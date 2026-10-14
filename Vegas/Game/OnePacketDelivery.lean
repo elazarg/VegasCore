@@ -820,7 +820,7 @@ theorem onePacket_keyedLocalComparisons {E : ExecutionProtocol Player}
       refine ⟨continuation, score, error, drift, slack, errorVanishes, driftVanishes,
         slackVanishes, drift_nonneg, slack_nonneg, fun n who site choice notFree marked => ?_⟩
       obtain ⟨lower_le, gap_le, rest⟩ := facts n who site choice notFree marked
-      exact ⟨by linarith [excluded_le_lower who], gap_le, rest⟩)
+      exact ⟨Or.inl (by linarith [excluded_le_lower who]), gap_le, rest⟩)
     (fun weights targetSequence played mixed bayes pooled =>
       otherComparisons weights targetSequence played mixed bayes (by convert pooled; rfl))
   all_goals rfl

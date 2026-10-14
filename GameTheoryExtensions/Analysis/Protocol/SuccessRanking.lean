@@ -814,7 +814,8 @@ theorem localComparisons_of_success [DecidableEq Pool]
         Tendsto error atTop (nhds 0) ∧ Tendsto slack atTop (nhds 0) ∧ (∀ n, 0 ≤ slack n) ∧
         ∀ n who (site : N.InformationSite who) (choice : N.Choice who site.1),
           N.agentAt site ∉ free → compared who site choice →
-          excluded who ≤ continuation n (N.agentAt site) + error n ∧
+          (excluded who ≤ continuation n (N.agentAt site) + error n ∨
+            failed (N.agentAt site) = ∅) ∧
           continuation n (N.agentAt site) - excluded who ≤ bound ∧
           |localSuccessValue fuel observe utility (targetSequence n) site (failed (N.agentAt site))
               (PMF.pure choice) -
@@ -916,13 +917,26 @@ theorem localComparisons_of_success [DecidableEq Pool]
   refine ⟨fun n => max (rankedError n) (otherError n), by
     simpa using rankedVanishes.max otherVanishes, fun n who site notFree choice => ?_⟩
   by_cases marked : compared who site choice
-  · obtain ⟨excluded_le, gap_le, choiceNear, bestNear, ranked⟩ :=
+  · obtain ⟨excludedOrEmpty, gap_le, choiceNear, bestNear, ranked⟩ :=
       facts n who site choice notFree marked
-    have dominated := localGain_le_of_failure_le fuel observe utility (targetSequence n) site
-      (failed (N.agentAt site)) (excluded who) (pays (N.agentAt site))
-      (continuation n (N.agentAt site)) (error n) (slack n) bound (PMF.pure choice)
-      (component n (N.agentAt site) (best n (pool (N.agentAt site)))) choiceNear bestNear ranked
-      (slack_nonneg n) excluded_le gap_le bound_nonneg
+    have dominated : localGain fuel observe utility (targetSequence n) site (PMF.pure choice) ≤
+        localGain fuel observe utility (targetSequence n) site
+          (component n (N.agentAt site) (best n (pool (N.agentAt site)))) +
+          slack n * bound + 3 * error n := by
+      rcases excludedOrEmpty with excluded_le | empty
+      · exact localGain_le_of_failure_le fuel observe utility (targetSequence n) site
+          (failed (N.agentAt site)) (excluded who) (pays (N.agentAt site))
+          (continuation n (N.agentAt site)) (error n) (slack n) bound (PMF.pure choice)
+          (component n (N.agentAt site) (best n (pool (N.agentAt site)))) choiceNear bestNear
+          ranked (slack_nonneg n) excluded_le gap_le bound_nonneg
+      · -- Without failed histories the excluded payoff enters nothing: any value pays.
+        have errorNonneg : 0 ≤ error n := (abs_nonneg _).trans choiceNear
+        exact localGain_le_of_failure_le fuel observe utility (targetSequence n) site
+          (failed (N.agentAt site)) (continuation n (N.agentAt site))
+          (by rw [empty]; exact fun _ impossible => impossible.elim)
+          (continuation n (N.agentAt site)) (error n) (slack n) bound (PMF.pure choice)
+          (component n (N.agentAt site) (best n (pool (N.agentAt site)))) choiceNear bestNear
+          ranked (slack_nonneg n) (by linarith) (by linarith) bound_nonneg
     refine Or.inr (Or.inl ⟨PMF.pure (best n (pool (N.agentAt site))), ?_⟩)
     change localGain fuel observe utility (targetSequence n) site (PMF.pure choice) ≤
       localGain fuel observe utility (targetSequence n) site

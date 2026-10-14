@@ -468,7 +468,8 @@ theorem freeKeyedLocalComparisons [Finite Opt] {E : ExecutionProtocol Player}
         Tendsto slack atTop (nhds 0) ∧ (∀ n, 0 ≤ drift n) ∧ (∀ n, 0 ≤ slack n) ∧
         ∀ n who (site : N.InformationSite who) (choice : N.Choice who site.1),
           ¬ free (N.agentAt site) → compared who site choice →
-          excluded who ≤ continuation n (N.agentAt site) + error n ∧
+          (excluded who ≤ continuation n (N.agentAt site) + error n ∨
+            failed (N.agentAt site) = ∅) ∧
           continuation n (N.agentAt site) - excluded who ≤ bound ∧
           |localSuccessValue fuel observe utility (targetSequence n) site (failed (N.agentAt site))
               (PMF.pure choice) -

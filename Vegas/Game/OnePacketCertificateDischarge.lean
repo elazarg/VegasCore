@@ -3087,13 +3087,13 @@ def OnePacketOpenInputs.toCertificateInputs
       obtain ⟨options, near⟩ := common n who site notFree keyed
       simp only [keyed, ↓reduceIte]
       have bound := le_max_left (lateError n) (otherError n)
-      refine ⟨by linarith, gap, (chosen choice marked).trans bound, fun _ =>
+      refine ⟨Or.inl (by linarith), gap, (chosen choice marked).trans bound, fun _ =>
         ⟨fun option => (late option).trans bound, options, near choice marked⟩,
         fun unkeyed => (unkeyed trivial).elim⟩
     · obtain ⟨low, gap, chosen, other⟩ := otherValue n who site notFree keyed
       simp only [keyed, ↓reduceIte]
       have bound := le_max_right (lateError n) (otherError n)
-      refine ⟨by linarith, gap, (chosen choice marked).trans bound,
+      refine ⟨Or.inl (by linarith), gap, (chosen choice marked).trans bound,
         fun isKeyed => isKeyed.elim,
         fun _ => ⟨other.trans bound, prescribed n who site choice notFree keyed⟩⟩
   otherComparisons weights targetSequence assembled mixed bayes poolBest := by
