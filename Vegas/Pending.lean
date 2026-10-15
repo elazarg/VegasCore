@@ -635,3 +635,5 @@ import Vegas.Pending.PhaseNativeInitialRounds
 import Vegas.Pending.PhasePacketCallback
 import Vegas.Pending.PhaseBindingMenuShape
 import Vegas.Pending.PhaseExpiryExclusion
+import Vegas.Pending.PhaseBindingWordKernel
+import Vegas.Pending.PhaseBindingWordHistory

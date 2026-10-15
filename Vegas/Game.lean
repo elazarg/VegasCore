@@ -901,3 +901,6 @@ import Vegas.Game.PhaseSourceCompletionOutcome
 import Vegas.Game.PhaseCanonicalSourceLaw
 import Vegas.Game.PhaseCanonicalCompletion
 import Vegas.Game.PhaseBindingDeviationMove
+import Vegas.Game.PhaseCompletionInitialLaw
+import Vegas.Game.RecoveryBindingWordRealization
+import Vegas.Game.PhaseCommitWordPolicy

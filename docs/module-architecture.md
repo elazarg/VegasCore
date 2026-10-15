@@ -1236,7 +1236,8 @@ The same completed assessment and canonical execution law:
 [Phase Source Dispatch Limit](../Vegas/Game/PhaseSourceDispatchLimit.lean),
 [Phase Source Completion Law](../Vegas/Game/PhaseSourceCompletionLaw.lean),
 [Phase Source Completion Outcome](../Vegas/Game/PhaseSourceCompletionOutcome.lean),
-[Phase Canonical Completion](../Vegas/Game/PhaseCanonicalCompletion.lean).
+[Phase Canonical Completion](../Vegas/Game/PhaseCanonicalCompletion.lean),
+[Phase Completion Initial Law](../Vegas/Game/PhaseCompletionInitialLaw.lean).
 Every actual clear callback has a convergent entire canonical finite strategy,
 including no-request and silent branches. Support-local behavioral congruence
 gives the same common limit's full finite-fuel and terminal history laws.
@@ -1244,7 +1245,10 @@ One actual fully mixed Bayes sequence, its consistent limit and optimal whole
 continuations after public exclusion retain those laws. Under the original
 physical service bounds, that same completion has the source readout/base
 payoff and actual randomized settlement law, with supported exclusion/charge
-zero. Native/source Bayes and clear-site rationality remain separate; this is
+zero. Immutable source input cells recover the original setup draw on actual
+pure-input histories. The same completed assessment retains that original
+draw jointly with readout, base payoffs and randomized settlement through the
+original outer initial-law bind. Native/source Bayes and clear-site rationality remain separate; this is
 not a native sequential equilibrium theorem.
 
 Full-word source readout and actual callback prediction:
@@ -1273,3 +1277,26 @@ typed result, including failure. Due expiry of an actual request puts its owner
 in permanent exclusion through normalization and rollback, enabling the
 existing arbitrary-continuation floor theorem. Silence can later send;
 these local command facts do not supply source continuation values or Bayes.
+
+Owned-word physical members and actual response conditioning:
+[Commit Prefix Word](../Vegas/Source/CommitPrefixWord.lean),
+[Phase Binding Word Kernel](../Vegas/Pending/PhaseBindingWordKernel.lean),
+[Phase Binding Word History](../Vegas/Pending/PhaseBindingWordHistory.lean),
+[Recovery Binding Word Realization](../Vegas/Game/RecoveryBindingWordRealization.lean),
+[Phase Commit Word Policy](../Vegas/Game/PhaseCommitWordPolicy.lean).
+The addressed selector uses only one owner's complete source view. Its physical
+member is globally legal for the counted menu, and actual initialized unsent
+binding histories discharge the channel guard. The full canonical/slot
+response is the member mixture under the same owned-word posterior, with the
+original omission law retained. SEND updates condition on the exact typed
+result, including failure; a positive WAIT leaves the word posterior unchanged.
+These are local member laws; accumulated recall and mixed-entry native/source
+posterior correspondence remain separate obligations.
+
+Complete words mixed over their original entries:
+[Commit Prefix Mixture](../Vegas/Source/CommitPrefixMixture.lean).
+An arbitrary entry law remains inside the full chronological word joint law.
+Reading the earlier owned view and next result retains the original entry tag.
+Conditioning that same joint on the owned view gives its actual entry posterior
+and the original next source kernel. No product over entries or native/source
+posterior identity is assumed or concluded.

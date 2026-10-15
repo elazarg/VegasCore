@@ -1,6 +1,6 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**SE: non-concurrent ✓ · safety/joint law ✓ · consistent completion ✓; Bayes/incentives open.**
+**SE: non-concurrent ✓ · safety/laws ✓ · completion ✓ · word policies ✓; posterior/incentives open.**
 
 <details>
 <summary>Checked recovery milestones and remaining proof obligations</summary>
@@ -79,6 +79,9 @@ history laws. One actual fully mixed Bayes sequence and its consistent limit
 retain the clear-site recipe and optimal whole continuations after public
 exclusion. That same limit has the source readout/base-payoff and randomized
 settlement laws; its supported terminal histories exclude and charge nobody.
+Immutable input cells reconstruct the original setup draw from the typed
+terminal state. The same completion therefore preserves that original draw
+jointly with readout, base payoffs and realized randomized settlement.
 This is a consistent completion with the desired terminal law. Clear-site
 rationality remains open, so it is not yet a sequential equilibrium theorem.
 
@@ -97,8 +100,11 @@ filled view and the complete-word conditional next action without a supplied
 source-information witness. The entire canonical/slot response factors into
 the original omission flag followed, when nonmissing, by the conditional
 typed result and its physical slot encoder. The raw-noise tier stays separate.
-Chronological source-window conditioning preserves the original initial
-posterior jointly with its endpoint. Neither this source identity nor the
+The complete chronological word can also be mixed over an arbitrary entry
+law while retaining the original entry tag. Conditioning that same joint on
+the current owned view gives its actual entry posterior and original next
+source kernel. Chronological source-window conditioning preserves the
+original initial posterior jointly with its endpoint. Neither this source identity nor the
 fixed-entry product establishes native/source posterior equality after actual
 native recall or after mixing over source entries. A globally legal replay
 policy fixes the focal player's recorded actions with unit own reach throughout
@@ -119,10 +125,17 @@ exclusion and enables the existing continuation-floor theorem. Silence can
 still be followed by a later send; these local facts do not identify its
 whole continuation value.
 
+A globally legal physical member policy now reads only one owner's complete
+word, the public block address and actual own input. Its complete callback
+mixture retains the original omission marginal. At genuine initialized
+binding callbacks, the remaining menu guard is derived. A supported SEND
+conditions the latent word on its exact typed result, including accepted
+failure; a positive WAIT leaves that word posterior unchanged. Full
+chronological recall filtering remains to be proved.
+
 Remaining obligations include the source/native posterior law under actual
 recall and mixed saved entries, and the clear-site continuation/incentive
-comparison. The completed assessment's full original setup-tag joint law
-must retain its explicit reconstruction or supported-input argument.
+comparison.
 Full concurrent SE preservation remains unproved.
 </details>
 

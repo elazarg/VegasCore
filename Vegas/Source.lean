@@ -117,3 +117,5 @@ import Vegas.Source.CommitPrefixConditioning
 import Vegas.Source.ProtocolSuffixPolicy
 import Vegas.Source.CommitPrefixReadout
 import Vegas.Source.CommitPrefixPolicyReadout
+import Vegas.Source.CommitPrefixWord
+import Vegas.Source.CommitPrefixMixture
