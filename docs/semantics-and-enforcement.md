@@ -186,7 +186,7 @@ There are two compiled contracts on one chain model:
   count verdict: a packet is permitted only if it has a valid token, a correct
   call by the right owner, and is its sender's first packet for its event; the
   verdict reads no inclusion. The exited player's payoff is a fixed
-  `excludedPayoff`, minus any charge (`recoveryExclusionBase`).
+  exit payoff, minus any charge (`recoveryExclusionBase`).
 
 ### II.2 Deviations under the current contracts
 
@@ -244,7 +244,7 @@ stand.
 5. **A gadget is formed in the contract layer.** The application's `packet`
    function forms readiness tokens, and the forced-exit contract changes it.
    Draining completes the affected events, so they would carry no token anyway.
-6. **The exit payoff is a utility.** `excludedPayoff : Player → ℝ` fixes the
+6. **The exit payoff is a utility.** The exit payoff, a real number per player, fixes the
    exit utility directly; the realism assumption of I.5 is not stated.
 7. **Naming.** "Runtime", "recovery runtime", "exclusion" and "forced-exit
    ledger" name a compiled contract as if it were a chain.
