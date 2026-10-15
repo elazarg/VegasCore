@@ -301,7 +301,7 @@ local notation "onePacketN" =>
 /-- A choice's failure differs from a mixture's by at most `A + weight` when
 the mixture keeps `1 - weight` of a main law on whose support every choice
 fails within `A` of the choice. -/
-private theorem abs_localFailure_pure_sub_le_of_mass
+theorem abs_localFailure_pure_sub_le_of_mass
     (assessment : (onePacketN).BehavioralAssessment) {who : Player}
     (site : (onePacketN).InformationSite who)
     (failed : Set ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup)

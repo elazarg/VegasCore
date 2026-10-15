@@ -1,6 +1,6 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**Recovery: 8/10 · incentives: 3/6 · joint law: 2/3 checked · concurrency open.**
+**Recovery: 8/10 · incentives: 4/6 · joint law: 2/3 checked · concurrency open.**
 
 <details>
 <summary>Recovery milestones and current proof substeps</summary>
@@ -37,7 +37,7 @@ The active continuation proof feeds the clear-site incentive milestone:
 | Verified | Actual recovery gain versus the native debt-stopped gain |
 | Verified | One source policy for each intended native commitment |
 | Verified | Common continuation values versus source values |
-| Pending | Nonlate native gain versus source gain |
+| Verified | Nonlate native gain versus source gain |
 | Pending | Keyed late gain comparisons and common ranking |
 | Pending | Limit transfer of sequential rationality |
 
@@ -50,6 +50,9 @@ The active continuation proof feeds the clear-site incentive milestone:
 The audited raw extension preserves the joint readout and settled-payoff law
 of any one-packet recovery equilibrium, with zero charges.
 Recovery SE assembly follows these incentive substeps.
+Nonlate comparisons cover every pure local choice under the original common
+assessment. Keyed component mixtures have a uniform vanishing gain bound;
+arbitrary keyed commitments and their source-policy comparison remain open.
 A substep is verified only after its warning-strict module build;
 the ten recovery milestones require the full checkpoint checks.
 

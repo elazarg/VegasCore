@@ -1,3 +1,6 @@
+import Vegas.Game.RecoveryNonLateComparisons
+import Vegas.Game.RecoveryPooledMemberGains
+import Vegas.Game.OnePacketCommitDecisionFailure
 import Vegas.Game.RecoveryLocalValueComparison
 import Vegas.Game.RecoveryPhaseValueBlind
 import Vegas.Game.RecoveryKeyedFailure
@@ -5632,3 +5635,53 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms GameTheory.Protocol.InformationModel.freeKeyed_memberGain_le_of_common_values
+
+/-- info: 'Vegas.RecoveryOnePacket.nativeComparison_pending_value_affine'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.RecoveryOnePacket.nativeComparison_pending_value_affine
+
+/-- info: 'Vegas.RecoveryOnePacket.recovery_keyed_component_value_bounds'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.RecoveryOnePacket.recovery_keyed_component_value_bounds
+
+/-- info: 'Vegas.RecoveryOnePacket.recovery_pooled_member_gain_bounds'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.RecoveryOnePacket.recovery_pooled_member_gain_bounds
+
+/-- info: 'Vegas.RecoveryOnePacket.nativeComparison_firstActivation_commitment_gain_le'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.RecoveryOnePacket.nativeComparison_firstActivation_commitment_gain_le
+
+/-- info: 'Vegas.RecoveryOnePacket.nativeComparison_intendedCommitment_history_comparisons'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.RecoveryOnePacket.nativeComparison_intendedCommitment_history_comparisons
+
+/-- info: 'Vegas.RecoveryOnePacket.nativeComparison_intendedCommitment_belief_comparison'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.RecoveryOnePacket.nativeComparison_intendedCommitment_belief_comparison
+
+/-- info: 'Vegas.RecoveryOnePacket.nativeComparison_nonlate_pending_comparisons'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.RecoveryOnePacket.nativeComparison_nonlate_pending_comparisons
+
+/-- info: 'Vegas.RecoveryOnePacket.recovery_nonlate_local_comparisons'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.RecoveryOnePacket.recovery_nonlate_local_comparisons
+
+/-- info: 'Vegas.certificate_lateCommit_historyDecisionFailure'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.certificate_lateCommit_historyDecisionFailure
+
+/-- info: 'Vegas.certificate_lateCommit_siteDecisionFailure'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.certificate_lateCommit_siteDecisionFailure

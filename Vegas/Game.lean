@@ -680,3 +680,20 @@ import Vegas.Game.RecoveryPhasePotential
 import Vegas.Game.RecoveryKeyedFailure
 import Vegas.Game.RecoveryLocalValueComparison
 import Vegas.Game.RecoveryPhaseValueBlind
+import Vegas.Game.RecoveryCompletionPotential
+import Vegas.Game.RecoveryLocalCompletionValue
+import Vegas.Game.RecoveryPendingValueAffine
+import Vegas.Game.RecoveryKeyedValueBounds
+
+import Vegas.Game.IntendedChoiceReach
+import Vegas.Game.RecoveryIntendedCommitmentValue
+import Vegas.Game.RecoveryCommitmentComparisons
+import Vegas.Game.RecoveryCommitmentBeliefValue
+import Vegas.Game.RecoveryCommitmentGainBounds
+import Vegas.Game.RecoverySilenceComparison
+import Vegas.Game.RecoveryDisclosureComparison
+import Vegas.Game.RecoveryUnintendedComparison
+import Vegas.Game.RecoveryNonLateNativeComparisons
+import Vegas.Game.RecoveryNonLateComparisons
+import Vegas.Game.RecoveryPooledMemberGains
+import Vegas.Game.OnePacketCommitDecisionFailure
