@@ -1,6 +1,6 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**SE: 2/4 stages checked · next: recovery bounds and assembly · then: concurrency.**
+**SE: 2/4 stages checked · recovery: foreign-failure bound → incentive assembly · then concurrency.**
 
 Status: partly mechanized mathematics. The checked results include Proposition
 1(1) for events run one at a time, Lemma C, the finite core of Lemma T, and a
@@ -2948,6 +2948,16 @@ needs its own review. What is known:
 | Lifting every fixed seeded scheduler retains its exact transcript posterior and behavioral mixture scheduler | `Vegas.EventGraphRuntime.RecoveryProjection.schedulerMixture_liftScheduler_posterior`, `Vegas.EventGraphRuntime.RecoveryProjection.schedulerMixture_liftScheduler_scheduler` |
 | Clear finite recovery Bayes beliefs project to the exact full native-control belief | `Vegas.EventGraphRuntime.RecoveryProjection.bounded_bayesBelief_projectedState` |
 | The original seeded occupation law equals the actual behavioral control law tagged with its full-transcript seed posterior | `Interaction.ReactiveApplication.schedulerMixture_occupation_joint` |
+| The assembled recovery strategy and same-weight native comparison have exactly the same optional action law at represented clear sites | `Vegas.RecoveryOnePacket.nativeComparisonStrategy_at_clear` |
+| Actual first public failures identify a pending owner packet or a genuinely activated due expiry | `Vegas.firstPublicFailure_pending_or_due` |
+| Pending submissions and due expiries supply actual future foreign first-activation response prefixes | `Vegas.foreign_firstActivation_prefix_of_recorded`, `Vegas.recovery_foreign_firstActivation_prefix_of_due` |
+| Clear regularity and focal debt-freedom transport to every actual earlier prefix | `Vegas.clear_regular_notOwes_of_tracePrefix` |
+| Actual recovery component mixtures put at most scale plus scale squared on events disjoint from main support | `Vegas.RecoveryOnePacket.component_mixture_event_le_of_disjoint_main` |
+| First-exclusion stopped endpoints retain their actual clear environment predecessor and realized command | `Vegas.EventGraphRuntime.responseMenu_stopped_exclusion_boundary` |
+| A recorded protected fixed-value binding completes successfully at the stopped boundary under actual recovery service | `Vegas.recovery_committed_stop_config` |
+| Its decoded stopped continuation law is exactly the source step law | `Vegas.recovery_committed_stop_sourceLaw` |
+| Original persistent seeds conditioned on actual finite-menu information equal standard Bayes controls tagged by the actual transcript posterior | `Interaction.ReactiveApplication.ResponseMenu.bayesBelief_seededOccupation` |
+| The original seed joint law transports to complete clear recovery controls, including their recalled exclusion records | `Vegas.EventGraphRuntime.RecoveryProjection.bounded_bayesBelief_seededState` |
 | One common recovery assessment completion retains consistent Bayes approximants and rationality at all post-exclusion sites | `Vegas.RecoveryOnePacket.exists_consistent_completion` |
 | Own latent source debt is uniform throughout the actual full recovery information fiber and gives whole-policy rationality for every assessment | `Vegas.RecoveryOnePacket.owingAgent_allHistories`, `Vegas.RecoveryOnePacket.owingAgent_isSequentiallyRationalAt` |
 | Actual recovery service timing gives native opportunity and inclusion at clear native histories | `Vegas.EventGraphRuntime.Recovery.Opportunity.clear_native`, `Vegas.EventGraphRuntime.Recovery.ProtectedInclusion.clear_native` |
@@ -2994,7 +3004,13 @@ supply responder forcedness before own debt; a first event failure rules out
 main support at its earlier first activation. The total nonmain event mass is
 bounded by the tremble scale plus its square, independently of menu size.
 The recovery weights also determine a globally assembled native comparison
-sequence with full support and canonical Bayes beliefs.
+sequence with full support and canonical Bayes beliefs. At represented clear
+decisions, its action laws equal those of the actual assembled recovery
+strategy using the same weights. Actual first-failure command classification,
+future first-activation provenance and prefix guard transport are checked;
+the marked-history probability estimate remains open. Protected recorded
+fixed-value bindings have the exact stopped source-step law under actual
+recovery service, without a global native completion contract.
 A common consistent assessment completion gives rationality at every
 post-exclusion site. Own latent source debt gives rationality at every owing
 site of any assessment, under actual recovery completion. The intended-law
@@ -3025,8 +3041,9 @@ seed law maps exactly to the same controls. At genuine clean ready finite native
 information sites, their checked conditional product retains the full current
 control and all other seed coordinates in its residual factor. Every supported
 Bayes control and latent seed recovers the same actual query log. Transfer to
-actual clear recovery sites and extension of this scoped controller result to
-the full runtime remain open.
+actual clear recovery sites retains the full original seed/control joint law.
+The filtered local-seed product at those sites and extension of this scoped
+controller result to the full runtime remain open.
 
 A mechanization must also check the following, beyond the statements above:
 

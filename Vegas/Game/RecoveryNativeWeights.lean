@@ -42,7 +42,8 @@ theorem initialLaw_native : (Initial).map RecoveryState.native = initialLaw setu
   exact PMF.map_id _
 
 omit [Fintype Player] in
-private theorem initialized_initialLaw (state : RecoveryState (graph setup))
+/-- The canonical recovery prior starts from native initial configurations with no exclusions. -/
+theorem initialLaw_initialized (state : RecoveryState (graph setup))
     (supported : state ∈ (Initial).support) :
     ∃ inputs, state =
       (RecoveryState.mk (State.initial inputs) ∅ : RecoveryState (graph setup)) := by
@@ -75,7 +76,7 @@ theorem forcedAgent_iff_at_liftedSite [Fintype (RP).History]
   let site : (R).InformationSite who :=
     ⟨liftInformation (runtime setup) leaks input, decision⟩
   obtain ⟨nativeSite, seen, matching⟩ := exists_nativeInformationSite_of_clear setup leaks bounds
-    Initial (initialized_initialLaw setup) horizon scheduler site
+    Initial (initialLaw_initialized setup) horizon scheduler site
     (clearInput_lift (runtime setup) leaks input)
   have nativeInput : nativeSite.1 = input :=
     seen.trans (information_liftInformation (runtime setup) leaks input)

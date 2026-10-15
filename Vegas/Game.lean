@@ -590,3 +590,19 @@ import Vegas.Game.RecoveryPrescribedMixture
 
 import Vegas.Game.RecoveryCommitmentFreshCall
 import Vegas.Game.RecoveryNativeLaw
+
+import Vegas.Game.RecoveryStoppedSettlement
+
+import Vegas.Game.RecoveryStoppedCommitment
+
+import Vegas.Game.OnePacketPendingClear
+import Vegas.Game.RecoveryPrescribedStrategy
+import Vegas.Game.RecoveryNativeMixture
+import Vegas.Game.RecoveryForeignActivation
+import Vegas.Game.OnePacketForeignSubmission
+import Vegas.Game.RecoveryRareMainMass
+import Vegas.Game.OnePacketCompletionOrigin
+
+import Vegas.Game.RecoveryStoppedSourceLaw
+import Vegas.Game.RecoveryNativeStrategy
+import Vegas.Game.OnePacketFilteredPrefix

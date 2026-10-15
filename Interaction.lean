@@ -144,3 +144,4 @@ import Interaction.ReactiveOccupationBayes
 import Interaction.ReactiveOccupationPosterior
 import Interaction.ReactiveSiteHorizon
 import Interaction.ReactiveSchedulerSeedOccupation
+import Interaction.ReactiveSchedulerSeedBayes

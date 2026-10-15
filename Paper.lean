@@ -1,3 +1,13 @@
+import Interaction.ReactiveSchedulerSeedBayes
+import Vegas.Game.RecoveryStoppedSourceLaw
+import Vegas.Game.RecoveryNativeStrategy
+import Vegas.Game.RecoveryPrescribedStrategy
+import Vegas.Game.RecoveryForeignActivation
+import Vegas.Game.OnePacketForeignSubmission
+import Vegas.Game.RecoveryRareMainMass
+import Vegas.Game.OnePacketCompletionOrigin
+import Vegas.Game.OnePacketFilteredPrefix
+import Vegas.Pending.ExclusionSeedBelief
 import Vegas.Game.RecoveryCommitmentFreshCall
 import Vegas.Game.OnePacketForeignFreshness
 import Vegas.Game.RecoveryPrescribedMixture
@@ -5069,3 +5079,87 @@ open Vegas.Examples.LateOpeningRuntimeLabelContinuation in
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms continuation_payoff_le_of_uniform_sequence
+
+open Vegas in
+/-- info: 'Vegas.recovery_committed_stop_sourceLaw'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms recovery_committed_stop_sourceLaw
+
+open Vegas in
+/-- info: 'Vegas.recovery_committed_stop_config'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms recovery_committed_stop_config
+
+open Vegas in
+/-- info: 'Vegas.recovery_stopped_freshCall_receipt'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms recovery_stopped_freshCall_receipt
+
+open Vegas.EventGraphRuntime in
+/-- info: 'Vegas.EventGraphRuntime.responseMenu_stopped_exclusion_boundary'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms responseMenu_stopped_exclusion_boundary
+
+open Vegas in
+/-- info: 'Vegas.pending_publicClear_of_acceptanceInvariant'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms pending_publicClear_of_acceptanceInvariant
+
+open Vegas.RecoveryOnePacket in
+/-- info: 'Vegas.RecoveryOnePacket.nativeComparisonStrategy_at_clear'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms nativeComparisonStrategy_at_clear
+
+open Vegas.RecoveryOnePacket in
+/-- info: 'Vegas.RecoveryOnePacket.assembledStrategy_projected_of_forced_nonlate'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms assembledStrategy_projected_of_forced_nonlate
+
+open Vegas in
+/-- info: 'Vegas.recovery_foreign_firstActivation_prefix_of_due'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms recovery_foreign_firstActivation_prefix_of_due
+
+open Vegas in
+/-- info: 'Vegas.foreign_firstActivation_prefix_of_recorded'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms foreign_firstActivation_prefix_of_recorded
+
+open Vegas in
+/-- info: 'Vegas.firstPublicFailure_pending_or_due'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms firstPublicFailure_pending_or_due
+
+open Vegas.RecoveryOnePacket in
+/-- info: 'Vegas.RecoveryOnePacket.component_mixture_event_le_of_disjoint_main'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms component_mixture_event_le_of_disjoint_main
+
+open Vegas in
+/-- info: 'Vegas.clear_regular_notOwes_of_tracePrefix'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms clear_regular_notOwes_of_tracePrefix
+
+open Interaction.ReactiveApplication.ResponseMenu in
+/-- info: 'Interaction.ReactiveApplication.ResponseMenu.bayesBelief_seededOccupation'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms bayesBelief_seededOccupation
+
+open Vegas.EventGraphRuntime.RecoveryProjection in
+/-- info: 'Vegas.EventGraphRuntime.RecoveryProjection.bounded_bayesBelief_seededState'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms bounded_bayesBelief_seededState

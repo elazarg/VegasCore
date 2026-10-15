@@ -93,3 +93,5 @@ import GameTheoryExtensions.Math.Probability.TaggedPosterior
 import GameTheoryExtensions.Math.Probability.EqualMassFibers
 import GameTheoryExtensions.Math.Probability.ProductMixture
 import GameTheoryExtensions.Math.Probability.ConditionalProductMixture
+
+import GameTheoryExtensions.Analysis.Protocol.StoppedHistoryInvariant

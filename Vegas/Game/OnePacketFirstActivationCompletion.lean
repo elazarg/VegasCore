@@ -184,21 +184,16 @@ private theorem commitInvariant_transition {who : Player}
               · exact ⟨action, member⟩
               · exact (pending earlier).elim
 
-/-- **The stop after a commitment.** Let who have sent message, recorded by
-entry, from the configuration sent at which the binding event of rank
-rank is ready, committing to candidate whose meaning is the successful
-value value of the binding. Suppose the acceptance invariant holds at a
-history at sent, and the packet has an accepting receipt at every later
-history recording it at which the event has completed. Then, under a scheduler
-completing play, every stop of play of any profile until the event completes
-completes the event from sent by action, the action binding value, and
-the event's output is a success. -/
-theorem committed_stop_config
-    (completes : CompletesPlay (runtime setup) leaks (initialLaw setup) horizon scheduler)
+/-- Arbitrary early stopping retains the original configuration while the
+committed binding is pending. Once it completes, an accepted fixed-value call
+gives exactly its successful compiled event step, without a completion contract. -/
+theorem committed_until_config
     (certificate : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup)
       horizon scheduler).WellFoundedHistories)
     (players : ∀ player, ((bounds.onePacketMenu (runtime setup) leaks).information
       (initialLaw setup) horizon scheduler).BehavioralPolicy player)
+    (extraStop : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup)
+      horizon scheduler).History → Prop)
     {who : Player} {entry : (application setup leaks).PlayerEntry}
     {message : Message Player (WitnessedPacket (graph setup))} {event : (graph setup).EventId}
     {sent : (graph setup).Config} (ready : sent.cut.Ready event) {rank : Nat}
@@ -210,11 +205,6 @@ theorem committed_stop_config
     {value : L.Val payload} (action : (graph setup).Action event)
     (successful : (cast (congrArg EventGraph.EventField.Action outputEq) action :
       PublicationResult (L.Val payload)) = .success value)
-    (settles : ∀ control, ((bounds.onePacketMenu (runtime setup) leaks).protocol
-        (initialLaw setup) horizon scheduler).Trace (some control) →
-      RecordsEntry setup leaks who entry (some control) →
-      event ∈ control.execution.application.config.cut.completed →
-        (message.id, true) ∈ control.execution.receipts)
     (start : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
       scheduler).History) {control : (application setup leaks).Control}
     (current : start.state = some control)
@@ -222,13 +212,24 @@ theorem committed_stop_config
       sent (some control))
     (atSent : control.execution.application.config = sent)
     (fixed : control.execution.application.candidates.lookup candidate =
-      .openable ⟨payload, value⟩) :
+      .openable ⟨payload, value⟩)
+    (settles : ∀ stopped ∈ (((bounds.onePacketMenu (runtime setup) leaks).information
+        (initialLaw setup) horizon scheduler).runBehavioralUntil certificate players
+        (fun history => LateStopped setup leaks bounds horizon scheduler rank history ∨
+          extraStop history) start).support,
+      ∀ final, stopped.state = some final → RecordsEntry setup leaks who entry (some final) →
+        event ∈ final.execution.application.config.cut.completed →
+          (message.id, true) ∈ final.execution.receipts) :
     ∀ stop ∈ (((bounds.onePacketMenu (runtime setup) leaks).information (initialLaw setup)
         horizon scheduler).runBehavioralUntil certificate players
-        (LateStopped setup leaks bounds horizon scheduler rank) start).support,
+        (fun history => LateStopped setup leaks bounds horizon scheduler rank history ∨
+          extraStop history) start).support,
       ∃ final, stop.state = some final ∧
-        final.execution.application.config ∈ (sent.step event ready action).support ∧
-        OutputSucceeded final.execution.application.config.store event := by
+        (event ∉ final.execution.application.config.cut.completed →
+          final.execution.application.config = sent) ∧
+        (event ∈ final.execution.application.config.cut.completed →
+          final.execution.application.config ∈ (sent.step event ready action).support ∧
+            OutputSucceeded final.execution.application.config.store event) := by
   intro stop member
   let menu := bounds.onePacketMenu (runtime setup) leaks
   let model := menu.information (initialLaw setup) horizon scheduler
@@ -239,15 +240,15 @@ theorem committed_stop_config
     rw [atSent] at done
     exact (ready.1 done).elim
   have reachedInvariant := model.runBehavioralUntil_support_closed_of_going certificate players
-    (LateStopped setup leaks bounds horizon scheduler rank)
+    (fun history => LateStopped setup leaks bounds horizon scheduler rank history ∨
+      extraStop history)
     (CommitInvariant setup leaks bounds horizon scheduler who entry message event sent ready
       candidate ⟨payload, value⟩)
     (fun history going _ joint legal target holds reached =>
       commitInvariant_transition ordered history.state target
-        (fun control state prefixed => going ⟨control, state, prefixed⟩) joint legal holds
+        (fun control state prefixed => going (Or.inl ⟨control, state, prefixed⟩)) joint legal holds
         reached)
     start holds stop member
-  have ends := model.mem_support_runBehavioralUntil certificate players _ start stop member
   cases state : stop.state with
   | none =>
       rw [state] at reachedInvariant
@@ -259,21 +260,11 @@ theorem committed_stop_config
       have rawTrace : ((application setup leaks).protocol (initialLaw setup) horizon
           scheduler).Trace (some final) :=
         menu.toRawTrace (initialLaw setup) horizon scheduler finalTrace
-      have done : event ∈ final.execution.application.config.cut.completed := by
-        by_contra pending
-        have same := stable pending
-        rcases ends with ⟨other, otherState, prefixed⟩ | ended
-        · rw [state] at otherState
-          cases Option.some.inj otherState
-          rw [same] at prefixed
-          exact Nat.succ_ne_self rank (isPrefix_unique prefixed ordered)
-        · rw [state] at ended
-          have terminal := completes final rawTrace ended
-          exact pending (by rw [terminal]; exact Finset.mem_univ _)
+      refine ⟨final, rfl, stable, fun done => ?_⟩
       obtain ⟨found, stepMember⟩ := completion done
-      have receipt := settles final finalTrace records done
+      have receipt := settles stop member final state records done
       have succeeded := settled receipt
-      refine ⟨final, rfl, ?_, succeeded⟩
+      refine ⟨?_, succeeded⟩
       -- The completion's action binds the committed value.
       have facts := legalFacts setup leaks horizon scheduler final rawTrace
       have initialized : initialLaw setup =
@@ -325,6 +316,76 @@ theorem committed_stop_config
             (cast_inj _).mp (resultEq.trans successful.symm)
           rw [← actionEq]
           exact stepMember
+
+/-- **The stop after a commitment.** Let who have sent message, recorded by
+entry, from the configuration sent at which the binding event of rank
+rank is ready, committing to candidate whose meaning is the successful
+value value of the binding. Suppose the acceptance invariant holds at a
+history at sent, and the packet has an accepting receipt at every later
+history recording it at which the event has completed. Then, under a scheduler
+completing play, every stop of play of any profile until the event completes
+completes the event from sent by action, the action binding value, and
+the event's output is a success. -/
+theorem committed_stop_config
+    (completes : CompletesPlay (runtime setup) leaks (initialLaw setup) horizon scheduler)
+    (certificate : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup)
+      horizon scheduler).WellFoundedHistories)
+    (players : ∀ player, ((bounds.onePacketMenu (runtime setup) leaks).information
+      (initialLaw setup) horizon scheduler).BehavioralPolicy player)
+    {who : Player} {entry : (application setup leaks).PlayerEntry}
+    {message : Message Player (WitnessedPacket (graph setup))} {event : (graph setup).EventId}
+    {sent : (graph setup).Config} (ready : sent.cut.Ready event) {rank : Nat}
+    (ordered : sent.cut.IsPrefix rank) {owner : Player} {payload : L.Ty}
+    {outputEq : (graph setup).outputLayout event = .binding owner payload}
+    (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
+      ((graph setup).nodes event) = .bind owner payload)
+    {candidate : Handle (graph setup)} (call : message.payload.call = .commitment event candidate)
+    {value : L.Val payload} (action : (graph setup).Action event)
+    (successful : (cast (congrArg EventGraph.EventField.Action outputEq) action :
+      PublicationResult (L.Val payload)) = .success value)
+    (settles : ∀ control, ((bounds.onePacketMenu (runtime setup) leaks).protocol
+        (initialLaw setup) horizon scheduler).Trace (some control) →
+      RecordsEntry setup leaks who entry (some control) →
+      event ∈ control.execution.application.config.cut.completed →
+        (message.id, true) ∈ control.execution.receipts)
+    (start : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
+      scheduler).History) {control : (application setup leaks).Control}
+    (current : start.state = some control)
+    (invariant : AcceptanceInvariant setup leaks bounds horizon scheduler who entry message event
+      sent (some control))
+    (atSent : control.execution.application.config = sent)
+    (fixed : control.execution.application.candidates.lookup candidate =
+      .openable ⟨payload, value⟩) :
+    ∀ stop ∈ (((bounds.onePacketMenu (runtime setup) leaks).information (initialLaw setup)
+        horizon scheduler).runBehavioralUntil certificate players
+        (LateStopped setup leaks bounds horizon scheduler rank) start).support,
+      ∃ final, stop.state = some final ∧
+        final.execution.application.config ∈ (sent.step event ready action).support ∧
+        OutputSucceeded final.execution.application.config.store event := by
+  intro stop member
+  let menu := bounds.onePacketMenu (runtime setup) leaks
+  let model := menu.information (initialLaw setup) horizon scheduler
+  have classified := committed_until_config certificate players (fun _ => False) ready ordered
+    (outputEq := outputEq) codeEq call action successful start current invariant atSent fixed
+    (fun stopped _ final equal records done =>
+      settles final (equal ▸ stopped.trace) records done)
+  obtain ⟨final, state, stable, completed⟩ := classified stop
+    (by simpa only [or_false] using member)
+  have ends := model.mem_support_runBehavioralUntil certificate players
+    (LateStopped setup leaks bounds horizon scheduler rank) start stop member
+  have done : event ∈ final.execution.application.config.cut.completed := by
+    by_contra pending
+    have same := stable pending
+    rcases ends with ⟨other, otherState, prefixed⟩ | ended
+    · rw [state] at otherState
+      cases Option.some.inj otherState
+      rw [same] at prefixed
+      exact Nat.succ_ne_self rank (isPrefix_unique prefixed ordered)
+    · rw [state] at ended
+      have rawTrace := state ▸ menu.toRawTrace (initialLaw setup) horizon scheduler stop.trace
+      have terminal := completes final rawTrace ended
+      exact pending (by rw [terminal]; exact Finset.mem_univ _)
+  exact ⟨final, state, (completed done).1, (completed done).2⟩
 
 omit [Fintype Player] in
 /-- The canonical decision committing a successful value at a binding of who
