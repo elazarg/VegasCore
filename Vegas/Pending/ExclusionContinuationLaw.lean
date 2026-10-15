@@ -60,10 +60,7 @@ theorem terminal_readout_withinTV_of_exclusion
       recoveryReadout history = nativeReadout
         (nativeHistory runtime leaks initial horizon scheduler history clear))
     (history : (RecoveryProtocol).History)
-    (current : (runtime.recoveryApplication leaks).Control)
-    (state : history.state = some current) (empty : current.execution.application.excluded = ∅) :
-    let clear := fun next (same : history.state = some next) =>
-      (Option.some.inj (state.symm.trans same)) ▸ empty
+    (clear : RecoveryClear runtime leaks initial horizon scheduler history) :
     let recoveryStopped := (RecoveryModel).runBehavioralUntil recoveryCertificate profile
       (fun history => ¬ RecoveryClear runtime leaks initial horizon scheduler history) history
     PMF.WithinTV (((recoveryStopped.map
@@ -75,13 +72,13 @@ theorem terminal_readout_withinTV_of_exclusion
         (nativeHistory runtime leaks initial horizon scheduler history clear)).map nativeReadout) :=
     by
   classical
-  intro clear recoveryStopped
+  intro recoveryStopped
   let native := nativeHistory runtime leaks initial horizon scheduler history clear
   let nativeStopped := (NativeModel).runBehavioralUntil nativeCertificate
     (nativeProfile runtime leaks initial horizon scheduler profile)
     (fun history => ¬ NativeClear runtime leaks initial horizon scheduler history) native
   have stoppedLaw := runBehavioralUntil_exclusion_map_eq runtime leaks initial horizon scheduler
-    initialized profile nativeCertificate recoveryCertificate history current state empty
+    initialized profile nativeCertificate recoveryCertificate history clear
   have dominated : ∀ target,
       (recoveryStopped.map (recoveryStoppedReadout runtime leaks initial horizon scheduler))
         (some target) ≤ nativeStopped target := by

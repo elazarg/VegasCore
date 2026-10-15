@@ -1,6 +1,6 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**Recovery: 8/10 · continuation ✓ · incentives: 2/6 checked · concurrency open.**
+**Recovery: 8/10 · incentives: 2/6 · joint law: 2/3 checked · concurrency open.**
 
 <details>
 <summary>Recovery milestones and current proof substeps</summary>
@@ -41,6 +41,14 @@ The active continuation proof feeds the clear-site incentive milestone:
 | Pending | Keyed late gain comparisons and common ranking |
 | Pending | Limit transfer of sequential rationality |
 
+| Status | Joint-law assembly substep |
+| --- | --- |
+| Verified | Initialized honest source law, including the private setup draw |
+| Verified | Actual common recovery sequence approaches the intended joint law |
+| Pending | Intended-law SE at the common assessment limit |
+
+The audited raw extension preserves the joint readout and settled-payoff law
+of any one-packet recovery equilibrium, with zero charges.
 Recovery SE assembly follows these incentive substeps.
 A substep is verified only after its warning-strict module build;
 the ten recovery milestones require the full checkpoint checks.
@@ -3014,6 +3022,19 @@ needs its own review. What is known:
 | Both raw and finite-menu stopped chance phases preserve the exact source continuation law | `Vegas.recovery_chance_sourceContinuation`, `Vegas.recovery_chance_stopped_sourceContinuation` |
 | Every terminal source prefix has its exact readout law under arbitrary native continuation policies, without service hypotheses | `Vegas.terminalPrefix_readout_law` |
 | Honest finite-menu play from an actual intended recovery boundary has the full source continuation law, by source-rank induction | `Vegas.recovery_honest_boundary_readout_law` |
+| Honest native continuations have no repeated pending delivery at any supported owner input | `Vegas.recovery_honest_reached_not_late` |
+| Stopping an honest continuation at public failure or focal latent debt preserves its exact terminal law | `Vegas.honest_debt_stopped_terminal_law_of_readout_law` |
+| Honest-choice retention bounds every bounded stopped native continuation payoff | `Vegas.onePacket_stopped_expect_sub_le` |
+| Actual recovery service supplies source values for honest debt-stopped boundary comparisons | `Vegas.recovery_stopped_boundary_value_sub_le` |
+| The original common recovery weights retain honest choices at every future boundary continuation input | `Vegas.RecoveryOnePacket.nativeComparison_dominatesHonestFrom_boundary` |
+| Actual recovery completion settles the current event at every supported next-event or public-failure stop | `Vegas.recovery_pending_stop_completed` |
+| The actual terminal probability of current-event primitive decision failure equals its stopped probability | `Vegas.recovery_pending_failure_terminal_eq_stopped` |
+| Original common recovery posteriors with the same operational key have vanishing past-record discrepancy | `Vegas.RecoveryOnePacket.recovery_keyed_record_bounds` |
+| Under the stated clock/slot and menu-coverage premises, actual clean unsent Bayes sites and the same original local seed retain the same first resolving binding log under different hidden binding material and residual seeds | `Vegas.EventGraphRuntime.LocalSeedController.bayesBelief_first_binding_log_eq` |
+| Initialized honest native play has the full intended source readout law, including its private setup draw, under actual recovery service | `Vegas.recovery_honest_initialized_readout_law` |
+| Native first-exit mass equals terminal public-failure mass without a native completion contract | `Vegas.EventGraphRuntime.RecoveryProjection.native_exit_mass_eq_terminal_failure_mass` |
+| The actual common recovery strategy has a uniformly vanishing initialized joint typed-readout and base-payoff law error against the original source sequence | `Vegas.RecoveryOnePacket.recovery_initialized_lawApproximation` |
+| A one-packet recovery equilibrium and its intended joint law extend to the audited raw recovery game with zero charges and the same joint typed-readout and settled-payoff law | `Vegas.recovery_intended_raw_sequentialEquilibrium_of_onePacket` |
 | An owed failure appears in any existing terminal readout; an honest source terminal law therefore makes every intermediate honest state intended | `Vegas.decoded_owesFailure_failedReveals_of_readout`, `Vegas.honest_reached_intended_of_readout_law` |
 | The original recovery assessment's whole-policy gain is bounded by its concrete belief-averaged native debt-stopped gain plus a uniform vanishing error | `Vegas.RecoveryOnePacket.recovery_common_gain_le_native_debt_stopped` |
 | An intended native commitment determines one source policy and its exact source history-gain identity throughout the debt-free information fiber | `Vegas.intendedCommitment_sourcePolicy_gain` |
@@ -3079,6 +3100,16 @@ comparison bound under actual recovery completion. Actual clear regular traces
 supply responder forcedness before own debt; a first event failure rules out
 main support at its earlier first activation. The total nonmain event mass is
 bounded by the tremble scale plus its square, independently of menu size.
+Initialized honest native play has the intended source law under actual
+recovery service, including the private setup draw. The same original recovery
+completion weights retain every supported honest choice. For round budget $H$,
+the actual recovery sequence's initialized joint typed-readout and base-payoff
+law has total-variation error at most
+$2|P|(2H+1)(1-\operatorname{slotRetention}(\eta))$ against the original source
+sequence. This bound vanishes with the common tremble scale. The coupling
+includes initialization; native terminal public failure is exactly the
+first-exit mass. No global native completion contract is needed. This law
+approximation does not yet prove limiting sequential rationality.
 The recovery weights also determine a globally assembled native comparison
 sequence with full support and canonical Bayes beliefs. At represented clear
 decisions, its action laws equal those of the actual assembled recovery
@@ -3112,7 +3143,12 @@ stopped source-step law. At intended clear first callbacks, honest choices give
 the exact source behavioral step for either owned node. The prescribed component
 preserves the source continuation value within six times the tremble scale times
 the payoff bound, also for the comparison strategy with the same recovery weights.
-The recursive comparison with future source play remains open.
+Honest continuations have the full source law by source-rank induction, including
+chance phases and the terminal base. Actual recovery service also makes every
+supported honest future input nonlate, so the original common weights retain
+honest choices throughout the continuation. Stopped expectations inherit the
+resulting finite-horizon error bound. Comparisons for all nonlate and keyed late
+local deviations remain open.
 A common consistent assessment completion gives rationality at every
 post-exclusion site. Own latent source debt gives rationality at every owing
 site of any assessment, under actual recovery completion. The intended-law

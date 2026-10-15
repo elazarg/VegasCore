@@ -141,7 +141,7 @@ theorem recovery_expect_sub_native_debt_stopped_le_foreign_exit {Parameter : Typ
     exact responseMenu_exclusion_or_classified_eq (runtime setup) leaks initial horizon scheduler
       initialized menu profile nativeCertificate recoveryCertificate menuCertificate
       nativeDebt recoveryDebt (fun next _clear => decodedEq next.state)
-      history current state empty
+      history clear
   have valueEq (next : (menu.protocol initial horizon scheduler).History) :
       read (classify next) = if stop next then excludedPayoff who else
         recoveryExclusionBase parameter utility excludedPayoff next.state who := by

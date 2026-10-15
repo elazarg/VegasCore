@@ -47,11 +47,9 @@ theorem responseMenu_exclusion_or_classified_eq
       nativeStop (nativeHistory runtime leaks initial horizon scheduler history clear) ↔
         recoveryStop history)
     (history : (menu.protocol initial horizon scheduler).History)
-    (current : (runtime.recoveryApplication leaks).Control)
-    (state : history.state = some current) (empty : current.execution.application.excluded = ∅) :
+    (clear : ∀ current, history.state = some current →
+      current.execution.application.excluded = ∅) :
     let raw := menu.toRawHistory initial horizon scheduler history
-    let clear := fun next (same : raw.state = some next) =>
-      (Option.some.inj (state.symm.trans same)) ▸ empty
     ((NativeModel).runBehavioralUntil nativeCertificate
       (nativeProfile runtime leaks initial horizon scheduler
         (fun who => menu.embedPolicy initial horizon scheduler who (profile who)))
@@ -65,10 +63,10 @@ theorem responseMenu_exclusion_or_classified_eq
         recoveryStop (menu.toRawHistory initial horizon scheduler history)) history).map
       (fun history => recoveryClassifiedReadout runtime leaks initial horizon scheduler
         (menu.toRawHistory initial horizon scheduler history)) := by
-  intro raw clear
+  intro raw
   have compared := runBehavioralUntil_exclusion_or_classified_eq runtime leaks initial horizon
     scheduler initialized (fun who => menu.embedPolicy initial horizon scheduler who (profile who))
-    nativeCertificate recoveryCertificate nativeStop recoveryStop stopAgrees raw current state empty
+    nativeCertificate recoveryCertificate nativeStop recoveryStop stopAgrees raw clear
   rw [← menu.runBehavioralUntil_embed initial horizon scheduler recoveryCertificate menuCertificate
     profile (fun history => ¬ RecoveryClear runtime leaks initial horizon scheduler history ∨
       recoveryStop history) history,
@@ -86,11 +84,9 @@ theorem responseMenu_exclusion_classified_eq
     (recoveryCertificate : (RecoveryProtocol).WellFoundedHistories)
     (menuCertificate : (menu.protocol initial horizon scheduler).WellFoundedHistories)
     (history : (menu.protocol initial horizon scheduler).History)
-    (current : (runtime.recoveryApplication leaks).Control)
-    (state : history.state = some current) (empty : current.execution.application.excluded = ∅) :
+    (clear : ∀ current, history.state = some current →
+      current.execution.application.excluded = ∅) :
     let raw := menu.toRawHistory initial horizon scheduler history
-    let clear := fun next (same : raw.state = some next) =>
-      (Option.some.inj (state.symm.trans same)) ▸ empty
     ((NativeModel).runBehavioralUntil nativeCertificate
       (nativeProfile runtime leaks initial horizon scheduler
         (fun who => menu.embedPolicy initial horizon scheduler who (profile who)))
@@ -106,6 +102,6 @@ theorem responseMenu_exclusion_classified_eq
   simpa only [or_false] using
     responseMenu_exclusion_or_classified_eq runtime leaks initial horizon scheduler initialized
       menu profile nativeCertificate recoveryCertificate menuCertificate (fun _ => False)
-      (fun _ => False) (fun _ _ => Iff.rfl) history current state empty
+      (fun _ => False) (fun _ _ => Iff.rfl) history clear
 
 end Vegas.EventGraphRuntime.RecoveryProjection

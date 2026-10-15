@@ -106,8 +106,7 @@ theorem recovery_expect_sub_native_stopped_le_foreign_exit {Parameter : Type}
     dsimp only [nativeStopped, stopped]
     rw [stopEq]
     exact responseMenu_exclusion_classified_eq (runtime setup) leaks initial horizon scheduler
-      initialized menu profile nativeCertificate recoveryCertificate menuCertificate history current
-      state empty
+      initialized menu profile nativeCertificate recoveryCertificate menuCertificate history clear
   have valueEq (next : (menu.protocol initial horizon scheduler).History) :
       read (classify next) = if stop next then excludedPayoff who else
         recoveryExclusionBase parameter utility excludedPayoff next.state who := by

@@ -649,3 +649,16 @@ import Vegas.Game.HonestContinuationIntended
 import Vegas.Game.RecoveryHonestContinuation
 
 import Vegas.Game.OnePacketCommitmentSourcePolicy
+
+import Vegas.Game.RecoveryKeyedRecords
+import Vegas.Game.RecoveryHonestStoppedLaw
+import Vegas.Game.StoppedHonestComparison
+import Vegas.Game.RecoveryHonestRecall
+
+import Vegas.Game.RecoveryPendingCompletion
+import Vegas.Game.RecoveryStoppedContinuationValue
+import Vegas.Game.RecoveryComparisonRetention
+import Vegas.Game.RecoveryPendingFailure
+import Vegas.Game.RecoveryInitializedLaw
+import Vegas.Game.RecoveryInitializedProjection
+import Vegas.Game.RecoveryOnePacketRawLaw

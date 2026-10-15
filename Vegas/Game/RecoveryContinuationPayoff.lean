@@ -65,7 +65,7 @@ theorem recovery_exclusionPayoffs_withinTV {Parameter : Type}
     initialized profile nativeCertificate recoveryCertificate
     (fun final => exclusionBase setup parameter utility excludedPayoff leaks final.state)
     (fun final => recoveryExclusionBase parameter utility excludedPayoff final.state)
-    ?_ history current state empty
+    ?_ history clear
   intro stop clearStop
   funext who
   change recoveryExclusionBase parameter utility excludedPayoff stop.state who =

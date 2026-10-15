@@ -73,17 +73,18 @@ theorem exists_paired_transition_clear_reflection
     (initialized : ∀ state ∈ initial.support, ∃ inputs,
       state = (⟨State.initial inputs, ∅⟩ : RecoveryState graph))
     (horizon : Nat) (scheduler : (runtime.recoveryApplication leaks).Scheduler)
-    (current : (runtime.recoveryApplication leaks).Control)
+    (state : (runtime.recoveryApplication leaks).ProtocolState)
     (trace : ((runtime.recoveryApplication leaks).protocol initial horizon scheduler).Trace
-      (some current)) (empty : current.execution.application.excluded = ∅)
+      state) (clear : ∀ current, state = some current →
+        current.execution.application.excluded = ∅)
     (joint : Player → Option (runtime.recoveryApplication leaks).Action) :
     ∃ paired : PMF ((runtime.reactiveApplication leaks).ProtocolState ×
         (runtime.recoveryApplication leaks).ProtocolState),
       paired.map Prod.fst = (runtime.reactiveApplication leaks).transition
         (initial.map RecoveryState.native) horizon (nativeScheduler runtime leaks scheduler)
-        (some (control runtime leaks current)) (jointActions runtime leaks joint) ∧
+        (protocolState runtime leaks state) (jointActions runtime leaks joint) ∧
       paired.map Prod.snd = (runtime.recoveryApplication leaks).transition initial horizon scheduler
-        (some current) joint ∧
+        state joint ∧
       (∀ pair ∈ paired.support,
         (∀ next, pair.2 = some next → next.execution.application.excluded = ∅) →
         pair.1 = protocolState runtime leaks pair.2) ∧
@@ -92,18 +93,46 @@ theorem exists_paired_transition_clear_reflection
           PublicExclusionRecord (⟨next.execution.application, ∅⟩ : RecoveryState graph)) →
         pair.2 = liftProtocolState runtime leaks pair.1) ∧
       ∀ pair ∈ paired.support, PairedExclusionRecord runtime leaks pair.1 pair.2 := by
-  have valid := nativeHistory_record runtime leaks initial initialized horizon scheduler trace
-    (by intro next same; cases Option.some.inj same; exact empty)
-    (control runtime leaks current) rfl
-  change PublicExclusionRecord (⟨current.execution.application.native, ∅⟩ : RecoveryState graph)
-    at valid
-  rw [← empty] at valid
-  obtain ⟨paired, first, second, preserved⟩ :=
-    exists_paired_transition runtime leaks initial horizon scheduler current trace empty valid joint
-  have forward := fun pair member => (preserved pair member).1
-  exact ⟨paired, first, second, forward,
-    paired_transition_clear_reflection runtime leaks initial initialized horizon scheduler current
-      trace empty joint paired first second forward,
-    fun pair member => (preserved pair member).2⟩
+  cases state with
+  | none =>
+    let package := fun native : RecoveryState graph =>
+      (some (⟨horizon, none, ReactiveApplication.Execution.initial
+          (runtime.reactiveApplication leaks) native.native⟩ :
+            (runtime.reactiveApplication leaks).Control),
+        some (⟨horizon, none, ReactiveApplication.Execution.initial
+          (runtime.recoveryApplication leaks) native⟩ :
+            (runtime.recoveryApplication leaks).Control))
+    refine ⟨initial.map package, ?_, ?_, ?_, ?_, ?_⟩
+    · simp only [PMF.map_comp, ReactiveApplication.transition]
+      rfl
+    · rw [PMF.map_comp]
+      rfl
+    · intro pair supported _
+      obtain ⟨native, _member, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp supported
+      rfl
+    · intro pair supported _
+      obtain ⟨native, member, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp supported
+      obtain ⟨inputs, rfl⟩ := initialized native member
+      rfl
+    · intro pair supported
+      obtain ⟨native, member, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp supported
+      obtain ⟨inputs, rfl⟩ := initialized native member
+      exact PublicExclusionRecord.initial inputs
+  | some current =>
+    have empty := clear current rfl
+    have valid := nativeHistory_record runtime leaks initial initialized horizon scheduler trace
+      (by intro next same; cases Option.some.inj same; exact empty)
+      (control runtime leaks current) rfl
+    change PublicExclusionRecord (⟨current.execution.application.native, ∅⟩ : RecoveryState graph)
+      at valid
+    rw [← empty] at valid
+    obtain ⟨paired, first, second, preserved⟩ :=
+      exists_paired_transition runtime leaks initial horizon scheduler current trace empty valid
+        joint
+    have forward := fun pair member => (preserved pair member).1
+    exact ⟨paired, first, second, forward,
+      paired_transition_clear_reflection runtime leaks initial initialized horizon scheduler current
+        trace empty joint paired first second forward,
+      fun pair member => (preserved pair member).2⟩
 
 end Vegas.EventGraphRuntime.RecoveryProjection

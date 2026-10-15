@@ -30,7 +30,9 @@ local notation "NMenu" => bounds.onePacketMenu (runtime setup) leaks
 local notation "Clear" => ReactiveApplication.stateInvariant
   (app := application setup leaks) (fun state => PublicExclusionRecord (RecoveryState.mk state ∅))
 
-private theorem comparison_at_clear [Fintype ((RMenu).protocol Initial horizon
+/-- The common comparison and actual projected recovery strategy agree at every
+clear native history before termination. -/
+theorem nativeComparisonStrategy_eq_projection_at_clear [Fintype ((RMenu).protocol Initial horizon
       scheduler).History]
     [(application setup leaks).FiniteNature (initialLaw setup) (NativeScheduler)]
     [∀ who, DecidableEq ((R).InfoState who)] [∀ who, DecidableEq ((N).InfoState who)]
@@ -133,8 +135,9 @@ theorem nativeComparison_stopped_update_eq [Fintype ((RMenu).protocol Initial ho
         · subst who
           rw [Profile.update_same, Profile.update_same]
         · rw [Profile.update_of_ne _ _ same, Profile.update_of_ne _ _ same]
-          exact comparison_at_clear setup leaks bounds horizon scheduler sequence scale positive
-            le_one weights n fallback strategy assembled first.trace valid running who
+          exact nativeComparisonStrategy_eq_projection_at_clear setup leaks bounds horizon scheduler
+            sequence scale positive le_one weights n fallback strategy assembled first.trace valid
+              running who
       have oneStep : (N).runBehavioralFrom firstProfile 1 first =
           (N).runBehavioralFrom secondProfile 1 first := by
         rw [(N).runBehavioralFrom_succ_of_not_terminal firstProfile 0 running,

@@ -1,3 +1,16 @@
+import Vegas.Game.RecoveryOnePacketRawLaw
+import GameTheoryExtensions.Analysis.Protocol.StoppedContinuationComparison
+import Vegas.Game.RecoveryKeyedRecords
+import Vegas.Game.RecoveryHonestStoppedLaw
+import Vegas.Game.StoppedHonestComparison
+import Vegas.Game.RecoveryHonestRecall
+import Vegas.Game.RecoveryPendingCompletion
+import Vegas.Game.RecoveryPendingFailure
+import Vegas.Game.RecoveryStoppedContinuationValue
+import Vegas.Game.RecoveryComparisonRetention
+import Vegas.Pending.ReactiveSeedBindingService
+import Vegas.Game.RecoveryInitializedProjection
+import Vegas.Pending.ExclusionTerminalClearance
 import Vegas.Game.RecoveryBoundaryWaiting
 import Vegas.Game.RecoverySuccessorBoundary
 import Vegas.Game.RecoveryChanceSourceLaw
@@ -5390,3 +5403,78 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.intendedCommitment_sourcePolicy_gain
+
+/-- info: 'GameTheory.Protocol.InformationModel.abs_expect_runBehavioralUntil_sub_le_of_stepTV'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms GameTheory.Protocol.InformationModel.abs_expect_runBehavioralUntil_sub_le_of_stepTV
+
+/-- info: 'Vegas.RecoveryOnePacket.recovery_keyed_record_bounds'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.RecoveryOnePacket.recovery_keyed_record_bounds
+
+/-- info: 'Vegas.honest_debt_stopped_terminal_law_of_readout_law'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.honest_debt_stopped_terminal_law_of_readout_law
+
+/-- info: 'Vegas.onePacket_stopped_expect_sub_le'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.onePacket_stopped_expect_sub_le
+
+/-- info: 'Vegas.recovery_honest_reached_not_late'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.recovery_honest_reached_not_late
+
+/-- info: 'Vegas.recovery_pending_stop_completed'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.recovery_pending_stop_completed
+
+/-- info: 'Vegas.recovery_pending_failure_terminal_eq_stopped'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.recovery_pending_failure_terminal_eq_stopped
+
+/-- info: 'Vegas.recovery_stopped_boundary_value_sub_le'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.recovery_stopped_boundary_value_sub_le
+
+/-- info: 'Vegas.RecoveryOnePacket.nativeComparison_dominatesHonestFrom_boundary'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.RecoveryOnePacket.nativeComparison_dominatesHonestFrom_boundary
+
+/-- info: 'Vegas.EventGraphRuntime.LocalSeedController.bayesBelief_first_binding_log_eq'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.LocalSeedController.bayesBelief_first_binding_log_eq
+
+/-- info: 'Vegas.recovery_honest_initialized_readout_law'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.recovery_honest_initialized_readout_law
+
+/-- info: 'Vegas.EventGraphRuntime.RecoveryProjection.native_exit_mass_eq_terminal_failure_mass'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.RecoveryProjection.native_exit_mass_eq_terminal_failure_mass
+
+/-- info: 'Vegas.EventGraphRuntime.RecoveryProjection.terminal_readout_withinTV_of_native_failure'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.RecoveryProjection.terminal_readout_withinTV_of_native_failure
+
+/-- info: 'Vegas.RecoveryOnePacket.recovery_initialized_lawApproximation'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.RecoveryOnePacket.recovery_initialized_lawApproximation
+
+/-- info: 'Vegas.recovery_intended_raw_sequentialEquilibrium_of_onePacket'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.recovery_intended_raw_sequentialEquilibrium_of_onePacket

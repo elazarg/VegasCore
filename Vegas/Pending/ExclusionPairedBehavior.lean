@@ -102,11 +102,9 @@ theorem exists_paired_behavioralStep
       state = (⟨State.initial inputs, ∅⟩ : RecoveryState graph))
     (profile : ∀ who, (RecoveryModel).BehavioralPolicy who)
     (history : (RecoveryProtocol).History)
-    (current : (runtime.recoveryApplication leaks).Control)
-    (state : history.state = some current) (empty : current.execution.application.excluded = ∅)
+    (clear : ∀ current, history.state = some current →
+      current.execution.application.excluded = ∅)
     (running : ¬ (RecoveryProtocol).terminal history.state) :
-    let clear := fun next (same : history.state = some next) =>
-      (Option.some.inj (state.symm.trans same)) ▸ empty
     let native := nativeHistory runtime leaks initial horizon scheduler history clear
     ∃ paired : PMF ((NativeProtocol).History × (RecoveryProtocol).History),
       paired.map Prod.fst = (NativeModel).runBehavioralFrom
@@ -121,13 +119,13 @@ theorem exists_paired_behavioralStep
           ∀ control, next.2.state = some control → control.execution.application.excluded = ∅) ∧
         PairedExclusionRecord runtime leaks next.1.state next.2.state) := by
   classical
-  intro clear native
+  intro native
   let draws := (RecoveryModel).behavioralJoint profile history.trace running
   let project := projectedJoint runtime leaks initial horizon scheduler history.state
   have nativeRunning : ¬ (NativeProtocol).terminal native.state :=
     fun stopped => running ((terminal_protocolState runtime leaks history.state).mp stopped)
   have coupled draw := exists_paired_transition_clear_reflection runtime leaks initial initialized
-    horizon scheduler current (state ▸ history.trace) empty draw
+    horizon scheduler history.state history.trace clear draw
   let kernel := fun draw : { joint // (RecoveryProtocol).Legal history.state joint } =>
     Classical.choose (coupled draw.1)
   have marginal (draw : { joint // (RecoveryProtocol).Legal history.state joint }) :=
@@ -137,17 +135,12 @@ theorem exists_paired_behavioralStep
     change (kernel draw).map Prod.fst = (runtime.reactiveApplication leaks).transition
       (initial.map RecoveryState.native) horizon (nativeScheduler runtime leaks scheduler)
       (protocolState runtime leaks history.state) (jointActions runtime leaks draw.1)
-    exact (marginal draw).1.trans (congrArg
-      (fun before => (runtime.reactiveApplication leaks).transition
-        (initial.map RecoveryState.native) horizon (nativeScheduler runtime leaks scheduler)
-        (protocolState runtime leaks before) (jointActions runtime leaks draw.1)) state).symm
+    exact (marginal draw).1
   have second draw : (kernel draw).map Prod.snd =
       (RecoveryProtocol).step history.state draw := by
     change (kernel draw).map Prod.snd = (runtime.recoveryApplication leaks).transition
       initial horizon scheduler history.state draw.1
-    exact (marginal draw).2.1.trans (congrArg
-      (fun before => (runtime.recoveryApplication leaks).transition initial horizon scheduler
-        before draw.1) state).symm
+    exact (marginal draw).2.1
   let extend := fun draw (pair : (NativeProtocol).State × (RecoveryProtocol).State)
       (supported : pair ∈ (kernel draw).support) =>
     (native.extend (target := pair.1) (project draw).2 (by
