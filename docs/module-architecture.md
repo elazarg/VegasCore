@@ -963,3 +963,52 @@ Binding WAIT products and quantitative noise:
 [Phase Waiting Prefix](../Vegas/Game/PhaseWaitingPrefix.lean),
 [Phase Repair Noise](../Vegas/Game/PhaseRepairNoise.lean).
 Actual own-play WAIT factors give player-reach cross bounds, retaining all complementary factors and unequal raw menus. The same genuine source floors instantiate send ratios, WAIT ratios and a positive vanishing raw-noise schedule.
+
+Authentic source choices and local admission:
+[Commit Prefix Admitted Action](../Vegas/Compile/CommitPrefixAdmittedAction.lean),
+[Phase Source Policy](../Vegas/Game/PhaseSourcePolicy.lean),
+[Phase Recorded Binding Meaning](../Vegas/Pending/PhaseRecordedBindingMeaning.lean),
+[Phase Binding Response Origin](../Vegas/Pending/PhaseBindingResponseOrigin.lean),
+[Phase Source Binding Origin](../Vegas/Game/PhaseSourceBindingOrigin.lean),
+[Recovery Commit Prefix Witness](../Vegas/Game/RecoveryCommitPrefixWitness.lean),
+[Recovery Intended Binding Checkpoint](../Vegas/Game/RecoveryIntendedBindingCheckpoint.lean),
+[Phase Binding Source Admission](../Vegas/Game/PhaseBindingSourceAdmission.lean).
+Actual surviving accepted bindings retain their original supported callback and typed meaning. Copied intended choices derive guard admission at the exact filled predecessor, conditional on saved intendedness and earlier own admission.
+
+Exact chosen source checkpoint successors:
+[Commit Recovery Non Commit Intended](../Vegas/Source/CommitRecoveryNonCommitIntended.lean),
+[Compiled Commit Completion](../Vegas/Game/CompiledCommitCompletion.lean),
+[Recovery Settled Commit Checkpoint](../Vegas/Game/RecoverySettledCommitCheckpoint.lean),
+[Recovery Reveal Checkpoint](../Vegas/Game/RecoveryRevealCheckpoint.lean),
+[Recovery Sample Checkpoint](../Vegas/Game/RecoverySampleCheckpoint.lean),
+[Recovery Checkpoint Normalization](../Vegas/Game/RecoveryCheckpointNormalization.lean).
+Clear completed attempts equal physical prefix completion. The chosen commitment, sample and reveal successors retain whole intendedness under the stated admission/clarity hypotheses; supported-history admission induction remains separate.
+
+All counted packet inclusion cases:
+[Phase Binding Admitted Include](../Vegas/Pending/PhaseBindingAdmittedInclude.lean),
+[Phase Binding Inclusion Frame](../Vegas/Pending/PhaseBindingInclusionFrame.lean),
+[Phase Binding Opening Inclusion](../Vegas/Pending/PhaseBindingOpeningInclusion.lean),
+[Phase Binding Counted Opening](../Vegas/Pending/PhaseBindingCountedOpening.lean),
+[Phase Binding Foreign Inclusion](../Vegas/Pending/PhaseBindingForeignInclusion.lean),
+[Phase Binding Rejected Inclusion](../Vegas/Pending/PhaseBindingRejectedInclusion.lean),
+[Phase Binding Counted Foreign](../Vegas/Pending/PhaseBindingCountedForeign.lean),
+[Phase Binding Counted Inclusion](../Vegas/Pending/PhaseBindingCountedInclusion.lean),
+[Phase Binding Include Dispatcher](../Vegas/Pending/PhaseBindingIncludeDispatcher.lean),
+[Phase Binding Inclusion Trace](../Vegas/Pending/PhaseBindingInclusionTrace.lean).
+The actual same-scheduler include command extends paired directed histories across all packet branches. Submitted-binding records and own-binding memory remain explicit induction invariants.
+
+Exact directed opening response factors:
+[Reactive Uniform Menu](../Interaction/ReactiveUniformMenu.lean),
+[Phase Opening Coverage](../Vegas/Pending/PhaseOpeningCoverage.lean),
+[Phase Opening Policy](../Vegas/Pending/PhaseOpeningPolicy.lean),
+[Phase Source Policy Law](../Vegas/Game/PhaseSourcePolicyLaw.lean),
+[Phase Source Slot Policy Law](../Vegas/Game/PhaseSourceSlotPolicyLaw.lean),
+[Phase Compiled Opening Response](../Vegas/Game/PhaseCompiledOpeningResponse.lean),
+[Phase Sent Menu](../Vegas/Pending/PhaseSentMenu.lean),
+[Phase Opening Binding Prefix](../Vegas/Pending/PhaseOpeningBindingPrefix.lean),
+[Phase Opening Waiting Law](../Vegas/Game/PhaseOpeningWaitingLaw.lean),
+[Phase Binding Inert Response](../Vegas/Pending/PhaseBindingInertResponse.lean),
+[Phase Opening Menu Shape](../Vegas/Pending/PhaseOpeningMenuShape.lean),
+[Phase Opening Menu Symmetry](../Vegas/Pending/PhaseOpeningMenuSymmetry.lean),
+[Phase Opening Response Symmetry](../Vegas/Game/PhaseOpeningResponseSymmetry.lean).
+Actual clear binding endpoints force prior opening success. Directed opening callbacks have equal entire response laws, including exactly equal counted raw-noise menus; full-history products and native Bayes transport remain separate.

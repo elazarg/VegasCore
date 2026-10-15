@@ -136,8 +136,7 @@ theorem phaseSourceSlotPolicy_opening_of_history
     (value : L.Val payload)
     (stored : binding.get? control.execution.application.current.native.config.store =
       some (.success value))
-    (values : (⟨payload, value⟩ : Raw L) ∈ bounds.values)
-    (timely : control.execution.application.current.native.WithinDeadline runtime event) :
+    (values : (⟨payload, value⟩ : Raw L) ∈ bounds.values) :
     ∃ candidate,
       control.execution.application.current.native.accepted binding.field = some candidate ∧
       phaseSourceSlotPolicy setup mode runtime leaks bounds wellFormed assessment who
@@ -153,7 +152,7 @@ theorem phaseSourceSlotPolicy_opening_of_history
   obtain ⟨candidate, accepted, law⟩ := PhaseCount.phaseOpeningPolicy_of_history runtime leaks bounds
     plan inputs horizon scheduler trace who event payload binding checks outputEq codeEq node
     request
-    unsent value stored values timely (fun _ _ => PMF.pure true)
+    unsent value stored values (fun _ _ => PMF.pure true)
   refine ⟨candidate, accepted, ?_⟩
   rw [branch, law, PMF.pure_map]
   rfl

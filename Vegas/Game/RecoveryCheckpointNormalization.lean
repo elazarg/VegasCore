@@ -128,14 +128,15 @@ theorem RecoverySourceCheckpoint.normalized
                   (retired ++ [⟨⟨phase.low, generation⟩, image.native⟩])
                   (phase.finished_prefix rebuilt rebuiltWithin rebuiltFinished) rebuiltNative
                   rebuiltBinding rebuiltRecord.receipts rebuiltCoverage nextCheckpoint
-            · obtain ⟨nextCheckpoint, normalized⟩ := checkpoint.after_commit_clean committing
+            · obtain ⟨⟨nextCheckpoint, _sourcePoint, _intended⟩, normalized⟩ :=
+                checkpoint.after_commit_clean committing
                 phase remaining rfl maximal binding receipts stored remembered native order.coverage
                   finished missed
               rw [normalized]
               exact advance image retired imagePrefix imageNative imageBinding imageRecord.receipts
-                imageCoverage nextCheckpoint
+                imageCoverage ⟨nextCheckpoint⟩
         | reveal =>
-            have nextCheckpoint := checkpoint.after_reveal phase remaining rfl kind
+            obtain ⟨nextCheckpoint, _intended⟩ := checkpoint.after_reveal phase remaining rfl kind
               receipts.exclusion stored remembered imageNative.reachable imageOrder finished
             have noRetry : ¬ (phase.kind = .commitment ∧
                 ((image.excluded \ entry.excluded) ∩ phase.owners).Nonempty) := by
@@ -147,9 +148,9 @@ theorem RecoverySourceCheckpoint.normalized
             rw [PhaseRuntimeState.settle_clean phase remaining generation entry current retired
               finished noRetry]
             exact advance image retired imagePrefix imageNative imageBinding imageRecord.receipts
-              imageCoverage nextCheckpoint
+              imageCoverage ⟨nextCheckpoint⟩
         | sample =>
-            have nextCheckpoint := checkpoint.after_sample phase remaining rfl kind
+            obtain ⟨nextCheckpoint, _intended⟩ := checkpoint.after_sample phase remaining rfl kind
               receipts.exclusion stored remembered imageNative.reachable finished
             have noRetry : ¬ (phase.kind = .commitment ∧
                 ((image.excluded \ entry.excluded) ∩ phase.owners).Nonempty) := by
@@ -161,7 +162,7 @@ theorem RecoverySourceCheckpoint.normalized
             rw [PhaseRuntimeState.settle_clean phase remaining generation entry current retired
               finished noRetry]
             exact advance image retired imagePrefix imageNative imageBinding imageRecord.receipts
-              imageCoverage nextCheckpoint
+              imageCoverage ⟨nextCheckpoint⟩
       · change Nonempty (RecoverySourceCheckpoint setup mode
           (PhaseRuntimeState.settle (phase :: remaining) generation entry current retired))
         simp only [PhaseRuntimeState.settle, finished, ↓reduceIte]

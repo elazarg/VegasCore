@@ -41,6 +41,54 @@ namespace Frame
 variable {memory : BindingMemory runtime (nativeLeaks (graph := graph))} {owner : Player}
   {original repaired : (phaseApplication runtime leaks).Execution}
 
+/-- Exact physical envelope agreement transports both directions of the
+counted inert raw menu. No probability law or source-view equality is assumed. -/
+theorem inert_response_menu_iff (frame : Frame runtime leaks memory owner original repaired)
+    (bounds : MessageBounds graph)
+    (left : PhaseCount.CountRecall runtime leaks original)
+    (right : PhaseCount.CountRecall runtime leaks repaired) (material : WitnessedSubmission graph)
+    (envelopes : PhaseCount.localEnvelope runtime leaks owner (original.recall owner)
+      (original.observe (phaseApplication runtime leaks) owner) material =
+        PhaseCount.localEnvelope runtime leaks owner (repaired.recall owner)
+          (repaired.observe (phaseApplication runtime leaks) owner) material) :
+    (⟨some material⟩ : (phaseApplication runtime leaks).Action) ∈
+        PhaseCount.onePacketActions runtime leaks bounds owner (original.recall owner)
+          (original.observe (phaseApplication runtime leaks) owner) ↔
+      (⟨some material⟩ : (phaseApplication runtime leaks).Action) ∈
+        PhaseCount.onePacketActions runtime leaks bounds owner (repaired.recall owner)
+          (repaired.observe (phaseApplication runtime leaks) owner) := by
+  let app := phaseApplication runtime leaks
+  have knownLeft : original.network.known owner =
+      ReactiveApplication.ResponseMenu.knownPackets (original.recall owner)
+        (original.observe app owner) := app.known_from_recall original owner left.1
+  have knownRight : repaired.network.known owner =
+      ReactiveApplication.ResponseMenu.knownPackets (repaired.recall owner)
+        (repaired.observe app owner) := app.known_from_recall repaired owner right.1
+  have raw : (⟨some material⟩ : app.Action) ∈
+      (PhaseCount.rawMenu runtime leaks bounds).actions owner (original.recall owner)
+        (original.observe app owner) ↔
+    (⟨some material⟩ : app.Action) ∈
+      (PhaseCount.rawMenu runtime leaks bounds).actions owner (repaired.recall owner)
+        (repaired.observe app owner) := by
+    rw [PhaseCount.rawMenu, ReactiveApplication.ResponseMenu.fromSubmissions_mem,
+      ReactiveApplication.ResponseMenu.fromSubmissions_mem]
+    change material ∈ bounds.submissions _ ↔ material ∈ bounds.submissions _
+    rw [← knownLeft, frame.network, knownRight]
+  rw [PhaseCount.mem_onePacketActions, PhaseCount.mem_onePacketActions]
+  constructor
+  · rintro ⟨rawMember, silent | ⟨other, transmitted, permitted⟩⟩
+    · cases silent
+    · cases Option.some.inj transmitted
+      refine ⟨raw.mp rawMember, Or.inr ⟨material, rfl, ?_⟩⟩
+      rw [← frame.outputs left.1 right.1 owner, ← envelopes]
+      exact permitted
+  · rintro ⟨rawMember, silent | ⟨other, transmitted, permitted⟩⟩
+    · cases silent
+    · cases Option.some.inj transmitted
+      refine ⟨raw.mpr rawMember, Or.inr ⟨material, rfl, ?_⟩⟩
+      rw [frame.outputs left.1 right.1 owner, envelopes]
+      exact permitted
+
 /-- An unchanged inert raw response preserves both semantic checkpoints and
 actual foreign recall. Count support follows from the source menu, the actual
 emitted packet, and the permanent physical output word. -/
@@ -102,31 +150,7 @@ theorem inert_response (frame : Frame runtime leaks memory owner original repair
         (repaired.network.known owner) material⟩ : Message Player (CommitAttemptPacket graph)))
       (congrArg (fun pool : MessageNetwork Player (CommitAttemptPacket graph) =>
         pool.nextSerial owner) frame.network)
-  have legal : response ∈ PhaseCount.onePacketActions runtime leaks bounds owner
-      (repaired.recall owner) (repaired.observe app owner) := by
-    have allowed := member
-    rw [PhaseCount.mem_onePacketActions] at allowed ⊢
-    refine ⟨?_, ?_⟩
-    · have knownLeft : original.network.known owner =
-          ReactiveApplication.ResponseMenu.knownPackets (original.recall owner)
-            (original.observe app owner) := app.known_from_recall original owner left.1
-      have knownRight : repaired.network.known owner =
-          ReactiveApplication.ResponseMenu.knownPackets (repaired.recall owner)
-            (repaired.observe app owner) := app.known_from_recall repaired owner right.1
-      have rawAllowed := allowed.1
-      rw [PhaseCount.rawMenu, ReactiveApplication.ResponseMenu.fromSubmissions_mem] at rawAllowed
-      rw [PhaseCount.rawMenu, ReactiveApplication.ResponseMenu.fromSubmissions_mem]
-      change material ∈ bounds.submissions _
-      change material ∈ bounds.submissions _ at rawAllowed
-      rw [← knownLeft, frame.network, knownRight] at rawAllowed
-      exact rawAllowed
-    · rcases allowed.2 with impossible | ⟨other, transmitted, permitted⟩
-      · cases impossible
-      · cases Option.some.inj transmitted
-        right
-        refine ⟨material, rfl, ?_⟩
-        rw [← frame.outputs left.1 right.1 owner, ← envelopes]
-        exact permitted
+  have legal := (frame.inert_response_menu_iff bounds left right material envelopes).mp member
   refine ⟨legal, ?_⟩
   have leftNative : nativeApp.submit original.application.current.native owner material =
       original.application.current.native := congrArg (fun state => state.current.native) leftInert

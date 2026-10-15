@@ -298,4 +298,97 @@ theorem phaseSourceStrategy_map_val (wellFormed : setup.WellFormed)
     scheduler who _ past view (fun response supported => phaseSourcePolicy_covered setup mode
       runtime leaks bounds wellFormed assessment who past view response supported)
 
+/-- Every supported canonical binding transmission names a genuine current
+request at its original callback. Count-token persistence alone would not imply
+unfinishedness; the actual dispatcher selection supplies that fact. -/
+theorem phaseSourcePolicy_request_of_binding_support (wellFormed : setup.WellFormed)
+    (assessment : setup.commitRecoveryModel.BehavioralAssessment)
+    (execution : (phaseApplication runtime leaks).Execution) {inputs}
+    (valid : execution.application.Invariant inputs) (who : Player)
+    (response : (phaseApplication runtime leaks).Action)
+    (supported : response ∈ (phaseSourcePolicy setup mode runtime leaks bounds wellFormed
+      assessment who (execution.recall who)
+        (execution.observe (phaseApplication runtime leaks) who)).support)
+    (material : WitnessedSubmission (serviceGraph setup mode))
+    (transmitted : response.transmission = some material)
+    (event : (serviceGraph setup mode).EventId) (candidate : Handle (serviceGraph setup mode))
+    (call : material.call.packet = .commitment event candidate) :
+    execution.application.SeedRequest who ⟨execution.application.attempt, event⟩ := by
+  classical
+  unfold phaseSourcePolicy phasePolicyDispatch at supported
+  change response ∈ (match requestedEvent setup mode who execution.application.publicView with
+    | none => PMF.pure (⟨none⟩ : (phaseApplication runtime leaks).Action)
+    | some selected => eventPolicyDispatch setup mode runtime leaks bounds
+        (fun owner event payload binding => phaseRecoveryBindingPolicy setup mode runtime leaks
+          bounds wellFormed assessment owner event payload binding) who selected
+          (execution.recall who)
+          (execution.observe (phaseApplication runtime leaks) who)).support at supported
+  cases selected : requestedEvent setup mode who execution.application.publicView with
+  | none =>
+      rw [selected] at supported
+      cases (PMF.mem_support_pure_iff _ _).mp supported
+      cases transmitted
+  | some selectedEvent =>
+      rw [selected] at supported
+      have request : execution.application.SeedRequest who
+          ⟨execution.application.attempt, selectedEvent⟩ := by
+        unfold requestedEvent at selected
+        split at selected
+        · rename_i offered
+          have same := Option.some.inj selected
+          have selectedRequest := (execution.application.requests_publicView valid who
+            ⟨execution.application.publicView.attempt, offered.choose⟩).mp offered.choose_spec
+          rwa [same] at selectedRequest
+        · cases selected
+      cases node : nodeView (serviceGraph setup mode) selectedEvent with
+      | bind owner payload outputEq codeEq =>
+          simp only [eventPolicyDispatch, node] at supported
+          split at supported
+          · rename_i same
+            subst owner
+            unfold phaseRecoveryBindingPolicy at supported
+            split at supported
+            · cases (PMF.mem_support_pure_iff _ _).mp supported
+              cases transmitted
+            · split at supported
+              · dsimp only [phaseRecoveryBindingLaw] at supported
+                obtain ⟨choice, _chosen, rfl⟩ := PMF.support_map .. ▸ supported
+                unfold phaseRecoveryBindingResponse at transmitted
+                dsimp only at transmitted
+                split at transmitted
+                · cases transmitted
+                · have sameMaterial := Option.some.inj transmitted
+                  have sameCall := (congrArg (fun submitted : WitnessedSubmission
+                    (serviceGraph setup mode) => submitted.call.packet) sameMaterial).trans call
+                  have sameEvent := (Payload.commitment.inj sameCall).1
+                  exact sameEvent ▸ request
+              · cases (PMF.mem_support_pure_iff _ _).mp supported
+                cases transmitted
+          · cases (PMF.mem_support_pure_iff _ _).mp supported
+            cases transmitted
+      | resolve owner payload binding checks outputEq codeEq =>
+          simp only [eventPolicyDispatch, node] at supported
+          split at supported
+          · unfold PhaseCount.phaseOpeningPolicy at supported
+            split at supported
+            · dsimp only at supported
+              split at supported
+              · obtain ⟨disclose, _chosen, rfl⟩ := PMF.support_map .. ▸ supported
+                cases disclose
+                · cases transmitted
+                · have sameMaterial := Option.some.inj transmitted
+                  have impossible := (congrArg (fun submitted : WitnessedSubmission
+                    (serviceGraph setup mode) => submitted.call.packet) sameMaterial).trans call
+                  cases impossible
+              · cases (PMF.mem_support_pure_iff _ _).mp supported
+                cases transmitted
+            · cases (PMF.mem_support_pure_iff _ _).mp supported
+              cases transmitted
+          · cases (PMF.mem_support_pure_iff _ _).mp supported
+            cases transmitted
+      | sample payload law outputEq codeEq =>
+          simp only [eventPolicyDispatch, node] at supported
+          cases (PMF.mem_support_pure_iff _ _).mp supported
+          cases transmitted
+
 end Vegas

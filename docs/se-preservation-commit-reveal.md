@@ -1,16 +1,44 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**SE: non-concurrent ✓ · auxiliary ✓ · memory ✓ · WAIT products ✓ · noise scales ✓; whole repair/joint law/Bayes/incentives open.**
+**SE: non-concurrent ✓ · memory ✓ · local admission ✓ · inclusion cases ✓ · opening factors ✓; whole repair/joint law/Bayes/incentives open.**
 
 <details>
 <summary>Recovery milestones and current proof substeps</summary>
 
 Milestones have unequal cost; the fixed SE checklist is unchanged.
 
+Each surviving accepted binding now retains its actual earlier supported source
+choice, genuine request, fresh slot and immutable typed result. At that callback,
+the copied intended source law derives successful data, a true guard prediction
+and next own admission from the saved whole intended state and earlier own
+admission. The exact actual filled predecessor view is factored once. The
+supported-history induction still must supply its hypotheses at those callbacks.
+
+The actual chosen clean commitment checkpoint retains its exact whole decoded
+source endpoint. Clear completed decoding equals the existing full prefix
+completion. Saved whole intendedness and admitted physical prefix fields imply
+whole intendedness of that same successor, including future guard satisfiability.
+The actual chosen sample and reveal checkpoints also preserve whole intendedness
+when their final exclusion record is empty. Their actual source paths preserve
+the initial context cells.
+
+All counted packet inclusion cases now extend both genuine directed repair
+histories under the same scheduler command: missing, rejected, accepted binding
+and opening packets. Original typed opening success, handle provenance, deferred
+guard results and repaired exclusions are derived. Submitted-binding records and
+own-binding memory remain explicit induction invariants. Their update closure
+and the whole-history driver remain open.
+
+At paired opening callbacks before an actual clear binding endpoint, the entire
+perturbed response laws agree. The actual public barrier derives prior binding
+success; exact counted menu equality includes evidence aliases, so uniform raw
+noise cancels too. This applies to directed repair frames preserving successful
+openings. It does not establish arbitrary hidden-value exchange or native/source
+posterior equality.
+
 At an actual initialized clear count-clean history with policy-consistent full
 recalls, every supported memory of a compiled globally disclosing policy
-reconstructs the entire physical native configuration. This derives the graph
-observation used by the full binding-law
+reconstructs the entire physical native configuration. This derives the graph observation used by the full binding-law
 adapter; its second decoder-match premise is removed. A genuine intended source
 counterpart is still required.
 
@@ -26,8 +54,8 @@ value and its guard prediction from the saved whole intended state and admitted
 own prefix. The prediction and own admission persist along actual clear trace
 prefixes, even after that binding has completed. Closing an admitted commitment
 phase preserves both intended bindings and future guard satisfiability. The
-supported-history invariant must still thread these facts through the actual
-chosen successor checkpoint.
+supported-history invariant must still establish admission at each actual
+callback before threading these facts through the chosen successor checkpoint.
 
 Actual selected binding-WAIT records factor out of player reach probabilities,
 with all complementary own actions retained explicitly. Pairing those records
@@ -36,7 +64,7 @@ unequal raw-noise contribution. The same derived finite source floors feed both
 send and WAIT bounds. A positive vanishing raw-noise sequence can be chosen
 after arbitrary positive slot weights so the finite-horizon replacement error
 vanishes and the repeated-WAIT factor tends to one. No decay rate for the source
-floor is assumed. Opening waits, remaining actions, paired full histories and
+floor is assumed. Whole-prefix action composition, paired full histories and
 native posterior transport remain open.
 
 Directed repair couples both actual marginals of every application command:
@@ -44,7 +72,7 @@ clock, sample and expiry, including commands that cannot advance an event.
 Actual clear survival forces due strategic expiry to be absent. The same
 scheduler atom extends both genuine histories. Missing and publicly rejected
 packet inclusions also replay with their full receipts and scheduler logs.
-Successful inclusion dispatch and whole-history induction remain open.
+Whole-history induction and submitted-record update closure remain open.
 
 The checked fixed-calendar source theorem covers optional opening with the
 source reveal order preserved. The intended-game recovery theorem additionally
@@ -77,8 +105,8 @@ terms remain separate. Whole-history likelihood products are still open.
 
 Directed repair handles arbitrary foreign responses, own binding preparations,
 opening responses, clock steps and silence while retaining original private
-recall and both checkpoint frames. Remaining inclusion branches and whole
-history induction are open. The generic execution engine now requires expiry
+recall and both checkpoint frames. Submitted-record update closure and whole
+history induction are open. The generic execution engine requires expiry
 invariance only for commands in the actual scheduler support. A genuine history
 with consistent full recalls occurs as that exact history under the prescribed
 behavioral profile.

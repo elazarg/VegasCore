@@ -82,7 +82,6 @@ theorem phaseOpeningPolicy_of_history
     (stored : binding.get? control.execution.application.current.native.config.store =
       some (.success value))
     (values : (⟨payload, value⟩ : Raw L) ∈ bounds.values)
-    (timely : control.execution.application.current.native.WithinDeadline runtime event)
     (opens : List (app).PlayerEntry → (app).PlayerView → PMF Bool) :
     ∃ candidate,
       control.execution.application.current.native.accepted binding.field = some candidate ∧
@@ -92,9 +91,9 @@ theorem phaseOpeningPolicy_of_history
           (fun disclose => if disclose then
             phaseOpeningResponse runtime leaks event candidate ⟨payload, value⟩ else ⟨none⟩) := by
   classical
-  obtain ⟨candidate, accepted, _, _, available, _⟩ := exists_phaseOpeningResponse_of_history
+  obtain ⟨candidate, accepted, _, _, available⟩ := phaseOpeningResponse_of_history
     runtime leaks bounds plan inputs horizon scheduler trace owner event payload binding checks
-    outputEq codeEq node request unsent value stored values timely
+    outputEq codeEq node request unsent value stored values
   have localStored : binding.get?
       (control.execution.observe app owner).application.1.observation.store =
         some (.success value) := by

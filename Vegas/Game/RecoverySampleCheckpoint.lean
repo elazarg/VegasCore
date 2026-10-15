@@ -7,6 +7,7 @@ import Vegas.Pending.PhaseStoredCheckpoint
 import Vegas.Pending.PhaseHistoryCheckpoint
 import Vegas.Game.RecordedSourceHistory
 import Vegas.Source.CommitRecoveryPathLift
+import Vegas.Source.CommitRecoveryNonCommitIntended
 
 /-! # Saved source checkpoints after actual singleton sample phases -/
 
@@ -32,9 +33,14 @@ theorem RecoverySourceCheckpoint.after_sample
     {inputs : ((toEventGraph setup.program).withMode mode).Inputs}
     (reachable : (phase.drain state.current).native.config.Reachable inputs)
     (finished : phase.Finished (phase.drain state.current)) :
-    Nonempty (RecoverySourceCheckpoint setup mode
+    ∃ next : RecoverySourceCheckpoint setup mode
       (⟨remaining, state.generation, phase.drain state.current, phase.drain state.current,
-        state.retired⟩ : PhaseRuntimeState ((toEventGraph setup.program).withMode mode))) := by
+        state.retired⟩ : PhaseRuntimeState ((toEventGraph setup.program).withMode mode)),
+      (phase.drain state.current).excluded = ∅ →
+      ProtocolState.Intended setup.program (checkpoint.residual.lift
+        (ProtocolState.entry checkpoint.residual.tail checkpoint.source)) →
+      ProtocolState.Intended setup.program (next.residual.lift
+        (ProtocolState.entry next.residual.tail next.source)) := by
   rcases checkpoint with ⟨⟨Γ, O, program, lift⟩, source, refs, registry, embedding, before,
     compiled, terminalAligned, agrees, guards, failures, unique, ranks, actors, commits,
     owners, endpoints, automatic, histories, memories, steps, menus, readouts, trace, views,
@@ -189,7 +195,7 @@ theorem RecoverySourceCheckpoint.after_sample
           views := ProtocolViewSuffix.sampleTail setup.program fresh law next refs embedding
             lift views
           origin := .sampleTail fresh law next origin
-          historyAlignment := ?_ }⟩
+          historyAlignment := ?_ }, ?_⟩
       · rw [address]
         exact compiled.sampleTail (_openNames := O) setup.program fresh law next refs
           source.revelations registry embedding before state.attempt.phase
@@ -221,5 +227,8 @@ theorem RecoverySourceCheckpoint.after_sample
           source.history source.history word reachable
           (remembered.trans (phase.drain_history_prefix state.current)) saved prefixEnd
           (historyAlignment oldClear)
+      · intro clear intended
+        exact origin.intended_of_clear_nonCommit_path _ _ path intended
+          (excludedEq.symm.trans clear)
 
 end Vegas

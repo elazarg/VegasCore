@@ -1,6 +1,9 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.RecoverySourceBoundary
+import Vegas.Game.CompiledCommitCompletion
+import Vegas.Compile.CommitPrefixAdmission
+import Vegas.Source.CommitPrefixIntendedLift
 import Vegas.Game.CompiledCommitClosing
 import Vegas.Game.CompiledCommitTail
 import Vegas.Game.CompiledCommitMaximality
@@ -37,6 +40,40 @@ private theorem next_phase_address {graph : Vegas.EventGraph Player L}
       simpa only [PhaseRuntimeState.attempt, List.head?_cons, Option.map_some, Option.getD_some]
         using boundary.symm
 
+/-- Read the exact whole source endpoint of the current maximal binding
+segment from an actual physical image. The source entry and own words are those
+of this same saved checkpoint. -/
+def RecoverySourceCheckpoint.commitResultPoint
+    {setup : Setup (Player := Player) (L := L)} {mode : EventGraph.ExecutionMode}
+    {state : PhaseRuntimeState ((toEventGraph setup.program).withMode mode)}
+    (checkpoint : RecoverySourceCheckpoint setup mode state)
+    (image : RecoveryState ((toEventGraph setup.program).withMode mode)) :
+    ProtocolState setup.program :=
+  match commitPhase checkpoint.residual.tail with
+  | ⟨_, _, suffix, block, reconstruct, _⟩ =>
+    let embedding := cast (congrArg (fun program => OutputEmbedding
+      (inputLayout setup.context) (outputLayout setup.program) program)
+        reconstruct.symm) checkpoint.embedding
+    let decoded := decodeCommitAttempt setup.program mode block suffix embedding
+      image.native checkpoint.source state.entry.excluded
+    checkpoint.residual.lift (cast (congrArg (fun program => ProtocolState program)
+      reconstruct) (block.liftPoint suffix (ProtocolState.entry suffix decoded.1)))
+
+/-- Every owner's completed physical prefix contains successful bindings
+satisfying their original private guards, including the saved entry cells. -/
+def RecoverySourceCheckpoint.commitAdmitted
+    {setup : Setup (Player := Player) (L := L)} {mode : EventGraph.ExecutionMode}
+    {state : PhaseRuntimeState ((toEventGraph setup.program).withMode mode)}
+    (checkpoint : RecoverySourceCheckpoint setup mode state)
+    (image : RecoveryState ((toEventGraph setup.program).withMode mode)) : Prop :=
+  match commitPhase checkpoint.residual.tail with
+  | ⟨_, pending, suffix, block, reconstruct, _⟩ =>
+    let embedding := cast (congrArg (fun program => OutputEmbedding
+      (inputLayout setup.context) (outputLayout setup.program) program)
+        reconstruct.symm) checkpoint.embedding
+    ∀ who, (fillCommitPrefix setup.program block suffix embedding image.native.config.store
+      checkpoint.source).IntendedFor who pending
+
 /-- A completed physical phase without a new owned miss saves the exact
 source-ordered binding result and its initialized legal source recovery trace. -/
 theorem RecoverySourceCheckpoint.after_commit_clean
@@ -56,15 +93,26 @@ theorem RecoverySourceCheckpoint.after_commit_clean
     (finished : phase.Finished (phase.drain state.current))
     (clean : ¬ (((phase.drain state.current).excluded \ state.entry.excluded) ∩
       phase.owners).Nonempty) :
-    Nonempty (RecoverySourceCheckpoint setup mode
+    (∃ next : RecoverySourceCheckpoint setup mode
       (⟨remaining, state.generation, phase.drain state.current, phase.drain state.current,
-        state.retired⟩ : PhaseRuntimeState ((toEventGraph setup.program).withMode mode))) ∧
+        state.retired⟩ : PhaseRuntimeState ((toEventGraph setup.program).withMode mode)),
+      next.residual.lift (ProtocolState.entry next.residual.tail next.source) =
+        checkpoint.commitResultPoint (phase.drain state.current) ∧
+      ((phase.drain state.current).excluded = ∅ →
+        ProtocolState.Intended setup.program (checkpoint.residual.lift
+          (ProtocolState.entry checkpoint.residual.tail checkpoint.source)) →
+        checkpoint.commitAdmitted (phase.drain state.current) →
+        ProtocolState.Intended setup.program (next.residual.lift
+          (ProtocolState.entry next.residual.tail next.source)))) ∧
       state.normalize = PhaseRuntimeState.settle remaining state.generation
         (phase.drain state.current) (phase.drain state.current) state.retired := by
+  dsimp only [RecoverySourceCheckpoint.commitResultPoint, RecoverySourceCheckpoint.commitAdmitted]
   rcases checkpoint with ⟨⟨Γ, O, program, lift⟩, source, refs, registry, embedding, before,
     compiled, aligned, agree, guards, failures, unique, ranks, actors, commits, owners, endpoints,
     automatic, history, memory, steps, menus, readout, sourceTrace, views, historyAlignment, origin⟩
-  obtain ⟨Δ, P, suffix, block, reconstruct, boundary⟩ := commitPhase program
+  dsimp only
+  generalize _decomposition : commitPhase program = segment at ⊢
+  rcases segment with ⟨Δ, P, suffix, block, reconstruct, boundary⟩
   subst program
   have positive : 0 < block.length := by
     cases block with
@@ -181,7 +229,7 @@ theorem RecoverySourceCheckpoint.after_commit_clean
       trace := reachedTrace
       views := finalViews
       origin := origin.compose (block.protocolSuffix suffix)
-      historyAlignment := ?_ }⟩
+      historyAlignment := ?_ }, ?_, ?_⟩
   · rw [address]
     exact finalCompiled
   · intro point excluded joint
@@ -210,6 +258,20 @@ theorem RecoverySourceCheckpoint.after_commit_clean
       clear (remembered.trans (phase.drain_history_prefix state.current)) within.1
       (phase.finished_prefix image (phase.drain_within state.current within.2) finished)
       alignedHistory views.actionEq
+  · rfl
+  · intro clear intended admitted
+    have completed : ∀ index : Fin (eventCount (block.prepend suffix)),
+        index.val < block.length → embedding.event index ∈ image.native.config.cut.completed := by
+      intro index inside
+      exact finished ((compiledCommitPhase_mem_iff setup.program mode block suffix embedding
+        compiled positive _).mpr ⟨index, inside, rfl⟩)
+    have equal := decodeCommitAttempt_eq_fill_of_clear setup.program mode block suffix embedding
+      image.native (phase.drain_bindingInvariant state.current binding.active) source
+      state.entry.excluded completed (excludedEq.trans clear)
+    have finalIntended := fillCommitPrefix_intended setup.program block suffix embedding
+      image.native.config.store source (origin.intended_reflect _ intended) admitted
+    rw [← equal] at finalIntended
+    exact attempt.intended_lift setup.program suffix lift origin intended finalIntended
 
 /-- An actual exhausted physical phase rebuilds the saved source block with
 only automatic excluded slots and preserves the retained attempted history.

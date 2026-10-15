@@ -8,6 +8,7 @@ import Vegas.Game.CompiledRevealBoundary
 import Vegas.Pending.PhaseHistoryCheckpoint
 import Vegas.Game.RevealRecoveryResidual
 import Vegas.Source.CommitRecoveryPathLift
+import Vegas.Source.CommitRecoveryNonCommitIntended
 
 /-! # Saved source checkpoints after actual completed disclosure phases -/
 
@@ -54,9 +55,14 @@ theorem RecoverySourceCheckpoint.after_reveal
     (reachable : (phase.drain state.current).native.config.Reachable inputs)
     (ordered : (phase.drain state.current).OrderedPublicFailures phase.low state.entry.excluded)
     (finished : phase.Finished (phase.drain state.current)) :
-    Nonempty (RecoverySourceCheckpoint setup mode
+    ∃ next : RecoverySourceCheckpoint setup mode
       (⟨remaining, state.generation, phase.drain state.current, phase.drain state.current,
-        state.retired⟩ : PhaseRuntimeState ((toEventGraph setup.program).withMode mode))) := by
+        state.retired⟩ : PhaseRuntimeState ((toEventGraph setup.program).withMode mode)),
+      (phase.drain state.current).excluded = ∅ →
+      ProtocolState.Intended setup.program (checkpoint.residual.lift
+        (ProtocolState.entry checkpoint.residual.tail checkpoint.source)) →
+      ProtocolState.Intended setup.program (next.residual.lift
+        (ProtocolState.entry next.residual.tail next.source)) := by
   let program := checkpoint.residual.tail
   let count := phase.high - phase.low
   let image := phase.drain state.current
@@ -146,7 +152,7 @@ theorem RecoverySourceCheckpoint.after_reveal
         checkpoint.embedding checkpoint.residual.lift checkpoint.views
       origin := checkpoint.origin.compose
         (revealTail_protocolSuffix count program prefixed)
-      historyAlignment := ?_ }⟩
+      historyAlignment := ?_ }, ?_⟩
   · rw [address, high]
     rw [revelations]
     exact graphTail
@@ -173,5 +179,7 @@ theorem RecoverySourceCheckpoint.after_reveal
       checkpoint.source.history final.history (word checkpoint.views.actionEq clear)
       reachable (remembered.trans (phase.drain_history_prefix state.current)) saved prefixEnd
       (checkpoint.historyAlignment oldClear)
+  · intro clear intended
+    exact checkpoint.origin.intended_of_clear_nonCommit_path _ _ path intended clear
 
 end Vegas

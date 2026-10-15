@@ -74,6 +74,8 @@ theorem RecoverySourceCheckpoint.intended_binding_information
           (outputEmbedding setup.program).ref owner (checkpoint.embedding.event selected)
           ((serviceGraph setup mode).playerStore owner state.current.native.config.store) past =
             site.1 := by
+  have decodedFilled := checkpoint.filled_prefix_view fresh guard next earlier reconstruct
+    stored selected atEnd ready acting notPublication past historyAligned
   rcases checkpoint with ⟨⟨Γ, O, program, lift⟩, entry, refs, registry, embedding, before,
     compiled, terminalAlignment, agrees, guards, failures, unique, ranks, actors, commits, owners,
     endpoints, automatic, histories, memories, steps, menus, readout, initialized, views,
@@ -125,34 +127,6 @@ theorem RecoverySourceCheckpoint.intended_binding_information
     rfl
   obtain ⟨site, original, _, siteView, _⟩ := setup.commitRecovery_intendedInformation wellFormed
     after sourceTrace rfl wholeIntended owner actor
-  have currentAgreement : refs.Agrees entry.state state.current.native.config.store := by
-    intro selectedName selectedCell selected
-    apply (refs.get selected).get?_preserved state.entry.native.config.store
-      state.current.native.config.store stored
-    exact agrees selected
-  have decoded : decodeObservation? owner refs state.current.native.config.store =
-      some (sourceObserve owner entry.state) :=
-    decodeObservation?_eq_some refs owner entry.state state.current.native.config.store
-      currentAgreement
-  have filledObservation := fillCommitPrefix_observation_of_ready setup mode earlier suffix
-    embedding refs state.current.native.config entry owner decoded selected atEnd ready acting
-      notPublication
-  have visibleDecode : decodeObservation? owner
-      (commitBlockRefs setup.program earlier suffix embedding refs)
-      ((toEventGraph setup.program).playerStore owner state.current.native.config.store) =
-        some (sourceObserve owner filled.state) :=
-    (decodeObservation?_playerStore (graph := toEventGraph setup.program) owner
-      (commitBlockRefs setup.program earlier suffix embedding refs)
-        state.current.native.config.store).trans filledObservation
-  have localView := decodeEventView?_commitPrefix_entry setup.program earlier suffix embedding
-    refs ((toEventGraph setup.program).playerStore owner state.current.native.config.store) filled
-    owner selected atEnd visibleDecode
-  have wholeView := (views.decode owner selected
-    ((toEventGraph setup.program).playerStore owner state.current.native.config.store)
-      (filled.history owner)).trans
-    ((congrArg (Option.map (views.view owner)) localView).trans
-      (congrArg some (views.observe owner
-        (earlier.liftPoint suffix (ProtocolState.entry suffix filled)))).symm)
   have observed := prefix_observe_congr earlier suffix final filled owner sameView
   have wholeObserved : ProtocolState.observe owner setup.program after.point =
       ProtocolState.observe owner setup.program
@@ -161,9 +135,7 @@ theorem RecoverySourceCheckpoint.intended_binding_information
         (lift (earlier.liftPoint suffix (ProtocolState.entry suffix final))) = _
     rw [views.observe, views.observe, observed]
   refine ⟨site, original, ?_⟩
-  change filled.history owner = past at historyAligned
-  rw [← historyAligned]
-  exact wholeView.trans ((congrArg some wholeObserved).symm.trans siteView.symm)
+  exact decodedFilled.trans ((congrArg some wholeObserved).symm.trans siteView.symm)
 
 /-- Readiness and actual checkpoint recall derive the complete own-history
 alignment used by the intended counterpart. Only semantic admissibility and

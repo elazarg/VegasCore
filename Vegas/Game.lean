@@ -832,3 +832,8 @@ import Vegas.Game.PhaseWaitingMass
 import Vegas.Game.PhaseBindingWaitingRatio
 import Vegas.Game.PhaseWaitingPrefix
 import Vegas.Game.PhaseRepairNoise
+import Vegas.Game.PhaseSourceBindingOrigin
+import Vegas.Game.PhaseBindingSourceAdmission
+import Vegas.Game.PhaseOpeningWaitingLaw
+import Vegas.Game.PhaseOpeningResponseSymmetry
+import Vegas.Game.CompiledCommitCompletion

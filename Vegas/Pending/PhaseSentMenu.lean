@@ -21,7 +21,7 @@ variable {Player : Type} [Fintype Player] [DecidableEq Player]
 local notation "app" => phaseApplication runtime leaks
 
 omit [Fintype Player] in
-private theorem localEnvelope_phase (execution : (app).Execution) (owner : Player)
+theorem localEnvelope_phase (execution : (app).Execution) (owner : Player)
     (material : (app).Submission) (event : graph.EventId)
     (authorized : (localEnvelope runtime leaks owner (execution.recall owner)
       (execution.observe app owner) material).payload.packet.tokenValid = true)

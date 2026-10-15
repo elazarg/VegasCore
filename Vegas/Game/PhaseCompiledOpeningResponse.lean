@@ -47,7 +47,6 @@ theorem phaseSourcePolicy_opening_erasure_of_history
     (stored : binding.get? control.execution.application.current.native.config.store =
       some (.success value))
     (values : (⟨payload, value⟩ : Raw L) ∈ bounds.values)
-    (timely : control.execution.application.current.native.WithinDeadline runtime event)
     (resolved : EventCode.resolveOutput? binding checks true
       control.execution.application.current.native.config.store = some (.success value))
     (law : PMF ((serviceGraph setup mode).Action event))
@@ -63,7 +62,7 @@ theorem phaseSourcePolicy_opening_erasure_of_history
   classical
   obtain ⟨candidate, accepted, actualLaw⟩ := phaseSourcePolicy_opening_of_history setup mode
     runtime leaks bounds wellFormed assessment plan inputs horizon scheduler trace who event
-      payload binding checks outputEq codeEq node request unsent value stored values timely
+      payload binding checks outputEq codeEq node request unsent value stored values
   have raw := (PhaseCount.onePacketMenu runtime leaks bounds).toRawTrace _ horizon scheduler trace
   have valid := (phaseBindingRecord_history runtime leaks plan inputs horizon scheduler raw).active
   rw [actualLaw, PMF.pure_map]
