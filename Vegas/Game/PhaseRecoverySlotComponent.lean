@@ -36,7 +36,7 @@ def phaseRecoverySlotPolicy (wellFormed : setup.WellFormed)
     (who : Player) (event : (serviceGraph setup mode).EventId) (payload : L.Ty)
     (outputEq : (serviceGraph setup mode).outputLayout event = .binding who payload) :
     (phaseApplication runtime leaks).Policy := fun past view =>
-  (assessment.strategy who (setup.commitRecoveryInformation wellFormed who
+  (assessment.strategy who (setup.commitRecoveryClearInformation wellFormed who
       (phaseSourceView? setup mode runtime leaks who event view))).bind fun choice =>
     let data := phaseRecoveryBindingData setup mode event who payload outputEq choice.1
     if data.2 then PMF.pure ⟨none⟩ else
@@ -144,17 +144,18 @@ theorem phaseRecoverySlotPolicy_result_law (wellFormed : setup.WellFormed)
       payload outputEq (execution.recall who)
         (execution.observe (phaseApplication runtime leaks) who)).map
       (phaseBindingResponseOutcome setup mode runtime leaks execution who payload) =
-      (assessment.strategy who (setup.commitRecoveryInformation wellFormed who
+      (assessment.strategy who (setup.commitRecoveryClearInformation wellFormed who
         (phaseSourceView? setup mode runtime leaks who event
           (execution.observe (phaseApplication runtime leaks) who)))).map
         (fun choice => phaseRecoveryBindingData setup mode event who payload outputEq
           choice.1) := by
-  let source := assessment.strategy who (setup.commitRecoveryInformation wellFormed who
+  let source := assessment.strategy who (setup.commitRecoveryClearInformation wellFormed who
     (phaseSourceView? setup mode runtime leaks who event
       (execution.observe (phaseApplication runtime leaks) who)))
   let data := fun choice : setup.commitRecoveryModel.Choice who
-      (setup.commitRecoveryInformation wellFormed who (phaseSourceView? setup mode runtime leaks
-        who event (execution.observe (phaseApplication runtime leaks) who))) =>
+      (setup.commitRecoveryClearInformation wellFormed who
+        (phaseSourceView? setup mode runtime leaks who event
+          (execution.observe (phaseApplication runtime leaks) who))) =>
     phaseRecoveryBindingData setup mode event who payload outputEq choice.1
   rw [phaseRecoverySlotPolicy, PMF.map_bind]
   calc
@@ -178,7 +179,7 @@ theorem phaseRecoverySlotPolicy_omission_law (wellFormed : setup.WellFormed)
       payload outputEq (execution.recall who)
         (execution.observe (phaseApplication runtime leaks) who)).map
       (fun response => response.transmission.isNone) =
-      (assessment.strategy who (setup.commitRecoveryInformation wellFormed who
+      (assessment.strategy who (setup.commitRecoveryClearInformation wellFormed who
         (phaseSourceView? setup mode runtime leaks who event
           (execution.observe (phaseApplication runtime leaks) who)))).map
         (fun choice => (phaseRecoveryBindingData setup mode event who payload outputEq
@@ -203,7 +204,7 @@ theorem phaseRecoverySlotPolicy_mass (wellFormed : setup.WellFormed)
     (past : List (phaseApplication runtime leaks).PlayerEntry)
     (view : (phaseApplication runtime leaks).PlayerView)
     (choice : setup.commitRecoveryModel.Choice who
-      (setup.commitRecoveryInformation wellFormed who
+      (setup.commitRecoveryClearInformation wellFormed who
         (phaseSourceView? setup mode runtime leaks who event view)))
     (serial : Nat)
     (eligible : serial ∈ PhaseCount.phaseBindingSlots runtime leaks bounds who event payload
@@ -211,13 +212,13 @@ theorem phaseRecoverySlotPolicy_mass (wellFormed : setup.WellFormed)
     (notMissing : (phaseRecoveryBindingData setup mode event who payload outputEq choice.1).2 =
       false) :
     ((PhaseCount.phaseBindingSlots runtime leaks bounds who event payload past view).card :
-        ENNReal)⁻¹ * (assessment.strategy who (setup.commitRecoveryInformation wellFormed who
+        ENNReal)⁻¹ * (assessment.strategy who (setup.commitRecoveryClearInformation wellFormed who
           (phaseSourceView? setup mode runtime leaks who event view))) choice ≤
       phaseRecoverySlotPolicy setup mode runtime leaks bounds wellFormed assessment who event
         payload outputEq past view (phaseBindingResponse runtime leaks who event payload
           (phaseRecoveryBindingData setup mode event who payload outputEq choice.1).1 serial) := by
   classical
-  let source := assessment.strategy who (setup.commitRecoveryInformation wellFormed who
+  let source := assessment.strategy who (setup.commitRecoveryClearInformation wellFormed who
     (phaseSourceView? setup mode runtime leaks who event view))
   let data := phaseRecoveryBindingData setup mode event who payload outputEq choice.1
   let response := phaseBindingResponse runtime leaks who event payload data.1 serial
@@ -252,7 +253,7 @@ theorem phaseRecoverySlotPolicy_result_mass (wellFormed : setup.WellFormed)
       past view) (result : PublicationResult (L.Val payload)) :
     ((PhaseCount.phaseBindingSlots runtime leaks bounds who event payload past view).card :
         ENNReal)⁻¹ *
-      ((assessment.strategy who (setup.commitRecoveryInformation wellFormed who
+      ((assessment.strategy who (setup.commitRecoveryClearInformation wellFormed who
         (phaseSourceView? setup mode runtime leaks who event view))).map
           (fun choice => phaseRecoveryBindingData setup mode event who payload outputEq
             choice.1)) (result, false) ≤
@@ -276,7 +277,7 @@ theorem phaseRecoverySlotPolicy_result_mass (wellFormed : setup.WellFormed)
     simp only [PMF.pure_apply_self, mul_one] at lower
     simp only [missing, Bool.false_eq_true, ↓reduceIte, typed]
     simpa only [mul_comm] using mul_le_mul_left lower
-      ((assessment.strategy who (setup.commitRecoveryInformation wellFormed who
+      ((assessment.strategy who (setup.commitRecoveryClearInformation wellFormed who
         (phaseSourceView? setup mode runtime leaks who event view))) choice)
   · simp only [ite_eq_right same, mul_zero, zero_le]
 
@@ -289,10 +290,10 @@ theorem phaseRecoverySlotPolicy_omission_mass (wellFormed : setup.WellFormed)
     (past : List (phaseApplication runtime leaks).PlayerEntry)
     (view : (phaseApplication runtime leaks).PlayerView)
     (choice : setup.commitRecoveryModel.Choice who
-      (setup.commitRecoveryInformation wellFormed who
+      (setup.commitRecoveryClearInformation wellFormed who
         (phaseSourceView? setup mode runtime leaks who event view)))
     (missing : (phaseRecoveryBindingData setup mode event who payload outputEq choice.1).2 = true) :
-    (assessment.strategy who (setup.commitRecoveryInformation wellFormed who
+    (assessment.strategy who (setup.commitRecoveryClearInformation wellFormed who
       (phaseSourceView? setup mode runtime leaks who event view))) choice ≤
       phaseRecoverySlotPolicy setup mode runtime leaks bounds wellFormed assessment who event
         payload outputEq past view ⟨none⟩ := by
@@ -300,7 +301,7 @@ theorem phaseRecoverySlotPolicy_omission_mass (wellFormed : setup.WellFormed)
   rw [phaseRecoverySlotPolicy, PMF.bind_apply]
   simpa only [missing, ↓reduceIte, PMF.pure_apply_self, mul_one] using
     (ENNReal.le_tsum (f := fun chosen =>
-      (assessment.strategy who (setup.commitRecoveryInformation wellFormed who
+      (assessment.strategy who (setup.commitRecoveryClearInformation wellFormed who
         (phaseSourceView? setup mode runtime leaks who event view))) chosen *
       (if (phaseRecoveryBindingData setup mode event who payload outputEq chosen.1).2 then
         PMF.pure (⟨none⟩ : (phaseApplication runtime leaks).Action) else

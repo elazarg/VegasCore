@@ -67,7 +67,7 @@ theorem phaseSourcePolicy_result_law_of_history :
     (phaseSourcePolicy setup mode runtime leaks bounds wellFormed assessment who
         (control.execution.recall who) (control.execution.observe app who)).map
       (phaseBindingResponseOutcome setup mode runtime leaks control.execution who payload) =
-      (assessment.strategy who (setup.commitRecoveryInformation wellFormed who
+      (assessment.strategy who (setup.commitRecoveryClearInformation wellFormed who
         (phaseSourceView? setup mode runtime leaks who event
           (control.execution.observe app who)))).map
         (fun choice => phaseRecoveryBindingData setup mode event who payload binding choice.1) := by
@@ -88,13 +88,15 @@ theorem phaseSourcePolicy_result_law_of_history :
               tidy := by
     rw [PMF.map_comp, law, PMF.map_comp, PMF.map_comp]
     apply congrArg (fun f =>
-      (assessment.strategy who (setup.commitRecoveryInformation wellFormed who (some view))).map f)
+      (assessment.strategy who
+        (setup.commitRecoveryClearInformation wellFormed who (some view))).map f)
     funext choice
     exact recoveryBindingResponse_outcome setup mode runtime leaks control.execution who event
       payload binding serial choice.1
   rw [common, result, PMF.map_comp, decoded]
   apply congrArg (fun f =>
-    (assessment.strategy who (setup.commitRecoveryInformation wellFormed who (some view))).map f)
+    (assessment.strategy who
+      (setup.commitRecoveryClearInformation wellFormed who (some view))).map f)
   funext choice
   dsimp only [Function.comp_def, tidy]
   unfold phaseRecoveryBindingData
@@ -120,7 +122,7 @@ theorem phaseSourcePerturbedStrategy_result_law_of_history
       mix noise nonnegative bounded
         (((PhaseCount.onePacketMenu runtime leaks bounds).uniformPolicy initial horizon scheduler
           who input).map outcome)
-        ((assessment.strategy who (setup.commitRecoveryInformation wellFormed who
+        ((assessment.strategy who (setup.commitRecoveryClearInformation wellFormed who
           (phaseSourceView? setup mode runtime leaks who event
             (control.execution.observe app who)))).map
               (fun choice => phaseRecoveryBindingData setup mode event who payload binding
@@ -132,7 +134,7 @@ theorem phaseSourcePerturbedStrategy_result_law_of_history
   have slots := (phaseSourceSlotPolicy_binding_of_history setup mode runtime leaks bounds
     wellFormed assessment who event payload binding menu plan inputs horizon scheduler capacity
       control trace acting request unsent values).2
-  let source := (assessment.strategy who (setup.commitRecoveryInformation wellFormed who
+  let source := (assessment.strategy who (setup.commitRecoveryClearInformation wellFormed who
     (phaseSourceView? setup mode runtime leaks who event
       (control.execution.observe app who)))).map
         (fun choice => phaseRecoveryBindingData setup mode event who payload binding choice.1)

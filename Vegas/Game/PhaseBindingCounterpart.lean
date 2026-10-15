@@ -5,6 +5,7 @@ import Vegas.Game.RecoveryCheckpointHistory
 import Vegas.Pending.PhaseNativeInvariant
 import Vegas.Pending.PhaseFailureCoverage
 import Vegas.Pending.PhaseLive
+import Vegas.Game.CommitRecoveryClearDecoder
 
 /-! # Source decision witnesses from actual initialized phased binding histories -/
 
@@ -110,8 +111,8 @@ theorem phase_ready_binding_sourceView
         stored retained phase remaining installed kind event inside ready who payload binding
         savedClear bindingRecord.active native.active.reachable
 
-/-- A classified actual intended-view witness realizes the complete source
-information used by the physical component; fallback views are not declared played. -/
+/-- Every actual clear ready binding realizes the complete auxiliary source
+information selected by the physical decoder, including signal and own-play recall. -/
 theorem phase_ready_binding_information
     (setup : Setup (Player := Player) (L := L)) (mode : ExecutionMode)
     (runtime : EventGraphRuntime (serviceGraph setup mode))
@@ -127,19 +128,20 @@ theorem phase_ready_binding_information
     (binding : (serviceGraph setup mode).outputLayout event = .binding who payload)
     (ready : control.execution.application.current.native.config.cut.Ready event)
     (clear : control.execution.application.current.excluded = ∅)
-    (wellFormed : setup.WellFormed) (original : setup.intendedProtocol.History)
-    (same : phaseSourceView? setup mode runtime leaks who event
-      (control.execution.observe (phaseApplication runtime leaks) who) =
-        setup.intendedModel.infoOf who original.trace) :
+    (wellFormed : setup.WellFormed) :
     setup.commitRecoveryModel.IsDecisionInfo who
-      (setup.commitRecoveryInformation wellFormed who
+      (setup.commitRecoveryClearInformation wellFormed who
         (phaseSourceView? setup mode runtime leaks who event
           (control.execution.observe (phaseApplication runtime leaks) who))) := by
   obtain ⟨source, sourceTrace, excluded, _generation, actor, decoded⟩ :=
     phase_ready_binding_sourceView setup mode runtime leaks plan maximal horizon scheduler trace
       who event payload binding ready clear
-  rw [same]
-  exact commitRecovery_isDecisionInfo_of_clear_view setup wellFormed who source sourceTrace
-    excluded actor original (decoded.symm.trans same)
+  have played := commitRecovery_isDecisionInfo_of_actor setup source sourceTrace who
+    excluded actor
+  have observed := setup.commitRecoveryClearInformation_observed wellFormed who sourceTrace
+    excluded
+  rw [observed] at played
+  rw [decoded]
+  exact played
 
 end Vegas

@@ -102,3 +102,4 @@ import Vegas.Source.CommitRecoveryPrefixPath
 import Vegas.Source.CommitRecoveryClearRecall
 import Vegas.Source.CommitPrefixLaw
 import Vegas.Source.CommitPrefixInformationLaw
+import Vegas.Source.IntendedCommitPredecessor

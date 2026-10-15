@@ -1,6 +1,6 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**SE: non-concurrent ✓ · native assessment ✓ · local response ✓ · guarded replay ✓ · service law ✓; likelihood/incentives open.**
+**SE: non-concurrent ✓ · all-clear inputs ✓ · native response ✓ · posterior service product ✓; likelihood/incentives open.**
 
 <details>
 <summary>Recovery milestones and current proof substeps</summary>
@@ -13,9 +13,12 @@ The 8/8 count tracks these proof steps, not a percentage of full SE.
 At unsent sites the original local seed has its observed-delay-filtered law,
 independently of the full physical control and all other original seeds under
 the actual Bayes belief. Saved source/native action recall agrees at every clear
-checkpoint. Ready bindings have an actual initialized source counterpart with
-the same whole view; an actual intended-view witness identifies complete played
-information. First callbacks retain the full protected inclusion window.
+checkpoint. Every actual clear ready binding has an initialized auxiliary source
+counterpart with the same whole current view. Its complete signal and own-play
+information is selected by a decoder of actual clear auxiliary histories;
+no intended-view witness is needed for this local source input. On intended
+views the decoder agrees with the intended-source embedding. First callbacks
+retain the full protected inclusion window.
 The whole physical source-policy dispatcher is globally legal, with exact local
 binding and canonical-opening laws and a finite strategy representation.
 While the same binding stays ready in its attempt, arbitrary future rounds
@@ -30,6 +33,16 @@ marginal is independent of foreign profiles and hidden entry state when its own
 policy and entry view agree. Positive original source-view mass remains explicit;
 a legal auxiliary all-failure witness does not supply it. Transport from the
 actual native partial history to this original source law remains open.
+An intended-compatible entry and admitted own choices permit completion of
+hidden foreign bindings by legal intended values, preserving the full focal
+view and repeated-owner recall. Every initialized source trace either reaches
+the same typed point by an intended history or retains some player's departure
+debt. A clear record alone does not supply the intended-entry premise.
+For any fully mixed Bayes auxiliary assessment, the actual clear native binding
+selects a positive-mass source information set. Its source belief is exactly
+the original auxiliary runner's encountered-prefix law conditioned on passage,
+retaining latent foreign actions and their chronological dependencies. Matching
+that source law to the native conditional distribution remains open.
 
 The fresh-slot binding law samples independently of the original typed result,
 offers every bounded fresh slot at actual unsent sites, retains the exact
@@ -39,6 +52,10 @@ now preserves the joint typed-result/omission law: source omission is silence,
 while an accepted unusable binding emits a packet. Its finite strategy has the
 exact same law, with canonical opening unchanged. Aggregate result masses sum
 all source choices that produce the same encoding.
+Every typed binding result, including accepted failure with no omission, has a
+legal auxiliary choice at its exact decoded address. Full mixing at the actual
+clear source site gives it positive original source mass, without an additional
+source-admission premise for a replacement value.
 Every permitted raw binding's named slot is bounded, globally fresh and offered
 by this law, even with wrong-typed preparation or arbitrary evidence requests.
 Its mass has the fixed lower bound of the original result mass divided by wire
@@ -54,8 +71,8 @@ of the intended joint law remain open. Silence leaves later legal sending
 available; it is not treated as an irrevocable omission.
 At an actual unsent binding, both source tiers preserve the same joint declared
 result/omission law, read from the handle each response actually names; only raw
-noise contaminates it. At a clear site with an actual intended-view witness,
-source assessment convergence identifies that joint response law at the same
+noise contaminates it. At every actual clear unsent binding, source assessment
+convergence identifies that joint response law at the same
 common native subsequential limit. Slot weights need not vanish for this local
 semantic statement. Native history likelihoods and physical inclusion are
 separate from the declared response law.
@@ -80,8 +97,13 @@ window, giving the exact Boolean continuation law. Under the actual coarse owner
 Bayes belief, the window marginal is its original local prior filtered only by
 the observed first delay. Arbitrary later sending, even when adapted to full
 observations, cannot cause selected inclusion outside the immediate-send window.
-Composing this marginal and the physical response kernel at a decision site,
-and transporting source continuation values, remain separate obligations.
+This now composes at the actual positive-mass owner decision: for any permitted
+authored response naming the unsent coordinate, its future accepting-receipt law
+is the original filtered window law. The same receipt bit is independent of the
+full current control and every other original seed coordinate, jointly, under
+the natural continuation using the same original scheduler seed. Future policies
+may depend on full observations and priority on full erased history.
+Transporting source continuation values and the intended joint law remains open.
 
 The existing hidden-value involution acts on both saved and live states and
 all archived attempts. Restore, automatic drain and every phase reset commute
@@ -109,6 +131,9 @@ bindings, completed/current-phase-ready disclosures and recalled evidence
 requests. Deriving it throughout the required source fibers, repairing unusable
 foreign bindings, comparing source-policy likelihoods, native/source Bayes
 transport and sequential rationality remain open.
+For swaps of computed private fields and prepared handles, the genuine initialized
+phase state and its exact joint prior are fixed pointwise. This supplies initial
+support closure without an independence assumption on that prior.
 
 | Status | Recovery milestone |
 | --- | --- |
@@ -241,8 +266,9 @@ At any actual clear auxiliary-source history, the current private source view
 determines its entire signal transcript and own-play recall. If an actual
 intended history shares that view, the complete recovery information equals
 the existing intended-information embedding. A latent bad binding does not
-invalidate this clear-history theorem, but an intended-view witness is still
-required to identify an intended information site. Typed prefix completion
+invalidate this clear-history theorem. The auxiliary decoder selects genuine
+complete information at every realized clear view; an intended-view witness is
+needed only to identify an intended source information site. Typed prefix completion
 also yields an actual initialized source trace and exact whole source view
 at the selected binding. At an actual initialized clear ready binding, the
 checkpoint, typed prefix, own-history alignment and all native invariants are
@@ -3530,8 +3556,9 @@ source-point/no-exclusion law and never increase the retry generation.
 Every actual clear auxiliary-source history projects to an original source
 history with the same actions, length and current source observation. The
 complete clear source signal transcript and own-play recall are determined by
-that current view. An actual intended-view witness identifies the complete
-copied information. Native/source conditional probability transport remains open.
+that current view. The actual-clear auxiliary decoder identifies complete source
+information at every clear ready binding, including views outside the intended
+source region. Native/source conditional probability transport remains open.
 These checked models and invariants
 do not establish a concurrent preserving SE or its intended joint law. The
 checked raw audit extension requires a counted-menu SE. Scheduler-seed
@@ -3577,8 +3604,9 @@ At unsent actual inputs its original local seed law is independent of the full
 physical control and all other original coordinates, conditional only on the
 observed first delay. The exact original-packet receipt/window law, original-prior
 owner Bayes window marginal and adaptive later-send upper bound are checked.
-Their concrete decision-response composition, full operational source-information
-likelihoods and continuation/payoff coupling remain open. The concrete calendar
+Their actual decision-response composition and joint independence from the full
+current control and all other original seeds are also checked. Full operational
+source-information likelihoods and continuation/payoff coupling remain open. The concrete calendar
 results do not quantify over every abstract admissible service.
 
 A mechanization must also check the following, beyond the statements above:

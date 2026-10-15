@@ -2,12 +2,13 @@
 
 import Vegas.Game.PhaseEventSourceView
 import Vegas.Game.CommitRecoveryRestriction
+import Vegas.Game.CommitRecoveryClearDecoder
 import Vegas.Pending.PhasePreparedOnePacket
 import Vegas.Compile.EventGraphBacktranslation
 
 /-! # Actual phased binding components of source recovery assessments
 
-The original source assessment is evaluated at the retained information of the
+The original source assessment is evaluated at the complete clear information of the
 decoded source view. Accepted unusable bindings emit an actual packet, whereas
 the distinct source omission flag emits silence. No source history, posterior
 identity or future physical service law is assumed here.
@@ -90,7 +91,7 @@ theorem phaseRecoveryBindingData_faithful
       (execution.observe (phaseApplication runtime leaks) who) = some view)
     (acting : (serviceGraph setup mode).actor? event = some who)
     (choice : setup.commitRecoveryModel.Choice who
-      (setup.commitRecoveryInformation wellFormed who (some view))) :
+      (setup.commitRecoveryClearInformation wellFormed who (some view))) :
     ∃ move action, choice.1 = some move ∧
       decodeEventAction setup.program event action = some move.action ∧
       phaseRecoveryBindingData setup mode event who payload outputEq choice.1 =
@@ -98,9 +99,9 @@ theorem phaseRecoveryBindingData_faithful
   have actor := (phaseSourceView?_actor setup mode runtime leaks execution who event view
     decoded).trans acting
   have active : setup.commitRecoveryActive who
-      (setup.commitRecoveryRetainedInfo wellFormed who (some view)).1 := by
+      (setup.commitRecoveryClearInformation wellFormed who (some view)).1.1 := by
     unfold Setup.commitRecoveryActive
-    rw [setup.commitRecoveryRetainedInfo_current, setup.commitRecoveryRetainedInfo_excluded]
+    rw [setup.commitRecoveryClearInformation_current, setup.commitRecoveryClearInformation_excluded]
     exact ⟨actor, Finset.notMem_empty _⟩
   cases value : choice.1 with
   | none =>
@@ -113,9 +114,9 @@ theorem phaseRecoveryBindingData_faithful
       have offered : move ∈
           SourceProgram.ProtocolView.recoveryAvailable who setup.program view := by
         have offeredHere := available.2
-        change (setup.commitRecoveryRetainedInfo wellFormed who (some view)).1.1.elim False _
+        change (setup.commitRecoveryClearInformation wellFormed who (some view)).1.1.1.elim False _
           at offeredHere
-        rw [setup.commitRecoveryRetainedInfo_current] at offeredHere
+        rw [setup.commitRecoveryClearInformation_current] at offeredHere
         exact offeredHere
       obtain ⟨action, sent⟩ := phaseSourceView?_available setup mode runtime leaks execution who
         event view decoded move.action offered.1
@@ -143,7 +144,8 @@ def phaseRecoveryBindingLaw (wellFormed : setup.WellFormed)
     (who : Player) (event : (serviceGraph setup mode).EventId) (payload : L.Ty)
     (outputEq : (serviceGraph setup mode).outputLayout event = .binding who payload)
     (serial : Nat) (view : setup.ProtocolView who) : PMF (phaseApplication runtime leaks).Action :=
-  (assessment.strategy who (setup.commitRecoveryInformation wellFormed who view)).map fun choice =>
+  (assessment.strategy who (setup.commitRecoveryClearInformation wellFormed who view)).map
+    fun choice =>
     phaseRecoveryBindingResponse setup mode runtime leaks who event payload outputEq serial choice.1
 
 section FiniteMenu
@@ -218,7 +220,7 @@ theorem phaseRecoveryBindingPolicy_of_history
         (control.execution.observe (phaseApplication runtime leaks) who) = some view ∧
       serial < horizon ∧
       let source := assessment.strategy who
-        (setup.commitRecoveryInformation wellFormed who (some view))
+        (setup.commitRecoveryClearInformation wellFormed who (some view))
       let actual := phaseRecoveryBindingPolicy setup mode runtime leaks bounds wellFormed
         assessment who event payload outputEq (control.execution.recall who)
           (control.execution.observe (phaseApplication runtime leaks) who)
@@ -266,7 +268,8 @@ theorem phaseRecoveryBindingPolicy_of_history
   · have law : phaseRecoveryBindingPolicy setup mode runtime leaks bounds wellFormed assessment
         who event payload outputEq (control.execution.recall who)
           (control.execution.observe (phaseApplication runtime leaks) who) =
-      (assessment.strategy who (setup.commitRecoveryInformation wellFormed who (some view))).map
+      (assessment.strategy who
+        (setup.commitRecoveryClearInformation wellFormed who (some view))).map
         (fun choice => phaseRecoveryBindingResponse setup mode runtime leaks who event payload
           outputEq serial choice.1) := by
       unfold phaseRecoveryBindingPolicy
@@ -275,7 +278,8 @@ theorem phaseRecoveryBindingPolicy_of_history
         event payload outputEq serial) decoded
     rw [law, PMF.map_comp]
     apply congrArg (fun f =>
-      (assessment.strategy who (setup.commitRecoveryInformation wellFormed who (some view))).map f)
+      (assessment.strategy who
+        (setup.commitRecoveryClearInformation wellFormed who (some view))).map f)
     funext choice
     exact phaseRecoveryBindingResponse_result setup mode runtime leaks control.execution who
       event payload outputEq serial fresh choice.1

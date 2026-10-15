@@ -791,3 +791,9 @@ import Vegas.Game.PhaseSourcePerturbation
 import Vegas.Game.PhaseAssessmentCompletion
 import Vegas.Game.PhaseSourceResponseLaw
 import Vegas.Game.PhaseSourceResponseLimit
+import Vegas.Game.CommitRecoveryClearDecoder
+import Vegas.Game.SourceIntendedTrace
+import Vegas.Game.PhaseRecoveryBindingChoice
+import Vegas.Game.CommitRecoveryClearFiber
+import Vegas.Game.CommitRecoveryClearBayes
+import Vegas.Game.PhaseBindingBayesPrefix

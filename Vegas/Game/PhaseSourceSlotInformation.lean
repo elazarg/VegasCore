@@ -20,8 +20,8 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket (serviceGraph setup mode)))
   (bounds : MessageBounds (serviceGraph setup mode))
 
-/-- The slot law is evaluated at genuinely played auxiliary information
-when the actual current source view has a played intended witness. -/
+/-- Every actual clear unsent binding evaluates the slot law at genuinely
+played complete auxiliary source information. -/
 theorem phaseSourceSlotPolicy_binding_at_played_information
     (wellFormed : setup.WellFormed)
     (assessment : setup.commitRecoveryModel.BehavioralAssessment)
@@ -43,16 +43,12 @@ theorem phaseSourceSlotPolicy_binding_at_played_information
     (unsent : ∀ message ∈ (phaseApplication runtime leaks).outputs (control.execution.recall who),
       PhaseCount.event? message.payload ≠ some ⟨control.execution.application.attempt, event⟩)
     (values : ∀ value : L.Val payload, (⟨payload, value⟩ : Raw L) ∈ bounds.values)
-    (clear : control.execution.application.current.excluded = ∅)
-    (original : setup.intendedProtocol.History)
-    (same : phaseSourceView? setup mode runtime leaks who event
-      (control.execution.observe (phaseApplication runtime leaks) who) =
-        setup.intendedModel.infoOf who original.trace) :
+    (clear : control.execution.application.current.excluded = ∅) :
     ∃ view,
       phaseSourceView? setup mode runtime leaks who event
         (control.execution.observe (phaseApplication runtime leaks) who) = some view ∧
       setup.commitRecoveryModel.IsDecisionInfo who
-        (setup.commitRecoveryInformation wellFormed who (some view)) ∧
+        (setup.commitRecoveryClearInformation wellFormed who (some view)) ∧
       (PhaseCount.phaseBindingSlots runtime leaks bounds who event payload
         (control.execution.recall who)
         (control.execution.observe (phaseApplication runtime leaks) who)).Nonempty ∧
@@ -60,13 +56,14 @@ theorem phaseSourceSlotPolicy_binding_at_played_information
         (control.execution.recall who)
         (control.execution.observe (phaseApplication runtime leaks) who)).map
         (phaseBindingResponseOutcome setup mode runtime leaks control.execution who payload) =
-        (assessment.strategy who (setup.commitRecoveryInformation wellFormed who (some view))).map
+        (assessment.strategy who
+          (setup.commitRecoveryClearInformation wellFormed who (some view))).map
           (fun choice => phaseRecoveryBindingData setup mode event who payload outputEq
             choice.1) := by
   obtain ⟨view, serial, decoded, played, _bounded, _canonical, _result⟩ :=
     phaseSourcePolicy_binding_at_played_information setup mode runtime leaks bounds wellFormed
       assessment who event payload outputEq menu plan maximal horizon scheduler capacity control
-      trace acting request unsent values clear original same
+      trace acting request unsent values clear
   let inputs : PMF (serviceGraph setup mode).Inputs := setup.initialLaw.map encodeInputs
   have finiteTrace : (menu.protocol (inputs.map (PhaseRuntimeState.initial plan))
       horizon scheduler).Trace (some control) := by

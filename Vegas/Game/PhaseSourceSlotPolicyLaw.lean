@@ -51,7 +51,7 @@ theorem phaseSourceSlotPolicy_binding_of_history
       (control.execution.recall who)
         (control.execution.observe (phaseApplication runtime leaks) who)).map
       (phaseBindingResponseOutcome setup mode runtime leaks control.execution who payload) =
-      (assessment.strategy who (setup.commitRecoveryInformation wellFormed who
+      (assessment.strategy who (setup.commitRecoveryClearInformation wellFormed who
         (phaseSourceView? setup mode runtime leaks who event
           (control.execution.observe (phaseApplication runtime leaks) who)))).map
         (fun choice => phaseRecoveryBindingData setup mode event who payload outputEq
@@ -91,7 +91,7 @@ theorem phaseSourceSlotPolicy_result_mass_of_history
     ((PhaseCount.phaseBindingSlots runtime leaks bounds who event payload
         (control.execution.recall who)
         (control.execution.observe (phaseApplication runtime leaks) who)).card : ENNReal)⁻¹ *
-      ((assessment.strategy who (setup.commitRecoveryInformation wellFormed who
+      ((assessment.strategy who (setup.commitRecoveryClearInformation wellFormed who
         (phaseSourceView? setup mode runtime leaks who event
           (control.execution.observe (phaseApplication runtime leaks) who)))).map
             (fun choice => phaseRecoveryBindingData setup mode event who payload outputEq

@@ -37,5 +37,7 @@ import Vegas.Compile.ProtocolViewSuffix
 import Vegas.Compile.CommitPrefixCompletion
 import Vegas.Compile.CommitPrefixView
 import Vegas.Compile.CommitPrefixAtEvent
+import Vegas.Compile.CommitPrefixIntendedCompletion
+import Vegas.Compile.EventSourceBindingChoice
 
 /-! Source-program lowering to the typed immutable graph. -/

@@ -676,6 +676,18 @@ import Vegas.Pending.PhaseSwapGuard
 import Vegas.Pending.PhaseSwapTransition
 import Vegas.Pending.PhaseSwapSymmetry
 import Vegas.Pending.PhaseSwapFiber
+import Vegas.Game.CommitRecoveryClearDecoder
+import Vegas.Source.IntendedCommitPredecessor
+import Vegas.Compile.CommitPrefixIntendedCompletion
+import Vegas.Game.SourceIntendedTrace
+import Vegas.Pending.PhaseSwapInitialLaw
+import Vegas.Compile.EventSourceBindingChoice
+import Vegas.Game.PhaseRecoveryBindingChoice
+import Vegas.Game.CommitRecoveryClearFiber
+import Vegas.Game.CommitRecoveryClearBayes
+import Vegas.Game.PhaseBindingBayesPrefix
+import Vegas.Pending.PhaseSeedPosteriorResponse
+import Vegas.Pending.PhaseSeedReceiptProduct
 
 /-! # Checked sequential-equilibrium preservation, Nash correspondence and termination -/
 
@@ -7243,3 +7255,75 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms
   Vegas.EventGraphRuntime.phaseSwapInformationFiberEquiv
+
+/-- info: 'Vegas.SourceProgram.Setup.commitRecoveryClearInformation_observed'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecoveryClearInformation_observed
+
+/-- info: 'Vegas.SourceProgram.Setup.commitRecoveryClearInformation_intended'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecoveryClearInformation_intended
+
+/-- info: 'Vegas.fillCommitPrefix_intended_completion'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.fillCommitPrefix_intended_completion
+
+/-- info: 'Vegas.SourceProgram.Setup.sourceTrace_intended_or_owes'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.sourceTrace_intended_or_owes
+
+/-- info: 'Vegas.decodeEventView?_binding_choice'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.decodeEventView?_binding_choice
+
+/-- info: 'Vegas.exists_phaseRecoveryBindingChoice'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.exists_phaseRecoveryBindingChoice
+
+/-- info: 'Vegas.phaseRecoveryBindingChoice_supported_of_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseRecoveryBindingChoice_supported_of_history
+
+/-- info: 'Vegas.EventGraphRuntime.HiddenSwap.ofPairs_initial_phase_law'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.HiddenSwap.ofPairs_initial_phase_law
+
+/-- info: 'Vegas.phase_ready_binding_bayes_prefix'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phase_ready_binding_bayes_prefix
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseSeedCalendar.bayes_authored_receipt_law'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseSeedCalendar.bayes_authored_receipt_law
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseSeedCalendar.bayes_receipt_control_product'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseSeedCalendar.bayes_receipt_control_product
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseSeedCalendar.bayes_receipt_original_residual_product'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseSeedCalendar.bayes_receipt_original_residual_product

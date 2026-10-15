@@ -46,7 +46,7 @@ theorem phaseRecoverySlotPolicy_of_history
       payload outputEq (control.execution.recall who)
         (control.execution.observe (phaseApplication runtime leaks) who)).map
       (phaseBindingResponseOutcome setup mode runtime leaks control.execution who payload) =
-      (assessment.strategy who (setup.commitRecoveryInformation wellFormed who
+      (assessment.strategy who (setup.commitRecoveryClearInformation wellFormed who
         (phaseSourceView? setup mode runtime leaks who event
           (control.execution.observe (phaseApplication runtime leaks) who)))).map
         (fun choice => phaseRecoveryBindingData setup mode event who payload outputEq

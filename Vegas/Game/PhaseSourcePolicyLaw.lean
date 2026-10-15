@@ -46,7 +46,7 @@ theorem phaseSourcePolicy_binding_of_history
         (control.execution.observe (phaseApplication runtime leaks) who) = some view ∧
       serial < horizon ∧
       let source := assessment.strategy who
-        (setup.commitRecoveryInformation wellFormed who (some view))
+        (setup.commitRecoveryClearInformation wellFormed who (some view))
       let actual := phaseSourcePolicy setup mode runtime leaks bounds wellFormed assessment who
         (control.execution.recall who)
           (control.execution.observe (phaseApplication runtime leaks) who)

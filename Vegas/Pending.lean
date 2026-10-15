@@ -523,3 +523,6 @@ import Vegas.Pending.PhaseSwapGuard
 import Vegas.Pending.PhaseSwapTransition
 import Vegas.Pending.PhaseSwapSymmetry
 import Vegas.Pending.PhaseSwapFiber
+import Vegas.Pending.PhaseSwapInitialLaw
+import Vegas.Pending.PhaseSeedPosteriorResponse
+import Vegas.Pending.PhaseSeedReceiptProduct

@@ -19,9 +19,9 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket (serviceGraph setup mode)))
   (bounds : MessageBounds (serviceGraph setup mode))
 
-/-- An actual intended current-view witness makes the dispatched source input
-a genuine auxiliary decision site. The exact local typed-result and omission
-law is retained; no source posterior or continuation comparison is asserted. -/
+/-- Every actual clear unsent binding selects a genuine complete auxiliary
+decision input. Its exact local typed-result and omission law is retained;
+source posterior and continuation comparisons are separate. -/
 theorem phaseSourcePolicy_binding_at_played_information
     (wellFormed : setup.WellFormed)
     (assessment : setup.commitRecoveryModel.BehavioralAssessment)
@@ -43,19 +43,15 @@ theorem phaseSourcePolicy_binding_at_played_information
     (unsent : ∀ message ∈ (phaseApplication runtime leaks).outputs (control.execution.recall who),
       PhaseCount.event? message.payload ≠ some ⟨control.execution.application.attempt, event⟩)
     (values : ∀ value : L.Val payload, (⟨payload, value⟩ : Raw L) ∈ bounds.values)
-    (clear : control.execution.application.current.excluded = ∅)
-    (original : setup.intendedProtocol.History)
-    (same : phaseSourceView? setup mode runtime leaks who event
-      (control.execution.observe (phaseApplication runtime leaks) who) =
-        setup.intendedModel.infoOf who original.trace) :
+    (clear : control.execution.application.current.excluded = ∅) :
     ∃ view serial,
       phaseSourceView? setup mode runtime leaks who event
         (control.execution.observe (phaseApplication runtime leaks) who) = some view ∧
       setup.commitRecoveryModel.IsDecisionInfo who
-        (setup.commitRecoveryInformation wellFormed who (some view)) ∧
+        (setup.commitRecoveryClearInformation wellFormed who (some view)) ∧
       serial < horizon ∧
       let source := assessment.strategy who
-        (setup.commitRecoveryInformation wellFormed who (some view))
+        (setup.commitRecoveryClearInformation wellFormed who (some view))
       let actual := phaseSourcePolicy setup mode runtime leaks bounds wellFormed assessment who
         (control.execution.recall who)
           (control.execution.observe (phaseApplication runtime leaks) who)
@@ -78,7 +74,7 @@ theorem phaseSourcePolicy_binding_at_played_information
       inputs horizon scheduler capacity control finiteTrace acting request unsent values
   have raw := menu.toRawTrace _ horizon scheduler trace
   have played := phase_ready_binding_information setup mode runtime leaks plan maximal horizon
-    scheduler raw who event payload outputEq request.2.2.1 clear wellFormed original same
+    scheduler raw who event payload outputEq request.2.2.1 clear wellFormed
   rw [decoded] at played
   exact ⟨view, serial, decoded, played, bounded, law, result⟩
 

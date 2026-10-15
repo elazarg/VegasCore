@@ -41,10 +41,6 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
     PhaseCount.event? message.payload ≠ some ⟨control.execution.application.attempt, event⟩)
   (values : ∀ value : L.Val payload, (⟨payload, value⟩ : Raw L) ∈ bounds.values)
   (clear : control.execution.application.current.excluded = ∅)
-  (original : setup.intendedProtocol.History)
-  (same : phaseSourceView? setup mode runtime leaks who event
-    (control.execution.observe (phaseApplication runtime leaks) who) =
-      setup.intendedModel.infoOf who original.trace)
   (noise : ℕ → ℝ) (nonnegative : ∀ n, 0 ≤ noise n) (bounded : ∀ n, noise n ≤ 1)
   (vanishes : Tendsto noise atTop (nhds 0))
   (slotWeight : ℕ → ℝ) (slotNonnegative : ∀ n, 0 ≤ slotWeight n)
@@ -56,9 +52,9 @@ local notation "start" => setup.initialLaw.map fun draw =>
 local notation "N" => ReactiveApplication.ResponseMenu.information
   (PhaseCount.onePacketMenu runtime leaks bounds) (start) horizon scheduler
 
-include sourceConvergence maximal capacity trace acting request unsent values clear same vanishes
+include sourceConvergence maximal capacity trace acting request unsent values clear vanishes
 
-/-- At an actual copied binding site, the joint declared-result/omission law
+/-- At every actual clear binding site, the joint declared-result/omission law
 converges to its original auxiliary source law. Slot weights need not vanish:
 both source tiers have the same semantic law before physical inclusion. -/
 theorem phaseSourcePerturbedStrategy_result_converges_of_history :
@@ -70,7 +66,7 @@ theorem phaseSourcePerturbedStrategy_result_converges_of_history :
       (fun n => (phaseSourcePerturbedStrategy setup mode runtime leaks bounds (start) horizon
         scheduler wellFormed (sourceSequence n) (noise n) (nonnegative n) (bounded n)
           (slotWeight n) (slotNonnegative n) (slotBounded n) who input).map outcome)
-      ((sourceLimit.strategy who (setup.commitRecoveryInformation wellFormed who
+      ((sourceLimit.strategy who (setup.commitRecoveryClearInformation wellFormed who
         (phaseSourceView? setup mode runtime leaks who event
           (control.execution.observe app who)))).map
             (fun choice => phaseRecoveryBindingData setup mode event who payload binding
@@ -79,7 +75,7 @@ theorem phaseSourcePerturbedStrategy_result_converges_of_history :
   have raw := (PhaseCount.onePacketMenu runtime leaks bounds).toRawTrace (start) horizon scheduler
     trace
   have played := phase_ready_binding_information setup mode runtime leaks plan maximal horizon
-    scheduler raw who event payload binding request.2.2.1 clear wellFormed original same
+    scheduler raw who event payload binding request.2.2.1 clear wellFormed
   have source := (sourceConvergence.strategy who ⟨_, played⟩).map
     (fun choice => phaseRecoveryBindingData setup mode event who payload binding choice.1)
   let inputs := setup.initialLaw.map encodeInputs
@@ -106,7 +102,7 @@ theorem phaseSourcePerturbedStrategy_result_converges_of_history :
   rw [exactLaw n, mix_apply_toReal]
 
 /-- Every common native subsequential limit retaining this recipe has the exact
-source joint response law at the same actual copied site. This identifies a
+source joint response law at the same actual clear site. This identifies a
 local response law, not a conditional native/source history distribution. -/
 theorem phaseSourceAssessment_binding_limit_of_history
     (sequence : ℕ → (N).BehavioralAssessment) (limit : (N).BehavioralAssessment)
@@ -123,7 +119,7 @@ theorem phaseSourceAssessment_binding_limit_of_history
       phaseBindingResponseOutcome setup mode runtime leaks control.execution who payload
         (choice.1.getD ⟨none⟩)
     (limit.strategy who input).map outcome =
-      ((sourceLimit.strategy who (setup.commitRecoveryInformation wellFormed who
+      ((sourceLimit.strategy who (setup.commitRecoveryClearInformation wellFormed who
         (phaseSourceView? setup mode runtime leaks who event
           (control.execution.observe app who)))).map
             (fun choice => phaseRecoveryBindingData setup mode event who payload binding
@@ -146,10 +142,10 @@ theorem phaseSourceAssessment_binding_limit_of_history
   have intended := phaseSourcePerturbedStrategy_result_converges_of_history setup mode runtime
     leaks bounds wellFormed sourceSequence sourceLimit sourceConvergence plan maximal horizon
       scheduler capacity who event payload binding control trace acting request unsent values clear
-        original same noise nonnegative bounded vanishes slotWeight slotNonnegative slotBounded
+        noise nonnegative bounded vanishes slotWeight slotNonnegative slotBounded
   have transported : PMFConvergesPointwise
       (fun n => ((sequence (index n)).strategy who input).map outcome)
-      ((sourceLimit.strategy who (setup.commitRecoveryInformation wellFormed who
+      ((sourceLimit.strategy who (setup.commitRecoveryClearInformation wellFormed who
         (phaseSourceView? setup mode runtime leaks who event
           (control.execution.observe app who)))).map
             (fun choice => phaseRecoveryBindingData setup mode event who payload binding
