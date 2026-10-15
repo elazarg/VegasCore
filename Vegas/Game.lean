@@ -727,3 +727,8 @@ import Vegas.Game.CompiledRecoveryResidual
 import Vegas.Game.PhaseOnePacketExtension
 import Vegas.Game.CommitRecoveryPayoff
 import Vegas.Game.CommitRecoveryDebtPayoff
+import Vegas.Game.CommitRecoveryHiddenInformation
+import Vegas.Game.CommitRecoveryBlockDebt
+import Vegas.Game.CommitRecoveryExtraChoice
+import Vegas.Game.CommitRecoveryDeviationPayoff
+import Vegas.Game.CommitRecoveryPreservation

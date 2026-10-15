@@ -475,6 +475,25 @@ import Vegas.Game.CommitRecoveryPayoff
 import Vegas.Pending.PhaseSampleProgress
 import Vegas.Source.CommitRecoveryFailureCoverage
 import Vegas.Game.CommitRecoveryDebtPayoff
+import Interaction.ReactiveServiceRounds
+import Vegas.Pending.PhaseSeedServiceMarks
+import Vegas.Pending.PhaseSeedQueryMarks
+import Vegas.Pending.PhaseSeedServiceBook
+import Vegas.Pending.PhaseSeedHorizon
+import Interaction.ReactiveServiceMixture
+import Vegas.Pending.PhaseSeedMixtureHorizon
+import Vegas.Pending.SuffixExclusionRecord
+import Vegas.Pending.PhaseFailureCoverage
+import Vegas.Pending.PhaseFailureOrder
+import Vegas.Pending.PhaseFailureOrderHistory
+import Vegas.Source.CommitBlockInformation
+import Vegas.Source.CommitBlockRecovery
+import Vegas.Game.CommitRecoveryHiddenInformation
+import Vegas.Source.CommitRecoveryDeviation
+import Vegas.Game.CommitRecoveryBlockDebt
+import Vegas.Game.CommitRecoveryExtraChoice
+import Vegas.Game.CommitRecoveryDeviationPayoff
+import Vegas.Game.CommitRecoveryPreservation
 
 /-! # Checked sequential-equilibrium preservation, Nash correspondence and termination -/
 
@@ -6130,3 +6149,58 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.CompiledSuffix.exists_recoveryResidual
+
+/-- info: 'Vegas.EventGraphRuntime.phaseApplication_publicFailureOrder'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.phaseApplication_publicFailureOrder
+
+/-- info: 'Vegas.EventGraphRuntime.phasePublicFailureOrder_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.phasePublicFailureOrder_history
+
+/-- info: 'Vegas.EventGraphRuntime.phase_inclusion_failureOrder_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.phase_inclusion_failureOrder_history
+
+/-- info: 'Vegas.EventGraphRuntime.phase_environment_failureOrder_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.phase_environment_failureOrder_history
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseSeedCalendar.runRounds_complete'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.PhaseSeedCalendar.runRounds_complete
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseSeedCalendar.terminal_history_complete'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.PhaseSeedCalendar.terminal_history_complete
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseSeedCalendar.mixture_terminal_history_complete'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.PhaseSeedCalendar.mixture_terminal_history_complete
+
+/-- info: 'Vegas.SourceProgram.Setup.intended_sequentialEquilibrium_commitRecovery'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.intended_sequentialEquilibrium_commitRecovery
+
+/-- info: 'Vegas.SourceProgram.Setup.commitRecovery_deviation_payoff'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.commitRecovery_deviation_payoff
+
+/-- info: 'Vegas.SourceProgram.Setup.hidden_commit_terminal_debt'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.hidden_commit_terminal_debt
+
+/-- info: 'Vegas.SourceProgram.Setup.hidden_commit_recovery_step'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.hidden_commit_recovery_step

@@ -151,3 +151,5 @@ import Interaction.ReactiveAddressedScheduler
 import Interaction.ReactiveSchedulerTranscript
 import Interaction.ReactiveAddressedFreshSeed
 import Interaction.ReactiveAddressedPosterior
+import Interaction.ReactiveServiceRounds
+import Interaction.ReactiveServiceMixture

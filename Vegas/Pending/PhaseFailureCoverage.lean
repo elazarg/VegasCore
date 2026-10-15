@@ -51,6 +51,12 @@ theorem initial (inputs : graph.Inputs) :
   exact ⟨valid.receipts, fun event owner acting failed =>
     (valid.excluded owner).mpr ⟨event, acting, failed⟩⟩
 
+omit [DecidableEq Player] in
+theorem completeAutomatic (valid : state.FailureCoverage) (event : graph.EventId)
+    (eligible : state.AutomaticReady event) :
+    (state.completeAutomatic event eligible).FailureCoverage :=
+  of_suffix (valid.suffixRecord.completeAutomatic event eligible)
+
 theorem drain (valid : state.FailureCoverage) (phase : RuntimePhase graph) :
     (phase.drain state).FailureCoverage := of_suffix (valid.suffixRecord.phase_drain phase)
 
@@ -84,7 +90,7 @@ structure FailureCoverage (state : PhaseRuntimeState graph) : Prop where
   inherited : state.entry.excluded ⊆ state.current.excluded
 
 omit [DecidableEq Player] in
-private theorem restore_failureCoverage (entry current : RecoveryState graph)
+theorem restore_failureCoverage (entry current : RecoveryState graph)
     (saved : entry.FailureCoverage) (inherited : entry.excluded ⊆ current.excluded) :
     (restore entry current).FailureCoverage := by
   refine ⟨fun event candidate installed => saved.receipts event candidate installed, ?_⟩

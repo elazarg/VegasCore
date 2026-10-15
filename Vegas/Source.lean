@@ -84,3 +84,6 @@ import Vegas.Source.CommitPhaseAutomatic
 import Vegas.Source.CommitRecoveryDebt
 import Vegas.Source.CommitRecoveryFrontier
 import Vegas.Source.CommitRecoveryFailureCoverage
+import Vegas.Source.CommitBlockInformation
+import Vegas.Source.CommitBlockRecovery
+import Vegas.Source.CommitRecoveryDeviation

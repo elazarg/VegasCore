@@ -1,6 +1,6 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**SE: non-concurrent proved · concurrent: embedding/readback/acceptance/clock bound ✓; incentives/completion/transport open.**
+**SE: non-concurrent proved · concurrent: source SE & finite calendar ✓; simulation/Bayes/native SE open.**
 
 <details>
 <summary>Recovery milestones and current proof substeps</summary>
@@ -67,10 +67,14 @@ stated service, coverage, utility and independent-private-input hypotheses.
 Concurrent preservation remains open. Its checked structural action restriction
 now embeds every legal intended source history, its complete observation
 transcript and own-play recall, and every pure local step into the recovery
-source game. One consistent recovery assessment retains the intended strategy,
-retained-site beliefs and exact initialized history law, with optimal local
-laws at every new information agent. Enlarged-menu incentives at retained sites
-remain open. Completed physical commitment blocks have a decoded typed attempt
+source game. Every intended SE extends to a sequential equilibrium of this
+auxiliary source recovery game, retaining strategies, retained-site beliefs,
+the exact initialized and terminal joint readout/payoff-vector laws, and no
+on-path exclusion. Every extra retained-site action leads to the actual
+exclusion floor: foreign information is retained through the current hidden
+commitment block, then checkpointed debt survives arbitrary later actions and
+resets. Only actually intended terminal readouts must lie above exclusion.
+Completed physical commitment blocks have a decoded typed attempt
 with the exact physical exclusion set, store and a registry extension by inert
 failed subjects, derived through actual inclusion/environment operations and
 local drain from saved-boundary relations. Extra compiler guards change no
@@ -94,11 +98,17 @@ ordering; it does not cover the full admissible history-adaptive scheduler class
 Every legal initialized history of this calendar has a uniform finite clock
 bound, derived by charging clock advances to distinct bounded event/generation
 tickets. Live phase frontiers expose an owner request or a ready singleton
-sample, whose execution strictly advances the phase. A finite clock bound
-alone does not prove finite completion: total service rounds remain to be bounded.
-The all-phase store/registry/history simulation, scheduler completion and general
-conditioning transport, source equilibrium extension and
-concurrent SE assembly remain open.
+sample, whose execution strictly advances the phase. Distinct service tickets
+also bound total rounds: at the derived horizon, every legal terminal history
+has finished all phases and completed every graph event, for arbitrary raw
+player responses. This holds both for fixed original seeds and their actual
+posterior mixture scheduler, without an assumed service or completion result.
+Actual histories also suppress every later same-owner publication after inherited
+exclusion or an earlier source-ranked public failure, including raw operation
+results before phase retirement. This supports source-order reveal reconstruction.
+The all-phase store/registry/history simulation, general admissible scheduler
+conditioning transport, native incentive comparisons and concurrent SE assembly
+remain open.
 Appendix A identifies the checked declarations; Section 9 lists the broader
 limitations.
 

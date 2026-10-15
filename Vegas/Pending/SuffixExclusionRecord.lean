@@ -92,7 +92,7 @@ private theorem advance (valid : SuffixExclusionRecord low inherited state)
     · exact newEvidence query completed failed owner acting
 
 omit [DecidableEq Player] in
-private theorem new_event_eq {before after : State graph} {event : graph.EventId}
+theorem new_event_eq {before after : State graph} {event : graph.EventId}
     {ready : before.config.cut.Ready event} {action : graph.Action event}
     (member : after.config ∈ (before.config.step event ready action).support)
     {query : graph.EventId} (unfinished : query ∉ before.config.cut.completed)
@@ -102,7 +102,7 @@ private theorem new_event_eq {before after : State graph} {event : graph.EventId
   exact completed.resolve_right unfinished
 
 omit [DecidableEq Player] in
-private theorem failureCompletionStep (native : State graph) (event : graph.EventId)
+theorem failureCompletionStep (native : State graph) (event : graph.EventId)
     (ready : native.config.cut.Ready event) {owner : Player}
     (acting : graph.actor? event = some owner) :
     CompletionStep native (native.completeFailure event ready) := by
@@ -113,7 +113,7 @@ private theorem failureCompletionStep (native : State graph) (event : graph.Even
   exact (changed (congrFun (native.completeFailure_tables event ready).1 field)).elim
 
 omit [DecidableEq Player] in
-private theorem completeFailure_publicFailure (native : State graph)
+theorem completeFailure_publicFailure (native : State graph)
     (valid : native.ReceiptsComplete) (event : graph.EventId)
     (ready : native.config.cut.Ready event) {owner : Player}
     (acting : graph.actor? event = some owner) :
@@ -220,7 +220,7 @@ theorem inclusionResult (valid : SuffixExclusionRecord low inherited state)
         · exact Or.inl excluded
 
 omit [DecidableEq Player] in
-private theorem expire_publicFailure (runtime : EventGraphRuntime graph)
+theorem expire_publicFailure (runtime : EventGraphRuntime graph)
     (native next : State graph) (valid : native.ReceiptsComplete) (event : graph.EventId)
     (reached : next ∈ (environmentStep runtime native (.expire event)).support)
     (changed : next.config ≠ native.config) {owner : Player}
