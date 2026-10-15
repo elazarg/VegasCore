@@ -1113,4 +1113,103 @@ strict timing bounds and sole identifiers for each attempt-event coordinate.
 Actual clear prefixes supply native pointwise service conditions without a
 global reconstructed-native contract. An actual permitted binding response
 emitted in its protected window supplies an original native fresh-call
-certificate; first-response timing and canonical physical safety remain open.
+certificate. The physical timing and binding-deadline adapters below derive
+actual timely callbacks; opening and whole-execution safety remain open.
+
+
+Actual compiled response matching and prescribed runs:
+[Present Context Evaluation](../Vegas/Compile/PresentContextEvaluation.lean),
+[Compiled Reveal Phase](../Vegas/Game/CompiledRevealPhase.lean),
+[Compiled Reveal Present](../Vegas/Game/CompiledRevealPresent.lean),
+[Compiled Ready Reveal](../Vegas/Game/CompiledReadyReveal.lean),
+[Phase Intended Opening Success](../Vegas/Game/PhaseIntendedOpeningSuccess.lean),
+[Phase Compiled Disclosure](../Vegas/Game/PhaseCompiledDisclosure.lean),
+[Phase Intended Opening Response](../Vegas/Game/PhaseIntendedOpeningResponse.lean),
+[Phase Compiled Sent Response](../Vegas/Game/PhaseCompiledSentResponse.lean),
+[Phase Clear Request Address](../Vegas/Pending/PhaseClearRequestAddress.lean),
+[Phase Recorded Request](../Vegas/Pending/PhaseRecordedRequest.lean),
+[Phase Unsent Native Memory](../Vegas/Pending/PhaseUnsentNativeMemory.lean),
+[Phase Canonical Freshness](../Vegas/Game/PhaseCanonicalFreshness.lean),
+[Phase Compiled Response](../Vegas/Game/PhaseCompiledResponse.lean),
+[Phase Compiled Run](../Vegas/Game/PhaseCompiledRun.lean).
+Actual clear canonical histories derive successful guarded openings despite
+partial publication holes. Complete physical/native response equality covers
+every dispatcher branch. Native consistency and compiled ready independence
+are derived, and the original finite-fuel coupling retains physical safety as
+its operational premise.
+
+Physical owner response timing and binding deadline safety:
+[Phase Fresh Call Settlement](../Vegas/Game/PhaseFreshCallSettlement.lean),
+[Phase Owner Opportunity](../Vegas/Pending/PhaseOwnerOpportunity.lean),
+[Phase Owner Response](../Vegas/Pending/PhaseOwnerResponse.lean),
+[Phase Sole Packet](../Vegas/Pending/PhaseSolePacket.lean),
+[Phase Activation Response](../Vegas/Pending/PhaseActivationResponse.lean),
+[Phase Binding Recall Conformance](../Vegas/Game/PhaseBindingRecallConformance.lean),
+[Phase Binding Packet Callback](../Vegas/Game/PhaseBindingPacketCallback.lean),
+[Phase Binding Deadline](../Vegas/Game/PhaseBindingDeadline.lean).
+The original all-raw-history physical contract derives actual timely callbacks
+at the original attempt and activation stamp. A remembered canonical binding
+has its genuine earlier unsent callback. Protected inclusion and fresh-call
+settlement rule out a ready binding at its deadline, including accepted failed
+bindings. Opening and whole-execution safety are separate obligations.
+
+Actual nonmissing binding and full source-block reference laws:
+[Phase Binding Nonmissing Law](../Vegas/Game/PhaseBindingNonmissingLaw.lean),
+[Phase Binding Nonmissing Reference](../Vegas/Game/PhaseBindingNonmissingReference.lean),
+[Phase Binding Encoding Law](../Vegas/Pending/PhaseBindingEncodingLaw.lean),
+[Phase Recovery Slot Atom](../Vegas/Game/PhaseRecoverySlotAtom.lean),
+[Phase Binding Slot Symmetry](../Vegas/Pending/PhaseBindingSlotSymmetry.lean),
+[Phase Binding Source Reference](../Vegas/Game/PhaseBindingSourceReference.lean),
+[Commit Prefix Product](../Vegas/Source/CommitPrefixProduct.lean),
+[Commit Prefix Conditioning](../Vegas/Source/CommitPrefixConditioning.lean),
+[Protocol Suffix Policy](../Vegas/Source/ProtocolSuffixPolicy.lean),
+[Phase Commit Block Reference](../Vegas/Game/PhaseCommitBlockReference.lean).
+Actual callbacks derive the exact nonmissing source response and eligible-slot
+atom law. A fixed saved entry supplies the complete maximal commitment block
+as a product over owner words, preserving dependence within each owner's word
+and retaining later-ranked foreign choices. Original omission flags and
+mixtures over source entries are not removed by this reference law. Actual
+native/source posterior identification remains separate.
+
+Native frontiers and complete execution from physical safety:
+[Phase Native Policy Preimage](../Vegas/Pending/PhaseNativePolicyPreimage.lean),
+[Reactive Failure Free Expiry](../Vegas/Pending/ReactiveFailureFreeExpiry.lean),
+[Reactive Frontier Execution](../Vegas/Pending/ReactiveFrontierExecution.lean),
+[Source Service Reactive Law](../Vegas/Game/SourceServiceReactiveLaw.lean),
+[Phase Native Frontier Law](../Vegas/Pending/PhaseNativeFrontierLaw.lean),
+[Phase Native Round Law](../Vegas/Pending/PhaseNativeRoundLaw.lean),
+[Reactive Initial Support](../Interaction/ReactiveInitialSupport.lean),
+[Phase Native Initial Support](../Vegas/Pending/PhaseNativeInitialSupport.lean),
+[Phase Native Initial Rounds](../Vegas/Pending/PhaseNativeInitialRounds.lean).
+Under physical safety and actual actor-local law matching, every actual
+prescribed-consistent native history has a clear physical preimage. Failure-free
+expiry and completion at those consistent histories instantiate the existing
+posterior-frontier engine; no global native completion contract is imposed.
+The terminal-store theorem is pointwise at an original supported input.
+Complete round projection and initial-support transport permit outer binding
+of the original initial law without inferring a joint law from mixed marginals.
+The source-service caller also supplies the weaker completion interface.
+
+
+Original initialized source and terminal behavioral laws:
+[Phase Compiled Source Law](../Vegas/Game/PhaseCompiledSourceLaw.lean),
+[Reactive Terminal Evaluation](../Interaction/ReactiveTerminalEvaluation.lean),
+[Phase Compiled Behavioral Law](../Vegas/Game/PhaseCompiledBehavioralLaw.lean).
+The original physical and native round evaluators retain the original initial
+draw jointly with the complete typed source readout and arbitrary realized
+payoff vectors. Supported-input restriction is used before the original outer
+initial-law bind. Local matching and ready independence are derived; physical
+safety and the original physical completion contract remain explicit.
+Terminal behavioral histories evaluate the same covered physical profile,
+and their actual typed source readout has the corresponding source-run law.
+
+Actual packet provenance and focal Bayes interventions:
+[Phase Packet Callback](../Vegas/Pending/PhasePacketCallback.lean),
+[Reactive Recall Replay](../Interaction/ReactiveRecallReplay.lean).
+An actual owned packet supplies its genuine earlier legal supported callback,
+exact request, complete recall decomposition and unsent condition. The replay
+policy fixes all focal recorded choices on the actual information fiber with
+unit own reach. Positive replayed information mass follows from the original
+mass, and the existing counterfactual Bayes theorem gives exact belief equality.
+This intervenes on focal raw sends; opponent full-block likelihood and actual
+native/source Bayes identification remain separate obligations.

@@ -111,7 +111,8 @@ theorem source_prescribed_terminal_joint_store_law
       runtime.reactiveFrontier_initial leaks (setup.eventInputs initial)⟩
   have law := runRounds_terminal_store_of_expiry runtime leaks ordered profile independent
     inputs horizon
-    scheduler safe invariant expiry completes horizon execution
+    scheduler safe invariant expiry (fun control history _consistent =>
+      completes control history) horizon execution
       (by simpa only [Nat.sub_zero] using initialTrace) valid consistent frontiers
   rw [initial_posterior_potential runtime leaks profile (setup.eventInputs initial)] at law
   have joint := congrArg (fun distribution => distribution.map (fun store => (initial, store))) law

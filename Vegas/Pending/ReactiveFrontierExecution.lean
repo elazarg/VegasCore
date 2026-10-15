@@ -433,7 +433,13 @@ theorem runRounds_terminal_store_of_expiry (runtime : EventGraphRuntime graph)
         next ∈ (execution.environmentStep (runtime.reactiveApplication leaks)
           (.application (.expire event))).support →
         runtime.ReactiveFrontier leaks next memories frontier)
-    (completes : runtime.CompletesPlay leaks (inputs.map State.initial) horizon scheduler)
+    (completes : ∀ control,
+      ((runtime.reactiveApplication leaks).protocol (inputs.map State.initial)
+        horizon scheduler).Trace (some control) →
+      (∀ owner, (runtime.prescribedReactivePolicy leaks owner (profile owner)).Consistent
+        (control.execution.recall owner)) →
+      (runtime.reactiveApplication leaks).terminal (some control) →
+        control.execution.application.config.cut.Terminal)
     (count : Nat) (execution : (runtime.reactiveApplication leaks).Execution)
     (trace : ((runtime.reactiveApplication leaks).protocol (inputs.map State.initial)
       horizon scheduler).Trace (some ⟨count, none, execution⟩))
@@ -470,11 +476,11 @@ theorem runRounds_terminal_store_of_expiry (runtime : EventGraphRuntime graph)
   intro next reached
   obtain ⟨nextTrace⟩ := app.raw_trace_runRounds (inputs.map State.initial) horizon scheduler players
     0 count execution next initializedTrace reached
-  have terminal := completes ⟨0, none, next⟩ nextTrace ⟨rfl, rfl⟩
   have stable := runtime.entryEventStable_history leaks (inputs.map State.initial) horizon
     scheduler nextTrace
   have nextConsistent := (ReactiveApplication.consistentRecall_policyInvariant players).runRounds
     scheduler count execution next consistent reached
+  have terminal := completes ⟨0, none, next⟩ nextTrace nextConsistent ⟨rfl, rfl⟩
   symm
   rw [PMF.map_bind]
   calc
@@ -522,7 +528,7 @@ theorem initial_posterior_potential (runtime : EventGraphRuntime graph)
     (Config.initial inputs) consistent supported
 
 omit [Fintype Player] in
-theorem initialized_terminal_store_of_expiry [Finite Player] (runtime : EventGraphRuntime graph)
+theorem initial_terminal_store_of_expiry [Finite Player] (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (ordered : graph.RevealRelaxedOrdered) (profile : graph.BehavioralProfile)
     (independent : graph.ReadyIndependent profile)
@@ -545,23 +551,25 @@ theorem initialized_terminal_store_of_expiry [Finite Player] (runtime : EventGra
         next ∈ (execution.environmentStep (runtime.reactiveApplication leaks)
           (.application (.expire event))).support →
         runtime.ReactiveFrontier leaks next memories frontier)
-    (completes : runtime.CompletesPlay leaks (inputs.map State.initial) horizon scheduler)
-    (initialSafe : ∀ initial ∈ inputs.support,
-      safe (ReactiveApplication.Execution.initial (runtime.reactiveApplication leaks)
-        (State.initial initial))) :
-    ((runtime.reactiveApplication leaks).roundsFrom (inputs.map State.initial) scheduler
-      (fun owner => runtime.prescribedReactivePolicy leaks owner (profile owner)) horizon).map
-        (fun next => next.application.config.store) =
-      inputs.bind (fun initial =>
-        (graph.canonicalContinuation profile (Config.initial initial)).map
-          (fun key => key.2.1)) := by
+    (completes : ∀ control,
+      ((runtime.reactiveApplication leaks).protocol (inputs.map State.initial)
+        horizon scheduler).Trace (some control) →
+      (∀ owner, (runtime.prescribedReactivePolicy leaks owner (profile owner)).Consistent
+        (control.execution.recall owner)) →
+      (runtime.reactiveApplication leaks).terminal (some control) →
+        control.execution.application.config.cut.Terminal)
+    (initial : graph.Inputs) (supportedInitial : initial ∈ inputs.support)
+    (initialSafe : safe (ReactiveApplication.Execution.initial (runtime.reactiveApplication leaks)
+      (State.initial initial))) :
+    ((runtime.reactiveApplication leaks).runRounds scheduler
+      (fun owner => runtime.prescribedReactivePolicy leaks owner (profile owner)) horizon
+        (ReactiveApplication.Execution.initial (runtime.reactiveApplication leaks)
+          (State.initial initial))).map (fun next => next.application.config.store) =
+      (graph.canonicalContinuation profile (Config.initial initial)).map
+        (fun key => key.2.1) := by
   let _ := Fintype.ofFinite Player
   let app := runtime.reactiveApplication leaks
   let players := fun owner => runtime.prescribedReactivePolicy leaks owner (profile owner)
-  rw [ReactiveApplication.roundsFrom, PMF.bind_map, PMF.map_bind]
-  simp only [Function.comp_def]
-  apply bind_congr_on_support
-  intro initial supportedInitial
   let execution := ReactiveApplication.Execution.initial app (State.initial initial)
   have supportedState : State.initial initial ∈ (inputs.map State.initial).support := by
     rw [PMF.support_map]
@@ -588,7 +596,7 @@ theorem initialized_terminal_store_of_expiry [Finite Player] (runtime : EventGra
         inputs horizon scheduler
     safe invariant expiry completes horizon execution
       (by simpa only [Nat.sub_zero] using initialTrace)
-        (initialSafe initial supportedInitial) consistent frontiers,
+        initialSafe consistent frontiers,
     initial_posterior_potential runtime leaks profile initial]
 
 end Vegas.EventGraphRuntime

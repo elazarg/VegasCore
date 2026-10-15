@@ -46,5 +46,6 @@ import Vegas.Compile.CommitPrefixReadStability
 import Vegas.Compile.CommitPrefixAdmission
 import Vegas.Compile.CommitPrefixAdmittedAction
 import Vegas.Compile.CommitPrefixCompletionSnoc
+import Vegas.Compile.PresentContextEvaluation
 
 /-! Source-program lowering to the typed immutable graph. -/

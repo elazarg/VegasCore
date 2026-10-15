@@ -112,3 +112,6 @@ import Vegas.Source.CommitPrefixIntendedLift
 import Vegas.Source.ProtocolSuffixMenu
 import Vegas.Source.CommitRecoveryNonCommitIntended
 import Vegas.Source.CommitPrefixSnoc
+import Vegas.Source.CommitPrefixProduct
+import Vegas.Source.CommitPrefixConditioning
+import Vegas.Source.ProtocolSuffixPolicy

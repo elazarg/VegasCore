@@ -1,6 +1,6 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**SE: non-concurrent ✓ · intended histories ✓ · raw-send fiber limit ✓; safety/joint law/Bayes/incentives open.**
+**SE: non-concurrent ✓ · raw-send ✓ · dispatcher ✓ · joint law ◐ (safety); Bayes/incentives open.**
 
 <details>
 <summary>Checked recovery milestones and remaining proof obligations</summary>
@@ -9,84 +9,88 @@ Milestones have unequal cost; the fixed SE checklist is unchanged.
 
 Every actual initialized clear history consistent with the canonical source
 policy has one whole intended saved source checkpoint. Static source-prefix
-induction derives admission from authentic earlier supported policy draws,
-without a prior-admission premise. Actual inclusion and environment completions
-preserve that same checkpoint's intendedness through normalization, including
-the last binding that immediately closes a phase. Initialization, source guard
-bookkeeping, full own-action words and future guard satisfiability are retained.
-This concerns the saved source checkpoint; a partial concurrent cut can have
-holes. At actual ready bindings, the complete intended information and original
-source history are now reconstructed from this invariant. The compiled binding
-response adapter derives both decoder equations; supported native memories
-and native policy consistency remain explicit hypotheses.
+induction derives admission from authentic earlier supported policy draws.
+Inclusion, environment completion and normalization preserve that same
+checkpoint, including the last binding that closes a phase. Actual ready
+bindings reconstruct complete intended information and the original source
+history. Partial concurrent cuts can retain independent publication holes.
 
-At an actual clear binding history, directed repair constructs a genuine image
-history under the same initial law and scheduler. All response and command
-branches preserve both saved and live frames, submitted-binding provenance,
-own-binding memory, full foreign inputs and the scheduler transcript. The
-actual counterfactual reach probability for the repaired owner is exactly
-equal, including environment and public sample atoms. The driver derives the
-chronological send, binding-WAIT, opening and inert callback witnesses used by
-the probability bounds.
+Actual opening guards succeed by evaluating the present fields against a
+virtual source reveal prefix. This does not require independent publications
+to have completed. Complete canonical physical response laws match prescribed
+compiled native laws at actual supported callbacks, including binding, opening,
+already-sent and absent-request branches. Freshness and unsent-memory facts are
+derived from actual earlier callbacks. Native recall consistency follows by
+history induction; no final consistency or intended current-view premise is
+assumed by the concrete execution coupling.
 
-One finite positive source-choice floor gives an actual whole-prefix
-player-reach comparison with bounded send and WAIT counts. Binding WAIT retains
-the unequal uniform raw-menu terms. Directed opening callbacks before the
-actual clear binding endpoint have equal entire response laws, including
-evidence aliases and uniform noise. Inert callbacks cover both absent requests
-and already-sent requests.
-
-A selected raw-mixture binding SEND contributes an additional raw-noise factor
-to its actual player-reach product. The bound composes the chronological
-segments before and after that draw and has a uniform finite-horizon form.
-The exact mixture decomposition retains all remaining source/slot mass,
-including canonical accepted failures. Actual marked history repair now
-constructs a repair map within the same complete focal information fiber.
-Finite preimages are bounded by the fixed number of legal histories. Summing
-over every opponent and recorded position gives a normalized raw binding-send
-contribution that vanishes under the chosen noise schedule, even when the
-information mass tends to zero. Exact clear-history locality transfers this
-result to every actual common assessment profile satisfying its clear-site
-recipe clause. The schedule is chosen after the source floors and slot
-weights. Canonical failures, omissions and opening WAIT contributions remain
-in the original law; their native/source posterior identification is open.
+Directed binding repair constructs genuine same-information-fiber histories
+under the same initial law and scheduler, retaining saved and live frames,
+packet provenance, complete own recall and foreign inputs. Its counterfactual
+reach probability is exactly equal. A finite positive source-choice floor
+gives whole-prefix send and WAIT bounds; binding WAIT retains unequal uniform
+raw-menu terms. Directed opening laws include evidence aliases and exactly
+equal uniform noise. Finite repair preimages and summation over every opponent
+and recorded position show normalized raw-mixture binding-send contributions
+vanish under the chosen noise schedule, including at vanishing information
+mass. Exact clear-history locality transfers this result to actual common
+assessment profiles. Canonical failures, omissions and opening WAIT remain in
+the original law; their native/source posterior identification is open.
 
 Supported disclosing memories reconstruct the whole physical native
-configuration. Actual count-clean clear phased histories project to ordinary
-native histories with complete owner and scheduler recall. The native and
-phased original behavioral runs have an exact coupling at every finite fuel,
-conditional on physical exclusion remaining empty. Both real marginals, the
-shared initial draw and full projected controls are retained. Full owner
-recall consistency transports through the projection. Actual-history
-induction also derives consistency for a prescribed native profile when
-local response laws agree at histories whose prior recalls are consistent.
-This local agreement identifies the original native control law and supplies
-both actual behavioral-run marginals for the prescribed native policy, without
-requiring policy agreement away from supported callbacks.
-Every first physical exclusion has a genuine native public-failure history
-before rollback. The protected-inclusion service engine rules out a still-ready
-sole acceptable fresh packet at its deadline. The physical service contract
-retains all raw legal histories and attempt-event addresses; its actual clear
-prefixes supply the native pointwise opportunity and inclusion conditions.
-An actual permitted binding response supplies a native fresh-call certificate
-when emitted in its protected time window. Deriving physical safety from
-the approved builder contract, and identifying the full native/source joint
-law, remain open.
+configuration. Actual clear counted histories project to ordinary native
+histories with complete owner and scheduler recall. Both original finite-fuel
+behavioral laws and complete round evaluators agree under the projection,
+conditional on physical safety. Local response matching is derived for the
+compiled opening extension. Supported-input specialization retains the
+original initial draw when these laws are used inside an outer initial-law
+bind. The concrete physical and native round laws preserve the original
+initial draw jointly with the complete typed source readout and every realized
+payoff vector. The terminal behavioral game evaluates the same covered physical
+profile and has that source readout law. Physical safety remains explicit;
+equality of mixed endpoint laws alone is not used to identify a joint law.
 
-On the source side, chronological nonmissing conditioning has an exact history
-density, constant over each complete clear auxiliary information fiber.
-Conditioning a commitment window on clear preserves the original initial
-posterior jointly with its endpoint. Future original choices remain sampled,
-and accepted failed bindings retain their original canonical source mass.
-The auxiliary posterior identity does not establish native posterior equality.
+Every actual prescribed-consistent native history has a clear physical
+preimage under the same safety premise. This excludes native public failure,
+derives failure-free expiry and supplies completion only at the actual
+consistent histories. The existing posterior-frontier execution engine gives
+the pointwise initial-to-terminal store law without a global reconstructed
+native service contract. The original physical service contract retains all
+raw legal histories and attempt-event addresses.
+
+At actual clear prefixes, physical opportunity and protected inclusion derive
+timely owner callbacks, sole packet identifiers and settlement of genuine
+native fresh calls. A canonical binding packet has an authentic earlier
+callback. Its emission and deadline bounds imply that a ready binding cannot
+remain due under the continuing canonical policy. Opening deadline safety and
+the whole-execution first-exclusion argument remain open; physical safety is
+still a premise of the execution laws above.
+
+At actual binding callbacks, nonmissing conditioning has an exact typed
+sending law and eligible-slot atom mass. Paired histories have the same
+eligible slot set. At one saved source entry, the full maximal commitment
+block has an exact product law over owner words, retaining chronological
+dependence between repeated choices of one owner. Conditioning an own prefix
+uses that same full block, including later foreign commitments. These are
+nonmissing reference laws; original future omission flags remain sampled.
+Chronological source-window conditioning preserves the original initial
+posterior jointly with its endpoint. Neither this source identity nor the
+fixed-entry product establishes native/source posterior equality after actual
+native recall or after mixing over source entries. A globally legal replay
+policy fixes the focal player's recorded actions with unit own reach throughout
+the actual information fiber. Its positive information mass follows from the
+original positive mass, and the owning Bayes transport theorem proves that this
+focal intervention leaves beliefs unchanged. This does not explain past focal
+raw-mixture sends as source-word draws or supply the opponent likelihood law.
 
 The checked fixed-calendar source theorem handles optional opening in source
 reveal order. The intended-game recovery theorem also handles withholding
-deviations. Independent reveal reordering remains outside these checked results.
+deviations. Independent reveal reordering remains outside these checked SE
+results.
 
-Remaining obligations include actual opening-response matching and physical
-safety, the native/source joint law, native Bayes transport and incentive
-transfer. Full concurrent SE preservation remains unproved.
+Remaining obligations include discharging physical safety in the original
+joint-law theorem, native Bayes transport and incentive transfer.
+Full concurrent SE preservation remains unproved.
 </details>
 
 Status: non-concurrent preservation is mechanized. The checked results

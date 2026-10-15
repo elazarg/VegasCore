@@ -164,3 +164,6 @@ import Interaction.MessageNetworkMap
 import Interaction.ReactiveConsistentHistory
 import Interaction.ReactiveUniformMenu
 import Interaction.ReactiveEnvironmentMass
+import Interaction.ReactiveInitialSupport
+import Interaction.ReactiveRecallReplay
+import Interaction.ReactiveTerminalEvaluation

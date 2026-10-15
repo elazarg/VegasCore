@@ -17,7 +17,7 @@ open SourceProgram EventGraph EventGraphRuntime GameTheory.Math.Probability
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
 omit [DecidableEq Player] in
-private theorem publication_failure_iff_read {graph : Vegas.EventGraph Player L}
+theorem publication_failure_iff_read {graph : Vegas.EventGraph Player L}
     (native : EventGraphRuntime.State graph) (event : graph.EventId)
     {owner : Player} {payload : L.Ty}
     (binding : FieldRef graph.layout (.binding owner payload))
