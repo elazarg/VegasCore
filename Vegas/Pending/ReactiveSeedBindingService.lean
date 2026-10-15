@@ -7,6 +7,7 @@ import Vegas.Pending.ReactiveLocalSeedEmissionPrefix
 import Vegas.Pending.ReactiveSeedCompletion
 import Vegas.Pending.ReactiveStateInvariant
 import Vegas.Pending.ReactiveOnePacketMenu
+import Vegas.Pending.ReactiveBindingServicePolicy
 
 /-! # Canonical bindings under local service timing policies -/
 
@@ -138,37 +139,6 @@ end Vegas.EventGraphRuntime
 
 end
 
-noncomputable section
-
-namespace Vegas.EventGraphRuntime
-
-open Interaction GameTheory.Protocol GameTheory.Math.Probability
-
-variable {Player : Type} [DecidableEq Player]
-  {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
-  (runtime : EventGraphRuntime graph)
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-
-local notation "app" => runtime.reactiveApplication leaks
-
-/-- A pure own-service rule reads the complete local activation-clock history
-and chooses either to wait or the prepared handle slot of its single packet.
-The hidden source result is fixed outside the service rule. -/
-def bindingServiceResponse (owner : Player) (event : graph.EventId) (payload : L.Ty)
-    (result : PublicationResult (L.Val payload)) (choose : List Nat → Option Nat)
-    (past : List (app).PlayerEntry) (view : (app).PlayerView) : (app).Action :=
-  if view.application.publicView.EventReady event ∧
-      (runtime.ownerSeedInput leaks event past view).emitted = [] then
-    match choose ((runtime.ownerActivationQueries leaks event past).map
-        (fun query => query.input.elapsed) ++
-          [(runtime.ownerSeedInput leaks event past view).elapsed]) with
-    | none => ⟨none⟩
-    | some slot => runtime.reactiveBinding leaks owner event payload result slot
-  else ⟨none⟩
-
-end Vegas.EventGraphRuntime
-
-end
 
 noncomputable section
 
@@ -630,8 +600,11 @@ theorem dispatch_bindingEmissionWord
     (payload : L.Ty) (result : PublicationResult (L.Val payload))
     (start serial : Nat) (choose : List Nat → Option Nat)
     (players : Player → (app).Policy)
-    (focal : players owner = fun past view => PMF.pure
-      (runtime.bindingServiceResponse leaks owner event payload result choose past view))
+    (focal : ∀ middle, middle ∈
+      (execution.environmentStep app (.activate owner)).support →
+      players owner (middle.recall owner) (middle.observe app owner) = PMF.pure
+        (runtime.bindingServiceResponse leaks owner event payload result choose
+          (middle.recall owner) (middle.observe app owner)))
     (ready : execution.application.publicView.EventReady event)
     (genuine : controller.domain execution) (recalled : execution.InputRecall app)
     (counted : CountedQueryLog (controller.replay remainder (initialMemory seed rest)
@@ -696,7 +669,7 @@ theorem dispatch_bindingEmissionWord
     obtain ⟨middle, moved, responded⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
     change next ∈ ((players owner (middle.recall owner) (middle.observe app owner)).map
       (middle.respond app owner)).support at responded
-    rw [focal, PMF.pure_map] at responded
+    rw [focal middle moved, PMF.pure_map] at responded
     cases (PMF.mem_support_pure_iff _ _).mp responded
     have recallEq := (app).environmentStep_recall execution middle (.activate owner) moved
     have serialEq := (app).environmentStep_nextSerial execution middle (.activate owner) moved
@@ -790,8 +763,13 @@ theorem runRounds_bindingEmissionWord
     (payload : L.Ty) (result : PublicationResult (L.Val payload))
     (start serial entered : Nat) (choose : List Nat → Option Nat)
     (players : Player → (app).Policy)
-    (focal : players owner = fun past view => PMF.pure
-      (runtime.bindingServiceResponse leaks owner event payload result choose past view))
+    (episode : (app).Execution → Prop)
+    (invariant : (app).PolicyInvariant players episode)
+    (focal : ∀ execution middle, controller.domain execution → episode execution →
+      middle ∈ (execution.environmentStep app (.activate owner)).support →
+      players owner (middle.recall owner) (middle.observe app owner) = PMF.pure
+        (runtime.bindingServiceResponse leaks owner event payload result choose
+          (middle.recall owner) (middle.observe app owner)))
     (preserves : ∀ execution memory next, controller.domain execution →
       execution.application.Invariant inputs →
       execution.application.activatedAt event = some entered →
@@ -801,7 +779,8 @@ theorem runRounds_bindingEmissionWord
       event ∉ next.application.config.cut.completed → controller.domain next)
     (count : Nat) (execution next : (app).Execution)
     (ready : execution.application.publicView.EventReady event)
-    (genuine : controller.domain execution) (valid : execution.application.Invariant inputs)
+    (genuine : controller.domain execution) (episodeValid : episode execution)
+    (valid : execution.application.Invariant inputs)
     (activated : execution.application.activatedAt event = some entered)
     (recalled : execution.InputRecall app)
     (counted : CountedQueryLog (controller.replay remainder (initialMemory seed rest)
@@ -890,7 +869,9 @@ theorem runRounds_bindingEmissionWord
         exact controller.replay_snoc remainder (initialMemory seed rest)
           execution.environmentRecall _
       have middleWord := controller.dispatch_bindingEmissionWord remainder seed rest execution
-        middle payload result start serial choose players focal ready genuine recalled counted
+        middle payload result start serial choose players
+          (fun next reached => focal execution next genuine episodeValid reached)
+            ready genuine recalled counted
           matched indexed clocks started word unused moved
       have middleRemembered : ∀ entry ∈ (controller.replay remainder (initialMemory seed rest)
           middle.environmentRecall).log, entry.query.input.emitted =
@@ -934,7 +915,8 @@ theorem runRounds_bindingEmissionWord
       rw [← replayEq] at middleCounted middleUnresolved middleMatched middleClocks
       exact ih middle middleReady
         (preserves execution memory middle genuine valid activated moved middleUnfinished)
-        first.invariant (first.activated event entered activated middleUnfinished)
+        (invariant.dispatch _ execution middle episodeValid moved) first.invariant
+        (first.activated event entered activated middleUnfinished)
         (recallInvariant.dispatch _ execution middle recalled moved)
         middleCounted middleUnresolved middleMatched.1 middleMatched.2 middleClocks middleStarted
         middleWord.1 middleWord.2 middleRemembered later
@@ -964,8 +946,13 @@ theorem runRounds_first_binding_resolution
     (payload : L.Ty) (result : PublicationResult (L.Val payload))
     (start serial entered : Nat) (choose : List Nat → Option Nat)
     (players : Player → (app).Policy)
-    (focal : players owner = fun past view => PMF.pure
-      (runtime.bindingServiceResponse leaks owner event payload result choose past view))
+    (episode : (app).Execution → Prop)
+    (invariant : (app).PolicyInvariant players episode)
+    (focal : ∀ execution middle, controller.domain execution → episode execution →
+      middle ∈ (execution.environmentStep app (.activate owner)).support →
+      players owner (middle.recall owner) (middle.observe app owner) = PMF.pure
+        (runtime.bindingServiceResponse leaks owner event payload result choose
+          (middle.recall owner) (middle.observe app owner)))
     (preserves : ∀ execution memory next, controller.domain execution →
       execution.application.Invariant inputs →
       execution.application.activatedAt event = some entered →
@@ -975,7 +962,8 @@ theorem runRounds_first_binding_resolution
       event ∉ next.application.config.cut.completed → controller.domain next)
     (count : Nat) (execution next : (app).Execution)
     (ready : execution.application.publicView.EventReady event)
-    (genuine : controller.domain execution) (valid : execution.application.Invariant inputs)
+    (genuine : controller.domain execution) (episodeValid : episode execution)
+    (valid : execution.application.Invariant inputs)
     (activated : execution.application.activatedAt event = some entered)
     (recalled : execution.InputRecall app)
     (counted : CountedQueryLog (controller.replay remainder (initialMemory seed rest)
@@ -1039,15 +1027,21 @@ theorem runRounds_first_binding_resolution
           entry.query.activationIndex) ∧
         (controller.replay remainder (initialMemory seed rest) final.environmentRecall).log =
           (controller.replay remainder (initialMemory seed rest) before.environmentRecall).log ++
-            [⟨query, .resolution command⟩] := by
+            [⟨query, .resolution command⟩] ∧
+        next ∈ ((app).runRounds (controller.fixedScheduler remainder (initialMemory seed rest))
+          players (count - used - 1) final).support := by
   obtain ⟨used, before, final, query, command, within, supported, incomplete, complete, dispatched,
-      recorded, priorUnresolved, answer, logged⟩ :=
+      recorded, priorUnresolved, answer, logged, suffix⟩ :=
     controller.runRounds_first_counted_resolution remainder seed rest inputs players entered
       preserves count execution next initialUnfinished completed reached genuine valid activated
         recalled counted unresolved matched indexed clocks
   have priorWord := controller.runRounds_bindingEmissionWord remainder seed rest inputs payload
-    result start serial entered choose players focal preserves used execution before ready
-      genuine valid activated recalled counted unresolved matched indexed clocks started word unused
+    result start serial entered choose players episode invariant focal preserves used execution
+      before
+      ready
+      genuine episodeValid valid activated recalled counted unresolved matched indexed clocks
+        started word
+        unused
         remembered incomplete supported
   have joint : (before, controller.replay remainder (initialMemory seed rest)
       before.environmentRecall) ∈
@@ -1085,7 +1079,7 @@ theorem runRounds_first_binding_resolution
   have answers := controller.replayFrom_answers remainder (initialMemory seed rest) []
     final.environmentRecall (by intro entry member; cases member)
   refine ⟨used, before, final, query, command, within, supported, incomplete, complete, dispatched,
-    recorded, priorUnresolved, ?_, logged⟩
+    recorded, priorUnresolved, ?_, logged, suffix⟩
   intro entry member
   have inFinal : entry ∈ (controller.replay remainder (initialMemory seed rest)
       final.environmentRecall).log := by rwa [logged]
@@ -1285,12 +1279,14 @@ theorem bayesBelief_first_binding_resolution
       (current.execution.observe app owner)).emitted = [])
     (payload : L.Ty) (result : PublicationResult (L.Val payload))
     (choose : List Nat → Option Nat)
-    (permitted : runtime.bindingServiceResponse leaks owner event payload result choose
-      (current.execution.recall owner) (current.execution.observe app owner) ∈
-        (menu).actions owner (current.execution.recall owner) (current.execution.observe app owner))
+    (binding : bindingOwnedBy graph owner event = true)
+    (bounded : ∀ value, result = .success value → (⟨payload, value⟩ : Raw L) ∈ bounds.values)
+    (admissible : ∀ clocks slot, choose clocks = some slot → slot < bounds.candidateCount ∧
+      slot ∉ runtime.submittedCandidateSlots leaks (current.execution.recall owner))
     (future : Player → (app).Policy)
     (focal : future owner = fun past view => PMF.pure
-      (runtime.bindingServiceResponse leaks owner event payload result choose past view))
+      (runtime.guardedBindingServiceResponse leaks bounds owner event payload result choose
+        past view))
     (coveredFuture : ∀ who past view action, action ∈ (future who past view).support →
       action ∈ (menu).actions who past view)
     (next : (app).Execution)
@@ -1323,11 +1319,68 @@ theorem bayesBelief_first_binding_resolution
             (runtime.readyActivationCount leaks event (current.execution.recall owner)) owner event
             (current.execution.network.nextSerial owner)
             entry.query.activationIndex) ∧
-        (memory final).log = (memory before).log ++ [⟨query, .resolution command⟩] := by
+        (memory final).log = (memory before).log ++ [⟨query, .resolution command⟩] ∧
+        next ∈ ((app).runRounds (family values) future
+          (current.remaining - used - 1) final).support := by
   classical
   let response := runtime.bindingServiceResponse leaks owner event payload result choose
     (current.execution.recall owner) (current.execution.observe app owner)
   let after := current.execution.respond app owner response
+  obtain ⟨sourceHistory, _, sourceState⟩ := (PMF.mem_support_map_iff _ _ _).mp supported
+  have sourceTrace : ((menu).protocol (inputs.map State.initial) horizon
+      (mixture).scheduler).Trace (some current) := sourceState ▸ sourceHistory.1.trace
+  have rawSourceTrace := (menu).toRawTrace (inputs.map State.initial) horizon
+    (mixture).scheduler sourceTrace
+  let episode := runtime.BindingServiceEpisode leaks (current.execution.recall owner)
+    owner event payload result
+  have episodeInvariant : (app).PolicyInvariant future episode :=
+    runtime.bindingServiceEpisode_policyInvariant leaks bounds (current.execution.recall owner)
+      owner event payload result choose future focal
+  have episodeInitial : episode current.execution :=
+    runtime.bindingServiceEpisode_initial leaks owner event payload result current.execution
+  have responseEq : runtime.guardedBindingServiceResponse leaks bounds owner event payload result
+      choose (current.execution.recall owner) (current.execution.observe app owner) = response :=
+    runtime.guardedBindingServiceResponse_eq_at_history leaks bounds inputs horizon
+      (mixture).scheduler current rawSourceTrace (current.execution.recall owner) owner event
+        payload
+        result choose binding bounded admissible episodeInitial
+          (current.execution.observe app owner)
+          rfl
+  have permitted : response ∈ (menu).actions owner (current.execution.recall owner)
+      (current.execution.observe app owner) := by
+    rw [← responseEq]
+    exact runtime.guardedBindingServiceResponse_available leaks bounds owner event payload result
+      choose (current.execution.recall owner) (current.execution.observe app owner)
+  have afterEpisode : episode after := episodeInvariant.respond current.execution owner response
+    episodeInitial (by
+      rw [focal]
+      change response ∈ (PMF.pure (runtime.guardedBindingServiceResponse leaks bounds owner event
+        payload result choose (current.execution.recall owner)
+          (current.execution.observe app owner))).support
+      rw [responseEq]
+      exact (PMF.mem_support_pure_iff _ _).mpr rfl)
+  have agrees : ∀ execution middle, controller.domain execution → episode execution →
+      middle ∈ (execution.environmentStep app (.activate owner)).support →
+      future owner (middle.recall owner) (middle.observe app owner) = PMF.pure
+        (runtime.bindingServiceResponse leaks owner event payload result choose
+          (middle.recall owner) (middle.observe app owner)) := by
+    intro execution middle genuine episodeValid moved
+    rw [domainEq] at genuine
+    obtain ⟨budget, scheduler, remaining, ⟨trace⟩, _⟩ := genuine
+    have rawTrace := (menu).toRawTrace (inputs.map State.initial) budget scheduler trace
+    have recallEq := (app).environmentStep_recall execution middle (.activate owner) moved
+    have applicationEq : middle.application = execution.application := by
+      simp only [ReactiveApplication.Execution.environmentStep, PMF.map_comp] at moved
+      obtain ⟨selected, _, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp moved
+      rfl
+    rw [focal, recallEq]
+    change PMF.pure (runtime.guardedBindingServiceResponse leaks bounds owner event payload result
+      choose (execution.recall owner) (middle.observe app owner)) = _
+    exact congrArg PMF.pure
+      (runtime.guardedBindingServiceResponse_eq_at_history leaks bounds inputs budget scheduler
+        ⟨remaining, none, execution⟩ rawTrace (current.execution.recall owner) owner event payload
+          result choose binding bounded admissible episodeValid (middle.observe app owner)
+            (congrArg (fun state => (app).observePlayer state owner) applicationEq))
   obtain ⟨setup, entered, _, valid, recalled, genuine, enteredEq, counted, unresolved,
       positiveMatch, indexMatch, remembered, clocks⟩ :=
     controller.bayesBelief_response_log_signature remainder laws bounds inputs horizon ordered
@@ -1391,8 +1444,11 @@ theorem bayesBelief_first_binding_resolution
         _ moved incomplete
   exact controller.runRounds_first_binding_resolution remainder (values false) (values true) setup
     payload result (runtime.readyActivationCount leaks event (current.execution.recall owner))
-      (current.execution.network.nextSerial owner) entered choose future focal preserves
-        current.remaining after next afterReady genuine valid enteredEq recalled counted unresolved
+      (current.execution.network.nextSerial owner) entered choose future episode episodeInvariant
+        agrees preserves
+        current.remaining after next afterReady genuine afterEpisode valid enteredEq recalled
+          counted
+          unresolved
           positiveMatch indexMatch clocks started initialWord initialUnused initialRemembered
             initialUnfinished completed reached
 
@@ -1653,14 +1709,15 @@ theorem bayesBelief_first_binding_log_eq
     (payload : Bool → L.Ty)
     (result : ∀ side, PublicationResult (L.Val (payload side)))
     (choose : List Nat → Option Nat)
-    (permitted : ∀ side, runtime.bindingServiceResponse leaks owner event
-      (payload side) (result side) choose
-      ((current side).execution.recall owner) ((current side).execution.observe app owner) ∈
-        (menu).actions owner ((current side).execution.recall owner)
-          ((current side).execution.observe app owner))
+    (binding : bindingOwnedBy graph owner event = true)
+    (bounded : ∀ side value, result side = .success value →
+      (⟨payload side, value⟩ : Raw L) ∈ bounds.values)
+    (admissible : ∀ side clocks slot, choose clocks = some slot →
+      slot < bounds.candidateCount ∧
+        slot ∉ runtime.submittedCandidateSlots leaks ((current side).execution.recall owner))
     (future : Bool → Player → (app).Policy)
     (focal : ∀ side, future side owner = fun past view => PMF.pure
-      (runtime.bindingServiceResponse leaks owner event
+      (runtime.guardedBindingServiceResponse leaks bounds owner event
         (payload side) (result side) choose past view))
     (coveredFuture : ∀ side who past view action,
       action ∈ (future side who past view).support → action ∈ (menu).actions who past view)
@@ -1691,7 +1748,9 @@ theorem bayesBelief_first_binding_log_eq
           final.environmentRecall).log = log ∧
         log = (controller.replay remainder
           (initialMemory (values side false) (values side true)) before.environmentRecall).log ++
-            [⟨query, .resolution command⟩] := by
+            [⟨query, .resolution command⟩] ∧
+        next side ∈ ((app).runRounds (family (values side)) (future side)
+          ((current side).remaining - used - 1) final).support := by
   classical
   have genuine : ∀ side,
       (app).observe owner (some (current side)) = site.1 ∧
@@ -1719,21 +1778,22 @@ theorem bayesBelief_first_binding_log_eq
     rw [(genuine false).2 owner, (genuine true).2 owner, recallEq]
   obtain ⟨leftUsed, leftBefore, leftFinal, leftQuery, leftCommand,
       leftWithin, leftReached, leftIncomplete, leftComplete, leftMoved, leftCounted,
-      leftUnresolved, leftWords, leftLog⟩ :=
+      leftUnresolved, leftWords, leftLog, leftSuffix⟩ :=
     controller.bayesBelief_first_binding_resolution remainder laws bounds inputs horizon
       ordered domainEq owned profile site positive (current false) (acting false)
         (supported false) (values false) (valueSupport false) (ready false) (unmissed false)
           (unsent false) (payload false) (result false) choose
-            (permitted false) (future false) (focal false) (coveredFuture false)
+            binding (bounded false) (admissible false) (future false) (focal false)
+              (coveredFuture false)
               (next false) (reached false) (completed false)
   obtain ⟨rightUsed, rightBefore, rightFinal, rightQuery, rightCommand,
       rightWithin, rightReached, rightIncomplete, rightComplete, rightMoved, rightCounted,
-      rightUnresolved, rightWords, rightLog⟩ :=
+      rightUnresolved, rightWords, rightLog, rightSuffix⟩ :=
     controller.bayesBelief_first_binding_resolution remainder laws bounds inputs horizon
       ordered domainEq owned profile site positive (current true) (acting true)
         (supported true) (values true) (valueSupport true) (ready true) (unmissed true)
           (unsent true) (payload true) (result true) choose
-            (permitted true) (future true) (focal true) (coveredFuture true)
+            binding (bounded true) (admissible true) (future true) (focal true) (coveredFuture true)
               (next true) (reached true) (completed true)
   have sameLog := CountedQueryLog.eq_at_resolution controller (values false false)
     (bindingEmissionWord (controller.calendar (values false false)) choose
@@ -1751,11 +1811,11 @@ theorem bayesBelief_first_binding_log_eq
   cases side with
   | false =>
       exact ⟨leftUsed, leftBefore, leftFinal, leftQuery, leftCommand, leftWithin, leftReached,
-        leftIncomplete, leftComplete, leftMoved, leftLog, rfl⟩
+        leftIncomplete, leftComplete, leftMoved, leftLog, rfl, leftSuffix⟩
   | true =>
       exact ⟨rightUsed, rightBefore, rightFinal, rightQuery, rightCommand, rightWithin,
         rightReached, rightIncomplete, rightComplete, rightMoved,
-        rightLog.trans sameLog.symm, sameLog⟩
+        rightLog.trans sameLog.symm, sameLog, rightSuffix⟩
 
 end Vegas.EventGraphRuntime.LocalSeedController
 

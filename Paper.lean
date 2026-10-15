@@ -1,3 +1,5 @@
+import Vegas.Pending.ReactiveSeedBindingSiteOutcome
+import Vegas.Game.RecoveryUnpendingChoices
 import Vegas.Game.RecoveryComparisonRawValue
 import Vegas.Game.RecoverySourceBeliefBounds
 import Vegas.Game.RecoveryFirstActivationValue
@@ -5534,3 +5536,33 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.withLaw_eq_self_of_unpending_notOwing
+
+/-- info: 'Vegas.RecoveryOnePacket.localGain_eq_zero_of_unpending_notOwing'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.RecoveryOnePacket.localGain_eq_zero_of_unpending_notOwing
+
+/-- info: 'Interaction.ReactiveApplication.ResponseMenu.recorded_response_prefix'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Interaction.ReactiveApplication.ResponseMenu.recorded_response_prefix
+
+/-- info: 'Vegas.EventGraphRuntime.guardedBindingServiceResponse_eq_at_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.guardedBindingServiceResponse_eq_at_history
+
+/-- info: 'Vegas.EventGraphRuntime.resolvingSeedCommand_binding_readout'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.resolvingSeedCommand_binding_readout
+
+/-- info: 'Vegas.EventGraphRuntime.bindingServiceResponse_resolution_result'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.bindingServiceResponse_resolution_result
+
+/-- info: 'Vegas.EventGraphRuntime.LocalSeedController.bayesBelief_first_binding_output_common'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.LocalSeedController.bayesBelief_first_binding_output_common

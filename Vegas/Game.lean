@@ -672,3 +672,4 @@ import Vegas.Game.RecoveryNonLateSourceValue
 import Vegas.Game.RecoveryComparisonRawValue
 import Vegas.Game.RecoveryFirstActivationValue
 import Vegas.Game.RecoveryNonLateChoices
+import Vegas.Game.RecoveryUnpendingChoices

@@ -181,7 +181,11 @@ theorem runJoint_first_completion
         event ∈ final.application.config.cut.completed ∧
         final ∈ ((app).dispatch players
           (controller.step remainder prior before.environmentRecall
-            (before.observeEnvironment app)).1 before).support := by
+            (before.observeEnvironment app)).1 before).support ∧
+        (next, after) ∈
+          ((controller.implementation localLaw remainderLaw remainder).runJoint players
+            (count - used - 1) final (controller.step remainder prior before.environmentRecall
+              (before.observeEnvironment app)).2).support := by
   induction count generalizing execution memory with
   | zero =>
       cases (PMF.mem_support_pure_iff _ _).mp reached
@@ -190,13 +194,16 @@ theorem runJoint_first_completion
       rw [controller.runJoint_succ] at reached
       obtain ⟨middle, moved, continued⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       by_cases done : event ∈ middle.application.config.cut.completed
-      · exact ⟨0, execution, middle, memory, Nat.zero_lt_succ _,
-          (PMF.mem_support_pure_iff _ _).mpr rfl, unfinished, done, moved⟩
-      · obtain ⟨used, before, final, prior, within, supported, incomplete, complete, dispatched⟩ :=
+      · refine ⟨0, execution, middle, memory, Nat.zero_lt_succ _,
+          (PMF.mem_support_pure_iff _ _).mpr rfl, unfinished, done, moved, ?_⟩
+        simpa only [Nat.sub_zero, Nat.add_sub_cancel_right] using continued
+      · obtain ⟨used, before, final, prior, within, supported, incomplete, complete, dispatched,
+            suffix⟩ :=
           ih middle _ done continued
-        refine ⟨used + 1, before, final, prior, by omega, ?_, incomplete, complete, dispatched⟩
-        rw [controller.runJoint_succ, PMF.support_bind]
-        exact Set.mem_iUnion₂.mpr ⟨middle, moved, supported⟩
+        refine ⟨used + 1, before, final, prior, by omega, ?_, incomplete, complete, dispatched, ?_⟩
+        · rw [controller.runJoint_succ, PMF.support_bind]
+          exact Set.mem_iUnion₂.mpr ⟨middle, moved, supported⟩
+        · simpa only [Nat.add_sub_add_right] using suffix
 
 /-- The actual first completing service extends a genuinely surviving prefix
 by one correctly counted resolving query. No local success law is assumed. -/
@@ -251,8 +258,13 @@ theorem runJoint_first_counted_resolution
         controller.reply prior.localSeed query = .resolution command ∧
         (controller.step remainder prior before.environmentRecall
           (before.observeEnvironment app)).2.log =
-            prior.log ++ [⟨query, .resolution command⟩] := by
-  obtain ⟨used, before, final, prior, within, supported, incomplete, complete, dispatched⟩ :=
+            prior.log ++ [⟨query, .resolution command⟩] ∧
+        (next, after) ∈
+          ((controller.implementation localLaw remainderLaw remainder).runJoint players
+            (count - used - 1) final (controller.step remainder prior before.environmentRecall
+              (before.observeEnvironment app)).2).support := by
+  obtain ⟨used, before, final, prior, within, supported, incomplete, complete, dispatched,
+      suffix⟩ :=
     controller.runJoint_first_completion localLaw remainderLaw remainder players count
       execution next memory after unfinished completed reached
   obtain ⟨priorCounted, priorUnresolved, priorPositive, priorIndex, priorClocks⟩ :=
@@ -267,7 +279,7 @@ theorem runJoint_first_counted_resolution
   obtain ⟨query, command, answer, logged⟩ := controller.dispatch_completed_resolution
     remainder prior players before final incomplete complete dispatched
   refine ⟨used, before, final, prior, query, command, within, supported, incomplete, complete,
-    dispatched, ?_, priorUnresolved, answer, logged⟩
+    dispatched, ?_, priorUnresolved, answer, logged, suffix⟩
   rwa [logged] at finalCounted
 
 variable (remainder : SeedRemainderController runtime leaks RestSeed owner event)
@@ -328,14 +340,16 @@ theorem runRounds_first_counted_resolution
           entry.reply = .activation ∨ entry.reply = .exhausted) ∧
         controller.reply localSeed query = .resolution command ∧
         (recalledMemory final).log =
-          (recalledMemory before).log ++ [⟨query, .resolution command⟩] := by
+          (recalledMemory before).log ++ [⟨query, .resolution command⟩] ∧
+        next ∈ ((app).runRounds (controller.fixedScheduler remainder baseMemory) players
+          (count - used - 1) final).support := by
   have joint : (next, recalledMemory next) ∈
       ((controller.implementation (PMF.pure localSeed) (PMF.pure remainderSeed) remainder).runJoint
         players count execution (recalledMemory execution)).support := by
     rw [controller.runJoint_replay]
     exact (PMF.mem_support_map_iff _ _ _).mpr ⟨next, reached, rfl⟩
   obtain ⟨used, before, final, prior, query, command, within, supported, incomplete, complete,
-      dispatched, recorded, priorUnresolved, _, logged⟩ :=
+      dispatched, recorded, priorUnresolved, _, logged, suffix⟩ :=
     controller.runJoint_first_counted_resolution (PMF.pure localSeed) (PMF.pure remainderSeed)
       remainder inputs players entered preserves count execution next (recalledMemory execution)
         (recalledMemory next) unfinished completed joint genuine valid activated recalled counted
@@ -352,7 +366,7 @@ theorem runRounds_first_counted_resolution
     rw [(app).dispatch_environmentRecall players _ before final dispatched]
     exact controller.replay_snoc remainder baseMemory before.environmentRecall _
   refine ⟨used, before, final, query, command, within, pointSupported, incomplete, complete,
-    dispatched, recorded, priorUnresolved, ?_, ?_⟩
+    dispatched, recorded, priorUnresolved, ?_, ?_, ?_⟩
   · have answers := controller.replayFrom_answers remainder baseMemory [] final.environmentRecall
       (by simp only [initialMemory, List.not_mem_nil, false_implies, implies_true])
     apply answers ⟨query, .resolution command⟩
@@ -360,6 +374,10 @@ theorem runRounds_first_counted_resolution
     rw [finalReplay, logged]
     exact List.mem_append_right _ (by simp)
   · rw [finalReplay, logged]
+  · rw [← finalReplay, controller.runJoint_replay] at suffix
+    obtain ⟨point, supported, same⟩ := (PMF.mem_support_map_iff _ _ _).mp suffix
+    have identified : point = next := congrArg Prod.fst same
+    exact identified ▸ supported
 
 end Vegas.EventGraphRuntime.LocalSeedController
 
@@ -921,7 +939,9 @@ theorem bayesBelief_response_first_resolution
         (∀ entry ∈ (memory before).log,
           entry.reply = .activation ∨ entry.reply = .exhausted) ∧
         controller.reply (values false) query = .resolution command ∧
-        (memory final).log = (memory before).log ++ [⟨query, .resolution command⟩] := by
+        (memory final).log = (memory before).log ++ [⟨query, .resolution command⟩] ∧
+        next ∈ ((app).runRounds (family values) future
+          (current.remaining - used - 1) final).support := by
   classical
   let after := current.execution.respond app owner response
   obtain ⟨setup, entered, _, valid, recalled, genuine, enteredEq, counted, unresolved,

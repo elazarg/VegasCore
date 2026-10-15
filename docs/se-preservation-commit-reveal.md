@@ -3032,6 +3032,9 @@ needs its own review. What is known:
 | The common first-activation baseline has the source value as a lower bound up to retention and tremble errors | `Vegas.RecoveryOnePacket.nativeComparison_firstActivation_value_lower` |
 | Arbitrary local nonlate laws admit an event-phase source potential comparison | `Vegas.RecoveryOnePacket.nativeComparison_local_phase_value_sub_le` |
 | At nonowing unpending sites every legal local law leaves the whole policy unchanged | `Vegas.withLaw_eq_self_of_unpending_notOwing` |
+| Every actual recovery local law has zero gain at clear nonlate unpending sites without source debt, for arbitrary assessment beliefs and payoffs | `Vegas.RecoveryOnePacket.localGain_eq_zero_of_unpending_notOwing` |
+| A globally legal guarded binding policy agrees with its clock and slot rule along actual supported histories with fresh bounded prepared slots | `Vegas.EventGraphRuntime.guardedBindingServiceResponse_eq_at_history` |
+| In one positive owner Bayes fiber the same original local seed gives the same resolving command and the corresponding typed binding output, retained at the requested final execution | `Vegas.EventGraphRuntime.LocalSeedController.bayesBelief_first_binding_output_common` |
 | Actual recovery completion settles the current event at every supported next-event or public-failure stop | `Vegas.recovery_pending_stop_completed` |
 | The actual terminal probability of current-event primitive decision failure equals its stopped probability | `Vegas.recovery_pending_failure_terminal_eq_stopped` |
 | Original common recovery posteriors with the same operational key have vanishing past-record discrepancy | `Vegas.RecoveryOnePacket.recovery_keyed_record_bounds` |
@@ -3197,9 +3200,16 @@ common raw continuation policies, retaining the original immutable seed.
 Actual positive Bayes controls and supported original seeds now recover genuine
 fixed-seed runs and derive replay counters and query logs after a legal pending
 response. A supported completion in the remaining physical budget has a genuine
-first resolving dispatch whose reply agrees with that original seed. Completion
-existence and policy-derived emission normalization still require proof. This
-does not yet identify successful completion with a function of that seed alone.
+first resolving dispatch whose reply agrees with that original seed. For pure
+clock and slot binding rules, a guarded policy is globally legal and agrees
+with the rule on actual histories when its chosen bounded prepared slots were
+initially unmentioned. At two supported controls in the same positive owner
+Bayes fiber, the same original local seed then gives one resolving command,
+even with different hidden declared values and remainder seeds. Inclusion
+retains the declared typed result and expiry gives failure; this selected output
+persists through the actual supported suffix to the requested final execution.
+Completion support remains explicit. General adaptive-policy realization and
+the successful-payoff/source-continuation identification remain open.
 The scoped resolving controller permits concurrent events of
 different owners. Full runtime realization still requires an actual all-event
 and reset scheduler with fresh attempt coordinates, complete calendar/progress
