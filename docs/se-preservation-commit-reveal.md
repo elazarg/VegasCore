@@ -1,11 +1,50 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**SE: non-concurrent ✓ · auxiliary SE ✓ · canonical limit ✓ · clear trace ✓ · source windows ✓ · local ratios ✓; whole repair/joint law/likelihood/incentives open.**
+**SE: non-concurrent ✓ · auxiliary ✓ · memory ✓ · WAIT products ✓ · noise scales ✓; whole repair/joint law/Bayes/incentives open.**
 
 <details>
 <summary>Recovery milestones and current proof substeps</summary>
 
 Milestones have unequal cost; the fixed SE checklist is unchanged.
+
+At an actual initialized clear count-clean history with policy-consistent full
+recalls, every supported memory of a compiled globally disclosing policy
+reconstructs the entire physical native configuration. This derives the graph
+observation used by the full binding-law
+adapter; its second decoder-match premise is removed. A genuine intended source
+counterpart is still required.
+
+Every remembered response now retains its genuine earlier trace prefix and
+exact prior own recall. Consistency therefore supplies its policy support at
+that actual callback. Continuing auxiliary strategies emit a fresh canonical
+handle at every clear unsent binding, including accepted failed bindings, with
+exactly zero WAIT probability. Earlier same-coordinate binding callbacks in
+consistent recall cannot have been silent.
+
+An intended source binding at a partial commitment prefix derives an accepted
+value and its guard prediction from the saved whole intended state and admitted
+own prefix. The prediction and own admission persist along actual clear trace
+prefixes, even after that binding has completed. Closing an admitted commitment
+phase preserves both intended bindings and future guard satisfiability. The
+supported-history invariant must still thread these facts through the actual
+chosen successor checkpoint.
+
+Actual selected binding-WAIT records factor out of player reach probabilities,
+with all complementary own actions retained explicitly. Pairing those records
+by genuine same-event callbacks gives a prefix ratio bound with the exact
+unequal raw-noise contribution. The same derived finite source floors feed both
+send and WAIT bounds. A positive vanishing raw-noise sequence can be chosen
+after arbitrary positive slot weights so the finite-horizon replacement error
+vanishes and the repeated-WAIT factor tends to one. No decay rate for the source
+floor is assumed. Opening waits, remaining actions, paired full histories and
+native posterior transport remain open.
+
+Directed repair couples both actual marginals of every application command:
+clock, sample and expiry, including commands that cannot advance an event.
+Actual clear survival forces due strategic expiry to be absent. The same
+scheduler atom extends both genuine histories. Missing and publicly rejected
+packet inclusions also replay with their full receipts and scheduler logs.
+Successful inclusion dispatch and whole-history induction remain open.
 
 The checked fixed-calendar source theorem covers optional opening with the
 source reveal order preserved. The intended-game recovery theorem additionally

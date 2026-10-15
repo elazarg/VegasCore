@@ -921,3 +921,45 @@ Operational replay and supported execution:
 [Phase Binding Response Aliases](../Vegas/Pending/PhaseBindingResponseAliases.lean),
 [Phase Binding Silent Response](../Vegas/Pending/PhaseBindingSilentResponse.lean).
 Response and clock replay retain both semantic checkpoints and exact private recall. Selected-command expiry hypotheses and exact consistent-history support are reusable execution adapters. Whole arbitrary-history repair and native/source joint probability remain separate obligations.
+
+Original memory and compiled observations:
+[Reactive Intention Recall](../Vegas/Pending/ReactiveIntentionRecall.lean),
+[Reactive Disclosing Recall](../Vegas/Pending/ReactiveDisclosingRecall.lean),
+[Phase Original Observation](../Vegas/Pending/PhaseOriginalObservation.lean),
+[Phase Compiled Observation](../Vegas/Game/PhaseCompiledObservation.lean),
+[Phase Compiled Binding Memory](../Vegas/Game/PhaseCompiledBindingMemory.lean).
+Supported disclosing memories fix the entire physical configuration at genuine clear histories. The compiled physical binding adapter derives its graph decoder match; intended source playedness remains separate.
+
+Guard admission and retained source reads:
+[Protocol Suffix Menu](../Vegas/Source/ProtocolSuffixMenu.lean),
+[Commit Prefix Read Stability](../Vegas/Compile/CommitPrefixReadStability.lean),
+[Compiled Commit Partial View](../Vegas/Game/CompiledCommitPartialView.lean),
+[Commit Prefix Admission](../Vegas/Compile/CommitPrefixAdmission.lean),
+[Phase Commit Read Stability](../Vegas/Game/PhaseCommitReadStability.lean).
+Saved whole intendedness and admitted own prefixes imply local source guard acceptance and phase-close intendedness including future guard satisfiability. Actual clear trace prefixes preserve the required reads after completion.
+
+Exact historical policy inputs:
+[Reactive Recorded Response](../Interaction/ReactiveRecordedResponse.lean),
+[Reactive Seed Binding Outcome](../Vegas/Pending/ReactiveSeedBindingOutcome.lean),
+[Phase Swap Information](../Vegas/Pending/PhaseSwapInformation.lean),
+[Phase Continuing Binding](../Vegas/Game/PhaseContinuingBinding.lean).
+Remembered responses retain the actual earlier trace prefix and exact own input word. Continuing source policies emit at clear unsent bindings and exclude silent same-coordinate earlier responses in consistent recall.
+
+Actual application-command replay:
+[Phase Binding Rejected Replay](../Vegas/Pending/PhaseBindingRejectedReplay.lean),
+[Phase Binding Sample Replay](../Vegas/Pending/PhaseBindingSampleReplay.lean),
+[Phase Binding Expiry Replay](../Vegas/Pending/PhaseBindingExpiryReplay.lean),
+[Phase Binding Expiry Coupling](../Vegas/Pending/PhaseBindingExpiryCoupling.lean),
+[Phase Binding Environment Trace](../Vegas/Pending/PhaseBindingEnvironmentTrace.lean),
+[Phase Binding Application Replay](../Vegas/Pending/PhaseBindingApplicationReplay.lean).
+Both real command marginals are coupled through saved/live repair frames with the same scheduler. Missing and public-gate rejected inclusions also replay; successful inclusion and whole-history dispatch remain separate.
+
+Binding WAIT products and quantitative noise:
+[Phase Binding Response Ratio](../Vegas/Game/PhaseBindingResponseRatio.lean),
+[Phase Binding Waiting Law](../Vegas/Game/PhaseBindingWaitingLaw.lean),
+[Commit Recovery Missing Floor](../Vegas/Game/CommitRecoveryMissingFloor.lean),
+[Phase Waiting Mass](../Vegas/Game/PhaseWaitingMass.lean),
+[Phase Binding Waiting Ratio](../Vegas/Game/PhaseBindingWaitingRatio.lean),
+[Phase Waiting Prefix](../Vegas/Game/PhaseWaitingPrefix.lean),
+[Phase Repair Noise](../Vegas/Game/PhaseRepairNoise.lean).
+Actual own-play WAIT factors give player-reach cross bounds, retaining all complementary factors and unequal raw menus. The same genuine source floors instantiate send ratios, WAIT ratios and a positive vanishing raw-noise schedule.

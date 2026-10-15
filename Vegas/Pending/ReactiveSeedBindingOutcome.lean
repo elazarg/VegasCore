@@ -33,7 +33,7 @@ theorem onePacket_recorded_binding_result
     (result : PublicationResult (L.Val payload)) (slot : Nat)
     (declared : entry.action = runtime.reactiveBinding leaks owner event payload result slot) :
     control.execution.application.bindingResult (owner, .prepared slot) payload = result := by
-  obtain ⟨before, ⟨prior⟩, _, viewed, permitted⟩ :=
+  obtain ⟨before, prior, _prefix, _, viewed, permitted, _⟩ :=
     (bounds.onePacketMenu runtime leaks).recorded_response_prefix (inputs.map State.initial)
       horizon scheduler control trace owner entry recorded
   rw [declared] at permitted

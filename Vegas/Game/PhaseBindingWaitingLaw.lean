@@ -112,7 +112,7 @@ private theorem raw_silence_atom (law : PMF (app).Action) :
     cases transmission <;> simp
   simp only [PMF.map_apply, preimage, tsum_ite_eq]
 
-private theorem sourceMixture_silence_atom (wellFormed : setup.WellFormed)
+theorem phaseSourceMixture_silence_atom (wellFormed : setup.WellFormed)
     (assessment : setup.commitRecoveryModel.BehavioralAssessment) (who : Player)
     (control : (app).Control)
     (slotWeight : ℝ) (slotNonnegative : 0 ≤ slotWeight) (slotBounded : slotWeight ≤ 1)
@@ -243,10 +243,10 @@ theorem phaseSourceMixture_silence_eq_of_history (n : Nat)
       exact missing
     refine ⟨laws, ?_⟩
     intro firstChoice secondChoice firstSelected secondSelected
-    exact (sourceMixture_silence_atom setup mode runtime leaks bounds plan horizon scheduler
+    exact (phaseSourceMixture_silence_atom setup mode runtime leaks bounds plan horizon scheduler
       wellFormed (approximation.sequence n) who first slotWeight slotNonnegative slotBounded
         firstChoice firstSelected).trans ((congrArg (fun law : PMF Bool => law true) laws).trans
-          (sourceMixture_silence_atom setup mode runtime leaks bounds plan horizon scheduler
+          (phaseSourceMixture_silence_atom setup mode runtime leaks bounds plan horizon scheduler
             wellFormed (approximation.sequence n) who second slotWeight slotNonnegative slotBounded
               secondChoice secondSelected).symm)
 

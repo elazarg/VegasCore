@@ -83,14 +83,16 @@ include maximal
 fresh slot. One common positive source floor bounds its perturbed response
 ratio against any original native input, even when the two decoded source
 views differ. Source-result, slot-tier and raw-noise factors stay separate. -/
-theorem phaseSourcePerturbedStrategy_replacement_ratio
-    (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialLaw]
+theorem phaseSourcePerturbedStrategy_replacement_ratio_of_floor
     (wellFormed : setup.WellFormed)
     (assessment : setup.commitRecoveryModel.BehavioralAssessment) (mixed : assessment.IsFullyMixed)
+    (floor : ℝ) (floorPositive : 0 < floor)
+    (floored : ∀ (who : Player) (site : setup.commitRecoveryModel.InformationSite who)
+      (choice : setup.commitRecoveryModel.Choice who site.1),
+      floor ≤ (assessment.strategy who site.1 choice).toReal)
     (noise : ℝ) (noiseNonnegative : 0 ≤ noise) (noiseSmall : noise < 1)
     (slotWeight : ℝ) (slotPositive : 0 < slotWeight) (slotBounded : slotWeight ≤ 1) :
-    ∃ floor : ℝ, 0 < floor ∧ floor ≤ 1 ∧
-      ∀ (control : (phaseApplication runtime leaks).Control) (_trace : (E).Trace (some control))
+    ∀ (control : (phaseApplication runtime leaks).Control) (_trace : (E).Trace (some control))
         (who : Player) (event : (serviceGraph setup mode).EventId) (payload : L.Ty)
         (_binding : (serviceGraph setup mode).outputLayout event = .binding who payload)
         (_request : control.execution.application.SeedRequest who
@@ -121,9 +123,6 @@ theorem phaseSourcePerturbedStrategy_replacement_ratio
                 slotPositive.le slotBounded who (some (control.execution.recall who,
                   control.execution.observe (phaseApplication runtime leaks) who)))
                     replacement).toReal := by
-  obtain ⟨floor, floorPositive, floorBounded, floored⟩ :=
-    setup.exists_commitRecovery_choice_floor finite assessment mixed
-  refine ⟨floor, floorPositive, floorBounded, ?_⟩
   intro control trace who event payload binding request unsent values clear serial preparation
     evidence member result
   obtain ⟨replacement, selected, _positive, lower⟩ :=
@@ -174,5 +173,52 @@ theorem phaseSourcePerturbedStrategy_replacement_ratio
           (bounds.candidateCount : ℝ) := by field_simp
     _ ≤ _ := by
       simpa only [mul_comm] using mul_le_mul_of_nonneg_right lowerFloor capacity.le
+
+/-- Finite genuine auxiliary sites provide a single source floor for all
+actual replacement callbacks, independently of their hidden source views. -/
+theorem phaseSourcePerturbedStrategy_replacement_ratio
+    (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialLaw]
+    (wellFormed : setup.WellFormed)
+    (assessment : setup.commitRecoveryModel.BehavioralAssessment) (mixed : assessment.IsFullyMixed)
+    (noise : ℝ) (noiseNonnegative : 0 ≤ noise) (noiseSmall : noise < 1)
+    (slotWeight : ℝ) (slotPositive : 0 < slotWeight) (slotBounded : slotWeight ≤ 1) :
+    ∃ floor : ℝ, 0 < floor ∧ floor ≤ 1 ∧
+      ∀ (control : (phaseApplication runtime leaks).Control) (_trace : (E).Trace (some control))
+        (who : Player) (event : (serviceGraph setup mode).EventId) (payload : L.Ty)
+        (_binding : (serviceGraph setup mode).outputLayout event = .binding who payload)
+        (_request : control.execution.application.SeedRequest who
+          ⟨control.execution.application.attempt, event⟩)
+        (_unsent : ∀ message ∈ (phaseApplication runtime leaks).outputs
+          (control.execution.recall who), PhaseCount.event? message.payload ≠
+            some ⟨control.execution.application.attempt, event⟩)
+        (_values : ∀ value : L.Val payload, (⟨payload, value⟩ : Raw L) ∈ bounds.values)
+        (_clear : control.execution.application.current.excluded = ∅)
+        (serial : Nat) (preparation : Option (Raw L))
+        (evidence : EvidenceRequest (serviceGraph setup mode))
+        (_member : (⟨some ⟨⟨.commitment event (who, .prepared serial), preparation⟩, evidence⟩⟩ :
+          (phaseApplication runtime leaks).Action) ∈ PhaseCount.onePacketActions runtime leaks
+            bounds who (control.execution.recall who)
+              (control.execution.observe (phaseApplication runtime leaks) who))
+        (result : PublicationResult (L.Val payload)),
+      ∃ replacement : (N).Choice who (some (control.execution.recall who,
+        control.execution.observe (phaseApplication runtime leaks) who)),
+        replacement.1 = some (phaseBindingResponse runtime leaks who event payload result serial) ∧
+        ∀ (originalInput : (phaseApplication runtime leaks).Info)
+          (original : (N).Choice who originalInput),
+          ((phaseSourcePerturbedStrategy setup mode runtime leaks bounds initial horizon scheduler
+            wellFormed assessment noise noiseNonnegative noiseSmall.le slotWeight slotPositive.le
+              slotBounded who originalInput) original).toReal ≤
+          ((bounds.candidateCount : ℝ) / ((1 - noise) * slotWeight * floor)) *
+            ((phaseSourcePerturbedStrategy setup mode runtime leaks bounds initial horizon
+              scheduler wellFormed assessment noise noiseNonnegative noiseSmall.le slotWeight
+                slotPositive.le slotBounded who (some (control.execution.recall who,
+                  control.execution.observe (phaseApplication runtime leaks) who)))
+                    replacement).toReal := by
+  obtain ⟨floor, floorPositive, floorBounded, floored⟩ :=
+    setup.exists_commitRecovery_choice_floor finite assessment mixed
+  exact ⟨floor, floorPositive, floorBounded,
+    phaseSourcePerturbedStrategy_replacement_ratio_of_floor setup mode runtime leaks bounds plan
+      maximal horizon scheduler wellFormed assessment mixed floor floorPositive floored noise
+        noiseNonnegative noiseSmall slotWeight slotPositive slotBounded⟩
 
 end Vegas

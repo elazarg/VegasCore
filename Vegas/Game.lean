@@ -823,3 +823,12 @@ import Vegas.Game.CommitRecoveryBeliefWindow
 import Vegas.Game.CommitRecoveryChoiceFloor
 import Vegas.Game.PhaseBindingResponseRatio
 import Vegas.Game.PhaseBindingWaitingLaw
+import Vegas.Game.PhaseCompiledObservation
+import Vegas.Game.PhaseCompiledBindingMemory
+import Vegas.Game.PhaseCommitReadStability
+import Vegas.Game.PhaseContinuingBinding
+import Vegas.Game.CommitRecoveryMissingFloor
+import Vegas.Game.PhaseWaitingMass
+import Vegas.Game.PhaseBindingWaitingRatio
+import Vegas.Game.PhaseWaitingPrefix
+import Vegas.Game.PhaseRepairNoise

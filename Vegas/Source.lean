@@ -109,3 +109,4 @@ import Vegas.Source.CommitRecoveryCommitWindow
 import Vegas.Source.IntendedNoDebt
 import Vegas.Source.ProtocolSuffix
 import Vegas.Source.CommitPrefixIntendedLift
+import Vegas.Source.ProtocolSuffixMenu

@@ -568,3 +568,11 @@ import Vegas.Pending.PhaseBindingOpeningResponse
 import Vegas.Pending.PhaseBindingClockReplay
 import Vegas.Pending.PhaseBindingResponseAliases
 import Vegas.Pending.PhaseBindingSilentResponse
+import Vegas.Pending.ReactiveDisclosingRecall
+import Vegas.Pending.PhaseOriginalObservation
+import Vegas.Pending.PhaseBindingRejectedReplay
+import Vegas.Pending.PhaseBindingSampleReplay
+import Vegas.Pending.PhaseBindingExpiryReplay
+import Vegas.Pending.PhaseBindingExpiryCoupling
+import Vegas.Pending.PhaseBindingEnvironmentTrace
+import Vegas.Pending.PhaseBindingApplicationReplay

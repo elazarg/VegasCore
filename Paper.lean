@@ -767,6 +767,26 @@ import Vegas.Pending.PhaseBindingOpeningResponse
 import Vegas.Pending.PhaseBindingClockReplay
 import Vegas.Pending.PhaseBindingResponseAliases
 import Vegas.Pending.PhaseBindingSilentResponse
+import Vegas.Pending.ReactiveDisclosingRecall
+import Vegas.Pending.PhaseOriginalObservation
+import Vegas.Game.PhaseCompiledObservation
+import Vegas.Game.PhaseCompiledBindingMemory
+import Vegas.Source.ProtocolSuffixMenu
+import Vegas.Compile.CommitPrefixReadStability
+import Vegas.Compile.CommitPrefixAdmission
+import Vegas.Game.PhaseCommitReadStability
+import Vegas.Game.PhaseContinuingBinding
+import Vegas.Pending.PhaseBindingRejectedReplay
+import Vegas.Pending.PhaseBindingSampleReplay
+import Vegas.Pending.PhaseBindingExpiryReplay
+import Vegas.Pending.PhaseBindingExpiryCoupling
+import Vegas.Pending.PhaseBindingEnvironmentTrace
+import Vegas.Pending.PhaseBindingApplicationReplay
+import Vegas.Game.CommitRecoveryMissingFloor
+import Vegas.Game.PhaseWaitingMass
+import Vegas.Game.PhaseBindingWaitingRatio
+import Vegas.Game.PhaseWaitingPrefix
+import Vegas.Game.PhaseRepairNoise
 
 /-! # Checked sequential-equilibrium preservation, Nash correspondence and termination -/
 
@@ -7784,3 +7804,129 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms
   Vegas.phaseSourceMixture_silence_eq_of_history
+
+/-- info:
+'Interaction.ReactiveApplication.ResponseMenu.recorded_response_supported'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Interaction.ReactiveApplication.ResponseMenu.recorded_response_supported
+
+/-- info:
+'Vegas.phaseSourcePolicy_no_silent_binding_recall'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseSourcePolicy_no_silent_binding_recall
+
+/-- info:
+'Vegas.phaseSourcePolicy_binding_silence_law_of_continuing'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseSourcePolicy_binding_silence_law_of_continuing
+
+/-- info:
+'Vegas.EventGraphRuntime.originalConfig_eq_of_publication_true'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.originalConfig_eq_of_publication_true
+
+/-- info:
+'Vegas.phase_compiled_originalConfig_of_clear'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phase_compiled_originalConfig_of_clear
+
+/-- info:
+'Vegas.phaseSourcePolicy_compiled_binding_of_originalConfig'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseSourcePolicy_compiled_binding_of_originalConfig
+
+/-- info:
+'Vegas.fillCommitPrefix_intended_commit_choice'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.fillCommitPrefix_intended_commit_choice
+
+/-- info:
+'Vegas.fillCommitPrefix_intended'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.fillCommitPrefix_intended
+
+/-- info:
+'Vegas.commit_guard_predicts_of_clear_prefix'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.commit_guard_predicts_of_clear_prefix
+
+/-- info:
+'Vegas.fillCommitPrefix_intendedFor_of_clear_prefix'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.fillCommitPrefix_intendedFor_of_clear_prefix
+
+/-- info:
+'Vegas.EventGraphRuntime.PhaseBindingRepair.Frame.application_coupling'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseBindingRepair.Frame.application_coupling
+
+/-- info:
+'Vegas.EventGraphRuntime.PhaseBindingRepair.Frame.application_trace'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseBindingRepair.Frame.application_trace
+
+/-- info:
+'Vegas.EventGraphRuntime.PhaseBindingRepair.Frame.sample_coupling'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseBindingRepair.Frame.sample_coupling
+
+/-- info:
+'Vegas.EventGraphRuntime.PhaseBindingRepair.Frame.expiry_coupling'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseBindingRepair.Frame.expiry_coupling
+
+/-- info:
+'Vegas.EventGraphRuntime.PhaseBindingRepair.Frame.include_unauthorized'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseBindingRepair.Frame.include_unauthorized
+
+/-- info:
+'Vegas.phase_playerReach_waiting_prefix'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phase_playerReach_waiting_prefix
+
+/-- info:
+'Vegas.phaseSourcePerturbedStrategy_waiting_ratio'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseSourcePerturbedStrategy_waiting_ratio
+
+/-- info:
+'Vegas.exists_phase_repair_noise'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.exists_phase_repair_noise

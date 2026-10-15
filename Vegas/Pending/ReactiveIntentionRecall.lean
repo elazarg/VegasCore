@@ -43,20 +43,21 @@ private theorem filterMap_head_of_unique {α β : Type} (select : α → Option 
           · intro witness member head chosen
             exact unique witness (List.mem_cons_of_mem _ member) head chosen
 
-/-- Original-action recall preserves every physical completion's event identity,
-independently of service success or supported internal memory. -/
-theorem reactiveOriginal_event {graph : EventGraph Player L}
+/-- Original-action recall selects either the physical completion or a retained
+intention carrying the same event address. -/
+theorem reactiveOriginal_eq_or_retained {graph : EventGraph Player L}
     (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)) (who : Player)
     (history : List (runtime.reactiveApplication leaks).PlayerEntry)
     (intentions : List (Option graph.Completion)) (receipts : List (MessageId Player × Bool))
     (completion : graph.Completion) :
-    (runtime.reactiveOriginal leaks who history intentions receipts completion).event =
-      completion.event := by
+    runtime.reactiveOriginal leaks who history intentions receipts completion = completion ∨
+      ∃ remembered, some remembered ∈ intentions ∧ remembered.event = completion.event ∧
+        runtime.reactiveOriginal leaks who history intentions receipts completion = remembered := by
   classical
   cases node : nodeView graph completion.event with
-  | sample => simp only [reactiveOriginal, node]
-  | bind => simp only [reactiveOriginal, node]
+  | sample => exact Or.inl (by simp only [reactiveOriginal, node])
+  | bind => exact Or.inl (by simp only [reactiveOriginal, node])
   | resolve =>
       let select := fun (pair : (runtime.reactiveApplication leaks).PlayerEntry ×
           Option graph.Completion) => do
@@ -72,9 +73,10 @@ theorem reactiveOriginal_event {graph : EventGraph Player L}
                 remembered.action pair.1.beforeView.application then some remembered
           else none
       let candidates := (history.zip intentions).filterMap select
-      have sameEvent : ∀ remembered ∈ candidates, remembered.event = completion.event := by
+      have retained : ∀ remembered ∈ candidates,
+          some remembered ∈ intentions ∧ remembered.event = completion.event := by
         intro remembered member
-        obtain ⟨⟨entry, saved⟩, _, selected⟩ := List.mem_filterMap.mp member
+        obtain ⟨⟨entry, saved⟩, paired, selected⟩ := List.mem_filterMap.mp member
         cases saved with
         | none => simp [select] at selected
         | some intention =>
@@ -82,7 +84,7 @@ theorem reactiveOriginal_event {graph : EventGraph Player L}
             split at selected
             · rename_i authentic
               cases Option.some.inj selected
-              exact authentic.1
+              exact ⟨(List.of_mem_zip paired).2, authentic.1⟩
             · cases emitted : entry.emitted with
               | none => simp [emitted] at selected
               | some message =>
@@ -90,14 +92,33 @@ theorem reactiveOriginal_event {graph : EventGraph Player L}
                   split at selected
                   · rename_i accepted
                     cases Option.some.inj selected
-                    exact accepted.1
+                    exact ⟨(List.of_mem_zip paired).2, accepted.1⟩
                   · cases selected
       simp only [reactiveOriginal, node]
-      change (candidates.head?.getD completion).event = completion.event
+      change candidates.head?.getD completion = completion ∨
+        ∃ remembered, some remembered ∈ intentions ∧ remembered.event = completion.event ∧
+          candidates.head?.getD completion = remembered
       cases selected : candidates.head? with
-      | none => rfl
+      | none => exact Or.inl rfl
       | some remembered =>
-          exact sameEvent remembered (List.mem_of_mem_head? (by simp [selected]))
+          obtain ⟨member, named⟩ := retained remembered
+            (List.mem_of_mem_head? (by simp [selected]))
+          exact Or.inr ⟨remembered, member, named, rfl⟩
+
+/-- Original-action recall preserves the event address of every physical completion. -/
+theorem reactiveOriginal_event {graph : EventGraph Player L}
+    (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)) (who : Player)
+    (history : List (runtime.reactiveApplication leaks).PlayerEntry)
+    (intentions : List (Option graph.Completion)) (receipts : List (MessageId Player × Bool))
+    (completion : graph.Completion) :
+    (runtime.reactiveOriginal leaks who history intentions receipts completion).event =
+      completion.event := by
+  rcases runtime.reactiveOriginal_eq_or_retained leaks who history intentions receipts completion
+      with equal | ⟨remembered, _retained, named, equal⟩
+  · rw [equal]
+  · rw [equal]
+    exact named
 
 /-- Complete response recall restores a genuine silent resolution intention.
 Uniqueness is about the event-labelled private memory, rather than a desired

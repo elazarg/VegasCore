@@ -42,5 +42,7 @@ import Vegas.Compile.EventSourceBindingChoice
 import Vegas.Compile.EventSourcePolicyLaw
 import Vegas.Compile.EventGraphDisclosureAction
 import Vegas.Compile.EventSourcePosition
+import Vegas.Compile.CommitPrefixReadStability
+import Vegas.Compile.CommitPrefixAdmission
 
 /-! Source-program lowering to the typed immutable graph. -/

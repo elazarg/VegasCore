@@ -94,7 +94,7 @@ theorem phaseRecall_eq_of_fixed [Fintype Player] (bounds : MessageBounds graph)
   conv_rhs => rw [← List.map_id (control.execution.recall who)]
   apply List.map_congr_left
   intro entry member
-  obtain ⟨before, _, _, viewed, legal⟩ :=
+  obtain ⟨before, _, _prefix, _, viewed, legal, _⟩ :=
     (PhaseCount.onePacketMenu runtime leaks bounds).recorded_response_prefix initial horizon
       scheduler control trace who entry member
   rcases entry with ⟨beforeView, action, emitted⟩
