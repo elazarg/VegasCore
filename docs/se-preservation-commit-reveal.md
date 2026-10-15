@@ -1,6 +1,6 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**Recovery: 7/10 verified · foreign bound: native ✓, recovery pending · then incentives → SE.**
+**Recovery: 8/10 · incentives: first-event kernel ✓, continuation pending · concurrency pending.**
 
 <details>
 <summary>Counted proof milestones; concurrency remains pending</summary>
@@ -16,7 +16,7 @@ Milestones have unequal cost; the fixed SE checklist is unchanged.
 | Verified | Same-assessment strategy, reach and Bayes transfer |
 | Verified | Actual first-callback source laws for bindings and openings |
 | Verified | Filtered seed product at actual clear recovery sites |
-| Pending | Quantitative foreign-failure probability bound; native rate checked, recovery transfer pending |
+| Verified | Quantitative foreign-failure probability bound |
 | Pending | Clear-site incentive bounds and limit transfer |
 | Pending | Recovery SE with intended joint law and zero charges |
 
@@ -2983,9 +2983,16 @@ needs its own review. What is known:
 | First-exclusion stopped endpoints retain their actual clear environment predecessor and realized command | `Vegas.EventGraphRuntime.responseMenu_stopped_exclusion_boundary` |
 | A recorded protected fixed-value binding completes successfully at the stopped boundary under actual recovery service | `Vegas.recovery_committed_stop_config` |
 | Actual clear first callbacks derive freshness and acceptance and have the exact stopped source-step law, for fixed-value bindings and canonical disclosures | `Vegas.recovery_firstActivation_commitment_sourceLaw`, `Vegas.recovery_firstActivation_disclosure_sourceLaw` |
+| At actual clear intended first callbacks, honest binding and disclosure choices give the exact source behavioral step, and the prescribed component preserves source continuation value within six times scale times the payoff bound | `Vegas.recovery_firstActivation_honest_sourceLaw`, `Vegas.recovery_firstActivation_prescribed_sourceValue` |
+| The comparison strategy with the same recovery completion weights inherits the actual first-callback source-value bound | `Vegas.RecoveryOnePacket.nativeComparison_firstActivation_sourceValue` |
 | Every first foreign public failure has a future foreign first-callback response outside main support | `Vegas.recovery_firstForeignFailure_not_mainActivationTraceAfter` |
 | Against any focal continuation policy, the common comparison's foreign first-exit probability before focal debt is at most scale plus scale squared times the remaining rank, from a clear regular own-turn history | `Vegas.RecoveryOnePacket.nativeComparison_foreign_exit_mass_le_rank` |
 | Averaging over clear own-turn histories adds only the belief's irregular-history mass to the depth bound | `Vegas.RecoveryOnePacket.nativeComparison_foreign_exit_mass_le_irregular_add_depth` |
+| The actual recovery payoff under any focal policy differs from its debt-stopped native surrogate by at most twice the payoff bound times the rank rate, from regular clear starts | `Vegas.RecoveryOnePacket.recovery_expect_sub_native_debt_stopped_le_rank` |
+| Under the original common recovery assessment, concrete counterparts make projected irregular-history posterior mass vanish uniformly | `Vegas.RecoveryOnePacket.recovery_irregular_belief_bounds` |
+| Averaging actual recovery continuation errors charges only the foreign-exit mass of the concrete belief-integrated native law | `Vegas.RecoveryOnePacket.recovery_belief_expect_abs_sub_native_debt_stopped_le_foreign_exit` |
+| The original common recovery posterior gives uniformly vanishing foreign first-exit probability against every focal recovery continuation policy, including late sites | `Vegas.RecoveryOnePacket.recovery_common_foreign_exit_bounds` |
+| The common recovery posterior's expected absolute terminal-payoff error against its concrete debt-stopped native law vanishes uniformly at clear forced debt-free own-turn sites | `Vegas.RecoveryOnePacket.recovery_common_continuation_error_vanishes` |
 | The common comparison and projected recovery opponents have identical stopped laws against any focal continuation policy | `Vegas.RecoveryOnePacket.nativeComparison_stopped_update_eq` |
 | Complete finite information histories and Bayes beliefs project exactly at actual clear recovery decisions | `Vegas.EventGraphRuntime.RecoveryProjection.boundedInformationHistory`, `Vegas.RecoveryOnePacket.recovery_belief_eq_comparisonInformationHistory` |
 | Actual recovery nonlate decisions inherit vanishing unforced mass and operational-record/decode decorrelation under the same completion weights | `Vegas.RecoveryOnePacket.recovery_prefix_bounds` |
@@ -3014,6 +3021,7 @@ needs its own review. What is known:
 | At genuine clean ready finite native sites, the original immutable local seed has its recovered reply-filtered law independently of the complete runtime control and other seed coordinates | `Vegas.EventGraphRuntime.LocalSeedController.bayesBelief_seed_product` |
 | At matching actual clear recovery sites, the local seed filtered by recovered replies is independent of the complete recovery control and all other seed coordinates, retaining the same replay log on every supported seed/control pair | `Vegas.EventGraphRuntime.RecoveryProjection.clear_bayesBelief_seed_product` |
 | The same original filtered seed and residual control law give the exact physical finish law under any fixed common raw continuation policies | `Vegas.EventGraphRuntime.RecoveryProjection.clear_bayesBelief_finish_seeded` |
+| At an actual positive Bayes decision, a legal pending response derives the original-seed replay invariants, and any supported completion within the remaining budget has a genuine first resolving reply from that seed | `Vegas.EventGraphRuntime.LocalSeedController.bayesBelief_response_first_resolution` |
 | The original immutable seed law maps exactly to that command-boundary control law | `Vegas.EventGraphRuntime.LocalSeedController.seededSampledRoundDecisionLaw_control` |
 
 The default-runtime theorem derives zero on-path count charges and the joint
@@ -3053,8 +3061,14 @@ The marked-history estimate bounds foreign first-exit probability before focal
 debt by the tremble scale plus its square times the remaining protocol rank,
 against an arbitrary focal continuation policy. It starts from a clear regular
 focal source turn; belief averaging adds the irregular-history mass and replaces
-rank by the uniform protocol depth. Transferring this rate to actual recovery
-payoff error and controlling the irregular-history term remain open. Complete
+rank by the uniform protocol depth. The actual recovery payoff comparison
+inherits the rank rate against arbitrary focal recovery policies, using actual
+recovery service and completion. Concrete counterparts make the common recovery
+assessment's projected irregular-history mass vanish uniformly. Combining these
+results gives uniformly vanishing foreign-exit probability and expected absolute
+payoff error under the original common recovery assessment, against every focal
+recovery continuation policy at clear forced debt-free own-turn sites, including
+late sites. Complete
 finite information histories also transport exactly, giving actual recovery
 unforced-mass and record/decode decorrelation estimates with vanishing errors.
 Protected recorded
@@ -3062,13 +3076,16 @@ fixed-value bindings have the exact stopped source-step law under actual
 recovery service, without a global native completion contract. Actual first
 callbacks derive freshness and acceptance for both fixed-value bindings and
 canonical disclosures; both resulting response histories have their exact
-stopped source-step law.
+stopped source-step law. At intended clear first callbacks, honest choices give
+the exact source behavioral step for either owned node. The prescribed component
+preserves the source continuation value within six times the tremble scale times
+the payoff bound, also for the comparison strategy with the same recovery weights.
+The recursive comparison with future source play remains open.
 A common consistent assessment completion gives rationality at every
 post-exclusion site. Own latent source debt gives rationality at every owing
 site of any assessment, under actual recovery completion. The intended-law
-one-packet SE still requires the numerical
-clear-site comparisons, bounds for foreign failures, and assembly of the
-recovery assessment.
+one-packet SE still requires clear-site incentive comparisons, limit transfer,
+and assembly of the recovery assessment.
 The foreign-failure estimate is needed only before the focal player incurs
 latent own debt: every later recovery continuation already pays the exclusion
 utility. A clear public record alone does not supply this condition.
@@ -3098,7 +3115,12 @@ At matching actual clear recovery sites, the filtered local-seed product is
 also checked, retaining the full recovery control and every other seed
 coordinate, with actual replay provenance for the same recovered log. The
 result extends through the exact physical finish kernel under arbitrary fixed
-common raw continuation policies, retaining the original immutable seed. This
+common raw continuation policies, retaining the original immutable seed.
+Actual positive Bayes controls and supported original seeds now recover genuine
+fixed-seed runs and derive replay counters and query logs after a legal pending
+response. A supported completion in the remaining physical budget has a genuine
+first resolving dispatch whose reply agrees with that original seed. Completion
+existence and policy-derived emission normalization still require proof. This
 does not yet identify successful completion with a function of that seed alone.
 The scoped resolving controller permits concurrent events of
 different owners. Full runtime realization still requires an actual all-event

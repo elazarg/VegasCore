@@ -1,3 +1,12 @@
+import Vegas.Game.RecoveryContinuationComparison
+import Vegas.Game.RecoveryIrregularBeliefBounds
+import Vegas.Game.RecoveryBeliefContinuation
+import Vegas.Game.RecoveryComparisonSite
+import Vegas.Game.RecoveryPrescribedSourceKernel
+import Vegas.Game.RecoveryForeignExitBounds
+import Vegas.Game.RecoveryContinuationLimit
+import Vegas.Game.RecoveryComparisonSourceKernel
+import Vegas.Pending.ReactiveSeedCompletion
 import Vegas.Game.RecoveryForeignExitBeliefBound
 import Vegas.Game.RecoveryComparisonStopped
 import Vegas.Game.RecoveryComparisonInformation
@@ -5269,3 +5278,55 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Interaction.ReactiveApplication.schedulerMixture_finish_joint
+
+/-- info: 'Vegas.RecoveryOnePacket.recovery_expect_sub_native_debt_stopped_le_rank'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.RecoveryOnePacket.recovery_expect_sub_native_debt_stopped_le_rank
+
+/-- info: 'Vegas.RecoveryOnePacket.recovery_irregular_belief_bounds'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.RecoveryOnePacket.recovery_irregular_belief_bounds
+
+open Vegas.RecoveryOnePacket in
+/-- info: 'Vegas.RecoveryOnePacket.recovery_belief_expect_abs_sub_native_debt_stopped_le_foreign_exit'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms recovery_belief_expect_abs_sub_native_debt_stopped_le_foreign_exit
+
+/-- info: 'Vegas.RecoveryOnePacket.exists_comparisonInformationHistory'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.RecoveryOnePacket.exists_comparisonInformationHistory
+
+/-- info: 'Vegas.recovery_firstActivation_honest_sourceLaw'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.recovery_firstActivation_honest_sourceLaw
+
+/-- info: 'Vegas.recovery_firstActivation_prescribed_sourceValue'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.recovery_firstActivation_prescribed_sourceValue
+
+open Vegas.EventGraphRuntime.LocalSeedController in
+/-- info: 'Vegas.EventGraphRuntime.LocalSeedController.bayesBelief_response_first_resolution'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms bayesBelief_response_first_resolution
+
+/-- info: 'Vegas.RecoveryOnePacket.recovery_common_foreign_exit_bounds'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.RecoveryOnePacket.recovery_common_foreign_exit_bounds
+
+/-- info: 'Vegas.RecoveryOnePacket.recovery_common_continuation_error_vanishes'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.RecoveryOnePacket.recovery_common_continuation_error_vanishes
+
+/-- info: 'Vegas.RecoveryOnePacket.nativeComparison_firstActivation_sourceValue'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.RecoveryOnePacket.nativeComparison_firstActivation_sourceValue

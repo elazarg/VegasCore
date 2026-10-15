@@ -2,7 +2,7 @@
 
 import Vegas.Game.RecoveryNativePrefixSites
 import Vegas.Game.RecoveryNativePrefixBounds
-import Vegas.Game.RecoveryComparisonInformation
+import Vegas.Game.RecoveryComparisonSite
 
 /-! # Posterior prefix estimates at actual recovery decisions
 
@@ -19,16 +19,6 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
   GameTheory.Protocol.InformationModel GameTheory.Math.Probability Interaction EventGraphRuntime
   RecoveryProjection Filter
 
-private theorem belief_repackage {Player : Type} {T : ExecutionProtocol Player}
-    (M : InformationModel T) (assessment : M.BehavioralAssessment) (who : Player)
-    (first second : M.InformationSite who) (same : first.1 = second.1) :
-    (assessment.belief who first).map
-      (fun history => (⟨history.1, history.2.trans same⟩ :
-        M.InformationHistory who second.1)) = assessment.belief who second := by
-  have equal : first = second := Subtype.ext same
-  subst second
-  exact PMF.map_id _
-
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L] (setup : Setup (Player := Player) (L := L))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
@@ -44,44 +34,6 @@ local notation "RP" => ReactiveApplication.ResponseMenu.protocol
   (Recovery.onePacketMenu (runtime setup) leaks bounds) Initial horizon scheduler
 local notation "RMenu" => Recovery.onePacketMenu (runtime setup) leaks bounds
 local notation "NMenu" => bounds.onePacketMenu (runtime setup) leaks
-
-private theorem exists_clearReference [Fintype (RP).History]
-    [∀ player, DecidableEq ((R).InfoState player)]
-    {who : Player} (site : (R).InformationSite who)
-    (forced : ForcedAgent setup leaks bounds Initial horizon scheduler ((R).agentAt site)) :
-    ∃ reference : (application setup leaks).Control,
-      reference.actor = some who ∧
-      PublicExclusionRecord (RecoveryState.mk reference.execution.application ∅) ∧
-      site.1 = liftInformation (runtime setup) leaks
-        ((application setup leaks).observe who (some reference)) := by
-  obtain ⟨history, _running, _choice, _legal⟩ := site.2
-  have active := InformationSite.active (R) site history
-  obtain ⟨current, state, actor⟩ := (recoveryApplication (runtime setup) leaks).control_of_active
-    Initial horizon scheduler ((RMenu).toRawHistory Initial horizon scheduler history.1) who active
-  change history.1.state = some current at state
-  have observed := ((RMenu).info Initial horizon scheduler who history.1.trace).symm.trans history.2
-  rw [state] at observed
-  let reference := RecoveryProjection.control (runtime setup) leaks current
-  have referenceActor : reference.actor = some who := actor
-  have projection := observe_projection (runtime setup) leaks who (some current)
-  change (application setup leaks).observe who (some reference) =
-    RecoveryProjection.information (runtime setup) leaks
-      ((recoveryApplication (runtime setup) leaks).observe who (some current)) at projection
-  rw [observed] at projection
-  have atSite : site.1 = liftInformation (runtime setup) leaks
-      ((application setup leaks).observe who (some reference)) := by
-    rw [projection]
-    exact forced.1.symm
-  have clear := informationFiber_clear (runtime setup) leaks who reference referenceActor
-    history.1.state (((RMenu).info Initial horizon scheduler who history.1.trace).symm.trans
-      (history.2.trans atSite))
-  have nativeState : protocolState (runtime setup) leaks history.1.state = some reference := by
-    rw [state]
-    rfl
-  have valid := nativeHistory_record (runtime setup) leaks Initial (initialLaw_initialized setup)
-    horizon scheduler ((RMenu).toRawTrace Initial horizon scheduler history.1.trace) clear
-      reference nativeState
-  exact ⟨reference, referenceActor, valid, atSite⟩
 
 open Classical in
 /-- Actual forced, debt-free nonlate recovery decisions inherit the original
@@ -161,72 +113,26 @@ theorem recovery_prefix_bounds [Fintype (RP).History]
         weights
   refine ⟨drift, error, driftLimit, errorLimit, ?_⟩
   intro n who site notFree notOwing notKeyed past view atSite event turn unsent
-  have nonlate : ¬ KeyedAgent setup leaks bounds Initial horizon scheduler ((R).agentAt site) :=
-    fun keyed => notKeyed ⟨keyed, notFree⟩
-  obtain ⟨nativeSite, nativeInput, _lifted, nativeNotFree, nativeNotOwing, nativeNotKeyed⟩ :=
-    exists_nativePrefixSite setup leaks bounds horizon scheduler site notFree notOwing nonlate
+  obtain ⟨nativeSite, project, nativeInput, nativeNotFree, nativeNotOwing, rawProjection,
+    states, law⟩ := exists_comparisonInformationHistory setup leaks bounds horizon scheduler
+      sequence scale positive le_one weights assessments fallback assembled bayes n who site
+        notFree notOwing
+  have nativeNotKeyed : ¬ ownedKeyed
+      (Vegas.FreeAgent setup leaks bounds horizon (NativeScheduler))
+      (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon (NativeScheduler))
+      ((N).agentAt nativeSite) := by
+    intro keyed
+    apply notKeyed
+    refine ⟨?_, notFree⟩
+    change LateDelivery setup leaks who
+      (RecoveryProjection.information (runtime setup) leaks site.1)
+    rw [← nativeInput]
+    exact keyed.1
   have pending : pendingEvent setup leaks who nativeSite.1 ≠ none := by
     rw [nativeInput, atSite, pendingEvent_of_recoveryRecall setup leaks turn unsent]
     exact Option.some_ne_none _
   obtain ⟨unforced, decorrelated⟩ :=
     estimates n who nativeSite nativeNotFree nativeNotOwing nativeNotKeyed pending
-  obtain ⟨reference, active, valid, seen⟩ := exists_clearReference setup leaks bounds horizon
-    scheduler site (Classical.not_not.mp notFree)
-  have nativeSeen : nativeSite.1 = (application setup leaks).observe who (some reference) :=
-    nativeInput.trans ((congrArg (RecoveryProjection.information (runtime setup) leaks) seen).trans
-      (information_liftInformation (runtime setup) leaks _))
-  let nativeDecision : (N).IsDecisionInfo who
-      ((application setup leaks).observe who (some reference)) := nativeSeen ▸ nativeSite.2
-  let recoveryDecision : (R).IsDecisionInfo who (liftInformation (runtime setup) leaks
-      ((application setup leaks).observe who (some reference))) := seen ▸ site.2
-  let normalizedNative : (N).InformationSite who :=
-    ⟨(application setup leaks).observe who (some reference), nativeDecision⟩
-  let normalizedRecovery : (R).InformationSite who :=
-    ⟨liftInformation (runtime setup) leaks
-      ((application setup leaks).observe who (some reference)), recoveryDecision⟩
-  let repackage : (R).InformationHistory who site.1 →
-      (R).InformationHistory who normalizedRecovery.1 := fun history =>
-    ⟨history.1, history.2.trans seen⟩
-  let unpackage : (N).InformationHistory who normalizedNative.1 →
-      (N).InformationHistory who nativeSite.1 := fun history =>
-    ⟨history.1, history.2.trans nativeSeen.symm⟩
-  let middle := comparisonInformationHistory setup leaks bounds horizon scheduler who reference
-    active valid nativeDecision recoveryDecision
-  let project := unpackage ∘ middle ∘ repackage
-  have states (history : (R).InformationHistory who site.1) :
-      (project history).1.state = protocolState (runtime setup) leaks history.1.state :=
-    comparisonInformationHistory_state setup leaks bounds horizon scheduler who reference active
-      valid nativeDecision recoveryDecision (repackage history)
-  have rawProjection (history : (R).InformationHistory who site.1) :
-      ∃ clear : ∀ current, history.1.state = some current →
-          current.execution.application.excluded = ∅,
-        (NMenu).toRawHistory (initialLaw setup) horizon (NativeScheduler) (project history).1 =
-          Equiv.cast (congrArg (fun initial : PMF (EventGraphRuntime.State (graph setup)) =>
-            ((application setup leaks).protocol initial horizon (NativeScheduler)).History)
-              (initialLaw_native setup))
-            (nativeHistory (runtime setup) leaks Initial horizon scheduler
-              ((RMenu).toRawHistory Initial horizon scheduler history.1) clear) := by
-    have observed := ((RMenu).info Initial horizon scheduler who history.1.trace).symm.trans
-      (history.2.trans seen)
-    have clear := informationFiber_clear (runtime setup) leaks who reference active history.1.state
-      observed
-    refine ⟨clear, ?_⟩
-    exact comparisonInformationHistory_raw setup leaks bounds horizon scheduler who reference
-      active valid nativeDecision recoveryDecision (repackage history)
-  have law : ((assessments n).belief who site).map project =
-      (nativeComparisonSequence setup leaks bounds horizon scheduler sequence scale positive
-        le_one weights n).belief who nativeSite := by
-    have first := belief_repackage (R) (assessments n) who site normalizedRecovery seen
-    have last := belief_repackage (N) (nativeComparisonSequence setup leaks bounds horizon scheduler
-      sequence scale positive le_one weights n) who normalizedNative nativeSite nativeSeen.symm
-    have main := recovery_belief_eq_comparisonInformationHistory setup leaks bounds horizon
-      scheduler who reference active valid nativeDecision recoveryDecision sequence scale positive
-        le_one weights n (fallback n) (assessments n) (assembled n) (bayes n)
-    calc
-      _ = ((((assessments n).belief who site).map repackage).map middle).map unpackage := by
-        rw [PMF.map_comp, PMF.map_comp]
-        rfl
-      _ = _ := by rw [first, main, last]
   refine ⟨nativeSite, project, nativeInput, rawProjection, states, law, ?_, ?_⟩
   · rw [← law, expect_map] at unforced
     simpa only [Function.comp_def, states] using unforced

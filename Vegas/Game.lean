@@ -624,3 +624,13 @@ import Vegas.Game.RecoveryPrefixBeliefBounds
 import Vegas.Game.RecoveryForeignFailureBound
 
 import Vegas.Game.RecoveryForeignExitBeliefBound
+import Vegas.Game.RecoveryContinuationComparison
+
+import Vegas.Game.RecoveryIrregularBeliefBounds
+import Vegas.Game.RecoveryBeliefContinuation
+import Vegas.Game.RecoveryComparisonSite
+import Vegas.Game.RecoveryPrescribedSourceKernel
+
+import Vegas.Game.RecoveryForeignExitBounds
+import Vegas.Game.RecoveryContinuationLimit
+import Vegas.Game.RecoveryComparisonSourceKernel
