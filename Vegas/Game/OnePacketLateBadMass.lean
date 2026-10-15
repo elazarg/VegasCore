@@ -48,7 +48,6 @@ bad stops of play until the event completes is at most the cube of the scale
 per step of the horizon. -/
 theorem lateBinding_badMass
     [(application setup leaks).FiniteNature (initialLaw setup) scheduler]
-    (completes : CompletesPlay (runtime setup) leaks (initialLaw setup) horizon scheduler)
     (covers : bounds.CoversOutputValues) (capacity : 1 ≤ bounds.candidateCount)
     (assessment : setup.intendedModel.BehavioralAssessment) {scale : ℝ} (positive : 0 < scale)
     (le_one : scale ≤ 1) {slots : Nat} (slotsLe : slots ≤ bounds.candidateCount)
@@ -68,6 +67,11 @@ theorem lateBinding_badMass
     {rank : Nat} (ordered : execution.application.config.cut.IsPrefix rank)
     {point : ProtocolState setup.program}
     (decoded : sourceServicePrefix? setup rank execution.application.config = some point)
+    (terminalCompleted : ∀ (final : (application setup leaks).Control),
+      ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace (some final) →
+      (application setup leaks).terminal (some final) →
+      final.execution.application.config = execution.application.config →
+      event ∈ final.execution.application.config.cut.completed)
     (intendedPoint : ProtocolState.Intended setup.program point)
     {fresh : (application setup leaks).Control → Prop}
     (freshIff : ∀ control, fresh control ↔
@@ -114,6 +118,10 @@ theorem lateBinding_badMass
                 (LateStopped setup leaks bounds horizon scheduler rank) next) bad -
               factor * (fun _ : Option (OwnAction Player L) => (0 : ℝ)) choice| ≤ 0 := by
     intro history later reached state holds _ _ slot below permitted
+    have sameConfig : reached.application.config = execution.application.config := by
+      have unsent := holds
+      rw [state] at unsent
+      exact unsent.1
     refine ⟨0, fun choice member next nextState => ?_⟩
     have traceHere : (menu.protocol (initialLaw setup) horizon scheduler).Trace
         (some ⟨later, some who, reached⟩) := state ▸ history.trace
@@ -167,7 +175,9 @@ theorem lateBinding_badMass
         (LateStopped setup leaks bounds horizon scheduler rank) next).support, bad stop = 0 := by
       intro stop stopMember
       obtain ⟨final, finalState, stepped⟩ := openableCommitment_stop bounds horizon scheduler
-        completes certificate installed codeEq successful residual.checkpoint.ordered next
+        certificate installed codeEq successful residual.checkpoint.ordered
+        (fun final trace ended same => terminalCompleted final trace ended
+          (same.trans sameConfig)) next
         invariantNext stop stopMember
       simp only [bad, lateBadStop]
       rw [ite_eq_right_iff]

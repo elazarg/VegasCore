@@ -162,7 +162,8 @@ theorem nativeComparison_local_phase_value_sub_le [Fintype (RP).History]
           by_contra notFailed
           exact badFinal ⟨found, notFailed⟩
         obtain ⟨anchor, state, completed, nextPrefix, _seen⟩ := recovery_pending_stop_completed
-          (initialLaw_initialized setup) (initialLaw_native setup) completes certificate installed
+          (initialLaw_initialized setup) (initialLaw_native setup) completes true certificate
+            installed
           history current ordered clear event ready final member
         have stored : StoreEventFailed anchor.application.config.store event := by
           simpa only [state, DecisionFailed, decided, completed, true_and] using failed

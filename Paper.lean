@@ -1,3 +1,9 @@
+import Vegas.Game.RecoveryLocalValueComparison
+import Vegas.Game.RecoveryPhaseValueBlind
+import Vegas.Game.RecoveryKeyedFailure
+import GameTheoryExtensions.Math.Probability.AffineDecorrelation
+import Vegas.Game.RecoveryPooledGains
+import Vegas.Game.RecoverySequentialLimit
 import Vegas.Pending.ReactiveSeedBindingSiteOutcome
 import Vegas.Game.RecoveryUnpendingChoices
 import Vegas.Game.RecoveryComparisonRawValue
@@ -5566,3 +5572,63 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.EventGraphRuntime.LocalSeedController.bayesBelief_first_binding_output_common
+
+/-- info: 'Vegas.RecoveryOnePacket.sequentialEquilibrium_of_local_comparisons'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.RecoveryOnePacket.sequentialEquilibrium_of_local_comparisons
+
+/-- info: 'Vegas.RecoveryOnePacket.pooledLocalGain_nonpos_of_continuation'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.RecoveryOnePacket.pooledLocalGain_nonpos_of_continuation
+
+/-- info: 'Vegas.RecoveryOnePacket.componentGain_le_of_common_values'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.RecoveryOnePacket.componentGain_le_of_common_values
+
+/-- info: 'Vegas.recovery_committed_sourceKernel'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.recovery_committed_sourceKernel
+
+/-- info: 'Vegas.recovery_unintendedCommitment_phase_owes'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.recovery_unintendedCommitment_phase_owes
+
+/-- info: 'Vegas.recovery_pending_completionValue_of_stops'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.recovery_pending_completionValue_of_stops
+
+/-- info: 'Vegas.recovery_disclosure_sourceValue'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.recovery_disclosure_sourceValue
+
+/-- info: 'Vegas.RecoveryOnePacket.recovery_keyed_failure_bounds'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.RecoveryOnePacket.recovery_keyed_failure_bounds
+
+/-- info: 'Vegas.RecoveryOnePacket.recovery_local_value_comparison_bounds'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.RecoveryOnePacket.recovery_local_value_comparison_bounds
+
+/-- info: 'Vegas.recovery_pending_phase_value_bounds'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.recovery_pending_phase_value_bounds
+
+/-- info: 'GameTheory.Math.Probability.abs_expect_affine_sub_le_of_decorrelated'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms GameTheory.Math.Probability.abs_expect_affine_sub_le_of_decorrelated
+
+/-- info: 'GameTheory.Protocol.InformationModel.freeKeyed_memberGain_le_of_common_values'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms GameTheory.Protocol.InformationModel.freeKeyed_memberGain_le_of_common_values

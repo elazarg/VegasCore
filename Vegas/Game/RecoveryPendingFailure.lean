@@ -126,7 +126,8 @@ theorem recovery_pending_failure_terminal_eq_stopped [Finite (Protocol).History]
   apply expect_congr_on_support
   intro final supported
   obtain ⟨anchor, state, completed, _ordered, _seen⟩ := recovery_pending_stop_completed initialized
-    nativeLaw completes certificate players start current ordered clear event ready final supported
+    nativeLaw completes true certificate players start current ordered clear event ready final
+      supported
   exact completed_decisionFailure_terminal_expect certificate players final state key event decided
     completed
 

@@ -673,3 +673,10 @@ import Vegas.Game.RecoveryComparisonRawValue
 import Vegas.Game.RecoveryFirstActivationValue
 import Vegas.Game.RecoveryNonLateChoices
 import Vegas.Game.RecoveryUnpendingChoices
+import Vegas.Game.RecoverySequentialLimit
+import Vegas.Game.RecoveryPooledGains
+import Vegas.Game.RecoveryLateSourcePhase
+import Vegas.Game.RecoveryPhasePotential
+import Vegas.Game.RecoveryKeyedFailure
+import Vegas.Game.RecoveryLocalValueComparison
+import Vegas.Game.RecoveryPhaseValueBlind

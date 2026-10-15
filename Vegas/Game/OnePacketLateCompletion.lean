@@ -38,7 +38,6 @@ which the committed action's source action reaches the intended point
 or `target`, for every property `fresh` of controls that fails when the event
 has failed. -/
 theorem completionPoint_of_openableCommitment
-    (completes : CompletesPlay (runtime setup) leaks (initialLaw setup) horizon scheduler)
     (certificate : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup)
       horizon scheduler).WellFoundedHistories)
     (players : ∀ player, ((bounds.onePacketMenu (runtime setup) leaks).information
@@ -56,6 +55,11 @@ theorem completionPoint_of_openableCommitment
     {rank : Nat} {profile : BehavioralProfile setup.program}
     (residual : SourceResidual setup profile rank sent) {point : ProtocolState setup.program}
     (decoded : sourceServicePrefix? setup rank sent = some point)
+    (terminalCompleted : ∀ (final : (application setup leaks).Control),
+      ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace (some final) →
+      (application setup leaks).terminal (some final) →
+      final.execution.application.config = sent →
+      event ∈ final.execution.application.config.cut.completed)
     {target : ProtocolState setup.program}
     (stepEq : ProtocolState.step setup.program point
       (fun _ => decodeEventAction setup.program event action) = PMF.pure target)
@@ -75,7 +79,7 @@ theorem completionPoint_of_openableCommitment
   intro stop member
   have ordered := residual.checkpoint.ordered
   obtain ⟨final, finalState, stepped⟩ := openableCommitment_stop bounds horizon scheduler
-    completes certificate players codeEq successful ordered start holds stop member
+    certificate players codeEq successful ordered terminalCompleted start holds stop member
   rcases stepped with inStep | ⟨failing, failed, inStep⟩
   · -- The event completes by the committed action, at the target.
     obtain ⟨before, after, beforeDecoded, afterDecoded, reachedPoint⟩ :=
@@ -212,7 +216,6 @@ Under the hypotheses of `Vegas.completionPoint_of_openableCommitment`, the
 centered completion value under play until the event completes is the value at
 the target less `center` times the completion mass. -/
 theorem expect_centeredCompletion_of_openableCommitment
-    (completes : CompletesPlay (runtime setup) leaks (initialLaw setup) horizon scheduler)
     (certificate : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup)
       horizon scheduler).WellFoundedHistories)
     (players : ∀ player, ((bounds.onePacketMenu (runtime setup) leaks).information
@@ -230,6 +233,11 @@ theorem expect_centeredCompletion_of_openableCommitment
     {rank : Nat} {profile : BehavioralProfile setup.program}
     (residual : SourceResidual setup profile rank sent) {point : ProtocolState setup.program}
     (decoded : sourceServicePrefix? setup rank sent = some point)
+    (terminalCompleted : ∀ (final : (application setup leaks).Control),
+      ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace (some final) →
+      (application setup leaks).terminal (some final) →
+      final.execution.application.config = sent →
+      event ∈ final.execution.application.config.cut.completed)
     {target : ProtocolState setup.program}
     (stepEq : ProtocolState.step setup.program point
       (fun _ => decodeEventAction setup.program event action) = PMF.pure target)
@@ -253,8 +261,9 @@ theorem expect_centeredCompletion_of_openableCommitment
   rw [← expect_const_mul]
   apply expect_congr_on_support
   intro stop member
-  rcases completionPoint_of_openableCommitment completes certificate players codeEq successful
-      residual decoded stepEq failedStale start holds stop member with none_ | some_
+  rcases completionPoint_of_openableCommitment certificate players codeEq successful
+      residual decoded terminalCompleted stepEq failedStale start holds stop member with none_ |
+        some_
   · simp only [centeredCompletion, completionIndicator, none_, Option.elim_none, mul_zero]
   · simp only [centeredCompletion, completionIndicator, some_, Option.elim_some, mul_one]
 

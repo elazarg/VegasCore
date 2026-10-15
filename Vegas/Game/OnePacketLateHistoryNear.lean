@@ -367,12 +367,18 @@ theorem lateBinding_historyNear [Finite ((bounds.onePacketMenu (runtime setup) l
     (execution.application.publicView_eventReady event).mp
       (PublicView.ownTurn?_spec _ who event turn).1
   have boundNonneg : 0 ≤ bound := (abs_nonneg _).trans (readoutBounded none)
-  have pointLaw := lateBinding_completionPointLaw completes covers capacity source positive
-    le_one slotsLe installed history.1 current node turn unrecorded ordered decoded intendedPoint
+  have pointLaw := lateBinding_completionPointLaw covers capacity source positive
+    le_one slotsLe installed history.1 current node turn unrecorded ordered decoded
+    (fun final trace ended _same => by
+        rw [completes final trace ended]
+        exact Finset.mem_univ _) intendedPoint
     (fun control failedHere freshHere => (freshIff control).mp freshHere failedHere) shape
     η_nonneg successFree
-  have badMass := lateBinding_badMass completes covers capacity source positive le_one slotsLe
-    installed history.1 current node turn unrecorded ordered decoded intendedPoint freshIff shape
+  have badMass := lateBinding_badMass covers capacity source positive le_one slotsLe
+    installed history.1 current node turn unrecorded ordered decoded
+    (fun final trace ended _same => by
+        rw [completes final trace ended]
+        exact Finset.mem_univ _) intendedPoint freshIff shape
   have split := lateStop_split setup leaks bounds horizon scheduler completes assessment site
     decided pending law history current ordered ready
   have badBounded : ∀ stop, |bad stop| ≤ 1 := by

@@ -206,8 +206,8 @@ from a history at which the openable-commitment invariant holds for an event of
 rank `rank` still unfinished, every stop of play of any profile until the event
 completes is one step of the event from `sent`, by the committed action or by a
 failure. -/
-theorem openableCommitment_stop
-    (completes : CompletesPlay (runtime setup) leaks (initialLaw setup) horizon scheduler)
+theorem openableCommitment_stop (bounds : MessageBounds (graph setup)) (horizon : Nat)
+    (scheduler : (application setup leaks).Scheduler)
     (certificate : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup)
       horizon scheduler).WellFoundedHistories)
     (players : ∀ player, ((bounds.onePacketMenu (runtime setup) leaks).information
@@ -223,6 +223,11 @@ theorem openableCommitment_stop
     (successful : (cast (congrArg EventGraph.EventField.Action outputEq) action :
       PublicationResult (L.Val payload)) = .success value)
     {rank : Nat} (ordered : sent.cut.IsPrefix rank)
+    (terminalCompleted : ∀ (final : (application setup leaks).Control),
+      ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace (some final) →
+      (application setup leaks).terminal (some final) →
+      final.execution.application.config = sent →
+      event ∈ final.execution.application.config.cut.completed)
     (start : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
       scheduler).History)
     (holds : OpenableCommitmentInvariant setup leaks bounds horizon scheduler who entry message
@@ -281,8 +286,7 @@ theorem openableCommitment_stop
         have rawTrace : ((application setup leaks).protocol (initialLaw setup) horizon
             scheduler).Trace (some final) :=
           menu.toRawTrace (initialLaw setup) horizon scheduler finalTrace
-        have terminal := completes final rawTrace ended
-        exact pending (by rw [terminal]; exact Finset.mem_univ _)
+        exact pending (terminalCompleted final rawTrace ended atSent)
 
 /-- **A slot commitment sets up the invariant.** Along a history of the
 one-packet game, at a decision of `who` at its pending binding `event`,

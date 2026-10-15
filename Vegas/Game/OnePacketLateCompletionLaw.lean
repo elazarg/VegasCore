@@ -681,7 +681,6 @@ times the step of the intended effective opening of `assessment` at the decoded
 point, up to twice the cube of the scale plus `η` per step of the horizon. -/
 theorem lateBinding_completionPointLaw
     [(application setup leaks).FiniteNature (initialLaw setup) scheduler]
-    (completes : CompletesPlay (runtime setup) leaks (initialLaw setup) horizon scheduler)
     (covers : bounds.CoversOutputValues) (capacity : 1 ≤ bounds.candidateCount)
     (assessment : setup.intendedModel.BehavioralAssessment) {scale : ℝ} (positive : 0 < scale)
     (le_one : scale ≤ 1) {slots : Nat} (slotsLe : slots ≤ bounds.candidateCount)
@@ -701,6 +700,11 @@ theorem lateBinding_completionPointLaw
     {rank : Nat} (ordered : execution.application.config.cut.IsPrefix rank)
     {point : ProtocolState setup.program}
     (decoded : sourceServicePrefix? setup rank execution.application.config = some point)
+    (terminalCompleted : ∀ (final : (application setup leaks).Control),
+      ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace (some final) →
+      (application setup leaks).terminal (some final) →
+      final.execution.application.config = execution.application.config →
+      event ∈ final.execution.application.config.cut.completed)
     (intendedPoint : ProtocolState.Intended setup.program point)
     {fresh : (application setup leaks).Control → Prop}
     (failedStale : ∀ control, StoreEventFailed control.execution.application.config.store event →
@@ -824,6 +828,10 @@ theorem lateBinding_completionPointLaw
             |expect (model.runBehavioralUntil certificate installed stopped next) payoff -
               factor * centered choice| ≤ 2 * bound * η := by
     intro history later reached state holds sameView extended slot below permitted
+    have sameConfig : reached.application.config = execution.application.config := by
+      have unsent := holds
+      rw [state] at unsent
+      exact unsent.1
     obtain ⟨factor, near⟩ := successFree history later reached state holds sameView extended slot
       below permitted
     refine ⟨factor, fun choice member next nextState => ?_⟩
@@ -857,8 +865,10 @@ theorem lateBinding_completionPointLaw
         (fun _ => decodeEventAction setup.program event action) = PMF.pure target := by
       rw [decodeEq]
       exact stepEq
-    have valueAt := expect_centeredCompletion_of_openableCommitment completes certificate
-      installed codeEq successful residual decodedHere stepEq' failedStale next
+    have valueAt := expect_centeredCompletion_of_openableCommitment certificate
+      installed codeEq successful residual decodedHere
+      (fun final trace ended same => terminalCompleted final trace ended
+        (same.trans sameConfig)) stepEq' failedStale next
       (by rw [nextState]; exact invariant) value center
     have centeredEq : centered (some source) = value target - center := by
       simp only [centered, stepEq, expect_pure]

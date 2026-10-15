@@ -3042,6 +3042,11 @@ needs its own review. What is known:
 | Initialized honest native play has the full intended source readout law, including its private setup draw, under actual recovery service | `Vegas.recovery_honest_initialized_readout_law` |
 | Native first-exit mass equals terminal public-failure mass without a native completion contract | `Vegas.EventGraphRuntime.RecoveryProjection.native_exit_mass_eq_terminal_failure_mass` |
 | The actual common recovery strategy has a uniformly vanishing initialized joint typed-readout and base-payoff law error against the original source sequence | `Vegas.RecoveryOnePacket.recovery_initialized_lawApproximation` |
+| Pure local comparisons at all nonfree sites imply that the same common recovery assessment limit is an SE with the intended joint law; the pure-comparison premise remains explicit | `Vegas.RecoveryOnePacket.sequentialEquilibrium_of_local_comparisons` |
+| The original pooled completion witness bounds every recovery member mixture when actual keyed payoffs have a common affine score; the affine-value premise remains explicit | `Vegas.RecoveryOnePacket.componentGain_le_of_common_values` |
+| Every actual local recovery law has the same-weight native debt-stopped value up to a uniformly vanishing error, at clear debt-free own-turn sites including keyed late sites | `Vegas.RecoveryOnePacket.recovery_local_value_comparison_bounds` |
+| Binding and disclosure physical phases have concrete source-value factors and bad-support bounds under actual recovery completion | `Vegas.recovery_pending_phase_value_bounds` |
+| Primitive native failure scores become common within each late key under the original recovery posterior; these scores are not identified with actual recovery terminal failure events | `Vegas.RecoveryOnePacket.recovery_keyed_failure_bounds` |
 | A one-packet recovery equilibrium and its intended joint law extend to the audited raw recovery game with zero charges and the same joint typed-readout and settled-payoff law | `Vegas.recovery_intended_raw_sequentialEquilibrium_of_onePacket` |
 | An owed failure appears in any existing terminal readout; an honest source terminal law therefore makes every intermediate honest state intended | `Vegas.decoded_owesFailure_failedReveals_of_readout`, `Vegas.honest_reached_intended_of_readout_law` |
 | The original recovery assessment's whole-policy gain is bounded by its concrete belief-averaged native debt-stopped gain plus a uniform vanishing error | `Vegas.RecoveryOnePacket.recovery_common_gain_le_native_debt_stopped` |
@@ -3162,6 +3167,16 @@ successor boundaries. Its original Bayes beliefs also approach the source
 beliefs at clear debt-free sites, including keyed late sites. Event-phase
 towers, local phase potentials and first-activation baseline bounds supply
 the continuation estimates needed for the remaining gain comparisons.
+Every actual recovery local law also has the same-weight finite native
+debt-stopped value up to a uniformly vanishing error. Actual pending binding
+and disclosure laws give source-value factors and bounded missing-completion
+mass. Original recovery posteriors give common primitive failure scores within
+each late key. Their composition into actual affine payoff estimates and
+arbitrary-choice incentive bounds remains open. Given those estimates, checked
+pooled ranking bounds every member mixture without replacing the original
+weights or identifying primitive scores with terminal recovery failure events.
+Pure comparisons at all nonfree sites then give SE and the intended joint law
+at that same common limit; this comparison premise remains explicit.
 A common consistent assessment completion gives rationality at every
 post-exclusion site. Own latent source debt gives rationality at every owing
 site of any assessment, under actual recovery completion. The intended-law

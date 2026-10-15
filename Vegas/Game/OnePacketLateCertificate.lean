@@ -197,7 +197,6 @@ theorem certificate_lateSuccessFree (sequence : ℕ → setup.intendedModel.Beha
     (targetSequence : ℕ → (onePacketN).BehavioralAssessment)
     (assembled : OnePacketAssembled setup leaks bounds horizon scheduler sequence scale scale_pos
       scale_le_one weights targetSequence) (n : ℕ)
-    (completes : CompletesPlay (runtime setup) leaks (initialLaw setup) horizon scheduler)
     (covers : bounds.CoversOutputValues) (capacity : 1 ≤ bounds.candidateCount)
     (slotsLe : slots ≤ bounds.candidateCount) {who : Player}
     (site : (onePacketN).InformationSite who)
@@ -220,6 +219,11 @@ theorem certificate_lateSuccessFree (sequence : ℕ → setup.intendedModel.Beha
     {point : ProtocolState setup.program}
     (decoded : sourceServicePrefix? setup (siteRank site.1) execution.application.config =
       some point)
+    (terminalCompleted : ∀ (final : (application setup leaks).Control),
+      ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace (some final) →
+      (application setup leaks).terminal (some final) →
+      final.execution.application.config = execution.application.config →
+      event ∈ final.execution.application.config.cut.completed)
     (intendedPoint : ProtocolState.Intended setup.program point) :
     ∀ (later : ((bounds.onePacketMenu (runtime setup) leaks).protocol
         (initialLaw setup) horizon scheduler).History) (laterRemaining : Nat)
@@ -280,9 +284,9 @@ theorem certificate_lateSuccessFree (sequence : ℕ → setup.intendedModel.Beha
     change decisionImage key state = _
     unfold decisionImage
     rw [noPublication, binding, ownerEq]
-  refine lateBinding_successFree completes covers (sequence n) lumping site ⟨pendingSite, debtFree⟩
+  refine lateBinding_successFree covers (sequence n) lumping site ⟨pendingSite, debtFree⟩
     siteKey (none : LateOption slots) decided Sum.inr imageBinding history.1 current ?_ _ ?_ node
-    turn ordered decoded intendedPoint forced freshIff
+    turn ordered decoded terminalCompleted intendedPoint forced freshIff
   · -- Forced states with the event ready, the site's configuration and a recall
     -- extended by an entry at the site's view are kept.
     intro later control laterState laterForced laterReady sameConfig longer
@@ -421,9 +425,11 @@ theorem certificate_pendingBinding_historyNear
     unrecorded ordered decoded intendedPoint reachedPoint shape
     (mul_nonneg (Nat.cast_nonneg _) (by have := pow_nonneg (scale_pos n).le 3; linarith))
     (certificate_lateSuccessFree setup leaks bounds horizon scheduler sequence scale scale_pos
-      scale_le_one weights targetSequence assembled n completes covers capacity slotsLe site
+      scale_le_one weights targetSequence assembled n covers capacity slotsLe site
       pendingSite debtFree siteKey pending law history current atSite forced node ordered decoded
-      intendedPoint)
+      (fun final trace ended _same => by
+        rw [completes final trace ended]
+        exact Finset.mem_univ _) intendedPoint)
     readoutBounded
 
 /-- **The certificate's completion value at a late binding.** At a late delivery

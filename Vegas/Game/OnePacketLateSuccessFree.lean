@@ -81,7 +81,6 @@ event completes is one less the probability that terminal play from the
 history fails the event, for every property `fresh` of controls that holds
 exactly when the event has not failed. -/
 theorem expect_completionIndicator_of_openableCommitment
-    (completes : CompletesPlay (runtime setup) leaks (initialLaw setup) horizon scheduler)
     (players : ∀ player, ((bounds.onePacketMenu (runtime setup) leaks).information
       (initialLaw setup) horizon scheduler).BehavioralPolicy player)
     {who : Player} {entry : (application setup leaks).PlayerEntry}
@@ -97,6 +96,11 @@ theorem expect_completionIndicator_of_openableCommitment
     {rank : Nat} {profile : BehavioralProfile setup.program}
     (residual : SourceResidual setup profile rank sent) {point : ProtocolState setup.program}
     (decoded : sourceServicePrefix? setup rank sent = some point)
+    (terminalCompleted : ∀ (final : (application setup leaks).Control),
+      ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace (some final) →
+      (application setup leaks).terminal (some final) →
+      final.execution.application.config = sent →
+      event ∈ final.execution.application.config.cut.completed)
     {target : ProtocolState setup.program}
     (stepEq : ProtocolState.step setup.program point
       (fun _ => decodeEventAction setup.program event action) = PMF.pure target)
@@ -156,7 +160,7 @@ theorem expect_completionIndicator_of_openableCommitment
         1 - expect (model.runBehavioralTerminalFrom certificate players stop) failure := by
     intro stop member
     obtain ⟨final, finalState, stepped⟩ := openableCommitment_stop bounds horizon scheduler
-      completes certificate players codeEq successful ordered start holds stop member
+      certificate players codeEq successful ordered terminalCompleted start holds stop member
     rcases stepped with inStep | ⟨failing, failed, inStep⟩
     · -- Completed by the committed action, a success that stays.
       have output := step_binding_output (outputEq := outputEq) (codeEq := codeEq) inStep
@@ -231,7 +235,6 @@ completion mass of play of `installed` until the event completes depends, up
 to the horizon times `δ`, on the slot alone. -/
 theorem lateBinding_successFree
     [(application setup leaks).FiniteNature (initialLaw setup) scheduler]
-    (completes : CompletesPlay (runtime setup) leaks (initialLaw setup) horizon scheduler)
     (covers : bounds.CoversOutputValues)
     (assessment : setup.intendedModel.BehavioralAssessment)
     {target : (onePacketInformation setup leaks bounds horizon scheduler).BehavioralAssessment}
@@ -284,6 +287,11 @@ theorem lateBinding_successFree
     {rank : Nat} (ordered : execution.application.config.cut.IsPrefix rank)
     {point : ProtocolState setup.program}
     (decoded : sourceServicePrefix? setup rank execution.application.config = some point)
+    (terminalCompleted : ∀ (final : (application setup leaks).Control),
+      ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace (some final) →
+      (application setup leaks).terminal (some final) →
+      final.execution.application.config = execution.application.config →
+      event ∈ final.execution.application.config.cut.completed)
     (intendedPoint : ProtocolState.Intended setup.program point)
     (forced : ForcedState setup leaks who start.state)
     {fresh : (application setup leaks).Control → Prop}
@@ -410,8 +418,10 @@ theorem lateBinding_successFree
       (fun player active => ?_) (by rw [stepEq]; exact (PMF.mem_support_pure_iff _ _).mpr rfl)
     cases (acts player).symm.trans active
     exact ⟨source, rfl, legal.2⟩
-  have massEq := expect_completionIndicator_of_openableCommitment completes installed codeEq
-    successful residual decodedHere stepEq' targetIntended freshIff next
+  have massEq := expect_completionIndicator_of_openableCommitment installed codeEq
+    successful residual decodedHere
+    (fun final trace ended same => terminalCompleted final trace ended (same.trans atSent))
+      stepEq' targetIntended freshIff next
     (by rw [nextState]; exact invariant)
   -- Play from the commitment is play of the option's profile.
   have nextRecall : (execution.recall who).length <

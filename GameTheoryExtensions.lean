@@ -96,3 +96,5 @@ import GameTheoryExtensions.Math.Probability.ConditionalProductMixture
 
 import GameTheoryExtensions.Analysis.Protocol.StoppedHistoryInvariant
 import GameTheoryExtensions.Analysis.Protocol.StoppedContinuationComparison
+import GameTheoryExtensions.Analysis.Protocol.AffineKeyedPools
+import GameTheoryExtensions.Math.Probability.AffineDecorrelation

@@ -77,7 +77,8 @@ theorem recovery_pending_until_eq_clearUntil
       apply bind_congr_on_support
       intro final member
       obtain ⟨anchor, state, _completed, nextPrefix, _seen⟩ := recovery_pending_stop_completed
-        initialized nativeLaw completes certificate players start current ordered clear event ready
+        initialized nativeLaw completes true certificate players start current ordered clear
+          event ready
         final member
       exact (N).runBehavioralUntil_of_stopped certificate players ⟨_, state, nextPrefix⟩
     _ = _ := PMF.bind_pure _

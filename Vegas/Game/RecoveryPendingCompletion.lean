@@ -39,6 +39,7 @@ include initialized nativeLaw completes in
 scheduler boundary under every actual bounded response profile. Before that
 event completes, no event can change the configuration or create public failure. -/
 theorem recovery_pending_stop_completed
+    (stopAtPublicFailure : Bool)
     (certificate : (E).WellFoundedHistories)
     (players : ∀ player, (N).BehavioralPolicy player)
     (start : (E).History) {control : (application setup leaks).Control}
@@ -48,16 +49,18 @@ theorem recovery_pending_stop_completed
     (event : (graph setup).EventId)
     (ready : control.execution.application.config.cut.Ready event) :
     ∀ final ∈ ((N).runBehavioralUntil certificate players
-      (fun stop => LateStopped setup leaks bounds horizon scheduler rank stop ∨
-        ¬ Clear stop.state) start).support,
+      (fun stop => if stopAtPublicFailure then
+        LateStopped setup leaks bounds horizon scheduler rank stop ∨ ¬ Clear stop.state
+        else LateStopped setup leaks bounds horizon scheduler rank stop) start).support,
       ∃ anchor : (application setup leaks).Execution,
         final.state = some ⟨horizon - anchor.environmentRecall.length, none, anchor⟩ ∧
         event ∈ anchor.application.config.cut.completed ∧
         anchor.application.config.cut.IsPrefix (rank + 1) ∧
         ReadySeen setup leaks rank anchor := by
   classical
-  let stopped : (E).History → Prop := fun stop =>
+  let stopped : (E).History → Prop := fun stop => if stopAtPublicFailure then
     LateStopped setup leaks bounds horizon scheduler rank stop ∨ ¬ Clear stop.state
+    else LateStopped setup leaks bounds horizon scheduler rank stop
   let property : (E).History → Prop := fun history =>
     ∃ next : (application setup leaks).Control, history.state = some next ∧
       ((PendingAt setup leaks rank next.execution ∧
@@ -93,7 +96,11 @@ theorem recovery_pending_stop_completed
         exact ⟨next, nextState, Or.inl ⟨pendingNext, sameConfig.trans equal,
           beforeClear.completionStep_sameConfig physical sameConfig⟩⟩
       · exact ⟨next, nextState, Or.inr completed⟩
-    · exact (going (Or.inl ⟨before, state, completed.2.1⟩)).elim
+    · apply False.elim
+      apply going
+      cases stopAtPublicFailure
+      · exact ⟨before, state, completed.2.1⟩
+      · exact Or.inl ⟨before, state, completed.2.1⟩
   have remains := (N).runBehavioralUntil_support_history_closed certificate players stopped property
     preserved start ⟨control, current, Or.inl ⟨pending, rfl, clear⟩⟩
   intro final supported
@@ -103,7 +110,14 @@ theorem recovery_pending_stop_completed
     rcases cases with ⟨pendingNext, equal, nextClear⟩ | completed
     · have ends := (N).mem_support_runBehavioralUntil certificate players stopped start final
         supported
-      rcases ends with (halted | failed) | ended
+      have endCases : LateStopped setup leaks bounds horizon scheduler rank final ∨
+          ¬ Clear final.state ∨ (E).terminal final.state := by
+        cases stopAtPublicFailure
+        · exact ends.elim Or.inl (fun ended => Or.inr (Or.inr ended))
+        · exact ends.elim
+            (fun halted => halted.elim Or.inl (fun failed => Or.inr (Or.inl failed)))
+            (fun ended => Or.inr (Or.inr ended))
+      rcases endCases with halted | failed | ended
       · obtain ⟨other, otherState, prefixed⟩ := halted
         rw [state, Option.some.injEq] at otherState
         subst otherState

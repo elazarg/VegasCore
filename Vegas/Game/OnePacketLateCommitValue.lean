@@ -189,7 +189,10 @@ theorem lateCommit_historyNear [Finite ((bounds.onePacketMenu (runtime setup) le
         rw [← ((runtime setup).reactive_respond_application leaks execution who response).1]
         exact done))).elim
     obtain ⟨final, finalState, stepped⟩ := openableCommitment_stop bounds horizon scheduler
-      completes certificate installed codeEq successful ordered next invariant stop reached
+      certificate installed codeEq successful ordered
+      (fun final trace ended _same => by
+        rw [completes final trace ended]
+        exact Finset.mem_univ _) next invariant stop reached
     refine ⟨final, finalState, ?_⟩
     rcases stepped with inStep | ⟨failing, failed, inStep⟩
     · have pointEq := completionPoint_of_mem_step (fresh := siteFresh who site.1) residual
