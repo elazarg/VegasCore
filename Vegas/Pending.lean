@@ -377,3 +377,9 @@ import Vegas.Pending.PhaseCompletion
 import Vegas.Pending.PhaseApplication
 import Vegas.Pending.PhaseFrontier
 import Vegas.Pending.PhaseReadiness
+import Vegas.Pending.EventBindingReadback
+import Vegas.Pending.PhaseBindingInvariant
+import Vegas.Pending.PhaseStoredCheckpoint
+import Vegas.Pending.SuffixExclusionRecord
+import Vegas.Pending.PhaseExclusionRecord
+import Vegas.Pending.PhaseReceiptOrder

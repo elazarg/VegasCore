@@ -69,3 +69,6 @@ import Vegas.Source.CommitRecoveryState
 import Vegas.Source.CommitRecoveryProtocol
 import Vegas.Source.CommitRecoveryInformation
 import Vegas.Source.CommitRecoveryClear
+import Vegas.Source.CommitRecoveryFiniteness
+import Vegas.Source.CommitRecoveryIntended
+import Vegas.Source.CommitRecoveryProjection

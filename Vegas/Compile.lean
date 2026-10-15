@@ -28,5 +28,6 @@ import Vegas.Compile.EventGraphObservationEncoding
 import Vegas.Compile.EventGraphPolicyBacktranslation
 import Vegas.Compile.EventGraphPolicyAlignment
 import Vegas.Compile.EventGraphDisclosurePolicy
+import Vegas.Compile.CommitPhaseLayout
 
 /-! Source-program lowering to the typed immutable graph. -/

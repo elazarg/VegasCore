@@ -1,6 +1,6 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**SE: non-concurrent proved · concurrent: source model ✓, dispatcher ✓; compiler/law/incentives open.**
+**SE: non-concurrent proved · concurrent: source/dispatcher/phase plan ✓; readback/law/incentives open.**
 
 <details>
 <summary>Recovery milestones and current proof substeps</summary>
@@ -2972,6 +2972,12 @@ needs its own review. What is known:
 | Clear recovery instructions have the original source-step law | `Vegas.SourceProgram.CommitRecoveryState.step_empty_point` |
 | All-phase rollback preserves the native invariant and semantic frontier | `Vegas.EventGraphRuntime.phaseApplication_invariant`, `Vegas.EventGraphRuntime.phaseApplication_frontier` |
 | Under maximal phase boundaries and graph ordering, every actual exposed ready event is nonexcluded | `Vegas.EventGraphRuntime.phaseApplication_quiescent` |
+| The actual compiler supplies maximal phase boundaries for every program | `Vegas.compiledRuntimePhasePlan_maximal` |
+| Typed source commitment blocks have exactly their compiled owner rosters | `Vegas.compiledCommitPhase_owners` |
+| Current phase exclusion is inherited exclusion or an actual completed missing receipt | `Vegas.phase_excluded_iff_missing` |
+| All legal recovery source histories are finite | `Vegas.SourceProgram.Setup.commitRecovery_finite_history` |
+| Intended source steps without omissions retain intendedness, no exclusions and the same generation | `Vegas.SourceProgram.CommitRecoveryState.step_intended_support` |
+| Clear auxiliary-source histories project to source histories with the same length and source observation | `Vegas.SourceProgram.Setup.commitRecoveryClearTrace_length`, `Vegas.SourceProgram.Setup.commitRecoveryClearTrace_observe` |
 | Behavioral realization of a fixed private scheduler seed retains the joint seed/execution law | `Interaction.ReactiveApplication.schedulerMixture_joint` |
 | Automatic failure completion terminates with no excluded-owner event ready | `Vegas.EventGraphRuntime.RecoveryState.drain_quiescent` |
 | Actual recovery histories preserve permanent exclusion and native state validity | `Vegas.EventGraphRuntime.recoveryApplication_history_invariant`, `Vegas.EventGraphRuntime.recoveryApplication_exclusion_monotone` |
@@ -3218,9 +3224,22 @@ separate physical recall carrier. The actual all-phase dispatcher preserves
 the saved semantic frontier, physical candidates, clock and retired attempt
 records. It restores only the failed phase, uses a fresh retry namespace,
 and automatically finishes excluded owners before exposing a ready event.
-Its frontier and readiness theorems take a contiguous maximal phase plan
-and the graph ordering hypotheses; deriving that plan and the complete
-source-state relation from the compiler remains open. These checked models
+The compiler derives a contiguous maximal phase plan for every program,
+including singleton sample barriers, and identifies typed commitment
+blocks with exact graph rank intervals and owner rosters. Actual dispatcher
+histories retain binding provenance and saved values. Their current
+exclusion set is exactly inherited checkpoint exclusion plus owners of
+completed phase events with no accepted receipt, regardless of hidden
+candidate values. Typed attempt decoding from accepted tables is checked;
+its exclusion set and complete source state still need to be identified
+with the actual runtime. The recovery source model has finite menus and
+finitely many legal histories, with a fully mixed reference. Intended
+source steps without physical omissions have the exact original joint
+source-point/no-exclusion law and never increase the retry generation.
+Every actual clear auxiliary-source history projects to an original source
+history with the same actions, length and current source observation. The
+inverse history/information correspondence remains open.
+These checked models and invariants
 do not establish the concurrent joint law, audit extension or SE. Scheduler-seed
 realization and the scoped local seed controller do not yet establish the full
 runtime conditioning needed for (S1–S3). For clean ready activations in ordered

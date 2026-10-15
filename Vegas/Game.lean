@@ -706,3 +706,8 @@ import Vegas.Game.RecoveryKeyedComparisons
 import Vegas.Game.RecoveryLocalComparisons
 
 import Vegas.Game.RecoverySequentialCompilation
+import Vegas.Game.CompiledCommitPhase
+import Vegas.Game.CompiledRuntimePhases
+import Vegas.Game.CompiledCommitAttempt
+import Vegas.Game.CompiledCommitOmissions
+import Vegas.Game.CommitRecoveryReference

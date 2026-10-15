@@ -7,6 +7,12 @@ import Vegas.Game.RecoveryUnintendedValue
 import Vegas.Game.RecoveryLocalComparisons
 import Vegas.Game.RecoverySequentialCompilation
 import Vegas.Source.CommitRecoveryClear
+import Vegas.Game.CompiledCommitOmissions
+import Vegas.Game.CompiledRuntimePhases
+import Vegas.Pending.PhaseStoredCheckpoint
+import Vegas.Game.CommitRecoveryReference
+import Vegas.Source.CommitRecoveryIntended
+import Vegas.Source.CommitRecoveryProjection
 import Vegas.Pending.PhaseReadiness
 import Vegas.Game.RecoveryLocalValueComparison
 import Vegas.Game.RecoveryPhaseValueBlind
@@ -5807,3 +5813,53 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.EventGraphRuntime.phaseApplication_clock_monotone
+
+/-- info: 'Vegas.compiledRuntimePhasePlan_maximal'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.compiledRuntimePhasePlan_maximal
+
+/-- info: 'Vegas.compiledCommitPhase_owners'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.compiledCommitPhase_owners
+
+/-- info: 'Vegas.EventGraphRuntime.phaseBindingRecord_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.phaseBindingRecord_history
+
+/-- info: 'Vegas.EventGraphRuntime.phaseStoredCheckpoint_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.phaseStoredCheckpoint_history
+
+/-- info: 'Vegas.phase_excluded_iff_missing'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phase_excluded_iff_missing
+
+/-- info: 'Vegas.SourceProgram.Setup.commitRecovery_finite_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.commitRecovery_finite_history
+
+/-- info: 'Vegas.SourceProgram.Setup.commitRecoveryReference_fullyMixed'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.commitRecoveryReference_fullyMixed
+
+/-- info: 'Vegas.SourceProgram.CommitRecoveryState.step_intended_support'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.CommitRecoveryState.step_intended_support
+
+/-- info: 'Vegas.SourceProgram.Setup.commitRecoveryClearTrace_length'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.commitRecoveryClearTrace_length
+
+/-- info: 'Vegas.SourceProgram.Setup.commitRecoveryClearTrace_observe'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.commitRecoveryClearTrace_observe
