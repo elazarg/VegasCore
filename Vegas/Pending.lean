@@ -371,3 +371,9 @@ import Vegas.Pending.ReactiveBindingServicePolicy
 import Vegas.Pending.ReactiveSeedBindingReadout
 import Vegas.Pending.ReactiveSeedBindingOutcome
 import Vegas.Pending.ReactiveSeedBindingSiteOutcome
+import Vegas.Pending.AttemptNamespace
+import Vegas.Pending.RuntimePhase
+import Vegas.Pending.PhaseCompletion
+import Vegas.Pending.PhaseApplication
+import Vegas.Pending.PhaseFrontier
+import Vegas.Pending.PhaseReadiness

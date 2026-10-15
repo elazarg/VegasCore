@@ -6,6 +6,8 @@ import Vegas.Game.RecoveryLatePureChoices
 import Vegas.Game.RecoveryUnintendedValue
 import Vegas.Game.RecoveryLocalComparisons
 import Vegas.Game.RecoverySequentialCompilation
+import Vegas.Source.CommitRecoveryClear
+import Vegas.Pending.PhaseReadiness
 import Vegas.Game.RecoveryLocalValueComparison
 import Vegas.Game.RecoveryPhaseValueBlind
 import Vegas.Game.RecoveryKeyedFailure
@@ -5745,3 +5747,63 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.recovery_intended_raw_sequentialEquilibrium_preserved
+
+/-- info: 'Vegas.SourceProgram.CommitRecoveryState.retry_restore'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.CommitRecoveryState.retry_restore
+
+/-- info: 'Vegas.SourceProgram.CommitRecoveryState.step_potential_lt'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.CommitRecoveryState.step_potential_lt
+
+/-- info: 'Vegas.SourceProgram.Setup.commitRecoveryProtocol_bounded'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.commitRecoveryProtocol_bounded
+
+/-- info: 'Vegas.SourceProgram.Setup.commitRecovery_generation_le_players'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.commitRecovery_generation_le_players
+
+/-- info: 'Vegas.SourceProgram.Setup.commitRecoveryModel_perfectRecall'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.commitRecoveryModel_perfectRecall
+
+/-- info: 'Vegas.SourceProgram.Setup.commitRecoveryModel_decisionAntichain'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.commitRecoveryModel_decisionAntichain
+
+/-- info: 'Vegas.SourceProgram.CommitRecoveryState.step_empty_point'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.CommitRecoveryState.step_empty_point
+
+/-- info: 'Vegas.EventGraphRuntime.phaseApplication_invariant'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.phaseApplication_invariant
+
+/-- info: 'Vegas.EventGraphRuntime.phaseApplication_frontier'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.phaseApplication_frontier
+
+/-- info: 'Vegas.EventGraphRuntime.phaseApplication_quiescent'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.phaseApplication_quiescent
+
+/-- info: 'Vegas.EventGraphRuntime.phaseApplication_initial_quiescent'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.phaseApplication_initial_quiescent
+
+/-- info: 'Vegas.EventGraphRuntime.phaseApplication_clock_monotone'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.phaseApplication_clock_monotone

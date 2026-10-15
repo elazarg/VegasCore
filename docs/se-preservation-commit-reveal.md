@@ -1,6 +1,6 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**Recovery: 10/10 · incentives: 6/6 · joint law: 3/3 checked · concurrency open.**
+**SE: non-concurrent proved · concurrent: source model ✓, dispatcher ✓; compiler/law/incentives open.**
 
 <details>
 <summary>Recovery milestones and current proof substeps</summary>
@@ -2967,6 +2967,11 @@ needs its own review. What is known:
 | SE preservation by the default bounded raw runtime with exclusion payoff, with zero count charges and the intended joint readout/payoff law | `Vegas.onePacket_intended_raw_sequentialEquilibrium_preserved` |
 | Typed source commit-phase rollback preserves all attempted private histories | `Vegas.SourceProgram.CommitPrefix.Close.retry_checkpoint` |
 | Any chain of these actual phase closes resets at most once per player | `Vegas.SourceProgram.CommitCloseChain.reset_bound` |
+| Actual source recovery has a finite horizon and at most one retry per player | `Vegas.SourceProgram.Setup.commitRecoveryProtocol_bounded`, `Vegas.SourceProgram.Setup.commitRecovery_generation_le_players` |
+| The recovery source information model retains perfect recall | `Vegas.SourceProgram.Setup.commitRecoveryModel_perfectRecall` |
+| Clear recovery instructions have the original source-step law | `Vegas.SourceProgram.CommitRecoveryState.step_empty_point` |
+| All-phase rollback preserves the native invariant and semantic frontier | `Vegas.EventGraphRuntime.phaseApplication_invariant`, `Vegas.EventGraphRuntime.phaseApplication_frontier` |
+| Under maximal phase boundaries and graph ordering, every actual exposed ready event is nonexcluded | `Vegas.EventGraphRuntime.phaseApplication_quiescent` |
 | Behavioral realization of a fixed private scheduler seed retains the joint seed/execution law | `Interaction.ReactiveApplication.schedulerMixture_joint` |
 | Automatic failure completion terminates with no excluded-owner event ready | `Vegas.EventGraphRuntime.RecoveryState.drain_quiescent` |
 | Actual recovery histories preserve permanent exclusion and native state validity | `Vegas.EventGraphRuntime.recoveryApplication_history_invariant`, `Vegas.EventGraphRuntime.recoveryApplication_exclusion_monotone` |
@@ -3203,8 +3208,20 @@ A missed
 binding excludes its owner immediately; an accepted unopenable binding instead
 excludes it when its reveal fails. The recovery handlers retain that distinction;
 the concurrent runtime must also retain it when resetting a phase.
-The checked phase-attempt and rollback primitives do not yet define the full
-concurrent source information model or recovery runtime. Scheduler-seed
+The checked source recovery protocol includes one private setup draw, maximal
+commit-block retries, exhaustion, permanent exclusion and complete observed
+transcripts with own-play recall. Its global retry generation is bounded by
+the number of players, and its horizon is at most `(players + 1)` times
+`(source instructions + 1)`. Its typed action history records effective
+source choices; the full native preparation and packet history remains a
+separate physical recall carrier. The actual all-phase dispatcher preserves
+the saved semantic frontier, physical candidates, clock and retired attempt
+records. It restores only the failed phase, uses a fresh retry namespace,
+and automatically finishes excluded owners before exposing a ready event.
+Its frontier and readiness theorems take a contiguous maximal phase plan
+and the graph ordering hypotheses; deriving that plan and the complete
+source-state relation from the compiler remains open. These checked models
+do not establish the concurrent joint law, audit extension or SE. Scheduler-seed
 realization and the scoped local seed controller do not yet establish the full
 runtime conditioning needed for (S1–S3). For clean ready activations in ordered
 graphs, actual histories derive the resolution-safety domain and recover

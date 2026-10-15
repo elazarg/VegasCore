@@ -90,12 +90,10 @@ def automaticCommit {Γ : SourceCtx Player L} (name : VarId) (owner : Player)
   ⟨Env.cons .failure config.state, Registry.weaken config.registry,
     Revelations.weaken config.revelations, config.history⟩
 
-/-- Only an actual missing binding excludes an active owner. Guard violations
-remain successful commitments until a later reveal decides their obligations. -/
-def excludeCommit (excluded : Finset Player) (owner : Player) {payload : L.Ty} :
-    PublicationResult (L.Val payload) → Finset Player
-  | .failure => insert owner excluded
-  | .success _ => excluded
+/-- Only an actual missing binding excludes an active owner. A received but
+unusable binding may have a failed typed value without being a public miss. -/
+def excludeCommit (excluded : Finset Player) (owner : Player) (missed : Bool) : Finset Player :=
+  if missed then insert owner excluded else excluded
 
 namespace CommitPrefix
 
@@ -115,7 +113,9 @@ theorem automatic_history (block : CommitPrefix Γ O Δ P) (config : Config Play
   | commit _ _ _ _ rest ih => exact ih _
 
 /-- A completed phase attempt executes precisely its source commitment slots.
-New exclusions affect later slots internally; no phase observation is defined here. -/
+The physical miss flag is separate from its typed result: accepted unusable
+bindings retain their failed value without excluding the owner at commitment.
+New exclusions affect later slots internally. -/
 inductive Attempt : {Γ Δ : SourceCtx Player L} → {O P : Finset VarId} →
     CommitPrefix Γ O Δ P → Config Player L Γ → Finset Player →
       Config Player L Δ → Finset Player → Type where
@@ -129,8 +129,9 @@ inductive Attempt : {Γ Δ : SourceCtx Player L} → {O P : Finset VarId} →
       {config : Config Player L Γ} {excluded : Finset Player}
       {finished : Config Player L Δ} {afterExcluded : Finset Player}
       (active : owner ∉ excluded) (choice : PublicationResult (L.Val payload))
+      (missed : Bool) (missingFailure : missed = true → choice = .failure)
       (later : Attempt rest (commitSuccessor name guard config choice)
-        (excludeCommit excluded owner choice) finished afterExcluded) :
+        (excludeCommit excluded owner missed) finished afterExcluded) :
       Attempt (.commit name owner fresh guard rest) config excluded finished afterExcluded
   | excluded {Γ Δ : SourceCtx Player L} {O P : Finset VarId}
       {name : VarId} {owner : Player} {payload : L.Ty} {fresh : name ∉ Γ.map Prod.fst}
@@ -154,10 +155,8 @@ def failedOwners : {Γ Δ : SourceCtx Player L} → {O P : Finset VarId} →
     {afterExcluded : Finset Player} → Attempt block entry excluded finished afterExcluded →
       Finset Player
   | _, _, _, _, _, _, _, _, _, .nil _ _ => ∅
-  | _, _, _, _, _, _, _, _, _, .active (owner := owner) _ choice later =>
-      match choice with
-      | .failure => insert owner later.failedOwners
-      | .success _ => later.failedOwners
+  | _, _, _, _, _, _, _, _, _, .active (owner := owner) _ _ missed _ later =>
+      if missed then insert owner later.failedOwners else later.failedOwners
   | _, _, _, _, _, _, _, _, _, .excluded _ later => later.failedOwners
 
 omit [IExpr.ResultTypes L] in
@@ -166,8 +165,8 @@ theorem excluded_eq (attempt : Attempt block entry excluded finished afterExclud
   induction attempt with
   | nil => simp [failedOwners]
   | @active _ _ _ _ name owner payload fresh guard rest config excluded finished afterExcluded
-      active choice later ih =>
-      cases choice <;> simpa [failedOwners, excludeCommit, Finset.union_insert,
+      active choice missed missingFailure later ih =>
+      cases missed <;> simpa [failedOwners, excludeCommit, Finset.union_insert,
         Finset.insert_union] using ih
   | excluded _ _ ih => exact ih
 
@@ -177,12 +176,13 @@ theorem failed_disjoint (attempt : Attempt block entry excluded finished afterEx
   induction attempt with
   | nil => simp [failedOwners]
   | @active _ _ _ _ name owner payload fresh guard rest config excluded finished afterExcluded
-      active choice later ih =>
-      cases choice with
-      | failure =>
-          simp only [excludeCommit, Finset.disjoint_insert_right] at ih
+      active choice missed missingFailure later ih =>
+      cases missed with
+      | true =>
+          simp only [excludeCommit, ↓reduceIte,
+            Finset.disjoint_insert_right] at ih
           exact Finset.disjoint_insert_left.mpr ⟨active, ih.2⟩
-      | success _ => exact ih
+      | false => exact ih
   | excluded _ _ ih => exact ih
 
 omit [IExpr.ResultTypes L] in
@@ -190,10 +190,10 @@ theorem failed_subset_owners (attempt : Attempt block entry excluded finished af
     attempt.failedOwners ⊆ block.owners := by
   induction attempt with
   | nil => exact Finset.empty_subset _
-  | active _ choice later ih =>
-      cases choice with
-      | failure => exact Finset.insert_subset_insert _ ih
-      | success _ => exact fun who member => Finset.mem_insert_of_mem (ih member)
+  | active _ _ missed _ later ih =>
+      cases missed with
+      | true => exact Finset.insert_subset_insert _ ih
+      | false => exact fun who member => Finset.mem_insert_of_mem (ih member)
   | excluded _ later ih => exact fun who member => Finset.mem_insert_of_mem (ih member)
 
 omit [IExpr.ResultTypes L] in
@@ -228,7 +228,7 @@ theorem history_prefix (attempt : Attempt block entry excluded finished afterExc
     (who : Player) : (entry.history who).IsPrefix (finished.history who) := by
   induction attempt with
   | nil => exact List.prefix_refl _
-  | active _ choice later ih => exact (commit_history_prefix _ _ choice who).trans ih
+  | active _ choice _ _ later ih => exact (commit_history_prefix _ _ choice who).trans ih
   | excluded _ later ih => exact ih
 
 end Attempt

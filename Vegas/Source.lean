@@ -63,3 +63,9 @@ import Vegas.Source.ExclusionMoveGame
 import Vegas.Source.ExclusionFailure
 import Vegas.Source.CommitPhase
 import Vegas.Source.CommitPhaseRecovery
+import Vegas.Source.CommitRecoveryPoint
+import Vegas.Source.CommitRecoveryStep
+import Vegas.Source.CommitRecoveryState
+import Vegas.Source.CommitRecoveryProtocol
+import Vegas.Source.CommitRecoveryInformation
+import Vegas.Source.CommitRecoveryClear
