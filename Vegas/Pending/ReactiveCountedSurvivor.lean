@@ -5,6 +5,7 @@ import Vegas.Pending.ReactiveCountedOpeningAcceptance
 import Vegas.Pending.ReactiveTokenReadiness
 import Vegas.Pending.ReactiveRiskPersistence
 import Interaction.ReactiveOwnerSelection
+import Interaction.MessageNetworkSelection
 
 /-! # Pending authentic packets at unfinished timely events -/
 
@@ -133,17 +134,6 @@ private theorem countedSurvivors_respond
           · change message ∈ execution.network.pending ++ [_]
             exact List.mem_append_right _ latest
 
-private theorem network_pending_retained_or_selected
-    (network : MessageNetwork Player (WitnessedPacket graph)) (id : MessageId Player)
-    (message : Message Player (WitnessedPacket graph)) (member : message ∈ network.pending) :
-    message ∈ (network.includePending id).2.pending ∨ network.lookup id = some message := by
-  let pool : MessagePool Player (WitnessedPacket graph) :=
-    ⟨network.pending, network.ledger, fun _ => [], fun _ => [], network.nextSerial⟩
-  have retained := pool.pending_retained_or_selected id message member
-  cases found : network.pending.find? (fun packet => packet.id = id) <;>
-    simpa only [MessagePool.includePending, MessagePool.lookup, MessageNetwork.includePending,
-      MessageNetwork.lookup, MessagePool.Result.invalid, pool, found] using retained
-
 private theorem countedSurvivors_environment
     (inputs : PMF graph.Inputs) (horizon : Nat)
     (scheduler : (runtime.reactiveApplication leaks).Scheduler)
@@ -198,7 +188,7 @@ private theorem countedSurvivors_environment
   | «include» id =>
       simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map] at moved
       cases (PMF.mem_support_pure_iff _ _).mp moved
-      rcases network_pending_retained_or_selected control.execution.network id message pending with
+      rcases control.execution.network.pending_retained_or_selected id message pending with
         retained | selected
       · change message ∈ (control.execution.includePending
           (runtime.reactiveApplication leaks) id).network.pending

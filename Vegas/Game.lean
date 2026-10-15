@@ -742,3 +742,7 @@ import Vegas.Game.CompiledSampleCompletion
 import Vegas.Game.PhaseExclusionPayoff
 import Vegas.Game.PhaseExcludedRationality
 import Vegas.Game.PhaseRawReadoutLaw
+import Vegas.Game.CompiledCommitMaximality
+import Vegas.Game.CompiledCommitTail
+import Vegas.Game.RecoverySourceCheckpoint
+import Vegas.Game.RecoverySourceReadout

@@ -2,6 +2,7 @@
 
 import Vegas.Source.CommitPhase
 import Vegas.Compile.EventGraphLayout
+import Vegas.EventGraph.Information
 
 /-! # Layout of typed source commitment blocks -/
 
@@ -65,5 +66,35 @@ theorem owner_iff_binding (block : CommitPrefix Γ O Δ P)
     have same := actual.symm.trans layout
     cases same
     exact member
+
+/-- A maximal commitment telescope is followed only by public source output. -/
+theorem public_at_length (block : CommitPrefix Γ O Δ P)
+    (suffix : SourceProgram Player L Δ P) (boundary : IsCommitBoundary suffix) :
+    ∀ index : Fin (eventCount (block.prepend suffix)), index.val = block.length →
+      (outputLayout (block.prepend suffix) index).IsPublic := by
+  induction block with
+  | nil =>
+      intro index atEnd
+      cases suffix with
+      | ret payoffs => exact Fin.elim0 index
+      | sample name fresh law next =>
+          have zero : index = ⟨0, by simp only [prepend, eventCount]; omega⟩ := Fin.ext atEnd
+          rw [zero]
+          trivial
+      | commit name owner fresh guard next => exact boundary.elim
+      | reveal published owner name fresh source unresolved next =>
+          have zero : index = ⟨0, by simp only [prepend, eventCount]; omega⟩ := Fin.ext atEnd
+          rw [zero]
+          trivial
+  | commit name owner fresh guard rest ih =>
+      intro index
+      refine Fin.cases ?_ ?_ index
+      · intro impossible
+        change 0 = rest.length + 1 at impossible
+        omega
+      · intro later atEnd
+        apply ih suffix boundary later
+        change later.val + 1 = rest.length + 1 at atEnd
+        omega
 
 end Vegas.SourceProgram.CommitPrefix

@@ -31,5 +31,6 @@ import Vegas.Compile.EventGraphDisclosurePolicy
 import Vegas.Compile.CommitPhaseLayout
 import Vegas.Compile.CommitBlockReferences
 import Vegas.Compile.EventGraphRecoveryReveal
+import Vegas.Compile.CompiledReadoutSuffix
 
 /-! Source-program lowering to the typed immutable graph. -/

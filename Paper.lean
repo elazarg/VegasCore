@@ -517,6 +517,25 @@ import Vegas.Game.PhaseRawReadoutLaw
 import Vegas.Pending.PhaseSeedClockLog
 import Vegas.Pending.PhaseSeedInformationInput
 import Interaction.ReactiveAddressedQueryTranscript
+import Vegas.Compile.CommitPhaseLayout
+import Vegas.Game.CompiledCommitMaximality
+import Vegas.Pending.PhasePlanSuffix
+import Vegas.Compile.CompiledReadoutSuffix
+import Vegas.Pending.PhaseCandidateSupply
+import Vegas.Pending.PhasePreparedBinding
+import Vegas.Pending.PhaseReadyRequests
+import Vegas.Pending.PhaseSeedClosedQueries
+import Vegas.Pending.PhaseRequestOrigin
+import Vegas.Pending.PhaseSeedTickExhaustion
+import Vegas.Source.CommitPhaseFailures
+import Vegas.Game.CompiledCommitTail
+import Vegas.Game.RecoverySourceCheckpoint
+import Interaction.MessageNetworkSelection
+import Vegas.Pending.ReactiveCountedSurvivor
+import Vegas.Pending.PhaseCurrentTokens
+import Vegas.Pending.PhaseCountedSurvivor
+import Vegas.Pending.PhaseSeedHistoryInput
+import Vegas.Game.RecoverySourceReadout
 
 /-! # Checked sequential-equilibrium preservation, Nash correspondence and termination -/
 
@@ -6302,3 +6321,68 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Interaction.ReactiveApplication.AddressedScheduler.command_rectangle_transcript
+
+/-- info: 'Vegas.compiledCommitPhase_eq_of_maximal'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.compiledCommitPhase_eq_of_maximal
+
+/-- info: 'Vegas.EventGraphRuntime.phasePlanGeometry_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.phasePlanGeometry_history
+
+/-- info: 'Vegas.CompiledReadoutSuffix.decode_ret'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.CompiledReadoutSuffix.decode_ret
+
+/-- info: 'Vegas.SourceProgram.CommitPrefix.Attempt.compiledTail'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.CommitPrefix.Attempt.compiledTail
+
+/-- info: 'Vegas.RecoverySourceCheckpoint.initial'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.RecoverySourceCheckpoint.initial
+
+/-- info: 'Vegas.RecoverySourceCheckpoint.terminal_readback'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.RecoverySourceCheckpoint.terminal_readback
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseCandidates.reactiveFreshSlot_lt_horizon'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.PhaseCandidates.reactiveFreshSlot_lt_horizon
+
+/-- info: 'Vegas.EventGraphRuntime.phaseBindingResponse_result_law'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.phaseBindingResponse_result_law
+
+/-- info: 'Vegas.EventGraphRuntime.exists_phaseBindingResponse_of_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.exists_phaseBindingResponse_of_history
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseSeedCalendar.history_tickExhaustion'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.PhaseSeedCalendar.history_tickExhaustion
+
+/-- info: 'Vegas.EventGraphRuntime.currentTokenPrerequisites_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.currentTokenPrerequisites_history
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseCount.survivor_pending'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.PhaseCount.survivor_pending
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseSeedScheduler.active_informationInput_of_trace'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.PhaseSeedScheduler.active_informationInput_of_trace

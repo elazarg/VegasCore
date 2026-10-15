@@ -1,6 +1,6 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**SE: non-concurrent proved · concurrent: source SE/phase paths/adaptive calendar ✓; whole-trace/Bayes/native SE open.**
+**SE: non-concurrent ✓ · concurrent: source SE, phase geometry, checkpoint base, tick exhaustion ✓; trace/Bayes/native SE open.**
 
 <details>
 <summary>Recovery milestones and current proof substeps</summary>
@@ -99,6 +99,20 @@ typed store/guard/revelation readback. Whole-program noncommit path lifting uses
 the existing residual kernel and control laws; compiled residuals preserve the
 available typed menus as well. These are phase boundaries, not yet an initialized
 whole-history simulation.
+Concrete saved-entry checkpoints now retain a genuine initialized source trace,
+typed store and failure bookkeeping, exact compiled suffix and canonical terminal
+references. Their initial constructor uses the single supported setup draw;
+unchanged saved entries retain the same witness. Every typed commitment attempt
+preserves the compiled tail, including excluded automatic slots. Actual remaining
+descriptors form a suffix of the original plan. Its inherited maximality identifies
+the installed commitment phase with the precise source telescope. If a checkpoint
+is available when that plan is exhausted, its source readout equals the actual
+current native terminal decoder. Constructing such checkpoints through every
+phase closure and retry remains open.
+Every actual active raw history also has a fresh prepared slot below its finite
+horizon. With sufficient capacity and typed value coverage, a bounded raw response
+can represent every source binding result and any distribution of those results
+exactly. Information-local source policy realization remains separate.
 An immutable addressed-seed scheduler has checked joint realization, erased
 operational queries, full clocked owner recall and fresh laws after actual
 namespace changes. Its tick-draining calendar now permits priority to read the
@@ -119,7 +133,12 @@ results before phase retirement. This supports source-order reveal reconstructio
 Activation timestamps retain actual origins through rollback; new retry timers
 start at the physical retry clock. Current owner information reconstructs the
 erased pre-activation query, and addressed transcript extraction checks every
-candidate local seed. Equating that transcript to the constraints recovered
+candidate local seed. Every elapsed tick since a surviving coordinate became
+ready has an actual nonactivation query in the calendar log. Authentic current
+tokens retain their emission prerequisites through rollback; in count-clean
+histories, an authentic current-coordinate packet stays pending while its event
+is ready and within its deadline. Actual active owner information reconstructs
+its pre-activation erased query. Equating that transcript to the constraints recovered
 from the full owner information fiber remains open. Permanently excluded
 players have constant continuation payoff throughout their complete native
 information fibers, so every continuation policy is optimal there. The raw
@@ -3308,9 +3327,11 @@ blocks with exact graph rank intervals and owner rosters. Actual dispatcher
 histories retain binding provenance and saved values. Their current
 exclusion set is exactly inherited checkpoint exclusion plus owners of
 completed phase events with no accepted receipt, regardless of hidden
-candidate values. Typed attempt decoding from accepted tables is checked;
-its exclusion set and complete source state still need to be identified
-with the actual runtime. The recovery source model has finite menus and
+candidate values. Typed attempt decoding from accepted tables has the exact
+physical exclusion set and typed source store at completed commitment blocks.
+Saved-entry compiler and terminal-reference certificates start from the actual
+setup draw and survive typed attempts; whole-history checkpoint composition
+remains open. The recovery source model has finite menus and
 finitely many legal histories, with a fully mixed reference. Intended
 source steps without physical omissions have the exact original joint
 source-point/no-exclusion law and never increase the retry generation.
@@ -3318,7 +3339,8 @@ Every actual clear auxiliary-source history projects to an original source
 history with the same actions, length and current source observation. The
 inverse history/information correspondence remains open.
 These checked models and invariants
-do not establish the concurrent joint law, audit extension or SE. Scheduler-seed
+do not establish a concurrent preserving SE or its intended joint law. The
+checked raw audit extension requires a counted-menu SE. Scheduler-seed
 realization and the scoped local seed controller do not yet establish the full
 runtime conditioning needed for (S1–S3). For clean ready activations in ordered
 graphs, actual histories derive the resolution-safety domain and recover
