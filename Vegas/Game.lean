@@ -761,3 +761,5 @@ import Vegas.Game.CompiledCommitControl
 import Vegas.Game.RecoveryCheckpointNormalization
 import Vegas.Game.RecoveryCheckpointHistory
 import Vegas.Game.PhasePublicCompletion
+import Vegas.Game.PhaseEventSourceView
+import Vegas.Game.PhaseRecoveryBindingComponent

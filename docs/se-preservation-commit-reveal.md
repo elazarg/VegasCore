@@ -1,6 +1,6 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**SE: non-concurrent ✓ · concurrent trace 8/8; Bayes and native SE open.**
+**SE: non-concurrent ✓ · concurrent trace 8/8 · unsent seed filter ✓; posterior product/native SE open.**
 
 <details>
 <summary>Recovery milestones and current proof substeps</summary>
@@ -10,6 +10,8 @@ Milestones have unequal cost; the fixed SE checklist is unchanged.
 Concurrent trace substeps: initialization, reveal, sample, clean commitment,
 retry, exhaustion, normalization and the actual-history invariant are checked.
 The 8/8 count tracks these proof steps, not a percentage of full SE.
+Unsent-site seed constraints are checked across the complete owner information
+fiber; their conditional probability product and native SE remain open.
 
 | Status | Recovery milestone |
 | --- | --- |
@@ -122,10 +124,10 @@ available menu, raw step and typed readout. The checked normalization theorem
 handles every phase and arbitrary chains of automatic retirement. Every actual
 initialized legal physical history now has such a saved source checkpoint, with
 no source path or simulation witness assumed.
-At an actual finished raw history, a supplied checkpoint yields a genuine
-terminal auxiliary-source history with the same typed readout and entire payoff
-vector. Actual history invariants derive terminal exclusion equality and store
-agreement. This is a pointwise terminal correspondence; it does not establish
+Every actually initialized finished raw history now yields a genuine terminal
+auxiliary-source history with the same typed readout and entire payoff vector;
+no checkpoint or source-outcome witness is a premise. Actual history invariants
+derive terminal exclusion equality and store agreement. This is a pointwise terminal correspondence; it does not establish
 a source/native probability law or information-fiber map.
 Every actual active raw history also has a fresh prepared slot below its finite
 horizon. With sufficient capacity and typed value coverage, a bounded raw response
@@ -134,8 +136,22 @@ exactly. At a genuine unsent ready binding, every source result also has a
 legal one-packet encoding with a derived fresh slot. A globally legal guarded
 policy evaluates the actual syntactic source commitment policy on its decoded
 semantic view and realizes that exact result distribution. It waits outside
-its guard. The complete auxiliary-source information and posterior transport
-remain separate.
+its guard. A syntax-directed decoder now reconstructs the complete typed source view at
+any ready owned binding. The actual auxiliary source assessment can drive a
+globally legal physical component with the exact first-response joint law of
+its typed result and omission flag. A physical omission is silence; an accepted
+unusable binding emits a packet. Typed decoding alone does not establish a
+played source information site or identify its full recovery transcript.
+A first-response policy records every callback in own recall, including silence,
+and never redraws that coordinate after arbitrary later behavior or retries.
+New attempt namespaces permit fresh choices. The complete auxiliary-source
+information and posterior transport remain separate.
+Every bounded raw history also retains encodable saved and live accepted handles.
+At an unsent ready opening of a surviving successful binding, actual history
+provenance supplies the latest signed handle and authentic certificate. Its
+canonical response is in the bounded one-packet menu and executes the exact
+native guarded result, including rejection. A globally legal opening policy
+realizes the requested local Boolean disclosure law exactly at such a site.
 An immutable addressed-seed scheduler has checked joint realization, erased
 operational queries, full clocked owner recall and fresh laws after actual
 namespace changes. Its tick-draining calendar now permits priority to read the
@@ -165,10 +181,15 @@ a coordinate that survives to any later callback must have replied WAIT:
 inclusion or expiry permanently resolves that coordinate, even across retries.
 Actual active owner information reconstructs
 its pre-activation erased query. Equating that transcript to the constraints recovered
-from the full owner information fiber remains open. At an actual unsent native
-information site, all candidate inclusion-coin words have the same complete
-command-transcript consistency verdict when their first delays agree; recovery
-of that first delay across the whole information fiber remains open. Permanently excluded
+from the full owner information fiber is now checked at unsent sites: the full
+command-filter condition for every candidate original seed is exactly equality
+of its first delay with the minimum observed activation clock. All inclusion-coin
+words remain unconstrained there. The condition agrees across every pair of
+actual histories with the same complete owner input, even for different original
+remainder and foreign seeds. Actual posterior-product composition remains open.
+Every completed current-phase event of a nonexcluded owner has an authentic
+same-attempt submitted message naming it, covering openings and bindings through
+arbitrary automatic completion, expiry, retirement and resets. Permanently excluded
 players have constant continuation payoff throughout their complete native
 information fibers, so every continuation policy is optimal there. For all
 players at a public nonempty-exclusion site, actual exclusion persistence lets

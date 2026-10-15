@@ -18,7 +18,7 @@ variable {Player RestSeed : Type} [Fintype Player] [DecidableEq Player]
 
 local notation "app" => phaseApplication runtime leaks
 
-private theorem request_query (delay bound : graph.EventId → Nat)
+theorem request_query (delay bound : graph.EventId → Nat)
     (priority : RestSeed → List (app).EnvironmentEntry → (app).EnvironmentView → Nat)
     (rest : RestSeed) (execution : (app).Execution) (coordinate : PhaseSeedAddress graph)
     (owner : Player) (actor : graph.actor? coordinate.1.event = some owner)

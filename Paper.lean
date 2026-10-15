@@ -566,6 +566,24 @@ import Vegas.Game.PhasePublicCompletion
 import Interaction.ReactiveAddressedTranscriptAppend
 import Vegas.Pending.PhaseSeedUnsentQueries
 import Vegas.Pending.PhaseSeedUnsentInformation
+import Vegas.Pending.PhaseBoundedHandles
+import Vegas.Pending.PhaseOpeningResponse
+import Vegas.Pending.PhaseOpeningCoverage
+import Vegas.Pending.PhaseOncePolicy
+import Vegas.Pending.PhaseOpeningPolicy
+import Vegas.Pending.PhaseCompletionStamp
+import Vegas.Pending.PhaseCompletionStampHistory
+import Interaction.ReactiveRecordedRounds
+import Vegas.Pending.PhaseSeedActivationQueries
+import Vegas.Pending.PhaseSeedQueryClocks
+import Vegas.Pending.PhaseSeedFirstDelay
+import Vegas.Pending.PhaseSeedRecordedWait
+import Vegas.Pending.PhaseSeedUnsentDelay
+import Vegas.Pending.PhaseSeedUnsentFiber
+import Vegas.Compile.EventSourceView
+import Vegas.Game.PhaseEventSourceView
+import Vegas.Game.PhaseRecoveryBindingComponent
+import Vegas.Pending.RecordedBindingReadback
 
 /-! # Checked sequential-equilibrium preservation, Nash correspondence and termination -/
 
@@ -6537,3 +6555,88 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms
   Vegas.EventGraphRuntime.PhaseSeedCalendar.coordinateConsistent_iff_of_unsent_information
+
+/-- info: 'Vegas.EventGraphRuntime.MessageBounds.phaseAcceptedHandles_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.MessageBounds.phaseAcceptedHandles_history
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseCount.phaseOpeningResponse_permitted'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseCount.phaseOpeningResponse_permitted
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseCount.exists_phaseOpeningResponse_of_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseCount.exists_phaseOpeningResponse_of_history
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseCount.phaseOncePolicy_later'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseCount.phaseOncePolicy_later
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseCount.phaseOpeningPolicy_of_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseCount.phaseOpeningPolicy_of_history
+
+/-- info: 'Vegas.EventGraphRuntime.phaseLiveCompletionStamp_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.phaseLiveCompletionStamp_history
+
+/-- info: 'Vegas.EventGraphRuntime.phase_completed_owned_message'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.phase_completed_owned_message
+
+/-- info: 'Vegas.phaseSourceView?_succeeds'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseSourceView?_succeeds
+
+/-- info: 'Vegas.phaseRecoveryBindingPolicy_of_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseRecoveryBindingPolicy_of_history
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseSeedCalendar.runRounds_activationTranscript'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseSeedCalendar.runRounds_activationTranscript
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseSeedCalendar.unsent_information_delay_filter'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseSeedCalendar.unsent_information_delay_filter
+
+/-- info:
+'Vegas.EventGraphRuntime.PhaseSeedCalendar.coordinateConsistent_iff_of_unsent_information_eq'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseSeedCalendar.coordinateConsistent_iff_of_unsent_information_eq
+
+/-- info: 'Vegas.recoverySourceTerminal_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.recoverySourceTerminal_history
+
+/-- info: 'Vegas.EventGraphRuntime.State.BindingInvariant.recorded_binding_action'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.State.BindingInvariant.recorded_binding_action

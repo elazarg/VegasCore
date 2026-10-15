@@ -54,7 +54,7 @@ theorem choose_eq_reply
   rw [selected]
   simp only [Option.bind_some, actor, Option.map_some, queryAt]
 
-private theorem activation_owner
+theorem activation_owner
     (delay bound : graph.EventId → Nat)
     (seeds : RestSeed × (PhaseSeedAddress graph → Seed runtime delay))
     (coordinate : PhaseSeedAddress graph)

@@ -58,7 +58,7 @@ def word (coordinate : CommitAttemptEvent graph) (owner : Player)
           (ownPacket coordinate owner))
 
 open Classical in
-private theorem word_snoc (coordinate : CommitAttemptEvent graph) (owner : Player)
+theorem word_snoc (coordinate : CommitAttemptEvent graph) (owner : Player)
     (past : List (app).EnvironmentEntry) (entry : (app).EnvironmentEntry)
     (view : (app).EnvironmentView) :
     word runtime leaks coordinate owner (past ++ [entry]) view =

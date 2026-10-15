@@ -461,3 +461,17 @@ import Vegas.Pending.PhaseResolutionPersistence
 import Vegas.Pending.PhaseSeedSurvivalReply
 import Vegas.Pending.PhaseSeedUnsentQueries
 import Vegas.Pending.PhaseSeedUnsentInformation
+import Vegas.Pending.PhaseBoundedHandles
+import Vegas.Pending.PhaseOpeningResponse
+import Vegas.Pending.PhaseOpeningCoverage
+import Vegas.Pending.PhaseOncePolicy
+import Vegas.Pending.PhaseOpeningPolicy
+import Vegas.Pending.PhaseCompletionStamp
+import Vegas.Pending.PhaseCompletionStampHistory
+import Vegas.Pending.PhaseSeedActivationQueries
+import Vegas.Pending.PhaseSeedQueryClocks
+import Vegas.Pending.PhaseSeedFirstDelay
+import Vegas.Pending.PhaseSeedRecordedWait
+import Vegas.Pending.PhaseSeedUnsentDelay
+import Vegas.Pending.PhaseSeedUnsentFiber
+import Vegas.Pending.RecordedBindingReadback
