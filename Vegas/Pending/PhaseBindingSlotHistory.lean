@@ -50,6 +50,39 @@ theorem mem_phaseBindingSlots_of_history
         control.execution recalled fixed who event payload outputEq request unsent result
           serial fresh)⟩
 
+/-- At a genuine unsent request, the slot test has no hidden value predicate:
+it consists exactly of the bounded physically fresh slots. -/
+theorem phaseBindingSlots_eq_fresh_of_history
+    (menu : (phaseApplication runtime leaks).ResponseMenu)
+    (plan : RuntimePhasePlan graph) (inputs : PMF graph.Inputs) (horizon : Nat)
+    (scheduler : (phaseApplication runtime leaks).Scheduler)
+    (control : (phaseApplication runtime leaks).Control)
+    (trace : (menu.protocol (inputs.map (PhaseRuntimeState.initial plan))
+      horizon scheduler).Trace (some control))
+    (who : Player) (event : graph.EventId) (payload : L.Ty)
+    (outputEq : graph.outputLayout event = .binding who payload)
+    (request : control.execution.application.SeedRequest who
+      ⟨control.execution.application.attempt, event⟩)
+    (unsent : ∀ message ∈ (phaseApplication runtime leaks).outputs (control.execution.recall who),
+      event? message.payload ≠ some ⟨control.execution.application.attempt, event⟩)
+    (values : ∀ value : L.Val payload, (⟨payload, value⟩ : Raw L) ∈ bounds.values) :
+    phaseBindingSlots runtime leaks bounds who event payload (control.execution.recall who)
+        (control.execution.observe (phaseApplication runtime leaks) who) =
+      (Finset.range bounds.candidateCount).filter fun serial =>
+        control.execution.application.current.native.candidates.lookup
+          (who, .prepared serial) = .fresh := by
+  classical
+  ext serial
+  constructor
+  · intro member
+    obtain ⟨bounded, fresh, _permitted⟩ := Finset.mem_filter.mp member
+    exact Finset.mem_filter.mpr ⟨bounded, fresh⟩
+  · intro member
+    obtain ⟨bounded, fresh⟩ := Finset.mem_filter.mp member
+    exact mem_phaseBindingSlots_of_history runtime leaks bounds menu plan inputs horizon scheduler
+      control trace who event payload outputEq request unsent values serial
+        (Finset.mem_range.mp bounded) fresh
+
 /-- The actual horizon bound supplies at least one eligible slot, while the
 slot tier retains every other bounded fresh slot with positive uniform mass. -/
 theorem phaseBindingSlots_nonempty_of_history

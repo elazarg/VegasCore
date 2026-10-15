@@ -1,6 +1,6 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**SE: non-concurrent ✓ · safety/laws ✓ · completion ✓ · word policies ✓; posterior/incentives open.**
+**SE: non-concurrent ✓ · safety/laws ✓ · completion ✓ · posterior: entry/updates ✓, recall open · incentives open.**
 
 <details>
 <summary>Checked recovery milestones and remaining proof obligations</summary>
@@ -133,9 +133,27 @@ conditions the latent word on its exact typed result, including accepted
 failure; a positive WAIT leaves that word posterior unchanged. Full
 chronological recall filtering remains to be proved.
 
+Each owner can sample its complete word from its own observable entry view.
+These kernels reconstruct the original tagged entry/full-word joint law;
+correlations between entries remain. Actual supported callback SEND and WAIT
+derive the corresponding updates of the whole-block member posterior. A
+complete scheduler run retains all sampled member words jointly with the
+execution, exactly as the behavioral run followed by final own-recall
+posteriors. In the source, supported entry view and effective owned word
+determine the complete current view, including accepted failures. Identifying
+the actual native record with that effective word remains open.
+
 Remaining obligations include the source/native posterior law under actual
 recall and mixed saved entries, and the clear-site continuation/incentive
-comparison.
+comparison. The exact native local value is now the actual assessment-belief
+average of the chosen response and its entire original physical continuation.
+This carrier retains later sends and resets; its auxiliary source-value
+identification remains open. Comparisons must also cover fresh handles other
+than the canonical one and callbacks without enough remaining inclusion slack.
+The all-clear canonical completion does not establish optimality at those
+inputs. Finite counted histories follow from the explicit finite initial law,
+finite leak support and finite scheduler branching clauses, rather than from
+opportunity or inclusion bounds alone.
 Full concurrent SE preservation remains unproved.
 </details>
 

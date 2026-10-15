@@ -1300,3 +1300,42 @@ Reading the earlier owned view and next result retains the original entry tag.
 Conditioning that same joint on the owned view gives its actual entry posterior
 and the original next source kernel. No product over entries or native/source
 posterior identity is assumed or concluded.
+
+Whole-profile private-word execution:
+[Reactive Profile Mixture](../Interaction/ReactiveProfileMixture.lean),
+[Phase Commit Word Posterior](../Vegas/Game/PhaseCommitWordPosterior.lean),
+[Commit Prefix Entry Kernel](../Vegas/Source/CommitPrefixEntryKernel.lean),
+[Commit Prefix Word Recall](../Vegas/Source/CommitPrefixWordRecall.lean).
+The existing scheduler runner retains the full sampled member profile jointly
+with its execution; the behavioral realization reconstructs that joint from
+final own-recall posteriors. Arbitrary outer entry tags remain joint. Each
+owner can draw a source word from its observable entry view while reconstructing
+the original correlated entry/full-word law. Actual supported binding callbacks
+derive their own posterior update witnesses. Supported source effective own
+histories determine full views and the same source posterior. Native record
+decoding and full source/native posterior transport remain separate.
+
+All-value binding observations:
+[Phase Binding Observation](../Vegas/Pending/PhaseBindingObservation.lean),
+[Phase Binding Completion Symmetry](../Vegas/Pending/PhaseBindingCompletionSymmetry.lean).
+Typed binding results, including failure, have identical complete emitted
+envelopes at a fixed fresh handle. Their joint external response law and
+random-slot external channel integrate out the typed-result distribution.
+The native handler accepts both arbitrary private preparations under its actual
+ready/timely/fresh premises and retains an all-value shadow; clear phase
+normalization preserves saved, current and retired external views. Whole
+physical inclusion-history coupling and arbitrary allocator value comparison
+remain separate obligations.
+
+Actual callback values and finite branching:
+[Phase Callback Continuation](../Vegas/Game/PhaseCallbackContinuation.lean),
+[Phase Local Value Continuation](../Vegas/Game/PhaseLocalValueContinuation.lean),
+[Phase Finite Nature](../Vegas/Pending/PhaseFiniteNature.lean),
+[Phase Source Finite History](../Vegas/Game/PhaseSourceFiniteHistory.lean).
+Every actual callback lottery has its exact original full physical finish law
+and bounded payoff expectation. Its actual assessment local value averages
+that law over the original information-fiber belief. Silence retains later
+callbacks and resets; no source continuation identity is assumed or concluded.
+The finite initial prior, finite leaks and finite scheduler branches derive
+phase finite nature and bounded counted history finiteness. Timing and service
+opportunity alone do not imply those branching properties.

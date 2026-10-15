@@ -92,7 +92,7 @@ theorem failedBinding_preparation (state : State graph) (owner : Player)
     rw [configEq]
     exact ready.1
   exact (rememberCompletion_native_pending _ owner _ event missing _ _).trans
-    (native_binding_preparation state owner event serial opening payload value fresh)
+    (native_binding_preparation state owner event serial opening (some ⟨payload, value⟩) fresh)
 
 end BindingShadow
 end Vegas.EventGraphRuntime

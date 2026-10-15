@@ -54,14 +54,13 @@ theorem native_rememberCandidate_of_fresh (state : State graph) (owner : Player)
 /-- Both physical preparations emit the same handle, while the remembered
 original catalogue exactly reconstructs absent or wrongly typed private material. -/
 theorem native_binding_preparation (state : State graph) (owner : Player)
-    (event : graph.EventId) (serial : Nat) (opening : Option (Raw L))
-    (payload : L.Ty) (value : L.Val payload)
+    (event : graph.EventId) (serial : Nat) (opening replacement : Option (Raw L))
     (fresh : state.candidates.lookup (owner, .prepared serial) = .fresh) :
     let prepare (material : Option (Raw L)) :=
       submitStep (Submission.register ⟨.commitment event (owner, .prepared serial), material⟩
         state owner) owner (.commitment event (owner, .prepared serial))
     let original := prepare opening
-    let repaired := prepare (some ⟨payload, value⟩)
+    let repaired := prepare replacement
     let memory := (empty : BindingShadow graph).rememberCandidate (.prepared serial)
       (original.candidates.lookup (owner, .prepared serial))
     memory.native owner repaired = original := by
@@ -71,7 +70,7 @@ theorem native_binding_preparation (state : State graph) (owner : Player)
   let prepare (material : Option (Raw L)) :=
     submitStep ((call material).register state owner) owner (call material).packet
   let original := prepare opening
-  let repaired := prepare (some ⟨payload, value⟩)
+  let repaired := prepare replacement
   let memory := (empty : BindingShadow graph).rememberCandidate (.prepared serial)
     (original.candidates.lookup (owner, .prepared serial))
   have configEq (material : Option (Raw L)) : (prepare material).config = state.config :=
@@ -89,10 +88,11 @@ theorem native_binding_preparation (state : State graph) (owner : Player)
       owner who different (call material).packet).trans
         ((call material).register_other state owner who different)
     exact congrFun (congrArg PlayerView.candidates observed) slot
-  have target : repaired.candidates.lookup (owner, .prepared serial) =
-      .openable ⟨payload, value⟩ := by
+  have target : repaired.candidates.lookup (owner, .prepared serial) ≠ .fresh := by
     rw [own]
-    simp only [call, Submission.candidateAfter, fresh, and_self, ↓reduceIte]
+    cases replacement <;>
+      simp only [call, Submission.candidateAfter, fresh, and_self, ↓reduceIte] <;>
+      intro impossible <;> cases impossible
   have candidates : (memory.native owner repaired).candidates = original.candidates := by
     change (⟨fun who slot => if who = owner then
         memory.candidate slot (repaired.candidates.table who slot)
@@ -107,9 +107,11 @@ theorem native_binding_preparation (state : State graph) (owner : Player)
         original.candidates.lookup (owner, slot)
       by_cases sameSlot : slot = .prepared serial
       · subst slot
-        rw [target]
-        simp only [candidate, memory, rememberCandidate, Function.update_self,
-          Option.getD_some]
+        cases actual : repaired.candidates.lookup (owner, .prepared serial) with
+        | fresh => exact (target actual).elim
+        | unopenable | openable raw =>
+            simp only [candidate, memory, rememberCandidate, Function.update_self,
+              Option.getD_some]
       · have none : memory.candidates slot = none := by
           simp only [memory, rememberCandidate, Function.update_of_ne sameSlot, empty]
         have unchanged : memory.candidate slot (repaired.candidates.lookup (owner, slot)) =

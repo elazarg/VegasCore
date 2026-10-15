@@ -904,3 +904,7 @@ import Vegas.Game.PhaseBindingDeviationMove
 import Vegas.Game.PhaseCompletionInitialLaw
 import Vegas.Game.RecoveryBindingWordRealization
 import Vegas.Game.PhaseCommitWordPolicy
+import Vegas.Game.PhaseCommitWordPosterior
+import Vegas.Game.PhaseSourceFiniteHistory
+import Vegas.Game.PhaseCallbackContinuation
+import Vegas.Game.PhaseLocalValueContinuation

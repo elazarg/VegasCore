@@ -938,6 +938,16 @@ import Vegas.Source.CommitPrefixWord
 import Vegas.Game.RecoveryBindingWordRealization
 import Vegas.Game.PhaseCommitWordPolicy
 import Vegas.Source.CommitPrefixMixture
+import Interaction.ReactiveProfileMixture
+import Vegas.Game.PhaseCommitWordPosterior
+import Vegas.Source.CommitPrefixEntryKernel
+import Vegas.Source.CommitPrefixWordRecall
+import Vegas.Pending.PhaseFiniteNature
+import Vegas.Game.PhaseSourceFiniteHistory
+import Vegas.Game.PhaseCallbackContinuation
+import Vegas.Game.PhaseLocalValueContinuation
+import Vegas.Pending.PhaseBindingObservation
+import Vegas.Pending.PhaseBindingCompletionSymmetry
 
 /-! # Checked sequential-equilibrium preservation, Nash correspondence and termination -/
 
@@ -9121,3 +9131,129 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms
   Vegas.SourceProgram.CommitPrefix.prefixLaw_binding_entry_posterior
+
+/-- info:
+'Interaction.ReactiveApplication.runRounds_policyMixtures'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Interaction.ReactiveApplication.runRounds_policyMixtures
+
+/-- info:
+'Interaction.ReactiveApplication.runRounds_policyMixtures_posterior_joint'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Interaction.ReactiveApplication.runRounds_policyMixtures_posterior_joint
+
+/-- info:
+'Interaction.ReactiveApplication.runRounds_policyMixtures_entry_joint'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Interaction.ReactiveApplication.runRounds_policyMixtures_entry_joint
+
+/-- info:
+'Vegas.phaseCommitWordPolicy_posterior_wait_of_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseCommitWordPolicy_posterior_wait_of_history
+
+/-- info:
+'Vegas.phaseCommitWordPolicy_posterior_send_of_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseCommitWordPolicy_posterior_send_of_history
+
+/-- info:
+'Vegas.SourceProgram.CommitPrefix.ownedEntryWordKernel_at_entry'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.CommitPrefix.ownedEntryWordKernel_at_entry
+
+/-- info:
+'Vegas.SourceProgram.CommitPrefix.prefixLaw_entry_word_kernels'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.CommitPrefix.prefixLaw_entry_word_kernels
+
+/-- info:
+'Vegas.SourceProgram.CommitPrefix.prefixLaw_view_eq_of_history_eq'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.CommitPrefix.prefixLaw_view_eq_of_history_eq
+
+/-- info:
+'Vegas.SourceProgram.CommitPrefix.prefixPosterior_eq_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.CommitPrefix.prefixPosterior_eq_history
+
+/-- info:
+'Vegas.phase_source_history_finite'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phase_source_history_finite
+
+/-- info:
+'Vegas.phase_callback_terminal_outcome'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phase_callback_terminal_outcome
+
+/-- info:
+'Vegas.phase_callback_base_value'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phase_callback_base_value
+
+/-- info:
+'Vegas.phase_localValue_eq_response_continuation'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phase_localValue_eq_response_continuation
+
+/-- info:
+'Vegas.EventGraphRuntime.PhaseCount.phaseBindingSlots_eq_fresh_of_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseCount.phaseBindingSlots_eq_fresh_of_history
+
+/-- info:
+'Vegas.EventGraphRuntime.phaseBindingResponse_observation_law'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.phaseBindingResponse_observation_law
+
+/-- info:
+'Vegas.EventGraphRuntime.phaseBindingSlotPolicy_observation_law'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.phaseBindingSlotPolicy_observation_law
+
+/-- info:
+'Vegas.EventGraphRuntime.BindingShadow.binding_handle_all_values'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.BindingShadow.binding_handle_all_values
+
+/-- info:
+'Vegas.EventGraphRuntime.BindingShadow.normalize_external_views'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.BindingShadow.normalize_external_views

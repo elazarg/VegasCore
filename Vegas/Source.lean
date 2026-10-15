@@ -119,3 +119,5 @@ import Vegas.Source.CommitPrefixReadout
 import Vegas.Source.CommitPrefixPolicyReadout
 import Vegas.Source.CommitPrefixWord
 import Vegas.Source.CommitPrefixMixture
+import Vegas.Source.CommitPrefixEntryKernel
+import Vegas.Source.CommitPrefixWordRecall
