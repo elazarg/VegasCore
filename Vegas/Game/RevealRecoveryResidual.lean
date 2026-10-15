@@ -4,6 +4,7 @@ import Vegas.Game.ServiceRevealTail
 import Vegas.Source.CommitRecoveryPoint
 import Vegas.Source.CommitRecoveryStep
 import Vegas.Source.ProtocolEvaluation
+import Vegas.Source.ProtocolSuffix
 
 /-! # Recovery control and readout through the existing disclosure residual -/
 
@@ -30,6 +31,26 @@ theorem revealTail_terminalCtx : ∀ (count : Nat) {Γ : SourceCtx Player L}
       | sample _ _ _ _ => exact prefixed.elim
       | commit _ _ _ _ _ => exact prefixed.elim
       | reveal _ _ _ _ _ _ next => exact ih next prefixed
+
+/-- The existing disclosure residual is an actual syntactic suffix,
+retaining its exact source-point lift. -/
+theorem revealTail_protocolSuffix : ∀ (count : Nat) {Γ : SourceCtx Player L}
+    {O : Finset VarId} (program : SourceProgram Player L Γ O)
+    (prefixed : RevealPrefix program count),
+    ProtocolSuffix program (revealTail count program prefixed).tail
+      (revealTail count program prefixed).lift := by
+  intro count
+  induction count with
+  | zero => intro Γ O program prefixed; exact .initial
+  | succ count ih =>
+      intro Γ O program prefixed
+      cases program with
+      | ret _ => exact prefixed.elim
+      | sample _ _ _ _ => exact prefixed.elim
+      | commit _ _ _ _ _ => exact prefixed.elim
+      | reveal published owner name fresh selected unresolved next =>
+          exact (ProtocolSuffix.revealTail fresh selected unresolved next
+            ProtocolSuffix.initial).compose (ih next prefixed)
 
 /-- The actual disclosure residual commutes with recovery control, retained
 typed action history, available menus, raw steps and complete terminal readout.

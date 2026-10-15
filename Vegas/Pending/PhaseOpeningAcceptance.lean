@@ -67,7 +67,7 @@ private theorem binding_before_reveal (state : PhaseRuntimeState graph)
       simpa only [PhaseRuntimeState.attempt, phases, List.head?_cons, Option.map_some,
         Option.getD_some] using before
 
-private theorem accepted_of_latest (execution : (app).Execution)
+theorem accepted_of_latest (execution : (app).Execution)
     (physical : PhysicalBindings runtime leaks execution)
     (bindingValid : execution.application.current.native.BindingInvariant)
     (covered : execution.application.current.FailureCoverage)

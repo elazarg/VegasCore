@@ -63,7 +63,7 @@ theorem RecoverySourceCheckpoint.after_commit_clean
         (phase.drain state.current) (phase.drain state.current) state.retired := by
   rcases checkpoint with ⟨⟨Γ, O, program, lift⟩, source, refs, registry, embedding, before,
     compiled, aligned, agree, guards, failures, unique, ranks, actors, commits, owners, endpoints,
-    automatic, history, memory, steps, menus, readout, sourceTrace, views, historyAlignment⟩
+    automatic, history, memory, steps, menus, readout, sourceTrace, views, historyAlignment, origin⟩
   obtain ⟨Δ, P, suffix, block, reconstruct, boundary⟩ := commitPhase program
   subst program
   have positive : 0 < block.length := by
@@ -180,6 +180,7 @@ theorem RecoverySourceCheckpoint.after_commit_clean
       readout := ?_
       trace := reachedTrace
       views := finalViews
+      origin := origin.compose (block.protocolSuffix suffix)
       historyAlignment := ?_ }⟩
   · rw [address]
     exact finalCompiled
@@ -239,7 +240,7 @@ theorem RecoverySourceCheckpoint.after_commit_exhausted
         archive := by
   rcases checkpoint with ⟨⟨Γ, O, program, lift⟩, source, refs, registry, embedding, before,
     compiled, aligned, agree, guards, failures, unique, ranks, actors, commits, owners, endpoints,
-    automatic, history, memory, steps, menus, readout, sourceTrace, views, historyAlignment⟩
+    automatic, history, memory, steps, menus, readout, sourceTrace, views, historyAlignment, origin⟩
   obtain ⟨Δ, P, suffix, block, reconstruct, boundary⟩ := commitPhase program
   subst program
   have positive : 0 < block.length := by
@@ -329,6 +330,7 @@ theorem RecoverySourceCheckpoint.after_commit_exhausted
       readout := ?_
       trace := finalTrace
       views := finalViews
+      origin := origin.compose (block.protocolSuffix suffix)
       historyAlignment := by
         intro clear
         have imageClear : image.excluded = ∅ := by

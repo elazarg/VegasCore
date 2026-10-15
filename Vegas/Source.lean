@@ -106,3 +106,6 @@ import Vegas.Source.IntendedCommitPredecessor
 import Vegas.Source.CommitRecoveryContinuingMenu
 import Vegas.Source.CommitRecoveryVoluntaryFailure
 import Vegas.Source.CommitRecoveryCommitWindow
+import Vegas.Source.IntendedNoDebt
+import Vegas.Source.ProtocolSuffix
+import Vegas.Source.CommitPrefixIntendedLift

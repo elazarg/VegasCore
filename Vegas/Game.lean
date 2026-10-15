@@ -813,3 +813,13 @@ import Vegas.Game.CommitRecoveryNonmissingSource
 import Vegas.Game.CommitRecoveryNonmissingConditioning
 import Vegas.Game.CommitRecoveryNonmissingBelief
 import Vegas.Game.CommitRecoveryCompiledPolicy
+import Vegas.Game.CommitRecoveryIntendedInformation
+import Vegas.Game.CommitRecoveryIntendedPolicyLaw
+import Vegas.Game.RecoveryIntendedBindingCheckpoint
+import Vegas.Game.PhaseCompiledBindingResponse
+import Vegas.Game.PhaseCompiledOpeningResponse
+import Vegas.Game.CommitRecoveryWindowLaw
+import Vegas.Game.CommitRecoveryBeliefWindow
+import Vegas.Game.CommitRecoveryChoiceFloor
+import Vegas.Game.PhaseBindingResponseRatio
+import Vegas.Game.PhaseBindingWaitingLaw

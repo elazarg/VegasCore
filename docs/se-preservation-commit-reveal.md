@@ -1,11 +1,48 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**SE: non-concurrent ✓ · auxiliary SE ✓ · canonical limit ✓ · clear trace ✓ · repair steps ✓; joint law/likelihood/incentives open.**
+**SE: non-concurrent ✓ · auxiliary SE ✓ · canonical limit ✓ · clear trace ✓ · source windows ✓ · local ratios ✓; whole repair/joint law/likelihood/incentives open.**
 
 <details>
 <summary>Recovery milestones and current proof substeps</summary>
 
 Milestones have unequal cost; the fixed SE checklist is unchanged.
+
+The checked fixed-calendar source theorem covers optional opening with the
+source reveal order preserved. The intended-game recovery theorem additionally
+accounts for withholding deviations. Independent reveal reordering remains
+outside these checked results.
+
+Actual recovery checkpoints carry their exact syntactic source origin. From a
+saved intended entry and admissible own bindings, the ready binding adapter
+constructs a genuine initialized intended information history with the same
+complete owner observation and own action word. Hidden foreign holes are filled
+at their updated source views. The saved intended-entry and own-admissibility
+invariants still need an on-path proof.
+
+The full native and phased transition and policy kernels admit an exact paired
+coupling, including first-failure owner records. Compiled binding and opening
+response adapters retain complete packets and action memory. A compiled
+disclosing source policy publishes TRUE even at decoder fallback inputs.
+
+Across an actual auxiliary commitment window, conditioning on clear preserves
+the original initial posterior jointly with its endpoint. The exact density is
+constant over the full source information fiber; subsequent original choices
+remain unconditioned. This is a source probability theorem.
+
+Finite source information and full mixing supply a positive uniform legal
+choice floor. Each actual raw binding response has a same-slot canonical
+replacement with an explicit local likelihood ratio. At any two genuine clear
+unsent callbacks for the same static event, canonical-plus-slot WAIT masses are
+equal despite different hidden values and own words. Uniform raw-noise menu
+terms remain separate. Whole-history likelihood products are still open.
+
+Directed repair handles arbitrary foreign responses, own binding preparations,
+opening responses, clock steps and silence while retaining original private
+recall and both checkpoint frames. Remaining inclusion branches and whole
+history induction are open. The generic execution engine now requires expiry
+invariance only for commands in the actual scheduler support. A genuine history
+with consistent full recalls occurs as that exact history under the prescribed
+behavioral profile.
 
 Every actual initialized count-clean clear phased history projects to a genuine
 ordinary native trace of the same length. Static packet addresses reconstruct
@@ -18,8 +55,8 @@ the native/source joint probability law remains open.
 Directed binding replacement preserves the physical slot, network, receipts and
 full foreign inputs while tracking both live and saved semantic checkpoints.
 Actual normalization, delayed binding inclusion, activation and waiting retain
-the same scheduler atom. Pending-read guards remain explicit; arbitrary response
-memory updates and whole-history repair are not established by these steps.
+the same scheduler atom. Pending-read guards remain explicit; response replay is checked,
+while whole-history repair remains open.
 
 On the source side, conditioning each chronological auxiliary choice on
 nonmissing gives an exact history density. Its positive scalar is constant over

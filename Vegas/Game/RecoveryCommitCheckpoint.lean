@@ -39,7 +39,7 @@ theorem RecoverySourceCheckpoint.after_commit_retry
     Nonempty (RecoverySourceCheckpoint setup mode state.normalize) := by
   rcases checkpoint with ⟨⟨Γ, O, program, lift⟩, source, refs, registry, embedding, before,
     compiled, aligned, agree, guards, failures, unique, ranks, actors, commits, owners, endpoints,
-    automatic, history, memory, steps, menus, readout, sourceTrace, views, historyAlignment⟩
+    automatic, history, memory, steps, menus, readout, sourceTrace, views, historyAlignment, origin⟩
   obtain ⟨Δ, P, suffix, block, reconstruct, boundary⟩ := commitPhase program
   subst program
   have positive : 0 < block.length := by
@@ -105,6 +105,7 @@ theorem RecoverySourceCheckpoint.after_commit_retry
       readout := readout
       trace := reachedTrace
       views := views
+      origin := origin
       historyAlignment := by
         intro clear
         obtain ⟨who, member⟩ := missedSource

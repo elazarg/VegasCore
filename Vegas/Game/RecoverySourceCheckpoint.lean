@@ -5,6 +5,7 @@ import Vegas.Compile.CompiledReadoutSuffix
 import Vegas.Compile.ProtocolViewSuffix
 import Vegas.Compile.EventGraphInputs
 import Vegas.Source.CommitRecoveryProtocol
+import Vegas.Source.ProtocolSuffix
 import Vegas.Source.RegistryFailureExtension
 import Vegas.Pending.PhaseApplication
 import Vegas.Compile.EventGraphHistory
@@ -83,6 +84,7 @@ structure RecoverySourceCheckpoint (setup : Setup (Player := Player) (L := L))
   historyAlignment : state.entry.excluded = ∅ → source.history =
     decodeHistory setup.program (state.entry.native.config.history.map
       ((toEventGraph setup.program).fromModeCompletion mode))
+  origin : ProtocolSuffix setup.program residual.tail residual.lift
 
 namespace RecoverySourceCheckpoint
 
@@ -145,6 +147,7 @@ def initial (setup : Setup (Player := Player) (L := L)) (mode : EventGraph.Execu
     exact (PMF.mem_support_map_iff _ _ _).mpr ⟨initial, supported, rfl⟩
 
   views := ProtocolViewSuffix.initial setup.program
+  origin := .initial
   historyAlignment := fun _ => rfl
 
 /-- Unfinished live effects preserve the same saved checkpoint, irrespective

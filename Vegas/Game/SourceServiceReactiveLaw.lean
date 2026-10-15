@@ -57,12 +57,14 @@ theorem source_prescribed_terminal_joint_store_law
       (∀ owner, memories owner ∈
         ((runtime.prescribedReactiveImplementation leaks owner (profile owner)).posterior
           (execution.recall owner)).support) →
-      runtime.ReactiveFrontier leaks execution memories frontier → ∀ event next,
+      runtime.ReactiveFrontier leaks execution memories frontier → ∀ event,
+      .application (.expire event) ∈ (scheduler execution.environmentRecall
+        (execution.observeEnvironment (runtime.reactiveApplication leaks))).support → ∀ next,
         next ∈ (execution.environmentStep (runtime.reactiveApplication leaks)
           (.application (.expire event))).support →
         runtime.ReactiveFrontier leaks next memories frontier := by
     intro remaining execution ⟨trace⟩ valid consistent memories frontier supported related
-      event next moved
+      event _chosen next moved
     have sourceTrace := initialEq ▸ trace
     have faithful := runtime.reactiveEmission_history leaks (serviceInitialLaw setup mode)
       horizon scheduler ⟨remaining + 1, none, execution⟩ sourceTrace

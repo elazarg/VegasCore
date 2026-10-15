@@ -870,3 +870,54 @@ Compiler action and commitment-window adapters:
 [Commit Recovery Compiled Policy](../Vegas/Game/CommitRecoveryCompiledPolicy.lean),
 [Commit Recovery Commit Window](../Vegas/Source/CommitRecoveryCommitWindow.lean).
 Successful full-view decoding transports the entire compiled action law; actual intended information witnesses connect the auxiliary law. The nonmissing source runner remains clear throughout its real commitment window.
+
+Intended source counterparts:
+[Intended No Debt](../Vegas/Source/IntendedNoDebt.lean),
+[Commit Recovery Intended Information](../Vegas/Game/CommitRecoveryIntendedInformation.lean),
+[Commit Recovery Intended Policy Law](../Vegas/Game/CommitRecoveryIntendedPolicyLaw.lean),
+[Recovery Source Checkpoint](../Vegas/Game/RecoverySourceCheckpoint.lean),
+[Recovery Intended Binding Checkpoint](../Vegas/Game/RecoveryIntendedBindingCheckpoint.lean),
+[Protocol Suffix](../Vegas/Source/ProtocolSuffix.lean),
+[Commit Prefix Intended Lift](../Vegas/Source/CommitPrefixIntendedLift.lean).
+Exact syntactic source origins and preserved entry cells build initialized intended binding information from a saved intended entry and admissible own bindings. These two on-path invariants are explicit obligations.
+
+Source windows and native response masses:
+[Commit Recovery Window Law](../Vegas/Game/CommitRecoveryWindowLaw.lean),
+[Commit Recovery Belief Window](../Vegas/Game/CommitRecoveryBeliefWindow.lean),
+[Commit Recovery Choice Floor](../Vegas/Game/CommitRecoveryChoiceFloor.lean),
+[Phase Binding Response Ratio](../Vegas/Game/PhaseBindingResponseRatio.lean),
+[Event Source Position](../Vegas/Compile/EventSourcePosition.lean),
+[Phase Binding Waiting Law](../Vegas/Game/PhaseBindingWaitingLaw.lean).
+Full source information fibers retain their original posterior across clear commitment windows. Finite source choice floors give local native response ratios; same-event canonical-plus-slot WAIT atoms agree. Raw-noise menu terms and whole-history likelihoods need further transport.
+
+Paired kernels and compiled response adapters:
+[Event Graph Disclosure Action](../Vegas/Compile/EventGraphDisclosureAction.lean),
+[Phase Native Paired Transition](../Vegas/Pending/PhaseNativePairedTransition.lean),
+[Phase Native Control Law](../Vegas/Pending/PhaseNativeControlLaw.lean),
+[Phase Compiled Binding Response](../Vegas/Game/PhaseCompiledBindingResponse.lean),
+[Phase Compiled Opening Response](../Vegas/Game/PhaseCompiledOpeningResponse.lean).
+Both physical transition marginals and policy kernels are coupled with the exact failure record. Compiled response adapters preserve whole responses, and disclosing compiler policies publish TRUE without a decode premise.
+
+Operational replay and supported execution:
+[Recovery Commit Checkpoint](../Vegas/Game/RecoveryCommitCheckpoint.lean),
+[Recovery Commit Prefix Witness](../Vegas/Game/RecoveryCommitPrefixWitness.lean),
+[Recovery Ready Commit Witness](../Vegas/Game/RecoveryReadyCommitWitness.lean),
+[Reveal Recovery Residual](../Vegas/Game/RevealRecoveryResidual.lean),
+[Recovery Reveal Checkpoint](../Vegas/Game/RecoveryRevealCheckpoint.lean),
+[Recovery Sample Checkpoint](../Vegas/Game/RecoverySampleCheckpoint.lean),
+[Recovery Settled Commit Checkpoint](../Vegas/Game/RecoverySettledCommitCheckpoint.lean),
+[Reactive Frontier Execution](../Vegas/Pending/ReactiveFrontierExecution.lean),
+[Source Service Reactive Law](../Vegas/Game/SourceServiceReactiveLaw.lean),
+[Source Service Reactive Audit](../Vegas/Game/SourceServiceReactiveAudit.lean),
+[Reactive Consistent History](../Interaction/ReactiveConsistentHistory.lean),
+[Phase Binding Checkpoint Submission](../Vegas/Pending/PhaseBindingCheckpointSubmission.lean),
+[Phase Binding Foreign Response](../Vegas/Pending/PhaseBindingForeignResponse.lean),
+[Phase Opening Acceptance](../Vegas/Pending/PhaseOpeningAcceptance.lean),
+[Phase Binding Repaired Response](../Vegas/Pending/PhaseBindingRepairedResponse.lean),
+[Phase Binding Opening Read](../Vegas/Pending/PhaseBindingOpeningRead.lean),
+[Phase Binding Inert Response](../Vegas/Pending/PhaseBindingInertResponse.lean),
+[Phase Binding Opening Response](../Vegas/Pending/PhaseBindingOpeningResponse.lean),
+[Phase Binding Clock Replay](../Vegas/Pending/PhaseBindingClockReplay.lean),
+[Phase Binding Response Aliases](../Vegas/Pending/PhaseBindingResponseAliases.lean),
+[Phase Binding Silent Response](../Vegas/Pending/PhaseBindingSilentResponse.lean).
+Response and clock replay retain both semantic checkpoints and exact private recall. Selected-command expiry hypotheses and exact consistent-history support are reusable execution adapters. Whole arbitrary-history repair and native/source joint probability remain separate obligations.

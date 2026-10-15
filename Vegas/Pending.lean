@@ -557,3 +557,14 @@ import Vegas.Pending.PhaseBindingDelayedRepair
 import Vegas.Pending.PhaseBindingRepairTrace
 import Vegas.Pending.PhaseBindingRepairObservationStep
 import Vegas.Pending.PhaseBindingRepairMenu
+import Vegas.Pending.PhaseNativePairedTransition
+import Vegas.Pending.PhaseNativeControlLaw
+import Vegas.Pending.PhaseBindingCheckpointSubmission
+import Vegas.Pending.PhaseBindingForeignResponse
+import Vegas.Pending.PhaseBindingRepairedResponse
+import Vegas.Pending.PhaseBindingOpeningRead
+import Vegas.Pending.PhaseBindingInertResponse
+import Vegas.Pending.PhaseBindingOpeningResponse
+import Vegas.Pending.PhaseBindingClockReplay
+import Vegas.Pending.PhaseBindingResponseAliases
+import Vegas.Pending.PhaseBindingSilentResponse

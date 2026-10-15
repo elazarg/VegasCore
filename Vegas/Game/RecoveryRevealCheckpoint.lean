@@ -144,6 +144,8 @@ theorem RecoverySourceCheckpoint.after_reveal
       trace := sourceTrace
       views := ProtocolViewSuffix.revealTailMany setup count program prefixed checkpoint.refs
         checkpoint.embedding checkpoint.residual.lift checkpoint.views
+      origin := checkpoint.origin.compose
+        (revealTail_protocolSuffix count program prefixed)
       historyAlignment := ?_ }⟩
   · rw [address, high]
     rw [revelations]

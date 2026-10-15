@@ -54,7 +54,7 @@ theorem RecoverySourceCheckpoint.filled_prefix_trace_of_ready
   rcases checkpoint with ⟨⟨Γ, O, program, lift⟩, entry, refs, registry, embedding, before,
     compiled, terminalAlignment, agrees, guards, failures, unique, ranks, actors, commits, owners,
     endpoints, automatic, histories, memories, steps, menus, readout, initialized, views,
-    _savedHistory⟩
+    _savedHistory, _origin⟩
   dsimp only at *
   change SourceProgram.Config Player L Γ at entry
   change OutputEmbedding (inputLayout setup.context) (outputLayout setup.program) program

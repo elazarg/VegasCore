@@ -28,10 +28,15 @@ private theorem environment_frontier_exists (runtime : EventGraphRuntime graph)
     (supported : ∀ owner, memories owner ∈
       ((runtime.prescribedReactiveImplementation leaks owner (profile owner)).posterior
         (control.execution.recall owner)).support)
-    (expiry : ∀ event next, next ∈ (control.execution.environmentStep
+    (expiry : ∀ event,
+      .application (.expire event) ∈ (scheduler control.execution.environmentRecall
+        (control.execution.observeEnvironment (runtime.reactiveApplication leaks))).support →
+      ∀ next, next ∈ (control.execution.environmentStep
         (runtime.reactiveApplication leaks) (.application (.expire event))).support →
       runtime.ReactiveFrontier leaks next memories frontier)
     (command : (runtime.reactiveApplication leaks).Command)
+    (selected : command ∈ (scheduler control.execution.environmentRecall
+      (control.execution.observeEnvironment (runtime.reactiveApplication leaks))).support)
     (next : (runtime.reactiveApplication leaks).Execution)
     (reached : next ∈ (control.execution.environmentStep
       (runtime.reactiveApplication leaks) command).support) :
@@ -54,7 +59,7 @@ private theorem environment_frontier_exists (runtime : EventGraphRuntime graph)
       | executeSample event =>
           exact related.sample_command_frontier_exists runtime leaks profile control.execution
             memories frontier consistent supported event next reached
-      | expire event => exact ⟨frontier, expiry event next reached⟩
+      | expire event => exact ⟨frontier, expiry event selected next reached⟩
 
 private theorem environment_potential_harmonic (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
@@ -72,10 +77,15 @@ private theorem environment_potential_harmonic (runtime : EventGraphRuntime grap
     (supported : ∀ owner, memories owner ∈
       ((runtime.prescribedReactiveImplementation leaks owner (profile owner)).posterior
         (control.execution.recall owner)).support)
-    (expiry : ∀ event next, next ∈ (control.execution.environmentStep
+    (expiry : ∀ event,
+      .application (.expire event) ∈ (scheduler control.execution.environmentRecall
+        (control.execution.observeEnvironment (runtime.reactiveApplication leaks))).support →
+      ∀ next, next ∈ (control.execution.environmentStep
         (runtime.reactiveApplication leaks) (.application (.expire event))).support →
       runtime.ReactiveFrontier leaks next memories frontier)
-    (command : (runtime.reactiveApplication leaks).Command) :
+    (command : (runtime.reactiveApplication leaks).Command)
+    (selected : command ∈ (scheduler control.execution.environmentRecall
+      (control.execution.observeEnvironment (runtime.reactiveApplication leaks))).support) :
     (control.execution.environmentStep (runtime.reactiveApplication leaks) command).bind
       (fun next => runtime.reactiveFrontierPotential leaks profile next memories) =
         runtime.reactiveFrontierPotential leaks profile control.execution memories := by
@@ -112,7 +122,8 @@ private theorem environment_potential_harmonic (runtime : EventGraphRuntime grap
               have stableNext := (runtime.entryEventStable_serviceInvariant leaks
                 (fun _ _ => PMF.pure (.application (.expire event)))).environment
                   control.execution next (.application (.expire event)) stable (by simp) reached
-              exact (expiry event next reached).potential_eq runtime leaks profile next stableNext
+              exact (expiry event selected next reached).potential_eq runtime leaks profile next
+                stableNext
                 memories frontier (by simpa only [recallEq] using consistent)
                   (by simpa only [recallEq] using supported)
             _ = graph.canonicalContinuation profile frontier := PMF.bind_const _ _
@@ -138,7 +149,9 @@ theorem round_posterior_frontier_exists_of_expiry (runtime : EventGraphRuntime g
       (∀ owner, memories owner ∈
         ((runtime.prescribedReactiveImplementation leaks owner (profile owner)).posterior
           (execution.recall owner)).support) →
-      runtime.ReactiveFrontier leaks execution memories frontier → ∀ event next,
+      runtime.ReactiveFrontier leaks execution memories frontier → ∀ event,
+      .application (.expire event) ∈ (scheduler execution.environmentRecall
+        (execution.observeEnvironment (runtime.reactiveApplication leaks))).support → ∀ next,
         next ∈ (execution.environmentStep (runtime.reactiveApplication leaks)
           (.application (.expire event))).support →
         runtime.ReactiveFrontier leaks next memories frontier)
@@ -173,7 +186,7 @@ theorem round_posterior_frontier_exists_of_expiry (runtime : EventGraphRuntime g
     obtain ⟨frontier, related⟩ := frontiers saved prior
     exact environment_frontier_exists runtime leaks ordered profile inputs horizon scheduler
       ⟨remaining + 1, none, execution⟩ trace saved frontier related consistent prior
-        (expiry saved frontier prior related) command current moved
+        (expiry saved frontier prior related) command chosen current moved
   cases actorEq : command.actor? app with
   | none =>
       simp only [ReactiveApplication.resume, actorEq, PMF.mem_support_pure_iff] at resumed
@@ -214,7 +227,9 @@ theorem round_posterior_potential_of_expiry (runtime : EventGraphRuntime graph)
       (∀ owner, memories owner ∈
         ((runtime.prescribedReactiveImplementation leaks owner (profile owner)).posterior
           (execution.recall owner)).support) →
-      runtime.ReactiveFrontier leaks execution memories frontier → ∀ event next,
+      runtime.ReactiveFrontier leaks execution memories frontier → ∀ event,
+      .application (.expire event) ∈ (scheduler execution.environmentRecall
+        (execution.observeEnvironment (runtime.reactiveApplication leaks))).support → ∀ next,
         next ∈ (execution.environmentStep (runtime.reactiveApplication leaks)
           (.application (.expire event))).support →
         runtime.ReactiveFrontier leaks next memories frontier) :
@@ -255,7 +270,8 @@ theorem round_posterior_potential_of_expiry (runtime : EventGraphRuntime graph)
       obtain ⟨nextFrontier, nextRelated⟩ :=
         environment_frontier_exists runtime leaks ordered profile
         inputs horizon scheduler ⟨remaining + 1, none, execution⟩ trace memories frontier related
-          consistent supported (expiry memories frontier supported related) command next reached
+          consistent supported (expiry memories frontier supported related) command chosen next
+            reached
       have recallEq := app.environmentStep_recall execution next command reached
       obtain ⟨nextTrace⟩ := app.raw_trace_environment (inputs.map State.initial) horizon scheduler
         remaining execution next command trace chosen reached
@@ -276,11 +292,11 @@ theorem round_posterior_potential_of_expiry (runtime : EventGraphRuntime graph)
     _ = (scheduler execution.environmentRecall (execution.observeEnvironment app)).bind
         (fun _ => runtime.reactiveFrontierPotential leaks profile execution memories) := by
       apply bind_congr_on_support
-      intro command _
+      intro command chosen
       exact environment_potential_harmonic runtime leaks ordered profile independent
         inputs horizon scheduler
         ⟨remaining + 1, none, execution⟩ trace memories frontier related consistent supported
-          (expiry memories frontier supported related) command
+          (expiry memories frontier supported related) command chosen
     _ = _ := PMF.bind_const _ _
 
 theorem runRounds_posterior_potential_of_expiry (runtime : EventGraphRuntime graph)
@@ -300,7 +316,9 @@ theorem runRounds_posterior_potential_of_expiry (runtime : EventGraphRuntime gra
       (∀ owner, memories owner ∈
         ((runtime.prescribedReactiveImplementation leaks owner (profile owner)).posterior
           (execution.recall owner)).support) →
-      runtime.ReactiveFrontier leaks execution memories frontier → ∀ event next,
+      runtime.ReactiveFrontier leaks execution memories frontier → ∀ event,
+      .application (.expire event) ∈ (scheduler execution.environmentRecall
+        (execution.observeEnvironment (runtime.reactiveApplication leaks))).support → ∀ next,
         next ∈ (execution.environmentStep (runtime.reactiveApplication leaks)
           (.application (.expire event))).support →
         runtime.ReactiveFrontier leaks next memories frontier)
@@ -409,7 +427,9 @@ theorem runRounds_terminal_store_of_expiry (runtime : EventGraphRuntime graph)
       (∀ owner, memories owner ∈
         ((runtime.prescribedReactiveImplementation leaks owner (profile owner)).posterior
           (execution.recall owner)).support) →
-      runtime.ReactiveFrontier leaks execution memories frontier → ∀ event next,
+      runtime.ReactiveFrontier leaks execution memories frontier → ∀ event,
+      .application (.expire event) ∈ (scheduler execution.environmentRecall
+        (execution.observeEnvironment (runtime.reactiveApplication leaks))).support → ∀ next,
         next ∈ (execution.environmentStep (runtime.reactiveApplication leaks)
           (.application (.expire event))).support →
         runtime.ReactiveFrontier leaks next memories frontier)
@@ -519,7 +539,9 @@ theorem initialized_terminal_store_of_expiry [Finite Player] (runtime : EventGra
       (∀ owner, memories owner ∈
         ((runtime.prescribedReactiveImplementation leaks owner (profile owner)).posterior
           (execution.recall owner)).support) →
-      runtime.ReactiveFrontier leaks execution memories frontier → ∀ event next,
+      runtime.ReactiveFrontier leaks execution memories frontier → ∀ event,
+      .application (.expire event) ∈ (scheduler execution.environmentRecall
+        (execution.observeEnvironment (runtime.reactiveApplication leaks))).support → ∀ next,
         next ∈ (execution.environmentStep (runtime.reactiveApplication leaks)
           (.application (.expire event))).support →
         runtime.ReactiveFrontier leaks next memories frontier)
