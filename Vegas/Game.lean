@@ -746,3 +746,14 @@ import Vegas.Game.CompiledCommitMaximality
 import Vegas.Game.CompiledCommitTail
 import Vegas.Game.RecoverySourceCheckpoint
 import Vegas.Game.RecoverySourceReadout
+import Vegas.Game.RevealRecoveryResidual
+import Vegas.Game.RecoverySampleCheckpoint
+import Vegas.Game.RecoverySourceBoundary
+import Vegas.Game.CompiledRevealTail
+import Vegas.Game.RecoveryInitialCheckpoint
+import Vegas.Game.RecoveryRevealCheckpoint
+import Vegas.Game.RecoveryCommitCheckpoint
+import Vegas.Game.RecoverySettledCommitCheckpoint
+import Vegas.Game.PhaseSourceObservation
+import Vegas.Game.RecoverySourceTerminal
+import Vegas.Game.PhaseSourceBindingPolicy

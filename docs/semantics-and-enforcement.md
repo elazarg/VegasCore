@@ -145,7 +145,7 @@ resolved.
    values only, so a missed binding is handled outside the source: charged as an
    omission by the plain contract, an exit under forced exit.
 4. **Two audit-service models.** The settled-record audit is an authentic
-   sampler with coverage `p_i` over the complete traffic (`sourceServiceAudit`).
+   sampler with coverage $p_i$ over the complete traffic (`sourceServiceAudit`).
    The count audit is an `EvidenceReportService` with separate observation and
    conditional delivery rates inside a challenge window (`CountEvidenceCoverage`).
    The deposit conditions differ accordingly.

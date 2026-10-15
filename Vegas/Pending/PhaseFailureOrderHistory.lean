@@ -22,7 +22,7 @@ structure PublicFailureOrder (state : PhaseRuntimeState graph) : Prop where
     state.current.OrderedPublicFailures phase.low state.entry.excluded
 
 omit [DecidableEq Player] in
-private theorem fresh_publicFailureOrder (phases : List (RuntimePhase graph)) (generation : Nat)
+theorem fresh_publicFailureOrder (phases : List (RuntimePhase graph)) (generation : Nat)
     (current : RecoveryState graph) (retired : List (RetiredCommitAttempt graph))
     (frontier : Frontier
       (⟨phases, generation, current, current, retired⟩ : PhaseRuntimeState graph))

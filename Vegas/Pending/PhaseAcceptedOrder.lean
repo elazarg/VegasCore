@@ -25,7 +25,7 @@ structure ReceiptRecord (state : PhaseRuntimeState graph) : Prop where
     BindingReceiptOrder phase.low state.entry.excluded state.current.native.accepted
 
 omit [DecidableEq Player] in
-private theorem fresh_receiptRecord (phases : List (RuntimePhase graph)) (generation : Nat)
+theorem fresh_receiptRecord (phases : List (RuntimePhase graph)) (generation : Nat)
     (current : RecoveryState graph) (retired : List (RetiredCommitAttempt graph))
     (frontier : Frontier
       (⟨phases, generation, current, current, retired⟩ : PhaseRuntimeState graph))

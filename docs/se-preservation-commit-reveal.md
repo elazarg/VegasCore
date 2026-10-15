@@ -1,11 +1,15 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**SE: non-concurrent ✓ · concurrent: source SE, phase geometry, checkpoint base, tick exhaustion ✓; trace/Bayes/native SE open.**
+**SE: non-concurrent ✓ · concurrent trace 6/8; normalization/history, Bayes, native SE open.**
 
 <details>
 <summary>Recovery milestones and current proof substeps</summary>
 
 Milestones have unequal cost; the fixed SE checklist is unchanged.
+
+Concurrent trace substeps: initialization, reveal, sample, clean commitment,
+retry and exhaustion are checked; normalization and the actual-history invariant
+remain open. The 6/8 count tracks these proof steps, not a percentage of full SE.
 
 | Status | Recovery milestone |
 | --- | --- |
@@ -101,18 +105,35 @@ available typed menus as well. These are phase boundaries, not yet an initialize
 whole-history simulation.
 Concrete saved-entry checkpoints now retain a genuine initialized source trace,
 typed store and failure bookkeeping, exact compiled suffix and canonical terminal
-references. Their initial constructor uses the single supported setup draw;
-unchanged saved entries retain the same witness. Every typed commitment attempt
+references. The actual normalized initial dispatcher has the checkpoint of
+its single supported setup draw; unchanged saved entries retain the same witness.
+Every typed commitment attempt
 preserves the compiled tail, including excluded automatic slots. Actual remaining
 descriptors form a suffix of the original plan. Its inherited maximality identifies
 the installed commitment phase with the precise source telescope. If a checkpoint
 is available when that plan is exhausted, its source readout equals the actual
-current native terminal decoder. Constructing such checkpoints through every
-phase closure and retry remains open.
+current native terminal decoder. Checked checkpoint constructors now cover
+completed reveal and sample phases and all three commitment closures: clean,
+retry and exhausted. They derive legal source paths and append them to the
+initialized source trace, retaining exact typed state, exclusion, global
+generation and compiler/readout certificates. Both the existing disclosure
+residual and commitment-prefix lift preserve every recovery-control component,
+available menu, raw step and typed readout. Whole normalization and the
+all-history checkpoint factory remain open.
+At an actual finished raw history, a supplied checkpoint yields a genuine
+terminal auxiliary-source history with the same typed readout and entire payoff
+vector. Actual history invariants derive terminal exclusion equality and store
+agreement. This is a pointwise terminal correspondence; it does not establish
+a source/native probability law or information-fiber map.
 Every actual active raw history also has a fresh prepared slot below its finite
 horizon. With sufficient capacity and typed value coverage, a bounded raw response
 can represent every source binding result and any distribution of those results
-exactly. Information-local source policy realization remains separate.
+exactly. At a genuine unsent ready binding, every source result also has a
+legal one-packet encoding with a derived fresh slot. A globally legal guarded
+policy evaluates the actual syntactic source commitment policy on its decoded
+semantic view and realizes that exact result distribution. It waits outside
+its guard. The complete auxiliary-source information and posterior transport
+remain separate.
 An immutable addressed-seed scheduler has checked joint realization, erased
 operational queries, full clocked owner recall and fresh laws after actual
 namespace changes. Its tick-draining calendar now permits priority to read the
@@ -137,7 +158,10 @@ candidate local seed. Every elapsed tick since a surviving coordinate became
 ready has an actual nonactivation query in the calendar log. Authentic current
 tokens retain their emission prerequisites through rollback; in count-clean
 histories, an authentic current-coordinate packet stays pending while its event
-is ready and within its deadline. Actual active owner information reconstructs
+is ready and within its deadline. An actual earlier nonactivation query for
+a coordinate that survives to any later callback must have replied WAIT:
+inclusion or expiry permanently resolves that coordinate, even across retries.
+Actual active owner information reconstructs
 its pre-activation erased query. Equating that transcript to the constraints recovered
 from the full owner information fiber remains open. Permanently excluded
 players have constant continuation payoff throughout their complete native

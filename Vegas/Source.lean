@@ -94,3 +94,6 @@ import Vegas.Source.CommitRecoveryBlockClose
 import Vegas.Source.CommitRecoveryNonCommitPath
 import Vegas.Source.CommitRecoveryPathLift
 import Vegas.Source.CommitPhaseFailures
+import Vegas.Source.CommitRecoveryBlockLift
+import Vegas.Source.CommitRecoveryBlockCloseLift
+import Vegas.Source.CommitPhaseAutomaticAttempt
