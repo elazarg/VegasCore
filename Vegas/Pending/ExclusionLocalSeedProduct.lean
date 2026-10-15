@@ -218,4 +218,3 @@ theorem clear_bayesBelief_seed_product
   cases stateEq : history.1.state <;> rfl
 
 end Vegas.EventGraphRuntime.RecoveryProjection
-
