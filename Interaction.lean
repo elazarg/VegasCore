@@ -155,3 +155,4 @@ import Interaction.ReactiveServiceRounds
 import Interaction.ReactiveServiceMixture
 import Interaction.ReactiveAddressedQueryTranscript
 import Interaction.MessageNetworkSelection
+import Interaction.ReactiveAddressedTranscriptAppend

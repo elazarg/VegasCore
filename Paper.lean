@@ -559,6 +559,13 @@ import Vegas.Game.PhaseSourceBindingPolicy
 import Vegas.Pending.PhaseSeedInclusion
 import Vegas.Pending.PhaseResolutionPersistence
 import Vegas.Pending.PhaseSeedSurvivalReply
+import Vegas.Game.CompiledCommitControl
+import Vegas.Game.RecoveryCheckpointNormalization
+import Vegas.Game.RecoveryCheckpointHistory
+import Vegas.Game.PhasePublicCompletion
+import Interaction.ReactiveAddressedTranscriptAppend
+import Vegas.Pending.PhaseSeedUnsentQueries
+import Vegas.Pending.PhaseSeedUnsentInformation
 
 /-! # Checked sequential-equilibrium preservation, Nash correspondence and termination -/
 
@@ -6494,3 +6501,39 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.CompiledSuffix.revealTailMany
+
+/-- info: 'Vegas.CompiledSuffix.atCommit_of_bindingPhase'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.CompiledSuffix.atCommit_of_bindingPhase
+
+/-- info: 'Vegas.RecoverySourceCheckpoint.normalized'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.RecoverySourceCheckpoint.normalized
+
+/-- info: 'Vegas.recoverySourceCheckpoint_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.recoverySourceCheckpoint_history
+
+/-- info: 'Vegas.phase_run_afterExclusionPolicy_eq'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phase_run_afterExclusionPolicy_eq
+
+/-- info: 'Vegas.wholePolicyOptimal_of_phasePublicExclusion'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.wholePolicyOptimal_of_phasePublicExclusion
+
+/-- info: 'Interaction.ReactiveApplication.AddressedScheduler.coordinateTranscriptFrom_append'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Interaction.ReactiveApplication.AddressedScheduler.coordinateTranscriptFrom_append
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseSeedCalendar.coordinateConsistent_iff_of_unsent_information'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseSeedCalendar.coordinateConsistent_iff_of_unsent_information

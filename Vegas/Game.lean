@@ -757,3 +757,7 @@ import Vegas.Game.RecoverySettledCommitCheckpoint
 import Vegas.Game.PhaseSourceObservation
 import Vegas.Game.RecoverySourceTerminal
 import Vegas.Game.PhaseSourceBindingPolicy
+import Vegas.Game.CompiledCommitControl
+import Vegas.Game.RecoveryCheckpointNormalization
+import Vegas.Game.RecoveryCheckpointHistory
+import Vegas.Game.PhasePublicCompletion

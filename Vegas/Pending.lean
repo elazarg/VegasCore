@@ -459,3 +459,5 @@ import Vegas.Pending.PhaseBindingPolicy
 import Vegas.Pending.PhaseSeedInclusion
 import Vegas.Pending.PhaseResolutionPersistence
 import Vegas.Pending.PhaseSeedSurvivalReply
+import Vegas.Pending.PhaseSeedUnsentQueries
+import Vegas.Pending.PhaseSeedUnsentInformation

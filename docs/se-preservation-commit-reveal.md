@@ -1,6 +1,6 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**SE: non-concurrent ✓ · concurrent trace 6/8; normalization/history, Bayes, native SE open.**
+**SE: non-concurrent ✓ · concurrent trace 8/8; Bayes and native SE open.**
 
 <details>
 <summary>Recovery milestones and current proof substeps</summary>
@@ -8,8 +8,8 @@
 Milestones have unequal cost; the fixed SE checklist is unchanged.
 
 Concurrent trace substeps: initialization, reveal, sample, clean commitment,
-retry and exhaustion are checked; normalization and the actual-history invariant
-remain open. The 6/8 count tracks these proof steps, not a percentage of full SE.
+retry, exhaustion, normalization and the actual-history invariant are checked.
+The 8/8 count tracks these proof steps, not a percentage of full SE.
 
 | Status | Recovery milestone |
 | --- | --- |
@@ -101,8 +101,8 @@ exact clean, retry or exhausted close at the block boundary. Actual completed
 reveal and sample operations also give legal source paths, exact exclusion and
 typed store/guard/revelation readback. Whole-program noncommit path lifting uses
 the existing residual kernel and control laws; compiled residuals preserve the
-available typed menus as well. These are phase boundaries, not yet an initialized
-whole-history simulation.
+available typed menus as well. These phase boundaries now compose through actual normalization and every
+initialized legal history into reachable saved source checkpoints.
 Concrete saved-entry checkpoints now retain a genuine initialized source trace,
 typed store and failure bookkeeping, exact compiled suffix and canonical terminal
 references. The actual normalized initial dispatcher has the checkpoint of
@@ -118,8 +118,10 @@ retry and exhausted. They derive legal source paths and append them to the
 initialized source trace, retaining exact typed state, exclusion, global
 generation and compiler/readout certificates. Both the existing disclosure
 residual and commitment-prefix lift preserve every recovery-control component,
-available menu, raw step and typed readout. Whole normalization and the
-all-history checkpoint factory remain open.
+available menu, raw step and typed readout. The checked normalization theorem
+handles every phase and arbitrary chains of automatic retirement. Every actual
+initialized legal physical history now has such a saved source checkpoint, with
+no source path or simulation witness assumed.
 At an actual finished raw history, a supplied checkpoint yields a genuine
 terminal auxiliary-source history with the same typed readout and entire payoff
 vector. Actual history invariants derive terminal exclusion equality and store
@@ -163,13 +165,21 @@ a coordinate that survives to any later callback must have replied WAIT:
 inclusion or expiry permanently resolves that coordinate, even across retries.
 Actual active owner information reconstructs
 its pre-activation erased query. Equating that transcript to the constraints recovered
-from the full owner information fiber remains open. Permanently excluded
+from the full owner information fiber remains open. At an actual unsent native
+information site, all candidate inclusion-coin words have the same complete
+command-transcript consistency verdict when their first delays agree; recovery
+of that first delay across the whole information fiber remains open. Permanently excluded
 players have constant continuation payoff throughout their complete native
-information fibers, so every continuation policy is optimal there. The raw
+information fibers, so every continuation policy is optimal there. For all
+players at a public nonempty-exclusion site, actual exclusion persistence lets
+one restrict every whole deviation to public-exclusion sites without changing
+its terminal law. Consistency and local optimality on those sites therefore
+give whole-policy optimality there; existence of a native assessment still
+requires the clear-site comparison. The raw
 audit extension preserves the joint typed readout and realized audited payoff
 vector of a counted-menu SE, whose existence is still a separate obligation.
-The all-phase store/registry/history simulation, general admissible scheduler
-conditioning transport, native incentive comparisons and concurrent SE assembly
+The physical/source information and probability-law transport, general admissible
+scheduler conditioning, native incentive comparisons and concurrent SE assembly
 remain open.
 Appendix A identifies the checked declarations; Section 9 lists the broader
 limitations.
