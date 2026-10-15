@@ -29,8 +29,9 @@ local notation "Clear" => ReactiveApplication.stateInvariant
   (app := nativeApp) (fun state => PublicExclusionRecord (RecoveryState.mk state ∅))
 
 /-- An actual idle clear prefix and its realized environment transition into
-this complete history. The chosen command retains its true scheduler support. -/
-def ClearEnvironmentBoundary (history : (protocol).History) : Prop :=
+this complete history, after the actual continuation start. The chosen command
+retains its true scheduler support. -/
+def ClearEnvironmentBoundary (start history : (protocol).History) : Prop :=
   ∃ (remaining : Nat) (execution : (nativeApp).Execution)
     (prior : (protocol).Trace (some ⟨remaining + 1, none, execution⟩))
     (command : (nativeApp).Command) (next : (nativeApp).Execution),
@@ -39,7 +40,7 @@ def ClearEnvironmentBoundary (history : (protocol).History) : Prop :=
         (execution.observeEnvironment nativeApp)).support ∧
       next ∈ (execution.environmentStep nativeApp command).support ∧
       history.state = some ⟨remaining, command.actor? nativeApp, next⟩ ∧
-      TracePrefix prior history.trace
+      TracePrefix start.trace prior ∧ TracePrefix prior history.trace
 
 omit [Fintype Player] in
 private theorem record_respond (execution : (nativeApp).Execution) (who : Player)
@@ -99,16 +100,17 @@ theorem responseMenu_stopped_exclusion_boundary
       (fun history => ¬ Clear history.state ∨ extraStop history)
       start).support,
       Clear final.state ∨
-      ClearEnvironmentBoundary runtime leaks initial horizon scheduler menu final := by
+      ClearEnvironmentBoundary runtime leaks initial horizon scheduler menu start final := by
   classical
   let stopped := fun history : (protocol).History =>
     ¬ Clear history.state ∨ extraStop history
   let property := fun history : (protocol).History =>
     (∃ current, history.state = some current) ∧
+      TracePrefix start.trace history.trace ∧
       (Clear history.state ∨
-        ClearEnvironmentBoundary runtime leaks initial horizon scheduler menu history)
+        ClearEnvironmentBoundary runtime leaks initial horizon scheduler menu start history)
   have initialProperty : property start := by
-    refine ⟨⟨current, state⟩, Or.inl ?_⟩
+    refine ⟨⟨current, state⟩, .refl, Or.inl ?_⟩
     change Clear start.state
     rw [state]
     exact clear
@@ -137,15 +139,16 @@ theorem responseMenu_stopped_exclusion_boundary
     rcases transition_clear_or_environment runtime leaks initial horizon scheduler current target
       draw.1 record realized with ⟨next, same, nextRecord⟩ |
         ⟨remaining, execution, beforeEq, command, next, chosen, moved, same⟩
-    · refine ⟨⟨next, same⟩, Or.inl ?_⟩
+    · refine ⟨⟨next, same⟩, .extend valid.2.1 draw.1 draw.2 realized, Or.inl ?_⟩
       change Clear target
       rw [same]
       exact nextRecord
     · cases beforeEq
-      exact ⟨⟨_, same⟩, Or.inr ⟨remaining, execution, trace, command, next,
-        record, chosen, moved, same, .extend .refl draw.1 draw.2 realized⟩⟩
+      exact ⟨⟨_, same⟩, .extend valid.2.1 draw.1 draw.2 realized,
+        Or.inr ⟨remaining, execution, trace, command, next, record, chosen, moved, same,
+          valid.2.1, .extend .refl draw.1 draw.2 realized⟩⟩
   intro final member
   exact ((model).runBehavioralUntil_support_history_closed certificate profile stopped property
-    preserved start initialProperty final member).2
+    preserved start initialProperty final member).2.2
 
 end Vegas.EventGraphRuntime

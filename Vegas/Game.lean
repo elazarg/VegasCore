@@ -606,3 +606,10 @@ import Vegas.Game.OnePacketCompletionOrigin
 import Vegas.Game.RecoveryStoppedSourceLaw
 import Vegas.Game.RecoveryNativeStrategy
 import Vegas.Game.OnePacketFilteredPrefix
+import Vegas.Game.RecoveryNativeClearReach
+import Vegas.Game.RecoveryNativePrior
+import Vegas.Game.RecoveryForeignFailure
+import Vegas.Game.RecoveryNativeClearBelief
+
+import Vegas.Game.RecoveryStoppedAcceptance
+import Vegas.Game.RecoveryComparisonBelief

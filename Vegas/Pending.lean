@@ -357,3 +357,4 @@ import Vegas.Pending.ExclusionStoppedBoundary
 
 import Vegas.Pending.ExclusionSameConfiguration
 import Vegas.Pending.ExclusionSeedBelief
+import Vegas.Pending.ExclusionLocalSeedProduct

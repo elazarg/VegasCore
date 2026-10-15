@@ -108,6 +108,73 @@ private theorem acceptedInvariant_transition {who : Player}
             · exact ⟨action, member⟩
             · exact (pending earlier).elim
 
+/-- A recorded accepted call retains its sent configuration while pending,
+and every completed stopped endpoint performs its successful compiled event
+step. Settlement is required only on this actual stopped law. -/
+theorem accepted_until_config
+    (certificate : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup)
+      horizon scheduler).WellFoundedHistories)
+    (players : ∀ player, ((bounds.onePacketMenu (runtime setup) leaks).information
+      (initialLaw setup) horizon scheduler).BehavioralPolicy player)
+    (extraStop : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup)
+      horizon scheduler).History → Prop)
+    {who : Player} {entry : (application setup leaks).PlayerEntry}
+    {message : Message Player (WitnessedPacket (graph setup))} {event : (graph setup).EventId}
+    {sent : (graph setup).Config} (ready : sent.cut.Ready event) {rank : Nat}
+    (ordered : sent.cut.IsPrefix rank)
+    (start : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
+      scheduler).History) {control : (application setup leaks).Control}
+    (current : start.state = some control)
+    (invariant : AcceptanceInvariant setup leaks bounds horizon scheduler who entry message event
+      sent (some control))
+    (atSent : control.execution.application.config = sent)
+    (settles : ∀ stopped ∈ (((bounds.onePacketMenu (runtime setup) leaks).information
+        (initialLaw setup) horizon scheduler).runBehavioralUntil certificate players
+        (fun history => LateStopped setup leaks bounds horizon scheduler rank history ∨
+          extraStop history) start).support,
+      ∀ final, stopped.state = some final → RecordsEntry setup leaks who entry (some final) →
+        event ∈ final.execution.application.config.cut.completed →
+          (message.id, true) ∈ final.execution.receipts) :
+    ∀ stop ∈ (((bounds.onePacketMenu (runtime setup) leaks).information (initialLaw setup)
+        horizon scheduler).runBehavioralUntil certificate players
+        (fun history => LateStopped setup leaks bounds horizon scheduler rank history ∨
+          extraStop history) start).support,
+      ∃ final, stop.state = some final ∧
+        (event ∉ final.execution.application.config.cut.completed →
+          final.execution.application.config = sent) ∧
+        (event ∈ final.execution.application.config.cut.completed →
+          ∃ action, final.execution.application.config ∈ (sent.step event ready action).support ∧
+            OutputSucceeded final.execution.application.config.store event) := by
+  intro stop member
+  let menu := bounds.onePacketMenu (runtime setup) leaks
+  let model := menu.information (initialLaw setup) horizon scheduler
+  have holds : AcceptedInvariant setup leaks bounds horizon scheduler who entry message event sent
+      ready start.state := by
+    rw [current]
+    refine ⟨invariant, fun done => ?_⟩
+    rw [atSent] at done
+    exact (ready.1 done).elim
+  have reachedInvariant := model.runBehavioralUntil_support_closed_of_going certificate players
+    (fun history => LateStopped setup leaks bounds horizon scheduler rank history ∨
+      extraStop history)
+    (AcceptedInvariant setup leaks bounds horizon scheduler who entry message event sent ready)
+    (fun history going _ joint legal target holds reached =>
+      acceptedInvariant_transition ordered history.state target
+        (fun control state prefixed => going (Or.inl ⟨control, state, prefixed⟩)) joint legal holds
+        reached)
+    start holds stop member
+  cases state : stop.state with
+  | none =>
+      rw [state] at reachedInvariant
+      exact reachedInvariant.elim
+  | some final =>
+      rw [state] at reachedInvariant
+      obtain ⟨finalInvariant, completion⟩ := reachedInvariant
+      obtain ⟨⟨finalTrace⟩, records, _, _, _, stable, settled⟩ := finalInvariant
+      refine ⟨final, rfl, stable, fun done => ?_⟩
+      obtain ⟨action, stepMember⟩ := completion done
+      exact ⟨action, stepMember, settled (settles stop member final state records done)⟩
+
 /-- **The stop after an accepted packet.** Let who have sent message, recorded
 by entry, from the configuration sent at which the event of rank rank is ready.
 Suppose the acceptance invariant holds at a history at sent, and the packet has
@@ -142,46 +209,30 @@ theorem accepted_stop_config
       ∃ final action, stop.state = some final ∧
         final.execution.application.config ∈ (sent.step event ready action).support ∧
         OutputSucceeded final.execution.application.config.store event := by
-  intro stop member
+  intro stopped supported
   let menu := bounds.onePacketMenu (runtime setup) leaks
   let model := menu.information (initialLaw setup) horizon scheduler
-  have holds : AcceptedInvariant setup leaks bounds horizon scheduler who entry message event sent
-      ready start.state := by
-    rw [current]
-    refine ⟨invariant, fun done => ?_⟩
-    rw [atSent] at done
-    exact (ready.1 done).elim
-  have reachedInvariant := model.runBehavioralUntil_support_closed_of_going certificate players
-    (LateStopped setup leaks bounds horizon scheduler rank)
-    (AcceptedInvariant setup leaks bounds horizon scheduler who entry message event sent ready)
-    (fun history going _ joint legal target holds reached =>
-      acceptedInvariant_transition ordered history.state target
-        (fun control state prefixed => going ⟨control, state, prefixed⟩) joint legal holds
-        reached)
-    start holds stop member
-  have ends := model.mem_support_runBehavioralUntil certificate players _ start stop member
-  cases state : stop.state with
-  | none =>
-      rw [state] at reachedInvariant
-      exact reachedInvariant.elim
-  | some final =>
-      rw [state] at reachedInvariant
-      obtain ⟨finalInvariant, completion⟩ := reachedInvariant
-      obtain ⟨⟨finalTrace⟩, records, _, _, _, stable, settled⟩ := finalInvariant
-      have done : event ∈ final.execution.application.config.cut.completed := by
-        by_contra pending
-        have same := stable pending
-        rcases ends with ⟨other, otherState, prefixed⟩ | ended
-        · rw [state] at otherState
-          cases Option.some.inj otherState
-          rw [same] at prefixed
-          exact Nat.succ_ne_self rank (isPrefix_unique prefixed ordered)
-        · rw [state] at ended
-          have terminal := completes final (menu.toRawTrace (initialLaw setup) horizon scheduler
-            finalTrace) ended
-          exact pending (by rw [terminal]; exact Finset.mem_univ _)
-      obtain ⟨action, stepMember⟩ := completion done
-      exact ⟨final, action, rfl, stepMember, settled (settles final finalTrace records done)⟩
+  have partialLaw := accepted_until_config certificate players (fun _ => False) ready ordered
+    start current invariant atSent
+    (fun final _ control equal records done =>
+      settles control (equal ▸ final.trace) records done)
+  obtain ⟨final, state, stable, completed⟩ := partialLaw stopped
+    (by simpa only [or_false] using supported)
+  have ends := model.mem_support_runBehavioralUntil certificate players
+    (LateStopped setup leaks bounds horizon scheduler rank) start stopped supported
+  have done : event ∈ final.execution.application.config.cut.completed := by
+    by_contra pending
+    rcases ends with ⟨other, otherState, prefixed⟩ | ended
+    · rw [state] at otherState
+      cases Option.some.inj otherState
+      rw [stable pending] at prefixed
+      exact Nat.succ_ne_self rank (isPrefix_unique prefixed ordered)
+    · rw [state] at ended
+      have rawTrace := state ▸ menu.toRawTrace (initialLaw setup) horizon scheduler stopped.trace
+      have terminal := completes final rawTrace ended
+      exact pending (by rw [terminal]; exact Finset.mem_univ _)
+  obtain ⟨action, stepMember, succeeded⟩ := completed done
+  exact ⟨final, action, state, stepMember, succeeded⟩
 
 omit [DecidableEq Player] [Fintype Player] [IExpr.ResultTypes L] in
 /-- A publication's failure read at its own type is a failure. -/

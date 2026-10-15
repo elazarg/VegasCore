@@ -1,6 +1,26 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**SE: 2/4 stages checked · recovery: foreign-failure bound → incentive assembly · then concurrency.**
+**Recovery: 7/10 verified · next: foreign-failure bound → incentives → SE assembly.**
+
+<details>
+<summary>Counted proof milestones; concurrency remains pending</summary>
+
+Milestones have unequal cost; the fixed SE checklist is unchanged.
+
+| Status | Recovery milestone |
+| --- | --- |
+| Verified | Permanent exclusion and count-audit extension |
+| Verified | Exact clear histories and complete information fibers |
+| Verified | One common consistent assessment completion |
+| Verified | Debt-stopped payoff comparison |
+| Verified | Same-assessment strategy, reach and Bayes transfer |
+| Verified | Actual first-callback source laws for bindings and openings |
+| Verified | Filtered seed product at actual clear recovery sites |
+| Pending | Quantitative foreign-failure probability bound |
+| Pending | Clear-site incentive bounds and limit transfer |
+| Pending | Recovery SE with intended joint law and zero charges |
+
+</details>
 
 Status: partly mechanized mathematics. The checked results include Proposition
 1(1) for events run one at a time, Lemma C, the finite core of Lemma T, and a
@@ -2106,11 +2126,15 @@ probability $\tfrac12$ and earns $\tfrac12$ or $1$, not $\tfrac12\cdot1.5$. Part
 
 *Proof.* Write $Z$ for everything in the run other than $\xi_e$ and $j$'s
 choices for $e$: Nature, the players' private randomization (including $j$'s
-own later randomization), the other seeds and the remainder seed. By (S2–S3),
-$\xi_e$ is independent of $Z$ given $j$'s information at the history. At each
-stage $n$ this is Bayes' rule: the likelihood of $j$'s observations factors
-into a term in $\xi_e$ (activations so far, and no resolution yet) and a term
-in $Z$. The product form survives the limit.
+own later randomization), the other seeds and the remainder seed. At each
+stage $n$, recover from $j$'s actual information the local transcript of
+activations, own emissions and survival, including the local query replies.
+By (S2–S3) and Bayes' rule, the conditional joint law factors into the law
+of $\xi_e$ filtered by agreement with those replies and a conditional law of
+$Z$. The filtered local law may depend on the information site and on $n$;
+it need not equal the original seed prior. The product form survives the
+limit. All remaining success probabilities below use this site's filtered
+local law.
 
 - *Failure* gives $a_j$.
 - *Success.* Given $Z$ and the success of $e$, $j$'s gross payoff is a number
@@ -2136,7 +2160,7 @@ in $Z$. The product form survives the limit.
   $e$ resolves, everything $j$ observes is a function of $Z$, of $j$'s
   activations for $e$, of the clock and of $j$'s own emissions. With $Z$
   fixed, $s$ is therefore an own-service policy, and $\pi_s(Z)\le P^*$ because
-  $\xi_e$ has its fixed law given $Z$.
+  conditioning further on $Z$ leaves this site's filtered local law unchanged.
 - *Conclusion.* For an own-service $s$, $\pi_s(Z)=P_s$ for every $Z$, which
   gives (a) with $V=\mathbb E[G(Z)]$. For a general $s$, $G(Z)-a_j\ge0$ and
   $\pi_s(Z)\le P^*$ give (b).
@@ -2949,12 +2973,17 @@ needs its own review. What is known:
 | Clear finite recovery Bayes beliefs project to the exact full native-control belief | `Vegas.EventGraphRuntime.RecoveryProjection.bounded_bayesBelief_projectedState` |
 | The original seeded occupation law equals the actual behavioral control law tagged with its full-transcript seed posterior | `Interaction.ReactiveApplication.schedulerMixture_occupation_joint` |
 | The assembled recovery strategy and same-weight native comparison have exactly the same optional action law at represented clear sites | `Vegas.RecoveryOnePacket.nativeComparisonStrategy_at_clear` |
+| Every actual clear complete native history has the same reach weight under the comparison strategy and the projected common recovery strategy | `Vegas.RecoveryOnePacket.historyReachWeight_nativeComparison_of_clear` |
+| At a complete clear native information fiber, the comparison Bayes belief normalizes exactly the projected recovery trace weights | `Vegas.RecoveryOnePacket.nativeComparison_bayes_formula_of_clear` |
+| The same common recovery Bayes assessment has exactly the comparison belief on complete clear raw information histories | `Vegas.RecoveryOnePacket.recovery_belief_eq_nativeComparison` |
 | Actual first public failures identify a pending owner packet or a genuinely activated due expiry | `Vegas.firstPublicFailure_pending_or_due` |
 | Pending submissions and due expiries supply actual future foreign first-activation response prefixes | `Vegas.foreign_firstActivation_prefix_of_recorded`, `Vegas.recovery_foreign_firstActivation_prefix_of_due` |
 | Clear regularity and focal debt-freedom transport to every actual earlier prefix | `Vegas.clear_regular_notOwes_of_tracePrefix` |
 | Actual recovery component mixtures put at most scale plus scale squared on events disjoint from main support | `Vegas.RecoveryOnePacket.component_mixture_event_le_of_disjoint_main` |
 | First-exclusion stopped endpoints retain their actual clear environment predecessor and realized command | `Vegas.EventGraphRuntime.responseMenu_stopped_exclusion_boundary` |
 | A recorded protected fixed-value binding completes successfully at the stopped boundary under actual recovery service | `Vegas.recovery_committed_stop_config` |
+| Actual clear first callbacks derive freshness and acceptance and have the exact stopped source-step law, for fixed-value bindings and canonical disclosures | `Vegas.recovery_firstActivation_commitment_sourceLaw`, `Vegas.recovery_firstActivation_disclosure_sourceLaw` |
+| Every first foreign public failure has a future foreign first-callback response outside main support | `Vegas.recovery_firstForeignFailure_not_mainActivationTraceAfter` |
 | Its decoded stopped continuation law is exactly the source step law | `Vegas.recovery_committed_stop_sourceLaw` |
 | Original persistent seeds conditioned on actual finite-menu information equal standard Bayes controls tagged by the actual transcript posterior | `Interaction.ReactiveApplication.ResponseMenu.bayesBelief_seededOccupation` |
 | The original seed joint law transports to complete clear recovery controls, including their recalled exclusion records | `Vegas.EventGraphRuntime.RecoveryProjection.bounded_bayesBelief_seededState` |
@@ -2978,6 +3007,7 @@ needs its own review. What is known:
 | Across independently sampled round counts, conditioning on the actual full ready owner observation retains the filtered local seed independently of the hidden count, initial inputs, selected execution and every other seed | `Vegas.EventGraphRuntime.LocalSeedController.ownerObservation_seed_product` |
 | The standard finite-menu Bayes belief on complete controls is the actual command-boundary occupation posterior across round counts | `Interaction.ReactiveApplication.ResponseMenu.bayesBelief_state_eq_occupationPosterior` |
 | At genuine clean ready finite native sites, the original immutable local seed has its recovered reply-filtered law independently of the complete runtime control and other seed coordinates | `Vegas.EventGraphRuntime.LocalSeedController.bayesBelief_seed_product` |
+| At matching actual clear recovery sites, the local seed filtered by recovered replies is independent of the complete recovery control and all other seed coordinates | `Vegas.EventGraphRuntime.RecoveryProjection.clear_bayesBelief_seed_product` |
 | The original immutable seed law maps exactly to that command-boundary control law | `Vegas.EventGraphRuntime.LocalSeedController.seededSampledRoundDecisionLaw_control` |
 
 The default-runtime theorem derives zero on-path count charges and the joint
@@ -3006,11 +3036,19 @@ bounded by the tremble scale plus its square, independently of menu size.
 The recovery weights also determine a globally assembled native comparison
 sequence with full support and canonical Bayes beliefs. At represented clear
 decisions, its action laws equal those of the actual assembled recovery
-strategy using the same weights. Actual first-failure command classification,
+strategy using the same weights. Their exact reach weights agree on all clear
+complete native histories, and their Bayes laws normalize the same trace
+weights on every complete clear fiber. The actual common recovery Bayes
+assessment and the comparison have exactly the same complete raw-history
+belief after the clear-fiber equivalence and initial-law transport. Actual
+first-failure command classification,
 future first-activation provenance and prefix guard transport are checked;
 the marked-history probability estimate remains open. Protected recorded
 fixed-value bindings have the exact stopped source-step law under actual
-recovery service, without a global native completion contract.
+recovery service, without a global native completion contract. Actual first
+callbacks derive freshness and acceptance for both fixed-value bindings and
+canonical disclosures; both resulting response histories have their exact
+stopped source-step law.
 A common consistent assessment completion gives rationality at every
 post-exclusion site. Own latent source debt gives rationality at every owing
 site of any assessment, under actual recovery completion. The intended-law
@@ -3042,8 +3080,13 @@ information sites, their checked conditional product retains the full current
 control and all other seed coordinates in its residual factor. Every supported
 Bayes control and latent seed recovers the same actual query log. Transfer to
 actual clear recovery sites retains the full original seed/control joint law.
-The filtered local-seed product at those sites and extension of this scoped
-controller result to the full runtime remain open.
+At matching actual clear recovery sites, the filtered local-seed product is
+also checked, retaining the full recovery control and every other seed
+coordinate. The scoped resolving controller permits concurrent events of
+different owners. Full runtime realization still requires an actual all-event
+and reset scheduler with fresh attempt coordinates, complete calendar/progress
+and domain proofs, any required emission-time dependence, concrete finite
+histories, and the continuation/payoff coupling.
 
 A mechanization must also check the following, beyond the statements above:
 

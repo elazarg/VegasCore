@@ -1,3 +1,8 @@
+import Vegas.Game.RecoveryComparisonBelief
+import Vegas.Game.RecoveryNativeClearBelief
+import Vegas.Game.RecoveryNativePrior
+import Vegas.Game.RecoveryForeignFailure
+import Vegas.Pending.ExclusionLocalSeedProduct
 import Interaction.ReactiveSchedulerSeedBayes
 import Vegas.Game.RecoveryStoppedSourceLaw
 import Vegas.Game.RecoveryNativeStrategy
@@ -5163,3 +5168,51 @@ open Vegas.EventGraphRuntime.RecoveryProjection in
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms bounded_bayesBelief_seededState
+
+open Vegas in
+/-- info: 'Vegas.recovery_firstActivation_commitment_sourceLaw'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms recovery_firstActivation_commitment_sourceLaw
+
+open Vegas in
+/-- info: 'Vegas.recovery_firstActivation_disclosure_sourceLaw'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms recovery_firstActivation_disclosure_sourceLaw
+
+open Vegas in
+/-- info: 'Vegas.recovery_accepted_stop_config'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms recovery_accepted_stop_config
+
+open Vegas.RecoveryOnePacket in
+/-- info: 'Vegas.RecoveryOnePacket.historyReachWeight_nativeComparison_of_clear'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms historyReachWeight_nativeComparison_of_clear
+
+open Vegas.RecoveryOnePacket in
+/-- info: 'Vegas.RecoveryOnePacket.nativeComparison_bayes_formula_of_clear'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms nativeComparison_bayes_formula_of_clear
+
+open Vegas.EventGraphRuntime.RecoveryProjection in
+/-- info: 'Vegas.EventGraphRuntime.RecoveryProjection.clear_bayesBelief_seed_product'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms clear_bayesBelief_seed_product
+
+open Vegas in
+/-- info: 'Vegas.recovery_firstForeignFailure_not_mainActivationTraceAfter'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms recovery_firstForeignFailure_not_mainActivationTraceAfter
+
+open Vegas.RecoveryOnePacket in
+/-- info: 'Vegas.RecoveryOnePacket.recovery_belief_eq_nativeComparison'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms recovery_belief_eq_nativeComparison

@@ -84,7 +84,7 @@ theorem recovery_stopped_freshCall_receipt
     exact (recovery_prescribed_packet_settles setup leaks initialized nativeLaw inclusion final
       rawTrace finalClear event who owned earlier later entry message split call sole).2 done
   · obtain ⟨remaining, execution, prior, command, next, priorClear, _chosen, moved, target,
-        _prefix⟩ := boundary
+        _fromStart, _prefix⟩ := boundary
     have same := Option.some.inj (finalState.symm.trans target)
     cases same
     have rawPrior := (menu).toRawTrace (initialLaw setup) horizon nativeScheduler prior
