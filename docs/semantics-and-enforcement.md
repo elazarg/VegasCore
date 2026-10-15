@@ -78,17 +78,48 @@ Consequences:
   private relays, fee fields, shared secrets) can be neither prevented nor
   deterred. They are limitations, not obligations.
 
-### I.4 Which deviations a source language must contain
+### I.4 Which deviations a source language must account for
 
-[argued] A source language needs to expose exactly the deviations the
-implementation can neither prevent nor deter. For commit–reveal on a ledger
-that is silence, at a commitment or at a reveal. A guard-violating value or an
-unopenable binding is indistinguishable from silence by the time anyone can
-tell, at the reveal. Malformed, premature, duplicate and evidence-bearing
-packets are prevented or deterred. Everything else is a limitation or an
-assumption.
+A deviation can enter a source language to two degrees:
+
+1. **Analyzed.** It is a move the designer reasons about strategically, with a
+   price the program specifies.
+2. **Given a consequence.** The designer need not analyze it, but the language
+   defines what happens after it.
+
+[argued] No deviation needs the first degree. Silence is attributable from the
+public record, so it can be charged with certainty. A charge above the payoff
+range makes it strictly dominated, and a failure payoff no higher than every
+intended payoff makes it weakly dominated. The designer can therefore analyze
+the game without it. The forfeit pass and `Vegas.Paper.intended_sequential_equilibrium`
+[checked] are an instance.
+
+[argued] Silence, at a commitment or at a reveal, needs the second degree, and
+it is the only deviation that does. A prevented packet, or one deterred by
+signed evidence, leaves the record unchanged: the contract rejects or ignores
+it, and play continues as if it had not been sent. Silence changes the record:
+the move did not happen, and the contract cannot supply the missing value.
+Something must follow, at least the other players' payouts. Dominance does not
+remove this need. The histories after silence exist on the ledger, trembles
+reach them, and a sequential equilibrium must specify beliefs and rational play
+there.
+
+A guard-violating value or an unopenable binding is indistinguishable from
+silence by the time anyone can tell, at the reveal. Malformed, premature,
+duplicate and evidence-bearing packets are prevented or deterred. Everything
+else is a limitation or an assumption.
 
 ### I.5 What the failure response must satisfy
+
+[argued] The failure response is not mainly a deterrent. The deviation that
+threatens sequential equilibrium under builders that may include late packets
+is late sending, not silence. A late opening is included with probability $q$,
+and when it is included the contract cannot prove it was late, so a charge on
+failure costs a late sender only $(1-q)$ times the charge in expectation. The
+builder is fixed after the charge, so $q$ can approach $1$. Deterring failure
+does not deter a gamble that rarely fails. The response must instead make the
+failure branch worth the same to every type, which removes the motive rather
+than raising the price.
 
 - [argued] A dropped late opening is evidence of a deviation. Under a builder
   that includes an owner's sole timely packet, non-inclusion of that packet
@@ -253,7 +284,8 @@ stand.
 
 ### III.1 Target language: commit–reveal with exit
 
-Following I.4 and I.5: pure commit–reveal, plus one way to fail.
+Following I.4 and I.5: the designer analyzes pure commit–reveal, and the
+language defines the consequence of silence.
 
 - Every owned move, a commitment or a reveal, may instead fail. A failure is
   public, ends its owner's participation, and pays the owner a fixed exit
