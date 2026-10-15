@@ -641,6 +641,12 @@ import Vegas.Pending.PhaseSeedProtectedReceipt
 import Vegas.Pending.PhaseValueSwap
 import Vegas.Pending.PhaseSwapApplication
 import Vegas.Pending.PhaseReactiveValueSwap
+import Vegas.Pending.PhaseSeedServiceTick
+import Vegas.Pending.PhaseTimelyResolution
+import Vegas.Pending.PhaseSeedWindowReceipt
+import Vegas.Pending.PhaseSwapMenu
+import Vegas.Pending.PhaseSwapInformation
+import Vegas.Game.PhaseOwnerSwapInformation
 
 /-! # Checked sequential-equilibrium preservation, Nash correspondence and termination -/
 
@@ -6998,3 +7004,45 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms
   Vegas.EventGraphRuntime.HiddenSwap.environmentStep_phaseExecution
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseSeedCalendar.history_calendar_state'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseSeedCalendar.history_calendar_state
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseSeedCalendar.service_tick_bounds_request_time'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseSeedCalendar.service_tick_bounds_request_time
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseSeedCalendar.future_tick_unclosed'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseSeedCalendar.future_tick_unclosed
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseSeedCalendar.window_eventually_included'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseSeedCalendar.window_eventually_included
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseCount.swap_mem_onePacketActions'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseCount.swap_mem_onePacketActions
+
+/-- info: 'Vegas.EventGraphRuntime.HiddenSwap.phaseNormalize_entry'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.HiddenSwap.phaseNormalize_entry
+
+/-- info: 'Vegas.ownerSwap_phaseInput_eq'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.ownerSwap_phaseInput_eq

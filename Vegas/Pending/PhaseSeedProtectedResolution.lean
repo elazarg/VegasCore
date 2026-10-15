@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.PhaseSeedProtectedClock
-import Vegas.Pending.PhaseReadyResolution
+import Vegas.Pending.PhaseTimelyResolution
 
 /-! # Protected packets physically resolve by inclusion -/
 
@@ -13,39 +13,6 @@ open EventGraph Interaction GameTheory.Math.Probability
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
-
-namespace PhaseRuntimeState
-
-/-- Expiry before this ready event's deadline stutters before normalization,
-which preserves its genuine request. No scheduler fairness premise is used. -/
-theorem expiry_request_before_deadline (runtime : EventGraphRuntime graph)
-    (state next : PhaseRuntimeState graph) (owner : Player)
-    (coordinate : CommitAttemptEvent graph) (requested : state.SeedRequest owner coordinate)
-    (timely : state.current.native.WithinDeadline runtime coordinate.event)
-    (reached : next ∈ (state.environment runtime (.expire coordinate.event)).support) :
-    next.SeedRequest owner coordinate := by
-  classical
-  cases activated : state.current.native.activatedAt coordinate.event with
-  | none =>
-      simp only [State.WithinDeadline, activated] at timely
-  | some entered =>
-      have notDue : ¬ runtime.deadline coordinate.event ≤ state.current.native.clock - entered :=
-        Nat.not_le_of_lt (by simpa only [State.WithinDeadline, activated] using timely)
-      have raw := environmentStep_expire_of_not_due runtime state.current.native coordinate.event
-        requested.2.2.1 entered activated notDue
-      unfold PhaseRuntimeState.environment at reached
-      split at reached
-      · rw [raw, PMF.pure_map, PMF.mem_support_pure_iff _ _] at reached
-        have unchanged : state.current.environmentResult (.expire coordinate.event)
-            state.current.native = state.current := by
-          simp only [RecoveryState.environmentResult, requested.2.2.1.1, and_false, ite_false]
-        simp only [unchanged] at reached
-        cases reached
-        exact requested.normalize.2
-      · cases (PMF.mem_support_pure_iff _ _).mp reached
-        exact requested
-
-end PhaseRuntimeState
 
 namespace PhaseSeedCalendar
 
@@ -150,16 +117,8 @@ theorem protected_first_resolution_includes (delay bound : graph.EventId → Nat
   have nextValid := invariant.runRounds
     ((controller runtime leaks delay bound priority).family seeds) count execution next valid
       continued
-  rcases environment_request_or_own_resolution runtime leaks ordered next after nextValid
-      owner coordinate.1 survives command moved with retained | expiry | included
-  · exact (lost retained).elim
-  · have expirySupported := moved
-    rw [expiry] at expirySupported
-    simp only [ReactiveApplication.Execution.environmentStep, PMF.map_comp] at expirySupported
-    obtain ⟨state, stateMoved, rfl⟩ := PMF.support_map .. ▸ expirySupported
-    exact (lost (PhaseRuntimeState.expiry_request_before_deadline runtime next.application state
-      owner coordinate.1 survives timely stateMoved)).elim
-  · exact included
+  exact timely_first_request_loss_includes runtime leaks ordered next after nextValid
+    owner coordinate.1 survives timely command moved lost
 
 end PhaseSeedCalendar
 end Vegas.EventGraphRuntime

@@ -113,7 +113,7 @@ theorem initial_plan_tickExhaustion
 
 /-- The earlier-tick query coverage holds at every actual legal history, with
 arbitrary private inputs, arbitrary player choices and the original fixed seeds. -/
-theorem history_tickExhaustion (delay bound : graph.EventId → Nat)
+theorem history_calendar_state (delay bound : graph.EventId → Nat)
     (priority : RestSeed → List (app).EnvironmentEntry → (app).EnvironmentView → Nat)
     (seeds : RestSeed × (PhaseSeedAddress graph → Seed runtime delay))
     (plan : RuntimePhasePlan graph) (ordered : graph.RevealRelaxedOrdered)
@@ -123,7 +123,8 @@ theorem history_tickExhaustion (delay bound : graph.EventId → Nat)
     (trace : ((app).protocol (inputLaw.map (PhaseRuntimeState.initial plan)) horizon
       ((controller runtime leaks delay bound priority).family seeds)).Trace state)
     (current : (app).Control) (stateEq : state = some current) :
-    TickExhaustion runtime leaks priority seeds.1 current.execution := by
+    ∃ inputs, ClockAccounting runtime leaks delay priority seeds inputs 0 current.execution ∧
+      TickExhaustion runtime leaks priority seeds.1 current.execution := by
   let predicate := fun execution : (app).Execution =>
     ∃ inputs, ClockAccounting runtime leaks delay priority seeds inputs 0 execution ∧
       TickExhaustion runtime leaks priority seeds.1 execution
@@ -145,7 +146,22 @@ theorem history_tickExhaustion (delay bound : graph.EventId → Nat)
         maximal inputs, initial_plan_tickExhaustion runtime leaks priority seeds.1 plan inputs⟩)
     trace
   rw [stateEq] at supported
-  obtain ⟨_, _, exhausted⟩ := supported
+  exact supported
+
+/-- Every genuine calendar history has queried all earlier ready ticks. -/
+theorem history_tickExhaustion (delay bound : graph.EventId → Nat)
+    (priority : RestSeed → List (app).EnvironmentEntry → (app).EnvironmentView → Nat)
+    (seeds : RestSeed × (PhaseSeedAddress graph → Seed runtime delay))
+    (plan : RuntimePhasePlan graph) (ordered : graph.RevealRelaxedOrdered)
+    (maximal : plan.phases.IsChain fun before after =>
+      before.kind ≠ after.kind ∨ before.kind = .sample)
+    (inputLaw : PMF graph.Inputs) (horizon : Nat) {state : (app).ProtocolState}
+    (trace : ((app).protocol (inputLaw.map (PhaseRuntimeState.initial plan)) horizon
+      ((controller runtime leaks delay bound priority).family seeds)).Trace state)
+    (current : (app).Control) (stateEq : state = some current) :
+    TickExhaustion runtime leaks priority seeds.1 current.execution := by
+  obtain ⟨_inputs, _accounting, exhausted⟩ := history_calendar_state runtime leaks delay bound
+    priority seeds plan ordered maximal inputLaw horizon trace current stateEq
   exact exhausted
 
 end Vegas.EventGraphRuntime.PhaseSeedCalendar

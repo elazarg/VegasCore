@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.PhaseSeedWaitingWindow
-import Vegas.Pending.PhaseSeedRecordedWait
+import Vegas.Pending.PhaseSeedServiceTick
 
 /-! # A protected packet cannot survive an actual calendar tick -/
 
@@ -57,74 +56,15 @@ theorem protected_request_time (delay bound : graph.EventId → Nat)
       bound coordinate.1.event < runtime.deadline coordinate.1.event) :
     next.application.current.native.clock = execution.application.current.native.clock ∧
       next.application.current.native.activatedAt coordinate.1.event = some entered := by
-  have timely : execution.application.current.native.clock - entered <
-      runtime.deadline coordinate.1.event := by omega
-  have initialBound : ClosedCoordinateBound runtime execution.application.current.native.clock
-      entered coordinate.1 execution.application :=
-    ⟨le_rfl, started, by rw [requested.1], by rw [requested.1],
-      fun _ => Or.inr ⟨requested.2.2.1, activated, timely⟩⟩
-  have retained := retained_bound_runRounds runtime leaks
-    ((controller runtime leaks delay bound priority).family seeds) players count execution next
-      valid phases execution.application.current.native.clock entered coordinate.1 initialBound
-      continued
-  have stamp : next.application.current.native.activatedAt coordinate.1.event = some entered := by
-    rcases retained.event survives.1 with completed | active
-    · exact (survives.2.2.1.1 completed).elim
-    · exact active.2.1
-  refine ⟨?_, stamp⟩
-  apply Nat.le_antisymm
-  · by_contra later
-    have strict : execution.application.current.native.clock <
-        next.application.current.native.clock := Nat.lt_of_not_ge later
-    have raw := (PhaseCount.onePacketMenu runtime leaks bounds).toRawTrace
-      (inputs.map (PhaseRuntimeState.initial plan)) horizon
-      ((controller runtime leaks delay bound priority).family seeds) trace
-    have exhausted := history_tickExhaustion runtime leaks delay bound priority seeds plan
-      ordered maximal inputs horizon raw ⟨remaining, none, next⟩ rfl
-    have closed := exhausted coordinate owner survives entered stamp
-      execution.application.current.native.clock started strict
-    obtain ⟨laterEntries, recordedLater, _length⟩ :=
-      (app).runRounds_environmentRecall_append
-        ((controller runtime leaks delay bound priority).family seeds) players count execution next
-          continued
-    have closure : (execution.application.current.native.clock, coordinate) ∈
-        replayClosedFrom runtime leaks priority seeds.1
-          (replayClosed runtime leaks priority seeds.1 execution.environmentRecall)
-          execution.environmentRecall laterEntries := by
-      simpa only [recordedLater, replayClosed, replayClosedFrom_append, List.nil_append]
-        using closed
-    rcases replayClosedFrom_origin runtime leaks priority seeds.1
-        (replayClosed runtime leaks priority seeds.1 execution.environmentRecall)
-        execution.environmentRecall laterEntries execution.application.current.native.clock
-        coordinate closure with already | ⟨before, entry, after, entries, _clock, selected, idle⟩
-    · exact unclosed already
-    · have recordedEntry : next.environmentRecall =
-          execution.environmentRecall ++ before ++ entry :: after := by
-        rw [recordedLater, entries, List.append_assoc]
-      have selectedGlobal : selectOpen runtime leaks
-          (replayClosed runtime leaks priority seeds.1 (execution.environmentRecall ++ before))
-          entry.beforeView (priority seeds.1 (execution.environmentRecall ++ before)
-            entry.beforeView) = some coordinate := by
-        simpa only [replayClosed, replayClosedFrom_append, List.nil_append] using selected
-      have waited := (recorded_wait_of_request runtime leaks delay bound priority seeds bounds
-        plan ordered maximal inputs horizon remaining next trace coordinate owner survives
-          (execution.environmentRecall ++ before) entry after recordedEntry selectedGlobal idle).1
-      obtain ⟨used, _left, prior, _middle, _length, priorSupported, priorRecall, observed, chosen,
-          _moved, _future⟩ := (app).runRounds_recorded_entry
-        ((controller runtime leaks delay bound priority).family seeds) players count execution next
-          continued before entry after recordedEntry
-      have selectedPrior : selectedAt runtime leaks priority seeds.1 prior = some coordinate := by
-        unfold selectedAt
-        rw [priorRecall, ← observed]
-        exact selectedGlobal
-      have actualWait : (controller runtime leaks delay bound priority).choose seeds
-          prior.environmentRecall (prior.observeEnvironment app) = .wait :=
-        ((PMF.mem_support_pure_iff _ _).mp chosen).symm.trans waited
-      have excluded := runRounds_wait_excludes_earlier_emission runtime leaks delay bound priority
-        seeds players used execution prior wordRecall clean priorSupported owner coordinate
-          requested.2.2.2.1 selectedPrior
-          (execution.application.current.native.clock - entered) message recorded actualWait
-      exact excluded.1 protection
-  · exact retained.clock
+  have sum : entered + (execution.application.current.native.clock - entered) =
+      execution.application.current.native.clock := by omega
+  obtain ⟨lower, upper, stamp⟩ := service_tick_bounds_request_time runtime leaks delay bound
+    priority seeds bounds plan ordered maximal inputs horizon remaining players count execution
+      next trace valid phases wordRecall clean continued owner coordinate requested survives entered
+      activated started (execution.application.current.native.clock - entered) (by omega)
+      (by omega) (by simpa only [sum] using unclosed)
+      (execution.application.current.native.clock - entered) message recorded (Or.inl protection)
+  rw [sum] at upper
+  exact ⟨Nat.le_antisymm upper lower, stamp⟩
 
 end Vegas.EventGraphRuntime.PhaseSeedCalendar

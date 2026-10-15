@@ -501,3 +501,8 @@ import Vegas.Pending.PhaseSeedProtectedReceipt
 import Vegas.Pending.PhaseValueSwap
 import Vegas.Pending.PhaseSwapApplication
 import Vegas.Pending.PhaseReactiveValueSwap
+import Vegas.Pending.PhaseSeedServiceTick
+import Vegas.Pending.PhaseTimelyResolution
+import Vegas.Pending.PhaseSeedWindowReceipt
+import Vegas.Pending.PhaseSwapMenu
+import Vegas.Pending.PhaseSwapInformation

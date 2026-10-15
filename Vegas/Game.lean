@@ -781,3 +781,4 @@ import Vegas.Game.PhaseWaitingSourceView
 import Vegas.Game.PhaseSourcePolicy
 import Vegas.Game.PhaseSourcePolicyLaw
 import Vegas.Game.PhaseSourcePolicyInformation
+import Vegas.Game.PhaseOwnerSwapInformation

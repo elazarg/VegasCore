@@ -1,6 +1,6 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**SE: non-concurrent ✓ · protected inclusion ✓ · raw-slot coverage ✓ · reset replay ✓; native SE open.**
+**SE: non-concurrent ✓ · window attainment ✓ · raw-slot coverage ✓ · counted replay ✓; native SE open.**
 
 <details>
 <summary>Recovery milestones and current proof substeps</summary>
@@ -42,15 +42,25 @@ The derived calendar horizon forces that first loss. Permanent packet identity
 then identifies the accepting packet with the original protected envelope,
 whose accepting receipt is retained in every supported completion. The proof
 keeps the actual include command, raw graph step and same supported suffix.
-The complete late coin-window probability law remains open.
+For any original protection-or-coin inclusion window, the same argument yields
+an accepting receipt for the exact authored envelope under arbitrary covered
+future policies and history-adaptive priority. Original favorable future ticks
+bound every later surviving request's clock; their initial openness follows
+from the actual calendar state. The converse and exact late-window probability
+law remain open.
 
 The existing hidden-value involution acts on both saved and live states and
 all archived attempts. Restore, automatic drain and every phase reset commute
 when failures are fixed. Under the native binding/disclosure compatibility and
 evidence conditions, actual response and environment laws replay, preserving
 the network, receipts and complete scheduler recall while mapping full private
-recall. Menu transport, paired likelihoods, source/native Bayes transport and
-sequential rationality remain open.
+recall. Local signed packets, evidence normalization and bounded counted-menu
+membership also transport under evidence-fixing and raw-value-closure
+conditions. Visible-field, owned-action and owned-handle fixing preserve the
+complete actual observer input. The concrete foreign-owner transposition
+wrapper uses the default graph; the observation theorem itself is generic.
+Paired execution existence, likelihood comparisons, source/native Bayes
+transport and sequential rationality remain open.
 
 | Status | Recovery milestone |
 | --- | --- |
