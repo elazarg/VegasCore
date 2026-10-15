@@ -802,3 +802,7 @@ import Vegas.Game.CommitRecoveryContinuingExtension
 import Vegas.Game.PhaseBindingReplacementMass
 import Vegas.Game.CommitRecoveryContinuingProbability
 import Vegas.Game.PhaseBindingSilenceProbability
+import Vegas.Game.CommitRecoveryReferencePosition
+import Vegas.Game.CommitRecoveryPrefixConditioning
+import Vegas.Game.CommitRecoveryOmissionPosition
+import Vegas.Game.PhaseSourceStrategyLimit

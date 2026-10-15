@@ -695,6 +695,10 @@ import Vegas.Game.CommitRecoveryContinuingExtension
 import Vegas.Game.PhaseBindingReplacementMass
 import Vegas.Game.CommitRecoveryContinuingProbability
 import Vegas.Game.PhaseBindingSilenceProbability
+import Vegas.Game.CommitRecoveryReferencePosition
+import Vegas.Game.CommitRecoveryPrefixConditioning
+import Vegas.Game.CommitRecoveryOmissionPosition
+import Vegas.Game.PhaseSourceStrategyLimit
 
 /-! # Checked sequential-equilibrium preservation, Nash correspondence and termination -/
 
@@ -7397,3 +7401,52 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms
   Vegas.phaseSourcePerturbedStrategy_replacement_mass
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryReference_raw_eq_of_menu'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecoveryReference_raw_eq_of_menu
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecovery_prefix_continuation'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecovery_prefix_continuation
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecovery_prefix_next_raw_at_trace'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecovery_prefix_next_raw_at_trace
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecovery_approximation_missing_eq_at_traces'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecovery_approximation_missing_eq_at_traces
+
+/-- info:
+'Vegas.phaseSourceStrategy_binding_converges_of_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseSourceStrategy_binding_converges_of_history
+
+/-- info:
+'Vegas.phaseSourceAssessment_binding_strategy_of_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseSourceAssessment_binding_strategy_of_history
+
+/-- info:
+'Vegas.phaseSourceAssessment_opening_strategy_of_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseSourceAssessment_opening_strategy_of_history

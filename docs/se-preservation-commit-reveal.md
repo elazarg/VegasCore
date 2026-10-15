@@ -1,6 +1,6 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**SE: non-concurrent ✓ · auxiliary SE ✓ · native response/service laws ✓ · tremble bounds ✓; native likelihood/incentives open.**
+**SE: non-concurrent ✓ · auxiliary SE ✓ · canonical native limit ✓ · service product ✓; native likelihood/incentives open.**
 
 <details>
 <summary>Recovery milestones and current proof substeps</summary>
@@ -61,6 +61,18 @@ native binding callback, silence has probability at most `η + (1 - η) ε`, whe
 `η` is raw noise. The fresh-slot weight does not enter this upper bound. This
 controls a future response; it does not bound past foreign omissions after
 conditioning on the player's full native information.
+For the concrete uniform reference, the entire raw choice law is identical at
+the same static source position and owner-exclusion status. Consequently the
+approximating omission law is exactly identical at any two initialized clear
+source decision histories at that position, for every approximation index.
+It is not merely small: the reference omission factor ignores hidden source
+values and own words. Identifying the corresponding native timing factor still
+requires the physical-history coupling.
+The actual auxiliary runner also has an exact prefix reconstruction and
+continuation tower conditioned on the clear-prefix bit and complete current
+view. The next full raw move retains its unsampled omission flag; future
+omissions are not conditioned false. Repeated-owner dependencies remain in the
+chronological source runner.
 
 The fresh-slot binding law samples independently of the original typed result,
 offers every bounded fresh slot at actual unsent sites, retains the exact
@@ -100,6 +112,14 @@ convergence identifies that joint response law at the same
 common native subsequential limit. Slot weights need not vanish for this local
 semantic statement. Native history likelihoods and physical inclusion are
 separate from the declared response law.
+If both raw noise and the fresh-slot weight vanish, the same common native
+limit retains the full canonical finite binding strategy, including actual
+handle and preparation, at every initialized clear ready binding. The opening
+strategy is independent of the auxiliary assessment at every actual opening
+request, so the common limit also retains its full canonical opening strategy
+where the recipe is pinned. These statements derive native decision inputs and
+source playedness from the actual histories. They do not assert native/source
+posterior equality or clear-site rationality.
 
 Actual request loss is an own accepting inclusion or an addressed expiry;
 foreign work and private responses cannot silently remove the request. The
