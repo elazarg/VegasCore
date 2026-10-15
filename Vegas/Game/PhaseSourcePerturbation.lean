@@ -84,4 +84,35 @@ theorem phaseSourcePerturbedStrategy_ge_main (wellFormed : setup.WellFormed)
     mul_nonneg (sub_nonneg.mpr noiseBounded) (mul_nonneg slotNonnegative slots)
   nlinarith
 
+/-- Every fresh-slot atom retains the independent slot-tier weight, without
+absorbing its source-result mass into the raw-noise perturbation rate. -/
+theorem phaseSourcePerturbedStrategy_ge_slot (wellFormed : setup.WellFormed)
+    (assessment : setup.commitRecoveryModel.BehavioralAssessment)
+    (noise : ℝ) (noiseNonnegative : 0 ≤ noise) (noiseBounded : noise ≤ 1)
+    (slotWeight : ℝ) (slotNonnegative : 0 ≤ slotWeight) (slotBounded : slotWeight ≤ 1)
+    (who : Player) (input : (phaseApplication runtime leaks).Info)
+    (choice : (N).Choice who input) :
+    (1 - noise) * slotWeight *
+        ((phaseSourceSlotStrategy setup mode runtime leaks bounds wellFormed assessment initial
+          horizon scheduler who input) choice).toReal ≤
+      ((phaseSourcePerturbedStrategy setup mode runtime leaks bounds initial horizon scheduler
+        wellFormed assessment noise noiseNonnegative noiseBounded slotWeight slotNonnegative
+          slotBounded who input) choice).toReal := by
+  unfold phaseSourcePerturbedStrategy
+  rw [mix_apply_toReal, mix_apply_toReal]
+  have uniform := ENNReal.toReal_nonneg (a :=
+    ((menu).uniformPolicy initial horizon scheduler who input) choice)
+  have main := ENNReal.toReal_nonneg (a :=
+    (phaseSourceStrategy setup mode runtime leaks bounds wellFormed assessment initial horizon
+      scheduler who input) choice)
+  have first : 0 ≤ noise *
+      (((menu).uniformPolicy initial horizon scheduler who input) choice).toReal :=
+    mul_nonneg noiseNonnegative uniform
+  have second : 0 ≤ (1 - noise) * ((1 - slotWeight) *
+      ((phaseSourceStrategy setup mode runtime leaks bounds wellFormed assessment initial
+        horizon scheduler who input) choice).toReal) :=
+    mul_nonneg (sub_nonneg.mpr noiseBounded)
+      (mul_nonneg (sub_nonneg.mpr slotBounded) main)
+  nlinarith
+
 end Vegas

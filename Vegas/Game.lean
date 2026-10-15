@@ -797,3 +797,8 @@ import Vegas.Game.PhaseRecoveryBindingChoice
 import Vegas.Game.CommitRecoveryClearFiber
 import Vegas.Game.CommitRecoveryClearBayes
 import Vegas.Game.PhaseBindingBayesPrefix
+import Vegas.Game.CommitRecoveryVoluntaryFailurePayoff
+import Vegas.Game.CommitRecoveryContinuingExtension
+import Vegas.Game.PhaseBindingReplacementMass
+import Vegas.Game.CommitRecoveryContinuingProbability
+import Vegas.Game.PhaseBindingSilenceProbability

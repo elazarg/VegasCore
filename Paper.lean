@@ -688,6 +688,13 @@ import Vegas.Game.CommitRecoveryClearBayes
 import Vegas.Game.PhaseBindingBayesPrefix
 import Vegas.Pending.PhaseSeedPosteriorResponse
 import Vegas.Pending.PhaseSeedReceiptProduct
+import Vegas.Source.CommitRecoveryContinuingMenu
+import Vegas.Source.CommitRecoveryVoluntaryFailure
+import Vegas.Game.CommitRecoveryVoluntaryFailurePayoff
+import Vegas.Game.CommitRecoveryContinuingExtension
+import Vegas.Game.PhaseBindingReplacementMass
+import Vegas.Game.CommitRecoveryContinuingProbability
+import Vegas.Game.PhaseBindingSilenceProbability
 
 /-! # Checked sequential-equilibrium preservation, Nash correspondence and termination -/
 
@@ -7327,3 +7334,66 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms
   Vegas.EventGraphRuntime.PhaseSeedCalendar.bayes_receipt_original_residual_product
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecovery_voluntaryFailure_step'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecovery_voluntaryFailure_step
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecovery_voluntaryFailure_context_value'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecovery_voluntaryFailure_context_value
+
+/-- info:
+'Vegas.SourceProgram.Setup.intended_sequentialEquilibrium_commitRecovery_continuing'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.intended_sequentialEquilibrium_commitRecovery_continuing
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecovery_approximation_continuing_law'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecovery_approximation_continuing_law
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecovery_approximation_failure_probability'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecovery_approximation_failure_probability
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecovery_approximation_missing_probability'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecovery_approximation_missing_probability
+
+/-- info:
+'Vegas.phaseSourcePerturbedStrategy_silence_probability_of_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseSourcePerturbedStrategy_silence_probability_of_history
+
+/-- info:
+'Vegas.phaseSourcePerturbedStrategy_binding_mass'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseSourcePerturbedStrategy_binding_mass
+
+/-- info:
+'Vegas.phaseSourcePerturbedStrategy_replacement_mass'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseSourcePerturbedStrategy_replacement_mass

@@ -1,6 +1,6 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**SE: non-concurrent ✓ · all-clear inputs ✓ · native response ✓ · posterior service product ✓; likelihood/incentives open.**
+**SE: non-concurrent ✓ · auxiliary SE ✓ · native response/service laws ✓ · tremble bounds ✓; native likelihood/incentives open.**
 
 <details>
 <summary>Recovery milestones and current proof substeps</summary>
@@ -44,6 +44,24 @@ the original auxiliary runner's encountered-prefix law conditioned on passage,
 retaining latent foreign actions and their chronological dependencies. Matching
 that source law to the native conditional distribution remains open.
 
+Under the global terminal payoff floor, every intended SE has an auxiliary
+rollback SE that never omits a commitment or withholds an opening at any genuine
+source decision site. Accepted failed bindings remain available. The theorem
+`Setup.intended_sequentialEquilibrium_commitRecovery_continuing` preserves the
+intended strategies, retained beliefs and joint terminal readout/payoff law, and
+provides a restricted approximating sequence. Source omission or withholding
+puts the acting owner in the permanent excluded set in one actual source step;
+its continuation payoff is exactly the owner's floor under every belief and
+continuation. This source theorem supplies the required continuing profile;
+transporting its incentives to the native runtime remains open.
+At every genuine source site, the approximating voluntary-failure law comes
+entirely from the common reference tremble. Omission and withholding therefore
+have probability at most its rate `ε`. At every actual initialized clear unsent
+native binding callback, silence has probability at most `η + (1 - η) ε`, where
+`η` is raw noise. The fresh-slot weight does not enter this upper bound. This
+controls a future response; it does not bound past foreign omissions after
+conditioning on the player's full native information.
+
 The fresh-slot binding law samples independently of the original typed result,
 offers every bounded fresh slot at actual unsent sites, retains the exact
 post-response result law and gives each encoding at least its original result
@@ -60,6 +78,12 @@ Every permitted raw binding's named slot is bounded, globally fresh and offered
 by this law, even with wrong-typed preparation or arbitrary evidence requests.
 Its mass has the fixed lower bound of the original result mass divided by wire
 capacity, independently of the varying number of eligible fresh slots.
+For any permitted raw preparation and evidence, an actual legal canonical
+replacement exists at that same slot for every typed result. Its perturbed
+finite-choice mass is at least `(1 - η) σ m / capacity`, where `σ` is the
+independent slot weight and `m` is the original nonmissing source-result mass.
+Full mixing gives `m > 0` at the actual clear source site. These are local atom
+bounds; a whole-history repair and likelihood comparison remain open.
 
 One common native assessment sequence now retains a source/slot/raw-noise recipe
 at every clear decision input. Raw noise gives full support; independently

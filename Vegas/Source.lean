@@ -103,3 +103,5 @@ import Vegas.Source.CommitRecoveryClearRecall
 import Vegas.Source.CommitPrefixLaw
 import Vegas.Source.CommitPrefixInformationLaw
 import Vegas.Source.IntendedCommitPredecessor
+import Vegas.Source.CommitRecoveryContinuingMenu
+import Vegas.Source.CommitRecoveryVoluntaryFailure
