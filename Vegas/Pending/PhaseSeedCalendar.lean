@@ -109,14 +109,14 @@ def closeAfter (closed : Finset (Nat × PhaseSeedAddress graph))
 def orderInput (view : (app).EnvironmentView) : Nat × CommitAttemptId :=
   (view.application.native.clock, view.application.attempt)
 
-def orderPriority
+def clockAttemptPriority
     (priority : RestSeed → List (Nat × CommitAttemptId) → Nat × CommitAttemptId → Nat)
     (rest : RestSeed) (past : List (app).EnvironmentEntry) (view : (app).EnvironmentView) : Nat :=
   priority rest (past.map fun entry => orderInput runtime leaks entry.beforeView)
     (orderInput runtime leaks view)
 
 def replayClosedFrom
-    (priority : RestSeed → List (Nat × CommitAttemptId) → Nat × CommitAttemptId → Nat)
+    (priority : RestSeed → List (app).EnvironmentEntry → (app).EnvironmentView → Nat)
     (rest : RestSeed) (closed : Finset (Nat × PhaseSeedAddress graph))
     (earlier : List (app).EnvironmentEntry) : List (app).EnvironmentEntry →
       Finset (Nat × PhaseSeedAddress graph)
@@ -125,11 +125,11 @@ def replayClosedFrom
       replayClosedFrom priority rest
         (closeAfter runtime leaks closed entry.beforeView
           (selectOpen runtime leaks closed entry.beforeView
-            (orderPriority runtime leaks priority rest earlier entry.beforeView))
+            (priority rest earlier entry.beforeView))
           entry.command) (earlier ++ [entry]) later
 
 def replayClosed
-    (priority : RestSeed → List (Nat × CommitAttemptId) → Nat × CommitAttemptId → Nat)
+    (priority : RestSeed → List (app).EnvironmentEntry → (app).EnvironmentView → Nat)
     (rest : RestSeed) (past : List (app).EnvironmentEntry) :=
   replayClosedFrom runtime leaks priority rest ∅ [] past
 
@@ -154,12 +154,12 @@ def reply (delay bound : graph.EventId → Nat) (coordinate : PhaseSeedAddress g
   | .wait => .wait
 
 def controller (delay bound : graph.EventId → Nat)
-    (priority : RestSeed → List (Nat × CommitAttemptId) → Nat × CommitAttemptId → Nat) :
+    (priority : RestSeed → List (app).EnvironmentEntry → (app).EnvironmentView → Nat) :
     (app).AddressedScheduler (PhaseSeedAddress graph) (Seed runtime delay) RestSeed
       (PhaseSeedOperationalInput graph) where
   request rest past view :=
     (selectOpen runtime leaks (replayClosed runtime leaks priority rest past) view
-      (orderPriority runtime leaks priority rest past view)).bind fun coordinate =>
+      (priority rest past view)).bind fun coordinate =>
         (graph.actor? coordinate.1.event).map fun owner =>
           (coordinate, PhaseSeedInput.operational coordinate.1.attempt
             (PhaseSeedScheduler.localInput runtime leaks coordinate.1 owner past view))
@@ -169,7 +169,7 @@ def controller (delay bound : graph.EventId → Nat)
 /-- Every seed read by the finite calendar driver is for a genuine current,
 ready, nonexcluded owned event in the installed phase. -/
 theorem request_sound (delay bound : graph.EventId → Nat)
-    (priority : RestSeed → List (Nat × CommitAttemptId) → Nat × CommitAttemptId → Nat)
+    (priority : RestSeed → List (app).EnvironmentEntry → (app).EnvironmentView → Nat)
     (rest : RestSeed) (execution : (app).Execution) {inputs : graph.Inputs}
     (valid : execution.application.Invariant inputs) {coordinate : PhaseSeedAddress graph}
     {query : PhaseSeedOperationalInput graph}
@@ -179,7 +179,7 @@ theorem request_sound (delay bound : graph.EventId → Nat)
   unfold controller at requested
   cases chosen : selectOpen runtime leaks (replayClosed runtime leaks priority rest
       execution.environmentRecall) (execution.observeEnvironment app)
-        (orderPriority runtime leaks priority rest execution.environmentRecall
+        (priority rest execution.environmentRecall
           (execution.observeEnvironment app)) with
   | none =>
       simp only [chosen, Option.bind_none] at requested
@@ -224,7 +224,7 @@ variable {PrivateInput : Type}
 of the full original event-seed vector. Behavioralization preserves their joint
 law with the actual complete phase execution and every retained original seed. -/
 theorem realize_private_joint (delay bound : graph.EventId → Nat)
-    (priority : RestSeed → List (Nat × CommitAttemptId) → Nat × CommitAttemptId → Nat)
+    (priority : RestSeed → List (app).EnvironmentEntry → (app).EnvironmentView → Nat)
     (delayLaw : (event : graph.EventId) → PMF (Fin (delay event + 1)))
     (coinLaw : graph.EventId → Fin (clockLimit runtime delay + 1) → PMF Bool)
     (restLaw : PMF RestSeed) (privateLaw : PMF PrivateInput)

@@ -22,9 +22,9 @@ variable {Player RestSeed : Type} [Fintype Player] [DecidableEq Player]
 
 local notation "app" => phaseApplication runtime leaks
 
-variable (priority : RestSeed → List (Nat × CommitAttemptId) → Nat × CommitAttemptId → Nat)
-
-theorem replayClosedFrom_append (rest : RestSeed)
+theorem replayClosedFrom_append
+    (priority : RestSeed → List (app).EnvironmentEntry → (app).EnvironmentView → Nat)
+    (rest : RestSeed)
     (closed : Finset (Nat × PhaseSeedAddress graph))
     (earlier left right : List (app).EnvironmentEntry) :
     replayClosedFrom runtime leaks priority rest closed earlier (left ++ right) =
@@ -36,15 +36,19 @@ theorem replayClosedFrom_append (rest : RestSeed)
   | cons entry later ih =>
       simp only [List.cons_append, replayClosedFrom, ih, List.append_assoc, List.nil_append]
 
-theorem replayClosed_snoc (rest : RestSeed) (past : List (app).EnvironmentEntry)
+theorem replayClosed_snoc
+    (priority : RestSeed → List (app).EnvironmentEntry → (app).EnvironmentView → Nat)
+    (rest : RestSeed) (past : List (app).EnvironmentEntry)
     (entry : (app).EnvironmentEntry) :
     replayClosed runtime leaks priority rest (past ++ [entry]) =
       closeAfter runtime leaks (replayClosed runtime leaks priority rest past) entry.beforeView
         (selectOpen runtime leaks (replayClosed runtime leaks priority rest past) entry.beforeView
-          (orderPriority runtime leaks priority rest past entry.beforeView)) entry.command := by
+          (priority rest past entry.beforeView)) entry.command := by
   simp only [replayClosed, replayClosedFrom_append, List.nil_append, replayClosedFrom]
 
-theorem replayClosedFrom_mono (rest : RestSeed)
+theorem replayClosedFrom_mono
+    (priority : RestSeed → List (app).EnvironmentEntry → (app).EnvironmentView → Nat)
+    (rest : RestSeed)
     (closed : Finset (Nat × PhaseSeedAddress graph))
     (earlier later : List (app).EnvironmentEntry) :
     closed ⊆ replayClosedFrom runtime leaks priority rest closed earlier later := by
@@ -55,7 +59,9 @@ theorem replayClosedFrom_mono (rest : RestSeed)
 
 /-- Neither successful resolution nor a failed or rejected physical reply
 removes the closed record of an earlier actual query. -/
-theorem replayClosed_append_mono (rest : RestSeed)
+theorem replayClosed_append_mono
+    (priority : RestSeed → List (app).EnvironmentEntry → (app).EnvironmentView → Nat)
+    (rest : RestSeed)
     (past later : List (app).EnvironmentEntry) :
     replayClosed runtime leaks priority rest past ⊆
       replayClosed runtime leaks priority rest (past ++ later) := by
@@ -65,10 +71,12 @@ theorem replayClosed_append_mono (rest : RestSeed)
 
 /-- The actual nonactivation command closes its selected physical address at
 this tick, even when its application effect installs a new namespace. -/
-theorem closed_after_nonactivation (rest : RestSeed) (past : List (app).EnvironmentEntry)
+theorem closed_after_nonactivation
+    (priority : RestSeed → List (app).EnvironmentEntry → (app).EnvironmentView → Nat)
+    (rest : RestSeed) (past : List (app).EnvironmentEntry)
     (view : (app).EnvironmentView) (coordinate : PhaseSeedAddress graph) (command : (app).Command)
     (selected : selectOpen runtime leaks (replayClosed runtime leaks priority rest past) view
-      (orderPriority runtime leaks priority rest past view) = some coordinate)
+      (priority rest past view) = some coordinate)
     (idle : (command.actor? app).isNone = true) :
     (view.application.native.clock, coordinate) ∈
       replayClosed runtime leaks priority rest (past ++ [⟨view, command⟩]) := by
@@ -78,17 +86,19 @@ theorem closed_after_nonactivation (rest : RestSeed) (past : List (app).Environm
 
 /-- At a fixed global clock a closed physical address cannot be selected again,
 regardless of intervening callbacks, resets, or remainder priorities. -/
-theorem not_selected_after_nonactivation (rest : RestSeed)
+theorem not_selected_after_nonactivation
+    (priority : RestSeed → List (app).EnvironmentEntry → (app).EnvironmentView → Nat)
+    (rest : RestSeed)
     (past later : List (app).EnvironmentEntry)
     (view nextView : (app).EnvironmentView) (coordinate : PhaseSeedAddress graph)
     (command : (app).Command)
     (selected : selectOpen runtime leaks (replayClosed runtime leaks priority rest past) view
-      (orderPriority runtime leaks priority rest past view) = some coordinate)
+      (priority rest past view) = some coordinate)
     (idle : (command.actor? app).isNone = true)
     (sameClock : nextView.application.native.clock = view.application.native.clock) :
     selectOpen runtime leaks
       (replayClosed runtime leaks priority rest (past ++ [⟨view, command⟩] ++ later)) nextView
-      (orderPriority runtime leaks priority rest (past ++ [⟨view, command⟩] ++ later) nextView) ≠
+      (priority rest (past ++ [⟨view, command⟩] ++ later) nextView) ≠
         some coordinate := by
   intro again
   have closed := replayClosed_append_mono runtime leaks priority rest

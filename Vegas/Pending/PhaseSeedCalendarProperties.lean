@@ -26,7 +26,7 @@ local notation "app" => phaseApplication runtime leaks
 
 /-- The concrete planner never queries a retired or not-yet-installed namespace. -/
 theorem request_ne_of_namespace (delay bound : graph.EventId → Nat)
-    (priority : RestSeed → List (Nat × CommitAttemptId) → Nat × CommitAttemptId → Nat)
+    (priority : RestSeed → List (app).EnvironmentEntry → (app).EnvironmentView → Nat)
     (selected : PhaseSeedAddress graph) (past : List (app).EnvironmentEntry)
     (view : (app).EnvironmentView) (different : selected.1.attempt ≠ view.application.attempt)
     (rest : RestSeed) :
@@ -34,7 +34,7 @@ theorem request_ne_of_namespace (delay bound : graph.EventId → Nat)
       some selected := by
   intro requested
   cases chosen : selectOpen runtime leaks (replayClosed runtime leaks priority rest past)
-      view (orderPriority runtime leaks priority rest past view) with
+      view (priority rest past view) with
   | none =>
       simp only [controller, chosen, Option.bind_none, Option.map_none] at requested
       cases requested
@@ -109,7 +109,7 @@ theorem decision_deadline (delay bound : graph.EventId → Nat)
 seed at its original local law before its first query. The complete remainder
 retains the old seeds, voided observations, and original remainder randomness. -/
 theorem posterior_after_namespace_change (delay bound : graph.EventId → Nat)
-    (priority : RestSeed → List (Nat × CommitAttemptId) → Nat × CommitAttemptId → Nat)
+    (priority : RestSeed → List (app).EnvironmentEntry → (app).EnvironmentView → Nat)
     (laws : PhaseSeedAddress graph → PMF (Seed runtime delay)) (restLaw : PMF RestSeed)
     (execution next : (app).Execution) (command : (app).Command)
     (valid : PhaseSeedFreshness.NamespacePast runtime leaks execution)

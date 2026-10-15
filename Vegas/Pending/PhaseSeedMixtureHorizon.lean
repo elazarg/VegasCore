@@ -21,7 +21,7 @@ local notation "app" => phaseApplication runtime leaks
 /-- The actual mixed scheduler, rather than a chosen fixed-seed run, completes
 every legal terminal history under the same original independent seed prior. -/
 theorem mixture_terminal_history_complete (delay bound : graph.EventId → Nat)
-    (priority : RestSeed → List (Nat × CommitAttemptId) → Nat × CommitAttemptId → Nat)
+    (priority : RestSeed → List (app).EnvironmentEntry → (app).EnvironmentView → Nat)
     (laws : PhaseSeedAddress graph → PMF (Seed runtime delay)) (restLaw : PMF RestSeed)
     (plan : RuntimePhasePlan graph) (ordered : graph.RevealRelaxedOrdered)
     (maximal : plan.phases.IsChain fun before after =>

@@ -18,11 +18,11 @@ variable {Player RestSeed : Type} [Fintype Player] [DecidableEq Player]
 
 local notation "app" => phaseApplication runtime leaks
 
-variable (delay bound : graph.EventId → Nat)
-  (priority : RestSeed → List (Nat × CommitAttemptId) → Nat × CommitAttemptId → Nat)
-  (seeds : RestSeed × (PhaseSeedAddress graph → Seed runtime delay))
-
-structure ClockAccounting (inputs : graph.Inputs) (origin : Nat)
+structure ClockAccounting
+    (delay : graph.EventId → Nat)
+    (priority : RestSeed → List (app).EnvironmentEntry → (app).EnvironmentView → Nat)
+    (seeds : RestSeed × (PhaseSeedAddress graph → Seed runtime delay))
+    (inputs : graph.Inputs) (origin : Nat)
     (execution : (app).Execution) : Prop where
   safe : TickSafe runtime leaks delay priority seeds inputs execution
   budget : execution.application.SeedBudget
@@ -39,7 +39,11 @@ structure ClockAccounting (inputs : graph.Inputs) (origin : Nat)
       ClosedCoordinateBound runtime charge.tick charge.entered charge.coordinate.1
         execution.application
 
-theorem initial_clockAccounting {inputs : graph.Inputs} (state : PhaseRuntimeState graph)
+theorem initial_clockAccounting
+    (delay : graph.EventId → Nat)
+    (priority : RestSeed → List (app).EnvironmentEntry → (app).EnvironmentView → Nat)
+    (seeds : RestSeed × (PhaseSeedAddress graph → Seed runtime delay))
+    {inputs : graph.Inputs} (state : PhaseRuntimeState graph)
     (valid : state.Invariant inputs) (budget : state.SeedBudget) (frontier : state.Frontier)
     (live : state.Live) (maximal : state.phases.IsChain fun before after =>
       before.kind ≠ after.kind ∨ before.kind = .sample)
@@ -53,7 +57,11 @@ theorem initial_clockAccounting {inputs : graph.Inputs} (state : PhaseRuntimeSta
 
 /-- Proof-only tickets count genuine physical clock advances. They neither
 change scheduler memory nor inspect hidden private inputs or seed values. -/
-theorem clockAccounting_invariant (ordered : graph.RevealRelaxedOrdered)
+theorem clockAccounting_invariant
+    (delay bound : graph.EventId → Nat)
+    (priority : RestSeed → List (app).EnvironmentEntry → (app).EnvironmentView → Nat)
+    (seeds : RestSeed × (PhaseSeedAddress graph → Seed runtime delay))
+    (ordered : graph.RevealRelaxedOrdered)
     (inputs : graph.Inputs) (origin : Nat) :
     (app).ServiceInvariant ((controller runtime leaks delay bound priority).family seeds)
       (ClockAccounting runtime leaks delay priority seeds inputs origin) where
@@ -141,7 +149,11 @@ theorem clockAccounting_invariant (ordered : graph.RevealRelaxedOrdered)
 
 /-- The actual physical clock is bounded by the finite original coordinate
 space and deadlines, including every phase reset and unrestricted response. -/
-theorem ClockAccounting.clock_le {inputs : graph.Inputs} {origin : Nat}
+theorem ClockAccounting.clock_le
+    (delay : graph.EventId → Nat)
+    (priority : RestSeed → List (app).EnvironmentEntry → (app).EnvironmentView → Nat)
+    (seeds : RestSeed × (PhaseSeedAddress graph → Seed runtime delay))
+    {inputs : graph.Inputs} {origin : Nat}
     {execution : (app).Execution}
     (accounting : ClockAccounting runtime leaks delay priority seeds inputs origin execution) :
     execution.application.current.native.clock ≤ origin + Fintype.card (ClockTicket runtime) := by

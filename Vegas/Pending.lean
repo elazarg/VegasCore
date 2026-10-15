@@ -437,3 +437,8 @@ import Vegas.Pending.PhaseSeedHorizon
 import Vegas.Pending.PhaseSeedMixtureHorizon
 import Vegas.Pending.PhaseFailureOrder
 import Vegas.Pending.PhaseFailureOrderHistory
+import Vegas.Pending.PhaseNativeInvariant
+import Vegas.Pending.PhaseActivationOrigin
+import Vegas.Pending.PhaseClockOrigin
+import Vegas.Pending.PhaseRetryClock
+import Vegas.Pending.PhaseSeedInformationInput

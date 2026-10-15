@@ -20,10 +20,6 @@ variable {Player RestSeed : Type} [Fintype Player] [DecidableEq Player]
 
 local notation "app" => phaseApplication runtime leaks
 
-variable (delay bound : graph.EventId → Nat)
-  (priority : RestSeed → List (Nat × CommitAttemptId) → Nat × CommitAttemptId → Nat)
-  (seeds : RestSeed × (PhaseSeedAddress graph → Seed runtime delay))
-
 omit [Fintype Player] [DecidableEq Player] in
 private theorem nonempty_before (before after : PhaseRuntimeState graph)
     (progress : before.attempt.phase ≤ after.attempt.phase) (nonempty : after.phases ≠ []) :
@@ -52,7 +48,9 @@ private theorem command_of_actor (command : (app).Command) (owner : Player)
   | «include» identifier => cases actor
   | application native => cases actor
 
-private theorem advance_mark_fresh (rest : RestSeed) (execution : (app).Execution)
+private theorem advance_mark_fresh
+    (priority : RestSeed → List (app).EnvironmentEntry → (app).EnvironmentView → Nat)
+    (rest : RestSeed) (execution : (app).Execution)
     (old : ServiceMark graph)
     (valid : old.Valid runtime leaks priority rest execution) :
     old.ticket ≠ (ServiceMark.advanced execution.application.current.native.clock).ticket := by
@@ -65,7 +63,9 @@ private theorem advance_mark_fresh (rest : RestSeed) (execution : (app).Executio
         Sum.inl.inj (Sum.inr.inj same)
       exact Nat.ne_of_lt valid tickEq
 
-private theorem sample_mark_fresh (rest : RestSeed) (execution : (app).Execution)
+private theorem sample_mark_fresh
+    (priority : RestSeed → List (app).EnvironmentEntry → (app).EnvironmentView → Nat)
+    (rest : RestSeed) (execution : (app).Execution)
     (old : ServiceMark graph)
     (valid : old.Valid runtime leaks priority rest execution) :
     old.ticket ≠ (ServiceMark.sampled execution.application.attempt).ticket := by
@@ -78,7 +78,11 @@ private theorem sample_mark_fresh (rest : RestSeed) (execution : (app).Execution
 
 /-- Every genuine nonterminal environment command consumes either an unread
 query receipt, a fresh clock tick, or the current singleton sample namespace. -/
-theorem environment_mark {inputs : graph.Inputs} (execution next : (app).Execution)
+theorem environment_mark
+    (delay bound : graph.EventId → Nat)
+    (priority : RestSeed → List (app).EnvironmentEntry → (app).EnvironmentView → Nat)
+    (seeds : RestSeed × (PhaseSeedAddress graph → Seed runtime delay))
+    {inputs : graph.Inputs} (execution next : (app).Execution)
     (accounting : ClockAccounting runtime leaks delay priority seeds inputs 0 execution)
     (command : (app).Command)
     (chosen : command = (controller runtime leaks delay bound priority).choose seeds
@@ -166,7 +170,11 @@ theorem environment_mark {inputs : graph.Inputs} (execution next : (app).Executi
               have := congrArg CommitAttemptId.phase equal
               omega
 
-structure ServiceBook (inputs : graph.Inputs) (execution : (app).Execution) : Prop where
+structure ServiceBook
+    (delay : graph.EventId → Nat)
+    (priority : RestSeed → List (app).EnvironmentEntry → (app).EnvironmentView → Nat)
+    (seeds : RestSeed × (PhaseSeedAddress graph → Seed runtime delay))
+    (inputs : graph.Inputs) (execution : (app).Execution) : Prop where
   accounting : ClockAccounting runtime leaks delay priority seeds inputs 0 execution
   receipts : ∃ marks : List (ServiceMark graph), (marks.map ServiceMark.ticket).Nodup ∧
     (∀ mark ∈ marks, mark.Valid runtime leaks priority seeds.1 execution) ∧
@@ -174,7 +182,11 @@ structure ServiceBook (inputs : graph.Inputs) (execution : (app).Execution) : Pr
 
 /-- Receipt counting follows existing actual transitions and responses. At a
 still-running phase, every environment entry has a distinct finite ticket. -/
-theorem serviceBook_invariant (ordered : graph.RevealRelaxedOrdered) (inputs : graph.Inputs) :
+theorem serviceBook_invariant
+    (delay bound : graph.EventId → Nat)
+    (priority : RestSeed → List (app).EnvironmentEntry → (app).EnvironmentView → Nat)
+    (seeds : RestSeed × (PhaseSeedAddress graph → Seed runtime delay))
+    (ordered : graph.RevealRelaxedOrdered) (inputs : graph.Inputs) :
     (app).ServiceInvariant ((controller runtime leaks delay bound priority).family seeds)
       (ServiceBook runtime leaks delay priority seeds inputs) where
   respond execution who action before := by
@@ -227,7 +239,11 @@ theorem serviceBook_invariant (ordered : graph.RevealRelaxedOrdered) (inputs : g
 
 /-- A genuine unfinished state admits at most finitely many actual rounds,
 regardless of arbitrary callback responses and rollback outcomes. -/
-theorem ServiceBook.rounds_le {inputs : graph.Inputs} {execution : (app).Execution}
+theorem ServiceBook.rounds_le
+    (delay : graph.EventId → Nat)
+    (priority : RestSeed → List (app).EnvironmentEntry → (app).EnvironmentView → Nat)
+    (seeds : RestSeed × (PhaseSeedAddress graph → Seed runtime delay))
+    {inputs : graph.Inputs} {execution : (app).Execution}
     (book : ServiceBook runtime leaks delay priority seeds inputs execution)
     (unfinished : execution.application.phases ≠ []) :
     execution.environmentRecall.length ≤ (ServiceMark.tickets runtime).card := by

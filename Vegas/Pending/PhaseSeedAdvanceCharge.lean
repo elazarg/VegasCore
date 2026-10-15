@@ -19,11 +19,11 @@ variable {Player RestSeed : Type} [Fintype Player] [DecidableEq Player]
 
 local notation "app" => phaseApplication runtime leaks
 
-variable (delay bound : graph.EventId → Nat)
-  (priority : RestSeed → List (Nat × CommitAttemptId) → Nat × CommitAttemptId → Nat)
-  (seeds : RestSeed × (PhaseSeedAddress graph → Seed runtime delay))
-
-private theorem fallback_of_advance (execution : (app).Execution)
+private theorem fallback_of_advance
+    (delay bound : graph.EventId → Nat)
+    (priority : RestSeed → List (app).EnvironmentEntry → (app).EnvironmentView → Nat)
+    (seeds : RestSeed × (PhaseSeedAddress graph → Seed runtime delay))
+    (execution : (app).Execution)
     (advance : (controller runtime leaks delay bound priority).choose seeds
       execution.environmentRecall (execution.observeEnvironment app) = .application .advanceClock) :
     fallback runtime leaks (execution.observeEnvironment app) = .application .advanceClock := by
@@ -31,7 +31,7 @@ private theorem fallback_of_advance (execution : (app).Execution)
   cases selected : selectOpen runtime leaks
       (replayClosed runtime leaks priority seeds.1 execution.environmentRecall)
       (execution.observeEnvironment app)
-      (orderPriority runtime leaks priority seeds.1 execution.environmentRecall
+      (priority seeds.1 execution.environmentRecall
         (execution.observeEnvironment app)) with
   | none => simpa only [selected, Option.bind_none] using advance
   | some coordinate =>
@@ -42,7 +42,11 @@ private theorem fallback_of_advance (execution : (app).Execution)
 
 /-- The driver cannot increase time in a finished program or a sample phase.
 Its actual live owned request supplies a previously closed, strictly early tick. -/
-theorem advance_charge {inputs : graph.Inputs} (execution : (app).Execution)
+theorem advance_charge
+    (delay bound : graph.EventId → Nat)
+    (priority : RestSeed → List (app).EnvironmentEntry → (app).EnvironmentView → Nat)
+    (seeds : RestSeed × (PhaseSeedAddress graph → Seed runtime delay))
+    {inputs : graph.Inputs} (execution : (app).Execution)
     (safe : TickSafe runtime leaks delay priority seeds inputs execution)
     (budget : execution.application.SeedBudget)
     (frontier : execution.application.Frontier) (live : execution.application.Live)

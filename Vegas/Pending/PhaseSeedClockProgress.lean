@@ -59,7 +59,7 @@ theorem reply_ne_advanceClock (delay bound : graph.EventId → Nat)
 /-- The actual fixed-seed driver advances the clock only after its entire ready
 roster is exhausted, independently of the priority ordering. -/
 theorem choose_advanceClock_roster_empty (delay bound : graph.EventId → Nat)
-    (priority : RestSeed → List (Nat × CommitAttemptId) → Nat × CommitAttemptId → Nat)
+    (priority : RestSeed → List (app).EnvironmentEntry → (app).EnvironmentView → Nat)
     (seeds : RestSeed × (PhaseSeedAddress graph → Seed runtime delay))
     (past : List (app).EnvironmentEntry) (view : (app).EnvironmentView)
     (advance : (controller runtime leaks delay bound priority).choose seeds past view =
@@ -67,7 +67,7 @@ theorem choose_advanceClock_roster_empty (delay bound : graph.EventId → Nat)
     openRoster runtime leaks (replayClosed runtime leaks priority seeds.1 past) view = ∅ := by
   unfold ReactiveApplication.AddressedScheduler.choose controller at advance
   cases chosen : selectOpen runtime leaks (replayClosed runtime leaks priority seeds.1 past)
-      view (orderPriority runtime leaks priority seeds.1 past view) with
+      view (priority seeds.1 past view) with
   | none => exact roster_empty_of_select_none runtime leaks _ _ _ chosen
   | some coordinate =>
       have member := (Finset.mem_filter.mp (selectOpen_mem runtime leaks chosen)).1
@@ -78,7 +78,7 @@ theorem choose_advanceClock_roster_empty (delay bound : graph.EventId → Nat)
 /-- At a genuine current request, advancing time proves that this address has
 already received its nonactivation reply for the current tick. -/
 theorem clockAdvance_request_closed (delay bound : graph.EventId → Nat)
-    (priority : RestSeed → List (Nat × CommitAttemptId) → Nat × CommitAttemptId → Nat)
+    (priority : RestSeed → List (app).EnvironmentEntry → (app).EnvironmentView → Nat)
     (seeds : RestSeed × (PhaseSeedAddress graph → Seed runtime delay))
     (execution : (app).Execution) {inputs : graph.Inputs}
     (valid : execution.application.Invariant inputs) (budget : execution.application.SeedBudget)

@@ -153,3 +153,4 @@ import Interaction.ReactiveAddressedFreshSeed
 import Interaction.ReactiveAddressedPosterior
 import Interaction.ReactiveServiceRounds
 import Interaction.ReactiveServiceMixture
+import Interaction.ReactiveAddressedQueryTranscript

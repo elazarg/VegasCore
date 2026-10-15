@@ -26,7 +26,7 @@ local notation "app" => phaseApplication runtime leaks
 /-- Every genuine operational query names the unique event served when its
 reply activates the owner, including a newly installed retry attempt. -/
 theorem request_ownTurn (delay bound : graph.EventId → Nat)
-    (priority : RestSeed → List (Nat × CommitAttemptId) → Nat × CommitAttemptId → Nat)
+    (priority : RestSeed → List (app).EnvironmentEntry → (app).EnvironmentView → Nat)
     (rest : RestSeed) (execution : (app).Execution) {inputs : graph.Inputs}
     (valid : execution.application.Invariant inputs) (ordered : graph.RevealRelaxedOrdered)
     {coordinate : PhaseSeedAddress graph} {query : PhaseSeedOperationalInput graph}

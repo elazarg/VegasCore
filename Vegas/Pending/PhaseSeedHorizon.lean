@@ -19,13 +19,13 @@ variable {Player RestSeed : Type} [Fintype Player] [DecidableEq Player]
 
 local notation "app" => phaseApplication runtime leaks
 
-variable (delay bound : graph.EventId → Nat)
-  (priority : RestSeed → List (Nat × CommitAttemptId) → Nat × CommitAttemptId → Nat)
-  (seeds : RestSeed × (PhaseSeedAddress graph → Seed runtime delay))
-
 def serviceHorizon : Nat := (ServiceMark.tickets runtime).card + 1
 
-theorem initial_plan_serviceBook (plan : RuntimePhasePlan graph)
+theorem initial_plan_serviceBook
+    (delay : graph.EventId → Nat)
+    (priority : RestSeed → List (app).EnvironmentEntry → (app).EnvironmentView → Nat)
+    (seeds : RestSeed × (PhaseSeedAddress graph → Seed runtime delay))
+    (plan : RuntimePhasePlan graph)
     (ordered : graph.RevealRelaxedOrdered)
     (maximal : plan.phases.IsChain fun before after =>
       before.kind ≠ after.kind ∨ before.kind = .sample) (inputs : graph.Inputs) :
@@ -40,7 +40,11 @@ theorem initial_plan_serviceBook (plan : RuntimePhasePlan graph)
 
 /-- The derived horizon works for every original seed vector, every private
 initial input and unrestricted player policies, through all automatic retries. -/
-theorem runRounds_complete (plan : RuntimePhasePlan graph)
+theorem runRounds_complete
+    (delay bound : graph.EventId → Nat)
+    (priority : RestSeed → List (app).EnvironmentEntry → (app).EnvironmentView → Nat)
+    (seeds : RestSeed × (PhaseSeedAddress graph → Seed runtime delay))
+    (plan : RuntimePhasePlan graph)
     (ordered : graph.RevealRelaxedOrdered)
     (maximal : plan.phases.IsChain fun before after =>
       before.kind ≠ after.kind ∨ before.kind = .sample)
@@ -69,7 +73,11 @@ theorem runRounds_complete (plan : RuntimePhasePlan graph)
 
 /-- Completion holds at every genuine legal terminal protocol history, rather
 than only under a chosen player profile or an assumed eventual service law. -/
-theorem terminal_history_complete (plan : RuntimePhasePlan graph)
+theorem terminal_history_complete
+    (delay bound : graph.EventId → Nat)
+    (priority : RestSeed → List (app).EnvironmentEntry → (app).EnvironmentView → Nat)
+    (seeds : RestSeed × (PhaseSeedAddress graph → Seed runtime delay))
+    (plan : RuntimePhasePlan graph)
     (ordered : graph.RevealRelaxedOrdered)
     (maximal : plan.phases.IsChain fun before after =>
       before.kind ≠ after.kind ∨ before.kind = .sample)

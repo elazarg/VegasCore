@@ -1,6 +1,6 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**SE: non-concurrent proved · concurrent: source SE & finite calendar ✓; simulation/Bayes/native SE open.**
+**SE: non-concurrent proved · concurrent: source SE/phase paths/adaptive calendar ✓; whole-trace/Bayes/native SE open.**
 
 <details>
 <summary>Recovery milestones and current proof substeps</summary>
@@ -91,10 +91,20 @@ the joint typed-readout/payoff-vector law and has no exclusion. The phase count
 audit extends any counted-menu SE to the actual bounded raw menu, preserving
 the joint terminal-history/net-payoff-vector law with zero on-path charges;
 existence of the required counted-menu SE remains open.
+Typed commitment attempts now give actual legal recovery-protocol paths, keeping
+the original checkpoint through every interior instruction and executing the
+exact clean, retry or exhausted close at the block boundary. Actual completed
+reveal and sample operations also give legal source paths, exact exclusion and
+typed store/guard/revelation readback. Whole-program noncommit path lifting uses
+the existing residual kernel and control laws; compiled residuals preserve the
+available typed menus as well. These are phase boundaries, not yet an initialized
+whole-history simulation.
 An immutable addressed-seed scheduler has checked joint realization, erased
 operational queries, full clocked owner recall and fresh laws after actual
-namespace changes. Its concrete calendar is a witness with clock/attempt-based
-ordering; it does not cover the full admissible history-adaptive scheduler class.
+namespace changes. Its tick-draining calendar now permits priority to read the
+full actual environment history and view; clock/attempt ordering remains a
+concrete instance. This does not yet prove conditioning transport for the full
+admissible history-adaptive scheduler class.
 Every legal initialized history of this calendar has a uniform finite clock
 bound, derived by charging clock advances to distinct bounded event/generation
 tickets. Live phase frontiers expose an owner request or a ready singleton
@@ -106,6 +116,15 @@ posterior mixture scheduler, without an assumed service or completion result.
 Actual histories also suppress every later same-owner publication after inherited
 exclusion or an earlier source-ranked public failure, including raw operation
 results before phase retirement. This supports source-order reveal reconstruction.
+Activation timestamps retain actual origins through rollback; new retry timers
+start at the physical retry clock. Current owner information reconstructs the
+erased pre-activation query, and addressed transcript extraction checks every
+candidate local seed. Equating that transcript to the constraints recovered
+from the full owner information fiber remains open. Permanently excluded
+players have constant continuation payoff throughout their complete native
+information fibers, so every continuation policy is optimal there. The raw
+audit extension preserves the joint typed readout and realized audited payoff
+vector of a counted-menu SE, whose existence is still a separate obligation.
 The all-phase store/registry/history simulation, general admissible scheduler
 conditioning transport, native incentive comparisons and concurrent SE assembly
 remain open.

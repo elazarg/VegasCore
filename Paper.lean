@@ -494,6 +494,29 @@ import Vegas.Game.CommitRecoveryBlockDebt
 import Vegas.Game.CommitRecoveryExtraChoice
 import Vegas.Game.CommitRecoveryDeviationPayoff
 import Vegas.Game.CommitRecoveryPreservation
+import Vegas.Source.CommitRecoveryBlockEmbedding
+import Vegas.Source.CommitRecoveryCommitStep
+import Vegas.Source.CommitRecoveryBlockPath
+import Vegas.Source.CommitRecoveryBlockClose
+import Vegas.Source.CommitRecoveryNonCommitPath
+import Vegas.Source.CommitRecoveryPathLift
+import Vegas.Pending.PhaseNativeInvariant
+import Vegas.Game.CompiledRevealReadback
+import Vegas.Game.CompiledRevealPhase
+import Vegas.Game.CompiledRevealLayout
+import Vegas.Game.CompiledRevealBoundary
+import Vegas.Game.CompiledRevealCompletion
+import Vegas.Game.CompiledSampleReadback
+import Vegas.Game.CompiledSampleCompletion
+import Vegas.Pending.PhaseActivationOrigin
+import Vegas.Pending.PhaseClockOrigin
+import Vegas.Pending.PhaseRetryClock
+import Vegas.Game.PhaseExclusionPayoff
+import Vegas.Game.PhaseExcludedRationality
+import Vegas.Game.PhaseRawReadoutLaw
+import Vegas.Pending.PhaseSeedClockLog
+import Vegas.Pending.PhaseSeedInformationInput
+import Interaction.ReactiveAddressedQueryTranscript
 
 /-! # Checked sequential-equilibrium preservation, Nash correspondence and termination -/
 
@@ -6204,3 +6227,78 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.SourceProgram.Setup.hidden_commit_recovery_step
+
+/-- info: 'Vegas.SourceProgram.lifted_commit_successor'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.lifted_commit_successor
+
+/-- info: 'Vegas.SourceProgram.CommitPrefix.Attempt.reaches_closed_lift'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.CommitPrefix.Attempt.reaches_closed_lift
+
+/-- info: 'Vegas.SourceProgram.CommitPrefix.Close.reaches'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.CommitPrefix.Close.reaches
+
+/-- info: 'Vegas.sourceRecovery_of_actual_revealCompletion'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.sourceRecovery_of_actual_revealCompletion
+
+/-- info: 'Vegas.sourceRecovery_of_actual_sampleCompletion'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.sourceRecovery_of_actual_sampleCompletion
+
+/-- info: 'Vegas.completed_reveal_phase_source_path'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.completed_reveal_phase_source_path
+
+/-- info: 'Vegas.SourceProgram.CommitRecoveryState.reaches_of_lifted_nonCommit_path'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.CommitRecoveryState.reaches_of_lifted_nonCommit_path
+
+/-- info: 'Vegas.EventGraphRuntime.phaseNativeInvariant_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.phaseNativeInvariant_history
+
+/-- info: 'Vegas.EventGraphRuntime.phaseApplication_activationOrigin'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.phaseApplication_activationOrigin
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseRuntimeState.advanceClock_activationOrigin'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.PhaseRuntimeState.advanceClock_activationOrigin
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseRuntimeState.advanceClock_retry_timers'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.PhaseRuntimeState.advanceClock_retry_timers
+
+/-- info: 'Vegas.phase_excluded_sequentiallyRationalAt'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phase_excluded_sequentiallyRationalAt
+
+/-- info: 'Vegas.phase_counted_raw_sequentialEquilibrium'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phase_counted_raw_sequentialEquilibrium
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseSeedScheduler.activation_informationInput'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.PhaseSeedScheduler.activation_informationInput
+
+/-- info: 'Interaction.ReactiveApplication.AddressedScheduler.command_rectangle_transcript'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Interaction.ReactiveApplication.AddressedScheduler.command_rectangle_transcript

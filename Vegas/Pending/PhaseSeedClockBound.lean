@@ -17,13 +17,13 @@ variable {Player RestSeed : Type} [Fintype Player] [DecidableEq Player]
 
 local notation "app" => phaseApplication runtime leaks
 
-variable (delay bound : graph.EventId → Nat)
-  (priority : RestSeed → List (Nat × CommitAttemptId) → Nat × CommitAttemptId → Nat)
-  (seeds : RestSeed × (PhaseSeedAddress graph → Seed runtime delay))
-
 /-- The normalized initial attempt starts with an empty ticket book even when
 excluded automatic cells already complete entire descriptors. -/
-theorem initial_plan_clockAccounting (plan : RuntimePhasePlan graph)
+theorem initial_plan_clockAccounting
+    (delay : graph.EventId → Nat)
+    (priority : RestSeed → List (app).EnvironmentEntry → (app).EnvironmentView → Nat)
+    (seeds : RestSeed × (PhaseSeedAddress graph → Seed runtime delay))
+    (plan : RuntimePhasePlan graph)
     (ordered : graph.RevealRelaxedOrdered)
     (maximal : plan.phases.IsChain fun before after =>
       before.kind ≠ after.kind ∨ before.kind = .sample) (inputs : graph.Inputs) :
@@ -39,7 +39,11 @@ theorem initial_plan_clockAccounting (plan : RuntimePhasePlan graph)
 
 /-- The bound applies to all legal histories, including off-path responses and
 arbitrary private input laws. Original seed values remain immutable parameters. -/
-theorem history_clock_le (plan : RuntimePhasePlan graph)
+theorem history_clock_le
+    (delay bound : graph.EventId → Nat)
+    (priority : RestSeed → List (app).EnvironmentEntry → (app).EnvironmentView → Nat)
+    (seeds : RestSeed × (PhaseSeedAddress graph → Seed runtime delay))
+    (plan : RuntimePhasePlan graph)
     (ordered : graph.RevealRelaxedOrdered)
     (maximal : plan.phases.IsChain fun before after =>
       before.kind ≠ after.kind ∨ before.kind = .sample)

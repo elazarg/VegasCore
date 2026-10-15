@@ -56,7 +56,11 @@ theorem CompiledSuffix.exists_recoveryResidual :
       (∀ point excluded joint,
         ProtocolState.recoveryStep program (residual.lift point) excluded joint =
           (ProtocolState.recoveryStep residual.tail point excluded joint).map
-            (fun result => (residual.lift result.1, result.2))) := by
+            (fun result => (residual.lift result.1, result.2))) ∧
+      (∀ who point, ProtocolView.recoveryAvailable who program
+        (ProtocolState.observe who program (residual.lift point)) =
+        ProtocolView.recoveryAvailable who residual.tail
+          (ProtocolState.observe who residual.tail point)) := by
   intro count
   induction count with
   | zero =>
@@ -65,8 +69,11 @@ theorem CompiledSuffix.exists_recoveryResidual :
         Function.injective_id, (fun _ => rfl), (fun _ => rfl), (fun _ => rfl), (fun _ => rfl),
         (fun _ => rfl), (fun _ => rfl), (fun _ => rfl), (fun _ _ => rfl), ?_⟩
       · simpa only [Nat.add_zero] using compiled
-      · intro point excluded joint
-        exact (PMF.map_id _).symm
+      · constructor
+        · intro point excluded joint
+          exact (PMF.map_id _).symm
+        · intro who point
+          rfl
   | succ count ih =>
       intro Γ O program refs revelations registry embedding before offset compiled bounded
       cases program with
@@ -76,14 +83,14 @@ theorem CompiledSuffix.exists_recoveryResidual :
             revelations registry embedding before offset
           obtain ⟨residual, tailRefs, tailRevelations, tailRegistry, tailEmbedding, tailBefore,
             aligned, injective, remaining, actor, commit, owners, endpoint, automatic, history,
-            memory, step⟩ :=
+            memory, step, menus⟩ :=
             ih next _ _ _ _ _ (offset + 1) nextCompiled (by
               simp only [eventCount] at bounded
               omega)
           refine ⟨⟨residual.context, residual.names, residual.tail,
               fun point => Sum.inr (residual.lift point)⟩,
             tailRefs, tailRevelations, tailRegistry, tailEmbedding, tailBefore, ?_, ?_, ?_,
-            ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+            ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
           · convert aligned using 1; omega
           · intro left right same
             exact injective (Sum.inr.inj same)
@@ -108,19 +115,21 @@ theorem CompiledSuffix.exists_recoveryResidual :
               (fun result => (Sum.inr result.1, result.2))) = _
             rw [step]
             simp only [PMF.map_comp, Function.comp_def]
+          · intro who point
+            exact menus who point
       | commit name owner fresh guard next =>
           have nextCompiled := compiled.commitTail whole fresh guard next refs revelations registry
             embedding before offset
           obtain ⟨residual, tailRefs, tailRevelations, tailRegistry, tailEmbedding, tailBefore,
             aligned, injective, remaining, actor, commit, owners, endpoint, automatic, history,
-            memory, step⟩ :=
+            memory, step, menus⟩ :=
             ih next _ _ _ _ _ (offset + 1) nextCompiled (by
               simp only [eventCount] at bounded
               omega)
           refine ⟨⟨residual.context, residual.names, residual.tail,
               fun point => Sum.inr (residual.lift point)⟩,
             tailRefs, tailRevelations, tailRegistry, tailEmbedding, tailBefore, ?_, ?_, ?_,
-            ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+            ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
           · convert aligned using 1; omega
           · intro left right same
             exact injective (Sum.inr.inj same)
@@ -145,19 +154,21 @@ theorem CompiledSuffix.exists_recoveryResidual :
               (fun result => (Sum.inr result.1, result.2))) = _
             rw [step]
             simp only [PMF.map_comp, Function.comp_def]
+          · intro who point
+            exact menus who point
       | reveal published owner name fresh selected unresolved next =>
           have nextCompiled := compiled.revealTail whole fresh selected unresolved next refs
             revelations registry embedding before offset
           obtain ⟨residual, tailRefs, tailRevelations, tailRegistry, tailEmbedding, tailBefore,
             aligned, injective, remaining, actor, commit, owners, endpoint, automatic, history,
-            memory, step⟩ :=
+            memory, step, menus⟩ :=
             ih next _ _ _ _ _ (offset + 1) nextCompiled (by
               simp only [eventCount] at bounded
               omega)
           refine ⟨⟨residual.context, residual.names, residual.tail,
               fun point => Sum.inr (residual.lift point)⟩,
             tailRefs, tailRevelations, tailRegistry, tailEmbedding, tailBefore, ?_, ?_, ?_,
-            ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+            ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
           · convert aligned using 1; omega
           · intro left right same
             exact injective (Sum.inr.inj same)
@@ -182,5 +193,7 @@ theorem CompiledSuffix.exists_recoveryResidual :
               (fun result => (Sum.inr result.1, result.2))) = _
             rw [step]
             simp only [PMF.map_comp, Function.comp_def]
+          · intro who point
+            exact menus who point
 
 end Vegas

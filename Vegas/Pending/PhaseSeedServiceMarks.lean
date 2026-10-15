@@ -31,14 +31,15 @@ def ticket : ServiceMark graph → ServiceTicket graph
 
 variable (runtime : EventGraphRuntime graph)
   (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket graph))
-  (priority : RestSeed → List (Nat × CommitAttemptId) → Nat × CommitAttemptId → Nat)
-  (rest : RestSeed)
 
 local notation "app" => phaseApplication runtime leaks
 
 /-- Receipt validity retains physical clocks, original activation anchors and
 full callback provenance. It is a proof predicate, never scheduler memory. -/
-def Valid (mark : ServiceMark graph) (execution : (app).Execution) : Prop :=
+def Valid
+    (priority : RestSeed → List (app).EnvironmentEntry → (app).EnvironmentView → Nat)
+    (rest : RestSeed)
+    (mark : ServiceMark graph) (execution : (app).Execution) : Prop :=
   match mark with
   | .queried false tick coordinate =>
       tick ≤ execution.application.current.native.clock ∧
@@ -72,7 +73,10 @@ private theorem retired_of_progress (attempt before after : CommitAttemptId)
   cases before
   exact congrArg₂ CommitAttemptId.mk phaseEq generationEq
 
-private theorem valid_mono (mark : ServiceMark graph) (before after : (app).Execution)
+private theorem valid_mono
+    (priority : RestSeed → List (app).EnvironmentEntry → (app).EnvironmentView → Nat)
+    (rest : RestSeed)
+    (mark : ServiceMark graph) (before after : (app).Execution)
     (clock : before.application.current.native.clock ≤ after.application.current.native.clock)
     (namespaceProgress : before.application.attempt.generation ≤
       after.application.attempt.generation ∧
@@ -100,7 +104,10 @@ private theorem valid_mono (mark : ServiceMark graph) (before after : (app).Exec
         retired_of_progress attempt _ _ valid.2.2.1 valid.2.2.2.1 valid.2.2.2.2 namespaceProgress⟩
 
 /-- Arbitrary player choices preserve every previously issued service receipt. -/
-theorem valid_respond {inputs : graph.Inputs} (mark : ServiceMark graph)
+theorem valid_respond
+    (priority : RestSeed → List (app).EnvironmentEntry → (app).EnvironmentView → Nat)
+    (rest : RestSeed)
+    {inputs : graph.Inputs} (mark : ServiceMark graph)
     (execution : (app).Execution) (who : Player) (action : (app).Action)
     (invariant : execution.application.Invariant inputs) (ordered : execution.application.Ordered)
     (valid : mark.Valid runtime leaks priority rest execution) :
@@ -117,7 +124,10 @@ theorem valid_respond {inputs : graph.Inputs} (mark : ServiceMark graph)
 
 /-- Supported actual environment moves preserve all prior receipts, including
 callbacks and closure records belonging to retired attempts. -/
-theorem valid_environment {inputs : graph.Inputs} (mark : ServiceMark graph)
+theorem valid_environment
+    (priority : RestSeed → List (app).EnvironmentEntry → (app).EnvironmentView → Nat)
+    (rest : RestSeed)
+    {inputs : graph.Inputs} (mark : ServiceMark graph)
     (execution next : (app).Execution) (command : (app).Command)
     (invariant : execution.application.Invariant inputs) (ordered : execution.application.Ordered)
     (reached : next ∈ (execution.environmentStep app command).support)
@@ -151,7 +161,9 @@ def tickets : Finset (ServiceTicket graph) :=
 
 /-- Actual clock accounting supplies every finite-carrier bound; no bound on
 arbitrary hidden initial states or on a scheduler-provided trace is assumed. -/
-theorem ticket_mem {delay : graph.EventId → Nat}
+theorem ticket_mem
+    (priority : RestSeed → List (app).EnvironmentEntry → (app).EnvironmentView → Nat)
+    {delay : graph.EventId → Nat}
     {seeds : RestSeed × (PhaseSeedAddress graph → Seed runtime delay)}
     {inputs : graph.Inputs} {execution : (app).Execution}
     (accounting : ClockAccounting runtime leaks delay priority seeds inputs 0 execution)
@@ -186,7 +198,9 @@ theorem ticket_mem {delay : graph.EventId → Nat}
           Finset.mem_range.mpr (by omega)⟩
       · rfl
 
-theorem length_le_tickets {delay : graph.EventId → Nat}
+theorem length_le_tickets
+    (priority : RestSeed → List (app).EnvironmentEntry → (app).EnvironmentView → Nat)
+    {delay : graph.EventId → Nat}
     {seeds : RestSeed × (PhaseSeedAddress graph → Seed runtime delay)}
     {inputs : graph.Inputs} {execution : (app).Execution}
     (accounting : ClockAccounting runtime leaks delay priority seeds inputs 0 execution)

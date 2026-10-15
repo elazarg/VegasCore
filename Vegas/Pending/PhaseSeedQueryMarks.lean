@@ -17,13 +17,11 @@ variable {Player RestSeed : Type} [Fintype Player] [DecidableEq Player]
 
 local notation "app" => phaseApplication runtime leaks
 
-variable (delay bound : graph.EventId → Nat)
-  (priority : RestSeed → List (Nat × CommitAttemptId) → Nat × CommitAttemptId → Nat)
-  (seeds : RestSeed × (PhaseSeedAddress graph → Seed runtime delay))
-
-def selectedAt (rest : RestSeed) (execution : (app).Execution) : Option (PhaseSeedAddress graph) :=
+def selectedAt
+    (priority : RestSeed → List (app).EnvironmentEntry → (app).EnvironmentView → Nat)
+    (rest : RestSeed) (execution : (app).Execution) : Option (PhaseSeedAddress graph) :=
   selectOpen runtime leaks (replayClosed runtime leaks priority rest execution.environmentRecall)
-    (execution.observeEnvironment app) (orderPriority runtime leaks priority rest
+    (execution.observeEnvironment app) (priority rest
       execution.environmentRecall (execution.observeEnvironment app))
 
 def queryAt (execution : (app).Execution) (coordinate : PhaseSeedAddress graph) (owner : Player) :=
@@ -31,7 +29,9 @@ def queryAt (execution : (app).Execution) (coordinate : PhaseSeedAddress graph) 
     (PhaseSeedScheduler.localInput runtime leaks coordinate.1 owner execution.environmentRecall
       (execution.observeEnvironment app))
 
-theorem selected_request (rest : RestSeed) {inputs : graph.Inputs} (execution : (app).Execution)
+theorem selected_request
+    (priority : RestSeed → List (app).EnvironmentEntry → (app).EnvironmentView → Nat)
+    (rest : RestSeed) {inputs : graph.Inputs} (execution : (app).Execution)
     (valid : execution.application.Invariant inputs) (coordinate : PhaseSeedAddress graph)
     (selected : selectedAt runtime leaks priority rest execution = some coordinate) :
     ∃ owner, execution.application.SeedRequest owner coordinate.1 := by
@@ -39,7 +39,11 @@ theorem selected_request (rest : RestSeed) {inputs : graph.Inputs} (execution : 
   obtain ⟨owner, requested⟩ := (PhaseSeedScheduler.mem_eligible runtime leaks _ _).mp member
   exact ⟨owner, (PhaseRuntimeState.requests_publicView _ valid owner coordinate.1).mp requested⟩
 
-theorem choose_eq_reply (execution : (app).Execution) (coordinate : PhaseSeedAddress graph)
+theorem choose_eq_reply
+    (delay bound : graph.EventId → Nat)
+    (priority : RestSeed → List (app).EnvironmentEntry → (app).EnvironmentView → Nat)
+    (seeds : RestSeed × (PhaseSeedAddress graph → Seed runtime delay))
+    (execution : (app).Execution) (coordinate : PhaseSeedAddress graph)
     (selected : selectedAt runtime leaks priority seeds.1 execution = some coordinate)
     (owner : Player) (actor : graph.actor? coordinate.1.event = some owner) :
     (controller runtime leaks delay bound priority).choose seeds execution.environmentRecall
@@ -50,7 +54,10 @@ theorem choose_eq_reply (execution : (app).Execution) (coordinate : PhaseSeedAdd
   rw [selected]
   simp only [Option.bind_some, actor, Option.map_some, queryAt]
 
-private theorem activation_owner (coordinate : PhaseSeedAddress graph)
+private theorem activation_owner
+    (delay bound : graph.EventId → Nat)
+    (seeds : RestSeed × (PhaseSeedAddress graph → Seed runtime delay))
+    (coordinate : PhaseSeedAddress graph)
     (input : PhaseSeedOperationalInput graph) (owner expected : Player)
     (actor : graph.actor? coordinate.1.event = some expected)
     (activated : reply runtime leaks delay bound coordinate (seeds.2 coordinate) input =
@@ -75,7 +82,11 @@ private theorem activation_application (execution next : (app).Execution) (owner
 
 /-- A selected activation is attributed to its actual ready owner and retained
 in the full physical recall; original activation clocks remain immutable. -/
-theorem activation_mark_valid {inputs : graph.Inputs} (execution next : (app).Execution)
+theorem activation_mark_valid
+    (delay bound : graph.EventId → Nat)
+    (priority : RestSeed → List (app).EnvironmentEntry → (app).EnvironmentView → Nat)
+    (seeds : RestSeed × (PhaseSeedAddress graph → Seed runtime delay))
+    {inputs : graph.Inputs} (execution next : (app).Execution)
     (valid : execution.application.Invariant inputs) (ordered : execution.application.Ordered)
     (coordinate : PhaseSeedAddress graph)
     (selected : selectedAt runtime leaks priority seeds.1 execution = some coordinate)
@@ -112,7 +123,9 @@ theorem activation_mark_valid {inputs : graph.Inputs} (execution next : (app).Ex
 
 /-- A nonactivation reply closes exactly this original physical coordinate at
 this clock, including rejected packets and immediate retry installation. -/
-theorem closure_mark_valid (rest : RestSeed) (execution next : (app).Execution)
+theorem closure_mark_valid
+    (priority : RestSeed → List (app).EnvironmentEntry → (app).EnvironmentView → Nat)
+    (rest : RestSeed) (execution next : (app).Execution)
     (coordinate : PhaseSeedAddress graph)
     (selected : selectedAt runtime leaks priority rest execution = some coordinate)
     (command : (app).Command) (idle : (command.actor? app).isNone = true)
@@ -126,7 +139,9 @@ theorem closure_mark_valid (rest : RestSeed) (execution next : (app).Execution)
     selected idle
 
 /-- Current roster selection excludes all previously closed tickets. -/
-theorem closure_mark_fresh (rest : RestSeed) (execution : (app).Execution)
+theorem closure_mark_fresh
+    (priority : RestSeed → List (app).EnvironmentEntry → (app).EnvironmentView → Nat)
+    (rest : RestSeed) (execution : (app).Execution)
     (coordinate : PhaseSeedAddress graph)
     (selected : selectedAt runtime leaks priority rest execution = some coordinate)
     (old : ServiceMark graph) (valid : old.Valid runtime leaks priority rest execution) :
@@ -155,7 +170,11 @@ theorem closure_mark_fresh (rest : RestSeed) (execution : (app).Execution)
 
 /-- A previous activation at this physical tick is visible in the genuine own
 clock word, so the concrete erased query cannot activate again. -/
-theorem activation_mark_fresh {inputs : graph.Inputs} (execution : (app).Execution)
+theorem activation_mark_fresh
+    (delay bound : graph.EventId → Nat)
+    (priority : RestSeed → List (app).EnvironmentEntry → (app).EnvironmentView → Nat)
+    (seeds : RestSeed × (PhaseSeedAddress graph → Seed runtime delay))
+    {inputs : graph.Inputs} (execution : (app).Execution)
     (invariant : execution.application.Invariant inputs) (coordinate : PhaseSeedAddress graph)
     (selected : selectedAt runtime leaks priority seeds.1 execution = some coordinate)
     (owner : Player)

@@ -24,10 +24,6 @@ variable {Player RestSeed : Type} [Fintype Player] [DecidableEq Player]
 
 local notation "app" => phaseApplication runtime leaks
 
-variable (delay bound : graph.EventId → Nat)
-  (priority : RestSeed → List (Nat × CommitAttemptId) → Nat × CommitAttemptId → Nat)
-  (seeds : RestSeed × (PhaseSeedAddress graph → Seed runtime delay))
-
 omit [Fintype Player] in
 /-- Every actual expiry reply resolves the selected old physical coordinate,
 including the immediate-normalization case where the static event is retried. -/
@@ -48,7 +44,10 @@ theorem environment_expiry_resolves (execution next : (app).Execution)
   exact PhaseRuntimeState.expire_resolves_of_request runtime execution.application state
     valid ordered request due moved
 
-theorem selected_bound (execution next : (app).Execution)
+theorem selected_bound (delay bound : graph.EventId → Nat)
+    (priority : RestSeed → List (app).EnvironmentEntry → (app).EnvironmentView → Nat)
+    (seeds : RestSeed × (PhaseSeedAddress graph → Seed runtime delay))
+    (execution next : (app).Execution)
     {inputs : graph.Inputs} (valid : execution.application.Invariant inputs)
     (ordered : execution.application.Ordered) (command : (app).Command)
     (chosen : command = (controller runtime leaks delay bound priority).choose seeds
@@ -58,7 +57,7 @@ theorem selected_bound (execution next : (app).Execution)
     (selected : selectOpen runtime leaks
       (replayClosed runtime leaks priority seeds.1 execution.environmentRecall)
       (execution.observeEnvironment app)
-      (orderPriority runtime leaks priority seeds.1 execution.environmentRecall
+      (priority seeds.1 execution.environmentRecall
         (execution.observeEnvironment app)) = some coordinate) :
     ∃ entered, ClosedCoordinateBound runtime execution.application.current.native.clock entered
       coordinate.1 next.application := by
@@ -118,13 +117,19 @@ theorem selected_bound (execution next : (app).Execution)
         · exact retired current
         · exact completed done
 
-structure TickSafe (inputs : graph.Inputs) (execution : (app).Execution) : Prop where
+structure TickSafe (delay : graph.EventId → Nat)
+    (priority : RestSeed → List (app).EnvironmentEntry → (app).EnvironmentView → Nat)
+    (seeds : RestSeed × (PhaseSeedAddress graph → Seed runtime delay))
+    (inputs : graph.Inputs) (execution : (app).Execution) : Prop where
   invariant : execution.application.Invariant inputs
   ordered : execution.application.Ordered
   closed : ∀ key ∈ replayClosed runtime leaks priority seeds.1 execution.environmentRecall,
     ∃ entered, ClosedCoordinateBound runtime key.1 entered key.2.1 execution.application
 
-theorem initial_tickSafe {inputs : graph.Inputs} (state : PhaseRuntimeState graph)
+theorem initial_tickSafe (delay : graph.EventId → Nat)
+    (priority : RestSeed → List (app).EnvironmentEntry → (app).EnvironmentView → Nat)
+    (seeds : RestSeed × (PhaseSeedAddress graph → Seed runtime delay))
+    {inputs : graph.Inputs} (state : PhaseRuntimeState graph)
     (valid : state.Invariant inputs) (ordered : state.Ordered) :
     TickSafe runtime leaks delay priority seeds inputs
       (ReactiveApplication.Execution.initial app state) := by
@@ -134,7 +139,10 @@ theorem initial_tickSafe {inputs : graph.Inputs} (state : PhaseRuntimeState grap
 
 /-- Actual player responses are unrestricted. The environment side is exactly
 the immutable original-seed calendar, with no native service contract premise. -/
-theorem tickSafe_invariant (inputs : graph.Inputs) :
+theorem tickSafe_invariant (delay bound : graph.EventId → Nat)
+    (priority : RestSeed → List (app).EnvironmentEntry → (app).EnvironmentView → Nat)
+    (seeds : RestSeed × (PhaseSeedAddress graph → Seed runtime delay))
+    (inputs : graph.Inputs) :
     (app).ServiceInvariant ((controller runtime leaks delay bound priority).family seeds)
       (TickSafe runtime leaks delay priority seeds inputs) where
   respond execution who action safe := by
@@ -162,7 +170,7 @@ theorem tickSafe_invariant (inputs : graph.Inputs) :
     · cases selected : selectOpen runtime leaks
           (replayClosed runtime leaks priority seeds.1 execution.environmentRecall)
           (execution.observeEnvironment app)
-          (orderPriority runtime leaks priority seeds.1 execution.environmentRecall
+          (priority seeds.1 execution.environmentRecall
             (execution.observeEnvironment app)) with
       | none =>
           simp only [selected, Option.elim_none] at member

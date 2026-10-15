@@ -732,3 +732,13 @@ import Vegas.Game.CommitRecoveryBlockDebt
 import Vegas.Game.CommitRecoveryExtraChoice
 import Vegas.Game.CommitRecoveryDeviationPayoff
 import Vegas.Game.CommitRecoveryPreservation
+import Vegas.Game.CompiledRevealReadback
+import Vegas.Game.CompiledRevealPhase
+import Vegas.Game.CompiledRevealLayout
+import Vegas.Game.CompiledRevealBoundary
+import Vegas.Game.CompiledRevealCompletion
+import Vegas.Game.CompiledSampleReadback
+import Vegas.Game.CompiledSampleCompletion
+import Vegas.Game.PhaseExclusionPayoff
+import Vegas.Game.PhaseExcludedRationality
+import Vegas.Game.PhaseRawReadoutLaw

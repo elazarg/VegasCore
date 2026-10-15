@@ -87,3 +87,9 @@ import Vegas.Source.CommitRecoveryFailureCoverage
 import Vegas.Source.CommitBlockInformation
 import Vegas.Source.CommitBlockRecovery
 import Vegas.Source.CommitRecoveryDeviation
+import Vegas.Source.CommitRecoveryBlockEmbedding
+import Vegas.Source.CommitRecoveryCommitStep
+import Vegas.Source.CommitRecoveryBlockPath
+import Vegas.Source.CommitRecoveryBlockClose
+import Vegas.Source.CommitRecoveryNonCommitPath
+import Vegas.Source.CommitRecoveryPathLift
