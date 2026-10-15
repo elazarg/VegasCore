@@ -1,9 +1,9 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**Recovery: 8/10 · incentives: first-event kernel ✓, continuation pending · concurrency pending.**
+**Recovery: 8/10 · continuation: 5/7 checked, chance adapter checking · concurrency open.**
 
 <details>
-<summary>Counted proof milestones; concurrency remains pending</summary>
+<summary>Recovery milestones and current proof substeps</summary>
 
 Milestones have unequal cost; the fixed SE checklist is unchanged.
 
@@ -19,6 +19,22 @@ Milestones have unequal cost; the fixed SE checklist is unchanged.
 | Verified | Quantitative foreign-failure probability bound |
 | Pending | Clear-site incentive bounds and limit transfer |
 | Pending | Recovery SE with intended joint law and zero charges |
+
+The active continuation proof feeds the clear-site incentive milestone:
+
+| Status | Continuation substep |
+| --- | --- |
+| Verified | First-callback source kernel |
+| Verified | Raw chance-phase source law |
+| Verified | Honest callback reaches the next source boundary |
+| Verified | Waiting until the owner's first callback |
+| Verified | Terminal-prefix base case |
+| Checking | Finite-menu chance stopping adapter |
+| Pending | Full honest continuation by source-rank induction |
+
+After continuation: incentive bounds and limit transfer, then recovery SE
+assembly. A substep is verified only after its warning-strict module build;
+the ten recovery milestones require the full checkpoint checks.
 
 </details>
 
