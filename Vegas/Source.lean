@@ -100,3 +100,5 @@ import Vegas.Source.CommitPhaseAutomaticAttempt
 import Vegas.Source.CommitPrefixSplitting
 import Vegas.Source.CommitRecoveryPrefixPath
 import Vegas.Source.CommitRecoveryClearRecall
+import Vegas.Source.CommitPrefixLaw
+import Vegas.Source.CommitPrefixInformationLaw

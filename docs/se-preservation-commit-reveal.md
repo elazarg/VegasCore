@@ -1,6 +1,6 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**SE: non-concurrent ✓ · window attainment ✓ · raw-slot coverage ✓ · counted replay ✓; native SE open.**
+**SE: non-concurrent ✓ · native assessment ✓ · slot law ✓ · service probability ✓; source likelihood/incentives open.**
 
 <details>
 <summary>Recovery milestones and current proof substeps</summary>
@@ -22,15 +22,36 @@ While the same binding stays ready in its attempt, arbitrary future rounds
 preserve its exact semantic source view. This does not assert equality of full
 operational observations or their conditional source likelihoods.
 
+The original source-prefix law now samples each commitment at its updated full
+view, retaining dependencies between repeated choices by the same owner.
+Conditioning on the complete focal view reconstructs the original joint prefix
+and terminal laws and gives the exact next owned binding kernel. The focal view
+marginal is independent of foreign profiles and hidden entry state when its own
+policy and entry view agree. Positive original source-view mass remains explicit;
+a legal auxiliary all-failure witness does not supply it. Transport from the
+actual native partial history to this original source law remains open.
+
 The fresh-slot binding law samples independently of the original typed result,
 offers every bounded fresh slot at actual unsent sites, retains the exact
 post-response result law and gives each encoding at least its original result
-mass divided by the number of eligible slots. This is a local component; the
-whole recovery slot tier, including the distinct omission branch, is separate.
+mass divided by the number of eligible slots. The whole recovery slot dispatcher
+now preserves the joint typed-result/omission law: source omission is silence,
+while an accepted unusable binding emits a packet. Its finite strategy has the
+exact same law, with canonical opening unchanged. Aggregate result masses sum
+all source choices that produce the same encoding.
 Every permitted raw binding's named slot is bounded, globally fresh and offered
 by this law, even with wrong-typed preparation or arbitrary evidence requests.
 Its mass has the fixed lower bound of the original result mass divided by wire
 capacity, independently of the varying number of eligible fresh slots.
+
+One common native assessment sequence now retains a source/slot/raw-noise recipe
+at every clear decision input. Raw noise gives full support; independently
+chosen slot noise supplies alternate fresh handles. The sequence has actual
+Bayes beliefs and one common subsequential consistent limit. At that same limit,
+every public nonempty-exclusion site is optimal against arbitrary whole-policy
+deviations for the actual physical payoff. Clear-site rationality and preservation
+of the intended joint law remain open. Silence leaves later legal sending
+available; it is not treated as an irrevocable omission.
 
 Actual request loss is an own accepting inclusion or an addressed expiry;
 foreign work and private responses cannot silently remove the request. The
@@ -46,8 +67,14 @@ For any original protection-or-coin inclusion window, the same argument yields
 an accepting receipt for the exact authored envelope under arbitrary covered
 future policies and history-adaptive priority. Original favorable future ticks
 bound every later surviving request's clock; their initial openness follows
-from the actual calendar state. The converse and exact late-window probability
-law remain open.
+from the actual calendar state. The converse is also checked: the exact original
+packet has an accepting final receipt precisely on its original inclusion
+window, giving the exact Boolean continuation law. Under the actual coarse owner
+Bayes belief, the window marginal is its original local prior filtered only by
+the observed first delay. Arbitrary later sending, even when adapted to full
+observations, cannot cause selected inclusion outside the immediate-send window.
+Composing this marginal and the physical response kernel at a decision site,
+and transporting source continuation values, remain separate obligations.
 
 The existing hidden-value involution acts on both saved and live states and
 all archived attempts. Restore, automatic drain and every phase reset commute
@@ -58,7 +85,15 @@ recall. Local signed packets, evidence normalization and bounded counted-menu
 membership also transport under evidence-fixing and raw-value-closure
 conditions. Visible-field, owned-action and owned-handle fixing preserve the
 complete actual observer input. The concrete foreign-owner transposition
-wrapper uses the default graph; the observation theorem itself is generic.
+wrapper uses the default graph; an adapter for foreign private pairs now applies
+to every graph and execution mode. Operational normalization preserves exact
+submission and packet effects, as well as the raw and counted menus; every
+permitted binding normalizes to an evidence-free request. Replay guards need
+only actually admitted calls, so phase-masked future openings impose no guard.
+At any initialized clear endpoint, the retry generation is zero and the retired
+archive is empty. Every earlier prefix is clear, and accepted handles, immutable
+values, the full effective action word and completed events persist across all
+intervening physical steps and clean phase transitions.
 Paired execution existence, likelihood comparisons, source/native Bayes
 transport and sequential rationality remain open.
 
@@ -281,8 +316,10 @@ information fibers, so every continuation policy is optimal there. For all
 players at a public nonempty-exclusion site, actual exclusion persistence lets
 one restrict every whole deviation to public-exclusion sites without changing
 its terminal law. Consistency and local optimality on those sites therefore
-give whole-policy optimality there; existence of a native assessment still
-requires the clear-site comparison. The raw
+give whole-policy optimality there. A common native assessment now supplies
+that consistency and optimality while retaining the prescribed fully mixed
+source recipe at every clear input. Clear-site incentive comparisons are still
+required to obtain an equilibrium. The raw
 audit extension preserves the joint typed readout and realized audited payoff
 vector of a counted-menu SE, whose existence is still a separate obligation.
 The physical/source information and probability-law transport, general admissible
@@ -3525,10 +3562,11 @@ bounded raw history at its derived horizon. Its supported terminal histories
 have genuine source counterparts with identical readout and payoff vector.
 At unsent actual inputs its original local seed law is independent of the full
 physical control and all other original coordinates, conditional only on the
-observed first delay. The full operational source-information likelihoods,
-late first-resolution probability law and continuation/payoff coupling remain
-open. The concrete calendar results do not quantify over every abstract
-admissible service.
+observed first delay. The exact original-packet receipt/window law, original-prior
+owner Bayes window marginal and adaptive later-send upper bound are checked.
+Their concrete decision-response composition, full operational source-information
+likelihoods and continuation/payoff coupling remain open. The concrete calendar
+results do not quantify over every abstract admissible service.
 
 A mechanization must also check the following, beyond the statements above:
 

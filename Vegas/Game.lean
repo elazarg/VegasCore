@@ -782,3 +782,10 @@ import Vegas.Game.PhaseSourcePolicy
 import Vegas.Game.PhaseSourcePolicyLaw
 import Vegas.Game.PhaseSourcePolicyInformation
 import Vegas.Game.PhaseOwnerSwapInformation
+import Vegas.Game.PhaseRecoverySlotComponent
+import Vegas.Game.PhaseRecoverySlotHistory
+import Vegas.Game.PhaseSourceSlotPolicy
+import Vegas.Game.PhaseSourceSlotPolicyLaw
+import Vegas.Game.PhaseSourceSlotInformation
+import Vegas.Game.PhaseSourcePerturbation
+import Vegas.Game.PhaseAssessmentCompletion
