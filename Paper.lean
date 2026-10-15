@@ -1,6 +1,11 @@
 import Vegas.Game.RecoveryNonLateComparisons
 import Vegas.Game.RecoveryPooledMemberGains
 import Vegas.Game.OnePacketCommitDecisionFailure
+import Vegas.Game.RecoveryKeyedCommitmentComparisons
+import Vegas.Game.RecoveryLatePureChoices
+import Vegas.Game.RecoveryUnintendedValue
+import Vegas.Game.RecoveryLocalComparisons
+import Vegas.Game.RecoverySequentialCompilation
 import Vegas.Game.RecoveryLocalValueComparison
 import Vegas.Game.RecoveryPhaseValueBlind
 import Vegas.Game.RecoveryKeyedFailure
@@ -5685,3 +5690,58 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.certificate_lateCommit_siteDecisionFailure
+
+/-- info: 'Vegas.RecoveryOnePacket.keyedComponent_gain_le_of_member_mixtures'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.RecoveryOnePacket.keyedComponent_gain_le_of_member_mixtures
+
+/-- info: 'Vegas.RecoveryOnePacket.nativeComparison_commitment_value_affine'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.RecoveryOnePacket.nativeComparison_commitment_value_affine
+
+/-- info: 'Vegas.RecoveryOnePacket.nativeComparison_committed_value_sub_le'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.RecoveryOnePacket.nativeComparison_committed_value_sub_le
+
+/-- info: 'Vegas.RecoveryOnePacket.nativeComparison_keyed_commitment_comparisons'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.RecoveryOnePacket.nativeComparison_keyed_commitment_comparisons
+
+/-- info: 'Vegas.RecoveryOnePacket.keyed_main_value_sub_le'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.RecoveryOnePacket.keyed_main_value_sub_le
+
+/-- info: 'Vegas.RecoveryOnePacket.lateChoice_eq_pure_opening'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.RecoveryOnePacket.lateChoice_eq_pure_opening
+
+/-- info: 'Vegas.RecoveryOnePacket.recovery_unintendedCommitment_stopped_value'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.RecoveryOnePacket.recovery_unintendedCommitment_stopped_value
+
+/-- info: 'Vegas.RecoveryOnePacket.recovery_unintendedCommitment_value_sub_le'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.RecoveryOnePacket.recovery_unintendedCommitment_value_sub_le
+
+/-- info: 'Vegas.RecoveryOnePacket.recovery_keyed_local_comparisons'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.RecoveryOnePacket.recovery_keyed_local_comparisons
+
+/-- info: 'Vegas.RecoveryOnePacket.recovery_local_comparisons'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.RecoveryOnePacket.recovery_local_comparisons
+
+/-- info: 'Vegas.recovery_intended_raw_sequentialEquilibrium_preserved'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.recovery_intended_raw_sequentialEquilibrium_preserved

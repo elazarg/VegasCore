@@ -697,3 +697,12 @@ import Vegas.Game.RecoveryNonLateNativeComparisons
 import Vegas.Game.RecoveryNonLateComparisons
 import Vegas.Game.RecoveryPooledMemberGains
 import Vegas.Game.OnePacketCommitDecisionFailure
+import Vegas.Game.RecoveryLatePureChoices
+import Vegas.Game.RecoveryUnintendedValue
+import Vegas.Game.RecoveryCommittedContinuationValue
+import Vegas.Game.RecoveryCommittedValueAffine
+import Vegas.Game.RecoveryKeyedCommitmentComparisons
+import Vegas.Game.RecoveryKeyedComparisons
+import Vegas.Game.RecoveryLocalComparisons
+
+import Vegas.Game.RecoverySequentialCompilation

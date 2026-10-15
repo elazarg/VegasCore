@@ -143,4 +143,64 @@ theorem recovery_pooled_member_gain_bounds [Fintype (RP).History]
     (values n)
     who site alternative
 
+
+open Classical in
+/-- Every keyed option is an actual pure part of the same original pool, so
+its component gain inherits the all-member-mixture bound without changing weights. -/
+theorem keyedComponent_gain_le_of_member_mixtures [Fintype (RP).History]
+    [∀ who, DecidableEq ((R).InfoState who)]
+    {Parameter : Type} (parameter : State L setup.context → Parameter)
+    (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
+    (excludedPayoff : Player → ℝ) (assessment : (R).BehavioralAssessment)
+    (source : setup.intendedModel.BehavioralAssessment)
+    {slots : Nat} (scale : ℝ) (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1)
+    {who : Player} (site : (R).InformationSite who)
+    (keyed : ownedKeyed (FreeAgent setup leaks bounds Initial horizon scheduler)
+      (KeyedAgent setup leaks bounds Initial horizon scheduler) ((R).agentAt site))
+    {error : ℝ}
+    (members : ∀ alternative : PMF (Part setup leaks bounds Initial horizon scheduler slots
+        (pool setup leaks bounds Initial horizon scheduler ((R).agentAt site))),
+      localGain (2 * horizon + 1) (fun final => final.state)
+        (recoveryExclusionBase parameter utility excludedPayoff) assessment site
+        (alternative.bind (component setup leaks bounds Initial horizon scheduler source scale
+          nonnegative le_one ((R).agentAt site))) ≤ error)
+    (option : LateOption slots) :
+    localGain (2 * horizon + 1) (fun final => final.state)
+      (recoveryExclusionBase parameter utility excludedPayoff) assessment site
+      (keyedComponent setup leaks bounds Initial horizon scheduler source scale nonnegative le_one
+        ((R).agentAt site) option) ≤ error := by
+  let agent := (R).agentAt site
+  let prescribed := prescribedComponent setup leaks bounds Initial horizon scheduler source scale
+    nonnegative le_one
+  let lateLaw := keyedComponent setup leaks bounds Initial horizon scheduler source
+    (slots := slots) scale nonnegative le_one
+  obtain ⟨identify, same⟩ := freeKeyedComponent_of_not_free
+    (key := agentKey setup leaks bounds Initial horizon scheduler)
+    (keyed := KeyedAgent setup leaks bounds Initial horizon scheduler)
+    (freeLaw setup leaks bounds Initial horizon scheduler scale nonnegative le_one)
+    prescribed lateLaw keyed.2
+  let best := keyedBest
+    (keyed := ownedKeyed (FreeAgent setup leaks bounds Initial horizon scheduler)
+      (KeyedAgent setup leaks bounds Initial horizon scheduler))
+    (key := agentKey setup leaks bounds Initial horizon scheduler) (fun _ => option)
+    (keyedPool (ownedKeyed (FreeAgent setup leaks bounds Initial horizon scheduler)
+      (KeyedAgent setup leaks bounds Initial horizon scheduler))
+      (agentKey setup leaks bounds Initial horizon scheduler) agent)
+  let part := identify.symm best
+  have lawEq : component setup leaks bounds Initial horizon scheduler source scale nonnegative
+      le_one agent part = lateLaw agent option := by
+    refine (same part).trans ?_
+    change InformationModel.keyedComponent prescribed lateLaw agent
+      (identify (identify.symm best)) = lateLaw agent option
+    rw [identify.apply_symm_apply]
+    exact keyedComponent_best_of_keyed prescribed lateLaw (fun _ => option) keyed
+  have near := members (PMF.pure part)
+  simp only [PMF.pure_bind] at near
+  change localGain (2 * horizon + 1) (fun final => final.state)
+    (recoveryExclusionBase parameter utility excludedPayoff) assessment site
+    (component setup leaks bounds Initial horizon scheduler source scale nonnegative le_one
+      agent part) ≤ error at near
+  rw [lawEq] at near
+  exact near
+
 end Vegas.RecoveryOnePacket

@@ -1,6 +1,6 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**Recovery: 8/10 · incentives: 4/6 · joint law: 2/3 checked · concurrency open.**
+**Recovery: 10/10 · incentives: 6/6 · joint law: 3/3 checked · concurrency open.**
 
 <details>
 <summary>Recovery milestones and current proof substeps</summary>
@@ -17,10 +17,10 @@ Milestones have unequal cost; the fixed SE checklist is unchanged.
 | Verified | Actual first-callback source laws for bindings and openings |
 | Verified | Filtered seed product at actual clear recovery sites |
 | Verified | Quantitative foreign-failure probability bound |
-| Pending | Clear-site incentive bounds and limit transfer |
-| Pending | Recovery SE with intended joint law and zero charges |
+| Verified | Clear-site incentive bounds and limit transfer |
+| Verified | Recovery SE with intended joint law and zero charges |
 
-The active continuation proof feeds the clear-site incentive milestone:
+The continuation lemmas support the clear-site incentive milestone:
 
 | Status | Continuation substep |
 | --- | --- |
@@ -38,36 +38,33 @@ The active continuation proof feeds the clear-site incentive milestone:
 | Verified | One source policy for each intended native commitment |
 | Verified | Common continuation values versus source values |
 | Verified | Nonlate native gain versus source gain |
-| Pending | Keyed late gain comparisons and common ranking |
-| Pending | Limit transfer of sequential rationality |
+| Verified | Keyed late gain comparisons and common ranking |
+| Verified | Limit transfer of sequential rationality |
 
 | Status | Joint-law assembly substep |
 | --- | --- |
 | Verified | Initialized honest source law, including the private setup draw |
 | Verified | Actual common recovery sequence approaches the intended joint law |
-| Pending | Intended-law SE at the common assessment limit |
+| Verified | Intended-law SE at the common assessment limit |
 
 The audited raw extension preserves the joint readout and settled-payoff law
 of any one-packet recovery equilibrium, with zero charges.
-Recovery SE assembly follows these incentive substeps.
-Nonlate comparisons cover every pure local choice under the original common
-assessment. Keyed component mixtures have a uniform vanishing gain bound;
-arbitrary keyed commitments and their source-policy comparison remain open.
+The recovery preservation theorem discharges every local comparison under
+one common assessment witness. It preserves the intended joint typed-readout
+and realized net-payoff law, with zero charges on every supported path.
 A substep is verified only after its warning-strict module build;
 the ten recovery milestones require the full checkpoint checks.
 
 </details>
 
-Status: partly mechanized mathematics. The checked results include Proposition
-1(1) for events run one at a time, Lemma C, the finite core of Lemma T, and a
-sequential preservation theorem for the default bounded runtime with an
-exclusion payoff. Its counterpart construction and likelihood bounds are
-derived. A separate recovery runtime enforces persistent exclusion and automatic
-failure of excluded owners' later events, with checked packet accounting,
-one-packet SE extension to its raw menu, and exact history and information-fiber
-bijections with the default runtime before exclusion. Constructing its
-law-preserving one-packet SE and proving
-concurrent preservation remain open.
+Status: non-concurrent preservation is mechanized. The checked results
+include Proposition 1(1) for events run one at a time, Lemma C, the finite core
+of Lemma T, and sequential preservation for both the default bounded runtime
+with an exclusion payoff and the permanent-exclusion recovery runtime.
+The recovery theorem implements every intended SE with the exact joint law
+of typed readout and realized net payoffs and zero count charges, under its
+stated service, coverage, utility and independent-private-input hypotheses.
+Concurrent preservation remains open.
 Appendix A identifies the checked declarations; Section 9 lists the broader
 limitations.
 
@@ -3050,6 +3047,12 @@ needs its own review. What is known:
 | Every actual local recovery law has the same-weight native debt-stopped value up to a uniformly vanishing error, at clear debt-free own-turn sites including keyed late sites | `Vegas.RecoveryOnePacket.recovery_local_value_comparison_bounds` |
 | Binding and disclosure physical phases have concrete source-value factors and bad-support bounds under actual recovery completion | `Vegas.recovery_pending_phase_value_bounds` |
 | Primitive native failure scores become common within each late key under the original recovery posterior; these scores are not identified with actual recovery terminal failure events | `Vegas.RecoveryOnePacket.recovery_keyed_failure_bounds` |
+| Every pure nonlate recovery deviation is bounded by a vanishing error or a mixture of deviations in the original source assessment | `Vegas.RecoveryOnePacket.recovery_nonlate_local_comparisons` |
+| Actual keyed component values have common affine scores under the original recovery posterior, with a uniform vanishing error | `Vegas.RecoveryOnePacket.recovery_keyed_component_value_bounds` |
+| The original pooled continuation witness bounds every actual component-mixture gain uniformly, with no affine-value premise | `Vegas.RecoveryOnePacket.recovery_pooled_member_gain_bounds` |
+| Any successful prepared-slot commitment has nearly the same primitive decision-failure probability as its same-slot late option, without a global native completion premise | `Vegas.certificate_lateCommit_siteDecisionFailure` |
+| Every pure local recovery choice has a vanishing gain or compares with an original source-deviation mixture, under one common completion witness | `Vegas.RecoveryOnePacket.recovery_local_comparisons` |
+| Every intended SE has an audited raw permanent-exclusion recovery SE with zero charges and the exact joint typed-readout and realized net-payoff law, with all incentive comparisons derived | `Vegas.recovery_intended_raw_sequentialEquilibrium_preserved` |
 | A one-packet recovery equilibrium and its intended joint law extend to the audited raw recovery game with zero charges and the same joint typed-readout and settled-payoff law | `Vegas.recovery_intended_raw_sequentialEquilibrium_of_onePacket` |
 | An owed failure appears in any existing terminal readout; an honest source terminal law therefore makes every intermediate honest state intended | `Vegas.decoded_owesFailure_failedReveals_of_readout`, `Vegas.honest_reached_intended_of_readout_law` |
 | The original recovery assessment's whole-policy gain is bounded by its concrete belief-averaged native debt-stopped gain plus a uniform vanishing error | `Vegas.RecoveryOnePacket.recovery_common_gain_le_native_debt_stopped` |
@@ -3125,7 +3128,8 @@ $2|P|(2H+1)(1-\operatorname{slotRetention}(\eta))$ against the original source
 sequence. This bound vanishes with the common tremble scale. The coupling
 includes initialization; native terminal public failure is exactly the
 first-exit mass. No global native completion contract is needed. This law
-approximation does not yet prove limiting sequential rationality.
+approximation combines with the local incentive bounds to prove sequential
+rationality at the same common assessment limit.
 The recovery weights also determine a globally assembled native comparison
 sequence with full support and canonical Bayes beliefs. At represented clear
 decisions, its action laws equal those of the actual assembled recovery
@@ -3163,8 +3167,9 @@ Honest continuations have the full source law by source-rank induction, includin
 chance phases and the terminal base. Actual recovery service also makes every
 supported honest future input nonlate, so the original common weights retain
 honest choices throughout the continuation. Stopped expectations inherit the
-resulting finite-horizon error bound. Comparisons for all nonlate and keyed late
-local deviations remain open. The actual raw debt-stopped continuation under
+resulting finite-horizon error bound. Every nonlate local choice compares
+with the original source assessment up to a uniform vanishing error.
+The actual raw debt-stopped continuation under
 the original recovery strategy approaches the source value uniformly at intended
 successor boundaries. Its original Bayes beliefs also approach the source
 beliefs at clear debt-free sites, including keyed late sites. Event-phase
@@ -3174,17 +3179,23 @@ Every actual recovery local law also has the same-weight finite native
 debt-stopped value up to a uniformly vanishing error. Actual pending binding
 and disclosure laws give source-value factors and bounded missing-completion
 mass. Original recovery posteriors give common primitive failure scores within
-each late key. Their composition into actual affine payoff estimates and
-arbitrary-choice incentive bounds remains open. Given those estimates, checked
-pooled ranking bounds every member mixture without replacing the original
+each late key. Actual affine payoff estimates and the original pooled witness
+bound every member mixture without replacing the original
 weights or identifying primitive scores with terminal recovery failure events.
-Pure comparisons at all nonfree sites then give SE and the intended joint law
-at that same common limit; this comparison premise remains explicit.
+Arbitrary intended keyed commitments compare with their same-slot option
+plus the physical success probability times one original source-policy gain.
+Mixing that source deviation with its zero-gain baseline retains the comparison
+also when its gain is negative. Waiting and legal disclosure compare with
+actual keyed components; unintended commitments have exclusion value at forced
+debt-free histories. Every pure local choice therefore has a uniformly
+vanishing gain or compares with an original source-deviation mixture.
 A common consistent assessment completion gives rationality at every
-post-exclusion site. Own latent source debt gives rationality at every owing
-site of any assessment, under actual recovery completion. The intended-law
-one-packet SE still requires clear-site incentive comparisons, limit transfer,
-and assembly of the recovery assessment.
+post-exclusion site. Own latent source debt gives zero gain at every owing
+site under actual recovery completion. These comparisons establish SE and
+the intended joint law at that same common limit. The audited raw extension
+gives the full preservation theorem, with zero charges and the exact joint
+typed-readout and realized net-payoff law; no incentive-comparison premise
+remains in the capstone.
 The foreign-failure estimate is needed only before the focal player incurs
 latent own debt: every later recovery continuation already pays the exclusion
 utility. A clear public record alone does not supply this condition.
