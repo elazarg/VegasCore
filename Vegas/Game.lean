@@ -662,3 +662,13 @@ import Vegas.Game.RecoveryPendingFailure
 import Vegas.Game.RecoveryInitializedLaw
 import Vegas.Game.RecoveryInitializedProjection
 import Vegas.Game.RecoveryOnePacketRawLaw
+import Vegas.Game.RecoveryComparisonContinuationValue
+import Vegas.Game.RecoveryFiniteStoppedValue
+import Vegas.Game.RecoveryLocalStoppedValue
+import Vegas.Game.RecoverySourcePhaseValue
+import Vegas.Game.RecoveryEventPhaseLaw
+import Vegas.Game.RecoverySourceBeliefBounds
+import Vegas.Game.RecoveryNonLateSourceValue
+import Vegas.Game.RecoveryComparisonRawValue
+import Vegas.Game.RecoveryFirstActivationValue
+import Vegas.Game.RecoveryNonLateChoices

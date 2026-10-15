@@ -1,3 +1,9 @@
+import Vegas.Game.RecoveryComparisonRawValue
+import Vegas.Game.RecoverySourceBeliefBounds
+import Vegas.Game.RecoveryFirstActivationValue
+import Vegas.Game.RecoveryNonLateChoices
+import Vegas.Game.RecoveryNonLateSourceValue
+import Vegas.Game.RecoveryEventPhaseLaw
 import Vegas.Game.RecoveryOnePacketRawLaw
 import GameTheoryExtensions.Analysis.Protocol.StoppedContinuationComparison
 import Vegas.Game.RecoveryKeyedRecords
@@ -5478,3 +5484,53 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.recovery_intended_raw_sequentialEquilibrium_of_onePacket
+
+/-- info: 'Vegas.RecoveryOnePacket.nativeComparison_stopped_boundary_value_sub_le'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.RecoveryOnePacket.nativeComparison_stopped_boundary_value_sub_le
+
+/-- info: 'Vegas.RecoveryOnePacket.nativeDebtStoppedValue_eq_finite_continuation'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.RecoveryOnePacket.nativeDebtStoppedValue_eq_finite_continuation
+
+/-- info: 'Vegas.RecoveryOnePacket.nativeDebtStoppedValue_localLaw_eq_comparison'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.RecoveryOnePacket.nativeDebtStoppedValue_localLaw_eq_comparison
+
+/-- info: 'Vegas.RecoveryOnePacket.recovery_common_boundary_value_bounds'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.RecoveryOnePacket.recovery_common_boundary_value_bounds
+
+/-- info: 'Vegas.RecoveryOnePacket.recovery_source_belief_bounds'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.RecoveryOnePacket.recovery_source_belief_bounds
+
+/-- info: 'Vegas.RecoveryOnePacket.nativeComparison_firstActivation_value_lower'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.RecoveryOnePacket.nativeComparison_firstActivation_value_lower
+
+/-- info: 'Vegas.RecoveryOnePacket.nativeComparison_local_phase_value_sub_le'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.RecoveryOnePacket.nativeComparison_local_phase_value_sub_le
+
+/-- info: 'Vegas.RecoveryOnePacket.debtStopped_eq_bind_eventPhase'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.RecoveryOnePacket.debtStopped_eq_bind_eventPhase
+
+/-- info: 'Vegas.recovery_pending_until_eq_clearUntil'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.recovery_pending_until_eq_clearUntil
+
+/-- info: 'Vegas.withLaw_eq_self_of_unpending_notOwing'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.withLaw_eq_self_of_unpending_notOwing

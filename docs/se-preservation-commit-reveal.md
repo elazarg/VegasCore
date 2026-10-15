@@ -1,6 +1,6 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**Recovery: 8/10 · incentives: 2/6 · joint law: 2/3 checked · concurrency open.**
+**Recovery: 8/10 · incentives: 3/6 · joint law: 2/3 checked · concurrency open.**
 
 <details>
 <summary>Recovery milestones and current proof substeps</summary>
@@ -36,7 +36,7 @@ The active continuation proof feeds the clear-site incentive milestone:
 | --- | --- |
 | Verified | Actual recovery gain versus the native debt-stopped gain |
 | Verified | One source policy for each intended native commitment |
-| Checking | Common continuation values versus source values |
+| Verified | Common continuation values versus source values |
 | Pending | Nonlate native gain versus source gain |
 | Pending | Keyed late gain comparisons and common ranking |
 | Pending | Limit transfer of sequential rationality |
@@ -3027,6 +3027,11 @@ needs its own review. What is known:
 | Honest-choice retention bounds every bounded stopped native continuation payoff | `Vegas.onePacket_stopped_expect_sub_le` |
 | Actual recovery service supplies source values for honest debt-stopped boundary comparisons | `Vegas.recovery_stopped_boundary_value_sub_le` |
 | The original common recovery weights retain honest choices at every future boundary continuation input | `Vegas.RecoveryOnePacket.nativeComparison_dominatesHonestFrom_boundary` |
+| The actual raw debt-stopped continuation under the original recovery weights approaches the source value uniformly at intended successor boundaries | `Vegas.RecoveryOnePacket.recovery_common_boundary_value_bounds` |
+| Original recovery Bayes beliefs project to source beliefs with uniformly vanishing error, including keyed late sites | `Vegas.RecoveryOnePacket.recovery_source_belief_bounds` |
+| The common first-activation baseline has the source value as a lower bound up to retention and tremble errors | `Vegas.RecoveryOnePacket.nativeComparison_firstActivation_value_lower` |
+| Arbitrary local nonlate laws admit an event-phase source potential comparison | `Vegas.RecoveryOnePacket.nativeComparison_local_phase_value_sub_le` |
+| At nonowing unpending sites every legal local law leaves the whole policy unchanged | `Vegas.withLaw_eq_self_of_unpending_notOwing` |
 | Actual recovery completion settles the current event at every supported next-event or public-failure stop | `Vegas.recovery_pending_stop_completed` |
 | The actual terminal probability of current-event primitive decision failure equals its stopped probability | `Vegas.recovery_pending_failure_terminal_eq_stopped` |
 | Original common recovery posteriors with the same operational key have vanishing past-record discrepancy | `Vegas.RecoveryOnePacket.recovery_keyed_record_bounds` |
@@ -3148,7 +3153,12 @@ chance phases and the terminal base. Actual recovery service also makes every
 supported honest future input nonlate, so the original common weights retain
 honest choices throughout the continuation. Stopped expectations inherit the
 resulting finite-horizon error bound. Comparisons for all nonlate and keyed late
-local deviations remain open.
+local deviations remain open. The actual raw debt-stopped continuation under
+the original recovery strategy approaches the source value uniformly at intended
+successor boundaries. Its original Bayes beliefs also approach the source
+beliefs at clear debt-free sites, including keyed late sites. Event-phase
+towers, local phase potentials and first-activation baseline bounds supply
+the continuation estimates needed for the remaining gain comparisons.
 A common consistent assessment completion gives rationality at every
 post-exclusion site. Own latent source debt gives rationality at every owing
 site of any assessment, under actual recovery completion. The intended-law

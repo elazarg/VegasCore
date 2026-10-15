@@ -107,7 +107,6 @@ theorem sourceNativeProfile_initialized_failure_mass_eq
       (nativeProfile (runtime setup) leaks Initial horizon scheduler
         (fun who => (RMenu).embedPolicy Initial horizon scheduler who (profile who)))
         fuel).toOuterMeasure
-
          {next | ¬ NativeClear (runtime setup) leaks Initial horizon scheduler next}).toReal =
       (((N).runBehavioral (sourceNativeProfile setup leaks bounds horizon scheduler profile)
         fuel).toOuterMeasure {next | ¬ Clear next.state}).toReal := by
