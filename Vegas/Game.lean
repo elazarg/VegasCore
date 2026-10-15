@@ -771,3 +771,9 @@ import Vegas.Game.CommitAttemptRecall
 import Vegas.Game.CommitAttemptOwnRecall
 import Vegas.Game.RecoveryCommitPrefixWitness
 import Vegas.Game.CommitPrefixFillRecall
+import Vegas.Game.RecordedSourceHistory
+import Vegas.Game.CommitPrefixReadyRecall
+import Vegas.Game.RecoveryReadyCommitWitness
+import Vegas.Game.RecoveryReadyCommitInformation
+import Vegas.Game.RecoveryBindingCounterpart
+import Vegas.Game.PhaseBindingCounterpart

@@ -606,6 +606,15 @@ import Vegas.Game.CommitAttemptRecall
 import Vegas.Game.CommitAttemptOwnRecall
 import Vegas.Game.RecoveryCommitPrefixWitness
 import Vegas.Game.CommitPrefixFillRecall
+import Vegas.Game.RecordedSourceHistory
+import Vegas.Compile.CommitPrefixAtEvent
+import Vegas.Game.CommitPrefixReadyRecall
+import Vegas.Game.RecoveryReadyCommitWitness
+import Vegas.Game.RecoveryReadyCommitInformation
+import Vegas.Game.RecoveryBindingCounterpart
+import Vegas.Game.PhaseBindingCounterpart
+import Vegas.Pending.PhaseSeedFirstCallback
+import Vegas.Pending.PhaseSeedFirstBayes
 
 /-! # Checked sequential-equilibrium preservation, Nash correspondence and termination -/
 
@@ -6759,3 +6768,39 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms
   Vegas.fillCommitPrefix_history
+
+/-- info: 'Vegas.RecordedSourceHistory.native_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.RecordedSourceHistory.native_history
+
+/-- info: 'Vegas.phase_ready_binding_sourceView'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phase_ready_binding_sourceView
+
+/-- info: 'Vegas.phase_ready_binding_information'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phase_ready_binding_information
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseSeedCalendar.first_delay_eq_elapsed_of_unrecorded'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseSeedCalendar.first_delay_eq_elapsed_of_unrecorded
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseSeedCalendar.first_callback_protected'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseSeedCalendar.first_callback_protected
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseSeedCalendar.first_bayes_input_protected'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseSeedCalendar.first_bayes_input_protected

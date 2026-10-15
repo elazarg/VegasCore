@@ -92,7 +92,8 @@ theorem RecoverySourceCheckpoint.filled_prefix_trace
           some (ProtocolState.observe owner setup.program source.point) := by
   rcases checkpoint with ⟨⟨Γ, O, program, lift⟩, entry, refs, registry, embedding, before,
     compiled, terminalAlignment, agrees, guards, failures, unique, ranks, actors, commits, owners,
-    endpoints, automatic, histories, memories, steps, menus, readout, initialized, views⟩
+    endpoints, automatic, histories, memories, steps, menus, readout, initialized, views,
+    _savedHistory⟩
   dsimp only at *
   change SourceProgram.Config Player L Γ at entry
   change ContextRefs (graphLayout setup.program) Γ at refs

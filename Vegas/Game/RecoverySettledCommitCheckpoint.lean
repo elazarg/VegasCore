@@ -5,6 +5,8 @@ import Vegas.Game.CompiledCommitClosing
 import Vegas.Game.CompiledCommitTail
 import Vegas.Game.CompiledCommitMaximality
 import Vegas.Source.CommitPhaseAutomaticAttempt
+import Vegas.Game.CommitAttemptOwnRecall
+import Vegas.Pending.PhaseHistoryCheckpoint
 import Vegas.Source.CommitRecoveryBlockCloseLift
 
 /-! # Saved source checkpoints after clean and exhausted physical binding phases -/
@@ -49,7 +51,9 @@ theorem RecoverySourceCheckpoint.after_commit_clean
     (maximal : state.phases.IsChain fun before after =>
       before.kind ≠ after.kind ∨ before.kind = .sample)
     (binding : state.BindingRecord) (receipts : state.ReceiptRecord)
-    (stored : state.StoredCheckpoint) (finished : phase.Finished (phase.drain state.current))
+    (stored : state.StoredCheckpoint) (remembered : state.HistoryCheckpoint)
+    {inputs} (native : state.Invariant inputs) (coverage : state.FailureCoverage)
+    (finished : phase.Finished (phase.drain state.current))
     (clean : ¬ (((phase.drain state.current).excluded \ state.entry.excluded) ∩
       phase.owners).Nonempty) :
     Nonempty (RecoverySourceCheckpoint setup mode
@@ -59,7 +63,7 @@ theorem RecoverySourceCheckpoint.after_commit_clean
         (phase.drain state.current) (phase.drain state.current) state.retired := by
   rcases checkpoint with ⟨⟨Γ, O, program, lift⟩, source, refs, registry, embedding, before,
     compiled, aligned, agree, guards, failures, unique, ranks, actors, commits, owners, endpoints,
-    automatic, history, memory, steps, menus, readout, sourceTrace, views⟩
+    automatic, history, memory, steps, menus, readout, sourceTrace, views, historyAlignment⟩
   obtain ⟨Δ, P, suffix, block, reconstruct, boundary⟩ := commitPhase program
   subst program
   have positive : 0 < block.length := by
@@ -84,9 +88,37 @@ theorem RecoverySourceCheckpoint.after_commit_clean
   have ownerEq : phase.owners = block.owners :=
     compiledCommitPhase_owners setup.program mode block suffix embedding compiled positive
   have head : state.phases.head? = some phase := by rw [installed]; rfl
-  obtain ⟨final, ⟨attempt⟩, values, finalGuards⟩ :=
-    sourceAttempt_of_drained_bindingPhase setup.program mode block suffix embedding compiled
-      positive state head binding.active receipts stored source agree guards finished
+  have member : phase ∈ state.phases.head? := by
+    rw [head]
+    exact Option.mem_some_iff.mpr rfl
+  have within := receipts.exclusion.frontier.positioned
+  rw [installed] at within
+  let image := phase.drain state.current
+  let decoded := decodeCommitAttempt setup.program mode block suffix embedding image.native source
+    state.entry.excluded
+  let final := decoded.1
+  have record := (receipts.exclusion.installed phase member).phase_drain phase
+  have excludedEq := decodeCommitAttempt_excluded_eq_physical setup.program mode block suffix
+    embedding compiled positive image source state.entry.excluded record
+    (phase.drain_within state.current within.2) finished
+  have attempt : block.Attempt source state.entry.excluded final image.excluded :=
+    excludedEq ▸ decoded.2.2
+  have activeAgree : refs.Agrees source.state image.native.config.store := by
+    intro name cell selected
+    apply (refs.get selected).get?_preserved state.entry.native.config.store _
+      (fun field value present => phase.drain_keepsStore state.current field value
+        (stored field value present)) _ (agree selected)
+  have values : (commitBlockRefs setup.program block suffix embedding refs).Agrees final.state
+      image.native.config.store := by
+    apply decodeCommitAttempt_state_agrees setup.program mode block suffix embedding refs
+      image.native source state.entry.excluded state.attempt.phase compiled.rankEq
+      (phase.drain_bindingInvariant state.current binding.active)
+      ((receipts.ordered phase member rfl).congr (phase.drain_tables state.current).1) activeAgree
+    intro index inside
+    exact finished ((compiledCommitPhase_mem_iff setup.program mode block suffix embedding
+      compiled positive _).mpr ⟨index, inside, rfl⟩)
+  have finalGuards := decodeCommitAttempt_registry_extension setup.program mode block suffix
+    embedding image.native source state.entry.excluded registry guards
   have noFailure : attempt.failedOwners = ∅ := by
     apply Finset.not_nonempty_iff_eq_empty.mp
     rintro ⟨who, failed⟩
@@ -147,7 +179,8 @@ theorem RecoverySourceCheckpoint.after_commit_clean
       menus := fun who point => (menus who _).trans (tailMenus who point)
       readout := ?_
       trace := reachedTrace
-      views := finalViews }⟩
+      views := finalViews
+      historyAlignment := ?_ }⟩
   · rw [address]
     exact finalCompiled
   · intro point excluded joint
@@ -158,6 +191,24 @@ theorem RecoverySourceCheckpoint.after_commit_clean
     congr 1
     funext terminal
     simp only [Function.comp_apply, cast_cast]
+  · intro clear
+    have oldClear : state.entry.excluded = ∅ := by
+      apply Finset.eq_empty_iff_forall_notMem.mpr
+      intro who member
+      have excluded := (record.excluded who).mpr (Or.inl member)
+      rw [clear] at excluded
+      exact Finset.notMem_empty _ excluded
+    have alignedHistory := historyAlignment oldClear
+    change (decodeCommitAttempt setup.program mode block suffix embedding image.native source
+      state.entry.excluded).1.history = _
+    rw [oldClear]
+    exact decodeCommitAttempt_history_of_clear_phase setup.program mode block suffix embedding
+      state.attempt.phase compiled.rankEq state.entry.native image source
+      (phase.drain_bindingInvariant state.current binding.active)
+      (phase.drain_invariant state.current native.active).reachable (coverage.active.drain phase)
+      clear (remembered.trans (phase.drain_history_prefix state.current)) within.1
+      (phase.finished_prefix image (phase.drain_within state.current within.2) finished)
+      alignedHistory views.actionEq
 
 /-- An actual exhausted physical phase rebuilds the saved source block with
 only automatic excluded slots and preserves the retained attempted history.
@@ -188,7 +239,7 @@ theorem RecoverySourceCheckpoint.after_commit_exhausted
         archive := by
   rcases checkpoint with ⟨⟨Γ, O, program, lift⟩, source, refs, registry, embedding, before,
     compiled, aligned, agree, guards, failures, unique, ranks, actors, commits, owners, endpoints,
-    automatic, history, memory, steps, menus, readout, sourceTrace, views⟩
+    automatic, history, memory, steps, menus, readout, sourceTrace, views, historyAlignment⟩
   obtain ⟨Δ, P, suffix, block, reconstruct, boundary⟩ := commitPhase program
   subst program
   have positive : 0 < block.length := by
@@ -277,7 +328,18 @@ theorem RecoverySourceCheckpoint.after_commit_exhausted
       menus := fun who point => (menus who _).trans (tailMenus who point)
       readout := ?_
       trace := finalTrace
-      views := finalViews }⟩
+      views := finalViews
+      historyAlignment := by
+        intro clear
+        have imageClear : image.excluded = ∅ := by
+          change rebuilt.excluded = ∅ at clear
+          have same : rebuilt.excluded = image.excluded :=
+            phase.drain_excluded (PhaseRuntimeState.restore state.entry image)
+          exact same.symm.trans clear
+        obtain ⟨who, member⟩ := missedSource
+        have excluded := (Finset.mem_sdiff.mp member).1
+        rw [imageClear] at excluded
+        exact False.elim (Finset.notMem_empty _ excluded) }⟩
   · rw [address]
     exact finalCompiled
   · intro point excluded joint

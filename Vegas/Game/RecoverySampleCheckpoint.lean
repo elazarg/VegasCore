@@ -4,6 +4,8 @@ import Vegas.Game.RecoverySourceBoundary
 import Vegas.Game.CompiledSampleReadback
 import Vegas.Pending.PhaseExclusionRecord
 import Vegas.Pending.PhaseStoredCheckpoint
+import Vegas.Pending.PhaseHistoryCheckpoint
+import Vegas.Game.RecordedSourceHistory
 import Vegas.Source.CommitRecoveryPathLift
 
 /-! # Saved source checkpoints after actual singleton sample phases -/
@@ -26,6 +28,7 @@ theorem RecoverySourceCheckpoint.after_sample
     (remaining : List (RuntimePhase ((toEventGraph setup.program).withMode mode)))
     (installed : state.phases = phase :: remaining) (kind : phase.kind = .sample)
     (exclusion : state.ExclusionRecord) (stored : state.StoredCheckpoint)
+    (remembered : state.HistoryCheckpoint)
     {inputs : ((toEventGraph setup.program).withMode mode).Inputs}
     (reachable : (phase.drain state.current).native.config.Reachable inputs)
     (finished : phase.Finished (phase.drain state.current)) :
@@ -34,7 +37,8 @@ theorem RecoverySourceCheckpoint.after_sample
         state.retired⟩ : PhaseRuntimeState ((toEventGraph setup.program).withMode mode))) := by
   rcases checkpoint with ⟨⟨Γ, O, program, lift⟩, source, refs, registry, embedding, before,
     compiled, terminalAligned, agrees, guards, failures, unique, ranks, actors, commits,
-    owners, endpoints, automatic, histories, memories, steps, menus, readouts, trace, views⟩
+    owners, endpoints, automatic, histories, memories, steps, menus, readouts, trace, views,
+    historyAlignment⟩
   let image := phase.drain state.current
   have low : phase.low = state.attempt.phase := by
     rw [PhaseRuntimeState.attempt, installed]
@@ -183,12 +187,38 @@ theorem RecoverySourceCheckpoint.after_sample
           readout := fun point => readouts (Sum.inr point)
           trace := by rw [excludedEq]; exact sourceTrace
           views := ProtocolViewSuffix.sampleTail setup.program fresh law next refs embedding
-            lift views }⟩
+            lift views
+          historyAlignment := ?_ }⟩
       · rw [address]
         exact compiled.sampleTail (_openNames := O) setup.program fresh law next refs
           source.revelations registry embedding before state.attempt.phase
       · intro point excluded joint
         rw [steps]
         simp only [ProtocolState.recoveryStep, Sum.elim_inr, PMF.map_comp, Function.comp_def]
+      · intro clear
+        have oldClear : state.entry.excluded = ∅ := excludedEq.symm.trans clear
+        obtain ⟨⟨selected, action⟩, recorded, named⟩ :=
+          List.mem_map.mp ((image.native.config.history_exact event).mpr completed)
+        change selected = event at named
+        subst selected
+        have decoded : decodeEventAction setup.program event action = none := by
+          rw [views.actionEq zero action]
+          rfl
+        have word := RecordedSourceHistory.sample setup.program mode image.native.config
+          state.attempt.phase source.history ⟨event, action⟩ recorded
+          (show event.val = state.attempt.phase from ranked.trans low) decoded
+        have saved : state.entry.native.config.cut.IsPrefix state.attempt.phase := by
+          rw [← low]
+          exact within.1
+        have prefixEnd : image.native.config.cut.IsPrefix (state.attempt.phase + 1) := by
+          have ended := phase.finished_prefix image (phase.drain_within state.current within.2)
+            finished
+          rw [← low, ← singleton]
+          exact ended
+        exact RecordedSourceHistory.native_history setup.program mode
+          state.entry.native.config image.native.config state.attempt.phase 1
+          source.history source.history word reachable
+          (remembered.trans (phase.drain_history_prefix state.current)) saved prefixEnd
+          (historyAlignment oldClear)
 
 end Vegas

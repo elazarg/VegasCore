@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.CompiledRevealReadback
+import Vegas.Game.RecordedSourceHistory
 import Vegas.Game.ServiceRevealTail
 import Vegas.Compile.EventGraphSuffix
 import Vegas.Pending.PhaseFailureOrder
@@ -127,16 +128,25 @@ theorem completed_reveal_phase_source_path :
           ∃ joint, right ∈ (ProtocolState.recoveryStep program left.1 left.2 joint).support)
         (ProtocolState.entry program entry, inherited)
         ((revealTail count program prefixed).lift
-          (ProtocolState.entry _ final), excluded) := by
+          (ProtocolState.entry _ final), excluded) ∧
+      ∀ (_actions : ∀ index action,
+        decodeEventAction setup.program (embedding.event index) action =
+          decodeEventAction program index
+            (cast (congrArg EventField.Action (embedding.layout_eq index)) action)),
+        excluded = ∅ → RecordedSourceHistory setup.program mode native.native.config offset count
+          entry.history final.history := by
   intro count
   induction count with
   | zero =>
       intro Γ O program prefixed refs revelations registry embedding before offset compiled native
         inputs reachable entry inherited agree guards failures sameRevelations unique ordered
         completed
-      refine ⟨entry, inherited, agree, guards, failures, sameRevelations, ?_, .refl⟩
-      intro who
-      simp only [Nat.not_lt_zero, false_and, exists_false, or_false]
+      refine ⟨entry, inherited, agree, guards, failures, sameRevelations, ?_, .refl, ?_⟩
+      · intro who
+        simp only [Nat.not_lt_zero, false_and, exists_false, or_false]
+      · intro _actions _clear
+        exact RecordedSourceHistory.empty setup.program mode native.native.config offset
+          entry.history
   | succ count ih =>
       intro Γ O program prefixed refs revelations registry embedding before offset compiled native
         inputs reachable entry inherited agree guards failures sameRevelations unique ordered
@@ -229,11 +239,11 @@ theorem completed_reveal_phase_source_path :
             intro index inside
             exact completed (Fin.succ index) (by simp only [Fin.val_succ]; omega)
           obtain ⟨final, excluded, finalAgree, finalGuards, finalFailures, finalRevelations,
-            finalMembers, path⟩ := ih next prefixed tailRefs after.revelations registry.weaken
+            finalMembers, path, word⟩ := ih next prefixed tailRefs after.revelations registry.weaken
               tailEmbedding tailBefore (offset + 1) nextCompiled native reachable after
               nextExcluded nextAgree nextGuards nextFailures rfl nextUnique nextOrdered
               nextCompleted
-          refine ⟨final, excluded, finalAgree, finalGuards, finalFailures, ?_, ?_, ?_⟩
+          refine ⟨final, excluded, finalAgree, finalGuards, finalFailures, ?_, ?_, ?_, ?_⟩
           · simpa only [revealTailRevelations, nextRevelations] using finalRevelations
           · intro who
             rw [finalMembers, members]
@@ -281,5 +291,40 @@ theorem completed_reveal_phase_source_path :
             dsimp only [Prod.fst, Prod.snd, ProtocolState.entry]
             rw [oneStep]
             exact (PMF.mem_support_pure_iff _ _).mpr rfl
+          · intro actions clear
+            have nextClear : nextExcluded = ∅ := by
+              apply Finset.eq_empty_iff_forall_notMem.mpr
+              intro who member
+              have later := (finalMembers who).mpr (Or.inl member)
+              rw [clear] at later
+              exact Finset.notMem_empty _ later
+            have active : owner ∉ inherited := by
+              intro member
+              have later := (members owner).mpr (Or.inl member)
+              rw [nextClear] at later
+              exact Finset.notMem_empty _ later
+            have tailActions : ∀ index action,
+                decodeEventAction setup.program (tailEmbedding.event index) action =
+                  decodeEventAction next index
+                    (cast (congrArg EventField.Action (tailEmbedding.layout_eq index)) action) := by
+              intro index action
+              have current := actions (Fin.succ index) action
+              dsimp only [tailEmbedding]
+              simpa only [decodeEventAction, Fin.cases_succ, OutputEmbedding.tail,
+                Fin.cast_eq_self] using current
+            have decoded : decodeEventAction setup.program event action =
+                some (.reveal owner name disclose) := by
+              have encoded := actions zero action
+              have returned : cast (congrArg EventField.Action (embedding.layout_eq zero)) action =
+                  disclose := actual
+              rw [returned] at encoded
+              change decodeEventAction setup.program (embedding.event zero) action = _
+              simpa only [decodeEventAction, zero, Fin.mk_zero, Fin.cases_zero] using encoded
+            have appended : after.history = Function.update entry.history owner
+                (entry.history owner ++ [.reveal owner name disclose]) := by
+              rw [nextHistory, ite_eq_right active]
+            exact RecordedSourceHistory.cons setup.program mode native.native.config offset count
+              entry.history after.history final.history ⟨event, action⟩ recorded rankEq
+              (.reveal owner name disclose) decoded appended (word tailActions clear)
 
 end Vegas

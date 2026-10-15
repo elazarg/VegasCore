@@ -479,3 +479,5 @@ import Vegas.Pending.PhaseSeedUnsentPosterior
 import Vegas.Pending.PhaseSeedUnsentBayes
 import Vegas.Pending.PhaseSentMenu
 import Vegas.Pending.PhaseHistoryCheckpoint
+import Vegas.Pending.PhaseSeedFirstCallback
+import Vegas.Pending.PhaseSeedFirstBayes

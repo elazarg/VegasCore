@@ -4,6 +4,7 @@ import Vegas.Game.RecoveryCheckpointNormalization
 import Vegas.Game.RecoveryInitialCheckpoint
 import Vegas.Pending.PhasePlanSuffix
 import Vegas.Pending.PhaseRawCheckpoint
+import Vegas.Pending.PhaseHistoryCheckpoint
 import Interaction.ReactiveInvariant
 
 /-! # Actual initialized phased histories have reachable typed source checkpoints -/
@@ -27,22 +28,26 @@ private theorem phase_source_invariant
     (phaseApplication runtime leaks).Invariant (fun state =>
       Nonempty (RecoverySourceCheckpoint setup mode state) ∧
       (∃ inputs, state.Invariant inputs) ∧ state.BindingRecord ∧ state.ReceiptRecord ∧
-      state.StoredCheckpoint ∧ state.PublicFailureOrder ∧ state.phases <:+ plan.phases) := by
+      state.StoredCheckpoint ∧ state.HistoryCheckpoint ∧ state.PublicFailureOrder ∧
+      state.phases <:+ plan.phases) := by
   have graphOrder := (toEventGraph setup.program).withMode_revealRelaxedOrdered
     (toEventGraph_barrierOrdered setup.program) mode
   refine ⟨?_, ?_, ?_⟩
   · intro state who material valid
-    obtain ⟨⟨checkpoint⟩, ⟨inputs, native⟩, binding, receipts, stored, order, suffix⟩ := valid
+    obtain ⟨⟨checkpoint⟩, ⟨inputs, native⟩, binding, receipts, stored, remembered, order,
+      suffix⟩ := valid
     exact ⟨⟨checkpoint.transfer rfl rfl rfl⟩,
       ⟨inputs, (phaseApplication_invariant runtime leaks inputs).submit state who material native⟩,
       (phaseApplication_bindingInvariant runtime leaks).submit state who material binding,
       (phaseApplication_receiptRecord runtime leaks graphOrder).submit state who material receipts,
       (phaseApplication_storedCheckpoint runtime leaks).submit state who material stored,
+      (phaseApplication_historyCheckpoint runtime leaks).submit state who material remembered,
       (phaseApplication_publicFailureOrder graphOrder runtime leaks).submit state who material
         order,
       (phaseApplication_planSuffix runtime leaks plan).submit state who material suffix⟩
   · intro state message next valid accepted
-    obtain ⟨⟨checkpoint⟩, ⟨inputs, native⟩, binding, receipts, stored, order, suffix⟩ := valid
+    obtain ⟨⟨checkpoint⟩, ⟨inputs, native⟩, binding, receipts, stored, remembered, order,
+      suffix⟩ := valid
     refine ⟨?_,
       ⟨inputs, (phaseApplication_invariant runtime leaks inputs).handle state message next native
         accepted⟩,
@@ -50,6 +55,8 @@ private theorem phase_source_invariant
       (phaseApplication_receiptRecord runtime leaks graphOrder).handle state message next receipts
         accepted,
       (phaseApplication_storedCheckpoint runtime leaks).handle state message next stored accepted,
+      (phaseApplication_historyCheckpoint runtime leaks).handle state message next remembered
+        accepted,
       (phaseApplication_publicFailureOrder graphOrder runtime leaks).handle state message next order
         accepted,
       (phaseApplication_planSuffix runtime leaks plan).handle state message next suffix accepted⟩
@@ -79,6 +86,13 @@ private theorem phase_source_invariant
       have rawReceipts := receipts.inclusionResult runtime state nativeMessage result authorized
         permitted handled graphOrder
       have rawStored := stored.inclusionResult runtime state nativeMessage result handled
+      have rawRemembered : raw.HistoryCheckpoint := by
+        obtain ⟨event, _named, ready, action, supported⟩ :=
+          handle_config_mem_step runtime _ result nativeMessage handled
+        apply remembered.trans
+        change state.current.native.config.history.IsPrefix result.config.history
+        rw [state.current.native.config.step_history _ _ _ _ supported]
+        exact ⟨_, rfl⟩
       have rawOrder : raw.PublicFailureOrder :=
         ⟨state.raw_handle_frontier runtime order.frontier nativeMessage result authorized handled,
           ⟨order.coverage.saved, order.coverage.active.inclusionResult runtime nativeMessage result
@@ -87,11 +101,13 @@ private theorem phase_source_invariant
           fun phase member => (order.publicationOrder phase member).inclusionResult
             order.coverage.active order.coverage.inherited graphOrder runtime nativeMessage result
               permitted handled⟩
-      exact rawCheckpoint.normalized raw rawNative rawBinding rawReceipts rawStored rawOrder
+      exact rawCheckpoint.normalized raw rawNative rawBinding rawReceipts rawStored
+        rawRemembered rawOrder
         (plan.suffix_geometry maximal state.phases suffix).2.2
     · cases accepted
   · intro state command next valid reached
-    obtain ⟨⟨checkpoint⟩, ⟨inputs, native⟩, binding, receipts, stored, order, suffix⟩ := valid
+    obtain ⟨⟨checkpoint⟩, ⟨inputs, native⟩, binding, receipts, stored, remembered, order,
+      suffix⟩ := valid
     refine ⟨?_,
       ⟨inputs, (phaseApplication_invariant runtime leaks inputs).environment state command next
         native reached⟩,
@@ -100,6 +116,8 @@ private theorem phase_source_invariant
       (phaseApplication_receiptRecord runtime leaks graphOrder).environment state command next
         receipts reached,
       (phaseApplication_storedCheckpoint runtime leaks).environment state command next stored
+        reached,
+      (phaseApplication_historyCheckpoint runtime leaks).environment state command next remembered
         reached,
       (phaseApplication_publicFailureOrder graphOrder runtime leaks).environment state command next
         order reached,
@@ -121,6 +139,8 @@ private theorem phase_source_invariant
       have rawReceipts := receipts.environmentResult runtime state command result authorized
         supported
       have rawStored := stored.environmentResult runtime state command result supported
+      have rawRemembered : raw.HistoryCheckpoint :=
+        remembered.trans (environmentStep_history_prefix runtime _ result command supported)
       have rawOrder : raw.PublicFailureOrder :=
         ⟨state.raw_environment_frontier runtime order.frontier command result authorized supported,
           ⟨order.coverage.saved, order.coverage.active.environmentResult runtime command result
@@ -129,7 +149,8 @@ private theorem phase_source_invariant
           fun phase member => (order.publicationOrder phase member).environmentResult
             order.coverage.active order.coverage.inherited graphOrder runtime command result
               supported⟩
-      exact rawCheckpoint.normalized raw rawNative rawBinding rawReceipts rawStored rawOrder
+      exact rawCheckpoint.normalized raw rawNative rawBinding rawReceipts rawStored
+        rawRemembered rawOrder
         (plan.suffix_geometry maximal state.phases suffix).2.2
     · rw [PMF.mem_support_pure_iff] at reached
       subst next
@@ -163,6 +184,7 @@ theorem recoverySourceCheckpoint_history
       PhaseRuntimeState.initial_bindingRecord plan (encodeInputs draw),
       PhaseRuntimeState.initial_receiptRecord plan (encodeInputs draw),
       PhaseRuntimeState.initial_storedCheckpoint plan (encodeInputs draw),
+      PhaseRuntimeState.initial_historyCheckpoint plan (encodeInputs draw),
       PhaseRuntimeState.initial_publicFailureOrder graphOrder plan (encodeInputs draw),
       PhaseRuntimeState.settle_suffix _ _ _ _ _⟩
 

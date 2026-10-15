@@ -135,9 +135,11 @@ theorem sourceRecovery_of_actual_revealCompletion
     apply (refs.get source).get?_preserved state.entry.native.config.store _
       (fun field value present => phase.drain_keepsStore raw field value
         (stored field value present)) _ (agree source)
-  apply sourceRecovery_of_completed_revealPhase setup mode program refs revelations registry
+  obtain ⟨final, values, guards, failures, revelations, path, reaches, _word⟩ :=
+    sourceRecovery_of_completed_revealPhase setup mode program refs revelations registry
     embedding before offset compiled phase kind low count high (phase.drain raw)
     (phase.drain_invariant raw rawValid).reachable state.entry.excluded record prefixEnd
     (by simpa only [low] using ordered) entry afterAgree guards failures sameRevelations unique
+  exact ⟨final, values, guards, failures, revelations, path, reaches⟩
 
 end Vegas

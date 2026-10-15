@@ -63,11 +63,17 @@ theorem sourceRecovery_of_completed_revealPhase
         (ProtocolState.entry program entry, inherited)
         ((revealTail count program prefixed).lift (ProtocolState.entry _ final),
           native.excluded) ∧
-      ∀ generation, (commitRecoveryProtocol program entry).Reaches
+      (∀ generation, (commitRecoveryProtocol program entry).Reaches
         (CommitRecoveryState.atPoint (ProtocolState.entry program entry) inherited generation)
         (CommitRecoveryState.atPoint
           ((revealTail count program prefixed).lift (ProtocolState.entry _ final))
-          native.excluded generation) := by
+          native.excluded generation)) ∧
+      ∀ (_actions : ∀ index action,
+        decodeEventAction setup.program (embedding.event index) action =
+          decodeEventAction program index
+            (cast (congrArg EventField.Action (embedding.layout_eq index)) action)),
+        native.excluded = ∅ → RecordedSourceHistory setup.program mode native.native.config offset
+          count entry.history final.history := by
   let prefixed := compiled.revealPrefix_of_phase setup.program mode program refs revelations
     registry embedding before offset phase kind low count high
   have completed : ∀ index : Fin (eventCount program), index.val < count →
@@ -77,7 +83,8 @@ theorem sourceRecovery_of_completed_revealPhase
     rw [compiled.rankEq]
     omega
   obtain ⟨final, excluded, finalAgree, finalGuards, finalFailures, finalRevelations,
-    members, path⟩ := completed_reveal_phase_source_path setup mode count program prefixed refs
+    members, path, word⟩ := completed_reveal_phase_source_path setup mode count program prefixed
+      refs
       revelations registry embedding before offset compiled native reachable entry inherited agree
       guards failures sameRevelations unique ordered completed
   have excludedEq : excluded = native.excluded := by
@@ -102,7 +109,7 @@ theorem sourceRecovery_of_completed_revealPhase
         exact Or.inr ⟨index, by dsimp only [index]; omega, same.symm ▸ acting,
           same.symm ▸ failed⟩
   subst excluded
-  refine ⟨final, finalAgree, finalGuards, finalFailures, finalRevelations, path, ?_⟩
+  refine ⟨final, finalAgree, finalGuards, finalFailures, finalRevelations, path, ?_, word⟩
   intro generation
   exact CommitRecoveryState.reaches_of_nonCommit_path program entry generation _ _ path
 

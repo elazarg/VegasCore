@@ -1,6 +1,6 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**SE: non-concurrent ✓ · trace 8/8 · unsent Bayes ✓ · clear source recall ✓; native SE open.**
+**SE: non-concurrent ✓ · saved recall ✓ · binding information ✓ · unsent Bayes ✓; native SE open.**
 
 <details>
 <summary>Recovery milestones and current proof substeps</summary>
@@ -12,8 +12,11 @@ retry, exhaustion, normalization and the actual-history invariant are checked.
 The 8/8 count tracks these proof steps, not a percentage of full SE.
 At unsent sites the original local seed has its observed-delay-filtered law,
 independently of the full physical control and all other original seeds under
-the actual Bayes belief. Complete clear source recall is checked; its all-history
-alignment with native action records and native SE remain open.
+the actual Bayes belief. Saved source/native action recall agrees at every clear
+checkpoint. Ready bindings have an actual initialized source counterpart with
+the same whole view; an actual intended-view witness identifies complete played
+information. First callbacks leave the protected inclusion window. Native
+probability, incentive and SE transport remain open.
 
 | Status | Recovery milestone |
 | --- | --- |
@@ -136,9 +139,12 @@ earlier visible owned fields. Their exact typed own-action word now follows from
 the actual immutable native records, including accepted unusable bindings.
 The saved chronological history is a prefix of the live history under every
 actual operation and rollback. Source-ranked and physical owned records agree
-on partial intervals even when foreign commitments have holes. Completed clear
-blocks advance the exact whole source own history, given its saved-entry
-alignment. The all-history saved source/native alignment remains open.
+on partial intervals even when foreign commitments have holes. Every initialized
+history constructs the same saved source checkpoint with exact effective own
+history whenever its saved exclusion set is empty. Clean commitments, samples
+and reveals preserve this alignment; retry and exhaustion cannot produce a clear
+saved entry. Reveal records retain their actual disclosure bit, including a true
+opening rejected by a guard.
 At any actual clear auxiliary-source history, the current private source view
 determines its entire signal transcript and own-play recall. If an actual
 intended history shares that view, the complete recovery information equals
@@ -146,7 +152,11 @@ the existing intended-information embedding. A latent bad binding does not
 invalidate this clear-history theorem, but an intended-view witness is still
 required to identify an intended information site. Typed prefix completion
 also yields an actual initialized source trace and exact whole source view
-at the selected binding, given the effective own-history alignment.
+at the selected binding. At an actual initialized clear ready binding, the
+checkpoint, typed prefix, own-history alignment and all native invariants are
+derived. No source trace or information-site witness is assumed. An actual
+intended history sharing the decoded view then proves that the complete copied
+auxiliary source information is a played decision site.
 Every actually initialized finished raw history now yields a genuine terminal
 auxiliary-source history with the same typed readout and entire payoff vector;
 no checkpoint or source-outcome witness is a premise. Actual history invariants
@@ -214,6 +224,11 @@ finite Bayes belief now factors into this original delay-filtered seed law and
 the joint law of the full physical control and all other original coordinates.
 The history-adaptive priority remains arbitrary. At a genuine ready coordinate
 with a recorded own packet, the actual one-packet menu contains only silence.
+At an unsent coordinate with no previous response, the first callback's elapsed clock
+equals its original delay draw. The declared event law bounds that draw by the
+reaction bound, so the complete protected inclusion window fits before expiry.
+This also holds at every positive-mass first input of the actual finite Bayes
+assessment. It does not identify the value of waiting and emitting later.
 Every completed current-phase event of a nonexcluded owner has an authentic
 same-attempt submitted message naming it, covering openings and bindings through
 arbitrary automatic completion, expiry, retirement and resets. Permanently excluded

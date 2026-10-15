@@ -5,6 +5,7 @@ import Vegas.Game.RecoverySourceBoundary
 import Vegas.Game.CompiledRevealTail
 import Vegas.Game.CompiledViewTail
 import Vegas.Game.CompiledRevealBoundary
+import Vegas.Pending.PhaseHistoryCheckpoint
 import Vegas.Game.RevealRecoveryResidual
 import Vegas.Source.CommitRecoveryPathLift
 
@@ -48,6 +49,7 @@ theorem RecoverySourceCheckpoint.after_reveal
     (remaining : List (RuntimePhase ((toEventGraph setup.program).withMode mode)))
     (installed : state.phases = phase :: remaining) (kind : phase.kind = .reveal)
     (exclusion : state.ExclusionRecord) (stored : state.StoredCheckpoint)
+    (remembered : state.HistoryCheckpoint)
     {inputs : ((toEventGraph setup.program).withMode mode).Inputs}
     (reachable : (phase.drain state.current).native.config.Reachable inputs)
     (ordered : (phase.drain state.current).OrderedPublicFailures phase.low state.entry.excluded)
@@ -86,7 +88,7 @@ theorem RecoverySourceCheckpoint.after_reveal
   let prefixed := checkpoint.compiled.revealPrefix_of_phase setup.program mode program
     checkpoint.refs checkpoint.source.revelations checkpoint.registry checkpoint.embedding
     checkpoint.before state.attempt.phase phase kind low count high
-  obtain ⟨final, values, guards, failures, revelations, path, _legal⟩ :=
+  obtain ⟨final, values, guards, failures, revelations, path, _legal, word⟩ :=
     sourceRecovery_of_completed_revealPhase setup mode program checkpoint.refs
       checkpoint.source.revelations checkpoint.registry checkpoint.embedding checkpoint.before
       state.attempt.phase checkpoint.compiled phase kind low count high image reachable
@@ -141,7 +143,8 @@ theorem RecoverySourceCheckpoint.after_reveal
       readout := ?_
       trace := sourceTrace
       views := ProtocolViewSuffix.revealTailMany setup count program prefixed checkpoint.refs
-        checkpoint.embedding checkpoint.residual.lift checkpoint.views }⟩
+        checkpoint.embedding checkpoint.residual.lift checkpoint.views
+      historyAlignment := ?_ }⟩
   · rw [address, high]
     rw [revelations]
     exact graphTail
@@ -153,5 +156,20 @@ theorem RecoverySourceCheckpoint.after_reveal
     congr 1
     funext terminal
     simp only [Function.comp_apply, cast_cast]
+  · intro clear
+    have oldClear : state.entry.excluded = ∅ := by
+      apply Finset.eq_empty_iff_forall_notMem.mpr
+      intro who member
+      have excluded := (record.excluded who).mpr (Or.inl member)
+      rw [clear] at excluded
+      exact Finset.notMem_empty _ excluded
+    have saved : state.entry.native.config.cut.IsPrefix state.attempt.phase := by
+      rw [← low]
+      exact within.1
+    exact RecordedSourceHistory.native_history setup.program mode
+      state.entry.native.config image.native.config state.attempt.phase count
+      checkpoint.source.history final.history (word checkpoint.views.actionEq clear)
+      reachable (remembered.trans (phase.drain_history_prefix state.current)) saved prefixEnd
+      (checkpoint.historyAlignment oldClear)
 
 end Vegas

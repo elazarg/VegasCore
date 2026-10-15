@@ -7,6 +7,8 @@ import Vegas.Compile.EventGraphInputs
 import Vegas.Source.CommitRecoveryProtocol
 import Vegas.Source.RegistryFailureExtension
 import Vegas.Pending.PhaseApplication
+import Vegas.Compile.EventGraphHistory
+import Vegas.EventGraph.SequentialLaw
 import Vegas.EventGraph.Sequential
 
 /-! # Reachable source recovery checkpoints at saved physical phase entries
@@ -78,6 +80,9 @@ structure RecoverySourceCheckpoint (setup : Setup (Player := Player) (L := L))
       (residual.lift (ProtocolState.entry residual.tail source)) state.entry.excluded
       state.generation)))
   views : ProtocolViewSuffix setup.program residual.tail refs embedding residual.lift
+  historyAlignment : state.entry.excluded = ∅ → source.history =
+    decodeHistory setup.program (state.entry.native.config.history.map
+      ((toEventGraph setup.program).fromModeCompletion mode))
 
 namespace RecoverySourceCheckpoint
 
@@ -140,6 +145,7 @@ def initial (setup : Setup (Player := Player) (L := L)) (mode : EventGraph.Execu
     exact (PMF.mem_support_map_iff _ _ _).mpr ⟨initial, supported, rfl⟩
 
   views := ProtocolViewSuffix.initial setup.program
+  historyAlignment := fun _ => rfl
 
 /-- Unfinished live effects preserve the same saved checkpoint, irrespective
 of the live concurrent cut or the permanent physical archive. -/
@@ -152,7 +158,8 @@ def transfer {setup : Setup (Player := Player) (L := L)} {mode : EventGraph.Exec
   { checkpoint with
     compiled := by rw [offset]; exact checkpoint.compiled
     agrees := by rw [entry]; exact checkpoint.agrees
-    trace := by rw [entry, generation]; exact checkpoint.trace }
+    trace := by rw [entry, generation]; exact checkpoint.trace
+    historyAlignment := by rw [entry]; exact checkpoint.historyAlignment }
 
 end RecoverySourceCheckpoint
 end Vegas

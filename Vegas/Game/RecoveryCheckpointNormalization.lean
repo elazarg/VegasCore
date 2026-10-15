@@ -27,6 +27,7 @@ theorem RecoverySourceCheckpoint.normalized
     {inputs : ((toEventGraph setup.program).withMode mode).Inputs}
     (native : state.Invariant inputs) (binding : state.BindingRecord)
     (receipts : state.ReceiptRecord) (stored : state.StoredCheckpoint)
+    (remembered : state.HistoryCheckpoint)
     (order : state.PublicFailureOrder)
     (maximal : state.phases.IsChain fun before after =>
       before.kind ≠ after.kind ∨ before.kind = .sample) :
@@ -74,7 +75,7 @@ theorem RecoverySourceCheckpoint.normalized
         exact ih generation next next archive nextSource ⟨nextNative, nextNative⟩
           ⟨nextBinding, nextBinding, fun _ _ => rfl⟩
           (PhaseRuntimeState.fresh_receiptRecord remaining generation next archive nextFrontier
-            nextReceipts) (fun _ _ present => present)
+            nextReceipts) (fun _ _ present => present) (⟨[], by simp⟩)
           (PhaseRuntimeState.fresh_publicFailureOrder remaining generation next archive
             nextFrontier nextCoverage) maximal.tail
       by_cases finished : phase.Finished (phase.drain current)
@@ -128,13 +129,14 @@ theorem RecoverySourceCheckpoint.normalized
                   (phase.finished_prefix rebuilt rebuiltWithin rebuiltFinished) rebuiltNative
                   rebuiltBinding rebuiltRecord.receipts rebuiltCoverage nextCheckpoint
             · obtain ⟨nextCheckpoint, normalized⟩ := checkpoint.after_commit_clean committing
-                phase remaining rfl maximal binding receipts stored finished missed
+                phase remaining rfl maximal binding receipts stored remembered native order.coverage
+                  finished missed
               rw [normalized]
               exact advance image retired imagePrefix imageNative imageBinding imageRecord.receipts
                 imageCoverage nextCheckpoint
         | reveal =>
             have nextCheckpoint := checkpoint.after_reveal phase remaining rfl kind
-              receipts.exclusion stored imageNative.reachable imageOrder finished
+              receipts.exclusion stored remembered imageNative.reachable imageOrder finished
             have noRetry : ¬ (phase.kind = .commitment ∧
                 ((image.excluded \ entry.excluded) ∩ phase.owners).Nonempty) := by
               rintro ⟨impossible, _⟩
@@ -148,7 +150,7 @@ theorem RecoverySourceCheckpoint.normalized
               imageCoverage nextCheckpoint
         | sample =>
             have nextCheckpoint := checkpoint.after_sample phase remaining rfl kind
-              receipts.exclusion stored imageNative.reachable finished
+              receipts.exclusion stored remembered imageNative.reachable finished
             have noRetry : ¬ (phase.kind = .commitment ∧
                 ((image.excluded \ entry.excluded) ∩ phase.owners).Nonempty) := by
               rintro ⟨impossible, _⟩
