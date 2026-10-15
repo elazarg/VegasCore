@@ -699,6 +699,47 @@ import Vegas.Game.CommitRecoveryReferencePosition
 import Vegas.Game.CommitRecoveryPrefixConditioning
 import Vegas.Game.CommitRecoveryOmissionPosition
 import Vegas.Game.PhaseSourceStrategyLimit
+import Interaction.MessageNetworkMap
+import Vegas.Pending.PhasePacketAddress
+import Vegas.Pending.PhaseNativeProjection
+import Vegas.Pending.PhaseNativeCursor
+import Vegas.Pending.PhaseNativeResponse
+import Vegas.Pending.PhaseNativeHandle
+import Vegas.Pending.PhaseNativeScheduler
+import Vegas.Pending.PhaseNativeInclusion
+import Vegas.Pending.PhaseNativeEnvironment
+import Vegas.Pending.PhaseNativeFailureRecord
+import Vegas.Pending.PhaseNativeEnvironmentExecution
+import Vegas.Pending.PhaseNativeTrace
+import Vegas.Pending.PhaseNativePlayerInput
+import Vegas.Pending.PhaseBindingShadow
+import Vegas.Pending.PhaseBindingRepairObservation
+import Vegas.Pending.PhaseRawBindingRepair
+import Vegas.Pending.PhaseBindingShadowStep
+import Vegas.Pending.PhaseBindingPreparationRepair
+import Vegas.Pending.PhaseBindingRepairInclusion
+import Vegas.Pending.PhaseBindingRepairCompletion
+import Vegas.Pending.PhaseBindingRepairProjection
+import Vegas.Pending.PhaseBindingRepairFrame
+import Vegas.Pending.PhaseBindingRepairNormalize
+import Vegas.Pending.PhaseBindingNativeResponse
+import Vegas.Pending.PhaseBindingCountTransport
+import Vegas.Pending.PhaseBindingCheckpointFrame
+import Vegas.Pending.PhaseBindingNativeInclusion
+import Vegas.Pending.PhaseBindingRawInclusion
+import Vegas.Pending.PhaseBindingDelayedRepair
+import Vegas.Pending.PhaseBindingRepairTrace
+import Vegas.Pending.PhaseBindingRepairObservationStep
+import Vegas.Pending.PhaseBindingRepairMenu
+import Vegas.Game.CommitRecoveryNonmissingLaw
+import Vegas.Game.CommitRecoveryNonmissingReach
+import Vegas.Game.CommitRecoveryNonmissingPosition
+import Vegas.Game.CommitRecoveryNonmissingSource
+import Vegas.Game.CommitRecoveryNonmissingConditioning
+import Vegas.Game.CommitRecoveryNonmissingBelief
+import Vegas.Compile.EventSourcePolicyLaw
+import Vegas.Game.CommitRecoveryCompiledPolicy
+import Vegas.Source.CommitRecoveryCommitWindow
 
 /-! # Checked sequential-equilibrium preservation, Nash correspondence and termination -/
 
@@ -7450,3 +7491,129 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms
   Vegas.phaseSourceAssessment_opening_strategy_of_history
+
+/-- info:
+'Vegas.EventGraphRuntime.PhaseNativeProjection.respond_of_onePacket'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseNativeProjection.respond_of_onePacket
+
+/-- info:
+'Vegas.EventGraphRuntime.PhaseNativeProjection.nativeScheduler_at_clear'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseNativeProjection.nativeScheduler_at_clear
+
+/-- info:
+'Vegas.EventGraphRuntime.PhaseNativeProjection.exists_paired_environmentStep'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseNativeProjection.exists_paired_environmentStep
+
+/-- info:
+'Vegas.EventGraphRuntime.PhaseNativeProjection.nativeTrace_length'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseNativeProjection.nativeTrace_length
+
+/-- info:
+'Vegas.EventGraphRuntime.PhaseNativeProjection.nativePolicy_at_clear'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseNativeProjection.nativePolicy_at_clear
+
+/-- info:
+'Vegas.EventGraphRuntime.PhaseCount.binding_replacement_trace'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseCount.binding_replacement_trace
+
+/-- info:
+'Vegas.EventGraphRuntime.PhaseBindingRepair.Frame.binding_menu'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseBindingRepair.Frame.binding_menu
+
+/-- info:
+'Vegas.EventGraphRuntime.PhaseBindingRepair.Frame.include_trace'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseBindingRepair.Frame.include_trace
+
+/-- info:
+'Vegas.EventGraphRuntime.PhaseBindingRepair.Frame.activate_trace'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseBindingRepair.Frame.activate_trace
+
+/-- info:
+'Vegas.EventGraphRuntime.PhaseBindingRepair.Frame.wait_trace'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseBindingRepair.Frame.wait_trace
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecovery_no_omission_factorization'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecovery_no_omission_factorization
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecovery_clear_prefix_conditioning'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecovery_clear_prefix_conditioning
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecovery_nonmissing_prefix_continuation'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecovery_nonmissing_prefix_continuation
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecovery_nonmissing_belief'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecovery_nonmissing_belief
+
+/-- info:
+'Vegas.compileEventPolicy_source_law'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.compileEventPolicy_source_law
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecovery_compiled_policy_raw_law'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecovery_compiled_policy_raw_law
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecovery_run_nonmissing_commit_clear'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecovery_run_nonmissing_commit_clear
+
+/-- info:
+'Vegas.SourceProgram.CommitPrefix.length_le_commit_window'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.CommitPrefix.length_le_commit_window

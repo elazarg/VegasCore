@@ -1,11 +1,41 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**SE: non-concurrent ✓ · auxiliary SE ✓ · canonical native limit ✓ · service product ✓; native likelihood/incentives open.**
+**SE: non-concurrent ✓ · auxiliary SE ✓ · canonical limit ✓ · clear trace ✓ · repair steps ✓; joint law/likelihood/incentives open.**
 
 <details>
 <summary>Recovery milestones and current proof substeps</summary>
 
 Milestones have unequal cost; the fixed SE checklist is unchanged.
+
+Every actual initialized count-clean clear phased history projects to a genuine
+ordinary native trace of the same length. Static packet addresses reconstruct
+the phase cursor and complete scheduler and owner recall. The same arbitrary
+history-adaptive scheduler command law and arbitrary phase policy response law
+are retained. Natural environment coupling records the exact first-failure
+owner set before rollback. These are operational and local kernel results;
+the native/source joint probability law remains open.
+
+Directed binding replacement preserves the physical slot, network, receipts and
+full foreign inputs while tracking both live and saved semantic checkpoints.
+Actual normalization, delayed binding inclusion, activation and waiting retain
+the same scheduler atom. Pending-read guards remain explicit; arbitrary response
+memory updates and whole-history repair are not established by these steps.
+
+On the source side, conditioning each chronological auxiliary choice on
+nonmissing gives an exact history density. Its positive scalar is constant over
+clear histories at the same instruction depth, so it cancels in clear-prefix
+conditioning and in the complete auxiliary information fiber. The actual
+approximating auxiliary belief equals the Bayes belief of this chronological
+nonmissing profile on that same fiber. This is a source-side posterior identity,
+not a native posterior identity. Inside the actual commitment window the
+nonmissing runner stays clear, including accepted failed bindings and automatic
+block closure. Future flags in the original unconditioned law remain sampled.
+
+The compiler also preserves the full local source action distribution at every
+successfully decoded structural source view. At an actual intended source
+information witness this identifies the auxiliary raw action law with the
+compiled graph policy law. An arbitrary clear view alone does not supply that
+intended witness.
 
 Concurrent trace substeps: initialization, reveal, sample, clean commitment,
 retry, exhaustion, normalization and the actual-history invariant are checked.

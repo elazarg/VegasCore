@@ -817,3 +817,56 @@ Bob deposit give actual audited context value at most `2/5` for every whole Bob
 alternative, under arbitrary audit sampling. This bound is distinct from the
 Safe attainment theorem; first-binding selection and weak-PBE assembly remain
 open.
+
+Clear phase/native transport:
+[Message Network Map](../Interaction/MessageNetworkMap.lean),
+[Phase Packet Address](../Vegas/Pending/PhasePacketAddress.lean),
+[Phase Native Projection](../Vegas/Pending/PhaseNativeProjection.lean),
+[Phase Native Cursor](../Vegas/Pending/PhaseNativeCursor.lean),
+[Phase Native Response](../Vegas/Pending/PhaseNativeResponse.lean),
+[Phase Native Handle](../Vegas/Pending/PhaseNativeHandle.lean),
+[Phase Native Scheduler](../Vegas/Pending/PhaseNativeScheduler.lean),
+[Phase Native Inclusion](../Vegas/Pending/PhaseNativeInclusion.lean),
+[Phase Native Environment](../Vegas/Pending/PhaseNativeEnvironment.lean),
+[Phase Native Failure Record](../Vegas/Pending/PhaseNativeFailureRecord.lean),
+[Phase Native Environment Execution](../Vegas/Pending/PhaseNativeEnvironmentExecution.lean),
+[Phase Native Trace](../Vegas/Pending/PhaseNativeTrace.lean),
+[Phase Native Player Input](../Vegas/Pending/PhaseNativePlayerInput.lean).
+These modules transport actual clear count-clean traces, full recalls, arbitrary scheduler commands and local policy kernels. They do not assert a joint source law.
+
+Directed binding repair:
+[Phase Binding Shadow](../Vegas/Pending/PhaseBindingShadow.lean),
+[Phase Binding Repair Observation](../Vegas/Pending/PhaseBindingRepairObservation.lean),
+[Phase Raw Binding Repair](../Vegas/Pending/PhaseRawBindingRepair.lean),
+[Phase Binding Shadow Step](../Vegas/Pending/PhaseBindingShadowStep.lean),
+[Phase Binding Preparation Repair](../Vegas/Pending/PhaseBindingPreparationRepair.lean),
+[Phase Binding Repair Inclusion](../Vegas/Pending/PhaseBindingRepairInclusion.lean),
+[Phase Binding Repair Completion](../Vegas/Pending/PhaseBindingRepairCompletion.lean),
+[Phase Binding Repair Projection](../Vegas/Pending/PhaseBindingRepairProjection.lean),
+[Phase Binding Repair Frame](../Vegas/Pending/PhaseBindingRepairFrame.lean),
+[Phase Binding Repair Normalize](../Vegas/Pending/PhaseBindingRepairNormalize.lean),
+[Phase Binding Native Response](../Vegas/Pending/PhaseBindingNativeResponse.lean),
+[Phase Binding Count Transport](../Vegas/Pending/PhaseBindingCountTransport.lean),
+[Phase Binding Checkpoint Frame](../Vegas/Pending/PhaseBindingCheckpointFrame.lean),
+[Phase Binding Native Inclusion](../Vegas/Pending/PhaseBindingNativeInclusion.lean),
+[Phase Binding Raw Inclusion](../Vegas/Pending/PhaseBindingRawInclusion.lean),
+[Phase Binding Delayed Repair](../Vegas/Pending/PhaseBindingDelayedRepair.lean),
+[Phase Binding Repair Trace](../Vegas/Pending/PhaseBindingRepairTrace.lean),
+[Phase Binding Repair Observation Step](../Vegas/Pending/PhaseBindingRepairObservationStep.lean),
+[Phase Binding Repair Menu](../Vegas/Pending/PhaseBindingRepairMenu.lean).
+The live and saved checkpoint frames support actual normalization, binding inclusion and observation steps. Whole arbitrary-suffix repair and remaining pending-read guards require separate adapters.
+
+Chronological source conditioning:
+[Commit Recovery Nonmissing Law](../Vegas/Game/CommitRecoveryNonmissingLaw.lean),
+[Commit Recovery Nonmissing Reach](../Vegas/Game/CommitRecoveryNonmissingReach.lean),
+[Commit Recovery Nonmissing Position](../Vegas/Game/CommitRecoveryNonmissingPosition.lean),
+[Commit Recovery Nonmissing Source](../Vegas/Game/CommitRecoveryNonmissingSource.lean),
+[Commit Recovery Nonmissing Conditioning](../Vegas/Game/CommitRecoveryNonmissingConditioning.lean),
+[Commit Recovery Nonmissing Belief](../Vegas/Game/CommitRecoveryNonmissingBelief.lean).
+The original auxiliary runner factors through nonmissing conditional kernels with a static clear-prefix scalar. Its exact full-fiber Bayes identity is source-side; native conditional likelihoods require further transport.
+
+Compiler action and commitment-window adapters:
+[Event Source Policy Law](../Vegas/Compile/EventSourcePolicyLaw.lean),
+[Commit Recovery Compiled Policy](../Vegas/Game/CommitRecoveryCompiledPolicy.lean),
+[Commit Recovery Commit Window](../Vegas/Source/CommitRecoveryCommitWindow.lean).
+Successful full-view decoding transports the entire compiled action law; actual intended information witnesses connect the auxiliary law. The nonmissing source runner remains clear throughout its real commitment window.

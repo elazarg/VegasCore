@@ -806,3 +806,10 @@ import Vegas.Game.CommitRecoveryReferencePosition
 import Vegas.Game.CommitRecoveryPrefixConditioning
 import Vegas.Game.CommitRecoveryOmissionPosition
 import Vegas.Game.PhaseSourceStrategyLimit
+import Vegas.Game.CommitRecoveryNonmissingLaw
+import Vegas.Game.CommitRecoveryNonmissingReach
+import Vegas.Game.CommitRecoveryNonmissingPosition
+import Vegas.Game.CommitRecoveryNonmissingSource
+import Vegas.Game.CommitRecoveryNonmissingConditioning
+import Vegas.Game.CommitRecoveryNonmissingBelief
+import Vegas.Game.CommitRecoveryCompiledPolicy

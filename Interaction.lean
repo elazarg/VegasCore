@@ -160,3 +160,4 @@ import Interaction.ReactiveRecordedRounds
 import Interaction.ReactiveAddressedCoordinatePosterior
 import Interaction.ReactiveRoundBoundary
 import Interaction.ReactiveReceiptBoundary
+import Interaction.MessageNetworkMap
