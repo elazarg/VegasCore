@@ -1,6 +1,6 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**SE: non-concurrent ✓ · dispatcher ✓ · fresh-slot law ✓ · protected first-loss ✓; concurrent SE open.**
+**SE: non-concurrent ✓ · protected inclusion ✓ · raw-slot coverage ✓ · reset replay ✓; native SE open.**
 
 <details>
 <summary>Recovery milestones and current proof substeps</summary>
@@ -27,6 +27,10 @@ offers every bounded fresh slot at actual unsent sites, retains the exact
 post-response result law and gives each encoding at least its original result
 mass divided by the number of eligible slots. This is a local component; the
 whole recovery slot tier, including the distinct omission branch, is separate.
+Every permitted raw binding's named slot is bounded, globally fresh and offered
+by this law, even with wrong-typed preparation or arbitrary evidence requests.
+Its mass has the fixed lower bound of the original result mass divided by wire
+capacity, independently of the varying number of eligible fresh slots.
 
 Actual request loss is an own accepting inclusion or an addressed expiry;
 foreign work and private responses cannot silently remove the request. The
@@ -34,9 +38,19 @@ full timed emission word persists. A selected activation and its response
 leave the physical tick open. Once an authentic protected packet is emitted,
 every genuine surviving ready prefix has the same clock and activation stamp,
 and its first request-loss transition must be an own accepting inclusion.
-Existence of that first loss and the complete late coin-window probability law
-remain separate obligations. Native probability, incentive and SE transport
-remain open.
+The derived calendar horizon forces that first loss. Permanent packet identity
+then identifies the accepting packet with the original protected envelope,
+whose accepting receipt is retained in every supported completion. The proof
+keeps the actual include command, raw graph step and same supported suffix.
+The complete late coin-window probability law remains open.
+
+The existing hidden-value involution acts on both saved and live states and
+all archived attempts. Restore, automatic drain and every phase reset commute
+when failures are fixed. Under the native binding/disclosure compatibility and
+evidence conditions, actual response and environment laws replay, preserving
+the network, receipts and complete scheduler recall while mapping full private
+recall. Menu transport, paired likelihoods, source/native Bayes transport and
+sequential rationality remain open.
 
 | Status | Recovery milestone |
 | --- | --- |
@@ -3447,14 +3461,17 @@ completed phase events with no accepted receipt, regardless of hidden
 candidate values. Typed attempt decoding from accepted tables has the exact
 physical exclusion set and typed source store at completed commitment blocks.
 Saved-entry compiler and terminal-reference certificates start from the actual
-setup draw and survive typed attempts; whole-history checkpoint composition
-remains open. The recovery source model has finite menus and
+setup draw and survive every initialized raw history, including all phase
+closures and recursive normalization. Every clear saved entry retains exact
+source/native action-history alignment. The recovery source model has finite menus and
 finitely many legal histories, with a fully mixed reference. Intended
 source steps without physical omissions have the exact original joint
 source-point/no-exclusion law and never increase the retry generation.
 Every actual clear auxiliary-source history projects to an original source
 history with the same actions, length and current source observation. The
-inverse history/information correspondence remains open.
+complete clear source signal transcript and own-play recall are determined by
+that current view. An actual intended-view witness identifies the complete
+copied information. Native/source conditional probability transport remains open.
 These checked models and invariants
 do not establish a concurrent preserving SE or its intended joint law. The
 checked raw audit extension requires a counted-menu SE. Scheduler-seed
@@ -3492,11 +3509,16 @@ retains the declared typed result and expiry gives failure; this selected output
 persists through the actual supported suffix to the requested final execution.
 Completion support remains explicit. General adaptive-policy realization and
 the successful-payoff/source-continuation identification remain open.
-The scoped resolving controller permits concurrent events of
-different owners. Full runtime realization still requires an actual all-event
-and reset scheduler with fresh attempt coordinates, complete calendar/progress
-and domain proofs, any required emission-time dependence, concrete finite
-histories, and the continuation/payoff coupling.
+The concrete all-event addressed calendar permits concurrent events of
+different owners, uses fresh coordinates on retry and completes every actual
+bounded raw history at its derived horizon. Its supported terminal histories
+have genuine source counterparts with identical readout and payoff vector.
+At unsent actual inputs its original local seed law is independent of the full
+physical control and all other original coordinates, conditional only on the
+observed first delay. The full operational source-information likelihoods,
+late first-resolution probability law and continuation/payoff coupling remain
+open. The concrete calendar results do not quantify over every abstract
+admissible service.
 
 A mechanization must also check the following, beyond the statements above:
 

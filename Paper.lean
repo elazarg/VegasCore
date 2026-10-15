@@ -633,6 +633,14 @@ import Vegas.Pending.PhaseBindingSlotHistory
 import Vegas.Pending.PhaseSeedWaitingWindow
 import Vegas.Pending.PhaseSeedProtectedClock
 import Vegas.Pending.PhaseSeedProtectedResolution
+import Vegas.Pending.PhaseBindingFreshness
+import Vegas.Pending.PhaseBindingSlotSupport
+import Interaction.ReactiveRoundBoundary
+import Vegas.Pending.PhaseCountUniqueness
+import Vegas.Pending.PhaseSeedProtectedReceipt
+import Vegas.Pending.PhaseValueSwap
+import Vegas.Pending.PhaseSwapApplication
+import Vegas.Pending.PhaseReactiveValueSwap
 
 /-! # Checked sequential-equilibrium preservation, Nash correspondence and termination -/
 
@@ -6930,3 +6938,63 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms
   Vegas.EventGraphRuntime.PhaseSeedCalendar.protected_first_resolution_includes
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseCount.onePacket_binding_fresh'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseCount.onePacket_binding_fresh
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseCount.binding_slot_mem_of_onePacket'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseCount.binding_slot_mem_of_onePacket
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseCount.phaseBindingSlotPolicy_bounded_mass'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseCount.phaseBindingSlotPolicy_bounded_mass
+
+/-- info: 'Interaction.ReactiveApplication.runRounds_environment_boundary'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Interaction.ReactiveApplication.runRounds_environment_boundary
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseCount.Permits.eq_of_same_event'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseCount.Permits.eq_of_same_event
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseSeedCalendar.protected_eventually_included'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseSeedCalendar.protected_eventually_included
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseRuntimeState.settle_swap'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseRuntimeState.settle_swap
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseRuntimeState.normalize_swap'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseRuntimeState.normalize_swap
+
+/-- info: 'Vegas.EventGraphRuntime.HiddenSwap.respond_phaseExecution'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.HiddenSwap.respond_phaseExecution
+
+/-- info: 'Vegas.EventGraphRuntime.HiddenSwap.environmentStep_phaseExecution'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.HiddenSwap.environmentStep_phaseExecution

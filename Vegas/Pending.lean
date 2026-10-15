@@ -494,3 +494,10 @@ import Vegas.Pending.PhaseBindingSlotHistory
 import Vegas.Pending.PhaseSeedWaitingWindow
 import Vegas.Pending.PhaseSeedProtectedClock
 import Vegas.Pending.PhaseSeedProtectedResolution
+import Vegas.Pending.PhaseBindingFreshness
+import Vegas.Pending.PhaseBindingSlotSupport
+import Vegas.Pending.PhaseCountUniqueness
+import Vegas.Pending.PhaseSeedProtectedReceipt
+import Vegas.Pending.PhaseValueSwap
+import Vegas.Pending.PhaseSwapApplication
+import Vegas.Pending.PhaseReactiveValueSwap
