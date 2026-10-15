@@ -13,6 +13,14 @@ import Vegas.Pending.PhaseStoredCheckpoint
 import Vegas.Game.CommitRecoveryReference
 import Vegas.Source.CommitRecoveryIntended
 import Vegas.Source.CommitRecoveryProjection
+import Vegas.Game.CommitRecoveryRestriction
+import Vegas.Game.CompiledCommitReadback
+import Vegas.Pending.PhaseBindingService
+import Vegas.Pending.PhaseBindingStampHistory
+import Vegas.Pending.PhaseSeedCalendarProperties
+import Vegas.Pending.PhaseSeedRecall
+import Vegas.Pending.PhaseResolution
+import Interaction.ReactiveAddressedPosterior
 import Vegas.Pending.PhaseReadiness
 import Vegas.Game.RecoveryLocalValueComparison
 import Vegas.Game.RecoveryPhaseValueBlind
@@ -5863,3 +5871,88 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.SourceProgram.Setup.commitRecoveryClearTrace_observe
+
+/-- info: 'Vegas.SourceProgram.CommitRecoveryState.step_lifted_intended'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.CommitRecoveryState.step_lifted_intended
+
+/-- info: 'Vegas.SourceProgram.Setup.commitRecoveryClearHistory_lift'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.commitRecoveryClearHistory_lift
+
+/-- info: 'Vegas.SourceProgram.Setup.commitRecoveryInformation_observed'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.commitRecoveryInformation_observed
+
+/-- info: 'Vegas.SourceProgram.Setup.commitRecoveryRestriction'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.commitRecoveryRestriction
+
+/-- info: 'Vegas.decodeCommitAttempt_excluded_eq'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.decodeCommitAttempt_excluded_eq
+
+/-- info: 'Vegas.decodeCommitAttempt_state_agrees'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.decodeCommitAttempt_state_agrees
+
+/-- info: 'Vegas.sourceAttempt_of_completed_bindings'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.sourceAttempt_of_completed_bindings
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseCount.onePacketMenu_countCharge_zero'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.PhaseCount.onePacketMenu_countCharge_zero
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseCount.binding_accepted_of_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.PhaseCount.binding_accepted_of_history
+
+/-- info: 'Vegas.EventGraphRuntime.phaseLiveBindingStamp_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.phaseLiveBindingStamp_history
+
+/-- info: 'Interaction.ReactiveApplication.AddressedScheduler.realize_joint'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Interaction.ReactiveApplication.AddressedScheduler.realize_joint
+
+/-- info: 'Interaction.ReactiveApplication.AddressedScheduler.posterior_given_remainder'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Interaction.ReactiveApplication.AddressedScheduler.posterior_given_remainder
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseSeedCalendar.realize_private_joint'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.PhaseSeedCalendar.realize_private_joint
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseSeedCalendar.reply_opening_raw'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.PhaseSeedCalendar.reply_opening_raw
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseSeedScheduler.runRounds_wordRecall'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.PhaseSeedScheduler.runRounds_wordRecall
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseSeedCalendar.posterior_after_namespace_change'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.PhaseSeedCalendar.posterior_after_namespace_change
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseRuntimeState.expire_resolves_of_request'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.PhaseRuntimeState.expire_resolves_of_request

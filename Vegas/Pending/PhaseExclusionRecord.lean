@@ -130,7 +130,7 @@ theorem initial_exclusionRecord (plan : RuntimePhasePlan graph) (inputs : graph.
         exact ⟨atLow, atLow.within phase.nonempty.le⟩
   exact fresh_exclusionRecord _ _ _ _ rawFrontier (State.ReceiptsComplete.initial inputs)
 
-private theorem raw_handle_frontier (runtime : EventGraphRuntime graph)
+theorem raw_handle_frontier (runtime : EventGraphRuntime graph)
     (state : PhaseRuntimeState graph) (valid : state.Frontier)
     (message : Message Player (Payload graph)) (native : State graph)
     (authorized : state.allows message.payload = true)
@@ -154,7 +154,7 @@ private theorem raw_handle_frontier (runtime : EventGraphRuntime graph)
       exact ⟨positioned.1, native_step_within phase _ _ positioned.2 event inside
         ready action supported⟩
 
-private theorem raw_environment_frontier (runtime : EventGraphRuntime graph)
+theorem raw_environment_frontier (runtime : EventGraphRuntime graph)
     (state : PhaseRuntimeState graph) (valid : state.Frontier)
     (command : EnvironmentCommand graph) (native : State graph)
     (allowed : state.commandAllowed command = true)

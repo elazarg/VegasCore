@@ -147,3 +147,7 @@ import Interaction.ReactiveSchedulerSeedOccupation
 import Interaction.ReactiveSchedulerSeedBayes
 import Interaction.ReactiveSchedulerFinishSeed
 import Interaction.ReactiveRecordedResponse
+import Interaction.ReactiveAddressedScheduler
+import Interaction.ReactiveSchedulerTranscript
+import Interaction.ReactiveAddressedFreshSeed
+import Interaction.ReactiveAddressedPosterior

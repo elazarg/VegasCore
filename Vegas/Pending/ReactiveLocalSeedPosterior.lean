@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.ReactiveLocalSeedReplay
-import GameTheory.Math.Probability.Conditioning
+import Interaction.ReactiveSchedulerTranscript
 
 /-! # The actual scheduler posterior filters concrete command consistency
 
@@ -46,28 +46,6 @@ theorem follows_snoc (memory : LocalSeedMemory runtime leaks LocalSeed RestSeed)
           past entry.beforeView).1 = entry.command := by
   simp only [controller.followsFrom_append, followsFrom, List.nil_append, and_true, replay]
 
-private theorem filter_eq_of_support_eq {Seed : Type} (prior : PMF Seed)
-    (first second : Set Seed)
-    (firstPositive : ∃ seed ∈ first, seed ∈ prior.support)
-    (secondPositive : ∃ seed ∈ second, seed ∈ prior.support)
-    (matching : ∀ seed ∈ prior.support, seed ∈ first ↔ seed ∈ second) :
-    prior.filter first firstPositive = prior.filter second secondPositive := by
-  classical
-  have indicatorEq : first.indicator prior = second.indicator prior := by
-    funext seed
-    by_cases supported : seed ∈ prior.support
-    · by_cases member : seed ∈ first
-      · simp only [Set.indicator_of_mem member,
-          Set.indicator_of_mem ((matching seed supported).mp member)]
-      · simp only [Set.indicator_of_notMem member,
-          Set.indicator_of_notMem (fun h => member ((matching seed supported).mpr h))]
-    · have zero : prior seed = 0 := by
-        change ¬ prior seed ≠ 0 at supported
-        exact Classical.not_not.mp supported
-      simp only [Set.indicator, zero, ite_self]
-  ext seed
-  simp only [PMF.filter_apply, indicatorEq]
-
 variable {A : Bool → Type}
   (localController : LocalSeedController runtime leaks (A false) owner event)
   (restController : SeedRemainderController runtime leaks (A true) owner event)
@@ -84,60 +62,33 @@ theorem posterior_follows (prior : PMF ((side : Bool) → A side))
       prior.filter {values : (side : Bool) → A side |
         localController.followsFrom restController
           (initialMemory (values false) (values true)) [] past} positive := by
-  classical
-  induction past using List.reverseRecOn with
-  | nil =>
-      change prior = _
-      exact (filter_of_support_subset prior _ positive (by intro values _; trivial)).symm
-  | append_singleton past entry ih =>
-      let earlier : Set ((side : Bool) → A side) := {values |
+  let choose (values : (side : Bool) → A side)
+      (before : List (app).EnvironmentEntry) (view : (app).EnvironmentView) : (app).Command :=
+    (localController.step restController
+      (localController.replay restController
+        (initialMemory (values false) (values true)) before) before view).1
+  have compatible (values : (side : Bool) → A side) (recorded : List (app).EnvironmentEntry) :
+      (app).commandConsistentFrom choose values [] recorded ↔
         localController.followsFrom restController
-          (initialMemory (values false) (values true)) [] past}
-      let full : Set ((side : Bool) → A side) := {values |
-        localController.followsFrom restController
-          (initialMemory (values false) (values true)) [] (past ++ [entry])}
-      have included : full ⊆ earlier := fun values compatible =>
-        ((localController.follows_snoc restController _ _ _).mp compatible).1
-      have earlierPositive : ∃ values ∈ earlier, values ∈ prior.support := by
-        obtain ⟨values, compatible, supported⟩ := positive
-        exact ⟨values, included compatible, supported⟩
-      let current := prior.filter earlier earlierPositive
-      let choose (values : (side : Bool) → A side) : (app).Command :=
-        (localController.step restController
-          (localController.replay restController
-            (initialMemory (values false) (values true)) past) past entry.beforeView).1
-      have fullPositive : ∃ values ∈ full, values ∈ current.support := by
-        obtain ⟨values, compatible, supported⟩ := positive
-        exact ⟨values, compatible, (PMF.mem_support_filter_iff earlierPositive).mpr
-          ⟨included compatible, supported⟩⟩
-      have nextPositive : ∃ values ∈ {values | choose values = entry.command},
-          values ∈ current.support := by
-        obtain ⟨values, compatible, supported⟩ := fullPositive
-        exact ⟨values, ((localController.follows_snoc restController _ _ _).mp compatible).2,
-          supported⟩
-      have postEq := ih earlierPositive
-      rw [ReactiveApplication.SchedulerImplementation.posterior_snoc, postEq]
-      simp only [ReactiveApplication.schedulerMixture, fixedScheduler, PMF.pure_map]
-      change (fiberPosterior (current.map fun values => (choose values, values))
-        Prod.fst entry.command).map Prod.snd = prior.filter full positive
-      have tagged := fiberPosterior_bind_of_observation current
-        (fun values => PMF.pure (choose values, values)) choose Prod.fst
-        (fun _ _ result supported => by
-          cases (PMF.mem_support_pure_iff _ _).mp supported
-          rfl) entry.command (mem_support_map_of_exists_mem_fiber nextPositive)
-      change fiberPosterior (current.map fun values => (choose values, values))
-        Prod.fst entry.command = _ at tagged
-      rw [tagged, PMF.map_bind]
-      simp only [PMF.pure_map, PMF.bind_pure]
-      rw [fiberPosterior_eq_filter _ _ nextPositive]
-      have conditioned := filter_eq_of_support_eq current
-        {values | choose values = entry.command} full nextPositive fullPositive
-        (fun values supported => by
-          have old := ((PMF.mem_support_filter_iff earlierPositive).mp supported).1
-          exact ⟨fun next => (localController.follows_snoc restController _ _ _).mpr
-            ⟨old, next⟩, fun whole =>
-              ((localController.follows_snoc restController _ _ _).mp whole).2⟩)
-      rw [conditioned]
-      exact filter_filter_of_subset prior earlier full earlierPositive fullPositive included
+          (initialMemory (values false) (values true)) [] recorded := by
+    induction recorded using List.reverseRecOn with
+    | nil => rfl
+    | append_singleton earlier entry ih =>
+        simp only [ReactiveApplication.commandConsistent_snoc, follows_snoc, ih, choose]
+  have matched : {values | (app).commandConsistentFrom choose values [] past} =
+      {values | localController.followsFrom restController
+        (initialMemory (values false) (values true)) [] past} :=
+    Set.ext (fun values => compatible values past)
+  have possible : ∃ values ∈ {values | (app).commandConsistentFrom choose values [] past},
+      values ∈ prior.support := by
+    obtain ⟨values, follows, supported⟩ := positive
+    exact ⟨values, (compatible values past).mpr follows, supported⟩
+  have result := (app).schedulerMixture_posterior_eq_filter prior choose past possible
+  have familyEq : (fun values before view => PMF.pure (choose values before view)) =
+      (fun values => localController.fixedScheduler restController
+        (initialMemory (values false) (values true))) := by
+    rfl
+  rw [familyEq] at result
+  simpa only [matched] using result
 
 end Vegas.EventGraphRuntime.LocalSeedController

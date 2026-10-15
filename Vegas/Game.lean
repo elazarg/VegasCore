@@ -711,3 +711,10 @@ import Vegas.Game.CompiledRuntimePhases
 import Vegas.Game.CompiledCommitAttempt
 import Vegas.Game.CompiledCommitOmissions
 import Vegas.Game.CommitRecoveryReference
+import Vegas.Game.CompiledAttemptExclusion
+import Vegas.Game.CompiledCommitState
+import Vegas.Game.CompiledCommitReadback
+import Vegas.Game.CommitRecoveryEmbedding
+import Vegas.Game.CommitRecoveryRetraction
+import Vegas.Game.CommitRecoveryInformationEmbedding
+import Vegas.Game.CommitRecoveryRestriction

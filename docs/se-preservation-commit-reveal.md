@@ -1,6 +1,6 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**SE: non-concurrent proved · concurrent: source/dispatcher/phase plan ✓; readback/law/incentives open.**
+**SE: non-concurrent proved · concurrent: source embedding, block E/store, count audit ✓; scheduler completion and SE transport open.**
 
 <details>
 <summary>Recovery milestones and current proof substeps</summary>
@@ -64,7 +64,20 @@ with an exclusion payoff and the permanent-exclusion recovery runtime.
 The recovery theorem implements every intended SE with the exact joint law
 of typed readout and realized net payoffs and zero count charges, under its
 stated service, coverage, utility and independent-private-input hypotheses.
-Concurrent preservation remains open.
+Concurrent preservation remains open. Its checked structural action restriction
+now embeds every legal intended source history, its complete observation
+transcript and own-play recall, and every pure local step into the recovery
+source game. Completed physical commitment blocks have a decoded typed attempt
+with the exact physical exclusion set and store. The phase audit has zero count
+charges under the one-packet menu; current ready timely bindings are accepted
+from actual initialized histories, including accepted unusable bindings.
+An immutable addressed-seed scheduler has checked joint realization, erased
+operational queries, full clocked owner recall and fresh laws after actual
+namespace changes. Its concrete calendar is a witness with clock/attempt-based
+ordering; it does not cover the full admissible history-adaptive scheduler class.
+The all-phase store/registry/history simulation, scheduler completion and general
+conditioning transport, opening acceptance, source equilibrium extension and
+concurrent SE assembly remain open.
 Appendix A identifies the checked declarations; Section 9 lists the broader
 limitations.
 
@@ -2978,6 +2991,17 @@ needs its own review. What is known:
 | All legal recovery source histories are finite | `Vegas.SourceProgram.Setup.commitRecovery_finite_history` |
 | Intended source steps without omissions retain intendedness, no exclusions and the same generation | `Vegas.SourceProgram.CommitRecoveryState.step_intended_support` |
 | Clear auxiliary-source histories project to source histories with the same length and source observation | `Vegas.SourceProgram.Setup.commitRecoveryClearTrace_length`, `Vegas.SourceProgram.Setup.commitRecoveryClearTrace_observe` |
+| Every legal intended history, full observation transcript, own-play record and pure local step embeds into the source recovery game | `Vegas.SourceProgram.Setup.commitRecoveryRestriction` |
+| Completed physical commitment blocks supply an actual typed attempt with exact exclusion and store | `Vegas.sourceAttempt_of_completed_bindings` |
+| Actual phase one-packet histories have zero count charges under every scheduler | `Vegas.EventGraphRuntime.PhaseCount.onePacketMenu_countCharge_zero` |
+| Actual ready timely counted bindings are accepted, with exact normalization even if immediately retired | `Vegas.EventGraphRuntime.PhaseCount.binding_accepted_of_history` |
+| Live binding records retain actual authored current-namespace provenance | `Vegas.EventGraphRuntime.phaseLiveBindingStamp_history` |
+| Immutable addressed seeds realize the joint original seed and full execution law | `Interaction.ReactiveApplication.AddressedScheduler.realize_joint` |
+| At a fixed remainder and actual command transcript, the original seed posterior factors by addressed coordinate | `Interaction.ReactiveApplication.AddressedScheduler.posterior_given_remainder` |
+| The concrete erased-query calendar realizes its private-initializer and original-seed joint law | `Vegas.EventGraphRuntime.PhaseSeedCalendar.realize_private_joint` |
+| Concrete calendar replies are unchanged by replacing opening raw values and evidence | `Vegas.EventGraphRuntime.PhaseSeedCalendar.reply_opening_raw` |
+| Actual phase inputs retain full clocked owner callback recall | `Vegas.EventGraphRuntime.PhaseSeedScheduler.runRounds_wordRecall` |
+| Newly installed actual namespaces retain the original unread coordinate law | `Vegas.EventGraphRuntime.PhaseSeedCalendar.posterior_after_namespace_change` |
 | Behavioral realization of a fixed private scheduler seed retains the joint seed/execution law | `Interaction.ReactiveApplication.schedulerMixture_joint` |
 | Automatic failure completion terminates with no excluded-owner event ready | `Vegas.EventGraphRuntime.RecoveryState.drain_quiescent` |
 | Actual recovery histories preserve permanent exclusion and native state validity | `Vegas.EventGraphRuntime.recoveryApplication_history_invariant`, `Vegas.EventGraphRuntime.recoveryApplication_exclusion_monotone` |
