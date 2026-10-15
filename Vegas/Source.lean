@@ -115,3 +115,5 @@ import Vegas.Source.CommitPrefixSnoc
 import Vegas.Source.CommitPrefixProduct
 import Vegas.Source.CommitPrefixConditioning
 import Vegas.Source.ProtocolSuffixPolicy
+import Vegas.Source.CommitPrefixReadout
+import Vegas.Source.CommitPrefixPolicyReadout

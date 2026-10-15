@@ -913,6 +913,24 @@ import Vegas.Pending.PhasePacketCallback
 import Interaction.ReactiveRecallReplay
 import Interaction.ReactiveTerminalEvaluation
 import Vegas.Game.PhaseCompiledBehavioralLaw
+import Vegas.Game.PhaseOpeningDeadline
+import Vegas.Game.PhaseCanonicalOperations
+import Vegas.Game.PhaseCanonicalExpiry
+import Vegas.Game.PhaseCanonicalSafety
+import Vegas.Game.PhaseOpeningRecallConformance
+import Vegas.Source.CommitPrefixReadout
+import Vegas.Source.CommitPrefixPolicyReadout
+import Vegas.Game.PhaseBindingResponseFactor
+import Vegas.Game.RecoveryBindingWordPrediction
+import Vegas.Game.RecoveryCommitPrefixSupport
+import Vegas.Game.PhaseSourceDispatchLimit
+import Vegas.Game.PhaseSourceCompletionLaw
+import Vegas.Game.PhaseSourceCompletionOutcome
+import Vegas.Game.PhaseCanonicalSourceLaw
+import Vegas.Game.PhaseCanonicalCompletion
+import Vegas.Pending.PhaseBindingMenuShape
+import Vegas.Game.PhaseBindingDeviationMove
+import Vegas.Pending.PhaseExpiryExclusion
 
 /-! # Checked sequential-equilibrium preservation, Nash correspondence and termination -/
 
@@ -8816,3 +8834,206 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms
   Vegas.phaseSourceStrategy_terminal_source_payoff_law
+
+/-- info:
+'Vegas.phase_recalled_inclusion_window'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phase_recalled_inclusion_window
+
+/-- info:
+'Vegas.phase_recalled_opening_freshCall'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phase_recalled_opening_freshCall
+
+/-- info:
+'Vegas.phase_due_opening_impossible'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phase_due_opening_impossible
+
+/-- info:
+'Vegas.phaseSourcePolicy_handle_clear_of_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseSourcePolicy_handle_clear_of_history
+
+/-- info:
+'Vegas.phaseSourcePolicy_environmentResult_clear_of_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseSourcePolicy_environmentResult_clear_of_history
+
+/-- info:
+'Vegas.phaseSourcePolicy_transition_clear_of_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseSourcePolicy_transition_clear_of_history
+
+/-- info:
+'Vegas.phaseSourcePolicy_clear_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseSourcePolicy_clear_history
+
+/-- info:
+'Vegas.SourceProgram.CommitPrefix.prefixLaw_binding_readout'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.CommitPrefix.prefixLaw_binding_readout
+
+/-- info:
+'Vegas.SourceProgram.CommitPrefix.prefixLaw_binding_conditional'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.CommitPrefix.prefixLaw_binding_conditional
+
+/-- info:
+'Vegas.SourceProgram.CommitPrefix.binding_kernel_protocolAction'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.CommitPrefix.binding_kernel_protocolAction
+
+/-- info:
+'Vegas.phaseRecoveryBindingResponse_factor'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseRecoveryBindingResponse_factor
+
+/-- info:
+'Vegas.RecoverySourceCheckpoint.binding_word_prediction_of_ready'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.RecoverySourceCheckpoint.binding_word_prediction_of_ready
+
+/-- info:
+'Vegas.RecoverySourceCheckpoint.binding_word_native_reference_of_ready'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.RecoverySourceCheckpoint.binding_word_native_reference_of_ready
+
+/-- info:
+'Vegas.RecoverySourceCheckpoint.attempt_mem_prefixLaw'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.RecoverySourceCheckpoint.attempt_mem_prefixLaw
+
+/-- info:
+'Vegas.phaseSourceStrategy_converges_of_clear_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseSourceStrategy_converges_of_clear_history
+
+/-- info:
+'Vegas.phaseSourceAssessment_strategy_of_clear_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseSourceAssessment_strategy_of_clear_history
+
+/-- info:
+'Vegas.phaseSourceAssessment_run_eq_canonical'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseSourceAssessment_run_eq_canonical
+
+/-- info:
+'Vegas.phaseSourceAssessment_terminal_run_eq_canonical'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseSourceAssessment_terminal_run_eq_canonical
+
+/-- info:
+'Vegas.exists_phase_source_completion_with_history_law'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.exists_phase_source_completion_with_history_law
+
+/-- info:
+'Vegas.phaseSourcePolicy_async_joint_source_law'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseSourcePolicy_async_joint_source_law
+
+/-- info:
+'Vegas.phaseSourcePolicy_async_joint_payoff_law'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseSourcePolicy_async_joint_payoff_law
+
+/-- info:
+'Vegas.phaseSourceStrategy_async_terminal_source_law'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseSourceStrategy_async_terminal_source_law
+
+/-- info:
+'Vegas.phaseSourceStrategy_async_terminal_source_payoff_law'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseSourceStrategy_async_terminal_source_payoff_law
+
+/-- info:
+'Vegas.phaseSourceStrategy_async_terminal_clear_uncharged'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseSourceStrategy_async_terminal_clear_uncharged
+
+/-- info:
+'Vegas.phaseSourceStrategy_async_terminal_settlement_law'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseSourceStrategy_async_terminal_settlement_law
+
+/-- info:
+'Vegas.exists_phase_source_completion_with_source_law'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.exists_phase_source_completion_with_source_law
+
+/-- info:
+'Vegas.EventGraphRuntime.PhaseCount.onePacket_binding_shape'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseCount.onePacket_binding_shape
+
+/-- info:
+'Vegas.phase_binding_deviation_move_of_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phase_binding_deviation_move_of_history
+
+/-- info:
+'Vegas.EventGraphRuntime.PhaseRuntimeState.expire_excludes_of_request'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseRuntimeState.expire_excludes_of_request

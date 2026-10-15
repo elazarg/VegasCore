@@ -633,3 +633,5 @@ import Vegas.Pending.PhaseNativeRoundLaw
 import Vegas.Pending.PhaseNativeInitialSupport
 import Vegas.Pending.PhaseNativeInitialRounds
 import Vegas.Pending.PhasePacketCallback
+import Vegas.Pending.PhaseBindingMenuShape
+import Vegas.Pending.PhaseExpiryExclusion

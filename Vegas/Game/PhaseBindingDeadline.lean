@@ -30,7 +30,9 @@ local notation "N" => serviceApplication setup mode deadline NL
 local notation "start" => setup.initialLaw.map fun draw =>
   PhaseRuntimeState.initial plan (encodeInputs draw)
 
-private theorem recalled_binding_window
+/-- An actual earlier ready callback inherits the protected window of a later
+within-delay callback, using its original activation stamp and monotone clock. -/
+theorem phase_recalled_inclusion_window
     (bounds : MessageBounds (serviceGraph setup mode))
     (ordered : (serviceGraph setup mode).RevealRelaxedOrdered)
     (maximal : plan.phases.IsChain fun before after =>
@@ -208,9 +210,9 @@ theorem phase_due_binding_impossible
               beforeConsistent event payload binding values packet output named
       have firstNested : (menu.protocol (inputs.map (PhaseRuntimeState.initial plan)) horizon
           scheduler).Trace (some first) := initialEq.symm ▸ firstTrace
-      have fitting := recalled_binding_window setup mode deadline leaks plan bounds ordered maximal
-        inputs horizon scheduler before first beforeNested firstNested beforeClear owner event owned
-          beforeReady entered wasStamp delay bound timely clock entry member firstViewed
+      have fitting := phase_recalled_inclusion_window setup mode deadline leaks plan bounds ordered
+        maximal inputs horizon scheduler before first beforeNested firstNested beforeClear owner
+          event owned beforeReady entered wasStamp delay bound timely clock entry member firstViewed
             firstRequest.2.2.1
       have finalMember : entry ∈ current.execution.recall owner := by
         rw [recalled]

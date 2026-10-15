@@ -1,6 +1,6 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**SE: non-concurrent ✓ · raw-send ✓ · dispatcher ✓ · joint law ◐ (safety); Bayes/incentives open.**
+**SE: non-concurrent ✓ · safety/joint law ✓ · consistent completion ✓; Bayes/incentives open.**
 
 <details>
 <summary>Checked recovery milestones and remaining proof obligations</summary>
@@ -47,8 +47,11 @@ original initial draw when these laws are used inside an outer initial-law
 bind. The concrete physical and native round laws preserve the original
 initial draw jointly with the complete typed source readout and every realized
 payoff vector. The terminal behavioral game evaluates the same covered physical
-profile and has that source readout law. Physical safety remains explicit;
-equality of mixed endpoint laws alone is not used to identify a joint law.
+profile and has that source readout law. For the compiled service runtime,
+physical safety is derived from the original asynchronous contract and
+timeliness bounds. The canonical terminal laws include the actual randomized
+count settlement. Equality of mixed endpoint laws alone is not used to
+identify the original setup-draw joint law.
 
 Every actual prescribed-consistent native history has a clear physical
 preimage under the same safety premise. This excludes native public failure,
@@ -62,9 +65,22 @@ At actual clear prefixes, physical opportunity and protected inclusion derive
 timely owner callbacks, sole packet identifiers and settlement of genuine
 native fresh calls. A canonical binding packet has an authentic earlier
 callback. Its emission and deadline bounds imply that a ready binding cannot
-remain due under the continuing canonical policy. Opening deadline safety and
-the whole-execution first-exclusion argument remain open; physical safety is
-still a premise of the execution laws above.
+remain due under the continuing canonical policy. Remembered openings have
+their actual fresh-call certificates and protected emission windows, even
+when they precede the selected timely callback. Due ready openings are
+impossible as well. Accepted binding and opening operations preserve clarity;
+a genuine first-exclusion argument proves every canonical-consistent
+initialized counted history is clear under the physical service bounds.
+
+The complete canonical finite strategy converges at every actual clear
+callback, including silent dispatcher branches. The same common completed
+assessment therefore has the entire canonical finite-fuel and terminal
+history laws. One actual fully mixed Bayes sequence and its consistent limit
+retain the clear-site recipe and optimal whole continuations after public
+exclusion. That same limit has the source readout/base-payoff and randomized
+settlement laws; its supported terminal histories exclude and charge nobody.
+This is a consistent completion with the desired terminal law. Clear-site
+rationality remains open, so it is not yet a sequential equilibrium theorem.
 
 At actual binding callbacks, nonmissing conditioning has an exact typed
 sending law and eligible-slot atom mass. Paired histories have the same
@@ -73,6 +89,14 @@ block has an exact product law over owner words, retaining chronological
 dependence between repeated choices of one owner. Conditioning an own prefix
 uses that same full block, including later foreign commitments. These are
 nonmissing reference laws; original future omission flags remain sampled.
+A complete block word recovers the earlier owned view and addressed typed
+result with their exact chronological conditional kernel. Actual checkpoint
+attempts derive positive support for that same nonmissing source prefix,
+including accepted failures. At actual ready callbacks, this derives the
+filled view and the complete-word conditional next action without a supplied
+source-information witness. The entire canonical/slot response factors into
+the original omission flag followed, when nonmissing, by the conditional
+typed result and its physical slot encoder. The raw-noise tier stays separate.
 Chronological source-window conditioning preserves the original initial
 posterior jointly with its endpoint. Neither this source identity nor the
 fixed-entry product establishes native/source posterior equality after actual
@@ -88,8 +112,17 @@ reveal order. The intended-game recovery theorem also handles withholding
 deviations. Independent reveal reordering remains outside these checked SE
 results.
 
-Remaining obligations include discharging physical safety in the original
-joint-law theorem, native Bayes transport and incentive transfer.
+An arbitrary actual legal nonsilent binding also derives a genuine auxiliary
+nonmissing move matching its exact postresponse typed result, with a globally
+fresh prepared slot. Due expiry of a genuine owner request derives permanent
+exclusion and enables the existing continuation-floor theorem. Silence can
+still be followed by a later send; these local facts do not identify its
+whole continuation value.
+
+Remaining obligations include the source/native posterior law under actual
+recall and mixed saved entries, and the clear-site continuation/incentive
+comparison. The completed assessment's full original setup-tag joint law
+must retain its explicit reconstruction or supported-input argument.
 Full concurrent SE preservation remains unproved.
 </details>
 
@@ -3467,8 +3500,10 @@ complete clear source signal transcript and own-play recall are determined by
 that current view. The actual-clear auxiliary decoder identifies complete source
 information at every clear ready binding, including views outside the intended
 source region. Native/source conditional probability transport remains open.
-These checked models and invariants
-do not establish a concurrent preserving SE or its intended joint law. The
+The canonical initialized source joint law and the consistent completed
+assessment's terminal readout/payoff law are checked under the physical
+service contract. These do not establish a concurrent preserving SE: the
+source/native Bayes and clear-site continuation comparison remain open. The
 checked raw audit extension requires a counted-menu SE. Scheduler-seed
 realization and the scoped local seed controller do not yet establish the full
 runtime conditioning needed for (S1–S3). For clean ready activations in ordered

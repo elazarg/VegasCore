@@ -887,3 +887,17 @@ import Vegas.Game.PhaseBindingSourceReference
 import Vegas.Game.PhaseCommitBlockReference
 import Vegas.Game.PhaseCompiledSourceLaw
 import Vegas.Game.PhaseCompiledBehavioralLaw
+import Vegas.Game.PhaseOpeningDeadline
+import Vegas.Game.PhaseCanonicalOperations
+import Vegas.Game.PhaseCanonicalExpiry
+import Vegas.Game.PhaseCanonicalSafety
+import Vegas.Game.PhaseOpeningRecallConformance
+import Vegas.Game.PhaseBindingResponseFactor
+import Vegas.Game.RecoveryBindingWordPrediction
+import Vegas.Game.RecoveryCommitPrefixSupport
+import Vegas.Game.PhaseSourceDispatchLimit
+import Vegas.Game.PhaseSourceCompletionLaw
+import Vegas.Game.PhaseSourceCompletionOutcome
+import Vegas.Game.PhaseCanonicalSourceLaw
+import Vegas.Game.PhaseCanonicalCompletion
+import Vegas.Game.PhaseBindingDeviationMove

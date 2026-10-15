@@ -1102,7 +1102,7 @@ Native recall consistency, original behavioral runs and first failure:
 [Phase Native Behavioral Run](../Vegas/Pending/PhaseNativeBehavioralRun.lean),
 [Phase Native Failure Exit](../Vegas/Pending/PhaseNativeFailureExit.lean),
 [Source Fresh Call Deadline](../Vegas/Game/SourceFreshCallDeadline.lean).
-Complete clear owner recall transports policy consistency. Local law matching under prior consistency propagates prescribed native consistency by actual history induction. Both original finite-fuel behavioral laws have an exact coupling conditional on physical safety. First exclusion extracts an actual native public failure before rollback; the existing protected-inclusion engine excludes a still-ready acceptable fresh packet at its deadline. Physical safety from the approved builder contract remains open.
+Complete clear owner recall transports policy consistency. Local law matching under prior consistency propagates prescribed native consistency by actual history induction. Both original finite-fuel behavioral laws have an exact coupling conditional on physical safety. First exclusion extracts an actual native public failure before rollback; the existing protected-inclusion engine excludes a still-ready acceptable fresh packet at its deadline. The canonical physical safety adapter below discharges that premise for the compiled service runtime.
 
 Physical service contracts and authentic fresh calls:
 [Phase Service Contract](../Vegas/Pending/PhaseServiceContract.lean),
@@ -1114,7 +1114,7 @@ Actual clear prefixes supply native pointwise service conditions without a
 global reconstructed-native contract. An actual permitted binding response
 emitted in its protected window supplies an original native fresh-call
 certificate. The physical timing and binding-deadline adapters below derive
-actual timely callbacks; opening and whole-execution safety remain open.
+actual timely callbacks. The opening deadline and whole-execution safety adapters below complete the canonical case.
 
 
 Actual compiled response matching and prescribed runs:
@@ -1151,7 +1151,7 @@ The original all-raw-history physical contract derives actual timely callbacks
 at the original attempt and activation stamp. A remembered canonical binding
 has its genuine earlier unsent callback. Protected inclusion and fresh-call
 settlement rule out a ready binding at its deadline, including accepted failed
-bindings. Opening and whole-execution safety are separate obligations.
+bindings. The opening and first-exclusion adapters below establish whole canonical safety.
 
 Actual nonmissing binding and full source-block reference laws:
 [Phase Binding Nonmissing Law](../Vegas/Game/PhaseBindingNonmissingLaw.lean),
@@ -1213,3 +1213,63 @@ unit own reach. Positive replayed information mass follows from the original
 mass, and the existing counterfactual Bayes theorem gives exact belief equality.
 This intervenes on focal raw sends; opponent full-block likelihood and actual
 native/source Bayes identification remain separate obligations.
+
+
+Canonical physical safety and contract-only source laws:
+[Phase Opening Recall Conformance](../Vegas/Game/PhaseOpeningRecallConformance.lean),
+[Phase Binding Deadline](../Vegas/Game/PhaseBindingDeadline.lean),
+[Phase Opening Deadline](../Vegas/Game/PhaseOpeningDeadline.lean),
+[Phase Canonical Operations](../Vegas/Game/PhaseCanonicalOperations.lean),
+[Phase Canonical Expiry](../Vegas/Game/PhaseCanonicalExpiry.lean),
+[Phase Canonical Safety](../Vegas/Game/PhaseCanonicalSafety.lean),
+[Phase Canonical Source Law](../Vegas/Game/PhaseCanonicalSourceLaw.lean).
+Actual remembered packets retain their genuine callbacks and original
+protected emission windows. The physical all-raw-history service contract
+rules out due canonical bindings and openings. Accepted operations preserve
+clarity, and first-exclusion extraction proves every canonical-consistent
+initialized counted history clear. The compiled service runtime's original
+setup/readout/payoff joint laws and terminal source/base-payoff/randomized
+settlement laws derive safety internally; supported terminal histories exclude
+and charge no player. No global reconstructed native contract is imposed.
+
+The same completed assessment and canonical execution law:
+[Phase Source Dispatch Limit](../Vegas/Game/PhaseSourceDispatchLimit.lean),
+[Phase Source Completion Law](../Vegas/Game/PhaseSourceCompletionLaw.lean),
+[Phase Source Completion Outcome](../Vegas/Game/PhaseSourceCompletionOutcome.lean),
+[Phase Canonical Completion](../Vegas/Game/PhaseCanonicalCompletion.lean).
+Every actual clear callback has a convergent entire canonical finite strategy,
+including no-request and silent branches. Support-local behavioral congruence
+gives the same common limit's full finite-fuel and terminal history laws.
+One actual fully mixed Bayes sequence, its consistent limit and optimal whole
+continuations after public exclusion retain those laws. Under the original
+physical service bounds, that same completion has the source readout/base
+payoff and actual randomized settlement law, with supported exclusion/charge
+zero. Native/source Bayes and clear-site rationality remain separate; this is
+not a native sequential equilibrium theorem.
+
+Full-word source readout and actual callback prediction:
+[Commit Prefix Readout](../Vegas/Source/CommitPrefixReadout.lean),
+[Commit Prefix Policy Readout](../Vegas/Source/CommitPrefixPolicyReadout.lean),
+[Recovery Commit Prefix Support](../Vegas/Game/RecoveryCommitPrefixSupport.lean),
+[Phase Binding Response Factor](../Vegas/Game/PhaseBindingResponseFactor.lean),
+[Recovery Binding Word Prediction](../Vegas/Game/RecoveryBindingWordPrediction.lean).
+The existing complete chronological word retains later foreign and repeated
+owner choices while recovering the addressed earlier view/result joint law.
+Actual checkpoint attempts derive positive support in the same nonmissing
+prefix law without intendedness or successful-binding premises. The callback
+adapter derives its filled view and predicts its next conditional raw action.
+The entire canonical/slot response factors through the original omission flag
+and the nonmissing typed-result/slot encoder. Actual raw noise, the observed
+physical recall and the joint saved-entry mixture still require posterior
+identification.
+
+Actual local deviation commands:
+[Phase Binding Menu Shape](../Vegas/Pending/PhaseBindingMenuShape.lean),
+[Phase Binding Deviation Move](../Vegas/Game/PhaseBindingDeviationMove.lean),
+[Phase Expiry Exclusion](../Vegas/Pending/PhaseExpiryExclusion.lean).
+A genuine legal nonsilent binding derives its exact globally fresh bounded
+prepared slot and a legal auxiliary nonmissing move with the actual physical
+typed result, including failure. Due expiry of an actual request puts its owner
+in permanent exclusion through normalization and rollback, enabling the
+existing arbitrary-continuation floor theorem. Silence can later send;
+these local command facts do not supply source continuation values or Bayes.
