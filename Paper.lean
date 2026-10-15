@@ -615,6 +615,24 @@ import Vegas.Game.RecoveryBindingCounterpart
 import Vegas.Game.PhaseBindingCounterpart
 import Vegas.Pending.PhaseSeedFirstCallback
 import Vegas.Pending.PhaseSeedFirstBayes
+import Vegas.Pending.PhaseRequestProgress
+import Vegas.Pending.EventCommandFrame
+import Vegas.Pending.PhaseSeedPhysicalIsolation
+import Vegas.Pending.PhaseEnvironmentIsolation
+import Vegas.Pending.PhaseReadyResolution
+import Vegas.Pending.PhaseSeedResolutionWindow
+import Vegas.Pending.PhaseSeedEmissionPersistence
+import Vegas.EventGraph.ReadySemanticStability
+import Vegas.Pending.PhaseSemanticProgress
+import Vegas.Game.PhaseWaitingSourceView
+import Vegas.Game.PhaseSourcePolicy
+import Vegas.Game.PhaseSourcePolicyLaw
+import Vegas.Game.PhaseSourcePolicyInformation
+import Vegas.Pending.PhaseBindingSlotPolicy
+import Vegas.Pending.PhaseBindingSlotHistory
+import Vegas.Pending.PhaseSeedWaitingWindow
+import Vegas.Pending.PhaseSeedProtectedClock
+import Vegas.Pending.PhaseSeedProtectedResolution
 
 /-! # Checked sequential-equilibrium preservation, Nash correspondence and termination -/
 
@@ -6804,3 +6822,111 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms
   Vegas.EventGraphRuntime.PhaseSeedCalendar.first_bayes_input_protected
+
+/-- info: 'Vegas.EventGraphRuntime.environment_request_or_own_resolution'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.environment_request_or_own_resolution
+
+/-- info: 'Vegas.EventGraphRuntime.runRounds_request_or_resolved'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.runRounds_request_or_resolved
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseSeedScheduler.runRounds_emissions_prefix'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseSeedScheduler.runRounds_emissions_prefix
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseSeedCalendar.inclusionWindow_of_decision'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseSeedCalendar.inclusionWindow_of_decision
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseSeedCalendar.decision_single_emission'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseSeedCalendar.decision_single_emission
+
+/-- info: 'Vegas.phaseSourceView?_runRounds_of_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseSourceView?_runRounds_of_history
+
+/-- info: 'Vegas.phaseSourcePolicy_covered'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseSourcePolicy_covered
+
+/-- info: 'Vegas.phaseSourceStrategy_map_val'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseSourceStrategy_map_val
+
+/-- info: 'Vegas.phaseSourcePolicy_binding_of_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseSourcePolicy_binding_of_history
+
+/-- info: 'Vegas.phaseSourcePolicy_opening_of_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseSourcePolicy_opening_of_history
+
+/-- info: 'Vegas.phaseSourcePolicy_binding_at_played_information'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseSourcePolicy_binding_at_played_information
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseCount.phaseBindingSlotPolicy_covered'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseCount.phaseBindingSlotPolicy_covered
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseCount.phaseBindingSlotPolicy_mass'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseCount.phaseBindingSlotPolicy_mass
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseCount.phaseBindingSlotPolicy_result_law'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseCount.phaseBindingSlotPolicy_result_law
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseCount.phaseBindingSlots_nonempty_of_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseCount.phaseBindingSlots_nonempty_of_history
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseSeedCalendar.callback_tick_unclosed'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseSeedCalendar.callback_tick_unclosed
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseSeedCalendar.protected_request_time'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseSeedCalendar.protected_request_time
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseSeedCalendar.protected_first_resolution_includes'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseSeedCalendar.protected_first_resolution_includes

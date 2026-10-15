@@ -48,6 +48,7 @@ import Vegas.EventGraph.ForeignCompletionEvaluation
 import Vegas.EventGraph.CompletedOutputAgreement
 import Vegas.EventGraph.ConfigRestriction
 import Vegas.EventGraph.RelaxedRecall
+import Vegas.EventGraph.ReadySemanticStability
 
 /-! # Dependency-driven typed events
 

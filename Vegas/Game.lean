@@ -777,3 +777,7 @@ import Vegas.Game.RecoveryReadyCommitWitness
 import Vegas.Game.RecoveryReadyCommitInformation
 import Vegas.Game.RecoveryBindingCounterpart
 import Vegas.Game.PhaseBindingCounterpart
+import Vegas.Game.PhaseWaitingSourceView
+import Vegas.Game.PhaseSourcePolicy
+import Vegas.Game.PhaseSourcePolicyLaw
+import Vegas.Game.PhaseSourcePolicyInformation

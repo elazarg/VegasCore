@@ -54,14 +54,16 @@ end PhaseSeedScheduler
 namespace PhaseSeedCalendar
 
 omit [DecidableEq Player] in
-/-- The actual inclusion index comes from the authorized finite emission word
-and is selected strictly before this event's original deadline. -/
-theorem decision_inclusion_witness (delay bound : graph.EventId → Nat)
+/-- Every actual inclusion index satisfies the primitive protection-or-coin
+rule, in addition to the authorization and deadline checks. -/
+theorem decision_inclusion_service (delay bound : graph.EventId → Nat)
     (coordinate : PhaseSeedAddress graph) (seed : Seed runtime delay)
     (input : PhaseSeedOperationalInput graph) (index : Nat)
     (chosen : decision runtime delay bound coordinate seed input = .inclusion index) :
     ∃ emission, input.emissions[index]? = some emission ∧ emission.authorized = true ∧
-      input.elapsed < runtime.deadline coordinate.1.event := by
+      input.elapsed < runtime.deadline coordinate.1.event ∧
+      (emission.clock + bound coordinate.1.event < runtime.deadline coordinate.1.event ∨
+        seed.2 (Fin.ofNat (clockLimit runtime delay + 1) input.elapsed) = true) := by
   by_cases due : runtime.deadline coordinate.1.event ≤ input.elapsed
   · simp only [decision, ite_eq_left due, reduceCtorEq] at chosen
   · by_cases activate : seed.1.val ≤ input.elapsed ∧ input.elapsed ∉ input.activationClocks
@@ -75,10 +77,24 @@ theorem decision_inclusion_witness (delay bound : graph.EventId → Nat)
           have same : entry.2 = index := PhaseSeedDecision.inclusion.inj (by
             simpa only [found] using chosen)
           have indexed := List.mem_zipIdx_iff_getElem?.mp (List.mem_of_find?_eq_some found)
-          have test := List.find?_some found
-          have authorized := (Bool.and_eq_true_iff.mp test).1
+          have foundTest := List.find?_some found
+          have test := Bool.and_eq_true_iff.mp foundTest
           rw [same] at indexed
-          exact ⟨entry.1, indexed, authorized, Nat.lt_of_not_ge due⟩
+          exact ⟨entry.1, indexed, test.1, Nat.lt_of_not_ge due,
+            by simpa only [Bool.or_eq_true, decide_eq_true_eq] using test.2⟩
+
+omit [DecidableEq Player] in
+/-- The actual inclusion index comes from the authorized finite emission word
+and is selected strictly before this event's original deadline. -/
+theorem decision_inclusion_witness (delay bound : graph.EventId → Nat)
+    (coordinate : PhaseSeedAddress graph) (seed : Seed runtime delay)
+    (input : PhaseSeedOperationalInput graph) (index : Nat)
+    (chosen : decision runtime delay bound coordinate seed input = .inclusion index) :
+    ∃ emission, input.emissions[index]? = some emission ∧ emission.authorized = true ∧
+      input.elapsed < runtime.deadline coordinate.1.event := by
+  obtain ⟨emission, indexed, authorized, timely, _service⟩ :=
+    decision_inclusion_service runtime delay bound coordinate seed input index chosen
+  exact ⟨emission, indexed, authorized, timely⟩
 
 /-- A concrete include reply names an authorized member of the erased word. -/
 theorem reply_inclusion_witness (delay bound : graph.EventId → Nat)

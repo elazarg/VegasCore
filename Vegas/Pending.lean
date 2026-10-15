@@ -481,3 +481,16 @@ import Vegas.Pending.PhaseSentMenu
 import Vegas.Pending.PhaseHistoryCheckpoint
 import Vegas.Pending.PhaseSeedFirstCallback
 import Vegas.Pending.PhaseSeedFirstBayes
+import Vegas.Pending.PhaseRequestProgress
+import Vegas.Pending.EventCommandFrame
+import Vegas.Pending.PhaseSeedPhysicalIsolation
+import Vegas.Pending.PhaseEnvironmentIsolation
+import Vegas.Pending.PhaseReadyResolution
+import Vegas.Pending.PhaseSeedResolutionWindow
+import Vegas.Pending.PhaseSeedEmissionPersistence
+import Vegas.Pending.PhaseSemanticProgress
+import Vegas.Pending.PhaseBindingSlotPolicy
+import Vegas.Pending.PhaseBindingSlotHistory
+import Vegas.Pending.PhaseSeedWaitingWindow
+import Vegas.Pending.PhaseSeedProtectedClock
+import Vegas.Pending.PhaseSeedProtectedResolution

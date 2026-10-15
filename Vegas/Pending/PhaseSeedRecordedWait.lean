@@ -21,7 +21,7 @@ variable {Player RestSeed : Type} [Fintype Player] [DecidableEq Player]
 local notation "app" => phaseApplication runtime leaks
 
 omit [Fintype Player] in
-private theorem retained_bound_runRounds (scheduler : (app).Scheduler)
+theorem retained_bound_runRounds (scheduler : (app).Scheduler)
     (players : Player → (app).Policy) (count : Nat) (execution next : (app).Execution)
     {inputs : graph.Inputs} (valid : execution.application.Invariant inputs)
     (ordered : execution.application.Ordered) (tick entered : Nat)

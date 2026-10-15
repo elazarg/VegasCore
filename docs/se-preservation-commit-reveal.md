@@ -1,6 +1,6 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**SE: non-concurrent ✓ · saved recall ✓ · binding information ✓ · unsent Bayes ✓; native SE open.**
+**SE: non-concurrent ✓ · dispatcher ✓ · fresh-slot law ✓ · protected first-loss ✓; concurrent SE open.**
 
 <details>
 <summary>Recovery milestones and current proof substeps</summary>
@@ -15,8 +15,28 @@ independently of the full physical control and all other original seeds under
 the actual Bayes belief. Saved source/native action recall agrees at every clear
 checkpoint. Ready bindings have an actual initialized source counterpart with
 the same whole view; an actual intended-view witness identifies complete played
-information. First callbacks leave the protected inclusion window. Native
-probability, incentive and SE transport remain open.
+information. First callbacks retain the full protected inclusion window.
+The whole physical source-policy dispatcher is globally legal, with exact local
+binding and canonical-opening laws and a finite strategy representation.
+While the same binding stays ready in its attempt, arbitrary future rounds
+preserve its exact semantic source view. This does not assert equality of full
+operational observations or their conditional source likelihoods.
+
+The fresh-slot binding law samples independently of the original typed result,
+offers every bounded fresh slot at actual unsent sites, retains the exact
+post-response result law and gives each encoding at least its original result
+mass divided by the number of eligible slots. This is a local component; the
+whole recovery slot tier, including the distinct omission branch, is separate.
+
+Actual request loss is an own accepting inclusion or an addressed expiry;
+foreign work and private responses cannot silently remove the request. The
+full timed emission word persists. A selected activation and its response
+leave the physical tick open. Once an authentic protected packet is emitted,
+every genuine surviving ready prefix has the same clock and activation stamp,
+and its first request-loss transition must be an own accepting inclusion.
+Existence of that first loss and the complete late coin-window probability law
+remain separate obligations. Native probability, incentive and SE transport
+remain open.
 
 | Status | Recovery milestone |
 | --- | --- |
