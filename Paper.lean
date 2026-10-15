@@ -669,6 +669,13 @@ import Vegas.Pending.PhaseSeedAdaptiveWindow
 import Vegas.Pending.PhaseSeedWindowBayes
 import Vegas.Source.CommitPrefixLaw
 import Vegas.Source.CommitPrefixInformationLaw
+import Vegas.Game.PhaseSourceResponseLaw
+import Vegas.Game.PhaseSourceResponseLimit
+import Vegas.Pending.PhaseClearPhasePersistence
+import Vegas.Pending.PhaseSwapGuard
+import Vegas.Pending.PhaseSwapTransition
+import Vegas.Pending.PhaseSwapSymmetry
+import Vegas.Pending.PhaseSwapFiber
 
 /-! # Checked sequential-equilibrium preservation, Nash correspondence and termination -/
 
@@ -7188,3 +7195,51 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms
   Vegas.SourceProgram.CommitPrefix.prefixPosterior_binding_joint
+
+/-- info: 'Vegas.phaseSourcePolicy_result_law_of_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseSourcePolicy_result_law_of_history
+
+/-- info: 'Vegas.phaseSourcePerturbedStrategy_result_law_of_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseSourcePerturbedStrategy_result_law_of_history
+
+/-- info: 'Vegas.phaseSourcePerturbedStrategy_result_converges_of_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseSourcePerturbedStrategy_result_converges_of_history
+
+/-- info: 'Vegas.phaseSourceAssessment_binding_limit_of_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseSourceAssessment_binding_limit_of_history
+
+/-- info: 'Vegas.EventGraphRuntime.phaseSwapGuard_of_transition'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.phaseSwapGuard_of_transition
+
+/-- info: 'Vegas.EventGraphRuntime.HiddenSwap.phaseTransition_swap'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.HiddenSwap.phaseTransition_swap
+
+/-- info: 'Vegas.EventGraphRuntime.phaseOnePacketSwapSymmetry_involutive'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.phaseOnePacketSwapSymmetry_involutive
+
+/-- info: 'Vegas.EventGraphRuntime.phaseSwapInformationFiberEquiv'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.phaseSwapInformationFiberEquiv

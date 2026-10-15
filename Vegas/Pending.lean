@@ -518,3 +518,8 @@ import Vegas.Pending.PhaseSeedWindowEquivalence
 import Vegas.Pending.PhaseSeedEmissionTimes
 import Vegas.Pending.PhaseSeedAdaptiveWindow
 import Vegas.Pending.PhaseSeedWindowBayes
+import Vegas.Pending.PhaseClearPhasePersistence
+import Vegas.Pending.PhaseSwapGuard
+import Vegas.Pending.PhaseSwapTransition
+import Vegas.Pending.PhaseSwapSymmetry
+import Vegas.Pending.PhaseSwapFiber

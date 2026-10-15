@@ -1,6 +1,6 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**SE: non-concurrent ✓ · native assessment ✓ · slot law ✓ · service probability ✓; source likelihood/incentives open.**
+**SE: non-concurrent ✓ · native assessment ✓ · local response ✓ · guarded replay ✓ · service law ✓; likelihood/incentives open.**
 
 <details>
 <summary>Recovery milestones and current proof substeps</summary>
@@ -52,6 +52,13 @@ every public nonempty-exclusion site is optimal against arbitrary whole-policy
 deviations for the actual physical payoff. Clear-site rationality and preservation
 of the intended joint law remain open. Silence leaves later legal sending
 available; it is not treated as an irrevocable omission.
+At an actual unsent binding, both source tiers preserve the same joint declared
+result/omission law, read from the handle each response actually names; only raw
+noise contaminates it. At a clear site with an actual intended-view witness,
+source assessment convergence identifies that joint response law at the same
+common native subsequential limit. Slot weights need not vanish for this local
+semantic statement. Native history likelihoods and physical inclusion are
+separate from the declared response law.
 
 Actual request loss is an own accepting inclusion or an addressed expiry;
 foreign work and private responses cannot silently remove the request. The
@@ -94,7 +101,13 @@ At any initialized clear endpoint, the retry generation is zero and the retired
 archive is empty. Every earlier prefix is clear, and accepted handles, immutable
 values, the full effective action word and completed events persist across all
 intervening physical steps and clean phase transitions.
-Paired execution existence, likelihood comparisons, source/native Bayes
+The native clear replay guard is backward closed along actual transitions.
+Under this guard, initial support closure, bounded-value closure and expiry
+fixing, the same scheduler admits an involutive map of actual counted histories
+and a bijection of complete focal information fibers. The guard reads accepted
+bindings, completed/current-phase-ready disclosures and recalled evidence
+requests. Deriving it throughout the required source fibers, repairing unusable
+foreign bindings, comparing source-policy likelihoods, native/source Bayes
 transport and sequential rationality remain open.
 
 | Status | Recovery milestone |

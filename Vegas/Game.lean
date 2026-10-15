@@ -789,3 +789,5 @@ import Vegas.Game.PhaseSourceSlotPolicyLaw
 import Vegas.Game.PhaseSourceSlotInformation
 import Vegas.Game.PhaseSourcePerturbation
 import Vegas.Game.PhaseAssessmentCompletion
+import Vegas.Game.PhaseSourceResponseLaw
+import Vegas.Game.PhaseSourceResponseLimit
