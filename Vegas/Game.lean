@@ -718,3 +718,7 @@ import Vegas.Game.CommitRecoveryEmbedding
 import Vegas.Game.CommitRecoveryRetraction
 import Vegas.Game.CommitRecoveryInformationEmbedding
 import Vegas.Game.CommitRecoveryRestriction
+import Vegas.Game.CompiledCommitRegistry
+import Vegas.Game.CompiledPhaseReadback
+import Vegas.Game.CommitRecoveryRetainedHistory
+import Vegas.Game.CommitRecoveryCompletion

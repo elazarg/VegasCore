@@ -1,6 +1,6 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**SE: non-concurrent proved · concurrent: source embedding, block E/store, count audit ✓; scheduler completion and SE transport open.**
+**SE: non-concurrent proved · concurrent: consistent source, block readback, packet acceptance ✓; scheduler/incentives open.**
 
 <details>
 <summary>Recovery milestones and current proof substeps</summary>
@@ -67,16 +67,23 @@ stated service, coverage, utility and independent-private-input hypotheses.
 Concurrent preservation remains open. Its checked structural action restriction
 now embeds every legal intended source history, its complete observation
 transcript and own-play recall, and every pure local step into the recovery
-source game. Completed physical commitment blocks have a decoded typed attempt
-with the exact physical exclusion set and store. The phase audit has zero count
-charges under the one-packet menu; current ready timely bindings are accepted
-from actual initialized histories, including accepted unusable bindings.
+source game. One consistent recovery assessment retains the intended strategy,
+retained-site beliefs and exact initialized history law, with optimal local
+laws at every new information agent. Enlarged-menu incentives at retained sites
+remain open. Completed physical commitment blocks have a decoded typed attempt
+with the exact physical exclusion set, store and a registry extension by inert
+failed subjects, derived through actual inclusion/environment operations and
+local drain from saved-boundary relations. Extra compiler guards change no
+reveal kernel. The phase audit has zero count charges under the one-packet menu;
+current ready timely bindings and openings are accepted from actual initialized
+counted histories, including unusable bindings and openings that fail a guard.
+Opening acceptance derives the surviving handle and certificate soundness.
 An immutable addressed-seed scheduler has checked joint realization, erased
 operational queries, full clocked owner recall and fresh laws after actual
 namespace changes. Its concrete calendar is a witness with clock/attempt-based
 ordering; it does not cover the full admissible history-adaptive scheduler class.
 The all-phase store/registry/history simulation, scheduler completion and general
-conditioning transport, opening acceptance, source equilibrium extension and
+conditioning transport, source equilibrium extension and
 concurrent SE assembly remain open.
 Appendix A identifies the checked declarations; Section 9 lists the broader
 limitations.
@@ -2992,9 +2999,13 @@ needs its own review. What is known:
 | Intended source steps without omissions retain intendedness, no exclusions and the same generation | `Vegas.SourceProgram.CommitRecoveryState.step_intended_support` |
 | Clear auxiliary-source histories project to source histories with the same length and source observation | `Vegas.SourceProgram.Setup.commitRecoveryClearTrace_length`, `Vegas.SourceProgram.Setup.commitRecoveryClearTrace_observe` |
 | Every legal intended history, full observation transcript, own-play record and pure local step embeds into the source recovery game | `Vegas.SourceProgram.Setup.commitRecoveryRestriction` |
+| One consistent source recovery completion retains intended strategies, beliefs and every initialized history law, with local optimality at new agents | `Vegas.SourceProgram.Setup.exists_consistent_commitRecovery_completion` |
 | Completed physical commitment blocks supply an actual typed attempt with exact exclusion and store | `Vegas.sourceAttempt_of_completed_bindings` |
+| Actual drained binding operations reconstruct exact source attempts and inert guard-registry extensions from saved-boundary relations | `Vegas.sourceAttempt_of_actual_bindingInclusion`, `Vegas.sourceAttempt_of_actual_bindingEnvironment` |
+| Compiler guards on automatic failed subjects change no source reveal kernel | `Vegas.reveal_step_of_failureExtension` |
 | Actual phase one-packet histories have zero count charges under every scheduler | `Vegas.EventGraphRuntime.PhaseCount.onePacketMenu_countCharge_zero` |
 | Actual ready timely counted bindings are accepted, with exact normalization even if immediately retired | `Vegas.EventGraphRuntime.PhaseCount.binding_accepted_of_history` |
+| Actual ready timely counted openings have their surviving signed handle and are accepted without an openability or acceptance premise | `Vegas.EventGraphRuntime.PhaseCount.opening_accepted_of_history` |
 | Live binding records retain actual authored current-namespace provenance | `Vegas.EventGraphRuntime.phaseLiveBindingStamp_history` |
 | Immutable addressed seeds realize the joint original seed and full execution law | `Interaction.ReactiveApplication.AddressedScheduler.realize_joint` |
 | At a fixed remainder and actual command transcript, the original seed posterior factors by addressed coordinate | `Interaction.ReactiveApplication.AddressedScheduler.posterior_given_remainder` |

@@ -30,5 +30,6 @@ import Vegas.Compile.EventGraphPolicyAlignment
 import Vegas.Compile.EventGraphDisclosurePolicy
 import Vegas.Compile.CommitPhaseLayout
 import Vegas.Compile.CommitBlockReferences
+import Vegas.Compile.EventGraphRecoveryReveal
 
 /-! Source-program lowering to the typed immutable graph. -/

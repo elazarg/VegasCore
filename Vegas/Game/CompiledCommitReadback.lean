@@ -2,6 +2,7 @@
 
 import Vegas.Game.CompiledAttemptExclusion
 import Vegas.Game.CompiledCommitState
+import Vegas.Game.CompiledCommitRegistry
 
 /-! # Completed physical commitment intervals determine exact source attempts -/
 
@@ -84,20 +85,25 @@ theorem sourceAttempt_of_completed_bindings
     (record : SuffixExclusionRecord offset entryExcluded physical)
     (within : physical.native.config.cut.Within offset (offset + block.length))
     (finished : (compiledCommitPhase whole mode block suffix embedding compiled positive).Finished
-      physical) (agree : refs.Agrees entry.state physical.native.config.store) :
+      physical) (agree : refs.Agrees entry.state physical.native.config.store)
+    (guards : Registry.FailureExtension entry.registry registry entry.state) :
     ∃ finalSource : SourceProgram.Config Player L Δ,
       Nonempty (block.Attempt entry entryExcluded finalSource physical.excluded) ∧
         (commitBlockRefs whole block suffix embedding refs).Agrees finalSource.state
-          physical.native.config.store := by
+          physical.native.config.store ∧
+        Registry.FailureExtension finalSource.registry (block.guardRegistry registry)
+          finalSource.state := by
   let decoded := decodeCommitAttempt whole mode block suffix embedding physical.native entry
     entryExcluded
   have exclusion := decodeCommitAttempt_excluded_eq_physical whole mode block suffix embedding
     compiled positive physical entry entryExcluded record within finished
-  refine ⟨decoded.1, ⟨exclusion ▸ decoded.2.2⟩, ?_⟩
-  apply decodeCommitAttempt_state_agrees whole mode block suffix embedding refs physical.native
-    entry entryExcluded offset compiled.rankEq valid receipts agree
-  intro index inside
-  exact finished ((compiledCommitPhase_mem_iff whole mode block suffix embedding compiled
+  refine ⟨decoded.1, ⟨exclusion ▸ decoded.2.2⟩, ?_, ?_⟩
+  · apply decodeCommitAttempt_state_agrees whole mode block suffix embedding refs physical.native
+      entry entryExcluded offset compiled.rankEq valid receipts agree
+    intro index inside
+    exact finished ((compiledCommitPhase_mem_iff whole mode block suffix embedding compiled
       positive _).mpr ⟨index, inside, rfl⟩)
+  · exact decodeCommitAttempt_registry_extension whole mode block suffix embedding physical.native
+      entry entryExcluded registry guards
 
 end Vegas

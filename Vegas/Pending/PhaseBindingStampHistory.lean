@@ -61,7 +61,7 @@ def LiveBindingStamp (execution : (app).Execution) : Prop :=
   BindingStamp (fun who => (app).outputs (execution.recall who)) execution.application.attempt
     execution.application.current.native
 
-private theorem liveBindingStamp_respond (execution : (app).Execution)
+theorem liveBindingStamp_respond (execution : (app).Execution)
     (who : Player) (response : (app).Action) (valid : LiveBindingStamp runtime leaks execution) :
     LiveBindingStamp runtime leaks (execution.respond (app) who response) := by
   have contains : ∀ observer, (app).outputs (execution.recall observer) ⊆
@@ -119,7 +119,7 @@ private theorem liveBindingStamp_handle (execution : (app).Execution)
     · exact valid.copy table
   · cases handled
 
-private theorem liveBindingStamp_environment (execution next : (app).Execution)
+theorem liveBindingStamp_environment (execution next : (app).Execution)
     (command : (app).Command) (valid : LiveBindingStamp runtime leaks execution)
     (record : execution.application.ExclusionRecord) (origins : execution.Provenance (app))
     (reached : next ∈ (execution.environmentStep (app) command).support) :

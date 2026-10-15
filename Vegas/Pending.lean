@@ -408,3 +408,10 @@ import Vegas.Pending.CompletedBindingReadback
 import Vegas.Pending.BindingReceiptOrder
 import Vegas.Pending.PhaseRawExclusion
 import Vegas.Pending.PhaseAcceptedOrder
+import Vegas.Pending.PhaseLatestBindings
+import Vegas.Pending.PhaseLatestBindingHistory
+import Vegas.Pending.PhasePacketEvidence
+import Vegas.Pending.PhaseFailureCoverage
+import Vegas.Pending.PhaseInputAddress
+import Vegas.Pending.PhaseInputBindings
+import Vegas.Pending.PhaseOpeningAcceptance

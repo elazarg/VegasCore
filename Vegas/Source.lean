@@ -75,3 +75,8 @@ import Vegas.Source.CommitRecoveryProjection
 import Vegas.Source.CommitRecoveryLift
 import Vegas.Source.CommitRecoveryObservation
 import Vegas.Source.SetupObservationRecall
+import Vegas.Source.FailedGuardRegistry
+import Vegas.Source.FailureRevelations
+import Vegas.Source.RegistryFailureExtension
+import Vegas.Source.CommitPhaseRegistry
+import Vegas.Source.CommitRecoveryClearSuccessor

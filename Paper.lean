@@ -21,6 +21,10 @@ import Vegas.Pending.PhaseSeedCalendarProperties
 import Vegas.Pending.PhaseSeedRecall
 import Vegas.Pending.PhaseResolution
 import Interaction.ReactiveAddressedPosterior
+import Vegas.Game.CommitRecoveryCompletion
+import Vegas.Game.CompiledPhaseReadback
+import Vegas.Compile.EventGraphRecoveryReveal
+import Vegas.Pending.PhaseOpeningAcceptance
 import Vegas.Pending.PhaseReadiness
 import Vegas.Game.RecoveryLocalValueComparison
 import Vegas.Game.RecoveryPhaseValueBlind
@@ -5956,3 +5960,53 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.EventGraphRuntime.PhaseRuntimeState.expire_resolves_of_request
+
+/-- info: 'Vegas.SourceProgram.Setup.commitRecovery_clear_step_reconstruct'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.commitRecovery_clear_step_reconstruct
+
+/-- info: 'Vegas.SourceProgram.Setup.commitRecovery_retained_clear'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.commitRecovery_retained_clear
+
+/-- info: 'Vegas.SourceProgram.Setup.exists_consistent_commitRecovery_completion'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.exists_consistent_commitRecovery_completion
+
+/-- info: 'Vegas.SourceProgram.Registry.FailureExtension.completedBy_all_eq'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Registry.FailureExtension.completedBy_all_eq
+
+/-- info: 'Vegas.decodeCommitAttempt_registry_extension'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.decodeCommitAttempt_registry_extension
+
+/-- info: 'Vegas.sourceAttempt_of_actual_bindingInclusion'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.sourceAttempt_of_actual_bindingInclusion
+
+/-- info: 'Vegas.sourceAttempt_of_actual_bindingEnvironment'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.sourceAttempt_of_actual_bindingEnvironment
+
+/-- info: 'Vegas.reveal_step_of_failureExtension'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.reveal_step_of_failureExtension
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseCount.physicalBindings_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.PhaseCount.physicalBindings_history
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseCount.opening_accepted_of_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.PhaseCount.opening_accepted_of_history
