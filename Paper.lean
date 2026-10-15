@@ -596,6 +596,16 @@ import Interaction.ReactiveAddressedCoordinatePosterior
 import Vegas.Pending.PhaseSeedUnsentPosterior
 import Vegas.Pending.PhaseSeedUnsentBayes
 import Vegas.Pending.PhaseSentMenu
+import Vegas.Source.CommitRecoveryClearRecall
+import Vegas.Game.CommitRecoveryInformationEmbedding
+import Vegas.Game.CommitRecoveryClearInformation
+import Vegas.Pending.PhaseHistoryCheckpoint
+import Vegas.Game.CommitAttemptHistory
+import Vegas.EventGraph.RelaxedRecall
+import Vegas.Game.CommitAttemptRecall
+import Vegas.Game.CommitAttemptOwnRecall
+import Vegas.Game.RecoveryCommitPrefixWitness
+import Vegas.Game.CommitPrefixFillRecall
 
 /-! # Checked sequential-equilibrium preservation, Nash correspondence and termination -/
 
@@ -6707,3 +6717,45 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms
   Vegas.EventGraphRuntime.PhaseCount.onePacketActions_eq_singleton_of_sent
+
+/-- info: 'Vegas.SourceProgram.Setup.commitRecovery_clear_info_eq'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecovery_clear_info_eq
+
+/-- info: 'Vegas.SourceProgram.Setup.commitRecoveryInformation_of_clear'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecoveryInformation_of_clear
+
+/-- info: 'Vegas.EventGraphRuntime.phaseHistoryCheckpoint_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.phaseHistoryCheckpoint_history
+
+/-- info: 'Vegas.commitAttemptCompletions_ownRecall'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.commitAttemptCompletions_ownRecall
+
+/-- info: 'Vegas.decodeCommitAttempt_history_of_clear_phase'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.decodeCommitAttempt_history_of_clear_phase
+
+/-- info: 'Vegas.RecoverySourceCheckpoint.filled_prefix_trace'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.RecoverySourceCheckpoint.filled_prefix_trace
+
+/-- info: 'Vegas.fillCommitPrefix_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.fillCommitPrefix_history

@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.CommitRecoveryRetraction
-import Vegas.Source.SetupObservationRecall
+import Vegas.Source.CommitRecoveryClearRecall
 
 /-! # No additional observed information along intended recovery histories -/
 
@@ -13,62 +13,6 @@ open GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
-
-/-- The complete retained observation transcript of an intended recovery
-history is determined by the observer's original source view. -/
-theorem commitRecoveryLiftTrace_observations (wellFormed : setup.WellFormed) (who : Player) :
-    ∀ {first second : setup.intendedProtocol.State}
-      (firstTrace : setup.intendedProtocol.Trace first)
-      (secondTrace : setup.intendedProtocol.Trace second),
-      setup.protocolObserve who first = setup.protocolObserve who second →
-        setup.commitRecoverySignals.infoOf who
-            (setup.commitRecoveryLiftTrace wellFormed firstTrace).1.trace =
-          setup.commitRecoverySignals.infoOf who
-            (setup.commitRecoveryLiftTrace wellFormed secondTrace).1.trace
-  | _, _, .start, .start, _ => rfl
-  | _, _, .start, .extend prior joint legal supported, same => by
-      have lengths := setup.intendedTrace_length_eq_of_observe who .start
-        (prior.extend joint legal supported) same
-      simp only [Trace.length] at lengths
-      omega
-  | _, _, .extend prior joint legal supported, .start, same => by
-      have lengths := setup.intendedTrace_length_eq_of_observe who
-        (prior.extend joint legal supported) .start same
-      simp only [Trace.length] at lengths
-      omega
-  | firstAfter, secondAfter, .extend firstPrior firstJoint firstLegal firstSupported,
-      .extend secondPrior secondJoint secondLegal secondSupported, same => by
-      have before := setup.intended_predecessor_observations_eq who firstPrior secondPrior
-        firstJoint secondJoint firstLegal secondLegal firstSupported secondSupported same
-      have earlier := commitRecoveryLiftTrace_observations wellFormed who
-        firstPrior secondPrior before
-      let left := setup.commitRecoveryLiftTrace wellFormed firstPrior
-      let right := setup.commitRecoveryLiftTrace wellFormed secondPrior
-      have current := congrArg Prod.fst earlier
-      rw [setup.commitRecoverySignals_current, setup.commitRecoverySignals_current] at current
-      have publicView := setup.commitRecoveryLiftSuccessor_public who left.1.state right.1.state
-        left.2.2 right.2.2 (congrArg Prod.fst current) (congrArg Prod.snd current)
-        firstAfter secondAfter same
-      have privateView : setup.commitRecoveryPrivate who
-          (setup.commitRecoveryLiftSuccessor left.1.state left.2.2 firstAfter) =
-          setup.commitRecoveryPrivate who
-            (setup.commitRecoveryLiftSuccessor right.1.state right.2.2 secondAfter) := by
-        rw [setup.commitRecoveryPrivate_source, setup.commitRecoveryPrivate_source,
-          setup.commitRecoveryLiftSuccessor_source, setup.commitRecoveryLiftSuccessor_source]
-        exact same
-      change ((setup.commitRecoveryPrivate who
-          (setup.commitRecoveryLiftSuccessor left.1.state left.2.2 firstAfter),
-        setup.commitRecoveryPublic
-          (setup.commitRecoveryLiftSuccessor left.1.state left.2.2 firstAfter)),
-        (setup.commitRecoverySignals.infoOf who left.1.trace).1 ::
-          (setup.commitRecoverySignals.infoOf who left.1.trace).2) =
-        ((setup.commitRecoveryPrivate who
-          (setup.commitRecoveryLiftSuccessor right.1.state right.2.2 secondAfter),
-        setup.commitRecoveryPublic
-          (setup.commitRecoveryLiftSuccessor right.1.state right.2.2 secondAfter)),
-        (setup.commitRecoverySignals.infoOf who right.1.trace).1 ::
-          (setup.commitRecoverySignals.infoOf who right.1.trace).2)
-      rw [privateView, publicView, earlier]
 
 /-- Extend the retained transcript to all source information values. On an
 unrealized information value its current private component still carries that
@@ -110,8 +54,13 @@ theorem commitRecoveryRetainedInfo_observed (wellFormed : setup.WellFormed) (who
   unfold commitRecoveryRetainedInfo
   split
   · next witness =>
-      apply setup.commitRecoveryLiftTrace_observations wellFormed who
-      simpa only [setup.intended_info] using witness.choose_spec.symm
+      apply setup.commitRecovery_clear_signals_eq who
+        (setup.commitRecoveryLiftHistory wellFormed original).trace
+        (setup.commitRecoveryLiftHistory wellFormed witness.choose).trace
+        (setup.commitRecoveryLiftHistory_clear wellFormed original)
+        (setup.commitRecoveryLiftHistory_clear wellFormed witness.choose)
+      rw [setup.commitRecoveryLiftHistory_private, setup.commitRecoveryLiftHistory_private]
+      exact witness.choose_spec.symm
   · next absent => exact (absent ⟨original, rfl⟩).elim
 
 theorem commitRecoveryRetainedInfo_excluded (wellFormed : setup.WellFormed) (who : Player)

@@ -478,3 +478,4 @@ import Vegas.Pending.RecordedBindingReadback
 import Vegas.Pending.PhaseSeedUnsentPosterior
 import Vegas.Pending.PhaseSeedUnsentBayes
 import Vegas.Pending.PhaseSentMenu
+import Vegas.Pending.PhaseHistoryCheckpoint

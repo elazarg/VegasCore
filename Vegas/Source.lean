@@ -99,3 +99,4 @@ import Vegas.Source.CommitRecoveryBlockCloseLift
 import Vegas.Source.CommitPhaseAutomaticAttempt
 import Vegas.Source.CommitPrefixSplitting
 import Vegas.Source.CommitRecoveryPrefixPath
+import Vegas.Source.CommitRecoveryClearRecall

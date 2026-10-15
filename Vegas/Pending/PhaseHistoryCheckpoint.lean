@@ -1,0 +1,119 @@
+/- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
+
+import Vegas.Pending.PhaseStoredCheckpoint
+
+/-! # Surviving chronological histories extend their saved checkpoint -/
+
+noncomputable section
+
+namespace Vegas.EventGraphRuntime
+
+open EventGraph Interaction GameTheory.Math.Probability
+
+variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
+  {graph : Vegas.EventGraph Player L}
+
+namespace RuntimePhase
+
+/-- Automatic completions append their original dependent actions. -/
+theorem drainFuel_history_prefix (phase : RuntimePhase graph) (fuel : Nat)
+    (state : RecoveryState graph) :
+    state.native.config.history.IsPrefix (phase.drainFuel fuel state).native.config.history := by
+  induction fuel generalizing state with
+  | zero => exact ⟨[], by simp only [drainFuel, List.append_nil]⟩
+  | succ fuel ih =>
+      unfold drainFuel
+      split
+      · rename_i pending
+        obtain ⟨owner, acting, _excluded⟩ := (Classical.choose_spec pending).2.owned
+        obtain ⟨action, supported⟩ := state.native.completeFailure_step _
+          (Classical.choose_spec pending).2.1 acting
+        apply List.IsPrefix.trans ?_ (ih _)
+        change state.native.config.history.IsPrefix
+          (state.native.completeFailure _ _).config.history
+        rw [state.native.config.step_history _ _ _ _ supported]
+        exact ⟨_, rfl⟩
+      · exact ⟨[], by simp⟩
+
+theorem drain_history_prefix (phase : RuntimePhase graph) (state : RecoveryState graph) :
+    state.native.config.history.IsPrefix (phase.drain state).native.config.history :=
+  phase.drainFuel_history_prefix _ _
+
+end RuntimePhase
+
+namespace PhaseRuntimeState
+
+/-- A retry discards only the live suffix of effective semantic actions. -/
+def HistoryCheckpoint (state : PhaseRuntimeState graph) : Prop :=
+  state.entry.native.config.history.IsPrefix state.current.native.config.history
+
+theorem settle_historyCheckpoint (phases : List (RuntimePhase graph)) (generation : Nat)
+    (entry current : RecoveryState graph) (retired : List (RetiredCommitAttempt graph))
+    (history : entry.native.config.history.IsPrefix current.native.config.history) :
+    (settle phases generation entry current retired).HistoryCheckpoint := by
+  induction phases generalizing generation entry current retired with
+  | nil => exact history
+  | cons phase remaining ih =>
+      have drained := history.trans (phase.drain_history_prefix current)
+      simp only [settle]
+      split
+      · split
+        · split
+          · exact phase.drain_history_prefix _
+          · exact ih _ _ _ _ (⟨[], by simp⟩)
+        · exact ih _ _ _ _ (⟨[], by simp⟩)
+      · exact drained
+
+theorem initial_historyCheckpoint (plan : RuntimePhasePlan graph) (inputs : graph.Inputs) :
+    (initial plan inputs).HistoryCheckpoint :=
+  settle_historyCheckpoint _ _ _ _ _ (⟨[], by simp⟩)
+
+end PhaseRuntimeState
+
+/-- Every physical primitive retains saved dependent completion actions. -/
+theorem phaseApplication_historyCheckpoint (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket graph)) :
+    (phaseApplication runtime leaks).Invariant PhaseRuntimeState.HistoryCheckpoint where
+  submit state who material valid := by
+    change state.entry.native.config.history.IsPrefix
+      (submitStep (material.call.register state.current.native who) who
+        material.call.packet).config.history
+    rw [submitStep_config, (material.call.register_facts who state.current.native).1]
+    exact valid
+  handle state message next valid accepted := by
+    change state.handle runtime message = some next at accepted
+    unfold PhaseRuntimeState.handle at accepted
+    split at accepted
+    · obtain ⟨native, handled, rfl⟩ := Option.map_eq_some_iff.mp accepted
+      apply PhaseRuntimeState.settle_historyCheckpoint
+      obtain ⟨event, _named, ready, action, supported⟩ :=
+        handle_config_mem_step runtime _ native _ handled
+      apply valid.trans
+      change state.current.native.config.history.IsPrefix native.config.history
+      rw [state.current.native.config.step_history _ _ _ _ supported]
+      exact ⟨_, rfl⟩
+    · cases accepted
+  environment state command next valid reached := by
+    change next ∈ (state.environment runtime command).support at reached
+    unfold PhaseRuntimeState.environment at reached
+    split at reached
+    · obtain ⟨native, supported, rfl⟩ := PMF.support_map .. ▸ reached
+      apply PhaseRuntimeState.settle_historyCheckpoint
+      exact valid.trans (environmentStep_history_prefix runtime _ native command supported)
+    · cases (PMF.mem_support_pure_iff _ _).mp reached
+      exact valid
+
+/-- The complete actual history derives chronological checkpoint retention. -/
+theorem phaseHistoryCheckpoint_history (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket graph))
+    (plan : RuntimePhasePlan graph) (inputs : PMF graph.Inputs) (horizon : Nat)
+    (scheduler : (phaseApplication runtime leaks).Scheduler) {control}
+    (trace : ((phaseApplication runtime leaks).protocol
+      (inputs.map (PhaseRuntimeState.initial plan)) horizon scheduler).Trace (some control)) :
+    control.execution.application.HistoryCheckpoint :=
+  (phaseApplication_historyCheckpoint runtime leaks).history _ _ _
+    (fun state supported => by
+      obtain ⟨draw, _supported, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp supported
+      exact PhaseRuntimeState.initial_historyCheckpoint plan draw) trace
+
+end Vegas.EventGraphRuntime

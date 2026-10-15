@@ -1,6 +1,6 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**SE: non-concurrent ✓ · concurrent trace 8/8 · unsent Bayes product ✓; native SE open.**
+**SE: non-concurrent ✓ · trace 8/8 · unsent Bayes ✓ · clear source recall ✓; native SE open.**
 
 <details>
 <summary>Recovery milestones and current proof substeps</summary>
@@ -12,7 +12,8 @@ retry, exhaustion, normalization and the actual-history invariant are checked.
 The 8/8 count tracks these proof steps, not a percentage of full SE.
 At unsent sites the original local seed has its observed-delay-filtered law,
 independently of the full physical control and all other original seeds under
-the actual Bayes belief. Native SE remains open.
+the actual Bayes belief. Complete clear source recall is checked; its all-history
+alignment with native action records and native SE remain open.
 
 | Status | Recovery milestone |
 | --- | --- |
@@ -131,8 +132,21 @@ actual lifted source observation when supplied the saved source own history.
 Legal unclosed commitment prefixes keep the same saved checkpoint. Filling
 unavailable earlier foreign cells with latent failures preserves the ready
 owner's visible source observation; genuine readiness derives availability of
-earlier visible owned fields. Alignment with the actual native own history
-and the complete source signal transcript remains separate.
+earlier visible owned fields. Their exact typed own-action word now follows from
+the actual immutable native records, including accepted unusable bindings.
+The saved chronological history is a prefix of the live history under every
+actual operation and rollback. Source-ranked and physical owned records agree
+on partial intervals even when foreign commitments have holes. Completed clear
+blocks advance the exact whole source own history, given its saved-entry
+alignment. The all-history saved source/native alignment remains open.
+At any actual clear auxiliary-source history, the current private source view
+determines its entire signal transcript and own-play recall. If an actual
+intended history shares that view, the complete recovery information equals
+the existing intended-information embedding. A latent bad binding does not
+invalidate this clear-history theorem, but an intended-view witness is still
+required to identify an intended information site. Typed prefix completion
+also yields an actual initialized source trace and exact whole source view
+at the selected binding, given the effective own-history alignment.
 Every actually initialized finished raw history now yields a genuine terminal
 auxiliary-source history with the same typed readout and entire payoff vector;
 no checkpoint or source-outcome witness is a premise. Actual history invariants

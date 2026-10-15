@@ -765,3 +765,9 @@ import Vegas.Game.PhaseEventSourceView
 import Vegas.Game.PhaseRecoveryBindingComponent
 import Vegas.Game.CompiledViewTail
 import Vegas.Game.CompiledCommitPartialView
+import Vegas.Game.CommitRecoveryClearInformation
+import Vegas.Game.CommitAttemptHistory
+import Vegas.Game.CommitAttemptRecall
+import Vegas.Game.CommitAttemptOwnRecall
+import Vegas.Game.RecoveryCommitPrefixWitness
+import Vegas.Game.CommitPrefixFillRecall
