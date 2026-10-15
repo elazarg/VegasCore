@@ -1,6 +1,6 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**SE: non-concurrent ✓ · concurrent trace 8/8 · unsent seed filter ✓; posterior product/native SE open.**
+**SE: non-concurrent ✓ · concurrent trace 8/8 · unsent Bayes product ✓; native SE open.**
 
 <details>
 <summary>Recovery milestones and current proof substeps</summary>
@@ -10,8 +10,9 @@ Milestones have unequal cost; the fixed SE checklist is unchanged.
 Concurrent trace substeps: initialization, reveal, sample, clean commitment,
 retry, exhaustion, normalization and the actual-history invariant are checked.
 The 8/8 count tracks these proof steps, not a percentage of full SE.
-Unsent-site seed constraints are checked across the complete owner information
-fiber; their conditional probability product and native SE remain open.
+At unsent sites the original local seed has its observed-delay-filtered law,
+independently of the full physical control and all other original seeds under
+the actual Bayes belief. Native SE remains open.
 
 | Status | Recovery milestone |
 | --- | --- |
@@ -124,6 +125,14 @@ available menu, raw step and typed readout. The checked normalization theorem
 handles every phase and arbitrary chains of automatic retirement. Every actual
 initialized legal physical history now has such a saved source checkpoint, with
 no source path or simulation witness assumed.
+Every checkpoint also carries the canonical syntactic embedding of residual
+source views and named actions. Its whole-program decoder agrees with the
+actual lifted source observation when supplied the saved source own history.
+Legal unclosed commitment prefixes keep the same saved checkpoint. Filling
+unavailable earlier foreign cells with latent failures preserves the ready
+owner's visible source observation; genuine readiness derives availability of
+earlier visible owned fields. Alignment with the actual native own history
+and the complete source signal transcript remains separate.
 Every actually initialized finished raw history now yields a genuine terminal
 auxiliary-source history with the same typed readout and entire payoff vector;
 no checkpoint or source-outcome witness is a premise. Actual history invariants
@@ -186,7 +195,11 @@ command-filter condition for every candidate original seed is exactly equality
 of its first delay with the minimum observed activation clock. All inclusion-coin
 words remain unconstrained there. The condition agrees across every pair of
 actual histories with the same complete owner input, even for different original
-remainder and foreign seeds. Actual posterior-product composition remains open.
+remainder and foreign seeds. At every positive-mass unsent owner site, the actual
+finite Bayes belief now factors into this original delay-filtered seed law and
+the joint law of the full physical control and all other original coordinates.
+The history-adaptive priority remains arbitrary. At a genuine ready coordinate
+with a recorded own packet, the actual one-packet menu contains only silence.
 Every completed current-phase event of a nonexcluded owner has an authentic
 same-attempt submitted message naming it, covering openings and bindings through
 arbitrary automatic completion, expiry, retirement and resets. Permanently excluded

@@ -41,8 +41,9 @@ theorem Attempt.liftPoint_entry_of_length_zero
   | excluded => simp only [length] at zero; omega
 
 /-- A typed attempt supplies actual legal recovery choices. The saved frontier
-is retained at every interior instruction; the last instruction executes the
-protocol's automatic closure, including its genuine retry or exhaustion. -/
+is retained while later commitment instructions remain before its saved block
+endpoint. The final instruction applies the actual closure, which may simply
+retain an unfinished maximal block. -/
 theorem Attempt.reaches_closed_lift
     {wholeΓ Γ Δ : SourceCtx Player L} {wholeO O P : Finset VarId}
     (whole : SourceProgram Player L wholeΓ wholeO) (initial : Config Player L wholeΓ)
@@ -66,7 +67,7 @@ theorem Attempt.reaches_closed_lift
       (_atEntry : state.point = lift (ProtocolState.entry (block.prepend suffix) entry))
       (stateExcluded : state.excluded = excluded),
     ProtocolState.atCommit whole state.saved = true →
-    ProtocolState.commitEnd whole state.saved = instructionCount suffix → 0 < block.length →
+    ProtocolState.commitEnd whole state.saved ≤ instructionCount suffix → 0 < block.length →
     (commitRecoveryProtocol whole initial).Reaches state
       (state.install (lift (block.liftPoint suffix (ProtocolState.entry suffix finished)), after)
         (fun _ member => attempt.excluded_subset (stateExcluded ▸ member))).close := by
@@ -95,7 +96,7 @@ theorem Attempt.reaches_closed_lift
             ProtocolState.remaining whole next.point := by
           change ProtocolState.commitEnd whole state.saved <
             ProtocolState.remaining whole (lift (Sum.inr _))
-          rw [endpoint, ranks]
+          rw [ranks]
           simp only [prepend, ProtocolState.remaining, Sum.elim_inr,
             ProtocolState.remaining_entry]
           rw [instructionCount_prepend]
@@ -140,7 +141,7 @@ theorem Attempt.reaches_closed_lift
             ProtocolState.remaining whole next.point := by
           change ProtocolState.commitEnd whole state.saved <
             ProtocolState.remaining whole (lift (Sum.inr _))
-          rw [endpoint, ranks]
+          rw [ranks]
           simp only [prepend, ProtocolState.remaining, Sum.elim_inr,
             ProtocolState.remaining_entry]
           rw [instructionCount_prepend]

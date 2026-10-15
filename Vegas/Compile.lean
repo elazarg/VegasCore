@@ -33,5 +33,8 @@ import Vegas.Compile.CommitBlockReferences
 import Vegas.Compile.EventGraphRecoveryReveal
 import Vegas.Compile.CompiledReadoutSuffix
 import Vegas.Compile.EventSourceView
+import Vegas.Compile.ProtocolViewSuffix
+import Vegas.Compile.CommitPrefixCompletion
+import Vegas.Compile.CommitPrefixView
 
 /-! Source-program lowering to the typed immutable graph. -/

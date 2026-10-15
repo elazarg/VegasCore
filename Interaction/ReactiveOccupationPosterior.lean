@@ -17,6 +17,30 @@ variable {Principal : Type} [DecidableEq Principal] [Fintype Principal]
 
 local notation "model" => menu.information initial horizon scheduler
 
+/-- Positive finite-site information mass gives a genuine supported observation
+of the actual bounded command-occupation law. -/
+theorem occupation_observation_support
+    (profile : ∀ who, (model).BehavioralPolicy who)
+    (who : Principal) (site : (model).InformationSite who)
+    (positive : 0 < (model).informationMass profile who site) :
+    site.1 ∈ ((app.occupationControlLaw scheduler
+      (menu.decodeProfile initial horizon scheduler profile) initial horizon).map
+        (app.observe who)).support := by
+  classical
+  have antichain := menu.decisionInformationAntichain initial horizon scheduler who site
+  have massPositive : 0 < ((model).informationMass profile who site).toReal :=
+    ENNReal.toReal_pos (ne_of_gt positive)
+      (ne_of_lt (lt_of_le_of_lt
+        ((model).informationMass_le_one profile who site antichain) ENNReal.one_lt_top))
+  have marginal := menu.occupation_information_mass initial horizon scheduler profile who site
+  have marginalPositive : 0 <
+      (((app.occupationControlLaw scheduler
+        (menu.decodeProfile initial horizon scheduler profile) initial horizon).map
+          (app.observe who)) site.1).toReal := by
+    rw [marginal]
+    exact div_pos massPositive (Nat.cast_pos.mpr (Nat.pos_of_ne_zero (NeZero.ne horizon)))
+  exact (PMF.apply_pos_iff _ _).mp (ENNReal.toReal_pos_iff.mp marginalPositive).1
+
 /-- Standard Bayes beliefs pushed to the complete actual control equal
 conditioning the genuine bounded command-occupation law on full owner information. -/
 theorem bayesBelief_state_eq_occupationPosterior

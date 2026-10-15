@@ -47,30 +47,6 @@ variable [Finite (GameTheory.Protocol.ExecutionProtocol.History
         (independentProduct laws) (fun values => controller.fixedScheduler remainder
           (initialMemory (values false) (values true)))))))]
 
-/-- Positive finite-site information mass gives a genuine supported observation
-of the actual bounded command-occupation law. -/
-theorem occupation_observation_support [NeZero horizon]
-    (profile : ∀ who, (model).BehavioralPolicy who)
-    (site : (model).InformationSite owner)
-    (positive : 0 < (model).informationMass profile owner site) :
-    site.1 ∈ (((app).occupationControlLaw (mixture).scheduler (players profile)
-      (inputs.map State.initial) horizon).map ((app).observe owner)).support := by
-  classical
-  have antichain := (menu).decisionInformationAntichain
-    (inputs.map State.initial) horizon (mixture).scheduler owner site
-  have massPositive : 0 < ((model).informationMass profile owner site).toReal :=
-    ENNReal.toReal_pos (ne_of_gt positive)
-      (ne_of_lt (lt_of_le_of_lt
-        ((model).informationMass_le_one profile owner site antichain) ENNReal.one_lt_top))
-  have marginal := (menu).occupation_information_mass
-    (inputs.map State.initial) horizon (mixture).scheduler profile owner site
-  have marginalPositive : 0 <
-      ((((app).occupationControlLaw (mixture).scheduler (players profile)
-        (inputs.map State.initial) horizon).map ((app).observe owner)) site.1).toReal := by
-    rw [marginal]
-    exact div_pos massPositive (Nat.cast_pos.mpr (Nat.pos_of_ne_zero (NeZero.ne horizon)))
-  exact (PMF.apply_pos_iff _ _).mp (ENNReal.toReal_pos_iff.mp marginalPositive).1
-
 /-- Tagging standard finite-site Bayes beliefs with the actual seed posterior
 is exactly conditioning the original immutable seeded command law. -/
 theorem bayesBelief_seededDecision [NeZero horizon]
@@ -98,8 +74,9 @@ theorem bayesBelief_seededDecision [NeZero horizon]
     (app).observe owner outcome.1
   let law := (app).occupationControlLaw (mixture).scheduler (players profile)
     (inputs.map State.initial) horizon
-  have observationPresent := controller.occupation_observation_support remainder laws bounds
-    inputs horizon profile site positive
+  have observationPresent := (menu).occupation_observation_support (inputs.map State.initial)
+    horizon (mixture).scheduler
+      profile owner site positive
   have mapped : source.map read = law.bind fun state => (draws state).map (Prod.mk state) :=
     controller.seededSampledRoundDecisionLaw_control remainder laws inputs (players profile) horizon
   have sourcePresent : site.1 ∈ (source.map (observe ∘ read)).support := by

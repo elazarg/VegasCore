@@ -584,6 +584,18 @@ import Vegas.Compile.EventSourceView
 import Vegas.Game.PhaseEventSourceView
 import Vegas.Game.PhaseRecoveryBindingComponent
 import Vegas.Pending.RecordedBindingReadback
+import Vegas.Compile.ProtocolViewSuffix
+import Vegas.Game.CompiledViewTail
+import Vegas.Source.CommitPrefixSplitting
+import Vegas.Source.CommitRecoveryPrefixPath
+import Vegas.Compile.CommitPrefixCompletion
+import Vegas.Compile.CommitPrefixView
+import Vegas.Game.CompiledCommitPartialView
+import Interaction.ReactiveOccupationPosterior
+import Interaction.ReactiveAddressedCoordinatePosterior
+import Vegas.Pending.PhaseSeedUnsentPosterior
+import Vegas.Pending.PhaseSeedUnsentBayes
+import Vegas.Pending.PhaseSentMenu
 
 /-! # Checked sequential-equilibrium preservation, Nash correspondence and termination -/
 
@@ -6640,3 +6652,58 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms
   Vegas.EventGraphRuntime.State.BindingInvariant.recorded_binding_action
+
+/-- info: 'Vegas.ProtocolViewSuffix.decode_entry'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.ProtocolViewSuffix.decode_entry
+
+/-- info: 'Vegas.RecoverySourceCheckpoint.source_entry_view'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.RecoverySourceCheckpoint.source_entry_view
+
+/-- info: 'Vegas.SourceProgram.CommitPrefix.Attempt.reaches_unclosed_lift'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.CommitPrefix.Attempt.reaches_unclosed_lift
+
+/-- info: 'Vegas.fillCommitPrefix_observation_of_ready'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.fillCommitPrefix_observation_of_ready
+
+/-- info: 'Vegas.decodeEventView?_commitPrefix_entry'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.decodeEventView?_commitPrefix_entry
+
+/-- info:
+'Interaction.ReactiveApplication.AddressedScheduler.posterior_splitAt_of_coordinate_constraint'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Interaction.ReactiveApplication.AddressedScheduler.posterior_splitAt_of_coordinate_constraint
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseSeedCalendar.unsent_posterior_splitAt'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseSeedCalendar.unsent_posterior_splitAt
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseSeedCalendar.bayesBelief_unsent_seed_product'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseSeedCalendar.bayesBelief_unsent_seed_product
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseCount.onePacketActions_eq_singleton_of_sent'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseCount.onePacketActions_eq_singleton_of_sent

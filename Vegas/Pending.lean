@@ -475,3 +475,6 @@ import Vegas.Pending.PhaseSeedRecordedWait
 import Vegas.Pending.PhaseSeedUnsentDelay
 import Vegas.Pending.PhaseSeedUnsentFiber
 import Vegas.Pending.RecordedBindingReadback
+import Vegas.Pending.PhaseSeedUnsentPosterior
+import Vegas.Pending.PhaseSeedUnsentBayes
+import Vegas.Pending.PhaseSentMenu

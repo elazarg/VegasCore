@@ -3,6 +3,8 @@
 import Vegas.Compile.CommitBlockReferences
 import Vegas.Compile.EventGraphSuffix
 import Vegas.Compile.CompiledReadoutSuffix
+import Vegas.Compile.ProtocolViewSuffix
+import Vegas.Source.CommitRecoveryBlockEmbedding
 import Vegas.Source.CommitPhaseRegistry
 import Vegas.Source.CommitPhaseFailures
 
@@ -34,6 +36,8 @@ theorem SourceProgram.CommitPrefix.Attempt.compiledTail
     CompiledSuffix whole (block.prepend suffix) refs entry.revelations registry
       embedding before offset →
     CompiledReadoutSuffix whole (block.prepend suffix) refs embedding →
+    (lift : ProtocolState (block.prepend suffix) → ProtocolState whole) →
+    ProtocolViewSuffix whole (block.prepend suffix) refs embedding lift →
     ∃ finalEmbedding : OutputEmbedding (inputLayout wholeΓ) (outputLayout whole) suffix,
     ∃ finalBefore : ContextRefsBefore
       (commitBlockRefs whole block suffix embedding refs) finalEmbedding,
@@ -41,16 +45,18 @@ theorem SourceProgram.CommitPrefix.Attempt.compiledTail
         finished.revelations (block.guardRegistry registry) finalEmbedding finalBefore
         (offset + block.length) ∧
       CompiledReadoutSuffix whole suffix (commitBlockRefs whole block suffix embedding refs)
-        finalEmbedding := by
+        finalEmbedding ∧
+      Nonempty (ProtocolViewSuffix whole suffix (commitBlockRefs whole block suffix embedding refs)
+        finalEmbedding (fun point => lift (block.liftPoint suffix point))) := by
   induction attempt with
   | nil =>
-      intro suffix refs registry embedding before offset compiled readout
-      refine ⟨embedding, before, ?_, readout⟩
+      intro suffix refs registry embedding before offset compiled readout lift views
+      refine ⟨embedding, before, ?_, readout, ⟨views⟩⟩
       simpa only [CommitPrefix.length, CommitPrefix.prepend, commitBlockRefs,
         CommitPrefix.guardRegistry, Nat.add_zero] using compiled
   | @active Γ O Δ P name owner payload fresh guard rest config excluded finished afterExcluded
       active choice missed missingFailure later ih =>
-      intro suffix refs registry embedding before offset compiled readout
+      intro suffix refs registry embedding before offset compiled readout lift views
       let zero : Fin (eventCount ((SourceProgram.CommitPrefix.commit name owner fresh guard
           rest).prepend suffix)) := ⟨0, by
         simp only [SourceProgram.CommitPrefix.prepend, eventCount]
@@ -83,10 +89,13 @@ theorem SourceProgram.CommitPrefix.Attempt.compiledTail
       have nextReadout : CompiledReadoutSuffix whole (rest.prepend suffix) tailRefs
           tailEmbedding :=
         readout.commitTail whole fresh guard (rest.prepend suffix) refs embedding
-      obtain ⟨finalEmbedding, finalBefore, aligned, terminalAligned⟩ := ih suffix tailRefs
+      obtain ⟨finalEmbedding, finalBefore, aligned, terminalAligned, ⟨finalViews⟩⟩ :=
+        ih suffix tailRefs
         (obligation :: registry.weaken) tailEmbedding tailBefore (offset + 1) nextCompiled
-        nextReadout
-      refine ⟨finalEmbedding, finalBefore, ?_, terminalAligned⟩
+        nextReadout (fun point => lift (Sum.inr point))
+        (ProtocolViewSuffix.commitTail whole fresh guard (rest.prepend suffix) refs embedding
+          lift views)
+      refine ⟨finalEmbedding, finalBefore, ?_, terminalAligned, ⟨finalViews⟩⟩
       convert aligned using 1
       · rfl
       · rfl
@@ -94,7 +103,7 @@ theorem SourceProgram.CommitPrefix.Attempt.compiledTail
         omega
   | @excluded Γ O Δ P name owner payload fresh guard rest config excluded finished afterExcluded
       inactive later ih =>
-      intro suffix refs registry embedding before offset compiled readout
+      intro suffix refs registry embedding before offset compiled readout lift views
       let zero : Fin (eventCount ((SourceProgram.CommitPrefix.commit name owner fresh guard
           rest).prepend suffix)) := ⟨0, by
         simp only [SourceProgram.CommitPrefix.prepend, eventCount]
@@ -127,10 +136,13 @@ theorem SourceProgram.CommitPrefix.Attempt.compiledTail
       have nextReadout : CompiledReadoutSuffix whole (rest.prepend suffix) tailRefs
           tailEmbedding :=
         readout.commitTail whole fresh guard (rest.prepend suffix) refs embedding
-      obtain ⟨finalEmbedding, finalBefore, aligned, terminalAligned⟩ := ih suffix tailRefs
+      obtain ⟨finalEmbedding, finalBefore, aligned, terminalAligned, ⟨finalViews⟩⟩ :=
+        ih suffix tailRefs
         (obligation :: registry.weaken) tailEmbedding tailBefore (offset + 1) nextCompiled
-        nextReadout
-      refine ⟨finalEmbedding, finalBefore, ?_, terminalAligned⟩
+        nextReadout (fun point => lift (Sum.inr point))
+        (ProtocolViewSuffix.commitTail whole fresh guard (rest.prepend suffix) refs embedding
+          lift views)
+      refine ⟨finalEmbedding, finalBefore, ?_, terminalAligned, ⟨finalViews⟩⟩
       convert aligned using 1
       · rfl
       · rfl

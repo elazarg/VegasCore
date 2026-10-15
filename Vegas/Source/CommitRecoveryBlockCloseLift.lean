@@ -68,7 +68,7 @@ theorem Close.reaches_lift
       (CommitRecoveryState.atPoint
         (lift (ProtocolState.entry (block.prepend suffix) entry.config))
         entry.excluded entry.attempt)
-      rfl rfl ((commits _).trans committing) ((endpoints _).trans endpoint) positive
+      rfl rfl ((commits _).trans committing) ((endpoints _).trans endpoint).le positive
   cases closed with
   | clean attempt noFailure =>
       have reached := path attempt

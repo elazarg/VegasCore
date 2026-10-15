@@ -106,8 +106,9 @@ theorem bayesBelief_seed_product
     rfl
   have present : site.1 ∈ (source.map sourceObserve).support := by
     rw [observationEq]
-    exact controller.occupation_observation_support remainder laws bounds inputs horizon
-      profile site positive
+    exact (menu).occupation_observation_support (inputs.map State.initial)
+      horizon (mixture).scheduler
+        profile owner site positive
   obtain ⟨witness, witnessSupport, observed⟩ := (PMF.mem_support_map_iff _ _ _).mp present
   obtain ⟨acting, information⟩ := decisionObservation_fields owner witness.2 past view
     (observed.trans siteInfo)

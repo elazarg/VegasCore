@@ -62,7 +62,7 @@ theorem Close.reaches (closed : block.Close entry result)
       (fun point excluded joint => (PMF.map_id _).symm)
       (CommitRecoveryState.atPoint
         (ProtocolState.entry (block.prepend suffix) entry.config) entry.excluded entry.attempt)
-      rfl rfl committing endpoint positive
+      rfl rfl committing endpoint.le positive
   cases closed with
   | clean attempt noFailure =>
       have reached := path attempt

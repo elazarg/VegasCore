@@ -2,6 +2,7 @@
 
 import Vegas.Game.CompiledRecoveryResidual
 import Vegas.Compile.CompiledReadoutSuffix
+import Vegas.Compile.ProtocolViewSuffix
 import Vegas.Compile.EventGraphInputs
 import Vegas.Source.CommitRecoveryProtocol
 import Vegas.Source.RegistryFailureExtension
@@ -76,6 +77,7 @@ structure RecoverySourceCheckpoint (setup : Setup (Player := Player) (L := L))
     (some (CommitRecoveryState.atPoint
       (residual.lift (ProtocolState.entry residual.tail source)) state.entry.excluded
       state.generation)))
+  views : ProtocolViewSuffix setup.program residual.tail refs embedding residual.lift
 
 namespace RecoverySourceCheckpoint
 
@@ -136,6 +138,8 @@ def initial (setup : Setup (Player := Player) (L := L)) (mode : EventGraph.Execu
     refine ⟨.extend .start (fun _ => none) ⟨(fun impossible => impossible),
       (fun _ impossible => impossible)⟩ ?_⟩
     exact (PMF.mem_support_map_iff _ _ _).mpr ⟨initial, supported, rfl⟩
+
+  views := ProtocolViewSuffix.initial setup.program
 
 /-- Unfinished live effects preserve the same saved checkpoint, irrespective
 of the live concurrent cut or the permanent physical archive. -/

@@ -20,7 +20,7 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   (runtime : EventGraphRuntime graph)
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
 
-private theorem countCallCorrect_owned_event
+theorem countCallCorrect_owned_event
     (earlier : Message Player (WitnessedPacket graph) → Prop)
     (message : Message Player (WitnessedPacket graph))
     (correct : CountCallCorrect earlier message) {event : graph.EventId}

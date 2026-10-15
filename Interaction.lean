@@ -157,3 +157,4 @@ import Interaction.ReactiveAddressedQueryTranscript
 import Interaction.MessageNetworkSelection
 import Interaction.ReactiveAddressedTranscriptAppend
 import Interaction.ReactiveRecordedRounds
+import Interaction.ReactiveAddressedCoordinatePosterior

@@ -3,6 +3,7 @@
 import Vegas.Game.RecoverySourceCheckpoint
 import Vegas.Game.RecoverySourceBoundary
 import Vegas.Game.CompiledRevealTail
+import Vegas.Game.CompiledViewTail
 import Vegas.Game.CompiledRevealBoundary
 import Vegas.Game.RevealRecoveryResidual
 import Vegas.Source.CommitRecoveryPathLift
@@ -138,7 +139,9 @@ theorem RecoverySourceCheckpoint.after_reveal
       step := ?_
       menus := fun who point => (checkpoint.menus who _).trans (menus who point)
       readout := ?_
-      trace := sourceTrace }⟩
+      trace := sourceTrace
+      views := ProtocolViewSuffix.revealTailMany setup count program prefixed checkpoint.refs
+        checkpoint.embedding checkpoint.residual.lift checkpoint.views }⟩
   · rw [address, high]
     rw [revelations]
     exact graphTail

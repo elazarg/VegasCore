@@ -34,7 +34,7 @@ theorem RecoverySourceCheckpoint.after_sample
         state.retired⟩ : PhaseRuntimeState ((toEventGraph setup.program).withMode mode))) := by
   rcases checkpoint with ⟨⟨Γ, O, program, lift⟩, source, refs, registry, embedding, before,
     compiled, terminalAligned, agrees, guards, failures, unique, ranks, actors, commits,
-    owners, endpoints, automatic, histories, memories, steps, menus, readouts, trace⟩
+    owners, endpoints, automatic, histories, memories, steps, menus, readouts, trace, views⟩
   let image := phase.drain state.current
   have low : phase.low = state.attempt.phase := by
     rw [PhaseRuntimeState.attempt, installed]
@@ -181,7 +181,9 @@ theorem RecoverySourceCheckpoint.after_sample
           step := ?_
           menus := fun who point => menus who (Sum.inr point)
           readout := fun point => readouts (Sum.inr point)
-          trace := by rw [excludedEq]; exact sourceTrace }⟩
+          trace := by rw [excludedEq]; exact sourceTrace
+          views := ProtocolViewSuffix.sampleTail setup.program fresh law next refs embedding
+            lift views }⟩
       · rw [address]
         exact compiled.sampleTail (_openNames := O) setup.program fresh law next refs
           source.revelations registry embedding before state.attempt.phase

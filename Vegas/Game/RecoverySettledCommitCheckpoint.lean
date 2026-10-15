@@ -59,7 +59,7 @@ theorem RecoverySourceCheckpoint.after_commit_clean
         (phase.drain state.current) (phase.drain state.current) state.retired := by
   rcases checkpoint with ⟨⟨Γ, O, program, lift⟩, source, refs, registry, embedding, before,
     compiled, aligned, agree, guards, failures, unique, ranks, actors, commits, owners, endpoints,
-    automatic, history, memory, steps, menus, readout, sourceTrace⟩
+    automatic, history, memory, steps, menus, readout, sourceTrace, views⟩
   obtain ⟨Δ, P, suffix, block, reconstruct, boundary⟩ := commitPhase program
   subst program
   have positive : 0 < block.length := by
@@ -110,8 +110,10 @@ theorem RecoverySourceCheckpoint.after_commit_clean
     ranks actors (fun point who => menus who point) steps commits owners endpoints automatic
     history memory
   have reachedTrace := setup.recoveryTrace_of_reaches sourceInitial sourceTrace reached
-  obtain ⟨finalEmbedding, finalBefore, finalCompiled, finalAlignment⟩ := attempt.compiledTail
-    setup.program suffix refs registry embedding before state.attempt.phase compiled aligned
+  obtain ⟨finalEmbedding, finalBefore, finalCompiled, finalAlignment, ⟨finalViews⟩⟩ :=
+    attempt.compiledTail
+      setup.program suffix refs registry embedding before state.attempt.phase compiled aligned lift
+        views
   obtain ⟨tailRanks, tailActors, tailCommits, tailOwners, tailEnds, tailAutomatic, tailHistory,
     tailMemory, tailSteps, tailMenus, tailReadout⟩ := block.liftPoint_recovery suffix
   have address := next_phase_address phase remaining state.generation (phase.drain state.current)
@@ -144,7 +146,8 @@ theorem RecoverySourceCheckpoint.after_commit_clean
       step := ?_
       menus := fun who point => (menus who _).trans (tailMenus who point)
       readout := ?_
-      trace := reachedTrace }⟩
+      trace := reachedTrace
+      views := finalViews }⟩
   · rw [address]
     exact finalCompiled
   · intro point excluded joint
@@ -185,7 +188,7 @@ theorem RecoverySourceCheckpoint.after_commit_exhausted
         archive := by
   rcases checkpoint with ⟨⟨Γ, O, program, lift⟩, source, refs, registry, embedding, before,
     compiled, aligned, agree, guards, failures, unique, ranks, actors, commits, owners, endpoints,
-    automatic, history, memory, steps, menus, readout, sourceTrace⟩
+    automatic, history, memory, steps, menus, readout, sourceTrace, views⟩
   obtain ⟨Δ, P, suffix, block, reconstruct, boundary⟩ := commitPhase program
   subst program
   have positive : 0 < block.length := by
@@ -226,9 +229,9 @@ theorem RecoverySourceCheckpoint.after_commit_exhausted
     by_contra outside
     exact noSource ⟨who, Finset.mem_sdiff.mpr ⟨member, outside⟩⟩
   let automaticAttempt := block.automaticAttempt restoredSource image.excluded allSource
-  obtain ⟨finalEmbedding, finalBefore, finalCompiled, finalAlignment⟩ :=
+  obtain ⟨finalEmbedding, finalBefore, finalCompiled, finalAlignment, ⟨finalViews⟩⟩ :=
     automaticAttempt.compiledTail setup.program suffix refs registry embedding before
-      state.attempt.phase compiled aligned
+      state.attempt.phase compiled aligned lift views
   obtain ⟨tailRanks, tailActors, tailCommits, tailOwners, tailEnds, tailAutomatic, tailHistory,
     tailMemory, tailSteps, tailMenus, tailReadout⟩ := block.liftPoint_recovery suffix
   let sourceInitial := setup.initialConfig setup.initialLaw.support_nonempty.choose
@@ -273,7 +276,8 @@ theorem RecoverySourceCheckpoint.after_commit_exhausted
       step := ?_
       menus := fun who point => (menus who _).trans (tailMenus who point)
       readout := ?_
-      trace := finalTrace }⟩
+      trace := finalTrace
+      views := finalViews }⟩
   · rw [address]
     exact finalCompiled
   · intro point excluded joint
