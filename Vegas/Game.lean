@@ -613,3 +613,14 @@ import Vegas.Game.RecoveryNativeClearBelief
 
 import Vegas.Game.RecoveryStoppedAcceptance
 import Vegas.Game.RecoveryComparisonBelief
+import Vegas.Game.RecoveryNativeDebt
+import Vegas.Game.RecoveryNativePrefixBounds
+import Vegas.Game.RecoveryComparisonInformation
+import Vegas.Game.RecoveryNativePrefixSites
+
+import Vegas.Game.RecoveryComparisonStopped
+import Vegas.Game.RecoveryPrefixBeliefBounds
+
+import Vegas.Game.RecoveryForeignFailureBound
+
+import Vegas.Game.RecoveryForeignExitBeliefBound

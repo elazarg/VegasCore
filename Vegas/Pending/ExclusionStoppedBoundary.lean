@@ -30,12 +30,14 @@ local notation "Clear" => ReactiveApplication.stateInvariant
 
 /-- An actual idle clear prefix and its realized environment transition into
 this complete history, after the actual continuation start. The chosen command
-retains its true scheduler support. -/
-def ClearEnvironmentBoundary (start history : (protocol).History) : Prop :=
+retains its true scheduler support, and the extra stop is false at the prior. -/
+def ClearEnvironmentBoundary (extraStop : (protocol).History → Prop)
+    (start history : (protocol).History) : Prop :=
   ∃ (remaining : Nat) (execution : (nativeApp).Execution)
     (prior : (protocol).Trace (some ⟨remaining + 1, none, execution⟩))
     (command : (nativeApp).Command) (next : (nativeApp).Execution),
     PublicExclusionRecord (⟨execution.application, ∅⟩ : RecoveryState graph) ∧
+      ¬ extraStop ⟨some ⟨remaining + 1, none, execution⟩, prior⟩ ∧
       command ∈ (scheduler execution.environmentRecall
         (execution.observeEnvironment nativeApp)).support ∧
       next ∈ (execution.environmentStep nativeApp command).support ∧
@@ -100,7 +102,8 @@ theorem responseMenu_stopped_exclusion_boundary
       (fun history => ¬ Clear history.state ∨ extraStop history)
       start).support,
       Clear final.state ∨
-      ClearEnvironmentBoundary runtime leaks initial horizon scheduler menu start final := by
+      ClearEnvironmentBoundary runtime leaks initial horizon scheduler menu extraStop
+        start final := by
   classical
   let stopped := fun history : (protocol).History =>
     ¬ Clear history.state ∨ extraStop history
@@ -108,7 +111,8 @@ theorem responseMenu_stopped_exclusion_boundary
     (∃ current, history.state = some current) ∧
       TracePrefix start.trace history.trace ∧
       (Clear history.state ∨
-        ClearEnvironmentBoundary runtime leaks initial horizon scheduler menu start history)
+        ClearEnvironmentBoundary runtime leaks initial horizon scheduler menu extraStop
+          start history)
   have initialProperty : property start := by
     refine ⟨⟨current, state⟩, .refl, Or.inl ?_⟩
     change Clear start.state
@@ -145,8 +149,9 @@ theorem responseMenu_stopped_exclusion_boundary
       exact nextRecord
     · cases beforeEq
       exact ⟨⟨_, same⟩, .extend valid.2.1 draw.1 draw.2 realized,
-        Or.inr ⟨remaining, execution, trace, command, next, record, chosen, moved, same,
-          valid.2.1, .extend .refl draw.1 draw.2 realized⟩⟩
+        Or.inr ⟨remaining, execution, trace, command, next, record,
+          (fun halt => going (Or.inr halt)), chosen, moved, same, valid.2.1,
+          .extend .refl draw.1 draw.2 realized⟩⟩
   intro final member
   exact ((model).runBehavioralUntil_support_history_closed certificate profile stopped property
     preserved start initialProperty final member).2.2

@@ -1,3 +1,11 @@
+import Vegas.Game.RecoveryForeignExitBeliefBound
+import Vegas.Game.RecoveryComparisonStopped
+import Vegas.Game.RecoveryComparisonInformation
+import Vegas.Game.RecoveryPrefixBeliefBounds
+import Vegas.Pending.ExclusionBoundedInformationHistory
+import Vegas.Pending.ExclusionPolicyDeviation
+import Vegas.Pending.ExclusionSeedContinuation
+import Interaction.ReactiveSchedulerFinishSeed
 import Vegas.Game.RecoveryComparisonBelief
 import Vegas.Game.RecoveryNativeClearBelief
 import Vegas.Game.RecoveryNativePrior
@@ -5216,3 +5224,48 @@ open Vegas.RecoveryOnePacket in
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms recovery_belief_eq_nativeComparison
+
+/-- info: 'Vegas.RecoveryOnePacket.nativeComparison_foreign_exit_mass_le_rank'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.RecoveryOnePacket.nativeComparison_foreign_exit_mass_le_rank
+
+/-- info: 'Vegas.RecoveryOnePacket.nativeComparison_foreign_exit_mass_le_irregular_add_depth'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.RecoveryOnePacket.nativeComparison_foreign_exit_mass_le_irregular_add_depth
+
+/-- info: 'Vegas.RecoveryOnePacket.nativeComparison_stopped_update_eq'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.RecoveryOnePacket.nativeComparison_stopped_update_eq
+
+/-- info: 'Vegas.RecoveryOnePacket.recovery_belief_eq_comparisonInformationHistory'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.RecoveryOnePacket.recovery_belief_eq_comparisonInformationHistory
+
+/-- info: 'Vegas.RecoveryOnePacket.recovery_prefix_bounds'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.RecoveryOnePacket.recovery_prefix_bounds
+
+/-- info: 'Vegas.EventGraphRuntime.RecoveryProjection.bounded_bayesBelief_informationHistory'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.RecoveryProjection.bounded_bayesBelief_informationHistory
+
+/-- info: 'Vegas.EventGraphRuntime.RecoveryProjection.boundedNativeProfile_update'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.RecoveryProjection.boundedNativeProfile_update
+
+/-- info: 'Vegas.EventGraphRuntime.RecoveryProjection.clear_bayesBelief_finish_seeded'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.RecoveryProjection.clear_bayesBelief_finish_seeded
+
+/-- info: 'Interaction.ReactiveApplication.schedulerMixture_finish_joint'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Interaction.ReactiveApplication.schedulerMixture_finish_joint

@@ -73,6 +73,14 @@ private theorem seed_product_at_equal_laws
         controller.reply seed entry.query = entry.reply}, seed ∈ (laws false).support)
       (residual : PMF ((native).ProtocolState ×
         ((side : {side : Bool // side ≠ false}) → A side))),
+      (∀ current, some current ∈
+          (((nativeModelAt nativeInitial nativeSchedule).bayesBelief profile owner site
+            ((NativeMenu).decisionInformationAntichain nativeInitial horizon nativeSchedule
+              owner site) positive).map (fun history => history.1.state)).support →
+        ∀ values ∈ ((nativeMixture).posterior current.execution.environmentRecall).support,
+          (controller.replay remainder
+            (LocalSeedController.initialMemory (values false) (values true))
+              current.execution.environmentRecall).log = log) ∧
       ((((nativeModelAt nativeInitial nativeSchedule).bayesBelief profile owner site
         ((NativeMenu).decisionInformationAntichain nativeInitial horizon nativeSchedule owner site)
         positive).map (β := (native).ProtocolState) (fun history => history.1.state)).bind
@@ -86,10 +94,10 @@ private theorem seed_product_at_equal_laws
           controller.reply seed entry.query = entry.reply} localPositive).bind fun localSeed =>
             residual.map (Prod.mk localSeed) := by
   subst nativeInitial nativeSchedule
-  obtain ⟨log, localPositive, residual, _, product⟩ :=
+  obtain ⟨log, localPositive, residual, recovered, product⟩ :=
     controller.bayesBelief_seed_product remainder laws bounds inputs horizon ordered domainEq
       owned profile site positive past view siteInfo ready unmissed
-  exact ⟨log, localPositive, residual, product⟩
+  exact ⟨log, localPositive, residual, recovered, product⟩
 
 /-- The locally filtered seed product applies to the concretely projected
 recovery profile under the actual lifted persistent scheduler mixture. -/
@@ -111,6 +119,17 @@ theorem projected_bayesBelief_seed_product
         controller.reply seed entry.query = entry.reply}, seed ∈ (laws false).support)
       (residual : PMF ((native).ProtocolState ×
         ((side : {side : Bool // side ≠ false}) → A side))),
+      (∀ current, some current ∈
+          (((NativeModel).bayesBelief
+            (boundedNativeProfile runtime leaks bounds initial horizon scheduler profile)
+            owner site ((NativeMenu).decisionInformationAntichain
+              (initial.map RecoveryState.native) horizon
+                (nativeScheduler runtime leaks scheduler) owner site) positive).map
+                  (fun history => history.1.state)).support →
+        ∀ values ∈ ((nativeMixture).posterior current.execution.environmentRecall).support,
+          (controller.replay remainder
+            (LocalSeedController.initialMemory (values false) (values true))
+              current.execution.environmentRecall).log = log) ∧
       ((((NativeModel).bayesBelief
         (boundedNativeProfile runtime leaks bounds initial horizon scheduler profile) owner site
         ((NativeMenu).decisionInformationAntichain (initial.map RecoveryState.native) horizon
@@ -169,6 +188,20 @@ theorem clear_bayesBelief_seed_product
         controller.reply seed entry.query = entry.reply}, seed ∈ (laws false).support)
       (residual : PMF ((runtime.recoveryApplication leaks).ProtocolState ×
         ((side : {side : Bool // side ≠ false}) → A side))),
+      (∀ current, some current ∈
+          (((RecoveryModel).bayesBelief profile owner (recoverySiteAt reference recoveryDecision)
+            ((Recovery.onePacketMenu runtime leaks bounds).decisionInformationAntichain initial
+              horizon scheduler owner (recoverySiteAt reference recoveryDecision))
+            (by
+              rw [bounded_informationMass_liftedInformationSite runtime leaks bounds initial
+                initialized horizon scheduler owner reference active valid nativeDecision
+                  recoveryDecision profile]
+              exact positive)).map (fun history => history.1.state)).support →
+        ∀ values ∈ ((recoveryMixture).posterior current.execution.environmentRecall).support,
+          (controller.replay remainder
+            (LocalSeedController.initialMemory (values false) (values true))
+              (current.execution.environmentRecall.map (environmentEntry runtime leaks))).log =
+                log) ∧
       (((RecoveryModel).bayesBelief profile owner (recoverySiteAt reference recoveryDecision)
         ((Recovery.onePacketMenu runtime leaks bounds).decisionInformationAntichain initial horizon
           scheduler owner (recoverySiteAt reference recoveryDecision))
@@ -190,7 +223,7 @@ theorem clear_bayesBelief_seed_product
   have observed : (native).observe owner (some reference) =
       some (reference.execution.recall owner, reference.execution.observe native owner) := by
     simp only [ReactiveApplication.observe, active, ↓reduceIte]
-  obtain ⟨log, localPositive, nativeResidual, product⟩ :=
+  obtain ⟨log, localPositive, nativeResidual, recovered, product⟩ :=
     projected_bayesBelief_seed_product runtime leaks bounds initial inputs horizon controller
       remainder laws initialEq ordered domainEq owned profile
         (nativeSiteAt reference nativeDecision) positive
@@ -209,12 +242,29 @@ theorem clear_bayesBelief_seed_product
   simp only [PMF.map_bind, PMF.map_comp, Function.comp_def] at split lifted
   let residual := nativeResidual.map fun result =>
     (liftProtocolState runtime leaks result.1, result.2)
-  refine ⟨log, localPositive, residual, ?_⟩
-  have combined := split.trans lifted
-  simp only [residual, PMF.map_comp, Function.comp_def]
-  convert combined using 1
-  apply bind_congr_on_support _
-  intro history _
-  cases stateEq : history.1.state <;> rfl
+  refine ⟨log, localPositive, residual, ?_, ?_⟩
+  · intro current supported values valueSupport
+    have transported := bounded_bayesBelief_projectedState runtime leaks bounds initial
+      initialized horizon scheduler owner reference active valid nativeDecision recoveryDecision
+        profile positive
+    have projectedSupport := (PMF.mem_support_map_iff
+      (protocolState runtime leaks) _ _).mpr ⟨some current, supported, rfl⟩
+    rw [PMF.map_comp] at projectedSupport
+    have nativeSupported := (congrArg
+      (fun law : PMF (native).ProtocolState =>
+        protocolState runtime leaks (some current) ∈ law.support) transported).mp projectedSupport
+    have nativeValueSupport : values ∈
+        ((nativeMixture).posterior
+          (current.execution.environmentRecall.map (environmentEntry runtime leaks))).support := by
+      exact (congrArg (fun law : PMF ((side : Bool) → A side) => values ∈ law.support)
+        (schedulerMixture_liftScheduler_posterior runtime leaks (independentProduct laws)
+          family current.execution.environmentRecall)).mp valueSupport
+    exact recovered (control runtime leaks current) nativeSupported values nativeValueSupport
+  · have combined := split.trans lifted
+    simp only [residual, PMF.map_comp, Function.comp_def]
+    convert combined using 1
+    apply bind_congr_on_support _
+    intro history _
+    cases stateEq : history.1.state <;> rfl
 
 end Vegas.EventGraphRuntime.RecoveryProjection
