@@ -1,201 +1,298 @@
 # Semantics, compiled output and enforcement
 
-Status: design note. It records where each part of the development lives, how
-the compiler meets each kind of deviation, which combinations carry checked
-results, where the code and the paper disagree with a single coherent story,
-and the decisions needed to reach one semantics with Nash and sequential
-equilibrium (SE) results. Plans here are proposals until the project owner
-approves them.
+This note has three parts. Keep them apart when editing.
 
-## 1. Layers
+- **Part I, insights.** Facts and arguments about compiling commit–reveal games
+  to a ledger that hold whatever design we choose. Each carries a status tag.
+- **Part II, current state.** What the code defines and proves now. The paper
+  must be faithful to this part, including its discrepancies.
+- **Part III, proposals.** The design we intend to move to, its decisions and
+  open questions. Nothing here holds yet. Proposals become current state only
+  when implemented and checked.
 
-Several distinct things are easy to run together under words such as
-"runtime" or "ledger". They change for different reasons and are justified
-differently.
+Status tags:
 
-| Layer | What it is | Chosen by | In the code |
+- **[checked]** A Lean result at the cited declaration.
+- **[argued]** An argument made here or in a linked note, not checked in Lean.
+- **[conjecture]** Plausible, with no argument yet.
+- **[assumption]** A modelling or realism assumption that must be stated.
+
+## Part I. Insights
+
+### I.1 Layers
+
+[argued] Several distinct things are easily run together under words such as
+"runtime" or "ledger". They change for different reasons and need different
+justifications.
+
+| Layer | What it is | Justified by |
+| --- | --- | --- |
+| Source semantics | What a program means, including what a failure means | Language design |
+| Analysis views | Games derived from a program for the designer to solve, such as an intended game or a payoff rewrite | Language design |
+| Intermediate representation | The typed event graph | Compiler correctness |
+| Compiled output | Contract acceptance rules, deadlines, what a failure does on chain, the settlement verdict, deposits, honest clients | Preservation theorems |
+| Implementation gadgets | Generic protocol mechanisms realizable over a chain, neither specific to Vegas nor inherent to the chain | A realization argument per gadget |
+| Chain model | Accounts and signatures, a pending pool, inclusion, clock, contract execution | Given |
+| Environment assumptions | What the chain and its operators do: inclusion service, observation, audit coverage, randomness | Stated hypotheses |
+
+A failure semantics is a choice in the first two layers or in the compiled
+output, never in the chain model. A builder schedule (such as a calendar) is an
+environment assumption, never a property of the compiled output.
+
+### I.2 Gadgets are ideal functionalities
+
+[argued] Gadgets are best stated in the style of a hybrid model: the theorems
+assume an ideal functionality, and realizing it is a separate claim of the form
+"a construct with these properties is implementable over a chain". Each gadget
+needs its functionality, a realization sketch, and its known failure modes.
+
+| Gadget | Ideal functionality | Realization sketch | Known failure modes |
 | --- | --- | --- | --- |
-| Source semantics | What a program means, including what a failure means | Language design | [`SourceProgram`](../Vegas/Source) execution: a failure is a `Result` value and play continues |
-| Analysis views | Games derived from a program for the designer to solve | Language design | The intended game (`Setup.intendedModel`, a menu restriction); payoff rewrites `forfeitUtility` and `exclusionUtility` ([Forfeit](../Vegas/Source/Forfeit.lean)) |
-| Intermediate representation | The typed event graph | Compiler | [Event graph compiler](../Vegas/Compile/EventGraphCompiler.lean) |
-| Compiled output | Contract acceptance rules, deadlines, what a failure does on chain, the settlement verdict, deposits, and the honest clients | Compiler | `EventGraphRuntime` handlers; `recoveryApplication`; the settled-record and count verdicts; client profiles |
-| Implementation gadgets | Generic protocol mechanisms realizable over a chain, neither specific to Vegas nor inherent to the chain | Implementation, with a refinement obligation | Readiness credentials (`PublicView.tokenFor`), opening certificates (`WitnessedSubmission.emit`), the audit or watcher service |
-| Chain model | Accounts and signatures, a pending pool, inclusion, clock, contract execution | Given | The [`Interaction`](../Interaction) layer: `MessageNetwork`, `ReactiveApplication`, schedulers |
-| Environment assumptions | What the chain and its operators are assumed to do | Stated hypothesis | Builder contract or calendar, observation rule, audit coverage, randomness beacon |
+| Readiness credential | A packet is bound to the public record that made its event ready | Cite the block or state that completed the prerequisites; the contract checks ancestry and readiness | Valid only after finality; reorganization invalidates it |
+| Commitment with opening certificate | Hiding, binding, verifiable opening | Hash or Pedersen commitment and its opening | Non-malleability; voluntarily shared openings or keys |
+| Audit | See I.6 | See I.6 | See I.6 |
 
-Gadgets deserve their own layer. A readiness credential binds a packet to the
-public completion of its prerequisites; on a chain it would be a reference to
-the block or state that completed them, which survives only to finality. A
-commitment with an opening certificate is a cryptographic gadget. The audit is
-a reporting service with its own incentives. None of these is specific to
-compiling Vegas, and none is provided by a chain as such. Each needs a
-refinement argument of its own, and each can fail independently: reorganization
-invalidates credentials, and private relays defeat the audit.
+### I.3 How a compiler can meet a deviation
 
-In the code, gadgets and the compiled contract share the application layer:
-`ReactiveApplication.packet` forms the emitted packet, including its token, and
-the same application supplies the contract handler. The forced-exit contract
-uses this to withhold the token from calls for an exited owner's events
-(`RecoveryState.emit`). Draining completes those events, so they would carry no
-token anyway, but the layering lets a contract rule change a gadget's output.
-
-## 2. Enforcement responses
-
-The compiler meets a deviation in one of the following ways. Each has a
-different cost and a different effect on the source.
+[argued] Every deviation the target admits is met in one of these ways.
 
 | Response | Mechanism | Cost | Effect on the source |
 | --- | --- | --- | --- |
-| Prevent | The contract or a gadget rejects it | None at runtime; a gadget refinement obligation | None: the deviation has no outcome |
-| Attribute from the public record | The settled record names the culprit (an expiry, a failed reveal) | Collection is certain; the response rewrites the game off-path (forced exit) or prices it (forfeit) | The response is part of the semantics or of an analysis view |
-| Attribute from signed evidence | An authentic signed packet proves the deviation | Collection only with probability $p_i$; deposits scale with $1/p_i$ and must be locked | None if deterred, apart from the deposit hypothesis |
-| Expose | The deviation is a source move priced by the program | The programmer must specify its price | The source game contains it |
-| Assume | A stated property of the chain or its operators | A model assumption | None |
-| State as a limitation | Non-attributable channels | Weakens the claim | The theorem is forward-only or excludes it |
+| Prevent | The contract or a gadget rejects it | A gadget realization obligation | None: the deviation has no outcome |
+| Attribute from the public record | The settled record names the culprit, for example an expiry | Collection is certain | The response belongs to the semantics or an analysis view |
+| Attribute from signed evidence | An authentic signed packet proves the deviation | Collection only with probability $p_i$; deposits of order range$/p_i$ locked | None if deterred, apart from the deposit hypothesis |
+| Expose | The deviation is a source move priced by the program | The programmer prices it | The source game contains it |
+| Assume | A property of the chain or its operators | A model assumption | None |
+| State as a limitation | A non-attributable channel | A weaker claim | The result excludes it or is forward-only |
 
-Prevention removes only a deviation's effect on the record. A prevented packet
-can still carry information, through the pending pool and the observation rule,
-so information deviations need a second, evidence-based response. This is why
-the audit forbids packets the contract would reject anyway.
+Consequences:
 
-## 3. Deviation inventory
+- [argued] Prevention removes a deviation's effect on the record, not the
+  information it carries. A rejected packet can still be shown to other players
+  through the pending pool. Information deviations therefore need an
+  evidence-based response even when the contract rejects the packet.
+- [argued] The certainty of attribution decides the money mechanism. A fault in
+  the public record can be priced exactly. A fault proved only by sampled
+  signed evidence needs a deposit scaled by $1/p_i$.
+- [argued] Non-attributable channels (timing among one's own activations,
+  private relays, fee fields, shared secrets) can be neither prevented nor
+  deterred. They are limitations, not obligations.
 
-"Plain" is the compiled contract in which a failure is recorded and play
-continues, with the settled-record verdict (`SettledRecord.Permits` plus binding
-omissions). "Forced exit" is the contract of `recoveryApplication` with the
-count verdict (`CountPermits`).
+### I.4 Which deviations a source language must contain
 
-| Deviation | Attribution | Plain contract | Forced-exit contract |
-| --- | --- | --- | --- |
-| Silence at a binding (missed binding) | Public record | Charged as an omission; no source counterpart, since source commitments cannot fail | The owner exits |
-| Silence at a reveal | Public record | Exposed: priced by the program's failure branch; in the intended game, by a forfeit | The owner exits |
-| Guard-violating or unopenable binding | Public record, at the completing reveal | Becomes a failed reveal; as above | The owner exits at the failed reveal |
-| Premature packet | Prevented by the credential; signed evidence | Rejected; forbidden | Rejected; forbidden |
-| Packet for another player's event, or malformed | Prevented; signed evidence | Rejected; forbidden | Rejected; forbidden |
-| Competing or duplicate packets | Signed evidence | The contract accepts the first; extra packets forbidden | Extra packets forbidden; the first well-formed packet per event is free |
-| Commitment carrying its opening certificate | Signed evidence (an information deviation) | Forbidden | Forbidden |
-| Late send after the protected turn | Under the builder contract, non-inclusion of an owner's sole packet witnesses a late send | On the calendar every owner packet is included; otherwise a dropped packet is forbidden as unaccepted | Not charged; a dropped opening expires and the owner exits |
-| Packets after exit | Record effect prevented; information by signed evidence | Not applicable | Rejected by the contract; every such packet is forbidden, and the charge still applies after exit |
-| Choice among one's activations (timing) | Not attributable | Limitation: the result is forward-only | Same |
-| Off-chain relays, private channels, fee fields | Not attributable | Limitation; audit coverage presupposes audited communication | Same |
-| Builder censorship, bribery, strategic ordering | Not a player deviation | Assumption: non-strategic builder with a known law | Same |
-| Biased or withheld randomness | Not a player deviation | Assumption: an unbiasable live beacon | Same |
-| Sharing secrets or signing keys | Not attributable | Limitation: the cryptographic refinement must account for it | Same |
+[argued] A source language needs to expose exactly the deviations the
+implementation can neither prevent nor deter. For commit–reveal on a ledger
+that is silence, at a commitment or at a reveal. A guard-violating value or an
+unopenable binding is indistinguishable from silence by the time anyone can
+tell, at the reveal. Malformed, premature, duplicate and evidence-bearing
+packets are prevented or deterred. Everything else is a limitation or an
+assumption.
 
-The free first packet does not leave late sending unpunished. A dropped late
-opening expires, and expiry forces exit at the exit payoff. A further charge
-would add an expected cost whose size the builder sets after the deposit is
-fixed. That cost can lie between two types' continuation values and make late
-sending type-dependent, which is the obstruction recorded in
-[the commit–reveal note](se-preservation-commit-reveal.md), Section 7.
+### I.5 What the failure response must satisfy
 
-After exit, "no further moves" is a fact about the record and an incentive fact
-about the network. The contract ignores an exited player's packets, but the
-chain lets it send, and a leaked opening with its certificate is verifiable
-disclosure. Every such packet is forbidden by the count verdict. The exited
-player's payoff is the exit payoff minus any charge, so every emission lowers
-its expected payoff by at least $p_i d_i$, and silence strictly dominates. The
-exit payoff appears in the deposit condition of the forced-exit theorem for this
-reason. No lemma currently states this dominance.
+- [argued] A dropped late opening is evidence of a deviation. Under a builder
+  that includes an owner's sole timely packet, non-inclusion of that packet
+  witnesses a late send.
+- [argued] Charging that evidence can nevertheless break sequential equilibrium.
+  If the late sender is already punished through its failure, an extra charge
+  adds an expected cost whose size the builder sets after the deposit is fixed.
+  That cost can fall between two types' continuation values and make late
+  sending a type-dependent choice. See
+  [the commit–reveal note](se-preservation-commit-reveal.md), Section 7.
+- [argued] For sequential equilibrium under builders that may include late
+  packets, a failing player's payoff must depend neither on its type nor on the
+  route to failure. Otherwise the timing of a late opening becomes a
+  type-dependent choice. The counterexample with a forfeit and continued play is
+  [checked] (`Vegas.Paper.late_leak_intended_outcome_not_preserved`).
+- [assumption] A contract controls money, not what a player values. A
+  type-independent failure payoff is implementable only if a player who has
+  failed values nothing in the game beyond what it is paid: private values
+  without externalities on failure outcomes, with utility quasi-linear in money.
+  Private valuations for bidding fit, since a failing bidder receives no item.
+  Allocative externalities (caring who wins), public outcomes the failed player
+  still values, and allocations received before failure do not fit.
+- [argued] After a player stops participating, the chain still lets it send,
+  and a leaked opening with its certificate is verifiable disclosure. "No
+  further moves" can therefore hold mechanically only for the record. For the
+  network it must hold by deterrence: if every such packet is forbidden and the
+  charge still applies, silence strictly dominates.
 
-## 4. What each guarantee needs
+### I.6 The audit
 
-| Guarantee | Needs | Does not need |
+[argued] What the preservation proofs need from an audit, independently of who
+runs it:
+
+- **Authenticity.** Only packets actually sent and signed are reported.
+  Signatures provide this.
+- **Coverage.** Each forbidden packet of player $i$ is reported with
+  probability at least $p_i$, whatever the rest of the traffic.
+- **Timeliness.** Reports land in a window before settlement. Reports are
+  transactions, so this is a second inclusion-service assumption.
+- **Neutrality.** Collected deposits are burned, so no player gains from
+  another's violation.
+- **No feedback into play.** No player observes reports during play.
+
+Candidate auditors and their realism:
+
+- **Players.** They see exactly the packets the observation rule shows them, so
+  they are natural reporters. If players receive bounties, their off-path
+  payoffs depend on others' violations, which changes the game being analyzed.
+- **Third parties with bounties.** They preserve neutrality for the players.
+  Coverage depends on what they can observe.
+- **A service of the contract owner.** Plausible, but trusted.
+- **Limits.** Private relays to the builder evade public watchers. A small $p_i$
+  means large locked deposits.
+
+[conjecture] A forbidden packet matters only if some player observes it or it
+reaches the record. Coverage of observed or included packets may then suffice,
+instead of coverage of all traffic. This would let coverage be derived from the
+observation rule.
+
+### I.7 Guarantees cost different amounts
+
+[argued] Different preserved notions need different compilers, as stronger
+security criteria need stronger compilers in secure compilation. A Nash
+comparison fixes the opponents' policies, and against honest clients that
+decide at their first opportunity every native policy of one player has the
+outcome law of a source deviation whose bindings may fail. If failure buys
+nothing, no audit is needed. Sequential equilibrium must also be rational after
+traffic no source policy produces, which requires deterrence of information
+deviations and a failure response as in I.5. The current results instantiate
+this (II.3).
+
+## Part II. Current state
+
+### II.1 Where things live in the code
+
+| Layer | Code |
+| --- | --- |
+| Source semantics | [`SourceProgram`](../Vegas/Source) execution: a failure is a `Result` value and play continues |
+| Analysis views | The intended game (`Setup.intendedModel`); payoff rewrites `forfeitUtility` and `exclusionUtility` ([Forfeit](../Vegas/Source/Forfeit.lean)) |
+| Intermediate representation | [Event graph compiler](../Vegas/Compile/EventGraphCompiler.lean) |
+| Compiled output | `EventGraphRuntime` handlers and deadlines; the forced-exit contract `recoveryApplication`; the settled-record verdict (`SettledRecord.Permits` with binding omissions, `sourceServiceAudit`) and the count verdict (`CountPermits`, `Recovery.countAudit`); client profiles |
+| Gadgets | Readiness tokens (`PublicView.tokenFor`) and opening certificates (`WitnessedSubmission.emit`), formed by the application's `packet` function |
+| Chain model | The [`Interaction`](../Interaction) layer: `MessageNetwork`, `ReactiveApplication`, schedulers, observation rules |
+| Environment assumptions | `AsyncContract` and `Recovery.AsyncContract` (timely builders), calendar rosters, observation-rule finiteness, audit-service coverage |
+
+There are two compiled contracts on one chain model:
+
+- **Plain.** A failure is recorded and play continues. Its verdict is the
+  settled-record verdict, which forbids any packet the final record does not
+  accept with canonical content and separately charges a binding omission.
+- **Forced exit.** An owned expiry, or an accepted opening whose result is
+  failure, adds its owner to an exit set. The exited owner's later events are
+  completed as failures, and packets for them get no readiness token and are
+  rejected (`RecoveryState.emit`, `RecoveryState.handle`). Its verdict is the
+  count verdict: a packet is permitted only if it has a valid token, a correct
+  call by the right owner, and is its sender's first packet for its event; the
+  verdict reads no inclusion. The exited player's payoff is a fixed
+  `excludedPayoff`, minus any charge (`recoveryExclusionBase`).
+
+### II.2 Deviations under the current contracts
+
+| Deviation | Plain contract | Forced-exit contract |
 | --- | --- | --- |
-| ε-Nash correspondence | Prevention, exposure, timely service, honest first-turn clients | Audit coverage, deposits (zero is allowed), forced exit, independence |
-| Sequential equilibrium | Additionally: evidence-based deterrence with coverage and deposits, and either a calendar or forced exit with a free first packet; under forced exit, independent private inputs | Value-blind builders or content-blind leaks |
+| Silence at a binding | Charged as an omission; no source counterpart, since source commitments choose values only | The owner exits |
+| Silence at a reveal | Exposed: priced by the program's failure branch, or by a forfeit in the intended game | The owner exits |
+| Guard-violating or unopenable binding | A failed reveal, as above | The owner exits at the failed reveal |
+| Premature, misaddressed or malformed packet | Rejected; forbidden | Rejected; forbidden |
+| Competing or duplicate packets | The first valid inclusion is accepted; the others forbidden | All but the first well-formed packet per event forbidden |
+| Commitment carrying its opening certificate | Forbidden | Forbidden |
+| Late send after the protected turn | On a calendar every owner packet is included; elsewhere a dropped packet is forbidden as unaccepted | Not charged; a dropped opening expires and the owner exits |
+| Packets after exit | Not applicable | Rejected; every such packet is forbidden, and the charge applies after exit |
+| Timing, private channels, fee fields | Limitation | Limitation |
+| Builder misbehavior, biased randomness | Assumption | Assumption |
 
-The Nash correspondence holds because, against first-turn clients, every native
-policy of one player has the outcome law of a source deviation whose bindings
-may fail, and failure buys nothing. SE must also be rational after traffic no
-source policy produces, which is what the audit and forced exit pay for. This is
-the analogue of a threat model: a stronger preserved notion requires a costlier
-compiler.
+The post-exit packet rule holds in the code: every call by an exited owner lacks
+a token, commitments must be the sender's own bindings, and openings must come
+from the owner. No lemma states the resulting dominance of silence.
 
-## 5. Checked combinations
+### II.3 Checked results
 
-| Result (paper label) | Analysis target | Compiled output | Environment | Main Lean declaration |
+| Result (paper label) | Analysis target | Compiled output | Environment | Lean |
 | --- | --- | --- | --- | --- |
-| Nash (1) (`thm:nash`) | Source game | Plain contract, any authentic verdict, nonnegative deposits | Any builder meeting `AsyncContract` | `Vegas.Paper.async_first_turn_nash_iff` |
+| Nash (1) (`thm:nash`) | Source game | Plain contract, any authentic verdict, nonnegative deposits including zero | Any builder meeting `AsyncContract` | `Vegas.Paper.async_first_turn_nash_iff` |
 | Nash (2) | Source game | Plain contract, settled-record verdict | Calendar | `Vegas.Paper.source_audited_raw_nash_iff` |
 | Nash (3) | Intended game via forfeit | As (1) or (2) | As (1) or (2) | `Vegas.Paper.intended_async_first_turn_nash`, `Vegas.Paper.intended_audited_raw_nash` |
 | SE (`thm:sequential`) | Source game | Plain contract, settled-record verdict | Calendar | `Vegas.Paper.source_audited_raw_sequential_equilibrium` |
 | SE (`cor:intended-ledger`) | Intended game via forfeit | As above | Calendar | `Vegas.SourceServiceSpec.intended_audited_raw_sequentialEquilibrium` |
 | SE (`thm:recovery`) | Intended game | Forced exit, count verdict | Any builder meeting `Recovery.AsyncContract`; independent private inputs | `Vegas.recovery_intended_raw_sequentialEquilibrium_preserved` |
 | SE, conditional | Intended game with exit payoff | Plain contract with exit payoff, count verdict | Timely builder | `Vegas.onePacket_intended_raw_sequentialEquilibrium` (assumes certificates; superseded by the row above) |
-| Negative (`thm:late-leak`) | Intended game with forfeit | Failure continues; dropped late openings charged | An abstract game, not the ledger | `Vegas.Paper.late_leak_intended_outcome_not_preserved` |
-| Intended to source (`thm:intended`) | Intended to source game | None | None | `Vegas.Paper.intended_sequential_equilibrium` |
+| Negative (`thm:late-leak`) | Intended game with forfeit | Continued play after failure; dropped late openings charged | An abstract game, not the ledger | `Vegas.Paper.late_leak_intended_outcome_not_preserved` |
+| Intended to source (`thm:intended`) | Intended game to source game | None | None | `Vegas.Paper.intended_sequential_equilibrium` |
 
-## 6. Discrepancies
+### II.4 Discrepancies
 
-These must appear in the paper as assumptions, future work or TODOs until
-resolved.
+These must appear in the paper as assumptions, future work or TODOs while they
+stand.
 
 1. **Nash and SE concern different compiled outputs.** The Nash correspondence
-   under timely builders is proved for the plain contract. The SE result is
-   proved for the forced-exit contract with the count verdict. No result
-   covers Nash for the forced-exit contract.
+   under timely builders is proved for the plain contract. SE under timely
+   builders is proved for the forced-exit contract and the count verdict. No
+   result covers Nash for the forced-exit contract.
 2. **Forced exit is not a source semantics.** The source has no operational
    exit. `exclusionUtility` fixes a failing player's payoff but lets it keep
-   acting, and its later publications still affect others' payoffs; the
-   forced-exit contract instead fails the exited owner's later events. The SE
-   theorem starts from the intended game, where nothing fails, so it is
-   unaffected, but the two forms disagree off-path.
-3. **Missed bindings have no source counterpart.** Source commitments choose
-   values only, so a missed binding is handled outside the source: charged as an
-   omission by the plain contract, an exit under forced exit.
+   acting, so its later publications still affect others' payoffs; the
+   forced-exit contract instead fails its later events. The SE theorem starts
+   from the intended game, where nothing fails, so it is unaffected.
+3. **Missed bindings have no source counterpart.** They are charged as
+   omissions by the plain contract and cause exit under forced exit.
 4. **Two audit-service models.** The settled-record audit is an authentic
-   sampler with coverage $p_i$ over the complete traffic (`sourceServiceAudit`).
-   The count audit is an `EvidenceReportService` with separate observation and
-   conditional delivery rates inside a challenge window (`CountEvidenceCoverage`).
-   The deposit conditions differ accordingly.
-5. **Gadget and contract share a layer.** The forced-exit contract changes token
-   attachment (Section 1).
-6. **Naming.** "Runtime", "recovery runtime", "exclusion" and "forced-exit ledger"
-   name a choice of compiled contract as if it were a chain. The chain model is
-   the same in every result; the calendar is an environment assumption.
+   sampler with coverage $p_i$ over all traffic. The count audit is an
+   `EvidenceReportService` with observation and conditional delivery rates in a
+   challenge window (`CountEvidenceCoverage`). Their deposit conditions differ.
+5. **A gadget is formed in the contract layer.** The application's `packet`
+   function forms readiness tokens, and the forced-exit contract changes it.
+   Draining completes the affected events, so they would carry no token anyway.
+6. **The exit payoff is a utility.** `excludedPayoff : Player → ℝ` fixes the
+   exit utility directly; the realism assumption of I.5 is not stated.
+7. **Naming.** "Runtime", "recovery runtime", "exclusion" and "forced-exit
+   ledger" name a compiled contract as if it were a chain.
 
-## 7. Toward one semantics
+## Part III. Proposals
 
-Target: one source semantics with forced exit, one compiled contract and
-verdict, one audit-service model, and Nash and SE results for that combination.
-Other combinations remain as design alternatives, not as the results.
+### III.1 Target language: commit–reveal with exit
 
-Decisions to make:
+Following I.4 and I.5: pure commit–reveal, plus one way to fail.
 
-- **Exit in the source.** A failed move ends its owner's participation: the
-  owner's later moves fail without a choice, and its payoff is a fixed exit
-  payoff. The others continue, and their utilities still read the program's
-  failure results, so `Result` stays meaningful. The checked source properties
-  (publication accounting, guard safety) and the source–graph correspondence
-  must be re-established.
-- **Failing commitments.** Whether the source gains a failing commitment move,
-  or a missed binding is modelled directly as exit. With exit in the source, the
-  value interface and the omission charge become unnecessary.
-- **Intended game.** With exit at a payoff no higher than every intended payoff,
-  departures from the intended menus are unprofitable without a forfeit
-  (`intended_exclusionSource` is the payoff form of this). The forfeit becomes
-  an alternative.
-- **Nash under forced exit.** Adapt the first-turn client argument to the
-  forced-exit contract and the count verdict.
-- **Source and contract exit agree.** An equivalence between the source-level
-  exit and the contract's drain, so that the SE theorem can be stated from the
-  source semantics.
-- **One audit-service model and one deposit condition.**
-- **Gadget layer.** Readiness credentials, certificates and the audit as a
-  separate layer between the chain model and the compiled contract, each with
-  its stated refinement obligation.
-- **Named facts.** Post-exit dominance; that a dropped owner packet witnesses a
-  late send under the builder contract.
-- **Alternatives.** The calendar, the forfeit, the plain contract and the
-  settled-record verdict move out of the main results, with the reasons they
-  were not chosen recorded here.
+- Every owned move, a commitment or a reveal, may instead fail. A failure is
+  public, ends its owner's participation, and pays the owner a fixed exit
+  payoff.
+- The other players continue. Payouts may read who exited and at which move.
+  A publication is a value or "its owner exited here".
+- The exit payoff may default to the owner's minimum over intended outcomes, so
+  that a programmer writes pure commit–reveal and, optionally, the survivors'
+  payouts after an exit (refunds by default).
+- The intended game is the game without failures. With an exit payoff no higher
+  than every intended payoff, no forfeit is needed.
+- Missed bindings become exits, which removes the value-only commitment
+  interface and the omission charge.
 
-Open questions:
+### III.2 Target development
 
-- Whether the free first packet should apply only to openings, or also to
-  bindings.
-- Whether the exit payoff is per player or may depend on public history before
-  exit.
-- How the gadget layer should be stated in the paper: as part of the ledger
-  model, or as explicit assumptions about an implementation over a chain.
+One source semantics (III.1), one compiled contract and verdict, one audit
+model, and Nash and SE results for that combination. Steps:
+
+1. Operational exit in the source semantics; re-establish publication
+   accounting, guard safety and the source–graph correspondence.
+2. Nash correspondence for the forced-exit contract and the count verdict,
+   adapting the first-turn client argument.
+3. An equivalence between source-level exit and the contract's draining, so
+   that the SE theorem is stated from the source semantics.
+4. One audit-service model and one deposit condition.
+5. Gadgets as a separate layer between the chain model and the compiled
+   contract, each with its stated functionality.
+6. Named lemmas, when the code is stable: post-exit dominance of silence; that
+   a dropped owner packet witnesses a late send.
+7. The calendar, the forfeit, the plain contract and the settled-record verdict
+   become documented alternatives, with the reasons they were not chosen.
+
+### III.3 Open questions
+
+- Whether the free first packet should cover bindings as well as openings.
+- Whether the exit payoff is per player or may depend on the public history
+  before exit.
+- Whether the observed-coverage conjecture of I.6 holds, and whether players,
+  third parties or a service should audit.
+- How the paper should present gadgets: inside the ledger model, or as explicit
+  ideal-functionality assumptions.
