@@ -80,3 +80,7 @@ import Vegas.Source.FailureRevelations
 import Vegas.Source.RegistryFailureExtension
 import Vegas.Source.CommitPhaseRegistry
 import Vegas.Source.CommitRecoveryClearSuccessor
+import Vegas.Source.CommitPhaseAutomatic
+import Vegas.Source.CommitRecoveryDebt
+import Vegas.Source.CommitRecoveryFrontier
+import Vegas.Source.CommitRecoveryFailureCoverage

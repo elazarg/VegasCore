@@ -450,6 +450,31 @@ import Vegas.Game.RecoveryProtectedCalls
 import Vegas.Game.RecoveryCanonicalSafety
 import Vegas.Game.RecoveryOwingOptimality
 import Vegas.Pending.ReactiveCountedSeedObservation
+import Vegas.Source.CommitPhaseAutomatic
+import Vegas.Pending.PhaseRawCheckpoint
+import Vegas.Game.CompiledCommitClosing
+import Vegas.Source.CommitRecoveryDebt
+import Vegas.Game.CompiledRecoveryResidual
+import Vegas.Source.CommitRecoveryFrontier
+import Vegas.Pending.PhaseCountCollection
+import Vegas.Game.PhaseOnePacketExtension
+import Vegas.Pending.PhaseFrontier
+import Vegas.Pending.PhaseLive
+import Vegas.Pending.PhaseSeedClockProgress
+import Vegas.Pending.PhaseServiceProgress
+import Vegas.Pending.PhaseSeedClosedBound
+import Vegas.Pending.PhaseSeedAttribution
+import Vegas.Pending.PhaseSeedTickInvariant
+import Vegas.Pending.PhaseSeedClockEffects
+import Vegas.Pending.PhaseSeedClockCharge
+import Vegas.Pending.PhaseSeedAdvanceCharge
+import Vegas.Pending.PhaseSeedClockAccounting
+import Vegas.Pending.PhaseSeedClockBound
+import Vegas.Pending.PhaseSeedActivationMemory
+import Vegas.Game.CommitRecoveryPayoff
+import Vegas.Pending.PhaseSampleProgress
+import Vegas.Source.CommitRecoveryFailureCoverage
+import Vegas.Game.CommitRecoveryDebtPayoff
 
 /-! # Checked sequential-equilibrium preservation, Nash correspondence and termination -/
 
@@ -6010,3 +6035,98 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.EventGraphRuntime.PhaseCount.opening_accepted_of_history
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseRuntimeState.request_or_sample'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.PhaseRuntimeState.request_or_sample
+
+/-- info: 'Vegas.EventGraphRuntime.phaseApplication_live'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.phaseApplication_live
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseRuntimeState.sample_ready_of_live'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.PhaseRuntimeState.sample_ready_of_live
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseRuntimeState.sample_advances_phase'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.PhaseRuntimeState.sample_advances_phase
+
+/-- info: 'Vegas.sourceClose_of_clean_bindingPhase'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.sourceClose_of_clean_bindingPhase
+
+/-- info: 'Vegas.sourceClose_of_retry_bindingPhase'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.sourceClose_of_retry_bindingPhase
+
+/-- info: 'Vegas.sourceClose_of_exhausted_bindingPhase'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.sourceClose_of_exhausted_bindingPhase
+
+/-- info: 'Vegas.EventGraphRuntime.phase_environment_checkpoint_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.phase_environment_checkpoint_history
+
+/-- info: 'Vegas.SourceProgram.CommitRecoveryState.step_preserves_excluded_or_owesFailure'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.CommitRecoveryState.step_preserves_excluded_or_owesFailure
+
+/-- info: 'Vegas.SourceProgram.Setup.commitRecovery_blockFrontier'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.commitRecovery_blockFrontier
+
+/-- info: 'Vegas.SourceProgram.Setup.commitRecovery_failuresCovered'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.commitRecovery_failuresCovered
+
+/-- info: 'Vegas.SourceProgram.Setup.commitRecovery_terminal_excluded_of_owesFailure'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.commitRecovery_terminal_excluded_of_owesFailure
+
+/-- info: 'Vegas.SourceProgram.Setup.commitRecovery_terminal_payoff_of_checkpointed_debt'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.commitRecovery_terminal_payoff_of_checkpointed_debt
+
+/-- info: 'Vegas.SourceProgram.Setup.commitRecovery_initialized_joint'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.commitRecovery_initialized_joint
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseCount.audit_collection'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.PhaseCount.audit_collection
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseCount.onePacket_raw_sequentialEquilibrium'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.PhaseCount.onePacket_raw_sequentialEquilibrium
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseSeedCalendar.clockAccounting_invariant'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.PhaseSeedCalendar.clockAccounting_invariant
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseSeedCalendar.history_clock_le'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.PhaseSeedCalendar.history_clock_le
+
+/-- info: 'Vegas.CompiledSuffix.exists_recoveryResidual'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.CompiledSuffix.exists_recoveryResidual

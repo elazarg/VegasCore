@@ -90,10 +90,10 @@ theorem settle_frontier (phases : List (RuntimePhase graph)) (generation : Nat)
           exact ih _ _ _ _ ⟨next.adjacent, next.last, next.positioned⟩
       · exact ⟨adjacent, last, saved, drainedWithin⟩
 
-/-- The actual compiled partition starts at the true empty semantic prefix. -/
-theorem initial_frontier (plan : RuntimePhasePlan graph) (inputs : graph.Inputs) :
-    (initial plan inputs).Frontier := by
-  apply settle_frontier
+/-- The unnormalized compiled partition starts at the empty semantic prefix. -/
+theorem initial_checkpoint_frontier (plan : RuntimePhasePlan graph) (inputs : graph.Inputs) :
+    Frontier (⟨plan.phases, 0, ⟨State.initial inputs, ∅⟩,
+      ⟨State.initial inputs, ∅⟩, []⟩ : PhaseRuntimeState graph) := by
   refine ⟨plan.adjacent, plan.last, ?_⟩
   cases phases : plan.phases with
   | nil =>
@@ -112,6 +112,11 @@ theorem initial_frontier (plan : RuntimePhasePlan graph) (inputs : graph.Inputs)
           simp only [State.initial, Config.initial, EventOrder.Cut.empty, Finset.notMem_empty,
             low, Nat.not_lt_zero]
       exact ⟨atLow, atLow.within phase.nonempty.le⟩
+
+/-- The actual compiled partition starts at the true empty semantic prefix. -/
+theorem initial_frontier (plan : RuntimePhasePlan graph) (inputs : graph.Inputs) :
+    (initial plan inputs).Frontier :=
+  settle_frontier _ _ _ _ _ (initial_checkpoint_frontier plan inputs)
 
 omit [DecidableEq Player] in
 /-- A supported graph event below the active high frontier retains its interval. -/

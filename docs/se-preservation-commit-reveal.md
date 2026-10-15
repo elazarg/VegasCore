@@ -1,6 +1,6 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**SE: non-concurrent proved · concurrent: consistent source, block readback, packet acceptance ✓; scheduler/incentives open.**
+**SE: non-concurrent proved · concurrent: embedding/readback/acceptance/clock bound ✓; incentives/completion/transport open.**
 
 <details>
 <summary>Recovery milestones and current proof substeps</summary>
@@ -78,10 +78,24 @@ reveal kernel. The phase audit has zero count charges under the one-packet menu;
 current ready timely bindings and openings are accepted from actual initialized
 counted histories, including unusable bindings and openings that fail a guard.
 Opening acceptance derives the surviving handle and certificate soundness.
+Completed commitment phases now have exact clean, retry and exhaustion
+source closures, retaining effective own actions while restoring the saved
+semantics. Checkpointed source debt survives every later move and reset;
+at an actual terminal history it forces permanent exclusion and its payoff
+floor under arbitrary continuation policies. Copied intended play preserves
+the joint typed-readout/payoff-vector law and has no exclusion. The phase count
+audit extends any counted-menu SE to the actual bounded raw menu, preserving
+the joint terminal-history/net-payoff-vector law with zero on-path charges;
+existence of the required counted-menu SE remains open.
 An immutable addressed-seed scheduler has checked joint realization, erased
 operational queries, full clocked owner recall and fresh laws after actual
 namespace changes. Its concrete calendar is a witness with clock/attempt-based
 ordering; it does not cover the full admissible history-adaptive scheduler class.
+Every legal initialized history of this calendar has a uniform finite clock
+bound, derived by charging clock advances to distinct bounded event/generation
+tickets. Live phase frontiers expose an owner request or a ready singleton
+sample, whose execution strictly advances the phase. A finite clock bound
+alone does not prove finite completion: total service rounds remain to be bounded.
 The all-phase store/registry/history simulation, scheduler completion and general
 conditioning transport, source equilibrium extension and
 concurrent SE assembly remain open.

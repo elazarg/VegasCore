@@ -722,3 +722,8 @@ import Vegas.Game.CompiledCommitRegistry
 import Vegas.Game.CompiledPhaseReadback
 import Vegas.Game.CommitRecoveryRetainedHistory
 import Vegas.Game.CommitRecoveryCompletion
+import Vegas.Game.CompiledCommitClosing
+import Vegas.Game.CompiledRecoveryResidual
+import Vegas.Game.PhaseOnePacketExtension
+import Vegas.Game.CommitRecoveryPayoff
+import Vegas.Game.CommitRecoveryDebtPayoff

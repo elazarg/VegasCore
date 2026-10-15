@@ -45,7 +45,7 @@ end RuntimePhase
 namespace PhaseRuntimeState
 
 omit [DecidableEq Player] in
-private theorem phaseLow_lt_tail (phase : RuntimePhase graph)
+theorem phaseLow_lt_tail (phase : RuntimePhase graph)
     (remaining : List (RuntimePhase graph))
     (ordered : (phase :: remaining).IsChain (fun before after => before.high = after.low)) :
     phase.low < phaseLow remaining := by
