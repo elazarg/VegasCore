@@ -36,6 +36,25 @@ theorem TracePrefix.length_le {first second : E.State} {prefixTrace : E.Trace fi
   | refl => exact le_rfl
   | extend _ _ _ _ ih => exact ih.trans (Nat.le_succ _)
 
+/-- The canonical continuation between a history prefix and that same full
+history uses exactly their trace-length difference. -/
+theorem TracePrefix.reachesWithin {first second : E.State} {prefixTrace : E.Trace first}
+    {trace : E.Trace second} (isPrefix : TracePrefix prefixTrace trace) :
+    E.ReachesWithin (trace.length - prefixTrace.length) ⟨first, prefixTrace⟩ ⟨second, trace⟩ := by
+  induction isPrefix with
+  | refl => simpa only [Nat.sub_self] using (ReachesWithin.refl 0 ⟨first, prefixTrace⟩)
+  | @extend source target prior earlier joint legal realized ih =>
+      have last : E.ReachesWithin 1 ⟨source, prior⟩ ⟨target, prior.extend joint legal realized⟩ :=
+        .step joint legal realized (.refl 0 _)
+      have path := ih.trans last
+      have fuel : prior.length - prefixTrace.length + 1 =
+          (prior.extend joint legal realized).length - prefixTrace.length := by
+        have bounded := earlier.length_le
+        simp only [Trace.length]
+        omega
+      rw [fuel] at path
+      exact path
+
 theorem TracePrefix.trans {first second third : E.State} {firstTrace : E.Trace first}
     {secondTrace : E.Trace second} {thirdTrace : E.Trace third}
     (left : TracePrefix firstTrace secondTrace) (right : TracePrefix secondTrace thirdTrace) :

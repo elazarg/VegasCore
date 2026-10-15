@@ -1,366 +1,69 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**SE: non-concurrent ✓ · memory ✓ · local admission ✓ · inclusion cases ✓ · opening factors ✓; whole repair/joint law/Bayes/incentives open.**
+**SE: non-concurrent ✓ · intended histories ✓ · quantitative repair ✓ · marked prefix bounds ✓; joint law/Bayes/incentives open.**
 
 <details>
-<summary>Recovery milestones and current proof substeps</summary>
+<summary>Checked recovery milestones and remaining proof obligations</summary>
 
 Milestones have unequal cost; the fixed SE checklist is unchanged.
 
-Each surviving accepted binding now retains its actual earlier supported source
-choice, genuine request, fresh slot and immutable typed result. At that callback,
-the copied intended source law derives successful data, a true guard prediction
-and next own admission from the saved whole intended state and earlier own
-admission. The exact actual filled predecessor view is factored once. The
-supported-history induction still must supply its hypotheses at those callbacks.
+Every actual initialized clear history consistent with the canonical source
+policy has one whole intended saved source checkpoint. Static source-prefix
+induction derives admission from authentic earlier supported policy draws,
+without a prior-admission premise. Actual inclusion and environment completions
+preserve that same checkpoint's intendedness through normalization, including
+the last binding that immediately closes a phase. Initialization, source guard
+bookkeeping, full own-action words and future guard satisfiability are retained.
+This concerns the saved source checkpoint; a partial concurrent cut can have
+holes. The local compiled binding adapter still takes a genuine intended
+information witness.
 
-The actual chosen clean commitment checkpoint retains its exact whole decoded
-source endpoint. Clear completed decoding equals the existing full prefix
-completion. Saved whole intendedness and admitted physical prefix fields imply
-whole intendedness of that same successor, including future guard satisfiability.
-The actual chosen sample and reveal checkpoints also preserve whole intendedness
-when their final exclusion record is empty. Their actual source paths preserve
-the initial context cells.
+At an actual clear binding history, directed repair constructs a genuine image
+history under the same initial law and scheduler. All response and command
+branches preserve both saved and live frames, submitted-binding provenance,
+own-binding memory, full foreign inputs and the scheduler transcript. The
+actual counterfactual reach probability for the repaired owner is exactly
+equal, including environment and public sample atoms. The driver derives the
+chronological send, binding-WAIT, opening and inert callback witnesses used by
+the probability bounds.
 
-All counted packet inclusion cases now extend both genuine directed repair
-histories under the same scheduler command: missing, rejected, accepted binding
-and opening packets. Original typed opening success, handle provenance, deferred
-guard results and repaired exclusions are derived. Submitted-binding records and
-own-binding memory remain explicit induction invariants. Their update closure
-and the whole-history driver remain open.
+One finite positive source-choice floor gives an actual whole-prefix
+player-reach comparison with bounded send and WAIT counts. Binding WAIT retains
+the unequal uniform raw-menu terms. Directed opening callbacks before the
+actual clear binding endpoint have equal entire response laws, including
+evidence aliases and uniform noise. Inert callbacks cover both absent requests
+and already-sent requests.
 
-At paired opening callbacks before an actual clear binding endpoint, the entire
-perturbed response laws agree. The actual public barrier derives prior binding
-success; exact counted menu equality includes evidence aliases, so uniform raw
-noise cancels too. This applies to directed repair frames preserving successful
-openings. It does not establish arbitrary hidden-value exchange or native/source
-posterior equality.
+A selected raw-mixture binding SEND contributes an additional raw-noise factor
+to its actual player-reach product. The bound composes the chronological
+segments before and after that draw and has a uniform finite-horizon form.
+The exact mixture decomposition retains all remaining source/slot mass,
+including canonical accepted failures. This is a marked prefix contribution,
+not a bound on every unusable binding or a summed information-fiber theorem.
+The positive vanishing raw-noise schedule is chosen after the source floors
+and slot weights; it needs no source-floor decay assumption.
 
-At an actual initialized clear count-clean history with policy-consistent full
-recalls, every supported memory of a compiled globally disclosing policy
-reconstructs the entire physical native configuration. This derives the graph observation used by the full binding-law
-adapter; its second decoder-match premise is removed. A genuine intended source
-counterpart is still required.
+Supported disclosing memories reconstruct the whole physical native
+configuration. Actual count-clean clear phased histories project to ordinary
+native histories with complete owner and scheduler recall. The native and
+phased kernels have couplings with both real marginals and the first-failure
+owner records. These operational results do not yet identify the complete
+native/source joint probability law.
 
-Every remembered response now retains its genuine earlier trace prefix and
-exact prior own recall. Consistency therefore supplies its policy support at
-that actual callback. Continuing auxiliary strategies emit a fresh canonical
-handle at every clear unsent binding, including accepted failed bindings, with
-exactly zero WAIT probability. Earlier same-coordinate binding callbacks in
-consistent recall cannot have been silent.
+On the source side, chronological nonmissing conditioning has an exact history
+density, constant over each complete clear auxiliary information fiber.
+Conditioning a commitment window on clear preserves the original initial
+posterior jointly with its endpoint. Future original choices remain sampled,
+and accepted failed bindings retain their original canonical source mass.
+The auxiliary posterior identity does not establish native posterior equality.
 
-An intended source binding at a partial commitment prefix derives an accepted
-value and its guard prediction from the saved whole intended state and admitted
-own prefix. The prediction and own admission persist along actual clear trace
-prefixes, even after that binding has completed. Closing an admitted commitment
-phase preserves both intended bindings and future guard satisfiability. The
-supported-history invariant must still establish admission at each actual
-callback before threading these facts through the chosen successor checkpoint.
+The checked fixed-calendar source theorem handles optional opening in source
+reveal order. The intended-game recovery theorem also handles withholding
+deviations. Independent reveal reordering remains outside these checked results.
 
-Actual selected binding-WAIT records factor out of player reach probabilities,
-with all complementary own actions retained explicitly. Pairing those records
-by genuine same-event callbacks gives a prefix ratio bound with the exact
-unequal raw-noise contribution. The same derived finite source floors feed both
-send and WAIT bounds. A positive vanishing raw-noise sequence can be chosen
-after arbitrary positive slot weights so the finite-horizon replacement error
-vanishes and the repeated-WAIT factor tends to one. No decay rate for the source
-floor is assumed. Whole-prefix action composition, paired full histories and
-native posterior transport remain open.
-
-Directed repair couples both actual marginals of every application command:
-clock, sample and expiry, including commands that cannot advance an event.
-Actual clear survival forces due strategic expiry to be absent. The same
-scheduler atom extends both genuine histories. Missing and publicly rejected
-packet inclusions also replay with their full receipts and scheduler logs.
-Whole-history induction and submitted-record update closure remain open.
-
-The checked fixed-calendar source theorem covers optional opening with the
-source reveal order preserved. The intended-game recovery theorem additionally
-accounts for withholding deviations. Independent reveal reordering remains
-outside these checked results.
-
-Actual recovery checkpoints carry their exact syntactic source origin. From a
-saved intended entry and admissible own bindings, the ready binding adapter
-constructs a genuine initialized intended information history with the same
-complete owner observation and own action word. Hidden foreign holes are filled
-at their updated source views. The saved intended-entry and own-admissibility
-invariants still need an on-path proof.
-
-The full native and phased transition and policy kernels admit an exact paired
-coupling, including first-failure owner records. Compiled binding and opening
-response adapters retain complete packets and action memory. A compiled
-disclosing source policy publishes TRUE even at decoder fallback inputs.
-
-Across an actual auxiliary commitment window, conditioning on clear preserves
-the original initial posterior jointly with its endpoint. The exact density is
-constant over the full source information fiber; subsequent original choices
-remain unconditioned. This is a source probability theorem.
-
-Finite source information and full mixing supply a positive uniform legal
-choice floor. Each actual raw binding response has a same-slot canonical
-replacement with an explicit local likelihood ratio. At any two genuine clear
-unsent callbacks for the same static event, canonical-plus-slot WAIT masses are
-equal despite different hidden values and own words. Uniform raw-noise menu
-terms remain separate. Whole-history likelihood products are still open.
-
-Directed repair handles arbitrary foreign responses, own binding preparations,
-opening responses, clock steps and silence while retaining original private
-recall and both checkpoint frames. Submitted-record update closure and whole
-history induction are open. The generic execution engine requires expiry
-invariance only for commands in the actual scheduler support. A genuine history
-with consistent full recalls occurs as that exact history under the prescribed
-behavioral profile.
-
-Every actual initialized count-clean clear phased history projects to a genuine
-ordinary native trace of the same length. Static packet addresses reconstruct
-the phase cursor and complete scheduler and owner recall. The same arbitrary
-history-adaptive scheduler command law and arbitrary phase policy response law
-are retained. Natural environment coupling records the exact first-failure
-owner set before rollback. These are operational and local kernel results;
-the native/source joint probability law remains open.
-
-Directed binding replacement preserves the physical slot, network, receipts and
-full foreign inputs while tracking both live and saved semantic checkpoints.
-Actual normalization, delayed binding inclusion, activation and waiting retain
-the same scheduler atom. Pending-read guards remain explicit; response replay is checked,
-while whole-history repair remains open.
-
-On the source side, conditioning each chronological auxiliary choice on
-nonmissing gives an exact history density. Its positive scalar is constant over
-clear histories at the same instruction depth, so it cancels in clear-prefix
-conditioning and in the complete auxiliary information fiber. The actual
-approximating auxiliary belief equals the Bayes belief of this chronological
-nonmissing profile on that same fiber. This is a source-side posterior identity,
-not a native posterior identity. Inside the actual commitment window the
-nonmissing runner stays clear, including accepted failed bindings and automatic
-block closure. Future flags in the original unconditioned law remain sampled.
-
-The compiler also preserves the full local source action distribution at every
-successfully decoded structural source view. At an actual intended source
-information witness this identifies the auxiliary raw action law with the
-compiled graph policy law. An arbitrary clear view alone does not supply that
-intended witness.
-
-Concurrent trace substeps: initialization, reveal, sample, clean commitment,
-retry, exhaustion, normalization and the actual-history invariant are checked.
-The 8/8 count tracks these proof steps, not a percentage of full SE.
-At unsent sites the original local seed has its observed-delay-filtered law,
-independently of the full physical control and all other original seeds under
-the actual Bayes belief. Saved source/native action recall agrees at every clear
-checkpoint. Every actual clear ready binding has an initialized auxiliary source
-counterpart with the same whole current view. Its complete signal and own-play
-information is selected by a decoder of actual clear auxiliary histories;
-no intended-view witness is needed for this local source input. On intended
-views the decoder agrees with the intended-source embedding. First callbacks
-retain the full protected inclusion window.
-The whole physical source-policy dispatcher is globally legal, with exact local
-binding and canonical-opening laws and a finite strategy representation.
-While the same binding stays ready in its attempt, arbitrary future rounds
-preserve its exact semantic source view. This does not assert equality of full
-operational observations or their conditional source likelihoods.
-
-The original source-prefix law now samples each commitment at its updated full
-view, retaining dependencies between repeated choices by the same owner.
-Conditioning on the complete focal view reconstructs the original joint prefix
-and terminal laws and gives the exact next owned binding kernel. The focal view
-marginal is independent of foreign profiles and hidden entry state when its own
-policy and entry view agree. Positive original source-view mass remains explicit;
-a legal auxiliary all-failure witness does not supply it. Transport from the
-actual native partial history to this original source law remains open.
-An intended-compatible entry and admitted own choices permit completion of
-hidden foreign bindings by legal intended values, preserving the full focal
-view and repeated-owner recall. Every initialized source trace either reaches
-the same typed point by an intended history or retains some player's departure
-debt. A clear record alone does not supply the intended-entry premise.
-For any fully mixed Bayes auxiliary assessment, the actual clear native binding
-selects a positive-mass source information set. Its source belief is exactly
-the original auxiliary runner's encountered-prefix law conditioned on passage,
-retaining latent foreign actions and their chronological dependencies. Matching
-that source law to the native conditional distribution remains open.
-
-Under the global terminal payoff floor, every intended SE has an auxiliary
-rollback SE that never omits a commitment or withholds an opening at any genuine
-source decision site. Accepted failed bindings remain available. The theorem
-`Setup.intended_sequentialEquilibrium_commitRecovery_continuing` preserves the
-intended strategies, retained beliefs and joint terminal readout/payoff law, and
-provides a restricted approximating sequence. Source omission or withholding
-puts the acting owner in the permanent excluded set in one actual source step;
-its continuation payoff is exactly the owner's floor under every belief and
-continuation. This source theorem supplies the required continuing profile;
-transporting its incentives to the native runtime remains open.
-At every genuine source site, the approximating voluntary-failure law comes
-entirely from the common reference tremble. Omission and withholding therefore
-have probability at most its rate `ε`. At every actual initialized clear unsent
-native binding callback, silence has probability at most `η + (1 - η) ε`, where
-`η` is raw noise. The fresh-slot weight does not enter this upper bound. This
-controls a future response; it does not bound past foreign omissions after
-conditioning on the player's full native information.
-For the concrete uniform reference, the entire raw choice law is identical at
-the same static source position and owner-exclusion status. Consequently the
-approximating omission law is exactly identical at any two initialized clear
-source decision histories at that position, for every approximation index.
-It is not merely small: the reference omission factor ignores hidden source
-values and own words. Identifying the corresponding native timing factor still
-requires the physical-history coupling.
-The actual auxiliary runner also has an exact prefix reconstruction and
-continuation tower conditioned on the clear-prefix bit and complete current
-view. The next full raw move retains its unsampled omission flag; future
-omissions are not conditioned false. Repeated-owner dependencies remain in the
-chronological source runner.
-
-The fresh-slot binding law samples independently of the original typed result,
-offers every bounded fresh slot at actual unsent sites, retains the exact
-post-response result law and gives each encoding at least its original result
-mass divided by the number of eligible slots. The whole recovery slot dispatcher
-now preserves the joint typed-result/omission law: source omission is silence,
-while an accepted unusable binding emits a packet. Its finite strategy has the
-exact same law, with canonical opening unchanged. Aggregate result masses sum
-all source choices that produce the same encoding.
-Every typed binding result, including accepted failure with no omission, has a
-legal auxiliary choice at its exact decoded address. Full mixing at the actual
-clear source site gives it positive original source mass, without an additional
-source-admission premise for a replacement value.
-Every permitted raw binding's named slot is bounded, globally fresh and offered
-by this law, even with wrong-typed preparation or arbitrary evidence requests.
-Its mass has the fixed lower bound of the original result mass divided by wire
-capacity, independently of the varying number of eligible fresh slots.
-For any permitted raw preparation and evidence, an actual legal canonical
-replacement exists at that same slot for every typed result. Its perturbed
-finite-choice mass is at least `(1 - η) σ m / capacity`, where `σ` is the
-independent slot weight and `m` is the original nonmissing source-result mass.
-Full mixing gives `m > 0` at the actual clear source site. These are local atom
-bounds; a whole-history repair and likelihood comparison remain open.
-
-One common native assessment sequence now retains a source/slot/raw-noise recipe
-at every clear decision input. Raw noise gives full support; independently
-chosen slot noise supplies alternate fresh handles. The sequence has actual
-Bayes beliefs and one common subsequential consistent limit. At that same limit,
-every public nonempty-exclusion site is optimal against arbitrary whole-policy
-deviations for the actual physical payoff. Clear-site rationality and preservation
-of the intended joint law remain open. Silence leaves later legal sending
-available; it is not treated as an irrevocable omission.
-At an actual unsent binding, both source tiers preserve the same joint declared
-result/omission law, read from the handle each response actually names; only raw
-noise contaminates it. At every actual clear unsent binding, source assessment
-convergence identifies that joint response law at the same
-common native subsequential limit. Slot weights need not vanish for this local
-semantic statement. Native history likelihoods and physical inclusion are
-separate from the declared response law.
-If both raw noise and the fresh-slot weight vanish, the same common native
-limit retains the full canonical finite binding strategy, including actual
-handle and preparation, at every initialized clear ready binding. The opening
-strategy is independent of the auxiliary assessment at every actual opening
-request, so the common limit also retains its full canonical opening strategy
-where the recipe is pinned. These statements derive native decision inputs and
-source playedness from the actual histories. They do not assert native/source
-posterior equality or clear-site rationality.
-
-Actual request loss is an own accepting inclusion or an addressed expiry;
-foreign work and private responses cannot silently remove the request. The
-full timed emission word persists. A selected activation and its response
-leave the physical tick open. Once an authentic protected packet is emitted,
-every genuine surviving ready prefix has the same clock and activation stamp,
-and its first request-loss transition must be an own accepting inclusion.
-The derived calendar horizon forces that first loss. Permanent packet identity
-then identifies the accepting packet with the original protected envelope,
-whose accepting receipt is retained in every supported completion. The proof
-keeps the actual include command, raw graph step and same supported suffix.
-For any original protection-or-coin inclusion window, the same argument yields
-an accepting receipt for the exact authored envelope under arbitrary covered
-future policies and history-adaptive priority. Original favorable future ticks
-bound every later surviving request's clock; their initial openness follows
-from the actual calendar state. The converse is also checked: the exact original
-packet has an accepting final receipt precisely on its original inclusion
-window, giving the exact Boolean continuation law. Under the actual coarse owner
-Bayes belief, the window marginal is its original local prior filtered only by
-the observed first delay. Arbitrary later sending, even when adapted to full
-observations, cannot cause selected inclusion outside the immediate-send window.
-This now composes at the actual positive-mass owner decision: for any permitted
-authored response naming the unsent coordinate, its future accepting-receipt law
-is the original filtered window law. The same receipt bit is independent of the
-full current control and every other original seed coordinate, jointly, under
-the natural continuation using the same original scheduler seed. Future policies
-may depend on full observations and priority on full erased history.
-Transporting source continuation values and the intended joint law remains open.
-
-The existing hidden-value involution acts on both saved and live states and
-all archived attempts. Restore, automatic drain and every phase reset commute
-when failures are fixed. Under the native binding/disclosure compatibility and
-evidence conditions, actual response and environment laws replay, preserving
-the network, receipts and complete scheduler recall while mapping full private
-recall. Local signed packets, evidence normalization and bounded counted-menu
-membership also transport under evidence-fixing and raw-value-closure
-conditions. Visible-field, owned-action and owned-handle fixing preserve the
-complete actual observer input. The concrete foreign-owner transposition
-wrapper uses the default graph; an adapter for foreign private pairs now applies
-to every graph and execution mode. Operational normalization preserves exact
-submission and packet effects, as well as the raw and counted menus; every
-permitted binding normalizes to an evidence-free request. Replay guards need
-only actually admitted calls, so phase-masked future openings impose no guard.
-At any initialized clear endpoint, the retry generation is zero and the retired
-archive is empty. Every earlier prefix is clear, and accepted handles, immutable
-values, the full effective action word and completed events persist across all
-intervening physical steps and clean phase transitions.
-The native clear replay guard is backward closed along actual transitions.
-Under this guard, initial support closure, bounded-value closure and expiry
-fixing, the same scheduler admits an involutive map of actual counted histories
-and a bijection of complete focal information fibers. The guard reads accepted
-bindings, completed/current-phase-ready disclosures and recalled evidence
-requests. Deriving it throughout the required source fibers, repairing unusable
-foreign bindings, comparing source-policy likelihoods, native/source Bayes
-transport and sequential rationality remain open.
-For swaps of computed private fields and prepared handles, the genuine initialized
-phase state and its exact joint prior are fixed pointwise. This supplies initial
-support closure without an independence assumption on that prior.
-
-| Status | Recovery milestone |
-| --- | --- |
-| Verified | Permanent exclusion and count-audit extension |
-| Verified | Exact clear histories and complete information fibers |
-| Verified | One common consistent assessment completion |
-| Verified | Debt-stopped payoff comparison |
-| Verified | Same-assessment strategy, reach and Bayes transfer |
-| Verified | Actual first-callback source laws for bindings and openings |
-| Verified | Filtered seed product at actual clear recovery sites |
-| Verified | Quantitative foreign-failure probability bound |
-| Verified | Clear-site incentive bounds and limit transfer |
-| Verified | Recovery SE with intended joint law and zero charges |
-
-The continuation lemmas support the clear-site incentive milestone:
-
-| Status | Continuation substep |
-| --- | --- |
-| Verified | First-callback source kernel |
-| Verified | Raw chance-phase source law |
-| Verified | Honest callback reaches the next source boundary |
-| Verified | Waiting until the owner's first callback |
-| Verified | Terminal-prefix base case |
-| Verified | Finite-menu chance stopping adapter |
-| Verified | Full honest continuation by source-rank induction |
-
-| Status | Incentive substep |
-| --- | --- |
-| Verified | Actual recovery gain versus the native debt-stopped gain |
-| Verified | One source policy for each intended native commitment |
-| Verified | Common continuation values versus source values |
-| Verified | Nonlate native gain versus source gain |
-| Verified | Keyed late gain comparisons and common ranking |
-| Verified | Limit transfer of sequential rationality |
-
-| Status | Joint-law assembly substep |
-| --- | --- |
-| Verified | Initialized honest source law, including the private setup draw |
-| Verified | Actual common recovery sequence approaches the intended joint law |
-| Verified | Intended-law SE at the common assessment limit |
-
-The audited raw extension preserves the joint readout and settled-payoff law
-of any one-packet recovery equilibrium, with zero charges.
-The recovery preservation theorem discharges every local comparison under
-one common assessment witness. It preserves the intended joint typed-readout
-and realized net-payoff law, with zero charges on every supported path.
-A substep is verified only after its warning-strict module build;
-the ten recovery milestones require the full checkpoint checks.
-
+Remaining obligations include the native/source joint law, control of repair
+preimages and summed information fibers, native Bayes transport and incentive
+transfer. Full concurrent SE preservation remains unproved.
 </details>
 
 Status: non-concurrent preservation is mechanized. The checked results

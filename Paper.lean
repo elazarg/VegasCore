@@ -810,6 +810,39 @@ import Vegas.Pending.PhaseOpeningMenuSymmetry
 import Vegas.Game.PhaseOpeningResponseSymmetry
 import Vegas.Source.CommitRecoveryNonCommitIntended
 import Vegas.Game.CompiledCommitCompletion
+import Vegas.Pending.PhaseBindingClearCounts
+import Vegas.Pending.PhaseBindingSubmittedPreservation
+import Vegas.Pending.PhaseBindingSubmittedRepair
+import Vegas.Pending.PhaseBindingSubmittedRawRepair
+import Vegas.Pending.PhaseBindingIdleMenu
+import Interaction.ReactiveEnvironmentMass
+import Vegas.Pending.PhaseBindingActivationMass
+import Vegas.Pending.PhaseBindingReach
+import Vegas.Pending.PhaseBindingSampleMass
+import Vegas.Pending.PhaseBindingEnvironmentMass
+import Vegas.Pending.PhaseBindingCounterfactualStep
+import Vegas.Game.PhaseRepairOwnPlay
+import Vegas.Game.PhaseRepairResponseFactor
+import Vegas.Game.PhaseRepairPrefixLikelihood
+import Vegas.Game.PhaseRawBindingContribution
+import Vegas.Game.PhaseMarkedRepairLikelihood
+import Vegas.Pending.PhaseBindingResponseDispatcher
+import Vegas.Pending.PhaseBindingEnvironmentDispatcher
+import Vegas.Pending.PhaseBindingHistoryRepair
+import Vegas.Pending.PhaseBindingResponseWitness
+import Vegas.Game.PhaseRepairSendingWitness
+import Vegas.Game.PhaseRepairCallbackWitness
+import Vegas.Game.PhaseRepairHistoryWitness
+import Vegas.Source.CommitPrefixSnoc
+import Vegas.Compile.CommitPrefixCompletionSnoc
+import Vegas.Pending.PhaseAttemptCheckpoint
+import Vegas.Game.PhaseCompletedBindingAdmission
+import Vegas.Game.PhaseCommitPrefixAdmission
+import Vegas.Game.PhaseRawCommitAdmission
+import Vegas.Pending.PhaseClearSettlement
+import Vegas.Game.RecoveryIntendedNormalization
+import Vegas.Game.PhaseIntendedCheckpointStep
+import Vegas.Game.PhaseIntendedCheckpointHistory
 
 /-! # Checked sequential-equilibrium preservation, Nash correspondence and termination -/
 
@@ -8065,3 +8098,185 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms
   Vegas.phaseSourcePerturbedStrategy_opening_raw_eq_before_binding
+
+/-- info:
+'Vegas.SourceProgram.CommitPrefix.exists_snoc'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.CommitPrefix.exists_snoc
+
+/-- info:
+'Vegas.fillCommitPrefix_snoc'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.fillCommitPrefix_snoc
+
+/-- info:
+'Vegas.RecoverySourceCheckpoint.initialized_intended'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.RecoverySourceCheckpoint.initialized_intended
+
+/-- info:
+'Vegas.RecoverySourceCheckpoint.normalized_intended'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.RecoverySourceCheckpoint.normalized_intended
+
+/-- info:
+'Vegas.phase_commitPrefix_image_admitted'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phase_commitPrefix_image_admitted
+
+/-- info:
+'Vegas.phase_commitPrefix_admitted'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phase_commitPrefix_admitted
+
+/-- info:
+'Vegas.phase_handle_commit_admitted'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phase_handle_commit_admitted
+
+/-- info:
+'Vegas.phase_environment_commit_admitted'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phase_environment_commit_admitted
+
+/-- info:
+'Vegas.phase_handle_intended_checkpoint'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phase_handle_intended_checkpoint
+
+/-- info:
+'Vegas.phase_environment_intended_checkpoint'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phase_environment_intended_checkpoint
+
+/-- info:
+'Vegas.phase_intended_checkpoint_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phase_intended_checkpoint_history
+
+/-- info:
+'Vegas.EventGraphRuntime.PhaseBindingRepair.native_countClean_of_clear'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseBindingRepair.native_countClean_of_clear
+
+/-- info:
+'Vegas.EventGraphRuntime.PhaseBindingRepair.Frame.raw_binding_response_records'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseBindingRepair.Frame.raw_binding_response_records
+
+/-- info:
+'Vegas.EventGraphRuntime.PhaseCount.onePacketActions_eq_singleton_of_no_request'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseCount.onePacketActions_eq_singleton_of_no_request
+
+/-- info:
+'Interaction.ReactiveApplication.transition_environment_apply'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Interaction.ReactiveApplication.transition_environment_apply
+
+/-- info:
+'Vegas.EventGraphRuntime.PhaseBindingRepair.Frame.environment_transition_apply'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseBindingRepair.Frame.environment_transition_apply
+
+/-- info:
+'Vegas.EventGraphRuntime.PhaseBindingRepair.Frame.foreign_playerReach'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseBindingRepair.Frame.foreign_playerReach
+
+/-- info:
+'Vegas.EventGraphRuntime.PhaseBindingRepair.Frame.counterfactual_environment_extend'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseBindingRepair.Frame.counterfactual_environment_extend
+
+/-- info:
+'Vegas.EventGraphRuntime.PhaseBindingRepair.repair_clear_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseBindingRepair.repair_clear_history
+
+/-- info:
+'Vegas.phase_repair_callback_pair'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phase_repair_callback_pair
+
+/-- info:
+'Vegas.phase_repair_binding_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phase_repair_binding_history
+
+/-- info:
+'Vegas.phase_playerReach_repair_prefix'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phase_playerReach_repair_prefix
+
+/-- info:
+'Vegas.phaseSourcePerturbedStrategy_raw_decomposition'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseSourcePerturbedStrategy_raw_decomposition
+
+/-- info:
+'Vegas.phaseRawBindingSendingPair.raw_ratio'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseRawBindingSendingPair.raw_ratio
+
+/-- info:
+'Vegas.phase_marked_ownPlay_decomposition'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phase_marked_ownPlay_decomposition
+
+/-- info:
+'Vegas.phase_raw_playerReach_prefix_of_floor'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phase_raw_playerReach_prefix_of_floor

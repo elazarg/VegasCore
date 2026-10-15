@@ -973,7 +973,7 @@ Authentic source choices and local admission:
 [Recovery Commit Prefix Witness](../Vegas/Game/RecoveryCommitPrefixWitness.lean),
 [Recovery Intended Binding Checkpoint](../Vegas/Game/RecoveryIntendedBindingCheckpoint.lean),
 [Phase Binding Source Admission](../Vegas/Game/PhaseBindingSourceAdmission.lean).
-Actual surviving accepted bindings retain their original supported callback and typed meaning. Copied intended choices derive guard admission at the exact filled predecessor, conditional on saved intendedness and earlier own admission.
+Actual surviving accepted bindings retain their original supported callback and typed meaning. Copied intended choices derive guard admission at the exact filled predecessor, conditional on saved intendedness and earlier own admission; the actual canonical-history and static-prefix consumers below derive those hypotheses.
 
 Exact chosen source checkpoint successors:
 [Commit Recovery Non Commit Intended](../Vegas/Source/CommitRecoveryNonCommitIntended.lean),
@@ -982,7 +982,7 @@ Exact chosen source checkpoint successors:
 [Recovery Reveal Checkpoint](../Vegas/Game/RecoveryRevealCheckpoint.lean),
 [Recovery Sample Checkpoint](../Vegas/Game/RecoverySampleCheckpoint.lean),
 [Recovery Checkpoint Normalization](../Vegas/Game/RecoveryCheckpointNormalization.lean).
-Clear completed attempts equal physical prefix completion. The chosen commitment, sample and reveal successors retain whole intendedness under the stated admission/clarity hypotheses; supported-history admission induction remains separate.
+Clear completed attempts equal physical prefix completion. The chosen commitment, sample and reveal successors retain whole intendedness under the stated admission/clarity hypotheses; the actual clear canonical-history consumer below supplies admission and threads the chosen checkpoint.
 
 All counted packet inclusion cases:
 [Phase Binding Admitted Include](../Vegas/Pending/PhaseBindingAdmittedInclude.lean),
@@ -995,7 +995,7 @@ All counted packet inclusion cases:
 [Phase Binding Counted Inclusion](../Vegas/Pending/PhaseBindingCountedInclusion.lean),
 [Phase Binding Include Dispatcher](../Vegas/Pending/PhaseBindingIncludeDispatcher.lean),
 [Phase Binding Inclusion Trace](../Vegas/Pending/PhaseBindingInclusionTrace.lean).
-The actual same-scheduler include command extends paired directed histories across all packet branches. Submitted-binding records and own-binding memory remain explicit induction invariants.
+The actual same-scheduler include command extends paired directed histories across all packet branches. Submitted-binding records and own-binding memory are established and preserved by the whole-history consumer below.
 
 Exact directed opening response factors:
 [Reactive Uniform Menu](../Interaction/ReactiveUniformMenu.lean),
@@ -1011,4 +1011,59 @@ Exact directed opening response factors:
 [Phase Opening Menu Shape](../Vegas/Pending/PhaseOpeningMenuShape.lean),
 [Phase Opening Menu Symmetry](../Vegas/Pending/PhaseOpeningMenuSymmetry.lean),
 [Phase Opening Response Symmetry](../Vegas/Game/PhaseOpeningResponseSymmetry.lean).
-Actual clear binding endpoints force prior opening success. Directed opening callbacks have equal entire response laws, including exactly equal counted raw-noise menus; full-history products and native Bayes transport remain separate.
+Actual clear binding endpoints force prior opening success. Directed opening callbacks have equal entire response laws, including exactly equal counted raw-noise menus; the whole-prefix product consumer below composes these factors; native Bayes transport remains separate.
+
+Actual intended source histories:
+[Trace Prefix](../GameTheoryExtensions/Protocol/TracePrefix.lean),
+[Commit Prefix Snoc](../Vegas/Source/CommitPrefixSnoc.lean),
+[Commit Prefix Completion Snoc](../Vegas/Compile/CommitPrefixCompletionSnoc.lean),
+[Phase Resolution](../Vegas/Pending/PhaseResolution.lean),
+[Phase Semantic Progress](../Vegas/Pending/PhaseSemanticProgress.lean),
+[Phase Service Progress](../Vegas/Pending/PhaseServiceProgress.lean),
+[Phase Attempt Checkpoint](../Vegas/Pending/PhaseAttemptCheckpoint.lean),
+[Phase Binding Stamp History](../Vegas/Pending/PhaseBindingStampHistory.lean),
+[Phase Binding Response Origin](../Vegas/Pending/PhaseBindingResponseOrigin.lean),
+[Phase Source Binding Origin](../Vegas/Game/PhaseSourceBindingOrigin.lean),
+[Recovery Ready Commit Witness](../Vegas/Game/RecoveryReadyCommitWitness.lean),
+[Recovery Intended Binding Checkpoint](../Vegas/Game/RecoveryIntendedBindingCheckpoint.lean),
+[Phase Binding Source Admission](../Vegas/Game/PhaseBindingSourceAdmission.lean),
+[Phase Completed Binding Admission](../Vegas/Game/PhaseCompletedBindingAdmission.lean),
+[Phase Commit Prefix Admission](../Vegas/Game/PhaseCommitPrefixAdmission.lean),
+[Phase Raw Commit Admission](../Vegas/Game/PhaseRawCommitAdmission.lean),
+[Recovery Initial Checkpoint](../Vegas/Game/RecoveryInitialCheckpoint.lean),
+[Phase Clear Settlement](../Vegas/Pending/PhaseClearSettlement.lean),
+[Recovery Intended Normalization](../Vegas/Game/RecoveryIntendedNormalization.lean),
+[Phase Intended Checkpoint Step](../Vegas/Game/PhaseIntendedCheckpointStep.lean),
+[Phase Intended Checkpoint History](../Vegas/Game/PhaseIntendedCheckpointHistory.lean).
+Static source-prefix induction reconstructs admission at authentic callbacks. Actual clear canonical histories retain one whole intended saved source checkpoint through genuine raw completion and chosen normalization.
+
+Whole directed history repair and exact counterfactual reach:
+[Phase Binding Clear Counts](../Vegas/Pending/PhaseBindingClearCounts.lean),
+[Phase Binding Submitted Preservation](../Vegas/Pending/PhaseBindingSubmittedPreservation.lean),
+[Phase Binding Submitted Repair](../Vegas/Pending/PhaseBindingSubmittedRepair.lean),
+[Phase Binding Submitted Raw Repair](../Vegas/Pending/PhaseBindingSubmittedRawRepair.lean),
+[Phase Binding Idle Menu](../Vegas/Pending/PhaseBindingIdleMenu.lean),
+[Reactive Environment Mass](../Interaction/ReactiveEnvironmentMass.lean),
+[Phase Binding Sample Replay](../Vegas/Pending/PhaseBindingSampleReplay.lean),
+[Phase Binding Activation Mass](../Vegas/Pending/PhaseBindingActivationMass.lean),
+[Phase Binding Reach](../Vegas/Pending/PhaseBindingReach.lean),
+[Phase Binding Sample Mass](../Vegas/Pending/PhaseBindingSampleMass.lean),
+[Phase Binding Environment Mass](../Vegas/Pending/PhaseBindingEnvironmentMass.lean),
+[Phase Binding Counterfactual Step](../Vegas/Pending/PhaseBindingCounterfactualStep.lean),
+[Phase Binding Response Dispatcher](../Vegas/Pending/PhaseBindingResponseDispatcher.lean),
+[Phase Binding Environment Dispatcher](../Vegas/Pending/PhaseBindingEnvironmentDispatcher.lean),
+[Phase Binding History Repair](../Vegas/Pending/PhaseBindingHistoryRepair.lean),
+[Phase Binding Response Witness](../Vegas/Pending/PhaseBindingResponseWitness.lean),
+[Phase Repair Sending Witness](../Vegas/Game/PhaseRepairSendingWitness.lean),
+[Phase Repair Callback Witness](../Vegas/Game/PhaseRepairCallbackWitness.lean),
+[Phase Repair History Witness](../Vegas/Game/PhaseRepairHistoryWitness.lean).
+Actual response and environment steps construct both genuine histories, retain submitted/own binding provenance and derive exact repair-owner counterfactual reach equality from real command atoms. The compiled driver derives chronological callback categories; whole native/source law and Bayes transport remain separate.
+
+Whole-prefix and marked raw-binding contributions:
+[Phase Waiting Prefix](../Vegas/Game/PhaseWaitingPrefix.lean),
+[Phase Repair Own Play](../Vegas/Game/PhaseRepairOwnPlay.lean),
+[Phase Repair Response Factor](../Vegas/Game/PhaseRepairResponseFactor.lean),
+[Phase Repair Prefix Likelihood](../Vegas/Game/PhaseRepairPrefixLikelihood.lean),
+[Phase Raw Binding Contribution](../Vegas/Game/PhaseRawBindingContribution.lean),
+[Phase Marked Repair Likelihood](../Vegas/Game/PhaseMarkedRepairLikelihood.lean).
+Actual chronological own-play products derive send and WAIT bounds using one genuine source floor. A selected raw-mixture binding send retains an additional noise factor; source canonical failures remain in the unmarked factors. Preimage sums and posterior exclusion require further proof.

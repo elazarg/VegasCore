@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.RecoverySourceCheckpoint
+import Vegas.Game.IntendedPreservation
 
 /-! # The actual initialized dispatcher has its single-draw source checkpoint -/
 
@@ -43,7 +44,47 @@ def RecoverySourceCheckpoint.initialized (setup : Setup (Player := Player) (L :=
     (initial : State L setup.context) (supported : initial ∈ setup.initialLaw.support) :
     RecoverySourceCheckpoint setup mode
       (PhaseRuntimeState.initial plan (encodeInputs initial)) := by
-  rw [phaseInitial_eq_raw]
-  exact RecoverySourceCheckpoint.initial setup mode plan initial supported
+  exact cast (congrArg (RecoverySourceCheckpoint setup mode)
+    (phaseInitial_eq_raw plan (encodeInputs initial)).symm)
+      (RecoverySourceCheckpoint.initial setup mode plan initial supported)
+
+private theorem checkpoint_point_cast {setup : Setup (Player := Player) (L := L)}
+    {mode : ExecutionMode}
+    {state other : PhaseRuntimeState ((toEventGraph setup.program).withMode mode)}
+    (same : state = other) (checkpoint : RecoverySourceCheckpoint setup mode state) :
+    let transported := cast (congrArg (RecoverySourceCheckpoint setup mode) same) checkpoint
+    transported.residual.lift (ProtocolState.entry transported.residual.tail transported.source) =
+      checkpoint.residual.lift
+        (ProtocolState.entry checkpoint.residual.tail checkpoint.source) := by
+  cases same
+  rfl
+
+/-- The chosen initialized checkpoint contains exactly the initial source
+program point, including the complete setup configuration. -/
+theorem RecoverySourceCheckpoint.initialized_point
+    (setup : Setup (Player := Player) (L := L)) (mode : ExecutionMode)
+    (plan : RuntimePhasePlan ((toEventGraph setup.program).withMode mode))
+    (initial : State L setup.context) (supported : initial ∈ setup.initialLaw.support) :
+    let checkpoint := RecoverySourceCheckpoint.initialized setup mode plan initial supported
+    checkpoint.residual.lift (ProtocolState.entry checkpoint.residual.tail checkpoint.source) =
+      ProtocolState.entry setup.program (setup.initialConfig initial) := by
+  exact checkpoint_point_cast (phaseInitial_eq_raw plan (encodeInputs initial)).symm
+    (RecoverySourceCheckpoint.initial setup mode plan initial supported)
+
+/-- A supported setup draw gives whole intendedness at the actual chosen
+initial checkpoint, including future guard satisfiability. -/
+theorem RecoverySourceCheckpoint.initialized_intended
+    (setup : Setup (Player := Player) (L := L)) (mode : ExecutionMode)
+    (plan : RuntimePhasePlan ((toEventGraph setup.program).withMode mode))
+    (wellFormed : setup.WellFormed)
+    (initial : State L setup.context) (supported : initial ∈ setup.initialLaw.support) :
+    let checkpoint := RecoverySourceCheckpoint.initialized setup mode plan initial supported
+    ProtocolState.Intended setup.program (checkpoint.residual.lift
+      (ProtocolState.entry checkpoint.residual.tail checkpoint.source)) := by
+  dsimp only
+  rw [RecoverySourceCheckpoint.initialized_point]
+  exact ProtocolState.intended_entry setup.program _
+    (setup.initialConfig_intended wellFormed supported)
+    (wellFormed.guardsSatisfiable initial supported)
 
 end Vegas

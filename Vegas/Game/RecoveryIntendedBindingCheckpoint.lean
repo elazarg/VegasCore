@@ -176,24 +176,9 @@ theorem RecoverySourceCheckpoint.intended_binding_information_of_ready
           ((serviceGraph setup mode).playerStore owner state.current.native.config.store)
           (decodeHistory setup.program (state.current.native.config.history.map
             (setup.eventGraph.fromModeCompletion mode)) owner) = site.1 := by
-  apply checkpoint.intended_binding_information wellFormed fresh guard next earlier reconstruct
-    clear stored savedIntended selected atEnd ready acting notPublication _ ?_ ownAdmitted
-  have history := congrFun (checkpoint.historyAlignment clear) owner
-  rcases checkpoint with ⟨⟨Γ, O, program, lift⟩, entry, refs, registry, embedding, before,
-    compiled, terminalAlignment, agrees, guards, failures, unique, ranks, actors, commits, owners,
-    endpoints, automatic, histories, memories, steps, menus, readout, initialized, views,
-    _savedHistory, _origin⟩
-  dsimp only at *
-  change SourceProgram.Config Player L Γ at entry
-  change OutputEmbedding (inputLayout setup.context) (outputLayout setup.program) program
-    at embedding
-  change SourceProgram.CommitPrefix Γ O Δ P at earlier
-  change Fin (eventCount program) at selected
-  change earlier.prepend (.commit name owner fresh guard next) = program at reconstruct
-  subst program
-  exact fillCommitPrefix_history_of_ready setup.program mode earlier
-    (.commit name owner fresh guard next) embedding state.attempt.phase compiled.rankEq
-    state.entry.native state.current.native entry valid reachable retained saved owner
-    history views.actionEq selected atEnd ready acting
+  exact checkpoint.intended_binding_information wellFormed fresh guard next earlier reconstruct
+    clear stored savedIntended selected atEnd ready acting notPublication _
+      (checkpoint.filled_prefix_history_of_ready fresh guard next earlier reconstruct clear selected
+        atEnd ready acting valid reachable retained saved) ownAdmitted
 
 end Vegas

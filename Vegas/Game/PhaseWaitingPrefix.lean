@@ -61,7 +61,7 @@ variable (finite : setup.program.FiniteBindingTypes) (wellFormed : setup.WellFor
 
 include maximal
 
-private theorem waiting_record_ratio (n : Nat) (capacity : horizon ≤ bounds.candidateCount)
+theorem phaseBindingWaitingPair.record_ratio (n : Nat) (capacity : horizon ≤ bounds.candidateCount)
     (floor : ℝ) (floorPositive : 0 < floor)
     (floored : ∀ (player : Player) (site : setup.commitRecoveryModel.InformationSite player)
       (choice : setup.commitRecoveryModel.Choice player site.1),
@@ -151,7 +151,8 @@ theorem phase_playerReach_waiting_prefix_of_floor
     induction matched with
     | nil => simp [InformationModel.ownPlayReachProbability]
     | @cons firstRecord secondRecord firstRecords secondRecords matchHead _matchTail ih =>
-      have head := waiting_record_ratio setup mode runtime leaks bounds plan horizon scheduler
+      have head := phaseBindingWaitingPair.record_ratio setup mode runtime leaks bounds plan horizon
+        scheduler
         finite wellFormed target approximation maximal n capacity floor positive floored noise
           noiseNonnegative noiseSmall slotWeight slotNonnegative slotBounded who firstRecord
             secondRecord matchHead

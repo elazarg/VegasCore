@@ -16,6 +16,51 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
 /-- Readiness identifies the filled source history with actual native own recall,
 so the typed source trace requires no supplied filled-history equation. -/
+theorem RecoverySourceCheckpoint.filled_prefix_history_of_ready
+    {setup : Setup (Player := Player) (L := L)} {mode : ExecutionMode}
+    {state : PhaseRuntimeState (serviceGraph setup mode)}
+    (checkpoint : RecoverySourceCheckpoint setup mode state)
+    {Δ : SourceCtx Player L} {P : Finset VarId} {name : VarId} {owner : Player}
+    {payload : L.Ty} (fresh : name ∉ Δ.map Prod.fst)
+    (guard : SourceGuard L Δ owner name payload)
+    (next : SourceProgram Player L ((name, .commitment owner payload) :: Δ) (insert name P))
+    (earlier : SourceProgram.CommitPrefix checkpoint.residual.context checkpoint.residual.names Δ P)
+    (reconstruct : earlier.prepend (.commit name owner fresh guard next) = checkpoint.residual.tail)
+    (clear : state.entry.excluded = ∅)
+    (selected : Fin (eventCount checkpoint.residual.tail))
+    (atEnd : selected.val = earlier.length)
+    (ready : state.current.native.config.cut.Ready (checkpoint.embedding.event selected))
+    (acting : (serviceGraph setup mode).actor? (checkpoint.embedding.event selected) = some owner)
+    (valid : state.current.native.BindingInvariant) {inputs}
+    (reachable : state.current.native.config.Reachable inputs)
+    (retained : state.HistoryCheckpoint)
+    (saved : state.entry.native.config.cut.IsPrefix state.attempt.phase) :
+    let embedding := cast (congrArg
+      (fun program => OutputEmbedding (inputLayout setup.context) (outputLayout setup.program)
+        program) reconstruct.symm) checkpoint.embedding
+    (fillCommitPrefix setup.program earlier (.commit name owner fresh guard next) embedding
+      state.current.native.config.store checkpoint.source).history owner =
+        decodeHistory setup.program (state.current.native.config.history.map
+          (setup.eventGraph.fromModeCompletion mode)) owner := by
+  have history := congrFun (checkpoint.historyAlignment clear) owner
+  rcases checkpoint with ⟨⟨Γ, O, program, lift⟩, entry, refs, registry, embedding, before,
+    compiled, terminalAlignment, agrees, guards, failures, unique, ranks, actors, commits, owners,
+    endpoints, automatic, histories, memories, steps, menus, readout, initialized, views,
+    _savedHistory, _origin⟩
+  dsimp only at *
+  change SourceProgram.Config Player L Γ at entry
+  change OutputEmbedding (inputLayout setup.context) (outputLayout setup.program) program
+    at embedding
+  change SourceProgram.CommitPrefix Γ O Δ P at earlier
+  change Fin (eventCount program) at selected
+  change earlier.prepend (.commit name owner fresh guard next) = program at reconstruct
+  subst program
+  exact fillCommitPrefix_history_of_ready setup.program mode earlier
+    (.commit name owner fresh guard next) embedding state.attempt.phase compiled.rankEq
+    state.entry.native state.current.native entry valid reachable retained saved owner
+    history views.actionEq selected atEnd ready acting
+
+/-- The actual source trace uses the filled own history derived from readiness. -/
 theorem RecoverySourceCheckpoint.filled_prefix_trace_of_ready
     {setup : Setup (Player := Player) (L := L)} {mode : ExecutionMode}
     {state : PhaseRuntimeState (serviceGraph setup mode)}
@@ -48,25 +93,9 @@ theorem RecoverySourceCheckpoint.filled_prefix_trace_of_ready
         (decodeHistory setup.program (state.current.native.config.history.map
           (setup.eventGraph.fromModeCompletion mode)) owner) =
           some (ProtocolState.observe owner setup.program source.point) := by
-  apply checkpoint.filled_prefix_trace fresh guard next earlier reconstruct clear stored selected
-    atEnd ready acting notPublication _
-  have history := congrFun (checkpoint.historyAlignment clear) owner
-  rcases checkpoint with ⟨⟨Γ, O, program, lift⟩, entry, refs, registry, embedding, before,
-    compiled, terminalAlignment, agrees, guards, failures, unique, ranks, actors, commits, owners,
-    endpoints, automatic, histories, memories, steps, menus, readout, initialized, views,
-    _savedHistory, _origin⟩
-  dsimp only at *
-  change SourceProgram.Config Player L Γ at entry
-  change OutputEmbedding (inputLayout setup.context) (outputLayout setup.program) program
-    at embedding
-  change SourceProgram.CommitPrefix Γ O Δ P at earlier
-  change Fin (eventCount program) at selected
-  change earlier.prepend (.commit name owner fresh guard next) = program at reconstruct
-  subst program
-  exact fillCommitPrefix_history_of_ready setup.program mode earlier
-    (.commit name owner fresh guard next) embedding state.attempt.phase compiled.rankEq
-    state.entry.native state.current.native entry valid reachable retained saved owner
-    history views.actionEq selected atEnd ready acting
+  exact checkpoint.filled_prefix_trace fresh guard next earlier reconstruct clear stored selected
+    atEnd ready acting notPublication _ (checkpoint.filled_prefix_history_of_ready fresh guard next
+      earlier reconstruct clear selected atEnd ready acting valid reachable retained saved)
 
 /-- The current phase's actual layouts determine the typed earlier prefix.
 Foreign holes need no feasibility premise and no maximal-block decomposition

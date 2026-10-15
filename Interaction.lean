@@ -163,3 +163,4 @@ import Interaction.ReactiveReceiptBoundary
 import Interaction.MessageNetworkMap
 import Interaction.ReactiveConsistentHistory
 import Interaction.ReactiveUniformMenu
+import Interaction.ReactiveEnvironmentMass

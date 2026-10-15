@@ -45,14 +45,11 @@ theorem phase_binding_source_choice_admitted
     (acting : (serviceGraph setup mode).actor? (checkpoint.embedding.event selected) = some owner)
     (binding : (serviceGraph setup mode).outputLayout (checkpoint.embedding.event selected) =
       .binding owner payload)
-    (historyAligned :
-      let embedding := cast (congrArg
-        (fun program => OutputEmbedding (inputLayout setup.context) (outputLayout setup.program)
-          program) reconstruct.symm) checkpoint.embedding
-      (fillCommitPrefix setup.program earlier (.commit name owner fresh guard next) embedding
-        execution.application.current.native.config.store checkpoint.source).history owner =
-          decodeHistory setup.program (execution.application.current.native.config.history.map
-            (setup.eventGraph.fromModeCompletion mode)) owner)
+    (valid : execution.application.current.native.BindingInvariant) {inputs}
+    (reachable : execution.application.current.native.config.Reachable inputs)
+    (retained : execution.application.HistoryCheckpoint)
+    (saved : execution.application.entry.native.config.cut.IsPrefix
+      execution.application.attempt.phase)
     (ownAdmitted :
       let embedding := cast (congrArg
         (fun program => OutputEmbedding (inputLayout setup.context) (outputLayout setup.program)
@@ -80,6 +77,8 @@ theorem phase_binding_source_choice_admitted
       (checkpoint.embedding.event selected)).IsPublication := by
     rw [binding]
     simp only [EventField.IsPublication, not_false_eq_true]
+  have historyAligned := checkpoint.filled_prefix_history_of_ready fresh guard next earlier
+    reconstruct clear selected atEnd ready acting valid reachable retained saved
   have filledView := checkpoint.filled_prefix_view fresh guard next earlier reconstruct stored
     selected atEnd ready acting notPublication _ historyAligned
   obtain ⟨site, original, intendedView⟩ := checkpoint.intended_binding_information wellFormed

@@ -45,5 +45,6 @@ import Vegas.Compile.EventSourcePosition
 import Vegas.Compile.CommitPrefixReadStability
 import Vegas.Compile.CommitPrefixAdmission
 import Vegas.Compile.CommitPrefixAdmittedAction
+import Vegas.Compile.CommitPrefixCompletionSnoc
 
 /-! Source-program lowering to the typed immutable graph. -/

@@ -81,8 +81,9 @@ theorem normalize_progress {inputs : graph.Inputs} (state : PhaseRuntimeState gr
     (valid : state.current.native.Invariant inputs) (ordered : state.Ordered)
     (same : state.attempt = state.normalize.attempt) :
     State.ServiceProgress inputs 0 state.current.native state.normalize.current.native := by
-  have currentEq := settle_current_of_same_namespace state.phases state.generation state.entry
+  have settled := settle_of_same_namespace state.phases state.generation state.entry
     state.current state.retired ordered same
+  have currentEq := congrArg PhaseRuntimeState.current settled
   change State.ServiceProgress inputs 0 state.current.native
     (settle state.phases state.generation state.entry state.current state.retired).current.native
   rw [currentEq]

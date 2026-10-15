@@ -56,13 +56,14 @@ theorem phaseLow_lt_tail (phase : RuntimePhase graph)
 
 /-- If normalization retains the current physical namespace, it only performs
 phase-local automatic completions; it has not restored an earlier checkpoint. -/
-theorem settle_current_of_same_namespace (phases : List (RuntimePhase graph)) (generation : Nat)
+theorem settle_of_same_namespace (phases : List (RuntimePhase graph)) (generation : Nat)
     (entry current : RecoveryState graph) (retired : List (RetiredCommitAttempt graph))
     (ordered : phases.IsChain (fun before after => before.high = after.low))
     (same : (⟨phases, generation, entry, current, retired⟩ : PhaseRuntimeState graph).attempt =
       (settle phases generation entry current retired).attempt) :
-    (settle phases generation entry current retired).current =
-      phases.head?.elim current (fun phase => phase.drain current) := by
+    settle phases generation entry current retired =
+      ⟨phases, generation, entry,
+        phases.head?.elim current (fun phase => phase.drain current), retired⟩ := by
   classical
   cases phases with
   | nil => rfl
@@ -109,7 +110,7 @@ theorem settle_resolves (phases : List (RuntimePhase graph)) (generation : Nat)
       (⟨phases, generation, entry, current, retired⟩ : PhaseRuntimeState graph).attempt =
       (settle phases generation entry current retired).attempt
   · right
-    rw [settle_current_of_same_namespace phases generation entry current retired ordered same]
+    rw [settle_of_same_namespace phases generation entry current retired ordered same]
     cases phases with
     | nil => exact completed
     | cons phase remaining => exact phase.drain_completed current completed

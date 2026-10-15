@@ -30,6 +30,39 @@ def rawSample (physical : (phaseApplication runtime leaks).Execution) (event : g
       [⟨physical.observeEnvironment (phaseApplication runtime leaks),
         .application (.executeSample event)⟩] }
 
+/-- The real sample command law retains the exact public draw through
+physical phase normalization. -/
+theorem sample_environment_law (physical : (phaseApplication runtime leaks).Execution)
+    (event : graph.EventId)
+    (ready : physical.application.current.native.config.cut.Ready event)
+    (payload : L.Ty) (law : PublicDist graph.layout payload)
+    (outputEq : graph.outputLayout event = .publicData payload)
+    (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
+      (graph.nodes event) = .sample payload law)
+    (node : nodeView graph event = .sample payload law outputEq codeEq)
+    (allowed : physical.application.commandAllowed (.executeSample event) = true)
+    (draw : PMF (L.Val payload))
+    (evaluates : law.eval? physical.application.current.native.config.store = some draw) :
+    physical.environmentStep (phaseApplication runtime leaks)
+        (.application (.executeSample event)) =
+      draw.map (fun value => PhaseRuntimeState.normalizeExecution runtime leaks
+        (rawSample runtime leaks physical event payload outputEq ready value)) := by
+  have applicationLaw : environmentStep runtime physical.application.current.native
+      (.executeSample event) = draw.map (fun value =>
+        physical.application.current.native.complete event ready
+          (cast (congrArg EventField.Action outputEq.symm) PUnit.unit)
+          (cast (congrArg EventField.Value outputEq.symm) value)) := by
+    rw [environmentStep_executeSample_eq runtime physical.application.current.native event
+      ready payload law outputEq codeEq node,
+      physical.application.current.native.config.step_eq_map_of_code event ready outputEq
+        (.sample payload law) codeEq PUnit.unit draw evaluates, PMF.map_comp]
+    rfl
+  simp only [ReactiveApplication.Execution.environmentStep, PMF.map_comp]
+  change (physical.application.environment runtime (.executeSample event)).map _ = _
+  rw [PhaseRuntimeState.environment]
+  simp only [allowed, ↓reduceIte, applicationLaw, PMF.map_comp]
+  rfl
+
 namespace Frame
 
 variable {runtime leaks}
@@ -139,33 +172,16 @@ theorem sample_coupling (frame : Frame runtime leaks memory owner original repai
       (value : L.Val payload) :=
     PhaseRuntimeState.normalizeExecution runtime leaks
       (rawSample runtime leaks physical event payload outputEq ready value)
-  have actual (physical : app.Execution)
-      (ready : physical.application.current.native.config.cut.Ready event)
-      (allowed : physical.application.commandAllowed (.executeSample event) = true)
-      (evaluates : law.eval? physical.application.current.native.config.store = some draw) :
-      physical.environmentStep app (.application (.executeSample event)) =
-        draw.map (next physical ready) := by
-    have applicationLaw : environmentStep runtime physical.application.current.native
-        (.executeSample event) = draw.map (fun value =>
-          physical.application.current.native.complete event ready
-            (cast (congrArg EventField.Action outputEq.symm) PUnit.unit)
-            (cast (congrArg EventField.Value outputEq.symm) value)) := by
-      rw [environmentStep_executeSample_eq runtime physical.application.current.native event
-        ready payload law outputEq codeEq node,
-        physical.application.current.native.config.step_eq_map_of_code event ready outputEq
-          (.sample payload law) codeEq PUnit.unit draw evaluates, PMF.map_comp]
-      rfl
-    simp only [ReactiveApplication.Execution.environmentStep, PMF.map_comp]
-    change (physical.application.environment runtime (.executeSample event)).map _ = _
-    rw [PhaseRuntimeState.environment]
-    simp only [allowed, ↓reduceIte, applicationLaw, PMF.map_comp]
-    rfl
   refine ⟨draw.map (fun value => (next original ready value, next repaired rightReady value)),
     ?_, ?_, ?_⟩
   · rw [PMF.map_comp]
-    exact (actual original ready allowed leftLaw).symm
+    exact (sample_environment_law runtime leaks original event ready payload law outputEq codeEq
+      node
+      allowed draw leftLaw).symm
   · rw [PMF.map_comp]
-    exact (actual repaired rightReady rightAllowed rightLaw).symm
+    exact (sample_environment_law runtime leaks repaired event rightReady payload law outputEq
+      codeEq node
+      rightAllowed draw rightLaw).symm
   · intro pair supported
     obtain ⟨value, _member, rfl⟩ := PMF.support_map .. ▸ supported
     exact frame.sample_value onlyBindings event payload outputEq ready rightReady value

@@ -80,6 +80,51 @@ theorem liveBindingStamp_respond (execution : (app).Execution)
             who material.call.packet).accepted = _
           rw [submitStep_accepted, Submission.register_accepted]
 
+/-- Raw native acceptance preserves every typed binding meaning, including
+fresh candidates whose freeze merely changes one failure representation. -/
+theorem raw_handle_bindingResult (state next : State graph)
+    (message : Message Player (Payload graph))
+    (accepted : EventGraphRuntime.handle runtime state message = some next)
+    (candidate : Handle graph) (payload : L.Ty) :
+    next.bindingResult candidate payload = state.bindingResult candidate payload := by
+  rcases handle_tables_cases runtime state next message accepted with
+    ⟨event, selected, call, candidates, table, owner⟩ | ⟨table, candidates⟩
+  · unfold State.bindingResult
+    rw [candidates]
+    by_cases same : candidate = selected
+    · subst candidate
+      rw [CommitmentCandidates.lookup_freeze_self]
+      cases state.candidates.lookup selected <;> rfl
+    · rw [CommitmentCandidates.lookup_freeze_other _ _ _ same]
+  · unfold State.bindingResult
+    rw [candidates]
+
+/-- Native acceptance records the real authored packet before phase normalization. -/
+theorem raw_handle_bindingStamp (execution : (app).Execution)
+    (native : State graph) (message : Message Player (CommitAttemptPacket graph))
+    (valid : LiveBindingStamp runtime leaks execution)
+    (issued : execution.Issued (app) message)
+    (current : message.payload.attempt = execution.application.attempt)
+    (accepted : EventGraphRuntime.handle runtime execution.application.current.native
+      ⟨message.id, message.payload.packet.call⟩ = some native) :
+    BindingStamp (fun who => (app).outputs (execution.recall who))
+      execution.application.attempt native := by
+  rcases handle_tables_cases runtime execution.application.current.native native _ accepted with
+    ⟨event, candidate, call, _, table, owner⟩ | ⟨table, _⟩
+  · intro field handle installed
+    change native.accepted (.inr field) = some handle at installed
+    rw [table] at installed
+    by_cases same : field = event
+    · subst field
+      rw [Function.update_self] at installed
+      cases Option.some.inj installed
+      obtain ⟨entry, present, material, transmission, emitted, packet⟩ := issued
+      exact Or.inr ⟨message, List.mem_filterMap.mpr ⟨entry,
+        by simpa only [Message.sender, owner] using present, emitted⟩, owner.symm, call, current⟩
+    · rw [Function.update_of_ne (by simpa using same)] at installed
+      exact valid field handle installed
+  · exact valid.copy table
+
 private theorem liveBindingStamp_handle (execution : (app).Execution)
     (next : PhaseRuntimeState graph) (message : Message Player (CommitAttemptPacket graph))
     (valid : LiveBindingStamp runtime leaks execution)
@@ -100,23 +145,8 @@ private theorem liveBindingStamp_handle (execution : (app).Execution)
     apply PhaseRuntimeState.normalize_bindingStamp _ _
       (PhaseRuntimeState.raw_handle_frontier runtime _ record.frontier _ native authorized accepted)
       record.saved (record.active.step (completionStep_handle runtime _ native _ accepted))
-    change BindingStamp (fun who => (app).outputs (execution.recall who))
-      execution.application.attempt native
-    rcases handle_tables_cases runtime execution.application.current.native native _ accepted with
-      ⟨event, candidate, call, _, table, owner⟩ | ⟨table, _⟩
-    · intro field handle installed
-      change native.accepted (.inr field) = some handle at installed
-      rw [table] at installed
-      by_cases same : field = event
-      · subst field
-        rw [Function.update_self] at installed
-        cases Option.some.inj installed
-        obtain ⟨entry, present, material, transmission, emitted, packet⟩ := issued
-        exact Or.inr ⟨message, List.mem_filterMap.mpr ⟨entry,
-          by simpa only [Message.sender, owner] using present, emitted⟩, owner.symm, call, current⟩
-      · rw [Function.update_of_ne (by simpa using same)] at installed
-        exact valid field handle installed
-    · exact valid.copy table
+    exact raw_handle_bindingStamp runtime leaks execution native message valid issued current
+      accepted
   · cases handled
 
 theorem liveBindingStamp_environment (execution next : (app).Execution)

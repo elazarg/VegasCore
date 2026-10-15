@@ -837,3 +837,17 @@ import Vegas.Game.PhaseBindingSourceAdmission
 import Vegas.Game.PhaseOpeningWaitingLaw
 import Vegas.Game.PhaseOpeningResponseSymmetry
 import Vegas.Game.CompiledCommitCompletion
+import Vegas.Game.PhaseRepairOwnPlay
+import Vegas.Game.PhaseRepairResponseFactor
+import Vegas.Game.PhaseRepairPrefixLikelihood
+import Vegas.Game.PhaseRawBindingContribution
+import Vegas.Game.PhaseMarkedRepairLikelihood
+import Vegas.Game.PhaseRepairSendingWitness
+import Vegas.Game.PhaseRepairCallbackWitness
+import Vegas.Game.PhaseRepairHistoryWitness
+import Vegas.Game.PhaseCompletedBindingAdmission
+import Vegas.Game.PhaseCommitPrefixAdmission
+import Vegas.Game.PhaseRawCommitAdmission
+import Vegas.Game.RecoveryIntendedNormalization
+import Vegas.Game.PhaseIntendedCheckpointStep
+import Vegas.Game.PhaseIntendedCheckpointHistory

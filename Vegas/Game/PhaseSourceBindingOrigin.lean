@@ -66,6 +66,104 @@ private theorem binding_policy_transmitted_choice (wellFormed : setup.WellFormed
     · cases (PMF.mem_support_pure_iff _ _).mp supported
       cases transmitted
 
+/-- A stamped native binding retains the actual source draw at its authentic
+callback, including a raw native completion before physical normalization. -/
+theorem phase_binding_source_choice_of_stamp
+    (wellFormed : setup.WellFormed)
+    (assessment : setup.commitRecoveryModel.BehavioralAssessment)
+    (plan : RuntimePhasePlan (serviceGraph setup mode))
+    (maximal : plan.phases.IsChain fun before after =>
+      before.kind ≠ after.kind ∨ before.kind = .sample)
+    (inputs : PMF (serviceGraph setup mode).Inputs) (horizon : Nat)
+    (scheduler : (app).Scheduler) {control : (app).Control}
+    (trace : ((PhaseCount.onePacketMenu runtime leaks bounds).protocol
+      (inputs.map (PhaseRuntimeState.initial plan)) horizon scheduler).Trace (some control))
+    (clear : control.execution.application.current.excluded = ∅)
+    (who : Player) (event : (serviceGraph setup mode).EventId) (payload : L.Ty)
+    (binding : (serviceGraph setup mode).outputLayout event = .binding who payload)
+    (native : EventGraphRuntime.State (serviceGraph setup mode))
+    (validBinding : native.BindingInvariant)
+    (results : ∀ handle payload, native.bindingResult handle payload =
+      control.execution.application.current.native.bindingResult handle payload)
+    (stamped : BindingStamp (fun owner => (app).outputs (control.execution.recall owner))
+      control.execution.application.attempt native)
+    (candidate : Handle (serviceGraph setup mode))
+    (accepted : native.accepted (.inr event) = some candidate)
+    (lower : control.execution.application.attempt.phase ≤ event.val)
+    (consistent : (phaseSourcePolicy setup mode runtime leaks bounds wellFormed assessment
+      who).Consistent (control.execution.recall who)) :
+    ∃ (before : (app).Control)
+      (prior : ((PhaseCount.onePacketMenu runtime leaks bounds).protocol
+        (inputs.map (PhaseRuntimeState.initial plan)) horizon scheduler).Trace (some before))
+      (entry : (app).PlayerEntry) (serial : Nat)
+      (choice : setup.commitRecoveryModel.Choice who
+        (setup.commitRecoveryClearInformation wellFormed who
+          (phaseSourceView? setup mode runtime leaks who event
+            (before.execution.observe (app) who)))),
+      TracePrefix prior trace ∧
+      before.execution.application.attempt = control.execution.application.attempt ∧
+      before.actor = some who ∧
+      before.execution.application.current.excluded = ∅ ∧
+      before.execution.application.SeedRequest who
+        ⟨before.execution.application.attempt, event⟩ ∧
+      entry ∈ control.execution.recall who ∧
+      entry.beforeView = before.execution.observe (app) who ∧
+      reactiveFreshSlot entry.beforeView.application.1 = some serial ∧
+      choice ∈ (assessment.strategy who (setup.commitRecoveryClearInformation wellFormed who
+        (phaseSourceView? setup mode runtime leaks who event
+          (before.execution.observe (app) who)))).support ∧
+      (phaseRecoveryBindingData setup mode event who payload binding choice.1).2 = false ∧
+      entry.action = phaseBindingResponse runtime leaks who event payload
+        (phaseRecoveryBindingData setup mode event who payload binding choice.1).1 serial ∧
+      candidate = (who, .prepared serial) ∧
+      native.bindingResult candidate payload =
+        (phaseRecoveryBindingData setup mode event who payload binding choice.1).1 := by
+  obtain ⟨actualPayload, typed⟩ := validBinding.accepted_typed (.inr event) candidate accepted
+  have owner : candidate.1 = who := (EventField.binding.inj (typed.symm.trans binding)).1
+  have focal : (phaseSourcePolicy setup mode runtime leaks bounds wellFormed assessment
+      who).Consistent (control.execution.recall candidate.1) := by rw [owner]; exact consistent
+  obtain ⟨message, entry, material, before, prior, _sender, _attempt, _call, retained, _emitted,
+    transmitted, materialCall, retainedTrace, sameAttempt, acting, viewed, supported, _suffix,
+      _samePast⟩ :=
+    phase_binding_response_origin_of_stamp runtime leaks bounds plan inputs horizon scheduler
+      trace native stamped event candidate accepted lower
+        (phaseSourcePolicy setup mode runtime leaks bounds wellFormed assessment who) focal
+  rw [owner] at retained acting viewed supported
+  have raw := (PhaseCount.onePacketMenu runtime leaks bounds).toRawTrace _ horizon scheduler prior
+  obtain ⟨_draw, valid⟩ := phaseNativeInvariant_history runtime leaks plan inputs horizon
+    scheduler raw
+  have request := phaseSourcePolicy_request_of_binding_support setup mode runtime leaks bounds
+    wellFormed assessment before.execution valid who entry.action supported material transmitted
+      event candidate materialCall
+  have branch := phaseSourcePolicy_binding setup mode runtime leaks bounds wellFormed assessment
+    before.execution valid who event payload binding request
+  rw [branch] at supported
+  obtain ⟨serial, choice, selected, chosen, missing, declared⟩ := binding_policy_transmitted_choice
+    setup mode runtime leaks bounds wellFormed assessment who event payload binding
+      (before.execution.recall who) (before.execution.observe (app) who) entry.action supported
+        material transmitted
+  have fresh : reactiveFreshSlot entry.beforeView.application.1 = some serial := by
+    rw [viewed]
+    exact selected
+  have sameMaterial : (phaseBindingResponse runtime leaks who event payload
+      (phaseRecoveryBindingData setup mode event who payload binding choice.1).1
+        serial).transmission = some material := declared ▸ transmitted
+  have exactCall := (congrArg (fun submitted : WitnessedSubmission (serviceGraph setup mode) =>
+    submitted.call.packet) (Option.some.inj sameMaterial)).trans materialCall
+  have handleEq : candidate = (who, .prepared serial) :=
+    (Payload.commitment.inj exactCall).2.symm
+  have beforeClear := (phase_clear_nativeProgress_of_prefix runtime leaks
+    (PhaseCount.onePacketMenu runtime leaks bounds) _ horizon scheduler before control prior
+      trace retainedTrace clear).1
+  refine ⟨before, prior, entry, serial, choice, retainedTrace, sameAttempt, acting, beforeClear,
+    request,
+    retained, viewed, fresh, chosen, missing, declared, handleEq, ?_⟩
+  rw [handleEq]
+  rw [results]
+  exact PhaseNativeProjection.recorded_binding_result_of_clear runtime leaks plan bounds
+    (serviceGraph_revealRelaxedOrdered setup mode) maximal inputs horizon scheduler trace clear
+      who event payload _ serial entry retained declared (reactiveFreshSlot_spec _ serial fresh)
+
 /-- An actual surviving current-phase accepted binding retains the very source
 draw used at its genuine earlier ready callback. Its immutable typed result,
 fresh physical slot and full actual history prefix are derived together. -/
@@ -98,7 +196,9 @@ theorem phase_accepted_binding_source_choice
         (setup.commitRecoveryClearInformation wellFormed who
           (phaseSourceView? setup mode runtime leaks who event
             (before.execution.observe (app) who)))),
-      TracePrefix prior trace ∧ before.actor = some who ∧
+      TracePrefix prior trace ∧
+      before.execution.application.attempt = control.execution.application.attempt ∧
+      before.actor = some who ∧
       before.execution.application.current.excluded = ∅ ∧
       before.execution.application.SeedRequest who
         ⟨before.execution.application.attempt, event⟩ ∧
@@ -114,50 +214,16 @@ theorem phase_accepted_binding_source_choice
       candidate = (who, .prepared serial) ∧
       control.execution.application.current.native.bindingResult candidate payload =
         (phaseRecoveryBindingData setup mode event who payload binding choice.1).1 := by
-  have rawCurrent := (PhaseCount.onePacketMenu runtime leaks bounds).toRawTrace _ horizon
-    scheduler trace
-  have bindings := phaseBindingRecord_history runtime leaks plan inputs horizon scheduler rawCurrent
-  obtain ⟨actualPayload, typed⟩ := bindings.active.accepted_typed (.inr event) candidate accepted
-  have owner : candidate.1 = who := (EventField.binding.inj (typed.symm.trans binding)).1
-  have focal : (phaseSourcePolicy setup mode runtime leaks bounds wellFormed assessment
-      who).Consistent (control.execution.recall candidate.1) := by rw [owner]; exact consistent
-  obtain ⟨message, entry, material, before, prior, _sender, _attempt, _call, retained, _emitted,
-    transmitted, materialCall, retainedTrace, acting, viewed, supported, _suffix, _samePast⟩ :=
-    phase_accepted_binding_response_origin runtime leaks bounds plan inputs horizon scheduler
-      trace event candidate accepted phase installed inside
-        (phaseSourcePolicy setup mode runtime leaks bounds wellFormed assessment who) focal
-  rw [owner] at retained acting viewed supported
-  have raw := (PhaseCount.onePacketMenu runtime leaks bounds).toRawTrace _ horizon scheduler prior
-  obtain ⟨_draw, valid⟩ := phaseNativeInvariant_history runtime leaks plan inputs horizon
-    scheduler raw
-  have request := phaseSourcePolicy_request_of_binding_support setup mode runtime leaks bounds
-    wellFormed assessment before.execution valid who entry.action supported material transmitted
-      event candidate materialCall
-  have branch := phaseSourcePolicy_binding setup mode runtime leaks bounds wellFormed assessment
-    before.execution valid who event payload binding request
-  rw [branch] at supported
-  obtain ⟨serial, choice, selected, chosen, missing, declared⟩ := binding_policy_transmitted_choice
-    setup mode runtime leaks bounds wellFormed assessment who event payload binding
-      (before.execution.recall who) (before.execution.observe (app) who) entry.action supported
-        material transmitted
-  have fresh : reactiveFreshSlot entry.beforeView.application.1 = some serial := by
-    rw [viewed]
-    exact selected
-  have sameMaterial : (phaseBindingResponse runtime leaks who event payload
-      (phaseRecoveryBindingData setup mode event who payload binding choice.1).1
-        serial).transmission = some material := declared ▸ transmitted
-  have exactCall := (congrArg (fun submitted : WitnessedSubmission (serviceGraph setup mode) =>
-    submitted.call.packet) (Option.some.inj sameMaterial)).trans materialCall
-  have handleEq : candidate = (who, .prepared serial) :=
-    (Payload.commitment.inj exactCall).2.symm
-  have beforeClear := (phase_clear_nativeProgress_of_prefix runtime leaks
-    (PhaseCount.onePacketMenu runtime leaks bounds) _ horizon scheduler before control prior
-      trace retainedTrace clear).1
-  refine ⟨before, prior, entry, serial, choice, retainedTrace, acting, beforeClear, request,
-    retained, viewed, fresh, chosen, missing, declared, handleEq, ?_⟩
-  rw [handleEq]
-  exact PhaseNativeProjection.recorded_binding_result_of_clear runtime leaks plan bounds
-    (serviceGraph_revealRelaxedOrdered setup mode) maximal inputs horizon scheduler trace clear
-      who event payload _ serial entry retained declared (reactiveFreshSlot_spec _ serial fresh)
+  have raw := (PhaseCount.onePacketMenu runtime leaks bounds).toRawTrace _ horizon scheduler trace
+  have bindings := phaseBindingRecord_history runtime leaks plan inputs horizon scheduler raw
+  have stamped := phaseLiveBindingStamp_history runtime leaks plan inputs horizon scheduler raw
+  have lower := ((phase.mem_events event).mp inside).1
+  have address : control.execution.application.attempt.phase = phase.low := by
+    simp only [PhaseRuntimeState.attempt, installed, Option.map_some, Option.getD_some]
+  rw [← address] at lower
+  exact phase_binding_source_choice_of_stamp setup mode runtime leaks bounds wellFormed assessment
+    plan maximal inputs horizon scheduler trace clear who event payload binding
+      control.execution.application.current.native bindings.active (fun _ _ => rfl) stamped
+        candidate accepted lower consistent
 
 end Vegas

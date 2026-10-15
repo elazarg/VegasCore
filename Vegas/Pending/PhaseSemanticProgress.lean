@@ -24,8 +24,9 @@ theorem normalize_semantic_extension (state : PhaseRuntimeState graph) (ordered 
     KeepsStore state.current.native state.normalize.current.native ∧
       state.current.native.config.history.IsPrefix
         state.normalize.current.native.config.history := by
-  have currentEq := settle_current_of_same_namespace state.phases state.generation state.entry
+  have settled := settle_of_same_namespace state.phases state.generation state.entry
     state.current state.retired ordered same
+  have currentEq := congrArg PhaseRuntimeState.current settled
   change KeepsStore state.current.native
     (settle state.phases state.generation state.entry state.current state.retired).current.native ∧
     state.current.native.config.history.IsPrefix
