@@ -48,7 +48,7 @@ private theorem resume_config_law (players : Player →
 
 /-- At an unfinished chance event, each scheduler command either keeps the
 configuration or samples the event with its graph law. -/
-private theorem sample_command_law (players : Player →
+theorem sample_command_law (players : Player →
     (serviceApplication setup mode deadline leaks).Policy)
     (execution : (serviceApplication setup mode deadline leaks).Execution) (command :
         (serviceApplication setup mode deadline leaks).Command)

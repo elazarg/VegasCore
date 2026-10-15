@@ -418,7 +418,7 @@ theorem runRounds_response_log_signature
         runtime.ownerActivationQueries leaks event (after.recall owner) ∧
       memory.activationIndex = runtime.readyActivationCount leaks event (after.recall owner) ∧
       (∀ entry ∈ memory.log,
-        entry.query.activationIndex ≤
+        entry.query.activationIndex <
           runtime.readyActivationCount leaks event (after.recall owner) ∧
         entry.query.input.emitted = runtime.ownerEmissionsAtActivation leaks event
           (after.recall owner) entry.query.activationIndex) ∧
@@ -492,6 +492,30 @@ theorem runRounds_response_log_signature
     recalled positives indexed dispatched
   have afterRemembered := controller.dispatch_log_emittedAtActivation remainder memory replies
     before after recalled ready indexed remembered dispatched
+  have priorBound : ∀ entry ∈ (controller.step remainder memory before.environmentRecall
+      (before.observeEnvironment app)).2.log,
+      entry.query.activationIndex ≤
+        runtime.readyActivationCount leaks event (before.recall owner) :=
+    by
+      rw [controller.activation_log remainder memory before genuine recalled ready commandEq]
+      intro entry member
+      rcases List.mem_append.mp member with earlier | last
+      · exact (remembered entry earlier).1
+      · cases List.mem_singleton.mp last
+        exact Nat.le_of_eq indexed
+  have afterCount := congrArg List.length (runtime.dispatch_ownerActivationQueries leaks replies
+    before after _ owner event dispatched)
+  rw [commandEq, ite_eq_left ⟨rfl, ready⟩, List.length_append, List.length_singleton,
+    runtime.ownerActivationQueries_length, runtime.ownerActivationQueries_length] at afterCount
+  have afterRememberedStrict : ∀ entry ∈ (controller.step remainder memory before.environmentRecall
+      (before.observeEnvironment app)).2.log,
+      entry.query.activationIndex < runtime.readyActivationCount leaks event (after.recall owner) ∧
+      entry.query.input.emitted = runtime.ownerEmissionsAtActivation leaks event
+        (after.recall owner) entry.query.activationIndex := by
+    intro entry member
+    refine ⟨?_, (afterRemembered entry member).2⟩
+    rw [afterCount]
+    exact Nat.lt_succ_of_le (priorBound entry member)
   have enteredPresent := (beforeValid.activated_iff event).mpr
     ⟨(before.application.publicView_eventReady event).mp ready, by simp [owned]⟩
   obtain ⟨entered, enteredEq⟩ := Option.isSome_iff_exists.mp enteredPresent
@@ -512,7 +536,7 @@ theorem runRounds_response_log_signature
   dsimp only
   rw [replayEq]
   exact ⟨afterValid, afterRecall, afterCounted, afterUnresolved, afterMatched.1, afterMatched.2,
-    afterRemembered, afterClocks⟩
+    afterRememberedStrict, afterClocks⟩
 
 end Vegas.EventGraphRuntime.LocalSeedController
 
@@ -736,7 +760,7 @@ theorem bayesBelief_response_log_signature
         runtime.ownerActivationQueries leaks event (after.recall owner) ∧
       memory.activationIndex = runtime.readyActivationCount leaks event (after.recall owner) ∧
       (∀ entry ∈ memory.log,
-        entry.query.activationIndex ≤
+        entry.query.activationIndex <
           runtime.readyActivationCount leaks event (after.recall owner) ∧
         entry.query.input.emitted = runtime.ownerEmissionsAtActivation leaks event
           (after.recall owner) entry.query.activationIndex) ∧

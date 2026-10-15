@@ -634,3 +634,18 @@ import Vegas.Game.RecoveryPrescribedSourceKernel
 import Vegas.Game.RecoveryForeignExitBounds
 import Vegas.Game.RecoveryContinuationLimit
 import Vegas.Game.RecoveryComparisonSourceKernel
+
+import Vegas.Game.RecoverySuccessorBoundary
+import Vegas.Game.RecoveryBoundaryWaiting
+
+import Vegas.Game.RecoveryChanceStoppedLaw
+
+import Vegas.Game.RecoveryChanceSourceLaw
+import Vegas.Game.RecoveryTerminalSourceLaw
+import Vegas.Game.SourceServiceFailureReadout
+
+import Vegas.Game.RecoveryValueTransport
+import Vegas.Game.HonestContinuationIntended
+import Vegas.Game.RecoveryHonestContinuation
+
+import Vegas.Game.OnePacketCommitmentSourcePolicy

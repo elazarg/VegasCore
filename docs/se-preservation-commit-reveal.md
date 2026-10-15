@@ -1,6 +1,6 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**Recovery: 8/10 · continuation: 5/7 checked, chance adapter checking · concurrency open.**
+**Recovery: 8/10 · continuation ✓ · incentives: 2/6 checked · concurrency open.**
 
 <details>
 <summary>Recovery milestones and current proof substeps</summary>
@@ -29,11 +29,20 @@ The active continuation proof feeds the clear-site incentive milestone:
 | Verified | Honest callback reaches the next source boundary |
 | Verified | Waiting until the owner's first callback |
 | Verified | Terminal-prefix base case |
-| Checking | Finite-menu chance stopping adapter |
-| Pending | Full honest continuation by source-rank induction |
+| Verified | Finite-menu chance stopping adapter |
+| Verified | Full honest continuation by source-rank induction |
 
-After continuation: incentive bounds and limit transfer, then recovery SE
-assembly. A substep is verified only after its warning-strict module build;
+| Status | Incentive substep |
+| --- | --- |
+| Verified | Actual recovery gain versus the native debt-stopped gain |
+| Verified | One source policy for each intended native commitment |
+| Checking | Common continuation values versus source values |
+| Pending | Nonlate native gain versus source gain |
+| Pending | Keyed late gain comparisons and common ranking |
+| Pending | Limit transfer of sequential rationality |
+
+Recovery SE assembly follows these incentive substeps.
+A substep is verified only after its warning-strict module build;
 the ten recovery milestones require the full checkpoint checks.
 
 </details>
@@ -3001,6 +3010,13 @@ needs its own review. What is known:
 | Actual clear first callbacks derive freshness and acceptance and have the exact stopped source-step law, for fixed-value bindings and canonical disclosures | `Vegas.recovery_firstActivation_commitment_sourceLaw`, `Vegas.recovery_firstActivation_disclosure_sourceLaw` |
 | At actual clear intended first callbacks, honest binding and disclosure choices give the exact source behavioral step, and the prescribed component preserves source continuation value within six times scale times the payoff bound | `Vegas.recovery_firstActivation_honest_sourceLaw`, `Vegas.recovery_firstActivation_prescribed_sourceValue` |
 | The comparison strategy with the same recovery completion weights inherits the actual first-callback source-value bound | `Vegas.RecoveryOnePacket.nativeComparison_firstActivation_sourceValue` |
+| Actual recovery service reaches the owner's first callback without changing the source configuration and then gives an honest successor boundary | `Vegas.recovery_boundary_firstActivation`, `Vegas.recovery_firstActivation_honest_successorBoundary` |
+| Both raw and finite-menu stopped chance phases preserve the exact source continuation law | `Vegas.recovery_chance_sourceContinuation`, `Vegas.recovery_chance_stopped_sourceContinuation` |
+| Every terminal source prefix has its exact readout law under arbitrary native continuation policies, without service hypotheses | `Vegas.terminalPrefix_readout_law` |
+| Honest finite-menu play from an actual intended recovery boundary has the full source continuation law, by source-rank induction | `Vegas.recovery_honest_boundary_readout_law` |
+| An owed failure appears in any existing terminal readout; an honest source terminal law therefore makes every intermediate honest state intended | `Vegas.decoded_owesFailure_failedReveals_of_readout`, `Vegas.honest_reached_intended_of_readout_law` |
+| The original recovery assessment's whole-policy gain is bounded by its concrete belief-averaged native debt-stopped gain plus a uniform vanishing error | `Vegas.RecoveryOnePacket.recovery_common_gain_le_native_debt_stopped` |
+| An intended native commitment determines one source policy and its exact source history-gain identity throughout the debt-free information fiber | `Vegas.intendedCommitment_sourcePolicy_gain` |
 | Every first foreign public failure has a future foreign first-callback response outside main support | `Vegas.recovery_firstForeignFailure_not_mainActivationTraceAfter` |
 | Against any focal continuation policy, the common comparison's foreign first-exit probability before focal debt is at most scale plus scale squared times the remaining rank, from a clear regular own-turn history | `Vegas.RecoveryOnePacket.nativeComparison_foreign_exit_mass_le_rank` |
 | Averaging over clear own-turn histories adds only the belief's irregular-history mass to the depth bound | `Vegas.RecoveryOnePacket.nativeComparison_foreign_exit_mass_le_irregular_add_depth` |

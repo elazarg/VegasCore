@@ -34,7 +34,7 @@ local notation "N" => onePacketModel setup leaks bounds (initialLaw setup) horiz
 local notation "RP" => ReactiveApplication.ResponseMenu.protocol
   (Recovery.onePacketMenu (runtime setup) leaks bounds) Initial horizon scheduler
 
-private def nativeBaseInputs
+def nativeBaseInputs
     [(application setup leaks).FiniteNature (initialLaw setup) (NativeScheduler)]
     [Finite setup.intendedProtocol.History]
     [∀ who, DecidableEq ((N).InfoState who)] (wellFormed : setup.WellFormed)

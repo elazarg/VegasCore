@@ -1,3 +1,13 @@
+import Vegas.Game.RecoveryBoundaryWaiting
+import Vegas.Game.RecoverySuccessorBoundary
+import Vegas.Game.RecoveryChanceSourceLaw
+import Vegas.Game.RecoveryChanceStoppedLaw
+import Vegas.Game.RecoveryTerminalSourceLaw
+import Vegas.Game.RecoveryHonestContinuation
+import Vegas.Game.SourceServiceFailureReadout
+import Vegas.Game.HonestContinuationIntended
+import Vegas.Game.RecoveryValueTransport
+import Vegas.Game.OnePacketCommitmentSourcePolicy
 import Vegas.Game.RecoveryContinuationComparison
 import Vegas.Game.RecoveryIrregularBeliefBounds
 import Vegas.Game.RecoveryBeliefContinuation
@@ -5330,3 +5340,53 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.RecoveryOnePacket.nativeComparison_firstActivation_sourceValue
+
+/-- info: 'Vegas.recovery_boundary_firstActivation'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.recovery_boundary_firstActivation
+
+/-- info: 'Vegas.recovery_firstActivation_honest_successorBoundary'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.recovery_firstActivation_honest_successorBoundary
+
+/-- info: 'Vegas.recovery_chance_sourceContinuation'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.recovery_chance_sourceContinuation
+
+/-- info: 'Vegas.recovery_chance_stopped_sourceContinuation'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.recovery_chance_stopped_sourceContinuation
+
+/-- info: 'Vegas.terminalPrefix_readout_law'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.terminalPrefix_readout_law
+
+/-- info: 'Vegas.recovery_honest_boundary_readout_law'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.recovery_honest_boundary_readout_law
+
+/-- info: 'Vegas.decoded_owesFailure_failedReveals_of_readout'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.decoded_owesFailure_failedReveals_of_readout
+
+/-- info: 'Vegas.honest_reached_intended_of_readout_law'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.honest_reached_intended_of_readout_law
+
+/-- info: 'Vegas.RecoveryOnePacket.recovery_common_gain_le_native_debt_stopped'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.RecoveryOnePacket.recovery_common_gain_le_native_debt_stopped
+
+/-- info: 'Vegas.intendedCommitment_sourcePolicy_gain'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.intendedCommitment_sourcePolicy_gain
