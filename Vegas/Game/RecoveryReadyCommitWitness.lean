@@ -2,7 +2,7 @@
 
 import Vegas.Game.RecoveryCommitPrefixWitness
 import Vegas.Game.CommitPrefixReadyRecall
-import Vegas.Compile.CommitPrefixAtEvent
+import Vegas.Game.RecoveryBindingPrefix
 
 /-! # Actual source histories realizing clear ready commitment views -/
 
@@ -126,7 +126,9 @@ theorem RecoverySourceCheckpoint.ready_binding_trace
         (decodeHistory setup.program (state.current.native.config.history.map
           (setup.eventGraph.fromModeCompletion mode)) who) =
           some (ProtocolState.observe who setup.program source.point) := by
-  obtain ⟨selected, selectedEq⟩ := checkpoint.native_event_index frontier event ready
+  obtain ⟨selected, selectedEq, Δ, P, name, fresh, guard, next, earlier, atEnd, reconstruct⟩ :=
+    checkpoint.ready_binding_prefix frontier phase remaining installed kind event inside ready
+      who payload binding
   have low : state.attempt.phase = phase.low := by
     simp only [PhaseRuntimeState.attempt, installed, List.head?_cons, Option.map_some,
       Option.getD_some]
@@ -135,30 +137,13 @@ theorem RecoverySourceCheckpoint.ready_binding_trace
   have saved : state.entry.native.config.cut.IsPrefix state.attempt.phase := by
     rw [low]
     exact positioned.1
-  have interval := (phase.mem_events event).mp inside
-  have bindings : ∀ index : Fin (eventCount checkpoint.residual.tail),
-      index.val ≤ selected.val →
-        ∃ owner value, outputLayout checkpoint.residual.tail index = .binding owner value := by
-    intro index before
-    have typed := phase.fields (checkpoint.embedding.event index)
-      (by rw [checkpoint.compiled.rankEq, low]; omega)
-      (by have rank := checkpoint.compiled.rankEq selected
-          rw [selectedEq, low] at rank
-          rw [checkpoint.compiled.rankEq, low]; omega)
-    rw [kind] at typed
-    obtain ⟨owner, value, layout⟩ := typed
-    exact ⟨owner, value, (checkpoint.embedding.layout_eq index).symm.trans layout⟩
-  have layout : outputLayout checkpoint.residual.tail selected = .binding who payload :=
-    (checkpoint.embedding.layout_eq selected).symm.trans (selectedEq.symm ▸ binding)
-  obtain ⟨Δ, P, name, fresh, guard, next, earlier, atEnd, reconstruct⟩ :=
-    exists_commitPrefix_at_binding checkpoint.residual.tail selected who payload bindings layout
   have acting : (serviceGraph setup mode).actor? event = some who :=
     EventGraph.actor?_of_outputLayout_binding _ binding
   have notPublication : ¬ ((serviceGraph setup mode).outputLayout event).IsPublication := by
     rw [binding]
     exact id
   simpa only [selectedEq] using checkpoint.filled_prefix_trace_of_ready fresh guard next earlier
-    reconstruct clear stored selected atEnd.symm (selectedEq.symm ▸ ready)
+    reconstruct clear stored selected atEnd (selectedEq.symm ▸ ready)
     (selectedEq.symm ▸ acting)
     (selectedEq.symm ▸ notPublication) valid reachable retained saved
 

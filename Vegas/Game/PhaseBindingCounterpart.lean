@@ -4,7 +4,7 @@ import Vegas.Game.RecoveryBindingCounterpart
 import Vegas.Game.RecoveryCheckpointHistory
 import Vegas.Pending.PhaseNativeInvariant
 import Vegas.Pending.PhaseFailureCoverage
-import Vegas.Pending.PhaseLive
+import Vegas.Pending.PhaseBindingReadiness
 import Vegas.Game.CommitRecoveryClearDecoder
 
 /-! # Source decision witnesses from actual initialized phased binding histories -/
@@ -63,53 +63,18 @@ theorem phase_ready_binding_sourceView
     physicalTrace
   obtain ⟨draw, native⟩ := phaseNativeInvariant_history runtime leaks plan inputs horizon scheduler
     physicalTrace
-  have live := (phaseApplication_live runtime leaks).history
-    (inputs.map (PhaseRuntimeState.initial plan)) horizon scheduler (fun state member => by
-      obtain ⟨initial, _supported, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp member
-      exact ⟨PhaseRuntimeState.initial_frontier plan initial,
-        PhaseRuntimeState.initial_live plan initial⟩) physicalTrace
-  have geometry := phasePlanGeometry_history runtime leaks plan maximal inputs horizon scheduler
-    physicalTrace
   have savedClear : control.execution.application.entry.excluded = ∅ := by
     apply Finset.eq_empty_iff_forall_notMem.mpr
     intro owner excluded
     have current := coverage.inherited excluded
     rw [clear] at current
     exact Finset.notMem_empty _ current
-  cases installed : control.execution.application.phases with
-  | nil =>
-      have terminal := exclusion.frontier.terminal installed
-      exact (ready.1 (terminal.symm ▸ Finset.mem_univ event)).elim
-  | cons phase remaining =>
-      have head : phase ∈ control.execution.application.phases.head? := by
-        rw [installed]
-        exact Option.mem_some_iff.mpr rfl
-      have position := exclusion.frontier.positioned
-      rw [installed] at position
-      rw [installed] at geometry
-      have boundaries := PhaseRuntimeState.phase_boundaries phase remaining geometry.1
-        geometry.2.1 geometry.2.2
-      have inside := phase.ready_mem control.execution.application.current
-        (serviceGraph_revealRelaxedOrdered setup mode) position.2 (live.2 phase head)
-        boundaries.1 boundaries.2 event ready
-      have typed := phase.fields event ((phase.mem_events event).mp inside).1
-        ((phase.mem_events event).mp inside).2
-      have kind : phase.kind = .commitment := by
-        cases kind : phase.kind with
-        | commitment => rfl
-        | reveal =>
-            rw [kind] at typed
-            obtain ⟨value, layout⟩ := typed
-            rw [binding] at layout
-            cases layout
-        | sample =>
-            rw [kind] at typed
-            obtain ⟨value, layout⟩ := typed
-            rw [binding] at layout
-            cases layout
-      exact checkpoint.ready_binding_sourceView runtime leaks control.execution exclusion.frontier
-        stored retained phase remaining installed kind event inside ready who payload binding
-        savedClear bindingRecord.active native.active.reachable
+  obtain ⟨phase, remaining, installed, kind, inside⟩ := phase_ready_binding_phase runtime leaks
+    plan (serviceGraph_revealRelaxedOrdered setup mode) maximal inputs horizon scheduler
+      physicalTrace who event payload binding ready
+  exact checkpoint.ready_binding_sourceView runtime leaks control.execution exclusion.frontier
+    stored retained phase remaining installed kind event inside ready who payload binding
+    savedClear bindingRecord.active native.active.reachable
 
 /-- Every actual clear ready binding realizes the complete auxiliary source
 information selected by the physical decoder, including signal and own-play recall. -/

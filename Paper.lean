@@ -843,6 +843,33 @@ import Vegas.Pending.PhaseClearSettlement
 import Vegas.Game.RecoveryIntendedNormalization
 import Vegas.Game.PhaseIntendedCheckpointStep
 import Vegas.Game.PhaseIntendedCheckpointHistory
+import Vegas.Pending.PhaseBindingReadiness
+import Vegas.Game.RecoveryBindingPrefix
+import Vegas.Game.PhaseIntendedBindingInformation
+import Vegas.Game.PhaseIntendedBindingResponse
+import Vegas.Game.RecoveryReadyRevealPrefix
+import Vegas.Pending.PhaseNativeConsistency
+import Vegas.Pending.PhaseNativePolicyConsistency
+import Vegas.Game.PhaseRepairRawSendingWitness
+import Vegas.Game.PhaseRepairMarkedRecords
+import Vegas.Game.PhaseRepairMarkedHistory
+import GameTheoryExtensions.Analysis.Protocol.FiniteRepairMass
+import Vegas.Game.PhaseMarkedRepairMass
+import Vegas.Game.PhaseMarkedBindingFiber
+import Vegas.Game.PhaseBindingFiberGeometry
+import Vegas.Game.PhaseOpponentRawBindingMass
+import Vegas.Game.PhaseOpponentRawBindingLimit
+import Vegas.Game.PhaseClearProfileLocality
+import Vegas.Game.PhaseCommonRawBindingLimit
+import Vegas.Pending.PhaseNativeSupportedPlay
+import Vegas.Pending.PhaseNativeControlRun
+import Vegas.Pending.PhaseNativeBehavioralRun
+import Vegas.Pending.PhaseNativeFailureExit
+import Vegas.Game.SourceFreshCallDeadline
+import Vegas.Pending.PhaseNativePolicyRun
+import Vegas.Pending.PhaseServiceContract
+import Vegas.Pending.PhaseServiceProjection
+import Vegas.Game.PhaseBindingFreshCall
 
 /-! # Checked sequential-equilibrium preservation, Nash correspondence and termination -/
 
@@ -8280,3 +8307,164 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms
   Vegas.phase_raw_playerReach_prefix_of_floor
+
+/-- info:
+'Vegas.phase_ready_binding_intended_information'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phase_ready_binding_intended_information
+
+/-- info:
+'Vegas.phaseSourcePolicy_compiled_binding_of_intended_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseSourcePolicy_compiled_binding_of_intended_history
+
+/-- info:
+'Vegas.RecoverySourceCheckpoint.ready_reveal_prefix'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.RecoverySourceCheckpoint.ready_reveal_prefix
+
+/-- info:
+'Vegas.EventGraphRuntime.PhaseNativeProjection.nativePolicy_consistent_of_clear'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseNativeProjection.nativePolicy_consistent_of_clear
+
+/-- info:
+'Vegas.phase_repair_marked_binding_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phase_repair_marked_binding_history
+
+/-- info:
+'GameTheory.Protocol.InformationModel.sum_contribution_le_of_repair'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  GameTheory.Protocol.InformationModel.sum_contribution_le_of_repair
+
+/-- info:
+'Vegas.phase_raw_binding_fiber_mass_le'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phase_raw_binding_fiber_mass_le
+
+/-- info:
+'Vegas.phase_opponent_raw_binding_mass_le'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phase_opponent_raw_binding_mass_le
+
+/-- info:
+'Vegas.phase_opponent_raw_binding_share_le'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phase_opponent_raw_binding_share_le
+
+/-- info:
+'Vegas.exists_phase_opponent_raw_binding_share_vanishes'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.exists_phase_opponent_raw_binding_share_vanishes
+
+/-- info:
+'Vegas.phase_clear_historyReach_eq'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phase_clear_historyReach_eq
+
+/-- info:
+'Vegas.phase_clear_fiber_raw_share_eq'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phase_clear_fiber_raw_share_eq
+
+/-- info:
+'Vegas.exists_phase_common_raw_binding_share_vanishes'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.exists_phase_common_raw_binding_share_vanishes
+
+/-- info:
+'Vegas.EventGraphRuntime.PhaseNativeProjection.exists_paired_behavioral_run'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseNativeProjection.exists_paired_behavioral_run
+
+/-- info:
+'Vegas.EventGraphRuntime.PhaseNativeProjection.exists_first_exclusion_transition'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseNativeProjection.exists_first_exclusion_transition
+
+/-- info:
+'Vegas.EventGraphRuntime.PhaseNativeProjection.exists_native_failure_exit'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseNativeProjection.exists_native_failure_exit
+
+/-- info:
+'Vegas.freshCall_within_deadline_of_ready'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.freshCall_within_deadline_of_ready
+
+/-- info:
+'Vegas.EventGraphRuntime.PhaseNativeProjection.nativePolicies_consistent_of_local_agreement'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseNativeProjection.nativePolicies_consistent_of_local_agreement
+
+/-- info:
+'Vegas.EventGraphRuntime.PhaseNativeProjection.native_controlLaw_eq_of_local_agreement'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseNativeProjection.native_controlLaw_eq_of_local_agreement
+
+/-- info:
+'Vegas.EventGraphRuntime.PhaseNativeProjection.exists_paired_behavioral_run_of_local_agreement'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseNativeProjection.exists_paired_behavioral_run_of_local_agreement
+
+/-- info:
+'Vegas.EventGraphRuntime.PhaseNativeProjection.opportunity_projection'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseNativeProjection.opportunity_projection
+
+/-- info:
+'Vegas.EventGraphRuntime.PhaseNativeProjection.protectedInclusion_projection'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseNativeProjection.protectedInclusion_projection
+
+/-- info:
+'Vegas.phaseBindingResponse_native_freshCall'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseBindingResponse_native_freshCall

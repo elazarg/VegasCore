@@ -17,7 +17,7 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
 /-- Readiness makes every earlier binding owned by the active player available,
 regardless of unfinished hidden foreign commitments. -/
-theorem commitPrefix_owned_fields_of_ready
+theorem commitPrefix_owned_completed_of_ready
     {Γ Δ : SourceCtx Player L} {O P : Finset VarId}
     (block : SourceProgram.CommitPrefix Γ O Δ P) (suffix : SourceProgram Player L Δ P)
     (embedding : OutputEmbedding (inputLayout setup.context) (outputLayout setup.program)
@@ -29,7 +29,7 @@ theorem commitPrefix_owned_fields_of_ready
       (embedding.event selected)).IsPublication) :
     ∀ index : Fin (eventCount (block.prepend suffix)), index.val < block.length →
       eventOwner? (block.prepend suffix) index = some who →
-        ((embedding.ref index).get? config.store).isSome = true := by
+        embedding.event index ∈ config.cut.completed := by
   intro prior earlier owned
   obtain ⟨owner, payload, _member, layout⟩ := block.binding_before_length suffix prior earlier
   have localActor := EventGraph.actor?_of_outputLayout_binding (toEventGraph
@@ -48,10 +48,29 @@ theorem commitPrefix_owned_fields_of_ready
       (EventGraph.IndependentReveals.not_of_not_publication_right notPublication)
       (EventGraph.IndependentReveals.not_of_not_publication_left notPublication)).mpr
     (embedding.strictMono (Fin.mk_lt_mk.mpr (earlier.trans_eq atEnd.symm)))
+  exact completed
+
+/-- Readiness makes every earlier binding owned by the active player available,
+regardless of unfinished hidden foreign commitments. -/
+theorem commitPrefix_owned_fields_of_ready
+    {Γ Δ : SourceCtx Player L} {O P : Finset VarId}
+    (block : SourceProgram.CommitPrefix Γ O Δ P) (suffix : SourceProgram Player L Δ P)
+    (embedding : OutputEmbedding (inputLayout setup.context) (outputLayout setup.program)
+      (block.prepend suffix)) (config : (serviceGraph setup mode).Config) (who : Player)
+    (selected : Fin (eventCount (block.prepend suffix))) (atEnd : selected.val = block.length)
+    (ready : config.cut.Ready (embedding.event selected))
+    (acting : (serviceGraph setup mode).actor? (embedding.event selected) = some who)
+    (notPublication : ¬ ((serviceGraph setup mode).outputLayout
+      (embedding.event selected)).IsPublication) :
+    ∀ index : Fin (eventCount (block.prepend suffix)), index.val < block.length →
+      eventOwner? (block.prepend suffix) index = some who →
+        ((embedding.ref index).get? config.store).isSome = true := by
+  intro prior earlier owned
   apply (embedding.ref prior).get?_isSome
   change (config.store (.inr (embedding.event prior))).isSome = true
   rw [EventGraph.Config.store_output, config.output_available]
-  exact completed
+  exact commitPrefix_owned_completed_of_ready setup mode block suffix embedding config who
+    selected atEnd ready acting notPublication prior earlier owned
 
 /-- Complete the earlier commitment slots from the actual partial store. Every
 own slot is already present by readiness; unavailable foreign cells are hidden

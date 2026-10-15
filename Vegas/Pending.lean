@@ -607,3 +607,13 @@ import Vegas.Pending.PhaseBindingHistoryRepair
 import Vegas.Pending.PhaseBindingResponseWitness
 import Vegas.Pending.PhaseAttemptCheckpoint
 import Vegas.Pending.PhaseClearSettlement
+import Vegas.Pending.PhaseBindingReadiness
+import Vegas.Pending.PhaseNativeConsistency
+import Vegas.Pending.PhaseNativePolicyConsistency
+import Vegas.Pending.PhaseNativeSupportedPlay
+import Vegas.Pending.PhaseNativeControlRun
+import Vegas.Pending.PhaseNativeBehavioralRun
+import Vegas.Pending.PhaseNativeFailureExit
+import Vegas.Pending.PhaseNativePolicyRun
+import Vegas.Pending.PhaseServiceContract
+import Vegas.Pending.PhaseServiceProjection

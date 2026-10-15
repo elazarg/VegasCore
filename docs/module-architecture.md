@@ -1066,4 +1066,51 @@ Whole-prefix and marked raw-binding contributions:
 [Phase Repair Prefix Likelihood](../Vegas/Game/PhaseRepairPrefixLikelihood.lean),
 [Phase Raw Binding Contribution](../Vegas/Game/PhaseRawBindingContribution.lean),
 [Phase Marked Repair Likelihood](../Vegas/Game/PhaseMarkedRepairLikelihood.lean).
-Actual chronological own-play products derive send and WAIT bounds using one genuine source floor. A selected raw-mixture binding send retains an additional noise factor; source canonical failures remain in the unmarked factors. Preimage sums and posterior exclusion require further proof.
+Actual chronological own-play products derive send and WAIT bounds using one genuine source floor. A selected raw-mixture binding send retains an additional noise factor; source canonical failures remain in the unmarked factors. The marked-fiber consumers below bound finite preimages and normalized raw binding-send contributions; full native/source posterior identification remains open.
+
+Actual intended binding inputs and source reveal geometry:
+[Compiled Commit Partial View](../Vegas/Game/CompiledCommitPartialView.lean),
+[Phase Binding Readiness](../Vegas/Pending/PhaseBindingReadiness.lean),
+[Recovery Binding Prefix](../Vegas/Game/RecoveryBindingPrefix.lean),
+[Recovery Ready Commit Witness](../Vegas/Game/RecoveryReadyCommitWitness.lean),
+[Phase Binding Counterpart](../Vegas/Game/PhaseBindingCounterpart.lean),
+[Phase Intended Binding Information](../Vegas/Game/PhaseIntendedBindingInformation.lean),
+[Phase Intended Binding Response](../Vegas/Game/PhaseIntendedBindingResponse.lean),
+[Recovery Ready Reveal Prefix](../Vegas/Game/RecoveryReadyRevealPrefix.lean).
+Actual clear canonical histories derive complete intended binding information and both decoder equations. The compiled binding response consumer no longer asks for an independently supplied intended site. Ready source reveal prefixes are recovered without requiring independent publications to have completed.
+
+Marked history repair and normalized opponent raw-binding contributions:
+[Phase Repair Raw Sending Witness](../Vegas/Game/PhaseRepairRawSendingWitness.lean),
+[Phase Repair Marked Records](../Vegas/Game/PhaseRepairMarkedRecords.lean),
+[Phase Repair Marked History](../Vegas/Game/PhaseRepairMarkedHistory.lean),
+[Finite Repair Mass](../GameTheoryExtensions/Analysis/Protocol/FiniteRepairMass.lean),
+[Phase Marked Repair Mass](../Vegas/Game/PhaseMarkedRepairMass.lean),
+[Phase Marked Binding Fiber](../Vegas/Game/PhaseMarkedBindingFiber.lean),
+[Phase Binding Fiber Geometry](../Vegas/Game/PhaseBindingFiberGeometry.lean),
+[Phase Opponent Raw Binding Mass](../Vegas/Game/PhaseOpponentRawBindingMass.lean),
+[Phase Opponent Raw Binding Limit](../Vegas/Game/PhaseOpponentRawBindingLimit.lean),
+[Phase Clear Profile Locality](../Vegas/Game/PhaseClearProfileLocality.lean),
+[Phase Common Raw Binding Limit](../Vegas/Game/PhaseCommonRawBindingLimit.lean).
+Actual marked repair derives same-information-fiber images and all before/after response pairings. Finite legal-history cardinality bounds repair preimages. Summing every opponent and position yields a normalized raw binding-send contribution tending to zero. Exact locality transfers the bound from the recipe to all actual common profiles with its clear-site clause. Canonical source failures, omissions and opening WAIT remain in the law; native/source posterior identification is separate.
+
+Native recall consistency, original behavioral runs and first failure:
+[Phase Native Consistency](../Vegas/Pending/PhaseNativeConsistency.lean),
+[Phase Native Policy Consistency](../Vegas/Pending/PhaseNativePolicyConsistency.lean),
+[Phase Native Policy Run](../Vegas/Pending/PhaseNativePolicyRun.lean),
+[Phase Native Supported Play](../Vegas/Pending/PhaseNativeSupportedPlay.lean),
+[Phase Native Control Run](../Vegas/Pending/PhaseNativeControlRun.lean),
+[Phase Native Behavioral Run](../Vegas/Pending/PhaseNativeBehavioralRun.lean),
+[Phase Native Failure Exit](../Vegas/Pending/PhaseNativeFailureExit.lean),
+[Source Fresh Call Deadline](../Vegas/Game/SourceFreshCallDeadline.lean).
+Complete clear owner recall transports policy consistency. Local law matching under prior consistency propagates prescribed native consistency by actual history induction. Both original finite-fuel behavioral laws have an exact coupling conditional on physical safety. First exclusion extracts an actual native public failure before rollback; the existing protected-inclusion engine excludes a still-ready acceptable fresh packet at its deadline. Physical safety from the approved builder contract remains open.
+
+Physical service contracts and authentic fresh calls:
+[Phase Service Contract](../Vegas/Pending/PhaseServiceContract.lean),
+[Phase Service Projection](../Vegas/Pending/PhaseServiceProjection.lean),
+[Phase Binding Fresh Call](../Vegas/Game/PhaseBindingFreshCall.lean).
+The physical contract retains all raw legal histories, original readiness stamps,
+strict timing bounds and sole identifiers for each attempt-event coordinate.
+Actual clear prefixes supply native pointwise service conditions without a
+global reconstructed-native contract. An actual permitted binding response
+emitted in its protected window supplies an original native fresh-call
+certificate; first-response timing and canonical physical safety remain open.

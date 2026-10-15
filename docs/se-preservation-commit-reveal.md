@@ -1,6 +1,6 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**SE: non-concurrent ✓ · intended histories ✓ · quantitative repair ✓ · marked prefix bounds ✓; joint law/Bayes/incentives open.**
+**SE: non-concurrent ✓ · intended histories ✓ · raw-send fiber limit ✓; safety/joint law/Bayes/incentives open.**
 
 <details>
 <summary>Checked recovery milestones and remaining proof obligations</summary>
@@ -15,8 +15,10 @@ preserve that same checkpoint's intendedness through normalization, including
 the last binding that immediately closes a phase. Initialization, source guard
 bookkeeping, full own-action words and future guard satisfiability are retained.
 This concerns the saved source checkpoint; a partial concurrent cut can have
-holes. The local compiled binding adapter still takes a genuine intended
-information witness.
+holes. At actual ready bindings, the complete intended information and original
+source history are now reconstructed from this invariant. The compiled binding
+response adapter derives both decoder equations; supported native memories
+and native policy consistency remain explicit hypotheses.
 
 At an actual clear binding history, directed repair constructs a genuine image
 history under the same initial law and scheduler. All response and command
@@ -38,17 +40,38 @@ A selected raw-mixture binding SEND contributes an additional raw-noise factor
 to its actual player-reach product. The bound composes the chronological
 segments before and after that draw and has a uniform finite-horizon form.
 The exact mixture decomposition retains all remaining source/slot mass,
-including canonical accepted failures. This is a marked prefix contribution,
-not a bound on every unusable binding or a summed information-fiber theorem.
-The positive vanishing raw-noise schedule is chosen after the source floors
-and slot weights; it needs no source-floor decay assumption.
+including canonical accepted failures. Actual marked history repair now
+constructs a repair map within the same complete focal information fiber.
+Finite preimages are bounded by the fixed number of legal histories. Summing
+over every opponent and recorded position gives a normalized raw binding-send
+contribution that vanishes under the chosen noise schedule, even when the
+information mass tends to zero. Exact clear-history locality transfers this
+result to every actual common assessment profile satisfying its clear-site
+recipe clause. The schedule is chosen after the source floors and slot
+weights. Canonical failures, omissions and opening WAIT contributions remain
+in the original law; their native/source posterior identification is open.
 
 Supported disclosing memories reconstruct the whole physical native
 configuration. Actual count-clean clear phased histories project to ordinary
 native histories with complete owner and scheduler recall. The native and
-phased kernels have couplings with both real marginals and the first-failure
-owner records. These operational results do not yet identify the complete
-native/source joint probability law.
+phased original behavioral runs have an exact coupling at every finite fuel,
+conditional on physical exclusion remaining empty. Both real marginals, the
+shared initial draw and full projected controls are retained. Full owner
+recall consistency transports through the projection. Actual-history
+induction also derives consistency for a prescribed native profile when
+local response laws agree at histories whose prior recalls are consistent.
+This local agreement identifies the original native control law and supplies
+both actual behavioral-run marginals for the prescribed native policy, without
+requiring policy agreement away from supported callbacks.
+Every first physical exclusion has a genuine native public-failure history
+before rollback. The protected-inclusion service engine rules out a still-ready
+sole acceptable fresh packet at its deadline. The physical service contract
+retains all raw legal histories and attempt-event addresses; its actual clear
+prefixes supply the native pointwise opportunity and inclusion conditions.
+An actual permitted binding response supplies a native fresh-call certificate
+when emitted in its protected time window. Deriving physical safety from
+the approved builder contract, and identifying the full native/source joint
+law, remain open.
 
 On the source side, chronological nonmissing conditioning has an exact history
 density, constant over each complete clear auxiliary information fiber.
@@ -61,8 +84,8 @@ The checked fixed-calendar source theorem handles optional opening in source
 reveal order. The intended-game recovery theorem also handles withholding
 deviations. Independent reveal reordering remains outside these checked results.
 
-Remaining obligations include the native/source joint law, control of repair
-preimages and summed information fibers, native Bayes transport and incentive
+Remaining obligations include actual opening-response matching and physical
+safety, the native/source joint law, native Bayes transport and incentive
 transfer. Full concurrent SE preservation remains unproved.
 </details>
 
