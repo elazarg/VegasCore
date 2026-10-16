@@ -1530,3 +1530,39 @@ Actual foreign responses, activation leaks and every counted inclusion branch de
 Actual attempt continuation:
 [Phase Attempt Continuation](../Vegas/Game/PhaseAttemptContinuation.lean).
 Stopping the existing local execution at focal exclusion or attempt exit retains its entire physical boundary continuation. The surviving-retry contribution is explicit and bounded by its actual boundary probability. No option-independent retry value or common timing score is assumed.
+
+Original timing plans and source-word posteriors:
+[Nested Posterior](../GameTheoryExtensions/Math/Probability/NestedPosterior.lean),
+[Reactive Nested Policy Mixture](../Interaction/ReactiveNestedPolicyMixture.lean),
+[Phase Timing Word Binding Factor](../Vegas/Game/PhaseTimingWordBindingFactor.lean),
+[Phase Timing Word Entry](../Vegas/Game/PhaseTimingWordEntry.lean),
+[Phase Timing Word Entry Occupation](../Vegas/Game/PhaseTimingWordEntryOccupation.lean),
+[Phase Timing Word Unread](../Vegas/Game/PhaseTimingWordUnread.lean),
+[Recovery Binding Profile Law](../Vegas/Game/RecoveryBindingProfileLaw.lean),
+[Recovery Timing Word Plan Posterior](../Vegas/Game/RecoveryTimingWordPlanPosterior.lean),
+[Recovery Timing Word Plan Prediction](../Vegas/Game/RecoveryTimingWordPlanPrediction.lean),
+[Recovery Timing Word Plan Realization](../Vegas/Game/RecoveryTimingWordPlanRealization.lean).
+The hierarchical posterior retains the original plan product and owner-word prior. At a fixed saved entry and consistent full own recall, the current pool part is independent of the genuine next AUX action, and their concrete response kernel equals the actual assembled zero-RAW response. Entry-tagged physical occupation keeps the actual entry posterior; full mixed-entry source belief identification remains open.
+
+Surviving source prefixes after exclusions:
+[Excluded Commit Prefix Observation](../Vegas/Compile/ExcludedCommitPrefixObservation.lean),
+[Commit Prefix Surviving Recall](../Vegas/Game/CommitPrefixSurvivingRecall.lean),
+[Phase Surviving Binding Source](../Vegas/Game/PhaseSurvivingBindingSource.lean),
+[Recovery Surviving Binding Source](../Vegas/Game/RecoverySurvivingBindingSource.lean).
+A surviving binding derives a genuine initialized AUX source trace using saved source exclusion and the actual generation. Excluded slots are automatic and hidden active holes retain accepted failure. Complete source own history is preserved; a deterministic full physical-recall decoder for retired attempts remains open.
+
+Actual finite-plan physical callback coupling:
+[Phase Binding Clear Observation Law](../Vegas/Game/PhaseBindingClearObservationLaw.lean),
+[Phase Commit Word Canonical Option](../Vegas/Game/PhaseCommitWordCanonicalOption.lean),
+[Phase Commit Word Physical Coupling](../Vegas/Game/PhaseCommitWordPhysicalCoupling.lean),
+[Phase Timing Plan Callback Coupling](../Vegas/Game/PhaseTimingPlanCallbackCoupling.lean),
+[Phase Timing Plan Physical Coupling](../Vegas/Game/PhaseTimingPlanPhysicalCoupling.lean),
+[Phase Timing Word Plan Coupling](../Vegas/Game/PhaseTimingWordPlanCoupling.lean),
+[Phase Binding Clear Command Law](../Vegas/Pending/PhaseBindingClearCommandLaw.lean),
+[Phase Binding Memory Callback](../Vegas/Pending/PhaseBindingMemoryCallback.lean).
+Every owner callback in the current commitment interval is either genuinely unsent or silent. The same original full plan chooses the same canonical channel or keyed option across hidden words. The actual PMF coupling derives both original response marginals, successor memory and full external/erased recall. Clear-restricted original application commands retain the same observation law. Whole stopped-block iteration and through-reset payoff comparison remain separate obligations.
+
+Physical attempt values and deviations:
+[Phase Attempt Physical Value](../Vegas/Game/PhaseAttemptPhysicalValue.lean),
+[Phase Attempt Value Comparison](../Vegas/Game/PhaseAttemptValueComparison.lean).
+The original physical stopped execution followed by the same baseline continuation has the actual terminal outcome and payoff. A local gain decomposes exactly into retry and nonretry differences; the retry error is bounded by both actual boundary probabilities. No common retry value or its vanishing is assumed.

@@ -662,3 +662,5 @@ import Vegas.Pending.PhaseBindingForeignResponseMemory
 import Vegas.Pending.PhaseBindingCountedMemory
 import Vegas.Pending.PhaseBindingCountedIncludeMemory
 import Vegas.Pending.PhaseBindingMemoryIncludeTrace
+import Vegas.Pending.PhaseBindingClearCommandLaw
+import Vegas.Pending.PhaseBindingMemoryCallback

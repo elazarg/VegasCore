@@ -100,3 +100,4 @@ import GameTheoryExtensions.Analysis.Protocol.AffineKeyedPools
 import GameTheoryExtensions.Math.Probability.AffineDecorrelation
 import GameTheoryExtensions.Analysis.Protocol.FiniteRepairMass
 import GameTheoryExtensions.Analysis.Protocol.FreeKeyedPoolObservation
+import GameTheoryExtensions.Math.Probability.NestedPosterior

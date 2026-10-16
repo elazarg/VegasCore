@@ -1,6 +1,6 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**SE: non-concurrent ✓ · safety/laws ✓ · timing/raw limits ✓ · posterior: fixed-entry ✓, full law open · incentives open.**
+**SE: non-concurrent ✓ · timing/raw bounds ✓ · posterior: fixed-entry/all-plans ✓, full law open · incentives open.**
 
 <details>
 <summary>Checked recovery milestones and remaining proof obligations</summary>
@@ -165,6 +165,17 @@ chronological source mass. The next nonmissing action has the original source
 kernel. Physical omission remains separate. RAW is handled by its vanishing
 normalized contribution, rather than by exact word filtering.
 
+At one saved entry, the original product of timing plans and original word
+prior also has an exact hierarchical posterior. Every supported plan has the
+same filled-view word fiber. Its unread current pool coordinate retains the
+original weights, independently of the next genuine auxiliary source action.
+The actual member response factors through those two quantities, so integrating
+the same physical kernel gives the actual assembled zero-RAW response, including
+the original omission and independent slot tiers. The result requires consistency
+of the original word-plan family with the full own recall. Arbitrary earlier
+RAW-generated own actions do not automatically satisfy this premise. This
+fixed-entry realization does not establish the full native/source Bayes law.
+
 The raw-response parser retains accepted typed failures as source actions.
 Every posterior-supported static member follows the entire actual own recall;
 at each accepted binding its word result agrees with the actual result and its
@@ -176,6 +187,15 @@ source-ranked word actions. The native parsed list for the earlier part of the
 current attempt equals the surviving chronological original own actions, including order,
 multiplicity and accepted failures. At a genuine ready binding it reconstructs
 the exact filled source history from the saved entry history.
+
+For a surviving owner after exclusions, the saved checkpoint and current
+generation also give a genuine initialized auxiliary source trace at the
+actual typed binding view. Excluded prefix actions are automatic, and hidden
+active holes can contain accepted failure. The construction preserves the
+complete source own history. Reading the old source history and observed
+attempt transcript from full physical recall remains open; the current native
+history alone loses actions discarded by rollback. Saved source exclusion and
+physical in-phase exclusion are kept separate.
 
 Two chronological same-attempt raw binding sends have strictly increasing
 source ranks. Their genuine earlier callbacks, readiness and event distinctness

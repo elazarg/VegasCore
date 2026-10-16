@@ -25,7 +25,7 @@ open SourceProgram EventGraph EventGraphRuntime Interaction GameTheory.Protocol
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
-private theorem protocolAction_cast {Γ : SourceCtx Player L} {O : Finset VarId}
+theorem protocolAction_cast {Γ : SourceCtx Player L} {O : Finset VarId}
     (first second : SourceProgram Player L Γ O) (equal : first = second)
     (profile : SourceProgram.BehavioralProfile second) (who : Player) (point :
       ProtocolState first) :

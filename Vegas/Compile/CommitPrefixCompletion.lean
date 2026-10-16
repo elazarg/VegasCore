@@ -59,7 +59,9 @@ def fillCommitPrefix_attempt {Γ Δ : SourceCtx Player L} {O P : Finset VarId}
       simpa only [fillCommitPrefix, excludeCommit, Bool.false_eq_true, ↓reduceIte] using
         ih suffix later (commitSuccessor name guard entry choice)
 
-private theorem decodeObservation_commit_cons
+/-- Extending a typed commitment observation needs its own visible cell only.
+Hidden foreign cells impose no availability requirement. -/
+theorem decodeObservation_commit_cons
     {Γ : SourceCtx Player L} {name : VarId} {owner : Player} {payload : L.Ty}
     (who : Player) (refs : ContextRefs (graphLayout whole) Γ)
     (field : FieldRef (graphLayout whole) (.binding owner payload))

@@ -167,7 +167,9 @@ theorem phaseTimingWordComponent_cases {Γ Δ : SourceCtx Player L} {O P : Finse
       simp only [current, dite_true, cast_eq]
 
 open Classical in
-private theorem word_member_apply {Γ Δ : SourceCtx Player L} {O P : Finset VarId}
+/-- Decode the actual finite played-pool member at its complete physical input,
+retaining the original dependent plan coordinate and fallback branch. -/
+theorem word_member_apply {Γ Δ : SourceCtx Player L} {O P : Finset VarId}
     (fallback : (who : Player) → (N).Policy who)
     (wellFormed : setup.WellFormed)
     (source : setup.commitRecoveryModel.BehavioralAssessment)
