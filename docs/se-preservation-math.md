@@ -4,7 +4,7 @@ This note works with the theorem and runtime semantics of
 `docs/se-preservation-commit-reveal.md`. It records mathematical arguments,
 not claims of Lean verification. No runtime or target assumption is changed.
 
-**Math draft: source pooling, observable queries, reset cancellation and relative transport; full Lean theorem open.**
+**Math audit: original-attempt/reset argument ✓ · source incentives ✓ · native query/transport dependencies explicit. Full Lean theorem open.**
 
 The source strategy is selected with the erasure and failed-attempt pins
 constructed below. This is not a claim about an arbitrary source extension
@@ -46,8 +46,9 @@ original setup, public chance and builder laws.
    any limit. With d domain values its conditional regret is at most
    d*gamma_n*spread_j. The zero-coefficient members are indifferent.
    Honest pins retain the given honest assessment by the relative departure
-   bound. Guard-safe induction on original-tree height compares omission
-   and accepted failure. This produces a full-information source SE with
+   bound. The terminal payoff floor and the exact common-reset identity
+   compare omission and accepted failure without future optimality. This
+   produces a full-information source SE with
    the required sharing and successful-phase value optimality.
 
 2. **Construct the native prescription from observable data.** The forward
@@ -478,6 +479,54 @@ deadline expiry are insufficient substitutes. This is an interface mismatch
 to resolve when implementing the mathematical theorem, not a proved
 counterexample to the theorem with S1.
 
+### Averaging the original timing tables
+
+The fixed-table coupling must represent the actual behavioral Q_n law.
+For every owner sample its ENTIRE address-by-ordinal timing table once, at
+initialization, independently with the prescribed coordinate laws. An address
+contains the full attempt identifier and event; the ordinal counts that
+owner's callbacks at this address. Keep the original vector of per-owner
+tables, including unused coordinates, together with all primitive randomness.
+
+At an actual prefix, fix its next owner and coordinate c. Changing only this
+coordinate cannot change the prefix: earlier callbacks at this address used
+strictly smaller ordinals; other addresses read different coordinates;
+opening and inert responses ignore this coin; no outside actor can inspect
+an unread private coordinate. Split the SAME product prior as mu_c x nu.
+The likelihood of the actual full prefix consequently has the form ell(R),
+where R is the entire remainder. At every positive prefix,
+
+    Law(T_c,R | prefix) = mu_c x Law(R | prefix).
+
+Averaging the next member response under mu_c gives exactly its prescribed
+behavioral response mixture. Induction over the finite original runner then
+identifies the stopped Q_n law together with its likelihood-induced table
+posterior. Equivalently this is the original table prior integrated against
+the fixed-member stopped kernel; it is not the behavioral law multiplied by
+a fresh independent table prior. A later entry uses this same posterior. The
+formula is not asserted for an arbitrary replacement entry prior, and is
+not asserted after conditioning on future G or Phi, which may read this coin.
+
+To apply the fixed-member coupling one may read each address from its
+owner's original table; the unused coordinates and original per-owner table
+vector remain tags. This is a deterministic readout, not a new table draw.
+Condition first on those tags and the genuine entry, apply the pathwise
+good-reference argument, then average under their actual posterior. Only
+after proving the required SAME-event relative repairs restrict to G and
+sum the normalized focal continuation. Its conditional kernel sums to one
+even when it is correlated with the retained entry tags.
+
+Two distinct obligations enter this argument. Table unreadness proves the
+behavioral realization; scalar G invariance does not. Conversely scalar G
+invariance does not identify a foreign typed word: a value rule allowed to
+copy a focal leak could change that word while every delivery succeeds.
+The selected prefix-causal query invariant rules this out. Each foreign
+query reads only its original source entry, its preceding virtual own word
+and its occurrence. The native scan establishing that invariant stops before
+the queried binding and uses no future focal miss or Phi. The good-reference
+induction above can therefore obtain typed-word equality without assuming
+the posterior transport it is meant to prove.
+
 ## Conditional factorization once these comparisons hold
 
 Fix the public source record UP TO I and the focal source history projected
@@ -903,16 +952,13 @@ original honest full information. Two copied honest members cannot impose
 different honest laws on one class. A coarser current-state key would not
 justify that pin coherence.
 
-The limit-optimality of failure and opening is separate. At a non-doomed
-set, a guard-accepted move followed by optimal nonmissing continuations has
-value at least m_j-o(1), by backward induction on the remaining own choices.
-The fixed failure and mandatory-value trembles contribute a vanishing
-finite-horizon error. Immediate failure gives a_j<m_j. At a doomed set,
-moving either leaves payoff a_j or permits rescue by another owner's reset;
-it cannot do worse than a_j. Opening correctly weakly dominates withholding.
-Together with the individual value optimality above, the limit assessment
-is a full-information source SE, not merely an equilibrium of a quotient
-whose members cannot deviate individually.
+Failure and opening require a separate comparison. Every terminal payoff is
+at least a_j. Omission and reveal withholding give exactly a_j. For a current
+accepted failed binding, the common-reset identity below shows that replacing
+it by a domain value changes only the no-reset payoff, from a_j to a payoff
+at least a_j. These comparisons hold before any future best-response claim.
+Together with individual domain optimality and honest-pin preservation, they
+give sequential rationality in the original full-information game.
 
 The perturbation choices have a noncircular order. Take T>=1, let C bound
 the finite menus, and let 0<h_n<=1/(n+1) bound the positive honest action
@@ -1395,12 +1441,99 @@ case, even when rescue is possible. Such classes may use uniform domain
 pins. A live bad binding remains in the retained typed view, so these pins
 cannot constrain an ordinary non-doomed member of the same pool.
 
+### The original attempt stopping lemma
+
+Fix a genuine active commitment information set I of j. Let [a,b) be its
+maximal commitment block, r its current source rank, E_0 the exclusions at
+this attempt's saved entry, and g its generation. Retain the actual processed
+prefix of this attempt. Suppose every own commitment already present at its
+saved entry holds a typed value; guard acceptance is not needed for this
+lemma. Write Y_v for the ORIGINAL terminal payoff after forcing current
+domain value v and then using the selected E/F-shared continuation. All
+random variables below are realized using the same initialized occurrence
+flags, domain table, setup and Nature draws.
+
+The first exit from the full attempt identifier (a,g) is exactly b-r source
+transitions away. Before the last slot, a supported step advances the cursor
+by one, keeps the saved cursor a and generation g, and has no reveal or
+sample. The final slot applies the real close in that same transition.
+Clean close changes the saved cursor to b; retry changes the generation to
+g+1; exhausted close changes the saved cursor to b even though g is unchanged.
+Thus none of these cases can be confused with an interior step. This proves
+the claim by induction on b-r, directly from the original transition rule.
+In particular the stopped window contains no action from a retry. One may
+instead stop earlier at j's exclusion: its terminal payoff is already fixed
+at a_j, and the success indicator below is false there.
+
+Concatenate the retained processed prefix with these remaining commitment
+steps. Induction over the block gives its actual typed attempt: at each slot
+an excluded owner takes the automatic transition; an active owner contributes
+its actual typed result and its separate omission bit. Deferred guard
+rejection is not an omission or an accepted failed typed result. This
+extracts the attempt from the supported run; it does not posit a separate
+attempt with a matching endpoint.
+
+Let X be a remaining focal omission, F any foreign omission in this original
+attempt, including its processed prefix, and B an own accepted failed typed
+result in its processed prefix or strictly AFTER the forced current choice.
+Set D = X^c intersect F^c intersect B^c. Under a forced domain choice,
+
+    1_D = 1{E_stop = E_0 and every own commitment at stop holds a value}.
+
+Indeed, the growing exclusion set is E_0 union the owners who actually omit.
+If it grows, the right side is false through clean, retry and exhausted
+readback alike: close never removes an exclusion. If it does not grow, close
+leaves the completed typed store unchanged. An own failed typed cell then
+persists throughout the block, whereas every own nonfailed result appends a
+value; freshness prevents overwriting an earlier failure. The assumed saved
+own cells supply the base case. This proves both directions. The right side
+uses the ORIGINAL E_0, not the new saved exclusions after restore. It is a
+function of the erased stopped state and therefore survives private-word
+erasure. A guard-rejecting domain value still counts as a value here.
+For the comparison with current accepted failure, D continues to mean this
+same event of the OTHER occurrence flags, defined in the forced-domain
+experiment. In the accepted-failure experiment the current failed cell makes
+its stopped-state success readout false; the displayed readout identity is
+not asserted for that experiment.
+
+Now compare any two forced nonmissing current choices, including accepted
+failure. Couple their O/B occurrence flags. Until the end of this original
+block the public exclusion scan is the same: it reads omission flags, never
+private values. Every nonfocal full observation is the same, so couple its
+actual choices identically. Later focal domain choices may differ; nothing
+requires equality of draws at those different private queries. If X occurs,
+both payoffs are a_j. Otherwise j survives. If F occurs, the real close must
+be a retry, since the block contains surviving owner j. It restores the same
+entire saved semantic state, retains the same full public signal word, and
+voids all changed bindings and obligations. The remaining private differences
+are exactly retired own words. E removes them, and the chosen continuation
+has the same erased query and terminal kernel. Denote this common payoff by
+R. This is an equality under the original experiment, including the entire
+post-retry continuation, not a freshly drawn entry law.
+
+This also proves the known-failed attachment claim. At such a member F has
+already occurred. Every current nonmissing action is consequently indifferent:
+either X pays a_j or retry gives the same R. This argument holds for each
+history of its own genuine information fiber, so integrating its ACTUAL
+belief suffices. No Bayes identification with its no-new-miss representative
+is asserted. Current omission is compared separately with the payoff floor.
+
+For ordinary members with equal E keys, use the original information-fiber
+bijection and its normalized Bayes cancellation. Under corresponding forced
+values their complete erased stopped states and terminal payoff laws agree.
+The displayed erased-state readout therefore gives equality of the JOINT
+law (1_D,Y_v). Normalizing its D component proves common H_K whenever its
+mass is positive. Equality of the unconditional Y_v laws alone would not
+justify this conditioning. A member with an own failed prefix has D empty;
+its no-reset payoff is a_j and its reset branch is still common.
+
 The exact decomposition uses the initialized occurrence coins, not assumed
 equality of draws at different private keys. Condition on a genuine source
 information I and force a current DOMAIN value v. Let X mean a future own
 omission in this attempt, F mean a foreign omission in this attempt
-(including one already observed), and B mean a future own accepted failure
-in it. Define D=X^c intersect F^c intersect B^c. On X the owner is excluded
+(including one already observed), and B mean an own accepted failure in its
+processed prefix or after the current choice. Define
+D=X^c intersect F^c intersect B^c. On X the owner is excluded
 and receives a_j. On X^c intersect F, j survives the real close, so it is a
 retry: all changed new values and obligations are erased, the same actual
 public signal/failure word is retained, and the erased continuation is R.
@@ -1419,9 +1552,10 @@ independent of v. For a CURRENT accepted-failure choice b, the same coupling
 gives U_I(b)=C_I+lambda_I a_j; a current omission gives a_j. In particular,
 future accepted failures that a retry rescues are inside R, not the
 payoff-a_j branch. At a known-foreign-failed attachment lambda_I=0, so all
-nonmissing current choices are exactly indifferent. If a current own bad
-binding is already present, H_v=a_j for every subsequent domain v; if an
-earlier retained phase contains the bad binding, every branch gives a_j.
+nonmissing current choices are exactly indifferent. If a current-attempt own
+bad binding is already present, D is empty and the no-reset payoff is a_j
+for every subsequent domain v; no conditional expectation on D is needed.
+If an earlier retained phase contains the bad binding, every branch gives a_j.
 
 This identity holds for every admissible E/F-shared continuation profile
 with fixed failure rates. It does not hold for arbitrary full-information
@@ -1441,6 +1575,76 @@ future SE or a guard-safe continuation. The ordinary domain-gain equality,
 attachment pins and honest-pin preservation are still required. The stronger
 conditional successful-phase ranking used by native transport additionally
 requires the D identity; unconditional gain equality does not replace it.
+
+### Honest pins and successful-phase conditioning
+
+At an ordinary honest-compatible site there is neither a processed foreign
+miss nor an own failed typed prefix. After forcing the current DOMAIN choice,
+D concerns only unused occurrence flags: O at each remaining entry-active
+slot strictly after the forced current action, and B at each remaining focal
+slot strictly after it. On D the active roster never
+changes, so these sets of coordinates are fixed by the public occurrence.
+Their independence from the entire genuine past gives, with r_O and r_B
+the respective numbers of remaining slots,
+
+    lambda_I = (1-alpha_n)^r_O (1-beta_n)^r_B,
+    1-lambda_I <= T(alpha_n+beta_n) -> 0.
+
+This is a source-attempt statement, not a bound on native Phi. If Y has
+payoff range of width S_j, the elementary mixture identity gives
+
+    |E[Y | D] - E[Y]| <= S_j(1-lambda_I).
+
+Consequently the conditional domain regret of an honest pin is at most its
+unconditional domain regret plus 2 S_j(1-lambda_I). The relative departure
+bound above makes the latter converge to the given honest assessment's
+regret for honest legal choices. A current violating value either is voided
+by a foreign miss, whose probability tends to zero, or leaves a retained
+invalid obligation and payoff a_j; it cannot improve on honest play. This
+proves the required honest conditional-success comparison without dividing
+by a rare probability or assuming that the honest consistency approximants
+are themselves best responses. Known-foreign-failed attachments have D empty
+and use indifference instead. Native Phi may remain arbitrarily rare and
+still requires the separate relative transport argument.
+
+### Concluding source sequential rationality
+
+Let S_j bound the full terminal payoff range and d bound the domain menu.
+At a free ordinary member, exact pooled optimality gives conditional-D
+domain regret at most d gamma_n S_j; multiplication by lambda_I<=1 gives
+the same bound for unconditional domain regret. This holds equally for the
+implemented sum of CONDITIONAL member utilities: its coefficient is
+pi_K sum_I lambda_I, with no reach weights. Its exact positive coefficient
+cancels before taking a limit. A zero coefficient and known-failed or
+own-doomed pinned members use the action-independent branches proved above.
+Honest members use the preceding preservation and conditional-success bound;
+their finitely many domain regrets tend to zero.
+
+For any of these members let U_tau be its conditional domain-mixture value.
+The terminal floor and common reset give U_tau>=U_b>=a_j, where U_b is the
+value of current accepted failure. The actual current mixture differs from
+the domain mixture only through omission mass alpha_n and accepted-failure
+mass at most beta_n. Thus its value is at least
+U_tau-S_j(alpha_n+beta_n). Every current raw action consequently has gain
+at most the domain regret plus S_j(alpha_n+beta_n). Reveal withholding has
+value a_j, so its fixed-rate mixture has regret at most S_j alpha_n as well.
+These inequalities concern the actual original full-information beliefs
+and continuation values; no quotient-player rationality is substituted.
+
+Take one convergent subsequence of the finite collection of source profiles
+and their Bayes beliefs. Full mixing supplies consistency. Finite terminal
+expectations are continuous in the behavioral profile and the beliefs, so
+the vanishing one-shot regrets give sequential rationality at every original
+information set. Perfect recall upgrades this to all continuation deviations.
+Honest-pin preservation identifies the requested honest joint law on paths.
+This completes the mathematical source selection argument; its formal
+stopped-window, attachment and honest-pin consumers are still obligations.
+
+### The stronger guard-safe continuation bound
+
+The following stronger m_j-o(1) bound uses guard viability; the weaker
+terminal floor and common reset already suffice for the failure-action
+part of source sequential rationality.
 
 At a non-doomed information set, omission gives a_j. For accepted failure,
 the no-reset branch gives a_j and the reset branch has the common erased
@@ -1823,8 +2027,9 @@ the SAME sampled flags before consuming the genuine failed-attempt close.
 It proves the joint terminal readout/all-player-payoff equality through retry
 and exhausted restore without assuming equal omission words. The global
 history paste supplies original support and its inverse uniqueness; actual
-information-fiber Bayes cancellation and successful-phase payoff equality
-remain open.
+information-fiber Bayes cancellation is checked as described above. The
+original local stopped-window consumer, its joint D/payoff specialization
+and individual source optimality remain open in Lean.
 
 The existing broad post-exclusion native completion is not the pinned
 construction above:
