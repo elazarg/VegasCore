@@ -45,7 +45,7 @@ private theorem foreign_position_replay_factor
       ownFactor * phaseRawBindingPositionWeight setup mode runtime leaks bounds runtimePlan horizon
         scheduler noise owner selected ⟨some control, trace⟩ index := by
   classical
-  obtain ⟨records, recordEq, _provenance, chance, _nonnegative, factor⟩ :=
+  obtain ⟨records, recordEq, _provenance, chance, _nonnegative, _natureMass, factor⟩ :=
     (N).exists_continuation_ownPlay_factor (.start : (E).Trace (E).init) trace
       (TracePrefix.start trace)
   have recordsEq (who) : records who = (N).ownPlay who trace := by

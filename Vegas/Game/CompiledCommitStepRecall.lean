@@ -2,6 +2,7 @@
 
 import Vegas.Game.CompiledAttemptObservation
 import Vegas.Game.CompiledCommitSuccessor
+import Vegas.Game.CompiledCommitHead
 import Vegas.Game.RecoverySourceBoundary
 import Vegas.Source.CommitRecoveryObservedClosure
 import Vegas.Source.CommitRecoverySurvivingInformation
@@ -202,13 +203,17 @@ theorem decoded_commit_source_traces
       setup.commitRecoveryProtocol.ReachesWithin rightFuel
         ⟨some right, secondTrace⟩ ⟨some rightRaw.close, rightTrace⟩ ∧
       setup.commitRecoverySignals.infoOf who leftTrace =
-        setup.commitRecoverySignals.infoOf who rightTrace := by
+        setup.commitRecoverySignals.infoOf who rightTrace ∧
+      setup.recoveryJointRecall leftTrace = leftDecoded.2.2.joints.reverse ++
+        setup.recoveryJointRecall firstTrace ∧
+      setup.recoveryJointRecall rightTrace = rightDecoded.2.2.joints.reverse ++
+        setup.recoveryJointRecall secondTrace := by
   intro block leftDecoded rightDecoded leftRaw rightRaw
   let initial := setup.initialConfig setup.initialLaw.support_nonempty.choose
-  obtain ⟨firstJoint, firstLegal, firstReached, _firstJointExact⟩ :=
+  obtain ⟨firstJoint, firstLegal, firstReached, firstJointExact⟩ :=
     decoded_commit_successor setup.program initial
     mode fresh guard tail embedding first firstEntry left lift firstAtEntry ranks actors menus steps
-  obtain ⟨secondJoint, secondLegal, secondReached, _secondJointExact⟩ :=
+  obtain ⟨secondJoint, secondLegal, secondReached, secondJointExact⟩ :=
     decoded_commit_successor setup.program initial
     mode fresh guard tail embedding second secondEntry right lift secondAtEntry ranks actors menus
     steps
@@ -248,15 +253,23 @@ theorem decoded_commit_source_traces
     rw [excludedEq, generationEq, remainingEq]
   refine ⟨leftTrace, rightTrace, 1, 1,
     .step firstJoint firstLegal _ (.refl 0 _),
-    .step secondJoint secondLegal _ (.refl 0 _), ?_⟩
-  change ((setup.commitRecoveryPrivate who (some leftRaw.close),
-      setup.commitRecoveryPublic (some leftRaw.close)),
-        (setup.commitRecoverySignals.infoOf who firstTrace).1 ::
-          (setup.commitRecoverySignals.infoOf who firstTrace).2) =
-    ((setup.commitRecoveryPrivate who (some rightRaw.close),
-      setup.commitRecoveryPublic (some rightRaw.close)),
-        (setup.commitRecoverySignals.infoOf who secondTrace).1 ::
-          (setup.commitRecoverySignals.infoOf who secondTrace).2)
-  rw [privateEq, publicEq, prior]
+    .step secondJoint secondLegal _ (.refl 0 _), ?_, ?_, ?_⟩
+  · change ((setup.commitRecoveryPrivate who (some leftRaw.close),
+        setup.commitRecoveryPublic (some leftRaw.close)),
+          (setup.commitRecoverySignals.infoOf who firstTrace).1 ::
+            (setup.commitRecoverySignals.infoOf who firstTrace).2) =
+      ((setup.commitRecoveryPrivate who (some rightRaw.close),
+        setup.commitRecoveryPublic (some rightRaw.close)),
+          (setup.commitRecoverySignals.infoOf who secondTrace).1 ::
+            (setup.commitRecoverySignals.infoOf who secondTrace).2)
+    rw [privateEq, publicEq, prior]
+  · have word := decodeCommitAttempt_head_joints setup.program mode fresh guard tail embedding
+      first firstEntry left
+    change firstJoint :: setup.recoveryJointRecall firstTrace = _
+    rw [word, List.reverse_singleton, List.singleton_append, firstJointExact]
+  · have word := decodeCommitAttempt_head_joints setup.program mode fresh guard tail embedding
+      second secondEntry right
+    change secondJoint :: setup.recoveryJointRecall secondTrace = _
+    rw [word, List.reverse_singleton, List.singleton_append, secondJointExact]
 
 end Vegas

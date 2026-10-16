@@ -217,7 +217,7 @@ theorem phaseTimingPlanPolicy_binding_good_weight
     runtimePlan initial horizon
     scheduler bound fallback wellFormed source noise nonnegative bounded slot slotNonnegative
       slotBounded parts focal intervention trace
-  obtain ⟨suffixes, suffixEq, _provenance, chance, chanceNonnegative, factor⟩ :=
+  obtain ⟨suffixes, suffixEq, _provenance, chance, chanceNonnegative, _natureMass, factor⟩ :=
     (N).exists_continuation_ownPlay_factor (.start : (E).Trace (E).init) trace
       (TracePrefix.start trace)
   have suffixIdentity (who : Player) : suffixes who = records who := by

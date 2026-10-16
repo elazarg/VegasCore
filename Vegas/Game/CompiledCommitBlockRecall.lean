@@ -88,7 +88,11 @@ theorem decoded_commit_block_source_traces
         setup.commitRecoveryProtocol.ReachesWithin rightFuel
           ⟨some right, secondTrace⟩ ⟨some rightRaw.close, rightTrace⟩ ∧
         setup.commitRecoverySignals.infoOf who leftTrace =
-          setup.commitRecoverySignals.infoOf who rightTrace := by
+          setup.commitRecoverySignals.infoOf who rightTrace ∧
+        setup.recoveryJointRecall leftTrace = leftDecoded.2.2.joints.reverse ++
+          setup.recoveryJointRecall firstTrace ∧
+        setup.recoveryJointRecall rightTrace = rightDecoded.2.2.joints.reverse ++
+          setup.recoveryJointRecall secondTrace := by
   induction block with
   | nil =>
       intro suffix embedding lift origin ranks actors menus steps first second firstValid
@@ -119,7 +123,7 @@ theorem decoded_commit_block_source_traces
       have firstHeadCompleted := firstCompleted ⟨0, Nat.zero_lt_succ _⟩ (Nat.zero_lt_succ _)
       have secondHeadCompleted := secondCompleted ⟨0, Nat.zero_lt_succ _⟩ (Nat.zero_lt_succ _)
       obtain ⟨firstNextTrace, secondNextTrace, firstFuel, secondFuel, firstPath, secondPath,
-        nextSignals⟩ :=
+        nextSignals, firstInstructions, secondInstructions⟩ :=
         decoded_commit_source_traces setup mode
         fresh guard tail embedding lift origin first second firstValid secondValid firstEntry
         secondEntry left right who entry publicView observed firstHeadCompleted secondHeadCompleted
@@ -198,6 +202,10 @@ theorem decoded_commit_block_source_traces
           (by rw [firstNoClose]; exact firstEndpoint)
           (by rw [secondNoClose]; exact secondEndpoint)
           remaining firstNextTrace secondNextTrace nextSignals
+        generalize firstWordEq : setup.recoveryJointRecall firstNextTrace = firstWord
+          at continuation
+        generalize secondWordEq : setup.recoveryJointRecall secondNextTrace = secondWord
+          at continuation
         generalize firstStartEq :
           (⟨some leftHead.close, firstNextTrace⟩ : setup.commitRecoveryProtocol.History) =
             firstStart at continuation
@@ -245,7 +253,10 @@ theorem decoded_commit_block_source_traces
           setup.commitRecoveryProtocol.ReachesWithin rightFuel
             secondStart ⟨some rightFinal.close, rightTrace⟩ ∧
           setup.commitRecoverySignals.infoOf who leftTrace =
-            setup.commitRecoverySignals.infoOf who rightTrace at continuation
+            setup.commitRecoverySignals.infoOf who rightTrace ∧
+          setup.recoveryJointRecall leftTrace = firstTail.2.2.joints.reverse ++ firstWord ∧
+          setup.recoveryJointRecall rightTrace = secondTail.2.2.joints.reverse ++ secondWord
+            at continuation
         have firstDecoded := decodeCommitAttempt_commit_tail setup.program mode fresh guard rest
           suffix embedding first firstEntry left.excluded
         have secondDecoded := decodeCommitAttempt_commit_tail setup.program mode fresh guard rest
@@ -253,11 +264,11 @@ theorem decoded_commit_block_source_traces
         have firstTagged : firstPartial = firstComplete := Subtype.ext
           (Prod.ext (congrArg (fun config => lift
             (Sum.inr (rest.liftPoint suffix (ProtocolState.entry suffix config)))) firstDecoded.1)
-              firstDecoded.2)
+              firstDecoded.2.1)
         have secondTagged : secondPartial = secondComplete := Subtype.ext
           (Prod.ext (congrArg (fun config => lift
             (Sum.inr (rest.liftPoint suffix (ProtocolState.entry suffix config)))) secondDecoded.1)
-              secondDecoded.2)
+              secondDecoded.2.1)
         have firstFinish : leftFinal.close = leftComplete.close :=
           congrArg (fun value : { result : ProtocolState setup.program × Finset Player //
             left.excluded ⊆ result.2 } => (left.install value.1 value.2).close) firstTagged
@@ -265,14 +276,20 @@ theorem decoded_commit_block_source_traces
           congrArg (fun value : { result : ProtocolState setup.program × Finset Player //
             right.excluded ⊆ result.2 } => (right.install value.1 value.2).close) secondTagged
         rw [firstFinish, secondFinish] at continuation
-        obtain ⟨leftTrace, rightTrace, leftFuel, rightFuel, leftPath, rightPath, same⟩ :=
-          continuation
-        exact ⟨leftTrace, rightTrace, firstFuel + leftFuel, secondFuel + rightFuel,
-          firstPath.trans leftPath, secondPath.trans rightPath, same⟩
+        obtain ⟨leftTrace, rightTrace, leftFuel, rightFuel, leftPath, rightPath, same,
+          leftInstructions, rightInstructions⟩ := continuation
+        refine ⟨leftTrace, rightTrace, firstFuel + leftFuel, secondFuel + rightFuel,
+          firstPath.trans leftPath, secondPath.trans rightPath, same, ?_, ?_⟩
+        · rw [← firstWordEq, firstInstructions, ← List.append_assoc, ← List.reverse_append,
+            ← firstDecoded.2.2] at leftInstructions
+          exact leftInstructions
+        · rw [← secondWordEq, secondInstructions, ← List.append_assoc, ← List.reverse_append,
+            ← secondDecoded.2.2] at rightInstructions
+          exact rightInstructions
       · cases rest with
         | nil =>
             exact ⟨firstNextTrace, secondNextTrace, firstFuel, secondFuel, firstPath,
-              secondPath, nextSignals⟩
+              secondPath, nextSignals, firstInstructions, secondInstructions⟩
         | commit => simp only [SourceProgram.CommitPrefix.length] at remaining; omega
 
 end Vegas

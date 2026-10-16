@@ -64,6 +64,25 @@ theorem observe_reflect (origin : ProtocolSuffix whole program lift) (who : Play
       intro first second same
       exact Sum.inr.inj (ih (.inr first) (.inr second) same)
 
+/-- A genuine source suffix preserves whether its current instruction commits. -/
+theorem atCommit_lift (origin : ProtocolSuffix whole program lift) :
+    ∀ point, ProtocolState.atCommit whole (lift point) = ProtocolState.atCommit program point := by
+  induction origin with
+  | initial => intro point; rfl
+  | sampleTail fresh law next previous ih => exact fun point => ih (.inr point)
+  | commitTail fresh guard next previous ih => exact fun point => ih (.inr point)
+  | revealTail fresh selected unresolved next previous ih => exact fun point => ih (.inr point)
+
+/-- A genuine source suffix preserves the endpoint of its current commitment window. -/
+theorem commitEnd_lift (origin : ProtocolSuffix whole program lift) :
+    ∀ point, ProtocolState.commitEnd whole (lift point) =
+      ProtocolState.commitEnd program point := by
+  induction origin with
+  | initial => intro point; rfl
+  | sampleTail fresh law next previous ih => exact fun point => ih (.inr point)
+  | commitTail fresh guard next previous ih => exact fun point => ih (.inr point)
+  | revealTail fresh selected unresolved next previous ih => exact fun point => ih (.inr point)
+
 /-- Two genuine source suffix traversals compose without changing the executor. -/
 theorem compose {later : ProtocolState tail → ProtocolState program}
     (outer : ProtocolSuffix whole program lift) (inner : ProtocolSuffix program tail later) :

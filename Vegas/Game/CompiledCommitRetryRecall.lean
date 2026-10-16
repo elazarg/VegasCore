@@ -140,7 +140,8 @@ theorem decoded_commit_retry_source_traces
   have secondEndpoint : ProtocolState.commitEnd setup.program right.saved ≤
       instructionCount suffix :=
     ((endpoints _).trans (block.commitEnd_entry_prepend suffix boundary secondEntry)).le
-  obtain ⟨leftTrace, rightTrace, leftFuel, rightFuel, leftPath, rightPath, same⟩ :=
+  obtain ⟨leftTrace, rightTrace, leftFuel, rightFuel, leftPath, rightPath, same,
+    _firstInstructions, _secondInstructions⟩ :=
     decoded_commit_block_source_traces setup mode who block
     suffix embedding lift origin ranks actors menus steps first second firstValid secondValid
     firstEntry secondEntry left right entry publicView observed firstCompleted secondCompleted

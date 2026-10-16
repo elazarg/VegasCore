@@ -1,6 +1,6 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**SE: non-concurrent ✓ · seed/Bayes ✓ · native L1/RAW markers ✓ · opening swaps ✓ · source transport/incentives open.**
+**SE: non-concurrent ✓ · clear-belief L1→0 ✓ · initial retry Info ✓ · swap likelihoods ✓ · AUX transport/reset optimality open.**
 
 <details>
 <summary>Checked recovery milestones and remaining proof obligations</summary>
@@ -48,6 +48,20 @@ original-memory average is exactly the intrinsic native position sum.
 Focal recall replay preserves the normalized foreign RAW share. Source-law
 proportionality on complete auxiliary information fibers and prescribed
 reset-continuation optimality remain open.
+
+For an actual clear binding information set, the normalized retained original
+history weights approach the actual native belief in L1 under the same chosen
+noise schedule. This uses the intrinsic foreign binding RAW share and requires
+no uniform information-mass floor. The retained weights have not yet been
+identified with the auxiliary source posterior. Whole-recall nonsend products
+have two-sided hidden-swap bounds tending to one, retaining opening WAIT. Actual
+continuations and their guarded swap images have the same strictly positive
+nature coefficient; the original initial prior remains a separate weight.
+
+At phase zero, actual initialized traces derive the archive retry numbering.
+Equal owner observations then determine the complete saved auxiliary
+information through arbitrarily many initial retries. General later-phase
+chronological information recovery remains open.
 
 Supported disclosing memories reconstruct the whole physical native
 configuration. Actual clear counted histories project to ordinary native

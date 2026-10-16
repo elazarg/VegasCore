@@ -14,7 +14,7 @@ open EventGraph Interaction GameTheory.Protocol GameTheory.Math.Probability
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {graph : Vegas.EventGraph Player L} {runtime : EventGraphRuntime graph}
   {leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket graph)}
-  (swap : HiddenSwap graph)
+  {allowed : Set graph.Inputs} (swap : HiddenSwap graph)
 
 def phaseControl (control : (phaseApplication runtime leaks).Control) :
     (phaseApplication runtime leaks).Control :=
@@ -37,7 +37,7 @@ theorem getD_phaseJoint (joint : Player → Option (phaseApplication runtime lea
 actual post-response execution. -/
 theorem phaseRequestFixed_of_respond (current : (phaseApplication runtime leaks).Execution)
     (who : Player) (response : (phaseApplication runtime leaks).Action)
-    (guarded : PhaseSwapGuard runtime leaks swap
+    (guarded : PhaseSwapGuard runtime leaks swap allowed
       (current.respond (phaseApplication runtime leaks) who response)) :
     ∀ submission, response.transmission = some submission → submission.evidence.FixedBy swap := by
   obtain ⟨emitted, remembered⟩ :=
@@ -57,8 +57,8 @@ theorem phaseInclusionFixed_of_guards (current : (phaseApplication runtime leaks
     (admitted : (message.payload.tokenValid current.application.attempt &&
       current.application.allows message.payload.packet.call &&
       !current.application.current.excludedCall message.payload.packet.call) = true)
-    (beforeGuard : PhaseSwapGuard runtime leaks swap current)
-    (afterGuard : PhaseSwapGuard runtime leaks swap
+    (beforeGuard : PhaseSwapGuard runtime leaks swap allowed current)
+    (afterGuard : PhaseSwapGuard runtime leaks swap allowed
       (current.includePending (phaseApplication runtime leaks) id)) :
     InclusionFixed runtime swap current.application.current.native
       ⟨message.id, message.payload.packet.call⟩ := by
@@ -136,18 +136,22 @@ theorem environmentStep_phaseExecution_of_admitted
       rfl
 
 /-- Every realized transition into a clear primitive guard replays under the
-same scheduler. Initial support closure is the sole setup obligation. -/
+same scheduler. Setup support is required only at the guarded original input
+tuple, rather than at every other tuple in the prior. -/
 theorem phaseTransition_swap
     (initial : PMF (phaseApplication runtime leaks).State)
-    (initialClosed : ∀ state ∈ initial.support, state.swap swap ∈ initial.support)
+    (initialClosed : ∀ state ∈ initial.support,
+      state.current.native.config.inputs ∈ allowed → state.swap swap ∈ initial.support)
     (horizon : Nat) (scheduler : (phaseApplication runtime leaks).Scheduler)
     (source target : (phaseApplication runtime leaks).ProtocolState)
     (joint : Player → Option (phaseApplication runtime leaks).Action)
     (reached : target ∈ ((phaseApplication runtime leaks).transition initial horizon scheduler
       source joint).support)
     (expiry : ∀ event, swap.values.ExpiryFixed event)
+    (native : ∀ control, source = some control →
+      ∃ draw, control.execution.application.Invariant draw)
     (guarded : ∀ control, target = some control →
-      PhaseSwapGuard runtime leaks swap control.execution) :
+      PhaseSwapGuard runtime leaks swap allowed control.execution) :
     swap.phaseProtocolState target ∈ ((phaseApplication runtime leaks).transition initial horizon
       scheduler (swap.phaseProtocolState source) (swap.phaseJoint joint)).support := by
   let app := phaseApplication runtime leaks
@@ -159,13 +163,14 @@ theorem phaseTransition_swap
         ⟨horizon, none, ReactiveApplication.Execution.initial _ state⟩) ∈
         (app.transition initial horizon scheduler none _).support
       rw [ReactiveApplication.transition, PMF.support_map]
-      exact ⟨state.swap swap, initialClosed state member, rfl⟩
+      have allowedInputs := (guarded _ rfl).inputs
+      exact ⟨state.swap swap, initialClosed state member allowedInputs, rfl⟩
   | some before =>
       obtain ⟨after, rfl, _⟩ := app.transition_recall_prefix initial horizon scheduler
         before target joint reached
       have afterGuard := guarded after rfl
-      have beforeGuard := phaseSwapGuard_of_transition runtime leaks swap initial horizon scheduler
-        before after joint reached afterGuard
+      have beforeGuard := phaseSwapGuard_of_transition runtime leaks swap allowed initial horizon
+        scheduler before after joint reached (native before rfl) afterGuard
       rcases before with ⟨remaining, actor, current⟩
       cases actor with
       | some who =>
@@ -204,15 +209,15 @@ theorem phaseTransition_swap
                 · exact ⟨next, stepped, rfl⟩
                 · intro id envelope commandEq found admitted
                   subst commandEq
-                  have included : PhaseSwapGuard runtime leaks swap
+                  have included : PhaseSwapGuard runtime leaks swap allowed
                       (current.includePending app id) := by
                     unfold ReactiveApplication.Execution.environmentStep at stepped
                     rw [PMF.support_map] at stepped
                     obtain ⟨included, supported, rfl⟩ := stepped
                     rw [PMF.mem_support_pure_iff] at supported
                     subst included
-                    exact ⟨afterGuard.clear, afterGuard.compatible, afterGuard.completed,
-                      afterGuard.active, afterGuard.requests⟩
+                    exact ⟨afterGuard.clear, afterGuard.inputs, afterGuard.compatible,
+                      afterGuard.completed, afterGuard.active, afterGuard.requests⟩
                   exact swap.phaseInclusionFixed_of_guards current id envelope found admitted
                     beforeGuard included
 

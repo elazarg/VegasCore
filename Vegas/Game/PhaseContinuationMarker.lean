@@ -69,7 +69,7 @@ theorem exists_binding_marker_of_tracePrefix
                 binding_marker_density setup mode runtime leaks bounds runtimePlan horizon
                   scheduler noise focal profile records chance) := by
   classical
-  obtain ⟨records, recordEq, callbacks, chance, chanceNonnegative, factor⟩ :=
+  obtain ⟨records, recordEq, callbacks, chance, chanceNonnegative, _natureMass, factor⟩ :=
     (N).exists_continuation_ownPlay_factor entry.trace final.trace isPrefix
   refine ⟨records, chance, chanceNonnegative, recordEq, callbacks, factor, ?_⟩
   intro chosen coefficient certified profile

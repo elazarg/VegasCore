@@ -57,7 +57,7 @@ theorem phase_timing_continuation_callback_factor
           (((N).runBehavioralFrom profile (finalTrace.length - entryTrace.length)
             ⟨some entry, entryTrace⟩) ⟨some final, finalTrace⟩).toReal =
             chance * ∏ who, (N).ownPlayReachProbability (profile who) (records who) := by
-  obtain ⟨records, recordEq, provenance, chance, nonnegative, factor⟩ :=
+  obtain ⟨records, recordEq, provenance, chance, nonnegative, _natureMass, factor⟩ :=
     (N).exists_continuation_ownPlay_factor entryTrace finalTrace isPrefix
   refine ⟨records, recordEq, ?_, chance, nonnegative, factor⟩
   intro who record member

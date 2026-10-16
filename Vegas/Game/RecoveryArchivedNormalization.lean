@@ -133,6 +133,9 @@ theorem RecoverySourceCheckpoint.normalized_archived
         change phase.high ≤ eventCount setup.program at bounded
         change phase.low + eventCount checkpoint.residual.tail = eventCount setup.program at counted
         omega
+      have imageStored : KeepsStore entry.native image.native :=
+        fun field value present => phase.drain_keepsStore current field value
+          (stored field value present)
       have imageAgrees : checkpoint.refs.Agrees checkpoint.source.state
           image.native.config.store := by
         intro name cell selected
@@ -306,7 +309,7 @@ theorem RecoverySourceCheckpoint.normalized_archived
                     obtain ⟨nextFuel, nextPath, instructions⟩ := sourcePrefix
                     exact ⟨nextFuel, nextPath, ArchivedSourceOrigins.advance checkpoint
                       nextCheckpoint origins phase remaining rfl rfl rfl rfl
-                      nextBoundary finished
+                      nextBoundary aligned position.1 retained imageStored finished
                       ⟨_, imageNative⟩ nextPath (fun _ => instructions)⟩⟩
         | reveal =>
             obtain ⟨nextCheckpoint, sourcePrefix, word, _intended⟩ :=
@@ -335,7 +338,7 @@ theorem RecoverySourceCheckpoint.normalized_archived
                   obtain ⟨nextFuel, nextPath⟩ := sourcePrefix
                   exact ⟨nextFuel, nextPath, ArchivedSourceOrigins.advance checkpoint
                     nextCheckpoint origins phase remaining rfl rfl rfl rfl
-                      nextBoundary finished
+                      nextBoundary aligned position.1 retained imageStored finished
                     ⟨_, imageNative⟩ nextPath (fun impossible => by
                       rw [kind] at impossible
                       cases impossible)⟩⟩
@@ -366,7 +369,7 @@ theorem RecoverySourceCheckpoint.normalized_archived
                   obtain ⟨nextFuel, nextPath⟩ := sourcePrefix
                   exact ⟨nextFuel, nextPath, ArchivedSourceOrigins.advance checkpoint
                     nextCheckpoint origins phase remaining rfl rfl rfl rfl
-                      nextBoundary finished
+                      nextBoundary aligned position.1 retained imageStored finished
                     ⟨_, imageNative⟩ nextPath (fun impossible => by
                       rw [kind] at impossible
                       cases impossible)⟩⟩

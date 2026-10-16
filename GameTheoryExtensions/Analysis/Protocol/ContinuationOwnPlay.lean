@@ -2,10 +2,40 @@
 
 import GameTheoryExtensions.Protocol.TracePrefix
 import GameTheory.Analysis.Protocol.CounterfactualReach
+import Mathlib.Algebra.Group.TypeTags.Basic
 
 /-! # Actual continuation atoms and the new own-action suffixes -/
 
 noncomputable section
+
+namespace GameTheory.Protocol.ExecutionProtocol
+
+variable {Player : Type*} {E : ExecutionProtocol Player}
+
+/-- The product of the actual nature atoms on a realized trace, using the
+protocol's existing transition-value fold. Player choice atoms are excluded. -/
+def Trace.transitionMass {state : E.State} (trace : E.Trace state) : ℝ :=
+  (trace.valueSum fun event => Additive.ofMul
+    (((E.step event.source ⟨event.joint, event.isLegal⟩) event.target).toReal)).toMul
+
+@[simp] theorem Trace.transitionMass_start :
+    (Trace.start : E.Trace E.init).transitionMass = 1 := rfl
+
+@[simp] theorem Trace.transitionMass_extend {source target : E.State}
+    (prior : E.Trace source) (joint : ∀ player, Option (E.Action player))
+    (legal : E.Legal source joint) (reached : target ∈ (E.step source ⟨joint, legal⟩).support) :
+    (prior.extend joint legal reached).transitionMass =
+      prior.transitionMass * ((E.step source ⟨joint, legal⟩) target).toReal := rfl
+
+/-- Every nature atom named by a genuine realized trace is strictly positive. -/
+theorem Trace.transitionMass_pos : ∀ {state : E.State} (trace : E.Trace state),
+    0 < trace.transitionMass
+  | _, .start => zero_lt_one
+  | _, .extend prior _joint _legal reached =>
+      mul_pos prior.transitionMass_pos (ENNReal.toReal_pos
+        ((PMF.mem_support_iff _ _).mp reached) (PMF.apply_ne_top _ _))
+
+end GameTheory.Protocol.ExecutionProtocol
 
 namespace GameTheory.Protocol.InformationModel
 
@@ -92,6 +122,7 @@ theorem exists_continuation_ownPlay_factor [Fintype Player]
           TracePrefix (before.trace.extend joint legal realized) final ∧
           model.infoOf who before.trace = record.1 ∧ joint who = some record.2) ∧
       ∃ chance : ℝ, 0 ≤ chance ∧
+        chance * entry.transitionMass = final.transitionMass ∧
         ∀ profile : ∀ who, model.BehavioralPolicy who,
           ((model.runBehavioralFrom profile (final.length - entry.length)
             ⟨first, entry⟩) ⟨second, final⟩).toReal =
@@ -99,7 +130,7 @@ theorem exists_continuation_ownPlay_factor [Fintype Player]
   classical
   induction isPrefix with
   | refl =>
-      refine ⟨fun _ => [], ?_, ?_, 1, zero_le_one, ?_⟩
+      refine ⟨fun _ => [], ?_, ?_, 1, zero_le_one, by simp only [one_mul], ?_⟩
       · intro who
         exact (List.nil_append _).symm
       · intro who record member
@@ -107,12 +138,12 @@ theorem exists_continuation_ownPlay_factor [Fintype Player]
       · intro profile
         simp [runBehavioralFrom, ownPlayReachProbability]
   | @extend source target prior earlier joint legal realized ih =>
-      obtain ⟨records, recordEq, provenance, chance, nonnegative, factor⟩ := ih
+      obtain ⟨records, recordEq, provenance, chance, nonnegative, mass, factor⟩ := ih
       let newer := fun who => match joint who with
         | none => records who
         | some action => (model.infoOf who prior, action) :: records who
       refine ⟨newer, ?_, ?_, chance * ((E.step source ⟨joint, legal⟩) target).toReal,
-        mul_nonneg nonnegative ENNReal.toReal_nonneg, ?_⟩
+        mul_nonneg nonnegative ENNReal.toReal_nonneg, ?_, ?_⟩
       · intro who
         rw [InfoSignals.ownPlay_extend, recordEq]
         dsimp only [newer]
@@ -140,6 +171,8 @@ theorem exists_continuation_ownPlay_factor [Fintype Player]
               exact ⟨⟨source, prior⟩, joint, legal, target, realized, earlier, .refl, rfl,
                 selected⟩
             · exact old member
+      · rw [Trace.transitionMass_extend, ← mass]
+        ring
       · intro profile
         have lengths : (prior.extend joint legal realized).length - entry.length =
             (prior.length - entry.length) + 1 := by

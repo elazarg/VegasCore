@@ -220,7 +220,7 @@ theorem phase_timing_continuation_fiber_noise
               parts members focal intervention entry current entryTrace trace isPrefix phase
                 remaining installed committing event inside allValues currentClear
                   currentRequest.2.2.1 certificate site same
-      obtain ⟨actualRecords, actualEq, provenance, _chance, _nonnegative, _factor⟩ :=
+      obtain ⟨actualRecords, actualEq, provenance, _chance, _nonnegative, _natureMass, _factor⟩ :=
         (baseN).exists_continuation_ownPlay_factor entryTrace trace isPrefix
       have recordsEq : actualRecords = records := by
         funext who

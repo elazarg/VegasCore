@@ -110,7 +110,7 @@ theorem phaseTimingPlanPolicy_value_history_average
     change ((menu).signals initial horizon scheduler).ownPlay who trace = _
     rw [← (menu).ownPlay_toRawTrace initial horizon scheduler who trace, (app).trace_ownPlay]
     rfl
-  obtain ⟨records, recordsEq, _provenance, chance, _chanceNonnegative, factor⟩ :=
+  obtain ⟨records, recordsEq, _provenance, chance, _chanceNonnegative, _natureMass, factor⟩ :=
     (N).exists_continuation_ownPlay_factor (.start : (E).Trace (E).init) trace
       (TracePrefix.start trace)
   have recordEq (who) : records who = (app).ownPlayFrom [] (final.execution.recall who) := by
@@ -217,7 +217,7 @@ theorem phaseTimingPlanPolicy_value_good_history_average
         ((N).historyReachWeight behavior ⟨some final, trace⟩).toReal ≤ good + error := by
   intro original source plain zero members family behavior records Index record marked
     atom raw kept
-  obtain ⟨suffixes, suffixEq, _provenance, chance, chanceNonnegative, factor⟩ :=
+  obtain ⟨suffixes, suffixEq, _provenance, chance, chanceNonnegative, _natureMass, factor⟩ :=
     (N).exists_continuation_ownPlay_factor (.start : (E).Trace (E).init) trace
       (TracePrefix.start trace)
   have suffixIdentity (who : Player) : suffixes who = records who := by

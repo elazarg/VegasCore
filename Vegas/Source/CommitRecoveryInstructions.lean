@@ -80,6 +80,21 @@ theorem joints_cast_after
   cases same
   rfl
 
+omit [IExpr.ResultTypes L] in
+/-- A typed commitment attempt retains one original instruction per static slot,
+including automatic slots of already excluded owners. -/
+theorem joints_length
+    {Γ Δ : SourceCtx Player L} {O P : Finset VarId} {block : CommitPrefix Γ O Δ P}
+    {entry : Config Player L Γ} {excluded : Finset Player} {finished : Config Player L Δ}
+    {after : Finset Player} (attempt : block.Attempt entry excluded finished after) :
+    attempt.joints.length = block.length := by
+  induction attempt with
+  | nil => rfl
+  | active _ _ _ _ _ ih =>
+      simpa only [joints, List.length_cons, CommitPrefix.length] using congrArg Nat.succ ih
+  | excluded _ _ ih =>
+      simpa only [joints, List.length_cons, CommitPrefix.length] using congrArg Nat.succ ih
+
 end CommitPrefix.Attempt
 namespace Setup
 

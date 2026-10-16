@@ -140,3 +140,4 @@ import Vegas.Source.CommitRecoveryCommitUnique
 import Vegas.Source.CommitRecoveryNonCommitObservation
 import Vegas.Source.CommitRecoveryNonCommitRecall
 import Vegas.Source.CommitRecoveryControl
+import Vegas.Source.CommitRecoverySavedProgress

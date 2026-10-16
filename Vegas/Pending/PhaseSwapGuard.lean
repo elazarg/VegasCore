@@ -2,6 +2,8 @@
 
 import Vegas.Pending.PhaseClearPhasePersistence
 import Vegas.Pending.PhaseSwapMenu
+import Vegas.Pending.PhaseNativeInvariant
+import Vegas.EventGraph.PrivateInputs
 
 /-! # Backward native replay guards on clear phased histories -/
 
@@ -15,11 +17,14 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {graph : Vegas.EventGraph Player L}
 
 /-- Only completed revelations and ready revelations of the installed phase
-may constrain the swap. Future graph-ready revelations remain masked. -/
+may constrain the swap. Future graph-ready revelations remain masked. The
+original tuple must lie in the selected input domain. -/
 structure PhaseSwapGuard (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket graph))
-    (swap : HiddenSwap graph) (current : (phaseApplication runtime leaks).Execution) : Prop where
+    (swap : HiddenSwap graph) (allowed : Set graph.Inputs)
+    (current : (phaseApplication runtime leaks).Execution) : Prop where
   clear : current.application.current.excluded = ∅
+  inputs : current.application.current.native.config.inputs ∈ allowed
   compatible : ∀ event candidate,
     current.application.current.native.accepted (.inr event) = some candidate →
       BindCompatible swap event candidate
@@ -30,6 +35,28 @@ structure PhaseSwapGuard (runtime : EventGraphRuntime graph)
       RevealFixed swap current.application.current.native event
   requests : ∀ who, ∀ entry ∈ current.recall who, ∀ submission,
     entry.action.transmission = some submission → submission.evidence.FixedBy swap
+
+/-- Initialized support and the actual invariant engine retain one original
+input tuple throughout the complete physical history, including retries. -/
+theorem phaseNativeInvariant_of_initialized_history (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket graph))
+    (initial : PMF (phaseApplication runtime leaks).State)
+    (initialized : ∀ state ∈ initial.support, ∃ draw, state.Invariant draw)
+    (horizon : Nat) (scheduler : (phaseApplication runtime leaks).Scheduler) {control}
+    (trace : ((phaseApplication runtime leaks).protocol initial horizon scheduler).Trace
+      (some control)) : ∃ draw, control.execution.application.Invariant draw := by
+  have preserved : (phaseApplication runtime leaks).Invariant
+      (fun state => ∃ draw, state.Invariant draw) := by
+    refine ⟨?_, ?_, ?_⟩
+    · rintro state who material ⟨draw, valid⟩
+      exact ⟨draw, (phaseApplication_invariant runtime leaks draw).submit state who material valid⟩
+    · rintro state message next ⟨draw, valid⟩ handled
+      exact ⟨draw, (phaseApplication_invariant runtime leaks draw).handle
+        state message next valid handled⟩
+    · rintro state command next ⟨draw, valid⟩ reached
+      exact ⟨draw, (phaseApplication_invariant runtime leaks draw).environment
+        state command next valid reached⟩
+  exact preserved.history initial horizon scheduler initialized trace
 
 namespace HiddenSwap
 
@@ -52,17 +79,20 @@ theorem revealFixed_of_accepted_extension (swap : HiddenSwap graph)
 end HiddenSwap
 
 /-- The primitive guard is closed under every actual predecessor of a clear
-endpoint. No completeness, strategy or observation-fiber hypothesis is used. -/
+endpoint, retaining the original input tuple from actual native reachability.
+No strategy or observation-fiber hypothesis is used. -/
 theorem phaseSwapGuard_of_transition (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket graph))
-    (swap : HiddenSwap graph) (initial : PMF (phaseApplication runtime leaks).State)
+    (swap : HiddenSwap graph) (allowed : Set graph.Inputs)
+    (initial : PMF (phaseApplication runtime leaks).State)
     (horizon : Nat) (scheduler : (phaseApplication runtime leaks).Scheduler)
     (before after : (phaseApplication runtime leaks).Control)
     (joint : Player → Option (phaseApplication runtime leaks).Action)
     (reached : some after ∈ ((phaseApplication runtime leaks).transition initial horizon scheduler
       (some before) joint).support)
-    (guarded : PhaseSwapGuard runtime leaks swap after.execution) :
-    PhaseSwapGuard runtime leaks swap before.execution := by
+    (native : ∃ draw, before.execution.application.Invariant draw)
+    (guarded : PhaseSwapGuard runtime leaks swap allowed after.execution) :
+    PhaseSwapGuard runtime leaks swap allowed before.execution := by
   let app := phaseApplication runtime leaks
   obtain ⟨_store, _history, accepted, completed⟩ :=
     (phaseApplication_clear_nativeProgress runtime leaks).transition initial horizon scheduler
@@ -75,7 +105,16 @@ theorem phaseSwapGuard_of_transition (runtime : EventGraphRuntime graph)
     joint reached
   obtain ⟨next, same, recalled⟩ := prefixes
   cases Option.some.inj same
-  refine ⟨clear, ?_, ?_, ?_, ?_⟩
+  obtain ⟨draw, valid⟩ := native
+  have nextValid := (phaseApplication_invariant runtime leaks draw).transition
+    (PMF.pure before.execution.application) horizon scheduler
+      (fun state member => by
+        cases (PMF.mem_support_pure_iff _ _).mp member
+        exact valid)
+      (some before) (some after) joint valid reached
+  have inputsSame := valid.active.reachable.inputs_eq.trans
+    nextValid.active.reachable.inputs_eq.symm
+  refine ⟨clear, inputsSame.symm ▸ guarded.inputs, ?_, ?_, ?_, ?_⟩
   · intro event candidate present
     exact guarded.compatible event candidate (accepted (.inr event) candidate present)
   · intro event done

@@ -1291,6 +1291,29 @@ import Interaction.ReactiveMarkedReach
 import Vegas.Game.PhaseRecoveryValueMarkerSum
 import Vegas.Game.PhaseRecoveryValueNativeMarkerSum
 import Vegas.Game.PhaseRawBindingReplayShare
+import Vegas.Game.CompiledCommitObservedRecall
+import Vegas.Game.RecoveryCommitChronology
+import Vegas.Game.PhaseInitialArchiveInformation
+import Vegas.Game.RecoveryChosenCommitControl
+import Vegas.Source.CommitRecoverySavedProgress
+import Vegas.Game.RecoveryRetryChronology
+import Vegas.Game.PhaseInitialRetryInformation
+import Vegas.Pending.PhaseArchiveOrder
+import Vegas.Pending.PhaseInitialRetryChronology
+import Vegas.Game.PhaseInitialSavedInformation
+import Vegas.Game.PhaseTimingSwapCallback
+import Vegas.Pending.PhaseSwapCallback
+import Vegas.Pending.PhaseSwapTransitionMass
+import Vegas.Pending.PhaseSwapContinuationMass
+import Vegas.Game.PhaseRecoveryValueGoodNative
+import Vegas.Game.PhaseRecoveryValueGoodConditional
+import Vegas.Game.PhaseRecoveryValueGoodBelief
+import Vegas.Game.PhaseRecoveryValueGoodBinding
+import Vegas.Game.PhaseRecoveryValueGoodLimit
+import Vegas.Game.PhaseBindingSwapSilence
+import Vegas.Game.PhaseTimingSwapWaiting
+import Vegas.Game.PhaseTimingSwapWaitingLimit
+import Vegas.Game.PhaseTimingSwapRecall
 
 /-! # Checked sequential-equilibrium preservation, Nash correspondence and termination -/
 
@@ -13410,3 +13433,255 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms
   Vegas.phase_raw_binding_share_eq_recallReplay
+
+/-- info:
+'Vegas.RecoverySourceCheckpoint.completed_commit_phase'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.RecoverySourceCheckpoint.completed_commit_phase
+
+/-- info:
+'Vegas.RecoverySourceCheckpoint.commit_information_eq'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.RecoverySourceCheckpoint.commit_information_eq
+
+/-- info:
+'Vegas.phase_archived_chosen_information_eq_of_observed'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phase_archived_chosen_information_eq_of_observed
+
+/-- info:
+'Vegas.phase_initial_archive_information_eq_of_observed'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phase_initial_archive_information_eq_of_observed
+
+/-- info:
+'Vegas.phase_initial_retry_information_eq_of_observed'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phase_initial_retry_information_eq_of_observed
+
+/-- info:
+'Vegas.RecoverySourceCheckpoint.chosen_commit_control'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.RecoverySourceCheckpoint.chosen_commit_control
+
+/-- info:
+'Vegas.RecoverySourceCheckpoint.retry_chosen_history_eq'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.RecoverySourceCheckpoint.retry_chosen_history_eq
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecovery_saved_remaining_le_of_prefix'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecovery_saved_remaining_le_of_prefix
+
+/-- info:
+'Vegas.phase_initial_saved_information_eq_of_observed'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phase_initial_saved_information_eq_of_observed
+
+/-- info:
+'Vegas.EventGraphRuntime.phaseNativeInvariant_of_initialized_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.phaseNativeInvariant_of_initialized_history
+
+/-- info:
+'Vegas.EventGraphRuntime.phase_infoOf_mapTrace_of_fixed'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.phase_infoOf_mapTrace_of_fixed
+
+/-- info:
+'Vegas.EventGraphRuntime.phase_initial_support_invariant'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.phase_initial_support_invariant
+
+/-- info:
+'Vegas.EventGraphRuntime.phase_initialClosed_swapAllowed'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.phase_initialClosed_swapAllowed
+
+/-- info:
+'Vegas.EventGraphRuntime.phaseSwapAllowed_closed'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.phaseSwapAllowed_closed
+
+/-- info:
+'Vegas.EventGraphRuntime.HiddenSwap.initial_phase_of_native_swap'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.HiddenSwap.initial_phase_of_native_swap
+
+/-- info:
+'Vegas.EventGraphRuntime.HiddenSwap.initial_inputs_mem_phaseSwapAllowed'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.HiddenSwap.initial_inputs_mem_phaseSwapAllowed
+
+/-- info:
+'Vegas.EventGraphRuntime.HiddenSwap.phaseSwapGuard_of_tracePrefix'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.HiddenSwap.phaseSwapGuard_of_tracePrefix
+
+/-- info:
+'Vegas.EventGraphRuntime.HiddenSwap.phaseAction_eq_of_nonbinding_callback'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.HiddenSwap.phaseAction_eq_of_nonbinding_callback
+
+/-- info:
+'Vegas.phaseTimingPlanPolicy_nonbinding_swap_before_binding'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseTimingPlanPolicy_nonbinding_swap_before_binding
+
+/-- info:
+'Vegas.phaseTimingPlanPolicy_nonbinding_record_swap'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseTimingPlanPolicy_nonbinding_record_swap
+
+/-- info:
+'Vegas.EventGraphRuntime.HiddenSwap.environmentStep_phaseExecution_of_guards'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.HiddenSwap.environmentStep_phaseExecution_of_guards
+
+/-- info:
+'Vegas.EventGraphRuntime.HiddenSwap.phaseTransition_apply_swap'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.HiddenSwap.phaseTransition_apply_swap
+
+/-- info:
+'Vegas.EventGraphRuntime.HiddenSwap.exists_phase_continuation_common_factor'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.HiddenSwap.exists_phase_continuation_common_factor
+
+/-- info:
+'Vegas.phaseTimingPlanPolicy_value_good_history_native'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseTimingPlanPolicy_value_good_history_native
+
+/-- info:
+'Vegas.phaseTimingPlanPolicy_value_good_conditional'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseTimingPlanPolicy_value_good_conditional
+
+/-- info:
+'Vegas.phaseTimingPlanPolicy_value_good_belief'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseTimingPlanPolicy_value_good_belief
+
+/-- info:
+'Vegas.phaseTimingPlanPolicy_value_good_binding'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseTimingPlanPolicy_value_good_binding
+
+/-- info:
+'Vegas.exists_phase_value_good_belief_vanishes'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.exists_phase_value_good_belief_vanishes
+
+/-- info:
+'Vegas.phaseBindingSlots_swap_of_histories'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseBindingSlots_swap_of_histories
+
+/-- info:
+'Vegas.phaseSourceTimingPolicy_binding_silence_swap'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseSourceTimingPolicy_binding_silence_swap
+
+/-- info:
+'Vegas.phaseTimingPlanPolicy_binding_residual_silence_swap'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseTimingPlanPolicy_binding_residual_silence_swap
+
+/-- info:
+'Vegas.phaseTimingPlanPolicy_binding_waiting_swap_of_floor'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseTimingPlanPolicy_binding_waiting_swap_of_floor
+
+/-- info:
+'Vegas.phaseTimingPlanPolicy_value_binding_waiting_swap_of_floor'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseTimingPlanPolicy_value_binding_waiting_swap_of_floor
+
+/-- info:
+'Vegas.phase_binding_waiting_factor_tendsto'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phase_binding_waiting_factor_tendsto
+
+/-- info:
+'Vegas.phaseTimingPlanPolicy_value_nonsend_record_swap_ratio'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseTimingPlanPolicy_value_nonsend_record_swap_ratio
+
+/-- info:
+'Vegas.phaseTimingPlanPolicy_value_operational_swap_bounds'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseTimingPlanPolicy_value_operational_swap_bounds

@@ -19,40 +19,45 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
 fiber of a fixed observer. Only histories satisfying the primitive native
 read guards occur in this domain; raw bad-binding repair remains separate. -/
 def phaseSwapInformationFiberEquiv (bounds : MessageBounds graph)
-    (initial : PMF (phaseApplication runtime leaks).State) (horizon : Nat)
+    (initial : PMF (phaseApplication runtime leaks).State)
+    (initialized : ∀ state ∈ initial.support, ∃ draw, state.Invariant draw) (horizon : Nat)
     (scheduler : (phaseApplication runtime leaks).Scheduler) (swap : HiddenSwap graph)
-    (initialClosed : ∀ state ∈ initial.support, state.swap swap ∈ initial.support)
+    (allowed : Set graph.Inputs)
+    (initialClosed : ∀ state ∈ initial.support,
+      state.current.native.config.inputs ∈ allowed → state.swap swap ∈ initial.support)
     (bounded : ∀ handle raw, raw ∈ bounds.values → swap.raw handle raw ∈ bounds.values)
-    (expiry : ∀ event, swap.values.ExpiryFixed event) (who : Player)
+    (expiry : ∀ event, swap.values.ExpiryFixed event)
+    (allowedClosed : ∀ inputs ∈ allowed,
+      (fun input => swap.values.value (.inl input) (inputs input)) ∈ allowed) (who : Player)
     (fields : ∀ field, graph.fieldVisibleTo who field → swap.values.value field = id)
     (actions : ∀ event, graph.actor? event = some who → swap.values.action event = id)
     (handles : ∀ slot, swap.raw (who, slot) = id)
     (input : (phaseApplication runtime leaks).Info) :
     {history : ((PhaseCount.onePacketMenu runtime leaks bounds).protocol initial
-        horizon scheduler).History // PhaseSwapGuardState swap history.state ∧
+        horizon scheduler).History // PhaseSwapGuardState swap allowed history.state ∧
       ((PhaseCount.onePacketMenu runtime leaks bounds).information initial horizon scheduler).infoOf
         who history.trace = input} ≃
     {history : ((PhaseCount.onePacketMenu runtime leaks bounds).protocol initial
-        horizon scheduler).History // PhaseSwapGuardState swap history.state ∧
+        horizon scheduler).History // PhaseSwapGuardState swap allowed history.state ∧
       ((PhaseCount.onePacketMenu runtime leaks bounds).information initial horizon scheduler).infoOf
         who history.trace = input} := by
-  let symmetry := phaseOnePacketSwapSymmetry bounds initial horizon scheduler swap
-    initialClosed bounded expiry
-  have involutive := phaseOnePacketSwapSymmetry_involutive bounds initial horizon scheduler
-    swap initialClosed bounded expiry
+  let symmetry := phaseOnePacketSwapSymmetry bounds initial initialized horizon scheduler swap
+    allowed initialClosed bounded expiry
+  have involutive := phaseOnePacketSwapSymmetry_involutive bounds initial initialized horizon
+    scheduler swap allowed initialClosed bounded expiry allowedClosed
   let fiber := fun history : ((PhaseCount.onePacketMenu runtime leaks bounds).protocol
-      initial horizon scheduler).History => PhaseSwapGuardState swap history.state ∧
+      initial horizon scheduler).History => PhaseSwapGuardState swap allowed history.state ∧
     ((PhaseCount.onePacketMenu runtime leaks bounds).information initial horizon scheduler).infoOf
       who history.trace = input
   refine symmetry.exchange involutive fiber fiber (fun _ member => member.1)
     (fun _ member => member.1) ?_ ?_
   · intro history member
     exact ⟨involutive.guard_map history.state member.1,
-      (phase_infoOf_mapTrace_of_fixed bounds initial horizon scheduler swap initialClosed
-        bounded expiry who fields actions handles history member.1).trans member.2⟩
+      (phase_infoOf_mapTrace_of_fixed bounds initial initialized horizon scheduler swap allowed
+        initialClosed bounded expiry who fields actions handles history member.1).trans member.2⟩
   · intro history member
     exact ⟨involutive.guard_map history.state member.1,
-      (phase_infoOf_mapTrace_of_fixed bounds initial horizon scheduler swap initialClosed
-        bounded expiry who fields actions handles history member.1).trans member.2⟩
+      (phase_infoOf_mapTrace_of_fixed bounds initial initialized horizon scheduler swap allowed
+        initialClosed bounded expiry who fields actions handles history member.1).trans member.2⟩
 
 end Vegas.EventGraphRuntime

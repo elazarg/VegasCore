@@ -17,14 +17,14 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket graph)}
 
 /-- The operational native guard at an initialized control; setup has no reads. -/
-def PhaseSwapGuardState (swap : HiddenSwap graph) :
+def PhaseSwapGuardState (swap : HiddenSwap graph) (allowed : Set graph.Inputs) :
     (phaseApplication runtime leaks).ProtocolState → Prop
   | none => True
-  | some control => PhaseSwapGuard runtime leaks swap control.execution
+  | some control => PhaseSwapGuard runtime leaks swap allowed control.execution
 
 namespace HiddenSwap
 
-variable (swap : HiddenSwap graph)
+variable (swap : HiddenSwap graph) {allowed : Set graph.Inputs}
 
 theorem phaseControl_involutive :
     Function.Involutive (swap.phaseControl (runtime := runtime) (leaks := leaks)) := by
@@ -51,9 +51,12 @@ theorem phaseJoint_involutive :
 
 /-- Every primitive read condition is preserved by applying its own swap. -/
 theorem phaseSwapGuard_map (current : (phaseApplication runtime leaks).Execution)
-    (valid : PhaseSwapGuard runtime leaks swap current) :
-    PhaseSwapGuard runtime leaks swap (swap.phaseExecution current) := by
-  refine ⟨valid.clear, valid.compatible, valid.completed, valid.active, ?_⟩
+    (allowedClosed : ∀ inputs ∈ allowed,
+      (fun input => swap.values.value (.inl input) (inputs input)) ∈ allowed)
+    (valid : PhaseSwapGuard runtime leaks swap allowed current) :
+    PhaseSwapGuard runtime leaks swap allowed (swap.phaseExecution current) := by
+  refine ⟨valid.clear, allowedClosed _ valid.inputs, valid.compatible, valid.completed,
+    valid.active, ?_⟩
   intro who entry member submission transmitted
   change entry ∈ (current.recall who).map swap.phaseEntry at member
   obtain ⟨original, recorded, rfl⟩ := List.mem_map.mp member
@@ -71,29 +74,36 @@ end HiddenSwap
 variable [Fintype Player]
 
 /-- The existing guarded protocol symmetry is instantiated with actual phase
-operations. Its guard contains only native read conditions and fixed requests;
-no desired observation or probability equality is assumed. -/
+operations. Its guard contains the allowed original input tuple, native read
+conditions and fixed requests. No desired observation or probability equality
+is assumed. -/
 def phaseOnePacketSwapSymmetry (bounds : MessageBounds graph)
-    (initial : PMF (phaseApplication runtime leaks).State) (horizon : Nat)
+    (initial : PMF (phaseApplication runtime leaks).State)
+    (initialized : ∀ state ∈ initial.support, ∃ draw, state.Invariant draw) (horizon : Nat)
     (scheduler : (phaseApplication runtime leaks).Scheduler) (swap : HiddenSwap graph)
-    (initialClosed : ∀ state ∈ initial.support, state.swap swap ∈ initial.support)
+    (allowed : Set graph.Inputs)
+    (initialClosed : ∀ state ∈ initial.support,
+      state.current.native.config.inputs ∈ allowed → state.swap swap ∈ initial.support)
     (bounded : ∀ handle raw, raw ∈ bounds.values → swap.raw handle raw ∈ bounds.values)
     (expiry : ∀ event, swap.values.ExpiryFixed event) :
     ((PhaseCount.onePacketMenu runtime leaks bounds).protocol initial
       horizon scheduler).StateSymmetry where
   map := swap.phaseProtocolState
   act _ := swap.phaseJoint
-  Guard := PhaseSwapGuardState swap
+  Guard := PhaseSwapGuardState swap allowed
   map_init := rfl
   guard_source := by
-    intro source target joint _prior legal reached guarded
+    intro source target joint prior legal reached guarded
     cases source with
     | none => trivial
     | some before =>
         obtain ⟨after, rfl, _⟩ := (phaseApplication runtime leaks).transition_recall_prefix
           initial horizon scheduler before target joint reached
-        exact phaseSwapGuard_of_transition runtime leaks swap initial horizon scheduler
-          before after joint reached guarded
+        exact phaseSwapGuard_of_transition runtime leaks swap allowed initial horizon scheduler
+          before after joint reached
+            (phaseNativeInvariant_of_initialized_history runtime leaks initial initialized horizon
+              scheduler ((PhaseCount.onePacketMenu runtime leaks bounds).toRawTrace initial
+                horizon scheduler prior)) guarded
   legal := by
     intro source target joint _prior legal reached guarded
     cases source with
@@ -139,52 +149,66 @@ def phaseOnePacketSwapSymmetry (bounds : MessageBounds graph)
             exact PhaseCount.swap_mem_onePacketActions bounds swap who _ _ rfl response
               available fixed bounded
   realized := by
-    intro source target joint _prior _legal reached guarded
+    intro source target joint prior _legal reached guarded
     apply swap.phaseTransition_swap initial initialClosed horizon scheduler source target joint
       reached expiry
-    intro control same
-    cases same
-    exact guarded
+    · intro control same
+      cases same
+      exact phaseNativeInvariant_of_initialized_history runtime leaks initial initialized horizon
+        scheduler ((PhaseCount.onePacketMenu runtime leaks bounds).toRawTrace initial
+          horizon scheduler prior)
+    · intro control same
+      cases same
+      exact guarded
 
 /-- This actual history map is an involution on its primitive guarded domain. -/
 theorem phaseOnePacketSwapSymmetry_involutive (bounds : MessageBounds graph)
-    (initial : PMF (phaseApplication runtime leaks).State) (horizon : Nat)
+    (initial : PMF (phaseApplication runtime leaks).State)
+    (initialized : ∀ state ∈ initial.support, ∃ draw, state.Invariant draw) (horizon : Nat)
     (scheduler : (phaseApplication runtime leaks).Scheduler) (swap : HiddenSwap graph)
-    (initialClosed : ∀ state ∈ initial.support, state.swap swap ∈ initial.support)
+    (allowed : Set graph.Inputs)
+    (initialClosed : ∀ state ∈ initial.support,
+      state.current.native.config.inputs ∈ allowed → state.swap swap ∈ initial.support)
     (bounded : ∀ handle raw, raw ∈ bounds.values → swap.raw handle raw ∈ bounds.values)
-    (expiry : ∀ event, swap.values.ExpiryFixed event) :
-    (phaseOnePacketSwapSymmetry bounds initial horizon scheduler swap
-      initialClosed bounded expiry).Involutive where
+    (expiry : ∀ event, swap.values.ExpiryFixed event)
+    (allowedClosed : ∀ inputs ∈ allowed,
+      (fun input => swap.values.value (.inl input) (inputs input)) ∈ allowed) :
+    (phaseOnePacketSwapSymmetry bounds initial initialized horizon scheduler swap
+      allowed initialClosed bounded expiry).Involutive where
   map_map state _ := swap.phaseProtocolState_involutive state
   guard_map state valid := by
     cases state with
     | none => trivial
-    | some control => exact swap.phaseSwapGuard_map control.execution valid
+    | some control => exact swap.phaseSwapGuard_map control.execution allowedClosed valid
   act_act _prior _legal _reached _guarded := swap.phaseJoint_involutive _
 
 /-- The map fixes the complete actual information fiber of an observer whose
 visible fields, owned actions and candidate handles are fixed by the swap. -/
 theorem phase_infoOf_mapTrace_of_fixed (bounds : MessageBounds graph)
-    (initial : PMF (phaseApplication runtime leaks).State) (horizon : Nat)
+    (initial : PMF (phaseApplication runtime leaks).State)
+    (initialized : ∀ state ∈ initial.support, ∃ draw, state.Invariant draw) (horizon : Nat)
     (scheduler : (phaseApplication runtime leaks).Scheduler) (swap : HiddenSwap graph)
-    (initialClosed : ∀ state ∈ initial.support, state.swap swap ∈ initial.support)
+    (allowed : Set graph.Inputs)
+    (initialClosed : ∀ state ∈ initial.support,
+      state.current.native.config.inputs ∈ allowed → state.swap swap ∈ initial.support)
     (bounded : ∀ handle raw, raw ∈ bounds.values → swap.raw handle raw ∈ bounds.values)
     (expiry : ∀ event, swap.values.ExpiryFixed event) (who : Player)
     (fields : ∀ field, graph.fieldVisibleTo who field → swap.values.value field = id)
     (actions : ∀ event, graph.actor? event = some who → swap.values.action event = id)
     (handles : ∀ slot, swap.raw (who, slot) = id)
     (history : ((PhaseCount.onePacketMenu runtime leaks bounds).protocol
-      initial horizon scheduler).History) (guarded : PhaseSwapGuardState swap history.state) :
+      initial horizon scheduler).History)
+    (guarded : PhaseSwapGuardState swap allowed history.state) :
     ((PhaseCount.onePacketMenu runtime leaks bounds).information initial
-      horizon scheduler).infoOf who ((phaseOnePacketSwapSymmetry bounds initial horizon
+      horizon scheduler).infoOf who ((phaseOnePacketSwapSymmetry bounds initial initialized horizon
           scheduler swap
-          initialClosed bounded expiry).mapTrace history.trace guarded) =
+          allowed initialClosed bounded expiry).mapTrace history.trace guarded) =
       ((PhaseCount.onePacketMenu runtime leaks bounds).information initial
       horizon scheduler).infoOf who history.trace := by
   have mapped :
       ((PhaseCount.onePacketMenu runtime leaks bounds).information initial horizon scheduler).infoOf
-        who ((phaseOnePacketSwapSymmetry bounds initial horizon scheduler swap initialClosed
-          bounded expiry).mapTrace history.trace guarded) =
+        who ((phaseOnePacketSwapSymmetry bounds initial initialized horizon scheduler swap allowed
+          initialClosed bounded expiry).mapTrace history.trace guarded) =
         (phaseApplication runtime leaks).observe who (swap.phaseProtocolState history.state) :=
     (PhaseCount.onePacketMenu runtime leaks bounds).info initial horizon scheduler who _
   have original :

@@ -16,7 +16,8 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
 namespace ProtocolView
 
-private theorem atRank_le_position (who : Player) :
+/-- A successful earlier-rank observation cannot lie beyond the current source position. -/
+theorem atRank_le_position (who : Player) :
     ∀ {Γ : SourceCtx Player L} {O : Finset VarId}
       (program : SourceProgram Player L Γ O) (rank : Nat)
       (view result : ProtocolView who program),

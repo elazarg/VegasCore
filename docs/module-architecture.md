@@ -2169,3 +2169,36 @@ timing plan therefore has exactly the same whole response law, including WAIT
 and every uniform-noise evidence alias. Binding WAIT requires a separate
 relative-error comparison; these opening identities do not identify source
 posteriors or reset payoffs.
+
+Actual native belief approximation:
+[Phase Recovery Value Good Native](../Vegas/Game/PhaseRecoveryValueGoodNative.lean),
+[Phase Recovery Value Good Conditional](../Vegas/Game/PhaseRecoveryValueGoodConditional.lean),
+[Phase Recovery Value Good Belief](../Vegas/Game/PhaseRecoveryValueGoodBelief.lean),
+[Phase Recovery Value Good Binding](../Vegas/Game/PhaseRecoveryValueGoodBinding.lean),
+[Phase Recovery Value Good Limit](../Vegas/Game/PhaseRecoveryValueGoodLimit.lean).
+The original retained history submeasure normalizes on the actual input fiber.
+Its L1 distance from the actual clear binding belief tends to zero under the
+same noise schedule, using the intrinsic foreign binding RAW share. This does
+not identify the retained measure with the auxiliary source posterior.
+
+Guarded swap likelihoods:
+[Phase Swap Callback](../Vegas/Pending/PhaseSwapCallback.lean),
+[Phase Swap Transition Mass](../Vegas/Pending/PhaseSwapTransitionMass.lean),
+[Phase Swap Continuation Mass](../Vegas/Pending/PhaseSwapContinuationMass.lean),
+[Phase Timing Swap Callback](../Vegas/Game/PhaseTimingSwapCallback.lean),
+[Phase Timing Swap Recall](../Vegas/Game/PhaseTimingSwapRecall.lean).
+Actual initialized prefix guards supply the callback laws and transition atom
+equalities. The existing continuation own-play factorization retains intrinsic
+transition mass; genuine continuations and their mapped traces share one
+strictly positive nature coefficient. Whole-recall nonsend products obey
+two-sided bounds tending to one. Initial prior weights stay separate, and
+within-owner input correlations are retained by restricted support guards.
+
+Initial retry source information:
+[Phase Initial Retry Chronology](../Vegas/Pending/PhaseInitialRetryChronology.lean),
+[Phase Initial Retry Information](../Vegas/Game/PhaseInitialRetryInformation.lean),
+[Phase Initial Saved Information](../Vegas/Game/PhaseInitialSavedInformation.lean).
+Actual phase-zero traces derive their complete archive namespace sequence.
+Equal owner observations identify full auxiliary information at archived and
+current saved checkpoints through arbitrary initial retries. General
+later-phase synchronization remains a separate obligation.
