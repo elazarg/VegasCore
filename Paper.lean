@@ -1346,6 +1346,7 @@ import Vegas.Source.CommitRecoveryNoMissRepresentative
 import Vegas.Game.CommitRecoveryNoMissContinuation
 import Vegas.Game.CommitRecoveryFlagPlan
 import Vegas.Game.CommitRecoveryFlagConditioning
+import Vegas.Game.CommitRecoveryNormalizedFlagPlan
 
 /-! # Checked sequential-equilibrium preservation, Nash correspondence and termination -/
 
@@ -14375,3 +14376,45 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms
   Vegas.SourceProgram.Setup.commitRecoveryFlagPlan_run
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryNormalizedFlagPlan_record_readout'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecoveryNormalizedFlagPlan_record_readout
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryNormalizedFlagPlan_current_record_readout'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecoveryNormalizedFlagPlan_current_record_readout
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryNormalizedFlagPlan_record_present'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecoveryNormalizedFlagPlan_record_present
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryNormalizedFlagPlan_posterior_readout'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecoveryNormalizedFlagPlan_posterior_readout
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryNormalizedFlagPlan_toBehavioralWith'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecoveryNormalizedFlagPlan_toBehavioralWith
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryNormalizedFlagPlan_run'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecoveryNormalizedFlagPlan_run

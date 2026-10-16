@@ -1,6 +1,6 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**SE: non-concurrent ✓ · source reset/query ✓ · shared-flag runner ✓ · native query/transport/incentives open.**
+**SE: non-concurrent ✓ · source reset/query ✓ · normalized sampler ✓ · native query/transport/incentives open.**
 
 <details>
 <summary>Checked recovery milestones and remaining proof obligations</summary>
@@ -18,23 +18,24 @@ coordinates include genuine erased queries at every legal retry; fixed source
 omission/accepted-failure flags and native timing remain separate. The full
 source perturbation is fully mixed on every genuine decision and its original
 full-choice plan has the entire source runner law. A separate initialized joint
-of public-occurrence flags and erased-query domain values also has that entire
-law, including omissions and retries. Its exact current/past answer product
+of public-occurrence flags and domain values, read at the combined erased/
+no-new-miss query, also has that entire law, including omissions and retries.
+Its exact current/past answer product
 derives conditioning on the complete original own-action record; it uses the
 original game's perfect recall. The private joint differs from full-choice
 predrawing and shares flags at counterfactual private queries of one occurrence.
 The domain posterior adapter
 retains the actual entire remaining table and extra private memory, conditional
 on an actual-response non-reading premise. Deriving that premise for native Q,
-and connecting that initialized sampler to the combined no-new-miss query,
-remain open.
+with its actual observable combined source query, remains open.
 
 The selected reduced source coordinates retain current typed private data and
 the complete public signal word. Their chronological occurrence is never
 queried twice, including across retries. One original table, lifted back to the
-full-information game, realizes its entire source runner law. Conditioning
-the original full action record leaves the current coordinate independent of
-the entire remaining table. This is a source law; native query measurability
+full-information game, realizes its entire source runner law. For the original
+erased full-choice table, conditioning the full action record leaves the current
+coordinate independent of the entire remaining table. This is a source law;
+native query measurability
 and native/source posterior equality remain open.
 
 The no-new-miss representative is defined from the original full information,

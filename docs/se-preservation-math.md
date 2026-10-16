@@ -1284,9 +1284,14 @@ and the native response premise are not supplied by those run-law identities.
 `Vegas.SourceProgram.Setup.commitRecoveryFlagPlan_run` separately realizes the
 entire original source law from ONE initialized public-occurrence flag array
 and independent erased-query domain table. Its genuine-record posterior leaves
-the current three-class choice unchanged. Connecting this initialized sampler
-to the final combined no-new-miss query remains separate from its erased-query
-realization; no equality of the two private table joints is asserted.
+the current three-class choice unchanged.
+`Vegas.SourceProgram.Setup.commitRecoveryNormalizedFlagPlan_run` reads that
+SAME initialized prior at the combined key E(F(info)) and proves its entire
+ORIGINAL source run law. Genuine combined-query membership and logical-clock
+preservation give the exact current/whole-record product and original-record
+posterior. The original game's perfect recall is used; no recursively defined
+normalized signal model or entry refresh is introduced. No equality with the
+independent full-choice private-table joint is asserted.
 
 The existing broad post-exclusion native completion is not the pinned
 construction above:

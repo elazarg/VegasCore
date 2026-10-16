@@ -2294,6 +2294,10 @@ Failure flags are shared at a public source time while domain coordinates are
 private erased queries. Distinct chronological clocks derive the full answer
 product; the original source game's perfect recall gives its complete runner.
 The private joint is not the independent full-choice-table joint.
+[The normalized sampler](../Vegas/Game/CommitRecoveryNormalizedFlagPlan.lean)
+reads that same initialized prior at the combined erased/no-new-miss query.
+Genuine query membership and preserved logical clocks derive the current/whole
+original record product, posterior and entire original source runner law.
 
 No-new-miss query:
 [literal attempt entry](../Vegas/Source/CommitRecoveryAttemptOrigin.lean),

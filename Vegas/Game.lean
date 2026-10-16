@@ -1149,3 +1149,4 @@ import Vegas.Game.CommitRecoveryAttemptReset
 import Vegas.Game.CommitRecoveryNoMissContinuation
 import Vegas.Game.CommitRecoveryFlagPlan
 import Vegas.Game.CommitRecoveryFlagConditioning
+import Vegas.Game.CommitRecoveryNormalizedFlagPlan
