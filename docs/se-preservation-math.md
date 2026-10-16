@@ -4,7 +4,7 @@ This note works with the theorem and runtime semantics of
 `docs/se-preservation-commit-reveal.md`. It records mathematical arguments,
 not claims of Lean verification. No runtime or target assumption is changed.
 
-**Math audit: source/reset ✓ · full-fiber conditioning ✓ · rare-event normalization ✓ · full Lean SE open.**
+**Math audit: raw source regret ≤ S(f+α+β) → 0 · full-fiber transport ✓ · full Lean SE open.**
 
 The source strategy is selected with the erasure and failed-attempt pins
 constructed below. This is not a claim about an arbitrary source extension
@@ -478,6 +478,59 @@ activations depend on emissions. Independent original seed coordinates and
 deadline expiry are insufficient substitutes. This is an interface mismatch
 to resolve when implementing the mathematical theorem, not a proved
 counterexample to the theorem with S1.
+
+### Constructing the observable source query
+
+The query used above is obtained by a forward scan from initialization,
+not from a chosen source endpoint. Its invariant retains the complete source
+public signal word, virtual live and saved typed stores, live and saved
+exclusions, current attempt identifier, and consumed native archive prefix.
+Retain the original pre-setup signal, then process the setup transition and
+its successor signal exactly once. Keep the original setup data and this
+actual initial public record.
+
+For a completed commitment attempt, scan the maximal source block in source
+order. A previously excluded owner takes its automatic step. An active
+owner with an accepted binding contributes that binding's actual typed
+result to the physical readback, including accepted failure. In the virtual
+store apply the already specified origin-blind representative substitution
+for native-only bad declarations; the bad-binding repair above proves that
+their ordinary counterparts append this SAME virtual action. Otherwise
+record its omission and update
+exclusions before the next slot. Same-owner order makes the subsequent
+automatic steps agree with native exclusions. The final slot executes the
+real source close once. A retry consumes this archive and changes generation;
+exhaustion also consumes it, even though generation need not change. Thus
+neither can make the scan reread an earlier attempt. Noncommitment phases
+append the immutable public sample or reveal result and its actual exclusion
+update. Induction proves the invariant through every completed phase.
+
+At an active unsent commitment callback, stop before its source binding.
+Keep the original saved entry and the owner's virtual typed prefix. For the
+current attempt replay the no-new-foreign-miss representative, and erase
+only earlier retired own words. Choose foreign predecessor fillers as arbitrary
+supported nonmissing domain moves, with omission bit FALSE. Commitment opacity
+means they affect
+neither this owner's observation nor the public record in this representative.
+The replay is therefore a genuine source witness with one common combined
+key kappa. Its retained data are read from the native observation and own
+recall. Equal full native information gives equal kappa; no future failure
+or success event is inspected to define it. This proves query measurability
+and genuine membership before any posterior claim.
+
+The current domain coordinate at kappa is unread throughout this native
+information fiber. Earlier callbacks at this occurrence were value-independent
+WAITs; a previous SEND would contradict UNSENT. Earlier source occurrences,
+including retries, have different keys. Changing only this original table
+coordinate consequently preserves every prefix in the fiber. Splitting the
+same initialized product prior and summing those prefix likelihoods gives
+
+    Law_{Q_n}(V_kappa,R | I) = tau_kappa x Law_{Q_n}(R | I),
+
+where R is the entire original remainder with that coordinate masked in the
+SAME initialized normalized-reference experiment Q_n. This is not a claim
+of independence after conditioning on future Phi. That later
+conditioning is handled by the separate same-event repairs and Lemma T.
 
 ### Averaging the original timing tables
 
@@ -1630,6 +1683,76 @@ attachment pins and honest-pin preservation are still required. The stronger
 conditional successful-phase ranking used by native transport additionally
 requires the D identity; unconditional gain equality does not replace it.
 
+### Accepted failure under arbitrary later resets
+
+The preceding failure comparison can be proved without the stronger event D.
+Here is the complete coupling, including its original marginals. Fix one
+genuine active commitment history h and its actual remaining window through
+the first full-identifier exit. Compare a forced current domain value v with
+a forced current accepted failure b. In both experiments follow the SAME
+selected erased/no-new-miss prescription thereafter. The experiments start
+at h itself, with its original saved state; no entry law is replaced.
+
+Let P_v and P_b be their laws of complete remaining-window histories, and
+let m be the original attempt's public omission word: append the remaining
+window's bits to the fixed already-processed prefix at h. Thus m also records
+any foreign failure already observed at h, relative to ORIGINAL entry
+exclusions. Their pushforwards to m agree.
+Indeed, at each slot the active roster is determined by the entry exclusions
+and preceding omission bits. Its omission kernel depends only on that public
+occurrence and roster, not on the private typed choices. Induct over the
+remaining slots, including the real close. This proves a common word law
+lambda, even though later domain queries and domain draws may differ.
+In particular it does not assume equal full-information laws at those queries.
+
+On the finite window space an explicit coupling is
+
+    Gamma(dh_v,dh_b) = sum_m lambda(m) P_v(dh_v | m) P_b(dh_b | m).
+
+For lambda(m)=0 take any conditional kernels: that summand is zero.
+Summing either coordinate gives its ORIGINAL window law. Thus this is a
+coupling of the actual experiments, rather than an assumption that their
+private random tables agree after conditioning. One can additionally retain
+each experiment's entire future kernel when comparing terminal payoffs.
+
+If the common word excludes j, both terminal payoffs are a_j. If it records
+a new foreign failure and j survives, the real close is a retry: it restores
+the same original saved state and retains the same public signal word.
+Every changed new binding and obligation is discarded. All owners' remaining
+private differences are retired words, so erasure gives the same continuation
+kernel. Exhausted restore cannot occur with surviving j. Consequently these
+word summands have equal terminal payoff expectations, without any future
+optimality hypothesis.
+
+In the remaining case the ending exclusions equal the ORIGINAL entry
+exclusions. The accepted failure is then not discarded. Fresh context names
+prevent subsequent commitments from overwriting its failed cell. Clean close
+copies the completed live state into the saved checkpoint, including this
+cell and its unresolved obligation. Every later source step preserves the
+following disjunction: j is excluded, or both the saved and live states owe
+j's failure. Ordinary extensions retain the obligation; a retry restores a
+saved state that already owes it; a later clean close checkpoints it again.
+A reveal either retains that debt or turns it into exclusion. At an actual
+terminal state all required reveals have been processed, so unresolved debt
+for a surviving owner is impossible. Hence j is eventually excluded and
+receives a_j under EVERY later continuation, including arbitrary later resets.
+No safe-value or best-response assertion enters this argument.
+
+Let N denote the common omission-word event that ending exclusions equal
+original entry exclusions. The actual payoff floor gives Y_v>=a_j on every
+terminal continuation. The coupling therefore proves the simpler identity
+
+    U_h(v) - U_h(b) = E_v[1_N (Y_v-a_j)] >= 0.
+
+Here N is not D: it does not remove future accepted failures. Those merely
+make some terms Y_v-a_j zero. An already observed foreign failure makes N
+empty, proving exact nonmissing indifference at a known-failed attachment.
+Integrate the displayed coupling against the ACTUAL belief on h in an
+information fiber to obtain the same identity and inequality there. This
+needs neither belief transport to an ordinary representative nor a supplied
+reset-endpoint equality. The separate joint (D,Y_v) identity remains necessary
+for successful-phase rankings and native transport.
+
 ### Honest pins and successful-phase conditioning
 
 Here is the honest-limit argument before conditioning on D. Let sigma^H_n
@@ -1710,7 +1833,47 @@ still requires the separate relative transport argument.
 
 ### Concluding source sequential rationality
 
-Let S_j bound the full terminal payoff range and d bound the domain menu.
+Write S_j for the full terminal payoff spread. There is a direct calculation
+for the actual completion's sum of conditional
+member gains that does not condition on D. At a free class write its domain
+law as tau=f_n*u+(1-f_n)*nu, with fixed reference law u, 0<=f_n<1,
+and free simplex variable nu. For uniform floors f_n=d*gamma_n. Put
+pi=(1-alpha_n)(1-beta_n)>0. Compare nu with a pure domain value v while
+keeping the failure rates and the floor part fixed. At each ordinary member
+the actual raw conditional gain is exactly
+
+    pi*(1-f_n) * (U(v)-U(nu)).
+
+The ordinary gains agree by the original E-fiber comparison. Every other
+member of this same combined-query pool is known-failed and contributes
+ZERO by the preceding coupling. The actual whole-pool best-response bound
+is consequently the positive number of ordinary members times the displayed
+gain, bounded above by zero. Cancel those strictly positive factors at this
+fixed n. Thus nu maximizes U, and
+
+    U(v)-U(tau) <= f_n*S_j.
+
+This establishes unconditional domain optimality without dividing by a reach
+or success probability. A class pinned by an honest site uses a separate
+argument: that embedded honest site is an ordinary member of the class;
+all other ordinary members have its same E-key. Exact finite-n domain gain
+equality transfers the comparison to that site. Its retained honest belief
+and limit raw best response give the desired inequality by continuity,
+also when its limiting reach is zero. Own-doomed pins have only the
+action-independent branches. These statements exhaust the ordinary classes.
+
+Together with U(tau)>=U(b)>=a_j, the actual raw mixture has value at least
+U(tau)-S_j*(alpha_n+beta_n). Hence at free ordinary members its regret
+against EVERY raw action is at most S_j*(f_n+alpha_n+beta_n). At a
+known-failed member all nonmissing actions tie and omission costs at most
+alpha_n*S_j. At a reveal the domain menu is the singleton TRUE and withholding
+pays a_j, giving the same alpha_n*S_j bound. Automatic excluded sites have
+no strategic alternative. Pinned ordinary members have vanishing domain
+regret by the honest comparison instead of the f_n bound. Thus every
+original full-information decision has vanishing raw one-shot regret.
+
+For the stronger conditional-success comparison, retain the D decomposition.
+Let d bound the domain menu.
 At a free ordinary member, exact pooled optimality gives conditional-D
 domain regret at most d gamma_n S_j; multiplication by lambda_I<=1 gives
 the same bound for unconditional domain regret. This holds equally for the

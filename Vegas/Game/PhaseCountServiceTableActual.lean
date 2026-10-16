@@ -166,4 +166,3 @@ theorem phaseCountServiceTapePolicy_occupation_literal :
     tag (horizon - time.val - 1) time.val time.isLt.le]
 
 end Vegas
-
