@@ -13,6 +13,54 @@ open GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol GameTheory.Math.P
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
+/-- A real typed attempt with a fresh miss and a surviving block owner closes
+to the exact restored whole source point, retaining the completed own words. -/
+theorem Attempt.close_retry_lift
+    {wholeΓ Γ Δ : SourceCtx Player L} {wholeO O P : Finset VarId}
+    (whole : SourceProgram Player L wholeΓ wholeO)
+    {block : CommitPrefix Γ O Δ P} {entry : Config Player L Γ} {excluded : Finset Player}
+    {finished : Config Player L Δ} {after : Finset Player}
+    (attempt : block.Attempt entry excluded finished after)
+    (suffix : SourceProgram Player L Δ P) (boundary : IsCommitBoundary suffix)
+    (positive : 0 < block.length) (generation : Nat)
+    (lift : ProtocolState (block.prepend suffix) → ProtocolState whole)
+    (ranks : ∀ point, ProtocolState.remaining whole (lift point) =
+      ProtocolState.remaining (block.prepend suffix) point)
+    (commits : ∀ point, ProtocolState.atCommit whole (lift point) =
+      ProtocolState.atCommit (block.prepend suffix) point)
+    (owners : ∀ point, ProtocolState.commitOwners whole (lift point) =
+      ProtocolState.commitOwners (block.prepend suffix) point)
+    (endpoints : ∀ point, ProtocolState.commitEnd whole (lift point) =
+      ProtocolState.commitEnd (block.prepend suffix) point)
+    (histories : ∀ point, ProtocolState.history whole (lift point) =
+      ProtocolState.history (block.prepend suffix) point)
+    (memories : ∀ point past, lift (ProtocolState.withHistory (block.prepend suffix) point past) =
+      ProtocolState.withHistory whole (lift point) past)
+    (failed : attempt.failedOwners.Nonempty) (survives : (block.owners \ after).Nonempty) :
+    ((CommitRecoveryState.atPoint
+        (lift (ProtocolState.entry (block.prepend suffix) entry)) excluded generation).install
+      (lift (block.liftPoint suffix (ProtocolState.entry suffix finished)), after)
+      (fun _ member => attempt.excluded_subset member)).close =
+      CommitRecoveryState.atPoint
+        (lift (ProtocolState.entry (block.prepend suffix)
+          { entry with history := finished.history })) after (generation + 1) := by
+  classical
+  have committing : ProtocolState.atCommit (block.prepend suffix)
+      (ProtocolState.entry (block.prepend suffix) entry) = true := by
+    cases block with
+    | nil => cases positive
+    | commit => rfl
+  have endpoint := block.commitEnd_entry_prepend suffix boundary entry
+  simp only [CommitRecoveryState.close, CommitRecoveryState.Finished,
+    CommitRecoveryState.NewFailure, CommitRecoveryState.Survives,
+    CommitRecoveryState.retry, CommitRecoveryState.restored,
+    CommitRecoveryState.install, CommitRecoveryState.atPoint,
+    commits, committing, ranks, liftPoint_remaining, ProtocolState.remaining_entry,
+    endpoints, endpoint, and_self, attempt.newly_excluded, failed, owners,
+    block.commitOwners_entry_prepend suffix boundary entry, survives, ↓reduceIte,
+    ← memories, histories, liftPoint_history, ProtocolState.history_entry,
+    ProtocolState.withHistory_entry]
+
 /-- Compiler-derived residual control lifts every typed clean, retry or exhausted
 closure to the exact settled point of the actual whole-source recovery protocol. -/
 theorem Close.reaches_lift
@@ -80,16 +128,10 @@ theorem Close.reaches_lift
         CommitCloseResult.recoveryState] using reached
   | retry attempt failed survives =>
       have reached := path attempt
-      simpa only [CommitRecoveryState.close, CommitRecoveryState.Finished,
-        CommitRecoveryState.NewFailure, CommitRecoveryState.Survives,
-        CommitRecoveryState.retry, CommitRecoveryState.restored,
-        CommitRecoveryState.install, CommitRecoveryState.atPoint,
-        commits, committing, ranks, liftPoint_remaining, ProtocolState.remaining_entry,
-        endpoints, endpoint, and_self, attempt.newly_excluded, failed, owners,
-        block.commitOwners_entry_prepend suffix boundary entry.config, survives, ↓reduceIte,
-        ← memories, histories, liftPoint_history, ProtocolState.history_entry,
-        ProtocolState.withHistory_entry, CommitCloseResult.recoveryState, CommitCheckpoint.retry]
-        using reached
+      rw [attempt.close_retry_lift whole suffix boundary positive entry.attempt lift ranks
+        commits owners endpoints histories memories failed survives] at reached
+      simpa only [CommitCloseResult.recoveryState, CommitCheckpoint.retry,
+        CommitRecoveryState.atPoint] using reached
   | @exhausted finished after attempt failed noSurvivor =>
       have reached := path attempt
       have noneLeft : ¬ (block.owners \ after).Nonempty := by

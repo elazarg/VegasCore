@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.RecoverySourceCheckpoint
+import Vegas.Game.RecoverySettledCommitCheckpoint
 import Vegas.Game.RecoverySourceBoundary
 import Vegas.Game.CommitAttemptSurvivingRecall
 import Vegas.Game.CompiledCommitClosing
@@ -39,17 +40,26 @@ theorem RecoverySourceCheckpoint.after_commit_retry
     (missed : (((phase.drain state.current).excluded \ state.entry.excluded) ∩
       phase.owners).Nonempty)
     (survives : (phase.owners \ (phase.drain state.current).excluded).Nonempty) :
-    ∃ next : RecoverySourceCheckpoint setup mode state.normalize, ∀ who,
-      who ∉ (phase.drain state.current).excluded →
+    ∃ next : RecoverySourceCheckpoint setup mode state.normalize,
+      next.residual.lift (ProtocolState.entry next.residual.tail next.source) =
+        ProtocolState.withHistory setup.program
+          (checkpoint.residual.lift
+            (ProtocolState.entry checkpoint.residual.tail checkpoint.source))
+          (ProtocolState.history setup.program
+            (checkpoint.commitResultPoint (phase.drain state.current))) ∧
+      ∀ who, who ∉ (phase.drain state.current).excluded →
       next.source.history who = checkpoint.source.history who ++
         (decodeHistory setup.program ((phase.drain state.current).native.config.history.map
           ((toEventGraph setup.program).fromModeCompletion mode)) who).drop
             (decodeHistory setup.program (state.entry.native.config.history.map
               ((toEventGraph setup.program).fromModeCompletion mode)) who).length := by
+  dsimp only [RecoverySourceCheckpoint.commitResultPoint]
   rcases checkpoint with ⟨⟨Γ, O, program, lift⟩, source, refs, registry, embedding, before,
     compiled, aligned, agree, guards, failures, unique, ranks, actors, commits, owners, endpoints,
     automatic, history, memory, steps, menus, readout, sourceTrace, views, historyAlignment, origin⟩
-  obtain ⟨Δ, P, suffix, block, reconstruct, boundary⟩ := commitPhase program
+  dsimp only
+  generalize _decomposition : commitPhase program = segment at ⊢
+  rcases segment with ⟨Δ, P, suffix, block, reconstruct, boundary⟩
   subst program
   have positive : 0 < block.length := by
     cases block with
@@ -154,16 +164,25 @@ theorem RecoverySourceCheckpoint.after_commit_retry
       embedding before phase.low
     rw [← low] at compiled
     exact compiled
-  · intro who active
-    exact decodeCommitAttempt_history_extension_of_survivor setup.program mode block suffix
-      embedding state.attempt.phase compiled.rankEq state.entry.native image.native source
-      state.entry.excluded who (by rw [excludedEq]; exact active)
-      (phase.drain_bindingInvariant state.current binding.active)
-      (phase.drain_invariant state.current native.active).reachable
-      (remembered.trans (phase.drain_history_prefix state.current))
-      (show state.entry.native.config.cut.IsPrefix state.attempt.phase from by
-        rw [← low]; exact within.1)
-      (phase.finished_prefix image (phase.drain_within state.current within.2) finished)
-      views.actionEq
+  · refine ⟨?_, ?_⟩
+    · change lift (ProtocolState.entry (block.prepend suffix)
+          { source with history := final.history }) =
+        ProtocolState.withHistory setup.program
+          (lift (ProtocolState.entry (block.prepend suffix) source))
+          (ProtocolState.history setup.program
+            (lift (block.liftPoint suffix (ProtocolState.entry suffix final))))
+      rw [← memory, history, SourceProgram.CommitPrefix.liftPoint_history,
+        ProtocolState.history_entry, ProtocolState.withHistory_entry]
+    · intro who active
+      exact decodeCommitAttempt_history_extension_of_survivor setup.program mode block suffix
+        embedding state.attempt.phase compiled.rankEq state.entry.native image.native source
+        state.entry.excluded who (by rw [excludedEq]; exact active)
+        (phase.drain_bindingInvariant state.current binding.active)
+        (phase.drain_invariant state.current native.active).reachable
+        (remembered.trans (phase.drain_history_prefix state.current))
+        (show state.entry.native.config.cut.IsPrefix state.attempt.phase from by
+          rw [← low]; exact within.1)
+        (phase.finished_prefix image (phase.drain_within state.current within.2) finished)
+        views.actionEq
 
 end Vegas

@@ -1051,3 +1051,7 @@ import Vegas.Game.CompiledCommitHead
 import Vegas.Game.CompiledCommitStepRecall
 import Vegas.Game.CompiledCommitBlockRecall
 import Vegas.Game.PhaseTimingAnchoredSourceReference
+import Vegas.Game.RecoverySavedSourceRank
+import Vegas.Game.PhaseSurvivingSavedView
+import Vegas.Game.PhaseRecoveryValueBinding
+import Vegas.Game.PhaseRecoveryValuePlan

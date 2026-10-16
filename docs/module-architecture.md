@@ -1860,3 +1860,36 @@ whole-block trace extensions through final closure. Equal native public/focal
 observations and genuine prior signal/saved-view induction data give equal full
 source signal recall, retaining actual omissions and automatic foreign actions.
 Whole archived-checkpoint composition and partial-callback chronology remain.
+
+Exact phased service query inputs and original clock geometry:
+[Phase Service Query Prefix](../Vegas/Pending/PhaseServiceQueryPrefix.lean),
+[Reactive Addressed Transcript Request](../Interaction/ReactiveAddressedTranscriptRequest.lean),
+[Phase Service Unsent Input](../Vegas/Pending/PhaseServiceUnsentInput.lean),
+[Phase Service Rounds](../Vegas/Pending/PhaseServiceRounds.lean),
+[Phase Service Recorded Query](../Vegas/Pending/PhaseServiceRecordedQuery.lean).
+The request projection alone determines the actual query transcript, even for
+different seed carriers. Actual unsent inputs have no emissions and retain an
+exact prefix of the final owner word. Recorded queries identify its exact
+preceding activation index. Native service progress composes across arbitrary
+rounds in a surviving namespace, retaining the readiness anchor and elapsed
+clock bound. Exact negative-query counts and the general seed product remain.
+
+Actual assembled source-plan callback laws:
+[Phase Recovery Value Binding](../Vegas/Game/PhaseRecoveryValueBinding.lean),
+[Phase Recovery Value Plan](../Vegas/Game/PhaseRecoveryValuePlan.lean).
+The original finite-plan implementation reads only its queried ordinary source
+coordinate at a binding. Its whole SILENCE atom and opening response law ignore
+that source-policy draw, retaining the RAW tier and selected timing part.
+Whole recorded-word posterior transport is a separate consumer.
+
+Observable saved source views and exact retry source points:
+[Recovery Saved Source Rank](../Vegas/Game/RecoverySavedSourceRank.lean),
+[Commit Recovery Saved Observation](../Vegas/Source/CommitRecoverySavedObservation.lean),
+[Phase Surviving Saved View](../Vegas/Game/PhaseSurvivingSavedView.lean),
+[Recovery Commit Checkpoint](../Vegas/Game/RecoveryCommitCheckpoint.lean),
+[Commit Recovery Block Close Lift](../Vegas/Source/CommitRecoveryBlockCloseLift.lean).
+Existing rank projection recovers the saved view of the same surviving source
+counterpart. The chosen retry checkpoint preserves the exact restored point of
+its actual completed decoder, and the source close evaluator identifies that
+same endpoint. These adapters retain the prior history; full signal chronology
+must still be threaded through the actual checkpoint construction.

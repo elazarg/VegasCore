@@ -46,8 +46,8 @@ theorem RecoverySourceCheckpoint.after_commit_retry_archived
       phase.owners).Nonempty)
     (survives : (phase.owners \ (phase.drain state.current).excluded).Nonempty) :
     ∃ next : RecoverySourceCheckpoint setup mode state.normalize, next.ArchivedRecall := by
-  obtain ⟨next, word⟩ := checkpoint.after_commit_retry committing phase remaining installed maximal
-    binding receipts remembered native finished missed survives
+  obtain ⟨next, _point, word⟩ := checkpoint.after_commit_retry committing phase remaining installed
+    maximal binding receipts remembered native finished missed survives
   have positioned := receipts.exclusion.frontier.positioned
   rw [installed] at positioned
   have member : phase ∈ state.phases.head? := by

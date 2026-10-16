@@ -137,7 +137,8 @@ def phaseTimingPlanPolicy (fallback : (who : Player) → (N).Policy who)
           slotNonnegative slotBounded) agent (plan (pool agent)))) who
 
 open Classical in
-private theorem member_apply (plan : (p : Pool) → Parts p) (who : Player)
+/-- Evaluating a finite timing plan at its actual complete player input. -/
+theorem phaseTimingPlanPolicy_apply (plan : (p : Pool) → Parts p) (who : Player)
     (past : List (app).PlayerEntry) (view : (app).PlayerView) :
     (phaseTimingPlanPolicy setup mode runtime leaks bounds initial horizon scheduler bound
           fallback wellFormed source noise noiseNonnegative noiseBounded slotWeight
@@ -180,7 +181,7 @@ theorem phaseTimingPlanPolicy_unread (who : Player)
     bounds initial horizon scheduler bound who past view present
   · have samePart : part = plan (pool current) := @Subsingleton.elim _ singleton _ _
     rw [samePart, Function.update_eq_self]
-  · rw [member_apply, member_apply]
+  · rw [phaseTimingPlanPolicy_apply, phaseTimingPlanPolicy_apply]
     by_cases earlier : some (before, entry.beforeView) ∈ (N).playedInformation who
     · rw [dite_eq_left earlier, dite_eq_left earlier,
         Function.update_of_ne (fresh before entry recorded earlier)]
@@ -253,7 +254,7 @@ theorem phaseTimingPlanPolicy_realization (weights : (p : Pool) → PMF (Parts p
           wellFormed source noise noiseNonnegative noiseBounded slotWeight
           slotNonnegative slotBounded) current (plan (pool current))).map
           (fun choice => choice.1.getD ⟨none⟩) := by
-      rw [member_apply, dite_eq_left present]
+      rw [phaseTimingPlanPolicy_apply, dite_eq_left present]
     simp_rw [atCurrent]
     have evaluatedBind := congrArg (fun law => law.bind (fun part =>
       ((phaseTimingComponent setup mode runtime leaks bounds initial horizon scheduler bound
@@ -271,7 +272,7 @@ theorem phaseTimingPlanPolicy_realization (weights : (p : Pool) → PMF (Parts p
           fallback wellFormed source noise noiseNonnegative noiseBounded slotWeight
           slotNonnegative slotBounded) plan who past view =
         PMF.pure ((fallback who (some (past, view))).1.getD ⟨none⟩) := by
-      rw [member_apply, dite_eq_right present, PMF.pure_map]
+      rw [phaseTimingPlanPolicy_apply, dite_eq_right present, PMF.pure_map]
     simp_rw [unchanged]
     rw [PMF.bind_const]
     simp only [ReactiveApplication.ResponseMenu.decodeProfile, ReactiveApplication.decodePolicy,

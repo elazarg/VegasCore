@@ -1,6 +1,6 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**SE: non-concurrent ✓ · source plans ✓ · block recall ✓ · timed WAITs ✓ · full chronology/Bayes/incentives open.**
+**SE: non-concurrent ✓ · block recall ✓ · query prefix/index/time ✓ · chronology/Bayes/incentives open.**
 
 <details>
 <summary>Checked recovery milestones and remaining proof obligations</summary>
@@ -251,6 +251,11 @@ argument: their source/slot response atom is equal for every immutable value
 policy, with the original fresh omission retained. The generic posterior rule
 for equal recorded atoms is checked, including zero-likelihood fallback.
 Its whole-recall physical policy application remains open.
+The literal assembled finite-plan policy has the corresponding binding locality
+and SILENCE identities, retaining its selected timing part, fresh omission and
+uniform RAW tier. At the same physical input, its opening law is independent
+of the ordinary source-policy draw. These are actual callback laws; conditioning
+the entire recalled word is still required.
 
 For a completed native binding block, equal native public and focal observations
 and genuine prior source signal/saved-view induction data construct two legal
@@ -259,6 +264,12 @@ end at the exact whole decoded block's final close, including real omissions,
 automatic foreign actions, retry and exhausted advancement. Composing these
 extensions through all archived checkpoints remains an obligation; a ready
 partial callback does not imply that foreign bindings have completed.
+The public phase rank also recovers a surviving owner's saved source view from
+the same genuine current source counterpart. A commitment retry's chosen source
+checkpoint starts at the exact restored whole-source point of that attempt's
+actual completed decoder. The source close evaluator identifies this same retry
+endpoint, retaining the original prior history and new generation. Full signal
+recall must still be composed along the chosen checkpoints.
 
 Conditioning the source prior on the current focal view retains its posterior
 over the complete focal word, including its unseen suffix, and the original
@@ -441,8 +452,14 @@ counted history resolves its original physical coordinate, possibly by retiring
 the namespace. Every earlier selected nonactivation of a surviving coordinate
 was therefore WAIT. Every elapsed ready tick has such an actual WAIT query,
 retaining the original readiness anchor, without a first-delay assumption.
-Recovering all negative-query inputs and the common filtered-seed product
-remains open, as does comparison with richer physical policies.
+Every recorded queried activation list is the exact preceding activation
+transcript, including repeated equal-clock activations. Each earlier query of
+a still-live coordinate retains its original readiness timestamp and has no
+later elapsed clock than the current query. For an unsent coordinate, its
+entire queried input is that elapsed clock, the corresponding prefix of the
+final owner clock word, and an empty emission list. The negative queries' exact
+activation counts, the common filtered-seed product and comparison with richer
+physical policies remain open.
 A common delivery ranking across private types and a bound against policies
 that read more remain open. Source projection at
 a partial concurrent cut must distinguish saved/prefix exclusions from physical

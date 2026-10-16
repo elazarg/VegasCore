@@ -88,7 +88,7 @@ theorem RecoverySourceCheckpoint.normalized
               phase kind rfl checkpoint.source
             by_cases missed : ((image.excluded \ entry.excluded) ∩ phase.owners).Nonempty
             · by_cases survives : (phase.owners \ image.excluded).Nonempty
-              · obtain ⟨nextCheckpoint, _recall⟩ := checkpoint.after_commit_retry committing
+              · obtain ⟨nextCheckpoint, _point, _recall⟩ := checkpoint.after_commit_retry committing
                   phase remaining rfl maximal binding receipts remembered native finished
                   missed survives
                 exact ⟨nextCheckpoint⟩
