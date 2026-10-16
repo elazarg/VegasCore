@@ -108,7 +108,7 @@ theorem phaseCommitWordRecall_accepted_of_response
     simpa only [← acting] using prior
   rw [actionEq] at offered
   obtain ⟨coordinate, request⟩ := PhaseCount.onePacket_request_of_nonsilent runtime leaks bounds
-    plan inputs horizon scheduler before.remaining who before.execution priorActive beforeClear
+    plan inputs horizon scheduler before.remaining who before.execution priorActive
       material offered
   have named := PhaseCount.onePacket_event_of_request runtime leaks bounds plan
     (serviceGraph_revealRelaxedOrdered setup mode) inputs horizon scheduler before.remaining who

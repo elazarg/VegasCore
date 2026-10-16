@@ -60,7 +60,6 @@ theorem phaseAction_eq_of_nonbinding_callback (swap : HiddenSwap graph)
     (trace : ((PhaseCount.onePacketMenu runtime leaks bounds).protocol
       (inputs.map (PhaseRuntimeState.initial plan)) horizon scheduler).Trace
         (some ⟨remaining, some who, execution⟩))
-    (clear : execution.application.current.excluded = ∅)
     (nonbinding : ¬∃ event payload,
       graph.outputLayout event = .binding who payload ∧
       execution.application.SeedRequest who ⟨execution.application.attempt, event⟩ ∧
@@ -75,7 +74,7 @@ theorem phaseAction_eq_of_nonbinding_callback (swap : HiddenSwap graph)
   | none => rfl
   | some material =>
       obtain ⟨⟨attempt, event⟩, request⟩ := PhaseCount.onePacket_request_of_nonsilent runtime
-        leaks bounds plan inputs horizon scheduler remaining who execution trace clear material
+        leaks bounds plan inputs horizon scheduler remaining who execution trace material
           offered
       have address : attempt = execution.application.attempt := request.1
       subst attempt

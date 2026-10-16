@@ -89,12 +89,16 @@ def phaseCommitTimingWordPolicy {Γ Δ : SourceCtx Player L} {O P : Finset VarId
     (option : LateOption bounds.candidateCount) (who : Player) (word : DecisionView who Δ) :
     (phaseApplication runtime leaks).Policy := fun past view =>
   mix slotWeight slotNonnegative slotBounded
-    (phasePolicyDispatch setup mode runtime leaks bounds
+    (phasePolicyDispatch setup mode runtime leaks (fun owner event payload binding =>
+        PhaseCount.phaseOpeningPolicy runtime leaks bounds owner event payload binding (fun _ _ =>
+        PMF.pure true))
       (timingWordBinding setup mode runtime leaks bounds wellFormed assessment block low generation
         1 (by norm_num) le_rfl none who word) who past view)
     (match option with
     | none => PMF.pure ⟨none⟩
-    | some serial => phasePolicyDispatch setup mode runtime leaks bounds
+    | some serial => phasePolicyDispatch setup mode runtime leaks (fun owner event payload binding
+        => PhaseCount.phaseOpeningPolicy runtime leaks bounds owner event payload binding (fun _ _
+        => PMF.pure true))
         (timingWordBinding setup mode runtime leaks bounds wellFormed assessment block low
           generation 0 le_rfl (by norm_num) (some serial) who word) who past view)
 
@@ -116,7 +120,11 @@ theorem phaseCommitTimingWordPolicy_covered {Γ Δ : SourceCtx Player L} {O P : 
   classical
   unfold phaseCommitTimingWordPolicy at supported
   rcases support_mix_subset _ _ _ _ _ supported with slots | selected
-  · exact phasePolicyDispatch_covered setup mode runtime leaks bounds _
+  · exact phasePolicyDispatch_covered (opened := (fun owner event payload binding past view
+      response supported => PhaseCount.phaseOpeningPolicy_covered runtime leaks bounds owner event
+      payload binding (fun _ _ => PMF.pure true) past view response supported)) setup mode runtime
+      leaks bounds (fun owner event payload binding => PhaseCount.phaseOpeningPolicy runtime leaks
+      bounds owner event payload binding (fun _ _ => PMF.pure true)) _
       (timingWordBinding_covered setup mode runtime leaks bounds wellFormed assessment
       block low generation 1 (by norm_num) le_rfl none who word) who past view response slots
   · cases option with
@@ -124,7 +132,12 @@ theorem phaseCommitTimingWordPolicy_covered {Γ Δ : SourceCtx Player L} {O P : 
         cases (PMF.mem_support_pure_iff ..).mp selected
         exact PhaseCount.silence_onePacket runtime leaks bounds who past view
     | some serial =>
-        exact phasePolicyDispatch_covered setup mode runtime leaks bounds _
+        exact phasePolicyDispatch_covered (opened := (fun owner event payload binding past view
+            response supported => PhaseCount.phaseOpeningPolicy_covered runtime leaks bounds owner
+            event payload binding (fun _ _ => PMF.pure true) past view response supported)) setup
+            mode runtime leaks bounds (fun owner event payload binding =>
+            PhaseCount.phaseOpeningPolicy runtime leaks bounds owner event payload binding (fun _
+            _ => PMF.pure true)) _
           (timingWordBinding_covered setup mode runtime leaks bounds wellFormed assessment block low
             generation 0 le_rfl (by norm_num) (some serial) who word) who past view response
             selected
@@ -163,7 +176,9 @@ theorem phaseCommitTimingWordPolicy_cases {Γ Δ : SourceCtx Player L} {O P : Fi
     else timingWordBinding setup mode runtime leaks bounds wellFormed assessment block low
       generation 0 le_rfl (by norm_num) option who index.2
   obtain ⟨law, constant⟩ | ⟨event, payload, binding, selected⟩ :=
-    phasePolicyDispatch_indexed_cases setup mode runtime leaks bounds bindingFamily who past view
+    phasePolicyDispatch_indexed_cases setup mode runtime leaks (fun owner event payload binding =>
+        PhaseCount.phaseOpeningPolicy runtime leaks bounds owner event payload binding (fun _ _ =>
+        PMF.pure true)) bindingFamily who past view
   · refine Or.inl ⟨mix slotWeight slotNonnegative slotBounded law
         (match option with | none => PMF.pure ⟨none⟩ | some _ => law), ?_⟩
     intro word
@@ -295,7 +310,9 @@ theorem phaseCommitTimingWordPolicy_binding {Γ Δ : SourceCtx Player L} {O P : 
   have addressed : low ≤ event.val ∧ event.val < low + block.length ∧
       (execution.observe (phaseApplication runtime leaks) who).application.2.attempt =
         ⟨low, generation⟩ := ⟨inside.1, inside.2, address⟩
-  have slots := phasePolicyDispatch_binding setup mode runtime leaks bounds
+  have slots := phasePolicyDispatch_binding setup mode runtime leaks (fun owner event payload
+      binding => PhaseCount.phaseOpeningPolicy runtime leaks bounds owner event payload binding
+      (fun _ _ => PMF.pure true))
     (timingWordBinding setup mode runtime leaks bounds wellFormed assessment block low generation
       1 (by norm_num) le_rfl none who word) execution valid who event payload binding request
   cases option with
@@ -303,7 +320,9 @@ theorem phaseCommitTimingWordPolicy_binding {Γ Δ : SourceCtx Player L} {O P : 
       simp only [phaseCommitTimingWordPolicy, slots, timingWordBinding, dite_true, cast_eq,
         ite_eq_left addressed, phaseBindingTimingWordResponse, mix_one]
   | some serial =>
-      have main := phasePolicyDispatch_binding setup mode runtime leaks bounds
+      have main := phasePolicyDispatch_binding setup mode runtime leaks (fun owner event payload
+          binding => PhaseCount.phaseOpeningPolicy runtime leaks bounds owner event payload
+          binding (fun _ _ => PMF.pure true))
         (timingWordBinding setup mode runtime leaks bounds wellFormed assessment block low
           generation
           0 le_rfl (by norm_num) (some serial) who word) execution valid who event payload binding

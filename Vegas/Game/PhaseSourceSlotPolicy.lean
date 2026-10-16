@@ -25,7 +25,9 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
 def phaseSourceSlotPolicy (wellFormed : setup.WellFormed)
     (assessment : setup.commitRecoveryModel.BehavioralAssessment) (who : Player) :
     (phaseApplication runtime leaks).Policy :=
-  phasePolicyDispatch setup mode runtime leaks bounds
+  phasePolicyDispatch setup mode runtime leaks (fun owner event payload binding =>
+      PhaseCount.phaseOpeningPolicy runtime leaks bounds owner event payload binding (fun _ _ =>
+      PMF.pure true))
     (fun owner event payload binding => phaseRecoverySlotPolicy setup mode runtime leaks bounds
       wellFormed assessment owner event payload binding) who
 
@@ -37,7 +39,11 @@ theorem phaseSourceSlotPolicy_covered (wellFormed : setup.WellFormed)
     (supported : response ∈ (phaseSourceSlotPolicy setup mode runtime leaks bounds wellFormed
       assessment who past view).support) :
     response ∈ PhaseCount.onePacketActions runtime leaks bounds who past view := by
-  exact phasePolicyDispatch_covered setup mode runtime leaks bounds
+  exact phasePolicyDispatch_covered (opened := (fun owner event payload binding past view response
+      supported => PhaseCount.phaseOpeningPolicy_covered runtime leaks bounds owner event payload
+      binding (fun _ _ => PMF.pure true) past view response supported)) setup mode runtime leaks
+      bounds (fun owner event payload binding => PhaseCount.phaseOpeningPolicy runtime leaks
+      bounds owner event payload binding (fun _ _ => PMF.pure true))
     (fun owner event payload binding => phaseRecoverySlotPolicy setup mode runtime leaks bounds
       wellFormed assessment owner event payload binding)
     (fun owner event payload binding past view response supported =>
@@ -56,7 +62,9 @@ theorem phaseSourceSlotPolicy_binding (wellFormed : setup.WellFormed)
       phaseRecoverySlotPolicy setup mode runtime leaks bounds wellFormed assessment who
         event payload binding (execution.recall who)
         (execution.observe (phaseApplication runtime leaks) who) := by
-  exact phasePolicyDispatch_binding setup mode runtime leaks bounds
+  exact phasePolicyDispatch_binding setup mode runtime leaks (fun owner event payload binding =>
+      PhaseCount.phaseOpeningPolicy runtime leaks bounds owner event payload binding (fun _ _ =>
+      PMF.pure true))
     (fun owner event payload binding => phaseRecoverySlotPolicy setup mode runtime leaks bounds
       wellFormed assessment owner event payload binding)
     execution valid who event payload binding request
@@ -77,7 +85,9 @@ theorem phaseSourceSlotPolicy_opening (wellFormed : setup.WellFormed)
       PhaseCount.phaseOpeningPolicy runtime leaks bounds who event payload binding
         (fun _ _ => PMF.pure true) (execution.recall who)
           (execution.observe (phaseApplication runtime leaks) who) := by
-  exact phasePolicyDispatch_opening setup mode runtime leaks bounds
+  exact phasePolicyDispatch_opening setup mode runtime leaks (fun owner event payload binding =>
+      PhaseCount.phaseOpeningPolicy runtime leaks bounds owner event payload binding (fun _ _ =>
+      PMF.pure true))
     (fun owner event payload binding => phaseRecoverySlotPolicy setup mode runtime leaks bounds
       wellFormed assessment owner event payload binding)
     execution valid who event payload binding checks outputEq codeEq request

@@ -36,7 +36,9 @@ theorem phaseSourceTimingPolicy_opening_eq_source (wellFormed : setup.WellFormed
         who (execution.recall who) (execution.observe app who) =
       phaseSourcePolicy setup mode runtime leaks bounds wellFormed assessment who
         (execution.recall who) (execution.observe app who) := by
-  have timed := phasePolicyDispatch_opening setup mode runtime leaks bounds
+  have timed := phasePolicyDispatch_opening setup mode runtime leaks (fun owner event payload
+      binding => PhaseCount.phaseOpeningPolicy runtime leaks bounds owner event payload binding
+      (fun _ _ => PMF.pure true))
     (fun owner event payload binding => phaseRecoveryTimingPolicy setup mode runtime leaks bounds
       wellFormed assessment owner event payload binding (some serial)) execution valid who event
         payload binding checks outputEq codeEq request

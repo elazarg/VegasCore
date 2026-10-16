@@ -1,11 +1,29 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**SE: non-concurrent ✓ · source reset/query/sampler ✓ · open: pooled SE, native query, transport, incentives.**
+**SE: non-concurrent ✓ · sampler ✓ · flag-coupled reset ✓ · pooled Bayes ✓ · individual SE / native query / transport / incentives open.**
 
 <details>
 <summary>Checked recovery milestones and remaining proof obligations</summary>
 
 Milestones have unequal cost; the fixed SE checklist is unchanged.
+
+The source pooled completion selects shared conditional domain laws with
+query-level pins and independently fixed failure/floor rates. Its actual
+full-information assessments are fully mixed and Bayes consistent, converge
+to one consistent limit, and satisfy the pooled conditional gain inequalities.
+The same initialized flag/domain prior realizes their entire source runners.
+Individual optimality and preservation of the given honest pins remain open.
+
+Complete sampled-flag records now derive the entire actual omission word of
+a commitment block. The real close and selected continuation consequently
+give the same joint terminal readout/all-player-payoff law through retry or
+exhausted restore; no equality of omission words is assumed by this consumer.
+
+The normalized native policy uses one original address/ordinal timing tape.
+Actual complete-policy recall derives consistency with its local service
+splice and resolved success under the complete-calendar/packet-success
+contract. This does not yet prove whole-phase foreign-word independence or
+conditional native/source transport.
 
 Actual failed source attempts from the same literal prior and omission word
 now derive equal complete erased histories after the real close, for both

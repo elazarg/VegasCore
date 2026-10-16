@@ -178,7 +178,7 @@ theorem phaseSourcePolicy_prescribed_of_no_request
     rw [blocked, PMF.pure_map] at produced
     exact (PMF.mem_support_pure_iff _ _).mp produced
   have singleton := PhaseCount.onePacketActions_eq_singleton_of_no_request runtime leaks bounds
-    plan inputs horizon scheduler remaining who execution trace clear absent
+    plan inputs horizon scheduler remaining who execution trace absent
   have canonical : phaseSourcePolicy setup mode runtime leaks bounds wellFormed assessment who
       (execution.recall who) (execution.observe (phaseApplication runtime leaks) who) =
         PMF.pure ⟨none⟩ := by

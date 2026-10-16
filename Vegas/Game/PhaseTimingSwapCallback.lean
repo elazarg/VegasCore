@@ -163,10 +163,10 @@ theorem phaseTimingPlanPolicy_nonbinding_swap_before_binding
       rwa [swap.phaseOutputs_entry] at unsent
     have firstMenu := PhaseCount.onePacketActions_eq_singleton_of_no_unsent runtime leaks bounds
       plan (serviceGraph_revealRelaxedOrdered setup mode) inputs horizon scheduler remaining who
-        original trace guardedBefore.clear usable
+        original trace usable
     have secondMenu := PhaseCount.onePacketActions_eq_singleton_of_no_unsent runtime leaks bounds
       plan (serviceGraph_revealRelaxedOrdered setup mode) inputs horizon scheduler remaining who
-        (swap.phaseExecution original) swappedTrace guardedBefore.clear swappedAbsent
+        (swap.phaseExecution original) swappedTrace swappedAbsent
     have forced (execution : (app).Execution)
         (singleton : PhaseCount.onePacketActions runtime leaks bounds who (execution.recall who)
           (execution.observe app who) = {⟨none⟩}) :
@@ -259,13 +259,11 @@ theorem phaseTimingPlanPolicy_nonbinding_record_swap
           guarded bindingEvent bindingOwner bindingPayload bindingOutput requested values
             nonbindingBefore
   rw [swap.observe_phaseExecution, pastEq, ← viewed] at laws
-  have priorClear := (phase_clear_nativeProgress_of_prefix runtime leaks menu initial horizon
-    scheduler before final prior finalTrace isPrefix guarded.clear).1
   change entry.action ∈ PhaseCount.onePacketActions runtime leaks bounds who past
     (before.execution.observe app who) at offered
   have fixed := swap.phaseAction_eq_of_nonbinding_callback bounds plan
     (serviceGraph_revealRelaxedOrdered setup mode) inputs horizon scheduler before.remaining who
-      before.execution actual priorClear nonbindingBefore entry.action (by
+      before.execution actual nonbindingBefore entry.action (by
         simpa only [pastEq] using offered)
   rw [fixed]
   simpa only [HiddenSwap.phaseExecution, pastEq] using

@@ -238,7 +238,9 @@ theorem phaseTimingWordPlanPolicy_binding_factor_of_history
       rw [phaseSourceSlotPolicy_binding setup mode runtime leaks bounds wellFormed source
         control.execution valid who event payload binding request,
         phaseSourcePolicy,
-        phasePolicyDispatch_binding setup mode runtime leaks bounds _ control.execution valid who
+        phasePolicyDispatch_binding setup mode runtime leaks (fun owner event payload binding =>
+            PhaseCount.phaseOpeningPolicy runtime leaks bounds owner event payload binding (fun _
+            _ => PMF.pure true)) _ control.execution valid who
           event payload binding request, canonicalLaw]
       exact word_response_law setup mode runtime leaks bounds wellFormed source who event payload
         binding serial past view slotWeight slotNonnegative slotBounded sourceLaw id (PMF.map_id _)

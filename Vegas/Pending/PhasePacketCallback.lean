@@ -118,7 +118,7 @@ theorem packet_callback (bounds : MessageBounds graph)
   rcases before with ⟨remaining, actor, physical⟩
   cases acting
   obtain ⟨actual, request⟩ := PhaseCount.onePacket_request_of_nonsilent runtime leaks bounds plan
-    inputs horizon scheduler remaining owner physical prior beforeClear material sentMember
+    inputs horizon scheduler remaining owner physical prior material sentMember
   have addressed := PhaseCount.onePacket_event_of_request runtime leaks bounds plan ordered inputs
     horizon scheduler remaining owner physical prior actual request material sentMember
   have sameEvent : actual.event = coordinate.event :=

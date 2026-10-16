@@ -27,7 +27,6 @@ theorem onePacketActions_eq_singleton_of_no_unsent (bounds : MessageBounds graph
     (trace : ((onePacketMenu runtime leaks bounds).protocol
       (inputs.map (PhaseRuntimeState.initial plan)) horizon scheduler).Trace
         (some ⟨remaining, some owner, execution⟩))
-    (clear : execution.application.current.excluded = ∅)
     (absent : ¬∃ coordinate, execution.application.SeedRequest owner coordinate ∧
       ∀ message ∈ (app).outputs (execution.recall owner),
         event? message.payload ≠ some coordinate) :
@@ -43,7 +42,7 @@ theorem onePacketActions_eq_singleton_of_no_unsent (bounds : MessageBounds graph
     | none => rfl
     | some material =>
         obtain ⟨coordinate, request⟩ := onePacket_request_of_nonsilent runtime leaks bounds plan
-          inputs horizon scheduler remaining owner execution trace clear material offered
+          inputs horizon scheduler remaining owner execution trace material offered
         exact (absent ⟨coordinate, request, unsent_of_nonsilent runtime leaks bounds plan ordered
           inputs horizon scheduler remaining owner execution trace coordinate request material
             offered⟩).elim
@@ -80,7 +79,6 @@ theorem callback_binding_or_silent (bounds : MessageBounds graph)
     (memory : BindingShadow graph)
     (application : left.application = memory.phased owner right.application)
     (network : left.network = right.network)
-    (clear : right.application.current.excluded = ∅)
     (phase : RuntimePhase graph) (remaining : List (RuntimePhase graph))
     (installed : right.application.phases = phase :: remaining)
     (committing : phase.kind = .commitment) :
@@ -138,11 +136,10 @@ theorem callback_binding_or_silent (bounds : MessageBounds graph)
         exact request
       · rw [outputs] at unsent
         exact unsent
-    have leftClear : left.application.current.excluded = ∅ := by rw [application]; exact clear
     exact Or.inl ⟨PhaseCount.onePacketActions_eq_singleton_of_no_unsent runtime leaks bounds
-      plan ordered inputs horizon scheduler firstRemaining owner left leftTrace leftClear
+      plan ordered inputs horizon scheduler firstRemaining owner left leftTrace
         leftAbsent,
       PhaseCount.onePacketActions_eq_singleton_of_no_unsent runtime leaks bounds plan ordered
-        inputs horizon scheduler secondRemaining owner right rightTrace clear usable⟩
+        inputs horizon scheduler secondRemaining owner right rightTrace usable⟩
 
 end Vegas.EventGraphRuntime.BindingShadow

@@ -27,7 +27,9 @@ def phaseSourceTimingPolicy (wellFormed : setup.WellFormed)
     (phaseApplication runtime leaks).Policy :=
   match option with
   | none => fun _ _ => PMF.pure ⟨none⟩
-  | some serial => phasePolicyDispatch setup mode runtime leaks bounds
+  | some serial => phasePolicyDispatch setup mode runtime leaks (fun owner event payload binding
+      => PhaseCount.phaseOpeningPolicy runtime leaks bounds owner event payload binding (fun _ _
+      => PMF.pure true))
       (fun owner event payload binding => phaseRecoveryTimingPolicy setup mode runtime leaks
         bounds wellFormed assessment owner event payload binding (some serial)) who
 
@@ -45,7 +47,12 @@ theorem phaseSourceTimingPolicy_covered (wellFormed : setup.WellFormed)
       cases (PMF.mem_support_pure_iff ..).mp supported
       exact PhaseCount.silence_onePacket runtime leaks bounds who past view
   | some serial =>
-      exact phasePolicyDispatch_covered setup mode runtime leaks bounds
+      exact phasePolicyDispatch_covered (opened := (fun owner event payload binding past view
+          response supported => PhaseCount.phaseOpeningPolicy_covered runtime leaks bounds owner
+          event payload binding (fun _ _ => PMF.pure true) past view response supported)) setup
+          mode runtime leaks bounds (fun owner event payload binding =>
+          PhaseCount.phaseOpeningPolicy runtime leaks bounds owner event payload binding (fun _ _
+          => PMF.pure true))
         (fun owner event payload binding => phaseRecoveryTimingPolicy setup mode runtime leaks
           bounds wellFormed assessment owner event payload binding (some serial))
         (fun owner event payload binding past view response supported =>
@@ -73,7 +80,9 @@ theorem phaseSourceTimingPolicy_binding (wellFormed : setup.WellFormed)
       exact (phaseRecoveryTimingPolicy_wait setup mode runtime leaks bounds wellFormed assessment
         who event payload binding _ _).symm
   | some serial =>
-      exact phasePolicyDispatch_binding setup mode runtime leaks bounds _ execution valid who
+      exact phasePolicyDispatch_binding setup mode runtime leaks (fun owner event payload binding
+          => PhaseCount.phaseOpeningPolicy runtime leaks bounds owner event payload binding (fun _
+          _ => PMF.pure true)) _ execution valid who
         event payload binding request
 
 /-- The globally covered component has an exact representation in the actual

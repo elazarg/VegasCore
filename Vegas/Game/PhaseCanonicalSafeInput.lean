@@ -126,7 +126,7 @@ theorem phaseSourcePolicy_protected_or_singleton
         rw [noActor] at owned
         cases owned
   · exact Or.inr (PhaseCount.onePacketActions_eq_singleton_of_no_request runtime leaks bounds plan
-      inputs horizon scheduler remaining owner execution trace clear (fun coordinate requested =>
+      inputs horizon scheduler remaining owner execution trace (fun coordinate requested =>
         offered ⟨coordinate, requested⟩))
 
 end Vegas

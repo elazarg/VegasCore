@@ -117,7 +117,7 @@ theorem phase_repair_raw_response_pair
   let material : (app).Submission :=
     ⟨⟨.commitment event (who, .prepared serial), preparation⟩, evidence⟩
   obtain ⟨coordinate, request⟩ := PhaseCount.onePacket_request_of_nonsilent runtime leaks bounds
-    plan inputs horizon scheduler remaining who original typed frame.clearOriginal material member
+    plan inputs horizon scheduler remaining who original typed material member
   have named := PhaseCount.onePacket_event_of_request runtime leaks bounds plan
     (serviceGraph_revealRelaxedOrdered setup mode) inputs horizon scheduler remaining who original
       typed coordinate request material member

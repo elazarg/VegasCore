@@ -68,7 +68,7 @@ theorem recorded_binding_request {control : (app).Control}
       (some ⟨before.remaining, some who, before.execution⟩) := by
     simpa only [← active] using prior
   obtain ⟨coordinate, request⟩ := onePacket_request_of_nonsilent runtime leaks bounds plan inputs
-    horizon scheduler before.remaining who before.execution priorActive priorClear material
+    horizon scheduler before.remaining who before.execution priorActive material
       offeredRaw
   have actual := onePacket_event_of_request runtime leaks bounds plan ordered inputs horizon
     scheduler before.remaining who before.execution priorActive coordinate request material

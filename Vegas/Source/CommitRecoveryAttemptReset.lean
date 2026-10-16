@@ -326,7 +326,7 @@ private theorem publicRecall_of_erased_states
             ProtocolState.remaining_withHistory] at publicEq
           exact congrArg (fun current => ((current, _), [])) (Prod.ext privateEq publicEq)
 
-private def omissionRecall {state : setup.commitRecoveryProtocol.State}
+def omissionRecall {state : setup.commitRecoveryProtocol.State}
     (trace : setup.commitRecoveryProtocol.Trace state) :=
   (setup.recoveryJointRecall trace).map
     (fun joint owner => CommitRecoveryMove.missed (joint owner))
@@ -336,7 +336,7 @@ private theorem omissionRecall_length {state : setup.commitRecoveryProtocol.Stat
     (setup.omissionRecall trace).length = trace.length := by
   rw [omissionRecall, List.length_map, setup.recoveryJointRecall_length]
 
-private theorem inside_attempt_public_eq
+theorem inside_attempt_public_eq
     (observer : Player) (first : CommitRecoveryState setup.program)
     (prior : setup.commitRecoveryProtocol.Trace (some first))
     (committing : ProtocolState.atCommit setup.program first.point = true)

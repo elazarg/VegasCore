@@ -208,7 +208,7 @@ theorem phaseTimingPlanPolicy_value_callback_of_history
         cases owned
   · have singleton := PhaseCount.onePacketActions_eq_singleton_of_no_unsent runtime leaks bounds
       runtimePlan (serviceGraph_revealRelaxedOrdered setup mode) inputs horizon scheduler
-        control.remaining who control.execution actual clear usable
+        control.remaining who control.execution actual usable
     have forced (source : setup.commitRecoveryModel.BehavioralAssessment) (plan) :
         phaseTimingPlanPolicy setup mode runtime leaks bounds initial horizon scheduler bound
             fallback wellFormed source noise noiseNonnegative noiseBounded slotWeight

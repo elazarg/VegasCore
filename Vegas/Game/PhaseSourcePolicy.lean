@@ -46,6 +46,9 @@ private theorem requestedEvent_of_request
 
 open Classical in
 private def eventPolicyDispatch
+    (openings : ∀ (owner : Player) (_event : (serviceGraph setup mode).EventId)
+      (payload : L.Ty), FieldRef (serviceGraph setup mode).layout (.binding owner payload) →
+      (phaseApplication runtime leaks).Policy)
     (bindings : ∀ (owner : Player) (event : (serviceGraph setup mode).EventId)
       (payload : L.Ty), (serviceGraph setup mode).outputLayout event = .binding owner payload →
       (phaseApplication runtime leaks).Policy) (who : Player)
@@ -57,12 +60,17 @@ private def eventPolicyDispatch
       else fun _ _ => PMF.pure ⟨none⟩
   | .resolve owner payload binding _checks _outputEq _codeEq =>
       if owner = who then
-        PhaseCount.phaseOpeningPolicy runtime leaks bounds owner event payload binding
-          (fun _ _ => PMF.pure true)
+        openings owner event payload binding
       else fun _ _ => PMF.pure ⟨none⟩
   | .sample _ _ _ _ => fun _ _ => PMF.pure ⟨none⟩
 
 private theorem eventPolicyDispatch_covered
+    (openings : ∀ (owner : Player) (_event : (serviceGraph setup mode).EventId)
+      (payload : L.Ty), FieldRef (serviceGraph setup mode).layout (.binding owner payload) →
+      (phaseApplication runtime leaks).Policy)
+    (opened : ∀ owner event payload binding past view response,
+      response ∈ (openings owner event payload binding past view).support →
+        response ∈ PhaseCount.onePacketActions runtime leaks bounds owner past view)
     (bindings : ∀ (owner : Player) (event : (serviceGraph setup mode).EventId)
       (payload : L.Ty), (serviceGraph setup mode).outputLayout event = .binding owner payload →
       (phaseApplication runtime leaks).Policy)
@@ -73,7 +81,8 @@ private theorem eventPolicyDispatch_covered
     (past : List (phaseApplication runtime leaks).PlayerEntry)
     (view : (phaseApplication runtime leaks).PlayerView)
     (response : (phaseApplication runtime leaks).Action)
-    (supported : response ∈ (eventPolicyDispatch setup mode runtime leaks bounds bindings who event
+    (supported : response ∈ (eventPolicyDispatch setup mode runtime leaks openings bindings who
+        event
       past view).support) :
     response ∈ PhaseCount.onePacketActions runtime leaks bounds who past view := by
   classical
@@ -91,8 +100,7 @@ private theorem eventPolicyDispatch_covered
       split at supported
       · rename_i same
         subst owner
-        exact PhaseCount.phaseOpeningPolicy_covered runtime leaks bounds who event payload binding
-          (fun _ _ => PMF.pure true) past view response supported
+        exact opened who event payload binding past view response supported
       · cases (PMF.mem_support_pure_iff _ _).mp supported
         exact PhaseCount.silence_onePacket runtime leaks bounds who past view
   | sample payload law outputEq codeEq =>
@@ -101,21 +109,30 @@ private theorem eventPolicyDispatch_covered
       exact PhaseCount.silence_onePacket runtime leaks bounds who past view
 
 /-- The current public request selects the event. Binding choices use the supplied
-local recipe; openings use canonical disclosure. Coverage follows from coverage
-of the binding recipe; selecting the sites where it is pinned is separate. -/
+local recipe; openings use the supplied opening component. Coverage follows
+from the two component families; selecting pinned sites is separate. -/
 def phasePolicyDispatch
+    (openings : ∀ (owner : Player) (_event : (serviceGraph setup mode).EventId)
+      (payload : L.Ty), FieldRef (serviceGraph setup mode).layout (.binding owner payload) →
+      (phaseApplication runtime leaks).Policy)
     (bindings : ∀ (owner : Player) (event : (serviceGraph setup mode).EventId)
       (payload : L.Ty), (serviceGraph setup mode).outputLayout event = .binding owner payload →
       (phaseApplication runtime leaks).Policy) (who : Player) :
     (phaseApplication runtime leaks).Policy := fun past view =>
   match requestedEvent setup mode who view.application.2 with
   | none => PMF.pure ⟨none⟩
-  | some event => eventPolicyDispatch setup mode runtime leaks bounds bindings who
+  | some event => eventPolicyDispatch setup mode runtime leaks openings bindings who
       event past view
 
 /-- Even malformed or unrealized inputs receive a law supported by the actual
 bounded authenticated one-packet menu. -/
 theorem phasePolicyDispatch_covered
+    (openings : ∀ (owner : Player) (_event : (serviceGraph setup mode).EventId)
+      (payload : L.Ty), FieldRef (serviceGraph setup mode).layout (.binding owner payload) →
+      (phaseApplication runtime leaks).Policy)
+    (opened : ∀ owner event payload binding past view response,
+      response ∈ (openings owner event payload binding past view).support →
+        response ∈ PhaseCount.onePacketActions runtime leaks bounds owner past view)
     (bindings : ∀ (owner : Player) (event : (serviceGraph setup mode).EventId)
       (payload : L.Ty), (serviceGraph setup mode).outputLayout event = .binding owner payload →
       (phaseApplication runtime leaks).Policy)
@@ -125,23 +142,28 @@ theorem phasePolicyDispatch_covered
     (past : List (phaseApplication runtime leaks).PlayerEntry)
     (view : (phaseApplication runtime leaks).PlayerView)
     (response : (phaseApplication runtime leaks).Action)
-    (supported : response ∈ (phasePolicyDispatch setup mode runtime leaks bounds bindings who
+    (supported : response ∈ (phasePolicyDispatch setup mode runtime leaks openings bindings who
       past view).support) :
     response ∈ PhaseCount.onePacketActions runtime leaks bounds who past view := by
   unfold phasePolicyDispatch at supported
   split at supported
   · cases (PMF.mem_support_pure_iff _ _).mp supported
     exact PhaseCount.silence_onePacket runtime leaks bounds who past view
-  · exact eventPolicyDispatch_covered setup mode runtime leaks bounds bindings covered who
+  · exact eventPolicyDispatch_covered (opened := opened) setup mode runtime leaks bounds openings
+      bindings covered who
       _ past view response supported
 
+omit [Fintype Player] in
 private theorem eventPolicyDispatch_binding
+    (openings : ∀ (owner : Player) (_event : (serviceGraph setup mode).EventId)
+      (payload : L.Ty), FieldRef (serviceGraph setup mode).layout (.binding owner payload) →
+      (phaseApplication runtime leaks).Policy)
     (bindings : ∀ (owner : Player) (event : (serviceGraph setup mode).EventId)
       (payload : L.Ty), (serviceGraph setup mode).outputLayout event = .binding owner payload →
       (phaseApplication runtime leaks).Policy) (who : Player)
     (event : (serviceGraph setup mode).EventId) (payload : L.Ty)
     (binding : (serviceGraph setup mode).outputLayout event = .binding who payload) :
-    eventPolicyDispatch setup mode runtime leaks bounds bindings who event =
+    eventPolicyDispatch setup mode runtime leaks openings bindings who event =
       bindings who event payload binding := by
   classical
   cases node : nodeView (serviceGraph setup mode) event with
@@ -151,9 +173,13 @@ private theorem eventPolicyDispatch_binding
   | resolve owner actual ref checks outputEq codeEq => cases outputEq.symm.trans binding
   | sample actual law outputEq codeEq => cases outputEq.symm.trans binding
 
+omit [Fintype Player] in
 /-- A genuine current request selects its actual binding branch, independently
 of the choice made by the public selector on impossible inputs. -/
 theorem phasePolicyDispatch_binding
+    (openings : ∀ (owner : Player) (_event : (serviceGraph setup mode).EventId)
+      (payload : L.Ty), FieldRef (serviceGraph setup mode).layout (.binding owner payload) →
+      (phaseApplication runtime leaks).Policy)
     (bindings : ∀ (owner : Player) (event : (serviceGraph setup mode).EventId)
       (payload : L.Ty), (serviceGraph setup mode).outputLayout event = .binding owner payload →
       (phaseApplication runtime leaks).Policy)
@@ -162,7 +188,7 @@ theorem phasePolicyDispatch_binding
     (event : (serviceGraph setup mode).EventId) (payload : L.Ty)
     (binding : (serviceGraph setup mode).outputLayout event = .binding who payload)
     (request : execution.application.SeedRequest who ⟨execution.application.attempt, event⟩) :
-    phasePolicyDispatch setup mode runtime leaks bounds bindings who
+    phasePolicyDispatch setup mode runtime leaks openings bindings who
         (execution.recall who) (execution.observe (phaseApplication runtime leaks) who) =
       bindings who event payload binding (execution.recall who)
         (execution.observe (phaseApplication runtime leaks) who) := by
@@ -170,18 +196,22 @@ theorem phasePolicyDispatch_binding
     request
   change (match requestedEvent setup mode who execution.application.publicView with
     | none => PMF.pure (⟨none⟩ : (phaseApplication runtime leaks).Action)
-    | some selected => eventPolicyDispatch setup mode runtime leaks bounds bindings
+    | some selected => eventPolicyDispatch setup mode runtime leaks openings bindings
         who selected (execution.recall who)
           (execution.observe (phaseApplication runtime leaks) who)) = _
   rw [selected]
-  change eventPolicyDispatch setup mode runtime leaks bounds bindings who event
+  change eventPolicyDispatch setup mode runtime leaks openings bindings who event
     (execution.recall who) (execution.observe (phaseApplication runtime leaks) who) = _
-  rw [eventPolicyDispatch_binding setup mode runtime leaks bounds bindings who event
+  rw [eventPolicyDispatch_binding setup mode runtime leaks openings bindings who event
     payload binding]
 
-/-- Every genuine resolve request selects the canonical disclosure component;
+omit [Fintype Player] in
+/-- Every genuine resolve request selects its supplied opening component;
 no source opening-view decoder is used. -/
 theorem phasePolicyDispatch_opening
+    (openings : ∀ (owner : Player) (_event : (serviceGraph setup mode).EventId)
+      (payload : L.Ty), FieldRef (serviceGraph setup mode).layout (.binding owner payload) →
+      (phaseApplication runtime leaks).Policy)
     (bindings : ∀ (owner : Player) (event : (serviceGraph setup mode).EventId)
       (payload : L.Ty), (serviceGraph setup mode).outputLayout event = .binding owner payload →
       (phaseApplication runtime leaks).Policy)
@@ -194,10 +224,9 @@ theorem phasePolicyDispatch_opening
     (codeEq : cast (congrArg (EventCode (serviceGraph setup mode).layout) outputEq)
       ((serviceGraph setup mode).nodes event) = .resolve who payload binding checks)
     (request : execution.application.SeedRequest who ⟨execution.application.attempt, event⟩) :
-    phasePolicyDispatch setup mode runtime leaks bounds bindings who
+    phasePolicyDispatch setup mode runtime leaks openings bindings who
         (execution.recall who) (execution.observe (phaseApplication runtime leaks) who) =
-      PhaseCount.phaseOpeningPolicy runtime leaks bounds who event payload binding
-        (fun _ _ => PMF.pure true) (execution.recall who)
+      openings who event payload binding (execution.recall who)
           (execution.observe (phaseApplication runtime leaks) who) := by
   classical
   have selected := requestedEvent_of_request setup mode execution.application valid who event
@@ -205,7 +234,7 @@ theorem phasePolicyDispatch_opening
   unfold phasePolicyDispatch
   change (match requestedEvent setup mode who execution.application.publicView with
     | none => PMF.pure (⟨none⟩ : (phaseApplication runtime leaks).Action)
-    | some selected => eventPolicyDispatch setup mode runtime leaks bounds bindings
+    | some selected => eventPolicyDispatch setup mode runtime leaks openings bindings
         who selected (execution.recall who)
           (execution.observe (phaseApplication runtime leaks) who)) = _
   rw [selected]
@@ -215,7 +244,9 @@ theorem phasePolicyDispatch_opening
 def phaseSourcePolicy (wellFormed : setup.WellFormed)
     (assessment : setup.commitRecoveryModel.BehavioralAssessment) (who : Player) :
     (phaseApplication runtime leaks).Policy :=
-  phasePolicyDispatch setup mode runtime leaks bounds
+  phasePolicyDispatch setup mode runtime leaks (fun owner event payload binding =>
+      PhaseCount.phaseOpeningPolicy runtime leaks bounds owner event payload binding (fun _ _ =>
+      PMF.pure true))
     (fun owner event payload binding => phaseRecoveryBindingPolicy setup mode runtime leaks bounds
       wellFormed assessment owner event payload binding) who
 
@@ -227,7 +258,11 @@ theorem phaseSourcePolicy_covered (wellFormed : setup.WellFormed)
     (supported : response ∈ (phaseSourcePolicy setup mode runtime leaks bounds wellFormed
       assessment who past view).support) :
     response ∈ PhaseCount.onePacketActions runtime leaks bounds who past view := by
-  exact phasePolicyDispatch_covered setup mode runtime leaks bounds
+  exact phasePolicyDispatch_covered (opened := (fun owner event payload binding past view response
+      supported => PhaseCount.phaseOpeningPolicy_covered runtime leaks bounds owner event payload
+      binding (fun _ _ => PMF.pure true) past view response supported)) setup mode runtime leaks
+      bounds (fun owner event payload binding => PhaseCount.phaseOpeningPolicy runtime leaks
+      bounds owner event payload binding (fun _ _ => PMF.pure true))
     (fun owner event payload binding => phaseRecoveryBindingPolicy setup mode runtime leaks bounds
       wellFormed assessment owner event payload binding)
     (fun owner event payload binding past view response supported =>
@@ -246,7 +281,9 @@ theorem phaseSourcePolicy_binding (wellFormed : setup.WellFormed)
       phaseRecoveryBindingPolicy setup mode runtime leaks bounds wellFormed assessment who
         event payload binding (execution.recall who)
         (execution.observe (phaseApplication runtime leaks) who) := by
-  exact phasePolicyDispatch_binding setup mode runtime leaks bounds
+  exact phasePolicyDispatch_binding setup mode runtime leaks (fun owner event payload binding =>
+      PhaseCount.phaseOpeningPolicy runtime leaks bounds owner event payload binding (fun _ _ =>
+      PMF.pure true))
     (fun owner event payload binding => phaseRecoveryBindingPolicy setup mode runtime leaks bounds
       wellFormed assessment owner event payload binding)
     execution valid who event payload binding request
@@ -267,7 +304,9 @@ theorem phaseSourcePolicy_opening (wellFormed : setup.WellFormed)
       PhaseCount.phaseOpeningPolicy runtime leaks bounds who event payload binding
         (fun _ _ => PMF.pure true) (execution.recall who)
           (execution.observe (phaseApplication runtime leaks) who) := by
-  exact phasePolicyDispatch_opening setup mode runtime leaks bounds
+  exact phasePolicyDispatch_opening setup mode runtime leaks (fun owner event payload binding =>
+      PhaseCount.phaseOpeningPolicy runtime leaks bounds owner event payload binding (fun _ _ =>
+      PMF.pure true))
     (fun owner event payload binding => phaseRecoveryBindingPolicy setup mode runtime leaks bounds
       wellFormed assessment owner event payload binding)
     execution valid who event payload binding checks outputEq codeEq request
@@ -318,7 +357,9 @@ theorem phaseSourcePolicy_request_of_binding_support (wellFormed : setup.WellFor
   unfold phaseSourcePolicy phasePolicyDispatch at supported
   change response ∈ (match requestedEvent setup mode who execution.application.publicView with
     | none => PMF.pure (⟨none⟩ : (phaseApplication runtime leaks).Action)
-    | some selected => eventPolicyDispatch setup mode runtime leaks bounds
+    | some selected => eventPolicyDispatch setup mode runtime leaks (fun owner event payload
+        binding => PhaseCount.phaseOpeningPolicy runtime leaks bounds owner event payload binding
+        (fun _ _ => PMF.pure true))
         (fun owner event payload binding => phaseRecoveryBindingPolicy setup mode runtime leaks
           bounds wellFormed assessment owner event payload binding) who selected
           (execution.recall who)
@@ -392,10 +433,14 @@ theorem phaseSourcePolicy_request_of_binding_support (wellFormed : setup.WellFor
           cases transmitted
 
 
-/-- Public request selection and canonical opening preserve a binding
+omit [Fintype Player] in
+/-- Public request selection and a shared opening component preserve a binding
 component's equality of supported response masses. No realized-input or
 source-information correspondence is needed for this dispatcher fact. -/
 theorem phasePolicyDispatch_apply_eq_of_support
+    (openings : ∀ (owner : Player) (_event : (serviceGraph setup mode).EventId)
+      (payload : L.Ty), FieldRef (serviceGraph setup mode).layout (.binding owner payload) →
+      (phaseApplication runtime leaks).Policy)
     (first second : ∀ (owner : Player) (event : (serviceGraph setup mode).EventId)
       (payload : L.Ty), (serviceGraph setup mode).outputLayout event = .binding owner payload →
       (phaseApplication runtime leaks).Policy)
@@ -407,12 +452,12 @@ theorem phasePolicyDispatch_apply_eq_of_support
       response ∈ (second owner event payload binding past view).support →
         first owner event payload binding past view response =
           second owner event payload binding past view response)
-    (left : response ∈ (phasePolicyDispatch setup mode runtime leaks bounds first who past
+    (left : response ∈ (phasePolicyDispatch setup mode runtime leaks openings first who past
       view).support)
-    (right : response ∈ (phasePolicyDispatch setup mode runtime leaks bounds second who past
+    (right : response ∈ (phasePolicyDispatch setup mode runtime leaks openings second who past
       view).support) :
-    phasePolicyDispatch setup mode runtime leaks bounds first who past view response =
-      phasePolicyDispatch setup mode runtime leaks bounds second who past view response := by
+    phasePolicyDispatch setup mode runtime leaks openings first who past view response =
+      phasePolicyDispatch setup mode runtime leaks openings second who past view response := by
   classical
   cases offered : requestedEvent setup mode who view.application.2 with
   | none => simp only [phasePolicyDispatch, offered]
@@ -431,19 +476,24 @@ theorem phasePolicyDispatch_apply_eq_of_support
           simp only [eventPolicyDispatch, node]
 
 
+omit [Fintype Player] in
 /-- A public request selects the same binding branch for every private member.
 Every other dispatcher branch has one member-independent law. -/
 theorem phasePolicyDispatch_indexed_cases {Index : Type}
+    (openings : ∀ (owner : Player) (_event : (serviceGraph setup mode).EventId)
+      (payload : L.Ty), FieldRef (serviceGraph setup mode).layout (.binding owner payload) →
+      (phaseApplication runtime leaks).Policy)
     (bindings : Index → ∀ (owner : Player) (event : (serviceGraph setup mode).EventId)
       (payload : L.Ty), (serviceGraph setup mode).outputLayout event = .binding owner payload →
       (phaseApplication runtime leaks).Policy)
     (who : Player) (past : List (phaseApplication runtime leaks).PlayerEntry)
     (view : (phaseApplication runtime leaks).PlayerView) :
-    (∃ law, ∀ index, phasePolicyDispatch setup mode runtime leaks bounds (bindings index) who
+    (∃ law, ∀ index, phasePolicyDispatch setup mode runtime leaks openings (bindings index) who
       past view = law) ∨
     ∃ event payload, ∃ binding :
       (serviceGraph setup mode).outputLayout event = .binding who payload,
-      ∀ index, phasePolicyDispatch setup mode runtime leaks bounds (bindings index) who past view =
+      ∀ index, phasePolicyDispatch setup mode runtime leaks openings (bindings index) who past
+          view =
         bindings index who event payload binding past view := by
   classical
   cases offered : requestedEvent setup mode who view.application.2 with
@@ -460,8 +510,8 @@ theorem phasePolicyDispatch_indexed_cases {Index : Type}
               simp only [phasePolicyDispatch, offered, eventPolicyDispatch, node,
                 ite_eq_right owned]⟩
       | resolve owner payload binding checks outputEq codeEq =>
-          refine Or.inl ⟨if owner = who then PhaseCount.phaseOpeningPolicy runtime leaks bounds
-            owner event payload binding (fun _ _ => PMF.pure true) past view else PMF.pure ⟨none⟩,
+          refine Or.inl ⟨if owner = who then openings owner event payload binding past view else
+              PMF.pure ⟨none⟩,
             fun _ => ?_⟩
           simp only [phasePolicyDispatch, offered, eventPolicyDispatch, node]
           split <;> rfl

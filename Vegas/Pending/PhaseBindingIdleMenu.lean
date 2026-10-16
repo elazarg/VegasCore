@@ -18,7 +18,7 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
 
 local notation "app" => phaseApplication runtime leaks
 
-/-- On actual clear histories, every nonsilent counted response names a real
+/-- On actual initialized histories, every nonsilent counted response names a real
 current ready owner request. Completed alternatives already have an authentic
 same-attempt packet, which contradicts the new response's firstness. -/
 theorem onePacket_request_of_nonsilent (bounds : MessageBounds graph)
@@ -28,7 +28,6 @@ theorem onePacket_request_of_nonsilent (bounds : MessageBounds graph)
     (trace : ((onePacketMenu runtime leaks bounds).protocol
       (inputs.map (PhaseRuntimeState.initial plan)) horizon scheduler).Trace
         (some ⟨remaining, some owner, execution⟩))
-    (clear : execution.application.current.excluded = ∅)
     (material : WitnessedSubmission graph)
     (offered : (⟨some material⟩ : (app).Action) ∈ onePacketActions runtime leaks bounds owner
       (execution.recall owner) (execution.observe (app) owner)) :
@@ -57,8 +56,9 @@ theorem onePacket_request_of_nonsilent (bounds : MessageBounds graph)
     (WitnessedPacket.tokenValid_iff message.payload.packet).mp permittedAfter.1
   have acting : graph.actor? event = some owner :=
     countCallCorrect_owned_event _ (nativeMessage message) permittedAfter.2.1 named
-  have allowed := (PhaseBindingRepair.localEnvelope_admitted runtime leaks execution owner material
-    permittedAfter.1).1
+  have admitted := PhaseBindingRepair.localEnvelope_admitted runtime leaks execution owner material
+    permittedAfter.1
+  have allowed := admitted.1
   obtain ⟨phase, installed, actual, actualNamed, inside⟩ :=
     execution.application.allows_event material.call.packet allowed
   have callEq : message.payload.packet.call = material.call.packet := maskPacket_call _ _
@@ -71,7 +71,13 @@ theorem onePacket_request_of_nonsilent (bounds : MessageBounds graph)
       execution.application.current.native.config := by
     change (submitStep _ owner _).config = _
     rw [submitStep_config, (material.call.register_facts owner _).1]
-  have unexcluded : owner ∉ execution.application.current.excluded := by simp only [clear]; simp
+  have unexcluded : owner ∉ execution.application.current.excluded := by
+    have absent := admitted.2
+    have namedCall : material.call.packet.event? graph = some event := by
+      rwa [callEq] at named
+    simpa only [RecoveryState.excludedCall, RecoveryState.excludedEvent, namedCall, acting,
+      Option.any_some,
+      decide_eq_false_iff_not] using absent
   by_cases completed : event ∈ execution.application.current.native.config.cut.completed
   · obtain ⟨old, oldInput, oldOwner, oldTag, oldNamed⟩ :=
       phase_completed_owned_message runtime leaks plan inputs horizon scheduler raw phase
@@ -98,7 +104,7 @@ theorem onePacket_request_of_nonsilent (bounds : MessageBounds graph)
     exact ⟨⟨execution.application.attempt, event⟩,
       rfl, ⟨phase, installed, inside⟩, ready, acting, unexcluded⟩
 
-/-- Without a genuine current owned request, an actual clear callback has the
+/-- Without a genuine current owned request, an actual initialized callback has the
 singleton silent menu. No owner ordering or completion contract is assumed. -/
 theorem onePacketActions_eq_singleton_of_no_request (bounds : MessageBounds graph)
     (plan : RuntimePhasePlan graph) (inputs : PMF graph.Inputs) (horizon : Nat)
@@ -107,7 +113,6 @@ theorem onePacketActions_eq_singleton_of_no_request (bounds : MessageBounds grap
     (trace : ((onePacketMenu runtime leaks bounds).protocol
       (inputs.map (PhaseRuntimeState.initial plan)) horizon scheduler).Trace
         (some ⟨remaining, some owner, execution⟩))
-    (clear : execution.application.current.excluded = ∅)
     (absent : ∀ coordinate, ¬execution.application.SeedRequest owner coordinate) :
     onePacketActions runtime leaks bounds owner (execution.recall owner)
       (execution.observe (app) owner) = {⟨none⟩} := by
@@ -121,7 +126,7 @@ theorem onePacketActions_eq_singleton_of_no_request (bounds : MessageBounds grap
     | none => rfl
     | some material =>
         obtain ⟨coordinate, request⟩ := onePacket_request_of_nonsilent runtime leaks bounds plan
-          inputs horizon scheduler remaining owner execution trace clear material offered
+          inputs horizon scheduler remaining owner execution trace material offered
         exact (absent coordinate request).elim
   · intro silent
     rw [Finset.mem_singleton.mp silent]

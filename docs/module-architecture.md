@@ -2284,8 +2284,8 @@ Domain coordinates exclude accepted failure and omission. Positive flags give
 full support on every source menu, including reveal withholding, and the full
 trembled source plan has the entire original source runner law. The native
 posterior adapter keeps the actual entire remaining domain table and extra
-memory under an actual-response non-reading premise. The no-new-miss coordinate
-sharing and its native realization remain separate obligations.
+memory under an actual-response non-reading premise. These domain-table APIs
+alone do not supply no-new-miss sharing or its native realization.
 
 Shared occurrence flags:
 [initialized flag/domain law](../Vegas/Game/CommitRecoveryFlagPlan.lean),
@@ -2299,6 +2299,18 @@ reads that same initialized prior at the combined erased/no-new-miss query.
 Genuine query membership and preserved logical clocks derive the current/whole
 original record product, posterior and entire original source runner law.
 
+[Actual flag decoding](../Vegas/Game/CommitRecoveryFlagDecoding.lean) and
+[whole failed-attempt coupling](../Vegas/Game/CommitRecoveryFlagCoupling.lean)
+derive the full omission word from actual complete member records using the
+same initialized flags. They consume the real retry/exhausted close to give
+the selected joint terminal readout/all-player-payoff law.
+[Pooled source completion](../Vegas/Game/CommitRecoveryPooledCompletion.lean)
+instantiates the existing component completion on genuine normalized queries.
+It selects fully mixed Bayes assessments, a consistent limit and actual pooled
+conditional gain inequalities. Component affinity connects the SAME initialized
+sampler to their entire original source runners. Individual optimality and
+honest pin preservation still require the source density/incentive arguments.
+
 No-new-miss query:
 [literal attempt entry](../Vegas/Source/CommitRecoveryAttemptOrigin.lean),
 [actual replay steps](../Vegas/Source/CommitRecoveryNoMissStep.lean),
@@ -2308,7 +2320,8 @@ No-new-miss query:
 The representative is read from original full information, has a genuine
 nonterminal witness at every genuine query, commutes with erasure and preserves
 the combined key's clock. Its legal source profile consumes the existing
-paired failed-attempt law. Native query decoding and source pooling remain open.
+paired failed-attempt law. Native query decoding and individual source
+optimality remain open.
 
 Normalized local delivery:
 [counted binding service](../Vegas/Pending/PhaseCountServiceReference.lean).
@@ -2316,3 +2329,15 @@ Silence and SEND have separate local masses; uniform packet selection is
 conditional on SEND. Source omission is used only at the first activation.
 Actual surviving callbacks derive the exact emission law even after a foreign
 exclusion. Source accepted failures and the extra raw-send tier stay distinct.
+
+[Original local service tapes](../Vegas/Pending/PhaseBindingServiceTape.lean),
+[complete relative calendars](../Vegas/Pending/PhasePrivateService.lean),
+[single-event resolution](../Vegas/Pending/PhaseBindingServiceEpisode.lean),
+[the complete normalized policy](../Vegas/Game/PhaseCountServicePolicy.lean),
+[its all-address tape realization](../Vegas/Game/PhaseCountServiceTapePolicy.lean),
+and [its actual resolved episodes](../Vegas/Game/PhaseCountServiceEpisode.lean)
+retain the original event seed, all other timing tapes and complete own recall.
+Whole-policy consistency derives the local splice agreement; first-SEND
+uniqueness and resolution use the quantified complete-calendar/packet-success
+contract. Whole-phase foreign-word independence and conditional transport
+remain separate obligations.

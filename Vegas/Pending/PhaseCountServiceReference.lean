@@ -247,6 +247,65 @@ theorem bindingServiceEmissionLaw_send (clocks : List Nat) (choose : List Nat �
   split_ifs <;> simp only [mix_apply_toReal, PMF.pure_apply,
     Bool.true_eq_false, ite_true, ite_false, ENNReal.toReal_zero, ENNReal.toReal_one] <;> ring
 
+/-- Genuine counted history discharges both encoder guards. Each conditional
+encoder transmits with total mass one, separately from local timing and the
+source result, including an accepted unusable binding. -/
+theorem bindingEncoders_transmission_of_history
+    (owner : Player) (event : graph.EventId) (payload : L.Ty)
+    (values : List (app).PlayerEntry → (app).PlayerView → PMF (PublicationResult (L.Val payload)))
+    (slotWeight : ℝ) (slotNonnegative : 0 ≤ slotWeight) (slotBounded : slotWeight ≤ 1)
+    (menu : (app).ResponseMenu) (plan : RuntimePhasePlan graph) (inputs : PMF graph.Inputs)
+    (horizon : Nat) (scheduler : (app).Scheduler) (capacity : horizon ≤ bounds.candidateCount)
+    (control : (app).Control)
+    (trace : (menu.protocol (inputs.map (PhaseRuntimeState.initial plan))
+      horizon scheduler).Trace (some control)) (active : control.actor = some owner)
+    (output : graph.outputLayout event = .binding owner payload)
+    (request : control.execution.application.SeedRequest owner
+      ⟨control.execution.application.attempt, event⟩)
+    (unsent : ∀ message ∈ (app).outputs (control.execution.recall owner),
+      event? message.payload ≠ some ⟨control.execution.application.attempt, event⟩)
+    (catalogue : ∀ value : L.Val payload, (⟨payload, value⟩ : Raw L) ∈ bounds.values) :
+    (countedSendLaw runtime leaks bounds owner (control.execution.recall owner)
+      (control.execution.observe app owner)).map (fun action => action.transmission.isSome) =
+        PMF.pure true ∧
+    (bindingResultEncoder runtime leaks bounds owner event payload values slotWeight slotNonnegative
+      slotBounded (control.execution.recall owner) (control.execution.observe app owner)).map
+        (fun action => action.transmission.isSome) = PMF.pure true := by
+  classical
+  let past := control.execution.recall owner
+  let view := control.execution.observe (app) owner
+  let results := values
+  have slots := phaseBindingSlots_nonempty_of_history runtime leaks bounds menu plan inputs
+    horizon scheduler capacity control trace owner active event payload output request unsent
+      catalogue
+  have rawNonempty : (countedSends runtime leaks bounds owner past view).Nonempty := by
+    obtain ⟨serial, eligible⟩ := slots
+    refine ⟨phaseBindingResponse runtime leaks owner event payload .failure serial, ?_⟩
+    exact Finset.mem_filter.mpr ⟨(Finset.mem_filter.mp eligible).2.2 .failure, by rfl⟩
+  have rawLaw := countedSendLaw_transmission runtime leaks bounds owner past view rawNonempty
+  have slotLaw : (phaseBindingSlotPolicy runtime leaks bounds owner event payload results
+      past view).map (fun response => response.transmission.isSome) = PMF.pure true := by
+    rw [phaseBindingSlotPolicy, dite_eq_left slots, PMF.map_bind]
+    have each (serial : Nat) :
+        ((results past view).map (phaseBindingResponse runtime leaks owner event payload
+          · serial)).map (fun response => response.transmission.isSome) = PMF.pure true := by
+      rw [PMF.map_comp]
+      exact PMF.map_const _ _
+    simp only [each, PMF.bind_const]
+  obtain ⟨serial, _bounded, canonical, _meaning⟩ := phaseBindingPolicy_of_history runtime leaks
+    bounds owner event payload output results menu plan inputs horizon scheduler capacity control
+      trace active request unsent catalogue
+  have canonicalLaw : (phaseBindingPolicy runtime leaks bounds owner event payload results
+      past view).map (fun response => response.transmission.isSome) = PMF.pure true := by
+    rw [canonical, PMF.map_comp]
+    exact PMF.map_const _ _
+  have encoder : (bindingResultEncoder runtime leaks bounds owner event payload values slotWeight
+      slotNonnegative slotBounded past view).map
+        (fun response => response.transmission.isSome) = PMF.pure true := by
+    rw [bindingResultEncoder, mix_map]
+    rw [slotLaw, canonicalLaw, mix_self]
+  exact ⟨rawLaw, encoder⟩
+
 /-- Actual history proves both encoder guards inactive. The projected law
 does not depend on the chosen typed-result law or on any slot/menu cardinality. -/
 theorem bindingServiceReference_transmission_of_history
@@ -281,40 +340,9 @@ theorem bindingServiceReference_transmission_of_history
             (control.execution.observe (app) owner))
         choose failure timing firstNonnegative firstBounded timingNonnegative timingBounded
           rawWeight rawNonnegative rawBounded := by
-  classical
-  let past := control.execution.recall owner
-  let view := control.execution.observe (app) owner
-  let results := values
-  have slots := phaseBindingSlots_nonempty_of_history runtime leaks bounds menu plan inputs
-    horizon scheduler capacity control trace owner active event payload output request unsent
-      catalogue
-  have rawNonempty : (countedSends runtime leaks bounds owner past view).Nonempty := by
-    obtain ⟨serial, eligible⟩ := slots
-    refine ⟨phaseBindingResponse runtime leaks owner event payload .failure serial, ?_⟩
-    exact Finset.mem_filter.mpr ⟨(Finset.mem_filter.mp eligible).2.2 .failure, by rfl⟩
-  have rawLaw := countedSendLaw_transmission runtime leaks bounds owner past view rawNonempty
-  have slotLaw : (phaseBindingSlotPolicy runtime leaks bounds owner event payload results
-      past view).map (fun response => response.transmission.isSome) = PMF.pure true := by
-    rw [phaseBindingSlotPolicy, dite_eq_left slots, PMF.map_bind]
-    have each (serial : Nat) :
-        ((results past view).map (phaseBindingResponse runtime leaks owner event payload
-          · serial)).map (fun response => response.transmission.isSome) = PMF.pure true := by
-      rw [PMF.map_comp]
-      exact PMF.map_const _ _
-    simp only [each, PMF.bind_const]
-  obtain ⟨serial, _bounded, canonical, _meaning⟩ := phaseBindingPolicy_of_history runtime leaks
-    bounds owner event payload output results menu plan inputs horizon scheduler capacity control
-      trace active request unsent catalogue
-  have canonicalLaw : (phaseBindingPolicy runtime leaks bounds owner event payload results
-      past view).map (fun response => response.transmission.isSome) = PMF.pure true := by
-    rw [canonical, PMF.map_comp]
-    exact PMF.map_const _ _
-  have encoder : (bindingResultEncoder runtime leaks bounds owner event payload values slotWeight
-      slotNonnegative slotBounded past view).map
-        (fun response => response.transmission.isSome) = PMF.pure true := by
-    rw [bindingResultEncoder, mix_map]
-    rw [slotLaw, canonicalLaw, mix_self]
-  dsimp only [past, view] at rawLaw encoder
+  obtain ⟨rawLaw, encoder⟩ := bindingEncoders_transmission_of_history runtime leaks bounds
+    owner event payload values slotWeight slotNonnegative slotBounded menu plan inputs horizon
+      scheduler capacity control trace active output request unsent catalogue
   unfold bindingServiceReference bindingServiceBase bindingServiceEmissionLaw
   dsimp only
   split_ifs <;> rw [mix_map, rawLaw, mix_map, encoder, PMF.pure_map] <;> rfl

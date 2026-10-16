@@ -32,7 +32,6 @@ private theorem sourceStrategy_eq_of_no_request (remaining : Nat) (who : Player)
     (execution : (app).Execution)
     (trace : ((menu).protocol (start) horizon scheduler).Trace
       (some ⟨remaining, some who, execution⟩))
-    (clear : execution.application.current.excluded = ∅)
     (absent : ∀ coordinate, ¬ execution.application.SeedRequest who coordinate)
     (first second : setup.commitRecoveryModel.BehavioralAssessment) :
     let input := some (execution.recall who, execution.observe app who)
@@ -48,7 +47,7 @@ private theorem sourceStrategy_eq_of_no_request (remaining : Nat) (who : Player)
     exact trace
   have singleton := PhaseCount.onePacketActions_eq_singleton_of_no_request runtime leaks bounds
     plan (setup.initialLaw.map encodeInputs) horizon scheduler remaining who execution physical
-      clear absent
+      absent
   have silent (assessment : setup.commitRecoveryModel.BehavioralAssessment) :
       phaseSourcePolicy setup mode runtime leaks bounds wellFormed assessment who
         (execution.recall who) (execution.observe app who) = PMF.pure ⟨none⟩ := by
@@ -118,7 +117,7 @@ theorem phaseSourceStrategy_converges_of_clear_history
   · rcases control with ⟨remaining, actor, execution⟩
     cases acting
     have same (n : Nat) := sourceStrategy_eq_of_no_request setup mode runtime leaks bounds
-      wellFormed plan horizon scheduler remaining who execution trace clear
+      wellFormed plan horizon scheduler remaining who execution trace
         (fun coordinate present => requested ⟨coordinate, present⟩) (sourceSequence n) sourceLimit
     simpa only [input, same] using pmfConvergesPointwise_const
       (phaseSourceStrategy setup mode runtime leaks bounds wellFormed sourceLimit

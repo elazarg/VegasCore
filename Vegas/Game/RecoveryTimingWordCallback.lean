@@ -154,7 +154,7 @@ theorem RecoverySourceCheckpoint.timing_word_anchored_policy_at_callback
         (some ⟨control.remaining, some owner, control.execution⟩) := sameControl ▸ trace
     have singleton := PhaseCount.onePacketActions_eq_singleton_of_no_unsent runtime leaks bounds
       runtimePlan (serviceGraph_revealRelaxedOrdered setup mode) inputs horizon scheduler
-        control.remaining owner control.execution activeTrace clearCurrent usable
+        control.remaining owner control.execution activeTrace usable
     have own : flat.policy (control.execution.recall owner)
         (control.execution.observe (app) owner) = PMF.pure ⟨none⟩ := by
       apply pmf_eq_pure_of_support_subset_singleton

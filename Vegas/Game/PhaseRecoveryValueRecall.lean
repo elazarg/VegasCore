@@ -198,7 +198,7 @@ theorem phaseTimingPlanPolicy_source_coordinate_unread
         cases owned
   · have singleton := PhaseCount.onePacketActions_eq_singleton_of_no_request runtime leaks bounds
       runtimePlan inputs horizon scheduler before.remaining who before.execution beforeTrace
-        previousClear (fun coordinate present => requested ⟨coordinate, present⟩)
+        (fun coordinate present => requested ⟨coordinate, present⟩)
     have forced (source : setup.commitRecoveryModel.BehavioralAssessment) :
         phaseTimingPlanPolicy setup mode runtime leaks bounds initial horizon scheduler bound
             fallback wellFormed source noise noiseNonnegative noiseBounded slotWeight

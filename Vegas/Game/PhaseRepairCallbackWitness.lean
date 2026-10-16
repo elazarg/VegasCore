@@ -176,7 +176,7 @@ theorem phase_repair_callback_pair (covered : bounds.CoversOutputValues)
                 values event payload (Or.inr outputEq), finalRequest, rfl, rfl, key⟩
   | some material =>
       obtain ⟨coordinate, request⟩ := PhaseCount.onePacket_request_of_nonsilent runtime leaks
-        bounds plan inputs horizon scheduler remaining who original leftTrace frame.clearOriginal
+        bounds plan inputs horizon scheduler remaining who original leftTrace
           material member
       have named := PhaseCount.onePacket_event_of_request runtime leaks bounds plan
         (serviceGraph_revealRelaxedOrdered setup mode) inputs horizon scheduler remaining who

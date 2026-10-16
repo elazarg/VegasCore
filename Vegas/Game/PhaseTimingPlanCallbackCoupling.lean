@@ -142,7 +142,7 @@ theorem phase_timing_plan_word_callback_coupling
   have cases := BindingShadow.callback_binding_or_silent runtime leaks bounds plan
     (serviceGraph_revealRelaxedOrdered setup mode) inputs horizon scheduler left.remaining
       right.remaining owner left.execution right.execution activeLeft activeRight memory
-        application network clear phase remaining installed committing
+        application network phase remaining installed committing
   rcases cases with ⟨leftSilent, rightSilent⟩ |
       ⟨event, payload, binding, eventLower, eventUpper, request, unsent⟩
   · let firstPolicy := phaseTimingWordPlanPolicy setup mode runtime leaks bounds initial horizon

@@ -733,3 +733,8 @@ import Vegas.Pending.PhaseArchivedBindingInputOrigin
 import Vegas.Pending.PhaseArchivedRecordedBindingMeaning
 import Vegas.Pending.PhaseCompletedBindingMeaning
 import Vegas.Pending.PhaseCountServiceReference
+import Vegas.Pending.PhaseBindingServiceTape
+import Vegas.Pending.PhaseBindingServiceTapeHistory
+import Vegas.Pending.PhasePrivateService
+import Vegas.Pending.PhaseBindingServiceTapeOrder
+import Vegas.Pending.PhaseBindingServiceEpisode

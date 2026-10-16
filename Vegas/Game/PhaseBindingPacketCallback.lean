@@ -139,7 +139,7 @@ theorem phase_binding_packet_callback (horizon : Nat) (scheduler : (P).Scheduler
   cases acting
   obtain ⟨coordinate, request⟩ :=
     PhaseCount.onePacket_request_of_nonsilent runtime leaks bounds plan
-    inputs horizon scheduler remaining owner physical beforeNested beforeClear material sentMember
+    inputs horizon scheduler remaining owner physical beforeNested material sentMember
   have addressed := PhaseCount.onePacket_event_of_request runtime leaks bounds plan ordered inputs
     horizon scheduler remaining owner physical beforeNested coordinate request material sentMember
   have sameEvent : coordinate.event = event :=

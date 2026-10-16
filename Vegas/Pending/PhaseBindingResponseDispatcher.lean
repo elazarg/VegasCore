@@ -105,7 +105,7 @@ theorem response_records (frame : Frame runtime leaks memory owner original repa
             simp only [responseImage, ↓reduceIte]⟩
     | some material =>
         obtain ⟨coordinate, request⟩ := PhaseCount.onePacket_request_of_nonsilent runtime leaks
-          bounds plan inputs horizon scheduler remaining owner original left frame.clearOriginal
+          bounds plan inputs horizon scheduler remaining owner original left
             material member
         have named := PhaseCount.onePacket_event_of_request runtime leaks bounds plan ordered inputs
           horizon scheduler remaining owner original left coordinate request material member

@@ -438,7 +438,6 @@ private theorem binding_request_of_commitment
     (remaining : Nat) (who : Player) (physical : (app).Execution)
     (trace : ((menu).protocol initial horizon scheduler).Trace
       (some ⟨remaining, some who, physical⟩))
-    (clear : physical.application.current.excluded = ∅)
     (material : WitnessedSubmission (serviceGraph setup mode))
     (event : (serviceGraph setup mode).EventId) (candidate : Handle (serviceGraph setup mode))
     (named : material.call.packet = .commitment event candidate)
@@ -451,7 +450,7 @@ private theorem binding_request_of_commitment
   subst initial
   let initial := (setup.initialLaw.map encodeInputs).map (PhaseRuntimeState.initial runtimePlan)
   obtain ⟨coordinate, requested⟩ := PhaseCount.onePacket_request_of_nonsilent runtime leaks bounds
-    runtimePlan inputs horizon scheduler remaining who physical trace clear material member
+    runtimePlan inputs horizon scheduler remaining who physical trace material member
   have namedEvent := PhaseCount.onePacket_event_of_request runtime leaks bounds runtimePlan
     (serviceGraph_revealRelaxedOrdered setup mode) inputs horizon scheduler remaining who physical
       trace coordinate requested material member
@@ -547,7 +546,6 @@ private theorem binding_record_callback
     simpa only [PhaseCount.onePacketMenu, material, actionEq, ← pastEq] using allowed
   obtain ⟨payload, binding, request, unsent⟩ := binding_request_of_commitment setup mode runtime
     leaks bounds runtimePlan initial initialLaw horizon scheduler remaining who physical prior
-      currentClear
       material event (who, .prepared serial) rfl member
   exact ⟨before, sent, after, remaining, physical, prior, event, serial, preparation, evidence,
     payload, tailSplit, recordEq, pastEq, viewed, currentClear, binding, request, unsent, actionEq⟩

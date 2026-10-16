@@ -168,7 +168,7 @@ theorem phaseInertResponsePair.record_eq (strategy : ∀ player, (N).BehavioralP
       exact trace
     rcases inert with absent | ⟨coordinate, request, sent⟩
     · exact PhaseCount.onePacketActions_eq_singleton_of_no_request runtime leaks bounds plan inputs
-        horizon scheduler control.remaining who control.execution typed clear absent
+        horizon scheduler control.remaining who control.execution typed absent
     · exact PhaseCount.onePacketActions_eq_singleton_of_sent runtime leaks bounds plan
         (serviceGraph_revealRelaxedOrdered setup mode) inputs horizon scheduler control.remaining
           who control.execution typed coordinate request sent

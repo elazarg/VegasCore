@@ -94,7 +94,9 @@ def phaseCommitWordPolicy {Γ Δ : SourceCtx Player L} {O P : Finset VarId}
     (block : SourceProgram.CommitPrefix Γ O Δ P) (low generation : Nat)
     (slotWeight : ℝ) (slotNonnegative : 0 ≤ slotWeight) (slotBounded : slotWeight ≤ 1)
     (who : Player) (word : DecisionView who Δ) : (phaseApplication runtime leaks).Policy :=
-  phasePolicyDispatch setup mode runtime leaks bounds
+  phasePolicyDispatch setup mode runtime leaks (fun owner event payload binding =>
+      PhaseCount.phaseOpeningPolicy runtime leaks bounds owner event payload binding (fun _ _ =>
+      PMF.pure true))
     (commitWordBinding setup mode runtime leaks bounds wellFormed assessment block low generation
       slotWeight slotNonnegative slotBounded who word) who
 
@@ -112,7 +114,11 @@ theorem phaseCommitWordPolicy_covered {Γ Δ : SourceCtx Player L} {O P : Finset
       assessment block low generation slotWeight slotNonnegative slotBounded who word past
         view).support) :
     response ∈ PhaseCount.onePacketActions runtime leaks bounds who past view :=
-  phasePolicyDispatch_covered setup mode runtime leaks bounds _
+  phasePolicyDispatch_covered (opened := (fun owner event payload binding past view response
+      supported => PhaseCount.phaseOpeningPolicy_covered runtime leaks bounds owner event payload
+      binding (fun _ _ => PMF.pure true) past view response supported)) setup mode runtime leaks
+      bounds (fun owner event payload binding => PhaseCount.phaseOpeningPolicy runtime leaks
+      bounds owner event payload binding (fun _ _ => PMF.pure true)) _
     (commitWordBinding_covered setup mode runtime leaks bounds wellFormed assessment block low
       generation slotWeight slotNonnegative slotBounded who word) who past view response supported
 
@@ -146,7 +152,9 @@ theorem phaseCommitWordPolicy_binding {Γ Δ : SourceCtx Player L} {O P : Finset
           (CommitRecoveryMove.lift (block.wordAction who (event.val - low) ownWord))).1)
         word (execution.recall who) (execution.observe (phaseApplication runtime leaks) who) := by
   classical
-  rw [phaseCommitWordPolicy, phasePolicyDispatch_binding setup mode runtime leaks bounds _
+  rw [phaseCommitWordPolicy, phasePolicyDispatch_binding setup mode runtime leaks (fun owner event
+      payload binding => PhaseCount.phaseOpeningPolicy runtime leaks bounds owner event payload
+      binding (fun _ _ => PMF.pure true)) _
     execution valid who event payload binding request]
   unfold commitWordBinding
   simp only [dite_true, cast_eq,
@@ -179,7 +187,9 @@ theorem phaseCommitWordPolicy_apply_eq_of_support
         generation slotWeight slotNonnegative slotBounded who second past view response := by
   classical
   unfold phaseCommitWordPolicy at left right ⊢
-  apply phasePolicyDispatch_apply_eq_of_support setup mode runtime leaks bounds _ _ who past view
+  apply phasePolicyDispatch_apply_eq_of_support setup mode runtime leaks (fun owner event payload
+      binding => PhaseCount.phaseOpeningPolicy runtime leaks bounds owner event payload binding
+      (fun _ _ => PMF.pure true)) _ _ who past view
     response ?_ left right
   intro owner event payload binding left right
   unfold commitWordBinding at left right ⊢
@@ -255,7 +265,9 @@ theorem phaseCommitWordPolicy_cases
           word past view := by
   classical
   obtain constant | ⟨event, payload, binding, selected⟩ :=
-    phasePolicyDispatch_indexed_cases setup mode runtime leaks bounds
+    phasePolicyDispatch_indexed_cases setup mode runtime leaks (fun owner event payload binding =>
+        PhaseCount.phaseOpeningPolicy runtime leaks bounds owner event payload binding (fun _ _ =>
+        PMF.pure true))
       (fun word => commitWordBinding setup mode runtime leaks bounds wellFormed assessment block low
         generation slotWeight slotNonnegative slotBounded who word) who past view
   · exact Or.inl constant

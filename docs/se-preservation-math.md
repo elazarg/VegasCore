@@ -1426,6 +1426,28 @@ posterior. The original game's perfect recall is used; no recursively defined
 normalized signal model or entry refresh is introduced. No equality with the
 independent full-choice private-table joint is asserted.
 
+`Vegas.SourceProgram.Setup.exists_consistent_commitRecovery_normalized_pool`
+selects shared query weights using the existing component completion. Its
+actual source assessments are fully mixed and Bayes consistent, converge to
+a consistent limit, and satisfy the summed actual conditional gain bounds.
+The SAME initialized normalized flag sampler realizes their complete source
+runners. Query-level optional pins are prescribed coherently; proving the
+required honest pins and each member's individual source optimality is still
+separate from this pooled existence theorem.
+The owning completion sums conditional member gains. After the same ancillary
+and reset identities, its domain comparison has coefficient
+pi_K*sum_I lambda_I, rather than the ex-ante coefficient
+pi_K*sum_I r_I*lambda_I above. Both are nonnegative and vanish only when all
+positive-reach ordinary members have zero success coefficient. Exact
+cancellation therefore gives the same individual conditional bound; no new
+fixed-point machinery is needed for the different normalization.
+`Vegas.SourceProgram.Setup.commitRecoveryNormalizedFlagPolicy_failed_attempt_terminal_joint_eq`
+derives the whole omission word from actual complete pure-member records and
+the SAME sampled flags before consuming the genuine failed-attempt close.
+It proves the joint terminal readout/all-player-payoff equality through retry
+and exhausted restore without assuming equal omission words. The owner-world
+substitution needed for ancillary Bayes cancellation remains open.
+
 The existing broad post-exclusion native completion is not the pinned
 construction above:
 a focal expiry can change another owner's still-pending old-phase value
@@ -1439,9 +1461,10 @@ The formal accepted-failure tier requires the enlarged pooled construction
 and WHOLE-owner relative repair above. Conditioning merely on no omission,
 or using the continuing menu, is insufficient. Its beta_n must stay distinct
 from native zeta_n^3. The full source minimum rho_n includes beta_n and
-cannot replace gamma_n in the source repair bound. The enlarged construction,
-its owner-density cancellation, native chronological readback and the
-whole-phase service induction still require checked Lean realizations.
+cannot replace gamma_n in the source repair bound. Individual rationality of
+the enlarged source construction, owner-density cancellation, native
+chronological readback and the whole-phase service induction still require
+checked Lean realizations.
 
 The safe-value induction also requires a formal guard-viability adapter at
 every non-doomed recovery view it uses. Mere domain-menu nonemptiness, or

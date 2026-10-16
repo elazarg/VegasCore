@@ -1,3 +1,14 @@
+import Vegas.Pending.PhaseBindingServiceTape
+import Vegas.Pending.PhaseBindingServiceTapeHistory
+import Vegas.Pending.PhasePrivateService
+import Vegas.Pending.PhaseBindingServiceTapeOrder
+import Vegas.Pending.PhaseBindingServiceEpisode
+import Vegas.Game.PhaseCountServicePolicy
+import Vegas.Game.PhaseCountServiceTapePolicy
+import Vegas.Game.PhaseCountServiceEpisode
+import Vegas.Game.CommitRecoveryFlagDecoding
+import Vegas.Game.CommitRecoveryFlagCoupling
+import Vegas.Game.CommitRecoveryPooledCompletion
 import Vegas.Game.RecoveryNonLateComparisons
 import Vegas.Game.RecoveryPooledMemberGains
 import Vegas.Game.OnePacketCommitDecisionFailure
@@ -14418,3 +14429,346 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms
   Vegas.SourceProgram.Setup.commitRecoveryNormalizedFlagPlan_run
+
+open Vegas.EventGraphRuntime.PhaseCount in
+/-- info:
+'Vegas.EventGraphRuntime.PhaseCount.bindingEncoders_transmission_of_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms bindingEncoders_transmission_of_history
+
+open Vegas.EventGraphRuntime.PhaseCount in
+/-- info:
+'Vegas.EventGraphRuntime.PhaseCount.bindingServiceCoinResponse_average'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms bindingServiceCoinResponse_average
+
+open Vegas.EventGraphRuntime.PhaseCount in
+/-- info:
+'Vegas.EventGraphRuntime.PhaseCount.bindingServiceOrdinal_lt'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms bindingServiceOrdinal_lt
+
+open Vegas.EventGraphRuntime.PhaseCount in
+/-- info:
+'Vegas.EventGraphRuntime.PhaseCount.bindingServiceTapeMember_posterior'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms bindingServiceTapeMember_posterior
+
+open Vegas.EventGraphRuntime.PhaseCount in
+/-- info:
+'Vegas.EventGraphRuntime.PhaseCount.bindingServiceTapeMember_realization'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms bindingServiceTapeMember_realization
+
+open Vegas.EventGraphRuntime.PhaseCount in
+/-- info:
+'Vegas.EventGraphRuntime.PhaseCount.bindingServiceCoinResponse_transmission_of_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms bindingServiceCoinResponse_transmission_of_history
+
+open Vegas.EventGraphRuntime.PhaseCount in
+/-- info:
+'Vegas.EventGraphRuntime.PhaseCount.bindingServiceOrdinal_lt_horizon'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms bindingServiceOrdinal_lt_horizon
+
+open Vegas.EventGraphRuntime.PhaseCount in
+/-- info:
+'Vegas.EventGraphRuntime.PhaseCount.bindingServiceTapeMember_transmission_of_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms bindingServiceTapeMember_transmission_of_history
+
+open Vegas.EventGraphRuntime.PhaseCount in
+/-- info:
+'Vegas.EventGraphRuntime.PhaseCount.bindingServiceTapeMember_recorded_wait'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms bindingServiceTapeMember_recorded_wait
+
+open Vegas.EventGraphRuntime.PhaseCount in
+/-- info:
+'Vegas.EventGraphRuntime.PhaseCount.bindingServiceTapeMember_wait_before_unsent'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms bindingServiceTapeMember_wait_before_unsent
+
+open Vegas.EventGraphRuntime.PhaseCount in
+/-- info:
+'Vegas.EventGraphRuntime.PhaseCount.bindingServiceTapeMember_send_decision'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms bindingServiceTapeMember_send_decision
+
+open Vegas.EventGraphRuntime.PhaseCount in
+/-- info:
+'Vegas.EventGraphRuntime.PhaseCount.bindingServiceTapeMember_send_index_eq'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms bindingServiceTapeMember_send_index_eq
+
+open Vegas.EventGraphRuntime.PhaseCount in
+/-- info:
+'Vegas.EventGraphRuntime.PhaseCount.bindingServiceTapeMember_silent_of_resolved_unsent'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms bindingServiceTapeMember_silent_of_resolved_unsent
+
+open Vegas.EventGraphRuntime.PhaseCount in
+/-- info:
+'Vegas.EventGraphRuntime.PhaseCount.bindingServiceTapeMember_emission_origin'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms bindingServiceTapeMember_emission_origin
+
+open Vegas.EventGraphRuntime.PhaseCount in
+/-- info:
+'Vegas.EventGraphRuntime.PhaseCount.bindingServiceTapeMember_accepted_iff_of_resolved'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms bindingServiceTapeMember_accepted_iff_of_resolved
+
+open Vegas.EventGraphRuntime.PhaseCount in
+/-- info:
+'Vegas.EventGraphRuntime.PhaseCount.onePacket_request_of_nonsilent'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms onePacket_request_of_nonsilent
+
+open Vegas.EventGraphRuntime.PhaseService in
+/-- info:
+'Vegas.EventGraphRuntime.PhaseService.bindingEmissionClocks_eq_nil_of_unsent'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms bindingEmissionClocks_eq_nil_of_unsent
+
+open Vegas.EventGraphRuntime.PhaseService.PrivateActivationCalendar in
+/-- info:
+'Vegas.EventGraphRuntime.PhaseService.PrivateActivationCalendar.unsentPrivacy'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms unsentPrivacy
+
+open Vegas.EventGraphRuntime.PhaseService.PrivateBindingSuccess in
+/-- info:
+'Vegas.EventGraphRuntime.PhaseService.PrivateBindingSuccess.accepted_iff_of_emission_clock'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms accepted_iff_of_emission_clock
+
+open Vegas.EventGraphRuntime.PhaseService.PrivateActivationCalendar in
+/-- info:
+'Vegas.EventGraphRuntime.PhaseService.PrivateActivationCalendar.accepted_iff_of_callbacks'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms accepted_iff_of_callbacks
+
+open Vegas.EventGraphRuntime.PhaseService in
+/-- info:
+'Vegas.EventGraphRuntime.PhaseService.bindingServiceReference_transmission_eq'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms bindingServiceReference_transmission_eq
+
+open Vegas in
+/-- info:
+'Vegas.phasePolicyDispatch_covered'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms phasePolicyDispatch_covered
+
+open Vegas in
+/-- info:
+'Vegas.phasePolicyDispatch_binding'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms phasePolicyDispatch_binding
+
+open Vegas in
+/-- info:
+'Vegas.phasePolicyDispatch_opening'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms phasePolicyDispatch_opening
+
+open Vegas in
+/-- info:
+'Vegas.phasePolicyDispatch_apply_eq_of_support'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms phasePolicyDispatch_apply_eq_of_support
+
+open Vegas in
+/-- info:
+'Vegas.phasePolicyDispatch_indexed_cases'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms phasePolicyDispatch_indexed_cases
+
+open Vegas in
+/-- info:
+'Vegas.phaseCountServicePolicy_covered'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms phaseCountServicePolicy_covered
+
+open Vegas in
+/-- info:
+'Vegas.phaseCountServicePolicy_binding'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms phaseCountServicePolicy_binding
+
+open Vegas in
+/-- info:
+'Vegas.phaseCountServicePolicy_opening'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms phaseCountServicePolicy_opening
+
+open Vegas in
+/-- info:
+'Vegas.phaseCountServicePolicy_binding_tape_realization'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms phaseCountServicePolicy_binding_tape_realization
+
+open Vegas in
+/-- info:
+'Vegas.phaseCountServicePolicy_transmission_of_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms phaseCountServicePolicy_transmission_of_history
+
+open Vegas in
+/-- info:
+'Vegas.phaseCountServiceTapePolicy_covered'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms phaseCountServiceTapePolicy_covered
+
+open Vegas in
+/-- info:
+'Vegas.phaseCountServiceTapePolicy_binding'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms phaseCountServiceTapePolicy_binding
+
+open Vegas in
+/-- info:
+'Vegas.phaseCountServiceTapePolicy_local_member'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms phaseCountServiceTapePolicy_local_member
+
+open Vegas in
+/-- info:
+'Vegas.phaseCountServiceTapePolicy_local_consistent'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms phaseCountServiceTapePolicy_local_consistent
+
+open Vegas in
+/-- info:
+'Vegas.phaseCountServiceTapePolicy_accepted_iff_of_resolved'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms phaseCountServiceTapePolicy_accepted_iff_of_resolved
+
+open Vegas.SourceProgram.Setup in
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryValueFlags_binding_spec'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms commitRecoveryValueFlags_binding_spec
+
+open Vegas.SourceProgram.Setup in
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryNormalizedFlagPolicy_binding_spec'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms commitRecoveryNormalizedFlagPolicy_binding_spec
+
+open Vegas.SourceProgram.Setup in
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryNormalizedFlagPolicy_binding_congr'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms commitRecoveryNormalizedFlagPolicy_binding_congr
+
+open Vegas.SourceProgram.Setup in
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryNormalizedFlagPolicy_joint_missed_eq'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms commitRecoveryNormalizedFlagPolicy_joint_missed_eq
+
+open Vegas.SourceProgram.Setup in
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryNormalizedFlagPolicy_raw_public_congr'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms commitRecoveryNormalizedFlagPolicy_raw_public_congr
+
+open Vegas.SourceProgram.Setup in
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryNormalizedFlagPolicy_omissionRecall_eq'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms commitRecoveryNormalizedFlagPolicy_omissionRecall_eq
+
+open Vegas.SourceProgram.Setup in
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryNormalizedFlagPolicy_failed_attempt_erased_eq'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms commitRecoveryNormalizedFlagPolicy_failed_attempt_erased_eq
+
+open Vegas.SourceProgram.Setup in
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryNormalizedFlagPolicy_failed_attempt_terminal_joint_eq'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms commitRecoveryNormalizedFlagPolicy_failed_attempt_terminal_joint_eq
+
+open Vegas.SourceProgram.Setup in
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryValueReference_fullSupport'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms commitRecoveryValueReference_fullSupport
+
+open Vegas.SourceProgram.Setup in
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryPooledDomainLaw_fullSupport'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms commitRecoveryPooledDomainLaw_fullSupport
+
+open Vegas.SourceProgram.Setup in
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryPoolComponent_fullSupport'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms commitRecoveryPoolComponent_fullSupport
+
+open Vegas.SourceProgram.Setup in
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryPoolComponent_bind'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms commitRecoveryPoolComponent_bind
+
+open Vegas.SourceProgram.Setup in
+/-- info:
+'Vegas.SourceProgram.Setup.exists_consistent_commitRecovery_normalized_pool'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms exists_consistent_commitRecovery_normalized_pool

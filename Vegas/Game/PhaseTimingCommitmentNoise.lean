@@ -117,7 +117,7 @@ theorem phaseTimingComponent_commitment_silence_noise
       sameControl ▸ counted
     have singleton := PhaseCount.onePacketActions_eq_singleton_of_no_unsent runtime leaks bounds
       plan (serviceGraph_revealRelaxedOrdered setup mode) inputs horizon scheduler current.remaining
-        agent.1 current.execution activeTrace clear usable
+        agent.1 current.execution activeTrace usable
     have valueEq (choice : (N).Choice agent.1 agent.2.1) : choice.1 = some ⟨none⟩ := by
       let raw : Option (app).Action := choice.1
       have legal : raw ∈ (N).menu agent.1 agent.2.1 := choice.2

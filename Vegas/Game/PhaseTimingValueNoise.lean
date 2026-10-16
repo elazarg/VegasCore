@@ -255,7 +255,7 @@ theorem phaseTimingComponent_value_commitment_silence_lower
       sameControl ▸ counted
     have singleton := PhaseCount.onePacketActions_eq_singleton_of_no_unsent runtime leaks bounds
       plan (serviceGraph_revealRelaxedOrdered setup mode) inputs horizon scheduler current.remaining
-        who current.execution activeTrace clear usable
+        who current.execution activeTrace usable
     have valueEq (choice : (N).Choice who agent.2.1) : choice.1 = some ⟨none⟩ := by
       obtain ⟨action, offered, equal⟩ := choice.2
       change action ∈ PhaseCount.onePacketActions runtime leaks bounds who

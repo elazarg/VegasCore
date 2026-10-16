@@ -1150,3 +1150,9 @@ import Vegas.Game.CommitRecoveryNoMissContinuation
 import Vegas.Game.CommitRecoveryFlagPlan
 import Vegas.Game.CommitRecoveryFlagConditioning
 import Vegas.Game.CommitRecoveryNormalizedFlagPlan
+import Vegas.Game.PhaseCountServicePolicy
+import Vegas.Game.PhaseCountServiceTapePolicy
+import Vegas.Game.PhaseCountServiceEpisode
+import Vegas.Game.CommitRecoveryFlagDecoding
+import Vegas.Game.CommitRecoveryFlagCoupling
+import Vegas.Game.CommitRecoveryPooledCompletion
