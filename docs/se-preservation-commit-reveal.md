@@ -2884,11 +2884,15 @@ optimal.)
 
 - *$j$'s own binding fails.* Then $j$ gets $a_j$.
 - *Some other binding of the phase fails, while $j$'s succeeds.* The reset
-  voids $v$. The continuation is the lift of $\sigma^X$ after the reset. Its
-  value to $j$ does not depend on $v$:
-  - $v$ is never revealed and reaches no payoff;
-  - it tells $j$ nothing about the others' values, which are independent of it
-    given the public history.
+  voids $v$. Use the selected extension that shares future laws over erased
+  voided words, as constructed in the
+  [mathematical audit](se-preservation-math.md#constructing-source-play-that-ignores-voided-private-choices).
+  Couple the original inputs, public samples and public-occurrence failure
+  coins. The same foreign failure word gives the same restored state and
+  public history. Erased-word sharing then gives the same future actions
+  and reset payoff. Unrevealedness alone would not justify this step: an
+  arbitrary source equilibrium could use remembered voided values as
+  private mixing seeds after restore.
 - *No binding fails.* Every value stands, and play continues by $\sigma^H$.
   Conditional on this event, the other values of the phase are still
   distributed by $\sigma^H$, because success is independent of values by
@@ -2916,8 +2920,8 @@ be the largest remaining success probability of an own-service policy, which
 $\varphi^*$ attains. Then:
 
 - (a) every own-service policy $s$ yields $P_s\,V+(1-P_s)\,a_j$, where $V$
-  does not depend on $s$ and $V\ge m_j>a_j$. So every type ranks own-service
-  policies by $P_s$ alone;
+  does not depend on $s$ and $V\ge a_j$. So success maximization is weakly
+  optimal for every type;
 - (b) every policy yields at most $P^*V+(1-P^*)\,a_j$, the payoff of
   $\varphi^*$.
 
@@ -2932,9 +2936,10 @@ probability $\tfrac12$ and earns $\tfrac12$ or $1$, not $\tfrac12\cdot1.5$. Part
 choices for $e$: Nature, the players' private randomization (including $j$'s
 own later randomization), the other seeds and the remainder seed. At each
 stage $n$, recover from $j$'s actual information the local transcript of
-activations, own emissions and survival, including the local query replies.
+activations, own emissions and survival. Only observable local data are used;
+an internal polling reply is not assumed to be observed.
 By (S2–S3) and Bayes' rule, the conditional joint law factors into the law
-of $\xi_e$ filtered by agreement with those replies and a conditional law of
+of $\xi_e$ filtered by agreement with that transcript and a conditional law of
 $Z$. The filtered local law may depend on the information site and on $n$;
 it need not equal the original seed prior. The product form survives the
 limit. All remaining success probabilities below use this site's filtered
@@ -2950,13 +2955,11 @@ local law.
   - prescribed play within the phase ignores in-phase observations, because
     it is played at $\Pi(I)$, and after the barrier it is past-blind (P).
 
-  $G(Z)\ge m_j$ for every $Z$, for three reasons:
-  - $j$ is not privately doomed, and its prescribed continuation never fails
-    (Proposition 1(2));
-  - $\sigma^X$ may prescribe a violating value only where the binding is
-    surely voided by a reset, and the value after a reset is at least $m_j$
-    by never fail;
-  - nobody else can exclude $j$.
+  $G(Z)\ge a_j$ pointwise: exclusion gives $a_j$, and survival gives at least
+  $m_j>a_j$. This bound uses the terminal payoff definition and requires no
+  claim that future prescribed play is already optimal. The common success
+  payoff uses the same erased-word sharing and original-randomness coupling
+  as Lemma D3; operational past-blindness alone does not erase private memory.
 
   So the payoff of $s$ is $a_j+\mathbb E\bigl[(G(Z)-a_j)\,\pi_s(Z)\bigr]$,
   where $\pi_s(Z)$ is the probability that $e$ succeeds given $Z$.

@@ -693,6 +693,42 @@ point. This maximization applies to free classes; copied honest and doomed
 classes keep their specified pins and use the separate limit arguments.
 Empty R_K classes have only indifferent members.
 
+There is a useful quantitative consequence of the reset decomposition below.
+Let H_K be the conditional successful-phase vector. Ancillary cancellation
+also applies after adjoining the future original randomness omega. The
+joint weight is A_n(z,omega;q)L_j(w;q); the success event D is a function
+of the common occurrence flags, independent of w and the current domain
+value. Restricting to D therefore leaves the same cancellable L_j factor.
+Given q,z,omega and the current value, erased-word sharing makes the later
+payoff independent of w. Thus H_K is common to the ordinary members;
+equality of their unconditional payoff vectors alone would not prove this.
+Write their payoff vectors as
+`c_I + lambda_I H_K`, with lambda_I>=0, and absorb every failed attachment
+into the constant term. The pool objective is then
+
+    constant + Lambda_K (x . H_K),
+    Lambda_K = sum_{I in R_K} r_I lambda_I.
+
+If Lambda_K>0, its constrained maximizers are EXACTLY the constrained
+maximizers of x.H_K, however small Lambda_K is. For a domain menu of size d
+with a uniform lower bound gamma_n<1/d, write
+
+    x = gamma_n 1 + (1-d gamma_n) y,    y in the probability simplex.
+
+A best response puts y on maximizers of H_K. Hence the selected conditional
+domain law tau_K satisfies, for every domain value v,
+
+    H_K(v) - tau_K.H_K <= d gamma_n osc(H_K).
+
+The oscillation is bounded by the fixed terminal payoff range. This error
+tends to zero WITHOUT dividing an approximate payoff bound by Lambda_K or
+by a phase-success probability. This order is essential: an unconditional
+regret bound alone would give no conditional guarantee at a rare success
+event. If Lambda_K=0, every ordinary coefficient in this nonnegative sum is
+zero, so the entire class is action-independent; no conditional ranking is
+needed. Copied honest classes use the separately preserved honest beliefs,
+rather than this free-agent maximization.
+
 ### The original plan uses reduced occurrences as coordinates
 
 Before taking any fixed point, let I_j be the finite set of genuine source
@@ -798,7 +834,8 @@ bad binding they need not, and rationality uses the separate pointwise
 own-bad-binding argument.
 
 Here is the precise native non-reading proof. Fix a positive UNSENT input
-J with reconstructed key k, and split the original experiment into
+J of an active owner under Q_n, with reconstructed key k, and split the
+original experiment into
 (V_k,R_k) with prior tau_k x nu_k. Replacing V_k alone cannot change the
 prefix event {input=J}: earlier occurrences use different keys, any earlier
 callback at this key was WAIT with a value-independent atom, and a previous
@@ -839,7 +876,10 @@ chronological order. Respect the source signal convention: there is the
 pre-setup signal and one genuine setup transition, with no additional
 initialization transition. At a commitment block [a,b), start with the
 scanned saved exclusion set E. A matching retired record (a,g) supplies
-its completed omission mask. At each rank add the owner precisely on an
+its completed omission mask: a binding completed without an accepted result
+is missing; an already-excluded slot is automatic. This is read from the
+completed event record, independently of any later sampled audit charge.
+At each rank add the owner precisely on an
 original missed binding; an already-excluded automatic slot adds nothing.
 At nonfinal ranks the next cursor is the following rank, with generation
 g and saved rank a. At the LAST slot apply the actual close once:
@@ -871,6 +911,10 @@ The resulting key retains the owner, event and generation, the CURRENT
 typed virtual view with its history erased, and this entire PAST PUBLIC
 signal word. Current own private cells and original private inputs remain;
 they are not replaced by P. Old voided private words are never reconstructed.
+Precisely, the scan produces the complete newest-first public signal recall,
+including its current head. Form the erased information with the current
+virtual typed observation/control as head and the TAIL of that scanned
+recall as its past. This counts the current signal exactly once.
 
 To prove that the key is in K_j, replay genuine source instructions from
 the SAME supported original setup draw. Decoded ordinary moves and recorded
