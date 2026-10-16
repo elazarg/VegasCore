@@ -2737,8 +2737,8 @@ The application below uses the normalized uncharged reference law $Q_n$
 specified in the [mathematical audit](se-preservation-math.md). Exact (T0)
 is asserted after the required regularization, rather than for arbitrary
 charged continuations of the fully mixed law $P_n$. For a whole-menu RAW
-realization the order is: transfer $P_n$ to normalized $Q_n$; apply both the
-bad-binding and same-value RAW repairs inside $I\cap\Phi$; restrict to
+realization the order is: transfer $P_n$ to normalized $Q_n$; repair bad-SEND,
+same-value-SEND and same-action-WAIT RAW origins inside $I\cap\Phi$; restrict to
 $G=\{\text{no effective active-foreign RAW use},\Phi\}$; then sum the focal
 future and apply the factorization below. The cemetery-stopped variable
 makes $G$ and its foreign word nonfocal; arbitrary post-RAW words need not
@@ -2758,9 +2758,10 @@ record up to $I$ is fixed, so a projection is a pair $x=(o,e)$:
 Call an extended history **regular** if it is clean, $\Phi$ holds in it, and
 no *other* owner active at $I$ has an old or current native-only bad binding,
 including a voided one. For a whole-menu RAW realization strengthen this
-to the good domain $G$: remove ordinary typed RAW origins as well, using
-the same-value repair. Unread tier labels at sent or inert singleton-WAIT
-callbacks are integrated out and do not define bad paths.
+to the good domain $G$: remove ordinary typed RAW SEND origins by the
+same-value repair and effective RAW WAIT origins by the same-action repair.
+Unread tier labels at sent or inert singleton-WAIT callbacks are integrated
+out and do not define bad paths.
 Assume, at every stage $n$:
 
 - **(T0) The focal owner can be summed out.** The other owners' choices in
@@ -2901,9 +2902,9 @@ with a clean one in which $\Phi$ holds, which exists when $\Phi$ is possible.
 
 **Claim 2** follows by the ordered comparisons above and Lemma T on the
 retained regular reference law. In a whole-menu RAW realization this is
-the $G$ law after BOTH repairs; its focal continuation is summed only
-after restricting to $G$. The mathematical
-audit gives the normalized law, the original-prior non-reading argument,
+the $G$ law after all three RAW-origin repairs; its focal continuation is
+summed only after restricting to $G$. The mathematical audit gives the
+normalized law, the original-prior non-reading argument,
 and the common weighted operational domain. The hypotheses use the
 following construction facts.
 - **(T0).** The other owners' in-phase choices are made at native sets whose
