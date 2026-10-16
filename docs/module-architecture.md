@@ -2251,6 +2251,27 @@ records have their exact source likelihood, and conditioning those records
 retains the original per-owner posterior and the next unused source choice.
 These source laws do not assert a native/source posterior identity.
 
+Reduced occurrence coordinates:
+[source erasure and menu transport](../Vegas/Source/CommitRecoveryErasure.lean),
+[genuine no-miss replay](../Vegas/Source/CommitRecoveryNoMissInformation.lean),
+[reduced coordinate carrier](../Vegas/Source/CommitRecoveryErasedModel.lean),
+[original reduced plans and full source law](../Vegas/Game/CommitRecoveryErasedPolicyPlan.lean),
+[their conditioned entire-table split](../Vegas/Game/CommitRecoveryErasedPolicyConditioning.lean).
+The auxiliary carrier indexes random choices without changing the original
+game's information. It retains current private cells and every public signal;
+word length proves distinctness along genuine source paths. Its lifted tables
+have the actual full-information source runner law, and their record event is
+exactly the original full own-action record. Native query reconstruction and
+the pooled source equilibrium remain separate obligations.
+
+Erased continuation:
+[actual source kernels and stopped laws](../Vegas/Source/CommitRecoveryErasedContinuation.lean),
+[the concrete prescription's joint terminal payoff law](../Vegas/Game/CommitRecoveryErasedContinuation.lean).
+The summary retains live/saved semantic data and every owner's erased full
+information. Equal summaries imply equal terminal typed readout, permanent
+exclusion and payoff-vector laws. This is derived from source transitions;
+actual paired attempts must still establish summary equality after restore.
+
 Normalized local delivery:
 [counted binding service](../Vegas/Pending/PhaseCountServiceReference.lean).
 Silence and SEND have separate local masses; uniform packet selection is

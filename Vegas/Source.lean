@@ -141,3 +141,10 @@ import Vegas.Source.CommitRecoveryNonCommitObservation
 import Vegas.Source.CommitRecoveryNonCommitRecall
 import Vegas.Source.CommitRecoveryControl
 import Vegas.Source.CommitRecoverySavedProgress
+import Vegas.Source.CommitRecoveryValueMenu
+import Vegas.Source.CommitRecoveryNoMiss
+import Vegas.Source.CommitRecoveryErasure
+import Vegas.Source.CommitRecoveryNoMissInformation
+import Vegas.Source.CommitRecoveryErasedStep
+import Vegas.Source.CommitRecoveryErasedModel
+import Vegas.Source.CommitRecoveryErasedContinuation

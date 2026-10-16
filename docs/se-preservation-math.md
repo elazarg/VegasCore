@@ -1004,6 +1004,20 @@ theorem and does not identify the existing implementation as its witness.
 
 ## Boundary between this construction and the implementation
 
+The reduced-coordinate original plan and its full source history law are
+checked by `Vegas.SourceProgram.Setup.commitRecoveryErasedPolicyPlan_run`.
+`Vegas.SourceProgram.Setup.commitRecoveryErasedPolicyPosterior_split` checks
+the current-coordinate/entire-original-remainder split after genuine records;
+those records correspond to the original full-information own play. Genuine
+no-miss replay and erasure of instruction/retry/exhausted closure are also
+checked. These results do not yet construct the pooled source equilibrium or
+identify native observations with the reduced source query.
+`Vegas.SourceProgram.Setup.commitRecoveryErasedProfile_terminal_joint_eq`
+also proves the actual joint terminal typed-readout and payoff-vector law for
+the concrete erased prescription from two genuine histories with equal erased
+semantic/information summaries. That structural continuation comparison does
+not supply the paired-attempt or physical-reset relation as a premise-free fact.
+
 The existing broad post-exclusion native completion is not the pinned
 construction above:
 a focal expiry can change another owner's still-pending old-phase value

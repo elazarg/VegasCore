@@ -1,11 +1,32 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**SE: non-concurrent ✓ · live/archive meanings ✓ · retry prior/SEND law ✓ · transport/reset math drafted · concurrent Lean open.**
+**SE: non-concurrent ✓ · no-miss replay ✓ · erased prior+split ✓ · source continuation ✓ · native transport/reset/incentives open.**
 
 <details>
 <summary>Checked recovery milestones and remaining proof obligations</summary>
 
 Milestones have unequal cost; the fixed SE checklist is unchanged.
+
+The selected reduced source coordinates retain current typed private data and
+the complete public signal word. Their chronological occurrence is never
+queried twice, including across retries. One original table, lifted back to the
+full-information game, realizes its entire source runner law. Conditioning
+the original full action record leaves the current coordinate independent of
+the entire remaining table. This is a source law; native query measurability
+and native/source posterior equality remain open.
+
+No-new-miss replay constructs a genuine initialized source trace from the
+same original prefix. Source erasure preserves the full raw menu, including
+accepted failure and omission, and commutes with actual instruction steps and
+retry/exhausted closure. These results do not yet establish the selected pooled
+source equilibrium or native reset incentives.
+
+The concrete erased source prescription now has the same joint terminal
+typed-readout and payoff-vector law from genuine histories with equal erased
+semantic states and full public chronology. This follows from actual source
+steps and the original stopped runner. The paired reset construction must
+still derive that relation after different voided choices; native timing and
+belief transport are separate obligations.
 
 The original source policy now has coordinates at full recovery information,
 including every retry. Its single initial draw realizes the complete source

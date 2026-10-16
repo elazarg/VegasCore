@@ -1322,6 +1322,16 @@ import Vegas.Pending.PhaseArchivedRecordedBindingMeaning
 import Vegas.Pending.PhaseCompletedBindingMeaning
 import Vegas.Pending.PhaseCountServiceReference
 import Vegas.Game.CommitRecoveryPolicyPlan
+import Vegas.Source.CommitRecoveryValueMenu
+import Vegas.Source.CommitRecoveryNoMiss
+import Vegas.Source.CommitRecoveryErasure
+import Vegas.Source.CommitRecoveryNoMissInformation
+import Vegas.Source.CommitRecoveryErasedStep
+import Vegas.Source.CommitRecoveryErasedModel
+import Vegas.Game.CommitRecoveryErasedPolicyPlan
+import Vegas.Game.CommitRecoveryErasedPolicyConditioning
+import Vegas.Source.CommitRecoveryErasedContinuation
+import Vegas.Game.CommitRecoveryErasedContinuation
 import Vegas.Game.CommitRecoveryPolicyConditioning
 import Vegas.Game.CommitRecoveryPolicySplit
 
@@ -13912,3 +13922,171 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms
   Vegas.SourceProgram.Setup.commitRecoveryPolicyPosterior_split
+
+/-- info:
+'Vegas.SourceProgram.CommitPrefix.Attempt.withoutMisses_attempt'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.CommitPrefix.Attempt.withoutMisses_attempt
+
+/-- info:
+'Vegas.SourceProgram.CommitPrefix.Attempt.withoutMisses_surviving_view'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.CommitPrefix.Attempt.withoutMisses_surviving_view
+
+/-- info:
+'Vegas.SourceProgram.CommitPrefix.Attempt.withoutMisses_eq_of_unchanged_exclusions'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.CommitPrefix.Attempt.withoutMisses_eq_of_unchanged_exclusions
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryErasedInformation_menu'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecoveryErasedInformation_menu
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecovery_noMiss_information'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecovery_noMiss_information
+
+/-- info:
+'Vegas.SourceProgram.ProtocolState.recoveryStep_eraseHistory'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.ProtocolState.recoveryStep_eraseHistory
+
+/-- info:
+'Vegas.SourceProgram.CommitRecoveryState.eraseHistory_retry'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.CommitRecoveryState.eraseHistory_retry
+
+/-- info:
+'Vegas.SourceProgram.CommitRecoveryState.eraseHistory_exhausted'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.CommitRecoveryState.eraseHistory_exhausted
+
+/-- info:
+'Vegas.SourceProgram.CommitRecoveryState.eraseHistory_close'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.CommitRecoveryState.eraseHistory_close
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryBindingAtom_surjective'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecoveryBindingAtom_surjective
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryBindingValueLaw_fullSupport'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecoveryBindingValueLaw_fullSupport
+
+/-- info:
+'Vegas.SourceProgram.CommitPrefix.Attempt.instructions_closed_lift'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.CommitPrefix.Attempt.instructions_closed_lift
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryErasedModel_actsOnce'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecoveryErasedModel_actsOnce
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryErasedPolicyPlan_run'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecoveryErasedPolicyPlan_run
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryErasedPolicyPlan_record_readout'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecoveryErasedPolicyPlan_record_readout
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryErasedPolicyPosterior_split'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecoveryErasedPolicyPosterior_split
+
+/-- info:
+'Vegas.SourceProgram.CommitRecoveryState.step_eraseHistory'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.CommitRecoveryState.step_eraseHistory
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryErasedHistory_extend'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecoveryErasedHistory_extend
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecovery_oneStep_erased_eq'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecovery_oneStep_erased_eq
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecovery_runUntil_erased_eq'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecovery_runUntil_erased_eq
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecovery_terminal_erased_eq'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecovery_terminal_erased_eq
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecovery_terminal_readout_excluded_erased_eq'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecovery_terminal_readout_excluded_erased_eq
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryErasedProfile_terminal_readout_excluded_eq'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecoveryErasedProfile_terminal_readout_excluded_eq
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryErasedProfile_terminal_joint_eq'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecoveryErasedProfile_terminal_joint_eq

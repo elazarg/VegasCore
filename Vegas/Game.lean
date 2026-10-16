@@ -1141,3 +1141,6 @@ import Vegas.Game.PhaseRecordedBindingSourceView
 import Vegas.Game.CommitRecoveryPolicyPlan
 import Vegas.Game.CommitRecoveryPolicyConditioning
 import Vegas.Game.CommitRecoveryPolicySplit
+import Vegas.Game.CommitRecoveryErasedPolicyPlan
+import Vegas.Game.CommitRecoveryErasedPolicyConditioning
+import Vegas.Game.CommitRecoveryErasedContinuation
