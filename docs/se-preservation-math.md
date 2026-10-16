@@ -507,6 +507,43 @@ a fresh independent table prior. A later entry uses this same posterior. The
 formula is not asserted for an arbitrary replacement entry prior, and is
 not asserted after conditioning on future G or Phi, which may read this coin.
 
+The same calculation must be made for the FULL native information fiber,
+rather than only the implementation's private memory. Here is that step
+explicitly. Fix a positive decision information value I that determines the
+next address/ordinal coordinate c. Mask just that coordinate in the ORIGINAL
+per-owner table vector. Let R contain this masked vector together with all
+other original primitive randomness, including source plans, setup and
+service seeds. The original prior splits as mu_c(dx) nu_c(dR); mu_c is fixed
+by c and the stage parameters. Derived entry tags may be retained as
+functions of R, once prefix-unreadness below has shown that they do not read
+c. They are not additional independent primitive draws. Any randomness not
+predrawn can equivalently remain in the original runner kernel.
+
+For each possible observation time t, and each actual prefix ending at I,
+the coordinate c has not been read. Replay with only its value changed:
+earlier callbacks at this address used smaller ordinals, other addresses
+used other coordinates, and inert callbacks ignored it. Hence the entire
+prefix and its observation at time t are unchanged. This also preserves
+which prefixes belong to I; it is stronger than agreement of their final
+private-memory records. Summing their original runner likelihoods and the
+original observation-time weights gives a nonnegative function ell_I(R)
+independent of x. Therefore, with Z_I>0,
+
+    Law(T_c=x, R in dR | I)
+      = mu_c(x) nu_c(dR) ell_I(R) / Z_I,
+    Z_I = integral ell_I(R) nu_c(dR).
+
+Observation-time weights here are those defining the original assessment;
+one may use a uniform independent time on its fixed finite horizon, whose
+common factor cancels. No prefix is reweighted after observing its input.
+The deterministic mask and reinsertion recover the SAME original table
+vector. Thus the right-hand remainder is its actual updated posterior,
+including correlations induced between all the other primitive tags.
+An auxiliary independent table attached to an already sampled history
+would not prove this identity. Nor does the identity apply after restricting
+to a future event that reads c. The good-event coupling and relative repairs
+are used only afterwards.
+
 To apply the fixed-member coupling one may read each address from its
 owner's original table; the unused coordinates and original per-owner table
 vector remain tags. This is a deterministic readout, not a new table draw.
@@ -723,6 +760,23 @@ uniform clean-path density ratio, including normalization on I-and-Phi.
 The last subtracts the source-weighted mean of epsilon. None divides by
 the unnormalized mass of I or Phi. If a larger RAW-origin submeasure is
 used, add its same-value-SEND and same-action-WAIT remainders as well.
+
+For completeness, the normalization step is a finite calculation, including
+when some source weights vanish. Write p(o)=A_n(o)/sum_u A_n(u), and let
+epsilon_bar=sum_o p(o) epsilon_n(o). The regular native marginal is exactly
+
+    p_regular(o) = p(o) (1+epsilon_n(o))/(1+epsilon_bar).
+
+Consequently its L1 distance from p is at most
+2 epsilon_n/(1-epsilon_n). A zero A_n(o) has zero regular native weight as
+well; an additive leakage at such an o must instead be counted in a
+remainder. Adding a disjoint remainder of mass at most r times the regular
+mass changes the normalized law by at most 2r/(1+r) in L1. These identities
+prove the displayed bound by the triangle inequality. They do not require
+C_n, the total regular mass, or the mass of the conditioned event to be
+bounded away from zero. The substantive part of Lemma T is therefore the
+same-event repairs and the common operational domain established above;
+normalization cannot supply either of those properties.
 
 The o-law includes the complete typed private trajectories of the other
 active owners, including their old voided typed choices. It is not merely
@@ -1577,6 +1631,53 @@ conditional successful-phase ranking used by native transport additionally
 requires the D identity; unconditional gain equality does not replace it.
 
 ### Honest pins and successful-phase conditioning
+
+Here is the honest-limit argument before conditioning on D. Let sigma^H_n
+be the GIVEN honest consistency sequence. At each embedded honest site,
+use the already prescribed omission and accepted-failure branches, with
+their fixed rates alpha_n and beta_n, and the domain-floor mixture of its
+lifted honest law. These give a retained honest coefficient at least
+q_n=(1-alpha_n)(1-beta_n)(1-floor_n); they do not redistribute the fixed
+failure masses. These are legal coherent pins because the reduced key
+reconstructs the original honest full information. They do not depend on
+the later optimized free laws.
+
+For every honest raw atom, its pinned probability is at least q_n times
+its honest probability. With p players and a fixed horizon T, multiplying
+the actual initialized transition factors gives domination of the ENTIRE
+mapped honest-history law at every time t<=T by c_n=q_n^(p*T). The original
+setup and chance kernels are identical, and c_n tends to one.
+Taking limits in each current-law inequality shows that every retained
+limit atom is at least its given honest limit atom. Both laws have mass
+one, so equality holds on the honest menu and all extra limit mass is zero.
+
+Fix an original honest information value i and its embedded full-information
+value I. Its full signal-word length fixes the decision time. Let h_n(i)>0
+be its mass at that time in the given honest sequence, and let
+delta_n=1-c_n. The domination splits the actual history measure into
+c_n times the mapped honest measure plus a nonnegative residual of total
+mass delta_n. Inside I the residual is at most delta_n, whereas its honest
+component has mass c_n*h_n(i). Hence the L1 distance between the actual
+Bayes belief at I and the mapped honest Bayes belief is at most
+
+    2 delta_n / (c_n*h_n(i)).
+
+The source scales were chosen to make this tend to zero for every honest
+i, before the free completion. Here h_n(i) is an ORIGINAL honest reach,
+not a reach probability of the optimized extended game. This retains the
+given honest belief even where its limiting reach is zero.
+
+At the limit, forcing a legal honest current law and following the pinned
+continuation has precisely its original honest continuation value. Honest
+sequential rationality therefore compares all these laws at the retained
+belief. An extra current binding action either is omission or leaves a
+failed or rejected obligation; with foreign omission rates zero in the
+limit, there is no foreign reset to remove it. It eventually pays a_j.
+Reveal withholding likewise pays a_j. Every honest terminal continuation
+pays at least a_j, so each extra action is weakly dominated by an honest
+comparator. Linearity now gives the local best-response inequality on the
+entire raw menu. This establishes honest-pin optimality without assuming
+that the fully mixed honest approximants themselves are best responses.
 
 At an ordinary honest-compatible site there is neither a processed foreign
 miss nor an own failed typed prefix. After forcing the current DOMAIN choice,
