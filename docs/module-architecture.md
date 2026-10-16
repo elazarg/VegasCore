@@ -2350,8 +2350,35 @@ transfers complete public-record equality between observers.
 [original information fibers](../Vegas/Game/CommitRecoveryAncillaryFibers.lean), and
 [exact Bayes cancellation](../Vegas/Game/CommitRecoveryAncillaryBayes.lean)
 derive a bijection and transport the actual normalized beliefs while retaining
-the original joint setup law. Conditional successful-phase payoff equality and
-individual source optimality remain separate obligations.
+the original joint setup law.
+[Erased semantic exchange](../Vegas/Game/CommitRecoverySpliceErasure.lean),
+[marked continuation transport](../Vegas/Game/CommitRecoveryAncillaryContinuation.lean),
+[original local interventions](../Vegas/Game/CommitRecoveryNormalizedLocalLaw.lean), and
+[actual conditional gains](../Vegas/Game/CommitRecoveryAncillaryGains.lean)
+retain complete erased states and prove equality of actual ordinary-copy
+continuation values and gains under the original Bayes assessment. The joint
+stopped-boundary mark and full terminal readout/payoffs stay coupled. The
+success-marker specialization, failed attachments and individual source
+optimality remain separate obligations.
+[Original source attempt exit](../Vegas/Source/CommitRecoveryAttemptExit.lean)
+identifies the actual first-full-identifier stopped law with its exact remaining
+commitment window, retaining original joint instructions and public addresses.
+[Typed attempt success](../Vegas/Source/CommitRecoveryAttemptSuccess.lean) and
+[closed erased success readout](../Vegas/Source/CommitRecoveryAttemptReadout.lean)
+read no omission/no own accepted failure from the original entry exclusions
+and own typed cells. [Actual attempt extraction](../Vegas/Source/CommitRecoveryAttemptExtraction.lean)
+recovers the typed attempt from the literal supported instruction word.
+[Stopped success](../Vegas/Source/CommitRecoveryStoppedAttempt.lean) composes
+the original first-exit law with its erased boundary success readout, under
+fresh names and valued own-prefix cells.
+[Honest own recall](../Vegas/Source/IntendedErasedRecall.lean) and
+[query pin coherence](../Vegas/Game/CommitRecoveryHonestPins.lean) recover
+original honest full information from the actual combined query.
+[The legal honest prescription](../Vegas/Game/CommitRecoveryHonestPrescription.lean),
+[initialized-run domination](../Vegas/Game/CommitRecoveryHonestDomination.lean), and
+[honest Bayes convergence](../Vegas/Game/CommitRecoveryHonestBeliefs.lean)
+retain the original honest assessment at fixed source-only scales, independently
+of the optimized free laws. Final source individual optimality remains open.
 [Player-specific recovery validity](../Vegas/Source/CommitRecoveryPlayerValidity.lean)
 reuses the existing intended-for-one-player predicate through arbitrary foreign
 actions, automatic slots and actual checkpoint closes. Current observed guard
@@ -2367,6 +2394,9 @@ Native chronology:
 These retain original address chunks, actual public openings and exhausted
 archives. The complete native numeric scan and measurable combined query are
 still open.
+[Original noncommit instructions](../Vegas/Source/CommitRecoveryNonCommitPath.lean)
+and [their source lifting](../Vegas/Source/CommitRecoveryPathLift.lean) retain
+actual raw joints and address chunks through reveal and chance normalization.
 
 No-new-miss query:
 [literal attempt entry](../Vegas/Source/CommitRecoveryAttemptOrigin.lean),
@@ -2415,4 +2445,18 @@ derive original first-exit survivor classification.
 [actual survivor-vector laws](../Vegas/Game/PhaseCountServiceSurvival.lean)
 compare the existing stopped runners under arbitrary focal policies with the
 same original supported zero-RAW table and foreign event seeds. Positive-RAW
-good-event transport and typed foreign-word independence remain separate.
+[first-RAW exclusion](../Vegas/Game/PhaseCountServiceRawOrigin.lean) and
+[joint good-event laws](../Vegas/Game/PhaseCountServiceGood.lean) compare actual
+first-full-identifier stopped runs under the same original tapes and arbitrary
+focal futures. The good event includes all entry-active foreign survivors and
+no effective foreign RAW. Proper service is used after the RAW comparison.
+[Original full timing tables](../Vegas/Game/PhaseCountServiceTable.lean) and
+[their stopped runner](../Vegas/Game/PhaseCountServiceTableRun.lean) identify
+the literal normalized policy, retaining the entire original per-owner table
+vector and its likelihood-induced posterior.
+[Actual entry posteriors](../Vegas/Game/PhaseCountServiceTableEntry.lean),
+[focal continuations](../Vegas/Game/PhaseCountServiceTableContinuation.lean), and
+[the averaged good-event law](../Vegas/Game/PhaseCountServiceTableGood.lean)
+give equality of the joint good-event/original-table-vector law after arbitrary
+focal interventions. Typed foreign-word independence and conditioning on the
+full native information fiber remain separate obligations.

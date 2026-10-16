@@ -36,7 +36,9 @@ theorem commitRecovery_bayes_eq_of_erasedInformation_eq
         setup.attemptPublicRecall focal (exchange original).1.trace =
           setup.attemptPublicRecall focal original.1.trace ∧
         (∀ who, who ≠ focal → setup.commitRecoveryModel.infoOf who
-          (exchange original).1.trace = setup.commitRecoveryModel.infoOf who original.1.trace)) ∧
+          (exchange original).1.trace = setup.commitRecoveryModel.infoOf who original.1.trace) ∧
+        setup.commitRecoveryErasedHistory (exchange original).1 =
+          setup.commitRecoveryErasedHistory original.1) ∧
       (setup.commitRecoveryModel.bayesBelief strategy focal source
         (setup.commitRecoveryModel_decisionAntichain focal source)
         (setup.commitRecoveryModel.informationMass_pos_of_fullSupport
@@ -88,9 +90,9 @@ theorem commitRecovery_bayes_eq_of_erasedInformation_eq
         setup.commitRecoveryModel.counterfactualReachProbability strategy focal
           history.1.trace := by
     rw [← exchange.tsum_eq]
-    exact tsum_congr fun history => (exchangeSpec history).2.2
+    exact tsum_congr fun history => (exchangeSpec history).2.2.1
   refine ⟨exchange, fun original => ⟨(exchangeSpec original).1,
-    (exchangeSpec original).2.1⟩, ?_⟩
+    (exchangeSpec original).2.1, (exchangeSpec original).2.2.2⟩, ?_⟩
   apply pmf_ext_toReal
   intro targetHistory
   obtain ⟨original, rfl⟩ := exchange.surjective targetHistory
@@ -102,7 +104,7 @@ theorem commitRecovery_bayes_eq_of_erasedInformation_eq
     setup.commitRecoveryModel.historyReachProbability_eq_player_mul_counterfactual,
     sourceCommon original, targetCommon (exchange original),
     factor source sourceReach sourceCommon, factor target targetReach targetCommon,
-    sameCounterfactual, (exchangeSpec original).2.2,
+    sameCounterfactual, (exchangeSpec original).2.2.1,
     mul_div_mul_left _ _ sourceReachPositive.ne',
     mul_div_mul_left _ _ targetReachPositive.ne']
 

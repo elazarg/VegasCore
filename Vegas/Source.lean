@@ -183,3 +183,9 @@ import Vegas.Source.CommitRecoveryPublicReadback
 import Vegas.Source.CommitRecoveryPublicScan
 import Vegas.Source.CommitRecoveryVirtualHistory
 import Vegas.Source.CommitRecoveryVirtualView
+import Vegas.Source.CommitRecoveryAttemptExit
+import Vegas.Source.CommitRecoveryAttemptReadout
+import Vegas.Source.CommitRecoveryAttemptSuccess
+import Vegas.Source.CommitRecoveryAttemptExtraction
+import Vegas.Source.CommitRecoveryStoppedAttempt
+import Vegas.Source.IntendedErasedRecall

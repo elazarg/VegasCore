@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.CompiledRevealPhase
+import Vegas.Game.CompiledRevealReadback
 import Vegas.Source.CommitRecoveryPublicControl
 
 /-! # Public source exclusion updates from original native publications

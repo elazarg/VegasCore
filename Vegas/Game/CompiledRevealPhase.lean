@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.CompiledRevealReadback
+import Vegas.Game.CompiledPublicExclusions
 import Vegas.Game.RecordedSourceHistory
 import Vegas.Game.ServiceRevealTail
 import Vegas.Compile.EventGraphSuffix
@@ -15,47 +16,6 @@ namespace Vegas
 open SourceProgram EventGraph EventGraphRuntime GameTheory.Math.Probability
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
-
-omit [DecidableEq Player] in
-theorem publication_failure_iff_read {graph : Vegas.EventGraph Player L}
-    (native : EventGraphRuntime.State graph) (event : graph.EventId)
-    {owner : Player} {payload : L.Ty}
-    (binding : FieldRef graph.layout (.binding owner payload))
-    (checks : List (GuardCheck graph.layout payload))
-    (outputEq : graph.outputLayout event = .publication payload)
-    (codeEq : cast (congrArg (EventCode graph.layout) outputEq) (graph.nodes event) =
-      .resolve owner payload binding checks)
-    (value : PublicationResult (L.Val payload))
-    (stored : (⟨.inr event, outputEq⟩ : FieldRef graph.layout (.publication payload)).get?
-      native.config.store = some value) :
-    native.PublicFailure event ↔ value = .failure := by
-  have viewed := nodeView_eq_resolve outputEq codeEq
-  have missed : native.publicView.missedBinding event = false := by
-    simp only [PublicView.missedBinding, outputEq]
-  simp only [EventGraphRuntime.State.PublicFailure, missed, Bool.false_eq_true, false_or,
-    RecoveryState.publicationFailed, viewed]
-  change cast (congrArg Option (congrArg EventField.Value outputEq))
-    (native.config.outputs event) = some value at stored
-  have castSome : ∀ {α β : Type} (same : α = β) (item : α),
-      cast (congrArg Option same) (some item) = some (cast same item) := by
-    intro α β same item
-    cases same
-    rfl
-  have castNone : ∀ {α β : Type} (same : α = β),
-      cast (congrArg Option same) (none : Option α) = (none : Option β) := by
-    intro α β same
-    cases same
-    rfl
-  cases output : native.config.outputs event with
-  | none =>
-      rw [output, castNone (congrArg EventField.Value outputEq)] at stored
-      cases stored
-  | some result =>
-      rw [output, castSome (congrArg EventField.Value outputEq)] at stored
-      have same := Option.some.inj stored
-      dsimp only
-      rw [same]
-      cases value <;> simp
 
 namespace EventGraphRuntime.RecoveryState
 
@@ -79,6 +39,23 @@ theorem OrderedPublicFailures.raise {graph : Vegas.EventGraph Player L}
   · exact Or.inr ⟨prior, by omega, earlier, actor, failed⟩
 
 end EventGraphRuntime.RecoveryState
+
+open scoped Classical in
+/-- A source-ranked public instruction retains both its genuine raw kernel
+step and the exclusion update read from the original completed native event. -/
+def NativePublicSourceStep {graph : Vegas.EventGraph Player L}
+    {Γ : SourceCtx Player L} {O : Finset VarId}
+    (native : EventGraphRuntime.State graph) (offset : Nat)
+    (program : SourceProgram Player L Γ O)
+    (first last : ProtocolState program × Finset Player) : Prop :=
+  (¬ ProtocolState.terminal program first.1 ∧
+    ProtocolState.atCommit program first.1 = false ∧
+    ∃ joint, last ∈ (ProtocolState.recoveryStep program first.1 first.2 joint).support) ∧
+  ∀ event : graph.EventId,
+    event.val = offset + (instructionCount program -
+      ProtocolState.remaining program first.1) →
+    last.2 = (graph.actor? event).elim first.2 fun owner =>
+      if native.PublicFailure event then insert owner first.2 else first.2
 
 variable (setup : Setup (Player := Player) (L := L)) (mode : EventGraph.ExecutionMode)
 
@@ -121,11 +98,7 @@ theorem completed_reveal_phase_source_path :
         ∃ index : Fin (eventCount program), index.val < count ∧
           ((toEventGraph setup.program).withMode mode).actor? (embedding.event index) = some who ∧
           native.native.PublicFailure (embedding.event index)) ∧
-      Relation.ReflTransGen
-        (fun left right : ProtocolState program × Finset Player =>
-          ¬ ProtocolState.terminal program left.1 ∧
-          ProtocolState.atCommit program left.1 = false ∧
-          ∃ joint, right ∈ (ProtocolState.recoveryStep program left.1 left.2 joint).support)
+      Relation.ReflTransGen (NativePublicSourceStep native.native offset program)
         (ProtocolState.entry program entry, inherited)
         ((revealTail count program prefixed).lift
           (ProtocolState.entry _ final), excluded) ∧
@@ -135,6 +108,7 @@ theorem completed_reveal_phase_source_path :
             (cast (congrArg EventField.Action (embedding.layout_eq index)) action)),
         RecordedSourceHistory setup.program mode native.native.config offset count
           entry.history final.history excluded := by
+  classical
   intro count
   induction count with
   | zero =>
@@ -231,6 +205,17 @@ theorem completed_reveal_phase_source_path :
                   rw [failedIff, value]
                   simp only [reduceCtorEq, not_false_eq_true]
                 simp only [notFailed, and_false, or_false]
+          have publicUpdate : nextExcluded =
+              if native.native.PublicFailure event then insert owner inherited else inherited := by
+            have read := compiled_reveal_public_exclusions owner fresh source unresolved next
+              (ProtocolSuffix.initial : ProtocolSuffix
+                (.reveal published owner name fresh source unresolved next)
+                (.reveal published owner name fresh source unresolved next) id)
+              native.native event (refs.get source)
+              (compileChecks (published := published) refs registry entry.revelations source)
+              outputEq codeEq entry after refs nextAgree inherited
+            simp only [id_eq, ProtocolView.publicSuccessorExclusions_reveal] at read
+            exact nextExcludedEq.trans read
           have nextOrdered := ordered.raise event rankEq acting nextExcluded members
           have nextUnique : (((published, CellTy.publication payload) :: Γ).map Prod.fst).Nodup :=
             List.nodup_cons.mpr ⟨fresh, unique⟩
@@ -270,27 +255,34 @@ theorem completed_reveal_phase_source_path :
                   exact Or.inr ⟨later, by dsimp only [later]; omega, actor, failed⟩
           · have lifted := Relation.ReflTransGen.lift
               (fun state : ProtocolState next × Finset Player => (Sum.inr state.1, state.2))
-              (p := fun left right =>
-                ¬ ProtocolState.terminal
-                  (.reveal published owner name fresh source unresolved next) left.1 ∧
-                ProtocolState.atCommit
-                  (.reveal published owner name fresh source unresolved next) left.1 = false ∧
-                ∃ joint, right ∈ (ProtocolState.recoveryStep
-                  (.reveal published owner name fresh source unresolved next)
-                  left.1 left.2 joint).support)
+              (p := NativePublicSourceStep native.native offset
+                (.reveal published owner name fresh source unresolved next))
               (by
-                intro left right step
-                obtain ⟨running, notCommit, joint, supported⟩ := step
-                refine ⟨running, notCommit, joint, ?_⟩
-                exact (PMF.mem_support_map_iff _ _ _).mpr ⟨right, supported, rfl⟩)
+                intro left right moved
+                obtain ⟨⟨running, notCommit, joint, supported⟩, update⟩ := moved
+                refine ⟨⟨running, notCommit, joint, ?_⟩, ?_⟩
+                · exact (PMF.mem_support_map_iff _ _ _).mpr ⟨right, supported, rfl⟩
+                · intro selected ranked
+                  apply update selected ?_
+                  have bounded := ProtocolState.remaining_le_instructionCount next left.1
+                  simp only [instructionCount, ProtocolState.remaining, Sum.elim_inr] at ranked
+                  omega)
               _ _ path
             apply Relation.ReflTransGen.head ?_ lifted
-            refine ⟨(fun impossible => impossible), rfl,
+            refine ⟨⟨(fun impossible => impossible), rfl,
               Function.update (fun _ => none) owner
-                (some ⟨.reveal owner name disclose, false⟩), ?_⟩
-            dsimp only [Prod.fst, Prod.snd, ProtocolState.entry]
-            rw [oneStep]
-            exact (PMF.mem_support_pure_iff _ _).mpr rfl
+                (some ⟨.reveal owner name disclose, false⟩), ?_⟩, ?_⟩
+            · dsimp only [Prod.fst, Prod.snd, ProtocolState.entry]
+              rw [oneStep]
+              exact (PMF.mem_support_pure_iff _ _).mpr rfl
+            · intro selected ranked
+              have same : selected = event := by
+                apply Fin.ext
+                rw [rankEq]
+                simpa only [ProtocolState.remaining_entry, Nat.sub_self, Nat.add_zero] using ranked
+              subst selected
+              rw [acting]
+              exact publicUpdate
           · intro actions
             have tailActions : ∀ index action,
                 decodeEventAction setup.program (tailEmbedding.event index) action =

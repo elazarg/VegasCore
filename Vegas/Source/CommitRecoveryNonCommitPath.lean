@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Source.CommitRecoveryProtocol
+import Vegas.Source.CommitRecoveryInstructions
+import Mathlib.Data.List.Chain
 import GameTheory.Protocol.Backward
 
 /-! # Legal recovery paths through sample and reveal phases -/
@@ -136,25 +137,36 @@ theorem CommitRecoveryState.nonCommit_successor
   cases packedEq
   rfl
 
-/-- A sequence of noncommitment instructions lifts to realized legal source
-recovery transitions, with the same permanent exclusions and generation. -/
-theorem CommitRecoveryState.reaches_of_nonCommit_path
+/-- The existing noncommitment path retains its actual intermediate points,
+legal instructions and post-step addresses. An annotation on each original
+step is retained in the same chronological chain. -/
+theorem CommitRecoveryState.instructions_of_nonCommit_path
     {Γ : SourceCtx Player L} {O : Finset VarId}
     (program : SourceProgram Player L Γ O) (initial : Config Player L Γ)
-    (generation : Nat) (first last : ProtocolState program × Finset Player)
-    (path : Relation.ReflTransGen
-      (fun earlier later : ProtocolState program × Finset Player =>
-        ¬ ProtocolState.terminal program earlier.1 ∧
-        ProtocolState.atCommit program earlier.1 = false ∧
-        ∃ joint, later ∈ (ProtocolState.recoveryStep program earlier.1 earlier.2 joint).support)
-      first last) :
-    (commitRecoveryProtocol program initial).Reaches
-      (atPoint first.1 first.2 generation) (atPoint last.1 last.2 generation) := by
-  apply Relation.ReflTransGen.lift
-    (fun state : ProtocolState program × Finset Player => atPoint state.1 state.2 generation)
-    (fun earlier later step => ?_) first last path
-  obtain ⟨running, notCommit, joint, supported⟩ := step
-  exact nonCommit_successor program initial earlier.1 earlier.2 generation notCommit running
-    joint later supported
+    (generation : Nat) {relation : (ProtocolState program × Finset Player) →
+      (ProtocolState program × Finset Player) → Prop}
+    (steps : ∀ first last, relation first last →
+      ¬ ProtocolState.terminal program first.1 ∧
+      ProtocolState.atCommit program first.1 = false ∧
+      ∃ joint, last ∈ (ProtocolState.recoveryStep program first.1 first.2 joint).support)
+    (first last : ProtocolState program × Finset Player)
+    (path : Relation.ReflTransGen relation first last) :
+    ∃ (states : List (ProtocolState program × Finset Player))
+      (joints : List (Player → Option (CommitRecoveryMove Player L))),
+      (first :: states).IsChain relation ∧
+      (first :: states).getLast (List.cons_ne_nil _ _) = last ∧
+      InstructionPath program initial joints
+        (states.map fun point => (atPoint point.1 point.2 generation).publicAddress)
+        (atPoint first.1 first.2 generation) (atPoint last.1 last.2 generation) := by
+  induction path using Relation.ReflTransGen.head_induction_on with
+  | refl => exact ⟨[], [], .singleton _, rfl, .refl _⟩
+  | @head first middle moved _remaining ih =>
+      obtain ⟨states, joints, chain, ending, instructions⟩ := ih
+      obtain ⟨running, notCommit, joint, supported⟩ := steps first middle moved
+      obtain ⟨legalJoint, legal, realized⟩ := nonCommit_successor program initial first.1 first.2
+        generation notCommit running joint middle supported
+      exact ⟨middle :: states, legalJoint :: joints, .cons_cons moved chain,
+        by simpa only [List.getLast_cons_cons] using ending,
+        .step legal realized instructions⟩
 
 end Vegas.SourceProgram

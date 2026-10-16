@@ -141,7 +141,8 @@ theorem RecoverySourceCheckpoint.normalized
               exact advance image retired imagePrefix imageNative imageBinding imageRecord.receipts
                 imageCoverage ⟨nextCheckpoint⟩
         | reveal =>
-            obtain ⟨nextCheckpoint, _sourcePrefix, _history, _intended⟩ :=
+            obtain ⟨nextCheckpoint, _sourcePrefix, _publicSteps, _publicAddresses,
+              _history, _intended⟩ :=
               checkpoint.after_reveal phase remaining rfl kind
               receipts.exclusion stored remembered imageNative.reachable imageOrder finished
             have noRetry : ¬ (phase.kind = .commitment ∧
@@ -156,7 +157,8 @@ theorem RecoverySourceCheckpoint.normalized
             exact advance image retired imagePrefix imageNative imageBinding imageRecord.receipts
               imageCoverage ⟨nextCheckpoint⟩
         | sample =>
-            obtain ⟨nextCheckpoint, _sourcePrefix, _history, _intended⟩ :=
+            obtain ⟨nextCheckpoint, _sourcePrefix, _publicSteps, _publicAddresses,
+              _history, _intended⟩ :=
               checkpoint.after_sample phase remaining rfl kind
               receipts.exclusion stored remembered imageNative.reachable finished
             have noRetry : ¬ (phase.kind = .commitment ∧

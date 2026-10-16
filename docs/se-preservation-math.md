@@ -2061,8 +2061,22 @@ actual bijection of original information histories at equal erased keys.
 then transports the actual normalized Bayes belief exactly, using positive
 constant own reach and unchanged counterfactual reach. The original joint
 setup law may be correlated. Combined-key known-failed attachments do not
-use this bijection. Successful-phase payoff equality and individual source
-optimality remain open in Lean.
+use this bijection. Actual ordinary-copy continuation values and gains are
+checked in `Vegas/Game/CommitRecoveryAncillaryGains.lean`, retaining the joint
+stopped mark and terminal readout/payoffs. The conditional-success
+specialization and individual source optimality remain open in Lean.
+
+`Vegas.SourceProgram.Setup.commitRecovery_stopped_attempt_success` now extracts
+the literal typed attempt from the actual first-full-identifier stopped source
+word and proves its original-entry exclusion/own-value success marker. It uses
+fresh context names and valued current own-prefix cells. The marker is stated
+for domain forcing; it does not reinterpret a forced current accepted failure
+as a successful typed boundary.
+`Vegas/Game/CommitRecoveryHonestPins.lean` derives honest pin coherence from
+actual query equality. The actual prescription and initialized-run domination
+in `Vegas/Game/CommitRecoveryHonestDomination.lean` give honest Bayes convergence
+in `Vegas/Game/CommitRecoveryHonestBeliefs.lean`, at scales tied to the original
+honest sequence before free completion. These do not yet prove the full source SE.
 
 `Vegas.SourceProgram.CommitRecoveryState.step_preserves_intendedFor` keeps a
 surviving player's existing validity predicate in current and saved states
@@ -2072,7 +2086,11 @@ all-reachable viability from intended-only setup well-formedness.
 `Vegas.phaseCountServiceTapePolicy_foreign_survivors_law` compares the actual
 first-exit survivor-vector laws under arbitrary focal policies with the same
 supported original zero-RAW timing table and foreign seeds. This supplies
-proper-reference scalar survival, not positive-RAW or typed-word transport.
+proper-reference scalar survival. `Vegas/Game/PhaseCountServiceGood.lean` gives
+the positive-RAW joint good event for the same original supported tables;
+`Vegas/Game/PhaseCountServiceTableGood.lean` averages the literal original table
+posterior and retains the entire table vector. Typed-word transport and the
+original full native information-fiber posterior remain open.
 `Vegas.compiled_reveal_public_exclusions` reads the source public exclusion
 update from the actual immutable native publication at its original compiled
 suffix. The full native observable query remains open.
@@ -2112,9 +2130,9 @@ selects shared query weights using the existing component completion. Its
 actual source assessments are fully mixed and Bayes consistent, converge to
 a consistent limit, and satisfy the summed actual conditional gain bounds.
 The SAME initialized normalized flag sampler realizes their complete source
-runners. Query-level optional pins are prescribed coherently; proving the
-required honest pins and each member's individual source optimality is still
-separate from this pooled existence theorem.
+runners. The honest pins and their Bayes convergence are now constructed as
+described above; each member's individual source optimality is still separate
+from this pooled existence theorem.
 The owning completion sums conditional member gains. After the same ancillary
 and reset identities, its domain comparison has coefficient
 pi_K*sum_I lambda_I, rather than the ex-ante coefficient
@@ -2129,8 +2147,9 @@ It proves the joint terminal readout/all-player-payoff equality through retry
 and exhausted restore without assuming equal omission words. The global
 history paste supplies original support and its inverse uniqueness; actual
 information-fiber Bayes cancellation is checked as described above. The
-original local stopped-window consumer, its joint D/payoff specialization
-and individual source optimality remain open in Lean.
+original local stopped window and its raw typed success readout are now checked.
+Its joint conditional-D/payoff specialization and individual source optimality
+remain open in Lean.
 
 The existing broad post-exclusion native completion is not the pinned
 construction above:

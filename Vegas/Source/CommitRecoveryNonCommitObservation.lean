@@ -42,6 +42,24 @@ theorem step_noncommit_atPoint {Γ : SourceCtx Player L} {O : Finset VarId}
   refine ⟨result.1, raw, ?_⟩
   simp only [close, Finished, install, saved, Bool.false_eq_true, false_and, ↓reduceIte]
 
+/-- An actual public instruction installs its observed exclusion update and
+new saved point exactly; no prior private signal or intended action is needed. -/
+theorem step_noncommit_public_controls {Γ : SourceCtx Player L} {O : Finset VarId}
+    {program : SourceProgram Player L Γ O} (state : CommitRecoveryState program)
+    (frontier : state.BlockFrontier)
+    (notCommit : ProtocolState.atCommit program state.point = false)
+    (joint : Player → Option (CommitRecoveryMove Player L)) (next : CommitRecoveryState program)
+    (reached : next ∈ (state.step joint).support) (who : Player) :
+    next.excluded = ProtocolView.publicSuccessorExclusions who program
+        (ProtocolView.publicOnly who program (ProtocolState.observe who program state.point))
+        (ProtocolView.publicOnly who program (ProtocolState.observe who program next.point))
+        state.excluded ∧
+      next.generation = state.generation ∧ next.saved = next.point := by
+  obtain ⟨result, supported, rfl⟩ :=
+    state.step_noncommit_atPoint frontier notCommit joint next reached
+  exact ⟨ProtocolState.recoveryStep_noncommit_public_excluded who program state.point
+    notCommit state.excluded joint result supported, rfl, rfl⟩
+
 end CommitRecoveryState
 
 namespace Setup
@@ -86,25 +104,26 @@ theorem commitRecovery_noncommit_public_eq (setup : Setup (Player := Player) (L 
     exact kind ▸ notCommit
   obtain ⟨left, leftReached, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp firstReached
   obtain ⟨right, rightReached, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp secondReached
-  obtain ⟨leftRaw, leftRawReached, rfl⟩ := first.step_noncommit_atPoint
-    (setup.commitRecovery_blockFrontier firstTrace) notCommit firstJoint left leftReached
-  obtain ⟨rightRaw, rightRawReached, rfl⟩ := second.step_noncommit_atPoint
-    (setup.commitRecovery_blockFrontier secondTrace) secondNotCommit secondJoint right rightReached
+  obtain ⟨leftExcluded, leftGeneration, leftSaved⟩ := first.step_noncommit_public_controls
+    (setup.commitRecovery_blockFrontier firstTrace) notCommit firstJoint left leftReached who
+  obtain ⟨rightExcluded, rightGeneration, rightSaved⟩ := second.step_noncommit_public_controls
+    (setup.commitRecovery_blockFrontier secondTrace) secondNotCommit secondJoint right
+      rightReached who
   have observedAfter : ProtocolView.publicOnly who setup.program
-      (ProtocolState.observe who setup.program leftRaw.1) =
+      (ProtocolState.observe who setup.program left.point) =
     ProtocolView.publicOnly who setup.program
-      (ProtocolState.observe who setup.program rightRaw.1) := Option.some.inj after
-  have rawExclusions := ProtocolState.recoveryStep_noncommit_public_excluded_eq who
-    setup.program first.point second.point observedBefore notCommit first.excluded
-    firstJoint secondJoint leftRaw leftRawReached rightRaw (exclusions ▸ rightRawReached)
-    observedAfter
-  have leftRank := ProtocolView.position_add_remaining who setup.program leftRaw.1
-  have rightRank := ProtocolView.position_add_remaining who setup.program rightRaw.1
+      (ProtocolState.observe who setup.program right.point) :=
+    Option.some.inj after
+  have nextExclusions : left.excluded = right.excluded := by
+    rw [leftExcluded, rightExcluded, observedBefore, observedAfter, exclusions]
+  have leftRank := ProtocolView.position_add_remaining who setup.program left.point
+  have rightRank := ProtocolView.position_add_remaining who setup.program right.point
   have positions := congrArg (ProtocolView.position who setup.program) observedAfter
   simp only [ProtocolView.position_publicOnly] at positions
-  have rank : ProtocolState.remaining setup.program leftRaw.1 =
-      ProtocolState.remaining setup.program rightRaw.1 := by omega
-  simp only [commitRecoveryPublic, CommitRecoveryState.atPoint, rawExclusions, generation, rank]
+  have rank : ProtocolState.remaining setup.program left.point =
+      ProtocolState.remaining setup.program right.point := by omega
+  simp only [commitRecoveryPublic, leftSaved, rightSaved, nextExclusions,
+    leftGeneration, rightGeneration, generation, rank]
 
 end Setup
 end Vegas.SourceProgram

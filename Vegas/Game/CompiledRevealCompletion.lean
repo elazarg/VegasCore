@@ -140,6 +140,7 @@ theorem sourceRecovery_of_actual_revealCompletion
     embedding before offset compiled phase kind low count high (phase.drain raw)
     (phase.drain_invariant raw rawValid).reachable state.entry.excluded record prefixEnd
     (by simpa only [low] using ordered) entry afterAgree guards failures sameRevelations unique
-  exact ⟨final, values, guards, failures, revelations, path, reaches⟩
+  exact ⟨final, values, guards, failures, revelations,
+    Relation.ReflTransGen.mono (fun _ _ moved => moved.1) _ _ path, reaches⟩
 
 end Vegas

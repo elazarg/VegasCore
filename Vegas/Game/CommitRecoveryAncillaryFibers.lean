@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.CommitRecoveryAncillaryBelief
+import Vegas.Game.CommitRecoverySpliceErasure
+import Vegas.Source.CommitRecoveryErasedContinuation
 
 /-! # Original source information-fiber exchange
 
@@ -99,8 +100,13 @@ private theorem exchange_exists [Fintype Player]
       (∀ who, who ≠ focal → setup.commitRecoveryModel.infoOf who exchanged.1.trace =
         setup.commitRecoveryModel.infoOf who original.1.trace) ∧
       setup.commitRecoveryModel.counterfactualReachProbability strategy focal exchanged.1.trace =
-        setup.commitRecoveryModel.counterfactualReachProbability strategy focal
-          original.1.trace := by
+        setup.commitRecoveryModel.counterfactualReachProbability strategy focal original.1.trace ∧
+      setup.commitRecoveryErasedHistory exchanged.1 =
+        setup.commitRecoveryErasedHistory original.1 := by
+  have mineActive := InformationModel.InformationSite.active
+    setup.commitRecoveryModel target representative
+  have othersActive := InformationModel.InformationSite.active
+    setup.commitRecoveryModel source original
   obtain ⟨mine, mineState⟩ := setup.site_state_some focal target representative
   obtain ⟨others, othersState⟩ := setup.site_state_some focal source original
   rcases representative with ⟨⟨mineOption, mineTrace⟩, mineInfo⟩
@@ -110,11 +116,30 @@ private theorem exchange_exists [Fintype Player]
   obtain ⟨input, prior, length, originalKept, hybrid, satisfies, _⟩ :=
     setup.commitRecovery_hybrid_of_erasedInformation_eq strategy focal mine others
       mineTrace othersTrace (by rw [mineInfo, othersInfo]; exact same)
-  obtain ⟨_, hybridKept, publicWord, coordinates, focalInfo, foreignInfo, density, _⟩ := satisfies
+  obtain ⟨shape, hybridKept, publicWord, coordinates, focalInfo, foreignInfo, density, _⟩ :=
+    satisfies
+  have semantic := setup.commitRecovery_splice_erased_state_eq focal mine others
+    mineTrace othersTrace mineActive.2 othersActive.2 (by rw [mineInfo, othersInfo]; exact same)
+  have erased : setup.commitRecoveryErasedHistory hybrid =
+      setup.commitRecoveryErasedHistory ⟨some others, othersTrace⟩ := by
+    apply Prod.ext
+    · change hybrid.state.map CommitRecoveryState.eraseHistory = some others.eraseHistory
+      rw [shape]
+      exact congrArg some semantic
+    · funext who
+      by_cases own : who = focal
+      · subst who
+        change setup.commitRecoveryErasedInformation focal
+            (setup.commitRecoveryModel.infoOf focal hybrid.trace) =
+          setup.commitRecoveryErasedInformation focal
+            (setup.commitRecoveryModel.infoOf focal othersTrace)
+        rw [focalInfo, mineInfo, othersInfo]
+        exact same
+      · exact congrArg (setup.commitRecoveryErasedInformation who) (foreignInfo who own)
   exact ⟨⟨hybrid, focalInfo.trans mineInfo⟩,
     ⟨⟨_, prior, length, originalKept, hybridKept⟩, publicWord focal,
       fun who foreign => by simpa only [foreign, ↓reduceIte] using coordinates who⟩,
-    foreignInfo, density⟩
+    foreignInfo, density, erased⟩
 
 /-- Equal actual erased keys induce a bijection of the ORIGINAL full-information
 fibers. The bijection preserves all opponents' full information and the exact
@@ -135,7 +160,9 @@ theorem commitRecovery_information_fiber_equiv [Fintype Player]
         setup.commitRecoveryModel.counterfactualReachProbability strategy focal
           (exchange original).1.trace =
             setup.commitRecoveryModel.counterfactualReachProbability strategy focal
-          original.1.trace := by
+              original.1.trace ∧
+        setup.commitRecoveryErasedHistory (exchange original).1 =
+          setup.commitRecoveryErasedHistory original.1 := by
   classical
   obtain ⟨targetRepresentative, _, _⟩ := target.2
   obtain ⟨sourceRepresentative, _, _⟩ := source.2

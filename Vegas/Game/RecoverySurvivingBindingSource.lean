@@ -94,7 +94,11 @@ theorem RecoverySourceCheckpoint.surviving_prefix_trace
         (ContextRefs.initial setup.context (outputLayout setup.program))
         (outputEmbedding setup.program).ref owner (checkpoint.embedding.event selected)
         ((serviceGraph setup mode).playerStore owner state.current.native.config.store)
-        (filled.history owner) = some (ProtocolState.observe owner setup.program source.point) := by
+        (filled.history owner) = some (ProtocolState.observe owner setup.program source.point) ∧
+      setup.recoveryAddressWord trace = setup.recoveryAddressWord checkpoint.trace ++
+        (List.range earlier.length).map (fun index =>
+          (some (state.attempt.phase + index + 1), state.entry.excluded,
+            state.generation, state.attempt.phase)) := by
   have savedPosition := checkpoint.saved_position
   rcases checkpoint with ⟨⟨Γ, O, program, lift⟩, entry, refs, registry, embedding, before,
     compiled, terminalAlignment, agrees, guards, failures, unique, ranks, actors, commits, owners,
@@ -154,14 +158,78 @@ theorem RecoverySourceCheckpoint.surviving_prefix_trace
       (lift (ProtocolState.entry (earlier.prepend suffix) entry)) < instructionCount suffix
     rw [endpoints, earlier.commitEnd_suffix suffix entry finished]
     exact ProtocolState.commitEnd_lt_remaining suffix (ProtocolState.entry suffix finished) rfl
-  obtain ⟨_addresses, instructions, _exclusions, _metadata⟩ :=
+  obtain ⟨addresses, instructions, exclusions, metadata⟩ :=
     attempt.instructions_unclosed_lift setup.program
     (setup.initialConfig setup.initialLaw.support_nonempty.choose) suffix lift ranks actors
       (fun point who => menus who point) steps first rfl rfl committing beforeEnd
   change CommitRecoveryState.InstructionPath setup.program _ attempt.joints _ first after
     at instructions
-  obtain ⟨sourceTrace, _prefix, _length, _joints, _numeric⟩ :=
+  obtain ⟨sourceTrace, _prefix, _length, _joints, numeric⟩ :=
     setup.recoveryInstructionPath_information _ instructions initialized
+  have addressLength : addresses.length = earlier.length :=
+    instructions.addresses_length.trans attempt.joints_length
+  have excludedWord : addresses.map (fun address => address.2.1) =
+      List.replicate earlier.length state.entry.excluded :=
+    exclusions.trans (attempt.exclusionsAfter_of_unchanged rfl)
+  have targetRank : instructionCount setup.program -
+      ProtocolState.remaining setup.program target = state.attempt.phase + earlier.length := by
+    have firstRank := savedPosition
+    have firstBound := ProtocolState.remaining_le_instructionCount setup.program
+      (lift (ProtocolState.entry (earlier.prepend suffix) entry))
+    rw [ranks, ProtocolState.remaining_entry, earlier.instructionCount_prepend] at firstRank
+    rw [ranks, ProtocolState.remaining_entry, earlier.instructionCount_prepend] at firstBound
+    rw [show target = lift (earlier.liftPoint suffix
+      (ProtocolState.entry suffix finished)) from rfl, ranks,
+      earlier.liftPoint_remaining, ProtocolState.remaining_entry]
+    omega
+  have ending : after.publicAddress =
+      (some (state.attempt.phase + earlier.length), state.entry.excluded,
+        state.generation, state.attempt.phase) := by
+    change (some (instructionCount setup.program -
+        ProtocolState.remaining setup.program target), state.entry.excluded,
+      state.generation, instructionCount setup.program - ProtocolState.remaining setup.program
+        (lift (ProtocolState.entry (earlier.prepend suffix) entry))) = _
+    rw [targetRank, savedPosition]
+  have exactAddresses : addresses = (List.range earlier.length).map (fun index =>
+      (some (state.attempt.phase + index + 1), state.entry.excluded,
+        state.generation, state.attempt.phase)) := by
+    apply List.ext_getElem (by simp only [List.length_map, List.length_range, addressLength])
+    intro index bound _
+    have excludedAt := List.getElem_of_eq excludedWord (i := index)
+      (by simpa only [List.length_map] using bound)
+    have sameExcluded : (addresses[index]'bound).2.1 = state.entry.excluded := by
+      simpa only [List.getElem_map, List.getElem_replicate] using excludedAt
+    simp only [List.getElem_map, List.getElem_range]
+    by_cases internal : index + 1 < addresses.length
+    · obtain ⟨rank, generation, saved⟩ := metadata index internal
+      have currentRank : (addresses[index]'bound).1 =
+          some (state.attempt.phase + index + 1) := by
+        dsimp only [first, CommitRecoveryState.atPoint] at rank
+        rwa [savedPosition] at rank
+      have savedRank : (addresses[index]'bound).2.2.2 = state.attempt.phase := by
+        dsimp only [first, CommitRecoveryState.atPoint] at saved
+        rwa [savedPosition] at saved
+      exact Prod.ext currentRank (Prod.ext sameExcluded (Prod.ext generation savedRank))
+    · have indexLast : index = addresses.length - 1 := by omega
+      have positive : attempt.joints ≠ [] := by
+        intro empty
+        have zero := congrArg List.length empty
+        rw [attempt.joints_length] at zero
+        simp only [List.length_nil] at zero
+        omega
+      have last := instructions.last_address positive
+      rw [List.getLast?_eq_getElem?, List.getElem?_eq_getElem (by omega)] at last
+      have addressLast : addresses[index]'bound = after.publicAddress := by
+        simpa only [indexLast] using Option.some.inj last
+      rw [addressLast, ending]
+      have count : earlier.length = index + 1 := by omega
+      rw [count, Nat.add_assoc]
+  have exactNumeric : setup.recoveryAddressWord sourceTrace =
+      setup.recoveryAddressWord initialized ++
+        (List.range earlier.length).map (fun index =>
+          (some (state.attempt.phase + index + 1), state.entry.excluded,
+            state.generation, state.attempt.phase)) := by
+    rw [numeric, exactAddresses]
   have actor : ProtocolState.actor setup.program after.point = some owner := by
     change ProtocolState.actor setup.program
       (lift (earlier.liftPoint suffix (ProtocolState.entry suffix finished))) = some owner
@@ -175,7 +243,7 @@ theorem RecoverySourceCheckpoint.surviving_prefix_trace
     rw [savedPosition]
   refine ⟨after, sourceTrace, rfl, rfl, publicSignal, actor,
     commitRecovery_isDecisionInfo_of_surviving_actor setup after sourceTrace owner survives actor,
-    ?_, wholeView⟩
+    ?_, wholeView, exactNumeric⟩
   change (fillCommitPrefix setup.program earlier suffix embedding state.current.native.config.store
     entry).history owner = _
   rw [← word]
@@ -223,7 +291,8 @@ theorem RecoverySourceCheckpoint.surviving_ready_binding_trace
   have notPublication : ¬ ((serviceGraph setup mode).outputLayout event).IsPublication := by
     rw [binding]
     exact id
-  obtain ⟨source, trace, excluded, generation, publicSignal, sourceActor, played, word, decoded⟩ :=
+  obtain ⟨source, trace, excluded, generation, publicSignal, sourceActor, played, word, decoded,
+    _numeric⟩ :=
     checkpoint.surviving_prefix_trace fresh guard next earlier reconstruct stored survives selected
       atEnd (selectedEq.symm ▸ ready) (selectedEq.symm ▸ acting)
       (selectedEq.symm ▸ notPublication)

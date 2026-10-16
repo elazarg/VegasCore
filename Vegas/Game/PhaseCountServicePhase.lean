@@ -86,17 +86,25 @@ private theorem original_tapes_no_raw (supported : tapes ∈ (originalTapes).sup
     exact (PMF.mem_support_map_iff _ _ _).mpr ⟨tapes coordinate index, coin, rfl⟩
   exact (PMF.mem_support_pure_iff _ _).mp observed
 
+section Continuation
+
+variable (nativeRaw : ℝ) (nativeNonnegative : 0 ≤ nativeRaw) (nativeBounded : nativeRaw ≤ 1)
+
+local notation "currentQ" => phaseCountServiceTapePolicy setup mode runtime leaks bounds values
+  choose failure timing firstNonnegative firstBounded timingNonnegative timingBounded slotWeight
+  slotNonnegative slotBounded nativeRaw nativeNonnegative nativeBounded horizon tapes
+
 include ordered in
 /-- A true receipt in the actual immutable prescription recovers a genuine
 old-coordinate request, even after immediate normalization and restoration. -/
-private theorem receipt_request_origin
+theorem phaseCountServiceTapePolicy_receipt_request_origin
     (seeds : RestSeed × (PhaseSeedAddress graph → LocalSeed))
     (remaining : Nat) (execution : (app).Execution)
     (trace : ((menu).protocol initial horizon (family seeds)).Trace
       (some ⟨remaining, none, execution⟩))
     (owner : Player) (coordinate : PhaseSeedAddress graph) (payload : L.Ty)
     (binding : (serviceGraph setup mode).outputLayout coordinate.1.event = .binding owner payload)
-    (consistent : (Q owner).Consistent (execution.recall owner))
+    (consistent : (currentQ owner).Consistent (execution.recall owner))
     (accepted : PhaseService.BindingAccepted runtime leaks coordinate.1 owner execution) :
     ∃ (before : (app).Control)
       (prior : ((menu).protocol initial horizon (family seeds)).Trace (some before)),
@@ -112,24 +120,24 @@ private theorem receipt_request_origin
     simp only [PhaseCount.event?, event, Option.map_some, attempt]
   have localConsistent := phaseCountServiceTapePolicy_local_consistent setup mode runtime leaks
     bounds values choose failure timing firstNonnegative firstBounded timingNonnegative
-    timingBounded slotWeight slotNonnegative slotBounded rawWeight rawNonnegative rawBounded
+    timingBounded slotWeight slotNonnegative slotBounded nativeRaw nativeNonnegative nativeBounded
     horizon tapes plan inputs (family seeds) ⟨remaining, none, execution⟩ trace coordinate
       owner
     payload binding consistent
   obtain ⟨before, prior, _action, retained, _active, request, _rest⟩ :=
     PhaseCount.bindingServiceTapeMember_emission_origin runtime leaks bounds plan ordered inputs
-      horizon (family seeds) (Q owner) owner coordinate.1 payload
+      horizon (family seeds) (currentQ owner) owner coordinate.1 payload
       (fun past view => (values owner coordinate.1.event payload binding past view).map
         PublicationResult.success)
       (choose owner coordinate.1) failure timing firstNonnegative firstBounded timingNonnegative
-      timingBounded slotWeight slotNonnegative slotBounded rawWeight rawNonnegative rawBounded
+      timingBounded slotWeight slotNonnegative slotBounded nativeRaw nativeNonnegative nativeBounded
       (tapes coordinate) remaining execution trace localConsistent message authored named
   exact ⟨before, prior, retained, request⟩
 
 /-- Actual supported continuation of the restricted complete prescription
 preserves the original member's complete own recall. Old entry recall is
 retained and only the genuinely new response suffix is checked. -/
-private theorem continuation_consistent
+theorem phaseCountServiceTapePolicy_consistent_of_continuation
     (scheduler : (app).Scheduler)
     (profile : ∀ who, ((menu).information initial horizon scheduler).BehavioralPolicy who)
     (start final : (app).Control)
@@ -141,9 +149,10 @@ private theorem continuation_consistent
         ((menu).bounded initial horizon scheduler).wellFoundedHistories profile stopped
           ⟨some start, entry⟩).support)
     (owner : Player)
-    (follows : profile owner = (menu).restrictPolicy initial horizon scheduler owner (Q owner))
-    (atEntry : (Q owner).Consistent (start.execution.recall owner)) :
-    (Q owner).Consistent (final.execution.recall owner) := by
+    (follows : profile owner =
+      (menu).restrictPolicy initial horizon scheduler owner (currentQ owner))
+    (atEntry : (currentQ owner).Consistent (start.execution.recall owner)) :
+    (currentQ owner).Consistent (final.execution.recall owner) := by
   classical
   let E := (menu).protocol initial horizon scheduler
   let N := (menu).information initial horizon scheduler
@@ -197,19 +206,19 @@ private theorem continuation_consistent
     rw [← suffixEq, (app).ownPlayFrom_concat] at equal
     exact (List.append_cancel_right equal).symm
   rw [actualRecords, follows] at ownPositive
-  have covered : ∀ past view response, response ∈ (Q owner past view).support →
+  have covered : ∀ past view response, response ∈ (currentQ owner past view).support →
       response ∈ (menu).actions owner past view := by
     intro past view response member
     exact phaseCountServiceTapePolicy_covered setup mode runtime leaks bounds values choose failure
       timing firstNonnegative firstBounded timingNonnegative timingBounded slotWeight
       slotNonnegative
-      slotBounded rawWeight rawNonnegative rawBounded horizon tapes owner past view response
+      slotBounded nativeRaw nativeNonnegative nativeBounded horizon tapes owner past view response
       member
   have extend (suffix : List (app).PlayerEntry) :
       0 < N.ownPlayReachProbability
-        ((menu).restrictPolicy initial horizon scheduler owner (Q owner))
+        ((menu).restrictPolicy initial horizon scheduler owner (currentQ owner))
           ((app).ownPlayFrom (start.execution.recall owner) suffix) →
-      (Q owner).Consistent (start.execution.recall owner ++ suffix) := by
+      (currentQ owner).Consistent (start.execution.recall owner ++ suffix) := by
     induction suffix using List.reverseRecOn with
     | nil => exact fun _ => by simpa only [List.append_nil] using atEntry
     | append_singleton suffix response ih =>
@@ -218,7 +227,7 @@ private theorem continuation_consistent
         have earlier := pos_of_mul_pos_right positive ENNReal.toReal_nonneg
         have responsePositive := pos_of_mul_pos_left positive
           (N.ownPlayReachProbability_nonneg _ _)
-        rw [(menu).restrictPolicy_atom initial horizon scheduler owner (Q owner)
+        rw [(menu).restrictPolicy_atom initial horizon scheduler owner (currentQ owner)
           (start.execution.recall owner ++ suffix) response.beforeView response.action
             (covered _ _)] at responsePositive
         exact (by
@@ -227,6 +236,8 @@ private theorem continuation_consistent
               (pmf_toReal_pos_iff.mp responsePositive))
   rw [← suffixEq]
   exact extend suffix ownPositive
+
+end Continuation
 
 include ordered calendar privateSuccess capacity catalogue in
 /-- The actual normalized proper-domain prescription has the same entire
@@ -291,14 +302,18 @@ theorem phaseCountServiceTapePolicy_foreign_survival_iff
   refine ⟨original_tapes_no_raw setup mode failure timing firstNonnegative firstBounded
     timingNonnegative timingBounded horizon tapes tapeSupport, ?_⟩
   intro owner foreign active
-  have firstConsistent := continuation_consistent setup mode runtime leaks bounds values choose
+  have firstConsistent := phaseCountServiceTapePolicy_consistent_of_continuation setup mode
+    runtime leaks bounds values choose
     failure timing firstNonnegative firstBounded timingNonnegative timingBounded slotWeight
-    slotNonnegative slotBounded horizon tapes plan inputs (family firstSeeds) firstProfile start
+    slotNonnegative slotBounded horizon tapes plan inputs rawWeight rawNonnegative rawBounded
+    (family firstSeeds) firstProfile start
     first firstStart firstTrace _ firstRun owner (firstFollows owner foreign) (atEntry owner
       foreign)
-  have secondConsistent := continuation_consistent setup mode runtime leaks bounds values choose
+  have secondConsistent := phaseCountServiceTapePolicy_consistent_of_continuation setup mode
+    runtime leaks bounds values choose
     failure timing firstNonnegative firstBounded timingNonnegative timingBounded slotWeight
-    slotNonnegative slotBounded horizon tapes plan inputs (family secondSeeds) secondProfile start
+    slotNonnegative slotBounded horizon tapes plan inputs rawWeight rawNonnegative rawBounded
+    (family secondSeeds) secondProfile start
     second secondStart secondTrace _ secondRun owner (secondFollows owner foreign) (atEntry owner
       foreign)
   have sameSeeds := sameSeeds owner foreign
@@ -415,10 +430,12 @@ theorem phaseCountServiceTapePolicy_foreign_survival_iff
     have same : who = owner := Option.some.inj
       ((actor?_of_outputLayout_binding graph layout).symm.trans request.2.2.2.1)
     subst who
-    have ready := receipt_request_origin setup mode runtime leaks bounds values choose failure
+    have ready := phaseCountServiceTapePolicy_receipt_request_origin setup mode runtime leaks
+      bounds values choose failure
       timing firstNonnegative firstBounded timingNonnegative timingBounded slotWeight
       slotNonnegative
-      slotBounded horizon tapes plan ordered inputs family firstSeeds first.remaining
+      slotBounded horizon tapes plan ordered inputs family rawWeight rawNonnegative rawBounded
+      firstSeeds first.remaining
       first.execution firstIdleTrace owner coordinate payload layout firstConsistent accepted
     have success := phaseCountServiceTapePolicy_accepted_iff_of_resolved setup mode runtime leaks
       bounds values choose failure timing firstNonnegative firstBounded timingNonnegative
@@ -447,10 +464,12 @@ theorem phaseCountServiceTapePolicy_foreign_survival_iff
     have same : who = owner := Option.some.inj
       ((actor?_of_outputLayout_binding graph layout).symm.trans request.2.2.2.1)
     subst who
-    have ready := receipt_request_origin setup mode runtime leaks bounds values choose failure
+    have ready := phaseCountServiceTapePolicy_receipt_request_origin setup mode runtime leaks
+      bounds values choose failure
       timing firstNonnegative firstBounded timingNonnegative timingBounded slotWeight
       slotNonnegative
-      slotBounded horizon tapes plan ordered inputs family secondSeeds second.remaining
+      slotBounded horizon tapes plan ordered inputs family rawWeight rawNonnegative rawBounded
+      secondSeeds second.remaining
       second.execution secondIdleTrace owner coordinate payload layout secondConsistent accepted
     have success := phaseCountServiceTapePolicy_accepted_iff_of_resolved setup mode runtime leaks
       bounds values choose failure timing firstNonnegative firstBounded timingNonnegative

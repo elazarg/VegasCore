@@ -1,6 +1,6 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**SE: non-concurrent ✓ · sampler/reset ✓ · source fibers/Bayes ✓ · safe retries ✓ · individual SE / native query / transport / incentives open.**
+**SE: non-concurrent ✓ · source gains/D ✓ · honest Bayes ✓ · service G ✓ · individual SE / native query / transport / incentives open.**
 
 The [mathematical proof dependency](se-preservation-math.md#scope-and-proof-dependency)
 states the source selection, conditional transport and deviation arguments,
@@ -26,6 +26,24 @@ information fibers now transports their normalized Bayes beliefs exactly.
 The original joint setup law is retained. Equal combined no-new-miss keys
 alone do not supply that bijection, and individual optimality remains open.
 
+For the selected normalized source prescription, corresponding ordinary
+erased-key copies now have equal actual conditional continuation values,
+baseline values and gains under their original fully mixed Bayes assessment.
+The comparison retains the joint stopped-boundary mark and full terminal
+readout/payoff law. Known-failed attachments still need their separate
+indifference argument; ordinary-copy equality does not establish it.
+
+First full-identifier exit of an actual source commitment attempt is exactly
+the original remaining commitment window, including its final real close.
+Its supported stopped histories retain the actual joint word, public address
+word and exact transition count under arbitrary source profiles. Separately,
+original typed attempts characterize no omission/no own accepted failure by
+ending exclusions equal to the original entry exclusions and successful own
+typed cells, also after close and erasure. The actual stopped word now yields
+that typed attempt and its literal original-entry success marker. This uses
+fresh context names and valued own cells at the current prefix. Applying the
+marked Bayes comparison to derive conditional success rankings remains open.
+
 Guard-safe focal moves preserve the existing player-specific validity
 predicate in both current and saved states through actual recovery steps,
 including retry and exhausted close, under arbitrary foreign actions. The
@@ -39,23 +57,34 @@ identifiers, including the last inclusion before normalization. These are
 actual-run facts. The actual first-exit laws now give the same entire foreign
 survivor vector under arbitrary focal policies, for the same supported
 original zero-RAW timing table and foreign seeds under the strong service
-contract. This is a proper-reference result; the positive-RAW good-event
-comparison and whole-phase typed-word independence remain open.
+contract. With positive RAW rates, the same original tapes also give equal
+laws of the joint event that all entry-active foreign owners survive and no
+effective foreign RAW occurs. The proper-service comparison is used only
+after RAW has been excluded. The complete original per-owner timing tables
+now realize the normalized stopped runner, with their actual entry posterior.
+Averaging gives the same joint good-event/table-vector law under arbitrary
+focal futures. Whole-phase typed-word independence remains open.
 
 Original native archives determine retry generation, distinguishing retries
 from exhausted closes. Chosen commitment chunks have exact source addresses
 and public signals; the virtual current typed view has a genuine source
 witness. Public-only noncommitment observations determine the actual next
 exclusions, and immutable native publications give that same update through
-the compiled suffix. The complete native public scan and observable combined
-query still need their final composition.
+the compiled suffix. Completed reveal phases retain that derived native
+next-exclusion update at each original source rank through actual archived
+normalization. Reveal and sample normalization now retain their exact source
+instruction/address chunks and ending controls. The complete native public
+scan and observable combined query still need their final composition.
 
 The source pooled completion selects shared conditional domain laws with
 query-level pins and independently fixed failure/floor rates. Its actual
 full-information assessments are fully mixed and Bayes consistent, converge
 to one consistent limit, and satisfy the pooled conditional gain inequalities.
 The same initialized flag/domain prior realizes their entire source runners.
-Individual optimality and preservation of the given honest pins remain open.
+Honest full information is now determined by the actual combined query,
+giving coherent legal pins. Actual initialized-run domination retains the
+given honest Bayes limits at source scales fixed before completion.
+Individual optimality and the final source SE composition remain open.
 
 Complete sampled-flag records now derive the entire actual omission word of
 a commitment block. The real close and selected continuation consequently

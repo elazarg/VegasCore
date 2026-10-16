@@ -4,6 +4,7 @@ import Vegas.Game.RecoveryArchivedSavedWord
 import Vegas.Game.RecoveryArchivedInitialization
 import Vegas.Game.RecoverySettledCommitCheckpoint
 import Vegas.Game.RecoveryChosenCommitControl
+import Vegas.Game.CompiledRevealPhase
 
 /-! # Actual archived checkpoints in one linked chosen source chronology -/
 
@@ -76,6 +77,27 @@ inductive ArchivedSourceOrigins (setup : Setup (Player := Player) (L := L)) (mod
         setup.recoveryJointRecall next.trace =
           (checkpoint.commitInstructionWord nextState.entry.native).reverse ++
             setup.recoveryJointRecall checkpoint.trace)
+      (publicSteps : phase.kind ≠ .commitment →
+        Relation.ReflTransGen
+          (NativePublicSourceStep nextState.entry.native 0 setup.program)
+          (checkpoint.residual.lift
+            (ProtocolState.entry checkpoint.residual.tail checkpoint.source), state.entry.excluded)
+          (next.residual.lift (ProtocolState.entry next.residual.tail next.source),
+            nextState.entry.excluded))
+      (publicAddresses : phase.kind ≠ .commitment →
+        ∃ states : List (ProtocolState setup.program × Finset Player),
+          ((checkpoint.residual.lift
+            (ProtocolState.entry checkpoint.residual.tail checkpoint.source),
+            state.entry.excluded) :: states).IsChain
+              (NativePublicSourceStep nextState.entry.native 0 setup.program) ∧
+          ((checkpoint.residual.lift
+            (ProtocolState.entry checkpoint.residual.tail checkpoint.source),
+            state.entry.excluded) :: states).getLast (List.cons_ne_nil _ _) =
+              (next.residual.lift (ProtocolState.entry next.residual.tail next.source),
+                nextState.entry.excluded) ∧
+          setup.recoveryAddressWord next.trace = setup.recoveryAddressWord checkpoint.trace ++
+            states.map (fun point =>
+              (CommitRecoveryState.atPoint point.1 point.2 state.generation).publicAddress))
       (addresses : phase.kind = .commitment →
         ∃ word, setup.recoveryAddressWord next.trace =
           setup.recoveryAddressWord checkpoint.trace ++ word ∧
@@ -154,7 +176,7 @@ theorem get {setup : Setup (Player := Player) (L := L)} {mode : ExecutionMode}
             List.getElem_cons_zero] using instructions
   | advance _checkpoint _next _previous _phase _remaining _installed _advanced _generation archives
       _boundary _aligned _saved _retained _stored _finished _reachable path _instructions
-      _addresses ih =>
+      _publicSteps _publicAddresses _addresses ih =>
       obtain ⟨old, source, sourceAligned, earlierOrigins, archive, oldAttempt, oldRetained,
         oldSaved, oldAgrees, oldPositive, oldClosed, oldSteps, oldLater, sourcePath,
         oldInstructions, onward⟩ := ih index (by simpa only [archives] using bound)

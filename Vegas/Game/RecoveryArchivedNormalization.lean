@@ -314,10 +314,12 @@ theorem RecoverySourceCheckpoint.normalized_archived
                       nextCheckpoint origins phase remaining rfl rfl rfl rfl
                       nextBoundary aligned position.1 retained imageStored finished
                       ⟨_, imageNative⟩ nextPath (fun _ => instructions)
+                      (fun impossible => False.elim (impossible kind))
+                      (fun impossible => False.elim (impossible kind))
                       (fun _ => checkpoint.chosen_commit_addresses image.native committing
                         ⟨_, nextCheckpoint.trace⟩ nextPath instructions)⟩⟩
         | reveal =>
-            obtain ⟨nextCheckpoint, sourcePrefix, word, _intended⟩ :=
+            obtain ⟨nextCheckpoint, sourcePrefix, publicSteps, publicAddresses, word, _intended⟩ :=
               checkpoint.after_reveal phase remaining rfl kind
               receipts.exclusion stored remembered imageNative.reachable imageOrder finished
             have noRetry : ¬ (phase.kind = .commitment ∧
@@ -346,11 +348,12 @@ theorem RecoverySourceCheckpoint.normalized_archived
                       nextBoundary aligned position.1 retained imageStored finished
                     ⟨_, imageNative⟩ nextPath (fun impossible => by
                       rw [kind] at impossible
-                      cases impossible) (fun impossible => by
+                      cases impossible) (fun _ => publicSteps) (fun _ => publicAddresses)
+                      (fun impossible => by
                       rw [kind] at impossible
                       cases impossible)⟩⟩
         | sample =>
-            obtain ⟨nextCheckpoint, sourcePrefix, word, _intended⟩ :=
+            obtain ⟨nextCheckpoint, sourcePrefix, publicSteps, publicAddresses, word, _intended⟩ :=
               checkpoint.after_sample phase remaining rfl kind
               receipts.exclusion stored remembered imageNative.reachable finished
             have noRetry : ¬ (phase.kind = .commitment ∧
@@ -379,9 +382,10 @@ theorem RecoverySourceCheckpoint.normalized_archived
                       nextBoundary aligned position.1 retained imageStored finished
                     ⟨_, imageNative⟩ nextPath (fun impossible => by
                       rw [kind] at impossible
-                      cases impossible) (fun impossible => by
-                      rw [kind] at impossible
-                      cases impossible)⟩⟩
+                      cases impossible) (fun _ => publicSteps) (fun _ => publicAddresses)
+                      (fun impossible => by
+                        rw [kind] at impossible
+                        cases impossible)⟩⟩
       · change
           let finalState :=
             PhaseRuntimeState.settle (phase :: remaining) generation entry current retired

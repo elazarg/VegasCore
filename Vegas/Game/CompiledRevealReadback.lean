@@ -4,6 +4,7 @@ import Vegas.Compile.EventGraphRecoveryReveal
 import Vegas.Compile.EventGraphState
 import Vegas.EventGraph.ConfigRestriction
 import Vegas.Source.CommitRecoveryStep
+import Vegas.Pending.ExclusionPublicRecord
 
 /-! # Reading completed reveals in source order from actual reachable stores -/
 
@@ -11,9 +12,50 @@ noncomputable section
 
 namespace Vegas
 
-open SourceProgram EventGraph GameTheory.Math.Probability
+open SourceProgram EventGraph EventGraphRuntime GameTheory.Math.Probability
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
+
+omit [DecidableEq Player] in
+theorem publication_failure_iff_read {graph : Vegas.EventGraph Player L}
+    (native : EventGraphRuntime.State graph) (event : graph.EventId)
+    {owner : Player} {payload : L.Ty}
+    (binding : FieldRef graph.layout (.binding owner payload))
+    (checks : List (GuardCheck graph.layout payload))
+    (outputEq : graph.outputLayout event = .publication payload)
+    (codeEq : cast (congrArg (EventCode graph.layout) outputEq) (graph.nodes event) =
+      .resolve owner payload binding checks)
+    (value : PublicationResult (L.Val payload))
+    (stored : (⟨.inr event, outputEq⟩ : FieldRef graph.layout (.publication payload)).get?
+      native.config.store = some value) :
+    native.PublicFailure event ↔ value = .failure := by
+  have viewed := nodeView_eq_resolve outputEq codeEq
+  have missed : native.publicView.missedBinding event = false := by
+    simp only [PublicView.missedBinding, outputEq]
+  simp only [EventGraphRuntime.State.PublicFailure, missed, Bool.false_eq_true, false_or,
+    RecoveryState.publicationFailed, viewed]
+  change cast (congrArg Option (congrArg EventField.Value outputEq))
+    (native.config.outputs event) = some value at stored
+  have castSome : ∀ {α β : Type} (same : α = β) (item : α),
+      cast (congrArg Option same) (some item) = some (cast same item) := by
+    intro α β same item
+    cases same
+    rfl
+  have castNone : ∀ {α β : Type} (same : α = β),
+      cast (congrArg Option same) (none : Option α) = (none : Option β) := by
+    intro α β same
+    cases same
+    rfl
+  cases output : native.config.outputs event with
+  | none =>
+      rw [output, castNone (congrArg EventField.Value outputEq)] at stored
+      cases stored
+  | some result =>
+      rw [output, castSome (congrArg EventField.Value outputEq)] at stored
+      have same := Option.some.inj stored
+      dsimp only
+      rw [same]
+      cases value <;> simp
 
 private theorem recorded_reveal_value {Field : Type} [DecidableEq Field]
     {layout : Field → EventField Player L} {Γ : SourceCtx Player L}

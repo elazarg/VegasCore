@@ -61,6 +61,25 @@ theorem RecoverySourceCheckpoint.after_reveal
       (∃ fuel : Nat,
         setup.commitRecoveryProtocol.ReachesWithin fuel
           ⟨_, checkpoint.trace⟩ ⟨_, next.trace⟩) ∧
+      Relation.ReflTransGen
+        (NativePublicSourceStep (phase.drain state.current).native 0 setup.program)
+        (checkpoint.residual.lift (ProtocolState.entry checkpoint.residual.tail checkpoint.source),
+          state.entry.excluded)
+        (next.residual.lift (ProtocolState.entry next.residual.tail next.source),
+          (phase.drain state.current).excluded) ∧
+      (∃ states : List (ProtocolState setup.program × Finset Player),
+        ((checkpoint.residual.lift
+          (ProtocolState.entry checkpoint.residual.tail checkpoint.source),
+          state.entry.excluded) :: states).IsChain
+            (NativePublicSourceStep (phase.drain state.current).native 0 setup.program) ∧
+        ((checkpoint.residual.lift
+          (ProtocolState.entry checkpoint.residual.tail checkpoint.source),
+          state.entry.excluded) :: states).getLast (List.cons_ne_nil _ _) =
+          (next.residual.lift (ProtocolState.entry next.residual.tail next.source),
+            (phase.drain state.current).excluded) ∧
+        setup.recoveryAddressWord next.trace = setup.recoveryAddressWord checkpoint.trace ++
+          states.map (fun point =>
+            (CommitRecoveryState.atPoint point.1 point.2 state.generation).publicAddress)) ∧
       (∀ who, who ∉ (phase.drain state.current).excluded →
         next.source.history who = checkpoint.source.history who ++
           (decodeHistory setup.program ((phase.drain state.current).native.config.history.map
@@ -114,12 +133,40 @@ theorem RecoverySourceCheckpoint.after_reveal
   obtain ⟨ranks, actors, commits, owners, endpoints, automatic, history, memory, steps, menus,
     readout⟩ := revealTail_recovery count program prefixed
   let sourceInitial := setup.initialConfig setup.initialLaw.support_nonempty.choose
-  have reached := CommitRecoveryState.reaches_of_lifted_nonCommit_path setup.program sourceInitial
-    program checkpoint.residual.lift checkpoint.remaining checkpoint.atCommit checkpoint.step
-    state.generation (ProtocolState.entry program checkpoint.source, state.entry.excluded)
-    (tail.lift (ProtocolState.entry tail.tail final), image.excluded) path
-  obtain ⟨sourceTrace, fuel, reachedPrefix⟩ :=
-    setup.recoveryTrace_of_reaches sourceInitial priorTrace reached
+  have publicPath : Relation.ReflTransGen
+      (NativePublicSourceStep image.native 0 setup.program)
+      (checkpoint.residual.lift (ProtocolState.entry program checkpoint.source),
+        state.entry.excluded)
+      (checkpoint.residual.lift (tail.lift (ProtocolState.entry tail.tail final)),
+        image.excluded) := by
+    apply Relation.ReflTransGen.lift
+      (fun point : ProtocolState program × Finset Player =>
+        (checkpoint.residual.lift point.1, point.2)) (fun left right moved => ?_) _ _ path
+    obtain ⟨⟨running, notCommit, joint, supported⟩, update⟩ := moved
+    refine ⟨⟨?_, ?_, joint, ?_⟩, ?_⟩
+    · intro stopped
+      apply running
+      apply (ProtocolState.remaining_zero_iff_terminal program left.1).mp
+      rw [← checkpoint.remaining left.1]
+      exact (ProtocolState.remaining_zero_iff_terminal setup.program _).mpr stopped
+    · exact (checkpoint.atCommit left.1).trans notCommit
+    · rw [checkpoint.step]
+      exact (PMF.mem_support_map_iff _ _ _).mpr ⟨right, supported, rfl⟩
+    · intro selected ranked
+      apply update selected ?_
+      have count := checkpoint.compiled.countEq
+      simp only [eventCount_eq_instructionCount] at count
+      have bounded := ProtocolState.remaining_le_instructionCount program left.1
+      rw [checkpoint.remaining] at ranked
+      simp only [Nat.zero_add] at ranked
+      dsimp only [program] at bounded ⊢
+      omega
+  have rawPath := Relation.ReflTransGen.mono (fun _ _ moved => moved.1) _ _ path
+  obtain ⟨states, joints, chain, ending, instructions⟩ :=
+    CommitRecoveryState.instructions_of_nonCommit_path setup.program sourceInitial
+      state.generation (fun _ _ moved => moved.1) _ _ publicPath
+  obtain ⟨sourceTrace, reachedPrefix, _length, _word, numeric⟩ :=
+    setup.recoveryInstructionPath_information sourceInitial instructions priorTrace
   have adjacent := exclusion.frontier.adjacent
   have last := exclusion.frontier.last
   rw [installed] at adjacent last
@@ -163,7 +210,7 @@ theorem RecoverySourceCheckpoint.after_reveal
         checkpoint.embedding checkpoint.residual.lift checkpoint.views
       origin := checkpoint.origin.compose
         (revealTail_protocolSuffix count program prefixed)
-      historyAlignment := ?_ }, ?_, ?_, ?_⟩
+      historyAlignment := ?_ }, ?_, publicPath, ⟨states, chain, ending, numeric⟩, ?_, ?_⟩
   · rw [address, high]
     rw [revelations]
     exact graphTail
@@ -192,7 +239,7 @@ theorem RecoverySourceCheckpoint.after_reveal
       reachable (remembered.trans (phase.drain_history_prefix state.current)) saved prefixEnd
       (fun owner _survives => congrFun (checkpoint.historyAlignment oldClear) owner) who
       (by rw [clear]; exact Finset.notMem_empty _)
-  · exact ⟨fuel, reachedPrefix⟩
+  · exact ⟨joints.length, reachedPrefix⟩
   · intro who active
     have saved : state.entry.native.config.cut.IsPrefix state.attempt.phase := by
       rw [← low]
@@ -203,6 +250,6 @@ theorem RecoverySourceCheckpoint.after_reveal
       reachable (remembered.trans (phase.drain_history_prefix state.current)) saved prefixEnd
       who active
   · intro clear intended
-    exact checkpoint.origin.intended_of_clear_nonCommit_path _ _ path intended clear
+    exact checkpoint.origin.intended_of_clear_nonCommit_path _ _ rawPath intended clear
 
 end Vegas

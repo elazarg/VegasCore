@@ -2,6 +2,8 @@
 
 import Vegas.Pending.PhaseSavedExclusionReadback
 import Vegas.Pending.PhaseArchiveGeneration
+import Vegas.Game.CompiledRevealPhase
+import Vegas.Source.CommitRecoveryInstructions
 
 /-! # Public numeric source chronology from the literal native attempt records -/
 
@@ -80,6 +82,56 @@ theorem sourceFailureFootprint_congr {first second : State graph}
     exact exists_congr fun event => and_congr_right fun _ =>
       PublicFailure.of_publicView_eq same event
 
+open scoped Classical in
+/-- Extending a source-ranked public scan by one original event adds exactly
+that event's failed owner. Repeated failures retain the same exclusion set. -/
+theorem failureOwnersBefore_successor (state : State graph) (event : graph.EventId) :
+    state.failureOwnersBefore (event.val + 1) =
+      state.failureOwnersBefore event.val ∪ Finset.univ.filter (fun owner =>
+        graph.actor? event = some owner ∧ state.PublicFailure event) := by
+  classical
+  ext owner
+  simp only [failureOwnersBefore, Finset.mem_union, Finset.mem_filter,
+    Finset.mem_univ, true_and]
+  constructor
+  · rintro ⟨prior, lower, acting, failed⟩
+    by_cases earlier : prior.val < event.val
+    · exact Or.inl ⟨prior, earlier, acting, failed⟩
+    · have same : prior = event := Fin.ext (by omega)
+      subst prior
+      exact Or.inr ⟨acting, failed⟩
+  · rintro (⟨prior, earlier, acting, failed⟩ | ⟨acting, failed⟩)
+    · exact ⟨prior, by omega, acting, failed⟩
+    · exact ⟨event, by omega, acting, failed⟩
+
+open scoped Classical in
+/-- The next excluded set is determined by the old set and the current public
+failure. The inherited part may also contain failures from retired attempts. -/
+theorem union_failureOwnersBefore_successor (state : State graph) (event : graph.EventId)
+    (inherited : Finset Player) :
+    inherited ∪ state.failureOwnersBefore (event.val + 1) =
+      (graph.actor? event).elim (inherited ∪ state.failureOwnersBefore event.val)
+        (fun owner => if state.PublicFailure event then
+          insert owner (inherited ∪ state.failureOwnersBefore event.val)
+        else inherited ∪ state.failureOwnersBefore event.val) := by
+  classical
+  rw [state.failureOwnersBefore_successor event]
+  cases acting : graph.actor? event with
+  | none =>
+      ext who
+      simp only [Option.elim_none, Finset.mem_union, Finset.mem_filter,
+        Finset.mem_univ, true_and, reduceCtorEq, false_and, or_false]
+  | some owner =>
+      by_cases failed : state.PublicFailure event
+      · ext who
+        simp only [Option.elim_some, failed, ↓reduceIte, Finset.mem_union,
+          Finset.mem_filter, Finset.mem_univ, true_and, Option.some.injEq,
+          and_true, Finset.mem_insert, eq_comm]
+        tauto
+      · ext who
+        simp only [Option.elim_some, failed, ↓reduceIte, Finset.mem_union,
+          Finset.mem_filter, Finset.mem_univ, and_false, or_false]
+
 end State
 
 namespace PhaseRuntimeState
@@ -145,3 +197,108 @@ theorem sourcePublicAddressWord_congr (plan : RuntimePhasePlan graph)
 
 end PhaseRuntimeState
 end Vegas.EventGraphRuntime
+
+namespace Vegas
+
+open SourceProgram EventGraph EventGraphRuntime
+
+variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
+
+/-- The retained native annotation is attached to the next original source
+rank; no source retry or extra close lies inside a public instruction path. -/
+theorem NativePublicSourceStep.position
+    {graph : Vegas.EventGraph Player L} {Γ : SourceCtx Player L} {O : Finset VarId}
+    {native : EventGraphRuntime.State graph} {offset : Nat}
+    {program : SourceProgram Player L Γ O}
+    {first last : ProtocolState program × Finset Player}
+    (step : NativePublicSourceStep native offset program first last) :
+    instructionCount program - ProtocolState.remaining program last.1 =
+      instructionCount program - ProtocolState.remaining program first.1 + 1 := by
+  obtain ⟨⟨running, _notCommit, joint, supported⟩, _update⟩ := step
+  have consumed := ProtocolState.recoveryStep_remaining program first.1 first.2 joint last
+    running supported
+  have bound := ProtocolState.remaining_le_instructionCount program first.1
+  omega
+
+/-- Actual per-slot control metadata propagates the native public exclusion
+scan, including chance-only steps and owners already excluded earlier. -/
+theorem NativePublicSourceStep.excluded_scan [Fintype Player]
+    {graph : Vegas.EventGraph Player L} {Γ : SourceCtx Player L} {O : Finset VarId}
+    {native : EventGraphRuntime.State graph} {offset : Nat}
+    {program : SourceProgram Player L Γ O}
+    {first last : ProtocolState program × Finset Player}
+    (step : NativePublicSourceStep native offset program first last)
+    (event : graph.EventId)
+    (ranked : event.val = offset + (instructionCount program -
+      ProtocolState.remaining program first.1))
+    (inherited : Finset Player)
+    (before : first.2 = inherited ∪ native.failureOwnersBefore event.val) :
+    last.2 = inherited ∪ native.failureOwnersBefore (event.val + 1) := by
+  have update := step.2 event ranked
+  rw [before] at update
+  exact update.trans (native.union_failureOwnersBefore_successor event inherited).symm
+
+/-- The complete public-instruction chunk is the deterministic native scan.
+Every element is an actual post-instruction address in the retained path. -/
+theorem native_public_path_addresses [Fintype Player]
+    (setup : Setup (Player := Player) (L := L)) (mode : ExecutionMode)
+    (native : EventGraphRuntime.State ((toEventGraph setup.program).withMode mode))
+    (inherited : Finset Player) (generation : Nat)
+    (first : ProtocolState setup.program × Finset Player)
+    (states : List (ProtocolState setup.program × Finset Player))
+    (chain : (first :: states).IsChain (NativePublicSourceStep native 0 setup.program))
+    (before : first.2 = inherited ∪ native.failureOwnersBefore
+      (instructionCount setup.program - ProtocolState.remaining setup.program first.1)) :
+    states.map (fun point =>
+      (CommitRecoveryState.atPoint point.1 point.2 generation).publicAddress) =
+    (List.range states.length).map (fun index =>
+      let rank := instructionCount setup.program -
+        ProtocolState.remaining setup.program first.1 + index + 1
+      (some rank, inherited ∪ native.failureOwnersBefore rank, generation, rank)) := by
+  have addresses : ∀ index (bound : index < states.length),
+      (CommitRecoveryState.atPoint (states[index]'bound).1
+        (states[index]'bound).2 generation).publicAddress =
+      let rank := instructionCount setup.program -
+        ProtocolState.remaining setup.program first.1 + index + 1
+      (some rank, inherited ∪ native.failureOwnersBefore rank, generation, rank) := by
+    induction states generalizing first with
+    | nil => intro index bound; simp only [List.length_nil] at bound; omega
+    | cons middle states ih =>
+        have moved := List.isChain_cons_cons.mp chain
+        have nextRank := moved.1.position
+        have bounded := ProtocolState.remaining_le_instructionCount setup.program first.1
+        have positive : 0 < ProtocolState.remaining setup.program first.1 := by
+          by_contra absent
+          have stopped := (ProtocolState.remaining_zero_iff_terminal setup.program first.1).mp
+            (by omega)
+          exact moved.1.1.1 stopped
+        let event : ((toEventGraph setup.program).withMode mode).EventId :=
+          ⟨instructionCount setup.program - ProtocolState.remaining setup.program first.1, by
+            change _ < eventCount setup.program
+            rw [eventCount_eq_instructionCount]
+            omega⟩
+        have excluded := moved.1.excluded_scan event (by dsimp only [event]; omega)
+          inherited before
+        have nextExcluded : middle.2 = inherited ∪ native.failureOwnersBefore
+            (instructionCount setup.program - ProtocolState.remaining setup.program middle.1) := by
+          rw [nextRank]
+          exact excluded
+        intro index bound
+        cases index with
+        | zero =>
+            change (some (instructionCount setup.program -
+                ProtocolState.remaining setup.program middle.1), middle.2, generation,
+              instructionCount setup.program - ProtocolState.remaining setup.program middle.1) = _
+            rw [nextRank, nextExcluded, nextRank]
+        | succ index =>
+            have later := ih middle moved.2 nextExcluded index (by
+              simp only [List.length_cons] at bound
+              omega)
+            simpa only [List.getElem_cons_succ, Nat.succ_eq_add_one, nextRank,
+              Nat.add_assoc, Nat.add_comm, Nat.add_left_comm] using later
+  apply List.ext_getElem (by simp only [List.length_map, List.length_range])
+  intro index bound _
+  simpa only [List.getElem_map, List.getElem_range] using
+    addresses index (by simpa only [List.length_map] using bound)
+
+end Vegas

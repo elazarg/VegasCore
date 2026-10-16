@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.RecoverySourceBoundary
+import Vegas.Game.CompiledRevealPhase
 import Vegas.Game.CompiledSampleReadback
 import Vegas.Pending.PhaseExclusionRecord
 import Vegas.Pending.PhaseStoredCheckpoint
@@ -40,6 +41,25 @@ theorem RecoverySourceCheckpoint.after_sample
       (∃ fuel : Nat,
         setup.commitRecoveryProtocol.ReachesWithin fuel
           ⟨_, checkpoint.trace⟩ ⟨_, next.trace⟩) ∧
+      Relation.ReflTransGen
+        (NativePublicSourceStep (phase.drain state.current).native 0 setup.program)
+        (checkpoint.residual.lift (ProtocolState.entry checkpoint.residual.tail checkpoint.source),
+          state.entry.excluded)
+        (next.residual.lift (ProtocolState.entry next.residual.tail next.source),
+          (phase.drain state.current).excluded) ∧
+      (∃ states : List (ProtocolState setup.program × Finset Player),
+        ((checkpoint.residual.lift
+          (ProtocolState.entry checkpoint.residual.tail checkpoint.source),
+          state.entry.excluded) :: states).IsChain
+            (NativePublicSourceStep (phase.drain state.current).native 0 setup.program) ∧
+        ((checkpoint.residual.lift
+          (ProtocolState.entry checkpoint.residual.tail checkpoint.source),
+          state.entry.excluded) :: states).getLast (List.cons_ne_nil _ _) =
+          (next.residual.lift (ProtocolState.entry next.residual.tail next.source),
+            (phase.drain state.current).excluded) ∧
+        setup.recoveryAddressWord next.trace = setup.recoveryAddressWord checkpoint.trace ++
+          states.map (fun point =>
+            (CommitRecoveryState.atPoint point.1 point.2 state.generation).publicAddress)) ∧
       (∀ who, who ∉ (phase.drain state.current).excluded →
         next.source.history who = checkpoint.source.history who ++
           (decodeHistory setup.program ((phase.drain state.current).native.config.history.map
@@ -155,12 +175,39 @@ theorem RecoverySourceCheckpoint.after_sample
         refine ⟨(fun impossible => impossible), rfl, (fun _ => none), ?_⟩
         exact (PMF.mem_support_map_iff _ _ _).mpr ⟨sampled, supported, rfl⟩
       let sourceInitial := setup.initialConfig setup.initialLaw.support_nonempty.choose
-      have reached := CommitRecoveryState.reaches_of_lifted_nonCommit_path setup.program
-        sourceInitial (.sample name fresh law next) lift ranks commits steps state.generation
-        (Sum.inl source, state.entry.excluded)
-        (Sum.inr (ProtocolState.entry next after), state.entry.excluded) path
-      obtain ⟨sourceTrace, fuel, reachedPrefix⟩ :=
-        setup.recoveryTrace_of_reaches sourceInitial priorTrace reached
+      have publicPath : Relation.ReflTransGen
+          (NativePublicSourceStep image.native 0 setup.program)
+          (lift (Sum.inl source), state.entry.excluded)
+          (lift (Sum.inr (ProtocolState.entry next after)), state.entry.excluded) := by
+        apply Relation.ReflTransGen.single
+        refine ⟨⟨?_, ?_, (fun _ => none), ?_⟩, ?_⟩
+        · intro stopped
+          have zeroRemaining := (ProtocolState.remaining_zero_iff_terminal setup.program _).mpr
+            stopped
+          rw [ranks] at zeroRemaining
+          simp only [ProtocolState.remaining, Sum.elim_inl] at zeroRemaining
+          omega
+        · exact (commits (Sum.inl source)).trans rfl
+        · rw [steps]
+          apply (PMF.mem_support_map_iff _ _ _).mpr
+          refine ⟨(Sum.inr (ProtocolState.entry next after), state.entry.excluded), ?_, rfl⟩
+          exact (PMF.mem_support_map_iff _ _ _).mpr ⟨sampled, supported, rfl⟩
+        · intro selected selectedRank
+          have count := compiled.countEq
+          simp only [eventCount_eq_instructionCount] at count
+          rw [ranks] at selectedRank
+          change selected.val = 0 + (instructionCount setup.program -
+            instructionCount (.sample name fresh law next)) at selectedRank
+          have same : selected = event := Fin.ext (by
+            have eventRank := ranked.trans low
+            omega)
+          rw [same, ownerless]
+          rfl
+      obtain ⟨states, joints, chain, ending, instructions⟩ :=
+        CommitRecoveryState.instructions_of_nonCommit_path setup.program sourceInitial
+          state.generation (fun _ _ moved => moved.1) _ _ publicPath
+      obtain ⟨sourceTrace, reachedPrefix, _length, _word, numeric⟩ :=
+        setup.recoveryInstructionPath_information sourceInitial instructions priorTrace
       let targetTrace : setup.commitRecoveryProtocol.Trace
           (some (CommitRecoveryState.atPoint
             (lift (Sum.inr (ProtocolState.entry next after))) image.excluded state.generation)) :=
@@ -213,7 +260,7 @@ theorem RecoverySourceCheckpoint.after_sample
           views := ProtocolViewSuffix.sampleTail setup.program fresh law next refs embedding
             lift views
           origin := .sampleTail fresh law next origin
-          historyAlignment := ?_ }, ?_, ?_, ?_⟩
+          historyAlignment := ?_ }, ?_, ?_, ?_, ?_, ?_⟩
       · rw [address]
         exact compiled.sampleTail (_openNames := O) setup.program fresh law next refs
           source.revelations registry embedding before state.attempt.phase
@@ -247,13 +294,30 @@ theorem RecoverySourceCheckpoint.after_sample
           (remembered.trans (phase.drain_history_prefix state.current)) saved prefixEnd
           (fun owner _survives => congrFun (historyAlignment oldClear) owner) who
           (by rw [clear]; exact Finset.notMem_empty _)
-      · refine ⟨fuel, ?_⟩
-        change setup.commitRecoveryProtocol.ReachesWithin fuel
+      · refine ⟨joints.length, ?_⟩
+        change setup.commitRecoveryProtocol.ReachesWithin joints.length
           ⟨_, priorTrace⟩ ⟨_, targetTrace⟩
         rw [show (⟨_, targetTrace⟩ : setup.commitRecoveryProtocol.History) =
             ⟨_, sourceTrace⟩ from
           GameTheory.Protocol.ExecutionProtocol.StateSymmetry.history_cast _ sourceTrace]
         exact reachedPrefix
+      · change Relation.ReflTransGen
+          (NativePublicSourceStep image.native 0 setup.program)
+          (lift (Sum.inl source), state.entry.excluded)
+          (lift (Sum.inr (ProtocolState.entry next after)), image.excluded)
+        rw [excludedEq]
+        exact publicPath
+      · refine ⟨states, chain, ?_, ?_⟩
+        · change ((lift (Sum.inl source), state.entry.excluded) :: states).getLast
+            (List.cons_ne_nil _ _) =
+              (lift (Sum.inr (ProtocolState.entry next after)), image.excluded)
+          rw [excludedEq]
+          exact ending
+        · have sameHistory : (⟨_, targetTrace⟩ : setup.commitRecoveryProtocol.History) =
+              ⟨_, sourceTrace⟩ :=
+            GameTheory.Protocol.ExecutionProtocol.StateSymmetry.history_cast _ sourceTrace
+          exact (congrArg (fun history => setup.recoveryAddressWord history.trace)
+            sameHistory).trans numeric
       · intro who active
         obtain ⟨⟨selected, action⟩, recorded, named⟩ :=
           List.mem_map.mp ((image.native.config.history_exact event).mpr completed)

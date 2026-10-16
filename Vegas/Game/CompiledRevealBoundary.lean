@@ -55,11 +55,7 @@ theorem sourceRecovery_of_completed_revealPhase
       (@Config.revelations Player L _ final) =
         (revealTailRevelations count program prefixed revelations :
           Revelations (revealTail count program prefixed).context) ∧
-      Relation.ReflTransGen
-        (fun left right : ProtocolState program × Finset Player =>
-          ¬ ProtocolState.terminal program left.1 ∧
-          ProtocolState.atCommit program left.1 = false ∧
-          ∃ joint, right ∈ (ProtocolState.recoveryStep program left.1 left.2 joint).support)
+      Relation.ReflTransGen (NativePublicSourceStep native.native offset program)
         (ProtocolState.entry program entry, inherited)
         ((revealTail count program prefixed).lift (ProtocolState.entry _ final),
           native.excluded) ∧
@@ -111,6 +107,12 @@ theorem sourceRecovery_of_completed_revealPhase
   subst excluded
   refine ⟨final, finalAgree, finalGuards, finalFailures, finalRevelations, path, ?_, word⟩
   intro generation
-  exact CommitRecoveryState.reaches_of_nonCommit_path program entry generation _ _ path
+  obtain ⟨_states, _joints, _chain, _ending, instructions⟩ :=
+    CommitRecoveryState.instructions_of_nonCommit_path program entry generation
+      (fun _ _ moved => moved.1)
+      (ProtocolState.entry program entry, inherited)
+      ((revealTail count program prefixed).lift
+        (ProtocolState.entry (revealTail count program prefixed).tail final), native.excluded) path
+  exact instructions.reaches
 
 end Vegas

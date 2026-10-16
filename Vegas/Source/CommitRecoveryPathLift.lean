@@ -38,22 +38,30 @@ theorem CommitRecoveryState.reaches_of_lifted_nonCommit_path
       first last) :
     (commitRecoveryProtocol whole initial).Reaches
       (atPoint (lift first.1) first.2 generation) (atPoint (lift last.1) last.2 generation) := by
-  apply reaches_of_nonCommit_path whole initial generation
-    (lift first.1, first.2) (lift last.1, last.2)
-  apply Relation.ReflTransGen.lift
-    (fun point : ProtocolState program × Finset Player => (lift point.1, point.2))
-    (fun earlier later moved => ?_) first last path
-  obtain ⟨running, notCommit, joint, supported⟩ := moved
-  refine ⟨?_, ?_, joint, ?_⟩
-  · intro stopped
-    apply running
-    apply (ProtocolState.remaining_zero_iff_terminal program earlier.1).mp
-    rw [← remaining earlier.1]
-    exact (ProtocolState.remaining_zero_iff_terminal whole (lift earlier.1)).mpr stopped
-  · exact (atCommit earlier.1).trans notCommit
-  · change (lift later.1, later.2) ∈
-      (ProtocolState.recoveryStep whole (lift earlier.1) earlier.2 joint).support
-    rw [step]
-    exact (PMF.mem_support_map_iff _ _ _).mpr ⟨later, supported, rfl⟩
+  have lifted : Relation.ReflTransGen
+      (fun earlier later : ProtocolState whole × Finset Player =>
+        ¬ ProtocolState.terminal whole earlier.1 ∧
+        ProtocolState.atCommit whole earlier.1 = false ∧
+        ∃ joint, later ∈ (ProtocolState.recoveryStep whole earlier.1 earlier.2 joint).support)
+      (lift first.1, first.2) (lift last.1, last.2) := by
+    apply Relation.ReflTransGen.lift
+      (fun point : ProtocolState program × Finset Player => (lift point.1, point.2))
+      (fun earlier later moved => ?_) first last path
+    obtain ⟨running, notCommit, joint, supported⟩ := moved
+    refine ⟨?_, ?_, joint, ?_⟩
+    · intro stopped
+      apply running
+      apply (ProtocolState.remaining_zero_iff_terminal program earlier.1).mp
+      rw [← remaining earlier.1]
+      exact (ProtocolState.remaining_zero_iff_terminal whole (lift earlier.1)).mpr stopped
+    · exact (atCommit earlier.1).trans notCommit
+    · change (lift later.1, later.2) ∈
+        (ProtocolState.recoveryStep whole (lift earlier.1) earlier.2 joint).support
+      rw [step]
+      exact (PMF.mem_support_map_iff _ _ _).mpr ⟨later, supported, rfl⟩
+  obtain ⟨_states, _joints, _chain, _ending, instructions⟩ :=
+    instructions_of_nonCommit_path whole initial generation (fun _ _ moved => moved)
+      (lift first.1, first.2) (lift last.1, last.2) lifted
+  exact instructions.reaches
 
 end Vegas.SourceProgram

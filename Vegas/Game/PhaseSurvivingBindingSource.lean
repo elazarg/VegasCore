@@ -95,7 +95,7 @@ theorem phase_ready_binding_surviving_source
     rw [binding]
     exact id
   obtain ⟨source, sourceTrace, excluded, generation, publicSignal, sourceActor, played,
-      word, decoded⟩ :=
+      word, decoded, _numeric⟩ :=
     checkpoint.surviving_prefix_trace fresh guard next earlier reconstruct stored survives selected
       atEnd (selectedEq.symm ▸ request.2.2.1) (selectedEq.symm ▸ acting)
       (selectedEq.symm ▸ notPublication)

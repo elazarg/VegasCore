@@ -84,7 +84,8 @@ theorem RecoverySourceCheckpoint.normalized_intended
               stored remembered (phase.drain_invariant current native.active).reachable imageOrder
                 finishedDrain
             rw [drained] at result
-            obtain ⟨next, _sourcePrefix, _history, nextIntended⟩ := result
+            obtain ⟨next, _sourcePrefix, _publicSteps, _publicAddresses, _history,
+              nextIntended⟩ := result
             exact ⟨next, nextIntended clear intended⟩
         | sample =>
             have result := checkpoint.after_sample
@@ -92,7 +93,8 @@ theorem RecoverySourceCheckpoint.normalized_intended
               stored remembered (phase.drain_invariant current native.active).reachable
                 finishedDrain
             rw [drained] at result
-            obtain ⟨next, _sourcePrefix, _history, nextIntended⟩ := result
+            obtain ⟨next, _sourcePrefix, _publicSteps, _publicAddresses, _history,
+              nextIntended⟩ := result
             exact ⟨next, nextIntended clear intended⟩
       · have unchanged : state.normalize = state := by
           change PhaseRuntimeState.settle (phase :: remaining) generation entry current retired =
