@@ -2358,12 +2358,17 @@ the original joint setup law.
 retain complete erased states and prove equality of actual ordinary-copy
 continuation values and gains under the original Bayes assessment. The joint
 stopped-boundary mark and full terminal readout/payoffs stay coupled. The
-success-marker specialization, failed attachments and individual source
-optimality remain separate obligations.
+conditional-success specialization and full source SE assembly remain separate
+obligations.
 [Actual pooled ordinary gains](../Vegas/Game/CommitRecoveryPooledOrdinaryGains.lean)
 specialize the original component lotteries and give the exact positive-cardinality
-ordinary-class sum. The whole normalized pool still needs its failed-member
-zero-gain and original decision-agent adapters.
+ordinary-class sum.
+[The actual agent-pool sum](../Vegas/Game/CommitRecoveryPooledAgentGains.lean)
+derives its failed-member zero remainder and the ordinary individual component
+inequality. [The free ordinary limit](../Vegas/Game/CommitRecoveryPooledOrdinaryLimit.lean)
+derives the actual component convergence and best response to every domain law.
+[Ordinary limit copies](../Vegas/Game/CommitRecoveryOrdinaryLimitCopies.lean)
+transport every raw local gain between ordinary erased copies at that same limit.
 [Original source attempt exit](../Vegas/Source/CommitRecoveryAttemptExit.lean)
 identifies the actual first-full-identifier stopped law with its exact remaining
 commitment window, retaining original joint instructions and public addresses.
@@ -2375,6 +2380,16 @@ recovers the typed attempt from the literal supported instruction word.
 [Stopped success](../Vegas/Source/CommitRecoveryStoppedAttempt.lean) composes
 the original first-exit law with its erased boundary success readout, under
 fresh names and valued own-prefix cells.
+[Actual committing syntax](../Vegas/Source/CommitRecoveryCommitEntry.lean)
+supplies its residual commitment entry and inherited fresh names.
+[The original omission word](../Vegas/Source/CommitRecoveryAttemptOmissions.lean)
+identifies no new failures with no raw omission.
+[The genuine stopped marker](../Vegas/Game/CommitRecoveryCommitSuccess.lean)
+reads raw-word success from the erased endpoint without supplied typed geometry.
+[Standing attempt debt](../Vegas/Source/CommitRecoveryAttemptDebt.lean),
+[its stopped payoff](../Vegas/Game/CommitRecoveryAttemptDebtPayoff.lean), and
+[the genuine committing consumer](../Vegas/Game/CommitRecoveryCommitFailure.lean)
+derive the exclusion payoff under every later continuation and reset.
 [Honest own recall](../Vegas/Source/IntendedErasedRecall.lean) and
 [query pin coherence](../Vegas/Game/CommitRecoveryHonestPins.lean) recover
 original honest full information from the actual combined query.
@@ -2385,7 +2400,10 @@ retain the original honest assessment at fixed source-only scales, independently
 of the optimized free laws.
 [The honest limit](../Vegas/Game/CommitRecoveryHonestLimit.lean) derives its actual
 honest extension and beliefs, every raw local best response at embedded honest
-sites, and the original initialized joint law. Free-site source optimality remains open.
+sites, and the original initialized joint law.
+[Actual honest pool witnesses](../Vegas/Game/CommitRecoveryHonestPoolWitness.lean)
+derive a genuine honest decision site from a nonempty pin, with the same erased
+key at every ordinary pool member. Full raw source SE assembly remains open.
 [Player-specific recovery validity](../Vegas/Source/CommitRecoveryPlayerValidity.lean)
 reuses the existing intended-for-one-player predicate through arbitrary foreign
 actions, automatic slots and actual checkpoint closes. Current observed guard
@@ -2424,8 +2442,14 @@ same erased-information class or actual new-failure attempts.
 [Original omission windows](../Vegas/Game/CommitRecoveryOmissionWindow.lean) and
 [the normalized raw omission kernel](../Vegas/Game/CommitRecoveryOmissionKernel.lean)
 derive their full omission-word law and failed-window terminal readout/payoff
-law, allowing arbitrary private domain prescriptions. One-site indifference
-and the whole source SE composition are separate consumers.
+law, allowing arbitrary private domain prescriptions.
+[The actual failed local law](../Vegas/Game/CommitRecoveryFailedLocalLaw.lean)
+derives one-site indifference under the actual source belief.
+[Accepted failure](../Vegas/Game/CommitRecoveryAcceptedFailure.lean) cannot improve
+on any domain lottery, using the original window marginals and permanent debt.
+[Known-failed limit optimality](../Vegas/Game/CommitRecoveryFailedLimit.lean)
+compares every raw local lottery in the same actual source limit.
+The whole source SE composition remains open.
 
 Normalized local delivery:
 [counted binding service](../Vegas/Pending/PhaseCountServiceReference.lean).

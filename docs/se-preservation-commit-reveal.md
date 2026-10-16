@@ -1,6 +1,6 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**SE: non-concurrent ✓ · source D/reset ✓ · honest BR ✓ · native timing Bayes ✓ · source SE / query / transport / incentives open.**
+**SE: non-concurrent ✓ · source BR: honest raw ✓ / free domain ✓ / failed raw ✓ · full source SE + native query/transport open.**
 
 The [mathematical proof dependency](se-preservation-math.md#scope-and-proof-dependency)
 states the source selection, conditional transport and deviation arguments,
@@ -35,7 +35,13 @@ copies, and their complete ordinary-class sum is its positive cardinality
 times the individual conditional gain. The genuine normalized query fiber
 now has a derived ordinary representative; every other genuine member is
 in that same erased class or in an actual already-failed attempt.
-One-site indifference and the full pool-to-individual composition remain open.
+Actual one-site indifference now makes the entire failed-member remainder zero.
+The whole-pool inequality gives each ordinary component inequality, and the
+same assessment sequence gives every free ordinary site's limit best response
+against all domain lotteries. Full raw gains also transfer between ordinary
+erased copies in that limit. A nonempty honest pin now supplies a genuine
+honest decision site with the same ordinary erased key. Full source SE still
+needs the raw-action case assembly.
 
 First full-identifier exit of an actual source commitment attempt is exactly
 the original remaining commitment window, including its final real close.
@@ -47,6 +53,15 @@ typed cells, also after close and erasure. The actual stopped word now yields
 that typed attempt and its literal original-entry success marker. This uses
 fresh context names and valued own cells at the current prefix. Applying the
 marked Bayes comparison to derive conditional success rankings remains open.
+
+The original raw-word success marker now derives its typed block internally
+from the genuine committing point. A failed declaration surviving the original
+close gives the exclusion payoff under every later continuation, including
+later resets. Coupling the original window laws proves accepted failure cannot
+outperform any domain law under the actual source belief. At known-failed
+sites every raw local lottery is now unprofitable in the same source limit.
+These comparisons use the terminal payoff floor and selected erased reset
+continuation, without assuming future optimality.
 
 Guard-safe focal moves preserve the existing player-specific validity
 predicate in both current and saved states through actual recovery steps,

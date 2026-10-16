@@ -1,3 +1,16 @@
+import Vegas.Game.CommitRecoveryAcceptedFailure
+import Vegas.Game.CommitRecoveryAttemptDebtPayoff
+import Vegas.Game.CommitRecoveryCommitFailure
+import Vegas.Game.CommitRecoveryCommitSuccess
+import Vegas.Game.CommitRecoveryFailedLimit
+import Vegas.Game.CommitRecoveryFailedLocalLaw
+import Vegas.Game.CommitRecoveryHonestPoolWitness
+import Vegas.Game.CommitRecoveryOrdinaryLimitCopies
+import Vegas.Game.CommitRecoveryPooledAgentGains
+import Vegas.Game.CommitRecoveryPooledOrdinaryLimit
+import Vegas.Source.CommitRecoveryAttemptDebt
+import Vegas.Source.CommitRecoveryAttemptOmissions
+import Vegas.Source.CommitRecoveryCommitEntry
 import Vegas.Game.CommitRecoveryHonestLimit
 import Vegas.Game.CommitRecoveryOmissionKernel
 import Vegas.Game.CommitRecoveryOmissionWindow
@@ -16212,3 +16225,234 @@ open Vegas in
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms phaseCountServiceTapePolicy_occupation_tables_joint
+
+open Vegas.SourceProgram.CommitPrefix.Attempt in
+/-- info:
+'Vegas.SourceProgram.CommitPrefix.Attempt.failedBinding_of_failed_joint'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms failedBinding_of_failed_joint
+
+open Vegas.SourceProgram.CommitPrefix.Attempt in
+/-- info:
+'Vegas.SourceProgram.CommitPrefix.Attempt.failedOwners_eq_empty_iff_no_missed'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms failedOwners_eq_empty_iff_no_missed
+
+open Vegas.SourceProgram.CommitPrefix in
+/-- info:
+'Vegas.SourceProgram.CommitPrefix.failedBinding_liftPoint'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms failedBinding_liftPoint
+
+open Vegas.SourceProgram.CommitRecoveryState in
+/-- info:
+'Vegas.SourceProgram.CommitRecoveryState.close_checkpointed_owesFailure'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms close_checkpointed_owesFailure
+
+open Vegas.SourceProgram.ProtocolState in
+/-- info:
+'Vegas.SourceProgram.ProtocolState.exists_committing_entry'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms exists_committing_entry
+
+open Vegas.SourceProgram.ProtocolSuffix in
+/-- info:
+'Vegas.SourceProgram.ProtocolSuffix.failedBinding_lift'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms failedBinding_lift
+
+open Vegas.SourceProgram.Setup in
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryHonestPoolPins_decision_witness'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms commitRecoveryHonestPoolPins_decision_witness
+
+open Vegas.SourceProgram.Setup in
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryHonestPoolPins_ordinary_witness'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms commitRecoveryHonestPoolPins_ordinary_witness
+
+open Vegas.SourceProgram.Setup in
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryNormalizedTrembledProfile_accepted_failure_value_le'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms commitRecoveryNormalizedTrembledProfile_accepted_failure_value_le
+
+open Vegas.SourceProgram.Setup in
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryNormalizedTrembledProfile_failed_local_terminal_joint_eq'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms commitRecoveryNormalizedTrembledProfile_failed_local_terminal_joint_eq
+
+open Vegas.SourceProgram.Setup in
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryNormalizedTrembledProfile_local_terminal_of_prescribed'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms commitRecoveryNormalizedTrembledProfile_local_terminal_of_prescribed
+
+open Vegas.SourceProgram.Setup in
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryNormalizedTrembledProfile_local_terminal_window'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms commitRecoveryNormalizedTrembledProfile_local_terminal_window
+
+open Vegas.SourceProgram.Setup in
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryNormalizedTrembledProfile_local_window_omissions'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms commitRecoveryNormalizedTrembledProfile_local_window_omissions
+
+open Vegas.SourceProgram.Setup in
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryPoolComponent_unpinned_converges'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms commitRecoveryPoolComponent_unpinned_converges
+
+open Vegas.SourceProgram.Setup in
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecovery_commit_window_success_iff'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms commitRecovery_commit_window_success_iff
+
+open Vegas.SourceProgram.Setup in
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecovery_component_missed_eq'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms commitRecovery_component_missed_eq
+
+open Vegas.SourceProgram.Setup in
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecovery_conditional_value_lower'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms commitRecovery_conditional_value_lower
+
+open Vegas.SourceProgram.Setup in
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecovery_failed_commit_attempt_payoff'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms commitRecovery_failed_commit_attempt_payoff
+
+open Vegas.SourceProgram.Setup in
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecovery_failed_commit_window_payoff'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms commitRecovery_failed_commit_window_payoff
+
+open Vegas.SourceProgram.Setup in
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecovery_local_failed_window_recorded'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms commitRecovery_local_failed_window_recorded
+
+open Vegas.SourceProgram.Setup in
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecovery_normalized_accepted_failure_conditional_value_le'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms commitRecovery_normalized_accepted_failure_conditional_value_le
+
+open Vegas.SourceProgram.Setup in
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecovery_normalized_failed_belief_terminal_joint_eq'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms commitRecovery_normalized_failed_belief_terminal_joint_eq
+
+open Vegas.SourceProgram.Setup in
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecovery_normalized_failed_conditional_value_eq'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms commitRecovery_normalized_failed_conditional_value_eq
+
+open Vegas.SourceProgram.Setup in
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecovery_normalized_failed_limit_localOptimal'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms commitRecovery_normalized_failed_limit_localOptimal
+
+open Vegas.SourceProgram.Setup in
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecovery_normalized_limit_gain_eq'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms commitRecovery_normalized_limit_gain_eq
+
+open Vegas.SourceProgram.Setup in
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecovery_normalized_limit_localOptimal_of_erased_copy'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms commitRecovery_normalized_limit_localOptimal_of_erased_copy
+
+open Vegas.SourceProgram.Setup in
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecovery_ordinary_agent_gain_nonpos_iff'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms commitRecovery_ordinary_agent_gain_nonpos_iff
+
+open Vegas.SourceProgram.Setup in
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecovery_ordinary_agent_gain_sum'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms commitRecovery_ordinary_agent_gain_sum
+
+open Vegas.SourceProgram.Setup in
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecovery_pool_complement_known_failed'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms commitRecovery_pool_complement_known_failed
+
+open Vegas.SourceProgram.Setup in
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecovery_pooled_ordinary_component_optimal'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms commitRecovery_pooled_ordinary_component_optimal
+
+open Vegas.SourceProgram.Setup in
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecovery_pooled_ordinary_limit_domain_optimal'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms commitRecovery_pooled_ordinary_limit_domain_optimal
+
+open Vegas.SourceProgram.Setup in
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecovery_stopped_attempt_failed_payoff'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms commitRecovery_stopped_attempt_failed_payoff
+
+open Vegas.SourceProgram.Setup in
+/-- info:
+'Vegas.SourceProgram.Setup.prefix_excluded'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms prefix_excluded

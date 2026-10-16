@@ -1831,6 +1831,31 @@ are themselves best responses. Known-foreign-failed attachments have D empty
 and use indifference instead. Native Phi may remain arbitrarily rare and
 still requires the separate relative transport argument.
 
+The source success estimate is not confined to honest pins. At ANY genuine
+ordinary commitment site whose current own bindings hold values, there is
+no processed foreign omission or own failed typed prefix. The same unused
+occurrence-coin calculation, after forcing a current domain law, gives
+
+    1-Pr_n(D | I, forced domain law) <= T*(alpha_n+beta_n).
+
+The bound is uniform over that original SOURCE information fiber and over
+the forced domain law. Integrating the per-history bound uses its actual
+belief; it assumes no comparison with a native belief. For any domain
+prescription tau and alternative v, the bounded-payoff mixture identity
+therefore gives
+
+    E_n[Y_v | D]-E_n[Y_tau | D]
+      <= U_n(v)-U_n(tau) + 2*S_j*T*(alpha_n+beta_n).
+
+Consequently vanishing UNCONDITIONAL source domain regret already implies
+the limiting conditional-D ranking needed for native preservation, at both
+free and honest-pinned ordinary sites. The source D probability tends to
+one here; one need not derive exact common coefficients or cancel a rare
+lambda to obtain this limiting conclusion. Known-failed or own-failed-prefix
+sites instead use their separate indifference/debt comparisons. This shortcut
+changes no native conditioning argument: native Phi can still be arbitrarily
+rare and requires all of Lemma T's same-event repairs.
+
 ### Concluding source sequential rationality
 
 Write S_j for the full terminal payoff spread. There is a direct calculation
@@ -2247,6 +2272,21 @@ specializes actual pooled component gains and their exact ordinary-class sum.
 representative and the ordinary-versus-new-failure partition from original
 histories. These do not yet prove the full source SE.
 
+`Vegas/Game/CommitRecoveryPooledAgentGains.lean` now derives the actual entire
+pool's failed-member zero remainder and ordinary component inequality.
+`Vegas/Game/CommitRecoveryPooledOrdinaryLimit.lean` gives every free ordinary
+site's limit best response against all domain laws. The SAME limit's raw gains
+transfer between ordinary copies in `Vegas/Game/CommitRecoveryOrdinaryLimitCopies.lean`.
+`Vegas/Game/CommitRecoveryHonestPoolWitness.lean` extracts a genuine honest
+decision site from a nonempty pin and identifies the ordinary erased key.
+The actual original-word marker in `Vegas/Game/CommitRecoveryCommitSuccess.lean`
+and arbitrary-continuation failure payoff in `Vegas/Game/CommitRecoveryCommitFailure.lean`
+derive their typed geometry from the genuine committing point.
+`Vegas/Game/CommitRecoveryAcceptedFailure.lean` checks accepted-failure dominance
+under the actual source belief, and `Vegas/Game/CommitRecoveryFailedLimit.lean`
+checks every raw local lottery at known-failed sites. Full raw source SE and
+the conditional-D ranking are still separate composition obligations.
+
 `Vegas.SourceProgram.CommitRecoveryState.step_preserves_intendedFor` keeps a
 surviving player's existing validity predicate in current and saved states
 through actual recovery and close, with arbitrary foreign actions. Its
@@ -2324,8 +2364,9 @@ original local stopped window and its raw typed success readout are now checked.
 `Vegas/Game/CommitRecoveryOmissionKernel.lean` also derives actual normalized
 omission marginals, their whole-window law and failed-window terminal-law equality,
 without assuming an omission-word coupling or a reset endpoint equality.
-Its joint conditional-D/payoff specialization and individual source optimality
-remain open in Lean.
+Its one-site original belief consumer is checked in
+`Vegas/Game/CommitRecoveryFailedLocalLaw.lean`. The conditional-D ranking and
+full individual source optimality remain open in Lean.
 
 The existing broad post-exclusion native completion is not the pinned
 construction above:

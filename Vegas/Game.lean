@@ -1194,3 +1194,13 @@ import Vegas.Game.CommitRecoveryPooledOrdinaryGains
 import Vegas.Game.PhaseCountServiceTableActual
 import Vegas.Game.PhaseCountServiceTableNative
 import Vegas.Game.PhaseCountServiceTableOccupation
+import Vegas.Game.CommitRecoveryAcceptedFailure
+import Vegas.Game.CommitRecoveryAttemptDebtPayoff
+import Vegas.Game.CommitRecoveryCommitFailure
+import Vegas.Game.CommitRecoveryCommitSuccess
+import Vegas.Game.CommitRecoveryFailedLimit
+import Vegas.Game.CommitRecoveryFailedLocalLaw
+import Vegas.Game.CommitRecoveryHonestPoolWitness
+import Vegas.Game.CommitRecoveryOrdinaryLimitCopies
+import Vegas.Game.CommitRecoveryPooledAgentGains
+import Vegas.Game.CommitRecoveryPooledOrdinaryLimit

@@ -118,7 +118,7 @@ theorem commitRecovery_window_omission_law_eq
         nextWord (by omega)
 
 omit [Fintype Player] in
-private theorem prefix_excluded
+theorem prefix_excluded
     {before after : setup.commitRecoveryProtocol.State}
     (prior : setup.commitRecoveryProtocol.Trace before)
     (trace : setup.commitRecoveryProtocol.Trace after)

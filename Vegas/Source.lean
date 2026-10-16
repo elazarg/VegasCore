@@ -190,3 +190,6 @@ import Vegas.Source.CommitRecoveryAttemptExtraction
 import Vegas.Source.CommitRecoveryStoppedAttempt
 import Vegas.Source.IntendedErasedRecall
 import Vegas.Source.CommitRecoveryNoMissFixed
+import Vegas.Source.CommitRecoveryAttemptDebt
+import Vegas.Source.CommitRecoveryAttemptOmissions
+import Vegas.Source.CommitRecoveryCommitEntry
