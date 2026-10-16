@@ -64,8 +64,6 @@ local notation "family" => phaseTimingWordPlanPolicy setup mode runtime leaks bo
 exact original source-word meaning. The actual part may differ at every past
 key, and WAIT creates no source-result record. Raw noise is not in this family. -/
 theorem phaseTimingWordPlanRecall_accepted
-    (maximal : runtimePlan.phases.IsChain fun before after =>
-      before.kind ≠ after.kind ∨ before.kind = .sample)
     {control : (app).Control}
     (trace : ((menu).protocol initial horizon scheduler).Trace (some control))
     (clear : control.execution.application.current.excluded = ∅)
@@ -88,7 +86,7 @@ theorem phaseTimingWordPlanRecall_accepted
         decodeEventAction setup.program event
           (cast (congrArg EventField.Action binding.symm) result) := by
   apply phaseCommitWordRecall_accepted_of_response setup mode runtime leaks bounds block low
-    generation who word runtimePlan maximal inputs horizon scheduler (family word) ?_ ?_ trace
+    generation who word runtimePlan inputs horizon scheduler (family word) ?_ ?_ trace
       clear event payload binding inside address candidate accepted consistent
   · intro past view response supported
     unfold phaseTimingWordPlanPolicy at supported

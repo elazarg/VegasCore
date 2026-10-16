@@ -28,8 +28,6 @@ accepted binding. The response hypothesis is a local packet-shape property;
 all actual prefix, request, provenance and accepted-result facts are derived. -/
 theorem phaseCommitWordRecall_accepted_of_response
     (plan : RuntimePhasePlan (serviceGraph setup mode))
-    (maximal : plan.phases.IsChain fun before after =>
-      before.kind ≠ after.kind ∨ before.kind = .sample)
     (inputs : PMF (serviceGraph setup mode).Inputs) (horizon : Nat)
     (scheduler : (app).Scheduler)
     (policy : (app).Policy)
@@ -144,9 +142,9 @@ theorem phaseCommitWordRecall_accepted_of_response
   · rw [viewed]
     exact beforeAddress
   · rw [handleEq]
-    exact PhaseNativeProjection.recorded_binding_result_of_clear runtime leaks plan bounds
-      (serviceGraph_revealRelaxedOrdered setup mode) maximal inputs horizon scheduler trace
-        clear who event payload _ serial entry retained declared fresh
+    exact phase_recorded_binding_result runtime leaks _ horizon scheduler
+      ((PhaseCount.onePacketMenu runtime leaks bounds).toRawTrace _ horizon scheduler trace)
+        who event payload _ serial entry retained declared fresh
   · rw [declared]
     exact phaseBindingAction?_response setup.program mode runtime leaks who event payload binding
       _ serial

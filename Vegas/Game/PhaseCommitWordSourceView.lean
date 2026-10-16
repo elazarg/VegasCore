@@ -100,8 +100,6 @@ variable [Fintype Player]
   (slotWeight : ℝ) (slotNonnegative : 0 ≤ slotWeight) (slotBounded : slotWeight ≤ 1)
   (who : Player)
   (plan : RuntimePhasePlan (serviceGraph setup mode))
-  (maximal : plan.phases.IsChain fun before after =>
-    before.kind ≠ after.kind ∨ before.kind = .sample)
   (inputs : PMF (serviceGraph setup mode).Inputs) (horizon : Nat)
   (scheduler : (phaseApplication runtime leaks).Scheduler)
   {control : (phaseApplication runtime leaks).Control}
@@ -117,7 +115,7 @@ variable [Fintype Player]
 local notation "family" => phaseCommitWordPolicy setup mode runtime leaks bounds wellFormed
   assessment block low generation slotWeight slotNonnegative slotBounded who
 
-include rank actions maximal trace clear request inside address in
+include rank actions trace clear request inside address in
 /-- At an actual clear owned callback, accepted-result agreement is exactly
 agreement of the original addressed source actions strictly before that callback.
 The comparison uses the genuine compiler codec, including accepted failures. -/
@@ -146,7 +144,7 @@ theorem phaseCommitWordAgrees_iff_wordActions_of_history
           (CommitRecoveryMove.lift (block.wordAction who (event.val - low) original))).1 := by
     obtain ⟨_entry, _serial, _retained, _attempt, _declared, _handle, meaning, _decoded⟩ :=
       phaseCommitWordRecall_accepted setup mode runtime leaks bounds wellFormed assessment block
-        low generation slotWeight slotNonnegative slotBounded who original plan maximal inputs
+        low generation slotWeight slotNonnegative slotBounded who original plan inputs
           horizon scheduler trace clear event payload binding (by omega) address candidate accepted
             consistent
     exact meaning

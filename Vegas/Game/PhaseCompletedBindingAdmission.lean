@@ -31,8 +31,6 @@ theorem phase_stamped_binding_admitted
     (copies : (setup.commitRecoveryRestriction wellFormed).ExtendsProfile source
       assessment.strategy)
     (plan : RuntimePhasePlan (serviceGraph setup mode))
-    (maximal : plan.phases.IsChain fun before after =>
-      before.kind ≠ after.kind ∨ before.kind = .sample)
     (inputs : PMF (serviceGraph setup mode).Inputs) (horizon : Nat)
     (scheduler : (phaseApplication runtime leaks).Scheduler)
     {control : (phaseApplication runtime leaks).Control}
@@ -101,7 +99,7 @@ theorem phase_stamped_binding_admitted
   obtain ⟨before, prior, entry, serial, choice, retainedTrace, sameAttempt, acting, beforeClear,
     request, _retained, _viewed, _fresh, supported, _nonmissing, _declared, _candidate,
     immutable⟩ := phase_binding_source_choice_of_stamp setup mode runtime leaks bounds wellFormed
-      assessment plan maximal inputs horizon scheduler trace clear owner
+      assessment plan inputs horizon scheduler trace clear owner
         (checkpoint.embedding.event selected) payload binding nativeImage validImage results stamped
           candidate accepted lower consistent
   have rawBefore := menu.toRawTrace initial horizon scheduler prior
@@ -206,8 +204,6 @@ theorem phase_completed_binding_admitted
     (copies : (setup.commitRecoveryRestriction wellFormed).ExtendsProfile source
       assessment.strategy)
     (plan : RuntimePhasePlan (serviceGraph setup mode))
-    (maximal : plan.phases.IsChain fun before after =>
-      before.kind ≠ after.kind ∨ before.kind = .sample)
     (inputs : PMF (serviceGraph setup mode).Inputs) (horizon : Nat)
     (scheduler : (phaseApplication runtime leaks).Scheduler)
     {control : (phaseApplication runtime leaks).Control}
@@ -268,7 +264,7 @@ theorem phase_completed_binding_admitted
     simp only [PhaseRuntimeState.attempt, installed, Option.map_some, Option.getD_some]
   rw [← address] at lower
   exact phase_stamped_binding_admitted setup mode runtime leaks bounds wellFormed source assessment
-    copies plan maximal inputs horizon scheduler trace clear checkpoint fresh guard next earlier
+    copies plan inputs horizon scheduler trace clear checkpoint fresh guard next earlier
       reconstruct selected atEnd binding control.execution.application.current.native
         bindings.active (fun _ _ => rfl) stamped (fun _ _ installed => installed) candidate accepted
           lower consistent savedIntended priorAdmitted

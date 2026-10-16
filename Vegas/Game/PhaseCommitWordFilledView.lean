@@ -180,8 +180,6 @@ theorem phaseCommitWord_sourceView_eq_fill_of_history
     (slotWeight : ℝ) (slotNonnegative : 0 ≤ slotWeight) (slotBounded : slotWeight ≤ 1)
     (who : Player)
     (plan : RuntimePhasePlan (serviceGraph setup mode))
-    (maximal : plan.phases.IsChain fun before after =>
-      before.kind ≠ after.kind ∨ before.kind = .sample)
     (inputs : PMF (serviceGraph setup mode).Inputs) (horizon : Nat)
     (scheduler : (phaseApplication runtime leaks).Scheduler)
     {control : (phaseApplication runtime leaks).Control}
@@ -211,7 +209,7 @@ theorem phaseCommitWord_sourceView_eq_fill_of_history
     obtain ⟨_entry, _serial, _retained, _attempt, _declared, _handle, meaning, _decoded⟩ :=
       phaseCommitWordRecall_accepted setup mode runtime leaks bounds wellFormed assessment
         (earlier.append later) low generation slotWeight slotNonnegative slotBounded who word
-          plan maximal inputs horizon scheduler trace clear event payload binding
+          plan inputs horizon scheduler trace clear event payload binding
             (by rw [CommitPrefix.length_append]; omega) address candidate accepted consistent
     exact meaning
   exact phaseCommitWord_sourceView_eq_fill_of_accepted setup mode runtime leaks bounds earlier

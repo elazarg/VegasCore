@@ -51,8 +51,6 @@ residual profile. Only its structural all-point raw law is required. -/
 theorem RecoverySourceCheckpoint.timing_word_predicts_of_history
     {control : (app).Control}
     (trace : ((menu).protocol initial horizon scheduler).Trace (some control))
-    (maximal : runtimePlan.phases.IsChain fun before after =>
-      before.kind ≠ after.kind ∨ before.kind = .sample)
     (clearCurrent : control.execution.application.current.excluded = ∅)
     (checkpoint : RecoverySourceCheckpoint setup mode control.execution.application)
     (wellFormed : setup.WellFormed)
@@ -150,14 +148,14 @@ theorem RecoverySourceCheckpoint.timing_word_predicts_of_history
       earlier (.commit name owner fresh guard later) suffix residual entry embedding
         control.execution.application.attempt.phase control.execution.application.generation
           compiled.rankEq views.actionEq slotWeight slotNonnegative slotBounded timingPlan owner
-            maximal trace clearCurrent (embedding.event selected) request inside atRank address
+            trace clearCurrent (embedding.event selected) request inside atRank address
               unsent
               consistent
   have prediction := phaseTimingWordPlanPolicy_next_action_of_history setup mode runtime leaks
     bounds runtimePlan inputs horizon scheduler bound fallback wellFormed assessment fresh guard
       earlier later suffix residual entry embedding control.execution.application.attempt.phase
         control.execution.application.generation compiled.rankEq views.actionEq slotWeight
-          slotNonnegative slotBounded timingPlan maximal trace clearCurrent
+          slotNonnegative slotBounded timingPlan trace clearCurrent
             (embedding.event selected)
             request inside atRank address unsent consistent
   exact ⟨posterior.2, prediction.trans sourceLaw⟩

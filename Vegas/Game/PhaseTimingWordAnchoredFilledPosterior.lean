@@ -69,8 +69,6 @@ theorem phaseTimingWordAnchoredPolicy_posterior_filled_of_history
     (anchorTrace : ((menu).protocol initial horizon scheduler).Trace (some anchor))
     (entryFresh : ∀ record ∈ anchor.execution.recall who,
       record.beforeView.application.2.attempt ≠ (⟨low, generation⟩ : CommitAttemptId))
-    (maximal : runtimePlan.phases.IsChain fun before after =>
-      before.kind ≠ after.kind ∨ before.kind = .sample)
     {control : (app).Control}
     (trace : ((menu).protocol initial horizon scheduler).Trace (some control))
     (clear : control.execution.application.current.excluded = ∅)
@@ -122,7 +120,7 @@ theorem phaseTimingWordAnchoredPolicy_posterior_filled_of_history
         horizon
         scheduler bound fallback wellFormed source (earlier.append later) low generation slotWeight
           slotNonnegative slotBounded timingPlan who original anchor.execution entryFresh
-            (covered original) maximal trace clear event payload
+            (covered original) trace clear event payload
             binding (by omega) address candidate accepted member
     exact meaning
   have originalFill : later.entryView who original = filled.view who :=
@@ -139,7 +137,7 @@ theorem phaseTimingWordAnchoredPolicy_posterior_filled_of_history
     leaks bounds runtimePlan inputs horizon scheduler bound fallback wellFormed source
       (earlier.append later) low generation slotWeight slotNonnegative slotBounded timingPlan who
         anchor.execution entryFresh covered
-        maximal trace clear selected request inside address unsent prior consistent
+        trace clear selected request inside address unsent prior consistent
   refine ⟨present, acceptedLaw.trans ?_⟩
   apply fiberPosterior_eq_of_support_fiber
   intro word supported
@@ -191,8 +189,6 @@ theorem phaseTimingWordAnchoredPolicy_next_action_of_history
     (anchorTrace : ((menu).protocol initial horizon scheduler).Trace (some anchor))
     (entryFresh : ∀ record ∈ anchor.execution.recall owner,
       record.beforeView.application.2.attempt ≠ (⟨low, generation⟩ : CommitAttemptId))
-    (maximal : runtimePlan.phases.IsChain fun before after =>
-      before.kind ≠ after.kind ∨ before.kind = .sample)
     {control : (app).Control}
     (trace : ((menu).protocol initial horizon scheduler).Trace (some control))
     (clear : control.execution.application.current.excluded = ∅)
@@ -226,7 +222,7 @@ theorem phaseTimingWordAnchoredPolicy_next_action_of_history
     mode
     runtime leaks bounds runtimePlan inputs horizon scheduler bound fallback wellFormed source
       earlier rest suffix profile entry embedding low generation rank actions slotWeight
-        slotNonnegative slotBounded timingPlan owner anchor anchorTrace entryFresh maximal trace
+        slotNonnegative slotBounded timingPlan owner anchor anchorTrace entryFresh trace
           clear selected request inside
           atEnd address unsent consistent
   rw [posterior]

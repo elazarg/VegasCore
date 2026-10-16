@@ -72,8 +72,6 @@ theorem phase_binding_source_choice_of_stamp
     (wellFormed : setup.WellFormed)
     (assessment : setup.commitRecoveryModel.BehavioralAssessment)
     (plan : RuntimePhasePlan (serviceGraph setup mode))
-    (maximal : plan.phases.IsChain fun before after =>
-      before.kind ≠ after.kind ∨ before.kind = .sample)
     (inputs : PMF (serviceGraph setup mode).Inputs) (horizon : Nat)
     (scheduler : (app).Scheduler) {control : (app).Control}
     (trace : ((PhaseCount.onePacketMenu runtime leaks bounds).protocol
@@ -160,8 +158,8 @@ theorem phase_binding_source_choice_of_stamp
     retained, viewed, fresh, chosen, missing, declared, handleEq, ?_⟩
   rw [handleEq]
   rw [results]
-  exact PhaseNativeProjection.recorded_binding_result_of_clear runtime leaks plan bounds
-    (serviceGraph_revealRelaxedOrdered setup mode) maximal inputs horizon scheduler trace clear
+  exact phase_recorded_binding_result runtime leaks _ horizon scheduler
+    ((PhaseCount.onePacketMenu runtime leaks bounds).toRawTrace _ horizon scheduler trace)
       who event payload _ serial entry retained declared (reactiveFreshSlot_spec _ serial fresh)
 
 /-- An actual surviving current-phase accepted binding retains the very source
@@ -171,8 +169,6 @@ theorem phase_accepted_binding_source_choice
     (wellFormed : setup.WellFormed)
     (assessment : setup.commitRecoveryModel.BehavioralAssessment)
     (plan : RuntimePhasePlan (serviceGraph setup mode))
-    (maximal : plan.phases.IsChain fun before after =>
-      before.kind ≠ after.kind ∨ before.kind = .sample)
     (inputs : PMF (serviceGraph setup mode).Inputs) (horizon : Nat)
     (scheduler : (app).Scheduler) {control : (app).Control}
     (trace : ((PhaseCount.onePacketMenu runtime leaks bounds).protocol
@@ -222,7 +218,7 @@ theorem phase_accepted_binding_source_choice
     simp only [PhaseRuntimeState.attempt, installed, Option.map_some, Option.getD_some]
   rw [← address] at lower
   exact phase_binding_source_choice_of_stamp setup mode runtime leaks bounds wellFormed assessment
-    plan maximal inputs horizon scheduler trace clear who event payload binding
+    plan inputs horizon scheduler trace clear who event payload binding
       control.execution.application.current.native bindings.active (fun _ _ => rfl) stamped
         candidate accepted lower consistent
 

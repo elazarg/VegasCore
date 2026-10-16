@@ -103,8 +103,6 @@ private theorem phase_commitPrefix_admitted_bounded
     (copies : (setup.commitRecoveryRestriction wellFormed).ExtendsProfile source
       assessment.strategy)
     (plan : RuntimePhasePlan (serviceGraph setup mode))
-    (maximal : plan.phases.IsChain fun before after =>
-      before.kind ≠ after.kind ∨ before.kind = .sample)
     (inputs : PMF (serviceGraph setup mode).Inputs) (horizon : Nat)
     (scheduler : (phaseApplication runtime leaks).Scheduler) :
     ∀ (depth : Nat) {control : (phaseApplication runtime leaks).Control}
@@ -243,7 +241,7 @@ private theorem phase_commitPrefix_admitted_bounded
             control.execution.application.attempt.phase + selected.val at ranked
           omega
         obtain ⟨value, _result, read, _predicts, admitted⟩ := phase_stamped_binding_admitted
-          setup mode runtime leaks bounds wellFormed source assessment copies plan maximal inputs
+          setup mode runtime leaks bounds wellFormed source assessment copies plan inputs
             horizon scheduler trace clear fixed fresh guard next earlier earlierReconstruct selected
               rfl binding image.native imageBindings results stamped preservedImage candidate
                 accepted lower consistent savedIntended (by
@@ -346,8 +344,6 @@ theorem phase_commitPrefix_image_admitted
     (copies : (setup.commitRecoveryRestriction wellFormed).ExtendsProfile source
       assessment.strategy)
     (plan : RuntimePhasePlan (serviceGraph setup mode))
-    (maximal : plan.phases.IsChain fun before after =>
-      before.kind ≠ after.kind ∨ before.kind = .sample)
     (inputs : PMF (serviceGraph setup mode).Inputs) (horizon : Nat)
     (scheduler : (phaseApplication runtime leaks).Scheduler)
     {control : (phaseApplication runtime leaks).Control}
@@ -387,7 +383,7 @@ theorem phase_commitPrefix_image_admitted
       image.native.config.store checkpoint.source).IntendedFor
         who P := by
   exact phase_commitPrefix_admitted_bounded setup mode runtime leaks bounds wellFormed source
-    assessment copies plan maximal inputs horizon scheduler block.length trace clear checkpoint
+    assessment copies plan inputs horizon scheduler block.length trace clear checkpoint
       block suffix
       reconstruct who consistent savedIntended image
         ⟨imageClear, imageCoverage, imageBindings, results, stamped, preservedImage⟩
@@ -406,8 +402,6 @@ theorem phase_commitPrefix_admitted
     (copies : (setup.commitRecoveryRestriction wellFormed).ExtendsProfile source
       assessment.strategy)
     (plan : RuntimePhasePlan (serviceGraph setup mode))
-    (maximal : plan.phases.IsChain fun before after =>
-      before.kind ≠ after.kind ∨ before.kind = .sample)
     (inputs : PMF (serviceGraph setup mode).Inputs) (horizon : Nat)
     (scheduler : (phaseApplication runtime leaks).Scheduler)
     {control : (phaseApplication runtime leaks).Control}
@@ -440,7 +434,7 @@ theorem phase_commitPrefix_admitted
         who P := by
   have raw := (PhaseCount.onePacketMenu runtime leaks bounds).toRawTrace _ horizon scheduler trace
   exact phase_commitPrefix_admitted_bounded setup mode runtime leaks bounds wellFormed source
-    assessment copies plan maximal inputs horizon scheduler block.length trace clear checkpoint
+    assessment copies plan inputs horizon scheduler block.length trace clear checkpoint
       block suffix
       reconstruct who consistent savedIntended control.execution.application.current
         ⟨clear, (phaseFailureCoverage_history runtime leaks plan inputs horizon scheduler

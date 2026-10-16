@@ -64,8 +64,6 @@ theorem phaseTimingWordPlanPolicy_posterior_filled_of_history
         (cast (congrArg EventField.Action (embedding.layout_eq index)) action))
     (slotWeight : ℝ) (slotNonnegative : 0 ≤ slotWeight) (slotBounded : slotWeight ≤ 1)
     (timingPlan : (p : Pool) → Parts p) (who : Player)
-    (maximal : runtimePlan.phases.IsChain fun before after =>
-      before.kind ≠ after.kind ∨ before.kind = .sample)
     {control : (app).Control}
     (trace : ((menu).protocol initial horizon scheduler).Trace (some control))
     (clear : control.execution.application.current.excluded = ∅)
@@ -104,7 +102,7 @@ theorem phaseTimingWordPlanPolicy_posterior_filled_of_history
     obtain ⟨_entry, _serial, _retained, _attempt, _declared, _handle, meaning, _decoded⟩ :=
       phaseTimingWordPlanRecall_accepted setup mode runtime leaks bounds runtimePlan inputs horizon
         scheduler bound fallback wellFormed source (earlier.append later) low generation slotWeight
-          slotNonnegative slotBounded timingPlan who original maximal trace clear event payload
+          slotNonnegative slotBounded timingPlan who original trace clear event payload
             binding (by omega) address candidate accepted member
     exact meaning
   have originalFill : later.entryView who original = filled.view who :=
@@ -120,7 +118,7 @@ theorem phaseTimingWordPlanPolicy_posterior_filled_of_history
   have acceptedLaw := phaseTimingWordPlanPolicy_posterior_accepted_of_history setup mode runtime
     leaks bounds runtimePlan inputs horizon scheduler bound fallback wellFormed source
       (earlier.append later) low generation slotWeight slotNonnegative slotBounded timingPlan who
-        maximal trace clear selected request inside address unsent prior consistent
+        trace clear selected request inside address unsent prior consistent
   refine ⟨present, acceptedLaw.trans ?_⟩
   apply fiberPosterior_eq_of_support_fiber
   intro word supported
@@ -168,8 +166,6 @@ theorem phaseTimingWordPlanPolicy_next_action_of_history
         index (cast (congrArg EventField.Action (embedding.layout_eq index)) action))
     (slotWeight : ℝ) (slotNonnegative : 0 ≤ slotWeight) (slotBounded : slotWeight ≤ 1)
     (timingPlan : (p : Pool) → Parts p)
-    (maximal : runtimePlan.phases.IsChain fun before after =>
-      before.kind ≠ after.kind ∨ before.kind = .sample)
     {control : (app).Control}
     (trace : ((menu).protocol initial horizon scheduler).Trace (some control))
     (clear : control.execution.application.current.excluded = ∅)
@@ -200,7 +196,7 @@ theorem phaseTimingWordPlanPolicy_next_action_of_history
   obtain ⟨present, posterior⟩ := phaseTimingWordPlanPolicy_posterior_filled_of_history setup mode
     runtime leaks bounds runtimePlan inputs horizon scheduler bound fallback wellFormed source
       earlier rest suffix profile entry embedding low generation rank actions slotWeight
-        slotNonnegative slotBounded timingPlan owner maximal trace clear selected request inside
+        slotNonnegative slotBounded timingPlan owner trace clear selected request inside
           atEnd address unsent consistent
   rw [posterior]
   have prediction := earlier.prefixLaw_owned_word_conditional fresh guard later suffix profile

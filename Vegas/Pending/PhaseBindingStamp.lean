@@ -125,6 +125,79 @@ theorem settle_bindingStamp
           exact activeBefore event candidate accepted
       · exact drained
 
+/-- Every retired native table retains the authored namespace of its own
+acceptance, including records produced when no owner survives the phase. -/
+theorem settle_archivedBindingStamp
+    (outputs : Player → List (Message Player (CommitAttemptPacket graph)))
+    (phases : List (RuntimePhase graph)) (generation : Nat) (entry current : RecoveryState graph)
+    (retired : List (RetiredCommitAttempt graph))
+    (ordered : phases.IsChain (fun before after => before.high = after.low))
+    (saved : ∀ phase ∈ phases.head?, ∀ event candidate,
+      entry.native.accepted (.inr event) = some candidate → event.val < phase.low)
+    (bounded : ∀ phase ∈ phases.head?, ∀ event candidate,
+      current.native.accepted (.inr event) = some candidate → event.val < phase.high)
+    (active : BindingStamp outputs ⟨phaseLow phases, generation⟩ current.native)
+    (archives : ∀ record ∈ retired, BindingStamp outputs record.attempt record.state) :
+    ∀ record ∈ (settle phases generation entry current retired).retired,
+      BindingStamp outputs record.attempt record.state := by
+  induction phases generalizing generation entry current retired with
+  | nil => exact archives
+  | cons phase remaining ih =>
+      have head : phase ∈ (phase :: remaining).head? := by simp
+      have savedBefore := saved phase head
+      have activeBefore := bounded phase head
+      have drained := active.copy (phase.drain_tables current).1
+      have rebuiltBefore : ∀ event candidate,
+          (phase.drain (restore entry (phase.drain current))).native.accepted (.inr event) =
+            some candidate → event.val < phase.low := by
+        intro event candidate accepted
+        rw [(phase.drain_tables _).1] at accepted
+        exact savedBefore event candidate accepted
+      have advance : ∀ (state : RecoveryState graph)
+          (archive : List (RetiredCommitAttempt graph)),
+          (∀ event candidate, state.native.accepted (.inr event) = some candidate →
+            event.val < phase.high) →
+          (∀ record ∈ archive, BindingStamp outputs record.attempt record.state) →
+          ∀ record ∈ (settle remaining generation state state archive).retired,
+            BindingStamp outputs record.attempt record.state := by
+        intro state archive before archived
+        have nextBefore : ∀ next ∈ remaining.head?, ∀ event candidate,
+            state.native.accepted (.inr event) = some candidate → event.val < next.low := by
+          intro next member event candidate accepted
+          exact (before event candidate accepted).trans_eq (ordered.rel_head? member)
+        apply ih _ _ _ _ ordered.tail nextBefore
+        · intro next member event candidate accepted
+          exact (nextBefore next member event candidate accepted).trans next.nonempty
+        · apply BindingStamp.of_before
+          intro event candidate accepted
+          cases rest : remaining with
+          | nil => exact event.isLt
+          | cons next tail =>
+              exact nextBefore next (by simp only [rest, List.head?_cons, Option.mem_some_iff])
+                event candidate accepted
+        · exact archived
+      have appended : ∀ record ∈ retired ++
+          [⟨⟨phase.low, generation⟩, (phase.drain current).native⟩],
+          BindingStamp outputs record.attempt record.state := by
+        intro record member
+        rcases List.mem_append.mp member with old | new
+        · exact archives record old
+        · cases List.mem_singleton.mp new
+          simpa only [phaseLow, List.head?_cons, Option.map_some, Option.getD_some] using drained
+      simp only [settle]
+      split
+      · split
+        · split
+          · exact appended
+          · apply advance _ _ _ appended
+            intro event candidate accepted
+            exact (rebuiltBefore event candidate accepted).trans phase.nonempty
+        · apply advance _ _ _ archives
+          intro event candidate accepted
+          rw [(phase.drain_tables current).1] at accepted
+          exact activeBefore event candidate accepted
+      · exact archives
+
 end PhaseRuntimeState
 
 end Vegas.EventGraphRuntime

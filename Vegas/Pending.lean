@@ -728,3 +728,8 @@ import Vegas.Pending.PhaseInitialRetryChronology
 import Vegas.Pending.PhaseSwapCallback
 import Vegas.Pending.PhaseSwapTransitionMass
 import Vegas.Pending.PhaseSwapContinuationMass
+import Vegas.Pending.PhaseAttemptCompletion
+import Vegas.Pending.PhaseArchivedBindingInputOrigin
+import Vegas.Pending.PhaseArchivedRecordedBindingMeaning
+import Vegas.Pending.PhaseCompletedBindingMeaning
+import Vegas.Pending.PhaseCountServiceReference

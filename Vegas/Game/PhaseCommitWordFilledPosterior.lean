@@ -41,8 +41,6 @@ theorem phaseCommitWordPolicy_posterior_filled_of_history
     (slotWeight : ℝ) (slotNonnegative : 0 ≤ slotWeight) (slotBounded : slotWeight ≤ 1)
     (who : Player)
     (plan : RuntimePhasePlan (serviceGraph setup mode))
-    (maximal : plan.phases.IsChain fun before after =>
-      before.kind ≠ after.kind ∨ before.kind = .sample)
     (inputs : PMF (serviceGraph setup mode).Inputs) (horizon : Nat)
     (scheduler : (phaseApplication runtime leaks).Scheduler)
     {control : (phaseApplication runtime leaks).Control}
@@ -86,7 +84,7 @@ theorem phaseCommitWordPolicy_posterior_filled_of_history
   have originalFill : later.entryView who original = filled.view who :=
     phaseCommitWord_sourceView_eq_fill_of_history setup mode runtime leaks bounds wellFormed
       assessment earlier later suffix profile entry embedding low generation rank actions
-        slotWeight slotNonnegative slotBounded who plan maximal inputs horizon scheduler trace clear
+        slotWeight slotNonnegative slotBounded who plan inputs horizon scheduler trace clear
           selected request atEnd address original member admitted
   have projection : prior.map (later.entryView who) =
       before.map (SourceProgram.Config.view who) :=
@@ -100,7 +98,7 @@ theorem phaseCommitWordPolicy_posterior_filled_of_history
     obtain ⟨_entry, _serial, _retained, _attempt, _declared, _handle, meaning, _decoded⟩ :=
       phaseCommitWordRecall_accepted setup mode runtime leaks bounds wellFormed assessment
         (earlier.append later) low generation slotWeight slotNonnegative slotBounded who original
-          plan maximal inputs horizon scheduler trace clear event payload binding (by omega)
+          plan inputs horizon scheduler trace clear event payload binding (by omega)
             address candidate accepted member
     exact meaning
   have positive : true ∈ (prior.map accepts).support := by
@@ -108,7 +106,7 @@ theorem phaseCommitWordPolicy_posterior_filled_of_history
     exact ⟨original, admitted, by simp only [accepts, decide_eq_true_eq]; exact originalAgrees⟩
   have acceptedLaw := phaseCommitWordPolicy_posterior_accepted_of_history setup mode runtime leaks
     bounds wellFormed assessment (earlier.append later) low generation slotWeight slotNonnegative
-      slotBounded who plan maximal inputs horizon scheduler trace clear selected request inside
+      slotBounded who plan inputs horizon scheduler trace clear selected request inside
         address unsent prior consistent
   refine ⟨present, acceptedLaw.trans ?_⟩
   apply fiberPosterior_eq_of_support_fiber
@@ -127,7 +125,7 @@ theorem phaseCommitWordPolicy_posterior_filled_of_history
       (control.execution.recall who) consistent word retained
     exact phaseCommitWord_sourceView_eq_fill_of_history setup mode runtime leaks bounds wellFormed
       assessment earlier later suffix profile entry embedding low generation rank actions
-        slotWeight slotNonnegative slotBounded who plan maximal inputs horizon scheduler trace clear
+        slotWeight slotNonnegative slotBounded who plan inputs horizon scheduler trace clear
           selected request atEnd address word compatible supported
   · intro sameView event payload binding candidate interval accepted
     have meaning := originalAgrees event payload binding candidate interval accepted
@@ -166,8 +164,6 @@ theorem phaseCommitWordPolicy_next_action_of_history
         (cast (congrArg EventField.Action (embedding.layout_eq index)) action))
     (slotWeight : ℝ) (slotNonnegative : 0 ≤ slotWeight) (slotBounded : slotWeight ≤ 1)
     (plan : RuntimePhasePlan (serviceGraph setup mode))
-    (maximal : plan.phases.IsChain fun before after =>
-      before.kind ≠ after.kind ∨ before.kind = .sample)
     (inputs : PMF (serviceGraph setup mode).Inputs) (horizon : Nat)
     (scheduler : (phaseApplication runtime leaks).Scheduler)
     {control : (phaseApplication runtime leaks).Control}
@@ -202,7 +198,7 @@ theorem phaseCommitWordPolicy_next_action_of_history
   intro rest current before prior family filled consistent
   obtain ⟨present, posterior⟩ := phaseCommitWordPolicy_posterior_filled_of_history setup mode
     runtime leaks bounds wellFormed assessment earlier rest suffix profile entry embedding low
-      generation rank actions slotWeight slotNonnegative slotBounded owner plan maximal inputs
+      generation rank actions slotWeight slotNonnegative slotBounded owner plan inputs
         horizon scheduler trace clear selected request inside atEnd address unsent consistent
   rw [posterior]
   have prediction := earlier.prefixLaw_owned_word_conditional fresh guard later suffix profile

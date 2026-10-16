@@ -102,7 +102,7 @@ theorem phase_ready_binding_intended_information
       embedding control.execution.application.current.native.config.store
         checkpoint.source).IntendedFor who P := by
     apply phase_commitPrefix_admitted setup mode runtime leaks bounds wellFormed source assessment
-      copies plan maximal inputs horizon scheduler trace clear checkpoint earlier
+      copies plan inputs horizon scheduler trace clear checkpoint earlier
         (.commit name who fresh guard next) reconstruct who (consistent who) savedIntended
     exact commitPrefix_owned_completed_of_ready setup mode earlier (.commit name who fresh guard
       next) embedding control.execution.application.current.native.config who index atEnd

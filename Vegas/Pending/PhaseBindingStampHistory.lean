@@ -49,6 +49,30 @@ theorem normalize_bindingStamp
         exact positioned.2.2 event (active event candidate installed)
   · exact stamped
 
+/-- Normalizing a real raw checkpoint retains every earlier stamp and stamps
+any newly archived phase with the exact namespace of its accepted packets. -/
+theorem normalize_archivedBindingStamp
+    (outputs : Player → List (Message Player (CommitAttemptPacket graph)))
+    (state : PhaseRuntimeState graph) (frontier : state.Frontier)
+    (saved : state.entry.native.ReceiptsComplete) (active : state.current.native.ReceiptsComplete)
+    (stamped : BindingStamp outputs state.attempt state.current.native)
+    (archives : ∀ record ∈ state.retired, BindingStamp outputs record.attempt record.state) :
+    ∀ record ∈ state.normalize.retired, BindingStamp outputs record.attempt record.state := by
+  apply settle_archivedBindingStamp outputs state.phases state.generation state.entry state.current
+    state.retired frontier.adjacent
+  · intro phase member event candidate accepted
+    obtain ⟨remaining, phases⟩ := List.head?_eq_some_iff.mp (Option.mem_def.mp member)
+    have positioned := frontier.positioned
+    rw [phases] at positioned
+    exact (positioned.1.2 event).mp (saved event candidate accepted)
+  · intro phase member event candidate accepted
+    obtain ⟨remaining, phases⟩ := List.head?_eq_some_iff.mp (Option.mem_def.mp member)
+    have positioned := frontier.positioned
+    rw [phases] at positioned
+    exact positioned.2.2 event (active event candidate accepted)
+  · exact stamped
+  · exact archives
+
 end PhaseRuntimeState
 
 variable (runtime : EventGraphRuntime graph)
@@ -232,5 +256,151 @@ theorem phaseLiveBindingStamp_history (plan : RuntimePhasePlan graph) (inputs : 
       obtain ⟨input, owner, payload, impossible, rest⟩ :=
         State.initial_accepted_eq_some draw (.inr event) candidate installed
       cases impossible) trace).1
+
+private theorem archivedBindingStamp_handle (execution : (app).Execution)
+    (next : PhaseRuntimeState graph) (message : Message Player (CommitAttemptPacket graph))
+    (stamped : LiveBindingStamp runtime leaks execution)
+    (archives : ∀ record ∈ execution.application.retired,
+      BindingStamp (fun who => (app).outputs (execution.recall who)) record.attempt record.state)
+    (record : execution.application.ExclusionRecord)
+    (issued : execution.Issued (app) message)
+    (handled : execution.application.handle runtime message = some next) :
+    ∀ retired ∈ next.retired,
+      BindingStamp (fun who => (app).outputs (execution.recall who))
+        retired.attempt retired.state := by
+  unfold PhaseRuntimeState.handle at handled
+  split at handled
+  · rename_i allowed
+    obtain ⟨native, accepted, rfl⟩ := Option.map_eq_some_iff.mp handled
+    have authorized := (Bool.and_eq_true_iff.mp (Bool.and_eq_true_iff.mp allowed).1).2
+    have tagValid := (Bool.and_eq_true_iff.mp (Bool.and_eq_true_iff.mp allowed).1).1
+    change (decide (message.payload.attempt = execution.application.attempt) &&
+      message.payload.packet.tokenValid) = true at tagValid
+    have current : message.payload.attempt = execution.application.attempt :=
+      decide_eq_true_eq.mp (Bool.and_eq_true_iff.mp tagValid).1
+    apply PhaseRuntimeState.normalize_archivedBindingStamp _ _
+      (PhaseRuntimeState.raw_handle_frontier runtime _ record.frontier _ native authorized accepted)
+      record.saved (record.active.step (completionStep_handle runtime _ native _ accepted))
+    · exact raw_handle_bindingStamp runtime leaks execution native message stamped issued current
+        accepted
+    · exact archives
+  · cases handled
+
+private theorem archivedBindingStamp_environment (execution next : (app).Execution)
+    (command : (app).Command) (stamped : LiveBindingStamp runtime leaks execution)
+    (archives : ∀ record ∈ execution.application.retired,
+      BindingStamp (fun who => (app).outputs (execution.recall who)) record.attempt record.state)
+    (record : execution.application.ExclusionRecord) (origins : execution.Provenance (app))
+    (reached : next ∈ (execution.environmentStep (app) command).support) :
+    ∀ retired ∈ next.application.retired,
+      BindingStamp (fun who => (app).outputs (next.recall who)) retired.attempt retired.state := by
+  cases command with
+  | wait =>
+      simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map] at reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
+      exact archives
+  | activate who =>
+      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
+      obtain ⟨selected, _chosen, rfl⟩ := PMF.support_map .. ▸ supported
+      exact archives
+  | «include» id =>
+      simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map] at reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
+      unfold ReactiveApplication.Execution.includePending MessageNetwork.includePending
+      cases found : execution.network.lookup id with
+      | none => exact archives
+      | some message =>
+          change ∀ retired ∈ (((app).handle execution.application message).getD
+            execution.application).retired,
+              BindingStamp (fun who => (app).outputs (execution.recall who))
+                retired.attempt retired.state
+          cases accepted : (app).handle execution.application message with
+          | none => exact archives
+          | some state =>
+              exact archivedBindingStamp_handle runtime leaks execution state message stamped
+                archives record (origins.lookup id message found) accepted
+  | application command =>
+      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
+      obtain ⟨state, changed, rfl⟩ := PMF.support_map .. ▸ supported
+      change state ∈ (execution.application.environment runtime command).support at changed
+      unfold PhaseRuntimeState.environment at changed
+      split at changed
+      · rename_i allowed
+        obtain ⟨native, nativeMoved, rfl⟩ := PMF.support_map .. ▸ changed
+        apply PhaseRuntimeState.normalize_archivedBindingStamp _ _
+          (PhaseRuntimeState.raw_environment_frontier runtime _ record.frontier _ native allowed
+            nativeMoved) record.saved
+          (record.active.step (completionStep_environmentStep runtime _ native command nativeMoved))
+        · exact stamped.copy (environmentStep_tables runtime _ _ command nativeMoved).1
+        · exact archives
+      · cases (PMF.mem_support_pure_iff _ _).mp changed
+        exact archives
+
+/-- Every actual archived accepted table retains its own exact authored packet
+namespace in permanent player recall, without requiring a clear endpoint. -/
+theorem phaseArchivedBindingStamp_history (plan : RuntimePhasePlan graph)
+    (inputs : PMF graph.Inputs)
+    (horizon : Nat) (scheduler : (app).Scheduler) {control}
+    (trace : ((app).protocol (inputs.map (PhaseRuntimeState.initial plan)) horizon scheduler).Trace
+      (some control)) :
+    ∀ record ∈ control.execution.application.retired,
+      BindingStamp (fun who => (app).outputs (control.execution.recall who))
+        record.attempt record.state := by
+  let property := fun execution : (app).Execution =>
+    (∀ record ∈ execution.application.retired,
+      BindingStamp (fun who => (app).outputs (execution.recall who)) record.attempt record.state) ∧
+      LiveBindingStamp runtime leaks execution ∧ execution.application.ExclusionRecord ∧
+        execution.Provenance (app)
+  have invariant : (app).ServiceInvariant scheduler property := {
+    respond := by
+      intro execution who response valid
+      refine ⟨?_, liveBindingStamp_respond runtime leaks execution who response valid.2.1,
+        (phaseApplication_exclusionRecord runtime leaks).respond execution who response valid.2.2.1,
+        (app).respond_provenance execution who response valid.2.2.2⟩
+      intro record member
+      have retiredEq : (execution.respond (app) who response).application.retired =
+          execution.application.retired := by
+        cases response with
+        | mk transmission => cases transmission <;> rfl
+      rw [retiredEq] at member
+      apply (valid.1 record member).mono
+      intro owner message emitted
+      obtain ⟨entry, recorded, produced⟩ := List.mem_filterMap.mp emitted
+      exact List.mem_filterMap.mpr ⟨entry,
+        (app).respond_recall_mono execution who owner response recorded, produced⟩
+    environment := by
+      intro execution next command valid _ reached
+      exact ⟨archivedBindingStamp_environment runtime leaks execution next command valid.2.1 valid.1
+          valid.2.2.1 valid.2.2.2 reached,
+        liveBindingStamp_environment runtime leaks execution next command valid.2.1 valid.2.2.1
+          valid.2.2.2 reached,
+        (phaseApplication_exclusionRecord runtime leaks).environmentStep execution next command
+          valid.2.2.1 reached,
+        (app).environment_provenance execution next command valid.2.2.2 reached⟩ }
+  exact (invariant.history _ horizon (by
+    intro state supported
+    obtain ⟨draw, _supported, rfl⟩ := PMF.support_map .. ▸ supported
+    have empty : ∀ event candidate, (State.initial draw).accepted (.inr event) = some candidate →
+        False := by
+      intro event candidate accepted
+      obtain ⟨input, owner, payload, impossible, _rest⟩ :=
+        State.initial_accepted_eq_some draw (.inr event) candidate accepted
+      cases impossible
+    have saved : ∀ phase ∈ plan.phases.head?, ∀ event candidate,
+        (State.initial draw).accepted (.inr event) = some candidate → event.val < phase.low := by
+      intro _ _ event candidate accepted
+      exact (empty event candidate accepted).elim
+    have bounded : ∀ phase ∈ plan.phases.head?, ∀ event candidate,
+        (State.initial draw).accepted (.inr event) = some candidate → event.val < phase.high := by
+      intro _ _ event candidate accepted
+      exact (empty event candidate accepted).elim
+    have active : BindingStamp (fun _ => []) ⟨PhaseRuntimeState.phaseLow plan.phases, 0⟩
+        (State.initial draw) := fun event candidate accepted =>
+          (empty event candidate accepted).elim
+    exact ⟨PhaseRuntimeState.settle_archivedBindingStamp _ plan.phases 0 _ _ [] plan.adjacent
+        saved bounded active (fun _ impossible => (List.not_mem_nil impossible).elim),
+      PhaseRuntimeState.settle_bindingStamp _ plan.phases 0 _ _ [] plan.adjacent
+        saved bounded active,
+      PhaseRuntimeState.initial_exclusionRecord plan draw, MessageNetwork.Satisfies.empty⟩) trace).1
 
 end Vegas.EventGraphRuntime

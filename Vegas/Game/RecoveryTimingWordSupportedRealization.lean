@@ -54,8 +54,6 @@ supplies the recall consistency needed for the real zero-RAW assembled callback.
 No final consistency or source/native posterior identity is assumed. -/
 theorem RecoverySourceCheckpoint.timing_word_policy_of_original_run
     {control : (app).Control}
-    (maximal : runtimePlan.phases.IsChain fun before after =>
-      before.kind ≠ after.kind ∨ before.kind = .sample)
     (clearCurrent : control.execution.application.current.excluded = ∅)
     (checkpoint : RecoverySourceCheckpoint setup mode control.execution.application)
     (wellFormed : setup.WellFormed)
@@ -153,7 +151,7 @@ theorem RecoverySourceCheckpoint.timing_word_policy_of_original_run
   have own : flat.policy.Consistent (control.execution.recall owner) := by
     simpa only [wordLaw] using (consistent owner).1
   exact RecoverySourceCheckpoint.timing_word_policy_of_history setup mode runtime leaks bounds
-    runtimePlan inputs horizon scheduler bound trace maximal clearCurrent checkpoint wellFormed
+    runtimePlan inputs horizon scheduler bound trace clearCurrent checkpoint wellFormed
       assessment residual raw fresh guard later suffix earlier reconstruct clear stored selected
         atEnd ready acting notPublication valid reachable retained saved fallback slotWeight
           slotNonnegative slotBounded weights request unsent actingControl binding capacity values

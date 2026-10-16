@@ -95,8 +95,7 @@ private theorem anchored_cases {Word : Type}
     · exact Or.inl ⟨PMF.pure record.action, fun _ => ite_eq_left recorded⟩
     · exact Or.inr (fun _ => ite_eq_right recorded)
 
-variable (maximal : runtimePlan.phases.IsChain fun before after =>
-    before.kind ≠ after.kind ∨ before.kind = .sample)
+variable
   {control : (phaseApplication runtime leaks).Control}
   (trace : ((PhaseCount.onePacketMenu runtime leaks bounds).protocol
     (inputs.map (PhaseRuntimeState.initial runtimePlan)) horizon scheduler).Trace (some control))
@@ -107,7 +106,7 @@ variable (maximal : runtimePlan.phases.IsChain fun before after =>
   (inside : low ≤ selected.val ∧ selected.val < low + block.length)
   (address : control.execution.application.attempt = ⟨low, generation⟩)
 
-include maximal trace clear inside address fresh covered in
+include trace clear inside address fresh covered in
 private theorem anchored_agrees_of_consistent (word : DecisionView who Δ)
     (consistent : (family word).Consistent (control.execution.recall who)) :
     phaseCommitWordAgrees setup mode block low who control.execution.application.current.native
@@ -117,12 +116,12 @@ private theorem anchored_agrees_of_consistent (word : DecisionView who Δ)
     phaseTimingWordAnchoredRecall_accepted setup mode runtime leaks bounds runtimePlan inputs
       horizon
       scheduler bound fallback wellFormed source block low generation slotWeight slotNonnegative
-        slotBounded timingPlan who word anchor fresh (covered word) maximal trace clear event
+        slotBounded timingPlan who word anchor fresh (covered word) trace clear event
           payload binding (by omega)
           address candidate accepted consistent
   exact meaning
 
-include maximal trace clear request address fresh covered in
+include trace clear request address fresh covered in
 private theorem anchored_consistent_of_agrees
     (unsent : ∀ message ∈ (app).outputs (control.execution.recall who),
       PhaseCount.event? message.payload ≠ some ⟨control.execution.application.attempt, selected⟩)
@@ -204,7 +203,7 @@ private theorem anchored_consistent_of_agrees
               inputs
               horizon scheduler bound fallback wellFormed source block low generation slotWeight
                 slotNonnegative slotBounded timingPlan who original anchor fresh (covered original)
-                  maximal trace clear event payload
+                  trace clear event payload
                   binding addressed address candidate accepted consistent
           have target := agrees event payload binding candidate ⟨addressed.1, before⟩ accepted
           have equal := meaning.symm.trans target
@@ -224,7 +223,7 @@ private theorem anchored_consistent_of_agrees
       exact .snoc entry (ih priorPrefix) (record earlier entry later recalled)
   exact build _ (List.prefix_refl _)
 
-include maximal trace clear request inside address fresh covered in
+include trace clear request inside address fresh covered in
 open Classical in
 /-- With the ORIGINAL entire timing plan fixed, actual full recall at an
 unsent callback conditions its ONE original source word only by surviving
@@ -265,11 +264,11 @@ theorem phaseTimingWordAnchoredPolicy_posterior_accepted_of_history
   constructor
   · exact anchored_agrees_of_consistent setup mode runtime leaks bounds runtimePlan inputs horizon
       scheduler bound fallback wellFormed source block low generation slotWeight slotNonnegative
-        slotBounded timingPlan who anchor fresh covered maximal trace clear selected inside address
+        slotBounded timingPlan who anchor fresh covered trace clear selected inside address
           word
   · exact anchored_consistent_of_agrees setup mode runtime leaks bounds runtimePlan inputs horizon
       scheduler bound fallback wellFormed source block low generation slotWeight slotNonnegative
-        slotBounded timingPlan who anchor fresh covered maximal trace clear selected request address
+        slotBounded timingPlan who anchor fresh covered trace clear selected request address
           unsent original word
           member
 

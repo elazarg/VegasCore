@@ -39,8 +39,6 @@ variable (runtime : EventGraphRuntime (serviceGraph setup mode))
   (slotWeight : ℝ) (slotNonnegative : 0 ≤ slotWeight) (slotBounded : slotWeight ≤ 1)
   (who : Player)
   (plan : RuntimePhasePlan (serviceGraph setup mode))
-  (maximal : plan.phases.IsChain fun before after =>
-    before.kind ≠ after.kind ∨ before.kind = .sample)
   (inputs : PMF (serviceGraph setup mode).Inputs) (horizon : Nat)
   (scheduler : (phaseApplication runtime leaks).Scheduler)
   {control : (phaseApplication runtime leaks).Control}
@@ -57,7 +55,7 @@ local notation "app" => phaseApplication runtime leaks
 local notation "family" => phaseCommitWordPolicy setup mode runtime leaks bounds wellFormed
   assessment block low generation slotWeight slotNonnegative slotBounded who
 
-include maximal trace clear inside address in
+include trace clear inside address in
 private theorem agrees_of_consistent (word : DecisionView who Δ)
     (consistent : (family word).Consistent (control.execution.recall who)) :
     phaseCommitWordAgrees setup mode block low who control.execution.application.current.native
@@ -65,11 +63,11 @@ private theorem agrees_of_consistent (word : DecisionView who Δ)
   intro event value shape candidate interval accepted
   obtain ⟨_entry, _serial, _retained, _attempt, _declared, _handle, meaning, _decoded⟩ :=
     phaseCommitWordRecall_accepted setup mode runtime leaks bounds wellFormed assessment block low
-      generation slotWeight slotNonnegative slotBounded who word plan maximal inputs horizon
+      generation slotWeight slotNonnegative slotBounded who word plan inputs horizon
         scheduler trace clear event value shape (by omega) address candidate accepted consistent
   exact meaning
 
-include maximal trace clear request address in
+include trace clear request address in
 private theorem consistent_of_agrees
     (unsent : ∀ message ∈ (app).outputs (control.execution.recall who),
       PhaseCount.event? message.payload ≠ some ⟨control.execution.application.attempt, selected⟩)
@@ -150,7 +148,7 @@ private theorem consistent_of_agrees
           obtain ⟨candidate, accepted⟩ := Option.ne_none_iff_exists'.mp receipt
           obtain ⟨_entry, _serial, _retained, _attempt, _declared, _handle, meaning, _decoded⟩ :=
             phaseCommitWordRecall_accepted setup mode runtime leaks bounds wellFormed assessment
-              block low generation slotWeight slotNonnegative slotBounded who original plan maximal
+              block low generation slotWeight slotNonnegative slotBounded who original plan
                 inputs horizon scheduler trace clear event value shape addressed address candidate
                   accepted consistent
           have target := agrees event value shape candidate ⟨addressed.1, before⟩ accepted
@@ -177,7 +175,7 @@ private theorem consistent_of_agrees
         exact .snoc entry (ih priorPrefix) (record earlier entry later recalled)
   exact build _ (List.prefix_refl _)
 
-include maximal trace clear request inside address in
+include trace clear request inside address in
 open Classical in
 /-- Before a genuine still-unsent owned callback, the concrete whole-word
 implementation posterior is exactly its original prior conditioned by the
@@ -206,10 +204,10 @@ theorem phaseCommitWordPolicy_posterior_accepted_of_history
   simp only [decide_eq_true_eq]
   constructor
   · exact agrees_of_consistent setup mode runtime leaks bounds wellFormed assessment block low
-      generation slotWeight slotNonnegative slotBounded who plan maximal inputs horizon scheduler
+      generation slotWeight slotNonnegative slotBounded who plan inputs horizon scheduler
         trace clear selected inside address word
   · exact consistent_of_agrees setup mode runtime leaks bounds wellFormed assessment block low
-      generation slotWeight slotNonnegative slotBounded who plan maximal inputs horizon scheduler
+      generation slotWeight slotNonnegative slotBounded who plan inputs horizon scheduler
         trace clear selected request address unsent original word member
 
 end Vegas

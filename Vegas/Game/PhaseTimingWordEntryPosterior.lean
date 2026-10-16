@@ -166,8 +166,6 @@ theorem phaseTimingWordPlanPolicy_entry_posterior_of_history
         (cast (congrArg EventField.Action (embedding.layout_eq index)) action))
     (slotWeight : ℝ) (slotNonnegative : 0 ≤ slotWeight) (slotBounded : slotWeight ≤ 1)
     (timingPlan : (p : Pool) → Parts p) (who : Player)
-    (maximal : runtimePlan.phases.IsChain fun before after =>
-      before.kind ≠ after.kind ∨ before.kind = .sample)
     {control : (app).Control}
     (trace : ((menu).protocol initial horizon scheduler).Trace (some control))
     (clear : control.execution.application.current.excluded = ∅)
@@ -207,7 +205,7 @@ theorem phaseTimingWordPlanPolicy_entry_posterior_of_history
   obtain ⟨present, ownPosterior⟩ := phaseTimingWordPlanPolicy_posterior_filled_of_history setup mode
     runtime leaks bounds runtimePlan inputs horizon scheduler bound fallback wellFormed source
       earlier later suffix profile entry embedding low generation rank actions slotWeight
-        slotNonnegative slotBounded timingPlan who maximal trace clear selected request inside atEnd
+        slotNonnegative slotBounded timingPlan who trace clear selected request inside atEnd
           address unsent consistent
   refine ⟨present, ?_⟩
   have wordLaw : (earlier.append later).prefixLaw suffix fullProfile entry = completeLaw := by

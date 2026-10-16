@@ -58,8 +58,6 @@ history. The proof uses the original callback rather than replacing its draw. -/
 theorem phaseBindingRecall_completed_action
     (bounds : MessageBounds ((toEventGraph whole).withMode mode))
     (plan : RuntimePhasePlan ((toEventGraph whole).withMode mode))
-    (maximal : plan.phases.IsChain fun before after =>
-      before.kind ≠ after.kind ∨ before.kind = .sample)
     (inputs : PMF ((toEventGraph whole).withMode mode).Inputs) (horizon : Nat)
     (scheduler : (app).Scheduler)
     {control : (app).Control}
@@ -71,8 +69,6 @@ theorem phaseBindingRecall_completed_action
     (result : PublicationResult (L.Val payload)) (serial : Nat) (entry : (app).PlayerEntry)
     (retained : entry ∈ control.execution.recall who)
     (declared : entry.action = phaseBindingResponse runtime leaks who event payload result serial)
-    (accepted : control.execution.application.current.native.accepted (.inr event) =
-      some (who, .prepared serial))
     (completed : event ∈ control.execution.application.current.native.config.cut.completed) :
     ∃ original : ((toEventGraph whole).withMode mode).Action event,
       ⟨event, original⟩ ∈ control.execution.application.current.native.config.history ∧
@@ -82,9 +78,8 @@ theorem phaseBindingRecall_completed_action
     scheduler trace who event payload result serial entry retained declared
   obtain ⟨original, recorded, meaning⟩ :=
     PhaseNativeProjection.completed_binding_action_of_recorded runtime leaks plan bounds
-      ((toEventGraph whole).withMode_revealRelaxedOrdered
-        (toEventGraph_barrierOrdered whole) mode) maximal inputs horizon scheduler trace clear who
-          event payload binding result serial entry retained declared fresh accepted completed
+      inputs horizon scheduler trace clear who
+          event payload binding result serial entry retained declared fresh completed
   refine ⟨original, recorded, ?_⟩
   rw [declared, phaseBindingAction?_response whole mode runtime leaks who event payload binding]
   have actionEq : cast (congrArg EventField.Action binding.symm) result = original := by

@@ -153,7 +153,7 @@ theorem RecoverySourceCheckpoint.timing_word_anchored_policy_of_ready
     simpa only [PhaseRuntimeState.attempt, installed, List.head?_cons, Option.map_some,
       Option.getD_some] using position.1
   exact RecoverySourceCheckpoint.timing_word_anchored_policy_of_history setup mode runtime leaks
-    bounds runtimePlan inputs horizon scheduler bound trace maximal clearCurrent checkpoint
+    bounds runtimePlan inputs horizon scheduler bound trace clearCurrent checkpoint
       wellFormed assessment
       residual raw fresh guard later suffix earlier reconstruct clear stored selected atEnd
         request.2.2.1 request.2.2.2.1

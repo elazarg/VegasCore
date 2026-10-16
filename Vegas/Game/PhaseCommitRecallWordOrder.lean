@@ -305,7 +305,7 @@ theorem phaseCommitRecallWord_eq_completed
         (receipt pair.1 value shape finished)
       obtain ⟨_oldEntry, _serial, _retained, _attempt, _declared, _handle, agrees, _decoded⟩ :=
         phaseCommitWordRecall_accepted setup mode runtime leaks bounds wellFormed assessment block
-          low generation slotWeight slotNonnegative slotBounded who word plan maximal inputs
+          low generation slotWeight slotNonnegative slotBounded who word plan inputs
             horizon scheduler trace clear pair.1 value shape (by omega) address acceptedCandidate
               accepted consistent
       obtain ⟨_serial, _declared, _handle, forward⟩ := phaseCommitWordRecall_record setup mode
@@ -341,7 +341,7 @@ theorem phaseCommitRecallWord_eq_completed
         (receipt completion.event value shape finished)
       obtain ⟨entry, serial, recalled, attempt, declared, _handle, agrees, parsed⟩ :=
         phaseCommitWordRecall_accepted setup mode runtime leaks bounds wellFormed assessment block
-          low generation slotWeight slotNonnegative slotBounded who word plan maximal inputs
+          low generation slotWeight slotNonnegative slotBounded who word plan inputs
             horizon scheduler trace clear completion.event value shape (by omega) address candidate
               accepted consistent
       have decodedAction := meaning completion retained value shape candidate accepted _ agrees

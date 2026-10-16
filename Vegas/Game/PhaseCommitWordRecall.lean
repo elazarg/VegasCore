@@ -46,8 +46,6 @@ raw record of that member's exact typed result. The callback and its legality
 are reconstructed from the initialized history, rather than supplied. -/
 theorem phaseCommitWordRecall_accepted
     (plan : RuntimePhasePlan (serviceGraph setup mode))
-    (maximal : plan.phases.IsChain fun before after =>
-      before.kind ≠ after.kind ∨ before.kind = .sample)
     (inputs : PMF (serviceGraph setup mode).Inputs) (horizon : Nat)
     (scheduler : (app).Scheduler) {control : (app).Control}
     (trace : ((PhaseCount.onePacketMenu runtime leaks bounds).protocol
@@ -152,9 +150,9 @@ theorem phaseCommitWordRecall_accepted
     · rw [viewed]
       exact beforeAddress
     · rw [handleEq]
-      exact PhaseNativeProjection.recorded_binding_result_of_clear runtime leaks plan bounds
-        (serviceGraph_revealRelaxedOrdered setup mode) maximal inputs horizon scheduler trace
-          clear who event payload _ serial entry retained declared fresh
+      exact phase_recorded_binding_result runtime leaks _ horizon scheduler
+        ((PhaseCount.onePacketMenu runtime leaks bounds).toRawTrace _ horizon scheduler trace)
+          who event payload _ serial entry retained declared fresh
     · rw [declared]
       exact phaseBindingAction?_response setup.program mode runtime leaks who event payload binding
         _ serial
@@ -167,8 +165,6 @@ agrees with each surviving current-block binding. Its exact private raw action
 is retained as a witness, so an accepted failure is constrained as well. -/
 theorem phaseCommitWordPosterior_accepted
     (plan : RuntimePhasePlan (serviceGraph setup mode))
-    (maximal : plan.phases.IsChain fun before after =>
-      before.kind ≠ after.kind ∨ before.kind = .sample)
     (inputs : PMF (serviceGraph setup mode).Inputs) (horizon : Nat)
     (scheduler : (app).Scheduler) {control : (app).Control}
     (trace : ((PhaseCount.onePacketMenu runtime leaks bounds).protocol
@@ -203,7 +199,7 @@ theorem phaseCommitWordPosterior_accepted
   obtain ⟨entry, serial, retained, attempt, declared, _candidate, meaning, decoded⟩ :=
     phaseCommitWordRecall_accepted setup mode runtime leaks bounds wellFormed assessment block
       low generation
-      slotWeight slotNonnegative slotBounded who word plan maximal inputs horizon scheduler trace
+      slotWeight slotNonnegative slotBounded who word plan inputs horizon scheduler trace
         clear event payload binding inside address candidate accepted member
   refine ⟨meaning, ⟨entry, retained, attempt, decoded⟩, ?_⟩
   intro action observed

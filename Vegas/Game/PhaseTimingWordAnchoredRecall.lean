@@ -71,8 +71,6 @@ theorem phaseTimingWordAnchoredRecall_accepted
     (covered : ∀ past view response,
       response ∈ (ReactiveApplication.anchoredPolicy anchor (fun _ => family word) who past
         view).support → response ∈ PhaseCount.onePacketActions runtime leaks bounds who past view)
-    (maximal : runtimePlan.phases.IsChain fun before after =>
-      before.kind ≠ after.kind ∨ before.kind = .sample)
     {control : (app).Control}
     (trace : ((menu).protocol initial horizon scheduler).Trace (some control))
     (clear : control.execution.application.current.excluded = ∅)
@@ -97,7 +95,7 @@ theorem phaseTimingWordAnchoredRecall_accepted
           (cast (congrArg EventField.Action binding.symm) result) := by
   let replay := ReactiveApplication.anchoredPolicy anchor (fun _ => family word) who
   apply phaseCommitWordRecall_accepted_of_response setup mode runtime leaks bounds block low
-    generation who word runtimePlan maximal inputs horizon scheduler replay covered ?_ trace
+    generation who word runtimePlan inputs horizon scheduler replay covered ?_ trace
       clear event payload binding inside address candidate accepted consistent
   intro remaining execution prior beforeClear selected value shape request addressed tag response
     sampled nonsilent

@@ -58,8 +58,6 @@ the SAME actual filled-view word fiber; no target posterior is assumed. -/
 theorem RecoverySourceCheckpoint.timing_word_current_joint_of_history
     {control : (app).Control}
     (trace : ((menu).protocol initial horizon scheduler).Trace (some control))
-    (maximal : runtimePlan.phases.IsChain fun before after =>
-      before.kind ≠ after.kind ∨ before.kind = .sample)
     (clearCurrent : control.execution.application.current.excluded = ∅)
     (checkpoint : RecoverySourceCheckpoint setup mode control.execution.application)
     (wellFormed : setup.WellFormed)
@@ -158,7 +156,7 @@ theorem RecoverySourceCheckpoint.timing_word_current_joint_of_history
       (fun plan => ((app).policyMixture prior (family plan)).policy) past hierarchical.2 plan
         supported
     exact RecoverySourceCheckpoint.timing_word_predicts_of_history setup mode runtime leaks
-      bounds runtimePlan inputs horizon scheduler bound trace maximal clearCurrent checkpoint
+      bounds runtimePlan inputs horizon scheduler bound trace clearCurrent checkpoint
         wellFormed assessment residual raw fresh guard later suffix earlier reconstruct clear
           stored selected atEnd ready acting notPublication valid reachable retained saved fallback
             slotWeight slotNonnegative slotBounded plan request unsent innerConsistent

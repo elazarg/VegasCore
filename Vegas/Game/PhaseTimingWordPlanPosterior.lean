@@ -60,8 +60,7 @@ local notation "family" => phaseTimingWordPlanPolicy setup mode runtime leaks bo
   horizon scheduler bound fallback wellFormed source block low generation slotWeight
     slotNonnegative slotBounded timingPlan who
 
-variable (maximal : runtimePlan.phases.IsChain fun before after =>
-    before.kind ≠ after.kind ∨ before.kind = .sample)
+variable
   {control : (phaseApplication runtime leaks).Control}
   (trace : ((PhaseCount.onePacketMenu runtime leaks bounds).protocol
     (inputs.map (PhaseRuntimeState.initial runtimePlan)) horizon scheduler).Trace (some control))
@@ -72,7 +71,7 @@ variable (maximal : runtimePlan.phases.IsChain fun before after =>
   (inside : low ≤ selected.val ∧ selected.val < low + block.length)
   (address : control.execution.application.attempt = ⟨low, generation⟩)
 
-include maximal trace clear inside address in
+include trace clear inside address in
 private theorem plan_agrees_of_consistent (word : DecisionView who Δ)
     (consistent : (family word).Consistent (control.execution.recall who)) :
     phaseCommitWordAgrees setup mode block low who control.execution.application.current.native
@@ -81,11 +80,11 @@ private theorem plan_agrees_of_consistent (word : DecisionView who Δ)
   obtain ⟨_entry, _serial, _retained, _attempt, _declared, _handle, meaning, _decoded⟩ :=
     phaseTimingWordPlanRecall_accepted setup mode runtime leaks bounds runtimePlan inputs horizon
       scheduler bound fallback wellFormed source block low generation slotWeight slotNonnegative
-        slotBounded timingPlan who word maximal trace clear event payload binding (by omega)
+        slotBounded timingPlan who word trace clear event payload binding (by omega)
           address candidate accepted consistent
   exact meaning
 
-include maximal trace clear request address in
+include trace clear request address in
 private theorem plan_consistent_of_agrees
     (unsent : ∀ message ∈ (app).outputs (control.execution.recall who),
       PhaseCount.event? message.payload ≠ some ⟨control.execution.application.attempt, selected⟩)
@@ -158,7 +157,7 @@ private theorem plan_consistent_of_agrees
         obtain ⟨_entry, _serial, _retained, _attempt, _declared, _handle, meaning, _decoded⟩ :=
           phaseTimingWordPlanRecall_accepted setup mode runtime leaks bounds runtimePlan inputs
             horizon scheduler bound fallback wellFormed source block low generation slotWeight
-              slotNonnegative slotBounded timingPlan who original maximal trace clear event payload
+              slotNonnegative slotBounded timingPlan who original trace clear event payload
                 binding addressed address candidate accepted consistent
         have target := agrees event payload binding candidate ⟨addressed.1, before⟩ accepted
         have equal := meaning.symm.trans target
@@ -178,7 +177,7 @@ private theorem plan_consistent_of_agrees
       exact .snoc entry (ih priorPrefix) (record earlier entry later recalled)
   exact build _ (List.prefix_refl _)
 
-include maximal trace clear request inside address in
+include trace clear request inside address in
 open Classical in
 /-- With the ORIGINAL entire timing plan fixed, actual full recall at an
 unsent callback conditions its ONE original source word only by surviving
@@ -207,10 +206,10 @@ theorem phaseTimingWordPlanPolicy_posterior_accepted_of_history
   constructor
   · exact plan_agrees_of_consistent setup mode runtime leaks bounds runtimePlan inputs horizon
       scheduler bound fallback wellFormed source block low generation slotWeight slotNonnegative
-        slotBounded timingPlan who maximal trace clear selected inside address word
+        slotBounded timingPlan who trace clear selected inside address word
   · exact plan_consistent_of_agrees setup mode runtime leaks bounds runtimePlan inputs horizon
       scheduler bound fallback wellFormed source block low generation slotWeight slotNonnegative
-        slotBounded timingPlan who maximal trace clear selected request address unsent original word
+        slotBounded timingPlan who trace clear selected request address unsent original word
           member
 
 end Vegas

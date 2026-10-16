@@ -57,8 +57,6 @@ word posterior and genuine AUX choice law are derived. RAW remains separate. -/
 theorem RecoverySourceCheckpoint.timing_word_policy_of_history
     {control : (app).Control}
     (trace : ((menu).protocol initial horizon scheduler).Trace (some control))
-    (maximal : runtimePlan.phases.IsChain fun before after =>
-      before.kind ≠ after.kind ∨ before.kind = .sample)
     (clearCurrent : control.execution.application.current.excluded = ∅)
     (checkpoint : RecoverySourceCheckpoint setup mode control.execution.application)
     (wellFormed : setup.WellFormed)
@@ -152,7 +150,7 @@ theorem RecoverySourceCheckpoint.timing_word_policy_of_history
       (phaseSourceView? setup mode runtime leaks owner (checkpoint.embedding.event selected)
         view))).map (fun choice => CommitRecoveryMove.underlying choice.1)
   have joint := RecoverySourceCheckpoint.timing_word_current_joint_of_history setup mode runtime
-    leaks bounds runtimePlan inputs horizon scheduler bound trace maximal clearCurrent checkpoint
+    leaks bounds runtimePlan inputs horizon scheduler bound trace clearCurrent checkpoint
       wellFormed assessment residual raw fresh guard later suffix earlier reconstruct clear stored
         selected atEnd ready acting notPublication valid reachable retained saved fallback
           slotWeight

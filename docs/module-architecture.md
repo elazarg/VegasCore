@@ -2202,3 +2202,58 @@ Actual phase-zero traces derive their complete archive namespace sequence.
 Equal owner observations identify full auxiliary information at archived and
 current saved checkpoints through arbitrary initial retries. General
 later-phase synchronization remains a separate obligation.
+
+Original source binding content and reveal correction:
+[Commit Recovery Value Plan](../Vegas/Game/CommitRecoveryValuePlan.lean),
+[Commit Recovery Opening Mass](../Vegas/Game/CommitRecoveryOpeningMass.lean).
+One original global source-policy prior gives the joint binding readout and
+complete binding-indicator expectation along an actual source history. Source
+reach retains its literal reveal-choice product separately from binding and
+chance factors. On genuine clear source histories that product tends uniformly
+to one using the actual protocol budget.
+
+Authored binding readback and historical source queries:
+[Phase Recorded Binding Meaning](../Vegas/Pending/PhaseRecordedBindingMeaning.lean),
+[Phase Binding Recall Meaning](../Vegas/Game/PhaseBindingRecallMeaning.lean),
+[Phase Recorded Binding Source View](../Vegas/Game/PhaseRecordedBindingSourceView.lean),
+[Phase Archived Binding Input Origin](../Vegas/Pending/PhaseArchivedBindingInputOrigin.lean),
+[Phase Archived Recorded Binding Meaning](../Vegas/Pending/PhaseArchivedRecordedBindingMeaning.lean),
+[surviving owners' live typed declarations after foreign exclusion](../Vegas/Pending/PhaseCompletedBindingMeaning.lean).
+Raw initialized histories preserve exact fresh declarations in the permanent
+catalogue through exclusion, rollback and exhaustion. A completed clear endpoint
+derives the original accepted handle and typed action from its remembered SEND.
+Actual clear prefix extension identifies the historical query with the later
+decoded source predecessor. Whole binding-record coverage remains separate.
+Actual archived namespace stamps, failure coverage and permanent catalogue
+refinement identify a surviving owner's original typed SEND in its retired
+graph history. The endpoint may have exclusions; no receipt or accepted-handle
+premise is supplied to this typed readback.
+
+Actual first-attempt stopped endpoints:
+[Phase Attempt Completion](../Vegas/Pending/PhaseAttemptCompletion.lean).
+The original service contract and existing stopped runner derive a genuine
+attempt exit while retaining focal failures and all exclusions. A generation
+change exposes the exact retired attempt with complete phase, failure and
+catalogue provenance. A newly excluded original phase owner also exposes that
+archive on exhausted restore without a generation change. Same-generation
+current completion alone asserts event membership; the archived image retains
+the original authored choices.
+
+Recovery policy coordinates and original record conditioning:
+[complete recovery policy plans](../Vegas/Game/CommitRecoveryPolicyPlan.lean),
+[their actual source-record posteriors](../Vegas/Game/CommitRecoveryPolicyConditioning.lean),
+[the entire remaining original policy](../Vegas/Game/CommitRecoveryPolicySplit.lean).
+The current choice splits from that remaining policy under the actual posterior,
+retaining retired coordinates and omission flags.
+The policy table is indexed by full recovery information, including retries.
+One initial draw realizes the complete source runner. Genuine chronological
+records have their exact source likelihood, and conditioning those records
+retains the original per-owner posterior and the next unused source choice.
+These source laws do not assert a native/source posterior identity.
+
+Normalized local delivery:
+[counted binding service](../Vegas/Pending/PhaseCountServiceReference.lean).
+Silence and SEND have separate local masses; uniform packet selection is
+conditional on SEND. Source omission is used only at the first activation.
+Actual surviving callbacks derive the exact emission law even after a foreign
+exclusion. Source accepted failures and the extra raw-send tier stay distinct.

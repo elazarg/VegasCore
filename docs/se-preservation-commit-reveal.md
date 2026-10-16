@@ -1,11 +1,25 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**SE: non-concurrent ✓ · clear-belief L1→0 ✓ · initial retry Info ✓ · swap likelihoods ✓ · AUX transport/reset optimality open.**
+**SE: non-concurrent ✓ · live/archive meanings ✓ · retry-aware prior+split ✓ · local SEND law ✓ · full transport/reset open.**
 
 <details>
 <summary>Checked recovery milestones and remaining proof obligations</summary>
 
 Milestones have unequal cost; the fixed SE checklist is unchanged.
+
+The original source policy now has coordinates at full recovery information,
+including every retry. Its single initial draw realizes the complete source
+runner. At genuine source decisions, conditioning all earlier own actions
+leaves the current choice independent of the entire remaining original policy.
+This retains old coordinates and omission flags; native/source posterior
+equality still requires the chronological query adapter.
+
+The counted delivery profile has separate local SEND and WAIT masses, with
+packet selection normalized only after SEND. Omission mass is used only at
+the first activation. Genuine surviving callbacks derive the exact emission
+law even after foreign exclusion. Live and archived completed graph actions
+retain their original typed declarations, without supplied receipts or
+accepted-handle premises. These results do not yet prove the incentive bounds.
 
 Every actual initialized clear history consistent with the canonical source
 policy has one whole intended saved source checkpoint. Static source-prefix
@@ -62,6 +76,21 @@ At phase zero, actual initialized traces derive the archive retry numbering.
 Equal owner observations then determine the complete saved auxiliary
 information through arbitrarily many initial retries. General later-phase
 chronological information recovery remains open.
+
+An original global source-policy draw gives the exact joint binding constraints
+on a genuine source history, including repeated owners and typed failure.
+Source reach factors into binding/chance weight and the actual reveal-choice
+factor; on clear source histories that factor tends uniformly to one. A
+remembered fresh native declaration retains its exact catalogue meaning through
+arbitrary exclusion and recovery. At a completed clear endpoint, the original
+SEND determines the accepted handle and typed graph action. Historical query
+views agree with the corresponding later decoded predecessor on genuine clear
+prefixes. For a surviving owner, a matching-attempt SEND also determines the
+exact typed action in an actual retired attempt, without a clear endpoint or
+receipt premise. First-attempt stopping retains the original archive on both
+retry and exhausted restore, including when exhaustion keeps the generation.
+Full chronological coverage of source binding records and source query
+identification at archived attempts with exclusions remain open.
 
 Supported disclosing memories reconstruct the whole physical native
 configuration. Actual clear counted histories project to ordinary native

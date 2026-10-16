@@ -97,7 +97,7 @@ theorem phase_finished_commit_admitted
   subst phase
   intro who
   apply phase_commitPrefix_image_admitted setup mode runtime leaks bounds wellFormed source
-    assessment copies plan maximal inputs horizon scheduler trace clear fixed block suffix rfl who
+    assessment copies plan inputs horizon scheduler trace clear fixed block suffix rfl who
       (consistent who) savedIntended image imageClear imageCoverage imageBindings results stamped
         preserved
   dsimp only

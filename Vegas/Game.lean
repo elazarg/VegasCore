@@ -1136,3 +1136,8 @@ import Vegas.Game.PhaseBindingSwapSilence
 import Vegas.Game.PhaseTimingSwapWaiting
 import Vegas.Game.PhaseTimingSwapWaitingLimit
 import Vegas.Game.PhaseTimingSwapRecall
+import Vegas.Game.CommitRecoveryOpeningMass
+import Vegas.Game.PhaseRecordedBindingSourceView
+import Vegas.Game.CommitRecoveryPolicyPlan
+import Vegas.Game.CommitRecoveryPolicyConditioning
+import Vegas.Game.CommitRecoveryPolicySplit

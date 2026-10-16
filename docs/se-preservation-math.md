@@ -748,3 +748,14 @@ identify distinct recovery occurrences. The arbitrary controller contract
 also does not enforce the strong service packet quotient used above. These
 differences must be resolved before an implementation of the mathematical
 construction is reported as full SE preservation.
+
+The formal auxiliary source also admits an accepted failed binding separately
+from an omission. Conditioning on no omission, or on its continuing menu,
+does not yield a law on domain values. A realization through that larger
+source must keep an explicit accepted-failure source tier beta_n, separate
+from the native zeta_n^3 tier. If these extra source paths are removed by
+content repair, choose beta_n=o(gamma_n^T), where gamma_n is a preselected
+lower bound for ordinary domain actions, and prove the same-path repair.
+The full source minimum rho_n includes beta_n and cannot replace gamma_n in
+that estimate. This is an adapter obligation for the larger formal source;
+the mathematical domain-value source used above has no such extra action.
