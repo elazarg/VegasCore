@@ -60,7 +60,7 @@ theorem exists_phaseRecoveryBindingChoice (wellFormed : setup.WellFormed)
 
 /-- Full mixing at the actual auxiliary decision gives positive original
 typed-result mass for every result, including accepted unusable bindings. -/
-theorem phaseRecoveryBindingChoice_supported_of_history
+theorem phaseRecoveryBindingChoice_supported_of_history [Finite Player]
     (wellFormed : setup.WellFormed)
     (assessment : setup.commitRecoveryModel.BehavioralAssessment)
     (mixed : assessment.IsFullyMixed)

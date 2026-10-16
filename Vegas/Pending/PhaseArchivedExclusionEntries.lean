@@ -15,22 +15,6 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
 
 namespace State
 
-/-- A retained exact lower prefix determines all later public failures below
-that prefix, even when later events complete in a different order. -/
-theorem PublicFailureExtension.failureOwnersBefore_eq {before after : State graph}
-    (extension : before.PublicFailureExtension after) (low : Nat)
-    (atLow : before.config.cut.IsPrefix low) :
-    after.failureOwnersBefore low = before.failureOwners := by
-  classical
-  ext owner
-  simp only [failureOwnersBefore, failureOwners, Finset.mem_filter,
-    Finset.mem_univ, true_and]
-  constructor
-  · rintro ⟨event, earlier, acting, failed⟩
-    exact ⟨event, acting, (extension.failures event ((atLow.2 event).mpr earlier)).mp failed⟩
-  · rintro ⟨event, acting, failed⟩
-    exact ⟨event, (atLow.2 event).mp failed.completed, acting,
-      (extension.failures event failed.completed).mpr failed⟩
 
 end State
 

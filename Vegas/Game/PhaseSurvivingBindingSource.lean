@@ -13,7 +13,7 @@ namespace Vegas
 open SourceProgram EventGraph EventGraphRuntime Interaction GameTheory.Protocol
   GameTheory.Math.Probability
 
-variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
+variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr} [IExpr.ResultTypes L]
 
 /-- Every initialized surviving ready binding has a genuine played auxiliary
 source decision with the saved source exclusions and actual generation.
@@ -56,14 +56,16 @@ theorem phase_ready_binding_surviving_source
         ((serviceGraph setup mode).playerStore who
           control.execution.application.current.native.config.store)
         (ProtocolState.history setup.program source.point who) =
-          some (ProtocolState.observe who setup.program source.point) := by
+          some (ProtocolState.observe who setup.program source.point) ∧
+      setup.recoveryAddressWord sourceTrace =
+        control.execution.application.sourcePublicAddressWord plan event.val := by
   let inputs : PMF (serviceGraph setup mode).Inputs := setup.initialLaw.map encodeInputs
   have physicalTrace : ((phaseApplication runtime leaks).protocol
       (inputs.map (PhaseRuntimeState.initial plan)) horizon scheduler).Trace (some control) := by
     dsimp only [inputs]
     rw [PMF.map_comp]
     exact trace
-  obtain ⟨checkpoint, archivedRecall, _sourceOrigin⟩ :=
+  obtain ⟨checkpoint, archivedRecall, publicChronology, _sourceOrigin⟩ :=
     recoverySourceCheckpoint_history setup mode runtime leaks plan maximal
       horizon scheduler trace
   have exclusion := phaseExclusionRecord_history runtime leaks plan inputs horizon scheduler
@@ -95,7 +97,7 @@ theorem phase_ready_binding_surviving_source
     rw [binding]
     exact id
   obtain ⟨source, sourceTrace, excluded, generation, publicSignal, sourceActor, played,
-      word, decoded, _numeric⟩ :=
+      word, decoded, numeric⟩ :=
     checkpoint.surviving_prefix_trace fresh guard next earlier reconstruct stored survives selected
       atEnd (selectedEq.symm ▸ request.2.2.1) (selectedEq.symm ▸ acting)
       (selectedEq.symm ▸ notPublication)
@@ -109,7 +111,23 @@ theorem phase_ready_binding_surviving_source
     fresh guard next earlier reconstruct survives selected atEnd (selectedEq.symm ▸ request.2.2.1)
       (selectedEq.symm ▸ acting) bindingRecord.active native.active.reachable retained saved
   rw [word, selectedEq] at decoded
-  exact ⟨source, sourceTrace, excluded, generation, publicSignal, sourceActor, played,
-    word.symm.trans actualWord, decoded⟩
+  have archiveExclusions := phaseArchivedExclusions_history runtime leaks plan inputs horizon
+    scheduler physicalTrace
+  have savedFailures := phasePublicFailureCheckpoint_history runtime leaks plan inputs horizon
+    scheduler physicalTrace
+  have savedExcluded := PhaseRuntimeState.saved_excluded_eq_public_failures archiveExclusions
+    savedFailures exclusion.frontier phase remaining installed
+  have eventRank : event.val = control.execution.application.attempt.phase + earlier.length := by
+    rw [← selectedEq, checkpoint.compiled.rankEq, atEnd]
+  refine ⟨source, sourceTrace, excluded, generation, publicSignal, sourceActor, played,
+    word.symm.trans actualWord, decoded, ?_⟩
+  rw [numeric, publicChronology.addresses,
+    PhaseRuntimeState.sourcePublicAddressWord_saved]
+  dsimp only [PhaseRuntimeState.sourcePublicAddressWord, State.sourceFailureFootprint]
+  have failures := PhaseRuntimeState.sourceRecordFailures_sourceControlRecords
+    control.execution.application.retired
+  unfold RuntimePhasePlan.sourceRecordFailures at failures
+  rw [eventRank, Nat.add_sub_cancel_left, failures, ← savedExcluded]
+  rfl
 
 end Vegas

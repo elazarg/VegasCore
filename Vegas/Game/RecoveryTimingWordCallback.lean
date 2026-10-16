@@ -118,7 +118,7 @@ theorem RecoverySourceCheckpoint.timing_word_anchored_policy_at_callback
     ((menu).toRawTrace initial horizon scheduler trace)
   have geometry := phasePlanGeometry_history runtime leaks runtimePlan maximal inputs horizon
     scheduler ((menu).toRawTrace initial horizon scheduler trace)
-  have interval := checkpoint.commit_phase_geometry block suffix reconstruct positive boundary
+  have interval := checkpoint.commit_block_phase_geometry block suffix reconstruct positive boundary
     exclusion.frontier geometry.2.2 phase remaining installed
   by_cases usable : ∃ coordinate, control.execution.application.SeedRequest owner coordinate ∧
       ∀ message ∈ (app).outputs (control.execution.recall owner),

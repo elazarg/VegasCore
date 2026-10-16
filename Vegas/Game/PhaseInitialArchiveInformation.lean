@@ -12,7 +12,7 @@ namespace Vegas
 open SourceProgram EventGraph EventGraphRuntime Interaction GameTheory.Protocol
   GameTheory.Protocol.ExecutionProtocol GameTheory.Math.Probability
 
-variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
+variable {Player : Type} [DecidableEq Player] [Finite Player] {L : IExpr} [IExpr.ResultTypes L]
 
 /-- At the initial archived attempt, equal actual owner inputs determine the
 complete chosen source information at the real close, including retry and
@@ -64,6 +64,7 @@ theorem phase_initial_archive_information_eq_of_observed
       setup.commitRecoveryProtocol.ReachesWithin rightLater rightClosed ⟨_, secondFinal.trace⟩ ∧
       setup.commitRecoveryModel.infoOf who leftClosed.trace =
         setup.commitRecoveryModel.infoOf who rightClosed.trace := by
+  let := Fintype.ofFinite Player
   let inputs : PMF ((toEventGraph setup.program).withMode mode).Inputs :=
     setup.initialLaw.map encodeInputs
   have firstRaw : ((phaseApplication runtime leaks).protocol
@@ -90,10 +91,10 @@ theorem phase_initial_archive_information_eq_of_observed
     List.getElem?_eq_getElem secondBound
   have firstRecord : first.execution.application.retired[0] = record := by
     exact Option.some.inj ((List.getElem?_eq_getElem bound).symm.trans selected)
-  obtain ⟨firstFinal, firstAligned, firstOrigins⟩ :=
+  obtain ⟨firstFinal, firstAligned, _firstChronology, firstOrigins⟩ :=
     recoverySourceCheckpoint_history setup mode runtime leaks plan maximal horizon scheduler
       firstTrace
-  obtain ⟨secondFinal, secondAligned, secondOrigins⟩ :=
+  obtain ⟨secondFinal, secondAligned, _secondChronology, secondOrigins⟩ :=
     recoverySourceCheckpoint_history setup mode runtime leaks plan maximal horizon scheduler
       secondTrace
   obtain ⟨leftState, left, leftAligned, _leftEarlier, leftArchives, leftAttempt, leftRetained,

@@ -15,6 +15,23 @@ variable {Player : Type}
 
 namespace State
 
+/-- A completed binding fails publicly exactly when no handle was accepted.
+An accepted failed typed result remains distinct from physical omission. -/
+theorem publicFailure_iff_accepted_none (state : State graph) (event : graph.EventId)
+    (owner : Player) (payload : L.Ty)
+    (binding : graph.outputLayout event = .binding owner payload)
+    (completed : event ∈ state.config.cut.completed) :
+    state.PublicFailure event ↔ state.accepted (.inr event) = none := by
+  have noPublication : RecoveryState.publicationFailed state event = false := by
+    cases viewed : nodeView graph event with
+    | sample other law kind code => cases kind.symm.trans binding
+    | resolve other otherPayload source checks kind code => cases kind.symm.trans binding
+    | bind other otherPayload kind code =>
+        simp only [RecoveryState.publicationFailed, viewed]
+  rw [PublicFailure, noPublication, Bool.false_eq_true, or_false,
+    state.publicView_missedBinding event owner payload binding]
+  exact and_iff_right completed
+
 /-- All earlier completed events retain their exact public failure verdict. -/
 structure PublicFailureExtension (before after : State graph) : Prop where
   completed : before.config.cut.completed ⊆ after.config.cut.completed
@@ -175,6 +192,92 @@ theorem failureOwnersBefore_congr {first second : State graph}
   exact exists_congr fun event => and_congr_right fun _ =>
     and_congr_right fun _ => PublicFailure.of_publicView_eq same event
 
+/-- Public failures below an already completed cutoff cannot change under
+an actual continuation, even when new failures occur above the cutoff. -/
+theorem PublicFailureExtension.failureOwnersBefore_eq_below {before after : State graph}
+    (extension : before.PublicFailureExtension after) (low : Nat)
+    (completed : ∀ event : graph.EventId, event.val < low →
+      event ∈ before.config.cut.completed) (rank : Nat) (bounded : rank ≤ low) :
+    before.failureOwnersBefore rank = after.failureOwnersBefore rank := by
+  classical
+  ext owner
+  simp only [State.failureOwnersBefore, Finset.mem_filter, Finset.mem_univ, true_and]
+  constructor
+  · rintro ⟨event, below, acting, failed⟩
+    exact ⟨event, below, acting,
+      (extension.failures event (completed event (by omega))).mpr failed⟩
+  · rintro ⟨event, below, acting, failed⟩
+    exact ⟨event, below, acting,
+      (extension.failures event (completed event (by omega))).mp failed⟩
+
+/-- A retained exact lower prefix determines all later public failures below
+that prefix, even when later events complete in a different order. -/
+theorem PublicFailureExtension.failureOwnersBefore_eq {before after : State graph}
+    (extension : before.PublicFailureExtension after) (low : Nat)
+    (atLow : before.config.cut.IsPrefix low) :
+    after.failureOwnersBefore low = before.failureOwners := by
+  classical
+  ext owner
+  simp only [State.failureOwnersBefore, State.failureOwners, Finset.mem_filter,
+    Finset.mem_univ, true_and]
+  constructor
+  · rintro ⟨event, earlier, acting, failed⟩
+    exact ⟨event, acting, (extension.failures event ((atLow.2 event).mpr earlier)).mp failed⟩
+  · rintro ⟨event, acting, failed⟩
+    exact ⟨event, (atLow.2 event).mp failed.completed, acting,
+      (extension.failures event failed.completed).mpr failed⟩
+
+
+open scoped Classical in
+/-- Extending a source-ranked public scan by one original event adds exactly
+that event's failed owner. Repeated failures retain the same exclusion set. -/
+theorem failureOwnersBefore_successor (state : State graph) (event : graph.EventId) :
+    state.failureOwnersBefore (event.val + 1) =
+      state.failureOwnersBefore event.val ∪ Finset.univ.filter (fun owner =>
+        graph.actor? event = some owner ∧ state.PublicFailure event) := by
+  classical
+  ext owner
+  simp only [failureOwnersBefore, Finset.mem_union, Finset.mem_filter,
+    Finset.mem_univ, true_and]
+  constructor
+  · rintro ⟨prior, lower, acting, failed⟩
+    by_cases earlier : prior.val < event.val
+    · exact Or.inl ⟨prior, earlier, acting, failed⟩
+    · have same : prior = event := Fin.ext (by omega)
+      subst prior
+      exact Or.inr ⟨acting, failed⟩
+  · rintro (⟨prior, earlier, acting, failed⟩ | ⟨acting, failed⟩)
+    · exact ⟨prior, by omega, acting, failed⟩
+    · exact ⟨event, by omega, acting, failed⟩
+
+open scoped Classical in
+/-- The next excluded set is determined by the old set and the current public
+failure. The inherited part may also contain failures from retired attempts. -/
+theorem union_failureOwnersBefore_successor (state : State graph) (event : graph.EventId)
+    (inherited : Finset Player) :
+    inherited ∪ state.failureOwnersBefore (event.val + 1) =
+      (graph.actor? event).elim (inherited ∪ state.failureOwnersBefore event.val)
+        (fun owner => if state.PublicFailure event then
+          insert owner (inherited ∪ state.failureOwnersBefore event.val)
+        else inherited ∪ state.failureOwnersBefore event.val) := by
+  classical
+  rw [state.failureOwnersBefore_successor event]
+  cases acting : graph.actor? event with
+  | none =>
+      ext who
+      simp only [Option.elim_none, Finset.mem_union, Finset.mem_filter,
+        Finset.mem_univ, true_and, reduceCtorEq, false_and, or_false]
+  | some owner =>
+      by_cases failed : state.PublicFailure event
+      · ext who
+        simp only [Option.elim_some, failed, ↓reduceIte, Finset.mem_union,
+          Finset.mem_filter, Finset.mem_univ, true_and, Option.some.injEq,
+          and_true, Finset.mem_insert, eq_comm]
+        tauto
+      · ext who
+        simp only [Option.elim_some, failed, ↓reduceIte, Finset.mem_union,
+          Finset.mem_filter, Finset.mem_univ, and_false, or_false]
+
 end State
 
 variable [Fintype Player]
@@ -220,22 +323,9 @@ theorem saved_excluded_eq_public_failures {state : PhaseRuntimeState graph}
       state.current.native.failureOwnersBefore state.attempt.phase := by
   have saved := frontier.positioned
   rw [installed] at saved
-  rw [archives.saved_eq]
-  apply congrArg (archivedFailureOwners state.retired ∪ ·)
-  classical
-  ext owner
-  simp only [State.failureOwners, State.failureOwnersBefore, Finset.mem_filter,
-    Finset.mem_univ, true_and]
-  have low : state.attempt.phase = phase.low := by simp only [attempt, installed, List.head?_cons,
-    Option.map_some, Option.getD_some]
-  rw [low]
-  constructor
-  · rintro ⟨event, acting, failed⟩
-    have completed := failed.completed
-    exact ⟨event, (saved.1.2 event).mp completed, acting,
-      (checkpoint.failures event completed).mpr failed⟩
-  · rintro ⟨event, earlier, acting, failed⟩
-    exact ⟨event, acting, (checkpoint.failures event ((saved.1.2 event).mpr earlier)).mp failed⟩
+  have low : state.attempt.phase = phase.low := by
+    simp only [attempt, installed, List.head?_cons, Option.map_some, Option.getD_some]
+  rw [archives.saved_eq, ← checkpoint.failureOwnersBefore_eq phase.low saved.1, low]
 
 /-- The same public native view determines the saved source exclusion set at
 an installed phase. Current in-phase failures cannot change that set. -/

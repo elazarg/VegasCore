@@ -22,7 +22,7 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
 omit [Fintype Player] in
 /-- A uniform source-choice floor bounds every nonmissing typed binding result
 at the genuine source information reconstructed from an actual clear callback. -/
-theorem phaseSourceBindingData_result_lower (wellFormed : setup.WellFormed)
+theorem phaseSourceBindingData_result_lower [Finite Player] (wellFormed : setup.WellFormed)
     (assessment : setup.commitRecoveryModel.BehavioralAssessment) (floor : ℝ)
     (floored : ∀ (who : Player) (site : setup.commitRecoveryModel.InformationSite who)
       (choice : setup.commitRecoveryModel.Choice who site.1),

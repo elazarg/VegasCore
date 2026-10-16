@@ -193,3 +193,4 @@ import Vegas.Source.CommitRecoveryNoMissFixed
 import Vegas.Source.CommitRecoveryAttemptDebt
 import Vegas.Source.CommitRecoveryAttemptOmissions
 import Vegas.Source.CommitRecoveryCommitEntry
+import Vegas.Source.CommitRecoveryVirtualMenu

@@ -13,7 +13,7 @@ namespace Vegas
 open SourceProgram EventGraph EventGraphRuntime Interaction GameTheory.Protocol
   GameTheory.Protocol.ExecutionProtocol GameTheory.Math.Probability
 
-variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
+variable {Player : Type} [DecidableEq Player] [Finite Player] {L : IExpr} [IExpr.ResultTypes L]
 
 /-- Equal actual full owner inputs determine complete source information at
 every archived close in the initial commitment retry window. The actual

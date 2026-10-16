@@ -98,7 +98,7 @@ theorem RecoverySourceCheckpoint.terminal_history
 /-- Every actually initialized completed phased history represents an actual
 terminal auxiliary source history with exactly its typed readout and payoff
 vector. Its reachable checkpoint is derived from the physical history. -/
-theorem recoverySourceTerminal_history
+theorem recoverySourceTerminal_history [Finite Player]
     (setup : Setup (Player := Player) (L := L)) (mode : EventGraph.ExecutionMode)
     (runtime : EventGraphRuntime (serviceGraph setup mode))
     (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket (serviceGraph setup mode)))
@@ -119,7 +119,8 @@ theorem recoverySourceTerminal_history
       (fun who => phaseExclusionBase setup mode runtime leaks utility excludedPayoff
         (some control) who) = fun who => setup.commitRecoveryPayoff utility excludedPayoff who
           history := by
-  obtain ⟨checkpoint, _archivedRecall, _sourceOrigin⟩ :=
+  let := Fintype.ofFinite Player
+  obtain ⟨checkpoint, _archivedRecall, _publicChronology, _sourceOrigin⟩ :=
     recoverySourceCheckpoint_history setup mode runtime leaks plan maximal
       horizon scheduler trace
   have initialized : ((phaseApplication runtime leaks).protocol

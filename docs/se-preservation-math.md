@@ -4,7 +4,7 @@ This note works with the theorem and runtime semantics of
 `docs/se-preservation-commit-reveal.md`. It records mathematical arguments,
 not claims of Lean verification. No runtime or target assumption is changed.
 
-**Math audit: raw source regret ≤ S(f+α+β) → 0 · full-fiber transport ✓ · full Lean SE open.**
+**Math audit: source SE checked · native query checked · native transport/incentives open in Lean.**
 
 The source strategy is selected with the erasure and failed-attempt pins
 constructed below. This is not a claim about an arbitrary source extension
@@ -14,8 +14,10 @@ or an arbitrary completion of the current native policy family.
 
 The mathematical conclusion here is Theorem 3 of the main document, whose
 program starts in the empty context. Its native transport argument also
-applies to independent initial OWNER tuples, allowing arbitrary correlation
-within one owner's tuple. The source erasure argument below retains an
+applies to initial OWNER tuples that are independent conditional on the
+retained public setup data, allowing arbitrary correlation within one owner's
+tuple. Independent owner marginals alone are insufficient if observing public
+setup data couples them, as with P=X xor Y. The source erasure argument retains an
 arbitrary original joint setup density, but that fact alone does not extend
 native transport to correlated tuples across owners.
 
@@ -2071,6 +2073,31 @@ Then
 
     payoff(s) = a_j + E[(G_v(Z)-a_j) pi_s(Z)].
 
+Use one coherent service rule at every local prefix, rather than unrelated
+maximizers chosen separately at native information sets. For a supported
+unsent clock word r, let mu_r be the ORIGINAL seed law filtered by that
+calendar prefix, let s(r) be immediate-SEND success under mu_r, and let
+p(r'|r) be the next-callback probabilities after WAIT; the missing mass is
+expiry without success. The bounded complete calendars give a finite prefix
+tree. Backward induction defines
+
+    V(r) = max(s(r), sum_{r' child of r} p(r'|r) V(r')).
+
+Choose SEND on ties. This single clock-only rule attains V(r) at every
+supported prefix, including prefixes its own unperturbed play never reaches.
+Bayes nesting of the original prefix filters supplies the child probabilities;
+no posterior is refreshed. Induction also gives 0<=V(r)<=1. At a protected
+first callback s(r)=1, so the tie rule sends immediately. A finite argmax
+for the whole continuation at one native site alone would not establish
+this simultaneous optimality or that first-callback choice.
+Prefixes of zero original seed mass may be totalized arbitrarily; no filtered
+law is asserted there. The displayed recursion is the unperturbed service
+optimizer. In the already factored local service experiment, its finite-stage
+implementation has a uniform error bounded by the number of remaining
+callbacks times the total omission, timing and RAW perturbation rates.
+That error tends to zero. The recursion is not an assertion of exact
+finite-stage optimality of the trembling policy.
+
 For a general information-dependent policy, fix Z. Its extra observations
 are then determined by Z and its own local transcript. It is a permissible
 local policy with success probability at most P*, the optimal local value
@@ -2251,8 +2278,8 @@ constant own reach and unchanged counterfactual reach. The original joint
 setup law may be correlated. Combined-key known-failed attachments do not
 use this bijection. Actual ordinary-copy continuation values and gains are
 checked in `Vegas/Game/CommitRecoveryAncillaryGains.lean`, retaining the joint
-stopped mark and terminal readout/payoffs. The conditional-success
-specialization and individual source optimality remain open in Lean.
+stopped mark and terminal readout/payoffs. Their conditional-success and
+individual optimality consumers are described below.
 
 `Vegas.SourceProgram.Setup.commitRecovery_stopped_attempt_success` now extracts
 the literal typed attempt from the actual first-full-identifier stopped source
@@ -2270,7 +2297,7 @@ initialized joint law. `Vegas/Game/CommitRecoveryPooledOrdinaryGains.lean`
 specializes actual pooled component gains and their exact ordinary-class sum.
 `Vegas/Source/CommitRecoveryNoMissFixed.lean` derives a genuine ordinary query
 representative and the ordinary-versus-new-failure partition from original
-histories. These do not yet prove the full source SE.
+histories. Their raw-case and source-SE consumers are described below.
 
 `Vegas/Game/CommitRecoveryPooledAgentGains.lean` now derives the actual entire
 pool's failed-member zero remainder and ordinary component inequality.
@@ -2284,8 +2311,28 @@ and arbitrary-continuation failure payoff in `Vegas/Game/CommitRecoveryCommitFai
 derive their typed geometry from the genuine committing point.
 `Vegas/Game/CommitRecoveryAcceptedFailure.lean` checks accepted-failure dominance
 under the actual source belief, and `Vegas/Game/CommitRecoveryFailedLimit.lean`
-checks every raw local lottery at known-failed sites. Full raw source SE and
-the conditional-D ranking are still separate composition obligations.
+checks every raw local lottery at known-failed sites.
+`Vegas/Game/CommitRecoveryRawLimit.lean`, `Vegas/Game/CommitRecoveryPooledRawLimit.lean`,
+`Vegas/Game/CommitRecoveryPinnedLimit.lean`, `Vegas/Game/CommitRecoveryCommitLimit.lean`
+and `Vegas/Game/CommitRecoveryNoncommitLimit.lean` assemble every original raw
+local incentive. `Vegas/Game/CommitRecoverySelectedEquilibrium.lean` uses source
+perfect recall to obtain SE of that same limit. The parametric constructor in
+`Vegas/Game/CommitRecoveryEquilibriumConstruction.lean` retains the assessment
+sequence, original sampler and chosen subsequence. The unconditional extension
+in `Vegas/Game/CommitRecoveryEquilibriumExtension.lean` supplies all of them
+internally from the intended SE, preserving the full original initialized
+history law and typed-readout/payoff joint.
+
+`Vegas/Game/CommitRecoverySuccessProbability.lean` derives source success loss
+at most |Players| T (alpha+beta), using the same zero-failure domain law and
+existing supported-choice domination. The actual belief consumer in
+`Vegas/Game/CommitRecoverySuccessBelief.lean` retains the original information
+history, stopped boundary and full terminal history jointly. Its payoff error
+is at most twice the terminal bound times that loss. The original domain
+law's convergence is derived in `Vegas/Game/CommitRecoverySuccessLimit.lean`.
+`Vegas/Game/CommitRecoveryPooledSuccessLimit.lean` obtains vanishing conditional-D
+regret for the same selected domain law, uniformly over its finite pure menu.
+No equality of the pre- and post-conditioning information-history laws is used.
 
 `Vegas.SourceProgram.CommitRecoveryState.step_preserves_intendedFor` keeps a
 surviving player's existing validity predicate in current and saved states
@@ -2306,7 +2353,13 @@ marginal in `Vegas/Game/PhaseCountServiceTableActual.lean`. It does not imply
 source-query locality or a product after future-success conditioning.
 `Vegas.compiled_reveal_public_exclusions` reads the source public exclusion
 update from the actual immutable native publication at its original compiled
-suffix. The full native observable query remains open.
+suffix. `Vegas/Game/PhaseObservableSourceQuery.lean` composes the initialized
+public/archive scan with the virtual typed view. The observable getter is
+exactly E(F(info)) for a genuine original source decision, retaining its actor
+and static rank. `Vegas/Game/PhaseObservableDomainValue.lean` instantiates the
+actual native callback with that query's domain law; every domain choice
+encodes a successful typed binding. The original native domain-table posterior
+and joint typed-word transport remain separate.
 
 `Vegas.SourceProgram.Setup.commitRecoveryNoMissInformation_genuine_history`
 gives a genuine source witness for the no-new-miss transformation of every
@@ -2344,8 +2397,8 @@ actual source assessments are fully mixed and Bayes consistent, converge to
 a consistent limit, and satisfy the summed actual conditional gain bounds.
 The SAME initialized normalized flag sampler realizes their complete source
 runners. The honest pins and their Bayes convergence are now constructed as
-described above; each member's individual source optimality is still separate
-from this pooled existence theorem.
+described above. The individual optimality and existential source-SE consumers
+are the checked modules listed above.
 The owning completion sums conditional member gains. After the same ancillary
 and reset identities, its domain comparison has coefficient
 pi_K*sum_I lambda_I, rather than the ex-ante coefficient
@@ -2366,7 +2419,7 @@ omission marginals, their whole-window law and failed-window terminal-law equali
 without assuming an omission-word coupling or a reset endpoint equality.
 Its one-site original belief consumer is checked in
 `Vegas/Game/CommitRecoveryFailedLocalLaw.lean`. The conditional-D ranking and
-full individual source optimality remain open in Lean.
+full individual source optimality use the checked consumers listed above.
 
 The existing broad post-exclusion native completion is not the pinned
 construction above:
@@ -2381,10 +2434,9 @@ The formal accepted-failure tier requires the enlarged pooled construction
 and WHOLE-owner relative repair above. Conditioning merely on no omission,
 or using the continuing menu, is insufficient. Its beta_n must stay distinct
 from native zeta_n^3. The full source minimum rho_n includes beta_n and
-cannot replace gamma_n in the source repair bound. Individual rationality of
-the enlarged source construction, owner-density cancellation, native
-chronological readback and the whole-phase service induction still require
-checked Lean realizations.
+cannot replace gamma_n in the source repair bound. Owner-density cancellation,
+the native domain-table posterior and whole-phase typed-word service induction
+still require checked Lean realizations.
 
 The safe-value induction also requires a formal guard-viability adapter at
 every non-doomed recovery view it uses. Mere domain-menu nonemptiness, or

@@ -17,7 +17,7 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 /-- Existing current-view decoding and the public phase rank recover the saved
 view of the same genuine source counterpart. Physical in-phase exclusions are
 kept separate from the counterpart's saved exclusions. -/
-theorem phaseSurvivingSourceView?_saved_of_ready_binding
+theorem phaseSurvivingSourceView?_saved_of_ready_binding [Finite Player]
     (setup : Setup (Player := Player) (L := L)) (mode : ExecutionMode)
     (runtime : EventGraphRuntime (serviceGraph setup mode))
     (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket (serviceGraph setup mode)))

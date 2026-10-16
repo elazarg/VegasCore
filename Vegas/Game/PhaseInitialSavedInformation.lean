@@ -12,7 +12,7 @@ namespace Vegas
 open SourceProgram EventGraph EventGraphRuntime Interaction GameTheory.Protocol
   GameTheory.Protocol.ExecutionProtocol GameTheory.Math.Probability
 
-variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
+variable {Player : Type} [DecidableEq Player] [Finite Player] {L : IExpr} [IExpr.ResultTypes L]
 
 /-- At a genuine binding request before leaving the initial static phase,
 equal full owner inputs determine the complete saved source information.
@@ -50,6 +50,7 @@ theorem phase_initial_saved_information_eq_of_observed
       ArchivedSourceOrigins setup mode second.execution.application.retired ⟨_, right.trace⟩ ∧
       setup.commitRecoveryModel.infoOf who left.trace =
         setup.commitRecoveryModel.infoOf who right.trace := by
+  let := Fintype.ofFinite Player
   let inputs : PMF ((toEventGraph setup.program).withMode mode).Inputs :=
     setup.initialLaw.map encodeInputs
   have firstRaw : ((phaseApplication runtime leaks).protocol
@@ -80,10 +81,10 @@ theorem phase_initial_saved_information_eq_of_observed
     rwa [← sameExcluded]
   cases count : first.execution.application.retired.length with
   | zero =>
-      obtain ⟨left, leftAligned, leftOrigins⟩ :=
+      obtain ⟨left, leftAligned, _leftChronology, leftOrigins⟩ :=
         recoverySourceCheckpoint_history setup mode runtime leaks plan maximal horizon scheduler
           firstTrace
-      obtain ⟨right, rightAligned, rightOrigins⟩ :=
+      obtain ⟨right, rightAligned, _rightChronology, rightOrigins⟩ :=
         recoverySourceCheckpoint_history setup mode runtime leaks plan maximal horizon scheduler
           secondTrace
       have firstGeneration : first.execution.application.generation = 0 :=

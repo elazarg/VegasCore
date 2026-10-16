@@ -6,6 +6,7 @@ import Vegas.Game.RecoveryInitialCheckpoint
 import Vegas.Pending.PhasePlanSuffix
 import Vegas.Pending.PhaseRawCheckpoint
 import Vegas.Pending.PhaseHistoryCheckpoint
+import Vegas.Pending.PhaseCountProjection
 import Interaction.ReactiveInvariant
 
 /-! # Actual initialized phased histories have reachable typed source checkpoints -/
@@ -16,7 +17,7 @@ namespace Vegas
 
 open SourceProgram EventGraph EventGraphRuntime Interaction GameTheory.Math.Probability
 
-variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
+variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr} [IExpr.ResultTypes L]
 
 private theorem phase_source_invariant
     (setup : Setup (Player := Player) (L := L)) (mode : ExecutionMode)
@@ -28,19 +29,28 @@ private theorem phase_source_invariant
       before.kind ≠ after.kind ∨ before.kind = .sample) :
     (phaseApplication runtime leaks).Invariant (fun state =>
       (∃ checkpoint : RecoverySourceCheckpoint setup mode state,
-        checkpoint.ArchivedRecall ∧
+        checkpoint.ArchivedRecall ∧ checkpoint.PublicChronology plan ∧
         ArchivedSourceOrigins setup mode state.retired ⟨_, checkpoint.trace⟩) ∧
       (∃ inputs, state.Invariant inputs) ∧ state.BindingRecord ∧ state.ReceiptRecord ∧
       state.StoredCheckpoint ∧ state.HistoryCheckpoint ∧ state.PublicFailureOrder ∧
-      state.phases <:+ plan.phases ∧ state.ArchivesBefore) := by
+      state.phases <:+ plan.phases ∧ state.ArchivesBefore ∧
+      state.ArchivedExclusions ∧ state.PublicFailureCheckpoint) := by
   have graphOrder := (toEventGraph setup.program).withMode_revealRelaxedOrdered
     (toEventGraph_barrierOrdered setup.program) mode
   refine ⟨?_, ?_, ?_⟩
   · intro state who material valid
-    obtain ⟨⟨checkpoint, aligned, sourceOrigins⟩, ⟨inputs, native⟩, binding, receipts,
+    obtain ⟨⟨checkpoint, aligned, chronology, sourceOrigins⟩, ⟨inputs, native⟩, binding, receipts,
       stored, remembered,
-      order, suffix, archives⟩ := valid
-    exact ⟨⟨checkpoint.transfer rfl rfl rfl, aligned, sourceOrigins⟩,
+      order, suffix, archives, archiveExclusions, savedFailures⟩ := valid
+    have nextChronology :
+        (checkpoint.transfer (other := state.submit who material) rfl rfl rfl).PublicChronology
+          plan := by
+      refine ⟨?_, chronology.consumed⟩
+      change setup.recoveryAddressWord checkpoint.trace = _
+      exact chronology.addresses.trans
+        (PhaseRuntimeState.sourcePublicAddressWord_congr plan
+          (PhaseCount.submit_publicView state who material).symm state.attempt.phase)
+    exact ⟨⟨checkpoint.transfer rfl rfl rfl, aligned, nextChronology, sourceOrigins⟩,
       ⟨inputs, (phaseApplication_invariant runtime leaks inputs).submit state who material native⟩,
       (phaseApplication_bindingInvariant runtime leaks).submit state who material binding,
       (phaseApplication_receiptRecord runtime leaks graphOrder).submit state who material receipts,
@@ -48,11 +58,13 @@ private theorem phase_source_invariant
       (phaseApplication_historyCheckpoint runtime leaks).submit state who material remembered,
       (phaseApplication_publicFailureOrder graphOrder runtime leaks).submit state who material
         order,
-      (phaseApplication_planSuffix runtime leaks plan).submit state who material suffix, archives⟩
+      (phaseApplication_planSuffix runtime leaks plan).submit state who material suffix, archives,
+      (phaseApplication_archivedExclusions runtime leaks).submit _ _ _ archiveExclusions,
+      (phaseApplication_publicFailureCheckpoint runtime leaks).submit _ _ _ savedFailures⟩
   · intro state message next valid accepted
-    obtain ⟨⟨checkpoint, aligned, sourceOrigins⟩, ⟨inputs, native⟩, binding, receipts,
+    obtain ⟨⟨checkpoint, aligned, chronology, sourceOrigins⟩, ⟨inputs, native⟩, binding, receipts,
       stored, remembered,
-      order, suffix, archives⟩ := valid
+      order, suffix, archives, archiveExclusions, savedFailures⟩ := valid
     refine ⟨?_,
       ⟨inputs, (phaseApplication_invariant runtime leaks inputs).handle state message next native
         accepted⟩,
@@ -66,7 +78,10 @@ private theorem phase_source_invariant
         accepted,
       (phaseApplication_planSuffix runtime leaks plan).handle state message next suffix accepted,
       ((PhaseRuntimeState.archivesBefore_invariant runtime leaks).handle state message next
-        ⟨order.frontier.adjacent, archives⟩ accepted).2⟩
+        ⟨order.frontier.adjacent, archives⟩ accepted).2,
+      (phaseApplication_archivedExclusions runtime leaks).handle _ _ _ archiveExclusions accepted,
+      (phaseApplication_publicFailureCheckpoint runtime leaks).handle _ _ _ savedFailures
+        accepted⟩
     change state.handle runtime message = some next at accepted
     unfold PhaseRuntimeState.handle at accepted
     split at accepted
@@ -111,16 +126,36 @@ private theorem phase_source_invariant
       have rawAligned : rawCheckpoint.ArchivedRecall := by
         simpa only [rawCheckpoint, RecoverySourceCheckpoint.transfer,
           RecoverySourceCheckpoint.ArchivedRecall, raw] using aligned
-      obtain ⟨nextCheckpoint, nextAligned, _fuel, _sourcePath, nextOrigins⟩ :=
-        rawCheckpoint.normalized_archived raw rawAligned sourceOrigins
+      have rawExtension : state.current.native.PublicFailureExtension raw.current.native :=
+        (completionStep_handle runtime _ result nativeMessage handled).publicFailureExtension
+      have rawSavedFailures : raw.PublicFailureCheckpoint := savedFailures.trans rawExtension
+      have rawArchiveExclusions : raw.ArchivedExclusions :=
+        ⟨rawOrder.coverage, archiveExclusions.saved,
+          archiveExclusions.active.inclusionResult runtime nativeMessage result handled⟩
+      have rawChronology : rawCheckpoint.PublicChronology plan := by
+        apply RecoverySourceCheckpoint.PublicChronology.current checkpoint plan chronology
+          raw.current rawExtension
+        have positioned := order.frontier.positioned
+        cases installed : state.phases with
+        | nil =>
+            rw [installed] at positioned
+            intro event _
+            exact (positioned.2 event).mpr event.isLt
+        | cons phase remaining =>
+            rw [installed] at positioned
+            simpa only [PhaseRuntimeState.attempt, installed, List.head?_cons, Option.map_some,
+              Option.getD_some] using positioned.2.1
+      obtain ⟨nextCheckpoint, nextAligned, nextChronology, _fuel, _sourcePath, nextOrigins⟩ :=
+        rawCheckpoint.normalized_archived raw plan suffix rawChronology rawArchiveExclusions
+          rawSavedFailures rawAligned sourceOrigins
           archives rawNative rawBinding rawReceipts rawStored rawRemembered rawOrder
           (plan.suffix_geometry maximal state.phases suffix).2.2
-      exact ⟨nextCheckpoint, nextAligned, nextOrigins⟩
+      exact ⟨nextCheckpoint, nextAligned, nextChronology, nextOrigins⟩
     · cases accepted
   · intro state command next valid reached
-    obtain ⟨⟨checkpoint, aligned, sourceOrigins⟩, ⟨inputs, native⟩, binding, receipts,
+    obtain ⟨⟨checkpoint, aligned, chronology, sourceOrigins⟩, ⟨inputs, native⟩, binding, receipts,
       stored, remembered,
-      order, suffix, archives⟩ := valid
+      order, suffix, archives, archiveExclusions, savedFailures⟩ := valid
     refine ⟨?_,
       ⟨inputs, (phaseApplication_invariant runtime leaks inputs).environment state command next
         native reached⟩,
@@ -137,7 +172,11 @@ private theorem phase_source_invariant
       (phaseApplication_planSuffix runtime leaks plan).environment state command next suffix
         reached,
       ((PhaseRuntimeState.archivesBefore_invariant runtime leaks).environment state command next
-        ⟨order.frontier.adjacent, archives⟩ reached).2⟩
+        ⟨order.frontier.adjacent, archives⟩ reached).2,
+      (phaseApplication_archivedExclusions runtime leaks).environment _ _ _ archiveExclusions
+        reached,
+      (phaseApplication_publicFailureCheckpoint runtime leaks).environment _ _ _ savedFailures
+        reached⟩
     change next ∈ (state.environment runtime command).support at reached
     unfold PhaseRuntimeState.environment at reached
     split at reached
@@ -167,14 +206,34 @@ private theorem phase_source_invariant
       have rawAligned : rawCheckpoint.ArchivedRecall := by
         simpa only [rawCheckpoint, RecoverySourceCheckpoint.transfer,
           RecoverySourceCheckpoint.ArchivedRecall, raw] using aligned
-      obtain ⟨nextCheckpoint, nextAligned, _fuel, _sourcePath, nextOrigins⟩ :=
-        rawCheckpoint.normalized_archived raw rawAligned sourceOrigins
+      have rawExtension : state.current.native.PublicFailureExtension raw.current.native :=
+        (completionStep_environmentStep runtime _ result command supported).publicFailureExtension
+      have rawSavedFailures : raw.PublicFailureCheckpoint := savedFailures.trans rawExtension
+      have rawArchiveExclusions : raw.ArchivedExclusions :=
+        ⟨rawOrder.coverage, archiveExclusions.saved,
+          archiveExclusions.active.environmentResult runtime command result supported⟩
+      have rawChronology : rawCheckpoint.PublicChronology plan := by
+        apply RecoverySourceCheckpoint.PublicChronology.current checkpoint plan chronology
+          raw.current rawExtension
+        have positioned := order.frontier.positioned
+        cases installed : state.phases with
+        | nil =>
+            rw [installed] at positioned
+            intro event _
+            exact (positioned.2 event).mpr event.isLt
+        | cons phase remaining =>
+            rw [installed] at positioned
+            simpa only [PhaseRuntimeState.attempt, installed, List.head?_cons, Option.map_some,
+              Option.getD_some] using positioned.2.1
+      obtain ⟨nextCheckpoint, nextAligned, nextChronology, _fuel, _sourcePath, nextOrigins⟩ :=
+        rawCheckpoint.normalized_archived raw plan suffix rawChronology rawArchiveExclusions
+          rawSavedFailures rawAligned sourceOrigins
           archives rawNative rawBinding rawReceipts rawStored rawRemembered rawOrder
           (plan.suffix_geometry maximal state.phases suffix).2.2
-      exact ⟨nextCheckpoint, nextAligned, nextOrigins⟩
+      exact ⟨nextCheckpoint, nextAligned, nextChronology, nextOrigins⟩
     · rw [PMF.mem_support_pure_iff] at reached
       subst next
-      exact ⟨checkpoint, aligned, sourceOrigins⟩
+      exact ⟨checkpoint, aligned, chronology, sourceOrigins⟩
 
 /-- Every actual initialized phased history has a saved typed source
 checkpoint reached in the actual auxiliary recovery protocol. This includes
@@ -193,7 +252,7 @@ theorem recoverySourceCheckpoint_history
       (setup.initialLaw.map fun draw => PhaseRuntimeState.initial plan (encodeInputs draw))
       horizon scheduler).Trace (some control)) :
     ∃ checkpoint : RecoverySourceCheckpoint setup mode control.execution.application,
-      checkpoint.ArchivedRecall ∧
+      checkpoint.ArchivedRecall ∧ checkpoint.PublicChronology plan ∧
       ArchivedSourceOrigins setup mode control.execution.application.retired
         ⟨_, checkpoint.trace⟩ := by
   have graphOrder := (toEventGraph setup.program).withMode_revealRelaxedOrdered
@@ -204,6 +263,7 @@ theorem recoverySourceCheckpoint_history
   · obtain ⟨draw, drawSupport, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp supported
     refine ⟨⟨RecoverySourceCheckpoint.initialized setup mode plan draw drawSupport,
         RecoverySourceCheckpoint.initialized_archived setup mode plan draw drawSupport,
+        RecoverySourceCheckpoint.initialized_publicChronology setup mode plan draw drawSupport,
         ?_⟩,
       ⟨encodeInputs draw, (PhaseRuntimeState.initial_invariant plan (encodeInputs draw)).1⟩,
       PhaseRuntimeState.initial_bindingRecord plan (encodeInputs draw),
@@ -213,7 +273,9 @@ theorem recoverySourceCheckpoint_history
       PhaseRuntimeState.initial_publicFailureOrder graphOrder plan (encodeInputs draw),
       PhaseRuntimeState.settle_suffix _ _ _ _ _,
       PhaseRuntimeState.settle_archivesBefore _ _ _ _ _ plan.adjacent
-        (fun _ impossible => by cases impossible)⟩
+        (fun _ impossible => by cases impossible),
+      PhaseRuntimeState.initial_archivedExclusions plan (encodeInputs draw),
+      PhaseRuntimeState.initial_publicFailureCheckpoint plan (encodeInputs draw)⟩
     have noArchives : (PhaseRuntimeState.initial plan (encodeInputs draw)).retired = [] :=
       congrArg PhaseRuntimeState.retired (phaseInitial_eq_raw plan (encodeInputs draw))
     rw [noArchives]

@@ -84,7 +84,7 @@ theorem phaseSurvivingSourceView?_observed_of_history
 genuine played auxiliary source view, with its complete own history including
 retired attempts. Saved source exclusions and generation are retained separately
 from the additional physical in-phase exclusions. -/
-theorem phaseSurvivingSourceView?_of_ready_binding
+theorem phaseSurvivingSourceView?_of_ready_binding [Finite Player]
     (setup : Setup (Player := Player) (L := L)) (mode : ExecutionMode)
     (runtime : EventGraphRuntime (serviceGraph setup mode))
     (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket (serviceGraph setup mode)))
@@ -112,8 +112,9 @@ theorem phaseSurvivingSourceView?_of_ready_binding
       phaseSurvivingSourceView? setup mode runtime leaks who event
           (control.execution.observe (phaseApplication runtime leaks) who) =
         some (ProtocolState.observe who setup.program source.point) := by
+  let := Fintype.ofFinite Player
   obtain ⟨source, sourceTrace, excluded, generation, publicSignal, acting, played,
-      history, decoded⟩ :=
+      history, decoded, _numeric⟩ :=
     phase_ready_binding_surviving_source setup mode runtime leaks plan maximal horizon scheduler
       trace who event payload binding request
   let inputs : PMF (serviceGraph setup mode).Inputs := setup.initialLaw.map encodeInputs

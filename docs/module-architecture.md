@@ -1549,7 +1549,7 @@ Surviving source prefixes after exclusions:
 [Commit Prefix Surviving Recall](../Vegas/Game/CommitPrefixSurvivingRecall.lean),
 [Phase Surviving Binding Source](../Vegas/Game/PhaseSurvivingBindingSource.lean),
 [Recovery Surviving Binding Source](../Vegas/Game/RecoverySurvivingBindingSource.lean).
-A surviving binding derives a genuine initialized AUX source trace using saved source exclusion and the actual generation. Excluded slots are automatic and hidden active holes retain accepted failure. Actual checkpoint induction supplies one chosen checkpoint with the complete archived-history identity for every surviving owner. Public retired handles and the permanent private catalogue recover the whole own history and current source view. Full remembered source information remains open.
+A surviving binding derives a genuine initialized AUX source trace using saved source exclusion and the actual generation. Excluded slots are automatic and hidden active holes retain accepted failure. Actual checkpoint induction supplies one chosen checkpoint with the complete archived-history identity for every surviving owner. Public retired handles and the permanent private catalogue recover the whole own history and current source view. The selected prescription's observable combined query and genuine original source witness are described below.
 
 Actual finite-plan physical callback coupling:
 [Phase Binding Clear Observation Law](../Vegas/Game/PhaseBindingClearObservationLaw.lean),
@@ -2308,8 +2308,8 @@ the selected joint terminal readout/all-player-payoff law.
 instantiates the existing component completion on genuine normalized queries.
 It selects fully mixed Bayes assessments, a consistent limit and actual pooled
 conditional gain inequalities. Component affinity connects the SAME initialized
-sampler to their entire original source runners. Individual optimality and
-honest pin preservation still require the source density/incentive arguments.
+sampler to their entire original source runners. The source density/incentive
+consumers below supply individual optimality and honest pin preservation.
 
 Global source records and support:
 [private-coordinate observation](../Vegas/Source/CommitRecoveryWordObservation.lean),
@@ -2358,8 +2358,7 @@ the original joint setup law.
 retain complete erased states and prove equality of actual ordinary-copy
 continuation values and gains under the original Bayes assessment. The joint
 stopped-boundary mark and full terminal readout/payoffs stay coupled. The
-conditional-success specialization and full source SE assembly remain separate
-obligations.
+conditional-success and full source SE consumers are described below.
 [Actual pooled ordinary gains](../Vegas/Game/CommitRecoveryPooledOrdinaryGains.lean)
 specialize the original component lotteries and give the exact positive-cardinality
 ordinary-class sum.
@@ -2403,7 +2402,7 @@ honest extension and beliefs, every raw local best response at embedded honest
 sites, and the original initialized joint law.
 [Actual honest pool witnesses](../Vegas/Game/CommitRecoveryHonestPoolWitness.lean)
 derive a genuine honest decision site from a nonempty pin, with the same erased
-key at every ordinary pool member. Full raw source SE assembly remains open.
+key at every ordinary pool member.
 [Player-specific recovery validity](../Vegas/Source/CommitRecoveryPlayerValidity.lean)
 reuses the existing intended-for-one-player predicate through arbitrary foreign
 actions, automatic slots and actual checkpoint closes. Current observed guard
@@ -2432,8 +2431,8 @@ No-new-miss query:
 The representative is read from original full information, has a genuine
 nonterminal witness at every genuine query, commutes with erasure and preserves
 the combined key's clock. Its legal source profile consumes the existing
-paired failed-attempt law. Native query decoding and individual source
-optimality remain open.
+paired failed-attempt law. Its native decoder and source incentive consumers
+are described below.
 [The actual fixed representative](../Vegas/Source/CommitRecoveryNoMissFixed.lean)
 recovers the entire original information when exclusions have not grown. The
 same initialized replay supplies a genuine ordinary representative of every
@@ -2449,7 +2448,7 @@ derives one-site indifference under the actual source belief.
 on any domain lottery, using the original window marginals and permanent debt.
 [Known-failed limit optimality](../Vegas/Game/CommitRecoveryFailedLimit.lean)
 compares every raw local lottery in the same actual source limit.
-The whole source SE composition remains open.
+The source SE composition is described below.
 
 Normalized local delivery:
 [counted binding service](../Vegas/Pending/PhaseCountServiceReference.lean).
@@ -2506,5 +2505,48 @@ retains primitive tags, full tables and hidden command control.
 derives the next address/ordinal and the current-coin/entire-updated-remainder
 product at the actual information fiber.
 [Its physical marginal](../Vegas/Game/PhaseCountServiceTableActual.lean) is the
-literal normalized policy. Future-success conditioning, native query locality
-and typed foreign-word transport remain separate obligations.
+literal normalized policy. Future-success conditioning and typed foreign-word
+transport remain separate obligations.
+
+Complete source equilibrium extension:
+[raw failure comparisons](../Vegas/Game/CommitRecoveryRawLimit.lean),
+[free ordinary sites](../Vegas/Game/CommitRecoveryPooledRawLimit.lean),
+[honest pinned sites](../Vegas/Game/CommitRecoveryPinnedLimit.lean),
+[all commitment sites](../Vegas/Game/CommitRecoveryCommitLimit.lean), and
+[noncommit sites](../Vegas/Game/CommitRecoveryNoncommitLimit.lean)
+derive every original raw local incentive at the same assessment limit.
+[The sequential equilibrium criterion](../Vegas/Game/CommitRecoverySelectedEquilibrium.lean)
+uses original perfect recall. The
+[parametric construction](../Vegas/Game/CommitRecoveryEquilibriumConstruction.lean)
+selects the assessments, weights and strict subsequence from pooled completion,
+retaining the original initialized sampler and supplied independent rates.
+[The unconditional extension](../Vegas/Game/CommitRecoveryEquilibriumExtension.lean)
+derives those inputs from the given intended SE and preserves its entire
+initialized history law and typed-readout/all-player-payoff joint law.
+
+Successful source phases:
+[actual source success probabilities](../Vegas/Game/CommitRecoverySuccessProbability.lean)
+use existing supported-choice domination to bound failure loss uniformly by
+|Players| T (alpha+beta).
+[The original belief consumer](../Vegas/Game/CommitRecoverySuccessBelief.lean)
+retains the original information history, stopped boundary and full terminal
+history jointly, including the conditioning-induced history tilt.
+[Its limit](../Vegas/Game/CommitRecoverySuccessLimit.lean) derives convergence
+of the same selected domain law from the actual prescribed source profile.
+[Pooled success rankings](../Vegas/Game/CommitRecoveryPooledSuccessLimit.lean)
+give vanishing conditional regret uniformly over the finite pure domain menu.
+This source estimate does not bound the mass of native phase success.
+
+Observable native domain values:
+[the full query decoder](../Vegas/Game/PhaseObservableSourceQuery.lean)
+reads the complete initialized public/archive scan and virtual typed view.
+It returns exactly E(F(info)) for a genuine original source decision, retaining
+the actor and static event rank through retry and exhausted restore.
+[Virtual source menus](../Vegas/Source/CommitRecoveryVirtualMenu.lean) and
+[binding failure reflection](../Vegas/Compile/EventBindingActionFailure.lean)
+support [faithful typed encoding](../Vegas/Game/PhaseRecoveryDomainValue.lean).
+[The actual native callback](../Vegas/Game/PhaseObservableDomainValue.lean)
+selects precisely that query's domain law and encodes only successful typed
+payloads. It has the counted service policy's literal value-callback type.
+The original domain-table posterior, joint typed-word transport, same-event
+relative repairs and native incentive composition remain separate.

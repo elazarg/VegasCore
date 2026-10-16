@@ -16,7 +16,7 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 /-- The same saved source block fixes the actual commitment descriptor's
 upper boundary. This follows from the compiled suffix and actual maximal
 descriptor geometry, without choosing a new source checkpoint or prior. -/
-theorem RecoverySourceCheckpoint.commit_phase_geometry
+theorem RecoverySourceCheckpoint.commit_block_phase_geometry
     {setup : Setup (Player := Player) (L := L)} {mode : ExecutionMode}
     {state : PhaseRuntimeState (serviceGraph setup mode)}
     (checkpoint : RecoverySourceCheckpoint setup mode state)

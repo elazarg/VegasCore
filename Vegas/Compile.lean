@@ -53,5 +53,6 @@ import Vegas.Compile.ExcludedCommitPrefixObservation
 import Vegas.Compile.CommitPrefixBindingSplit
 
 import Vegas.Compile.EventSourceViewErasure
+import Vegas.Compile.EventBindingActionFailure
 
 /-! Source-program lowering to the typed immutable graph. -/

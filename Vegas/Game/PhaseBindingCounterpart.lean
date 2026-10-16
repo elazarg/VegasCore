@@ -16,7 +16,7 @@ namespace Vegas
 open SourceProgram EventGraph EventGraphRuntime Interaction GameTheory.Protocol
   GameTheory.Math.Probability
 
-variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
+variable {Player : Type} [DecidableEq Player] [Finite Player] {L : IExpr} [IExpr.ResultTypes L]
 
 /-- Every actual clear ready binding has a genuine auxiliary source trace
 with the same decoded whole private view. The saved checkpoint, its typed
@@ -43,13 +43,14 @@ theorem phase_ready_binding_sourceView
       phaseSourceView? setup mode runtime leaks who event
         (control.execution.observe (phaseApplication runtime leaks) who) =
           some (ProtocolState.observe who setup.program source.point) := by
+  let := Fintype.ofFinite Player
   let inputs : PMF (serviceGraph setup mode).Inputs := setup.initialLaw.map encodeInputs
   have physicalTrace : ((phaseApplication runtime leaks).protocol
       (inputs.map (PhaseRuntimeState.initial plan)) horizon scheduler).Trace (some control) := by
     dsimp only [inputs]
     rw [PMF.map_comp]
     exact trace
-  obtain ⟨checkpoint, _archivedRecall, _sourceOrigin⟩ :=
+  obtain ⟨checkpoint, _archivedRecall, _publicChronology, _sourceOrigin⟩ :=
     recoverySourceCheckpoint_history setup mode runtime leaks plan maximal
       horizon scheduler trace
   have exclusion := phaseExclusionRecord_history runtime leaks plan inputs horizon scheduler

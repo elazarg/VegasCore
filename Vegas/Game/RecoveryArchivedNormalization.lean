@@ -1,5 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
+import Vegas.Game.RecoveryPublicSourceChronology
 import Vegas.Game.RecoveryArchivedRetry
 import Vegas.Game.RecoveryArchivedSourceOrigin
 import Vegas.Pending.PhaseSurvivingHistory
@@ -18,9 +19,10 @@ namespace Vegas
 
 open SourceProgram EventGraph EventGraphRuntime GameTheory.Math.Probability
 
-variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
+variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr} [IExpr.ResultTypes L]
 
 
+omit [Fintype Player] in
 private theorem archived_extension
     {setup : Setup (Player := Player) (L := L)} {mode : ExecutionMode}
     {state : PhaseRuntimeState ((toEventGraph setup.program).withMode mode)}
@@ -60,6 +62,11 @@ theorem RecoverySourceCheckpoint.normalized_archived
     {setup : Setup (Player := Player) (L := L)} {mode : EventGraph.ExecutionMode}
     (state : PhaseRuntimeState ((toEventGraph setup.program).withMode mode))
     (checkpoint : RecoverySourceCheckpoint setup mode state)
+    (plan : RuntimePhasePlan ((toEventGraph setup.program).withMode mode))
+    (suffix : state.phases <:+ plan.phases)
+    (chronology : checkpoint.PublicChronology plan)
+    (archiveExclusions : state.ArchivedExclusions)
+    (savedFailures : state.PublicFailureCheckpoint)
     (aligned : checkpoint.ArchivedRecall)
     (origins : ArchivedSourceOrigins setup mode state.retired ⟨_, checkpoint.trace⟩)
     (archives : state.ArchivesBefore)
@@ -71,7 +78,7 @@ theorem RecoverySourceCheckpoint.normalized_archived
     (maximal : state.phases.IsChain fun before after =>
       before.kind ≠ after.kind ∨ before.kind = .sample) :
     ∃ next : RecoverySourceCheckpoint setup mode state.normalize,
-      next.ArchivedRecall ∧
+      next.ArchivedRecall ∧ next.PublicChronology plan ∧
       ∃ fuel : Nat,
         setup.commitRecoveryProtocol.ReachesWithin fuel
           ⟨_, checkpoint.trace⟩ ⟨_, next.trace⟩ ∧
@@ -79,11 +86,12 @@ theorem RecoverySourceCheckpoint.normalized_archived
   let priorTrace := checkpoint.trace
   rcases state with ⟨phases, generation, entry, current, retired⟩
   induction phases generalizing generation entry current retired with
-  | nil => exact ⟨checkpoint, aligned, 0, .refl 0 _, origins⟩
+  | nil => exact ⟨checkpoint, aligned, chronology, 0, .refl 0 _, origins⟩
   | cons phase remaining ih =>
       let state : PhaseRuntimeState ((toEventGraph setup.program).withMode mode) :=
         ⟨phase :: remaining, generation, entry, current, retired⟩
       let image := phase.drain current
+      have planMember : phase ∈ plan.phases := suffix.subset (by simp)
       have member : phase ∈ state.phases.head? := by
         exact Option.mem_some_iff.mpr rfl
       have graphOrder := (toEventGraph setup.program).withMode_revealRelaxedOrdered
@@ -94,6 +102,7 @@ theorem RecoverySourceCheckpoint.normalized_archived
       have imageRecord := (receipts.exclusion.installed phase member).phase_drain phase
       have imageNative := phase.drain_invariant current native.active
       have imageBinding := phase.drain_bindingInvariant current binding.active
+      have imageArchived := archiveExclusions.active.phase_drain phase
       have imageCoverage := order.coverage.active.drain phase
       have imageOrder := phase.orderedPublicFailures_drain phase.low entry.excluded current
         (order.publicationOrder phase member) order.coverage.active order.coverage.inherited
@@ -162,25 +171,27 @@ theorem RecoverySourceCheckpoint.normalized_archived
           (nextBinding : next.native.BindingInvariant)
           (nextReceipts : next.native.ReceiptsComplete)
           (nextCoverage : next.FailureCoverage)
+          (nextRecord : SuffixExclusionRecord 0
+            (PhaseRuntimeState.archivedFailureOwners archive) next)
           (nextArchives : (⟨remaining, generation, next, next, archive⟩ :
             PhaseRuntimeState ((toEventGraph setup.program).withMode mode)).ArchivesBefore)
           (nextCheckpoint :
             let nextState : PhaseRuntimeState ((toEventGraph setup.program).withMode mode) :=
               ⟨remaining, generation, next, next, archive⟩
             ∃ checkpoint : RecoverySourceCheckpoint setup mode nextState,
-              checkpoint.ArchivedRecall ∧
+              checkpoint.ArchivedRecall ∧ checkpoint.PublicChronology plan ∧
               ∃ fuel : Nat,
                 setup.commitRecoveryProtocol.ReachesWithin fuel
                   ⟨_, priorTrace⟩ ⟨_, checkpoint.trace⟩ ∧
                 ArchivedSourceOrigins setup mode nextState.retired ⟨_, checkpoint.trace⟩) :
           let finalState := PhaseRuntimeState.settle remaining generation next next archive
           ∃ checkpoint : RecoverySourceCheckpoint setup mode finalState,
-            checkpoint.ArchivedRecall ∧
+            checkpoint.ArchivedRecall ∧ checkpoint.PublicChronology plan ∧
             ∃ fuel : Nat,
               setup.commitRecoveryProtocol.ReachesWithin fuel
                 ⟨_, priorTrace⟩ ⟨_, checkpoint.trace⟩ ∧
               ArchivedSourceOrigins setup mode finalState.retired ⟨_, checkpoint.trace⟩ := by
-        obtain ⟨nextSource, nextAligned, nextFuel, nextPath, nextOrigins⟩ :=
+        obtain ⟨nextSource, nextAligned, nextChronology, nextFuel, nextPath, nextOrigins⟩ :=
           nextCheckpoint
         have nextPosition := PhaseRuntimeState.positioned_next phase remaining next
           frontier.adjacent frontier.last nextPrefix
@@ -188,15 +199,18 @@ theorem RecoverySourceCheckpoint.normalized_archived
             (⟨remaining, generation, next, next, archive⟩ :
               PhaseRuntimeState ((toEventGraph setup.program).withMode mode)) :=
           ⟨nextPosition.adjacent, nextPosition.last, nextPosition.positioned⟩
-        obtain ⟨result, resultAligned, resultFuel, resultPath, resultOrigins⟩ :=
-          ih generation next next archive nextSource nextAligned nextOrigins nextArchives
+        obtain ⟨result, resultAligned, resultChronology, resultFuel, resultPath, resultOrigins⟩ :=
+          ih generation next next archive nextSource
+          ((List.suffix_cons phase remaining).trans suffix) nextChronology
+          ⟨⟨nextCoverage, nextCoverage, Finset.Subset.refl _⟩, nextRecord, nextRecord⟩
+          (State.PublicFailureExtension.refl _) nextAligned nextOrigins nextArchives
           ⟨nextNative, nextNative⟩
           ⟨nextBinding, nextBinding, fun _ _ => rfl⟩
           (PhaseRuntimeState.fresh_receiptRecord remaining generation next archive nextFrontier
             nextReceipts) (fun _ _ present => present) (⟨[], by simp⟩)
           (PhaseRuntimeState.fresh_publicFailureOrder remaining generation next archive
             nextFrontier nextCoverage) maximal.tail
-        exact ⟨result, resultAligned, nextFuel + resultFuel,
+        exact ⟨result, resultAligned, resultChronology, nextFuel + resultFuel,
           nextPath.trans resultPath, resultOrigins⟩
       by_cases finished : phase.Finished (phase.drain current)
       · have imagePrefix := phase.finished_prefix image within finished
@@ -208,19 +222,32 @@ theorem RecoverySourceCheckpoint.normalized_archived
               phase kind rfl checkpoint.source
             by_cases missed : ((image.excluded \ entry.excluded) ∩ phase.owners).Nonempty
             · by_cases survives : (phase.owners \ image.excluded).Nonempty
-              · obtain ⟨next, nextAligned, fuel, path, instructions⟩ :=
+              · dsimp only [image] at survives
+                obtain ⟨next, nextAligned, fuel, path, instructions⟩ :=
                   checkpoint.after_commit_retry_archived aligned archives
                     committing phase remaining rfl kind maximal binding receipts remembered native
                     finished missed survives
-                refine ⟨next, nextAligned, fuel, path, ?_⟩
                 have normalized := PhaseRuntimeState.settle_retry phase remaining generation entry
                   current retired finished kind missed survives
-                change ArchivedSourceOrigins setup mode
-                  (PhaseRuntimeState.settle (phase :: remaining) generation entry current
-                    retired).retired ⟨_, next.trace⟩
-                rw [normalized]
-                exact archivedSource committing path instructions
-              · obtain ⟨⟨nextCheckpoint, sourcePrefix, word⟩, normalized⟩ :=
+                refine ⟨next, nextAligned, ?_, fuel, path, ?_⟩
+                · apply PublicChronology.failed_commit checkpoint next plan chronology phase
+                    remaining rfl planMember kind frontier maximal archiveExclusions
+                    savedFailures finished
+                  · simp only [PhaseRuntimeState.normalize, normalized]
+                  · simp only [PhaseRuntimeState.normalize, normalized, PhaseRuntimeState.restore]
+                  · simp only [PhaseRuntimeState.normalize, normalized, survives, ↓reduceIte]
+                  · simp only [PhaseRuntimeState.normalize, normalized, survives, ↓reduceIte,
+                      PhaseRuntimeState.attempt, List.head?_cons, Option.map_some,
+                      Option.getD_some]
+                  · exact path
+                  · exact instructions
+                · change ArchivedSourceOrigins setup mode
+                    (PhaseRuntimeState.settle (phase :: remaining) generation entry current
+                      retired).retired ⟨_, next.trace⟩
+                  rw [normalized]
+                  exact archivedSource committing path instructions
+              · dsimp only [image] at survives
+                obtain ⟨⟨nextCheckpoint, sourcePrefix, word⟩, normalized⟩ :=
                   checkpoint.after_commit_exhausted committing
                   phase remaining rfl maximal binding receipts stored finished missed survives
                 rw [normalized]
@@ -247,6 +274,17 @@ theorem RecoverySourceCheckpoint.normalized_archived
                 have restoredCoverage := PhaseRuntimeState.restore_failureCoverage entry image
                   order.coverage.saved inherited
                 have rebuiltCoverage := restoredCoverage.drain phase
+                have archiveOwners : PhaseRuntimeState.archivedFailureOwners
+                    (retired ++ [⟨⟨phase.low, generation⟩, image.native⟩]) = image.excluded := by
+                  rw [PhaseRuntimeState.archivedFailureOwners_append]
+                  simpa only [PhaseRuntimeState.archivedFailureOwners, List.foldr_cons,
+                    List.foldr_nil, Finset.union_empty] using imageArchived.failureOwners_union.symm
+                have restoredArchived : SuffixExclusionRecord 0
+                    (PhaseRuntimeState.archivedFailureOwners
+                      (retired ++ [⟨⟨phase.low, generation⟩, image.native⟩])) restored := by
+                  rw [archiveOwners]
+                  exact restoredCoverage.suffixRecord
+                have rebuiltArchived := restoredArchived.phase_drain phase
                 have allExcluded : phase.owners ⊆ restored.excluded := by
                   intro owner owned
                   by_contra active
@@ -294,34 +332,50 @@ theorem RecoverySourceCheckpoint.normalized_archived
                 exact advance rebuilt
                   (retired ++ [⟨⟨phase.low, generation⟩, image.native⟩])
                   (phase.finished_prefix rebuilt rebuiltWithin rebuiltFinished) rebuiltNative
-                  rebuiltBinding rebuiltRecord.receipts rebuiltCoverage
+                  rebuiltBinding rebuiltRecord.receipts rebuiltCoverage rebuiltArchived
                   (beforeNext archive archiveBefore rebuilt)
                   (by
                     obtain ⟨nextFuel, nextPath, instructions⟩ := sourcePrefix
-                    exact ⟨nextCheckpoint, nextAligned, nextFuel, nextPath,
-                      archivedSource committing nextPath instructions⟩)
+                    refine ⟨nextCheckpoint, nextAligned, ?_, nextFuel, nextPath,
+                      archivedSource committing nextPath instructions⟩
+                    apply PublicChronology.failed_commit checkpoint nextCheckpoint plan chronology
+                      phase remaining rfl planMember kind frontier maximal archiveExclusions
+                      savedFailures finished rfl
+                    · exact phase.drain_excluded restored
+                    · simp only [survives, ↓reduceIte, Nat.add_zero]
+                    · simp only [survives, ↓reduceIte]
+                      exact nextBoundary.symm
+                    · exact nextPath
+                    · exact instructions)
             · obtain ⟨⟨nextCheckpoint, _sourcePoint, sourcePrefix, word, _intended⟩, normalized⟩ :=
                 checkpoint.after_commit_clean committing
                 phase remaining rfl maximal binding receipts stored remembered native order.coverage
                   finished missed
               rw [normalized]
+              obtain ⟨nextFuel, nextPath, instructions⟩ := sourcePrefix
+              have nextChronology := PublicChronology.clean_commit checkpoint nextCheckpoint plan
+                chronology phase remaining rfl planMember kind frontier maximal archiveExclusions
+                savedFailures finished rfl rfl nextBoundary.symm rfl rfl nextPath instructions
               exact advance image retired imagePrefix imageNative imageBinding imageRecord.receipts
-                imageCoverage (beforeNext retired oldBefore image)
+                imageCoverage imageArchived (beforeNext retired oldBefore image)
                 ⟨nextCheckpoint, archived_extension checkpoint aligned archives phase remaining rfl
-                  image position.1 retained inherited nextCheckpoint word, by
-                    obtain ⟨nextFuel, nextPath, instructions⟩ := sourcePrefix
-                    exact ⟨nextFuel, nextPath, ArchivedSourceOrigins.advance checkpoint
+                  image position.1 retained inherited nextCheckpoint word, nextChronology,
+                  nextFuel, nextPath, ArchivedSourceOrigins.advance checkpoint
                       nextCheckpoint origins phase remaining rfl rfl rfl rfl
                       nextBoundary aligned position.1 retained imageStored finished
                       ⟨_, imageNative⟩ nextPath (fun _ => instructions)
                       (fun impossible => False.elim (impossible kind))
                       (fun impossible => False.elim (impossible kind))
                       (fun _ => checkpoint.chosen_commit_addresses image.native committing
-                        ⟨_, nextCheckpoint.trace⟩ nextPath instructions)⟩⟩
+                        ⟨_, nextCheckpoint.trace⟩ nextPath instructions)⟩
         | reveal =>
             obtain ⟨nextCheckpoint, sourcePrefix, publicSteps, publicAddresses, word, _intended⟩ :=
               checkpoint.after_reveal phase remaining rfl kind
               receipts.exclusion stored remembered imageNative.reachable imageOrder finished
+            have nextChronology := PublicChronology.advance_public checkpoint nextCheckpoint plan
+              chronology phase remaining rfl planMember (by simp only [kind]; decide) frontier
+              archiveExclusions savedFailures (phase.drain_publicFailureExtension current)
+              rfl rfl nextBoundary.symm rfl publicAddresses
             have noRetry : ¬ (phase.kind = .commitment ∧
                 ((image.excluded \ entry.excluded) ∩ phase.owners).Nonempty) := by
               rintro ⟨impossible, _⟩
@@ -331,7 +385,7 @@ theorem RecoverySourceCheckpoint.normalized_archived
               let finalState :=
                 PhaseRuntimeState.settle (phase :: remaining) generation entry current retired
               ∃ checkpoint : RecoverySourceCheckpoint setup mode finalState,
-                checkpoint.ArchivedRecall ∧
+                checkpoint.ArchivedRecall ∧ checkpoint.PublicChronology plan ∧
                 ∃ fuel : Nat,
                   setup.commitRecoveryProtocol.ReachesWithin fuel
                     ⟨_, priorTrace⟩ ⟨_, checkpoint.trace⟩ ∧
@@ -339,9 +393,9 @@ theorem RecoverySourceCheckpoint.normalized_archived
             rw [PhaseRuntimeState.settle_clean phase remaining generation entry current retired
               finished noRetry]
             exact advance image retired imagePrefix imageNative imageBinding imageRecord.receipts
-              imageCoverage (beforeNext retired oldBefore image)
+              imageCoverage imageArchived (beforeNext retired oldBefore image)
               ⟨nextCheckpoint, archived_extension checkpoint aligned archives phase remaining rfl
-                image position.1 retained inherited nextCheckpoint word, by
+                image position.1 retained inherited nextCheckpoint word, nextChronology, by
                   obtain ⟨nextFuel, nextPath⟩ := sourcePrefix
                   exact ⟨nextFuel, nextPath, ArchivedSourceOrigins.advance checkpoint
                     nextCheckpoint origins phase remaining rfl rfl rfl rfl
@@ -356,6 +410,10 @@ theorem RecoverySourceCheckpoint.normalized_archived
             obtain ⟨nextCheckpoint, sourcePrefix, publicSteps, publicAddresses, word, _intended⟩ :=
               checkpoint.after_sample phase remaining rfl kind
               receipts.exclusion stored remembered imageNative.reachable finished
+            have nextChronology := PublicChronology.advance_public checkpoint nextCheckpoint plan
+              chronology phase remaining rfl planMember (by simp only [kind]; decide) frontier
+              archiveExclusions savedFailures (phase.drain_publicFailureExtension current)
+              rfl rfl nextBoundary.symm rfl publicAddresses
             have noRetry : ¬ (phase.kind = .commitment ∧
                 ((image.excluded \ entry.excluded) ∩ phase.owners).Nonempty) := by
               rintro ⟨impossible, _⟩
@@ -365,7 +423,7 @@ theorem RecoverySourceCheckpoint.normalized_archived
               let finalState :=
                 PhaseRuntimeState.settle (phase :: remaining) generation entry current retired
               ∃ checkpoint : RecoverySourceCheckpoint setup mode finalState,
-                checkpoint.ArchivedRecall ∧
+                checkpoint.ArchivedRecall ∧ checkpoint.PublicChronology plan ∧
                 ∃ fuel : Nat,
                   setup.commitRecoveryProtocol.ReachesWithin fuel
                     ⟨_, priorTrace⟩ ⟨_, checkpoint.trace⟩ ∧
@@ -373,9 +431,9 @@ theorem RecoverySourceCheckpoint.normalized_archived
             rw [PhaseRuntimeState.settle_clean phase remaining generation entry current retired
               finished noRetry]
             exact advance image retired imagePrefix imageNative imageBinding imageRecord.receipts
-              imageCoverage (beforeNext retired oldBefore image)
+              imageCoverage imageArchived (beforeNext retired oldBefore image)
               ⟨nextCheckpoint, archived_extension checkpoint aligned archives phase remaining rfl
-                image position.1 retained inherited nextCheckpoint word, by
+                image position.1 retained inherited nextCheckpoint word, nextChronology, by
                   obtain ⟨nextFuel, nextPath⟩ := sourcePrefix
                   exact ⟨nextFuel, nextPath, ArchivedSourceOrigins.advance checkpoint
                     nextCheckpoint origins phase remaining rfl rfl rfl rfl
@@ -390,7 +448,7 @@ theorem RecoverySourceCheckpoint.normalized_archived
           let finalState :=
             PhaseRuntimeState.settle (phase :: remaining) generation entry current retired
           ∃ checkpoint : RecoverySourceCheckpoint setup mode finalState,
-            checkpoint.ArchivedRecall ∧
+            checkpoint.ArchivedRecall ∧ checkpoint.PublicChronology plan ∧
             ∃ fuel : Nat,
               setup.commitRecoveryProtocol.ReachesWithin fuel
                 ⟨_, priorTrace⟩ ⟨_, checkpoint.trace⟩ ∧
@@ -401,6 +459,10 @@ theorem RecoverySourceCheckpoint.normalized_archived
               PhaseRuntimeState ((toEventGraph setup.program).withMode mode)) := by
           rw [PhaseRuntimeState.settle, ite_eq_right finished]
         rw [unfinishedEq]
-        exact ⟨checkpoint.transfer rfl rfl rfl, aligned, 0, .refl 0 _, origins⟩
+        refine ⟨checkpoint.transfer rfl rfl rfl, aligned, ?_, 0, .refl 0 _, origins⟩
+        apply PublicChronology.current checkpoint plan chronology image
+          (phase.drain_publicFailureExtension current)
+        intro event completed
+        exact position.2.1 event completed
 
 end Vegas

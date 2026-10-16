@@ -1,6 +1,6 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**SE: non-concurrent ✓ · source BR: honest raw ✓ / free domain ✓ / failed raw ✓ · full source SE + native query/transport open.**
+**SE: non-concurrent ✓ · recovery source ✓ · native query/value kernel ✓ · native posterior/transport/incentives open.**
 
 The [mathematical proof dependency](se-preservation-math.md#scope-and-proof-dependency)
 states the source selection, conditional transport and deviation arguments,
@@ -24,7 +24,7 @@ tuple at literal initialized prefixes. Public chronology equality transfers
 between observers. At equal erased keys, an actual bijection of the original
 information fibers now transports their normalized Bayes beliefs exactly.
 The original joint setup law is retained. Equal combined no-new-miss keys
-alone do not supply that bijection, and individual optimality remains open.
+alone do not supply that bijection.
 
 For the selected normalized source prescription, corresponding ordinary
 erased-key copies now have equal actual conditional continuation values,
@@ -40,8 +40,13 @@ The whole-pool inequality gives each ordinary component inequality, and the
 same assessment sequence gives every free ordinary site's limit best response
 against all domain lotteries. Full raw gains also transfer between ordinary
 erased copies in that limit. A nonempty honest pin now supplies a genuine
-honest decision site with the same ordinary erased key. Full source SE still
-needs the raw-action case assembly.
+honest decision site with the same ordinary erased key. Accepted-failure,
+omission, pinned, free, already-failed and noncommit cases give every raw
+local incentive in the same limit. Source perfect recall gives its SE.
+[The existential extension](../Vegas/Game/CommitRecoveryEquilibriumExtension.lean)
+selects the construction internally from the
+given intended SE and preserves its entire initialized history law, including
+original parameter correlations, typed results and all-player payoffs.
 
 First full-identifier exit of an actual source commitment attempt is exactly
 the original remaining commitment window, including its final real close.
@@ -51,8 +56,12 @@ original typed attempts characterize no omission/no own accepted failure by
 ending exclusions equal to the original entry exclusions and successful own
 typed cells, also after close and erasure. The actual stopped word now yields
 that typed attempt and its literal original-entry success marker. This uses
-fresh context names and valued own cells at the current prefix. Applying the
-marked Bayes comparison to derive conditional success rankings remains open.
+fresh context names and valued own cells at the current prefix. Actual source
+success loss is at most |Players| T (alpha + beta). Conditioning retains the
+original information history, stopped boundary and full terminal history
+jointly. The same selected domain law has vanishing successful-phase regret,
+uniformly over the finite pure menu. This source estimate supplies no lower
+bound on a native success event.
 
 The original raw-word success marker now derives its typed block internally
 from the genuine committing point. A failed declaration surviving the original
@@ -101,7 +110,10 @@ the compiled suffix. Completed reveal phases retain that derived native
 next-exclusion update at each original source rank through actual archived
 normalization. Reveal and sample normalization now retain their exact source
 instruction/address chunks and ending controls. The complete native public
-scan and observable combined query still need their final composition.
+scan gives the observable combined query E(F(info)) of a genuine original
+source decision, retaining its actor and static rank. At that exact query
+the actual native value callback encodes the selected domain law as successful
+typed bindings, without using its totalization default.
 
 The source pooled completion selects shared conditional domain laws with
 query-level pins and independently fixed failure/floor rates. Its actual
@@ -112,8 +124,11 @@ Honest full information is now determined by the actual combined query,
 giving coherent legal pins. Actual initialized-run domination retains the
 given honest Bayes limits at source scales fixed before completion. The same
 limit now preserves the original honest joint law and is optimal against
-every raw local law at every embedded honest information set. Free-site
-individual optimality and the final source SE composition remain open.
+every raw local law at every embedded honest information set. Pooled
+completion and the raw-case assembly give an SE of the full recovery source
+game. The parametric existence theorem retains the original assessments,
+weights, strict subsequence, normalized prescription and initialized sampler
+for native transport, with independently supplied source rates.
 
 Complete sampled-flag records now derive the entire actual omission word of
 a commitment block. The real close and selected continuation consequently
@@ -154,8 +169,8 @@ queried twice, including across retries. One original table, lifted back to the
 full-information game, realizes its entire source runner law. For the original
 erased full-choice table, conditioning the full action record leaves the current
 coordinate independent of the entire remaining table. This is a source law;
-native query measurability
-and native/source posterior equality remain open.
+native/source posterior equality remains open. Query measurability alone
+does not identify the original table's conditional law at a native input.
 
 The no-new-miss representative is defined from the original full information,
 including the saved-entry cut read from its signal word. Every genuine query
@@ -164,8 +179,8 @@ is idempotent, commutes with erasure, and transports the complete legal menu.
 The combined erased/no-new-miss key preserves the public logical clock.
 Source erasure preserves the full raw menu, including
 accepted failure and omission, and commutes with actual instruction steps and
-retry/exhausted closure. These results do not yet establish the selected pooled
-source equilibrium or native reset incentives. The actual legal profile reading
+retry/exhausted closure. The selected pooled source equilibrium uses these
+results; native reset incentives remain separate. The actual legal profile reading
 that combined key has one terminal typed-readout/payoff-vector law after paired
 same-prior, same-omission failed attempts.
 
@@ -532,11 +547,9 @@ Complete archived player observations, including original own actions, are
 also observable. Each archived source endpoint reinserts the preceding voided
 own words. Splitting a genuine source attempt preserves its actual omission
 flags and transports its earlier views to ranks in the original program.
-The full remembered source signal transcript remains open.
-On the source side, a surviving player's complete signal transcript determines
-their entire original own play, including accepted failures and choices retained
-through retries. Thus recovering that signal transcript will also recover full
-source information; no separate equality of own-play histories is assumed.
+The selected prescription reads the observable combined query E(F(info)):
+current live private data and the complete public chronology determine it.
+The native and source information models retain their full perfect recall.
 
 Actual raw histories also identify the saved exclusion set: it is the union of
 archived failure owners and current public failure owners strictly before the
@@ -562,8 +575,8 @@ the later decoder producing the same full endpoint. Equal actual public and
 owner observations determine the decoded prefix's focal view and processed
 exclusions, retaining accepted failures and arbitrary hidden foreign omissions.
 Equal saved/live source views and exclusion/generation signals also determine
-the observed closure, through retry and exhausted advancement. Connecting these
-pieces along the chosen physical-to-source history remains open.
+the observed closure, through retry and exhausted advancement. The initialized
+chronology composes these pieces into the selected observable query.
 Actual source recovery instructions preserve each surviving owner's earlier
 views under rank projection, including automatically excluded commitments and
 reveals. The full native attempt decoder's rank projection recovers exactly
@@ -733,7 +746,9 @@ fresh draws at a later entry.
 A common delivery ranking across private types and a bound against policies
 that read more remain open. Source projection at
 a partial concurrent cut must distinguish saved/prefix exclusions from physical
-in-phase expiries. Auxiliary source-value identification remains open.
+in-phase expiries. The selected normalized prescription's actual observable
+query and domain kernel are checked; its original domain-table posterior
+and conditional native/source law still require proof.
 Comparisons must also cover fresh handles other than the canonical one and
 callbacks without enough remaining inclusion slack.
 The all-clear canonical completion does not establish optimality at those
@@ -743,10 +758,10 @@ opportunity or inclusion bounds alone.
 The chosen source traces now retain the exact original typed choices and
 omission instructions of the actual native decoder, through clean closure,
 retry and exhaustion. Each archived source origin keeps its real closing trace,
-that exact instruction word and its onward source path. Full owner-information
-observability must still identify these traces with the paired block traces
-and recover every chronological source signal; it is not inferred from equal
-source endpoints or abstract reachability.
+that exact instruction word and its onward source path. The initialized
+public/archive scan identifies the selected observable combined query with
+a genuine original source decision, using chronological signals rather than
+source endpoint equality. Conditional probability transport remains separate.
 The original local seed and the clock-erased own packet pattern determine
 all activation clocks at genuine callbacks, including after a send. The packet
 pattern retains identifiers and authorization at each callback. Actual counted

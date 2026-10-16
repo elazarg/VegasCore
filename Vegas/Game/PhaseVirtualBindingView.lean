@@ -2,8 +2,10 @@
 
 import Vegas.Game.PhaseSurvivingBindingSource
 import Vegas.Compile.EventSourceViewErasure
+import Vegas.Compile.EventSourcePosition
 import Vegas.Source.CommitRecoveryVirtualHistory
 import Vegas.Source.CommitRecoveryNoMissRepresentative
+import Vegas.Source.CommitRecoveryPublicScan
 
 /-! # Observable virtual typed queries at actual binding requests -/
 
@@ -14,7 +16,7 @@ namespace Vegas
 open SourceProgram EventGraph EventGraphRuntime Interaction GameTheory.Protocol
   GameTheory.Math.Probability
 
-variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
+variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr} [IExpr.ResultTypes L]
 
 /-- The native typed virtual query reads only the current masked store.
 It retains original private inputs, repairs introduced unusable declarations,
@@ -58,6 +60,8 @@ theorem phaseVirtualSourceView?_genuine_of_ready_binding
       virtual.excluded = control.execution.application.entry.excluded ∧
       virtual.generation = control.execution.application.generation ∧
       ProtocolState.actor setup.program virtual.point = some who ∧
+      instructionCount setup.program - ProtocolState.remaining setup.program virtual.point =
+        event.val ∧
       setup.commitRecoveryModel.IsDecisionInfo who
         (setup.commitRecoveryModel.infoOf who virtualTrace) ∧
       phaseVirtualSourceView? setup mode runtime leaks who event
@@ -66,11 +70,16 @@ theorem phaseVirtualSourceView?_genuine_of_ready_binding
             (ProtocolState.observe who setup.program virtual.point)) ∧
       (∀ observer, setup.attemptPublicRecall observer virtualTrace =
         setup.attemptPublicRecall observer originalTrace) ∧
-      setup.commitRecoveryPublic (some original) =
+      setup.commitRecoveryPublic (some virtual) =
         (control.execution.application.entry.excluded, control.execution.application.generation,
-          control.execution.application.attempt.phase) := by
+          control.execution.application.attempt.phase) ∧
+      (setup.attemptPublicRecall who virtualTrace).map
+        (setup.commitRecoveryPublicAddress who) =
+          (control.execution.application.sourcePublicAddressWord plan event.val).reverse ++
+            [(none, (∅, 0, 0))] := by
   obtain ⟨original, originalTrace, excluded, generation, publicSignal, actor, _played,
-    _word, decoded⟩ := phase_ready_binding_surviving_source setup mode runtime leaks plan maximal
+    _word, decoded, numeric⟩ :=
+    phase_ready_binding_surviving_source setup mode runtime leaks plan maximal
       horizon scheduler trace who event payload binding request
   let inputs : PMF (serviceGraph setup mode).Inputs := setup.initialLaw.map encodeInputs
   have raw : ((phaseApplication runtime leaks).protocol
@@ -89,23 +98,37 @@ theorem phaseVirtualSourceView?_genuine_of_ready_binding
     rw [(ProtocolState.FocalRepair.control who setup.program _ _
       relation.focalRepair.point).2.1]
     exact actor
+  have originalPosition := decodeEventView?_position setup.program
+    (ContextRefs.initial setup.context (outputLayout setup.program))
+    (outputEmbedding setup.program).ref who event _ _ _ decoded
+  have positionCount := ProtocolView.position_add_remaining who setup.program original.point
+  rw [originalPosition] at positionCount
+  have virtualRemaining := (ProtocolState.FocalRepair.control who setup.program _ _
+    relation.focalRepair.point).1
+  have virtualPosition : instructionCount setup.program -
+      ProtocolState.remaining setup.program virtual.point = event.val := by omega
+  have virtualPublic := congrArg Prod.snd
+    (setup.commitRecovery_publicSignal_of_focalRepair relation.focalRepair who)
+  change setup.commitRecoveryPublic (some virtual) =
+    setup.commitRecoveryPublic (some original) at virtualPublic
   refine ⟨original, virtual, originalTrace, virtualTrace, relation.excluded.trans excluded,
-    relation.generation.trans generation, virtualActor,
+    relation.generation.trans generation, virtualActor, virtualPosition,
     commitRecovery_isDecisionInfo_of_surviving_actor setup virtual virtualTrace who virtualActive
-      virtualActor, ?_, publicRecall, publicSignal⟩
-  dsimp only [phaseVirtualSourceView?, ReactiveApplication.Execution.observe, phaseApplication,
-    PhaseRuntimeState.playerView, State.playerView]
-  rw [dite_eq_left rfl]
-  change (decodeEventView? setup.program
-      (ContextRefs.initial setup.context (outputLayout setup.program))
-      (outputEmbedding setup.program).ref who event
-      ((serviceGraph setup mode).playerStore who
-        control.execution.application.current.native.config.store) []).map _ = _
-  rw [decodeEventView?_eraseHistory
-      (past := ProtocolState.history setup.program original.point who),
-    decoded, Option.map_some, Option.map_some, ProtocolView.virtualBindings_eraseHistory]
-  exact congrArg some
-    (ProtocolState.VirtualRepair.observe (setup.context.map Prod.fst).toFinset who setup.program
-      _ _ relation.point).symm
+      virtualActor, ?_, publicRecall, virtualPublic.trans publicSignal, ?_⟩
+  · dsimp only [phaseVirtualSourceView?, ReactiveApplication.Execution.observe, phaseApplication,
+      PhaseRuntimeState.playerView, State.playerView]
+    rw [dite_eq_left rfl]
+    change (decodeEventView? setup.program
+        (ContextRefs.initial setup.context (outputLayout setup.program))
+        (outputEmbedding setup.program).ref who event
+        ((serviceGraph setup mode).playerStore who
+          control.execution.application.current.native.config.store) []).map _ = _
+    rw [decodeEventView?_eraseHistory
+        (past := ProtocolState.history setup.program original.point who),
+      decoded, Option.map_some, Option.map_some, ProtocolView.virtualBindings_eraseHistory]
+    exact congrArg some
+      (ProtocolState.VirtualRepair.observe (setup.context.map Prod.fst).toFinset who setup.program
+        _ _ relation.point).symm
+  · rw [publicRecall who, setup.commitRecovery_publicRecall_addresses, numeric]
 
 end Vegas

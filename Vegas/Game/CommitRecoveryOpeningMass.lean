@@ -14,7 +14,7 @@ open GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol GameTheory.Math.P
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
-private theorem nonfailure_noncommit_unique (who : Player) :
+theorem nonfailure_noncommit_unique (who : Player) :
     ∀ {Γ : SourceCtx Player L} {O : Finset VarId}
       (program : SourceProgram Player L Γ O) (view : ProtocolView who program)
       (_notCommit : ProtocolView.atCommit who program view = false)
@@ -53,7 +53,7 @@ namespace Setup
 
 variable (setup : Setup (Player := Player) (L := L))
 
-private theorem continuing_noncommit_unique (who : Player)
+theorem continuing_noncommit_unique (who : Player)
     (info : setup.commitRecoveryModel.InfoState who)
     (notCommit : info.1.1.1.elim false (ProtocolView.atCommit who setup.program) = false)
     (first second : setup.commitRecoveryModel.Choice who info)

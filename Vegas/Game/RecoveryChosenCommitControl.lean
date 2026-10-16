@@ -165,6 +165,116 @@ theorem RecoverySourceCheckpoint.chosen_commit_addresses
   cases same
   exact ⟨addresses, addressWord, exclusions, metadata, lastAddress⟩
 
+/-- Every interior signal in the genuinely chosen completed commitment
+chunk is read from the native public failure scan at that exact source rank.
+The final signal is the actual close, including exhausted restore. -/
+theorem RecoverySourceCheckpoint.chosen_commit_public_scan [Fintype Player]
+    {setup : Setup (Player := Player) (L := L)} {mode : ExecutionMode}
+    {state : PhaseRuntimeState ((toEventGraph setup.program).withMode mode)}
+    (checkpoint : RecoverySourceCheckpoint setup mode state)
+    (phase : RuntimePhase ((toEventGraph setup.program).withMode mode))
+    (remaining : List (RuntimePhase ((toEventGraph setup.program).withMode mode)))
+    (installed : state.phases = phase :: remaining) (kind : phase.kind = .commitment)
+    (frontier : state.Frontier)
+    (maximal : state.phases.IsChain fun before after =>
+      before.kind ≠ after.kind ∨ before.kind = .sample)
+    (archives : state.ArchivedExclusions) (savedFailures : state.PublicFailureCheckpoint)
+    (finished : phase.Finished (phase.drain state.current))
+    (closed : setup.commitRecoveryProtocol.History) {fuel : Nat}
+    (reached : setup.commitRecoveryProtocol.ReachesWithin fuel ⟨_, checkpoint.trace⟩ closed)
+    (instructions : setup.recoveryJointRecall closed.trace =
+      (checkpoint.commitInstructionWord (phase.drain state.current).native).reverse ++
+        setup.recoveryJointRecall checkpoint.trace) :
+    ∃ addresses, setup.recoveryAddressWord closed.trace =
+        setup.recoveryAddressWord checkpoint.trace ++ addresses ∧
+      (∀ index (beforeLast : index + 1 < addresses.length),
+        addresses[index]'(by omega) =
+          (some (state.attempt.phase + index + 1),
+            PhaseRuntimeState.archivedFailureOwners state.retired ∪
+              (phase.drain state.current).native.failureOwnersBefore
+                (state.attempt.phase + index + 1), state.generation, state.attempt.phase)) ∧
+      addresses.getLast? = closed.state.map CommitRecoveryState.publicAddress ∧
+      addresses.dropLast = (List.range (phase.high - phase.low - 1)).map (fun index =>
+        (some (state.attempt.phase + index + 1),
+          PhaseRuntimeState.archivedFailureOwners state.retired ∪
+            (phase.drain state.current).native.failureOwnersBefore
+              (state.attempt.phase + index + 1), state.generation, state.attempt.phase)) := by
+  let native := (phase.drain state.current).native
+  have low : phase.low = state.attempt.phase := by
+    simp only [PhaseRuntimeState.attempt, installed, List.head?_cons,
+      Option.map_some, Option.getD_some]
+  have committing := checkpoint.compiled.atCommit_of_bindingPhase setup.program mode
+    checkpoint.residual.tail checkpoint.refs checkpoint.source.revelations
+    checkpoint.registry checkpoint.embedding checkpoint.before state.attempt.phase
+    phase kind low checkpoint.source
+  have saved : state.entry.native.config.cut.IsPrefix state.attempt.phase := by
+    have positioned := frontier.positioned
+    rw [installed] at positioned
+    rw [← low]
+    exact positioned.1
+  have extension : state.entry.native.PublicFailureExtension native :=
+    savedFailures.trans (phase.drain_publicFailureExtension state.current)
+  have geometry := checkpoint.commit_phase_geometry phase remaining installed kind frontier maximal
+  have completed : match commitPhase checkpoint.residual.tail with
+      | ⟨_, _, suffix, block, reconstruct, _⟩ =>
+        let embedding := cast (congrArg (fun program => OutputEmbedding
+          (inputLayout setup.context) (outputLayout setup.program) program) reconstruct.symm)
+            checkpoint.embedding
+        ∀ index : Fin (eventCount (block.prepend suffix)), index.val < block.length →
+          embedding.event index ∈ native.config.cut.completed := by
+    generalize decomposition : commitPhase checkpoint.residual.tail = segment at geometry ⊢
+    rcases segment with ⟨Δ, P, suffix, block, reconstruct, boundary⟩
+    dsimp only at geometry ⊢
+    intro index inside
+    exact finished (geometry.2 index inside)
+  have wordLength : (checkpoint.commitInstructionWord native).length =
+      phase.high - phase.low := by
+    unfold RecoverySourceCheckpoint.commitInstructionWord
+    generalize decomposition : commitPhase checkpoint.residual.tail = segment at geometry ⊢
+    rcases segment with ⟨Δ, P, suffix, block, reconstruct, boundary⟩
+    dsimp only at geometry ⊢
+    rw [CommitPrefix.Attempt.joints_length]
+    exact geometry.1
+  obtain ⟨addresses, word, exclusions, metadata, ending⟩ :=
+    checkpoint.chosen_commit_addresses native committing closed reached instructions
+  have scanned := checkpoint.commit_exclusion_scan native archives saved extension completed
+  have fullScan := exclusions.trans scanned
+  have length : addresses.length = (checkpoint.commitInstructionWord native).length := by
+    have lengths := congrArg List.length fullScan
+    simpa only [List.length_map, List.length_range] using lengths
+  have interior : ∀ index (beforeLast : index + 1 < addresses.length),
+      addresses[index]'(by omega) =
+        (some (state.attempt.phase + index + 1),
+          PhaseRuntimeState.archivedFailureOwners state.retired ∪
+            native.failureOwnersBefore (state.attempt.phase + index + 1),
+          state.generation, state.attempt.phase) := by
+    intro index beforeLast
+    obtain ⟨rank, generation, boundary⟩ := metadata index beforeLast
+    have excluded := congrArg (fun values : List (Finset Player) => values[index]?) fullScan
+    have bound : index < addresses.length := by omega
+    have otherBound : index < (checkpoint.commitInstructionWord native).length := by omega
+    simp only [List.getElem?_map, List.getElem?_eq_getElem bound,
+      List.getElem?_range otherBound, Option.map_some] at excluded
+    have sameExcluded := Option.some.inj excluded
+    have position := checkpoint.saved_position
+    change instructionCount setup.program - ProtocolState.remaining setup.program
+        (checkpoint.residual.lift
+          (ProtocolState.entry checkpoint.residual.tail checkpoint.source)) =
+      state.attempt.phase at position
+    dsimp only [CommitRecoveryState.atPoint] at rank generation boundary
+    rw [position] at rank boundary
+    apply Prod.ext rank
+    exact Prod.ext sameExcluded (Prod.ext generation boundary)
+  refine ⟨addresses, word, interior, ending, ?_⟩
+  apply List.ext_getElem
+  · simp only [List.length_dropLast, List.length_map, List.length_range, length, wordLength]
+  · intro index bound _
+    have beforeLast : index + 1 < addresses.length := by
+      simp only [List.length_dropLast] at bound
+      omega
+    simpa only [List.getElem_dropLast, List.getElem_map, List.getElem_range] using
+      interior index beforeLast
+
 /-- The original decoded instruction word fixes the control of its genuinely
 chosen close. A retry keeps the saved instruction rank and increments generation;
 a clean or exhausted close moves to the exact maximal block end. -/

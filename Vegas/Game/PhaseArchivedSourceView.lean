@@ -29,7 +29,7 @@ private theorem source_excluded_subset_of_reaches
 /-- Equal real owner inputs determine both earlier chosen source views at any
 retired attempt. Earlier coherent source histories and their archive prefixes are
 retained; no given source view or source-information equality is assumed. -/
-theorem phase_archived_source_views_eq_of_observed
+theorem phase_archived_source_views_eq_of_observed [Finite Player]
     (setup : Setup (Player := Player) (L := L)) (mode : ExecutionMode)
     (runtime : EventGraphRuntime ((toEventGraph setup.program).withMode mode))
     (leaks : MessageNetwork.ObservationRule Player
@@ -61,6 +61,7 @@ theorem phase_archived_source_views_eq_of_observed
           (ProtocolState.entry left.residual.tail left.source)) =
         ProtocolState.observe who setup.program (right.residual.lift
           (ProtocolState.entry right.residual.tail right.source)) := by
+  let := Fintype.ofFinite Player
   let inputs : PMF ((toEventGraph setup.program).withMode mode).Inputs :=
     setup.initialLaw.map encodeInputs
   have firstRaw : ((phaseApplication runtime leaks).protocol
@@ -86,10 +87,10 @@ theorem phase_archived_source_views_eq_of_observed
     List.getElem?_eq_getElem bound
   have secondSelected : second.execution.application.retired[index]? = some rightRecord :=
     List.getElem?_eq_getElem secondBound
-  obtain ⟨firstCheckpoint, _firstAligned, firstOrigins⟩ :=
+  obtain ⟨firstCheckpoint, _firstAligned, _firstChronology, firstOrigins⟩ :=
     recoverySourceCheckpoint_history setup mode runtime leaks plan maximal horizon scheduler
       firstTrace
-  obtain ⟨secondCheckpoint, _secondAligned, secondOrigins⟩ :=
+  obtain ⟨secondCheckpoint, _secondAligned, _secondChronology, secondOrigins⟩ :=
     recoverySourceCheckpoint_history setup mode runtime leaks plan maximal horizon scheduler
       secondTrace
   obtain ⟨leftState, left, leftAligned, leftEarlier, leftArchives, leftAttempt, leftRetained,
