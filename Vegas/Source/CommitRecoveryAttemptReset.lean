@@ -219,7 +219,7 @@ theorem close_eraseHistory_eq_of_failure (first second : CommitRecoveryState pro
       ProtocolState.withHistory_automaticCommitBlock, ProtocolState.withHistory_withHistory,
       saved, excluded, generation]
 
-private theorem step_raw_result (state : CommitRecoveryState program)
+theorem step_raw_result (state : CommitRecoveryState program)
     (joint : Player → Option (CommitRecoveryMove Player L)) (target : CommitRecoveryState program)
     (supported : target ∈ (state.step joint).support) :
     ∃ result : {result : ProtocolState program × Finset Player // state.excluded ⊆ result.2},

@@ -2311,6 +2311,32 @@ conditional gain inequalities. Component affinity connects the SAME initialized
 sampler to their entire original source runners. Individual optimality and
 honest pin preservation still require the source density/incentive arguments.
 
+Global source records and support:
+[private-coordinate observation](../Vegas/Source/CommitRecoveryWordObservation.lean),
+[publicly determined metadata](../Vegas/Source/CommitRecoveryMetadata.lean),
+[public raw-step masses](../Vegas/Source/CommitRecoveryWordMass.lean),
+and [global reach identities](../Vegas/Game/CommitRecoveryGlobalWordDensity.lean)
+work across original samples, reveals, retries and exhausted advances. Public
+chronology plus an owner's complete raw coordinate reconstructs its full
+information. With nonfocal coordinates retained, original counterfactual
+reach agrees and full reach satisfies the exact cross-product identity.
+[Public successor views](../Vegas/Source/CommitRecoveryPublicSuccessor.lean),
+[their Nature atoms](../Vegas/Source/CommitRecoveryPublicSuccessorMass.lean),
+and [exclusion determinacy](../Vegas/Source/CommitRecoveryPublicControl.lean)
+are source-layer adapters for that induction.
+
+[Typed configuration substitution](../Vegas/Source/CommitRecoveryConfigSplice.lean)
+uses the existing owner splice;
+[source-point substitution](../Vegas/Source/CommitRecoveryStateSplice.lean)
+retains the original cursor and action histories. The
+[raw support theorem](../Vegas/Source/CommitRecoverySpliceSupport.lean) constructs
+an actual supported successor from supported paired public results and the
+selected original coordinates. Separately,
+[erased-history suffix splicing](../Vegas/Source/CommitRecoverySupportSplice.lean)
+retains the exact original joint suffix after an erased-equal boundary.
+Whole-history hybrid fiber existence and individual source Bayes cancellation
+remain separate obligations.
+
 No-new-miss query:
 [literal attempt entry](../Vegas/Source/CommitRecoveryAttemptOrigin.lean),
 [actual replay steps](../Vegas/Source/CommitRecoveryNoMissStep.lean),
@@ -2341,3 +2367,14 @@ Whole-policy consistency derives the local splice agreement; first-SEND
 uniqueness and resolution use the quantified complete-calendar/packet-success
 contract. Whole-phase foreign-word independence and conditional transport
 remain separate obligations.
+
+Original native receipt classification:
+[first-exclusion origin](../Vegas/Pending/PhaseCommitmentExclusionOrigin.lean)
+and [receipt resolution](../Vegas/Pending/PhaseBindingReceiptResolution.lean)
+derive an old ready coordinate without acceptance for each newly excluded
+owner at the original attempt's first full-identifier exit.
+[Accepted binding receipts](../Vegas/Pending/PhaseBindingAcceptedReceipt.lean)
+derive true original-ID receipts from actual inclusion snapshots and completed
+live or archived surviving bindings, including normalization after the last
+inclusion. These results neither read restored retry choices as old results
+nor assume a receipt at the endpoint.

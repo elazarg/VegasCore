@@ -1156,3 +1156,6 @@ import Vegas.Game.PhaseCountServiceEpisode
 import Vegas.Game.CommitRecoveryFlagDecoding
 import Vegas.Game.CommitRecoveryFlagCoupling
 import Vegas.Game.CommitRecoveryPooledCompletion
+import Vegas.Game.CommitRecoveryFlagDensity
+import Vegas.Game.CommitRecoveryFlagWordSwap
+import Vegas.Game.CommitRecoveryGlobalWordDensity

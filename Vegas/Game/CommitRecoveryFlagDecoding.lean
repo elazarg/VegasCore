@@ -207,6 +207,44 @@ theorem commitRecoveryNormalizedFlagPolicy_binding_congr
     subst move
     exact ⟨leftMove, leftChosen, failed.mpr bad⟩
 
+/-- Equal ORIGINAL omission coordinates suffice even when accepted-failure
+coordinates differ. A voided accepted-failure word is not conditioned away. -/
+theorem commitRecoveryNormalizedFlagPolicy_binding_missed_congr
+    (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialLaw] (who : Player)
+    (first second :
+      setup.CommitRecoveryFlagDraw finite who × setup.CommitRecoveryDomainDraw finite who)
+    (left right : setup.commitRecoveryModel.InfoState who)
+    (sameOmissions : (fun clock => (first.1 clock).1) = (fun clock => (second.1 clock).1))
+    (sameClock : left.1.2.length = right.1.2.length)
+    (leftActive : setup.commitRecoveryActive who left.1.1)
+    (rightActive : setup.commitRecoveryActive who right.1.1)
+    (leftCommit : left.1.1.1.elim false (ProtocolView.atCommit who setup.program) = true)
+    (rightCommit : right.1.1.1.elim false (ProtocolView.atCommit who setup.program) = true) :
+    CommitRecoveryMove.missed
+        (setup.commitRecoveryNormalizedFlagPolicy finite who first left).val =
+      CommitRecoveryMove.missed
+        (setup.commitRecoveryNormalizedFlagPolicy finite who second right).val := by
+  classical
+  obtain ⟨leftMove, leftChosen⟩ := setup.active_choice who left
+    (setup.commitRecoveryNormalizedFlagPolicy finite who first left) leftActive
+  obtain ⟨rightMove, rightChosen⟩ := setup.active_choice who right
+    (setup.commitRecoveryNormalizedFlagPolicy finite who second right) rightActive
+  have leftSpec := (setup.commitRecoveryNormalizedFlagPolicy_binding_spec finite who first left
+    leftCommit leftMove leftChosen).1
+  have rightSpec := (setup.commitRecoveryNormalizedFlagPolicy_binding_spec finite who second right
+    rightCommit rightMove rightChosen).1
+  rw [sameClock] at leftSpec
+  have flags : (FiniteAssignment.resolve (fun _ : Nat => (false, false))
+        (setup.commitRecoveryFlagSites finite who) first.1 right.1.2.length).1 =
+      (FiniteAssignment.resolve (fun _ : Nat => (false, false))
+        (setup.commitRecoveryFlagSites finite who) second.1 right.1.2.length).1 := by
+    unfold FiniteAssignment.resolve
+    split
+    · exact congrFun sameOmissions _
+    · rfl
+  have missing := leftSpec.trans (flags.trans rightSpec.symm)
+  simpa only [leftChosen, rightChosen, CommitRecoveryMove.missed, Option.elim_some] using missing
+
 /-- At an actual source commitment step, shared flags determine the entire
 omission vector. The source private domain tables can be arbitrary. -/
 theorem commitRecoveryNormalizedFlagPolicy_joint_missed_eq
@@ -216,7 +254,8 @@ theorem commitRecoveryNormalizedFlagPolicy_joint_missed_eq
     (right : setup.commitRecoveryProtocol.Trace (some second))
     (firstMemory secondMemory : (who : Player) →
       setup.CommitRecoveryFlagDraw finite who × setup.CommitRecoveryDomainDraw finite who)
-    (flags : ∀ who, (firstMemory who).1 = (secondMemory who).1)
+    (flags : ∀ who, (fun clock => ((firstMemory who).1 clock).1) =
+      (fun clock => ((secondMemory who).1 clock).1))
     (clock : left.length = right.length) (excluded : first.excluded = second.excluded)
     (observed : ∀ who, ProtocolView.publicOnly who setup.program
       (ProtocolState.observe who setup.program first.point) =
@@ -254,10 +293,10 @@ theorem commitRecoveryNormalizedFlagPolicy_joint_missed_eq
       ProtocolState.atCommit_observe] using secondCommit
   by_cases active : setup.commitRecoveryActive who
       (setup.commitRecoveryModel.infoOf who left).1.1
-  · exact (setup.commitRecoveryNormalizedFlagPolicy_binding_congr finite who
+  · exact (setup.commitRecoveryNormalizedFlagPolicy_binding_missed_congr finite who
       (firstMemory who) (secondMemory who) _ _ (flags who)
       (by rw [setup.actual_clock who left, setup.actual_clock who right, clock])
-      active (actives.mp active) leftIsCommit rightIsCommit).1
+      active (actives.mp active) leftIsCommit rightIsCommit)
   · rw [setup.inactive_choice who _ _ active,
       setup.inactive_choice who _ _ (fun yes => active (actives.mpr yes))]
 
@@ -271,7 +310,8 @@ theorem commitRecoveryNormalizedFlagPolicy_raw_public_congr
     (right : setup.commitRecoveryProtocol.Trace (some second))
     (firstMemory secondMemory : (who : Player) →
       setup.CommitRecoveryFlagDraw finite who × setup.CommitRecoveryDomainDraw finite who)
-    (flags : ∀ who, (firstMemory who).1 = (secondMemory who).1)
+    (flags : ∀ who, (fun clock => ((firstMemory who).1 clock).1) =
+      (fun clock => ((secondMemory who).1 clock).1))
     (clock : left.length = right.length) (excluded : first.excluded = second.excluded)
     (observed : ∀ who, ProtocolView.publicOnly who setup.program
       (ProtocolState.observe who setup.program first.point) =

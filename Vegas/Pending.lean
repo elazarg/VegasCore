@@ -738,3 +738,6 @@ import Vegas.Pending.PhaseBindingServiceTapeHistory
 import Vegas.Pending.PhasePrivateService
 import Vegas.Pending.PhaseBindingServiceTapeOrder
 import Vegas.Pending.PhaseBindingServiceEpisode
+import Vegas.Pending.PhaseBindingAcceptedReceipt
+import Vegas.Pending.PhaseBindingReceiptResolution
+import Vegas.Pending.PhaseCommitmentExclusionOrigin

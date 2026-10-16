@@ -1632,6 +1632,22 @@ same literal prior and omission word, through retry or exhausted close.
 then gives their actual joint terminal law. The corresponding physical native
 relation remains open.
 
+`Vegas.SourceProgram.Setup.commitRecovery_info_eq_of_public_and_coordinate`
+now reconstructs complete original owner information from the literal setup
+prefix, full public chronology and the owner's raw coordinate word.
+`Vegas.SourceProgram.Setup.commitRecovery_history_eq_of_public_and_joints`
+gives original history uniqueness from those public and complete joint records.
+`Vegas.SourceProgram.Setup.commitRecovery_metadata_of_publicRecall` derives
+the current/saved registry, revelation and control agreement from actual
+public recall, allowing distinct original supported setup draws.
+`Vegas.SourceProgram.Setup.commitRecovery_counterfactual_reach_eq_of_public_and_coordinates`
+and `Vegas.SourceProgram.Setup.commitRecovery_reach_cross_mul_eq_of_public_and_coordinates`
+give the global paired reach identities, retaining original Nature atoms.
+`Vegas.SourceProgram.ProtocolState.recoveryStep_splice_support` constructs
+the raw supported owner-spliced successor. These paired results still need
+the global hybrid support existence theorem to obtain the common fiber and
+its Bayes cancellation; individual source optimality remains open.
+
 `Vegas.SourceProgram.Setup.commitRecoveryNoMissInformation_genuine_history`
 gives a genuine source witness for the no-new-miss transformation of every
 original query, preserving nonterminality. Its idempotence, erasure commutation,
@@ -1681,7 +1697,7 @@ fixed-point machinery is needed for the different normalization.
 derives the whole omission word from actual complete pure-member records and
 the SAME sampled flags before consuming the genuine failed-attempt close.
 It proves the joint terminal readout/all-player-payoff equality through retry
-and exhausted restore without assuming equal omission words. The owner-world
+and exhausted restore without assuming equal omission words. The whole-history owner-world
 substitution needed for ancillary Bayes cancellation remains open.
 
 The existing broad post-exclusion native completion is not the pinned

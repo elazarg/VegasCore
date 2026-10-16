@@ -18,7 +18,7 @@ open GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol GameTheory.Math.P
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
 
-private theorem recorded_joint
+theorem recorded_joint
     (policies : ∀ who, setup.commitRecoveryModel.Policy who)
     {source target : setup.commitRecoveryProtocol.State}
     (prior : setup.commitRecoveryProtocol.Trace source)
@@ -78,7 +78,8 @@ theorem commitRecoveryNormalizedFlagPolicy_omissionRecall_eq
     (committing : ProtocolState.atCommit setup.program first.point = true)
     (firstMemory secondMemory : (who : Player) →
       setup.CommitRecoveryFlagDraw finite who × setup.CommitRecoveryDomainDraw finite who)
-    (flags : ∀ who, (firstMemory who).1 = (secondMemory who).1)
+    (flags : ∀ who, (fun clock => ((firstMemory who).1 clock).1) =
+      (fun clock => ((secondMemory who).1 clock).1))
     {leftState rightState : setup.commitRecoveryProtocol.State}
     (leftTrace : setup.commitRecoveryProtocol.Trace leftState)
     (rightTrace : setup.commitRecoveryProtocol.Trace rightState)
@@ -162,7 +163,8 @@ theorem commitRecoveryNormalizedFlagPolicy_failed_attempt_erased_eq
     (committing : ProtocolState.atCommit setup.program first.point = true)
     (firstMemory secondMemory : (who : Player) →
       setup.CommitRecoveryFlagDraw finite who × setup.CommitRecoveryDomainDraw finite who)
-    (flags : ∀ who, (firstMemory who).1 = (secondMemory who).1)
+    (flags : ∀ who, (fun clock => ((firstMemory who).1 clock).1) =
+      (fun clock => ((secondMemory who).1 clock).1))
     {leftState rightState : setup.commitRecoveryProtocol.State}
     (leftTrace : setup.commitRecoveryProtocol.Trace leftState)
     (rightTrace : setup.commitRecoveryProtocol.Trace rightState)
@@ -200,7 +202,8 @@ theorem commitRecoveryNormalizedFlagPolicy_failed_attempt_terminal_joint_eq
     (committing : ProtocolState.atCommit setup.program first.point = true)
     (firstMemory secondMemory : (who : Player) →
       setup.CommitRecoveryFlagDraw finite who × setup.CommitRecoveryDomainDraw finite who)
-    (flags : ∀ who, (firstMemory who).1 = (secondMemory who).1)
+    (flags : ∀ who, (fun clock => ((firstMemory who).1 clock).1) =
+      (fun clock => ((secondMemory who).1 clock).1))
     {leftState rightState : setup.commitRecoveryProtocol.State}
     (leftTrace : setup.commitRecoveryProtocol.Trace leftState)
     (rightTrace : setup.commitRecoveryProtocol.Trace rightState)

@@ -155,3 +155,15 @@ import Vegas.Source.CommitRecoveryAttemptOrigin
 import Vegas.Source.CommitRecoveryNoMissStep
 import Vegas.Source.CommitRecoveryNoMissQuery
 import Vegas.Source.CommitRecoveryNoMissRepresentative
+import Vegas.Source.CommitRecoveryConfigSplice
+import Vegas.Source.CommitRecoveryMetadata
+import Vegas.Source.CommitRecoveryPrivateWordSwap
+import Vegas.Source.CommitRecoveryPublicControl
+import Vegas.Source.CommitRecoveryPublicDeterminacy
+import Vegas.Source.CommitRecoveryPublicSuccessor
+import Vegas.Source.CommitRecoveryPublicSuccessorMass
+import Vegas.Source.CommitRecoverySpliceSupport
+import Vegas.Source.CommitRecoveryStateSplice
+import Vegas.Source.CommitRecoverySupportSplice
+import Vegas.Source.CommitRecoveryWordMass
+import Vegas.Source.CommitRecoveryWordObservation

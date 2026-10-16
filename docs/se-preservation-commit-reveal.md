@@ -1,6 +1,6 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**SE: non-concurrent ✓ · sampler ✓ · flag-coupled reset ✓ · pooled Bayes ✓ · individual SE / native query / transport / incentives open.**
+**SE: non-concurrent ✓ · sampler/reset ✓ · pooled Bayes ✓ · global source reach ✓ · individual SE / native query / transport / incentives open.**
 
 The [mathematical proof dependency](se-preservation-math.md#scope-and-proof-dependency)
 states the source selection, conditional transport and deviation arguments,
@@ -10,6 +10,20 @@ with their scope distinguished from the checked milestones below.
 <summary>Checked recovery milestones and remaining proof obligations</summary>
 
 Milestones have unequal cost; the fixed SE checklist is unchanged.
+
+The complete public source chronology and an owner's actual raw coordinate
+word now determine its original perfect-recall information across all phases,
+retries and exhausted advances. Matched public records preserve the original
+Nature atoms; retaining all nonfocal coordinates gives equal counterfactual
+reach and an exact cross-multiplication identity for full reach. A raw owner
+splice also produces a genuinely supported source successor. Constructing the
+whole hybrid history fiber and cancelling its Bayes normalization remain open.
+
+At the original native attempt's first exit, every newly excluded owner has
+an old ready binding without a true accepting receipt. Completed live and
+archived surviving bindings have true receipts with their original full
+identifiers, including the last inclusion before normalization. These are
+actual-run facts; whole-phase foreign-word independence remains open.
 
 The source pooled completion selects shared conditional domain laws with
 query-level pins and independently fixed failure/floor rates. Its actual
