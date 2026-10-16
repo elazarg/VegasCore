@@ -103,6 +103,14 @@ theorem TracePrefix.eq_of_same_length {first second third : E.State}
                 sameLength
           | extend secondEarlier _ _ _ => exact ih firstEarlier secondEarlier
 
+/-- A finite realized history path retains its actual starting trace as a prefix. -/
+theorem ReachesWithin.tracePrefix {fuel : Nat} {first last : E.History}
+    (reached : E.ReachesWithin fuel first last) : TracePrefix first.trace last.trace := by
+  induction reached with
+  | refl => exact .refl
+  | step joint legal realized rest ih =>
+      exact (TracePrefix.extend .refl joint legal realized).trans ih
+
 end ExecutionProtocol
 
 end GameTheory.Protocol

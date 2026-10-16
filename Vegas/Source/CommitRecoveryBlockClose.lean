@@ -57,7 +57,7 @@ theorem Close.reaches (closed : block.Close entry result)
   have endpoint := block.commitEnd_entry_prepend suffix boundary entry.config
   have path {finished : Config Player L Δ} {after : Finset Player}
       (attempt : block.Attempt entry.config entry.excluded finished after) :=
-    attempt.reaches_closed_lift (block.prepend suffix) entry.config suffix id
+    attempt.instructions_closed_lift (block.prepend suffix) entry.config suffix id
       (fun _ => rfl) (fun _ => rfl) (fun _ _ => rfl)
       (fun point excluded joint => (PMF.map_id _).symm)
       (CommitRecoveryState.atPoint
@@ -65,7 +65,7 @@ theorem Close.reaches (closed : block.Close entry result)
       rfl rfl committing endpoint.le positive
   cases closed with
   | clean attempt noFailure =>
-      have reached := path attempt
+      have reached := (path attempt).reaches
       have noNew : ¬ (attempt.failedOwners.Nonempty) := by rw [noFailure]; simp
       simpa only [CommitRecoveryState.close, CommitRecoveryState.Finished,
         CommitRecoveryState.NewFailure, CommitRecoveryState.install, CommitRecoveryState.atPoint,
@@ -73,7 +73,7 @@ theorem Close.reaches (closed : block.Close entry result)
         and_self, attempt.newly_excluded, noNew, ↓reduceIte, CommitCloseResult.recoveryState]
         using reached
   | retry attempt failed survives =>
-      have reached := path attempt
+      have reached := (path attempt).reaches
       simpa only [CommitRecoveryState.close, CommitRecoveryState.Finished,
         CommitRecoveryState.NewFailure, CommitRecoveryState.Survives,
         CommitRecoveryState.retry, CommitRecoveryState.restored,
@@ -84,7 +84,7 @@ theorem Close.reaches (closed : block.Close entry result)
         ProtocolState.history_entry, ProtocolState.withHistory_entry,
         CommitCloseResult.recoveryState, CommitCheckpoint.retry] using reached
   | @exhausted finished after attempt failed noSurvivor =>
-      have reached := path attempt
+      have reached := (path attempt).reaches
       have noneLeft : ¬ (block.owners \ after).Nonempty := by
         rintro ⟨owner, member⟩
         exact (Finset.mem_sdiff.mp member).2 (noSurvivor (Finset.mem_sdiff.mp member).1)

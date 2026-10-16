@@ -54,14 +54,18 @@ theorem RecoverySourceCheckpoint.after_commit_retry
           (next.residual.lift (ProtocolState.entry next.residual.tail next.source))
           state.normalize.entry.excluded state.normalize.generation))) (fuel : Nat),
         setup.commitRecoveryProtocol.ReachesWithin fuel
-          ⟨_, priorTrace⟩ ⟨_, nextTrace⟩) ∧
+          ⟨_, priorTrace⟩ ⟨_, nextTrace⟩ ∧
+        setup.recoveryJointRecall nextTrace =
+          (checkpoint.commitInstructionWord (phase.drain state.current).native).reverse ++
+            setup.recoveryJointRecall priorTrace) ∧
       ∀ who, who ∉ (phase.drain state.current).excluded →
       next.source.history who = checkpoint.source.history who ++
         (decodeHistory setup.program ((phase.drain state.current).native.config.history.map
           ((toEventGraph setup.program).fromModeCompletion mode)) who).drop
             (decodeHistory setup.program (state.entry.native.config.history.map
               ((toEventGraph setup.program).fromModeCompletion mode)) who).length := by
-  dsimp only [RecoverySourceCheckpoint.commitResultPoint]
+  dsimp only [RecoverySourceCheckpoint.commitResultPoint,
+    RecoverySourceCheckpoint.commitInstructionWord]
   rcases checkpoint with ⟨⟨Γ, O, program, lift⟩, source, refs, registry, embedding, before,
     compiled, aligned, agree, guards, failures, unique, ranks, actors, commits, owners, endpoints,
     automatic, history, memory, steps, menus, readout, _sourceTrace, views, historyAlignment,
@@ -111,14 +115,10 @@ theorem RecoverySourceCheckpoint.after_commit_retry
     decodeCommitAttempt_excluded_eq_physical setup.program mode block suffix embedding
       compiled positive image source state.entry.excluded record
       (phase.drain_within state.current within.2) finished
-  have attempt : block.Attempt source state.entry.excluded final image.excluded :=
+  let attempt : block.Attempt source state.entry.excluded final image.excluded :=
     excludedEq ▸ decoded.2.2
   have failed : attempt.failedOwners.Nonempty := by
     rwa [← attempt.newly_excluded]
-  let closed : block.Close
-      (⟨source, state.entry.excluded, state.generation⟩ : CommitCheckpoint Γ)
-      (.retry ⟨{ source with history := final.history }, image.excluded,
-        state.generation + 1⟩) := .retry attempt failed survivesSource
   have normalized : state.normalize =
       ⟨phase :: remaining, state.generation + 1, PhaseRuntimeState.restore state.entry image,
         phase.drain (PhaseRuntimeState.restore state.entry image),
@@ -129,11 +129,20 @@ theorem RecoverySourceCheckpoint.after_commit_retry
     exact PhaseRuntimeState.settle_retry phase remaining state.generation state.entry
       state.current state.retired finished rfl missed survives
   let sourceInitial := setup.initialConfig setup.initialLaw.support_nonempty.choose
-  have reached := closed.reaches_lift setup.program sourceInitial suffix boundary positive lift
-    ranks actors (fun point who => menus who point) steps commits owners endpoints automatic
-    history memory
-  obtain ⟨reachedTrace, fuel, reachedPrefix⟩ :=
-    setup.recoveryTrace_of_reaches sourceInitial priorTrace reached
+  have instructions := attempt.instructions_closed_lift setup.program sourceInitial suffix lift
+    ranks actors (fun point who => menus who point) steps
+    (CommitRecoveryState.atPoint
+      (lift (ProtocolState.entry (block.prepend suffix) source)) state.entry.excluded
+      state.generation) rfl rfl ((commits _).trans committing)
+    ((endpoints _).trans (block.commitEnd_entry_prepend suffix boundary source)).le positive
+  rw [attempt.close_retry_lift setup.program suffix boundary positive state.generation lift ranks
+    commits owners endpoints history memory failed survivesSource] at instructions
+  obtain ⟨reachedTrace, reachedPrefix, reachedInstructions⟩ :=
+    setup.recoveryTrace_of_instructions sourceInitial priorTrace instructions
+  let fuel := attempt.joints.length
+  have decodedInstructions : attempt.joints = decoded.2.2.joints :=
+    SourceProgram.CommitPrefix.Attempt.joints_cast_after excludedEq decoded.2.2
+  rw [decodedInstructions] at reachedInstructions
   rw [normalized]
   refine ⟨
     { residual := ⟨Γ, O, block.prepend suffix, lift⟩
@@ -174,7 +183,7 @@ theorem RecoverySourceCheckpoint.after_commit_retry
       embedding before phase.low
     rw [← low] at compiled
     exact compiled
-  · refine ⟨?_, ⟨reachedTrace, fuel, reachedPrefix⟩, ?_⟩
+  · refine ⟨?_, ⟨reachedTrace, fuel, reachedPrefix, reachedInstructions⟩, ?_⟩
     · change lift (ProtocolState.entry (block.prepend suffix)
           { source with history := final.history }) =
         ProtocolState.withHistory setup.program

@@ -205,9 +205,11 @@ theorem decoded_commit_source_traces
         setup.commitRecoverySignals.infoOf who rightTrace := by
   intro block leftDecoded rightDecoded leftRaw rightRaw
   let initial := setup.initialConfig setup.initialLaw.support_nonempty.choose
-  obtain ⟨firstJoint, firstLegal, firstReached⟩ := decoded_commit_successor setup.program initial
+  obtain ⟨firstJoint, firstLegal, firstReached, _firstJointExact⟩ :=
+    decoded_commit_successor setup.program initial
     mode fresh guard tail embedding first firstEntry left lift firstAtEntry ranks actors menus steps
-  obtain ⟨secondJoint, secondLegal, secondReached⟩ := decoded_commit_successor setup.program initial
+  obtain ⟨secondJoint, secondLegal, secondReached, _secondJointExact⟩ :=
+    decoded_commit_successor setup.program initial
     mode fresh guard tail embedding second secondEntry right lift secondAtEntry ranks actors menus
     steps
   let leftTrace : setup.commitRecoveryProtocol.Trace (some leftRaw.close) :=

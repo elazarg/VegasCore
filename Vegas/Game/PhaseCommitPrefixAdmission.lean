@@ -255,8 +255,9 @@ private theorem phase_commitPrefix_admitted_bounded
                 have rawBefore := menu.toRawTrace initial horizon scheduler prior
                 have ordered := (phaseApplication_seedOrder runtime leaks).history initial horizon
                   scheduler initialized rawBefore
-                have sameEntry := phase_entry_of_same_attempt_prefix runtime leaks menu initial
-                  initialized horizon scheduler before control prior trace retainedTrace ordered
+                have sameEntry := (phase_attempt_progress_of_prefix runtime leaks menu
+                  initial initialized horizon scheduler before control prior trace retainedTrace
+                    ordered).2.2
                     sameAttempt
                 let author := fixed.transfer sameEntry
                   (congrArg CommitAttemptId.generation sameAttempt)

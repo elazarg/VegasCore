@@ -43,6 +43,7 @@ local notation "draws" => fun state : (app).ProtocolState => match state with
 
 /-- One original filtered local-seed law separates from the full history and
 all remaining seeds for every belief on the actual owner information fiber.
+Its seed constraint depends only on the local clock word, across private types.
 This includes limiting assessments and sites of zero equilibrium probability. -/
 theorem belief_unsent_seed_product
     (timed : DeadlineExpiry runtime decideLocal)
@@ -57,6 +58,23 @@ theorem belief_unsent_seed_product
       PhaseSeedScheduler.ownPacket coordinate.1 owner message = false) :
     ∃ (event : Set LocalSeed)
       (localPositive : ∃ seed ∈ event, seed ∈ (laws coordinate).support),
+      (∀ (seeds : RestSeed × (PhaseSeedAddress graph → LocalSeed)) (left : Nat)
+        (other : (app).Execution)
+        (_trace : ((menu).protocol initial horizon ((driver).family seeds)).Trace
+          (some ⟨left, some owner, other⟩)),
+        other.application.SeedRequest owner coordinate.1 →
+        (PhaseSeedScheduler.informationInput runtime leaks coordinate.1 owner
+          (other.recall owner) (other.observe app owner)).activationClocks ++
+          [(PhaseSeedScheduler.informationInput runtime leaks coordinate.1 owner
+            (other.recall owner) (other.observe app owner)).elapsed] =
+          (PhaseSeedScheduler.informationInput runtime leaks coordinate.1 owner
+            past view).activationClocks ++
+            [(PhaseSeedScheduler.informationInput runtime leaks coordinate.1 owner
+              past view).elapsed] →
+        (∀ message ∈ (app).outputs (other.recall owner),
+          PhaseSeedScheduler.ownPacket coordinate.1 owner message = false) →
+        ∀ candidate, (driver).coordinateConsistentFrom seeds.1 coordinate candidate []
+          other.environmentRecall ↔ candidate ∈ event) ∧
       ∀ belief : PMF ((model).InformationHistory owner site.1),
       ∃ residual : PMF (((model).InformationHistory owner site.1) ×
         ((index : {index : Option (PhaseSeedAddress graph) // index ≠ some coordinate}) →
@@ -95,7 +113,16 @@ theorem belief_unsent_seed_product
           (_trace : ((menu).protocol initial horizon ((driver).family seeds)).Trace
             (some ⟨left, some owner, current⟩)),
           current.application.SeedRequest owner coordinate.1 →
-          (current.recall owner, current.observe app owner) = (past, view) →
+          (PhaseSeedScheduler.informationInput runtime leaks coordinate.1 owner
+            (current.recall owner) (current.observe app owner)).activationClocks ++
+            [(PhaseSeedScheduler.informationInput runtime leaks coordinate.1 owner
+              (current.recall owner) (current.observe app owner)).elapsed] =
+            (PhaseSeedScheduler.informationInput runtime leaks coordinate.1 owner
+              past view).activationClocks ++
+              [(PhaseSeedScheduler.informationInput runtime leaks coordinate.1 owner
+                past view).elapsed] →
+          (∀ message ∈ (app).outputs (current.recall owner),
+            PhaseSeedScheduler.ownPacket coordinate.1 owner message = false) →
           ∀ candidate, (driver).coordinateConsistentFrom seeds.1 coordinate candidate []
             current.environmentRecall ↔ candidate ∈ event := by
     intro history
@@ -160,12 +187,24 @@ theorem belief_unsent_seed_product
     refine ⟨event, localPositive, remaining, product,
       ⟨ReactiveApplication.AddressedScheduler.unpack values, horizon - count - 1,
         current, trace, requested, information⟩, ?_⟩
-    intro seeds left other otherTrace otherRequest otherInfo candidate
-    exact uniform seeds left other otherTrace otherRequest (information.trans otherInfo.symm)
-      candidate
+    intro seeds left other otherTrace otherRequest otherClocks otherUnsent candidate
+    have currentClocks := congrArg (fun pair : List (app).PlayerEntry × (app).PlayerView =>
+      let input := PhaseSeedScheduler.informationInput runtime leaks coordinate.1 owner
+        pair.1 pair.2
+      input.activationClocks ++ [input.elapsed]) information
+    exact uniform seeds left other otherTrace otherRequest
+      (currentClocks.trans otherClocks.symm) otherUnsent candidate
   obtain ⟨reference, _rest⟩ := site.2
   obtain ⟨event, localPositive, _, _, witness, uniform⟩ := perHistory reference
   obtain ⟨seeds, left, current, ⟨trace⟩, requested, information⟩ := witness
+  have referenceClocks := congrArg (fun pair : List (app).PlayerEntry × (app).PlayerView =>
+    let input := PhaseSeedScheduler.informationInput runtime leaks coordinate.1 owner pair.1 pair.2
+    input.activationClocks ++ [input.elapsed]) information
+  have referenceUnsent : ∀ message ∈ (app).outputs (current.recall owner),
+      PhaseSeedScheduler.ownPacket coordinate.1 owner message = false := by
+    have recalled : current.recall owner = past := congrArg Prod.fst information
+    rw [recalled]
+    exact unsent
   have sameFactor : ∀ history : (model).InformationHistory owner site.1, ∃ remaining : PMF
       ((index : {index : Option (PhaseSeedAddress graph) // index ≠ some coordinate}) →
         SeedAt index),
@@ -179,11 +218,12 @@ theorem belief_unsent_seed_product
     obtain ⟨otherEvent, otherPositive, remaining, product, _, otherUniform⟩ :=
       perHistory history
     have same : otherEvent = event := Set.ext fun candidate =>
-      (otherUniform seeds left current trace requested information candidate).symm.trans
-        (uniform seeds left current trace requested information candidate)
+      (otherUniform seeds left current trace requested referenceClocks referenceUnsent
+        candidate).symm.trans
+        (uniform seeds left current trace requested referenceClocks referenceUnsent candidate)
     subst otherEvent
     exact ⟨remaining, product⟩
-  refine ⟨event, localPositive, ?_⟩
+  refine ⟨event, localPositive, uniform, ?_⟩
   intro belief
   let remaining := fun history => Classical.choose (sameFactor history)
   let residual := belief.bind fun history => (remaining history).map (Prod.mk history)

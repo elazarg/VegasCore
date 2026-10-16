@@ -135,3 +135,5 @@ import Vegas.Source.CommitRecoveryRanks
 import Vegas.Source.CommitRecoveryPredecessor
 import Vegas.Source.CommitPrefixFocalViewMarginal
 import Vegas.Source.CommitRecoverySavedObservation
+import Vegas.Source.CommitRecoveryInstructions
+import Vegas.Source.CommitRecoveryCommitUnique

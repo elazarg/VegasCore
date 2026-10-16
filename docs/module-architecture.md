@@ -1907,8 +1907,10 @@ Complete phased query recovery and actual native local-seed Bayes:
 [Phase Service Unsent Posterior](../Vegas/Pending/PhaseServiceUnsentPosterior.lean),
 [Phase Service Unsent Bayes](../Vegas/Pending/PhaseServiceUnsentBayes.lean).
 Actual ordered query occurrences derive WAIT and activation counts and instantiate
-the existing counted-log recovery. Equal unsent owner information determines the
-complete query transcript and every candidate-seed constraint. The original
+the existing counted-log recovery. The local activation-clock word alone
+determines the complete unsent query transcript and every candidate-seed
+constraint across different complete native/private information sites. Both
+callbacks are genuine and unsent in the same physical coordinate. The original
 filtered local prior factors from the updated full remainder at the actual
 scheduler posterior. One such filter works for every belief on the owner's
 actual information histories, retaining the whole history and all other seeds.
@@ -2047,3 +2049,53 @@ identifies the actual native belief; its denominator is exactly the actual
 information mass, with positivity derived from common full mixing. The actual
 common terminal tail remains on stopped exits. Eliminating that tail and
 identifying chronological AUX source beliefs are separate obligations.
+
+Actual stopped native Bayes passage:
+[Phase Attempt Passage](../Vegas/Pending/PhaseAttemptPassage.lean),
+[Phase Recovery Value Stopped Passage](../Vegas/Game/PhaseRecoveryValueStoppedPassage.lean).
+Actual exclusion persistence, full namespace progress and the site antichain
+identify the terminal ancestor with the stopped ancestor at a genuine clear
+full-ID input. The factual once-sampled global member law therefore gives the
+actual native Bayes belief directly at the stopped endpoint, with exact positive
+information mass. First exclusion, terminal and skipped-entry branches retain
+their mass. Chronological AUX source-belief identification remains open.
+
+Original decoded instructions through the chosen source chronology:
+[Commit Recovery Instructions](../Vegas/Source/CommitRecoveryInstructions.lean),
+[Recovery Archived Source Origin](../Vegas/Game/RecoveryArchivedSourceOrigin.lean),
+[Recovery Checkpoint History](../Vegas/Game/RecoveryCheckpointHistory.lean).
+The typed commitment attempt retains its original joint instruction word;
+instruction paths refine existing legal reachability. The same chosen clean,
+retry and exhausted source traces retain exactly that native-decoded word, and
+each actual archived origin retains its real closing trace, word and genuine
+continuation. Exhaustion reads the final Config from that same decoder. No new
+runner or endpoint-based identification of omission chronology is used. Full
+native-information determination of the chosen chronological source InfoState
+still needs the actual trace and signal identification.
+
+Source commitment traces fixed by the original joint word:
+[Commit Recovery Commit Unique](../Vegas/Source/CommitRecoveryCommitUnique.lean),
+[Trace Prefix](../GameTheoryExtensions/Protocol/TracePrefix.lean).
+The recovery-step definition derives the actual commitment singleton law.
+The same original joint recall and genuine source prefixes, within the current
+commitment window, identify the full source History, including final retry or
+exhaustion closure. No deterministic-kernel premise is assumed. This supplies
+the chosen-versus-paired trace identification required by source observability;
+the full chronological information-state theorem remains separate.
+
+Actual stopped commitment-path noise comparisons:
+[Continuation Own Play](../GameTheoryExtensions/Analysis/Protocol/ContinuationOwnPlay.lean),
+[Stopped History Atom](../GameTheoryExtensions/Analysis/Protocol/StoppedHistoryAtom.lean),
+[Phase Timing Continuation Comparison](../Vegas/Game/PhaseTimingContinuationComparison.lean),
+[Phase Timing Stopped Comparison](../Vegas/Game/PhaseTimingStoppedComparison.lean).
+The original full entry and per-owner pure source-policy/full-plan members stay
+fixed, along with the focal intervention. Genuine trace prefixes supply the
+exact transition coefficient and new own-play factors. A clear ready endpoint
+derives every intermediate callback's actual commitment interval, and every
+marked transmission has literal prepared-binding syntax, including accepted
+failures. First-hit history geometry identifies the actual stopped target atom
+with the exact continuation atom. Its noisy mass is bounded by a near-one factor
+times the same zero-RAW atom plus exact foreign RAW binding contributions with
+all other original noisy factors retained. Summing actual input fibers and
+normalizing through the actual selected entry law remain necessary; no uniform
+positive input-mass floor or source Bayes identity is asserted.

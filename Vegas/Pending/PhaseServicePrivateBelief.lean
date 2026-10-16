@@ -74,7 +74,8 @@ theorem runRounds_private_seed_joint (input : graph.Inputs) (count : Nat) :
 /-- The same local-seed filter works at every actual owner belief jointly
 with all original player members and the remaining original scheduler seeds.
 Player members retain their actual recall-updated posteriors, including their
-unplayed future decisions. No independence premise on those posteriors is used. -/
+unplayed future decisions. The filter is common across the local clock class;
+no independence premise on those posteriors is used. -/
 theorem belief_unsent_private_seed_product
     (timed : DeadlineExpiry runtime decideLocal)
     (ordered : graph.RevealRelaxedOrdered)
@@ -88,6 +89,23 @@ theorem belief_unsent_private_seed_product
       PhaseSeedScheduler.ownPacket coordinate.1 owner message = false) :
     ∃ (event : Set LocalSeed)
       (localPositive : ∃ seed ∈ event, seed ∈ (laws coordinate).support),
+      (∀ (seeds : RestSeed × (PhaseSeedAddress graph → LocalSeed)) (left : Nat)
+        (other : (app).Execution)
+        (_trace : ((menu).protocol initial horizon ((driver).family seeds)).Trace
+          (some ⟨left, some owner, other⟩)),
+        other.application.SeedRequest owner coordinate.1 →
+        (PhaseSeedScheduler.informationInput runtime leaks coordinate.1 owner
+          (other.recall owner) (other.observe app owner)).activationClocks ++
+          [(PhaseSeedScheduler.informationInput runtime leaks coordinate.1 owner
+            (other.recall owner) (other.observe app owner)).elapsed] =
+          (PhaseSeedScheduler.informationInput runtime leaks coordinate.1 owner
+            past view).activationClocks ++
+            [(PhaseSeedScheduler.informationInput runtime leaks coordinate.1 owner
+              past view).elapsed] →
+        (∀ message ∈ (app).outputs (other.recall owner),
+          PhaseSeedScheduler.ownPacket coordinate.1 owner message = false) →
+        ∀ candidate, (driver).coordinateConsistentFrom seeds.1 coordinate candidate []
+          other.environmentRecall ↔ candidate ∈ event) ∧
       ∀ belief : PMF ((model).InformationHistory owner site.1),
       ∃ residual : PMF (((model).InformationHistory owner site.1) ×
         (((index : {index : Option (PhaseSeedAddress graph) // index ≠ some coordinate}) →
@@ -99,10 +117,11 @@ theorem belief_unsent_private_seed_product
         ((laws coordinate).filter event localPositive).bind fun seed =>
           residual.map (Prod.mk seed) := by
   classical
-  obtain ⟨event, localPositive, factored⟩ := belief_unsent_seed_product runtime leaks priority
+  obtain ⟨event, localPositive, clockClass, factored⟩ :=
+    belief_unsent_seed_product runtime leaks priority
     decideLocal laws restLaw bounds plan inputs horizon timed ordered maximal owner site past view
       siteInfo coordinate request unsent
-  refine ⟨event, localPositive, ?_⟩
+  refine ⟨event, localPositive, clockClass, ?_⟩
   intro belief
   obtain ⟨remaining, product⟩ := factored belief
   let residual := remaining.bind fun pair =>

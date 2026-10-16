@@ -42,6 +42,8 @@ theorem sourceAttempt_of_drained_bindingPhase
           state.current)) :
     let phase := compiledCommitPhase whole mode block suffix embedding compiled positive
     ∃ finalSource : SourceProgram.Config Player L Δ,
+      finalSource = (decodeCommitAttempt whole mode block suffix embedding
+        (phase.drain state.current).native entry state.entry.excluded).1 ∧
       Nonempty (block.Attempt entry state.entry.excluded finalSource
         (phase.drain state.current).excluded) ∧
       (commitBlockRefs whole block suffix embedding refs).Agrees finalSource.state
@@ -103,6 +105,8 @@ theorem sourceAttempt_of_actual_bindingInclusion
     let image := phase.drain
       (control.execution.application.current.inclusionResult message.payload native)
     ∃ finalSource : SourceProgram.Config Player L Δ,
+      finalSource = (decodeCommitAttempt whole mode block suffix embedding image.native entry
+        control.execution.application.entry.excluded).1 ∧
       Nonempty (block.Attempt entry control.execution.application.entry.excluded finalSource
         image.excluded) ∧
       (commitBlockRefs whole block suffix embedding refs).Agrees finalSource.state
@@ -158,6 +162,8 @@ theorem sourceAttempt_of_actual_bindingEnvironment
     let image := phase.drain
       (control.execution.application.current.environmentResult command native)
     ∃ finalSource : SourceProgram.Config Player L Δ,
+      finalSource = (decodeCommitAttempt whole mode block suffix embedding image.native entry
+        control.execution.application.entry.excluded).1 ∧
       Nonempty (block.Attempt entry control.execution.application.entry.excluded finalSource
         image.excluded) ∧
       (commitBlockRefs whole block suffix embedding refs).Agrees finalSource.state

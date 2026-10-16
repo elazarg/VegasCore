@@ -44,7 +44,7 @@ theorem Attempt.reaches_unclosed_lift
       (state.install (lift (block.liftPoint suffix (ProtocolState.entry suffix finished)), after)
         (fun _ member => attempt.excluded_subset (stateExcluded ▸ member))) := by
   by_cases positive : 0 < block.length
-  · have path := attempt.reaches_closed_lift whole initial suffix lift ranks actors menus steps
+  · have path := attempt.instructions_closed_lift whole initial suffix lift ranks actors menus steps
       state atEntry stateExcluded committing beforeEnd.le positive
     have unfinished : ProtocolState.commitEnd whole state.saved <
         ProtocolState.remaining whole
@@ -55,7 +55,7 @@ theorem Attempt.reaches_unclosed_lift
       (lift (block.liftPoint suffix (ProtocolState.entry suffix finished)), after)
       (fun _ member => attempt.excluded_subset (stateExcluded ▸ member))
     rw [next.close_eq_self_of_remaining_gt committing unfinished] at path
-    exact path
+    exact path.reaches
   · have zero : block.length = 0 := by omega
     obtain ⟨point, owners⟩ := attempt.liftPoint_entry_of_length_zero suffix zero
     have same : (state.install

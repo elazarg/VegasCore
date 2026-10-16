@@ -61,6 +61,22 @@ def RecoverySourceCheckpoint.commitResultPoint
     checkpoint.residual.lift (cast (congrArg (fun program => ProtocolState program)
       reconstruct) (block.liftPoint suffix (ProtocolState.entry suffix decoded.1)))
 
+/-- Read the exact original typed-choice and omission instruction word of
+this checkpoint's actual maximal physical commitment image. -/
+def RecoverySourceCheckpoint.commitInstructionWord
+    {setup : Setup (Player := Player) (L := L)} {mode : EventGraph.ExecutionMode}
+    {state : PhaseRuntimeState ((toEventGraph setup.program).withMode mode)}
+    (checkpoint : RecoverySourceCheckpoint setup mode state)
+    (native : EventGraphRuntime.State ((toEventGraph setup.program).withMode mode)) :
+    List (Player → Option (CommitRecoveryMove Player L)) :=
+  match commitPhase checkpoint.residual.tail with
+  | ⟨_, _, suffix, block, reconstruct, _⟩ =>
+    let embedding := cast (congrArg (fun program => OutputEmbedding
+      (inputLayout setup.context) (outputLayout setup.program) program)
+        reconstruct.symm) checkpoint.embedding
+    (decodeCommitAttempt setup.program mode block suffix embedding native
+      checkpoint.source state.entry.excluded).2.2.joints
+
 /-- Every owner's completed physical prefix contains successful bindings
 satisfying their original private guards, including the saved entry cells. -/
 def RecoverySourceCheckpoint.commitAdmitted
@@ -107,7 +123,10 @@ theorem RecoverySourceCheckpoint.after_commit_clean
           (next.residual.lift (ProtocolState.entry next.residual.tail next.source))
           (phase.drain state.current).excluded state.generation))) (fuel : Nat),
         setup.commitRecoveryProtocol.ReachesWithin fuel
-          ⟨_, priorTrace⟩ ⟨_, nextTrace⟩) ∧
+          ⟨_, priorTrace⟩ ⟨_, nextTrace⟩ ∧
+        setup.recoveryJointRecall nextTrace =
+          (checkpoint.commitInstructionWord (phase.drain state.current).native).reverse ++
+            setup.recoveryJointRecall priorTrace) ∧
       (∀ who, who ∉ (phase.drain state.current).excluded →
         next.source.history who = checkpoint.source.history who ++
           (decodeHistory setup.program ((phase.drain state.current).native.config.history.map
@@ -122,7 +141,8 @@ theorem RecoverySourceCheckpoint.after_commit_clean
           (ProtocolState.entry next.residual.tail next.source)))) ∧
       state.normalize = PhaseRuntimeState.settle remaining state.generation
         (phase.drain state.current) (phase.drain state.current) state.retired := by
-  dsimp only [RecoverySourceCheckpoint.commitResultPoint, RecoverySourceCheckpoint.commitAdmitted]
+  dsimp only [RecoverySourceCheckpoint.commitResultPoint, RecoverySourceCheckpoint.commitAdmitted,
+    RecoverySourceCheckpoint.commitInstructionWord]
   rcases checkpoint with ⟨⟨Γ, O, program, lift⟩, source, refs, registry, embedding, before,
     compiled, aligned, agree, guards, failures, unique, ranks, actors, commits, owners, endpoints,
     automatic, history, memory, steps, menus, readout, _sourceTrace, views, historyAlignment,
@@ -166,7 +186,7 @@ theorem RecoverySourceCheckpoint.after_commit_clean
   have excludedEq := decodeCommitAttempt_excluded_eq_physical setup.program mode block suffix
     embedding compiled positive image source state.entry.excluded record
     (phase.drain_within state.current within.2) finished
-  have attempt : block.Attempt source state.entry.excluded final image.excluded :=
+  let attempt : block.Attempt source state.entry.excluded final image.excluded :=
     excludedEq ▸ decoded.2.2
   have activeAgree : refs.Agrees source.state image.native.config.store := by
     intro name cell selected
@@ -192,8 +212,6 @@ theorem RecoverySourceCheckpoint.after_commit_clean
     · rwa [attempt.newly_excluded]
     · rw [ownerEq]
       exact attempt.failed_subset_owners failed
-  let closed : block.Close (⟨source, state.entry.excluded, state.generation⟩ : CommitCheckpoint Γ)
-      (.settled final (phase.drain state.current).excluded) := .clean attempt noFailure
   have normalized : state.normalize = PhaseRuntimeState.settle remaining state.generation
       (phase.drain state.current) (phase.drain state.current) state.retired := by
     change PhaseRuntimeState.settle state.phases state.generation state.entry state.current
@@ -203,11 +221,20 @@ theorem RecoverySourceCheckpoint.after_commit_clean
       state.retired finished
     exact fun failed => clean failed.2
   let sourceInitial := setup.initialConfig setup.initialLaw.support_nonempty.choose
-  have reached := closed.reaches_lift setup.program sourceInitial suffix boundary positive lift
-    ranks actors (fun point who => menus who point) steps commits owners endpoints automatic
-    history memory
-  obtain ⟨reachedTrace, fuel, reachedPrefix⟩ :=
-    setup.recoveryTrace_of_reaches sourceInitial priorTrace reached
+  have instructions := attempt.instructions_closed_lift setup.program sourceInitial suffix lift
+    ranks actors (fun point who => menus who point) steps
+    (CommitRecoveryState.atPoint
+      (lift (ProtocolState.entry (block.prepend suffix) source)) state.entry.excluded
+      state.generation) rfl rfl ((commits _).trans committing)
+    ((endpoints _).trans (block.commitEnd_entry_prepend suffix boundary source)).le positive
+  rw [attempt.close_clean_lift setup.program suffix boundary positive state.generation lift ranks
+    commits endpoints noFailure] at instructions
+  obtain ⟨reachedTrace, reachedPrefix, reachedInstructions⟩ :=
+    setup.recoveryTrace_of_instructions sourceInitial priorTrace instructions
+  let fuel := attempt.joints.length
+  have decodedInstructions : attempt.joints = decoded.2.2.joints :=
+    SourceProgram.CommitPrefix.Attempt.joints_cast_after excludedEq decoded.2.2
+  rw [decodedInstructions] at reachedInstructions
   obtain ⟨finalEmbedding, finalBefore, finalCompiled, finalAlignment, ⟨finalViews⟩⟩ :=
     attempt.compiledTail
       setup.program suffix refs registry embedding before state.attempt.phase compiled aligned lift
@@ -277,7 +304,7 @@ theorem RecoverySourceCheckpoint.after_commit_clean
       (phase.finished_prefix image (phase.drain_within state.current within.2) finished)
       alignedHistory views.actionEq
   · rfl
-  · exact ⟨reachedTrace, fuel, reachedPrefix⟩
+  · exact ⟨reachedTrace, fuel, reachedPrefix, reachedInstructions⟩
   · intro who active
     exact decodeCommitAttempt_history_extension_of_survivor setup.program mode block suffix
       embedding state.attempt.phase compiled.rankEq state.entry.native image.native source
@@ -333,15 +360,21 @@ theorem RecoverySourceCheckpoint.after_commit_exhausted
           (next.residual.lift (ProtocolState.entry next.residual.tail next.source))
           rebuilt.excluded state.generation))) (fuel : Nat),
         setup.commitRecoveryProtocol.ReachesWithin fuel
-          ⟨_, priorTrace⟩ ⟨_, nextTrace⟩) ∧
+          ⟨_, priorTrace⟩ ⟨_, nextTrace⟩ ∧
+        setup.recoveryJointRecall nextTrace =
+          (checkpoint.commitInstructionWord image.native).reverse ++
+            setup.recoveryJointRecall priorTrace) ∧
       (∀ who, who ∉ image.excluded → next.source.history who = checkpoint.source.history who)) ∧
       state.normalize = PhaseRuntimeState.settle remaining state.generation rebuilt rebuilt
         archive := by
+  dsimp only [RecoverySourceCheckpoint.commitInstructionWord]
   rcases checkpoint with ⟨⟨Γ, O, program, lift⟩, source, refs, registry, embedding, before,
     compiled, aligned, agree, guards, failures, unique, ranks, actors, commits, owners, endpoints,
     automatic, history, memory, steps, menus, readout, _sourceTrace, views, historyAlignment,
     origin⟩
-  obtain ⟨Δ, P, suffix, block, reconstruct, boundary⟩ := commitPhase program
+  dsimp only
+  generalize _decomposition : commitPhase program = segment at ⊢
+  rcases segment with ⟨Δ, P, suffix, block, reconstruct, boundary⟩
   subst program
   have positive : 0 < block.length := by
     cases block with
@@ -369,12 +402,29 @@ theorem RecoverySourceCheckpoint.after_commit_exhausted
     exact ⟨who, (Finset.mem_inter.mp member).1⟩
   have noSource : ¬ (block.owners \ (phase.drain state.current).excluded).Nonempty := by
     rwa [← ownerEq]
-  obtain ⟨final, closed, values, finalGuards, normalized⟩ :=
+  obtain ⟨chosenFinal, chosenFinalEq, closed, values, finalGuards, normalized⟩ :=
     sourceClose_of_exhausted_bindingPhase setup.program mode block suffix embedding compiled
       positive state remaining installed binding receipts stored source agree guards finished
       missedSource noSource
   let image := phase.drain state.current
   let rebuilt := phase.drain (PhaseRuntimeState.restore state.entry image)
+  let decoded := decodeCommitAttempt setup.program mode block suffix embedding image.native source
+    state.entry.excluded
+  let final := decoded.1
+  have selectedFinal : chosenFinal = final := chosenFinalEq
+  subst chosenFinal
+  have member : phase ∈ state.phases.head? := by
+    rw [installed]
+    exact Option.mem_some_iff.mpr rfl
+  have within := receipts.exclusion.frontier.positioned
+  rw [installed] at within
+  have record := (receipts.exclusion.installed phase member).phase_drain phase
+  have excludedEq := decodeCommitAttempt_excluded_eq_physical setup.program mode block suffix
+    embedding compiled positive image source state.entry.excluded record
+    (phase.drain_within state.current within.2) finished
+  let attempt : block.Attempt source state.entry.excluded final image.excluded :=
+    excludedEq ▸ decoded.2.2
+  have failed : attempt.failedOwners.Nonempty := by rwa [← attempt.newly_excluded]
   let restoredSource := { source with history := final.history }
   have allSource : block.owners ⊆ image.excluded := by
     intro who member
@@ -387,11 +437,20 @@ theorem RecoverySourceCheckpoint.after_commit_exhausted
   obtain ⟨tailRanks, tailActors, tailCommits, tailOwners, tailEnds, tailAutomatic, tailHistory,
     tailMemory, tailSteps, tailMenus, tailReadout⟩ := block.liftPoint_recovery suffix
   let sourceInitial := setup.initialConfig setup.initialLaw.support_nonempty.choose
-  have reached := closed.reaches_lift setup.program sourceInitial suffix boundary positive lift
-    ranks actors (fun point who => menus who point) steps commits owners endpoints automatic
-    history memory
-  obtain ⟨reachedTrace, fuel, reachedPrefix⟩ :=
-    setup.recoveryTrace_of_reaches sourceInitial priorTrace reached
+  have instructions := attempt.instructions_closed_lift setup.program sourceInitial suffix lift
+    ranks actors (fun point who => menus who point) steps
+    (CommitRecoveryState.atPoint
+      (lift (ProtocolState.entry (block.prepend suffix) source)) state.entry.excluded
+      state.generation) rfl rfl ((commits _).trans committing)
+    ((endpoints _).trans (block.commitEnd_entry_prepend suffix boundary source)).le positive
+  rw [attempt.close_exhausted_lift setup.program suffix boundary positive state.generation lift
+    ranks commits owners endpoints automatic history memory failed allSource] at instructions
+  obtain ⟨reachedTrace, reachedPrefix, reachedInstructions⟩ :=
+    setup.recoveryTrace_of_instructions sourceInitial priorTrace instructions
+  let fuel := attempt.joints.length
+  have decodedInstructions : attempt.joints = decoded.2.2.joints :=
+    SourceProgram.CommitPrefix.Attempt.joints_cast_after excludedEq decoded.2.2
+  rw [decodedInstructions] at reachedInstructions
   have address := next_phase_address phase remaining state.generation rebuilt
     (state.retired ++ [⟨⟨phase.low, state.generation⟩, image.native⟩]) adjacent last
   have finalFailures := automaticAttempt.preservesFailures failures
@@ -401,10 +460,12 @@ theorem RecoverySourceCheckpoint.after_commit_exhausted
           (ProtocolState.entry suffix (block.automatic restoredSource))))
         rebuilt.excluded state.generation))) (finalFuel : Nat),
       setup.commitRecoveryProtocol.ReachesWithin finalFuel
-        ⟨_, priorTrace⟩ ⟨_, finalTrace⟩ := by
+        ⟨_, priorTrace⟩ ⟨_, finalTrace⟩ ∧
+      setup.recoveryJointRecall finalTrace = decoded.2.2.joints.reverse ++
+        setup.recoveryJointRecall priorTrace := by
     rw [show rebuilt.excluded = image.excluded from phase.drain_excluded _]
-    exact ⟨reachedTrace, fuel, reachedPrefix⟩
-  obtain ⟨finalTrace, finalFuel, finalPrefix⟩ := finalHistory
+    exact ⟨reachedTrace, fuel, reachedPrefix, reachedInstructions⟩
+  obtain ⟨finalTrace, finalFuel, finalPrefix, finalInstructions⟩ := finalHistory
   refine ⟨?_, normalized⟩
   refine ⟨
     { residual := ⟨Δ, P, suffix, fun point => lift (block.liftPoint suffix point)⟩
@@ -456,7 +517,7 @@ theorem RecoverySourceCheckpoint.after_commit_exhausted
     congr 1
     funext terminal
     simp only [Function.comp_apply, cast_cast]
-  · refine ⟨⟨finalTrace, finalFuel, finalPrefix⟩, ?_⟩
+  · refine ⟨⟨finalTrace, finalFuel, finalPrefix, finalInstructions⟩, ?_⟩
     intro who active
     have outside : who ∉ block.owners := fun member => active (allSource member)
     exact closed.history_eq_of_not_owner who outside

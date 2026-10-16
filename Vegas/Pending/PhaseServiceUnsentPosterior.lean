@@ -26,7 +26,7 @@ local notation "SeedAt" => ReactiveApplication.AddressedScheduler.CoordinateSeed
   (Address := PhaseSeedAddress graph) (LocalSeed := LocalSeed) (RestSeed := RestSeed)
 
 /-- At an actual unsent callback, the ORIGINAL local-seed prior is filtered
-by one constraint common to the entire owner-information fiber. It factors
+by one constraint common across its local activation-clock word. It factors
 from all remaining original coordinates, with their updated joint law intact. -/
 theorem unsent_posterior_splitAt (timed : DeadlineExpiry runtime decideLocal)
     (laws : PhaseSeedAddress graph → PMF LocalSeed) (restLaw : PMF RestSeed)
@@ -66,8 +66,16 @@ theorem unsent_posterior_splitAt (timed : DeadlineExpiry runtime decideLocal)
           (inputs.map (PhaseRuntimeState.initial plan)) horizon
           ((driver).family otherSeeds)).Trace (some ⟨otherRemaining, some owner, other⟩)),
         other.application.SeedRequest owner coordinate.1 →
-        (current.recall owner, current.observe app owner) =
-          (other.recall owner, other.observe app owner) →
+        (PhaseSeedScheduler.informationInput runtime leaks coordinate.1 owner
+          (current.recall owner) (current.observe app owner)).activationClocks ++
+          [(PhaseSeedScheduler.informationInput runtime leaks coordinate.1 owner
+            (current.recall owner) (current.observe app owner)).elapsed] =
+          (PhaseSeedScheduler.informationInput runtime leaks coordinate.1 owner
+            (other.recall owner) (other.observe app owner)).activationClocks ++
+            [(PhaseSeedScheduler.informationInput runtime leaks coordinate.1 owner
+              (other.recall owner) (other.observe app owner)).elapsed] →
+        (∀ message ∈ (app).outputs (other.recall owner),
+          PhaseSeedScheduler.ownPacket coordinate.1 owner message = false) →
         ∀ candidate, (driver).coordinateConsistentFrom otherSeeds.1 coordinate candidate []
             other.environmentRecall ↔ candidate ∈ event := by
   classical
@@ -121,20 +129,20 @@ theorem unsent_posterior_splitAt (timed : DeadlineExpiry runtime decideLocal)
         obtain ⟨_, ⟨trace⟩⟩ := PhaseSeedScheduler.trace_of_posterior_support runtime leaks (driver)
           laws restLaw bounds plan inputs horizon count within players covered input inputSupported
             before current owner reached chosen moved values supported
-        have common := (unsent_information_transcript runtime leaks priority decideLocal timed
+        have common := (unsent_clock_transcript runtime leaks priority decideLocal timed
           (ReactiveApplication.AddressedScheduler.unpack reference)
           (ReactiveApplication.AddressedScheduler.unpack values) bounds plan ordered maximal inputs
           horizon (horizon - count - 1) (horizon - count - 1) owner current current referenceTrace
-            trace coordinate request request rfl unsent).2 candidate
+            trace coordinate request request rfl unsent unsent).2 candidate
         change (driver).coordinateConsistentFrom rest coordinate candidate []
           current.environmentRecall ↔ candidate ∈ event
         simpa only [event, Set.mem_ofPred_eq, ReactiveApplication.AddressedScheduler.unpack, restEq]
           using common.symm)
   refine ⟨event, localPositive, residual, product, ?_⟩
-  intro otherSeeds otherRemaining other otherTrace otherRequest same candidate
-  exact ((unsent_information_transcript runtime leaks priority decideLocal timed
+  intro otherSeeds otherRemaining other otherTrace otherRequest same otherUnsent candidate
+  exact ((unsent_clock_transcript runtime leaks priority decideLocal timed
     (ReactiveApplication.AddressedScheduler.unpack reference) otherSeeds bounds plan ordered maximal
     inputs horizon (horizon - count - 1) otherRemaining owner current other referenceTrace
-      otherTrace coordinate request otherRequest same unsent).2 candidate).symm
+      otherTrace coordinate request otherRequest same unsent otherUnsent).2 candidate).symm
 
 end Vegas.EventGraphRuntime.PhaseServiceScheduler

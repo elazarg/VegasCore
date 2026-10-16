@@ -108,9 +108,9 @@ def RecoverySourceCheckpoint.transfer_of_same_attempt_prefix
   have ordered := (phaseApplication_seedOrder runtime leaks).history
     (inputs.map (PhaseRuntimeState.initial plan)) horizon scheduler initialized
       (menu.toRawTrace (inputs.map (PhaseRuntimeState.initial plan)) horizon scheduler prior)
-  have entry := phase_entry_of_same_attempt_prefix runtime leaks menu
+  have entry := (phase_attempt_progress_of_prefix runtime leaks menu
     (inputs.map (PhaseRuntimeState.initial plan)) initialized horizon scheduler before after
-      prior trace retained ordered same
+      prior trace retained ordered).2.2 same
   exact checkpoint.transfer entry.symm (congrArg CommitAttemptId.generation same).symm
     (congrArg CommitAttemptId.phase same).symm
 

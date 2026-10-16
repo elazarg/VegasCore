@@ -1239,6 +1239,18 @@ import Vegas.Game.PhaseRecoveryValueEntryBelief
 import Vegas.Pending.PhaseServicePrivateBelief
 import Vegas.Game.RecoveryArchivedSourceOrigin
 import Vegas.Game.PhaseRecoveryValuePassage
+import Vegas.Pending.PhaseAttemptPassage
+import Vegas.Game.PhaseRecoveryValueStoppedPassage
+import Vegas.Source.CommitRecoveryInstructions
+import Vegas.Source.CommitRecoveryCommitUnique
+import GameTheoryExtensions.Analysis.Protocol.ContinuationOwnPlay
+import GameTheoryExtensions.Analysis.Protocol.StoppedHistoryAtom
+import Vegas.Pending.PhaseClearInterval
+import Vegas.Pending.PhaseAttemptInputAtom
+import Vegas.Pending.PhaseCommitmentMenuShape
+import Vegas.Game.PhaseTimingContinuationNoise
+import Vegas.Game.PhaseTimingContinuationComparison
+import Vegas.Game.PhaseTimingStoppedComparison
 
 /-! # Checked sequential-equilibrium preservation, Nash correspondence and termination -/
 
@@ -6955,11 +6967,6 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.SourceProgram.lifted_commit_successor
 
-/-- info: 'Vegas.SourceProgram.CommitPrefix.Attempt.reaches_closed_lift'
-depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Vegas.SourceProgram.CommitPrefix.Attempt.reaches_closed_lift
-
 /-- info: 'Vegas.SourceProgram.CommitPrefix.Close.reaches'
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
@@ -12203,11 +12210,11 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
   Vegas.EventGraphRuntime.PhaseServiceScheduler.active_unsent_transcript_signature
 
 /-- info:
-'Vegas.EventGraphRuntime.PhaseServiceScheduler.unsent_information_transcript'
+'Vegas.EventGraphRuntime.PhaseServiceScheduler.unsent_clock_transcript'
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms
-  Vegas.EventGraphRuntime.PhaseServiceScheduler.unsent_information_transcript
+  Vegas.EventGraphRuntime.PhaseServiceScheduler.unsent_clock_transcript
 
 /-- info:
 'Vegas.EventGraphRuntime.PhaseServiceScheduler.unsent_posterior_splitAt'
@@ -12733,3 +12740,178 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms
   Vegas.EventGraphRuntime.PhaseServiceScheduler.belief_unsent_private_seed_product
+
+/-- info:
+'Vegas.EventGraphRuntime.phase_attempt_progress_of_prefix'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.phase_attempt_progress_of_prefix
+
+/-- info:
+'Vegas.EventGraphRuntime.phase_attempt_ancestor_of_exit'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.phase_attempt_ancestor_of_exit
+
+/-- info:
+'Vegas.EventGraphRuntime.phase_attempt_stopped_ancestor'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.phase_attempt_stopped_ancestor
+
+/-- info:
+'Vegas.phaseTimingPlanPolicy_value_bayes_stopped_passage'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseTimingPlanPolicy_value_bayes_stopped_passage
+
+/-- info:
+'Vegas.SourceProgram.CommitPrefix.Attempt.instructions_closed_lift'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.CommitPrefix.Attempt.instructions_closed_lift
+
+/-- info:
+'Vegas.SourceProgram.CommitPrefix.Attempt.close_clean_lift'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.CommitPrefix.Attempt.close_clean_lift
+
+/-- info:
+'Vegas.SourceProgram.CommitPrefix.Attempt.close_exhausted_lift'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.CommitPrefix.Attempt.close_exhausted_lift
+
+/-- info:
+'Vegas.SourceProgram.Setup.recoveryTrace_of_instructions'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.recoveryTrace_of_instructions
+
+/-- info:
+'Vegas.SourceProgram.ProtocolState.recoveryStep_commit_pure'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.ProtocolState.recoveryStep_commit_pure
+
+/-- info:
+'Vegas.SourceProgram.CommitRecoveryState.step_unique_of_commit'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.CommitRecoveryState.step_unique_of_commit
+
+/-- info:
+'Vegas.SourceProgram.CommitRecoveryState.step_inside_commit'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.CommitRecoveryState.step_inside_commit
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecovery_prefix_inside_commit'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecovery_prefix_inside_commit
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecovery_history_eq_of_commit_window'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecovery_history_eq_of_commit_window
+
+/-- info:
+'GameTheory.Protocol.ExecutionProtocol.ReachesWithin.tracePrefix'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  GameTheory.Protocol.ExecutionProtocol.ReachesWithin.tracePrefix
+
+/-- info:
+'GameTheory.Protocol.InformationModel.ownPlayReachProbability_ofFn'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  GameTheory.Protocol.InformationModel.ownPlayReachProbability_ofFn
+
+/-- info:
+'GameTheory.Protocol.InformationModel.exists_continuation_ownPlay_factor'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  GameTheory.Protocol.InformationModel.exists_continuation_ownPlay_factor
+
+/-- info:
+'Vegas.EventGraphRuntime.phase_phases_eq_of_clear_unfinished_prefix'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.phase_phases_eq_of_clear_unfinished_prefix
+
+/-- info:
+'Vegas.EventGraphRuntime.phase_interval_of_between_clear_ready'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.phase_interval_of_between_clear_ready
+
+/-- info:
+'Vegas.phase_timing_continuation_callback_factor'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phase_timing_continuation_callback_factor
+
+/-- info:
+'Vegas.phase_timing_continuation_path_noise'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phase_timing_continuation_path_noise
+
+/-- info:
+'GameTheory.Protocol.InformationModel.runBehavioralUntil_support_prefix'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  GameTheory.Protocol.InformationModel.runBehavioralUntil_support_prefix
+
+/-- info:
+'GameTheory.Protocol.InformationModel.runBehavioralUntil_apply_of_first_hit'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  GameTheory.Protocol.InformationModel.runBehavioralUntil_apply_of_first_hit
+
+/-- info:
+'Vegas.EventGraphRuntime.phase_current_attempt_until_atom'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.phase_current_attempt_until_atom
+
+/-- info:
+'Vegas.EventGraphRuntime.PhaseCount.onePacket_commitment_shape'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseCount.onePacket_commitment_shape
+
+/-- info:
+'Vegas.phase_timing_continuation_stopped_noise'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phase_timing_continuation_stopped_noise

@@ -84,8 +84,8 @@ theorem active_unsent_transcript_signature
       (idle.recall owner)).map Prod.fst =
       (PhaseSeedScheduler.informationInput runtime leaks coordinate.1 owner
         (execution.recall owner) (execution.observe app owner)).activationClocks ++
-      [(PhaseSeedScheduler.informationInput runtime leaks coordinate.1 owner
-        (execution.recall owner) (execution.observe app owner)).elapsed] := by
+        [(PhaseSeedScheduler.informationInput runtime leaks coordinate.1 owner
+          (execution.recall owner) (execution.observe app owner)).elapsed] := by
     simp only [idle, ReactiveApplication.Execution.respond, PhaseSeedScheduler.ownerWord,
       List.filter_append, List.filter_cons, List.filter_nil, List.map_append, List.map_cons,
       List.map_nil, visibleBool, ite_true, PhaseSeedScheduler.informationInput]
@@ -150,10 +150,10 @@ theorem active_unsent_transcript_signature
   simpa only [idle, (app).respond_environmentRecall] using
     And.intro counted ⟨positives, exhaustionCount, restored⟩
 
-/-- Complete owner information recovers the whole actual unsent query
-transcript, for arbitrary original remainder and local seeds. Consequently
-every candidate seed has the same filter throughout that information fiber. -/
-theorem unsent_information_transcript
+/-- The local activation-clock word recovers the whole actual unsent query
+transcript across different private information, remainder and local seeds.
+Every candidate seed has the same filter across that entire clock class. -/
+theorem unsent_clock_transcript
     (priority : RestSeed → List (app).EnvironmentEntry → (app).EnvironmentView → Nat)
     (decideLocal : PhaseSeedAddress graph → LocalSeed → PhaseSeedOperationalInput graph →
       PhaseSeedDecision)
@@ -176,9 +176,17 @@ theorem unsent_information_transcript
     (coordinate : PhaseSeedAddress graph)
     (firstRequest : first.application.SeedRequest owner coordinate.1)
     (secondRequest : second.application.SeedRequest owner coordinate.1)
-    (same : (first.recall owner, first.observe app owner) =
-      (second.recall owner, second.observe app owner))
+    (same : (PhaseSeedScheduler.informationInput runtime leaks coordinate.1 owner
+      (first.recall owner) (first.observe app owner)).activationClocks ++
+      [(PhaseSeedScheduler.informationInput runtime leaks coordinate.1 owner
+        (first.recall owner) (first.observe app owner)).elapsed] =
+      (PhaseSeedScheduler.informationInput runtime leaks coordinate.1 owner
+        (second.recall owner) (second.observe app owner)).activationClocks ++
+        [(PhaseSeedScheduler.informationInput runtime leaks coordinate.1 owner
+          (second.recall owner) (second.observe app owner)).elapsed])
     (unsent : ∀ message ∈ (app).outputs (first.recall owner),
+      PhaseSeedScheduler.ownPacket coordinate.1 owner message = false)
+    (secondUnsent : ∀ message ∈ (app).outputs (second.recall owner),
       PhaseSeedScheduler.ownPacket coordinate.1 owner message = false) :
     (controller runtime leaks priority decideLocal).coordinateTranscriptFrom firstSeeds.1 coordinate
         [] first.environmentRecall =
@@ -191,13 +199,11 @@ theorem unsent_information_transcript
   classical
   let alphabet : MessageNetwork.ObservationRule Player (WitnessedPacket graph) :=
     fun _ _ => PMF.pure ∅
-  have samePast : first.recall owner = second.recall owner := congrArg Prod.fst same
-  have secondUnsent : ∀ message ∈ (app).outputs (second.recall owner),
-      PhaseSeedScheduler.ownPacket coordinate.1 owner message = false := by
-    rw [← samePast]
-    exact unsent
-  have inputEq := congrArg (fun pair : List (app).PlayerEntry × (app).PlayerView =>
-    PhaseSeedScheduler.informationInput runtime leaks coordinate.1 owner pair.1 pair.2) same
+  have reversed := congrArg List.reverse same
+  simp only [List.reverse_append, List.reverse_singleton, List.singleton_append,
+    List.cons.injEq] at reversed
+  have sameClocks := List.reverse_injective reversed.2
+  have sameElapsed := reversed.1
   obtain ⟨firstCounted, firstClocks, firstWaits, firstRestore⟩ :=
     active_unsent_transcript_signature runtime leaks alphabet priority decideLocal timed firstSeeds
       bounds plan ordered maximal inputs horizon firstRemaining owner first firstTrace coordinate
@@ -206,7 +212,7 @@ theorem unsent_information_transcript
     active_unsent_transcript_signature runtime leaks alphabet priority decideLocal timed secondSeeds
       bounds plan ordered maximal inputs horizon secondRemaining owner second secondTrace coordinate
         secondRequest secondUnsent
-  rw [inputEq] at firstClocks firstWaits firstRestore
+  simp only [sameClocks, sameElapsed] at firstClocks firstWaits firstRestore
   have emptyLog (items : List (PhaseSeedOperationalInput graph × (app).Command)) :
       ∀ entry ∈ items.map (counterEntry runtime leaks alphabet owner),
         entry.query.input.emitted = [] := by

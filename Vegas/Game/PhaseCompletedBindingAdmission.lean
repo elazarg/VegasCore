@@ -107,8 +107,8 @@ theorem phase_stamped_binding_admitted
   have rawBefore := menu.toRawTrace initial horizon scheduler prior
   have ordered := (phaseApplication_seedOrder runtime leaks).history initial horizon scheduler
     initialized rawBefore
-  have sameEntry := phase_entry_of_same_attempt_prefix runtime leaks menu initial initialized
-    horizon scheduler before control prior trace retainedTrace ordered sameAttempt
+  have sameEntry := (phase_attempt_progress_of_prefix runtime leaks menu initial initialized
+    horizon scheduler before control prior trace retainedTrace ordered).2.2 sameAttempt
   have generation : before.execution.application.generation =
       control.execution.application.generation := congrArg CommitAttemptId.generation sameAttempt
   have position : before.execution.application.attempt.phase =

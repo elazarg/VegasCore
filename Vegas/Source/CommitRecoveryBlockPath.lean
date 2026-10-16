@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Source.CommitRecoveryCommitStep
+import Vegas.Source.CommitRecoveryInstructions
 
 /-! # Every typed commitment attempt is a path of legal recovery instructions -/
 
@@ -44,7 +44,7 @@ theorem Attempt.liftPoint_entry_of_length_zero
 is retained while later commitment instructions remain before its saved block
 endpoint. The final instruction applies the actual closure, which may simply
 retain an unfinished maximal block. -/
-theorem Attempt.reaches_closed_lift
+theorem Attempt.instructions_closed_lift
     {wholeΓ Γ Δ : SourceCtx Player L} {wholeO O P : Finset VarId}
     (whole : SourceProgram Player L wholeΓ wholeO) (initial : Config Player L wholeΓ)
     {block : CommitPrefix Γ O Δ P} {entry : Config Player L Γ} {excluded : Finset Player}
@@ -68,7 +68,7 @@ theorem Attempt.reaches_closed_lift
       (stateExcluded : state.excluded = excluded),
     ProtocolState.atCommit whole state.saved = true →
     ProtocolState.commitEnd whole state.saved ≤ instructionCount suffix → 0 < block.length →
-    (commitRecoveryProtocol whole initial).Reaches state
+    CommitRecoveryState.InstructionPath whole initial attempt.joints state
       (state.install (lift (block.liftPoint suffix (ProtocolState.entry suffix finished)), after)
         (fun _ member => attempt.excluded_subset (stateExcluded ▸ member))).close := by
   induction attempt with
@@ -82,15 +82,26 @@ theorem Attempt.reaches_closed_lift
         positive
       let headConfig := commitSuccessor name guard entry choice
       let headExcluded := excludeCommit excluded owner missed
-      obtain ⟨monotone, first⟩ := lifted_commit_successor whole initial guard
+      obtain ⟨monotone, firstLegal, firstReached⟩ := lifted_commit_successor whole initial guard
         (rest.prepend suffix) lift ranks actors menus steps entry state atEntry choice missed
         missingFailure
       have monotone' : state.excluded ⊆ headExcluded := by
         simpa only [stateExcluded, active, ↓reduceIte, headExcluded] using monotone
       let next := state.install (lift (Sum.inr
         (ProtocolState.entry (rest.prepend suffix) headConfig)), headExcluded) monotone'
-      have firstStep : (commitRecoveryProtocol whole initial).Successor next.close state := by
-        simpa only [stateExcluded, active, ↓reduceIte, headConfig, headExcluded, next] using first
+      have jointEq : state.commitJoint owner name payload choice missed =
+          (fun who => if who = owner then some ⟨.commit owner name payload choice, missed⟩
+            else none) := by
+        funext who
+        simp only [CommitRecoveryState.commitJoint, stateExcluded, active, not_false_eq_true,
+          and_true]
+      have firstStep : next.close ∈
+          ((commitRecoveryProtocol whole initial).step state
+            ⟨state.commitJoint owner name payload choice missed, firstLegal⟩).support := by
+        simpa only [stateExcluded, active, ↓reduceIte, headConfig, headExcluded, next]
+          using firstReached
+      simp only [Attempt.joints]
+      rw [← jointEq]
       by_cases remaining : 0 < rest.length
       · have beforeEnd : ProtocolState.commitEnd whole next.saved <
             ProtocolState.remaining whole next.point := by
@@ -110,7 +121,7 @@ theorem Attempt.reaches_closed_lift
             simpa only [prepend, ProtocolState.recoveryStep, Sum.elim_inr, PMF.map_comp,
               Function.comp_def] using steps (Sum.inr point) owners joint)
           next rfl rfl committing endpoint remaining
-        exact Reaches.step firstStep (by
+        exact CommitRecoveryState.InstructionPath.step firstLegal firstStep (by
           simpa only [next, CommitRecoveryState.install, liftPoint] using continuation)
       · have zero : rest.length = 0 := by omega
         obtain ⟨point, owners⟩ := later.liftPoint_entry_of_length_zero suffix zero
@@ -122,20 +133,30 @@ theorem Attempt.reaches_closed_lift
                   (stateExcluded ▸ member))).close = next.close := by
           simp only [liftPoint, point, owners, next, headConfig, headExcluded]
         rw [final]
-        exact Reaches.step firstStep (.refl _)
+        simp only [later.joints_eq_nil_of_length_zero zero]
+        exact CommitRecoveryState.InstructionPath.step firstLegal firstStep (.refl _)
   | @excluded Γ Δ O P name owner payload fresh guard rest entry excluded finished after
       inactive later ih =>
       intro suffix lift ranks actors menus steps state atEntry stateExcluded committing endpoint
         positive
       let headConfig := automaticCommit name owner payload entry
-      obtain ⟨monotone, first⟩ := lifted_commit_successor whole initial guard
+      obtain ⟨monotone, firstLegal, firstReached⟩ := lifted_commit_successor whole initial guard
         (rest.prepend suffix) lift ranks actors menus steps entry state atEntry .failure false
         (by intro impossible; cases impossible)
       have monotone' : state.excluded ⊆ excluded := by rw [stateExcluded]
       let next := state.install (lift (Sum.inr
         (ProtocolState.entry (rest.prepend suffix) headConfig)), excluded) monotone'
-      have firstStep : (commitRecoveryProtocol whole initial).Successor next.close state := by
-        simpa only [stateExcluded, inactive, ↓reduceIte, headConfig, next] using first
+      have jointEq : state.commitJoint owner name payload .failure false =
+          (fun _ => none) := by
+        funext who
+        simp only [CommitRecoveryState.commitJoint, stateExcluded, inactive, not_true_eq_false,
+          and_false, ↓reduceIte]
+      have firstStep : next.close ∈
+          ((commitRecoveryProtocol whole initial).step state
+            ⟨state.commitJoint owner name payload .failure false, firstLegal⟩).support := by
+        simpa only [stateExcluded, inactive, ↓reduceIte, headConfig, next] using firstReached
+      simp only [Attempt.joints]
+      rw [← jointEq]
       by_cases remaining : 0 < rest.length
       · have beforeEnd : ProtocolState.commitEnd whole next.saved <
             ProtocolState.remaining whole next.point := by
@@ -155,7 +176,7 @@ theorem Attempt.reaches_closed_lift
             simpa only [prepend, ProtocolState.recoveryStep, Sum.elim_inr, PMF.map_comp,
               Function.comp_def] using steps (Sum.inr point) owners joint)
           next rfl rfl committing endpoint remaining
-        exact Reaches.step firstStep (by
+        exact CommitRecoveryState.InstructionPath.step firstLegal firstStep (by
           simpa only [next, CommitRecoveryState.install, liftPoint] using continuation)
       · have zero : rest.length = 0 := by omega
         obtain ⟨point, owners⟩ := later.liftPoint_entry_of_length_zero suffix zero
@@ -167,7 +188,8 @@ theorem Attempt.reaches_closed_lift
                 (stateExcluded ▸ member))).close = next.close := by
           simp only [liftPoint, point, owners, next, headConfig]
         rw [final]
-        exact Reaches.step firstStep (.refl _)
+        simp only [later.joints_eq_nil_of_length_zero zero]
+        exact CommitRecoveryState.InstructionPath.step firstLegal firstStep (.refl _)
 
 end CommitPrefix
 end Vegas.SourceProgram

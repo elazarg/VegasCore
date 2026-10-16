@@ -54,7 +54,10 @@ theorem RecoverySourceCheckpoint.after_commit_retry_archived
           (next.residual.lift (ProtocolState.entry next.residual.tail next.source))
           state.normalize.entry.excluded state.normalize.generation))) (fuel : Nat),
         setup.commitRecoveryProtocol.ReachesWithin fuel
-          ⟨_, priorTrace⟩ ⟨_, nextTrace⟩ := by
+          ⟨_, priorTrace⟩ ⟨_, nextTrace⟩ ∧
+        setup.recoveryJointRecall nextTrace =
+          (checkpoint.commitInstructionWord (phase.drain state.current).native).reverse ++
+            setup.recoveryJointRecall priorTrace := by
   obtain ⟨next, _point, sourcePrefix, word⟩ := checkpoint.after_commit_retry
     priorTrace committing phase remaining installed
     maximal binding receipts remembered native finished missed survives

@@ -1,6 +1,6 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**SE: non-concurrent ✓ · private-seed product ✓ · native entry Bayes ✓ · chronology/source Bayes/incentives open.**
+**SE: non-concurrent ✓ · clock-only seed law ✓ · stopped native Bayes ✓ · source info/Bayes/incentives open.**
 
 <details>
 <summary>Checked recovery milestones and remaining proof obligations</summary>
@@ -477,6 +477,11 @@ local-seed filter factors from those retained member draws jointly with full
 history and every other original seed, for every belief on the native fiber.
 This includes the members' unplayed future decisions; it does not identify
 their continuation payoffs or establish a common delivery ranking.
+The seed constraint is common across all genuine unsent callbacks with the
+same local activation-clock word, even when their complete native and private
+information differs. This removes private information from the filtered local
+prior itself. A common success score and comparison against policies reading
+other traffic still require actual continuation proofs.
 
 The original global source-policy and per-owner full timing-plan draws realize
 the literal assembled stopped physical history law at every actual clear actor.
@@ -493,9 +498,12 @@ weights, rather than replacing them by source reference-entry weights.
 The actual native belief is the normalized passage law from the original
 member draws through their exact first full-ID entry and same-member stopped
 continuation. Its denominator is the actual native information mass, positive
-under the common fully mixed strategy. The common terminal tail after an exit
-remains explicit; reducing it and identifying chronological source Bayes are
-still required.
+under the common fully mixed strategy. At a genuine clear input of the same
+full attempt ID, actual exclusion persistence, namespace monotonicity and the
+site antichain remove the terminal tail: the stopped endpoint's ancestor gives
+the actual native conditional law directly. Terminal and skipped-entry mass
+remain in that law. Identifying it with chronological source Bayes is still
+required.
 Reference source-view conditioning retains full entry and plan tags and their
 actual observation tilt; those reference tags cannot be replaced by independent
 fresh draws at a later entry.
@@ -509,6 +517,13 @@ The all-clear canonical completion does not establish optimality at those
 inputs. Finite counted histories follow from the explicit finite initial law,
 finite leak support and finite scheduler branching clauses, rather than from
 opportunity or inclusion bounds alone.
+The chosen source traces now retain the exact original typed choices and
+omission instructions of the actual native decoder, through clean closure,
+retry and exhaustion. Each archived source origin keeps its real closing trace,
+that exact instruction word and its onward source path. Full owner-information
+observability must still identify these traces with the paired block traces
+and recover every chronological source signal; it is not inferred from equal
+source endpoints or abstract reachability.
 Full concurrent SE preservation remains unproved.
 </details>
 
@@ -3736,7 +3751,7 @@ needs its own review. What is known:
 | The actual scheduler posterior conditioned on its transcript and query log factors with the local prior filtered by the recorded answers | `Vegas.EventGraphRuntime.LocalSeedController.posterior_transcript_log` |
 | Actual owner recall reconstructs every positive local query and its index along complete runs, under the operational-domain invariant | `Vegas.EventGraphRuntime.LocalSeedController.runJoint_initial_ownerLog` |
 | Counted unsent query logs are determined by their positive-query history and exhaustion count | `Vegas.EventGraphRuntime.LocalSeedController.CountedQueryLog.eq_of_unsent_signature` |
-| Complete unsent phased query transcripts agree across genuine equal owner information | `Vegas.EventGraphRuntime.PhaseServiceScheduler.unsent_information_transcript` |
+| Complete unsent phased query transcripts agree across the same local clock word | `Vegas.EventGraphRuntime.PhaseServiceScheduler.unsent_clock_transcript` |
 | One original local-seed filter factors from full history for every belief at the native site | `Vegas.EventGraphRuntime.PhaseServiceScheduler.belief_unsent_seed_product` |
 | Original source-policy and timing-plan tags realize the initialized stopped physical law | `Vegas.phaseTimingPlanPolicy_value_initial_memory_joint` |
 | The concrete local service derives packet inclusion and expiry resolution on genuine clean one-packet histories | `Vegas.EventGraphRuntime.countedLocalSeedController` |

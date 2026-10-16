@@ -1088,3 +1088,7 @@ import Vegas.Game.PhaseRecoveryValueEntry
 import Vegas.Game.PhaseRecoveryValueEntryBelief
 import Vegas.Game.RecoveryArchivedSourceOrigin
 import Vegas.Game.PhaseRecoveryValuePassage
+import Vegas.Game.PhaseRecoveryValueStoppedPassage
+import Vegas.Game.PhaseTimingContinuationNoise
+import Vegas.Game.PhaseTimingContinuationComparison
+import Vegas.Game.PhaseTimingStoppedComparison

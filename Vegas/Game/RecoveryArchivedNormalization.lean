@@ -132,12 +132,15 @@ theorem RecoverySourceCheckpoint.normalized_archived
           (fun field value present => phase.drain_keepsStore current field value
             (stored field value present)) _ (checkpoint.agrees selected)
       have archivedSource {history : setup.commitRecoveryProtocol.History} {fuel : Nat}
-          (path : setup.commitRecoveryProtocol.ReachesWithin fuel ⟨_, priorTrace⟩ history) :
+          (path : setup.commitRecoveryProtocol.ReachesWithin fuel ⟨_, priorTrace⟩ history)
+          (instructions : setup.recoveryJointRecall history.trace =
+            (checkpoint.commitInstructionWord image.native).reverse ++
+              setup.recoveryJointRecall priorTrace) :
           ArchivedSourceOrigins setup mode
             (retired ++ [⟨⟨phase.low, generation⟩, image.native⟩]) history :=
         ArchivedSourceOrigins.append checkpoint priorTrace origins aligned
           ⟨⟨phase.low, generation⟩, image.native⟩ rfl retained position.1 imageAgrees sourcePositive
-          path
+          path instructions
       have advance (next : RecoveryState ((toEventGraph setup.program).withMode mode))
           (archive : List (RetiredCommitAttempt ((toEventGraph setup.program).withMode mode)))
           (nextPrefix : next.native.config.cut.IsPrefix phase.high)
@@ -197,7 +200,7 @@ theorem RecoverySourceCheckpoint.normalized_archived
               phase kind rfl checkpoint.source
             by_cases missed : ((image.excluded \ entry.excluded) ∩ phase.owners).Nonempty
             · by_cases survives : (phase.owners \ image.excluded).Nonempty
-              · obtain ⟨next, nextAligned, nextTrace, fuel, path⟩ :=
+              · obtain ⟨next, nextAligned, nextTrace, fuel, path, instructions⟩ :=
                   checkpoint.after_commit_retry_archived priorTrace aligned archives
                     committing phase remaining rfl kind maximal binding receipts remembered native
                     finished missed survives
@@ -208,7 +211,7 @@ theorem RecoverySourceCheckpoint.normalized_archived
                   (PhaseRuntimeState.settle (phase :: remaining) generation entry current
                     retired).retired ⟨_, nextTrace⟩
                 rw [normalized]
-                exact archivedSource path
+                exact archivedSource path instructions
               · obtain ⟨⟨nextCheckpoint, sourcePrefix, word⟩, normalized⟩ :=
                   checkpoint.after_commit_exhausted priorTrace committing
                   phase remaining rfl maximal binding receipts stored finished missed survives
@@ -286,9 +289,9 @@ theorem RecoverySourceCheckpoint.normalized_archived
                   rebuiltBinding rebuiltRecord.receipts rebuiltCoverage
                   (beforeNext archive archiveBefore rebuilt)
                   (by
-                    obtain ⟨nextTrace, nextFuel, nextPath⟩ := sourcePrefix
+                    obtain ⟨nextTrace, nextFuel, nextPath, instructions⟩ := sourcePrefix
                     exact ⟨nextCheckpoint, nextAligned, nextTrace, nextFuel, nextPath,
-                      archivedSource nextPath⟩)
+                      archivedSource nextPath instructions⟩)
             · obtain ⟨⟨nextCheckpoint, _sourcePoint, sourcePrefix, word, _intended⟩, normalized⟩ :=
                 checkpoint.after_commit_clean priorTrace committing
                 phase remaining rfl maximal binding receipts stored remembered native order.coverage
@@ -298,7 +301,7 @@ theorem RecoverySourceCheckpoint.normalized_archived
                 imageCoverage (beforeNext retired oldBefore image)
                 ⟨nextCheckpoint, archived_extension checkpoint aligned archives phase remaining rfl
                   image position.1 retained inherited nextCheckpoint word, by
-                    obtain ⟨nextTrace, nextFuel, nextPath⟩ := sourcePrefix
+                    obtain ⟨nextTrace, nextFuel, nextPath, _instructions⟩ := sourcePrefix
                     exact ⟨nextTrace, nextFuel, nextPath, origins.trans nextPath⟩⟩
         | reveal =>
             obtain ⟨nextCheckpoint, sourcePrefix, word, _intended⟩ :=

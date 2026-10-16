@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.PhaseTimingCommitmentNoise
+import GameTheoryExtensions.Analysis.Protocol.ContinuationOwnPlay
 
 /-! # Exact marked transmission contributions across commitment callbacks -/
 
@@ -58,20 +59,6 @@ theorem prod_le_trimmed_add_marked {Index : Type} [DecidableEq Index]
       rw [Finset.prod_insert fresh, Finset.prod_insert fresh, erased]
       nlinarith
 
-private theorem ownPlay_ofFn
-    {Player : Type} {Protocol : GameTheory.Protocol.ExecutionProtocol Player}
-    (model : GameTheory.Protocol.InformationModel Protocol)
-    (who : Player) (policy : model.BehavioralPolicy who)
-    {count : Nat} (records : Fin count → model.InfoState who × Protocol.Action who) :
-    model.ownPlayReachProbability policy (List.ofFn records) =
-      ∏ index, (((policy (records index).1).map Subtype.val)
-        (some (records index).2)).toReal := by
-  induction count with
-  | zero => simp [InformationModel.ownPlayReachProbability]
-  | succ count ih =>
-      rw [List.ofFn_succ, InformationModel.ownPlayReachProbability, Fin.prod_univ_succ]
-      rw [ih]
-
 private theorem ownPlay_agents_of_records
     {Player : Type} {Protocol : GameTheory.Protocol.ExecutionProtocol Player}
     (model : GameTheory.Protocol.InformationModel Protocol)
@@ -86,7 +73,7 @@ private theorem ownPlay_agents_of_records
       ∏ index : Fin records.length,
         (laws ⟨who, ⟨(records[index.val]).1, present index⟩⟩ (choices index)).toReal := by
   classical
-  have array := ownPlay_ofFn model who (model.agentBehavior sites fallback laws who)
+  have array := model.ownPlayReachProbability_ofFn who (model.agentBehavior sites fallback laws who)
     (fun index : Fin records.length => records[index.val])
   simp only [List.ofFn_getElem] at array
   rw [array]

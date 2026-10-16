@@ -49,16 +49,20 @@ theorem phaseApplication_sameAttempt_entry :
     · cases (PMF.mem_support_pure_iff _ _).mp reached
       rfl
 
-/-- Monotone namespaces rule out a restore at an intermediate actual prefix. -/
-theorem phase_entry_of_same_attempt_prefix
+/-- Actual prefixes increase both namespace coordinates; retaining the full namespace
+also retains the same saved checkpoint. -/
+theorem phase_attempt_progress_of_prefix
     (menu : (app).ResponseMenu) (initial : PMF (app).State)
     (initialized : ∀ state ∈ initial.support, state.Ordered) (horizon : Nat)
     (scheduler : (app).Scheduler) (before after : (app).Control)
     (prior : (menu.protocol initial horizon scheduler).Trace (some before))
     (trace : (menu.protocol initial horizon scheduler).Trace (some after))
-    (retained : TracePrefix prior trace) (ordered : before.execution.application.Ordered)
-    (same : before.execution.application.attempt = after.execution.application.attempt) :
-    before.execution.application.entry = after.execution.application.entry := by
+    (retained : TracePrefix prior trace) (ordered : before.execution.application.Ordered) :
+    before.execution.application.attempt.generation ≤
+        after.execution.application.attempt.generation ∧
+      before.execution.application.attempt.phase ≤ after.execution.application.attempt.phase ∧
+      (before.execution.application.attempt = after.execution.application.attempt →
+        before.execution.application.entry = after.execution.application.entry) := by
   have along : ∀ {target} {targetTrace : (menu.protocol initial horizon scheduler).Trace target},
       TracePrefix prior targetTrace → ∃ next : (app).Control, target = some next ∧
         next.execution.application.Ordered ∧
@@ -96,9 +100,9 @@ theorem phase_entry_of_same_attempt_prefix
         exact ((phaseApplication_sameAttempt_entry runtime leaks).transition initial horizon
           scheduler middle next joint realized middleOrdered
             (intermediate.symm.trans finalSame)).trans (previous intermediate)
-  obtain ⟨next, equality, _ordered, _gen, _phase, result⟩ := along retained
+  obtain ⟨next, equality, _ordered, generation, phase, result⟩ := along retained
   cases Option.some.inj equality
-  exact (result same).symm
+  exact ⟨generation, phase, fun same => (result same).symm⟩
 
 /-- An actual emitted packet retains the namespace in its original full callback
 view. This statement covers arbitrary raw responses and all earlier attempts. -/

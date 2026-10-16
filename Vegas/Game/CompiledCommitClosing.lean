@@ -57,7 +57,7 @@ theorem sourceClose_of_clean_bindingPhase
         state.retired := by
   let phase := compiledCommitPhase whole mode block suffix embedding compiled positive
   have head : state.phases.head? = some phase := by rw [installed]; rfl
-  obtain ⟨finalSource, ⟨attempt⟩, values, registry⟩ :=
+  obtain ⟨finalSource, _finalSourceEq, ⟨attempt⟩, values, registry⟩ :=
     sourceAttempt_of_drained_bindingPhase whole mode block suffix embedding compiled positive
       state head binding.active receipts stored entry agree guards finished
   have noFailure : attempt.failedOwners = ∅ := by
@@ -97,7 +97,7 @@ theorem sourceClose_of_retry_bindingPhase
       ∀ who, (entry.history who).IsPrefix (finalSource.history who) := by
   let phase := compiledCommitPhase whole mode block suffix embedding compiled positive
   have head : state.phases.head? = some phase := by rw [installed]; rfl
-  obtain ⟨finalSource, ⟨attempt⟩, _values, _registry⟩ :=
+  obtain ⟨finalSource, _finalSourceEq, ⟨attempt⟩, _values, _registry⟩ :=
     sourceAttempt_of_drained_bindingPhase whole mode block suffix embedding compiled positive
       state head binding.active receipts stored entry agree guards finished
   have failed : attempt.failedOwners.Nonempty := by rwa [← attempt.newly_excluded]
@@ -129,6 +129,8 @@ theorem sourceClose_of_exhausted_bindingPhase
     let rebuilt := phase.drain (PhaseRuntimeState.restore state.entry image)
     let checkpoint : CommitCheckpoint Γ := ⟨entry, state.entry.excluded, state.generation⟩
     ∃ finalSource : SourceProgram.Config Player L Δ,
+      finalSource = (decodeCommitAttempt whole mode block suffix embedding image.native entry
+        state.entry.excluded).1 ∧
       block.Close checkpoint
         (.settled (block.automatic { entry with history := finalSource.history }) image.excluded) ∧
       (commitBlockRefs whole block suffix embedding refs).Agrees
@@ -145,7 +147,7 @@ theorem sourceClose_of_exhausted_bindingPhase
   let restored := PhaseRuntimeState.restore state.entry image
   let rebuilt := phase.drain restored
   have head : state.phases.head? = some phase := by rw [installed]; rfl
-  obtain ⟨finalSource, ⟨attempt⟩, _values, _registry⟩ :=
+  obtain ⟨finalSource, finalSourceEq, ⟨attempt⟩, _values, _registry⟩ :=
     sourceAttempt_of_drained_bindingPhase whole mode block suffix embedding compiled positive
       state head binding.active receipts stored entry agree guards finished
   have failed : attempt.failedOwners.Nonempty := by rwa [← attempt.newly_excluded]
@@ -181,14 +183,16 @@ theorem sourceClose_of_exhausted_bindingPhase
     intro name cell source
     exact (refs.get source).get?_preserved restored.native.config.store _
       (phase.drain_keepsStore restored) _ (agree source)
-  obtain ⟨automaticSource, ⟨automaticAttempt⟩, automaticValues, automaticGuards⟩ :=
+  obtain ⟨automaticSource, _automaticSourceEq, ⟨automaticAttempt⟩, automaticValues,
+    automaticGuards⟩ :=
     sourceAttempt_of_completed_bindings whole mode block suffix embedding compiled positive
       rebuilt restoredSource image.excluded (phase.drain_bindingInvariant restored restoredValid)
-      ((BindingReceiptOrder.of_prefix restoredReceipts saved).congr (phase.drain_tables restored).1)
+      ((BindingReceiptOrder.of_prefix restoredReceipts saved).congr
+        (phase.drain_tables restored).1)
       ((SuffixExclusionRecord.of_prefix restoredReceipts saved rfl).phase_drain phase)
       (phase.drain_within restored within) rebuiltFinished restoredAgree guards
   have automaticEq := (automaticAttempt.eq_automatic_of_owners allSource).1
-  refine ⟨finalSource, .exhausted attempt failed allSource, ?_, ?_, ?_⟩
+  refine ⟨finalSource, finalSourceEq, .exhausted attempt failed allSource, ?_, ?_, ?_⟩
   · intro name cell source
     simpa only [automaticEq] using automaticValues source
   · simpa only [automaticEq] using automaticGuards

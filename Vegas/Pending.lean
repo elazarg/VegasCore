@@ -714,3 +714,7 @@ import Vegas.Pending.PhaseServiceUnsentBayes
 import Vegas.Pending.PhaseArchivedSavedObservation
 import Vegas.Pending.PhaseAttemptEntryStopping
 import Vegas.Pending.PhaseServicePrivateBelief
+import Vegas.Pending.PhaseAttemptPassage
+import Vegas.Pending.PhaseClearInterval
+import Vegas.Pending.PhaseAttemptInputAtom
+import Vegas.Pending.PhaseCommitmentMenuShape

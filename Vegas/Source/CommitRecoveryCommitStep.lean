@@ -16,6 +16,14 @@ namespace CommitRecoveryState
 
 variable {Γ : SourceCtx Player L} {O : Finset VarId} {whole : SourceProgram Player L Γ O}
 
+/-- The original one-owner recovery instruction, retaining its actual omission
+marker. An already excluded owner supplies no original action. -/
+def commitJoint (state : CommitRecoveryState whole) (owner : Player) (name : VarId)
+    (payload : L.Ty) (choice : PublicationResult (L.Val payload)) (missed : Bool) :
+    Player → Option (CommitRecoveryMove Player L) :=
+  fun who => if who = owner ∧ owner ∉ state.excluded then
+    some ⟨.commit owner name payload choice, missed⟩ else none
+
 /-- A supported raw instruction gives the exact automatically closed successor. -/
 theorem step_contains_close (state : CommitRecoveryState whole)
     (joint : Player → Option (CommitRecoveryMove Player L))
@@ -63,15 +71,16 @@ theorem lifted_commit_successor
     let nextConfig := if inactive then automaticCommit name owner payload config
       else commitSuccessor name guard config choice
     let excluded := if inactive then state.excluded else excludeCommit state.excluded owner missed
+    let joint := state.commitJoint owner name payload choice missed
     ∃ monotone : state.excluded ⊆ excluded,
-      (commitRecoveryProtocol whole initial).Successor
+      ∃ legal : (commitRecoveryProtocol whole initial).Legal state joint,
         (state.install (lift (Sum.inr (ProtocolState.entry tail nextConfig)), excluded)
-          monotone).close state := by
+          monotone).close ∈
+          ((commitRecoveryProtocol whole initial).step state ⟨joint, legal⟩).support := by
   classical
   dsimp only
   let move : CommitRecoveryMove Player L := ⟨.commit owner name payload choice, missed⟩
-  let joint : Player → Option (CommitRecoveryMove Player L) := fun who =>
-    if who = owner ∧ owner ∉ state.excluded then some move else none
+  let joint := state.commitJoint owner name payload choice missed
   have acting : ProtocolState.actor whole state.point = some owner := by
     rw [atEntry, actors]
     rfl
@@ -111,7 +120,7 @@ theorem lifted_commit_successor
       split
       · exact Finset.subset_insert _ _
       · exact Finset.Subset.refl _
-  refine ⟨monotone, joint, legal, state.step_contains_close joint _ monotone ?_⟩
+  refine ⟨monotone, legal, state.step_contains_close joint _ monotone ?_⟩
   rw [atEntry, steps]
   by_cases inactive : owner ∈ state.excluded
   · simp only [ProtocolState.recoveryStep, Sum.elim_inl, inactive, ↓reduceIte, PMF.pure_map,

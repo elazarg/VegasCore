@@ -154,10 +154,13 @@ private theorem attempt_supported
           have drawn := commitKernel_supported setup wellFormed assessment mixed guard
             (rest.prepend suffix) profile lift ranks actors menus raw entry state trace atEntry
             clear result
-          obtain ⟨monotone, next⟩ := lifted_commit_successor setup.program
+          obtain ⟨monotone, nextLegal, nextReached⟩ := lifted_commit_successor setup.program
             (setup.initialConfig setup.initialLaw.support_nonempty.choose) guard
             (rest.prepend suffix) lift ranks actors menus steps entry state atEntry result false
             (by intro impossible; cases impossible)
+          have next : (SourceProgram.commitRecoveryProtocol setup.program
+              (setup.initialConfig setup.initialLaw.support_nonempty.choose)).Successor _ state :=
+            ⟨_, nextLegal, nextReached⟩
           have activeState : owner ∉ state.excluded := by
             rw [clear]
             exact Finset.notMem_empty _

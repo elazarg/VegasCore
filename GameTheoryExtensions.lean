@@ -102,3 +102,5 @@ import GameTheoryExtensions.Analysis.Protocol.FiniteRepairMass
 import GameTheoryExtensions.Analysis.Protocol.FreeKeyedPoolObservation
 import GameTheoryExtensions.Math.Probability.NestedPosterior
 import GameTheoryExtensions.Analysis.Protocol.StoppedComposition
+import GameTheoryExtensions.Analysis.Protocol.ContinuationOwnPlay
+import GameTheoryExtensions.Analysis.Protocol.StoppedHistoryAtom

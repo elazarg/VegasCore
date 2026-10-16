@@ -43,19 +43,26 @@ theorem decoded_commit_successor
         ((name, .commitment owner payload) :: Γ) (insert name O) :=
       .commit name owner fresh guard .nil
     let decoded := decodeCommitAttempt whole mode block tail embedding native entry state.excluded
-    (commitRecoveryProtocol whole initial).Successor
+    let event := embedding.event ⟨0, by simp only [eventCount]; omega⟩
+    let accepted := native.accepted (.inr event)
+    let nativeJoint := state.commitJoint owner name payload
+      (accepted.elim PublicationResult.failure (fun candidate =>
+        native.bindingResult candidate payload)) accepted.isNone
+    ∃ (joint : Player → Option (CommitRecoveryMove Player L))
+      (legal : (commitRecoveryProtocol whole initial).Legal state joint),
       (state.install (lift (Sum.inr (ProtocolState.entry tail decoded.1)), decoded.2.1)
-        (fun _ member => decoded.2.2.excluded_subset member)).close state := by
-  intro block decoded
-  let event := embedding.event ⟨0, by simp only [eventCount]; omega⟩
-  let accepted := native.accepted (.inr event)
+          (fun _ member => decoded.2.2.excluded_subset member)).close ∈
+        ((commitRecoveryProtocol whole initial).step state ⟨joint, legal⟩).support ∧
+        joint = nativeJoint := by
+  intro block decoded event accepted nativeJoint
   let choice := accepted.elim PublicationResult.failure (fun candidate =>
     native.bindingResult candidate payload)
   have missingFailure : accepted.isNone = true → choice = .failure := by
     cases found : accepted <;>
       simp only [choice, found, Option.isNone_none, Option.isNone_some, Option.elim_none,
         Bool.false_eq_true, false_implies, implies_true]
-  obtain ⟨monotone, reached⟩ := lifted_commit_successor whole initial guard tail lift ranks actors
+  obtain ⟨monotone, legal, reached⟩ :=
+    lifted_commit_successor whole initial guard tail lift ranks actors
     menus steps entry state atEntry choice accepted.isNone missingFailure
   have configEq : decoded.1 = if owner ∈ state.excluded then
       automaticCommit name owner payload entry else commitSuccessor name guard entry choice := by
@@ -84,6 +91,7 @@ theorem decoded_commit_successor
     (fun _ member => decoded.2.2.excluded_subset member) monotone
     (Prod.ext (congrArg (fun config => lift (Sum.inr (ProtocolState.entry tail config))) configEq)
       excludedEq)
+  refine ⟨state.commitJoint owner name payload choice accepted.isNone, legal, ?_, rfl⟩
   rw [show (state.install (lift (Sum.inr (ProtocolState.entry tail decoded.1)), decoded.2.1)
       (fun _ member => decoded.2.2.excluded_subset member)).close = _ from
     congrArg CommitRecoveryState.close rawEq]

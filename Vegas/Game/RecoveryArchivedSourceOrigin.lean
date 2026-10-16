@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.RecoveryArchivedSavedWord
+import Vegas.Game.RecoverySettledCommitCheckpoint
 
 /-! # Actual archived checkpoints retained in the same genuine source history -/
 
@@ -31,8 +32,13 @@ def ArchivedSourceOrigins (setup : Setup (Player := Player) (L := L)) (mode : Ex
       ∃ (prior : setup.commitRecoveryProtocol.Trace (some (CommitRecoveryState.atPoint
           (checkpoint.residual.lift
             (ProtocolState.entry checkpoint.residual.tail checkpoint.source))
-          state.entry.excluded state.generation))) (fuel : Nat),
-        setup.commitRecoveryProtocol.ReachesWithin fuel ⟨_, prior⟩ history
+          state.entry.excluded state.generation)))
+        (closed : setup.commitRecoveryProtocol.History) (steps later : Nat),
+        setup.commitRecoveryProtocol.ReachesWithin steps ⟨_, prior⟩ closed ∧
+        setup.recoveryJointRecall closed.trace =
+          (checkpoint.commitInstructionWord retired[index].state).reverse ++
+            setup.recoveryJointRecall prior ∧
+        setup.commitRecoveryProtocol.ReachesWithin later closed history
 
 namespace ArchivedSourceOrigins
 
@@ -45,9 +51,9 @@ theorem trans {setup : Setup (Player := Player) (L := L)} {mode : ExecutionMode}
     ArchivedSourceOrigins setup mode retired second := by
   intro index bound
   obtain ⟨state, checkpoint, aligned, archive, attempt, retained, saved, agrees, positive,
-    prior, earlier, sourcePath⟩ := origins index bound
+    prior, closed, steps, later, sourcePath, instructions, following⟩ := origins index bound
   exact ⟨state, checkpoint, aligned, archive, attempt, retained, saved, agrees, positive,
-    prior, earlier + fuel, sourcePath.trans reached⟩
+    prior, closed, steps, later + fuel, sourcePath, instructions, following.trans reached⟩
 
 /-- The actual newest retired image retains its old checkpoint and the exact
 old source prefix, while every earlier archive keeps its original source origin. -/
@@ -66,24 +72,30 @@ theorem append {setup : Setup (Player := Player) (L := L)} {mode : ExecutionMode
     (agrees : checkpoint.refs.Agrees checkpoint.source.state record.state.config.store)
     (positive : 0 < eventCount checkpoint.residual.tail)
     {next : setup.commitRecoveryProtocol.History} {fuel : Nat}
-    (reached : setup.commitRecoveryProtocol.ReachesWithin fuel ⟨_, prior⟩ next) :
+    (reached : setup.commitRecoveryProtocol.ReachesWithin fuel ⟨_, prior⟩ next)
+    (instructions : setup.recoveryJointRecall next.trace =
+      (checkpoint.commitInstructionWord record.state).reverse ++
+        setup.recoveryJointRecall prior) :
     ArchivedSourceOrigins setup mode (state.retired ++ [record]) next := by
   intro index bound
   by_cases earlier : index < state.retired.length
   · obtain ⟨old, source, sourceAligned, archive, oldAttempt, oldRetained, oldSaved, oldAgrees,
-      oldPositive, trace, steps, sourcePath⟩ := origins index earlier
+      oldPositive, trace, closed, steps, later, sourcePath, oldInstructions, following⟩ :=
+        origins index earlier
     refine ⟨old, source, sourceAligned, ?_, ?_, ?_, oldSaved, ?_, oldPositive,
-      trace, steps + fuel, sourcePath.trans reached⟩
+      trace, closed, steps, later + fuel, sourcePath, ?_, following.trans reached⟩
     · simpa only [List.take_append_of_le_length earlier.le] using archive
     · simpa only [List.getElem_append_left earlier] using oldAttempt
     · simpa only [List.getElem_append_left earlier] using oldRetained
     · intro name cell selected
       simpa only [List.getElem_append_left earlier] using oldAgrees selected
+    · simpa only [List.getElem_append_left earlier] using oldInstructions
   · have last : index = state.retired.length := by
       simp only [List.length_append, List.length_singleton] at bound
       omega
     subst index
-    refine ⟨state, checkpoint, aligned, ?_, ?_, ?_, saved, ?_, positive, prior, fuel, reached⟩
+    refine ⟨state, checkpoint, aligned, ?_, ?_, ?_, saved, ?_, positive, prior, next, fuel, 0,
+      reached, ?_, .refl 0 _⟩
     · simp only [List.take_left' rfl]
     · simpa only [List.getElem_append_right (Nat.le_refl _), Nat.sub_self,
         List.getElem_cons_zero] using attempt
@@ -92,6 +104,8 @@ theorem append {setup : Setup (Player := Player) (L := L)} {mode : ExecutionMode
     · intro name cell selected
       simpa only [List.getElem_append_right (Nat.le_refl _), Nat.sub_self,
         List.getElem_cons_zero] using agrees selected
+    · simpa only [List.getElem_append_right (Nat.le_refl _), Nat.sub_self,
+        List.getElem_cons_zero] using instructions
 
 end ArchivedSourceOrigins
 end Vegas
