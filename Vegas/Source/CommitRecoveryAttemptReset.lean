@@ -3,6 +3,7 @@
 import Vegas.Source.CommitRecoveryErasedContinuation
 import Vegas.Source.CommitRecoveryCommitUnique
 import Vegas.Source.CommitRecoveryBlockPath
+import Vegas.Source.CommitRecoveryPublicRanks
 
 /-! # Actual failed source attempts have a common erased continuation
 
@@ -64,34 +65,6 @@ private theorem public_entry_congr {Γ : SourceCtx Player L} {O : Finset VarId}
     ProtocolView.publicOnly who program (observe who program (entry program first)) =
       ProtocolView.publicOnly who program (observe who program (entry program second)) := by
   cases program <;> simp only [entry, observe, ProtocolView.publicOnly, Sum.elim_inl, same]
-
-theorem public_control (who : Player) :
-    ∀ {Γ : SourceCtx Player L} {O : Finset VarId}
-      (program : SourceProgram Player L Γ O) (first second : ProtocolState program),
-      ProtocolView.publicOnly who program (observe who program first) =
-        ProtocolView.publicOnly who program (observe who program second) →
-      remaining program first = remaining program second ∧
-        atCommit program first = atCommit program second ∧
-        commitEnd program first = commitEnd program second
-  | _, _, .ret _, _, _, _ => ⟨rfl, rfl, rfl⟩
-  | _, _, .sample _ _ _ next, first, second, same => by
-      cases first <;> cases second
-      · exact ⟨rfl, rfl, rfl⟩
-      · cases same
-      · cases same
-      · exact public_control who next _ _ (Sum.inr.inj same)
-  | _, _, .commit _ _ _ _ next, first, second, same => by
-      cases first <;> cases second
-      · exact ⟨rfl, rfl, rfl⟩
-      · cases same
-      · cases same
-      · exact public_control who next _ _ (Sum.inr.inj same)
-  | _, _, .reveal _ _ _ _ _ _ next, first, second, same => by
-      cases first <;> cases second
-      · exact ⟨rfl, rfl, rfl⟩
-      · cases same
-      · cases same
-      · exact public_control who next _ _ (Sum.inr.inj same)
 
 /-- The actual commitment kernel exposes the omission and source position,
 not the chosen hidden typed result. Accepted failure remains a hidden result. -/

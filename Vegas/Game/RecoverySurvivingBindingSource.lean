@@ -154,12 +154,14 @@ theorem RecoverySourceCheckpoint.surviving_prefix_trace
       (lift (ProtocolState.entry (earlier.prepend suffix) entry)) < instructionCount suffix
     rw [endpoints, earlier.commitEnd_suffix suffix entry finished]
     exact ProtocolState.commitEnd_lt_remaining suffix (ProtocolState.entry suffix finished) rfl
-  have reached := attempt.reaches_unclosed_lift setup.program
+  obtain ⟨_addresses, instructions, _exclusions, _metadata⟩ :=
+    attempt.instructions_unclosed_lift setup.program
     (setup.initialConfig setup.initialLaw.support_nonempty.choose) suffix lift ranks actors
       (fun point who => menus who point) steps first rfl rfl committing beforeEnd
-  change (SourceProgram.commitRecoveryProtocol setup.program _).Reaches first after at reached
-  obtain ⟨sourceTrace, _fuel, _prefix⟩ :=
-    setup.recoveryTrace_of_reaches _ initialized reached
+  change CommitRecoveryState.InstructionPath setup.program _ attempt.joints _ first after
+    at instructions
+  obtain ⟨sourceTrace, _prefix, _length, _joints, _numeric⟩ :=
+    setup.recoveryInstructionPath_information _ instructions initialized
   have actor : ProtocolState.actor setup.program after.point = some owner := by
     change ProtocolState.actor setup.program
       (lift (earlier.liftPoint suffix (ProtocolState.entry suffix finished))) = some owner

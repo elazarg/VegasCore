@@ -1429,6 +1429,19 @@ continuations that remember voided values. It is established before taking
 the pooled fixed point or using future optimality. Since every source
 terminal payoff is either a_j or at least m_j>a_j, R>=a_j pointwise.
 
+For source sequential rationality alone there is a shorter failure comparison.
+The same terminal floor gives H_v>=a_j under ANY continuation, even if a
+domain value or a later domain choice violates a guard. Therefore
+U_I(v)-U_I(b)=lambda_I*(E[H_v | D]-a_j)>=0 whenever lambda_I>0;
+when lambda_I=0 both nonmissing choices have the same reset value. Current
+omission and reveal withholding pay a_j and cannot improve on any legal
+continuation either. Thus the failure-action part of source optimality uses
+the terminal floor and the exact common-reset identity, without assuming
+future SE or a guard-safe continuation. The ordinary domain-gain equality,
+attachment pins and honest-pin preservation are still required. The stronger
+conditional successful-phase ranking used by native transport additionally
+requires the D identity; unconditional gain equality does not replace it.
+
 At a non-doomed information set, omission gives a_j. For accepted failure,
 the no-reset branch gives a_j and the reset branch has the common erased
 continuation. A guard-safe domain value has that same reset branch and
@@ -1736,9 +1749,28 @@ the other, the latter's literal setup draw and its exact counterfactual reach.
 derives that original hidden tuple agreement from actual combined query
 equality at literal initialized prefixes; no independent prior is introduced.
 `Vegas.SourceProgram.Setup.attemptPublicRecall_eq_for_observer` transfers
-the entire public record between observers. Actual information-fiber
-equivalence and Bayes normalization still need their direct consumers;
-individual source optimality remains open.
+the entire public record between observers.
+`Vegas.SourceProgram.Setup.commitRecovery_information_fiber_equiv` gives an
+actual bijection of original information histories at equal erased keys.
+`Vegas.SourceProgram.Setup.commitRecovery_bayes_eq_of_erasedInformation_eq`
+then transports the actual normalized Bayes belief exactly, using positive
+constant own reach and unchanged counterfactual reach. The original joint
+setup law may be correlated. Combined-key known-failed attachments do not
+use this bijection. Successful-phase payoff equality and individual source
+optimality remain open in Lean.
+
+`Vegas.SourceProgram.CommitRecoveryState.step_preserves_intendedFor` keeps a
+surviving player's existing validity predicate in current and saved states
+through actual recovery and close, with arbitrary foreign actions. Its
+current guard-satisfiability hypothesis is explicit; it does not derive
+all-reachable viability from intended-only setup well-formedness.
+`Vegas.phaseCountServiceTapePolicy_foreign_survivors_law` compares the actual
+first-exit survivor-vector laws under arbitrary focal policies with the same
+supported original zero-RAW timing table and foreign seeds. This supplies
+proper-reference scalar survival, not positive-RAW or typed-word transport.
+`Vegas.compiled_reveal_public_exclusions` reads the source public exclusion
+update from the actual immutable native publication at its original compiled
+suffix. The full native observable query remains open.
 
 `Vegas.SourceProgram.Setup.commitRecoveryNoMissInformation_genuine_history`
 gives a genuine source witness for the no-new-miss transformation of every

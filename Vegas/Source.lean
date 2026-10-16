@@ -171,3 +171,15 @@ import Vegas.Source.CommitRecoveryClosedSplice
 import Vegas.Source.CommitRecoveryClosedSupport
 import Vegas.Source.CommitRecoveryInitialInputs
 import Vegas.Source.CommitRecoveryPublicObservation
+import Vegas.Source.CommitRecoveryBindingReplay
+import Vegas.Source.CommitRecoveryBindingSubstitution
+import Vegas.Source.CommitRecoveryCursor
+import Vegas.Source.CommitRecoveryObservedMemory
+import Vegas.Source.CommitRecoveryPlayerValidity
+import Vegas.Source.CommitRecoveryPublicHistory
+import Vegas.Source.CommitRecoveryPublicPadding
+import Vegas.Source.CommitRecoveryPublicRanks
+import Vegas.Source.CommitRecoveryPublicReadback
+import Vegas.Source.CommitRecoveryPublicScan
+import Vegas.Source.CommitRecoveryVirtualHistory
+import Vegas.Source.CommitRecoveryVirtualView

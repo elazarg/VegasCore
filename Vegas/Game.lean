@@ -1160,3 +1160,15 @@ import Vegas.Game.CommitRecoveryFlagDensity
 import Vegas.Game.CommitRecoveryFlagWordSwap
 import Vegas.Game.CommitRecoveryGlobalWordDensity
 import Vegas.Game.CommitRecoveryHybridHistory
+import Vegas.Game.CommitRecoveryAncillaryBayes
+import Vegas.Game.CommitRecoveryAncillaryBelief
+import Vegas.Game.CommitRecoveryAncillaryFibers
+import Vegas.Game.CompiledCommitExclusionWord
+import Vegas.Game.CompiledCommitMemory
+import Vegas.Game.CompiledCommitSurvivingView
+import Vegas.Game.CompiledPublicExclusions
+import Vegas.Game.PhaseCountServicePhase
+import Vegas.Game.PhaseCountServiceSurvival
+import Vegas.Game.PhaseErasedSourceObservation
+import Vegas.Game.PhasePublicSourceChronology
+import Vegas.Game.PhaseVirtualBindingView

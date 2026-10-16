@@ -2345,9 +2345,28 @@ literal supported setup draw and exact counterfactual density.
 derives original hidden-owner tuple equality from actual combined query
 equality at initialized prefixes, using existing entry-cell permanence.
 [Observer-independent public chronology](../Vegas/Source/CommitRecoveryPublicObservation.lean)
-transfers complete public-record equality between observers. Actual information
-fiber equivalence, Bayes normalization and individual source optimality remain
-separate obligations.
+transfers complete public-record equality between observers.
+[Genuine erased-key exchange](../Vegas/Game/CommitRecoveryAncillaryBelief.lean),
+[original information fibers](../Vegas/Game/CommitRecoveryAncillaryFibers.lean), and
+[exact Bayes cancellation](../Vegas/Game/CommitRecoveryAncillaryBayes.lean)
+derive a bijection and transport the actual normalized beliefs while retaining
+the original joint setup law. Conditional successful-phase payoff equality and
+individual source optimality remain separate obligations.
+[Player-specific recovery validity](../Vegas/Source/CommitRecoveryPlayerValidity.lean)
+reuses the existing intended-for-one-player predicate through arbitrary foreign
+actions, automatic slots and actual checkpoint closes. Current observed guard
+satisfiability is explicit, without an intended-reachability fallback.
+
+Native chronology:
+[public retry-generation readback](../Vegas/Pending/PhaseArchiveGeneration.lean),
+[original source instruction paths](../Vegas/Source/CommitRecoveryInstructions.lean),
+[chosen commitment controls](../Vegas/Game/RecoveryChosenCommitControl.lean),
+[public source scan](../Vegas/Source/CommitRecoveryPublicScan.lean),
+[genuine virtual current views](../Vegas/Source/CommitRecoveryVirtualView.lean), and
+[compiled publication exclusion updates](../Vegas/Game/CompiledPublicExclusions.lean).
+These retain original address chunks, actual public openings and exhausted
+archives. The complete native numeric scan and measurable combined query are
+still open.
 
 No-new-miss query:
 [literal attempt entry](../Vegas/Source/CommitRecoveryAttemptOrigin.lean),
@@ -2390,3 +2409,10 @@ derive true original-ID receipts from actual inclusion snapshots and completed
 live or archived surviving bindings, including normalization after the last
 inclusion. These results neither read restored retry choices as old results
 nor assume a receipt at the endpoint.
+[Pre-normalization snapshots](../Vegas/Pending/PhaseAttemptReceiptSnapshot.lean)
+derive original first-exit survivor classification.
+[Same-tape phase survival](../Vegas/Game/PhaseCountServicePhase.lean) and
+[actual survivor-vector laws](../Vegas/Game/PhaseCountServiceSurvival.lean)
+compare the existing stopped runners under arbitrary focal policies with the
+same original supported zero-RAW table and foreign event seeds. Positive-RAW
+good-event transport and typed foreign-word independence remain separate.

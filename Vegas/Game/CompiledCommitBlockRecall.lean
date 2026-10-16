@@ -17,10 +17,14 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
 /-- Actual completed binding blocks extend genuine initialized source traces
 with the same entire observed signal recall whenever their physical public and
-focal observations and their prior remembered source observations agree.
+focal observations agree and any chosen observation of prior recall agrees.
+Prior hidden private signals need not agree.
 The real original missing scan and the final retry or exhaustion are retained. -/
 theorem decoded_commit_block_source_traces
     (setup : Setup (Player := Player) (L := L)) (mode : ExecutionMode) (who : Player)
+    (remember : Bool)
+    {Observation : Type*}
+    (observe : setup.ProtocolView who × (Finset Player × Nat × Nat) → Observation)
     {Γ Δ : SourceCtx Player L} {O P : Finset VarId}
     (block : SourceProgram.CommitPrefix Γ O Δ P) :
     ∀ (suffix : SourceProgram Player L Δ P)
@@ -44,7 +48,8 @@ theorem decoded_commit_block_source_traces
       (_firstValid : first.BindingInvariant) (_secondValid : second.BindingInvariant)
       (firstEntry secondEntry : SourceProgram.Config Player L Γ)
       (left right : CommitRecoveryState setup.program)
-      (_entry : firstEntry.view who = secondEntry.view who)
+      (_entry : DecisionView.historyProjection remember (firstEntry.view who) =
+        DecisionView.historyProjection remember (secondEntry.view who))
       (_publicView : first.publicView = second.publicView)
       (_observed : ((toEventGraph setup.program).withMode mode).playerObserve who first.config =
         ((toEventGraph setup.program).withMode mode).playerObserve who second.config)
@@ -52,13 +57,16 @@ theorem decoded_commit_block_source_traces
         index.val < block.length → embedding.event index ∈ first.config.cut.completed)
       (_secondCompleted : ∀ index : Fin (eventCount (block.prepend suffix)),
         index.val < block.length → embedding.event index ∈ second.config.cut.completed)
-      (_saved : ProtocolState.observe who setup.program left.saved =
-        ProtocolState.observe who setup.program right.saved)
+      (_saved : ProtocolView.historyProjection who setup.program remember
+          (ProtocolState.observe who setup.program left.saved) =
+        ProtocolView.historyProjection who setup.program remember
+          (ProtocolState.observe who setup.program right.saved))
       (_excluded : left.excluded = right.excluded)
       (_entryExcluded : left.entryExcluded = right.entryExcluded)
       (_generation : left.generation = right.generation)
       (_firstAtEntry : left.point = lift (ProtocolState.entry (block.prepend suffix) firstEntry))
-      (_secondAtEntry : right.point = lift (ProtocolState.entry (block.prepend suffix) secondEntry))
+      (_secondAtEntry : right.point =
+        lift (ProtocolState.entry (block.prepend suffix) secondEntry))
       (_firstCommitting : ProtocolState.atCommit setup.program left.saved = true)
       (_secondCommitting : ProtocolState.atCommit setup.program right.saved = true)
       (_firstEndpoint : ProtocolState.commitEnd setup.program left.saved ≤ instructionCount suffix)
@@ -67,8 +75,10 @@ theorem decoded_commit_block_source_traces
       (_positive : 0 < block.length)
       (firstTrace : setup.commitRecoveryProtocol.Trace (some left))
       (secondTrace : setup.commitRecoveryProtocol.Trace (some right))
-      (_prior : setup.commitRecoverySignals.infoOf who firstTrace =
-        setup.commitRecoverySignals.infoOf who secondTrace),
+      (_prior : setup.commitRecoveryProjectedRecall who remember observe
+          (setup.commitRecoverySignals.infoOf who firstTrace) =
+        setup.commitRecoveryProjectedRecall who remember observe
+          (setup.commitRecoverySignals.infoOf who secondTrace)),
       let leftDecoded := decodeCommitAttempt setup.program mode block suffix embedding first
         firstEntry left.excluded
       let rightDecoded := decodeCommitAttempt setup.program mode block suffix embedding second
@@ -87,8 +97,14 @@ theorem decoded_commit_block_source_traces
           ⟨some left, firstTrace⟩ ⟨some leftRaw.close, leftTrace⟩ ∧
         setup.commitRecoveryProtocol.ReachesWithin rightFuel
           ⟨some right, secondTrace⟩ ⟨some rightRaw.close, rightTrace⟩ ∧
-        setup.commitRecoverySignals.infoOf who leftTrace =
-          setup.commitRecoverySignals.infoOf who rightTrace ∧
+        setup.commitRecoveryHistorySignal who remember
+            (setup.commitRecoverySignals.infoOf who leftTrace).1 =
+          setup.commitRecoveryHistorySignal who remember
+            (setup.commitRecoverySignals.infoOf who rightTrace).1 ∧
+        setup.commitRecoveryProjectedRecall who remember observe
+            (setup.commitRecoverySignals.infoOf who leftTrace) =
+          setup.commitRecoveryProjectedRecall who remember observe
+            (setup.commitRecoverySignals.infoOf who rightTrace) ∧
         setup.recoveryJointRecall leftTrace = leftDecoded.2.2.joints.reverse ++
           setup.recoveryJointRecall firstTrace ∧
         setup.recoveryJointRecall rightTrace = rightDecoded.2.2.joints.reverse ++
@@ -123,10 +139,11 @@ theorem decoded_commit_block_source_traces
       have firstHeadCompleted := firstCompleted ⟨0, Nat.zero_lt_succ _⟩ (Nat.zero_lt_succ _)
       have secondHeadCompleted := secondCompleted ⟨0, Nat.zero_lt_succ _⟩ (Nat.zero_lt_succ _)
       obtain ⟨firstNextTrace, secondNextTrace, firstFuel, secondFuel, firstPath, secondPath,
-        nextSignals, firstInstructions, secondInstructions⟩ :=
+        nextCurrent, nextSignals, firstInstructions, secondInstructions⟩ :=
         decoded_commit_source_traces setup mode
         fresh guard tail embedding lift origin first second firstValid secondValid firstEntry
-        secondEntry left right who entry publicView observed firstHeadCompleted secondHeadCompleted
+        secondEntry left right who remember observe entry publicView observed firstHeadCompleted
+        secondHeadCompleted
         saved excluded entryExcluded generation firstAtEntry secondAtEntry ranks actors menus steps
         firstTrace secondTrace prior
       by_cases remaining : 0 < rest.length
@@ -151,21 +168,24 @@ theorem decoded_commit_block_source_traces
         have firstNoClose := leftHead.close_eq_self_of_remaining_gt firstCommitting firstUnfinished
         have secondNoClose := rightHead.close_eq_self_of_remaining_gt secondCommitting
           secondUnfinished
-        have currentSignals := congrArg Prod.fst nextSignals
+        have currentSignals := nextCurrent
         rw [setup.commitRecoverySignals_current, setup.commitRecoverySignals_current]
           at currentSignals
         have nextPrivate := congrArg Prod.fst currentSignals
-        change some (ProtocolState.observe who setup.program leftHead.close.point) =
-          some (ProtocolState.observe who setup.program rightHead.close.point) at nextPrivate
+        change some (ProtocolView.historyProjection who setup.program remember
+            (ProtocolState.observe who setup.program leftHead.close.point)) =
+          some (ProtocolView.historyProjection who setup.program remember
+            (ProtocolState.observe who setup.program rightHead.close.point)) at nextPrivate
         have currentViews := Option.some.inj nextPrivate
         rw [firstNoClose, secondNoClose] at currentViews
-        have localViews := origin.observe_reflect who _ _ currentViews
-        have tailViews := Sum.inr.inj localViews
-        change ProtocolState.observe who tail (ProtocolState.entry tail firstHead.1) =
-          ProtocolState.observe who tail (ProtocolState.entry tail secondHead.1) at tailViews
-        have nextEntry : firstHead.1.view who = secondHead.1.view who := by
+        have tailOrigin := ProtocolSuffix.commitTail fresh guard tail origin
+        have tailViews := tailOrigin.historyProjection_observe_reflect who remember _ _
+          currentViews
+        have nextEntry : DecisionView.historyProjection remember (firstHead.1.view who) =
+            DecisionView.historyProjection remember (secondHead.1.view who) := by
           have views := congrArg (ProtocolView.entryView who tail) tailViews
-          simpa only [ProtocolView.entryView_observe_entry] using views
+          simpa only [ProtocolView.entryView_historyProjection,
+            ProtocolView.entryView_observe_entry] using views
         have nextExcluded := congrArg (fun item => item.2.1) currentSignals
         change leftHead.close.excluded = rightHead.close.excluded at nextExcluded
         let tailEmbedding := embedding.tail tail
@@ -252,8 +272,14 @@ theorem decoded_commit_block_source_traces
             firstStart ⟨some leftFinal.close, leftTrace⟩ ∧
           setup.commitRecoveryProtocol.ReachesWithin rightFuel
             secondStart ⟨some rightFinal.close, rightTrace⟩ ∧
-          setup.commitRecoverySignals.infoOf who leftTrace =
-            setup.commitRecoverySignals.infoOf who rightTrace ∧
+          setup.commitRecoveryHistorySignal who remember
+              (setup.commitRecoverySignals.infoOf who leftTrace).1 =
+            setup.commitRecoveryHistorySignal who remember
+              (setup.commitRecoverySignals.infoOf who rightTrace).1 ∧
+          setup.commitRecoveryProjectedRecall who remember observe
+              (setup.commitRecoverySignals.infoOf who leftTrace) =
+            setup.commitRecoveryProjectedRecall who remember observe
+              (setup.commitRecoverySignals.infoOf who rightTrace) ∧
           setup.recoveryJointRecall leftTrace = firstTail.2.2.joints.reverse ++ firstWord ∧
           setup.recoveryJointRecall rightTrace = secondTail.2.2.joints.reverse ++ secondWord
             at continuation
@@ -276,10 +302,10 @@ theorem decoded_commit_block_source_traces
           congrArg (fun value : { result : ProtocolState setup.program × Finset Player //
             right.excluded ⊆ result.2 } => (right.install value.1 value.2).close) secondTagged
         rw [firstFinish, secondFinish] at continuation
-        obtain ⟨leftTrace, rightTrace, leftFuel, rightFuel, leftPath, rightPath, same,
+        obtain ⟨leftTrace, rightTrace, leftFuel, rightFuel, leftPath, rightPath, sameCurrent, same,
           leftInstructions, rightInstructions⟩ := continuation
         refine ⟨leftTrace, rightTrace, firstFuel + leftFuel, secondFuel + rightFuel,
-          firstPath.trans leftPath, secondPath.trans rightPath, same, ?_, ?_⟩
+          firstPath.trans leftPath, secondPath.trans rightPath, sameCurrent, same, ?_, ?_⟩
         · rw [← firstWordEq, firstInstructions, ← List.append_assoc, ← List.reverse_append,
             ← firstDecoded.2.2] at leftInstructions
           exact leftInstructions
@@ -289,7 +315,7 @@ theorem decoded_commit_block_source_traces
       · cases rest with
         | nil =>
             exact ⟨firstNextTrace, secondNextTrace, firstFuel, secondFuel, firstPath,
-              secondPath, nextSignals, firstInstructions, secondInstructions⟩
+              secondPath, nextCurrent, nextSignals, firstInstructions, secondInstructions⟩
         | commit => simp only [SourceProgram.CommitPrefix.length] at remaining; omega
 
 end Vegas

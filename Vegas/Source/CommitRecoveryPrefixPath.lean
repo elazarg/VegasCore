@@ -16,7 +16,7 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 /-- An initial typed attempt strictly before the saved maximal endpoint is
 reachable without closing or replacing that saved checkpoint. Empty initial
 segments are included. -/
-theorem Attempt.reaches_unclosed_lift
+theorem Attempt.instructions_unclosed_lift
     {wholeΓ Γ Δ : SourceCtx Player L} {wholeO O P : Finset VarId}
     (whole : SourceProgram Player L wholeΓ wholeO) (initial : Config Player L wholeΓ)
     {block : CommitPrefix Γ O Δ P} {entry : Config Player L Γ} {excluded : Finset Player}
@@ -40,11 +40,14 @@ theorem Attempt.reaches_unclosed_lift
     (stateExcluded : state.excluded = excluded)
     (committing : ProtocolState.atCommit whole state.saved = true)
     (beforeEnd : ProtocolState.commitEnd whole state.saved < instructionCount suffix) :
-    (commitRecoveryProtocol whole initial).Reaches state
+    ∃ addresses, CommitRecoveryState.InstructionPath whole initial attempt.joints addresses state
       (state.install (lift (block.liftPoint suffix (ProtocolState.entry suffix finished)), after)
-        (fun _ member => attempt.excluded_subset (stateExcluded ▸ member))) := by
+        (fun _ member => attempt.excluded_subset (stateExcluded ▸ member))) ∧
+      addresses.map (fun address => address.2.1) = attempt.exclusionsAfter ∧
+      state.IntervalAddresses addresses := by
   by_cases positive : 0 < block.length
-  · have path := attempt.instructions_closed_lift whole initial suffix lift ranks actors menus steps
+  · obtain ⟨addresses, path, exclusions, metadata⟩ :=
+      attempt.instructions_closed_lift whole initial suffix lift ranks actors menus steps
       state atEntry stateExcluded committing beforeEnd.le positive
     have unfinished : ProtocolState.commitEnd whole state.saved <
         ProtocolState.remaining whole
@@ -55,14 +58,18 @@ theorem Attempt.reaches_unclosed_lift
       (lift (block.liftPoint suffix (ProtocolState.entry suffix finished)), after)
       (fun _ member => attempt.excluded_subset (stateExcluded ▸ member))
     rw [next.close_eq_self_of_remaining_gt committing unfinished] at path
-    exact path.reaches
+    exact ⟨addresses, path, exclusions, metadata⟩
   · have zero : block.length = 0 := by omega
     obtain ⟨point, owners⟩ := attempt.liftPoint_entry_of_length_zero suffix zero
     have same : (state.install
         (lift (block.liftPoint suffix (ProtocolState.entry suffix finished)), after)
         (fun _ member => attempt.excluded_subset (stateExcluded ▸ member))) = state := by
       simp only [point, owners, CommitRecoveryState.install, ← atEntry, ← stateExcluded]
-    rw [same]
-    exact .refl _
+    rw [same, attempt.joints_eq_nil_of_length_zero zero,
+      attempt.exclusionsAfter_eq_nil_of_length_zero zero]
+    refine ⟨[], .refl _, rfl, ?_⟩
+    intro index bound
+    simp only [List.length_nil] at bound
+    omega
 
 end Vegas.SourceProgram.CommitPrefix

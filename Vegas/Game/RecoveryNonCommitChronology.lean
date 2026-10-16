@@ -82,19 +82,33 @@ theorem RecoverySourceCheckpoint.reveal_information_eq
       ⟨_, left.trace⟩ ⟨_, leftNext.trace⟩)
     (secondPath : setup.commitRecoveryProtocol.ReachesWithin secondFuel
       ⟨_, right.trace⟩ ⟨_, rightNext.trace⟩)
-    (who : Player) (firstSurvives : who ∉ firstNext.entry.excluded)
+    (who : Player) (projection : SourceViewProjection) {Observation : Type*}
+    (observe : setup.ProtocolView who × (Finset Player × Nat × Nat) → Observation)
+    (firstSurvives : who ∉ firstNext.entry.excluded)
     (secondSurvives : who ∉ secondNext.entry.excluded)
-    (prior : setup.commitRecoverySignals.infoOf who left.trace =
-      setup.commitRecoverySignals.infoOf who right.trace)
-    (observed : ProtocolState.observe who setup.program (leftNext.residual.lift
-        (ProtocolState.entry leftNext.residual.tail leftNext.source)) =
-      ProtocolState.observe who setup.program (rightNext.residual.lift
-        (ProtocolState.entry rightNext.residual.tail rightNext.source))) :
-    setup.commitRecoveryModel.infoOf who leftNext.trace =
-      setup.commitRecoveryModel.infoOf who rightNext.trace := by
-  apply setup.commitRecovery_surviving_info_eq who leftNext.trace rightNext.trace
-    firstSurvives secondSurvives
-  apply setup.commitRecovery_noncommit_signals_eq_of_rank_windows who
+    (prior : setup.commitRecoveryObservationSignal who projection
+          (setup.commitRecoverySignals.infoOf who left.trace).1 =
+        setup.commitRecoveryObservationSignal who projection
+          (setup.commitRecoverySignals.infoOf who right.trace).1 ∧
+      setup.commitRecoveryObservedRecall who projection observe
+        (setup.commitRecoverySignals.infoOf who left.trace) =
+        setup.commitRecoveryObservedRecall who projection observe
+          (setup.commitRecoverySignals.infoOf who right.trace))
+    (observed : projection.apply who setup.program
+        (ProtocolState.observe who setup.program (leftNext.residual.lift
+          (ProtocolState.entry leftNext.residual.tail leftNext.source))) =
+      projection.apply who setup.program
+        (ProtocolState.observe who setup.program (rightNext.residual.lift
+          (ProtocolState.entry rightNext.residual.tail rightNext.source)))) :
+    setup.commitRecoveryObservationSignal who projection
+          (setup.commitRecoverySignals.infoOf who leftNext.trace).1 =
+        setup.commitRecoveryObservationSignal who projection
+          (setup.commitRecoverySignals.infoOf who rightNext.trace).1 ∧
+      setup.commitRecoveryObservedRecall who projection observe
+          (setup.commitRecoverySignals.infoOf who leftNext.trace) =
+        setup.commitRecoveryObservedRecall who projection observe
+          (setup.commitRecoverySignals.infoOf who rightNext.trace) := by
+  apply setup.commitRecovery_noncommit_signals_eq_of_rank_windows who projection observe
     _ _ _ _ left.trace right.trace leftNext.trace rightNext.trace
     firstPath.tracePrefix secondPath.tracePrefix
   · exact firstGeneration.symm
@@ -103,7 +117,8 @@ theorem RecoverySourceCheckpoint.reveal_information_eq
       firstKind firstBoundary
   · exact reveal_advance_window right rightNext secondPhase secondRemaining secondInstalled
       secondKind secondBoundary
-  · exact prior
+  · exact prior.1
+  · exact prior.2
   · exact firstSurvives
   · exact secondSurvives
   · exact congrArg some observed
@@ -168,19 +183,33 @@ theorem RecoverySourceCheckpoint.sample_information_eq
       ⟨_, left.trace⟩ ⟨_, leftNext.trace⟩)
     (secondPath : setup.commitRecoveryProtocol.ReachesWithin secondFuel
       ⟨_, right.trace⟩ ⟨_, rightNext.trace⟩)
-    (who : Player) (firstSurvives : who ∉ firstNext.entry.excluded)
+    (who : Player) (projection : SourceViewProjection) {Observation : Type*}
+    (observe : setup.ProtocolView who × (Finset Player × Nat × Nat) → Observation)
+    (firstSurvives : who ∉ firstNext.entry.excluded)
     (secondSurvives : who ∉ secondNext.entry.excluded)
-    (prior : setup.commitRecoverySignals.infoOf who left.trace =
-      setup.commitRecoverySignals.infoOf who right.trace)
-    (observed : ProtocolState.observe who setup.program (leftNext.residual.lift
-        (ProtocolState.entry leftNext.residual.tail leftNext.source)) =
-      ProtocolState.observe who setup.program (rightNext.residual.lift
-        (ProtocolState.entry rightNext.residual.tail rightNext.source))) :
-    setup.commitRecoveryModel.infoOf who leftNext.trace =
-      setup.commitRecoveryModel.infoOf who rightNext.trace := by
-  apply setup.commitRecovery_surviving_info_eq who leftNext.trace rightNext.trace
-    firstSurvives secondSurvives
-  apply setup.commitRecovery_noncommit_signals_eq_of_rank_windows who
+    (prior : setup.commitRecoveryObservationSignal who projection
+          (setup.commitRecoverySignals.infoOf who left.trace).1 =
+        setup.commitRecoveryObservationSignal who projection
+          (setup.commitRecoverySignals.infoOf who right.trace).1 ∧
+      setup.commitRecoveryObservedRecall who projection observe
+        (setup.commitRecoverySignals.infoOf who left.trace) =
+        setup.commitRecoveryObservedRecall who projection observe
+          (setup.commitRecoverySignals.infoOf who right.trace))
+    (observed : projection.apply who setup.program
+        (ProtocolState.observe who setup.program (leftNext.residual.lift
+          (ProtocolState.entry leftNext.residual.tail leftNext.source))) =
+      projection.apply who setup.program
+        (ProtocolState.observe who setup.program (rightNext.residual.lift
+          (ProtocolState.entry rightNext.residual.tail rightNext.source)))) :
+    setup.commitRecoveryObservationSignal who projection
+          (setup.commitRecoverySignals.infoOf who leftNext.trace).1 =
+        setup.commitRecoveryObservationSignal who projection
+          (setup.commitRecoverySignals.infoOf who rightNext.trace).1 ∧
+      setup.commitRecoveryObservedRecall who projection observe
+          (setup.commitRecoverySignals.infoOf who leftNext.trace) =
+        setup.commitRecoveryObservedRecall who projection observe
+          (setup.commitRecoverySignals.infoOf who rightNext.trace) := by
+  apply setup.commitRecovery_noncommit_signals_eq_of_rank_windows who projection observe
     _ _ _ _ left.trace right.trace leftNext.trace rightNext.trace
     firstPath.tracePrefix secondPath.tracePrefix
   · exact firstGeneration.symm
@@ -189,7 +218,8 @@ theorem RecoverySourceCheckpoint.sample_information_eq
       firstKind firstBoundary
   · exact sample_advance_window right rightNext secondPhase secondRemaining secondInstalled
       secondKind secondBoundary
-  · exact prior
+  · exact prior.1
+  · exact prior.2
   · exact firstSurvives
   · exact secondSurvives
   · exact congrArg some observed

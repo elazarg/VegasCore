@@ -85,10 +85,19 @@ theorem RecoverySourceCheckpoint.commit_information_eq
         ∀ index : Fin (eventCount (block.prepend suffix)), index.val < block.length →
           embedding.event index ∈ secondNative.config.cut.completed)
     (publicView : firstNative.publicView = secondNative.publicView) (who : Player)
+    (remember : Bool)
+    {Observation : Type*}
+    (observe : setup.ProtocolView who × (Finset Player × Nat × Nat) → Observation)
     (observed : ((toEventGraph setup.program).withMode mode).playerObserve who firstNative.config =
       ((toEventGraph setup.program).withMode mode).playerObserve who secondNative.config)
-    (prior : setup.commitRecoverySignals.infoOf who left.trace =
-      setup.commitRecoverySignals.infoOf who right.trace)
+    (prior : setup.commitRecoveryHistorySignal who remember
+          (setup.commitRecoverySignals.infoOf who left.trace).1 =
+        setup.commitRecoveryHistorySignal who remember
+          (setup.commitRecoverySignals.infoOf who right.trace).1 ∧
+      setup.commitRecoveryProjectedRecall who remember observe
+        (setup.commitRecoverySignals.infoOf who left.trace) =
+        setup.commitRecoveryProjectedRecall who remember observe
+          (setup.commitRecoverySignals.infoOf who right.trace))
     (leftClosed rightClosed : setup.commitRecoveryProtocol.History)
     {leftFuel rightFuel : Nat}
     (leftPath : setup.commitRecoveryProtocol.ReachesWithin leftFuel
@@ -99,11 +108,15 @@ theorem RecoverySourceCheckpoint.commit_information_eq
       (left.commitInstructionWord firstNative).reverse ++ setup.recoveryJointRecall left.trace)
     (rightInstructions : setup.recoveryJointRecall rightClosed.trace =
       (right.commitInstructionWord secondNative).reverse ++ setup.recoveryJointRecall right.trace)
-    (firstSurvives : who ∉ (setup.commitRecoveryPublic leftClosed.state).1)
-    (secondSurvives : who ∉ (setup.commitRecoveryPublic rightClosed.state).1) :
-    setup.commitRecoveryModel.infoOf who leftClosed.trace =
-      setup.commitRecoveryModel.infoOf who rightClosed.trace := by
-  have current := congrArg Prod.fst prior
+    : setup.commitRecoveryHistorySignal who remember
+          (setup.commitRecoverySignals.infoOf who leftClosed.trace).1 =
+        setup.commitRecoveryHistorySignal who remember
+          (setup.commitRecoverySignals.infoOf who rightClosed.trace).1 ∧
+      setup.commitRecoveryProjectedRecall who remember observe
+          (setup.commitRecoverySignals.infoOf who leftClosed.trace) =
+        setup.commitRecoveryProjectedRecall who remember observe
+          (setup.commitRecoverySignals.infoOf who rightClosed.trace) := by
+  have current := prior.1
   rw [setup.commitRecoverySignals_current, setup.commitRecoverySignals_current] at current
   have privateBefore := congrArg Prod.fst current
   have publicBefore := congrArg Prod.snd current
@@ -151,16 +164,20 @@ theorem RecoverySourceCheckpoint.commit_information_eq
     | commit name owner fresh guard rest =>
         simp only [CommitPrefix.length]
         omega
-  have privateView : ProtocolState.observe who setup.program
-      (lift (ProtocolState.entry (block.prepend suffix) source)) =
-      ProtocolState.observe who setup.program
-        (lift (ProtocolState.entry (block.prepend suffix) otherSource)) :=
+  have privateView : ProtocolView.historyProjection who setup.program remember
+      (ProtocolState.observe who setup.program
+        (lift (ProtocolState.entry (block.prepend suffix) source))) =
+      ProtocolView.historyProjection who setup.program remember
+        (ProtocolState.observe who setup.program
+          (lift (ProtocolState.entry (block.prepend suffix) otherSource))) :=
     Option.some.inj privateBefore
-  have localView := origin.observe_reflect who _ _ privateView
+  have localView := origin.historyProjection_observe_reflect who remember _ _ privateView
   have entry := congrArg (ProtocolView.entryView who (block.prepend suffix)) localView
-  simp only [ProtocolView.entryView_observe_entry] at entry
+  simp only [ProtocolView.entryView_historyProjection,
+    ProtocolView.entryView_observe_entry] at entry
   let leftStart := CommitRecoveryState.atPoint
-    (lift (ProtocolState.entry (block.prepend suffix) source)) first.entry.excluded first.generation
+    (lift (ProtocolState.entry (block.prepend suffix) source)) first.entry.excluded
+    first.generation
   let rightStart := CommitRecoveryState.atPoint
     (lift (ProtocolState.entry (block.prepend suffix) otherSource)) second.entry.excluded
       second.generation
@@ -172,9 +189,10 @@ theorem RecoverySourceCheckpoint.commit_information_eq
   have secondCommitting : ProtocolState.atCommit setup.program rightStart.saved = true := by
     change ProtocolState.atCommit setup.program
       (lift (ProtocolState.entry (block.prepend suffix) otherSource)) = true
-    rw [← ProtocolState.atCommit_observe setup.program _ who, ← privateView,
-      ProtocolState.atCommit_observe]
-    exact firstCommitting
+    rw [origin.atCommit_lift]
+    cases block with
+    | nil => exact (Nat.not_lt_zero _ positive).elim
+    | commit => rfl
   have firstEnd : ProtocolState.commitEnd setup.program leftStart.saved ≤
       instructionCount suffix := by
     change ProtocolState.commitEnd setup.program
@@ -185,14 +203,15 @@ theorem RecoverySourceCheckpoint.commit_information_eq
     change ProtocolState.commitEnd setup.program
       (lift (ProtocolState.entry (block.prepend suffix) otherSource)) ≤ instructionCount suffix
     rw [origin.commitEnd_lift, block.commitEnd_entry_prepend suffix boundary]
-  have signals := decoded_commit_block_chosen_signal_eq setup mode who block suffix embedding
+  have signals := decoded_commit_block_chosen_signal_eq setup mode who remember observe block suffix
+    embedding
     lift origin ranks actors (fun point owner => menus owner point) steps firstNative secondNative
     firstValid secondValid source otherSource leftStart rightStart entry publicView observed
     firstCompleted secondCompleted privateView exclusions exclusions generation rfl rfl
-    firstCommitting secondCommitting firstEnd secondEnd positive leftTrace rightTrace prior
+    firstCommitting secondCommitting firstEnd secondEnd positive leftTrace rightTrace
+    prior.2
     leftClosed.trace rightClosed.trace leftPath rightPath leftInstructions rightInstructions
-  exact setup.commitRecovery_surviving_info_eq who leftClosed.trace rightClosed.trace
-    firstSurvives secondSurvives signals
+  exact signals
 
 /-- An actual completed member commitment phase identifies the saved typed block
 and supplies all of its native completion witnesses. -/
@@ -290,7 +309,9 @@ theorem phase_archived_chosen_information_eq_of_observed
       (inputs.map (PhaseRuntimeState.initial plan)) horizon scheduler).Trace (some first))
     (secondTrace : ((phaseApplication runtime leaks).protocol
       (inputs.map (PhaseRuntimeState.initial plan)) horizon scheduler).Trace (some second))
-    (who : Player) (survives : who ∉ first.execution.application.current.excluded)
+    (who : Player) (remember : Bool) {Observation : Type*}
+    (observe : setup.ProtocolView who × (Finset Player × Nat × Nat) → Observation)
+    (survives : who ∉ first.execution.application.current.excluded)
     (index : Nat) (firstRecord secondRecord : RetiredCommitAttempt
       ((toEventGraph setup.program).withMode mode))
     (firstSelected : first.execution.application.retired[index]? = some firstRecord)
@@ -303,8 +324,14 @@ theorem phase_archived_chosen_information_eq_of_observed
     (firstAttempt : firstSource.attempt = firstRecord.attempt)
     (firstFinal : RecoverySourceCheckpoint setup mode first.execution.application)
     (secondFinal : RecoverySourceCheckpoint setup mode second.execution.application)
-    (prior : setup.commitRecoverySignals.infoOf who left.trace =
-      setup.commitRecoverySignals.infoOf who right.trace)
+    (prior : setup.commitRecoveryHistorySignal who remember
+          (setup.commitRecoverySignals.infoOf who left.trace).1 =
+        setup.commitRecoveryHistorySignal who remember
+          (setup.commitRecoverySignals.infoOf who right.trace).1 ∧
+      setup.commitRecoveryProjectedRecall who remember observe
+        (setup.commitRecoverySignals.infoOf who left.trace) =
+        setup.commitRecoveryProjectedRecall who remember observe
+          (setup.commitRecoverySignals.infoOf who right.trace))
     (leftClosed rightClosed : setup.commitRecoveryProtocol.History)
     {leftFuel rightFuel leftLater rightLater : Nat}
     (leftPath : setup.commitRecoveryProtocol.ReachesWithin leftFuel
@@ -321,8 +348,16 @@ theorem phase_archived_chosen_information_eq_of_observed
     (rightInstructions : setup.recoveryJointRecall rightClosed.trace =
       (right.commitInstructionWord secondRecord.state).reverse ++
         setup.recoveryJointRecall right.trace) :
-    setup.commitRecoveryModel.infoOf who leftClosed.trace =
-      setup.commitRecoveryModel.infoOf who rightClosed.trace := by
+    who ∉ (setup.commitRecoveryPublic leftClosed.state).1 ∧
+      who ∉ (setup.commitRecoveryPublic rightClosed.state).1 ∧
+      setup.commitRecoveryHistorySignal who remember
+          (setup.commitRecoverySignals.infoOf who leftClosed.trace).1 =
+        setup.commitRecoveryHistorySignal who remember
+          (setup.commitRecoverySignals.infoOf who rightClosed.trace).1 ∧
+      setup.commitRecoveryProjectedRecall who remember observe
+          (setup.commitRecoverySignals.infoOf who leftClosed.trace) =
+        setup.commitRecoveryProjectedRecall who remember observe
+          (setup.commitRecoverySignals.infoOf who rightClosed.trace) := by
   have archives := congrArg (fun view : (phaseApplication runtime leaks).PlayerView =>
     view.application.2.retired) observed
   change first.execution.application.retired.map
@@ -344,7 +379,8 @@ theorem phase_archived_chosen_information_eq_of_observed
   have secondValid := (phaseRetiredBindings_history runtime leaks plan inputs horizon scheduler
     secondTrace secondRecord secondMember).1
   obtain ⟨phase, member, low, kind, completed, _receipts, _failures⟩ :=
-    (phaseRetiredCompletion_history runtime leaks plan inputs horizon scheduler firstTrace).archives
+    (phaseRetiredCompletion_history runtime leaks plan inputs horizon scheduler
+      firstTrace).archives
       firstRecord firstMember
   have phaseLow : phase.low = firstSource.attempt.phase :=
     low.symm.trans (congrArg CommitAttemptId.phase firstAttempt).symm
@@ -397,8 +433,10 @@ theorem phase_archived_chosen_information_eq_of_observed
     fun inactive => survives (firstCoverage.inherited (firstInherited inactive))
   have rightActive : who ∉ (setup.commitRecoveryPublic rightClosed.state).1 :=
     fun inactive => rightSurvives (secondCoverage.inherited (secondInherited inactive))
-  exact left.commit_information_eq right firstRecord.state secondRecord.state firstValid secondValid
-    committing firstCompleted secondCompleted samePublic who sameNative prior leftClosed rightClosed
-    leftPath rightPath leftInstructions rightInstructions leftActive rightActive
+  refine ⟨leftActive, rightActive, ?_⟩
+  exact left.commit_information_eq right firstRecord.state secondRecord.state firstValid
+    secondValid committing firstCompleted secondCompleted samePublic who remember observe
+    sameNative prior
+    leftClosed rightClosed leftPath rightPath leftInstructions rightInstructions
 
 end Vegas

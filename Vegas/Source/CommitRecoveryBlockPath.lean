@@ -68,9 +68,11 @@ theorem Attempt.instructions_closed_lift
       (stateExcluded : state.excluded = excluded),
     ProtocolState.atCommit whole state.saved = true →
     ProtocolState.commitEnd whole state.saved ≤ instructionCount suffix → 0 < block.length →
-    CommitRecoveryState.InstructionPath whole initial attempt.joints state
+    ∃ addresses, CommitRecoveryState.InstructionPath whole initial attempt.joints addresses state
       (state.install (lift (block.liftPoint suffix (ProtocolState.entry suffix finished)), after)
-        (fun _ member => attempt.excluded_subset (stateExcluded ▸ member))).close := by
+        (fun _ member => attempt.excluded_subset (stateExcluded ▸ member))).close ∧
+      addresses.map (fun address => address.2.1) = attempt.exclusionsAfter ∧
+      state.IntervalAddresses addresses := by
   induction attempt with
   | nil =>
       intro suffix lift ranks actors menus steps state atEntry stateExcluded committing endpoint
@@ -114,15 +116,31 @@ theorem Attempt.instructions_closed_lift
           omega
         have noClose := next.close_eq_self_of_remaining_gt committing beforeEnd
         rw [noClose] at firstStep
-        have continuation := ih suffix (fun point => lift (Sum.inr point))
+        obtain ⟨addresses, continuation, exclusionWord, metadata⟩ :=
+          ih suffix (fun point => lift (Sum.inr point))
           (fun point => ranks (Sum.inr point)) (fun point => actors (Sum.inr point))
           (fun point who => menus (Sum.inr point) who)
           (fun point owners joint => by
             simpa only [prepend, ProtocolState.recoveryStep, Sum.elim_inr, PMF.map_comp,
               Function.comp_def] using steps (Sum.inr point) owners joint)
           next rfl rfl committing endpoint remaining
-        exact CommitRecoveryState.InstructionPath.step firstLegal firstStep (by
-          simpa only [next, CommitRecoveryState.install, liftPoint] using continuation)
+        have consumed : ProtocolState.remaining whole next.point + 1 =
+            ProtocolState.remaining whole state.point := by
+          simp only [next, CommitRecoveryState.install, atEntry, ranks, prepend,
+            ProtocolState.remaining, Sum.elim_inr,
+            ProtocolState.remaining_entry, instructionCount]
+        have point : instructionCount whole - ProtocolState.remaining whole next.point =
+            instructionCount whole - ProtocolState.remaining whole state.point + 1 := by
+          have bounded := ProtocolState.remaining_le_instructionCount whole state.point
+          omega
+        refine ⟨next.publicAddress :: addresses, .step firstLegal firstStep ?_, ?_, ?_⟩
+        · simpa only [next, CommitRecoveryState.install, liftPoint] using continuation
+        · simpa only [List.map_cons, CommitRecoveryState.publicAddress, next,
+            CommitRecoveryState.install, Attempt.exclusionsAfter, headExcluded] using
+            congrArg (List.cons headExcluded) exclusionWord
+        · apply CommitRecoveryState.IntervalAddresses.cons state next _ addresses point rfl rfl
+          · exact ⟨congrArg some point, rfl, rfl⟩
+          · exact metadata
       · have zero : rest.length = 0 := by omega
         obtain ⟨point, owners⟩ := later.liftPoint_entry_of_length_zero suffix zero
         have final :
@@ -134,7 +152,14 @@ theorem Attempt.instructions_closed_lift
           simp only [liftPoint, point, owners, next, headConfig, headExcluded]
         rw [final]
         simp only [later.joints_eq_nil_of_length_zero zero]
-        exact CommitRecoveryState.InstructionPath.step firstLegal firstStep (.refl _)
+        refine ⟨[next.close.publicAddress], .step firstLegal firstStep (.refl _), ?_, ?_⟩
+        · simp only [List.map_cons, List.map_nil, CommitRecoveryState.publicAddress,
+            CommitRecoveryState.close_excluded, next, CommitRecoveryState.install,
+            Attempt.exclusionsAfter, later.exclusionsAfter_eq_nil_of_length_zero zero,
+            headExcluded]
+        · intro index impossible
+          simp only [List.length_singleton] at impossible
+          omega
   | @excluded Γ Δ O P name owner payload fresh guard rest entry excluded finished after
       inactive later ih =>
       intro suffix lift ranks actors menus steps state atEntry stateExcluded committing endpoint
@@ -169,15 +194,31 @@ theorem Attempt.instructions_closed_lift
           omega
         have noClose := next.close_eq_self_of_remaining_gt committing beforeEnd
         rw [noClose] at firstStep
-        have continuation := ih suffix (fun point => lift (Sum.inr point))
+        obtain ⟨addresses, continuation, exclusionWord, metadata⟩ :=
+          ih suffix (fun point => lift (Sum.inr point))
           (fun point => ranks (Sum.inr point)) (fun point => actors (Sum.inr point))
           (fun point who => menus (Sum.inr point) who)
           (fun point owners joint => by
             simpa only [prepend, ProtocolState.recoveryStep, Sum.elim_inr, PMF.map_comp,
               Function.comp_def] using steps (Sum.inr point) owners joint)
           next rfl rfl committing endpoint remaining
-        exact CommitRecoveryState.InstructionPath.step firstLegal firstStep (by
-          simpa only [next, CommitRecoveryState.install, liftPoint] using continuation)
+        have consumed : ProtocolState.remaining whole next.point + 1 =
+            ProtocolState.remaining whole state.point := by
+          simp only [next, CommitRecoveryState.install, atEntry, ranks, prepend,
+            ProtocolState.remaining, Sum.elim_inr,
+            ProtocolState.remaining_entry, instructionCount]
+        have point : instructionCount whole - ProtocolState.remaining whole next.point =
+            instructionCount whole - ProtocolState.remaining whole state.point + 1 := by
+          have bounded := ProtocolState.remaining_le_instructionCount whole state.point
+          omega
+        refine ⟨next.publicAddress :: addresses, .step firstLegal firstStep ?_, ?_, ?_⟩
+        · simpa only [next, CommitRecoveryState.install, liftPoint] using continuation
+        · simpa only [List.map_cons, CommitRecoveryState.publicAddress, next,
+            CommitRecoveryState.install, Attempt.exclusionsAfter] using
+            congrArg (List.cons excluded) exclusionWord
+        · apply CommitRecoveryState.IntervalAddresses.cons state next _ addresses point rfl rfl
+          · exact ⟨congrArg some point, rfl, rfl⟩
+          · exact metadata
       · have zero : rest.length = 0 := by omega
         obtain ⟨point, owners⟩ := later.liftPoint_entry_of_length_zero suffix zero
         have final :
@@ -189,7 +230,13 @@ theorem Attempt.instructions_closed_lift
           simp only [liftPoint, point, owners, next, headConfig]
         rw [final]
         simp only [later.joints_eq_nil_of_length_zero zero]
-        exact CommitRecoveryState.InstructionPath.step firstLegal firstStep (.refl _)
+        refine ⟨[next.close.publicAddress], .step firstLegal firstStep (.refl _), ?_, ?_⟩
+        · simp only [List.map_cons, List.map_nil, CommitRecoveryState.publicAddress,
+            CommitRecoveryState.close_excluded, next, CommitRecoveryState.install,
+            Attempt.exclusionsAfter, later.exclusionsAfter_eq_nil_of_length_zero zero]
+        · intro index impossible
+          simp only [List.length_singleton] at impossible
+          omega
 
 end CommitPrefix
 end Vegas.SourceProgram

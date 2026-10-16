@@ -52,4 +52,6 @@ import Vegas.Compile.CommitPrefixWordReadout
 import Vegas.Compile.ExcludedCommitPrefixObservation
 import Vegas.Compile.CommitPrefixBindingSplit
 
+import Vegas.Compile.EventSourceViewErasure
+
 /-! Source-program lowering to the typed immutable graph. -/

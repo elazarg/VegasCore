@@ -135,18 +135,25 @@ theorem decoded_commit_retry_source_traces
     | commit => rfl
   have firstCommitting := (commits _).trans (committing firstEntry)
   have secondCommitting := (commits _).trans (committing secondEntry)
-  have firstEndpoint : ProtocolState.commitEnd setup.program left.saved ≤ instructionCount suffix :=
+  have firstEndpoint : ProtocolState.commitEnd setup.program left.saved ≤
+      instructionCount suffix :=
     ((endpoints _).trans (block.commitEnd_entry_prepend suffix boundary firstEntry)).le
   have secondEndpoint : ProtocolState.commitEnd setup.program right.saved ≤
       instructionCount suffix :=
     ((endpoints _).trans (block.commitEnd_entry_prepend suffix boundary secondEntry)).le
-  obtain ⟨leftTrace, rightTrace, leftFuel, rightFuel, leftPath, rightPath, same,
+  obtain ⟨leftTrace, rightTrace, leftFuel, rightFuel, leftPath, rightPath, _sameCurrent, same,
     _firstInstructions, _secondInstructions⟩ :=
-    decoded_commit_block_source_traces setup mode who block
+    decoded_commit_block_source_traces setup mode who true id block
     suffix embedding lift origin ranks actors menus steps first second firstValid secondValid
     firstEntry secondEntry left right entry publicView observed firstCompleted secondCompleted
-    saved rfl rfl rfl rfl rfl firstCommitting secondCommitting firstEndpoint secondEndpoint positive
-    firstTrace secondTrace prior
+    saved rfl rfl rfl rfl rfl firstCommitting secondCommitting firstEndpoint secondEndpoint
+    positive
+    firstTrace secondTrace (by simpa only [Setup.commitRecoveryProjectedRecall_true,
+      List.map_id_fun, Prod.map_id, id_eq] using prior)
+  have same : setup.commitRecoverySignals.infoOf who leftTrace =
+      setup.commitRecoverySignals.infoOf who rightTrace := by
+    simpa only [Setup.commitRecoveryProjectedRecall_true,
+      List.map_id_fun, Prod.map_id, id_eq] using same
   have reachedSignal := congrArg Prod.fst same
   rw [setup.commitRecoverySignals_current who leftTrace,
     setup.commitRecoverySignals_current who rightTrace] at reachedSignal

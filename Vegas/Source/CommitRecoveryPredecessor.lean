@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Source.CommitRecoveryRanks
+import Vegas.Source.CommitRecoveryPublicHistory
 
 /-! # Exact earlier observations of surviving source recovery instructions -/
 
@@ -30,7 +31,7 @@ theorem recover_recoveryStep {Γ : SourceCtx Player L} {O : Finset VarId}
 surviving owner. The source instruction rank follows from actual step progress,
 including missing and automatic foreign commitments and disclosures. -/
 theorem recoveryStep_predecessor_eq {Γ : SourceCtx Player L} {O : Finset VarId}
-    (who : Player) (program : SourceProgram Player L Γ O)
+    (who : Player) (projection : SourceViewProjection) (program : SourceProgram Player L Γ O)
     (first second : ProtocolState program) (firstExcluded secondExcluded : Finset Player)
     (firstJoint secondJoint : Player → Option (CommitRecoveryMove Player L))
     (firstResult secondResult : ProtocolState program × Finset Player)
@@ -41,9 +42,12 @@ theorem recoveryStep_predecessor_eq {Γ : SourceCtx Player L} {O : Finset VarId}
     (secondReached : secondResult ∈
       (ProtocolState.recoveryStep program second secondExcluded secondJoint).support)
     (firstSurvives : who ∉ firstExcluded) (secondSurvives : who ∉ secondExcluded)
-    (observed : ProtocolState.observe who program firstResult.1 =
-      ProtocolState.observe who program secondResult.1) :
-    ProtocolState.observe who program first = ProtocolState.observe who program second := by
+    (observed : projection.apply who program
+        (ProtocolState.observe who program firstResult.1) =
+      projection.apply who program
+        (ProtocolState.observe who program secondResult.1)) :
+    projection.apply who program (ProtocolState.observe who program first) =
+      projection.apply who program (ProtocolState.observe who program second) := by
   have firstProgress := ProtocolState.recoveryStep_remaining program first firstExcluded
     firstJoint firstResult firstRunning firstReached
   have secondProgress := ProtocolState.recoveryStep_remaining program second secondExcluded
@@ -52,14 +56,19 @@ theorem recoveryStep_predecessor_eq {Γ : SourceCtx Player L} {O : Finset VarId}
   have secondBefore := position_add_remaining who program second
   have firstAfter := position_add_remaining who program firstResult.1
   have secondAfter := position_add_remaining who program secondResult.1
-  rw [observed] at firstAfter
+  have positions := congrArg (position who program) observed
+  simp only [SourceViewProjection.position_apply] at positions
   have rank : position who program (ProtocolState.observe who program first) =
       position who program (ProtocolState.observe who program second) := by omega
   have left := recover_recoveryStep who program first firstExcluded firstJoint firstResult
     firstReached firstSurvives
   have right := recover_recoveryStep who program second secondExcluded secondJoint secondResult
     secondReached secondSurvives
-  rw [rank, observed, right] at left
-  exact Option.some.inj left.symm
+  have leftProjected := congrArg (Option.map (projection.apply who program)) left
+  have rightProjected := congrArg (Option.map (projection.apply who program)) right
+  rw [← SourceViewProjection.atRank_apply] at leftProjected rightProjected
+  simp only [Option.map_some] at leftProjected rightProjected
+  rw [rank, observed, rightProjected] at leftProjected
+  exact Option.some.inj leftProjected.symm
 
 end Vegas.SourceProgram.ProtocolView

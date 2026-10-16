@@ -50,7 +50,7 @@ theorem high_le_of_mem_tail (first : RuntimePhase graph) (rest : List (RuntimePh
         (low_le_of_mem (next :: tail) ordered.tail next rfl other member)
 
 omit [DecidableEq Player] in
-private theorem containing_unique (phases : List (RuntimePhase graph))
+theorem containing_unique (phases : List (RuntimePhase graph))
     (ordered : phases.IsChain fun before after => before.high = after.low)
     (event : graph.EventId) (first second : RuntimePhase graph)
     (firstMember : first ∈ phases) (secondMember : second ∈ phases)

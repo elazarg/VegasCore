@@ -48,7 +48,8 @@ theorem phase_initial_archive_information_eq_of_observed
       (leftSteps rightSteps leftLater rightLater : Nat),
       firstFinal.ArchivedRecall ∧ secondFinal.ArchivedRecall ∧
       ArchivedSourceOrigins setup mode first.execution.application.retired ⟨_, firstFinal.trace⟩ ∧
-      ArchivedSourceOrigins setup mode second.execution.application.retired ⟨_, secondFinal.trace⟩ ∧
+      ArchivedSourceOrigins setup mode second.execution.application.retired
+        ⟨_, secondFinal.trace⟩ ∧
       second.execution.application.retired[0]? = some rightRecord ∧
       leftState.attempt = record.attempt ∧ rightState.attempt = rightRecord.attempt ∧
       setup.commitRecoveryProtocol.ReachesWithin leftSteps ⟨_, left.trace⟩ leftClosed ∧
@@ -144,9 +145,15 @@ theorem phase_initial_archive_information_eq_of_observed
   have prior := congrArg Prod.fst fullPrior
   have information := phase_archived_chosen_information_eq_of_observed setup mode runtime leaks
     plan maximal
-    inputs horizon scheduler firstRaw secondRaw who survives 0 record rightRecord selected
-    secondSelected observed left right leftAttempt firstFinal secondFinal prior leftClosed
+    inputs horizon scheduler firstRaw secondRaw who true id survives 0 record rightRecord selected
+    secondSelected observed left right leftAttempt firstFinal secondFinal
+    ⟨congrArg (fun info => setup.commitRecoveryHistorySignal who true info.1) prior,
+      congrArg (setup.commitRecoveryProjectedRecall who true id) prior⟩ leftClosed
     rightClosed leftPath rightPath leftFollowing rightFollowing leftInstructions rightInstructions
+  have information := setup.commitRecovery_surviving_info_eq who leftClosed.trace
+    rightClosed.trace information.1 information.2.1
+    (by simpa only [Setup.commitRecoveryProjectedRecall_true,
+      List.map_id_fun, Prod.map_id, id_eq] using information.2.2.2)
   exact ⟨firstFinal, secondFinal, leftState, rightState, left, right, rightRecord, leftClosed,
     rightClosed, leftSteps, rightSteps, leftLater, rightLater, firstAligned, secondAligned,
     firstOrigins, secondOrigins,

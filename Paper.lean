@@ -1,3 +1,30 @@
+import Vegas.Compile.EventSourceViewErasure
+import Vegas.Game.CommitRecoveryAncillaryBayes
+import Vegas.Game.CommitRecoveryAncillaryBelief
+import Vegas.Game.CommitRecoveryAncillaryFibers
+import Vegas.Game.CompiledCommitExclusionWord
+import Vegas.Game.CompiledCommitMemory
+import Vegas.Game.CompiledCommitSurvivingView
+import Vegas.Game.CompiledPublicExclusions
+import Vegas.Game.PhaseCountServicePhase
+import Vegas.Game.PhaseCountServiceSurvival
+import Vegas.Game.PhaseErasedSourceObservation
+import Vegas.Game.PhasePublicSourceChronology
+import Vegas.Game.PhaseVirtualBindingView
+import Vegas.Pending.PhaseArchiveGeneration
+import Vegas.Pending.PhaseAttemptReceiptSnapshot
+import Vegas.Source.CommitRecoveryBindingReplay
+import Vegas.Source.CommitRecoveryBindingSubstitution
+import Vegas.Source.CommitRecoveryCursor
+import Vegas.Source.CommitRecoveryObservedMemory
+import Vegas.Source.CommitRecoveryPlayerValidity
+import Vegas.Source.CommitRecoveryPublicHistory
+import Vegas.Source.CommitRecoveryPublicPadding
+import Vegas.Source.CommitRecoveryPublicRanks
+import Vegas.Source.CommitRecoveryPublicReadback
+import Vegas.Source.CommitRecoveryPublicScan
+import Vegas.Source.CommitRecoveryVirtualHistory
+import Vegas.Source.CommitRecoveryVirtualView
 import Vegas.Game.CommitRecoveryHybridHistory
 import Vegas.Source.CommitRecoveryInitialInputs
 import Vegas.Source.CommitRecoveryPublicObservation
@@ -7430,11 +7457,6 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #print axioms
   Vegas.RecoverySourceCheckpoint.source_entry_view
 
-/-- info: 'Vegas.SourceProgram.CommitPrefix.Attempt.reaches_unclosed_lift'
-depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms
-  Vegas.SourceProgram.CommitPrefix.Attempt.reaches_unclosed_lift
 
 /-- info: 'Vegas.fillCommitPrefix_observation_of_ready'
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
@@ -12898,12 +12920,6 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #print axioms
   Vegas.SourceProgram.CommitPrefix.Attempt.close_exhausted_lift
 
-/-- info:
-'Vegas.SourceProgram.Setup.recoveryTrace_of_instructions'
-depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms
-  Vegas.SourceProgram.Setup.recoveryTrace_of_instructions
 
 /-- info:
 'Vegas.SourceProgram.ProtocolState.recoveryStep_commit_pure'
@@ -13059,12 +13075,6 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #print axioms
   Vegas.EventGraphRuntime.PhaseServiceScheduler.operational_emission_of_onePacket
 
-/-- info:
-'Vegas.SourceProgram.ProtocolState.recoveryStep_noncommit_excluded_eq'
-depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms
-  Vegas.SourceProgram.ProtocolState.recoveryStep_noncommit_excluded_eq
 
 /-- info:
 'Vegas.SourceProgram.CommitRecoveryState.step_noncommit_atPoint'
@@ -15249,3 +15259,325 @@ open Vegas.SourceProgram in
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms hiddenAgree_of_sourceObserve_eq
+
+open Vegas.EventGraphRuntime.PhaseRuntimeState.ArchiveGeneration in
+/-- info:
+'Vegas.EventGraphRuntime.PhaseRuntimeState.ArchiveGeneration.retry_count'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms retry_count
+
+open Vegas.EventGraphRuntime.PhaseRuntimeState in
+/-- info:
+'Vegas.EventGraphRuntime.PhaseRuntimeState.archivedRetryAttemptsFrom_eq_of_publicViews_eq'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms archivedRetryAttemptsFrom_eq_of_publicViews_eq
+
+open Vegas.EventGraphRuntime.PhaseRuntimeState in
+/-- info:
+'Vegas.EventGraphRuntime.PhaseRuntimeState.finished_of_normalize_attempt_ne'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms finished_of_normalize_attempt_ne
+
+open Vegas.EventGraphRuntime.PhaseRuntimeState in
+/-- info:
+'Vegas.EventGraphRuntime.PhaseRuntimeState.settle_archiveGeneration'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms settle_archiveGeneration
+
+open Vegas.EventGraphRuntime.PhaseRuntimeState in
+/-- info:
+'Vegas.EventGraphRuntime.PhaseRuntimeState.sourcePublicAddressWord_congr'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms sourcePublicAddressWord_congr
+
+open Vegas.EventGraphRuntime.RuntimePhasePlan in
+/-- info:
+'Vegas.EventGraphRuntime.RuntimePhasePlan.containing_unique'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms containing_unique
+
+open Vegas.EventGraphRuntime in
+/-- info:
+'Vegas.EventGraphRuntime.phaseArchiveGeneration_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms phaseArchiveGeneration_history
+
+open Vegas.EventGraphRuntime in
+/-- info:
+'Vegas.EventGraphRuntime.phase_archived_retry_boundary'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms phase_archived_retry_boundary
+
+open Vegas.EventGraphRuntime in
+/-- info:
+'Vegas.EventGraphRuntime.phase_attempt_stopped_receipt_snapshot'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms phase_attempt_stopped_receipt_snapshot
+
+open Vegas.EventGraphRuntime in
+/-- info:
+'Vegas.EventGraphRuntime.phase_attempt_stopped_survivor_iff_receipts'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms phase_attempt_stopped_survivor_iff_receipts
+
+open Vegas.EventGraphRuntime in
+/-- info:
+'Vegas.EventGraphRuntime.phase_closed_transition_receipt_snapshot'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms phase_closed_transition_receipt_snapshot
+
+open Vegas.RecoverySourceCheckpoint in
+/-- info:
+'Vegas.RecoverySourceCheckpoint.chosen_commit_addresses'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms chosen_commit_addresses
+
+open Vegas.RecoverySourceCheckpoint in
+/-- info:
+'Vegas.RecoverySourceCheckpoint.chosen_commit_trace'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms chosen_commit_trace
+
+open Vegas.SourceProgram.CommitRecoveryState.InstructionPath in
+/-- info:
+'Vegas.SourceProgram.CommitRecoveryState.InstructionPath.addresses_length'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms addresses_length
+
+open Vegas.SourceProgram.CommitRecoveryState in
+/-- info:
+'Vegas.SourceProgram.CommitRecoveryState.close_preserves_intendedFor'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms close_preserves_intendedFor
+
+open Vegas.SourceProgram.CommitRecoveryState in
+/-- info:
+'Vegas.SourceProgram.CommitRecoveryState.step_preserves_intendedFor'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms step_preserves_intendedFor
+
+open Vegas.SourceProgram.Config.IntendedFor in
+/-- info:
+'Vegas.SourceProgram.Config.IntendedFor.automaticCommit_other'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms automaticCommit_other
+
+open Vegas.SourceProgram.Config in
+/-- info:
+'Vegas.SourceProgram.Config.intendedFor_withHistory'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms intendedFor_withHistory
+
+open Vegas.SourceProgram.ProtocolState in
+/-- info:
+'Vegas.SourceProgram.ProtocolState.commitOwners_entry'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms commitOwners_entry
+
+open Vegas.SourceProgram.ProtocolState in
+/-- info:
+'Vegas.SourceProgram.ProtocolState.commitOwners_withHistory'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms commitOwners_withHistory
+
+open Vegas.SourceProgram.ProtocolState in
+/-- info:
+'Vegas.SourceProgram.ProtocolState.intendedFor_automaticCommitBlock'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms intendedFor_automaticCommitBlock
+
+open Vegas.SourceProgram.ProtocolState in
+/-- info:
+'Vegas.SourceProgram.ProtocolState.intendedFor_recoveryStep'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms intendedFor_recoveryStep
+
+open Vegas.SourceProgram.ProtocolState in
+/-- info:
+'Vegas.SourceProgram.ProtocolState.intendedFor_withHistory'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms intendedFor_withHistory
+
+open Vegas.SourceProgram.ProtocolState in
+/-- info:
+'Vegas.SourceProgram.ProtocolState.recoveryStep_noncommit_public_excluded'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms recoveryStep_noncommit_public_excluded
+
+open Vegas.SourceProgram.ProtocolSuffix in
+/-- info:
+'Vegas.SourceProgram.ProtocolSuffix.publicSuccessorExclusions_lift'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms publicSuccessorExclusions_lift
+
+open Vegas.SourceProgram.ProtocolView in
+/-- info:
+'Vegas.SourceProgram.ProtocolView.publicPadding_observe'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms publicPadding_observe
+
+open Vegas.SourceProgram.ProtocolView in
+/-- info:
+'Vegas.SourceProgram.ProtocolView.publicSuccessorExclusions_reveal'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms publicSuccessorExclusions_reveal
+
+open Vegas.SourceProgram.Setup in
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecovery_bayes_eq_of_erasedInformation_eq'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms commitRecovery_bayes_eq_of_erasedInformation_eq
+
+open Vegas.SourceProgram.Setup in
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecovery_commit_public_readback'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms commitRecovery_commit_public_readback
+
+open Vegas.SourceProgram.Setup in
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecovery_coordinate_eq_of_info_eq'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms commitRecovery_coordinate_eq_of_info_eq
+
+open Vegas.SourceProgram.Setup in
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecovery_erasedInformation_read'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms commitRecovery_erasedInformation_read
+
+open Vegas.SourceProgram.Setup in
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecovery_hybrid_of_erasedInformation_eq'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms commitRecovery_hybrid_of_erasedInformation_eq
+
+open Vegas.SourceProgram.Setup in
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecovery_information_fiber_equiv'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms commitRecovery_information_fiber_equiv
+
+open Vegas.SourceProgram.Setup in
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecovery_publicRecall_addresses'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms commitRecovery_publicRecall_addresses
+
+open Vegas.SourceProgram.Setup in
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecovery_publicRecall_eq_of_erasedInformation_eq'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms commitRecovery_publicRecall_eq_of_erasedInformation_eq
+
+open Vegas.SourceProgram.Setup in
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecovery_public_expansion'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms commitRecovery_public_expansion
+
+open Vegas.SourceProgram.Setup in
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecovery_public_rank_of_reaches'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms commitRecovery_public_rank_of_reaches
+
+open Vegas.SourceProgram.Setup in
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecovery_same_generation_length'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms commitRecovery_same_generation_length
+
+open Vegas.SourceProgram.Setup in
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecovery_virtual_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms commitRecovery_virtual_history
+
+open Vegas.SourceProgram.Setup in
+/-- info:
+'Vegas.SourceProgram.Setup.recoveryInstructionPath_information'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms recoveryInstructionPath_information
+
+open Vegas in
+/-- info:
+'Vegas.compiled_reveal_public_exclusions'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms compiled_reveal_public_exclusions
+
+open Vegas in
+/-- info:
+'Vegas.decodeCommitAttempt_exclusionWord_eq_of_publicView'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms decodeCommitAttempt_exclusionWord_eq_of_publicView
+
+open Vegas in
+/-- info:
+'Vegas.decoded_commit_block_chosen_signal_eq'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms decoded_commit_block_chosen_signal_eq
+
+open Vegas in
+/-- info:
+'Vegas.phaseCountServiceTapePolicy_foreign_survival_iff'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms phaseCountServiceTapePolicy_foreign_survival_iff
+
+open Vegas in
+/-- info:
+'Vegas.phaseCountServiceTapePolicy_foreign_survivors_law'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms phaseCountServiceTapePolicy_foreign_survivors_law
+
+open Vegas in
+/-- info:
+'Vegas.phaseVirtualSourceView?_genuine_of_ready_binding'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms phaseVirtualSourceView?_genuine_of_ready_binding

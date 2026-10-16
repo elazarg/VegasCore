@@ -1,0 +1,358 @@
+/- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
+
+import Vegas.Pending.PhaseBindingAcceptedReceipt
+import Vegas.Pending.PhaseAttemptCompletion
+
+/-! # The original completed physical snapshot at a full-attempt exit -/
+
+noncomputable section
+
+namespace Vegas.EventGraphRuntime
+
+open Interaction EventGraph GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
+  GameTheory.Math.Probability
+
+variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
+  {graph : Vegas.EventGraph Player L} (runtime : EventGraphRuntime graph)
+  (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket graph))
+
+local notation "app" => phaseApplication runtime leaks
+
+namespace PhaseRuntimeState
+
+/-- Leaving the installed namespace requires completing that original
+phase before selecting any retry or exhausted restoration branch. -/
+theorem finished_of_normalize_attempt_ne (state : PhaseRuntimeState graph)
+    (phase : RuntimePhase graph) (installed : phase ∈ state.phases.head?)
+    (closed : state.normalize.attempt ≠ state.attempt) :
+    phase.Finished (phase.drain state.current) := by
+  classical
+  obtain ⟨remaining, phases⟩ := List.head?_eq_some_iff.mp (Option.mem_def.mp installed)
+  by_contra unfinished
+  apply closed
+  simp only [normalize, phases, settle, ite_eq_right unfinished, attempt, List.head?_cons,
+    Option.map_some, Option.getD_some]
+
+end PhaseRuntimeState
+
+/-- Every actual namespace-changing transition has its original completed
+physical snapshot before normalization. Its accepted bindings carry actual
+old-attempt true receipts. The snapshot is retained separately from both
+the post-reset live store and a possible exhausted restoration. -/
+theorem phase_closed_transition_receipt_snapshot (plan : RuntimePhasePlan graph)
+    (inputs : PMF graph.Inputs) (horizon : Nat) (scheduler : (app).Scheduler)
+    (before after : (app).Control)
+    (trace : ((app).protocol (inputs.map (PhaseRuntimeState.initial plan)) horizon scheduler).Trace
+      (some before)) (joint : Player → Option (app).Action)
+    (reached : some after ∈ ((app).transition (inputs.map (PhaseRuntimeState.initial plan))
+      horizon scheduler (some before) joint).support)
+    (phase : RuntimePhase graph) (installed : phase ∈ before.execution.application.phases.head?)
+    (closed : after.execution.application.attempt ≠ before.execution.application.attempt) :
+    ∃ current : RecoveryState graph, after.actor = none ∧
+      after.execution.application =
+        ({ before.execution.application with
+          current := current } : PhaseRuntimeState graph).normalize ∧
+      phase.Finished (phase.drain current) ∧
+      (phase.drain current).native.BindingInvariant ∧ (phase.drain current).FailureCoverage ∧
+      (phase.drain current).excluded = after.execution.application.current.excluded ∧
+      ∀ event candidate, before.execution.application.attempt.phase ≤ event.val →
+        (phase.drain current).native.accepted (.inr event) = some candidate →
+        PhaseService.BindingAccepted runtime leaks
+          ⟨before.execution.application.attempt, event⟩ candidate.1 after.execution := by
+  classical
+  have binding :=
+    (phaseBindingRecord_history runtime leaks plan inputs horizon scheduler trace).active
+  have coverage :=
+    (phaseFailureCoverage_history runtime leaks plan inputs horizon scheduler trace).active
+  have finish (current : RecoveryState graph) (idle : after.actor = none)
+      (normalized : after.execution.application =
+        ({ before.execution.application with
+          current := current } : PhaseRuntimeState graph).normalize)
+      (nativeBinding : current.native.BindingInvariant) (covered : current.FailureCoverage)
+      (receipts : ∀ event candidate, before.execution.application.attempt.phase ≤ event.val →
+        current.native.accepted (.inr event) = some candidate →
+          PhaseService.BindingAccepted runtime leaks
+            ⟨before.execution.application.attempt, event⟩ candidate.1 after.execution) :
+      ∃ current : RecoveryState graph, after.actor = none ∧
+        after.execution.application =
+          ({ before.execution.application with
+            current := current } : PhaseRuntimeState graph).normalize ∧
+        phase.Finished (phase.drain current) ∧
+        (phase.drain current).native.BindingInvariant ∧ (phase.drain current).FailureCoverage ∧
+        (phase.drain current).excluded = after.execution.application.current.excluded ∧
+        ∀ event candidate, before.execution.application.attempt.phase ≤ event.val →
+          (phase.drain current).native.accepted (.inr event) = some candidate →
+          PhaseService.BindingAccepted runtime leaks
+            ⟨before.execution.application.attempt, event⟩ candidate.1 after.execution := by
+    have finished := PhaseRuntimeState.finished_of_normalize_attempt_ne
+      ({ before.execution.application with current := current } : PhaseRuntimeState graph)
+        phase installed (by
+          simpa only [← normalized, PhaseRuntimeState.attempt] using closed)
+    have physical : after.execution.application.current.excluded = current.excluded := by
+      rw [normalized]
+      exact (PhaseRuntimeState.settle_physical _ _ _ _ _).1
+    refine ⟨current, idle, normalized, finished, phase.drain_bindingInvariant current nativeBinding,
+      covered.drain phase, (phase.drain_excluded current).trans physical.symm, ?_⟩
+    intro event candidate lower accepted
+    apply receipts event candidate lower
+    rwa [(phase.drain_tables current).1] at accepted
+  rcases before with ⟨remaining, actor, execution⟩
+  cases actor with
+  | some owner =>
+    cases (PMF.mem_support_pure_iff ..).mp reached
+    apply (closed _).elim
+    cases response : ((joint owner).getD ⟨none⟩).transmission <;>
+      simp [ReactiveApplication.Execution.respond, response, phaseApplication,
+        PhaseRuntimeState.submit, PhaseRuntimeState.attempt]
+  | none =>
+    cases remaining with
+    | zero =>
+      cases (PMF.mem_support_pure_iff ..).mp reached
+      exact (closed rfl).elim
+    | succ remaining =>
+      obtain ⟨command, _selected, moved⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+      obtain ⟨next, stepped, equal⟩ := PMF.support_map .. ▸ moved
+      cases Option.some.inj equal
+      cases command with
+      | wait =>
+        simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map] at stepped
+        cases (PMF.mem_support_pure_iff ..).mp stepped
+        exact (closed rfl).elim
+      | activate owner =>
+        obtain ⟨updated, selected, rfl⟩ := PMF.support_map .. ▸ stepped
+        obtain ⟨sample, _supported, rfl⟩ := PMF.support_map .. ▸ selected
+        exact (closed rfl).elim
+      | «include» id =>
+        simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map] at stepped
+        cases (PMF.mem_support_pure_iff ..).mp stepped
+        cases found : execution.network.lookup id with
+        | none =>
+          simp only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
+            found] at closed
+          exact (closed rfl).elim
+        | some message =>
+          cases handled : execution.application.handle runtime message with
+          | none =>
+            simp only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
+              found, show (app).handle execution.application message = none from handled,
+              Option.getD_none] at closed
+            exact (closed rfl).elim
+          | some state =>
+            obtain ⟨native, nativeHandled, normalized, receipted⟩ :=
+              phase_inclusion_snapshot_bindingAccepted runtime leaks plan inputs horizon scheduler
+                trace id message found state handled
+            refine finish (execution.application.current.inclusionResult
+              message.payload.packet.call native) rfl ?_ ?_ ?_ ?_
+            · simpa only [ReactiveApplication.Execution.includePending,
+                MessageNetwork.includePending,
+                found, show (app).handle execution.application message = some state from handled,
+                Option.getD_some] using normalized
+            · exact handle_bindingInvariant runtime execution.application.current.native native
+                ⟨message.id, message.payload.packet.call⟩ binding nativeHandled
+            · exact coverage.inclusionResult runtime _ native nativeHandled
+            · exact receipted
+      | application operation =>
+        obtain ⟨updated, selected, rfl⟩ := PMF.support_map .. ▸ stepped
+        obtain ⟨state, supported, rfl⟩ := PMF.support_map .. ▸ selected
+        change state ∈ (execution.application.environment runtime operation).support at supported
+        unfold PhaseRuntimeState.environment at supported
+        split at supported
+        · obtain ⟨native, nativeMoved, rfl⟩ := PMF.support_map .. ▸ supported
+          refine finish (execution.application.current.environmentResult operation native)
+            rfl rfl ?_ ?_ ?_
+          · exact environmentStep_bindingInvariant runtime execution.application.current.native
+              native operation binding nativeMoved
+          · exact coverage.environmentResult runtime operation native nativeMoved
+          · intro event candidate lower accepted
+            have old :
+                execution.application.current.native.accepted (.inr event) = some candidate :=
+              by
+                change native.accepted (.inr event) = some candidate at accepted
+                rwa [(environmentStep_tables runtime _ _ operation nativeMoved).1] at accepted
+            exact phase_live_bindingAccepted runtime leaks plan inputs horizon scheduler trace
+              event lower candidate old
+        · cases (PMF.mem_support_pure_iff ..).mp supported
+          exact (closed rfl).elim
+
+
+section Stopped
+
+variable [Fintype Player]
+
+/-- The first actual full-attempt exit retains the original completed physical
+snapshot and all of its accepting receipts, before retry or exhausted restore.
+No exclusion or terminal branch is discarded. -/
+theorem phase_attempt_stopped_receipt_snapshot
+    (menu : (app).ResponseMenu) (plan : RuntimePhasePlan graph) (inputs : PMF graph.Inputs)
+    (horizon : Nat) (scheduler : (app).Scheduler) (delay bound : graph.EventId → Nat)
+    (contract : PhaseService.AsyncContract runtime leaks
+      (inputs.map (PhaseRuntimeState.initial plan)) horizon scheduler delay bound)
+    (profile : ∀ who, (menu.information (inputs.map (PhaseRuntimeState.initial plan))
+      horizon scheduler).BehavioralPolicy who)
+    (start : (app).Control)
+    (trace : (menu.protocol (inputs.map (PhaseRuntimeState.initial plan))
+      horizon scheduler).Trace (some start))
+    (phase : RuntimePhase graph) (installed : phase ∈ start.execution.application.phases.head?) :
+    let stopped := fun history : (menu.protocol (inputs.map (PhaseRuntimeState.initial plan))
+        horizon scheduler).History => match history.state with
+      | none => False
+      | some control => control.execution.application.attempt ≠ start.execution.application.attempt
+    ∀ final ∈ ((menu.information (inputs.map (PhaseRuntimeState.initial plan))
+        horizon scheduler).runBehavioralUntil
+      (menu.bounded (inputs.map (PhaseRuntimeState.initial plan))
+        horizon scheduler).wellFoundedHistories profile stopped ⟨some start, trace⟩).support,
+      ∃ ending : (app).Control, final.state = some ending ∧
+        ending.execution.application.attempt ≠ start.execution.application.attempt ∧
+        ending.actor = none ∧ ∃ snapshot : RecoveryState graph,
+          phase.Finished snapshot ∧ snapshot.native.BindingInvariant ∧ snapshot.FailureCoverage ∧
+          snapshot.excluded = ending.execution.application.current.excluded ∧
+          ∀ event candidate, start.execution.application.attempt.phase ≤ event.val →
+            snapshot.native.accepted (.inr event) = some candidate →
+            PhaseService.BindingAccepted runtime leaks
+              ⟨start.execution.application.attempt, event⟩ candidate.1 ending.execution := by
+  classical
+  intro stopped final supported
+  let initial := inputs.map (PhaseRuntimeState.initial plan)
+  let E := menu.protocol initial horizon scheduler
+  let N := menu.information initial horizon scheduler
+  let Snapshot (ending : (app).Control) : Prop := ending.actor = none ∧
+    ∃ snapshot : RecoveryState graph,
+    phase.Finished snapshot ∧ snapshot.native.BindingInvariant ∧ snapshot.FailureCoverage ∧
+      snapshot.excluded = ending.execution.application.current.excluded ∧
+      ∀ event candidate, start.execution.application.attempt.phase ≤ event.val →
+        snapshot.native.accepted (.inr event) = some candidate →
+        PhaseService.BindingAccepted runtime leaks
+          ⟨start.execution.application.attempt, event⟩ candidate.1 ending.execution
+  have initialized : ∀ state ∈ initial.support, state.Ordered := by
+    intro state member
+    obtain ⟨draw, _, rfl⟩ := PMF.support_map .. ▸ member
+    exact PhaseRuntimeState.initial_ordered plan draw
+  have ordered := (phaseApplication_seedOrder runtime leaks).history initial horizon scheduler
+    initialized (menu.toRawTrace initial horizon scheduler trace)
+  have first := N.runBehavioralUntil_support_first
+    (menu.bounded initial horizon scheduler).wellFoundedHistories profile stopped
+      ⟨some start, trace⟩ final supported
+  have along : ∀ {target} {targetTrace : E.Trace target}, TracePrefix trace targetTrace →
+      TracePrefix targetTrace final.trace →
+      ∃ current : (app).Control, target = some current ∧ current.execution.application.Ordered ∧
+        (current.execution.application.attempt = start.execution.application.attempt →
+          current.execution.application.phases = start.execution.application.phases) ∧
+        (current.execution.application.attempt ≠ start.execution.application.attempt →
+          Snapshot current) := by
+    intro target targetTrace kept
+    induction kept with
+    | refl =>
+      intro _before
+      exact ⟨start, rfl, ordered, fun _ => rfl, fun closed => (closed rfl).elim⟩
+    | @extend source target earlier kept joint legal realized ih =>
+      intro beforeFinal
+      have earlierFinal := (TracePrefix.extend .refl joint legal realized).trans beforeFinal
+      obtain ⟨middle, rfl, middleOrdered, phasesKept, _previous⟩ := ih earlierFinal
+      have moved : target ∈ ((app).transition initial horizon scheduler
+          (some middle) joint).support := realized
+      obtain ⟨next, rfl, _recall⟩ := (app).transition_recall_prefix initial horizon scheduler
+        middle target joint moved
+      have shorter : earlier.length < final.trace.length := by
+        have upper := beforeFinal.length_le
+        simp only [Trace.length] at upper
+        omega
+      have same : middle.execution.application.attempt = start.execution.application.attempt := by
+        by_contra different
+        exact first ⟨some middle, earlier⟩ kept earlierFinal shorter different
+      have nextOrdered := (phaseApplication_seedOrder runtime leaks).transition initial horizon
+        scheduler initialized (some middle) (some next) joint middleOrdered moved
+      refine ⟨next, rfl, nextOrdered, ?_, ?_⟩
+      · intro sameNext
+        exact ((phaseApplication_sameAttempt_phases runtime leaks).transition initial horizon
+          scheduler middle next joint moved middleOrdered (same.trans sameNext.symm)).trans
+            (phasesKept same)
+      · intro closed
+        have installedNow : phase ∈ middle.execution.application.phases.head? := by
+          simpa only [phasesKept same] using installed
+        obtain ⟨raw, idle, _normalized, finished, binding, covered, excluded, receipts⟩ :=
+          phase_closed_transition_receipt_snapshot runtime leaks plan inputs horizon scheduler
+            middle next (menu.toRawTrace initial horizon scheduler earlier) joint moved phase
+              installedNow (fun equal => closed (equal.trans same))
+        refine ⟨idle, phase.drain raw, finished, binding, covered, excluded, ?_⟩
+        simpa only [same] using receipts
+  obtain ⟨ending, stateEq, _prefix, changed, _completed, _retried, _failed⟩ :=
+    phase_attempt_stopped_results runtime leaks menu plan inputs horizon scheduler delay bound
+      contract profile start trace phase installed final supported
+  have retained := N.runBehavioralUntil_support_prefix
+    (menu.bounded initial horizon scheduler).wellFoundedHistories profile stopped
+      ⟨some start, trace⟩ final supported
+  obtain ⟨current, currentEq, _currentOrdered, _phases, snapshot⟩ := along retained .refl
+  have same := Option.some.inj (currentEq.symm.trans stateEq)
+  subst current
+  exact ⟨ending, stateEq, changed, snapshot changed⟩
+
+
+/-- At the original first full-attempt exit, an initially active owner survives
+exactly when every owned binding of that original phase has a true receipt.
+The equivalence includes focal-triggered retry and exhausted restoration. -/
+theorem phase_attempt_stopped_survivor_iff_receipts
+    (menu : (app).ResponseMenu) (plan : RuntimePhasePlan graph) (inputs : PMF graph.Inputs)
+    (horizon : Nat) (scheduler : (app).Scheduler) (delay bound : graph.EventId → Nat)
+    (contract : PhaseService.AsyncContract runtime leaks
+      (inputs.map (PhaseRuntimeState.initial plan)) horizon scheduler delay bound)
+    (profile : ∀ who, (menu.information (inputs.map (PhaseRuntimeState.initial plan))
+      horizon scheduler).BehavioralPolicy who)
+    (start : (app).Control)
+    (trace : (menu.protocol (inputs.map (PhaseRuntimeState.initial plan))
+      horizon scheduler).Trace (some start))
+    (phase : RuntimePhase graph) (installed : phase ∈ start.execution.application.phases.head?)
+    (commitment : phase.kind = .commitment) :
+    let stopped := fun history : (menu.protocol (inputs.map (PhaseRuntimeState.initial plan))
+        horizon scheduler).History => match history.state with
+      | none => False
+      | some control => control.execution.application.attempt ≠ start.execution.application.attempt
+    ∀ final ∈ ((menu.information (inputs.map (PhaseRuntimeState.initial plan))
+        horizon scheduler).runBehavioralUntil
+      (menu.bounded (inputs.map (PhaseRuntimeState.initial plan))
+        horizon scheduler).wellFoundedHistories profile stopped ⟨some start, trace⟩).support,
+      ∃ ending : (app).Control, final.state = some ending ∧
+        ∀ owner, owner ∉ start.execution.application.current.excluded →
+          (owner ∉ ending.execution.application.current.excluded ↔
+            ∀ event ∈ phase.events, graph.actor? event = some owner →
+              PhaseService.BindingAccepted runtime leaks
+                ⟨start.execution.application.attempt, event⟩ owner ending.execution) := by
+  classical
+  intro stopped final supported
+  obtain ⟨ending, stateEq, _changed, _idle, snapshot, finished, valid, covered, excluded,
+    receipts⟩ :=
+    phase_attempt_stopped_receipt_snapshot runtime leaks menu plan inputs horizon scheduler
+      delay bound contract profile start trace phase installed final supported
+  refine ⟨ending, stateEq, ?_⟩
+  intro owner active
+  constructor
+  · intro surviving event inside actor
+    have ranks := (phase.mem_events event).mp inside
+    obtain ⟨other, payload, layout⟩ := commitment ▸ phase.fields event ranks.1 ranks.2
+    have same : other = owner := by
+      exact Option.some.inj ((actor?_of_outputLayout_binding graph layout).symm.trans actor)
+    subst other
+    have present : snapshot.native.accepted (.inr event) ≠ none := by
+      intro missing
+      have missed := (snapshot.native.publicView_missedBinding event owner payload layout).mpr
+        ⟨finished inside, missing⟩
+      have failed := covered.covered event owner actor (Or.inl missed)
+      exact surviving (excluded ▸ failed)
+    obtain ⟨candidate, accepted⟩ := Option.ne_none_iff_exists'.mp present
+    have owned : candidate.1 = owner := by
+      obtain ⟨_otherPayload, typed⟩ := valid.accepted_typed (.inr event) candidate accepted
+      exact (EventField.binding.inj (typed.symm.trans layout)).1
+    have lower : start.execution.application.attempt.phase ≤ event.val := by
+      have headEq := Option.mem_def.mp installed
+      simpa only [PhaseRuntimeState.attempt, headEq, Option.map_some, Option.getD_some]
+        using ranks.1
+    simpa only [owned] using receipts event candidate lower accepted
+  · intro accepted failed
+    obtain ⟨event, inside, before, _prior, _fromStart, _toFinal, _same, request, absent⟩ :=
+      PhaseService.phase_attempt_stopped_exclusion_unaccepted runtime leaks menu plan inputs
+        horizon scheduler profile start trace phase installed commitment owner active final
+          supported ending stateEq failed
+    exact absent (accepted event inside request.2.2.2.1)
+
+end Stopped
+
+end Vegas.EventGraphRuntime

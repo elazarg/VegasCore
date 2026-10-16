@@ -50,7 +50,8 @@ theorem phase_initial_retry_information_eq_of_observed
       (leftSteps rightSteps leftLater rightLater : Nat),
       firstFinal.ArchivedRecall ∧ secondFinal.ArchivedRecall ∧
       ArchivedSourceOrigins setup mode first.execution.application.retired ⟨_, firstFinal.trace⟩ ∧
-      ArchivedSourceOrigins setup mode second.execution.application.retired ⟨_, secondFinal.trace⟩ ∧
+      ArchivedSourceOrigins setup mode second.execution.application.retired
+        ⟨_, secondFinal.trace⟩ ∧
       second.execution.application.retired[index]? = some rightRecord ∧
       leftState.attempt = record.attempt ∧ rightState.attempt = rightRecord.attempt ∧
       setup.commitRecoveryProtocol.ReachesWithin leftSteps ⟨_, left.trace⟩ leftClosed ∧
@@ -98,7 +99,8 @@ theorem phase_initial_retry_information_eq_of_observed
         rw [PMF.map_comp]
         exact firstTrace
       have secondRaw : ((phaseApplication runtime leaks).protocol
-          (inputs.map (PhaseRuntimeState.initial plan)) horizon scheduler).Trace (some second) := by
+          (inputs.map (PhaseRuntimeState.initial plan)) horizon scheduler).Trace
+          (some second) := by
         dsimp only [inputs]
         rw [PMF.map_comp]
         exact secondTrace
@@ -171,16 +173,19 @@ theorem phase_initial_retry_information_eq_of_observed
           firstRaw).archives
           oldRecord (List.mem_of_getElem? oldSelected)
       have oldCommitting := (oldLeft.completed_commit_phase plan maximal oldPhase oldMember oldKind
-        (oldLow.symm.trans (congrArg CommitAttemptId.phase oldLeftAttempt).symm) who oldRecord.state
+        (oldLow.symm.trans (congrArg CommitAttemptId.phase oldLeftAttempt).symm) who
+        oldRecord.state
         oldCompleted).1
-      obtain ⟨rightPhase, rightMember, rightLow, rightKind, rightCompleted, _receipts, _failures⟩ :=
+      obtain ⟨rightPhase, rightMember, rightLow, rightKind, rightCompleted,
+        _receipts, _failures⟩ :=
         (phaseRetiredCompletion_history runtime leaks plan inputs horizon scheduler
           secondRaw).archives
           oldRightRecord (List.mem_of_getElem? oldSecondSelected)
       have rightCommitting := (oldRight.completed_commit_phase plan maximal rightPhase rightMember
         rightKind (rightLow.symm.trans (congrArg CommitAttemptId.phase oldRightAttempt).symm) who
         oldRightRecord.state rightCompleted).1
-      have firstCoverage := phaseFailureCoverage_history runtime leaks plan inputs horizon scheduler
+      have firstCoverage := phaseFailureCoverage_history runtime leaks plan inputs horizon
+        scheduler
         firstRaw
       have secondCoverage := phaseFailureCoverage_history runtime leaks plan inputs horizon
         scheduler secondRaw
@@ -207,10 +212,18 @@ theorem phase_initial_retry_information_eq_of_observed
         setup.commitRecoverySignals.withOwnPlayRecall.infoOf who right.trace at prior
       rw [InfoSignals.withOwnPlayRecall_infoOf, InfoSignals.withOwnPlayRecall_infoOf] at prior
       have information := phase_archived_chosen_information_eq_of_observed setup mode runtime leaks
-        plan maximal inputs horizon scheduler firstRaw secondRaw who survives (index + 1) record
+        plan maximal inputs horizon scheduler firstRaw secondRaw who true id survives
+        (index + 1) record
         rightRecord selected secondSelected observed left right leftAttempt firstFinal secondFinal
-        (congrArg Prod.fst prior) leftClosed rightClosed leftPath rightPath leftFollowing
+        ⟨congrArg (fun info => setup.commitRecoveryHistorySignal who true info.1.1) prior,
+          congrArg (fun info => setup.commitRecoveryProjectedRecall who true id info.1) prior⟩
+        leftClosed rightClosed
+        leftPath rightPath leftFollowing
         rightFollowing leftInstructions rightInstructions
+      have information := setup.commitRecovery_surviving_info_eq who leftClosed.trace
+        rightClosed.trace information.1 information.2.1
+        (by simpa only [Setup.commitRecoveryProjectedRecall_true,
+      List.map_id_fun, Prod.map_id, id_eq] using information.2.2.2)
       exact ⟨firstFinal, secondFinal, leftState, rightState, left, right, rightRecord, leftClosed,
         rightClosed, leftSteps, rightSteps, leftLater, rightLater, firstAligned, secondAligned,
         firstOrigins, secondOrigins,

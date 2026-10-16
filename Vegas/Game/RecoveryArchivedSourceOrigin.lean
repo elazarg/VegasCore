@@ -3,6 +3,7 @@
 import Vegas.Game.RecoveryArchivedSavedWord
 import Vegas.Game.RecoveryArchivedInitialization
 import Vegas.Game.RecoverySettledCommitCheckpoint
+import Vegas.Game.RecoveryChosenCommitControl
 
 /-! # Actual archived checkpoints in one linked chosen source chronology -/
 
@@ -40,6 +41,14 @@ inductive ArchivedSourceOrigins (setup : Setup (Player := Player) (L := L)) (mod
       (instructions : setup.recoveryJointRecall closed.trace =
         (checkpoint.commitInstructionWord record.state).reverse ++
           setup.recoveryJointRecall checkpoint.trace)
+      (addresses : ∃ word, setup.recoveryAddressWord closed.trace =
+        setup.recoveryAddressWord checkpoint.trace ++ word ∧
+        word.map (fun address => address.2.1) = checkpoint.commitExclusionWord record.state ∧
+        (CommitRecoveryState.atPoint
+          (checkpoint.residual.lift
+            (ProtocolState.entry checkpoint.residual.tail checkpoint.source))
+          state.entry.excluded state.generation).IntervalAddresses word ∧
+        word.getLast? = closed.state.map CommitRecoveryState.publicAddress)
       : ArchivedSourceOrigins setup mode (state.retired ++ [record]) closed
   /-- A completed nonarchiving phase retains both chosen endpoints and its actual native image. -/
   | advance {state nextState : PhaseRuntimeState ((toEventGraph setup.program).withMode mode)}
@@ -66,7 +75,19 @@ inductive ArchivedSourceOrigins (setup : Setup (Player := Player) (L := L)) (mod
       (instructions : phase.kind = .commitment →
         setup.recoveryJointRecall next.trace =
           (checkpoint.commitInstructionWord nextState.entry.native).reverse ++
-            setup.recoveryJointRecall checkpoint.trace) :
+            setup.recoveryJointRecall checkpoint.trace)
+      (addresses : phase.kind = .commitment →
+        ∃ word, setup.recoveryAddressWord next.trace =
+          setup.recoveryAddressWord checkpoint.trace ++ word ∧
+          word.map (fun address => address.2.1) =
+            checkpoint.commitExclusionWord nextState.entry.native ∧
+          (CommitRecoveryState.atPoint
+            (checkpoint.residual.lift
+              (ProtocolState.entry checkpoint.residual.tail checkpoint.source))
+            state.entry.excluded state.generation).IntervalAddresses word ∧
+          word.getLast? = some (CommitRecoveryState.atPoint
+            (next.residual.lift (ProtocolState.entry next.residual.tail next.source))
+            nextState.entry.excluded nextState.generation).publicAddress) :
       ArchivedSourceOrigins setup mode nextState.retired ⟨_, next.trace⟩
 
 namespace ArchivedSourceOrigins
@@ -98,7 +119,7 @@ theorem get {setup : Setup (Player := Player) (L := L)} {mode : ExecutionMode}
   induction origins generalizing index with
   | initial => exact (Nat.not_lt_zero index bound).elim
   | @append state checkpoint previous aligned record attempt retained saved agrees positive
-      closed steps path instructions ih =>
+      closed steps path instructions _addresses ih =>
       by_cases earlier : index < state.retired.length
       · obtain ⟨old, source, sourceAligned, earlierOrigins, archive, oldAttempt, oldRetained,
           oldSaved,
@@ -132,7 +153,8 @@ theorem get {setup : Setup (Player := Player) (L := L)} {mode : ExecutionMode}
         · simpa only [List.getElem_append_right (Nat.le_refl _), Nat.sub_self,
             List.getElem_cons_zero] using instructions
   | advance _checkpoint _next _previous _phase _remaining _installed _advanced _generation archives
-      _boundary _aligned _saved _retained _stored _finished _reachable path _instructions ih =>
+      _boundary _aligned _saved _retained _stored _finished _reachable path _instructions
+      _addresses ih =>
       obtain ⟨old, source, sourceAligned, earlierOrigins, archive, oldAttempt, oldRetained,
         oldSaved, oldAgrees, oldPositive, oldClosed, oldSteps, oldLater, sourcePath,
         oldInstructions, onward⟩ := ih index (by simpa only [archives] using bound)

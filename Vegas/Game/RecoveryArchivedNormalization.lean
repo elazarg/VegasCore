@@ -142,7 +142,9 @@ theorem RecoverySourceCheckpoint.normalized_archived
         exact (checkpoint.refs.get selected).get?_preserved _ _
           (fun field value present => phase.drain_keepsStore current field value
             (stored field value present)) _ (checkpoint.agrees selected)
-      have archivedSource {history : setup.commitRecoveryProtocol.History} {fuel : Nat}
+      have archivedSource (committing : ProtocolState.atCommit checkpoint.residual.tail
+          (ProtocolState.entry checkpoint.residual.tail checkpoint.source) = true)
+          {history : setup.commitRecoveryProtocol.History} {fuel : Nat}
           (path : setup.commitRecoveryProtocol.ReachesWithin fuel ⟨_, priorTrace⟩ history)
           (instructions : setup.recoveryJointRecall history.trace =
             (checkpoint.commitInstructionWord image.native).reverse ++
@@ -152,6 +154,7 @@ theorem RecoverySourceCheckpoint.normalized_archived
         ArchivedSourceOrigins.append checkpoint origins aligned
           ⟨⟨phase.low, generation⟩, image.native⟩ rfl retained position.1 imageAgrees sourcePositive
           path instructions
+          (checkpoint.chosen_commit_addresses image.native committing history path instructions)
       have advance (next : RecoveryState ((toEventGraph setup.program).withMode mode))
           (archive : List (RetiredCommitAttempt ((toEventGraph setup.program).withMode mode)))
           (nextPrefix : next.native.config.cut.IsPrefix phase.high)
@@ -216,7 +219,7 @@ theorem RecoverySourceCheckpoint.normalized_archived
                   (PhaseRuntimeState.settle (phase :: remaining) generation entry current
                     retired).retired ⟨_, next.trace⟩
                 rw [normalized]
-                exact archivedSource path instructions
+                exact archivedSource committing path instructions
               · obtain ⟨⟨nextCheckpoint, sourcePrefix, word⟩, normalized⟩ :=
                   checkpoint.after_commit_exhausted committing
                   phase remaining rfl maximal binding receipts stored finished missed survives
@@ -296,7 +299,7 @@ theorem RecoverySourceCheckpoint.normalized_archived
                   (by
                     obtain ⟨nextFuel, nextPath, instructions⟩ := sourcePrefix
                     exact ⟨nextCheckpoint, nextAligned, nextFuel, nextPath,
-                      archivedSource nextPath instructions⟩)
+                      archivedSource committing nextPath instructions⟩)
             · obtain ⟨⟨nextCheckpoint, _sourcePoint, sourcePrefix, word, _intended⟩, normalized⟩ :=
                 checkpoint.after_commit_clean committing
                 phase remaining rfl maximal binding receipts stored remembered native order.coverage
@@ -310,7 +313,9 @@ theorem RecoverySourceCheckpoint.normalized_archived
                     exact ⟨nextFuel, nextPath, ArchivedSourceOrigins.advance checkpoint
                       nextCheckpoint origins phase remaining rfl rfl rfl rfl
                       nextBoundary aligned position.1 retained imageStored finished
-                      ⟨_, imageNative⟩ nextPath (fun _ => instructions)⟩⟩
+                      ⟨_, imageNative⟩ nextPath (fun _ => instructions)
+                      (fun _ => checkpoint.chosen_commit_addresses image.native committing
+                        ⟨_, nextCheckpoint.trace⟩ nextPath instructions)⟩⟩
         | reveal =>
             obtain ⟨nextCheckpoint, sourcePrefix, word, _intended⟩ :=
               checkpoint.after_reveal phase remaining rfl kind
@@ -340,6 +345,8 @@ theorem RecoverySourceCheckpoint.normalized_archived
                     nextCheckpoint origins phase remaining rfl rfl rfl rfl
                       nextBoundary aligned position.1 retained imageStored finished
                     ⟨_, imageNative⟩ nextPath (fun impossible => by
+                      rw [kind] at impossible
+                      cases impossible) (fun impossible => by
                       rw [kind] at impossible
                       cases impossible)⟩⟩
         | sample =>
@@ -371,6 +378,8 @@ theorem RecoverySourceCheckpoint.normalized_archived
                     nextCheckpoint origins phase remaining rfl rfl rfl rfl
                       nextBoundary aligned position.1 retained imageStored finished
                     ⟨_, imageNative⟩ nextPath (fun impossible => by
+                      rw [kind] at impossible
+                      cases impossible) (fun impossible => by
                       rw [kind] at impossible
                       cases impossible)⟩⟩
       · change

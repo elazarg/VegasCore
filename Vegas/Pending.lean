@@ -741,3 +741,5 @@ import Vegas.Pending.PhaseBindingServiceEpisode
 import Vegas.Pending.PhaseBindingAcceptedReceipt
 import Vegas.Pending.PhaseBindingReceiptResolution
 import Vegas.Pending.PhaseCommitmentExclusionOrigin
+import Vegas.Pending.PhaseArchiveGeneration
+import Vegas.Pending.PhaseAttemptReceiptSnapshot

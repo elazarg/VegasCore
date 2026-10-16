@@ -20,6 +20,9 @@ instructions have equal complete signal recall on physically indistinguishable
 completed binding blocks. Final retries and exhausted closes are retained. -/
 theorem decoded_commit_block_chosen_signal_eq
     (setup : Setup (Player := Player) (L := L)) (mode : ExecutionMode) (who : Player)
+    (remember : Bool)
+    {Observation : Type*}
+    (observe : setup.ProtocolView who × (Finset Player × Nat × Nat) → Observation)
     {Γ Δ : SourceCtx Player L} {O P : Finset VarId}
     (block : SourceProgram.CommitPrefix Γ O Δ P)
     (suffix : SourceProgram Player L Δ P)
@@ -43,7 +46,8 @@ theorem decoded_commit_block_chosen_signal_eq
       (firstValid : first.BindingInvariant) (secondValid : second.BindingInvariant)
       (firstEntry secondEntry : SourceProgram.Config Player L Γ)
       (left right : CommitRecoveryState setup.program)
-      (entry : firstEntry.view who = secondEntry.view who)
+      (entry : DecisionView.historyProjection remember (firstEntry.view who) =
+        DecisionView.historyProjection remember (secondEntry.view who))
       (publicView : first.publicView = second.publicView)
       (observed : ((toEventGraph setup.program).withMode mode).playerObserve who first.config =
         ((toEventGraph setup.program).withMode mode).playerObserve who second.config)
@@ -51,8 +55,10 @@ theorem decoded_commit_block_chosen_signal_eq
         index.val < block.length → embedding.event index ∈ first.config.cut.completed)
       (secondCompleted : ∀ index : Fin (eventCount (block.prepend suffix)),
         index.val < block.length → embedding.event index ∈ second.config.cut.completed)
-      (saved : ProtocolState.observe who setup.program left.saved =
-        ProtocolState.observe who setup.program right.saved)
+      (saved : ProtocolView.historyProjection who setup.program remember
+          (ProtocolState.observe who setup.program left.saved) =
+        ProtocolView.historyProjection who setup.program remember
+          (ProtocolState.observe who setup.program right.saved))
       (excluded : left.excluded = right.excluded)
       (entryExcluded : left.entryExcluded = right.entryExcluded)
       (generation : left.generation = right.generation)
@@ -66,8 +72,10 @@ theorem decoded_commit_block_chosen_signal_eq
       (positive : 0 < block.length)
       (firstTrace : setup.commitRecoveryProtocol.Trace (some left))
       (secondTrace : setup.commitRecoveryProtocol.Trace (some right))
-      (prior : setup.commitRecoverySignals.infoOf who firstTrace =
-        setup.commitRecoverySignals.infoOf who secondTrace)
+      (prior : setup.commitRecoveryProjectedRecall who remember observe
+          (setup.commitRecoverySignals.infoOf who firstTrace) =
+        setup.commitRecoveryProjectedRecall who remember observe
+          (setup.commitRecoverySignals.infoOf who secondTrace))
     {leftState rightState : setup.commitRecoveryProtocol.State}
     {leftFuel rightFuel : Nat}
     (leftChosen : setup.commitRecoveryProtocol.Trace leftState)
@@ -82,11 +90,20 @@ theorem decoded_commit_block_chosen_signal_eq
     (rightInstructions : setup.recoveryJointRecall rightChosen =
       (decodeCommitAttempt setup.program mode block suffix embedding second secondEntry
         right.excluded).2.2.joints.reverse ++ setup.recoveryJointRecall secondTrace) :
-    setup.commitRecoverySignals.infoOf who leftChosen =
-      setup.commitRecoverySignals.infoOf who rightChosen := by
+    setup.commitRecoveryHistorySignal who remember
+          (setup.commitRecoverySignals.infoOf who leftChosen).1 =
+        setup.commitRecoveryHistorySignal who remember
+          (setup.commitRecoverySignals.infoOf who rightChosen).1 ∧
+      setup.commitRecoveryProjectedRecall who remember observe
+          (setup.commitRecoverySignals.infoOf who leftChosen) =
+        setup.commitRecoveryProjectedRecall who remember observe
+          (setup.commitRecoverySignals.infoOf who rightChosen) := by
   obtain ⟨leftPaired, rightPaired, leftPairedFuel, rightPairedFuel, leftPairedReached,
-    rightPairedReached, pairedSignals, leftPairedInstructions, rightPairedInstructions⟩ :=
-    decoded_commit_block_source_traces setup mode who block suffix embedding lift origin ranks
+    rightPairedReached, pairedCurrent, pairedSignals, leftPairedInstructions,
+    rightPairedInstructions⟩ :=
+    decoded_commit_block_source_traces setup mode who remember observe block suffix embedding
+      lift origin
+      ranks
       actors menus steps first second firstValid secondValid firstEntry secondEntry left right
       entry publicView observed firstCompleted secondCompleted saved excluded entryExcluded
       generation firstAtEntry secondAtEntry firstCommitting secondCommitting firstEndpoint
@@ -123,6 +140,14 @@ theorem decoded_commit_block_chosen_signal_eq
   have rightSignals := congrArg
     (fun history : setup.commitRecoveryProtocol.History =>
       setup.commitRecoverySignals.infoOf who history.trace) rightSame
-  exact leftSignals.trans (pairedSignals.trans rightSignals.symm)
+  constructor
+  · exact (congrArg (fun signal => setup.commitRecoveryHistorySignal who remember signal.1)
+      leftSignals).trans
+      (pairedCurrent.trans (congrArg
+        (fun signal => setup.commitRecoveryHistorySignal who remember signal.1)
+        rightSignals).symm)
+  · exact (congrArg (setup.commitRecoveryProjectedRecall who remember observe) leftSignals).trans
+      (pairedSignals.trans
+        (congrArg (setup.commitRecoveryProjectedRecall who remember observe) rightSignals).symm)
 
 end Vegas

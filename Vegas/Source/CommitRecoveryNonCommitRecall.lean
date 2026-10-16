@@ -21,7 +21,7 @@ namespace Setup
 /-- Genuine noncommitment steps preserve enough observed information to
 recover the previous private signal, with arbitrary permanent exclusions. -/
 theorem commitRecovery_noncommit_predecessor_private
-    (setup : Setup (Player := Player) (L := L)) (who : Player)
+    (setup : Setup (Player := Player) (L := L)) (who : Player) (projection : SourceViewProjection)
     (first second : CommitRecoveryState setup.program)
     (firstTrace : setup.commitRecoveryProtocol.Trace (some first))
     (secondTrace : setup.commitRecoveryProtocol.Trace (some second))
@@ -36,19 +36,26 @@ theorem commitRecovery_noncommit_predecessor_private
     (firstNotCommit : ProtocolState.atCommit setup.program first.point = false)
     (secondNotCommit : ProtocolState.atCommit setup.program second.point = false)
     (firstSurvives : who ∉ first.excluded) (secondSurvives : who ∉ second.excluded)
-    (after : setup.commitRecoveryPrivate who firstAfter =
-      setup.commitRecoveryPrivate who secondAfter) :
-    setup.commitRecoveryPrivate who (some first) =
-      setup.commitRecoveryPrivate who (some second) := by
+    (after : (setup.commitRecoveryPrivate who firstAfter).map
+        (projection.apply who setup.program) =
+      (setup.commitRecoveryPrivate who secondAfter).map
+        (projection.apply who setup.program)) :
+    (setup.commitRecoveryPrivate who (some first)).map
+        (projection.apply who setup.program) =
+      (setup.commitRecoveryPrivate who (some second)).map
+        (projection.apply who setup.program) := by
   obtain ⟨left, leftReached, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp firstReached
   obtain ⟨right, rightReached, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp secondReached
   obtain ⟨leftRaw, leftRawReached, rfl⟩ := first.step_noncommit_atPoint
     (setup.commitRecovery_blockFrontier firstTrace) firstNotCommit firstJoint left leftReached
   obtain ⟨rightRaw, rightRawReached, rfl⟩ := second.step_noncommit_atPoint
     (setup.commitRecovery_blockFrontier secondTrace) secondNotCommit secondJoint right rightReached
-  change some (ProtocolState.observe who setup.program leftRaw.1) =
-    some (ProtocolState.observe who setup.program rightRaw.1) at after
-  exact congrArg some (ProtocolView.recoveryStep_predecessor_eq who setup.program first.point
+  change some (projection.apply who setup.program
+      (ProtocolState.observe who setup.program leftRaw.1)) =
+    some (projection.apply who setup.program
+      (ProtocolState.observe who setup.program rightRaw.1)) at after
+  exact congrArg some (ProtocolView.recoveryStep_predecessor_eq who projection setup.program
+    first.point
     second.point first.excluded second.excluded firstJoint secondJoint leftRaw rightRaw
     firstLegal.1 secondLegal.1 leftRawReached rightRawReached firstSurvives secondSurvives
     (Option.some.inj after))
@@ -56,7 +63,9 @@ theorem commitRecovery_noncommit_predecessor_private
 /-- Two genuine noncommitment intervals retain the same complete signal recall
 when their prior recalls and final private observations agree. -/
 theorem commitRecovery_noncommit_signals_eq_of_prefixes
-    (setup : Setup (Player := Player) (L := L)) (who : Player)
+    (setup : Setup (Player := Player) (L := L)) (who : Player) (projection : SourceViewProjection)
+    {Observation : Type*}
+    (observe : setup.ProtocolView who × (Finset Player × Nat × Nat) → Observation)
     {firstStart secondStart firstEnd secondEnd : setup.commitRecoveryProtocol.State}
     (firstPrior : setup.commitRecoveryProtocol.Trace firstStart)
     (secondPrior : setup.commitRecoveryProtocol.Trace secondStart)
@@ -64,8 +73,14 @@ theorem commitRecovery_noncommit_signals_eq_of_prefixes
     (secondTrace : setup.commitRecoveryProtocol.Trace secondEnd)
     (firstPrefix : TracePrefix firstPrior firstTrace)
     (secondPrefix : TracePrefix secondPrior secondTrace)
-    (prior : setup.commitRecoverySignals.infoOf who firstPrior =
-      setup.commitRecoverySignals.infoOf who secondPrior)
+    (priorCurrent : setup.commitRecoveryObservationSignal who projection
+        (setup.commitRecoverySignals.infoOf who firstPrior).1 =
+      setup.commitRecoveryObservationSignal who projection
+        (setup.commitRecoverySignals.infoOf who secondPrior).1)
+    (prior : setup.commitRecoveryObservedRecall who projection observe
+        (setup.commitRecoverySignals.infoOf who firstPrior) =
+      setup.commitRecoveryObservedRecall who projection observe
+        (setup.commitRecoverySignals.infoOf who secondPrior))
     (lengths : firstTrace.length - firstPrior.length =
       secondTrace.length - secondPrior.length)
     (firstNonCommit : ∀ {middle} (trace : setup.commitRecoveryProtocol.Trace middle),
@@ -80,10 +95,18 @@ theorem commitRecovery_noncommit_signals_eq_of_prefixes
         ProtocolState.atCommit setup.program current.point = false)
     (firstSurvives : who ∉ (setup.commitRecoveryPublic firstEnd).1)
     (secondSurvives : who ∉ (setup.commitRecoveryPublic secondEnd).1)
-    (after : setup.commitRecoveryPrivate who firstEnd =
-      setup.commitRecoveryPrivate who secondEnd) :
-    setup.commitRecoverySignals.infoOf who firstTrace =
-      setup.commitRecoverySignals.infoOf who secondTrace := by
+    (after : (setup.commitRecoveryPrivate who firstEnd).map
+        (projection.apply who setup.program) =
+      (setup.commitRecoveryPrivate who secondEnd).map
+        (projection.apply who setup.program)) :
+    setup.commitRecoveryObservationSignal who projection
+          (setup.commitRecoverySignals.infoOf who firstTrace).1 =
+        setup.commitRecoveryObservationSignal who projection
+          (setup.commitRecoverySignals.infoOf who secondTrace).1 ∧
+      setup.commitRecoveryObservedRecall who projection observe
+          (setup.commitRecoverySignals.infoOf who firstTrace) =
+        setup.commitRecoveryObservedRecall who projection observe
+          (setup.commitRecoverySignals.infoOf who secondTrace) := by
   induction firstPrefix generalizing secondEnd with
   | refl =>
       have bounded := secondPrefix.length_le
@@ -92,7 +115,7 @@ theorem commitRecovery_noncommit_signals_eq_of_prefixes
         omega
       have sameHistory := secondPrefix.eq_of_length sameLength
       cases sameHistory
-      exact prior
+      exact ⟨priorCurrent, prior⟩
   | @extend firstBefore firstAfter firstBeforeTrace firstEarlier firstJoint firstLegal
       firstReached ih =>
       cases secondPrefix with
@@ -120,7 +143,8 @@ theorem commitRecovery_noncommit_signals_eq_of_prefixes
           have rightActive : who ∉ right.excluded := fun inactive =>
             secondSurvives (setup.commitRecovery_step_excluded_subset secondJoint secondLegal
               secondReached inactive)
-          have before := setup.commitRecovery_noncommit_predecessor_private who left right
+          have before := setup.commitRecovery_noncommit_predecessor_private who projection
+            left right
             firstBeforeTrace secondBeforeTrace firstJoint secondJoint firstLegal secondLegal
             firstAfter secondEnd firstReached secondReached leftNotCommit rightNotCommit
             leftActive rightActive after
@@ -136,21 +160,31 @@ theorem commitRecovery_noncommit_signals_eq_of_prefixes
             (fun trace early later shorter => secondNonCommit trace early
               (later.trans rightLast) (by simp only [Trace.length]; omega))
             leftActive rightActive before
-          have current := congrArg Prod.fst earlier
+          have current := earlier.1
           rw [setup.commitRecoverySignals_current, setup.commitRecoverySignals_current] at current
           have publicAfter := setup.commitRecovery_noncommit_public_eq who left right
             firstBeforeTrace secondBeforeTrace firstJoint secondJoint firstLegal secondLegal
-            firstAfter secondEnd firstReached secondReached leftNotCommit before
-            (congrArg Prod.snd current) after
-          change ((setup.commitRecoveryPrivate who firstAfter,
+            firstAfter secondEnd firstReached secondReached leftNotCommit (by
+              simpa only [Option.map_map, Function.comp_def,
+                SourceViewProjection.publicOnly_apply] using
+                congrArg (Option.map (ProtocolView.publicOnly who setup.program)) before)
+            (congrArg Prod.snd current) (by
+              simpa only [Option.map_map, Function.comp_def,
+                SourceViewProjection.publicOnly_apply] using
+                congrArg (Option.map (ProtocolView.publicOnly who setup.program)) after)
+          refine ⟨Prod.ext after publicAfter, ?_⟩
+          let observation := observe ∘ setup.commitRecoveryObservationSignal who projection
+          change (observation (setup.commitRecoveryPrivate who firstAfter,
               setup.commitRecoveryPublic firstAfter),
-            (setup.commitRecoverySignals.infoOf who firstBeforeTrace).1 ::
-              (setup.commitRecoverySignals.infoOf who firstBeforeTrace).2) =
-            ((setup.commitRecoveryPrivate who secondEnd,
+            observation (setup.commitRecoverySignals.infoOf who firstBeforeTrace).1 ::
+              (setup.commitRecoverySignals.infoOf who firstBeforeTrace).2.map observation) =
+            (observation (setup.commitRecoveryPrivate who secondEnd,
               setup.commitRecoveryPublic secondEnd),
-            (setup.commitRecoverySignals.infoOf who secondBeforeTrace).1 ::
-              (setup.commitRecoverySignals.infoOf who secondBeforeTrace).2)
-          rw [after, publicAfter, earlier]
+            observation (setup.commitRecoverySignals.infoOf who secondBeforeTrace).1 ::
+              (setup.commitRecoverySignals.infoOf who secondBeforeTrace).2.map observation)
+          exact Prod.ext (congrArg observe (Prod.ext after publicAfter))
+            (congrArg₂ List.cons (congrArg Prod.fst earlier.2)
+              (congrArg Prod.snd earlier.2))
 
 private theorem noncommit_remaining
     (setup : Setup (Player := Player) (L := L))
@@ -286,7 +320,9 @@ theorem commitRecovery_noncommit_prefix_of_rank_window
 an instruction window classified by the original source suffix. Interval lengths
 and all intermediate noncommitment conditions are derived from the real paths. -/
 theorem commitRecovery_noncommit_signals_eq_of_rank_windows
-    (setup : Setup (Player := Player) (L := L)) (who : Player)
+    (setup : Setup (Player := Player) (L := L)) (who : Player) (projection : SourceViewProjection)
+    {Observation : Type*}
+    (observe : setup.ProtocolView who × (Finset Player × Nat × Nat) → Observation)
     (firstStart firstEnd secondStart secondEnd : CommitRecoveryState setup.program)
     (firstPrior : setup.commitRecoveryProtocol.Trace (some firstStart))
     (secondPrior : setup.commitRecoveryProtocol.Trace (some secondStart))
@@ -308,13 +344,27 @@ theorem commitRecovery_noncommit_signals_eq_of_rank_windows
       ProtocolState.remaining setup.program point ≤
         ProtocolState.remaining setup.program secondStart.point →
       ProtocolState.atCommit setup.program point = false)
-    (prior : setup.commitRecoverySignals.infoOf who firstPrior =
-      setup.commitRecoverySignals.infoOf who secondPrior)
+    (priorCurrent : setup.commitRecoveryObservationSignal who projection
+        (setup.commitRecoverySignals.infoOf who firstPrior).1 =
+      setup.commitRecoveryObservationSignal who projection
+        (setup.commitRecoverySignals.infoOf who secondPrior).1)
+    (prior : setup.commitRecoveryObservedRecall who projection observe
+        (setup.commitRecoverySignals.infoOf who firstPrior) =
+      setup.commitRecoveryObservedRecall who projection observe
+        (setup.commitRecoverySignals.infoOf who secondPrior))
     (firstSurvives : who ∉ firstEnd.excluded) (secondSurvives : who ∉ secondEnd.excluded)
-    (after : setup.commitRecoveryPrivate who (some firstEnd) =
-      setup.commitRecoveryPrivate who (some secondEnd)) :
-    setup.commitRecoverySignals.infoOf who firstTrace =
-      setup.commitRecoverySignals.infoOf who secondTrace := by
+    (after : (setup.commitRecoveryPrivate who (some firstEnd)).map
+        (projection.apply who setup.program) =
+      (setup.commitRecoveryPrivate who (some secondEnd)).map
+        (projection.apply who setup.program)) :
+    setup.commitRecoveryObservationSignal who projection
+          (setup.commitRecoverySignals.infoOf who firstTrace).1 =
+        setup.commitRecoveryObservationSignal who projection
+          (setup.commitRecoverySignals.infoOf who secondTrace).1 ∧
+      setup.commitRecoveryObservedRecall who projection observe
+          (setup.commitRecoverySignals.infoOf who firstTrace) =
+        setup.commitRecoveryObservedRecall who projection observe
+          (setup.commitRecoverySignals.infoOf who secondTrace) := by
   have leftNonCommit := fun {middle}
       (trace : setup.commitRecoveryProtocol.Trace middle) =>
     setup.commitRecovery_noncommit_prefix_of_rank_window
@@ -326,20 +376,25 @@ theorem commitRecovery_noncommit_signals_eq_of_rank_windows
   have leftLength := noncommit_prefix_length setup firstPrior firstTrace firstPrefix leftNonCommit
   have rightLength := noncommit_prefix_length setup secondPrior secondTrace secondPrefix
     rightNonCommit
-  have current := congrArg Prod.fst prior
+  have current := priorCurrent
   rw [setup.commitRecoverySignals_current, setup.commitRecoverySignals_current] at current
   have beforeView := Option.some.inj (congrArg Prod.fst current)
   have afterView := Option.some.inj after
-  change ProtocolState.observe who setup.program firstStart.point =
-    ProtocolState.observe who setup.program secondStart.point at beforeView
-  change ProtocolState.observe who setup.program firstEnd.point =
-    ProtocolState.observe who setup.program secondEnd.point at afterView
+  change projection.apply who setup.program
+      (ProtocolState.observe who setup.program firstStart.point) =
+    projection.apply who setup.program
+      (ProtocolState.observe who setup.program secondStart.point) at beforeView
+  change projection.apply who setup.program
+      (ProtocolState.observe who setup.program firstEnd.point) =
+    projection.apply who setup.program
+      (ProtocolState.observe who setup.program secondEnd.point) at afterView
   have firstBeforeRank := ProtocolView.position_add_remaining who setup.program firstStart.point
   have secondBeforeRank := ProtocolView.position_add_remaining who setup.program secondStart.point
   have firstAfterRank := ProtocolView.position_add_remaining who setup.program firstEnd.point
   have secondAfterRank := ProtocolView.position_add_remaining who setup.program secondEnd.point
-  rw [beforeView] at firstBeforeRank
-  rw [afterView] at firstAfterRank
+  have beforePositions := congrArg (ProtocolView.position who setup.program) beforeView
+  have afterPositions := congrArg (ProtocolView.position who setup.program) afterView
+  simp only [SourceViewProjection.position_apply] at beforePositions afterPositions
   have beforeRemaining : ProtocolState.remaining setup.program firstStart.point =
       ProtocolState.remaining setup.program secondStart.point := by omega
   have afterRemaining : ProtocolState.remaining setup.program firstEnd.point =
@@ -350,8 +405,10 @@ theorem commitRecovery_noncommit_signals_eq_of_rank_windows
     have secondBound := secondPrefix.length_le
     simp only [Option.elim_some] at leftLength rightLength
     omega
-  exact setup.commitRecovery_noncommit_signals_eq_of_prefixes who firstPrior secondPrior
-    firstTrace secondTrace firstPrefix secondPrefix prior lengths leftNonCommit rightNonCommit
+  exact setup.commitRecovery_noncommit_signals_eq_of_prefixes who projection observe
+    firstPrior secondPrior
+    firstTrace secondTrace firstPrefix secondPrefix priorCurrent prior lengths leftNonCommit
+    rightNonCommit
     firstSurvives secondSurvives after
 
 end Setup

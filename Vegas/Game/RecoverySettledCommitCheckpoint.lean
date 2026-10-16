@@ -77,6 +77,22 @@ def RecoverySourceCheckpoint.commitInstructionWord
     (decodeCommitAttempt setup.program mode block suffix embedding native
       checkpoint.source state.entry.excluded).2.2.joints
 
+/-- The original accepted-none mask determines the exclusion set after
+all successive static slots, including automatic slots of excluded owners. -/
+def RecoverySourceCheckpoint.commitExclusionWord
+    {setup : Setup (Player := Player) (L := L)} {mode : EventGraph.ExecutionMode}
+    {state : PhaseRuntimeState ((toEventGraph setup.program).withMode mode)}
+    (checkpoint : RecoverySourceCheckpoint setup mode state)
+    (native : EventGraphRuntime.State ((toEventGraph setup.program).withMode mode)) :
+    List (Finset Player) :=
+  match commitPhase checkpoint.residual.tail with
+  | ⟨_, _, suffix, block, reconstruct, _⟩ =>
+    let embedding := cast (congrArg (fun program => OutputEmbedding
+      (inputLayout setup.context) (outputLayout setup.program) program)
+        reconstruct.symm) checkpoint.embedding
+    (decodeCommitAttempt setup.program mode block suffix embedding native
+      checkpoint.source state.entry.excluded).2.2.exclusionsAfter
+
 /-- Every owner's completed physical prefix contains successful bindings
 satisfying their original private guards, including the saved entry cells. -/
 def RecoverySourceCheckpoint.commitAdmitted
@@ -217,7 +233,8 @@ theorem RecoverySourceCheckpoint.after_commit_clean
       state.retired finished
     exact fun failed => clean failed.2
   let sourceInitial := setup.initialConfig setup.initialLaw.support_nonempty.choose
-  have instructions := attempt.instructions_closed_lift setup.program sourceInitial suffix lift
+  obtain ⟨_addresses, instructions, _exclusions⟩ :=
+    attempt.instructions_closed_lift setup.program sourceInitial suffix lift
     ranks actors (fun point who => menus who point) steps
     (CommitRecoveryState.atPoint
       (lift (ProtocolState.entry (block.prepend suffix) source)) state.entry.excluded
@@ -225,8 +242,8 @@ theorem RecoverySourceCheckpoint.after_commit_clean
     ((endpoints _).trans (block.commitEnd_entry_prepend suffix boundary source)).le positive
   rw [attempt.close_clean_lift setup.program suffix boundary positive state.generation lift ranks
     commits endpoints noFailure] at instructions
-  obtain ⟨reachedTrace, reachedPrefix, reachedInstructions⟩ :=
-    setup.recoveryTrace_of_instructions sourceInitial priorTrace instructions
+  obtain ⟨reachedTrace, reachedPrefix, _reachedLength, reachedInstructions, _reachedAddresses⟩ :=
+    setup.recoveryInstructionPath_information sourceInitial instructions priorTrace
   let fuel := attempt.joints.length
   have decodedInstructions : attempt.joints = decoded.2.2.joints :=
     SourceProgram.CommitPrefix.Attempt.joints_cast_after excludedEq decoded.2.2
@@ -429,7 +446,8 @@ theorem RecoverySourceCheckpoint.after_commit_exhausted
   obtain ⟨tailRanks, tailActors, tailCommits, tailOwners, tailEnds, tailAutomatic, tailHistory,
     tailMemory, tailSteps, tailMenus, tailReadout⟩ := block.liftPoint_recovery suffix
   let sourceInitial := setup.initialConfig setup.initialLaw.support_nonempty.choose
-  have instructions := attempt.instructions_closed_lift setup.program sourceInitial suffix lift
+  obtain ⟨_addresses, instructions, _exclusions⟩ :=
+    attempt.instructions_closed_lift setup.program sourceInitial suffix lift
     ranks actors (fun point who => menus who point) steps
     (CommitRecoveryState.atPoint
       (lift (ProtocolState.entry (block.prepend suffix) source)) state.entry.excluded
@@ -437,8 +455,8 @@ theorem RecoverySourceCheckpoint.after_commit_exhausted
     ((endpoints _).trans (block.commitEnd_entry_prepend suffix boundary source)).le positive
   rw [attempt.close_exhausted_lift setup.program suffix boundary positive state.generation lift
     ranks commits owners endpoints automatic history memory failed allSource] at instructions
-  obtain ⟨reachedTrace, reachedPrefix, reachedInstructions⟩ :=
-    setup.recoveryTrace_of_instructions sourceInitial priorTrace instructions
+  obtain ⟨reachedTrace, reachedPrefix, _reachedLength, reachedInstructions, _reachedAddresses⟩ :=
+    setup.recoveryInstructionPath_information sourceInitial instructions priorTrace
   let fuel := attempt.joints.length
   have decodedInstructions : attempt.joints = decoded.2.2.joints :=
     SourceProgram.CommitPrefix.Attempt.joints_cast_after excludedEq decoded.2.2

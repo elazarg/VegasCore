@@ -65,7 +65,8 @@ theorem Close.reaches (closed : block.Close entry result)
       rfl rfl committing endpoint.le positive
   cases closed with
   | clean attempt noFailure =>
-      have reached := (path attempt).reaches
+      obtain ⟨_addresses, instructions, _exclusions⟩ := path attempt
+      have reached := instructions.reaches
       have noNew : ¬ (attempt.failedOwners.Nonempty) := by rw [noFailure]; simp
       simpa only [CommitRecoveryState.close, CommitRecoveryState.Finished,
         CommitRecoveryState.NewFailure, CommitRecoveryState.install, CommitRecoveryState.atPoint,
@@ -73,7 +74,8 @@ theorem Close.reaches (closed : block.Close entry result)
         and_self, attempt.newly_excluded, noNew, ↓reduceIte, CommitCloseResult.recoveryState]
         using reached
   | retry attempt failed survives =>
-      have reached := (path attempt).reaches
+      obtain ⟨_addresses, instructions, _exclusions⟩ := path attempt
+      have reached := instructions.reaches
       simpa only [CommitRecoveryState.close, CommitRecoveryState.Finished,
         CommitRecoveryState.NewFailure, CommitRecoveryState.Survives,
         CommitRecoveryState.retry, CommitRecoveryState.restored,
@@ -84,7 +86,8 @@ theorem Close.reaches (closed : block.Close entry result)
         ProtocolState.history_entry, ProtocolState.withHistory_entry,
         CommitCloseResult.recoveryState, CommitCheckpoint.retry] using reached
   | @exhausted finished after attempt failed noSurvivor =>
-      have reached := (path attempt).reaches
+      obtain ⟨_addresses, instructions, _exclusions⟩ := path attempt
+      have reached := instructions.reaches
       have noneLeft : ¬ (block.owners \ after).Nonempty := by
         rintro ⟨owner, member⟩
         exact (Finset.mem_sdiff.mp member).2 (noSurvivor (Finset.mem_sdiff.mp member).1)

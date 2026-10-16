@@ -208,18 +208,21 @@ theorem Close.reaches_lift
       rfl rfl ((commits _).trans committing) ((endpoints _).trans endpoint).le positive
   cases closed with
   | clean attempt noFailure =>
-      have reached := (path attempt).reaches
+      obtain ⟨_addresses, instructions, _exclusions⟩ := path attempt
+      have reached := instructions.reaches
       rw [attempt.close_clean_lift whole suffix boundary positive entry.attempt lift ranks
         commits endpoints noFailure] at reached
       simpa only [CommitCloseResult.recoveryState, CommitRecoveryState.atPoint] using reached
   | retry attempt failed survives =>
-      have reached := (path attempt).reaches
+      obtain ⟨_addresses, instructions, _exclusions⟩ := path attempt
+      have reached := instructions.reaches
       rw [attempt.close_retry_lift whole suffix boundary positive entry.attempt lift ranks
         commits owners endpoints histories memories failed survives] at reached
       simpa only [CommitCloseResult.recoveryState, CommitCheckpoint.retry,
         CommitRecoveryState.atPoint] using reached
   | @exhausted finished after attempt failed noSurvivor =>
-      have reached := (path attempt).reaches
+      obtain ⟨_addresses, instructions, _exclusions⟩ := path attempt
+      have reached := instructions.reaches
       rw [attempt.close_exhausted_lift whole suffix boundary positive entry.attempt lift ranks
         commits owners endpoints automatic histories memories failed noSurvivor] at reached
       simpa only [CommitCloseResult.recoveryState, CommitRecoveryState.atPoint] using reached

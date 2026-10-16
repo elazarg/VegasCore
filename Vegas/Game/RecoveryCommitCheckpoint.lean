@@ -125,7 +125,8 @@ theorem RecoverySourceCheckpoint.after_commit_retry
     exact PhaseRuntimeState.settle_retry phase remaining state.generation state.entry
       state.current state.retired finished rfl missed survives
   let sourceInitial := setup.initialConfig setup.initialLaw.support_nonempty.choose
-  have instructions := attempt.instructions_closed_lift setup.program sourceInitial suffix lift
+  obtain ⟨_addresses, instructions, _exclusions⟩ :=
+    attempt.instructions_closed_lift setup.program sourceInitial suffix lift
     ranks actors (fun point who => menus who point) steps
     (CommitRecoveryState.atPoint
       (lift (ProtocolState.entry (block.prepend suffix) source)) state.entry.excluded
@@ -133,8 +134,8 @@ theorem RecoverySourceCheckpoint.after_commit_retry
     ((endpoints _).trans (block.commitEnd_entry_prepend suffix boundary source)).le positive
   rw [attempt.close_retry_lift setup.program suffix boundary positive state.generation lift ranks
     commits owners endpoints history memory failed survivesSource] at instructions
-  obtain ⟨reachedTrace, reachedPrefix, reachedInstructions⟩ :=
-    setup.recoveryTrace_of_instructions sourceInitial priorTrace instructions
+  obtain ⟨reachedTrace, reachedPrefix, _reachedLength, reachedInstructions, _reachedAddresses⟩ :=
+    setup.recoveryInstructionPath_information sourceInitial instructions priorTrace
   let fuel := attempt.joints.length
   have decodedInstructions : attempt.joints = decoded.2.2.joints :=
     SourceProgram.CommitPrefix.Attempt.joints_cast_after excludedEq decoded.2.2

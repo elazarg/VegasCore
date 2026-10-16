@@ -1,6 +1,6 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**SE: non-concurrent ✓ · sampler/reset ✓ · pooled Bayes ✓ · global source splice/reach ✓ · individual SE / native query / transport / incentives open.**
+**SE: non-concurrent ✓ · sampler/reset ✓ · source fibers/Bayes ✓ · safe retries ✓ · individual SE / native query / transport / incentives open.**
 
 The [mathematical proof dependency](se-preservation-math.md#scope-and-proof-dependency)
 states the source selection, conditional transport and deviation arguments,
@@ -21,14 +21,34 @@ real closes: focal full information comes from one trace, all nonfocal full
 information from the other, with the latter's original supported setup draw.
 Equal retained combined queries derive equality of the original hidden owner
 tuple at literal initialized prefixes. Public chronology equality transfers
-between observers. Information-fiber equivalence, Bayes normalization and
-individual optimality remain open.
+between observers. At equal erased keys, an actual bijection of the original
+information fibers now transports their normalized Bayes beliefs exactly.
+The original joint setup law is retained. Equal combined no-new-miss keys
+alone do not supply that bijection, and individual optimality remains open.
+
+Guard-safe focal moves preserve the existing player-specific validity
+predicate in both current and saved states through actual recovery steps,
+including retry and exhausted close, under arbitrary foreign actions. The
+current guard's satisfiability is explicit; intended-only well-formedness
+does not supply the required all-reachable-history hypothesis.
 
 At the original native attempt's first exit, every newly excluded owner has
 an old ready binding without a true accepting receipt. Completed live and
 archived surviving bindings have true receipts with their original full
 identifiers, including the last inclusion before normalization. These are
-actual-run facts; whole-phase foreign-word independence remains open.
+actual-run facts. The actual first-exit laws now give the same entire foreign
+survivor vector under arbitrary focal policies, for the same supported
+original zero-RAW timing table and foreign seeds under the strong service
+contract. This is a proper-reference result; the positive-RAW good-event
+comparison and whole-phase typed-word independence remain open.
+
+Original native archives determine retry generation, distinguishing retries
+from exhausted closes. Chosen commitment chunks have exact source addresses
+and public signals; the virtual current typed view has a genuine source
+witness. Public-only noncommitment observations determine the actual next
+exclusions, and immutable native publications give that same update through
+the compiled suffix. The complete native public scan and observable combined
+query still need their final composition.
 
 The source pooled completion selects shared conditional domain laws with
 query-level pins and independently fixed failure/floor rates. Its actual
