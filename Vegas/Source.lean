@@ -127,3 +127,5 @@ import Vegas.Source.CommitPrefixWordProjection
 import Vegas.Source.CommitPhaseRecall
 import Vegas.Source.CommitAttemptObservation
 import Vegas.Source.CommitAttemptRanks
+import Vegas.Source.CommitRecoveryOwnHistory
+import Vegas.Source.CommitRecoverySurvivingInformation

@@ -1701,3 +1701,33 @@ Actual permanent own actions and masked stores reconstruct each complete old
 player observation; preceding voided own words reconstruct its source endpoint.
 Genuine source attempt splits retain omission flags and earlier views at
 original-program ranks. Full source signal-history reconstruction remains open.
+
+Actual callback and stopped reference consumers:
+[Recovery Timing Word Ready Realization](../Vegas/Game/RecoveryTimingWordReadyRealization.lean),
+[Recovery Fixed Commit Geometry](../Vegas/Game/RecoveryFixedCommitGeometry.lean),
+[Recovery Timing Word Fixed Realization](../Vegas/Game/RecoveryTimingWordFixedRealization.lean),
+[Recovery Timing Word Callback](../Vegas/Game/RecoveryTimingWordCallback.lean),
+[Phase Timing Word Entry Reference](../Vegas/Game/PhaseTimingWordEntryReference.lean).
+Actual initialized traces supply native invariants and the same maximal source
+block at every active callback. The original-product anchored mixture realizes
+the zero-RAW response under its explicit consistency condition. The actual
+stopped reference runner retains the updated joint entry/plan posterior and
+original source-view fiber per retained tag; common-assessment identification
+remains separate.
+
+Source-ordered public exclusion and receipt provenance:
+[Compiled Commit Prefix Exclusions](../Vegas/Game/CompiledCommitPrefixExclusions.lean),
+[Phase Archived Receipt Order](../Vegas/Pending/PhaseArchivedReceiptOrder.lean).
+The existing native decoder reads source E from saved exclusions plus public
+failures inside the processed rank interval, preserving accepted bad values as
+source choices. Every actual archived accepted table retains source receipt
+order under that attempt's own reconstructed entry E, including exhausted
+automatic rebuilds. No historical raw execution is invented for an archive.
+
+Surviving source information:
+[Commit Recovery Own History](../Vegas/Source/CommitRecoveryOwnHistory.lean),
+[Commit Recovery Surviving Information](../Vegas/Source/CommitRecoverySurvivingInformation.lean).
+Actual recovery instructions, closure and retry retain the surviving owner's
+original action word. Equal complete source signal transcripts determine their
+full own play and information state despite arbitrary foreign exclusions. The
+physical-to-source signal transcript correspondence is still required.

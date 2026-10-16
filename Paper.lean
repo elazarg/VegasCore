@@ -1122,6 +1122,15 @@ import Vegas.Pending.PhaseArchivedOwnPrefix
 import Vegas.Pending.ArchivePlayerObservation
 import Vegas.Pending.PhaseArchivedSourceObservation
 import Vegas.Source.CommitAttemptRanks
+import Vegas.Game.CompiledCommitPrefixExclusions
+import Vegas.Pending.PhaseArchivedReceiptOrder
+import Vegas.Game.RecoveryTimingWordReadyRealization
+import Vegas.Game.RecoveryFixedCommitGeometry
+import Vegas.Game.RecoveryTimingWordFixedRealization
+import Vegas.Game.RecoveryTimingWordCallback
+import Vegas.Game.PhaseTimingWordEntryReference
+import Vegas.Source.CommitRecoveryOwnHistory
+import Vegas.Source.CommitRecoverySurvivingInformation
 
 /-! # Checked sequential-equilibrium preservation, Nash correspondence and termination -/
 
@@ -11286,3 +11295,129 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms
   Vegas.EventGraphRuntime.phase_archivedExclusionEntries_append_drain
+
+/-- info:
+'Vegas.phaseTimingWordIntervention_entry_source_posterior'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseTimingWordIntervention_entry_source_posterior
+
+/-- info:
+'Vegas.SourceProgram.ProtocolState.recoveryStep_own_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.ProtocolState.recoveryStep_own_history
+
+/-- info:
+'Vegas.SourceProgram.CommitRecoveryState.step_own_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.CommitRecoveryState.step_own_history
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecovery_surviving_joint_eq'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecovery_surviving_joint_eq
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecovery_surviving_ownPlay_eq'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecovery_surviving_ownPlay_eq
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecovery_surviving_info_eq'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecovery_surviving_info_eq
+
+/-- info:
+'Vegas.decodeCommitAttempt_failedOwners_eq'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.decodeCommitAttempt_failedOwners_eq
+
+/-- info:
+'Vegas.commitMissingOwners_eq_public_failures'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.commitMissingOwners_eq_public_failures
+
+/-- info:
+'Vegas.decodeCommitAttempt_excluded_eq_public_prefix'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.decodeCommitAttempt_excluded_eq_public_prefix
+
+/-- info:
+'Vegas.decodeCommitAttempt_failedOwners_eq_public_prefix'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.decodeCommitAttempt_failedOwners_eq_public_prefix
+
+/-- info:
+'Vegas.EventGraphRuntime.PhaseRuntimeState.RetiredReceiptOrderFrom.getElem'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseRuntimeState.RetiredReceiptOrderFrom.getElem
+
+/-- info:
+'Vegas.EventGraphRuntime.PhaseRuntimeState.settle_archivedReceiptRecord'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseRuntimeState.settle_archivedReceiptRecord
+
+/-- info:
+'Vegas.EventGraphRuntime.phaseApplication_archivedReceiptRecord'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.phaseApplication_archivedReceiptRecord
+
+/-- info:
+'Vegas.EventGraphRuntime.phaseArchivedReceiptRecord_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.phaseArchivedReceiptRecord_history
+
+/-- info:
+'Vegas.RecoverySourceCheckpoint.commit_phase_geometry'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.RecoverySourceCheckpoint.commit_phase_geometry
+
+/-- info:
+'Vegas.RecoverySourceCheckpoint.timing_word_anchored_policy_of_ready'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.RecoverySourceCheckpoint.timing_word_anchored_policy_of_ready
+
+/-- info:
+'Vegas.RecoverySourceCheckpoint.timing_word_anchored_policy_of_fixed_block'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.RecoverySourceCheckpoint.timing_word_anchored_policy_of_fixed_block
+
+/-- info:
+'Vegas.RecoverySourceCheckpoint.timing_word_anchored_policy_at_callback'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.RecoverySourceCheckpoint.timing_word_anchored_policy_at_callback

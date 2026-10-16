@@ -1,6 +1,6 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**SE: non-concurrent ✓ · timing/RAW ✓ · anchored word ✓ · archive readback ✓ · full Bayes/incentives open.**
+**SE: non-concurrent ✓ · timing/RAW ✓ · concrete callback ✓ · archived receipts ✓ · source recall/Bayes/incentives open.**
 
 <details>
 <summary>Checked recovery milestones and remaining proof obligations</summary>
@@ -210,6 +210,14 @@ arbitrary updated shared plan law also derives foreign anchored consistency.
 The fixed original commitment block supplies typed selectors at later binding
 callbacks. These facts still require a comparison with the original common
 physical assessment, rather than an independently reset plan prior.
+At every actual clear active callback in that block, its native invariants,
+block endpoint and typed split are derived from the genuine initialized trace.
+The singleton and unsent cases therefore give the assembled zero-RAW response
+without supplied native invariant premises. Original-product anchored-family
+consistency remains explicit. For the actual stopped reference runner, an
+arbitrary joint full-entry/full-plan prior retains its observation-weighted tag
+posterior and the original source-view fiber at each retained tag. This does
+not identify that posterior with the common physical assessment's source law.
 
 Conditioning the source prior on the current focal view retains its posterior
 over the complete focal word, including its unseen suffix, and the original
@@ -250,6 +258,10 @@ also observable. Each archived source endpoint reinserts the preceding voided
 own words. Splitting a genuine source attempt preserves its actual omission
 flags and transports its earlier views to ranks in the original program.
 The full remembered source signal transcript remains open.
+On the source side, a surviving player's complete signal transcript determines
+their entire original own play, including accepted failures and choices retained
+through retries. Thus recovering that signal transcript will also recover full
+source information; no separate equality of own-play histories is assumed.
 
 Actual raw histories also identify the saved exclusion set: it is the union of
 archived failure owners and current public failure owners strictly before the
@@ -263,6 +275,14 @@ values cannot affect this chronological readout. Appending an actual drained
 attempt gives exactly its saved entry exclusions. Source signals inside that
 attempt must additionally account for omissions processed in source order;
 physical in-phase expiries cannot substitute for that history.
+The actual receipt-order invariant is now retained for every archived attempt
+under its own historical entry exclusions, including exhausted rebuilds. The
+original source decoder also reads exclusions after any processed commitment
+prefix as saved exclusions union public failures in exactly that prefix's rank
+interval. Newly failed owners are this set minus the inherited exclusions.
+These statements retain the distinction between a missing receipt and an
+accepted bad value. Identifying each prefix of the chosen full decoded attempt
+with that same native prefix decoder remains an explicit composition step.
 
 Two chronological same-attempt raw binding sends have strictly increasing
 source ranks. Their genuine earlier callbacks, readiness and event distinctness

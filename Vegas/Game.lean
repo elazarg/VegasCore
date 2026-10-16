@@ -1021,3 +1021,9 @@ import Vegas.Game.PhaseTimingWordAnchoredUnread
 import Vegas.Game.RecoveryTimingWordAnchoredPrediction
 import Vegas.Game.RecoveryTimingWordAnchoredJoint
 import Vegas.Game.RecoveryTimingWordAnchoredRealization
+import Vegas.Game.CompiledCommitPrefixExclusions
+import Vegas.Game.RecoveryTimingWordReadyRealization
+import Vegas.Game.RecoveryFixedCommitGeometry
+import Vegas.Game.RecoveryTimingWordFixedRealization
+import Vegas.Game.RecoveryTimingWordCallback
+import Vegas.Game.PhaseTimingWordEntryReference
