@@ -26,9 +26,6 @@ theorem RecoverySourceCheckpoint.after_commit_retry
     {setup : Setup (Player := Player) (L := L)} {mode : EventGraph.ExecutionMode}
     {state : PhaseRuntimeState ((toEventGraph setup.program).withMode mode)}
     (checkpoint : RecoverySourceCheckpoint setup mode state)
-    (priorTrace : setup.commitRecoveryProtocol.Trace (some (CommitRecoveryState.atPoint
-      (checkpoint.residual.lift (ProtocolState.entry checkpoint.residual.tail checkpoint.source))
-      state.entry.excluded state.generation)))
     (committing : ProtocolState.atCommit checkpoint.residual.tail
       (ProtocolState.entry checkpoint.residual.tail checkpoint.source) = true)
     (phase : RuntimePhase ((toEventGraph setup.program).withMode mode))
@@ -50,20 +47,19 @@ theorem RecoverySourceCheckpoint.after_commit_retry
             (ProtocolState.entry checkpoint.residual.tail checkpoint.source))
           (ProtocolState.history setup.program
             (checkpoint.commitResultPoint (phase.drain state.current))) ∧
-      (∃ (nextTrace : setup.commitRecoveryProtocol.Trace (some (CommitRecoveryState.atPoint
-          (next.residual.lift (ProtocolState.entry next.residual.tail next.source))
-          state.normalize.entry.excluded state.normalize.generation))) (fuel : Nat),
+      (∃ fuel : Nat,
         setup.commitRecoveryProtocol.ReachesWithin fuel
-          ⟨_, priorTrace⟩ ⟨_, nextTrace⟩ ∧
-        setup.recoveryJointRecall nextTrace =
+          ⟨_, checkpoint.trace⟩ ⟨_, next.trace⟩ ∧
+        setup.recoveryJointRecall next.trace =
           (checkpoint.commitInstructionWord (phase.drain state.current).native).reverse ++
-            setup.recoveryJointRecall priorTrace) ∧
+            setup.recoveryJointRecall checkpoint.trace) ∧
       ∀ who, who ∉ (phase.drain state.current).excluded →
       next.source.history who = checkpoint.source.history who ++
         (decodeHistory setup.program ((phase.drain state.current).native.config.history.map
           ((toEventGraph setup.program).fromModeCompletion mode)) who).drop
             (decodeHistory setup.program (state.entry.native.config.history.map
               ((toEventGraph setup.program).fromModeCompletion mode)) who).length := by
+  let priorTrace := checkpoint.trace
   dsimp only [RecoverySourceCheckpoint.commitResultPoint,
     RecoverySourceCheckpoint.commitInstructionWord]
   rcases checkpoint with ⟨⟨Γ, O, program, lift⟩, source, refs, registry, embedding, before,
@@ -168,7 +164,7 @@ theorem RecoverySourceCheckpoint.after_commit_retry
       step := steps
       menus := menus
       readout := readout
-      trace := ⟨reachedTrace⟩
+      trace := reachedTrace
       views := views
       origin := origin
       historyAlignment := by
@@ -183,7 +179,7 @@ theorem RecoverySourceCheckpoint.after_commit_retry
       embedding before phase.low
     rw [← low] at compiled
     exact compiled
-  · refine ⟨?_, ⟨reachedTrace, fuel, reachedPrefix, reachedInstructions⟩, ?_⟩
+  · refine ⟨?_, ⟨fuel, reachedPrefix, reachedInstructions⟩, ?_⟩
     · change lift (ProtocolState.entry (block.prepend suffix)
           { source with history := final.history }) =
         ProtocolState.withHistory setup.program

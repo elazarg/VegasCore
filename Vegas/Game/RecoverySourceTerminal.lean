@@ -69,7 +69,7 @@ theorem RecoverySourceCheckpoint.terminal_history
       (fun who => phaseExclusionBase setup mode runtime leaks utility excludedPayoff
         (some control) who) = fun who => setup.commitRecoveryPayoff utility excludedPayoff who
           history := by
-  let history : setup.commitRecoveryProtocol.History := ⟨_, Classical.choice checkpoint.trace⟩
+  let history : setup.commitRecoveryProtocol.History := ⟨_, checkpoint.trace⟩
   have stored := phaseStoredCheckpoint_history runtime leaks plan inputs horizon scheduler trace
   have frontier := (phaseApplication_frontier runtime leaks).history _ _ _
     (fun state supported => by

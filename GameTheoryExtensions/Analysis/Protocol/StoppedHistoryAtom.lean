@@ -14,14 +14,6 @@ open ExecutionProtocol GameTheory.Math.Probability
 variable {Player : Type*} [Fintype Player] {E : ExecutionProtocol Player}
   (model : InformationModel E)
 
-omit [Fintype Player] in
-private theorem reached_prefix {fuel : Nat} {start final : E.History}
-    (reached : E.ReachesWithin fuel start final) : TracePrefix start.trace final.trace := by
-  induction reached with
-  | refl => exact .refl
-  | step joint legal realized rest ih =>
-      exact (TracePrefix.extend (.refl) joint legal realized).trans ih
-
 /-- The existing stopped evaluator reaches only genuine extensions of its full
 starting history, including all old actions and observations. -/
 theorem runBehavioralUntil_support_prefix
@@ -48,10 +40,53 @@ theorem runBehavioralUntil_support_prefix
     PMF.mem_support_bind_iff] at member
   obtain ⟨next, supported, reached⟩ := member
   have step := model.mem_support_runBehavioralFrom_one profile ended supported
-  have earlier := reached_prefix
+  have earlier := ReachesWithin.tracePrefix
     (model.runBehavioralFrom_reachesWithin profile 1 current next supported)
   exact earlier.trans
     (ih next step.1 final reached)
+/-- A supported stopped endpoint has no earlier stopping prefix along its
+actual continuation. Terminal and immediately stopped starts are retained. -/
+theorem runBehavioralUntil_support_first
+    (certificate : E.WellFoundedHistories)
+    (profile : ∀ who, model.BehavioralPolicy who) (stopped : E.History → Prop)
+    (start : E.History) :
+    ∀ final ∈ (model.runBehavioralUntil certificate profile stopped start).support,
+      ∀ middle : E.History, TracePrefix start.trace middle.trace →
+        TracePrefix middle.trace final.trace → middle.trace.length < final.trace.length →
+          ¬ stopped middle := by
+  classical
+  induction start using certificate.induction with
+  | _ current ih =>
+  intro final member middle after before shorter
+  by_cases halt : stopped current
+  · rw [model.runBehavioralUntil_of_stopped certificate profile halt,
+      PMF.mem_support_pure_iff] at member
+    subst final
+    have lower := after.length_le
+    omega
+  by_cases terminal : E.terminal current.state
+  · rw [model.runBehavioralUntil_of_terminal certificate profile terminal,
+      PMF.mem_support_pure_iff] at member
+    subst final
+    have lower := after.length_le
+    omega
+  rw [model.runBehavioralUntil_of_running certificate profile halt terminal,
+    PMF.mem_support_bind_iff] at member
+  obtain ⟨next, supported, reached⟩ := member
+  have step := model.mem_support_runBehavioralFrom_one profile terminal supported
+  have nextLength := model.length_of_mem_support_runBehavioralFrom_one profile terminal supported
+  by_cases length : middle.trace.length < next.trace.length
+  · have lower := after.length_le
+    have same := after.eq_of_length (by omega)
+    have sameHistory : current = middle := same
+    cases sameHistory
+    exact halt
+  · have nextPrefix := model.runBehavioralUntil_support_prefix certificate profile stopped
+      next final reached
+    have middlePrefix := (nextPrefix.reachesWithin.ancestor_comparable before.reachesWithin
+      (Nat.le_of_not_gt length))
+    exact ih next step.1 final reached middle middlePrefix.tracePrefix before shorter
+
 /-- At a genuine first stopped endpoint, the stopped atom is the original
 finite-depth continuation atom. Earlier stopping is excluded along the ACTUAL
 history prefixes, rather than by an assumed kernel or mass identity. -/
@@ -95,7 +130,7 @@ theorem runBehavioralUntil_apply_of_first_hit
       intro next
       by_cases supported : next ∈ (model.runBehavioralFrom profile 1 start).support
       · have step := model.runBehavioralFrom_reachesWithin profile 1 start next supported
-        have before : TracePrefix start.trace next.trace := reached_prefix step
+        have before : TracePrefix start.trace next.trace := ReachesWithin.tracePrefix step
         have nextLength : next.trace.length = start.trace.length + 1 := by
           exact model.length_of_mem_support_runBehavioralFrom_one profile running supported
         by_cases reaches : TracePrefix next.trace final.trace
@@ -114,7 +149,8 @@ theorem runBehavioralUntil_apply_of_first_hit
           have finiteZero : model.runBehavioralFrom profile fuel next final = 0 := by
             apply (PMF.apply_eq_zero_iff _ _).mpr
             intro member
-            exact reaches (reached_prefix (model.runBehavioralFrom_reachesWithin profile fuel
+            exact reaches (ReachesWithin.tracePrefix
+              (model.runBehavioralFrom_reachesWithin profile fuel
               next final member))
           rw [stoppedZero, finiteZero]
       · have zero := (PMF.apply_eq_zero_iff _ _).mpr supported

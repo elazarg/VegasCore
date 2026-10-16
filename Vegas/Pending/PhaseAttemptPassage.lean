@@ -61,7 +61,9 @@ variable (menu : (phaseApplication runtime leaks).ResponseMenu)
 local notation "E" => menu.protocol initial horizon scheduler
 local notation "N" => menu.information initial horizon scheduler
 
-private theorem site_control {who : Player} (site : (N).InformationSite who)
+/-- A full actual information view identifies its genuine physical control's
+public exclusion set and complete attempt namespace. -/
+theorem phase_information_control_of_view {who : Player} (site : (N).InformationSite who)
     (past : List (app).PlayerEntry) (view : (app).PlayerView)
     (observed : site.1 = some (past, view))
     (prior : (N).InformationHistory who site.1) :
@@ -109,7 +111,8 @@ theorem phase_attempt_ancestor_of_exit
   apply ancestor_stable (N) site antichain _ final reached
   intro atSite later
   obtain ⟨current, currentState, currentClear, currentAttempt⟩ :=
-    site_control runtime leaks menu initial horizon scheduler site past view observed atSite
+    phase_information_control_of_view runtime leaks menu initial horizon scheduler site past view
+      observed atSite
   cases atSite with
   | mk history info =>
     cases history with

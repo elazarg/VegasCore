@@ -31,9 +31,6 @@ theorem RecoverySourceCheckpoint.after_commit_retry_archived
     {setup : Setup (Player := Player) (L := L)} {mode : ExecutionMode}
     {state : PhaseRuntimeState ((toEventGraph setup.program).withMode mode)}
     (checkpoint : RecoverySourceCheckpoint setup mode state)
-    (priorTrace : setup.commitRecoveryProtocol.Trace (some (CommitRecoveryState.atPoint
-      (checkpoint.residual.lift (ProtocolState.entry checkpoint.residual.tail checkpoint.source))
-      state.entry.excluded state.generation)))
     (aligned : checkpoint.ArchivedRecall) (archives : state.ArchivesBefore)
     (committing : ProtocolState.atCommit checkpoint.residual.tail
       (ProtocolState.entry checkpoint.residual.tail checkpoint.source) = true)
@@ -50,16 +47,14 @@ theorem RecoverySourceCheckpoint.after_commit_retry_archived
     (survives : (phase.owners \ (phase.drain state.current).excluded).Nonempty) :
     ∃ next : RecoverySourceCheckpoint setup mode state.normalize,
       next.ArchivedRecall ∧
-      ∃ (nextTrace : setup.commitRecoveryProtocol.Trace (some (CommitRecoveryState.atPoint
-          (next.residual.lift (ProtocolState.entry next.residual.tail next.source))
-          state.normalize.entry.excluded state.normalize.generation))) (fuel : Nat),
+      ∃ fuel : Nat,
         setup.commitRecoveryProtocol.ReachesWithin fuel
-          ⟨_, priorTrace⟩ ⟨_, nextTrace⟩ ∧
-        setup.recoveryJointRecall nextTrace =
+          ⟨_, checkpoint.trace⟩ ⟨_, next.trace⟩ ∧
+        setup.recoveryJointRecall next.trace =
           (checkpoint.commitInstructionWord (phase.drain state.current).native).reverse ++
-            setup.recoveryJointRecall priorTrace := by
+            setup.recoveryJointRecall checkpoint.trace := by
   obtain ⟨next, _point, sourcePrefix, word⟩ := checkpoint.after_commit_retry
-    priorTrace committing phase remaining installed
+    committing phase remaining installed
     maximal binding receipts remembered native finished missed survives
   have positioned := receipts.exclusion.frontier.positioned
   rw [installed] at positioned

@@ -65,7 +65,7 @@ theorem RecoverySourceCheckpoint.normalized_intended
               simp only [drained, clear, Finset.empty_sdiff, Finset.empty_inter,
                 Finset.not_nonempty_empty, not_false_eq_true]
             have result := checkpoint.after_commit_clean
-              (Classical.choice checkpoint.trace) committing phase remaining rfl maximal
+              committing phase remaining rfl maximal
               binding receipts stored remembered native order.coverage finishedDrain clean
             rw [drained] at result
             obtain ⟨⟨next, _point, _sourcePrefix, _history, nextIntended⟩, _normalized⟩ := result
@@ -80,7 +80,7 @@ theorem RecoverySourceCheckpoint.normalized_intended
               (order.publicationOrder phase member) order.coverage.active order.coverage.inherited
                 graphOrder
             have result := checkpoint.after_reveal
-              (Classical.choice checkpoint.trace) phase remaining rfl kind receipts.exclusion
+              phase remaining rfl kind receipts.exclusion
               stored remembered (phase.drain_invariant current native.active).reachable imageOrder
                 finishedDrain
             rw [drained] at result
@@ -88,7 +88,7 @@ theorem RecoverySourceCheckpoint.normalized_intended
             exact ⟨next, nextIntended clear intended⟩
         | sample =>
             have result := checkpoint.after_sample
-              (Classical.choice checkpoint.trace) phase remaining rfl kind receipts.exclusion
+              phase remaining rfl kind receipts.exclusion
               stored remembered (phase.drain_invariant current native.active).reachable
                 finishedDrain
             rw [drained] at result

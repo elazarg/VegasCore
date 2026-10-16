@@ -39,7 +39,7 @@ theorem unsent_queried_input
       item.1 = ⟨item.1.elapsed,
         ((PhaseSeedScheduler.ownerWord runtime leaks coordinate.1 owner
           (execution.recall owner)).map Prod.fst).take item.1.activationClocks.length, []⟩ := by
-  have prefixes := initialized_queryActivationPrefixes runtime leaks priority decideLocal rest
+  have prefixes := initialized_queryOperationalPrefixes runtime leaks priority decideLocal rest
     coordinate owner actor scheduler players count state execution reached
   have empty := PhaseSeedCalendar.queried_emissions_nil_of_unsent runtime leaks (fun _ => 0)
     (fun _ => 0) priority rest coordinate owner actor scheduler players count state execution
@@ -51,7 +51,11 @@ theorem unsent_queried_input
     rfl rest coordinate [] execution.environmentRecall
   rw [← transcript] at empty
   intro item member
-  obtain ⟨suffix, joined⟩ := prefixes item member
+  obtain ⟨before, isPrefix, operational⟩ := prefixes item member
+  have clockEq : item.1.activationClocks = before.map Prod.fst :=
+    congrArg PhaseSeedOperationalInput.activationClocks operational
+  obtain ⟨suffix, joined⟩ := isPrefix.map Prod.fst
+  rw [← clockEq] at joined
   have absent := empty item member
   have take : ((PhaseSeedScheduler.ownerWord runtime leaks coordinate.1 owner
       (execution.recall owner)).map Prod.fst).take item.1.activationClocks.length =

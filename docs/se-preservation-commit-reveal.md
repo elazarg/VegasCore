@@ -1,6 +1,6 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**SE: non-concurrent ✓ · clock-only seed law ✓ · stopped native Bayes ✓ · source info/Bayes/incentives open.**
+**SE: non-concurrent ✓ · seed law ✓ · native Bayes ✓ · conditional L1 bound ✓ · source transport/incentives open.**
 
 <details>
 <summary>Checked recovery milestones and remaining proof obligations</summary>
@@ -524,6 +524,30 @@ that exact instruction word and its onward source path. Full owner-information
 observability must still identify these traces with the paired block traces
 and recover every chronological source signal; it is not inferred from equal
 source endpoints or abstract reachability.
+The original local seed and the clock-erased own packet pattern determine
+all activation clocks at genuine callbacks, including after a send. The packet
+pattern retains identifiers and authorization at each callback. Actual counted
+emissions derive those fields from the owner's transport nonce and current
+readiness token; they do not expose private packet contents. Success and
+continuation-payoff independence still require the resolving-run comparison.
+
+Actual source checkpoints retain one literal chosen trace. Their chronological
+origins start at the supported original setup draw and retain the exact prior
+trace at each archive and each completed clean, sample or reveal phase. Actual
+noncommitment steps reconstruct previous private views and next public signals
+with arbitrary permanent exclusions. Full chronological source information and
+prescribed reset-continuation values remain separate obligations.
+
+For the same selected noisy entry law and its original updated private-memory
+posteriors, the conditional native input law has an explicit L1 bound against
+the normalized zero-RAW commitment-suffix weights. Its denominator is the actual
+positive input mass; no uniform lower bound is imposed. The error retains exact
+new foreign RAW-binding marks and genuine continuation provenance. Averaging a
+marked physical path uses the actual original memory posteriors and intrinsic
+native RAW atom. Mixing and summing these marked paths and identifying the
+remaining entry-weighted law with source Bayes still require proofs. Earlier
+RAW opening-WAIT factors remain in that original entry law.
+
 Full concurrent SE preservation remains unproved.
 </details>
 

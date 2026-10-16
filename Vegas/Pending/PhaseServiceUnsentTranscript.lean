@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.PhaseServiceCallbackCounters
+import Vegas.Pending.PhaseServiceQueryTranscript
 
 /-! # Complete actual unsent query transcripts from owner information -/
 
@@ -95,36 +95,15 @@ theorem active_unsent_transcript_signature
   obtain ⟨state, stateSupported, reached⟩ :=
     Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ fullSupport.2)
   obtain ⟨initialInput, _supported, rfl⟩ := PMF.support_map .. ▸ stateSupported
-  have counted := history_countedQueryLog runtime leaks counterLeaks priority decideLocal timed
-    seeds bounds plan ordered maximal inputs horizon remaining idle idleTrace coordinate owner
-      request
-  have actualWord := runRounds_activationTranscript runtime leaks priority decideLocal seeds ordered
-    coordinate owner request.2.2.2.1 menu.uniformResponses idle.environmentRecall.length
-    (ReactiveApplication.Execution.initial app (PhaseRuntimeState.initial plan initialInput)) idle
-      (PhaseRuntimeState.initial_invariant plan initialInput).1
-      (PhaseSeedScheduler.initial_wordRecall runtime leaks
-        (PhaseRuntimeState.initial plan initialInput)) (by rfl) reached
+  obtain ⟨counted, positives, exhaustionCount, _⟩ :=
+    active_query_transcript_signature runtime leaks counterLeaks priority decideLocal timed seeds
+      bounds plan ordered maximal inputs horizon remaining owner execution trace coordinate request
   have queryInputs := unsent_queried_input runtime leaks priority decideLocal seeds.1 coordinate
     owner request.2.2.2.1 scheduler menu.uniformResponses idle.environmentRecall.length
     (PhaseRuntimeState.initial plan initialInput) idle reached networkUnsent
   rw [clocks] at queryInputs
   have unresolved := queried_activate_or_wait runtime leaks priority decideLocal timed seeds bounds
     plan ordered maximal inputs horizon remaining idle idleTrace coordinate owner request
-  have positives := counterEntry_positive_clocks runtime leaks counterLeaks owner
-    ((controller runtime leaks priority decideLocal).coordinateTranscriptFrom seeds.1 coordinate []
-      idle.environmentRecall)
-  change _ = activationTranscript runtime leaks priority decideLocal seeds.1 coordinate owner
-    idle.environmentRecall at positives
-  rw [← actualWord, clocks] at positives
-  have exhausts := counterEntry_exhausted runtime leaks counterLeaks owner
-    ((controller runtime leaks priority decideLocal).coordinateTranscriptFrom seeds.1 coordinate []
-      idle.environmentRecall) unresolved
-  change _ = waitClocks runtime leaks priority decideLocal seeds.1 coordinate
-    idle.environmentRecall at exhausts
-  have exhaustionCount := congrArg List.length exhausts
-  rw [(app).respond_environmentRecall,
-    active_wait_count runtime leaks priority decideLocal timed seeds bounds plan ordered maximal
-      inputs horizon remaining owner execution trace coordinate request] at exhaustionCount
   have restored : (((controller runtime leaks priority decideLocal).coordinateTranscriptFrom seeds.1
       coordinate [] idle.environmentRecall).map (counterEntry runtime leaks counterLeaks owner)).map
         (restoreCounterEntry runtime leaks counterLeaks owner

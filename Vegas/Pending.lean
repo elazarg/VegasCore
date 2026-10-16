@@ -718,3 +718,8 @@ import Vegas.Pending.PhaseAttemptPassage
 import Vegas.Pending.PhaseClearInterval
 import Vegas.Pending.PhaseAttemptInputAtom
 import Vegas.Pending.PhaseCommitmentMenuShape
+import Vegas.Pending.PhaseServiceQueryTranscript
+import Vegas.Pending.PhaseServiceAutonomy
+import Vegas.Pending.PhaseServiceEmission
+import Vegas.Pending.PhaseAttemptFirstPassage
+import Vegas.Pending.PhaseAttemptEntryFiber

@@ -76,10 +76,10 @@ structure RecoverySourceCheckpoint (setup : Setup (Player := Player) (L := L))
   readout : ∀ point, ProtocolState.readout setup.program (residual.lift point) =
     (ProtocolState.readout residual.tail point).map
       (cast (congrArg (State L) terminalAlignment.contextEq))
-  trace : Nonempty (setup.commitRecoveryProtocol.Trace
+  trace : setup.commitRecoveryProtocol.Trace
     (some (CommitRecoveryState.atPoint
       (residual.lift (ProtocolState.entry residual.tail source)) state.entry.excluded
-      state.generation)))
+      state.generation))
   views : ProtocolViewSuffix setup.program residual.tail refs embedding residual.lift
   historyAlignment : state.entry.excluded = ∅ → source.history =
     decodeHistory setup.program (state.entry.native.config.history.map
@@ -142,8 +142,8 @@ def initial (setup : Setup (Player := Player) (L := L)) (mode : EventGraph.Execu
     change _ = Option.map id _
     simp only [Option.map_id, id_eq]
   trace := by
-    refine ⟨.extend .start (fun _ => none) ⟨(fun impossible => impossible),
-      (fun _ impossible => impossible)⟩ ?_⟩
+    refine .extend .start (fun _ => none) ⟨(fun impossible => impossible),
+      (fun _ impossible => impossible)⟩ ?_
     exact (PMF.mem_support_map_iff _ _ _).mpr ⟨initial, supported, rfl⟩
 
   views := ProtocolViewSuffix.initial setup.program

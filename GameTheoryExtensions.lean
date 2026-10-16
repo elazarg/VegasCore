@@ -104,3 +104,4 @@ import GameTheoryExtensions.Math.Probability.NestedPosterior
 import GameTheoryExtensions.Analysis.Protocol.StoppedComposition
 import GameTheoryExtensions.Analysis.Protocol.ContinuationOwnPlay
 import GameTheoryExtensions.Analysis.Protocol.StoppedHistoryAtom
+import GameTheoryExtensions.Math.Probability.ProductExpectation

@@ -159,7 +159,7 @@ theorem RecoverySourceCheckpoint.surviving_prefix_trace
       (fun point who => menus who point) steps first rfl rfl committing beforeEnd
   change (SourceProgram.commitRecoveryProtocol setup.program _).Reaches first after at reached
   obtain ⟨sourceTrace, _fuel, _prefix⟩ :=
-    setup.recoveryTrace_of_reaches _ (Classical.choice initialized) reached
+    setup.recoveryTrace_of_reaches _ initialized reached
   have actor : ProtocolState.actor setup.program after.point = some owner := by
     change ProtocolState.actor setup.program
       (lift (earlier.liftPoint suffix (ProtocolState.entry suffix finished))) = some owner

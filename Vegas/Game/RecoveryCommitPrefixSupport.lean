@@ -229,11 +229,10 @@ theorem RecoverySourceCheckpoint.attempt_mem_prefixLaw
   subst program
   let first := CommitRecoveryState.atPoint
     (lift (ProtocolState.entry (earlier.prepend suffix) entry)) ∅ state.generation
-  have actual : Nonempty (setup.commitRecoveryProtocol.Trace (some first)) := by
+  have actual : setup.commitRecoveryProtocol.Trace (some first) := by
     rw [savedClear] at initialized
     exact initialized
-  obtain ⟨trace⟩ := actual
   exact attempt_supported setup wellFormed assessment mixed earlier suffix residual lift ranks
-    actors (fun point who => menus who point) steps raw entry first trace rfl rfl final attempt
+    actors (fun point who => menus who point) steps raw entry first actual rfl rfl final attempt
 
 end Vegas

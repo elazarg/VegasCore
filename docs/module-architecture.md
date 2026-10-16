@@ -2096,6 +2096,41 @@ marked transmission has literal prepared-binding syntax, including accepted
 failures. First-hit history geometry identifies the actual stopped target atom
 with the exact continuation atom. Its noisy mass is bounded by a near-one factor
 times the same zero-RAW atom plus exact foreign RAW binding contributions with
-all other original noisy factors retained. Summing actual input fibers and
-normalizing through the actual selected entry law remain necessary; no uniform
-positive input-mass floor or source Bayes identity is asserted.
+all other original noisy factors retained. Actual input-fiber sums normalize
+through the same selected noisy entry law and its original updated memories.
+The resulting conditional L1 bound retains the exact marked error over actual
+positive input mass; no uniform input-mass floor or source Bayes identity is
+asserted.
+
+Complete phased service words and counted emissions:
+[Phase Service Query Transcript](../Vegas/Pending/PhaseServiceQueryTranscript.lean),
+[Phase Service Autonomy](../Vegas/Pending/PhaseServiceAutonomy.lean),
+[Phase Service Emission](../Vegas/Pending/PhaseServiceEmission.lean).
+The full erased clocked owner word reconstructs every actual local query.
+The same original seed and callback-indexed clock-erased packet pattern derive
+all activation clocks, including post-SEND. A nonempty counted response has the
+original owner nonce and valid authorization regardless of private contents.
+These facts do not yet prove independence of success or continuation payoffs.
+
+Actual chosen source chronology and noncommitment observations:
+[Recovery Archived Source Origin](../Vegas/Game/RecoveryArchivedSourceOrigin.lean),
+[Commit Recovery Noncommit Observation](../Vegas/Source/CommitRecoveryNonCommitObservation.lean),
+[Commit Recovery Noncommit Recall](../Vegas/Source/CommitRecoveryNonCommitRecall.lean).
+Each checkpoint contains its literal source trace. Chronological origins retain
+the supported original setup anchor and exact predecessor traces through actual
+archive appends and clean, sample and reveal advances. Noncommitment successor
+public signals and predecessor private views are reconstructed on genuine
+arbitrary-exclusion paths. Full chronological InfoState equality and prescribed
+reset-continuation law remain open.
+
+Actual conditional native likelihood comparison:
+[Phase Recovery Value Comparison](../Vegas/Game/PhaseRecoveryValueComparison.lean),
+[Phase Recovery Value Send Posterior](../Vegas/Game/PhaseRecoveryValueSendPosterior.lean),
+[Phase Recovery Value Native Mark](../Vegas/Game/PhaseRecoveryValueNativeMark.lean).
+The same selected noisy entry and original memory posterior normalize stopped
+input weights using their factual positive mass. Exact marked errors retain the
+new own-play suffix, callbacks and universal continuation chance. Observing a
+binding SEND leaves the complete downstream response-likelihood law unchanged
+under the original posterior; integrating original owner memories identifies
+the marked path with the intrinsic native RAW atom. Summation, selected-entry
+mixing and source likelihood proportionality remain explicit consumers.

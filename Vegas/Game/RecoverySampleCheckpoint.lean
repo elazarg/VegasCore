@@ -8,6 +8,7 @@ import Vegas.Pending.PhaseHistoryCheckpoint
 import Vegas.Game.RecordedSourceHistory
 import Vegas.Source.CommitRecoveryPathLift
 import Vegas.Source.CommitRecoveryNonCommitIntended
+import GameTheoryExtensions.Protocol.StateSymmetry
 
 /-! # Saved source checkpoints after actual singleton sample phases -/
 
@@ -25,9 +26,6 @@ theorem RecoverySourceCheckpoint.after_sample
     {setup : Setup (Player := Player) (L := L)} {mode : EventGraph.ExecutionMode}
     {state : PhaseRuntimeState ((toEventGraph setup.program).withMode mode)}
     (checkpoint : RecoverySourceCheckpoint setup mode state)
-    (priorTrace : setup.commitRecoveryProtocol.Trace (some (CommitRecoveryState.atPoint
-      (checkpoint.residual.lift (ProtocolState.entry checkpoint.residual.tail checkpoint.source))
-      state.entry.excluded state.generation)))
     (phase : RuntimePhase ((toEventGraph setup.program).withMode mode))
     (remaining : List (RuntimePhase ((toEventGraph setup.program).withMode mode)))
     (installed : state.phases = phase :: remaining) (kind : phase.kind = .sample)
@@ -39,11 +37,9 @@ theorem RecoverySourceCheckpoint.after_sample
     ∃ next : RecoverySourceCheckpoint setup mode
       (⟨remaining, state.generation, phase.drain state.current, phase.drain state.current,
         state.retired⟩ : PhaseRuntimeState ((toEventGraph setup.program).withMode mode)),
-      (∃ (nextTrace : setup.commitRecoveryProtocol.Trace (some (CommitRecoveryState.atPoint
-          (next.residual.lift (ProtocolState.entry next.residual.tail next.source))
-          (phase.drain state.current).excluded state.generation))) (fuel : Nat),
+      (∃ fuel : Nat,
         setup.commitRecoveryProtocol.ReachesWithin fuel
-          ⟨_, priorTrace⟩ ⟨_, nextTrace⟩) ∧
+          ⟨_, checkpoint.trace⟩ ⟨_, next.trace⟩) ∧
       (∀ who, who ∉ (phase.drain state.current).excluded →
         next.source.history who = checkpoint.source.history who ++
           (decodeHistory setup.program ((phase.drain state.current).native.config.history.map
@@ -55,6 +51,7 @@ theorem RecoverySourceCheckpoint.after_sample
         (ProtocolState.entry checkpoint.residual.tail checkpoint.source)) →
       ProtocolState.Intended setup.program (next.residual.lift
         (ProtocolState.entry next.residual.tail next.source))) := by
+  let priorTrace := checkpoint.trace
   rcases checkpoint with ⟨⟨Γ, O, program, lift⟩, source, refs, registry, embedding, before,
     compiled, terminalAligned, agrees, guards, failures, unique, ranks, actors, commits,
     owners, endpoints, automatic, histories, memories, steps, menus, readouts, _trace, views,
@@ -164,6 +161,12 @@ theorem RecoverySourceCheckpoint.after_sample
         (Sum.inr (ProtocolState.entry next after), state.entry.excluded) path
       obtain ⟨sourceTrace, fuel, reachedPrefix⟩ :=
         setup.recoveryTrace_of_reaches sourceInitial priorTrace reached
+      let targetTrace : setup.commitRecoveryProtocol.Trace
+          (some (CommitRecoveryState.atPoint
+            (lift (Sum.inr (ProtocolState.entry next after))) image.excluded state.generation)) :=
+        (congrArg (fun excluded => some (CommitRecoveryState.atPoint
+          (lift (Sum.inr (ProtocolState.entry next after))) excluded state.generation))
+            excludedEq).symm ▸ sourceTrace
       have adjacent := exclusion.frontier.adjacent
       have last := exclusion.frontier.last
       rw [installed] at adjacent last
@@ -206,7 +209,7 @@ theorem RecoverySourceCheckpoint.after_sample
           step := ?_
           menus := fun who point => menus who (Sum.inr point)
           readout := fun point => readouts (Sum.inr point)
-          trace := by rw [excludedEq]; exact ⟨sourceTrace⟩
+          trace := targetTrace
           views := ProtocolViewSuffix.sampleTail setup.program fresh law next refs embedding
             lift views
           origin := .sampleTail fresh law next origin
@@ -244,13 +247,13 @@ theorem RecoverySourceCheckpoint.after_sample
           (remembered.trans (phase.drain_history_prefix state.current)) saved prefixEnd
           (fun owner _survives => congrFun (historyAlignment oldClear) owner) who
           (by rw [clear]; exact Finset.notMem_empty _)
-      · change ∃ (nextTrace : setup.commitRecoveryProtocol.Trace
-            (some (CommitRecoveryState.atPoint
-              (lift (Sum.inr (ProtocolState.entry next after))) image.excluded state.generation)))
-            (fuel : Nat), setup.commitRecoveryProtocol.ReachesWithin fuel
-              ⟨_, priorTrace⟩ ⟨_, nextTrace⟩
-        rw [excludedEq]
-        exact ⟨sourceTrace, fuel, reachedPrefix⟩
+      · refine ⟨fuel, ?_⟩
+        change setup.commitRecoveryProtocol.ReachesWithin fuel
+          ⟨_, priorTrace⟩ ⟨_, targetTrace⟩
+        rw [show (⟨_, targetTrace⟩ : setup.commitRecoveryProtocol.History) =
+            ⟨_, sourceTrace⟩ from
+          GameTheory.Protocol.ExecutionProtocol.StateSymmetry.history_cast _ sourceTrace]
+        exact reachedPrefix
       · intro who active
         obtain ⟨⟨selected, action⟩, recorded, named⟩ :=
           List.mem_map.mp ((image.native.config.history_exact event).mpr completed)

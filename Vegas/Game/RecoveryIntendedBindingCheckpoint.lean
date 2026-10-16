@@ -114,11 +114,11 @@ theorem RecoverySourceCheckpoint.intended_binding_information
     (setup.initialConfig setup.initialLaw.support_nonempty.choose) suffix lift ranks actors
       (fun point who => menus who point) steps first rfl rfl committing beforeEnd
   change (SourceProgram.commitRecoveryProtocol setup.program _).Reaches first after at reached
-  have initializedClear : Nonempty (setup.commitRecoveryProtocol.Trace (some first)) := by
+  have initializedClear : setup.commitRecoveryProtocol.Trace (some first) := by
     rw [clear] at initialized
     exact initialized
   obtain ⟨sourceTrace, _fuel, _prefix⟩ :=
-    setup.recoveryTrace_of_reaches _ (Classical.choice initializedClear) reached
+    setup.recoveryTrace_of_reaches _ initializedClear reached
   have wholeIntended : ProtocolState.Intended setup.program after.point :=
     attempt.intended_lift setup.program suffix lift origin savedIntended finalIntended
   have actor : ProtocolState.actor setup.program after.point = some owner := by

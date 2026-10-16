@@ -98,9 +98,6 @@ theorem RecoverySourceCheckpoint.after_commit_clean
     {setup : Setup (Player := Player) (L := L)} {mode : EventGraph.ExecutionMode}
     {state : PhaseRuntimeState ((toEventGraph setup.program).withMode mode)}
     (checkpoint : RecoverySourceCheckpoint setup mode state)
-    (priorTrace : setup.commitRecoveryProtocol.Trace (some (CommitRecoveryState.atPoint
-      (checkpoint.residual.lift (ProtocolState.entry checkpoint.residual.tail checkpoint.source))
-      state.entry.excluded state.generation)))
     (committing : ProtocolState.atCommit checkpoint.residual.tail
       (ProtocolState.entry checkpoint.residual.tail checkpoint.source) = true)
     (phase : RuntimePhase ((toEventGraph setup.program).withMode mode))
@@ -119,14 +116,12 @@ theorem RecoverySourceCheckpoint.after_commit_clean
         state.retired⟩ : PhaseRuntimeState ((toEventGraph setup.program).withMode mode)),
       next.residual.lift (ProtocolState.entry next.residual.tail next.source) =
         checkpoint.commitResultPoint (phase.drain state.current) ∧
-      (∃ (nextTrace : setup.commitRecoveryProtocol.Trace (some (CommitRecoveryState.atPoint
-          (next.residual.lift (ProtocolState.entry next.residual.tail next.source))
-          (phase.drain state.current).excluded state.generation))) (fuel : Nat),
+      (∃ fuel : Nat,
         setup.commitRecoveryProtocol.ReachesWithin fuel
-          ⟨_, priorTrace⟩ ⟨_, nextTrace⟩ ∧
-        setup.recoveryJointRecall nextTrace =
+          ⟨_, checkpoint.trace⟩ ⟨_, next.trace⟩ ∧
+        setup.recoveryJointRecall next.trace =
           (checkpoint.commitInstructionWord (phase.drain state.current).native).reverse ++
-            setup.recoveryJointRecall priorTrace) ∧
+            setup.recoveryJointRecall checkpoint.trace) ∧
       (∀ who, who ∉ (phase.drain state.current).excluded →
         next.source.history who = checkpoint.source.history who ++
           (decodeHistory setup.program ((phase.drain state.current).native.config.history.map
@@ -141,6 +136,7 @@ theorem RecoverySourceCheckpoint.after_commit_clean
           (ProtocolState.entry next.residual.tail next.source)))) ∧
       state.normalize = PhaseRuntimeState.settle remaining state.generation
         (phase.drain state.current) (phase.drain state.current) state.retired := by
+  let priorTrace := checkpoint.trace
   dsimp only [RecoverySourceCheckpoint.commitResultPoint, RecoverySourceCheckpoint.commitAdmitted,
     RecoverySourceCheckpoint.commitInstructionWord]
   rcases checkpoint with ⟨⟨Γ, O, program, lift⟩, source, refs, registry, embedding, before,
@@ -271,7 +267,7 @@ theorem RecoverySourceCheckpoint.after_commit_clean
       step := ?_
       menus := fun who point => (menus who _).trans (tailMenus who point)
       readout := ?_
-      trace := ⟨reachedTrace⟩
+      trace := reachedTrace
       views := finalViews
       origin := origin.compose (block.protocolSuffix suffix)
       historyAlignment := ?_ }, ?_, ?_, ?_, ?_⟩
@@ -304,7 +300,7 @@ theorem RecoverySourceCheckpoint.after_commit_clean
       (phase.finished_prefix image (phase.drain_within state.current within.2) finished)
       alignedHistory views.actionEq
   · rfl
-  · exact ⟨reachedTrace, fuel, reachedPrefix, reachedInstructions⟩
+  · exact ⟨fuel, reachedPrefix, reachedInstructions⟩
   · intro who active
     exact decodeCommitAttempt_history_extension_of_survivor setup.program mode block suffix
       embedding state.attempt.phase compiled.rankEq state.entry.native image.native source
@@ -335,9 +331,6 @@ theorem RecoverySourceCheckpoint.after_commit_exhausted
     {setup : Setup (Player := Player) (L := L)} {mode : EventGraph.ExecutionMode}
     {state : PhaseRuntimeState ((toEventGraph setup.program).withMode mode)}
     (checkpoint : RecoverySourceCheckpoint setup mode state)
-    (priorTrace : setup.commitRecoveryProtocol.Trace (some (CommitRecoveryState.atPoint
-      (checkpoint.residual.lift (ProtocolState.entry checkpoint.residual.tail checkpoint.source))
-      state.entry.excluded state.generation)))
     (committing : ProtocolState.atCommit checkpoint.residual.tail
       (ProtocolState.entry checkpoint.residual.tail checkpoint.source) = true)
     (phase : RuntimePhase ((toEventGraph setup.program).withMode mode))
@@ -356,17 +349,16 @@ theorem RecoverySourceCheckpoint.after_commit_exhausted
     (∃ next : RecoverySourceCheckpoint setup mode
       (⟨remaining, state.generation, rebuilt, rebuilt, archive⟩ :
         PhaseRuntimeState ((toEventGraph setup.program).withMode mode)),
-      (∃ (nextTrace : setup.commitRecoveryProtocol.Trace (some (CommitRecoveryState.atPoint
-          (next.residual.lift (ProtocolState.entry next.residual.tail next.source))
-          rebuilt.excluded state.generation))) (fuel : Nat),
+      (∃ fuel : Nat,
         setup.commitRecoveryProtocol.ReachesWithin fuel
-          ⟨_, priorTrace⟩ ⟨_, nextTrace⟩ ∧
-        setup.recoveryJointRecall nextTrace =
+          ⟨_, checkpoint.trace⟩ ⟨_, next.trace⟩ ∧
+        setup.recoveryJointRecall next.trace =
           (checkpoint.commitInstructionWord image.native).reverse ++
-            setup.recoveryJointRecall priorTrace) ∧
+            setup.recoveryJointRecall checkpoint.trace) ∧
       (∀ who, who ∉ image.excluded → next.source.history who = checkpoint.source.history who)) ∧
       state.normalize = PhaseRuntimeState.settle remaining state.generation rebuilt rebuilt
         archive := by
+  let priorTrace := checkpoint.trace
   dsimp only [RecoverySourceCheckpoint.commitInstructionWord]
   rcases checkpoint with ⟨⟨Γ, O, program, lift⟩, source, refs, registry, embedding, before,
     compiled, aligned, agree, guards, failures, unique, ranks, actors, commits, owners, endpoints,
@@ -493,7 +485,7 @@ theorem RecoverySourceCheckpoint.after_commit_exhausted
       step := ?_
       menus := fun who point => (menus who _).trans (tailMenus who point)
       readout := ?_
-      trace := ⟨finalTrace⟩
+      trace := finalTrace
       views := finalViews
       origin := origin.compose (block.protocolSuffix suffix)
       historyAlignment := by
@@ -517,7 +509,7 @@ theorem RecoverySourceCheckpoint.after_commit_exhausted
     congr 1
     funext terminal
     simp only [Function.comp_apply, cast_cast]
-  · refine ⟨⟨finalTrace, finalFuel, finalPrefix, finalInstructions⟩, ?_⟩
+  · refine ⟨⟨finalFuel, finalPrefix, finalInstructions⟩, ?_⟩
     intro who active
     have outside : who ∉ block.owners := fun member => active (allSource member)
     exact closed.history_eq_of_not_owner who outside

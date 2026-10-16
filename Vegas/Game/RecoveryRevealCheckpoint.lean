@@ -46,9 +46,6 @@ theorem RecoverySourceCheckpoint.after_reveal
     {setup : Setup (Player := Player) (L := L)} {mode : EventGraph.ExecutionMode}
     {state : PhaseRuntimeState ((toEventGraph setup.program).withMode mode)}
     (checkpoint : RecoverySourceCheckpoint setup mode state)
-    (priorTrace : setup.commitRecoveryProtocol.Trace (some (CommitRecoveryState.atPoint
-      (checkpoint.residual.lift (ProtocolState.entry checkpoint.residual.tail checkpoint.source))
-      state.entry.excluded state.generation)))
     (phase : RuntimePhase ((toEventGraph setup.program).withMode mode))
     (remaining : List (RuntimePhase ((toEventGraph setup.program).withMode mode)))
     (installed : state.phases = phase :: remaining) (kind : phase.kind = .reveal)
@@ -61,11 +58,9 @@ theorem RecoverySourceCheckpoint.after_reveal
     ∃ next : RecoverySourceCheckpoint setup mode
       (⟨remaining, state.generation, phase.drain state.current, phase.drain state.current,
         state.retired⟩ : PhaseRuntimeState ((toEventGraph setup.program).withMode mode)),
-      (∃ (nextTrace : setup.commitRecoveryProtocol.Trace (some (CommitRecoveryState.atPoint
-          (next.residual.lift (ProtocolState.entry next.residual.tail next.source))
-          (phase.drain state.current).excluded state.generation))) (fuel : Nat),
+      (∃ fuel : Nat,
         setup.commitRecoveryProtocol.ReachesWithin fuel
-          ⟨_, priorTrace⟩ ⟨_, nextTrace⟩) ∧
+          ⟨_, checkpoint.trace⟩ ⟨_, next.trace⟩) ∧
       (∀ who, who ∉ (phase.drain state.current).excluded →
         next.source.history who = checkpoint.source.history who ++
           (decodeHistory setup.program ((phase.drain state.current).native.config.history.map
@@ -77,6 +72,7 @@ theorem RecoverySourceCheckpoint.after_reveal
         (ProtocolState.entry checkpoint.residual.tail checkpoint.source)) →
       ProtocolState.Intended setup.program (next.residual.lift
         (ProtocolState.entry next.residual.tail next.source))) := by
+  let priorTrace := checkpoint.trace
   let program := checkpoint.residual.tail
   let count := phase.high - phase.low
   let image := phase.drain state.current
@@ -162,7 +158,7 @@ theorem RecoverySourceCheckpoint.after_reveal
       step := ?_
       menus := fun who point => (checkpoint.menus who _).trans (menus who point)
       readout := ?_
-      trace := ⟨sourceTrace⟩
+      trace := sourceTrace
       views := ProtocolViewSuffix.revealTailMany setup count program prefixed checkpoint.refs
         checkpoint.embedding checkpoint.residual.lift checkpoint.views
       origin := checkpoint.origin.compose
@@ -196,7 +192,7 @@ theorem RecoverySourceCheckpoint.after_reveal
       reachable (remembered.trans (phase.drain_history_prefix state.current)) saved prefixEnd
       (fun owner _survives => congrFun (checkpoint.historyAlignment oldClear) owner) who
       (by rw [clear]; exact Finset.notMem_empty _)
-  · exact ⟨sourceTrace, fuel, reachedPrefix⟩
+  · exact ⟨fuel, reachedPrefix⟩
   · intro who active
     have saved : state.entry.native.config.cut.IsPrefix state.attempt.phase := by
       rw [← low]
