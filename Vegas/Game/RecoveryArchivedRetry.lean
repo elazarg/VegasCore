@@ -31,6 +31,9 @@ theorem RecoverySourceCheckpoint.after_commit_retry_archived
     {setup : Setup (Player := Player) (L := L)} {mode : ExecutionMode}
     {state : PhaseRuntimeState ((toEventGraph setup.program).withMode mode)}
     (checkpoint : RecoverySourceCheckpoint setup mode state)
+    (priorTrace : setup.commitRecoveryProtocol.Trace (some (CommitRecoveryState.atPoint
+      (checkpoint.residual.lift (ProtocolState.entry checkpoint.residual.tail checkpoint.source))
+      state.entry.excluded state.generation)))
     (aligned : checkpoint.ArchivedRecall) (archives : state.ArchivesBefore)
     (committing : ProtocolState.atCommit checkpoint.residual.tail
       (ProtocolState.entry checkpoint.residual.tail checkpoint.source) = true)
@@ -45,8 +48,15 @@ theorem RecoverySourceCheckpoint.after_commit_retry_archived
     (missed : (((phase.drain state.current).excluded \ state.entry.excluded) ∩
       phase.owners).Nonempty)
     (survives : (phase.owners \ (phase.drain state.current).excluded).Nonempty) :
-    ∃ next : RecoverySourceCheckpoint setup mode state.normalize, next.ArchivedRecall := by
-  obtain ⟨next, _point, word⟩ := checkpoint.after_commit_retry committing phase remaining installed
+    ∃ next : RecoverySourceCheckpoint setup mode state.normalize,
+      next.ArchivedRecall ∧
+      ∃ (nextTrace : setup.commitRecoveryProtocol.Trace (some (CommitRecoveryState.atPoint
+          (next.residual.lift (ProtocolState.entry next.residual.tail next.source))
+          state.normalize.entry.excluded state.normalize.generation))) (fuel : Nat),
+        setup.commitRecoveryProtocol.ReachesWithin fuel
+          ⟨_, priorTrace⟩ ⟨_, nextTrace⟩ := by
+  obtain ⟨next, _point, sourcePrefix, word⟩ := checkpoint.after_commit_retry
+    priorTrace committing phase remaining installed
     maximal binding receipts remembered native finished missed survives
   have positioned := receipts.exclusion.frontier.positioned
   rw [installed] at positioned
@@ -74,7 +84,7 @@ theorem RecoverySourceCheckpoint.after_commit_retry_archived
     rw [installed]
     exact PhaseRuntimeState.settle_retry_archivedHistory phase remaining state.generation
       state.entry state.current state.retired positioned.1 remembered finished kind missed survives
-  refine ⟨next, ?_⟩
+  refine ⟨next, ?_, sourcePrefix⟩
   intro who active
   have activeImage : who ∉ (phase.drain state.current).excluded := by
     simpa only [normalized, PhaseRuntimeState.restore] using active

@@ -88,7 +88,7 @@ theorem CountedQueryLog.encode_unsent {log : List (LocalSeedEntry graph (app).Co
         rw [← form]
 
 /-- Two actual counted unsent unresolved logs with identical observable
-positive queries and closed-clock count are exactly the same raw query log. -/
+positive clocks and closed-clock count are exactly the same raw query log. -/
 theorem CountedQueryLog.eq_of_unsent_signature
     {first second : List (LocalSeedEntry graph (app).Command)}
     (left : CountedQueryLog first) (right : CountedQueryLog second)
@@ -96,7 +96,8 @@ theorem CountedQueryLog.eq_of_unsent_signature
     (rightUnsent : ∀ entry ∈ second, entry.query.input.emitted = [])
     (leftUnresolved : ∀ entry ∈ first, entry.reply = .activation ∨ entry.reply = .exhausted)
     (rightUnresolved : ∀ entry ∈ second, entry.reply = .activation ∨ entry.reply = .exhausted)
-    (positiveEq : positiveQueries first = positiveQueries second)
+    (positiveEq : (positiveQueries first).map (fun query => query.input.elapsed) =
+      (positiveQueries second).map (fun query => query.input.elapsed))
     (closedEq : (exhaustedClocks first).length = (exhaustedClocks second).length) :
     first = second := by
   obtain ⟨firstWord, rfl⟩ := left.encode_unsent leftUnsent leftUnresolved

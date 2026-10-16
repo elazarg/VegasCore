@@ -107,10 +107,11 @@ private theorem phase_source_invariant
       have rawAligned : rawCheckpoint.ArchivedRecall := by
         simpa only [rawCheckpoint, RecoverySourceCheckpoint.transfer,
           RecoverySourceCheckpoint.ArchivedRecall, raw] using aligned
-      exact rawCheckpoint.normalized_archived raw rawAligned archives rawNative rawBinding
-        rawReceipts rawStored
-        rawRemembered rawOrder
-        (plan.suffix_geometry maximal state.phases suffix).2.2
+      obtain ⟨nextCheckpoint, nextAligned, _sourcePrefix⟩ :=
+        rawCheckpoint.normalized_archived raw (Classical.choice rawCheckpoint.trace) rawAligned
+          archives rawNative rawBinding rawReceipts rawStored rawRemembered rawOrder
+          (plan.suffix_geometry maximal state.phases suffix).2.2
+      exact ⟨nextCheckpoint, nextAligned⟩
     · cases accepted
   · intro state command next valid reached
     obtain ⟨⟨checkpoint, aligned⟩, ⟨inputs, native⟩, binding, receipts, stored, remembered,
@@ -161,10 +162,11 @@ private theorem phase_source_invariant
       have rawAligned : rawCheckpoint.ArchivedRecall := by
         simpa only [rawCheckpoint, RecoverySourceCheckpoint.transfer,
           RecoverySourceCheckpoint.ArchivedRecall, raw] using aligned
-      exact rawCheckpoint.normalized_archived raw rawAligned archives rawNative rawBinding
-        rawReceipts rawStored
-        rawRemembered rawOrder
-        (plan.suffix_geometry maximal state.phases suffix).2.2
+      obtain ⟨nextCheckpoint, nextAligned, _sourcePrefix⟩ :=
+        rawCheckpoint.normalized_archived raw (Classical.choice rawCheckpoint.trace) rawAligned
+          archives rawNative rawBinding rawReceipts rawStored rawRemembered rawOrder
+          (plan.suffix_geometry maximal state.phases suffix).2.2
+      exact ⟨nextCheckpoint, nextAligned⟩
     · rw [PMF.mem_support_pure_iff] at reached
       subst next
       exact ⟨checkpoint, aligned⟩

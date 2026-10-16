@@ -179,3 +179,8 @@ import Interaction.ReactiveStoppedProfileMixture
 import Interaction.ReactiveAnchoredStopped
 import Interaction.ReactiveMixtureAtoms
 import Interaction.ReactiveAddressedTranscriptRequest
+import Interaction.ReactiveAddressedTranscriptEntries
+import Interaction.ReactiveAddressedTranscriptOrder
+import Interaction.ReactiveRecordedEnvironmentPrefix
+import Interaction.ReactiveMixtureExtraCoordinate
+import Interaction.ReactiveAnchoredOwner

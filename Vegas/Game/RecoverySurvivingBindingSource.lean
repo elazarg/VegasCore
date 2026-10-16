@@ -158,7 +158,8 @@ theorem RecoverySourceCheckpoint.surviving_prefix_trace
     (setup.initialConfig setup.initialLaw.support_nonempty.choose) suffix lift ranks actors
       (fun point who => menus who point) steps first rfl rfl committing beforeEnd
   change (SourceProgram.commitRecoveryProtocol setup.program _).Reaches first after at reached
-  obtain ⟨sourceTrace⟩ := setup.recoveryTrace_of_reaches _ initialized reached
+  obtain ⟨sourceTrace, _fuel, _prefix⟩ :=
+    setup.recoveryTrace_of_reaches _ (Classical.choice initialized) reached
   have actor : ProtocolState.actor setup.program after.point = some owner := by
     change ProtocolState.actor setup.program
       (lift (earlier.liftPoint suffix (ProtocolState.entry suffix finished))) = some owner

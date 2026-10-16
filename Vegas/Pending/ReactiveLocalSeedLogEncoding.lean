@@ -53,12 +53,14 @@ private theorem encode_positive_elapsed (word : List Bool) (elapsed activationIn
             exact Nat.le_refl _
           · exact ih elapsed (activationIndex + 1) later
 
-/-- Positive queries and the final exhausted-clock count determine the
+/-- Positive clocks and the final exhausted-clock count determine the
 complete raw word; repeated activations at one clock remain distinguishable. -/
 theorem encodeUnsentLogFrom_signature_injective (first second : List Bool)
     (elapsed activationIndex : Nat)
-    (positiveEq : positiveQueries (encodeLog elapsed activationIndex first) =
-      positiveQueries (encodeLog elapsed activationIndex second))
+    (positiveEq : (positiveQueries (encodeLog elapsed activationIndex first)).map
+        (fun query => query.input.elapsed) =
+      (positiveQueries (encodeLog elapsed activationIndex second)).map
+        (fun query => query.input.elapsed))
     (exhaustedEq : (exhaustedClocks (encodeLog elapsed activationIndex first)).length =
       (exhaustedClocks (encodeLog elapsed activationIndex second)).length) : first = second := by
   induction first generalizing second elapsed activationIndex with
@@ -83,36 +85,46 @@ theorem encodeUnsentLogFrom_signature_injective (first second : List Bool)
           | true => simp [encodeUnsentLogFrom, positiveQueries] at positiveEq
       | cons other tail =>
           cases answer <;> cases other
-          · have positives : positiveQueries (encodeLog (elapsed + 1) activationIndex rest) =
-                positiveQueries (encodeLog (elapsed + 1) activationIndex tail) := positiveEq
+          · have positives : (positiveQueries (encodeLog (elapsed + 1) activationIndex rest)).map
+                  (fun query => query.input.elapsed) =
+                (positiveQueries (encodeLog (elapsed + 1) activationIndex tail)).map
+                  (fun query => query.input.elapsed) := positiveEq
             have exhausts : (exhaustedClocks
                 (encodeLog (elapsed + 1) activationIndex rest)).length =
                 (exhaustedClocks (encodeLog (elapsed + 1) activationIndex tail)).length := by
               simpa only [encodeUnsentLogFrom, exhaustedClocks, List.filterMap_cons,
                 List.length_cons, Nat.succ.injEq] using exhaustedEq
             exact congrArg (false :: ·) (ih tail _ _ positives exhausts)
-          · have member : (⟨⟨elapsed, []⟩, activationIndex⟩ : CurrentSeedQuery graph) ∈
-                positiveQueries (encodeLog (elapsed + 1) activationIndex rest) := by
-              change positiveQueries (encodeLog (elapsed + 1) activationIndex rest) =
-                (⟨⟨elapsed, []⟩, activationIndex⟩ : CurrentSeedQuery graph) ::
-                  positiveQueries (encodeLog elapsed (activationIndex + 1) tail) at positiveEq
+          · have memberClock : elapsed ∈
+                (positiveQueries (encodeLog (elapsed + 1) activationIndex rest)).map
+                  (fun query => query.input.elapsed) := by
+              change (positiveQueries (encodeLog (elapsed + 1) activationIndex rest)).map
+                  (fun query => query.input.elapsed) = elapsed ::
+                (positiveQueries (encodeLog elapsed (activationIndex + 1) tail)).map
+                  (fun query => query.input.elapsed) at positiveEq
               rw [positiveEq]
               exact List.mem_cons_self
+            obtain ⟨query, member, clock⟩ := List.mem_map.mp memberClock
             have later := encode_positive_elapsed rest (elapsed + 1) activationIndex _ member
-            change elapsed + 1 ≤ elapsed at later
+            rw [clock] at later
             omega
-          · have member : (⟨⟨elapsed, []⟩, activationIndex⟩ : CurrentSeedQuery graph) ∈
-                positiveQueries (encodeLog (elapsed + 1) activationIndex tail) := by
-              change (⟨⟨elapsed, []⟩, activationIndex⟩ : CurrentSeedQuery graph) ::
-                positiveQueries (encodeLog elapsed (activationIndex + 1) rest) =
-                  positiveQueries (encodeLog (elapsed + 1) activationIndex tail) at positiveEq
+          · have memberClock : elapsed ∈
+                (positiveQueries (encodeLog (elapsed + 1) activationIndex tail)).map
+                  (fun query => query.input.elapsed) := by
+              change elapsed :: (positiveQueries (encodeLog elapsed (activationIndex + 1) rest)).map
+                  (fun query => query.input.elapsed) =
+                (positiveQueries (encodeLog (elapsed + 1) activationIndex tail)).map
+                  (fun query => query.input.elapsed) at positiveEq
               rw [← positiveEq]
               exact List.mem_cons_self
+            obtain ⟨query, member, clock⟩ := List.mem_map.mp memberClock
             have later := encode_positive_elapsed tail (elapsed + 1) activationIndex _ member
-            change elapsed + 1 ≤ elapsed at later
+            rw [clock] at later
             omega
-          · have positives : positiveQueries (encodeLog elapsed (activationIndex + 1) rest) =
-                positiveQueries (encodeLog elapsed (activationIndex + 1) tail) := by
+          · have positives : (positiveQueries (encodeLog elapsed (activationIndex + 1) rest)).map
+                  (fun query => query.input.elapsed) =
+                (positiveQueries (encodeLog elapsed (activationIndex + 1) tail)).map
+                  (fun query => query.input.elapsed) := by
               exact (List.cons.inj positiveEq).2
             have exhausts :
                 (exhaustedClocks (encodeLog elapsed (activationIndex + 1) rest)).length =

@@ -166,7 +166,7 @@ private theorem attempt_supported
           let target := (state.install
             (lift (.inr (ProtocolState.entry (rest.prepend suffix)
               (commitSuccessor name guard entry result))), state.excluded) monotone).close
-          obtain ⟨nextTrace⟩ := setup.recoveryTrace_of_reaches _ ⟨trace⟩
+          obtain ⟨nextTrace, _fuel, _prefix⟩ := setup.recoveryTrace_of_reaches _ trace
             (.tail .refl next)
           have targetPoint : target.point = lift (.inr
               (ProtocolState.entry (rest.prepend suffix)

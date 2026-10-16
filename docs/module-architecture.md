@@ -1822,7 +1822,8 @@ An explicit expiry/deadline equivalence permits arbitrary other local decisions.
 Existing counted acceptance proves that authentic selected inclusions resolve
 the original coordinate, including namespace retirement. A surviving earlier
 nonactivation was WAIT, and every elapsed ready tick has an actual WAIT query
-with its original readiness anchor. Full query-input recovery is still required.
+with its original readiness anchor. The complete query recovery and native
+seed Bayes product below retain arbitrary other local decisions.
 
 Original source-coordinate independence and actual response atoms:
 [Reactive Mixture Atoms](../Interaction/ReactiveMixtureAtoms.lean),
@@ -1833,8 +1834,8 @@ Equal actual recorded atoms preserve the original private-member posterior,
 including zero-likelihood fallback. Actual earlier SENDs cannot query the current
 unsent source coordinate; observed source/slot SILENCE atoms ignore its value.
 The original global value-plan prior splits at its current genuine clear input,
-retaining the original marginal of all other coordinates. Whole native recall
-conditioning remains a separate consumer.
+retaining the original marginal of all other coordinates. Complete native
+recall conditioning and the literal stopped runtime realization are below.
 
 Actual native conditioning and source-view reference marginals:
 [Reactive Anchored Stopped](../Interaction/ReactiveAnchoredStopped.lean),
@@ -1872,7 +1873,8 @@ different seed carriers. Actual unsent inputs have no emissions and retain an
 exact prefix of the final owner word. Recorded queries identify its exact
 preceding activation index. Native service progress composes across arbitrary
 rounds in a surviving namespace, retaining the readiness anchor and elapsed
-clock bound. Exact negative-query counts and the general seed product remain.
+clock bound. Actual negative-query counts determine the complete transcript
+and original local-seed Bayes product below.
 
 Actual assembled source-plan callback laws:
 [Phase Recovery Value Binding](../Vegas/Game/PhaseRecoveryValueBinding.lean),
@@ -1880,7 +1882,8 @@ Actual assembled source-plan callback laws:
 The original finite-plan implementation reads only its queried ordinary source
 coordinate at a binding. Its whole SILENCE atom and opening response law ignore
 that source-policy draw, retaining the RAW tier and selected timing part.
-Whole recorded-word posterior transport is a separate consumer.
+Whole recorded-word posterior transport retains the original source marginal
+and the updated entire remainder of private memory.
 
 Observable saved source views and exact retry source points:
 [Recovery Saved Source Rank](../Vegas/Game/RecoverySavedSourceRank.lean),
@@ -1891,5 +1894,73 @@ Observable saved source views and exact retry source points:
 Existing rank projection recovers the saved view of the same surviving source
 counterpart. The chosen retry checkpoint preserves the exact restored point of
 its actual completed decoder, and the source close evaluator identifies that
-same endpoint. These adapters retain the prior history; full signal chronology
-must still be threaded through the actual checkpoint construction.
+same endpoint. The actual checkpoint construction retains supplied source
+traces through normalization; full observable signal chronology remains open.
+
+Complete phased query recovery and actual native local-seed Bayes:
+[Phase Service Query Entries](../Vegas/Pending/PhaseServiceQueryEntries.lean),
+[Phase Service Query Commands](../Vegas/Pending/PhaseServiceQueryCommands.lean),
+[Phase Service Transcript Order](../Vegas/Pending/PhaseServiceTranscriptOrder.lean),
+[Phase Service Query Wait Count](../Vegas/Pending/PhaseServiceQueryWaitCount.lean),
+[Phase Service Counted Queries](../Vegas/Pending/PhaseServiceCountedQueries.lean),
+[Phase Service Unsent Transcript](../Vegas/Pending/PhaseServiceUnsentTranscript.lean),
+[Phase Service Unsent Posterior](../Vegas/Pending/PhaseServiceUnsentPosterior.lean),
+[Phase Service Unsent Bayes](../Vegas/Pending/PhaseServiceUnsentBayes.lean).
+Actual ordered query occurrences derive WAIT and activation counts and instantiate
+the existing counted-log recovery. Equal unsent owner information determines the
+complete query transcript and every candidate-seed constraint. The original
+filtered local prior factors from the updated full remainder at the actual
+scheduler posterior and finite native Bayes site, retaining the whole physical
+control. The explicit local deadline discipline is required; no general
+adaptive-policy dominance or common delivery ranking is inferred.
+
+Original global source memory and exact assembled stopped runtime:
+[Phase Recovery Value Recall](../Vegas/Game/PhaseRecoveryValueRecall.lean),
+[Phase Recovery Value Posterior](../Vegas/Game/PhaseRecoveryValuePosterior.lean),
+[Phase Recovery Value Joint](../Vegas/Game/PhaseRecoveryValueJoint.lean),
+[Phase Recovery Value Strategy](../Vegas/Game/PhaseRecoveryValueStrategy.lean),
+[Phase Recovery Value Callback](../Vegas/Game/PhaseRecoveryValueCallback.lean),
+[Phase Recovery Value Stopped](../Vegas/Game/PhaseRecoveryValueStopped.lean),
+[Phase Recovery Value Stopped Memory](../Vegas/Game/PhaseRecoveryValueStoppedMemory.lean).
+The original global source-policy draw retains the fresh AUX omission and all
+ordinary source actions. At an actual unsent binding its current coordinate
+separates from the entire updated private-memory remainder. At every clear
+actor the actual own-mixture response is the literal assembled behavior,
+including RAW, WAIT, slots and openings. The original initialized product of
+source policies and full timing plans stays tagged jointly with the exact
+stopped physical history law. Later entries retain actual own-recall posteriors.
+This does not identify the common chronological source assessment.
+
+Literal reference laws with full entry and plan tags:
+[Recovery Timing Source Reference](../Vegas/Game/RecoveryTimingSourceReference.lean),
+[Phase Timing Memory Source Posterior](../Vegas/Game/PhaseTimingMemorySourcePosterior.lean),
+[Recovery Timing Reference Input](../Vegas/Game/RecoveryTimingReferenceInput.lean).
+Authentic source-current-view references give the literal zero-RAW stopped
+physical input law under focal intervention. Conditioning keeps full entry and
+per-owner plan tags with their actual observation tilt and original source
+fibers. The reference tags are distinct from entry-updated physical plan tags;
+factual common source Bayes transport remains open.
+
+Actual tagged noise and binding WAIT comparisons:
+[Phase Timing Tagged Noise](../Vegas/Game/PhaseTimingTaggedNoise.lean),
+[Phase Timing Binding Noise](../Vegas/Game/PhaseTimingBindingNoise.lean).
+Finite-fuel domination compares the same full entry/plan-tagged noisy and
+zero-RAW stopped histories under one focal intervention. Its conditional bound
+retains the positive zero-RAW input-mass denominator. At an actual unsent binding,
+arbitrary timing weights retain a source-omission WAIT floor and a near-one
+noisy/zero-RAW WAIT ratio. A whole-block relative-likelihood limit still needs
+proof; the binding-SEND marked bound alone does not supply it.
+
+Actual source origins through chosen checkpoints and normalization:
+[Recovery Residual Uniqueness](../Vegas/Game/RecoveryResidualUniqueness.lean),
+[Recovery Saved Source View](../Vegas/Game/RecoverySavedSourceView.lean),
+[Compiled Commit Retry Recall](../Vegas/Game/CompiledCommitRetryRecall.lean),
+[Recovery Checkpoint History](../Vegas/Game/RecoveryCheckpointHistory.lean).
+The same remaining source count determines the dependent residual program and
+its output embedding. Equal actual owner information determines the chosen
+saved source view under that derived transport. Clean, exhausted, reveal,
+sample and retry constructors extend the supplied genuine prior source trace
+to their exact chosen checkpoint. Archived normalization composes those actual
+paths to the chosen final checkpoint. Paired retry paths preserve full source
+information given the prior signal induction. An observable chronology
+induction across arbitrary callbacks is still required for the total decoder.

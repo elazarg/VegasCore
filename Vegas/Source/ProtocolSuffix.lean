@@ -47,6 +47,23 @@ variable {wholeΓ Γ Δ : SourceCtx Player L} {wholeO O P : Finset VarId}
   {tail : SourceProgram Player L Δ P}
   {lift : ProtocolState program → ProtocolState whole}
 
+/-- Equality of whole observations reflects to the same actual typed suffix. -/
+theorem observe_reflect (origin : ProtocolSuffix whole program lift) (who : Player) :
+    ∀ first second, ProtocolState.observe who whole (lift first) =
+        ProtocolState.observe who whole (lift second) →
+      ProtocolState.observe who program first = ProtocolState.observe who program second := by
+  induction origin with
+  | initial => intro first second same; exact same
+  | sampleTail fresh law next previous ih =>
+      intro first second same
+      exact Sum.inr.inj (ih (.inr first) (.inr second) same)
+  | commitTail fresh guard next previous ih =>
+      intro first second same
+      exact Sum.inr.inj (ih (.inr first) (.inr second) same)
+  | revealTail fresh selected unresolved next previous ih =>
+      intro first second same
+      exact Sum.inr.inj (ih (.inr first) (.inr second) same)
+
 /-- Two genuine source suffix traversals compose without changing the executor. -/
 theorem compose {later : ProtocolState tail → ProtocolState program}
     (outer : ProtocolSuffix whole program lift) (inner : ProtocolSuffix program tail later) :

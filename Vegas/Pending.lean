@@ -699,3 +699,15 @@ import Vegas.Pending.PhaseServiceQueryPrefix
 import Vegas.Pending.PhaseServiceUnsentInput
 import Vegas.Pending.PhaseServiceRounds
 import Vegas.Pending.PhaseServiceRecordedQuery
+import Vegas.Pending.PhaseServiceQueryEntries
+import Vegas.Pending.PhaseServiceQueryCommands
+import Vegas.Pending.PhaseServiceQueryOrder
+import Vegas.Pending.PhaseServiceQueryStrictOrder
+import Vegas.Pending.PhaseServiceTranscriptOrder
+import Vegas.Pending.PhaseServiceQueryWaitCount
+import Vegas.Pending.PhaseServiceCountedQueries
+import Vegas.Pending.PhaseServiceCallbackCounters
+import Vegas.Pending.PhaseServiceUnsentTranscript
+import Vegas.Pending.PhaseSeedPosteriorTrace
+import Vegas.Pending.PhaseServiceUnsentPosterior
+import Vegas.Pending.PhaseServiceUnsentBayes

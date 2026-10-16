@@ -1,6 +1,6 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**SE: non-concurrent ✓ · block recall ✓ · query prefix/index/time ✓ · chronology/Bayes/incentives open.**
+**SE: non-concurrent ✓ · block recall ✓ · query recovery/seed Bayes ✓ · source chronology/Bayes/incentives open.**
 
 <details>
 <summary>Checked recovery milestones and remaining proof obligations</summary>
@@ -457,9 +457,28 @@ transcript, including repeated equal-clock activations. Each earlier query of
 a still-live coordinate retains its original readiness timestamp and has no
 later elapsed clock than the current query. For an unsent coordinate, its
 entire queried input is that elapsed clock, the corresponding prefix of the
-final owner clock word, and an empty emission list. The negative queries' exact
-activation counts, the common filtered-seed product and comparison with richer
-physical policies remain open.
+final owner clock word, and an empty emission list. Actual query clocks are
+ordered, with strict increase after WAIT; every earlier tick occurs exactly
+once as WAIT. Its elapsed clock and activation index are therefore the actual
+preceding WAIT and activation counts. The existing counted-log theorem recovers
+the entire operational query transcript across equal owner information,
+including repeated same-clock activations. The original local-seed constraint
+is common across that whole fiber. At a positive finite native information
+site, the original filtered local seed is independent of the full current
+physical control and the updated joint law of all other original seeds.
+This retains arbitrary other local decisions under the stated deadline
+discipline, without a first-delay assumption.
+
+The original global source-policy and per-owner full timing-plan draws realize
+the literal assembled stopped physical history law at every actual clear actor.
+Their original joint law is retained from initialization; later entries use
+their actual recall-updated posteriors. The current ordinary source choice
+factors from the entire remaining private memory at an unsent binding.
+These are source-memory and physical-runtime identities. Identifying the
+common native assessment with chronological source beliefs remains open.
+Reference source-view conditioning retains full entry and plan tags and their
+actual observation tilt; those reference tags cannot be replaced by independent
+fresh draws at a later entry.
 A common delivery ranking across private types and a bound against policies
 that read more remain open. Source projection at
 a partial concurrent cut must distinguish saved/prefix exclusions from physical
@@ -3697,6 +3716,9 @@ needs its own review. What is known:
 | The actual scheduler posterior conditioned on its transcript and query log factors with the local prior filtered by the recorded answers | `Vegas.EventGraphRuntime.LocalSeedController.posterior_transcript_log` |
 | Actual owner recall reconstructs every positive local query and its index along complete runs, under the operational-domain invariant | `Vegas.EventGraphRuntime.LocalSeedController.runJoint_initial_ownerLog` |
 | Counted unsent query logs are determined by their positive-query history and exhaustion count | `Vegas.EventGraphRuntime.LocalSeedController.CountedQueryLog.eq_of_unsent_signature` |
+| Complete unsent phased query transcripts agree across genuine equal owner information | `Vegas.EventGraphRuntime.PhaseServiceScheduler.unsent_information_transcript` |
+| The original phased local seed factors from full control at a positive native Bayes site | `Vegas.EventGraphRuntime.PhaseServiceScheduler.bayesBelief_unsent_seed_product` |
+| Original source-policy and timing-plan tags realize the initialized stopped physical law | `Vegas.phaseTimingPlanPolicy_value_initial_memory_joint` |
 | The concrete local service derives packet inclusion and expiry resolution on genuine clean one-packet histories | `Vegas.EventGraphRuntime.countedLocalSeedController` |
 | Genuine clean service domains persist while the selected ordered owned event survives | `Vegas.EventGraphRuntime.countedSeedDomain_dispatch_of_activated_survives` |
 | Actual clean ready owner activations with equal full owner information have the same raw query log | `Vegas.EventGraphRuntime.LocalSeedController.runRounds_log_eq_of_owner_info` |

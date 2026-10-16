@@ -26,6 +26,9 @@ theorem RecoverySourceCheckpoint.after_commit_retry
     {setup : Setup (Player := Player) (L := L)} {mode : EventGraph.ExecutionMode}
     {state : PhaseRuntimeState ((toEventGraph setup.program).withMode mode)}
     (checkpoint : RecoverySourceCheckpoint setup mode state)
+    (priorTrace : setup.commitRecoveryProtocol.Trace (some (CommitRecoveryState.atPoint
+      (checkpoint.residual.lift (ProtocolState.entry checkpoint.residual.tail checkpoint.source))
+      state.entry.excluded state.generation)))
     (committing : ProtocolState.atCommit checkpoint.residual.tail
       (ProtocolState.entry checkpoint.residual.tail checkpoint.source) = true)
     (phase : RuntimePhase ((toEventGraph setup.program).withMode mode))
@@ -47,6 +50,11 @@ theorem RecoverySourceCheckpoint.after_commit_retry
             (ProtocolState.entry checkpoint.residual.tail checkpoint.source))
           (ProtocolState.history setup.program
             (checkpoint.commitResultPoint (phase.drain state.current))) ∧
+      (∃ (nextTrace : setup.commitRecoveryProtocol.Trace (some (CommitRecoveryState.atPoint
+          (next.residual.lift (ProtocolState.entry next.residual.tail next.source))
+          state.normalize.entry.excluded state.normalize.generation))) (fuel : Nat),
+        setup.commitRecoveryProtocol.ReachesWithin fuel
+          ⟨_, priorTrace⟩ ⟨_, nextTrace⟩) ∧
       ∀ who, who ∉ (phase.drain state.current).excluded →
       next.source.history who = checkpoint.source.history who ++
         (decodeHistory setup.program ((phase.drain state.current).native.config.history.map
@@ -56,7 +64,8 @@ theorem RecoverySourceCheckpoint.after_commit_retry
   dsimp only [RecoverySourceCheckpoint.commitResultPoint]
   rcases checkpoint with ⟨⟨Γ, O, program, lift⟩, source, refs, registry, embedding, before,
     compiled, aligned, agree, guards, failures, unique, ranks, actors, commits, owners, endpoints,
-    automatic, history, memory, steps, menus, readout, sourceTrace, views, historyAlignment, origin⟩
+    automatic, history, memory, steps, menus, readout, _sourceTrace, views, historyAlignment,
+    origin⟩
   dsimp only
   generalize _decomposition : commitPhase program = segment at ⊢
   rcases segment with ⟨Δ, P, suffix, block, reconstruct, boundary⟩
@@ -123,7 +132,8 @@ theorem RecoverySourceCheckpoint.after_commit_retry
   have reached := closed.reaches_lift setup.program sourceInitial suffix boundary positive lift
     ranks actors (fun point who => menus who point) steps commits owners endpoints automatic
     history memory
-  have reachedTrace := setup.recoveryTrace_of_reaches sourceInitial sourceTrace reached
+  obtain ⟨reachedTrace, fuel, reachedPrefix⟩ :=
+    setup.recoveryTrace_of_reaches sourceInitial priorTrace reached
   rw [normalized]
   refine ⟨
     { residual := ⟨Γ, O, block.prepend suffix, lift⟩
@@ -149,7 +159,7 @@ theorem RecoverySourceCheckpoint.after_commit_retry
       step := steps
       menus := menus
       readout := readout
-      trace := reachedTrace
+      trace := ⟨reachedTrace⟩
       views := views
       origin := origin
       historyAlignment := by
@@ -164,7 +174,7 @@ theorem RecoverySourceCheckpoint.after_commit_retry
       embedding before phase.low
     rw [← low] at compiled
     exact compiled
-  · refine ⟨?_, ?_⟩
+  · refine ⟨?_, ⟨reachedTrace, fuel, reachedPrefix⟩, ?_⟩
     · change lift (ProtocolState.entry (block.prepend suffix)
           { source with history := final.history }) =
         ProtocolState.withHistory setup.program

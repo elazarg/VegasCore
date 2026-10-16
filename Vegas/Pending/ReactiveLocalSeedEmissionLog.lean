@@ -123,7 +123,8 @@ theorem CountedQueryLog.eq_of_emission_signature
   have erased := (left.setEmissions (fun _ => [])).eq_of_unsent_signature
     (right.setEmissions (fun _ => [])) (erasedUnsent first) (erasedUnsent second)
       (erasedUnresolved first leftUnresolved) (erasedUnresolved second rightUnresolved)
-        positives clocks
+        (congrArg (List.map fun query : CurrentSeedQuery graph => query.input.elapsed) positives)
+        clocks
   have restored (log : List (LocalSeedEntry graph (app).Command))
       (fixed : ∀ entry ∈ log, entry.query.input.emitted = emittedAt entry.query.activationIndex) :
       (log.map erase).map (setQueryEmissions emittedAt) = log := by

@@ -15,26 +15,6 @@ open SourceProgram EventGraph EventGraphRuntime GameTheory.Protocol
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
-private theorem suffix_observe_reflect
-    {wholeΓ Γ : SourceCtx Player L} {wholeO O : Finset VarId}
-    {whole : SourceProgram Player L wholeΓ wholeO} {program : SourceProgram Player L Γ O}
-    {lift : ProtocolState program → ProtocolState whole}
-    (origin : ProtocolSuffix whole program lift) (who : Player) :
-    ∀ first second, ProtocolState.observe who whole (lift first) =
-        ProtocolState.observe who whole (lift second) →
-      ProtocolState.observe who program first = ProtocolState.observe who program second := by
-  induction origin with
-  | initial => intro first second same; exact same
-  | sampleTail fresh law next previous ih =>
-      intro first second same
-      exact Sum.inr.inj (ih (.inr first) (.inr second) same)
-  | commitTail fresh guard next previous ih =>
-      intro first second same
-      exact Sum.inr.inj (ih (.inr first) (.inr second) same)
-  | revealTail fresh selected unresolved next previous ih =>
-      intro first second same
-      exact Sum.inr.inj (ih (.inr first) (.inr second) same)
-
 /-- Actual completed binding blocks extend genuine initialized source traces
 with the same entire observed signal recall whenever their physical public and
 focal observations and their prior remembered source observations agree.
@@ -102,6 +82,11 @@ theorem decoded_commit_block_source_traces
         (fun _ member => rightDecoded.2.2.excluded_subset member)
       ∃ (leftTrace : setup.commitRecoveryProtocol.Trace (some leftRaw.close))
         (rightTrace : setup.commitRecoveryProtocol.Trace (some rightRaw.close)),
+        ∃ (leftFuel rightFuel : Nat),
+        setup.commitRecoveryProtocol.ReachesWithin leftFuel
+          ⟨some left, firstTrace⟩ ⟨some leftRaw.close, leftTrace⟩ ∧
+        setup.commitRecoveryProtocol.ReachesWithin rightFuel
+          ⟨some right, secondTrace⟩ ⟨some rightRaw.close, rightTrace⟩ ∧
         setup.commitRecoverySignals.infoOf who leftTrace =
           setup.commitRecoverySignals.infoOf who rightTrace := by
   induction block with
@@ -133,7 +118,8 @@ theorem decoded_commit_block_source_traces
         (fun _ member => secondHead.2.2.excluded_subset member)
       have firstHeadCompleted := firstCompleted ⟨0, Nat.zero_lt_succ _⟩ (Nat.zero_lt_succ _)
       have secondHeadCompleted := secondCompleted ⟨0, Nat.zero_lt_succ _⟩ (Nat.zero_lt_succ _)
-      obtain ⟨firstNextTrace, secondNextTrace, nextSignals⟩ :=
+      obtain ⟨firstNextTrace, secondNextTrace, firstFuel, secondFuel, firstPath, secondPath,
+        nextSignals⟩ :=
         decoded_commit_source_traces setup mode
         fresh guard tail embedding lift origin first second firstValid secondValid firstEntry
         secondEntry left right who entry publicView observed firstHeadCompleted secondHeadCompleted
@@ -169,7 +155,7 @@ theorem decoded_commit_block_source_traces
           some (ProtocolState.observe who setup.program rightHead.close.point) at nextPrivate
         have currentViews := Option.some.inj nextPrivate
         rw [firstNoClose, secondNoClose] at currentViews
-        have localViews := suffix_observe_reflect origin who _ _ currentViews
+        have localViews := origin.observe_reflect who _ _ currentViews
         have tailViews := Sum.inr.inj localViews
         change ProtocolState.observe who tail (ProtocolState.entry tail firstHead.1) =
           ProtocolState.observe who tail (ProtocolState.entry tail secondHead.1) at tailViews
@@ -212,7 +198,15 @@ theorem decoded_commit_block_source_traces
           (by rw [firstNoClose]; exact firstEndpoint)
           (by rw [secondNoClose]; exact secondEndpoint)
           remaining firstNextTrace secondNextTrace nextSignals
+        generalize firstStartEq :
+          (⟨some leftHead.close, firstNextTrace⟩ : setup.commitRecoveryProtocol.History) =
+            firstStart at continuation
+        generalize secondStartEq :
+          (⟨some rightHead.close, secondNextTrace⟩ : setup.commitRecoveryProtocol.History) =
+            secondStart at continuation
         rw [firstNoClose, secondNoClose] at continuation
+        rw [firstStartEq] at firstPath
+        rw [secondStartEq] at secondPath
         let firstTail := decodeCommitAttempt setup.program mode rest suffix tailEmbedding first
           firstHead.1 firstHead.2.1
         let secondTail := decodeCommitAttempt setup.program mode rest suffix tailEmbedding second
@@ -245,6 +239,11 @@ theorem decoded_commit_block_source_traces
         let rightComplete := right.install secondComplete.1 secondComplete.2
         change ∃ (leftTrace : setup.commitRecoveryProtocol.Trace (some leftFinal.close))
           (rightTrace : setup.commitRecoveryProtocol.Trace (some rightFinal.close)),
+          ∃ (leftFuel rightFuel : Nat),
+          setup.commitRecoveryProtocol.ReachesWithin leftFuel
+            firstStart ⟨some leftFinal.close, leftTrace⟩ ∧
+          setup.commitRecoveryProtocol.ReachesWithin rightFuel
+            secondStart ⟨some rightFinal.close, rightTrace⟩ ∧
           setup.commitRecoverySignals.infoOf who leftTrace =
             setup.commitRecoverySignals.infoOf who rightTrace at continuation
         have firstDecoded := decodeCommitAttempt_commit_tail setup.program mode fresh guard rest
@@ -266,9 +265,14 @@ theorem decoded_commit_block_source_traces
           congrArg (fun value : { result : ProtocolState setup.program × Finset Player //
             right.excluded ⊆ result.2 } => (right.install value.1 value.2).close) secondTagged
         rw [firstFinish, secondFinish] at continuation
-        exact continuation
+        obtain ⟨leftTrace, rightTrace, leftFuel, rightFuel, leftPath, rightPath, same⟩ :=
+          continuation
+        exact ⟨leftTrace, rightTrace, firstFuel + leftFuel, secondFuel + rightFuel,
+          firstPath.trans leftPath, secondPath.trans rightPath, same⟩
       · cases rest with
-        | nil => exact ⟨firstNextTrace, secondNextTrace, nextSignals⟩
+        | nil =>
+            exact ⟨firstNextTrace, secondNextTrace, firstFuel, secondFuel, firstPath,
+              secondPath, nextSignals⟩
         | commit => simp only [SourceProgram.CommitPrefix.length] at remaining; omega
 
 end Vegas

@@ -88,12 +88,13 @@ theorem RecoverySourceCheckpoint.normalized
               phase kind rfl checkpoint.source
             by_cases missed : ((image.excluded \ entry.excluded) ∩ phase.owners).Nonempty
             · by_cases survives : (phase.owners \ image.excluded).Nonempty
-              · obtain ⟨nextCheckpoint, _point, _recall⟩ := checkpoint.after_commit_retry committing
+              · obtain ⟨nextCheckpoint, _point, _sourcePrefix, _recall⟩ :=
+                  checkpoint.after_commit_retry (Classical.choice checkpoint.trace) committing
                   phase remaining rfl maximal binding receipts remembered native finished
                   missed survives
                 exact ⟨nextCheckpoint⟩
-              · obtain ⟨⟨nextCheckpoint, _recall⟩, normalized⟩ :=
-                  checkpoint.after_commit_exhausted committing
+              · obtain ⟨⟨nextCheckpoint, _sourcePrefix, _recall⟩, normalized⟩ :=
+                  checkpoint.after_commit_exhausted (Classical.choice checkpoint.trace) committing
                   phase remaining rfl maximal binding receipts stored finished missed survives
                 rw [normalized]
                 let restored := PhaseRuntimeState.restore entry image
@@ -131,16 +132,17 @@ theorem RecoverySourceCheckpoint.normalized
                   (retired ++ [⟨⟨phase.low, generation⟩, image.native⟩])
                   (phase.finished_prefix rebuilt rebuiltWithin rebuiltFinished) rebuiltNative
                   rebuiltBinding rebuiltRecord.receipts rebuiltCoverage ⟨nextCheckpoint⟩
-            · obtain ⟨⟨nextCheckpoint, _sourcePoint, _recall, _intended⟩, normalized⟩ :=
-                checkpoint.after_commit_clean committing
+            · obtain ⟨⟨nextCheckpoint, _sourcePoint, _sourcePrefix, _recall, _intended⟩,
+                normalized⟩ :=
+                checkpoint.after_commit_clean (Classical.choice checkpoint.trace) committing
                 phase remaining rfl maximal binding receipts stored remembered native order.coverage
                   finished missed
               rw [normalized]
               exact advance image retired imagePrefix imageNative imageBinding imageRecord.receipts
                 imageCoverage ⟨nextCheckpoint⟩
         | reveal =>
-            obtain ⟨nextCheckpoint, _history, _intended⟩ :=
-              checkpoint.after_reveal phase remaining rfl kind
+            obtain ⟨nextCheckpoint, _sourcePrefix, _history, _intended⟩ :=
+              checkpoint.after_reveal (Classical.choice checkpoint.trace) phase remaining rfl kind
               receipts.exclusion stored remembered imageNative.reachable imageOrder finished
             have noRetry : ¬ (phase.kind = .commitment ∧
                 ((image.excluded \ entry.excluded) ∩ phase.owners).Nonempty) := by
@@ -154,8 +156,8 @@ theorem RecoverySourceCheckpoint.normalized
             exact advance image retired imagePrefix imageNative imageBinding imageRecord.receipts
               imageCoverage ⟨nextCheckpoint⟩
         | sample =>
-            obtain ⟨nextCheckpoint, _history, _intended⟩ :=
-              checkpoint.after_sample phase remaining rfl kind
+            obtain ⟨nextCheckpoint, _sourcePrefix, _history, _intended⟩ :=
+              checkpoint.after_sample (Classical.choice checkpoint.trace) phase remaining rfl kind
               receipts.exclusion stored remembered imageNative.reachable finished
             have noRetry : ¬ (phase.kind = .commitment ∧
                 ((image.excluded \ entry.excluded) ∩ phase.owners).Nonempty) := by

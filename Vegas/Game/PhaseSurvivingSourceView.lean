@@ -31,6 +31,55 @@ def phaseSurvivingSourceView? (setup : Setup (Player := Player) (L := L))
       (decodeCompletions setup.program (past.map (setup.eventGraph.fromModeCompletion mode)))
   else none
 
+/-- At any actual initialized physical history the existing decoder reads the
+entire effective own source word, including the publicly archived attempts. -/
+theorem phaseSurvivingSourceView?_observed_of_history
+    (setup : Setup (Player := Player) (L := L)) (mode : ExecutionMode)
+    (runtime : EventGraphRuntime (serviceGraph setup mode))
+    (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket (serviceGraph setup mode)))
+    (plan : RuntimePhasePlan (serviceGraph setup mode))
+    (inputs : PMF (serviceGraph setup mode).Inputs) (horizon : Nat)
+    (scheduler : (phaseApplication runtime leaks).Scheduler) {control}
+    (trace : ((phaseApplication runtime leaks).protocol
+      (inputs.map (PhaseRuntimeState.initial plan)) horizon scheduler).Trace (some control))
+    (who : Player) (event : (serviceGraph setup mode).EventId) :
+    phaseSurvivingSourceView? setup mode runtime leaks who event
+        (control.execution.observe (phaseApplication runtime leaks) who) =
+      decodeEventView? setup.program
+        (ContextRefs.initial setup.context (outputLayout setup.program))
+        (outputEmbedding setup.program).ref who event
+        ((serviceGraph setup mode).playerStore who
+          control.execution.application.current.native.config.store)
+        (decodeHistory setup.program
+          ((PhaseRuntimeState.archivedHistory control.execution.application.retired
+            control.execution.application.current.native.config.history).map
+              ((toEventGraph setup.program).fromModeCompletion mode)) who) := by
+  have visible := phaseArchivedHistory_observed runtime leaks plan inputs horizon scheduler trace
+    who
+  have word : decodeCompletions setup.program
+      ((control.execution.application.publicView.archivedOwnHistory who
+          (control.execution.application.current.native.playerView who).candidates
+          ((serviceGraph setup mode).playerObserve who
+            control.execution.application.current.native.config).ownActions).map
+        (setup.eventGraph.fromModeCompletion mode)) =
+      decodeHistory setup.program
+        ((PhaseRuntimeState.archivedHistory control.execution.application.retired
+          control.execution.application.current.native.config.history).map
+            ((toEventGraph setup.program).fromModeCompletion mode)) who := by
+    rw [visible]
+    simp only [decodeHistory, ownCompletions, List.filter_map]
+    rfl
+  simp only [phaseSurvivingSourceView?, ReactiveApplication.Execution.observe,
+    phaseApplication, PhaseRuntimeState.playerView, State.playerView]
+  change decodeEventView? setup.program
+    (ContextRefs.initial setup.context (outputLayout setup.program)) (outputRef setup.program)
+    who event ((serviceGraph setup mode).playerStore who
+      control.execution.application.current.native.config.store) _ = _
+  exact congrArg (fun past => decodeEventView? setup.program
+    (ContextRefs.initial setup.context (outputLayout setup.program)) (outputRef setup.program)
+    who event ((serviceGraph setup mode).playerStore who
+      control.execution.application.current.native.config.store) past) word
+
 /-- At an authentic surviving binding request the observable decoder gives a
 genuine played auxiliary source view, with its complete own history including
 retired attempts. Saved source exclusions and generation are retained separately
@@ -73,28 +122,9 @@ theorem phaseSurvivingSourceView?_of_ready_binding
     dsimp only [inputs]
     rw [PMF.map_comp]
     exact trace
-  have visible := phaseArchivedHistory_observed runtime leaks plan inputs horizon scheduler
-    actualTrace who
-  have word : decodeCompletions setup.program
-      ((control.execution.application.publicView.archivedOwnHistory who
-          (control.execution.application.current.native.playerView who).candidates
-          ((serviceGraph setup mode).playerObserve who
-            control.execution.application.current.native.config).ownActions).map
-        (setup.eventGraph.fromModeCompletion mode)) =
-      ProtocolState.history setup.program source.point who := by
-    rw [visible, history]
-    simp only [decodeHistory, ownCompletions, List.filter_map]
-    rfl
   refine ⟨source, sourceTrace, excluded, generation, publicSignal, acting, played, ?_⟩
-  simp only [phaseSurvivingSourceView?, ReactiveApplication.Execution.observe,
-    phaseApplication, PhaseRuntimeState.playerView, State.playerView]
-  change decodeEventView? setup.program
-    (ContextRefs.initial setup.context (outputLayout setup.program)) (outputRef setup.program)
-    who event ((serviceGraph setup mode).playerStore who
-      control.execution.application.current.native.config.store) _ = _
-  exact (congrArg (fun past => decodeEventView? setup.program
-    (ContextRefs.initial setup.context (outputLayout setup.program)) (outputRef setup.program)
-    who event ((serviceGraph setup mode).playerStore who
-      control.execution.application.current.native.config.store) past) word).trans decoded
+  rw [phaseSurvivingSourceView?_observed_of_history setup mode runtime leaks plan inputs horizon
+    scheduler actualTrace who event, ← history]
+  exact decoded
 
 end Vegas

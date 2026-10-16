@@ -64,10 +64,11 @@ theorem RecoverySourceCheckpoint.normalized_intended
                 phase.owners).Nonempty := by
               simp only [drained, clear, Finset.empty_sdiff, Finset.empty_inter,
                 Finset.not_nonempty_empty, not_false_eq_true]
-            have result := checkpoint.after_commit_clean committing phase remaining rfl maximal
+            have result := checkpoint.after_commit_clean
+              (Classical.choice checkpoint.trace) committing phase remaining rfl maximal
               binding receipts stored remembered native order.coverage finishedDrain clean
             rw [drained] at result
-            obtain ⟨⟨next, _point, _history, nextIntended⟩, _normalized⟩ := result
+            obtain ⟨⟨next, _point, _sourcePrefix, _history, nextIntended⟩, _normalized⟩ := result
             exact ⟨next, nextIntended clear intended
               (admitted phase remaining rfl finished committing)⟩
         | reveal =>
@@ -78,18 +79,20 @@ theorem RecoverySourceCheckpoint.normalized_intended
             have imageOrder := phase.orderedPublicFailures_drain phase.low entry.excluded current
               (order.publicationOrder phase member) order.coverage.active order.coverage.inherited
                 graphOrder
-            have result := checkpoint.after_reveal phase remaining rfl kind receipts.exclusion
+            have result := checkpoint.after_reveal
+              (Classical.choice checkpoint.trace) phase remaining rfl kind receipts.exclusion
               stored remembered (phase.drain_invariant current native.active).reachable imageOrder
                 finishedDrain
             rw [drained] at result
-            obtain ⟨next, _history, nextIntended⟩ := result
+            obtain ⟨next, _sourcePrefix, _history, nextIntended⟩ := result
             exact ⟨next, nextIntended clear intended⟩
         | sample =>
-            have result := checkpoint.after_sample phase remaining rfl kind receipts.exclusion
+            have result := checkpoint.after_sample
+              (Classical.choice checkpoint.trace) phase remaining rfl kind receipts.exclusion
               stored remembered (phase.drain_invariant current native.active).reachable
                 finishedDrain
             rw [drained] at result
-            obtain ⟨next, _history, nextIntended⟩ := result
+            obtain ⟨next, _sourcePrefix, _history, nextIntended⟩ := result
             exact ⟨next, nextIntended clear intended⟩
       · have unchanged : state.normalize = state := by
           change PhaseRuntimeState.settle (phase :: remaining) generation entry current retired =

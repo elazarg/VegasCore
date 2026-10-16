@@ -196,6 +196,11 @@ theorem decoded_commit_source_traces
       (fun _ member => rightDecoded.2.2.excluded_subset member)
     ∃ (leftTrace : setup.commitRecoveryProtocol.Trace (some leftRaw.close))
       (rightTrace : setup.commitRecoveryProtocol.Trace (some rightRaw.close)),
+      ∃ (leftFuel rightFuel : Nat),
+      setup.commitRecoveryProtocol.ReachesWithin leftFuel
+        ⟨some left, firstTrace⟩ ⟨some leftRaw.close, leftTrace⟩ ∧
+      setup.commitRecoveryProtocol.ReachesWithin rightFuel
+        ⟨some right, secondTrace⟩ ⟨some rightRaw.close, rightTrace⟩ ∧
       setup.commitRecoverySignals.infoOf who leftTrace =
         setup.commitRecoverySignals.infoOf who rightTrace := by
   intro block leftDecoded rightDecoded leftRaw rightRaw
@@ -239,7 +244,9 @@ theorem decoded_commit_source_traces
         instructionCount setup.program -
           ProtocolState.remaining setup.program rightRaw.close.saved)
     rw [excludedEq, generationEq, remainingEq]
-  refine ⟨leftTrace, rightTrace, ?_⟩
+  refine ⟨leftTrace, rightTrace, 1, 1,
+    .step firstJoint firstLegal _ (.refl 0 _),
+    .step secondJoint secondLegal _ (.refl 0 _), ?_⟩
   change ((setup.commitRecoveryPrivate who (some leftRaw.close),
       setup.commitRecoveryPublic (some leftRaw.close)),
         (setup.commitRecoverySignals.infoOf who firstTrace).1 ::

@@ -82,6 +82,9 @@ theorem RecoverySourceCheckpoint.after_commit_clean
     {setup : Setup (Player := Player) (L := L)} {mode : EventGraph.ExecutionMode}
     {state : PhaseRuntimeState ((toEventGraph setup.program).withMode mode)}
     (checkpoint : RecoverySourceCheckpoint setup mode state)
+    (priorTrace : setup.commitRecoveryProtocol.Trace (some (CommitRecoveryState.atPoint
+      (checkpoint.residual.lift (ProtocolState.entry checkpoint.residual.tail checkpoint.source))
+      state.entry.excluded state.generation)))
     (committing : ProtocolState.atCommit checkpoint.residual.tail
       (ProtocolState.entry checkpoint.residual.tail checkpoint.source) = true)
     (phase : RuntimePhase ((toEventGraph setup.program).withMode mode))
@@ -100,6 +103,11 @@ theorem RecoverySourceCheckpoint.after_commit_clean
         state.retired⟩ : PhaseRuntimeState ((toEventGraph setup.program).withMode mode)),
       next.residual.lift (ProtocolState.entry next.residual.tail next.source) =
         checkpoint.commitResultPoint (phase.drain state.current) ∧
+      (∃ (nextTrace : setup.commitRecoveryProtocol.Trace (some (CommitRecoveryState.atPoint
+          (next.residual.lift (ProtocolState.entry next.residual.tail next.source))
+          (phase.drain state.current).excluded state.generation))) (fuel : Nat),
+        setup.commitRecoveryProtocol.ReachesWithin fuel
+          ⟨_, priorTrace⟩ ⟨_, nextTrace⟩) ∧
       (∀ who, who ∉ (phase.drain state.current).excluded →
         next.source.history who = checkpoint.source.history who ++
           (decodeHistory setup.program ((phase.drain state.current).native.config.history.map
@@ -117,7 +125,8 @@ theorem RecoverySourceCheckpoint.after_commit_clean
   dsimp only [RecoverySourceCheckpoint.commitResultPoint, RecoverySourceCheckpoint.commitAdmitted]
   rcases checkpoint with ⟨⟨Γ, O, program, lift⟩, source, refs, registry, embedding, before,
     compiled, aligned, agree, guards, failures, unique, ranks, actors, commits, owners, endpoints,
-    automatic, history, memory, steps, menus, readout, sourceTrace, views, historyAlignment, origin⟩
+    automatic, history, memory, steps, menus, readout, _sourceTrace, views, historyAlignment,
+    origin⟩
   dsimp only
   generalize _decomposition : commitPhase program = segment at ⊢
   rcases segment with ⟨Δ, P, suffix, block, reconstruct, boundary⟩
@@ -197,7 +206,8 @@ theorem RecoverySourceCheckpoint.after_commit_clean
   have reached := closed.reaches_lift setup.program sourceInitial suffix boundary positive lift
     ranks actors (fun point who => menus who point) steps commits owners endpoints automatic
     history memory
-  have reachedTrace := setup.recoveryTrace_of_reaches sourceInitial sourceTrace reached
+  obtain ⟨reachedTrace, fuel, reachedPrefix⟩ :=
+    setup.recoveryTrace_of_reaches sourceInitial priorTrace reached
   obtain ⟨finalEmbedding, finalBefore, finalCompiled, finalAlignment, ⟨finalViews⟩⟩ :=
     attempt.compiledTail
       setup.program suffix refs registry embedding before state.attempt.phase compiled aligned lift
@@ -234,10 +244,10 @@ theorem RecoverySourceCheckpoint.after_commit_clean
       step := ?_
       menus := fun who point => (menus who _).trans (tailMenus who point)
       readout := ?_
-      trace := reachedTrace
+      trace := ⟨reachedTrace⟩
       views := finalViews
       origin := origin.compose (block.protocolSuffix suffix)
-      historyAlignment := ?_ }, ?_, ?_, ?_⟩
+      historyAlignment := ?_ }, ?_, ?_, ?_, ?_⟩
   · rw [address]
     exact finalCompiled
   · intro point excluded joint
@@ -267,6 +277,7 @@ theorem RecoverySourceCheckpoint.after_commit_clean
       (phase.finished_prefix image (phase.drain_within state.current within.2) finished)
       alignedHistory views.actionEq
   · rfl
+  · exact ⟨reachedTrace, fuel, reachedPrefix⟩
   · intro who active
     exact decodeCommitAttempt_history_extension_of_survivor setup.program mode block suffix
       embedding state.attempt.phase compiled.rankEq state.entry.native image.native source
@@ -297,6 +308,9 @@ theorem RecoverySourceCheckpoint.after_commit_exhausted
     {setup : Setup (Player := Player) (L := L)} {mode : EventGraph.ExecutionMode}
     {state : PhaseRuntimeState ((toEventGraph setup.program).withMode mode)}
     (checkpoint : RecoverySourceCheckpoint setup mode state)
+    (priorTrace : setup.commitRecoveryProtocol.Trace (some (CommitRecoveryState.atPoint
+      (checkpoint.residual.lift (ProtocolState.entry checkpoint.residual.tail checkpoint.source))
+      state.entry.excluded state.generation)))
     (committing : ProtocolState.atCommit checkpoint.residual.tail
       (ProtocolState.entry checkpoint.residual.tail checkpoint.source) = true)
     (phase : RuntimePhase ((toEventGraph setup.program).withMode mode))
@@ -315,12 +329,18 @@ theorem RecoverySourceCheckpoint.after_commit_exhausted
     (∃ next : RecoverySourceCheckpoint setup mode
       (⟨remaining, state.generation, rebuilt, rebuilt, archive⟩ :
         PhaseRuntimeState ((toEventGraph setup.program).withMode mode)),
-      ∀ who, who ∉ image.excluded → next.source.history who = checkpoint.source.history who) ∧
+      (∃ (nextTrace : setup.commitRecoveryProtocol.Trace (some (CommitRecoveryState.atPoint
+          (next.residual.lift (ProtocolState.entry next.residual.tail next.source))
+          rebuilt.excluded state.generation))) (fuel : Nat),
+        setup.commitRecoveryProtocol.ReachesWithin fuel
+          ⟨_, priorTrace⟩ ⟨_, nextTrace⟩) ∧
+      (∀ who, who ∉ image.excluded → next.source.history who = checkpoint.source.history who)) ∧
       state.normalize = PhaseRuntimeState.settle remaining state.generation rebuilt rebuilt
         archive := by
   rcases checkpoint with ⟨⟨Γ, O, program, lift⟩, source, refs, registry, embedding, before,
     compiled, aligned, agree, guards, failures, unique, ranks, actors, commits, owners, endpoints,
-    automatic, history, memory, steps, menus, readout, sourceTrace, views, historyAlignment, origin⟩
+    automatic, history, memory, steps, menus, readout, _sourceTrace, views, historyAlignment,
+    origin⟩
   obtain ⟨Δ, P, suffix, block, reconstruct, boundary⟩ := commitPhase program
   subst program
   have positive : 0 < block.length := by
@@ -370,17 +390,21 @@ theorem RecoverySourceCheckpoint.after_commit_exhausted
   have reached := closed.reaches_lift setup.program sourceInitial suffix boundary positive lift
     ranks actors (fun point who => menus who point) steps commits owners endpoints automatic
     history memory
-  have reachedTrace := setup.recoveryTrace_of_reaches sourceInitial sourceTrace reached
+  obtain ⟨reachedTrace, fuel, reachedPrefix⟩ :=
+    setup.recoveryTrace_of_reaches sourceInitial priorTrace reached
   have address := next_phase_address phase remaining state.generation rebuilt
     (state.retired ++ [⟨⟨phase.low, state.generation⟩, image.native⟩]) adjacent last
   have finalFailures := automaticAttempt.preservesFailures failures
-  have finalTrace : Nonempty (setup.commitRecoveryProtocol.Trace
+  have finalHistory : ∃ (finalTrace : setup.commitRecoveryProtocol.Trace
       (some (CommitRecoveryState.atPoint
         (lift (block.liftPoint suffix
           (ProtocolState.entry suffix (block.automatic restoredSource))))
-        rebuilt.excluded state.generation))) := by
+        rebuilt.excluded state.generation))) (finalFuel : Nat),
+      setup.commitRecoveryProtocol.ReachesWithin finalFuel
+        ⟨_, priorTrace⟩ ⟨_, finalTrace⟩ := by
     rw [show rebuilt.excluded = image.excluded from phase.drain_excluded _]
-    exact reachedTrace
+    exact ⟨reachedTrace, fuel, reachedPrefix⟩
+  obtain ⟨finalTrace, finalFuel, finalPrefix⟩ := finalHistory
   refine ⟨?_, normalized⟩
   refine ⟨
     { residual := ⟨Δ, P, suffix, fun point => lift (block.liftPoint suffix point)⟩
@@ -408,7 +432,7 @@ theorem RecoverySourceCheckpoint.after_commit_exhausted
       step := ?_
       menus := fun who point => (menus who _).trans (tailMenus who point)
       readout := ?_
-      trace := finalTrace
+      trace := ⟨finalTrace⟩
       views := finalViews
       origin := origin.compose (block.protocolSuffix suffix)
       historyAlignment := by
@@ -432,7 +456,8 @@ theorem RecoverySourceCheckpoint.after_commit_exhausted
     congr 1
     funext terminal
     simp only [Function.comp_apply, cast_cast]
-  · intro who active
+  · refine ⟨⟨finalTrace, finalFuel, finalPrefix⟩, ?_⟩
+    intro who active
     have outside : who ∉ block.owners := fun member => active (allSource member)
     exact closed.history_eq_of_not_owner who outside
 
