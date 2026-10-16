@@ -1,6 +1,6 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**SE: non-concurrent ✓ · live/archive meanings ✓ · retry-aware prior+split ✓ · local SEND law ✓ · full transport/reset open.**
+**SE: non-concurrent ✓ · live/archive meanings ✓ · retry prior/SEND law ✓ · transport/reset math drafted · concurrent Lean open.**
 
 <details>
 <summary>Checked recovery milestones and remaining proof obligations</summary>
