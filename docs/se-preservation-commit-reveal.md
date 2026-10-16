@@ -1,10 +1,12 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**SE: non-concurrent ✓ · recovery source ✓ · native query/value kernel ✓ · native posterior/transport/incentives open.**
+**SE: non-concurrent ✓ · recovery source ✓ · native query/value kernel ✓ · native math written; posterior/transport/incentives open in Lean.**
 
 The [mathematical proof dependency](se-preservation-math.md#scope-and-proof-dependency)
 states the source selection, conditional transport and deviation arguments,
 with their scope distinguished from the checked milestones below.
+The [native one-shot estimate](se-preservation-math.md#closing-the-one-shot-estimate)
+assembles the mathematical posterior, repair, reset and service arguments.
 
 <details>
 <summary>Checked recovery milestones and remaining proof obligations</summary>

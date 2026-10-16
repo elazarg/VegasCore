@@ -330,6 +330,67 @@ no-effective-RAW event. A later near-one likelihood estimate for physical
 WAIT factors alone would not establish this deletion. Sent and inert
 singleton-WAIT callbacks need no restriction: integrate their unread labels.
 
+For the actual `phaseCountServicePolicy`, the RAW encoder is
+`countedSendLaw`. At a genuine unsent binding its atoms are all SENDs for
+that requested event at a fresh bounded slot; there is no RAW-WAIT case
+there. Put r=zeta_n^3, take slot weight zeta_n, let C bound the number of
+slots, and let rho_n lower-bound the selected domain atoms. Eventually each
+BASE SEND coefficient is at least zeta_n: it is 1-alpha_n-zeta_n at the
+first callback and either zeta_n or 1-zeta_n afterwards. After grouping
+request aliases by their emitted packet and preparation, a canonical BASE
+replacement of value v at the SAME slot has mass at least
+
+    (1-r) zeta_n (zeta_n/C) tau_q(v)
+      >= zeta_n^2 rho_n/(2C).
+
+The whole RAW class has mass at most r, so one replacement costs at most
+2C zeta_n/rho_n. Request aliases are grouped with their actual weights;
+a particular noncanonical request need not have any BASE mass.
+At an earlier successful opening of an owner still active at I, retain its
+unique permitted emitted opening and group the request aliases first. Its
+BASE SEND mass is at least zeta_n/2, giving RAW/BASE ratio at most
+2 zeta_n^2, no larger than the binding bound. Inert tier labels integrate
+out. Thus the comparison covers all relevant earlier RAW origins as well.
+
+Repair ALL effective RAW SENDs of every foreign owner active at I,
+including ordinary typed RAW SENDs and earlier voided declarations. This
+scope is essential. Changing a bad preparation can alter the cardinality
+of a later RAW evidence-request fiber, so later RAW probabilities cannot
+be cancelled. They are instead bounded by r and repaired too. Later BASE
+queries, timing factors and fresh-slot sets agree under the paired virtual
+history. The remaining owners' factors are unchanged. A relevant changed
+declaration has not been successfully opened: otherwise its value is fixed
+by the public record; an unsuccessful reveal would have excluded its owner.
+Voided declarations have no subsequent guard check. Thus the paired native
+operations preserve the same public records, focal full I and old-attempt
+Phi, including after restore.
+An old-content repair may change the hidden physical saved entry itself.
+Its derived entry tags are pushed through this initialized-cylinder map
+with their original density; the comparison does not fix an arbitrary
+physical entry and then attach a new independent prior there.
+
+The source-coordinate density in this comparison is the ORIGINAL density.
+At a RAW BINDING occurrence q the raw declaration ignores V_q. Earlier
+callbacks there were WAITs; after SEND the sent/inert responses ignore it. Later
+binding occurrences have different keys, and an opening reads its immutable
+prepared meaning, not V_q. Hence the entire original RAW path, including
+I-and-Phi, is independent of this unused coordinate. Sum its original law
+to one. In the repaired path restrict that SAME coordinate to the virtual
+representative (or the original typed value for an ordinary RAW SEND),
+costing tau_q(v)>=rho_n. Its virtual update agrees, so later paired queries
+agree. This is not a fresh draw at the repair time. Iterating over at most
+T distinct coordinates and summing the finite preimages gives a constant
+K, independent of n and I, such that
+
+    Q_n(effective foreign RAW, I, Phi)
+      <= K zeta_n rho_n^(-T) Q_n(no effective foreign RAW, I, Phi).
+
+Only this relative comparison is used for the actual recipe. The generic
+whole-menu variant additionally needs the RAW-WAIT repair described above.
+An earlier successful RAW opening instead keeps the same immutable prepared
+value and permitted opening envelope. Its alias repair has no unread domain
+coordinate and incurs no additional source-value density cost.
+
 ## Local service independence and the permitted packet quotient
 
 Use the exhaustive inputs of the document's concurrent S1. For a binding,
@@ -369,6 +430,14 @@ potential relative activation; if one episode never sends, completion
 forces it to consume the entire remaining calendar. S1 then gives the
 same success bit. Readiness and inclusion may occur at different absolute
 clocks, which the selected binding query and service rule ignore.
+
+For a declaration sent before the shared entry but included afterwards,
+the shared recall and preparation catalogue already fix its immutable value.
+Packet uniqueness prevents a second declaration from replacing it. Every
+other earlier own declaration comes from an earlier static occurrence and
+is covered by the induction. No assertion about global SEND order is needed:
+the output is indexed by static source occurrences, preserving repeated
+ownership, and read from the original completed attempt or its archive.
 
 Foreign predecessors already satisfy the invariant. A focal predecessor
 can change readiness time but cannot prevent readiness: even a failed
@@ -533,6 +602,33 @@ where R is the entire original remainder with that coordinate masked in the
 SAME initialized normalized-reference experiment Q_n. This is not a claim
 of independence after conditioning on future Phi. That later
 conditioning is handled by the separate same-event repairs and Lemma T.
+
+Here is the likelihood calculation, including the actual encoder fallbacks.
+Fix I=(past,view), hence q=kappa(I), and write X=V_j(q). Mask X in the
+ORIGINAL table and put all other primitive coordinates in R. For a fixed
+genuine history h in I, an earlier response at a different key does not read
+X. An earlier response at q has the same full attempt/event address; any
+SEND there would remain in recalled outputs and contradict UNSENT at I.
+Its response was therefore WAIT. On the ordinary encoder branch every
+typed choice maps to a transmission, so its WAIT atom is zero independently
+of X. Empty-slot and legality fallbacks are pure WAIT, whose atom is one;
+their guards quantify over all typed choices, not their sampled support.
+Timing mixtures preserve that independence. The counted RAW menu depends
+on the fixed native input, not X; opening and inert branches do not use
+the domain callback. Other players' response factors and the fixed chance
+factors at h are unchanged. Thus, including the original occupation-time
+weight, there is a nonnegative w_I with
+
+    Pr(X=x, R=r, h, I) = tau_q(x) w_I(r,h).
+
+Sum over the genuine histories and original times in I and normalize. This
+proves the displayed product with the ENTIRE updated remainder, rather than
+just agreement of final private stores. Positivity of this particular I
+suffices; no uniform lower bound is used. The full consumed public chronology
+distinguishes exhausted closes even if their generation does not increase.
+The durable-output contradiction itself needs only the same address, not
+a strict-generation argument. The product is asserted only at positive
+inputs; Bayesian defaults at zero-mass inputs are not used as evidence.
 
 ### Averaging the original timing tables
 
@@ -2064,6 +2160,38 @@ Inside rare Phi use the relative comparisons above; beyond the already
 measured phase boundary, future errors have a uniform finite-horizon bound
 because Phi imposes no further condition on those future draws.
 
+The failed branch needs its OWN coupling; the G-masked word theorem alone
+says nothing on Phi's complement. Condition on the actual hidden prefix
+under the original belief at I, keeping every past RAW declaration and
+preparation literally present. Compare current typed choices with the same
+focal service rule. Replace only FUTURE effective RAW choices by their
+normalized BASE kernels. Uniform tier mass gives a coupling failure
+probability at most T r_n from this prefix, before any Phi conditioning.
+
+On this proper continuation, induct over static binding occurrences. The
+fixed prefix determines any already sent immutable declaration. At a new
+foreign event, the saved entry and earlier own virtual word agree in the
+paired runs, so its domain query and typed choice agree. Complete calendars
+and the same timing tape give the same relative first SEND and success bit.
+A focal later typed choice may differ, but its clock-only delivery has the
+same bit. An owner excluded by an earlier failure has the same later skips.
+This induction preserves the ENTIRE original failure mask, including on
+failed attempts, and does not use the G restriction. No physical entry is
+refreshed and no past RAW coordinate is deleted.
+
+If the focal owner is excluded, both payoffs are a_j. Otherwise a foreign
+failure gives the same restore and retained public chronology. Every changed
+current typed cell and obligation is dropped; remembered voided values are
+ignored by the selected erased query. Old bad material from the fixed prefix
+remains identical in both runs. Subsequent BASE choices therefore couple
+from the same restored semantic state and selected queries. At each new
+event its protected first service preserves the same source continuation;
+its perturbations have the usual finite-horizon bound. This proves the
+common reset payoff R(Z), with a uniform within-attempt RAW error as well
+as the post-attempt error. It assumes no rationality of that continuation.
+The multiplication by 1{not Phi} is inside this coupled expectation; there
+is no division by Pr(not Phi|I).
+
 For a FIXED v, compare delivery policies s. On j's success, the same coupling
 gives a common payoff G_v(Z), independent of its send time. This is different
 from comparing different v on a successful phase, where values do matter.
@@ -2073,29 +2201,54 @@ Then
 
     payoff(s) = a_j + E[(G_v(Z)-a_j) pi_s(Z)].
 
-Use one coherent service rule at every local prefix, rather than unrelated
-maximizers chosen separately at native information sets. For a supported
-unsent clock word r, let mu_r be the ORIGINAL seed law filtered by that
-calendar prefix, let s(r) be immediate-SEND success under mu_r, and let
-p(r'|r) be the next-callback probabilities after WAIT; the missing mass is
-expiry without success. The bounded complete calendars give a finite prefix
-tree. Backward induction defines
+Use one coherent service rule at every local prefix. Write C(xi) for the
+potential unsent activation calendar of the ORIGINAL event seed. It is the
+calendar obtained by always waiting, so it is defined independently of the
+selected rule and of foreign traffic. Completion makes that episode consume
+the whole calendar before resolving. The bounded runner therefore bounds
+its length. For each supported nonempty clock word r, put
+
+    D_r = {xi : r is a prefix of C(xi)},
+    mu_r = mu(. | D_r).
+
+The preceding seed-posterior calculation identifies this law at every full
+native input with local word r, independently of its entire remainder.
+For xi in D_r, let a_r(xi) be the acceptance bit of an authorized first
+packet emitted at r's last clock. Such a completion exists by menu coverage,
+fresh-slot capacity and the completion contract. S1's packet quotient makes
+the bit independent of value, handle, other histories and the chosen
+completion. It is not defined by an arbitrary callback representative with
+a different seed. Put s(r)=integral a_r dmu_r.
+
+Children r'=r++[t] partition the seeds with a further callback. Thus
+
+    p(r'|r) = mu(D_r')/mu(D_r),
+    sum_children p(r'|r) <= 1.
+
+The missing mass is a calendar ending at r, hence expiry with no SEND and
+success zero. Bayes nesting gives mu_r conditioned on the child equal to
+mu_r'. This is an identity of the same original prior. The finite prefix
+tree now supports backward induction:
 
     V(r) = max(s(r), sum_{r' child of r} p(r'|r) V(r')).
 
-Choose SEND on ties. This single clock-only rule attains V(r) at every
-supported prefix, including prefixes its own unperturbed play never reaches.
-Bayes nesting of the original prefix filters supplies the child probabilities;
-no posterior is refreshed. Induction also gives 0<=V(r)<=1. At a protected
-first callback s(r)=1, so the tie rule sends immediately. A finite argmax
-for the whole continuation at one native site alone would not establish
-this simultaneous optimality or that first-callback choice.
+Choose SEND on ties. At a leaf WAIT has value zero; at every other node the
+induction identifies WAIT's value with the displayed child sum. This proves
+both attainment and optimality, simultaneously at ALL supported prefixes,
+including ones the rule's own play never reaches. Induction also gives
+0<=V(r)<=1. Protected inclusion and timeliness give a_r=1 at the first
+callback for every compatible seed, so s(r)=1 and the rule sends there.
+This first-callback conclusion uses protected service, not success
+separability alone. A whole-continuation argmax at one native input would
+not prove these simultaneous statements.
 Prefixes of zero original seed mass may be totalized arbitrarily; no filtered
 law is asserted there. The displayed recursion is the unperturbed service
 optimizer. In the already factored local service experiment, its finite-stage
-implementation has a uniform error bounded by the number of remaining
-callbacks times the total omission, timing and RAW perturbation rates.
-That error tends to zero. The recursion is not an assertion of exact
+implementation can be coupled to this rule with the same seed and slots.
+At each callback they disagree with probability at most alpha_n+zeta_n+r_n,
+where r_n is the RAW tier mass; slot randomization preserves the acceptance
+bit. A union bound gives an error at most T(alpha_n+zeta_n+r_n), uniformly
+from every supported prefix. The recursion is not an assertion of exact
 finite-stage optimality of the trembling policy.
 
 For a general information-dependent policy, fix Z. Its extra observations
@@ -2114,38 +2267,165 @@ unconditional success probability. The local action space must include all
 permitted uncharged delivery choices; a SEND/WAIT optimizer alone does not
 cover slot-dependent service unless the service law erases those slots.
 
-The fixed-v inequality alone does not cover an arbitrary policy that also
-chooses its value adaptively after waiting. Close that issue with one-shot
-deviations at EVERY full information set. At an unsent binding set I, let
-tau be the prescribed value law at its full-occurrence source query and put
+More explicitly, fixing Z also fixes all extra private randomization. At
+each prefix such a policy chooses either SEND, with value s(r), or WAIT,
+with continuation bounded by the child sum; randomized choices are convex
+combinations. The same backward induction bounds it by V(r), for EACH Z.
+Multiplication by the nonnegative G_v(Z)-a_j and integration then prove the
+weighted inequality above. An unconditional success bound would not justify
+that multiplication. S3 is used here to ensure that the extra observations
+do not provide a further signal of xi beyond the local transcript.
 
-    W_v = E[G_v(Z)],       W_tau = sum_v tau(v) W_v.
+The fixed-v inequality alone does not cover choosing values adaptively after
+waiting. The following one-shot calculation is therefore made at EVERY full
+information set. While a binding remains unsent, no later own source event
+can occur and no reveal or sample can cross the phase barrier. The query
+reads the saved entry and preceding own word, ignoring clocks and new
+foreign misses. Its domain law stays unchanged throughout those WAITs.
 
-Conditional source value optimality, transport and the common reset term
-give W_v<=W_tau in the limiting comparison. The vanishing finite-stage
-errors have already been controlled relatively inside Phi. For copied
-honest approximants an error delta_n->0 suffices: multiplication by a
-success probability at most one preserves that error, without division by
-Pr_n(Phi|I). For an immediate uncharged SEND(v,slot), S1 makes its success
-probability p_now independent
-of v and Z. Since p_now<=P* and W_tau>=a_j,
+### Closing the one-shot estimate
 
-    a_j + p_now (W_v-a_j) <= a_j + P* (W_tau-a_j).
+First establish the JOINT own-survival factorization; equality of success
+probabilities across values would not suffice. Let eta collect the original
+service seeds and complete timing tapes of this owner's remaining bindings
+in the current attempt, strictly after the current event. The compiled own
+order makes all of them unready at I. Before readiness S3 does not read
+their seeds, and no callback reads their tapes. Changing these coordinates
+therefore leaves the whole prefix likelihood unchanged. Also put the current
+event's builder seed AND its unread current/future timing coins into a local
+coordinate chi_current. The observed clock word determines the next ordinal;
+all coins at that ordinal and beyond are unread. The joint original-prior
+no-read argument gives their product law together with the filtered builder
+seed. Call that law ell_r. Splitting the SAME original draw therefore gives
 
-No pointwise comparison between different values' G_v is asserted. WAIT
-now followed by the prescription uses the SAME source query at its eventual
-SEND. No own source event occurs while it remains unsent, no reveal or
-sample can cross the phase barrier, and the old-entry pins remove new
-in-phase exclusion dependence. Its value can be predrawn once with law tau:
-intervening WAIT atoms are value-independent and the projected query ignores
-these clocks. The
-same mixed value law consequently has common success payoff W_tau, and its
-local timing rule has success probability at most P*. The prescribed
-optimal timing rule attains the upper bound. These two cases exhaust
-uncharged one-shot choices at an ordinary unsent binding set. Proving them
-at every later full information set, then using perfect recall, rules out
-adaptive multi-step value/timing deviations as well. Own bad material and
-charged actions use their separate pointwise arguments below.
+    Law(chi_current, eta, Z | I) = ell_r x mu_remaining x nu_I.
+
+Here Z retains the semantic domain tables, nonfocal service randomness and
+the entire OTHER updated remainder, excluding chi_current and eta; nu_I is
+its actual posterior, not an entry prior. The current builder seed uses its
+recovered filter mu_r. Unread timing coins and strictly later coordinates
+retain their original laws. Past timing coins may stay in Z, since the rule
+reads their recalled clock/action record rather than their latent labels.
+This is a statement about the whole unused vector, not an inference from
+separate posterior independences.
+
+Work first in the proper continuation, with focal RAW removed. Replay the
+owner's potential typed word using its original domain table, ignoring new
+foreign misses at each query. Static own order and opacity make that word
+a function of Z and the forced current v, not eta. Each later event's
+complete calendar and clock-only timing tape give a success bit b_e(eta_e),
+independent of this typed word and of absolute readiness time. If preceding
+own events survive, completion readies this event; its protected first
+packet, and S1 at any later emission, make this the actual resolved bit.
+Induction over own order therefore identifies remaining own survival with
+S_own={all b_e=1}. If an earlier event fails, both sides of this equivalence
+are false; later potential bits need not describe automatically skipped
+events on that failed run.
+
+The joint foreign-word/good-event argument makes G and its typed word
+functions of Z alone, even when the focal seeds/tapes are varied. Hence,
+for every semantic set A in the measured successful continuation,
+
+    Pr(Z in A, G, S_own | I,current-success)
+      = mu_remaining(S_own) nu_I(A intersect G).
+
+Current-success here is for a fixed immediate SEND or the prescribed
+clock-only rule, so it reads chi_current only. Keeping its unread timing
+tape in Z would make this equation false for sets A reading that tape.
+Conditioning on success under an arbitrary Z-dependent timing policy could
+tilt Z; the weighted DP inequality handles those policies without this
+conditioning shortcut.
+
+The same factorization holds for the full typed-word readout. On G and S_own,
+the source D-conditioned word has precisely the transported law; the
+remaining source occurrence flags are independent and fixed to their D
+values. Thus OWN survival does not reweight that semantic law. This is the
+joint fact needed in the payoff comparison below, including repeated
+ownership. Neither mere value-blind delivery nor a value-independent
+Pr(S_own|I) would establish it.
+
+Fix an ordinary unsent input I and use the SAME stage-n source construction
+and native assessment throughout. Let S bound the focal payoff range. Let
+delta_n be the maximum source conditional-D domain regret over the finite
+menu/sites; the checked source argument gives delta_n->0. Let e_n bound
+the transport error in total variation, including the separate source-beta
+repair. Let k_n include the failed-branch coupling error above, later FOCAL
+RAW actions on the successful branch, and the coupling error after this
+attempt. On the failed branch the uniform future-RAW bound is unconditioned
+by Phi. On the successful branch, after restricting to the nonfocal G the
+focal continuation is still normalized and its unused timing coins retain
+their original laws, so later focal RAW probability is at most T r_n.
+After the measured attempt no Phi restriction remains; omission, beta,
+timing, RAW and first charged deviations have their ordinary uniform
+finite-horizon bounds. Thus k_n->0. All maxima are over fixed finite sets.
+The relative comparisons give e_n->0 even when native Phi is arbitrarily
+rare. No absolute error has been conditioned on that rare event.
+
+Define W_v=E[G_v(Z)] in the common CLEAN REFERENCE continuation constructed
+above, with its actual semantic remainder law, and W_tau=sum_v tau(v) W_v.
+All actual-to-reference discrepancies stay in the stated error bounds.
+Whenever current-success has positive probability under the fixed SEND or
+clock-only rule, W_v is its conditional reference payoff. If that probability
+is zero, its weighted payoff contribution is zero and no conditional law is
+formed. On a foreign failure, the entire current binding
+word is voided and its reset continuation is common to v and tau. A later
+own missed binding instead gives a_j. On the remaining successful-phase
+branch, Lemma T transports the JOINT active trajectories, and the same
+continuation kernels give the source D-conditioned payoff H_v. Excluded
+owners' hidden words have no further payoff effect: their future public
+results are failure and utilities read public results only. Consequently
+
+    W_v-W_tau = lambda_I (H_v-H_tau) + error_n(v),
+    0 <= lambda_I <= 1,
+    |error_n(v)| <= 2 S (e_n+k_n).
+
+Here lambda_I is the PROPER-reference coefficient of foreign G AND the
+remaining own delivery successes, after the stated RAW/error removals.
+It need not equal Pr(Phi|I) when the owner has further bindings in the phase.
+The joint factorization above, rather than just value independence of the
+coefficient, identifies the SAME H law. No lower bound on lambda_I is
+needed. Thus
+
+    W_v <= W_tau + d_n,
+    d_n = delta_n + 2 S (e_n+k_n) -> 0.
+
+Also W_tau>=a_j under clean continuation, directly from the terminal floor.
+Put P*=V(r), where r is I's current local word. An arbitrary uncharged
+immediate SEND(v,slot) has success probability p<=P*, independently of
+the hidden remainder. If it fails, the focal owner is excluded with payoff
+a_j. Therefore
+
+    U_reference(SEND(v,slot))
+      = a_j+p(W_v-a_j)
+      <= a_j+P*(W_tau-a_j)+d_n.
+
+The actual finite-stage action value differs by the reference and future
+errors already bounded above; the exact equality is asserted in the common
+clean reference experiment. Those errors are retained when returning to
+the actual assessment.
+
+For WAIT followed by the prescription, the unread domain coordinate and
+unchanged within-event query permit predrawing the SAME value with law tau.
+The weighted service bound then gives the same upper bound, without d_n.
+The prescribed trembling optimizer attains a_j+P*(W_tau-a_j) up to
+S T(alpha_n+zeta_n+r_n) and the already counted reference/future errors.
+Hence the largest uncharged one-shot gain tends to zero. Taking one common
+subsequence transfers this inequality to the limit at EVERY full input.
+Perfect recall then excludes adaptive multi-step value/timing deviations.
+
+If clean Phi is impossible, its limiting conditional mass is zero by the
+uncharged-history comparison. The common-reset identity still supplies
+value indifference, and the same service bound applies to its payoff
+R(Z)>=a_j. No undefined Phi-conditional law is used. An own unopenable
+binding is handled separately by this reset-or-a_j comparison; it is not
+replaced in the focal information fiber.
+
+This calculation uses source optimality, the actual posterior/transport
+identities, the terminal floor and the service recursion. It does not assume
+that the native prescription or any of its later information sets is
+already optimal. The local optimizer depends only on the original event
+seed law and calendar, so it is chosen before the native free-agent
+completion and introduces no fixed-point dependence on native beliefs.
 
 ## Order of the native rationality argument
 
