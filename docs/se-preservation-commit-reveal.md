@@ -1,11 +1,26 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**SE: non-concurrent ✓ · no-miss replay ✓ · erased prior+split ✓ · source continuation ✓ · native transport/reset/incentives open.**
+**SE: non-concurrent ✓ · source reset ✓ · domain sampler ✓ · native query/transport/incentives open.**
 
 <details>
 <summary>Checked recovery milestones and remaining proof obligations</summary>
 
 Milestones have unequal cost; the fixed SE checklist is unchanged.
+
+Actual failed source attempts from the same literal prior and omission word
+now derive equal complete erased histories after the real close, for both
+retry and exhausted restore. The selected erased prescription consequently
+has one joint terminal typed-readout and payoff-vector law; the reset relation
+is derived from genuine traces rather than supplied as a comparison premise.
+
+The original domain sampler has only domain values and true openings. Its
+coordinates include genuine erased queries at every legal retry; fixed source
+omission/accepted-failure flags and native timing remain separate. The full
+source perturbation is fully mixed on every genuine decision and its original
+full-choice plan has the entire source runner law. The domain posterior adapter
+retains the actual entire remaining table and extra private memory, conditional
+on an actual-response non-reading premise. Deriving that premise for native Q,
+and identifying the final shared no-new-miss coordinates, remain open.
 
 The selected reduced source coordinates retain current typed private data and
 the complete public signal word. Their chronological occurrence is never
@@ -24,9 +39,9 @@ source equilibrium or native reset incentives.
 The concrete erased source prescription now has the same joint terminal
 typed-readout and payoff-vector law from genuine histories with equal erased
 semantic states and full public chronology. This follows from actual source
-steps and the original stopped runner. The paired reset construction must
-still derive that relation after different voided choices; native timing and
-belief transport are separate obligations.
+steps and the original stopped runner. The paired reset construction
+derives that relation for genuine same-omission failed source attempts.
+Native timing and belief transport are separate obligations.
 
 The original source policy now has coordinates at full recovery information,
 including every retry. Its single initial draw realizes the complete source

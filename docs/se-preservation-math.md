@@ -1211,8 +1211,24 @@ identify native observations with the reduced source query.
 `Vegas.SourceProgram.Setup.commitRecoveryErasedProfile_terminal_joint_eq`
 also proves the actual joint terminal typed-readout and payoff-vector law for
 the concrete erased prescription from two genuine histories with equal erased
-semantic/information summaries. That structural continuation comparison does
-not supply the paired-attempt or physical-reset relation as a premise-free fact.
+semantic/information summaries.
+`Vegas.SourceProgram.Setup.commitRecovery_failed_attempt_erased_eq` derives
+the required summary equality for two genuine failed source attempts from the
+same literal prior and omission word, through retry or exhausted close.
+`Vegas.SourceProgram.Setup.commitRecoveryErasedProfile_failed_attempt_terminal_joint_eq`
+then gives their actual joint terminal law. The corresponding physical native
+relation and occurrence-flag coupling remain open.
+
+`Vegas.SourceProgram.Setup.commitRecoveryValueTremble_fullSupport` checks the
+all-query legal three-case perturbation, including reveal withholding;
+`Vegas.SourceProgram.Setup.commitRecoveryTrembledProfile_plan_run` checks its
+entire full-information source run law. The separate domain table is realized
+by `Vegas.SourceProgram.Setup.commitRecoveryDomainPlan_run`. Its native
+posterior adapter, `Vegas.SourceProgram.Setup.commitRecoveryDomainPlan_posterior_split`,
+retains the actual entire remainder but requires an actual-response non-reading
+proof. These are erased-coordinate results: the final no-new-miss sharing,
+initialized occurrence-flag/domain-table joint, and the native response premise
+are not supplied by the source run-law identity.
 
 The existing broad post-exclusion native completion is not the pinned
 construction above:

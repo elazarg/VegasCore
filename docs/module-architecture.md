@@ -2269,8 +2269,23 @@ Erased continuation:
 [the concrete prescription's joint terminal payoff law](../Vegas/Game/CommitRecoveryErasedContinuation.lean).
 The summary retains live/saved semantic data and every owner's erased full
 information. Equal summaries imply equal terminal typed readout, permanent
-exclusion and payoff-vector laws. This is derived from source transitions;
-actual paired attempts must still establish summary equality after restore.
+exclusion and payoff-vector laws. This is derived from source transitions.
+[Actual paired failed attempts](../Vegas/Source/CommitRecoveryAttemptReset.lean)
+derive summary equality from genuine same-prior, same-omission traces through
+retry or exhausted close; the
+[selected profile consumer](../Vegas/Game/CommitRecoveryAttemptReset.lean)
+gives their joint terminal typed-readout and payoff-vector law.
+
+Ordinary domain randomization:
+[genuine payload readout](../Vegas/Source/CommitRecoveryValueBinding.lean),
+[separate legal source failure flags](../Vegas/Source/CommitRecoveryValueTremble.lean),
+[original domain tables](../Vegas/Game/CommitRecoveryDomainPlan.lean).
+Domain coordinates exclude accepted failure and omission. Positive flags give
+full support on every source menu, including reveal withholding, and the full
+trembled source plan has the entire original source runner law. The native
+posterior adapter keeps the actual entire remaining domain table and extra
+memory under an actual-response non-reading premise. The no-new-miss coordinate
+sharing and its native realization remain separate obligations.
 
 Normalized local delivery:
 [counted binding service](../Vegas/Pending/PhaseCountServiceReference.lean).

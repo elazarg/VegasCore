@@ -1334,6 +1334,11 @@ import Vegas.Source.CommitRecoveryErasedContinuation
 import Vegas.Game.CommitRecoveryErasedContinuation
 import Vegas.Game.CommitRecoveryPolicyConditioning
 import Vegas.Game.CommitRecoveryPolicySplit
+import Vegas.Source.CommitRecoveryValueBinding
+import Vegas.Source.CommitRecoveryValueTremble
+import Vegas.Source.CommitRecoveryAttemptReset
+import Vegas.Game.CommitRecoveryDomainPlan
+import Vegas.Game.CommitRecoveryAttemptReset
 
 /-! # Checked sequential-equilibrium preservation, Nash correspondence and termination -/
 
@@ -14090,3 +14095,115 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms
   Vegas.SourceProgram.Setup.commitRecoveryErasedProfile_terminal_joint_eq
+
+/-- info:
+'Vegas.SourceProgram.ProtocolState.recoveryStep_commit_public_congr'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.ProtocolState.recoveryStep_commit_public_congr
+
+/-- info:
+'Vegas.SourceProgram.CommitRecoveryState.close_eraseHistory_eq_of_failure'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.CommitRecoveryState.close_eraseHistory_eq_of_failure
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecovery_failed_attempt_erased_eq'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecovery_failed_attempt_erased_eq
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryErasedProfile_failed_attempt_terminal_joint_eq'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecoveryErasedProfile_failed_attempt_terminal_joint_eq
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryBindingValueAtom_surjective'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecoveryBindingValueAtom_surjective
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryErasedBindingValueEquiv_map'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecoveryErasedBindingValueEquiv_map
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryValueFlags_law'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecoveryValueFlags_law
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryValueTremble_fullSupport'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecoveryValueTremble_fullSupport
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryValueTremble_binding'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecoveryValueTremble_binding
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryValueTremble_binding_fullSupport'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecoveryValueTremble_binding_fullSupport
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryDomainPlan_run'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecoveryDomainPlan_run
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryDomainPlan_source_readout'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecoveryDomainPlan_source_readout
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryDomainPolicy_consistent_update'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecoveryDomainPolicy_consistent_update
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryDomainPlan_posterior_split'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecoveryDomainPlan_posterior_split
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryTrembledProfile_fullyMixed'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecoveryTrembledProfile_fullyMixed
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryTrembledProfile_plan_run'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecoveryTrembledProfile_plan_run

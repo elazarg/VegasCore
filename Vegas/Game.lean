@@ -1144,3 +1144,5 @@ import Vegas.Game.CommitRecoveryPolicySplit
 import Vegas.Game.CommitRecoveryErasedPolicyPlan
 import Vegas.Game.CommitRecoveryErasedPolicyConditioning
 import Vegas.Game.CommitRecoveryErasedContinuation
+import Vegas.Game.CommitRecoveryDomainPlan
+import Vegas.Game.CommitRecoveryAttemptReset

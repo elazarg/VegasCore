@@ -148,3 +148,6 @@ import Vegas.Source.CommitRecoveryNoMissInformation
 import Vegas.Source.CommitRecoveryErasedStep
 import Vegas.Source.CommitRecoveryErasedModel
 import Vegas.Source.CommitRecoveryErasedContinuation
+import Vegas.Source.CommitRecoveryValueBinding
+import Vegas.Source.CommitRecoveryValueTremble
+import Vegas.Source.CommitRecoveryAttemptReset
