@@ -1,6 +1,6 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**SE: non-concurrent ✓ · recovery source ✓ · native query/value kernel ✓ · native math written; posterior/transport/incentives open in Lean.**
+**SE: non-concurrent ✓ · recovery source ✓ · native query/value kernel ✓ · native math audited; posterior/transport/incentives open in Lean.**
 
 The [mathematical proof dependency](se-preservation-math.md#scope-and-proof-dependency)
 states the source selection, conditional transport and deviation arguments,

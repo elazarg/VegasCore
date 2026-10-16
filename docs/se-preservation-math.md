@@ -369,6 +369,18 @@ Its derived entry tags are pushed through this initialized-cylinder map
 with their original density; the comparison does not fix an arbitrary
 physical entry and then attach a new independent prior there.
 
+The reconstruction invariant is indexed by immutable HANDLES, not just
+static source events. Interpret each current, saved and archived snapshot
+through that snapshot's own accepted-handle map against the permanent
+preparation catalogue. Fresh preparation cannot change an older accepted
+interpretation; inclusion records its one handle and typed result; expiry
+records failure; close archives the completed image before restoring the
+saved accepted map. These four operations preserve the invariant by
+induction. Consequently two retries at the same static event may retain
+different values, and repairing one declaration changes exactly the
+snapshots that refer to its handle. A static-event value override would not
+give the required paired execution.
+
 The source-coordinate density in this comparison is the ORIGINAL density.
 At a RAW BINDING occurrence q the raw declaration ignores V_q. Earlier
 callbacks there were WAITs; after SEND the sent/inert responses ignore it. Later
@@ -384,6 +396,16 @@ K, independent of n and I, such that
 
     Q_n(effective foreign RAW, I, Phi)
       <= K zeta_n rho_n^(-T) Q_n(no effective foreign RAW, I, Phi).
+
+More explicitly, a marked preimage with k repaired bindings and l repaired
+successful openings has weight ratio at most
+
+    (2C)^k 2^l zeta_n^(k+2l) rho_n^(-k).
+
+Here 1<=k+l<=T. Since zeta_n,rho_n<=1, this is bounded by a constant times
+zeta_n rho_n^(-T). Sum over the finitely many marked preimages of each
+regular operational quotient history. This produces K independently of
+n, I and the probability of Phi; no equal alias cardinality is assumed.
 
 Only this relative comparison is used for the actual recipe. The generic
 whole-menu variant additionally needs the RAW-WAIT repair described above.
@@ -657,6 +679,25 @@ the fixed-member stopped kernel; it is not the behavioral law multiplied by
 a fresh independent table prior. A later entry uses this same posterior. The
 formula is not asserted for an arbitrary replacement entry prior, and is
 not asserted after conditioning on future G or Phi, which may read this coin.
+
+When the member response also reads the original domain coordinate V_kappa,
+this realization step must average the JOINT current pair. Separate
+posterior marginals do not suffice. At a full unsent input I let c be its
+current address/ordinal. The earlier WAIT-atom calculation is uniform in
+the value of T_c, and timing-coordinate unreadness is uniform in V_kappa.
+Compose these two coordinate changes on each genuine prefix in I. With R
+now masking BOTH coordinates, the original product prior therefore gives
+
+    Law(V_kappa,T_c,R | I)
+      = tau_kappa x mu_c x Law(R | I).
+
+The same identity holds at each full prefix, before summing observation
+times. Integrating the literal next-response recipe over this pair gives
+exactly the specified behavioral domain/timing mixture, including its RAW
+and fallback branches. Finite runner induction consequently identifies the
+physical marginal of the once-sampled experiment with Q_n. Only then is
+its original information-fiber posterior transferred to Q_n; this avoids
+using the desired behavioral realization as a premise of that posterior.
 
 The same calculation must be made for the FULL native information fiber,
 rather than only the implementation's private memory. Here is that step
@@ -2412,6 +2453,29 @@ S T(alpha_n+zeta_n+r_n) and the already counted reference/future errors.
 Hence the largest uncharged one-shot gain tends to zero. Taking one common
 subsequence transfers this inequality to the limit at EVERY full input.
 Perfect recall then excludes adaptive multi-step value/timing deviations.
+
+The finite-stage conclusion can be recorded without hiding an interchange
+of limits. Put B_I=a_j+P*(W_tau-a_j). Let q_n bound the actual-to-reference
+error for each ordinary one-shot action and for the prescribed lottery;
+let h_n bound the trembling service rule's loss relative to B_I. The
+preceding relative comparisons and uniform continuation couplings give
+q_n->0, and the service coupling gives h_n->0. For every ordinary SEND or
+WAIT action b, the two bounds just proved are
+
+    U_n(b | I) <= B_I+d_n+q_n,
+    U_n(prescription | I) >= B_I-h_n-q_n.
+
+Subtracting gives one common bound
+
+    max_b (U_n(b | I)-U_n(prescription | I))
+      <= d_n+h_n+2q_n -> 0.
+
+The collection of full inputs and pure actions is fixed and finite, so take
+the maximum of each error sequence before choosing the common subsequence.
+Neither B_I nor its success coefficient must converge first, and neither
+is divided out. Own bad bindings use the separate reset comparison below;
+charged deviations and free sites use their separate comparisons. Thus
+the limit argument applies to the same constructed native assessment.
 
 If clean Phi is impossible, its limiting conditional mass is zero by the
 uncharged-history comparison. The common-reset identity still supplies
