@@ -1,6 +1,6 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**SE: non-concurrent ✓ · stopped runner ✓ · prefix ranks ✓ · local optimizer ✓ · full recall/Bayes/incentives open.**
+**SE: non-concurrent ✓ · stopped Config joint ✓ · global source plans ✓ · local optimizer ✓ · chronology/Bayes/incentives open.**
 
 <details>
 <summary>Checked recovery milestones and remaining proof obligations</summary>
@@ -222,9 +222,20 @@ The whole stopped physical history law also agrees: against an arbitrary focal
 finite intervention, foreign anchored original-product implementations and the
 literal actual zero-RAW profile induce the same original stopped runner. The
 proof derives foreign consistency and checkpoint transfer inside that runner,
-retaining the full entry, network and recall. Disintegrating the immutable
-joint source configuration and original per-owner timing-plan tags through this
-stopped implementation remains separate from the physical marginal equality.
+retaining the full entry, network and recall. Its joint version retains one
+original source Config and independent full timing plans for each owner,
+disintegrated by actual own recall and the original complete-word source fiber.
+The Config is drawn once; it is not attached as an independent replacement.
+Identifying the physical updated-plan and mixed-entry source posterior remains
+separate from this authentic-entry joint law.
+
+One immutable ordinary source-policy draw also realizes the entire ordinary
+source history law through the existing finite-site policy randomization.
+At actual clear physical binding callbacks its readout, together with the
+original fresh omission draw, gives the exact joint result/omission/response
+law before own-recall conditioning. Failed source choices and false opening
+choices remain explicit. This prior identity does not identify a retrospective
+source witness with the chronological source input at an earlier callback.
 
 Conditioning the source prior on the current focal view retains its posterior
 over the complete focal word, including its unseen suffix, and the original
@@ -397,6 +408,13 @@ callbacks. Every pure bounded WAIT/slot rule has a finite-table representative
 with identical behavior at all actual decision sites and the same native
 stopped continuation value. Finite maximization therefore gives an optimizer
 within that class for the actual assessment belief and stopped objective.
+A phased addressed driver allows arbitrary seed-dependent local decisions,
+including repeated activations at one tick, while reusing the closed-tick book
+and original runtime. Actual rounds identify its activation query transcript
+with the owner's retained clock word. Advancing time at a ready request derives
+an actual earlier nonactivation query for that address and tick. Resolution
+safety and recovery of the complete negative-query input remain obligations;
+these facts alone do not establish its filtered-seed product.
 A common delivery ranking across private types and a bound against policies
 that read more remain open. Source projection at
 a partial concurrent cut must distinguish saved/prefix exclusions from physical

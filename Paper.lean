@@ -1140,6 +1140,21 @@ import Vegas.Source.CommitRecoveryObservedClosure
 import Vegas.Game.PhaseBindingServiceOptimization
 import Vegas.Source.CommitRecoveryRanks
 import Vegas.Game.CompiledCommitAttemptRanks
+import Interaction.ReactiveResponseConditioning
+import Interaction.ReactiveResponseKernel
+import Interaction.ReactiveHistoryMixtureStep
+import Interaction.ReactiveStoppedProfileMixture
+import Vegas.Game.CommitPrefixPlanJoint
+import Vegas.Game.RecoveryTimingWordStoppedJoint
+import Vegas.Game.RecoveryTimingWordStoppedConfig
+import Vegas.Game.CommitRecoveryClearChoice
+import Vegas.Game.CommitRecoveryValuePolicy
+import Vegas.Game.CommitRecoveryValuePlan
+import Vegas.Game.PhaseRecoveryValueTiming
+import Vegas.Source.CommitRecoveryPredecessor
+import Vegas.Pending.PhaseServiceScheduler
+import Vegas.Pending.PhaseServiceActivationRecall
+import Vegas.Pending.PhaseServiceClockQueries
 
 /-! # Checked sequential-equilibrium preservation, Nash correspondence and termination -/
 
@@ -11563,3 +11578,143 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms
   Vegas.EventGraphRuntime.PhaseCount.exists_optimal_phase_binding_service
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryNonmissingSourcePolicy_clear_law'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecoveryNonmissingSourcePolicy_clear_law
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryValuePolicy_clear'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecoveryValuePolicy_clear
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryValuePolicy_clear_missing'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecoveryValuePolicy_clear_missing
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryValuePolicy_clear_mixture'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecoveryValuePolicy_clear_mixture
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryValuePlan_clear_readout'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecoveryValuePlan_clear_readout
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryValuePlan_clear_law'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecoveryValuePlan_clear_law
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryValuePlan_source_run'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecoveryValuePlan_source_run
+
+/-- info:
+'Vegas.phaseRecoveryTimingTaggedLaw_value_plan_of_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseRecoveryTimingTaggedLaw_value_plan_of_history
+
+/-- info:
+'Vegas.SourceProgram.ProtocolView.recover_recoveryStep'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.ProtocolView.recover_recoveryStep
+
+/-- info:
+'Vegas.SourceProgram.ProtocolView.recoveryStep_predecessor_eq'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.ProtocolView.recoveryStep_predecessor_eq
+
+/-- info:
+'Interaction.ReactiveApplication.response_action_disintegrate_profile'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Interaction.ReactiveApplication.response_action_disintegrate_profile
+
+/-- info:
+'Interaction.ReactiveApplication.ResponseMenu.exists_response_history_kernel'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Interaction.ReactiveApplication.ResponseMenu.exists_response_history_kernel
+
+/-- info:
+'Interaction.ReactiveApplication.ResponseMenu.runUntil_policyMixtures_joint'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Interaction.ReactiveApplication.ResponseMenu.runUntil_policyMixtures_joint
+
+/-- info:
+'Vegas.SourceProgram.CommitPrefix.prefixLaw_plan_config_joint'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.CommitPrefix.prefixLaw_plan_config_joint
+
+/-- info:
+'Vegas.RecoverySourceCheckpoint.timing_word_anchored_stopped_joint'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.RecoverySourceCheckpoint.timing_word_anchored_stopped_joint
+
+/-- info:
+'Vegas.RecoverySourceCheckpoint.timing_word_anchored_stopped_config_joint'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.RecoverySourceCheckpoint.timing_word_anchored_stopped_config_joint
+
+/-- info:
+'Vegas.EventGraphRuntime.PhaseServiceScheduler.controller_calendar'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseServiceScheduler.controller_calendar
+
+/-- info:
+'Vegas.EventGraphRuntime.PhaseServiceScheduler.callback_request'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseServiceScheduler.callback_request
+
+/-- info:
+'Vegas.EventGraphRuntime.PhaseServiceScheduler.runRounds_activationTranscript'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseServiceScheduler.runRounds_activationTranscript
+
+/-- info:
+'Vegas.EventGraphRuntime.PhaseServiceScheduler.clockAdvance_query_origin'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseServiceScheduler.clockAdvance_query_origin

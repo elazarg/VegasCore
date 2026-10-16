@@ -172,3 +172,7 @@ import Interaction.ReactiveMixtureRecall
 import Interaction.ReactiveNestedPolicyMixture
 import Interaction.ReactiveMixtureSupport
 import Interaction.ReactiveAnchoredMixture
+import Interaction.ReactiveResponseConditioning
+import Interaction.ReactiveResponseKernel
+import Interaction.ReactiveHistoryMixtureStep
+import Interaction.ReactiveStoppedProfileMixture

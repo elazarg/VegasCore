@@ -132,3 +132,4 @@ import Vegas.Source.CommitRecoverySurvivingInformation
 import Vegas.Source.CommitPrefixPointAppend
 import Vegas.Source.CommitRecoveryObservedClosure
 import Vegas.Source.CommitRecoveryRanks
+import Vegas.Source.CommitRecoveryPredecessor

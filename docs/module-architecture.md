@@ -1738,7 +1738,8 @@ The original behavioral stopped runner has the same full physical history law
 under foreign anchored original-product implementations and the literal zero-RAW
 assembled profile, against any focal finite intervention. Authentic checkpoint
 transfer and foreign consistency are derived inside the paired-step proof.
-Joint immutable-tag disintegration and common source Bayes remain separate.
+Its joint disintegration retains the original Config and separate full owner
+plans, as described below. Common source Bayes remains separate.
 
 Native prefix composition and observed source closure:
 [Compiled Commit Attempt Split](../Vegas/Game/CompiledCommitAttemptSplit.lean),
@@ -1774,3 +1775,38 @@ Raw recovery steps preserve earlier surviving-owner views under the original
 rank projection, including excluded automatic instructions. The same full native
 decoder projects to its exact earlier native prefix through the typed split and
 lifted-point append identities. Full chronological signal reconstruction remains.
+
+Immutable source and owner plans through stopped physical histories:
+[Reactive Stopped Profile Mixture](../Interaction/ReactiveStoppedProfileMixture.lean),
+[Commit Prefix Plan Joint](../Vegas/Game/CommitPrefixPlanJoint.lean),
+[Recovery Timing Word Stopped Joint](../Vegas/Game/RecoveryTimingWordStoppedJoint.lean),
+[Recovery Timing Word Stopped Config](../Vegas/Game/RecoveryTimingWordStoppedConfig.lean).
+The existing stopped evaluator retains original private members by actual own
+recall. The concrete zero-RAW assembled profile has the same stopped joint law
+as one original Config and independent full owner plans, with Config reattached
+through its original all-word fiber. Mixed-entry source Bayes is still required.
+
+Global ordinary source-policy memory:
+[Commit Recovery Clear Choice](../Vegas/Game/CommitRecoveryClearChoice.lean),
+[Commit Recovery Value Policy](../Vegas/Game/CommitRecoveryValuePolicy.lean),
+[Commit Recovery Value Plan](../Vegas/Game/CommitRecoveryValuePlan.lean),
+[Phase Recovery Value Timing](../Vegas/Game/PhaseRecoveryValueTiming.lean).
+Existing finite-site policy randomization realizes the whole ordinary source
+history law with one immutable policy draw. Original fresh AUX omission remains
+separate. Actual clear binding callbacks have the same prior tagged response
+law; own-recall conditioning and factual source chronology remain obligations.
+
+Exact surviving source predecessors:
+[Commit Recovery Predecessor](../Vegas/Source/CommitRecoveryPredecessor.lean).
+The original rank projection recovers the actual predecessor view. Equal reached
+views imply equal genuine predecessor views, retaining foreign automatic steps.
+
+Arbitrary phased service decisions and actual query attribution:
+[Phase Service Scheduler](../Vegas/Pending/PhaseServiceScheduler.lean),
+[Phase Service Activation Recall](../Vegas/Pending/PhaseServiceActivationRecall.lean),
+[Phase Service Clock Queries](../Vegas/Pending/PhaseServiceClockQueries.lean).
+The addressed driver reuses the existing closed-tick book and native execution.
+Its activation transcript is the actual owner clock word, for arbitrary local
+decisions and repeated same-tick activations. A clock advance at a ready event
+derives an actual earlier nonactivation query. Resolution safety, complete
+negative-query recovery and the general filtered-seed product remain open.

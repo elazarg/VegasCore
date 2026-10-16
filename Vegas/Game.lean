@@ -1032,3 +1032,10 @@ import Vegas.Game.CompiledAttemptObservation
 import Vegas.Game.RecoveryTimingWordStoppedRealization
 import Vegas.Game.PhaseBindingServiceOptimization
 import Vegas.Game.CompiledCommitAttemptRanks
+import Vegas.Game.CommitPrefixPlanJoint
+import Vegas.Game.RecoveryTimingWordStoppedJoint
+import Vegas.Game.RecoveryTimingWordStoppedConfig
+import Vegas.Game.CommitRecoveryClearChoice
+import Vegas.Game.CommitRecoveryValuePolicy
+import Vegas.Game.CommitRecoveryValuePlan
+import Vegas.Game.PhaseRecoveryValueTiming
