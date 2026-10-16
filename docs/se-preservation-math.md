@@ -409,13 +409,23 @@ bad paths and then summing the focal continuation to one.
 
 For a whole-menu RAW encoder, the post-RAW virtual word might itself read
 private alias data. In that realization use a stopped variable instead:
-it is a cemetery symbol at the first effective active-foreign RAW use at a
-genuinely unsent decision, and otherwise
-the pair (foreign virtual word, Phi) at the old attempt's end. Before the
-first such label only the ordinary quotient encoders run. Their induction
-and the fixed RAW tier totals make this STOPPED variable non-focal. It
-follows that the good event {no such RAW label, Phi} and its foreign word
-are non-focal. Remove all those RAW origins by the bad-SEND,
+write G={no effective active-foreign RAW use, Phi}, and let Y be the foreign
+virtual word and survivor vector on G, and a cemetery symbol otherwise.
+Only this jointly restricted output must be non-focal. Fix one run in G
+and pair it with another supported focal future under the SAME nonfocal
+randomness. Before any first discrepancy, ordinary foreign episodes have
+the same preceding virtual word and query. Their complete relative calendars
+and timing tapes force the same first SEND, or the same never-SEND result.
+A first RAW in the paired run is impossible: that genuinely unsent ordinal
+would be unsent in the reference run too, or an earlier common SEND would
+already have ended both unsent episodes. The same ordinal tier flag would then
+make the reference run RAW. A first foreign expiry is likewise impossible:
+the reference survivor's true receipt supplies a genuine request at that
+event; the common first-SEND decision and S1 force the same success.
+Thus both runs are in G, and the foreign words agree. Reversing the roles
+shows that G and Y are non-focal. This proves neither independence of an
+arbitrary post-RAW word nor equality of the identity/order of first RAW
+occurrences on discarded runs. Remove all RAW origins by the bad-SEND,
 same-value-SEND and same-action-WAIT repairs before using this good-event
 statement. There is no need to assert independence of an arbitrary trajectory
 after its first RAW action.
@@ -804,6 +814,69 @@ Adjoining this future randomness to z proves the corresponding identity
 with A_n(z,omega;q). An arbitrary memory-dependent focal continuation would
 invalidate this last step. No equality of previously conditioned private
 table joints is needed.
+
+Here is the corresponding statement directly on the ORIGINAL information
+fibers, without choosing a new game or a prior on reduced labels. Let I and
+J be genuine active decision information sets with E(I)=E(J), and write
+H(I), H(J) for their finite sets of complete prefix histories. Fix reference
+histories i in H(I) and j in H(J). For h in H(I), substitute j's focal raw
+word into h, keeping h's literal original setup prefix, public draws and
+every nonfocal raw word. The chronological support argument gives a UNIQUE
+history T(h) in H(J). Full focal information determines its raw word,
+including automatic and omitted coordinates. Substitution of i's word is
+therefore the inverse: both composites retain the original setup, public
+word and every raw coordinate, which determine the original history. Thus
+T is a bijection of actual information fibers.
+
+Fix any fully mixed behavioral profile sigma. Decompose original reach as
+
+    p_sigma(h) = r_I c_sigma(h),            h in H(I),
+    p_sigma(k) = r_J c_sigma(k),            k in H(J).
+
+Here c is counterfactual reach, including the ORIGINAL joint setup and
+Nature densities, and r is the product of past focal behavioral factors.
+Perfect recall makes r_I constant on H(I) and r_J constant on H(J); both
+are positive. Substitution preserves each nonfocal full observation and
+action and every Nature factor, so c_sigma(T(h))=c_sigma(h) exactly. Hence
+
+    p_sigma(T(h)) = (r_J/r_I) p_sigma(h),
+    Z_J = sum_{k in H(J)} p_sigma(k) = (r_J/r_I) Z_I,
+    mu_J(T(h)) = mu_I(h).
+
+The last line is the actual Bayes belief, with Z_I,Z_J>0. Information
+fibers are antichains, so these sums are the probabilities of their
+information events. This argument allows an arbitrarily correlated
+original setup law: no setup atom is changed by T. It says nothing about
+the different active/excluded-owner product required for native transport.
+
+Belief transport alone does NOT identify continuation values under an
+arbitrary sigma. For the selected shared profiles, force the SAME current
+domain value at h and T(h), then couple the future as above. Induction on
+the original bounded tree gives equal live states and public histories;
+the old focal word is their only private difference. Shared focal queries
+erase it and nonfocal full information agrees. Consequently both runs use
+the same future action laws, original chance kernels and occurrence flags.
+The remaining-attempt flag event D has the same indicator and the paired
+payoffs agree. Integrating this conditional coupling against the displayed
+Bayes equality proves equality of the joint law of D and payoff for every
+current domain value. If D has positive probability, its conditional
+payoff vector H is equal too; when it has zero probability, only the
+unconditional reset comparison is used. This establishes the successful-
+phase ranking needed BEFORE the auxiliary best-response calculation.
+
+This bijection applies to equal E-keys, not to arbitrary equal combined
+keys E(F(I)). At ordinary members F leaves the information unchanged, which
+reduces combined-key equality to E equality. A known-foreign-failed
+attachment can have a different true public chronology. It requires no
+Bayes identification with the ordinary member: couple two of its current
+nonmissing choices using the same original occurrence flags. If the focal
+owner later omits, both payoffs are a_j. Otherwise the already fixed foreign
+miss forces a retry, discarding every changed value and obligation, and
+the erased continuation is the same. Thus its NONMISSING value payoff is
+constant. Current omission need not tie with that constant; it is compared
+separately using the lower bound on the reset continuation. These two
+arguments justify the ordinary rankings and the attachment pins without
+asserting that all members have identical public histories or beliefs.
 
 Future legal menus and payoffs also ignore w. The same erasure transports
 the player's future policies between the full information sets. For shared
@@ -1381,7 +1454,14 @@ nonfailure menu entry. Here non-doomed means that no retained own obligation
 is already invalid. The standing guard-satisfiability assumption supplies
 an owner-observable accepted value at every relevant reachable commit;
 choosing it preserves own validity. Correctly opening then satisfies every
-completed own obligation. A typed domain action with a deferred rejecting
+completed own obligation. Preservation uses the guard's read scope: every
+read was already available at its commit, existing bindings are immutable,
+and the reveal completing the obligation belongs to the same owner. Fresh
+bindings cannot change an earlier accepting assignment; failed inputs make
+the corresponding compatibility test vacuous. A restore drops the new
+obligations together with their cells and retains the valid saved ones.
+Thus arbitrary foreign moves do not invalidate a safely retained own
+obligation. A typed domain action with a deferred rejecting
 guard is not a safe action. Satisfiability only on intended-reachable
 histories would not by itself justify this use after exclusions.
 
