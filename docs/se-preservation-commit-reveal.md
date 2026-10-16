@@ -2633,9 +2633,22 @@ public history.
 **Lemma T (conditional transport).** This lemma isolates the step that
 carries beliefs from $\Gamma^X$ to the native game. Fix a native information
 set $I$ of owner $j$ in a commit phase. Let $\Phi$ be the event that no
-binding of another active owner in the current phase fails. The transported
+binding of another owner active at the ORIGINAL attempt's entry fails in
+that attempt. Freeze these owners before any in-phase exclusions. Read the
+attempt to its first full attempt-identifier exit, including an exhausted
+restore with unchanged generation, before making retry decisions. The transported
 object concerns the *other* owners only. $j$'s past is part of $I$. $j$'s
 choices after $I$ are summed out first, by (T0).
+
+The application below uses the normalized uncharged reference law $Q_n$
+specified in the [mathematical audit](se-preservation-math.md). Exact (T0)
+is asserted for that law, or its stopped foreign-RAW variable, rather than
+for arbitrary charged continuations of the fully mixed law $P_n$. Relative
+charged/clean density bounds transfer the resulting conditional law back
+to $P_n$ inside $I\cap\Phi$. The selected native value encoder reads the
+conditional domain law; the formal source's accepted-failure tremble is
+handled by its separate relative repair. These constructions are part of
+the application, not extra assumptions on an arbitrary completion.
 
 Extend the other owners' play in every history of $I$ to the end of the
 phase, and project the clean extended histories to $\Gamma^X$. The public
@@ -2784,8 +2797,11 @@ counterpart of a bad-binding history has the same in-phase behaviour, so
 the same $\Phi$ status. A charged history in which $\Phi$ holds is compared
 with a clean one in which $\Phi$ holds, which exists when $\Phi$ is possible.
 
-**Claim 2** is Lemma T, for the set's owner $j$. Its hypotheses hold as
-follows.
+**Claim 2** follows from Lemma T for the regular reference law, followed by
+the relative remainder comparisons inside $I\cap\Phi$. The mathematical
+audit gives the normalized law, the original-prior non-reading argument,
+and the common weighted operational domain. The hypotheses use the
+following construction facts.
 - **(T0).** The other owners' in-phase choices are made at native sets whose
   source-level play is $\sigma^X_n$ at the projection. $\Pi$ ignores in-phase
   observations, so that play does not read $j$'s in-phase behaviour. Their

@@ -4,7 +4,7 @@ This note works with the theorem and runtime semantics of
 `docs/se-preservation-commit-reveal.md`. It records mathematical arguments,
 not claims of Lean verification. No runtime or target assumption is changed.
 
-**Math draft: reduced source plans, reset cancellation and conditional transport specified; full Lean theorem open.**
+**Math draft: source pooling, observable queries, reset cancellation and relative transport; full Lean theorem open.**
 
 The source strategy is selected with the erasure and failed-attempt pins
 constructed below. This is not a claim about an arbitrary source extension
@@ -217,17 +217,30 @@ The earlier Stage-S statement allowing late-slot preferences is broader.
 
 Work in Q_n. Predraw the original foreign event seeds, source-policy
 randomness and local timing randomness. Consider two continuations differing
-only in the focal future. Before a foreign event's first SEND, its seed fixes
-its local activation calendar under S1. Its source query reads the old
-entry's public data and its owner's preceding source choices. Its local timing rule thus
-gives the same first SEND clock, or the same decision never to send. S1 and
-the packet quotient then give the same success bit. Exact inclusion times
-need not agree. Induct in a topological order of the phase graph, retaining
-each owner's order. A cross-owner predecessor can change the absolute
-readiness clock, but S1 uses clocks relative to readiness and the original
-seed for that occurrence. A failed predecessor still completes; the phase
-completion contract readies its successors. Commitment opacity and source
-play ignoring in-phase observations preserve the induction.
+only in the focal future. For a genuinely ready foreign binding e, enumerate
+the potential relative activation calendar C_e(xi_e) fixed by S1. The owner's
+compiled order prevents a different simultaneously live own event from
+excluding it. Until the first SEND, WAIT leaves e ready; a never-SEND episode
+therefore exhausts C_e before expiry. The completion contract rules out
+cutting this episode off at the finite runner's horizon.
+
+Index its original timing tape by this calendar. If two first-SEND indices
+were k<l, the second episode would have taken WAIT at k despite having the
+same tape and local record. A sent episode and a never-SEND episode give
+the same contradiction, since the latter exhausts the calendar. Thus the
+first SEND has the same relative clock in both runs, or neither sends. S1
+and the packet quotient give the same resolved success bit. Exact inclusion
+times need not agree.
+
+The source query reads the old entry's public data and its owner's preceding
+virtual source choices. Induct in a topological order of the phase graph,
+retaining each owner's order. Earlier own outcomes determine skips and later
+own queries. A cross-owner predecessor can change absolute readiness, but
+S1 fixes the relative calendar and seed law for that occurrence. A failed
+predecessor still completes, so the phase completion contract readies its
+successors. Commitment opacity and the no-new-miss query preserve the
+induction. This proves independence for the selected prescription, not for
+arbitrary source-query or timing rules allowed to read foreign observations.
 
 Survivors keep these laws after a focal expiry while the old attempt remains
 open. Reset waits for the entire old attempt to finish. The completion
@@ -250,7 +263,8 @@ bad paths and then summing the focal continuation to one.
 
 For a whole-menu RAW encoder, the post-RAW virtual word might itself read
 private alias data. In that realization use a stopped variable instead:
-it is a cemetery symbol at the first active-foreign RAW label, and otherwise
+it is a cemetery symbol at the first effective active-foreign RAW use at a
+genuinely unsent decision, and otherwise
 the pair (foreign virtual word, Phi) at the old attempt's end. Before the
 first such label only the ordinary quotient encoders run. Their induction
 and the fixed RAW tier totals make this STOPPED variable non-focal. It
@@ -258,6 +272,9 @@ follows that the good event {no such RAW label, Phi} and its foreign word
 are non-focal. Remove all those RAW origins by the bad and same-value
 repairs before using this good-event statement. There is no need to assert
 independence of an arbitrary trajectory after its first RAW action.
+At sent or inert singleton-WAIT callbacks, the base and RAW response laws
+are identical. Integrate out their unread tier labels; counting them as a
+bad event would make the event depend on irrelevant callback multiplicity.
 
 The measure order is consequently as follows. Transfer P_n(.|I,Phi) to
 Q_n(.|I,Phi) by the charged bound and the clean-path density comparison.
@@ -265,11 +282,19 @@ Apply the same-prior bad-binding repair under Q_n to obtain
 
     Q_n(B != 0, I, Phi) <= r_n Q_n(B = 0, I, Phi),   r_n -> 0.
 
-Restricting to B=0 then costs at most r_n/(1+r_n) in total variation.
-Because B and Phi are non-focal variables, the NORMALIZED focal Q_n
-continuation sums to one for each fixed remaining realization with B=0
-and Phi. No restriction is imposed on the focal owner's own bad bindings.
-Only at this point apply the regular source factorization below.
+In the direct bad-only construction, restricting to B=0 costs at most
+r_n/(1+r_n) in total variation. Both B and Phi are non-focal there, so the
+NORMALIZED focal Q_n continuation sums to one for each fixed remaining
+realization with B=0 and Phi.
+
+For the whole-menu RAW construction use G={no effective active-foreign
+RAW use, Phi}. BOTH the bad and the same-value RAW repairs compare
+Q_n(. | I,Phi) to Q_n(. | I,G). The stopped-variable argument makes G
+and its foreign word non-focal; it does not assert that Phi or B separately
+remain non-focal after RAW. Integrate the normalized focal continuation
+only after this restriction to G. No restriction is imposed on the focal
+owner's own bad bindings. Only at this point apply the regular source
+factorization below.
 
 At an unsent focal site, let L be its OBSERVABLE event-local transcript:
 relative clock, its activations, own emissions and survival. Absence of an
@@ -469,17 +494,27 @@ law and the normalized source o-law have vanishing total variation. Transfer
 back through the bad-path, reference-law and charged-path comparisons to
 obtain Lemma T without an information-mass or Phi-mass floor.
 
+For the enlarged formal source, apply its separate whole-owner beta repair
+before this comparison. Native ordinary encoders use the conditional domain
+law tau, whereas a source ordinary atom is
+(1-alpha_n)(1-beta_n) tau. The missing beta factors contribute only a
+uniform factor 1+O(T beta_n); beta is not a native packet tier. The source
+conditional mass removed by that repair must also be included in the error.
+
 Explicitly, set a_n=(1-C zeta_n^M)^T -> 1. Let c_n bound the charged/clean
 P_n mass ratio inside I-and-Phi, let b_n bound the bad/regular Q_n ratio
 there, and let |epsilon_n(o)|<=epsilon_n<1. The L1 error between the actual
 conditional active law and the source law is at most
 
     2 c_n/(1+c_n) + 2(1-a_n)/a_n
-      + 2 b_n/(1+b_n) + 2 epsilon_n/(1-epsilon_n) -> 0.
+      + 2 b_n/(1+b_n) + 2 s_n/(1+s_n)
+      + 2 epsilon_n/(1-epsilon_n) -> 0.
 
-The first and third terms bound mixture remainders. The second uses the
+Here s_n is the source beta/regular mass ratio from whole-owner repair;
+epsilon_n includes the uniformly vanishing beta correction. The first,
+third and fourth terms bound mixture remainders. The second uses the
 uniform clean-path density ratio, including normalization on I-and-Phi.
-The fourth subtracts the source-weighted mean of epsilon. None divides by
+The last subtracts the source-weighted mean of epsilon. None divides by
 the unnormalized mass of I or Phi. If a larger RAW-origin submeasure is
 used, add its same-value-repair remainder as well.
 
@@ -540,6 +575,22 @@ its guard obligations were discarded. All public failure factors are fixed
 by p. Thus, whenever the information has positive probability, normalizing
 cancels L_j. The conditional distribution of opponents' retained states,
 private words and future decision rules is independent of w.
+
+Explicitly, let q retain p, the whole original private tuple, the live own
+typed cells and the occurrence. Static restriction of q together with w
+reconstructs every earlier personal information state i_r(q,w) and action
+a_r. For a compatible other-owner world z, write
+
+    Pr_n(z,w,q) = 1{z in D(q)} A_n(z;q) L_j(w;q),
+    L_j(w;q) = product_{past own r} sigma_n(a_r | i_r(q,w)).
+
+The original own-input density is already conditioned in q, or is included
+in L_j. The domain D(q) is independent of w: no voided value was published,
+and no obligation reading it survived restore. Original public-chance and
+other-owner factors belong to A_n. Thus L_j cancels from the conditional
+law separately at each positive full-information member. This argument
+retains other owners' complete private trajectories, including their voided
+words; it does not replace them by independent live cells.
 
 Future legal menus and payoffs also ignore w. The same erasure transports
 the player's future policies between the full information sets. For shared
@@ -707,20 +758,131 @@ an arbitrary assessment. It neither identifies a
 native posterior with an independently reset source prior nor explains
 arbitrary focal RAW actions as source draws.
 
-The key itself is reconstructed chronologically. Traverse the linear source
-instructions between resets; read each archived attempt's saved boundary,
-generation, rank-wise failure mask and close branch in archive order.
-Earlier typed public samples/publications are retained and no commitment
-rollback overwrites them. At a prefix rank the exclusion set is saved E
-union failure owners in the SAME attempt's rank interval from its saved
-boundary to that prefix. Include the original setup signal once and the
-actual final close/reset signal once, without inserting a fictitious extra
-pre-close signal. This recovers the complete PUBLIC
-logical signal word, even across periods with no callback to j. In the
-current block F reconstructs the same-length no-new-foreign-miss prefix,
-retaining j's typed values; no sample or reveal is crossed. Hidden foreign
-fillers cannot change this personal key. A genuine no-miss replay realizes
-F(i), so its key belongs to K_j; E(F(i)) need not be played information.
+For the reset coupling choose the following concrete realization at
+INITIALIZATION. Independently sample O_(j,c) with rate alpha_n and B_(j,c)
+with rate beta_n for each public owner/event/attempt occurrence c, and
+V_(j,k) with law tau_(j,k) for each reduced private key k. All of these are
+independent of the original inputs, Nature and service seeds. At a source
+binding consult O, then B, then V. At a reveal consult its fixed-rate
+withholding coin. Each actual source path visits c and k at most once, so
+its cylinder factors are exactly alpha_n, (1-alpha_n) beta_n, or
+(1-alpha_n)(1-beta_n) tau_(j,k)(v), as appropriate. This proves the same
+entire behavioral source history law.
+
+This realization correlates failure flags across counterfactual private
+keys at the SAME public occurrence. Its full private-table joint law is not
+the independent full-Choice table joint above. Both realize the stated
+source behavior, and the chosen occurrence-flag/domain-table realization
+is fixed once, before any entry or conditioning. It permits changed own
+values to use the same later omission/failure flags even when they change
+later own private keys. Equal rates alone would not justify that pathwise
+claim for an independently sampled full-Choice table. Predrawing these
+variables is an analytical representation, not an extra observation added
+to the extensive-form game.
+
+The native ordinary encoder reads ONLY V_(j,k), with its conditional domain
+law tau. It does not encode the source B coin as a native bad packet, and
+need not read the source O coin: its actual first-WAIT coin has the fixed
+prescribed rate. The source beta tier is handled by the separate source
+repair, not identified with native RAW.
+
+Define the virtual update from the ACTUAL recalled declaration d. An
+ordinary typed declaration appends its typed value; a bad declaration
+appends a fixed domain representative determined by d. In particular, two
+sampling tiers producing the same physical declaration produce the same
+virtual update. The latent tier label may be used in a probability bound,
+but cannot be read by a native strategy or by its query decoder. Restored
+virtual stores discard the same voided declarations as the physical reset.
+On ordinary paths the virtual and physical typed stores agree; at an own
+bad binding they need not, and rationality uses the separate pointwise
+own-bad-binding argument.
+
+Here is the precise native non-reading proof. Fix a positive UNSENT input
+J with reconstructed key k, and split the original experiment into
+(V_k,R_k) with prior tau_k x nu_k. Replacing V_k alone cannot change the
+prefix event {input=J}: earlier occurrences use different keys, any earlier
+callback at this key was WAIT with a value-independent atom, and a previous
+SEND at this key cannot coexist with UNSENT. A retry has a different key.
+Every domain value admits the selected legal SEND encoder, so there is no
+value-dependent fallback to WAIT. The origin-blind RAW decoder also reads
+no unused V_k. Consequently its likelihood has the form ell_J(R_k), and
+
+    Pr(V_k=v,R_k=r | J)
+      = tau_k(v) nu_k(r) ell_J(r) / sum_s nu_k(s) ell_J(s).
+
+This is the asserted product with the ACTUAL posterior of the entire
+remainder: all other table entries, occurrence flags, input tuples, timing
+coins, seeds, commands, entry tags and private operational records stay in
+R_k. The argument does not reset an entry prior. Conditioning additionally
+on a future Phi requires the separate non-focal phase induction; it is not
+an automatic consequence of current-key non-reading.
+
+The key is a deterministic function of an unsent native input J. Its inputs
+are the fixed source syntax and phase partition; current full attempt ID and
+binding address r; ordered public retired records with their original IDs,
+completed-event sets and omission masks; the immutable typed public store;
+the owner's original private tuple; and its recalled first declarations
+with their immutable catalogue meanings. An attempted later overwrite is
+not used to reinterpret an earlier declaration. Unused preparations are not
+virtual source actions.
+
+For a static source cursor c, let P(c) contain exactly the public-data and
+publication observations present in its source context, read at their
+original immutable native addresses. All private-input and commitment
+observations are absent and the private history word is empty. Every public
+cell needed for P(c) is retained: a reset crosses only a commitment block
+and discards no public cell. A voided cursor may be beyond the restored
+cursor, but its additional cells were commitments and P discards them.
+
+Scan the source instructions forward, consuming archived attempts in their
+chronological order. Respect the source signal convention: there is the
+pre-setup signal and one genuine setup transition, with no additional
+initialization transition. At a commitment block [a,b), start with the
+scanned saved exclusion set E. A matching retired record (a,g) supplies
+its completed omission mask. At each rank add the owner precisely on an
+original missed binding; an already-excluded automatic slot adds nothing.
+At nonfinal ranks the next cursor is the following rank, with generation
+g and saved rank a. At the LAST slot apply the actual close once:
+
+- a new failure with a surviving original block owner returns to a with
+  generation g+1 and saved rank a;
+- a new failure with no surviving block owner advances to b with the SAME
+  generation and saved rank b;
+- no new failure advances to b without an archive.
+
+The close supplies that last slot's next signal; it does not append an
+extra fictitious pre-close signal. A nonarchiving completed block is read
+from its retained successful image. Samples and reveals advance one rank,
+using their retained public results; a failed reveal adds its owner to E.
+Both set the saved rank to the new cursor. This FORWARD scan reconstructs
+the public controls instead of subtracting exclusions from the final set.
+It also covers periods with no native callback to the owner.
+
+For the current attempt stop that scan at its saved entry a. Append the
+no-new-foreign-miss prefix [a,r): excluded slots are automatic, active foreign
+slots use arbitrary supported domain fillers with missing=false, and own
+slots use the retained VIRTUAL declared values. No sample or reveal is
+crossed. Public projections are P(c), exclusions remain the saved E, and
+generation/saved-rank controls are (g,a). Foreign fillers cannot change
+the owner's typed view or this logical signal word. Its length counts
+source instructions, not native WAIT callbacks.
+
+The resulting key retains the owner, event and generation, the CURRENT
+typed virtual view with its history erased, and this entire PAST PUBLIC
+signal word. Current own private cells and original private inputs remain;
+they are not replaced by P. Old voided private words are never reconstructed.
+
+To prove that the key is in K_j, replay genuine source instructions from
+the SAME supported original setup draw. Decoded ordinary moves and recorded
+omissions are in the full source menu. A surviving owner's live bad native
+binding has not been revealed, and no completed guard could have read it;
+replacing it by its virtual domain representative therefore changes no
+earlier public result. Voided replacements also change no public result.
+Public samples use the same supported atoms at the same public environment.
+Finally replay the current no-miss prefix. Erasing this genuine full source
+information gives exactly the constructed key. Different hidden fillers or
+retired private witnesses give the same label. The erased label itself need
+not be played information or equal a decoder factory's chosen full history.
 
 This chronology, rather than equality of saved/current views alone, proves
 native measurability. Following a reset, two runs differing only in voided
@@ -789,6 +951,40 @@ Thus all current domain choices have the same payoff in this own-doomed
 case, even when rescue is possible. Such classes may use uniform domain
 pins. A live bad binding remains in the retained typed view, so these pins
 cannot constrain an ordinary non-doomed member of the same pool.
+
+The exact decomposition uses the initialized occurrence coins, not assumed
+equality of draws at different private keys. Condition on a genuine source
+information I and force a current DOMAIN value v. Let X mean a future own
+omission in this attempt, F mean a foreign omission in this attempt
+(including one already observed), and B mean a future own accepted failure
+in it. Define D=X^c intersect F^c intersect B^c. On X the owner is excluded
+and receives a_j. On X^c intersect F, j survives the real close, so it is a
+retry: all changed new values and obligations are erased, the same actual
+public signal/failure word is retained, and the erased continuation is R.
+An exhausted restore cannot be in this branch since j survives. On
+X^c intersect F^c intersect B the failed binding stands and payoff is a_j.
+On D let H_v include the entire later continuation, with its later resets
+and failure trembles unconditioned. Then
+
+    C_I = a_j Pr(X) + E[1{X^c intersect F} R]
+          + a_j Pr(X^c intersect F^c intersect B),
+    lambda_I = Pr(D),
+    U_I(v) = C_I + lambda_I E[H_v | D].
+
+Interpret the last term as zero when lambda_I=0. C_I and lambda_I are
+independent of v. For a CURRENT accepted-failure choice b, the same coupling
+gives U_I(b)=C_I+lambda_I a_j; a current omission gives a_j. In particular,
+future accepted failures that a retry rescues are inside R, not the
+payoff-a_j branch. At a known-foreign-failed attachment lambda_I=0, so all
+nonmissing current choices are exactly indifferent. If a current own bad
+binding is already present, H_v=a_j for every subsequent domain v; if an
+earlier retained phase contains the bad binding, every branch gives a_j.
+
+This identity holds for every admissible E/F-shared continuation profile
+with fixed failure rates. It does not hold for arbitrary full-information
+continuations that remember voided values. It is established before taking
+the pooled fixed point or using future optimality. Since every source
+terminal payoff is either a_j or at least m_j>a_j, R>=a_j pointwise.
 
 At a non-doomed information set, omission gives a_j. For accepted failure,
 the no-reset branch gives a_j and the reset branch has the common erased
