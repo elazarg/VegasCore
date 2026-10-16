@@ -63,7 +63,7 @@ theorem phase_ready_binding_surviving_source
     dsimp only [inputs]
     rw [PMF.map_comp]
     exact trace
-  obtain ⟨checkpoint, archivedRecall⟩ :=
+  obtain ⟨checkpoint, archivedRecall, _sourceOrigin⟩ :=
     recoverySourceCheckpoint_history setup mode runtime leaks plan maximal
       horizon scheduler trace
   have exclusion := phaseExclusionRecord_history runtime leaks plan inputs horizon scheduler

@@ -2,6 +2,7 @@
 
 import Interaction.ReactiveMixtureRounds
 import Interaction.ReactiveImplementationProfile
+import Interaction.ReactiveSchedulerImplementation
 import GameTheory.Math.Probability.Product
 
 /-! # Complete scheduler runs with private policy mixtures for every owner
@@ -184,5 +185,51 @@ theorem runRounds_policyMixtures_entry_joint {Entry : Type}
   rw [← PMF.map_bind]
   exact congrArg (PMF.map (Prod.mk entry))
     (app.runRounds_policyMixtures scheduler (initial entry) (members entry) count (execution entry))
+
+/-- The original independent scheduler seed and every private player member
+are drawn once and retained jointly with the existing complete execution.
+Their conditional joint law uses the scheduler's actual environment recall
+and each player's actual own recall, without redrawing original priors. -/
+theorem runRounds_policyMixtures_scheduler_joint {Seed : Type}
+    (prior : PMF Seed) (family : Seed → app.Scheduler)
+    (initial : (owner : Principal) → PMF (Memory owner))
+    (members : (owner : Principal) → Memory owner → app.Policy)
+    (count : Nat) (state : app.State) :
+    (prior.bind fun seed => (independentProduct initial).bind fun memories =>
+      (app.runRounds (family seed) (fun who => members who (memories who)) count
+        (Execution.initial app state)).map fun final => (final, (seed, memories))) =
+      (app.runRounds (app.schedulerMixture prior family).scheduler
+        (fun who => (app.policyMixture (initial who) (members who)).policy) count
+          (Execution.initial app state)).bind fun final =>
+            ((app.schedulerMixture prior family).posterior final.environmentRecall).bind
+              fun seed => (independentProduct (fun who =>
+                (app.policyMixture (initial who) (members who)).posterior
+                  (final.recall who))).map fun memories => (final, (seed, memories)) := by
+  let players := fun who => (app.policyMixture (initial who) (members who)).policy
+  let posterior := fun final : app.Execution => independentProduct (fun who =>
+    (app.policyMixture (initial who) (members who)).posterior (final.recall who))
+  have perSeed (seed : Seed) :
+      (independentProduct initial).bind (fun memories =>
+        (app.runRounds (family seed) (fun who => members who (memories who)) count
+          (Execution.initial app state)).map fun final => (final, (seed, memories))) =
+        (app.runRounds (family seed) players count (Execution.initial app state)).bind
+          fun final => (posterior final).map fun memories => (final, (seed, memories)) := by
+    have joint := app.runRounds_policyMixtures_posterior_joint (family seed) initial members
+      count (Execution.initial app state)
+    change (independentProduct initial).bind (fun memories =>
+      (app.runRounds (family seed) (fun who => members who (memories who)) count
+        (Execution.initial app state)).map fun final => (final, memories)) =
+      (app.runRounds (family seed) players count (Execution.initial app state)).bind
+        fun final => (posterior final).map (Prod.mk final) at joint
+    have tagged := congrArg (PMF.map fun pair => (pair.1, (seed, pair.2))) joint
+    simpa only [PMF.map_bind, PMF.map_comp, Function.comp_def] using tagged
+  change (prior.bind fun seed => (independentProduct initial).bind fun memories =>
+    (app.runRounds (family seed) (fun who => members who (memories who)) count
+      (Execution.initial app state)).map fun final => (final, (seed, memories))) = _
+  simp_rw [perSeed]
+  have joint := app.schedulerMixture_joint prior family players count state
+  have attached := congrArg (PMF.bind · (fun pair => (posterior pair.1).map
+    fun memories => (pair.1, (pair.2, memories)))) joint
+  simpa only [players, posterior, PMF.bind_bind, PMF.bind_map, Function.comp_def] using attached
 
 end Interaction.ReactiveApplication

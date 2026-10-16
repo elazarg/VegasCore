@@ -2017,3 +2017,33 @@ The same member tags govern the later stopped continuation. First exclusion,
 terminal and skipped-entry branches retain their mass. This supplies a factual
 entry carrier, without independent reference priors or an arbitrary-retry
 reachability claim.
+
+Original scheduler and all-player private draws at phased owner beliefs:
+[Reactive Profile Mixture](../Interaction/ReactiveProfileMixture.lean),
+[Phase Service Private Belief](../Vegas/Pending/PhaseServicePrivateBelief.lean).
+The existing runner retains the independently predrawn scheduler seed and every
+player member jointly with its actual execution. The exact conditional law
+uses environment recall for the seed and each owner's own recall for its member.
+At an unsent native information fiber, one local-seed filter factors from full
+history, all other seeds and all those recall-updated private members for every
+belief. Future member decisions remain in the retained draws. No common payoff
+ranking or reduction of richer delivery policies is inferred.
+
+Actual archived checkpoints in the chosen source trace:
+[Recovery Archived Source Origin](../Vegas/Game/RecoveryArchivedSourceOrigin.lean).
+The actual initialized checkpoint factory retains one genuine source trace and
+each archived checkpoint's original native provenance and genuine source prefix
+into that same trace. Normalization and all direct factory consumers retain it.
+Same-endpoint reachability alone does not identify intermediate omission scans;
+the actual decoded instruction constructors must still be carried through the
+chronology proof.
+
+Factual native Bayes conditioning through original member entry:
+[Phase Recovery Value Passage](../Vegas/Game/PhaseRecoveryValuePassage.lean).
+Original global members are drawn once, run to the exact full-ID entry and
+continue as the same members. The actual common entry History and genuine
+updated memories give the same passage law. Existing ancestor conditioning
+identifies the actual native belief; its denominator is exactly the actual
+information mass, with positivity derived from common full mixing. The actual
+common terminal tail remains on stopped exits. Eliminating that tail and
+identifying chronological AUX source beliefs are separate obligations.

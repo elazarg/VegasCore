@@ -1086,3 +1086,5 @@ import Vegas.Game.PhaseArchivedCommitObservation
 import Vegas.Game.RecoveryArchivedSavedWord
 import Vegas.Game.PhaseRecoveryValueEntry
 import Vegas.Game.PhaseRecoveryValueEntryBelief
+import Vegas.Game.RecoveryArchivedSourceOrigin
+import Vegas.Game.PhaseRecoveryValuePassage

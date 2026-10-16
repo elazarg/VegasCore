@@ -713,3 +713,4 @@ import Vegas.Pending.PhaseServiceUnsentPosterior
 import Vegas.Pending.PhaseServiceUnsentBayes
 import Vegas.Pending.PhaseArchivedSavedObservation
 import Vegas.Pending.PhaseAttemptEntryStopping
+import Vegas.Pending.PhaseServicePrivateBelief

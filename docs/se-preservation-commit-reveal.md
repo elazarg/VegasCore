@@ -1,6 +1,6 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**SE: non-concurrent ✓ · seed law at limits ✓ · native Bayes weights ✓ · chronology/source Bayes/incentives open.**
+**SE: non-concurrent ✓ · private-seed product ✓ · native entry Bayes ✓ · chronology/source Bayes/incentives open.**
 
 <details>
 <summary>Checked recovery milestones and remaining proof obligations</summary>
@@ -470,6 +470,13 @@ original seeds. In particular, this applies directly to limiting assessments
 and zero-probability sites, without a positive-reach hypothesis or a separate
 product-limit assumption. This retains arbitrary other local decisions under
 the stated deadline discipline, without a first-delay assumption.
+The original scheduler and all player private members also have an exact
+joint realization through the same physical runner. Each original member is
+drawn once; its posterior uses the actual complete own recall. The native
+local-seed filter factors from those retained member draws jointly with full
+history and every other original seed, for every belief on the native fiber.
+This includes the members' unplayed future decisions; it does not identify
+their continuation payoffs or establish a common delivery ranking.
 
 The original global source-policy and per-owner full timing-plan draws realize
 the literal assembled stopped physical history law at every actual clear actor.
@@ -483,6 +490,12 @@ weights equal the normalized full-history weights of that same original global
 implementation. This uses only agreement with the clear-site response recipe;
 post-exclusion behavior remains unrestricted. It identifies the factual native
 weights, rather than replacing them by source reference-entry weights.
+The actual native belief is the normalized passage law from the original
+member draws through their exact first full-ID entry and same-member stopped
+continuation. Its denominator is the actual native information mass, positive
+under the common fully mixed strategy. The common terminal tail after an exit
+remains explicit; reducing it and identifying chronological source Bayes are
+still required.
 Reference source-view conditioning retains full entry and plan tags and their
 actual observation tilt; those reference tags cannot be replaced by independent
 fresh draws at a later entry.

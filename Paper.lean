@@ -1236,6 +1236,9 @@ import GameTheoryExtensions.Analysis.Protocol.StoppedComposition
 import Vegas.Pending.PhaseAttemptEntryStopping
 import Vegas.Game.PhaseRecoveryValueEntry
 import Vegas.Game.PhaseRecoveryValueEntryBelief
+import Vegas.Pending.PhaseServicePrivateBelief
+import Vegas.Game.RecoveryArchivedSourceOrigin
+import Vegas.Game.PhaseRecoveryValuePassage
 
 /-! # Checked sequential-equilibrium preservation, Nash correspondence and termination -/
 
@@ -12688,3 +12691,45 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms
   Vegas.phaseTimingComponent_value_commitment_product_noise
+
+/-- info:
+'Vegas.ArchivedSourceOrigins.trans'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.ArchivedSourceOrigins.trans
+
+/-- info:
+'Vegas.ArchivedSourceOrigins.append'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.ArchivedSourceOrigins.append
+
+/-- info:
+'Vegas.phaseTimingPlanPolicy_value_bayes_entry_passage'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseTimingPlanPolicy_value_bayes_entry_passage
+
+/-- info:
+'Interaction.ReactiveApplication.runRounds_policyMixtures_scheduler_joint'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Interaction.ReactiveApplication.runRounds_policyMixtures_scheduler_joint
+
+/-- info:
+'Vegas.EventGraphRuntime.PhaseServiceScheduler.runRounds_private_seed_joint'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseServiceScheduler.runRounds_private_seed_joint
+
+/-- info:
+'Vegas.EventGraphRuntime.PhaseServiceScheduler.belief_unsent_private_seed_product'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseServiceScheduler.belief_unsent_private_seed_product
