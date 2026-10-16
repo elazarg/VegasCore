@@ -4,6 +4,8 @@ This note works with the theorem and runtime semantics of
 `docs/se-preservation-commit-reveal.md`. It records mathematical arguments,
 not claims of Lean verification. No runtime or target assumption is changed.
 
+**Math draft: source/reset construction specified; Lemma T repaired; full Lean theorem open.**
+
 The source strategy is selected with the erasure and failed-attempt pins
 constructed below. This is not a claim about an arbitrary source extension
 or an arbitrary completion of the current native policy family.
@@ -85,6 +87,45 @@ by the focal player's own information, as used by the document's one-shot
 charge argument. It must be checked against the authentic audit, rather than
 identified with a random later collection outcome.
 
+## A normalized uncharged reference law
+
+Deleting charged paths does NOT leave a normalized continuation kernel.
+In particular, summing a focal future only over those paths need not give
+one. Use an explicitly constructed reference profile Q_n instead.
+
+At a full own-information set J, firstness, authorization, preparation and
+own certificate data determine the uncharged action set U(J). It is nonempty:
+silence is always available. Specify a normalized Q_n(J), supported on U(J),
+using the local timing, source-value, slot and native-only tiers. Choose each
+total tier before distributing its mass over available packets; a foreign
+menu's cardinality must not determine the local send probability. On every
+clean-information fiber define the actual fully mixed prescription by
+
+    P_n(. | J) = (1-chi_n(J)) Q_n(. | J) + chi_n(J) C_n(. | J),
+    0 <= chi_n(J) <= C zeta_n^M,
+
+where C_n is supported on the charged complement. If that complement is
+empty, set chi_n(J)=0. Leave the actual free-agent profile unchanged on
+charged-only fibers. Every Q_n-reachable prefix is clean, so none of those
+fibers is reached by Q_n. Define Q_n arbitrarily on its unreachable fibers.
+
+For each clean complete extended history h, the fixed original chance laws
+and identical uncharged atoms give the exact identity
+
+    P_n(h) / Q_n(h) = product_{J visited in h} (1-chi_n(J)).
+
+The ratio is uniformly 1+O(T zeta_n^M). The same relative comparison holds
+after restricting to ANY event of positive Q_n mass, including I-and-Phi;
+normalization preserves a vanishing error without dividing by its mass.
+Combining this comparison with the preceding charged/clean ratio transfers
+the actual I-and-Phi conditional law to the normalized Q_n conditional law.
+Exact focal-future summation below is performed in Q_n, whose behavioral
+kernels sum to one, rather than in P_n conditioned on remaining clean.
+
+This specifies a witness. An arbitrary existing whole-menu-uniform profile
+need not have the required local normalized uncharged part; its mere
+decomposition into charged and uncharged atoms is insufficient.
+
 ## Native-only bad bindings require a different comparison
 
 The preceding absolute lower bound does not by itself remove the zeta_n^3
@@ -156,6 +197,14 @@ emissions of owners active at I. This also removes obsolete bad-value factors
 from the active private trajectory in the factorization below. Bad material
 of an excluded owner is not repaired and stays in its operational weight.
 
+The directly specified local-tier witness needs only this bad-binding
+restriction. A whole-menu RAW implementation can also produce an ordinary
+typed SEND from its RAW tier. If its retained submeasure deletes that origin,
+it requires an ADDITIONAL comparison: keep the same typed value and fresh
+slot and replace its RAW origin by the source/slot tier. The same
+zeta_n^3/(c zeta_n^2 rho_n) bound applies, with the same finite-multiplicity
+argument. Bad-only deletion is not a proof about that larger submeasure.
+
 ## Local service independence and the permitted packet quotient
 
 Use the exhaustive inputs of the document's concurrent S1. For a binding,
@@ -166,15 +215,19 @@ clock, preserves success for each fixed event seed. A merely value-blind
 functional allowed to read the entire envelope does NOT imply this fact.
 The earlier Stage-S statement allowing late-slot preferences is broader.
 
-Predraw the original foreign event seeds, source-policy randomness and local
-timing randomness. Consider two clean continuations differing only in the
-focal future. Before a foreign event's first SEND, its seed fixes its local
-activation calendar under S1. Its source query reads the old entry's public
-data and its owner's preceding source choices. Its local timing rule thus
+Work in Q_n. Predraw the original foreign event seeds, source-policy
+randomness and local timing randomness. Consider two continuations differing
+only in the focal future. Before a foreign event's first SEND, its seed fixes
+its local activation calendar under S1. Its source query reads the old
+entry's public data and its owner's preceding source choices. Its local timing rule thus
 gives the same first SEND clock, or the same decision never to send. S1 and
 the packet quotient then give the same success bit. Exact inclusion times
-need not agree. Induct along each owner's ordered events. Commitment opacity
-and source play ignoring in-phase observations preserve the induction.
+need not agree. Induct in a topological order of the phase graph, retaining
+each owner's order. A cross-owner predecessor can change the absolute
+readiness clock, but S1 uses clocks relative to readiness and the original
+seed for that occurrence. A failed predecessor still completes; the phase
+completion contract readies its successors. Commitment opacity and source
+play ignoring in-phase observations preserve the induction.
 
 Survivors keep these laws after a focal expiry while the old attempt remains
 open. Reset waits for the entire old attempt to finish. The completion
@@ -182,9 +235,37 @@ contract ensures the finite runner cannot cut an unresolved event off and
 call that its result. Hence both Phi and the joint foreign old-attempt
 trajectory are functions of the non-focal original randomness alone.
 
-At an unsent focal site, let L be its recovered complete local reply record,
-including negative queries/survival, and Z all original randomness except
-its event seed xi. S2 gives the prior mu(dxi) nu(dZ). By S3 the information
+The induction must establish one more independence before any bad-path
+restriction. Let B flag ANY old or current native-only bad emission of a
+foreign owner still active at I. Predraw each local tier label before its
+packet encoder: ordinary labels use the source draw; bad labels append the
+fixed virtual representative. Their total probabilities and local timing
+read no foreign menus. Conditional slot/bad encoders have total mass one,
+and S1 erases their handle choices from success. A bad flag can change its
+owner's later prescription, but that change depends only on its own labels
+and virtual history. Thus the JOINT variable (foreign virtual trajectory,
+Phi, B) is independent of the focal future under Q_n. This stronger
+statement is necessary: Phi independence alone would not justify deleting
+bad paths and then summing the focal continuation to one.
+
+The measure order is consequently as follows. Transfer P_n(.|I,Phi) to
+Q_n(.|I,Phi) by the charged bound and the clean-path density comparison.
+Apply the same-prior bad-binding repair under Q_n to obtain
+
+    Q_n(B != 0, I, Phi) <= r_n Q_n(B = 0, I, Phi),   r_n -> 0.
+
+Restricting to B=0 then costs at most r_n/(1+r_n) in total variation.
+Because B and Phi are non-focal variables, the NORMALIZED focal Q_n
+continuation sums to one for each fixed remaining realization with B=0
+and Phi. No restriction is imposed on the focal owner's own bad bindings.
+Only at this point apply the regular source factorization below.
+
+At an unsent focal site, let L be its OBSERVABLE event-local transcript:
+relative clock, its activations, own emissions and survival. Absence of an
+activation up to the observed clock constrains the calendar. No assumption
+that internal polling replies are observable is needed. Let Z be all
+original randomness except its event seed xi. S2 gives the prior
+mu(dxi) nu(dZ). By S3 the information
 event has the form
 
     {xi agrees with L} x R_I.
@@ -212,6 +293,8 @@ constructed below: through the old attempt foreign value kernels keep their
 no-new-miss queries and their failure rates are fixed in advance. They
 therefore do not acquire a dependence on a future focal failure before that
 failure is summed out. Owner-locality alone would not remove this mixture.
+The summation uses the normalized Q_n focal continuation, not a restriction
+of the actual continuation to uncharged paths.
 Each other owner's entire private trajectory has its own consistency
 constraints: its published results, its private decisions, and the success
 requirements in Phi. The source program's public samples contribute their
@@ -326,18 +409,23 @@ If the regular native o-weight is
     sup_o |epsilon_n(o)| -> 0,
 
 normalization removes C_n even if C_n tends to zero. The normalized regular
-law and the normalized source o-law have vanishing total variation. The
-two preceding comparisons then remove the irregular remainder. This is
-Lemma T's conclusion without an information-mass or Phi-mass floor.
+law and the normalized source o-law have vanishing total variation. Transfer
+back through the bad-path, reference-law and charged-path comparisons to
+obtain Lemma T without an information-mass or Phi-mass floor.
 
-Explicitly, if |epsilon_n(o)|<=epsilon_n<1 and irregular/regular mass is
-r_n, the L1 error of the full conditional active law is bounded by
+Explicitly, set a_n=(1-C zeta_n^M)^T -> 1. Let c_n bound the charged/clean
+P_n mass ratio inside I-and-Phi, let b_n bound the bad/regular Q_n ratio
+there, and let |epsilon_n(o)|<=epsilon_n<1. The L1 error between the actual
+conditional active law and the source law is at most
 
-    2 epsilon_n/(1-epsilon_n) + 2 r_n/(1+r_n) -> 0.
+    2 c_n/(1+c_n) + 2(1-a_n)/a_n
+      + 2 b_n/(1+b_n) + 2 epsilon_n/(1-epsilon_n) -> 0.
 
-The first term follows by subtracting the source-weighted mean of epsilon;
-the second is the mixture weight of the irregular conditional law. Neither
-bound divides by the unnormalized mass of I or Phi.
+The first and third terms bound mixture remainders. The second uses the
+uniform clean-path density ratio, including normalization on I-and-Phi.
+The fourth subtracts the source-weighted mean of epsilon. None divides by
+the unnormalized mass of I or Phi. If a larger RAW-origin submeasure is
+used, add its same-value-repair remainder as well.
 
 The o-law includes the complete typed private trajectories of the other
 active owners, including their old voided typed choices. It is not merely
@@ -368,6 +456,25 @@ optimizing these distributions. They tend to zero. In particular, omission
 does not signal whether an owner is privately doomed. Conditional value
 polytopes have full-support lower bounds preserved by the erasure.
 
+These rates must also preserve the GIVEN honest assessment, including its
+beliefs at rare honest information sets. Let rho^H_n be the minimum positive
+atom of its fixed consistency sequence and the original chance laws. Choose
+the failure rates and the additional violating-value/free-agent floors
+before the pooled fixed point, sufficiently small that their total one-step
+mass theta_n satisfies
+
+    theta_n = o((rho^H_n)^T).
+
+This stronger sufficient choice implies Proposition 1's source separation.
+At an honest-compatible set, cancel the focal remembered action likelihood.
+A fixed honest witness then has remaining mass at least b(rho^H_n)^T;
+the first foreign failure or violation has mass at most C theta_n. A finite
+sum makes their conditional mass vanish. On histories without either event,
+the copied honest likelihood differs only by a uniformly 1+o(1) product.
+Thus the copied honest beliefs are retained. Merely requiring positive
+floors tending to zero would not suffice; the later native zeta hierarchy
+cannot repair an incorrect source belief limit.
+
 To justify sharing, fix a public history p and a player's restored private
 information t. Expand the reach likelihood under an arbitrary profile of
 shared value distributions. By the owner-trajectory factorization, adding a
@@ -389,9 +496,10 @@ and ordinary progress changes the source event.
 
 Take an equilibrium of this finite perturbed pooled-agent game. Its compact
 convex value simplices and continuous finite-game payoffs give the usual
-fixed point. The identical-ranking calculation makes its best response a
-best response at EACH constituent full information set. Copied honest
-agents and the privately doomed agents are pinned as in Proposition 1.
+fixed point. Affinity in a pool's own distribution follows from the
+antichain property. The identical-ranking calculation makes its best
+response a best response at EACH constituent full information set. Copied
+honest agents and the privately doomed agents are pinned as in Proposition 1.
 Honest histories contain no voided word, so this sharing does not restrict
 the requested honest SE.
 
@@ -424,6 +532,37 @@ They impose no competing best-response requirement on the known-failed
 members. This is a property of the chosen strategy, not equality of the
 full source information states or a change to runtime observations.
 
+Specify that representative as a map F, not an informal edit to the current
+exclusion set. Canonically weave the ENTIRE current-attempt personal signal
+and own-play timeline with no new foreign misses, retaining the original
+entry, the current occurrence and the owner's complete typed prefix. Rebuild
+the information tags on earlier own actions as well. There is no public
+sample or reveal inside a commitment block, and foreign values are opaque,
+so the resulting personal information is independent of the compatible
+foreign filler values. F is idempotent. It commutes with erasing PREVIOUS
+retired words, which occupy disjoint attempt segments. These facts make the
+combined sharing constraints coherent and preserve the occurrence key;
+they do not identify two ordinary members with different retained histories.
+
+More explicitly, form these shared classes BEFORE taking the fixed point.
+For a final class K, let R_K be its ordinary retired-word variants and F_K
+its known-failed attachments. Its owner, event and attempt are fixed, so it
+is still an antichain. For any admissible opponents and future profile, its
+payoff as a function of the shared value distribution x has the form
+
+    U_K(x) = c + sum_{I in R_K} r_I (x . V_K)
+               + sum_{I in F_K} r_I c_I.
+
+Here r_I>0 is the reach probability, independent of x. Ancillary-word
+cancellation gives the SAME conditional vector V_K at each ordinary member;
+the failed-member c_I is exactly action-independent. Thus maximizing U_K
+maximizes each ordinary member's conditional payoff, while failed members
+impose no competing ranking. This calculation holds for every admissible
+future profile; it does not assume future optimality to obtain the fixed
+point. This maximization applies to free classes; copied honest and doomed
+classes keep their specified pins and use the separate limit arguments.
+Empty R_K classes have only indifferent members.
+
 For a free conditional-value source agent, the common reset term also gives
 the phase-success comparison. Differences between its nonmissing values are
 Pr_n(Phi | I) times their conditional successful-phase value differences,
@@ -445,8 +584,10 @@ and own-service outcomes ignore v. The binding service also ignores v.
 
 If j fails, its payoff is a_j. If another owner fails while j survives,
 read the whole failed attempt before restore. Every new binding of this
-attempt is erased. At retry, and also at exhausted restore, the two runs
-have the same restored semantic state and retained public failure history.
+attempt is erased. At retry the two runs have the same restored semantic
+state and retained public failure history. An exhausted restore has no
+surviving phase owner, so it belongs to j's payoff-a_j branch; it still uses
+the old archive for the measured trajectory and Phi.
 All changed private memories are precisely voided words, which the chosen
 source strategy ignores. Future source choices can therefore be coupled
 identically in the limit/reference profile. Later prescribed native events
@@ -474,7 +615,10 @@ Then
 For a general information-dependent policy, fix Z. Its extra observations
 are then determined by Z and its own local transcript. It is a permissible
 local policy with success probability at most P*, the optimal local value
-under the same filtered seed law. Since G_v(Z)>=a_j,
+under the same filtered seed law. Clean terminal payoffs give G_v(Z)>=a_j:
+j is either excluded with payoff a_j or survives with payoff at least m_j.
+This lower bound uses no source best-response or delivery-optimality claim.
+Consequently,
 
     payoff(s) <= a_j + P* E[G_v(Z)-a_j].
 
@@ -483,6 +627,39 @@ bound without asserting that a general policy's payoff depends only on its
 unconditional success probability. The local action space must include all
 permitted uncharged delivery choices; a SEND/WAIT optimizer alone does not
 cover slot-dependent service unless the service law erases those slots.
+
+The fixed-v inequality alone does not cover an arbitrary policy that also
+chooses its value adaptively after waiting. Close that issue with one-shot
+deviations at EVERY full information set. At an unsent binding set I, let
+tau be the prescribed value law at its full-occurrence source query and put
+
+    W_v = E[G_v(Z)],       W_tau = sum_v tau(v) W_v.
+
+Conditional source value optimality, transport and the common reset term
+give W_v<=W_tau in the limiting comparison. The vanishing finite-stage
+errors have already been controlled relatively inside Phi. For copied
+honest approximants an error delta_n->0 suffices: multiplication by a
+success probability at most one preserves that error, without division by
+Pr_n(Phi|I). For an immediate uncharged SEND(v,slot), S1 makes its success
+probability p_now independent
+of v and Z. Since p_now<=P* and W_tau>=a_j,
+
+    a_j + p_now (W_v-a_j) <= a_j + P* (W_tau-a_j).
+
+No pointwise comparison between different values' G_v is asserted. WAIT
+now followed by the prescription uses the SAME source query at its eventual
+SEND. No own source event occurs while it remains unsent, no reveal or
+sample can cross the phase barrier, and the old-entry pins remove new
+in-phase exclusion dependence. Its value can be predrawn once with law tau:
+intervening WAIT atoms are value-independent and the projected query ignores
+these clocks. The
+same mixed value law consequently has common success payoff W_tau, and its
+local timing rule has success probability at most P*. The prescribed
+optimal timing rule attains the upper bound. These two cases exhaust
+uncharged one-shot choices at an ordinary unsent binding set. Proving them
+at every later full information set, then using perfect recall, rules out
+adaptive multi-step value/timing deviations as well. Own bad material and
+charged actions use their separate pointwise arguments below.
 
 ## Order of the native rationality argument
 
@@ -506,9 +683,11 @@ payoffs above, and the deposit bound for charged one-shot deviations.
 
 Exact focal-future independence applies on the uncharged reference law.
 Charged focal continuations can move another owner into a charged-only
-information set where its prescription is free. Delete this contribution
-using the Phi-relative charged bound before applying independence; do not
-claim exact independence of every fully mixed finite-stage continuation.
+information set where its prescription is free. Use the Phi-relative charged
+bound and the uniform clean-path density ratio to transfer to Q_n before
+applying independence. Do not identify Q_n with the actual law conditioned
+on no future charge, or claim exact independence of every fully mixed
+finite-stage continuation.
 
 ## Sequential rationality, consistency and the preserved law
 
