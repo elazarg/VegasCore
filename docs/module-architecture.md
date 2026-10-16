@@ -1549,7 +1549,7 @@ Surviving source prefixes after exclusions:
 [Commit Prefix Surviving Recall](../Vegas/Game/CommitPrefixSurvivingRecall.lean),
 [Phase Surviving Binding Source](../Vegas/Game/PhaseSurvivingBindingSource.lean),
 [Recovery Surviving Binding Source](../Vegas/Game/RecoverySurvivingBindingSource.lean).
-A surviving binding derives a genuine initialized AUX source trace using saved source exclusion and the actual generation. Excluded slots are automatic and hidden active holes retain accepted failure. Actual checkpoint induction supplies one chosen checkpoint with the complete archived-history identity for every surviving owner; reading that identity from player information remains open.
+A surviving binding derives a genuine initialized AUX source trace using saved source exclusion and the actual generation. Excluded slots are automatic and hidden active holes retain accepted failure. Actual checkpoint induction supplies one chosen checkpoint with the complete archived-history identity for every surviving owner. Public retired handles and the permanent private catalogue recover the whole own history and current source view. Full remembered source information remains open.
 
 Actual finite-plan physical callback coupling:
 [Phase Binding Clear Observation Law](../Vegas/Game/PhaseBindingClearObservationLaw.lean),
@@ -1619,3 +1619,42 @@ Replacing free singleton weights represents an arbitrary prescribed response
 with the original uniform RAW tier, preserving all clear pool weights. The
 prescription's source-information decoder and optimality must be proved by its
 consumer.
+
+Original configuration posteriors and stopped observation factors:
+[Phase Timing Word Focal Law](../Vegas/Game/PhaseTimingWordFocalLaw.lean),
+[Phase Timing Word Foreign Posterior](../Vegas/Game/PhaseTimingWordForeignPosterior.lean),
+[Phase Timing Word Intervention Law](../Vegas/Game/PhaseTimingWordInterventionLaw.lean),
+[Phase Timing Word Intervention Posterior](../Vegas/Game/PhaseTimingWordInterventionPosterior.lean),
+[Phase Timing Word Config Posterior](../Vegas/Game/PhaseTimingWordConfigPosterior.lean),
+[Phase Timing Word Entry Posterior](../Vegas/Game/PhaseTimingWordEntryPosterior.lean),
+[Commit Prefix Splitting](../Vegas/Source/CommitPrefixSplitting.lean).
+The original full source configuration and entry tag survive exact own-record
+conditioning at the filled current view. The actual stopped member-profile
+input law is independent of foreign words at a fixed complete focal word; a
+fixed focal intervention makes it independent of all words. Identification
+with the actual physical entry law and common assessment remains open. Exact
+append splits retain one original block across interior binding callbacks.
+
+Player-readable retired attempts and current source views:
+[Phase Archived Bindings](../Vegas/Pending/PhaseArchivedBindings.lean),
+[Archive Binding Record](../Vegas/Pending/ArchiveBindingRecord.lean),
+[Phase Archived Binding Interval](../Vegas/Pending/PhaseArchivedBindingInterval.lean),
+[Phase Archived Observation](../Vegas/Pending/PhaseArchivedObservation.lean),
+[Phase Surviving Source View](../Vegas/Game/PhaseSurvivingSourceView.lean),
+[Phase Archived Inputs](../Vegas/Pending/PhaseArchivedInputs.lean),
+[Archive Player Store](../Vegas/Pending/ArchivePlayerStore.lean),
+[Commit Attempt Observation](../Vegas/Source/CommitAttemptObservation.lean).
+Actual archived accepted handles, completion order, permanent owned catalogue
+and immutable original inputs reconstruct whole owned action histories and
+archived masked stores. The total current source-view decoder has a genuine
+surviving AUX trace witness. Full remembered source signal information is a
+separate obligation.
+
+Observable saved exclusion sets:
+[Phase Archived Exclusions](../Vegas/Pending/PhaseArchivedExclusions.lean),
+[Phase Saved Exclusion Readback](../Vegas/Pending/PhaseSavedExclusionReadback.lean),
+[Phase Failure Coverage](../Vegas/Pending/PhaseFailureCoverage.lean).
+All permanent exclusions retain archived or live public failure witnesses.
+Saved exclusions equal archived failure owners plus current failures strictly
+before the installed phase. Equal actual public views therefore determine
+equal saved source exclusions without including independent in-phase expiries.

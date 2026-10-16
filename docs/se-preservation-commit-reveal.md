@@ -1,6 +1,6 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**SE: non-concurrent ✓ · timing/raw bounds ✓ · stopped channel ✓ · retry history ✓ · full posterior/incentives open.**
+**SE: non-concurrent ✓ · timing/RAW ✓ · stopped channel ✓ · current source view ✓ · full Bayes/incentives open.**
 
 <details>
 <summary>Checked recovery milestones and remaining proof obligations</summary>
@@ -180,6 +180,15 @@ full timing plan and full source configuration derive genuine callback traces
 and the required consistency internally. This gives the same actual zero-RAW
 assembled response without a final consistency premise. It does not explain
 arbitrary RAW-generated own actions as draws from that word family.
+Under the same own-family consistency premise, the response-record filter also
+conditions the original full source configuration, preserving all foreign
+values and correlations. For a source entry law, the tagged entry/full-config
+posterior is the original chronological joint conditioned only by the current
+filled view. The intermediate conditioning on the saved own entry view is
+redundant. Identifying that source entry law with the actual physical boundary
+distribution remains open. An authentic later entry can contain old RAW
+opening actions; global NON-RAW word-member consistency cannot be inferred
+merely from fresh current-attempt callbacks.
 
 Every genuine initialized current-attempt callback has an authentic earliest
 same-attempt prefix, with no earlier remembered callback at that address.
@@ -209,8 +218,21 @@ chosen source checkpoint whose complete surviving own history equals the
 deterministic fold of retired completion lists and the live history. The
 construction covers commitment retries, clean and exhausted closes, reveals,
 samples and automatic normalization. Reading this history and the observed
-attempt transcript from the player's information remains open. Saved source
-exclusion and physical in-phase exclusion are kept separate.
+attempt transcript requires the player's actual information. The public
+archived accepted handles, completion order and permanent private candidate
+catalogue now recover the entire surviving own action history. Every archived
+state retains the original initial inputs; its complete masked private store
+is reconstructed from the archived public view, current owned catalogue and
+immutable initial private fields. A total physical-view decoder therefore
+returns the genuine AUX current source view, with accepted failures retained.
+The full remembered source signal transcript remains open.
+
+Actual raw histories also identify the saved exclusion set: it is the union of
+archived failure owners and current public failure owners strictly before the
+phase. Current in-phase expiries are excluded from this readout. Two actual
+initialized histories with the same public view and installed phases have the
+same saved source exclusion set. Saved source exclusion and physical in-phase
+exclusion are kept separate.
 
 Two chronological same-attempt raw binding sends have strictly increasing
 source ranks. Their genuine earlier callbacks, readiness and event distinctness
@@ -266,6 +288,12 @@ command marginals, network and recall are retained. A separate own-key stop
 preserves external and erased observations without claiming equality of the
 hidden owner's private values. Mixing these likelihoods with original source
 words, entries and RAW perturbations remains open.
+At a fixed authentic full entry and full plan, changing foreign word
+coordinates leaves the stopped full focal-input law unchanged once the complete
+focal word is fixed. Against a fixed focal intervention, that law is independent
+of all words: the original source-config prior and stopped focal-input law have
+an exact product joint. These are actual member-profile likelihoods, not yet
+an identification with the original common physical assessment.
 
 At genuine unsent bindings, every actual timing mixture retains the independent
 source slot tier, for arbitrary pool weights including all WAIT. The original

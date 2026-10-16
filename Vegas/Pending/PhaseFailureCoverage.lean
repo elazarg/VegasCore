@@ -31,7 +31,8 @@ namespace FailureCoverage
 variable {state : RecoveryState graph}
 
 omit [DecidableEq Player] in
-private theorem suffixRecord (valid : state.FailureCoverage) :
+/-- Covered native failures are absorbed by the full permanent excluded set. -/
+theorem suffixRecord (valid : state.FailureCoverage) :
     SuffixExclusionRecord 0 state.excluded state := by
   refine ⟨valid.receipts, fun _ impossible => (Nat.not_lt_zero _ impossible).elim,
     fun owner => ⟨Or.inl, ?_⟩⟩

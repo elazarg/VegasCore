@@ -672,3 +672,11 @@ import Vegas.Pending.PhaseBindingStoppedCommandCoupling
 import Vegas.Pending.PhaseArchivedRecall
 import Vegas.Pending.PhaseSurvivingHistory
 import Vegas.Pending.PhaseEntryOwnRecall
+import Vegas.Pending.PhaseArchivedExclusions
+import Vegas.Pending.PhaseSavedExclusionReadback
+import Vegas.Pending.PhaseArchivedBindings
+import Vegas.Pending.ArchiveBindingRecord
+import Vegas.Pending.PhaseArchivedBindingInterval
+import Vegas.Pending.PhaseArchivedObservation
+import Vegas.Pending.PhaseArchivedInputs
+import Vegas.Pending.ArchivePlayerStore
