@@ -1030,3 +1030,5 @@ import Vegas.Game.PhaseTimingWordEntryReference
 import Vegas.Game.CompiledCommitAttemptSplit
 import Vegas.Game.CompiledAttemptObservation
 import Vegas.Game.RecoveryTimingWordStoppedRealization
+import Vegas.Game.PhaseBindingServiceOptimization
+import Vegas.Game.CompiledCommitAttemptRanks

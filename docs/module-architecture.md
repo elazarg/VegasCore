@@ -1758,3 +1758,19 @@ word. WAIT/slot rules read that word, with source values fixed separately.
 Existing word-policy guards provide total counted-menu legality and actual
 fresh unsent histories derive the exact sending law. Optimal service choice
 and comparison with policies reading extra observations remain obligations.
+
+Finite native own-service optimization:
+[Phase Binding Service Optimization](../Vegas/Game/PhaseBindingServiceOptimization.lean).
+The original finite protocol supplies the clock domain of all genuine decision
+sites. Restricting any pure bounded WAIT/slot rule to that finite table preserves
+its complete decision behavior and the same assessment-belief/stopped-run value.
+An optimizer exists inside that concrete class. Type-independent ranking and
+comparison with richer physical policies are separate obligations.
+
+Actual recovery and decoded attempt ranks:
+[Commit Recovery Ranks](../Vegas/Source/CommitRecoveryRanks.lean),
+[Compiled Commit Attempt Ranks](../Vegas/Game/CompiledCommitAttemptRanks.lean).
+Raw recovery steps preserve earlier surviving-owner views under the original
+rank projection, including excluded automatic instructions. The same full native
+decoder projects to its exact earlier native prefix through the typed split and
+lifted-point append identities. Full chronological signal reconstruction remains.

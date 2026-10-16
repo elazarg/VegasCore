@@ -1137,6 +1137,9 @@ import Vegas.Game.CompiledAttemptObservation
 import Vegas.Game.RecoveryTimingWordStoppedRealization
 import Vegas.Source.CommitPrefixPointAppend
 import Vegas.Source.CommitRecoveryObservedClosure
+import Vegas.Game.PhaseBindingServiceOptimization
+import Vegas.Source.CommitRecoveryRanks
+import Vegas.Game.CompiledCommitAttemptRanks
 
 /-! # Checked sequential-equilibrium preservation, Nash correspondence and termination -/
 
@@ -11518,3 +11521,45 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms
   Vegas.RecoverySourceCheckpoint.timing_word_anchored_stopped_law
+
+/-- info:
+'Vegas.SourceProgram.ProtocolView.entryView_recoveryStep'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.ProtocolView.entryView_recoveryStep
+
+/-- info:
+'Vegas.SourceProgram.ProtocolView.atRank_recoveryStep'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.ProtocolView.atRank_recoveryStep
+
+/-- info:
+'Vegas.decodeCommitAttempt_atRank'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.decodeCommitAttempt_atRank
+
+/-- info:
+'Vegas.EventGraphRuntime.PhaseCount.phaseBindingServiceStrategy_finite_agreement'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseCount.phaseBindingServiceStrategy_finite_agreement
+
+/-- info:
+'Vegas.EventGraphRuntime.PhaseCount.phaseBindingServiceValue_finite'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseCount.phaseBindingServiceValue_finite
+
+/-- info:
+'Vegas.EventGraphRuntime.PhaseCount.exists_optimal_phase_binding_service'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseCount.exists_optimal_phase_binding_service

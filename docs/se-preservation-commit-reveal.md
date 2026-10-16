@@ -1,6 +1,6 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**SE: non-concurrent ✓ · timing/RAW ✓ · stopped runner ✓ · prefix readback ✓ · full recall/Bayes/incentives open.**
+**SE: non-concurrent ✓ · stopped runner ✓ · prefix ranks ✓ · local optimizer ✓ · full recall/Bayes/incentives open.**
 
 <details>
 <summary>Checked recovery milestones and remaining proof obligations</summary>
@@ -296,6 +296,10 @@ exclusions, retaining accepted failures and arbitrary hidden foreign omissions.
 Equal saved/live source views and exclusion/generation signals also determine
 the observed closure, through retry and exhausted advancement. Connecting these
 pieces along the chosen physical-to-source history remains open.
+Actual source recovery instructions preserve each surviving owner's earlier
+views under rank projection, including automatically excluded commitments and
+reveals. The full native attempt decoder's rank projection recovers exactly
+its earlier native decoder, using the same original typed block and endpoint.
 
 Two chronological same-attempt raw binding sends have strictly increasing
 source ranks. Their genuine earlier callbacks, readiness and event distinctness
@@ -389,8 +393,12 @@ of the prescribed continuation. A phased own-service binding policy chooses
 WAIT or a prepared slot from the exact local activation-clock word, keeping
 the source result fixed separately. Existing word-policy guards make it legal
 at every input; actual history invariants discharge the guard at fresh unsent
-callbacks. This provides the concrete policy class, not its optimum or a bound
-against policies that read more. Source projection at
+callbacks. Every pure bounded WAIT/slot rule has a finite-table representative
+with identical behavior at all actual decision sites and the same native
+stopped continuation value. Finite maximization therefore gives an optimizer
+within that class for the actual assessment belief and stopped objective.
+A common delivery ranking across private types and a bound against policies
+that read more remain open. Source projection at
 a partial concurrent cut must distinguish saved/prefix exclusions from physical
 in-phase expiries. Auxiliary source-value identification remains open.
 Comparisons must also cover fresh handles other than the canonical one and
