@@ -17,14 +17,15 @@ namespace Interaction.ReactiveApplication
 
 open GameTheory.Math.Probability
 
-variable {Principal Memory : Type} [Fintype Principal] [DecidableEq Principal]
+variable {Principal : Type} {Memory : Principal → Type} [Fintype Principal] [DecidableEq Principal]
   (app : ReactiveApplication Principal)
 
 /-- Simultaneously realizing all private policy mixtures preserves the whole
 actual scheduler run. Independence is conditional on the given execution;
 each owner uses its posterior on its own complete recall. -/
 theorem runRounds_policyMixtures (scheduler : app.Scheduler)
-    (initial : Principal → PMF Memory) (members : Principal → Memory → app.Policy)
+    (initial : (owner : Principal) → PMF (Memory owner))
+    (members : (owner : Principal) → Memory owner → app.Policy)
     (count : Nat) (execution : app.Execution) :
     (independentProduct (fun who =>
       (app.policyMixture (initial who) (members who)).posterior (execution.recall who))).bind
@@ -36,14 +37,15 @@ theorem runRounds_policyMixtures (scheduler : app.Scheduler)
   let realized := fun who => (app.policyMixture (initial who) (members who)).policy
   let laws := fun who =>
     (app.policyMixture (initial who) (members who)).posterior (execution.recall who)
-  let profile := fun (active : Finset Principal) (memories : Principal → Memory) who =>
+  let profile := fun (active : Finset Principal)
+    (memories : (owner : Principal) → Memory owner) who =>
     if who ∈ active then members who (memories who) else realized who
   have peel (active : Finset Principal) (who : Principal) (absent : who ∉ active) :
       (independentProduct laws).bind (fun memories =>
         app.runRounds scheduler (profile (insert who active) memories) count execution) =
       (independentProduct laws).bind (fun memories =>
         app.runRounds scheduler (profile active memories) count execution) := by
-    let split := Equiv.piSplitAt who (fun _ : Principal => Memory)
+    let split := Equiv.piSplitAt who Memory
     rw [independentProduct_splitAt laws who]
     simp only [PMF.bind_bind, PMF.bind_map]
     conv_lhs => rw [PMF.bind_comm]
@@ -52,7 +54,7 @@ theorem runRounds_policyMixtures (scheduler : app.Scheduler)
     intro rest _
     let baseline := fun owner => if other : owner = who then realized owner else
       if owner ∈ active then members owner (rest ⟨owner, other⟩) else realized owner
-    have before (memory : Memory) :
+    have before (memory : Memory who) :
         profile (insert who active) (split.symm (memory, rest)) =
           Function.update baseline who (members who memory) := by
       funext owner
@@ -60,7 +62,7 @@ theorem runRounds_policyMixtures (scheduler : app.Scheduler)
       · subst owner
         simp [profile, split, Equiv.piSplitAt]
       · simp [profile, baseline, same, split, Equiv.piSplitAt]
-    have after (memory : Memory) :
+    have after (memory : Memory who) :
         profile active (split.symm (memory, rest)) = baseline := by
       funext owner
       by_cases same : owner = who
@@ -99,7 +101,8 @@ theorem runRounds_policyMixtures (scheduler : app.Scheduler)
 actual execution. Conditioning each member on the final own recall gives
 that same joint law, rather than merely its external execution marginal. -/
 theorem runRounds_policyMixtures_posterior_joint (scheduler : app.Scheduler)
-    (initial : Principal → PMF Memory) (members : Principal → Memory → app.Policy)
+    (initial : (owner : Principal) → PMF (Memory owner))
+    (members : (owner : Principal) → Memory owner → app.Policy)
     (count : Nat) (execution : app.Execution) :
     (independentProduct (fun who =>
       (app.policyMixture (initial who) (members who)).posterior (execution.recall who))).bind
@@ -114,7 +117,8 @@ theorem runRounds_policyMixtures_posterior_joint (scheduler : app.Scheduler)
   let implementations := fun who => app.policyMixture (initial who) (members who)
   let posterior := fun current : app.Execution => independentProduct (fun who =>
     (implementations who).posterior (current.recall who))
-  let profile := fun (memories : Principal → Memory) who => members who (memories who)
+  let profile := fun (memories : (owner : Principal) → Memory owner) who =>
+    members who (memories who)
   let realized := fun who => (implementations who).policy
   change (posterior execution).bind (fun memories =>
     (app.runRounds scheduler (profile memories) count execution).map
@@ -162,8 +166,8 @@ the same joint law. The owner products are conditional on that entry; no
 independence between entries or their hidden source data is asserted. -/
 theorem runRounds_policyMixtures_entry_joint {Entry : Type}
     (entryLaw : PMF Entry) (scheduler : app.Scheduler)
-    (initial : Entry → Principal → PMF Memory)
-    (members : Entry → Principal → Memory → app.Policy)
+    (initial : Entry → (owner : Principal) → PMF (Memory owner))
+    (members : Entry → (owner : Principal) → Memory owner → app.Policy)
     (count : Nat) (execution : Entry → app.Execution) :
     (entryLaw.bind fun entry =>
       (independentProduct (fun who =>

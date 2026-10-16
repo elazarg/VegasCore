@@ -966,6 +966,12 @@ import Vegas.Pending.PhaseOwnBindingOrder
 import Vegas.Game.CommitRecoveryLocalSourcePatch
 import Vegas.Game.PhaseContinuationFloor
 import Vegas.Game.CommitRecoveryPatchedContinuation
+import Vegas.Pending.PhaseBindingRecallOrder
+import Vegas.Pending.EventBindingPublicObservation
+import Vegas.Pending.PhaseBindingClearObservation
+import Vegas.Pending.PhaseBindingOpaqueHandle
+import Vegas.Pending.PhaseBindingOpaqueStep
+import Vegas.Game.PhaseCommitWordContinuation
 
 /-! # Checked sequential-equilibrium preservation, Nash correspondence and termination -/
 
@@ -9464,3 +9470,80 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms
   Vegas.SourceProgram.Setup.commitRecovery_local_source_patch_continuation
+
+/-- info:
+'Vegas.EventGraphRuntime.PhaseCount.recorded_binding_request'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseCount.recorded_binding_request
+
+/-- info:
+'Vegas.EventGraphRuntime.PhaseCount.recorded_binding_rank_lt'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseCount.recorded_binding_rank_lt
+
+/-- info:
+'Vegas.EventGraphRuntime.handle_commitment_publicView_congr'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.handle_commitment_publicView_congr
+
+/-- info:
+'Vegas.EventGraphRuntime.PhaseRuntimeState.normalize_publicView_congr_of_clear'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseRuntimeState.normalize_publicView_congr_of_clear
+
+/-- info:
+'Vegas.EventGraphRuntime.PhaseRuntimeState.handle_opaque_external_congr'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseRuntimeState.handle_opaque_external_congr
+
+/-- info:
+'Vegas.EventGraphRuntime.phase_include_opaque_external_congr'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.phase_include_opaque_external_congr
+
+/-- info:
+'Vegas.EventGraphRuntime.phase_opaque_include_trace'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.phase_opaque_include_trace
+
+/-- info:
+'Vegas.phaseCommitWordPolicy_runRounds_joint'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseCommitWordPolicy_runRounds_joint
+
+/-- info:
+'Vegas.phaseCommitWordPolicy_callback_joint'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseCommitWordPolicy_callback_joint
+
+/-- info:
+'Vegas.phaseCommitWordPolicy_callback_entry_joint'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseCommitWordPolicy_callback_entry_joint
+
+/-- info:
+'Vegas.phaseCommitWordPolicy_runRounds_replay'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseCommitWordPolicy_runRounds_replay

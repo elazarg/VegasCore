@@ -1324,8 +1324,8 @@ random-slot external channel integrate out the typed-result distribution.
 The native handler accepts both arbitrary private preparations under its actual
 ready/timely/fresh premises and retains an all-value shadow; clear phase
 normalization preserves saved, current and retired external views. Whole
-physical inclusion-history coupling and arbitrary allocator value comparison
-remain separate obligations.
+physical continuation coupling and arbitrary allocator value comparison remain
+separate obligations.
 
 Actual callback values and finite branching:
 [Phase Callback Continuation](../Vegas/Game/PhaseCallbackContinuation.lean),
@@ -1356,7 +1356,10 @@ operational key. One common completion supplies pooled gain bounds, Bayes
 approximants and its consistent limit. Actual canonical callbacks are protected
 or have singleton menus, so every component there is prescribed. The same
 timing limit has the entire canonical initialized history law. Individual pool
-member optimality and source/native posterior transport remain separate.
+member optimality at clear keyed inputs and source/native posterior transport
+remain separate. After public exclusion, singleton free pools give individual
+optimality; vanishing raw noise and permanent public exclusion lift it to whole
+continuations for the same actual timing assessment.
 
 Exact remembered callbacks and typed word meanings:
 [Reactive Recorded Response](../Interaction/ReactiveRecordedResponse.lean),
@@ -1382,3 +1385,34 @@ continuation value below by the global exclusion floor. A literal one-site
 source patch preserves the continuing auxiliary extension and gives its exact
 full source terminal readout/payoff law from any genuine retained history.
 Neither fact assumes the missing native/source tail or posterior equality.
+
+Actual chronological binding records:
+[Phase Binding Recall Order](../Vegas/Pending/PhaseBindingRecallOrder.lean).
+Each specified nonsilent record reconstructs its genuine ready callback. Two
+same-attempt raw binding sends have strictly increasing source ranks, with
+event distinctness derived from the earlier authenticated packet and actual
+one-packet rule. No sorted-record premise is needed.
+
+Whole owner-dependent word replay:
+[Reactive Implementation Profile](../Interaction/ReactiveImplementationProfile.lean),
+[Reactive Profile Mixture](../Interaction/ReactiveProfileMixture.lean),
+[Phase Commit Word Continuation](../Vegas/Game/PhaseCommitWordContinuation.lean).
+The existing implementation and scheduler runner support a separate private
+memory type for each owner. Actual complete-word member policies retain the
+full word profile jointly with the current response and full future execution.
+Arbitrary entry-dependent priors retain the original entry tag, and supported
+final posterior words replay under the same original member profile. Unsafe
+timing-option realization and source/native posterior equality remain open.
+
+All-value actual inclusion channels:
+[Event Binding Public Observation](../Vegas/Pending/EventBindingPublicObservation.lean),
+[Phase Binding Clear Observation](../Vegas/Pending/PhaseBindingClearObservation.lean),
+[Phase Binding Opaque Handle](../Vegas/Pending/PhaseBindingOpaqueHandle.lean),
+[Phase Binding Opaque Step](../Vegas/Pending/PhaseBindingOpaqueStep.lean).
+The actual optional packet handler and clean phase normalization have equal
+external observation laws for arbitrary hidden binding values, including
+accepted failure and rejected/stale packets. Actual inclusion retains the
+network, receipts, scheduler recall and all nonowner recall; the same supported
+command gives both genuine successor histories and their joint external
+channel. Evolved sender-private memory and whole compatible-word likelihood
+are further obligations.

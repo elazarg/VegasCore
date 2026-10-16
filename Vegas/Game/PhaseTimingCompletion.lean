@@ -33,8 +33,9 @@ local notation "N" => ReactiveApplication.ResponseMenu.information
 
 open Classical in
 /-- All operational pools use the same weights, fully mixed approximants,
-Bayes assessments and subsequence. Pool optimality concerns the sum of actual
-member gains. Member optimality, source likelihood transport and a sequential
+Bayes assessments and subsequence. Public-exclusion sites are rational for
+whole continuations when raw noise vanishes. Pool optimality concerns the sum
+of actual member gains. Keyed-member optimality, source likelihood transport and a sequential
 equilibrium conclusion require additional derived estimates. -/
 theorem exists_phase_timing_completion (wellFormed : setup.WellFormed)
     (sourceSequence : ℕ → setup.commitRecoveryModel.BehavioralAssessment)
@@ -63,6 +64,13 @@ theorem exists_phase_timing_completion (wellFormed : setup.WellFormed)
       BehavioralAssessmentConvergesPointwise (fun n => sequence (index n)) limit ∧
       limit.IsSequentiallyConsistent
         ((menu).decisionRecall initial horizon scheduler).decisionInformationAntichain ∧
+      (Filter.Tendsto noise Filter.atTop (nhds 0) →
+        ∀ who (site : (N).InformationSite who),
+          PhasePublicExclusion setup mode runtime leaks site.1 →
+            ∀ alternative : (N).BehavioralPolicy who,
+              (limit.continuationContext certificate site (payoff who)).value alternative ≤
+                (limit.continuationContext certificate site (payoff who)).value
+                  (limit.strategy who)) ∧
       (∀ n (alternative : ∀ p, PMF (parts p)) p,
         ∑ agent ∈ Finset.univ.filter (fun agent => pools agent = p),
           (if decision : (N).IsDecisionInfo agent.1 agent.2.1 then
@@ -92,10 +100,58 @@ theorem exists_phase_timing_completion (wellFormed : setup.WellFormed)
               (limit.continuationContext certificate site (payoff who)).value
                 (limit.strategy who) := by
   intro parts pools laws fallback certificate payoff
-  exact (N).exists_consistent_pooled_completion
+  obtain ⟨weights, sequence, limit, index, assembled, mixed, bayes, increasing, converges,
+      consistent, pooled, limitFacts⟩ := (N).exists_consistent_pooled_completion
     ((menu).decisionRecall initial horizon scheduler) fallback certificate payoff pools laws
     (fun n agent part => phaseTimingComponent_fullSupport setup mode runtime leaks bounds initial
       horizon scheduler bound wellFormed (sourceSequence n) (noise n) (positive n)
         (noiseBounded n) (slotWeight n) (slotNonnegative n) (slotBounded n) agent part)
+  refine ⟨weights, sequence, limit, index, assembled, mixed, bayes, increasing, converges,
+    consistent, ?_, pooled, limitFacts⟩
+  intro vanishes
+  apply wholePolicyOptimal_of_phasePublicExclusion setup mode runtime leaks menu initial horizon
+    scheduler certificate payoff limit consistent
+  intro who site excluded alternative
+  rcases site with ⟨input, decision⟩
+  let site : (N).InformationSite who := ⟨input, decision⟩
+  let identify := freeIdentify (agent := (N).agentAt site)
+    (free := fun agent : (N).InformationAgent (N).playedInformation =>
+      PhasePublicExclusion setup mode runtime leaks agent.2.1)
+    (keyed := fun agent => PhaseUnprotected runtime leaks bound agent.1 agent.2.1)
+    (key := fun agent => phaseTimingKey runtime leaks agent.1 agent.2.1)
+    (Opt := LateOption bounds.candidateCount) excluded
+  let limitComponent := fun part => PMF.pure (identify part)
+  have componentConverges : ∀ part, PMFConvergesPointwise
+      (fun n => laws n ((N).agentAt site) part) (limitComponent part) := by
+    intro part
+    exact phaseTimingComponent_free_converges setup mode runtime leaks bounds initial horizon
+      scheduler bound wellFormed sourceSequence noise (fun n => (positive n).le) noiseBounded
+        vanishes slotWeight slotNonnegative slotBounded ((N).agentAt site) excluded part
+  have localOptimal := (limitFacts who site limitComponent componentConverges).2
+    (fun _ => 0) tendsto_const_nhds (fun n replacement => by
+      have single : Finset.univ.filter (fun agent => pools agent = pools ((N).agentAt site)) =
+          {(N).agentAt site} := by
+        ext agent
+        simp only [Finset.mem_filter, Finset.mem_univ, true_and, Finset.mem_singleton]
+        constructor
+        · intro same
+          change freeKeyedPool _ _ _ agent = freeKeyedPool _ _ _ ((N).agentAt site) at same
+          rw [freeKeyedPool_of_free (agent := (N).agentAt site) excluded] at same
+          exact eq_of_freeKeyedPool_eq_inl same
+        · rintro rfl
+          rfl
+      have bound := pooled n
+        (Function.update (weights n) (pools ((N).agentAt site)) replacement)
+          (pools ((N).agentAt site))
+      rw [single, Finset.sum_singleton, dite_eq_left site.2] at bound
+      simp only [Function.update_self] at bound
+      simpa only [add_zero, site] using sub_nonpos.mp bound)
+  have spanning : (alternative.map identify.symm).bind limitComponent = alternative := by
+    rw [PMF.bind_map]
+    change alternative.bind (fun choice => PMF.pure (identify (identify.symm choice))) = alternative
+    simp only [Equiv.apply_symm_apply, PMF.bind_pure]
+  have optimal := localOptimal (alternative.map identify.symm)
+  rw [spanning] at optimal
+  exact optimal
 
 end Vegas

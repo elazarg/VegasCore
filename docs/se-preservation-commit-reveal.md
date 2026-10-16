@@ -1,6 +1,6 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**SE: non-concurrent ✓ · safety/laws ✓ · timing limit law ✓ · posterior: accepted recall ✓, full law open · incentives open.**
+**SE: non-concurrent ✓ · safety/laws ✓ · timing limit law ✓ · posterior: accepted/order ✓, full law open · incentives open.**
 
 <details>
 <summary>Checked recovery milestones and remaining proof obligations</summary>
@@ -95,7 +95,11 @@ or a singleton silent menu. Every timing component therefore equals the source
 prescription there. The same timing sequence and its own limit preserve the
 entire canonical initialized finite-fuel and terminal history laws. This needs
 no prescription at other clear inputs. Pooled gain bounds alone do not prove
-individual timing optimality.
+individual timing optimality. At public-exclusion inputs, the pool has exactly
+one member. Its actual pooled bound and the same component-limit passage give
+one-shot optimality as raw noise vanishes; permanent visibility of exclusion
+then gives whole-continuation optimality for that same limit. Clear keyed
+members still require their individual comparison estimates.
 
 At actual binding callbacks, nonmissing conditioning has an exact typed
 sending law and eligible-slot atom mass. Paired histories have the same
@@ -163,6 +167,11 @@ the full effective own history is the original entry history followed by the
 source-ranked word actions. Equality with the complete native parsed list,
 including order and multiplicity, remains open.
 
+Two chronological same-attempt raw binding sends have strictly increasing
+source ranks. Their genuine earlier callbacks, readiness and event distinctness
+follow from the exact recall occurrences, authenticated prior packet and actual
+one-packet rule; no sorted-record premise is supplied.
+
 Each owner can sample its complete word from its own observable entry view.
 These kernels reconstruct the original tagged entry/full-word joint law;
 correlations between entries remain. Actual supported callback SEND and WAIT
@@ -172,6 +181,21 @@ execution, exactly as the behavioral run followed by final own-recall
 posteriors. In the source, supported entry view and effective owned word
 determine the complete current view, including accepted failures. Identifying
 the actual native record with that effective word remains open.
+
+Concrete complete-word member policies retain their owner-dependent word
+profile jointly with the full physical execution through the current callback
+and every subsequent scheduler round. Entry-dependent word priors keep the
+original entry tag. Every supported final execution with a possible posterior
+word profile replays under those same words and the same scheduler. This
+realization does not yet include the independent unsafe WAIT/serial options.
+
+During commitment phases, actual packet inclusion has the same joint external
+observation channel for all private typed binding values, including accepted
+failures and stale, invalid or rejected packets. The coupling constructs both
+genuine same-command successor histories and retains network, receipts,
+scheduler recall and all nonowner recall. Iterating this fact needs the updated
+sender-private memory and compatible word likelihood; neither is assumed from
+external observation equality.
 
 Remaining obligations include the source/native posterior law under actual
 recall and mixed saved entries, and the clear-site continuation/incentive

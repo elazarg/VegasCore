@@ -641,3 +641,8 @@ import Vegas.Pending.PhaseFiniteNature
 import Vegas.Pending.PhaseBindingObservation
 import Vegas.Pending.PhaseBindingCompletionSymmetry
 import Vegas.Pending.PhaseOwnBindingOrder
+import Vegas.Pending.PhaseBindingRecallOrder
+import Vegas.Pending.EventBindingPublicObservation
+import Vegas.Pending.PhaseBindingClearObservation
+import Vegas.Pending.PhaseBindingOpaqueHandle
+import Vegas.Pending.PhaseBindingOpaqueStep

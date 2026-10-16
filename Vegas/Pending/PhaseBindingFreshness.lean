@@ -15,7 +15,7 @@ variable {Player : Type} [DecidableEq Player]
   (runtime : EventGraphRuntime graph)
   (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket graph))
 
-private theorem recalled_submission_emitted
+theorem recalled_submission_emitted
     (initial : PMF (phaseApplication runtime leaks).State) (horizon : Nat)
     (scheduler : (phaseApplication runtime leaks).Scheduler)
     {control : (phaseApplication runtime leaks).Control}

@@ -923,3 +923,4 @@ import Vegas.Game.PhaseCommitWordRecall
 import Vegas.Game.CommitRecoveryLocalSourcePatch
 import Vegas.Game.PhaseContinuationFloor
 import Vegas.Game.CommitRecoveryPatchedContinuation
+import Vegas.Game.PhaseCommitWordContinuation

@@ -11,16 +11,16 @@ namespace Interaction.ReactiveApplication
 
 open GameTheory.Math.Probability
 
-variable {Principal Memory : Type} [Fintype Principal] [DecidableEq Principal]
+variable {Principal : Type} {Memory : Principal → Type} [Fintype Principal] [DecidableEq Principal]
   {app : ReactiveApplication Principal}
 
 /-- One actual response disintegrates the whole independent private-memory
 profile into the actual behavioral response and its conditioned profile.
 The continuation can inspect every player's private memory. -/
 theorem response_disintegrate_profile
-    (implementations : Principal → app.Implementation Memory)
+    (implementations : (owner : Principal) → app.Implementation (Memory owner))
     (execution : app.Execution) (who : Principal)
-    {Result : Type} (next : app.Execution → (Principal → Memory) → PMF Result) :
+    {Result : Type} (next : app.Execution → ((owner : Principal) → Memory owner) → PMF Result) :
     (independentProduct (fun owner =>
       (implementations owner).posterior (execution.recall owner))).bind
         (fun memories =>
@@ -33,10 +33,11 @@ theorem response_disintegrate_profile
           (independentProduct (fun owner => (implementations owner).posterior
             ((execution.respond app who action).recall owner))).bind
               (next (execution.respond app who action)) := by
-  let split := Equiv.piSplitAt who (fun _ : Principal => Memory)
-  have atWho (memory : Memory) (rest : {owner // owner ≠ who} → Memory) :
+  let split := Equiv.piSplitAt who Memory
+  have atWho (memory : Memory who) (rest : (owner : {owner // owner ≠ who}) → Memory owner.val) :
       split.symm (memory, rest) who = memory := by simp [split, Equiv.piSplitAt]
-  have replace (memory replacement : Memory) (rest : {owner // owner ≠ who} → Memory) :
+  have replace (memory replacement : Memory who)
+      (rest : (owner : {owner // owner ≠ who}) → Memory owner.val) :
       Function.update (split.symm (memory, rest)) who replacement =
         split.symm (replacement, rest) := by
     funext owner
@@ -81,9 +82,9 @@ theorem response_disintegrate_profile
 /-- An actual environment command updates no private recall. Conditioning all
 implementation memories before or after that command gives the same joint law. -/
 theorem environmentStep_disintegrate_profile
-    (implementations : Principal → app.Implementation Memory)
+    (implementations : (owner : Principal) → app.Implementation (Memory owner))
     (execution : app.Execution) (command : app.Command)
-    {Result : Type} (next : app.Execution → (Principal → Memory) → PMF Result) :
+    {Result : Type} (next : app.Execution → ((owner : Principal) → Memory owner) → PMF Result) :
     (independentProduct (fun owner =>
       (implementations owner).posterior (execution.recall owner))).bind
         (fun memories => (execution.environmentStep app command).bind
@@ -103,9 +104,9 @@ theorem environmentStep_disintegrate_profile
 /-- The full private-memory profile disintegrates at an actual activation.
 Only the activated owner's memory changes, while all other memories survive. -/
 theorem resume_disintegrate_profile
-    (implementations : Principal → app.Implementation Memory)
+    (implementations : (owner : Principal) → app.Implementation (Memory owner))
     (execution : app.Execution) (actor : Option Principal)
-    {Result : Type} (next : app.Execution → (Principal → Memory) → PMF Result) :
+    {Result : Type} (next : app.Execution → ((owner : Principal) → Memory owner) → PMF Result) :
     (independentProduct (fun owner =>
       (implementations owner).posterior (execution.recall owner))).bind
         (fun memories => match actor with
@@ -127,9 +128,9 @@ theorem resume_disintegrate_profile
 The scheduler uses only its actual environment observation; no memory or
 conditional-law hypothesis is supplied. -/
 theorem round_disintegrate_profile
-    (implementations : Principal → app.Implementation Memory)
+    (implementations : (owner : Principal) → app.Implementation (Memory owner))
     (execution : app.Execution) (scheduler : app.Scheduler)
-    {Result : Type} (next : app.Execution → (Principal → Memory) → PMF Result) :
+    {Result : Type} (next : app.Execution → ((owner : Principal) → Memory owner) → PMF Result) :
     (independentProduct (fun owner =>
       (implementations owner).posterior (execution.recall owner))).bind
         (fun memories =>
