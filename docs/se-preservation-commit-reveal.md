@@ -1,6 +1,6 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**SE: non-concurrent ✓ · source reset/query ✓ · normalized sampler ✓ · native query/transport/incentives open.**
+**SE: non-concurrent ✓ · source reset/query/sampler ✓ · open: pooled SE, native query, transport, incentives.**
 
 <details>
 <summary>Checked recovery milestones and remaining proof obligations</summary>
@@ -1418,8 +1418,9 @@ the outcome $\omega$, and $j$'s later choices in the phase drawn from
 $\sigma^X$. Part 3 says: every value that $\sigma^X$ plays at $I$ with positive
 probability maximizes $W_I$.
 
-*Construction.* For each $n$ define a constrained agent-form game on
-$\Gamma^X$. Every information set is an agent with its own menu.
+*Construction for Part 1.* For each $n$ define a constrained agent-form game
+on $\Gamma^X$. Every information set is an agent with its own menu. Parts 2
+and 3 use the stronger pooled construction given below.
 
 - **Honest-region agents are forced.** Their behaviour is
   $\sigma^H_n\cdot(1-\eta_n-\eta_n^2)$ on honest actions. Failing gets
@@ -1427,32 +1428,16 @@ $\Gamma^X$. Every information set is an agent with its own menu.
   share $\eta_n^2$ uniformly. A set with no guard-violating value (every
   reveal, and a commit whose guards accept every value) has nowhere to put
   $\eta_n^2$; there honest actions get $\sigma^H_n\cdot(1-\eta_n)$.
-- **Own-doomed agents are forced**, in every region. They move, with the
-  value drawn from a fixed law of full support on the domain. Failing gets
-  $\eta_n$ in regions 3–4 and $\eta_n^{M_1}$ in regions 1–2, the same as the
-  non-doomed agents of that region (Part 2 shows those use exactly these
-  rates). This takes precedence over the two other rules.
+- **Stage S own-doomed agents may be forced.** Their payoff is identically
+  $a_j$. They move according to a fixed full-support domain law and fail
+  with probability $\eta_n$. Under concurrency and Part 1's weaker bound,
+  these agents are free: a reset can rescue them into a continuation worth
+  less than $a_j$, so moving need not dominate failing.
 - **All other agents are free.** They choose any behaviour that gives every
   action probability at least $\eta_n^{M_1}$, for a fixed exponent
-  $M_1\ge2$. Part 2 below needs the minimum to be $O(\eta_n)$, which this gives.
-
-*Why own-doomed agents may be forced.* For an own-doomed player, moving
-weakly dominates failing, and its value is irrelevant, pointwise:
-- failing excludes it now, for $a_j$;
-- after moving, it is either excluded later, for $a_j$, or rescued by a
-  reset that voids its violating binding (under concurrency, only while that
-  binding's phase is open). A rescued player is not excluded by that
-  binding, and its payoff is at least $a_j$, since every gross payoff is
-  either $a_j$ or a non-excluded payoff of at least $m_j>a_j$. Under Stage S
-  there is no reset, so its payoff is $a_j$ whatever it does, and Part 1
-  needs no more. Under concurrency the rescue case uses $a_j<m_j$, which
-  Theorems 3 and 4 assume;
-- the value it chooses either stands next to a binding that excludes it, or
-  is voided with it.
-
-So the forced rule is optimal at every own-doomed set, at any belief. It
-also makes failure uninformative: whether an agent fails does not depend on
-whether its owner is doomed.
+  $M_1\ge2$. In particular, concurrent own-doomed agents outside the honest
+  region are included here. Uniform failure rates and concurrent doomed
+  pins are properties of the separate strong-bound construction below.
 
 The sequences satisfy two conditions:
 $$
@@ -1483,11 +1468,15 @@ profiles, with Nature's laws fixed. This is Kreps–Wilson consistency.
   most $1$. Other players' sets and regions are the same in both histories, so their
   factors cancel. Since $\eta_n^2=o(\rho_n^{\mathcal T})$, violating histories
   get zero limit weight.
-- A history in $I$ with a failure has it inside the current phase, unobserved,
+- After removing the violating histories just considered, a history in $I$
+  with a failure has it inside the current phase, unobserved,
   since an observed failure would put $I$ in the post-exclusion region. The
   failure carries a factor $\eta_n$ against at least $\rho_n$ for the honest
   move in its place. Since $\eta_n=o(\rho_n)$, these histories also get zero
   limit weight.
+  This $\eta_n$ bound is applied only to histories without a prior violation;
+  arbitrary failure rates at free own-doomed agents belong to the first
+  case, whose first violation already contributes $\eta_n^2$.
 - On the remaining histories play is $\sigma^H_n$ times a factor
   $(1-\eta_n-\eta_n^2)$ or $(1-\eta_n)$ per move. Which one applies at a
   commit can depend on its owner's hidden values, through its guards. The two
@@ -1525,8 +1514,9 @@ $j$, with everyone following the limit profile afterwards.
 
 So $\sigma^H$ is optimal at $I$.
 
-*Sequential rationality elsewhere.* At own-doomed sets, the forced rule is
-optimal by the dominance above. Every other agent is free. In the
+*Sequential rationality elsewhere.* Any forced Stage S own-doomed rule is
+optimal because its payoff is identically $a_j$. Every other agent outside
+the honest region, including concurrent own-doomed agents, is free. In the
 constrained game it plays an exact best response to its Bayes beliefs, subject
 to the minimum probability. In the limit, every action that it plays with
 positive probability is a best response to $\mu^X$ and $\sigma^X$. That is the
@@ -1534,86 +1524,141 @@ standard argument that limits of perturbed agent-form equilibria are
 sequential. With the one-shot deviation principle, this gives sequential
 rationality at every free set.
 
-*Part 2: never fail.* Let $a_j<m_j$. At honest-region and own-doomed sets
-$j$ fails with probability $\eta_n$ or $\eta_n^{M_1}$, by construction. The free sets need a backward
-induction at each fixed large $n$. The induction runs on $j$'s **value**, not
-on its failure probability: a free agent of $j$ might violate rather than fail,
-and under Stage S a violation also excludes.
+*Parts 2 and 3: concurrent pooled construction.* Under $a_j<m_j$, select
+one source extension with the additional sharing properties in the
+[mathematical argument](se-preservation-math.md#constructing-source-play-that-ignores-voided-private-choices).
+The construction below fixes failure rates before taking the fixed point;
+it does not infer the required sharing from an arbitrary agent-form
+equilibrium. The original full-information game and individual deviations
+remain unchanged.
 
-For a set $I$ of $j$, write $k$ for the maximum, over all continuations
-from $I$, of the number of $j$'s own sets from $I$ on, counting $I$ itself and
-re-runs after resets. So $k\ge1$, and $k$ is at most $\mathcal T$ by 1.5(2).
-A terminal history counts as $k=0$. Write $\operatorname{sp}_j$ for the spread of $j$'s gross payoff (1.3).
+A reduced class retains the owner, logical event/attempt occurrence,
+original private tuple, live own typed values and complete public signal
+chronology. It erases only voided private words. In a sequential source
+presentation, also attach the known-failed current-attempt members to their
+no-new-foreign-miss representative. Those attachments will be indifferent;
+they need not have the same beliefs as the representative. No class is
+visited twice along a source path, because its logical occurrence strictly
+advances, including on retry and exhausted advance.
 
-**Claim.** At every set $I$ of $j$, forced or free, at which $j$ is not
-privately doomed and has at most $k$ own sets from $I$ on, $j$'s value in the
-constrained game at stage $n$ is at least $m_j-c_k\eta_n$. Here
-$c_0=0$ and $c_{k+1}=c_k+2\operatorname{sp}_j$, so $c_k=2k\operatorname{sp}_j$.
-The case $k=0$ is a terminal history in which $j$ is not excluded, worth at
-least $m_j$. The current set's own trembles are what the step from $c_{k-1}$
-to $c_k$ pays for: at a final reveal with $k=1$, the value is about
-$m_j-2\eta_n\operatorname{sp}_j$, not $m_j$.
+Fix $T\ge1$ bounding source path length and $C$ bounding domain menu sizes.
+Let $0<h_n\le1/(n+1)$ bound the positive honest tremble atoms and the fixed
+positive chance atoms from below. Before the fixed point set
+$$
+\eta_n=\frac{h_n^{T+1}}{n+1},\qquad
+\gamma_n=\frac{\eta_n^2}{2C}.
+$$
+At every active source decision prescribe omission/withholding probability
+$\eta_n$. A conditional domain law has every value's probability at least
+$\gamma_n$. Pin an honest class to its copied honest law with the domain
+floor added; its total extra violating mass is $O(C\gamma_n)$. The retained
+live values and public chronology reconstruct the honest full information,
+so two honest members of a class impose the same pin. Own-doomed classes
+may use a fixed full-support domain pin. Optimize the remaining classes'
+conditional domain laws. All these constraints are nonempty for large $n$.
+The formal source's additional accepted-failure action uses the separate
+fixed $\beta_n$ construction and repair in the mathematical argument; it is
+not a native packet tier.
 
-*Proof of the claim.* Consider the action "move": a guard-accepted value at a
-commit, which exists by guard satisfiability, or "open" at a reveal. After it,
-$j$ is still not privately doomed. Each continuation reaches either an own
-later set of $j$, which has at most $k-1$ own sets from it on and satisfies the
-claim with $k-1$ by the induction hypothesis, or a terminal history in which
-$j$ is not excluded, worth at least $m_j=m_j-c_0\eta_n$. Under
-concurrency a reset may void $j$'s binding; $j$ then commits again and is still
-not excluded. So "move" is worth at least $m_j-c_{k-1}\eta_n$.
+Give each free class its owner's original ex-ante expected payoff. Its
+reach probabilities do not depend on its own distribution, by the
+no-repeated-class property. Its utility is therefore affine in that
+distribution and continuous in the whole profile. The finite compact convex
+constrained game has an equilibrium. Take a common subsequence of these
+profiles, their full-information Bayes beliefs, and the finitely many
+phase-conditioned laws. This supplies consistency on the original game.
+The total honest-departure mass is $O(\eta_n)$, and
+$\eta_n/h_n^T\to0$. Cancel the focal recalled action factors and compare with
+a fixed honest witness of remaining weight at least $b h_n^T$. Histories
+with a departure have vanishing conditional mass; on the others the copied
+honest likelihood has uniform relative error $o(1)$. Thus the limit retains
+the given honest beliefs as well as its strategy.
 
-- At a free set, $j$ best-responds, subject to the minimum probability
-  $\eta_n^{M_1}$ on each of its actions, of which there are at most $\bar c$
-  (the largest menu size). Its value is therefore at
-  least that of "move", minus $\bar c\,\eta_n^{M_1}\operatorname{sp}_j\le\eta_n\operatorname{sp}_j$ for
-  large $n$, since $M_1\ge2$.
-- At a forced honest-region set, $j$ plays $\sigma^H_n$ scaled as in the
-  construction. Honest actions keep it not privately doomed. Failing and
-  violating cost at most $\operatorname{sp}_j$ each, with total probability
-  at most $\eta_n+\eta_n^2\le2\eta_n$. So its value is at least
-  $m_j-c_{k-1}\eta_n-2\eta_n\operatorname{sp}_j$.
+*Individual incentives of a pooled class.* Fix a reduced ordinary member
+with retained data $q$ and erased own word $w$. Over a complete compatible
+other-owner world $z$ and future original randomness $\omega$, its reach
+and continuation likelihood has the form
+$$
+  \mathbf1_{D(q)}(z) A_n(z,\omega;q)L_j(w;q).
+$$
+The domain and $A_n$ do not depend on $w$: no voided value is published,
+its obligations are discarded, and shared continuations ignore it.
+$L_j$ contains the original owner's own past action factors. Bayes
+normalization cancels it separately at each positive full-information
+member. It also cancels after restricting to the same future occurrence
+failure coins. Thus the conditional successful-phase payoff vector $H_K$
+is common across ordinary members of class $K$, with complete other-owner
+private trajectories retained.
 
-Either way, the value is at least $m_j-c_k\eta_n$. $\square$
+Couple those occurrence coins before varying a current domain value $v$.
+Foreign choices cannot see $v$, and no reveal or sample occurs within the
+commit block. Induction through the block keeps the same omission word
+and close branch. An own omission gives $a_j$. A foreign omission while
+$j$ survives triggers a retry, voids every changed new value, and gives the
+same erased continuation. If the block succeeds, the value stands.
+Consequently each ordinary member has the exact finite-stage form
+$$
+ U_I(v)=C_I+\lambda_I H_K(v),\qquad \lambda_I\ge0,
+$$
+with $C_I,\lambda_I$ independent of $v$. In the enlarged formal menu the
+accepted-failure coin is included in this decomposition as specified in
+the mathematical argument. Known-failed attachments contribute constants.
+The class's utility is therefore a constant plus
+$\Lambda_K x_K\cdot H_K$, where
+$\Lambda_K=\pi_K\sum_I r_I\lambda_I\ge0$, $r_I$ is its member's reach
+weight, and $\pi_K>0$ is the fixed current domain-branch probability.
+Here $\pi_K=1-\eta_n$, or $(1-\eta_n)(1-\beta_n)$ at an enlarged-menu
+binding. It is independent of the optimized domain distribution.
+If $\Lambda_K>0$, exact maximization cancels this coefficient. For menu size
+$d$, writing $x_K=\gamma_n\mathbf1+(1-d\gamma_n)y$ gives
+$$
+ H_K(v)-x_K\cdot H_K\le d\gamma_n\operatorname{sp}_j
+ \quad\text{for every domain value }v.
+$$
+There is no division of an approximate regret by a rare success probability.
+If $\Lambda_K=0$, each positive-reach member has zero coefficient and is
+indifferent. Honest pins use honest optimality with the retained honest
+beliefs, rather than this free-class bound.
 
-With $C=c_{\mathcal T}=2\mathcal T\operatorname{sp}_j$, failing yields
-$a_j<m_j-C\eta_n$ for large $n$. So at every free set of a non-doomed $j$,
-failing is strictly worse than an available action, by a margin bounded away
-from zero. In the constrained game it therefore gets exactly its minimum
-$\eta_n^{M_1}\to0$. This uses that the minimum is $O(\eta_n)$, which
-$M_1\ge2$ gives. So for large $n$, free agents fail with probability exactly
-$\eta_n^{M_1}$, honest-region agents with exactly $\eta_n$, and own-doomed
-agents with the rate of their region: the failure probability is a function
-of the public region alone.
+*Never fail.* At a non-doomed view, standing guard satisfiability supplies
+an owner-observable value preserving its own outstanding obligations;
+a typed nonfailure action alone would not supply this. Backward induction
+on remaining own decisions, using the conditional domain bound within a
+block and ordinary continuation values after its close, gives at least
+$m_j-O(T(\eta_n+C\gamma_n))$. Perfect recall fixes any previously forced
+own action at a later own information set, so its likelihood cancels from
+that later Bayes posterior. Unused occurrence coins stay independent.
+Thus the induction uses the correct conditional beliefs and never divides
+an error by the probability of block success. Omission yields $a_j$;
+opening correctly weakly dominates withholding. At own-doomed views a
+standing violation gives $a_j$, while a reset voids the changed values and
+gives the common continuation, at least $a_j$. Their pinned values are
+indifferent. The fixed failure trembles vanish and these comparisons prove
+full-information sequential rationality of the limit.
 
-*Part 3: phase-success optimality.* At stage $n$, the payoff of committing
-$v$ at $I$ is $\Pr_n(\Phi\mid I)\,W_{I,n}(v)+R_n$, where $W_{I,n}$ is the
-stage-$n$ version of $W_I$. The remainder $R_n$ covers $\neg\Phi$, in which
-the reset voids $v$, and it does not depend on $v$:
-- a voided value reaches no payoff;
-- it tells nobody anything, since others never observe it and it is
-  independent of their values;
-- $j$'s own later sets differ only by that value, so they face the same
-  decision problem, and their constrained values agree.
+*Optimality given phase success.* At a free ordinary class with positive
+success coefficient, the displayed conditional domain bound tends to zero.
+Conditioning also on the owner's remaining same-block survival changes the
+unconditioned-own-future phase value by at most
+$T\eta_n\operatorname{sp}_j$, or $T(\eta_n+\beta_n)\operatorname{sp}_j$ in
+the enlarged formal menu. This is a uniform bound conditional on $I,\Phi$:
+unused own occurrence coins remain independent of foreign phase success,
+and the two continuations agree unless an own remaining coin fails. Hence
+$H_K$ and the stage-$n$ vector $W_{I,n}$ have the same limit. Finite
+continuation values are polynomial in the convergent profile, and the
+phase-conditioned laws converge along the chosen subsequence. Therefore
+every limiting supported domain value maximizes $W_I$. Own-doomed members
+are indifferent; known-failed attachments have zero coefficient. At honest
+pins, the retained honest beliefs and vanishing foreign failure mass give
+the honest conditional continuation vector, maximized by $\sigma^H$.
+This proves Parts 2 and 3 for the same selected extension. $\square$
 
-$\Pr_n(\Phi\mid I)$ does not depend on $v$ either, because others choose
-without observing it. A free agent best-responds exactly, so any value it
-plays above the minimum probability maximizes $W_{I,n}$. Here
-$W_{I,n}(v)=\mathbb E_{\omega\sim\nu^X_n(I)}[U_n(h(v,\omega))]$, with $U_n$ the
-stage-$n$ value from an end-of-phase node and $j$'s later in-phase choices
-drawn from $\sigma_n$. Then $W_{I,n}\to W_I$:
-- $\nu^X_n(I)\to\nu^X(I)$ by the choice of subsequence. This carries the
-  conditioned joint law of others' trajectories in the phase, which
-  $\sigma^X$ alone would not;
-- $U_n\to U$ pointwise, since the value from a node is a polynomial in the
-  profile and $\sigma_n\to\sigma^X$, in a finite game;
-- $j$'s later in-phase choices converge to $\sigma^X$, and are not
-  conditioned. So in the limit every value in the support of $\sigma^X$ at $I$
-maximizes $W_I$. At honest-region sets, others fail with probability at most
-$\eta_n\to0$ and violators have zero weight, so $\Pr(\Phi\mid I)\to1$.
-Then $\nu^X(I)$ is the honest law: $\mu^H(I)$ for the past, and $\sigma^H$ for
-others' later choices in the phase. So $W_I$ is the honest continuation
-value, and $\sigma^H$ maximizes it by its sequential rationality. $\square$
+A known-failed attachment in the sequential source presentation can have
+$\Pr_n(\Phi\mid I)=0$ even under full mixing. It uses unconditional
+indifference, not a phase-conditioned $W_I$. The simultaneous $\Gamma^X$
+sets in Part 3 do not observe such an in-phase failure. Foreign
+accepted-failure actions in the enlarged formal source require the
+separate relative repair; the own-survival bound does not delete them.
 
 Two remarks:
 - Under concurrency, a violating value can tie with an honest one only when
@@ -2667,14 +2712,20 @@ that attempt. Freeze these owners before any in-phase exclusions. Read the
 attempt to its first full attempt-identifier exit, including an exhausted
 restore with unchanged generation, before making retry decisions. The transported
 object concerns the *other* owners only. $j$'s past is part of $I$. $j$'s
-choices after $I$ are summed out first, by (T0).
+choices after $I$ are summed out by (T0), after the reference-law and
+regularization steps specified next.
 
 The application below uses the normalized uncharged reference law $Q_n$
 specified in the [mathematical audit](se-preservation-math.md). Exact (T0)
-is asserted for that law, or its stopped foreign-RAW variable, rather than
-for arbitrary charged continuations of the fully mixed law $P_n$. Relative
-charged/clean density bounds transfer the resulting conditional law back
-to $P_n$ inside $I\cap\Phi$. The selected native value encoder reads the
+is asserted after the required regularization, rather than for arbitrary
+charged continuations of the fully mixed law $P_n$. For a whole-menu RAW
+realization the order is: transfer $P_n$ to normalized $Q_n$; apply both the
+bad-binding and same-value RAW repairs inside $I\cap\Phi$; restrict to
+$G=\{\text{no effective active-foreign RAW use},\Phi\}$; then sum the focal
+future and apply the factorization below. The cemetery-stopped variable
+makes $G$ and its foreign word nonfocal; arbitrary post-RAW words need not
+be nonfocal. Relative remainder bounds transfer the resulting conditional
+law back to $P_n$ inside $I\cap\Phi$. The selected native value encoder reads the
 conditional domain law; the formal source's accepted-failure tremble is
 handled by its separate relative repair. These constructions are part of
 the application, not extra assumptions on an arbitrary completion.
@@ -2687,7 +2738,11 @@ record up to $I$ is fixed, so a projection is a pair $x=(o,e)$:
 - $e$ is the private choices of excluded owners.
 
 Call an extended history **regular** if it is clean, $\Phi$ holds in it, and
-no *other* owner active at $I$ holds a native-only bad binding in it.
+no *other* owner active at $I$ has an old or current native-only bad binding,
+including a voided one. For a whole-menu RAW realization strengthen this
+to the good domain $G$: remove ordinary typed RAW origins as well, using
+the same-value repair. Unread tier labels at sent or inert singleton-WAIT
+callbacks are integrated out and do not define bad paths.
 Assume, at every stage $n$:
 
 - **(T0) The focal owner can be summed out.** The other owners' choices in
@@ -2730,8 +2785,8 @@ mass $o(1)$ to the conditional law given $I$ and $\Phi$. That moves it by at
 most $o(1)$ in total variation, though not uniformly state by state.
 $\square$
 
-The lemma fixes the order of operations:
-- the focal owner's own future is summed out, since others never see it;
+After that preprocessing, the lemma fixes the order of operations:
+- the normalized focal future is summed out on the retained nonfocal domain;
 - excluded owners are summed out over a common domain, so their
   posteriors, which may differ between the two games, never enter;
 - nothing is compared history by history;
@@ -2826,8 +2881,10 @@ counterpart of a bad-binding history has the same in-phase behaviour, so
 the same $\Phi$ status. A charged history in which $\Phi$ holds is compared
 with a clean one in which $\Phi$ holds, which exists when $\Phi$ is possible.
 
-**Claim 2** follows from Lemma T for the regular reference law, followed by
-the relative remainder comparisons inside $I\cap\Phi$. The mathematical
+**Claim 2** follows by the ordered comparisons above and Lemma T on the
+retained regular reference law. In a whole-menu RAW realization this is
+the $G$ law after BOTH repairs; its focal continuation is summed only
+after restricting to $G$. The mathematical
 audit gives the normalized law, the original-prior non-reading argument,
 and the common weighted operational domain. The hypotheses use the
 following construction facts.
@@ -2894,7 +2951,27 @@ $\mu^H(\Pi(I))$. So the honest choice $\sigma^H$ is optimal. (If $\Phi$ is
 impossible at $I$ (Lemma A3), the first term vanishes and every value is
 optimal.)
 
-*Proof.* There are three cases.
+*Proof.* First justify conditioning on the owner's delivery successes.
+Recover its observable local transcript from $I$. S2--S3 factor its
+information likelihood into agreement of the current event seed with that
+transcript and a constraint on all remaining original randomness. Its
+filtered seed is therefore independent of that remainder. Later own event
+seeds have not been read. By the whole-phase local-calendar induction,
+binding success depends on these own seeds and own timing tapes, ignoring
+values and absolute readiness shifts. Foreign success and the foreign word
+depend only on the nonfocal coordinates. Thus, for $S$ meaning success of
+the owner's remaining bindings, whenever the conditioning is positive,
+$$
+ \mathcal L_{Q_n}(o\mid I,\Phi,S)=\mathcal L_{Q_n}(o\mid I,\Phi).
+$$
+This is a local-seed likelihood argument, not an appeal to delivery
+optimality. Compare bounded success-weighted numerators on this reference
+experiment and transfer by the relative estimates before taking limits;
+do not divide a finite-stage error by $\Pr_n(S\mid I,\Phi)$. If the limiting
+own-success coefficient is positive, the conditional law follows by
+continuity. If it is zero, its payoff term vanishes and no conditioned law
+is used.
+There are now three cases.
 
 - *$j$'s own binding fails.* Then $j$ gets $a_j$.
 - *Some other binding of the phase fails, while $j$'s succeeds.* The reset
@@ -2925,8 +3002,10 @@ against a mixture that includes another player's failure. That is Example 3.
 
 **Lemma B3 (delivery).** Take a forced or lifted history at which $j$'s
 event $e$ is unresolved and $j$ has sent nothing for it. Others in the phase
-may be late, or may already be excluded. Let $j$ hold no bad binding. Consider
-policies $s$ that send at most the free packet. Call $s$ *own-service* if it
+may be late, or may already be excluded. Let $j$ hold no bad binding. Fix
+the binding value $v$, or a fixed predrawn value law independent of timing;
+at a reveal fix its bound value and prescribed opening. Consider delivery
+policies $s$ that send at most this free packet. Call $s$ *own-service* if it
 reads only $j$'s activations for $e$, the clock relative to $r_e$, and, for a
 reveal, the value being opened. A general policy may read everything $j$
 observes, including leaks, receipts and others' openings in flight. Let $P^*$
@@ -2945,6 +3024,10 @@ or 2 according to that bit, and sending surely succeeds. Then always sending
 earns $1.5$, while sending only after seeing one of the bits succeeds with
 probability $\tfrac12$ and earns $\tfrac12$ or $1$, not $\tfrac12\cdot1.5$. Part
 (b) bounds such policies anyway.
+
+The value is fixed throughout this lemma. Choosing a value adaptively after
+WAIT is addressed by one-shot value and timing comparisons at every full
+information set below, not by asserting a common $V$ across different values.
 
 *Proof.* Write $Z$ for everything in the run other than $\xi_e$ and $j$'s
 choices for $e$: Nature, the players' private randomization (including $j$'s
@@ -3069,6 +3152,25 @@ rules are own-service, so they do not react to others' traffic. The cases:
     - a timing deviation, which yields at most $P^*V+(1-P^*)a_j\le V$
       (Lemma B3), or $a_j$ for a doomed player;
     - a charged action (Lemma C).
+  - **Joint value and timing choices.** At any full unsent binding set,
+    write $\tau$ for its prescribed conditional domain law and
+    $W_v=\mathbb E[G_v(Z)]$. The source comparison with the common reset
+    term gives $W_v\le W_\tau$, with vanishing finite-stage error. An
+    immediate uncharged SEND has value-independent success probability
+    $p_{\rm now}\le P^*$ under the filtered local seed law. Since
+    $W_\tau\ge a_j$,
+    $$
+      a_j+p_{\rm now}(W_v-a_j)
+      \le a_j+P^*(W_\tau-a_j).
+    $$
+    WAIT followed by the prescription retains the same reduced source
+    query: no own source event occurs before this SEND, and current-block
+    foreign misses are removed by the specified pins. Every WAIT atom is
+    independent of the still-unused domain coordinate. Its eventual value
+    therefore has the same law $\tau$, and its remaining timing policy has
+    success probability at most $P^*$. The prescribed rule attains the
+    bound. These comparisons at EVERY later full information set cover
+    adaptive choices after waiting by the one-shot deviation principle.
   - **Finer native information.** Natively, $j$ may observe in-phase events
     that $\Pi(I)$ ignores: others' in-phase expiries, receipts, leaks, and in reveal phases others' openings. These do not change what is
     optimal.

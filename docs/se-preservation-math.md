@@ -40,6 +40,14 @@ a constant exists because the actual extended game is finite and its chance
 laws are fixed, including its original setup law. It is not an information
 mass floor and does not bound a perturbed behavioral probability.
 
+This does not require atoms in an original seed space. A seed can first be
+pushed to its complete response table on the fixed finite collection of
+possible local records. There are finitely many such tables. Use the
+minimum positive atom of that pushforward law (and the corresponding
+finite remainder-response law) when defining b. This is a deterministic
+quotient of the SAME initialized randomness, preserving its independence
+and observable run law; no seed law is perturbed or refreshed.
+
 At a fixed stage n, write rho_n for the minimum positive source action atom,
 zeta_n for the native perturbation scale, and M for the charged-action
 exponent. For sufficiently large n, each uncharged prescribed local atom has
@@ -231,6 +239,30 @@ the same contradiction, since the latter exhausts the calendar. Thus the
 first SEND has the same relative clock in both runs, or neither sends. S1
 and the packet quotient give the same resolved success bit. Exact inclusion
 times need not agree.
+
+The whole-phase induction has a precise invariant. For every processed
+foreign occurrence the paired runs have the same virtual typed choice,
+skip status, relative first-SEND decision and resolved success bit. For
+each owner they have the same preceding virtual word. Start with the same
+old entry and original random coordinates. A minimal unprocessed foreign
+event has the same skip status and virtual query by that invariant and
+the no-new-miss prescription. An ordinary encoder reads the same original
+domain coordinate. Its timing tape gives the same local decision at each
+potential relative activation; if one episode never sends, completion
+forces it to consume the entire remaining calendar. S1 then gives the
+same success bit. Readiness and inclusion may occur at different absolute
+clocks, which the selected binding query and service rule ignore.
+
+Foreign predecessors already satisfy the invariant. A focal predecessor
+can change readiness time but cannot prevent readiness: even a failed
+event completes, and the old attempt cannot close until its events finish.
+Same-owner order prevents a second live own event from excluding this
+owner during its unresolved episode. Thus the induction covers all events,
+including repeated ownership, and reaches the completed ORIGINAL attempt
+before any restore. Its foreign word and Phi are functions of the original
+nonfocal randomness. This proves locality of the selected whole-phase
+experiment; independent event seeds alone would not prove it for policies
+that read foreign traffic or hidden value-dependent menus.
 
 The source query reads the old entry's public data and its owner's preceding
 virtual source choices. Induct in a topological order of the phase graph,
@@ -680,10 +712,11 @@ its known-failed attachments. Its owner, event and attempt are fixed, so it
 is still an antichain. For any admissible opponents and future profile, its
 payoff as a function of the shared value distribution x has the form
 
-    U_K(x) = c + sum_{I in R_K} r_I (x . V_K)
+    U_K(x) = c + pi_K sum_{I in R_K} r_I (x . V_K)
                + sum_{I in F_K} r_I c_I.
 
-Here r_I>0 is the reach probability, independent of x. Ancillary-word
+Here r_I>0 is the reach probability, independent of x, and pi_K>0 is the
+fixed probability of taking the current domain branch. Ancillary-word
 cancellation gives the SAME conditional vector V_K at each ordinary member;
 the failed-member c_I is exactly action-independent. Thus maximizing U_K
 maximizes each ordinary member's conditional payoff, while failed members
@@ -707,7 +740,10 @@ Write their payoff vectors as
 into the constant term. The pool objective is then
 
     constant + Lambda_K (x . H_K),
-    Lambda_K = sum_{I in R_K} r_I lambda_I.
+    Lambda_K = pi_K sum_{I in R_K} r_I lambda_I.
+
+At a binding pi_K=(1-alpha_n)(1-beta_n); without the accepted-failure
+tier it is 1-alpha_n. It is common to the class and independent of x.
 
 If Lambda_K>0, its constrained maximizers are EXACTLY the constrained
 maximizers of x.H_K, however small Lambda_K is. For a domain menu of size d
@@ -728,6 +764,78 @@ event. If Lambda_K=0, every ordinary coefficient in this nonnegative sum is
 zero, so the entire class is action-independent; no conditional ranking is
 needed. Copied honest classes use the separately preserved honest beliefs,
 rather than this free-agent maximization.
+
+### The finite game and the conditional best-response bound
+
+Here is the fixed-point argument with its quantifiers made explicit. Fix n
+and the failure rates and domain floors first. The players of the auxiliary
+game are the FREE reduced classes K, not the original full-information
+members. A pure action of K is a domain value in its common finite menu;
+its mixed action is a distribution x_K with x_K(v)>=gamma_n for every v.
+Insert these distributions into the original full-information source game,
+using the specified honest and doomed pins at the other classes. This
+defines a genuine behavioral profile for EVERY auxiliary strategy profile.
+Use the original owner's ex-ante expected terminal payoff as K's utility.
+
+No genuine source path visits K twice: the key preserves the logical
+occurrence, which strictly advances at every source transition. The reach
+weight r_I of each member I is consequently independent of x_K. All
+occurrences of x_K in the expected payoff are disjoint current-action
+factors. Holding the other classes fixed therefore makes the utility affine
+in x_K. The utility is continuous in the whole finite profile. The product
+of the nonempty compact convex floor simplices thus has a constrained
+equilibrium by the finite-game best-response fixed-point argument. There
+is no Bayes denominator in this existence argument and no equilibrium
+reach probability enters the choice of gamma_n.
+
+To identify that equilibrium's INDIVIDUAL incentives, fix its opponents
+and future play, and fix an ordinary full-information member I of K.
+Let w be its erased own retired word. Its retained key q and w reconstruct
+every past own observation and action by static restriction, in source
+order. Substituting a compatible w changes no public observation: a voided
+binding is never opened, its obligations are discarded, and subsequent
+foreign kernels and reset continuations read the shared key. Hence the
+complete other-owner/chance domain D(q) is unchanged. For complete future
+original randomness omega, the unnormalized likelihood is exactly
+
+    p_n(z,omega,w,q) = 1{z in D(q)} A_n(z,omega;q) L_j(w;q).
+
+This identity is for the original fixed setup and chance laws. In
+particular A_n retains entire other-owner private tuples and retired words.
+At a positive full-information member, L_j(w;q)>0 cancels in Bayes' rule.
+The remaining-block success event D uses the common occurrence-level
+omission/failure coins; it reads neither w nor the forced current domain
+value. Restricting the displayed identity to D leaves the SAME cancellable
+factor. Conditional successful-phase payoff H_K is therefore common across
+ordinary members, even at finite n. Agreement of unconditional vectors
+alone would not establish this step.
+
+For fixed other classes, the source reset decomposition below now gives
+
+    utility_K(x_K) = constant + Lambda_K (x_K . H_K),
+    Lambda_K = pi_K sum_{ordinary I in K} r_I Pr_n(D | I) >= 0.
+
+The current domain-branch probability pi_K is fixed before optimization:
+it is (1-alpha_n)(1-beta_n) at a binding and 1-alpha_n at a reveal.
+
+Known-failed attachments contribute only constants: every changed current
+value is voided, or its owner is itself excluded. The common-flag coupling
+and erased continuation give the same reset distribution in either case.
+No future best-response assertion is used here. If Lambda_K>0, an EXACT
+auxiliary best response maximizes x_K.H_K. Write d for its menu size and
+S_j for the fixed terminal payoff spread. The floor-simplex representation
+x_K=gamma_n*1+(1-d*gamma_n)*y yields the explicit individual bound
+
+    H_K(v) - x_K.H_K <= d*gamma_n*S_j   for every domain value v.
+
+The bound has no inverse reach weight or inverse success probability.
+If Lambda_K=0, full mixing gives r_I>0 at every genuine member, so each
+ordinary Pr_n(D | I)=0 and its unconditional current-action payoff is
+constant. Such a class imposes no successful-phase ranking. Honest pins
+instead use the separately retained honest beliefs and honest optimality
+in the limit. These statements establish precisely what the pooled fixed
+point supplies; an equilibrium of a game that merely SUMS incompatible
+conditional rankings would not suffice.
 
 ### The original plan uses reduced occurrences as coordinates
 
@@ -1050,6 +1158,31 @@ failure, so it is indifferent; its coefficient is zero and is never divided
 out. Together these comparisons justify taking
 beta_n->0 in a sequentially rational limit of the full-menu construction.
 
+For clarity, the induction's safe action requires more than a typed
+nonfailure menu entry. Here non-doomed means that no retained own obligation
+is already invalid. The standing guard-satisfiability assumption supplies
+an owner-observable accepted value at every relevant reachable commit;
+choosing it preserves own validity. Correctly opening then satisfies every
+completed own obligation. A typed domain action with a deferred rejecting
+guard is not a safe action. Satisfiability only on intended-reachable
+histories would not by itself justify this use after exclusions.
+
+The conditional induction also keeps the right beliefs. If J is a later
+full-information set of this owner after forcing a current own action,
+perfect recall fixes that action and its earlier information throughout J.
+Its positive likelihood factor is therefore common to every history of J
+and cancels from its Bayes posterior. Already processed omission flags are
+in the genuine sequential public scan; already processed own failure flags
+are in own recall. Remaining success conditions fix UNUSED occurrence
+coins, whose laws are independent of the hidden world. At J, the same
+conditional-ranking argument applies with the same prescribed domain law.
+Induct over remaining own decisions within the block, and use the ordinary
+unconditioned induction after a successful close or retry. A safe action
+preserves validity; the floor draw, omission and accepted-failure branches
+cost at most S_j*O(T(alpha_n+beta_n+C*gamma_n)). This proves the stated
+m_j-o(1) bound without conditioning a previously obtained error estimate
+on a rare success event.
+
 There is also a separate RELATIVE deletion argument for transport. Consider
 foreign owners active at I and paths satisfying Phi through the original
 commitment attempt. Any earlier accepted-failure binding of such an owner
@@ -1309,3 +1442,9 @@ from native zeta_n^3. The full source minimum rho_n includes beta_n and
 cannot replace gamma_n in the source repair bound. The enlarged construction,
 its owner-density cancellation, native chronological readback and the
 whole-phase service induction still require checked Lean realizations.
+
+The safe-value induction also requires a formal guard-viability adapter at
+every non-doomed recovery view it uses. Mere domain-menu nonemptiness, or
+satisfiability only at intended-reachable histories, does not supply that
+scope. The mathematical argument uses the standing all-reachable-history
+guard-satisfiability assumption and owner-observable guard predictions.
