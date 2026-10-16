@@ -1,6 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.RecoverySourceBoundary
+import Vegas.Source.CommitPhaseRecall
+import Vegas.Game.CommitAttemptSurvivingRecall
 import Vegas.Game.CompiledCommitCompletion
 import Vegas.Compile.CommitPrefixAdmission
 import Vegas.Source.CommitPrefixIntendedLift
@@ -98,6 +100,12 @@ theorem RecoverySourceCheckpoint.after_commit_clean
         state.retired⟩ : PhaseRuntimeState ((toEventGraph setup.program).withMode mode)),
       next.residual.lift (ProtocolState.entry next.residual.tail next.source) =
         checkpoint.commitResultPoint (phase.drain state.current) ∧
+      (∀ who, who ∉ (phase.drain state.current).excluded →
+        next.source.history who = checkpoint.source.history who ++
+          (decodeHistory setup.program ((phase.drain state.current).native.config.history.map
+            ((toEventGraph setup.program).fromModeCompletion mode)) who).drop
+              (decodeHistory setup.program (state.entry.native.config.history.map
+                ((toEventGraph setup.program).fromModeCompletion mode)) who).length) ∧
       ((phase.drain state.current).excluded = ∅ →
         ProtocolState.Intended setup.program (checkpoint.residual.lift
           (ProtocolState.entry checkpoint.residual.tail checkpoint.source)) →
@@ -229,7 +237,7 @@ theorem RecoverySourceCheckpoint.after_commit_clean
       trace := reachedTrace
       views := finalViews
       origin := origin.compose (block.protocolSuffix suffix)
-      historyAlignment := ?_ }, ?_, ?_⟩
+      historyAlignment := ?_ }, ?_, ?_, ?_⟩
   · rw [address]
     exact finalCompiled
   · intro point excluded joint
@@ -259,6 +267,15 @@ theorem RecoverySourceCheckpoint.after_commit_clean
       (phase.finished_prefix image (phase.drain_within state.current within.2) finished)
       alignedHistory views.actionEq
   · rfl
+  · intro who active
+    exact decodeCommitAttempt_history_extension_of_survivor setup.program mode block suffix
+      embedding state.attempt.phase compiled.rankEq state.entry.native image.native source
+      state.entry.excluded who (by rw [excludedEq]; exact active)
+      (phase.drain_bindingInvariant state.current binding.active)
+      (phase.drain_invariant state.current native.active).reachable
+      (remembered.trans (phase.drain_history_prefix state.current)) within.1
+      (phase.finished_prefix image (phase.drain_within state.current within.2) finished)
+      views.actionEq
   · intro clear intended admitted
     have completed : ∀ index : Fin (eventCount (block.prepend suffix)),
         index.val < block.length → embedding.event index ∈ image.native.config.cut.completed := by
@@ -295,9 +312,10 @@ theorem RecoverySourceCheckpoint.after_commit_exhausted
     let image := phase.drain state.current
     let rebuilt := phase.drain (PhaseRuntimeState.restore state.entry image)
     let archive := state.retired ++ [⟨⟨phase.low, state.generation⟩, image.native⟩]
-    Nonempty (RecoverySourceCheckpoint setup mode
+    (∃ next : RecoverySourceCheckpoint setup mode
       (⟨remaining, state.generation, rebuilt, rebuilt, archive⟩ :
-        PhaseRuntimeState ((toEventGraph setup.program).withMode mode))) ∧
+        PhaseRuntimeState ((toEventGraph setup.program).withMode mode)),
+      ∀ who, who ∉ image.excluded → next.source.history who = checkpoint.source.history who) ∧
       state.normalize = PhaseRuntimeState.settle remaining state.generation rebuilt rebuilt
         archive := by
   rcases checkpoint with ⟨⟨Γ, O, program, lift⟩, source, refs, registry, embedding, before,
@@ -403,7 +421,7 @@ theorem RecoverySourceCheckpoint.after_commit_exhausted
         obtain ⟨who, member⟩ := missedSource
         have excluded := (Finset.mem_sdiff.mp member).1
         rw [imageClear] at excluded
-        exact False.elim (Finset.notMem_empty _ excluded) }⟩
+        exact False.elim (Finset.notMem_empty _ excluded) }, ?_⟩
   · rw [address]
     exact finalCompiled
   · intro point excluded joint
@@ -414,5 +432,8 @@ theorem RecoverySourceCheckpoint.after_commit_exhausted
     congr 1
     funext terminal
     simp only [Function.comp_apply, cast_cast]
+  · intro who active
+    have outside : who ∉ block.owners := fun member => active (allSource member)
+    exact closed.history_eq_of_not_owner who outside
 
 end Vegas

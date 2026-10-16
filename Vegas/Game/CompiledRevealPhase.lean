@@ -133,8 +133,8 @@ theorem completed_reveal_phase_source_path :
         decodeEventAction setup.program (embedding.event index) action =
           decodeEventAction program index
             (cast (congrArg EventField.Action (embedding.layout_eq index)) action)),
-        excluded = ∅ → RecordedSourceHistory setup.program mode native.native.config offset count
-          entry.history final.history := by
+        RecordedSourceHistory setup.program mode native.native.config offset count
+          entry.history final.history excluded := by
   intro count
   induction count with
   | zero =>
@@ -144,9 +144,9 @@ theorem completed_reveal_phase_source_path :
       refine ⟨entry, inherited, agree, guards, failures, sameRevelations, ?_, .refl, ?_⟩
       · intro who
         simp only [Nat.not_lt_zero, false_and, exists_false, or_false]
-      · intro _actions _clear
+      · intro _actions
         exact RecordedSourceHistory.empty setup.program mode native.native.config offset
-          entry.history
+          entry.history inherited
   | succ count ih =>
       intro Γ O program prefixed refs revelations registry embedding before offset compiled native
         inputs reachable entry inherited agree guards failures sameRevelations unique ordered
@@ -291,18 +291,7 @@ theorem completed_reveal_phase_source_path :
             dsimp only [Prod.fst, Prod.snd, ProtocolState.entry]
             rw [oneStep]
             exact (PMF.mem_support_pure_iff _ _).mpr rfl
-          · intro actions clear
-            have nextClear : nextExcluded = ∅ := by
-              apply Finset.eq_empty_iff_forall_notMem.mpr
-              intro who member
-              have later := (finalMembers who).mpr (Or.inl member)
-              rw [clear] at later
-              exact Finset.notMem_empty _ later
-            have active : owner ∉ inherited := by
-              intro member
-              have later := (members owner).mpr (Or.inl member)
-              rw [nextClear] at later
-              exact Finset.notMem_empty _ later
+          · intro actions
             have tailActions : ∀ index action,
                 decodeEventAction setup.program (tailEmbedding.event index) action =
                   decodeEventAction next index
@@ -320,11 +309,21 @@ theorem completed_reveal_phase_source_path :
               rw [returned] at encoded
               change decodeEventAction setup.program (embedding.event zero) action = _
               simpa only [decodeEventAction, zero, Fin.mk_zero, Fin.cases_zero] using encoded
-            have appended : after.history = Function.update entry.history owner
-                (entry.history owner ++ [.reveal owner name disclose]) := by
-              rw [nextHistory, ite_eq_right active]
+            have appended : ∀ who, who ∉ excluded → after.history who =
+                (Function.update entry.history owner
+                  (entry.history owner ++ [.reveal owner name disclose])) who := by
+              intro who survives
+              by_cases inactive : owner ∈ inherited
+              · have different : who ≠ owner := by
+                  intro same
+                  subst who
+                  exact survives ((finalMembers owner).mpr
+                    (Or.inl ((members owner).mpr (Or.inl inactive))))
+                rw [nextHistory, ite_eq_left inactive, Function.update_of_ne different]
+              · rw [nextHistory, ite_eq_right inactive]
             exact RecordedSourceHistory.cons setup.program mode native.native.config offset count
-              entry.history after.history final.history ⟨event, action⟩ recorded rankEq
-              (.reveal owner name disclose) decoded appended (word tailActions clear)
+              entry.history after.history final.history excluded ⟨event, action⟩ recorded rankEq
+              (.reveal owner name disclose) decoded appended (word tailActions)
+
 
 end Vegas

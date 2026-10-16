@@ -58,11 +58,17 @@ theorem RecoverySourceCheckpoint.after_reveal
     ∃ next : RecoverySourceCheckpoint setup mode
       (⟨remaining, state.generation, phase.drain state.current, phase.drain state.current,
         state.retired⟩ : PhaseRuntimeState ((toEventGraph setup.program).withMode mode)),
-      (phase.drain state.current).excluded = ∅ →
+      (∀ who, who ∉ (phase.drain state.current).excluded →
+        next.source.history who = checkpoint.source.history who ++
+          (decodeHistory setup.program ((phase.drain state.current).native.config.history.map
+            ((toEventGraph setup.program).fromModeCompletion mode)) who).drop
+              (decodeHistory setup.program (state.entry.native.config.history.map
+                ((toEventGraph setup.program).fromModeCompletion mode)) who).length) ∧
+      ((phase.drain state.current).excluded = ∅ →
       ProtocolState.Intended setup.program (checkpoint.residual.lift
         (ProtocolState.entry checkpoint.residual.tail checkpoint.source)) →
       ProtocolState.Intended setup.program (next.residual.lift
-        (ProtocolState.entry next.residual.tail next.source)) := by
+        (ProtocolState.entry next.residual.tail next.source))) := by
   let program := checkpoint.residual.tail
   let count := phase.high - phase.low
   let image := phase.drain state.current
@@ -152,7 +158,7 @@ theorem RecoverySourceCheckpoint.after_reveal
         checkpoint.embedding checkpoint.residual.lift checkpoint.views
       origin := checkpoint.origin.compose
         (revealTail_protocolSuffix count program prefixed)
-      historyAlignment := ?_ }, ?_⟩
+      historyAlignment := ?_ }, ?_, ?_⟩
   · rw [address, high]
     rw [revelations]
     exact graphTail
@@ -174,11 +180,22 @@ theorem RecoverySourceCheckpoint.after_reveal
     have saved : state.entry.native.config.cut.IsPrefix state.attempt.phase := by
       rw [← low]
       exact within.1
+    funext who
     exact RecordedSourceHistory.native_history setup.program mode
       state.entry.native.config image.native.config state.attempt.phase count
-      checkpoint.source.history final.history (word checkpoint.views.actionEq clear)
+      checkpoint.source.history final.history image.excluded (word checkpoint.views.actionEq)
       reachable (remembered.trans (phase.drain_history_prefix state.current)) saved prefixEnd
-      (checkpoint.historyAlignment oldClear)
+      (fun owner _survives => congrFun (checkpoint.historyAlignment oldClear) owner) who
+      (by rw [clear]; exact Finset.notMem_empty _)
+  · intro who active
+    have saved : state.entry.native.config.cut.IsPrefix state.attempt.phase := by
+      rw [← low]
+      exact within.1
+    exact RecordedSourceHistory.native_history_extension setup.program mode
+      state.entry.native.config image.native.config state.attempt.phase count
+      checkpoint.source.history final.history image.excluded (word checkpoint.views.actionEq)
+      reachable (remembered.trans (phase.drain_history_prefix state.current)) saved prefixEnd
+      who active
   · intro clear intended
     exact checkpoint.origin.intended_of_clear_nonCommit_path _ _ path intended clear
 

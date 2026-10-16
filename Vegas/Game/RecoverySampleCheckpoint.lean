@@ -36,11 +36,17 @@ theorem RecoverySourceCheckpoint.after_sample
     ∃ next : RecoverySourceCheckpoint setup mode
       (⟨remaining, state.generation, phase.drain state.current, phase.drain state.current,
         state.retired⟩ : PhaseRuntimeState ((toEventGraph setup.program).withMode mode)),
-      (phase.drain state.current).excluded = ∅ →
+      (∀ who, who ∉ (phase.drain state.current).excluded →
+        next.source.history who = checkpoint.source.history who ++
+          (decodeHistory setup.program ((phase.drain state.current).native.config.history.map
+            ((toEventGraph setup.program).fromModeCompletion mode)) who).drop
+              (decodeHistory setup.program (state.entry.native.config.history.map
+                ((toEventGraph setup.program).fromModeCompletion mode)) who).length) ∧
+      ((phase.drain state.current).excluded = ∅ →
       ProtocolState.Intended setup.program (checkpoint.residual.lift
         (ProtocolState.entry checkpoint.residual.tail checkpoint.source)) →
       ProtocolState.Intended setup.program (next.residual.lift
-        (ProtocolState.entry next.residual.tail next.source)) := by
+        (ProtocolState.entry next.residual.tail next.source))) := by
   rcases checkpoint with ⟨⟨Γ, O, program, lift⟩, source, refs, registry, embedding, before,
     compiled, terminalAligned, agrees, guards, failures, unique, ranks, actors, commits,
     owners, endpoints, automatic, histories, memories, steps, menus, readouts, trace, views,
@@ -195,7 +201,7 @@ theorem RecoverySourceCheckpoint.after_sample
           views := ProtocolViewSuffix.sampleTail setup.program fresh law next refs embedding
             lift views
           origin := .sampleTail fresh law next origin
-          historyAlignment := ?_ }, ?_⟩
+          historyAlignment := ?_ }, ?_, ?_⟩
       · rw [address]
         exact compiled.sampleTail (_openNames := O) setup.program fresh law next refs
           source.revelations registry embedding before state.attempt.phase
@@ -213,7 +219,7 @@ theorem RecoverySourceCheckpoint.after_sample
           rfl
         have word := RecordedSourceHistory.sample setup.program mode image.native.config
           state.attempt.phase source.history ⟨event, action⟩ recorded
-          (show event.val = state.attempt.phase from ranked.trans low) decoded
+          (show event.val = state.attempt.phase from ranked.trans low) decoded image.excluded
         have saved : state.entry.native.config.cut.IsPrefix state.attempt.phase := by
           rw [← low]
           exact within.1
@@ -222,11 +228,36 @@ theorem RecoverySourceCheckpoint.after_sample
             finished
           rw [← low, ← singleton]
           exact ended
+        funext who
         exact RecordedSourceHistory.native_history setup.program mode
           state.entry.native.config image.native.config state.attempt.phase 1
-          source.history source.history word reachable
+          source.history source.history image.excluded word reachable
           (remembered.trans (phase.drain_history_prefix state.current)) saved prefixEnd
-          (historyAlignment oldClear)
+          (fun owner _survives => congrFun (historyAlignment oldClear) owner) who
+          (by rw [clear]; exact Finset.notMem_empty _)
+      · intro who active
+        obtain ⟨⟨selected, action⟩, recorded, named⟩ :=
+          List.mem_map.mp ((image.native.config.history_exact event).mpr completed)
+        change selected = event at named
+        subst selected
+        have decoded : decodeEventAction setup.program event action = none := by
+          rw [views.actionEq zero action]
+          rfl
+        have word := RecordedSourceHistory.sample setup.program mode image.native.config
+          state.attempt.phase source.history ⟨event, action⟩ recorded
+          (show event.val = state.attempt.phase from ranked.trans low) decoded image.excluded
+        have saved : state.entry.native.config.cut.IsPrefix state.attempt.phase := by
+          rw [← low]
+          exact within.1
+        have prefixEnd : image.native.config.cut.IsPrefix (state.attempt.phase + 1) := by
+          have ended := phase.finished_prefix image (phase.drain_within state.current within.2)
+            finished
+          rw [← low, ← singleton]
+          exact ended
+        exact RecordedSourceHistory.native_history_extension setup.program mode
+          state.entry.native.config image.native.config state.attempt.phase 1
+          source.history source.history image.excluded word reachable
+          (remembered.trans (phase.drain_history_prefix state.current)) saved prefixEnd who active
       · intro clear intended
         exact origin.intended_of_clear_nonCommit_path _ _ path intended
           (excludedEq.symm.trans clear)

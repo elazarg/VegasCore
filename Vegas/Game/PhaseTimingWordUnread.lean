@@ -60,7 +60,8 @@ local notation "family" => phaseTimingWordPlanPolicy setup mode runtime leaks bo
 local notation "pool" => phaseTimingPool setup mode runtime leaks bounds initial horizon
   scheduler bound
 
-local instance : Fintype (FreeKeyedPool isFree isKeyed poolKey) := Fintype.ofFinite _
+local instance timingWordUnreadPoolFintype :
+    Fintype (FreeKeyedPool isFree isKeyed poolKey) := Fintype.ofFinite _
 
 open Classical in
 /-- The actual current pool coordinate has not been used in any earlier

@@ -2,6 +2,7 @@
 
 import Vegas.Game.RecoverySourceCheckpoint
 import Vegas.Game.RecoverySourceBoundary
+import Vegas.Game.CommitAttemptSurvivingRecall
 import Vegas.Game.CompiledCommitClosing
 import Vegas.Game.CompiledCommitTail
 import Vegas.Game.CompiledCommitMaximality
@@ -32,11 +33,19 @@ theorem RecoverySourceCheckpoint.after_commit_retry
     (maximal : state.phases.IsChain fun before after =>
       before.kind ≠ after.kind ∨ before.kind = .sample)
     (binding : state.BindingRecord) (receipts : state.ReceiptRecord)
-    (stored : state.StoredCheckpoint) (finished : phase.Finished (phase.drain state.current))
+    (remembered : state.HistoryCheckpoint)
+    {inputs} (native : state.Invariant inputs)
+    (finished : phase.Finished (phase.drain state.current))
     (missed : (((phase.drain state.current).excluded \ state.entry.excluded) ∩
       phase.owners).Nonempty)
     (survives : (phase.owners \ (phase.drain state.current).excluded).Nonempty) :
-    Nonempty (RecoverySourceCheckpoint setup mode state.normalize) := by
+    ∃ next : RecoverySourceCheckpoint setup mode state.normalize, ∀ who,
+      who ∉ (phase.drain state.current).excluded →
+      next.source.history who = checkpoint.source.history who ++
+        (decodeHistory setup.program ((phase.drain state.current).native.config.history.map
+          ((toEventGraph setup.program).fromModeCompletion mode)) who).drop
+            (decodeHistory setup.program (state.entry.native.config.history.map
+              ((toEventGraph setup.program).fromModeCompletion mode)) who).length := by
   rcases checkpoint with ⟨⟨Γ, O, program, lift⟩, source, refs, registry, embedding, before,
     compiled, aligned, agree, guards, failures, unique, ranks, actors, commits, owners, endpoints,
     automatic, history, memory, steps, menus, readout, sourceTrace, views, historyAlignment, origin⟩
@@ -69,10 +78,37 @@ theorem RecoverySourceCheckpoint.after_commit_retry
   have survivesSource : (block.owners \ (phase.drain state.current).excluded).Nonempty := by
     rw [← ownerEq]
     exact survives
-  obtain ⟨final, closed, values, finalGuards, normalized, _recall⟩ :=
-    sourceClose_of_retry_bindingPhase setup.program mode block suffix embedding compiled positive
-      state remaining installed binding receipts stored source agree guards finished missedSource
-      survivesSource
+  let image := phase.drain state.current
+  let decoded := decodeCommitAttempt setup.program mode block suffix embedding image.native
+    source state.entry.excluded
+  let final := decoded.1
+  have member : phase ∈ state.phases.head? := by
+    rw [installed]
+    exact Option.mem_some_iff.mpr rfl
+  have within := receipts.exclusion.frontier.positioned
+  rw [installed] at within
+  have record := (receipts.exclusion.installed phase member).phase_drain phase
+  have excludedEq : decoded.2.1 = image.excluded :=
+    decodeCommitAttempt_excluded_eq_physical setup.program mode block suffix embedding
+      compiled positive image source state.entry.excluded record
+      (phase.drain_within state.current within.2) finished
+  have attempt : block.Attempt source state.entry.excluded final image.excluded :=
+    excludedEq ▸ decoded.2.2
+  have failed : attempt.failedOwners.Nonempty := by
+    rwa [← attempt.newly_excluded]
+  let closed : block.Close
+      (⟨source, state.entry.excluded, state.generation⟩ : CommitCheckpoint Γ)
+      (.retry ⟨{ source with history := final.history }, image.excluded,
+        state.generation + 1⟩) := .retry attempt failed survivesSource
+  have normalized : state.normalize =
+      ⟨phase :: remaining, state.generation + 1, PhaseRuntimeState.restore state.entry image,
+        phase.drain (PhaseRuntimeState.restore state.entry image),
+        state.retired ++ [⟨⟨phase.low, state.generation⟩, image.native⟩]⟩ := by
+    change PhaseRuntimeState.settle state.phases state.generation state.entry state.current
+      state.retired = _
+    rw [installed]
+    exact PhaseRuntimeState.settle_retry phase remaining state.generation state.entry
+      state.current state.retired finished rfl missed survives
   let sourceInitial := setup.initialConfig setup.initialLaw.support_nonempty.choose
   have reached := closed.reaches_lift setup.program sourceInitial suffix boundary positive lift
     ranks actors (fun point who => menus who point) steps commits owners endpoints automatic
@@ -88,8 +124,8 @@ theorem RecoverySourceCheckpoint.after_commit_retry
       before := before
       compiled := ?_
       terminalAlignment := aligned
-      agrees := values
-      guards := finalGuards
+      agrees := agree
+      guards := guards
       failures := failures
       unique := unique
       remaining := ranks
@@ -113,10 +149,21 @@ theorem RecoverySourceCheckpoint.after_commit_retry
         change who ∈ (phase.drain state.current).excluded at excluded
         change (phase.drain state.current).excluded = ∅ at clear
         rw [clear] at excluded
-        exact False.elim (Finset.notMem_empty _ excluded) }⟩
-  change CompiledSuffix setup.program (block.prepend suffix) refs source.revelations registry
-    embedding before phase.low
-  rw [← low] at compiled
-  exact compiled
+        exact False.elim (Finset.notMem_empty _ excluded) }, ?_⟩
+  · change CompiledSuffix setup.program (block.prepend suffix) refs source.revelations registry
+      embedding before phase.low
+    rw [← low] at compiled
+    exact compiled
+  · intro who active
+    exact decodeCommitAttempt_history_extension_of_survivor setup.program mode block suffix
+      embedding state.attempt.phase compiled.rankEq state.entry.native image.native source
+      state.entry.excluded who (by rw [excludedEq]; exact active)
+      (phase.drain_bindingInvariant state.current binding.active)
+      (phase.drain_invariant state.current native.active).reachable
+      (remembered.trans (phase.drain_history_prefix state.current))
+      (show state.entry.native.config.cut.IsPrefix state.attempt.phase from by
+        rw [← low]; exact within.1)
+      (phase.finished_prefix image (phase.drain_within state.current within.2) finished)
+      views.actionEq
 
 end Vegas

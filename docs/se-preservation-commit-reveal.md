@@ -1,6 +1,6 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**SE: non-concurrent ✓ · timing/raw bounds ✓ · posterior: fixed-entry/all-plans ✓, full law open · incentives open.**
+**SE: non-concurrent ✓ · timing/raw bounds ✓ · stopped channel ✓ · retry history ✓ · full posterior/incentives open.**
 
 <details>
 <summary>Checked recovery milestones and remaining proof obligations</summary>
@@ -175,6 +175,18 @@ the original omission and independent slot tiers. The result requires consistenc
 of the original word-plan family with the full own recall. Arbitrary earlier
 RAW-generated own actions do not automatically satisfy this premise. This
 fixed-entry realization does not establish the full native/source Bayes law.
+At a supported row of the original command-run law, the original input, shared
+full timing plan and full source configuration derive genuine callback traces
+and the required consistency internally. This gives the same actual zero-RAW
+assembled response without a final consistency premise. It does not explain
+arbitrary RAW-generated own actions as draws from that word family.
+
+Every genuine initialized current-attempt callback has an authentic earliest
+same-attempt prefix, with no earlier remembered callback at that address.
+The prefix retains the actual network and permanent recall. Its original
+plan/word posterior factors as the updated plan posterior times the original
+word prior. This avoids initializing a fresh execution at a later checkpoint;
+transport through the subsequent observed attempt still needs proof.
 
 The raw-response parser retains accepted typed failures as source actions.
 Every posterior-supported static member follows the entire actual own recall;
@@ -192,10 +204,13 @@ For a surviving owner after exclusions, the saved checkpoint and current
 generation also give a genuine initialized auxiliary source trace at the
 actual typed binding view. Excluded prefix actions are automatic, and hidden
 active holes can contain accepted failure. The construction preserves the
-complete source own history. Reading the old source history and observed
-attempt transcript from full physical recall remains open; the current native
-history alone loses actions discarded by rollback. Saved source exclusion and
-physical in-phase exclusion are kept separate.
+complete source own history. Actual transition induction now supplies one
+chosen source checkpoint whose complete surviving own history equals the
+deterministic fold of retired completion lists and the live history. The
+construction covers commitment retries, clean and exhausted closes, reveals,
+samples and automatic normalization. Reading this history and the observed
+attempt transcript from the player's information remains open. Saved source
+exclusion and physical in-phase exclusion are kept separate.
 
 Two chronological same-attempt raw binding sends have strictly increasing
 source ranks. Their genuine earlier callbacks, readiness and event distinctness
@@ -242,8 +257,15 @@ saved-absence conditions; arbitrary inclusion branches derive the updated
 memory and extend both genuine traces. Original AUX omission laws agree at the
 paired source callbacks. With a genuine eligible fallback slot, physical word
 and timing-response couplings preserve both original marginals and the full
-external and erased owner recall. Whole-block compatible-word likelihood
-remains open.
+external and erased owner recall. These actual paired kernels now iterate over
+the original stopped behavioral execution, starting from one authentic full
+entry history. Changing a hidden owner's complete word preserves the full
+external channel and a foreign focal player's full input up to first exclusion,
+commitment-phase exit, the chosen focal input or termination. Both original
+command marginals, network and recall are retained. A separate own-key stop
+preserves external and erased observations without claiming equality of the
+hidden owner's private values. Mixing these likelihoods with original source
+words, entries and RAW perturbations remains open.
 
 At genuine unsent bindings, every actual timing mixture retains the independent
 source slot tier, for arbitrary pool weights including all WAIT. The original
@@ -258,12 +280,21 @@ comparison. The exact native local value is now the actual assessment-belief
 average of the chosen response and its entire original physical continuation.
 Stopping at focal exclusion or actual attempt exit retains the entire boundary
 continuation. The surviving foreign-retry contribution is explicit and bounded
-by its actual boundary mass. Its value cannot be replaced by the exclusion
+by its actual boundary mass. Every surviving retry endpoint of the actual
+stopped local response law now derives completion and a nonfailure receipt for
+the focal event in the exact retired old attempt, for every local response law.
+This follows from actual raw transitions and requires no supplied completion or
+successful-delivery premise. Its value cannot be replaced by the exclusion
 floor; an option-independent reset term or another valid common ranking still
 needs proof. The current completion retains full erased operational recall and
 allows arbitrary policies after a public exclusion. This alone supplies neither
 past-blind source play after foreign exclusion nor event-local delivery choices;
-the incentive comparison needs concrete adapters for both. Source projection at
+the incentive comparison needs concrete adapters for both. Prescribed
+post-exclusion response laws can be represented by replacing only the free
+singleton pool weights. The actual component mixture then equals that law with
+the original uniform RAW perturbation; all clear pool weights are unchanged.
+This identity supplies neither the source-information decoder nor optimality
+of the prescribed continuation. Source projection at
 a partial concurrent cut must distinguish saved/prefix exclusions from physical
 in-phase expiries. Auxiliary source-value identification remains open.
 Comparisons must also cover fresh handles other than the canonical one and

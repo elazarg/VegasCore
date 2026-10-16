@@ -47,7 +47,8 @@ local notation "Pool" => FreeKeyedPool isFree isKeyed poolKey
 local notation "Parts" => PhaseTimingPart setup mode runtime leaks bounds initial horizon
   scheduler bound
 
-local instance : Fintype (FreeKeyedPool isFree isKeyed poolKey) := Fintype.ofFinite _
+local instance timingWordPosteriorPoolFintype :
+    Fintype (FreeKeyedPool isFree isKeyed poolKey) := Fintype.ofFinite _
 
 open Classical in
 /-- At a genuine clear callback the ORIGINAL plan-weight product and

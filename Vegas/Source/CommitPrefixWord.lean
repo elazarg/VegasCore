@@ -33,6 +33,61 @@ theorem prepend_append (earlier : CommitPrefix Γ O Δ P) (later : CommitPrefix 
   | commit name owner fresh guard rest ih =>
       exact congrArg (SourceProgram.commit name owner fresh guard) (ih later)
 
+private theorem commitKernel_cast_tail
+    {name : VarId} {owner : Player} {payload : L.Ty}
+    (fresh : name ∉ Γ.map Prod.fst) (guard : SourceGuard L Γ owner name payload)
+    {first second : SourceProgram Player L ((name, .commitment owner payload) :: Γ)
+      (insert name O)} (same : first = second)
+    (profile : BehavioralProfile (.commit name owner fresh guard first))
+    (view : DecisionView owner Γ) :
+    commitKernel (cast (congrArg BehavioralProfile
+      (congrArg (SourceProgram.commit name owner fresh guard) same)) profile) view =
+      commitKernel profile view := by
+  cases same
+  rfl
+
+private theorem afterCommit_cast_tail
+    {name : VarId} {owner : Player} {payload : L.Ty}
+    (fresh : name ∉ Γ.map Prod.fst) (guard : SourceGuard L Γ owner name payload)
+    {first second : SourceProgram Player L ((name, .commitment owner payload) :: Γ)
+      (insert name O)} (same : first = second)
+    (profile : BehavioralProfile (.commit name owner fresh guard first)) :
+    afterCommit (cast (congrArg BehavioralProfile
+      (congrArg (SourceProgram.commit name owner fresh guard) same)) profile) =
+      cast (congrArg BehavioralProfile same) (afterCommit profile) := by
+  cases same
+  rfl
+
+/-- Sampling concatenated commitment telescopes is exactly chronological
+sampling of the earlier telescope followed by the later one at its updated
+configuration and residual profile. Repeated owners retain their full past. -/
+theorem prefixLaw_append (earlier : CommitPrefix Γ O Δ P) (later : CommitPrefix Δ P Ξ Q)
+    (suffix : SourceProgram Player L Ξ Q)
+    (profile : BehavioralProfile ((earlier.append later).prepend suffix))
+    (entry : Config Player L Γ) :
+    (earlier.append later).prefixLaw suffix profile entry =
+      let split := cast (congrArg BehavioralProfile (earlier.prepend_append later suffix)) profile
+      (earlier.prefixLaw (later.prepend suffix) split entry).bind
+        (later.prefixLaw suffix (earlier.tailProfile (later.prepend suffix) split)) := by
+  induction earlier with
+  | nil => simp only [append, prepend, prefixLaw, tailProfile, cast_eq, PMF.pure_bind]
+  | commit name owner fresh guard rest ih =>
+      have transported :
+          cast (congrArg BehavioralProfile
+            ((CommitPrefix.commit name owner fresh guard rest).prepend_append later suffix))
+            profile = cast (congrArg BehavioralProfile
+              (congrArg (SourceProgram.commit name owner fresh guard)
+                (rest.prepend_append later suffix))) profile := rfl
+      rw [transported]
+      simp only [append, prefixLaw, tailProfile, PMF.bind_bind]
+      have head := commitKernel_cast_tail fresh guard (rest.prepend_append later suffix) profile
+        (entry.view owner)
+      have tail := afterCommit_cast_tail fresh guard (rest.prepend_append later suffix) profile
+      rw [head, tail]
+      apply bind_congr_on_support _
+      intro result _
+      exact ih later (afterCommit profile) (commitSuccessor name guard entry result)
+
 omit [DecidableEq Player] [IExpr.ResultTypes L] in
 /-- Concatenating commitment telescopes adds their static lengths. -/
 theorem length_append (earlier : CommitPrefix Γ O Δ P) (later : CommitPrefix Δ P Ξ Q) :

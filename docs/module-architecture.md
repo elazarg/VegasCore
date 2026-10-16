@@ -1549,7 +1549,7 @@ Surviving source prefixes after exclusions:
 [Commit Prefix Surviving Recall](../Vegas/Game/CommitPrefixSurvivingRecall.lean),
 [Phase Surviving Binding Source](../Vegas/Game/PhaseSurvivingBindingSource.lean),
 [Recovery Surviving Binding Source](../Vegas/Game/RecoverySurvivingBindingSource.lean).
-A surviving binding derives a genuine initialized AUX source trace using saved source exclusion and the actual generation. Excluded slots are automatic and hidden active holes retain accepted failure. Complete source own history is preserved; a deterministic full physical-recall decoder for retired attempts remains open.
+A surviving binding derives a genuine initialized AUX source trace using saved source exclusion and the actual generation. Excluded slots are automatic and hidden active holes retain accepted failure. Actual checkpoint induction supplies one chosen checkpoint with the complete archived-history identity for every surviving owner; reading that identity from player information remains open.
 
 Actual finite-plan physical callback coupling:
 [Phase Binding Clear Observation Law](../Vegas/Game/PhaseBindingClearObservationLaw.lean),
@@ -1560,9 +1560,62 @@ Actual finite-plan physical callback coupling:
 [Phase Timing Word Plan Coupling](../Vegas/Game/PhaseTimingWordPlanCoupling.lean),
 [Phase Binding Clear Command Law](../Vegas/Pending/PhaseBindingClearCommandLaw.lean),
 [Phase Binding Memory Callback](../Vegas/Pending/PhaseBindingMemoryCallback.lean).
-Every owner callback in the current commitment interval is either genuinely unsent or silent. The same original full plan chooses the same canonical channel or keyed option across hidden words. The actual PMF coupling derives both original response marginals, successor memory and full external/erased recall. Clear-restricted original application commands retain the same observation law. Whole stopped-block iteration and through-reset payoff comparison remain separate obligations.
+Every owner callback in the current commitment interval is either genuinely unsent or silent. The same original full plan chooses the same canonical channel or keyed option across hidden words. The actual PMF coupling derives both original response marginals, successor memory and full external/erased recall. The original stopped behavioral execution now iterates these couplings from an authentic full entry history. Through-reset payoff comparison remains open.
 
 Physical attempt values and deviations:
 [Phase Attempt Physical Value](../Vegas/Game/PhaseAttemptPhysicalValue.lean),
 [Phase Attempt Value Comparison](../Vegas/Game/PhaseAttemptValueComparison.lean).
 The original physical stopped execution followed by the same baseline continuation has the actual terminal outcome and payoff. A local gain decomposes exactly into retry and nonretry differences; the retry error is bounded by both actual boundary probabilities. No common retry value or its vanishing is assumed.
+
+Actual stopped word channels:
+[Phase Binding Clear Execution Coupling](../Vegas/Pending/PhaseBindingClearExecutionCoupling.lean),
+[Phase Binding Environment Coupling](../Vegas/Pending/PhaseBindingEnvironmentCoupling.lean),
+[Phase Timing Plan Actor Coupling](../Vegas/Game/PhaseTimingPlanActorCoupling.lean),
+[Phase Binding Stopped Command Coupling](../Vegas/Pending/PhaseBindingStoppedCommandCoupling.lean),
+[Phase Timing Plan Control Coupling](../Vegas/Game/PhaseTimingPlanControlCoupling.lean),
+[Phase Timing Plan History Coupling](../Vegas/Game/PhaseTimingPlanHistoryCoupling.lean),
+[Phase Timing Plan Stopped Law](../Vegas/Game/PhaseTimingPlanStoppedLaw.lean),
+[Phase Timing Plan Word Channel](../Vegas/Game/PhaseTimingPlanWordChannel.lean),
+[Phase Timing Plan Stopped Key Law](../Vegas/Game/PhaseTimingPlanStoppedKeyLaw.lean),
+[Phase Timing Plan Word Key Channel](../Vegas/Game/PhaseTimingPlanWordKeyChannel.lean).
+Both original scheduler-command marginals and authentic full entry histories
+are retained. The channel stops at exclusion, phase exit, a chosen focal input
+or termination. It does not identify through-reset payoff or mixed-entry Bayes.
+
+Retired attempts and source own history:
+[Phase Retired Completion](../Vegas/Pending/PhaseRetiredCompletion.lean),
+[Phase Retry Completion](../Vegas/Pending/PhaseRetryCompletion.lean),
+[Phase Attempt Retry Completion](../Vegas/Game/PhaseAttemptRetryCompletion.lean),
+[Phase Local Retry Completion](../Vegas/Game/PhaseLocalRetryCompletion.lean),
+[Phase Archived Recall](../Vegas/Pending/PhaseArchivedRecall.lean),
+[Commit Phase Recall](../Vegas/Source/CommitPhaseRecall.lean),
+[Commit Attempt Surviving Recall](../Vegas/Game/CommitAttemptSurvivingRecall.lean),
+[Phase Surviving History](../Vegas/Pending/PhaseSurvivingHistory.lean),
+[Archived Source Recall](../Vegas/Game/ArchivedSourceRecall.lean),
+[Recovery Archived Retry](../Vegas/Game/RecoveryArchivedRetry.lean),
+[Recovery Archived Normalization](../Vegas/Game/RecoveryArchivedNormalization.lean),
+[Recovery Archived Initialization](../Vegas/Game/RecoveryArchivedInitialization.lean),
+[Recovery Archived Binding Recall](../Vegas/Game/RecoveryArchivedBindingRecall.lean).
+Actual transition induction supplies archived own-history alignment for the
+chosen source checkpoint. Every surviving retry of the actual stopped local
+response law derives an old-attempt completed nonfailure receipt. A player
+information decoder and a common retry value remain separate obligations.
+
+Authentic entry prefixes and supported source-word realization:
+[Reactive Mixture Support](../Interaction/ReactiveMixtureSupport.lean),
+[Phase Entry Own Recall](../Vegas/Pending/PhaseEntryOwnRecall.lean),
+[Phase Timing Word Entry Prefix](../Vegas/Game/PhaseTimingWordEntryPrefix.lean),
+[Phase Timing Word Supported Run](../Vegas/Game/PhaseTimingWordSupportedRun.lean),
+[Recovery Timing Word Supported Realization](../Vegas/Game/RecoveryTimingWordSupportedRealization.lean).
+The earliest actual attempt prefix retains network and permanent recall and
+has the original word prior independent of the updated timing plan. Original
+command-run support derives genuine callback traces and consistency, hence the
+actual assembled zero-RAW binding response. Arbitrary RAW own past and the
+mixed-entry native/source posterior are not inferred from that support theorem.
+
+Prescribed post-exclusion laws:
+[Phase Timing Exclusion Weights](../Vegas/Game/PhaseTimingExclusionWeights.lean).
+Replacing free singleton weights represents an arbitrary prescribed response
+with the original uniform RAW tier, preserving all clear pool weights. The
+prescription's source-information decoder and optimality must be proved by its
+consumer.

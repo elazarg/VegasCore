@@ -72,8 +72,8 @@ theorem sourceRecovery_of_completed_revealPhase
         decodeEventAction setup.program (embedding.event index) action =
           decodeEventAction program index
             (cast (congrArg EventField.Action (embedding.layout_eq index)) action)),
-        native.excluded = ∅ → RecordedSourceHistory setup.program mode native.native.config offset
-          count entry.history final.history := by
+        RecordedSourceHistory setup.program mode native.native.config offset
+          count entry.history final.history native.excluded := by
   let prefixed := compiled.revealPrefix_of_phase setup.program mode program refs revelations
     registry embedding before offset phase kind low count high
   have completed : ∀ index : Fin (eventCount program), index.val < count →

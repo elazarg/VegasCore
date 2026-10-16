@@ -119,8 +119,9 @@ theorem recoverySourceTerminal_history
       (fun who => phaseExclusionBase setup mode runtime leaks utility excludedPayoff
         (some control) who) = fun who => setup.commitRecoveryPayoff utility excludedPayoff who
           history := by
-  obtain ⟨checkpoint⟩ := recoverySourceCheckpoint_history setup mode runtime leaks plan maximal
-    horizon scheduler trace
+  obtain ⟨checkpoint, _archivedRecall⟩ :=
+    recoverySourceCheckpoint_history setup mode runtime leaks plan maximal
+      horizon scheduler trace
   have initialized : ((phaseApplication runtime leaks).protocol
       ((setup.initialLaw.map encodeInputs).map (PhaseRuntimeState.initial plan))
       horizon scheduler).Trace (some control) := by

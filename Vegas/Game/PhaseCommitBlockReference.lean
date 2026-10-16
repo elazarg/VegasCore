@@ -62,8 +62,9 @@ theorem phase_ready_binding_block_reference
               (fun final owner => final.view owner) =
             independentProduct (fun owner =>
               (block.prefixLaw suffix typed checkpoint.source).map (Config.view owner)) := by
-  obtain ⟨checkpoint⟩ := recoverySourceCheckpoint_history setup mode runtime leaks plan maximal
-    horizon scheduler trace
+  obtain ⟨checkpoint, _archivedRecall⟩ :=
+    recoverySourceCheckpoint_history setup mode runtime leaks plan maximal
+      horizon scheduler trace
   let inputs : PMF (serviceGraph setup mode).Inputs := setup.initialLaw.map encodeInputs
   have physical : ((phaseApplication runtime leaks).protocol
       (inputs.map (PhaseRuntimeState.initial plan)) horizon scheduler).Trace (some control) := by

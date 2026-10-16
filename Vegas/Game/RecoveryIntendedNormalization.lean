@@ -67,7 +67,7 @@ theorem RecoverySourceCheckpoint.normalized_intended
             have result := checkpoint.after_commit_clean committing phase remaining rfl maximal
               binding receipts stored remembered native order.coverage finishedDrain clean
             rw [drained] at result
-            obtain ⟨⟨next, _point, nextIntended⟩, _normalized⟩ := result
+            obtain ⟨⟨next, _point, _history, nextIntended⟩, _normalized⟩ := result
             exact ⟨next, nextIntended clear intended
               (admitted phase remaining rfl finished committing)⟩
         | reveal =>
@@ -82,14 +82,14 @@ theorem RecoverySourceCheckpoint.normalized_intended
               stored remembered (phase.drain_invariant current native.active).reachable imageOrder
                 finishedDrain
             rw [drained] at result
-            obtain ⟨next, nextIntended⟩ := result
+            obtain ⟨next, _history, nextIntended⟩ := result
             exact ⟨next, nextIntended clear intended⟩
         | sample =>
             have result := checkpoint.after_sample phase remaining rfl kind receipts.exclusion
               stored remembered (phase.drain_invariant current native.active).reachable
                 finishedDrain
             rw [drained] at result
-            obtain ⟨next, nextIntended⟩ := result
+            obtain ⟨next, _history, nextIntended⟩ := result
             exact ⟨next, nextIntended clear intended⟩
       · have unchanged : state.normalize = state := by
           change PhaseRuntimeState.settle (phase :: remaining) generation entry current retired =

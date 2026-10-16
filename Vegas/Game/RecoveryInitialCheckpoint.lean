@@ -13,7 +13,8 @@ open SourceProgram EventGraph EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
-private theorem phaseInitial_eq_raw {graph : Vegas.EventGraph Player L}
+/-- Empty initial exclusion leaves the actual phase dispatcher at its raw checkpoint. -/
+theorem phaseInitial_eq_raw {graph : Vegas.EventGraph Player L}
     (plan : RuntimePhasePlan graph) (inputs : graph.Inputs) :
     PhaseRuntimeState.initial plan inputs =
       (⟨plan.phases, 0, ⟨EventGraphRuntime.State.initial inputs, ∅⟩,
