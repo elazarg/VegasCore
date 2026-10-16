@@ -1,10 +1,9 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.PhaseServiceUnsentPosterior
-import Interaction.ReactiveSchedulerSeedBayes
-import Interaction.ReactiveSiteHorizon
+import Interaction.ReactiveRoundReachability
 
-/-! # The original event seed in actual unsent owner Bayes fibers -/
+/-! # Original local-seed laws at genuine unsent owner beliefs -/
 
 noncomputable section
 
@@ -42,69 +41,44 @@ local notation "draws" => fun state : (app).ProtocolState => match state with
       (ReactiveApplication.Execution.environmentRecall
         (ReactiveApplication.Control.execution current))
 
-variable [Finite (GameTheory.Protocol.ExecutionProtocol.History
-  (ReactiveApplication.ResponseMenu.protocol (PhaseCount.onePacketMenu runtime leaks bounds)
-    (PMF.map (PhaseRuntimeState.initial plan) inputs) horizon
-    (ReactiveApplication.SchedulerImplementation.scheduler
-      (ReactiveApplication.AddressedScheduler.coordinateImplementation
-        (controller runtime leaks priority decideLocal) laws restLaw))))]
-
-/-- Actual finite-site Bayes conditioning separates the original filtered local
-seed from the entire current physical control and every remaining seed. The
-filter is derived from genuine query histories across the whole information fiber. -/
-theorem bayesBelief_unsent_seed_product
+/-- One original filtered local-seed law separates from the full history and
+all remaining seeds for every belief on the actual owner information fiber.
+This includes limiting assessments and sites of zero equilibrium probability. -/
+theorem belief_unsent_seed_product
     (timed : DeadlineExpiry runtime decideLocal)
     (ordered : graph.RevealRelaxedOrdered)
     (maximal : plan.phases.IsChain fun before after =>
       before.kind ≠ after.kind ∨ before.kind = .sample)
-    (profile : ∀ who, (model).BehavioralPolicy who)
     (owner : Player) (site : (model).InformationSite owner)
-    (positive : 0 < (model).informationMass profile owner site)
     (past : List (app).PlayerEntry) (view : (app).PlayerView)
     (siteInfo : site.1 = some (past, view)) (coordinate : PhaseSeedAddress graph)
     (request : PhaseRuntimeState.requests view.application.2 owner coordinate.1)
     (unsent : ∀ message ∈ (app).outputs past,
       PhaseSeedScheduler.ownPacket coordinate.1 owner message = false) :
     ∃ (event : Set LocalSeed)
-      (localPositive : ∃ seed ∈ event, seed ∈ (laws coordinate).support)
-      (residual : PMF ((app).ProtocolState ×
+      (localPositive : ∃ seed ∈ event, seed ∈ (laws coordinate).support),
+      ∀ belief : PMF ((model).InformationHistory owner site.1),
+      ∃ residual : PMF (((model).InformationHistory owner site.1) ×
         ((index : {index : Option (PhaseSeedAddress graph) // index ≠ some coordinate}) →
-          SeedAt index))),
-      ((((model).bayesBelief profile owner site
-        ((menu).decisionInformationAntichain initial horizon (mixture).scheduler owner site)
-          positive).map (fun history => history.1.state)).bind fun state =>
-        (draws state).map fun values :
+          SeedAt index)),
+      (belief.bind fun history => (draws history.1.state).map fun values :
           (index : Option (PhaseSeedAddress graph)) → SeedAt index => (values (some coordinate),
-          (state, fun index : {index : Option (PhaseSeedAddress graph) //
+          (history, fun index : {index : Option (PhaseSeedAddress graph) //
             index ≠ some coordinate} => values index))) =
         ((laws coordinate).filter event localPositive).bind fun seed =>
           residual.map (Prod.mk seed) := by
   classical
-  have horizonPositive := (menu).informationSite_horizon_pos initial horizon
-    (mixture).scheduler owner site
-  let : NeZero horizon := ⟨ne_of_gt horizonPositive⟩
-  let players := (menu).decodeProfile initial horizon (mixture).scheduler profile
-  let occupied := (app).occupationControlLaw (mixture).scheduler players initial horizon
-  let beliefs := ((model).bayesBelief profile owner site
-    ((menu).decisionInformationAntichain initial horizon (mixture).scheduler owner site)
-      positive).map (fun history => history.1.state)
-  have present := (menu).occupation_observation_support initial horizon (mixture).scheduler
-    profile owner site positive
-  have beliefsEq : beliefs = fiberPosterior occupied ((app).observe owner) site.1 :=
-    (menu).bayesBelief_state_eq_occupationPosterior initial horizon (mixture).scheduler profile
-      owner site ((menu).decisionInformationAntichain initial horizon
-        (mixture).scheduler owner site) positive
+  let players := (menu).uniformResponses
   have covered : ∀ who previous current action, action ∈ (players who previous current).support →
       action ∈ (menu).actions who previous current := by
     intro who previous current action supported
-    exact (menu).decode_embedPolicy_covered initial horizon (mixture).scheduler who
-      (profile who) previous current action supported
-  have perState : ∀ state ∈ beliefs.support,
+    exact ((menu).uniformResponses_support who previous current action).mp supported
+  have perHistory : ∀ history : (model).InformationHistory owner site.1,
       ∃ (event : Set LocalSeed)
         (localPositive : ∃ seed ∈ event, seed ∈ (laws coordinate).support)
         (remaining : PMF ((index : {index : Option (PhaseSeedAddress graph) //
           index ≠ some coordinate}) → SeedAt index)),
-        ((draws state).map fun values :
+        ((draws history.1.state).map fun values :
           (index : Option (PhaseSeedAddress graph)) → SeedAt index => (values (some coordinate),
           fun index : {index : Option (PhaseSeedAddress graph) //
             index ≠ some coordinate} => values index)) =
@@ -124,43 +98,48 @@ theorem bayesBelief_unsent_seed_product
           (current.recall owner, current.observe app owner) = (past, view) →
           ∀ candidate, (driver).coordinateConsistentFrom seeds.1 coordinate candidate []
             current.environmentRecall ↔ candidate ∈ event := by
-    intro state supported
-    rw [beliefsEq] at supported
-    obtain ⟨observed, actual⟩ := mem_support_fiberPosterior present supported
-    unfold ReactiveApplication.occupationControlLaw at actual
-    obtain ⟨time, _, actual⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ actual)
-    unfold ReactiveApplication.commandControlLaw at actual
-    obtain ⟨inputState, initialStateSupported, actual⟩ :=
-      Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ actual)
+    intro history
+    have observed := ((menu).info initial horizon (mixture).scheduler owner
+      history.1.trace).symm.trans (history.2.trans siteInfo)
+    obtain ⟨control, controlEq⟩ : ∃ control, history.1.state = some control := by
+      cases stateEq : history.1.state with
+      | none => rw [stateEq] at observed; cases observed
+      | some control => exact ⟨control, rfl⟩
+    rw [controlEq] at observed
+    rw [controlEq]
+    have acting : control.actor = some owner :=
+      ((app).observe_isSome owner (some control)).mp (by rw [observed]; rfl)
+    have represented := (menu).roundSupported_uniform initial horizon (mixture).scheduler
+      (controlEq ▸ history.1.trace)
+    dsimp only [ReactiveApplication.RoundSupported] at represented
+    rw [acting] at represented
+    obtain ⟨accounted, count, before, command, position, priorReached, chosen,
+      commandActor, moved⟩ := represented
+    have within : count < horizon := by omega
+    rw [ReactiveApplication.roundsFrom, PMF.support_bind] at priorReached
+    obtain ⟨inputState, initialSupported, reached⟩ := Set.mem_iUnion₂.mp priorReached
     obtain ⟨input, inputSupported, rfl⟩ :=
-      (PMF.mem_support_map_iff _ _ _).mp initialStateSupported
-    obtain ⟨before, reached, actual⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ actual)
-    obtain ⟨command, chosen, actual⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ actual)
-    obtain ⟨current, moved, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp actual
-    have active : command.actor? app = some owner := by
-      apply ((app).observe_isSome owner
-        (some ⟨horizon - time.val - 1, command.actor? app, current⟩)).mp
-      rw [observed, siteInfo]
-      rfl
+      (PMF.mem_support_map_iff _ _ _).mp initialSupported
     have commandEq : command = .activate owner := by
       cases command with
-      | activate who => exact congrArg ReactiveApplication.Command.activate (Option.some.inj active)
-      | «include» id => cases active
-      | application command => cases active
-      | wait => cases active
+      | activate who =>
+          exact congrArg ReactiveApplication.Command.activate (Option.some.inj commandActor)
+      | «include» id => cases commandActor
+      | application operation => cases commandActor
+      | wait => cases commandActor
     subst command
+    let current := control.execution
     have information : (current.recall owner, current.observe app owner) = (past, view) := by
-      have exactInfo := observed.trans siteInfo
-      change (if (some owner : Option Player) = some owner then
+      change (if control.actor = some owner then
         some (current.recall owner, current.observe app owner) else none) =
-          some (past, view) at exactInfo
-      rw [ite_eq_left rfl] at exactInfo
-      exact Option.some.inj exactInfo
+          some (past, view) at observed
+      rw [ite_eq_left acting] at observed
+      exact Option.some.inj observed
     have pastEq : current.recall owner = past := congrArg Prod.fst information
     have viewEq : current.observe app owner = view := congrArg Prod.snd information
     have invariant := ReactiveApplication.Invariant.policyInvariant app
       (phaseApplication_invariant runtime leaks input) players
-    have priorValid := invariant.runRounds (mixture).scheduler time.val
+    have priorValid := invariant.runRounds (mixture).scheduler count
         (ReactiveApplication.Execution.initial app (PhaseRuntimeState.initial plan input))
           before (PhaseRuntimeState.initial_invariant plan input).1 reached
     have valid := (phaseApplication_invariant runtime leaks input).environmentStep before current
@@ -172,59 +151,57 @@ theorem bayesBelief_unsent_seed_product
       rwa [viewEq]
     obtain ⟨event, localPositive, remaining, product, uniform⟩ := unsent_posterior_splitAt
       runtime leaks priority decideLocal timed laws restLaw bounds plan ordered maximal inputs
-      horizon time.val time.isLt players covered input inputSupported before current owner reached
+      horizon count within players covered input inputSupported before current owner reached
         chosen moved coordinate requested (by rwa [pastEq])
     obtain ⟨values, supported⟩ := ((mixture).posterior current.environmentRecall).support_nonempty
     obtain ⟨_, trace⟩ := PhaseSeedScheduler.trace_of_posterior_support runtime leaks (driver)
-      laws restLaw bounds plan inputs horizon time.val time.isLt players covered input
+      laws restLaw bounds plan inputs horizon count within players covered input
         inputSupported before current owner reached chosen moved values supported
     refine ⟨event, localPositive, remaining, product,
-      ⟨ReactiveApplication.AddressedScheduler.unpack values, horizon - time.val - 1,
+      ⟨ReactiveApplication.AddressedScheduler.unpack values, horizon - count - 1,
         current, trace, requested, information⟩, ?_⟩
     intro seeds left other otherTrace otherRequest otherInfo candidate
     exact uniform seeds left other otherTrace otherRequest (information.trans otherInfo.symm)
       candidate
-  obtain ⟨reference, referenceSupported⟩ := beliefs.support_nonempty
-  obtain ⟨event, localPositive, _, _, witness, uniform⟩ := perState reference referenceSupported
+  obtain ⟨reference, _rest⟩ := site.2
+  obtain ⟨event, localPositive, _, _, witness, uniform⟩ := perHistory reference
   obtain ⟨seeds, left, current, ⟨trace⟩, requested, information⟩ := witness
-  have sameFactor : ∀ state ∈ beliefs.support, ∃ remaining : PMF
+  have sameFactor : ∀ history : (model).InformationHistory owner site.1, ∃ remaining : PMF
       ((index : {index : Option (PhaseSeedAddress graph) // index ≠ some coordinate}) →
         SeedAt index),
-      ((draws state).map fun values :
+      ((draws history.1.state).map fun values :
           (index : Option (PhaseSeedAddress graph)) → SeedAt index => (values (some coordinate),
         fun index : {index : Option (PhaseSeedAddress graph) // index ≠ some coordinate} =>
           values index)) =
         ((laws coordinate).filter event localPositive).bind fun seed =>
           remaining.map (Prod.mk seed) := by
-    intro state supported
+    intro history
     obtain ⟨otherEvent, otherPositive, remaining, product, _, otherUniform⟩ :=
-      perState state supported
+      perHistory history
     have same : otherEvent = event := Set.ext fun candidate =>
       (otherUniform seeds left current trace requested information candidate).symm.trans
         (uniform seeds left current trace requested information candidate)
     subst otherEvent
     exact ⟨remaining, product⟩
-  let remaining := fun state => if supported : state ∈ beliefs.support then
-    Classical.choose (sameFactor state supported) else
-      independentProduct (fun index : {index : Option (PhaseSeedAddress graph) //
-        index ≠ some coordinate} =>
-          ReactiveApplication.AddressedScheduler.coordinateLaws laws restLaw index)
-  let residual := beliefs.bind fun state => (remaining state).map (Prod.mk state)
-  refine ⟨event, localPositive, residual, ?_⟩
-  change (beliefs.bind fun state => (draws state).map fun values :
+  refine ⟨event, localPositive, ?_⟩
+  intro belief
+  let remaining := fun history => Classical.choose (sameFactor history)
+  let residual := belief.bind fun history => (remaining history).map (Prod.mk history)
+  refine ⟨residual, ?_⟩
+  change (belief.bind fun history => (draws history.1.state).map fun values :
           (index : Option (PhaseSeedAddress graph)) → SeedAt index =>
-    (values (some coordinate), (state, fun index : {index : Option (PhaseSeedAddress graph) //
+    (values (some coordinate), (history, fun index : {index : Option (PhaseSeedAddress graph) //
       index ≠ some coordinate} => values index))) = _
   calc
-    _ = beliefs.bind (fun state =>
+    _ = belief.bind (fun history =>
         ((laws coordinate).filter event
           localPositive).bind fun seed =>
-            (remaining state).map fun others => (seed, (state, others))) := by
+            (remaining history).map fun others => (seed, (history, others))) := by
       apply bind_congr_on_support _
-      intro state supported
-      have product := Classical.choose_spec (sameFactor state supported)
-      have mapped := congrArg (PMF.map fun pair => (pair.1, (state, pair.2))) product
-      simpa only [remaining, dite_eq_left supported, PMF.map_bind, PMF.map_comp,
+      intro history _supported
+      have product := Classical.choose_spec (sameFactor history)
+      have mapped := congrArg (PMF.map fun pair => (pair.1, (history, pair.2))) product
+      simpa only [remaining, PMF.map_bind, PMF.map_comp,
         Function.comp_def] using mapped
     _ = _ := by
       rw [PMF.bind_comm]

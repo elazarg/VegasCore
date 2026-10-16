@@ -14,17 +14,17 @@ namespace Vegas
 open SourceProgram EventGraph EventGraphRuntime Interaction GameTheory.Protocol
   GameTheory.Protocol.ExecutionProtocol GameTheory.Math.Probability
 
+section
+
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L)) (mode : ExecutionMode)
   (runtime : EventGraphRuntime (serviceGraph setup mode))
   (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket (serviceGraph setup mode)))
   (bounds : MessageBounds (serviceGraph setup mode))
-  (plan : RuntimePhasePlan (serviceGraph setup mode))
+  (initial : PMF (phaseApplication runtime leaks).State)
   (horizon : Nat) (scheduler : (phaseApplication runtime leaks).Scheduler)
 
-local notation "initial" => setup.initialLaw.map
-  (fun draw => PhaseRuntimeState.initial plan (encodeInputs draw))
 local notation "N" => ReactiveApplication.ResponseMenu.information
   (PhaseCount.onePacketMenu runtime leaks bounds) initial horizon scheduler
 local notation "E" => ReactiveApplication.ResponseMenu.protocol
@@ -62,7 +62,7 @@ theorem phase_clear_profile_queries
       first player info = second player info := by
   intro player info member
   obtain ⟨state, prior, retained, observed⟩ := queriedInfos_prefix setup mode runtime leaks bounds
-    plan
+    initial
     horizon scheduler player info finalTrace member
   rw [← observed]
   cases state with
@@ -114,8 +114,8 @@ theorem phase_clear_historyReach_eq
       (N).historyReachWeight second ⟨some final, finalTrace⟩ := by
   exact (N).runBehavioral_apply_congr_of_queriedInfos first second finalTrace.length
     ⟨some final, finalTrace⟩
-    (phase_clear_profile_queries setup mode runtime leaks bounds plan horizon scheduler first second
-      agree final finalTrace clear)
+    (phase_clear_profile_queries setup mode runtime leaks bounds initial horizon scheduler first
+      second agree final finalTrace clear)
 
 /-- Every recorded own law is an actual earlier queried law. No equality at
 arbitrary free inputs is needed. -/
@@ -134,7 +134,7 @@ theorem phase_clear_ownPlay_policy_eq
   have prefixInfo := (N).queriedInfos_mono_reachesWithin player
     (.step joint legal moved reached) ((N).infoOf_mem_queriedInfos player prior)
   rw [observed] at prefixInfo
-  exact phase_clear_profile_queries setup mode runtime leaks bounds plan horizon scheduler first
+  exact phase_clear_profile_queries setup mode runtime leaks bounds initial horizon scheduler first
     second agree final finalTrace clear player record.1 prefixInfo
 
 /-- The actual counterfactual factor also transfers. Positivity follows from
@@ -155,14 +155,34 @@ theorem phase_clear_counterfactualReach_eq
     rw [(N).playerReachProbability_eq_ownPlayReachProbability,
       (N).playerReachProbability_eq_ownPlayReachProbability]
     exact (N).ownPlayReachProbability_congr _
-      (phase_clear_ownPlay_policy_eq setup mode runtime leaks bounds plan horizon scheduler first
+      (phase_clear_ownPlay_policy_eq setup mode runtime leaks bounds initial horizon scheduler first
         second agree final finalTrace clear player)
   have full := congrArg ENNReal.toReal (phase_clear_historyReach_eq setup mode runtime leaks bounds
-    plan horizon scheduler first second agree final finalTrace clear)
+    initial horizon scheduler first second agree final finalTrace clear)
   rw [(N).historyReachProbability_eq_player_mul_counterfactual first player finalTrace,
     (N).historyReachProbability_eq_player_mul_counterfactual second player finalTrace,
     ownEq] at full
   exact mul_left_cancel₀ ((N).playerReachProbability_pos second mixed player finalTrace).ne' full
+
+end
+
+section
+
+variable {Player : Type} [DecidableEq Player] [Fintype Player]
+  {L : IExpr} [IExpr.ResultTypes L]
+  (setup : Setup (Player := Player) (L := L)) (mode : ExecutionMode)
+  (runtime : EventGraphRuntime (serviceGraph setup mode))
+  (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket (serviceGraph setup mode)))
+  (bounds : MessageBounds (serviceGraph setup mode))
+  (plan : RuntimePhasePlan (serviceGraph setup mode))
+  (horizon : Nat) (scheduler : (phaseApplication runtime leaks).Scheduler)
+
+local notation "initial" => setup.initialLaw.map
+  (fun draw => PhaseRuntimeState.initial plan (encodeInputs draw))
+local notation "N" => ReactiveApplication.ResponseMenu.information
+  (PhaseCount.onePacketMenu runtime leaks bounds) initial horizon scheduler
+local notation "E" => ReactiveApplication.ResponseMenu.protocol
+  (PhaseCount.onePacketMenu runtime leaks bounds) initial horizon scheduler
 
 /-- Each selected raw-send component transfers exactly to the actual common
 profile, since both side products and the real counterfactual factor are local. -/
@@ -180,8 +200,8 @@ theorem phase_clear_raw_positionWeight_eq
         player first ⟨some final, finalTrace⟩ index =
       phaseRawBindingPositionWeight setup mode runtime leaks bounds plan horizon scheduler noise
         player second ⟨some final, finalTrace⟩ index := by
-  have past := phase_clear_ownPlay_policy_eq setup mode runtime leaks bounds plan horizon scheduler
-    first second agree final finalTrace clear player
+  have past := phase_clear_ownPlay_policy_eq setup mode runtime leaks bounds initial horizon
+    scheduler first second agree final finalTrace clear player
   have beforeEq : (N).ownPlayReachProbability (first player)
       (((N).ownPlay player finalTrace).take index) =
       (N).ownPlayReachProbability (second player) (((N).ownPlay player finalTrace).take index) := by
@@ -195,12 +215,14 @@ theorem phase_clear_raw_positionWeight_eq
     apply (N).ownPlayReachProbability_congr
     intro record member
     exact past record (List.mem_of_mem_drop (List.mem_of_mem_tail member))
-  have otherEq := phase_clear_counterfactualReach_eq setup mode runtime leaks bounds plan horizon
+  have otherEq := phase_clear_counterfactualReach_eq setup mode runtime leaks bounds initial horizon
     scheduler first second agree mixed final finalTrace clear player
   unfold phaseRawBindingPositionWeight
   split_ifs
   · dsimp only [phaseMarkedHistoryWeight, phaseRawMixtureOwnPlayWeight]
     rw [beforeEq, afterEq, otherEq]
   · rfl
+
+end
 
 end Vegas

@@ -1076,3 +1076,13 @@ import Vegas.Game.PhaseTimingBindingNoise
 import Vegas.Game.RecoveryResidualUniqueness
 import Vegas.Game.RecoverySavedSourceView
 import Vegas.Game.CompiledCommitRetryRecall
+import Vegas.Game.PhaseRecoveryValueBelief
+import Vegas.Game.PhaseRecoveryValueSilence
+import Vegas.Game.PhaseTimingCommitmentNoise
+import Vegas.Game.PhaseTimingCommitmentProduct
+import Vegas.Game.PhaseTimingValueNoise
+import Vegas.Game.CompiledRecoveryInitialRecall
+import Vegas.Game.PhaseArchivedCommitObservation
+import Vegas.Game.RecoveryArchivedSavedWord
+import Vegas.Game.PhaseRecoveryValueEntry
+import Vegas.Game.PhaseRecoveryValueEntryBelief

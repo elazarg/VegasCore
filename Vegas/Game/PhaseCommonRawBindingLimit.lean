@@ -67,8 +67,8 @@ theorem phase_clear_fiber_raw_share_eq
     rcases history with ⟨⟨state, trace⟩, _info⟩
     change state = some control at atControl
     cases atControl
-    exact ⟨phase_clear_historyReach_eq setup mode runtime leaks bounds plan horizon scheduler first
-      second agree control trace controlClear, fun owner index =>
+    exact ⟨phase_clear_historyReach_eq setup mode runtime leaks bounds initial horizon scheduler
+      first second agree control trace controlClear, fun owner index =>
         phase_clear_raw_positionWeight_eq setup mode runtime leaks bounds plan horizon scheduler
           first
           second agree mixed control trace controlClear noise owner index⟩

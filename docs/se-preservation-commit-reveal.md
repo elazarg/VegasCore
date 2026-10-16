@@ -1,6 +1,6 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**SE: non-concurrent ✓ · block recall ✓ · query recovery/seed Bayes ✓ · source chronology/Bayes/incentives open.**
+**SE: non-concurrent ✓ · seed law at limits ✓ · native Bayes weights ✓ · chronology/source Bayes/incentives open.**
 
 <details>
 <summary>Checked recovery milestones and remaining proof obligations</summary>
@@ -463,11 +463,13 @@ once as WAIT. Its elapsed clock and activation index are therefore the actual
 preceding WAIT and activation counts. The existing counted-log theorem recovers
 the entire operational query transcript across equal owner information,
 including repeated same-clock activations. The original local-seed constraint
-is common across that whole fiber. At a positive finite native information
-site, the original filtered local seed is independent of the full current
-physical control and the updated joint law of all other original seeds.
-This retains arbitrary other local decisions under the stated deadline
-discipline, without a first-delay assumption.
+is common across that whole fiber. One original filtered local-seed law
+works for every belief on its actual native information histories. It is
+independent of the whole history and the updated joint law of all other
+original seeds. In particular, this applies directly to limiting assessments
+and zero-probability sites, without a positive-reach hypothesis or a separate
+product-limit assumption. This retains arbitrary other local decisions under
+the stated deadline discipline, without a first-delay assumption.
 
 The original global source-policy and per-owner full timing-plan draws realize
 the literal assembled stopped physical history law at every actual clear actor.
@@ -476,6 +478,11 @@ their actual recall-updated posteriors. The current ordinary source choice
 factors from the entire remaining private memory at an unsent binding.
 These are source-memory and physical-runtime identities. Identifying the
 common native assessment with chronological source beliefs remains open.
+At every clear native information fiber, its actual fully mixed common Bayes
+weights equal the normalized full-history weights of that same original global
+implementation. This uses only agreement with the clear-site response recipe;
+post-exclusion behavior remains unrestricted. It identifies the factual native
+weights, rather than replacing them by source reference-entry weights.
 Reference source-view conditioning retains full entry and plan tags and their
 actual observation tilt; those reference tags cannot be replaced by independent
 fresh draws at a later entry.
@@ -3717,7 +3724,7 @@ needs its own review. What is known:
 | Actual owner recall reconstructs every positive local query and its index along complete runs, under the operational-domain invariant | `Vegas.EventGraphRuntime.LocalSeedController.runJoint_initial_ownerLog` |
 | Counted unsent query logs are determined by their positive-query history and exhaustion count | `Vegas.EventGraphRuntime.LocalSeedController.CountedQueryLog.eq_of_unsent_signature` |
 | Complete unsent phased query transcripts agree across genuine equal owner information | `Vegas.EventGraphRuntime.PhaseServiceScheduler.unsent_information_transcript` |
-| The original phased local seed factors from full control at a positive native Bayes site | `Vegas.EventGraphRuntime.PhaseServiceScheduler.bayesBelief_unsent_seed_product` |
+| One original local-seed filter factors from full history for every belief at the native site | `Vegas.EventGraphRuntime.PhaseServiceScheduler.belief_unsent_seed_product` |
 | Original source-policy and timing-plan tags realize the initialized stopped physical law | `Vegas.phaseTimingPlanPolicy_value_initial_memory_joint` |
 | The concrete local service derives packet inclusion and expiry resolution on genuine clean one-packet histories | `Vegas.EventGraphRuntime.countedLocalSeedController` |
 | Genuine clean service domains persist while the selected ordered owned event survives | `Vegas.EventGraphRuntime.countedSeedDomain_dispatch_of_activated_survives` |

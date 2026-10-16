@@ -1910,9 +1910,12 @@ Actual ordered query occurrences derive WAIT and activation counts and instantia
 the existing counted-log recovery. Equal unsent owner information determines the
 complete query transcript and every candidate-seed constraint. The original
 filtered local prior factors from the updated full remainder at the actual
-scheduler posterior and finite native Bayes site, retaining the whole physical
-control. The explicit local deadline discipline is required; no general
-adaptive-policy dominance or common delivery ranking is inferred.
+scheduler posterior. One such filter works for every belief on the owner's
+actual information histories, retaining the whole history and all other seeds.
+This includes limiting assessments and zero-probability sites without a
+positive-reach or finite-history hypothesis. The explicit local deadline
+discipline is required; no adaptive-policy dominance or common delivery ranking
+is inferred.
 
 Original global source memory and exact assembled stopped runtime:
 [Phase Recovery Value Recall](../Vegas/Game/PhaseRecoveryValueRecall.lean),
@@ -1964,3 +1967,53 @@ to their exact chosen checkpoint. Archived normalization composes those actual
 paths to the chosen final checkpoint. Paired retry paths preserve full source
 information given the prior signal induction. An observable chronology
 induction across arbitrary callbacks is still required for the total decoder.
+
+Factual common native Bayes weights of the original global implementation:
+[Phase Recovery Value Belief](../Vegas/Game/PhaseRecoveryValueBelief.lean),
+[Phase Recovery Value Silence](../Vegas/Game/PhaseRecoveryValueSilence.lean).
+Actual clear-site recipe agreement identifies the common fully mixed native
+information mass and normalized full-history Bayes weights with the original
+global source-policy/full-plan implementation. The existing locality APIs take
+the actual initial law directly. No independent reference-entry prior is
+substituted. A fixed original pure source-value member retains its fresh AUX
+omission and has the exact base SILENCE atom; sparse members need not be fully
+mixed. Chronological AUX source-belief identification remains separate.
+
+Actual commitment RAW contribution comparisons across full own play:
+[Phase Timing Commitment Noise](../Vegas/Game/PhaseTimingCommitmentNoise.lean),
+[Phase Timing Commitment Product](../Vegas/Game/PhaseTimingCommitmentProduct.lean),
+[Phase Timing Value Noise](../Vegas/Game/PhaseTimingValueNoise.lean).
+Every genuine clear commitment callback derives its singleton or unsent case.
+The actual own-play product is bounded by the same zero-RAW product times a
+near-one factor plus the sum of exact RAW transmission marks, each retaining
+all other original noisy atoms. Accepted failures remain. The same bound holds
+for each original pure source-policy/full-plan member, retaining the fresh AUX
+omission floor without requiring that sparse member to be fully mixed. Summing
+actual stopped input fibers and deriving the relative Bayes error remain open.
+
+Initial and archived source observations from actual owner information:
+[Compiled Recovery Initial Recall](../Vegas/Game/CompiledRecoveryInitialRecall.lean),
+[Phase Archived Saved Observation](../Vegas/Pending/PhaseArchivedSavedObservation.lean),
+[Phase Archived Commit Observation](../Vegas/Game/PhaseArchivedCommitObservation.lean),
+[Recovery Archived Saved Word](../Vegas/Game/RecoveryArchivedSavedWord.lean).
+Equal actual initial observations give equal full source information under the
+original setup draws. At actual retired commitment prefixes, final owner input
+determines the decoded view, exclusion sets and closed source signal. Exact
+native archive-prefix, namespace, retained-image and store provenance determine
+the whole chosen saved source view without a prior source-view equality premise.
+Constructing that provenance through the actual chosen-checkpoint chronology
+remains necessary for the total source-information decoder.
+
+Actual common-strategy entry laws with original immutable memory:
+[Stopped Composition](../GameTheoryExtensions/Analysis/Protocol/StoppedComposition.lean),
+[Phase Attempt Entry Stopping](../Vegas/Pending/PhaseAttemptEntryStopping.lean),
+[Phase Recovery Value Entry](../Vegas/Game/PhaseRecoveryValueEntry.lean),
+[Phase Recovery Value Entry Belief](../Vegas/Game/PhaseRecoveryValueEntryBelief.lean).
+The existing stopped evaluator composes nested stopping predicates. Its first
+visit to an exact full attempt ID is idle and fresh. Under the actual common
+clear-site recipe, the first-entry full History stays joint with the original
+per-owner source-policy/full-plan draws and their true recall-updated posteriors.
+The same member tags govern the later stopped continuation. First exclusion,
+terminal and skipped-entry branches retain their mass. This supplies a factual
+entry carrier, without independent reference priors or an arbitrary-retry
+reachability claim.
