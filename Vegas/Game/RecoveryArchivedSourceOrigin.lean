@@ -52,6 +52,7 @@ inductive ArchivedSourceOrigins (setup : Setup (Player := Player) (L := L)) (mod
       (advanced : nextState.phases = remaining)
       (generation : nextState.generation = state.generation)
       (archives : nextState.retired = state.retired)
+      (boundary : phase.high = nextState.attempt.phase)
       (finished : phase.Finished nextState.entry)
       (reachable : ∃ inputs, nextState.entry.native.Invariant inputs)
       {fuel : Nat}
@@ -126,7 +127,7 @@ theorem get {setup : Setup (Player := Player) (L := L)} {mode : ExecutionMode}
         · simpa only [List.getElem_append_right (Nat.le_refl _), Nat.sub_self,
             List.getElem_cons_zero] using instructions
   | advance _checkpoint _next _previous _phase _remaining _installed _advanced _generation archives
-      _finished _reachable path _instructions ih =>
+      _boundary _finished _reachable path _instructions ih =>
       obtain ⟨old, source, sourceAligned, earlierOrigins, archive, oldAttempt, oldRetained,
         oldSaved, oldAgrees, oldPositive, oldClosed, oldSteps, oldLater, sourcePath,
         oldInstructions, onward⟩ := ih index (by simpa only [archives] using bound)

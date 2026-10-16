@@ -1,6 +1,6 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**SE: non-concurrent ✓ · seed law ✓ · native Bayes ✓ · conditional L1 bound ✓ · source transport/incentives open.**
+**SE: non-concurrent ✓ · seed/Bayes ✓ · native L1/RAW markers ✓ · opening swaps ✓ · source transport/incentives open.**
 
 <details>
 <summary>Checked recovery milestones and remaining proof obligations</summary>
@@ -37,6 +37,17 @@ contributions vanish under one chosen noise schedule, for arbitrary actual
 timing weights and even at vanishing information mass. Canonical failures,
 omissions and opening WAIT remain in the original law; full native/source
 posterior identification is open.
+
+Guarded hidden swaps preserve complete counted opening menus and operational
+timing keys even when original private inputs change. At genuine unsent
+openings of successful bindings, the same full timing plan has exactly the
+same whole response law, retaining timing WAIT and RAW opening-WAIT mass.
+The original global private-plan average admits an explicit good-history
+submeasure. Its deficit is bounded by foreign binding RAW markers, whose
+original-memory average is exactly the intrinsic native position sum.
+Focal recall replay preserves the normalized foreign RAW share. Source-law
+proportionality on complete auxiliary information fibers and prescribed
+reset-continuation optimality remain open.
 
 Supported disclosing memories reconstruct the whole physical native
 configuration. Actual clear counted histories project to ordinary native

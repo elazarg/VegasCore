@@ -31,20 +31,21 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket (serviceGraph setup mode)))
   (bounds : MessageBounds (serviceGraph setup mode))
   (runtimePlan : RuntimePhasePlan (serviceGraph setup mode))
+  (initial : PMF (PhaseRuntimeState (serviceGraph setup mode)))
+  (initialLaw : initial =
+    (setup.initialLaw.map encodeInputs).map (PhaseRuntimeState.initial runtimePlan))
   (horizon : Nat) (scheduler : (phaseApplication runtime leaks).Scheduler)
   (bound : (serviceGraph setup mode).EventId → Nat)
   [Fintype ((PhaseCount.onePacketMenu runtime leaks bounds).protocol
-    ((setup.initialLaw.map encodeInputs).map (PhaseRuntimeState.initial runtimePlan)) horizon
+    initial horizon
       scheduler).History]
   [∀ who, DecidableEq (((PhaseCount.onePacketMenu runtime leaks bounds).information
-    ((setup.initialLaw.map encodeInputs).map (PhaseRuntimeState.initial runtimePlan)) horizon
+    initial horizon
       scheduler).InfoState who)]
 
 local notation "app" => phaseApplication runtime leaks
 local notation "menu" => PhaseCount.onePacketMenu runtime leaks bounds
 local notation "inputs" => setup.initialLaw.map encodeInputs
-local notation "initial" => PMF.map (PhaseRuntimeState.initial runtimePlan)
-  (PMF.map encodeInputs setup.initialLaw)
 local notation "N" => ReactiveApplication.ResponseMenu.information
   (PhaseCount.onePacketMenu runtime leaks bounds) initial horizon scheduler
 local notation "Agent" => InformationModel.InformationAgent (N)
@@ -63,6 +64,8 @@ local notation "pool" => phaseTimingPool setup mode runtime leaks bounds initial
   scheduler bound
 
 local instance nativeMarkPoolFintype : Fintype Pool := Fintype.ofFinite _
+
+include initialLaw
 
 open Classical in
 /-- The SAME actual transition coefficient and original per-owner posterior
@@ -122,14 +125,15 @@ theorem phaseTimingPlanPolicy_native_mark_expect_of_history
     let raw := phaseRawMixtureAtom setup mode runtime leaks bounds runtimePlan horizon scheduler
       noise who (some (control.execution.recall who, control.execution.observe (app) who),
         sentRecord.action)
-    let likelihood := fun observer memory => if observer = who then
-      ((((app).privateTranscriptFrom (entryRecall observer) before).map (fun record =>
-        family observer memory record.1.1 record.1.2 record.2)).prod).toReal * raw *
-          ((((app).privateTranscriptFrom
-            (control.execution.recall who ++ [sentRecord]) suffix).map
-            (fun record => family observer memory record.1.1 record.1.2 record.2)).prod).toReal
-      else ((((app).privateTranscriptFrom (entryRecall observer) (otherSuffix observer)).map
-        (fun record => family observer memory record.1.1 record.1.2 record.2)).prod).toReal
+    let likelihood := fun observer memory =>
+      let native := (menu).restrictPolicy initial horizon scheduler observer
+        (family observer memory)
+      if observer = who then
+        (N).ownPlayReachProbability native ((app).ownPlayFrom (entryRecall observer) before) * raw *
+          (N).ownPlayReachProbability native
+            ((app).ownPlayFrom (control.execution.recall who ++ [sentRecord]) suffix)
+      else (N).ownPlayReachProbability native
+        ((app).ownPlayFrom (entryRecall observer) (otherSuffix observer))
     expect (independentProduct fun observer =>
       ((app).policyMixture (original observer) (family observer)).posterior
         (entryRecall observer))
@@ -141,13 +145,20 @@ theorem phaseTimingPlanPolicy_native_mark_expect_of_history
             ((app).ownPlayFrom (control.execution.recall who ++ [sentRecord]) suffix)
         else (N).ownPlayReachProbability (profile observer)
           ((app).ownPlayFrom (entryRecall observer) (otherSuffix observer)) := by
+  subst initial
+  let initial := (setup.initialLaw.map encodeInputs).map (PhaseRuntimeState.initial runtimePlan)
   intro original family behavior profile raw likelihood
-  have covered (observer past view response)
-      (supported : response ∈ (behavior observer past view).support) :
+  let physicalLikelihood := fun observer memory => if observer = who then
+      ((((app).privateTranscriptFrom (entryRecall observer) before).map (fun record =>
+        family observer memory record.1.1 record.1.2 record.2)).prod).toReal * raw *
+          ((((app).privateTranscriptFrom
+            (control.execution.recall who ++ [sentRecord]) suffix).map
+            (fun record => family observer memory record.1.1 record.1.2 record.2)).prod).toReal
+      else ((((app).privateTranscriptFrom (entryRecall observer) (otherSuffix observer)).map
+        (fun record => family observer memory record.1.1 record.1.2 record.2)).prod).toReal
+  have memberCovered (observer memory past view response)
+      (supported : response ∈ (family observer memory past view).support) :
       response ∈ (menu).actions observer past view := by
-    dsimp only [behavior] at supported
-    rw [(app).policyMixture_policy, PMF.support_bind] at supported
-    obtain ⟨memory, _possible, supported⟩ := Set.mem_iUnion₂.mp supported
     dsimp only [family] at supported
     by_cases same : observer = focal
     · subst observer
@@ -157,13 +168,30 @@ theorem phaseTimingPlanPolicy_native_mark_expect_of_history
       exact phaseTimingPlanPolicy_covered setup mode runtime leaks bounds initial horizon scheduler
         bound fallback wellFormed _ noise noiseNonnegative noiseBounded slotWeight slotNonnegative
           slotBounded memory.1 observer past view response supported
+  have likelihoodEq : likelihood = physicalLikelihood := by
+    funext observer memory
+    dsimp only [likelihood, physicalLikelihood]
+    split
+    · rw [(menu).ownPlayFrom_restrictPolicy initial horizon scheduler observer
+        (family observer memory) (memberCovered observer memory),
+      (menu).ownPlayFrom_restrictPolicy initial horizon scheduler observer
+        (family observer memory) (memberCovered observer memory)]
+    · exact (menu).ownPlayFrom_restrictPolicy initial horizon scheduler observer
+        (family observer memory) (memberCovered observer memory) _ _
+  have covered (observer past view response)
+      (supported : response ∈ (behavior observer past view).support) :
+      response ∈ (menu).actions observer past view := by
+    dsimp only [behavior] at supported
+    rw [(app).policyMixture_policy, PMF.support_bind] at supported
+    obtain ⟨memory, _possible, supported⟩ := Set.mem_iUnion₂.mp supported
+    exact memberCovered observer memory past view response supported
   have average := phaseTimingPlanPolicy_marked_profile_expect_of_history setup mode runtime leaks
     bounds runtimePlan horizon scheduler bound maximal fallback wellFormed assessment mixed finite
       weights noise noiseNonnegative noiseBounded slotWeight slotNonnegative slotBounded who
         control trace active clear event payload binding request unsent final finalTrace finalClear
           sentRecord suffix recalled viewed material transmitted candidate named entryRecall before
             callbackRecall focal foreign replay otherSuffix
-  rw [expect_const_mul, average]
+  rw [likelihoodEq, expect_const_mul, average]
   apply congrArg (chance * ·)
   apply Finset.prod_congr rfl
   intro observer _member

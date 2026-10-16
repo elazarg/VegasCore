@@ -36,14 +36,12 @@ theorem emit_mask (state : PhaseRuntimeState graph) (who : Player)
     split <;> rfl
   rw [calls]
 
-namespace Frame
-
-variable {memory : BindingMemory runtime (nativeLeaks (graph := graph))} {owner : Player}
+variable {owner : Player}
   {original repaired : (phaseApplication runtime leaks).Execution}
 
 /-- Exact physical envelope agreement transports both directions of the
 counted inert raw menu. No probability law or source-view equality is assumed. -/
-theorem inert_response_menu_iff (frame : Frame runtime leaks memory owner original repaired)
+theorem inert_response_menu_iff (network : original.network = repaired.network)
     (bounds : MessageBounds graph)
     (left : PhaseCount.CountRecall runtime leaks original)
     (right : PhaseCount.CountRecall runtime leaks repaired) (material : WitnessedSubmission graph)
@@ -64,6 +62,8 @@ theorem inert_response_menu_iff (frame : Frame runtime leaks memory owner origin
   have knownRight : repaired.network.known owner =
       ReactiveApplication.ResponseMenu.knownPackets (repaired.recall owner)
         (repaired.observe app owner) := app.known_from_recall repaired owner right.1
+  have outputs : app.outputs (original.recall owner) = app.outputs (repaired.recall owner) := by
+    rw [← left.1 owner, ← right.1 owner, network]
   have raw : (⟨some material⟩ : app.Action) ∈
       (PhaseCount.rawMenu runtime leaks bounds).actions owner (original.recall owner)
         (original.observe app owner) ↔
@@ -73,21 +73,25 @@ theorem inert_response_menu_iff (frame : Frame runtime leaks memory owner origin
     rw [PhaseCount.rawMenu, ReactiveApplication.ResponseMenu.fromSubmissions_mem,
       ReactiveApplication.ResponseMenu.fromSubmissions_mem]
     change material ∈ bounds.submissions _ ↔ material ∈ bounds.submissions _
-    rw [← knownLeft, frame.network, knownRight]
+    rw [← knownLeft, network, knownRight]
   rw [PhaseCount.mem_onePacketActions, PhaseCount.mem_onePacketActions]
   constructor
   · rintro ⟨rawMember, silent | ⟨other, transmitted, permitted⟩⟩
     · cases silent
     · cases Option.some.inj transmitted
       refine ⟨raw.mp rawMember, Or.inr ⟨material, rfl, ?_⟩⟩
-      rw [← frame.outputs left.1 right.1 owner, ← envelopes]
+      rw [← outputs, ← envelopes]
       exact permitted
   · rintro ⟨rawMember, silent | ⟨other, transmitted, permitted⟩⟩
     · cases silent
     · cases Option.some.inj transmitted
       refine ⟨raw.mpr rawMember, Or.inr ⟨material, rfl, ?_⟩⟩
-      rw [frame.outputs left.1 right.1 owner, envelopes]
+      rw [outputs, envelopes]
       exact permitted
+
+namespace Frame
+
+variable {memory : BindingMemory runtime (nativeLeaks (graph := graph))}
 
 /-- An unchanged inert raw response preserves both semantic checkpoints and
 actual foreign recall. Count support follows from the source menu, the actual
@@ -150,7 +154,8 @@ theorem inert_response (frame : Frame runtime leaks memory owner original repair
         (repaired.network.known owner) material⟩ : Message Player (CommitAttemptPacket graph)))
       (congrArg (fun pool : MessageNetwork Player (CommitAttemptPacket graph) =>
         pool.nextSerial owner) frame.network)
-  have legal := (frame.inert_response_menu_iff bounds left right material envelopes).mp member
+  have legal :=
+    (inert_response_menu_iff frame.network bounds left right material envelopes).mp member
   refine ⟨legal, ?_⟩
   have leftNative : nativeApp.submit original.application.current.native owner material =
       original.application.current.native := congrArg (fun state => state.current.native) leftInert

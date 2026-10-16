@@ -317,7 +317,9 @@ private theorem actual_member_profile
 
 omit [Fintype ((menu).protocol initial horizon scheduler).History]
   [∀ owner, DecidableEq (((menu).information initial horizon scheduler).InfoState owner)] in
-private def binding_marker_density (noise : ℝ) (focal : Player)
+/-- The intrinsic native RAW binding-send marks in the actual NEW response
+suffix, retaining the same transition coefficient and all other noisy atoms. -/
+def binding_marker_density (noise : ℝ) (focal : Player)
     (profile : ∀ owner, (N).BehavioralPolicy owner)
     (records : ∀ owner, List ((N).InfoState owner ×
       ((menu).protocol initial horizon scheduler).Action owner)) (chance : ℝ) : ℝ :=

@@ -2115,12 +2115,18 @@ These facts do not yet prove independence of success or continuation payoffs.
 Actual chosen source chronology and noncommitment observations:
 [Recovery Archived Source Origin](../Vegas/Game/RecoveryArchivedSourceOrigin.lean),
 [Commit Recovery Noncommit Observation](../Vegas/Source/CommitRecoveryNonCommitObservation.lean),
-[Commit Recovery Noncommit Recall](../Vegas/Source/CommitRecoveryNonCommitRecall.lean).
+[Commit Recovery Noncommit Recall](../Vegas/Source/CommitRecoveryNonCommitRecall.lean),
+[Recovery Noncommit Window](../Vegas/Game/RecoveryNonCommitWindow.lean),
+[Recovery Noncommit Chronology](../Vegas/Game/RecoveryNonCommitChronology.lean),
+[Phase Archived Source View](../Vegas/Game/PhaseArchivedSourceView.lean).
 Each checkpoint contains its literal source trace. Chronological origins retain
 the supported original setup anchor and exact predecessor traces through actual
 archive appends and clean, sample and reveal advances. Noncommitment successor
 public signals and predecessor private views are reconstructed on genuine
-arbitrary-exclusion paths. Full chronological InfoState equality and prescribed
+arbitrary-exclusion paths. Compiled reveal/sample windows derive the source
+instruction classification, and actual paired reveal/sample segments preserve
+the complete auxiliary information state. Archived owner observations recover
+the saved source view. Full chronological InfoState equality and prescribed
 reset-continuation law remain open.
 
 Actual conditional native likelihood comparison:
@@ -2132,5 +2138,34 @@ input weights using their factual positive mass. Exact marked errors retain the
 new own-play suffix, callbacks and universal continuation chance. Observing a
 binding SEND leaves the complete downstream response-likelihood law unchanged
 under the original posterior; integrating original owner memories identifies
-the marked path with the intrinsic native RAW atom. Summation, selected-entry
-mixing and source likelihood proportionality remain explicit consumers.
+the marked path with the intrinsic native RAW atom.
+
+Whole-history original-plan likelihoods and native RAW markers:
+[Phase Recovery Value Likelihood](../Vegas/Game/PhaseRecoveryValueLikelihood.lean),
+[Phase Recovery Value History Density](../Vegas/Game/PhaseRecoveryValueHistoryDensity.lean),
+[Phase Recovery Value Good Weight](../Vegas/Game/PhaseRecoveryValueGoodWeight.lean),
+[Phase Recovery Value Good Density](../Vegas/Game/PhaseRecoveryValueGoodDensity.lean),
+[Continuation Factor Uniqueness](../GameTheoryExtensions/Analysis/Protocol/ContinuationFactorUniqueness.lean),
+[Phase Continuation Marker](../Vegas/Game/PhaseContinuationMarker.lean),
+[Reactive Marked Reach](../Interaction/ReactiveMarkedReach.lean),
+[Phase Recovery Value Marker Sum](../Vegas/Game/PhaseRecoveryValueMarkerSum.lean),
+[Phase Recovery Value Native Marker Sum](../Vegas/Game/PhaseRecoveryValueNativeMarkerSum.lean),
+[Phase Raw Binding Replay Share](../Vegas/Game/PhaseRawBindingReplayShare.lean).
+Actual source-policy-independent nonsend factors and binding-SEND atoms retain
+the complete original own recall. Original independent private-plan averaging
+gives a good-history submeasure below the literal actual history law, with its
+deficit bounded by exact foreign binding RAW marks. Averaging all marked
+positions gives the intrinsic native counterfactual position sum with the same
+universal chance factor; focal recall replay preserves its normalized share.
+Source likelihood proportionality remains open.
+
+Opening laws across hidden original private inputs:
+[Phase Timing Swap Key](../Vegas/Game/PhaseTimingSwapKey.lean),
+[Phase Timing Swap Opening](../Vegas/Game/PhaseTimingSwapOpening.lean),
+[Phase Opening Menu Symmetry](../Vegas/Pending/PhaseOpeningMenuSymmetry.lean).
+Genuine guarded hidden-swap callbacks have identical complete counted opening
+menus and operational timing keys. At unsent successful openings, the same full
+timing plan therefore has exactly the same whole response law, including WAIT
+and every uniform-noise evidence alias. Binding WAIT requires a separate
+relative-error comparison; these opening identities do not identify source
+posteriors or reset payoffs.

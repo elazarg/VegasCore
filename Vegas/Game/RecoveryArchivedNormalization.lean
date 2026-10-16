@@ -108,6 +108,18 @@ theorem RecoverySourceCheckpoint.normalized_archived
             PhaseRuntimeState ((toEventGraph setup.program).withMode mode)).ArchivesBefore := by
         intro record member
         exact (bounded record member).trans nextOffset
+      have nextBoundary : phase.high = PhaseRuntimeState.phaseLow remaining := by
+        have adjacent := frontier.adjacent
+        have ending := frontier.last
+        change (phase :: remaining).IsChain _ at adjacent
+        change ∀ final ∈ (phase :: remaining).getLast?, _ at ending
+        cases remaining with
+        | nil =>
+            have last := ending phase (by simp only [List.getLast?_singleton,
+              Option.mem_some_iff])
+            exact last
+        | cons next rest =>
+            exact adjacent.rel_head? (y := next) (by simp)
       have oldBefore : ∀ record ∈ retired, record.attempt.phase ≤ phase.low := archives
       have inherited : entry.excluded ⊆ image.excluded := by
         intro who inactive
@@ -293,7 +305,8 @@ theorem RecoverySourceCheckpoint.normalized_archived
                   image position.1 retained inherited nextCheckpoint word, by
                     obtain ⟨nextFuel, nextPath, instructions⟩ := sourcePrefix
                     exact ⟨nextFuel, nextPath, ArchivedSourceOrigins.advance checkpoint
-                      nextCheckpoint origins phase remaining rfl rfl rfl rfl finished
+                      nextCheckpoint origins phase remaining rfl rfl rfl rfl
+                      nextBoundary finished
                       ⟨_, imageNative⟩ nextPath (fun _ => instructions)⟩⟩
         | reveal =>
             obtain ⟨nextCheckpoint, sourcePrefix, word, _intended⟩ :=
@@ -321,7 +334,8 @@ theorem RecoverySourceCheckpoint.normalized_archived
                 image position.1 retained inherited nextCheckpoint word, by
                   obtain ⟨nextFuel, nextPath⟩ := sourcePrefix
                   exact ⟨nextFuel, nextPath, ArchivedSourceOrigins.advance checkpoint
-                    nextCheckpoint origins phase remaining rfl rfl rfl rfl finished
+                    nextCheckpoint origins phase remaining rfl rfl rfl rfl
+                      nextBoundary finished
                     ⟨_, imageNative⟩ nextPath (fun impossible => by
                       rw [kind] at impossible
                       cases impossible)⟩⟩
@@ -351,7 +365,8 @@ theorem RecoverySourceCheckpoint.normalized_archived
                 image position.1 retained inherited nextCheckpoint word, by
                   obtain ⟨nextFuel, nextPath⟩ := sourcePrefix
                   exact ⟨nextFuel, nextPath, ArchivedSourceOrigins.advance checkpoint
-                    nextCheckpoint origins phase remaining rfl rfl rfl rfl finished
+                    nextCheckpoint origins phase remaining rfl rfl rfl rfl
+                      nextBoundary finished
                     ⟨_, imageNative⟩ nextPath (fun impossible => by
                       rw [kind] at impossible
                       cases impossible)⟩⟩
