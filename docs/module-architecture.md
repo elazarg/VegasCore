@@ -2360,6 +2360,10 @@ continuation values and gains under the original Bayes assessment. The joint
 stopped-boundary mark and full terminal readout/payoffs stay coupled. The
 success-marker specialization, failed attachments and individual source
 optimality remain separate obligations.
+[Actual pooled ordinary gains](../Vegas/Game/CommitRecoveryPooledOrdinaryGains.lean)
+specialize the original component lotteries and give the exact positive-cardinality
+ordinary-class sum. The whole normalized pool still needs its failed-member
+zero-gain and original decision-agent adapters.
 [Original source attempt exit](../Vegas/Source/CommitRecoveryAttemptExit.lean)
 identifies the actual first-full-identifier stopped law with its exact remaining
 commitment window, retaining original joint instructions and public addresses.
@@ -2378,7 +2382,10 @@ original honest full information from the actual combined query.
 [initialized-run domination](../Vegas/Game/CommitRecoveryHonestDomination.lean), and
 [honest Bayes convergence](../Vegas/Game/CommitRecoveryHonestBeliefs.lean)
 retain the original honest assessment at fixed source-only scales, independently
-of the optimized free laws. Final source individual optimality remains open.
+of the optimized free laws.
+[The honest limit](../Vegas/Game/CommitRecoveryHonestLimit.lean) derives its actual
+honest extension and beliefs, every raw local best response at embedded honest
+sites, and the original initialized joint law. Free-site source optimality remains open.
 [Player-specific recovery validity](../Vegas/Source/CommitRecoveryPlayerValidity.lean)
 reuses the existing intended-for-one-player predicate through arbitrary foreign
 actions, automatic slots and actual checkpoint closes. Current observed guard
@@ -2409,6 +2416,16 @@ nonterminal witness at every genuine query, commutes with erasure and preserves
 the combined key's clock. Its legal source profile consumes the existing
 paired failed-attempt law. Native query decoding and individual source
 optimality remain open.
+[The actual fixed representative](../Vegas/Source/CommitRecoveryNoMissFixed.lean)
+recovers the entire original information when exclusions have not grown. The
+same initialized replay supplies a genuine ordinary representative of every
+surviving commitment query fiber, and classifies its other histories into that
+same erased-information class or actual new-failure attempts.
+[Original omission windows](../Vegas/Game/CommitRecoveryOmissionWindow.lean) and
+[the normalized raw omission kernel](../Vegas/Game/CommitRecoveryOmissionKernel.lean)
+derive their full omission-word law and failed-window terminal readout/payoff
+law, allowing arbitrary private domain prescriptions. One-site indifference
+and the whole source SE composition are separate consumers.
 
 Normalized local delivery:
 [counted binding service](../Vegas/Pending/PhaseCountServiceReference.lean).
@@ -2458,5 +2475,12 @@ vector and its likelihood-induced posterior.
 [focal continuations](../Vegas/Game/PhaseCountServiceTableContinuation.lean), and
 [the averaged good-event law](../Vegas/Game/PhaseCountServiceTableGood.lean)
 give equality of the joint good-event/original-table-vector law after arbitrary
-focal interventions. Typed foreign-word independence and conditioning on the
-full native information fiber remain separate obligations.
+focal interventions.
+[The original occupation joint](../Vegas/Game/PhaseCountServiceTableOccupation.lean)
+retains primitive tags, full tables and hidden command control.
+[Full native input conditioning](../Vegas/Game/PhaseCountServiceTableNative.lean)
+derives the next address/ordinal and the current-coin/entire-updated-remainder
+product at the actual information fiber.
+[Its physical marginal](../Vegas/Game/PhaseCountServiceTableActual.lean) is the
+literal normalized policy. Future-success conditioning, native query locality
+and typed foreign-word transport remain separate obligations.

@@ -2076,7 +2076,13 @@ as a successful typed boundary.
 actual query equality. The actual prescription and initialized-run domination
 in `Vegas/Game/CommitRecoveryHonestDomination.lean` give honest Bayes convergence
 in `Vegas/Game/CommitRecoveryHonestBeliefs.lean`, at scales tied to the original
-honest sequence before free completion. These do not yet prove the full source SE.
+honest sequence before free completion. `Vegas/Game/CommitRecoveryHonestLimit.lean`
+now proves the same limit's honest-site raw local best responses and preserved
+initialized joint law. `Vegas/Game/CommitRecoveryPooledOrdinaryGains.lean`
+specializes actual pooled component gains and their exact ordinary-class sum.
+`Vegas/Source/CommitRecoveryNoMissFixed.lean` derives a genuine ordinary query
+representative and the ordinary-versus-new-failure partition from original
+histories. These do not yet prove the full source SE.
 
 `Vegas.SourceProgram.CommitRecoveryState.step_preserves_intendedFor` keeps a
 surviving player's existing validity predicate in current and saved states
@@ -2090,7 +2096,11 @@ proper-reference scalar survival. `Vegas/Game/PhaseCountServiceGood.lean` gives
 the positive-RAW joint good event for the same original supported tables;
 `Vegas/Game/PhaseCountServiceTableGood.lean` averages the literal original table
 posterior and retains the entire table vector. Typed-word transport and the
-original full native information-fiber posterior remain open.
+original full native information-fiber posterior are separate from that scalar
+law. The latter is now checked in `Vegas/Game/PhaseCountServiceTableNative.lean`,
+retaining the original updated remainder, with its literal normalized physical
+marginal in `Vegas/Game/PhaseCountServiceTableActual.lean`. It does not imply
+source-query locality or a product after future-success conditioning.
 `Vegas.compiled_reveal_public_exclusions` reads the source public exclusion
 update from the actual immutable native publication at its original compiled
 suffix. The full native observable query remains open.
@@ -2148,6 +2158,9 @@ and exhausted restore without assuming equal omission words. The global
 history paste supplies original support and its inverse uniqueness; actual
 information-fiber Bayes cancellation is checked as described above. The
 original local stopped window and its raw typed success readout are now checked.
+`Vegas/Game/CommitRecoveryOmissionKernel.lean` also derives actual normalized
+omission marginals, their whole-window law and failed-window terminal-law equality,
+without assuming an omission-word coupling or a reset endpoint equality.
 Its joint conditional-D/payoff specialization and individual source optimality
 remain open in Lean.
 

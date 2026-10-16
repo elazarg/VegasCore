@@ -348,6 +348,7 @@ theorem commitRecoveryNoMissInformation_genuine (who : Player)
     ∃ replay : CommitRecoveryState setup.program,
       ∃ replayTrace : setup.commitRecoveryProtocol.Trace (some replay),
         replay.excluded = current.entryExcluded ∧
+        replay.entryExcluded = current.entryExcluded ∧
         replay.saved = current.saved ∧ replay.generation = current.generation ∧
         ProtocolState.observe who setup.program replay.point =
           ProtocolState.observe who setup.program current.point ∧
@@ -369,12 +370,12 @@ theorem commitRecoveryNoMissInformation_genuine (who : Player)
   have inside : trace.length + ProtocolState.commitEnd setup.program current.saved <
       prior.length + ProtocolState.remaining setup.program current.saved := by omega
   obtain ⟨actual, replay, actualState, _actualSaved, _actualEntry, _actualGen,
-      replayTrace, _replayRetained, _length, saved, _entry, gen, excluded, views, info⟩ :=
+      replayTrace, _replayRetained, _length, saved, replayEntry, gen, excluded, views, info⟩ :=
     setup.commitRecovery_noMiss_prefix_information who current.saved current.entryExcluded
       current.generation prior savedCommit trace retained inside survives
   have actualEq := Option.some.inj actualState
   cases actualEq
-  refine ⟨replay, replayTrace, excluded, saved, gen, views, ?_⟩
+  refine ⟨replay, replayTrace, excluded, replayEntry, saved, gen, views, ?_⟩
   have entryExclusions :=
     setup.commitRecoverySavedExclusions_of_entry who current trace prior retained rank
   have savedSurvives : who ∉ current.entryExcluded := fun member =>
@@ -411,7 +412,7 @@ theorem commitRecoveryNoMissInformation_genuine_history (who : Player)
   | some current =>
       by_cases committing : ProtocolState.atCommit setup.program current.point = true
       · by_cases survives : who ∉ current.excluded
-        · obtain ⟨replay, replayTrace, _excluded, _saved, _gen, views, info⟩ :=
+        · obtain ⟨replay, replayTrace, _excluded, _entryExcluded, _saved, _gen, views, info⟩ :=
             setup.commitRecoveryNoMissInformation_genuine who current trace committing survives
           refine ⟨⟨some replay, replayTrace⟩, info, fun _running => ?_⟩
           have replayCommit : ProtocolState.atCommit setup.program replay.point = true := by

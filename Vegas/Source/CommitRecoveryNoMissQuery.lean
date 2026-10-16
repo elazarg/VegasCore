@@ -267,7 +267,9 @@ theorem commitRecoveryWithAttemptExclusions_at_entry (who : Player)
       _ = _ := by simp only [List.map_id]
 
 
-private theorem normalized_information_extend (who : Player) (cut : Nat)
+/-- Extending two actual source traces preserves their same current-attempt
+exclusion-normalization relation, with the original own action retained. -/
+theorem normalized_information_extend (who : Player) (cut : Nat)
     (excluded : Finset Player)
     {leftSource leftTarget rightSource rightTarget : setup.commitRecoveryProtocol.State}
     (left : setup.commitRecoveryProtocol.Trace leftSource)

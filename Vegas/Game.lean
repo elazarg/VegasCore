@@ -1187,3 +1187,10 @@ import Vegas.Game.PhaseCountServiceTableContinuation
 import Vegas.Game.PhaseCountServiceTableEntry
 import Vegas.Game.PhaseCountServiceTableGood
 import Vegas.Game.PhaseCountServiceTableRun
+import Vegas.Game.CommitRecoveryHonestLimit
+import Vegas.Game.CommitRecoveryOmissionKernel
+import Vegas.Game.CommitRecoveryOmissionWindow
+import Vegas.Game.CommitRecoveryPooledOrdinaryGains
+import Vegas.Game.PhaseCountServiceTableActual
+import Vegas.Game.PhaseCountServiceTableNative
+import Vegas.Game.PhaseCountServiceTableOccupation

@@ -1,6 +1,6 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**SE: non-concurrent ✓ · source gains/D ✓ · honest Bayes ✓ · service G ✓ · individual SE / native query / transport / incentives open.**
+**SE: non-concurrent ✓ · source D/reset ✓ · honest BR ✓ · native timing Bayes ✓ · source SE / query / transport / incentives open.**
 
 The [mathematical proof dependency](se-preservation-math.md#scope-and-proof-dependency)
 states the source selection, conditional transport and deviation arguments,
@@ -30,8 +30,12 @@ For the selected normalized source prescription, corresponding ordinary
 erased-key copies now have equal actual conditional continuation values,
 baseline values and gains under their original fully mixed Bayes assessment.
 The comparison retains the joint stopped-boundary mark and full terminal
-readout/payoff law. Known-failed attachments still need their separate
-indifference argument; ordinary-copy equality does not establish it.
+readout/payoff law. Actual pooled-component gains agree at ordinary erased
+copies, and their complete ordinary-class sum is its positive cardinality
+times the individual conditional gain. The genuine normalized query fiber
+now has a derived ordinary representative; every other genuine member is
+in that same erased class or in an actual already-failed attempt.
+One-site indifference and the full pool-to-individual composition remain open.
 
 First full-identifier exit of an actual source commitment attempt is exactly
 the original remaining commitment window, including its final real close.
@@ -65,6 +69,14 @@ now realize the normalized stopped runner, with their actual entry posterior.
 Averaging gives the same joint good-event/table-vector law under arbitrary
 focal futures. Whole-phase typed-word independence remains open.
 
+At a positive full native information fiber, the original next timing coin
+is now independent of the entire updated remainder: all other original
+table coordinates, primitive tags, command time and hidden control remain
+jointly present. The address and unused ordinal are derived from that same
+fiber. The original physical occupation marginal is the literal normalized
+policy. This product precedes conditioning on future phase success; it does
+not establish source-query locality or native/source belief equality.
+
 Original native archives determine retry generation, distinguishing retries
 from exhausted closes. Chosen commitment chunks have exact source addresses
 and public signals; the virtual current typed view has a genuine source
@@ -83,8 +95,10 @@ to one consistent limit, and satisfy the pooled conditional gain inequalities.
 The same initialized flag/domain prior realizes their entire source runners.
 Honest full information is now determined by the actual combined query,
 giving coherent legal pins. Actual initialized-run domination retains the
-given honest Bayes limits at source scales fixed before completion.
-Individual optimality and the final source SE composition remain open.
+given honest Bayes limits at source scales fixed before completion. The same
+limit now preserves the original honest joint law and is optimal against
+every raw local law at every embedded honest information set. Free-site
+individual optimality and the final source SE composition remain open.
 
 Complete sampled-flag records now derive the entire actual omission word of
 a commitment block. The real close and selected continuation consequently

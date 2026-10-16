@@ -1,3 +1,11 @@
+import Vegas.Game.CommitRecoveryHonestLimit
+import Vegas.Game.CommitRecoveryOmissionKernel
+import Vegas.Game.CommitRecoveryOmissionWindow
+import Vegas.Game.CommitRecoveryPooledOrdinaryGains
+import Vegas.Game.PhaseCountServiceTableActual
+import Vegas.Game.PhaseCountServiceTableNative
+import Vegas.Game.PhaseCountServiceTableOccupation
+import Vegas.Source.CommitRecoveryNoMissFixed
 import Vegas.Game.CommitRecoveryHonestBeliefs
 import Vegas.Game.CommitRecoveryHonestDomination
 import Vegas.Game.CommitRecoveryHonestPins
@@ -16029,3 +16037,178 @@ open Vegas in
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms phaseCountServiceTapePolicy_update_unread
+
+open Vegas.SourceProgram.Setup in
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryNoMissInformation_eq_of_unchanged_exclusions'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms commitRecoveryNoMissInformation_eq_of_unchanged_exclusions
+
+open Vegas.SourceProgram.Setup in
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryNormalizedTrembledProfile_failed_window_terminal_joint_eq'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms commitRecoveryNormalizedTrembledProfile_failed_window_terminal_joint_eq
+
+open Vegas.SourceProgram.Setup in
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryNormalizedTrembledProfile_joint_missed_eq'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms commitRecoveryNormalizedTrembledProfile_joint_missed_eq
+
+open Vegas.SourceProgram.Setup in
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryNormalizedTrembledProfile_missed_law'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms commitRecoveryNormalizedTrembledProfile_missed_law
+
+open Vegas.SourceProgram.Setup in
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryNormalizedTrembledProfile_window_omission_law_eq'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms commitRecoveryNormalizedTrembledProfile_window_omission_law_eq
+
+open Vegas.SourceProgram.Setup in
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryValueTremble_missed_law'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms commitRecoveryValueTremble_missed_law
+
+open Vegas.SourceProgram.Setup in
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryWithAttemptExclusions_fixed_of_prefix'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms commitRecoveryWithAttemptExclusions_fixed_of_prefix
+
+open Vegas.SourceProgram.Setup in
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecovery_erased_eq_of_query_eq_of_unchanged_exclusions'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms commitRecovery_erased_eq_of_query_eq_of_unchanged_exclusions
+
+open Vegas.SourceProgram.Setup in
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecovery_failed_window_terminal_joint_eq'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms commitRecovery_failed_window_terminal_joint_eq
+
+open Vegas.SourceProgram.Setup in
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecovery_joint_missed_law'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms commitRecovery_joint_missed_law
+
+open Vegas.SourceProgram.Setup in
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecovery_normalized_honest_limit'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms commitRecovery_normalized_honest_limit
+
+open Vegas.SourceProgram.Setup in
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecovery_normalized_honest_limit_extends'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms commitRecovery_normalized_honest_limit_extends
+
+open Vegas.SourceProgram.Setup in
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecovery_pooled_component_gain_eq'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms commitRecovery_pooled_component_gain_eq
+
+open Vegas.SourceProgram.Setup in
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecovery_pooled_ordinary_gain_nonpos_iff'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms commitRecovery_pooled_ordinary_gain_nonpos_iff
+
+open Vegas.SourceProgram.Setup in
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecovery_pooled_ordinary_gain_sum'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms commitRecovery_pooled_ordinary_gain_sum
+
+open Vegas.SourceProgram.Setup in
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecovery_query_fiber_cases'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms commitRecovery_query_fiber_cases
+
+open Vegas.SourceProgram.Setup in
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecovery_query_fiber_of_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms commitRecovery_query_fiber_of_history
+
+open Vegas.SourceProgram.Setup in
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecovery_window_omission_law_eq'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms commitRecovery_window_omission_law_eq
+
+open Vegas in
+/-- info:
+'Vegas.phaseCountServiceTapePolicy_command_literal'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms phaseCountServiceTapePolicy_command_literal
+
+open Vegas in
+/-- info:
+'Vegas.phaseCountServiceTapePolicy_command_tables_joint'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms phaseCountServiceTapePolicy_command_tables_joint
+
+open Vegas in
+/-- info:
+'Vegas.phaseCountServiceTapePolicy_mask_posterior'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms phaseCountServiceTapePolicy_mask_posterior
+
+open Vegas in
+/-- info:
+'Vegas.phaseCountServiceTapePolicy_native_coin_product'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms phaseCountServiceTapePolicy_native_coin_product
+
+open Vegas in
+/-- info:
+'Vegas.phaseCountServiceTapePolicy_native_coordinate'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms phaseCountServiceTapePolicy_native_coordinate
+
+open Vegas in
+/-- info:
+'Vegas.phaseCountServiceTapePolicy_occupation_literal'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms phaseCountServiceTapePolicy_occupation_literal
+
+open Vegas in
+/-- info:
+'Vegas.phaseCountServiceTapePolicy_occupation_tables_joint'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms phaseCountServiceTapePolicy_occupation_tables_joint
