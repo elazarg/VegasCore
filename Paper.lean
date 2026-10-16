@@ -1339,6 +1339,13 @@ import Vegas.Source.CommitRecoveryValueTremble
 import Vegas.Source.CommitRecoveryAttemptReset
 import Vegas.Game.CommitRecoveryDomainPlan
 import Vegas.Game.CommitRecoveryAttemptReset
+import Vegas.Source.CommitRecoveryAttemptOrigin
+import Vegas.Source.CommitRecoveryNoMissStep
+import Vegas.Source.CommitRecoveryNoMissQuery
+import Vegas.Source.CommitRecoveryNoMissRepresentative
+import Vegas.Game.CommitRecoveryNoMissContinuation
+import Vegas.Game.CommitRecoveryFlagPlan
+import Vegas.Game.CommitRecoveryFlagConditioning
 
 /-! # Checked sequential-equilibrium preservation, Nash correspondence and termination -/
 
@@ -14207,3 +14214,164 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms
   Vegas.SourceProgram.Setup.commitRecoveryTrembledProfile_plan_run
+
+/-- info:
+'Vegas.SourceProgram.ProtocolState.recoveryStep_noMiss_observe'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.ProtocolState.recoveryStep_noMiss_observe
+
+/-- info:
+'Vegas.SourceProgram.CommitRecoveryState.noMiss_instruction'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.CommitRecoveryState.noMiss_instruction
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecovery_attempt_entry'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecovery_attempt_entry
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecovery_noMiss_prefix_information'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecovery_noMiss_prefix_information
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryNoMissInformation_genuine'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecoveryNoMissInformation_genuine
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryNoMissInformation_idempotent'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecoveryNoMissInformation_idempotent
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryNoMissInformation_erased'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecoveryNoMissInformation_erased
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryNoMissInformation_menu'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecoveryNoMissInformation_menu
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryNoMissInformation_erased_idempotent'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecoveryNoMissInformation_erased_idempotent
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryNoMissErasedChoice'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecoveryNoMissErasedChoice
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryNoMissInformation_genuine_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecoveryNoMissInformation_genuine_history
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryNoMissInformation_erased_word_length'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecoveryNoMissInformation_erased_word_length
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryNoMissErasedProfile_raw'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecoveryNoMissErasedProfile_raw
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryNoMissErasedProfile_failed_attempt_terminal_joint_eq'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecoveryNoMissErasedProfile_failed_attempt_terminal_joint_eq
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryFlagLaw_choice'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecoveryFlagLaw_choice
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryErasedModel_record_clock_nodup'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecoveryErasedModel_record_clock_nodup
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryFlagPlan_readout'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecoveryFlagPlan_readout
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryFlagPlan_record_readout'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecoveryFlagPlan_record_readout
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryFlagPlan_current_record_readout'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecoveryFlagPlan_current_record_readout
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryFlagPlan_record_present'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecoveryFlagPlan_record_present
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryFlagPlan_posterior_readout'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecoveryFlagPlan_posterior_readout
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryFlagPlan_toBehavioralWith'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecoveryFlagPlan_toBehavioralWith
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecoveryFlagPlan_run'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecoveryFlagPlan_run

@@ -1,6 +1,6 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**SE: non-concurrent ✓ · source reset ✓ · domain sampler ✓ · native query/transport/incentives open.**
+**SE: non-concurrent ✓ · source reset/query ✓ · shared-flag runner ✓ · native query/transport/incentives open.**
 
 <details>
 <summary>Checked recovery milestones and remaining proof obligations</summary>
@@ -17,10 +17,17 @@ The original domain sampler has only domain values and true openings. Its
 coordinates include genuine erased queries at every legal retry; fixed source
 omission/accepted-failure flags and native timing remain separate. The full
 source perturbation is fully mixed on every genuine decision and its original
-full-choice plan has the entire source runner law. The domain posterior adapter
+full-choice plan has the entire source runner law. A separate initialized joint
+of public-occurrence flags and erased-query domain values also has that entire
+law, including omissions and retries. Its exact current/past answer product
+derives conditioning on the complete original own-action record; it uses the
+original game's perfect recall. The private joint differs from full-choice
+predrawing and shares flags at counterfactual private queries of one occurrence.
+The domain posterior adapter
 retains the actual entire remaining table and extra private memory, conditional
 on an actual-response non-reading premise. Deriving that premise for native Q,
-and identifying the final shared no-new-miss coordinates, remain open.
+and connecting that initialized sampler to the combined no-new-miss query,
+remain open.
 
 The selected reduced source coordinates retain current typed private data and
 the complete public signal word. Their chronological occurrence is never
@@ -30,11 +37,17 @@ the original full action record leaves the current coordinate independent of
 the entire remaining table. This is a source law; native query measurability
 and native/source posterior equality remain open.
 
-No-new-miss replay constructs a genuine initialized source trace from the
-same original prefix. Source erasure preserves the full raw menu, including
+The no-new-miss representative is defined from the original full information,
+including the saved-entry cut read from its signal word. Every genuine query
+has a genuine replay witness, with nonterminality preserved. The representative
+is idempotent, commutes with erasure, and transports the complete legal menu.
+The combined erased/no-new-miss key preserves the public logical clock.
+Source erasure preserves the full raw menu, including
 accepted failure and omission, and commutes with actual instruction steps and
 retry/exhausted closure. These results do not yet establish the selected pooled
-source equilibrium or native reset incentives.
+source equilibrium or native reset incentives. The actual legal profile reading
+that combined key has one terminal typed-readout/payoff-vector law after paired
+same-prior, same-omission failed attempts.
 
 The concrete erased source prescription now has the same joint terminal
 typed-readout and payoff-vector law from genuine histories with equal erased

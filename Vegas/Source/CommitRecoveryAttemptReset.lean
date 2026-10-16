@@ -239,11 +239,11 @@ namespace Setup
 
 variable (setup : Setup (Player := Player) (L := L))
 
-private def attemptPublicSignal (who : Player) (state : setup.commitRecoveryProtocol.State) :=
+def attemptPublicSignal (who : Player) (state : setup.commitRecoveryProtocol.State) :=
   ((setup.commitRecoveryPrivate who state).map (ProtocolView.publicOnly who setup.program),
     setup.commitRecoveryPublic state)
 
-private def attemptPublicRecall (who : Player)
+def attemptPublicRecall (who : Player)
     {state : setup.commitRecoveryProtocol.State}
     (trace : setup.commitRecoveryProtocol.Trace state) :=
   let information := setup.commitRecoverySignals.infoOf who trace
@@ -261,7 +261,7 @@ private theorem publicRecall_extend (who : Player)
   rw [attemptPublicRecall, InfoSignals.infoOf_extend]
   rfl
 
-private theorem erasedInformation_publicRecall (who : Player)
+theorem erasedInformation_publicRecall (who : Player)
     {state : setup.commitRecoveryProtocol.State}
     (trace : setup.commitRecoveryProtocol.Trace state) :
     setup.commitRecoveryErasedInformation who (setup.commitRecoveryModel.infoOf who trace) =

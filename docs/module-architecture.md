@@ -2287,6 +2287,25 @@ posterior adapter keeps the actual entire remaining domain table and extra
 memory under an actual-response non-reading premise. The no-new-miss coordinate
 sharing and its native realization remain separate obligations.
 
+Shared occurrence flags:
+[initialized flag/domain law](../Vegas/Game/CommitRecoveryFlagPlan.lean),
+[complete record conditioning and original source runner](../Vegas/Game/CommitRecoveryFlagConditioning.lean).
+Failure flags are shared at a public source time while domain coordinates are
+private erased queries. Distinct chronological clocks derive the full answer
+product; the original source game's perfect recall gives its complete runner.
+The private joint is not the independent full-choice-table joint.
+
+No-new-miss query:
+[literal attempt entry](../Vegas/Source/CommitRecoveryAttemptOrigin.lean),
+[actual replay steps](../Vegas/Source/CommitRecoveryNoMissStep.lean),
+[full personal query replay](../Vegas/Source/CommitRecoveryNoMissQuery.lean),
+[total legal representative](../Vegas/Source/CommitRecoveryNoMissRepresentative.lean),
+[actual selected reset continuation](../Vegas/Game/CommitRecoveryNoMissContinuation.lean).
+The representative is read from original full information, has a genuine
+nonterminal witness at every genuine query, commutes with erasure and preserves
+the combined key's clock. Its legal source profile consumes the existing
+paired failed-attempt law. Native query decoding and source pooling remain open.
+
 Normalized local delivery:
 [counted binding service](../Vegas/Pending/PhaseCountServiceReference.lean).
 Silence and SEND have separate local masses; uniform packet selection is

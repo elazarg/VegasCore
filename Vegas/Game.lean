@@ -1146,3 +1146,6 @@ import Vegas.Game.CommitRecoveryErasedPolicyConditioning
 import Vegas.Game.CommitRecoveryErasedContinuation
 import Vegas.Game.CommitRecoveryDomainPlan
 import Vegas.Game.CommitRecoveryAttemptReset
+import Vegas.Game.CommitRecoveryNoMissContinuation
+import Vegas.Game.CommitRecoveryFlagPlan
+import Vegas.Game.CommitRecoveryFlagConditioning

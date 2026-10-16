@@ -1261,7 +1261,16 @@ the required summary equality for two genuine failed source attempts from the
 same literal prior and omission word, through retry or exhausted close.
 `Vegas.SourceProgram.Setup.commitRecoveryErasedProfile_failed_attempt_terminal_joint_eq`
 then gives their actual joint terminal law. The corresponding physical native
-relation and occurrence-flag coupling remain open.
+relation remains open.
+
+`Vegas.SourceProgram.Setup.commitRecoveryNoMissInformation_genuine_history`
+gives a genuine source witness for the no-new-miss transformation of every
+original query, preserving nonterminality. Its idempotence, erasure commutation,
+menu transport and combined-query clock preservation are checked in
+`Vegas/Source/CommitRecoveryNoMissRepresentative.lean`.
+`Vegas.SourceProgram.Setup.commitRecoveryNoMissErasedProfile_failed_attempt_terminal_joint_eq`
+establishes the same actual reset continuation law for the legal profile reading
+that combined query. These are source constructions, not a native decoder.
 
 `Vegas.SourceProgram.Setup.commitRecoveryValueTremble_fullSupport` checks the
 all-query legal three-case perturbation, including reveal withholding;
@@ -1270,9 +1279,14 @@ entire full-information source run law. The separate domain table is realized
 by `Vegas.SourceProgram.Setup.commitRecoveryDomainPlan_run`. Its native
 posterior adapter, `Vegas.SourceProgram.Setup.commitRecoveryDomainPlan_posterior_split`,
 retains the actual entire remainder but requires an actual-response non-reading
-proof. These are erased-coordinate results: the final no-new-miss sharing,
-initialized occurrence-flag/domain-table joint, and the native response premise
-are not supplied by the source run-law identity.
+proof. These are erased-coordinate results: the final no-new-miss sharing
+and the native response premise are not supplied by those run-law identities.
+`Vegas.SourceProgram.Setup.commitRecoveryFlagPlan_run` separately realizes the
+entire original source law from ONE initialized public-occurrence flag array
+and independent erased-query domain table. Its genuine-record posterior leaves
+the current three-class choice unchanged. Connecting this initialized sampler
+to the final combined no-new-miss query remains separate from its erased-query
+realization; no equality of the two private table joints is asserted.
 
 The existing broad post-exclusion native completion is not the pinned
 construction above:
