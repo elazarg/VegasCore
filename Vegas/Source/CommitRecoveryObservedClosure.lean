@@ -78,7 +78,8 @@ theorem observe_withHistory_congr (who : Player) :
       · exact congrArg Sum.inr (observe_withHistory_congr who next _ _ left right
           (Sum.inr.inj same) word)
 
-private theorem observe_entry_congr {Γ : SourceCtx Player L} {O : Finset VarId}
+/-- Equal actual entry configurations give equal source entry observations. -/
+theorem observe_entry_congr {Γ : SourceCtx Player L} {O : Finset VarId}
     (who : Player) (program : SourceProgram Player L Γ O) (first second : Config Player L Γ)
     (same : first.view who = second.view who) :
     observe who program (entry program first) = observe who program (entry program second) := by

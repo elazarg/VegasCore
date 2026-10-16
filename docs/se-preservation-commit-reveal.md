@@ -1,6 +1,6 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**SE: non-concurrent ✓ · stopped Config joint ✓ · global source plans ✓ · local optimizer ✓ · chronology/Bayes/incentives open.**
+**SE: non-concurrent ✓ · source plans ✓ · block recall ✓ · timed WAITs ✓ · full chronology/Bayes/incentives open.**
 
 <details>
 <summary>Checked recovery milestones and remaining proof obligations</summary>
@@ -228,6 +228,13 @@ disintegrated by actual own recall and the original complete-word source fiber.
 The Config is drawn once; it is not attached as an independent replacement.
 Identifying the physical updated-plan and mixed-entry source posterior remains
 separate from this authentic-entry joint law.
+Conditioning this same joint on a genuine native input retains its actual
+history and memory weights. At an authentic anchor, conditioning the original
+source Config on the focal source view preserves the entire stopped physical
+history marginal under a fixed focal intervention. The corresponding
+mixed-entry reference posterior keeps the observation-dependent entry weights
+and the original source fiber at each retained entry. This reference coupling
+does not identify the factual common source Bayes assessment.
 
 One immutable ordinary source-policy draw also realizes the entire ordinary
 source history law through the existing finite-site policy randomization.
@@ -236,6 +243,22 @@ original fresh omission draw, gives the exact joint result/omission/response
 law before own-recall conditioning. Failed source choices and false opening
 choices remain explicit. This prior identity does not identify a retrospective
 source witness with the chronological source input at an earlier callback.
+At a genuine clear source input, the same global policy prior splits into its
+current ordinary choice and its original all-other-coordinate marginal.
+An earlier actual binding SEND cannot read the current unsent source coordinate;
+no same-attempt premise is needed. Earlier observed WAITs require a different
+argument: their source/slot response atom is equal for every immutable value
+policy, with the original fresh omission retained. The generic posterior rule
+for equal recorded atoms is checked, including zero-likelihood fallback.
+Its whole-recall physical policy application remains open.
+
+For a completed native binding block, equal native public and focal observations
+and genuine prior source signal/saved-view induction data construct two legal
+initialized source trace extensions with equal full signal recall. The traces
+end at the exact whole decoded block's final close, including real omissions,
+automatic foreign actions, retry and exhausted advancement. Composing these
+extensions through all archived checkpoints remains an obligation; a ready
+partial callback does not imply that foreign bindings have completed.
 
 Conditioning the source prior on the current focal view retains its posterior
 over the complete focal word, including its unseen suffix, and the original
@@ -412,9 +435,14 @@ A phased addressed driver allows arbitrary seed-dependent local decisions,
 including repeated activations at one tick, while reusing the closed-tick book
 and original runtime. Actual rounds identify its activation query transcript
 with the owner's retained clock word. Advancing time at a ready request derives
-an actual earlier nonactivation query for that address and tick. Resolution
-safety and recovery of the complete negative-query input remain obligations;
-these facts alone do not establish its filtered-seed product.
+an actual earlier nonactivation query for that address and tick. Under the
+explicit local expiry/deadline equivalence, a selected inclusion at an actual
+counted history resolves its original physical coordinate, possibly by retiring
+the namespace. Every earlier selected nonactivation of a surviving coordinate
+was therefore WAIT. Every elapsed ready tick has such an actual WAIT query,
+retaining the original readiness anchor, without a first-delay assumption.
+Recovering all negative-query inputs and the common filtered-seed product
+remains open, as does comparison with richer physical policies.
 A common delivery ranking across private types and a bound against policies
 that read more remain open. Source projection at
 a partial concurrent cut must distinguish saved/prefix exclusions from physical

@@ -1039,3 +1039,15 @@ import Vegas.Game.CommitRecoveryClearChoice
 import Vegas.Game.CommitRecoveryValuePolicy
 import Vegas.Game.CommitRecoveryValuePlan
 import Vegas.Game.PhaseRecoveryValueTiming
+import Vegas.Game.PhaseTimingOwnerWordChannel
+import Vegas.Game.RecoveryTimingWordNativePosterior
+import Vegas.Game.PhaseTimingSourceReferenceMarginal
+import Vegas.Game.PhaseTimingOwnerSourcePosterior
+import Vegas.Game.PhaseSourceRecordedPosition
+import Vegas.Game.CommitRecoveryValueConditioning
+import Vegas.Game.PhaseRecoveryValueAtoms
+import Vegas.Game.CompiledCommitSuccessor
+import Vegas.Game.CompiledCommitHead
+import Vegas.Game.CompiledCommitStepRecall
+import Vegas.Game.CompiledCommitBlockRecall
+import Vegas.Game.PhaseTimingAnchoredSourceReference

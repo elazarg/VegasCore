@@ -1808,5 +1808,55 @@ Arbitrary phased service decisions and actual query attribution:
 The addressed driver reuses the existing closed-tick book and native execution.
 Its activation transcript is the actual owner clock word, for arbitrary local
 decisions and repeated same-tick activations. A clock advance at a ready event
-derives an actual earlier nonactivation query. Resolution safety, complete
-negative-query recovery and the general filtered-seed product remain open.
+derives an actual earlier nonactivation query. Timed rules have the stronger
+resolution and elapsed-tick provenance below. Complete query-input recovery and
+the general filtered-seed product remain open.
+
+Timed phased service and actual surviving WAIT queries:
+[Phase Service Timing](../Vegas/Pending/PhaseServiceTiming.lean),
+[Phase Service Inclusion](../Vegas/Pending/PhaseServiceInclusion.lean),
+[Phase Service Survival](../Vegas/Pending/PhaseServiceSurvival.lean),
+[Phase Service Tick Queries](../Vegas/Pending/PhaseServiceTickQueries.lean),
+[Phase Service Recorded Wait](../Vegas/Pending/PhaseServiceRecordedWait.lean).
+An explicit expiry/deadline equivalence permits arbitrary other local decisions.
+Existing counted acceptance proves that authentic selected inclusions resolve
+the original coordinate, including namespace retirement. A surviving earlier
+nonactivation was WAIT, and every elapsed ready tick has an actual WAIT query
+with its original readiness anchor. Full query-input recovery is still required.
+
+Original source-coordinate independence and actual response atoms:
+[Reactive Mixture Atoms](../Interaction/ReactiveMixtureAtoms.lean),
+[Phase Source Recorded Position](../Vegas/Game/PhaseSourceRecordedPosition.lean),
+[Commit Recovery Value Conditioning](../Vegas/Game/CommitRecoveryValueConditioning.lean),
+[Phase Recovery Value Atoms](../Vegas/Game/PhaseRecoveryValueAtoms.lean).
+Equal actual recorded atoms preserve the original private-member posterior,
+including zero-likelihood fallback. Actual earlier SENDs cannot query the current
+unsent source coordinate; observed source/slot SILENCE atoms ignore its value.
+The original global value-plan prior splits at its current genuine clear input,
+retaining the original marginal of all other coordinates. Whole native recall
+conditioning remains a separate consumer.
+
+Actual native conditioning and source-view reference marginals:
+[Reactive Anchored Stopped](../Interaction/ReactiveAnchoredStopped.lean),
+[Phase Timing Owner Word Channel](../Vegas/Game/PhaseTimingOwnerWordChannel.lean),
+[Recovery Timing Word Native Posterior](../Vegas/Game/RecoveryTimingWordNativePosterior.lean),
+[Commit Prefix Focal View Marginal](../Vegas/Source/CommitPrefixFocalViewMarginal.lean),
+[Phase Timing Source Reference Marginal](../Vegas/Game/PhaseTimingSourceReferenceMarginal.lean),
+[Phase Timing Owner Source Posterior](../Vegas/Game/PhaseTimingOwnerSourcePosterior.lean),
+[Phase Timing Anchored Source Reference](../Vegas/Game/PhaseTimingAnchoredSourceReference.lean).
+The actual immutable Config/owner-plan joint can be conditioned on genuine
+native input. Source-current-view conditioning preserves the entire physical
+stopped-history marginal at an authentic anchor under fixed focal intervention.
+Mixed-entry reference conditioning retains the actual observation tilt and
+original source fibers. It does not identify the common source Bayes law.
+
+Completed native blocks extend genuine source signal recall:
+[Compiled Commit Successor](../Vegas/Game/CompiledCommitSuccessor.lean),
+[Compiled Commit Head](../Vegas/Game/CompiledCommitHead.lean),
+[Compiled Commit Step Recall](../Vegas/Game/CompiledCommitStepRecall.lean),
+[Compiled Commit Block Recall](../Vegas/Game/CompiledCommitBlockRecall.lean).
+The actual completed decoder constructs legal source instructions and exact
+whole-block trace extensions through final closure. Equal native public/focal
+observations and genuine prior signal/saved-view induction data give equal full
+source signal recall, retaining actual omissions and automatic foreign actions.
+Whole archived-checkpoint composition and partial-callback chronology remain.

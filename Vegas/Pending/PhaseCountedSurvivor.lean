@@ -69,7 +69,9 @@ private theorem countedSurvivors_respond {inputs : graph.Inputs}
       · change message ∈ execution.network.pending ++ [_]
         exact List.mem_append_right _ latest
 
-private theorem counted_call_resolves_of_history (bounds : MessageBounds graph)
+/-- An authentic timely named call of a currently requested counted event
+is accepted and completes that event before ordinary phase normalization. -/
+theorem counted_call_resolves_of_history (bounds : MessageBounds graph)
     (plan : RuntimePhasePlan graph) (inputs : PMF graph.Inputs) (horizon : Nat)
     (scheduler : (app).Scheduler) {control : (app).Control}
     (trace : ((onePacketMenu runtime leaks bounds).protocol

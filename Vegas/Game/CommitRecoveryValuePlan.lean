@@ -134,4 +134,100 @@ theorem commitRecoveryValuePlan_source_run
     (fun who => (policy who).supportFallback model) fuel
     (model.coversInformationSites_playedInformation fuel)
 
+open Classical in
+/-- The current source choice is independent of the complete remaining
+ORIGINAL source policy. The right marginal retains every earlier and future
+coordinate; it is not a new policy drawn at a later physical entry. -/
+theorem commitRecoveryValuePlan_split (finite : setup.program.FiniteBindingTypes)
+    [setup.FiniteInitialLaw] (wellFormed : setup.WellFormed)
+    (profile : ∀ who, setup.commitRecoveryModel.BehavioralPolicy who)
+    (history : setup.commitRecoveryProtocol.History)
+    (clear : setup.CommitRecoveryClear history.state)
+    (running : ¬ setup.commitRecoveryProtocol.terminal history.state) (who : Player) :
+    let view := setup.commitRecoveryPrivate who history.state
+    let choices := fun point : setup.ProtocolView who => (setup.informationModel
+      (CommitmentInterface.forfeiture setup.program)).Choice who point
+    let original := setup.commitRecoveryValuePlan finite wellFormed profile who
+    original.map (Equiv.piSplitAt view choices) =
+      (setup.commitRecoveryNonmissingSourcePolicy wellFormed profile who view).bind
+        (fun choice => (original.map fun member =>
+          fun other : {other // other ≠ view} => member other.val).map (Prod.mk choice)) := by
+  classical
+  intro view choices original
+  let := ordinary_history_finite setup finite
+  let := Fintype.ofFinite
+    (setup.executionProtocol (CommitmentInterface.forfeiture setup.program)).History
+  let model := setup.informationModel (CommitmentInterface.forfeiture setup.program)
+  let policy := setup.commitRecoveryNonmissingSourcePolicy wellFormed profile who
+  let sites : Finset (setup.ProtocolView who) := model.playedInformation who
+  let fallback : ∀ point, choices point := policy.supportFallback model
+  have sourceRunning : ¬ (setup.executionProtocol
+      (CommitmentInterface.forfeiture setup.program)).terminal
+        (setup.commitRecoverySourceState history.state) := by
+    cases state : history.state with
+    | none => exact id
+    | some current => rw [state] at running; exact running
+  have played := model.mem_playedInformation (who := who)
+    (history := ⟨_, setup.commitRecoveryClearTrace history.trace clear⟩) sourceRunning
+  rw [setup.commitRecoveryClearTrace_observe] at played
+  let selected : sites := ⟨view, played⟩
+  let laws : ∀ info : sites, PMF (choices info.val) := fun info => policy info.val
+  let resolve : ((info : sites) → choices info.val) → ∀ point, choices point :=
+    FiniteAssignment.resolve fallback sites
+  let wholeSplit := Equiv.piSplitAt view choices
+  let finiteSplit := Equiv.piSplitAt selected (fun info : sites => choices info.val)
+  let remaining := fun rest =>
+    (wholeSplit (resolve (finiteSplit.symm (fallback view, rest)))).2
+  let restLaw := (independentProduct (fun info : {info : sites // info ≠ selected} =>
+    laws info.val)).map remaining
+  have resolved (choice : choices view) (rest) :
+      wholeSplit (resolve (finiteSplit.symm (choice, rest))) = (choice, remaining rest) := by
+    apply Prod.ext
+    · change resolve (finiteSplit.symm (choice, rest)) view = choice
+      dsimp only [resolve]
+      rw [FiniteAssignment.resolve_of_mem fallback sites _ played]
+      simp [finiteSplit, selected, Equiv.piSplitAt, view]
+    · funext other
+      change resolve (finiteSplit.symm (choice, rest)) other.val =
+        resolve (finiteSplit.symm (fallback view, rest)) other.val
+      dsimp only [resolve]
+      by_cases present : other.val ∈ sites
+      · rw [FiniteAssignment.resolve_of_mem fallback sites _ present,
+          FiniteAssignment.resolve_of_mem fallback sites _ present]
+        have different : (⟨other.val, present⟩ : sites) ≠ selected := by
+          intro equal
+          exact other.property (congrArg Subtype.val equal)
+        simp [finiteSplit, Equiv.piSplitAt, different]
+      · rw [FiniteAssignment.resolve_of_not_mem fallback sites _ present,
+          FiniteAssignment.resolve_of_not_mem fallback sites _ present]
+  have originalLaw : original = (independentProduct laws).map resolve := by
+    change policy.toMixedWithin model sites fallback = _
+    rw [InformationModel.BehavioralPolicy.toMixedWithin_eq_sampleOn]
+    unfold FiniteAssignment.sampleOn
+    congr 1
+    funext draw point
+    by_cases present : point ∈ sites
+    · simp only [resolve, FiniteAssignment.resolve, dite_eq_left present]
+    · simp only [resolve, FiniteAssignment.resolve, dite_eq_right present]
+  have factored : original.map wholeSplit =
+      (policy view).bind (fun choice => restLaw.map (Prod.mk choice)) := by
+    rw [originalLaw, independentProduct_splitAt laws selected]
+    simp only [PMF.map_bind, PMF.map_comp, Function.comp_def]
+    change (policy view).bind _ = _
+    apply congrArg (PMF.bind (policy view))
+    funext choice
+    simp only [restLaw, PMF.map_comp, Function.comp_def]
+    exact congrArg (fun encode => PMF.map encode
+      (independentProduct fun info : {info : sites // info ≠ selected} => laws info.val))
+        (funext fun rest => resolved choice rest)
+  have marginal : original.map (fun member =>
+      fun other : {other // other ≠ view} => member other.val) = restLaw := by
+    have projected := congrArg (PMF.map Prod.snd) factored
+    change (original.map wholeSplit).map Prod.snd =
+      (bindPairLaw (policy view) fun _ => restLaw).map Prod.snd at projected
+    rw [bindPairLaw_const_map_snd, PMF.map_comp] at projected
+    exact projected
+  rw [marginal]
+  exact factored
+
 end Vegas.SourceProgram.Setup
