@@ -1,6 +1,6 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**SE: non-concurrent ✓ · timing/RAW ✓ · concrete callback ✓ · archived receipts ✓ · source recall/Bayes/incentives open.**
+**SE: non-concurrent ✓ · timing/RAW ✓ · stopped runner ✓ · prefix readback ✓ · full recall/Bayes/incentives open.**
 
 <details>
 <summary>Checked recovery milestones and remaining proof obligations</summary>
@@ -218,6 +218,13 @@ consistency remains explicit. For the actual stopped reference runner, an
 arbitrary joint full-entry/full-plan prior retains its observation-weighted tag
 posterior and the original source-view fiber at each retained tag. This does
 not identify that posterior with the common physical assessment's source law.
+The whole stopped physical history law also agrees: against an arbitrary focal
+finite intervention, foreign anchored original-product implementations and the
+literal actual zero-RAW profile induce the same original stopped runner. The
+proof derives foreign consistency and checkpoint transfer inside that runner,
+retaining the full entry, network and recall. Disintegrating the immutable
+joint source configuration and original per-owner timing-plan tags through this
+stopped implementation remains separate from the physical marginal equality.
 
 Conditioning the source prior on the current focal view retains its posterior
 over the complete focal word, including its unseen suffix, and the original
@@ -281,8 +288,14 @@ original source decoder also reads exclusions after any processed commitment
 prefix as saved exclusions union public failures in exactly that prefix's rank
 interval. Newly failed owners are this set minus the inherited exclusions.
 These statements retain the distinction between a missing receipt and an
-accepted bad value. Identifying each prefix of the chosen full decoded attempt
-with that same native prefix decoder remains an explicit composition step.
+accepted bad value. Decoding the original concatenated block splits
+at exactly the earlier native decoder's configuration and exclusion set, with
+the later decoder producing the same full endpoint. Equal actual public and
+owner observations determine the decoded prefix's focal view and processed
+exclusions, retaining accepted failures and arbitrary hidden foreign omissions.
+Equal saved/live source views and exclusion/generation signals also determine
+the observed closure, through retry and exhausted advancement. Connecting these
+pieces along the chosen physical-to-source history remains open.
 
 Two chronological same-attempt raw binding sends have strictly increasing
 source ranks. Their genuine earlier callbacks, readiness and event distinctness
@@ -372,7 +385,12 @@ post-exclusion response laws can be represented by replacing only the free
 singleton pool weights. The actual component mixture then equals that law with
 the original uniform RAW perturbation; all clear pool weights are unchanged.
 This identity supplies neither the source-information decoder nor optimality
-of the prescribed continuation. Source projection at
+of the prescribed continuation. A phased own-service binding policy chooses
+WAIT or a prepared slot from the exact local activation-clock word, keeping
+the source result fixed separately. Existing word-policy guards make it legal
+at every input; actual history invariants discharge the guard at fresh unsent
+callbacks. This provides the concrete policy class, not its optimum or a bound
+against policies that read more. Source projection at
 a partial concurrent cut must distinguish saved/prefix exclusions from physical
 in-phase expiries. Auxiliary source-value identification remains open.
 Comparisons must also cover fresh handles other than the canonical one and

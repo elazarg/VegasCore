@@ -686,3 +686,4 @@ import Vegas.Pending.PhaseArchivedOwnPrefix
 import Vegas.Pending.ArchivePlayerObservation
 import Vegas.Pending.PhaseArchivedSourceObservation
 import Vegas.Pending.PhaseArchivedReceiptOrder
+import Vegas.Pending.PhaseBindingServicePolicy

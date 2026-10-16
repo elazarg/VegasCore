@@ -1027,3 +1027,6 @@ import Vegas.Game.RecoveryFixedCommitGeometry
 import Vegas.Game.RecoveryTimingWordFixedRealization
 import Vegas.Game.RecoveryTimingWordCallback
 import Vegas.Game.PhaseTimingWordEntryReference
+import Vegas.Game.CompiledCommitAttemptSplit
+import Vegas.Game.CompiledAttemptObservation
+import Vegas.Game.RecoveryTimingWordStoppedRealization

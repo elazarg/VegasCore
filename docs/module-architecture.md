@@ -1731,3 +1731,30 @@ Actual recovery instructions, closure and retry retain the surviving owner's
 original action word. Equal complete source signal transcripts determine their
 full own play and information state despite arbitrary foreign exclusions. The
 physical-to-source signal transcript correspondence is still required.
+
+Actual stopped word realization:
+[Recovery Timing Word Stopped Realization](../Vegas/Game/RecoveryTimingWordStoppedRealization.lean).
+The original behavioral stopped runner has the same full physical history law
+under foreign anchored original-product implementations and the literal zero-RAW
+assembled profile, against any focal finite intervention. Authentic checkpoint
+transfer and foreign consistency are derived inside the paired-step proof.
+Joint immutable-tag disintegration and common source Bayes remain separate.
+
+Native prefix composition and observed source closure:
+[Compiled Commit Attempt Split](../Vegas/Game/CompiledCommitAttemptSplit.lean),
+[Compiled Attempt Observation](../Vegas/Game/CompiledAttemptObservation.lean),
+[Commit Prefix Point Append](../Vegas/Source/CommitPrefixPointAppend.lean),
+[Commit Recovery Observed Closure](../Vegas/Source/CommitRecoveryObservedClosure.lean).
+The same full native decoder splits at exactly its earlier decoded Config/E;
+its later decoder and lifted point retain the original full endpoint. Actual
+native observations determine the decoded focal view and processed exclusions.
+Equal saved/live source views and public signals determine observed closure,
+including retry and exhausted advancement. Full history composition remains.
+
+Phased own-service binding rules:
+[Phase Binding Service Policy](../Vegas/Pending/PhaseBindingServicePolicy.lean).
+The actual pre-activation local query supplies the event's full activation-clock
+word. WAIT/slot rules read that word, with source values fixed separately.
+Existing word-policy guards provide total counted-menu legality and actual
+fresh unsent histories derive the exact sending law. Optimal service choice
+and comparison with policies reading extra observations remain obligations.

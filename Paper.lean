@@ -1131,6 +1131,12 @@ import Vegas.Game.RecoveryTimingWordCallback
 import Vegas.Game.PhaseTimingWordEntryReference
 import Vegas.Source.CommitRecoveryOwnHistory
 import Vegas.Source.CommitRecoverySurvivingInformation
+import Vegas.Pending.PhaseBindingServicePolicy
+import Vegas.Game.CompiledCommitAttemptSplit
+import Vegas.Game.CompiledAttemptObservation
+import Vegas.Game.RecoveryTimingWordStoppedRealization
+import Vegas.Source.CommitPrefixPointAppend
+import Vegas.Source.CommitRecoveryObservedClosure
 
 /-! # Checked sequential-equilibrium preservation, Nash correspondence and termination -/
 
@@ -11421,3 +11427,94 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms
   Vegas.RecoverySourceCheckpoint.timing_word_anchored_policy_at_callback
+
+/-- info:
+'Vegas.decodeCommitAttempt_append'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.decodeCommitAttempt_append
+
+/-- info:
+'Vegas.decodeCommitAttempt_append_attempt'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.decodeCommitAttempt_append_attempt
+
+/-- info:
+'Vegas.decodeCommitAttempt_view_eq'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.decodeCommitAttempt_view_eq
+
+/-- info:
+'Vegas.SourceProgram.CommitPrefix.liftPoint_append'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.CommitPrefix.liftPoint_append
+
+/-- info:
+'Vegas.SourceProgram.Config.view_automaticCommit_congr'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Config.view_automaticCommit_congr
+
+/-- info:
+'Vegas.SourceProgram.ProtocolState.observe_withHistory_congr'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.ProtocolState.observe_withHistory_congr
+
+/-- info:
+'Vegas.SourceProgram.ProtocolState.automaticCommitBlock_observe_congr'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.ProtocolState.automaticCommitBlock_observe_congr
+
+/-- info:
+'Vegas.SourceProgram.CommitRecoveryState.close_observed_congr'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.CommitRecoveryState.close_observed_congr
+
+/-- info:
+'Vegas.EventGraphRuntime.PhaseSeedScheduler.serviceClocks_of_trace'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseSeedScheduler.serviceClocks_of_trace
+
+/-- info:
+'Vegas.EventGraphRuntime.PhaseCount.phaseBindingServicePolicy_covered'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseCount.phaseBindingServicePolicy_covered
+
+/-- info:
+'Vegas.EventGraphRuntime.PhaseCount.phaseBindingServicePolicy_eq_of_clocks'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseCount.phaseBindingServicePolicy_eq_of_clocks
+
+/-- info:
+'Vegas.EventGraphRuntime.PhaseCount.phaseBindingServicePolicy_send_of_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseCount.phaseBindingServicePolicy_send_of_history
+
+/-- info:
+'Vegas.RecoverySourceCheckpoint.timing_word_anchored_stopped_law'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.RecoverySourceCheckpoint.timing_word_anchored_stopped_law
