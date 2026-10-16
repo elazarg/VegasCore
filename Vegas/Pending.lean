@@ -646,3 +646,9 @@ import Vegas.Pending.EventBindingPublicObservation
 import Vegas.Pending.PhaseBindingClearObservation
 import Vegas.Pending.PhaseBindingOpaqueHandle
 import Vegas.Pending.PhaseBindingOpaqueStep
+import Vegas.Pending.PhaseBindingCompletionMemory
+import Vegas.Pending.PhaseBindingPreparationMemory
+import Vegas.Pending.PhaseBindingInclusionMemory
+import Vegas.Pending.PhaseBindingResponseMemory
+import Vegas.Pending.PhaseBindingOpaqueEnvironment
+import Vegas.Pending.PhaseBindingOpaqueEnvironmentTrace

@@ -924,3 +924,10 @@ import Vegas.Game.CommitRecoveryLocalSourcePatch
 import Vegas.Game.PhaseContinuationFloor
 import Vegas.Game.CommitRecoveryPatchedContinuation
 import Vegas.Game.PhaseCommitWordContinuation
+import Vegas.Game.PhaseTimingBindingResponseRatio
+import Vegas.Game.PhaseTimingBindingWaitingRatio
+import Vegas.Game.PhaseTimingKeyRecall
+import Vegas.Game.PhaseTimingPrivatePlan
+import Vegas.Game.PhaseCommitRecallWordOrder
+import Vegas.Game.PhaseCommitRecallHistory
+import Vegas.Game.PhaseTimingPoolPlan

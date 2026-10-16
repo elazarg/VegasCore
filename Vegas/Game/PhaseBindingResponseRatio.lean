@@ -20,7 +20,9 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   (bounds : MessageBounds (serviceGraph setup mode))
 
 omit [Fintype Player] in
-private theorem source_result_floor (wellFormed : setup.WellFormed)
+/-- A uniform source-choice floor bounds every nonmissing typed binding result
+at the genuine source information reconstructed from an actual clear callback. -/
+theorem phaseSourceBindingData_result_lower (wellFormed : setup.WellFormed)
     (assessment : setup.commitRecoveryModel.BehavioralAssessment) (floor : ℝ)
     (floored : ∀ (who : Player) (site : setup.commitRecoveryModel.InformationSite who)
       (choice : setup.commitRecoveryModel.Choice who site.1),
@@ -132,7 +134,8 @@ theorem phaseSourcePerturbedStrategy_replacement_ratio_of_floor
           unsent values clear serial preparation evidence member result
   refine ⟨replacement, selected, ?_⟩
   intro originalInput original
-  have sourceFloor := source_result_floor setup mode runtime leaks wellFormed assessment floor
+  have sourceFloor := phaseSourceBindingData_result_lower setup mode runtime leaks wellFormed
+    assessment floor
     floored plan maximal horizon scheduler
       ((PhaseCount.onePacketMenu runtime leaks bounds).toRawTrace initial horizon scheduler trace)
         who event payload binding request clear result

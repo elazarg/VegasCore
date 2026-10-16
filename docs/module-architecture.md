@@ -1374,7 +1374,9 @@ prior own words, including repeated WAITs; two occurrences give genuine ordered
 trace prefixes. Every posterior-supported member follows full actual recall
 and agrees with every accepted addressed typed result, including failure.
 The source history is its entry history followed by ranked word actions.
-Complete native parsed-list equality and the mixed-entry posterior are open.
+The native parsed list for the earlier part of the current attempt equals
+surviving chronological own actions, including failures, and reconstructs the filled source history.
+The mixed-entry posterior remains open.
 
 Whole continuation floors and literal source interventions:
 [Phase Continuation Floor](../Vegas/Game/PhaseContinuationFloor.lean),
@@ -1402,7 +1404,8 @@ memory type for each owner. Actual complete-word member policies retain the
 full word profile jointly with the current response and full future execution.
 Arbitrary entry-dependent priors retain the original entry tag, and supported
 final posterior words replay under the same original member profile. Unsafe
-timing-option realization and source/native posterior equality remain open.
+source/native posterior equality remains open. The actual finite timing-pool
+plan realization is described below.
 
 All-value actual inclusion channels:
 [Event Binding Public Observation](../Vegas/Pending/EventBindingPublicObservation.lean),
@@ -1414,5 +1417,48 @@ external observation laws for arbitrary hidden binding values, including
 accepted failure and rejected/stale packets. Actual inclusion retains the
 network, receipts, scheduler recall and all nonowner recall; the same supported
 command gives both genuine successor histories and their joint external
-channel. Evolved sender-private memory and whole compatible-word likelihood
-are further obligations.
+channel. The memory and environment adapters below preserve evolved private
+state; the whole compatible-word likelihood remains open.
+
+Complete physical binding words and source histories:
+[Phase Commit Recall Word Order](../Vegas/Game/PhaseCommitRecallWordOrder.lean),
+[Phase Commit Recall History](../Vegas/Game/PhaseCommitRecallHistory.lean).
+Exact callback provenance, readiness, first-send uniqueness and strict rank
+derive full list equality and order without a supplied coverage premise.
+The same parsed list gives the exact filled source history at a ready binding.
+
+Binding memory and opaque environment commands:
+[Phase Binding Completion Memory](../Vegas/Pending/PhaseBindingCompletionMemory.lean),
+[Phase Binding Preparation Memory](../Vegas/Pending/PhaseBindingPreparationMemory.lean),
+[Phase Binding Inclusion Memory](../Vegas/Pending/PhaseBindingInclusionMemory.lean),
+[Phase Binding Response Memory](../Vegas/Pending/PhaseBindingResponseMemory.lean),
+[Phase Binding Opaque Environment](../Vegas/Pending/PhaseBindingOpaqueEnvironment.lean),
+[Phase Binding Opaque Environment Trace](../Vegas/Pending/PhaseBindingOpaqueEnvironmentTrace.lean).
+Actual handlers reconstruct updated candidate/result memory and saved/live
+frames for arbitrary typed results. Supported clear environment steps retain
+the same shadow and complete physical external state. Expiry stutter uses
+literal native public-view equality rather than a successful source frame.
+Physical readiness, timely acceptance and a surviving clear output are explicit
+conditions; no desired target-handler or successor-shadow equation is assumed.
+
+Fresh operational timing plans:
+[Reactive Policy Mixture](../Interaction/ReactivePolicyMixture.lean),
+[Phase Timing Key Recall](../Vegas/Game/PhaseTimingKeyRecall.lean),
+[Phase Timing Private Plan](../Vegas/Game/PhaseTimingPrivatePlan.lean),
+[Phase Timing Pool Plan](../Vegas/Game/PhaseTimingPoolPlan.lean).
+Existing private-policy mixtures retain an unread coordinate independently of
+the complete updated remainder. Actual operational keys retain full recall
+length, including repeated WAITs. The finite actual pool-plan implementation
+realizes the assembled completion strategy, retaining every owner's plan
+jointly with the full original physical run. At a supported complete-round
+owner input its selected part has the original pool weight independently of
+that entire remainder. Assessment command-occupation Bayes and source-word
+observation likelihood still require specialization.
+
+Actual timing-mixture binding bounds:
+[Phase Timing Binding Response Ratio](../Vegas/Game/PhaseTimingBindingResponseRatio.lean),
+[Phase Timing Binding Waiting Ratio](../Vegas/Game/PhaseTimingBindingWaitingRatio.lean).
+Every nonexcluded component and every mixture retains the independent source
+slot tier. Genuine source-choice floors give replacement SEND and silent WAIT
+bounds for arbitrary actual pool weights. These are local response bounds;
+whole-history marked raw-tier transport remains separate.

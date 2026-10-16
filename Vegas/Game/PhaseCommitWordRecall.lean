@@ -7,6 +7,7 @@ import Vegas.Pending.PhaseBindingIdleMenu
 import Vegas.Pending.PhaseBindingResponseWitness
 import Vegas.Pending.PhaseClearTraceProgress
 import Vegas.Pending.PhaseNativeInvariant
+import Vegas.Pending.PhaseBindingRecallOrder
 import Interaction.ReactiveMixtureRecall
 
 /-! # Surviving bindings constrain the actual owned-word member
@@ -43,7 +44,7 @@ local notation "family" => phaseCommitWordPolicy setup mode runtime leaks bounds
 /-- Every surviving addressed binding of a possible member has an authentic
 raw record of that member's exact typed result. The callback and its legality
 are reconstructed from the initialized history, rather than supplied. -/
-private theorem accepted_member
+theorem phaseCommitWordRecall_accepted
     (plan : RuntimePhasePlan (serviceGraph setup mode))
     (maximal : plan.phases.IsChain fun before after =>
       before.kind ≠ after.kind ∨ before.kind = .sample)
@@ -200,7 +201,8 @@ theorem phaseCommitWordPosterior_accepted
   have member := (app).policyMixture_member_consistent prior family
     (control.execution.recall who) consistent word possible
   obtain ⟨entry, serial, retained, attempt, declared, _candidate, meaning, decoded⟩ :=
-    accepted_member setup mode runtime leaks bounds wellFormed assessment block low generation
+    phaseCommitWordRecall_accepted setup mode runtime leaks bounds wellFormed assessment block
+      low generation
       slotWeight slotNonnegative slotBounded who word plan maximal inputs horizon scheduler trace
         clear event payload binding inside address candidate accepted member
   refine ⟨meaning, ⟨entry, retained, attempt, decoded⟩, ?_⟩
@@ -215,5 +217,73 @@ theorem phaseCommitWordPosterior_accepted
   exact phaseCommitRecallWord_mem setup.program mode runtime leaks low (low + block.length)
     generation (control.execution.recall who) entry retained attempt material transmitted event
       (who, .prepared serial) rfl inside action (decoded.trans observed)
+
+/-- An actual addressed raw send in a possible member's own recall carries
+that member's selected typed action. Preparation and slot are recovered from
+the real earlier callback, including a selected accepted failure. -/
+theorem phaseCommitWordRecall_record
+    (plan : RuntimePhasePlan (serviceGraph setup mode))
+    (inputs : PMF (serviceGraph setup mode).Inputs) (horizon : Nat)
+    (scheduler : (app).Scheduler) {control : (app).Control}
+    (trace : ((PhaseCount.onePacketMenu runtime leaks bounds).protocol
+      (inputs.map (PhaseRuntimeState.initial plan)) horizon scheduler).Trace (some control))
+    (clear : control.execution.application.current.excluded = ∅)
+    (earlier : List (app).PlayerEntry) (entry : (app).PlayerEntry)
+    (later : List (app).PlayerEntry)
+    (recalled : control.execution.recall who = earlier ++ entry :: later)
+    (event : (serviceGraph setup mode).EventId) (payload : L.Ty)
+    (binding : (serviceGraph setup mode).outputLayout event = .binding who payload)
+    (inside : low ≤ event.val ∧ event.val < low + block.length)
+    (address : entry.beforeView.application.2.attempt = ⟨low, generation⟩)
+    (material : WitnessedSubmission (serviceGraph setup mode))
+    (transmitted : entry.action.transmission = some material)
+    (candidate : Handle (serviceGraph setup mode))
+    (named : material.call.packet = .commitment event candidate)
+    (consistent : (family word).Consistent (control.execution.recall who)) :
+    let result := (phaseRecoveryBindingData setup mode event who payload binding
+      (CommitRecoveryMove.lift (block.wordAction who (event.val - low) word))).1
+    ∃ serial, entry.action = phaseBindingResponse runtime leaks who event payload result serial ∧
+      candidate = (who, .prepared serial) ∧
+      phaseBindingAction? setup.program mode runtime leaks entry.action =
+        decodeEventAction setup.program event
+          (cast (congrArg EventField.Action binding.symm) result) := by
+  classical
+  let menu := PhaseCount.onePacketMenu runtime leaks bounds
+  let initial := inputs.map (PhaseRuntimeState.initial plan)
+  obtain ⟨before, prior, _isPrefix, _active, past, viewed, request, _allowed⟩ :=
+    PhaseCount.recorded_binding_request runtime leaks bounds plan
+      (serviceGraph_revealRelaxedOrdered setup mode) inputs horizon scheduler trace clear who
+        earlier entry later recalled material transmitted event candidate named
+  have faithful := recalled ▸ consistent
+  have atRecord : (family word).Consistent (earlier ++ [entry]) :=
+    ReactiveApplication.Policy.Consistent.of_append (by
+      simpa only [List.append_assoc, List.singleton_append] using faithful)
+  have supported := ((family word).consistent_snoc_iff earlier entry).mp atRecord |>.2
+  rw [← past, viewed] at supported
+  have beforeAddress : before.execution.application.attempt = ⟨low, generation⟩ := by
+    rw [viewed] at address
+    exact address
+  have raw := menu.toRawTrace initial horizon scheduler prior
+  obtain ⟨_draw, valid⟩ := phaseNativeInvariant_history runtime leaks plan inputs horizon scheduler
+    raw
+  rw [phaseCommitWordPolicy_binding setup mode runtime leaks bounds wellFormed assessment block
+    low generation slotWeight slotNonnegative slotBounded who word before.execution valid event
+      payload binding request inside beforeAddress] at supported
+  unfold PhaseCount.phaseBindingWordPolicy at supported
+  split at supported
+  · obtain ⟨serial, declared⟩ := PhaseCount.phaseBindingWordResponse_nonsilent runtime leaks
+      bounds who event payload _ _ slotWeight slotNonnegative slotBounded _ _ _ entry.action
+        supported (by intro silent; rw [silent] at transmitted; cases transmitted)
+    have sameMaterial : (phaseBindingResponse runtime leaks who event payload _
+        serial).transmission = some material := declared ▸ transmitted
+    have exactCall := (congrArg (fun supplied : WitnessedSubmission (serviceGraph setup mode) =>
+      supplied.call.packet) (Option.some.inj sameMaterial)).trans named
+    refine ⟨serial, declared, (Payload.commitment.inj exactCall).2.symm, ?_⟩
+    rw [declared]
+    exact phaseBindingAction?_response setup.program mode runtime leaks who event payload binding
+      _ serial
+  · have silent := (PMF.mem_support_pure_iff ..).mp supported
+    rw [silent] at transmitted
+    cases transmitted
 
 end Vegas

@@ -194,4 +194,85 @@ theorem phaseTimingComponent_free_converges (wellFormed : setup.WellFormed)
   rw [same]
   exact pmfConvergesPointwise_mix_zero noise nonnegative bounded vanishes _ _
 
+
+/-- Every component outside public exclusion retains the same independent
+slot-tier lower bound, including components that deliberately choose WAIT. -/
+theorem phaseTimingComponent_ge_slot (wellFormed : setup.WellFormed)
+    (assessment : setup.commitRecoveryModel.BehavioralAssessment)
+    (noise : ℝ) (noiseNonnegative : 0 ≤ noise) (noiseBounded : noise ≤ 1)
+    (slotWeight : ℝ) (slotNonnegative : 0 ≤ slotWeight) (slotBounded : slotWeight ≤ 1)
+    (agent : (N).InformationAgent (N).playedInformation)
+    (unflagged : ¬ PhasePublicExclusion setup mode runtime leaks agent.2.1)
+    (part : PhaseTimingPart setup mode runtime leaks bounds initial horizon scheduler bound
+      (phaseTimingPool setup mode runtime leaks bounds initial horizon scheduler bound agent))
+    (choice : (N).Choice agent.1 agent.2.1) :
+    (1 - noise) * slotWeight *
+        ((phaseSourceSlotStrategy setup mode runtime leaks bounds wellFormed assessment initial
+          horizon scheduler agent.1 agent.2.1) choice).toReal ≤
+      (phaseTimingComponent setup mode runtime leaks bounds initial horizon scheduler bound
+        wellFormed assessment noise noiseNonnegative noiseBounded slotWeight slotNonnegative
+          slotBounded agent part choice).toReal := by
+  classical
+  let free := fun agent : (N).InformationAgent (N).playedInformation =>
+    PhasePublicExclusion setup mode runtime leaks agent.2.1
+  let keyed := fun agent : (N).InformationAgent (N).playedInformation =>
+    PhaseUnprotected runtime leaks bound agent.1 agent.2.1
+  let key := fun agent : (N).InformationAgent (N).playedInformation =>
+    phaseTimingKey runtime leaks agent.1 agent.2.1
+  let freeLaw := fun (agent : (N).InformationAgent (N).playedInformation)
+    (choice : (N).Choice agent.1 agent.2.1) => mix noise noiseNonnegative noiseBounded
+      ((menu).uniformPolicy initial horizon scheduler agent.1 agent.2.1) (PMF.pure choice)
+  let prescribed := fun agent : (N).InformationAgent (N).playedInformation =>
+    phaseSourcePerturbedStrategy setup mode runtime leaks bounds initial horizon scheduler
+      wellFormed
+      assessment noise noiseNonnegative noiseBounded slotWeight slotNonnegative slotBounded
+        agent.1 agent.2.1
+  let timed := fun (agent : (N).InformationAgent (N).playedInformation) option =>
+    phaseSourceTimingComponent setup mode runtime leaks bounds initial horizon scheduler wellFormed
+      assessment noise noiseNonnegative noiseBounded slotWeight slotNonnegative slotBounded
+        agent.1 agent.2.1 option
+  obtain ⟨identify, same⟩ := freeKeyedComponent_of_not_free (free := free) (keyed := keyed)
+    (key := key) freeLaw prescribed timed (agent := agent) unflagged
+  change _ ≤ ((freeKeyedComponent freeLaw prescribed timed agent part) choice).toReal
+  rw [same part]
+  by_cases selected : ownedKeyed free keyed agent
+  · obtain ⟨option, chosen⟩ := keyedComponent_of_keyed prescribed timed selected (identify part)
+    rw [chosen]
+    exact phaseSourceTimingComponent_ge_slot setup mode runtime leaks bounds initial horizon
+      scheduler wellFormed assessment noise noiseNonnegative noiseBounded slotWeight slotNonnegative
+        slotBounded agent.1 agent.2.1 option choice
+  · rw [keyedComponent_of_not_keyed prescribed timed selected]
+    exact phaseSourcePerturbedStrategy_ge_slot setup mode runtime leaks bounds initial horizon
+      scheduler wellFormed assessment noise noiseNonnegative noiseBounded slotWeight slotNonnegative
+        slotBounded agent.1 agent.2.1 choice
+
+/-- Arbitrary common pool weights preserve the independent slot-tier bound.
+The estimate uses the actual component mixture, not a canonical-profile proxy. -/
+theorem phaseTimingComponent_mixture_ge_slot (wellFormed : setup.WellFormed)
+    (assessment : setup.commitRecoveryModel.BehavioralAssessment)
+    (noise : ℝ) (noiseNonnegative : 0 ≤ noise) (noiseBounded : noise ≤ 1)
+    (slotWeight : ℝ) (slotNonnegative : 0 ≤ slotWeight) (slotBounded : slotWeight ≤ 1)
+    (agent : (N).InformationAgent (N).playedInformation)
+    (unflagged : ¬ PhasePublicExclusion setup mode runtime leaks agent.2.1)
+    (weights : PMF (PhaseTimingPart setup mode runtime leaks bounds initial horizon scheduler bound
+      (phaseTimingPool setup mode runtime leaks bounds initial horizon scheduler bound agent)))
+    (choice : (N).Choice agent.1 agent.2.1) :
+    (1 - noise) * slotWeight *
+        ((phaseSourceSlotStrategy setup mode runtime leaks bounds wellFormed assessment initial
+          horizon scheduler agent.1 agent.2.1) choice).toReal ≤
+      ((weights.bind (phaseTimingComponent setup mode runtime leaks bounds initial horizon scheduler
+        bound wellFormed assessment noise noiseNonnegative noiseBounded slotWeight slotNonnegative
+          slotBounded agent)) choice).toReal := by
+  rw [toReal_bind_apply]
+  have lower := expect_mono
+    (fun part _ => phaseTimingComponent_ge_slot setup mode runtime leaks bounds initial horizon
+      scheduler bound wellFormed assessment noise noiseNonnegative noiseBounded slotWeight
+        slotNonnegative slotBounded agent unflagged part choice)
+    (payoffIntegrable_constant weights _)
+    (payoffIntegrable_of_bounded weights _ (C := 1) (fun part => by
+      rw [abs_of_nonneg ENNReal.toReal_nonneg]
+      exact ENNReal.toReal_le_of_le_ofReal zero_le_one
+        (by simpa only [ENNReal.ofReal_one] using PMF.coe_le_one _ _)))
+  simpa only [expect_constant] using lower
+
 end Vegas

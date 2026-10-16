@@ -165,4 +165,29 @@ theorem phaseSourceTimingComponent_ge_option (wellFormed : setup.WellFormed)
   have second := mul_nonneg (sub_nonneg.mpr noiseBounded) (mul_nonneg slotNonnegative slots)
   nlinarith
 
+
+/-- The independent slot tier retains its mass for every operational option,
+including WAIT, without any lower bound on the option's own mixture weight. -/
+theorem phaseSourceTimingComponent_ge_slot (wellFormed : setup.WellFormed)
+    (assessment : setup.commitRecoveryModel.BehavioralAssessment)
+    (noise : ℝ) (noiseNonnegative : 0 ≤ noise) (noiseBounded : noise ≤ 1)
+    (slotWeight : ℝ) (slotNonnegative : 0 ≤ slotWeight) (slotBounded : slotWeight ≤ 1)
+    (who : Player) (input : (phaseApplication runtime leaks).Info)
+    (option : LateOption bounds.candidateCount) (choice : (N).Choice who input) :
+    (1 - noise) * slotWeight *
+        ((phaseSourceSlotStrategy setup mode runtime leaks bounds wellFormed assessment initial
+          horizon scheduler who input) choice).toReal ≤
+      (phaseSourceTimingComponent setup mode runtime leaks bounds initial horizon scheduler
+        wellFormed assessment noise noiseNonnegative noiseBounded slotWeight slotNonnegative
+          slotBounded who input option choice).toReal := by
+  unfold phaseSourceTimingComponent
+  rw [mix_apply_toReal, mix_apply_toReal]
+  have raw := mul_nonneg noiseNonnegative (ENNReal.toReal_nonneg (a :=
+    ((menu).uniformPolicy initial horizon scheduler who input) choice))
+  have main := mul_nonneg (sub_nonneg.mpr noiseBounded)
+    (mul_nonneg (sub_nonneg.mpr slotBounded) (ENNReal.toReal_nonneg (a :=
+      (phaseSourceTimingStrategy setup mode runtime leaks bounds wellFormed assessment initial
+        horizon scheduler option who input) choice)))
+  nlinarith
+
 end Vegas

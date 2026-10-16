@@ -1,6 +1,6 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**SE: non-concurrent ✓ · safety/laws ✓ · timing limit law ✓ · posterior: accepted/order ✓, full law open · incentives open.**
+**SE: non-concurrent ✓ · safety/laws ✓ · timing limit law ✓ · posterior: binding recall ✓, full law open · incentives open.**
 
 <details>
 <summary>Checked recovery milestones and remaining proof obligations</summary>
@@ -164,8 +164,10 @@ decoded source action occurs in the parsed record. Exact occurrence
 reconstruction supplies the full prior own recall and chronological order of
 two real callbacks, including repeated equal WAIT entries. On the source side,
 the full effective own history is the original entry history followed by the
-source-ranked word actions. Equality with the complete native parsed list,
-including order and multiplicity, remains open.
+source-ranked word actions. The native parsed list for the earlier part of the current attempt
+equals the surviving chronological original own actions, including order,
+multiplicity and accepted failures. At a genuine ready binding it reconstructs
+the exact filled source history from the saved entry history.
 
 Two chronological same-attempt raw binding sends have strictly increasing
 source ranks. Their genuine earlier callbacks, readiness and event distinctness
@@ -179,23 +181,39 @@ derive the corresponding updates of the whole-block member posterior. A
 complete scheduler run retains all sampled member words jointly with the
 execution, exactly as the behavioral run followed by final own-recall
 posteriors. In the source, supported entry view and effective owned word
-determine the complete current view, including accepted failures. Identifying
-the actual native record with that effective word remains open.
+determine the complete current view, including accepted failures. The actual
+binding record identifies that effective word; its original mixed-entry
+posterior still requires the physical observation-likelihood comparison.
 
 Concrete complete-word member policies retain their owner-dependent word
 profile jointly with the full physical execution through the current callback
 and every subsequent scheduler round. Entry-dependent word priors keep the
 original entry tag. Every supported final execution with a possible posterior
 word profile replays under those same words and the same scheduler. This
-realization does not yet include the independent unsafe WAIT/serial options.
+realization is supplemented by an exact private-plan implementation of the
+actual common completion's finite pool weights, including unsafe WAIT/serial
+options and publicly excluded free pools. Full recall length derives that the
+current consequential pool was not read earlier. At a supported complete-round
+owner input, its original pool weight remains independent of the entire
+execution, all other owners' plans and every other own coordinate. The
+command-occupation assessment posterior and source-word likelihood remain
+separate obligations.
 
 During commitment phases, actual packet inclusion has the same joint external
 observation channel for all private typed binding values, including accepted
 failures and stale, invalid or rejected packets. The coupling constructs both
 genuine same-command successor histories and retains network, receipts,
-scheduler recall and all nonowner recall. Iterating this fact needs the updated
-sender-private memory and compatible word likelihood; neither is assumed from
-external observation equality.
+scheduler recall and all nonowner recall. Actual preparation, response and
+acceptance reconstruct the updated sender-private candidate/result memory,
+saved and live frames, including failed or wrong-typed raw bindings. Supported
+clear environment steps retain this shadow through genuine clock, chance and
+expiry commands. The chronological compatible-word likelihood remains open.
+
+At genuine unsent bindings, every actual timing mixture retains the independent
+source slot tier, for arbitrary pool weights including all WAIT. The original
+source-choice floor therefore bounds replacement SEND and silent WAIT masses
+in that same mixture. WAIT still retains every later callback and reset.
+Whole-history raw-tier error transport for these timing mixtures remains open.
 
 Remaining obligations include the source/native posterior law under actual
 recall and mixed saved entries, and the clear-site continuation/incentive

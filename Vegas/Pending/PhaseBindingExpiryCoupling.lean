@@ -79,7 +79,8 @@ theorem expiry_coupling (frame : Frame runtime leaks memory owner original repai
           (original.application.current.environmentResult (.expire event) native)
           original.application.retired).1
         exact preserved.symm.trans clear
-      have stutters := frame.expiry_native_stutter event native supported rawClear
+      have stutters := RecoveryState.expiry_native_stutter original.application.current
+        repaired.application.current frame.live.publicView event native supported rawClear
       rw [stutters.1, PMF.mem_support_pure_iff] at supported
       subst native
       have rightAllowed : repaired.application.commandAllowed (.expire event) = true := by
