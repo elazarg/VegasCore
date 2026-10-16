@@ -122,3 +122,5 @@ import Vegas.Source.CommitPrefixMixture
 import Vegas.Source.CommitPrefixEntryKernel
 import Vegas.Source.CommitPrefixWordRecall
 import Vegas.Source.CommitPrefixWordHistory
+import Vegas.Source.CommitPrefixAttemptReadout
+import Vegas.Source.CommitPrefixWordProjection

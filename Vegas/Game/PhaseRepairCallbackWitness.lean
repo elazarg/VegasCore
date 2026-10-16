@@ -30,10 +30,16 @@ local notation "E" => ReactiveApplication.ResponseMenu.protocol
 Only a genuine final clear binding site is used to classify earlier openings;
 there is no local probability, successful-binding or image-support premise. -/
 theorem phase_repair_callback_pair (covered : bounds.CoversOutputValues)
+    (maximal : plan.phases.IsChain fun before after =>
+      before.kind ≠ after.kind ∨ before.kind = .sample)
     (who : Player) (remaining : Nat) (original repaired : (app).Execution)
     (memory : BindingMemory runtime (PhaseBindingRepair.nativeLeaks
       (graph := serviceGraph setup mode)))
     (frame : PhaseBindingRepair.Frame runtime leaks memory who original repaired)
+    (past : (original.recall who).map (fun entry =>
+        (phaseOperationalView runtime leaks entry.beforeView, entry.emitted)) =
+      (repaired.recall who).map (fun entry =>
+        (phaseOperationalView runtime leaks entry.beforeView, entry.emitted)))
     (left : (E).Trace (some ⟨remaining, some who, original⟩))
     (right : (E).Trace (some ⟨remaining, some who, repaired⟩))
     (final : (app).Control) (finalTrace : (E).Trace (some final))
@@ -72,6 +78,16 @@ theorem phase_repair_callback_pair (covered : bounds.CoversOutputValues)
   have recallLeft := (app).history_inputRecall _ horizon scheduler rawLeft
   have recallRight := (app).history_inputRecall _ horizon scheduler rawRight
   have outputsEq := frame.outputs recallLeft recallRight who
+  obtain ⟨first, last, path⟩ :
+      ∃ (first : ((PhaseCount.onePacketMenu runtime leaks bounds).protocol
+          (inputs.map (PhaseRuntimeState.initial plan)) horizon scheduler).Trace
+            (some ⟨remaining, some who, original⟩))
+        (last : ((PhaseCount.onePacketMenu runtime leaks bounds).protocol
+          (inputs.map (PhaseRuntimeState.initial plan)) horizon scheduler).Trace (some final)),
+        TracePrefix first last := by
+    dsimp only [inputs]
+    rw [PMF.map_comp]
+    exact ⟨left, finalTrace, isPrefix⟩
   have attemptEq : original.application.attempt = repaired.application.attempt := by
     simp only [PhaseRuntimeState.attempt, frame.phases, frame.generation]
   have values (event : (serviceGraph setup mode).EventId) (payload : L.Ty)
@@ -147,12 +163,17 @@ theorem phase_repair_callback_pair (covered : bounds.CoversOutputValues)
                 rw [← EventCode.actor_cast outputEq _, codeEq] at acting
                 exact Option.some.inj acting
               subst owner
+              have key := frame.opening_timingKey_eq runtime leaks bounds plan
+                (serviceGraph_revealRelaxedOrdered setup mode) maximal inputs horizon scheduler who
+                  remaining original repaired memory past first final last path finalClear event
+                    payload binding checks outputEq codeEq node request imageRequest bindingEvent
+                      bindingOwner bindingPayload bindingOutput finalRequest
               refine ⟨0, 0, .opening ?_ .nil⟩
               exact ⟨remaining, original, repaired, memory, frame, left, right, final, finalTrace,
                 isPrefix, event, payload, binding, checks, outputEq, codeEq, node,
                 bindingEvent, bindingOwner, bindingPayload, bindingOutput, ⟨none⟩,
                 finalClear, request, imageRequest, unsent, imageUnsent,
-                values event payload (Or.inr outputEq), finalRequest, rfl, rfl⟩
+                values event payload (Or.inr outputEq), finalRequest, rfl, rfl, key⟩
   | some material =>
       obtain ⟨coordinate, request⟩ := PhaseCount.onePacket_request_of_nonsilent runtime leaks
         bounds plan inputs horizon scheduler remaining who original leftTrace frame.clearOriginal
@@ -228,12 +249,18 @@ theorem phase_repair_callback_pair (covered : bounds.CoversOutputValues)
               have actorEq : actor = who := correct.2.1.symm
               subst actor
               simp only [PhaseBindingRepair.Frame.responseImage, ↓reduceIte]
+              have key := frame.opening_timingKey_eq runtime leaks bounds plan
+                (serviceGraph_revealRelaxedOrdered setup mode) maximal inputs horizon scheduler who
+                  remaining original repaired memory past first final last path finalClear event
+                    payload binding checks outputEq codeEq node requestEvent imageRequest
+                      bindingEvent
+                      bindingOwner bindingPayload bindingOutput finalRequest
               refine ⟨0, 0, .opening ?_ .nil⟩
               exact ⟨remaining, original, repaired, memory, frame, left, right, final, finalTrace,
                 isPrefix, event, payload, binding, checks, outputEq, codeEq, node,
                 bindingEvent, bindingOwner, bindingPayload, bindingOutput,
                 ⟨some ⟨⟨.opening event candidate raw, preparation⟩, evidence⟩⟩,
                 finalClear, requestEvent, imageRequest, unsent, imageUnsent,
-                values event payload (Or.inr outputEq), finalRequest, rfl, rfl⟩
+                values event payload (Or.inr outputEq), finalRequest, rfl, rfl, key⟩
 
 end Vegas

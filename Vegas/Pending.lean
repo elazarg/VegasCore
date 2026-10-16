@@ -652,3 +652,13 @@ import Vegas.Pending.PhaseBindingInclusionMemory
 import Vegas.Pending.PhaseBindingResponseMemory
 import Vegas.Pending.PhaseBindingOpaqueEnvironment
 import Vegas.Pending.PhaseBindingOpaqueEnvironmentTrace
+import Vegas.Pending.PhaseBindingMemoryFreshness
+import Vegas.Pending.PhaseBindingForeignMemory
+import Vegas.Pending.PhaseBindingForeignCompletionMemory
+import Vegas.Pending.PhaseBindingMemoryActivation
+import Vegas.Pending.PhaseBindingMemorySlots
+import Vegas.Pending.PhaseBindingForeignSubmission
+import Vegas.Pending.PhaseBindingForeignResponseMemory
+import Vegas.Pending.PhaseBindingCountedMemory
+import Vegas.Pending.PhaseBindingCountedIncludeMemory
+import Vegas.Pending.PhaseBindingMemoryIncludeTrace

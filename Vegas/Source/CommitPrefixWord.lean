@@ -33,6 +33,25 @@ theorem prepend_append (earlier : CommitPrefix Γ O Δ P) (later : CommitPrefix 
   | commit name owner fresh guard rest ih =>
       exact congrArg (SourceProgram.commit name owner fresh guard) (ih later)
 
+omit [DecidableEq Player] [IExpr.ResultTypes L] in
+/-- Concatenating commitment telescopes adds their static lengths. -/
+theorem length_append (earlier : CommitPrefix Γ O Δ P) (later : CommitPrefix Δ P Ξ Q) :
+    (earlier.append later).length = earlier.length + later.length := by
+  induction earlier with
+  | nil => simp only [append, length, Nat.zero_add]
+  | commit _ _ _ _ _ ih => simp only [append, length, ih]; omega
+
+omit [IExpr.ResultTypes L] in
+/-- Recovering an earlier view discards the later telescope first, retaining
+the same complete earlier own history even when owners repeat. -/
+theorem entryView_append (earlier : CommitPrefix Γ O Δ P) (later : CommitPrefix Δ P Ξ Q)
+    (who : Player) (view : DecisionView who Ξ) :
+    (earlier.append later).entryView who view =
+      earlier.entryView who (later.entryView who view) := by
+  induction earlier with
+  | nil => rfl
+  | commit _ _ _ _ _ ih => simp only [append, entryView, ih]
+
 /-- Read a static addressed action from one owner's complete word. Outside
 the telescope or at a foreign-owned slot the readout is absent. -/
 def wordAction : {Γ Δ : SourceCtx Player L} → {O P : Finset VarId} →
@@ -46,6 +65,23 @@ def wordAction : {Γ Δ : SourceCtx Player L} → {O P : Finset VarId} →
             (((rest.entryView who view).1.cells name (.commitment owner _) .here).getD .failure))
         else none
       | index + 1 => rest.wordAction who index view
+
+omit [IExpr.ResultTypes L] in
+/-- An addressed action in the earlier telescope reads the same original
+typed result after discarding the later owned view. -/
+theorem wordAction_append_prefix (earlier : CommitPrefix Γ O Δ P)
+    (later : CommitPrefix Δ P Ξ Q) (who : Player) (index : Nat)
+    (view : DecisionView who Ξ) (bounded : index < earlier.length) :
+    (earlier.append later).wordAction who index view =
+      earlier.wordAction who index (later.entryView who view) := by
+  induction earlier generalizing index with
+  | nil => simp only [length] at bounded; omega
+  | commit _ _ _ _ rest ih =>
+    cases index with
+    | zero => simp only [append, wordAction, entryView_append]
+    | succ index =>
+      simp only [append, wordAction]
+      exact ih later index (by simpa only [length, Nat.succ_lt_succ_iff] using bounded)
 
 omit [IExpr.ResultTypes L] in
 /-- The selector is total on the complete word and uses the original source

@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Source.CommitPrefixPolicyReadout
+import Vegas.Source.CommitPrefixWord
 import Vegas.Source.ProtocolSuffixPolicy
 import Vegas.Game.CommitRecoveryNonmissingSource
 import Vegas.Game.RecoveryReadyCommitWitness
@@ -151,6 +152,81 @@ theorem RecoverySourceCheckpoint.binding_word_prediction_of_ready
     _ = (residual owner).protocolAction checkpoint.residual.tail
         (ProtocolState.observe owner checkpoint.residual.tail point) := castLaw
     _ = _ := by rw [raw, actualDecoded]
+
+/-- The actual filled owned view predicts the next draw of the ORIGINAL complete block word. -/
+theorem RecoverySourceCheckpoint.binding_owned_word_prediction_of_ready
+    {setup : Setup (Player := Player) (L := L)} {mode : ExecutionMode}
+    (runtime : EventGraphRuntime (serviceGraph setup mode))
+    (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket (serviceGraph setup mode)))
+    (execution : (phaseApplication runtime leaks).Execution)
+    (checkpoint : RecoverySourceCheckpoint setup mode execution.application)
+    (wellFormed : setup.WellFormed)
+    (assessment : setup.commitRecoveryModel.BehavioralAssessment)
+    (mixed : assessment.IsFullyMixed)
+    {Δ Ξ : SourceCtx Player L} {P Q : Finset VarId} {name : VarId} {owner : Player}
+    {payload : L.Ty} (fresh : name ∉ Δ.map Prod.fst)
+    (guard : SourceGuard L Δ owner name payload)
+    (later : SourceProgram.CommitPrefix ((name, .commitment owner payload) :: Δ)
+      (insert name P) Ξ Q)
+    (suffix : SourceProgram Player L Ξ Q)
+    (earlier : SourceProgram.CommitPrefix checkpoint.residual.context checkpoint.residual.names Δ P)
+    (reconstruct : earlier.prepend (.commit name owner fresh guard (later.prepend suffix)) =
+      checkpoint.residual.tail)
+    (clear : execution.application.entry.excluded = ∅)
+    (stored : execution.application.StoredCheckpoint)
+    (selected : Fin (eventCount checkpoint.residual.tail))
+    (atEnd : selected.val = earlier.length)
+    (ready : execution.application.current.native.config.cut.Ready
+      (checkpoint.embedding.event selected))
+    (acting : (serviceGraph setup mode).actor? (checkpoint.embedding.event selected) = some owner)
+    (notPublication : ¬ ((serviceGraph setup mode).outputLayout
+      (checkpoint.embedding.event selected)).IsPublication)
+    (valid : execution.application.current.native.BindingInvariant) {inputs}
+    (reachable : execution.application.current.native.config.Reachable inputs)
+    (retained : execution.application.HistoryCheckpoint)
+    (saved : execution.application.entry.native.config.cut.IsPrefix
+      execution.application.attempt.phase) :
+    ∃ residual : SourceProgram.BehavioralProfile checkpoint.residual.tail,
+      let typed := cast (congrArg SourceProgram.BehavioralProfile reconstruct.symm) residual
+      let embedding := cast (congrArg
+        (fun program => OutputEmbedding (inputLayout setup.context) (outputLayout setup.program)
+          program) reconstruct.symm) checkpoint.embedding
+      let filled := fillCommitPrefix setup.program earlier
+        (.commit name owner fresh guard (later.prepend suffix)) embedding
+        execution.application.current.native.config.store checkpoint.source
+      let current := earlier.tailProfile
+        (.commit name owner fresh guard (later.prepend suffix)) typed
+      let before := earlier.prefixLaw
+        (.commit name owner fresh guard (later.prepend suffix)) typed checkpoint.source
+      let complete := before.bind (fun config =>
+        ((SourceProgram.CommitPrefix.commit name owner fresh guard later).prefixLaw suffix
+          current config))
+      let beforeView := fun view : DecisionView owner Ξ =>
+        (later.entryView owner view).back true
+      let wordAction := (earlier.append (.commit name owner fresh guard later)).wordAction
+        owner earlier.length
+      (filled.view owner ∈ (before.map (SourceProgram.Config.view owner)).support) ∧
+        (fiberPosterior (complete.map (SourceProgram.Config.view owner)) beforeView
+          (filled.view owner)).map wordAction =
+        (setup.commitRecoveryNonmissingProfile assessment.strategy owner
+          (setup.commitRecoveryClearInformation wellFormed owner
+            (phaseSourceView? setup mode runtime leaks owner (checkpoint.embedding.event selected)
+              (execution.observe (phaseApplication runtime leaks) owner)))).map
+                (fun choice => CommitRecoveryMove.underlying choice.1) := by
+  obtain ⟨residual, predicted⟩ := checkpoint.binding_word_prediction_of_ready runtime leaks
+    execution wellFormed assessment mixed fresh guard later suffix earlier reconstruct clear
+    stored selected atEnd ready acting notPublication valid reachable retained saved
+  refine ⟨residual, ?_⟩
+  intro typed embedding filled current before complete beforeView wordAction
+  obtain ⟨present, predicts⟩ := predicted
+  have oldNext := earlier.prefixLaw_binding_conditional fresh guard later suffix typed
+    checkpoint.source (filled.view owner) present
+  have encodedOld := congrArg (fun law : PMF (PublicationResult (L.Val payload)) =>
+    law.map fun result => some (OwnAction.commit owner name payload result)) oldNext
+  rw [PMF.map_comp] at encodedOld
+  have next := earlier.prefixLaw_owned_word_conditional fresh guard later suffix typed
+    checkpoint.source (filled.view owner) present
+  exact ⟨present, next.trans (encodedOld.symm.trans predicts)⟩
 
 variable [Fintype Player]
 

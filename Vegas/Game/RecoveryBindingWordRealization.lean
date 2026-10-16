@@ -37,7 +37,8 @@ private theorem lift_underlying_of_nonmissing
           cases nonmissing
           rfl
 
-private theorem word_response_law {Word : Type}
+/-- A complete-word kernel retains the ORIGINAL omission marginal before physical encoding. -/
+theorem word_response_law {Word : Type}
     (setup : Setup (Player := Player) (L := L)) (mode : ExecutionMode)
     (runtime : EventGraphRuntime (serviceGraph setup mode))
     (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket (serviceGraph setup mode)))
@@ -191,20 +192,12 @@ theorem RecoverySourceCheckpoint.binding_word_response_of_ready
               payload binding (CommitRecoveryMove.lift (wordAction word))).1
             (execution.recall owner)
             (execution.observe (phaseApplication runtime leaks) owner)) := by
-  obtain ⟨residual, predicted⟩ := checkpoint.binding_word_prediction_of_ready runtime leaks
+  obtain ⟨residual, predicted⟩ := checkpoint.binding_owned_word_prediction_of_ready runtime leaks
     execution wellFormed assessment mixed fresh guard later suffix earlier reconstruct clear
     stored selected atEnd ready acting notPublication valid reachable retained saved
   refine ⟨residual, ?_⟩
   intro typed embedding filled current before complete beforeView wordAction
-  obtain ⟨present, predicts⟩ := predicted
-  have oldNext := earlier.prefixLaw_binding_conditional fresh guard later suffix typed
-    checkpoint.source (filled.view owner) present
-  have encodedOld := congrArg (fun law : PMF (PublicationResult (L.Val payload)) =>
-    law.map fun result => some (OwnAction.commit owner name payload result)) oldNext
-  rw [PMF.map_comp] at encodedOld
-  have next := earlier.prefixLaw_owned_word_conditional fresh guard later suffix typed
-    checkpoint.source (filled.view owner) present
-  have predictsOwned := next.trans (encodedOld.symm.trans predicts)
+  obtain ⟨present, predictsOwned⟩ := predicted
   refine ⟨present, ?_⟩
   exact word_response_law setup mode runtime leaks bounds wellFormed assessment owner
     (checkpoint.embedding.event selected) payload binding serial (execution.recall owner)

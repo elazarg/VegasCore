@@ -1452,13 +1452,81 @@ length, including repeated WAITs. The finite actual pool-plan implementation
 realizes the assembled completion strategy, retaining every owner's plan
 jointly with the full original physical run. At a supported complete-round
 owner input its selected part has the original pool weight independently of
-that entire remainder. Assessment command-occupation Bayes and source-word
-observation likelihood still require specialization.
+that entire remainder. Assessment command-occupation Bayes retains the same
+current pool weights independently of the full remaining plan and the same
+conditional physical-control belief. Source-entry likelihood remains open.
 
 Actual timing-mixture binding bounds:
 [Phase Timing Binding Response Ratio](../Vegas/Game/PhaseTimingBindingResponseRatio.lean),
 [Phase Timing Binding Waiting Ratio](../Vegas/Game/PhaseTimingBindingWaitingRatio.lean).
 Every nonexcluded component and every mixture retains the independent source
 slot tier. Genuine source-choice floors give replacement SEND and silent WAIT
-bounds for arbitrary actual pool weights. These are local response bounds;
-whole-history marked raw-tier transport remains separate.
+bounds for arbitrary actual pool weights. Chronological repair derives the
+complete opening key, hence the same original pool weights and exact opening
+response laws. The actual whole-history marked bound, finite same-fiber repair
+mass estimate and normalized all-opponent raw-send limit use those same timing
+profiles; no all-clear canonical recipe premise is required.
+
+Original word priors and filled source views:
+[Commit Prefix Word Action](../Vegas/Compile/CommitPrefixWordAction.lean),
+[Phase Commit Word Accepted Posterior](../Vegas/Game/PhaseCommitWordAcceptedPosterior.lean),
+[Commit Prefix Attempt Readout](../Vegas/Source/CommitPrefixAttemptReadout.lean),
+[Commit Prefix Word Projection](../Vegas/Source/CommitPrefixWordProjection.lean),
+[Commit Prefix Word Readout](../Vegas/Compile/CommitPrefixWordReadout.lean),
+[Phase Commit Word Source View](../Vegas/Game/PhaseCommitWordSourceView.lean),
+[Phase Commit Word Filled View](../Vegas/Game/PhaseCommitWordFilledView.lean),
+[Phase Commit Word Filled Posterior](../Vegas/Game/PhaseCommitWordFilledPosterior.lean),
+[Phase Commit Timing Word Policy](../Vegas/Game/PhaseCommitTimingWordPolicy.lean),
+[Phase Commit Word Response Recall](../Vegas/Game/PhaseCommitWordResponseRecall.lean).
+Actual accepted-result provenance and chronological readout derive the filled source view. For a fixed original saved entry, the entire non-RAW own recall conditions the original word prior by that view and gives its original nonmissing next-action kernel.
+
+Actual timing-word plans and assessment occupation:
+[Phase Timing Plan Occupation](../Vegas/Game/PhaseTimingPlanOccupation.lean),
+[Phase Timing Word Response](../Vegas/Game/PhaseTimingWordResponse.lean),
+[Phase Timing Word Realization](../Vegas/Game/PhaseTimingWordRealization.lean),
+[Phase Timing Word Plan](../Vegas/Game/PhaseTimingWordPlan.lean),
+[Phase Timing Word Plan Recall](../Vegas/Game/PhaseTimingWordPlanRecall.lean),
+[Phase Timing Word Plan Channels](../Vegas/Game/PhaseTimingWordPlanChannels.lean),
+[Phase Timing Word Plan Posterior](../Vegas/Game/PhaseTimingWordPlanPosterior.lean),
+[Phase Timing Word Plan Filled Posterior](../Vegas/Game/PhaseTimingWordPlanFilledPosterior.lean),
+[Phase Timing Word Coupling](../Vegas/Game/PhaseTimingWordCoupling.lean).
+A single owner word persists across varying actual pool coordinates. Global WAIT, guarded serials, original omission and independent slot encoding remain distinct. The actual command-occupation Bayes law retains original pool weights and physical control beliefs. Full mixed-entry source posterior transport remains open.
+
+Chronological timing repair and raw-send limits:
+[Phase Timing Raw Mixture](../Vegas/Game/PhaseTimingRawMixture.lean),
+[Phase Timing Repair Response Factor](../Vegas/Game/PhaseTimingRepairResponseFactor.lean),
+[Phase Timing Key Properties](../Vegas/Game/PhaseTimingKeyProperties.lean),
+[Phase Timing Opening Response](../Vegas/Game/PhaseTimingOpeningResponse.lean),
+[Free Keyed Pool Observation](../GameTheoryExtensions/Analysis/Protocol/FreeKeyedPoolObservation.lean),
+[Phase Timing Opening Factor](../Vegas/Game/PhaseTimingOpeningFactor.lean),
+[Phase Timing Repair Likelihood](../Vegas/Game/PhaseTimingRepairLikelihood.lean),
+[Phase Timing Marked Binding Fiber](../Vegas/Game/PhaseTimingMarkedBindingFiber.lean),
+[Phase Timing Opponent Raw Binding Mass](../Vegas/Game/PhaseTimingOpponentRawBindingMass.lean),
+[Phase Timing Memory](../Vegas/Game/PhaseTimingMemory.lean),
+[Phase Timing Binding Key](../Vegas/Game/PhaseTimingBindingKey.lean),
+[Phase Timing Recall Memory](../Vegas/Game/PhaseTimingRecallMemory.lean),
+[Phase Repair Operational View](../Vegas/Game/PhaseRepairOperationalView.lean),
+[Phase Repair Timing Key](../Vegas/Game/PhaseRepairTimingKey.lean),
+[Phase Timing Raw Binding Limit](../Vegas/Game/PhaseTimingRawBindingLimit.lean).
+Operational memory derives complete timing-key equality along genuine repair. The same pool plan selects the same option and the same arbitrary pool weights preserve opening laws. Whole chronological SEND/WAIT bounds, finite repair preimages and the original noise schedule give vanishing normalized opponent RAW-send share under arbitrary actual timing profiles. Accepted source failure remains ordinary mass.
+
+All-value physical memory and coupled responses:
+[Phase Binding Memory Freshness](../Vegas/Pending/PhaseBindingMemoryFreshness.lean),
+[Phase Binding Foreign Memory](../Vegas/Pending/PhaseBindingForeignMemory.lean),
+[Phase Binding Foreign Completion Memory](../Vegas/Pending/PhaseBindingForeignCompletionMemory.lean),
+[Phase Binding Memory Activation](../Vegas/Pending/PhaseBindingMemoryActivation.lean),
+[Phase Binding Memory Slots](../Vegas/Pending/PhaseBindingMemorySlots.lean),
+[Phase Binding Foreign Submission](../Vegas/Pending/PhaseBindingForeignSubmission.lean),
+[Phase Binding Foreign Response Memory](../Vegas/Pending/PhaseBindingForeignResponseMemory.lean),
+[Phase Binding Word Coupling](../Vegas/Game/PhaseBindingWordCoupling.lean),
+[Phase Binding Word Omission](../Vegas/Game/PhaseBindingWordOmission.lean),
+[Phase Source Word Coupling](../Vegas/Game/PhaseSourceWordCoupling.lean),
+[Phase Source Timing Word Coupling](../Vegas/Game/PhaseSourceTimingWordCoupling.lean),
+[Phase Binding Counted Memory](../Vegas/Pending/PhaseBindingCountedMemory.lean),
+[Phase Binding Counted Include Memory](../Vegas/Pending/PhaseBindingCountedIncludeMemory.lean),
+[Phase Binding Memory Include Trace](../Vegas/Pending/PhaseBindingMemoryIncludeTrace.lean).
+Actual foreign responses, activation leaks and every counted inclusion branch derive updated memory and genuine successor traces. Word-response couplings retain both original AUX omission marginals and full external/erased recall, with a genuine eligible fallback slot supplied. Whole-block observation likelihood and through-retry value identification remain separate obligations.
+
+Actual attempt continuation:
+[Phase Attempt Continuation](../Vegas/Game/PhaseAttemptContinuation.lean).
+Stopping the existing local execution at focal exclusion or attempt exit retains its entire physical boundary continuation. The surviving-retry contribution is explicit and bounded by its actual boundary probability. No option-independent retry value or common timing score is assumed.

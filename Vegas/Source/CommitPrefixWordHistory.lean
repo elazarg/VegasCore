@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Source.CommitPrefixWord
+import Vegas.Source.CommitPrefixAttemptReadout
 
 /-! # Complete owned source words enumerate the exact chronological actions -/
 
@@ -13,34 +14,25 @@ open GameTheory.Math.Probability
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {Γ Δ : SourceCtx Player L} {O P : Finset VarId}
 
+omit [IExpr.ResultTypes L] in
 /-- A supported full commitment word contains exactly the original effective
 own actions in source order. Foreign slots contribute no owned action, and
 accepted failed results contribute their genuine failed commitment action. -/
-theorem prefixLaw_wordAction_history (block : CommitPrefix Γ O Δ P)
-    (suffix : SourceProgram Player L Δ P) (profile : BehavioralProfile (block.prepend suffix))
+theorem Attempt.wordAction_history (block : CommitPrefix Γ O Δ P)
     (entry : Config Player L Γ) (who : Player) (final : Config Player L Δ)
-    (supported : final ∈ (block.prefixLaw suffix profile entry).support) :
+    (attempt : block.Attempt entry ∅ final ∅) :
     final.history who = entry.history who ++
       (List.range block.length).filterMap (fun index => block.wordAction who index
         (final.view who)) := by
   induction block with
   | nil =>
-      cases (PMF.mem_support_pure_iff ..).mp supported
+      cases attempt
       simp only [length, List.range_zero, List.filterMap_nil, List.append_nil]
   | @commit Γ O Δ P name owner payload fresh guard rest ih =>
-      obtain ⟨result, _chosen, later⟩ := (PMF.mem_support_bind_iff ..).mp supported
-      have tail := ih suffix (afterCommit profile) (commitSuccessor name guard entry result)
-        final later
-      have preView : rest.entryView who (final.view who) =
-          (commitSuccessor name guard entry result).view who := by
-        have member : rest.entryView who (final.view who) ∈
-            (((rest.prefixLaw suffix (afterCommit profile)
-              (commitSuccessor name guard entry result)).map (Config.view who)).map
-                (rest.entryView who)).support := by
-          exact (PMF.mem_support_map_iff ..).mpr
-            ⟨final.view who, (PMF.mem_support_map_iff ..).mpr ⟨final, later, rfl⟩, rfl⟩
-        rw [rest.prefixLaw_entryView] at member
-        exact (PMF.mem_support_pure_iff ..).mp member
+      obtain ⟨result, ⟨later⟩⟩ := attempt.clear_tail
+      have tail := ih (commitSuccessor name guard entry result) final later
+      have preView := Attempt.entryView_eq rest (commitSuccessor name guard entry result)
+        final later who
       rw [length, List.range_succ_eq_map, List.filterMap_cons, List.filterMap_map]
       simp only [Function.comp_def, wordAction]
       by_cases own : owner = who
@@ -57,5 +49,16 @@ theorem prefixLaw_wordAction_history (block : CommitPrefix Γ O Δ P)
       · simp only [ite_eq_right own]
         simpa only [commitSuccessor, Function.update_of_ne (Ne.symm own)] using tail
 
+/-- A supported chronological source word retains the exact original owned
+history, with all accepted failed choices preserved. -/
+theorem prefixLaw_wordAction_history (block : CommitPrefix Γ O Δ P)
+    (suffix : SourceProgram Player L Δ P) (profile : BehavioralProfile (block.prepend suffix))
+    (entry : Config Player L Γ) (who : Player) (final : Config Player L Δ)
+    (supported : final ∈ (block.prefixLaw suffix profile entry).support) :
+    final.history who = entry.history who ++
+      (List.range block.length).filterMap (fun index => block.wordAction who index
+        (final.view who)) := by
+  obtain ⟨attempt⟩ := block.prefixLaw_attempt suffix profile entry final supported
+  exact Attempt.wordAction_history block entry who final attempt
 
 end Vegas.SourceProgram.CommitPrefix

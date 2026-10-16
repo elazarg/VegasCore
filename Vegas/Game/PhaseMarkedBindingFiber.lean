@@ -32,6 +32,8 @@ local notation "E" => ReactiveApplication.ResponseMenu.protocol
 information of every other player, retaining every possible selected raw
 binding-record decomposition and the exact counterfactual factor. -/
 theorem phase_marked_repair_in_focal_fiber (covered : bounds.CoversOutputValues)
+    (maximal : plan.phases.IsChain fun before after =>
+      before.kind ≠ after.kind ∨ before.kind = .sample)
     (owner focal : Player) (different : focal ≠ owner)
     (profile : ∀ player, (N).BehavioralPolicy player) (site : (N).InformationSite focal)
     (history : (N).InformationHistory focal site.1)
@@ -51,8 +53,10 @@ theorem phase_marked_repair_in_focal_fiber (covered : bounds.CoversOutputValues)
   change state = some control at atControl
   cases atControl
   obtain ⟨memory, image, imageTrace, _sends, _waits, frame, _recorded, _bindings, counterfactual,
-    _ordinary, marked⟩ := phase_repair_marked_binding_history setup mode runtime leaks bounds plan
-      horizon scheduler covered owner profile control trace event focal payload output clear request
+    _ordinary, marked, _operationalRecall⟩ := phase_repair_marked_binding_history setup mode
+      runtime leaks bounds plan
+      horizon scheduler covered maximal owner profile control trace event focal payload output
+        clear request
   have sameInfo : (N).infoOf focal trace = (N).infoOf focal imageTrace := by
     change
       ((PhaseCount.onePacketMenu runtime leaks bounds).signals initial horizon scheduler).infoOf
@@ -147,7 +151,8 @@ theorem phase_raw_binding_fiber_mass_le
     intro history member
     obtain ⟨control, atControl, active, clear, request⟩ := genuine history member
     exact phase_marked_repair_in_focal_fiber setup mode runtime leaks bounds plan horizon scheduler
-      covered owner focal different strategy site history control atControl active event payload
+      covered maximal owner focal different strategy site history control atControl active event
+        payload
         output clear request
   let repair := fun history : (N).InformationHistory focal site.1 =>
     if member : history ∈ histories then Classical.choose (candidates history member) else history

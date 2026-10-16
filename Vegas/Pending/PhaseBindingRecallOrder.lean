@@ -153,4 +153,48 @@ theorem recorded_binding_rank_lt {control : (app).Control}
     scheduler left right leftTrace rightTrace leftPrefix rightClear who firstEvent secondEvent
       firstRequest.2.2.2.1 secondRequest.2.2.2.1 firstRequest.2.2.1 secondRequest.2.2.1 different
 
+
+include ordered in
+/-- Every earlier raw binding send in the current attempt strictly precedes
+a genuine still-unsent owned request. Readiness supplies weak rank order;
+the actual recorded envelope and unsent condition exclude equality. -/
+theorem recorded_binding_rank_lt_of_unsent_request {control : (app).Control}
+    (trace : ((menu).protocol initial horizon scheduler).Trace (some control))
+    (clear : control.execution.application.current.excluded = ∅)
+    (who : Player) (earlier : List (app).PlayerEntry) (entry : (app).PlayerEntry)
+    (later : List (app).PlayerEntry)
+    (recalled : control.execution.recall who = earlier ++ entry :: later)
+    (material : WitnessedSubmission graph)
+    (transmitted : entry.action.transmission = some material)
+    (event : graph.EventId) (candidate : Handle graph)
+    (named : material.call.packet = .commitment event candidate)
+    (sameAttempt : entry.beforeView.application.2.attempt = control.execution.application.attempt)
+    (selected : graph.EventId)
+    (request : control.execution.application.SeedRequest who
+      ⟨control.execution.application.attempt, selected⟩)
+    (unsent : ∀ message ∈ (app).outputs (control.execution.recall who),
+      event? message.payload ≠ some ⟨control.execution.application.attempt, selected⟩) :
+    event.val < selected.val := by
+  obtain ⟨before, prior, isPrefix, _active, _past, _viewed, previousRequest, _allowed⟩ :=
+    recorded_binding_request runtime leaks bounds plan ordered inputs horizon scheduler trace clear
+      who earlier entry later recalled material transmitted event candidate named
+  have raw := (menu).toRawTrace initial horizon scheduler trace
+  have retained : entry ∈ control.execution.recall who := by
+    rw [recalled]
+    exact List.mem_append_right earlier List.mem_cons_self
+  obtain ⟨message, emitted, _sender, packet⟩ := recalled_submission_emitted runtime leaks initial
+    horizon scheduler raw who entry retained material transmitted
+  have ownOutput : message ∈ (app).outputs (control.execution.recall who) :=
+    List.mem_filterMap.mpr ⟨entry, retained, emitted⟩
+  have tag := phase_recalled_emission_attempt runtime leaks initial horizon scheduler raw who entry
+    retained message emitted
+  have currentTag := tag.trans sameAttempt
+  have different : event ≠ selected := by
+    intro same
+    apply unsent message ownOutput
+    simp only [event?, packet, named, same, Payload.event?, Option.map_some, currentTag]
+  exact phase_ready_owner_rank_lt_of_clear_prefix runtime leaks ordered menu initial horizon
+    scheduler before control prior trace isPrefix clear who event selected previousRequest.2.2.2.1
+      request.2.2.2.1 previousRequest.2.2.1 request.2.2.1 different
+
 end Vegas.EventGraphRuntime.PhaseCount

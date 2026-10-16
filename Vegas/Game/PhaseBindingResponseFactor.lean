@@ -15,7 +15,8 @@ namespace Vegas
 
 open SourceProgram EventGraph EventGraphRuntime Interaction GameTheory.Math.Probability
 
-private theorem bind_mix_kernel {A B : Type} (law : PMF A)
+/-- Binding an actual input law through a pointwise mixture distributes over that mixture. -/
+theorem bind_mix_kernel {A B : Type} (law : PMF A)
     (first second : A → PMF B) (weight : ℝ) (nonnegative : 0 ≤ weight) (bounded : weight ≤ 1) :
     law.bind (fun point => mix weight nonnegative bounded (first point) (second point)) =
       mix weight nonnegative bounded (law.bind first) (law.bind second) := by

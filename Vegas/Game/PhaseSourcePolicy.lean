@@ -391,4 +391,82 @@ theorem phaseSourcePolicy_request_of_binding_support (wellFormed : setup.WellFor
           cases (PMF.mem_support_pure_iff _ _).mp supported
           cases transmitted
 
+
+/-- Public request selection and canonical opening preserve a binding
+component's equality of supported response masses. No realized-input or
+source-information correspondence is needed for this dispatcher fact. -/
+theorem phasePolicyDispatch_apply_eq_of_support
+    (first second : ∀ (owner : Player) (event : (serviceGraph setup mode).EventId)
+      (payload : L.Ty), (serviceGraph setup mode).outputLayout event = .binding owner payload →
+      (phaseApplication runtime leaks).Policy)
+    (who : Player) (past : List (phaseApplication runtime leaks).PlayerEntry)
+    (view : (phaseApplication runtime leaks).PlayerView)
+    (response : (phaseApplication runtime leaks).Action)
+    (same : ∀ owner event payload binding,
+      response ∈ (first owner event payload binding past view).support →
+      response ∈ (second owner event payload binding past view).support →
+        first owner event payload binding past view response =
+          second owner event payload binding past view response)
+    (left : response ∈ (phasePolicyDispatch setup mode runtime leaks bounds first who past
+      view).support)
+    (right : response ∈ (phasePolicyDispatch setup mode runtime leaks bounds second who past
+      view).support) :
+    phasePolicyDispatch setup mode runtime leaks bounds first who past view response =
+      phasePolicyDispatch setup mode runtime leaks bounds second who past view response := by
+  classical
+  cases offered : requestedEvent setup mode who view.application.2 with
+  | none => simp only [phasePolicyDispatch, offered]
+  | some event =>
+      simp only [phasePolicyDispatch, offered] at left right ⊢
+      cases node : nodeView (serviceGraph setup mode) event with
+      | bind owner payload binding code =>
+          simp only [eventPolicyDispatch, node] at left right ⊢
+          by_cases owned : owner = who
+          · simp only [ite_eq_left owned] at left right ⊢
+            exact same owner event payload binding left right
+          · simp only [ite_eq_right owned]
+      | resolve owner payload binding checks outputEq codeEq =>
+          simp only [eventPolicyDispatch, node]
+      | sample payload law outputEq codeEq =>
+          simp only [eventPolicyDispatch, node]
+
+
+/-- A public request selects the same binding branch for every private member.
+Every other dispatcher branch has one member-independent law. -/
+theorem phasePolicyDispatch_indexed_cases {Index : Type}
+    (bindings : Index → ∀ (owner : Player) (event : (serviceGraph setup mode).EventId)
+      (payload : L.Ty), (serviceGraph setup mode).outputLayout event = .binding owner payload →
+      (phaseApplication runtime leaks).Policy)
+    (who : Player) (past : List (phaseApplication runtime leaks).PlayerEntry)
+    (view : (phaseApplication runtime leaks).PlayerView) :
+    (∃ law, ∀ index, phasePolicyDispatch setup mode runtime leaks bounds (bindings index) who
+      past view = law) ∨
+    ∃ event payload, ∃ binding :
+      (serviceGraph setup mode).outputLayout event = .binding who payload,
+      ∀ index, phasePolicyDispatch setup mode runtime leaks bounds (bindings index) who past view =
+        bindings index who event payload binding past view := by
+  classical
+  cases offered : requestedEvent setup mode who view.application.2 with
+  | none => exact Or.inl ⟨PMF.pure ⟨none⟩, fun _ => by
+      simp only [phasePolicyDispatch, offered]⟩
+  | some event =>
+      cases node : nodeView (serviceGraph setup mode) event with
+      | bind owner payload binding code =>
+          by_cases owned : owner = who
+          · subst owner
+            exact Or.inr ⟨event, payload, binding, fun _ => by
+              simp only [phasePolicyDispatch, offered, eventPolicyDispatch, node, ite_true]⟩
+          · exact Or.inl ⟨PMF.pure ⟨none⟩, fun _ => by
+              simp only [phasePolicyDispatch, offered, eventPolicyDispatch, node,
+                ite_eq_right owned]⟩
+      | resolve owner payload binding checks outputEq codeEq =>
+          refine Or.inl ⟨if owner = who then PhaseCount.phaseOpeningPolicy runtime leaks bounds
+            owner event payload binding (fun _ _ => PMF.pure true) past view else PMF.pure ⟨none⟩,
+            fun _ => ?_⟩
+          simp only [phasePolicyDispatch, offered, eventPolicyDispatch, node]
+          split <;> rfl
+      | sample payload law outputEq codeEq =>
+          exact Or.inl ⟨PMF.pure ⟨none⟩, fun _ => by
+            simp only [phasePolicyDispatch, offered, eventPolicyDispatch, node]⟩
+
 end Vegas

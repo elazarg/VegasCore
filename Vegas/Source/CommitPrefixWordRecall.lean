@@ -18,6 +18,73 @@ open GameTheory.Math.Probability
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {Γ Δ : SourceCtx Player L} {O P : Finset VarId}
 
+omit [IExpr.ResultTypes L] in
+/-- An actually clear commitment has a nonmissing clear typed tail. -/
+theorem Attempt.clear_tail
+    {name : VarId} {owner : Player} {payload : L.Ty} {fresh : name ∉ Γ.map Prod.fst}
+    {guard : SourceGuard L Γ owner name payload}
+    {rest : CommitPrefix ((name, .commitment owner payload) :: Γ) (insert name O) Δ P}
+    {entry : Config Player L Γ} {final : Config Player L Δ}
+    (attempt : (CommitPrefix.commit name owner fresh guard rest).Attempt entry ∅ final ∅) :
+    ∃ result, Nonempty (rest.Attempt (commitSuccessor name guard entry result) ∅ final ∅) := by
+  cases attempt with
+  | active _ result missed _ later =>
+      cases missed with
+      | false => exact ⟨result, ⟨later⟩⟩
+      | true =>
+          have included := later.excluded_subset
+          have member : owner ∈ excludeCommit ∅ owner true := by simp only [excludeCommit,
+            ite_true, Finset.mem_insert, true_or]
+          exact (Finset.notMem_empty owner (included member)).elim
+  | excluded inactive _later => exact (Finset.notMem_empty owner inactive).elim
+
+omit [IExpr.ResultTypes L] in
+/-- Through actual clear typed attempts, the entry owned view and final
+original own-action word determine the complete final owned view. No source
+strategy, support or independence hypothesis is needed. -/
+theorem Attempt.view_eq_of_history_eq (block : CommitPrefix Γ O Δ P)
+    (first second : Config Player L Γ) (who : Player)
+    (entryView : first.view who = second.view who)
+    (left right : Config Player L Δ)
+    (leftAttempt : block.Attempt first ∅ left ∅)
+    (rightAttempt : block.Attempt second ∅ right ∅)
+    (history : left.history who = right.history who) : left.view who = right.view who := by
+  induction block with
+  | nil =>
+      cases leftAttempt
+      cases rightAttempt
+      exact entryView
+  | @commit Γ O Δ P name owner payload fresh guard rest ih =>
+      obtain ⟨firstResult, ⟨leftTail⟩⟩ := Attempt.clear_tail leftAttempt
+      obtain ⟨secondResult, ⟨rightTail⟩⟩ := Attempt.clear_tail rightAttempt
+      have nextView : (commitSuccessor name guard first firstResult).view who =
+          (commitSuccessor name guard second secondResult).view who := by
+        apply Config.view_commit_congr name guard first second entryView firstResult secondResult
+        intro own
+        subst who
+        have leftPrefix := leftTail.history_prefix owner
+        have rightPrefix := rightTail.history_prefix owner
+        simp only [commitSuccessor, Function.update_self] at leftPrefix rightPrefix
+        obtain ⟨leftWord, leftEqual⟩ := leftPrefix
+        obtain ⟨rightWord, rightEqual⟩ := rightPrefix
+        have prior : first.history owner = second.history owner := congrArg Prod.snd entryView
+        have words : (first.history owner ++ [OwnAction.commit owner name payload firstResult]) ++
+            leftWord = (first.history owner ++
+              [OwnAction.commit owner name payload secondResult]) ++ rightWord := by
+          rw [prior]
+          simpa only [prior] using leftEqual.trans (history.trans rightEqual.symm)
+        have heads : OwnAction.commit owner name payload firstResult =
+            OwnAction.commit owner name payload secondResult := by
+          have equal : OwnAction.commit owner name payload firstResult :: leftWord =
+              OwnAction.commit owner name payload secondResult :: rightWord := by
+            apply List.append_cancel_left (as := first.history owner)
+            simpa only [List.append_assoc, List.singleton_append] using words
+          exact (List.cons.inj equal).1
+        simpa only [OwnAction.commit.injEq, heq_eq_eq, true_and] using heads
+      exact ih (commitSuccessor name guard first firstResult)
+        (commitSuccessor name guard second secondResult) nextView left right leftTail rightTail
+          history
+
 /-- Equal effective owned words reconstruct the same complete owned view in
 any two supported executions of one typed commitment prefix. -/
 theorem prefixLaw_view_eq_of_history_eq (block : CommitPrefix Γ O Δ P)
@@ -29,47 +96,10 @@ theorem prefixLaw_view_eq_of_history_eq (block : CommitPrefix Γ O Δ P)
     (leftSupported : left ∈ (block.prefixLaw suffix firstProfile first).support)
     (rightSupported : right ∈ (block.prefixLaw suffix secondProfile second).support)
     (history : left.history who = right.history who) : left.view who = right.view who := by
-  induction block with
-  | nil =>
-      cases (PMF.mem_support_pure_iff ..).mp leftSupported
-      cases (PMF.mem_support_pure_iff ..).mp rightSupported
-      exact entryView
-  | @commit Γ O Δ P name owner payload fresh guard rest ih =>
-      obtain ⟨firstResult, _, leftStep⟩ := (PMF.mem_support_bind_iff ..).mp leftSupported
-      obtain ⟨secondResult, _, rightStep⟩ := (PMF.mem_support_bind_iff ..).mp rightSupported
-      have nextView : (commitSuccessor name guard first firstResult).view who =
-          (commitSuccessor name guard second secondResult).view who := by
-        apply Config.view_commit_congr name guard first second entryView firstResult secondResult
-        intro own
-        subst who
-        obtain ⟨leftAttempt⟩ := rest.prefixLaw_attempt suffix (afterCommit firstProfile)
-          (commitSuccessor name guard first firstResult) left leftStep
-        obtain ⟨rightAttempt⟩ := rest.prefixLaw_attempt suffix (afterCommit secondProfile)
-          (commitSuccessor name guard second secondResult) right rightStep
-        have leftPrefix := leftAttempt.history_prefix owner
-        have rightPrefix := rightAttempt.history_prefix owner
-        simp only [commitSuccessor, Function.update_self] at leftPrefix rightPrefix
-        obtain ⟨leftTail, leftWord⟩ := leftPrefix
-        obtain ⟨rightTail, rightWord⟩ := rightPrefix
-        have priorHistory : first.history owner = second.history owner :=
-          congrArg Prod.snd entryView
-        have words : (first.history owner ++ [OwnAction.commit owner name payload firstResult]) ++
-            leftTail = (first.history owner ++
-              [OwnAction.commit owner name payload secondResult]) ++ rightTail := by
-          rw [priorHistory]
-          simpa only [priorHistory] using leftWord.trans (history.trans rightWord.symm)
-        have heads : OwnAction.commit owner name payload firstResult =
-            OwnAction.commit owner name payload secondResult := by
-          have equal : OwnAction.commit owner name payload firstResult :: leftTail =
-              OwnAction.commit owner name payload secondResult :: rightTail := by
-            apply List.append_cancel_left (as := first.history owner)
-            simpa only [List.append_assoc, List.singleton_append] using words
-          exact (List.cons.inj equal).1
-        simpa only [OwnAction.commit.injEq, heq_eq_eq, true_and] using heads
-      exact ih suffix (afterCommit firstProfile) (afterCommit secondProfile)
-        (commitSuccessor name guard first firstResult)
-        (commitSuccessor name guard second secondResult) nextView left right leftStep rightStep
-          history
+  obtain ⟨leftAttempt⟩ := block.prefixLaw_attempt suffix firstProfile first left leftSupported
+  obtain ⟨rightAttempt⟩ := block.prefixLaw_attempt suffix secondProfile second right rightSupported
+  exact Attempt.view_eq_of_history_eq block first second who entryView left right leftAttempt
+    rightAttempt history
 
 /-- At a genuine current source view, conditioning the actual prefix law on
 the complete owned view is exactly conditioning it on the effective owned

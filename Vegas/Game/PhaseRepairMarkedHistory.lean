@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.PhaseRepairCallbackWitness
+import Vegas.Game.PhaseRepairOperationalView
 import Vegas.Game.PhaseRepairMarkedRecords
 import Vegas.Pending.PhaseBindingCounterfactualStep
 
@@ -37,6 +38,8 @@ and scheduler factors. Every selected raw binding position has separate ordinary
 before/after words and a concrete same-slot marked pair. No mixture origin is
 inferred from a typed failure, and no target history or kernel ratio is given. -/
 theorem phase_repair_marked_binding_history (covered : bounds.CoversOutputValues)
+    (maximal : plan.phases.IsChain fun before after =>
+      before.kind ≠ after.kind ∨ before.kind = .sample)
     (owner : Player) (policies : ∀ who, (N).BehavioralPolicy who)
     (final : (app).Control) (finalTrace : (E).Trace (some final))
     (bindingEvent : (serviceGraph setup mode).EventId) (bindingOwner : Player)
@@ -62,7 +65,11 @@ theorem phase_repair_marked_binding_history (covered : bounds.CoversOutputValues
         ((app).recallOwnPlay (image.recall owner)) sends waits ∧
       PhaseRepairMarkedBindings setup mode runtime leaks bounds plan horizon scheduler owner
         ((app).recallOwnPlay (final.execution.recall owner))
-        ((app).recallOwnPlay (image.recall owner)) := by
+        ((app).recallOwnPlay (image.recall owner)) ∧
+      (final.execution.recall owner).map (fun entry =>
+          (phaseOperationalView runtime leaks entry.beforeView, entry.emitted)) =
+        (image.recall owner).map (fun entry =>
+          (phaseOperationalView runtime leaks entry.beforeView, entry.emitted)) := by
   let menu := PhaseCount.onePacketMenu runtime leaks bounds
   let inputs := setup.initialLaw.map (fun draw => encodeInputs draw)
   have initialEq : inputs.map (PhaseRuntimeState.initial plan) = initial := by
@@ -88,7 +95,11 @@ theorem phase_repair_marked_binding_history (covered : bounds.CoversOutputValues
           ((app).recallOwnPlay (image.recall owner)) sends waits ∧
         PhaseRepairMarkedBindings setup mode runtime leaks bounds plan horizon scheduler owner
           ((app).recallOwnPlay (control.execution.recall owner))
-          ((app).recallOwnPlay (image.recall owner)) := by
+          ((app).recallOwnPlay (image.recall owner)) ∧
+        (control.execution.recall owner).map (fun entry =>
+            (phaseOperationalView runtime leaks entry.beforeView, entry.emitted)) =
+          (image.recall owner).map (fun entry =>
+            (phaseOperationalView runtime leaks entry.beforeView, entry.emitted)) := by
     intro state trace
     induction trace with
     | start => intro _ control impossible; cases impossible
@@ -113,7 +124,7 @@ theorem phase_repair_marked_binding_history (covered : bounds.CoversOutputValues
               PhaseBindingRepair.frame_at_clear_history runtime leaks bounds plan inputs horizon
                 scheduler (by rw [initialEq]; exact afterTrace) clear owner, ?_, ?_, rfl, .nil,
                 PhaseRepairMarkedBindings.nil setup mode runtime leaks bounds plan horizon
-                  scheduler owner⟩
+                  scheduler owner, rfl⟩
             · intro message member
               cases member
             · exact BindingShadow.ownBindings_empty owner
@@ -125,7 +136,8 @@ theorem phase_repair_marked_binding_history (covered : bounds.CoversOutputValues
             have beforeClear : before.execution.application.current.excluded = ∅ :=
               Finset.subset_empty.mp (clear ▸ monotone)
             obtain ⟨memory, image, imageTrace, sends, waits, paired, recorded, onlyBindings,
-                priorMass, priorRelation, priorMarked⟩ := ih priorPrefix before rfl beforeClear
+                priorMass, priorRelation, priorMarked, priorRecall⟩ := ih priorPrefix before rfl
+                  beforeClear
             have countedPrior : ((PhaseCount.onePacketMenu runtime leaks bounds).protocol
                 (inputs.map (PhaseRuntimeState.initial plan)) horizon scheduler).Trace
                   (some before) := by rw [initialEq]; exact prior
@@ -216,8 +228,10 @@ theorem phase_repair_marked_binding_history (covered : bounds.CoversOutputValues
                       by_cases own : actor = owner
                       · subst actor
                         obtain ⟨stepSends, stepWaits, callback⟩ := phase_repair_callback_pair setup
-                          mode runtime leaks bounds plan horizon scheduler covered owner remaining
-                            original image memory paired prior imageTrace final finalTrace
+                          mode runtime leaks bounds plan horizon scheduler covered maximal owner
+                            remaining
+                            original image memory paired priorRecall prior imageTrace final
+                              finalTrace
                             priorPrefix bindingEvent bindingOwner bindingPayload bindingOutput
                               finalClear finalRequest response available.2
                         rw [← responseImageEq] at callback
@@ -243,10 +257,23 @@ theorem phase_repair_marked_binding_history (covered : bounds.CoversOutputValues
                         · simpa only [ReactiveApplication.Execution.respond, Ne.symm own,
                             ↓reduceIte] using priorMarked
                     obtain ⟨nextSends, nextWaits, nextRelation, nextMarked⟩ := relationNext
+                    have nextRecall :
+                        ((original.respond app actor response).recall owner).map (fun entry =>
+                          (phaseOperationalView runtime leaks entry.beforeView, entry.emitted)) =
+                        ((image.respond app actor target).recall owner).map (fun entry =>
+                          (phaseOperationalView runtime leaks entry.beforeView, entry.emitted))
+                            := by
+                      by_cases own : actor = owner
+                      · subst actor
+                        exact phaseOperationalRecall_response runtime leaks original image owner
+                          response target paired.network priorRecall paired.operationalView_eq
+                            nextFrame.network
+                      · simpa only [ReactiveApplication.Execution.respond, Ne.symm own,
+                          ↓reduceIte] using priorRecall
                     refine ⟨remembered, image.respond app actor target,
                       imageTrace.extend targetJoint targetLegal targetRealized,
                       nextSends, nextWaits, nextFrame, nextRecorded, nextOnly, ?_, nextRelation,
-                        nextMarked⟩
+                        nextMarked, nextRecall⟩
                     rw [InformationModel.counterfactualReachProbability,
                       InformationModel.counterfactualReachProbability, priorMass]
                     congr 1
@@ -294,13 +321,16 @@ theorem phase_repair_marked_binding_history (covered : bounds.CoversOutputValues
                         targetRealized policies priorMass
                     refine ⟨memory, target,
                       imageTrace.extend targetJoint targetLegal targetRealized, sends, waits,
-                      nextFrame, nextRecorded, onlyBindings, compared, ?_, ?_⟩
+                      nextFrame, nextRecorded, onlyBindings, compared, ?_, ?_, ?_⟩
                     · rw [(app).environmentStep_recall original next command moved,
                         (app).environmentStep_recall image target command targetSupported]
                       exact priorRelation
                     · rw [(app).environmentStep_recall original next command moved,
                         (app).environmentStep_recall image target command targetSupported]
                       exact priorMarked
+                    · rw [(app).environmentStep_recall original next command moved,
+                        (app).environmentStep_recall image target command targetSupported]
+                      exact priorRecall
   exact construct finalTrace .refl final rfl finalClear
 
 end Vegas

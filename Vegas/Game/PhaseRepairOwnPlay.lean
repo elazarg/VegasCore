@@ -1,5 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
+import Vegas.Game.PhaseRepairTimingKey
 import Vegas.Game.PhaseBindingResponseRatio
 import Vegas.Game.PhaseWaitingPrefix
 import Vegas.Game.PhaseOpeningResponseSymmetry
@@ -91,7 +92,9 @@ def phaseOpeningResponsePair (who : Player)
     final.execution.application.SeedRequest bindingOwner
       ⟨final.execution.application.attempt, bindingEvent⟩ ∧
     firstRecord = (some (original.recall who, original.observe app who), action) ∧
-    secondRecord = (some (repaired.recall who, repaired.observe app who), action)
+    secondRecord = (some (repaired.recall who, repaired.observe app who), action) ∧
+    phaseTimingKey runtime leaks who (some (original.recall who, original.observe app who)) =
+      phaseTimingKey runtime leaks who (some (repaired.recall who, repaired.observe app who))
 
 /-- Inert callbacks have no owned request or have already sent for the current
 request. Both cases retain actual callback and physical own-packet evidence. -/

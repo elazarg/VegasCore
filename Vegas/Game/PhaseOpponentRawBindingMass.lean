@@ -27,7 +27,7 @@ local notation "N" => ReactiveApplication.ResponseMenu.information
 local notation "E" => ReactiveApplication.ResponseMenu.protocol
   (PhaseCount.onePacketMenu runtime leaks bounds) initial horizon scheduler
 
-private def phaseOwnRecordAt (owner : Player) (history : (E).History) (index : Nat) :
+def phaseOwnRecordAt (owner : Player) (history : (E).History) (index : Nat) :
     (N).InfoState owner × (E).Action owner :=
   (((N).ownPlay owner history.trace).drop index).headD (none, ⟨none⟩)
 
@@ -103,7 +103,7 @@ theorem phaseRawBindingRecord_of_ownPlay (owner : Player) (history : (E).History
       cases call
       exact ⟨event, serial, preparation, evidence, rfl⟩
 
-private theorem phase_position_records (owner : Player) (history : (E).History) (index : Nat)
+theorem phase_position_records (owner : Player) (history : (E).History) (index : Nat)
     (raw : phaseRawBindingRecord setup mode runtime leaks bounds plan horizon scheduler owner
       (phaseOwnRecordAt setup mode runtime leaks bounds plan horizon scheduler owner history
         index)) :
@@ -158,7 +158,7 @@ theorem phaseRawBindingPositionWeight_eq_zero_of_ge (noise : ℝ) (owner : Playe
       owner
   simp only [phaseRawBindingPositionWeight, ite_eq_right noRaw]
 
-private theorem phaseRawBindingPositionWeight_nonneg (noise : ℝ) (nonnegative : 0 ≤ noise)
+theorem phaseRawBindingPositionWeight_nonneg (noise : ℝ) (nonnegative : 0 ≤ noise)
     (owner : Player) (profile : ∀ player, (N).BehavioralPolicy player)
     (history : (E).History) (index : Nat) :
     0 ≤ phaseRawBindingPositionWeight setup mode runtime leaks bounds plan horizon scheduler

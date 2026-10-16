@@ -89,7 +89,7 @@ theorem phaseOpeningResponsePair.record_eq
   obtain ⟨remaining, original, repaired, memory, frame, leftTrace, rightTrace, final, finalTrace,
     isPrefix, event, payload, binding, checks, outputEq, codeEq, node, bindingEvent, bindingOwner,
       bindingPayload, bindingOutput, action, clear, leftRequest, rightRequest, leftUnsent,
-        rightUnsent, values, requested, rfl, rfl⟩ := paired
+        rightUnsent, values, requested, rfl, rfl, _key⟩ := paired
   intro strategy
   let inputs : PMF (serviceGraph setup mode).Inputs := setup.initialLaw.map encodeInputs
   obtain ⟨left, right, finalHistory, path⟩ :

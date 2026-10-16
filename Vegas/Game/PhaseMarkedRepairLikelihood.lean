@@ -38,7 +38,7 @@ def phaseRawMixtureOwnPlayWeight (noise : ℝ) (who : Player) (policy : (N).Beha
     phaseRawMixtureAtom setup mode runtime leaks bounds plan horizon scheduler noise who marked *
       (N).ownPlayReachProbability policy after
 
-private theorem ownPlayReachProbability_append (who : Player) (policy : (N).BehavioralPolicy who)
+theorem ownPlayReachProbability_append (who : Player) (policy : (N).BehavioralPolicy who)
     (first second : List ((N).InfoState who × (E).Action who)) :
     (N).ownPlayReachProbability policy (first ++ second) =
       (N).ownPlayReachProbability policy first * (N).ownPlayReachProbability policy second := by

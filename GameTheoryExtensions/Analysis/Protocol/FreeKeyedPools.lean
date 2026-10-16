@@ -104,6 +104,34 @@ def freeKeyedComponent
       PMF (N.Choice agent.1 agent.2.1) :=
   freeKeyedComponentAt freeLaw prescribed keyedLaw agent (freeKeyedPool free keyed key agent)
 
+/-- An agent-wise transformation of component laws commutes with selecting
+the actual free, keyed or prescribed component. -/
+theorem freeKeyedComponent_transform
+    (freeLaw : ∀ agent : N.InformationAgent N.playedInformation,
+      N.Choice agent.1 agent.2.1 → PMF (N.Choice agent.1 agent.2.1))
+    (prescribed : ∀ agent : N.InformationAgent N.playedInformation,
+      PMF (N.Choice agent.1 agent.2.1))
+    (keyedLaw : ∀ agent : N.InformationAgent N.playedInformation,
+      Opt → PMF (N.Choice agent.1 agent.2.1))
+    (transform : ∀ agent : N.InformationAgent N.playedInformation,
+      PMF (N.Choice agent.1 agent.2.1) → PMF (N.Choice agent.1 agent.2.1))
+    (agent : N.InformationAgent N.playedInformation)
+    (part : FreeKeyedPart free keyed key Opt (freeKeyedPool free keyed key agent)) :
+    freeKeyedComponent (fun agent choice => transform agent (freeLaw agent choice))
+        (fun agent => transform agent (prescribed agent))
+        (fun agent option => transform agent (keyedLaw agent option)) agent part =
+      transform agent (freeKeyedComponent freeLaw prescribed keyedLaw agent part) := by
+  classical
+  unfold freeKeyedComponent
+  generalize freeKeyedPool free keyed key agent = pool at part ⊢
+  cases pool with
+  | inl owner =>
+    by_cases same : owner.1 = agent
+    · subst agent
+      simp only [freeKeyedComponentAt, ↓reduceDIte]
+    · simp only [freeKeyedComponentAt, dite_eq_right same]
+  | inr pool => cases pool <;> rfl
+
 theorem freeKeyedPool_of_free {agent : N.InformationAgent N.playedInformation}
     (isFree : free agent) : freeKeyedPool free keyed key agent = .inl ⟨agent, isFree⟩ := by
   classical
@@ -116,6 +144,25 @@ theorem freeKeyedPool_of_not_free {agent : N.InformationAgent N.playedInformatio
   classical
   unfold freeKeyedPool
   simp only [notFree, ↓reduceDIte]
+
+
+/-- Nonfree agents with the same keyed status and key share the same pool.
+This identifies the original common pool weights without any response-law
+or posterior hypothesis. -/
+theorem freeKeyedPool_eq_of_not_free
+    {first second : N.InformationAgent N.playedInformation}
+    (firstNotFree : ¬ free first) (secondNotFree : ¬ free second)
+    (classified : keyed first ↔ keyed second) (sameKey : key first = key second) :
+    freeKeyedPool free keyed key first = freeKeyedPool free keyed key second := by
+  classical
+  rw [freeKeyedPool_of_not_free firstNotFree, freeKeyedPool_of_not_free secondNotFree]
+  apply congrArg Sum.inr
+  by_cases firstKeyed : keyed first
+  · rw [keyedPool_of_keyed ⟨firstKeyed, firstNotFree⟩,
+      keyedPool_of_keyed ⟨classified.mp firstKeyed, secondNotFree⟩]
+    exact congrArg some (Subtype.ext sameKey)
+  · rw [keyedPool_of_not_keyed (fun owned => firstKeyed owned.1),
+      keyedPool_of_not_keyed (fun owned => firstKeyed (classified.mpr owned.1))]
 
 /-- Only the free agent itself sits in its pool. -/
 theorem eq_of_freeKeyedPool_eq_inl {agent : N.InformationAgent N.playedInformation}
@@ -155,6 +202,42 @@ theorem freeKeyedComponent_of_free
     subst same
     simp [freeKeyedComponentAt]
   exact general _ (freeKeyedPool_of_free isFree) part
+
+
+/-- A nonfree keyed agent's pool part is its operational option. The
+identification depends only on the pool partition, independently of every
+component response law. -/
+def ownedKeyedIdentify {agent : N.InformationAgent N.playedInformation}
+    (isKeyed : ownedKeyed free keyed agent) :
+    FreeKeyedPart free keyed key Opt (freeKeyedPool free keyed key agent) ≃ Opt :=
+  Equiv.cast (congrArg (FreeKeyedPart free keyed key Opt)
+    ((freeKeyedPool_of_not_free isKeyed.2).trans
+      (congrArg Sum.inr (keyedPool_of_keyed isKeyed))))
+
+/-- Every law family reads the same operational option from a nonfree keyed
+pool part. Changing hidden content laws does not change this identification. -/
+theorem freeKeyedComponent_of_ownedKeyed
+    (freeLaw : ∀ agent : N.InformationAgent N.playedInformation,
+      N.Choice agent.1 agent.2.1 → PMF (N.Choice agent.1 agent.2.1))
+    (prescribed : ∀ agent : N.InformationAgent N.playedInformation,
+      PMF (N.Choice agent.1 agent.2.1))
+    (keyedLaw : ∀ agent : N.InformationAgent N.playedInformation,
+      Opt → PMF (N.Choice agent.1 agent.2.1))
+    {agent : N.InformationAgent N.playedInformation}
+    (isKeyed : ownedKeyed free keyed agent)
+    (part : FreeKeyedPart free keyed key Opt (freeKeyedPool free keyed key agent)) :
+    freeKeyedComponent freeLaw prescribed keyedLaw agent part =
+      keyedLaw agent (ownedKeyedIdentify isKeyed part) := by
+  have general : ∀ (p : FreeKeyedPool free keyed key)
+      (same : p = .inr (some ⟨key agent, ⟨agent, isKeyed⟩, rfl⟩))
+      (part : FreeKeyedPart free keyed key Opt p),
+      freeKeyedComponentAt freeLaw prescribed keyedLaw agent p part =
+        keyedLaw agent (cast (congrArg (FreeKeyedPart free keyed key Opt) same) part) := by
+    intro p same part
+    subst same
+    rfl
+  exact general _ ((freeKeyedPool_of_not_free isKeyed.2).trans
+    (congrArg Sum.inr (keyedPool_of_keyed isKeyed))) part
 
 /-- A non-free agent's components are its keyed components. -/
 theorem freeKeyedComponent_of_not_free

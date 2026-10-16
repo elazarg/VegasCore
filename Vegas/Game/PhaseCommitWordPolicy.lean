@@ -4,6 +4,7 @@ import Vegas.Source.CommitPrefixWord
 import Vegas.Game.PhaseSourcePolicy
 import Vegas.Game.PhaseSourceSlotPolicy
 import Vegas.Pending.PhaseBindingWordHistory
+import Interaction.ReactiveMixtureRecall
 
 /-! # Physical member policies for one complete owned commitment word
 
@@ -152,5 +153,125 @@ theorem phaseCommitWordPolicy_binding {Γ Δ : SourceCtx Player L} {O P : Finset
     ite_eq_left (show low ≤ event.val ∧ event.val < low + block.length ∧
       (execution.observe (phaseApplication runtime leaks) who).application.2.attempt =
         ⟨low, generation⟩ from ⟨inside.1, inside.2, address⟩)]
+
+
+/-- Every concrete raw response has the same mass for all whole-word members
+that support it. This holds for the total dispatcher: dormant callbacks and
+openings are word independent, sends identify their typed result, and binding
+WAIT keeps the original omission draw without revealing a latent value. -/
+theorem phaseCommitWordPolicy_apply_eq_of_support
+    {Γ Δ : SourceCtx Player L} {O P : Finset VarId}
+    (wellFormed : setup.WellFormed)
+    (assessment : setup.commitRecoveryModel.BehavioralAssessment)
+    (block : SourceProgram.CommitPrefix Γ O Δ P) (low generation : Nat)
+    (slotWeight : ℝ) (slotNonnegative : 0 ≤ slotWeight) (slotBounded : slotWeight ≤ 1)
+    (who : Player) (first second : DecisionView who Δ)
+    (past : List (phaseApplication runtime leaks).PlayerEntry)
+    (view : (phaseApplication runtime leaks).PlayerView)
+    (response : (phaseApplication runtime leaks).Action)
+    (left : response ∈ (phaseCommitWordPolicy setup mode runtime leaks bounds wellFormed assessment
+      block low generation slotWeight slotNonnegative slotBounded who first past view).support)
+    (right : response ∈ (phaseCommitWordPolicy setup mode runtime leaks bounds wellFormed assessment
+      block low generation slotWeight slotNonnegative slotBounded who second past view).support) :
+    phaseCommitWordPolicy setup mode runtime leaks bounds wellFormed assessment block low generation
+        slotWeight slotNonnegative slotBounded who first past view response =
+      phaseCommitWordPolicy setup mode runtime leaks bounds wellFormed assessment block low
+        generation slotWeight slotNonnegative slotBounded who second past view response := by
+  classical
+  unfold phaseCommitWordPolicy at left right ⊢
+  apply phasePolicyDispatch_apply_eq_of_support setup mode runtime leaks bounds _ _ who past view
+    response ?_ left right
+  intro owner event payload binding left right
+  unfold commitWordBinding at left right ⊢
+  by_cases owned : owner = who
+  · simp only [dite_eq_left owned] at left right ⊢
+    by_cases addressed : low ≤ event.val ∧ event.val < low + block.length ∧
+        view.application.2.attempt = ⟨low, generation⟩
+    · simp only [ite_eq_left addressed] at left right ⊢
+      exact PhaseCount.phaseBindingWordPolicy_apply_eq_of_support runtime leaks bounds owner event
+        payload _ _ slotWeight slotNonnegative slotBounded _ _ _ past view response left right
+    · simp only [ite_eq_right addressed]
+  · simp only [dite_eq_right owned]
+
+
+open Classical in
+/-- The whole actual own-recall posterior of the immutable word implementation
+is the original word prior conditioned by the supported member fiber. All
+recorded WAIT, opening, dormant and slot probabilities cancel on that fiber;
+source failed results remain distinct possible sending values. -/
+theorem phaseCommitWordPolicy_posterior_consistency_fiber
+    {Γ Δ : SourceCtx Player L} {O P : Finset VarId}
+    (wellFormed : setup.WellFormed)
+    (assessment : setup.commitRecoveryModel.BehavioralAssessment)
+    (block : SourceProgram.CommitPrefix Γ O Δ P) (low generation : Nat)
+    (slotWeight : ℝ) (slotNonnegative : 0 ≤ slotWeight) (slotBounded : slotWeight ≤ 1)
+    (who : Player) (prior : PMF (DecisionView who Δ))
+    (past : List (phaseApplication runtime leaks).PlayerEntry)
+    (consistent : ((phaseApplication runtime leaks).policyMixture prior
+      (phaseCommitWordPolicy setup mode runtime leaks bounds wellFormed assessment block low
+        generation slotWeight slotNonnegative slotBounded who)).policy.Consistent past) :
+    ((phaseApplication runtime leaks).policyMixture prior
+      (phaseCommitWordPolicy setup mode runtime leaks bounds wellFormed assessment block low
+        generation slotWeight slotNonnegative slotBounded who)).posterior past =
+      fiberPosterior prior (fun word => decide ((phaseCommitWordPolicy setup mode runtime leaks
+        bounds wellFormed assessment block low generation slotWeight slotNonnegative slotBounded
+          who word).Consistent past)) true := by
+  apply (phaseApplication runtime leaks).policyMixture_posterior_consistency_fiber prior _ ?_ past
+    consistent
+  intro earlier view response first second left right
+  exact phaseCommitWordPolicy_apply_eq_of_support setup mode runtime leaks bounds wellFormed
+    assessment block low generation slotWeight slotNonnegative slotBounded who first second earlier
+      view response left right
+
+
+/-- At any full physical input, the word family is either constant or uses
+one addressed owned binding channel. This is a decomposition of the existing
+total dispatcher, with no assumption about source or native likelihoods. -/
+theorem phaseCommitWordPolicy_cases
+    {Γ Δ : SourceCtx Player L} {O P : Finset VarId}
+    (wellFormed : setup.WellFormed)
+    (assessment : setup.commitRecoveryModel.BehavioralAssessment)
+    (block : SourceProgram.CommitPrefix Γ O Δ P) (low generation : Nat)
+    (slotWeight : ℝ) (slotNonnegative : 0 ≤ slotWeight) (slotBounded : slotWeight ≤ 1)
+    (who : Player) (past : List (phaseApplication runtime leaks).PlayerEntry)
+    (view : (phaseApplication runtime leaks).PlayerView) :
+    (∃ law, ∀ word, phaseCommitWordPolicy setup mode runtime leaks bounds wellFormed assessment
+      block low generation slotWeight slotNonnegative slotBounded who word past view = law) ∨
+    ∃ event payload, ∃ binding :
+      (serviceGraph setup mode).outputLayout event = .binding who payload,
+      (low ≤ event.val ∧ event.val < low + block.length) ∧
+      view.application.2.attempt = ⟨low, generation⟩ ∧
+      ∀ word, phaseCommitWordPolicy setup mode runtime leaks bounds wellFormed assessment block low
+        generation slotWeight slotNonnegative slotBounded who word past view =
+        PhaseCount.phaseBindingWordPolicy runtime leaks bounds who event payload
+          (fun _ view => (assessment.strategy who
+            (setup.commitRecoveryClearInformation wellFormed who
+              (phaseSourceView? setup mode runtime leaks who event view))).map
+                (fun choice => CommitRecoveryMove.missed choice.1))
+          (fun _ view => (reactiveFreshSlot view.application.1).getD 0)
+          slotWeight slotNonnegative slotBounded
+          (fun word => (phaseRecoveryBindingData setup mode event who payload binding
+            (CommitRecoveryMove.lift (block.wordAction who (event.val - low) word))).1)
+          word past view := by
+  classical
+  obtain constant | ⟨event, payload, binding, selected⟩ :=
+    phasePolicyDispatch_indexed_cases setup mode runtime leaks bounds
+      (fun word => commitWordBinding setup mode runtime leaks bounds wellFormed assessment block low
+        generation slotWeight slotNonnegative slotBounded who word) who past view
+  · exact Or.inl constant
+  · by_cases addressed : low ≤ event.val ∧ event.val < low + block.length ∧
+        view.application.2.attempt = ⟨low, generation⟩
+    · refine Or.inr ⟨event, payload, binding, ⟨addressed.1, addressed.2.1⟩, addressed.2.2, ?_⟩
+      intro word
+      rw [phaseCommitWordPolicy, selected word]
+      simp only [commitWordBinding, dite_true, cast_eq, ite_eq_left addressed]
+    · refine Or.inl ⟨mix slotWeight slotNonnegative slotBounded
+        (phaseRecoverySlotPolicy setup mode runtime leaks bounds wellFormed assessment who event
+          payload binding past view)
+        (phaseRecoveryBindingPolicy setup mode runtime leaks bounds wellFormed assessment who event
+          payload binding past view), ?_⟩
+      intro word
+      rw [phaseCommitWordPolicy, selected word]
+      simp only [commitWordBinding, dite_true, ite_eq_right addressed]
 
 end Vegas

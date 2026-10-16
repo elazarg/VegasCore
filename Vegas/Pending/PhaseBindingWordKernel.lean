@@ -285,4 +285,103 @@ theorem phaseBindingWordPolicy_posterior_send {Word : Type} (prior : PMF Word)
   rw [sent]
   exact raw
 
+
+/-- The silent atom cannot distinguish latent typed results, even at an empty
+slot menu. The original omission flag remains a separate source draw. -/
+theorem phaseBindingWordResponse_silence_congr
+    (who : Player) (event : graph.EventId) (payload : L.Ty)
+    (missing : PMF Bool) (serial : Nat)
+    (slotWeight : ℝ) (slotNonnegative : 0 ≤ slotWeight) (slotBounded : slotWeight ≤ 1)
+    (first second : PublicationResult (L.Val payload))
+    (past : List (phaseApplication runtime leaks).PlayerEntry)
+    (view : (phaseApplication runtime leaks).PlayerView) :
+    phaseBindingWordResponse runtime leaks bounds who event payload missing serial slotWeight
+        slotNonnegative slotBounded first past view ⟨none⟩ =
+      phaseBindingWordResponse runtime leaks bounds who event payload missing serial slotWeight
+        slotNonnegative slotBounded second past view ⟨none⟩ := by
+  classical
+  by_cases nonempty : (phaseBindingSlots runtime leaks bounds who event payload past view).Nonempty
+  · rw [phaseBindingWordResponse_silence runtime leaks bounds who event payload missing serial
+      slotWeight slotNonnegative slotBounded first past view nonempty,
+      phaseBindingWordResponse_silence runtime leaks bounds who event payload missing serial
+        slotWeight slotNonnegative slotBounded second past view nonempty]
+  · have slot (result : PublicationResult (L.Val payload)) :
+        phaseBindingSlotPolicy runtime leaks bounds who event payload (fun _ _ => PMF.pure result)
+          past view = PMF.pure ⟨none⟩ := by
+        rw [phaseBindingSlotPolicy, dite_eq_right nonempty]
+    have different (result : PublicationResult (L.Val payload)) :
+        (⟨none⟩ : (phaseApplication runtime leaks).Action) ≠
+          phaseBindingResponse runtime leaks who event payload result serial := by
+      intro same
+      have sent := congrArg (fun response : (phaseApplication runtime leaks).Action =>
+        response.transmission) same
+      cases sent
+    simp only [phaseBindingWordResponse, PMF.bind_apply, tsum_bool, Bool.false_eq_true,
+      ↓reduceIte, mix_apply, slot, PMF.pure_apply, ite_eq_right (different first),
+      ite_eq_right (different second)]
+
+/-- On the common support of two latent results, a concrete raw reply has
+identical mass. A send identifies its result; silence is ancillary. -/
+theorem phaseBindingWordResponse_apply_eq_of_support
+    (who : Player) (event : graph.EventId) (payload : L.Ty)
+    (missing : PMF Bool) (serial : Nat)
+    (slotWeight : ℝ) (slotNonnegative : 0 ≤ slotWeight) (slotBounded : slotWeight ≤ 1)
+    (first second : PublicationResult (L.Val payload))
+    (past : List (phaseApplication runtime leaks).PlayerEntry)
+    (view : (phaseApplication runtime leaks).PlayerView)
+    (response : (phaseApplication runtime leaks).Action)
+    (left : response ∈ (phaseBindingWordResponse runtime leaks bounds who event payload missing
+      serial slotWeight slotNonnegative slotBounded first past view).support)
+    (right : response ∈ (phaseBindingWordResponse runtime leaks bounds who event payload missing
+      serial slotWeight slotNonnegative slotBounded second past view).support) :
+    phaseBindingWordResponse runtime leaks bounds who event payload missing serial slotWeight
+        slotNonnegative slotBounded first past view response =
+      phaseBindingWordResponse runtime leaks bounds who event payload missing serial slotWeight
+        slotNonnegative slotBounded second past view response := by
+  by_cases silent : response = ⟨none⟩
+  · rw [silent]
+    exact phaseBindingWordResponse_silence_congr runtime leaks bounds who event payload missing
+      serial slotWeight slotNonnegative slotBounded first second past view
+  · obtain ⟨firstSlot, firstAt⟩ := phaseBindingWordResponse_nonsilent runtime leaks bounds who
+      event payload missing serial slotWeight slotNonnegative slotBounded first past view response
+        left silent
+    obtain ⟨secondSlot, secondAt⟩ := phaseBindingWordResponse_nonsilent runtime leaks bounds who
+      event payload missing serial slotWeight slotNonnegative slotBounded second past view response
+        right silent
+    have same := ((phaseBindingResponse_eq_iff runtime leaks who event payload first second
+      firstSlot secondSlot).mp (firstAt.symm.trans secondAt)).2
+    cases same
+    rfl
+
+/-- The global menu guard is word independent, so the same common-support
+likelihood property holds at every input, including unrealized ones. -/
+theorem phaseBindingWordPolicy_apply_eq_of_support {Word : Type}
+    (who : Player) (event : graph.EventId) (payload : L.Ty)
+    (missing : List (phaseApplication runtime leaks).PlayerEntry →
+      (phaseApplication runtime leaks).PlayerView → PMF Bool)
+    (serial : List (phaseApplication runtime leaks).PlayerEntry →
+      (phaseApplication runtime leaks).PlayerView → Nat)
+    (slotWeight : ℝ) (slotNonnegative : 0 ≤ slotWeight) (slotBounded : slotWeight ≤ 1)
+    (read : Word → PublicationResult (L.Val payload)) (first second : Word)
+    (past : List (phaseApplication runtime leaks).PlayerEntry)
+    (view : (phaseApplication runtime leaks).PlayerView)
+    (response : (phaseApplication runtime leaks).Action)
+    (left : response ∈ (phaseBindingWordPolicy runtime leaks bounds who event payload missing
+      serial slotWeight slotNonnegative slotBounded read first past view).support)
+    (right : response ∈ (phaseBindingWordPolicy runtime leaks bounds who event payload missing
+      serial slotWeight slotNonnegative slotBounded read second past view).support) :
+    phaseBindingWordPolicy runtime leaks bounds who event payload missing serial slotWeight
+        slotNonnegative slotBounded read first past view response =
+      phaseBindingWordPolicy runtime leaks bounds who event payload missing serial slotWeight
+        slotNonnegative slotBounded read second past view response := by
+  unfold phaseBindingWordPolicy at left right ⊢
+  split at left
+  · rename_i guard
+    simp only [ite_eq_left guard] at right ⊢
+    exact phaseBindingWordResponse_apply_eq_of_support runtime leaks bounds who event payload
+      (missing past view) (serial past view) slotWeight slotNonnegative slotBounded
+        (read first) (read second) past view response left right
+  · rename_i guard
+    simp only [ite_eq_right guard]
+
 end Vegas.EventGraphRuntime.PhaseCount

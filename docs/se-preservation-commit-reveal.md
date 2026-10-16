@@ -1,6 +1,6 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**SE: non-concurrent ✓ · safety/laws ✓ · timing limit law ✓ · posterior: binding recall ✓, full law open · incentives open.**
+**SE: non-concurrent ✓ · safety/laws ✓ · timing/raw limits ✓ · posterior: fixed-entry ✓, full law open · incentives open.**
 
 <details>
 <summary>Checked recovery milestones and remaining proof obligations</summary>
@@ -28,14 +28,15 @@ Directed binding repair constructs genuine same-information-fiber histories
 under the same initial law and scheduler, retaining saved and live frames,
 packet provenance, complete own recall and foreign inputs. Its counterfactual
 reach probability is exactly equal. A finite positive source-choice floor
-gives whole-prefix send and WAIT bounds; binding WAIT retains unequal uniform
-raw-menu terms. Directed opening laws include evidence aliases and exactly
-equal uniform noise. Finite repair preimages and summation over every opponent
-and recorded position show normalized raw-mixture binding-send contributions
-vanish under the chosen noise schedule, including at vanishing information
-mass. Exact clear-history locality transfers this result to actual common
-assessment profiles. Canonical failures, omissions and opening WAIT remain in
-the original law; their native/source posterior identification is open.
+gives whole-prefix SEND and WAIT bounds under arbitrary actual timing-pool
+weights. Genuine chronological repair derives the same complete opening key,
+so openings retain their original common weights, globally silent WAIT and all
+uniform-noise evidence aliases. Finite repair preimages and summation over
+every opponent and recorded position show normalized raw-mixture binding-send
+contributions vanish under one chosen noise schedule, for arbitrary actual
+timing weights and even at vanishing information mass. Canonical failures,
+omissions and opening WAIT remain in the original law; full native/source
+posterior identification is open.
 
 Supported disclosing memories reconstruct the whole physical native
 configuration. Actual clear counted histories project to ordinary native
@@ -154,8 +155,15 @@ word, the public block address and actual own input. Its complete callback
 mixture retains the original omission marginal. At genuine initialized
 binding callbacks, the remaining menu guard is derived. A supported SEND
 conditions the latent word on its exact typed result, including accepted
-failure; a positive WAIT leaves that word posterior unchanged. Full
-chronological recall filtering remains to be proved.
+failure; a positive WAIT leaves that word posterior unchanged. For one original
+saved entry and one full timing plan, the entire actual NON-RAW own recall
+filters the original word prior by its accepted source results. Timing options
+can vary at each actual operational key, and global WAIT imposes no source
+result constraint. At a genuine clear unsent callback this posterior is exactly
+the fiber of the actual filled source view, which has positive original
+chronological source mass. The next nonmissing action has the original source
+kernel. Physical omission remains separate. RAW is handled by its vanishing
+normalized contribution, rather than by exact word filtering.
 
 The raw-response parser retains accepted typed failures as source actions.
 Every posterior-supported static member follows the entire actual own recall;
@@ -164,8 +172,8 @@ decoded source action occurs in the parsed record. Exact occurrence
 reconstruction supplies the full prior own recall and chronological order of
 two real callbacks, including repeated equal WAIT entries. On the source side,
 the full effective own history is the original entry history followed by the
-source-ranked word actions. The native parsed list for the earlier part of the current attempt
-equals the surviving chronological original own actions, including order,
+source-ranked word actions. The native parsed list for the earlier part of the
+current attempt equals the surviving chronological original own actions, including order,
 multiplicity and accepted failures. At a genuine ready binding it reconstructs
 the exact filled source history from the saved entry history.
 
@@ -196,8 +204,10 @@ options and publicly excluded free pools. Full recall length derives that the
 current consequential pool was not read earlier. At a supported complete-round
 owner input, its original pool weight remains independent of the entire
 execution, all other owners' plans and every other own coordinate. The
-command-occupation assessment posterior and source-word likelihood remain
-separate obligations.
+actual command-occupation assessment Bayes law retains those same current pool
+weights independently of the full remaining plan, with the conditional physical
+control marginal equal to the same assessment belief. Source-entry likelihood
+remains a separate obligation.
 
 During commitment phases, actual packet inclusion has the same joint external
 observation channel for all private typed binding values, including accepted
@@ -207,21 +217,37 @@ scheduler recall and all nonowner recall. Actual preparation, response and
 acceptance reconstruct the updated sender-private candidate/result memory,
 saved and live frames, including failed or wrong-typed raw bindings. Supported
 clear environment steps retain this shadow through genuine clock, chance and
-expiry commands. The chronological compatible-word likelihood remains open.
+expiry commands. Actual counted acceptance derives readiness, frozen-handle and
+saved-absence conditions; arbitrary inclusion branches derive the updated
+memory and extend both genuine traces. Original AUX omission laws agree at the
+paired source callbacks. With a genuine eligible fallback slot, physical word
+and timing-response couplings preserve both original marginals and the full
+external and erased owner recall. Whole-block compatible-word likelihood
+remains open.
 
 At genuine unsent bindings, every actual timing mixture retains the independent
 source slot tier, for arbitrary pool weights including all WAIT. The original
 source-choice floor therefore bounds replacement SEND and silent WAIT masses
-in that same mixture. WAIT still retains every later callback and reset.
-Whole-history raw-tier error transport for these timing mixtures remains open.
+in that same mixture. WAIT still retains every later callback and reset. The
+whole-history marked raw-tier bound and normalized all-opponent raw-send limit
+hold for the same actual arbitrary-weight timing profiles.
 
 Remaining obligations include the source/native posterior law under actual
 recall and mixed saved entries, and the clear-site continuation/incentive
 comparison. The exact native local value is now the actual assessment-belief
 average of the chosen response and its entire original physical continuation.
-This carrier retains later sends and resets; its auxiliary source-value
-identification remains open. Comparisons must also cover fresh handles other
-than the canonical one and callbacks without enough remaining inclusion slack.
+Stopping at focal exclusion or actual attempt exit retains the entire boundary
+continuation. The surviving foreign-retry contribution is explicit and bounded
+by its actual boundary mass. Its value cannot be replaced by the exclusion
+floor; an option-independent reset term or another valid common ranking still
+needs proof. The current completion retains full erased operational recall and
+allows arbitrary policies after a public exclusion. This alone supplies neither
+past-blind source play after foreign exclusion nor event-local delivery choices;
+the incentive comparison needs concrete adapters for both. Source projection at
+a partial concurrent cut must distinguish saved/prefix exclusions from physical
+in-phase expiries. Auxiliary source-value identification remains open.
+Comparisons must also cover fresh handles other than the canonical one and
+callbacks without enough remaining inclusion slack.
 The all-clear canonical completion does not establish optimality at those
 inputs. Finite counted histories follow from the explicit finite initial law,
 finite leak support and finite scheduler branching clauses, rather than from
