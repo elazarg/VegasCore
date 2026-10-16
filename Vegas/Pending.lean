@@ -640,3 +640,4 @@ import Vegas.Pending.PhaseBindingWordHistory
 import Vegas.Pending.PhaseFiniteNature
 import Vegas.Pending.PhaseBindingObservation
 import Vegas.Pending.PhaseBindingCompletionSymmetry
+import Vegas.Pending.PhaseOwnBindingOrder

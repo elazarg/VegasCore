@@ -95,6 +95,7 @@ theorem exists_phase_source_completion_with_history_law
   exact phaseSourceAssessment_terminal_run_eq_canonical setup mode runtime leaks bounds wellFormed
     plan maximal horizon scheduler sourceSequence sourceLimit sourceConvergence noise
       (fun n => (positive n).le) (fun n => (small n).le) vanishes slotWeight slotNonnegative
-        slotBounded slotVanishes sequence limit index increasing converges recipe safe certificate
+        slotBounded slotVanishes sequence limit index increasing converges
+          (fun n who site _ => recipe n who site) safe certificate
 
 end Vegas

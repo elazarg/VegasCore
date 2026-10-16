@@ -1339,3 +1339,46 @@ callbacks and resets; no source continuation identity is assumed or concluded.
 The finite initial prior, finite leaks and finite scheduler branches derive
 phase finite nature and bounded counted history finiteness. Timing and service
 opportunity alone do not imply those branching properties.
+
+Operational timing completion on canonical support:
+[Phase Recovery Timing Component](../Vegas/Game/PhaseRecoveryTimingComponent.lean),
+[Phase Source Timing Policy](../Vegas/Game/PhaseSourceTimingPolicy.lean),
+[Phase Timing Pools](../Vegas/Game/PhaseTimingPools.lean),
+[Phase Timing Completion](../Vegas/Game/PhaseTimingCompletion.lean),
+[Phase Canonical Binding Protection](../Vegas/Game/PhaseCanonicalBindingProtection.lean),
+[Phase Canonical Opening Protection](../Vegas/Game/PhaseCanonicalOpeningProtection.lean),
+[Phase Canonical Safe Input](../Vegas/Game/PhaseCanonicalSafeInput.lean),
+[Phase Timing Canonical Recipe](../Vegas/Game/PhaseTimingCanonicalRecipe.lean),
+[Phase Timing Completion Law](../Vegas/Game/PhaseTimingCompletionLaw.lean).
+The original auxiliary typed-result/omission draw precedes a guarded serial or
+WAIT option. Public exclusion is free; unprotected requests share an erased
+operational key. One common completion supplies pooled gain bounds, Bayes
+approximants and its consistent limit. Actual canonical callbacks are protected
+or have singleton menus, so every component there is prescribed. The same
+timing limit has the entire canonical initialized history law. Individual pool
+member optimality and source/native posterior transport remain separate.
+
+Exact remembered callbacks and typed word meanings:
+[Reactive Recorded Response](../Interaction/ReactiveRecordedResponse.lean),
+[Reactive Mixture Recall](../Interaction/ReactiveMixtureRecall.lean),
+[Phase Binding Recall Word](../Vegas/Game/PhaseBindingRecallWord.lean),
+[Phase Binding Recall Meaning](../Vegas/Game/PhaseBindingRecallMeaning.lean),
+[Phase Commit Word Recall](../Vegas/Game/PhaseCommitWordRecall.lean),
+[Commit Prefix Word History](../Vegas/Source/CommitPrefixWordHistory.lean),
+[Phase Own Binding Order](../Vegas/Pending/PhaseOwnBindingOrder.lean).
+Specified recall occurrences reconstruct their exact earlier callbacks and
+prior own words, including repeated WAITs; two occurrences give genuine ordered
+trace prefixes. Every posterior-supported member follows full actual recall
+and agrees with every accepted addressed typed result, including failure.
+The source history is its entry history followed by ranked word actions.
+Complete native parsed-list equality and the mixed-entry posterior are open.
+
+Whole continuation floors and literal source interventions:
+[Phase Continuation Floor](../Vegas/Game/PhaseContinuationFloor.lean),
+[Commit Recovery Local Source Patch](../Vegas/Game/CommitRecoveryLocalSourcePatch.lean),
+[Commit Recovery Patched Continuation](../Vegas/Game/CommitRecoveryPatchedContinuation.lean).
+The original physical completion contract bounds every whole-policy and local
+continuation value below by the global exclusion floor. A literal one-site
+source patch preserves the continuing auxiliary extension and gives its exact
+full source terminal readout/payoff law from any genuine retained history.
+Neither fact assumes the missing native/source tail or posterior equality.

@@ -52,6 +52,10 @@ private theorem common_strategy_at_clear_callback
     (index : ℕ → ℕ) (increasing : StrictMono index)
     (converges : BehavioralAssessmentConvergesPointwise (fun n => sequence (index n)) limit)
     (recipe : ∀ n who (site : (N).InformationSite who),
+      (∃ (current : (app).Control) (_trace : (E).Trace (some current)),
+        current.actor = some who ∧
+        site.1 = some (current.execution.recall who, current.execution.observe app who) ∧
+        ∀ owner, (players owner).Consistent (current.execution.recall owner)) →
       ¬ PhasePublicExclusion setup mode runtime leaks site.1 →
         (sequence n).strategy who site.1 =
           phaseSourcePerturbedStrategy setup mode runtime leaks bounds (start) horizon scheduler
@@ -59,7 +63,8 @@ private theorem common_strategy_at_clear_callback
               (slotWeight n) (slotNonnegative n) (slotBounded n) who site.1)
     (current : (app).Control)
     (trace : (E).Trace (some current)) (who : Player) (acting : current.actor = some who)
-    (clear : current.execution.application.current.excluded = ∅) :
+    (clear : current.execution.application.current.excluded = ∅)
+    (faithful : ∀ owner, (players owner).Consistent (current.execution.recall owner)) :
     let input := some (current.execution.recall who, current.execution.observe app who)
     limit.strategy who input = canonical who input := by
   intro input
@@ -83,13 +88,13 @@ private theorem common_strategy_at_clear_callback
       pair.2.application.2.excluded) (Option.some.inj same)
     change current.execution.application.current.excluded = view.application.2.excluded at flags
     exact excluded (flags.symm.trans clear)
-  have pinned := recipe n who site unflagged
+  have pinned := recipe n who site ⟨current, trace, acting, atSite, faithful⟩ unflagged
   rw [atSite] at pinned
   exact pinned
 
 /-- The common completed assessment has the entire original canonical history
 law at every finite fuel. Equality is proved only along actual supported
-canonical play; the assessment may freely complete post-exclusion decisions. -/
+canonical play; the assessment can complete every other input freely. -/
 theorem phaseSourceAssessment_run_eq_canonical
     (noise : ℕ → ℝ) (nonnegative : ∀ n, 0 ≤ noise n) (bounded : ∀ n, noise n ≤ 1)
     (vanishes : Tendsto noise atTop (nhds 0))
@@ -100,6 +105,10 @@ theorem phaseSourceAssessment_run_eq_canonical
     (index : ℕ → ℕ) (increasing : StrictMono index)
     (converges : BehavioralAssessmentConvergesPointwise (fun n => sequence (index n)) limit)
     (recipe : ∀ n who (site : (N).InformationSite who),
+      (∃ (current : (app).Control) (_trace : (E).Trace (some current)),
+        current.actor = some who ∧
+        site.1 = some (current.execution.recall who, current.execution.observe app who) ∧
+        ∀ owner, (players owner).Consistent (current.execution.recall owner)) →
       ¬ PhasePublicExclusion setup mode runtime leaks site.1 →
         (sequence n).strategy who site.1 =
           phaseSourcePerturbedStrategy setup mode runtime leaks bounds (start) horizon scheduler
@@ -153,6 +162,7 @@ theorem phaseSourceAssessment_run_eq_canonical
       plan maximal horizon scheduler sourceSequence sourceLimit sourceConvergence noise
         nonnegative bounded vanishes slotWeight slotNonnegative slotBounded slotVanishes
           sequence limit index increasing converges recipe current trace who acting clear
+            (faithful current atCurrent)
     have observed : (N).infoOf who history.trace =
         some (current.execution.recall who, current.execution.observe app who) := by
       change ((menu).signals (start) horizon scheduler).infoOf who history.trace = _
@@ -164,7 +174,7 @@ theorem phaseSourceAssessment_run_eq_canonical
     exact same.symm
   · exact (N).behavioral_eq_of_not_active (canonical who) (limit.strategy who) history.trace active
 
-/-- Completing off-path excluded sites preserves the full original terminal
+/-- Completing inputs outside canonical supported play preserves the full terminal
 history law, retaining the original initial draw and all runtime observations. -/
 theorem phaseSourceAssessment_terminal_run_eq_canonical
     (noise : ℕ → ℝ) (nonnegative : ∀ n, 0 ≤ noise n) (bounded : ∀ n, noise n ≤ 1)
@@ -176,6 +186,10 @@ theorem phaseSourceAssessment_terminal_run_eq_canonical
     (index : ℕ → ℕ) (increasing : StrictMono index)
     (converges : BehavioralAssessmentConvergesPointwise (fun n => sequence (index n)) limit)
     (recipe : ∀ n who (site : (N).InformationSite who),
+      (∃ (current : (app).Control) (_trace : (E).Trace (some current)),
+        current.actor = some who ∧
+        site.1 = some (current.execution.recall who, current.execution.observe app who) ∧
+        ∀ owner, (players owner).Consistent (current.execution.recall owner)) →
       ¬ PhasePublicExclusion setup mode runtime leaks site.1 →
         (sequence n).strategy who site.1 =
           phaseSourcePerturbedStrategy setup mode runtime leaks bounds (start) horizon scheduler

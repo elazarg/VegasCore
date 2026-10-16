@@ -35,30 +35,31 @@ open GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol GameTheory.Math.P
 variable {Principal : Type} [DecidableEq Principal] {app : ReactiveApplication Principal}
   (menu : app.ResponseMenu)
 
-/-- Every remembered response retains its actual earlier active menu history,
-pre-response observation, complete prior own recall and menu legality. -/
-theorem recorded_response_prefix
+/-- A specified occurrence in the chronological recall retains its exact
+earlier active callback. Equal silent entries cause no ambiguity: the supplied
+list split identifies the occurrence, and its whole prior recall is recovered. -/
+theorem recorded_response_at
     (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
     (control : app.Control)
     (trace : (menu.protocol initial horizon scheduler).Trace (some control))
-    (who : Principal) (entry : app.PlayerEntry) (recorded : entry ∈ control.execution.recall who) :
+    (who : Principal) (earlier : List app.PlayerEntry) (entry : app.PlayerEntry)
+    (later : List app.PlayerEntry)
+    (recalled : control.execution.recall who = earlier ++ entry :: later) :
     ∃ (before : app.Control)
       (prior : (menu.protocol initial horizon scheduler).Trace (some before)),
-      TracePrefix prior trace ∧
-      before.actor = some who ∧ entry.beforeView = before.execution.observe app who ∧
-      entry.action ∈ menu.actions who (before.execution.recall who)
-        (before.execution.observe app who) ∧
-      ∃ after, control.execution.recall who = before.execution.recall who ++ entry :: after := by
+      TracePrefix prior trace ∧ before.actor = some who ∧
+      before.execution.recall who = earlier ∧
+      entry.beforeView = before.execution.observe app who ∧
+      entry.action ∈ menu.actions who earlier (before.execution.observe app who) := by
   have origin : ∀ {state} (_history : (menu.protocol initial horizon scheduler).Trace state),
-      state.elim True (fun current => ∀ who entry, entry ∈ current.execution.recall who →
+      state.elim True (fun current => ∀ who earlier entry later,
+        current.execution.recall who = earlier ++ entry :: later →
         ∃ (before : app.Control)
           (prior : (menu.protocol initial horizon scheduler).Trace (some before)),
-          TracePrefix prior _history ∧
-          before.actor = some who ∧ entry.beforeView = before.execution.observe app who ∧
-          entry.action ∈ menu.actions who (before.execution.recall who)
-            (before.execution.observe app who) ∧
-          ∃ after, current.execution.recall who =
-            before.execution.recall who ++ entry :: after) := by
+          TracePrefix prior _history ∧ before.actor = some who ∧
+          before.execution.recall who = earlier ∧
+          entry.beforeView = before.execution.observe app who ∧
+          entry.action ∈ menu.actions who earlier (before.execution.observe app who)) := by
     intro state history
     induction history with
     | start => trivial
@@ -67,8 +68,12 @@ theorem recorded_response_prefix
         cases source with
         | none =>
             obtain ⟨state, _, rfl⟩ := PMF.support_map .. ▸ reached
-            intro who entry member
-            exact (List.not_mem_nil member).elim
+            intro who earlier entry later recalled
+            simp only [Execution.initial] at recalled
+            have impossible : entry ∈ ([] : List app.PlayerEntry) := by
+              rw [recalled]
+              exact List.mem_append_right earlier List.mem_cons_self
+            exact (List.not_mem_nil impossible).elim
         | some current =>
             rcases current with ⟨remaining, actor, execution⟩
             cases actor with
@@ -85,28 +90,44 @@ theorem recorded_response_prefix
                       rw [chosen] at localLegal
                       exact ⟨action, rfl, localLegal.2⟩
                 cases (PMF.mem_support_pure_iff _ _).mp reached
-                intro who entry member
-                simp only [chosen, Option.getD_some] at member ⊢
+                intro who earlier entry later recalled
+                simp only [chosen, Option.getD_some] at recalled ⊢
                 by_cases same : who = acting
                 · subst who
-                  obtain ⟨emitted, recalled⟩ := app.respond_recall_entry execution acting action
-                  rw [recalled, List.mem_append, List.mem_singleton] at member
-                  rcases member with earlier | rfl
-                  · obtain ⟨before, history, isPrefix, active, viewed, allowed, after, original⟩ :=
-                      ih acting entry earlier
-                    refine ⟨before, history, .extend isPrefix joint legal reached, active, viewed,
-                      allowed,
-                      after ++ [⟨execution.observe app acting, action, emitted⟩], ?_⟩
-                    rw [recalled, original]
-                    simp only [List.append_assoc, List.cons_append]
-                  · exact ⟨⟨remaining, some acting, execution⟩, prior,
-                      .extend .refl joint legal reached,
-                      rfl, rfl, permitted, [], recalled⟩
-                · rw [app.respond_recall_other execution acting who same action] at member ⊢
-                  obtain ⟨before, history, isPrefix, active, viewed, allowed, after, original⟩ :=
-                    ih who entry member
-                  exact ⟨before, history, .extend isPrefix joint legal reached, active, viewed,
-                    allowed, after, original⟩
+                  obtain ⟨emitted, actual⟩ := app.respond_recall_entry execution acting action
+                  rw [actual] at recalled
+                  cases later using List.reverseRecOn with
+                  | nil =>
+                      have lengths := congrArg List.length recalled
+                      have sameLength : (execution.recall acting).length = earlier.length := by
+                        simp only [List.length_append, List.length_cons, List.length_nil] at lengths
+                        omega
+                      have splitEq := List.append_inj recalled sameLength
+                      have lastEq := List.singleton_inj.mp splitEq.2
+                      subst entry
+                      refine ⟨⟨remaining, some acting, execution⟩, prior,
+                        .extend .refl joint legal reached, rfl, splitEq.1, rfl, ?_⟩
+                      rwa [splitEq.1] at permitted
+                  | append_singleton middle last =>
+                      have equal : execution.recall acting ++
+                          [⟨execution.observe app acting, action, emitted⟩] =
+                            (earlier ++ entry :: middle) ++ [last] := by
+                        simpa only [List.append_assoc, List.cons_append] using recalled
+                      have lengths := congrArg List.length equal
+                      have sameLength : (execution.recall acting).length =
+                          (earlier ++ entry :: middle).length := by
+                        simp only [List.length_append, List.length_singleton] at lengths
+                        simpa only [List.length_append] using Nat.add_right_cancel lengths
+                      have previous := (List.append_inj equal sameLength).1
+                      obtain ⟨before, history, isPrefix, active, pastEq, viewed, allowed⟩ :=
+                        ih acting earlier entry middle previous
+                      exact ⟨before, history, .extend isPrefix joint legal reached, active,
+                        pastEq, viewed, allowed⟩
+                · rw [app.respond_recall_other execution acting who same action] at recalled
+                  obtain ⟨before, history, isPrefix, active, pastEq, viewed, allowed⟩ :=
+                    ih who earlier entry later recalled
+                  exact ⟨before, history, .extend isPrefix joint legal reached, active,
+                    pastEq, viewed, allowed⟩
             | none =>
                 cases remaining with
                 | zero => exact (legal.1 ⟨rfl, rfl⟩).elim
@@ -114,14 +135,69 @@ theorem recorded_response_prefix
                     obtain ⟨command, _, moved⟩ :=
                       Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
                     obtain ⟨next, supported, rfl⟩ := PMF.support_map .. ▸ moved
-                    intro who entry member
-                    rw [app.environmentStep_recall execution next command supported] at member ⊢
-                    obtain ⟨before, history, isPrefix, active, viewed, allowed, after, original⟩ :=
-                      ih who entry member
-                    exact ⟨before, history, .extend isPrefix joint legal reached, active, viewed,
-                      allowed, after, original⟩
-  exact origin trace who entry recorded
+                    intro who earlier entry later recalled
+                    rw [app.environmentStep_recall execution next command supported] at recalled
+                    obtain ⟨before, history, isPrefix, active, pastEq, viewed, allowed⟩ :=
+                      ih who earlier entry later recalled
+                    exact ⟨before, history, .extend isPrefix joint legal reached, active,
+                      pastEq, viewed, allowed⟩
+  exact origin trace who earlier entry later recalled
 
+/-- Two specified chronological occurrences reconstruct two genuinely ordered
+callbacks. Repeated equal entries, including silent responses, remain distinct
+occurrences because the second callback retains the exact earlier own word. -/
+theorem recorded_responses_at
+    (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
+    (control : app.Control)
+    (trace : (menu.protocol initial horizon scheduler).Trace (some control))
+    (who : Principal) (earlier : List app.PlayerEntry) (first : app.PlayerEntry)
+    (middle : List app.PlayerEntry) (second : app.PlayerEntry) (later : List app.PlayerEntry)
+    (recalled : control.execution.recall who = earlier ++ first :: (middle ++ second :: later)) :
+    ∃ (left right : app.Control)
+      (leftTrace : (menu.protocol initial horizon scheduler).Trace (some left))
+      (rightTrace : (menu.protocol initial horizon scheduler).Trace (some right)),
+      TracePrefix leftTrace rightTrace ∧ TracePrefix rightTrace trace ∧
+      left.actor = some who ∧ right.actor = some who ∧
+      left.execution.recall who = earlier ∧
+      right.execution.recall who = earlier ++ first :: middle ∧
+      first.beforeView = left.execution.observe app who ∧
+      second.beforeView = right.execution.observe app who ∧
+      first.action ∈ menu.actions who earlier (left.execution.observe app who) ∧
+      second.action ∈ menu.actions who (earlier ++ first :: middle)
+        (right.execution.observe app who) := by
+  have secondSplit : control.execution.recall who =
+      (earlier ++ first :: middle) ++ second :: later := by
+    simpa only [List.append_assoc, List.cons_append] using recalled
+  obtain ⟨right, rightTrace, rightPrefix, rightActive, rightPast, secondView, secondLegal⟩ :=
+    menu.recorded_response_at initial horizon scheduler control trace who
+      (earlier ++ first :: middle) second later secondSplit
+  obtain ⟨left, leftTrace, leftPrefix, leftActive, leftPast, firstView, firstLegal⟩ :=
+    menu.recorded_response_at initial horizon scheduler right rightTrace who earlier first middle
+      rightPast
+  exact ⟨left, right, leftTrace, rightTrace, leftPrefix, rightPrefix, leftActive, rightActive,
+    leftPast, rightPast, firstView, secondView, firstLegal, secondLegal⟩
+
+/-- Every remembered response retains its actual earlier active menu history,
+pre-response observation, complete prior own recall and menu legality. -/
+theorem recorded_response_prefix
+    (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
+    (control : app.Control)
+    (trace : (menu.protocol initial horizon scheduler).Trace (some control))
+    (who : Principal) (entry : app.PlayerEntry) (recorded : entry ∈ control.execution.recall who) :
+    ∃ (before : app.Control)
+      (prior : (menu.protocol initial horizon scheduler).Trace (some before)),
+      TracePrefix prior trace ∧
+      before.actor = some who ∧ entry.beforeView = before.execution.observe app who ∧
+      entry.action ∈ menu.actions who (before.execution.recall who)
+        (before.execution.observe app who) ∧
+      ∃ after, control.execution.recall who = before.execution.recall who ++ entry :: after := by
+  obtain ⟨earlier, later, recalled⟩ := List.mem_iff_append.mp recorded
+  obtain ⟨before, prior, isPrefix, active, pastEq, viewed, allowed⟩ :=
+    menu.recorded_response_at initial horizon scheduler control trace who earlier entry later
+      recalled
+  refine ⟨before, prior, isPrefix, active, viewed, ?_, later, ?_⟩
+  · rwa [pastEq]
+  · rwa [pastEq]
 
 /-- Consistent recall identifies a remembered response's supported policy law
 at its genuine earlier callback, including the exact earlier own input word. -/

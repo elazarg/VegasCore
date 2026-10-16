@@ -18,16 +18,18 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
 local notation "P" => phaseApplication runtime leaks
 
-/-- An activation at an idle endpoint already has its actual response in full
-own recall, with the exact physical public view before that activation. -/
-theorem recalled_response_of_activation
+/-- An actual recorded activation either already retains its response, or is
+exactly the current still-active callback with the same physical public view. -/
+theorem activation_response_or_current
     (initial : PMF (P).State) (horizon : Nat) (scheduler : (P).Scheduler)
     (current : (P).Control) (trace : ((P).protocol initial horizon scheduler).Trace (some current))
-    (idle : current.actor = none) (activation : (P).EnvironmentEntry)
+    (activation : (P).EnvironmentEntry)
     (recorded : activation ∈ current.execution.environmentRecall)
     (owner : Player) (chosen : activation.command = .activate owner) :
-    ∃ response ∈ current.execution.recall owner,
-      response.beforeView.application.2 = activation.beforeView.application := by
+    (∃ response ∈ current.execution.recall owner,
+      response.beforeView.application.2 = activation.beforeView.application) ∨
+      (current.actor = some owner ∧ current.execution.application.publicView =
+        activation.beforeView.application) := by
   let paired (execution : (P).Execution) (entry : (P).EnvironmentEntry) (owner : Player) : Prop :=
     ∃ response ∈ execution.recall owner,
       response.beforeView.application.2 = entry.beforeView.application
@@ -92,7 +94,20 @@ theorem recalled_response_of_activation
                       obtain ⟨updated, learned, rfl⟩ := PMF.support_map .. ▸ supported
                       obtain ⟨visible, _support, rfl⟩ := PMF.support_map .. ▸ learned
                       rfl
-  rcases origin trace activation recorded owner chosen with pairedBefore | waiting
+  exact origin trace activation recorded owner chosen
+
+/-- An activation at an idle endpoint already has its actual response in full
+own recall, with the exact physical public view before that activation. -/
+theorem recalled_response_of_activation
+    (initial : PMF (P).State) (horizon : Nat) (scheduler : (P).Scheduler)
+    (current : (P).Control) (trace : ((P).protocol initial horizon scheduler).Trace (some current))
+    (idle : current.actor = none) (activation : (P).EnvironmentEntry)
+    (recorded : activation ∈ current.execution.environmentRecall)
+    (owner : Player) (chosen : activation.command = .activate owner) :
+    ∃ response ∈ current.execution.recall owner,
+      response.beforeView.application.2 = activation.beforeView.application := by
+  rcases activation_response_or_current runtime leaks initial horizon scheduler current trace
+      activation recorded owner chosen with pairedBefore | waiting
   · exact pairedBefore
   · rw [idle] at waiting
     cases waiting.1

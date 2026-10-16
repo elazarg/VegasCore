@@ -1,6 +1,6 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**SE: non-concurrent ✓ · safety/laws ✓ · completion ✓ · posterior: entry/updates ✓, recall open · incentives open.**
+**SE: non-concurrent ✓ · safety/laws ✓ · timing limit law ✓ · posterior: accepted recall ✓, full law open · incentives open.**
 
 <details>
 <summary>Checked recovery milestones and remaining proof obligations</summary>
@@ -85,6 +85,18 @@ jointly with readout, base payoffs and realized randomized settlement.
 This is a consistent completion with the desired terminal law. Clear-site
 rationality remains open, so it is not yet a sequential equilibrium theorem.
 
+The operational timing completion samples the original auxiliary typed result
+and omission flag before choosing a fresh serial or WAIT. Publicly excluded
+sites are free; genuine unprotected requests share weights only through their
+erased operational histories. One common fully mixed Bayes sequence has pooled
+gain bounds and a consistent subsequential limit. On actual clear canonical
+callbacks, the physical service bounds derive either a protected unsent request
+or a singleton silent menu. Every timing component therefore equals the source
+prescription there. The same timing sequence and its own limit preserve the
+entire canonical initialized finite-fuel and terminal history laws. This needs
+no prescription at other clear inputs. Pooled gain bounds alone do not prove
+individual timing optimality.
+
 At actual binding callbacks, nonmissing conditioning has an exact typed
 sending law and eligible-slot atom mass. Paired histories have the same
 eligible slot set. At one saved source entry, the full maximal commitment
@@ -125,6 +137,14 @@ exclusion and enables the existing continuation-floor theorem. Silence can
 still be followed by a later send; these local facts do not identify its
 whole continuation value.
 
+For arbitrary physical whole-policy and local-law deviations, the original
+all-history completion contract and global terminal utility floor bound the
+actual continuation value below by the exclusion payoff. A literal one-site
+source intervention preserves the continuing auxiliary extension and has its
+exact source terminal readout/payoff law from every genuine retained source
+history. Connecting that source tail to an arbitrary physical continuation
+still requires the native/source posterior and execution comparison.
+
 A globally legal physical member policy now reads only one owner's complete
 word, the public block address and actual own input. Its complete callback
 mixture retains the original omission marginal. At genuine initialized
@@ -132,6 +152,16 @@ binding callbacks, the remaining menu guard is derived. A supported SEND
 conditions the latent word on its exact typed result, including accepted
 failure; a positive WAIT leaves that word posterior unchanged. Full
 chronological recall filtering remains to be proved.
+
+The raw-response parser retains accepted typed failures as source actions.
+Every posterior-supported static member follows the entire actual own recall;
+at each accepted binding its word result agrees with the actual result and its
+decoded source action occurs in the parsed record. Exact occurrence
+reconstruction supplies the full prior own recall and chronological order of
+two real callbacks, including repeated equal WAIT entries. On the source side,
+the full effective own history is the original entry history followed by the
+source-ranked word actions. Equality with the complete native parsed list,
+including order and multiplicity, remains open.
 
 Each owner can sample its complete word from its own observable entry view.
 These kernels reconstruct the original tagged entry/full-word joint law;

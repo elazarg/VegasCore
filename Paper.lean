@@ -948,6 +948,24 @@ import Vegas.Game.PhaseCallbackContinuation
 import Vegas.Game.PhaseLocalValueContinuation
 import Vegas.Pending.PhaseBindingObservation
 import Vegas.Pending.PhaseBindingCompletionSymmetry
+import Vegas.Game.PhaseRecoveryTimingComponent
+import Vegas.Game.PhaseSourceTimingPolicy
+import Vegas.Game.PhaseTimingPools
+import Vegas.Game.PhaseTimingCompletion
+import Vegas.Game.PhaseCanonicalBindingProtection
+import Vegas.Game.PhaseCanonicalOpeningProtection
+import Vegas.Game.PhaseCanonicalSafeInput
+import Vegas.Game.PhaseTimingCanonicalRecipe
+import Vegas.Game.PhaseTimingCompletionLaw
+import Vegas.Game.PhaseBindingRecallWord
+import Vegas.Source.CommitPrefixWordHistory
+import Interaction.ReactiveMixtureRecall
+import Vegas.Game.PhaseBindingRecallMeaning
+import Vegas.Game.PhaseCommitWordRecall
+import Vegas.Pending.PhaseOwnBindingOrder
+import Vegas.Game.CommitRecoveryLocalSourcePatch
+import Vegas.Game.PhaseContinuationFloor
+import Vegas.Game.CommitRecoveryPatchedContinuation
 
 /-! # Checked sequential-equilibrium preservation, Nash correspondence and termination -/
 
@@ -9257,3 +9275,192 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms
   Vegas.EventGraphRuntime.BindingShadow.normalize_external_views
+
+/-- info:
+'Vegas.phaseRecoveryTimingTaggedLaw_source'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseRecoveryTimingTaggedLaw_source
+
+/-- info:
+'Vegas.phaseRecoveryTimingPolicy_result_law'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseRecoveryTimingPolicy_result_law
+
+/-- info:
+'Vegas.phaseSourceTimingPolicy_covered'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseSourceTimingPolicy_covered
+
+/-- info:
+'Vegas.phaseSourceTimingStrategy_map_val'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseSourceTimingStrategy_map_val
+
+/-- info:
+'Vegas.phaseSourceTimingComponent_fullSupport'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseSourceTimingComponent_fullSupport
+
+/-- info:
+'Vegas.phaseTimingComponent_free_converges'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseTimingComponent_free_converges
+
+/-- info:
+'Vegas.exists_phase_timing_completion'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.exists_phase_timing_completion
+
+/-- info:
+'Vegas.EventGraphRuntime.PhaseService.activation_response_or_current'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseService.activation_response_or_current
+
+/-- info:
+'Vegas.phaseSourcePolicy_unsent_binding_protected'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseSourcePolicy_unsent_binding_protected
+
+/-- info:
+'Vegas.phaseSourcePolicy_unsent_opening_protected'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseSourcePolicy_unsent_opening_protected
+
+/-- info:
+'Vegas.phaseSourcePolicy_protected_or_singleton'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseSourcePolicy_protected_or_singleton
+
+/-- info:
+'Vegas.phaseTimingComponent_eq_source_of_canonical_callback'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseTimingComponent_eq_source_of_canonical_callback
+
+/-- info:
+'Vegas.phaseTimingAssessment_run_eq_canonical'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseTimingAssessment_run_eq_canonical
+
+/-- info:
+'Vegas.phaseTimingAssessment_terminal_run_eq_canonical'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseTimingAssessment_terminal_run_eq_canonical
+
+/-- info:
+'Vegas.phaseBindingAction?_word_response'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseBindingAction?_word_response
+
+/-- info:
+'Interaction.ReactiveApplication.ResponseMenu.recorded_response_at'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Interaction.ReactiveApplication.ResponseMenu.recorded_response_at
+
+/-- info:
+'Interaction.ReactiveApplication.ResponseMenu.recorded_responses_at'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Interaction.ReactiveApplication.ResponseMenu.recorded_responses_at
+
+/-- info:
+'Interaction.ReactiveApplication.policyMixture_member_consistent'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Interaction.ReactiveApplication.policyMixture_member_consistent
+
+/-- info:
+'Vegas.phaseBindingRecall_completed_action'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseBindingRecall_completed_action
+
+/-- info:
+'Vegas.phaseCommitWordPosterior_accepted'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseCommitWordPosterior_accepted
+
+/-- info:
+'Vegas.SourceProgram.CommitPrefix.prefixLaw_wordAction_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.CommitPrefix.prefixLaw_wordAction_history
+
+/-- info:
+'Vegas.EventGraphRuntime.phase_ready_owner_rank_lt_of_clear_prefix'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.phase_ready_owner_rank_lt_of_clear_prefix
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecovery_local_source_patch'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecovery_local_source_patch
+
+/-- info:
+'Vegas.phase_terminal_payoff_lower'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phase_terminal_payoff_lower
+
+/-- info:
+'Vegas.phase_continuation_value_lower'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phase_continuation_value_lower
+
+/-- info:
+'Vegas.phase_localValue_lower'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phase_localValue_lower
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecovery_local_source_patch_continuation'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.commitRecovery_local_source_patch_continuation
