@@ -2,6 +2,10 @@
 
 **SE: non-concurrent ✓ · sampler ✓ · flag-coupled reset ✓ · pooled Bayes ✓ · individual SE / native query / transport / incentives open.**
 
+The [mathematical proof dependency](se-preservation-math.md#scope-and-proof-dependency)
+states the source selection, conditional transport and deviation arguments,
+with their scope distinguished from the checked milestones below.
+
 <details>
 <summary>Checked recovery milestones and remaining proof obligations</summary>
 
@@ -2929,6 +2933,10 @@ following construction facts.
   grouping gives $O\times E$ with $A_n$ for the other active owners and $B_n$
   for the excluded ones. $j$'s own trajectory is fixed by $I$ up to $I$,
   and summed out after $I$ by (T0).
+  This uses the empty initial context of 1.1. An extension with private
+  initial inputs requires independence across complete owner tuples for
+  this product argument; arbitrary correlated setup laws need a separate
+  transport argument.
 - **(T4).** An excluded owner's private choices enter $N_n$ only through that
   owner's own factors: its native-only and timing trembles, including a bad
   binding, and the builder's treatment of its own events, which may read its

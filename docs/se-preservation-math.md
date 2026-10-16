@@ -10,6 +10,101 @@ The source strategy is selected with the erasure and failed-attempt pins
 constructed below. This is not a claim about an arbitrary source extension
 or an arbitrary completion of the current native policy family.
 
+## Scope and proof dependency
+
+The mathematical conclusion here is Theorem 3 of the main document, whose
+program starts in the empty context. Its native transport argument also
+applies to independent initial OWNER tuples, allowing arbitrary correlation
+within one owner's tuple. The source erasure argument below retains an
+arbitrary original joint setup density, but that fact alone does not extend
+native transport to correlated tuples across owners.
+
+In particular, Lemma T uses both a product compatibility domain and a
+factorization over active and excluded owners. If their initial bits satisfy
+X=Y almost surely, the support is diagonal. An operational factor depending
+on the excluded owner's Y can change the active owner's X posterior. The
+claimed cancellation of that factor is then unavailable. An arbitrary
+correlated-initial-law preservation theorem needs a separate transport
+argument; it is not established here. This scope distinction leaves the
+formal target and its checklist unchanged.
+
+The proof has the following dependency order. All experiments retain the
+original setup, public chance and builder laws.
+
+1. **Select a source assessment.** Chronological substitution of voided own
+   words gives a common support D(q) and the exact cylinder identity
+
+       p_n(z,omega,w,q) = 1{z in D(q)} A_n(z,omega;q) L_j(w;q).
+
+   Bayes normalization cancels L_j separately at each full-information
+   member. This holds also under the common future occurrence coins. Thus
+   ordinary members have the same successful-phase payoff vector H_K;
+   known-failed attachments have action-independent payoffs. A class is an
+   antichain, so its payoff is affine in its shared current distribution.
+   At a free class the objective has the form constant+Lambda_K*x.H_K.
+   Exact constrained maximization cancels every positive Lambda_K before
+   any limit. With d domain values its conditional regret is at most
+   d*gamma_n*spread_j. The zero-coefficient members are indifferent.
+   Honest pins retain the given honest assessment by the relative departure
+   bound. Guard-safe induction on original-tree height compares omission
+   and accepted failure. This produces a full-information source SE with
+   the required sharing and successful-phase value optimality.
+
+2. **Construct the native prescription from observable data.** The forward
+   archive scan produces a genuine reduced source key at every unsent
+   callback. It consumes each original attempt once, including exhausted
+   restore. That key's domain coordinate has never been read: preceding
+   callbacks at this occurrence were value-independent WAITs. Conditioning
+   therefore preserves its selected law and the actual posterior of every
+   remaining original coordinate. The local seed is separately filtered by
+   its observable service transcript. Finite local backward induction
+   selects a success-maximizing own-service rule under that filtered law.
+
+3. **Transport inside the actual rare event.** Fix I and clean possibility
+   of Phi. First compare the actual fully mixed law with normalized Q_n
+   inside I-and-Phi. Then remove effective foreign RAW origins by relative
+   repairs preserving that SAME event. Whole-phase induction makes the
+   retained foreign word and Phi independent of the focal future, allowing
+   its normalized continuation to sum to one. For the enlarged formal
+   source, separately repair its accepted-failure tier with relative error
+   O(beta_n*gamma_n^(-T)); beta_n remains distinct from native RAW.
+   On the common operational
+   domain, the regular active-owner weight is
+
+       A_n(o) C_n (1+epsilon_n(o)),
+       C_n>0,  sup_o |epsilon_n(o)| -> 0.
+
+   The source weight is proportional to the same A_n. Normalization
+   cancels C_n even when it tends to zero. The explicit remainder estimate
+   below transfers the resulting total-variation limit back to the actual
+   conditional law. No error is divided by the mass of I or Phi.
+
+4. **Compare original native deviations.** Source conditional optimality
+   and transport give W_v<=W_tau+delta_n at each ordinary binding input,
+   with delta_n->0. Reset contributes a common term, and W_tau>=a_j.
+   Write P_star for the optimal remaining service success probability.
+   An immediate SEND with p_now<=P_star consequently obeys
+
+       a_j+p_now*(W_v-a_j)
+         <= a_j+P_star*(W_tau-a_j)+delta_n.
+
+   WAIT followed by the prescription retains the same unused domain law
+   and has remaining success probability at most P_star. The local-seed
+   argument also bounds policies reading extra operational observations.
+   Own bad bindings use the common reset payoff; correctly opening and
+   silence at inactive sites use their pointwise comparisons. Charged
+   one-shot deviations lose the strict margin alpha*K_j-spread_j.
+   Charged-only sites use the perturbed free-agent best responses.
+
+Take one subsequence for all native profiles, Bayes beliefs and required
+phase-conditioned laws; finiteness makes this simultaneous. The comparisons
+give sequential rationality at every original information set by the
+one-shot deviation principle. The subsequence gives consistency. On its
+initialized paths every packet is sent at its protected first opportunity,
+so the original honest joint law is preserved with no charge or exclusion.
+The arguments below establish the identities and bounds used in this chain;
+their full Lean realization remains open.
+
 ## The object at a commitment information set
 
 Fix a native information set I of j and its original commitment attempt a.
