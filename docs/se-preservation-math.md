@@ -4,7 +4,7 @@ This note works with the theorem and runtime semantics of
 `docs/se-preservation-commit-reveal.md`. It records mathematical arguments,
 not claims of Lean verification. No runtime or target assumption is changed.
 
-**Math audit: original-attempt/reset argument ✓ · source incentives ✓ · native query/transport dependencies explicit. Full Lean theorem open.**
+**Math audit: source/reset ✓ · full-fiber conditioning ✓ · rare-event normalization ✓ · full Lean SE open.**
 
 The source strategy is selected with the erasure and failed-attempt pins
 constructed below. This is not a claim about an arbitrary source extension
