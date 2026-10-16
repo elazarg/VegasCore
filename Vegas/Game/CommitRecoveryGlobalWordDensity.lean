@@ -21,14 +21,14 @@ open GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol GameTheory.Math.P
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
 
-private theorem jointRecall_length {state : setup.commitRecoveryProtocol.State}
+theorem jointRecall_length {state : setup.commitRecoveryProtocol.State}
     (trace : setup.commitRecoveryProtocol.Trace state) :
     (setup.recoveryJointRecall trace).length = trace.length := by
   induction trace with
   | start => rfl
   | extend earlier joint legal reached ih => exact congrArg Nat.succ ih
 
-private theorem publicRecall_extend (who : Player)
+theorem publicRecall_extend (who : Player)
     {state target : setup.commitRecoveryProtocol.State}
     (trace : setup.commitRecoveryProtocol.Trace state)
     (joint : Player → Option (CommitRecoveryMove Player L))
@@ -39,7 +39,7 @@ private theorem publicRecall_extend (who : Player)
   rw [attemptPublicRecall, InfoSignals.infoOf_extend]
   rfl
 
-private theorem publicRecall_length (who : Player)
+theorem publicRecall_length (who : Player)
     {state : setup.commitRecoveryProtocol.State}
     (trace : setup.commitRecoveryProtocol.Trace state) :
     (setup.attemptPublicRecall who trace).length = trace.length + 1 := by
@@ -49,7 +49,7 @@ private theorem publicRecall_length (who : Player)
       rw [setup.publicRecall_extend, List.length_cons, ih]
       rfl
 
-private theorem state_some_of_prefix
+theorem state_some_of_prefix
     (first : CommitRecoveryState setup.program)
     (prior : setup.commitRecoveryProtocol.Trace (some first))
     {state : setup.commitRecoveryProtocol.State} (trace : setup.commitRecoveryProtocol.Trace state)
@@ -61,7 +61,7 @@ private theorem state_some_of_prefix
       obtain ⟨next, _, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp reached
       exact ⟨next, rfl⟩
 
-private theorem information_extend_congr (who : Player)
+theorem information_extend_congr (who : Player)
     {leftSource leftTarget rightSource rightTarget : setup.commitRecoveryProtocol.State}
     (left : setup.commitRecoveryProtocol.Trace leftSource)
     (right : setup.commitRecoveryProtocol.Trace rightSource)

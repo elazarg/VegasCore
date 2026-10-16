@@ -167,3 +167,7 @@ import Vegas.Source.CommitRecoveryStateSplice
 import Vegas.Source.CommitRecoverySupportSplice
 import Vegas.Source.CommitRecoveryWordMass
 import Vegas.Source.CommitRecoveryWordObservation
+import Vegas.Source.CommitRecoveryClosedSplice
+import Vegas.Source.CommitRecoveryClosedSupport
+import Vegas.Source.CommitRecoveryInitialInputs
+import Vegas.Source.CommitRecoveryPublicObservation

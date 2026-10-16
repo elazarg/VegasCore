@@ -1644,9 +1644,21 @@ public recall, allowing distinct original supported setup draws.
 and `Vegas.SourceProgram.Setup.commitRecovery_reach_cross_mul_eq_of_public_and_coordinates`
 give the global paired reach identities, retaining original Nature atoms.
 `Vegas.SourceProgram.ProtocolState.recoveryStep_splice_support` constructs
-the raw supported owner-spliced successor. These paired results still need
-the global hybrid support existence theorem to obtain the common fiber and
-its Bayes cancellation; individual source optimality remains open.
+the raw supported owner-spliced successor.
+`Vegas.SourceProgram.Setup.commitRecovery_step_splice_support` composes that
+support with the actual real close, without a supplied raw-result equality.
+`Vegas.SourceProgram.Setup.commitRecovery_hybrid_of_initial_inputs` constructs
+a UNIQUE original supported hybrid history from two actual initialized source
+prefixes with matching public records and focal hidden tuple. It preserves
+the focal full information of one trace, every nonfocal full information of
+the other, the latter's literal setup draw and its exact counterfactual reach.
+`Vegas.SourceProgram.Setup.commitRecovery_initial_hiddenAgree_of_query_eq`
+derives that original hidden tuple agreement from actual combined query
+equality at literal initialized prefixes; no independent prior is introduced.
+`Vegas.SourceProgram.Setup.attemptPublicRecall_eq_for_observer` transfers
+the entire public record between observers. Actual information-fiber
+equivalence and Bayes normalization still need their direct consumers;
+individual source optimality remains open.
 
 `Vegas.SourceProgram.Setup.commitRecoveryNoMissInformation_genuine_history`
 gives a genuine source witness for the no-new-miss transformation of every
@@ -1697,8 +1709,10 @@ fixed-point machinery is needed for the different normalization.
 derives the whole omission word from actual complete pure-member records and
 the SAME sampled flags before consuming the genuine failed-attempt close.
 It proves the joint terminal readout/all-player-payoff equality through retry
-and exhausted restore without assuming equal omission words. The whole-history owner-world
-substitution needed for ancillary Bayes cancellation remains open.
+and exhausted restore without assuming equal omission words. The global
+history paste supplies original support and its inverse uniqueness; actual
+information-fiber Bayes cancellation and successful-phase payoff equality
+remain open.
 
 The existing broad post-exclusion native completion is not the pinned
 construction above:

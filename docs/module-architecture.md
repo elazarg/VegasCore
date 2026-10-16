@@ -2334,8 +2334,20 @@ an actual supported successor from supported paired public results and the
 selected original coordinates. Separately,
 [erased-history suffix splicing](../Vegas/Source/CommitRecoverySupportSplice.lean)
 retains the exact original joint suffix after an erased-equal boundary.
-Whole-history hybrid fiber existence and individual source Bayes cancellation
-remain separate obligations.
+[Real close substitution](../Vegas/Source/CommitRecoveryClosedSplice.lean) and
+[actual closed support](../Vegas/Source/CommitRecoveryClosedSupport.lean) compose
+the raw operation with retry, exhaustion, clean close and unfinished windows.
+[The global history paste](../Vegas/Game/CommitRecoveryHybridHistory.lean)
+constructs a unique original history with the focal full information from one
+trace and every nonfocal full information from the other, retaining the latter's
+literal supported setup draw and exact counterfactual density.
+[Original input retention](../Vegas/Source/CommitRecoveryInitialInputs.lean)
+derives original hidden-owner tuple equality from actual combined query
+equality at initialized prefixes, using existing entry-cell permanence.
+[Observer-independent public chronology](../Vegas/Source/CommitRecoveryPublicObservation.lean)
+transfers complete public-record equality between observers. Actual information
+fiber equivalence, Bayes normalization and individual source optimality remain
+separate obligations.
 
 No-new-miss query:
 [literal attempt entry](../Vegas/Source/CommitRecoveryAttemptOrigin.lean),

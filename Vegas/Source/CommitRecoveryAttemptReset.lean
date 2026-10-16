@@ -65,7 +65,7 @@ private theorem public_entry_congr {Γ : SourceCtx Player L} {O : Finset VarId}
       ProtocolView.publicOnly who program (observe who program (entry program second)) := by
   cases program <;> simp only [entry, observe, ProtocolView.publicOnly, Sum.elim_inl, same]
 
-private theorem public_control (who : Player) :
+theorem public_control (who : Player) :
     ∀ {Γ : SourceCtx Player L} {O : Finset VarId}
       (program : SourceProgram Player L Γ O) (first second : ProtocolState program),
       ProtocolView.publicOnly who program (observe who program first) =
@@ -102,14 +102,15 @@ theorem recoveryStep_commit_public_congr (who : Player) :
         ProtocolView.publicOnly who program (observe who program second) →
       atCommit program first = true →
       ∀ (excluded : Finset Player) (left right : Player → Option (CommitRecoveryMove Player L)),
-      (∀ owner, CommitRecoveryMove.missed (left owner) = CommitRecoveryMove.missed (right owner)) →
       ∀ l ∈ (recoveryStep program first excluded left).support,
       ∀ r ∈ (recoveryStep program second excluded right).support,
         ProtocolView.publicOnly who program (observe who program l.1) =
-            ProtocolView.publicOnly who program (observe who program r.1) ∧ l.2 = r.2
-  | _, _, .ret _, _, _, _, committing, _, _, _, _, _, _, _, _ => by cases committing
+            ProtocolView.publicOnly who program (observe who program r.1) ∧
+          ((∀ owner, CommitRecoveryMove.missed (left owner) =
+            CommitRecoveryMove.missed (right owner)) → l.2 = r.2)
+  | _, _, .ret _, _, _, _, committing, _, _, _, _, _, _, _ => by cases committing
   | _, _, .sample _ _ _ next, first, second, same, committing,
-      excluded, left, right, missed, l, lm, r, rm => by
+      excluded, left, right, l, lm, r, rm => by
       cases first with
       | inl _ => cases committing
       | inr first =>
@@ -126,11 +127,11 @@ theorem recoveryStep_commit_public_congr (who : Player) :
               subst l
               subst r
               obtain ⟨views, exclusions⟩ := recoveryStep_commit_public_congr who next first second
-                (Sum.inr.inj same) committing excluded left right missed
+                (Sum.inr.inj same) committing excluded left right
                 lowerLeft lowerLeftMember lowerRight lowerRightMember
               exact ⟨congrArg Sum.inr views, exclusions⟩
   | _, _, .commit name owner fresh guard next, first, second, same, committing,
-      excluded, left, right, missed, l, lm, r, rm => by
+      excluded, left, right, l, lm, r, rm => by
       cases first with
       | inl first =>
           cases second with
@@ -142,12 +143,12 @@ theorem recoveryStep_commit_public_congr (who : Player) :
               · rw [ite_eq_left inactive, PMF.mem_support_pure_iff] at lm rm
                 subst l; subst r
                 exact ⟨congrArg Sum.inr (public_entry_congr who next _ _
-                  (Config.public_automatic_congr who owner name first second old)), rfl⟩
+                  (Config.public_automatic_congr who owner name first second old)), fun _ => rfl⟩
               · rw [ite_eq_right inactive, PMF.mem_support_pure_iff] at lm rm
                 subst l; subst r
                 exact ⟨congrArg Sum.inr (public_entry_congr who next _ _
                   (Config.public_commit_congr who owner name guard first second old _ _)),
-                  by rw [missed owner]⟩
+                  by intro missed; rw [missed owner]⟩
       | inr first =>
           cases second with
           | inl _ => cases same
@@ -162,11 +163,11 @@ theorem recoveryStep_commit_public_congr (who : Player) :
               subst l
               subst r
               obtain ⟨views, exclusions⟩ := recoveryStep_commit_public_congr who next first second
-                (Sum.inr.inj same) committing excluded left right missed
+                (Sum.inr.inj same) committing excluded left right
                 lowerLeft lowerLeftMember lowerRight lowerRightMember
               exact ⟨congrArg Sum.inr views, exclusions⟩
   | _, _, .reveal _ _ _ _ _ _ next, first, second, same, committing,
-      excluded, left, right, missed, l, lm, r, rm => by
+      excluded, left, right, l, lm, r, rm => by
       cases first with
       | inl _ => cases committing
       | inr first =>
@@ -183,7 +184,7 @@ theorem recoveryStep_commit_public_congr (who : Player) :
               subst l
               subst r
               obtain ⟨views, exclusions⟩ := recoveryStep_commit_public_congr who next first second
-                (Sum.inr.inj same) committing excluded left right missed
+                (Sum.inr.inj same) committing excluded left right
                 lowerLeft lowerLeftMember lowerRight lowerRightMember
               exact ⟨congrArg Sum.inr views, exclusions⟩
 
@@ -409,11 +410,11 @@ theorem inside_attempt_public_eq
                 (ProtocolState.observe who setup.program r.1.1) := fun who =>
             (ProtocolState.recoveryStep_commit_public_congr who setup.program left.point right.point
               (views who) middleCommit left.excluded joint rightJoint
-              (congrFun words.1) l.1 lm r.1 rraw).1
+              l.1 lm r.1 rraw).1
           have rawExcluded : l.1.2 = r.1.2 :=
             (ProtocolState.recoveryStep_commit_public_congr observer setup.program
               left.point right.point (views observer) middleCommit left.excluded joint rightJoint
-              (congrFun words.1) l.1 lm r.1 rraw).2
+              l.1 lm r.1 rraw).2 (congrFun words.1)
           have running : ¬ ProtocolState.terminal setup.program left.point := by
             intro terminal
             have zero := (ProtocolState.remaining_zero_iff_terminal setup.program left.point).mpr
@@ -541,7 +542,7 @@ theorem commitRecovery_failed_attempt_erased_eq
               beforeLeft.excluded rightJoint).support := exclusions.symm ▸ rm
           have rawPublic := ProtocolState.recoveryStep_commit_public_congr observer setup.program
             beforeLeft.point beforeRight.point (views observer) middleCommit beforeLeft.excluded
-            joint rightJoint (congrFun words.1) l.1 lm r.1 rraw
+            joint rightJoint l.1 lm r.1 rraw
           have rawRanks := (ProtocolState.public_control observer setup.program l.1.1 r.1.1
             rawPublic.1).1
           have running : ¬ ProtocolState.terminal setup.program beforeLeft.point := by
@@ -585,7 +586,8 @@ theorem commitRecovery_failed_attempt_erased_eq
               leftEntry, outputExcluded] using failed
           have states : left.eraseHistory = right.eraseHistory := by
             rw [lnext, rnext]
-            exact CommitRecoveryState.close_eraseHistory_eq_of_failure _ _ savedPair rawPublic.2
+            exact CommitRecoveryState.close_eraseHistory_eq_of_failure _ _ savedPair
+              (rawPublic.2 (congrFun words.1))
               (leftEntry.trans rightEntry.symm) (leftGeneration.trans rightGeneration.symm)
               rawFinished rightFinished rawFailed
           apply setup.publicRecall_of_erased_states

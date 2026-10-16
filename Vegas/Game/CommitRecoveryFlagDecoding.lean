@@ -342,8 +342,7 @@ theorem commitRecoveryNormalizedFlagPolicy_raw_public_congr
     excluded.symm ▸ rightSupport
   have compared (who : Player) := ProtocolState.recoveryStep_commit_public_congr who setup.program
     first.point second.point (observed who) firstCommit first.excluded _ _
-    (congrFun omissions)
     leftResult leftSupport rightResult rightRaw
-  exact ⟨fun who => (compared who).1, (compared observer).2⟩
+  exact ⟨fun who => (compared who).1, (compared observer).2 (congrFun omissions)⟩
 
 end Vegas.SourceProgram.Setup

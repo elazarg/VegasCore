@@ -168,7 +168,7 @@ theorem commitRecoveryNormalizedFlagPolicy_nonfocal_info_eq
                 rightJoint).support := excluded.symm ▸ rm
           have rawExcluded := (ProtocolState.recoveryStep_commit_public_congr focal setup.program
             left.point right.point (observed focal) middleCommit left.excluded joint rightJoint
-            (congrFun omissions) l.1 lm r.1 rightRaw).2
+            l.1 lm r.1 rightRaw).2 (congrFun omissions)
           intro who nonfocal
           have oldInfo := before who nonfocal
           have oldSignal := congrArg (fun info => info.1.1) oldInfo

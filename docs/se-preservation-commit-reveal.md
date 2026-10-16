@@ -1,6 +1,6 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**SE: non-concurrent ✓ · sampler/reset ✓ · pooled Bayes ✓ · global source reach ✓ · individual SE / native query / transport / incentives open.**
+**SE: non-concurrent ✓ · sampler/reset ✓ · pooled Bayes ✓ · global source splice/reach ✓ · individual SE / native query / transport / incentives open.**
 
 The [mathematical proof dependency](se-preservation-math.md#scope-and-proof-dependency)
 states the source selection, conditional transport and deviation arguments,
@@ -15,9 +15,14 @@ The complete public source chronology and an owner's actual raw coordinate
 word now determine its original perfect-recall information across all phases,
 retries and exhausted advances. Matched public records preserve the original
 Nature atoms; retaining all nonfocal coordinates gives equal counterfactual
-reach and an exact cross-multiplication identity for full reach. A raw owner
-splice also produces a genuinely supported source successor. Constructing the
-whole hybrid history fiber and cancelling its Bayes normalization remain open.
+reach and an exact cross-multiplication identity for full reach. Owner
+substitution now constructs a unique original supported history through the
+real closes: focal full information comes from one trace, all nonfocal full
+information from the other, with the latter's original supported setup draw.
+Equal retained combined queries derive equality of the original hidden owner
+tuple at literal initialized prefixes. Public chronology equality transfers
+between observers. Information-fiber equivalence, Bayes normalization and
+individual optimality remain open.
 
 At the original native attempt's first exit, every newly excluded owner has
 an old ready binding without a true accepting receipt. Completed live and

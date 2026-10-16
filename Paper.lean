@@ -1,3 +1,6 @@
+import Vegas.Game.CommitRecoveryHybridHistory
+import Vegas.Source.CommitRecoveryInitialInputs
+import Vegas.Source.CommitRecoveryPublicObservation
 import Vegas.Pending.PhaseBindingAcceptedReceipt
 import Vegas.Source.CommitRecoverySpliceSupport
 import Vegas.Source.CommitRecoveryPublicControl
@@ -15141,3 +15144,108 @@ open Vegas.SourceProgram.Setup in
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms commitRecovery_supported_suffix_of_erased_history_eq
+
+open Vegas.SourceProgram.CommitRecoveryState in
+/-- info:
+'Vegas.SourceProgram.CommitRecoveryState.close_base'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms close_base
+
+open Vegas.SourceProgram.CommitRecoveryState in
+/-- info:
+'Vegas.SourceProgram.CommitRecoveryState.splice_close'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms splice_close
+
+open Vegas.SourceProgram.CommitRecoveryState in
+/-- info:
+'Vegas.SourceProgram.CommitRecoveryState.step_base'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms step_base
+
+open Vegas.SourceProgram.CommitRecoveryState in
+/-- info:
+'Vegas.SourceProgram.CommitRecoveryState.step_splice_support_of_raw'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms step_splice_support_of_raw
+
+open Vegas.SourceProgram.Config in
+/-- info:
+'Vegas.SourceProgram.Config.public_view_eq_for_observer'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms public_view_eq_for_observer
+
+open Vegas.SourceProgram.ProtocolState in
+/-- info:
+'Vegas.SourceProgram.ProtocolState.public_observe_eq_for_observer'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms public_observe_eq_for_observer
+
+open Vegas.SourceProgram.ProtocolState in
+/-- info:
+'Vegas.SourceProgram.ProtocolState.sourceObserve_base_eq_of_erased_observe_eq'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms sourceObserve_base_eq_of_erased_observe_eq
+
+open Vegas.SourceProgram.Setup in
+/-- info:
+'Vegas.SourceProgram.Setup.attemptPublicRecall_eq_for_observer'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms attemptPublicRecall_eq_for_observer
+
+open Vegas.SourceProgram.Setup in
+/-- info:
+'Vegas.SourceProgram.Setup.attemptPublicSignal_eq_for_observer'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms attemptPublicSignal_eq_for_observer
+
+open Vegas.SourceProgram.Setup in
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecovery_base_observe_eq_of_query_eq'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms commitRecovery_base_observe_eq_of_query_eq
+
+open Vegas.SourceProgram.Setup in
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecovery_base_of_prefix'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms commitRecovery_base_of_prefix
+
+open Vegas.SourceProgram.Setup in
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecovery_hybrid_of_initial_inputs'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms commitRecovery_hybrid_of_initial_inputs
+
+open Vegas.SourceProgram.Setup in
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecovery_initial_hiddenAgree_of_query_eq'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms commitRecovery_initial_hiddenAgree_of_query_eq
+
+open Vegas.SourceProgram.Setup in
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecovery_step_splice_support'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms commitRecovery_step_splice_support
+
+open Vegas.SourceProgram in
+/-- info:
+'Vegas.SourceProgram.hiddenAgree_of_sourceObserve_eq'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms hiddenAgree_of_sourceObserve_eq
