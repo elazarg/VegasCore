@@ -54,13 +54,17 @@ theorem phaseSurvivingSourceView?_of_ready_binding
       (sourceTrace : setup.commitRecoveryProtocol.Trace (some source)),
       source.excluded = control.execution.application.entry.excluded ∧
       source.generation = control.execution.application.generation ∧
+      setup.commitRecoveryPublic (some source) =
+        (control.execution.application.entry.excluded, control.execution.application.generation,
+          control.execution.application.attempt.phase) ∧
       ProtocolState.actor setup.program source.point = some who ∧
       setup.commitRecoveryModel.IsDecisionInfo who
         (setup.commitRecoveryModel.infoOf who sourceTrace) ∧
       phaseSurvivingSourceView? setup mode runtime leaks who event
           (control.execution.observe (phaseApplication runtime leaks) who) =
         some (ProtocolState.observe who setup.program source.point) := by
-  obtain ⟨source, sourceTrace, excluded, generation, acting, played, history, decoded⟩ :=
+  obtain ⟨source, sourceTrace, excluded, generation, publicSignal, acting, played,
+      history, decoded⟩ :=
     phase_ready_binding_surviving_source setup mode runtime leaks plan maximal horizon scheduler
       trace who event payload binding request
   let inputs : PMF (serviceGraph setup mode).Inputs := setup.initialLaw.map encodeInputs
@@ -81,7 +85,7 @@ theorem phaseSurvivingSourceView?_of_ready_binding
     rw [visible, history]
     simp only [decodeHistory, ownCompletions, List.filter_map]
     rfl
-  refine ⟨source, sourceTrace, excluded, generation, acting, played, ?_⟩
+  refine ⟨source, sourceTrace, excluded, generation, publicSignal, acting, played, ?_⟩
   simp only [phaseSurvivingSourceView?, ReactiveApplication.Execution.observe,
     phaseApplication, PhaseRuntimeState.playerView, State.playerView]
   change decodeEventView? setup.program

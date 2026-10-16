@@ -1,6 +1,6 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**SE: non-concurrent ✓ · timing/RAW ✓ · stopped channel ✓ · current source view ✓ · full Bayes/incentives open.**
+**SE: non-concurrent ✓ · timing/RAW ✓ · anchored word ✓ · archive readback ✓ · full Bayes/incentives open.**
 
 <details>
 <summary>Checked recovery milestones and remaining proof obligations</summary>
@@ -102,6 +102,13 @@ one-shot optimality as raw noise vanishes; permanent visibility of exclusion
 then gives whole-continuation optimality for that same limit. Clear keyed
 members still require their individual comparison estimates.
 
+A constrained timing completion instead fixes supplied convergent responses
+after public exclusion. It uses one common fully mixed Bayes sequence, retains
+clear pooled gain bounds, and has a consistent limit with exactly those fixed
+responses. Each mixture embeds in the original timing family while preserving
+the clear weights and uniform RAW tier. Source-information observability and
+optimality of that prescribed continuation remain obligations.
+
 At actual binding callbacks, nonmissing conditioning has an exact typed
 sending law and eligible-slot atom mass. Paired histories have the same
 eligible slot set. At one saved source entry, the full maximal commitment
@@ -194,8 +201,21 @@ Every genuine initialized current-attempt callback has an authentic earliest
 same-attempt prefix, with no earlier remembered callback at that address.
 The prefix retains the actual network and permanent recall. Its original
 plan/word posterior factors as the updated plan posterior times the original
-word prior. This avoids initializing a fresh execution at a later checkpoint;
-transport through the subsequent observed attempt still needs proof.
+word prior. The existing anchored policy replays all old raw actions with unit
+likelihood and uses the original word family at fresh current-attempt inputs.
+Under its original product plan prior, conditioning the ensuing own recall
+retains the original unread timing weights and actual AUX next-action law;
+the same assembled zero-RAW response follows. An actual command run with an
+arbitrary updated shared plan law also derives foreign anchored consistency.
+The fixed original commitment block supplies typed selectors at later binding
+callbacks. These facts still require a comparison with the original common
+physical assessment, rather than an independently reset plan prior.
+
+Conditioning the source prior on the current focal view retains its posterior
+over the complete focal word, including its unseen suffix, and the original
+foreign-word product at that entry. For correlated entry laws, the exact joint
+retains the updated entry/focal-word posterior and samples foreign words at
+that retained entry. It does not assume foreign independence across entries.
 
 The raw-response parser retains accepted typed failures as source actions.
 Every posterior-supported static member follows the entire actual own recall;
@@ -225,6 +245,10 @@ state retains the original initial inputs; its complete masked private store
 is reconstructed from the archived public view, current owned catalogue and
 immutable initial private fields. A total physical-view decoder therefore
 returns the genuine AUX current source view, with accepted failures retained.
+Complete archived player observations, including original own actions, are
+also observable. Each archived source endpoint reinserts the preceding voided
+own words. Splitting a genuine source attempt preserves its actual omission
+flags and transports its earlier views to ranks in the original program.
 The full remembered source signal transcript remains open.
 
 Actual raw histories also identify the saved exclusion set: it is the union of
@@ -233,6 +257,12 @@ phase. Current in-phase expiries are excluded from this readout. Two actual
 initialized histories with the same public view and installed phases have the
 same saved source exclusion set. Saved source exclusion and physical in-phase
 exclusion are kept separate.
+For retired attempt index `i`, its entry-exclusion readout uses only the first
+`i` archived attempts and public failures below its own saved boundary. Hidden
+values cannot affect this chronological readout. Appending an actual drained
+attempt gives exactly its saved entry exclusions. Source signals inside that
+attempt must additionally account for omissions processed in source order;
+physical in-phase expiries cannot substitute for that history.
 
 Two chronological same-attempt raw binding sends have strictly increasing
 source ranks. Their genuine earlier callbacks, readiness and event distinctness

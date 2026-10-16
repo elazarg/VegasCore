@@ -1010,3 +1010,14 @@ import Vegas.Game.PhaseTimingWordInterventionPosterior
 import Vegas.Game.PhaseTimingWordConfigPosterior
 import Vegas.Game.PhaseTimingWordEntryPosterior
 import Vegas.Game.PhaseSurvivingSourceView
+import Vegas.Game.PhasePrescribedTimingComponent
+import Vegas.Game.PhasePrescribedTimingCompletion
+import Vegas.Game.PhaseTimingWordForeignSupport
+import Vegas.Game.RecoveryFixedCommitSelector
+import Vegas.Game.PhaseTimingWordAnchoredRecall
+import Vegas.Game.PhaseTimingWordAnchoredPosterior
+import Vegas.Game.PhaseTimingWordAnchoredFilledPosterior
+import Vegas.Game.PhaseTimingWordAnchoredUnread
+import Vegas.Game.RecoveryTimingWordAnchoredPrediction
+import Vegas.Game.RecoveryTimingWordAnchoredJoint
+import Vegas.Game.RecoveryTimingWordAnchoredRealization

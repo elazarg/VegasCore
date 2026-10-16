@@ -1614,11 +1614,17 @@ actual assembled zero-RAW binding response. Arbitrary RAW own past and the
 mixed-entry native/source posterior are not inferred from that support theorem.
 
 Prescribed post-exclusion laws:
-[Phase Timing Exclusion Weights](../Vegas/Game/PhaseTimingExclusionWeights.lean).
+[Phase Timing Exclusion Weights](../Vegas/Game/PhaseTimingExclusionWeights.lean),
+[Phase Prescribed Timing Component](../Vegas/Game/PhasePrescribedTimingComponent.lean),
+[Phase Prescribed Timing Completion](../Vegas/Game/PhasePrescribedTimingCompletion.lean).
 Replacing free singleton weights represents an arbitrary prescribed response
 with the original uniform RAW tier, preserving all clear pool weights. The
 prescription's source-information decoder and optimality must be proved by its
 consumer.
+The constrained component instantiates the existing pooled completion theorem:
+one common fully mixed Bayes sequence has a consistent limit with exactly the
+supplied convergent excluded-site laws, preserving clear pooled inequalities.
+This does not establish source observability or individual optimality.
 
 Original configuration posteriors and stopped observation factors:
 [Phase Timing Word Focal Law](../Vegas/Game/PhaseTimingWordFocalLaw.lean),
@@ -1658,3 +1664,40 @@ All permanent exclusions retain archived or live public failure witnesses.
 Saved exclusions equal archived failure owners plus current failures strictly
 before the installed phase. Equal actual public views therefore determine
 equal saved source exclusions without including independent in-phase expiries.
+
+Retired entry exclusions:
+[Phase Archived Exclusion Entries](../Vegas/Pending/PhaseArchivedExclusionEntries.lean).
+The chronological public readout at index `i` uses the first `i` archives and
+failures below that attempt's boundary. Its actual drain-and-append rule reads
+exactly the saved entry exclusions, without inventing a historical raw trace.
+
+Authentic-entry word realization:
+[Reactive Anchored Mixture](../Interaction/ReactiveAnchoredMixture.lean),
+[Phase Anchored Recall](../Vegas/Pending/PhaseAnchoredRecall.lean),
+[Phase Timing Word Foreign Support](../Vegas/Game/PhaseTimingWordForeignSupport.lean),
+[Phase Timing Word Anchored Recall](../Vegas/Game/PhaseTimingWordAnchoredRecall.lean),
+[Phase Timing Word Anchored Posterior](../Vegas/Game/PhaseTimingWordAnchoredPosterior.lean),
+[Phase Timing Word Anchored Filled Posterior](../Vegas/Game/PhaseTimingWordAnchoredFilledPosterior.lean),
+[Phase Timing Word Anchored Unread](../Vegas/Game/PhaseTimingWordAnchoredUnread.lean),
+[Recovery Timing Word Anchored Prediction](../Vegas/Game/RecoveryTimingWordAnchoredPrediction.lean),
+[Recovery Timing Word Anchored Joint](../Vegas/Game/RecoveryTimingWordAnchoredJoint.lean),
+[Recovery Timing Word Anchored Realization](../Vegas/Game/RecoveryTimingWordAnchoredRealization.lean),
+[Commit Prefix Binding Split](../Vegas/Compile/CommitPrefixBindingSplit.lean),
+[Recovery Fixed Commit Selector](../Vegas/Game/RecoveryFixedCommitSelector.lean).
+The existing anchored policy fixes old RAW recall at unit likelihood; fresh
+current-attempt callbacks read original words. Original product-plan posterior
+conditioning gives the unread pool part jointly with the AUX next action and
+the actual assembled zero-RAW response. Actual command-run support derives
+foreign consistency for arbitrary updated shared-plan laws. Typed selectors
+stay inside one original commitment block. Actual common-assessment comparison
+is a separate obligation.
+
+Complete archived source observations:
+[Phase Archived Own Prefix](../Vegas/Pending/PhaseArchivedOwnPrefix.lean),
+[Archive Player Observation](../Vegas/Pending/ArchivePlayerObservation.lean),
+[Phase Archived Source Observation](../Vegas/Pending/PhaseArchivedSourceObservation.lean),
+[Commit Attempt Ranks](../Vegas/Source/CommitAttemptRanks.lean).
+Actual permanent own actions and masked stores reconstruct each complete old
+player observation; preceding voided own words reconstruct its source endpoint.
+Genuine source attempt splits retain omission flags and earlier views at
+original-program ranks. Full source signal-history reconstruction remains open.

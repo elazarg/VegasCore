@@ -3,6 +3,7 @@
 import Vegas.Compile.ExcludedCommitPrefixObservation
 import Vegas.Game.RecoveryReadyCommitWitness
 import Vegas.Game.RecoveryReadyCommitInformation
+import Vegas.Game.RevealService
 
 /-! # Surviving source decisions with saved permanent exclusions -/
 
@@ -39,6 +40,20 @@ theorem commitRecovery_isDecisionInfo_of_surviving_actor
       refine ⟨⟨⟨some source, trace⟩, rfl⟩, nonterminal, move, ?_⟩
       exact (setup.commitRecoveryModel.menu_adequate who trace (some move)).mpr localLegal
 
+/-- The semantic saved source position is the actual compiled phase address. -/
+theorem RecoverySourceCheckpoint.saved_position
+    {setup : Setup (Player := Player) (L := L)} {mode : ExecutionMode}
+    {state : PhaseRuntimeState (serviceGraph setup mode)}
+    (checkpoint : RecoverySourceCheckpoint setup mode state) :
+    instructionCount setup.program - ProtocolState.remaining setup.program
+        (checkpoint.residual.lift
+          (ProtocolState.entry checkpoint.residual.tail checkpoint.source)) =
+      state.attempt.phase := by
+  rw [checkpoint.remaining, ProtocolState.remaining_entry]
+  have count := checkpoint.compiled.countEq
+  simp only [eventCount_eq_instructionCount] at count
+  omega
+
 /-- A surviving owner at a ready commitment has a genuine initialized source
 decision with the saved exclusion set and generation. Hidden earlier slots
 are completed without inventing new misses. Its complete current source view
@@ -69,6 +84,8 @@ theorem RecoverySourceCheckpoint.surviving_prefix_trace
     ∃ (source : CommitRecoveryState setup.program)
       (trace : setup.commitRecoveryProtocol.Trace (some source)),
       source.excluded = state.entry.excluded ∧ source.generation = state.generation ∧
+      setup.commitRecoveryPublic (some source) =
+        (state.entry.excluded, state.generation, state.attempt.phase) ∧
       ProtocolState.actor setup.program source.point = some owner ∧
       setup.commitRecoveryModel.IsDecisionInfo owner
         (setup.commitRecoveryModel.infoOf owner trace) ∧
@@ -78,6 +95,7 @@ theorem RecoverySourceCheckpoint.surviving_prefix_trace
         (outputEmbedding setup.program).ref owner (checkpoint.embedding.event selected)
         ((serviceGraph setup mode).playerStore owner state.current.native.config.store)
         (filled.history owner) = some (ProtocolState.observe owner setup.program source.point) := by
+  have savedPosition := checkpoint.saved_position
   rcases checkpoint with ⟨⟨Γ, O, program, lift⟩, entry, refs, registry, embedding, before,
     compiled, terminalAlignment, agrees, guards, failures, unique, ranks, actors, commits, owners,
     endpoints, automatic, histories, memories, steps, menus, readout, initialized, views,
@@ -146,7 +164,13 @@ theorem RecoverySourceCheckpoint.surviving_prefix_trace
       (lift (earlier.liftPoint suffix (ProtocolState.entry suffix finished))) = some owner
     rw [actors, (earlier.liftPoint_recovery suffix).2.1]
     rfl
-  refine ⟨after, sourceTrace, rfl, rfl, actor,
+  have publicSignal : setup.commitRecoveryPublic (some after) =
+      (state.entry.excluded, state.generation, state.attempt.phase) := by
+    change (state.entry.excluded, state.generation, instructionCount setup.program -
+      ProtocolState.remaining setup.program
+        (lift (ProtocolState.entry (earlier.prepend suffix) entry))) = _
+    rw [savedPosition]
+  refine ⟨after, sourceTrace, rfl, rfl, publicSignal, actor,
     commitRecovery_isDecisionInfo_of_surviving_actor setup after sourceTrace owner survives actor,
     ?_, wholeView⟩
   change (fillCommitPrefix setup.program earlier suffix embedding state.current.native.config.store
@@ -178,6 +202,8 @@ theorem RecoverySourceCheckpoint.surviving_ready_binding_trace
     ∃ (source : CommitRecoveryState setup.program)
       (trace : setup.commitRecoveryProtocol.Trace (some source)),
       source.excluded = state.entry.excluded ∧ source.generation = state.generation ∧
+      setup.commitRecoveryPublic (some source) =
+        (state.entry.excluded, state.generation, state.attempt.phase) ∧
       ProtocolState.actor setup.program source.point = some who ∧
       setup.commitRecoveryModel.IsDecisionInfo who (setup.commitRecoveryModel.infoOf who trace) ∧
       decodeEventView? setup.program
@@ -194,11 +220,11 @@ theorem RecoverySourceCheckpoint.surviving_ready_binding_trace
   have notPublication : ¬ ((serviceGraph setup mode).outputLayout event).IsPublication := by
     rw [binding]
     exact id
-  obtain ⟨source, trace, excluded, generation, sourceActor, played, word, decoded⟩ :=
+  obtain ⟨source, trace, excluded, generation, publicSignal, sourceActor, played, word, decoded⟩ :=
     checkpoint.surviving_prefix_trace fresh guard next earlier reconstruct stored survives selected
       atEnd (selectedEq.symm ▸ ready) (selectedEq.symm ▸ acting)
       (selectedEq.symm ▸ notPublication)
   rw [word, selectedEq] at decoded
-  exact ⟨source, trace, excluded, generation, sourceActor, played, decoded⟩
+  exact ⟨source, trace, excluded, generation, publicSignal, sourceActor, played, decoded⟩
 
 end Vegas

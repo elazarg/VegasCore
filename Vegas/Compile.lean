@@ -50,5 +50,6 @@ import Vegas.Compile.PresentContextEvaluation
 import Vegas.Compile.CommitPrefixWordAction
 import Vegas.Compile.CommitPrefixWordReadout
 import Vegas.Compile.ExcludedCommitPrefixObservation
+import Vegas.Compile.CommitPrefixBindingSplit
 
 /-! Source-program lowering to the typed immutable graph. -/

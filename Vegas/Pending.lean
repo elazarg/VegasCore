@@ -680,3 +680,8 @@ import Vegas.Pending.PhaseArchivedBindingInterval
 import Vegas.Pending.PhaseArchivedObservation
 import Vegas.Pending.PhaseArchivedInputs
 import Vegas.Pending.ArchivePlayerStore
+import Vegas.Pending.PhaseArchivedExclusionEntries
+import Vegas.Pending.PhaseAnchoredRecall
+import Vegas.Pending.PhaseArchivedOwnPrefix
+import Vegas.Pending.ArchivePlayerObservation
+import Vegas.Pending.PhaseArchivedSourceObservation

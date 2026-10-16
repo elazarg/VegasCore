@@ -126,3 +126,4 @@ import Vegas.Source.CommitPrefixAttemptReadout
 import Vegas.Source.CommitPrefixWordProjection
 import Vegas.Source.CommitPhaseRecall
 import Vegas.Source.CommitAttemptObservation
+import Vegas.Source.CommitAttemptRanks

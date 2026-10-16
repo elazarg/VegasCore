@@ -39,6 +39,9 @@ theorem phase_ready_binding_surviving_source
       (sourceTrace : setup.commitRecoveryProtocol.Trace (some source)),
       source.excluded = control.execution.application.entry.excluded ∧
       source.generation = control.execution.application.generation ∧
+      setup.commitRecoveryPublic (some source) =
+        (control.execution.application.entry.excluded, control.execution.application.generation,
+          control.execution.application.attempt.phase) ∧
       ProtocolState.actor setup.program source.point = some who ∧
       setup.commitRecoveryModel.IsDecisionInfo who
         (setup.commitRecoveryModel.infoOf who sourceTrace) ∧
@@ -91,7 +94,8 @@ theorem phase_ready_binding_surviving_source
   have notPublication : ¬ ((serviceGraph setup mode).outputLayout event).IsPublication := by
     rw [binding]
     exact id
-  obtain ⟨source, sourceTrace, excluded, generation, sourceActor, played, word, decoded⟩ :=
+  obtain ⟨source, sourceTrace, excluded, generation, publicSignal, sourceActor, played,
+      word, decoded⟩ :=
     checkpoint.surviving_prefix_trace fresh guard next earlier reconstruct stored survives selected
       atEnd (selectedEq.symm ▸ request.2.2.1) (selectedEq.symm ▸ acting)
       (selectedEq.symm ▸ notPublication)
@@ -105,7 +109,7 @@ theorem phase_ready_binding_surviving_source
     fresh guard next earlier reconstruct survives selected atEnd (selectedEq.symm ▸ request.2.2.1)
       (selectedEq.symm ▸ acting) bindingRecord.active native.active.reachable retained saved
   rw [word, selectedEq] at decoded
-  exact ⟨source, sourceTrace, excluded, generation, sourceActor, played,
+  exact ⟨source, sourceTrace, excluded, generation, publicSignal, sourceActor, played,
     word.symm.trans actualWord, decoded⟩
 
 end Vegas

@@ -52,7 +52,9 @@ theorem RetiredBindingInterval.binding_fields
   subst owner
   exact ⟨payload, binding⟩
 
-private theorem archivedHistory_readout (retired : List (RetiredCommitAttempt graph))
+/-- Reading each archived binding suffix commutes with inserting the original
+retired words into any effective physical completion history. -/
+theorem archivedHistory_readout (retired : List (RetiredCommitAttempt graph))
     (effective : List graph.Completion) (who : Player)
     (candidates : CandidateSlot graph → CommitmentCandidate (Raw L))
     (read : ∀ record ∈ retired,
