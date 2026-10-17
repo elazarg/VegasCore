@@ -1,6 +1,6 @@
 # Private-seed signalling in a first commitment phase
 
-**Math: delta>0 for counted/admission quotients · native certificate unchecked.**
+**Math: deviation bound 1/4 · counted scope identified · prose S3 unresolved.**
 
 This note tests Theorem 3 of [the preservation argument](se-preservation-commit-reveal.md).
 Under the literal causal reading of its S1--S3 bullets, independent event
@@ -635,17 +635,25 @@ under the assessed strategy even after another player deviates. This is a
 support restriction on the assessed policy at that input; it does not require
 the assessment's posterior to equal the deviating play's posterior.
 
-First record the no-helper timing bound. Couple the two values of an owner's
-fair seed, holding the other coordinates and the player's private randomness
-fixed. The first late inputs coincide: the absent middle marker is an
-unobserved identity WAIT. If the owner sends there, the one packet can land
-for only one of the two seeds. If it waits, its second late inputs also
-coincide, and a packet there can again land for only one seed. Never sending
-does no better. Thus every at-most-one-packet policy has accepting probability
-at most 1/2. This also permits bad preparations: they cannot increase accepting
-probability. For B the same coupling holds conditional on the complete A
-prefix BEFORE B's seed-dependent clock-4 polls, because nothing in that prefix
-reads B's seed. It does not condition on B's hidden polling position.
+First record the no-helper timing bound. Let Z be the complete physical
+prefix BEFORE the owner's seed-dependent first late polls. For B this is
+the prefix before command 12. None of that prefix reads its local seed,
+which is therefore still fair conditional on Z. Couple the two seeds using
+the same remaining player randomness. Their first late full inputs coincide:
+the absent middle marker is an unobserved identity WAIT. Let F mean that
+the owner emits for this original coordinate at its first late clock, and
+write q(Z) for its conditional probability. The equality of inputs makes
+q(Z) the same under both seeds. Under seed 0, acceptance requires F. Under
+seed 1, acceptance requires an emission at the second late clock, hence
+requires not F because the owner can emit at most once. Thus
+
+    P(D=1 | Z) <= (q(Z) + 1-q(Z))/2 = 1/2.
+
+This argument permits arbitrary later inputs, bad preparations, silence and
+randomized policies. It needs neither equality of the second late inputs nor
+a fair seed posterior after the first poll. It must not condition on the
+hidden polling position. For A after both initial WAITs the same argument
+starts before command 4; for B it retains the entire earlier A prefix.
 
 At B's initial input after A WAIT, compare two whole continuations. Full
 pending observation and empty initial own catalogues make this a fixed physical
@@ -705,7 +713,10 @@ at least
 
 To see the first bound explicitly, let Z be the complete physical prefix
 immediately before B's clock-4 polling block. A's delivery bit is already
-determined by Z, and B's seed remains fair conditional on Z. Hence
+determined by Z: after A's initial WAIT, its only eligible inclusion commands
+are 7 and 10, both strictly before this prefix. There is no later original-A
+callback or inclusion, and expiry cannot add an accepting receipt. B's seed
+remains fair conditional on Z. Hence
 
     P(D_A=1,D_B=0)
       = E[1{D_A=1} (1-P(D_B=1 | Z))] >= P(D_A=1)/2 = 1/4.
@@ -732,6 +743,34 @@ For W=3 and epsilon=1, the experiment checks BOTH fixed deviations' worst-case
 values against every opposing reduced late pure policy: each minimum is 1/4.
 Mixed policies follow by affinity. These checks support this shorter proof;
 they do not certify its native information or raw-audit adapters.
+
+### Exact boundary of the mathematical conclusion
+
+The preceding argument establishes a conditional mathematical proposition:
+for this finite schedule, complete-pending observation, actual reset rules,
+and count audit with W>2 epsilon and K>W+epsilon, every assessed native SE
+has initial A payoff at least W/4-epsilon/2. It fixes one honest source SE
+and excludes every preserving native SE; it does not merely show failure of
+a proposed lifted strategy. Clean support is proved at all genuine own-clean
+information sets, so neither positive lower bound assumes equilibrium reach
+or substitutes the deviation's posterior into the assessment.
+
+Its application to the abstract preservation theorem has a separate premise
+question. The causal seed-read restrictions in the S1--S3 bullets and the
+counted calendar/success predicates allow the schedule mathematically. The
+factorization assertion after S3, if imposed as an independent requirement
+of full seed-posterior sufficiency, excludes it. These readings are different
+hypotheses: a signal about within-clock activation position is a permitted
+causal effect in the first and forbidden extra information in the second.
+The narrower sentence about future activations needs the distinctions in the
+[mathematical audit](se-preservation-math.md#future-callback-clocks-and-future-service):
+potential unsent calendars agree, but actual callbacks after a chosen SEND
+can differ. The all-raw packet-content quotient is a further, independent
+choice, classified above. Consequently the payoff proposition is not an
+unqualified refutation of the intended abstract theorem. Conversely the
+claimed clock-filter inference cannot prove preservation from the causal
+bullets alone. Choosing the stronger reading would require explicit owner
+approval; it is not a missing algebraic step in this proof.
 
 ### Full outcome calculation
 

@@ -6,7 +6,7 @@ not claims of Lean verification. No runtime or target assumption is changed.
 
 **Math audit: source SE checked · native query checked · native transport/incentives open in Lean.**
 
-**Math frontier: delta>0 · all-raw admission quotient classified · activation scope unresolved.**
+**Math frontier: deviation 1/4 · conditional half-bound derived · S3 scope unresolved.**
 
 The [service likelihood issue](#when-clock-words-determine-the-seed-filter)
 below prevents treating this draft as an unconditional proof for every
@@ -981,6 +981,21 @@ service decisions, including acceptance. Until that implication is proved
 for the stated abstract class, the service comparison and full mathematical
 SE conclusion remain conditional. No target or hypothesis is changed to
 close this gap.
+
+The distinction can be expressed without any limiting argument. Fix a profile
+with positive probability of A's initial WAIT and positive probabilities of
+B's proper EARLY and WAIT after it. In that one original experiment, all
+three clock-2 marker inputs have positive probability and the same
+local transcript L: clock word [0,2], own WAIT at 0, no own emission and an
+unresolved original binding. The conditional seed laws at these inputs are,
+respectively, fair, point mass at 0 and point mass at 1. Hence there is no
+single measure mu_L that equals Law(xi | I) at every full input I carrying L.
+This directly disproves the common filtered-seed-law consequence of the
+causal bullets on this interpretation. If that common law is instead part
+of the premise, this construction fails the premise; the conditional payoff
+obstruction cannot refute that stronger statement. Its
+[precise conclusion](se-private-seed-signalling.md#exact-boundary-of-the-mathematical-conclusion)
+keeps these two claims separate.
 
 ### Future callback clocks and future service
 
