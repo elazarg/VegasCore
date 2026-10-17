@@ -1,4 +1,5 @@
 import Vegas.Pending.PhaseBindingServiceCompletion
+import Vegas.Examples.CommitSeedSignallingRealization
 import Vegas.Game.PhaseObservableDomainWord
 import Vegas.Game.PhaseCountServiceForeignWord
 import Vegas.Pending.PhaseBindingSuccessFunction
@@ -16992,3 +16993,15 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.phaseCountServiceTapePolicy_original_good_word_joint
+
+/-- info:
+'Vegas.Examples.CommitSeedSignalling.exists_honest_sequentialEquilibrium'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.CommitSeedSignalling.exists_honest_sequentialEquilibrium
+
+/-- info:
+'Vegas.Examples.CommitSeedSignalling.scheduler_completesPlay'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.CommitSeedSignalling.scheduler_completesPlay

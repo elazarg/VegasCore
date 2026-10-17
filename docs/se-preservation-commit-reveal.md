@@ -2,7 +2,7 @@
 
 **SE: non-concurrent ✓ · recovery source ✓ · native word/G coupling ✓ · posterior/RAW repair/service incentives open.**
 
-**Math: same-event repairs derived · deferred-receipt obstruction · S3 unresolved.**
+**Native obstruction: source SE ✓ · raw completion ✓ · service / late bound / incentives open.**
 
 The [mathematical proof dependency](se-preservation-math.md#scope-and-proof-dependency)
 states the source selection, conditional transport and deviation arguments,

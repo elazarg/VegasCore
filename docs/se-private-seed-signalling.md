@@ -1,6 +1,6 @@
 # Private-seed signalling in a first commitment phase
 
-**Obstruction: mathematical deviation 1/4 · native late bound and admissibility unchecked.**
+**Native obstruction: source SE ✓ · raw completion ✓ · service / late bound / incentives open.**
 
 The issue is that a player can withhold useful information. Alice has two late
 submission times; a hidden fair coin determines which succeeds. If Bob sends
@@ -30,6 +30,14 @@ alone proves neither of them.
 This is mathematical evidence, not closure of a checklist box or a checked
 refutation for the native Lean runtime. No target, semantics or additional
 hypothesis is adopted here.
+
+The native fixture has a checked honest source SE and a checked completion
+theorem, `Vegas.Examples.CommitSeedSignalling.scheduler_completesPlay`.
+Every legal raw history of its installed scheduler completes the graph within
+the 64-command horizon. The proof bounds unfinished play by 55 commands,
+including malformed submissions, retries and exhausted recovery. These
+theorems do not establish the full service contract, service privacy or the
+positive deviation bound.
 
 ## Program and payoffs
 
