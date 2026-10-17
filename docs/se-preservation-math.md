@@ -413,6 +413,17 @@ An earlier successful RAW opening instead keeps the same immutable prepared
 value and permitted opening envelope. Its alias repair has no unread domain
 coordinate and incurs no additional source-value density cost.
 
+The deletion bound can also be proved directly on Q_n's actual behavioral
+history weights. At each repaired RAW record its response atom is at most
+zeta_n^3, while the paired canonical BASE atom has the same-slot lower bound
+above. Other BASE atoms agree because their virtual queries and operational
+words agree; original fixed Nature, setup and builder factors are retained.
+The same finite-preimage summation gives the displayed I-and-Phi bound.
+This proves the needed probability comparison without a separate theorem
+repairing latent table tags. Identifying that behavioral Q_n marginal with
+the once-sampled experiment still uses the joint realization below; it does
+not follow by multiplying separate posterior marginals.
+
 ## Local service independence and the permitted packet quotient
 
 Use the exhaustive inputs of the document's concurrent S1. For a binding,
@@ -2689,9 +2700,15 @@ supported original zero-RAW timing table and foreign seeds. This supplies
 proper-reference scalar survival. `Vegas/Game/PhaseCountServiceGood.lean` gives
 the positive-RAW joint good event for the same original supported tables;
 `Vegas/Game/PhaseCountServiceTableGood.lean` averages the literal original table
-posterior and retains the entire table vector. Typed-word transport and the
-original full native information-fiber posterior are separate from that scalar
-law. The latter is now checked in `Vegas/Game/PhaseCountServiceTableNative.lean`,
+posterior and retains the entire table vector.
+`Vegas/Game/PhaseObservableDomainWord.lean` derives actual query equality by
+static own-prefix induction. `Vegas/Game/PhaseCountServiceForeignWord.lean`
+derives the joint STATIC foreign declaration word and good-event law for the
+original stopped runner, including pre-entry declarations and archived restore.
+Its initialized timing-posterior consumer retains every original timing table.
+The domain draw remains fixed, so this is not the full native/source
+conditional transport. The timing-only full native information-fiber posterior
+is checked in `Vegas/Game/PhaseCountServiceTableNative.lean`,
 retaining the original updated remainder, with its literal normalized physical
 marginal in `Vegas/Game/PhaseCountServiceTableActual.lean`. It does not imply
 source-query locality or a product after future-success conditioning.
@@ -2703,7 +2720,13 @@ exactly E(F(info)) for a genuine original source decision, retaining its actor
 and static rank. `Vegas/Game/PhaseObservableDomainValue.lean` instantiates the
 actual native callback with that query's domain law; every domain choice
 encodes a successful typed binding. The original native domain-table posterior
-and joint typed-word transport remain separate.
+and conditional typed-word transport remain separate.
+`Vegas/Pending/PhaseBindingSuccessFunction.lean` extracts native resolved
+acceptance as a function of its original local seed and emission-clock word.
+`Vegas/Pending/PhaseBindingServiceCompletion.lean` derives that resolution from
+the actual runtime completion contract, including after a legal one-shot
+response. Its joint readout retains arbitrary original posterior tags.
+The coherent service optimizer and final incentive consumer remain open.
 
 `Vegas.SourceProgram.Setup.commitRecoveryNoMissInformation_genuine_history`
 gives a genuine source witness for the no-new-miss transformation of every

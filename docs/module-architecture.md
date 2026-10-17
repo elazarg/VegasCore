@@ -2466,8 +2466,23 @@ and [its actual resolved episodes](../Vegas/Game/PhaseCountServiceEpisode.lean)
 retain the original event seed, all other timing tapes and complete own recall.
 Whole-policy consistency derives the local splice agreement; first-SEND
 uniqueness and resolution use the quantified complete-calendar/packet-success
-contract. Whole-phase foreign-word independence and conditional transport
-remain separate obligations.
+contract.
+[The original success function](../Vegas/Pending/PhaseBindingSuccessFunction.lean)
+is extracted from genuine resolved histories and retains arbitrary original
+posterior tags in the existing runner.
+[Runtime completion](../Vegas/Pending/PhaseBindingServiceCompletion.lean)
+derives the resolution premise from the actual terminal continuation, also
+after a legal one-shot response. It does not construct an optimal service rule.
+[Earlier declarations](../Vegas/Pending/PhaseReadyBindingDeclaration.lean)
+are derived from surviving readiness, original accepting handles and actual
+remembered supported SENDs, including after foreign exclusions.
+
+[Weighted request aliases](../Vegas/Game/PhaseCountServiceAliases.lean)
+normalize the actual request quotient while preserving the focal full input
+and physical application jointly.
+[Same-slot binding mass](../Vegas/Game/PhaseCountServiceBindingMass.lean)
+derives the BASE lower bound and cubic RAW/BASE ratio at each actual fresh
+slot. This is a local mass comparison, not the global initialized RAW repair.
 
 Original native receipt classification:
 [first-exclusion origin](../Vegas/Pending/PhaseCommitmentExclusionOrigin.lean)
@@ -2490,6 +2505,14 @@ same original supported zero-RAW table and foreign event seeds. Positive-RAW
 first-full-identifier stopped runs under the same original tapes and arbitrary
 focal futures. The good event includes all entry-active foreign survivors and
 no effective foreign RAW. Proper service is used after the RAW comparison.
+[Static query comparison](../Vegas/Game/PhaseObservableDomainWord.lean) and
+[the original foreign declaration word](../Vegas/Game/PhaseCountServiceForeignWord.lean)
+derive the joint static word/good-event invariance from actual callbacks,
+receipts and permanent recall. Static indices retain repeated ownership;
+pre-entry declarations and archived attempts are not read from a restored
+current store. Its posterior consumer retains the entire original timing
+table vector. The domain-table draw remains a parameter; this coupling does
+not identify the native/source conditional posterior.
 [Original full timing tables](../Vegas/Game/PhaseCountServiceTable.lean) and
 [their stopped runner](../Vegas/Game/PhaseCountServiceTableRun.lean) identify
 the literal normalized policy, retaining the entire original per-owner table

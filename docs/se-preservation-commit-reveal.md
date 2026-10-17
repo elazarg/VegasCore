@@ -1,6 +1,6 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
-**SE: non-concurrent ✓ · recovery source ✓ · native query/value kernel ✓ · native math audited; posterior/transport/incentives open in Lean.**
+**SE: non-concurrent ✓ · recovery source ✓ · native word/G coupling ✓ · posterior/RAW repair/service incentives open.**
 
 The [mathematical proof dependency](se-preservation-math.md#scope-and-proof-dependency)
 states the source selection, conditional transport and deviation arguments,
@@ -93,7 +93,13 @@ effective foreign RAW occurs. The proper-service comparison is used only
 after RAW has been excluded. The complete original per-owner timing tables
 now realize the normalized stopped runner, with their actual entry posterior.
 Averaging gives the same joint good-event/table-vector law under arbitrary
-focal futures. Whole-phase typed-word independence remains open.
+focal futures. The actual stopped runner also preserves the joint STATIC
+foreign declaration word and good event under those interventions. Its
+declarations come from original accepting receipts and permanent recall,
+including pre-entry SENDs, repeated ownership and restored archives. The
+original timing-posterior consumer retains every table jointly. The domain
+draw stays fixed in this comparison; native/source posterior transport
+remains open.
 
 At a positive full native information fiber, the original next timing coin
 is now independent of the entire updated remainder: all other original
@@ -140,7 +146,11 @@ exhausted restore; no equality of omission words is assumed by this consumer.
 The normalized native policy uses one original address/ordinal timing tape.
 Actual complete-policy recall derives consistency with its local service
 splice and resolved success under the complete-calendar/packet-success
-contract. This does not yet prove whole-phase foreign-word independence or
+contract. Runtime completion now derives original-coordinate resolution for
+the actual remaining-budget continuation, including retry and exhausted
+restore. Its terminal acceptance is the same original local-seed/emission
+function, jointly with arbitrary posterior tags, also after a legal one-shot
+response. This does not establish a coherent optimal service rule or the
 conditional native/source transport.
 
 Actual failed source attempts from the same literal prior and omission word

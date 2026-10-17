@@ -124,6 +124,43 @@ def phasePolicyDispatch
   | some event => eventPolicyDispatch setup mode runtime leaks openings bindings who
       event past view
 
+omit [Fintype Player] in
+/-- The request dispatcher preserves equality of its actual component laws
+at two recalls with the same current observation. -/
+theorem phasePolicyDispatch_congr_input
+    (openings : ∀ (owner : Player) (_event : (serviceGraph setup mode).EventId)
+      (payload : L.Ty), FieldRef (serviceGraph setup mode).layout (.binding owner payload) →
+      (phaseApplication runtime leaks).Policy)
+    (bindings : ∀ (owner : Player) (event : (serviceGraph setup mode).EventId)
+      (payload : L.Ty), (serviceGraph setup mode).outputLayout event = .binding owner payload →
+      (phaseApplication runtime leaks).Policy)
+    (who : Player) (first second : List (phaseApplication runtime leaks).PlayerEntry)
+    (view : (phaseApplication runtime leaks).PlayerView)
+    (opened : ∀ owner event payload binding,
+      openings owner event payload binding first view =
+        openings owner event payload binding second view)
+    (bound : ∀ owner event payload binding,
+      bindings owner event payload binding first view =
+        bindings owner event payload binding second view) :
+    phasePolicyDispatch setup mode runtime leaks openings bindings who first view =
+      phasePolicyDispatch setup mode runtime leaks openings bindings who second view := by
+  unfold phasePolicyDispatch
+  split
+  · rfl
+  · rename_i event _selected
+    cases node : nodeView (serviceGraph setup mode) event with
+    | bind owner payload outputEq codeEq =>
+        simp only [eventPolicyDispatch, node]
+        split
+        · exact bound owner event payload outputEq
+        · rfl
+    | resolve owner payload binding checks outputEq codeEq =>
+        simp only [eventPolicyDispatch, node]
+        split
+        · exact opened owner event payload binding
+        · rfl
+    | sample payload law outputEq codeEq => simp only [eventPolicyDispatch, node]
+
 /-- Even malformed or unrealized inputs receive a law supported by the actual
 bounded authenticated one-packet menu. -/
 theorem phasePolicyDispatch_covered

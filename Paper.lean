@@ -1,3 +1,10 @@
+import Vegas.Pending.PhaseBindingServiceCompletion
+import Vegas.Game.PhaseObservableDomainWord
+import Vegas.Game.PhaseCountServiceForeignWord
+import Vegas.Pending.PhaseBindingSuccessFunction
+import Vegas.Pending.PhaseReadyBindingDeclaration
+import Vegas.Game.PhaseCountServiceAliases
+import Vegas.Game.PhaseCountServiceBindingMass
 import Vegas.Compile.EventBindingActionFailure
 import Vegas.Game.CommitRecoveryEquilibriumConstruction
 import Vegas.Game.CommitRecoveryEquilibriumExtension
@@ -16754,3 +16761,234 @@ open Vegas.RecoverySourceCheckpoint in
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms commit_block_phase_geometry
+
+/-- info:
+'Vegas.EventGraphRuntime.PhaseService.bindingSuccess_eq_of_resolved'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.PhaseService.bindingSuccess_eq_of_resolved
+
+/-- info:
+'Vegas.EventGraphRuntime.PhaseService.bindingSuccess_eq_false_of_unsent'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.PhaseService.bindingSuccess_eq_false_of_unsent
+
+/-- info:
+'Vegas.EventGraphRuntime.PhaseService.bindingSuccess_joint'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.PhaseService.bindingSuccess_joint
+
+/-- info:
+'Vegas.EventGraphRuntime.PhaseService.runRounds_bindingSuccess_joint'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.PhaseService.runRounds_bindingSuccess_joint
+
+/-- info:
+'Vegas.EventGraphRuntime.phase_ready_earlier_binding_read'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.phase_ready_earlier_binding_read
+
+/-- info:
+'Vegas.EventGraphRuntime.phase_ready_earlier_binding_declaration'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.phase_ready_earlier_binding_declaration
+
+/-- info:
+'Vegas.EventGraphRuntime.phase_completed_recorded_binding_read'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.phase_completed_recorded_binding_read
+
+/-- info:
+'Vegas.phasePolicyDispatch_congr_input'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phasePolicyDispatch_congr_input
+
+/-- info:
+'Vegas.phaseCountServiceNormalization_info_fixed'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseCountServiceNormalization_info_fixed
+
+/-- info:
+'Vegas.phaseCountService_serviceClocks_normal_recall'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseCountService_serviceClocks_normal_recall
+
+/-- info:
+'Vegas.phaseCountService_actions_normal_recall'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseCountService_actions_normal_recall
+
+/-- info:
+'Vegas.phaseCountServicePolicy_normal_recall'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseCountServicePolicy_normal_recall
+
+/-- info:
+'Vegas.phaseCountServicePolicy_alias_covered'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseCountServicePolicy_alias_covered
+
+/-- info:
+'Vegas.phaseCountServicePolicy_alias_history'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseCountServicePolicy_alias_history
+
+/-- info:
+'Vegas.phaseCountServicePolicy_alias_focal_joint'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseCountServicePolicy_alias_focal_joint
+
+/-- info:
+'Vegas.phaseCountServicePolicy_binding_slot_mass'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseCountServicePolicy_binding_slot_mass
+
+/-- info:
+'Vegas.phaseCountServicePolicy_binding_operational_mass'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseCountServicePolicy_binding_operational_mass
+
+/-- info:
+'Vegas.phaseCountServicePolicy_binding_raw_ratio'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseCountServicePolicy_binding_raw_ratio
+
+/-- info:
+'Vegas.phaseCountServicePolicy_binding_cubic_raw_ratio'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseCountServicePolicy_binding_cubic_raw_ratio
+
+/-- info:
+'Vegas.EventGraphRuntime.PhaseService.CompletesPlay.resolved_runRounds'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.PhaseService.CompletesPlay.resolved_runRounds
+
+/-- info:
+'Vegas.EventGraphRuntime.PhaseService.runRounds_complete_bindingSuccess_joint'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.PhaseService.runRounds_complete_bindingSuccess_joint
+
+/-- info:
+'Vegas.EventGraphRuntime.PhaseService.response_runRounds_complete_bindingSuccess_joint'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.PhaseService.response_runRounds_complete_bindingSuccess_joint
+
+/-- info:
+'Vegas.phaseVirtualSourceQuery?_eq_of_ready_saved'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseVirtualSourceQuery?_eq_of_ready_saved
+
+/-- info:
+'Vegas.phaseObservableDomainValues_eq_of_masked_prefix'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseObservableDomainValues_eq_of_masked_prefix
+
+/-- info:
+'Vegas.EventGraphRuntime.phase_bindingAccepted_declaration'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.phase_bindingAccepted_declaration
+
+/-- info:
+'Vegas.EventGraphRuntime.phase_attempt_metadata_of_prefix'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.phase_attempt_metadata_of_prefix
+
+/-- info:
+'Vegas.phaseCountServiceTapePolicy_domain_sending'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseCountServiceTapePolicy_domain_sending
+
+/-- info:
+'Vegas.phaseCountServiceTapePolicy_recorded_domain'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseCountServiceTapePolicy_recorded_domain
+
+/-- info:
+'Vegas.phaseCountServiceTapePolicy_foreign_query_eq'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseCountServiceTapePolicy_foreign_query_eq
+
+/-- info:
+'Vegas.phaseCountServiceTapePolicy_recorded_openings_eq'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseCountServiceTapePolicy_recorded_openings_eq
+
+/-- info:
+'Vegas.phaseCountServiceTapePolicy_receipted_word_eq'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseCountServiceTapePolicy_receipted_word_eq
+
+/-- info:
+'Vegas.phaseCountServiceTapePolicy_good_word_law'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseCountServiceTapePolicy_good_word_law
+
+/-- info:
+'Vegas.phaseCountServiceTapePolicy_original_good_word_joint'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseCountServiceTapePolicy_original_good_word_joint

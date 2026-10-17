@@ -743,3 +743,6 @@ import Vegas.Pending.PhaseBindingReceiptResolution
 import Vegas.Pending.PhaseCommitmentExclusionOrigin
 import Vegas.Pending.PhaseArchiveGeneration
 import Vegas.Pending.PhaseAttemptReceiptSnapshot
+import Vegas.Pending.PhaseBindingSuccessFunction
+import Vegas.Pending.PhaseReadyBindingDeclaration
+import Vegas.Pending.PhaseBindingServiceCompletion
