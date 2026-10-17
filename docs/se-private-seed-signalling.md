@@ -1,6 +1,6 @@
 # Private-seed signalling in a first commitment phase
 
-**Native obstruction: source SE ✓ · raw contract ✓ · conditional ½ bound ✓ · private laws / incentives open.**
+**Native proof: source SE ✓ · raw contract ✓ · joint ½ bounds ✓ · raw continuations ✓ · private laws / final incentives open.**
 
 The issue is that a player can withhold useful information. Alice has two late
 submission times; a hidden fair coin determines which succeeds. If Bob sends
@@ -39,7 +39,19 @@ exhausted recovery. The conditional native late-acceptance bound is checked
 by `Vegas.Examples.CommitSeedSignalling.original_nohelper_acceptance_half`;
 the exact earlier-state/hidden-coin/final-state joint is retained separately
 by `Vegas.Examples.CommitSeedSignalling.bobPrefixFinalJoint_physical`.
-Private service laws and the positive deviation bound remain unproved.
+The initialized bound
+`Vegas.Examples.CommitSeedSignalling.bob_initialized_weighted_half` retains
+any earlier physical event jointly, so Alice's earlier delivery need not be
+independent of the updated hidden remainder. Alice's corresponding initialized
+bound is `Vegas.Examples.CommitSeedSignalling.alice_initialized_half`.
+The actual Bob quiet deviation has exactly the initialized counted experiment's
+value (`Vegas.Examples.CommitSeedSignalling.bobQuiet_fixedLate_context_initialized_value`),
+retaining Alice's later assessed strategy even at off-path decisions.
+`Vegas.Examples.CommitSeedSignalling.raw_equilibrium_own_clean_terminal_charge_zero`
+also proves that the assessed continuation never charges an owner with a clean
+own past, without restricting the other owner's raw traffic.
+Private service laws, survival of the proper deviation through retries and
+openings, and the positive deviation bound remain unproved.
 
 ## Program and payoffs
 

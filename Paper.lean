@@ -17061,3 +17061,31 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Examples.CommitSeedSignalling.counted_trace_fixed_seed
+
+/-- info:
+'Vegas.Examples.CommitSeedSignalling.bob_initialized_weighted_half'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.CommitSeedSignalling.bob_initialized_weighted_half
+
+/-- info:
+'Vegas.Examples.CommitSeedSignalling.alice_initialized_half'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.CommitSeedSignalling.alice_initialized_half
+
+/-- info:
+'Vegas.Examples.CommitSeedSignalling.raw_equilibrium_own_clean_terminal_charge_zero'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.CommitSeedSignalling.raw_equilibrium_own_clean_terminal_charge_zero
+
+/-- info:
+'Vegas.Examples.CommitSeedSignalling.bobQuiet_fixedLate_context_initialized_value'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.CommitSeedSignalling.bobQuiet_fixedLate_context_initialized_value

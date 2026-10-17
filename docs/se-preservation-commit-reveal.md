@@ -2,7 +2,7 @@
 
 **SE: non-concurrent ✓ · recovery source ✓ · native word/G coupling ✓ · posterior/RAW repair/service incentives open.**
 
-**Native obstruction: source SE ✓ · raw contract ✓ · conditional ½ bound ✓ · private laws / incentives open.**
+**Native proof: source SE ✓ · raw contract ✓ · joint ½ bounds ✓ · raw continuations ✓ · private laws / final incentives open.**
 
 The [mathematical proof dependency](se-preservation-math.md#scope-and-proof-dependency)
 states the source selection, conditional transport and deviation arguments,
