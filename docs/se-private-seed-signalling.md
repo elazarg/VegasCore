@@ -8,8 +8,10 @@ seeds do not prevent players from changing another player's information
 about its seed. The finite timing game below has no preserving sequential
 equilibrium. It extends to the raw audited game when service privacy is
 imposed on permitted counted histories, as in the existing formal predicates.
-Its relation to an all-raw reading of the prose S1 quotient is distinguished
-below; that ambiguity must not be hidden by charge dominance.
+An all-raw quotient by only the Boolean count-well-formedness verdict is
+incompatible with timely native protected inclusion, as proved below.
+The intended content quotient in prose S1 still needs a precise reading;
+charge dominance cannot decide an exogenous service hypothesis.
 This is mathematical evidence, not closure of a checklist box or a checked
 refutation for the native Lean runtime. No target, semantics or additional
 hypothesis is adopted here.
@@ -217,17 +219,136 @@ count audit is the precise formal interpretation obstructed here. This is
 not a claim that a native instance of these predicates has already been
 mechanized.
 
-If the prose S1 instead identifies ALL raw packets solely by the Boolean
-count-audit well-formedness verdict, its premise requires separate analysis.
-The native inclusion handler can accept a fresh binding carrying extra
-evidence that the count audit forbids, whereas it rejects a malformed call.
-Both packets are audit-invalid. Protected inclusion at an early clock
-cannot make their accepting-completion bits identical. Charge dominance
-does not prove an exogenous service hypothesis on those raw histories.
-Consequently this note does not silently assert that all-raw Boolean
-quotient, either for the constructed builder or for the existing positive
-example. This is a specification issue about that reading of S1, distinct
-from the counted-service signalling obstruction.
+Here is the complete classification for the two formal privacy predicates.
+All clocks are relative to the coordinate's own readiness clock.
+
+| Full coordinate | Potential unsent calendar | Accepting binding for its counted emission word |
+| --- | --- | --- |
+| Original A binding | [0,2,3] | [0] always; [2] iff x_A=0; [3] iff x_A=1 |
+| Original B binding | [0,4,5] | [0] always; [4] iff x_B=0; [5] iff x_B=1 |
+| Active retry binding | [0] | [0] always |
+| Active reveal | [0] | Outside the binding-layout premise |
+| Never-ready or excluded coordinate | [0], immaterial | No matching emission or accepting receipt |
+
+For every binding, an empty emission word has no accepting receipt. These
+cases exhaust the full bounded attempt/event address space, including
+addresses never installed by a particular play. A coordinate cannot receive
+an accepting receipt without an authentic own emission for that coordinate.
+
+For calendar exhaustion, a never-sending original owner cannot finish before
+its clock-6 expiry. Foreign packets cannot complete its event, no other event
+of this owner can exclude it in this phase, and an unfinished binding
+prevents phase retirement. It therefore gets all three callbacks. Every
+never-sending active tail owner gets its single clock-0 callback before any
+advance, then expires. Automatically skipped coordinates have no genuine
+ready-request witness, so the exhaustion implication has no premise.
+Post-SEND callbacks do not cause a conflict: the calendar-prefix clause
+requires an unsent own history, and exhaustion requires no emission at all.
+Those clauses no longer apply after transmission.
+
+Retirement does not erase owner recall or receipts. The clock words and
+accepted-receipt predicate are filtered by the full physical attempt/event
+ID. A retry changes generation and a phase advance changes the phase
+address, so subsequent callbacks cannot contaminate the old coordinate.
+The table thus proves the required calendar prefixes/exhaustion and resolved
+binding-success equivalence mathematically, with arbitrary counted actions
+and every supported original seed. It is not a verified instance of the
+Lean predicates.
+
+### Why the all-raw Boolean quotient cannot hold
+
+Consider the stronger interpretation that, on ALL raw histories, the original
+binding's accepting-completion bit is determined by its local seed, its own
+relative emission clocks and only the Boolean count-well-formedness verdict
+of each packet. This is a precise extra interpretation of S1's informal
+word "content"; it is not the existing counted privacy predicate. Under
+this interpretation NO builder for the Boolean program above satisfies
+the timely all-raw native contract. The argument does not use the signalling
+schedule or any equilibrium.
+
+Fix a supported full builder seed, and let everyone remain silent except
+for one response by A. Opportunity, completion and delay 0 force A's first
+callback at clock 0 while its initial binding e is ready. Its own prepared
+catalogue is empty. Choose a fresh owned prepared handle h and Boolean true.
+The bounded raw menu contains both of these responses:
+
+| Response at the first callback | Count-well-formed? | Native handling while e is ready and timely |
+| --- | --- | --- |
+| Register true at h; bind e to h; attach the authentic certificate for h=true | False: a binding must carry no evidence | Accepted |
+| Send an opening of h=true addressed to the SAME binding event e | False: an opening is not a binding call | Rejected |
+
+The first certificate exists even in the empty initial context: registration
+precedes certificate issuance in the SAME atomic response. No earlier packet
+or separate hidden preparation is needed. The second call explicitly names
+e; an unaddressed malformed call would not give the same emission word.
+Both runs retain the same original local seed, exactly one own emission for
+e at clock 0 and the one-entry verdict word [false]. All later own responses
+are silent. There is no reveal guard involved in this comparison.
+
+The first packet must receive an accepting receipt before clock 6. To see
+this, suppose it does not. No foreign action can complete or exclude A's
+initial binding, and its fresh handle cannot be displaced by another own
+packet. An inclusion while ready and before 6 accepts: the native handler
+does not inspect the extra evidence. If no inclusion occurs, native
+completion requires reaching expiry. Immediately after the advance to clock
+6, but BEFORE the separate expiry command, e is still unfinished in its
+original namespace. The sole-packet protected-inclusion premise applies
+because 0+5<6, requiring a receipt already. Such a receipt before 6 would
+have accepted, contradicting the supposition. Automatic phase normalization
+does not expire a still-active owner's unfinished event at the clock
+advance. Hence the first original coordinate has an accepting receipt.
+
+The second packet can never receive an accepting receipt: the call's event
+has binding layout, so the opening handler rejects it. No later own packet
+exists. Completion therefore eventually resolves the original coordinate
+without an accepting receipt. Reset and archival retain this distinction;
+it concerns the ORIGINAL coordinate, not a later retry or final survival.
+
+Thus the equal local seed, emission word [0] and verdict word [false] give
+opposite resolved accepting-completion bits. This contradicts the proposed
+all-raw Boolean quotient. The required premises are genuine initial
+readiness, both raw responses in the bounded menu, the numerical margin
+delay 0/bound 5/deadline 6, and the all-raw contract; the contract alone
+without timeliness would not suffice.
+
+Keeping the full signed packet content does not by itself settle the raw
+scope either. Couple two protected commitment prefixes that privately
+prepare A's same handle h with true and false, respectively, without
+attaching evidence. Their emitted binding envelopes are identical.
+Per-event value-blindness gives the same public prefix, reveal address and
+readiness clock under the same builder seed. At A's first reveal callback,
+send the SAME opening of h=true with NO certificate in both runs, and stay
+silent afterwards. The raw menu allows both. The emitted call, evidence,
+token and relative emission clock 0 are identical. Both packets are
+count-audit-invalid because their own certificate is missing; the static
+guard is TRUE in both cases.
+
+The native handler nevertheless accepts in the true-preparation run and
+rejects in the false-preparation run: it ignores the evidence field but
+checks the candidate's value and the value of the accepted binding. An
+opening submission cannot change that private candidate. The same timely
+sole-packet argument forces acceptance before expiry in the matching run;
+completion resolves the mismatching run without acceptance. Thus a proposed
+all-raw content classification must specify whether it also includes the
+STATE-RELATIVE fact that this opening matches the accepted binding. That
+fact distinguishes these two runs; it is not a function of the current
+signed packet or its count verdict. Count-clean authentic certificates make
+the compatibility derivable, which explains why counted privacy avoids
+this issue. The relevant handler and certificate semantics are in
+[native admission](../Vegas/Pending/EventApplication.lean) and
+[authentic evidence](../Vegas/Pending/OpeningEvidence.lean).
+
+The contradiction does not apply to counted privacy, which excludes both
+responses. Nor does it apply to a raw content classification that distinguishes
+their state-relative native admission statuses. Prose S1 lists packet
+"content" and names
+well-formedness, while its positive builder example also refers to content;
+it does not give a formal all-raw equivalence relation. Consequently the
+intended all-raw scope remains a specification question. If the Boolean
+quotient is intended, the proposed nonvacuity example fails it as well.
+If the counted/native-admission reading is intended, the signalling
+obstruction still applies. Neither conclusion licenses silently changing
+the theorem's assumptions or asserting a checked native refutation.
 
 ## What the observations reveal
 

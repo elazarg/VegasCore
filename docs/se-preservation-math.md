@@ -6,7 +6,7 @@ not claims of Lean verification. No runtime or target assumption is changed.
 
 **Math audit: source SE checked · native query checked · native transport/incentives open in Lean.**
 
-**Math frontier: native program/timing/charge argument specified · certificate open.**
+**Math frontier: counted privacy classified · raw Boolean quotient incompatible · certificate open.**
 
 The [service likelihood issue](#when-clock-words-determine-the-seed-filter)
 below prevents treating this draft as an unconditional proof for every
@@ -18,7 +18,10 @@ The [first-commit signalling construction](se-private-seed-signalling.md)
 goes beyond a failed delivery comparator: under the counted-service privacy
 predicates and full raw contract it gives strict initial WAIT incentives
 and a different public outcome law in every sequential equilibrium.
-An all-raw Boolean reading of prose S1 is distinguished in that note.
+That note also proves mathematically that the all-raw Boolean count-verdict
+reading of prose S1 contradicts timely native protected inclusion, even
+without the signalling schedule. A precise richer raw content equivalence
+remains unspecified.
 Starting at the empty first
 commitment phase avoids the hidden-bad-binding belief loophole of a reveal
 example. Its raw-action reduction and reset continuation are worked out

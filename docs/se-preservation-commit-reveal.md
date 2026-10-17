@@ -2,7 +2,7 @@
 
 **SE: non-concurrent ✓ · recovery source ✓ · native word/G coupling ✓ · posterior/RAW repair/service incentives open.**
 
-**Math: signalling obstruction · native program/timing/charge argument specified · certificate open.**
+**Math: counted privacy classified · all-raw Boolean quotient incompatible · native certificate open.**
 
 The [mathematical proof dependency](se-preservation-math.md#scope-and-proof-dependency)
 states the source selection, conditional transport and deviation arguments,
@@ -16,7 +16,10 @@ The [private-seed signalling construction](se-private-seed-signalling.md)
 tests the claim itself: with the formal counted-service privacy predicates
 and raw contract, it gives a mathematical obstruction to the preserved joint
 law, not just to the clock-only policy. It distinguishes an all-raw reading
-of prose S1. Its mathematical embedding uses the existing Boolean program,
+of prose S1: the all-raw Boolean count-verdict quotient conflicts with timely
+native protected inclusion, whereas the intended raw content equivalence is
+not yet specified precisely. Its mathematical embedding uses the existing
+Boolean program,
 concurrent reveals, a uniform 43-command bound and a whole-continuation
 charge argument. Its native Lean certificate and axiom audit remain open.
 
@@ -2691,6 +2694,17 @@ This shows that the interface is consistent and not vacuous. It does not
 show that it is realistic. Late inclusion here is luck private to each
 event, while real congestion is shared across events. Correlated shocks
 violate (S2), and remain open (Section 9).
+
+This nonvacuity claim depends on the meaning of packet "content" in (S1).
+On permitted counted histories, every first binding has the fresh owned
+shape required by the native handler. On all raw histories, the audit bit
+does not determine native admission: a binding carrying extra authentic
+evidence is audit-invalid but accepted, while an opening addressed to a
+binding event is audit-invalid and rejected. The
+[timely native contract rules out identifying these two cases](se-private-seed-signalling.md#why-the-all-raw-boolean-quotient-cannot-hold).
+Thus the example does not establish an all-raw Boolean count-verdict
+quotient. The precise raw content equivalence remains unspecified; this
+qualification changes neither the stated target nor the runtime semantics.
 
 ### 4.3 Statement
 
