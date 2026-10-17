@@ -1,6 +1,20 @@
 # Private-seed signalling in a first commitment phase
 
-**Math: deferred-receipt deviation 1/4 · original-clock experiments unchanged · S3 open.**
+**Obstruction: mathematical deviation 1/4 · native late bound and admissibility unchecked.**
+
+The issue is that a player can withhold useful information. Alice has two late
+submission times; a hidden fair coin determines which succeeds. If Bob sends
+early, Alice can learn the successful time from whether his packet is visible
+at her callback. If Bob waits, she cannot do better than success probability
+1/2. Bob benefits from Alice's failure, so after Alice initially waits, Bob
+strictly prefers to withhold this signal. Alice can then profit by waiting too.
+The honest game's payoff is zero, whereas this deviation earns at least 1/4.
+
+Observations are allowed to add knowledge throughout this argument. Independent
+coins and a scheduler that never reads packet values do not, by themselves,
+prevent players from controlling which useful observations others receive.
+The task is to check this example against the existing runtime assumptions;
+no new restriction on observations is being assumed.
 
 This note tests Theorem 3 of [the preservation argument](se-preservation-commit-reveal.md).
 Under the literal causal reading of its S1--S3 bullets, independent event
@@ -10,8 +24,9 @@ equilibrium. It extends to the raw audited game when service privacy is
 imposed on permitted counted histories, as in the existing formal predicates.
 An all-raw quotient by only the Boolean count-well-formedness verdict is
 incompatible with timely native protected inclusion, as proved below.
-The intended content quotient in prose S1 still needs a precise reading;
-charge dominance cannot decide an exogenous service hypothesis.
+The packet-content equivalence and the service-information claim in prose
+must be distinguished from the existing formal predicates; charge dominance
+alone proves neither of them.
 This is mathematical evidence, not closure of a checklist box or a checked
 refutation for the native Lean runtime. No target, semantics or additional
 hypothesis is adopted here.
@@ -839,8 +854,10 @@ can differ. The all-raw packet-content quotient is a further, independent
 choice, classified above. Consequently the payoff proposition is not an
 unqualified refutation of the intended abstract theorem. Conversely the
 claimed clock-filter inference cannot prove preservation from the causal
-bullets alone. Choosing the stronger reading would require explicit owner
-approval; it is not a missing algebraic step in this proof.
+bullets alone. The remaining work is to certify the construction under the
+existing runtime model, including its full service contract and the universal
+equilibrium incentive bounds. This note does not add the stronger premise or
+claim that its native certificate has been completed.
 
 ### Full outcome calculation
 
