@@ -6,7 +6,7 @@ not claims of Lean verification. No runtime or target assumption is changed.
 
 **Math audit: source SE checked · native query checked · native transport/incentives open in Lean.**
 
-**Math frontier: deviation 1/4 · conditional half-bound derived · S3 scope unresolved.**
+**Math frontier: conditional service DP derived · marginal transport scoped · S3 open.**
 
 The [service likelihood issue](#when-clock-words-determine-the-seed-filter)
 below prevents treating this draft as an unconditional proof for every
@@ -1071,6 +1071,81 @@ seed posterior at each full input, does not supply the common law. This
 identifies the missing mathematical premise; it neither adds it to S1--S3 nor proves it follows
 from their causal seed-read restrictions.
 
+### What a common service experiment would prove
+
+Here is the precise conditional finite theorem behind the proposed repair.
+This theorem does not assert its premise for the abstract builder class.
+Fix the nonfocal strategies and the original initialized randomness. Force
+the focal owner to WAIT while this event is unsent. The resulting potential
+experiment records every callback, its full own input and its local record r.
+At each callback it also records the accepting outcome of each permitted
+first-SEND class, followed by no second packet. S1's success quotient and
+the exhaustive potential calendar make these outcomes well defined. There
+are at most N callbacks, including repetitions at the same clock. Before
+its first SEND, any stopping policy follows this actual WAIT experiment.
+
+Let T be the remaining callback/acceptance table at a callback. Suppose that
+at EVERY genuine full input i in this experiment, for every retained
+remainder z of positive conditional mass,
+
+    Law(T | I=i, Z=z) = nu_r,
+
+with the same nu_r for all inputs carrying r. Permitted classes must have
+compatible actual encodings at these inputs. WAIT must expose the actual
+tail of this same experiment, rather than a separately chosen branch law.
+Perfect recall retains the current input in every later full own input.
+
+Put the value of expiry without another callback equal to zero. Backward
+induction on N minus the length of r defines
+
+    V(r) = max(max_class E_nu_r[acceptance at current callback],
+               E_nu_r[V(next local record)]).
+
+For any full-input policy, a first SEND has the displayed common acceptance
+mean for its chosen class. After WAIT, condition on the actual next full
+input and apply the induction hypothesis there; perfect recall ensures no
+extra conditioning on the present input was lost. Averaging uses precisely
+the next-record marginal of nu_r. Thus its conditional success probability
+is at most V(r), separately for every i,z. A deterministic maximizing choice
+depending only on r attains equality by the same induction. Equal-clock
+callbacks still increase record length, so the induction terminates.
+
+The tail laws are automatically consistent: condition nu_r on a child
+record r', then average over the corresponding full next inputs. Each has
+remaining-table law nu_r', so the conditional tail law is nu_r'. This is
+the tower rule for ONE original experiment, not independent specification
+of counterfactual branch distributions. If the packet quotient identifies
+all permitted classes, the inner maximum reduces to the SEND/WAIT recursion
+below; without that quotient, dropping the class maximum is unjustified.
+
+Consequently, for any nonnegative bounded remainder weight w(Z),
+
+    E[w(Z) 1{delivery} | I=i] <= V(r) E[w(Z) | I=i],
+
+and the record-only optimizer attains equality. This is the weighted form
+needed for w=G_v-a_j. A scalar unconditional delivery bound would not imply
+it. Applying the result to deviations requires the hypothesis at their
+continuation inputs too, using the SAME retained variable Z throughout.
+
+Reference coverage must hold conditional on Z. Marginally full support is
+insufficient if Z retains a reference action coin: let U be fair, let the
+reference WAIT exactly when U=0, and retain Z=U. A deviation that always
+WAITs reaches the later pair (I,Z=1), which has zero reference mass. Thus
+one cannot invoke reference Bayes there merely because both initial
+behavioral actions have positive marginal probabilities.
+
+One valid route uses an auxiliary fully supported behavioral reference
+whose action coins are independent of, and excluded from, retained Z.
+This supplies a dominating path measure without changing the service seed
+prior. Perfect recall fixes all earlier own inputs and actions, including
+actions at other events; only this event's earlier responses must be WAIT.
+The own-action likelihood ratio between a deviating policy and the reference
+is then constant on each full (I,Z) fiber and cancels in Bayes normalization.
+If private controller coins are retained in Z, require positive reference
+likelihood conditional on Z and verify the corresponding conditional action
+factors instead. An incumbent's marginal support or reached inputs alone
+do not supply these coverage and cancellation statements.
+
 ## Conditional factorization once these comparisons hold
 
 Fix the public source record UP TO I and the focal source history projected
@@ -1132,6 +1207,11 @@ actual likelihoods. They cannot be integrated out merely because S1 makes
 success slot-independent: the focal information can observe them.
 
 Here is the physical domain argument on this weighted operational quotient.
+For this marginal factorization, sum the original builder seed tags under
+their original initialized law before comparing operational cylinders.
+The actual conditional builder command kernels, with that original law and
+its history-induced posterior, are used below. This is a projection of the
+original experiment, not a fresh seed draw at an information set.
 For fixed e, take a regular quotient realization for one compatible o.
 Erase active hidden meanings from its live, saved AND archived states,
 from the preparation catalogue and from derived private views. Retain
@@ -1148,15 +1228,18 @@ Its original private-input density stays in A_n(o'); it is not cancelled as
 though all supported inputs had equal probabilities.
 Induct through the original physical operations:
 
-- Activation, clock and leaks have the same operational observations and
-  S1--S3 local responses. Binding opacity hides the substituted meanings.
+- Activation, clock and leak command atoms agree at the paired histories by
+  the builder's value-blind laws. Binding opacity hides the substituted
+  meanings. This asserts equality of actual kernels, not of each latent
+  seed member's commands.
 - WAIT preserves the paired states and the same local timing factor.
 - Binding SEND prepares its selected typed value at the same fresh handle;
   ownership, readiness, token and empty evidence are unchanged.
 - Binding inclusion takes the same branch: admission reads these conditions,
   while guards are deferred. The same event completes at the same cut.
-- Missing/expiry reads the same clocks and local success decisions, so the
-  same completion and exclusion flags are recorded.
+- Missing/expiry reads the retained actual commands, clocks and deterministic
+  native admission outcomes, so the same completion and exclusion flags are
+  recorded. No latent seed decision is retained in this marginal comparison.
 - An earlier active opening has its value and successful guard verdict fixed
   by the public source record. Compatibility of o' enforces that verdict.
   Excluded-owner opening content is part of the fixed e/template. No changed
@@ -1177,6 +1260,33 @@ the operation on quotient templates. Hidden preparation fibers need not
 have equal cardinality: each was already integrated under its normalized
 ordinary encoder. Hence the weighted template set Omega(e) is independent of o.
 It may be empty; K_n(e)=0 is allowed.
+
+Law-level blindness does not prove replay at a fixed original builder seed.
+For example, a fair bit b can realize the same fair command law by command
+b in one context and 1-b in another; the laws agree but the commands at
+fixed b disagree. The operational-cylinder argument only needs the former
+equality: multiply equal actual command atoms, the retained source action
+factors, and the same timing/slot factors. Sum the original latent seeds
+within these cylinder weights. It proves the marginal factor K_n(e) used
+by Lemma T. It does not identify the JOINT law with a retained seed tag, or
+permit attaching the original seed prior after projection. Any later use
+of such a tag must instead use the original marked experiment and its
+separate joint-likelihood or service-sufficiency argument. Equality after
+forgetting the tag cannot establish either argument.
+
+For clarity, the cylinder calculation uses the chain rule. If k_b is the
+command kernel with original builder tag b, its marginal cylinder weight is
+
+    sum_b mu(b) product_t k_b(command_t | history_t)
+      = product_t E[k_b(command_t | history_t) | original history_t].
+
+At each step the conditional expectation uses the original posterior of b
+at THAT prefix. It is not a product of expectations under the initial prior.
+The selected player source/timing factors can be taken outside the seed sum:
+at a fixed full physical history they have no direct seed input. Paired
+histories have equal marginal builder command atoms by law-level blindness.
+The product calculation therefore supplies the required marginal weight
+equality without an extensional theorem about the chosen seed realization.
 
 Chronological content is read from this SAME template, not from restored
 post-reset choices. For every counted surviving event, clean packet
@@ -2724,6 +2834,19 @@ reads their recalled clock/action record rather than their latent labels.
 This is a statement about the whole unused vector, not an inference from
 separate posterior independences.
 
+Keep the payoff remainder notation distinct from this probability split.
+In the preceding scalar timing comparison the remainder is R=(eta,Z),
+and the timing-independent realized continuation payoff is G_v^full(eta,Z).
+It need not be Z-measurable: later own delivery failures depend on eta.
+When eliminating eta below, define instead the conditional mean
+
+    g_v(Z) = integral G_v^full(eta,Z) mu_remaining(deta).
+
+Then g_v>=a_j and E_Z[g_v(Z)]=E_R[G_v^full(R)]. The weighted timing bound is
+first applied with the full nonnegative weight G_v^full(R)-a_j; only then
+is eta integrated out. No pathwise eta-independence of terminal payoff is
+being asserted.
+
 Work first in the proper continuation, with focal RAW removed. Replay the
 owner's potential typed word using its original domain table, ignoring new
 foreign misses at each query. Static own order and opacity make that word
@@ -2776,8 +2899,9 @@ finite-horizon bounds. Thus k_n->0. All maxima are over fixed finite sets.
 The relative comparisons give e_n->0 even when native Phi is arbitrarily
 rare. No absolute error has been conditioned on that rare event.
 
-Define W_v=E[G_v(Z)] in the common CLEAN REFERENCE continuation constructed
-above, with its actual semantic remainder law, and W_tau=sum_v tau(v) W_v.
+Define W_v=E_Z[g_v(Z)]=E_R[G_v^full(R)] in the common CLEAN REFERENCE
+continuation constructed above, with its actual semantic remainder law,
+and W_tau=sum_v tau(v) W_v.
 All actual-to-reference discrepancies stay in the stated error bounds.
 Whenever current-success has positive probability under the fixed SEND or
 clock-only rule, W_v is its conditional reference payoff. If that probability
@@ -2806,6 +2930,8 @@ transport on G. Consequently
 
 Here lambda_I is the PROPER-reference coefficient of foreign G AND the
 remaining own delivery successes, after the stated RAW/error removals.
+In this reference experiment it is
+mu_remaining(S_own) nu_I(G), by the joint factorization above.
 It need not equal Pr(Phi|I) when the owner has further bindings in the phase.
 The joint factorization above, rather than just value independence of the
 coefficient, identifies the SAME H law. No lower bound on lambda_I is

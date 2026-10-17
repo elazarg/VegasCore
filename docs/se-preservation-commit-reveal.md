@@ -2,7 +2,7 @@
 
 **SE: non-concurrent ✓ · recovery source ✓ · native word/G coupling ✓ · posterior/RAW repair/service incentives open.**
 
-**Math: conditional 1/2 bound derived · deviation +1/4 · S3 admissibility unresolved.**
+**Math: deviation +1/4 · conditional timing DP derived · S3 admissibility unresolved.**
 
 The [mathematical proof dependency](se-preservation-math.md#scope-and-proof-dependency)
 states the source selection, conditional transport and deviation arguments,
