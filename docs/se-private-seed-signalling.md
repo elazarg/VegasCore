@@ -1,6 +1,6 @@
 # Private-seed signalling in a first commitment phase
 
-**Native obstruction: source SE ✓ · raw completion ✓ · service / late bound / incentives open.**
+**Native obstruction: source SE ✓ · raw contract ✓ · conditional ½ bound ✓ · private laws / incentives open.**
 
 The issue is that a player can withhold useful information. Alice has two late
 submission times; a hidden fair coin determines which succeeds. If Bob sends
@@ -31,13 +31,15 @@ This is mathematical evidence, not closure of a checklist box or a checked
 refutation for the native Lean runtime. No target, semantics or additional
 hypothesis is adopted here.
 
-The native fixture has a checked honest source SE and a checked completion
-theorem, `Vegas.Examples.CommitSeedSignalling.scheduler_completesPlay`.
-Every legal raw history of its installed scheduler completes the graph within
-the 64-command horizon. The proof bounds unfinished play by 55 commands,
-including malformed submissions, retries and exhausted recovery. These
-theorems do not establish the full service contract, service privacy or the
-positive deviation bound.
+The native fixture has a checked honest source SE and the full raw contract
+`Vegas.Examples.CommitSeedSignalling.scheduler_asyncContract`: opportunity
+delay zero, protected receipt bound five, and completion within 64 commands.
+The unfinished-play bound is 55, including malformed submissions, retries and
+exhausted recovery. The conditional native late-acceptance bound is checked
+by `Vegas.Examples.CommitSeedSignalling.original_nohelper_acceptance_half`;
+the exact earlier-state/hidden-coin/final-state joint is retained separately
+by `Vegas.Examples.CommitSeedSignalling.bobPrefixFinalJoint_physical`.
+Private service laws and the positive deviation bound remain unproved.
 
 ## Program and payoffs
 
@@ -57,6 +59,11 @@ the strategy is completely mixed on its honest menus, its constant sequence
 has its Bayes-consistent beliefs, and every continuation has value 0.
 Its public law has independent fair revealed bits, certain joint success
 and payoff vector (0,0).
+
+This tests Theorem 3's stated bound a<m. It does not refute the stronger
+requirement in the asynchronous checklist that the forfeit exceed the payoff
+range: the example needs W>2 epsilon, whereas that requirement would need
+epsilon>W.
 
 Take certain audit collection and deposit K>W+epsilon. A first charged packet
 then gives net payoff at most W-K<-epsilon. An entirely silent remaining

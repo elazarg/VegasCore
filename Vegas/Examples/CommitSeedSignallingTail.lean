@@ -2,6 +2,7 @@
 
 import Vegas.Examples.CommitSeedSignallingContract
 import Vegas.Pending.PhaseSeedBudget
+import Vegas.Pending.PhaseRequestOrigin
 
 /-! # Deadline completion of the actual protected continuation -/
 
@@ -81,7 +82,7 @@ private theorem responseCommand_ticks (owner : Player) (past : List app.Environm
 
 private theorem block_elapsed_step (kind : RuntimePhaseKind) (position : Nat)
     (past : List app.EnvironmentEntry) (view : app.EnvironmentView) :
-    blockElapsed kind (position + 1) ≤ blockElapsed kind position +
+    blockElapsed kind (position + 1) = blockElapsed kind position +
       PhaseSeedCalendar.commandTicks runtime leaks
         (match kind with
         | .commitment => retryCommand position past view
@@ -96,11 +97,11 @@ private theorem block_elapsed_step (kind : RuntimePhaseKind) (position : Nat)
           try rw [responseCommand_ticks]
           decide
       | 8 =>
-          change min (8 + 1 - 2) 6 ≤ min (8 - 2) 6 + 0
+          change min (8 + 1 - 2) 6 = min (8 - 2) 6 + 0
           decide
       | position + 9 =>
           rw [retryCommand_bound _ _ _ (by omega)]
-          change min (position + 9 + 1 - 2) 6 ≤ min (position + 9 - 2) 6 + 0
+          change min (position + 9 + 1 - 2) 6 = min (position + 9 - 2) 6 + 0
           omega
   | reveal =>
       match position with
@@ -111,9 +112,9 @@ private theorem block_elapsed_step (kind : RuntimePhaseKind) (position : Nat)
           decide
       | position + 12 =>
           rw [revealCommand_bound _ _ _ (by omega)]
-          change min (position + 12 + 1 - 4) 6 ≤ min (position + 12 - 4) 6 + 0
+          change min (position + 12 + 1 - 4) 6 = min (position + 12 - 4) 6 + 0
           omega
-  | sample => change 0 ≤ 0; omega
+  | sample => rfl
 
 private def TailTimers (execution : app.Execution) : Prop :=
   execution.application.attempt ≠ originalAttempt →
@@ -125,6 +126,16 @@ private def TailTimers (execution : app.Execution) : Prop :=
         (tailIndex execution.environmentRecall (execution.observeEnvironment app)) ≤
           execution.application.current.native.clock
 
+private def ExactTailTimers (execution : app.Execution) : Prop :=
+  execution.application.attempt ≠ originalAttempt →
+    ∀ (phase : RuntimePhase graph), execution.application.phases.head? = some phase →
+    ∀ event ∈ phase.events, ∀ entered,
+      event ∉ execution.application.current.native.config.cut.completed →
+      execution.application.current.native.activatedAt event = some entered →
+      entered + blockElapsed phase.kind
+        (tailIndex execution.environmentRecall (execution.observeEnvironment app)) =
+          execution.application.current.native.clock
+
 private theorem timers_progress (seeds : Seeds) (before : app.Control)
     (trace : (app.protocol initial horizon (family seeds)).Trace (some before))
     (after : app.Execution) (ticks : Nat)
@@ -133,10 +144,10 @@ private theorem timers_progress (seeds : Seeds) (before : app.Control)
     (same : before.execution.application.attempt = after.application.attempt)
     (phases : before.execution.application.phases = after.application.phases)
     (age : ∀ phase, before.execution.application.phases.head? = some phase →
-      blockElapsed phase.kind (tailIndex after.environmentRecall (after.observeEnvironment app)) ≤
+      blockElapsed phase.kind (tailIndex after.environmentRecall (after.observeEnvironment app)) =
         blockElapsed phase.kind (tailIndex before.execution.environmentRecall
           (before.execution.observeEnvironment app)) + ticks)
-    (timers : TailTimers before.execution) : TailTimers after := by
+    (timers : ExactTailTimers before.execution) : ExactTailTimers after := by
   intro notOriginal phase installed event inside entered unfinished stamp
   have beforeNotOriginal : before.execution.application.attempt ≠ originalAttempt := by
     intro original
@@ -180,11 +191,9 @@ private theorem timers_progress (seeds : Seeds) (before : app.Control)
   have clock := progress.clock
   omega
 
-/-- Every unfinished tail event has aged by the actual clock advances of its
-current namespace's command block. No prescribed response law is assumed. -/
-theorem raw_tail_timers (seeds : Seeds) :
+private theorem raw_exact_tail_timers (seeds : Seeds) :
     ∀ {state} (_trace : (app.protocol initial horizon (family seeds)).Trace state),
-      state.elim True (fun current => TailTimers current.execution) := by
+      state.elim True (fun current => ExactTailTimers current.execution) := by
   intro state trace
   induction trace with
   | start => trivial
@@ -225,10 +234,16 @@ theorem raw_tail_timers (seeds : Seeds) :
                 rw [app.respond_environmentRecall]
                 exact tailIndex_congr_attempt _ _ _ same.symm
               change blockElapsed phase.kind
-                  (tailIndex after.environmentRecall (after.observeEnvironment app)) ≤
+                  (tailIndex after.environmentRecall (after.observeEnvironment app)) =
                 blockElapsed phase.kind
                   (tailIndex execution.environmentRecall (execution.observeEnvironment app)) + ticks
               rw [index]
+              have noTicks := PhaseSeedCalendar.respond_clock runtime leaks execution valid owner
+                action
+              have clock := progress.clock
+              change (execution.respond app owner action).application.current.native.clock =
+                execution.application.current.native.clock + ticks at clock
+              rw [noTicks] at clock
               omega
           | none =>
               cases remaining with
@@ -284,21 +299,133 @@ theorem raw_tail_timers (seeds : Seeds) :
                         Nat.add_left_cancel (progress.clock.symm.trans physicalClock)
                       rw [chooseEq] at ticksEq
                       change blockElapsed phase.kind
-                          (tailIndex next.environmentRecall (next.observeEnvironment app)) ≤
+                          (tailIndex next.environmentRecall (next.observeEnvironment app)) =
                         blockElapsed phase.kind (tailIndex execution.environmentRecall
                           (execution.observeEnvironment app)) + ticks
                       rw [index, ticksEq]
                       exact step
-                  · intro _notOriginal phase _installed event _inside entered _unfinished stamp
+                  · intro _notOriginal phase installed event inside entered unfinished stamp
                     have index := tailIndex_after_retirement seeds
                       ⟨remaining + 1, none, execution⟩ prior next command supported same
                     have nativeInvariant := phaseApplication_invariant runtime leaks originalInput
                     have validAfter := nativeInvariant.environmentStep
                       execution next command valid supported
                     have bounded := validAfter.active.activated_le event entered stamp
+                    have blocks : phase = commitmentPhase ∨ phase = publicationPhase := by
+                      rcases raw_phases_cases (family seeds) _ targetTrace with all | reveal | empty
+                      · rw [all] at installed
+                        exact Or.inl (Option.some.inj installed).symm
+                      · rw [reveal] at installed
+                        exact Or.inr (Option.some.inj installed).symm
+                      · rw [empty] at installed
+                        cases installed
+                    obtain ⟨owner, acting⟩ : ∃ owner, graph.actor? event = some owner := by
+                      change Fin 4 at event
+                      fin_cases event
+                      · exact ⟨alice, binding_actors.1⟩
+                      · exact ⟨bob, binding_actors.2⟩
+                      · exact ⟨alice, reveal_actors.1⟩
+                      · exact ⟨bob, reveal_actors.2⟩
+                    have requested := raw_phase_event_request (family seeds) _ targetTrace phase
+                      installed blocks event inside owner acting unfinished
+                    have physicalClock := PhaseSeedCalendar.environmentStep_clock runtime leaks
+                      execution next command valid supported
+                    have recent : next.application.current.native.clock ≤ entered := by
+                      by_cases advancing : command = .application .advanceClock
+                      · have origin := PhaseSeedScheduler.advanceClock_request_origin runtime leaks
+                          execution next
+                          (serviceGraph_revealRelaxedOrdered setup .concurrentReveals) valid
+                          geometry.1 geometry.2.1 geometry.2.2.1 geometry.2.2.2
+                          (advancing ▸ supported) owner _ entered requested stamp
+                        rcases origin with old | recent
+                        · exact (same (old.1.1.symm.trans requested.1)).elim
+                        · rw [advancing] at physicalClock
+                          change next.application.current.native.clock =
+                            execution.application.current.native.clock + 1 at physicalClock
+                          omega
+                      · have origin := PhaseSeedScheduler.environmentStep_request_origin
+                          runtime leaks execution next command
+                          (serviceGraph_revealRelaxedOrdered setup .concurrentReveals) valid
+                          geometry.1 geometry.2.1 geometry.2.2.1 geometry.2.2.2 supported owner _
+                          entered requested stamp
+                        rcases origin with old | recent
+                        · exact (same (old.1.1.symm.trans requested.1)).elim
+                        · have zero : PhaseSeedCalendar.commandTicks runtime leaks command = 0 := by
+                            cases command with
+                            | wait => rfl
+                            | activate who => rfl
+                            | «include» identifier => rfl
+                            | application operation =>
+                                cases operation with
+                                | advanceClock => exact (advancing rfl).elim
+                                | executeSample event => rfl
+                                | expire event => rfl
+                          rw [zero, Nat.add_zero] at physicalClock
+                          exact physicalClock.trans_le recent
+                    have enteredEq : entered = next.application.current.native.clock :=
+                      Nat.le_antisymm bounded recent
                     rw [index]
                     cases phase.kind <;> simpa only [blockElapsed, Nat.zero_sub,
-                      min_eq_left (by omega : 0 ≤ 6), Nat.add_zero] using bounded
+                      min_eq_left (by omega : 0 ≤ 6), Nat.add_zero] using enteredEq
+
+/-- Every unfinished tail event has aged by the actual clock advances of its
+current namespace's command block. No prescribed response law is assumed. -/
+theorem raw_tail_timers (seeds : Seeds) :
+    ∀ {state} (_trace : (app.protocol initial horizon (family seeds)).Trace state),
+      state.elim True (fun current => TailTimers current.execution) := by
+  intro state trace
+  cases state with
+  | none => trivial
+  | some current =>
+      intro retired phase installed event inside entered unfinished stamp
+      exact Nat.le_of_eq (raw_exact_tail_timers seeds trace retired phase installed event inside
+        entered unfinished stamp)
+
+/-- The original ready timestamp plus the continuation's actual clock advances
+equals the physical clock, even after retries entered at nonzero time. -/
+theorem tail_request_elapsed (seeds : Seeds) (current : app.Control)
+    (trace : (app.protocol initial horizon (family seeds)).Trace (some current))
+    (coordinate : CommitAttemptEvent graph) (owner : Player)
+    (retired : coordinate.attempt ≠ originalAttempt)
+    (request : current.execution.application.SeedRequest owner coordinate) :
+    PhaseSeedScheduler.elapsed runtime leaks coordinate
+        (current.execution.observeEnvironment app) =
+      if coordinate.event.val < 2 then
+        min (tailIndex current.execution.environmentRecall
+          (current.execution.observeEnvironment app) - 2) 6
+      else min (tailIndex current.execution.environmentRecall
+          (current.execution.observeEnvironment app) - 4) 6 := by
+  obtain ⟨phase, member, inside⟩ := request.2.1
+  have installed : current.execution.application.phases.head? = some phase :=
+    Option.mem_def.mp member
+  have valid := raw_native_valid (family seeds) current trace
+  obtain ⟨entered, stamp⟩ := Option.isSome_iff_exists.mp
+    ((valid.active.activated_iff coordinate.event).mpr ⟨request.2.2.1, by
+      rw [request.2.2.2.1]; rfl⟩)
+  have aged := raw_exact_tail_timers seeds trace (by rwa [← request.1]) phase installed
+    coordinate.event inside entered request.2.2.1.1 stamp
+  have blocks : phase = commitmentPhase ∨ phase = publicationPhase := by
+    rcases raw_phases_cases (family seeds) current trace with all | reveal | empty
+    · rw [all] at installed
+      exact Or.inl (Option.some.inj installed).symm
+    · rw [reveal] at installed
+      exact Or.inr (Option.some.inj installed).symm
+    · rw [empty] at installed
+      cases installed
+  have interval := (RuntimePhase.mem_events phase coordinate.event).mp inside
+  change current.execution.application.current.native.clock -
+    (current.execution.application.current.native.activatedAt coordinate.event).getD
+      current.execution.application.current.native.clock = _
+  rw [stamp, Option.getD_some, ← aged]
+  rcases blocks with rfl | rfl
+  · change 0 ≤ coordinate.event.val ∧ coordinate.event.val < 2 at interval
+    rw [ite_eq_left interval.2]
+    change entered + min _ 6 - entered = min _ 6
+    omega
+  · change 2 ≤ coordinate.event.val ∧ coordinate.event.val < 4 at interval
+    rw [ite_eq_right (by omega : ¬ coordinate.event.val < 2)]
+    change entered + min _ 6 - entered = min _ 6
+    omega
 
 /-- At the actual expiry slots, every still-unfinished tail event has reached
 its original deadline, even if this is a retry with a nonzero entry clock. -/

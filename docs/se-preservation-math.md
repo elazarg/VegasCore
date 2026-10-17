@@ -25,6 +25,9 @@ without the signalling schedule. Its
 gives a precise richer all-raw reading under which the signalling obstruction
 still applies. Whether this is the intended content equivalence remains
 unresolved; the activation/observation condition matters separately.
+The example also uses a small exclusion loss. It tests Theorem 3's a_j<m_j
+claim, not the checklist's stronger requirement that the forfeit exceed the
+payoff range.
 Starting at the empty first
 commitment phase avoids the hidden-bad-binding belief loophole of a reveal
 example. Its raw-action reduction and reset continuation are worked out

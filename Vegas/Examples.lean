@@ -237,4 +237,4 @@ import Vegas.Examples.LateOpeningRuntimeProtectedBobMenu
 import Vegas.Examples.LateOpeningRuntimeLabelContinuation
 import Vegas.Examples.OnePacketStructuralHypotheses
 import Vegas.Examples.OnePacketCommitRevealHypotheses
-import Vegas.Examples.CommitSeedSignallingRealization
+import Vegas.Examples.CommitSeedSignallingNativeBounds

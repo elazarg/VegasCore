@@ -1,5 +1,5 @@
 import Vegas.Pending.PhaseBindingServiceCompletion
-import Vegas.Examples.CommitSeedSignallingRealization
+import Vegas.Examples.CommitSeedSignallingNativeBounds
 import Vegas.Game.PhaseObservableDomainWord
 import Vegas.Game.PhaseCountServiceForeignWord
 import Vegas.Pending.PhaseBindingSuccessFunction
@@ -17005,3 +17005,59 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Examples.CommitSeedSignalling.scheduler_completesPlay
+
+/-- info:
+'Vegas.Examples.CommitSeedSignalling.scheduler_asyncContract'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.CommitSeedSignalling.scheduler_asyncContract
+
+/-- info:
+'Vegas.Examples.CommitSeedSignalling.raw_equilibrium_extends_counted'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.CommitSeedSignalling.raw_equilibrium_extends_counted
+
+/-- info:
+'Vegas.Examples.CommitSeedSignalling.original_nohelper_acceptance_half'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.CommitSeedSignalling.original_nohelper_acceptance_half
+
+/-- info:
+'Vegas.Examples.CommitSeedSignalling.bobPrefixFinalJoint_physical'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.CommitSeedSignalling.bobPrefixFinalJoint_physical
+
+/-- info:
+'Vegas.Examples.CommitSeedSignalling.alice_binding_unaccepted_after_late'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.CommitSeedSignalling.alice_binding_unaccepted_after_late
+
+/-- info:
+'Vegas.Examples.CommitSeedSignalling.initialized_counted_netPayoff_expectation'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.CommitSeedSignalling.initialized_counted_netPayoff_expectation
+
+/-- info:
+'Vegas.Examples.CommitSeedSignalling.silent_unsubmitted_publication_excluded'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.CommitSeedSignalling.silent_unsubmitted_publication_excluded
+
+/-- info:
+'Vegas.Examples.CommitSeedSignalling.counted_trace_fixed_seed'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.CommitSeedSignalling.counted_trace_fixed_seed
