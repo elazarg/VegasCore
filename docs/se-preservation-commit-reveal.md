@@ -2,7 +2,7 @@
 
 **SE: non-concurrent ✓ · recovery source ✓ · native word/G coupling ✓ · posterior/RAW repair/service incentives open.**
 
-**Math: deviation +1/4 · conditional timing DP derived · S3 admissibility unresolved.**
+**Math: same-event repairs derived · deferred-receipt obstruction · S3 unresolved.**
 
 The [mathematical proof dependency](se-preservation-math.md#scope-and-proof-dependency)
 states the source selection, conditional transport and deviation arguments,
@@ -2642,6 +2642,13 @@ that activation clocks determine every constraint on that seed. The
 isolates this issue, including seed information about acceptance rather
 than only future activations. This is a proof-status qualification, not an
 additional builder hypothesis.
+
+The [deferred-receipt variant](se-private-seed-signalling.md#variant-with-deferred-late-receipts)
+also keeps the original event's future callback clocks unchanged in the
+two-local-seed experiment under each fixed emission plan, while preserving
+the positive deviation obstruction.
+Thus sufficiency of those clock predictions alone would not close the gap;
+within-clock observations and accepting service remain relevant.
 
 The remainder may depend on the whole history, subject to per-event
 value-blindness and content-blind leaks:

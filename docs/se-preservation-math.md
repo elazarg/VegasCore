@@ -6,7 +6,7 @@ not claims of Lean verification. No runtime or target assumption is changed.
 
 **Math audit: source SE checked · native query checked · native transport/incentives open in Lean.**
 
-**Math frontier: conditional service DP derived · marginal transport scoped · S3 open.**
+**Math frontier: same-event repairs derived · deferred-receipt obstruction · S3 open.**
 
 The [service likelihood issue](#when-clock-words-determine-the-seed-filter)
 below prevents treating this draft as an unconditional proof for every
@@ -162,19 +162,26 @@ that owner's private choices is asserted.
 Here is a direct finite-game argument; it does not condition an already
 proved pre-I total-variation estimate.
 
-Let H bound the number of extended histories and let T bound their length.
-Absorb all positive fixed chance and builder atoms into a constant b>0. Such
-a constant exists because the actual extended game is finite and its chance
-laws are fixed, including its original setup law. It is not an information
-mass floor and does not bound a perturbed behavioral probability.
+Let H bound the number of unmarked full physical extended histories and T
+their length. A physical history includes every player's observations and
+actions but not an analytical latent seed tag. Fix one such history h and
+condition only on the original builder tag s. Every behavioral player factor
+is then p_n(action_t | ownInput_t(h)), independent of s once h is fixed.
+Include the original setup, Nature and observation laws in c_s(h). Thus
 
-This does not require atoms in an original seed space. A seed can first be
-pushed to its complete response table on the fixed finite collection of
-possible local records. There are finitely many such tables. Use the
-minimum positive atom of that pushforward law (and the corresponding
-finite remainder-response law) when defining b. This is a deterministic
-quotient of the SAME initialized randomness, preserving its independence
-and observable run law; no seed law is perturbed or refreshed.
+    P_n(h) = c(h) product_t p_n(action_t | ownInput_t(h)),
+    c(h) = integral c_s(h) mu(ds).
+
+The integral uses the SAME original initialized builder law. Its coefficient
+c(h) is independent of n. There are finitely many h, so their positive
+coefficients have a minimum b>0. Histories with c(h)=0 are unsupported and
+are not used as witnesses. This is not an information-mass floor and does
+not bound a perturbed behavioral probability. In particular no atomic seed
+law, finite independent seed quotient, or seed refresh is needed. This
+factorization applies to behavioral profiles; it does not pull probabilities
+outside an integral over a latent player-policy member that reads its tag.
+Such player randomization must first be integrated to its actual behavioral
+history law, as established separately below.
 
 At a fixed stage n, write rho_n for the minimum positive source action atom,
 zeta_n for the native perturbation scale, and M for the charged-action
@@ -201,9 +208,14 @@ such extended history g. Its support is independent of n. Consequently
 
 At a forced or lifted set, a charge already determined by j's recalled own
 actions cannot occur: otherwise there would be no clean history in I.
-Every charged extended history therefore has a charged action factor outside
-the fixed past factors q_n(I), possibly a future action of j. Its probability
-is at most C q_n(I) zeta_n^M, with C independent of n. Summing gives
+In a charged extended history choose its FIRST globally count-forbidden
+emission. Its preceding physical prefix is clean, so its emitter's input
+has a clean witness and the prescribed small charged-tier bound applies.
+It cannot be a past focal emission, by the immutable own-recall verdict.
+Its small factor therefore lies outside q_n(I), possibly in a future action
+of j. Later inputs may be charged-only and use arbitrary free-agent play;
+their action probabilities are merely bounded by one. Hence the history
+probability is at most C q_n(I) zeta_n^M, with C independent of n. Summing gives
 
     Pr_n(charged and I and Phi) / Pr_n(clean and I and Phi)
       <= (H C / b) zeta_n^M / d_n^T -> 0.
@@ -218,10 +230,16 @@ One must then use the unconditioned charged-history bound at I to conclude
 Pr_n(Phi | I)->0. A conditional transport claim is neither made nor needed
 there. Unrestricted positive stage-n Phi mass is not clean possibility.
 
-This argument requires that charge status relevant before I be determined
-by the focal player's own information, as used by the document's one-shot
-charge argument. It must be checked against the authentic audit, rather than
-identified with a random later collection outcome.
+Here a charged history means that a count-forbidden packet has been emitted,
+not that the later random audit has collected a deposit. Earlier signed own
+traffic fixes this immutable verdict at every full own-information fiber;
+foreign traffic cannot change it. For the actual count audit this is the
+property formalized by `Vegas.EventGraphRuntime.PhaseCount.permits_congr` and
+`Vegas.EventGraphRuntime.PhaseCount.permits_append_later`. Enforcement also
+uses authenticity to exclude false charges and conditional coverage to
+lower-bound collection after a forbidden emission. Authenticity alone would
+not provide that lower bound. None of these collection probabilities enters
+the displayed count-forbidden-path mass comparison.
 
 ## A normalized uncharged reference law
 
@@ -271,8 +289,10 @@ comparison that preserves operational factors inside Phi.
 For a still-active foreign owner k, replace its unopenable or wrongly typed
 bindings by the SAME ordinary typed values already used by its prescribed
 virtual source history. Keep the original signed binding envelopes, their
-identifiers, slots and emission times. Keep every other owner's actions and
-every fixed chance and builder realization.
+identifiers, slots and emission times, every other owner's recorded actions,
+and the supported public chance outcomes. The comparison is between
+initialized behavioral cylinder weights, with original builder tags summed
+under their original law. It does not fix each latent builder realization.
 
 Include old bindings voided by earlier retries, not just currently held bad
 bindings. Since k is still active, none was revealed unsuccessfully: it is
@@ -291,7 +311,8 @@ The comparison must establish all of the following from the construction:
    In particular Phi is unchanged. This uses actual own-service policies,
    not a timing policy allowed to read foreign traffic or private values.
 4. The counterpart has positive probability under the same original source
-   and builder laws. No initial input or private seed is redrawn.
+   and builder laws. No entry prior is refreshed. The marginal comparison
+   does not assert equality of a retained builder seed tag in the two paths.
 
 These four facts follow for the explicit virtual-history prescription as
 follows. Replace a bad declaration's prepared meaning, not its fresh handle
@@ -456,6 +477,14 @@ ordinary counterpart, use the earlier uniform factor at most 2 per callback;
 no extra vanishing-power cost is introduced.
 
 The source-coordinate density in this comparison is the ORIGINAL density.
+First partition the finitely many marked cylinders by their effective RAW
+records, physical declarations, selected source keys q_1,...,q_k and virtual
+replacement values v_1,...,v_k. These keys are distinct: WAIT repeats an
+unsent occurrence, SEND makes it inert, retry changes generation, and an
+exhausted close advances the static cursor even without changing generation.
+Each key is selected before its read. Changing the ENTIRE vector of selected
+V coordinates preserves the RAW path by the following chronological argument;
+this is stronger than separate marginal unreadness.
 At a RAW BINDING occurrence q the raw declaration ignores V_q. Earlier
 callbacks there were WAITs; after SEND the sent/inert responses ignore it. Later
 binding occurrences have different keys, and an opening reads its immutable
@@ -480,6 +509,14 @@ Here 1<=k+l<=T. Since zeta_n,rho_n<=1, this is bounded by a constant times
 zeta_n rho_n^(-T). Sum over the finitely many marked preimages of each
 regular operational quotient history. This produces K independently of
 n, I and the probability of Phi; no equal alias cardinality is assumed.
+
+The preimage count is over finite physical records and RAW alias patterns
+after the unused domain coordinates have been integrated. It does not count
+individual builder-seed realizations, nor pay again for the already summed
+unused domain values. Both sides are submeasures of the original initialized
+Q_n law. This marginal repair bound is not a coupling of retained builder
+tags; later arguments using those tags must return to that original law,
+not attach a new tag distribution to a repaired physical path.
 
 Only this relative comparison is used for the actual recipe. The generic
 whole-menu variant additionally needs the RAW-WAIT repair described above.
@@ -1020,12 +1057,31 @@ suppresses the next callback, while a missed binding stays ready at 3.
 
 Thus a condition about predictions of the potential unsent calendar does not
 exclude this builder. A condition equating actual future-callback predictions
-under EVERY chosen continuation would exclude it already at clock 2. It is
+under EVERY specified own emission plan would exclude it already at clock 2. It is
 not justified to dismiss that stronger reading using the identical calendars.
 Conversely, at the last clock-3 callback after WAIT2, future callbacks for this
 binding are empty for both seeds, yet the marker still predicts SEND3
 acceptance. Checking future activation clocks at just that last input says
 nothing about the current packet's acceptance.
+
+Even checking these original-event clock experiments at EVERY unsent prefix
+under EVERY fixed own emission plan does not supply the acceptance law.
+In the [deferred-receipt variant](se-private-seed-signalling.md#variant-with-deferred-late-receipts),
+postpone A's eligible late inclusion until after its clock-3 callback, and
+B's until after its clock-5 callback. Keep the helper slots fixed. Every
+original A callback word is then [0,2,3], even after SEND2. B's word is [0]
+if its EARLY packet accepts, otherwise [0,4,5]; that EARLY verdict is
+independent of x_B. These statements hold on raw histories. Nevertheless
+the helper identifies the eligible emission clock, and the same positive
+deviation bound applies. The proper-SEND2 row of the table becomes 1,1,1
+for the next callback, while its acceptance row stays 1/2,1,0. Thus the
+stronger future-clock condition excludes the original schedule in the
+table, but not this variant. This comparison fixes the other original
+randomness while varying the local seed. It does not equate the laws induced
+by an arbitrary adaptive policy across different full inputs; the policy
+may itself choose different emission plans there. Full observations and
+later owner activations across phase boundaries are separate objects and
+are not equated here.
 
 Replacing the clock-only optimizer by a full-input optimizer also fails to
 repair the stated argument. At clock 2 the two helper inputs have strict,

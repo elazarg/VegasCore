@@ -1,6 +1,6 @@
 # Private-seed signalling in a first commitment phase
 
-**Math: deviation bound 1/4 · counted scope identified · prose S3 unresolved.**
+**Math: deferred-receipt deviation 1/4 · original-clock experiments unchanged · S3 open.**
 
 This note tests Theorem 3 of [the preservation argument](se-preservation-commit-reveal.md).
 Under the literal causal reading of its S1--S3 bullets, independent event
@@ -117,6 +117,76 @@ There is at most one callback to a given owner at each original clock: the
 two seed-controlled polls in one block are mutually exclusive. Thus the
 eligible late inclusion selects at most one actual envelope, even on raw
 histories; it does not need extra inclusion slots for same-clock packets.
+
+## Variant with deferred late receipts
+
+The same payoff obstruction can hold even if future callback CLOCKS for the
+original coordinate reveal no additional seed information under any fixed
+own emission plan. Modify only these four inclusion slots in the builder above:
+
+| Slot | Modified command |
+| --- | --- |
+| After the clock-2 polling block | WAIT instead of including A's late packet |
+| After A's clock-3 callback | Include A's packet emitted at 2 if x_A=0, or at 3 if x_A=1 |
+| After the clock-4 polling block | WAIT instead of including B's late packet |
+| After B's clock-5 callback | Include B's packet emitted at 4 if x_B=0, or at 5 if x_B=1 |
+
+The selectors use the packet's actual EMISSION clock. In particular the
+clock-3 inclusion must still select a clock-2 packet when x_A=0; this is not
+a rule admitting only packets emitted at the current clock. Leave both
+EARLY helper inclusions and immediate namespace switching unchanged.
+
+No original A packet can accept before its clock-3 callback: late packets
+are considered only after that callback, and its EARLY packet only at 4.
+Private submission changes no cut or readiness timer; foreign packets cannot
+complete or exclude A. Hence on EVERY legal raw run its original callback
+word is exactly [0,2,3], including after a SEND at 0 or 2.
+
+B's only possible accepting completion before its clock-5 callback is its
+EARLY packet at 2. Its admission is determined by the physical first-call
+content and state, before x_B is read, and is independent of x_B. If it
+accepts, B's original callback word is [0]. Otherwise its word is [0,4,5]:
+the clock-4 late inclusion is now WAIT, and the sole late selection follows
+its clock-5 callback. No unresolved binding can retire or exclude its owner
+before these callbacks. Thus for fixed other randomness and a fixed chosen
+continuation, the two local seeds give the same remaining original callback
+clocks at every corresponding unsent input. This holds for raw responses,
+not just for the prescribed SEND/WAIT choices.
+
+The full inputs still differ. At A's clock-2 callback, a B EARLY packet is
+pending when x_A=0 and already receipted when x_A=1. Its information value
+now concerns only WHICH EMISSION will accept later. A proper SEND2 accepts
+at 3 exactly for x_A=0; after WAIT2 a proper SEND3 accepts exactly for x_A=1.
+The extra callback after SEND2 cannot provide a count-clean repair. B's
+clock-4 helper experiment is identical with clocks 4 and 5.
+
+The acceptance bits, raw admission quotient, and budget are unchanged.
+An intervening own response can prepare fresh cells but cannot change a
+frozen candidate's meaning, accepted map, readiness or handle-used status.
+Eligible admission therefore persists until its selection; all late
+selections still precede deadline 6. Protected EARLY receipts remain at 2/4,
+with the same completion/sole-packet exceptions. The routine still uses 22
+commands, at most six original callbacks and the same protected tail.
+
+The proof below applies without changing its inequalities. With a helper,
+proper SEND2 now guarantees acceptance after the extra clock-3 callback;
+silence there is forced once the free packet is spent. Without a helper,
+the first late send probability still bounds the two acceptance chances by
+q and 1-q. A's delivery is determined by the clock-3 inclusion, before B's
+clock-4 polls, so the joint bound and deviation value W/4-epsilon/2 remain.
+
+This variant rules out sufficiency of future ORIGINAL-EVENT callback-clock
+experiments under fixed own emission plans. The precise seed comparison
+holds the other original randomness fixed, as above. It does not say an
+arbitrary adaptive policy generates the same clock law across different
+full inputs: at B0, the policy SEND-if-A-packet-visible otherwise WAIT
+deliberately changes its own future callback word when that input changes.
+That is a policy-induced difference, not information about x_B.
+Nor are future full observations, within-clock placement, or later owner
+activations across retry/reveal phases equated: success can still change
+those later phases. The full service-posterior premise would exclude this
+variant. This is mathematical; no native Lean implementation or certificate
+for it is claimed.
 
 ## Concrete native realization and finite bounds
 
