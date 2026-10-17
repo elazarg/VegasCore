@@ -2,7 +2,7 @@
 
 **SE: non-concurrent ✓ · recovery source ✓ · native word/G coupling ✓ · posterior/RAW repair/service incentives open.**
 
-**Math: counted-service signalling obstruction explicit; native verification open.**
+**Math: signalling obstruction · native program/timing/charge argument specified · certificate open.**
 
 The [mathematical proof dependency](se-preservation-math.md#scope-and-proof-dependency)
 states the source selection, conditional transport and deviation arguments,
@@ -16,7 +16,9 @@ The [private-seed signalling construction](se-private-seed-signalling.md)
 tests the claim itself: with the formal counted-service privacy predicates
 and raw contract, it gives a mathematical obstruction to the preserved joint
 law, not just to the clock-only policy. It distinguishes an all-raw reading
-of prose S1. Its native Lean embedding and axiom audit remain open.
+of prose S1. Its mathematical embedding uses the existing Boolean program,
+concurrent reveals, a uniform 43-command bound and a whole-continuation
+charge argument. Its native Lean certificate and axiom audit remain open.
 
 <details>
 <summary>Checked recovery milestones and remaining proof obligations</summary>

@@ -16,23 +16,28 @@ hypothesis is adopted here.
 
 ## Program and payoffs
 
-Start in the empty context. Alice and Bob each commit a value of a singleton
-type, with guard TRUE, in the first commitment phase. Their two reveals form
+Start in the empty context. Alice and Bob each commit a Boolean value,
+with guard TRUE, in the first commitment phase. Their two reveals form
 the next phase. There are no samples or private input types. Each owner has
 one event in each phase, so concurrent execution respects information and
 same-owner order. Use the actual phase-reset rule for missed bindings.
 
 Fix W>2 epsilon>0. A nonexcluded player receives W if the other player's
 reveal fails, and 0 otherwise. An excluded player receives the constant
-a=-epsilon. Thus m=0 and a<m. The honest game has only its proper singleton
-choices, both reveals succeed, and its equilibrium joint law is deterministic
-success with payoff vector (0,0).
+a=-epsilon. Thus m=0 and a<m. Payoffs ignore the committed bits. In the
+honest game both reveals always succeed and every payoff is 0, including
+after every honest continuation. Choose independent uniform Boolean choices
+at the two commitments. This is a genuine honest sequential equilibrium:
+the strategy is completely mixed on its honest menus, its constant sequence
+has its Bayes-consistent beliefs, and every continuation has value 0.
+Its public law has independent fair revealed bits, certain joint success
+and payoff vector (0,0).
 
 Take certain audit collection and deposit K>W+epsilon. A first charged packet
 then gives net payoff at most W-K<-epsilon. An entirely silent remaining
 continuation guarantees at least -epsilon without a charge. At every
-information set with a known
-uncharged own past, a first charged action is strictly inferior. This covers
+information set with a known uncharged own past, a first charged action is
+strictly inferior. This covers
 extra packets, malformed calls, foreign-event packets and disallowed evidence.
 It does not assume that already-charged players incur a second deposit loss.
 
@@ -73,7 +78,9 @@ their binding is still ready. For a well-formed first binding packet:
 - B's packet sent at 4 is included exactly when x_B=0, and one sent at 5
   exactly when x_B=1.
 
-Successful late packets are included immediately after their callback.
+At clocks 2 and 4 the eligible late packet is included after the entire
+three-slot block, with no extra inclusion between its first and middle slots.
+At clocks 3 and 5 it is included immediately after its callback.
 The marker handler never uses a LATE packet as a helper. At clock 6 expire
 unresolved original bindings, then execute the real close/reset. If the
 attempt closes earlier, both original bindings are already resolved: retire
@@ -81,12 +88,14 @@ this routine and continue below.
 
 Predraw the seeds of ALL possible full attempt/event addresses independently
 at initialization, including retry and reveal addresses; their fixed laws
-may be degenerate. On all subsequent retries and reveal phases, give each
-ready owner a single
-immediate protected callback, include its packet immediately, and expire
-anything still unresolved at its deadline. Use fresh independent event seeds
-at those addresses, from that SAME original draw. Correct singleton commitments and openings
-therefore have sure service. Excluded owners' events are automatic failures.
+may be degenerate. On all subsequent retries and reveal phases, give EVERY
+currently ready owner its first callback and immediate inclusion before any
+clock advance, then expire anything unresolved at its deadline. Switch to
+this continuation as soon as the original full attempt retires; never finish
+old clock padding after a new event becomes ready. Use fresh independent event
+seeds at those addresses, from that SAME original draw. Correct Boolean
+commitments and openings therefore have sure service. Excluded owners'
+events are automatic failures.
 
 The builder is also specified on raw deviations: process each EARLY envelope
 in its designated inclusion slot, receiving the contract's acceptance or
@@ -101,6 +110,70 @@ enough fresh slots for every scheduled callback. There are finitely many
 scheduled callbacks, each emits at most one envelope, and every retry removes
 an owner. This gives both finite branching and a fixed finite horizon large
 enough for every legal raw run, not bounds chosen after the strategy.
+
+## Concrete native realization and finite bounds
+
+Use the existing empty-context `setup` and `program` in
+[the two-commitment fixture](../Vegas/Examples/OnePacketCommitRevealHypotheses.lean),
+with the utility just specified in place of its matching-pennies utility.
+Only the program and setup are reused: its default sequential scheduler,
+empty leak rule and two-slot bounds are not the construction here.
+
+Compile in `.concurrentReveals` mode. Events 0 and 1 are bindings; events 2
+and 3 are their publications. The two bindings are ready initially. Each
+reveal depends on the bindings, and neither reveal depends on the other:
+the guards are TRUE and the owners differ. Both surviving reveals are
+therefore ready together. The compiled maximal phase plan is exactly
+commitment [0,2), then reveal [2,4). Indeed, a phase cannot cross the
+binding/publication boundary; first/last/adjacent boundaries cover all four
+events; and maximality forbids splitting either same-kind block. This uses
+the actual chosen compiled plan, not a substitute plan assumed equal by
+definitional reduction. A checked specialization of this finite equality is
+still required.
+
+Use deadline duration 6 for every event, opportunity delay 0, protected
+bound 5 and the complete-pending observation rule. The implementation can
+use only the application's existing activate, include, WAIT, clock-advance
+and expire commands. Normalize/close/reset are the actual application's
+automatic transitions. Draw the two fair bits at the original binding
+addresses and use degenerate laws at every other full attempt/event
+address. Realize that original product draw by
+`Interaction.ReactiveApplication.schedulerMixture`; its
+posterior scheduler must retain the same seeds throughout the run. The
+bits are not added to player-visible application state or redrawn after a
+callback.
+
+One explicit command budget, replacing unused slots by WAIT, is:
+
+| Original segment | Maximum environment commands |
+| --- | ---: |
+| The two clock-0 activations | 2 |
+| Advances to clock 2 | 2 |
+| Clock-2 block and eligible late inclusion | 4 |
+| Advance to 3, A callback and inclusion | 3 |
+| Advance to 4, clock-4 block and late inclusion | 5 |
+| Advance to 5, B callback and inclusion | 3 |
+| Advance to 6 and the two expiry slots | 3 |
+| **Original routine** | **22** |
+
+An original binding miss excludes at least one owner. There is at most one
+sole-survivor commitment retry, costing at most 9 commands: callback,
+inclusion, six advances and expiry. There is one reveal phase, costing at
+most 12: two callbacks, two inclusions, six advances and two expiries. Thus
+every raw play reaches a terminal native cut within 43 environment commands.
+There are at most 6 original callbacks, 1 retry callback and 2 reveal
+callbacks, hence at most 9 transmissions. Horizon 64 and candidate capacity
+64 suffice uniformly. Player responses do not consume the environment
+command budget. After native completion, identity WAIT exhausts the
+remaining protocol fuel. Both Boolean raw values are retained in the bounds,
+as are the bounded raw preparation, evidence and malformed-call choices.
+
+Candidate catalogues persist through reset. A proper retry uses a fresh
+slot in that retained catalogue; it does not reuse or erase a voided cell.
+The protected tail services all ready owners before advancing the clock,
+including when both concurrent reveals become ready together. These details
+are necessary for the all-raw opportunity and completion claims. The budget
+and embedding here are mathematical checks, not checked native theorems.
 
 ## Service assumptions
 
@@ -187,6 +260,18 @@ Initial seed independence and the observation equivalences give these Bayes
 facts under every completely mixed sequence. No relative tremble rate can
 make Bob interpret that empty view as an inherited unopenable binding.
 
+More explicitly, pair hidden histories by toggling the relevant bit while
+retaining every other original coordinate and the same player actions. With
+no helper, the changed activation slot adds only an invisible WAIT on the
+other side of the callback. All full inputs before each recorded action
+are equal in the pair. Thus their behavioral likelihood factors agree
+pointwise for every approximation index n; equal prior bit masses give
+equal conditional masses before taking a limit. After an initial WAIT,
+the same pairing applies to the second late callback if the first late
+response was WAIT. For B it also retains the entire earlier A history,
+which has not read B's bit. This proves the conditional fair-bit claims
+without comparing rates of different trembles.
+
 This last point is why starting the same timing game at a reveal phase would
 not suffice: Bob could then assign an off-path WAIT to an inherited bad
 binding and rationally send EARLY.
@@ -202,6 +287,40 @@ changing any player view. These facts support the observation argument;
 they do not replace verification of the complete native instance.
 
 ## Raw preparations and reset continuation
+
+First justify eliminating the first charged action without assuming any
+later charge-free incumbent play. At a full input I, own recall fixes the
+complete list of signed own outputs. The count permission verdict of an
+own envelope depends only on earlier signed own outputs, and is immutable
+under later foreign traffic. Thus an own-clean recall is clean at EVERY
+history in I, including histories assigned zero limiting belief. At the
+two initial inputs the own output list is empty; after the initial WAIT it
+is still empty at each owner's first late input. A WAIT neither emits a
+packet nor privately registers a candidate. Foreign packets cannot create
+a signed own output.
+
+At any such clean input, the whole continuation policy that stays silent
+has zero own charge and terminal utility at least -epsilon on every
+compatible history. Committing to a forbidden current packet gives a
+permanent certain charge, so even with an arbitrary later incumbent policy
+its utility is at most W-K<-epsilon. Sequential rationality compares whole
+continuation policies. Every supported current atom must attain the
+optimal value; consequently a forbidden atom has probability zero. For
+W=3, epsilon=1, K=5, these are the uniform bounds -2<-1. The existing
+supported-choice uniform-gap theorem supplies precisely this inference;
+its hypotheses require bounds on the entire information fiber, which the
+own-recall argument supplies. Native terminal runner factoring and decision
+recall supply the current-choice mixture decomposition. There is no claim
+about optimal behavior after a sunk own charge, and no invocation of a
+converse to the counted-to-raw equilibrium extension theorem.
+
+The relevant existing permission APIs are in
+[count verdicts](../Vegas/Pending/PhaseCountVerdict.lean) and
+[permanent charge collection](../Vegas/Pending/PhaseCountCollection.lean);
+the native recall identity is in
+[input recall](../Interaction/ReactiveRecall.lean). These identify the
+adapters needed for a checked reflection proof. This paragraph supplies
+the mathematical argument, not those new checked adapters.
 
 Let D_A,D_B be accepting delivery of the two ORIGINAL bindings. A valid
 same-handle preparation has the same emitted envelope, markers and delivery
@@ -293,7 +412,8 @@ by sequential rationality, under any consistent beliefs.
 On these histories P(D_A=1)=1/2 and P(D_B=1|D_A)=1/2, so all four delivery
 patterns have probability 1/4. Both public reveals succeed with probability
 only 1/4; some player is excluded with probability 3/4. This differs from
-the deterministic honest joint law. For example W=3, epsilon=1 and K=5
+the honest law, under which both reveals always succeed. For example
+W=3, epsilon=1 and K=5
 give honest payoffs 0 and the strict initial WAIT value 1/4.
 
 This does not refute Nash preservation. An unconditional EARLY prescription

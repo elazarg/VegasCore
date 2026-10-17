@@ -6,7 +6,7 @@ not claims of Lean verification. No runtime or target assumption is changed.
 
 **Math audit: source SE checked · native query checked · native transport/incentives open in Lean.**
 
-**Math frontier: counted-service signalling obstruction explicit · native verification open.**
+**Math frontier: native program/timing/charge argument specified · certificate open.**
 
 The [service likelihood issue](#when-clock-words-determine-the-seed-filter)
 below prevents treating this draft as an unconditional proof for every
@@ -22,7 +22,10 @@ An all-raw Boolean reading of prose S1 is distinguished in that note.
 Starting at the empty first
 commitment phase avoids the hidden-bad-binding belief loophole of a reveal
 example. Its raw-action reduction and reset continuation are worked out
-mathematically; it is not yet a checked native counterexample. In particular,
+mathematically, including the existing Boolean program in concurrent-reveal
+mode, a uniform 43-command bound and exclusion of charged atoms by a whole
+silent continuation at own-clean information fibers. It is not yet a checked
+native counterexample. In particular,
 changing only the delivery optimizer does not resolve this obstruction.
 
 The source strategy is selected with the erasure and failed-attempt pins
