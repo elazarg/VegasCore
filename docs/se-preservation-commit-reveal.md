@@ -2,7 +2,7 @@
 
 **SE: non-concurrent ✓ · recovery source ✓ · native word/G coupling ✓ · posterior/RAW repair/service incentives open.**
 
-**Math: counted privacy classified · all-raw Boolean quotient incompatible · native certificate open.**
+**Math: delta>0 under counted/admission privacy · activation-transcript scope unresolved.**
 
 The [mathematical proof dependency](se-preservation-math.md#scope-and-proof-dependency)
 states the source selection, conditional transport and deviation arguments,
@@ -18,7 +18,10 @@ and raw contract, it gives a mathematical obstruction to the preserved joint
 law, not just to the clock-only policy. It distinguishes an all-raw reading
 of prose S1: the all-raw Boolean count-verdict quotient conflicts with timely
 native protected inclusion, whereas the intended raw content equivalence is
-not yet specified precisely. Its mathematical embedding uses the existing
+not yet specified precisely. An
+[all-raw emission-time admission quotient](se-private-seed-signalling.md#an-all-raw-quotient-by-admission-at-emission)
+also admits the obstruction, so enriching the content classification alone
+does not resolve it. Its mathematical embedding uses the existing
 Boolean program,
 concurrent reveals, a uniform 43-command bound and a whole-continuation
 charge argument. Its native Lean certificate and axiom audit remain open.

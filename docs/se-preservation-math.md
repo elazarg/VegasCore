@@ -6,7 +6,7 @@ not claims of Lean verification. No runtime or target assumption is changed.
 
 **Math audit: source SE checked · native query checked · native transport/incentives open in Lean.**
 
-**Math frontier: deviation bound delta>0 · counted privacy classified · raw S1 scope unresolved.**
+**Math frontier: delta>0 · all-raw admission quotient classified · activation scope unresolved.**
 
 The [service likelihood issue](#when-clock-words-determine-the-seed-filter)
 below prevents treating this draft as an unconditional proof for every
@@ -20,8 +20,11 @@ predicates and full raw contract it gives strict initial WAIT incentives
 and a different public outcome law in every sequential equilibrium.
 That note also proves mathematically that the all-raw Boolean count-verdict
 reading of prose S1 contradicts timely native protected inclusion, even
-without the signalling schedule. A precise richer raw content equivalence
-remains unspecified.
+without the signalling schedule. Its
+[emission-time native admission quotient](se-private-seed-signalling.md#an-all-raw-quotient-by-admission-at-emission)
+gives a precise richer all-raw reading under which the signalling obstruction
+still applies. Whether this is the intended content equivalence remains
+unresolved; the activation/observation condition matters separately.
 Starting at the empty first
 commitment phase avoids the hidden-bad-binding belief loophole of a reveal
 example. Its raw-action reduction and reset continuation are worked out
@@ -970,13 +973,88 @@ not a counterexample to SE preservation of the required joint law. Whether
 such placement is excluded by the intended word "activations" in S1--S3
 must be made precise. The paragraph after S3 already asserts a transcript
 factorization, but deriving it from the bullets is exactly the disputed
-step. Its separate statement about no extra information on FUTURE
-ACTIVATIONS is insufficient when the calendars coincide but acceptance bits
-differ. The proof needs sufficiency for the whole local seed's future
+step. Its statement about no extra information on FUTURE ACTIVATIONS needs
+a precise meaning: sufficiency for the potential unsent calendar is weaker
+than sufficiency for actual callbacks under every chosen continuation. The
+distinction is calculated below. The proof needs sufficiency for future
 service decisions, including acceptance. Until that implication is proved
 for the stated abstract class, the service comparison and full mathematical
 SE conclusion remain conditional. No target or hypothesis is changed to
 close this gap.
+
+### Future callback clocks and future service
+
+The signalling construction gives an exact distinction. At A's clock-2
+callback, after its initial WAIT, all three full inputs below have the same
+own clock word r=[0,2], no own emission, and an unresolved original binding.
+"Next callback" means a callback for that ORIGINAL binding, not a later
+retry or reveal.
+
+| Conditional quantity | No helper | Helper pending | Helper included |
+| --- | ---: | ---: | ---: |
+| Probability x_A=0 | 1/2 | 1 | 0 |
+| Next callback at 3, if A WAITs at 2 | 1 | 1 | 1 |
+| Proper SEND at 2 accepts | 1/2 | 1 | 0 |
+| Next callback at 3, if A sends a proper packet at 2 | 1/2 | 0 | 1 |
+
+The first row follows by the same full-input pairing used in the
+[counterexample](se-private-seed-signalling.md#what-the-observations-reveal).
+The second row uses the unsent potential calendar [0,2,3]. The last two
+rows follow because a proper SEND2 accepts exactly for x_A=0; acceptance
+suppresses the next callback, while a missed binding stays ready at 3.
+
+Thus a condition about predictions of the potential unsent calendar does not
+exclude this builder. A condition equating actual future-callback predictions
+under EVERY chosen continuation would exclude it already at clock 2. It is
+not justified to dismiss that stronger reading using the identical calendars.
+Conversely, at the last clock-3 callback after WAIT2, future callbacks for this
+binding are empty for both seeds, yet the marker still predicts SEND3
+acceptance. Checking future activation clocks at just that last input says
+nothing about the current packet's acceptance.
+
+Replacing the clock-only optimizer by a full-input optimizer also fails to
+repair the stated argument. At clock 2 the two helper inputs have strict,
+opposite rankings:
+
+| Marker | SEND2 | WAIT2, then proper SEND3 |
+| --- | ---: | ---: |
+| Pending, x_A=0 | 1 | 0 |
+| Included, x_A=1 | 0 | 1 |
+
+A clock-only rule sending at 2 with probability q has success at most q and
+1-q at these inputs. Its worst regret is at least max(q,1-q)>=1/2. Proper
+SEND3 after WAIT2 attains these bounds. A full-input rule has zero
+regret and sure delivery with the helper, but delivery at most 1/2 without
+it. Enlarging the local record to include the marker therefore recovers the
+posterior while making the optimal delivery value depend on foreign signalling.
+
+This defeats the common-payoff comparison as well as the common optimizer.
+Choose the full-input A rule that uses its known slot with a helper and
+otherwise sends at 2. Hold the original seeds fixed at x_A=1,x_B=0. B's
+proper EARLY packet and its WAIT/properSEND4 continuation both deliver B's
+binding. In the EARLY case A learns to send at 3 and survives; in the WAIT
+case A's SEND2 misses. Protected proper tails then give B payoff 0 and W,
+respectively. The payoff on B's own success is not one common G(Z) for these
+two policies. The first has delivery probability 1, the second 1/2; the risky
+WAIT nevertheless has the positive expected payoff proved in the
+counterexample. Maximizing actual payoff instead gives precisely the
+nonpreserving incentive, rather than repairing preservation.
+
+The local dynamic program would be justified by a common law, at EVERY
+future unsent prefix, for the service experiment consisting of the remaining
+potential callback calendar AND the acceptance bit of a permitted first
+SEND at each of its possible callbacks. Conditional on the full input and
+any compatible retained remainder of positive conditional mass, that law
+would have to depend only on the observable own clock/emission record. It
+must cover every permitted first-SEND content class unless the packet quotient
+already identifies them. The full-seed identity Law(xi | I=i,Z=z)=mu_r,
+with the SAME mu_r at every full input with record r,
+would imply this statement but is stronger than necessary: seeds
+indistinguishable by all such service experiments need not be separated.
+Equality only of the calendar marginal, or independence using a different
+seed posterior at each full input, does not supply the common law. This
+identifies the missing mathematical premise; it neither adds it to S1--S3 nor proves it follows
+from their causal seed-read restrictions.
 
 ## Conditional factorization once these comparisons hold
 

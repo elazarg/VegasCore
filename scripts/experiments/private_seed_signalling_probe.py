@@ -35,6 +35,24 @@ def delivered(choice: int | None, seed: int) -> int:
     return int(choice is not None and choice == seed)
 
 
+def forecast_rows():
+    """Bayes forecasts in each reduced marker view at the first late callback."""
+    rows = {}
+    for helper in (False, True):
+        views = {callback_view(seed, helper) for seed in (0, 1)}
+        for view in views:
+            seeds = [seed for seed in (0, 1) if callback_view(seed, helper) == view]
+            weight = Fraction(1, len(seeds))
+            send_success = sum((weight * delivered(0, seed) for seed in seeds), Fraction(0))
+            rows[view] = (
+                sum((weight * int(seed == 0) for seed in seeds), Fraction(0)),
+                Fraction(1),  # WAIT leaves the binding ready for its clock-3 callback.
+                send_success,
+                1 - send_success,  # A proper accepted SEND suppresses that callback.
+            )
+    return rows
+
+
 def payoff(own: int, other: int) -> Fraction:
     if not own:
         return -EPSILON
@@ -64,6 +82,12 @@ def main() -> None:
     assert W - DEPOSIT < -EPSILON
     assert callback_view(0, False) == callback_view(1, False)
     assert callback_view(0, True) != callback_view(1, True)
+    half = Fraction(1, 2)
+    assert forecast_rows() == {
+        (False, False): (half, 1, half, half),
+        (True, False): (1, 1, 1, 0),
+        (False, True): (0, 1, 0, 1),
+    }
 
     b_policies = tuple(product(CHOICES, repeat=2))
     laws = {(a, b): late_law(a, b) for a, b in product(CHOICES, b_policies)}
@@ -110,6 +134,7 @@ def main() -> None:
     print(f"All {len(equilibria)} late equilibrium pairs have the uniform delivery law.")
     print(f"Strict initial WAIT value: {expected}; honest value: 0.")
     print(f"Both fixed WAIT deviations have worst-case value {expected}.")
+    print("Three marker-view posterior and future-callback forecast rows checked.")
     print("Original co-delivery: 1/4; exclusion probability: 3/4.")
     print("Scope: reduced timing game only; native embedding remains unverified.")
 

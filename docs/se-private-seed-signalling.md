@@ -1,6 +1,6 @@
 # Private-seed signalling in a first commitment phase
 
-**Math: deviation bound delta>0 · native certificate unchecked · S1 scope unresolved.**
+**Math: delta>0 for counted/admission quotients · native certificate unchecked.**
 
 This note tests Theorem 3 of [the preservation argument](se-preservation-commit-reveal.md).
 Under the literal causal reading of its S1--S3 bullets, independent event
@@ -392,6 +392,80 @@ quotient is intended, the proposed nonvacuity example fails it as well.
 If the counted/native-admission reading is intended, the signalling
 obstruction still applies. Neither conclusion licenses silently changing
 the theorem's assumptions or asserting a checked native refutation.
+
+### An all-raw quotient by admission at emission
+
+There is a richer, nonvacuous all-raw interpretation for which this particular
+builder still gives the obstruction. This is a conditional classification of
+S1, not a choice of its intended meaning. For each actual emitted envelope m,
+record the bit a(m) saying that IMMEDIATE inclusion in the state just after
+its atomic submission would give an accepting native receipt. Use the full
+phase handler, including namespace, token, call/layout, author, handle and
+deadline checks. This bit tests the present state, not future delivery. It
+contains neither the service seed nor a future receipt.
+
+For an original binding owned by i, let L_i(x_i) be its eligible late clock:
+2 or 3 for A, 4 or 5 for B. On EVERY raw run continued through resolution
+of the original coordinate, its retained accepting bit is
+
+    D_i = OR over its own matching-coordinate emissions m of
+            [emissionClock(m) in {0,L_i(x_i)} and a(m)=1].
+
+The clocks are relative to the original readiness clock 0. This is a function
+of the local seed and the owner's own clock/status word. It ignores handles,
+private preparations and other traffic once the admission statuses are fixed.
+It is not a statement that raw admission is the Boolean count verdict.
+
+To prove the formula, each original owner has at most one callback at each
+of its three clocks. Only its clock-0 envelope and its eligible late envelope
+can be included for this binding. While the original event remains unresolved,
+a positive admission bit cannot be invalidated by foreign traffic: the other
+owner cannot bind this event or consume one of this owner's handles. There
+is no second own binding event in this phase. The original timer remains 0,
+and both possible inclusion clocks are strictly before 6. Private submission
+cannot change the cut or accepted handles. If a different own packet resolves
+the binding first, D_i is already true and that packet supplies the positive
+term instead.
+
+A matching original-coordinate emission occurs only at its owner's ready
+callback, strictly before clock 6. Its event cannot be unready at emission
+and become ready later. A raw packet naming a future static event is instead
+unauthorized in this full attempt and cannot become a packet for its later
+phase. A negative bit cannot turn positive before the binding resolves: its
+call, author, handle ownership and token are immutable; an already used handle
+cannot become unused inside the same live attempt. Hidden preparation does
+not enter binding admission. Wrong-clock envelopes are never selected later.
+Thus if every eligible term is false, no own packet can accept, foreign
+packets cannot complete this binding, and expiry resolves it without an
+accepting receipt. These two directions prove the formula on raw histories,
+including multiple identifiers and packets forbidden by the audit.
+
+For each active tail coordinate there is one owner callback at relative
+clock 0 and immediate inclusion of its exact new envelope, with no intervening
+player response. At a resolved endpoint its accepting bit therefore equals
+that envelope's admission bit, or false if silent. In this Boolean TRUE-guard
+program an admitted opening also succeeds; a general program would additionally
+require its native publication/guard result in the status. Skipped or
+never-installed coordinates have no accepting receipt. Full attempt tags
+prevent a packet from an earlier
+phase or generation reviving after reset, regardless of the retained catalogue.
+
+Do not replace this admission bit by a conjunction containing slot freshness.
+A raw earlier forbidden submission can fix an owned handle without binding it;
+a later binding may still accept that fixed but UNUSED handle. Its immutable
+meaning matters at the reveal, whose admission test checks it. Nor does this
+classification make the builder inspect the bit: its inclusion choices still
+read no private meaning; the native handler alone decides acceptance.
+
+Thus expanding content to state-relative native admission does not by itself
+remove the timing obstruction. The unsent activation-calendar classification
+also extends to raw histories in this fixture: only one event of each owner
+can be live in a phase, foreign packets cannot complete or exclude that owner,
+and a nonmatching own packet cannot resolve another own event in that phase.
+An owner that never sends for this coordinate therefore stays ready until
+expiry and receives the entire calendar, irrespective of its other raw traffic. Avoiding the
+obstruction requires resolving the activation and observation condition as
+well. No such stronger condition is adopted here.
 
 ## What the observations reveal
 
