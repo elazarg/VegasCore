@@ -6,6 +6,14 @@ not claims of Lean verification. No runtime or target assumption is changed.
 
 **Math audit: source SE checked · native query checked · native transport/incentives open in Lean.**
 
+**Math frontier: reset coupling explicit · abstract clock-transcript sufficiency unresolved.**
+
+The [service likelihood issue](#when-clock-words-determine-the-seed-filter)
+below prevents treating this draft as an unconditional proof for every
+builder described by the S1--S3 bullets. The concrete addressed controller
+has the required structural property. No stronger abstract assumption is
+adopted here.
+
 The source strategy is selected with the erasure and failed-attempt pins
 constructed below. This is not a claim about an arbitrary source extension
 or an arbitrary completion of the current native policy family.
@@ -60,7 +68,8 @@ original setup, public chance and builder laws.
    callbacks at this occurrence were value-independent WAITs. Conditioning
    therefore preserves its selected law and the actual posterior of every
    remaining original coordinate. The local seed is separately filtered by
-   its observable service transcript. Finite local backward induction
+   its observable service transcript, provided the clock-transcript
+   sufficiency identified below holds. Finite local backward induction
    selects a success-maximizing own-service rule under that filtered law.
 
 3. **Transport inside the actual rare event.** Fix I and clean possibility
@@ -105,8 +114,9 @@ give sequential rationality at every original information set by the
 one-shot deviation principle. The subsequence gives consistency. On its
 initialized paths every packet is sent at its protected first opportunity,
 so the original honest joint law is preserved with no charge or exclusion.
-The arguments below establish the identities and bounds used in this chain;
-their full Lean realization remains open.
+This chain is conditional on the abstract clock-transcript sufficiency gap
+identified below. The arguments detail its other identities and bounds;
+their full Lean realization also remains open.
 
 ## The object at a commitment information set
 
@@ -381,6 +391,50 @@ different values, and repairing one declaration changes exactly the
 snapshots that refer to its handle. A static-event value override would not
 give the required paired execution.
 
+More explicitly, replay from the ORIGINAL initialization, marking all
+effective RAW records to be repaired. Maintain equal attempt/control data,
+clocks, completed cuts, exclusions, envelope words and accepted-handle maps
+at every corresponding current, saved and archived snapshot. Catalogue
+domains, handles and their authored events agree. Meanings may differ only
+at the marked foreign handles; interpreted at each handle's AUTHORED payload
+type, the repaired meaning equals its original virtual representative.
+The selected virtual own words consequently agree. Do not demand decoding
+equality at every payload type: repairing a wrong-typed A declaration at a
+B event need not preserve a hypothetical A read.
+
+The induction over physical operations has the following cases. Preparation
+adds the same fresh handle to both catalogue domains, so no old snapshot
+changes. A repaired SEND emits the same authorized envelope; its ordinary
+replacement value has positive source mass at that same slot. An unrepaired
+BASE response has the same reduced query, own clock word, domain factor and
+slot factor; timing factors agree or obey the bound below. WAIT does not
+change either virtual word. Binding inclusion
+reads the unchanged envelope, authorization and readiness, records the same
+handle and advances the same cut; its private typed output is exactly the
+one specified by the handle invariant. Expiry has the same deadline/cut and
+records the same public miss and exclusion. A previously successful opening
+retains its original revealed value and guard verdict. A changed bad handle
+cannot occur there: a failed reveal would exclude its owner before I, while
+a successful reveal would make it a public, fixed ordinary value. No
+successful admitted reveal uses a voided handle; rejected or inert stale
+mentions have unchanged effects. Its fresh guard obligations were discarded.
+Public samples use the same public environment and original Nature atom.
+Automatic drain, close, retry and exhaustion read the same cut/exclusions,
+archive corresponding completed images, and restore the paired saved maps.
+The audit reads the same envelopes, firstness and public failures.
+
+Builder commands also retain their original probabilities: the opaque
+envelopes and public operational observations agree, and per-event
+value-blindness prevents a command from inspecting the substituted private
+meaning. Excluded-owner actions retain their actual factors, since their
+private data and observable inputs were not changed. These facts preserve
+the full focal input, including recall, and the original-attempt Phi.
+They supply the support and environment-factor parts of the replay, rather
+than inferring them merely from equality of the next source query. If the
+selected bad-owner prescription has different timing weights from its
+ordinary counterpart, use the earlier uniform factor at most 2 per callback;
+no extra vanishing-power cost is introduced.
+
 The source-coordinate density in this comparison is the ORIGINAL density.
 At a RAW BINDING occurrence q the raw declaration ignores V_q. Earlier
 callbacks there were WAITs; after SEND the sent/inert responses ignore it. Later
@@ -423,6 +477,14 @@ This proves the needed probability comparison without a separate theorem
 repairing latent table tags. Identifying that behavioral Q_n marginal with
 the once-sampled experiment still uses the joint realization below; it does
 not follow by multiplying separate posterior marginals.
+
+These are two proofs of the SAME source-density cost, not two costs to
+multiply. In a behavioral cylinder the replacement atom already contains
+tau_q(v), so the displayed RAW/BASE ratio already pays its factor 1/rho_n.
+In a once-sampled cylinder, summing the unused original coordinate and
+restricting its replacement pays that factor instead. Charging both would
+double-count the coordinate. Neither proof fixes an arbitrary updated entry
+and inserts a new independent value there.
 
 ## Local service independence and the permitted packet quotient
 
@@ -563,14 +625,16 @@ relative clock, its activations, own emissions and survival. Absence of an
 activation up to the observed clock constrains the calendar. No assumption
 that internal polling replies are observable is needed. Let Z be all
 original randomness except its event seed xi. S2 gives the prior
-mu(dxi) nu(dZ). By S3 the information
-event has the form
+mu(dxi) nu(dZ). The needed full-seed transcript-sufficiency step is that
+the information event has the form
 
     {xi agrees with L} x R_I.
 
-Indeed, fixing L fixes every way the event seed may enter the outside run;
-all remaining observation and focal action constraints are constraints on Z.
-Bayes therefore gives mu(. | agrees with L) times nu(. | R_I). This is the
+This requires fixing L to fix every way the event seed may enter the outside
+run; the remaining observation and focal action constraints would then be
+constraints on Z. Clock-valued S1--S3 alone do not establish that converse.
+Under the full-seed transcript sufficiency discussed below, Bayes gives
+mu(. | agrees with L) times nu(. | R_I). This is the
 original filtered seed law, not its unconditioned prior and not a refreshed
 entry distribution. Finite local backward induction gives an optimal rule
 at every remaining local record. Its action space is complete because of
@@ -767,6 +831,136 @@ the queried binding and uses no future focal miss or Phi. The good-reference
 induction above can therefore obtain typed-word equality without assuming
 the posterior transport it is meant to prove.
 
+### Joint likelihood for the service comparison
+
+The service comparison needs more than the current domain/timing pair.
+Here is its common likelihood calculation. Fix a full unsent binding input
+I, its reduced query q, its current event e and its nonempty relative
+activation word r. In the ORIGINAL initialized product draw, separate:
+
+- the unused domain coordinate V_q, with law tau_q;
+- the current event seed xi, with law mu_e;
+- all unread timing coins of e, with their original product law theta_e;
+- all seeds and timing tables of strictly later own events in this attempt,
+  with their original product law theta_later;
+- the entire remaining primitive draw Z, with its original law nu.
+
+Past current-event timing labels belong to Z. Original setup, public chance,
+foreign seeds, other domain coordinates and all builder remainder data also
+stay in Z; none is independently resampled after reaching I. If a seed space
+is not finite, use its finite response-table quotient as above.
+
+Put D_r={xi : r is a prefix of the potential unsent calendar C_e(xi)}.
+If the clock word determines the full seed constraint, the likelihood of
+the original information event has the form
+
+    likelihood_I(v,xi,t,eta,z) = 1{xi in D_r} L_I(z).
+
+To prove this, first fix a compatible original prefix. Changing v preserves
+every earlier response atom: a different query reads another coordinate;
+earlier callbacks at q were WAITs, whose atoms do not read v; an earlier
+SEND at this occurrence would contradict the current UNSENT input. The
+reduced-query antichain excludes a read at a different earlier occurrence.
+Changing t preserves
+the prefix because those ordinals have not occurred. Changing eta preserves
+it because same-owner order leaves these later events unready. Finally,
+replace xi by another seed in D_r. For the addressed controller, the
+query-log reconstruction below shows that its entire command transcript
+agrees, including nonactivation polls and within-clock placement. Thus, with
+Z and the past timing labels fixed, replay preserves the full prefix and
+its information value. For an abstract builder this is the precise
+transcript-sufficiency step still needing justification; S3's restriction
+on direct seed reads does not by itself reconstruct the query log.
+The reverse replacement
+gives the inverse. Sum over the original compatible prefixes and observation
+times to obtain L_I, without introducing a likelihood premise.
+
+Consequently, at every positive I, Bayes normalization gives the JOINT law
+
+    Law(V_q,xi,t,eta,Z | I)
+      = tau_q x mu_e(.|D_r) x theta_e x theta_later x nu_I,
+    nu_I(dz) = L_I(z) nu(dz) / integral L_I dnu.
+
+The last component is the actual posterior of the entire remaining draw.
+This proves the later own-service-vector split used in the one-shot estimate;
+separate marginal splits would not prove it. No claim is made after
+conditioning on a future policy-dependent success event.
+
+The identification with physical Q_n must retain ORIGINAL builder tags.
+For a fixed builder seed b and physical prefix h, average the next member
+response using the unused domain/timing pair, while keeping the actual
+command kernel for b and h. Induction on the original finite runner gives
+
+    Pr_original(b,h) = Pr_builder(b) Pr_Q_n(h | scheduler=b).
+
+This identity is joint in b and h. Thus at I the builder has its
+likelihood-tilted posterior proportional to
+Pr_builder(b) Pr_Q_n(I | scheduler=b). An identity at one fixed scheduler
+does not justify attaching a fresh builder prior after observing I. The
+joint identity transfers the preceding likelihood calculation to the
+physical assessment without doing so.
+
+### When clock words determine the seed filter
+
+A complete clock calendar and private success function do not alone prove
+the preceding likelihood identity. The missing inference is a CONVERSE:
+every seed compatible with r must preserve the full original information
+fiber, not merely give the same clock word when some compatible run exists.
+
+For the concrete addressed controller, the request selector depends only
+on the remainder and the existing history. The local seed answers the
+selected query. While UNSENT, an inclusion reply has no packet to include;
+deadline discipline prevents early expiry; hence the effective replies
+are activation and WAIT. A nonactivation closes that coordinate for the
+current clock, and every open ready coordinate is polled before advancing
+the clock. Recover the entire local query log from r as follows: at each
+earlier elapsed tick, record its number of activations, followed by one
+closing WAIT; at the current tick, stop at its last recorded activation.
+Repeated-clock activations retain their multiplicity. Each query's input
+contains that elapsed clock, the preceding activation prefix and no emissions.
+It contains no additional seed-dependent data.
+
+Matching this recovered log is equivalent to membership in D_r. In one
+direction replay its queries under the candidate seed. In the other, the
+first differing reply would either insert an extra activation before r's
+next entry or close a tick before a required activation. Both contradict
+the candidate's potential calendar prefix. With Z fixed, induction on the
+global commands now preserves their placement as well: the selector is
+unchanged, and every selected local reply agrees. This supplies the converse
+for this controller, without observing internal polling replies.
+The checked `Vegas.EventGraphRuntime.PhaseServiceScheduler.unsent_clock_transcript`
+and `Vegas.EventGraphRuntime.PhaseServiceScheduler.belief_unsent_seed_product`
+establish its transcript and filtered-seed ingredients. Their existence is
+not a representation theorem for every abstract S1--S3 builder.
+
+To see the issue for the abstract wording, let a fair local seed be 0 or 1.
+Both seeds have the same relative activation calendar [0,8,9]. At clock 0
+place the owner's first callback before a fixed public inclusion for seed 0
+and after it for seed 1. The inclusion is otherwise independent of the seed;
+the seed-dependent placement of the activation changes what its before-view
+records. If the owner WAITs, its recall at clock 8 identifies the seed even
+though its activation word is [0,8] in both cases. Sending at 8 can succeed
+only for seed 0 and sending at 9 only for seed 1; a protected first SEND at
+0 can still succeed for both. Success is a function of the local seed and
+emission clock, and the clock calendar itself is unaffected by other traffic.
+Nevertheless the full input has a point-mass seed posterior while
+mu(.|D_[0,8]) remains fair. A policy reading the retained before-view can
+succeed surely at these late inputs, whereas one clock-only rule cannot
+be optimal at both.
+
+This is an obstruction to the clock-only likelihood and delivery argument,
+not a counterexample to SE preservation of the required joint law. Whether
+such placement is excluded by the intended word "activations" in S1--S3
+must be made precise. The paragraph after S3 already asserts a transcript
+factorization, but deriving it from the bullets is exactly the disputed
+step. Its separate statement about no extra information on FUTURE
+ACTIVATIONS is insufficient when the calendars coincide but acceptance bits
+differ. The proof needs sufficiency for the whole local seed's future
+service decisions, including acceptance. Until that implication is proved
+for the stated abstract class, the service comparison and full mathematical
+SE conclusion remain conditional. No target or hypothesis is changed to
+close this gap.
+
 ## Conditional factorization once these comparisons hold
 
 Fix the public source record UP TO I and the focal source history projected
@@ -837,6 +1031,11 @@ excluded-owner data. Call the resulting operational template omega.
 
 For any other source-compatible o', insert its COMPLETE original supported
 private tuples and typed choices into the SAME occurrences and handle slots.
+Compatibility here means a supported complete source history with the same
+full public logical word, including every earlier failure and close branch.
+Equality of a current view or a final exclusion set would not suffice.
+Its original private-input density stays in A_n(o'); it is not cancelled as
+though all supported inputs had equal probabilities.
 Induct through the original physical operations:
 
 - Activation, clock and leaks have the same operational observations and
@@ -2219,6 +2418,15 @@ preparation literally present. Compare current typed choices with the same
 focal service rule. Replace only FUTURE effective RAW choices by their
 normalized BASE kernels. Uniform tier mass gives a coupling failure
 probability at most T r_n from this prefix, before any Phi conditioning.
+Construct this coupling on the original marked experiment: retain every
+original seed, domain coordinate, timing coin and tier label, and let the
+two runners agree until the first FUTURE effective RAW label. Its unread
+coordinate has RAW probability at most r_n; a union bound over at most T
+callbacks gives the stated error. Past RAW labels remain literal on both
+sides. This joint construction allows subsequent readouts of the original
+marks. A bound only on the marginal physical stopped-history law would not
+justify continuing with its original table posterior or testing a latent
+RAW event.
 
 On this proper continuation, induct over static binding occurrences. The
 fixed prefix determines any already sent immutable declaration. At a new
@@ -2226,16 +2434,61 @@ foreign event, the saved entry and earlier own virtual word agree in the
 paired runs, so its domain query and typed choice agree. Complete calendars
 and the same timing tape give the same relative first SEND and success bit.
 A focal later typed choice may differ, but its clock-only delivery has the
-same bit. An owner excluded by an earlier failure has the same later skips.
-This induction preserves the ENTIRE original failure mask, including on
-failed attempts, and does not use the G restriction. No physical entry is
-refreshed and no past RAW coordinate is deleted.
+same bit. This also covers a packet sent before I and included afterwards:
+its emission word and immutable preparation are fixed by the literal prefix.
+
+Here is why the argument identifies the whole failure record, rather than
+merely the final survivor vector. Write E_0 for the SAVED attempt-entry
+exclusions. For each owner k not in E_0 let f_k be its first static binding
+in this attempt that resolves without an accepted handle, or infinity if
+there is none. Include failures already fixed before I. Compare the two
+runs and suppose their first such ranks differ, say f_k^1<f_k^2. The later
+active request in run 2 requires an accepting receipt at the earlier own
+rank f_k^1. The paired local service episode at that rank has the same
+original seed, clock-only timing tape and acceptance bit, contradicting its
+unaccepted resolution in run 1. If f_k^2 is infinity, completion supplies
+accepting receipts at every owned rank, giving the same contradiction.
+Reverse the roles for the other inequality. Thus the first failed rank
+agrees for every owner. Same-owner dependency order and permanent receipts
+justify this comparison even when the two physical interleavings differ.
+
+For each binding e of the COMPLETED original interval, the resulting native
+archived failure bit F(e) and the canonical source omission bit M(e) are
+
+    F(e) = 1{owner(e) in E_0 or f_owner(e) <= e},
+    M(e) = 1{owner(e) not in E_0 and e = f_owner(e)}.
+
+The comparison in the first line is in that owner's static order. Native
+automatic suffixes have no accepted handle and are publicly failed; source
+automatic slots have no owned action and their omission bit is false. A
+binding with an accepted handle but an unusable typed value has neither
+kind of public miss. Confusing these cases would invalidate the source
+chronology. Nor may E_0 be replaced by the exclusions at I: doing so would
+incorrectly mark that owner's earlier accepted bindings as failed.
+
+Before each static rank e the source exclusions are exactly
+
+    E_0 union {k : f_k < e}.
+
+The common first-failure ranks therefore determine every prefix of the
+public failure scan, the entire source omission word and the final exclusion
+set. Outside this interval the old public footprint is fixed by the entry.
+Together these facts identify the full archived public failure footprint
+and canonical source address chronology. They identify neither physical
+completion order nor archived accepted handles, which the selected source
+query does not read. This argument uses no G restriction. No physical entry
+is refreshed and no past RAW coordinate is deleted.
 
 If the focal owner is excluded, both payoffs are a_j. Otherwise a foreign
 failure gives the same restore and retained public chronology. Every changed
 current typed cell and obligation is dropped; remembered voided values are
 ignored by the selected erased query. Old bad material from the fixed prefix
-remains identical in both runs. Subsequent BASE choices therefore couple
+remains identical in both runs. A surviving focal phase owner rules out
+exhaustion; if exhaustion occurs, it belongs to the preceding payoff-a_j
+case. Compare the original archive before that restore even when generation
+alone does not change. The restored semantic state, exclusions and selected
+query agree, although physical clocks, catalogues, recall and archived handles
+may differ. Subsequent BASE choices therefore couple
 from the same restored semantic state and selected queries. At each new
 event its protected first service preserves the same source continuation;
 its perturbations have the usual finite-horizon bound. This proves the
@@ -2425,7 +2678,17 @@ own missed binding instead gives a_j. On the remaining successful-phase
 branch, Lemma T transports the JOINT active trajectories, and the same
 continuation kernels give the source D-conditioned payoff H_v. Excluded
 owners' hidden words have no further payoff effect: their future public
-results are failure and utilities read public results only. Consequently
+results are failure and utilities read public results only.
+
+Precisely, partition the foreign outcomes into not-Phi, Phi-and-not-G,
+and G. Only not-Phi is a failed-attempt reset branch. Past RAW can make G
+false even when all foreign bindings succeed, so no common reset payoff
+is asserted on all of not-G. Instead the same-event repair bound gives
+
+    Q_n(Phi and not-G | I) <= b_n Q_n(G | I) <= b_n -> 0.
+
+Use this as an error term, use the reset coupling on not-Phi, and use
+transport on G. Consequently
 
     W_v-W_tau = lambda_I (H_v-H_tau) + error_n(v),
     0 <= lambda_I <= 1,
@@ -2575,9 +2838,11 @@ therefore gives the original honest run using the SAME original inputs and
 public chance kernels. This identifies jointly the initial parameters,
 public results and realized net payoffs, not just their separate marginals.
 
-This is a mathematical proof draft for the selected construction under the
-document's explicit strong service assumptions. It is not a checked Lean
-theorem and does not identify the existing implementation as its witness.
+This is a conditional mathematical proof draft for the selected construction.
+Its clock-transcript sufficiency step is justified for the concrete addressed
+controller, but is unresolved for the full abstract S1--S3 wording as explained
+above. It is not a checked Lean theorem and does not identify the existing
+implementation as a witness of full preservation.
 
 ## Boundary between this construction and the implementation
 

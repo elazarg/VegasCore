@@ -7,6 +7,9 @@ states the source selection, conditional transport and deviation arguments,
 with their scope distinguished from the checked milestones below.
 The [native one-shot estimate](se-preservation-math.md#closing-the-one-shot-estimate)
 assembles the mathematical posterior, repair, reset and service arguments.
+The [clock-transcript audit](se-preservation-math.md#when-clock-words-determine-the-seed-filter)
+identifies an unresolved implication in the abstract service argument;
+full mathematical preservation is conditional on resolving it.
 
 <details>
 <summary>Checked recovery milestones and remaining proof obligations</summary>
@@ -2617,6 +2620,14 @@ give $j$ an additional signal about its future activations beyond the posterior
 determined by this local transcript. The timing argument in 4.5 uses this
 filtered law.
 
+The claimed clock-transcript factorization in this paragraph has an
+unresolved proof step: restricting where a seed is read does not yet show
+that activation clocks determine every constraint on that seed. The
+[mathematical audit](se-preservation-math.md#when-clock-words-determine-the-seed-filter)
+isolates this issue, including seed information about acceptance rather
+than only future activations. This is a proof-status qualification, not an
+additional builder hypothesis.
+
 The remainder may depend on the whole history, subject to per-event
 value-blindness and content-blind leaks:
 
@@ -3103,7 +3114,8 @@ impossible at $I$ (Lemma A3), the first term vanishes and every value is
 optimal.)
 
 *Proof.* First justify conditioning on the owner's delivery successes.
-Recover its observable local transcript from $I$. S2--S3 factor its
+Recover its observable local transcript from $I$. The unresolved
+clock-transcript sufficiency step, together with S2, would factor its
 information likelihood into agreement of the current event seed with that
 transcript and a constraint on all remaining original randomness. Its
 filtered seed is therefore independent of that remainder. Later own event
@@ -3180,13 +3192,21 @@ The value is fixed throughout this lemma. Choosing a value adaptively after
 WAIT is addressed by one-shot value and timing comparisons at every full
 information set below, not by asserting a common $V$ across different values.
 
+The clock-only posterior step in the following proof remains unresolved for
+the abstract S1--S3 builder class; see the
+[transcript-sufficiency audit](se-preservation-math.md#when-clock-words-determine-the-seed-filter).
+The concrete addressed controller supplies it by reconstructing the full
+local query log. That does not establish it for every abstract builder.
+The delivery comparison below is conditional on this step.
+
 *Proof.* Write $Z$ for everything in the run other than $\xi_e$ and $j$'s
 choices for $e$: Nature, the players' private randomization (including $j$'s
 own later randomization), the other seeds and the remainder seed. At each
 stage $n$, recover from $j$'s actual information the local transcript of
 activations, own emissions and survival. Only observable local data are used;
 an internal polling reply is not assumed to be observed.
-By (S2–S3) and Bayes' rule, the conditional joint law factors into the law
+Under the clock-transcript sufficiency step identified above, (S2) and
+Bayes' rule factor the conditional joint law into the law
 of $\xi_e$ filtered by agreement with that transcript and a conditional law of
 $Z$. The filtered local law may depend on the information site and on $n$;
 it need not equal the original seed prior. The product form survives the
