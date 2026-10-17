@@ -87,6 +87,13 @@ def main() -> None:
         best_b = max(value(laws[a, b], 1) for b in b_policies)
         assert best_b >= expected > 0
 
+    # The contradiction needs fixed whole-policy deviations, not a complete
+    # classification of late equilibria. Their lower bounds hold against
+    # every opposing late policy, including deliberate nontransmission.
+    fixed_b = (0, 0)
+    assert min(value(laws[a, fixed_b], 1) for a in CHOICES) == expected
+    assert min(value(laws[0, b], 0) for b in b_policies) == expected
+
     # Each continuation-optimal B policy sends at an eligible late slot
     # for every positive-probability A history. A's maximum is then expected.
     for b in product((0, 1), repeat=2):
@@ -102,6 +109,7 @@ def main() -> None:
     print(f"Checked {len(laws)} pure late-policy pairs with exact fractions.")
     print(f"All {len(equilibria)} late equilibrium pairs have the uniform delivery law.")
     print(f"Strict initial WAIT value: {expected}; honest value: 0.")
+    print(f"Both fixed WAIT deviations have worst-case value {expected}.")
     print("Original co-delivery: 1/4; exclusion probability: 3/4.")
     print("Scope: reduced timing game only; native embedding remains unverified.")
 

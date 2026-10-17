@@ -6,7 +6,7 @@ not claims of Lean verification. No runtime or target assumption is changed.
 
 **Math audit: source SE checked · native query checked · native transport/incentives open in Lean.**
 
-**Math frontier: counted privacy classified · raw Boolean quotient incompatible · certificate open.**
+**Math frontier: deviation bound delta>0 · counted privacy classified · raw S1 scope unresolved.**
 
 The [service likelihood issue](#when-clock-words-determine-the-seed-filter)
 below prevents treating this draft as an unconditional proof for every
