@@ -6,13 +6,24 @@ not claims of Lean verification. No runtime or target assumption is changed.
 
 **Math audit: source SE checked · native query checked · native transport/incentives open in Lean.**
 
-**Math frontier: reset coupling explicit · abstract clock-transcript sufficiency unresolved.**
+**Math frontier: counted-service signalling obstruction explicit · native verification open.**
 
 The [service likelihood issue](#when-clock-words-determine-the-seed-filter)
 below prevents treating this draft as an unconditional proof for every
 builder described by the S1--S3 bullets. The concrete addressed controller
 has the required structural property. No stronger abstract assumption is
 adopted here.
+
+The [first-commit signalling construction](se-private-seed-signalling.md)
+goes beyond a failed delivery comparator: under the counted-service privacy
+predicates and full raw contract it gives strict initial WAIT incentives
+and a different public outcome law in every sequential equilibrium.
+An all-raw Boolean reading of prose S1 is distinguished in that note.
+Starting at the empty first
+commitment phase avoids the hidden-bad-binding belief loophole of a reveal
+example. Its raw-action reduction and reset continuation are worked out
+mathematically; it is not yet a checked native counterexample. In particular,
+changing only the delivery optimizer does not resolve this obstruction.
 
 The source strategy is selected with the erasure and failed-attempt pins
 constructed below. This is not a claim about an arbitrary source extension

@@ -1,0 +1,311 @@
+# Private-seed signalling in a first commitment phase
+
+**Counted-service obstruction worked out; native Lean counterexample not checked.**
+
+This note tests Theorem 3 of [the preservation argument](se-preservation-commit-reveal.md).
+Under the literal causal reading of its S1--S3 bullets, independent event
+seeds do not prevent players from changing another player's information
+about its seed. The finite timing game below has no preserving sequential
+equilibrium. It extends to the raw audited game when service privacy is
+imposed on permitted counted histories, as in the existing formal predicates.
+Its relation to an all-raw reading of the prose S1 quotient is distinguished
+below; that ambiguity must not be hidden by charge dominance.
+This is mathematical evidence, not closure of a checklist box or a checked
+refutation for the native Lean runtime. No target, semantics or additional
+hypothesis is adopted here.
+
+## Program and payoffs
+
+Start in the empty context. Alice and Bob each commit a value of a singleton
+type, with guard TRUE, in the first commitment phase. Their two reveals form
+the next phase. There are no samples or private input types. Each owner has
+one event in each phase, so concurrent execution respects information and
+same-owner order. Use the actual phase-reset rule for missed bindings.
+
+Fix W>2 epsilon>0. A nonexcluded player receives W if the other player's
+reveal fails, and 0 otherwise. An excluded player receives the constant
+a=-epsilon. Thus m=0 and a<m. The honest game has only its proper singleton
+choices, both reveals succeed, and its equilibrium joint law is deterministic
+success with payoff vector (0,0).
+
+Take certain audit collection and deposit K>W+epsilon. A first charged packet
+then gives net payoff at most W-K<-epsilon. An entirely silent remaining
+continuation guarantees at least -epsilon without a charge. At every
+information set with a known
+uncharged own past, a first charged action is strictly inferior. This covers
+extra packets, malformed calls, foreign-event packets and disallowed evidence.
+It does not assume that already-charged players incur a second deposit loss.
+
+## Original builder law
+
+The initial two bindings become ready together; translate their readiness
+clock to 0. Their common opportunity delay is 0, protected-inclusion bound
+is 5, and deadline duration is 6. Independently sample fair bits x_A and x_B
+as their original event seeds. The remainder is deterministic.
+
+At clock 0, activate Alice and then Bob. No packet is included between these
+two callbacks. At every callback show the player all pending packets of the
+other owner. This is a content-blind leak rule. An EARLY packet is a packet
+emitted by that owner at clock 0 in this original attempt; classify it by its
+actual owner, attempt and emission clock, not by its handle or private meaning.
+
+Use these fixed blocks, while the original attempt remains open:
+
+| Clock | First slot | Fixed middle slot | Third slot |
+| --- | --- | --- | --- |
+| 2 | activate A if x_A=0 | include B's EARLY packet, if any | activate A if x_A=1 |
+| 4 | activate B if x_B=0 | include A's EARLY packet, if any | activate B if x_B=1 |
+
+An unavailable activation or absent helper is replaced by an identity
+WAIT, which does not advance the public clock. The middle slot executes
+even if its associated owner has already completed its binding. Never read
+a resolved event's seed to decide an activation. Stutters produce neither
+an observed packet nor an own callback; the observation rule exposes no
+global command counter. The native interface has this distinction between
+identity WAIT and the separate clock-advance command.
+
+There is one further callback for A at clock 3 and for B at clock 5, if
+their binding is still ready. For a well-formed first binding packet:
+
+- an EARLY packet is included in its fixed middle slot, for either seed;
+- A's packet sent at 2 is included exactly when x_A=0, and one sent at 3
+  exactly when x_A=1;
+- B's packet sent at 4 is included exactly when x_B=0, and one sent at 5
+  exactly when x_B=1.
+
+Successful late packets are included immediately after their callback.
+The marker handler never uses a LATE packet as a helper. At clock 6 expire
+unresolved original bindings, then execute the real close/reset. If the
+attempt closes earlier, both original bindings are already resolved: retire
+this routine and continue below.
+
+Predraw the seeds of ALL possible full attempt/event addresses independently
+at initialization, including retry and reveal addresses; their fixed laws
+may be degenerate. On all subsequent retries and reveal phases, give each
+ready owner a single
+immediate protected callback, include its packet immediately, and expire
+anything still unresolved at its deadline. Use fresh independent event seeds
+at those addresses, from that SAME original draw. Correct singleton commitments and openings
+therefore have sure service. Excluded owners' events are automatic failures.
+
+The builder is also specified on raw deviations: process each EARLY envelope
+in its designated inclusion slot, receiving the contract's acceptance or
+rejection verdict. Late own-event envelopes are included only if their
+EMISSION clock equals that event's seed-selected eligible clock, in serial
+order. A wrong-clock packet stays unaccepted; it cannot wait in the network
+and land at the later eligible clock. A packet without valid content
+or readiness cannot cause an accepting completion; foreign authors cannot
+complete the owner's event. Expiry still completes every unresolved event.
+Fix finite raw payload, evidence, serial and candidate-slot bounds with
+enough fresh slots for every scheduled callback. There are finitely many
+scheduled callbacks, each emits at most one envelope, and every retry removes
+an owner. This gives both finite branching and a fixed finite horizon large
+enough for every legal raw run, not bounds chosen after the strategy.
+
+## Service assumptions
+
+Opportunity holds because both original owners are activated at 0. EARLY
+packets receive their receipts by clocks 4 and 2, respectively, within bound
+5. Every other original callback is late: s+5>=6, so expiry completes the
+event before a protected receipt would be required. Timeliness is 0+5<6.
+The protected-only continuation has opportunity and sure inclusion as well.
+Clock advances and expiry give completion on arbitrary raw responses.
+
+Each original binding's accepting-completion bit depends only on its own
+seed, its own relative emission clocks and packet well-formedness. Its
+potential unsent clock calendar is [0,2,3] for A and [0,4,5] for B. The seed
+chooses its within-clock activation slot; foreign actions never change that
+calendar. Fresh handles, hidden prepared meanings and payload aliases do
+not affect these delivery bits. Wrongly typed or unopenable bindings can be
+accepted, as required by the contract; they fail later if not voided.
+
+The selector and middle inclusion slots are fixed independently of the
+seeds. A local seed is read only to insert its own activation, or determine
+its own late service. Everything else is the deterministic remainder acting
+on history. No rule reads an unopened value. Consequently this satisfies
+the causal S1--S3 seed restrictions, the permitted-packet success quotient,
+per-event value-blindness and content-blind leaks. It violates the stronger
+clock-transcript sufficiency used in the
+proposed proof: identity WAIT does not close the coordinate's current tick.
+If S3 is instead defined to include that stronger composition discipline,
+this builder is excluded; that is a different precise premise, not a
+deduction from independent seeds or private delivery bits.
+
+The exact service scope matters. The existing
+`Vegas.EventGraphRuntime.PhaseService.PrivateActivationCalendar` and
+`Vegas.EventGraphRuntime.PhaseService.PrivateBindingSuccess` quantify over
+traces of `Vegas.EventGraphRuntime.PhaseCount.onePacketMenu`. On those
+count-clean histories every nonsilent first binding has the required fresh,
+authorized shape, and the construction's delivery bit depends only on its
+seed and emission clock. The separate
+`Vegas.EventGraphRuntime.PhaseService.AsyncContract` still quantifies over
+all raw histories. Thus counted-service privacy plus the raw contract and
+count audit is the precise formal interpretation obstructed here. This is
+not a claim that a native instance of these predicates has already been
+mechanized.
+
+If the prose S1 instead identifies ALL raw packets solely by the Boolean
+count-audit well-formedness verdict, its premise requires separate analysis.
+The native inclusion handler can accept a fresh binding carrying extra
+evidence that the count audit forbids, whereas it rejects a malformed call.
+Both packets are audit-invalid. Protected inclusion at an early clock
+cannot make their accepting-completion bits identical. Charge dominance
+does not prove an exogenous service hypothesis on those raw histories.
+Consequently this note does not silently assert that all-raw Boolean
+quotient, either for the constructed builder or for the existing positive
+example. This is a specification issue about that reading of S1, distinct
+from the counted-service signalling obstruction.
+
+## What the observations reveal
+
+If B sent EARLY, A sees B's packet pending at its clock-2 callback exactly
+when x_A=0, or sees its receipt already present exactly when x_A=1. Thus A
+knows which of 2 and 3 will deliver its packet. This works for any helper
+handle; it does not rely on a hidden choice of request alias.
+
+If B did not send EARLY, the middle slot at 2 is an unobserved stutter.
+Both A seeds give precisely the same full player input at that callback:
+clock 2, its earlier WAIT, no B packet or receipt, and the same public state.
+The private seed remains fair. A first SEND at either 2 or 3 succeeds with
+probability 1/2; no adapted uncharged rule does better. Choosing never to
+send gives probability zero. Randomization gives a convex combination.
+
+The analogous statements hold for B at 4 and 5 with A's EARLY packet as
+helper. When both players waited at 0, B's seed was not read anywhere in
+A's late history. Conditional on that entire history, B's seed is still
+fair, and the absent A-EARLY marker reveals nothing about it. B may condition
+its timing on A's accepted receipt, but its maximum delivery probability is
+still 1/2 in EACH such history. This is a conditional argument, rather than
+an inference from two unconditional success marginals.
+
+No hidden prior-doom type can replace these beliefs. Bob's first input
+reveals every A transmission, and none has yet been included. Observing
+no A packet therefore means Alice did not transmit at her first callback.
+In the first commitment phase from empty context she has no earlier accepted
+binding. Preparation is part of a transmission, not an extra hidden action.
+Initial seed independence and the observation equivalences give these Bayes
+facts under every completely mixed sequence. No relative tremble rate can
+make Bob interpret that empty view as an inherited unopenable binding.
+
+This last point is why starting the same timing game at a reveal phase would
+not suffice: Bob could then assign an off-path WAIT to an inherited bad
+binding and rationally send EARLY.
+
+The relevant information facts agree with the application interface:
+[responses and player views](../Interaction/ReactiveApplication.lean) expose
+optional transmission and own recall, while
+[native information](../Interaction/ReactiveProtocol.lean) does not expose
+the remaining response budget or global command index.
+[Private registration](../Vegas/Pending/EventSubmission.lean) is bundled
+with submission. An identity WAIT changes environment recall without
+changing any player view. These facts support the observation argument;
+they do not replace verification of the complete native instance.
+
+## Raw preparations and reset continuation
+
+Let D_A,D_B be accepting delivery of the two ORIGINAL bindings. A valid
+same-handle preparation has the same emitted envelope, markers and delivery
+law as a bad one. Compare their sequentially optimal continuation VALUES,
+not the behavior of an arbitrary fixed continuation reading different raw
+recall. Work backwards through the protected-only future first. A sole
+survivor's proper retry and reveals guarantee W, its payoff ceiling, at
+either history. With both bindings delivered, a proper owner guarantees a
+nonexcluded payoff >=0 by opening, while its own bad binding forces payoff
+-epsilon. These facts give the preparation comparison:
+
+- if own delivery misses, own payoff is -epsilon in either case;
+- if the other delivery misses, the actual reset voids the changed binding
+  and its guard obligation; the surviving optimal continuation has value W
+  at both histories, although their retained raw recall differs;
+- if both deliver, proper material guarantees own survival at the protected
+  reveals, giving at least 0, whereas bad material causes own exclusion and
+  payoff -epsilon.
+
+The last improvement is strict whenever joint delivery has positive
+conditional probability. Do not eliminate bad actions merely by citing weak
+dominance: when another binding certainly misses, the material is erased
+and may be indifferent. At B's late site, an already accepted A binding
+makes this strict comparison immediate; after an irrevocable A miss, its
+own bad/proper distinction is erased. At A's late site the still-unread B
+seed gives positive probability of B delivery, so standing bad material is
+strictly inferior. This is a backwards argument, not an assumption that
+all raw bindings have proper values.
+
+A sole survivor's retry has a sure proper move. At subsequent protected
+reveals, opening a proper value guarantees a nonexcluded payoff >=0,
+whereas withholding gives -epsilon. Neither comparison needs another
+player's off-path belief. Exhaustion after two misses gives both players
+-epsilon. Consequently sequentially optimal clean continuations have the
+following payoff table:
+
+| Original D_A | Original D_B | Payoff A | Payoff B |
+| --- | --- | --- | --- |
+| 0 | 0 | -epsilon | -epsilon |
+| 1 | 0 | W | -epsilon |
+| 0 | 1 | -epsilon | W |
+| 1 | 1 | 0 | 0 |
+
+Extra identifiers or disclosure packets cannot supply an uncharged extra
+signal: they incur the deposit loss above. A well-formed first packet,
+regardless of slot or preparation alias, is included as a helper exactly
+when it was EARLY. Before the first late callback the relevant seed is
+unread, so these aliases cannot carry advance information about it.
+If the precise raw audit admits an invalid but uncharged first own packet,
+do not relabel it charged: it cannot complete its event, burns that event's
+free first packet, and a later repair needs a charged extra identifier.
+Such a choice therefore gives own exclusion payoff -epsilon. The comparison
+with a proper delivery rules it out wherever it would affect this argument.
+
+## Sequential rationality forces the failures
+
+Suppose first that A sends a proper EARLY binding. Its delivery and later
+survival are guaranteed. B can guarantee its own survival by sending EARLY,
+or by waiting and decoding its seed from A's helper. Success gives B at
+least 0; own failure gives -epsilon. Every B best response therefore survives
+surely, even if B is uncertain about A's hidden preparation. For the actual
+proper A, the resulting payoff is 0. An EARLY bad preparation does worse.
+B need not strictly prefer EARLY here: safe late delivery also gives 0.
+
+Now suppose A WAITs. At B's first callback no A packet exists.
+
+- If B sends a proper EARLY packet, A learns its seed and delivers properly
+  with certainty. Both survive, so B earns 0. A bad EARLY packet is worse.
+- If B WAITs, neither helper exists. Write p<=1/2 for A's delivery chance.
+  B can attain conditional delivery probability 1/2 after every A history
+  using a proper packet. Its payoff is therefore at least
+
+      (W/2)(1-p) - epsilon/2 >= W/4 - epsilon/2 > 0.
+
+  This lower bound does not assume A already uses optimal late play, and
+  remains valid if an A bad preparation makes its later reveal fail.
+
+Thus B strictly WAITs after A WAIT. At the resulting late inputs, A can
+choose proper timing with delivery probability 1/2. B then maximizes its
+delivery probability in each A history, because the gain from own survival
+is strictly positive. Its conditional success probability is exactly 1/2.
+Hence A's WAIT continuation earns
+
+    W/4 - epsilon/2 > 0,
+
+strictly more than its EARLY payoff 0. Both first WAITs are therefore forced
+by sequential rationality, under any consistent beliefs.
+
+On these histories P(D_A=1)=1/2 and P(D_B=1|D_A)=1/2, so all four delivery
+patterns have probability 1/4. Both public reveals succeed with probability
+only 1/4; some player is excluded with probability 3/4. This differs from
+the deterministic honest joint law. For example W=3, epsilon=1 and K=5
+give honest payoffs 0 and the strict initial WAIT value 1/4.
+
+This does not refute Nash preservation. An unconditional EARLY prescription
+for the other owner makes a unilateral WAIT obtain its helper and survive
+without gaining over 0. Such prescriptions can support the honest Nash
+outcome. They fail sequential rationality at B's off-path callback after
+A WAIT, where B's own WAIT has the strict positive value computed above.
+
+The exact finite calculation in
+[the experiment](../scripts/experiments/private_seed_signalling_probe.py)
+enumerates the late pure timing policies, including B's conditioning on A's
+outcome, and checks these probabilities with rational arithmetic. It does
+not certify the native embedding, arbitrary raw-menu reduction or S1--S3
+interpretation; those require the mathematical argument above and eventually
+checked native theorems.
