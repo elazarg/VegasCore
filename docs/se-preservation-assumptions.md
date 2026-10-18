@@ -5,6 +5,11 @@ one-block policy comparison reviewed; common consistent assessment and general
 recovery composition open. No new Lean theorem, checklist closure, or runtime
 change is claimed here.
 
+The [network-assumption survey](se-network-assumptions.md) classifies common
+literature models and gives a delivery comparison allowing correlated delays
+and unknown network parameters. Actual packet-delay independence is sufficient
+for one comparison below, but is not necessary.
+
 The target is to implement each selected intended-game sequential equilibrium
 with the same joint law of private inputs, public results, and net payoffs, and
 without failures or charges on its paths. The
@@ -44,6 +49,7 @@ already received. Reveals must respect the intended game's information order.
 
 | Service guarantee | What it buys | Status and cost |
 | --- | --- | --- |
+| Under one shared network experiment, an earlier first submission retains every admission opportunity of a later submission | Fixed-packet qualification dominance despite correlated delays and learning about them | Delivery lemma proved; shared reserved-capacity processing opportunities give a concrete class. Full-game coupling and consistency remain open. |
 | Fresh stationary delays, independent of the entire pre-send observation history; exogenous activations; protected prompt submissions | A fixed packet cannot arrive later merely because it was sent earlier | Delivery lemma proved; whole-game preservation open. Correlated congestion, previews of the unread delay, or builder choices outside this kernel violate the assumption. |
 | Private collection until all current choices are irrevocably closed, including protection of timing and participation metadata | Removes the opportunity to learn from another player's submission before choosing one's own value | A credible architectural route; requires confidential intake, availability, and source-appropriate release. The complete compiler adapter remains open. |
 | A uniform conditional bound relating useful delay benefits to irreversible loss | Allows a finite penalty chosen before the service to deter informative delay | A proof criterion until derived from a concrete service. A lower marginal late-delivery probability does not establish it. |
@@ -216,8 +222,9 @@ proof.
 
 ## Next mathematical obligation
 
-The candidate that most directly retains visible traffic is the regular
-independent-service route. Its remaining task is one common consistent
+The candidate that most directly retains visible traffic uses shared
+admission opportunities with counterfactual earlier-send monotonicity, without
+requiring independent delays. Its remaining task is one common consistent
 assessment, with whole-policy source reflection through commitment retries and
 reveals. The more direct service-design alternative is private collection
 through the final admission boundary. Neither is yet a proved minimal
@@ -225,6 +232,8 @@ assumption set or a complete concurrent preservation theorem.
 
 For a shared EVM mempool and shared block capacity, independent per-packet
 service is a benchmark to justify, rather than a default network assumption.
+Exogenous shared processing with reserved capacity is another idealized
+interface to justify; it is not supplied merely by consensus liveness.
 Private intake with reserved capacity offers a more controllable interface,
 at the cost of an explicit confidentiality and availability trust model.
 Removing explicit failure bonuses is not an alternative proof: expelling a
