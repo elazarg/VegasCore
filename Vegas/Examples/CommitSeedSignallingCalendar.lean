@@ -13,10 +13,10 @@ open SourceProgram EventGraph EventGraphRuntime Interaction
 open GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol GameTheory.Math.Probability
 open OnePacketCommitRevealHypotheses (Player alice bob setup program)
 
-private def tailTurn (coordinate : CommitAttemptEvent graph) : Nat :=
+def tailTurn (coordinate : CommitAttemptEvent graph) : Nat :=
   if coordinate.event.val < 2 then 0 else if coordinate.event = aliceReveal then 0 else 2
 
-private theorem tail_activation_turn (seeds : Seeds) (current : app.Control)
+theorem tail_activation_turn (seeds : Seeds) (current : app.Control)
     (trace : (app.protocol initial horizon (family seeds)).Trace (some current))
     (coordinate : CommitAttemptEvent graph) (owner : Player)
     (retired : coordinate.attempt ≠ originalAttempt)
@@ -99,9 +99,9 @@ private theorem first_namespace_index_le (past : List app.EnvironmentEntry)
   simp only [same, decide_true] at earlier
   cases earlier
 
-private theorem recorded_tail_turn (seeds : Seeds) (remaining : Nat)
+private theorem recorded_tail_turn (menu : app.ResponseMenu) (seeds : Seeds) (remaining : Nat)
     (execution : app.Execution)
-    (trace : (countedMenu.protocol initial horizon (family seeds)).Trace
+    (trace : (menu.protocol initial horizon (family seeds)).Trace
       (some ⟨remaining, none, execution⟩))
     (coordinate : CommitAttemptEvent graph) (owner : Player)
     (retired : coordinate.attempt ≠ originalAttempt)
@@ -116,10 +116,10 @@ private theorem recorded_tail_turn (seeds : Seeds) (remaining : Nat)
       entry :: execution.environmentRecall.drop (index + 1) := by
     rw [List.getElem_cons_drop bounded, List.take_append_drop]
   obtain ⟨used, before, _within, ⟨beforeTrace⟩, _supported, recalled, viewed⟩ :=
-    countedMenu.recorded_environment_prefix initial horizon (family seeds) remaining execution
+    menu.recorded_environment_prefix initial horizon (family seeds) remaining execution
       trace (execution.environmentRecall.take index) entry
         (execution.environmentRecall.drop (index + 1)) recorded
-  have raw := countedMenu.toRawTrace initial horizon (family seeds) beforeTrace
+  have raw := menu.toRawTrace initial horizon (family seeds) beforeTrace
   have valid := raw_native_valid (family seeds) _ raw
   have publicRequest := callback.2
   change PhaseRuntimeState.requests entry.beforeView.application owner coordinate
@@ -128,7 +128,7 @@ private theorem recorded_tail_turn (seeds : Seeds) (remaining : Nat)
   change PhaseRuntimeState.requests before.application.publicView owner coordinate
     at publicRequest
   have request := (PhaseRuntimeState.requests_publicView _ valid owner coordinate).mp publicRequest
-  have commands := family_commands seeds _ (countedMenu.toRawTrace initial horizon
+  have commands := family_commands seeds _ (menu.toRawTrace initial horizon
     (family seeds) trace)
   rw [recorded] at commands
   have splitCommands := (app.commandConsistentFrom_append choose seeds []
@@ -152,10 +152,12 @@ private theorem recorded_tail_turn (seeds : Seeds) (remaining : Nat)
   omega
 
 /-- A genuine continuation coordinate has only one owner callback in the
-complete original counted history. The index is measured in actual environment
+complete original physical history. The index is measured in actual environment
 recall, so retirement, rollback and later foreign commands cannot add another. -/
-theorem tail_callback_index_unique (seeds : Seeds) (current : app.Control)
-    (trace : (countedMenu.protocol initial horizon (family seeds)).Trace
+theorem tail_callback_index_unique (menu : app.ResponseMenu)
+    (silence : ∀ owner past view,
+      (⟨none⟩ : app.Action) ∈ menu.actions owner past view) (seeds : Seeds) (current : app.Control)
+    (trace : (menu.protocol initial horizon (family seeds)).Trace
       (some current))
     (coordinate : CommitAttemptEvent graph) (owner : Player)
     (retired : coordinate.attempt ≠ originalAttempt)
@@ -169,18 +171,19 @@ theorem tail_callback_index_unique (seeds : Seeds) (current : app.Control)
   rcases current with ⟨remaining, active, execution⟩
   cases active with
   | none =>
-      exact (recorded_tail_turn seeds remaining execution trace coordinate owner retired first
+      exact (recorded_tail_turn menu seeds remaining execution trace coordinate owner retired first
         firstBound firstCallback).trans
-          (recorded_tail_turn seeds remaining execution trace coordinate owner retired second
+          (recorded_tail_turn menu seeds remaining execution trace coordinate owner retired second
             secondBound secondCallback).symm
   | some actor =>
-      obtain ⟨responded⟩ := countedMenu.trace_respond initial horizon (family seeds) remaining
-        execution actor ⟨none⟩ trace (PhaseCount.silence_onePacket runtime leaks bounds actor _ _)
-      have firstTurn := recorded_tail_turn seeds remaining (execution.respond app actor ⟨none⟩)
+      obtain ⟨responded⟩ := menu.trace_respond initial horizon (family seeds) remaining
+        execution actor ⟨none⟩ trace (silence actor _ _)
+      have firstTurn := recorded_tail_turn menu seeds remaining (execution.respond app actor ⟨none⟩)
         responded coordinate owner retired first
         (by simpa only [app.respond_environmentRecall] using firstBound)
         (by simpa only [app.respond_environmentRecall] using firstCallback)
-      have secondTurn := recorded_tail_turn seeds remaining (execution.respond app actor ⟨none⟩)
+      have secondTurn := recorded_tail_turn menu seeds remaining
+        (execution.respond app actor ⟨none⟩)
         responded coordinate owner retired second
         (by simpa only [app.respond_environmentRecall] using secondBound)
         (by simpa only [app.respond_environmentRecall] using secondCallback)

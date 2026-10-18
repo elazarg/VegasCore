@@ -590,6 +590,7 @@ import Vegas.Pending.PhaseBindingIncludeDispatcher
 import Vegas.Pending.PhaseBindingInclusionTrace
 import Vegas.Pending.PhaseOpeningBindingPrefix
 import Vegas.Pending.PhaseOpeningMenuShape
+import Vegas.Pending.PhaseRecordedCountedRequest
 import Vegas.Pending.PhaseOpeningMenuSymmetry
 import Vegas.Pending.PhaseBindingClearCounts
 import Vegas.Pending.PhaseBindingSubmittedPreservation

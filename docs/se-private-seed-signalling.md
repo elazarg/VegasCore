@@ -1,6 +1,6 @@
 # Private-seed signalling in a first commitment phase
 
-**Native proof: source SE ✓ · raw contract ✓ · joint ½ bounds ✓ · raw continuations ✓ · private laws / final incentives open.**
+**Native: clocks ✓ · joint bounds ✓ · opening incentives ✓ · recovery / service success / SE contradiction open.**
 
 The issue is that a player can withhold useful information. Alice has two late
 submission times; a hidden fair coin determines which succeeds. If Bob sends
@@ -50,8 +50,23 @@ retaining Alice's later assessed strategy even at off-path decisions.
 `Vegas.Examples.CommitSeedSignalling.raw_equilibrium_own_clean_terminal_charge_zero`
 also proves that the assessed continuation never charges an owner with a clean
 own past, without restricting the other owner's raw traffic.
-Private service laws, survival of the proper deviation through retries and
-openings, and the positive deviation bound remain unproved.
+The exact private clock-calendar predicate holds for the installed family
+(`Vegas.Examples.CommitSeedSignalling.family_privateActivationCalendar`),
+including exhausted attempts. Actual original correct-seed acceptance is at
+least 1/2 for either owner's fixed late deviation
+(`Vegas.Examples.CommitSeedSignalling.fixed_late_acceptance_probability`).
+The final joint acceptance bound
+`Vegas.Examples.CommitSeedSignalling.initialized_joint_acceptance_half`
+retains Alice's original receipt across the complete continuation.
+The opening incentive comparison
+`Vegas.Examples.CommitSeedSignalling.counted_successful_publication_wait_not_supported`
+excludes WAIT at an actual callback with a successful stored binding: the
+whole assessed continuation gives -1 after withholding and at least 0 after
+opening, uniformly across the full raw information fiber. Other owners' past
+and future traffic is unrestricted there.
+The private binding-success predicate, survival of the proper deviation through
+retries, and the positive deviation bound remain unproved. No theorem yet
+excludes every preserving native sequential equilibrium.
 
 ## Program and payoffs
 
@@ -695,17 +710,21 @@ conditional probability. Do not eliminate bad actions merely by citing weak
 dominance: when another binding certainly misses, the material is erased
 and may be indifferent. At B's late site, an already accepted A binding
 makes this strict comparison immediate; after an irrevocable A miss, its
-own bad/proper distinction is erased. At A's late site the still-unread B
-seed gives positive probability of B delivery, so standing bad material is
-strictly inferior. This is a backwards argument, not an assumption that
-all raw bindings have proper values.
+own bad/proper distinction is erased. At A's late site, an unread B seed
+alone does not prove positive B delivery: B could stay silent. Eliminating
+bad A material there additionally requires a best-response argument proving
+positive B acceptance and retaining its law when A's hidden preparation
+changes. That comparison is not established here and is not used by the
+shorter contradiction below, whose helper case already has B's receipt.
+In particular, weak dominance alone does not eliminate every bad binding.
 
 A sole survivor's retry has a sure proper move. At subsequent protected
 reveals, opening a proper value guarantees a nonexcluded payoff >=0,
 whereas withholding gives -epsilon. Neither comparison needs another
 player's off-path belief. Exhaustion after two misses gives both players
--epsilon. Consequently sequentially optimal clean continuations have the
-following payoff table:
+-epsilon. Conditional on the additional preparation comparison just identified,
+sequentially optimal clean continuations have the following payoff table;
+the shorter contradiction does not rely on this characterization:
 
 | Original D_A | Original D_B | Payoff A | Payoff B |
 | --- | --- | --- | --- |

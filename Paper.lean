@@ -17056,11 +17056,11 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #print axioms Vegas.Examples.CommitSeedSignalling.silent_unsubmitted_publication_excluded
 
 /-- info:
-'Vegas.Examples.CommitSeedSignalling.counted_trace_fixed_seed'
+'Vegas.Examples.CommitSeedSignalling.menu_trace_fixed_seed'
 
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.Examples.CommitSeedSignalling.counted_trace_fixed_seed
+#print axioms Vegas.Examples.CommitSeedSignalling.menu_trace_fixed_seed
 
 /-- info:
 'Vegas.Examples.CommitSeedSignalling.bob_initialized_weighted_half'
@@ -17089,3 +17089,52 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Examples.CommitSeedSignalling.bobQuiet_fixedLate_context_initialized_value
+
+/-- info:
+'Vegas.Examples.CommitSeedSignalling.family_privateActivationCalendar'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.CommitSeedSignalling.family_privateActivationCalendar
+
+/-- info:
+'Vegas.Examples.CommitSeedSignalling.fixed_late_acceptance_probability'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.CommitSeedSignalling.fixed_late_acceptance_probability
+
+/-- info:
+'Vegas.Examples.CommitSeedSignalling.bob_fixed_late_weighted_acceptance_probability'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.CommitSeedSignalling.bob_fixed_late_weighted_acceptance_probability
+
+/-- info:
+'Vegas.Examples.CommitSeedSignalling.initialized_joint_acceptance_half'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.CommitSeedSignalling.initialized_joint_acceptance_half
+
+/-- info:
+'Vegas.Examples.CommitSeedSignalling.surviving_original_binding_accepted'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.CommitSeedSignalling.surviving_original_binding_accepted
+
+/-- info:
+'Vegas.Examples.CommitSeedSignalling.counted_successful_publication_wait_not_supported'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.CommitSeedSignalling.counted_successful_publication_wait_not_supported
+
+/-- info:
+'Vegas.Examples.CommitSeedSignalling.raw_tail_opening_value_on_same_input'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.CommitSeedSignalling.raw_tail_opening_value_on_same_input

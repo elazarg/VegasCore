@@ -300,4 +300,21 @@ theorem family_completesPlay (seeds : Seeds) :
     omega
   exact (raw_phase_geometry (family seeds) current trace).1.terminal finished
 
+/-- Every actual requested callback has enough environment rounds remaining
+for protected inclusion; the native horizon cannot truncate its response. -/
+theorem family_requested_remaining (seeds : Seeds) (current : app.Control)
+    (trace : (app.protocol initial horizon (family seeds)).Trace (some current))
+    (coordinate : CommitAttemptEvent graph) (owner : Player)
+    (request : current.execution.application.SeedRequest owner coordinate) :
+    9 < current.remaining := by
+  have live : current.execution.application.phases ≠ [] := by
+    obtain ⟨phase, installed, _inside⟩ := request.2.1
+    intro empty
+    simp only [empty, List.head?_nil, Option.not_mem_none] at installed
+  have account := raw_command_accounting seeds trace live
+  have bound := live_ordinal_bound seeds current trace live
+  have horizonAccount := app.raw_trace_horizon initial horizon (family seeds) trace
+  change current.execution.environmentRecall.length + current.remaining = 64 at horizonAccount
+  omega
+
 end Vegas.Examples.CommitSeedSignalling

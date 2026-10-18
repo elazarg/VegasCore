@@ -14,13 +14,14 @@ open SourceProgram EventGraph EventGraphRuntime Interaction
 open GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol GameTheory.Math.Probability
 open OnePacketCommitRevealHypotheses (Player alice bob setup program)
 
-private theorem environment_prefix (seeds : Seeds) (before after : app.Control)
-    (beforeTrace : (countedMenu.protocol initial horizon (family seeds)).Trace (some before))
-    (afterTrace : (countedMenu.protocol initial horizon (family seeds)).Trace (some after))
+private theorem environment_prefix (menu : app.ResponseMenu)
+    (seeds : Seeds) (before after : app.Control)
+    (beforeTrace : (menu.protocol initial horizon (family seeds)).Trace (some before))
+    (afterTrace : (menu.protocol initial horizon (family seeds)).Trace (some after))
     (retained : TracePrefix beforeTrace afterTrace) :
     before.execution.environmentRecall <+: after.execution.environmentRecall := by
   have along : ∀ {target}
-      {trace : (countedMenu.protocol initial horizon (family seeds)).Trace target},
+      {trace : (menu.protocol initial horizon (family seeds)).Trace target},
       TracePrefix beforeTrace trace → ∃ next : app.Control, target = some next ∧
         before.execution.environmentRecall <+: next.execution.environmentRecall := by
     intro target trace kept
@@ -53,8 +54,9 @@ private theorem environment_prefix (seeds : Seeds) (before after : app.Control)
   cases Option.some.inj equal
   exact keptEnv
 
-private theorem active_callback_index (seeds : Seeds) (current : app.Control)
-    (trace : (countedMenu.protocol initial horizon (family seeds)).Trace (some current))
+private theorem active_callback_index (menu : app.ResponseMenu)
+    (seeds : Seeds) (current : app.Control)
+    (trace : (menu.protocol initial horizon (family seeds)).Trace (some current))
     (owner : Player) (active : current.actor = some owner)
     (coordinate : CommitAttemptEvent graph)
     (request : PhaseRuntimeState.requests
@@ -66,7 +68,7 @@ private theorem active_callback_index (seeds : Seeds) (current : app.Control)
   rcases current with ⟨remaining, acting, execution⟩
   cases active
   obtain ⟨before, _word, _selected, reached, _input⟩ :=
-    PhaseSeedScheduler.active_informationInput_of_trace runtime leaks countedMenu initial horizon
+    PhaseSeedScheduler.active_informationInput_of_trace runtime leaks menu initial horizon
       (family seeds) remaining owner execution trace coordinate
   have application : execution.application = before.application := by
     obtain ⟨updated, moved, rfl⟩ := PMF.support_map .. ▸ reached
@@ -105,8 +107,10 @@ private theorem prefix_callback (first last : List app.EnvironmentEntry)
 /-- Two distinct entries of actual own recall cannot both be requested
 responses for the same continuation coordinate. Arbitrary other owners' raw
 actions and every retired namespace remain in the original physical history. -/
-theorem tail_recalled_callbacks_no_repeat (seeds : Seeds) (current : app.Control)
-    (trace : (countedMenu.protocol initial horizon (family seeds)).Trace (some current))
+theorem tail_recalled_callbacks_no_repeat (menu : app.ResponseMenu)
+    (silence : ∀ owner past view,
+      (⟨none⟩ : app.Action) ∈ menu.actions owner past view) (seeds : Seeds) (current : app.Control)
+    (trace : (menu.protocol initial horizon (family seeds)).Trace (some current))
     (coordinate : CommitAttemptEvent graph) (owner : Player)
     (retired : coordinate.attempt ≠ originalAttempt)
     (earlier middle later : List app.PlayerEntry) (first second : app.PlayerEntry)
@@ -116,7 +120,7 @@ theorem tail_recalled_callbacks_no_repeat (seeds : Seeds) (current : app.Control
     False := by
   obtain ⟨left, right, leftTrace, rightTrace, leftRight, rightLast, leftActive, rightActive,
     leftRecall, rightRecall, leftView, rightView, _firstAvailable, _secondAvailable⟩ :=
-      countedMenu.recorded_responses_at initial horizon (family seeds) current trace owner
+      menu.recorded_responses_at initial horizon (family seeds) current trace owner
         earlier first middle second later recalled
   have leftRequest : PhaseRuntimeState.requests
       (left.execution.observe app owner).application.2 owner coordinate := leftView ▸ firstRequest
@@ -124,25 +128,26 @@ theorem tail_recalled_callbacks_no_repeat (seeds : Seeds) (current : app.Control
       (right.execution.observe app owner).application.2 owner coordinate :=
     rightView ▸ secondRequest
   obtain ⟨firstIndex, firstLength, firstBound, firstCallback⟩ :=
-    active_callback_index seeds left leftTrace owner leftActive coordinate leftRequest
+    active_callback_index menu seeds left leftTrace owner leftActive coordinate leftRequest
   obtain ⟨secondIndex, secondLength, secondBound, secondCallback⟩ :=
-    active_callback_index seeds right rightTrace owner rightActive coordinate rightRequest
-  have leftPrefix := environment_prefix seeds left right leftTrace rightTrace leftRight
-  have rightPrefix := environment_prefix seeds right current rightTrace trace rightLast
+    active_callback_index menu seeds right rightTrace owner rightActive coordinate rightRequest
+  have leftPrefix := environment_prefix menu seeds left right leftTrace rightTrace leftRight
+  have rightPrefix := environment_prefix menu seeds right current rightTrace trace rightLast
   obtain ⟨firstFinalBound, firstFinalCallback⟩ := prefix_callback _ _
     (leftPrefix.trans rightPrefix) coordinate owner firstIndex firstBound firstCallback
   obtain ⟨secondFinalBound, secondFinalCallback⟩ := prefix_callback _ _ rightPrefix coordinate
     owner secondIndex secondBound secondCallback
-  have sameIndex := tail_callback_index_unique seeds current trace coordinate owner retired
+  have sameIndex := tail_callback_index_unique menu silence seeds
+    current trace coordinate owner retired
     firstIndex secondIndex firstFinalBound secondFinalBound firstFinalCallback secondFinalCallback
   have sameLength : left.execution.environmentRecall.length =
       right.execution.environmentRecall.length := by omega
   have sameEnvironment : left.execution.environmentRecall =
       right.execution.environmentRecall := leftPrefix.eq_of_length sameLength
   have leftCount := app.response_count_history initial horizon (family seeds) left
-    (countedMenu.toRawTrace initial horizon (family seeds) leftTrace) owner
+    (menu.toRawTrace initial horizon (family seeds) leftTrace) owner
   have rightCount := app.response_count_history initial horizon (family seeds) right
-    (countedMenu.toRawTrace initial horizon (family seeds) rightTrace) owner
+    (menu.toRawTrace initial horizon (family seeds) rightTrace) owner
   have sameActivations : app.activationHistory left.execution =
       app.activationHistory right.execution := by
     unfold ReactiveApplication.activationHistory

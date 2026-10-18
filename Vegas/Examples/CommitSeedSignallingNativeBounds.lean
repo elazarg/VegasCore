@@ -15,10 +15,17 @@ import Vegas.Examples.CommitSeedSignallingInitializedHalf
 import Vegas.Examples.CommitSeedSignallingAliceInitializedHalf
 import Vegas.Examples.CommitSeedSignallingOwnContinuation
 import Vegas.Examples.CommitSeedSignallingBobQuietInitialization
+import Vegas.Examples.CommitSeedSignallingPrivateCalendar
+import Vegas.Examples.CommitSeedSignallingCorrectSeedProbability
+import Vegas.Examples.CommitSeedSignallingJointAcceptance
+import Vegas.Examples.CommitSeedSignallingOriginalReceipts
+import Vegas.Examples.CommitSeedSignallingRetryCheckpoint
+import Vegas.Examples.CommitSeedSignallingPublicationChoice
 
 /-! # Native service and conditional timing bounds for private-seed signalling
 
-These results establish the actual raw asynchronous contract, initialized
-late-acceptance bounds and exact physical continuation laws. They do not assert
-private calendar or success laws, or exclude every preserving equilibrium.
+These results establish the actual raw asynchronous contract, private clock
+calendar, initialized joint acceptance bounds and full-fiber opening incentives.
+They do not assert private binding-success laws, full recovery survival, or
+exclude every preserving equilibrium.
 -/

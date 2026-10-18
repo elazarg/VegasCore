@@ -22,7 +22,7 @@ open OnePacketCommitRevealHypotheses (Player alice bob setup program)
 private abbrev originalInputs : graph.Inputs :=
   encodeInputs (Env.empty (CellVal simpleExpr))
 
-private def NoOwnReveal (owner : Player) (coordinate : CommitAttemptEvent graph)
+def NoOwnReveal (owner : Player) (coordinate : CommitAttemptEvent graph)
     (message : Message Player (CommitAttemptPacket graph)) : Prop :=
   message.sender = owner → PhaseCount.event? message.payload ≠ some coordinate
 
@@ -69,12 +69,69 @@ private theorem expiry_request_or_excluded
     exact Or.inr (PhaseRuntimeState.expiry_request_before_deadline runtime state next owner
       coordinate request timely reached)
 
-private def Unopened (owner : Player) (coordinate : CommitAttemptEvent graph)
+def Unopened (owner : Player) (coordinate : CommitAttemptEvent graph)
     (execution : app.Execution) : Prop :=
   execution.application.Invariant originalInputs ∧
     execution.network.Satisfies (NoOwnReveal owner coordinate) ∧
     (owner ∈ execution.application.current.excluded ∨
       execution.application.SeedRequest owner coordinate)
+
+/-- Arbitrary foreign responses preserve a still-unsubmitted owned coordinate. -/
+theorem unopened_respond_other (owner : Player) (coordinate : CommitAttemptEvent graph)
+    (execution : app.Execution) (actor : Player) (action : app.Action)
+    (different : actor ≠ owner) (valid : Unopened owner coordinate execution) :
+    Unopened owner coordinate (execution.respond app actor action) := by
+  refine ⟨(phaseApplication_invariant runtime leaks originalInputs).respond execution actor
+    action valid.1, ?_, ?_⟩
+  · rcases action with ⟨transmission⟩
+    cases transmission with
+    | none => exact valid.2.1
+    | some submission =>
+        exact valid.2.1.submit actor _ (fun equal => (different equal).elim)
+  · rcases valid.2.2 with excluded | requested
+    · exact Or.inl ((phaseApplication_exclusion_monotone runtime leaks).respond execution
+        actor action excluded)
+    · exact Or.inr (respond_request runtime leaks execution actor action owner coordinate
+        requested)
+
+/-- A native environment operation either retains the unsubmitted request or
+excludes its owner. This statement concerns the actual pending network. -/
+theorem unopened_environment (owner : Player) (coordinate : CommitAttemptEvent graph)
+    (execution next : app.Execution) (command : app.Command)
+    (valid : Unopened owner coordinate execution)
+    (reached : next ∈ (execution.environmentStep app command).support) :
+    Unopened owner coordinate next := by
+  refine ⟨(phaseApplication_invariant runtime leaks originalInputs).environmentStep execution
+    next command valid.1 reached, network_environment_safe owner coordinate execution next command
+      valid.2.1 reached, ?_⟩
+  rcases valid.2.2 with excluded | requested
+  · exact Or.inl ((phaseApplication_exclusion_monotone runtime leaks).environmentStep execution
+      next command reached excluded)
+  · rcases environment_request_or_own_resolution runtime leaks
+      (serviceGraph_revealRelaxedOrdered setup .concurrentReveals) execution next valid.1
+        owner coordinate requested command reached with retained | expiry | included
+    · exact Or.inr retained
+    · rw [expiry] at reached
+      simp only [ReactiveApplication.Execution.environmentStep, PMF.map_comp] at reached
+      obtain ⟨state, supported, rfl⟩ := PMF.support_map .. ▸ reached
+      exact expiry_request_or_excluded execution.application state owner coordinate
+        valid.1 requested supported
+    · obtain ⟨identifier, message, _native, _ready, _action, selected, lookup, sender,
+        named, _handled, _step, _normalized⟩ := included
+      by_cases sameAttempt : message.payload.attempt = coordinate.attempt
+      · have addressed : PhaseCount.event? message.payload = some coordinate := by
+          simp only [PhaseCount.event?, named, Option.map_some, sameAttempt]
+        exact ((valid.2.1.lookup identifier message lookup) sender addressed).elim
+      · have rejected : app.handle execution.application message = none :=
+          PhaseRuntimeState.handle_retired runtime execution.application message
+            (fun equal => sameAttempt (equal.trans requested.1.symm))
+        have unchanged : next.application = execution.application := by
+          rw [selected] at reached
+          simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map] at reached
+          cases (PMF.mem_support_pure_iff _ _).mp reached
+          simp only [ReactiveApplication.Execution.includePending,
+            MessageNetwork.includePending, lookup, rejected, Option.getD_none]
+        exact Or.inr (by rwa [unchanged])
 
 private theorem unopened_policyInvariant (players : Player → app.Policy) (owner : Player)
     (coordinate : CommitAttemptEvent graph)
@@ -86,50 +143,9 @@ private theorem unopened_policyInvariant (players : Player → app.Policy) (owne
       rw [silent] at supported
       cases app.mem_silentPolicy_support.mp supported
       exact valid
-    · refine ⟨(phaseApplication_invariant runtime leaks originalInputs).respond execution actor
-        action valid.1, ?_, ?_⟩
-      · rcases action with ⟨transmission⟩
-        cases transmission with
-        | none => exact valid.2.1
-        | some submission =>
-            exact valid.2.1.submit actor _ (fun equal => (same equal).elim)
-      · rcases valid.2.2 with excluded | requested
-        · exact Or.inl ((phaseApplication_exclusion_monotone runtime leaks).respond execution
-            actor action excluded)
-        · exact Or.inr (respond_request runtime leaks execution actor action owner coordinate
-            requested)
-  environment execution next command valid reached := by
-    refine ⟨(phaseApplication_invariant runtime leaks originalInputs).environmentStep execution
-      next command valid.1 reached, network_environment_safe owner coordinate execution next command
-        valid.2.1 reached, ?_⟩
-    rcases valid.2.2 with excluded | requested
-    · exact Or.inl ((phaseApplication_exclusion_monotone runtime leaks).environmentStep execution
-        next command reached excluded)
-    · rcases environment_request_or_own_resolution runtime leaks
-        (serviceGraph_revealRelaxedOrdered setup .concurrentReveals) execution next valid.1
-          owner coordinate requested command reached with retained | expiry | included
-      · exact Or.inr retained
-      · rw [expiry] at reached
-        simp only [ReactiveApplication.Execution.environmentStep, PMF.map_comp] at reached
-        obtain ⟨state, supported, rfl⟩ := PMF.support_map .. ▸ reached
-        exact expiry_request_or_excluded execution.application state owner coordinate
-          valid.1 requested supported
-      · obtain ⟨identifier, message, _native, _ready, _action, selected, lookup, sender,
-          named, _handled, _step, _normalized⟩ := included
-        by_cases sameAttempt : message.payload.attempt = coordinate.attempt
-        · have addressed : PhaseCount.event? message.payload = some coordinate := by
-            simp only [PhaseCount.event?, named, Option.map_some, sameAttempt]
-          exact ((valid.2.1.lookup identifier message lookup) sender addressed).elim
-        · have rejected : app.handle execution.application message = none :=
-            PhaseRuntimeState.handle_retired runtime execution.application message
-              (fun equal => sameAttempt (equal.trans requested.1.symm))
-          have unchanged : next.application = execution.application := by
-            rw [selected] at reached
-            simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map] at reached
-            cases (PMF.mem_support_pure_iff _ _).mp reached
-            simp only [ReactiveApplication.Execution.includePending,
-              MessageNetwork.includePending, lookup, rejected, Option.getD_none]
-          exact Or.inr (by rwa [unchanged])
+    · exact unopened_respond_other owner coordinate execution actor action same valid
+  environment execution next command valid reached :=
+    unopened_environment owner coordinate execution next command valid reached
 
 /-- A genuine surviving ready publication which has never been submitted
 cannot be rescued by arbitrary foreign raw traffic after its owner stays

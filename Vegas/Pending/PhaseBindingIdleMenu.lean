@@ -2,6 +2,7 @@
 
 import Vegas.Pending.PhaseSentMenu
 import Vegas.Pending.PhaseBindingCountTransport
+import Interaction.ReactiveRawRoundTrace
 
 /-! # Actual callbacks without a current owned request admit only silence -/
 
@@ -18,22 +19,21 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
 
 local notation "app" => phaseApplication runtime leaks
 
-/-- On actual initialized histories, every nonsilent counted response names a real
-current ready owner request. Completed alternatives already have an authentic
+/-- On any actual initialized menu history, a locally count-admitted response
+names a real current ready owner request. Completed alternatives already have an authentic
 same-attempt packet, which contradicts the new response's firstness. -/
 theorem onePacket_request_of_nonsilent (bounds : MessageBounds graph)
     (plan : RuntimePhasePlan graph) (inputs : PMF graph.Inputs) (horizon : Nat)
     (scheduler : (app).Scheduler) (remaining : Nat) (owner : Player)
     (execution : (app).Execution)
-    (trace : ((onePacketMenu runtime leaks bounds).protocol
-      (inputs.map (PhaseRuntimeState.initial plan)) horizon scheduler).Trace
+    {menu : (app).ResponseMenu}
+    (trace : (menu.protocol (inputs.map (PhaseRuntimeState.initial plan)) horizon scheduler).Trace
         (some ⟨remaining, some owner, execution⟩))
     (material : WitnessedSubmission graph)
     (offered : (⟨some material⟩ : (app).Action) ∈ onePacketActions runtime leaks bounds owner
       (execution.recall owner) (execution.observe (app) owner)) :
     ∃ coordinate, execution.application.SeedRequest owner coordinate := by
   let initial := inputs.map (PhaseRuntimeState.initial plan)
-  let menu := onePacketMenu runtime leaks bounds
   have raw := menu.toRawTrace initial horizon scheduler trace
   have recalled := countRecall_history runtime leaks raw
   have serials := (app).serialsBeforeNext_history scheduler initial horizon raw
@@ -95,10 +95,10 @@ theorem onePacket_request_of_nonsilent (bounds : MessageBounds graph)
     apply False.elim
     apply permittedAfter.2.2.1 old before
     simp only [event?, oldNamed, named, Option.map_some, oldTag, currentTag]
-  · obtain ⟨afterTrace⟩ := menu.trace_respond initial horizon scheduler remaining execution owner
-      ⟨some material⟩ trace offered
+  · obtain ⟨afterTrace⟩ := (app).raw_trace_respond initial horizon scheduler remaining execution
+      owner ⟨some material⟩ raw
     have ready := ready_of_current_authentic_token runtime leaks plan inputs horizon scheduler
-      (menu.toRawTrace initial horizon scheduler afterTrace) message authentic currentTag
+      afterTrace message authentic currentTag
         permittedAfter.1 event named (by rwa [configEq])
     rw [configEq] at ready
     exact ⟨⟨execution.application.attempt, event⟩,
