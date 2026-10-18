@@ -375,13 +375,23 @@ the payoff-law claim.
 
 ## Next mathematical obligation
 
-The candidate that most directly retains visible traffic uses shared
-admission opportunities with counterfactual earlier-send monotonicity, without
-requiring independent delays. Its remaining task is one common consistent
-assessment, with whole-policy source reflection through commitment retries and
-reveals. The more direct service-design alternative is private collection
-through the final admission boundary. Neither is yet a proved minimal
-assumption set or a complete concurrent preservation theorem.
+The candidate that most directly retains visible traffic uses shared admission
+opportunities with counterfactual earlier-send monotonicity and protected
+reservations, without independent delays. Its remaining task is one common
+consistent assessment with source reflection through retries and publication.
+
+An opening can expose its raw value while pending and then fail its guard or
+miss its delivery deadline. The source observation may record only failure.
+This discrepancy remains even with universally true guards. Fixing a failed
+owner's low payoff does not settle surviving players' beliefs, and a permitted
+truthful opening is not a forbidden packet that the count audit can price.
+A complete preservation argument must handle these extra observations and
+rational continuations. Query matching and a one-block delivery comparison
+alone do not do so.
+
+Private collection through the final admission boundary remains another
+service-design alternative. Neither route is yet a proved minimal assumption
+set or a complete concurrent preservation theorem.
 
 For a shared EVM mempool and shared block capacity, independent per-packet
 service is a benchmark to justify, rather than a default network assumption.
@@ -393,6 +403,17 @@ Bob's later job can leave Alice safe. Each owner's own packet may still arrive
 no later when sent earlier. Thus monotone own delivery does not establish the
 required comparison of foreign outcomes. The shared-opportunity model is a
 candidate protected ledger interface, not an established ordinary-chain fact.
+
+Admission-controlled reservation is an established engineering architecture:
+[RFC 2212](https://www.rfc-editor.org/rfc/rfc2212) specifies bounded-delay
+service for policed traffic with reservations along the path. Its permitted
+spare-capacity sharing does not itself establish our stronger counterfactual
+coupling. Likewise, Ethereum's
+[draft inclusion-list proposal](https://eips.ethereum.org/EIPS/eip-7805#core-properties)
+explicitly permits omission when a block is full; it is not per-game reserved
+admission. An engineered ingress/ledger layer could enforce stricter isolation,
+but an ordinary contract cannot infer that guarantee from consensus liveness.
+
 Private intake with reserved capacity offers a more controllable interface,
 at the cost of an explicit confidentiality and availability trust model.
 Removing explicit failure bonuses is not an alternative proof: expelling a
