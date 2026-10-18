@@ -11,6 +11,9 @@ raw traffic, complete pending observation, a global exclusion floor and the
 specified metadata discipline are substantive conditions. Ordinary bounded
 latency or independent packet delays alone do not imply them.
 
+The [mechanization plan](se-concurrent-mechanization.md) specifies the checked
+deliverable, parallel proof tracks and later common-runtime consolidation.
+
 ## The theorem's exact class
 
 Fix a finite well-formed source setup, independent initial private input cells,
