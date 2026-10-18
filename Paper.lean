@@ -2,6 +2,8 @@ import Vegas.Pending.PhaseBindingServiceCompletion
 import GameTheoryExtensions.Analysis.FailureRewardDeterrence
 import Vegas.Examples.CommitSeedSignallingNativeBounds
 import Vegas.Examples.CommitSeedBroadcast
+import Vegas.Examples.CommitTimingInformation
+import Interaction.ReactiveEmptyInputs
 import Vegas.Game.PhaseObservableDomainWord
 import Vegas.Game.PhaseCountServiceForeignWord
 import Vegas.Pending.PhaseBindingSuccessFunction
@@ -17886,3 +17888,75 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in
 #print axioms GameTheory.FailureReward.exclusion_probabilities
+
+/-- info:
+'Vegas.Examples.CommitTimingInformation.exists_honest_sequentialEquilibrium_alice_value'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.CommitTimingInformation.exists_honest_sequentialEquilibrium_alice_value
+
+/-- info:
+'Vegas.Examples.CommitTimingInformation.addressed_scheduler_eq'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.CommitTimingInformation.addressed_scheduler_eq
+
+/-- info:
+'Vegas.Examples.CommitTimingInformation.alice_clock_two_empty_input'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.CommitTimingInformation.alice_clock_two_empty_input
+
+/-- info:
+'Vegas.Examples.CommitTimingInformation.bob_clock_two_quiet_input'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.CommitTimingInformation.bob_clock_two_quiet_input
+
+/-- info:
+'Vegas.Examples.CommitTimingInformation.bob_quiet_bad_posterior'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.CommitTimingInformation.bob_quiet_bad_posterior
+
+/-- info:
+'Vegas.Examples.CommitTimingInformation.no_forbidden_supported_of_ownPastPermitted'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.CommitTimingInformation.no_forbidden_supported_of_ownPastPermitted
+
+/-- info:
+'Vegas.Examples.CommitTimingInformation.raw_equilibrium_extends_counted'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.CommitTimingInformation.raw_equilibrium_extends_counted
+
+/-- info:
+'Vegas.Examples.CommitTimingInformation.raw_equilibrium_counted_deviation_support'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.CommitTimingInformation.raw_equilibrium_counted_deviation_support
+
+/-- info:
+'Vegas.Examples.CommitTimingInformation.raw_equilibrium_supported_commit_support'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.CommitTimingInformation.raw_equilibrium_supported_commit_support
+
+/-- info:
+'Vegas.EventGraphRuntime.PhaseCount.onePacketMenu_trace_of_completeInput'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.PhaseCount.onePacketMenu_trace_of_completeInput
+
+/-- info:
+'Interaction.ReactiveApplication.complete_decision_inputs_eq_nil'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Interaction.ReactiveApplication.complete_decision_inputs_eq_nil
+
+/-- info:
+'Interaction.ReactiveApplication.empty_inputs_recorded_silent'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Interaction.ReactiveApplication.empty_inputs_recorded_silent

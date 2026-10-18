@@ -239,3 +239,4 @@ import Vegas.Examples.OnePacketStructuralHypotheses
 import Vegas.Examples.OnePacketCommitRevealHypotheses
 import Vegas.Examples.CommitSeedSignallingNativeBounds
 import Vegas.Examples.CommitSeedBroadcast
+import Vegas.Examples.CommitTimingInformation

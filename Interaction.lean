@@ -195,3 +195,4 @@ import Interaction.ReactiveMenuFinishTrace
 import Interaction.ReactiveRecordedMenuTrace
 import Interaction.ReactiveSchedulerRelabel
 import Interaction.ReactiveSchedulerSeedContinuation
+import Interaction.ReactiveEmptyInputs

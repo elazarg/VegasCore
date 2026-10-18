@@ -1,6 +1,6 @@
 # Private service signals with an exclusion loss above the payoff range
 
-**Deterrence: aggregate bound checked · arbitrary-loss timing argument in math · native certification open.**
+**Deterrence: aggregate bound ✓ · private-input source/audit ✓ · native timing/SE open.**
 
 The full three-player native equilibrium obstruction remains pending. This
 note changes neither the preservation target nor the service assumptions in

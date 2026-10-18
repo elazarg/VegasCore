@@ -2,7 +2,7 @@
 
 **SE: non-concurrent ✓ · recovery source ✓ · native word/G coupling ✓ · posterior/RAW repair/service incentives open.**
 
-**Deterrence: aggregate bound ✓ · arbitrary-loss timing argument in math · native certification open.**
+**Deterrence: aggregate bound ✓ · private-input source/audit ✓ · native timing/SE open.**
 
 The [mathematical proof dependency](se-preservation-math.md#scope-and-proof-dependency)
 states the source selection, conditional transport and deviation arguments,
@@ -58,9 +58,15 @@ tests arbitrary finite individual exclusion losses with one fixed two-player
 source game. Both of a helper's timing choices protect its own survival, but
 their effect on another player's failure probability strictly depends on its
 private type. The resulting timing signal rewards delay even as that failure
-probability becomes arbitrarily small. The reduced-game argument is
-mathematical; its actual native RAW, information and service certification
-remain open. It is not a checked impossibility theorem for the full runtime.
+probability becomes arbitrarily small. The native fixture
+`Vegas.Examples.CommitTimingInformation` proves an actual source SE with value
+one half, complete native input equalities, the quiet callback kernel's exact
+Bayes ratio, and the raw count-audit restriction for arbitrary individual losses
+above one. The same assessed strategy has identical counted continuation laws,
+including whole-policy deviations and supported current choices. Transport to
+the full assessed history fiber, service certification and native timing
+incentives remain open. It is not a checked impossibility theorem for the full
+runtime.
 
 <details>
 <summary>Checked recovery milestones and remaining proof obligations</summary>

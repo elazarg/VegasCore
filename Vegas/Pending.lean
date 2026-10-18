@@ -754,3 +754,4 @@ import Vegas.Pending.PhaseSeedEmissionPrefix
 import Vegas.Pending.PhaseCountedTrace
 import Vegas.Pending.PhaseBindingOpaqueClock
 import Vegas.Pending.PhaseClearSemanticProgress
+import Vegas.Pending.PhaseCountedFiber

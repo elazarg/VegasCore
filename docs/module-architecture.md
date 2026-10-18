@@ -27,6 +27,12 @@ assessed belief bounds and first-late equilibrium transmission incentives.
 Proper continuation survival and full-information count-menu reflection are
 also checked. Its full native sequential-equilibrium obstruction remains open.
 
+The [private-input timing fixture](../Vegas/Examples/CommitTimingInformation.lean)
+retains an immutable hidden source parameter. It checks a source equilibrium
+with value one half, complete native input identities, actual quiet-prefix
+likelihoods and the count-audit restriction for arbitrary individual exclusion
+losses. Its native service certification and equilibrium obstruction remain open.
+
 Useful existing boundaries are the
 [source runtime](../Vegas/Game/RevealService.lean),
 [fixed service specification](../Vegas/Game/SourceServiceSpec.lean),
