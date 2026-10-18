@@ -14,6 +14,8 @@ namespace Vegas.Examples.CommitSeedBroadcast
 open SourceProgram EventGraph EventGraphRuntime Interaction GameTheory GameTheory.Protocol
   GameTheory.Protocol.ExecutionProtocol GameTheory.Math.Probability
 
+variable (clock : Nat)
+
 theorem initial_eq_compiled :
     initial = (setup.initialLaw.map encodeInputs).map (PhaseRuntimeState.initial plan) := by
   change PMF.pure initialState = ((PMF.pure (Env.empty (CellVal simpleExpr))).map
@@ -59,12 +61,20 @@ def lateAtRule (clock : Nat) (_owner : Player) (coordinate : CommitAttemptEvent 
   if coordinate.attempt = originalAttempt then decide (clocks.getLastD 0 = clock) else true
 
 open Classical in
-/-- The original first opportunity is skipped; the first packet is emitted
-at clock two. Every later attempt uses its protected first opportunity. -/
-def fixedLatePolicy (owner : Player) : app.Policy := fun past view =>
-  if view.application.2.attempt = originalAttempt ∧ view.application.2.native.clock = 0 then
+/-- The selected original clock controls the first binding packet. Positive
+clock choices skip the initial opportunity; retries use their protected first opportunity. -/
+def scheduledProperPolicy (clock : Nat) (owner : Player) : app.Policy := fun past view =>
+  if view.application.2.attempt = originalAttempt ∧
+      view.application.2.native.clock = 0 ∧ clock ≠ 0 then
     PMF.pure ⟨none⟩
-  else properPolicy (lateAtRule 2) owner past view
+  else properPolicy (lateAtRule clock) owner past view
+
+/-- Clock zero is the ordinary protected early comparator. -/
+theorem scheduledProperPolicy_zero (owner : Player) :
+    scheduledProperPolicy 0 owner = properPolicy (lateAtRule 0) owner := by
+  funext past view
+  unfold scheduledProperPolicy
+  exact ite_eq_right (fun enabled => enabled.2.2 rfl)
 
 theorem properPolicy_counted
     (rule : Player → CommitAttemptEvent graph → List Nat → Bool) (owner : Player)
@@ -76,24 +86,24 @@ theorem properPolicy_counted
     0 (by norm_num) (by norm_num) 0 (by norm_num) (by norm_num)
     owner past view response supported
 
-theorem fixedLatePolicy_counted (owner : Player) (past : List app.PlayerEntry)
+theorem scheduledProperPolicy_counted (owner : Player) (past : List app.PlayerEntry)
     (view : app.PlayerView) (response : app.Action)
-    (supported : response ∈ (fixedLatePolicy owner past view).support) :
+    (supported : response ∈ (scheduledProperPolicy clock owner past view).support) :
     response ∈ countedMenu.actions owner past view := by
   classical
-  unfold fixedLatePolicy at supported
+  unfold scheduledProperPolicy at supported
   split at supported
   · cases (PMF.mem_support_pure_iff _ _).mp supported
     exact PhaseCount.silence_onePacket runtime leaks bounds owner past view
-  · exact properPolicy_counted (lateAtRule 2) owner past view response supported
+  · exact properPolicy_counted (lateAtRule clock) owner past view response supported
 
 def properContinuation
     (rule : Player → CommitAttemptEvent graph → List Nat → Bool) (owner : Player) :
     rawModel.BehavioralPolicy owner :=
   rawMenu.restrictPolicy initial horizon scheduler owner (properPolicy rule owner)
 
-def fixedLateContinuation (owner : Player) : rawModel.BehavioralPolicy owner :=
-  rawMenu.restrictPolicy initial horizon scheduler owner (fixedLatePolicy owner)
+def scheduledProperContinuation (clock : Nat) (owner : Player) : rawModel.BehavioralPolicy owner :=
+  rawMenu.restrictPolicy initial horizon scheduler owner (scheduledProperPolicy clock owner)
 
 theorem decode_properContinuation
     (rule : Player → CommitAttemptEvent graph → List Nat → Bool) (owner : Player) :
@@ -104,27 +114,27 @@ theorem decode_properContinuation
   exact countedInRaw owner past view
     (properPolicy_counted rule owner past view action supported)
 
-theorem decode_fixedLateContinuation (owner : Player) :
+theorem decode_scheduledProperContinuation (owner : Player) :
     app.decodePolicy (rawMenu.embedPolicy initial horizon scheduler owner
-      (fixedLateContinuation owner)) = fixedLatePolicy owner := by
+      (scheduledProperContinuation clock owner)) = scheduledProperPolicy clock owner := by
   apply rawMenu.decode_restrictPolicy_of_covered
   intro past view action supported
   exact countedInRaw owner past view
-    (fixedLatePolicy_counted owner past view action supported)
+    (scheduledProperPolicy_counted clock owner past view action supported)
 
 /-- The concrete late deviation is silent at every actual original initial
 callback, with its literal recalled word and view. -/
-theorem fixedLatePolicy_initial (owner : Player) :
-    fixedLatePolicy owner ((initialCallback owner).recall owner)
+theorem scheduledProperPolicy_initial_wait (owner : Player) (nonzero : clock ≠ 0) :
+    scheduledProperPolicy clock owner ((initialCallback owner).recall owner)
       ((initialCallback owner).observe app owner) = PMF.pure ⟨none⟩ := by
   classical
-  unfold fixedLatePolicy
+  unfold scheduledProperPolicy
   apply ite_eq_left
   have application : (initialCallback owner).application = initialState := by
     fin_cases owner <;> rfl
   change (initialCallback owner).application.attempt = originalAttempt ∧
-    (initialCallback owner).application.current.native.clock = 0
+    (initialCallback owner).application.current.native.clock = 0 ∧ clock ≠ 0
   rw [application]
-  exact ⟨initialState_attempt, initialState_clock⟩
+  exact ⟨initialState_attempt, initialState_clock, nonzero⟩
 
 end Vegas.Examples.CommitSeedBroadcast

@@ -254,11 +254,9 @@ private theorem quiet_advance_round (seed : Seeds) (players : Player → app.Pol
     PMF.pure_bind, ReactiveApplication.dispatch, advance_law, PMF.pure_bind]
   rfl
 
-/-- No Nature or timing table is refreshed: the real first five rounds are pure. -/
-theorem quietStart_law (seed : Seeds) (players : Player → app.Policy)
-    (waited : ∀ owner, players owner ((initialCallback owner).recall owner)
-      ((initialCallback owner).observe app owner) = PMF.pure ⟨none⟩) :
-    app.runRounds (family seed) players 5 initialExecution = PMF.pure quietStart := by
+/-- Both passive clock advances retain the exact original quiet execution. -/
+theorem quiet_initial_advances (seed : Seeds) (players : Player → app.Policy) :
+    app.runRounds (family seed) players 2 quietAfterCallbacks = PMF.pure quietStart := by
   have first := quiet_advance_round seed players quietAfterCallbacks (by
     change initialState.attempt = originalAttempt
     exact initialState_attempt) (Or.inl rfl)
@@ -267,9 +265,16 @@ theorem quietStart_law (seed : Seeds) (players : Player → app.Policy)
     exact initialState_attempt) (Or.inr (by
     rw [advance_environmentRecall, List.length_append, List.length_singleton]
     rfl))
-  rw [show 5 = 3 + 2 by decide, app.runRounds_add, quiet_callbacks_law seed players waited,
-    PMF.pure_bind, ReactiveApplication.runRounds, first, PMF.pure_bind,
+  rw [ReactiveApplication.runRounds, first, PMF.pure_bind,
     ReactiveApplication.runRounds, second, PMF.pure_bind, ReactiveApplication.runRounds]
   rfl
+
+/-- No Nature or timing table is refreshed: the real first five rounds are pure. -/
+theorem quietStart_law (seed : Seeds) (players : Player → app.Policy)
+    (waited : ∀ owner, players owner ((initialCallback owner).recall owner)
+      ((initialCallback owner).observe app owner) = PMF.pure ⟨none⟩) :
+    app.runRounds (family seed) players 5 initialExecution = PMF.pure quietStart := by
+  rw [show 5 = 3 + 2 by decide, app.runRounds_add, quiet_callbacks_law seed players waited,
+    PMF.pure_bind, quiet_initial_advances]
 
 end Vegas.Examples.CommitSeedBroadcast

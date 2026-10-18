@@ -138,7 +138,7 @@ private theorem commandComposition_wait (players : Player → app.Policy)
     commandComposition_physical players commands execution]
   rfl
 
-private theorem commandComposition_callbacks (players : Player → app.Policy)
+theorem commandComposition_callbacks (players : Player → app.Policy)
     (commands : List app.Command)
     (permitted : ∀ command ∈ commands, command = .wait ∨ ∃ owner, command = .activate owner)
     (execution : app.Execution) :
@@ -233,11 +233,11 @@ private theorem respond_publicView (execution : app.Execution) (owner : Player)
   | none => rfl
   | some material => exact PhaseCount.submit_publicView execution.application owner material
 
-private def NoHelperBlock (execution : app.Execution) : Prop :=
+def NoHelperBlock (execution : app.Execution) : Prop :=
   execution.application.publicView = quietStart.application.publicView ∧
     EmptyEarlySnapshot execution ∧ 5 ≤ execution.environmentRecall.length
 
-private theorem noHelperBlock_command (seed : Seeds) (count : Nat) (inside : count < 9)
+theorem noHelperBlock_command (seed : Seeds) (count : Nat) (inside : count < 9)
     (execution : app.Execution) (valid : NoHelperBlock execution)
     (position : execution.environmentRecall.length = 5 + count) :
     family seed execution.environmentRecall (execution.observeEnvironment app) =
@@ -260,7 +260,7 @@ private theorem noHelperBlock_command (seed : Seeds) (count : Nat) (inside : cou
       ite_true, middle]
   all_goals split_ifs <;> simp_all
 
-private theorem firstLateCommands_permitted (seed : Seeds) :
+theorem firstLateCommands_permitted (seed : Seeds) :
     ∀ command ∈ firstLateCommands seed,
       command = .wait ∨ ∃ owner, command = .activate owner := by
   intro command member
@@ -301,7 +301,7 @@ private theorem noHelperBlock_dispatch (players : Player → app.Policy)
   · rw [recalled, List.length_append, List.length_singleton]
     omega
 
-private theorem noHelperBlock_run (seed : Seeds) (players : Player → app.Policy)
+theorem noHelperBlock_run (seed : Seeds) (players : Player → app.Policy)
     (execution : app.Execution) (valid : NoHelperBlock execution)
     (position : execution.environmentRecall.length = 5) (count : Nat) (within : count ≤ 9)
     (next : app.Execution)
@@ -332,7 +332,7 @@ private theorem noHelperBlock_run (seed : Seeds) (players : Player → app.Polic
       exact noHelperBlock_dispatch players _ (firstLateCommands_permitted seed _ member) before
         next beforeValid round
 
-private theorem runRounds_commandComposition (seed : Seeds) (players : Player → app.Policy)
+theorem runRounds_commandComposition (seed : Seeds) (players : Player → app.Policy)
     (commands : List app.Command) (execution : app.Execution)
     (selected : ∀ count < commands.length, ∀ next ∈
       (app.runRounds (family seed) players count execution).support,

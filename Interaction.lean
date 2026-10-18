@@ -190,3 +190,8 @@ import Interaction.ReactiveMarkedReach
 import Interaction.ReactiveRecordedResponseAfter
 import Interaction.ReactiveInvariantPrefix
 import Interaction.ReactiveSchedulerSeedTrace
+import Interaction.ReactiveCompleteInput
+import Interaction.ReactiveMenuFinishTrace
+import Interaction.ReactiveRecordedMenuTrace
+import Interaction.ReactiveSchedulerRelabel
+import Interaction.ReactiveSchedulerSeedContinuation

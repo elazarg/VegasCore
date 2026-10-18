@@ -22,8 +22,10 @@ Search with rg and inspect signatures with lean-defs.py before adding machinery.
 
 The [three-owner timing fixture](../Vegas/Examples/CommitSeedBroadcast.lean)
 collects its source, independent seed law, full native callback replay,
-initialized input weights, audit incentives and service bounds. Its full native
-sequential-equilibrium obstruction remains an explicit open obligation.
+initialized input weights, audit incentives, asynchronous service contracts,
+assessed belief bounds and first-late equilibrium transmission incentives.
+Proper continuation survival and full-information count-menu reflection are
+also checked. Its full native sequential-equilibrium obstruction remains open.
 
 Useful existing boundaries are the
 [source runtime](../Vegas/Game/RevealService.lean),

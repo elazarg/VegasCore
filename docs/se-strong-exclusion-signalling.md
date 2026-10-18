@@ -1,6 +1,6 @@
 # Private service signals with an exclusion loss above the payoff range
 
-**Math worked out · Lean: 129 modules checked privately · first-late timing ✓ · native SE theorem open.**
+**Math worked out · Lean: 134 modules checked by Lake · first-late timing ✓ · native SE theorem open.**
 
 The full three-player native equilibrium obstruction remains pending. This
 note changes neither the preservation target nor the service assumptions in
@@ -68,13 +68,25 @@ plays complete within horizon 128, and every ready owner has its opportunity
 (`Vegas.Examples.CommitSeedBroadcast.family_completesPlay`,
 `Vegas.Examples.CommitSeedBroadcast.family_opportunity`).
 
-Further private checks establish the full asynchronous service contract,
-private activation calendar and binding-success property, both assessed
-first-late belief bounds, and strict first-late transmission incentives.
-Proper continuations survive after original admission. Complete observations
-also transport a counted representative to
-every raw history in the same full information fiber. Their public integration
-is pending. The remaining proof includes the quantitative off-path preparation
+The checked service contracts include
+`Vegas.Examples.CommitSeedBroadcast.family_asyncContract`,
+`Vegas.Examples.CommitSeedBroadcast.family_privateActivationCalendar` and
+`Vegas.Examples.CommitSeedBroadcast.family_privateBindingSuccess`.
+The full assessed first-late bounds are
+`Vegas.Examples.CommitSeedBroadcast.assessed_firstLate_bad_le` and
+`Vegas.Examples.CommitSeedBroadcast.assessed_firstLate_regular_lower`.
+They imply the actual unchanged equilibrium response cannot WAIT at the
+empty-ledger first-late input
+(`Vegas.Examples.CommitSeedBroadcast.raw_first_late_response_ne_wait`).
+This includes off-path inputs; it assumes neither a clean belief nor the
+desired future survival. Proper continuations survive after original admission
+(`Vegas.Examples.CommitSeedBroadcast.scheduled_proper_original_binding_survives`).
+Complete observations transport a counted representative to every raw history
+in the same full information fiber
+(`Vegas.Examples.CommitSeedBroadcast.counted_input_raw_fiber_trace`).
+
+These sources build with `lake build`; the selected capstones have guarded
+axiom reports containing only `propext`, `Classical.choice` and `Quot.sound`. The remaining proof includes the quantitative off-path preparation
 comparison, the helper's later conditional belief argument, continuation payoff
 comparisons and the all-equilibrium contradiction. No preservation checklist
 box closes on these partial results.

@@ -17483,3 +17483,139 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms
   Vegas.Examples.CommitSeedBroadcast.properPolicy_opening_response
+
+/-- info:
+'Vegas.Examples.CommitSeedBroadcast.family_asyncContract'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.CommitSeedBroadcast.family_asyncContract
+
+/-- info:
+'Vegas.Examples.CommitSeedBroadcast.scheduler_asyncContract'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.CommitSeedBroadcast.scheduler_asyncContract
+
+/-- info:
+'Vegas.Examples.CommitSeedBroadcast.family_privateActivationCalendar'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.CommitSeedBroadcast.family_privateActivationCalendar
+
+/-- info:
+'Vegas.Examples.CommitSeedBroadcast.family_privateBindingSuccess'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.CommitSeedBroadcast.family_privateBindingSuccess
+
+/-- info:
+'Vegas.Examples.CommitSeedBroadcast.counted_input_raw_fiber_trace'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.CommitSeedBroadcast.counted_input_raw_fiber_trace
+
+/-- info:
+'Vegas.Examples.CommitSeedBroadcast.assessed_firstLate_bad_le'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.CommitSeedBroadcast.assessed_firstLate_bad_le
+
+/-- info:
+'Vegas.Examples.CommitSeedBroadcast.assessed_firstLate_regular_lower'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.CommitSeedBroadcast.assessed_firstLate_regular_lower
+
+/-- info:
+'Vegas.Examples.CommitSeedBroadcast.raw_first_late_response_ne_wait'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.CommitSeedBroadcast.raw_first_late_response_ne_wait
+
+/-- info:
+'Vegas.Examples.CommitSeedBroadcast.raw_proper_clock_two_context_value_lower'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.CommitSeedBroadcast.raw_proper_clock_two_context_value_lower
+
+/-- info:
+'Vegas.Examples.CommitSeedBroadcast.raw_first_late_wait_context_value_upper'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.CommitSeedBroadcast.raw_first_late_wait_context_value_upper
+
+/-- info:
+'Vegas.Examples.CommitSeedBroadcast.scheduled_proper_original_binding_survives'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.CommitSeedBroadcast.scheduled_proper_original_binding_survives
+
+/-- info:
+'Vegas.Examples.CommitSeedBroadcast.scheduled_proper_eligible_finish_survives'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.CommitSeedBroadcast.scheduled_proper_eligible_finish_survives
+
+/-- info:
+'Vegas.Examples.CommitSeedBroadcast.counted_scheduled_proper_finish_foreign_miss'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.CommitSeedBroadcast.counted_scheduled_proper_finish_foreign_miss
+
+/-- info:
+'Vegas.Examples.CommitSeedBroadcast.nativeSeedLaw_survival_reward_expectation'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.CommitSeedBroadcast.nativeSeedLaw_survival_reward_expectation
+
+/-- info:
+'Vegas.Examples.CommitSeedBroadcast.recorded_unusable_binding_result'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.CommitSeedBroadcast.recorded_unusable_binding_result
+
+/-- info:
+'Vegas.Examples.CommitSeedBroadcast.completed_binding_failure_persists'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.CommitSeedBroadcast.completed_binding_failure_persists
+
+/-- info:
+'Vegas.Examples.CommitSeedBroadcast.standing_failed_binding_terminal_payoff'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.CommitSeedBroadcast.standing_failed_binding_terminal_payoff

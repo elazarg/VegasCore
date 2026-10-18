@@ -27,7 +27,7 @@ theorem initialWaitEntry_clock (owner : Player) :
     (initialWaitEntry owner).beforeView.application.2.native.clock = 0 := by
   fin_cases owner <;> exact initialState_clock
 
-private theorem physicalCallbacks_cons (players : Player → app.Policy) (owner : Player)
+theorem physicalCallbacks_cons (players : Player → app.Policy) (owner : Player)
     (owners : List Player) (execution : app.Execution) :
     physicalCallbacks players (owner :: owners) execution =
       (app.dispatch players (.activate owner) (physicalExecution execution)).bind
@@ -40,7 +40,7 @@ private theorem physicalCallbacks_cons (players : Player → app.Policy) (owner 
   intro next _
   exact commandComposition_physical players _ next
 
-private theorem physicalCallbacks_cons_support (players : Player → app.Policy) (owner : Player)
+theorem physicalCallbacks_cons_support (players : Player → app.Policy) (owner : Player)
     (owners : List Player) (execution final : app.Execution)
     (reached : final ∈ (physicalCallbacks players (owner :: owners) execution).support) :
     ∃ action, action ∈ (players owner ((completeActivation (physicalExecution execution)
@@ -84,7 +84,7 @@ private theorem physicalCallbacks_publicView (players : Player → app.Policy)
         execution final reached
       exact (ih _ future).trans (response_publicView _ owner action)
 
-private theorem physicalCallbacks_no_own_response (players : Player → app.Policy)
+theorem physicalCallbacks_no_own_response (players : Player → app.Policy)
     (owners : List Player) (owner : Player) (absent : owner ∉ owners)
     (execution final : app.Execution)
     (reached : final ∈ (physicalCallbacks players owners execution).support) :
