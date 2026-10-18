@@ -6,6 +6,7 @@ import Vegas.Game.RecordedSourceHistory
 import Vegas.Game.ServiceRevealTail
 import Vegas.Compile.EventGraphSuffix
 import Vegas.Pending.PhaseFailureOrder
+import Vegas.Game.PhaseProposalReadback
 
 /-! # Source-order reconstruction of completed concurrent reveal phases -/
 
@@ -51,11 +52,12 @@ def NativePublicSourceStep {graph : Vegas.EventGraph Player L}
   (¬ ProtocolState.terminal program first.1 ∧
     ProtocolState.atCommit program first.1 = false ∧
     ∃ joint, last ∈ (ProtocolState.recoveryStep program first.1 first.2 joint).support) ∧
-  ∀ event : graph.EventId,
+  (∀ event : graph.EventId,
     event.val = offset + (instructionCount program -
       ProtocolState.remaining program first.1) →
     last.2 = (graph.actor? event).elim first.2 fun owner =>
-      if native.PublicFailure event then insert owner first.2 else first.2
+      if native.PublicFailure event then insert owner first.2 else first.2) ∧
+  NativeProposalReadback native offset program first.1
 
 variable (setup : Setup (Player := Player) (L := L)) (mode : EventGraph.ExecutionMode)
 
@@ -259,19 +261,23 @@ theorem completed_reveal_phase_source_path :
                 (.reveal published owner name fresh source unresolved next))
               (by
                 intro left right moved
-                obtain ⟨⟨running, notCommit, joint, supported⟩, update⟩ := moved
-                refine ⟨⟨running, notCommit, joint, ?_⟩, ?_⟩
+                obtain ⟨⟨running, notCommit, joint, supported⟩, update, readback⟩ := moved
+                refine ⟨⟨running, notCommit, joint, ?_⟩, ?_, ?_⟩
                 · exact (PMF.mem_support_map_iff _ _ _).mpr ⟨right, supported, rfl⟩
                 · intro selected ranked
                   apply update selected ?_
                   have bounded := ProtocolState.remaining_le_instructionCount next left.1
                   simp only [instructionCount, ProtocolState.remaining, Sum.elim_inr] at ranked
-                  omega)
+                  omega
+                · exact NativeProposalReadback.lift
+                    (ProtocolSuffix.revealTail fresh source unresolved next .initial)
+                    native.native offset (offset + 1)
+                    (by simp only [instructionCount]; omega) left.1 readback)
               _ _ path
             apply Relation.ReflTransGen.head ?_ lifted
             refine ⟨⟨(fun impossible => impossible), rfl,
               Function.update (fun _ => none) owner
-                (some ⟨.reveal owner name disclose, false⟩), ?_⟩, ?_⟩
+                (some ⟨.reveal owner name disclose, false⟩), ?_⟩, ?_, ?_⟩
             · dsimp only [Prod.fst, Prod.snd, ProtocolState.entry]
               rw [oneStep]
               exact (PMF.mem_support_pure_iff _ _).mpr rfl
@@ -283,6 +289,10 @@ theorem completed_reveal_phase_source_path :
               subst selected
               rw [acting]
               exact publicUpdate
+            · exact nativeProposalReadback_reveal fresh source unresolved next native.native
+                offset event rankEq refs entry
+                (compileChecks (published := published) refs registry entry.revelations source)
+                outputEq codeEq agree
           · intro actions
             have tailActions : ∀ index action,
                 decodeEventAction setup.program (tailEmbedding.event index) action =

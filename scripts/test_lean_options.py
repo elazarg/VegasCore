@@ -180,7 +180,7 @@ class LeanOptionTests(unittest.TestCase):
                 self.assertTrue(any("must immediately follow" in error
                                     for error in CHECKER.check_audit_pins(text)))
 
-    def test_axiom_prints_are_allowed_only_in_root_audit(self):
+    def test_axiom_prints_are_allowed_only_in_dedicated_audits(self):
         commands = ("#print axioms witness\n",
                     "#guard_msgs in #print axioms witness\n",
                     "#guard_msgs in\n#print\n  axioms\n  witness\n")
@@ -190,6 +190,15 @@ class LeanOptionTests(unittest.TestCase):
                 for path in ("Vegas/Proof.lean", "Interaction/Example.lean",
                              "VegasTests/Example.lean", "Paper/Source.lean"):
                     self.assertEqual(len(CHECKER.check_axiom_prints(Path(path), text)), 1)
+
+    def test_regression_axiom_prints_require_guards(self):
+        path = Path("VegasTests/AxiomAudit/Source.lean")
+        for text in ("#guard_msgs in #print axioms witness\n",
+                     "#guard_msgs (whitespace := lax) in\n#print\n  axioms\n  witness\n"):
+            with self.subTest(text=text):
+                self.assertEqual(CHECKER.check_axiom_prints(path, text), [])
+        self.assertEqual(len(CHECKER.check_axiom_prints(path, "#print axioms witness\n")), 1)
+        self.assertTrue(CHECKER.check_admissions(path, "#guard_msgs in\ntheorem bad : True := by sorry\n"))
 
     def test_documented_axiom_prints_are_not_commands(self):
         text = ('/- /- #print axioms hidden -/ -/\n'

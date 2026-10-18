@@ -194,12 +194,12 @@ quantifiers and a passing build. The labels below never enter Lean names.
 | Track | Checked statement | Status |
 | --- | --- | --- |
 | Source | Proposal moves/signals retain guard- and delivery-failed values; intended restriction is unchanged | Partial: semantic trace erasure and stored-value disclosure readback checked; intended restriction remains open |
-| Source | Archive-preserving erasure/NoMiss queries and pool antichains | Partial: normalized query, same-labeled suffix transport and full-information readback checked; archive-to-chronology alignment, complete fibers and pool antichains remain open |
+| Source | Archive-preserving erasure/NoMiss queries and pool antichains | Partial: normalized-query antichains, unique archive addresses, same-labeled suffix transport and full-information readback checked; archive-to-chronology alignment and complete fibers remain open |
 | Source | Actual conditional Bayes/action-vector exchange at fixed controls | Open |
 | Source | Affine NoMiss comparison and one joint pooled consistency witness | Open |
 | Source | Enriched source SE extending the selected intended SE and joint law | Open |
 | Runtime | Concrete correlated, block-frozen reserved scheduler family | Partial: joint tape and exact scheduler-mixture realization checked; block service certification remains open |
-| Runtime | All-raw opportunity/receipt/completion, timely-valid acceptance and noncircular budgets | Partial: actual queue draining, clock/traffic accounting and due-expiry work decrease checked; uniform cycle exhaustion, opportunity/timeliness and mixture trace lifting remain open |
+| Runtime | All-raw opportunity/receipt/completion, timely-valid acceptance and noncircular budgets | Partial: policy-independent cycle bound, derived packet capacity/horizon, actual queue draining and completion under the correlated scheduler mixture checked; opportunity, full receipt coverage and timely-valid acceptance remain open |
 | Runtime | Same-tape admission monotonicity and foreign-service invariance | Open |
 | Runtime | Complete proposal reconstruction and required fresh-slot reserve | Open |
 | Runtime | Supported concurrent instance with variable service orders | Checked: both orders have supported actual prefixes with distinct owners' typed, timely, handler-admissible packets pending together; see the fixture evidence below |
@@ -236,9 +236,24 @@ proposal's actual original callback and successful typed binding.
 outcomes; `proposalRecovery_info_eq_of_semantic_public_coordinate` reconstructs
 full enriched information from semantic information, proposal chronology and
 the owner's labeled choices. These do not assert a conditional Bayes identity.
+`proposalRecoveryArchive_eq_of_same_address` makes the canonical archive a
+partial function of its address; `proposalRecovery_prefix_eq_of_same_query`
+proves that normalized-query copies form an antichain along actual histories.
+`PhaseProposal.recorded_disclosure_submitted` traces recorded truthful openings
+to actual submitted packets even when their guard excludes the author.
+`source_proposal_delta_of_readback` retains exact typed proposal values through
+the existing source-order replay; whole enriched-history correspondence still
+requires matching physical publication attempts to source generations.
 `ReservedEpoch.clock_history` accounts for every physical tick;
 `ReservedEpoch.expiry_round_decreases` gives strict finite-work progress at an
-actual due-expiry round. The remaining global cycle bound is a proof obligation.
+actual due-expiry round. `ReservedEpoch.runRounds_complete` bounds all-raw
+completion by `(workBound + 1) * (maximumDeadline + 2)` cycles, independently
+of packet capacity. `ReservedEpoch.implementation_completesPlay` derives
+completion for every raw history under the actual correlated mixture and an
+arbitrary initial input law. It extracts a supported original tape rather than
+assuming a pointwise service property survives behavioral mixing. Packet
+capacity and the physical horizon are derived from this cycle bound; timely
+service and the remaining coupling obligations are separate.
 
 The concrete fixture is checked for every source input bit and both service
 orders. `ReservedEpochConcurrency.concurrent_prefix_supported` supplies the

@@ -22,6 +22,12 @@ outside the Lean source and default build roots.
 
 Search with rg and inspect signatures with lean-defs.py before adding machinery.
 
+[Paper](../Paper.lean) contains only paper-facing theorem statements and their
+axiom pins. Detailed proof-dependency regressions belong in
+[the test audits](../VegasTests/AxiomAudit.lean), grouped by subject and included
+in the default build. These tests permit guarded dependency prints, never proof
+admissions or extra axioms.
+
 The [three-owner timing fixture](../Vegas/Examples/CommitSeedBroadcast.lean)
 collects its source, independent seed law, full native callback replay,
 initialized input weights, audit incentives, asynchronous service contracts,
@@ -97,6 +103,11 @@ Useful existing boundaries are the
 [correlated reserved-epoch scheduler realization](../Vegas/Pending/ReservedEpochScheduler.lean),
 [bounded processing epochs and actual raw receipts](../Vegas/Pending/ReservedEpochDelivery.lean),
 [raw submission bounds from reserved owner slots](../Vegas/Pending/ReservedEpochTraffic.lean),
+[policy-independent reserved-service completion bounds](../Vegas/Pending/ReservedEpochExhaustion.lean),
+[all-raw completion for the actual correlated scheduler mixture](../Vegas/Pending/ReservedEpochCompletion.lean),
+[unique proposal addresses and their supported origins](../Vegas/Source/ProposalRecoveryChronology.lean),
+[normalized proposal-query antichains](../Vegas/Source/ProposalRecoveryQueryAntichain.lean),
+[submitted origins of recorded disclosures after guard rejection](../Vegas/Game/PhaseProposalCompletion.lean),
 [supported correlated service with simultaneously valid pending packets](../Vegas/Examples/ReservedEpochUsableConcurrency.lean),
 [actual original callbacks and typed meanings of counted proposals](../Vegas/Pending/PhaseProposalMeaning.lean),
 [proposal-preserving supported source suffix exchange](../Vegas/Source/ProposalRecoverySupportSplice.lean),

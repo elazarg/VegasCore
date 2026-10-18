@@ -25,7 +25,7 @@ local notation "initial" => inputs.map (PhaseRuntimeState.initial plan)
 local notation "menu" => PhaseCount.onePacketMenu runtime leaks bounds
 
 omit [Fintype Player] in
-private theorem runRounds_namespace_progress
+theorem runRounds_namespace_progress
     (scheduler : (app).Scheduler) (players : Player → (app).Policy) (count : Nat)
     (before after : (app).Execution) (ordered : before.application.Ordered)
     (reached : after ∈ ((app).runRounds scheduler players count before).support) :

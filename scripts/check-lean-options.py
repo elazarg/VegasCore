@@ -125,7 +125,7 @@ def check_forbidden_constructs(relative: Path, text: str) -> list[str]:
     """Reject local trust and code-generation escape hatches.
 
     `#print axioms` is deliberately not an axiom declaration and remains the
-    dependency audit mechanism in root `Paper.lean`.
+    dependency audit mechanism in `Paper.lean` and the dedicated test audits.
     """
     clean = strip_lean_comments_and_strings(text)
     failures: list[str] = []
@@ -184,14 +184,19 @@ def check_audit_pins(text: str) -> list[str]:
 
 
 def check_axiom_prints(relative: Path, text: str) -> list[str]:
-    """Keep axiom-print commands in the single root paper audit."""
+    """Keep dependency prints in the paper or guarded regression audit modules."""
     if relative == Path("Paper.lean"):
         return []
     clean = strip_lean_comments_and_strings(text)
     failures = []
+    regression = relative.parts[:2] == ("VegasTests", "AxiomAudit")
     for match in re.finditer(r"#print\s+axioms\b", clean):
         number = clean.count("\n", 0, match.start()) + 1
-        failures.append(f"{relative}:{number}: axiom prints belong only in Paper.lean")
+        if not regression:
+            failures.append(
+                f"{relative}:{number}: axiom prints belong in Paper.lean or VegasTests/AxiomAudit")
+        elif not re.search(r"#guard_msgs[^\n]*\bin\s*$", clean[:match.start()]):
+            failures.append(f"{relative}:{number}: dependency regression must use #guard_msgs")
     return failures
 
 
@@ -217,7 +222,8 @@ def main() -> int:
         return 1
     print("Explicit binders and warning-strict compilation configured centrally; "
           "no unchecked trust or code-generation escape hatches; guarded Paper "
-          "admissions only; axiom prints confined to adjacent Paper capstone pins.")
+          "admissions only; dependency audits confined to Paper capstone pins "
+          "and guarded VegasTests/AxiomAudit regressions.")
     return 0
 
 

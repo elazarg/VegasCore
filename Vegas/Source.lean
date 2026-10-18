@@ -211,3 +211,5 @@ import Vegas.Source.ProposalRecoverySplice
 import Vegas.Source.ProposalRecoveryWordLift
 import Vegas.Source.ProposalRecoveryReadout
 import Vegas.Source.ProposalRecoveryRank
+import Vegas.Source.ProposalRecoveryChronology
+import Vegas.Source.ProposalRecoveryQueryAntichain

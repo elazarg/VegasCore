@@ -633,7 +633,7 @@ theorem NativePublicSourceStep.excluded_scan [Fintype Player]
     (inherited : Finset Player)
     (before : first.2 = inherited ∪ native.failureOwnersBefore event.val) :
     last.2 = inherited ∪ native.failureOwnersBefore (event.val + 1) := by
-  have update := step.2 event ranked
+  have update := step.2.1 event ranked
   rw [before] at update
   exact update.trans (native.union_failureOwnersBefore_successor event inherited).symm
 

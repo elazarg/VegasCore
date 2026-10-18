@@ -21,7 +21,7 @@ variable {Player RestSeed : Type} [Fintype Player] [DecidableEq Player]
 local notation "app" => phaseApplication runtime leaks
 
 omit [Fintype Player] [DecidableEq Player] in
-private theorem nonempty_before (before after : PhaseRuntimeState graph)
+theorem nonempty_of_namespace_progress (before after : PhaseRuntimeState graph)
     (progress : before.attempt.phase ≤ after.attempt.phase) (nonempty : after.phases ≠ []) :
     before.phases ≠ [] := by
   intro empty
@@ -201,7 +201,7 @@ theorem serviceBook_invariant
     · intro unfinished
       rw [(app).respond_environmentRecall]
       apply counted
-      exact nonempty_before _ _
+      exact nonempty_of_namespace_progress _ _
         ((phaseApplication_namespace_progress runtime leaks).respond execution who action
           before.accounting.safe.ordered).2 unfinished
   environment execution next command before chosen reached := by
@@ -233,7 +233,7 @@ theorem serviceBook_invariant
         simp only [List.length_append, List.length_singleton, counted unfinished]
     · refine ⟨marks, unique, transport, ?_⟩
       intro afterUnfinished
-      exact (unfinished (nonempty_before _ _
+      exact (unfinished (nonempty_of_namespace_progress _ _
         ((phaseApplication_namespace_progress runtime leaks).environmentStep execution next command
           reached before.accounting.safe.ordered).2 afterUnfinished)).elim
 

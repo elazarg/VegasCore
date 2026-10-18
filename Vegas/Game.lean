@@ -1230,3 +1230,7 @@ import Vegas.Game.PhaseProposalAddress
 import Vegas.Game.ProposalRecoveryPublicHistory
 import Vegas.Game.ProposalRecoverySpliceSupport
 import Vegas.Game.ProposalRecoveryInformationReadback
+import Vegas.Game.PhaseProposalReadback
+import Vegas.Game.PhaseProposalSourceReadback
+import Vegas.Game.PhaseProposalReplay
+import Vegas.Game.PhaseProposalCompletion

@@ -180,7 +180,7 @@ theorem RecoverySourceCheckpoint.after_sample
           (lift (Sum.inl source), state.entry.excluded)
           (lift (Sum.inr (ProtocolState.entry next after)), state.entry.excluded) := by
         apply Relation.ReflTransGen.single
-        refine ⟨⟨?_, ?_, (fun _ => none), ?_⟩, ?_⟩
+        refine ⟨⟨?_, ?_, (fun _ => none), ?_⟩, ?_, ?_⟩
         · intro stopped
           have zeroRemaining := (ProtocolState.remaining_zero_iff_terminal setup.program _).mpr
             stopped
@@ -202,6 +202,12 @@ theorem RecoverySourceCheckpoint.after_sample
             have eventRank := ranked.trans low
             omega)
           rw [same, ownerless]
+          rfl
+        · apply NativeProposalReadback.lift origin image.native 0 state.attempt.phase
+            (by
+              simp only [Nat.zero_add]
+              simpa only [eventCount_eq_instructionCount] using total.symm) (.inl source)
+          intro joint
           rfl
       obtain ⟨states, joints, chain, ending, instructions⟩ :=
         CommitRecoveryState.instructions_of_nonCommit_path setup.program sourceInitial

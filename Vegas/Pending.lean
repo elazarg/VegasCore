@@ -777,3 +777,15 @@ import Vegas.Pending.ReservedEpochProgress
 import Vegas.Pending.ReservedEpochWorkMonotone
 import Vegas.Pending.ReservedEpochResolution
 import Vegas.Pending.ReservedEpochTraceDelivery
+import Vegas.Pending.PhaseProposalRetention
+import Vegas.Pending.PhaseProposalAccepted
+import Vegas.Pending.PhaseProposalAcceptedHistory
+import Vegas.Pending.ReservedEpochRequestProgress
+import Vegas.Pending.ReservedEpochRequestTimer
+import Vegas.Pending.ReservedEpochRequestBound
+import Vegas.Pending.ReservedEpochFlatWork
+import Vegas.Pending.ReservedEpochSampleProgress
+import Vegas.Pending.ReservedEpochInterval
+import Vegas.Pending.ReservedEpochGeometry
+import Vegas.Pending.ReservedEpochExhaustion
+import Vegas.Pending.ReservedEpochCompletion

@@ -1,5 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
+import VegasTests.AxiomAudit
 import VegasTests.Disclosure
 import VegasTests.EventCompilation
 import VegasTests.EventGraph

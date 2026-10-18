@@ -142,8 +142,8 @@ theorem RecoverySourceCheckpoint.after_reveal
     apply Relation.ReflTransGen.lift
       (fun point : ProtocolState program × Finset Player =>
         (checkpoint.residual.lift point.1, point.2)) (fun left right moved => ?_) _ _ path
-    obtain ⟨⟨running, notCommit, joint, supported⟩, update⟩ := moved
-    refine ⟨⟨?_, ?_, joint, ?_⟩, ?_⟩
+    obtain ⟨⟨running, notCommit, joint, supported⟩, update, readback⟩ := moved
+    refine ⟨⟨?_, ?_, joint, ?_⟩, ?_, ?_⟩
     · intro stopped
       apply running
       apply (ProtocolState.remaining_zero_iff_terminal program left.1).mp
@@ -161,6 +161,11 @@ theorem RecoverySourceCheckpoint.after_reveal
       simp only [Nat.zero_add] at ranked
       dsimp only [program] at bounded ⊢
       omega
+    · exact NativeProposalReadback.lift checkpoint.origin image.native 0 state.attempt.phase
+        (by
+          have count := checkpoint.compiled.countEq
+          simp only [eventCount_eq_instructionCount] at count
+          omega) left.1 readback
   have rawPath := Relation.ReflTransGen.mono (fun _ _ moved => moved.1) _ _ path
   obtain ⟨states, joints, chain, ending, instructions⟩ :=
     CommitRecoveryState.instructions_of_nonCommit_path setup.program sourceInitial
