@@ -770,3 +770,10 @@ import Vegas.Pending.ReservedEpochTraffic
 import Vegas.Pending.ReservedEpochFinite
 import Vegas.Pending.PhaseProposalOrigin
 import Vegas.Pending.PhaseProposalMeaning
+import Vegas.Pending.ReservedEpochClock
+import Vegas.Pending.ReservedEpochClockAccounting
+import Vegas.Pending.ReservedEpochPendingBound
+import Vegas.Pending.ReservedEpochProgress
+import Vegas.Pending.ReservedEpochWorkMonotone
+import Vegas.Pending.ReservedEpochResolution
+import Vegas.Pending.ReservedEpochTraceDelivery

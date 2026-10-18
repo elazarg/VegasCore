@@ -25,7 +25,7 @@ private theorem publicRecall_head (who : Player)
   simp only [attemptPublicRecall, List.map_cons, List.head?_cons,
     setup.commitRecoverySignals_current, attemptPublicSignal]
 
-private theorem splice_public (focal : Player)
+theorem commitRecovery_splice_public_control (focal : Player)
     (mine others : CommitRecoveryState setup.program) (metadata : mine.MetadataEq others) :
     setup.commitRecoveryPublic (some (CommitRecoveryState.splice focal mine others)) =
       setup.commitRecoveryPublic (some others) := by
@@ -33,7 +33,7 @@ private theorem splice_public (focal : Player)
     (ProtocolState.splice_metadata_eq_others focal setup.program _ _ metadata.2.1)
   simp only [commitRecoveryPublic, CommitRecoveryState.splice, saved.1]
 
-private theorem splice_public_signal (focal observer : Player)
+theorem commitRecovery_splice_public_signal (focal observer : Player)
     (mine others : CommitRecoveryState setup.program) (metadata : mine.MetadataEq others)
     (same : setup.attemptPublicSignal observer (some mine) =
       setup.attemptPublicSignal observer (some others)) :
@@ -56,9 +56,9 @@ private theorem splice_public_signal (focal observer : Player)
           (ProtocolState.splice focal setup.program mine.point others.point))) = _
       rw [view]
       rfl
-  · exact setup.splice_public focal mine others metadata
+  · exact setup.commitRecovery_splice_public_control focal mine others metadata
 
-private theorem splice_signal_self (focal : Player)
+theorem commitRecovery_splice_signal_self (focal : Player)
     (mine others : CommitRecoveryState setup.program) (metadata : mine.MetadataEq others)
     (same : setup.attemptPublicSignal focal (some mine) =
       setup.attemptPublicSignal focal (some others)) :
@@ -69,18 +69,20 @@ private theorem splice_signal_self (focal : Player)
     (Option.some.inj (congrArg Prod.fst same))
   apply Prod.ext
   · exact congrArg some view
-  · exact (setup.splice_public focal mine others metadata).trans (congrArg Prod.snd same).symm
+  · exact (setup.commitRecovery_splice_public_control focal mine others metadata).trans
+      (congrArg Prod.snd same).symm
 
-private theorem splice_signal_other (focal observer : Player) (foreign : observer ≠ focal)
+theorem commitRecovery_splice_signal_other (focal observer : Player) (foreign : observer ≠ focal)
     (mine others : CommitRecoveryState setup.program) (metadata : mine.MetadataEq others) :
     (setup.commitRecoveryPrivate observer (some (CommitRecoveryState.splice focal mine others)),
         setup.commitRecoveryPublic (some (CommitRecoveryState.splice focal mine others))) =
       (setup.commitRecoveryPrivate observer (some others),
         setup.commitRecoveryPublic (some others)) := by
   exact Prod.ext (congrArg some (ProtocolState.splice_observe_other focal observer foreign
-    setup.program _ _ metadata.1)) (setup.splice_public focal mine others metadata)
+    setup.program _ _ metadata.1))
+      (setup.commitRecovery_splice_public_control focal mine others metadata)
 
-private theorem splice_joint_legal (focal : Player)
+theorem commitRecovery_splice_joint_legal (focal : Player)
     (mine others : CommitRecoveryState setup.program) (metadata : mine.MetadataEq others)
     (before : ProtocolView.publicOnly focal setup.program
         (ProtocolState.observe focal setup.program mine.point) =
@@ -202,7 +204,8 @@ private theorem splice_prefixes (focal : Player)
             simpa only [setup.publicRecall_head] using
               congrArg List.head? (publicPair focal).2)
           have before := Option.some.inj (congrArg Prod.fst publicBefore)
-          have mixedLegal := setup.splice_joint_legal focal mine others metadata before
+          have mixedLegal := setup.commitRecovery_splice_joint_legal
+            focal mine others metadata before
             joint rightJoint legal rightLegal
           have mixedSupport := setup.commitRecovery_step_splice_support focal mine others earlier
             metadata before joint rightJoint leftNext rightNext leftSupport rightSupport
@@ -220,7 +223,7 @@ private theorem splice_prefixes (focal : Player)
                 (hybrid.extend _ mixedLegal supported) = _
             rw [setup.publicRecall_extend, setup.publicRecall_extend, hybridPublic who]
             apply congrArg (fun head => head :: setup.attemptPublicRecall who rightEarlier)
-            apply setup.splice_public_signal focal who leftNext rightNext
+            apply setup.commitRecovery_splice_public_signal focal who leftNext rightNext
             · exact setup.commitRecovery_metadata_of_publicRecall focal
                 (earlier.extend joint legal reached)
                 (rightEarlier.extend rightJoint rightLegal rightReached) (samePublic focal)
@@ -244,14 +247,15 @@ private theorem splice_prefixes (focal : Player)
                 simpa only [↓reduceIte] using hybridInformation focal
               exact setup.information_extend_congr focal hybrid earlier _ _ mixedLegal legal
                 supported reached previous (Function.update_self ..)
-                (setup.splice_signal_self focal leftNext rightNext nextMetadata
+                (setup.commitRecovery_splice_signal_self focal leftNext rightNext nextMetadata
                   (publicPair focal).1)
             · simp only [own, ↓reduceIte]
               apply setup.information_extend_congr who hybrid rightEarlier _ _ mixedLegal rightLegal
                 supported rightReached
               · simpa only [own, ↓reduceIte] using hybridInformation who
               · exact Function.update_of_ne own ..
-              · exact setup.splice_signal_other focal who own leftNext rightNext nextMetadata
+              · exact setup.commitRecovery_splice_signal_other
+                  focal who own leftNext rightNext nextMetadata
 
 private theorem initial_joint_word {state : setup.commitRecoveryProtocol.State}
     (trace : setup.commitRecoveryProtocol.Trace state) (length : trace.length = 1) :
@@ -368,7 +372,7 @@ theorem commitRecovery_hybrid_of_initial_inputs [Fintype Player]
         publicWord
       have current := Option.some.inj (by
         simpa only [setup.publicRecall_head] using congrArg List.head? publicWord)
-      have signal := setup.splice_signal_self focal _ _ metadata current
+      have signal := setup.commitRecovery_splice_signal_self focal _ _ metadata current
       rw [initialPaste] at signal
       exact setup.initial_information_congr focal othersPrior minePrior
         othersInitial mineInitial signal

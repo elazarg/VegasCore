@@ -12,6 +12,11 @@ import Vegas.Source.ProposalRecoverySupportSplice
 import Vegas.Game.PhaseProposalAddress
 import Vegas.Pending.PhaseProposalMeaning
 import Vegas.Examples.ReservedEpochUsableConcurrency
+import Vegas.Game.ProposalRecoveryInformationReadback
+import Vegas.Game.ProposalRecoverySpliceSupport
+import Vegas.Pending.ReservedEpochClockAccounting
+import Vegas.Pending.ReservedEpochResolution
+import Vegas.Pending.ReservedEpochTraceDelivery
 import Vegas.Source.ProposalRecoveryDisclosure
 import GameTheoryExtensions.Analysis.FailureRewardDeterrence
 import Vegas.Examples.CommitSeedSignallingNativeBounds
@@ -18136,3 +18141,81 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Examples.ReservedEpochConcurrency.pending_binding_usable
+
+/-- info:
+'Vegas.SourceProgram.ProtocolState.recoveryProposal_splice'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.ProtocolState.recoveryProposal_splice
+
+/-- info:
+'Vegas.SourceProgram.Setup.proposalRecoveryProposalOf_splice_eq'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.proposalRecoveryProposalOf_splice_eq
+
+/-- info:
+'Vegas.SourceProgram.Setup.proposalRecovery_splice_joint_legal'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.proposalRecovery_splice_joint_legal
+
+/-- info:
+'Vegas.SourceProgram.Setup.proposalRecovery_step_splice_support'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.proposalRecovery_step_splice_support
+
+/-- info:
+'Vegas.SourceProgram.Setup.proposalRecoveryPublicRecall_semantic'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.proposalRecoveryPublicRecall_semantic
+
+/-- info:
+'Vegas.SourceProgram.Setup.proposalRecovery_information_extend_congr'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.proposalRecovery_information_extend_congr
+
+/-- info:
+'Vegas.SourceProgram.Setup.proposalRecovery_lift_joint_word'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.proposalRecovery_lift_joint_word
+
+/-- info:
+'Vegas.SourceProgram.Setup.proposalRecoveryProposalOf_eq_of_actor_information'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.proposalRecoveryProposalOf_eq_of_actor_information
+
+/-- info:
+'Vegas.SourceProgram.Setup.proposalRecovery_info_eq_of_semantic_public_coordinate'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.proposalRecovery_info_eq_of_semantic_public_coordinate
+
+/-- info:
+'Vegas.EventGraphRuntime.ReservedEpoch.clock_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.clock_history
+
+/-- info:
+'Vegas.EventGraphRuntime.ReservedEpoch.runRounds_work_le'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.runRounds_work_le
+
+/-- info:
+'Vegas.EventGraphRuntime.ReservedEpoch.expiry_round_decreases'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.expiry_round_decreases
+
+/-- info:
+'Vegas.EventGraphRuntime.ReservedEpoch.actual_epoch_clears'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.actual_epoch_clears

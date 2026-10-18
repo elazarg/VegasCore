@@ -1227,3 +1227,6 @@ import Vegas.Game.PhaseCountServiceForeignWord
 import Vegas.Game.PhaseProposalSourceArchive
 import Vegas.Game.PhaseProposalQuery
 import Vegas.Game.PhaseProposalAddress
+import Vegas.Game.ProposalRecoveryPublicHistory
+import Vegas.Game.ProposalRecoverySpliceSupport
+import Vegas.Game.ProposalRecoveryInformationReadback

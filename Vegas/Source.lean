@@ -207,3 +207,7 @@ import Vegas.Source.ProposalRecoveryFlags
 import Vegas.Source.ProposalRecoveryErasedStep
 import Vegas.Source.ProposalRecoveryMass
 import Vegas.Source.ProposalRecoverySupportSplice
+import Vegas.Source.ProposalRecoverySplice
+import Vegas.Source.ProposalRecoveryWordLift
+import Vegas.Source.ProposalRecoveryReadout
+import Vegas.Source.ProposalRecoveryRank

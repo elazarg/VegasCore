@@ -194,12 +194,12 @@ quantifiers and a passing build. The labels below never enter Lean names.
 | Track | Checked statement | Status |
 | --- | --- | --- |
 | Source | Proposal moves/signals retain guard- and delivery-failed values; intended restriction is unchanged | Partial: semantic trace erasure and stored-value disclosure readback checked; intended restriction remains open |
-| Source | Archive-preserving erasure/NoMiss queries and pool antichains | Partial: normalized query and same-labeled suffix/archive transport checked; full information fibers and pool antichains remain open |
+| Source | Archive-preserving erasure/NoMiss queries and pool antichains | Partial: normalized query, same-labeled suffix transport and full-information readback checked; archive-to-chronology alignment, complete fibers and pool antichains remain open |
 | Source | Actual conditional Bayes/action-vector exchange at fixed controls | Open |
 | Source | Affine NoMiss comparison and one joint pooled consistency witness | Open |
 | Source | Enriched source SE extending the selected intended SE and joint law | Open |
 | Runtime | Concrete correlated, block-frozen reserved scheduler family | Partial: joint tape and exact scheduler-mixture realization checked; block service certification remains open |
-| Runtime | All-raw opportunity/receipt/completion, timely-valid acceptance and noncircular budgets | Partial: processing receipts and submissions bounded by players × cycles checked; opportunity, semantic completion, timeliness and global cycle budget remain open |
+| Runtime | All-raw opportunity/receipt/completion, timely-valid acceptance and noncircular budgets | Partial: actual queue draining, clock/traffic accounting and due-expiry work decrease checked; uniform cycle exhaustion, opportunity/timeliness and mixture trace lifting remain open |
 | Runtime | Same-tape admission monotonicity and foreign-service invariance | Open |
 | Runtime | Complete proposal reconstruction and required fresh-slot reserve | Open |
 | Runtime | Supported concurrent instance with variable service orders | Checked: both orders have supported actual prefixes with distinct owners' typed, timely, handler-admissible packets pending together; see the fixture evidence below |
@@ -232,6 +232,13 @@ has full support and `proposalRecoveryTrembledDomainLaw_value_lower` gives an
 ordinary-response floor independent of optimized domain weights.
 `PhaseProposal.submitted_proposal_binding_meaning` recovers each counted
 proposal's actual original callback and successful typed binding.
+`proposalRecovery_lift_joint_word` decorates the original trace and chance
+outcomes; `proposalRecovery_info_eq_of_semantic_public_coordinate` reconstructs
+full enriched information from semantic information, proposal chronology and
+the owner's labeled choices. These do not assert a conditional Bayes identity.
+`ReservedEpoch.clock_history` accounts for every physical tick;
+`ReservedEpoch.expiry_round_decreases` gives strict finite-work progress at an
+actual due-expiry round. The remaining global cycle bound is a proof obligation.
 
 The concrete fixture is checked for every source input bit and both service
 orders. `ReservedEpochConcurrency.concurrent_prefix_supported` supplies the
