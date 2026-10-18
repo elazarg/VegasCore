@@ -2,6 +2,11 @@
 
 **Native counterexample: proved ($a<m$) · stronger-forfeit target open.**
 
+The [three-owner argument](se-strong-exclusion-signalling.md) separately tests
+fixed exclusion loss above the nonexcluded reward range. Its checked native
+milestones are distinguished from the remaining off-path preparation argument
+and full native equilibrium certificate.
+
 The issue is that a player can withhold useful information. Alice has two late
 submission times; a hidden fair coin determines which succeeds. If Bob sends
 early, Alice can learn the successful time from whether his packet is visible

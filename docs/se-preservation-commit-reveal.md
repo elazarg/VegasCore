@@ -2,7 +2,7 @@
 
 **SE: non-concurrent ✓ · recovery source ✓ · native word/G coupling ✓ · posterior/RAW repair/service incentives open.**
 
-**Native counterexample: proved ($a<m$) · stronger-forfeit target open.**
+**Native: $a<m$ obstruction ✓ · stronger fixed loss: input bounds ✓, off-path incentives open.**
 
 The [mathematical proof dependency](se-preservation-math.md#scope-and-proof-dependency)
 states the source selection, conditional transport and deviation arguments,
@@ -31,6 +31,15 @@ whereas every honest source profile gives her zero
 Hence one fixed honest source sequential equilibrium has no preserving native
 sequential equilibrium. This tests the stated $a<m$ condition; exclusion loss
 one and reward three do not meet the checklist's stronger forfeit bound.
+
+The [three-owner fixed-exclusion argument](se-strong-exclusion-signalling.md)
+tests a loss above the whole nonexcluded payoff range. Its proposed
+obstruction uses range one, loss three halves, and the same count audit and
+reset rules. The source, original chance law, native callback replay and
+quiet-input likelihood bounds are checked; the full native sequential-
+equilibrium obstruction, including an off-path preparation comparison,
+remains pending. This fixed-exclusion model is
+distinct from the checklist's additive-forfeit and service-omission audit model.
 
 <details>
 <summary>Checked recovery milestones and remaining proof obligations</summary>

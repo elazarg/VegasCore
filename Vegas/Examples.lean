@@ -238,3 +238,4 @@ import Vegas.Examples.LateOpeningRuntimeLabelContinuation
 import Vegas.Examples.OnePacketStructuralHypotheses
 import Vegas.Examples.OnePacketCommitRevealHypotheses
 import Vegas.Examples.CommitSeedSignallingNativeBounds
+import Vegas.Examples.CommitSeedBroadcast

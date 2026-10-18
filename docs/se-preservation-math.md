@@ -33,8 +33,11 @@ commitment phase avoids the hidden-bad-binding belief loophole of a reveal
 example. Its raw-action reduction and reset continuation are worked out
 mathematically, including the existing Boolean program in concurrent-reveal
 mode, a uniform 43-command bound and exclusion of charged atoms by a whole
-silent continuation at own-clean information fibers. It is not yet a checked
-native counterexample. In particular,
+silent continuation at own-clean information fibers. The installed two-player
+native counterexample is checked. The
+[stronger-loss three-player argument](se-strong-exclusion-signalling.md) has
+checked native input kernels; its off-path preparation comparison and full
+native SE certificate remain pending. In particular,
 changing only the delivery optimizer does not resolve this obstruction.
 
 The source strategy is selected with the erasure and failed-attempt pins

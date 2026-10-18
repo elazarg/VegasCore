@@ -19,6 +19,12 @@ The [calendar checklist](se-proof-checklist.md) records checked evidence. The
 outside the Lean source and default build roots.
 
 Search with rg and inspect signatures with lean-defs.py before adding machinery.
+
+The [three-owner timing fixture](../Vegas/Examples/CommitSeedBroadcast.lean)
+collects its source, independent seed law, full native callback replay,
+initialized input weights, audit incentives and service bounds. Its full native
+sequential-equilibrium obstruction remains an explicit open obligation.
+
 Useful existing boundaries are the
 [source runtime](../Vegas/Game/RevealService.lean),
 [fixed service specification](../Vegas/Game/SourceServiceSpec.lean),
@@ -400,6 +406,7 @@ Useful existing boundaries are the
 [seed posteriors through recovery scheduler lifting](../Vegas/Pending/ExclusionSchedulerSeed.lean),
 [complete-control Bayes projection at clear recovery sites](../Vegas/Pending/ExclusionBoundedStateBelief.lean),
 [original immutable seeds at actual command occupations](../Interaction/ReactiveSchedulerSeedOccupation.lean),
+[original supported seeds on every legal raw history](../Interaction/ReactiveSchedulerSeedTrace.lean),
 [continuation error bounded by exclusion probability](../Vegas/Pending/ExclusionContinuationLaw.lean),
 [continuation error from foreign first exclusions only](../Vegas/Game/RecoveryForeignExitBound.lean),
 [native stopped payoff comparison for finite recovery menus](../Vegas/Game/RecoveryForeignExitComparison.lean),

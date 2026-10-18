@@ -1,5 +1,6 @@
 import Vegas.Pending.PhaseBindingServiceCompletion
 import Vegas.Examples.CommitSeedSignallingNativeBounds
+import Vegas.Examples.CommitSeedBroadcast
 import Vegas.Game.PhaseObservableDomainWord
 import Vegas.Game.PhaseCountServiceForeignWord
 import Vegas.Pending.PhaseBindingSuccessFunction
@@ -17362,3 +17363,123 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 open Vegas.Examples.CommitSeedSignalling in
 #print axioms
   exists_honest_sequentialEquilibrium_without_native_preservation
+
+/-- info:
+'Interaction.ReactiveApplication.schedulerMixture_trace_fixed_seed'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Interaction.ReactiveApplication.schedulerMixture_trace_fixed_seed
+
+/-- info:
+'Vegas.Examples.CommitSeedBroadcast.exists_honest_sequentialEquilibrium'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.CommitSeedBroadcast.exists_honest_sequentialEquilibrium
+
+/-- info:
+'Vegas.Examples.CommitSeedBroadcast.nativeSeedLaw_independent'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.CommitSeedBroadcast.nativeSeedLaw_independent
+
+/-- info:
+'Vegas.Examples.CommitSeedBroadcast.nativeSeedLaw_partition_expect'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.CommitSeedBroadcast.nativeSeedLaw_partition_expect
+
+/-- info:
+'Vegas.Examples.CommitSeedBroadcast.counted_assessment_finish_eq'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.CommitSeedBroadcast.counted_assessment_finish_eq
+
+/-- info:
+'Vegas.Examples.CommitSeedBroadcast.family_completesPlay'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.CommitSeedBroadcast.family_completesPlay
+
+/-- info:
+'Vegas.Examples.CommitSeedBroadcast.family_opportunity'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.CommitSeedBroadcast.family_opportunity
+
+/-- info:
+'Vegas.Examples.CommitSeedBroadcast.nohelper_first_late_physical_kernel'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.CommitSeedBroadcast.nohelper_first_late_physical_kernel
+
+/-- info:
+'Vegas.Examples.CommitSeedBroadcast.initialized_quiet_first_late_input_kernel'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.CommitSeedBroadcast.initialized_quiet_first_late_input_kernel
+
+/-- info:
+'Vegas.Examples.CommitSeedBroadcast.quiet_firstLate_bad_mass_le'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.CommitSeedBroadcast.quiet_firstLate_bad_mass_le
+
+/-- info:
+'Vegas.Examples.CommitSeedBroadcast.quiet_firstLate_all_good_mass'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.CommitSeedBroadcast.quiet_firstLate_all_good_mass
+
+/-- info:
+'Vegas.Examples.CommitSeedBroadcast.initialized_firstLate_raw_information'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.CommitSeedBroadcast.initialized_firstLate_raw_information
+
+/-- info:
+'Vegas.Examples.CommitSeedBroadcast.original_first_late_bad_iff'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.CommitSeedBroadcast.original_first_late_bad_iff
+
+/-- info:
+'Vegas.Examples.CommitSeedBroadcast.properPolicy_binding_response'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.CommitSeedBroadcast.properPolicy_binding_response
+
+/-- info:
+'Vegas.Examples.CommitSeedBroadcast.properPolicy_opening_response'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.CommitSeedBroadcast.properPolicy_opening_response
