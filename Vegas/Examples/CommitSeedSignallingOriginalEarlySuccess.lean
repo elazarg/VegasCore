@@ -89,8 +89,13 @@ theorem original_clock_zero_emission_resolved_accepted (seeds : Seeds) (remainin
   obtain ⟨_input, authored, tagged, named⟩ := PhaseSeedScheduler.localInput_emission_authentic
     runtime leaks before (originalCoordinate owner) owner words
       (app.history_inputRecall initial horizon (family seeds) sourceRaw) 0 message actualEmission
-  have accepted := original_clock_zero_recorded_accepted seeds (horizon - used) before beforeTrace
-    owner declaration member message issued authored tagged named zero count
+  have accepted := original_clock_zero_recorded_accepted seeds
+    ⟨horizon - used, none, before⟩ beforeTrace
+    owner declaration member message issued authored tagged named zero (by
+      change before.environmentRecall.length ≤ 19
+      exact count.le) (by
+      rw [count]
+      fin_cases owner <;> decide)
   have firstRound : middle ∈ (app.round (family seeds) players before).support := by
     rw [ReactiveApplication.round, PMF.support_bind]
     exact Set.mem_iUnion₂.mpr ⟨entry.command, chosen, dispatched⟩

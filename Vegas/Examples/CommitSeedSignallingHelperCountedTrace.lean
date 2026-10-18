@@ -134,8 +134,8 @@ private theorem bob_early_recall_singleton (seed : Seeds) (current : app.Control
           cases empty
 
 /-- Every actual raw realization of an early helper input has a counted
-prehistory at the identical physical control. The target's own materializations
-are retained, and only the observed signed helper's actual permission is used. -/
+prehistory at the identical physical control. The signed helper is retained
+among authored inputs, whether its observation is current or recalled. -/
 theorem raw_helper_input_counted_trace (sourceSeed targetSeed : Seeds)
     (source target : app.Control)
     (sourceTrace : countedProtocol.Trace (some source))
@@ -147,8 +147,8 @@ theorem raw_helper_input_counted_trace (sourceSeed targetSeed : Seeds)
     (recalled : target.execution.recall alice = source.execution.recall alice)
     (observed : target.execution.observe app alice = source.execution.observe app alice)
     (message : Message Player (CommitAttemptPacket graph)) (sender : message.sender = bob)
-    (visible : message ∈ (source.execution.observe app alice).messages.leaked ∨
-      message ∈ (source.execution.observe app alice).messages.ledger) :
+    (sourceInput : message ∈ source.execution.network.inputs)
+    (targetInput : message ∈ target.execution.network.inputs) :
     Nonempty (countedProtocol.Trace (some target)) := by
   have sourceRaw := countedMenu.toRawTrace initial horizon scheduler sourceTrace
   have targetRaw := rawMenu.toRawTrace initial horizon scheduler targetTrace
@@ -171,25 +171,8 @@ theorem raw_helper_input_counted_trace (sourceSeed targetSeed : Seeds)
   have sourceEarly := original_early_clock_index sourceSeed source sourceFixed request.1.symm clock
   have targetEarly := original_early_clock_index targetSeed target targetFixed
     targetRequest.1.symm targetClock
-  have sourceRetained := app.retained_envelopes_mem_inputs source.execution
-    (app.history_provenance initial horizon scheduler sourceRaw)
-    (app.history_inputRecall initial horizon scheduler sourceRaw)
-  have sourceInput : message ∈ source.execution.network.inputs := by
-    rcases visible with leaked | ledger
-    · exact sourceRetained.leaked alice message leaked
-    · exact sourceRetained.ledger message ledger
   have permitted := (observed_helper_packet_permission sourceSeed source sourceTrace sourceFixed
     request sourceEarly message sourceInput sender).2
-  have targetRetained := app.retained_envelopes_mem_inputs target.execution
-    (app.history_provenance initial horizon scheduler targetRaw)
-    (app.history_inputRecall initial horizon scheduler targetRaw)
-  have targetInput : message ∈ target.execution.network.inputs := by
-    have targetVisible : message ∈ (target.execution.observe app alice).messages.leaked ∨
-        message ∈ (target.execution.observe app alice).messages.ledger := by
-      rwa [observed]
-    rcases targetVisible with leaked | ledger
-    · exact targetRetained.leaked alice message leaked
-    · exact targetRetained.ledger message ledger
   obtain ⟨entry, recorded, emitted, original, zero⟩ := bob_packet_before_late_origin targetSeed
     target targetFixed targetRequest targetEarly message targetInput sender
   obtain ⟨_first, viewed, allowed, _aliceRecorded⟩ := bob_original_record_counted_of_helper target

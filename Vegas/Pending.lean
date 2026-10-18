@@ -577,6 +577,7 @@ import Vegas.Pending.PhaseBindingExpiryCoupling
 import Vegas.Pending.PhaseBindingEnvironmentTrace
 import Vegas.Pending.PhaseBindingApplicationReplay
 import Vegas.Pending.PhaseRecordedBindingMeaning
+import Vegas.Pending.PhaseRecordedBindingMaterial
 import Vegas.Pending.PhaseBindingResponseOrigin
 import Vegas.Pending.PhaseBindingAdmittedInclude
 import Vegas.Pending.PhaseBindingInclusionFrame

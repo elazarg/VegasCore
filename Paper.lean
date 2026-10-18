@@ -17265,3 +17265,100 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Examples.CommitSeedSignalling.helper_pending_binding_accepted_next
+
+/-- info:
+'Vegas.EventGraphRuntime.phase_recorded_material_binding_result'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.phase_recorded_material_binding_result
+
+/-- info:
+'Vegas.Examples.CommitSeedSignalling.raw_helper_binding_wait_context_value'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.CommitSeedSignalling.raw_helper_binding_wait_context_value
+
+/-- info:
+'Vegas.Examples.CommitSeedSignalling.raw_failed_helper_binding_context_value'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.CommitSeedSignalling.raw_failed_helper_binding_context_value
+
+/-- info:
+'Vegas.Examples.CommitSeedSignalling.raw_helper_context_value_nonnegative'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.CommitSeedSignalling.raw_helper_context_value_nonnegative
+
+/-- info:
+'Vegas.Examples.CommitSeedSignalling.helper_eligible_counted_response_usable_at_source'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.CommitSeedSignalling.helper_eligible_counted_response_usable_at_source
+
+/-- info:
+'Vegas.Examples.CommitSeedSignalling.helper_wrong_slot_counted_decoded_wait_at_source'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.CommitSeedSignalling.helper_wrong_slot_counted_decoded_wait_at_source
+
+/-- info:
+'Vegas.Examples.CommitSeedSignalling.assessed_publication_run_survives'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.CommitSeedSignalling.assessed_publication_run_survives
+
+/-- info:
+'Vegas.Examples.CommitSeedSignalling.bobQuiet_counted_transmission_alice_survives'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.CommitSeedSignalling.bobQuiet_counted_transmission_alice_survives
+
+/-- info:
+'Vegas.Examples.CommitSeedSignalling.bobQuiet_counted_decoded_wait'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.CommitSeedSignalling.bobQuiet_counted_decoded_wait
+
+/-- info:
+'Vegas.Examples.CommitSeedSignalling.native_equilibrium_alice_payoff_quarter'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.CommitSeedSignalling.native_equilibrium_alice_payoff_quarter
+
+/-- info:
+'Vegas.Examples.CommitSeedSignalling.no_preserving_sequentialEquilibrium'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.CommitSeedSignalling.no_preserving_sequentialEquilibrium
+
+/-- info:
+'Vegas.Examples.CommitSeedSignalling.exists_honest_sequentialEquilibrium_without_native_preservation'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.Examples.CommitSeedSignalling in
+#print axioms
+  exists_honest_sequentialEquilibrium_without_native_preservation

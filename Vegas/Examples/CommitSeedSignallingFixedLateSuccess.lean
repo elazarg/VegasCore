@@ -3,6 +3,7 @@
 import Vegas.Examples.CommitSeedSignallingInitialPollRequests
 import Vegas.Examples.CommitSeedSignallingProperBinding
 import Vegas.Examples.CommitSeedSignallingProperOpening
+import Vegas.Examples.CommitSeedSignallingOriginalLateAdmission
 import Vegas.Pending.PhaseReadyResolution
 import Vegas.Pending.PhaseBindingAcceptedReceipt
 import Interaction.ReactiveAllocation
@@ -137,14 +138,15 @@ theorem fixed_late_first_packet (seed : Seeds) (owner : Player)
   rw [ite_eq_right (fun condition => notZero condition.2)]
   exact response
 
-/-- At the actual first late inclusion slot a pending proper packet receives a
+/-- At the actual eligible late inclusion slot a pending proper packet receives a
 true receipt. The private value is read from its original recorded declaration,
 including when native normalization immediately closes the commitment phase. -/
-theorem first_late_inclusion (seed : Seeds) (owner : Player) (correct : seedBits seed owner = false)
+theorem proper_late_inclusion (seed : Seeds) (owner : Player) (remaining : Nat)
     (execution : app.Execution)
     (trace : (countedMenu.protocol initial horizon (family seed)).Trace
-      (some ⟨horizon - (firstLatePosition owner + 3), none, execution⟩))
-    (position : execution.environmentRecall.length = firstLatePosition owner + 3)
+      (some ⟨remaining, none, execution⟩))
+    (position : execution.environmentRecall.length =
+      lateIncludePosition owner (seedBits seed owner))
     (request : execution.application.SeedRequest owner (originalCoordinate owner))
     (serial : Nat) (entry : app.PlayerEntry) (retained : entry ∈ execution.recall owner)
     (declared : entry.action =
@@ -152,45 +154,31 @@ theorem first_late_inclusion (seed : Seeds) (owner : Player) (correct : seedBits
     (fresh : entry.beforeView.application.1.candidates (.prepared serial) = .fresh)
     (message : Message Player (CommitAttemptPacket graph))
     (emitted : entry.emitted = some message)
-    (timed : (lateClock owner false, message) ∈ (PhaseSeedScheduler.localInput runtime leaks
+    (timed : (lateClock owner (seedBits seed owner), message) ∈
+      (PhaseSeedScheduler.localInput runtime leaks
       (originalCoordinate owner) owner execution.environmentRecall
-        (execution.observeEnvironment app)).emissions)
-    (found : execution.network.lookup message.id = some message) :
+        (execution.observeEnvironment app)).emissions) :
     ∃ native next,
       family seed execution.environmentRecall (execution.observeEnvironment app) =
         PMF.pure (.include message.id) ∧
+      message.payload.packet.call =
+        .commitment (bindingEvent owner) (owner, .prepared serial) ∧
+      execution.network.lookup message.id = some message ∧
       handle runtime execution.application.current.native
         ⟨message.id, .commitment (bindingEvent owner) (owner, .prepared serial)⟩ = some native ∧
       native.accepted (.inr (bindingEvent owner)) = some (owner, .prepared serial) ∧
       native.config.outputs (bindingEvent owner) = some
         (cast (congrArg EventField.Value (bindingEvent_layout owner).symm)
           (PublicationResult.success true : PublicationResult (simpleExpr.Val .bool))) ∧
+      next = ({ execution.application with current :=
+        execution.application.current.inclusionResult message.payload.packet.call native } :
+          PhaseRuntimeState graph).normalize ∧
       app.handle execution.application message = some next ∧
       PhaseService.BindingAccepted runtime leaks (originalCoordinate owner) owner
         (execution.includePending app message.id) := by
   classical
   have rawTrace := countedMenu.toRawTrace initial horizon (family seed) trace
   have original : execution.application.attempt = originalAttempt := request.1.symm
-  have valid := raw_native_valid (family seed)
-    ⟨horizon - (firstLatePosition owner + 3), none, execution⟩ rawTrace
-  have clean := (PhaseCount.onePacketMenu_countClean runtime leaks bounds (family seed)).history
-    initial horizon (fun state _ => PhaseCount.countClean_initial runtime leaks state) trace
-  have words : PhaseSeedScheduler.WordRecall runtime leaks execution := by
-    obtain ⟨_, supported⟩ := countedMenu.roundSupported_uniform initial horizon (family seed) trace
-    change execution ∈ (app.roundsFrom initial (family seed) countedMenu.uniformResponses
-      execution.environmentRecall.length).support at supported
-    rw [ReactiveApplication.roundsFrom, initial_eq_pure, PMF.pure_bind] at supported
-    exact PhaseSeedScheduler.runRounds_wordRecall runtime leaks (family seed)
-      countedMenu.uniformResponses execution.environmentRecall.length initialExecution execution
-      (PhaseSeedScheduler.initial_wordRecall runtime leaks initialState) supported
-  have identities := app.input_identifier_injective_history initial horizon (family seed)
-    ⟨horizon - (firstLatePosition owner + 3), none, execution⟩ rawTrace
-  have singleton := PhaseSeedScheduler.localInput_emissions_eq_singleton runtime leaks execution
-    (originalCoordinate owner) owner words clean
-    (fun first firstMember second secondMember same =>
-      identities first second firstMember secondMember same) (lateClock owner false) message timed
-  have authentic := PhaseSeedScheduler.localInput_emission_authentic runtime leaks execution
-    (originalCoordinate owner) owner words clean.1.1 (lateClock owner false) message timed
   let material : app.Submission :=
     ⟨⟨.commitment (bindingEvent owner) (owner, .prepared serial), some ⟨.bool, true⟩⟩, .none⟩
   obtain ⟨actual, actualEmission, sender, call⟩ := PhaseCount.recalled_submission_emitted
@@ -198,48 +186,16 @@ theorem first_late_inclusion (seed : Seeds) (owner : Player) (correct : seedBits
     (by rw [declared]; rfl)
   have same : actual = message := Option.some.inj (actualEmission.symm.trans emitted)
   subst actual
-  have readyEq : ready owner (bindingEvent owner) (execution.observeEnvironment app) = true := by
-    change decide (PhaseRuntimeState.requests execution.application.publicView owner
-      ⟨execution.application.attempt, (bindingEvent owner)⟩) = true
-    apply decide_eq_true
-    apply (execution.application.requests_publicView valid owner _).mpr
-    simpa only [originalCoordinate, original] using request
-  have pending : message ∈ execution.network.pending := List.mem_of_find?_eq_some found
-  have available : (execution.observeEnvironment app).network.pending.any
-      (fun packet => packet.id = message.id) = true := by
-    apply List.any_eq_true.mpr
-    exact ⟨message, pending, by simp only [decide_true]⟩
+  obtain ⟨native, next, input, _authored, tagged, found, timely, chosen, nativeHandled,
+      _completed, accepted, normalized, phaseHandled⟩ :=
+    original_late_binding_admission seed remaining execution trace owner position request message
+      timed (owner, .prepared serial) call
   have command : family seed execution.environmentRecall (execution.observeEnvironment app) =
       PMF.pure (.include message.id) := by
-    rw [family_apply, choose_original seed _ _ original, position]
-    have slot : originalCommand seed (firstLatePosition owner + 3)
-        execution.environmentRecall (execution.observeEnvironment app) =
-        lateCommand owner (seedBits seed owner) (lateClock owner false)
-          execution.environmentRecall (execution.observeEnvironment app) := by
-      fin_cases owner <;> rfl
-    rw [slot]
-    rw [correct]
-    simp only [lateCommand, readyEq, and_true, singleton, List.find?_cons, decide_true,
-      pendingCommand, available, ite_true]
-  have clock := original_clock_index seed
-    ⟨horizon - (firstLatePosition owner + 3), none, execution⟩ rawTrace original
-  rw [position] at clock
-  have clockLate : execution.application.current.native.clock = lateClock owner false := by
-    fin_cases owner <;> exact clock
-  have timer := original_timer (family seed)
-    ⟨horizon - (firstLatePosition owner + 3), none, execution⟩ rawTrace original
-    (bindingEvent owner) (by
-      fin_cases owner
-      · exact Or.inl rfl
-      · exact Or.inr rfl) request.2.2.1.1
-  have timely : execution.application.current.native.WithinDeadline runtime
-      (bindingEvent owner) := by
-    change execution.application.current.native.activatedAt (bindingEvent owner) = some 0 at timer
-    rw [State.WithinDeadline, timer, clockLate]
-    fin_cases owner <;> decide
+    rw [family_apply, chosen]
   have messageRequest : execution.application.SeedRequest owner
       ⟨message.payload.attempt, (bindingEvent owner)⟩ := by
-    rw [authentic.2.2.1]
+    rw [tagged]
     exact request
   have codeEq : cast (congrArg (EventCode graph.layout) (bindingEvent_layout owner))
       (graph.nodes (bindingEvent owner)) = EventCode.bind (L := simpleExpr)
@@ -248,12 +204,17 @@ theorem first_late_inclusion (seed : Seeds) (owner : Player) (correct : seedBits
   have node : nodeView graph (bindingEvent owner) =
       .bind owner .bool (bindingEvent_layout owner) codeEq := by
     fin_cases owner <;> rfl
-  obtain ⟨native, next, handled, _completed, accepted, output, _normalized, phaseHandled⟩ :=
+  obtain ⟨typedNative, _typedNext, handled, _typedCompleted, _typedAccepted, output,
+      _typedNormalized, _typedHandled⟩ :=
     recorded_true_binding_accepted (family seed)
-      ⟨horizon - (firstLatePosition owner + 3), none, execution⟩ trace owner (bindingEvent owner)
+      ⟨remaining, none, execution⟩ trace owner
+      (bindingEvent owner)
       (bindingEvent_layout owner) codeEq node serial entry retained declared fresh message
-      authentic.1
+      input
       sender call messageRequest timely
+  rw [call] at nativeHandled
+  have sameTyped : typedNative = native := Option.some.inj (handled.symm.trans nativeHandled)
+  subst typedNative
   obtain ⟨actualNative, actualHandled, _actualNormalized, acceptedReceipt⟩ :=
     phase_inclusion_snapshot_bindingAccepted runtime leaks plan (setup.initialLaw.map encodeInputs)
       horizon (family seed) rawTrace message.id message found next phaseHandled
@@ -261,7 +222,8 @@ theorem first_late_inclusion (seed : Seeds) (owner : Player) (correct : seedBits
     rw [call] at actualHandled
     exact Option.some.inj (actualHandled.symm.trans handled)
   subst actualNative
-  refine ⟨native, next, command, handled, accepted, output, phaseHandled, ?_⟩
+  refine ⟨native, next, command, call, found, handled, accepted, output, normalized,
+    phaseHandled, ?_⟩
   have actual := acceptedReceipt (bindingEvent owner) (owner, .prepared serial)
     (by rw [original]; fin_cases owner <;> decide)
     accepted
@@ -440,17 +402,30 @@ theorem fixed_late_accepted_first_block (seed : Seeds) (owner : Player)
     simp only [originalCoordinate, entryClock, entryTimer,
       Option.getD_some, Nat.sub_zero, emitted, Option.toList_some, List.filter_cons, own,
       ite_true, List.filter_nil]
-  have serials : observed.network.SerialsBeforeNext := by
-    have beforeSerials := app.serialsBeforeNext_history (family seed) initial horizon rawBefore
-    exact beforeSerials.learn owner (execution.network.pending.map Message.id).toFinset
-  have found : atInclusion.network.lookup message.id = some message :=
-    serials.lookup_submit owner packet
   have entryFresh : entry.beforeView.application.1.candidates (.prepared serial) = .fresh :=
     freshCandidate
-  obtain ⟨_native, _next, includeCommand, _handled, _accepted, _output, _phaseHandled, accepted⟩ :=
-    first_late_inclusion seed owner correct atInclusion inclusionTrace inclusionLength
-      inclusionRequest
-      serial entry retained rfl entryFresh message emitted timed found
+  have includePosition : lateIncludePosition owner (seedBits seed owner) =
+      firstLatePosition owner + 3 := by
+    rw [correct]
+    fin_cases owner <;> rfl
+  have properTrace : (countedMenu.protocol initial horizon (family seed)).Trace
+      (some ⟨horizon - lateIncludePosition owner (seedBits seed owner), none, atInclusion⟩) := by
+    rw [includePosition]
+    exact inclusionTrace
+  have properPosition : atInclusion.environmentRecall.length =
+      lateIncludePosition owner (seedBits seed owner) := by
+    rw [includePosition]
+    exact inclusionLength
+  have properTimed : (lateClock owner (seedBits seed owner), message) ∈
+      (PhaseSeedScheduler.localInput runtime leaks (originalCoordinate owner) owner
+        atInclusion.environmentRecall (atInclusion.observeEnvironment app)).emissions := by
+    rwa [correct]
+  obtain ⟨_native, _next, includeCommand, _call, _found, _handled, _accepted, _output, _normalized,
+      _phaseHandled, accepted⟩ :=
+    proper_late_inclusion seed owner
+      (horizon - lateIncludePosition owner (seedBits seed owner)) atInclusion properTrace
+        properPosition inclusionRequest
+      serial entry retained rfl entryFresh message emitted properTimed
   rw [ReactiveApplication.runRounds, firstRound, PMF.pure_bind,
     show 3 = 2 + 1 by omega, app.runRounds_add, waitPair, PMF.pure_bind,
     ReactiveApplication.runRounds, ReactiveApplication.round, includeCommand, PMF.pure_bind]

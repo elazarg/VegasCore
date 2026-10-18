@@ -75,7 +75,9 @@ theorem helper_pending_binding_accepted_next (seed : Seeds) (remaining : Nat)
     (players : Player → app.Policy) (final : app.Execution)
     (reached : final ∈ (app.round (family seed) players
       (execution.respond app alice action)).support) :
-    PhaseService.BindingAccepted runtime leaks (originalCoordinate bob) bob final := by
+    PhaseService.BindingAccepted runtime leaks (originalCoordinate bob) bob final ∧
+      final.application.SeedRequest alice (originalCoordinate alice) ∧
+      final.environmentRecall.length = 6 := by
   have original : execution.application.attempt = originalAttempt := request.1.symm
   have count := original_first_late_input_index seed ⟨remaining, some alice, execution⟩ fixed
     alice rfl original clock
@@ -255,6 +257,31 @@ theorem helper_pending_binding_accepted_next (seed : Seeds) (remaining : Nat)
   change final ∈ (PMF.pure included).support at reached
   have finalEq := (PMF.mem_support_pure_iff _ _).mp reached
   subst final
-  exact trueReceipt
+  have includeStep : included ∈
+      (after.environmentStep app (.«include» message.id)).support := by
+    simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map,
+      PMF.mem_support_pure_iff]
+    rfl
+  have afterRequest : after.application.SeedRequest alice (originalCoordinate alice) :=
+    respond_request runtime leaks execution alice action alice (originalCoordinate alice) request
+  have afterValid := raw_native_valid (family seed) ⟨remaining, none, after⟩ afterRaw
+  have kept := environment_request_or_own_resolution runtime leaks
+    (serviceGraph_revealRelaxedOrdered setup .concurrentReveals) after included afterValid alice
+      (originalCoordinate alice) afterRequest (.«include» message.id) includeStep
+  have aliceRequest : included.application.SeedRequest alice (originalCoordinate alice) := by
+    rcases kept with kept | expired | resolved
+    · exact kept
+    · cases expired
+    · obtain ⟨identifier, packet, _state, _ready, _eventAction, commanded, packetLookup,
+        authored, _rest⟩ := resolved
+      have identifierEq : message.id = identifier :=
+        ReactiveApplication.Command.include.inj commanded
+      subst identifier
+      have packetEq : packet = message := Option.some.inj (packetLookup.symm.trans found)
+      rw [packetEq, sender] at authored
+      exact ((by decide : bob ≠ alice) authored).elim
+  refine ⟨trueReceipt, aliceRequest, ?_⟩
+  change (after.environmentRecall ++ [_]).length = 6
+  rw [List.length_append, List.length_singleton, afterCount]
 
 end Vegas.Examples.CommitSeedSignalling

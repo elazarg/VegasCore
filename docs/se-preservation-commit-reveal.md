@@ -2,7 +2,7 @@
 
 **SE: non-concurrent ✓ · recovery source ✓ · native word/G coupling ✓ · posterior/RAW repair/service incentives open.**
 
-**Native: service ✓ · helper knowledge ✓ · recovery ✓ · ¼ payoff ✓ · helper incentives / SE open.**
+**Native counterexample: proved ($a<m$) · stronger-forfeit target open.**
 
 The [mathematical proof dependency](se-preservation-math.md#scope-and-proof-dependency)
 states the source selection, conditional transport and deviation arguments,
@@ -14,7 +14,7 @@ identifies an unresolved implication in the abstract service argument;
 full mathematical preservation is conditional on resolving it.
 The [private-seed signalling construction](se-private-seed-signalling.md)
 tests the claim itself: with the formal counted-service privacy predicates
-and raw contract, it gives a mathematical obstruction to the preserved joint
+and raw contract, it gives a checked native obstruction to the preserved joint
 law, not just to the clock-only policy. It distinguishes an all-raw reading
 of prose S1: the all-raw Boolean count-verdict quotient conflicts with timely
 native protected inclusion, whereas the intended raw content equivalence is
@@ -24,7 +24,13 @@ also admits the obstruction, so enriching the content classification alone
 does not resolve it. Its mathematical embedding uses the existing
 Boolean program,
 concurrent reveals, a uniform 43-command bound and a whole-continuation
-charge argument. Its native Lean certificate and axiom audit remain open.
+charge argument. The installed 64-round native fixture proves that every
+native sequential equilibrium gives Alice expected payoff at least 1/4,
+whereas every honest source profile gives her zero
+(`Vegas.Examples.CommitSeedSignalling.native_equilibrium_alice_payoff_quarter`).
+Hence one fixed honest source sequential equilibrium has no preserving native
+sequential equilibrium. This tests the stated $a<m$ condition; exclusion loss
+one and reward three do not meet the checklist's stronger forfeit bound.
 
 <details>
 <summary>Checked recovery milestones and remaining proof obligations</summary>
@@ -2717,6 +2723,12 @@ quotient. The precise raw content equivalence remains unspecified; this
 qualification changes neither the stated target nor the runtime semantics.
 
 ### 4.3 Statement
+
+**Status.** Under the formal counted-service interpretation of S1--S3, the
+preservation claim below is refuted by the checked
+[native signalling fixture](se-private-seed-signalling.md). A player controls
+whether another receives a useful signal about its future submission time.
+The stronger all-raw content equivalence discussed above remains unspecified.
 
 **Theorem 3.** Take the deposit-first order, with compiler $C_1$ including the
 phase reset, and fix:

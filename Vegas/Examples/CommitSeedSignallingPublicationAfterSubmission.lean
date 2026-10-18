@@ -48,22 +48,23 @@ private theorem family_tail_ready_timely (seed : Seeds) (remaining : Nat)
   change execution.application.current.native.clock - entered < 6
   omega
 
-private theorem family_publication_inclusion_finished
-    (seed : Seeds) (remaining : Nat) (execution : app.Execution) (owner : Player)
-    (trace : (countedMenu.protocol initial horizon (family seed)).Trace
+private theorem publication_inclusion_finished
+    (selected : app.Scheduler) (remaining : Nat) (execution : app.Execution) (owner : Player)
+    (trace : (countedMenu.protocol initial horizon selected).Trace
       (some ⟨remaining + 1, some owner, execution⟩))
-    (retired : execution.application.attempt ≠ originalAttempt)
     (request : execution.application.SeedRequest owner
       ⟨execution.application.attempt, revealEvent owner⟩)
     (value : Bool)
     (stored : execution.application.current.native.config.store (.inr (bindingEvent owner)) =
       some (cast (congrArg EventField.Value (bindingEvent_layout owner).symm)
         (PublicationResult.success value)))
+    (timely : execution.application.current.native.WithinDeadline runtime
+      (revealEvent owner))
     (material : WitnessedSubmission graph)
     (offered : (⟨some material⟩ : (phaseApplication runtime leaks).Action) ∈
       (PhaseCount.onePacketMenu runtime leaks bounds).actions owner (execution.recall owner)
         (execution.observe (phaseApplication runtime leaks) owner))
-    (postTrace : (countedMenu.protocol initial horizon (family seed)).Trace
+    (postTrace : (countedMenu.protocol initial horizon selected).Trace
       (some ⟨remaining + 1, none, execution.respond app owner ⟨some material⟩⟩))
     (next : app.Execution)
     (included : next ∈ ((execution.respond app owner ⟨some material⟩).environmentStep app
@@ -73,7 +74,7 @@ private theorem family_publication_inclusion_finished
         event ∈ next.application.current.native.config.cut.completed) ∧
       owner ∉ next.application.current.excluded := by
   obtain ⟨candidate, rawValue, packet⟩ :=
-    counted_submission_opening_shape (family seed) (remaining + 1) execution owner trace request
+    counted_submission_opening_shape selected (remaining + 1) execution owner trace request
       material offered
   let after := execution.respond app owner ⟨some material⟩
   have application : after.application = execution.application := by
@@ -93,8 +94,8 @@ private theorem family_publication_inclusion_finished
     split <;> split <;> exact packet
   have member : message ∈ after.network.inputs :=
     List.mem_append_right _ (List.mem_singleton_self _)
-  have serials := app.serialsBeforeNext_history (family seed) initial horizon
-    (countedMenu.toRawTrace initial horizon (family seed) trace)
+  have serials := app.serialsBeforeNext_history selected initial horizon
+    (countedMenu.toRawTrace initial horizon selected trace)
   have lookup : after.network.lookup message.id = some message := serials.lookup_submit owner
     (app.packet after.application owner (execution.network.known owner) material)
   have actualRequest : after.application.SeedRequest message.sender
@@ -102,21 +103,77 @@ private theorem family_publication_inclusion_finished
     change after.application.SeedRequest owner _
     rw [application, attempt]
     exact request
-  have timely := family_tail_ready_timely seed (remaining + 1) execution owner trace
-    ⟨execution.application.attempt, revealEvent owner⟩ retired request
   have afterTimely : after.application.current.native.WithinDeadline runtime
       (revealEvent owner) := by rwa [application]
   have afterStored : after.application.current.native.config.store (.inr (bindingEvent owner)) =
       some (cast (congrArg EventField.Value (bindingEvent_layout owner).symm)
         (PublicationResult.success value)) := by rwa [application]
-  exact counted_successful_opening_finished (family seed) ⟨remaining + 1, none, after⟩ postTrace
+  exact counted_successful_opening_finished selected ⟨remaining + 1, none, after⟩ postTrace
     owner message member lookup candidate rawValue call actualRequest afterTimely value afterStored
       next included
 
 /-- A genuine admitted opening at a successful tail publication protects its
-owner at every later prefix of the same original history. The first include is
-derived from the actual fixed-family scheduler; the rest uses the native
-finished-owner invariant, without a newly selected future policy. -/
+owner at every later prefix of the same original history. Its actual timely
+request and next inclusion command feed the native finished-owner invariant,
+without a newly selected future policy. -/
+theorem publication_after_submission_survives
+    (selected : app.Scheduler) (remaining : Nat) (execution : app.Execution) (owner : Player)
+    (sourceTrace : (countedMenu.protocol initial horizon selected).Trace
+      (some ⟨remaining, some owner, execution⟩))
+    (request : execution.application.SeedRequest owner
+      ⟨execution.application.attempt, revealEvent owner⟩)
+    (value : Bool)
+    (stored : execution.application.current.native.config.store (.inr (bindingEvent owner)) =
+      some (cast (congrArg EventField.Value (bindingEvent_layout owner).symm)
+        (PublicationResult.success value)))
+    (material : WitnessedSubmission graph)
+    (offered : (⟨some material⟩ : (phaseApplication runtime leaks).Action) ∈
+      (PhaseCount.onePacketMenu runtime leaks bounds).actions owner (execution.recall owner)
+        (execution.observe (phaseApplication runtime leaks) owner))
+    (timely : execution.application.current.native.WithinDeadline runtime
+      (revealEvent owner))
+    (scheduled : selected (execution.respond app owner ⟨some material⟩).environmentRecall
+      ((execution.respond app owner ⟨some material⟩).observeEnvironment app) =
+        PMF.pure (.include (owner, execution.network.nextSerial owner)))
+    (postTrace : (countedMenu.protocol initial horizon selected).Trace
+      (some ⟨remaining, none, execution.respond app owner ⟨some material⟩⟩))
+    (final : app.Control)
+    (trace : (countedMenu.protocol initial horizon selected).Trace (some final))
+    (kept : TracePrefix postTrace trace) :
+    owner ∉ final.execution.application.current.excluded := by
+  let after := execution.respond app owner ⟨some material⟩
+  let start : app.Control := ⟨remaining, none, after⟩
+  have path := kept.reachesWithin
+  rcases path.eq_or_step with equal | ⟨joint, legal, reached, supported, _fuel, suffix⟩
+  · have same : start = final :=
+      Option.some.inj (congrArg History.state equal)
+    subst final
+    exact request.2.2.2.2
+  · have moved : reached ∈
+        (app.transition initial horizon selected (some start) joint).support := supported
+    obtain ⟨middle, stateEq, _retained⟩ :=
+      app.transition_recall_prefix initial horizon selected start reached joint moved
+    subst reached
+    cases remaining with
+    | zero => exact (legal.1 ⟨rfl, rfl⟩).elim
+    | succ remaining =>
+        obtain ⟨command, chosen, commandMoved⟩ :=
+          Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ moved)
+        change command ∈ (selected after.environmentRecall
+          (after.observeEnvironment app)).support at chosen
+        rw [scheduled, PMF.mem_support_pure_iff] at chosen
+        subst command
+        obtain ⟨result, included, exactControl⟩ := PMF.support_map .. ▸ commandMoved
+        cases Option.some.inj exactControl
+        have finished := publication_inclusion_finished selected remaining execution owner
+          sourceTrace request value stored timely material offered postTrace result included
+        have preserved := (finished_owner_invariant owner).reaches initial horizon selected
+          (countedMenu.reaches_raw initial horizon selected suffix)
+          ⟨remaining, none, result⟩ final rfl rfl finished
+        exact preserved.2.2
+
+/-- The original fixed-family callback supplies both its actual timely request and
+its next inclusion command to the same retained-trace survival proof. -/
 theorem family_publication_after_submission_survives
     (seed : Seeds) (remaining : Nat) (execution : app.Execution) (owner : Player)
     (sourceTrace : (countedMenu.protocol initial horizon (family seed)).Trace
@@ -138,45 +195,25 @@ theorem family_publication_after_submission_survives
     (trace : (countedMenu.protocol initial horizon (family seed)).Trace (some final))
     (kept : TracePrefix postTrace trace) :
     owner ∉ final.execution.application.current.excluded := by
-  let after := execution.respond app owner ⟨some material⟩
-  let start : app.Control := ⟨remaining, none, after⟩
-  have path := kept.reachesWithin
-  rcases path.eq_or_step with equal | ⟨joint, legal, reached, supported, _fuel, suffix⟩
-  · have same : start = final :=
-      Option.some.inj (congrArg History.state equal)
-    subst final
-    exact request.2.2.2.2
-  · have moved : reached ∈
-        (app.transition initial horizon (family seed) (some start) joint).support := supported
-    obtain ⟨middle, stateEq, _retained⟩ :=
-      app.transition_recall_prefix initial horizon (family seed) start reached joint moved
-    subst reached
-    cases remaining with
-    | zero => exact (legal.1 ⟨rfl, rfl⟩).elim
-    | succ remaining =>
-        obtain ⟨command, selected, commandMoved⟩ :=
-          Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ moved)
-        obtain ⟨chosen, past, view, recalled, serial⟩ := tail_response_command seed
-          (countedMenu.toRawTrace initial horizon (family seed) sourceTrace) owner rfl retired
-            ⟨some material⟩
-        have response : responseCommand owner after.environmentRecall
-            (after.observeEnvironment app) =
-              .include (owner, execution.network.nextSerial owner) := by
-          rw [app.respond_environmentRecall, recalled,
-            responseCommand_transmission execution owner past ⟨view, .activate owner⟩ rfl serial
-              material]
-        rw [response] at chosen
-        change command ∈ (family seed after.environmentRecall
-          (after.observeEnvironment app)).support at selected
-        rw [family_apply, PMF.mem_support_pure_iff, chosen] at selected
-        subst command
-        obtain ⟨result, included, exactControl⟩ := PMF.support_map .. ▸ commandMoved
-        cases Option.some.inj exactControl
-        have finished := family_publication_inclusion_finished seed remaining execution owner
-          sourceTrace retired request value stored material offered postTrace result included
-        have preserved := (finished_owner_invariant owner).reaches initial horizon (family seed)
-          (countedMenu.reaches_raw initial horizon (family seed) suffix)
-          ⟨remaining, none, result⟩ final rfl rfl finished
-        exact preserved.2.2
+  have timely := family_tail_ready_timely seed remaining execution owner sourceTrace
+    ⟨execution.application.attempt, revealEvent owner⟩ retired request
+  obtain ⟨chosen, past, view, recalled, serial⟩ := tail_response_command seed
+    (countedMenu.toRawTrace initial horizon (family seed) sourceTrace) owner rfl retired
+      ⟨some material⟩
+  have response : responseCommand owner
+      (execution.respond app owner ⟨some material⟩).environmentRecall
+      ((execution.respond app owner ⟨some material⟩).observeEnvironment app) =
+        .include (owner, execution.network.nextSerial owner) := by
+    rw [app.respond_environmentRecall, recalled,
+      responseCommand_transmission execution owner past ⟨view, .activate owner⟩ rfl serial
+        material]
+  rw [response] at chosen
+  have scheduled : (family seed)
+      (execution.respond app owner ⟨some material⟩).environmentRecall
+      ((execution.respond app owner ⟨some material⟩).observeEnvironment app) =
+        PMF.pure (.include (owner, execution.network.nextSerial owner)) := by
+    rw [family_apply, chosen]
+  exact publication_after_submission_survives (family seed) remaining execution owner sourceTrace
+    request value stored material offered timely scheduled postTrace final trace kept
 
 end Vegas.Examples.CommitSeedSignalling

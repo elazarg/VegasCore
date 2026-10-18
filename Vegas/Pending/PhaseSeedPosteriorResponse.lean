@@ -185,7 +185,7 @@ private theorem callback_selected (seeds : RestSeed Ã— (PhaseSeedAddress graph â
   simp only [reply, decision, ite_eq_left pastDeadline] at replyEq
   cases replyEq
 
-private theorem response_envelope_recorded
+theorem response_envelope_recorded
     (current : (app).Execution) {input : graph.Inputs}
     (valid : current.application.Invariant input) (owner : Player)
     (coordinate : PhaseSeedAddress graph)

@@ -16,7 +16,7 @@ open SourceProgram EventGraph EventGraphRuntime Interaction GameTheory GameTheor
   GameTheory.Math.Probability GameTheory.Enforcement
 open OnePacketCommitRevealHypotheses (Player alice bob setup program)
 
-private theorem recorded_helper_receipt_seed (seed : Seeds) (remaining : Nat)
+theorem recorded_helper_seed_iff_receipt (seed : Seeds) (remaining : Nat)
     (execution : app.Execution)
     (trace : (rawMenu.protocol initial horizon (family seed)).Trace
       (some ⟨remaining, none, execution⟩))
@@ -27,9 +27,9 @@ private theorem recorded_helper_receipt_seed (seed : Seeds) (remaining : Nat)
     (marker : Message Player (CommitAttemptPacket graph))
     (sender : marker.sender = bob) (addressed : marker.payload.attempt = originalAttempt)
     (visible : marker ∈ entry.beforeView.messages.leaked ∨
-      marker ∈ entry.beforeView.messages.ledger)
-    (receipted : ∃ accepted, (marker.id, accepted) ∈ entry.beforeView.receipts) :
-    seedBits seed alice = true := by
+      marker ∈ entry.beforeView.messages.ledger) :
+    seedBits seed alice = true ↔
+      ∃ accepted, (marker.id, accepted) ∈ entry.beforeView.receipts := by
   obtain ⟨before, prior, _kept, active, observed, _allowed, _later⟩ :=
     rawMenu.recorded_response_prefix initial horizon (family seed)
       ⟨remaining, none, execution⟩ trace alice entry recorded
@@ -41,9 +41,9 @@ private theorem recorded_helper_receipt_seed (seed : Seeds) (remaining : Nat)
     exact request
   have requested := (before.execution.application.requests_publicView valid alice
     (originalCoordinate alice)).mp publicHere
-  rw [observed] at clock visible receipted
-  exact (alice_helper_clock_two_seed seed before prior active requested clock marker sender
-    addressed visible).mpr receipted
+  rw [observed] at clock visible ⊢
+  exact alice_helper_clock_two_seed seed before prior active requested clock marker sender
+    addressed visible
 
 /-- The incumbent's unchanged whole continuation gives exactly minus one
 following a real clean wrong-slot declaration at a receipted-helper input.
@@ -107,10 +107,10 @@ theorem raw_wrong_helper_binding_assessed_value
     runRounds_recall_mono scheduler players remaining execution after rounds alice recorded
   obtain ⟨seed, supportedSeed⟩ :=
     (implementation.posterior after.environmentRecall).support_nonempty
-  obtain ⟨_originalSupport, ⟨fixed⟩⟩ := raw_original_posterior_trace
+  obtain ⟨_originalSupport, ⟨fixed⟩⟩ := menu_original_posterior_trace rawMenu
     ⟨0, none, after⟩ finalTrace seed supportedSeed
-  have bit := recorded_helper_receipt_seed seed 0 after fixed entry remembered request clock
-    marker sender addressed visible receipted
+  have bit := (recorded_helper_seed_iff_receipt seed 0 after fixed entry remembered request clock
+    marker sender addressed visible).mpr receipted
   have excluded := alice_wrong_packet_excluded_of_initial_wait seed after finalTrace fixed
     quietAfter bit own entry remembered request clock message emitted packet
   change rawPayoff alice final = -1

@@ -32,16 +32,21 @@ import Vegas.Examples.CommitSeedSignallingInitialDeviation
 import Vegas.Examples.CommitSeedSignallingHelperBindingValue
 import Vegas.Examples.CommitSeedSignallingHelperCountedTrace
 import Vegas.Examples.CommitSeedSignallingHelperPendingAcceptance
+import Vegas.Examples.CommitSeedSignallingNonpreservation
 import Interaction.ReactiveInvariantPrefix
 
-/-! # Native service and conditional timing bounds for private-seed signalling
+/-! # Native service and equilibrium obstruction for private-seed signalling
 
 These results establish the actual raw asynchronous contract, private clock
 calendar and binding-success quotient, helper knowledge on full raw information
-fibers, unilateral delivery bounds, and opening incentives. They do not assert
-every helper binding incentive or exclude every preserving equilibrium.
+fibers, unilateral delivery bounds, and binding and opening incentives.
 The fixed proper late deviation survives recovery whenever its original
 binding lands, and its initialized expected payoff is at least one quarter
 against an opponent who initially waits. The same whole-deviation bound holds
 at Bob's actual quiet information set, including off-path assessments.
+Every native sequential equilibrium gives Alice expected payoff at least one
+quarter, whereas every honest source profile gives her zero. Consequently no
+native sequential equilibrium preserves the required joint law. The fixture
+has reward three and exclusion loss one; it does not satisfy a forfeit bound
+strictly above the entire payoff range.
 -/

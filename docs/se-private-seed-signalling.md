@@ -1,6 +1,6 @@
 # Private-seed signalling in a first commitment phase
 
-**Native: service ✓ · helper knowledge ✓ · recovery ✓ · ¼ payoff ✓ · helper incentives / SE open.**
+**Native counterexample: proved ($a<m$) · stronger-forfeit target open.**
 
 The issue is that a player can withhold useful information. Alice has two late
 submission times; a hidden fair coin determines which succeeds. If Bob sends
@@ -13,8 +13,8 @@ The honest game's payoff is zero, whereas this deviation earns at least 1/4.
 Observations are allowed to add knowledge throughout this argument. Independent
 coins and a scheduler that never reads packet values do not, by themselves,
 prevent players from controlling which useful observations others receive.
-The task is to check this example against the existing runtime assumptions;
-no new restriction on observations is being assumed.
+The native certificate uses the existing runtime definitions and formal
+counted-service assumptions; no new restriction on observations is assumed.
 
 This note tests Theorem 3 of [the preservation argument](se-preservation-commit-reveal.md).
 Under the literal causal reading of its S1--S3 bullets, independent event
@@ -27,9 +27,9 @@ incompatible with timely native protected inclusion, as proved below.
 The packet-content equivalence and the service-information claim in prose
 must be distinguished from the existing formal predicates; charge dominance
 alone proves neither of them.
-This is mathematical evidence, not closure of a checklist box or a checked
-refutation for the native Lean runtime. No target, semantics or additional
-hypothesis is adopted here.
+The installed native Lean fixture proves the obstruction under the formal
+counted-service predicates. It does not close a checklist box, settle the
+all-raw content reading, or change any target, semantics or hypothesis.
 
 The native fixture has a checked honest source SE and the full raw contract
 `Vegas.Examples.CommitSeedSignalling.scheduler_asyncContract`: opportunity
@@ -88,8 +88,20 @@ set, retaining Alice's assessed continuation even off path
 (`Vegas.Examples.CommitSeedSignalling.bobQuiet_fixedLate_context_quarter`).
 Consequently a preserving equilibrium cannot have Bob always wait there
 (`Vegas.Examples.CommitSeedSignalling.preserving_equilibrium_bobQuiet_not_wait`).
-The remaining helper best-response argument must force that waiting behavior;
-no theorem yet excludes every preserving native sequential equilibrium.
+Full raw information-set comparisons force Alice to wait at the wrong time
+and submit openable material at the useful time. Her actual assessed opening
+continuation then survives. Thus every permitted early Bob packet makes Alice
+survive, giving Bob at most zero, whereas his whole waiting deviation gives
+at least 1/4. His waiting behavior is forced
+(`Vegas.Examples.CommitSeedSignalling.bobQuiet_counted_decoded_wait`).
+Consequently every native sequential equilibrium gives Alice expected payoff
+at least 1/4
+(`Vegas.Examples.CommitSeedSignalling.native_equilibrium_alice_payoff_quarter`).
+One fixed honest source sequential equilibrium has no preserving native
+sequential equilibrium
+(`Vegas.Examples.CommitSeedSignalling.exists_honest_sequentialEquilibrium_without_native_preservation`).
+These are actual native theorems, with the original assessment strategies,
+beliefs and scheduler posterior retained, including off-path decisions.
 
 ## Program and payoffs
 
@@ -778,8 +790,10 @@ contract, every native SE gives A expected net payoff at least
 
 The chosen honest SE gives A payoff 0. Thus no native SE preserves its joint
 public-result/realized-net-payoff law. This mathematical conclusion concerns
-the precise counted interpretation above; it does not settle the unresolved
-all-raw reading of prose S1, or assert a checked Lean counterexample.
+the precise counted interpretation above. Its installed W=3, epsilon=1 native
+fixture is checked by
+`Vegas.Examples.CommitSeedSignalling.native_equilibrium_alice_payoff_quarter`;
+the unresolved all-raw reading of prose S1 remains separate.
 
 Here is a proof that does not classify the late equilibria. Fix any assessed
 native SE. The clean-recall argument excludes a forbidden current packet at
@@ -980,5 +994,5 @@ The exact finite calculation in
 enumerates the late pure timing policies, including B's conditioning on A's
 outcome, and checks these probabilities with rational arithmetic. It does
 not certify the native embedding, arbitrary raw-menu reduction or S1--S3
-interpretation; those require the mathematical argument above and eventually
-checked native theorems.
+interpretation; those require the mathematical argument and the checked native
+theorems above.
