@@ -2,7 +2,7 @@
 
 **SE: non-concurrent ✓ · recovery source ✓ · native word/G coupling ✓ · posterior/RAW repair/service incentives open.**
 
-**Native: $a<m$ obstruction ✓ · stronger fixed loss: input bounds ✓, off-path incentives open.**
+**Deterrence: aggregate stronger-loss bound ✓ · general native SE preservation open.**
 
 The [mathematical proof dependency](se-preservation-math.md#scope-and-proof-dependency)
 states the source selection, conditional transport and deviation arguments,
@@ -40,6 +40,18 @@ quiet-input likelihood bounds are checked; the full native sequential-
 equilibrium obstruction, including an off-path preparation comparison,
 remains pending. This fixed-exclusion model is
 distinct from the checklist's additive-forfeit and service-omission audit model.
+
+A [positive aggregate bound](se-strong-exclusion-signalling.md#a-sufficient-stronger-exclusion-loss)
+rules out exclusion in the failure-reward class when each player can secure
+its zero baseline and its exclusion loss exceeds \((n-1)\) times its reward
+bound. Its finite-law support and probability conclusions are checked. Thus
+loss 3, with audit charge 5, defeats the three-player incentive under the
+stated security premise; the native fixture's constants remain unchanged.
+The same note gives a mathematical concurrent preservation proof for a
+[common-abort alternative](se-strong-exclusion-signalling.md#common-abort-for-general-source-utilities)
+with a service independent of all logical data. That alternative changes
+settlement and strengthens the service interface; it is not adopted by the
+native theorem or checklist.
 
 <details>
 <summary>Checked recovery milestones and remaining proof obligations</summary>

@@ -1,6 +1,6 @@
 # Private service signals with an exclusion loss above the payoff range
 
-**Lean: timing 3/3 · opening ✓ · preparation 2/3 · initial/final open · 230 checked owners.**
+**Deterrence: aggregate bound checked · concurrent common-abort proof below · general native SE open.**
 
 The full three-player native equilibrium obstruction remains pending. This
 note changes neither the preservation target nor the service assumptions in
@@ -10,6 +10,211 @@ The model here has permanent exclusion, commitment-phase reset, and the
 count audit. Exclusion replaces the owner's payoff by a fixed constant. This
 is not the older additive-forfeit model, which keeps the program utility and
 subtracts a penalty for each failed reveal.
+
+## A sufficient stronger exclusion loss
+
+For the failure-reward class below, a loss above one player's reward range
+is unnecessarily weak. A loss exceeding the total reward that one exclusion
+can give the other players rules out exclusion in **every equilibrium**.
+This is a positive result for the whole class, regardless of the service's
+private signals or the players' adaptive timing policies.
+
+Let there be \(n\) players and let \(E_i\) be the event that player \(i\)
+is excluded. Normalize the failure-free payoff to zero. Suppose that:
+
+- each player has a feasible unilateral continuation guaranteeing expected
+  net payoff at least zero against the equilibrium opponents;
+- on \(E_i\), its net payoff is at most \(-F_i\);
+- off \(E_i\), its net payoff is at most
+  \(R_i\sum_{j\ne i}\mathbf1_{E_j}\), where \(R_i>0\).
+
+Nonnegative audit deductions are allowed. The last condition includes reward
+at most \(R_i\) for any foreign exclusion, even if several exclusions do not
+give several rewards. The first condition is a security guarantee; it does
+not follow merely from equilibrium in an arbitrary source game.
+
+**Theorem.** If
+
+\[
+ F_i>(n-1)R_i\qquad\text{for every }i,
+\]
+
+then every Nash equilibrium, and hence every sequential equilibrium, has
+\(\Pr(E_i)=0\) for every player.
+
+The finite-law conclusion is checked in
+`GameTheory.FailureReward.supported_exclusion_free` and
+`GameTheory.FailureReward.exclusion_probabilities`, from actual supported
+terminal payoff bounds and nonnegative expected payoffs. A native game
+application must supply those premises from its own strategy and security
+theorems. The result does not assume an inequality about failure probabilities
+in place of the terminal payoff argument.
+
+**Proof.** Use the equilibrium's actual initialized law throughout and put
+\(p_i=\Pr(E_i)\). The security guarantee and best response imply
+\(\mathbb E U_i\ge0\). The terminal bounds imply
+
+\[
+ 0\le\mathbb E U_i
+ \le R_i\sum_{j\ne i}p_j-F_i p_i.
+\]
+
+Divide by \(R_i\) and sum over players. Each \(p_j\) occurs in precisely
+\(n-1\) foreign sums, giving
+
+\[
+ 0\le\sum_i\left(n-1-\frac{F_i}{R_i}\right)p_i.
+\]
+
+Every coefficient is strictly negative and every probability is nonnegative.
+Thus all \(p_i\) are zero. No independence or lower bound on a late packet's
+failure probability is used. This argument concerns initialized equilibrium
+payoffs; it does not assert a separate security guarantee after every
+off-path observation.
+
+For the three-player reward-one construction, **\(F>2\), for example
+\(F=3\), suffices** under the stated security guarantee. If raw forbidden
+packets are excluded using the existing silent-comparator audit argument,
+its charge must also be increased: charge \(K>F+1\), for example \(K=5\)
+when \(F=3\). Then a charged continuation has payoff at most \(1-K<-F\).
+These numbers are independent of the builder's late-inclusion probabilities.
+The installed fixture still has \(F=3/2\) and charge 3; changing those
+constants has not been mechanized as a native theorem.
+
+This theorem removes the failure-reward incentive, rather than prescribing
+a particular waiting policy. It does **not** yet preserve a selected source
+equilibrium's value distribution. For general source utilities, a protected
+continuation may guarantee only the utility floor, below the selected
+equilibrium value; the preceding summation then contains nonzero slack.
+Moreover, timing may transmit private source information even when exclusion
+does not occur. Those are the remaining obligations for general preservation,
+not consequences of the aggregate bound.
+
+## Common abort for general source utilities
+
+A stronger settlement removes the reward for another player's delivery
+failure altogether: **the first physical failure stops execution and gives
+every player its fixed low abort payoff** \(C_i\le\min u_i\). Completion
+still pays the source utility \(u_i\). This section proves sufficiency for
+concurrent blocks under the service interface stated here. Both this
+settlement and that interface are proposed alternatives; they are not the
+current reset/exclusion semantics or consequences of `AsyncContract` alone.
+
+Use the [value-blind delivery interface](commit-reveal-research/whole-game-delivery-preservation.md)
+with the following concurrent extension. There are finitely many fixed
+blocks, independent of values. In a commitment block, incomparable source
+choices retain their original information until their respective values
+are fixed; opaque foreign commitments disclose no new source value. Here
+incomparability concerns source dependencies, not statistical independence:
+original private parameters and values may be correlated. A choice becomes
+selectable only after all its source-information predecessors; from its
+first eligible selection until locking, its source information stays fixed. Within
+a reveal block, values are already fixed, and the next genuine source
+choice waits for the source barrier. Own dependent choices retain their
+original source order. Every legal logical choice, including a legal
+decline if present, has the same mechanical carrier interface.
+
+The service has a finite mechanical game whose state records tasks, clocks,
+callbacks, receipts and operational randomness. Its initial randomness is
+independent of the source parameters. Mechanical transitions, menus and
+observations ignore **all logical data, including earlier public results**.
+At mechanical view \(W=w\), the identities of any source fields exposed by
+pending or received packets are determined by \(w\); their values form a
+logical view \(S\). A genuine source decision observes exactly its original
+information \(I\), mechanical recall \(W\), and fields determined by them.
+These are requirements on complete remembered inputs and transition laws,
+not a hypothesis that arbitrary observations add no knowledge.
+
+**Theorem for this interface.** For each service, one can choose a delivery
+policy, independently of the selected source equilibrium, such that every
+source SE extends to a target SE. Conditional on completion, its joint law
+of original parameters, source results and payoffs is exact. If there is a
+canonical delivery policy completing surely, the preservation is
+unconditional, and abort never occurs on equilibrium paths.
+
+**Proof.** Give every decision agent in the mechanical game payoff one for
+whole-execution completion and zero for abort. For each sufficiently small
+\(\varepsilon>0\), maximize completion probability over the compact product
+of action simplexes with every probability at least \(\varepsilon\).
+At every legal mechanical information set \(W\), reach is positive. Divide
+the maximizer's one-site comparison by that reach *before* taking limits.
+For a menu of size \(m_W\), conditional regret against any pure action is
+at most \((m_W-1)\varepsilon\). One common convergent subsequence of
+strategies and all Bayes beliefs therefore supplies a consistent mechanical
+assessment with optimal local completion probability \(q(W,\cdot)\),
+including at limiting zero-reach inputs. Global maximization also makes its
+initialized completion probability at least that of every fallback policy.
+
+Combine this sequence with the chosen source SE's fully mixed consistency
+sequence. Virtually sample a commitment block's source choices in their
+canonical source order. This is only a coupling: it adds no observations
+and forces no earlier physical action. Unchanged source information makes
+their joint law independent of the mechanical callback order. Let \(g\)
+contain the logical prefix and these virtual choices, and \(\omega\) the
+mechanical prefix. Multiplying the actual kernels gives prefix weights
+
+\[
+ w'_n(g,\omega)=w_n(g)Q_n(\omega).
+\]
+
+Compatibility uses the task positions recorded in \(\omega\). At each
+barrier, append the original source transition and chance kernel. For fixed
+\(W=w\), the event \(S=s\) imposes a restriction \(L(s,w)\) on \(g\)
+alone. Thus the actual conditional belief at \((S,W)\) is the product
+
+\[
+ \Pr_n(g\mid L(s,w))\,
+ \Pr_n^{\rm mechanical}(\omega\mid W=w).
+\]
+
+Partial reveals can change the first factor. They leave the second factor
+equal to the mechanical assessment's own posterior. The combined sequence,
+with a further common subsequence for the finitely many extra beliefs,
+gives consistency of the target assessment.
+
+At a delivery decision, let \(V_i(g)\) be the expected source utility after
+completion and the prescribed logical continuation. The gain from a
+mechanical action \(a\) is
+
+\[
+ \bigl(\mathbb E[V_i(g)\mid S,W]-C_i\bigr)
+ \bigl(q(W,a)-q(W,\pi_*)\bigr)\le0.
+\]
+
+The first factor is nonnegative by the abort floor; the second is
+nonpositive by the mechanical comparison. At a source decision, completion
+is independent of the selected value and entire logical continuation, so
+the target gain equals \(q_J\) times the source gain. It is nonpositive by
+source sequential rationality. If an actual menu combines `WAIT` with
+`SEND(value)`, write \(V^*\) for the prescribed source value. Any joint
+alternative satisfies
+
+\[
+ q_a(V(v)-C_i)\le q_a(V^*-C_i)
+                 \le q_{\pi_*}(V^*-C_i).
+\]
+
+Waiting here preserves source information, and sending makes the value
+immutable. These comparisons cover arbitrary local actions at full inputs;
+they do not restrict deviations to value-blind policies. Finite perfect
+recall gives rationality against whole adaptive continuations.
+
+Finally, the completed joint law factors as \(pQ_\sigma\), with remaining
+mass on the distinct abort outcome. A surely completing fallback gives
+\(p=1\), since the mechanical maximizer does at least as well. That
+fallback requires actual timely callbacks, admission of valid packets,
+sufficient deadline margin and finite barrier advancement. A receipt which
+can report rejection does not suffice.
+
+**Boundary.** The interface does not include arbitrary raw payloads or
+source-dependent future service. Extra raw messages still require the
+existing audit and consistent-completion argument. If future service
+reliability depends on a public source result, \(q\) can depend on the
+logical continuation and the displayed products need not hold. Thus common
+abort is a proved mathematical alternative for the specified concurrent
+interface, not yet a preservation theorem for the existing bounded raw
+runtime. The interface, raw adapter and settlement would all need explicit
+adoption and mechanization before any preservation checklist box could close.
 
 ## Payoffs and source program
 

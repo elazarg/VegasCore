@@ -38,6 +38,7 @@ Useful existing boundaries are the
 [independent event action kernels](../Vegas/EventGraph/KernelCommutation.lean),
 [behavioral commutation](../Vegas/EventGraph/PolicyCommutation.lean),
 [whole-continuation enforcement](../GameTheoryExtensions/Analysis/Enforcement.lean),
+[aggregate exclusion deterrence for bounded failure rewards](../GameTheoryExtensions/Analysis/FailureRewardDeterrence.lean),
 [local comparison limit](../GameTheoryExtensions/Analysis/Protocol/LocalSimulationLimit.lean),
 [copied-site limit with component completion](../GameTheoryExtensions/Analysis/Protocol/CopiedSiteLimit.lean),
 [consistent completion with whole-player rationality and fixed opponent laws](../GameTheoryExtensions/Analysis/Protocol/PrescribedCompletion.lean),

@@ -5,6 +5,7 @@ import GameTheoryExtensions.Analysis.DisclosureReliability
 import GameTheoryExtensions.Analysis.EnforcementLimits
 import GameTheoryExtensions.Analysis.EnforcementSynthesis
 import GameTheoryExtensions.Analysis.FailureEnforcement
+import GameTheoryExtensions.Analysis.FailureRewardDeterrence
 import GameTheoryExtensions.Analysis.FinitePayoffBounds
 import GameTheoryExtensions.Analysis.ObservableEnforcement
 import GameTheoryExtensions.Analysis.ObservationAbstraction
