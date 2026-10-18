@@ -213,3 +213,9 @@ import Vegas.Source.ProposalRecoveryReadout
 import Vegas.Source.ProposalRecoveryRank
 import Vegas.Source.ProposalRecoveryChronology
 import Vegas.Source.ProposalRecoveryQueryAntichain
+import Vegas.Source.ProposalRecoveryArchiveLookup
+import Vegas.Source.ProposalRecoveryArchiveChronology
+import Vegas.Source.ProposalRecoveryWordSplice
+import Vegas.Source.CommitRecoveryRevealMenu
+import Vegas.Source.ProposalRecoveryTraceReadback
+import Vegas.Source.ProposalRecoveryEvolution

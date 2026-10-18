@@ -25,7 +25,7 @@ theorem recoveryStep_intended_of_clear_nonCommit
     (intended : Intended program point) (notCommit : atCommit program point = false)
     (supported : (target, ∅) ∈ (recoveryStep program point ∅ joint).support) :
     Intended program target := by
-  obtain ⟨legalJoint, legal, same⟩ :=
+  obtain ⟨legalJoint, legal, same, _disclosure⟩ :=
     recoveryStep_legalize_nonCommit program point ∅ joint notCommit
   have member : (target, ∅) ∈ (recoveryStep program point ∅ legalJoint).support := by
     rw [same]

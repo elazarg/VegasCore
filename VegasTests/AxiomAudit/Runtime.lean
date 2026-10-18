@@ -3281,3 +3281,123 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.EventGraphRuntime.ReservedEpoch.implementation_completesPlay
+
+/-- info:
+'Vegas.EventGraphRuntime.ReservedEpoch.full_processing_epoch_clears'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.full_processing_epoch_clears
+
+/-- info:
+'Vegas.EventGraphRuntime.ReservedEpoch.epoch_covers_submitted'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.epoch_covers_submitted
+
+/-- info:
+'Vegas.EventGraphRuntime.ReservedEpoch.activation_state_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.activation_state_history
+
+/-- info:
+'Vegas.EventGraphRuntime.ReservedEpoch.implementation_activation_state_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.implementation_activation_state_history
+
+/-- info:
+'Vegas.EventGraphRuntime.ReservedEpoch.family_opportunity'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.family_opportunity
+
+/-- info:
+'Vegas.EventGraphRuntime.ReservedEpoch.implementation_opportunity'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.implementation_opportunity
+
+/-- info:
+'Vegas.EventGraphRuntime.ReservedEpoch.idle_emission_receipt'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.idle_emission_receipt
+
+/-- info:
+'Vegas.EventGraphRuntime.ReservedEpoch.implementation_emission_receipt'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.implementation_emission_receipt
+
+/-- info:
+'Vegas.EventGraphRuntime.ReservedEpoch.implementation_protectedInclusion'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.implementation_protectedInclusion
+
+/-- info:
+'Vegas.EventGraphRuntime.ReservedEpoch.implementation_asyncContract'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.implementation_asyncContract
+
+/-- info:
+'Vegas.EventGraphRuntime.ReservedEpoch.implementation_first_response_protected'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.implementation_first_response_protected
+
+/-- info:
+'Vegas.EventGraphRuntime.ReservedEpoch.implementation_first_submission_admissible'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.implementation_first_submission_admissible
+
+/-- info:
+'Vegas.EventGraphRuntime.ReservedEpoch.active_fresh_candidate'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.active_fresh_candidate
+
+/-- info:
+'Vegas.EventGraphRuntime.PhaseCount.timely_request_loss_accepts'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.PhaseCount.timely_request_loss_accepts
+
+/-- info:
+'Vegas.EventGraphRuntime.PhaseCount.binding_accepted_of_own_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.PhaseCount.binding_accepted_of_own_history
+
+/-- info:
+'Vegas.EventGraphRuntime.PhaseSeedCalendar.service_tick_eventually_included'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.PhaseSeedCalendar.service_tick_eventually_included
+
+/-- info:
+'Vegas.consumed_publication_phase_archive'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.consumed_publication_phase_archive
+
+/-- info:
+'Vegas.proposalLift_archive_extension'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.proposalLift_archive_extension
+
+/-- info:
+'Vegas.EventGraphRuntime.PhaseProposal.submitted_proposal_owner_not_in_scan'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.PhaseProposal.submitted_proposal_owner_not_in_scan
+
+/-- info:
+'Vegas.EventGraphRuntime.PhaseProposal.sourceArchive_future_bucket_empty'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.PhaseProposal.sourceArchive_future_bucket_empty

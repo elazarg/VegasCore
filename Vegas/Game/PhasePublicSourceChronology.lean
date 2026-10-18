@@ -579,22 +579,6 @@ open SourceProgram EventGraph EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
-/-- The retained native annotation is attached to the next original source
-rank; no source retry or extra close lies inside a public instruction path. -/
-theorem NativePublicSourceStep.position
-    {graph : Vegas.EventGraph Player L} {Γ : SourceCtx Player L} {O : Finset VarId}
-    {native : EventGraphRuntime.State graph} {offset : Nat}
-    {program : SourceProgram Player L Γ O}
-    {first last : ProtocolState program × Finset Player}
-    (step : NativePublicSourceStep native offset program first last) :
-    instructionCount program - ProtocolState.remaining program last.1 =
-      instructionCount program - ProtocolState.remaining program first.1 + 1 := by
-  obtain ⟨⟨running, _notCommit, joint, supported⟩, _update⟩ := step
-  have consumed := ProtocolState.recoveryStep_remaining program first.1 first.2 joint last
-    running supported
-  have bound := ProtocolState.remaining_le_instructionCount program first.1
-  omega
-
 /-- The source rank difference is exactly the number of retained public
 instructions, independently of their disclosure bits and sampled values. -/
 theorem NativePublicSourceStep.path_length

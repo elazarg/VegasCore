@@ -100,6 +100,23 @@ def publicOnly (who : Player) : {Γ : SourceCtx Player L} → {O : Finset VarId}
       cases view <;> simp only [publicOnly, Sum.elim_inl, Sum.elim_inr,
         SourceObservation.publicOnly_idempotent, publicOnly_idempotent who next]
 
+theorem actor_publicOnly (who : Player) :
+    ∀ {Γ : SourceCtx Player L} {O : Finset VarId}
+      (program : SourceProgram Player L Γ O) (view : SourceProgram.ProtocolView who program),
+      ProtocolView.actor who program (ProtocolView.publicOnly who program view) =
+        ProtocolView.actor who program view
+  | _, _, .ret _, _ => rfl
+  | _, _, .sample _ _ _ next, view => by
+      cases view <;> simp only [ProtocolView.publicOnly, ProtocolView.actor,
+        Sum.elim_inl, Sum.elim_inr, actor_publicOnly who next]
+  | _, _, .commit _ _ _ _ next, view => by
+      cases view <;> simp only [ProtocolView.publicOnly, ProtocolView.actor,
+        Sum.elim_inl, Sum.elim_inr, actor_publicOnly who next]
+  | _, _, .reveal _ _ _ _ _ _ next, view => by
+      cases view <;> simp only [ProtocolView.publicOnly, ProtocolView.actor,
+        Sum.elim_inl, Sum.elim_inr, actor_publicOnly who next]
+
+
 @[simp] theorem actor_eraseHistory (who : Player) :
     ∀ {Γ : SourceCtx Player L} {O : Finset VarId}
       (program : SourceProgram Player L Γ O) (view : ProtocolView who program),

@@ -85,7 +85,7 @@ theorem RecoverySourceCheckpoint.normalized_intended
                 finishedDrain
             rw [drained] at result
             obtain ⟨next, _sourcePrefix, _publicSteps, _publicAddresses, _history,
-              nextIntended⟩ := result
+              nextIntended, _replay⟩ := result
             exact ⟨next, nextIntended clear intended⟩
         | sample =>
             have result := checkpoint.after_sample

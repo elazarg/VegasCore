@@ -194,12 +194,12 @@ quantifiers and a passing build. The labels below never enter Lean names.
 | Track | Checked statement | Status |
 | --- | --- | --- |
 | Source | Proposal moves/signals retain guard- and delivery-failed values; intended restriction is unchanged | Partial: semantic trace erasure and stored-value disclosure readback checked; intended restriction remains open |
-| Source | Archive-preserving erasure/NoMiss queries and pool antichains | Partial: normalized-query antichains, unique archive addresses, same-labeled suffix transport and full-information readback checked; archive-to-chronology alignment and complete fibers remain open |
-| Source | Actual conditional Bayes/action-vector exchange at fixed controls | Open |
+| Source | Archive-preserving erasure/NoMiss queries and pool antichains | Partial: normalized-query antichains, unique archive addresses, exact archive-to-chronology alignment and invertible full-history fibers checked; the full NoMiss query comparison remains open |
+| Source | Actual conditional Bayes/action-vector exchange at fixed controls | Checked: original fully mixed Bayes beliefs, arbitrary legal action values and deviation gains agree on equal old erased-information/archive fibers; see the source evidence below |
 | Source | Affine NoMiss comparison and one joint pooled consistency witness | Open |
 | Source | Enriched source SE extending the selected intended SE and joint law | Open |
 | Runtime | Concrete correlated, block-frozen reserved scheduler family | Partial: joint tape and exact scheduler-mixture realization checked; block service certification remains open |
-| Runtime | All-raw opportunity/receipt/completion, timely-valid acceptance and noncircular budgets | Partial: policy-independent cycle bound, derived packet capacity/horizon, actual queue draining and completion under the correlated scheduler mixture checked; opportunity, full receipt coverage and timely-valid acceptance remain open |
+| Runtime | All-raw opportunity/receipt/completion, timely-valid acceptance and noncircular budgets | Partial: actual correlated-mixture AsyncContract checked with opportunity, full raw receipt coverage, completion and noncircular resource bounds; eventual timely-valid acceptance remains open |
 | Runtime | Same-tape admission monotonicity and foreign-service invariance | Open |
 | Runtime | Complete proposal reconstruction and required fresh-slot reserve | Open |
 | Runtime | Supported concurrent instance with variable service orders | Checked: both orders have supported actual prefixes with distinct owners' typed, timely, handler-admissible packets pending together; see the fixture evidence below |
@@ -212,9 +212,11 @@ quantifiers and a passing build. The labels below never enter Lean names.
 | End-to-end | Counted SE and exact initialized joint law | Open |
 | End-to-end | Raw SE, exact settled joint law, zero exclusions/charges and instantiated service | Open |
 
-Compact progress display: **Source 0/5 · Runtime 1/5 · Transport 0/6 · E2E 0/2**.
+Compact progress display: **Source 1/5 · Runtime 1/5 · Transport 0/6 · E2E 0/2**.
 Update counts from checked statements and name the current bottleneck. Existing
 reusable proofs are dependencies, not new completed milestones.
+Current bottlenecks are the affine retry comparison and selected source SE,
+followed by whole native archive and likelihood transport.
 
 Checked prerequisites: `proposalRecoveryEraseTrace` preserves semantic endpoints;
 `recoveryProposal_reveal_success` reads disclosed values from the pre-state;
@@ -244,6 +246,13 @@ to actual submitted packets even when their guard excludes the author.
 `source_proposal_delta_of_readback` retains exact typed proposal values through
 the existing source-order replay; whole enriched-history correspondence still
 requires matching physical publication attempts to source generations.
+`consumed_publication_phase_archive` identifies the exact archive of one
+consumed publication phase on that same annotated source replay, retaining
+guard-failed and expired submitted disclosures. The global normalization
+companion and whole-history archive correspondence remain open.
+`PhaseProposal.sourceArchive_future_bucket_empty` rules out submitted proposal
+buckets from future physical phases on arbitrary raw histories; it also applies
+to later phases drained inside one environment step.
 `ReservedEpoch.clock_history` accounts for every physical tick;
 `ReservedEpoch.expiry_round_decreases` gives strict finite-work progress at an
 actual due-expiry round. `ReservedEpoch.runRounds_complete` bounds all-raw
@@ -254,6 +263,35 @@ arbitrary initial input law. It extracts a supported original tape rather than
 assuming a pointwise service property survives behavioral mixing. Packet
 capacity and the physical horizon are derived from this cycle bound; timely
 service and the remaining coupling obligations are separate.
+
+`proposalRecovery_information_fiber_equiv` gives an invertible map between
+complete histories with matching erased information and proposal archives.
+It preserves the initialized chance path, all proposal chronology, opponents'
+full enriched information and the actual erased history.
+`proposalRecovery_bayes_eq_of_erased_information_archive` transports the actual
+fully mixed Bayes beliefs through this map. These statements include failed
+disclosures. `proposalRecovery_bayes_stopped_eq` and
+`proposalRecovery_bayes_terminal_eq` extend the comparison to actual stopped and
+terminal full-image laws under normalized continuations, using the existing
+stopped-kernel comparison engine.
+`proposalRecovery_conditional_value_eq`, `proposalRecovery_baseline_value_eq`
+and `proposalRecovery_conditional_gain_eq` prove the corresponding action
+vectors and deviation gains for the original fully mixed Bayes assessment.
+`proposalRecoveryComponentChoice` is an equivalence with the entire legal
+menu, so these comparisons cover arbitrary legal action laws, including all
+valid proposal labels. The shared prescription is an internal strategy
+representation, not an assumed belief or continuation-law equality.
+These are fixed-control copies: their old erased information and proposal
+archive agree. The affine NoMiss comparison and source SE remain separate.
+The source dependency tests pin the standard axioms for these hard consumers.
+`ReservedEpoch.implementation_asyncContract` supplies opportunity, receipts and
+completion under the actual mixed scheduler, for every raw history and
+arbitrary initial input law, at the derived capacity and horizon.
+`ReservedEpoch.implementation_first_submission_admissible` proves immediate
+first-response handler admissibility, while
+`ReservedEpoch.active_fresh_candidate` supplies a fresh slot at every active
+raw decision when the candidate reserve covers the horizon. Eventual accepting
+receipts and the same-tape incentive couplings remain separate obligations.
 
 The concrete fixture is checked for every source input bit and both service
 orders. `ReservedEpochConcurrency.concurrent_prefix_supported` supplies the

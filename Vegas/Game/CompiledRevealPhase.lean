@@ -6,7 +6,7 @@ import Vegas.Game.RecordedSourceHistory
 import Vegas.Game.ServiceRevealTail
 import Vegas.Compile.EventGraphSuffix
 import Vegas.Pending.PhaseFailureOrder
-import Vegas.Game.PhaseProposalReadback
+import Vegas.Game.PhaseProposalDisclosure
 
 /-! # Source-order reconstruction of completed concurrent reveal phases -/
 
@@ -57,7 +57,25 @@ def NativePublicSourceStep {graph : Vegas.EventGraph Player L}
       ProtocolState.remaining program first.1) →
     last.2 = (graph.actor? event).elim first.2 fun owner =>
       if native.PublicFailure event then insert owner first.2 else first.2) ∧
-  NativeProposalReadback native offset program first.1
+  NativeProposalReadback native offset program first.1 ∧
+  ∃ joint, last ∈ (ProtocolState.recoveryStep program first.1 first.2 joint).support ∧
+    NativeDisclosureReadback native offset program first.1 first.2 joint
+
+/-- The retained native annotation is attached to the next original source
+rank; no source retry or extra close lies inside a public instruction path. -/
+theorem NativePublicSourceStep.position
+    {graph : Vegas.EventGraph Player L} {Γ : SourceCtx Player L} {O : Finset VarId}
+    {native : EventGraphRuntime.State graph} {offset : Nat}
+    {program : SourceProgram Player L Γ O}
+    {first last : ProtocolState program × Finset Player}
+    (step : NativePublicSourceStep native offset program first last) :
+    instructionCount program - ProtocolState.remaining program last.1 =
+      instructionCount program - ProtocolState.remaining program first.1 + 1 := by
+  obtain ⟨⟨running, _notCommit, joint, supported⟩, _update⟩ := step
+  have consumed := ProtocolState.recoveryStep_remaining program first.1 first.2 joint last
+    running supported
+  have bound := ProtocolState.remaining_le_instructionCount program first.1
+  omega
 
 variable (setup : Setup (Player := Player) (L := L)) (mode : EventGraph.ExecutionMode)
 
@@ -261,8 +279,9 @@ theorem completed_reveal_phase_source_path :
                 (.reveal published owner name fresh source unresolved next))
               (by
                 intro left right moved
-                obtain ⟨⟨running, notCommit, joint, supported⟩, update, readback⟩ := moved
-                refine ⟨⟨running, notCommit, joint, ?_⟩, ?_, ?_⟩
+                obtain ⟨⟨running, notCommit, joint, supported⟩, update, readback,
+                  selectedJoint, selectedSupport, disclosure⟩ := moved
+                refine ⟨⟨running, notCommit, joint, ?_⟩, ?_, ?_, selectedJoint, ?_, ?_⟩
                 · exact (PMF.mem_support_map_iff _ _ _).mpr ⟨right, supported, rfl⟩
                 · intro selected ranked
                   apply update selected ?_
@@ -272,12 +291,20 @@ theorem completed_reveal_phase_source_path :
                 · exact NativeProposalReadback.lift
                     (ProtocolSuffix.revealTail fresh source unresolved next .initial)
                     native.native offset (offset + 1)
-                    (by simp only [instructionCount]; omega) left.1 readback)
+                    (by simp only [instructionCount]; omega) left.1 readback
+                · exact (PMF.mem_support_map_iff _ _ _).mpr ⟨right, selectedSupport, rfl⟩
+                · exact NativeDisclosureReadback.lift
+                    (ProtocolSuffix.revealTail fresh source unresolved next .initial)
+                    native.native offset (offset + 1)
+                    (by simp only [instructionCount]; omega) left.1 left.2
+                    selectedJoint disclosure)
               _ _ path
             apply Relation.ReflTransGen.head ?_ lifted
             refine ⟨⟨(fun impossible => impossible), rfl,
               Function.update (fun _ => none) owner
-                (some ⟨.reveal owner name disclose, false⟩), ?_⟩, ?_, ?_⟩
+                (some ⟨.reveal owner name disclose, false⟩), ?_⟩, ?_, ?_,
+              Function.update (fun _ => none) owner
+                (some ⟨.reveal owner name disclose, false⟩), ?_, ?_⟩
             · dsimp only [Prod.fst, Prod.snd, ProtocolState.entry]
               rw [oneStep]
               exact (PMF.mem_support_pure_iff _ _).mpr rfl
@@ -293,6 +320,11 @@ theorem completed_reveal_phase_source_path :
                 offset event rankEq refs entry
                 (compileChecks (published := published) refs registry entry.revelations source)
                 outputEq codeEq agree
+            · dsimp only [Prod.fst, Prod.snd, ProtocolState.entry]
+              rw [oneStep]
+              exact (PMF.mem_support_pure_iff _ _).mpr rfl
+            · exact nativeDisclosureReadback_reveal fresh source unresolved next native.native
+                offset event rankEq entry inherited outputEq action disclose recorded actual
           · intro actions
             have tailActions : ∀ index action,
                 decodeEventAction setup.program (tailEmbedding.event index) action =

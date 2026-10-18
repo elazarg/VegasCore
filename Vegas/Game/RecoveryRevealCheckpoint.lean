@@ -9,6 +9,7 @@ import Vegas.Pending.PhaseHistoryCheckpoint
 import Vegas.Game.RevealRecoveryResidual
 import Vegas.Source.CommitRecoveryPathLift
 import Vegas.Source.CommitRecoveryNonCommitIntended
+import Vegas.Game.PhaseProposalReplayPath
 
 /-! # Saved source checkpoints after actual completed disclosure phases -/
 
@@ -90,7 +91,9 @@ theorem RecoverySourceCheckpoint.after_reveal
       ProtocolState.Intended setup.program (checkpoint.residual.lift
         (ProtocolState.entry checkpoint.residual.tail checkpoint.source)) →
       ProtocolState.Intended setup.program (next.residual.lift
-        (ProtocolState.entry next.residual.tail next.source))) := by
+        (ProtocolState.entry next.residual.tail next.source))) ∧
+      NativeSourceReplayExtension setup (phase.drain state.current).native state.generation
+        checkpoint.trace next.trace := by
   let priorTrace := checkpoint.trace
   let program := checkpoint.residual.tail
   let count := phase.high - phase.low
@@ -142,8 +145,9 @@ theorem RecoverySourceCheckpoint.after_reveal
     apply Relation.ReflTransGen.lift
       (fun point : ProtocolState program × Finset Player =>
         (checkpoint.residual.lift point.1, point.2)) (fun left right moved => ?_) _ _ path
-    obtain ⟨⟨running, notCommit, joint, supported⟩, update, readback⟩ := moved
-    refine ⟨⟨?_, ?_, joint, ?_⟩, ?_, ?_⟩
+    obtain ⟨⟨running, notCommit, joint, supported⟩, update, readback,
+      selectedJoint, selectedSupport, disclosure⟩ := moved
+    refine ⟨⟨?_, ?_, joint, ?_⟩, ?_, ?_, selectedJoint, ?_, ?_⟩
     · intro stopped
       apply running
       apply (ProtocolState.remaining_zero_iff_terminal program left.1).mp
@@ -166,12 +170,18 @@ theorem RecoverySourceCheckpoint.after_reveal
           have count := checkpoint.compiled.countEq
           simp only [eventCount_eq_instructionCount] at count
           omega) left.1 readback
+    · rw [checkpoint.step]
+      exact (PMF.mem_support_map_iff _ _ _).mpr ⟨right, selectedSupport, rfl⟩
+    · exact NativeDisclosureReadback.lift checkpoint.origin image.native 0 state.attempt.phase
+        (by
+          have count := checkpoint.compiled.countEq
+          simp only [eventCount_eq_instructionCount] at count
+          omega) left.1 left.2 selectedJoint disclosure
   have rawPath := Relation.ReflTransGen.mono (fun _ _ moved => moved.1) _ _ path
-  obtain ⟨states, joints, chain, ending, instructions⟩ :=
-    CommitRecoveryState.instructions_of_nonCommit_path setup.program sourceInitial
-      state.generation (fun _ _ moved => moved.1) _ _ publicPath
-  obtain ⟨sourceTrace, reachedPrefix, _length, _word, numeric⟩ :=
-    setup.recoveryInstructionPath_information sourceInitial instructions priorTrace
+  obtain ⟨sourceTrace, states, joints, events, chain, ending, reachedPrefix, _length, _word,
+    numeric, replaySteps, replayAnnotations, eventCount, replayCursors⟩ :=
+    native_public_path_history setup image.native sourceInitial state.generation _ _ publicPath
+      priorTrace
   have adjacent := exclusion.frontier.adjacent
   have last := exclusion.frontier.last
   rw [installed] at adjacent last
@@ -215,7 +225,7 @@ theorem RecoverySourceCheckpoint.after_reveal
         checkpoint.embedding checkpoint.residual.lift checkpoint.views
       origin := checkpoint.origin.compose
         (revealTail_protocolSuffix count program prefixed)
-      historyAlignment := ?_ }, ?_, publicPath, ⟨states, chain, ending, numeric⟩, ?_, ?_⟩
+      historyAlignment := ?_ }, ?_, publicPath, ⟨states, chain, ending, numeric⟩, ?_, ?_, ?_⟩
   · rw [address, high]
     rw [revelations]
     exact graphTail
@@ -256,5 +266,10 @@ theorem RecoverySourceCheckpoint.after_reveal
       who active
   · intro clear intended
     exact checkpoint.origin.intended_of_clear_nonCommit_path _ _ rawPath intended clear
+  · refine ⟨events, _, chain, rfl, replaySteps, replayAnnotations, ?_, ?_⟩
+    · change events.length = sourceTrace.length - checkpoint.trace.length
+      dsimp only [priorTrace] at _length
+      omega
+    · simpa only [Option.map_some, CommitRecoveryState.atPoint] using replayCursors
 
 end Vegas

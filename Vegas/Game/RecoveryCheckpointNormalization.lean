@@ -142,7 +142,7 @@ theorem RecoverySourceCheckpoint.normalized
                 imageCoverage ⟨nextCheckpoint⟩
         | reveal =>
             obtain ⟨nextCheckpoint, _sourcePrefix, _publicSteps, _publicAddresses,
-              _history, _intended⟩ :=
+              _history, _intended, _replay⟩ :=
               checkpoint.after_reveal phase remaining rfl kind
               receipts.exclusion stored remembered imageNative.reachable imageOrder finished
             have noRetry : ¬ (phase.kind = .commitment ∧

@@ -369,7 +369,8 @@ theorem RecoverySourceCheckpoint.normalized_archived
                       (fun _ => checkpoint.chosen_commit_addresses image.native committing
                         ⟨_, nextCheckpoint.trace⟩ nextPath instructions)⟩
         | reveal =>
-            obtain ⟨nextCheckpoint, sourcePrefix, publicSteps, publicAddresses, word, _intended⟩ :=
+            obtain ⟨nextCheckpoint, sourcePrefix, publicSteps, publicAddresses, word, _intended,
+              _replay⟩ :=
               checkpoint.after_reveal phase remaining rfl kind
               receipts.exclusion stored remembered imageNative.reachable imageOrder finished
             have nextChronology := PublicChronology.advance_public checkpoint nextCheckpoint plan

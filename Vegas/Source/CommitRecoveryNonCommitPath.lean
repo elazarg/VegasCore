@@ -27,34 +27,41 @@ theorem ProtocolState.recoveryStep_legalize_nonCommit :
       IsLegalJoint (CommitRecoveryState.atPoint point excluded 0).Active
         (CommitRecoveryState.atPoint point excluded 0).available legalJoint ∧
       recoveryStep program point excluded legalJoint =
-        recoveryStep program point excluded joint := by
+        recoveryStep program point excluded joint ∧
+      ∀ who, actor program point = some who → who ∉ excluded →
+        OwnAction.disclosure ((legalJoint who).map (·.action)) =
+          OwnAction.disclosure ((joint who).map (·.action)) := by
   intro Γ O program
   induction program with
   | ret payoff =>
       intro point excluded joint _notCommit
-      refine ⟨fun _ => none, ?_, rfl⟩
-      intro who
-      change ¬ (none = some who ∧ who ∉ excluded)
-      simp only [reduceCtorEq, false_and, not_false_eq_true]
+      refine ⟨fun _ => none, ?_, rfl, ?_⟩
+      · intro who
+        change ¬ (none = some who ∧ who ∉ excluded)
+        simp only [reduceCtorEq, false_and, not_false_eq_true]
+      · intro who acting
+        cases acting
   | sample name fresh law next ih =>
       intro point excluded joint notCommit
       cases point with
       | inl entry =>
-          refine ⟨fun _ => none, ?_, rfl⟩
-          intro who
-          change ¬ (none = some who ∧ who ∉ excluded)
-          simp only [reduceCtorEq, false_and, not_false_eq_true]
+          refine ⟨fun _ => none, ?_, rfl, ?_⟩
+          · intro who
+            change ¬ (none = some who ∧ who ∉ excluded)
+            simp only [reduceCtorEq, false_and, not_false_eq_true]
+          · intro who acting
+            cases acting
       | inr later =>
-          obtain ⟨legalJoint, legal, same⟩ := ih later excluded joint notCommit
-          refine ⟨legalJoint, legal, ?_⟩
+          obtain ⟨legalJoint, legal, same, disclosure⟩ := ih later excluded joint notCommit
+          refine ⟨legalJoint, legal, ?_, disclosure⟩
           simp only [recoveryStep, Sum.elim_inr, same]
   | commit name owner fresh guard next ih =>
       intro point excluded joint notCommit
       cases point with
       | inl entry => cases notCommit
       | inr later =>
-          obtain ⟨legalJoint, legal, same⟩ := ih later excluded joint notCommit
-          refine ⟨legalJoint, legal, ?_⟩
+          obtain ⟨legalJoint, legal, same, disclosure⟩ := ih later excluded joint notCommit
+          refine ⟨legalJoint, legal, ?_, disclosure⟩
           simp only [recoveryStep, Sum.elim_inr, same]
   | reveal published owner name fresh source unresolved next ih =>
       intro point excluded joint notCommit
@@ -62,14 +69,17 @@ theorem ProtocolState.recoveryStep_legalize_nonCommit :
       | inl entry =>
           let disclose := OwnAction.disclosure ((joint owner).map (·.action))
           by_cases inactive : owner ∈ excluded
-          · refine ⟨fun _ => none, ?_, ?_⟩
+          · refine ⟨fun _ => none, ?_, ?_, ?_⟩
             · intro who
               change ¬ (some owner = some who ∧ who ∉ excluded)
               rintro ⟨acting, active⟩
               exact active (Option.some.inj acting ▸ inactive)
             · simp only [recoveryStep, Sum.elim_inl, inactive, ↓reduceIte]
+            · intro who acting survives
+              have same : owner = who := Option.some.inj acting
+              exact (survives (same ▸ inactive)).elim
           · refine ⟨Function.update (fun _ => none) owner
-              (some ⟨.reveal owner name disclose, false⟩), ?_, ?_⟩
+              (some ⟨.reveal owner name disclose, false⟩), ?_, ?_, ?_⟩
             · intro who
               by_cases same : who = owner
               · subst who
@@ -84,9 +94,14 @@ theorem ProtocolState.recoveryStep_legalize_nonCommit :
             · simp only [recoveryStep, Sum.elim_inl, inactive, ↓reduceIte,
                 Function.update_self, Option.map_some, OwnAction.disclosure]
               rfl
+            · intro who acting _survives
+              have same : owner = who := Option.some.inj acting
+              subst who
+              simp only [Function.update_self, Option.map_some, OwnAction.disclosure]
+              rfl
       | inr later =>
-          obtain ⟨legalJoint, legal, same⟩ := ih later excluded joint notCommit
-          refine ⟨legalJoint, legal, ?_⟩
+          obtain ⟨legalJoint, legal, same, disclosure⟩ := ih later excluded joint notCommit
+          refine ⟨legalJoint, legal, ?_, disclosure⟩
           simp only [recoveryStep, Sum.elim_inr, same]
 
 /-- An actual noncommitment instruction checkpoints its result directly.
@@ -100,9 +115,14 @@ theorem CommitRecoveryState.nonCommit_successor
     (joint : Player → Option (CommitRecoveryMove Player L))
     (target : ProtocolState program × Finset Player)
     (supported : target ∈ (ProtocolState.recoveryStep program point excluded joint).support) :
-    (commitRecoveryProtocol program initial).Successor
-      (atPoint target.1 target.2 generation) (atPoint point excluded generation) := by
-  obtain ⟨legalJoint, legal, same⟩ :=
+    ∃ legalJoint, ∃ legal : (commitRecoveryProtocol program initial).Legal
+        (atPoint point excluded generation) legalJoint,
+      (atPoint target.1 target.2 generation) ∈
+        ((commitRecoveryProtocol program initial).step _ ⟨legalJoint, legal⟩).support ∧
+      ∀ who, ProtocolState.actor program point = some who → who ∉ excluded →
+        OwnAction.disclosure ((legalJoint who).map (·.action)) =
+          OwnAction.disclosure ((joint who).map (·.action)) := by
+  obtain ⟨legalJoint, legal, same, disclosure⟩ :=
     ProtocolState.recoveryStep_legalize_nonCommit program point excluded joint notCommit
   let state := atPoint point excluded generation
   have member : target ∈
@@ -117,7 +137,7 @@ theorem CommitRecoveryState.nonCommit_successor
     rw [map_val_pmfToSubtype]
     exact member
   obtain ⟨packed, packedSupport, packedEq⟩ := (PMF.mem_support_map_iff _ _ _).mp mapped
-  refine ⟨legalJoint, ⟨running, legal⟩, ?_⟩
+  refine ⟨legalJoint, ⟨running, legal⟩, ?_, disclosure⟩
   apply (PMF.mem_support_map_iff _ _ _).mpr
   refine ⟨packed, packedSupport, ?_⟩
   change (state.install packed.val packed.property).close = atPoint target.1 target.2 generation
@@ -163,7 +183,8 @@ theorem CommitRecoveryState.instructions_of_nonCommit_path
   | @head first middle moved _remaining ih =>
       obtain ⟨states, joints, chain, ending, instructions⟩ := ih
       obtain ⟨running, notCommit, joint, supported⟩ := steps first middle moved
-      obtain ⟨legalJoint, legal, realized⟩ := nonCommit_successor program initial first.1 first.2
+      obtain ⟨legalJoint, legal, realized, _disclosure⟩ :=
+        nonCommit_successor program initial first.1 first.2
         generation notCommit running joint middle supported
       exact ⟨middle :: states, legalJoint :: joints, .cons_cons moved chain,
         by simpa only [List.getLast_cons_cons] using ending,

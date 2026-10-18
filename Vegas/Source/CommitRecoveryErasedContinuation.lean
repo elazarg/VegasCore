@@ -59,7 +59,7 @@ def commitRecoveryErasedHistory (history : setup.commitRecoveryProtocol.History)
 
 /-- The next erased queries keep all old public signals. Only the private
 remembered words and their derived own-play tags are absent. -/
-private def nextErasedHistory
+def commitRecoveryNextErasedHistory
     (before : setup.commitRecoveryProtocol.State ×
       ((who : Player) → setup.commitRecoveryModel.InfoState who))
     (next : setup.commitRecoveryProtocol.State) :
@@ -105,7 +105,7 @@ theorem commitRecoveryErasedHistory_extend
     {target : setup.commitRecoveryProtocol.State}
     (realized : target ∈ (setup.commitRecoveryProtocol.step history.state ⟨joint, legal⟩).support) :
     setup.commitRecoveryErasedHistory (history.extend legal realized) =
-      setup.nextErasedHistory (setup.commitRecoveryErasedHistory history)
+      setup.commitRecoveryNextErasedHistory (setup.commitRecoveryErasedHistory history)
         (target.map CommitRecoveryState.eraseHistory) := by
   refine Prod.ext rfl ?_
   funext who
@@ -177,7 +177,8 @@ private theorem oneStep_erased_history
         setup.commitRecoveryErasedHistory =
       (setup.commitRecoveryModel.behavioralJoint profile history.trace running).bind fun draw =>
         (setup.commitRecoveryProtocol.step history.state draw).map
-          (fun target => setup.nextErasedHistory (setup.commitRecoveryErasedHistory history)
+          (fun target => setup.commitRecoveryNextErasedHistory
+        (setup.commitRecoveryErasedHistory history)
             (target.map CommitRecoveryState.eraseHistory)) := by
   rw [InformationModel.runBehavioralFrom_succ_of_not_terminal _ _ 0 running, PMF.map_bind]
   apply congrArg (PMF.bind _)
@@ -227,7 +228,7 @@ theorem commitRecovery_oneStep_erased_eq
   subst right
   have raw := setup.step_erased_state stateEq left leftLegal rightLegal
   have mapped := congrArg
-    (PMF.map (setup.nextErasedHistory (setup.commitRecoveryErasedHistory first))) raw
+    (PMF.map (setup.commitRecoveryNextErasedHistory (setup.commitRecoveryErasedHistory first))) raw
   rw [← same]
   convert mapped using 1 <;> rw [PMF.map_comp] <;> rfl
 

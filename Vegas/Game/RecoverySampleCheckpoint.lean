@@ -180,7 +180,7 @@ theorem RecoverySourceCheckpoint.after_sample
           (lift (Sum.inl source), state.entry.excluded)
           (lift (Sum.inr (ProtocolState.entry next after)), state.entry.excluded) := by
         apply Relation.ReflTransGen.single
-        refine ⟨⟨?_, ?_, (fun _ => none), ?_⟩, ?_, ?_⟩
+        refine ⟨⟨?_, ?_, (fun _ => none), ?_⟩, ?_, ?_, (fun _ => none), ?_, ?_⟩
         · intro stopped
           have zeroRemaining := (ProtocolState.remaining_zero_iff_terminal setup.program _).mpr
             stopped
@@ -209,6 +209,13 @@ theorem RecoverySourceCheckpoint.after_sample
               simpa only [eventCount_eq_instructionCount] using total.symm) (.inl source)
           intro joint
           rfl
+        · rw [steps]
+          apply (PMF.mem_support_map_iff _ _ _).mpr
+          refine ⟨(Sum.inr (ProtocolState.entry next after), state.entry.excluded), ?_, rfl⟩
+          exact (PMF.mem_support_map_iff _ _ _).mpr ⟨sampled, supported, rfl⟩
+        · intro who acting
+          rw [actors] at acting
+          cases acting
       obtain ⟨states, joints, chain, ending, instructions⟩ :=
         CommitRecoveryState.instructions_of_nonCommit_path setup.program sourceInitial
           state.generation (fun _ _ moved => moved.1) _ _ publicPath

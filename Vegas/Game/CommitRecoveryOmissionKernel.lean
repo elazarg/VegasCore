@@ -155,22 +155,6 @@ theorem commitRecoveryNormalizedTrembledProfile_missed_law
           rfl
       _ = _ := PMF.map_const _ _
 
-private theorem public_actor (who : Player) :
-    ∀ {Γ : SourceCtx Player L} {O : Finset VarId}
-      (program : SourceProgram Player L Γ O) (view : SourceProgram.ProtocolView who program),
-      ProtocolView.actor who program (ProtocolView.publicOnly who program view) =
-        ProtocolView.actor who program view
-  | _, _, .ret _, _ => rfl
-  | _, _, .sample _ _ _ next, view => by
-      cases view <;> simp only [ProtocolView.publicOnly, ProtocolView.actor,
-        Sum.elim_inl, Sum.elim_inr, public_actor who next]
-  | _, _, .commit _ _ _ _ next, view => by
-      cases view <;> simp only [ProtocolView.publicOnly, ProtocolView.actor,
-        Sum.elim_inl, Sum.elim_inr, public_actor who next]
-  | _, _, .reveal _ _ _ _ _ _ next, view => by
-      cases view <;> simp only [ProtocolView.publicOnly, ProtocolView.actor,
-        Sum.elim_inl, Sum.elim_inr, public_actor who next]
-
 private theorem current_signal (who : Player)
     {state : setup.commitRecoveryProtocol.State}
     (trace : setup.commitRecoveryProtocol.Trace state) :
@@ -238,7 +222,7 @@ theorem commitRecoveryNormalizedTrembledProfile_joint_missed_eq
   have actor : ProtocolState.actor setup.program left.point =
       ProtocolState.actor setup.program right.point := by
     have same := congrArg (ProtocolView.actor who setup.program) (observed who)
-    simpa only [public_actor, ProtocolState.actor_observe_eq] using same
+    simpa only [ProtocolView.actor_publicOnly, ProtocolState.actor_observe_eq] using same
   have active : setup.commitRecoveryActive who
       (setup.commitRecoveryModel.infoOf who leftTrace).1.1 ↔
         setup.commitRecoveryActive who (setup.commitRecoveryModel.infoOf who rightTrace).1.1 := by

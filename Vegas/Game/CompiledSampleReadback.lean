@@ -89,9 +89,11 @@ theorem completed_sample_source_successor {graph : Vegas.EventGraph Player L}
   · exact Revelations.PreservesFailures.weaken failures (name := name)
       (cell := .publicData payload) sampled
   · intro excluded generation
-    apply CommitRecoveryState.nonCommit_successor (.sample name fresh sourceLaw next) entry
+    obtain ⟨joint, legal, realized, _disclosure⟩ :=
+      CommitRecoveryState.nonCommit_successor (.sample name fresh sourceLaw next) entry
       (Sum.inl entry) excluded generation rfl (fun impossible => impossible) (fun _ => none)
       (Sum.inr (ProtocolState.entry next (sampleSuccessor name entry sampled)), excluded)
-    exact (PMF.mem_support_map_iff _ _ _).mpr ⟨sampled, sampledSupport, rfl⟩
+        ((PMF.mem_support_map_iff _ _ _).mpr ⟨sampled, sampledSupport, rfl⟩)
+    exact ⟨joint, legal, realized⟩
 
 end Vegas
