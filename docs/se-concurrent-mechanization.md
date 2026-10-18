@@ -194,16 +194,16 @@ quantifiers and a passing build. The labels below never enter Lean names.
 | Track | Checked statement | Status |
 | --- | --- | --- |
 | Source | Proposal moves/signals retain guard- and delivery-failed values; intended restriction is unchanged | Partial: semantic trace erasure and stored-value disclosure readback checked; intended restriction remains open |
-| Source | Archive-preserving erasure/NoMiss queries and pool antichains | Open |
+| Source | Archive-preserving erasure/NoMiss queries and pool antichains | Partial: normalized query and same-labeled suffix/archive transport checked; full information fibers and pool antichains remain open |
 | Source | Actual conditional Bayes/action-vector exchange at fixed controls | Open |
 | Source | Affine NoMiss comparison and one joint pooled consistency witness | Open |
 | Source | Enriched source SE extending the selected intended SE and joint law | Open |
 | Runtime | Concrete correlated, block-frozen reserved scheduler family | Partial: joint tape and exact scheduler-mixture realization checked; block service certification remains open |
-| Runtime | All-raw opportunity/receipt/completion, timely-valid acceptance and noncircular budgets | Partial: bounded pending processing segment and receipts checked; opportunity, completion, timeliness and global budget remain open |
+| Runtime | All-raw opportunity/receipt/completion, timely-valid acceptance and noncircular budgets | Partial: processing receipts and submissions bounded by players × cycles checked; opportunity, semantic completion, timeliness and global cycle budget remain open |
 | Runtime | Same-tape admission monotonicity and foreign-service invariance | Open |
 | Runtime | Complete proposal reconstruction and required fresh-slot reserve | Open |
-| Runtime | Supported concurrent instance with variable service orders | Open |
-| Transport | Genuine enriched native query, alias masses and full counted support | Partial: full-input archive reconstruction, counted address uniqueness and local alias splitting checked; enriched trace correspondence and full native reference support remain open |
+| Runtime | Supported concurrent instance with variable service orders | Checked: both orders have supported actual prefixes with distinct owners' typed, timely, handler-admissible packets pending together; see the fixture evidence below |
+| Transport | Genuine enriched native query, alias masses and full counted support | Partial: archive reconstruction, counted uniqueness, actual proposal origins/typed meanings and local alias splitting checked; enriched trace correspondence and full native reference support remain open |
 | Transport | Good-store likelihood transport, including failed proposals | Open |
 | Transport | Uniform foreign-bad posterior bound and separate own-debt cases | Open |
 | Transport | Publication timing dominance with actual early observations | Open |
@@ -212,7 +212,7 @@ quantifiers and a passing build. The labels below never enter Lean names.
 | End-to-end | Counted SE and exact initialized joint law | Open |
 | End-to-end | Raw SE, exact settled joint law, zero exclusions/charges and instantiated service | Open |
 
-Compact progress display: **Source 0/5 · Runtime 0/5 · Transport 0/6 · E2E 0/2**.
+Compact progress display: **Source 0/5 · Runtime 1/5 · Transport 0/6 · E2E 0/2**.
 Update counts from checked statements and name the current bottleneck. Existing
 reusable proofs are dependencies, not new completed milestones.
 
@@ -226,6 +226,21 @@ every submitted proposal from actual complete decision inputs; and
 `PhaseProposal.splitResponseLaw_project` and
 `PhaseProposal.splitResponseLaw_fullSupport` preserve a local response-class
 law and give support to all its actual permitted preimages.
+`proposalRecovery_supported_suffix_of_erased_history_eq` retains the complete
+proposal transcript through supported suffixes. The caller-controlled encoder
+has full support and `proposalRecoveryTrembledDomainLaw_value_lower` gives an
+ordinary-response floor independent of optimized domain weights.
+`PhaseProposal.submitted_proposal_binding_meaning` recovers each counted
+proposal's actual original callback and successful typed binding.
+
+The concrete fixture is checked for every source input bit and both service
+orders. `ReservedEpochConcurrency.concurrent_prefix_supported` supplies the
+actual mixed-scheduler prefixes; `two_packets_pending` and
+`distinct_pending_owners` give simultaneous distinct-owner traffic;
+`pending_binding_timely`, `pending_binding_admissible` and
+`pending_binding_usable` give actual deadline, handler and typed-preparation
+validity. `correlated_order_and_epochs` ties the activation order to processing
+availability, so this is not an independent-delay or fixed-order instance.
 The immediate joins are the enriched source-history/archive correspondence and
 the complete reserved-service certificate. None is an equilibrium theorem.
 

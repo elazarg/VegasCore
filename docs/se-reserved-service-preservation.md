@@ -24,7 +24,9 @@ guards of the existing language, not restricted to TRUE.
 
 Use the current public-barrier compilation and actual runtime semantics.
 Bindings of one owner follow its source order; inside a private binding block
-there are no cross-owner private predecessor edges. A phase drains before
+there are no cross-owner private predecessor edges. Publication readiness also
+retains the owner's earlier-event dependencies: only different owners' reveals
+can overlap. A phase drains before
 closure. A commitment retry restores its checkpoint after permanent exclusion;
 publication failure never restores the consumed commitment block. Exclusion
 is irreversible.

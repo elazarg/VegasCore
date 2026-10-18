@@ -240,3 +240,6 @@ import Vegas.Examples.OnePacketCommitRevealHypotheses
 import Vegas.Examples.CommitSeedSignallingNativeBounds
 import Vegas.Examples.CommitSeedBroadcast
 import Vegas.Examples.CommitTimingInformation
+import Vegas.Examples.ReservedEpochConcurrency
+import Vegas.Examples.ReservedEpochConcurrencyValidity
+import Vegas.Examples.ReservedEpochUsableConcurrency

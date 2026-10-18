@@ -202,3 +202,8 @@ import Vegas.Source.ProposalRecoveryInformation
 import Vegas.Source.ProposalRecoveryFiniteness
 import Vegas.Source.ProposalRecoveryAddress
 import Vegas.Source.ProposalRecoveryLift
+import Vegas.Source.ProposalRecoveryProjection
+import Vegas.Source.ProposalRecoveryFlags
+import Vegas.Source.ProposalRecoveryErasedStep
+import Vegas.Source.ProposalRecoveryMass
+import Vegas.Source.ProposalRecoverySupportSplice

@@ -765,3 +765,8 @@ import Vegas.Pending.PhaseProposalObservation
 import Vegas.Pending.PhaseProposalUniqueness
 import Vegas.Pending.PhaseProposalResponseAliases
 import Vegas.Pending.PhaseProposalTyping
+import Vegas.Pending.ReservedEpochCapacity
+import Vegas.Pending.ReservedEpochTraffic
+import Vegas.Pending.ReservedEpochFinite
+import Vegas.Pending.PhaseProposalOrigin
+import Vegas.Pending.PhaseProposalMeaning

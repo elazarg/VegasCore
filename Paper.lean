@@ -4,6 +4,14 @@ import Vegas.Pending.ReservedEpochDelivery
 import Vegas.Pending.PhaseProposalUniqueness
 import Vegas.Pending.PhaseProposalResponseAliases
 import Vegas.Game.PhaseProposalQuery
+import Vegas.Pending.ReservedEpochTraffic
+import Vegas.Pending.ReservedEpochFinite
+import Vegas.Examples.ReservedEpochConcurrency
+import Vegas.Source.ProposalRecoveryMass
+import Vegas.Source.ProposalRecoverySupportSplice
+import Vegas.Game.PhaseProposalAddress
+import Vegas.Pending.PhaseProposalMeaning
+import Vegas.Examples.ReservedEpochUsableConcurrency
 import Vegas.Source.ProposalRecoveryDisclosure
 import GameTheoryExtensions.Analysis.FailureRewardDeterrence
 import Vegas.Examples.CommitSeedSignallingNativeBounds
@@ -18032,3 +18040,99 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.phaseProposalQuery?_genuine_base
+
+/-- info:
+'Vegas.EventGraphRuntime.ReservedEpoch.inputs_le_cycles'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.inputs_le_cycles
+
+/-- info:
+'Vegas.EventGraphRuntime.ReservedEpoch.implementation_finiteNature'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.implementation_finiteNature
+
+/-- info:
+'Vegas.Examples.ReservedEpochConcurrency.concurrent_prefix_supported'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.ReservedEpochConcurrency.concurrent_prefix_supported
+
+/-- info:
+'Vegas.SourceProgram.Setup.proposalRecoveryEraseInfo_observed'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.proposalRecoveryEraseInfo_observed
+
+/-- info:
+'Vegas.SourceProgram.Setup.proposalRecoveryQuery_semantic_genuine'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.proposalRecoveryQuery_semantic_genuine
+
+/-- info:
+'Vegas.SourceProgram.Setup.proposalRecoveryTrembledLaw_fullSupport'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.proposalRecoveryTrembledLaw_fullSupport
+
+/-- info:
+'Vegas.SourceProgram.Setup.proposalRecoveryDomainLaw_lower'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.proposalRecoveryDomainLaw_lower
+
+/-- info:
+'Vegas.SourceProgram.Setup.proposalRecoveryTrembledDomainLaw_value_lower'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.proposalRecoveryTrembledDomainLaw_value_lower
+
+/-- info:
+'Vegas.SourceProgram.Setup.proposalRecovery_step_erased_eq'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.proposalRecovery_step_erased_eq
+
+/-- info:
+'Vegas.SourceProgram.Setup.proposalRecovery_supported_suffix_of_erased_history_eq'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.proposalRecovery_supported_suffix_of_erased_history_eq
+
+/-- info:
+'Vegas.SourceProgram.Setup.proposalRecoveryQuery_eq_of_erased_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.proposalRecoveryQuery_eq_of_erased_history
+
+/-- info:
+'Vegas.submitted_proposal_publicationBlockLow'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.submitted_proposal_publicationBlockLow
+
+/-- info:
+'Vegas.EventGraphRuntime.PhaseProposal.submitted_proposal_callback'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.PhaseProposal.submitted_proposal_callback
+
+/-- info:
+'Vegas.EventGraphRuntime.PhaseProposal.submitted_proposal_binding_meaning'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.PhaseProposal.submitted_proposal_binding_meaning
+
+/-- info:
+'Vegas.Examples.ReservedEpochConcurrency.pending_binding_admissible'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.ReservedEpochConcurrency.pending_binding_admissible
+
+/-- info:
+'Vegas.Examples.ReservedEpochConcurrency.pending_binding_usable'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.ReservedEpochConcurrency.pending_binding_usable
