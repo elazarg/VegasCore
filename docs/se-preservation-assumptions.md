@@ -1,9 +1,10 @@
 # Realistic assumptions for concurrent sequential-equilibrium preservation
 
-Research status: general bounds on information gains and audit charges reviewed;
-positive theorem assumptions audited; full concurrent preservation or general
-always-online impossibility open. No new Lean theorem, checklist closure, or
-runtime change is claimed here.
+Research status: general information/audit bounds and concurrent preservation
+under the explicit reserved-service, complete-observation assumptions are
+mathematically reviewed. Ordinary-chain sufficiency and a general always-online
+impossibility remain open. No new Lean theorem, checklist closure, or runtime
+change is claimed here.
 
 The [network-assumption survey](se-network-assumptions.md) classifies common
 literature models and gives a delivery comparison allowing correlated delays
@@ -373,25 +374,35 @@ justification. In particular, constant gas fees can preserve best responses
 while changing the exact net-payoff vector; prefunding alone does not bridge
 the payoff-law claim.
 
-## Next mathematical obligation
+## The protected-service theorem and its deployment boundary
 
-The candidate that most directly retains visible traffic uses shared admission
-opportunities with counterfactual earlier-send monotonicity and protected
-reservations, without independent delays. Its remaining task is one common
-consistent assessment with source reflection through retries and publication.
+The [reserved-service proof](se-reserved-service-preservation.md) preserves
+each selected source sequential equilibrium under an explicit concurrent
+service class. It permits visible traffic and arbitrarily correlated delivery
+uncertainty. Its hypotheses include protected per-coordinate capacity,
+source-independent service frozen through each complete commitment/publication
+block, nested admission opportunities, complete pending observation, adequate
+fresh slots and a global exclusion-payoff floor. Payoffs are the existing
+state-based source utility, exclusion settlement and count audit; deployment
+fees need a separate accounting argument. The result is reviewed mathematics,
+not a checked Lean theorem or a minimal assumption set.
 
-An opening can expose its raw value while pending and then fail its guard or
-miss its delivery deadline. The source observation may record only failure.
-This discrepancy remains even with universally true guards. Fixing a failed
-owner's low payoff does not settle surviving players' beliefs, and a permitted
-truthful opening is not a forbidden packet that the count audit can price.
-A complete preservation argument must handle these extra observations and
-rational continuations. Query matching and a one-block delivery comparison
-alone do not do so.
+Failed openings require explicit treatment. A raw value can be exposed while
+pending even when its guard or delivery later fails and the original source
+observation records only failure. The proof retains every truthful proposal in
+an enriched auxiliary recovery game without changing the intended game or
+expel/restart rules. Publication incentives use a pointwise timing comparison;
+later choices use the actual enriched information. One normalized auxiliary
+witness and one native Bayes sequence supply consistency across retries.
+Ambiguous unusable-preparation/withholding histories are handled by an explicit
+perturbation hierarchy and a bounded approximation error, not a blanket exact
+posterior identity. Query matching or a one-block delivery comparison alone
+would not establish this result.
 
-Private collection through the final admission boundary remains another
-service-design alternative. Neither route is yet a proved minimal assumption
-set or a complete concurrent preservation theorem.
+The theorem does not establish preservation for arbitrary partial pending
+leaks, ordinary shared-capacity chains, or additional timing-dependent payment
+rules. Private collection through the final admission boundary remains another
+service-design alternative, without a complete general preservation proof here.
 
 For a shared EVM mempool and shared block capacity, independent per-packet
 service is a benchmark to justify, rather than a default network assumption.
@@ -401,8 +412,8 @@ Its capacity reservation is doing real work. In an ordinary FIFO queue,
 Bob's earlier job can delay Alice past her deadline while Bob remains safe;
 Bob's later job can leave Alice safe. Each owner's own packet may still arrive
 no later when sent earlier. Thus monotone own delivery does not establish the
-required comparison of foreign outcomes. The shared-opportunity model is a
-candidate protected ledger interface, not an established ordinary-chain fact.
+required comparison of foreign outcomes. The protected shared-opportunity
+interface is not an established ordinary-chain fact.
 
 Admission-controlled reservation is an established engineering architecture:
 [RFC 2212](https://www.rfc-editor.org/rfc/rfc2212) specifies bounded-delay
