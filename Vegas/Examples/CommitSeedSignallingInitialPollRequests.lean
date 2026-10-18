@@ -58,15 +58,10 @@ private theorem late_not_application (owner : Player) (bit : Bool) (clock : Nat)
     · exact pending_not_application _ view command
   · intro impossible; cases impossible
 
-section Counted
-
-variable (profile : ∀ who, countedModel.BehavioralPolicy who)
-
-local notation "players" => countedMenu.decodeProfile initial horizon scheduler profile
-
 /-- No command before the first late poll can resolve either original binding.
 Arbitrary bounded private responses at the two initial callbacks are retained. -/
-theorem original_request_before_first_poll (seed : Seeds) (count : Nat) (early : count ≤ 4)
+theorem original_request_before_first_poll (players : Player → app.Policy)
+    (seed : Seeds) (count : Nat) (early : count ≤ 4)
     (execution : app.Execution)
     (reached : execution ∈ (app.runRounds (family seed) players count initialExecution).support)
     (owner : Player) : execution.application.SeedRequest owner (originalCoordinate owner) := by
@@ -124,10 +119,12 @@ theorem original_request_before_first_poll (seed : Seeds) (count : Nat) (early :
         · intro impossible; cases impossible
       obtain ⟨observed, environmentMoved, resumed⟩ :=
         Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ dispatched)
-      obtain ⟨trace⟩ := raw_counted_profile_trace profile seed count
-        (by change count ≤ 64; omega) before beforeReached
-      have valid := raw_native_valid (family seed) ⟨horizon - count, none, before⟩
-        (rawMenu.toRawTrace initial horizon (family seed) trace)
+      have originRun : before ∈ (app.roundsFrom initial (family seed) players count).support := by
+        simpa only [ReactiveApplication.roundsFrom, initial_eq_pure, PMF.pure_bind,
+          initialExecution] using beforeReached
+      obtain ⟨trace⟩ := app.raw_trace_roundsFrom initial horizon (family seed) players count
+        (by change count ≤ 64; omega) before originRun
+      have valid := raw_native_valid (family seed) ⟨horizon - count, none, before⟩ trace
       have retained := environment_request_or_own_resolution runtime leaks
         (serviceGraph_revealRelaxedOrdered setup .concurrentReveals)
         before observed valid owner (originalCoordinate owner) requested command environmentMoved
@@ -150,6 +147,12 @@ theorem original_request_before_first_poll (seed : Seeds) (count : Nat) (early :
           obtain ⟨action, _chosen, rfl⟩ := PMF.support_map .. ▸ resumed
           exact respond_request runtime leaks observed actor action owner _ observedRequest
 
+section Counted
+
+variable (profile : ∀ who, countedModel.BehavioralPolicy who)
+
+local notation "players" => countedMenu.decodeProfile initial horizon scheduler profile
+
 /-- Passive initial clock advances retain the complete quiet own recall. -/
 theorem quiet_before_first_poll_recall (seed : Seeds)
     (aliceWait : players alice [] (aliceFirst.observe app alice) = PMF.pure ⟨none⟩)
@@ -171,7 +174,7 @@ theorem quiet_before_first_poll_recall (seed : Seeds)
       have recalled : before.recall = quietAfterTwo.recall := by
         apply induction
         all_goals omega
-      have request := original_request_before_first_poll profile seed (2 + extra) (by omega)
+      have request := original_request_before_first_poll players seed (2 + extra) (by omega)
         before prior alice
       have original : before.application.attempt = originalAttempt := request.1.symm
       have length := app.runRounds_environmentRecall_length (family seed) players (2 + extra)
@@ -343,7 +346,7 @@ theorem original_first_poll_request_recall (seed : Seeds) (owner : Player)
     execution.application.SeedRequest owner (originalCoordinate owner) ∧
       execution.recall owner = quietAfterTwo.recall owner := by
   fin_cases owner
-  · refine ⟨original_request_before_first_poll profile seed 4 le_rfl execution reached alice, ?_⟩
+  · refine ⟨original_request_before_first_poll players seed 4 le_rfl execution reached alice, ?_⟩
     exact congrFun (quiet_before_first_poll_recall profile seed aliceWait bobWait 4
       (by decide) le_rfl execution reached) alice
   · exact quiet_bob_before_first_poll profile seed aliceWait bobWait 12

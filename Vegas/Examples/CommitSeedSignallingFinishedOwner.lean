@@ -22,7 +22,7 @@ theorem completed_of_keepsStore (before after : EventGraphRuntime.State graph)
   exact (after.config.output_available event).mp
     (Option.isSome_iff_exists.mpr ⟨value, keeps (.inr event) value stored⟩)
 
-private theorem excludeEvent_keeps_foreign (excluded : Finset Player) (owner : Player)
+theorem excludeEvent_keeps_foreign (excluded : Finset Player) (owner : Player)
     (active : owner ∉ excluded) (event : graph.EventId)
     (foreign : graph.actor? event ≠ some owner) :
     owner ∉ RecoveryState.excludeEvent excluded event := by

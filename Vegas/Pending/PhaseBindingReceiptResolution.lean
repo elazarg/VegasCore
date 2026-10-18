@@ -343,15 +343,17 @@ private theorem resolved_no_receipt_prefix (plan : RuntimePhasePlan graph)
   subst actual
   exact forbidden ⟨sameAttempt, named⟩
 
+/-- If packet inclusion protects this active owner, a newly excluded
+successor must come from an actual environment application command. -/
 theorem new_exclusion_application_command (plan : RuntimePhasePlan graph)
     (inputs : PMF graph.Inputs) (horizon : Nat) (scheduler : (app).Scheduler)
     (before after : (app).Control) (joint : Player → Option (app).Action)
     (moved : some after ∈ ((app).transition (inputs.map (PhaseRuntimeState.initial plan))
       horizon scheduler (some before) joint).support)
-    (phase : RuntimePhase graph) (installed : phase ∈ before.execution.application.phases.head?)
-    (commitment : phase.kind = .commitment) (owner : Player)
-    (active : owner ∉ before.execution.application.current.excluded)
-    (excluded : owner ∈ after.execution.application.current.excluded) :
+    (owner : Player) (active : owner ∉ before.execution.application.current.excluded)
+    (excluded : owner ∈ after.execution.application.current.excluded)
+    (preserves : ∀ message next, before.execution.application.handle runtime message = some next →
+      owner ∉ next.current.excluded) :
     ∃ command, after.execution ∈
       (before.execution.environmentStep app (.application command)).support := by
   rcases before with ⟨remaining, actor, execution⟩
@@ -401,9 +403,7 @@ theorem new_exclusion_application_command (plan : RuntimePhasePlan graph)
             exact (active excluded).elim
           | some next =>
             simp only [handled, Option.getD_some] at excluded
-            have same := PhaseRuntimeState.handle_commitment_phase_excluded runtime
-              execution.application next phase installed commitment message handled
-            exact (active (same ▸ excluded)).elim
+            exact (preserves message next handled excluded).elim
 
 /-- The first actual exclusion of an active commitment owner identifies an
 old physical event which cannot have an accepting receipt at any later
@@ -433,7 +433,11 @@ theorem not_bindingAccepted_after_commitment_exclusion (plan : RuntimePhasePlan 
         final.execution := by
   classical
   obtain ⟨command, stepped⟩ := new_exclusion_application_command runtime leaks plan inputs horizon
-    scheduler before after joint moved phase installed commitment owner active excluded
+    scheduler before after joint moved owner active excluded (by
+      intro message next handled
+      have same := PhaseRuntimeState.handle_commitment_phase_excluded runtime
+        before.execution.application next phase installed commitment message handled
+      exact fun chosen => active (same ▸ chosen))
   obtain ⟨updated, selected, equal⟩ := PMF.support_map .. ▸ stepped
   obtain ⟨native, supported, stateEq⟩ := PMF.support_map .. ▸ selected
   have afterApplication : after.execution.application = native := by

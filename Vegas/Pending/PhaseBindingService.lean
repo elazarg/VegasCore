@@ -51,8 +51,9 @@ theorem binding_accepted_of_history (bounds : MessageBounds graph)
     (fun state _ => countClean_initial runtime leaks state) trace
   have signed := phaseSignedBindings_history runtime leaks plan inputs horizon scheduler raw
   have binding := phaseBindingRecord_history runtime leaks plan inputs horizon scheduler raw
-  exact binding_accepted runtime leaks control.execution clean signed
+  exact binding_accepted runtime leaks control.execution clean.1.1 message.sender
+    (fun other present _ => clean.2 other present) signed
     ((app).uniqueIds_history scheduler initial horizon control raw)
-    binding.active.toAssociationInvariant message member event candidate call request timely
+    binding.active.toAssociationInvariant message member rfl event candidate call request timely
 
 end Vegas.EventGraphRuntime.PhaseCount

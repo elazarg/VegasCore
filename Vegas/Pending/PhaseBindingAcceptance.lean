@@ -55,22 +55,25 @@ theorem commitment_eq_of_handle
 /-- A permitted prepared handle is absent from every current association,
 including associations restored from earlier phase checkpoints. -/
 theorem binding_handle_unused (execution : (app).Execution)
-    (clean : CountClean runtime leaks execution)
+    (recalled : execution.InputRecall app) (principal : Player)
+    (clean : ∀ message ∈ execution.network.inputs, message.sender = principal →
+      permits execution.network.inputs message = true)
     (signed : PhaseRuntimeState.SignedBindings runtime leaks execution)
     (unique : execution.network.UniqueIds)
     (association : execution.application.current.native.AssociationInvariant)
     (message : Message Player (CommitAttemptPacket graph))
-    (member : message ∈ execution.network.inputs) (event : graph.EventId)
+    (member : message ∈ execution.network.inputs) (authored : message.sender = principal)
+    (event : graph.EventId)
     (candidate : Handle graph)
     (call : message.payload.packet.call = .commitment event candidate)
     (ready : execution.application.current.native.config.cut.Ready event) :
     execution.application.current.native.HandleUnused candidate := by
-  have allowed := (permits_eq_true_iff _ _).mp (clean.2 message member)
+  have allowed := (permits_eq_true_iff _ _).mp (clean message member authored)
   have correct := allowed.2.1
   unfold CountCallCorrect at correct
   dsimp only [nativeMessage] at correct
   rw [call] at correct
-  obtain ⟨_, _, _owner, ⟨serial, prepared⟩, _⟩ := correct
+  obtain ⟨_, _, candidateOwner, ⟨serial, prepared⟩, _⟩ := correct
   intro field accepted
   cases field with
   | inl input =>
@@ -81,9 +84,12 @@ theorem binding_handle_unused (execution : (app).Execution)
       obtain ⟨previous, output, previousSender, previousCall⟩ := signed.2.2 other candidate accepted
       have previousInput : previous ∈ execution.network.inputs := by
         change previous ∈ (app).outputs (execution.recall candidate.1) at output
-        rw [← clean.1.1 candidate.1] at output
+        rw [← recalled candidate.1] at output
         exact (List.mem_filter.mp output).1
-      have previousAllowed := (permits_eq_true_iff _ _).mp (clean.2 previous previousInput)
+      have previousOwner : previous.sender = principal :=
+        previousSender.trans (candidateOwner.trans authored)
+      have previousAllowed := (permits_eq_true_iff _ _).mp
+        (clean previous previousInput previousOwner)
       have same := commitment_eq_of_handle execution.network.inputs message previous allowed
         previousAllowed member previousInput (fun left leftInput right rightInput identified =>
           (unique.inputs right rightInput).inputs left leftInput identified) call previousCall
@@ -97,12 +103,15 @@ theorem binding_handle_unused (execution : (app).Execution)
 asserted at the raw native edge; the returned state is its exact phase settle,
 which may retire that edge when another owner omitted a co-phase binding. -/
 theorem binding_accepted (execution : (app).Execution)
-    (clean : CountClean runtime leaks execution)
+    (recalled : execution.InputRecall app) (principal : Player)
+    (clean : ∀ message ∈ execution.network.inputs, message.sender = principal →
+      permits execution.network.inputs message = true)
     (signed : PhaseRuntimeState.SignedBindings runtime leaks execution)
     (unique : execution.network.UniqueIds)
     (association : execution.application.current.native.AssociationInvariant)
     (message : Message Player (CommitAttemptPacket graph))
-    (member : message ∈ execution.network.inputs) (event : graph.EventId)
+    (member : message ∈ execution.network.inputs) (authored : message.sender = principal)
+    (event : graph.EventId)
     (candidate : Handle graph)
     (call : message.payload.packet.call = .commitment event candidate)
     (request : execution.application.SeedRequest message.sender
@@ -117,15 +126,15 @@ theorem binding_accepted (execution : (app).Execution)
         execution.application.current.inclusionResult message.payload.packet.call native} :
           PhaseRuntimeState graph).normalize ∧
       (app).handle execution.application message = some next := by
-  have allowed := (permits_eq_true_iff _ _).mp (clean.2 message member)
+  have allowed := (permits_eq_true_iff _ _).mp (clean message member authored)
   have correct := allowed.2.1
   unfold CountCallCorrect at correct
   dsimp only [nativeMessage] at correct
   rw [call] at correct
   obtain ⟨owned, _, candidateOwner, _, _⟩ := correct
   have ready := request.2.2.1
-  have unused := binding_handle_unused runtime leaks execution clean signed unique association
-    message member event candidate call ready
+  have unused := binding_handle_unused runtime leaks execution recalled principal clean signed
+    unique association message member authored event candidate call ready
   have vacant : execution.application.current.native.accepted (.inr event) = none := by
     cases accepted : execution.application.current.native.accepted (.inr event) with
     | none => rfl

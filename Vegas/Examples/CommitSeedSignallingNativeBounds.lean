@@ -28,6 +28,10 @@ import Vegas.Examples.CommitSeedSignallingProperBindingRecords
 import Vegas.Examples.CommitSeedSignallingHelperInitialRecall
 import Vegas.Examples.CommitSeedSignallingBobEarlyAcceptance
 import Vegas.Examples.CommitSeedSignallingPublicationResponse
+import Vegas.Examples.CommitSeedSignallingInitialDeviation
+import Vegas.Examples.CommitSeedSignallingHelperBindingValue
+import Vegas.Examples.CommitSeedSignallingHelperCountedTrace
+import Vegas.Examples.CommitSeedSignallingHelperPendingAcceptance
 import Interaction.ReactiveInvariantPrefix
 
 /-! # Native service and conditional timing bounds for private-seed signalling
@@ -35,5 +39,9 @@ import Interaction.ReactiveInvariantPrefix
 These results establish the actual raw asynchronous contract, private clock
 calendar and binding-success quotient, helper knowledge on full raw information
 fibers, unilateral delivery bounds, and opening incentives. They do not assert
-full recovery survival or exclude every preserving equilibrium.
+every helper binding incentive or exclude every preserving equilibrium.
+The fixed proper late deviation survives recovery whenever its original
+binding lands, and its initialized expected payoff is at least one quarter
+against an opponent who initially waits. The same whole-deviation bound holds
+at Bob's actual quiet information set, including off-path assessments.
 -/

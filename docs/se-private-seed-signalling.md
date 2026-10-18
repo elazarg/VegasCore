@@ -1,6 +1,6 @@
 # Private-seed signalling in a first commitment phase
 
-**Native: calendar ✓ · binding service ✓ · helper knowledge ✓ · ¼ delivery ✓ · opening incentives ✓ · recovery / SE open.**
+**Native: service ✓ · helper knowledge ✓ · recovery ✓ · ¼ payoff ✓ · helper incentives / SE open.**
 
 The issue is that a player can withhold useful information. Alice has two late
 submission times; a hidden fair coin determines which succeeds. If Bob sends
@@ -77,9 +77,19 @@ acceptance with the opponent's original binding missing
 and `Vegas.Examples.CommitSeedSignalling.bob_fixed_late_exclusive_acceptance_quarter`).
 Missing original receipts imply the actual terminal failed-publication bit
 (`Vegas.Examples.CommitSeedSignalling.initialized_missing_original_binding_publication_failed`).
-Survival of the proper deviation through retries and the positive payoff bound
-remain unproved. No theorem yet excludes every preserving native sequential
-equilibrium.
+Accepted original bindings of a fixed proper late owner protect it through
+the entire actual recovery and publication continuation
+(`Vegas.Examples.CommitSeedSignalling.initialized_fixed_late_original_binding_survives`).
+The resulting native expected payoff is at least 1/4 against any counted opponent
+who initially waits
+(`Vegas.Examples.CommitSeedSignalling.initialized_fixed_late_netPayoff_quarter`).
+The same bound holds for Bob's whole deviation at his actual quiet information
+set, retaining Alice's assessed continuation even off path
+(`Vegas.Examples.CommitSeedSignalling.bobQuiet_fixedLate_context_quarter`).
+Consequently a preserving equilibrium cannot have Bob always wait there
+(`Vegas.Examples.CommitSeedSignalling.preserving_equilibrium_bobQuiet_not_wait`).
+The remaining helper best-response argument must force that waiting behavior;
+no theorem yet excludes every preserving native sequential equilibrium.
 
 ## Program and payoffs
 

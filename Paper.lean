@@ -17216,3 +17216,52 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Examples.CommitSeedSignalling.counted_successful_publication_response_nonsilent
+
+/-- info:
+'Vegas.Examples.CommitSeedSignalling.fixed_late_original_binding_survives'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.CommitSeedSignalling.fixed_late_original_binding_survives
+
+/-- info:
+'Vegas.Examples.CommitSeedSignalling.initialized_fixed_late_original_binding_survives'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.CommitSeedSignalling.initialized_fixed_late_original_binding_survives
+
+/-- info:
+'Vegas.Examples.CommitSeedSignalling.initialized_fixed_late_netPayoff_quarter'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.CommitSeedSignalling.initialized_fixed_late_netPayoff_quarter
+
+/-- info:
+'Vegas.Examples.CommitSeedSignalling.bobQuiet_fixedLate_context_quarter'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.CommitSeedSignalling.bobQuiet_fixedLate_context_quarter
+
+/-- info:
+'Vegas.Examples.CommitSeedSignalling.preserving_equilibrium_bobQuiet_not_wait'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.CommitSeedSignalling.preserving_equilibrium_bobQuiet_not_wait
+
+/-- info:
+'Vegas.Examples.CommitSeedSignalling.raw_helper_input_counted_trace'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.CommitSeedSignalling.raw_helper_input_counted_trace
+
+/-- info:
+'Vegas.Examples.CommitSeedSignalling.helper_pending_binding_accepted_next'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.CommitSeedSignalling.helper_pending_binding_accepted_next

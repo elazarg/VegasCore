@@ -141,23 +141,16 @@ theorem original_receipts_before_helper (seed : Seeds) (current : app.Control)
     exact ⟨PhaseRuntimeState.initial_ordered plan _, fun _ _ => rfl⟩
   exact (invariant.history initial horizon started trace).2 original early
 
-/-- Every Bob packet observable before his late block was emitted at his
-actual initial callback. Its preparation and application acceptance are arbitrary. -/
-theorem bob_packet_before_late_origin (seed : Seeds) (current : app.Control)
+/-- Every retained Bob response before his late block is the original
+clock-zero callback, including silence and arbitrary private preparation. -/
+theorem bob_record_before_late_origin (seed : Seeds) (current : app.Control)
     (trace : (rawMenu.protocol initial horizon (family seed)).Trace (some current))
     (request : current.execution.application.SeedRequest alice (originalCoordinate alice))
     (early : current.execution.environmentRecall.length ≤ 12)
-    (message : Message Player (CommitAttemptPacket graph))
-    (input : message ∈ current.execution.network.inputs) (sender : message.sender = bob) :
-    ∃ entry ∈ current.execution.recall bob, entry.emitted = some message ∧
-      entry.beforeView.application.2.attempt = originalAttempt ∧
+    (entry : app.PlayerEntry) (recorded : entry ∈ current.execution.recall bob) :
+    entry.beforeView.application.2.attempt = originalAttempt ∧
       entry.beforeView.application.1.publicView.clock = 0 := by
   classical
-  have raw := rawMenu.toRawTrace initial horizon (family seed) trace
-  have output : message ∈ app.outputs (current.execution.recall bob) := by
-    rw [← app.history_inputRecall initial horizon (family seed) raw bob]
-    exact List.mem_filter.mpr ⟨input, by simp only [sender, decide_true]⟩
-  obtain ⟨entry, recorded, emitted⟩ := List.mem_filterMap.mp output
   obtain ⟨before, prior, kept, active, observed, _allowed, _later⟩ :=
     rawMenu.recorded_response_prefix initial horizon (family seed) current trace bob entry recorded
   have beforeRequest := original_binding_request_of_prefix rawMenu seed before current
@@ -204,11 +197,31 @@ theorem bob_packet_before_late_origin (seed : Seeds) (current : app.Control)
     have clock := original_clock_index seed before beforeRaw original
     rw [length, used] at clock
     exact clock
-  refine ⟨entry, recorded, emitted, ?_, ?_⟩
+  constructor
   · rw [observed]
     exact original
   · rw [observed]
     exact zero
+
+/-- Every Bob packet observable before his late block was emitted at his
+actual initial callback. Its preparation and application acceptance are arbitrary. -/
+theorem bob_packet_before_late_origin (seed : Seeds) (current : app.Control)
+    (trace : (rawMenu.protocol initial horizon (family seed)).Trace (some current))
+    (request : current.execution.application.SeedRequest alice (originalCoordinate alice))
+    (early : current.execution.environmentRecall.length ≤ 12)
+    (message : Message Player (CommitAttemptPacket graph))
+    (input : message ∈ current.execution.network.inputs) (sender : message.sender = bob) :
+    ∃ entry ∈ current.execution.recall bob, entry.emitted = some message ∧
+      entry.beforeView.application.2.attempt = originalAttempt ∧
+      entry.beforeView.application.1.publicView.clock = 0 := by
+  classical
+  have raw := rawMenu.toRawTrace initial horizon (family seed) trace
+  have output : message ∈ app.outputs (current.execution.recall bob) := by
+    rw [← app.history_inputRecall initial horizon (family seed) raw bob]
+    exact List.mem_filter.mpr ⟨input, by simp only [sender, decide_true]⟩
+  obtain ⟨entry, recorded, emitted⟩ := List.mem_filterMap.mp output
+  exact ⟨entry, recorded, emitted,
+    bob_record_before_late_origin seed current trace request early entry recorded⟩
 
 private theorem observed_packet_input (seed : Seeds) (current : app.Control)
     (trace : (rawMenu.protocol initial horizon (family seed)).Trace (some current))

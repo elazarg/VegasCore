@@ -32,7 +32,8 @@ theorem tail_recorded_binding_resolved_accepted (seeds : Seeds) (final : app.Con
   change transmission = some material at transmitted
   subst transmission
   obtain ⟨earlier, later, recalled⟩ := List.mem_iff_append.mp recorded
-  obtain ⟨remaining, execution, prior, postTrace, kept, _past, viewed, permitted⟩ :=
+  obtain ⟨remaining, execution, prior, postTrace, kept, _past, viewed, permitted,
+    _before, _length⟩ :=
     countedMenu.recorded_response_after initial horizon (family seeds) final trace owner
       earlier ⟨entryView, ⟨some material⟩, emitted⟩ later recalled
   have valid := raw_native_valid (family seeds) _

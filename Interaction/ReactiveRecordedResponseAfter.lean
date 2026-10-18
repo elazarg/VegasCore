@@ -23,14 +23,15 @@ theorem recorded_response_after
     (later : List app.PlayerEntry)
     (recalled : final.execution.recall who = earlier ++ entry :: later) :
     ∃ (remaining : Nat) (execution : app.Execution)
-      (_prior : (menu.protocol initial horizon scheduler).Trace
+      (prior : (menu.protocol initial horizon scheduler).Trace
         (some ⟨remaining, some who, execution⟩))
       (postTrace : (menu.protocol initial horizon scheduler).Trace
         (some ⟨remaining, none, execution.respond app who entry.action⟩)),
       TracePrefix postTrace trace ∧ execution.recall who = earlier ∧
         entry.beforeView = execution.observe app who ∧
         entry.action ∈ menu.actions who (execution.recall who)
-          (execution.observe app who) := by
+          (execution.observe app who) ∧
+      TracePrefix prior postTrace ∧ postTrace.length = prior.length + 1 := by
   obtain ⟨before, prior, kept, acting, past, viewed, permitted⟩ :=
     menu.recorded_response_at initial horizon scheduler final trace who
       earlier entry later recalled
@@ -65,6 +66,7 @@ theorem recorded_response_after
       prior.extend joint legal supported
     have postKept : TracePrefix postTrace trace := by
       simpa only [postTrace, History.extend] using suffix.tracePrefix
-    exact ⟨remaining, execution, prior, postTrace, postKept, past, viewed, permitted⟩
+    exact ⟨remaining, execution, prior, postTrace, postKept, past, viewed, permitted,
+      .extend .refl joint legal supported, rfl⟩
 
 end Interaction.ReactiveApplication.ResponseMenu

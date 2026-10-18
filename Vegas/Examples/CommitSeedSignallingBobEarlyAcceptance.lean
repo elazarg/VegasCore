@@ -17,18 +17,13 @@ open SourceProgram EventGraph EventGraphRuntime Interaction
 open GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol GameTheory.Math.Probability
 open OnePacketCommitRevealHypotheses (Player alice bob setup program)
 
-section Counted
-
-variable (profile : ∀ who, countedModel.BehavioralPolicy who)
-
-local notation "players" => countedMenu.decodeProfile initial horizon scheduler profile
-
-private theorem bob_request_before_helper (seed : Seeds) (execution : app.Execution)
+theorem bob_request_before_helper (players : Player → app.Policy)
+    (seed : Seeds) (execution : app.Execution)
     (reached : execution ∈ (app.runRounds (family seed) players 5 initialExecution).support) :
     execution.application.SeedRequest bob (originalCoordinate bob) := by
   rw [app.runRounds_succ_eq_bind_round, PMF.support_bind] at reached
   obtain ⟨before, prior, moved⟩ := Set.mem_iUnion₂.mp reached
-  have requested := original_request_before_first_poll profile seed 4 le_rfl before prior bob
+  have requested := original_request_before_first_poll players seed 4 le_rfl before prior bob
   have original : before.application.attempt = originalAttempt := requested.1.symm
   have length := app.runRounds_environmentRecall_length (family seed) players 4 initialExecution
     before prior
@@ -71,6 +66,12 @@ private theorem bob_request_before_helper (seed : Seeds) (execution : app.Execut
       obtain ⟨action, _chosen, rfl⟩ := PMF.support_map .. ▸ resumed
       exact respond_request runtime leaks observed who action bob _ observedRequest
 
+section Counted
+
+variable (profile : ∀ who, countedModel.BehavioralPolicy who)
+
+local notation "players" => countedMenu.decodeProfile initial horizon scheduler profile
+
 private theorem first_two_early_rounds (seed : Seeds) (material : app.Submission)
     (aliceWait : players alice [] (aliceFirst.observe app alice) = PMF.pure ⟨none⟩)
     (bobEarly : players bob [] ((bobFirst ⟨none⟩).observe app bob) =
@@ -101,7 +102,7 @@ theorem bob_early_binding_accepted_six (seed : Seeds) (material : app.Submission
     bobQuiet_counted_binding_shape material offered
   rw [app.runRounds_succ_eq_bind_round, PMF.support_bind] at reached
   obtain ⟨execution, beforeReached, future⟩ := Set.mem_iUnion₂.mp reached
-  have request := bob_request_before_helper profile seed execution beforeReached
+  have request := bob_request_before_helper players seed execution beforeReached
   have original : execution.application.attempt = originalAttempt := request.1.symm
   have length := app.runRounds_environmentRecall_length (family seed) players 5 initialExecution
     execution beforeReached
