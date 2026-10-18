@@ -1,6 +1,6 @@
 # Private-seed signalling in a first commitment phase
 
-**Native: clocks ✓ · joint bounds ✓ · opening incentives ✓ · recovery / service success / SE contradiction open.**
+**Native: calendar ✓ · binding service ✓ · helper knowledge ✓ · ¼ delivery ✓ · opening incentives ✓ · recovery / SE open.**
 
 The issue is that a player can withhold useful information. Alice has two late
 submission times; a hidden fair coin determines which succeeds. If Bob sends
@@ -64,9 +64,22 @@ excludes WAIT at an actual callback with a successful stored binding: the
 whole assessed continuation gives -1 after withholding and at least 0 after
 opening, uniformly across the full raw information fiber. Other owners' past
 and future traffic is unrestricted there.
-The private binding-success predicate, survival of the proper deviation through
-retries, and the positive deviation bound remain unproved. No theorem yet
-excludes every preserving native sequential equilibrium.
+The full existing counted binding-success predicate is checked by
+`Vegas.Examples.CommitSeedSignalling.family_privateBindingSuccess`, including
+arbitrary preparations and evidence in original and retry attempts.
+`Vegas.Examples.CommitSeedSignalling.raw_helper_clock_two_information_fiber`
+and `Vegas.Examples.CommitSeedSignalling.raw_recalled_helper_information_fiber`
+establish Alice's helper readout across every history in the full raw information
+fiber and every supported original seed there.
+Both fixed late deviations have probability at least 1/4 of own original
+acceptance with the opponent's original binding missing
+(`Vegas.Examples.CommitSeedSignalling.alice_fixed_late_exclusive_acceptance_quarter`
+and `Vegas.Examples.CommitSeedSignalling.bob_fixed_late_exclusive_acceptance_quarter`).
+Missing original receipts imply the actual terminal failed-publication bit
+(`Vegas.Examples.CommitSeedSignalling.initialized_missing_original_binding_publication_failed`).
+Survival of the proper deviation through retries and the positive payoff bound
+remain unproved. No theorem yet excludes every preserving native sequential
+equilibrium.
 
 ## Program and payoffs
 

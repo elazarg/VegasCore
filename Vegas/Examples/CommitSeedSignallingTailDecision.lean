@@ -117,7 +117,7 @@ theorem tail_callback_no_previous_request (menu : app.ResponseMenu)
   exact fixed_tail_callback_no_previous_request menu silence seed remaining execution owner fixed
     coordinate retired request entry member previous
 
-private theorem fixed_tail_callback_unsubmitted (seed : Seeds) (remaining : Nat)
+theorem fixed_tail_callback_unsubmitted (seed : Seeds) (remaining : Nat)
     (execution : app.Execution) (owner : Player)
     (trace : (countedMenu.protocol initial horizon (family seed)).Trace
       (some ⟨remaining, some owner, execution⟩))

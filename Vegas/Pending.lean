@@ -747,3 +747,6 @@ import Vegas.Pending.PhaseAttemptReceiptSnapshot
 import Vegas.Pending.PhaseBindingSuccessFunction
 import Vegas.Pending.PhaseReadyBindingDeclaration
 import Vegas.Pending.PhaseBindingServiceCompletion
+import Vegas.Pending.PhaseCountedBindingSubmission
+import Vegas.Pending.PhaseCountedOpeningSubmission
+import Vegas.Pending.PhaseSeedEmissionPrefix

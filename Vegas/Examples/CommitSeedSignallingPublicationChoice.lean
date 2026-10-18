@@ -94,7 +94,7 @@ theorem counted_tail_truthful_opening_available
     fin_cases owner <;> exact stored
   obtain ⟨checks, codeEq, node⟩ := own_reveal_descriptor owner
   obtain ⟨candidate, _accepted, literal⟩ := properPolicy_opening_response
-    (fun _ _ _ => true) ⟨remaining, some owner, execution⟩ trace owner (revealEvent owner)
+    (fun _ _ _ => true) scheduler ⟨remaining, some owner, execution⟩ trace owner (revealEvent owner)
       (ownBindingRef owner) checks (revealEvent_layout owner) codeEq node request unsent value typed
   refine ⟨candidate, ?_⟩
   apply properPolicy_counted (fun _ _ _ => true) owner _ _ _

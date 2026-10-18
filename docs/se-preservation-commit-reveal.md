@@ -2,7 +2,7 @@
 
 **SE: non-concurrent ✓ · recovery source ✓ · native word/G coupling ✓ · posterior/RAW repair/service incentives open.**
 
-**Native: clocks ✓ · joint bounds ✓ · opening incentives ✓ · recovery / service success / SE contradiction open.**
+**Native: calendar ✓ · binding service ✓ · helper knowledge ✓ · ¼ delivery ✓ · opening incentives ✓ · recovery / SE open.**
 
 The [mathematical proof dependency](se-preservation-math.md#scope-and-proof-dependency)
 states the source selection, conditional transport and deviation arguments,

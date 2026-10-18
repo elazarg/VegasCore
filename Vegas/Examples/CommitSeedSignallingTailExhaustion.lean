@@ -85,7 +85,7 @@ private theorem environment_exclusions_bound (seeds : Seeds) (current : app.Cont
   exact invariant.history initial horizon
     (fun _ _ entry member => False.elim (List.not_mem_nil member)) trace
 
-private theorem positive_age_callback (menu : app.ResponseMenu) (seeds : Seeds)
+theorem positive_age_callback (menu : app.ResponseMenu) (seeds : Seeds)
     (remaining : Nat) (execution : app.Execution)
     (trace : (menu.protocol initial horizon (family seeds)).Trace
       (some ⟨remaining, none, execution⟩))

@@ -21,11 +21,19 @@ import Vegas.Examples.CommitSeedSignallingJointAcceptance
 import Vegas.Examples.CommitSeedSignallingOriginalReceipts
 import Vegas.Examples.CommitSeedSignallingRetryCheckpoint
 import Vegas.Examples.CommitSeedSignallingPublicationChoice
+import Vegas.Examples.CommitSeedSignallingPrivateBindingSuccess
+import Vegas.Examples.CommitSeedSignallingUnilateralDelivery
+import Vegas.Examples.CommitSeedSignallingReceiptPayoff
+import Vegas.Examples.CommitSeedSignallingProperBindingRecords
+import Vegas.Examples.CommitSeedSignallingHelperInitialRecall
+import Vegas.Examples.CommitSeedSignallingBobEarlyAcceptance
+import Vegas.Examples.CommitSeedSignallingPublicationResponse
+import Interaction.ReactiveInvariantPrefix
 
 /-! # Native service and conditional timing bounds for private-seed signalling
 
 These results establish the actual raw asynchronous contract, private clock
-calendar, initialized joint acceptance bounds and full-fiber opening incentives.
-They do not assert private binding-success laws, full recovery survival, or
-exclude every preserving equilibrium.
+calendar and binding-success quotient, helper knowledge on full raw information
+fibers, unilateral delivery bounds, and opening incentives. They do not assert
+full recovery survival or exclude every preserving equilibrium.
 -/

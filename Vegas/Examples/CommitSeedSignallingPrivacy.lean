@@ -15,7 +15,7 @@ open SourceProgram EventGraph EventGraphRuntime Interaction
 open GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol GameTheory.Math.Probability
 open OnePacketCommitRevealHypotheses (Player alice bob setup program)
 
-private theorem runRounds_recall_mono (selected : app.Scheduler)
+theorem runRounds_recall_mono (selected : app.Scheduler)
     (players : Player → app.Policy) (count : Nat) (first last : app.Execution)
     (supported : last ∈ (app.runRounds selected players count first).support) :
     ∀ owner, first.recall owner ⊆ last.recall owner := by

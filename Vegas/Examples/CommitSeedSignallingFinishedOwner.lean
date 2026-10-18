@@ -190,8 +190,9 @@ theorem successful_opening_not_failed (native : EventGraphRuntime.State graph)
 /-- A genuine counted truthful opening, when selected by its real network
 identifier while ready and timely, makes its owner immune to every later raw
 exclusion. The normalized state may already have completed the entire graph. -/
-theorem counted_successful_opening_future_survives
-    (control : app.Control) (trace : countedProtocol.Trace (some control))
+theorem counted_successful_opening_finished
+    (sourceScheduler : app.Scheduler) (control : app.Control)
+    (trace : (countedMenu.protocol initial horizon sourceScheduler).Trace (some control))
     (owner : Player) (message : Message Player (CommitAttemptPacket graph))
     (member : message ∈ control.execution.network.inputs)
     (lookup : control.execution.network.lookup message.id = some message)
@@ -207,11 +208,11 @@ theorem counted_successful_opening_future_survives
           (PublicationResult.success value)))
     (nextExecution : app.Execution)
     (includedStep : nextExecution ∈
-      (control.execution.environmentStep app (.include message.id)).support)
-    (selected : app.Scheduler) (players : Player → app.Policy) (count : Nat)
-    (after : app.Execution)
-    (supported : after ∈ (app.runRounds selected players count nextExecution).support) :
-    owner ∉ after.application.current.excluded := by
+      (control.execution.environmentStep app (.include message.id)).support) :
+    nextExecution.application.phases <:+ [publicationPhase] ∧
+      (∀ event, graph.actor? event = some owner →
+        event ∈ nextExecution.application.current.native.config.cut.completed) ∧
+      owner ∉ nextExecution.application.current.excluded := by
   classical
   have ready : control.execution.application.current.native.config.cut.Ready
       (revealEvent owner) := request.2.2.1
@@ -228,11 +229,11 @@ theorem counted_successful_opening_future_survives
       control.execution.application.current.native.config.cut.completed :=
     ready.2 (by rw [predecessors]
                 exact Finset.mem_insert_of_mem (Finset.mem_singleton_self _))
-  have tail := completed_bindings_publication_tail scheduler control
-    (countedMenu.toRawTrace initial horizon scheduler trace) aliceDone bobDone
+  have tail := completed_bindings_publication_tail sourceScheduler control
+    (countedMenu.toRawTrace initial horizon sourceScheduler trace) aliceDone bobDone
   obtain ⟨native, next, _handled, completed, output, normalized, phaseHandled⟩ :=
-    counted_successful_opening_accepted control trace owner message member candidate raw opening
-      request timely value stored
+    counted_successful_opening_accepted sourceScheduler control trace owner message member candidate
+      raw opening request timely value stored
   have nativeKeeps : KeepsStore native next.current.native := by
     rw [normalized]
     exact settle_publication_keepsStore control.execution.application.phases
@@ -268,10 +269,40 @@ theorem counted_successful_opening_future_survives
     simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map] at includedStep
     cases (PMF.mem_support_pure_iff _ _).mp includedStep
     exact included
-  apply finished_owner_run_survives selected players count nextExecution after owner
+  refine ⟨?_, ?_, ?_⟩
   · rwa [actualApplication]
   · rwa [actualApplication]
   · rwa [actualApplication]
-  · exact supported
+
+/-- The actual successful inclusion makes its owner safe for every later
+raw continuation, with source and future schedulers independent. -/
+theorem counted_successful_opening_future_survives
+    (sourceScheduler : app.Scheduler) (control : app.Control)
+    (trace : (countedMenu.protocol initial horizon sourceScheduler).Trace (some control))
+    (owner : Player) (message : Message Player (CommitAttemptPacket graph))
+    (member : message ∈ control.execution.network.inputs)
+    (lookup : control.execution.network.lookup message.id = some message)
+    (candidate : Handle graph) (raw : Raw simpleExpr)
+    (opening : message.payload.packet.call = .opening (revealEvent owner) candidate raw)
+    (request : control.execution.application.SeedRequest message.sender
+      ⟨message.payload.attempt, revealEvent owner⟩)
+    (timely : control.execution.application.current.native.WithinDeadline runtime
+      (revealEvent owner)) (value : Bool)
+    (stored : control.execution.application.current.native.config.store
+      (.inr (bindingEvent owner)) = some
+        (cast (congrArg EventField.Value (bindingEvent_layout owner).symm)
+          (PublicationResult.success value)))
+    (nextExecution : app.Execution)
+    (includedStep : nextExecution ∈
+      (control.execution.environmentStep app (.include message.id)).support)
+    (selected : app.Scheduler) (players : Player → app.Policy) (count : Nat)
+    (after : app.Execution)
+    (supported : after ∈ (app.runRounds selected players count nextExecution).support) :
+    owner ∉ after.application.current.excluded := by
+  obtain ⟨tail, finished, active⟩ := counted_successful_opening_finished sourceScheduler control
+    trace owner message member lookup candidate raw opening request timely value stored
+      nextExecution includedStep
+  exact finished_owner_run_survives selected players count nextExecution after owner tail finished
+    active supported
 
 end Vegas.Examples.CommitSeedSignalling

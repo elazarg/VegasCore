@@ -12,7 +12,7 @@ open SourceProgram EventGraph EventGraphRuntime Interaction
 open GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol GameTheory.Math.Probability
 open OnePacketCommitRevealHypotheses (Player alice bob setup program)
 
-private theorem original_request_coordinate (seeds : Seeds) (current : app.Control)
+theorem original_request_coordinate (seeds : Seeds) (current : app.Control)
     (trace : (app.protocol initial horizon (family seeds)).Trace (some current))
     (coordinate : CommitAttemptEvent graph) (owner : Player)
     (original : coordinate.attempt = originalAttempt)

@@ -187,3 +187,5 @@ import Interaction.ReactiveAnchoredOwner
 import Interaction.ReactiveMixtureLikelihood
 import Interaction.ReactiveMenuLikelihood
 import Interaction.ReactiveMarkedReach
+import Interaction.ReactiveRecordedResponseAfter
+import Interaction.ReactiveInvariantPrefix

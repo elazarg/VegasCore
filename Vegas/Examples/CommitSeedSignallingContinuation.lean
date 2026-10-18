@@ -116,7 +116,8 @@ its accepted handle. It is derived from native history and remains the same
 under all hidden alternatives in the information fiber. -/
 theorem properPolicy_opening_response
     (rule : Player → CommitAttemptEvent graph → List Nat → Bool)
-    (control : app.Control) (trace : countedProtocol.Trace (some control))
+    (selected : app.Scheduler) (control : app.Control)
+    (trace : (countedMenu.protocol initial horizon selected).Trace (some control))
     (who : Player) (event : graph.EventId)
     (binding : FieldRef graph.layout (.binding who .bool))
     (checks : List (GuardCheck graph.layout .bool))
@@ -139,15 +140,15 @@ theorem properPolicy_opening_response
         PMF.pure (PhaseCount.phaseOpeningResponse runtime leaks event candidate
           ⟨.bool, value⟩) := by
   classical
-  have valid := raw_native_valid scheduler control
-    (countedMenu.toRawTrace initial horizon scheduler trace)
+  have valid := raw_native_valid selected control
+    (countedMenu.toRawTrace initial horizon selected trace)
   have service := phaseCountServicePolicy_opening setup .concurrentReveals runtime leaks bounds
     trueBindingLaw rule 0 0 (by norm_num) (by norm_num) (by norm_num) (by norm_num)
     0 (by norm_num) (by norm_num) 0 (by norm_num) (by norm_num)
     control.execution valid who event .bool binding checks outputEq codeEq request
   obtain ⟨candidate, accepted, literal⟩ :=
     PhaseCount.phaseOpeningPolicy_of_history runtime leaks bounds plan
-      (setup.initialLaw.map encodeInputs) horizon scheduler trace who event .bool binding checks
+      (setup.initialLaw.map encodeInputs) horizon selected trace who event .bool binding checks
       outputEq codeEq node request unsent value stored
       (Finset.mem_image.mpr ⟨value, Finset.mem_univ _, rfl⟩) (fun _ _ => PMF.pure true)
   refine ⟨candidate, accepted, ?_⟩

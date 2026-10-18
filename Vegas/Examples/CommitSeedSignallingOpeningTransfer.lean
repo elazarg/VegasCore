@@ -131,8 +131,8 @@ theorem opening_response_accepted_on_same_input
   have requested : left.application.SeedRequest leftMessage.sender
       ⟨leftMessage.payload.attempt, revealEvent owner⟩ := request
   obtain ⟨native, next, _handled, _completed, _output, _normalized, accepted⟩ :=
-    counted_successful_opening_accepted ⟨source.remaining, none, left⟩ respondedTrace owner
-      leftMessage member candidate ⟨.bool, value⟩ call requested timely value stored
+    counted_successful_opening_accepted scheduler ⟨source.remaining, none, left⟩ respondedTrace
+      owner leftMessage member candidate ⟨.bool, value⟩ call requested timely value stored
   have views : left.application.playerView owner = right.application.playerView owner :=
     (congrArg (fun view : app.PlayerView => view.application) observed).symm
   have same := phase_handle_isSome_of_owner_view left.application right.application owner

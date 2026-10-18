@@ -92,7 +92,8 @@ theorem handle_successful_binding_opening
 owner's value. Authentication, accepted-handle association and the raw
 handler result are derived from the same actual counted history. -/
 theorem counted_successful_opening_accepted
-    (control : app.Control) (trace : countedProtocol.Trace (some control))
+    (selected : app.Scheduler) (control : app.Control)
+    (trace : (countedMenu.protocol initial horizon selected).Trace (some control))
     (owner : Player) (message : Message Player (CommitAttemptPacket graph))
     (member : message ∈ control.execution.network.inputs)
     (candidate : Handle graph) (raw : Raw simpleExpr)
@@ -118,7 +119,7 @@ theorem counted_successful_opening_accepted
       app.handle control.execution.application message = some next := by
   obtain ⟨native, next, handled, completed, normalized, phaseHandled⟩ :=
     PhaseCount.opening_accepted_of_history runtime leaks bounds plan
-      (setup.initialLaw.map encodeInputs) horizon scheduler trace message member
+      (setup.initialLaw.map encodeInputs) horizon selected trace message member
       (revealEvent owner) candidate raw opening request timely
   have actual : handle runtime control.execution.application.current.native
       ⟨message.id, .opening (revealEvent owner) candidate raw⟩ = some native := by

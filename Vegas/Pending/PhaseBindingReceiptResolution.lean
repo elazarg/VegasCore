@@ -343,7 +343,7 @@ private theorem resolved_no_receipt_prefix (plan : RuntimePhasePlan graph)
   subst actual
   exact forbidden ⟨sameAttempt, named⟩
 
-private theorem new_exclusion_application_command (plan : RuntimePhasePlan graph)
+theorem new_exclusion_application_command (plan : RuntimePhasePlan graph)
     (inputs : PMF graph.Inputs) (horizon : Nat) (scheduler : (app).Scheduler)
     (before after : (app).Control) (joint : Player → Option (app).Action)
     (moved : some after ∈ ((app).transition (inputs.map (PhaseRuntimeState.initial plan))

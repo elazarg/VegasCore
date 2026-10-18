@@ -110,7 +110,7 @@ theorem counted_successful_opening_assessed_value_nonnegative
   simp only [ReactiveApplication.finish, ReactiveApplication.resume, PMF.pure_bind]
     at stateSupported
   obtain ⟨after, rounds, stateEq⟩ := PMF.support_map .. ▸ stateSupported
-  have active := counted_successful_opening_future_survives
+  have active := counted_successful_opening_future_survives scheduler
     ⟨remaining + 1, none, execution⟩ trace owner message member lookup candidate raw opening request
       timely value stored next included scheduler players remaining after rounds
   change 0 ≤ basePayoff final.state owner -
