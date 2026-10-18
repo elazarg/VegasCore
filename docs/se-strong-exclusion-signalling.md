@@ -1,6 +1,6 @@
 # Private service signals with an exclusion loss above the payoff range
 
-**Deterrence: aggregate bound checked · concurrent common-abort proof below · general native SE open.**
+**Deterrence: aggregate bound checked · arbitrary-loss timing argument in math · native certification open.**
 
 The full three-player native equilibrium obstruction remains pending. This
 note changes neither the preservation target nor the service assumptions in
@@ -89,6 +89,150 @@ equilibrium value; the preceding summation then contains nonzero slack.
 Moreover, timing may transmit private source information even when exclusion
 does not occur. Those are the remaining obligations for general preservation,
 not consequences of the aggregate bound.
+
+## Private types and arbitrary individual exclusion losses
+
+The following reduced timing game tests **every finite individual exclusion
+loss**, rather than one proposed numerical bound. Its argument is mathematical.
+The actual source program, scheduler, full-input equalities, RAW reduction and
+all-history service certificates still require native mechanization. It does
+not close a preservation checklist box.
+
+Bob has a fair immutable private bit \(b\). Alice commits a guess, Bob
+commits an irrelevant helper value, and both later reveal. Guards accept both
+Booleans. Alice's nonexcluded utility is \(\mathbf1_{\{\mathrm{guess}=b\}}\).
+Bob's is \(+\mathbf1_{\{A\text{ excluded}\}}\) when \(b=0\), and
+\(-\mathbf1_{\{A\text{ excluded}\}}\) when \(b=1\). Own exclusion pays
+\(-F_i\). The private bit is an initial parameter, like a private valuation;
+reset does not erase or redraw it. Parameter-dependent utilities are already
+represented by the [private-value auction](../Vegas/Examples/PrivateValueAuction.lean).
+The honest source SE in which Alice always guesses zero gives her expected
+payoff \(1/2\); Bob receives zero.
+
+Fix any finite \(F_A>1\) and \(F_B>3\). The latter ensures that Bob's
+exclusion payoff lies more than the entire nonexcluded range below its
+floor: \((-1)-(-F_B)>2\). Let
+
+\[
+ q=9/10,\qquad \delta=1/10,\qquad
+ \varepsilon=\frac1{10(F_A+1)}.
+\]
+
+Alice's service seed has independent bits \(G,L\), with
+\(\Pr(G)=q\) and \(\Pr(\neg L)=\varepsilon\), independent of \(b\).
+For proper original packets, admission is:
+
+| Owner | Emission clock | Admitted exactly when |
+| --- | --- | --- |
+| Alice | 0 | always |
+| Alice | 2 | \(G\) |
+| Alice | 3 | \(\neg G\) |
+| Alice | 4 | \(L\) |
+| Bob | 2 or 3 | always |
+
+Alice's protected callback is at 0, with actual acceptance at 1. At clock 2,
+the command order is: Alice's callback if \(G\); Bob's first callback;
+inclusion of his clock-2 packet if any; Alice's callback if \(\neg G\).
+At clock 3, Alice acts before Bob's remaining callback and inclusion.
+At clock 4, Alice has her last original opportunity. Bob's remaining
+callback is skipped if his original helper is already admitted. No reveal
+or new logical chance draw occurs before the commitment block closes.
+Thus a Bob receipt at Alice2 identifies \(\neg G\); a receipt first seen
+at Alice3 identifies \(G\).
+
+An original deadline of 7 leaves room for Alice's protected inclusion bound
+6 and delay 0, and Bob's inclusion bound 4 and delay 2. Failed late packets
+can remain unincluded until the original attempt retires; the phase contract
+discharges their inclusion obligation on retirement. A protected retry and
+publication tail must be supplied immediately after each actual phase exit.
+These numerical margins describe a candidate native script, not a checked
+all-RAW contract.
+
+**Off-path beliefs.** At Alice's empty clock-2 input, let \(s_n\) be her
+SEND probability in a fully mixed consistency sequence. The complete input
+is the same in the good case before Bob acts and the bad case after Bob
+waits. At Bob's quiet clock-2 input, good and bad prefix weights are
+proportional to \(q(1-s_n)\) and \(\delta\). The common initial WAIT
+likelihood cancels, even when it tends to zero.
+
+At Alice3 with recalled WAIT2 and no early Bob receipt, the two weights,
+for each fixed Bob type and retained preparation alias, are proportional to
+
+\[
+ q(1-s_n)\ell_{b,n},\qquad
+ \delta(1-s_n)\ell_{b,n},
+\]
+
+where \(\ell_{b,n}\) is Bob's quiet WAIT probability. Thus the whole
+information fiber has good probability exactly \(q\). This cancellation
+requires literal full-input equality and unchanged response likelihoods;
+equality of clock words alone would not establish it.
+
+**Continuation incentives.** First Bob cannot WAIT at 3: own omission gives
+\(-F_B\), while proper transmission and protected recovery guarantee at
+least \(-1\). His original packet therefore admits by 3, though its private
+material need not always be usable. Alice's proper material at 4 strictly
+improves the positive \(L\)-good branch; both original admissions then rule
+out reset. At empty Alice2, proper material strictly improves the positive
+\(G\)-good branch. On the bad branch both preparations miss. These facts
+are needed before equating Alice's exclusion with her original miss.
+
+With no early receipt at Alice3, SEND3 has value at most
+\(\delta-qF_A\), whereas a proper WAIT4 continuation guarantees at least
+\(-\varepsilon F_A\). Since \(F_A(q-\varepsilon)>\delta\), she waits.
+An early receipt first seen at 3 identifies \(G\), so SEND3 certainly misses
+and she again waits. A receipt already seen at 2 identifies \(\neg G\).
+In that case Bob is already resolved, and the intervening clock advance
+provides no new information about \(b\). If her current best guessing
+probability is \(V\), SEND3 gives \(V\), while WAIT4 gives at most
+\((1-\varepsilon)V-\varepsilon F_A<V\).
+
+**Strict timing separation.** Put \(s=\lim s_n\) and \(D=1-qs\ge\delta\).
+At Bob's quiet input Alice's exclusion probabilities after late and early
+transmission are
+
+\[
+ p_{\rm late}=\frac{\delta s+(1-s)\varepsilon}{D},\qquad
+ p_{\rm early}=\frac{q(1-s)\varepsilon}{D}.
+\]
+
+Hence
+
+\[
+ p_{\rm late}-p_{\rm early}
+ =\frac{\delta[s+(1-s)\varepsilon]}D>0.
+\]
+
+This comparison does not require every incumbent Bob preparation to be
+usable. Even when he is excluded, his actual payoff is at most
+\(+\mathbf1_{\{A\text{ excluded}\}}\) for \(b=0\), and at most
+\(-\mathbf1_{\{A\text{ excluded}\}}\) for \(b=1\). Proper whole
+continuations attain those respective bounds, including after reset.
+Consequently type zero strictly chooses late, and type one strictly chooses
+early. Both proper timing choices guarantee Bob's own survival, so increasing
+his exclusion loss cannot change this strict comparison.
+
+**Initial deviation.** Alice can WAIT0 and WAIT2, decode Bob's type from his
+receipt timing, and guess accordingly. An early receipt at 2 permits safe
+SEND3 with guess one. Otherwise a receipt at 3 means guess one, and no early
+receipt at 3 means guess zero; she uses SEND4 in both cases. Her actual payoff is
+
+\[
+ 1-\frac{1+q}{2}\varepsilon(F_A+1)=\frac{181}{200}>\frac12.
+\]
+
+Every initial SEND0 has value at most \(1/2\). Thus no sequential equilibrium
+of this reduced timing game preserves the source payoff law, for any finite
+losses satisfying the stated margins. The builder chooses \(\varepsilon\)
+after those losses; the source game and the number of opportunities stay fixed.
+
+The missing native certification is substantive: actual complete-input
+equalities and Bayes passage, usable Alice material, protected incumbent
+publication and recovery, forbidden-packet elimination, the original
+admission function, independent addressed seeds and all-RAW service contracts.
+In particular an unusable Bob binding may be rescued by a foreign miss and
+reset. Treating every such binding as an unconditional fixed loss would be
+incorrect; the payoff bounds above avoid that shortcut.
 
 ## Common abort for general source utilities
 

@@ -2,7 +2,7 @@
 
 **SE: non-concurrent ✓ · recovery source ✓ · native word/G coupling ✓ · posterior/RAW repair/service incentives open.**
 
-**Deterrence: aggregate stronger-loss bound ✓ · general native SE preservation open.**
+**Deterrence: aggregate bound ✓ · arbitrary-loss timing argument in math · native certification open.**
 
 The [mathematical proof dependency](se-preservation-math.md#scope-and-proof-dependency)
 states the source selection, conditional transport and deviation arguments,
@@ -52,6 +52,15 @@ The same note gives a mathematical concurrent preservation proof for a
 with a service independent of all logical data. That alternative changes
 settlement and strengthens the service interface; it is not adopted by the
 native theorem or checklist.
+
+A [private-type timing argument](se-strong-exclusion-signalling.md#private-types-and-arbitrary-individual-exclusion-losses)
+tests arbitrary finite individual exclusion losses with one fixed two-player
+source game. Both of a helper's timing choices protect its own survival, but
+their effect on another player's failure probability strictly depends on its
+private type. The resulting timing signal rewards delay even as that failure
+probability becomes arbitrarily small. The reduced-game argument is
+mathematical; its actual native RAW, information and service certification
+remain open. It is not a checked impossibility theorem for the full runtime.
 
 <details>
 <summary>Checked recovery milestones and remaining proof obligations</summary>
