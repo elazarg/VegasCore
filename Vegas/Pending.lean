@@ -752,3 +752,5 @@ import Vegas.Pending.PhaseCountedBindingSubmission
 import Vegas.Pending.PhaseCountedOpeningSubmission
 import Vegas.Pending.PhaseSeedEmissionPrefix
 import Vegas.Pending.PhaseCountedTrace
+import Vegas.Pending.PhaseBindingOpaqueClock
+import Vegas.Pending.PhaseClearSemanticProgress

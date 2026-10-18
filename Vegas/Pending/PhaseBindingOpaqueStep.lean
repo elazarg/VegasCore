@@ -25,7 +25,7 @@ def phaseExternalObservation (hidden : Player) (execution : (app).Execution) :=
     fun who => if who = hidden then none else
       some (execution.recall who, execution.observe app who))
 
-private theorem externalObservation_congr (left right : (app).Execution) (hidden : Player)
+theorem phaseExternalObservation_congr (left right : (app).Execution) (hidden : Player)
     (network : left.network = right.network) (receipts : left.receipts = right.receipts)
     (service : left.environmentRecall = right.environmentRecall)
     (application : left.application.publicView = right.application.publicView)
@@ -52,45 +52,47 @@ private theorem externalObservation_congr (left right : (app).Execution) (hidden
     rw [network, receipts, views who same]
     rfl
 
-/-- The actual physical include operation has the same entire external
-channel for an existing all-value shadow. No successful-store restriction or
-target handler, acceptance or normalization equation is assumed. -/
-theorem phase_include_opaque_external_congr (memory : BindingShadow graph) (hidden : Player)
-    (owned : memory.OwnBindings hidden) (left right : (app).Execution)
-    (application : left.application = memory.phased hidden right.application)
+/-- Inclusion preserves the entire external observation when hidden private
+binding meanings vary. Both actual handlers are derived from their public and
+foreign-view inputs, including rejected packets and final clean normalization. -/
+theorem phase_include_external_congr (left right : (app).Execution) (hidden : Player)
+    (phases : left.application.phases = right.application.phases)
+    (generation : left.application.generation = right.application.generation)
+    (retired : left.application.retired.map (fun prior =>
+        (prior.attempt, prior.state.publicView)) =
+      right.application.retired.map (fun prior => (prior.attempt, prior.state.publicView)))
+    (nativePublic : left.application.current.native.publicView =
+      right.application.current.native.publicView)
+    (nativeViews : ∀ who, who ≠ hidden →
+      left.application.current.native.playerView who =
+        right.application.current.native.playerView who)
     (network : left.network = right.network) (receipts : left.receipts = right.receipts)
     (service : left.environmentRecall = right.environmentRecall)
     (recalled : ∀ who, who ≠ hidden → left.recall who = right.recall who)
-    (clear : right.application.current.excluded = ∅)
-    (bindingPhase : ∀ phase ∈ right.application.phases.head?, phase.kind = .commitment)
+    (leftClear : left.application.current.excluded = ∅)
+    (rightClear : right.application.current.excluded = ∅)
+    (bindingPhase : ∀ phase ∈ left.application.phases.head?, phase.kind = .commitment)
     (id : MessageId Player) :
     phaseExternalObservation runtime leaks hidden (left.includePending app id) =
       phaseExternalObservation runtime leaks hidden (right.includePending app id) := by
   classical
   have publics : left.application.publicView = right.application.publicView := by
-    rw [application]
-    exact BindingShadow.phased_publicView owned _
+    simp only [PhaseRuntimeState.publicView, PhaseRuntimeState.attempt, phases, generation,
+      nativePublic, leftClear, rightClear, retired]
   have beforeViews (who : Player) (different : who ≠ hidden) :
-      left.application.playerView who = right.application.playerView who := by
-    rw [application]
-    exact BindingShadow.phased_playerView_other owned _ who different
-  have fields := congrArg PhasePublicView.retired publics
-  have opaqueLeft : ∀ phase ∈ left.application.phases.head?, phase.kind = .commitment := by
-    simpa only [application, BindingShadow.phased] using bindingPhase
+      left.application.playerView who = right.application.playerView who :=
+    Prod.ext (nativeViews who different) publics
   have handling (message : Message Player (CommitAttemptPacket graph)) :=
     PhaseRuntimeState.handle_opaque_external_congr runtime left.application right.application
-      hidden (by rw [application]; rfl) (by rw [application]; rfl) fields
-      (by rw [application]; exact BindingShadow.native_publicView owned _)
-      (by intro who different; rw [application];
-          exact BindingShadow.native_playerView_other owned _ who different)
-      (by rw [application]; exact clear) clear opaqueLeft message
+      hidden phases generation retired nativePublic nativeViews leftClear rightClear
+        bindingPhase message
   have pools : (left.network.includePending id).2 = (right.network.includePending id).2 :=
     congrArg (fun pool => (pool.includePending id).2) network
   cases found : left.network.lookup id with
   | none =>
       have otherFound : right.network.lookup id = none := network ▸ found
       simpa only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
-        found, otherFound] using externalObservation_congr runtime leaks left right hidden
+        found, otherFound] using phaseExternalObservation_congr runtime leaks left right hidden
           network receipts service publics beforeViews recalled
   | some message =>
       have otherFound : right.network.lookup id = some message := network ▸ found
@@ -130,7 +132,7 @@ theorem phase_include_opaque_external_congr (memory : BindingShadow graph) (hidd
           right.receipts ++ [(id, ((app).handle right.application message).isSome)] := by
         rw [receipts, results.2.2]
       simpa only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
-        found, otherFound] using externalObservation_congr runtime leaks
+        found, otherFound] using phaseExternalObservation_congr runtime leaks
           ({left with
             application := ((app).handle left.application message).getD left.application
             network := (left.network.includePending id).2
@@ -140,6 +142,31 @@ theorem phase_include_opaque_external_congr (memory : BindingShadow graph) (hidd
             network := (right.network.includePending id).2
             receipts := right.receipts ++ [(id, ((app).handle right.application message).isSome)]})
           hidden pools updatedReceipts service results.1 results.2.1 recalled
+
+/-- An existing all-value shadow supplies the direct public and foreign-view
+premises of opaque inclusion. Its reconstructed catalogue remains private. -/
+theorem phase_include_opaque_external_congr (memory : BindingShadow graph) (hidden : Player)
+    (owned : memory.OwnBindings hidden) (left right : (app).Execution)
+    (application : left.application = memory.phased hidden right.application)
+    (network : left.network = right.network) (receipts : left.receipts = right.receipts)
+    (service : left.environmentRecall = right.environmentRecall)
+    (recalled : ∀ who, who ≠ hidden → left.recall who = right.recall who)
+    (clear : right.application.current.excluded = ∅)
+    (bindingPhase : ∀ phase ∈ right.application.phases.head?, phase.kind = .commitment)
+    (id : MessageId Player) :
+    phaseExternalObservation runtime leaks hidden (left.includePending app id) =
+      phaseExternalObservation runtime leaks hidden (right.includePending app id) := by
+  have publics : left.application.publicView = right.application.publicView := by
+    rw [application]
+    exact BindingShadow.phased_publicView owned _
+  exact phase_include_external_congr runtime leaks left right hidden
+    (by rw [application]; rfl) (by rw [application]; rfl)
+    (congrArg PhasePublicView.retired publics)
+    (by rw [application]; exact BindingShadow.native_publicView owned _)
+    (by intro who different; rw [application];
+        exact BindingShadow.native_playerView_other owned _ who different)
+    network receipts service recalled (by rw [application]; exact clear) clear
+    (by simpa only [application, BindingShadow.phased] using bindingPhase) id
 
 /-- The same supported scheduler command constructs both genuine successor
 histories and the exact joint conditional observation law. Prior image legality
@@ -175,7 +202,8 @@ theorem phase_opaque_include_trace (memory : BindingShadow graph) (hidden : Play
         (phaseExternalObservation runtime leaks hidden)) := by
   classical
   intro firstNext secondNext
-  have before := externalObservation_congr runtime leaks left right hidden network receipts service
+  have before := phaseExternalObservation_congr runtime leaks left right hidden
+    network receipts service
     (by rw [application]; exact BindingShadow.phased_publicView owned _)
     (by intro who different; rw [application];
         exact BindingShadow.phased_playerView_other owned _ who different) recalled

@@ -124,8 +124,8 @@ theorem original_binding_accepted_emission (seeds : Seeds) (remaining : Nat)
         (PhaseSeedScheduler.localInput runtime leaks (originalCoordinate owner) owner
           execution.environmentRecall (execution.observeEnvironment app)).emissions) := by
   obtain ⟨prior, _native, used, priorTrace, count, original, envPrefix, _words, emittedPrefix,
-    packet, _input, sender, _attempt, _event, _lookup, _handled, selected⟩ :=
-      original_binding_accepted_boundary seeds remaining execution trace owner accepted
+    packet, _input, sender, _attempt, _event, _lookup, _handled, selected, _continuation⟩ :=
+      original_binding_accepted_boundary rawMenu seeds remaining execution trace owner accepted
   rcases original_include_cases seeds used prior.environmentRecall
       (prior.observeEnvironment app) packet.id selected with early | late
   · obtain ⟨source, chosen⟩ := early

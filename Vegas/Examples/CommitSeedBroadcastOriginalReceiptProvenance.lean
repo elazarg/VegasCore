@@ -86,9 +86,10 @@ theorem earlyCommand_inclusion (owner : Player) (past : List app.EnvironmentEntr
 /-- A retained original true receipt has a genuine earlier original-namespace
 inclusion under the same initialized seed and the same actual raw responses.
 The selected action is the real command table, not a supplied delivery law. -/
-theorem original_binding_accepted_boundary (seeds : Seeds) (remaining : Nat)
+theorem original_binding_accepted_boundary (menu : app.ResponseMenu) (seeds : Seeds)
+    (remaining : Nat)
     (execution : app.Execution)
-    (trace : (rawMenu.protocol initial horizon (family seeds)).Trace
+    (trace : (menu.protocol initial horizon (family seeds)).Trace
       (some ⟨remaining, none, execution⟩))
     (owner : Player)
     (accepted : PhaseService.BindingAccepted runtime leaks (originalCoordinate owner)
@@ -111,9 +112,17 @@ theorem original_binding_accepted_boundary (seeds : Seeds) (remaining : Nat)
         prior.network.lookup message.id = some message ∧
         prior.application.handle runtime message = some native ∧
         originalCommand seeds used prior.environmentRecall
-          (prior.observeEnvironment app) = .include message.id := by
+          (prior.observeEnvironment app) = .include message.id ∧
+        ∃ (rest : Nat) (middle : app.Execution),
+          prior ∈ (app.runRounds (family seeds) menu.uniformResponses used
+            initialExecution).support ∧
+          middle ∈ (prior.environmentStep app (.include message.id)).support ∧
+          middle.application = native ∧
+          execution ∈ (app.runRounds (family seeds) menu.uniformResponses rest middle).support ∧
+          used + 1 + rest = execution.environmentRecall.length ∧
+          message ∈ execution.network.inputs := by
   obtain ⟨message, input, sender, attempt, event, received⟩ := accepted
-  have roundSupport := rawMenu.roundSupported_uniform initial horizon (family seeds) trace
+  have roundSupport := menu.roundSupported_uniform initial horizon (family seeds) trace
   have initialized := roundSupport.2
   rw [ReactiveApplication.roundsFrom, PMF.support_bind] at initialized
   obtain ⟨state, stateSupport, initialized⟩ := Set.mem_iUnion₂.mp initialized
@@ -121,40 +130,40 @@ theorem original_binding_accepted_boundary (seeds : Seeds) (remaining : Nat)
   subst state
   obtain ⟨used, rest, prior, middle, length, priorSupported, unreceived, chosen, moved,
     nowReceived, future⟩ := app.runRounds_accepting_receipt_boundary (family seeds)
-      rawMenu.uniformResponses execution.environmentRecall.length initialExecution execution
+      menu.uniformResponses execution.environmentRecall.length initialExecution execution
         message.id (by exact List.not_mem_nil) initialized received
   have within : used ≤ horizon := by
     have accounted := roundSupport.1
     change execution.environmentRecall.length + remaining = horizon at accounted
     omega
   have priorFrom : prior ∈
-      (app.roundsFrom initial (family seeds) rawMenu.uniformResponses used).support := by
+      (app.roundsFrom initial (family seeds) menu.uniformResponses used).support := by
     rw [ReactiveApplication.roundsFrom, PMF.support_bind]
     exact Set.mem_iUnion₂.mpr ⟨initialState, by rw [initial]; simp, priorSupported⟩
   obtain ⟨priorTrace⟩ := app.raw_trace_roundsFrom initial horizon (family seeds)
-    rawMenu.uniformResponses used within prior priorFrom
-  have priorCount := app.roundsFrom_recall initial (family seeds) rawMenu.uniformResponses
+    menu.uniformResponses used within prior priorFrom
+  have priorCount := app.roundsFrom_recall initial (family seeds) menu.uniformResponses
     used prior priorFrom
   have priorWord := PhaseSeedScheduler.runRounds_wordRecall runtime leaks (family seeds)
-    rawMenu.uniformResponses used initialExecution prior
+    menu.uniformResponses used initialExecution prior
       (PhaseSeedScheduler.initial_wordRecall runtime leaks initialState) priorSupported
-  have firstRound : middle ∈ (app.round (family seeds) rawMenu.uniformResponses prior).support := by
+  have firstRound : middle ∈ (app.round (family seeds) menu.uniformResponses prior).support := by
     rw [ReactiveApplication.round, PMF.support_bind]
     refine Set.mem_iUnion₂.mpr ⟨.include message.id, chosen, ?_⟩
     change middle ∈ ((prior.environmentStep app (.include message.id)).bind PMF.pure).support
     simpa only [PMF.bind_pure] using moved
   have suffix : execution ∈
-      (app.runRounds (family seeds) rawMenu.uniformResponses (rest + 1) prior).support := by
-    change execution ∈ ((app.round (family seeds) rawMenu.uniformResponses prior).bind
-      (app.runRounds (family seeds) rawMenu.uniformResponses rest)).support
+      (app.runRounds (family seeds) menu.uniformResponses (rest + 1) prior).support := by
+    change execution ∈ ((app.round (family seeds) menu.uniformResponses prior).bind
+      (app.runRounds (family seeds) menu.uniformResponses rest)).support
     rw [PMF.support_bind]
     exact Set.mem_iUnion₂.mpr ⟨middle, firstRound, future⟩
   obtain ⟨appended, envRecall, _count⟩ := app.runRounds_environmentRecall_append (family seeds)
-    rawMenu.uniformResponses (rest + 1) prior execution suffix
+    menu.uniformResponses (rest + 1) prior execution suffix
   have envPrefix : prior.environmentRecall <+: execution.environmentRecall :=
     ⟨appended, envRecall.symm⟩
   have emissionPrefix := PhaseSeedScheduler.runRounds_emissions_prefix runtime leaks
-    (family seeds) rawMenu.uniformResponses (rest + 1) prior execution priorWord suffix
+    (family seeds) menu.uniformResponses (rest + 1) prior execution priorWord suffix
   have includeEq := moved
   simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map,
     PMF.mem_support_pure_iff] at includeEq
@@ -173,7 +182,7 @@ theorem original_binding_accepted_boundary (seeds : Seeds) (remaining : Nat)
         (app.history_provenance initial horizon (family seeds) priorTrace)
         (app.history_inputRecall initial horizon (family seeds) priorTrace)).lookup
           message.id actual found
-      have recalled := runRounds_recall_mono (family seeds) rawMenu.uniformResponses rest
+      have recalled := runRounds_recall_mono (family seeds) menu.uniformResponses rest
         middle execution future
       have sameRecall : middle.recall = prior.recall := by
         rw [includeEq]
@@ -189,7 +198,7 @@ theorem original_binding_accepted_boundary (seeds : Seeds) (remaining : Nat)
         apply recalled actual.sender
         rw [sameRecall]
         exact retained
-      have raw := rawMenu.toRawTrace initial horizon (family seeds) trace
+      have raw := menu.toRawTrace initial horizon (family seeds) trace
       rw [← app.history_inputRecall initial horizon (family seeds) raw actual.sender] at finalOutput
       have sameMessage := app.input_identifier_injective_history initial horizon (family seeds)
         ⟨remaining, none, execution⟩ raw actual message
@@ -216,8 +225,15 @@ theorem original_binding_accepted_boundary (seeds : Seeds) (remaining : Nat)
           rw [choose_original seeds prior.environmentRecall (prior.observeEnvironment app)
             original, priorCount] at decision
           exact decision.symm
-        exact ⟨prior, native, used, ⟨priorTrace⟩, priorCount, original, envPrefix, priorWord,
+        refine ⟨prior, native, used, ⟨priorTrace⟩, priorCount, original, envPrefix, priorWord,
           (fun coordinate owner => emissionPrefix owner coordinate), message, actualInput,
-          sender, attempt, event, found, handled, selected⟩
+          sender, attempt, event, found, handled, selected, rest, middle, priorSupported,
+          moved, ?_, future, length, input⟩
+        rw [includeEq]
+        simp only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
+          found]
+        change (prior.application.handle runtime message).getD prior.application = native
+        rw [handled]
+        rfl
 
 end Vegas.Examples.CommitSeedBroadcast

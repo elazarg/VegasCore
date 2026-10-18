@@ -17619,3 +17619,147 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms
   Vegas.Examples.CommitSeedBroadcast.standing_failed_binding_terminal_payoff
+
+/-- info:
+'Vegas.Examples.CommitSeedBroadcast.raw_clock_three_response_ne_wait'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.CommitSeedBroadcast.raw_clock_three_response_ne_wait
+
+/-- info:
+'Vegas.Examples.CommitSeedBroadcast.raw_helper_clock_two_response_wait'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.CommitSeedBroadcast.raw_helper_clock_two_response_wait
+
+/-- info:
+'Vegas.Examples.CommitSeedBroadcast.counted_assessed_publication_finish_survives'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.CommitSeedBroadcast.counted_assessed_publication_finish_survives
+
+/-- info:
+'Vegas.Examples.CommitSeedBroadcast.regular_assessed_original_admission'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.CommitSeedBroadcast.regular_assessed_original_admission
+
+/-- info:
+'Vegas.Examples.CommitSeedBroadcast.all_original_admissions_unusable_record_payoff'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.CommitSeedBroadcast.all_original_admissions_unusable_record_payoff
+
+/-- info:
+'Vegas.Examples.CommitSeedBroadcast.foreign_good_original_receipt_forecast'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.CommitSeedBroadcast.foreign_good_original_receipt_forecast
+
+/-- info:
+'Vegas.Examples.CommitSeedBroadcast.raw_proper_early_context_value_nonnegative'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.CommitSeedBroadcast.raw_proper_early_context_value_nonnegative
+
+/-- info:
+'Vegas.Examples.CommitSeedBroadcast.single_helper_conditional_original_joint'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.CommitSeedBroadcast.single_helper_conditional_original_joint
+
+/-- info:
+'Vegas.Examples.CommitSeedBroadcast.single_helper_conditional_next_input_joint'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.CommitSeedBroadcast.single_helper_conditional_next_input_joint
+
+/-- info:
+'Vegas.Examples.CommitSeedBroadcast.initial_public_continuation_error_tendsto'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.CommitSeedBroadcast.initial_public_continuation_error_tendsto
+
+/-- info:
+'Vegas.Examples.CommitSeedBroadcast.prepared_protocol_public_frame_posterior'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.CommitSeedBroadcast.prepared_protocol_public_frame_posterior
+
+/-- info:
+'Vegas.Examples.CommitSeedBroadcast.assessed_sent_helper_original_observation_law'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.CommitSeedBroadcast.assessed_sent_helper_original_observation_law
+
+/-- info:
+'Vegas.Examples.CommitSeedBroadcast.initial_single_helper_frame'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.CommitSeedBroadcast.initial_single_helper_frame
+
+/-- info:
+'Vegas.Examples.CommitSeedBroadcast.original_prefix_clear_of_all_final_receipts'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.CommitSeedBroadcast.original_prefix_clear_of_all_final_receipts
+
+/-- info:
+'Vegas.Examples.CommitSeedBroadcast.good_original_admission'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.CommitSeedBroadcast.good_original_admission
+
+/-- info:
+'Vegas.Examples.CommitSeedBroadcast.original_first_late_foreign_records'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.CommitSeedBroadcast.original_first_late_foreign_records
+
+/-- info:
+'Vegas.Examples.CommitSeedBroadcast.proper_bad_clock_two_finish_value_nonnegative'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.CommitSeedBroadcast.proper_bad_clock_two_finish_value_nonnegative
+
+/-- info:
+'Vegas.Examples.CommitSeedBroadcast.original_helper_gap_run'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.CommitSeedBroadcast.original_helper_gap_run

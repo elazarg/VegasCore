@@ -1,6 +1,6 @@
 # Private service signals with an exclusion loss above the payoff range
 
-**Math worked out · Lean: 134 modules checked by Lake · first-late timing ✓ · native SE theorem open.**
+**Lean: timing 3/3 · opening ✓ · preparation 0/3 · initial/final open · build ✓ (196 owners).**
 
 The full three-player native equilibrium obstruction remains pending. This
 note changes neither the preservation target nor the service assumptions in
@@ -85,11 +85,26 @@ Complete observations transport a counted representative to every raw history
 in the same full information fiber
 (`Vegas.Examples.CommitSeedBroadcast.counted_input_raw_fiber_trace`).
 
-These sources build with `lake build`; the selected capstones have guarded
-axiom reports containing only `propext`, `Classical.choice` and `Quot.sound`. The remaining proof includes the quantitative off-path preparation
+All 196 owners passed warning-strict checks and the full 7,097-job public
+build. Selected capstones have guarded axiom reports
+containing only `propext`, `Classical.choice` and `Quot.sound`.
+The remaining proof includes the quantitative off-path preparation
 comparison, the helper's later conditional belief argument, continuation payoff
 comparisons and the all-equilibrium contradiction. No preservation checklist
 box closes on these partial results.
+
+The actual equilibrium waits at the helper's bad clock-two slot
+(`Vegas.Examples.CommitSeedBroadcast.raw_helper_clock_two_response_wait`)
+and transmits at its last opportunity after the remembered receipt signal
+(`Vegas.Examples.CommitSeedBroadcast.raw_clock_three_response_ne_wait`).
+Protected opening incentives imply actual equilibrium survival
+(`Vegas.Examples.CommitSeedBroadcast.counted_assessed_publication_finish_survives`).
+Regular all-good prefixes admit every original binding
+(`Vegas.Examples.CommitSeedBroadcast.regular_assessed_original_admission`).
+An admitted unusable original preparation then has the fixed loss, derived
+from its actual recorded declaration and all three original receipts
+(`Vegas.Examples.CommitSeedBroadcast.all_original_admissions_unusable_record_payoff`).
+The current source tree contains these checked proofs and passes the full build.
 
 ## Original service experiment
 
@@ -329,15 +344,14 @@ The pointwise timing result forces their packets there. EARLY packets are
 included in the middle block. A current first packet consequently has
 positive conditional probability of all original bindings being admitted.
 
-Equivalently, apply the same estimate to the joint prefix/continuation law:
-finiteness of the bounded raw game makes convergence of response laws uniform
-over the target continuation inputs. The probability of a later violation of
-the limiting forced timing prescription then tends uniformly to zero before
-dividing by \(\Pr(I)\). No lower bound on that possibly vanishing denominator
-is assumed.
-
-This rearrangement and its native Bayes passage still require mechanization.
-The observable-envelope classification is necessary: a malformed rejected
+The rearrangement and native Bayes bound are checked in
+`Vegas.Examples.CommitSeedBroadcast.assessed_firstLate_regular_lower`.
+The resulting all-admission continuation is checked in
+`Vegas.Examples.CommitSeedBroadcast.regular_assessed_original_admission`;
+it passes the full public build. This uses the actual assessed
+continuation from each regular prefix, so a separate future-tremble limit
+is unnecessary here. The observable-envelope classification is necessary: a
+malformed rejected
 marker cannot be treated as an admitted EARLY binding. The preparation and
 initial-incentive arguments below use this positive no-reset mass, rather
 than identifying the all-good posterior bound with no-reset probability.
@@ -382,11 +396,24 @@ that every off-path clock-3 belief discards earlier mistakes.
 
 Replace an unusable current preparation by the canonical fresh proper packet
 and use a proper continuation. The handle may change, so opponents may change
-their subsequent hidden preparations. The timing result applies at every
-genuine continuation input, including those after this changed packet. It
-therefore fixes the same original admission pattern under the same service
-seeds: without a helper, precisely the good owners are admitted; with a helper,
-all are admitted. Freshness follows from the owner's literal unsent past.
+their subsequent hidden preparations. Freshness follows from the owner's
+literal unsent past. At an empty-ledger clock-2 input, condition first on a
+particular compatible physical prefix and original seed. If the focal seed
+is bad, both current packets miss original admission and pay \(-F\).
+
+If the focal seed is good, its callback precedes the middle inclusion block
+and all bad owners' clock-2 callbacks. Earlier good owners' admission is fixed
+by their retained packets; an earlier mistaken WAIT remains a miss under
+both deviations. Future good owners transmit at 2 unless they already sent
+EARLY. Future bad owners transmit at 2 without a helper, and wait for 3 with
+a helper. The two deviations retain the same initial EARLY word and earlier
+responses. Thus they give the same foreign original-miss indicator under
+each seed, despite possibly different later preparations. This statement
+allows earlier off-path timing errors; it does not identify every compatible
+prefix with a play that followed the timing rules from the beginning.
+At the relevant helper clock-3 inputs, the public-word argument above removes
+those earlier errors, so all originals are admitted there.
+
 On an own original miss both choices
 pay \(-F\). If a foreign original binding misses while this owner is
 admitted, the actual reset permanently excludes a foreign owner. Proper
