@@ -66,7 +66,7 @@ laws of actual scheduled full inputs, not merely equal public state laws. -/
 theorem initial_helper_original_next_input_law (seed : Seeds)
     (players : Player → app.Policy) (hidden owner : Player) (different : owner ≠ hidden)
     (waited : ∀ past view, players hidden past view = PMF.pure ⟨none⟩)
-    (count : Nat) (bounded : count ≤ 16) (first second : WitnessedSubmission graph)
+    (count : Nat) (bounded : count ≤ 19) (first second : WitnessedSubmission graph)
     (packet : app.packet (app.submit (initialCallback hidden).application hidden first) hidden
         ((initialCallback hidden).network.known hidden) first =
       app.packet (app.submit (initialCallback hidden).application hidden second) hidden
@@ -148,7 +148,7 @@ theorem single_helper_conditional_next_input_joint (players : Player → app.Pol
       initialPublicPackets).support)
     (hidden owner : Player) (different : owner ≠ hidden) (nonempty : packets.Nonempty)
     (owned : ∀ message ∈ packets, message.sender = hidden)
-    (count : Nat) (bounded : count ≤ 16) :
+    (count : Nat) (bounded : count ≤ 19) :
     ∃ material : WitnessedSubmission graph,
       initialPublicPackets (initialHelperFrame hidden material) = packets ∧
       (fiberPosterior (nativeSeedLaw.bind fun seed =>

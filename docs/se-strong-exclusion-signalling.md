@@ -1,6 +1,6 @@
 # Private service signals with an exclusion loss above the payoff range
 
-**Lean: timing 3/3 · opening ✓ · preparation 0/3 · initial/final open · build ✓ (196 owners).**
+**Lean: timing 3/3 · opening ✓ · preparation 2/3 · initial/final open · 230 checked owners.**
 
 The full three-player native equilibrium obstruction remains pending. This
 note changes neither the preservation target nor the service assumptions in
@@ -85,12 +85,11 @@ Complete observations transport a counted representative to every raw history
 in the same full information fiber
 (`Vegas.Examples.CommitSeedBroadcast.counted_input_raw_fiber_trace`).
 
-All 196 owners passed warning-strict checks and the full 7,097-job public
+All 230 owners passed warning-strict checks and the full 7,131-job public
 build. Selected capstones have guarded axiom reports
 containing only `propext`, `Classical.choice` and `Quot.sound`.
-The remaining proof includes the quantitative off-path preparation
-comparison, the helper's later conditional belief argument, continuation payoff
-comparisons and the all-equilibrium contradiction. No preservation checklist
+The remaining proof includes the helper's later conditional belief argument,
+continuation payoff comparisons and the all-equilibrium contradiction. No preservation checklist
 box closes on these partial results.
 
 The actual equilibrium waits at the helper's bad clock-two slot
@@ -104,7 +103,18 @@ Regular all-good prefixes admit every original binding
 An admitted unusable original preparation then has the fixed loss, derived
 from its actual recorded declaration and all three original receipts
 (`Vegas.Examples.CommitSeedBroadcast.all_original_admissions_unusable_record_payoff`).
-The current source tree contains these checked proofs and passes the full build.
+Supported original preparations at the empty-receipt clock-two input and at
+the initial opportunity are usable Boolean material
+(`Vegas.Examples.CommitSeedBroadcast.raw_first_late_response_usable`,
+`Vegas.Examples.CommitSeedBroadcast.raw_early_response_usable`).
+The clock-two comparison gives a strict expected gain of at least \(1/32\)
+(`Vegas.Examples.CommitSeedBroadcast.raw_unusable_clock_two_context_gap`).
+The exact quiet initial controls and their original seed posterior are also
+checked, as is the initialized quiet proper deviation's payoff lower bound
+of \(21/1000\)
+(`Vegas.Examples.CommitSeedBroadcast.quiet_initialized_proper_clock_two_value_lower`).
+This last bound assumes quiet initial policy responses; the backward argument
+that forces those responses remains open.
 
 ## Original service experiment
 
@@ -426,7 +436,7 @@ a gain of at least \(F/48=1/32\). Consequently unusable preparations are
 unsupported at the relevant inputs. This ceiling argument also covers a
 reset leaving two survivors.
 
-The same comparison must also be applied to every initial EARLY response,
+The same checked comparison applies to every initial EARLY response,
 including EARLY responses by owners other than the one whose incentive is
 being evaluated. The timing result with a helper was proved independently
 of preparation: all original bindings are admitted, so no reset can erase

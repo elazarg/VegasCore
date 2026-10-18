@@ -36,11 +36,13 @@ private theorem external_input (hidden owner : Player) (different : owner ≠ hi
     (if owner = hidden then none else some (right.recall owner, right.observe app owner)) at visible
   exact Option.some.inj (by simpa only [different, ite_false] using visible)
 
-/-- The actual original run, up to the last clock-three callbacks, is independent
+open Classical in
+/-- The actual original run, through its last eligible inclusion, is independent
 of a sent helper's hidden preparation when that helper's later callbacks WAIT.
 Every other player's entire raw policy is unchanged. The observation stops at
-actual original admission, before publication could expose the hidden value. -/
-theorem original_helper_run_observation (seed : Seeds) (players : Player → app.Policy)
+actual original admission and retains that complete boundary observation,
+before publication could expose the hidden value. -/
+theorem original_helper_stopped_observation (seed : Seeds) (players : Player → app.Policy)
     (hidden : Player)
     (waited : ∀ past view, players hidden past view = PMF.pure ⟨none⟩)
     (count remaining : Nat) (left right : app.Execution)
@@ -55,14 +57,18 @@ theorem original_helper_run_observation (seed : Seeds) (players : Player → app
     (leftClear : left.application.current.excluded = ∅)
     (rightClear : right.application.current.excluded = ∅)
     (lower : 5 ≤ left.environmentRecall.length)
-    (upper : left.environmentRecall.length + count ≤ 21) :
-    (app.runRounds (family seed) players count left).map (originalHelperObservation hidden) =
-      (app.runRounds (family seed) players count right).map (originalHelperObservation hidden) := by
+    (upper : left.environmentRecall.length + count ≤ 24) :
+    (app.runUntil (family seed) players
+      (fun current => current.application.attempt ≠ originalAttempt) count left).map
+        (phaseExternalObservation runtime leaks hidden) =
+      (app.runUntil (family seed) players
+        (fun current => current.application.attempt ≠ originalAttempt) count right).map
+          (phaseExternalObservation runtime leaks hidden) := by
+  classical
   induction count generalizing remaining left right with
   | zero =>
-      simp only [ReactiveApplication.runRounds, PMF.pure_map, originalHelperObservation,
-        leftOriginal, rightOriginal, ite_true]
-      exact congrArg PMF.pure (congrArg some same)
+      simp only [ReactiveApplication.runUntil, PMF.pure_map]
+      exact congrArg PMF.pure same
   | succ count ih =>
       have fuel : remaining + (count + 1) = (remaining + count) + 1 := by omega
       rw [fuel] at leftTrace rightTrace
@@ -98,10 +104,12 @@ theorem original_helper_run_observation (seed : Seeds) (players : Player → app
           (firstClear : first.application.current.excluded = ∅)
           (secondClear : second.application.current.excluded = ∅)
           (length : first.environmentRecall.length = left.environmentRecall.length + 1) :
-          (app.runRounds (family seed) players count first).map
-              (originalHelperObservation hidden) =
-            (app.runRounds (family seed) players count second).map
-              (originalHelperObservation hidden) := by
+          (app.runUntil (family seed) players
+            (fun current => current.application.attempt ≠ originalAttempt) count first).map
+              (phaseExternalObservation runtime leaks hidden) =
+            (app.runUntil (family seed) players
+              (fun current => current.application.attempt ≠ originalAttempt) count second).map
+                (phaseExternalObservation runtime leaks hidden) := by
         have attempts : first.application.attempt = second.application.attempt :=
           congrArg (fun data => data.2.2.2.1.application.attempt) observed
         by_cases original : first.application.attempt = originalAttempt
@@ -109,10 +117,10 @@ theorem original_helper_run_observation (seed : Seeds) (players : Player → app
             (attempts.symm.trans original) firstClear secondClear (by omega) (by omega)
         · have other : second.application.attempt ≠ originalAttempt :=
             fun equal => original (attempts.trans equal)
-          rw [retired_helper_observation_run (family seed) ⟨remaining + count, none, first⟩
-            firstTrace original players count hidden,
-            retired_helper_observation_run (family seed) ⟨remaining + count, none, second⟩
-              secondTrace other players count hidden]
+          rw [app.runUntil_of_stop (family seed) players _ count first original,
+            app.runUntil_of_stop (family seed) players _ count second other,
+            PMF.pure_map, PMF.pure_map]
+          exact congrArg PMF.pure observed
       generalize commandEq : choose seed left.environmentRecall (left.observeEnvironment app) =
         command
       have rightCommand : choose seed right.environmentRecall (right.observeEnvironment app) =
@@ -129,7 +137,10 @@ theorem original_helper_run_observation (seed : Seeds) (players : Player → app
       have secondRound : app.round (family seed) players right =
           app.dispatch players command right := by
         simp only [ReactiveApplication.round, family, rightCommand, PMF.pure_bind]
-      rw [ReactiveApplication.runRounds, ReactiveApplication.runRounds, firstRound, secondRound,
+      rw [ReactiveApplication.runUntil, ReactiveApplication.runUntil]
+      rw [ite_eq_right (not_not_intro leftOriginal),
+        ite_eq_right (not_not_intro rightOriginal)]
+      rw [firstRound, secondRound,
         PMF.map_bind, PMF.map_bind]
       cases command with
       | wait =>
@@ -270,5 +281,44 @@ theorem original_helper_run_observation (seed : Seeds) (players : Player → app
             (advance_clear left leftClear) (advance_clear right rightClear) (by
               change (left.environmentRecall ++ [_]).length = _
               simp only [List.length_append, List.length_singleton])
+
+/-- Discarding the boundary data only after actual original retirement gives
+the original stopped channel of the full native round evaluator. -/
+theorem original_helper_run_observation (seed : Seeds) (players : Player → app.Policy)
+    (hidden : Player)
+    (waited : ∀ past view, players hidden past view = PMF.pure ⟨none⟩)
+    (count remaining : Nat) (left right : app.Execution)
+    (leftTrace : (app.protocol initial horizon (family seed)).Trace
+      (some ⟨remaining + count, none, left⟩))
+    (rightTrace : (app.protocol initial horizon (family seed)).Trace
+      (some ⟨remaining + count, none, right⟩))
+    (same : phaseExternalObservation runtime leaks hidden left =
+      phaseExternalObservation runtime leaks hidden right)
+    (leftOriginal : left.application.attempt = originalAttempt)
+    (rightOriginal : right.application.attempt = originalAttempt)
+    (leftClear : left.application.current.excluded = ∅)
+    (rightClear : right.application.current.excluded = ∅)
+    (lower : 5 ≤ left.environmentRecall.length)
+    (upper : left.environmentRecall.length + count ≤ 24) :
+    (app.runRounds (family seed) players count left).map (originalHelperObservation hidden) =
+      (app.runRounds (family seed) players count right).map (originalHelperObservation hidden) := by
+  classical
+  rw [original_observation_rounds_stopped (family seed) players hidden count remaining left
+    leftTrace, original_observation_rounds_stopped (family seed) players hidden count remaining
+      right rightTrace]
+  have stopped := original_helper_stopped_observation seed players hidden waited count remaining
+    left right leftTrace rightTrace same leftOriginal rightOriginal leftClear rightClear lower upper
+  have projected := congrArg (fun law => law.map fun external =>
+    if external.2.2.2.1.application.attempt = originalAttempt then some external else none) stopped
+  have reading : (fun execution : app.Execution =>
+      if (phaseExternalObservation runtime leaks hidden execution).2.2.2.1.application.attempt =
+          originalAttempt then some (phaseExternalObservation runtime leaks hidden execution)
+        else none) = originalHelperObservation hidden := by
+    funext execution
+    change (if execution.application.attempt = originalAttempt then
+      some (phaseExternalObservation runtime leaks hidden execution) else none) = _
+    by_cases original : execution.application.attempt = originalAttempt <;>
+      simp only [originalHelperObservation, original, ite_true, ite_false]
+  simpa only [PMF.map_comp, Function.comp_def, reading] using projected
 
 end Vegas.Examples.CommitSeedBroadcast

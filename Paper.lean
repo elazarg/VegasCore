@@ -17763,3 +17763,115 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms
   Vegas.Examples.CommitSeedBroadcast.original_helper_gap_run
+
+/-- info:
+'Vegas.Examples.CommitSeedBroadcast.raw_first_late_response_usable'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.CommitSeedBroadcast.raw_first_late_response_usable
+
+/-- info:
+'Vegas.Examples.CommitSeedBroadcast.counted_first_late_response_usable'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.CommitSeedBroadcast.counted_first_late_response_usable
+
+/-- info:
+'Vegas.Examples.CommitSeedBroadcast.raw_unusable_clock_two_context_gap'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.CommitSeedBroadcast.raw_unusable_clock_two_context_gap
+
+/-- info:
+'Vegas.Examples.CommitSeedBroadcast.raw_early_response_usable'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.CommitSeedBroadcast.raw_early_response_usable
+
+/-- info:
+'Vegas.Examples.CommitSeedBroadcast.counted_early_response_usable'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.CommitSeedBroadcast.counted_early_response_usable
+
+/-- info:
+'Vegas.Examples.CommitSeedBroadcast.raw_unusable_early_context_value'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.CommitSeedBroadcast.raw_unusable_early_context_value
+
+/-- info:
+'Vegas.Examples.CommitSeedBroadcast.foreign_singleton_bad_original_admission_iff_packets'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.CommitSeedBroadcast.foreign_singleton_bad_original_admission_iff_packets
+
+/-- info:
+'Vegas.Examples.CommitSeedBroadcast.early_response_original_admissions'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.CommitSeedBroadcast.early_response_original_admissions
+
+/-- info:
+'Vegas.Examples.CommitSeedBroadcast.proper_clock_two_consistent_good_original_admission'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.CommitSeedBroadcast.proper_clock_two_consistent_good_original_admission
+
+/-- info:
+'Vegas.Examples.CommitSeedBroadcast.quiet_initialized_proper_clock_two_value_lower'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.CommitSeedBroadcast.quiet_initialized_proper_clock_two_value_lower
+
+/-- info:
+'Vegas.Examples.CommitSeedBroadcast.quiet_initial_raw_fiber_execution'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.CommitSeedBroadcast.quiet_initial_raw_fiber_execution
+
+/-- info:
+'Vegas.Examples.CommitSeedBroadcast.quiet_initial_original_seed_posterior'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.CommitSeedBroadcast.quiet_initial_original_seed_posterior
+
+/-- info:
+'Vegas.Examples.CommitSeedBroadcast.quiet_initial_native_finish'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.CommitSeedBroadcast.quiet_initial_native_finish
+
+/-- info:
+'Vegas.Examples.CommitSeedBroadcast.single_helper_assessed_conditional_original_joint'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.CommitSeedBroadcast.single_helper_assessed_conditional_original_joint

@@ -90,6 +90,38 @@ private theorem initial_carol_recall (first second : app.Action) :
   rw [app.respond_recall_other _ alice carol (by decide)]
   rfl
 
+theorem initial_alice_round (seed : Seeds) (players : Player → app.Policy) :
+    app.round (family seed) players initialExecution =
+    (players alice [] (initialAliceCallback.observe app alice)).map
+      (initialAliceCallback.respond app alice) := by
+  rw [ReactiveApplication.round, initial_alice_choice, PMF.pure_bind,
+    ReactiveApplication.dispatch, completeActivation_law, PMF.pure_bind]
+  rfl
+
+theorem initial_bob_round (seed : Seeds) (players : Player → app.Policy)
+    (first : app.Action) :
+    app.round (family seed) players (initialAliceCallback.respond app alice first) =
+      (players bob [] ((initialBobCallback first).observe app bob)).map
+        ((initialBobCallback first).respond app bob) := by
+  rw [ReactiveApplication.round, initial_bob_choice, PMF.pure_bind,
+    ReactiveApplication.dispatch, completeActivation_law, PMF.pure_bind]
+  change (players bob ((initialBobCallback first).recall bob)
+    ((initialBobCallback first).observe app bob)).map _ = _
+  rw [initial_bob_recall]
+  rfl
+
+theorem initial_carol_round (seed : Seeds) (players : Player → app.Policy)
+    (first second : app.Action) :
+    app.round (family seed) players ((initialBobCallback first).respond app bob second) =
+      (players carol [] ((initialCarolCallback first second).observe app carol)).map
+        (afterInitialResponses first second) := by
+  rw [ReactiveApplication.round, initial_carol_choice, PMF.pure_bind,
+    ReactiveApplication.dispatch, completeActivation_law, PMF.pure_bind]
+  change (players carol ((initialCarolCallback first second).recall carol)
+    ((initialCarolCallback first second).observe app carol)).map _ = _
+  rw [initial_carol_recall]
+  rfl
+
 /-- The literal initialized native law retains every arbitrary raw response. -/
 theorem first_three_rounds (seed : Seeds) (players : Player → app.Policy) :
     app.runRounds (family seed) players 3 initialExecution =
@@ -97,32 +129,9 @@ theorem first_three_rounds (seed : Seeds) (players : Player → app.Policy) :
         (players bob [] ((initialBobCallback first).observe app bob)).bind fun second =>
           (players carol [] ((initialCarolCallback first second).observe app carol)).map
             (afterInitialResponses first second) := by
-  have firstRound : app.round (family seed) players initialExecution =
-      (players alice [] (initialAliceCallback.observe app alice)).map
-        (initialAliceCallback.respond app alice) := by
-    rw [ReactiveApplication.round, initial_alice_choice, PMF.pure_bind,
-      ReactiveApplication.dispatch, completeActivation_law, PMF.pure_bind]
-    rfl
-  have secondRound (first : app.Action) :
-      app.round (family seed) players (initialAliceCallback.respond app alice first) =
-        (players bob [] ((initialBobCallback first).observe app bob)).map
-          ((initialBobCallback first).respond app bob) := by
-    rw [ReactiveApplication.round, initial_bob_choice, PMF.pure_bind,
-      ReactiveApplication.dispatch, completeActivation_law, PMF.pure_bind]
-    change (players bob ((initialBobCallback first).recall bob)
-      ((initialBobCallback first).observe app bob)).map _ = _
-    rw [initial_bob_recall]
-    rfl
-  have thirdRound (first second : app.Action) :
-      app.round (family seed) players ((initialBobCallback first).respond app bob second) =
-        (players carol [] ((initialCarolCallback first second).observe app carol)).map
-          (afterInitialResponses first second) := by
-    rw [ReactiveApplication.round, initial_carol_choice, PMF.pure_bind,
-      ReactiveApplication.dispatch, completeActivation_law, PMF.pure_bind]
-    change (players carol ((initialCarolCallback first second).recall carol)
-      ((initialCarolCallback first second).observe app carol)).map _ = _
-    rw [initial_carol_recall]
-    rfl
+  have firstRound := initial_alice_round seed players
+  have secondRound := initial_bob_round seed players
+  have thirdRound := initial_carol_round seed players
   rw [ReactiveApplication.runRounds, firstRound, PMF.bind_map]
   congr 1
   funext first

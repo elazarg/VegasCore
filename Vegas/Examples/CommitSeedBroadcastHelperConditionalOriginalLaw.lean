@@ -19,7 +19,7 @@ private theorem initial_helper_packet_set (hidden : Player)
         hidden ((initialCallback hidden).network.known hidden) material⟩} := by
   fin_cases hidden <;> rfl
 
-private theorem same_helper_public_packet (hidden : Player)
+theorem same_helper_public_packet (hidden : Player)
     (first second : WitnessedSubmission graph)
     (same : initialPublicPackets (initialHelperFrame hidden first) =
       initialPublicPackets (initialHelperFrame hidden second)) :
@@ -41,7 +41,7 @@ theorem single_helper_conditional_original_joint (players : Player → app.Polic
       initialPublicPackets).support)
     (hidden : Player) (nonempty : packets.Nonempty)
     (owned : ∀ message ∈ packets, message.sender = hidden)
-    (count : Nat) (bounded : count ≤ 16) :
+    (count : Nat) (bounded : count ≤ 19) :
     ∃ material : WitnessedSubmission graph,
       initialPublicPackets (initialHelperFrame hidden material) = packets ∧
       (fiberPosterior (nativeSeedLaw.bind fun seed =>

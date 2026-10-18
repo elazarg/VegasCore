@@ -115,4 +115,45 @@ theorem current_bad_clock_two_transmission_payoff
   exact bad_clock_two_record_terminal_payoff seed after finalTrace owner bad entry remembered
     publicRequest material rfl clock
 
+/-- A permitted current transmission at the good clock-two slot obtains its
+actual original receipt by the terminal endpoint, for every covered future. -/
+theorem current_good_clock_two_transmission_accepted
+    (seed : Seeds) (remaining : Nat) (execution : app.Execution) (owner : Player)
+    (trace : (countedMenu.protocol initial horizon (family seed)).Trace
+      (some ⟨remaining, some owner, execution⟩))
+    (request : execution.application.SeedRequest owner (originalCoordinate owner))
+    (clock : execution.application.current.native.clock = 2) (good : seed.2 owner = true)
+    (material : WitnessedSubmission graph)
+    (offered : (⟨some material⟩ : app.Action) ∈ countedMenu.actions owner
+      (execution.recall owner) (execution.observe app owner))
+    (players : Player → app.Policy)
+    (covered : ∀ who past view response, response ∈ (players who past view).support →
+      response ∈ countedMenu.actions who past view)
+    (after : app.Execution)
+    (reached : after ∈ (app.runRounds (family seed) players remaining
+      (execution.respond app owner ⟨some material⟩)).support) :
+    PhaseService.BindingAccepted runtime leaks (originalCoordinate owner) owner after := by
+  have original : execution.application.attempt = originalAttempt := request.1.symm
+  have currentRequest : execution.application.SeedRequest owner
+      ⟨execution.application.attempt, bindingEvent owner⟩ := by
+    simpa only [original, originalCoordinate] using request
+  obtain ⟨serial, preparation, evidence, materialEq, _bounded, _fresh⟩ :=
+    counted_submission_binding_shape (family seed) remaining execution owner trace
+      (bindingEvent owner) .bool (bindingEvent_layout owner) currentRequest material offered
+  have named : material.call.packet.event? graph = some (bindingEvent owner) := by
+    rw [materialEq]
+    rfl
+  obtain ⟨responded⟩ := countedMenu.trace_respond initial horizon (family seed) remaining
+    execution owner ⟨some material⟩ trace offered
+  obtain ⟨finalTrace⟩ := countedMenu.trace_runRounds initial horizon (family seed) players covered
+    0 remaining _ after (by simpa only [Nat.zero_add] using responded) reached
+  have accounted := (countedMenu.roundSupported_uniform initial horizon (family seed) finalTrace).1
+  have enough : 30 ≤ after.environmentRecall.length := by
+    change after.environmentRecall.length + 0 = 128 at accounted
+    omega
+  have resolved := original_bindings_resolved seed ⟨0, none, after⟩
+    (countedMenu.toRawTrace initial horizon (family seed) finalTrace) enough owner
+  exact original_eligible_response_resolved_accepted seed remaining execution owner trace request
+    (clock.trans (by rw [good]; rfl)) material offered named players covered after reached resolved
+
 end Vegas.Examples.CommitSeedBroadcast

@@ -83,7 +83,7 @@ private theorem prepared_mixed_advances (players : Player → app.Policy)
     advance_law, PMF.pure_map, PMF.pure_bind]
   rfl
 
-private theorem initial_mixed_five_rounds (players : Player → app.Policy) (reference : Seeds) :
+theorem initial_mixed_five_rounds (players : Player → app.Policy) (reference : Seeds) :
     app.runRounds scheduler players 5 initialExecution =
       app.runRounds (family reference) players 5 initialExecution := by
   have actual := app.schedulerMixture_realize nativeSeedLaw family players 5 initialState

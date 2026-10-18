@@ -63,11 +63,11 @@ private theorem late_not_application (owner : Player) (good : Bool) (clock : Nat
     intro impossible
     cases impossible
 
-/-- Every application command before the last original callbacks is a clock
+/-- Every application command through the original late inclusions is a clock
 advance. There is no expiry or hidden sample in this actual prefix. -/
 theorem original_helper_application_command (seed : Seeds) (position : Nat)
     (past : List app.EnvironmentEntry) (view : app.EnvironmentView)
-    (operation : EnvironmentCommand graph) (lower : 5 ≤ position) (upper : position ≤ 20)
+    (operation : EnvironmentCommand graph) (lower : 5 ≤ position) (upper : position ≤ 23)
     (selected : originalCommand seed position past view = .application operation) :
     operation = .advanceClock := by
   interval_cases position
@@ -87,6 +87,9 @@ theorem original_helper_application_command (seed : Seeds) (position : Nat)
   · exact (ready_not_application _ _ view operation selected).elim
   · exact (ready_not_application _ _ view operation selected).elim
   · exact (ready_not_application _ _ view operation selected).elim
+  · exact (late_not_application _ _ _ past view operation selected).elim
+  · exact (late_not_application _ _ _ past view operation selected).elim
+  · exact (late_not_application _ _ _ past view operation selected).elim
 
 /-- Genuine original traces supply the metadata for opaque native steps. -/
 theorem original_helper_metadata (seed : Seeds) (remaining : Nat)

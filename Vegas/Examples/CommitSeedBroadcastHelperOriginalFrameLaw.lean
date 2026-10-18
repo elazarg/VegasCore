@@ -56,7 +56,7 @@ All unsent raw strategies and the original fixed service seed stay unchanged. -/
 theorem initial_helper_original_run_law (seed : Seeds) (players : Player → app.Policy)
     (hidden : Player)
     (waited : ∀ past view, players hidden past view = PMF.pure ⟨none⟩)
-    (count : Nat) (bounded : count ≤ 16) (first second : WitnessedSubmission graph)
+    (count : Nat) (bounded : count ≤ 19) (first second : WitnessedSubmission graph)
     (packet : app.packet (app.submit (initialCallback hidden).application hidden first) hidden
         ((initialCallback hidden).network.known hidden) first =
       app.packet (app.submit (initialCallback hidden).application hidden second) hidden
@@ -84,5 +84,43 @@ theorem initial_helper_original_run_law (seed : Seeds) (players : Player → app
     _ _ firstNative secondNative (initial_helper_frame_external hidden first second packet)
     firstFacts.1 secondFacts.1 firstFacts.2.1 secondFacts.2.1
     (by omega) (by omega)
+
+open Classical in
+/-- The same-packet preparation comparison retains the complete original
+retirement boundary, including every unsent owner's current and recalled inputs.
+It stops before any later publication can expose the helper's private value. -/
+theorem initial_helper_original_stopped_law (seed : Seeds) (players : Player → app.Policy)
+    (hidden : Player)
+    (waited : ∀ past view, players hidden past view = PMF.pure ⟨none⟩)
+    (count : Nat) (bounded : count ≤ 19) (first second : WitnessedSubmission graph)
+    (packet : app.packet (app.submit (initialCallback hidden).application hidden first) hidden
+        ((initialCallback hidden).network.known hidden) first =
+      app.packet (app.submit (initialCallback hidden).application hidden second) hidden
+        ((initialCallback hidden).network.known hidden) second) :
+    (app.runUntil (family seed) players
+      (fun current => current.application.attempt ≠ originalAttempt) count
+      (initialHelperFrame hidden first)).map (phaseExternalObservation runtime leaks hidden) =
+    (app.runUntil (family seed) players
+      (fun current => current.application.attempt ≠ originalAttempt) count
+      (initialHelperFrame hidden second)).map (phaseExternalObservation runtime leaks hidden) := by
+  classical
+  obtain ⟨firstTrace⟩ := initial_helper_frame_native_trace seed hidden first
+  obtain ⟨secondTrace⟩ := initial_helper_frame_native_trace seed hidden second
+  have fuel : (horizon - 5 - count) + count = horizon - 5 := by
+    change (128 - 5 - count) + count = 128 - 5
+    omega
+  have firstNative : (app.protocol initial horizon (family seed)).Trace
+      (some ⟨(horizon - 5 - count) + count, none, initialHelperFrame hidden first⟩) := by
+    rw [fuel]
+    exact firstTrace
+  have secondNative : (app.protocol initial horizon (family seed)).Trace
+      (some ⟨(horizon - 5 - count) + count, none, initialHelperFrame hidden second⟩) := by
+    rw [fuel]
+    exact secondTrace
+  have firstFacts := initial_helper_frame_facts hidden first
+  have secondFacts := initial_helper_frame_facts hidden second
+  exact original_helper_stopped_observation seed players hidden waited count (horizon - 5 - count)
+    _ _ firstNative secondNative (initial_helper_frame_external hidden first second packet)
+    firstFacts.1 secondFacts.1 firstFacts.2.1 secondFacts.2.1 (by omega) (by omega)
 
 end Vegas.Examples.CommitSeedBroadcast
