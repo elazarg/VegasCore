@@ -1,4 +1,10 @@
 import Vegas.Pending.PhaseBindingServiceCompletion
+import Vegas.Pending.ReservedEpochProcessing
+import Vegas.Pending.ReservedEpochDelivery
+import Vegas.Pending.PhaseProposalUniqueness
+import Vegas.Pending.PhaseProposalResponseAliases
+import Vegas.Game.PhaseProposalQuery
+import Vegas.Source.ProposalRecoveryDisclosure
 import GameTheoryExtensions.Analysis.FailureRewardDeterrence
 import Vegas.Examples.CommitSeedSignallingNativeBounds
 import Vegas.Examples.CommitSeedBroadcast
@@ -17960,3 +17966,69 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Interaction.ReactiveApplication.empty_inputs_recorded_silent
+
+/-- info:
+'Vegas.SourceProgram.Setup.proposalRecoveryProtocol_terminates'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.proposalRecoveryProtocol_terminates
+
+/-- info:
+'Vegas.SourceProgram.Setup.proposalRecoveryEraseTrace'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.proposalRecoveryEraseTrace
+
+/-- info:
+'Vegas.SourceProgram.ProtocolState.recoveryProposal_reveal_success'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.ProtocolState.recoveryProposal_reveal_success
+
+/-- info:
+'Vegas.EventGraphRuntime.ReservedEpoch.realize'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.realize
+
+/-- info:
+'Vegas.EventGraphRuntime.ReservedEpoch.process_step'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.process_step
+
+/-- info:
+'Vegas.EventGraphRuntime.ReservedEpoch.processing_epoch_clears'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.processing_epoch_clears
+
+/-- info:
+'Vegas.EventGraphRuntime.PhaseProposal.observedArchive_eq_submitted'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.PhaseProposal.observedArchive_eq_submitted
+
+/-- info:
+'Vegas.EventGraphRuntime.PhaseProposal.archive_coordinate_unique'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.PhaseProposal.archive_coordinate_unique
+
+/-- info:
+'Vegas.EventGraphRuntime.PhaseProposal.splitResponseLaw_project'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.PhaseProposal.splitResponseLaw_project
+
+/-- info:
+'Vegas.EventGraphRuntime.PhaseProposal.splitResponseLaw_fullSupport'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.PhaseProposal.splitResponseLaw_fullSupport
+
+/-- info:
+'Vegas.phaseProposalQuery?_genuine_base'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseProposalQuery?_genuine_base

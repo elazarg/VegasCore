@@ -1224,3 +1224,5 @@ import Vegas.Game.PhaseCountServiceAliases
 import Vegas.Game.PhaseCountServiceBindingMass
 import Vegas.Game.PhaseObservableDomainWord
 import Vegas.Game.PhaseCountServiceForeignWord
+import Vegas.Game.PhaseProposalSourceArchive
+import Vegas.Game.PhaseProposalQuery

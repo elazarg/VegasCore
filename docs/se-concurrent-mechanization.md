@@ -193,17 +193,17 @@ quantifiers and a passing build. The labels below never enter Lean names.
 
 | Track | Checked statement | Status |
 | --- | --- | --- |
-| Source | Proposal moves/signals retain guard- and delivery-failed values; intended restriction is unchanged | Open |
+| Source | Proposal moves/signals retain guard- and delivery-failed values; intended restriction is unchanged | Partial: semantic trace erasure and stored-value disclosure readback checked; intended restriction remains open |
 | Source | Archive-preserving erasure/NoMiss queries and pool antichains | Open |
 | Source | Actual conditional Bayes/action-vector exchange at fixed controls | Open |
 | Source | Affine NoMiss comparison and one joint pooled consistency witness | Open |
 | Source | Enriched source SE extending the selected intended SE and joint law | Open |
-| Runtime | Concrete correlated, block-frozen reserved scheduler family | Open |
-| Runtime | All-raw opportunity/receipt/completion, timely-valid acceptance and noncircular budgets | Open |
+| Runtime | Concrete correlated, block-frozen reserved scheduler family | Partial: joint tape and exact scheduler-mixture realization checked; block service certification remains open |
+| Runtime | All-raw opportunity/receipt/completion, timely-valid acceptance and noncircular budgets | Partial: bounded pending processing segment and receipts checked; opportunity, completion, timeliness and global budget remain open |
 | Runtime | Same-tape admission monotonicity and foreign-service invariance | Open |
 | Runtime | Complete proposal reconstruction and required fresh-slot reserve | Open |
 | Runtime | Supported concurrent instance with variable service orders | Open |
-| Transport | Genuine enriched native query, alias masses and full counted support | Open |
+| Transport | Genuine enriched native query, alias masses and full counted support | Partial: full-input archive reconstruction, counted address uniqueness and local alias splitting checked; enriched trace correspondence and full native reference support remain open |
 | Transport | Good-store likelihood transport, including failed proposals | Open |
 | Transport | Uniform foreign-bad posterior bound and separate own-debt cases | Open |
 | Transport | Publication timing dominance with actual early observations | Open |
@@ -215,6 +215,19 @@ quantifiers and a passing build. The labels below never enter Lean names.
 Compact progress display: **Source 0/5 · Runtime 0/5 · Transport 0/6 · E2E 0/2**.
 Update counts from checked statements and name the current bottleneck. Existing
 reusable proofs are dependencies, not new completed milestones.
+
+Checked prerequisites: `proposalRecoveryEraseTrace` preserves semantic endpoints;
+`recoveryProposal_reveal_success` reads disclosed values from the pre-state;
+`ReservedEpoch.realize` uses the existing scheduler-mixture semantics;
+`ReservedEpoch.processing_epoch_clears` drains bounded pending traffic against
+arbitrary raw policies; `PhaseProposal.observedArchive_eq_submitted` reconstructs
+every submitted proposal from actual complete decision inputs; and
+`PhaseProposal.archive_coordinate_unique` proves uniqueness on counted histories.
+`PhaseProposal.splitResponseLaw_project` and
+`PhaseProposal.splitResponseLaw_fullSupport` preserve a local response-class
+law and give support to all its actual permitted preimages.
+The immediate joins are the enriched source-history/archive correspondence and
+the complete reserved-service certificate. None is an equilibrium theorem.
 
 Use the existing component/pooled completion, asymptotic likelihood, affine
 comparison, local-simulation limit and terminal-audit engines. In particular,

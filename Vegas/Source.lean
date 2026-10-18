@@ -194,3 +194,11 @@ import Vegas.Source.CommitRecoveryAttemptDebt
 import Vegas.Source.CommitRecoveryAttemptOmissions
 import Vegas.Source.CommitRecoveryCommitEntry
 import Vegas.Source.CommitRecoveryVirtualMenu
+import Vegas.Source.ProposalRecoveryMove
+import Vegas.Source.ProposalRecoveryProtocol
+import Vegas.Source.ProposalRecoveryObservation
+import Vegas.Source.ProposalRecoveryDisclosure
+import Vegas.Source.ProposalRecoveryInformation
+import Vegas.Source.ProposalRecoveryFiniteness
+import Vegas.Source.ProposalRecoveryAddress
+import Vegas.Source.ProposalRecoveryLift

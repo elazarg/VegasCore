@@ -755,3 +755,13 @@ import Vegas.Pending.PhaseCountedTrace
 import Vegas.Pending.PhaseBindingOpaqueClock
 import Vegas.Pending.PhaseClearSemanticProgress
 import Vegas.Pending.PhaseCountedFiber
+import Vegas.Pending.ReservedEpochTape
+import Vegas.Pending.ReservedEpochScheduler
+import Vegas.Pending.ReservedEpochProcessing
+import Vegas.Pending.ReservedEpochSlots
+import Vegas.Pending.ReservedEpochDelivery
+import Vegas.Pending.PhaseProposalArchive
+import Vegas.Pending.PhaseProposalObservation
+import Vegas.Pending.PhaseProposalUniqueness
+import Vegas.Pending.PhaseProposalResponseAliases
+import Vegas.Pending.PhaseProposalTyping
