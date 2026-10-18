@@ -1,9 +1,9 @@
 # Realistic assumptions for concurrent sequential-equilibrium preservation
 
-Research status: delivery and failure-floor lemmas proved; conditional
-one-block policy comparison reviewed; common consistent assessment and general
-recovery composition open. No new Lean theorem, checklist closure, or runtime
-change is claimed here.
+Research status: general bounds on information gains and audit charges reviewed;
+positive theorem assumptions audited; full concurrent preservation or general
+always-online impossibility open. No new Lean theorem, checklist closure, or
+runtime change is claimed here.
 
 The [network-assumption survey](se-network-assumptions.md) classifies common
 literature models and gives a delivery comparison allowing correlated delays
@@ -23,6 +23,106 @@ stronger delivery regularity, and restrictions on failure payoffs involve
 different tradeoffs. The useful question is which concrete service can support
 a complete preservation proof while retaining the intended game and
 expel/restart settlement.
+
+## What a general impossibility must establish
+
+A timing channel can exist without being used in a preserving equilibrium.
+Players may rationally use the same timing across private types. Showing that
+one proposed implementation strategy leaks information therefore does not
+show that every possible preserving equilibrium fails.
+
+There is, however, a model-independent cheap-information obstruction. Fix the
+source in which a receiver guesses a fair hidden bit b before observing any
+signal about it. Its payoff is 1 for a correct guess and 0 otherwise, so every
+source strategy has expected payoff 1/2. Runtime own failure pays -C, C >= 0.
+
+Against any candidate preserving runtime equilibrium, suppose the receiver
+has a feasible whole-policy deviation obtaining a signal Y before locking its
+guess. Let
+
+    delta = TV(Law(Y | b=0), Law(Y | b=1)),
+    p = P(own permanent failure under the composed decoding policy).
+
+The policy must have no additional fees, realize the guessing payoff when it
+survives, and include valid completion. Its signal law is the original joint
+law, not a law conditioned on surviving. A missing-signal symbol can complete
+the definition on failed runs. Optimal binary decoding has correctness
+probability (1 + delta)/2, and the actual payoff is at least
+
+    1{correct} - (C + 1) 1{failure}.
+
+Therefore its expected payoff is at least
+
+    (1 + delta)/2 - (C + 1) p.
+
+If delta > 2(C + 1)p against every candidate preserving equilibrium, none can
+preserve the source payoff. No independence between failure, signal, and
+correctness is assumed. A service family with an unbounded information-to-loss
+ratio defeats every finite prechosen loss whenever these whole-policy and
+equilibrium-uniform availability conditions hold. This is a necessary barrier
+for the guessing source, not a sufficient characterization of preservation.
+
+The demanding part is obtaining that signal against every relevant equilibrium.
+A passive leak can supply it independently of sender choices. An optional
+timing channel need not: opponents might pool. The
+[reviewed callback obstruction](se-concurrent-timing-obstruction.md) instead
+forces different timing choices because the sender's private type reverses
+its preference over the receiver's failure. Its strict timing comparison holds
+against every credible receiver continuation, including after a zero-probability
+delay. The receiver then learns at small expected loss.
+
+The same finite-game argument applies to any implementation supplying that
+strict failure contrast, timely distinguishability, and a complete bound on
+all other actions. These are substantial causal and incentive conditions.
+They have not been derived for general always-online blockchains. In
+particular, additional early submissions, late hidden submissions, and
+relaying can restore pooling or make the signal arrive too late to exploit.
+
+## When a larger audit deposit cannot help
+
+There is also a general evidence limitation, separate from the existence of
+an informative timing deviation. Let E be the COMPLETE input to a fixed audit
+mechanism, and let g(E) be its expected nonnegative charge, bounded by K.
+Let mu be an honest calibration law on which the audit charges zero, and nu
+the evidence law of the complete decoding deviation against the actual foreign
+continuation. Both use the same charge mechanism.
+
+Zero honest expected charge implies g = 0 almost surely under mu. Therefore,
+if nu is absolutely continuous with respect to mu, its expected charge is also
+zero. In a finite model this means every evidence record the deviation can
+produce also has positive probability under the zero-charge honest law.
+No increase in K changes that conclusion.
+
+In the finite-record model, let q be the probability under nu of evidence
+outside the honest support. Then
+
+    E_nu[g(E)] <= K q.
+
+With own-failure payoff -C before audit and all other expected costs, excluding
+those already counted in C or g(E), at most k, the cheap-information deviation
+above has payoff at least
+
+    1/2 + delta/2 - (C + 1)p - K q - k.
+
+If the last four terms give a positive advantage against every candidate
+preserving equilibrium, preservation is impossible. This bounds even the
+strongest nonnegative charge mechanism with that honest calibration and budget,
+not just the current count audit. It permits arbitrary dependence between
+information, failure, and evidence.
+
+The honest and deviating laws must describe the entire record, including
+logical outputs, authenticated metadata, foreign traffic, and every other audit
+input. Matching receipt times alone is insufficient. A randomized audit is
+covered by using its common conditional expected-charge kernel. If a calibration
+law mixes honest legal source choices, the mechanism must be sound for all of
+those choices; soundness cannot simply be assumed for new records.
+
+This gives a precise limit on pricing intentional delay. If its full evidence
+is compatible with honest network delay, an audit that charges honest play
+nothing cannot distinguish the two. Actual default risk, additional fees, or
+trusted evidence can still provide deterrence. We have not proved that a
+profitable, evidence-compatible timing policy is uniformly available in a
+general blockchain; that remains a physical and game-theoretic obligation.
 
 ## What needs to be controlled
 
@@ -83,8 +183,8 @@ The reviewed conditional block comparison makes those extra obligations
 explicit. Fix a full information set I in a private commitment block followed
 by mandatory truthful publication. Compare prompt usable play with any
 adaptive usable timing/value policy. Assume one common experiment supplies
-the SAME foreign commitment-miss set J under both policies; the complete
-mechanical transcript and qualification are source-neutral conditional on I;
+the SAME foreign commitment-miss set J under both policies; J, the complete
+mechanical transcript, and qualification are JOINTLY source-neutral given I;
 and every foreign full input is preserved until clean close or a separately
 controlled departure.
 
@@ -220,6 +320,59 @@ sequential-rationality requirement. This does not refute funded private intake;
 it shows why abort behavior and credible continuation incentives need explicit
 proof.
 
+## Why the checked positive results work
+
+Asynchrony, concurrency, and observable timing are separate properties. There
+are two relevant positive constructions in the repository.
+
+The [calendar construction](../Vegas/Game/SourceServiceCompilation.lean) uses
+an explicit serial plan for activation, inclusion, expiry, and moving to the
+next event. Its [roster scheduler](../Vegas/Game/ServiceRoster.lean) never
+consults the network-policy argument it receives. Its success is therefore
+not a theorem about an arbitrary synchronous network or public mempool.
+
+The later [recovery preservation theorem](../Vegas/Game/RecoverySequentialCompilation.lean)
+allows an arbitrary fixed stochastic scheduler, including adaptation to public
+traffic, subject to its service guarantees. It is asynchronous, but its
+[graph](../Vegas/Game/RevealService.lean) is globally sequentialized: at most
+one event is ready. While Alice's current choice is unresolved, Bob cannot
+make a later still-changeable conformant source move and time it to influence
+her current delivery. Nonconforming raw traffic remains possible and is
+handled by the authentic count audit.
+
+That structural restriction is substantial. The theorem also assumes:
+
+* Guaranteed reaction opportunities, protected sole-packet receipts, completion
+  within a finite horizon, and reaction plus inclusion bounds strictly inside
+  each deadline. These hold against modeled raw behavior, not merely on honest
+  paths. Protected receipt is converted to acceptance by separate validity
+  and timing proofs.
+* Finite source/native representations, enough preparation slots, well-formed
+  source behavior, and independence of each owner's hidden initial cells from
+  all other initial cells. Later posteriors need not remain independent.
+* Bounded utilities, an exclusion payoff no greater than every intended
+  terminal payoff, and authentic evidence with conditional collection coverage
+  and a sufficiently funded count-audit deposit.
+
+The large audit deposit prices forbidden traffic; it is not a charge for every
+WAIT. The theorem's exclusion-payoff comparison is weak and applies to intended
+terminal readouts, not every arbitrary raw terminal. Full-input repairs, belief
+transport, and rational late/free continuations are proved in the serial
+construction. They are not supplied as an assumption that observations add no
+knowledge.
+
+The initial-private-input independence premise does not explain away the
+concurrent obstruction: its single-owner hidden bit satisfies it. The crucial
+new interaction is overlapping unresolved choices. Synchronizing clocks alone
+does not remove that interaction.
+
+These are checked abstract-runtime results, not certified deployments on
+Ethereum. Known all-raw admission bounds, bounded-horizon completion, exact
+information hiding, audit availability, fees, and finality each need a backend
+justification. In particular, constant gas fees can preserve best responses
+while changing the exact net-payoff vector; prefunding alone does not bridge
+the payoff-law claim.
+
 ## Next mathematical obligation
 
 The candidate that most directly retains visible traffic uses shared
@@ -234,6 +387,12 @@ For a shared EVM mempool and shared block capacity, independent per-packet
 service is a benchmark to justify, rather than a default network assumption.
 Exogenous shared processing with reserved capacity is another idealized
 interface to justify; it is not supplied merely by consensus liveness.
+Its capacity reservation is doing real work. In an ordinary FIFO queue,
+Bob's earlier job can delay Alice past her deadline while Bob remains safe;
+Bob's later job can leave Alice safe. Each owner's own packet may still arrive
+no later when sent earlier. Thus monotone own delivery does not establish the
+required comparison of foreign outcomes. The shared-opportunity model is a
+candidate protected ledger interface, not an established ordinary-chain fact.
 Private intake with reserved capacity offers a more controllable interface,
 at the cost of an explicit confidentiality and availability trust model.
 Removing explicit failure bonuses is not an alternative proof: expelling a
