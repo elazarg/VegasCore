@@ -89,6 +89,15 @@ theorem processing_owned_packet_congr (runtime : EventGraphRuntime graph)
       middleRight ∈ ((phaseApplication runtime leaks).runRounds
         (family runtime leaks packetBudget tape) playersRight
           prefixRight.length beforeRight).support ∧
+      BindingFrame program owner middleLeft.application.current.native
+        middleRight.application.current.native ∧
+      middleLeft.application.phases = middleRight.application.phases ∧
+      middleLeft.application.generation = middleRight.application.generation ∧
+      middleLeft.application.current.excluded = middleRight.application.current.excluded ∧
+      middleLeft.application.SeedRequest owner coordinate ∧
+      middleRight.application.SeedRequest owner coordinate ∧
+      middleLeft.application.phases = beforeLeft.application.phases ∧
+      middleRight.application.phases = beforeRight.application.phases ∧
       ∃ accepted : Bool,
         (message.id, accepted) ∈ afterLeft.receipts ∧
         (message.id, accepted) ∈ afterRight.receipts ∧
@@ -97,6 +106,8 @@ theorem processing_owned_packet_congr (runtime : EventGraphRuntime graph)
             ⟨message.id, .commitment event candidate⟩ = some first ∧
           handle runtime middleRight.application.current.native
             ⟨message.id, .commitment event candidate⟩ = some second ∧
+          middleLeft.application.handle runtime message = some afterLeft.application ∧
+          middleRight.application.handle runtime message = some afterRight.application ∧
           afterLeft.application = ({ middleLeft.application with
             current := ⟨first, middleLeft.application.current.excluded⟩ } :
               PhaseRuntimeState graph).normalize ∧
@@ -136,7 +147,10 @@ theorem processing_owned_packet_congr (runtime : EventGraphRuntime graph)
     (by rw [rightLength, rightCursor]; omega) (by omega) epoch paired.2.1 rightLast
   have leftReceipt := (include_head runtime leaks middleLeft message restLeft paired.1).2.2
   have rightReceipt := (include_head runtime leaks middleRight message restRight paired.2.1).2.2
-  refine ⟨middleLeft, middleRight, leftPrefix, rightPrefix,
+  refine ⟨middleLeft, middleRight, leftPrefix, rightPrefix, paired.2.2.2.1,
+    paired.2.2.2.2.1, paired.2.2.2.2.2.1, paired.2.2.2.2.2.2.1,
+    paired.2.2.2.2.2.2.2.1, paired.2.2.2.2.2.2.2.2.1,
+    paired.2.2.2.2.2.2.2.2.2.1, paired.2.2.2.2.2.2.2.2.2.2,
     (middleLeft.application.handle runtime message).isSome, ?_, ?_, ?_⟩
   · rw [leftExecution]
     change (message.id, _) ∈ (middleLeft.includePending (phaseApplication runtime leaks)
@@ -155,13 +169,16 @@ theorem processing_owned_packet_congr (runtime : EventGraphRuntime graph)
         obtain ⟨first, second, firstStep, secondStep, normalized, counterpart, retained⟩ :=
           phase_binding_handler_counterpart program runtime middleLeft.application
             middleRight.application next owner message event candidate paired.2.2.2.1
-              paired.2.2.2.2.1 paired.2.2.2.2.2.1 paired.2.2.2.2.2.2 sender binding handled
+              paired.2.2.2.2.1 paired.2.2.2.2.2.1 paired.2.2.2.2.2.2.1 sender binding handled
         have leftFound : middleLeft.network.lookup message.id = some message := by
           simp [MessageNetwork.lookup, paired.1]
         have rightFound : middleRight.network.lookup message.id = some message := by
           simp [MessageNetwork.lookup, paired.2.1]
-        refine ⟨first, second, firstStep, secondStep, ?_, ?_, retained⟩
-        · rw [leftExecution]
+        have leftApplication : afterLeft.application =
+            ({ middleLeft.application with
+              current := ⟨first, middleLeft.application.current.excluded⟩ } :
+                PhaseRuntimeState graph).normalize := by
+          rw [leftExecution]
           change (middleLeft.includePending (phaseApplication runtime leaks)
             message.id).application = _
           simp only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
@@ -169,12 +186,21 @@ theorem processing_owned_packet_congr (runtime : EventGraphRuntime graph)
           change (middleLeft.application.handle runtime message).getD middleLeft.application = _
           rw [handled, Option.getD_some]
           exact normalized
-        · rw [rightExecution]
+        have rightApplication : afterRight.application =
+            ({ middleRight.application with
+              current := ⟨second, middleRight.application.current.excluded⟩ } :
+                PhaseRuntimeState graph).normalize := by
+          rw [rightExecution]
           change (middleRight.includePending (phaseApplication runtime leaks)
             message.id).application = _
           simp only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
             rightFound]
           change (middleRight.application.handle runtime message).getD middleRight.application = _
           rw [counterpart, Option.getD_some]
+        refine ⟨first, second, firstStep, secondStep, ?_, ?_,
+          leftApplication, rightApplication, retained⟩
+        · rw [leftApplication, ← normalized]
+        · rw [rightApplication]
+          exact counterpart
 
 end Vegas.EventGraphRuntime.ReservedEpoch

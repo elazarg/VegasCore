@@ -4,6 +4,7 @@ import Vegas.Pending.PhaseHistoryCheckpoint
 import Vegas.Pending.PhaseStoredCheckpoint
 import Vegas.Pending.PhaseResolution
 import Interaction.ReactivePolicyInvariant
+import Interaction.ReactiveInvariantPrefix
 
 /-! # Actual immutable semantic extensions inside one physical attempt -/
 
@@ -162,6 +163,29 @@ private theorem same_attempt_extension_invariant (runtime : EventGraphRuntime gr
         valid.1)
       valid.2.2.2 ((PhaseRuntimeState.semantic_extension runtime leaks).environment state command
         next reached)
+
+/-- A genuine retained history prefix preserves completed semantic data whenever
+both actual endpoints still belong to the same physical attempt. -/
+theorem phase_prefix_semantic_extension (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket graph))
+    (menu : (phaseApplication runtime leaks).ResponseMenu)
+    (initial : PMF (phaseApplication runtime leaks).State) (horizon : Nat)
+    (scheduler : (phaseApplication runtime leaks).Scheduler)
+    (before after : (phaseApplication runtime leaks).Control)
+    (prior : (menu.protocol initial horizon scheduler).Trace (some before))
+    (final : (menu.protocol initial horizon scheduler).Trace (some after))
+    (kept : GameTheory.Protocol.ExecutionProtocol.TracePrefix prior final)
+    (ordered : before.execution.application.Ordered)
+    (same : before.execution.application.attempt = after.execution.application.attempt) :
+    KeepsStore before.execution.application.current.native
+        after.execution.application.current.native ∧
+      before.execution.application.current.native.config.history.IsPrefix
+        after.execution.application.current.native.config.history := by
+  have valid := (same_attempt_extension_invariant runtime leaks
+    before.execution.application).tracePrefix menu initial horizon scheduler before after
+      prior final kept ⟨ordered, Nat.le_refl _, Nat.le_refl _, fun _ =>
+        ⟨fun _ _ present => present, ⟨[], by simp⟩⟩⟩
+  exact valid.2.2.2 same
 
 /-- Arbitrary supported physical rounds retain immutable semantic fields and
 chronological effective actions when their physical attempt survives. -/

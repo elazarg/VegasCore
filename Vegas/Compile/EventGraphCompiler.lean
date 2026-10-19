@@ -228,6 +228,30 @@ def compileGuard {Field : Type} [DecidableEq Field]
     reads_mem := fun source read field found =>
       Finset.mem_union_right _ (guardReadFields_mem _ _ reads source read field found) }
 
+omit [DecidableEq Player] R in
+/-- Every compiled guard footprint field comes from its subject operand or
+an actually code-read guard input. This retains the original typed read. -/
+theorem compileGuard_read_origin {Field : Type} [DecidableEq Field]
+    {layout : Field → Vegas.EventGraph.EventField Player L}
+    {Γ : SourceCtx Player L} {published : VarId} {payload : L.Ty}
+    (refs : ContextRefs layout Γ) (revealed : Revelations ((published, .publication payload) :: Γ))
+    (obligation : Obligation (Player := Player) (L := L) ((published, .publication payload) :: Γ))
+    (isRevealed : obligation.revealed revealed = true) (field : Field)
+    (member : field ∈ (compileGuard refs revealed obligation isRevealed).readFields) :
+    let complete := (Bool.and_eq_true _ _).mp isRevealed
+    (compileGuardRead refs revealed (.commitment obligation.source) complete.1).field? =
+      some field ∨
+      ∃ (name : VarId) (input : L.Ty) (source : HasVar obligation.guard.schema name input)
+        (used : name ∈ L.exprDeps obligation.guard.code),
+        (compileGuardRead refs revealed (obligation.guard.reads source)
+          ((GuardCode.allReads_iff _ _).mp complete.2 source used)).field? = some field := by
+  dsimp only
+  rw [compileGuard, Finset.mem_union] at member
+  rcases member with subject | inputs
+  · exact Or.inl ((mem_operandField_iff _ _).mp subject)
+  · obtain ⟨name, input, source, used, found⟩ := mem_guardReadFields _ _ _ field inputs
+    exact Or.inr ⟨name, input, source, used, found⟩
+
 /-- The checks a reveal performs: one for each obligation it completes. -/
 def compileChecks {Field : Type} [DecidableEq Field]
     {layout : Field → Vegas.EventGraph.EventField Player L}

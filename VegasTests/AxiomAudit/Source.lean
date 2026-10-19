@@ -3243,3 +3243,27 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.SourceProgram.Setup.exists_proposalRecovery_sequentialEquilibrium_extension
+
+/-- info:
+'Vegas.SourceProgram.Setup.proposalRecoveryComponentTrembledLaw_ordinary_lower'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.proposalRecoveryComponentTrembledLaw_ordinary_lower
+
+/-- info:
+'Vegas.SourceProgram.Setup.proposalRecoveryNormalizedTrembledProfile_ordinary_lower'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.proposalRecoveryNormalizedTrembledProfile_ordinary_lower
+
+/-- info:
+'Vegas.SourceProgram.Setup.proposalRecovery_future_flags_withinTV'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.proposalRecovery_future_flags_withinTV
+
+/-- info:
+'Vegas.SourceProgram.Setup.proposalRecovery_future_foreign_flags_withinTV'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.proposalRecovery_future_foreign_flags_withinTV

@@ -1343,3 +1343,13 @@ import Vegas.Game.ReservedEpochPhaseBindingFrame
 import Vegas.Game.ReservedEpochPhaseExpiryPair
 import Vegas.Game.ReservedEpochSubmissionFrame
 import Vegas.Game.ProposalRecoveryEquilibriumExtension
+import Vegas.Game.CompiledRevealReadCone
+import Vegas.Game.PhaseProposalCoupledQuery
+import Vegas.Game.PhaseProposalUnflaggedBinding
+import Vegas.Game.ProposalRecoveryFutureFlags
+import Vegas.Game.ReservedEpochCountedProcessing
+import Vegas.Game.ReservedEpochCountedSuccessor
+import Vegas.Game.ReservedEpochExcludedDrain
+import Vegas.Game.ReservedEpochProcessingExit
+import Vegas.Game.ReservedEpochProcessingProjection
+import Vegas.Game.ReservedEpochSuccessorAcceptance

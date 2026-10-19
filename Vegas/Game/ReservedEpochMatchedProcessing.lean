@@ -67,7 +67,11 @@ theorem processing_owned_receipt_congr (runtime : EventGraphRuntime graph)
         middleRight.application.current.native ∧
       middleLeft.application.phases = middleRight.application.phases ∧
       middleLeft.application.generation = middleRight.application.generation ∧
-      middleLeft.application.current.excluded = middleRight.application.current.excluded := by
+      middleLeft.application.current.excluded = middleRight.application.current.excluded ∧
+      middleLeft.application.SeedRequest owner coordinate ∧
+      middleRight.application.SeedRequest owner coordinate ∧
+      middleLeft.application.phases = beforeLeft.application.phases ∧
+      middleRight.application.phases = beforeRight.application.phases := by
   have left := foreign_processing_prefix_frame program runtime leaks packetBudget tape playersLeft
     cycle leftSlot prefixLeft (message :: restLeft) beforeLeft middleLeft
       leftCursor (by omega) epoch leftPending phase
@@ -92,6 +96,7 @@ theorem processing_owned_receipt_congr (runtime : EventGraphRuntime graph)
     congrArg CommitAttemptId.generation sameAttempt
   exact ⟨leftPhysical.1, rightPhysical.1, phase_binding_receipt_congr program runtime
     middleLeft.application middleRight.application owner message event candidate paired samePhases
-      sameGeneration sameExcluded sender binding, paired, samePhases, sameGeneration, sameExcluded⟩
+      sameGeneration sameExcluded sender binding, paired, samePhases, sameGeneration, sameExcluded,
+    left.2.1, right.2.1, left.2.2.1, right.2.2.1⟩
 
 end Vegas.EventGraphRuntime.ReservedEpoch

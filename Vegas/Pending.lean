@@ -828,3 +828,13 @@ import Vegas.Pending.PhaseProposalCanonicalBinding
 import Vegas.Pending.PhaseProposalCanonicalOpening
 import Vegas.Pending.ReservedEpochActivationWord
 import Vegas.Pending.ReservedEpochBatchApplication
+import Vegas.Pending.PhaseProposalCountedShadowAcceptance
+import Vegas.Pending.PhaseProposalPacketLaw
+import Vegas.Pending.PhaseProposalShadowAcceptance
+import Vegas.Pending.PhaseProposalShadowDrain
+import Vegas.Pending.PhaseProposalShadowExpiry
+import Vegas.Pending.PhaseProposalShadowInclude
+import Vegas.Pending.PhaseProposalShadowMask
+import Vegas.Pending.PhaseProposalShadowNormalization
+import Vegas.Pending.PhaseSuccessorRecall
+import Vegas.Pending.ReservedEpochPendingFrontier

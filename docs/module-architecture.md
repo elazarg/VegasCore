@@ -2664,3 +2664,33 @@ use the existing runtime evaluator.
 construct actual handler and normalization counterparts at unequal processing
 slots. Their owner frames compare the same initial world; whole stopped-attempt
 coupling and cross-world likelihood transport remain distinct consumers.
+
+Reserved-service counted successors:
+[pending frontier uniqueness](../Vegas/Pending/ReservedEpochPendingFrontier.lean)
+and [recalled predecessor provenance](../Vegas/Pending/PhaseSuccessorRecall.lean)
+feed [paired counted successor processing](../Vegas/Game/ReservedEpochCountedSuccessor.lean)
+and [fresh-successor receipts](../Vegas/Game/ReservedEpochSuccessorAcceptance.lean).
+[Excluded-owner drain](../Vegas/Game/ReservedEpochExcludedDrain.lean) retains
+the original consumed binding records. The full attempt-exit law remains separate.
+
+General native binding shadows:
+[dynamic checkpoint masks](../Vegas/Pending/PhaseProposalShadowMask.lean),
+[actual automatic drain](../Vegas/Pending/PhaseProposalShadowDrain.lean), and
+[settlement normalization](../Vegas/Pending/PhaseProposalShadowNormalization.lean)
+preserve original immutable inputs and retained public archives.
+[Counted acceptance](../Vegas/Pending/PhaseProposalCountedShadowAcceptance.lean)
+derives the handler facts from the actual trace;
+[actual inclusion](../Vegas/Pending/PhaseProposalShadowInclude.lean) preserves
+every other player's entire recalled input. These consumers do not supply the
+whole chronological repair or its posterior estimate.
+
+Publication guard operands:
+[the actual compiled resolve footprint](../Vegas/Game/CompiledRevealReadCone.lean)
+uses the same compiled suffix, registry and revelation telescope. Public operands
+precede block entry; newly disclosed commitment operands have the same author.
+This is distinct from the paired publication path and its incentive comparison.
+
+Prospective source errors:
+[the enriched future flag bound](../Vegas/Game/ProposalRecoveryFutureFlags.lean)
+instantiates supported-choice continuation on complete future histories, retaining
+the ordinary table, all past observations and an identical focal override.

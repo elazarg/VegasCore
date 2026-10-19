@@ -199,7 +199,7 @@ quantifiers and a passing build. The labels below never enter Lean names.
 | Source | Affine NoMiss comparison and one joint pooled consistency witness | Checked: one caller-rate pooled Bayes witness, ordinary-copy gain equality, failed-copy indifference and limiting retry comparison |
 | Source | Enriched source SE extending the selected intended SE and joint law | Checked: all legal information sites, selected intended strategy and exact initialized full-history law; see the source evidence below |
 | Runtime | Concrete correlated, block-frozen reserved scheduler family | Partial: joint tape and exact scheduler-mixture realization checked; block service certification remains open |
-| Runtime | All-raw opportunity/receipt/completion, timely-valid acceptance and noncircular budgets | Partial: actual correlated-mixture AsyncContract, noncircular budgets and accepting delivery for certified valid first-offered responses checked; complete retry/successor sender coverage remains open |
+| Runtime | All-raw opportunity/receipt/completion, timely-valid acceptance and noncircular budgets | Partial: actual correlated-mixture AsyncContract, noncircular budgets, paired counted successor requests and protected fresh-successor receipts checked; whole retry/chain coverage remains open |
 | Runtime | Same-tape admission monotonicity and foreign-service invariance | Open |
 | Runtime | Complete proposal reconstruction and required fresh-slot reserve | Checked: actual full raw inputs reconstruct all submitted proposals, and the horizon reserve supplies fresh active slots; the counted execution fold identifies the same source archive; see the runtime evidence below |
 | Runtime | Supported concurrent instance with variable service orders | Checked: both orders have supported actual prefixes with distinct owners' typed, timely, handler-admissible packets pending together; see the fixture evidence below |
@@ -213,6 +213,8 @@ quantifiers and a passing build. The labels below never enter Lean names.
 | End-to-end | Raw SE, exact settled joint law, zero exclusions/charges and instantiated service | Open |
 
 Compact progress display: **Source 5/5 · Runtime 2/5 · Transport 1/6 · E2E 0/2**.
+Runtime frontier: successor requests/receipts checked; whole attempt-exit law next.
+Transport frontier: binding inclusion preserves full external inputs; whole history repair next.
 Update counts from checked statements and name the current bottleneck. Existing
 reusable proofs are dependencies, not new completed milestones.
 Current bottlenecks are the stopped service coupling, cross-world likelihood
@@ -373,6 +375,36 @@ availability, so this is not an independent-delay or fixed-order instance.
 the same initial world. These are operational consumers, not the whole stopped
 service coupling or a cross-world likelihood theorem. Those joins and the
 native incentive/consistency assembly remain open.
+
+`counted_processing_owned_successor` derives the counterpart successor request
+from actual paired counted FIFO processing and accepted-handler provenance.
+`successor_response_receipt` derives first-response protection from an actual
+unfinished predecessor and the unchanged enabling-step recall. The excluded-owner
+drain retains the consumed attempt's accepted/catalogue binding record. These
+are single-step and chain-drain consumers, not the whole stopped-attempt law.
+
+`BindingShadow.PhaseStateFrame.normalize` transports actual settlement and
+checkpoint restoration with a dynamically restricted output mask, arbitrary
+existing exclusions and retained public archives.
+`BindingShadow.include_owned_binding_external_of_history` constructs the paired
+accepting handler and preserves the complete external observation, including
+every other player's entire recall and current input. The actual expiry
+consumer similarly passes through general normalization. Whole chronological
+repair and its posterior likelihood estimate remain separate obligations.
+
+`CompiledSuffix.resolve_read_cone` bounds actual compiled resolve-node reads
+using registry and revelation bounds derived on the same compiled suffix.
+Current-block publication operands are the author's own; other operands precede
+the block. This is a guard-operand result, not publication timing dominance.
+`proposalRecovery_future_foreign_flags_withinTV` compares complete source future
+histories from any starting history, keeping an arbitrary focal policy fixed.
+Its uniform error has no conditioning-reach denominator.
+
+Native clean-future transport must use the actual selected virtual source query.
+Ordinary typed values with rejected guards remain literal. Own unusable-binding
+repair can change the query key, so arbitrary policy tables cannot be identified
+across that repair: focal unusable choices need the same-reset or standing-debt
+floor argument, and past foreign unusables need the separate posterior bound.
 
 Use the existing component/pooled completion, asymptotic likelihood, affine
 comparison, local-simulation limit and terminal-audit engines. The underlying
