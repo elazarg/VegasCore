@@ -106,6 +106,16 @@ theorem phaseProposalUnflagged_paired_response_word
         phase.Finished (phase.drain leftRaw) ∧ phase.Finished (phase.drain rightRaw) ∧
         PhaseProposal.sourceArchive leftEnding.execution.network.inputs =
           PhaseProposal.sourceArchive rightEnding.execution.network.inputs ∧
+        (∀ event ∈ phase.events, ∀ owner payload,
+          (graph).outputLayout event = .binding owner payload →
+          (leftRaw.native.accepted (.inr event) ≠ none ↔
+            ReservedEpoch.ownedAcceptanceWord runtime leaks tape
+              (anchor leftResponse) owner event)) ∧
+        (∀ event ∈ phase.events, ∀ owner payload,
+          (graph).outputLayout event = .binding owner payload →
+          (rightRaw.native.accepted (.inr event) ≠ none ↔
+            ReservedEpoch.ownedAcceptanceWord runtime leaks tape
+              (anchor rightResponse) owner event)) ∧
         (∀ event ∈ phase.events, ∀ owner payload, owner ≠ actor →
           (graph).outputLayout event = .binding owner payload →
           (leftRaw.native.accepted (.inr event) ≠ none ↔
@@ -202,7 +212,7 @@ theorem phaseProposalUnflagged_paired_response_word
     rightRaw, leftState, rightState, leftPrefix, rightPrefix, leftEndPrefix, rightEndPrefix,
     leftSame.trans (attempt leftResponse),
     rightSame.trans (attempt rightResponse), leftEffect, rightEffect, leftInstalled, rightInstalled,
-    leftFinished, rightFinished, archive, foreignWord, ?_⟩
+    leftFinished, rightFinished, archive, leftWord, rightWord, foreignWord, ?_⟩
   intro focal
   have savedLeft : leftBefore.execution.application.entry = active.application.entry := by
     have initialized : ∀ state ∈ initial.support, state.Ordered := by

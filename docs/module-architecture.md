@@ -2764,5 +2764,8 @@ compares actual legal current responses and their original stopped continuations
 It derives foreign acceptance-word invariance and unconditional old proposal
 archive equality; full failure footprints and retired control/address words agree
 when both focal rows survive. The response wrapper derives the processing cursor
-from the real callback. Focal admission monotonicity, source-value coupling and
-conditional likelihood transport are separate consumers.
+from the real callback. The [focal binding consumer](../Vegas/Game/ReservedEpochFocalWord.lean) derives
+the actual unsent request from counted availability and proves WAIT survival
+implies SEND survival with equal original failure/control words. Source-value
+coupling, fresh-boundary continuation and conditional likelihood transport
+remain separate consumers.

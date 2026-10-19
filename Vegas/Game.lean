@@ -1416,3 +1416,4 @@ import Vegas.Game.ReservedEpochOriginalWord
 import Vegas.Game.ReservedEpochResponseWord
 import Vegas.Game.ReservedEpochResponseFrame
 import Vegas.Game.ReservedEpochPairedWord
+import Vegas.Game.ReservedEpochFocalWord

@@ -4924,3 +4924,15 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms
   Vegas.phaseProposalUnflagged_paired_response_word
+
+/-- info: 'Vegas.EventGraphRuntime.ReservedEpoch.ownedAcceptanceWord_wait_imp_available_binding' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.ReservedEpoch.ownedAcceptanceWord_wait_imp_available_binding
+
+/-- info: 'Vegas.phaseProposalUnflagged_wait_send_stopped_word' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseProposalUnflagged_wait_send_stopped_word
