@@ -4870,3 +4870,57 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.EventGraphRuntime.ReservedEpoch.rejected_binding_not_accepted
+
+/-- info: 'Vegas.EventGraphRuntime.ReservedEpoch.closing_receipt_record' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.ReservedEpoch.closing_receipt_record
+
+/-- info: 'Vegas.EventGraphRuntime.ReservedEpoch.original_binding_publicFailure_iff' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.ReservedEpoch.original_binding_publicFailure_iff
+
+/-- info: 'Vegas.EventGraphRuntime.ReservedEpoch.original_binding_sourceFailureFootprint' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.ReservedEpoch.original_binding_sourceFailureFootprint
+
+/-- info: 'Vegas.phaseProposalUnflagged_stopped_acceptance_word' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseProposalUnflagged_stopped_acceptance_word
+
+/-- info: 'Vegas.phaseProposalUnflagged_response_acceptance_word' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseProposalUnflagged_response_acceptance_word
+
+/-- info: 'Vegas.EventGraphRuntime.ReservedEpoch.frontierQualification_respond_foreign' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.ReservedEpoch.frontierQualification_respond_foreign
+
+/-- info: 'Vegas.EventGraphRuntime.ReservedEpoch.ownedAcceptanceWord_respond_foreign' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.ReservedEpoch.ownedAcceptanceWord_respond_foreign
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseProposal.commitment_response_archive' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseProposal.commitment_response_archive
+
+/-- info: 'Vegas.phaseProposalUnflagged_paired_response_word' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseProposalUnflagged_paired_response_word

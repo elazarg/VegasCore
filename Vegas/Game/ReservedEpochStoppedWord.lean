@@ -22,7 +22,7 @@ variable {Player : Type} [DecidableEq Player]
 
 local notation "app" => phaseApplication runtime leaks
 
-private theorem closing_receipt_record (ordered : graph.RevealRelaxedOrdered)
+theorem closing_receipt_record (ordered : graph.RevealRelaxedOrdered)
     (plan : RuntimePhasePlan graph) (inputs : PMF graph.Inputs) (horizon : Nat)
     (scheduler : (app).Scheduler) (before : (app).Control)
     (trace : ((app).protocol (inputs.map (PhaseRuntimeState.initial plan)) horizon

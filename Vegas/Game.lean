@@ -1411,3 +1411,8 @@ import Vegas.Game.PhaseProposalBindingEntry
 import Vegas.Game.PhaseProposalInstalledWord
 import Vegas.Game.PhaseProposalBindingSourceKernel
 import Vegas.Game.ReservedEpochStoppedUnsentBinding
+import Vegas.Game.ReservedEpochStoppedFootprint
+import Vegas.Game.ReservedEpochOriginalWord
+import Vegas.Game.ReservedEpochResponseWord
+import Vegas.Game.ReservedEpochResponseFrame
+import Vegas.Game.ReservedEpochPairedWord

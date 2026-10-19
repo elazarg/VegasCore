@@ -2758,3 +2758,11 @@ derives its entry conditions from the actual namespace-installing prefix.
 The [unsent binding cap](../Vegas/Game/ReservedEpochStoppedUnsentBinding.lean)
 and original whole-word consumer cover pending, rejected and unsent requests
 on one original closing image, without restarting deadlines or adding slack.
+
+The [paired reserved response law](../Vegas/Game/ReservedEpochPairedWord.lean)
+compares actual legal current responses and their original stopped continuations.
+It derives foreign acceptance-word invariance and unconditional old proposal
+archive equality; full failure footprints and retired control/address words agree
+when both focal rows survive. The response wrapper derives the processing cursor
+from the real callback. Focal admission monotonicity, source-value coupling and
+conditional likelihood transport are separate consumers.

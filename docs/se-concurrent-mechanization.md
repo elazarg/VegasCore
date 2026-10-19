@@ -200,7 +200,7 @@ quantifiers and a passing build. The labels below never enter Lean names.
 | Source | Enriched source SE extending the selected intended SE and joint law | Checked: all legal information sites, selected intended strategy and exact initialized full-history law; see the source evidence below |
 | Runtime | Concrete correlated, block-frozen reserved scheduler family | Partial: joint tape and exact scheduler-mixture realization checked; block service certification remains open |
 | Runtime | All-raw opportunity/receipt/completion, timely-valid acceptance and noncircular budgets | Partial: actual correlated-mixture AsyncContract, noncircular budgets, paired counted successor requests and protected fresh-successor receipts checked; whole retry/chain coverage remains open |
-| Runtime | Same-tape admission monotonicity and foreign-service invariance | Partial: all-owner original acceptance words with exhaustive pending/rejected/unsent frontier classification and finite tape bits checked on one closing image; paired all-owner law remains open |
+| Runtime | Same-tape admission monotonicity and foreign-service invariance | Partial: paired actual-response stopped runs have identical foreign acceptance words and proposal archives; full failure/address words agree when both focal rows survive; focal monotonicity remains open |
 | Runtime | Complete proposal reconstruction and required fresh-slot reserve | Checked: actual full raw inputs reconstruct all submitted proposals, and the horizon reserve supplies fresh active slots; the counted execution fold identifies the same source archive; see the runtime evidence below |
 | Runtime | Supported concurrent instance with variable service orders | Checked: both orders have supported actual prefixes with distinct owners' typed, timely, handler-admissible packets pending together; see the fixture evidence below |
 | Transport | Genuine enriched native query, alias masses and full counted support | Checked: actual genuine enriched query, exact alias projection and full reference support on every original-law counted input, including earlier deviations |
@@ -213,7 +213,7 @@ quantifiers and a passing build. The labels below never enter Lean names.
 | End-to-end | Raw SE, exact settled joint law, zero exclusions/charges and instantiated service | Open |
 
 Compact progress display: **Source 5/5 · Runtime 2/5 · Transport 1/6 · E2E 0/2**.
-Runtime frontier: all old frontier categories have exact bits in the original all-owner word; paired exit and outside-interval failure law next.
+Runtime frontier: paired foreign acceptance words, proposal archives and conditional full failure/address equality checked; focal WAIT-to-SEND monotonicity is next.
 Transport frontier: actual installed phase-word law, both past-bad posteriors and observable saved-debt zero gain checked; conditional likelihood, chronological source law and current-debt/reset joins remain.
 Update counts from checked statements and name the current bottleneck. Existing
 reusable proofs are dependencies, not new completed milestones.
@@ -511,7 +511,7 @@ occurs. Every pending frontier substitutes the actual finite next-processing
 epoch bit into this SAME closing image, including absent or out-of-horizon
 epochs. The unsent first-offer-versus-due-expiry bit and the rejected-packet zero bit
 are checked on this same image, with exhaustive frontier classification.
-The paired all-owner exit law remains open.
+The paired actual-response law below compares every supported pair of original closures; focal admission monotonicity remains open.
 
 The [observable binding debt](../Vegas/Game/PhaseProposalOwnBindingFailure.lean)
 uses the original typed own source view and its saved-rank projection. The
@@ -565,5 +565,16 @@ uses the first actual owner offer or due expiry before the original closure.
 finite processing horizon; it has no value, policy or final-clock argument.
 The original whole word internally classifies every old request as unsent,
 pending or already rejected and attaches its exact acceptance bit to the SAME
-raw/drained image. Outside-interval failure equality and the paired joint
-failure/address/ordinary-value law remain open.
+raw/drained image. The paired law below includes the complete failure footprint,
+including ranks outside the current interval, on the both-focal-survive branch.
+The ordinary-value coupling remains open.
+
+The [paired actual-response word](../Vegas/Game/ReservedEpochPairedWord.lean)
+compares two separately legal responses at the same original callback and every
+pair of their stopped supported continuations on one reserved tape. It derives
+the original closing operations, raw/drained records and first-exit prefixes.
+Every foreign acceptance bit and the old proposal archive agree. When both
+focal owned rows survive, the entire per-rank/total failure footprint and retired
+source control/address words agree, including ranks outside the active interval.
+This theorem does not supply the focal WAIT-to-SEND admission implication,
+ordinary-value coupling, conditional tape posterior or complete incentive bound.

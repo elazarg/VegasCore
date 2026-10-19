@@ -24,7 +24,7 @@ variable {Player : Type} [Fintype Player] [DecidableEq Player]
 local notation "app" => phaseApplication runtime leaks
 
 omit [Fintype Player] in
-private theorem commitment_response_archive (execution : (app).Execution) (who : Player)
+theorem commitment_response_archive (execution : (app).Execution) (who : Player)
     (material : WitnessedSubmission graph) (event : graph.EventId) (candidate : Handle graph)
     (call : material.call.packet = .commitment event candidate) :
     sourceArchive (execution.respond app who ⟨some material⟩).network.inputs =
