@@ -200,12 +200,12 @@ quantifiers and a passing build. The labels below never enter Lean names.
 | Source | Enriched source SE extending the selected intended SE and joint law | Checked: all legal information sites, selected intended strategy and exact initialized full-history law; see the source evidence below |
 | Runtime | Concrete correlated, block-frozen reserved scheduler family | Partial: joint tape and exact scheduler-mixture realization checked; block service certification remains open |
 | Runtime | All-raw opportunity/receipt/completion, timely-valid acceptance and noncircular budgets | Partial: actual correlated-mixture AsyncContract, noncircular budgets, paired counted successor requests and protected fresh-successor receipts checked; whole retry/chain coverage remains open |
-| Runtime | Same-tape admission monotonicity and foreign-service invariance | Open |
+| Runtime | Same-tape admission monotonicity and foreign-service invariance | Partial: original stopped owned words and old-episode receipt bits checked; paired all-owner law remains open |
 | Runtime | Complete proposal reconstruction and required fresh-slot reserve | Checked: actual full raw inputs reconstruct all submitted proposals, and the horizon reserve supplies fresh active slots; the counted execution fold identifies the same source archive; see the runtime evidence below |
 | Runtime | Supported concurrent instance with variable service orders | Checked: both orders have supported actual prefixes with distinct owners' typed, timely, handler-admissible packets pending together; see the fixture evidence below |
 | Transport | Genuine enriched native query, alias masses and full counted support | Checked: actual genuine enriched query, exact alias projection and full reference support on every original-law counted input, including earlier deviations |
 | Transport | Good-store likelihood transport, including failed proposals | Open |
-| Transport | Uniform foreign-bad posterior bound and separate own-debt cases | Open |
+| Transport | Uniform foreign-bad posterior bound and separate own-debt cases | Partial: uniform full-input foreign-bad posterior and saved-debt floor checked; current cancelable-debt reset comparison remains open |
 | Transport | Publication timing dominance with actual early observations | Open |
 | Transport | Whole-policy binding/retry comparison with the same reset continuation | Open |
 | Transport | One native Bayes sequence with vanishing gain and initialized-law errors | Open |
@@ -213,8 +213,8 @@ quantifiers and a passing build. The labels below never enter Lean names.
 | End-to-end | Raw SE, exact settled joint law, zero exclusions/charges and instantiated service | Open |
 
 Compact progress display: **Source 5/5 · Runtime 2/5 · Transport 1/6 · E2E 0/2**.
-Runtime frontier: first-attempt failures classified by old requests; paired exit law next.
-Transport frontier: initialized whole-history repair checked; quantitative posterior bound next.
+Runtime frontier: original owned acceptance words checked; paired all-owner exit law next.
+Transport frontier: uniform foreign-bad posterior checked; own-debt/reset and likelihood joins remain.
 Update counts from checked statements and name the current bottleneck. Existing
 reusable proofs are dependencies, not new completed milestones.
 Current bottlenecks are the stopped service coupling, cross-world likelihood
@@ -485,3 +485,23 @@ archive before checkpoint restoration. The
 [whole-word readback](../Vegas/Game/PhaseProposalCommitWord.lean) identifies each
 recalled preparation at its original rank in the same decoded source attempt.
 Neither statement assumes or proves the complete phase probability law.
+
+The [generated-preparation posterior](../Vegas/Game/PhaseProposalPreparationPosterior.lean)
+proves `exists_phaseProposal_generatedPreparation_posterior_bound` and its
+all-foreign-owner union bound at every positive full native decision fiber.
+The intrinsic chance and length constants are fixed before response rates;
+the complete repaired-response floor is fixed before bad rates, source pins
+and free pool weights. The estimate preserves the original joint initial draw
+and cancels every non-designated owner's literal response-word factor.
+It does not establish the separate conditional ordinary-world likelihood law
+or discharge current cancelable own debt.
+
+The [original owned word](../Vegas/Game/ReservedEpochStoppedWord.lean)
+proves `phaseProposalUnflagged_stopped_owned_word` on the actual stopped run.
+Each existing anchor request determines its entire owner's accepted suffix;
+active owners with no old frontier have every row accepted. The actual
+pre-normalization closing image, candidate tables, failure/address record and
+old proposal archive are retained. `original_binding_receipt_accepted` reads
+the exact handle from the actual closing primitive, including an inclusion
+which itself closes the attempt. Inherited-excluded row equality, substitution
+of all old tape bits and the paired all-owner exit law remain open.

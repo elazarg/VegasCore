@@ -32,7 +32,7 @@ theorem pending_identifier_not_receipted (initial : PMF app.State) (horizon : Na
   exact (List.nodup_append.mp distinct).2.2 _
     (List.mem_map.mpr ⟨message, pending, rfl⟩) _ published rfl
 
-private theorem new_accepting_receipt_command (execution next : app.Execution)
+theorem new_accepting_receipt_command (execution next : app.Execution)
     (identifier : MessageId Principal) (before : (identifier, true) ∉ execution.receipts)
     (command : app.Command) (reached : next ∈ (execution.environmentStep app command).support)
     (accepted : (identifier, true) ∈ next.receipts) : command = .include identifier := by

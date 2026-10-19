@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.PhaseClearNativeProgress
+import Interaction.ReactiveInvariantPrefix
 
 /-! # Accepted handles persist throughout a surviving physical attempt -/
 
@@ -138,6 +139,27 @@ private theorem same_attempt_accepted_invariant (runtime : EventGraphRuntime gra
         valid.1)
       valid.2.2.2 ((PhaseRuntimeState.accepted_progress runtime leaks).environment state command
         next reached)
+
+/-- An actual trace prefix keeps each accepted handle in its original
+physical attempt. Namespace monotonicity rules out an intermediate retry. -/
+theorem phase_prefix_accepted (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket graph))
+    (menu : (phaseApplication runtime leaks).ResponseMenu)
+    (initial : PMF (phaseApplication runtime leaks).State) (horizon : Nat)
+    (scheduler : (phaseApplication runtime leaks).Scheduler)
+    (before after : (phaseApplication runtime leaks).Control)
+    (prior : (menu.protocol initial horizon scheduler).Trace (some before))
+    (final : (menu.protocol initial horizon scheduler).Trace (some after))
+    (kept : GameTheory.Protocol.ExecutionProtocol.TracePrefix prior final)
+    (ordered : before.execution.application.Ordered)
+    (same : before.execution.application.attempt = after.execution.application.attempt)
+    (field : graph.Field) (candidate : Handle graph)
+    (present : before.execution.application.current.native.accepted field = some candidate) :
+    after.execution.application.current.native.accepted field = some candidate := by
+  have valid := (same_attempt_accepted_invariant runtime leaks
+    before.execution.application).tracePrefix menu initial horizon scheduler before after prior
+      final kept ⟨ordered, Nat.le_refl _, Nat.le_refl _, fun _ _ _ present => present⟩
+  exact valid.2.2.2 same field candidate present
 
 /-- Supported physical rounds keep all accepted handles if their endpoint
 attempt agrees with the original attempt; intermediate resets are excluded by

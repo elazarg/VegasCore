@@ -870,3 +870,7 @@ import Vegas.Pending.PhaseProposalShadowAcceptedTrace
 import Vegas.Pending.PhaseProposalShadowIncludeRepair
 import Vegas.Pending.PhaseProposalShadowEnvironmentRepair
 import Vegas.Pending.PhaseProposalShadowHistory
+import Vegas.Pending.PhaseProposalAliasMass
+import Vegas.Pending.PhaseProposalPreparedUsability
+import Vegas.Pending.ReservedEpochReceiptTiming
+import Vegas.Pending.ReservedEpochUnsentRequest

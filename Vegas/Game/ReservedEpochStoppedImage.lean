@@ -91,6 +91,10 @@ theorem phaseProposalUnflagged_stopped_binding_image
           (phase.drain raw).native.candidates = raw.native.candidates ∧
           PhaseProposal.sourceArchive ending.execution.network.inputs =
             PhaseProposal.sourceArchive anchor.network.inputs ∧
+          (∀ event candidate, anchor.application.attempt.phase ≤ event.val →
+            (phase.drain raw).native.accepted (.inr event) = some candidate →
+            PhaseService.BindingAccepted runtime leaks
+              ⟨anchor.application.attempt, event⟩ candidate.1 ending.execution) ∧
           (∀ event ∈ phase.events, (phase.drain raw).native.PublicFailure event ↔
             raw.native.accepted (.inr event) = none) ∧
           (∀ owner, owner ∉ anchor.application.current.excluded →
@@ -151,7 +155,7 @@ theorem phaseProposalUnflagged_stopped_binding_image
   refine ⟨ending, before, prior, joint, legal, realized, raw, stateEq, idle, changed, fromStart,
     toFinal, same, phaseInstalled, normalized, effect, finished, valid, coverage, excluded,
     tables.1,
-    tables.2.1, oldArchive, failures, ?_, ?_⟩
+    tables.2.1, oldArchive, receipts, failures, ?_, ?_⟩
   · intro owner active failed
     obtain ⟨event, inside, request, recorded, unaccepted⟩ :=
       phaseProposalUnflagged_stopped_exclusion_request setup mode runtime leaks bounds plan

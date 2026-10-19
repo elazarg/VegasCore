@@ -2723,3 +2723,11 @@ from its quantitative posterior estimate.
 the actual pre-restoration closing operation, accepted table and proposal
 archive. [Ranked preparation readback](../Vegas/Game/PhaseProposalCommitWord.lean)
 uses the same decoder append induction and literal emitted typed values.
+
+The [uniform preparation posterior](../Vegas/Game/PhaseProposalPreparationPosterior.lean)
+combines the initialized whole-history repair with fixed ordinary-response
+floors and exact designated response-word reach accounting. It bounds actual
+Bayes mass at every full native decision fiber without a replacement prior.
+The [original owned acceptance word](../Vegas/Game/ReservedEpochStoppedWord.lean)
+retains the actual stopped phase image and full failure/address/archive data;
+it does not supply the paired all-owner timing law or the source likelihood law.

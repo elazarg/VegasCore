@@ -4415,3 +4415,198 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.decodeCommitAttempt_joint_of_recorded_preparation
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseProposal.responseAliasMass_positive' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.PhaseProposal.responseAliasMass_positive
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseProposal.splitResponseLaw_probability_le_class' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.PhaseProposal.splitResponseLaw_probability_le_class
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseProposal.splitResponseLaw_probability_ge_alias' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.PhaseProposal.splitResponseLaw_probability_ge_alias
+
+/-- info: 'Vegas.EventGraphRuntime.BindingShadow.PreparedBindings.recorded_preparation_usable' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.BindingShadow.PreparedBindings.recorded_preparation_usable
+
+/-- info: 'Vegas.phaseProposalPooledDomain_ordinary_domination' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseProposalPooledDomain_ordinary_domination
+
+/-- info: 'Vegas.phaseProposalBasePolicy_ordinary_domination' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseProposalBasePolicy_ordinary_domination
+
+/-- info: 'Vegas.phaseProposalReferenceResponses_ordinary_domination' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseProposalReferenceResponses_ordinary_domination
+
+/-- info: 'Vegas.exists_phaseProposalOrdinaryStrategy_floor' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.exists_phaseProposalOrdinaryStrategy_floor
+
+/-- info: 'Vegas.phaseProposalOrdinaryResponses_supported_of_counted' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseProposalOrdinaryResponses_supported_of_counted
+
+/-- info: 'Vegas.phaseProposalRepaired_recorded_prepared' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseProposalRepaired_recorded_prepared
+
+/-- info: 'Vegas.phaseProposalReferenceResponses_badPreparation_mass_le' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseProposalReferenceResponses_badPreparation_mass_le
+
+/-- info: 'Vegas.phaseProposalReferenceResponses_badPreparation_atom_le' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseProposalReferenceResponses_badPreparation_atom_le
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseProposal.repair_information_history' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.PhaseProposal.repair_information_history
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseProposal.GeneratedUnusableBindingHistory' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.PhaseProposal.GeneratedUnusableBindingHistory
+
+/-- info: 'Vegas.exists_phaseProposalPooled_response_floor' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.exists_phaseProposalPooled_response_floor
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseProposal.historyReach_le_of_designated_word' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.PhaseProposal.historyReach_le_of_designated_word
+
+/-- info: 'Vegas.phaseProposalReference_word_probability' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseProposalReference_word_probability
+
+/-- info: 'Vegas.phaseProposalRepaired_owner_word_lower' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseProposalRepaired_owner_word_lower
+
+/-- info: 'Vegas.phaseProposalGenerated_owner_word_upper' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseProposalGenerated_owner_word_upper
+
+/-- info: 'Vegas.exists_phaseProposal_generatedPreparation_posterior_bound' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.exists_phaseProposal_generatedPreparation_posterior_bound
+
+/-- info: 'Vegas.exists_phaseProposal_foreignPreparation_posterior_bound' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.exists_phaseProposal_foreignPreparation_posterior_bound
+
+/-- info: 'Interaction.ReactiveApplication.new_accepting_receipt_command' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Interaction.ReactiveApplication.new_accepting_receipt_command
+
+/-- info: 'Vegas.EventGraphRuntime.phase_prefix_accepted' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.phase_prefix_accepted
+
+/-- info: 'Vegas.EventGraphRuntime.ReservedEpoch.accepting_include_binding' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.accepting_include_binding
+
+/-- info: 'Vegas.EventGraphRuntime.ReservedEpoch.pending_binding_receipt_requires_timely_epoch' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.pending_binding_receipt_requires_timely_epoch
+
+/-- info: 'Vegas.EventGraphRuntime.ReservedEpoch.pending_binding_receipt_iff_timely_epoch' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.pending_binding_receipt_iff_timely_epoch
+
+/-- info: 'Vegas.EventGraphRuntime.ReservedEpoch.old_pending_response_receipt_iff' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.old_pending_response_receipt_iff
+
+/-- info: 'Vegas.EventGraphRuntime.ReservedEpoch.old_pending_response_receipts_congr' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.old_pending_response_receipts_congr
+
+/-- info: 'Vegas.EventGraphRuntime.ReservedEpoch.old_pending_response_joint_receipt_law' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.old_pending_response_joint_receipt_law
+
+/-- info: 'Vegas.EventGraphRuntime.ReservedEpoch.first_owner_offer' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.first_owner_offer
+
+/-- info: 'Vegas.EventGraphRuntime.ReservedEpoch.first_due_check' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.first_due_check
+
+/-- info: 'Vegas.EventGraphRuntime.ReservedEpoch.unsent_request_before_next_offer' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.unsent_request_before_next_offer
+
+/-- info: 'Vegas.EventGraphRuntime.ReservedEpoch.unsent_request_at_owner_offer' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.unsent_request_at_owner_offer
+
+/-- info: 'Vegas.EventGraphRuntime.ReservedEpoch.unsent_due_check_before_offer' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.unsent_due_check_before_offer
+
+/-- info: 'Vegas.phaseProposalUnflagged_unsent_binding_receipt' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseProposalUnflagged_unsent_binding_receipt
+
+/-- info: 'Vegas.EventGraphRuntime.ReservedEpoch.original_binding_receipt_accepted' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.original_binding_receipt_accepted
+
+/-- info: 'Vegas.EventGraphRuntime.ReservedEpoch.original_snapshot_preserves_accepted' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.original_snapshot_preserves_accepted
+
+/-- info: 'Vegas.phaseProposalUnflagged_stopped_rejected_binding' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseProposalUnflagged_stopped_rejected_binding
+
+/-- info: 'Vegas.phaseProposalUnflagged_stopped_owned_word' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseProposalUnflagged_stopped_owned_word
