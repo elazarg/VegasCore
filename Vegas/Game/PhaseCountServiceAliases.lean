@@ -53,7 +53,7 @@ def phaseCountServiceNormalization (owners : Finset Player) : (app).SubmissionNo
     · simp only [ite_eq_right inside]
 
 omit [Fintype Player] in
-private theorem selective_recall_fixed (owners : Finset Player) (who : Player)
+theorem phaseCountServiceNormalization_recall_fixed (owners : Finset Player) (who : Player)
     (outside : who ∉ owners) (past : List (app).PlayerEntry) :
     (phaseCountServiceNormalization setup mode runtime leaks owners).recall who past = past := by
   induction past using List.reverseRecOn with
@@ -77,10 +77,10 @@ theorem phaseCountServiceNormalization_info_fixed (owners : Finset Player) (who 
   | some pair =>
       rcases pair with ⟨past, view⟩
       simp only [ReactiveApplication.SubmissionNormalization.info, Option.map_some,
-        selective_recall_fixed setup mode runtime leaks owners who outside]
+        phaseCountServiceNormalization_recall_fixed setup mode runtime leaks owners who outside]
 
 omit [Fintype Player] in
-private theorem normalized_submissionCount (normal : (app).SubmissionNormalization)
+theorem phaseCountService_submissionCount_normal_recall (normal : (app).SubmissionNormalization)
     (who : Player) (past : List (app).PlayerEntry) :
     (app).submissionCount (normal.recall who past) = (app).submissionCount past := by
   induction past using List.reverseRecOn with
@@ -97,7 +97,7 @@ private theorem normalized_localEnvelope (normal : (app).SubmissionNormalization
     (material : (app).Submission) :
     PhaseCount.localEnvelope runtime leaks actor (normal.recall who past) view material =
       PhaseCount.localEnvelope runtime leaks actor past view material := by
-  simp only [PhaseCount.localEnvelope, normalized_submissionCount,
+  simp only [PhaseCount.localEnvelope, phaseCountService_submissionCount_normal_recall,
     ReactiveApplication.ResponseMenu.knownPackets, normal.recall_outputs]
 
 omit [Fintype Player] in

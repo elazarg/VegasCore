@@ -4833,3 +4833,21 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms
   Vegas.RecoverySourceCheckpoint.ordinary_closing_binding_checkpoint
+
+/-- info: 'Vegas.phaseClosingEffect_checkpoint_facts' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseClosingEffect_checkpoint_facts
+
+/-- info: 'Vegas.phaseProposalBindingPotentialProfile_source_checkpoint_history' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseProposalBindingPotentialProfile_source_checkpoint_history
+
+/-- info: 'Vegas.RecoverySourceWitness.ordinary_installed_binding_history' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.RecoverySourceWitness.ordinary_installed_binding_history

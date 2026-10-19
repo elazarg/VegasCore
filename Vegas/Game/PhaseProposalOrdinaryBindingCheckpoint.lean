@@ -29,7 +29,7 @@ local notation "inputs" => setup.initialLaw.map encodeInputs
 local notation "initial" =>
   PMF.map (PhaseRuntimeState.initial plan) (PMF.map encodeInputs setup.initialLaw)
 
-private theorem closing_checkpoint_facts
+theorem phaseClosingEffect_checkpoint_facts
     (horizon : Nat) (scheduler : (app).Scheduler)
     (before ending : (app).Control)
     (prior : ((menu).protocol initial horizon scheduler).Trace (some before))
@@ -235,8 +235,8 @@ theorem RecoverySourceCheckpoint.ordinary_closing_binding_checkpoint
           before.execution.application.entry.excluded (phase.drain raw).native.config.store
             checkpoint.source = checkpoint.commitInstructionWord (phase.drain raw).native) := by
   obtain ⟨⟨draw, native⟩, binding, receipts, stored, remembered, coverage⟩ :=
-    closing_checkpoint_facts setup mode runtime leaks bounds plan horizon scheduler before ending
-      prior raw effect changed
+    phaseClosingEffect_checkpoint_facts setup mode runtime leaks bounds plan horizon scheduler
+      before ending prior raw effect changed
   let state : PhaseRuntimeState graph := { before.execution.application with current := raw }
   let transferred : RecoverySourceCheckpoint setup mode state := checkpoint.transfer rfl rfl rfl
   have chain := (phasePlanGeometry_history runtime leaks plan maximal inputs horizon scheduler

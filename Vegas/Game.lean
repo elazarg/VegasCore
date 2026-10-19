@@ -1438,3 +1438,6 @@ import Vegas.Game.PhaseProposalOrdinaryStoppedSourceWord
 import Vegas.Game.PhaseProposalOrdinaryStoppedSourceHistory
 import Vegas.Game.PhaseProposalInstalledSourceBlock
 import Vegas.Game.PhaseProposalOrdinaryBindingCheckpoint
+import Vegas.Game.PhaseProposalLostBindingContinuationMass
+import Vegas.Game.PhaseProposalAliasHistory
+import Vegas.Game.PhaseProposalInstalledSourceHistory

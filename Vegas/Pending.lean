@@ -886,3 +886,4 @@ import Vegas.Pending.PhaseProposalLostBindingInclusion
 import Vegas.Pending.PhaseProposalUnusedPreparation
 import Vegas.Pending.PhaseProposalLostPreparationMass
 import Vegas.Pending.PhaseProposalPreparationPrefix
+import Vegas.Pending.PhaseProposalInputSummary

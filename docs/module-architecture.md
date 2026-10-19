@@ -2756,9 +2756,22 @@ projects the actual stopped execution to that distribution. The
 [fresh installed cursor](../Vegas/Game/PhaseProposalInstalledSourceBlock.lean)
 retains the selected checkpoint and archive lift; the
 [actual closing checkpoint](../Vegas/Game/PhaseProposalOrdinaryBindingCheckpoint.lean)
-retains its raw/drained successor and normalization. Their selected-history
-composition, good-fiber usability and conditional intermediate-information
-likelihood remain separate obligations.
+retains its raw/drained successor and normalization. The
+[installed source history](../Vegas/Game/PhaseProposalInstalledSourceHistory.lean)
+identifies the complete semantic and enriched histories with that same
+next checkpoint and its archive lift. Good-fiber usability, the full
+terminal kernel and conditional intermediate-information likelihood remain
+separate obligations. The
+[foreign alias history law](../Vegas/Game/PhaseProposalAliasHistory.lean)
+instantiates the existing submission-normalization history projection
+for the actual reference policy, retaining full focal information and
+application jointly. Its owning
+[input summary](../Vegas/Pending/PhaseProposalInputSummary.lean)
+supplies menu and encoder congruence from outputs, submission count and
+view. The
+[lost binding continuation atom](../Vegas/Game/PhaseProposalLostBindingContinuationMass.lean)
+uses actual closing and permanent exclusion to make the lost sender's
+continuation policy irrelevant on that slice only.
 The [auxiliary entry graph view](../Vegas/Game/PhaseProposalBindingKernel.lean)
 includes the actual entry pending identifiers without changing observations.
 

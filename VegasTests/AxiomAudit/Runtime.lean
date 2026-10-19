@@ -5098,3 +5098,77 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms
   Vegas.EventGraphRuntime.HiddenSwap.phase_trace_ownPlay
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseCount.onePacketActions_congr_input' depends on axioms:
+[propext,
+ Classical.choice,
+ Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseCount.onePacketActions_congr_input
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseCount.bindingResultEncoder_congr_input' depends on axioms:
+[propext,
+ Classical.choice,
+ Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseCount.bindingResultEncoder_congr_input
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseCount.phaseOpeningPolicy_congr_input' depends on axioms:
+[propext,
+ Classical.choice,
+ Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseCount.phaseOpeningPolicy_congr_input
+
+/-- info: 'Vegas.phaseProposalBasePolicy_congr_input' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseProposalBasePolicy_congr_input
+
+/-- info: 'Vegas.phaseProposalReferencePolicy_congr_input' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseProposalReferencePolicy_congr_input
+
+/-- info: 'Vegas.phaseCountService_submissionCount_normal_recall' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseCountService_submissionCount_normal_recall
+
+/-- info: 'Vegas.phaseCountServiceNormalization_recall_fixed' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseCountServiceNormalization_recall_fixed
+
+/-- info: 'Vegas.EventGraphRuntime.phase_lost_binding_continuation_atom' depends on axioms:
+[propext,
+ Classical.choice,
+ Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.phase_lost_binding_continuation_atom
+
+/-- info: 'Vegas.phaseProposalReferencePolicy_normal_recall' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseProposalReferencePolicy_normal_recall
+
+/-- info: 'Vegas.phaseProposalReference_alias_history' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseProposalReference_alias_history
+
+/-- info: 'Vegas.phaseProposalReference_alias_focal_joint' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseProposalReference_alias_focal_joint

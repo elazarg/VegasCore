@@ -214,7 +214,7 @@ quantifiers and a passing build. The labels below never enter Lean names.
 
 Compact progress display: **Source 5/5 · Runtime 2/5 · Transport 1/6 · E2E 0/2**.
 Runtime frontier: binding WAIT-to-SEND survival and paired full failure/address/archive comparison checked; publication emission/acceptance and clean boundary law are next.
-Transport frontier: initialized lost-value cross-reach, whole finite source-block/history law and actual closing checkpoint checked; full input-fiber sums, selected-history checkpoint composition and current-debt/reset joins remain.
+Transport frontier: initialized lost-value cross-reach, whole foreign-alias history law and source-history/checkpoint composition checked; full input-fiber weights, good-fiber terminal law and current-debt/reset joins remain.
 Update counts from checked statements and name the current bottleneck. Existing
 reusable proofs are dependencies, not new completed milestones.
 Current bottlenecks are the stopped service coupling, cross-world likelihood
@@ -604,8 +604,8 @@ preserves each matched environment atom's probability. The
 constructs the changed typed SEND from the same original initialized prefix
 and proves the cross-multiplied whole reach identity for every legal profile.
 On both traces, the sender's later callbacks are forced WAIT on the actual
-never-accepted slice. Summing foreign raw aliases and complete input fibers is
-still open.
+never-accepted slice. Summing complete source fibers with their actual reference
+weights remains open.
 
 The [canonical disclosure readback](../Vegas/Game/PhaseProposalDisclosure.lean)
 retains equality of the recorded native Boolean and the chosen source action
@@ -626,6 +626,19 @@ uses that same selected checkpoint and archive lift; surviving source bindings
 must hold values, while guards may reject. The
 [closing checkpoint](../Vegas/Game/PhaseProposalOrdinaryBindingCheckpoint.lean)
 derives the next saved checkpoint and exact native normalization from the
-original closing operation. Composing the selected source history with that
-checkpoint and deriving ordinary usability on the good native fiber remain
-open, as do publication/Nature composition and full initialized preservation.
+original closing operation. The
+[installed source history](../Vegas/Game/PhaseProposalInstalledSourceHistory.lean)
+identifies the entire selected semantic history with that same next
+checkpoint trace and the enriched history with its literal archive lift.
+Deriving ordinary usability on the good native fiber, publication/Nature
+terminal composition and full initialized preservation remain open.
+
+The [foreign alias history law](../Vegas/Game/PhaseProposalAliasHistory.lean)
+sums raw foreign aliases through the existing full-history runner, retaining
+the focal player's full information jointly with the complete application.
+It permits an arbitrary covered focal policy and the original initial PMF
+and scheduler. The
+[lost binding continuation atom](../Vegas/Game/PhaseProposalLostBindingContinuationMass.lean)
+is independent of the lost sender's policy on the actual closing and
+permanent-exclusion slice. Neither result supplies the remaining full
+source-fiber weight identity.
