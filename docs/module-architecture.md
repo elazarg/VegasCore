@@ -2738,7 +2738,8 @@ conditional gain on the whole native information fiber for any belief.
 The [original pending tape bit](../Vegas/Game/ReservedEpochStoppedTapeWord.lean)
 is evaluated on the actual closing prefix; it retains the original timestamp,
 finite processing horizon and literal old packet identity. Its substitution
-into the original owned word does not supply the UNSENT or paired timing law.
+into the original owned word is complemented by the unsent/rejected laws below;
+the paired timing law is separate.
 
 The [fresh binding phase law](../Vegas/Game/PhaseProposalBindingPhaseLaw.lean)
 derives its emission-frontier callback conditions on the same supported native
@@ -2747,3 +2748,13 @@ the canonical continuation from that entry; literal source identification and
 conditional intermediate-information likelihood are separate adapters.
 The [auxiliary entry graph view](../Vegas/Game/PhaseProposalBindingKernel.lean)
 includes the actual entry pending identifiers without changing observations.
+
+The [selective source repair](../Vegas/Source/ProposalRecoveryPreparationRepairHistory.lean)
+preserves all other owners' full labeled information without a repaired-owner
+survival assumption. The [source posterior](../Vegas/Game/ProposalRecoveryPreparationPosterior.lean)
+uses this actual initialized history and a bad-independent response floor.
+The [installed commitment word](../Vegas/Game/PhaseProposalInstalledWord.lean)
+derives its entry conditions from the actual namespace-installing prefix.
+The [unsent binding cap](../Vegas/Game/ReservedEpochStoppedUnsentBinding.lean)
+and original whole-word consumer cover pending, rejected and unsent requests
+on one original closing image, without restarting deadlines or adding slack.

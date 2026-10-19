@@ -23,7 +23,7 @@ local notation "app" => phaseApplication runtime leaks
 omit [Fintype Player] in
 /-- Instantiate the existing behavioral evaluator at the actual starting
 history, retaining its literal prefix when selecting a complete continuation. -/
-private theorem complete_rounds_extension [Finite Player] (menu : (app).ResponseMenu)
+theorem complete_rounds_extension [Finite Player] (menu : (app).ResponseMenu)
     (initial : PMF (app).State) (horizon : Nat) (scheduler : (app).Scheduler)
     (players : Player → (app).Policy)
     (covered : ∀ who past view response, response ∈ (players who past view).support →

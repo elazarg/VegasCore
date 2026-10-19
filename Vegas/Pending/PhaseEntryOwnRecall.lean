@@ -2,6 +2,7 @@
 
 import Vegas.Pending.PhaseSeedFreshness
 import Vegas.Pending.PhaseAttemptCheckpoint
+import Vegas.Pending.PhaseEntryExclusion
 import Interaction.ReactiveRecordedResponse
 
 /-! # Actual full recall at the first installation of an attempt -/
@@ -96,7 +97,8 @@ theorem phase_ownRecall_fresh_after_environment (initial : PMF (app).State)
 
 /-- Every genuine history has an actual prefix at which its present attempt
 was installed and no callback in the permanent own recall used that address.
-The prefix is a full execution with its original network and recalled past. -/
+The prefix is idle and retains its original network and recalled past. Its
+application is an actual initial draw or saves the current exclusion. -/
 theorem phase_attempt_entry_prefix (menu : (app).ResponseMenu) (initial : PMF (app).State)
     (initialized : ∀ state ∈ initial.support, state.Ordered) (horizon : Nat)
     (scheduler : (app).Scheduler) (control : (app).Control)
@@ -104,7 +106,10 @@ theorem phase_attempt_entry_prefix (menu : (app).ResponseMenu) (initial : PMF (a
     ∃ (entry : (app).Control)
       (entryTrace : (menu.protocol initial horizon scheduler).Trace (some entry)),
       TracePrefix entryTrace trace ∧ entry.execution.application.attempt =
-        control.execution.application.attempt ∧
+        control.execution.application.attempt ∧ entry.actor = none ∧
+      ((∃ input ∈ initial.support, entry.execution.application = input) ∨
+        entry.execution.application.entry.excluded =
+          entry.execution.application.current.excluded) ∧
       ∀ who, ∀ record ∈ entry.execution.recall who,
         record.beforeView.application.2.attempt ≠ entry.execution.application.attempt := by
   have along : ∀ {state} (current : (menu.protocol initial horizon scheduler).Trace state),
@@ -112,7 +117,10 @@ theorem phase_attempt_entry_prefix (menu : (app).ResponseMenu) (initial : PMF (a
       ∃ (entry : (app).Control)
         (entryTrace : (menu.protocol initial horizon scheduler).Trace (some entry)),
         TracePrefix entryTrace current ∧ entry.execution.application.attempt =
-          target.execution.application.attempt ∧
+          target.execution.application.attempt ∧ entry.actor = none ∧
+        ((∃ input ∈ initial.support, entry.execution.application = input) ∨
+          entry.execution.application.entry.excluded =
+            entry.execution.application.current.excluded) ∧
         ∀ who, ∀ record ∈ entry.execution.recall who,
           record.beforeView.application.2.attempt ≠ entry.execution.application.attempt := by
     intro state current
@@ -127,14 +135,15 @@ theorem phase_attempt_entry_prefix (menu : (app).ResponseMenu) (initial : PMF (a
         | none =>
             obtain ⟨input, _supported, equation⟩ := PMF.support_map .. ▸ realized
             cases Option.some.inj equation
-            exact ⟨_, .extend prior joint legal reached, .refl, rfl,
+            exact ⟨_, .extend prior joint legal reached, .refl, rfl, rfl,
+              Or.inl ⟨input, _supported, rfl⟩,
               by intro who record impossible; cases impossible⟩
         | some before =>
             by_cases same : before.execution.application.attempt =
                 target.execution.application.attempt
-            · obtain ⟨entry, entryTrace, retained, address, fresh⟩ := ih before rfl
+            · obtain ⟨entry, entryTrace, retained, address, idle, origin, fresh⟩ := ih before rfl
               exact ⟨entry, entryTrace, .extend retained joint legal reached,
-                address.trans same, fresh⟩
+                address.trans same, idle, origin, fresh⟩
             · have previous := (menu).toRawTrace initial horizon scheduler prior
               cases active : before.actor with
               | some who =>
@@ -155,8 +164,55 @@ theorem phase_attempt_entry_prefix (menu : (app).ResponseMenu) (initial : PMF (a
                         PMF.support_bind, Set.mem_iUnion, PMF.support_map] at realized
                       obtain ⟨command, _selected, next, supported, equation⟩ := realized
                       cases Option.some.inj equation
-                      refine ⟨_, .extend prior joint legal reached, .refl, rfl, ?_⟩
+                      have idle : command.actor? (app) = none := by
+                        cases command with
+                        | activate owner =>
+                            simp only [ReactiveApplication.Execution.environmentStep,
+                              PMF.support_map] at supported
+                            obtain ⟨learned, ⟨selected, _chosen, rfl⟩, rfl⟩ := supported
+                            exact False.elim (same rfl)
+                        | «include» id => rfl
+                        | application operation => rfl
+                        | wait => rfl
+                      have installation := phaseApplication_namespaceInstallation runtime leaks
+                      have saved := installation.environmentStep before.execution next command
+                        supported same
+                      refine ⟨_, .extend prior joint legal reached, .refl, rfl, idle,
+                        Or.inr saved, ?_⟩
                       exact phase_ownRecall_fresh_after_environment runtime leaks initial
                         initialized horizon scheduler before previous next command supported same
   exact along trace control rfl
+
+/-- For the actual initialized application the SAME first-installation prefix
+is idle, has fresh complete recall, and saves its actual permanent exclusion.
+Inherited excluded owners and automatic phase skips remain permitted. -/
+theorem phase_attempt_installed_prefix (menu : (app).ResponseMenu)
+    (plan : RuntimePhasePlan graph) (inputs : PMF graph.Inputs) (horizon : Nat)
+    (scheduler : (app).Scheduler) (control : (app).Control)
+    (trace : (menu.protocol (inputs.map (PhaseRuntimeState.initial plan)) horizon scheduler).Trace
+      (some control)) :
+    ∃ (entry : (app).Control)
+      (entryTrace : (menu.protocol (inputs.map (PhaseRuntimeState.initial plan)) horizon
+        scheduler).Trace (some entry)),
+      TracePrefix entryTrace trace ∧
+      entry.execution.application.attempt = control.execution.application.attempt ∧
+      entry.actor = none ∧
+      entry.execution.application.entry.excluded = entry.execution.application.current.excluded ∧
+      ∀ who, ∀ record ∈ entry.execution.recall who,
+        record.beforeView.application.2.attempt ≠ entry.execution.application.attempt := by
+  have initialized : ∀ state ∈ (inputs.map (PhaseRuntimeState.initial plan)).support,
+      state.Ordered := by
+    intro state supported
+    obtain ⟨draw, _supported, rfl⟩ := PMF.support_map .. ▸ supported
+    exact PhaseRuntimeState.initial_ordered plan draw
+  obtain ⟨entry, entryTrace, retained, same, idle, origin, fresh⟩ :=
+    phase_attempt_entry_prefix runtime leaks menu (inputs.map (PhaseRuntimeState.initial plan))
+      initialized horizon scheduler control trace
+  refine ⟨entry, entryTrace, retained, same, idle, ?_, fresh⟩
+  rcases origin with ⟨input, supported, equation⟩ | saved
+  · obtain ⟨draw, _supported, rfl⟩ := PMF.support_map .. ▸ supported
+    rw [equation]
+    exact PhaseRuntimeState.initial_entry_excluded plan draw
+  · exact saved
+
 end Vegas.EventGraphRuntime

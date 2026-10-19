@@ -4780,3 +4780,93 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.EventGraphRuntime.PhaseProposal.phase_commitment_prefix_sourceArchive
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseRuntimeState.settle_entry_excluded_of_same' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.PhaseRuntimeState.settle_entry_excluded_of_same
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseRuntimeState.normalize_entry_excluded_of_changed' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.PhaseRuntimeState.normalize_entry_excluded_of_changed
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseRuntimeState.initial_entry_excluded' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.PhaseRuntimeState.initial_entry_excluded
+
+/-- info: 'Vegas.EventGraphRuntime.phaseApplication_namespaceInstallation' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.phaseApplication_namespaceInstallation
+
+/-- info: 'Vegas.EventGraphRuntime.phase_attempt_installed_prefix' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.phase_attempt_installed_prefix
+
+/-- info: 'Vegas.phaseProposal_binding_entry_checkpoint' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseProposal_binding_entry_checkpoint
+
+/-- info: 'Vegas.phaseProposalUnflagged_installed_binding_word' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseProposalUnflagged_installed_binding_word
+
+/-- info: 'Vegas.RecoverySourceWitness.ordinary_frozen_binding_query' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.RecoverySourceWitness.ordinary_frozen_binding_query
+
+/-- info: 'Vegas.EventGraphRuntime.ReservedEpoch.complete_rounds_extension' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.complete_rounds_extension
+
+/-- info: 'Vegas.EventGraphRuntime.ReservedEpoch.request_binding_identifier_not_receipted' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.request_binding_identifier_not_receipted
+
+/-- info: 'Vegas.EventGraphRuntime.ReservedEpoch.not_unsentQualification_of_due' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.not_unsentQualification_of_due
+
+/-- info: 'Vegas.EventGraphRuntime.ReservedEpoch.unsentQualification_iff_first_offer' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.unsentQualification_iff_first_offer
+
+/-- info: 'Vegas.EventGraphRuntime.ReservedEpoch.first_owner_offer_or_due' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.first_owner_offer_or_due
+
+/-- info: 'Vegas.EventGraphRuntime.ReservedEpoch.unsent_first_offer_or_due_before_exit' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.unsent_first_offer_or_due_before_exit
+
+/-- info: 'Vegas.EventGraphRuntime.ReservedEpoch.unsent_race_response_before_exit' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.unsent_race_response_before_exit
+
+/-- info: 'Vegas.phaseProposalUnflagged_stopped_unsent_offer_receipt' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseProposalUnflagged_stopped_unsent_offer_receipt
+
+/-- info: 'Vegas.phaseProposalUnflagged_stopped_unsent_binding' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseProposalUnflagged_stopped_unsent_binding
+
+/-- info: 'Vegas.EventGraphRuntime.ReservedEpoch.rejected_binding_not_accepted' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.rejected_binding_not_accepted

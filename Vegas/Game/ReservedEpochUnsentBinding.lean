@@ -55,12 +55,7 @@ theorem phaseProposalUnflagged_unsent_binding_receipt
       PhaseCount.event? message.payload ≠ some ⟨execution.application.attempt, event⟩)
     (response : (app).Action)
     (supported : response ∈ (phaseProposalUnflaggedPolicy setup mode runtime leaks bounds plan
-      values owner (execution.recall owner) (execution.observe app owner)).support)
-    (epoch : Nat)
-    (selected : tape.nextProcessingEpoch (execution.environmentRecall.length /
-      ReservedEpoch.cycleWidth («graph» := graph)
-        (ReservedEpoch.submissionBudget (Player := Player) cycles) + 1) = some epoch)
-    (running : epoch < cycles) :
+      values owner (execution.recall owner) (execution.observe app owner)).support) :
     let after := execution.respond app owner response
     let players := phaseProposalUnflaggedPolicy setup mode runtime leaks bounds plan values
     ∃ (material : WitnessedSubmission graph) (value : L.Val payload) (serial : Nat),
@@ -74,7 +69,11 @@ theorem phaseProposalUnflagged_unsent_binding_receipt
       ∀ final ∈ ((app).runRounds (ReservedEpoch.family runtime leaks
           (ReservedEpoch.submissionBudget (Player := Player) cycles) tape)
           players remaining after).support,
-        ((message.id, true) ∈ final.receipts ↔ epoch - entered < runtime.deadline event) := by
+        ((message.id, true) ∈ final.receipts ↔
+          ∃ epoch, tape.nextProcessingEpoch (execution.environmentRecall.length /
+              ReservedEpoch.cycleWidth («graph» := graph)
+                (ReservedEpoch.submissionBudget (Player := Player) cycles) + 1) = some epoch ∧
+            epoch < cycles ∧ epoch - entered < runtime.deadline event) := by
   intro after players
   let horizon := ReservedEpoch.horizon («graph» := graph) cycles
   let budget := ReservedEpoch.submissionBudget (Player := Player) cycles
@@ -160,12 +159,6 @@ theorem phaseProposalUnflagged_unsent_binding_receipt
       afterProcessing
       clock message pending event (owner, .prepared serial) named requestMessage entered afterStamp
         (by simpa only [ownerEq] using afterClean) futureCovered reached
-  constructor
-  · intro accepted
-    obtain ⟨actual, actualEpoch, _within, timely⟩ := law.mp accepted
-    have equal : actual = epoch := Option.some.inj (actualEpoch.symm.trans selected)
-    simpa only [equal] using timely
-  · intro timely
-    exact law.mpr ⟨epoch, selected, running, timely⟩
+  exact law
 
 end Vegas

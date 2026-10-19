@@ -114,9 +114,9 @@ theorem phaseTimingWordPlanPolicy_entry_joint_of_history
         ((app).policyMixture original members).posterior (entry.execution.recall who) =
           (plans.posterior (entry.execution.recall who)).bind
             (fun plan => prior.map (Prod.mk plan)) := by
-  obtain ⟨entry, entryTrace, retained, same, fresh⟩ := phase_attempt_entry_prefix runtime leaks
-    (PhaseCount.onePacketMenu runtime leaks bounds) initial initialized horizon scheduler
-      control trace
+  obtain ⟨entry, entryTrace, retained, same, _idle, _origin, fresh⟩ :=
+    phase_attempt_entry_prefix runtime leaks (PhaseCount.onePacketMenu runtime leaks bounds) initial
+      initialized horizon scheduler control trace
   refine ⟨entry, entryTrace, retained, same.trans address, ?_⟩
   intro weights who prior reference planLaw original members plans
   let past := entry.execution.recall who

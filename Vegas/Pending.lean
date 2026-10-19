@@ -874,3 +874,4 @@ import Vegas.Pending.PhaseProposalAliasMass
 import Vegas.Pending.PhaseProposalPreparedUsability
 import Vegas.Pending.ReservedEpochReceiptTiming
 import Vegas.Pending.ReservedEpochUnsentRequest
+import Vegas.Pending.PhaseEntryExclusion

@@ -1397,3 +1397,17 @@ import Vegas.Game.PhaseProposalBindingFrontierReady
 import Vegas.Game.PhaseProposalEmissionResponse
 import Vegas.Game.PhaseProposalBindingResponse
 import Vegas.Game.PhaseProposalBindingPhaseLaw
+import Vegas.Game.ProposalRecoveryPreparationChance
+import Vegas.Game.ProposalRecoveryPreparationLikelihood
+import Vegas.Game.ProposalRecoveryPreparationDomination
+import Vegas.Game.ProposalRecoveryPreparationSupport
+import Vegas.Game.ProposalRecoveryPreparationSupportProfile
+import Vegas.Game.ProposalRecoveryPreparationFloor
+import Vegas.Game.ProposalRecoveryPreparationBadMass
+import Vegas.Game.ProposalRecoveryPreparationWord
+import Vegas.Game.ProposalRecoveryPreparationPosterior
+import Vegas.Game.ProposalRecoveryForeignPreparationPosterior
+import Vegas.Game.PhaseProposalBindingEntry
+import Vegas.Game.PhaseProposalInstalledWord
+import Vegas.Game.PhaseProposalBindingSourceKernel
+import Vegas.Game.ReservedEpochStoppedUnsentBinding

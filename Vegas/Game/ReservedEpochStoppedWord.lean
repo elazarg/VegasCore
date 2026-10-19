@@ -4,6 +4,7 @@ import Vegas.Game.ReservedEpochStoppedCoupling
 import Vegas.Pending.PhaseAcceptedOrder
 import Vegas.Game.PhaseCountServiceForeignWord
 import Vegas.Game.ReservedEpochStoppedTapeWord
+import Vegas.Game.ReservedEpochStoppedUnsentBinding
 
 /-! # Owned accepting words in the original completed attempt image -/
 
@@ -402,6 +403,15 @@ theorem phaseProposalUnflagged_stopped_owned_word
           ∀ event ∈ phase.events, ∀ payload,
             (graph).outputLayout event = .binding owner payload →
               raw.native.accepted (.inr event) ≠ none) ∧
+        (∀ owner frontier payload,
+          (graph).outputLayout frontier = .binding owner payload →
+          anchor.application.SeedRequest owner ⟨anchor.application.attempt, frontier⟩ →
+          (∀ message ∈ (app).outputs (anchor.recall owner),
+            PhaseCount.event? message.payload ≠ some ⟨anchor.application.attempt, frontier⟩) ∨
+          ∃ message candidate, message ∈ anchor.network.inputs ∧ message.sender = owner ∧
+            message.payload.packet.call = .commitment frontier candidate ∧
+            message.payload.attempt = anchor.application.attempt ∧
+            (message ∈ anchor.network.pending ∨ (message.id, false) ∈ anchor.receipts)) ∧
         (∀ owner frontier,
           anchor.application.SeedRequest owner ⟨anchor.application.attempt, frontier⟩ →
           ∀ event ∈ phase.events, ∀ payload,
@@ -419,6 +429,20 @@ theorem phaseProposalUnflagged_stopped_owned_word
                 ReservedEpoch.cycleWidth («graph» := graph) (ReservedEpoch.packetCapacity runtime) +
                 1) = some epoch ∧ epoch < ReservedEpoch.completionCycles runtime ∧
               epoch - entered < runtime.deadline frontier)) ∧
+        (∀ message ∈ anchor.network.inputs, ∀ frontier candidate,
+          message.payload.packet.call = .commitment frontier candidate →
+          anchor.application.SeedRequest message.sender ⟨message.payload.attempt, frontier⟩ →
+          (message.id, false) ∈ anchor.receipts → raw.native.accepted (.inr frontier) = none) ∧
+        (∀ owner frontier payload,
+          (graph).outputLayout frontier = .binding owner payload →
+          anchor.application.SeedRequest owner ⟨anchor.application.attempt, frontier⟩ →
+          ∀ entered, anchor.application.current.native.activatedAt frontier = some entered →
+          (∀ message ∈ (app).outputs (anchor.recall owner),
+            PhaseCount.event? message.payload ≠ some ⟨anchor.application.attempt, frontier⟩) →
+          (raw.native.accepted (.inr frontier) ≠ none ↔
+            ReservedEpoch.UnsentQualification runtime leaks (ReservedEpoch.packetCapacity runtime)
+              (ReservedEpoch.completionCycles runtime) tape anchor.environmentRecall.length
+                entered owner frontier)) ∧
         (∀ event ∈ phase.events, (phase.drain raw).native.PublicFailure event ↔
           raw.native.accepted (.inr event) = none) ∧
         ((((phase.drain raw).excluded \ before.execution.application.entry.excluded) ∩
@@ -498,10 +522,72 @@ theorem phaseProposalUnflagged_stopped_owned_word
   have cleanEnd := (PhaseCount.onePacketMenu_countClean runtime leaks bounds scheduler).history
     initial horizon (fun state _ => PhaseCount.countClean_initial runtime leaks state) endingTrace
   have rawEnd := (menu).toRawTrace initial horizon scheduler endingTrace
+  have frontierReceipt (owner : Player) (frontier : (graph).EventId)
+      (request : anchor.application.SeedRequest owner ⟨anchor.application.attempt, frontier⟩)
+      (accepting : raw.native.accepted (.inr frontier) ≠ none) :
+      PhaseService.BindingAccepted runtime leaks ⟨anchor.application.attempt, frontier⟩ owner
+        ending.execution := by
+    obtain ⟨actual, head, inside⟩ := request.2.1
+    have equal : actual = phase := Option.some.inj
+      ((Option.mem_def.mp head).symm.trans (Option.mem_def.mp installed))
+    have frontierInside : frontier ∈ phase.events := equal ▸ inside
+    have lower : anchor.application.attempt.phase ≤ frontier.val := by
+      have head := Option.mem_def.mp installed
+      simpa only [PhaseRuntimeState.attempt, head, Option.map_some, Option.getD_some] using
+        ((phase.mem_events frontier).mp frontierInside).1
+    obtain ⟨candidate, accepted⟩ := Option.ne_none_iff_exists'.mp accepting
+    have drained : (phase.drain raw).native.accepted (.inr frontier) = some candidate := by
+      rwa [tables]
+    obtain ⟨_payload, binding⟩ := valid.accepted_typed (.inr frontier) candidate drained
+    have ownerEq : candidate.1 = owner := Option.some.inj
+      (((graph).actor?_of_outputLayout_binding binding).symm.trans request.2.2.2.1)
+    simpa only [ownerEq] using receipts frontier candidate lower drained
+  have packetLaw (message : Message Player (CommitAttemptPacket graph))
+      (endInput : message ∈ ending.execution.network.inputs) (frontier : (graph).EventId)
+      (candidate : Handle graph)
+      (call : message.payload.packet.call = .commitment frontier candidate)
+      (request : anchor.application.SeedRequest message.sender
+        ⟨message.payload.attempt, frontier⟩) :
+      raw.native.accepted (.inr frontier) ≠ none ↔
+        (message.id, true) ∈ ending.execution.receipts := by
+    have noReceipt := EventGraphRuntime.ReservedEpoch.request_binding_identifier_not_receipted
+      runtime leaks (menu) plan inputs horizon scheduler ⟨remaining, none, anchor⟩ ending trace
+        endingTrace atEnding message endInput frontier candidate call request
+    constructor
+    · intro accepting
+      have attemptEq : message.payload.attempt = anchor.application.attempt := request.1
+      have requested : anchor.application.SeedRequest message.sender
+          ⟨anchor.application.attempt, frontier⟩ := by simpa only [attemptEq] using request
+      obtain ⟨original, originalInput, originalSender, originalAttempt, originalNamed, received⟩ :=
+        frontierReceipt message.sender frontier requested accepting
+      have identical : original = message := PhaseCount.Permits.eq_of_same_event
+        ((PhaseCount.permits_eq_true_iff _ _).mp (cleanEnd.2 original originalInput))
+        ((PhaseCount.permits_eq_true_iff _ _).mp (cleanEnd.2 message endInput))
+        originalInput endInput
+        (fun first firstInput second secondInput ids =>
+          (app).input_identifier_injective_history initial horizon scheduler ending rawEnd
+            first second firstInput secondInput ids) originalSender (by
+          change (original.payload.packet.call.event? graph).map
+              (fun event => (⟨original.payload.attempt, event⟩ : CommitAttemptEvent graph)) =
+            (message.payload.packet.call.event? graph).map
+              (fun event => (⟨message.payload.attempt, event⟩ : CommitAttemptEvent graph))
+          rw [originalNamed, call]
+          simp only [Payload.event?, Option.map_some, originalAttempt]
+          exact congrArg some (congrArg
+            (fun attempt => (⟨attempt, frontier⟩ : CommitAttemptEvent graph))
+            (show message.payload.attempt = anchor.application.attempt from request.1).symm))
+      simpa only [identical] using received
+    · intro received
+      have accepted := EventGraphRuntime.ReservedEpoch.original_binding_receipt_accepted runtime
+        leaks bounds plan inputs horizon scheduler ⟨remaining, none, anchor⟩ before ending trace
+          prior joint legal realized fromStart same.symm raw effect message endInput frontier
+            candidate call request.1 noReceipt received
+      rw [accepted]
+      exact Option.some_ne_none _
   refine ⟨ending, before, prior, joint, legal, realized, raw, stateEq, idle, changed,
     fromStart, toFinal, same,
     phaseInstalled, normalized, effect, finished, valid, coverage, excluded, tables, candidates,
-    archive, priorRecord.1, ?_, receipts, ?_, ?_, ?_, ?_, failures, record⟩
+    archive, priorRecord.1, ?_, receipts, ?_, ?_, ?_, ?_, ?_, ?_, ?_, failures, record⟩
   · rw [normalized]
     simpa only [priorRecord.1, same] using
       EventGraphRuntime.ReservedEpoch.closing_retired_word before.execution.application phase
@@ -520,6 +606,68 @@ theorem phaseProposalUnflagged_stopped_owned_word
       ((graph).actor?_of_outputLayout_binding binding) ((failures event inside).mpr missing)
     rw [excluded] at ownerFailed
     exact survives ownerFailed
+  · intro owner frontier payload binding request
+    by_cases unsent : ∀ message ∈ (app).outputs (anchor.recall owner),
+        PhaseCount.event? message.payload ≠ some ⟨anchor.application.attempt, frontier⟩
+    · exact Or.inl unsent
+    · push Not at unsent
+      obtain ⟨message, member, named⟩ := unsent
+      have recalled := (app).history_inputRecall initial horizon scheduler rawStart owner
+      rw [← recalled] at member
+      obtain ⟨input, authoredBool⟩ := List.mem_filter.mp member
+      have authored : message.sender = owner := of_decide_eq_true authoredBool
+      have correct := ((PhaseCount.permits_eq_true_iff _ _).mp
+        (cleanStart.2 message input)).2.1
+      have packet : ∃ candidate, message.payload.packet.call = .commitment frontier candidate := by
+        cases call : message.payload.packet.call with
+        | malformed raw =>
+            simp only [PhaseCount.event?, call, Payload.event?, Option.map_none] at named
+            cases named
+        | commitment other candidate =>
+            have coordinate : (⟨message.payload.attempt, other⟩ : CommitAttemptEvent graph) =
+                ⟨anchor.application.attempt, frontier⟩ := Option.some.inj (by
+              simpa only [PhaseCount.event?, call, Payload.event?, Option.map_some] using named)
+            have sameEvent : other = frontier := congrArg CommitAttemptEvent.event coordinate
+            subst other
+            exact ⟨candidate, rfl⟩
+        | opening other candidate raw =>
+            have coordinate : (⟨message.payload.attempt, other⟩ : CommitAttemptEvent graph) =
+                ⟨anchor.application.attempt, frontier⟩ := Option.some.inj (by
+              simpa only [PhaseCount.event?, call, Payload.event?, Option.map_some] using named)
+            have sameEvent : other = frontier := congrArg CommitAttemptEvent.event coordinate
+            subst other
+            change CountCallCorrect _ (PhaseCount.nativeMessage message) at correct
+            simp only [CountCallCorrect, PhaseCount.nativeMessage, call] at correct
+            cases node : nodeView (graph) frontier with
+            | bind actor ty kind code => simp only [node, and_false] at correct
+            | resolve actor ty reference checks kind code => cases kind.symm.trans binding
+            | sample ty law kind code => cases kind.symm.trans binding
+      obtain ⟨candidate, call⟩ := packet
+      have coordinate : (⟨message.payload.attempt, frontier⟩ : CommitAttemptEvent graph) =
+          ⟨anchor.application.attempt, frontier⟩ := Option.some.inj (by
+        simpa only [PhaseCount.event?, call, Payload.event?, Option.map_some] using named)
+      have address : message.payload.attempt = anchor.application.attempt :=
+        congrArg CommitAttemptEvent.attempt coordinate
+      refine Or.inr ⟨message, candidate, input, authored, call, address, ?_⟩
+      have retained := (app).pendingOrPublished_history scheduler initial horizon rawStart
+      rcases retained.inputs message input with pending | published
+      · exact Or.inl pending
+      · have identifiers := (app).receipt_identifiers_history initial horizon scheduler
+          ⟨remaining, none, anchor⟩ rawStart
+        have recorded : message.id ∈ anchor.receipts.map Prod.fst := by
+          rw [identifiers]
+          exact List.mem_map.mpr ⟨message, published, rfl⟩
+        obtain ⟨receipt, receiptMember, equalId⟩ := List.mem_map.mp recorded
+        have actualReceipt : (message.id, receipt.2) ∈ anchor.receipts := by
+          simpa only [← equalId, Prod.mk.eta] using receiptMember
+        cases accepted : receipt.2 with
+        | false => exact Or.inr (by rwa [accepted] at actualReceipt)
+        | true =>
+            rw [accepted] at actualReceipt
+            have impossible := PhaseService.not_bindingAccepted_of_request runtime leaks plan
+              inputs horizon scheduler rawStart ⟨anchor.application.attempt, frontier⟩ owner request
+            exact (impossible ⟨message, input, authored, address,
+              by rw [call]; rfl, actualReceipt⟩).elim
   · intro owner frontier request event inside payload binding
     obtain ⟨requestPhase, requestInstalled, frontierInside⟩ := request.2.1
     have phaseEq : requestPhase = phase := Option.some.inj
@@ -609,52 +757,102 @@ theorem phaseProposalUnflagged_stopped_owned_word
       ((app).history_inputRecall initial horizon scheduler rawStart)).pending message pending
     have endInput := EventGraphRuntime.ReservedEpoch.input_mem_prefix runtime leaks (menu) initial
       horizon scheduler ⟨remaining, none, anchor⟩ ending trace endingTrace atEnding message input
-    have noReceipt := (app).pending_identifier_not_receipted initial horizon scheduler
-      ⟨remaining, none, anchor⟩ rawStart message pending true
-    have frontierInside : frontier ∈ phase.events := by
-      obtain ⟨actual, head, inside⟩ := request.2.1
-      have equal : actual = phase := Option.some.inj
-        ((Option.mem_def.mp head).symm.trans (Option.mem_def.mp installed))
-      exact equal ▸ inside
-    have lower : anchor.application.attempt.phase ≤ frontier.val := by
-      have head := Option.mem_def.mp installed
-      simpa only [PhaseRuntimeState.attempt, head, Option.map_some, Option.getD_some] using
-        ((phase.mem_events frontier).mp frontierInside).1
-    refine Iff.trans ?_ law
-    constructor
-    · intro accepting
-      obtain ⟨acceptedCandidate, accepted⟩ := Option.ne_none_iff_exists'.mp accepting
-      have drained : (phase.drain raw).native.accepted (.inr frontier) =
-          some acceptedCandidate := by rwa [tables]
-      obtain ⟨_payload, binding⟩ := valid.accepted_typed (.inr frontier) acceptedCandidate drained
-      have owner : acceptedCandidate.1 = message.sender := Option.some.inj
-        (((graph).actor?_of_outputLayout_binding binding).symm.trans request.2.2.2.1)
-      have acceptedReceipt := receipts frontier acceptedCandidate lower drained
-      rw [owner] at acceptedReceipt
-      obtain ⟨original, originalInput, originalSender, originalAttempt, originalNamed, received⟩ :=
-        acceptedReceipt
-      have identical : original = message := PhaseCount.Permits.eq_of_same_event
-        ((PhaseCount.permits_eq_true_iff _ _).mp (cleanEnd.2 original originalInput))
-        ((PhaseCount.permits_eq_true_iff _ _).mp (cleanEnd.2 message endInput))
-        originalInput endInput
-        (fun first firstInput second secondInput ids =>
-          (app).input_identifier_injective_history initial horizon scheduler ending rawEnd
-            first second firstInput secondInput ids) originalSender (by
-          change (original.payload.packet.call.event? graph).map
-              (fun event => (⟨original.payload.attempt, event⟩ : CommitAttemptEvent graph)) =
-            (message.payload.packet.call.event? graph).map
-              (fun event => (⟨message.payload.attempt, event⟩ : CommitAttemptEvent graph))
-          rw [originalNamed, call]
-          simp only [Payload.event?, Option.map_some, originalAttempt]
-          exact congrArg some (congrArg
-            (fun attempt => (⟨attempt, frontier⟩ : CommitAttemptEvent graph))
-            (show message.payload.attempt = anchor.application.attempt from request.1).symm))
-      simpa only [identical] using received
-    · intro received
-      have accepted := EventGraphRuntime.ReservedEpoch.original_binding_receipt_accepted runtime
-        leaks bounds plan inputs horizon scheduler ⟨remaining, none, anchor⟩ before ending trace
-          prior joint legal realized fromStart same.symm raw effect message endInput frontier
-            candidate call request.1 noReceipt received
-      rw [accepted]
-      exact Option.some_ne_none _
+    exact (packetLaw message endInput frontier candidate call request).trans law
+  · intro message input frontier candidate call request rejected
+    have endInput := EventGraphRuntime.ReservedEpoch.input_mem_prefix runtime leaks (menu) initial
+      horizon scheduler ⟨remaining, none, anchor⟩ ending trace endingTrace atEnding message input
+    have keptReceipts := (app).reaches_receipts_prefix initial horizon scheduler
+      ((menu).reaches_raw initial horizon scheduler atEnding.reachesWithin)
+        ⟨remaining, none, anchor⟩ ending rfl rfl
+    have impossible := EventGraphRuntime.ReservedEpoch.rejected_binding_not_accepted runtime leaks
+      bounds plan inputs horizon scheduler ending endingTrace message endInput frontier candidate
+        call (keptReceipts.subset rejected)
+    have attemptEq : message.payload.attempt = anchor.application.attempt := request.1
+    have currentRequest : anchor.application.SeedRequest message.sender
+        ⟨anchor.application.attempt, frontier⟩ := by simpa only [attemptEq] using request
+    by_contra present
+    have receipt := frontierReceipt message.sender frontier currentRequest present
+    exact impossible (by simpa only [attemptEq] using receipt)
+  · intro owner frontier payload binding request entered stamp unsent
+    let cycles := ReservedEpoch.completionCycles runtime
+    let budget := ReservedEpoch.packetCapacity runtime
+    let width := ReservedEpoch.cycleWidth («graph» := graph) budget
+    have positive : 0 < runtime.deadline frontier := by
+      have slack := margin frontier (by rw [request.2.2.2.1]; rfl)
+      omega
+    rcases phaseProposalUnflagged_stopped_unsent_binding setup mode runtime leaks bounds plan
+      complete coveredValues maximal ordered values fullValues cycles tape capacity remaining
+        ending.remaining used owner anchor ending.execution trace idleTrace atIdle changed
+          frontier payload binding request entered stamp unsent positive path with
+      ⟨cursor, lower, upper, expired, due, quiet, _open, failed⟩ |
+      ⟨elapsed, tail, activeRemaining, offered, active, response, material, value, serial, lengths,
+        initialPath, activation, moved, chosen, sent, prepared, call, sameAttempt, activeStamp,
+        recalled, quiet, expiryOpen, _activeTrace, input, receipt⟩
+    · have noQualification := ReservedEpoch.not_unsentQualification_of_due runtime leaks budget
+        cycles tape anchor.environmentRecall.length entered cursor owner frontier
+          (anchor.observeEnvironment app) lower expired due quiet
+      exact iff_of_false
+        (fun accepting => failed (frontierReceipt owner frontier request accepting)) noQualification
+    · let message : Message Player (CommitAttemptPacket graph) :=
+        ⟨(owner, active.network.nextSerial owner),
+          (app).packet ((app).submit active.application owner material) owner
+            (active.network.known owner) material⟩
+      have named : message.payload.packet.call =
+          .commitment frontier (owner, .prepared serial) := by
+        change (PhaseRuntimeState.emit (active.application.submit owner material) owner
+          (active.network.known owner) material).packet.call = _
+        rw [phase_emit_call, call]
+      have address : message.payload.attempt = anchor.application.attempt := sameAttempt
+      have sender : message.sender = owner := rfl
+      have messageRequest : anchor.application.SeedRequest message.sender
+          ⟨message.payload.attempt, frontier⟩ := by simpa only [address, sender] using request
+      have accepted := packetLaw message input frontier (owner, .prepared serial) named
+        messageRequest
+      have counted := (app).runRounds_environmentRecall_length scheduler
+        (phaseProposalUnflaggedPolicy setup mode runtime leaks bounds plan values) elapsed anchor
+          offered initialPath
+      have activationHere : ReservedEpoch.command runtime leaks budget tape
+          offered.environmentRecall.length (offered.observeEnvironment app) = .activate owner :=
+        activation
+      have actor : (ReservedEpoch.command runtime leaks budget tape offered.environmentRecall.length
+          (offered.observeEnvironment app)).actor? app = some owner := by
+        rw [activationHere]
+        rfl
+      have offeredAll : ∀ view, (ReservedEpoch.command runtime leaks budget tape
+          offered.environmentRecall.length view).actor? app = some owner := fun view =>
+        (ReservedEpoch.command_actor_view_independent runtime leaks budget tape
+          offered.environmentRecall.length view (offered.observeEnvironment app)).trans actor
+      have pureBit := ReservedEpoch.unsentQualification_iff_first_offer runtime leaks budget cycles
+        tape anchor.environmentRecall.length entered offered.environmentRecall.length owner frontier
+          (offered.observeEnvironment app) (by omega) offeredAll
+            (by
+              intro earlier lower upper view
+              exact quiet earlier lower (by omega) view)
+            (by
+              intro earlier lower upper view selected
+              exact expiryOpen earlier lower (by omega) view selected)
+      have activeLength := congrArg List.length ((app).environmentStep_environmentRecall offered
+        active (.activate owner) moved)
+      simp only [List.length_append, List.length_cons, List.length_nil, Nat.zero_add]
+        at activeLength
+      have window := ReservedEpoch.command_activation_window runtime leaks budget tape
+        offered.environmentRecall.length (offered.observeEnvironment app) owner actor
+      change budget ≤ offered.environmentRecall.length % width ∧
+        offered.environmentRecall.length % width < budget + Fintype.card Player at window
+      have notLast : offered.environmentRecall.length % width ≠
+          budget + Fintype.card Player + (graph).order.eventCount + 1 := by omega
+      have cycle := ReservedEpoch.cycle_succ («graph» := graph) budget
+        offered.environmentRecall.length
+      change (offered.environmentRecall.length + 1) / width =
+        offered.environmentRecall.length / width +
+          if offered.environmentRecall.length % width =
+            budget + Fintype.card Player + (graph).order.eventCount + 1 then 1 else 0 at cycle
+      simp only [notLast, ↓reduceIte, Nat.add_zero] at cycle
+      have sameCycle : active.environmentRecall.length / width =
+          offered.environmentRecall.length / width := by rw [activeLength]; exact cycle
+      change ((message.id, true) ∈ ending.execution.receipts ↔
+        ∃ epoch, tape.nextProcessingEpoch (active.environmentRecall.length / width + 1) =
+          some epoch ∧ epoch < cycles ∧ epoch - entered < runtime.deadline frontier) at receipt
+      rw [sameCycle] at receipt
+      exact accepted.trans (receipt.trans pureBit.symm)
 end Vegas

@@ -3279,3 +3279,74 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.SourceProgram.Setup.commitRecovery_ordinary_virtual_normalized_info
+
+/-- info: 'Vegas.SourceProgram.Config.FocalRepair.commit_kept' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Config.FocalRepair.commit_kept
+
+/-- info: 'Vegas.SourceProgram.Config.FocalRepair.reveal_preparation' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Config.FocalRepair.reveal_preparation
+
+/-- info: 'Vegas.SourceProgram.ProtocolState.FocalRepair.preparation_recoveryStep' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.ProtocolState.FocalRepair.preparation_recoveryStep
+
+/-- info: 'Vegas.SourceProgram.CommitRecoveryState.FocalRepair.preparation_step' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.CommitRecoveryState.FocalRepair.preparation_step
+
+/-- info: 'Vegas.SourceProgram.ProtocolState.FocalRepair.recoveryProposal_preparation' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.ProtocolState.FocalRepair.recoveryProposal_preparation
+
+/-- info: 'Vegas.SourceProgram.ProtocolState.repairPreparationJoint_prepared' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.ProtocolState.repairPreparationJoint_prepared
+
+/-- info: 'Vegas.SourceProgram.Setup.proposalRecovery_preparation_history' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.proposalRecovery_preparation_history
+
+/-- info: 'Vegas.SourceProgram.Setup.proposalRecoveryNormalizedTrembledProfile_preparation_domination' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.proposalRecoveryNormalizedTrembledProfile_preparation_domination
+
+/-- info: 'Vegas.SourceProgram.Setup.exists_proposalRecoveryPreparation_response_floor' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.exists_proposalRecoveryPreparation_response_floor
+
+/-- info: 'Vegas.SourceProgram.Setup.proposalRecoveryNormalizedTrembledProfile_generated_atom_le' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.proposalRecoveryNormalizedTrembledProfile_generated_atom_le
+
+/-- info: 'Vegas.SourceProgram.Setup.proposalRecoveryPrepared_word_lower' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.proposalRecoveryPrepared_word_lower
+
+/-- info: 'Vegas.SourceProgram.Setup.proposalRecoveryGenerated_word_upper' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.proposalRecoveryGenerated_word_upper
+
+/-- info: 'Vegas.SourceProgram.Setup.exists_proposalRecovery_generatedPreparation_posterior_bound' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.exists_proposalRecovery_generatedPreparation_posterior_bound
+
+/-- info: 'Vegas.SourceProgram.Setup.exists_proposalRecovery_foreignPreparation_posterior_bound' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.exists_proposalRecovery_foreignPreparation_posterior_bound

@@ -101,7 +101,7 @@ theorem prefix_accepting_receipt_boundary (menu : (app).ResponseMenu)
   cases Option.some.inj stateEq
   exact origin received
 
-private theorem rejected_binding_not_accepted (bounds : MessageBounds graph)
+theorem rejected_binding_not_accepted (bounds : MessageBounds graph)
     (plan : RuntimePhasePlan graph) (inputs : PMF graph.Inputs) (horizon : Nat)
     (scheduler : (app).Scheduler) (control : (app).Control)
     (trace : ((PhaseCount.onePacketMenu runtime leaks bounds).protocol
@@ -192,6 +192,44 @@ theorem input_mem_prefix (menu : (app).ResponseMenu)
     List.mem_filterMap.mpr ⟨entry, recalled.subset member, emitted⟩
   rw [← (app).history_inputRecall initial horizon scheduler rawAfter message.sender] at atEnd
   exact (List.mem_filter.mp atEnd).1
+
+omit [Fintype Player] in
+/-- Readiness rules out an earlier true receipt of a literal binding
+identifier, even when that packet is supplied from a later actual prefix.
+Ledger provenance and global identifier uniqueness identify any earlier copy. -/
+theorem request_binding_identifier_not_receipted (menu : (app).ResponseMenu)
+    (plan : RuntimePhasePlan graph) (inputs : PMF graph.Inputs) (horizon : Nat)
+    (scheduler : (app).Scheduler) (before after : (app).Control)
+    (prior : (menu.protocol (inputs.map (PhaseRuntimeState.initial plan)) horizon
+      scheduler).Trace (some before))
+    (final : (menu.protocol (inputs.map (PhaseRuntimeState.initial plan)) horizon
+      scheduler).Trace (some after)) (kept : TracePrefix prior final)
+    (message : Message Player (CommitAttemptPacket graph))
+    (input : message ∈ after.execution.network.inputs) (event : graph.EventId)
+    (candidate : Handle graph) (call : message.payload.packet.call = .commitment event candidate)
+    (request : before.execution.application.SeedRequest message.sender
+      ⟨message.payload.attempt, event⟩) :
+    (message.id, true) ∉ before.execution.receipts := by
+  intro received
+  let initial := inputs.map (PhaseRuntimeState.initial plan)
+  have rawBefore := menu.toRawTrace initial horizon scheduler prior
+  have rawAfter := menu.toRawTrace initial horizon scheduler final
+  have identifiers := (app).receipt_identifiers_history initial horizon scheduler before rawBefore
+  have ledgerId : message.id ∈ before.execution.network.ledger.map Message.id := by
+    rw [← identifiers]
+    exact List.mem_map.mpr ⟨(message.id, true), received, rfl⟩
+  obtain ⟨original, ledger, equalId⟩ := List.mem_map.mp ledgerId
+  have originalInput := ((app).retained_envelopes_mem_inputs before.execution
+    ((app).history_provenance initial horizon scheduler rawBefore)
+    ((app).history_inputRecall initial horizon scheduler rawBefore)).ledger original ledger
+  have endInput := input_mem_prefix runtime leaks menu initial horizon scheduler before after
+    prior final kept original originalInput
+  have equal : original = message := (app).input_identifier_injective_history initial horizon
+    scheduler after rawAfter original message endInput input equalId
+  have inputBefore : message ∈ before.execution.network.inputs := equal ▸ originalInput
+  exact PhaseService.not_bindingAccepted_of_request runtime leaks plan inputs horizon scheduler
+    rawBefore ⟨message.payload.attempt, event⟩ message.sender request
+      ⟨message, inputBefore, rfl, rfl, by rw [call]; rfl, received⟩
 
 /-- A true binding receipt in the actual closing control identifies its handle
 in the ORIGINAL raw image. The literal accepting transition either precedes
