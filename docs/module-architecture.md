@@ -2694,3 +2694,21 @@ Prospective source errors:
 [the enriched future flag bound](../Vegas/Game/ProposalRecoveryFutureFlags.lean)
 instantiates supported-choice continuation on complete future histories, retaining
 the ordinary table, all past observations and an identical focal override.
+
+The [actual stopped binding classification](../Vegas/Game/ReservedEpochStoppedBinding.lean)
+connects first-exit exclusions to old requests, with
+[fresh-response provenance](../Vegas/Pending/PhaseFirstResponseRecall.lean) and
+[protected delivery](../Vegas/Pending/ReservedEpochFreshBinding.lean).
+[Checkpointed debt](../Vegas/Game/PhaseProposalSavedDebt.lean) and its
+[reserved-service payoff](../Vegas/Game/PhaseProposalReservedDebt.lean) handle
+irreversible own failures separately from cancelable current-attempt debt.
+
+[Ordinary queries](../Vegas/Source/ProposalRecoveryOrdinaryQuery.lean) and
+[actual emitted draws](../Vegas/Game/PhaseProposalEmittedDraw.lean) retain the
+same source witness and original archive. General physical repair uses
+[submitted typed meanings](../Vegas/Pending/PhaseProposalSubmittedBindings.lean),
+[actual accepting trace extensions](../Vegas/Pending/PhaseProposalShadowIncludeTrace.lean)
+and [environment transport](../Vegas/Pending/PhaseProposalShadowEnvironment.lean).
+The [fixed chance and word bounds](../Vegas/Game/PhaseProposalRepairChance.lean)
+reuse continuation own-play factorization; they do not supply source likelihood
+transport or the whole history repair.

@@ -63,14 +63,17 @@ theorem family_completesPlay {length : Nat} (tape : Tape Player length)
 
 /-- The actual behavioral mixture terminates under every legal raw history.
 The proof extracts a supported original tape through the anchored run law. -/
-theorem implementation_completesPlay {length : Nat} (prior : PMF (Tape Player length))
+theorem implementation_terminal_history_complete {length : Nat} (prior : PMF (Tape Player length))
     (plan : RuntimePhasePlan graph) (ordered : graph.RevealRelaxedOrdered)
     (maximal : plan.phases.IsChain fun before after =>
-      before.kind ≠ after.kind ∨ before.kind = .sample) (inputs : PMF graph.Inputs) :
-    PhaseService.CompletesPlay runtime leaks (inputs.map (PhaseRuntimeState.initial plan))
+      before.kind ≠ after.kind ∨ before.kind = .sample) (inputs : PMF graph.Inputs)
+    (current : (app).Control)
+    (trace : ((app).protocol (inputs.map (PhaseRuntimeState.initial plan))
       (executionHorizon runtime)
-        (implementation runtime leaks (packetCapacity runtime) prior).scheduler := by
-  intro current trace terminal
+        (implementation runtime leaks (packetCapacity runtime) prior).scheduler).Trace
+          (some current)) (terminal : (app).terminal (some current)) :
+    current.execution.application.phases = [] ∧
+      current.execution.application.current.native.config.cut.completed = Finset.univ := by
   rcases current with ⟨remaining, actor, execution⟩
   obtain ⟨rfl, rfl⟩ := terminal
   let players : Player → (app).Policy := fun _ => (app).silentPolicy
@@ -86,7 +89,7 @@ theorem implementation_completesPlay {length : Nat} (prior : PMF (Tape Player le
   obtain ⟨draw, _drawSupported, rfl⟩ := initialized
   rw [← realize runtime leaks (packetCapacity runtime) prior] at reached
   obtain ⟨tape, _tapeSupported, fixed⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
-  exact (runRounds_complete runtime leaks (packetCapacity runtime) tape plan ordered maximal
-    ((app).anchoredPolicy execution players) draw execution fixed).2
+  exact runRounds_complete runtime leaks (packetCapacity runtime) tape plan ordered maximal
+    ((app).anchoredPolicy execution players) draw execution fixed
 
 end Vegas.EventGraphRuntime.ReservedEpoch

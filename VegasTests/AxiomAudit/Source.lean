@@ -3267,3 +3267,15 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.SourceProgram.Setup.proposalRecovery_future_foreign_flags_withinTV
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecovery_ordinary_virtual_erased_info'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.commitRecovery_ordinary_virtual_erased_info
+
+/-- info:
+'Vegas.SourceProgram.Setup.commitRecovery_ordinary_virtual_normalized_info'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.commitRecovery_ordinary_virtual_normalized_info

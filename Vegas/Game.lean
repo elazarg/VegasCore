@@ -1353,3 +1353,10 @@ import Vegas.Game.ReservedEpochExcludedDrain
 import Vegas.Game.ReservedEpochProcessingExit
 import Vegas.Game.ReservedEpochProcessingProjection
 import Vegas.Game.ReservedEpochSuccessorAcceptance
+import Vegas.Game.ReservedEpochUnflaggedExpiry
+import Vegas.Game.ReservedEpochStoppedBinding
+import Vegas.Game.PhaseProposalSavedDebt
+import Vegas.Game.PhaseProposalReservedDebt
+import Vegas.Game.PhaseProposalOrdinaryDraw
+import Vegas.Game.PhaseProposalEmittedDraw
+import Vegas.Game.PhaseProposalRepairChance

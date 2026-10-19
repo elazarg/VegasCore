@@ -103,7 +103,9 @@ theorem after_handle (witness : RecoverySourceWitness setup mode plan state)
       { state with current := state.current.inclusionResult message.payload.packet.call result }
     ∃ next : RecoverySourceWitness setup mode plan raw.normalize,
       (witness.checkpoint.transfer (other := raw) rfl rfl rfl).ProposalDelta plan
-        next.checkpoint := by
+        next.checkpoint ∧
+      ∃ fuel : Nat, setup.commitRecoveryProtocol.ReachesWithin fuel
+        ⟨_, witness.checkpoint.trace⟩ ⟨_, next.checkpoint.trace⟩ := by
   dsimp only
   obtain ⟨inputs, native⟩ := witness.native
   let checkpoint := witness.checkpoint
@@ -179,7 +181,7 @@ theorem after_handle (witness : RecoverySourceWitness setup mode plan state)
         rw [installed] at positioned
         simpa only [PhaseRuntimeState.attempt, installed, List.head?_cons, Option.map_some,
           Option.getD_some] using positioned.2.1
-  obtain ⟨nextCheckpoint, nextAligned, nextChronology, _fuel, _sourcePath, nextOrigins,
+  obtain ⟨nextCheckpoint, nextAligned, nextChronology, fuel, sourcePath, nextOrigins,
     proposalDelta⟩ :=
     rawCheckpoint.normalized_archived raw plan suffix rawChronology rawArchiveExclusions
       rawSavedFailures rawAligned sourceOrigins
@@ -209,7 +211,7 @@ theorem after_handle (witness : RecoverySourceWitness setup mode plan state)
       accepted
     failures := (phaseApplication_publicFailureCheckpoint runtime leaks).handle _ _ _ savedFailures
       accepted
-  }, proposalDelta⟩
+  }, proposalDelta, fuel, sourcePath⟩
 
 /-- Environment processing retains its exact native result and the same
 normalizer-selected source trace, including automatic phase advances. -/
@@ -227,7 +229,9 @@ theorem after_environment (witness : RecoverySourceWitness setup mode plan state
       { state with current := state.current.environmentResult command result }
     ∃ next : RecoverySourceWitness setup mode plan raw.normalize,
       (witness.checkpoint.transfer (other := raw) rfl rfl rfl).ProposalDelta plan
-        next.checkpoint := by
+        next.checkpoint ∧
+      ∃ fuel : Nat, setup.commitRecoveryProtocol.ReachesWithin fuel
+        ⟨_, witness.checkpoint.trace⟩ ⟨_, next.checkpoint.trace⟩ := by
   dsimp only
   obtain ⟨inputs, native⟩ := witness.native
   let checkpoint := witness.checkpoint
@@ -288,7 +292,7 @@ theorem after_environment (witness : RecoverySourceWitness setup mode plan state
         rw [installed] at positioned
         simpa only [PhaseRuntimeState.attempt, installed, List.head?_cons, Option.map_some,
           Option.getD_some] using positioned.2.1
-  obtain ⟨nextCheckpoint, nextAligned, nextChronology, _fuel, _sourcePath, nextOrigins,
+  obtain ⟨nextCheckpoint, nextAligned, nextChronology, fuel, sourcePath, nextOrigins,
     proposalDelta⟩ :=
     rawCheckpoint.normalized_archived raw plan suffix rawChronology rawArchiveExclusions
       rawSavedFailures rawAligned sourceOrigins
@@ -321,7 +325,7 @@ theorem after_environment (witness : RecoverySourceWitness setup mode plan state
     failures := (phaseApplication_publicFailureCheckpoint runtime leaks).environment _ _ _
       savedFailures
       reached
-  }, proposalDelta⟩
+  }, proposalDelta, fuel, sourcePath⟩
 
 /-- The one supported setup draw initializes the same source witness used by
 all later application transitions. No setup randomness is resampled. -/

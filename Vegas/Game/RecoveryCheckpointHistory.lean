@@ -33,7 +33,8 @@ private theorem phase_source_invariant
     split at accepted
     · rename_i allowed
       obtain ⟨result, handled, rfl⟩ := Option.map_eq_some_iff.mp accepted
-      obtain ⟨nextWitness, _delta⟩ := witness.after_handle runtime leaks maximal message result
+      obtain ⟨nextWitness, _delta, _fuel, _sourcePath⟩ :=
+        witness.after_handle runtime leaks maximal message result
         allowed handled
       exact ⟨nextWitness⟩
     · cases accepted
@@ -44,7 +45,8 @@ private theorem phase_source_invariant
     split at reached
     · rename_i authorized
       obtain ⟨result, supported, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp reached
-      obtain ⟨nextWitness, _delta⟩ := witness.after_environment runtime leaks maximal command result
+      obtain ⟨nextWitness, _delta, _fuel, _sourcePath⟩ :=
+        witness.after_environment runtime leaks maximal command result
         authorized supported
       exact ⟨nextWitness⟩
     · rw [PMF.mem_support_pure_iff] at reached

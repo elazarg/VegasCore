@@ -213,8 +213,8 @@ quantifiers and a passing build. The labels below never enter Lean names.
 | End-to-end | Raw SE, exact settled joint law, zero exclusions/charges and instantiated service | Open |
 
 Compact progress display: **Source 5/5 · Runtime 2/5 · Transport 1/6 · E2E 0/2**.
-Runtime frontier: successor requests/receipts checked; whole attempt-exit law next.
-Transport frontier: binding inclusion preserves full external inputs; whole history repair next.
+Runtime frontier: first-attempt failures classified by old requests; paired exit law next.
+Transport frontier: actual repair steps and saved-debt payoff checked; whole history repair next.
 Update counts from checked statements and name the current bottleneck. Existing
 reusable proofs are dependencies, not new completed milestones.
 Current bottlenecks are the stopped service coupling, cross-world likelihood
@@ -260,7 +260,7 @@ to later phases drained inside one environment step.
 `ReservedEpoch.expiry_round_decreases` gives strict finite-work progress at an
 actual due-expiry round. `ReservedEpoch.runRounds_complete` bounds all-raw
 completion by `(workBound + 1) * (maximumDeadline + 2)` cycles, independently
-of packet capacity. `ReservedEpoch.implementation_completesPlay` derives
+of packet capacity. `ReservedEpoch.implementation_terminal_history_complete` derives
 completion for every raw history under the actual correlated mixture and an
 arbitrary initial input law. It extracts a supported original tape rather than
 assuming a pointwise service property survives behavioral mixing. Packet
@@ -450,3 +450,23 @@ the payoff floor individually only when the corresponding checked theorem
 supports it. Do not substitute NE consequences of the SE theorem for a direct
 NE result with weaker assumptions. Backend fees, cryptographic hiding/finality
 and an always-online submission interface remain explicit refinement tasks.
+
+The [stopped binding proof](../Vegas/Game/ReservedEpochStoppedBinding.lean)
+classifies every newly excluded owner by its literal earlier request and
+original no-acceptance record; fresh prescribed successors cannot miss.
+The [saved-debt payoff proof](../Vegas/Game/PhaseProposalReservedDebt.lean)
+derives permanent exclusion and exact continuation payoff under arbitrary raw
+and behavioral futures, using actual reserved-service phase exhaustion.
+The [ordinary draw](../Vegas/Game/PhaseProposalOrdinaryDraw.lean) and
+[emitted draw](../Vegas/Game/PhaseProposalEmittedDraw.lean) identify the actual
+current preparation PMF with the shared table on the SAME chosen source replay.
+Their finite completed-phase law remains open.
+
+The [repair trace inclusion](../Vegas/Pending/PhaseProposalShadowIncludeTrace.lean),
+[environment transport](../Vegas/Pending/PhaseProposalShadowEnvironment.lean)
+and [truthful opening](../Vegas/Pending/PhaseProposalShadowOpening.lean) construct
+actual matching operations with general guards, retries and complete external
+recalls. The [intrinsic chance bound](../Vegas/Game/PhaseProposalRepairChance.lean)
+uses the fixed finite native game and its existing own-play factorization.
+These discharge operational steps; the whole repair, posterior estimate,
+paired stopped law and concurrent equilibrium theorem remain open.

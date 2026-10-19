@@ -35,7 +35,9 @@ theorem implementation_asyncContract {length : Nat} (prior : PMF (Tape Player le
     (completionCycles runtime) prior activationGap processingGap gaps plan ordered maximal inputs
   inclusion := implementation_protectedInclusion runtime leaks (completionCycles runtime) prior
     activationGap processingGap gaps plan inputs
-  completes := implementation_completesPlay runtime leaks prior plan ordered maximal inputs
+  completes current trace terminal :=
+    (implementation_terminal_history_complete runtime leaks prior plan ordered maximal inputs
+      current trace terminal).2
 
 omit [Fintype Player] [DecidableEq Player] in
 theorem asyncTimely (activationGap processingGap : Nat)

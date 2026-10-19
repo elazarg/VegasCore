@@ -235,3 +235,5 @@ import Vegas.Source.ProposalRecoverySuccessfulTrace
 import Vegas.Source.ProposalRecoveryVirtualLift
 import Vegas.Source.ProposalRecoveryVirtualStep
 import Vegas.Source.ProposalRecoveryVoluntaryFailure
+import Vegas.Source.ProposalRecoveryOrdinaryView
+import Vegas.Source.ProposalRecoveryOrdinaryQuery

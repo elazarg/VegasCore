@@ -83,7 +83,8 @@ theorem RecoverySourceWitness.environment_archivedProposals
               split at accepted
               · rename_i allowed
                 obtain ⟨result, handled, rfl⟩ := Option.map_eq_some_iff.mp accepted
-                obtain ⟨nextWitness, delta⟩ := witness.after_handle runtime leaks maximal
+                obtain ⟨nextWitness, delta, _fuel, _sourcePath⟩ :=
+                  witness.after_handle runtime leaks maximal
                   message result
                   allowed handled
                 refine ⟨nextWitness, ?_⟩
@@ -114,7 +115,8 @@ theorem RecoverySourceWitness.environment_archivedProposals
       split at changed
       · rename_i authorized
         obtain ⟨result, nativeSupport, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp changed
-        obtain ⟨nextWitness, delta⟩ := witness.after_environment runtime leaks maximal
+        obtain ⟨nextWitness, delta, _fuel, _sourcePath⟩ :=
+          witness.after_environment runtime leaks maximal
           command result
           authorized nativeSupport
         refine ⟨nextWitness, ?_⟩
