@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.ReservedEpochUnflaggedExpiry
-import Vegas.Pending.PhaseCommitmentExclusionOrigin
+import Vegas.Pending.PhaseExclusionOrigin
 import Interaction.ReactiveAnchoredSupport
 import Interaction.ReactiveResponseEvaluation
 import Interaction.ReactiveEnvironmentMass
@@ -80,7 +80,7 @@ theorem stopped_prefix_roundsSupported
       preserved ⟨some ⟨remaining, none, anchor⟩, trace⟩ initially final supported).2
 
 omit [Fintype Player] in
-private theorem exclusion_transition_idle
+theorem phase_exclusion_transition_idle
     {graph : Vegas.EventGraph Player L} (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket graph))
     (initial : PMF (phaseApplication runtime leaks).State) (horizon : Nat)
@@ -186,7 +186,7 @@ theorem phaseProposalUnflagged_stopped_exclusion_request
   obtain ⟨before, after, prior, joint, legal, realized, _originEvent, fromStart, toFinal,
     atAttempt, phaseInstalled, wasActive, nowExcluded, _originInside, _originRequest⟩ :=
     phase_attempt_stopped_exclusion_origin runtime leaks (menu) plan inputs horizon scheduler
-      profile ⟨remaining, none, anchor⟩ trace phase installed commitment owner active final
+      profile ⟨remaining, none, anchor⟩ trace phase installed owner active final
         (by
           dsimp only [initial, stopped] at supported
           convert supported using 1
@@ -200,7 +200,7 @@ theorem phaseProposalUnflagged_stopped_exclusion_request
       have same := PhaseRuntimeState.handle_commitment_phase_excluded runtime
         before.execution.application next phase phaseInstalled commitment message handled
       exact fun chosen => wasActive (same ▸ chosen))
-  have idle := exclusion_transition_idle runtime leaks initial horizon scheduler before after
+  have idle := phase_exclusion_transition_idle runtime leaks initial horizon scheduler before after
     joint realized owner wasActive nowExcluded command applicationStep
   obtain ⟨updated, selected, executionEq⟩ := PMF.support_map .. ▸ applicationStep
   obtain ⟨next, phaseStep, updateEq⟩ := PMF.support_map .. ▸ selected

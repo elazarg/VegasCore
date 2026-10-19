@@ -17,7 +17,7 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
 
 local notation "app" => phaseApplication runtime leaks
 
-private theorem processing_epoch_of_unsent {length : Nat} (tape : Tape Player length)
+theorem processing_epoch_of_unsent {length : Nat} (tape : Tape Player length)
     (start entered : Nat) (owner : Player) (event : graph.EventId)
     (qualified : UnsentQualification runtime leaks (packetCapacity runtime)
       (completionCycles runtime) tape start entered owner event) :

@@ -246,3 +246,5 @@ import Vegas.Source.ProposalRecoveryPreparationRepairMoves
 import Vegas.Source.ProposalRecoveryPreparationRepairHistory
 import Vegas.Source.ProposalRecoveryPreparationMenu
 import Vegas.Source.ProposalRecoveryPreparationMenuInverse
+import Vegas.Source.CommitRecoveryNonCommitJoint
+import Vegas.Source.CommitRecoveryNonCommitValues

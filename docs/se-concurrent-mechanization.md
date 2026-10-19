@@ -200,7 +200,7 @@ quantifiers and a passing build. The labels below never enter Lean names.
 | Source | Enriched source SE extending the selected intended SE and joint law | Checked: all legal information sites, selected intended strategy and exact initialized full-history law; see the source evidence below |
 | Runtime | Concrete correlated, block-frozen reserved scheduler family | Partial: joint tape and exact scheduler-mixture realization checked; block service certification remains open |
 | Runtime | All-raw opportunity/receipt/completion, timely-valid acceptance and noncircular budgets | Partial: actual correlated-mixture AsyncContract, noncircular budgets, paired counted successor requests and protected fresh-successor receipts checked; whole retry/chain coverage remains open |
-| Runtime | Same-tape admission monotonicity and foreign-service invariance | Partial: paired actual-response stopped runs have identical foreign acceptance words and proposal archives; WAIT focal survival implies available-SEND survival with equal full failure/address words; publication comparison remains open |
+| Runtime | Same-tape admission monotonicity and foreign-service invariance | Partial: paired actual-response stopped runs have identical foreign acceptance words and proposal archives; WAIT focal survival implies available-SEND survival with equal full failure/address words; the complete paired publication boundary is checked, including failed guards and full labeled histories; local payoff and boundary-kernel joins remain open |
 | Runtime | Complete proposal reconstruction and required fresh-slot reserve | Checked: actual full raw inputs reconstruct all submitted proposals, and the horizon reserve supplies fresh active slots; the counted execution fold identifies the same source archive; see the runtime evidence below |
 | Runtime | Supported concurrent instance with variable service orders | Checked: both orders have supported actual prefixes with distinct owners' typed, timely, handler-admissible packets pending together; see the fixture evidence below |
 | Transport | Genuine enriched native query, alias masses and full counted support | Checked: actual genuine enriched query, exact alias projection and full reference support on every original-law counted input, including earlier deviations |
@@ -213,12 +213,12 @@ quantifiers and a passing build. The labels below never enter Lean names.
 | End-to-end | Raw SE, exact settled joint law, zero exclusions/charges and instantiated service | Open |
 
 Compact progress display: **Source 5/5 · Runtime 2/5 · Transport 1/6 · E2E 0/2**.
-Runtime frontier: binding WAIT-to-SEND survival and paired full failure/address/archive comparison checked; publication emission/acceptance and clean boundary law are next.
+Runtime frontier: binding WAIT-to-SEND survival and paired full failure/address/archive comparison checked; the complete publication WAIT-to-SEND boundary is checked; the clean terminal boundary law is next.
 Transport frontier: initialized lost-value cross-reach, whole foreign-alias history law and source-history/checkpoint composition checked; full input-fiber weights, good-fiber terminal law and current-debt/reset joins remain.
 Update counts from checked statements and name the current bottleneck. Existing
 reusable proofs are dependencies, not new completed milestones.
-Current bottlenecks are the stopped service coupling, cross-world likelihood
-transport and native deviation comparisons. The raw concurrent capstone remains open.
+Current bottlenecks are full terminal source/runtime correspondence, initialized
+full-input likelihood weights and native deviation comparisons. The raw concurrent capstone remains open.
 
 Checked prerequisites: `proposalRecoveryEraseTrace` preserves semantic endpoints;
 `recoveryProposal_reveal_success` reads disclosed values from the pre-state;
@@ -524,7 +524,7 @@ Current cancelable debt still needs the separate paired reset comparison.
 
 The [stopped pending tape word](../Vegas/Game/ReservedEpochStoppedTapeWord.lean)
 extends the literal closed prefix using the existing behavioral evaluator.
-`stopped_pending_binding_receipt_iff_epoch` gives the old packet's exact bit at
+`stopped_pending_receipt_iff_epoch` gives the old packet's exact bit at
 original attempt closure, with the original readiness stamp and finite epoch
 bound. The [retired receipt proof](../Vegas/Game/ReservedEpochRetiredReceipt.lean)
 rules out a later first accepting receipt after that namespace is retired.
@@ -610,9 +610,9 @@ weights remains open.
 The [canonical disclosure readback](../Vegas/Game/PhaseProposalDisclosure.lean)
 retains equality of the recorded native Boolean and the chosen source action
 at every active disclosure, including false actions and guard-rejected true
-actions. This concerns that same chosen canonical replay. It does not require
-every statistical source refinement used in a likelihood argument to share its
-physical delivery label, and does not close the paired publication comparison.
+actions. This concerns that same chosen canonical replay. Statistical source
+refinements used in the likelihood argument may retain the same public result
+with a different foreign failure label.
 
 The [finite source-block coupling](../Vegas/Game/PhaseProposalCanonicalSourceBlock.lean)
 couples the actual enriched source evaluator to the existing compiled
@@ -642,3 +642,15 @@ and scheduler. The
 is independent of the lost sender's policy on the actual closing and
 permanent-exclusion slice. Neither result supplies the remaining full
 source-fiber weight identity.
+
+
+The complete publication boundary is checked by
+`phaseProposalUnflagged_paired_publication_boundary`. It constructs both actual
+current-response trace extensions and compares every pair of supported original
+attempt stops. Foreign receipt bits, recorded disclosure bits, semantic outputs
+and proposal values agree unconditionally. If the waiting player survives,
+prompt sending also survives, and both boundaries have the same exclusions,
+proposal archive, source control/address word and full semantic and enriched
+source histories. General rejecting guards and arbitrary available opening
+aliases are retained. This operational comparison does not establish the
+remaining local payoff inequality or the concurrent SE theorem.

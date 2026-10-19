@@ -62,10 +62,10 @@ theorem complete_rounds_extension [Finite Player] (menu : (app).ResponseMenu)
   subst state
   exact ⟨final, finalTrace, reached, extended.tracePrefix⟩
 
-/-- The old pending binding's exact finite tape bit is already fixed at the
+/-- The old pending certified packet's exact finite tape bit is already fixed at the
 original namespace exit. The complete continuation is selected from the SAME
 literal history, and retirement forbids a later first true receipt. -/
-theorem stopped_pending_binding_receipt_iff_epoch {length : Nat} (cycles : Nat)
+theorem stopped_pending_receipt_iff_epoch {length : Nat} (cycles : Nat)
     (tape : Tape Player length) (players : Player → (app).Policy)
     (menu : (app).ResponseMenu) (plan : RuntimePhasePlan graph)
     (ordered : graph.RevealRelaxedOrdered) (inputs : PMF graph.Inputs)
@@ -92,7 +92,7 @@ theorem stopped_pending_binding_receipt_iff_epoch {length : Nat} (cycles : Nat)
     (clock : before.application.current.native.clock = sentCycle)
     (message : Message Player (CommitAttemptPacket graph))
     (pending : message ∈ before.network.pending) (event : graph.EventId)
-    (candidate : Handle graph) (call : message.payload.packet.call = .commitment event candidate)
+    (certificate : ReadyCall before.application message.payload.packet.call event)
     (request : before.application.SeedRequest message.sender ⟨message.payload.attempt, event⟩)
     (entered : Nat) (stamp : before.application.current.native.activatedAt event = some entered)
     (clean : PhaseCount.OwnCountClean runtime leaks message.sender before)
@@ -125,12 +125,13 @@ theorem stopped_pending_binding_receipt_iff_epoch {length : Nat} (cycles : Nat)
     ((app).history_inputRecall initial bound scheduler rawStart)).pending message pending
   have finalInput := input_mem_prefix runtime leaks menu initial bound scheduler
     ⟨remaining, none, before⟩ ⟨0, none, final⟩ trace finalTrace (kept.trans extension) message input
-  have receipt := retired_binding_receipt_iff runtime leaks menu plan inputs bound scheduler
+  have receipt := retired_event_receipt_iff runtime leaks menu plan inputs bound scheduler
     ⟨remaining, none, before⟩ ⟨closedRemaining, none, closed⟩ ⟨0, none, final⟩ trace closedTrace
-      finalTrace kept extension retired message finalInput event candidate call request.1
-  exact receipt.symm.trans (pending_binding_receipt_iff_timely_epoch runtime leaks cycles tape
+      finalTrace kept extension retired message finalInput request.1
+  exact receipt.symm.trans (pending_receipt_iff_timely_epoch runtime leaks cycles tape
     players plan ordered inputs remaining sentCycle slot before final rawStart cursor
       afterProcessing
-      clock message pending event candidate call request entered stamp clean covered whole)
+      clock message pending event certificate request entered stamp clean covered
+        whole)
 
 end Vegas.EventGraphRuntime.ReservedEpoch

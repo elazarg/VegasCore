@@ -261,7 +261,7 @@ theorem first_owner_offer_or_due {length : Nat} (budget : Nat)
       ⟨lower, Or.inr (Or.inr ⟨actual, Nat.le_of_not_gt late⟩)⟩
     omega
 
-private theorem recall_before_next_offer {length : Nat} (budget : Nat)
+theorem recall_before_next_offer {length : Nat} (budget : Nat)
     (tape : Tape Player length) (players : Player → (app).Policy)
     (count : Nat) (before after : (app).Execution) (owner : Player)
     (quiet : ∀ cursor, before.environmentRecall.length ≤ cursor →
@@ -577,7 +577,8 @@ theorem unsent_due_check_before_offer {length : Nat} (budget : Nat)
     (expiry : expired ∈ (due.environmentStep app (.application (.expire coordinate.event))).support)
     (future : final ∈ ((app).runRounds (family runtime leaks budget tape)
       players tail expired).support) :
-    ¬ PhaseService.BindingAccepted runtime leaks coordinate owner final := by
+    ¬ PhaseService.BindingAccepted runtime leaks coordinate owner final ∧
+      coordinate.Resolved expired.application := by
   let initial := inputs.map (PhaseRuntimeState.initial plan)
   let scheduler := family runtime leaks budget tape
   have dueRequest := unsent_request_before_next_offer runtime leaks budget tape players plan
@@ -613,8 +614,25 @@ theorem unsent_due_check_before_offer {length : Nat} (budget : Nat)
       due.environmentRecall.length / cycleWidth (graph := graph) budget at clock
     rw [clock, elapsed]
     exact dueTime
-  exact PhaseService.not_bindingAccepted_runRounds_after_expire runtime leaks plan inputs horizon
+  have noReceipt := PhaseService.not_bindingAccepted_runRounds_after_expire runtime leaks plan
+    inputs horizon
     scheduler dueTrace coordinate owner dueRequest dueNow expired expiry players tail final future
+  obtain ⟨updated, supported, equal⟩ := PMF.support_map .. ▸ expiry
+  obtain ⟨next, moved, rfl⟩ := PMF.support_map .. ▸ supported
+  have applicationEq := congrArg (fun execution : (app).Execution => execution.application) equal
+  change next = expired.application at applicationEq
+  obtain ⟨_draw, dueValid⟩ := phaseNativeInvariant_history runtime leaks plan inputs horizon
+    scheduler dueTrace
+  have dueOrdered := (phaseApplication_seedOrder runtime leaks).history initial horizon scheduler
+    (fun state member => by
+      obtain ⟨draw, _positive, rfl⟩ := PMF.support_map .. ▸ member
+      exact PhaseRuntimeState.initial_ordered plan draw) dueTrace
+  have resolved := CommitAttemptEvent.Resolved.of_step coordinate due.application next dueRequest.1
+    ((phaseApplication_namespace_progress runtime leaks).environment due.application
+      (.expire coordinate.event) next moved dueOrdered)
+    (due.application.expire_resolves_of_request runtime next dueValid dueOrdered dueRequest dueNow
+      moved)
+  exact ⟨noReceipt, applicationEq ▸ resolved⟩
 
 /-- Decompose the ACTUAL supported stopped path at the first old-episode
 race. A due check permanently precludes acceptance; an owner offer retains the
@@ -647,7 +665,15 @@ theorem unsent_race_response_before_exit {length : Nat} (budget : Nat)
         command runtime leaks budget tape earlier view = .application (.expire coordinate.event) →
           earlier / cycleWidth (graph := graph) budget - entered <
             runtime.deadline coordinate.event) ∧
-      ¬ PhaseService.BindingAccepted runtime leaks coordinate owner closed) ∨
+      ¬ PhaseService.BindingAccepted runtime leaks coordinate owner closed ∧
+      ∃ used tail due expired,
+        used + 1 + tail = count ∧
+        due.environmentRecall.length = cursor ∧
+        due ∈ ((app).runRounds (family runtime leaks budget tape) players used before).support ∧
+        expired ∈ (due.environmentStep app (.application (.expire coordinate.event))).support ∧
+        coordinate.Resolved expired.application ∧
+        closed ∈ ((app).runRounds (family runtime leaks budget tape) players tail
+          expired).support) ∨
       ∃ used tail offered active response,
         used + 1 + tail = count ∧
         offered ∈ ((app).runRounds (family runtime leaks budget tape) players used before).support ∧
@@ -739,10 +765,13 @@ theorem unsent_race_response_before_exit {length : Nat} (budget : Nat)
     simp only [ReactiveApplication.Command.actor?, ReactiveApplication.resume,
       PMF.mem_support_pure_iff] at responsePath
     subst resumed
-    exact Or.inl ⟨cursor, lower, upper, expiredNow.1, expiredNow.2, quiet, expiryOpen,
-      unsent_due_check_before_offer runtime leaks budget tape players plan ordered inputs horizon
+    have expired := unsent_due_check_before_offer runtime leaks budget tape players plan ordered
+      inputs horizon
         remaining used tail before offered active closed trace usedWithin owner coordinate request
           entered stamp unsent quietUsed initialPath positive expiryUsed
-            (by simpa only [cursorEq] using expiredNow.2) moved future⟩
+            (by simpa only [cursorEq] using expiredNow.2) moved future
+    exact Or.inl ⟨cursor, lower, upper, expiredNow.1, expiredNow.2, quiet, expiryOpen,
+      expired.1, used, tail, offered, active, lengths, offeredCursor, initialPath, moved,
+        expired.2, future⟩
 
 end Vegas.EventGraphRuntime.ReservedEpoch

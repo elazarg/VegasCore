@@ -742,7 +742,7 @@ import Vegas.Pending.PhaseBindingServiceTapeOrder
 import Vegas.Pending.PhaseBindingServiceEpisode
 import Vegas.Pending.PhaseBindingAcceptedReceipt
 import Vegas.Pending.PhaseBindingReceiptResolution
-import Vegas.Pending.PhaseCommitmentExclusionOrigin
+import Vegas.Pending.PhaseExclusionOrigin
 import Vegas.Pending.PhaseArchiveGeneration
 import Vegas.Pending.PhaseAttemptReceiptSnapshot
 import Vegas.Pending.PhaseBindingSuccessFunction
@@ -841,7 +841,7 @@ import Vegas.Pending.ReservedEpochPendingFrontier
 import Vegas.Pending.PhaseFirstResponseRecall
 import Vegas.Pending.ReservedEpochExpiredRequest
 import Vegas.Pending.PhaseConsistentContinuation
-import Vegas.Pending.ReservedEpochFreshBinding
+import Vegas.Pending.ReservedEpochFreshResponse
 import Vegas.Pending.PhaseProposalShadowResponse
 import Vegas.Pending.PhaseProposalShadowMenu
 import Vegas.Pending.PhaseProposalShadowSourceAcceptance
@@ -887,3 +887,6 @@ import Vegas.Pending.PhaseProposalUnusedPreparation
 import Vegas.Pending.PhaseProposalLostPreparationMass
 import Vegas.Pending.PhaseProposalPreparationPrefix
 import Vegas.Pending.PhaseProposalInputSummary
+import Vegas.Pending.PhaseReadyPacketStatus
+import Vegas.Pending.PhaseOpeningReceiptOrigins
+import Vegas.Pending.PhaseAttemptControls

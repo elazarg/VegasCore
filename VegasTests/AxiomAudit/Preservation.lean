@@ -4851,3 +4851,135 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms
   Vegas.RecoverySourceWitness.ordinary_installed_binding_history
+
+/-- info:
+'Vegas.phaseProposalUnflaggedOpening_packet_law'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseProposalUnflaggedOpening_packet_law
+
+/-- info:
+'Vegas.phase_counted_publication_response_application'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phase_counted_publication_response_application
+
+/-- info:
+'Vegas.phaseProposalUnflagged_unsent_opening_receipt'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseProposalUnflagged_unsent_opening_receipt
+
+/-- info:
+'Vegas.phaseProposalUnflagged_stopped_opening_offer_receipt'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseProposalUnflagged_stopped_opening_offer_receipt
+
+/-- info:
+'Vegas.phaseProposalUnflagged_stopped_unsent_opening'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseProposalUnflagged_stopped_unsent_opening
+
+/-- info:
+'Vegas.phaseProposalUnflagged_stopped_unsent_opening_emission_word'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseProposalUnflagged_stopped_unsent_opening_emission_word
+
+/-- info:
+'Vegas.phaseProposalUnflagged_stopped_old_opening_receipt_word'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseProposalUnflagged_stopped_old_opening_receipt_word
+
+/-- info:
+'Vegas.phaseProposalUnflagged_stopped_unsent_opening_receipt_word'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseProposalUnflagged_stopped_unsent_opening_receipt_word
+
+/-- info:
+'Vegas.phaseProposalUnflagged_stopped_pending_opening_receipt_word'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseProposalUnflagged_stopped_pending_opening_receipt_word
+
+/-- info:
+'Vegas.phaseProposalUnflagged_stopped_false_opening_old_request'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseProposalUnflagged_stopped_false_opening_old_request
+
+/-- info:
+'Vegas.phaseProposalUnflagged_fresh_opening_disclosure'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseProposalUnflagged_fresh_opening_disclosure
+
+/-- info:
+'Vegas.publication_source_step_eq'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.publication_source_step_eq
+
+/-- info:
+'Vegas.RecoverySourceCheckpoint.publication_binding_value'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.RecoverySourceCheckpoint.publication_binding_value
+
+/-- info:
+'Vegas.RecoverySourceCheckpoint.publication_binding_row'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.RecoverySourceCheckpoint.publication_binding_row
+
+/-- info:
+'Vegas.RecoverySourceCheckpoint.publication_read_cone'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.RecoverySourceCheckpoint.publication_read_cone
+
+/-- info:
+'Vegas.phaseClosingEffect_publication_order'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseClosingEffect_publication_order
+
+/-- info:
+'Vegas.EventGraphRuntime.ReservedEpoch.phaseClosingEffect_publicFailureExtension'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.phaseClosingEffect_publicFailureExtension
+
+/-- info:
+'Vegas.SourceProgram.ProtocolState.noncommit_legal_joint_eq_of_disclosure'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.ProtocolState.noncommit_legal_joint_eq_of_disclosure
+
+/-- info:
+'Vegas.SourceProgram.ProtocolState.recoveryStep_noncommit_bindingsHoldValues'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.ProtocolState.recoveryStep_noncommit_bindingsHoldValues
+
+/-- info:
+'Vegas.SourceProgram.ProtocolState.noncommit_path_bindingsHoldValues'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.ProtocolState.noncommit_path_bindingsHoldValues
+
+/-- info:
+'Vegas.publication_original_closing_replay'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.publication_original_closing_replay
+
+/-- info:
+'Vegas.phaseProposalUnflagged_paired_publication_boundary'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseProposalUnflagged_paired_publication_boundary

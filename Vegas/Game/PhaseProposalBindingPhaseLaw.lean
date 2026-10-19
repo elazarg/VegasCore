@@ -1,5 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
+import Vegas.Pending.PhaseAttemptControls
 import Vegas.Game.PhaseProposalEmissionResponse
 import Vegas.Game.PhaseProposalBindingResponse
 import Vegas.Game.PhaseProposalBindingWord
@@ -295,8 +296,8 @@ theorem phaseProposalEmissionFrontier_traceInvariant
             congr 1 <;> omega
       obtain ⟨middlePhases, middleEntry, invariant⟩ := previous middleSame
       have stepSame := middleSame.trans nextSame.symm
-      have nextPhases := ((phaseApplication_sameAttempt_phases runtime leaks).transition initial
-        horizon scheduler middle next joint actual middleOrdered stepSame).trans middlePhases
+      have nextPhases := ((phaseApplication_sameAttempt_controls runtime leaks).transition initial
+        horizon scheduler middle next joint actual middleOrdered stepSame).1.trans middlePhases
       have nextEntry := ((phaseApplication_sameAttempt_entry runtime leaks).transition initial
         horizon scheduler middle next joint actual middleOrdered stepSame).trans middleEntry
       refine ⟨nextPhases, nextEntry, ?_⟩

@@ -1,5 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
+import Vegas.Pending.PhaseAttemptControls
 import Vegas.Pending.ReservedEpochRequestProgress
 import Vegas.Pending.PhaseRetryCompletion
 
@@ -65,8 +66,8 @@ theorem flat_snapshot_relation : (app).StepRelation (fun before after =>
       ((phaseApplication_seedBudget runtime leaks).handle state message next valid.2.2 accepted)
       (fun same => (state.handle_progress_of_same_namespace runtime next message valid.1
         valid.2.1 accepted same).completed)
-      ((phaseApplication_sameAttempt_phases runtime leaks).handle state message next accepted
-        valid.2.1) flat
+      (fun same => ((phaseApplication_sameAttempt_controls runtime leaks).handle state message next
+        accepted valid.2.1 same).1) flat
   environment state command next reached inputs valid flat := by
     apply snapshot_of_facts state next
       ((phaseApplication_namespace_progress runtime leaks).environment state command next reached
@@ -74,8 +75,8 @@ theorem flat_snapshot_relation : (app).StepRelation (fun before after =>
       ((phaseApplication_seedBudget runtime leaks).environment state command next valid.2.2 reached)
       (fun same => (state.environment_progress_of_same_namespace runtime next command valid.1
         valid.2.1 reached same).completed)
-      ((phaseApplication_sameAttempt_phases runtime leaks).environment state command next reached
-        valid.2.1) flat
+      (fun same => ((phaseApplication_sameAttempt_controls runtime leaks).environment state command
+        next reached valid.2.1 same).1) flat
 
 def SnapshotWatch (inputs : graph.Inputs) (origin : PhaseRuntimeState graph)
     (execution : (app).Execution) : Prop :=

@@ -2540,7 +2540,7 @@ derives the BASE lower bound and cubic RAW/BASE ratio at each actual fresh
 slot. This is a local mass comparison, not the global initialized RAW repair.
 
 Original native receipt classification:
-[first-exclusion origin](../Vegas/Pending/PhaseCommitmentExclusionOrigin.lean)
+[first-exclusion origin](../Vegas/Pending/PhaseExclusionOrigin.lean)
 and [receipt resolution](../Vegas/Pending/PhaseBindingReceiptResolution.lean)
 derive an old ready coordinate without acceptance for each newly excluded
 owner at the original attempt's first full-identifier exit.
@@ -2702,7 +2702,7 @@ the ordinary table, all past observations and an identical focal override.
 The [actual stopped binding classification](../Vegas/Game/ReservedEpochStoppedBinding.lean)
 connects first-exit exclusions to old requests, with
 [fresh-response provenance](../Vegas/Pending/PhaseFirstResponseRecall.lean) and
-[protected delivery](../Vegas/Pending/ReservedEpochFreshBinding.lean).
+[protected delivery](../Vegas/Pending/ReservedEpochFreshResponse.lean).
 [Checkpointed debt](../Vegas/Game/PhaseProposalSavedDebt.lean) and its
 [reserved-service payoff](../Vegas/Game/PhaseProposalReservedDebt.lean) handle
 irreversible own failures separately from cancelable current-attempt debt.
@@ -2795,3 +2795,18 @@ the actual unsent request from counted availability and proves WAIT survival
 implies SEND survival with equal original failure/control words. Source-value
 coupling, fresh-boundary continuation and conditional likelihood transport
 remain separate consumers.
+
+
+The [paired publication boundary](../Vegas/Game/ReservedEpochPublicationComparison.lean)
+constructs the actual current-response extensions and original closing witnesses.
+Its foreign publication word agrees unconditionally; focal WAIT survival implies
+prompt survival and equal complete source histories, proposal archives and
+control/address records. The [publication receipt boundary](../Vegas/Game/ReservedEpochPublicationBoundary.lean)
+relates actual accepting receipts to the canonical disclosure word, while the
+[owner-chain proof](../Vegas/Game/ReservedEpochPublicationOwnerChain.lean)
+traces FALSE disclosures to actual original requests and expiry.
+[Noncommitment value preservation](../Vegas/Source/CommitRecoveryNonCommitValues.lean)
+retains surviving owners' existing typed bindings along the same public source path.
+[Same-attempt controls](../Vegas/Pending/PhaseAttemptControls.lean) retain both
+installed phases and the literal retired archive. Full terminal continuation
+and initialized conditional belief transport remain separate obligations.

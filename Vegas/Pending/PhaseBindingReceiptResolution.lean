@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.PhasePrivateService
-import Vegas.Pending.PhaseCommitmentExclusionOrigin
+import Vegas.Pending.PhaseExclusionOrigin
 import Vegas.Pending.EventValueSwap
 import Interaction.ReactiveMessageIdentity
 import Interaction.ReactiveServiceRounds
@@ -618,7 +618,7 @@ theorem phase_attempt_stopped_exclusion_unaccepted
   obtain ⟨before, after, prior, joint, legal, realized, _event, fromStart, toFinal,
     atAttempt, phaseInstalled, wasActive, nowExcluded, _inside, _request⟩ :=
       phase_attempt_stopped_exclusion_origin runtime leaks menu plan inputs horizon scheduler
-        profile start trace phase installed commitment owner active ⟨some ending, finalTrace⟩
+        profile start trace phase installed owner active ⟨some ending, finalTrace⟩
           supported ending rfl excluded
   let initial := inputs.map (PhaseRuntimeState.initial plan)
   let E := menu.protocol initial horizon scheduler

@@ -1,5 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
+import Vegas.Pending.PhaseAttemptControls
 import Vegas.Pending.PhaseServiceContract
 import Vegas.Pending.PhaseRetryCompletion
 import Vegas.Pending.PhaseAttemptCheckpoint
@@ -220,8 +221,8 @@ theorem phase_attempt_stopped_results
     · exact ((phaseApplication_phaseSuffix runtime leaks).transition initial horizon scheduler
         current next joint realized).trans suffix
     · intro sameNext
-      exact ((phaseApplication_sameAttempt_phases runtime leaks).transition initial horizon
-        scheduler current next joint realized ordered (same.trans sameNext.symm)).trans
+      exact ((phaseApplication_sameAttempt_controls runtime leaks).transition initial horizon
+        scheduler current next joint realized ordered (same.trans sameNext.symm)).1.trans
           (phasesKept same)
     · intro sameNext
       exact ((phaseApplication_sameAttempt_entry runtime leaks).transition initial horizon

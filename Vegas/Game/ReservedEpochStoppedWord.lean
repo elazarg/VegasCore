@@ -746,12 +746,12 @@ theorem phaseProposalUnflagged_stopped_owned_word
         action).mp
         (phaseProposalUnflaggedPolicy_covered setup mode runtime leaks bounds plan values
           message.sender past view action selected)).2
-    have law := EventGraphRuntime.ReservedEpoch.stopped_pending_binding_receipt_iff_epoch runtime
+    have law := EventGraphRuntime.ReservedEpoch.stopped_pending_receipt_iff_epoch runtime
       leaks cycles tape future (menu) plan ordered inputs remaining ending.remaining used sentCycle
         slot anchor ending.execution trace idleTrace atIdle changed path
           (phaseProposalUnflaggedPolicy_covered setup mode runtime leaks bounds plan values)
-            cursor afterProcessing clock message pending frontier candidate call request entered
-              stamp ownClean covered
+            cursor afterProcessing clock message pending frontier (.binding candidate call) request
+              entered stamp ownClean covered
     have input := ((app).retained_envelopes_mem_inputs anchor
       ((app).history_provenance initial horizon scheduler rawStart)
       ((app).history_inputRecall initial horizon scheduler rawStart)).pending message pending

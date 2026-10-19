@@ -301,11 +301,14 @@ theorem original_binding_receipt_accepted (bounds : MessageBounds graph)
     ((app).history_provenance initial horizon scheduler rawAccepting)
     ((app).history_inputRecall initial horizon scheduler rawAccepting)).pending message pending
   obtain ⟨native, following, phaseHandled, nativeHandled⟩ :=
-    accepting_include_binding runtime leaks plan inputs horizon scheduler acceptingBefore
-      rawAccepting acceptingAfter.execution message acceptingInput event candidate call noReceipt
+    accepting_include_native runtime leaks plan inputs horizon scheduler acceptingBefore
+      rawAccepting acceptingAfter.execution message acceptingInput noReceipt
         moved accepted
+  have bindingHandled : handle runtime acceptingBefore.execution.application.current.native
+      ⟨message.id, .commitment event candidate⟩ = some native := by
+    simpa only [call] using nativeHandled
   have installed : native.accepted (.inr event) = some candidate := by
-    rw [(handle_commitment_tables runtime _ native message.id event candidate nativeHandled).2.1]
+    rw [(handle_commitment_tables runtime _ native message.id event candidate bindingHandled).2.1]
     exact Function.update_self _ _ _
   have closingBeforePrefix : TracePrefix prior closed := by
     change TracePrefix prior (prior.extend joint legal realized)
@@ -347,7 +350,7 @@ theorem original_binding_receipt_accepted (bounds : MessageBounds graph)
     have typedHandle : handle runtime acceptingBefore.execution.application.current.native
         ⟨message.id, .commitment event candidate⟩ = some sameNative := by
       simpa only [call] using handled
-    have nativeEq : sameNative = native := Option.some.inj (typedHandle.symm.trans nativeHandled)
+    have nativeEq : sameNative = native := Option.some.inj (typedHandle.symm.trans bindingHandled)
     subst sameNative
     have afterApplication : acceptingAfter.execution.application = following := by
       have literal := moved
@@ -402,7 +405,7 @@ theorem original_binding_receipt_accepted (bounds : MessageBounds graph)
           ⟨message.id, .commitment event candidate⟩ = some sameNative := by
         simpa only [call] using handled
       have nativeEq : sameNative = native := Option.some.inj
-        (otherHandled.symm.trans nativeHandled)
+        (otherHandled.symm.trans bindingHandled)
       subst sameNative
       exact installed
     · obtain ⟨command, _native, stepped, _nativeMoved, _rawEq⟩ := applied

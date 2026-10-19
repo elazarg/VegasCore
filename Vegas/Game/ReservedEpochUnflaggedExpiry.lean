@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.ReservedEpochExpiredRequest
-import Vegas.Pending.ReservedEpochFreshBinding
+import Vegas.Pending.ReservedEpochFreshResponse
 import Vegas.Game.PhaseProposalUnflaggedBinding
 import Interaction.ReactiveAnchoredMixture
 
@@ -176,9 +176,15 @@ theorem phaseProposalUnflagged_expiry_recorded_at_anchor
         ordinary owner (phaseProposalUnflaggedPolicy_covered setup mode runtime leaks bounds plan
           values owner) past view action positive
       exact ((PhaseCount.mem_onePacketActions runtime leaks bounds owner _ _ _).mp allowed).2
-    exact ReservedEpoch.first_binding_response_cannot_expire runtime leaks tape activationGap
+    obtain ⟨serial, _preparation, _evidence, declared, _bounded, _fresh⟩ :=
+      PhaseCount.onePacket_binding_shape runtime leaks bounds plan ordered inputs horizon scheduler
+        remaining owner execution prior event payload binding currentRequest material offered
+    have certificate : ReservedEpoch.ReadyCall execution.application material.call.packet event :=
+      .binding (owner, .prepared serial)
+        (congrArg (fun value : WitnessedSubmission graph => value.call.packet) declared)
+    exact ReservedEpoch.first_ready_response_cannot_expire runtime leaks tape activationGap
       processingGap gaps margin bounds plan ordered maximal inputs remaining owner execution prior
-        event payload binding currentRequest currentFirst material offered rawPost dueControl
+        event currentRequest currentFirst material certificate offered rawPost dueControl
           ((menu).toRawTrace _ horizon scheduler dueTrace) dueRequest atDeadline expired
             expiryRemaining expiry rawExpiry path players consistent coverage
   refine ⟨recorded, ?_⟩

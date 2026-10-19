@@ -149,15 +149,10 @@ theorem phaseProposalUnflagged_stopped_unsent_offer_receipt
   have finalInput := ReservedEpoch.input_mem_prefix runtime leaks (menu) initial horizon scheduler
     ⟨closedRemaining, none, closed⟩ ⟨0, none, final⟩ closedTrace finalTrace extension message
       closedInput
-  have named : message.payload.packet.call = .commitment event (owner, .prepared serial) := by
-    change (PhaseRuntimeState.emit (active.application.submit owner material) owner
-      (active.network.known owner) material).packet.call = _
-    rw [phase_emit_call, call]
   have address : message.payload.attempt = before.application.attempt := sameAttempt
-  have receipt := ReservedEpoch.retired_binding_receipt_iff runtime leaks (menu) plan inputs
+  have receipt := ReservedEpoch.retired_event_receipt_iff runtime leaks (menu) plan inputs
     horizon scheduler ⟨remaining, none, before⟩ ⟨closedRemaining, none, closed⟩ ⟨0, none, final⟩
-      trace closedTrace finalTrace kept extension retired message finalInput event
-        (owner, .prepared serial) named address
+      trace closedTrace finalTrace kept extension retired message finalInput address
   exact ⟨closedInput, receipt.symm.trans (law final whole)⟩
 
 /-- The old UNSENT frontier is resolved using its actual first race, not
@@ -288,7 +283,8 @@ theorem phaseProposalUnflagged_stopped_unsent_binding
       ⟨before.application.attempt, event⟩ request entered stamp unsent path positive retired with
     failed | ⟨used, tail, offered, active, response, lengths, initialPath, activation, moved,
       chosen, future, activeRequest, activeStamp, recalled, activeUnsent, quiet, expiryOpen⟩
-  · exact Or.inl failed
+  · obtain ⟨cursor, lower, upper, expire, due, quiet, expiryOpen, failed, _witness⟩ := failed
+    exact Or.inl ⟨cursor, lower, upper, expire, due, quiet, expiryOpen, failed⟩
   · have usedWithin : used + 1 ≤ remaining := by omega
     have remainingSplit : remaining - used + used = remaining := Nat.sub_add_cancel (by omega)
     obtain ⟨offeredTrace⟩ := (menu).trace_runRounds initial horizon scheduler players covered

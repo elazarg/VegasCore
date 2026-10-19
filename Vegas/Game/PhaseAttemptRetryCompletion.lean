@@ -1,5 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
+import Vegas.Pending.PhaseAttemptControls
 import Vegas.Game.PhaseAttemptContinuation
 import Vegas.Pending.PhaseRetryCompletion
 import Vegas.Pending.PhaseNativeInvariant
@@ -100,9 +101,9 @@ theorem phase_attempt_boundary_retry_completed
       target joint realized
     refine ⟨next, rfl, ?_, ?_⟩
     · intro sameNext
-      have retained := (phaseApplication_sameAttempt_phases runtime leaks).transition initial
+      have retained := (phaseApplication_sameAttempt_controls runtime leaks).transition initial
         horizon scheduler current next joint realized ordered (same.trans sameNext.symm)
-      exact retained.trans earlierPhases
+      exact retained.1.trans earlierPhases
     · intro survives
       obtain ⟨phase, installed, inside⟩ := request.2.1
       have installedNow : phase ∈ current.execution.application.phases.head? := by

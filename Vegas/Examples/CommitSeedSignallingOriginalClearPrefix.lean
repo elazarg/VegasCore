@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Examples.CommitSeedSignallingContract
-import Vegas.Pending.PhaseCommitmentExclusionOrigin
+import Vegas.Pending.PhaseExclusionOrigin
 import Vegas.Pending.PhaseSeedFreshness
 
 /-! # The actual original prefix stays clear before its expiry commands -/

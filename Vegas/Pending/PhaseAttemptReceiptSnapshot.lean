@@ -1,5 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
+import Vegas.Pending.PhaseAttemptControls
 import Vegas.Pending.PhaseBindingAcceptedReceipt
 import Vegas.Pending.PhaseAttemptCompletion
 
@@ -313,8 +314,8 @@ theorem phase_attempt_stopped_receipt_snapshot
         scheduler initialized (some middle) (some next) joint middleOrdered moved
       refine ⟨next, rfl, nextOrdered, ?_, ?_⟩
       · intro sameNext
-        exact ((phaseApplication_sameAttempt_phases runtime leaks).transition initial horizon
-          scheduler middle next joint moved middleOrdered (same.trans sameNext.symm)).trans
+        exact ((phaseApplication_sameAttempt_controls runtime leaks).transition initial horizon
+          scheduler middle next joint moved middleOrdered (same.trans sameNext.symm)).1.trans
             (phasesKept same)
       · intro closed
         have installedNow : phase ∈ middle.execution.application.phases.head? := by

@@ -38,7 +38,7 @@ private theorem response_request_iff (execution : (app).Execution) (actor : Play
       rfl
 
 omit [Fintype Player] in
-private theorem response_foreign_pending (execution : (app).Execution) (actor owner : Player)
+theorem response_foreign_pending (execution : (app).Execution) (actor owner : Player)
     (different : owner ≠ actor) (response : (app).Action)
     (message : Message Player (CommitAttemptPacket graph)) (authored : message.sender = owner) :
     message ∈ (execution.respond app actor response).network.pending ↔

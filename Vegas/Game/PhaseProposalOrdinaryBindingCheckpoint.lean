@@ -4,6 +4,8 @@ import Vegas.Game.PhaseProposalOrdinaryStoppedSourceHistory
 import Vegas.Game.RecoveryChosenCommitControl
 import Vegas.Pending.PhaseRawCheckpoint
 import Vegas.Pending.PhaseHistoryCheckpoint
+import Vegas.Pending.PhaseFailureOrderHistory
+import Vegas.Pending.PhaseSavedExclusionReadback
 
 /-! # The same chosen checkpoint at an actual clean binding close -/
 
@@ -109,6 +111,75 @@ theorem phaseClosingEffect_checkpoint_facts
       coverage.saved, coverage.active.environmentResult runtime command result supported,
       coverage.inherited.trans
         (before.execution.application.current.environmentResult_excluded_subset _ _)⟩
+
+/-- The original raw closing result has the actual source-order suppression
+law before the dispatcher installs another namespace. -/
+theorem phaseClosingEffect_publication_order
+    (horizon : Nat) (scheduler : (app).Scheduler)
+    (before ending : (app).Control)
+    (prior : ((menu).protocol initial horizon scheduler).Trace (some before))
+    (phase : RuntimePhase graph) (head : before.execution.application.phases.head? = some phase)
+    (raw : RecoveryState graph)
+    (effect : PhaseClosingEffect runtime leaks before.execution ending.execution raw)
+    (changed : ending.execution.application.attempt ≠ before.execution.application.attempt) :
+    (phase.drain raw).OrderedPublicFailures phase.low
+      before.execution.application.entry.excluded := by
+  have ordered := serviceGraph_revealRelaxedOrdered setup mode
+  let rawTrace := (menu).toRawTrace initial horizon scheduler prior
+  rcases effect with ⟨id, message, native, found, moved, handled, rfl⟩ |
+      ⟨command, native, _moved, supported, rfl⟩
+  · have selected : ending.execution.application =
+        ((app).handle before.execution.application message).getD
+          before.execution.application := by
+      have exactMove := moved
+      simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map] at exactMove
+      have stateEq := congrArg (fun execution : (app).Execution => execution.application)
+        ((PMF.mem_support_pure_iff _ _).mp exactMove)
+      simpa only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
+        found] using stateEq
+    have allowed : (message.payload.tokenValid before.execution.application.attempt &&
+        before.execution.application.allows message.payload.packet.call &&
+          (!(before.execution.application.current.excludedCall message.payload.packet.call))) =
+            true := by
+      by_contra invalid
+      have absent : before.execution.application.handle runtime message = none := by
+        simp only [PhaseRuntimeState.handle, ite_eq_right invalid]
+      have same : ending.execution.application = before.execution.application := by
+        simpa only [show (app).handle before.execution.application message = none from absent,
+          Option.getD_none] using selected
+      exact changed (congrArg PhaseRuntimeState.attempt same)
+    have permitted : before.execution.application.current.excludedCall
+        message.payload.packet.call = false := by
+      cases flag : before.execution.application.current.excludedCall message.payload.packet.call
+      · rfl
+      · have negative := (Bool.and_eq_true_iff.mp allowed).2
+        rw [flag] at negative
+        cases negative
+    exact phase_inclusion_failureOrder_history runtime leaks ordered plan inputs horizon
+      scheduler rawTrace phase head ⟨message.id, message.payload.packet.call⟩ native permitted
+        handled
+  · exact phase_environment_failureOrder_history runtime leaks ordered plan inputs horizon
+      scheduler rawTrace phase head command native supported
+
+/-- The original closing operation retains the saved checkpoint's failure
+verdicts before any actual dispatcher normalization. -/
+theorem phaseClosingEffect_failure_frame
+    (horizon : Nat) (scheduler : (app).Scheduler)
+    (before ending : (app).Control)
+    (prior : ((menu).protocol initial horizon scheduler).Trace (some before))
+    (raw : RecoveryState graph)
+    (effect : PhaseClosingEffect runtime leaks before.execution ending.execution raw) :
+    ({before.execution.application with current := raw} :
+      PhaseRuntimeState graph).PublicFailureCheckpoint := by
+  have saved := phasePublicFailureCheckpoint_history runtime leaks plan inputs horizon scheduler
+    ((menu).toRawTrace initial horizon scheduler prior)
+  rcases effect with ⟨id, message, native, _found, _moved, handled, rfl⟩ |
+      ⟨command, native, _moved, supported, rfl⟩
+  · exact saved.trans (completionStep_handle runtime _ native
+      (⟨message.id, message.payload.packet.call⟩ : Message Player (Payload graph))
+        handled).publicFailureExtension
+  · exact saved.trans (completionStep_environmentStep runtime _ native command
+      supported).publicFailureExtension
 
 omit [Fintype Player] in
 private theorem completed_binding_word

@@ -1993,10 +1993,10 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #print axioms Vegas.EventGraphRuntime.PhaseRuntimeState.normalize_retry_survivor_record
 
 /-- info:
-'Vegas.EventGraphRuntime.phaseApplication_sameAttempt_phases'
+'Vegas.EventGraphRuntime.phaseApplication_sameAttempt_controls'
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.EventGraphRuntime.phaseApplication_sameAttempt_phases
+#print axioms Vegas.EventGraphRuntime.phaseApplication_sameAttempt_controls
 
 /-- info:
 'Vegas.EventGraphRuntime.phaseApplication_retryCompletion'
@@ -4021,12 +4021,6 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #print axioms Vegas.EventGraphRuntime.ReservedEpoch.expired_request_first_response
 
 /-- info:
-'Vegas.EventGraphRuntime.ReservedEpoch.first_binding_response_cannot_expire'
-depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Vegas.EventGraphRuntime.ReservedEpoch.first_binding_response_cannot_expire
-
-/-- info:
 'Vegas.phaseProposalUnflagged_expiry_recorded_at_anchor'
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
@@ -4531,20 +4525,20 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.EventGraphRuntime.phase_prefix_accepted
 
-/-- info: 'Vegas.EventGraphRuntime.ReservedEpoch.accepting_include_binding' depends on axioms:
+/-- info: 'Vegas.EventGraphRuntime.ReservedEpoch.accepting_include_native' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.EventGraphRuntime.ReservedEpoch.accepting_include_binding
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.accepting_include_native
 
-/-- info: 'Vegas.EventGraphRuntime.ReservedEpoch.pending_binding_receipt_requires_timely_epoch' depends on axioms:
+/-- info: 'Vegas.EventGraphRuntime.ReservedEpoch.pending_receipt_requires_timely_epoch' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.EventGraphRuntime.ReservedEpoch.pending_binding_receipt_requires_timely_epoch
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.pending_receipt_requires_timely_epoch
 
-/-- info: 'Vegas.EventGraphRuntime.ReservedEpoch.pending_binding_receipt_iff_timely_epoch' depends on axioms:
+/-- info: 'Vegas.EventGraphRuntime.ReservedEpoch.pending_receipt_iff_timely_epoch' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.EventGraphRuntime.ReservedEpoch.pending_binding_receipt_iff_timely_epoch
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.pending_receipt_iff_timely_epoch
 
 /-- info: 'Vegas.EventGraphRuntime.ReservedEpoch.old_pending_response_receipt_iff' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
@@ -4691,20 +4685,20 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.EventGraphRuntime.ReservedEpoch.input_mem_prefix
 
-/-- info: 'Vegas.EventGraphRuntime.ReservedEpoch.retired_binding_receipt_iff' depends on axioms:
+/-- info: 'Vegas.EventGraphRuntime.ReservedEpoch.retired_event_receipt_iff' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.EventGraphRuntime.ReservedEpoch.retired_binding_receipt_iff
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.retired_event_receipt_iff
 
 /-- info: 'Vegas.stopped_prefix_roundsSupported' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.stopped_prefix_roundsSupported
 
-/-- info: 'Vegas.EventGraphRuntime.ReservedEpoch.stopped_pending_binding_receipt_iff_epoch' depends on axioms:
+/-- info: 'Vegas.EventGraphRuntime.ReservedEpoch.stopped_pending_receipt_iff_epoch' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.EventGraphRuntime.ReservedEpoch.stopped_pending_binding_receipt_iff_epoch
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.stopped_pending_receipt_iff_epoch
 
 /-- info: 'Vegas.phaseProposalBindingGraphView_archive' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
@@ -5172,3 +5166,76 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms
   Vegas.phaseProposalReference_alias_focal_joint
+
+/-- info:
+'Interaction.ReactiveApplication.ResponseMenu.trace_runRounds_prefix'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Interaction.ReactiveApplication.ResponseMenu.trace_runRounds_prefix
+
+/-- info:
+'Vegas.EventGraphRuntime.ReservedEpoch.current_response_receipt_iff'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.current_response_receipt_iff
+
+/-- info:
+'Vegas.EventGraphRuntime.ReservedEpoch.first_ready_response_cannot_expire'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.first_ready_response_cannot_expire
+
+/-- info:
+'Vegas.EventGraphRuntime.phase_resolved_prefix'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.phase_resolved_prefix
+
+/-- info:
+'Vegas.EventGraphRuntime.phase_counted_packet_receipt_iff'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.phase_counted_packet_receipt_iff
+
+/-- info:
+'Vegas.EventGraphRuntime.PhaseProposal.openingReceiptOrigins_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.PhaseProposal.openingReceiptOrigins_history
+
+/-- info:
+'Vegas.EventGraphRuntime.ReservedEpoch.publication_unresolved_receipt_iff_recorded'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.publication_unresolved_receipt_iff_recorded
+
+/-- info:
+'Vegas.EventGraphRuntime.ReservedEpoch.original_opening_receipt_iff_canonical_disclosure'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.ReservedEpoch.original_opening_receipt_iff_canonical_disclosure
+
+/-- info:
+'Vegas.EventGraphRuntime.ReservedEpoch.openingFrontierReceipt_wait_imp_send'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.openingFrontierReceipt_wait_imp_send
+
+/-- info:
+'Vegas.EventGraphRuntime.ReservedEpoch.publication_exclusion_cause'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.publication_exclusion_cause
+
+/-- info:
+'Vegas.EventGraphRuntime.ReservedEpoch.stopped_false_publication_expiry_origin'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.stopped_false_publication_expiry_origin
+
+/-- info:
+'Vegas.EventGraphRuntime.ReservedEpoch.resolved_counted_packet_origin'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.resolved_counted_packet_origin

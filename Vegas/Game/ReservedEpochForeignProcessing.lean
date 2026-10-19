@@ -4,7 +4,7 @@ import Vegas.Pending.ReservedEpochBatchApplication
 import Vegas.Game.ReservedEpochPhaseBindingFrame
 import Vegas.Pending.PhaseBindingCountedIncludeMemory
 import Vegas.Pending.PhaseSeedPhysicalIsolation
-import Vegas.Pending.PhaseCommitmentExclusionOrigin
+import Vegas.Pending.PhaseExclusionOrigin
 
 /-! # Actual foreign processing prefixes preserve a live binding chain -/
 

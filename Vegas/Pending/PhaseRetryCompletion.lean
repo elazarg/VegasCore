@@ -1,5 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
+import Vegas.Pending.PhaseAttemptControls
 import Vegas.Pending.PhaseRetiredCompletion
 import Vegas.Pending.PhaseResolution
 
@@ -39,39 +40,6 @@ theorem normalize_retry_survivor_record (state : PhaseRuntimeState graph)
     using result (by simpa only [normalize, phases] using changed)
 
 end PhaseRuntimeState
-
-/-- Every real application operation preserves the installed descriptors
-when the physical namespace is unchanged. -/
-theorem phaseApplication_sameAttempt_phases (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket graph)) :
-    (phaseApplication runtime leaks).StepRelation (fun before after => before.Ordered →
-      before.attempt = after.attempt → after.phases = before.phases) where
-  refl _ _ _ := rfl
-  submit _ _ _ _ _ := rfl
-  handle state message next accepted ordered same := by
-    change state.handle runtime message = some next at accepted
-    unfold PhaseRuntimeState.handle at accepted
-    split at accepted
-    · obtain ⟨native, _handled, rfl⟩ := Option.map_eq_some_iff.mp accepted
-      have settled := PhaseRuntimeState.settle_of_same_namespace
-        state.phases state.generation state.entry
-        (state.current.inclusionResult message.payload.packet.call native) state.retired ordered
-          same
-      have kept := congrArg PhaseRuntimeState.phases settled
-      exact kept
-    · cases accepted
-  environment state command next reached ordered same := by
-    change next ∈ (state.environment runtime command).support at reached
-    unfold PhaseRuntimeState.environment at reached
-    split at reached
-    · obtain ⟨native, _supported, rfl⟩ := PMF.support_map .. ▸ reached
-      have settled := PhaseRuntimeState.settle_of_same_namespace
-        state.phases state.generation state.entry (state.current.environmentResult command native)
-        state.retired ordered same
-      have kept := congrArg PhaseRuntimeState.phases settled
-      exact kept
-    · cases (PMF.mem_support_pure_iff _ _).mp reached
-      rfl
 
 /-- Every actual operation that changes generation records the surviving
 owner's current event as completed and nonfailed in the old attempt. -/

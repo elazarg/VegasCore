@@ -2,11 +2,10 @@
 
 import Vegas.Pending.ReservedEpochFirstAcceptance
 import Vegas.Pending.ReservedEpochCompletion
-import Vegas.Pending.PhaseBindingMenuShape
 import Vegas.Pending.PhaseBindingReceiptResolution
 import Vegas.Pending.PhaseConsistentContinuation
 
-/-! # An actual protected first binding cannot later expire on its continuation -/
+/-! # An actual protected first response cannot later expire on its continuation -/
 
 noncomputable section
 
@@ -26,7 +25,7 @@ local notation "app" => phaseApplication runtime leaks
 foreign continuation. It cannot coexist with a later due request expiring in
 that same physical coordinate. Both histories and all old unsafe episodes are
 literal; no assumption of a surviving endpoint is made. -/
-theorem first_binding_response_cannot_expire {length : Nat} (tape : Tape Player length)
+theorem first_ready_response_cannot_expire {length : Nat} (tape : Tape Player length)
     (activationGap processingGap : Nat)
     (gaps : tape.BoundedGaps (completionCycles runtime) activationGap processingGap)
     (margin : runtime.AsyncTimely (fun _ => activationGap + 1) (fun _ => processingGap + 1))
@@ -39,12 +38,12 @@ theorem first_binding_response_cannot_expire {length : Nat} (tape : Tape Player 
       (inputs.map (PhaseRuntimeState.initial plan)) (executionHorizon runtime)
         (family runtime leaks (packetCapacity runtime) tape)).Trace
           (some ⟨remaining, some owner, execution⟩))
-    (event : graph.EventId) (payload : L.Ty)
-    (binding : graph.outputLayout event = .binding owner payload)
+    (event : graph.EventId)
     (request : execution.application.SeedRequest owner ⟨execution.application.attempt, event⟩)
     (first : ¬ PhaseCount.ResponseRecorded runtime leaks owner
       ⟨execution.application.attempt, event⟩ (execution.recall owner))
     (material : WitnessedSubmission graph)
+    (certificate : ReadyCall execution.application material.call.packet event)
     (offered : (⟨some material⟩ : (app).Action) ∈ PhaseCount.onePacketActions runtime leaks bounds
       owner (execution.recall owner) (execution.observe (app) owner))
     (postTrace : ((app).protocol (inputs.map (PhaseRuntimeState.initial plan))
@@ -105,14 +104,6 @@ theorem first_binding_response_cannot_expire {length : Nat} (tape : Tape Player 
   obtain ⟨entered, stamp⟩ := Option.isSome_iff_exists.mp
     ((valid.active.activated_iff event).mpr
       ⟨request.2.2.1, by rw [request.2.2.2.1]; rfl⟩)
-  obtain ⟨serial, _preparation, _evidence, declared, _bounded, _fresh⟩ :=
-    PhaseCount.onePacket_binding_shape runtime leaks bounds plan ordered inputs
-      (executionHorizon runtime) scheduler remaining owner execution trace event payload binding
-        request material offered
-  have call : material.call.packet = .commitment event (owner, .prepared serial) :=
-    congrArg (fun value : WitnessedSubmission graph => value.call.packet) declared
-  have certificate : ReadyCall execution.application material.call.packet event :=
-    .binding (owner, .prepared serial) call
   have permitted : PhaseCount.OnePacketResponse runtime leaks owner (execution.recall owner)
       (execution.observe (app) owner) ⟨some material⟩ := by
     rcases ((PhaseCount.mem_onePacketActions runtime leaks bounds owner _ _ _).mp offered).2
@@ -148,7 +139,11 @@ theorem first_binding_response_cannot_expire {length : Nat} (tape : Tape Player 
   refine ⟨message, finalInput, rfl, rfl, ?_, receipt⟩
   change (PhaseRuntimeState.emit (execution.application.submit owner material) owner
     (execution.network.known owner) material).packet.call.event? graph = some event
-  rw [phase_emit_call, call]
-  rfl
+  rw [phase_emit_call]
+  cases certificate with
+  | binding candidate call => rw [call]; rfl
+  | opening owner payload binding checks outputEq codeEq node candidate raw call associated =>
+      rw [call]
+      rfl
 
 end Vegas.EventGraphRuntime.ReservedEpoch

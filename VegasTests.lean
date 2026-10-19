@@ -14,3 +14,4 @@ import VegasTests.ResultExpressions
 import VegasTests.SourceSemantics
 import VegasTests.SourceSetup
 import VegasTests.ValueBinding
+import VegasTests.ReservedPublicationContract

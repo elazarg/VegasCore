@@ -1,5 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
+import Vegas.Pending.PhaseAttemptControls
 import Vegas.Pending.PhaseAttemptFirstPassage
 import Vegas.Pending.PhaseRetryCompletion
 import Vegas.Pending.PhaseClearTraceProgress
@@ -60,8 +61,8 @@ private theorem stopped_phases
     obtain ⟨next, rfl, _recall⟩ := (app).transition_recall_prefix initial horizon scheduler current
       target joint realized
     refine ⟨next, rfl, fun nextSame => ?_⟩
-    exact ((phaseApplication_sameAttempt_phases runtime leaks).transition initial horizon
-      scheduler current next joint realized ordered (attempt.trans nextSame.symm)).trans
+    exact ((phaseApplication_sameAttempt_controls runtime leaks).transition initial horizon
+      scheduler current next joint realized ordered (attempt.trans nextSame.symm)).1.trans
         (previous attempt)
   obtain ⟨next, state, kept⟩ := (N).runBehavioralUntil_support_closed_of_going certificate profile
     stopped property preserved ⟨some entry, entryTrace⟩ ⟨entry, rfl, fun _ => rfl⟩

@@ -2,7 +2,7 @@
 
 import Vegas.Game.ReservedEpochStoppedCoupling
 
-/-! # Original binding receipts cannot appear after physical retirement -/
+/-! # Original event receipts cannot appear after physical retirement -/
 
 noncomputable section
 
@@ -18,10 +18,10 @@ variable {Player : Type} [DecidableEq Player]
 
 local notation "app" => phaseApplication runtime leaks
 
-/-- On the literal initialized history, an old binding's eventual true receipt
+/-- On the literal initialized history, an old event packet's eventual true receipt
 already exists at any later namespace exit. A first new receipt after that exit
 would require the handler to return to the original physical namespace. -/
-theorem retired_binding_receipt_iff (menu : (app).ResponseMenu)
+theorem retired_event_receipt_iff (menu : (app).ResponseMenu)
     (plan : RuntimePhasePlan graph) (inputs : PMF graph.Inputs) (horizon : Nat)
     (scheduler : (app).Scheduler) (start closed final : (app).Control)
     (startTrace : (menu.protocol (inputs.map (PhaseRuntimeState.initial plan))
@@ -34,8 +34,7 @@ theorem retired_binding_receipt_iff (menu : (app).ResponseMenu)
     (afterClosed : TracePrefix closedTrace finalTrace)
     (retired : closed.execution.application.attempt ≠ start.execution.application.attempt)
     (message : Message Player (CommitAttemptPacket graph))
-    (input : message ∈ final.execution.network.inputs) (event : graph.EventId)
-    (candidate : Handle graph) (call : message.payload.packet.call = .commitment event candidate)
+    (input : message ∈ final.execution.network.inputs)
     (address : message.payload.attempt = start.execution.application.attempt) :
     ((message.id, true) ∈ final.execution.receipts ↔
       (message.id, true) ∈ closed.execution.receipts) := by
@@ -81,9 +80,9 @@ theorem retired_binding_receipt_iff (menu : (app).ResponseMenu)
     have acceptingInput := ((app).retained_envelopes_mem_inputs acceptingBefore.execution
       ((app).history_provenance initial horizon scheduler rawAccepting)
       ((app).history_inputRecall initial horizon scheduler rawAccepting)).pending message pending
-    obtain ⟨_native, following, handled, _nativeHandled⟩ := accepting_include_binding runtime leaks
+    obtain ⟨_native, following, handled, _nativeHandled⟩ := accepting_include_native runtime leaks
       plan inputs horizon scheduler acceptingBefore rawAccepting acceptingAfter.execution message
-        acceptingInput event candidate call noReceipt moved accepted
+        acceptingInput noReceipt moved accepted
     have original := (PhaseRuntimeState.handle_attempt_eq runtime
       acceptingBefore.execution.application following message handled).symm.trans address
     have initialized : ∀ state ∈ initial.support, state.Ordered := by

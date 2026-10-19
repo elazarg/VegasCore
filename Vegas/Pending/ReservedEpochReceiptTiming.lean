@@ -8,7 +8,7 @@ import Interaction.ReactiveOwnerSelection
 import Interaction.ReactiveReceiptBoundary
 import Interaction.ReactiveTrafficIdentity
 
-/-! # An accepting old binding receipt precedes its original deadline -/
+/-! # An accepting event receipt precedes its original deadline -/
 
 noncomputable section
 
@@ -43,35 +43,39 @@ private theorem input_mem_runRounds (scheduler : (app).Scheduler)
   exact invariant.runRounds scheduler count before after input reached
 
 omit [Fintype Player] in
-private theorem handle_binding_ready_timely (state native : State graph)
-    (id : MessageId Player) (event : graph.EventId) (candidate : Handle graph)
-    (handled : handle runtime state ⟨id, .commitment event candidate⟩ = some native) :
+private theorem handle_event_ready_timely (state native : State graph)
+    (id : MessageId Player) (packet : Payload graph) (event : graph.EventId)
+    (named : packet.event? graph = some event)
+    (handled : handle runtime state ⟨id, packet⟩ = some native) :
     state.config.cut.Ready event ∧ state.WithinDeadline runtime event := by
-  by_cases ready : state.config.cut.Ready event
-  · refine ⟨ready, ?_⟩
-    by_contra late
-    simp only [handle, dite_eq_left ready, dite_eq_right late] at handled
-    cases handled
-  · simp only [handle, dite_eq_right ready] at handled
-    cases handled
+  cases packet with
+  | malformed raw => cases named
+  | commitment selected candidate | opening selected candidate raw =>
+      have same : selected = event := Option.some.inj named
+      subst selected
+      by_cases ready : state.config.cut.Ready event
+      · refine ⟨ready, ?_⟩
+        by_contra late
+        simp only [handle, dite_eq_left ready, dite_eq_right late] at handled
+        cases handled
+      · simp only [handle, dite_eq_right ready] at handled
+        cases handled
 
 omit [Fintype Player] in
-theorem accepting_include_binding (plan : RuntimePhasePlan graph)
+theorem accepting_include_native (plan : RuntimePhasePlan graph)
     (inputs : PMF graph.Inputs) (horizon : Nat) (scheduler : (app).Scheduler)
     (control : (app).Control)
     (trace : ((app).protocol (inputs.map (PhaseRuntimeState.initial plan)) horizon
       scheduler).Trace (some control)) (next : (app).Execution)
     (message : Message Player (CommitAttemptPacket graph))
     (input : message ∈ control.execution.network.inputs)
-    (event : graph.EventId) (candidate : Handle graph)
-    (call : message.payload.packet.call = .commitment event candidate)
     (absent : (message.id, true) ∉ control.execution.receipts)
     (moved : next ∈ (control.execution.environmentStep app (.include message.id)).support)
     (accepted : (message.id, true) ∈ next.receipts) :
     ∃ native following,
       control.execution.application.handle runtime message = some following ∧
       handle runtime control.execution.application.current.native
-        ⟨message.id, .commitment event candidate⟩ = some native := by
+        ⟨message.id, message.payload.packet.call⟩ = some native := by
   simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map] at moved
   cases (PMF.mem_support_pure_iff ..).mp moved
   cases found : control.execution.network.lookup message.id with
@@ -100,12 +104,12 @@ theorem accepting_include_binding (plan : RuntimePhasePlan graph)
           obtain ⟨native, nativeHandled, _normalized, _receipts⟩ :=
             phase_inclusion_snapshot_bindingAccepted runtime leaks plan inputs horizon scheduler
               trace message.id message found following handled
-          exact ⟨native, following, rfl, by simpa only [call] using nativeHandled⟩
+          exact ⟨native, following, rfl, nativeHandled⟩
 
-/-- Any eventual true receipt of this original pending binding forces the
+/-- Any eventual true receipt of this original pending event packet forces the
 first next marked epoch to be inside its original entered-time deadline.
 The statement covers old late episodes and arbitrary raw future players. -/
-theorem pending_binding_receipt_requires_timely_epoch {length : Nat}
+theorem pending_receipt_requires_timely_epoch {length : Nat}
     (packetBudget : Nat) (tape : Tape Player length) (players : Player → (app).Policy)
     (plan : RuntimePhasePlan graph) (inputs : PMF graph.Inputs) (horizon remaining : Nat)
     (before final : (app).Execution)
@@ -117,8 +121,7 @@ theorem pending_binding_receipt_requires_timely_epoch {length : Nat}
     (afterProcessing : packetBudget ≤ slot)
     (message : Message Player (CommitAttemptPacket graph))
     (pending : message ∈ before.network.pending) (event : graph.EventId)
-    (candidate : Handle graph)
-    (call : message.payload.packet.call = .commitment event candidate)
+    (named : message.payload.packet.call.event? graph = some event)
     (request : before.application.SeedRequest message.sender ⟨message.payload.attempt, event⟩)
     (entered : Nat) (stamp : before.application.current.native.activatedAt event = some entered)
     (reached : final ∈ ((app).runRounds (family runtime leaks packetBudget tape) players
@@ -148,11 +151,11 @@ theorem pending_binding_receipt_requires_timely_epoch {length : Nat}
       simpa only [Nat.sub_add_cancel usedLe] using trace) path
   have priorInput := input_mem_runRounds runtime leaks scheduler players used before prior message
     input path
-  obtain ⟨native, following, handled, nativeHandled⟩ := accepting_include_binding runtime leaks
+  obtain ⟨native, following, handled, nativeHandled⟩ := accepting_include_native runtime leaks
     plan inputs horizon scheduler ⟨remaining - used, none, prior⟩ priorTrace middle message
-      priorInput event candidate call unreceipted moved receipted
-  have live := handle_binding_ready_timely runtime prior.application.current.native native
-    message.id event candidate nativeHandled
+      priorInput unreceipted moved receipted
+  have live := handle_event_ready_timely runtime prior.application.current.native native
+    message.id message.payload.packet.call event named nativeHandled
   have positive : 0 < runtime.deadline event := by
     have timely := live.2
     unfold State.WithinDeadline at timely
@@ -219,10 +222,10 @@ theorem pending_binding_receipt_requires_timely_epoch {length : Nat}
   exact ⟨epoch, selectedEpoch, notEarlier.trans_lt beforeEnd,
     (Nat.sub_le_sub_right epochBefore entered).trans_lt timely⟩
 
-/-- The actual accepting-receipt bit of an old pending binding is exactly its
+/-- The actual accepting-receipt bit of an old pending certified packet is exactly its
 next shared epoch's deadline comparison. Preparation contents and arbitrary
 covered foreign traffic do not enter this operational bit. -/
-theorem pending_binding_receipt_iff_timely_epoch {length : Nat} (cycles : Nat)
+theorem pending_receipt_iff_timely_epoch {length : Nat} (cycles : Nat)
     (tape : Tape Player length) (players : Player → (app).Policy)
     (plan : RuntimePhasePlan graph) (ordered : graph.RevealRelaxedOrdered)
     (inputs : PMF graph.Inputs) (remaining sentCycle slot : Nat)
@@ -237,8 +240,7 @@ theorem pending_binding_receipt_iff_timely_epoch {length : Nat} (cycles : Nat)
     (clock : before.application.current.native.clock = sentCycle)
     (message : Message Player (CommitAttemptPacket graph))
     (pending : message ∈ before.network.pending) (event : graph.EventId)
-    (candidate : Handle graph)
-    (call : message.payload.packet.call = .commitment event candidate)
+    (certificate : ReadyCall before.application message.payload.packet.call event)
     (request : before.application.SeedRequest message.sender ⟨message.payload.attempt, event⟩)
     (entered : Nat) (stamp : before.application.current.native.activatedAt event = some entered)
     (clean : PhaseCount.OwnCountClean runtime leaks message.sender before)
@@ -251,13 +253,15 @@ theorem pending_binding_receipt_iff_timely_epoch {length : Nat} (cycles : Nat)
     (message.id, true) ∈ final.receipts ↔
       ∃ epoch, tape.nextProcessingEpoch (sentCycle + 1) = some epoch ∧ epoch < cycles ∧
         epoch - entered < runtime.deadline event := by
+  have named : message.payload.packet.call.event? graph = some event := by
+    cases certificate <;> simp_all only [Payload.event?]
   constructor
   · intro accepted
     obtain ⟨epoch, selected, within, timely⟩ :=
-      pending_binding_receipt_requires_timely_epoch runtime leaks
+      pending_receipt_requires_timely_epoch runtime leaks
         (submissionBudget (Player := Player) cycles) tape players plan inputs
         (horizon (graph := graph) cycles) remaining before final trace sentCycle slot cursor
-          afterProcessing message pending event candidate call request entered stamp reached
+          afterProcessing message pending event named request entered stamp reached
             accepted
     have running : epoch < cycles := by
       change epoch * cycleWidth (graph := graph) (submissionBudget (Player := Player) cycles) <
@@ -286,8 +290,102 @@ theorem pending_binding_receipt_iff_timely_epoch {length : Nat} (cycles : Nat)
       exact (Nat.sub_le_sub_right (by omega : sentCycle ≤ epoch) entered).trans_lt inTime
     exact receipt_at_processing_boundary runtime leaks cycles tape players plan ordered inputs
       remaining sentCycle slot epoch before final trace orderedBefore cursor afterProcessing quiet
-        (by omega) running spec.2.1 clock message pending event (.binding candidate call) entered
+        (by omega) running spec.2.1 clock message pending event certificate entered
           request stamp timely inTime clean covered reached
+
+/-- A literal current SEND at a real owner callback has the exact finite
+timely-epoch receipt bit. All cursor, packet, namespace and entered-stamp
+facts are derived after that actual response. The certificate covers both
+bindings and truthful openings, including a semantically rejected guard. -/
+theorem current_response_receipt_iff {length : Nat} (cycles : Nat)
+    (tape : Tape Player length) (players : Player → (app).Policy)
+    (plan : RuntimePhasePlan graph) (ordered : graph.RevealRelaxedOrdered)
+    (inputs : PMF graph.Inputs) (remaining : Nat) (owner : Player)
+    (execution : (app).Execution)
+    (trace : ((app).protocol (inputs.map (PhaseRuntimeState.initial plan))
+      (horizon (graph := graph) cycles)
+      (family runtime leaks (submissionBudget (Player := Player) cycles) tape)).Trace
+        (some ⟨remaining, some owner, execution⟩))
+    (event : graph.EventId) (entered : Nat)
+    (request : execution.application.SeedRequest owner ⟨execution.application.attempt, event⟩)
+    (stamp : execution.application.current.native.activatedAt event = some entered)
+    (material : WitnessedSubmission graph)
+    (certificate : ReadyCall execution.application material.call.packet event)
+    (clean : PhaseCount.OwnCountClean runtime leaks owner execution)
+    (permitted : PhaseCount.OnePacketResponse runtime leaks owner (execution.recall owner)
+      (execution.observe app owner) ⟨some material⟩)
+    (covered : ∀ past view action, action ∈ (players owner past view).support →
+      action.transmission = none ∨
+        PhaseCount.OnePacketResponse runtime leaks owner past view action) :
+    let after := execution.respond app owner ⟨some material⟩
+    let message : Message Player (app).Payload :=
+      ⟨(owner, execution.network.nextSerial owner),
+        (app).packet ((app).submit execution.application owner material) owner
+          (execution.network.known owner) material⟩
+    ∀ final ∈ ((app).runRounds
+        (family runtime leaks (submissionBudget (Player := Player) cycles) tape)
+          players remaining after).support,
+      ((message.id, true) ∈ final.receipts ↔
+        ∃ epoch, tape.nextProcessingEpoch (execution.environmentRecall.length /
+            cycleWidth (graph := graph) (submissionBudget (Player := Player) cycles) + 1) =
+          some epoch ∧ epoch < cycles ∧ epoch - entered < runtime.deadline event) := by
+  intro after message final reached
+  let bound := horizon (graph := graph) cycles
+  let budget := submissionBudget (Player := Player) cycles
+  let scheduler := family runtime leaks budget tape
+  let initial := inputs.map (PhaseRuntimeState.initial plan)
+  obtain ⟨afterTrace⟩ := (app).raw_trace_respond initial bound scheduler remaining execution
+    owner ⟨some material⟩ trace
+  have afterProcessing := active_after_processing runtime leaks budget tape
+    initial bound ⟨remaining, some owner, execution⟩ trace owner rfl
+  let sentCycle := execution.environmentRecall.length / cycleWidth (graph := graph) budget
+  let slot := execution.environmentRecall.length % cycleWidth (graph := graph) budget
+  have cursor : after.environmentRecall.length =
+      sentCycle * cycleWidth (graph := graph) budget + slot := by
+    have decomposition := Nat.mod_add_div execution.environmentRecall.length
+      (cycleWidth (graph := graph) budget)
+    rw [Nat.mul_comm (cycleWidth (graph := graph) budget)] at decomposition
+    change execution.environmentRecall.length =
+      execution.environmentRecall.length / cycleWidth (graph := graph) budget *
+        cycleWidth (graph := graph) budget +
+          execution.environmentRecall.length % cycleWidth (graph := graph) budget
+    omega
+  have clock := clock_history runtime leaks budget tape plan inputs bound
+    ⟨remaining, none, after⟩ afterTrace
+  have afterRequest := respond_request runtime leaks execution owner ⟨some material⟩ owner
+    ⟨execution.application.attempt, event⟩ request
+  have pending : message ∈ after.network.pending :=
+    List.mem_append_right _ (List.mem_singleton_self _)
+  have call : message.payload.packet.call = material.call.packet := by
+    change (PhaseRuntimeState.emit (execution.application.submit owner material) owner
+      (execution.network.known owner) material).packet.call = _
+    rw [phase_emit_call]
+  have address : message.payload.attempt = execution.application.attempt := rfl
+  have authored : message.sender = owner := rfl
+  have requestMessage : after.application.SeedRequest message.sender
+      ⟨message.payload.attempt, event⟩ := by
+    simpa only [address, authored] using afterRequest
+  obtain ⟨_draw, valid⟩ :=
+    phaseNativeInvariant_history runtime leaks plan inputs bound scheduler trace
+  have afterStamp : after.application.current.native.activatedAt event = some entered :=
+    (execution.application.submit_progress owner material valid.active).activated event entered
+      stamp afterRequest.2.2.1.1
+  have orderedBefore := (phaseApplication_seedOrder runtime leaks).history initial bound scheduler
+    (fun state positive => by
+      obtain ⟨draw, _positive, rfl⟩ := PMF.support_map .. ▸ positive
+      exact PhaseRuntimeState.initial_ordered plan draw) trace
+  have afterCertificate := ReadyCall.respond runtime leaks execution owner ⟨some material⟩
+    orderedBefore rfl material.call.packet event certificate
+  have packetCertificate : ReadyCall after.application message.payload.packet.call event := by
+    rw [call]
+    exact afterCertificate
+  have afterClean := PhaseCount.ownCountClean_respond runtime leaks owner owner execution
+    ⟨some material⟩ clean (fun _ => Or.inr permitted)
+  exact pending_receipt_iff_timely_epoch runtime leaks cycles tape players plan ordered inputs
+    remaining sentCycle slot after final afterTrace cursor afterProcessing clock message pending
+      event packetCertificate requestMessage entered afterStamp
+        (by simpa only [authored] using afterClean)
+          (by simpa only [authored] using covered) reached
 
 /-- A real player decision followed by its literal current response supplies
 the processing-side cursor and clock facts internally. Old pending envelopes
@@ -304,8 +402,7 @@ theorem old_pending_response_receipt_iff {length : Nat} (cycles : Nat)
     (response : (app).Action)
     (message : Message Player (CommitAttemptPacket graph))
     (pending : message ∈ execution.network.pending) (event : graph.EventId)
-    (candidate : Handle graph)
-    (call : message.payload.packet.call = .commitment event candidate)
+    (certificate : ReadyCall execution.application message.payload.packet.call event)
     (request : execution.application.SeedRequest message.sender ⟨message.payload.attempt, event⟩)
     (entered : Nat)
     (stamp : execution.application.current.native.activatedAt event = some entered) :
@@ -354,10 +451,19 @@ theorem old_pending_response_receipt_iff {length : Nat} (cycles : Nat)
           event entered stamp afterRequest.2.2.1.1
   have afterPending : message ∈ after.network.pending :=
     (app).respond_pending_mono execution acting response pending
-  have law := pending_binding_receipt_iff_timely_epoch runtime leaks cycles tape players plan
+  have orderedBefore := (phaseApplication_seedOrder runtime leaks).history initial
+    (horizon (graph := graph) cycles) scheduler (fun state positive => by
+      obtain ⟨input, _positive, rfl⟩ := PMF.support_map .. ▸ positive
+      exact PhaseRuntimeState.initial_ordered plan input) trace
+  have sameAttempt : execution.application.attempt = after.application.attempt := by
+    rcases response with ⟨transmission⟩
+    cases transmission <;> rfl
+  have afterCertificate := ReadyCall.respond runtime leaks execution acting response orderedBefore
+    sameAttempt message.payload.packet.call event certificate
+  have law := pending_receipt_iff_timely_epoch runtime leaks cycles tape players plan
     ordered
     inputs remaining sentCycle slot after final afterTrace cursor afterProcessing clock message
-      afterPending event candidate call afterRequest entered afterStamp clean covered reached
+      afterPending event afterCertificate afterRequest entered afterStamp clean covered reached
   constructor
   · intro accepted
     obtain ⟨actual, actualEpoch, _within, timely⟩ := law.mp accepted
@@ -367,7 +473,7 @@ theorem old_pending_response_receipt_iff {length : Nat} (cycles : Nat)
     exact law.mpr ⟨epoch, selected, running, timely⟩
 
 /-- Two actual current responses cannot change the accepting bit of an
-already pending binding. This compares their real continuations under the
+already pending certified event packet. This compares their real continuations under the
 same reserved tape, with no supplied counterpart receipt or payoff equality. -/
 theorem old_pending_response_receipts_congr {length : Nat} (cycles : Nat)
     (tape : Tape Player length) (leftPlayers rightPlayers : Player → (app).Policy)
@@ -381,8 +487,7 @@ theorem old_pending_response_receipts_congr {length : Nat} (cycles : Nat)
     (leftResponse rightResponse : (app).Action)
     (message : Message Player (CommitAttemptPacket graph))
     (pending : message ∈ execution.network.pending) (event : graph.EventId)
-    (candidate : Handle graph)
-    (call : message.payload.packet.call = .commitment event candidate)
+    (certificate : ReadyCall execution.application message.payload.packet.call event)
     (request : execution.application.SeedRequest message.sender ⟨message.payload.attempt, event⟩)
     (entered : Nat) (stamp : execution.application.current.native.activatedAt event = some entered)
     (epoch : Nat)
@@ -408,14 +513,14 @@ theorem old_pending_response_receipts_congr {length : Nat} (cycles : Nat)
         remaining (execution.respond app acting rightResponse)).support) :
     ((message.id, true) ∈ left.receipts ↔ (message.id, true) ∈ right.receipts) := by
   have first := old_pending_response_receipt_iff runtime leaks cycles tape leftPlayers plan ordered
-    inputs remaining acting execution trace leftResponse message pending event candidate call
+    inputs remaining acting execution trace leftResponse message pending event certificate
       request entered stamp epoch selected running leftClean leftCovered left leftReached
   have second := old_pending_response_receipt_iff runtime leaks cycles tape rightPlayers plan
-    ordered inputs remaining acting execution trace rightResponse message pending event candidate
-      call request entered stamp epoch selected running rightClean rightCovered right rightReached
+    ordered inputs remaining acting execution trace rightResponse message pending event certificate
+      request entered stamp epoch selected running rightClean rightCovered right rightReached
   exact first.trans second.symm
 
-/-- All indexed old pending bindings have one joint deterministic receipt
+/-- All indexed old pending certified packets have one joint deterministic receipt
 word conditional on the service tape. Ordinary private draws need not be
 independent; each bit follows from the actual physical acceptance theorem. -/
 theorem old_pending_response_joint_receipt_law {Index : Type} {length : Nat}
@@ -429,10 +534,10 @@ theorem old_pending_response_joint_receipt_law {Index : Type} {length : Nat}
         (some ⟨remaining, some acting, execution⟩))
     (response : (app).Action)
     (messages : Index → Message Player (CommitAttemptPacket graph))
-    (events : Index → graph.EventId) (candidates : Index → Handle graph) (entered : Index → Nat)
+    (events : Index → graph.EventId) (entered : Index → Nat)
     (pending : ∀ index, messages index ∈ execution.network.pending)
-    (calls : ∀ index, (messages index).payload.packet.call =
-      .commitment (events index) (candidates index))
+    (certificates : ∀ index, ReadyCall execution.application
+      (messages index).payload.packet.call (events index))
     (requests : ∀ index, execution.application.SeedRequest (messages index).sender
       ⟨(messages index).payload.attempt, events index⟩)
     (stamps : ∀ index, execution.application.current.native.activatedAt (events index) =
@@ -460,7 +565,7 @@ theorem old_pending_response_joint_receipt_law {Index : Type} {length : Nat}
       funext index
       exact decide_eq_decide.mpr (old_pending_response_receipt_iff runtime leaks cycles tape
         players plan ordered inputs remaining acting execution trace response (messages index)
-          (pending index) (events index) (candidates index) (calls index) (requests index)
+          (pending index) (events index) (certificates index) (requests index)
             (entered index) (stamps index) epoch selected running (clean index) (covered index)
               final supported)
     _ = _ := PMF.map_const _ _

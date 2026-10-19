@@ -1,12 +1,13 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
+import Vegas.Pending.PhaseAttemptControls
 import Vegas.Pending.PhaseExclusionRecord
 import Vegas.Pending.EventValueSwap
 import Vegas.Pending.PhaseRetryCompletion
 import Interaction.ReactiveRecall
 import GameTheoryExtensions.Analysis.Protocol.StoppedHistoryAtom
 
-/-! # Genuine owner expiry inside an installed commitment attempt -/
+/-! # Actual first owner exclusion inside an installed runtime phase -/
 
 noncomputable section
 
@@ -121,22 +122,92 @@ theorem environment_new_exclusion_request (runtime : EventGraphRuntime graph)
 
 end PhaseRuntimeState
 
-/-- A commitment attempt can newly exclude an owner only at a genuine ready
-request of that owner. Packet inclusion, preparation and bookkeeping cannot
-create such an exclusion, even when another owner was already excluded. -/
-theorem phaseApplication_commitment_exclusionRequest (runtime : EventGraphRuntime graph)
+/-- A newly excluded owner at an accepted opening was its actual ready
+sender. The physical handler and phase admission supply the original event. -/
+theorem PhaseRuntimeState.handle_new_exclusion_request (runtime : EventGraphRuntime graph)
+    (state next : PhaseRuntimeState graph) (phase : RuntimePhase graph)
+    (installed : phase ∈ state.phases.head?)
+    (message : Message Player (CommitAttemptPacket graph))
+    (handled : state.handle runtime message = some next)
+    (owner : Player) (active : owner ∉ state.current.excluded)
+    (excluded : owner ∈ next.current.excluded) :
+    ∃ (event : graph.EventId) (candidate : Handle graph) (value : Raw L)
+      (native : State graph), event ∈ phase.events ∧
+      state.SeedRequest owner ⟨state.attempt, event⟩ ∧
+      message.payload.packet.call = .opening event candidate value ∧
+      EventGraphRuntime.handle runtime state.current.native
+        ⟨message.id, message.payload.packet.call⟩ = some native ∧
+      RecoveryState.publicationFailed native event = true := by
+  unfold PhaseRuntimeState.handle at handled
+  split at handled
+  · rename_i permitted
+    obtain ⟨native, accepted, rfl⟩ := Option.map_eq_some_iff.mp handled
+    change owner ∈ (PhaseRuntimeState.settle state.phases state.generation state.entry
+      (state.current.inclusionResult message.payload.packet.call native)
+      state.retired).current.excluded at excluded
+    rw [(PhaseRuntimeState.settle_physical _ _ _ _ _).1] at excluded
+    cases call : message.payload.packet.call with
+    | malformed raw =>
+        rw [call] at excluded
+        exact (active excluded).elim
+    | commitment event candidate =>
+        rw [call] at excluded
+        exact (active excluded).elim
+    | opening event candidate raw =>
+        rw [call] at excluded
+        change owner ∈ (if RecoveryState.publicationFailed native event then
+          RecoveryState.excludeEvent state.current.excluded event else state.current.excluded)
+          at excluded
+        split at excluded
+        · rename_i failed
+          have acting : graph.actor? event = some owner := by
+            unfold RecoveryState.excludeEvent at excluded
+            cases actor : graph.actor? event with
+            | none =>
+                simp only [actor] at excluded
+                exact (active excluded).elim
+            | some actual =>
+                simp only [actor] at excluded
+                rcases Finset.mem_insert.mp excluded with same | old
+                · exact congrArg some same.symm
+                · exact (active old).elim
+          have allowed := (Bool.and_eq_true_iff.mp (Bool.and_eq_true_iff.mp permitted).1).2
+          obtain ⟨actualPhase, present, actualEvent, named, inside⟩ :=
+            state.allows_event message.payload.packet.call allowed
+          have samePhase : actualPhase = phase := Option.some.inj
+            ((Option.mem_def.mp present).symm.trans (Option.mem_def.mp installed))
+          have sameEvent : actualEvent = event := Option.some.inj (by
+            simpa only [call, Payload.event?] using named.symm)
+          subst actualPhase
+          subst actualEvent
+          obtain ⟨actual, addressed, ready, action, supported⟩ :=
+            handle_config_mem_step runtime state.current.native native
+              ⟨message.id, message.payload.packet.call⟩ accepted
+          have same : actual = event := Option.some.inj (by
+            simpa only [call, Payload.event?] using addressed.symm)
+          subst actual
+          exact ⟨event, candidate, raw, native, inside,
+            ⟨rfl, ⟨phase, installed, inside⟩, ready, acting, active⟩, rfl,
+            by simpa only [call] using accepted, failed⟩
+        · exact (active excluded).elim
+  · cases handled
+
+/-- Every actual new exclusion belongs to a ready owned event in the
+installed phase, including TRUE opening receipts whose guards reject. -/
+theorem phaseApplication_exclusionRequest (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket graph)) :
     (phaseApplication runtime leaks).StepRelation (fun before after =>
-      ∀ phase ∈ before.phases.head?, phase.kind = .commitment → ∀ owner,
+      ∀ phase ∈ before.phases.head?, ∀ owner,
         owner ∉ before.current.excluded → owner ∈ after.current.excluded →
           ∃ event ∈ phase.events, before.SeedRequest owner ⟨before.attempt, event⟩) where
-  refl _ _ _ _ _ active excluded := (active excluded).elim
-  submit _ _ _ _ _ _ _ active excluded := (active excluded).elim
-  handle before message after accepted phase installed kind owner active excluded := by
-    have same := PhaseRuntimeState.handle_commitment_phase_excluded runtime before after phase
-      installed kind message accepted
-    exact (active (same ▸ excluded)).elim
-  environment before command after reached phase installed _kind owner active excluded := by
+  refl _ _ _ _ active excluded := (active excluded).elim
+  submit _ _ _ _ _ _ active excluded := (active excluded).elim
+  handle before message after accepted phase installed owner active excluded := by
+    obtain ⟨event, _candidate, _value, _native, inside, request, _call, _handled, _failed⟩ :=
+      before.handle_new_exclusion_request runtime after phase installed message accepted owner
+        active excluded
+    exact ⟨event, inside, request⟩
+  environment before command after reached phase installed owner active excluded := by
     obtain ⟨event, _native, _command, inside, request, _step, _completed, _normalized⟩ :=
       PhaseRuntimeState.environment_new_exclusion_request runtime before after phase installed
         command reached owner active excluded
@@ -166,7 +237,6 @@ theorem phase_attempt_stopped_exclusion_origin
     (profile : ∀ who, (N).BehavioralPolicy who)
     (start : (app).Control) (trace : (E).Trace (some start))
     (phase : RuntimePhase graph) (installed : phase ∈ start.execution.application.phases.head?)
-    (commitment : phase.kind = .commitment)
     (owner : Player) (active : owner ∉ start.execution.application.current.excluded) :
     let stopped := fun history : (E).History => match history.state with
       | none => False
@@ -240,8 +310,8 @@ theorem phase_attempt_stopped_exclusion_origin
         scheduler initialized (some middle) (some next) joint middleOrdered moved
       refine ⟨next, rfl, nextOrdered, ?_, ?_⟩
       · intro sameNext
-        exact ((phaseApplication_sameAttempt_phases runtime leaks).transition initial horizon
-          scheduler middle next joint moved middleOrdered (same.trans sameNext.symm)).trans
+        exact ((phaseApplication_sameAttempt_controls runtime leaks).transition initial horizon
+          scheduler middle next joint moved middleOrdered (same.trans sameNext.symm)).1.trans
             (phasesKept same)
       · intro newExcluded
         by_cases old : owner ∈ middle.execution.application.current.excluded
@@ -253,8 +323,8 @@ theorem phase_attempt_stopped_exclusion_origin
         · have installedNow : phase ∈ middle.execution.application.phases.head? := by
             simpa only [phasesKept same] using installed
           obtain ⟨event, inside, request⟩ :=
-            (phaseApplication_commitment_exclusionRequest runtime leaks).transition initial horizon
-              scheduler middle next joint moved phase installedNow commitment owner old newExcluded
+            (phaseApplication_exclusionRequest runtime leaks).transition initial horizon
+              scheduler middle next joint moved phase installedNow owner old newExcluded
           exact ⟨middle, next, earlier, joint, legal, moved, event, kept, .refl, same,
             installedNow, old, newExcluded, inside, by simpa only [same] using request⟩
   have retained := (N).runBehavioralUntil_support_prefix

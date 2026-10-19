@@ -20,7 +20,7 @@ local notation "app" => phaseApplication runtime leaks
 
 /-- The real primitive underlying a closing image preserves every already
 completed public failure verdict before any normalization or retry. -/
-private theorem primitive_publicFailureExtension (before after : (app).Execution)
+theorem phaseClosingEffect_publicFailureExtension (before after : (app).Execution)
     (raw : RecoveryState graph) (effect : PhaseClosingEffect runtime leaks before after raw) :
     before.application.current.native.PublicFailureExtension raw.native := by
   rcases effect with included | applied
@@ -63,7 +63,8 @@ theorem original_binding_publicFailure_iff (ordered : graph.RevealRelaxedOrdered
   change before.execution.application.entry.native.PublicFailureExtension
     before.execution.application.current.native at checkpoint
   have preserved := (checkpoint.trans
-    (primitive_publicFailureExtension runtime leaks before.execution after raw effect)).trans
+    (phaseClosingEffect_publicFailureExtension runtime leaks before.execution after raw
+      effect)).trans
       (phase.drain_publicFailureExtension raw)
   by_cases earlier : event.val < phase.low
   · simp only [earlier, ↓reduceIte]

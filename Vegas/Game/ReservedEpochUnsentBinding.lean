@@ -103,62 +103,25 @@ theorem phaseProposalUnflagged_unsent_binding_receipt
   refine ⟨material, value, serial, rfl, prepared, call, ?_⟩
   intro message final reached
   have raw := (menu).toRawTrace initial horizon scheduler trace
-  obtain ⟨afterTrace⟩ := (app).raw_trace_respond initial horizon scheduler remaining execution
-    owner ⟨some material⟩ raw
-  have afterProcessing := ReservedEpoch.active_after_processing runtime leaks budget tape
-    initial horizon ⟨remaining, some owner, execution⟩ raw owner rfl
-  let sentCycle := execution.environmentRecall.length / ReservedEpoch.cycleWidth
-    («graph» := graph) budget
-  let slot := execution.environmentRecall.length %
-    ReservedEpoch.cycleWidth («graph» := graph) budget
-  have cursor : after.environmentRecall.length =
-      sentCycle * ReservedEpoch.cycleWidth («graph» := graph) budget + slot := by
-    have decomposition := Nat.mod_add_div execution.environmentRecall.length
-      (ReservedEpoch.cycleWidth («graph» := graph) budget)
-    rw [Nat.mul_comm (ReservedEpoch.cycleWidth («graph» := graph) budget)] at decomposition
-    change execution.environmentRecall.length =
-      execution.environmentRecall.length / ReservedEpoch.cycleWidth («graph» := graph) budget *
-        ReservedEpoch.cycleWidth («graph» := graph) budget +
-          execution.environmentRecall.length % ReservedEpoch.cycleWidth («graph» := graph) budget
-    omega
-  have clock := ReservedEpoch.clock_history runtime leaks budget tape plan inputs horizon
-    ⟨remaining, none, after⟩ afterTrace
-  have afterRequest := respond_request runtime leaks execution owner ⟨some material⟩ owner
-    ⟨execution.application.attempt, event⟩ request
-  have pending : message ∈ after.network.pending :=
-    List.mem_append_right _ (List.mem_singleton_self _)
-  have named : message.payload.packet.call = .commitment event (owner, .prepared serial) := by
-    change (PhaseRuntimeState.emit (execution.application.submit owner material) owner
-      (execution.network.known owner) material).packet.call = _
-    rw [phase_emit_call, call]
-  have address : message.payload.attempt = execution.application.attempt := rfl
-  have ownerEq : message.sender = owner := rfl
-  have requestMessage : after.application.SeedRequest message.sender
-      ⟨message.payload.attempt, event⟩ := by simpa only [address, ownerEq] using afterRequest
-  obtain ⟨draw, valid⟩ :=
-    phaseNativeInvariant_history runtime leaks plan inputs horizon scheduler raw
-  have afterStamp : after.application.current.native.activatedAt event = some entered :=
-    (execution.application.submit_progress owner material valid.active).activated event entered
-      stamp afterRequest.2.2.1.1
   have clean := (PhaseCount.onePacketMenu_countClean runtime leaks bounds scheduler).history
     initial horizon (fun state _ => PhaseCount.countClean_initial runtime leaks state) trace
   have ownClean : PhaseCount.OwnCountClean runtime leaks owner execution :=
     ⟨clean.1, fun packet member _ => clean.2 packet member⟩
   have allowed := ((PhaseCount.mem_onePacketActions runtime leaks bounds owner _ _ _).mp offered).2
-  have afterClean := PhaseCount.ownCountClean_respond runtime leaks owner owner execution
-    ⟨some material⟩ ownClean (fun _ => allowed)
-  have futureCovered : ∀ past view action, action ∈ (players message.sender past view).support →
+  have permitted : PhaseCount.OnePacketResponse runtime leaks owner (execution.recall owner)
+      (execution.observe app owner) ⟨some material⟩ := by
+    rcases allowed with impossible | counted
+    · cases impossible
+    · exact counted
+  have futureCovered : ∀ past view action, action ∈ (players owner past view).support →
       action.transmission = none ∨
-        PhaseCount.OnePacketResponse runtime leaks message.sender past view action := by
+        PhaseCount.OnePacketResponse runtime leaks owner past view action := by
     intro past view action chosen
-    exact ((PhaseCount.mem_onePacketActions runtime leaks bounds message.sender past view action).mp
-      (phaseProposalUnflaggedPolicy_covered setup mode runtime leaks bounds plan values
-        message.sender past view action chosen)).2
-  have law := ReservedEpoch.pending_binding_receipt_iff_timely_epoch runtime leaks cycles tape
-    players plan ordered inputs remaining sentCycle slot after final afterTrace cursor
-      afterProcessing
-      clock message pending event (owner, .prepared serial) named requestMessage entered afterStamp
-        (by simpa only [ownerEq] using afterClean) futureCovered reached
-  exact law
+    exact ((PhaseCount.mem_onePacketActions runtime leaks bounds owner past view action).mp
+      (phaseProposalUnflaggedPolicy_covered setup mode runtime leaks bounds plan values owner
+        past view action chosen)).2
+  exact ReservedEpoch.current_response_receipt_iff runtime leaks cycles tape players plan ordered
+    inputs remaining owner execution raw event entered request stamp material (.binding _ call)
+      ownClean permitted futureCovered final reached
 
 end Vegas

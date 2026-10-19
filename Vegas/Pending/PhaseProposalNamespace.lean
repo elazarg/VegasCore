@@ -1,5 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
+import Vegas.Pending.PhaseAttemptControls
 import Vegas.Pending.PhaseProposalOrigin
 import Vegas.Pending.PhaseRetryCompletion
 
@@ -126,8 +127,8 @@ theorem public_prefix_same_attempt
           scheduler middle next joint realized ordered (middlePhases.symm ▸ publicPhase)
             (middlePhase.symm.trans finalSame)
         exact ⟨middleSame.trans finalStep,
-          ((phaseApplication_sameAttempt_phases runtime leaks).transition initial horizon
-            scheduler middle next joint realized ordered finalStep).trans middlePhases⟩
+          ((phaseApplication_sameAttempt_controls runtime leaks).transition initial horizon
+            scheduler middle next joint realized ordered finalStep).1.trans middlePhases⟩
   obtain ⟨next, equality, result⟩ := along retained
   cases Option.some.inj equality
   exact (result same).1
