@@ -1384,3 +1384,16 @@ import Vegas.Game.PhaseProposalObservableDebt
 import Vegas.Game.PhaseProposalObservableDebtPayoff
 import Vegas.Game.ReservedEpochRetiredReceipt
 import Vegas.Game.ReservedEpochStoppedTapeWord
+import Vegas.Game.PhaseProposalBindingKernel
+import Vegas.Game.PhaseProposalBindingWord
+import Vegas.Game.PhaseProposalBindingEmission
+import Vegas.Game.PhaseProposalBindingAutomatic
+import Vegas.Game.PhaseProposalBindingSettlement
+import Vegas.Game.PhaseProposalBindingPending
+import Vegas.Game.PhaseProposalEmissionFrontier
+import Vegas.Game.PhaseProposalEmissionOrigin
+import Vegas.Game.PhaseProposalEmissionRecords
+import Vegas.Game.PhaseProposalBindingFrontierReady
+import Vegas.Game.PhaseProposalEmissionResponse
+import Vegas.Game.PhaseProposalBindingResponse
+import Vegas.Game.PhaseProposalBindingPhaseLaw

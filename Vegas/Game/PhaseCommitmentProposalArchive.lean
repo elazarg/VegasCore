@@ -1,10 +1,11 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.PhaseProposalSourceArchive
+import Vegas.Game.PhaseCountServiceForeignWord
 import Vegas.Pending.PhaseBindingIdleMenu
 import Vegas.Pending.PhaseBindingMenuShape
 import Vegas.Pending.PhaseCommitmentExclusionOrigin
-import GameTheoryExtensions.Analysis.Protocol.StoppedHistoryInvariant
+import GameTheoryExtensions.Analysis.Protocol.StoppedHistoryAtom
 
 /-! # An opaque commitment attempt preserves every old opening proposal -/
 
@@ -44,16 +45,13 @@ private theorem commitment_response_archive (execution : (app).Execution) (who :
   unfold sourceArchive
   rw [raw]
 
-/-- No counted callback can emit an opening while its original commitment
-descriptor is installed. The existing stopped evaluator therefore retains the
-ENTIRE typed proposal archive at its first namespace exit, including previously
-failed or negative-receipt disclosures. No publication plaintext is erased. -/
-theorem phase_attempt_stopped_sourceArchive
+/-- Every actual prefix through the original opaque attempt retains the
+complete proposal archive. The last transition may close the attempt; its
+proper prefixes still have the original namespace. -/
+theorem phase_commitment_prefix_sourceArchive
     (bounds : MessageBounds graph) (plan : RuntimePhasePlan graph)
     (ordered : graph.RevealRelaxedOrdered) (inputs : PMF graph.Inputs)
     (horizon : Nat) (scheduler : (app).Scheduler)
-    (profile : ∀ who, ((PhaseCount.onePacketMenu runtime leaks bounds).information
-      (inputs.map (PhaseRuntimeState.initial plan)) horizon scheduler).BehavioralPolicy who)
     (start : (app).Control)
     (trace : ((PhaseCount.onePacketMenu runtime leaks bounds).protocol
       (inputs.map (PhaseRuntimeState.initial plan)) horizon scheduler).Trace (some start))
@@ -61,72 +59,57 @@ theorem phase_attempt_stopped_sourceArchive
     (commitment : phase.kind = .commitment) :
     let menu := PhaseCount.onePacketMenu runtime leaks bounds
     let initial := inputs.map (PhaseRuntimeState.initial plan)
-    let stopped := fun history : (menu.protocol initial horizon scheduler).History =>
-      match history.state with
-      | none => False
-      | some control => control.execution.application.attempt ≠ start.execution.application.attempt
-    ∀ final ∈ ((menu.information initial horizon scheduler).runBehavioralUntil
-        (menu.bounded initial horizon scheduler).wellFoundedHistories profile stopped
-          ⟨some start, trace⟩).support,
-      ∃ ending : (app).Control, final.state = some ending ∧
+    ∀ {target} (last : (menu.protocol initial horizon scheduler).Trace target),
+      TracePrefix trace last →
+      (∀ (middle : (app).Control)
+        (prior : (menu.protocol initial horizon scheduler).Trace (some middle)),
+        TracePrefix trace prior → TracePrefix prior last → prior.length < last.length →
+          middle.execution.application.attempt = start.execution.application.attempt) →
+      ∃ ending : (app).Control, target = some ending ∧
         sourceArchive ending.execution.network.inputs =
           sourceArchive start.execution.network.inputs := by
   classical
-  intro menu initial stopped
+  intro menu initial
   let E := menu.protocol initial horizon scheduler
-  let model := menu.information initial horizon scheduler
-  let property := fun history : E.History =>
-    ∃ current : (app).Control, history.state = some current ∧
-      current.execution.application.Ordered ∧
-      (current.execution.application.attempt = start.execution.application.attempt →
-        current.execution.application.phases = start.execution.application.phases) ∧
-      sourceArchive current.execution.network.inputs = sourceArchive start.execution.network.inputs
   have initialized : ∀ state ∈ initial.support, state.Ordered := by
     intro state positive
     obtain ⟨draw, _positive, rfl⟩ := PMF.support_map .. ▸ positive
     exact PhaseRuntimeState.initial_ordered plan draw
   have startOrdered := (phaseApplication_seedOrder runtime leaks).history initial horizon scheduler
     initialized (menu.toRawTrace initial horizon scheduler trace)
-  have holds : property ⟨some start, trace⟩ :=
-    ⟨start, rfl, startOrdered, fun _ => rfl, rfl⟩
-  have preserved : ∀ history, ¬ stopped history → ¬ E.terminal history.state →
-      property history → ∀ next ∈ (model.runBehavioralFrom profile 1 history).support,
-        property next := by
-    intro history going running valid next supported
-    obtain ⟨current, currentEq, currentOrdered, phasesKept, archiveEq⟩ := valid
-    have same : current.execution.application.attempt = start.execution.application.attempt := by
-      by_contra changed
-      exact going (by simp only [stopped, currentEq]; exact changed)
-    obtain ⟨⟨joint, legal, realized⟩, _later⟩ :=
-      model.mem_support_runBehavioralFrom_one profile running supported
-    have moved : next.state ∈ ((app).transition initial horizon scheduler
-        (some current) joint).support := by
-      change next.state ∈ ((app).transition initial horizon scheduler history.state joint).support
-        at realized
-      rwa [currentEq] at realized
-    obtain ⟨updated, nextEq, _recall⟩ := (app).transition_recall_prefix initial horizon scheduler
-      current next.state joint moved
-    have afterMoved : some updated ∈ ((app).transition initial horizon scheduler
-        (some current) joint).support := by rwa [nextEq] at moved
-    have nextOrdered := (phaseApplication_seedOrder runtime leaks).transition initial horizon
-      scheduler initialized (some current) (some updated) joint currentOrdered afterMoved
-    refine ⟨updated, nextEq, nextOrdered, ?_, ?_⟩
-    · intro sameNext
-      exact ((phaseApplication_sameAttempt_phases runtime leaks).transition initial horizon
-        scheduler current updated joint afterMoved currentOrdered (same.trans sameNext.symm)).trans
-          (phasesKept same)
-    · have installedNow : phase ∈ current.execution.application.phases.head? := by
-        simpa only [phasesKept same] using installed
-      have prior : E.Trace (some current) := currentEq ▸ history.trace
-      have legalNow : E.Legal (some current) joint := currentEq ▸ legal
+  intro target last kept
+  induction kept with
+  | refl => exact fun _ => ⟨start, rfl, rfl⟩
+  | @extend source target prior kept joint legal reached ih =>
+      intro scope
+      have earlierScope : ∀ (middle : (app).Control)
+          (prefixTrace : E.Trace (some middle)), TracePrefix trace prefixTrace →
+          TracePrefix prefixTrace prior → prefixTrace.length < prior.length →
+            middle.execution.application.attempt = start.execution.application.attempt := by
+        intro middle prefixTrace after before shorter
+        exact scope middle prefixTrace after (before.trans (.extend .refl joint legal reached))
+          (by simp only [Trace.length]; omega)
+      obtain ⟨current, rfl, archiveEq⟩ := ih earlierScope
+      have same := scope current prior kept (.extend .refl joint legal reached)
+        (by simp only [Trace.length]; omega)
+      have metadata := phase_attempt_metadata_of_prefix runtime leaks menu initial initialized
+        horizon scheduler start current trace prior kept startOrdered same.symm
+      have installedNow : phase ∈ current.execution.application.phases.head? := by
+        exact (congrArg (fun phases => phase ∈ phases.head?)
+          (congrArg Prod.fst metadata)).mp installed
+      have afterMoved : target ∈ ((app).transition initial horizon scheduler (some current)
+          joint).support := reached
+      obtain ⟨updated, rfl, _recall⟩ := (app).transition_recall_prefix initial horizon scheduler
+        current target joint afterMoved
+      refine ⟨updated, rfl, ?_⟩
       rcases current with ⟨remaining, actor, execution⟩
       cases actor with
       | some owner =>
           obtain ⟨response, chosen⟩ := LegalOption.exists_eq_some_of_active
-            (E := E) (joint owner) (E.legalOption_of_legal legalNow owner) rfl
+            (E := E) (joint owner) (E.legalOption_of_legal legal owner) rfl
           have offered : response ∈ PhaseCount.onePacketActions runtime leaks bounds owner
               (execution.recall owner) (execution.observe app owner) := by
-            have allowed := legalNow.2 owner
+            have allowed := legal.2 owner
             rw [chosen] at allowed
             exact allowed.2
           simp only [ReactiveApplication.transition, chosen, Option.getD_some] at afterMoved
@@ -168,11 +151,46 @@ theorem phase_attempt_stopped_sourceArchive
               have kept := sourceArchive_environmentStep runtime leaks execution after command
                 stepped
               exact kept.trans archiveEq
-  intro final supported
-  obtain ⟨ending, stateEq, _ordered, _phases, archiveEq⟩ :=
-    model.runBehavioralUntil_support_history_closed
-      (menu.bounded initial horizon scheduler).wellFoundedHistories profile stopped property
-        preserved ⟨some start, trace⟩ holds final supported
-  exact ⟨ending, stateEq, archiveEq⟩
+
+/-- No counted callback can emit an opening while its original commitment
+descriptor is installed. The existing stopped evaluator therefore retains the
+ENTIRE typed proposal archive at its first namespace exit, including previously
+failed or negative-receipt disclosures. No publication plaintext is erased. -/
+theorem phase_attempt_stopped_sourceArchive
+    (bounds : MessageBounds graph) (plan : RuntimePhasePlan graph)
+    (ordered : graph.RevealRelaxedOrdered) (inputs : PMF graph.Inputs)
+    (horizon : Nat) (scheduler : (app).Scheduler)
+    (profile : ∀ who, ((PhaseCount.onePacketMenu runtime leaks bounds).information
+      (inputs.map (PhaseRuntimeState.initial plan)) horizon scheduler).BehavioralPolicy who)
+    (start : (app).Control)
+    (trace : ((PhaseCount.onePacketMenu runtime leaks bounds).protocol
+      (inputs.map (PhaseRuntimeState.initial plan)) horizon scheduler).Trace (some start))
+    (phase : RuntimePhase graph) (installed : phase ∈ start.execution.application.phases.head?)
+    (commitment : phase.kind = .commitment) :
+    let menu := PhaseCount.onePacketMenu runtime leaks bounds
+    let initial := inputs.map (PhaseRuntimeState.initial plan)
+    let stopped := fun history : (menu.protocol initial horizon scheduler).History =>
+      match history.state with
+      | none => False
+      | some control => control.execution.application.attempt ≠ start.execution.application.attempt
+    ∀ final ∈ ((menu.information initial horizon scheduler).runBehavioralUntil
+        (menu.bounded initial horizon scheduler).wellFoundedHistories profile stopped
+          ⟨some start, trace⟩).support,
+      ∃ ending : (app).Control, final.state = some ending ∧
+        sourceArchive ending.execution.network.inputs =
+          sourceArchive start.execution.network.inputs := by
+  classical
+  intro menu initial stopped final supported
+  let model := menu.information initial horizon scheduler
+  have kept := model.runBehavioralUntil_support_prefix
+    (menu.bounded initial horizon scheduler).wellFoundedHistories profile stopped
+      ⟨some start, trace⟩ final supported
+  apply phase_commitment_prefix_sourceArchive runtime leaks bounds plan ordered inputs horizon
+    scheduler start trace phase installed commitment final.trace kept
+  intro middle prior after before shorter
+  have going := model.runBehavioralUntil_support_first
+    (menu.bounded initial horizon scheduler).wellFoundedHistories profile stopped
+      ⟨some start, trace⟩ final supported ⟨some middle, prior⟩ after before shorter
+  exact Classical.not_not.mp going
 
 end Vegas.EventGraphRuntime.PhaseProposal

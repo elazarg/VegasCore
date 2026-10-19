@@ -2739,3 +2739,11 @@ The [original pending tape bit](../Vegas/Game/ReservedEpochStoppedTapeWord.lean)
 is evaluated on the actual closing prefix; it retains the original timestamp,
 finite processing horizon and literal old packet identity. Its substitution
 into the original owned word does not supply the UNSENT or paired timing law.
+
+The [fresh binding phase law](../Vegas/Game/PhaseProposalBindingPhaseLaw.lean)
+derives its emission-frontier callback conditions on the same supported native
+run and retains the original full closing image. Its addressed word law uses
+the canonical continuation from that entry; literal source identification and
+conditional intermediate-information likelihood are separate adapters.
+The [auxiliary entry graph view](../Vegas/Game/PhaseProposalBindingKernel.lean)
+includes the actual entry pending identifiers without changing observations.

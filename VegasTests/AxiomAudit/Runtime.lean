@@ -4705,3 +4705,78 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.EventGraphRuntime.ReservedEpoch.stopped_pending_binding_receipt_iff_epoch
+
+/-- info: 'Vegas.phaseProposalBindingGraphView_archive' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseProposalBindingGraphView_archive
+
+/-- info: 'Vegas.phaseProposalBindingPotentialProfile_harmonic' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseProposalBindingPotentialProfile_harmonic
+
+/-- info: 'Vegas.phaseProposalUnflagged_binding_action_law' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseProposalUnflagged_binding_action_law
+
+/-- info: 'Vegas.phaseProposalUnflagged_binding_emission_harmonic' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseProposalUnflagged_binding_emission_harmonic
+
+/-- info: 'Vegas.phaseProposalUnflagged_binding_response_harmonic' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseProposalUnflagged_binding_response_harmonic
+
+/-- info: 'Vegas.phaseProposalEmissionFrontier_binding_step' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseProposalEmissionFrontier_binding_step
+
+/-- info: 'Vegas.phaseProposalBinding_completed_agreement' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseProposalBinding_completed_agreement
+
+/-- info: 'Vegas.phaseProposalBinding_settled_domain' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseProposalBinding_settled_domain
+
+/-- info: 'Vegas.phaseProposalEmissionFrontier_ready' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseProposalEmissionFrontier_ready
+
+/-- info: 'Vegas.phaseProposalEmissionFrontier_traceInvariant' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseProposalEmissionFrontier_traceInvariant
+
+/-- info: 'Vegas.phaseProposalEmissionFrontier_automatic_values' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseProposalEmissionFrontier_automatic_values
+
+/-- info: 'Vegas.phaseProposalEmissionFrontier_callback_frame' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseProposalEmissionFrontier_callback_frame
+
+/-- info: 'Vegas.phaseProposalUnflagged_stopped_potential_of_fresh_entry' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseProposalUnflagged_stopped_potential_of_fresh_entry
+
+/-- info: 'Vegas.phaseProposalUnflagged_stopped_binding_word' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseProposalUnflagged_stopped_binding_word
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseProposal.phase_commitment_prefix_sourceArchive' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.PhaseProposal.phase_commitment_prefix_sourceArchive

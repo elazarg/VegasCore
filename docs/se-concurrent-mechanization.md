@@ -204,7 +204,7 @@ quantifiers and a passing build. The labels below never enter Lean names.
 | Runtime | Complete proposal reconstruction and required fresh-slot reserve | Checked: actual full raw inputs reconstruct all submitted proposals, and the horizon reserve supplies fresh active slots; the counted execution fold identifies the same source archive; see the runtime evidence below |
 | Runtime | Supported concurrent instance with variable service orders | Checked: both orders have supported actual prefixes with distinct owners' typed, timely, handler-admissible packets pending together; see the fixture evidence below |
 | Transport | Genuine enriched native query, alias masses and full counted support | Checked: actual genuine enriched query, exact alias projection and full reference support on every original-law counted input, including earlier deviations |
-| Transport | Good-store likelihood transport, including failed proposals | Open |
+| Transport | Good-store likelihood transport, including failed proposals | Partial: actual fresh stopped phase-word law checked; conditional full-input likelihood and source identification remain open |
 | Transport | Uniform foreign-bad posterior bound and separate own-debt cases | Partial: uniform full-input foreign-bad posterior and observable saved-debt zero gain on entire information fibers checked; current cancelable-debt reset comparison remains open |
 | Transport | Publication timing dominance with actual early observations | Open |
 | Transport | Whole-policy binding/retry comparison with the same reset continuation | Open |
@@ -214,7 +214,7 @@ quantifiers and a passing build. The labels below never enter Lean names.
 
 Compact progress display: **Source 5/5 · Runtime 2/5 · Transport 1/6 · E2E 0/2**.
 Runtime frontier: pending-frontier tape bits substituted into the original all-owner word; UNSENT and paired exit law next.
-Transport frontier: uniform foreign-bad posterior and observable saved-debt zero gain checked; current-debt/reset and likelihood joins remain.
+Transport frontier: actual fresh phase-word law, uniform foreign-bad posterior and observable saved-debt zero gain checked; conditional likelihood, source identification and current-debt/reset joins remain.
 Update counts from checked statements and name the current bottleneck. Existing
 reusable proofs are dependencies, not new completed milestones.
 Current bottlenecks are the stopped service coupling, cross-world likelihood
@@ -460,7 +460,9 @@ and behavioral futures, using actual reserved-service phase exhaustion.
 The [ordinary draw](../Vegas/Game/PhaseProposalOrdinaryDraw.lean) and
 [emitted draw](../Vegas/Game/PhaseProposalEmittedDraw.lean) identify the actual
 current preparation PMF with the shared table on the SAME chosen source replay.
-Their finite completed-phase law remains open.
+The actual fresh stopped commitment-phase word law is checked below.
+Conditional likelihood at intermediate information fibers and identification
+with the chronological literal-source continuation remain open.
 
 The [repair trace inclusion](../Vegas/Pending/PhaseProposalShadowIncludeTrace.lean),
 [environment transport](../Vegas/Pending/PhaseProposalShadowEnvironment.lean)
@@ -524,3 +526,14 @@ extends the literal closed prefix using the existing behavioral evaluator.
 original attempt closure, with the original readiness stamp and finite epoch
 bound. The [retired receipt proof](../Vegas/Game/ReservedEpochRetiredReceipt.lean)
 rules out a later first accepting receipt after that namespace is retired.
+
+The [fresh commitment-phase law](../Vegas/Game/PhaseProposalBindingPhaseLaw.lean)
+proves `phaseProposalUnflagged_stopped_binding_word` for the actual anchored
+asynchronous stopped run. It derives the supported callback frames and returns
+the original closing trace and full drained recovery state, including its
+accepted table, permanent exclusions, saved entry and proposal archive. Its
+addressed binding-word projection has the frozen canonical continuation law.
+The [entry archive](../Vegas/Game/PhaseProposalBindingKernel.lean) refreshes
+pending identifiers only in the auxiliary potential; runtime observations are
+unchanged. Actual first-entry installation adapters, chronological source-law
+identification and the conditional skeleton likelihood are still required.
