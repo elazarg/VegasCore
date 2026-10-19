@@ -23,7 +23,7 @@ variable {Player : Type} [Fintype Player] [DecidableEq Player]
 local notation "app" => phaseApplication runtime leaks
 
 omit [Fintype Player] in
-private theorem prefix_accepting_receipt_boundary (menu : (app).ResponseMenu)
+theorem prefix_accepting_receipt_boundary (menu : (app).ResponseMenu)
     (initial : PMF (app).State) (horizon : Nat) (scheduler : (app).Scheduler)
     (start ending : (app).Control)
     (startTrace : (menu.protocol initial horizon scheduler).Trace (some start))
@@ -171,7 +171,7 @@ theorem original_snapshot_preserves_accepted (menu : (app).ResponseMenu)
       acceptedAt before acceptedTrace prior kept ordered same field candidate present)
 
 omit [Fintype Player] in
-private theorem input_mem_prefix (menu : (app).ResponseMenu)
+theorem input_mem_prefix (menu : (app).ResponseMenu)
     (initial : PMF (app).State) (horizon : Nat) (scheduler : (app).Scheduler)
     (before after : (app).Control)
     (prior : (menu.protocol initial horizon scheduler).Trace (some before))

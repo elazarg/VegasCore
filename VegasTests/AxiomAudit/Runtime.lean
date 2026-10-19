@@ -4610,3 +4610,98 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.phaseProposalUnflagged_stopped_owned_word
+
+/-- info: 'Vegas.phaseProposalObservedBindingFailure_observe' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseProposalObservedBindingFailure_observe
+
+/-- info: 'Vegas.phaseProposalObservedBindingFailure_withHistory' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseProposalObservedBindingFailure_withHistory
+
+/-- info: 'Vegas.phaseProposalSavedBindingFailure_iff_of_seed_request' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseProposalSavedBindingFailure_iff_of_seed_request
+
+/-- info: 'Vegas.phaseProposalCurrentBindingFailure_iff_of_restored_readback' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseProposalCurrentBindingFailure_iff_of_restored_readback
+
+/-- info: 'Vegas.phaseProposalCancelableBindingFailure_iff_of_readbacks' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseProposalCancelableBindingFailure_iff_of_readbacks
+
+/-- info: 'Vegas.RecoverySourceWitness.checkpointDebt_of_observed_saved_binding' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.RecoverySourceWitness.checkpointDebt_of_observed_saved_binding
+
+/-- info: 'Vegas.RecoverySourceWitness.observed_saved_binding_of_failed_cell' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.RecoverySourceWitness.observed_saved_binding_of_failed_cell
+
+/-- info: 'Vegas.phaseProposalSavedBindingFailure_checkpointDebt' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseProposalSavedBindingFailure_checkpointDebt
+
+/-- info: 'Vegas.phaseProposalCurrentBindingFailure_genuine' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseProposalCurrentBindingFailure_genuine
+
+/-- info: 'Vegas.phaseProposalCurrentBindingFailure_checkpointed_after_step' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseProposalCurrentBindingFailure_checkpointed_after_step
+
+/-- info: 'Vegas.phaseProposalSavedBindingFailure_information_history' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseProposalSavedBindingFailure_information_history
+
+/-- info: 'Vegas.phaseProposalSavedBindingFailure_information_terminal_payoff' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseProposalSavedBindingFailure_information_terminal_payoff
+
+/-- info: 'Vegas.phaseProposalSavedBindingFailure_historyGain_eq_zero' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseProposalSavedBindingFailure_historyGain_eq_zero
+
+/-- info: 'Vegas.phaseProposalSavedBindingFailure_gain_eq_zero' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseProposalSavedBindingFailure_gain_eq_zero
+
+/-- info: 'Vegas.EventGraphRuntime.ReservedEpoch.prefix_accepting_receipt_boundary' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.prefix_accepting_receipt_boundary
+
+/-- info: 'Vegas.EventGraphRuntime.ReservedEpoch.input_mem_prefix' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.input_mem_prefix
+
+/-- info: 'Vegas.EventGraphRuntime.ReservedEpoch.retired_binding_receipt_iff' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.retired_binding_receipt_iff
+
+/-- info: 'Vegas.stopped_prefix_roundsSupported' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.stopped_prefix_roundsSupported
+
+/-- info: 'Vegas.EventGraphRuntime.ReservedEpoch.stopped_pending_binding_receipt_iff_epoch' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.stopped_pending_binding_receipt_iff_epoch

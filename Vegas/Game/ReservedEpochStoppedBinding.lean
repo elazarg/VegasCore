@@ -19,7 +19,7 @@ open SourceProgram EventGraph EventGraphRuntime Interaction GameTheory.Protocol
 variable {Player : Type} [Fintype Player] [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
 
-private theorem stopped_prefix_roundsSupported
+theorem stopped_prefix_roundsSupported
     {app : ReactiveApplication Player} (menu : app.ResponseMenu)
     (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
     (profile : ∀ who, (menu.information initial horizon scheduler).BehavioralPolicy who)

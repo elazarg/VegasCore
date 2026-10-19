@@ -155,9 +155,17 @@ theorem phaseProposalUnflagged_unsent_binding_receipt
     exact ((PhaseCount.mem_onePacketActions runtime leaks bounds message.sender past view action).mp
       (phaseProposalUnflaggedPolicy_covered setup mode runtime leaks bounds plan values
         message.sender past view action chosen)).2
-  exact ReservedEpoch.pending_binding_receipt_iff_timely_epoch runtime leaks cycles tape players
-    plan ordered inputs remaining sentCycle slot epoch after final afterTrace cursor afterProcessing
-      selected running clock message pending event (owner, .prepared serial) named requestMessage
-        entered afterStamp (by simpa only [ownerEq] using afterClean) futureCovered reached
+  have law := ReservedEpoch.pending_binding_receipt_iff_timely_epoch runtime leaks cycles tape
+    players plan ordered inputs remaining sentCycle slot after final afterTrace cursor
+      afterProcessing
+      clock message pending event (owner, .prepared serial) named requestMessage entered afterStamp
+        (by simpa only [ownerEq] using afterClean) futureCovered reached
+  constructor
+  · intro accepted
+    obtain ⟨actual, actualEpoch, _within, timely⟩ := law.mp accepted
+    have equal : actual = epoch := Option.some.inj (actualEpoch.symm.trans selected)
+    simpa only [equal] using timely
+  · intro timely
+    exact law.mpr ⟨epoch, selected, running, timely⟩
 
 end Vegas

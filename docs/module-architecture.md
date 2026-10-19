@@ -2731,3 +2731,11 @@ Bayes mass at every full native decision fiber without a replacement prior.
 The [original owned acceptance word](../Vegas/Game/ReservedEpochStoppedWord.lean)
 retains the actual stopped phase image and full failure/address/archive data;
 it does not supply the paired all-owner timing law or the source likelihood law.
+
+The [observable saved-debt payoff](../Vegas/Game/PhaseProposalObservableDebtPayoff.lean)
+identifies known saved failure from the literal own view and proves zero
+conditional gain on the whole native information fiber for any belief.
+The [original pending tape bit](../Vegas/Game/ReservedEpochStoppedTapeWord.lean)
+is evaluated on the actual closing prefix; it retains the original timestamp,
+finite processing horizon and literal old packet identity. Its substitution
+into the original owned word does not supply the UNSENT or paired timing law.

@@ -200,12 +200,12 @@ quantifiers and a passing build. The labels below never enter Lean names.
 | Source | Enriched source SE extending the selected intended SE and joint law | Checked: all legal information sites, selected intended strategy and exact initialized full-history law; see the source evidence below |
 | Runtime | Concrete correlated, block-frozen reserved scheduler family | Partial: joint tape and exact scheduler-mixture realization checked; block service certification remains open |
 | Runtime | All-raw opportunity/receipt/completion, timely-valid acceptance and noncircular budgets | Partial: actual correlated-mixture AsyncContract, noncircular budgets, paired counted successor requests and protected fresh-successor receipts checked; whole retry/chain coverage remains open |
-| Runtime | Same-tape admission monotonicity and foreign-service invariance | Partial: original stopped owned words and old-episode receipt bits checked; paired all-owner law remains open |
+| Runtime | Same-tape admission monotonicity and foreign-service invariance | Partial: all-owner original acceptance words, exact retired records and old pending finite tape bits checked on one closing image; UNSENT and paired all-owner law remain open |
 | Runtime | Complete proposal reconstruction and required fresh-slot reserve | Checked: actual full raw inputs reconstruct all submitted proposals, and the horizon reserve supplies fresh active slots; the counted execution fold identifies the same source archive; see the runtime evidence below |
 | Runtime | Supported concurrent instance with variable service orders | Checked: both orders have supported actual prefixes with distinct owners' typed, timely, handler-admissible packets pending together; see the fixture evidence below |
 | Transport | Genuine enriched native query, alias masses and full counted support | Checked: actual genuine enriched query, exact alias projection and full reference support on every original-law counted input, including earlier deviations |
 | Transport | Good-store likelihood transport, including failed proposals | Open |
-| Transport | Uniform foreign-bad posterior bound and separate own-debt cases | Partial: uniform full-input foreign-bad posterior and saved-debt floor checked; current cancelable-debt reset comparison remains open |
+| Transport | Uniform foreign-bad posterior bound and separate own-debt cases | Partial: uniform full-input foreign-bad posterior and observable saved-debt zero gain on entire information fibers checked; current cancelable-debt reset comparison remains open |
 | Transport | Publication timing dominance with actual early observations | Open |
 | Transport | Whole-policy binding/retry comparison with the same reset continuation | Open |
 | Transport | One native Bayes sequence with vanishing gain and initialized-law errors | Open |
@@ -213,8 +213,8 @@ quantifiers and a passing build. The labels below never enter Lean names.
 | End-to-end | Raw SE, exact settled joint law, zero exclusions/charges and instantiated service | Open |
 
 Compact progress display: **Source 5/5 · Runtime 2/5 · Transport 1/6 · E2E 0/2**.
-Runtime frontier: original owned acceptance words checked; paired all-owner exit law next.
-Transport frontier: uniform foreign-bad posterior checked; own-debt/reset and likelihood joins remain.
+Runtime frontier: pending-frontier tape bits substituted into the original all-owner word; UNSENT and paired exit law next.
+Transport frontier: uniform foreign-bad posterior and observable saved-debt zero gain checked; current-debt/reset and likelihood joins remain.
 Update counts from checked statements and name the current bottleneck. Existing
 reusable proofs are dependencies, not new completed milestones.
 Current bottlenecks are the stopped service coupling, cross-world likelihood
@@ -469,15 +469,15 @@ actual matching operations with general guards, retries and complete external
 recalls. The [intrinsic chance bound](../Vegas/Game/PhaseProposalRepairChance.lean)
 uses the fixed finite native game and its existing own-play factorization.
 Together with the initialized history repair below, these cover the whole
-physical repair. Its posterior estimate, the paired stopped law and concurrent
-equilibrium theorem remain open.
+physical repair and its checked posterior estimate. The paired stopped law
+and concurrent equilibrium theorem remain open.
 
 The [initialized history repair](../Vegas/Pending/PhaseProposalShadowHistory.lean)
 constructs an actual counted trace under the original joint initializer and
 scheduler, preserving every other owner's complete recall and own-play word.
 It covers rejected packets, general guards, existing exclusions and retries;
 submitted typed meanings persist independently of canceled logical cells.
-The quantitative posterior bound remains open.
+Its quantitative posterior bound is checked below.
 
 The [original stopped image](../Vegas/Game/ReservedEpochStoppedImage.lean)
 retains the actual closing operation, original accepted table and old proposal
@@ -503,5 +503,24 @@ active owners with no old frontier have every row accepted. The actual
 pre-normalization closing image, candidate tables, failure/address record and
 old proposal archive are retained. `original_binding_receipt_accepted` reads
 the exact handle from the actual closing primitive, including an inclusion
-which itself closes the attempt. Inherited-excluded row equality, substitution
-of all old tape bits and the paired all-owner exit law remain open.
+which itself closes the attempt. Inherited-excluded rows remain literal, and
+the retired list appends exactly the original drained record when a new miss
+occurs. Every pending frontier substitutes the actual finite next-processing
+epoch bit into this SAME closing image, including absent or out-of-horizon
+epochs. UNSENT offer-versus-expiry and the paired all-owner exit law remain open.
+
+The [observable binding debt](../Vegas/Game/PhaseProposalOwnBindingFailure.lean)
+uses the original typed own source view and its saved-rank projection. The
+[checkpoint bridge](../Vegas/Game/PhaseProposalObservableDebt.lean) identifies
+the SAME actual saved source checkpoint, retaining canceled own attempts only
+as memory. The [information-fiber payoff](../Vegas/Game/PhaseProposalObservableDebtPayoff.lean)
+proves `phaseProposalSavedBindingFailure_gain_eq_zero` for arbitrary beliefs
+and whole-policy alternatives on the ENTIRE full native information fiber.
+Current cancelable debt still needs the separate paired reset comparison.
+
+The [stopped pending tape word](../Vegas/Game/ReservedEpochStoppedTapeWord.lean)
+extends the literal closed prefix using the existing behavioral evaluator.
+`stopped_pending_binding_receipt_iff_epoch` gives the old packet's exact bit at
+original attempt closure, with the original readiness stamp and finite epoch
+bound. The [retired receipt proof](../Vegas/Game/ReservedEpochRetiredReceipt.lean)
+rules out a later first accepting receipt after that namespace is retired.

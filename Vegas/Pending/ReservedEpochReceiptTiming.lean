@@ -111,11 +111,10 @@ theorem pending_binding_receipt_requires_timely_epoch {length : Nat}
     (before final : (app).Execution)
     (trace : ((app).protocol (inputs.map (PhaseRuntimeState.initial plan)) horizon
       (family runtime leaks packetBudget tape)).Trace (some ⟨remaining, none, before⟩))
-    (sentCycle slot epoch : Nat)
+    (sentCycle slot : Nat)
     (cursor : before.environmentRecall.length =
       sentCycle * cycleWidth (graph := graph) packetBudget + slot)
     (afterProcessing : packetBudget ≤ slot)
-    (selectedEpoch : tape.nextProcessingEpoch (sentCycle + 1) = some epoch)
     (message : Message Player (CommitAttemptPacket graph))
     (pending : message ∈ before.network.pending) (event : graph.EventId)
     (candidate : Handle graph)
@@ -124,7 +123,9 @@ theorem pending_binding_receipt_requires_timely_epoch {length : Nat}
     (entered : Nat) (stamp : before.application.current.native.activatedAt event = some entered)
     (reached : final ∈ ((app).runRounds (family runtime leaks packetBudget tape) players
       remaining before).support) (accepted : (message.id, true) ∈ final.receipts) :
-    epoch - entered < runtime.deadline event := by
+    ∃ epoch, tape.nextProcessingEpoch (sentCycle + 1) = some epoch ∧
+      epoch * cycleWidth (graph := graph) packetBudget < horizon ∧
+      epoch - entered < runtime.deadline event := by
   let initial := inputs.map (PhaseRuntimeState.initial plan)
   let scheduler := family runtime leaks packetBudget tape
   obtain ⟨draw, valid⟩ := phaseNativeInvariant_history runtime leaks plan inputs horizon scheduler
@@ -170,15 +171,34 @@ theorem pending_binding_receipt_requires_timely_epoch {length : Nat}
     rcases retained.event sameAttempt with completed | active
     · exact (live.1.1 completed).elim
     · exact active.2.1
+  have extended := (app).runRounds_environmentRecall_length scheduler players used before prior path
+  have selected := (family_support runtime leaks packetBudget tape prior.environmentRecall
+    (prior.observeEnvironment app) (.include message.id)).mp included
+  have processing := include_requires_processing runtime leaks packetBudget tape
+    prior.environmentRecall.length (prior.observeEnvironment app) message.id selected.symm
+  have starts : sentCycle < prior.environmentRecall.length /
+      cycleWidth (graph := graph) packetBudget := by
+    by_contra earlier
+    have multiplication := Nat.mul_le_mul_right (cycleWidth (graph := graph) packetBudget)
+      (Nat.le_of_not_gt earlier)
+    have remainder := Nat.mod_add_div prior.environmentRecall.length
+      (cycleWidth (graph := graph) packetBudget)
+    rw [Nat.mul_comm _ (prior.environmentRecall.length /
+      cycleWidth (graph := graph) packetBudget)] at remainder
+    omega
+  have available : ∃ cycle, sentCycle + 1 ≤ cycle ∧ tape.processes cycle = true :=
+    ⟨prior.environmentRecall.length / cycleWidth (graph := graph) packetBudget,
+      by omega, processing.2⟩
+  let epoch := Nat.find available
+  have selectedEpoch : tape.nextProcessingEpoch (sentCycle + 1) = some epoch := by
+    simp only [Tape.nextProcessingEpoch, available, ↓reduceDIte]
+    rfl
   have spec := tape.nextProcessingEpoch_spec (sentCycle + 1) epoch selectedEpoch
   have quiet : ∀ later, sentCycle < later → later < epoch → tape.processes later = false := by
     intro later lower upper
     cases marked : tape.processes later with
     | false => rfl
     | true => have minimum := spec.2.2 later (by omega) marked; omega
-  have extended := (app).runRounds_environmentRecall_length scheduler players used before prior path
-  have selected := (family_support runtime leaks packetBudget tape prior.environmentRecall
-    (prior.observeEnvironment app) (.include message.id)).mp included
   have notEarlier : epoch * cycleWidth (graph := graph) packetBudget ≤
       prior.environmentRecall.length := by
     by_contra earlier
@@ -192,7 +212,12 @@ theorem pending_binding_receipt_requires_timely_epoch {length : Nat}
     exact (Nat.le_div_iff_mul_le (cycleWidth_pos packetBudget)).mpr notEarlier
   have timely := live.2
   rw [State.WithinDeadline, priorStamp] at timely
-  exact (Nat.sub_le_sub_right epochBefore entered).trans_lt timely
+  have accounted := (app).raw_trace_horizon initial horizon scheduler trace
+  have beforeEnd : prior.environmentRecall.length < horizon := by
+    change before.environmentRecall.length + remaining = horizon at accounted
+    omega
+  exact ⟨epoch, selectedEpoch, notEarlier.trans_lt beforeEnd,
+    (Nat.sub_le_sub_right epochBefore entered).trans_lt timely⟩
 
 /-- The actual accepting-receipt bit of an old pending binding is exactly its
 next shared epoch's deadline comparison. Preparation contents and arbitrary
@@ -200,7 +225,7 @@ covered foreign traffic do not enter this operational bit. -/
 theorem pending_binding_receipt_iff_timely_epoch {length : Nat} (cycles : Nat)
     (tape : Tape Player length) (players : Player → (app).Policy)
     (plan : RuntimePhasePlan graph) (ordered : graph.RevealRelaxedOrdered)
-    (inputs : PMF graph.Inputs) (remaining sentCycle slot epoch : Nat)
+    (inputs : PMF graph.Inputs) (remaining sentCycle slot : Nat)
     (before final : (app).Execution)
     (trace : ((app).protocol (inputs.map (PhaseRuntimeState.initial plan))
       (horizon (graph := graph) cycles)
@@ -209,8 +234,6 @@ theorem pending_binding_receipt_iff_timely_epoch {length : Nat} (cycles : Nat)
     (cursor : before.environmentRecall.length = sentCycle *
       cycleWidth (graph := graph) (submissionBudget (Player := Player) cycles) + slot)
     (afterProcessing : submissionBudget (Player := Player) cycles ≤ slot)
-    (selectedEpoch : tape.nextProcessingEpoch (sentCycle + 1) = some epoch)
-    (running : epoch < cycles)
     (clock : before.application.current.native.clock = sentCycle)
     (message : Message Player (CommitAttemptPacket graph))
     (pending : message ∈ before.network.pending) (event : graph.EventId)
@@ -225,14 +248,27 @@ theorem pending_binding_receipt_iff_timely_epoch {length : Nat} (cycles : Nat)
     (reached : final ∈ ((app).runRounds
       (family runtime leaks (submissionBudget (Player := Player) cycles) tape) players remaining
         before).support) :
-    (message.id, true) ∈ final.receipts ↔ epoch - entered < runtime.deadline event := by
+    (message.id, true) ∈ final.receipts ↔
+      ∃ epoch, tape.nextProcessingEpoch (sentCycle + 1) = some epoch ∧ epoch < cycles ∧
+        epoch - entered < runtime.deadline event := by
   constructor
-  · exact pending_binding_receipt_requires_timely_epoch runtime leaks
-      (submissionBudget (Player := Player) cycles) tape players plan inputs
-      (horizon (graph := graph) cycles) remaining before final trace sentCycle slot epoch cursor
-        afterProcessing selectedEpoch message pending event candidate call request entered stamp
-          reached
-  · intro inTime
+  · intro accepted
+    obtain ⟨epoch, selected, within, timely⟩ :=
+      pending_binding_receipt_requires_timely_epoch runtime leaks
+        (submissionBudget (Player := Player) cycles) tape players plan inputs
+        (horizon (graph := graph) cycles) remaining before final trace sentCycle slot cursor
+          afterProcessing message pending event candidate call request entered stamp reached
+            accepted
+    have running : epoch < cycles := by
+      change epoch * cycleWidth (graph := graph) (submissionBudget (Player := Player) cycles) <
+        cycles * cycleWidth (graph := graph) (submissionBudget (Player := Player) cycles) at within
+      by_contra late
+      have opposite := Nat.mul_le_mul_right
+        (cycleWidth (graph := graph) (submissionBudget (Player := Player) cycles))
+          (Nat.le_of_not_gt late)
+      omega
+    exact ⟨epoch, selected, running, timely⟩
+  · rintro ⟨epoch, selectedEpoch, running, inTime⟩
     let initial := inputs.map (PhaseRuntimeState.initial plan)
     let scheduler := family runtime leaks (submissionBudget (Player := Player) cycles) tape
     have orderedBefore := (phaseApplication_seedOrder runtime leaks).history initial
@@ -318,10 +354,17 @@ theorem old_pending_response_receipt_iff {length : Nat} (cycles : Nat)
           event entered stamp afterRequest.2.2.1.1
   have afterPending : message ∈ after.network.pending :=
     (app).respond_pending_mono execution acting response pending
-  exact pending_binding_receipt_iff_timely_epoch runtime leaks cycles tape players plan ordered
-    inputs remaining sentCycle slot epoch after final afterTrace cursor afterProcessing selected
-      running clock message afterPending event candidate call afterRequest entered afterStamp
-        clean covered reached
+  have law := pending_binding_receipt_iff_timely_epoch runtime leaks cycles tape players plan
+    ordered
+    inputs remaining sentCycle slot after final afterTrace cursor afterProcessing clock message
+      afterPending event candidate call afterRequest entered afterStamp clean covered reached
+  constructor
+  · intro accepted
+    obtain ⟨actual, actualEpoch, _within, timely⟩ := law.mp accepted
+    have equal : actual = epoch := Option.some.inj (actualEpoch.symm.trans selected)
+    simpa only [equal] using timely
+  · intro timely
+    exact law.mpr ⟨epoch, selected, running, timely⟩
 
 /-- Two actual current responses cannot change the accepting bit of an
 already pending binding. This compares their real continuations under the

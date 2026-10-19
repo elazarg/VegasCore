@@ -1379,3 +1379,8 @@ import Vegas.Game.PhaseProposalPreparationPosterior
 import Vegas.Game.ReservedEpochUnsentBinding
 import Vegas.Game.ReservedEpochStoppedCoupling
 import Vegas.Game.ReservedEpochStoppedWord
+import Vegas.Game.PhaseProposalOwnBindingFailure
+import Vegas.Game.PhaseProposalObservableDebt
+import Vegas.Game.PhaseProposalObservableDebtPayoff
+import Vegas.Game.ReservedEpochRetiredReceipt
+import Vegas.Game.ReservedEpochStoppedTapeWord
