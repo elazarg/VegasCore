@@ -1,5 +1,9 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
+import Vegas.Source.CommitRecoveryOwnHistory
+import Vegas.Source.CommitRecoveryRanks
+import Vegas.Source.CommitRecoveryClear
+import Vegas.Source.CommitRecoveryPublicReadback
 import Vegas.Source.CommitRecoveryWordObservation
 import Vegas.Source.CommitRecoveryPublicDeterminacy
 import Vegas.Source.CommitRecoveryWordMass
@@ -61,6 +65,112 @@ theorem state_some_of_prefix
       obtain ⟨next, _, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp reached
       exact ⟨next, rfl⟩
 
+private theorem clean_step_rank (who : Player)
+    (before after : CommitRecoveryState setup.program)
+    (joint : Player → Option (CommitRecoveryMove Player L))
+    (supported : after ∈ (before.step joint).support)
+    (entry : before.entryExcluded = before.excluded)
+    (unchanged : after.excluded = before.excluded)
+    (survives : who ∉ before.excluded)
+    (running : ¬ ProtocolState.terminal setup.program before.point)
+    (rank : Nat) (bounded : rank ≤ ProtocolView.position who setup.program
+      (ProtocolState.observe who setup.program before.point)) :
+    after.entryExcluded = after.excluded ∧
+      rank ≤ ProtocolView.position who setup.program
+        (ProtocolState.observe who setup.program after.point) ∧
+      ProtocolView.atRank who setup.program rank
+          (ProtocolState.observe who setup.program after.point) =
+        ProtocolView.atRank who setup.program rank
+          (ProtocolState.observe who setup.program before.point) := by
+  obtain ⟨raw, realized, rfl⟩ := before.step_raw_result joint after supported
+  have rawExcluded : raw.1.2 = before.excluded := by
+    simpa only [CommitRecoveryState.close_excluded, CommitRecoveryState.install] using unchanged
+  have noFailure : ¬ (before.install raw.1 raw.2).NewFailure := by
+    simp only [CommitRecoveryState.NewFailure, CommitRecoveryState.install, rawExcluded,
+      entry, Finset.sdiff_self, Finset.not_nonempty_empty, not_false_eq_true]
+  have point := (before.install raw.1 raw.2).close_point_of_no_new_failure noFailure
+  have entryEq : (before.install raw.1 raw.2).close.entryExcluded =
+      (before.install raw.1 raw.2).close.excluded := by
+    apply Finset.Subset.antisymm (before.install raw.1 raw.2).close.entered
+    simpa only [CommitRecoveryState.install, CommitRecoveryState.close_excluded,
+      rawExcluded, entry] using (before.install raw.1 raw.2).entryExcluded_close
+  refine ⟨entryEq, ?_, ?_⟩
+  · have remaining := ProtocolState.recoveryStep_remaining setup.program before.point
+      before.excluded joint raw.1 running realized
+    have oldPosition := ProtocolView.position_add_remaining who setup.program before.point
+    have nextPosition := ProtocolView.position_add_remaining who setup.program raw.1.1
+    rw [point]
+    change rank ≤ ProtocolView.position who setup.program
+      (ProtocolState.observe who setup.program raw.1.1)
+    omega
+  · rw [point]
+    exact ProtocolView.atRank_recoveryStep who setup.program before.point before.excluded
+      joint raw.1 realized survives rank bounded
+
+/-- A source interval without new exclusion retains the complete view at
+every earlier rank, including its original own actions. The real dispatcher
+and clean automatic close are used at every supported step. -/
+theorem commitRecovery_clean_rank_of_reaches (who : Player) {fuel : Nat}
+    {first last : setup.commitRecoveryProtocol.History}
+    (reached : setup.commitRecoveryProtocol.ReachesWithin fuel first last)
+    (before after : CommitRecoveryState setup.program)
+    (firstState : first.state = some before) (lastState : last.state = some after)
+    (entry : before.entryExcluded = before.excluded)
+    (unchanged : after.excluded = before.excluded) (survives : who ∉ after.excluded) :
+    after.entryExcluded = after.excluded ∧
+      ∀ rank, rank ≤ ProtocolView.position who setup.program
+        (ProtocolState.observe who setup.program before.point) →
+      ProtocolView.atRank who setup.program rank
+          (ProtocolState.observe who setup.program after.point) =
+        ProtocolView.atRank who setup.program rank
+          (ProtocolState.observe who setup.program before.point) := by
+  have propagate : ∀ {budget : Nat} {start finish : setup.commitRecoveryProtocol.History},
+      setup.commitRecoveryProtocol.ReachesWithin budget start finish →
+      ∀ initial final, start.state = some initial → finish.state = some final →
+      initial.entryExcluded = initial.excluded → final.excluded = initial.excluded →
+      who ∉ final.excluded →
+      final.entryExcluded = final.excluded ∧
+        ∀ rank, rank ≤ ProtocolView.position who setup.program
+          (ProtocolState.observe who setup.program initial.point) →
+        ProtocolView.atRank who setup.program rank
+            (ProtocolState.observe who setup.program final.point) =
+          ProtocolView.atRank who setup.program rank
+            (ProtocolState.observe who setup.program initial.point) := by
+    intro budget start finish path
+    induction path with
+    | refl =>
+        intro initial final startEq finishEq entered _unchanged _survives
+        have same := Option.some.inj (startEq.symm.trans finishEq)
+        subst final
+        exact ⟨entered, fun _ _ => rfl⟩
+    | @step budget start target joint legal next supported rest ih =>
+        intro initial final startEq finishEq entered excluded active
+        rcases start with ⟨startState, startTrace⟩
+        change startState = some initial at startEq
+        subst startState
+        obtain ⟨middle, middleSupported, middleState⟩ :=
+          (PMF.mem_support_map_iff _ _ _).mp supported
+        have laterSubset := setup.commitRecovery_public_excluded_of_reaches rest
+        change (setup.commitRecoveryPublic next).1 ⊆
+          (setup.commitRecoveryPublic target.state).1 at laterSubset
+        rw [← middleState, finishEq] at laterSubset
+        change middle.excluded ⊆ final.excluded at laterSubset
+        have middleExcluded : middle.excluded = initial.excluded :=
+          Finset.Subset.antisymm (by simpa only [excluded] using laterSubset)
+            (initial.step_excluded_monotone joint middle middleSupported)
+        have initialActive : who ∉ initial.excluded := by simpa only [excluded] using active
+        have running : ¬ ProtocolState.terminal setup.program initial.point := legal.1
+        obtain ⟨middleEntry, _zeroBound, _zeroView⟩ := setup.clean_step_rank who initial middle
+          joint middleSupported entered middleExcluded initialActive running 0 (Nat.zero_le _)
+        obtain ⟨finalEntry, laterRanks⟩ := ih middle final middleState.symm finishEq middleEntry
+          (excluded.trans middleExcluded.symm) active
+        refine ⟨finalEntry, ?_⟩
+        intro rank bounded
+        obtain ⟨_entryEq, middleBound, stepEq⟩ := setup.clean_step_rank who initial middle
+          joint middleSupported entered middleExcluded initialActive running rank bounded
+        exact (laterRanks rank middleBound).trans stepEq
+  exact propagate reached before after firstState lastState entry unchanged survives
+
 theorem information_extend_congr (who : Player)
     {leftSource leftTarget rightSource rightTarget : setup.commitRecoveryProtocol.State}
     (left : setup.commitRecoveryProtocol.Trace leftSource)
@@ -99,13 +209,139 @@ theorem information_extend_congr (who : Player)
     | none => exact record
     | some action => exact congrArg₂ List.cons (congrArg (fun info => (info, action)) base) record
 
+/-- A surviving observer's literal cumulative own actions and public source
+word determine every raw coordinate, including remembered canceled bindings.
+The two supported initializer prefixes can have different foreign inputs. -/
+theorem commitRecovery_coordinate_eq_of_public_and_own_history (who : Player)
+    (first second : CommitRecoveryState setup.program)
+    (leftPrior : setup.commitRecoveryProtocol.Trace (some first))
+    (rightPrior : setup.commitRecoveryProtocol.Trace (some second))
+    (prefixClock : leftPrior.length = rightPrior.length)
+    (prefixCoordinate : (setup.recoveryJointRecall leftPrior).map (fun joint => joint who) =
+      (setup.recoveryJointRecall rightPrior).map (fun joint => joint who))
+    {leftState rightState : setup.commitRecoveryProtocol.State}
+    (left : setup.commitRecoveryProtocol.Trace leftState)
+    (right : setup.commitRecoveryProtocol.Trace rightState)
+    (leftRetained : TracePrefix leftPrior left)
+    (rightRetained : TracePrefix rightPrior right)
+    (publicWord : setup.attemptPublicRecall who left = setup.attemptPublicRecall who right)
+    (leftSurvives : who ∉ (setup.commitRecoveryPublic leftState).1)
+    (rightSurvives : who ∉ (setup.commitRecoveryPublic rightState).1)
+    (ownedHistory :
+      leftState.map (fun state => ProtocolState.history setup.program state.point who) =
+      rightState.map (fun state => ProtocolState.history setup.program state.point who)) :
+    (setup.recoveryJointRecall left).map (fun joint => joint who) =
+      (setup.recoveryJointRecall right).map (fun joint => joint who) := by
+  have clock : left.length = right.length := by
+    have lengths := congrArg List.length publicWord
+    simpa only [setup.publicRecall_length, Nat.add_right_cancel_iff] using lengths
+  induction leftRetained generalizing rightState with
+  | refl =>
+      have equal := rightRetained.eq_of_length (prefixClock.symm.trans clock)
+      cases equal
+      exact prefixCoordinate
+  | @extend source target earlier kept joint legal reached ih =>
+      cases rightRetained with
+      | refl =>
+          have lower := kept.length_le
+          simp only [Trace.length] at clock
+          omega
+      | @extend rightSource rightTarget rightEarlier rightKept rightJoint rightLegal rightReached =>
+          have publicPair := List.cons.inj (by
+            simpa only [setup.publicRecall_extend] using publicWord)
+          obtain ⟨before, rfl⟩ := setup.state_some_of_prefix first leftPrior earlier kept
+          obtain ⟨other, rfl⟩ := setup.state_some_of_prefix second rightPrior rightEarlier rightKept
+          obtain ⟨after, afterSupport, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp reached
+          obtain ⟨last, lastSupport, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp rightReached
+          have previousPublic := congrArg List.head? publicPair.2
+          have beforePublic : setup.attemptPublicSignal who (some before) =
+              setup.attemptPublicSignal who (some other) := by
+            simpa only [attemptPublicSignal, attemptPublicRecall, List.map_cons, List.head?_cons,
+              setup.commitRecoverySignals_current, Option.some.injEq] using previousPublic
+          have actorEq : ProtocolState.actor setup.program before.point =
+              ProtocolState.actor setup.program other.point := by
+            have observed := Option.some.inj (congrArg Prod.fst beforePublic)
+            have actors := congrArg (ProtocolView.actor who setup.program) observed
+            simpa only [ProtocolView.actor_publicOnly, ProtocolState.actor_observe_eq] using actors
+          have excludedEq : before.excluded = other.excluded :=
+            congrArg (fun signal => signal.2.1) beforePublic
+          have activeEq : before.Active who ↔ other.Active who := by
+            change (ProtocolState.actor setup.program before.point = some who ∧
+              who ∉ before.excluded) ↔ (ProtocolState.actor setup.program other.point = some who ∧
+                who ∉ other.excluded)
+            rw [actorEq, excludedEq]
+          have updated := Option.some.inj ownedHistory
+          change ProtocolState.history setup.program after.point who =
+            ProtocolState.history setup.program last.point who at updated
+          rw [before.step_own_history who joint legal.2 after afterSupport leftSurvives,
+            other.step_own_history who rightJoint rightLegal.2 last lastSupport rightSurvives]
+            at updated
+          have choices : joint who = rightJoint who ∧
+              ProtocolState.history setup.program before.point who =
+                ProtocolState.history setup.program other.point who := by
+            have firstLift := setup.commitRecovery_surviving_joint_lift joint legal reached who
+              leftSurvives
+            have secondLift := setup.commitRecovery_surviving_joint_lift rightJoint rightLegal
+              rightReached who rightSurvives
+            have firstAllowed := legal.2 who
+            have secondAllowed := rightLegal.2 who
+            cases firstChoice : joint who with
+            | none =>
+                cases secondChoice : rightJoint who with
+                | none =>
+                    refine ⟨rfl, ?_⟩
+                    simpa only [firstChoice, secondChoice, Option.map_none, Option.toList_none,
+                      List.append_nil] using updated
+                | some move =>
+                    rw [firstChoice] at firstAllowed
+                    rw [secondChoice] at secondAllowed
+                    exact (firstAllowed (activeEq.mpr secondAllowed.1)).elim
+            | some firstMove =>
+                cases secondChoice : rightJoint who with
+                | none =>
+                    rw [firstChoice] at firstAllowed
+                    rw [secondChoice] at secondAllowed
+                    exact (secondAllowed (activeEq.mp firstAllowed.1)).elim
+                | some secondMove =>
+                    have reversed := congrArg List.reverse updated
+                    simp only [firstChoice, secondChoice, Option.map_some, Option.toList_some,
+                      List.reverse_append, List.reverse_cons, List.reverse_nil, List.nil_append,
+                      List.cons_append] at reversed
+                    have parts := List.cons.inj reversed
+                    refine ⟨?_, List.reverse_injective parts.2⟩
+                    have actions : (joint who).map (·.action) =
+                        (rightJoint who).map (·.action) := by
+                      simp only [firstChoice, secondChoice, Option.map_some, parts.1]
+                    have same := firstLift.trans
+                      ((congrArg CommitRecoveryMove.lift actions).trans secondLift.symm)
+                    exact firstChoice.symm.trans (same.trans secondChoice)
+          have beforeLeft : who ∉ before.excluded := fun absent =>
+            leftSurvives (before.step_excluded_monotone joint after afterSupport absent)
+          have beforeRight : who ∉ other.excluded := fun absent =>
+            rightSurvives (other.step_excluded_monotone rightJoint last lastSupport absent)
+          have previous := ih rightEarlier rightKept publicPair.2 beforeLeft beforeRight
+            (congrArg some choices.2) (by simpa only [Trace.length, Nat.add_left_inj] using clock)
+          simp only [recoveryJointRecall, List.map_cons, choices.1, previous]
+
 private theorem source_records_determine_observer (who : Player)
-    (first : CommitRecoveryState setup.program)
-    (prior : setup.commitRecoveryProtocol.Trace (some first))
+    (first second : CommitRecoveryState setup.program)
+    (leftPrior : setup.commitRecoveryProtocol.Trace (some first))
+    (rightPrior : setup.commitRecoveryProtocol.Trace (some second))
+    (prefixClock : leftPrior.length = rightPrior.length)
+    (prefixObserved :
+      (ProtocolState.observe who setup.program first.point,
+        ProtocolState.observe who setup.program first.saved,
+        first.excluded, first.entryExcluded, first.generation) =
+      (ProtocolState.observe who setup.program second.point,
+        ProtocolState.observe who setup.program second.saved,
+        second.excluded, second.entryExcluded, second.generation))
+    (prefixInfo : setup.commitRecoveryModel.infoOf who leftPrior =
+      setup.commitRecoveryModel.infoOf who rightPrior)
     {leftState rightState : setup.commitRecoveryProtocol.State}
     (leftTrace : setup.commitRecoveryProtocol.Trace leftState)
     (rightTrace : setup.commitRecoveryProtocol.Trace rightState)
-    (leftRetained : TracePrefix prior leftTrace) (rightRetained : TracePrefix prior rightTrace)
+    (leftRetained : TracePrefix leftPrior leftTrace)
+    (rightRetained : TracePrefix rightPrior rightTrace)
     (publicWord : setup.attemptPublicRecall who leftTrace =
       setup.attemptPublicRecall who rightTrace)
     (coordinate : (setup.recoveryJointRecall leftTrace).map (fun joint => joint who) =
@@ -125,9 +361,9 @@ private theorem source_records_determine_observer (who : Player)
     simpa only [List.length_map, setup.jointRecall_length] using lengths
   induction leftRetained generalizing rightState with
   | refl =>
-      have equal := rightRetained.eq_of_length clock
+      have equal := rightRetained.eq_of_length (prefixClock.symm.trans clock)
       cases equal
-      exact ⟨first, first, rfl, rfl, rfl, rfl⟩
+      exact ⟨first, second, rfl, rfl, prefixObserved, prefixInfo⟩
   | @extend source target earlier kept joint legal reached ih =>
       cases rightRetained with
       | refl =>
@@ -182,8 +418,43 @@ theorem commitRecovery_info_eq_of_public_and_coordinate (who : Player)
       (setup.recoveryJointRecall rightTrace).map (fun joint => joint who)) :
     setup.commitRecoveryModel.infoOf who leftTrace =
       setup.commitRecoveryModel.infoOf who rightTrace := by
-  obtain ⟨_, _, _, _, _, information⟩ := setup.source_records_determine_observer who first prior
-    leftTrace rightTrace leftRetained rightRetained publicWord coordinate
+  obtain ⟨_, _, _, _, _, information⟩ := setup.source_records_determine_observer who
+    first first prior prior rfl rfl rfl leftTrace rightTrace leftRetained rightRetained
+      publicWord coordinate
+  exact information
+
+/-- Equal complete focal observations at two genuine source prefixes are
+transported through equal public words and equal focal raw coordinates. The
+prefixes may have different supported original joint inputs; their intrinsic
+initializer probabilities are not replaced or compared by this statement. -/
+theorem commitRecovery_info_eq_of_observed_prefixes (who : Player)
+    (first second : CommitRecoveryState setup.program)
+    (leftPrior : setup.commitRecoveryProtocol.Trace (some first))
+    (rightPrior : setup.commitRecoveryProtocol.Trace (some second))
+    (prefixClock : leftPrior.length = rightPrior.length)
+    (prefixObserved :
+      (ProtocolState.observe who setup.program first.point,
+        ProtocolState.observe who setup.program first.saved,
+        first.excluded, first.entryExcluded, first.generation) =
+      (ProtocolState.observe who setup.program second.point,
+        ProtocolState.observe who setup.program second.saved,
+        second.excluded, second.entryExcluded, second.generation))
+    (prefixInfo : setup.commitRecoveryModel.infoOf who leftPrior =
+      setup.commitRecoveryModel.infoOf who rightPrior)
+    {leftState rightState : setup.commitRecoveryProtocol.State}
+    (leftTrace : setup.commitRecoveryProtocol.Trace leftState)
+    (rightTrace : setup.commitRecoveryProtocol.Trace rightState)
+    (leftRetained : TracePrefix leftPrior leftTrace)
+    (rightRetained : TracePrefix rightPrior rightTrace)
+    (publicWord : setup.attemptPublicRecall who leftTrace =
+      setup.attemptPublicRecall who rightTrace)
+    (coordinate : (setup.recoveryJointRecall leftTrace).map (fun joint => joint who) =
+      (setup.recoveryJointRecall rightTrace).map (fun joint => joint who)) :
+    setup.commitRecoveryModel.infoOf who leftTrace =
+      setup.commitRecoveryModel.infoOf who rightTrace := by
+  obtain ⟨_, _, _, _, _, information⟩ := setup.source_records_determine_observer who
+    first second leftPrior rightPrior prefixClock prefixObserved prefixInfo leftTrace rightTrace
+      leftRetained rightRetained publicWord coordinate
   exact information
 
 /-- The global record substitution has a genuine inverse: the SAME original

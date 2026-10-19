@@ -14,7 +14,8 @@ open GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol GameTheory.Math.P
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
 
-private theorem prefix_at_depth
+/-- Select the literal retained prefix at an actual trace depth. -/
+theorem proposalRecovery_prefix_at_depth
     {last : setup.proposalRecoveryProtocol.State}
     (trace : setup.proposalRecoveryProtocol.Trace last) (depth : Nat)
     (bounded : depth ≤ trace.length) :
@@ -42,7 +43,8 @@ theorem proposalRecoveryEraseTrace_prefix_inverse
     (kept : TracePrefix prior (setup.proposalRecoveryEraseTrace trace)) :
     ∃ labeled : setup.proposalRecoveryProtocol.Trace first,
       TracePrefix labeled trace ∧ setup.proposalRecoveryEraseTrace labeled = prior := by
-  obtain ⟨state, labeled, retained, length⟩ := setup.prefix_at_depth trace prior.length (by
+  obtain ⟨state, labeled, retained, length⟩ :=
+    setup.proposalRecovery_prefix_at_depth trace prior.length (by
     simpa only [setup.proposalRecoveryEraseTrace_length] using kept.length_le)
   have same := (setup.proposalRecoveryEraseTrace_prefix retained).eq_of_same_length kept (by
     simpa only [setup.proposalRecoveryEraseTrace_length] using length)

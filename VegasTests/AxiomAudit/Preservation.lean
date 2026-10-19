@@ -4983,3 +4983,27 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.phaseProposalUnflagged_paired_publication_boundary
+
+/-- info:
+'Vegas.PhaseProposalNativeSourceMatch.info_eq_of_information'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.PhaseProposalNativeSourceMatch.info_eq_of_information
+
+/-- info:
+'Vegas.PhaseProposalCanonicalBindingCut.info_eq_of_information'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.PhaseProposalCanonicalBindingCut.info_eq_of_information
+
+/-- info:
+'Vegas.SourceProgram.Setup.ProposalRecoveryForeignRefinement.surviving_info_eq'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.ProposalRecoveryForeignRefinement.surviving_info_eq
+
+/-- info:
+'Vegas.PhaseProposalNativeSourceMatch.decision'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.PhaseProposalNativeSourceMatch.decision

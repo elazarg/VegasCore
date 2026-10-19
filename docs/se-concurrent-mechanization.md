@@ -204,7 +204,7 @@ quantifiers and a passing build. The labels below never enter Lean names.
 | Runtime | Complete proposal reconstruction and required fresh-slot reserve | Checked: actual full raw inputs reconstruct all submitted proposals, and the horizon reserve supplies fresh active slots; the counted execution fold identifies the same source archive; see the runtime evidence below |
 | Runtime | Supported concurrent instance with variable service orders | Checked: both orders have supported actual prefixes with distinct owners' typed, timely, handler-admissible packets pending together; see the fixture evidence below |
 | Transport | Genuine enriched native query, alias masses and full counted support | Checked: actual genuine enriched query, exact alias projection and full reference support on every original-law counted input, including earlier deviations |
-| Transport | Good-store likelihood transport, including failed proposals | Partial: actual installed phase-word law and same-checkpoint scalar source getter checked; conditional full-input likelihood and chronological source-kernel identification remain open |
+| Transport | Good-store likelihood transport, including failed proposals | Partial: complete native information determines one entire labeled source information set across every matched preimage, including distinct initial draws and failed-disclosure refinements; initialized likelihood weights and chronological terminal-kernel identification remain open |
 | Transport | Uniform foreign-bad posterior bound and separate own-debt cases | Partial: native and source full-input foreign-bad posterior bounds and observable saved-debt zero gain checked; current cancelable-debt reset comparison remains open |
 | Transport | Publication timing dominance with actual early observations | Open |
 | Transport | Whole-policy binding/retry comparison with the same reset continuation | Open |
@@ -214,11 +214,19 @@ quantifiers and a passing build. The labels below never enter Lean names.
 
 Compact progress display: **Source 5/5 · Runtime 2/5 · Transport 1/6 · E2E 0/2**.
 Runtime frontier: binding WAIT-to-SEND survival and paired full failure/address/archive comparison checked; the complete publication WAIT-to-SEND boundary is checked; the clean terminal boundary law is next.
-Transport frontier: initialized lost-value cross-reach, whole foreign-alias history law and source-history/checkpoint composition checked; full input-fiber weights, good-fiber terminal law and current-debt/reset joins remain.
+Transport frontier: **full information correspondence checked; initialized probability identity and terminal coupling open**. Current-debt/reset and native gain comparisons also remain.
 Update counts from checked statements and name the current bottleneck. Existing
 reusable proofs are dependencies, not new completed milestones.
 Current bottlenecks are full terminal source/runtime correspondence, initialized
 full-input likelihood weights and native deviation comparisons. The raw concurrent capstone remains open.
+
+`PhaseProposalNativeSourceMatch.info_eq_of_information` proves the complete
+source-information equality for any two actual matched histories with equal full
+native information. It retains separate events, arbitrary supported correlated
+initial inputs, canceled owned bindings and foreign failure-cause refinements.
+`ProposalRecoveryForeignRefinement.surviving_info_eq` also gives complete
+information equality for every surviving observer. These statements do not
+establish matching probability weights or terminal laws.
 
 Checked prerequisites: `proposalRecoveryEraseTrace` preserves semantic endpoints;
 `recoveryProposal_reveal_success` reads disclosed values from the pre-state;

@@ -1459,3 +1459,5 @@ import Vegas.Game.ReservedEpochPublicationReceipt
 import Vegas.Game.ReservedEpochPublicationReadCone
 import Vegas.Game.CompiledRevealBindingRow
 import Vegas.Game.CompiledRevealBindingOrigins
+import Vegas.Game.PhaseProposalSourceFiber
+import Vegas.Game.PhaseProposalNativeSourceInformation
