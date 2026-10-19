@@ -101,7 +101,7 @@ theorem commitRecoveryFailureChoice_spec (who : Player)
       move.missing = (info.1.1.1.elim false (ProtocolView.atCommit who setup.program) && omitted) :=
   Classical.choose_spec (setup.commitRecovery_failureChoice_exists who info omitted) move selected
 
-private theorem failureChoice_eq_of_move (who : Player)
+theorem commitRecoveryFailureChoice_eq_of_failure_move (who : Player)
     (info : setup.commitRecoveryModel.InfoState who) (omitted : Bool)
     (choice : setup.commitRecoveryModel.Choice who info) (move : CommitRecoveryMove Player L)
     (selected : choice.val = some move) (failed : move.action.IsFailure)
@@ -208,13 +208,15 @@ theorem commitRecoveryValueTremble_fullSupport (who : Player)
       by_cases failed : move.action.IsFailure
       · cases committing : info.1.1.1.elim false (ProtocolView.atCommit who setup.program)
         · have missing : move.missing = false := by simpa [committing] using marker
-          have equal := setup.failureChoice_eq_of_move who info true choice move selected failed
+          have equal := setup.commitRecoveryFailureChoice_eq_of_failure_move who info true
+            choice move selected failed
             (by simpa only [committing, Bool.false_and] using missing)
           rw [commitRecoveryValueTremble, ← equal]
           exact mem_support_mix_left _ _ _ omissionPositive
             ((PMF.mem_support_pure_iff _ _).mpr rfl)
         · cases omitted : move.missing
-          · have equal := setup.failureChoice_eq_of_move who info false choice move selected failed
+          · have equal := setup.commitRecoveryFailureChoice_eq_of_failure_move who info false
+              choice move selected failed
               (by simpa only [committing, Bool.true_and] using omitted)
             rw [commitRecoveryValueTremble, committing]
             simp only [↓reduceIte]
@@ -222,7 +224,8 @@ theorem commitRecoveryValueTremble_fullSupport (who : Player)
             rw [← equal]
             exact mem_support_mix_left _ _ _ badPositive
               ((PMF.mem_support_pure_iff _ _).mpr rfl)
-          · have equal := setup.failureChoice_eq_of_move who info true choice move selected failed
+          · have equal := setup.commitRecoveryFailureChoice_eq_of_failure_move who info true
+              choice move selected failed
               (by simpa only [committing, Bool.true_and] using omitted)
             rw [commitRecoveryValueTremble, ← equal]
             exact mem_support_mix_left _ _ _ omissionPositive

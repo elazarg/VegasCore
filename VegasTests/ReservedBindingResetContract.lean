@@ -149,7 +149,8 @@ example
             PhaseRuntimeState.sourceControlRecords rightEnding.execution.application.retired ∧
           (((phase.drain rightRaw).excluded \ active.application.entry.excluded).Nonempty →
             PairedBindingResetSources checkpoint leftEnding.execution.application
-              rightEnding.execution.application)) := by
+              rightEnding.execution.application (phase.drain leftRaw)
+                (phase.drain rightRaw))) := by
   exact phaseProposalUnflagged_available_send_reset_boundary setup mode runtime leaks bounds plan
     complete coveredValues maximal ordered values fullValues tape activationGap processingGap
     gaps margin capacity remaining active actor leftResponse rightResponse activeTrace

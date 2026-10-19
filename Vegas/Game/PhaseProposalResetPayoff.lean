@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.PhaseProposalFreshTerminalCoupling
+import Vegas.Game.PhaseProposalFreshPayoff
 import Vegas.Game.ProposalRecoveryContinuation
 import Vegas.Game.ProposalRecoveryPayoff
 
@@ -28,7 +28,7 @@ local notation "initial" => PMF.map (PhaseRuntimeState.initial plan)
 local notation "horizon" => ReservedEpoch.executionHorizon runtime
 
 omit [Fintype Player] in
-private theorem source_history_eq_of_same_attempt_path [Finite Player]
+theorem RecoverySourceCheckpoint.history_eq_of_same_attempt_path [Finite Player]
     {before after : PhaseRuntimeState (serviceGraph setup mode)}
     (first : RecoverySourceCheckpoint setup mode before)
     (last : RecoverySourceCheckpoint setup mode after)
@@ -162,26 +162,10 @@ theorem phaseProposal_fresh_payoff_law_eq_of_erased_source
           (fun final => phaseExclusionBase setup mode runtime leaks utility excludedPayoff
             final.state who) =
       (sourceLaw side).map (setup.proposalRecoveryPayoff utility excludedPayoff who) := by
-    obtain ⟨joint, nativeLaw, sourceLawEq, supported⟩ :=
-      RecoverySourceWitness.ordinary_fresh_terminal_coupling setup mode runtime leaks bounds plan
-        complete covered maximal values fullValues tape activationGap processingGap gaps margin
-          capacity utility excludedPayoff (anchor side) (idle side) (traces side)
-            (entryExcluded side) (fresh side) (witness side) (archived side) (proper side)
-    change PMF.map Prod.snd joint = sourceLaw side at sourceLawEq
-    rw [← nativeLaw, ← sourceLawEq]
-    calc
-      _ = joint.map ((fun final => phaseExclusionBase setup mode runtime leaks utility
-          excludedPayoff final.state who) ∘ Prod.fst) := PMF.map_comp _ _ _
-      _ = joint.map ((setup.proposalRecoveryPayoff utility excludedPayoff who) ∘ Prod.snd) := by
-        apply map_congr_on_support
-        intro pair member
-        obtain ⟨ending, _next, current, _finished, _retained, _sourceRetained, _exact,
-          _sourceTerminal, _endingE, _sourceE, _theta, _readout, payoff⟩ := supported pair member
-        change phaseExclusionBase setup mode runtime leaks utility excludedPayoff pair.1.state
-          who = setup.proposalRecoveryPayoff utility excludedPayoff who pair.2
-        rw [current]
-        exact congrFun payoff who
-      _ = _ := (PMF.map_comp _ _ _).symm
+    exact phaseProposal_fresh_behavioral_payoff_law setup mode runtime leaks bounds plan complete
+      covered maximal values fullValues tape activationGap processingGap gaps margin capacity
+        utility excludedPayoff (anchor side) (idle side) (traces side) (entryExcluded side)
+          (fresh side) (witness side) (archived side) (proper side) who
   rw [projected false, projected true]
   have normalized : ∀ owner first second,
       setup.proposalRecoveryQuery owner first = setup.proposalRecoveryQuery owner second →

@@ -22,3 +22,6 @@ import VegasTests.PhaseProposalFutureFlagsContract
 import VegasTests.PhaseProposalInitializedContract
 import VegasTests.PhaseProposalCommonRateContract
 import VegasTests.PhaseProposalConsistentSequenceContract
+import VegasTests.ProposalRecoveryClassProductContract
+import VegasTests.OriginalBindingDebtContract
+import VegasTests.OriginalBindingPayoffContract

@@ -189,13 +189,40 @@ def PairedBindingResetSources
     {setup : Setup (Player := Player) (L := L)} {mode : ExecutionMode}
     {state : PhaseRuntimeState (serviceGraph setup mode)}
     (checkpoint : RecoverySourceCheckpoint setup mode state)
-    (left right : PhaseRuntimeState (serviceGraph setup mode)) : Prop :=
+    (left right : PhaseRuntimeState (serviceGraph setup mode))
+    (leftImage rightImage : RecoveryState (serviceGraph setup mode)) : Prop :=
   ∃ (leftNext : RecoverySourceCheckpoint setup mode left)
     (rightNext : RecoverySourceCheckpoint setup mode right),
     (∃ fuel, setup.commitRecoveryProtocol.ReachesWithin fuel
       ⟨_, checkpoint.trace⟩ ⟨_, leftNext.trace⟩) ∧
     (∃ fuel, setup.commitRecoveryProtocol.ReachesWithin fuel
       ⟨_, checkpoint.trace⟩ ⟨_, rightNext.trace⟩) ∧
+    leftNext.residual.lift (ProtocolState.entry leftNext.residual.tail leftNext.source) =
+      ProtocolState.withHistory setup.program
+        (checkpoint.residual.lift (ProtocolState.entry checkpoint.residual.tail checkpoint.source))
+        (ProtocolState.history setup.program (checkpoint.commitResultPoint leftImage)) ∧
+    rightNext.residual.lift (ProtocolState.entry rightNext.residual.tail rightNext.source) =
+      ProtocolState.withHistory setup.program
+        (checkpoint.residual.lift (ProtocolState.entry checkpoint.residual.tail checkpoint.source))
+        (ProtocolState.history setup.program (checkpoint.commitResultPoint rightImage)) ∧
+    setup.recoveryJointRecall leftNext.trace =
+      (checkpoint.commitInstructionWord leftImage.native).reverse ++
+        setup.recoveryJointRecall checkpoint.trace ∧
+    setup.recoveryJointRecall rightNext.trace =
+      (checkpoint.commitInstructionWord rightImage.native).reverse ++
+        setup.recoveryJointRecall checkpoint.trace ∧
+    (∀ owner, owner ∉ leftImage.excluded →
+      leftNext.source.history owner = checkpoint.source.history owner ++
+        (decodeHistory setup.program (leftImage.native.config.history.map
+          ((toEventGraph setup.program).fromModeCompletion mode)) owner).drop
+            (decodeHistory setup.program (state.entry.native.config.history.map
+              ((toEventGraph setup.program).fromModeCompletion mode)) owner).length) ∧
+    (∀ owner, owner ∉ rightImage.excluded →
+      rightNext.source.history owner = checkpoint.source.history owner ++
+        (decodeHistory setup.program (rightImage.native.config.history.map
+          ((toEventGraph setup.program).fromModeCompletion mode)) owner).drop
+            (decodeHistory setup.program (state.entry.native.config.history.map
+              ((toEventGraph setup.program).fromModeCompletion mode)) owner).length) ∧
     setup.commitRecoveryErasedHistory ⟨_, leftNext.trace⟩ =
       setup.commitRecoveryErasedHistory ⟨_, rightNext.trace⟩ ∧
     ∀ labels : setup.commitRecoveryProtocol.StepEvent → Player → Bool,
@@ -252,7 +279,8 @@ private theorem binding_reset_sources_of_actual_closings
     (newFailure : ((phase.drain (raw true)).excluded \
       anchor.execution.application.entry.excluded).Nonempty) :
     PairedBindingResetSources checkpoint (ending false).execution.application
-      (ending true).execution.application := by
+      (ending true).execution.application (phase.drain (raw false))
+        (phase.drain (raw true)) := by
   classical
   have initialized : ∀ state ∈ (nativeInitial).support, state.Ordered := by
     intro state reached
@@ -316,9 +344,22 @@ private theorem binding_reset_sources_of_actual_closings
       (ending side).execution.application,
       (∃ fuel, setup.commitRecoveryProtocol.ReachesWithin fuel
         ⟨_, checkpoint.trace⟩ ⟨_, next.trace⟩) ∧
+      next.residual.lift (ProtocolState.entry next.residual.tail next.source) =
+        ProtocolState.withHistory setup.program
+          (checkpoint.residual.lift
+            (ProtocolState.entry checkpoint.residual.tail checkpoint.source))
+          (ProtocolState.history setup.program
+            (checkpoint.commitResultPoint (phase.drain (raw side)))) ∧
       setup.recoveryJointRecall next.trace =
         (checkpoint.commitInstructionWord (phase.drain (raw side)).native).reverse ++
-          setup.recoveryJointRecall checkpoint.trace := by
+          setup.recoveryJointRecall checkpoint.trace ∧
+      (∀ owner, owner ∉ (phase.drain (raw side)).excluded →
+        next.source.history owner = checkpoint.source.history owner ++
+          (decodeHistory setup.program ((phase.drain (raw side)).native.config.history.map
+            ((toEventGraph setup.program).fromModeCompletion mode)) owner).drop
+              (decodeHistory setup.program
+                (anchor.execution.application.entry.native.config.history.map
+                  ((toEventGraph setup.program).fromModeCompletion mode)) owner).length) := by
     intro side
     obtain ⟨native, binding, receipts, stored, remembered, _coverage⟩ := rawFacts side
     rw [rawFrames side] at native binding receipts stored remembered
@@ -348,11 +389,11 @@ private theorem binding_reset_sources_of_actual_closings
     have survivor : (phase.owners \ (phase.drain (raw side)).excluded).Nonempty :=
       ⟨observer, Finset.mem_sdiff.mpr ⟨owned, by simpa only [excluded side] using survives side⟩⟩
     let cp : RecoverySourceCheckpoint setup mode (frames side) := checkpoint.transfer rfl rfl rfl
-    obtain ⟨next, _point, ⟨fuel, path, word⟩, _own⟩ := cp.after_commit_retry committing phase
+    obtain ⟨next, point, ⟨fuel, path, word⟩, own⟩ := cp.after_commit_retry committing phase
       remaining phases chain binding receipts remembered invariant (finished side) missed survivor
     rw [actual side]
-    exact ⟨next, ⟨fuel, path⟩, word⟩
-  choose next paths words using selected
+    exact ⟨next, ⟨fuel, path⟩, point, word, own⟩
+  choose next paths points words own using selected
   have completed : ∀ native ∈ [(phase.drain (raw false)).native,
       (phase.drain (raw true)).native],
       match commitPhase checkpoint.residual.tail with
@@ -391,7 +432,9 @@ private theorem binding_reset_sources_of_actual_closings
         anchor.execution.application.entry.excluded).Nonempty
       rw [endingEntry false, ← excluded false, sameExcluded]
       exact newFailure)
-  refine ⟨next false, next true, paths false, paths true, reset, ?_⟩
+  refine ⟨next false, next true, paths false, paths true, points false, points true,
+    words false, words true,
+    own false, own true, reset, ?_⟩
   intro labels
   have leftLength := congrArg List.length (words false)
   have rightLength := congrArg List.length (words true)
@@ -551,7 +594,8 @@ theorem phaseProposalUnflagged_available_send_reset_boundary
             PhaseRuntimeState.sourceControlRecords rightEnding.execution.application.retired ∧
           (((phase.drain rightRaw).excluded \ active.application.entry.excluded).Nonempty →
             PairedBindingResetSources checkpoint leftEnding.execution.application
-              rightEnding.execution.application)) := by
+              rightEnding.execution.application (phase.drain leftRaw)
+                (phase.drain rightRaw))) := by
   classical
   intro initial horizon scheduler anchor
   obtain ⟨leftTrace, rightTrace, leftResponsePrefix, rightResponsePrefix, paired⟩ :=

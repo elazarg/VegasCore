@@ -12,6 +12,7 @@ import Vegas.Pending.PhaseEntryExclusion
 import Vegas.Game.PhaseProposalActor
 import Vegas.Source.CommitRecoveryCursor
 import Vegas.Source.CommitRecoveryWordMass
+import Vegas.Source.CommitRecoveryOwnedStep
 import Vegas.Game.RecoverySurvivingBindingSource
 import Vegas.Game.PhaseProposalReplayScan
 import Vegas.Game.RecoveryRevealCheckpoint
@@ -323,64 +324,6 @@ theorem phaseProposal_fresh_settle_completion_origin
     keeps path,
     fun event completed fresh => automatic_path_new_completed path event completed fresh⟩
 
-omit [Fintype Player] in
-private theorem recovery_owned_pure :
-    ∀ {Γ : SourceCtx Player L} {O : Finset VarId}
-      (program : SourceProgram Player L Γ O) (point : ProtocolState program)
-      (excluded : Finset Player) (joint : Player → Option (CommitRecoveryMove Player L))
-      (owner : Player), ProtocolState.actor program point = some owner →
-        ∃ result, ProtocolState.recoveryStep program point excluded joint = PMF.pure result := by
-  intro Γ O program
-  induction program with
-  | ret payoffs => intro point excluded joint owner impossible; cases impossible
-  | sample name fresh law next ih =>
-      intro point excluded joint owner acting
-      cases point with
-      | inl config => cases acting
-      | inr later =>
-          obtain ⟨result, pure⟩ := ih later excluded joint owner acting
-          exact ⟨(Sum.inr result.1, result.2), by
-            simp only [ProtocolState.recoveryStep, Sum.elim_inr, pure,
-            PMF.pure_map]⟩
-  | commit name owner fresh guard next ih =>
-      intro point excluded joint who acting
-      cases point with
-      | inl config =>
-          simp only [ProtocolState.recoveryStep, Sum.elim_inl]
-          split <;> exact ⟨_, rfl⟩
-      | inr later =>
-          obtain ⟨result, pure⟩ := ih later excluded joint who acting
-          exact ⟨(Sum.inr result.1, result.2), by
-            simp only [ProtocolState.recoveryStep, Sum.elim_inr, pure,
-            PMF.pure_map]⟩
-  | reveal published owner name fresh selected unresolved next ih =>
-      intro point excluded joint who acting
-      cases point with
-      | inl config => exact ⟨_, rfl⟩
-      | inr later =>
-          obtain ⟨result, pure⟩ := ih later excluded joint who acting
-          exact ⟨(Sum.inr result.1, result.2), by
-            simp only [ProtocolState.recoveryStep, Sum.elim_inr, pure,
-            PMF.pure_map]⟩
-
-omit [Fintype Player] in
-private theorem owned_step_unique
-    (setup : Setup (Player := Player) (L := L))
-    (current : CommitRecoveryState setup.program) (owner : Player)
-    (acting : ProtocolState.actor setup.program current.point = some owner)
-    (joint : Player → Option (CommitRecoveryMove Player L))
-    (first second : CommitRecoveryState setup.program)
-    (left : first ∈ (current.step joint).support)
-    (right : second ∈ (current.step joint).support) : first = second := by
-  obtain ⟨l, lm, rfl⟩ := current.step_raw_result joint first left
-  obtain ⟨r, rm, rfl⟩ := current.step_raw_result joint second right
-  obtain ⟨result, pure⟩ := recovery_owned_pure setup.program current.point current.excluded
-    joint owner acting
-  rw [pure, PMF.mem_support_pure_iff] at lm rm
-  have equal : l = r := Subtype.ext (lm.trans rm.symm)
-  cases equal
-  rfl
-
 /-- An inherited excluded owner contributes its literal NONE instruction to
 the full enriched history under every behavioral profile. The existing real
 install and close are retained; the instruction cannot draw Nature. -/
@@ -417,7 +360,7 @@ theorem SourceProgram.Setup.proposalRecovery_excluded_owned_step_law
     apply pmf_eq_pure_of_support_subset_singleton
     intro final supported
     obtain ⟨other, otherReached, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp supported
-    exact congrArg some (owned_step_unique setup current owner acting
+    exact congrArg some (setup.commitRecovery_step_unique_of_actor current owner acting
       (proposalRecoveryJoint joint) other next otherReached reached)
   rw [setup.proposalRecoveryModel.runBehavioralFrom_succ_of_not_terminal profile 0 legal.1,
     setup.proposalRecoveryModel.behavioralJoint_eq_pure_of_no_active profile trace legal.1
@@ -734,7 +677,8 @@ theorem SourceProgram.Setup.proposalRecovery_ordinary_disclosure_step_law
   obtain ⟨actual, actualSupport, landed⟩ :=
     (PMF.mem_support_bindOnSupport_iff _ _).mp supported
   obtain ⟨other, otherReached, equal⟩ := (PMF.mem_support_map_iff _ _ _).mp actualSupport
-  have same := owned_step_unique setup current owner acting (proposalRecoveryJoint joint)
+  have same := setup.commitRecovery_step_unique_of_actor current owner acting
+    (proposalRecoveryJoint joint)
     other next otherReached reached
   subst other
   subst actual

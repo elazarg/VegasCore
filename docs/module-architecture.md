@@ -2853,3 +2853,15 @@ source equilibrium construction and its strict index for the actual source
 assessments, native Bayes assessments, posterior bounds and bounded-run joint
 laws. Native local gain comparisons and the native equilibrium limit remain
 separate obligations.
+
+The [source reach factorization](../Vegas/Game/ProposalRecoveryPublicClassFactorization.lean)
+separates original intrinsic mass and the entire focal own play from actual
+foreign class, value and conditional-cause factors, including failed and
+zero atoms. Acting-source-step determinism belongs to
+[the source layer](../Vegas/Source/CommitRecoveryOwnedStep.lean).
+[Original clean-close debt](../Vegas/Game/PhaseProposalStandingBindingDebt.lean)
+and [actual reset payoff laws](../Vegas/Game/PhaseProposalOriginalResetPayoff.lean)
+derive their selected source witnesses at the physical endpoints.
+[Saved properness](../Vegas/Game/PhaseProposalSavedBindingValues.lean) uses
+observable absence of saved debt and actual foreign-history regularity.
+Full conditional belief weights and complete native gain bounds remain open.

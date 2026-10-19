@@ -249,3 +249,5 @@ import Vegas.Source.ProposalRecoveryPreparationMenuInverse
 import Vegas.Source.CommitRecoveryNonCommitJoint
 import Vegas.Source.CommitRecoveryNonCommitValues
 import Vegas.Source.CommitRecoveryAutomaticValues
+import Vegas.Source.CommitRecoveryOwnedStep
+import Vegas.Source.CommitRecoveryBindingAlternatives

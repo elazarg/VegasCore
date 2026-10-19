@@ -54,7 +54,7 @@ theorem checkpointDebt_of_failed_binding
   exact Or.inr (Or.inr (witness.checkpoint.origin.failedBinding_lift who _
     (ProtocolState.failedBinding_entry _ _ localFailure)))
 
-private theorem debt_of_source_reaches
+theorem checkpointDebt_of_source_reaches
     (who : Player) (witness : RecoverySourceWitness setup mode plan state)
     (owed : witness.CheckpointDebt who)
     {nextState : PhaseRuntimeState (serviceGraph setup mode)}
@@ -126,7 +126,7 @@ theorem phaseCheckpointDebt_invariant
       obtain ⟨result, handled, rfl⟩ := Option.map_eq_some_iff.mp accepted
       obtain ⟨nextWitness, _delta, fuel, path⟩ := witness.after_handle runtime leaks maximal
         message result allowed handled
-      exact ⟨nextWitness, RecoverySourceWitness.debt_of_source_reaches who witness owed
+      exact ⟨nextWitness, RecoverySourceWitness.checkpointDebt_of_source_reaches who witness owed
         nextWitness fuel path⟩
     · cases accepted
   environment state command next valid supported := by
@@ -139,7 +139,7 @@ theorem phaseCheckpointDebt_invariant
       obtain ⟨nextWitness, _delta, fuel, path⟩ := witness.after_environment_source runtime leaks
         maximal
         command result authorized reached
-      exact ⟨nextWitness, RecoverySourceWitness.debt_of_source_reaches who witness owed
+      exact ⟨nextWitness, RecoverySourceWitness.checkpointDebt_of_source_reaches who witness owed
         nextWitness fuel path⟩
     · rw [PMF.mem_support_pure_iff] at supported
       subst next

@@ -9,3 +9,5 @@ import VegasTests.AxiomAudit.OrdinaryTerminal
 import VegasTests.AxiomAudit.InitializedOrdinary
 import VegasTests.AxiomAudit.NativeContinuation
 import VegasTests.AxiomAudit.CommonPerturbations
+import VegasTests.AxiomAudit.PublicClassProduct
+import VegasTests.AxiomAudit.OriginalBindingContinuation

@@ -1484,3 +1484,13 @@ import Vegas.Game.ReservedEpochBindingAliases
 import Vegas.Game.PhaseProposalResetPayoff
 import Vegas.Game.PhaseProposalCommonPerturbations
 import Vegas.Game.PhaseProposalConsistentSequence
+import Vegas.Game.ProposalRecoveryClassRows
+import Vegas.Game.ProposalRecoveryPublicClassProduct
+import Vegas.Game.ProposalRecoveryPublicClassFactorization
+import Vegas.Game.PhaseProposalCurrentBindingRetention
+import Vegas.Game.PhaseProposalFreshPayoff
+import Vegas.Game.RecoverySameAttemptWitness
+import Vegas.Game.PhaseProposalStandingBindingDebt
+import Vegas.Game.PhaseProposalSavedBindingValues
+import Vegas.Game.RecoveryOriginalRetryWitness
+import Vegas.Game.PhaseProposalOriginalResetPayoff
