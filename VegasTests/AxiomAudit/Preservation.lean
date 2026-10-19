@@ -4731,3 +4731,105 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms
   Vegas.source_replay_future_delta_none
+
+/-- info: 'Vegas.SourceProgram.Setup.proposalRecovery_ordinary_choice_law' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.proposalRecovery_ordinary_choice_law
+
+/-- info: 'Vegas.SourceProgram.Setup.proposalRecovery_ordinary_run_succ' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.proposalRecovery_ordinary_run_succ
+
+/-- info: 'Vegas.SourceProgram.Setup.proposalRecovery_oneStep_image' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.proposalRecovery_oneStep_image
+
+/-- info: 'Vegas.phaseProposalBindingGraphView_query_of_source_readback' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseProposalBindingGraphView_query_of_source_readback
+
+/-- info: 'Vegas.compiledCommitPrefix_erased_view_of_agrees' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.compiledCommitPrefix_erased_view_of_agrees
+
+/-- info: 'Vegas.phaseProposalBindingGraphView_query_of_compiled_prefix' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseProposalBindingGraphView_query_of_compiled_prefix
+
+/-- info: 'Vegas.phaseProposalBindingPotentialProfile_excluded_step' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseProposalBindingPotentialProfile_excluded_step
+
+/-- info: 'Vegas.phaseProposalBindingPotentialProfile_source_coupling' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseProposalBindingPotentialProfile_source_coupling
+
+/-- info: 'Vegas.phaseProposalBindingPotentialProfile_source_block_coupling' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseProposalBindingPotentialProfile_source_block_coupling
+
+/-- info: 'Vegas.phaseProposalBindingWord_of_ordinary_attempt' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseProposalBindingWord_of_ordinary_attempt
+
+/-- info: 'Vegas.phaseProposalBindingPotentialProfile_source_word_law' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseProposalBindingPotentialProfile_source_word_law
+
+/-- info: 'Vegas.phaseProposalBindingPotentialProfile_source_history_injective' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseProposalBindingPotentialProfile_source_history_injective
+
+/-- info: 'Vegas.phaseProposal_fresh_entry_binding_origins' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseProposal_fresh_entry_binding_origins
+
+/-- info: 'Vegas.phaseProposalUnflagged_stopped_source_binding_word' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseProposalUnflagged_stopped_source_binding_word
+
+/-- info: 'Vegas.phaseProposalUnflagged_stopped_source_history' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.phaseProposalUnflagged_stopped_source_history
+
+/-- info: 'Vegas.RecoverySourceWitness.ordinary_installed_binding_cursor' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.RecoverySourceWitness.ordinary_installed_binding_cursor
+
+/-- info: 'Vegas.RecoverySourceCheckpoint.ordinary_closing_binding_checkpoint' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.RecoverySourceCheckpoint.ordinary_closing_binding_checkpoint

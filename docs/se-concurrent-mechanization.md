@@ -214,7 +214,7 @@ quantifiers and a passing build. The labels below never enter Lean names.
 
 Compact progress display: **Source 5/5 · Runtime 2/5 · Transport 1/6 · E2E 0/2**.
 Runtime frontier: binding WAIT-to-SEND survival and paired full failure/address/archive comparison checked; publication emission/acceptance and clean boundary law are next.
-Transport frontier: whole lost-value replay, unchanged foreign information and matched intrinsic chance atoms checked; initialized joint likelihood, chronological source law and current-debt/reset joins remain.
+Transport frontier: initialized lost-value cross-reach, whole finite source-block/history law and actual closing checkpoint checked; full input-fiber sums, selected-history checkpoint composition and current-debt/reset joins remain.
 Update counts from checked statements and name the current bottleneck. Existing
 reusable proofs are dependencies, not new completed milestones.
 Current bottlenecks are the stopped service coupling, cross-world likelihood
@@ -599,9 +599,13 @@ actual closing command and every later step. The
 preserves the original joint inputs and every other player's full recall,
 current view and own action word. The
 [intrinsic chance comparison](../Vegas/Pending/PhaseProposalLostPreparationMass.lean)
-preserves each matched environment atom's probability. These statements do not
-yet construct the paired initial SEND or sum the actual reference-policy weights;
-the initialized full-information likelihood identity remains open.
+preserves each matched environment atom's probability. The
+[initialized comparison](../Vegas/Game/PhaseProposalLostBindingInitializedMass.lean)
+constructs the changed typed SEND from the same original initialized prefix
+and proves the cross-multiplied whole reach identity for every legal profile.
+On both traces, the sender's later callbacks are forced WAIT on the actual
+never-accepted slice. Summing foreign raw aliases and complete input fibers is
+still open.
 
 The [canonical disclosure readback](../Vegas/Game/PhaseProposalDisclosure.lean)
 retains equality of the recorded native Boolean and the chosen source action
@@ -609,3 +613,19 @@ at every active disclosure, including false actions and guard-rejected true
 actions. This concerns that same chosen canonical replay. It does not require
 every statistical source refinement used in a likelihood argument to share its
 physical delivery label, and does not close the paired publication comparison.
+
+The [finite source-block coupling](../Vegas/Game/PhaseProposalCanonicalSourceBlock.lean)
+couples the actual enriched source evaluator to the existing compiled
+continuation, retaining the full typed attempt, semantic and labeled history,
+exclusions, generation and live references. The
+[actual stopped history law](../Vegas/Game/PhaseProposalOrdinaryStoppedSourceHistory.lean)
+identifies the complete source-history distribution from an ordinary fresh
+native binding installation. The
+[installed cursor](../Vegas/Game/PhaseProposalInstalledSourceBlock.lean)
+uses that same selected checkpoint and archive lift; surviving source bindings
+must hold values, while guards may reject. The
+[closing checkpoint](../Vegas/Game/PhaseProposalOrdinaryBindingCheckpoint.lean)
+derives the next saved checkpoint and exact native normalization from the
+original closing operation. Composing the selected source history with that
+checkpoint and deriving ordinary usability on the good native fiber remain
+open, as do publication/Nature composition and full initialized preservation.

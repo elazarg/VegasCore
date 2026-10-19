@@ -45,9 +45,15 @@ theorem phase_lost_binding_replay
     (selected : command ∈ (scheduler before.environmentRecall
       (before.observeEnvironment app)).support)
     (moved : after ∈ (before.environmentStep app command).support)
+    (closingJoint : Player → Option (app).Action)
+    (closingLegal : ((menu).protocol initial horizon scheduler).Legal
+      (some ⟨remaining + 1, none, before⟩) closingJoint)
+    (closingRealized : some (⟨remaining, command.actor? app, after⟩ : (app).Control) ∈
+      (((menu).protocol initial horizon scheduler).step
+        (some ⟨remaining + 1, none, before⟩) ⟨closingJoint, closingLegal⟩).support)
     (afterTrace : ((menu).protocol initial horizon scheduler).Trace
       (some ⟨remaining, command.actor? app, after⟩))
-    (closingKept : TracePrefix beforeTrace afterTrace)
+    (closingStep : afterTrace = beforeTrace.extend closingJoint closingLegal closingRealized)
     (finish : (app).Control)
     (trace : ((menu).protocol initial horizon scheduler).Trace (some finish))
     (fromClose : TracePrefix afterTrace trace)
@@ -79,10 +85,27 @@ theorem phase_lost_binding_replay
       TracePrefix imagePrefix imageTrace ∧
       target.eraseRecall app owner =
         ((HiddenSwap.preparationOnly (owner, .prepared serial) first second).phaseExecution
-          finish.execution).eraseRecall app owner := by
+          finish.execution).eraseRecall app owner ∧
+        imageTrace.transitionMass * startTrace.transitionMass =
+          trace.transitionMass * imagePrefix.transitionMass ∧
+      (∀ policy : ((menu).information initial horizon scheduler).BehavioralPolicy owner,
+        ((menu).information initial horizon scheduler).ownPlayReachProbability policy
+            (((menu).information initial horizon scheduler).ownPlay owner imageTrace) =
+          ((menu).information initial horizon scheduler).ownPlayReachProbability policy
+            (((menu).information initial horizon scheduler).ownPlay owner imagePrefix)) ∧
+      ∀ policy : ((menu).information initial horizon scheduler).BehavioralPolicy owner,
+        ((menu).information initial horizon scheduler).ownPlayReachProbability policy
+            (((menu).information initial horizon scheduler).ownPlay owner trace) =
+          ((menu).information initial horizon scheduler).ownPlayReachProbability policy
+            (((menu).information initial horizon scheduler).ownPlay owner startTrace) := by
   classical
+  have closingKept : TracePrefix beforeTrace afterTrace := by
+    rw [closingStep]
+    exact TracePrefix.extend (prefixTrace := beforeTrace) TracePrefix.refl closingJoint
+      closingLegal closingRealized
   refine ⟨toClose.trans (closingKept.trans fromClose), ?_⟩
-  obtain ⟨closingImage, closingImageTrace, closingKept, closingPaired⟩ :=
+  obtain ⟨closingImage, closingImageTrace, imageClosingKept, closingPaired, closingMass,
+      closingTail, closingSourceTail⟩ :=
     phase_lost_binding_replay_before_close runtime leaks bounds plan inputs horizon scheduler
       ordered start ⟨remaining + 1, none, before⟩ startTrace beforeTrace toClose same after current
         effect phase installed kind owner omitted payload binding inside unaccepted entry recorded
@@ -162,9 +185,23 @@ theorem phase_lost_binding_replay
       (closingImage.observeEnvironment app)).support := by
     rw [service, observed]
     exact selected
-  obtain ⟨nextImageTrace, nextKept⟩ := HiddenSwap.phase_environment_trace_prefix bounds
+  obtain ⟨nextImageTrace, nextKept, nextMass, nextWord⟩ :=
+    HiddenSwap.phase_environment_trace_prefix bounds
     initial horizon scheduler remaining
     closingImage nextImage command closingImageTrace selectedImage nextMoved
+  have intrinsic := HiddenSwap.preparationOnly_environment_atom owner (.prepared serial) first
+    second before closingImage closingPaired command after nextImage moved nextMoved nextPaired
+      activeBefore originalRejected
+  have closingCross : nextImageTrace.transitionMass * beforeTrace.transitionMass =
+      afterTrace.transitionMass * closingImageTrace.transitionMass := by
+    rw [nextMass, service, observed, intrinsic, closingStep, Trace.transitionMass_extend]
+    change (_ * _ : ℝ) * beforeTrace.transitionMass =
+      (beforeTrace.transitionMass * ((app).transition initial horizon scheduler
+        (some ⟨remaining + 1, none, before⟩) closingJoint
+          (some ⟨remaining, command.actor? app, after⟩)).toReal) * _
+    rw [(app).transition_environment_apply initial horizon scheduler remaining before after
+      command moved]
+    ring
   obtain ⟨savedAfter, activeAfter⟩ := phase_environment_unused_preparation runtime leaks
     before after
     command (owner, .prepared serial) savedBefore activeBefore originalRejected moved
@@ -172,11 +209,45 @@ theorem phase_lost_binding_replay
     rw [← excludedEq]
     exact RecoveryState.excluded_of_finished_unaccepted_binding (phase.drain current) phase
       finished coverage omitted inside owner payload binding unaccepted
-  obtain ⟨target, targetTrace, suffixKept, finalPaired⟩ := phase_lost_binding_replay_after_close
+  obtain ⟨target, targetTrace, suffixKept, finalPaired, suffixMass,
+      suffixTail, suffixSourceTail⟩ :=
+    phase_lost_binding_replay_after_close
     runtime leaks bounds plan inputs horizon scheduler
     owner (.prepared serial) first second ⟨remaining, command.actor? app, after⟩ finish
       afterTrace trace
       fromClose excluded savedAfter activeAfter nextImage nextImageTrace nextPaired
-  exact ⟨target, targetTrace, closingKept.trans (nextKept.trans suffixKept), finalPaired⟩
+  refine ⟨target, targetTrace,
+    imageClosingKept.trans (nextKept.trans suffixKept), finalPaired, ?_, ?_, ?_⟩
+  · apply (mul_right_cancel₀ (ne_of_gt afterTrace.transitionMass_pos))
+    calc
+      targetTrace.transitionMass * startTrace.transitionMass * afterTrace.transitionMass =
+          trace.transitionMass * nextImageTrace.transitionMass * startTrace.transitionMass := by
+        calc
+          _ = (targetTrace.transitionMass * afterTrace.transitionMass) *
+              startTrace.transitionMass := by ring
+          _ = _ := by rw [suffixMass]
+      _ = trace.transitionMass * imagePrefix.transitionMass * afterTrace.transitionMass := by
+        apply (mul_right_cancel₀ (ne_of_gt beforeTrace.transitionMass_pos))
+        calc
+          _ = trace.transitionMass *
+              (nextImageTrace.transitionMass * beforeTrace.transitionMass) *
+                startTrace.transitionMass := by ring
+          _ = trace.transitionMass * afterTrace.transitionMass *
+              (closingImageTrace.transitionMass * startTrace.transitionMass) := by
+            rw [closingCross]; ring
+          _ = _ := by rw [closingMass]; ring
+  · intro policy
+    rw [suffixTail policy, nextWord owner]
+    exact closingTail policy
+  · intro policy
+    rw [suffixSourceTail policy]
+    have closingWord : ((menu).information initial horizon scheduler).ownPlay owner afterTrace =
+        ((menu).information initial horizon scheduler).ownPlay owner beforeTrace := by
+      rw [HiddenSwap.phase_trace_ownPlay bounds initial horizon scheduler _ afterTrace owner,
+        HiddenSwap.phase_trace_ownPlay bounds initial horizon scheduler _ beforeTrace owner,
+        ← (app).environmentStep_recall before after command moved]
+    rw [closingWord]
+    exact closingSourceTail policy
+
 
 end Vegas.EventGraphRuntime

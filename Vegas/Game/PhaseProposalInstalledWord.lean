@@ -97,7 +97,13 @@ theorem phaseProposalUnflagged_installed_binding_word
               image final = phase.drain raw ∧ phase.Finished (image final) ∧
               (image final).excluded = anchor.execution.application.current.excluded ∧
               PhaseProposal.sourceArchive ending.execution.network.inputs =
-                PhaseProposal.sourceArchive anchor.execution.network.inputs) ∧
+                PhaseProposal.sourceArchive anchor.execution.network.inputs ∧
+              before.execution.application.attempt = anchor.execution.application.attempt ∧
+              phase ∈ before.execution.application.phases.head? ∧
+              ending.execution.application =
+                ({ before.execution.application with current := raw } :
+                  PhaseRuntimeState graph).normalize ∧
+              (image final).native.BindingInvariant ∧ (image final).FailureCoverage) ∧
         law.map (fun final => phaseProposalBindingWord setup.program block suffix embedding
           anchor.execution.application.current.excluded (image final).native.config.store entry) =
             ((graph).canonicalContinuation

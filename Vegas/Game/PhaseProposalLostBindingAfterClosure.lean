@@ -54,7 +54,19 @@ theorem phase_lost_binding_replay_after_close
       TracePrefix imagePrefix imageTrace ∧
       target.eraseRecall app owner =
         ((HiddenSwap.preparationOnly (owner, slot) first second).phaseExecution
-          finish.execution).eraseRecall app owner := by
+          finish.execution).eraseRecall app owner ∧
+        imageTrace.transitionMass * startTrace.transitionMass =
+          trace.transitionMass * imagePrefix.transitionMass ∧
+      (∀ policy : ((menu).information initial horizon scheduler).BehavioralPolicy owner,
+        ((menu).information initial horizon scheduler).ownPlayReachProbability policy
+            (((menu).information initial horizon scheduler).ownPlay owner imageTrace) =
+          ((menu).information initial horizon scheduler).ownPlayReachProbability policy
+            (((menu).information initial horizon scheduler).ownPlay owner imagePrefix)) ∧
+      ∀ policy : ((menu).information initial horizon scheduler).BehavioralPolicy owner,
+        ((menu).information initial horizon scheduler).ownPlayReachProbability policy
+            (((menu).information initial horizon scheduler).ownPlay owner trace) =
+          ((menu).information initial horizon scheduler).ownPlayReachProbability policy
+            (((menu).information initial horizon scheduler).ownPlay owner startTrace) := by
   have persists (control : (app).Control)
       (prior : ((menu).protocol initial horizon scheduler).Trace (some control))
       (fromStart : TracePrefix startTrace prior) :
@@ -72,6 +84,19 @@ theorem phase_lost_binding_replay_after_close
       horizon scheduler remaining owner execution prior
     intro coordinate request
     exact request.2.2.2.2 original.1
+  · intro remaining execution prior fromStart _kept image imageTrace paired
+    have excluded := (persists ⟨remaining, some owner, execution⟩ prior fromStart).1
+    have imageExcluded : owner ∈ image.application.current.excluded := by
+      have application := congrArg
+        (fun value : (app).Execution => value.application.current.excluded) paired
+      change image.application.current.excluded = execution.application.current.excluded
+        at application
+      rw [application]
+      exact excluded
+    apply PhaseCount.onePacketActions_eq_singleton_of_no_request runtime leaks bounds plan inputs
+      horizon scheduler remaining owner image imageTrace
+    intro coordinate request
+    exact request.2.2.2.2 imageExcluded
   · intro control prior fromStart _kept
     exact (persists control prior fromStart).2.2
   · intro remaining execution prior fromStart _command _next _selected _moved _nextTrace

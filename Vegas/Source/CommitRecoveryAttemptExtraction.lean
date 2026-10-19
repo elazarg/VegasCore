@@ -13,7 +13,7 @@ open GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol GameTheory.Math.P
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
-private theorem commit_instruction_attempt
+theorem commitRecovery_commit_instruction_attempt
     {wholeΓ Γ : SourceCtx Player L} {wholeO O : Finset VarId}
     {whole : SourceProgram Player L wholeΓ wholeO} (initial : Config Player L wholeΓ)
     {name : VarId} {owner : Player} {payload : L.Ty} {fresh : name ∉ Γ.map Prod.fst}
@@ -98,7 +98,7 @@ private theorem commit_instruction_attempt
 
 namespace CommitPrefix
 
-private def prependAttempt
+def Attempt.prepend
     {Γ Δ : SourceCtx Player L} {O P : Finset VarId}
     {name : VarId} {owner : Player} {payload : L.Ty} {fresh : name ∉ Γ.map Prod.fst}
     {guard : SourceGuard L Γ owner name payload}
@@ -119,7 +119,7 @@ private def prependAttempt
       exact .excluded inactive tail
 
 omit [IExpr.ResultTypes L] in
-private theorem prependAttempt_joints
+theorem Attempt.prepend_joints
     {Γ Δ : SourceCtx Player L} {O P : Finset VarId}
     {name : VarId} {owner : Player} {payload : L.Ty} {fresh : name ∉ Γ.map Prod.fst}
     {guard : SourceGuard L Γ owner name payload}
@@ -130,7 +130,7 @@ private theorem prependAttempt_joints
     (head : (CommitPrefix.commit (O := O) name owner fresh guard .nil).Attempt
       entry excluded middle owners)
     (tail : rest.Attempt middle owners finished after) :
-    (prependAttempt head tail).joints = head.joints ++ tail.joints := by
+    (Attempt.prepend head tail).joints = head.joints ++ tail.joints := by
   cases head with
   | active active choice missed missing later => cases later; rfl
   | excluded inactive later => cases later; rfl
@@ -170,8 +170,8 @@ theorem attempt_of_instructions
       | @step _ middle _ joint words signals legal supported later =>
           obtain ⟨result, raw, middleEq⟩ := state.step_raw_result joint middle supported
           obtain ⟨headConfig, headExcluded, head, headWord, rawEq⟩ :=
-            commit_instruction_attempt initial guard (rest.prepend suffix) origin entry state
-              atEntry joint legal result.1 raw
+            commitRecovery_commit_instruction_attempt initial guard (rest.prepend suffix) origin
+              entry state atEntry joint legal result.1 raw
           have tailLength : words.length = rest.length := by
             simp only [List.length_cons, CommitPrefix.length] at length
             omega
@@ -198,10 +198,10 @@ theorem attempt_of_instructions
                 signals nextPoint saved endpoint restPositive later tailLength
             let tailTyped : rest.Attempt headConfig headExcluded finished after :=
               nextExcluded ▸ tailAttempt
-            let attempt := prependAttempt head tailTyped
+            let attempt := Attempt.prepend head tailTyped
             refine ⟨finished, after, attempt, ?_, head.excluded_subset.trans
               tailTyped.excluded_subset, ?_⟩
-            · rw [prependAttempt_joints, headWord]
+            · rw [Attempt.prepend_joints, headWord]
               have same : tailTyped.joints = words := by
                 dsimp only [tailTyped]
                 cases nextExcluded

@@ -1425,3 +1425,16 @@ import Vegas.Game.PhaseProposalLostBindingAfterClosure
 import Vegas.Game.PhaseProposalLostBindingClosingReplay
 import Vegas.Game.PhaseProposalLostBindingReplay
 import Vegas.Game.PhaseProposalLostBindingInformation
+import Vegas.Game.PhaseProposalLostBindingForcedWait
+import Vegas.Game.PhaseProposalLostBindingInitializedMass
+import Vegas.Game.ProposalRecoveryOrdinaryKernel
+import Vegas.Game.PhaseProposalCanonicalReadback
+import Vegas.Game.PhaseProposalCanonicalSourceQuery
+import Vegas.Game.PhaseProposalCanonicalSourceKernel
+import Vegas.Game.PhaseProposalCanonicalSourceBlock
+import Vegas.Game.PhaseProposalSourceWordReadout
+import Vegas.Game.PhaseProposalSourceHistoryReadout
+import Vegas.Game.PhaseProposalOrdinaryStoppedSourceWord
+import Vegas.Game.PhaseProposalOrdinaryStoppedSourceHistory
+import Vegas.Game.PhaseProposalInstalledSourceBlock
+import Vegas.Game.PhaseProposalOrdinaryBindingCheckpoint

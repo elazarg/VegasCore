@@ -1544,7 +1544,7 @@ private theorem closing_image_frontier
   intro event inside
   exact domain event.val event rfl ((phase.mem_events event).mp inside).2 (finished inside)
 
-private theorem fresh_entry_origins
+theorem phaseProposal_fresh_entry_binding_origins
     (anchor : (app).Control)
     (anchorTrace : ((menu).protocol initial horizon scheduler).Trace (some anchor))
     (phase : RuntimePhase (graph))
@@ -1552,7 +1552,9 @@ private theorem fresh_entry_origins
     (commitment : phase.kind = .commitment)
     (fresh : ∀ who, ∀ record ∈ anchor.execution.recall who,
       record.beforeView.application.2.attempt ≠ anchor.execution.application.attempt) :
-    PhaseProposalEmittedBindings runtime leaks anchor.execution phase
+    (∀ message ∈ anchor.execution.network.inputs,
+      message.payload.attempt ≠ anchor.execution.application.attempt) ∧
+      PhaseProposalEmittedBindings runtime leaks anchor.execution phase
         anchor.execution.application.current.native.config ∧
       ∀ event ∈ anchor.execution.application.current.native.config.cut.completed,
         event.val < phase.low ∨ ∃ owner ∈ anchor.execution.application.current.excluded,
@@ -1617,7 +1619,7 @@ private theorem fresh_entry_origins
     exact (excluded (coverage.covered event owner (actor?_of_outputLayout_binding (graph) binding)
       (Or.inl ((anchor.execution.application.current.native.publicView_missedBinding event owner
         payload binding).mpr ⟨completed, missing⟩)))).elim
-  exact ⟨emissions, initialOrigins⟩
+  exact ⟨noInputs, emissions, initialOrigins⟩
 
 private theorem excluded_prefix_grows : ∀ (first last : (app).Control)
     (prior : ((menu).protocol (initial) horizon scheduler).Trace (some first))
@@ -1697,8 +1699,10 @@ theorem phaseProposalUnflagged_stopped_potential_of_fresh_entry
     intro state supported
     obtain ⟨draw, _supported, rfl⟩ := PMF.support_map .. ▸ supported
     exact PhaseRuntimeState.initial_ordered plan draw
-  obtain ⟨emissions, initialOrigins⟩ := fresh_entry_origins setup mode runtime leaks bounds plan
-    (setup.initialLaw.map encodeInputs) horizon scheduler anchor anchorTrace phase installed
+  obtain ⟨_noInputs, emissions, initialOrigins⟩ :=
+    phaseProposal_fresh_entry_binding_origins setup mode runtime
+    leaks bounds plan (setup.initialLaw.map encodeInputs) horizon scheduler anchor anchorTrace phase
+      installed
       commitment fresh
   have result := phaseProposalUnflagged_stopped_potential_of_callback_frames setup mode runtime
     leaks bounds
@@ -1833,7 +1837,13 @@ theorem phaseProposalUnflagged_stopped_binding_word
             image final = phase.drain raw ∧ phase.Finished (image final) ∧
             (image final).excluded = anchor.execution.application.current.excluded ∧
             PhaseProposal.sourceArchive ending.execution.network.inputs =
-              PhaseProposal.sourceArchive anchor.execution.network.inputs) ∧
+              PhaseProposal.sourceArchive anchor.execution.network.inputs ∧
+            before.execution.application.attempt = anchor.execution.application.attempt ∧
+            phase ∈ before.execution.application.phases.head? ∧
+            ending.execution.application =
+              ({ before.execution.application with current := raw } :
+                PhaseRuntimeState graph).normalize ∧
+            (image final).native.BindingInvariant ∧ (image final).FailureCoverage) ∧
       law.map (fun final => phaseProposalBindingWord setup.program block suffix embedding
         anchor.execution.application.current.excluded (image final).native.config.store entry) =
           ((graph).canonicalContinuation
@@ -1847,8 +1857,10 @@ theorem phaseProposalUnflagged_stopped_binding_word
     phaseProposalEmissionFrontier setup mode runtime leaks anchor.execution phase anchorTrace.length
       anchor.execution.application.current.native.config startLaw horizon scheduler
         ((menu).toRawTrace startLaw horizon scheduler history.trace)
-  obtain ⟨emissions, initialOrigins⟩ := fresh_entry_origins setup mode runtime leaks bounds plan
-    (setup.initialLaw.map encodeInputs) horizon scheduler anchor anchorTrace phase installed
+  obtain ⟨_noInputs, emissions, initialOrigins⟩ :=
+    phaseProposal_fresh_entry_binding_origins setup mode runtime
+    leaks bounds plan (setup.initialLaw.map encodeInputs) horizon scheduler anchor anchorTrace phase
+      installed
       commitment fresh
   have initialized : ∀ state ∈ startLaw.support, state.Ordered := by
     intro state supported
@@ -1876,13 +1888,19 @@ theorem phaseProposalUnflagged_stopped_binding_word
               (⟨.inr event, binding⟩ : FieldRef (graph).layout (.binding owner payload)).get?
                   (phase.drain raw).native.config.store =
                 (⟨.inr event, binding⟩ : FieldRef (graph).layout (.binding owner payload)).get?
-                  (frontier final).store) := by
+                  (frontier final).store) ∧
+          before.execution.application.attempt = anchor.execution.application.attempt ∧
+          phase ∈ before.execution.application.phases.head? ∧
+          ending.execution.application =
+            ({ before.execution.application with current := raw } :
+              PhaseRuntimeState graph).normalize ∧
+          (phase.drain raw).native.BindingInvariant ∧ (phase.drain raw).FailureCoverage := by
     intro final supported
     rcases anchor with ⟨remaining, actor, execution⟩
     change actor = none at idle
     subst actor
     obtain ⟨ending, before, prior, joint, legal, realized, raw, stateEq, _idleEnd, changed,
-        fromAnchor, toFinal, sameAttempt, beforeInstalled, _normalized, effect, finished,
+        fromAnchor, toFinal, sameAttempt, beforeInstalled, normalized, effect, finished,
         bindingInvariant, coverage, snapshotE, _accepted, _candidates, oldArchive, _tail⟩ :=
       phaseProposalUnflagged_stopped_binding_image setup mode runtime leaks bounds plan complete
         covered maximal (serviceGraph_revealRelaxedOrdered setup mode) values fullValues tape
@@ -1989,7 +2007,8 @@ theorem phaseProposalUnflagged_stopped_binding_word
         ite_eq_left (by simpa only [(menu).toRawTrace_length] using fromAnchor.length_le)]
       simp only [phaseProposalBindingFrontierAdvance, sameAttempt, ↓reduceIte, beforeIdle]
     refine ⟨ending, before, prior, joint, legal, realized, raw, stateEq, fromAnchor, toFinal,
-      effect, finished, snapshotE.trans finalE, oldArchive, ?_, ?_⟩
+      effect, finished, snapshotE.trans finalE, oldArchive, ?_, ?_, sameAttempt,
+      beforeInstalled, normalized, bindingInvariant, coverage⟩
     · simpa only [frontierEq] using scalar.1
     · simpa only [entryE, frontierEq] using scalar.2
   choose ending before prior joint legal realized raw facts using endpoint
@@ -2002,12 +2021,15 @@ theorem phaseProposalUnflagged_stopped_binding_word
     simp only [image, dite_eq_left member]
   refine ⟨image, ?_, ?_⟩
   · intro final member
-    obtain ⟨stateEq, fromAnchor, toFinal, effect, finished, imageE, oldArchive, _rest⟩ :=
-      facts final member
+    obtain ⟨stateEq, fromAnchor, toFinal, effect, finished, imageE, oldArchive,
+      _completed, _scalar, sameAttempt, beforeInstalled, normalized, valid, coverage⟩ :=
+        facts final member
     exact ⟨ending final member, before final member, prior final member, joint final member,
       legal final member, realized final member, raw final member, stateEq, fromAnchor, toFinal,
       effect, imageEq final member, (imageEq final member).symm ▸ finished,
-      (congrArg RecoveryState.excluded (imageEq final member)).trans imageE, oldArchive⟩
+      (congrArg RecoveryState.excluded (imageEq final member)).trans imageE, oldArchive,
+      sameAttempt, beforeInstalled, normalized, (imageEq final member).symm ▸ valid,
+      (imageEq final member).symm ▸ coverage⟩
   let graphProfile := phaseProposalBindingPotentialProfile setup mode runtime leaks plan
     anchor.execution phase values
   let read := fun key : (graph).SemanticKey => phaseProposalBindingWord setup.program block suffix
@@ -2019,7 +2041,8 @@ theorem phaseProposalUnflagged_stopped_binding_word
           anchor.execution.application.current.excluded (frontier final).store entry := by
     intro final member
     obtain ⟨_stateEq, _fromAnchor, _toFinal, _effect, _finished, _imageE, _oldArchive,
-      _completed, same⟩ := facts final member
+      _completed, same, _sameAttempt, _beforeInstalled, _normalized, _valid, _coverage⟩ :=
+        facts final member
     rw [imageEq final member]
     apply phaseProposalBindingWord_congr setup.program block suffix embedding
     intro who active index inside owned

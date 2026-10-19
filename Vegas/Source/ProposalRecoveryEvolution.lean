@@ -42,7 +42,9 @@ theorem proposalRecoveryErasedHistory_extend
 
 variable [Fintype Player]
 
-private theorem oneStep_image
+/-- The actual one-step law retains the erased semantic state, every player's
+erased information and the complete proposal-delta word. -/
+theorem proposalRecovery_oneStep_image
     (profile : ∀ who, setup.proposalRecoveryModel.BehavioralPolicy who)
     (history : setup.proposalRecoveryProtocol.History)
     (running : ¬ setup.proposalRecoveryProtocol.terminal history.state) :
@@ -93,7 +95,8 @@ theorem proposalRecovery_oneStep_erased_eq
     funext who
     exact normalized who _ _
       (setup.proposalRecoveryQuery_eq_of_erased_history first second same who)
-  rw [setup.oneStep_image profile first running, setup.oneStep_image profile second secondRunning]
+  rw [setup.proposalRecovery_oneStep_image profile first running,
+    setup.proposalRecovery_oneStep_image profile second secondRunning]
   apply bind_eq_of_map_eq _ _ Subtype.val Subtype.val jointEq
   intro left _leftSupport right _rightSupport joints
   rcases left with ⟨left, leftLegal⟩

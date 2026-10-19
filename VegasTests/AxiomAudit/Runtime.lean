@@ -5050,3 +5050,51 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms
   Vegas.EventGraphRuntime.HiddenSwap.preparationOnly_full_information
+
+/-- info: 'Vegas.EventGraphRuntime.HiddenSwap.phase_respond_trace_prefix' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.HiddenSwap.phase_respond_trace_prefix
+
+/-- info: 'Vegas.EventGraphRuntime.HiddenSwap.phase_environment_trace_prefix' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.HiddenSwap.phase_environment_trace_prefix
+
+/-- info: 'Vegas.EventGraphRuntime.HiddenSwap.preparationOnly_changed_response_prefix' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.HiddenSwap.preparationOnly_changed_response_prefix
+
+/-- info: 'Vegas.EventGraphRuntime.phase_lost_binding_no_unsent_before_close' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.phase_lost_binding_no_unsent_before_close
+
+/-- info: 'Vegas.EventGraphRuntime.phase_lost_binding_image_wait' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.phase_lost_binding_image_wait
+
+/-- info: 'Vegas.EventGraphRuntime.phase_lost_binding_initialized_mass' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.phase_lost_binding_initialized_mass
+
+/-- info: 'Vegas.EventGraphRuntime.phase_singleton_wait_atom' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.phase_singleton_wait_atom
+
+/-- info: 'Vegas.EventGraphRuntime.HiddenSwap.phase_trace_ownPlay' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.HiddenSwap.phase_trace_ownPlay

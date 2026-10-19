@@ -310,6 +310,7 @@ Useful existing boundaries are the
 [whole lost-binding replay through the actual closing command and later exclusions](../Vegas/Game/PhaseProposalLostBindingReplay.lean),
 [original joint inputs and complete foreign information under that replay](../Vegas/Game/PhaseProposalLostBindingInformation.lean),
 [exact matched intrinsic environment atom probabilities](../Vegas/Pending/PhaseProposalLostPreparationMass.lean),
+[initialized whole-history cross-reach under actual lost binding replay](../Vegas/Game/PhaseProposalLostBindingInitializedMass.lean),
 [signed packet, evidence normalization and counted-menu swap transport](../Vegas/Pending/PhaseSwapMenu.lean),
 [complete actual observer recall fixed by invisible value changes](../Vegas/Pending/PhaseSwapInformation.lean),
 [actual phase admission guards for private-value replay](../Vegas/Pending/PhaseSwapAdmission.lean),
@@ -2747,8 +2748,17 @@ the paired timing law is separate.
 The [fresh binding phase law](../Vegas/Game/PhaseProposalBindingPhaseLaw.lean)
 derives its emission-frontier callback conditions on the same supported native
 run and retains the original full closing image. Its addressed word law uses
-the canonical continuation from that entry; literal source identification and
-conditional intermediate-information likelihood are separate adapters.
+the canonical continuation from that entry. The
+[finite source-block coupling](../Vegas/Game/PhaseProposalCanonicalSourceBlock.lean)
+identifies the complete typed attempt and literal source history, and the
+[stopped native source-history law](../Vegas/Game/PhaseProposalOrdinaryStoppedSourceHistory.lean)
+projects the actual stopped execution to that distribution. The
+[fresh installed cursor](../Vegas/Game/PhaseProposalInstalledSourceBlock.lean)
+retains the selected checkpoint and archive lift; the
+[actual closing checkpoint](../Vegas/Game/PhaseProposalOrdinaryBindingCheckpoint.lean)
+retains its raw/drained successor and normalization. Their selected-history
+composition, good-fiber usability and conditional intermediate-information
+likelihood remain separate obligations.
 The [auxiliary entry graph view](../Vegas/Game/PhaseProposalBindingKernel.lean)
 includes the actual entry pending identifiers without changing observations.
 

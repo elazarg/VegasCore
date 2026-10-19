@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.PhaseProposalLostRecallReplay
-import Vegas.Game.PhaseProposalLostBindingSilence
+import Vegas.Pending.PhaseProposalLostPreparationMass
+import Vegas.Game.PhaseProposalLostBindingForcedWait
 import Interaction.ReactiveOwnPlay
 
 /-! # Genuine counted suffixes after an unaccepted private preparation
@@ -51,6 +51,17 @@ theorem phase_lost_binding_suffix_replay
       TracePrefix startTrace prior → TracePrefix prior trace →
       PhaseCount.onePacketActions runtime leaks bounds owner (execution.recall owner)
         (execution.observe app owner) = {⟨none⟩})
+    (targetSilent : ∀ remaining execution
+      (prior : ((PhaseCount.onePacketMenu runtime leaks bounds).protocol initial horizon
+        scheduler).Trace (some ⟨remaining, some owner, execution⟩)),
+      TracePrefix startTrace prior → TracePrefix prior trace →
+      ∀ image (_imageTrace : ((PhaseCount.onePacketMenu runtime leaks bounds).protocol
+        initial horizon scheduler).Trace (some ⟨remaining, some owner, image⟩)),
+      image.eraseRecall app owner =
+        ((HiddenSwap.preparationOnly (owner, slot) first second).phaseExecution
+          execution).eraseRecall app owner →
+      PhaseCount.onePacketActions runtime leaks bounds owner (image.recall owner)
+        (image.observe app owner) = {⟨none⟩})
     (unused : ∀ control
       (prior : ((PhaseCount.onePacketMenu runtime leaks bounds).protocol initial horizon
         scheduler).Trace (some control)),
@@ -76,7 +87,29 @@ theorem phase_lost_binding_suffix_replay
       TracePrefix imagePrefix imageTrace ∧
       target.eraseRecall app owner =
         ((HiddenSwap.preparationOnly (owner, slot) first second).phaseExecution
-          finish.execution).eraseRecall app owner := by
+          finish.execution).eraseRecall app owner ∧
+        imageTrace.transitionMass * startTrace.transitionMass =
+          trace.transitionMass * imagePrefix.transitionMass ∧
+      (∀ policy : ((PhaseCount.onePacketMenu runtime leaks bounds).information initial horizon
+          scheduler).BehavioralPolicy owner,
+        ((PhaseCount.onePacketMenu runtime leaks bounds).information initial horizon
+          scheduler).ownPlayReachProbability policy
+              (((PhaseCount.onePacketMenu runtime leaks bounds).information initial horizon
+                scheduler).ownPlay owner imageTrace) =
+          ((PhaseCount.onePacketMenu runtime leaks bounds).information initial horizon
+            scheduler).ownPlayReachProbability policy
+              (((PhaseCount.onePacketMenu runtime leaks bounds).information initial horizon
+                scheduler).ownPlay owner imagePrefix)) ∧
+      ∀ policy : ((PhaseCount.onePacketMenu runtime leaks bounds).information initial horizon
+          scheduler).BehavioralPolicy owner,
+        ((PhaseCount.onePacketMenu runtime leaks bounds).information initial horizon
+          scheduler).ownPlayReachProbability policy
+            (((PhaseCount.onePacketMenu runtime leaks bounds).information initial horizon
+              scheduler).ownPlay owner trace) =
+          ((PhaseCount.onePacketMenu runtime leaks bounds).information initial horizon
+            scheduler).ownPlayReachProbability policy
+              (((PhaseCount.onePacketMenu runtime leaks bounds).information initial horizon
+                scheduler).ownPlay owner startTrace) := by
   classical
   let menu := PhaseCount.onePacketMenu runtime leaks bounds
   let swap := HiddenSwap.preparationOnly (owner, slot) first second
@@ -87,15 +120,30 @@ theorem phase_lost_binding_suffix_replay
           (some ⟨middle.remaining, middle.actor, target⟩)),
         TracePrefix imagePrefix imageTrace ∧
         target.eraseRecall app owner =
-          (swap.phaseExecution middle.execution).eraseRecall app owner := by
+          (swap.phaseExecution middle.execution).eraseRecall app owner ∧
+          imageTrace.transitionMass * startTrace.transitionMass =
+            middleTrace.transitionMass * imagePrefix.transitionMass ∧
+        (∀ policy : (menu.information initial horizon scheduler).BehavioralPolicy owner,
+          (menu.information initial horizon scheduler).ownPlayReachProbability policy
+              ((menu.information initial horizon scheduler).ownPlay owner imageTrace) =
+            (menu.information initial horizon scheduler).ownPlayReachProbability policy
+              ((menu.information initial horizon scheduler).ownPlay owner imagePrefix)) ∧
+        ∀ policy : (menu.information initial horizon scheduler).BehavioralPolicy owner,
+          (menu.information initial horizon scheduler).ownPlayReachProbability policy
+              ((menu.information initial horizon scheduler).ownPlay owner middleTrace) =
+            (menu.information initial horizon scheduler).ownPlayReachProbability policy
+              ((menu.information initial horizon scheduler).ownPlay owner startTrace) := by
     intro state middleTrace fromStart
     induction fromStart with
-    | refl => exact fun _ => ⟨start, rfl, image, imagePrefix, .refl, paired⟩
+    | refl => exact fun _ => ⟨start, rfl, image, imagePrefix, .refl, paired, by ring, (fun _ =>
+      rfl), fun _ => rfl⟩
     | @extend source target earlier kept joint legal realized ih =>
         intro toFinish
         have priorKept : TracePrefix earlier trace :=
           (TracePrefix.extend TracePrefix.refl joint legal realized).trans toFinish
-        obtain ⟨middle, rfl, image, imageTrace, imageKept, relation⟩ := ih priorKept
+        obtain ⟨middle, rfl, image, imageTrace, imageKept, relation, mass, tailFactor, sourceTail⟩
+          := ih
+          priorKept
         rcases middle with ⟨remaining, actor, original⟩
         cases actor with
         | some actor =>
@@ -118,21 +166,62 @@ theorem phase_lost_binding_suffix_replay
                     rw [← silent remaining original earlier kept priorKept]
                     exact available.2
                   subst response
-                  obtain ⟨targetTrace, targetKept⟩ := HiddenSwap.phase_respond_trace_prefix bounds
+                  obtain ⟨targetTrace, targetKept, targetMass, targetWord⟩ :=
+                    HiddenSwap.phase_respond_trace_prefix bounds
                     initial horizon scheduler remaining
                     image owner ⟨none⟩ imageTrace
                     (PhaseCount.silence_onePacket runtime leaks bounds owner _ _)
-                  exact ⟨_, rfl, _, targetTrace, imageKept.trans targetKept,
+                  refine ⟨_, rfl, _, targetTrace, imageKept.trans targetKept,
                     HiddenSwap.preparationOnly_wait_erased owner slot first second original image
-                      relation⟩
+                      relation, ?_, ?_, ?_⟩
+                  · rw [targetMass, Trace.transitionMass_extend]
+                    change _ = (earlier.transitionMass * ((PMF.pure _ : PMF (app).ProtocolState)
+                      (some ⟨remaining, none, original.respond app owner ⟨none⟩⟩)).toReal) * _
+                    simpa only [chosen, Option.getD_some, PMF.pure_apply_self,
+                      ENNReal.toReal_one, mul_one] using mass
+                  · intro policy
+                    rw [targetWord owner, ite_eq_left rfl,
+                      InformationModel.ownPlayReachProbability]
+                    have atom := phase_singleton_wait_atom runtime leaks bounds horizon initial
+                      scheduler owner (image.recall owner) (image.observe app owner)
+                        (targetSilent remaining original earlier kept priorKept image imageTrace
+                          relation) policy
+                    rw [atom, one_mul]
+                    exact tailFactor policy
+                  · intro policy
+                    rw [HiddenSwap.phase_trace_ownPlay bounds initial horizon scheduler _ _ owner,
+                      (app).respond_ownPlay, InformationModel.ownPlayReachProbability]
+                    have atom := phase_singleton_wait_atom runtime leaks bounds horizon initial
+                      scheduler owner (original.recall owner) (original.observe app owner)
+                        (silent remaining original earlier kept priorKept) policy
+                    rw [atom, one_mul,
+                      ← HiddenSwap.phase_trace_ownPlay bounds initial horizon scheduler _
+                        earlier owner]
+                    exact sourceTail policy
                 · obtain ⟨offered, nextRelation⟩ :=
                     HiddenSwap.preparationOnly_foreign_respond_erased owner actor designated slot
                       first second bounds initial horizon scheduler remaining original image earlier
                         relation response available.2
-                  obtain ⟨targetTrace, targetKept⟩ := HiddenSwap.phase_respond_trace_prefix bounds
+                  obtain ⟨targetTrace, targetKept, targetMass, targetWord⟩ :=
+                    HiddenSwap.phase_respond_trace_prefix bounds
                     initial horizon scheduler remaining
                     image actor response imageTrace offered
-                  exact ⟨_, rfl, _, targetTrace, imageKept.trans targetKept, nextRelation⟩
+                  refine ⟨_, rfl, _, targetTrace, imageKept.trans targetKept, nextRelation, ?_,
+                    ?_, ?_⟩
+                  · rw [targetMass, Trace.transitionMass_extend]
+                    change _ = (earlier.transitionMass * ((PMF.pure _ : PMF (app).ProtocolState)
+                      (some ⟨remaining, none, original.respond app actor response⟩)).toReal) * _
+                    simpa only [chosen, Option.getD_some, PMF.pure_apply_self,
+                      ENNReal.toReal_one, mul_one] using mass
+                  · intro policy
+                    rw [targetWord owner, ite_eq_right (Ne.symm designated)]
+                    exact tailFactor policy
+                  · intro policy
+                    rw [HiddenSwap.phase_trace_ownPlay bounds initial horizon scheduler _ _ owner,
+                      (app).respond_recall_other original actor owner (Ne.symm designated) response,
+                      ← HiddenSwap.phase_trace_ownPlay bounds initial horizon scheduler _
+                        earlier owner]
+                    exact sourceTail policy
         | none =>
             cases remaining with
             | zero => exact False.elim (legal.1 ⟨rfl, rfl⟩)
@@ -161,12 +250,44 @@ theorem phase_lost_binding_suffix_replay
                     (image.observeEnvironment app)).support := by
                   rw [service, observation]
                   exact selected
-                obtain ⟨targetTrace, targetKept⟩ := HiddenSwap.phase_environment_trace_prefix bounds
+                obtain ⟨targetTrace, targetKept, targetMass, targetWord⟩ :=
+                  HiddenSwap.phase_environment_trace_prefix bounds
                   initial horizon scheduler remaining
                   image target command imageTrace selectedImage targetMoved
-                exact ⟨_, rfl, target, targetTrace, imageKept.trans targetKept, nextRelation⟩
-  obtain ⟨last, same, target, targetTrace, imageKept, relation⟩ := lift retained TracePrefix.refl
+                have intrinsic := HiddenSwap.preparationOnly_environment_atom owner slot first
+                  second original image relation command next target moved targetMoved nextRelation
+                    (unused _ earlier kept priorKept)
+                    (rejected remaining original earlier kept command next selected moved
+                      (earlier.extend joint legal realized)
+                      (TracePrefix.extend TracePrefix.refl joint legal realized) toFinish)
+                refine ⟨_, rfl, target, targetTrace, imageKept.trans targetKept, nextRelation, ?_,
+                  ?_, ?_⟩
+                · rw [targetMass, service, observation, intrinsic, Trace.transitionMass_extend]
+                  change (_ * _ : ℝ) * startTrace.transitionMass =
+                    (earlier.transitionMass * ((app).transition initial horizon scheduler
+                      (some ⟨remaining + 1, none, original⟩) joint
+                        (some ⟨remaining, command.actor? app, next⟩)).toReal) *
+                          imagePrefix.transitionMass
+                  rw [(app).transition_environment_apply initial horizon scheduler remaining
+                    original next command moved]
+                  simpa only [mul_assoc, mul_left_comm, mul_comm] using
+                    congrArg (fun value : ℝ => value *
+                      ((scheduler original.environmentRecall (original.observeEnvironment app)
+                        command) *
+                        (original.environmentStep app command) next).toReal) mass
+                · intro policy
+                  rw [targetWord owner]
+                  exact tailFactor policy
+                · intro policy
+                  rw [HiddenSwap.phase_trace_ownPlay bounds initial horizon scheduler _ _ owner,
+                    (app).environmentStep_recall original next command moved,
+                    ← HiddenSwap.phase_trace_ownPlay bounds initial horizon scheduler _
+                      earlier owner]
+                  exact sourceTail policy
+  obtain ⟨last, same, target, targetTrace, imageKept, relation, mass, tailFactor, sourceTail⟩ :=
+    lift retained
+    TracePrefix.refl
   cases Option.some.inj same
-  exact ⟨target, targetTrace, imageKept, relation⟩
+  exact ⟨target, targetTrace, imageKept, relation, mass, tailFactor, sourceTail⟩
 
 end Vegas.EventGraphRuntime

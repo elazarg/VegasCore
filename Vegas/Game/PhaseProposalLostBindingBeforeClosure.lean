@@ -101,7 +101,19 @@ theorem phase_lost_binding_replay_before_close
       TracePrefix imagePrefix imageTrace ∧
       target.eraseRecall app owner =
         ((HiddenSwap.preparationOnly (owner, .prepared serial) first second).phaseExecution
-          closing.execution).eraseRecall app owner := by
+          closing.execution).eraseRecall app owner ∧
+        imageTrace.transitionMass * startTrace.transitionMass =
+          trace.transitionMass * imagePrefix.transitionMass ∧
+      (∀ policy : ((menu).information initial horizon scheduler).BehavioralPolicy owner,
+        ((menu).information initial horizon scheduler).ownPlayReachProbability policy
+            (((menu).information initial horizon scheduler).ownPlay owner imageTrace) =
+          ((menu).information initial horizon scheduler).ownPlayReachProbability policy
+            (((menu).information initial horizon scheduler).ownPlay owner imagePrefix)) ∧
+      ∀ policy : ((menu).information initial horizon scheduler).BehavioralPolicy owner,
+        ((menu).information initial horizon scheduler).ownPlayReachProbability policy
+            (((menu).information initial horizon scheduler).ownPlay owner trace) =
+          ((menu).information initial horizon scheduler).ownPlayReachProbability policy
+            (((menu).information initial horizon scheduler).ownPlay owner startTrace) := by
   have remembered (control : (app).Control)
       (prior : ((menu).protocol initial horizon scheduler).Trace (some control))
       (fromStart : TracePrefix startTrace prior) : entry ∈ control.execution.recall owner := by
@@ -130,6 +142,17 @@ theorem phase_lost_binding_replay_before_close
         phase installed kind omitted payload binding inside unaccepted entry
           (remembered _ prior fromStart) material transmitted (owner, .prepared serial) named
             ((sameEntry.trans same).trans currentSame.symm)
+  · intro remaining execution prior fromStart kept image imageTrace paired
+    have currentSame := phase_attempt_eq_between runtime leaks bounds plan inputs horizon scheduler
+      start ⟨remaining, some owner, execution⟩ closing startTrace prior trace fromStart kept same
+    have noUnsent := phase_lost_binding_no_unsent_before_close runtime leaks bounds plan inputs
+      horizon scheduler ordered remaining owner execution prior closing trace kept currentSame after
+        current effect phase installed kind omitted payload binding inside unaccepted entry
+        (remembered _ prior fromStart) material transmitted (owner, .prepared serial) named
+        ((sameEntry.trans same).trans currentSame.symm)
+    exact phase_lost_binding_image_wait runtime leaks bounds plan inputs horizon scheduler ordered
+      remaining owner (.prepared serial) first second execution image prior imageTrace paired
+        noUnsent
   · intro control prior fromStart kept
     have currentSame := phase_attempt_eq_between runtime leaks bounds plan inputs horizon scheduler
       start control closing startTrace prior trace fromStart kept same
