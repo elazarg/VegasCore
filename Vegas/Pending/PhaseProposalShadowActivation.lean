@@ -39,7 +39,8 @@ theorem activation_external_coupling (memory : BindingShadow graph) (owner : Pla
         pair.1.network = pair.2.network ∧
         pair.1.recall = left.recall ∧ pair.2.recall = right.recall ∧
         phaseExternalObservation runtime leaks owner pair.1 =
-          phaseExternalObservation runtime leaks owner pair.2 := by
+          phaseExternalObservation runtime leaks owner pair.2 ∧
+        pair.1.application = left.application ∧ pair.2.application = right.application := by
   let finish (before : (app).Execution) (selected : Finset (MessageId Player)) :
       (app).Execution :=
     { before with
@@ -69,7 +70,7 @@ theorem activation_external_coupling (memory : BindingShadow graph) (owner : Pla
         (finish right selected).environmentRecall := by
       change left.environmentRecall ++ [_] = right.environmentRecall ++ [_]
       rw [service, before]
-    refine ⟨frame, nextNetwork, rfl, rfl, ?_⟩
+    refine ⟨frame, nextNetwork, rfl, rfl, ?_, rfl, rfl⟩
     exact phaseExternalObservation_congr runtime leaks _ _ owner nextNetwork receipts nextService
       (frame.publicView owned) (frame.playerView_other owned) recalled
 

@@ -129,7 +129,7 @@ theorem PhaseStateFrame.environment_expire {memory : BindingShadow graph} {owner
         intro prior present
         exact environmentStep_completed_subset runtime repaired.current.native native
           (.expire event) moved (supported prior present)
-      obtain ⟨nextMemory, nextOwned, candidates, normalized, nextSupport⟩ :=
+      obtain ⟨nextMemory, nextOwned, candidates, normalized, nextSupport, _refinement⟩ :=
         rawFrame.normalize owned rawSupport
       have originalMoved : memory.native owner native ∈
           (environmentStep runtime original.current.native (.expire event)).support := by

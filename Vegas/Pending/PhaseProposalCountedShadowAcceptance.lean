@@ -100,9 +100,10 @@ theorem PhaseStateFrame.handle_owned_binding_of_history
   have savedMissing := PhaseBindingRepair.saved_uncompleted_of_ready
     control.execution.application stored event ready
   obtain ⟨nextMemory, image, second, imageHandled, secondHandled, nextOwned, candidates,
-      nextFrame, nextSupport⟩ := frame.handle_binding owned supported runtime event payload outputEq
-        codeEq node message candidate call admitted sender candidateOwner ready timely vacant unused
-        fixed originalFixed savedMissing
+      nextFrame, nextSupport, _refinement⟩ :=
+    frame.handle_binding owned supported runtime event payload outputEq codeEq node message
+      candidate call admitted sender candidateOwner ready timely vacant unused fixed originalFixed
+        savedMissing
   have secondEq : second = next := Option.some.inj (secondHandled.symm.trans accepted)
   subst second
   refine ⟨nextMemory, image, imageHandled, nextOwned, candidates, ?_, nextFrame, nextSupport⟩

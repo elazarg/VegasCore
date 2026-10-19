@@ -214,7 +214,7 @@ quantifiers and a passing build. The labels below never enter Lean names.
 
 Compact progress display: **Source 5/5 · Runtime 2/5 · Transport 1/6 · E2E 0/2**.
 Runtime frontier: first-attempt failures classified by old requests; paired exit law next.
-Transport frontier: actual repair steps and saved-debt payoff checked; whole history repair next.
+Transport frontier: initialized whole-history repair checked; quantitative posterior bound next.
 Update counts from checked statements and name the current bottleneck. Existing
 reusable proofs are dependencies, not new completed milestones.
 Current bottlenecks are the stopped service coupling, cross-world likelihood
@@ -468,5 +468,20 @@ and [truthful opening](../Vegas/Pending/PhaseProposalShadowOpening.lean) constru
 actual matching operations with general guards, retries and complete external
 recalls. The [intrinsic chance bound](../Vegas/Game/PhaseProposalRepairChance.lean)
 uses the fixed finite native game and its existing own-play factorization.
-These discharge operational steps; the whole repair, posterior estimate,
-paired stopped law and concurrent equilibrium theorem remain open.
+Together with the initialized history repair below, these cover the whole
+physical repair. Its posterior estimate, the paired stopped law and concurrent
+equilibrium theorem remain open.
+
+The [initialized history repair](../Vegas/Pending/PhaseProposalShadowHistory.lean)
+constructs an actual counted trace under the original joint initializer and
+scheduler, preserving every other owner's complete recall and own-play word.
+It covers rejected packets, general guards, existing exclusions and retries;
+submitted typed meanings persist independently of canceled logical cells.
+The quantitative posterior bound remains open.
+
+The [original stopped image](../Vegas/Game/ReservedEpochStoppedImage.lean)
+retains the actual closing operation, original accepted table and old proposal
+archive before checkpoint restoration. The
+[whole-word readback](../Vegas/Game/PhaseProposalCommitWord.lean) identifies each
+recalled preparation at its original rank in the same decoded source attempt.
+Neither statement assumes or proves the complete phase probability law.

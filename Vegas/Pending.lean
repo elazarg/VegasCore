@@ -856,3 +856,17 @@ import Vegas.Pending.PhaseProposalSubmittedBindings
 import Vegas.Pending.PhaseProposalPreparedResponse
 import Vegas.Pending.PhaseProposalPreparationResult
 import Vegas.Pending.PhaseProposalShadowForeignBinding
+import Vegas.Pending.PhaseProposalPreparedBinding
+import Vegas.Pending.PhaseProposalShadowBindingResponse
+import Vegas.Pending.PhaseProposalShadowInertResponse
+import Vegas.Pending.PhaseProposalShadowOpeningResponse
+import Vegas.Pending.PhaseProposalShadowResponseRepair
+import Vegas.Pending.PhaseProposalShadowProgress
+import Vegas.Pending.PhaseProposalShadowOpeningAcceptance
+import Vegas.Pending.PhaseProposalShadowHandlerRepair
+import Vegas.Pending.PhaseProposalShadowRejection
+import Vegas.Pending.PhaseProposalShadowRejectedTrace
+import Vegas.Pending.PhaseProposalShadowAcceptedTrace
+import Vegas.Pending.PhaseProposalShadowIncludeRepair
+import Vegas.Pending.PhaseProposalShadowEnvironmentRepair
+import Vegas.Pending.PhaseProposalShadowHistory

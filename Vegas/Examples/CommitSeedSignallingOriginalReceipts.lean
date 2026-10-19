@@ -95,7 +95,8 @@ theorem survivor_original_receipt_or_open (selected : app.Scheduler) (current : 
                 have changed : after.execution.application.attempt ≠
                     before.execution.application.attempt := by rwa [original]
                 obtain ⟨snapshot, _idle, _normalized, finished, binding, covered, excluded,
-                    receipts⟩ := phase_closed_transition_receipt_snapshot runtime leaks plan
+                    receipts, _effect⟩ := phase_closed_transition_receipt_snapshot runtime leaks
+                  plan
                   (setup.initialLaw.map encodeInputs) horizon selected before after prior joint
                     reached commitmentPhase installed changed
                 have inside : bindingEvent who ∈ commitmentPhase.events := by

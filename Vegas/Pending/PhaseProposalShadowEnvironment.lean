@@ -2,6 +2,7 @@
 
 import Vegas.Pending.PhaseProposalShadowSample
 import Vegas.Pending.PhaseProposalShadowExpiry
+import Vegas.Pending.PhaseProposalShadowProgress
 
 /-! # Original application-command outcomes construct repaired outcomes
 
@@ -48,7 +49,11 @@ theorem PhaseStateFrame.environment_repair {memory : BindingShadow graph} {owner
       image ∈ (repaired.environment runtime command).support ∧
       nextMemory.OwnBindings owner ∧ nextMemory.candidates = memory.candidates ∧
       PhaseStateFrame nextMemory owner next image ∧
-      nextMemory.CompletedAt image.current.native.config := by
+      nextMemory.CompletedAt image.current.native.config ∧
+      (original.entry.native.config.store.BindingRefines repaired.entry.native.config.store →
+        original.current.native.config.store.BindingRefines repaired.current.native.config.store →
+        next.entry.native.config.store.BindingRefines image.entry.native.config.store ∧
+        next.current.native.config.store.BindingRefines image.current.native.config.store) := by
   classical
   have allowedEq : original.commandAllowed command = repaired.commandAllowed command := by
     cases command <;> simp only [PhaseRuntimeState.commandAllowed, frame.phases]
@@ -58,7 +63,8 @@ theorem PhaseStateFrame.environment_repair {memory : BindingShadow graph} {owner
       simp only [PhaseRuntimeState.environment, allowed, Bool.false_eq_true,
         ↓reduceIte, PMF.mem_support_pure_iff] at reached
       subst next
-      refine ⟨memory, repaired, ?_, owned, rfl, frame, supported⟩
+      refine ⟨memory, repaired, ?_, owned, rfl, frame, supported,
+        fun entryRef currentRef => ⟨entryRef, currentRef⟩⟩
       simp only [PhaseRuntimeState.environment, rightAllowed, Bool.false_eq_true,
         ↓reduceIte, PMF.mem_support_pure_iff]
   | true =>
@@ -91,9 +97,20 @@ theorem PhaseStateFrame.environment_repair {memory : BindingShadow graph} {owner
         intro prior present
         exact environmentStep_completed_subset runtime repaired.current.native native command moved
           (supported prior present)
-      obtain ⟨nextMemory, nextOwned, candidates, paired, nextSupport⟩ :=
+      obtain ⟨nextMemory, nextOwned, candidates, paired, nextSupport, refineStores⟩ :=
         rawFrame.normalize owned rawSupport
-      refine ⟨nextMemory, rightRaw.normalize, ?_, nextOwned, candidates, paired, nextSupport⟩
+      have rawRefinement
+          (preserved : original.current.native.config.store.BindingRefines
+            repaired.current.native.config.store) :
+          leftRaw.current.native.config.store.BindingRefines
+            rightRaw.current.native.config.store := by
+        have nativeEq : original.current.native = memory.native owner repaired.current.native := by
+          rw [frame.current]
+          rfl
+        rw [nativeEq] at preserved
+        exact supported.environment_refinement owner preserved runtime command moved
+      refine ⟨nextMemory, rightRaw.normalize, ?_, nextOwned, candidates, paired, nextSupport,
+        fun entryRef currentRef => refineStores entryRef (rawRefinement currentRef)⟩
       simp only [PhaseRuntimeState.environment, rightAllowed, ↓reduceIte]
       exact (PMF.mem_support_map_iff _ _ _).mpr ⟨native, moved, rfl⟩
 
@@ -121,7 +138,15 @@ theorem environment_external_repair (memory : BindingShadow graph) (owner : Play
       nextMemory.CompletedAt image.application.current.native.config ∧
       next.network = image.network ∧
       phaseExternalObservation runtime leaks owner next =
-        phaseExternalObservation runtime leaks owner image := by
+        phaseExternalObservation runtime leaks owner image ∧
+      (left.application.entry.native.config.store.BindingRefines
+          right.application.entry.native.config.store →
+        left.application.current.native.config.store.BindingRefines
+          right.application.current.native.config.store →
+        next.application.entry.native.config.store.BindingRefines
+          image.application.entry.native.config.store ∧
+        next.application.current.native.config.store.BindingRefines
+          image.application.current.native.config.store) := by
   classical
   let finish (physical : (app).Execution) (state : PhaseRuntimeState graph) : (app).Execution :=
     { physical with
@@ -137,7 +162,8 @@ theorem environment_external_repair (memory : BindingShadow graph) (owner : Play
   change next ∈ ((left.application.environment runtime command).map (finish left)).support
     at reached
   obtain ⟨state, moved, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp reached
-  obtain ⟨nextMemory, image, imageMoved, nextOwned, candidates, paired, nextSupport⟩ :=
+  obtain ⟨nextMemory, image, imageMoved, nextOwned, candidates, paired, nextSupport,
+      refineStores⟩ :=
     frame.environment_repair owned supported runtime command state moved
   have actual : finish right image ∈
       (right.environmentStep app (.application command)).support := by
@@ -150,7 +176,7 @@ theorem environment_external_repair (memory : BindingShadow graph) (owner : Play
     change left.environmentRecall ++ [_] = right.environmentRecall ++ [_]
     rw [service, before]
   refine ⟨nextMemory, finish right image, actual, nextOwned, candidates, paired, nextSupport,
-    network, ?_⟩
+    network, ?_, refineStores⟩
   exact phaseExternalObservation_congr runtime leaks _ _ owner network receipts nextService
     (paired.publicView nextOwned) (paired.playerView_other nextOwned) recalled
 

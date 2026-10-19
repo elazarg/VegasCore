@@ -67,10 +67,20 @@ theorem include_owned_binding_repair_trace
       PhaseStateFrame nextMemory owner first.application second.application ∧
       nextMemory.CompletedAt second.application.current.native.config ∧
       phaseExternalObservation runtime leaks owner first =
-        phaseExternalObservation runtime leaks owner second := by
+        phaseExternalObservation runtime leaks owner second ∧
+      (left.application.entry.native.config.store.BindingRefines
+          right.application.entry.native.config.store →
+        left.application.current.native.config.store.BindingRefines
+          right.application.current.native.config.store →
+        PreparedBindingResult left.application.current.native
+          right.application.current.native candidate payload →
+        first.application.entry.native.config.store.BindingRefines
+          second.application.entry.native.config.store ∧
+        first.application.current.native.config.store.BindingRefines
+          second.application.current.native.config.store) := by
   classical
   intro first second
-  obtain ⟨intermediate, image, imageHandled, _, _, _, _, _⟩ :=
+  obtain ⟨intermediate, image, imageHandled, _, _, _, _, _, refineStores⟩ :=
     frame.repair_owned_binding_of_history runtime leaks bounds plan inputs horizon scheduler
       ⟨remaining + 1, none, left⟩ ⟨remaining + 1, none, right⟩ leftTrace rightTrace owned
         valid supported message member event payload binding candidate call next accepted
@@ -108,7 +118,15 @@ theorem include_owned_binding_repair_trace
     simpa only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
       found, rightFound] using recalled who different
   refine ⟨nextMemory, target, nextOwned, candidates, nextValid, paired, nextSupport, ?_⟩
-  exact phaseExternalObservation_congr runtime leaks first second owner nextNetwork nextReceipts
-    nextService (paired.publicView nextOwned) (paired.playerView_other nextOwned) nextRecall
+  constructor
+  · exact phaseExternalObservation_congr runtime leaks first second owner nextNetwork nextReceipts
+      nextService (paired.publicView nextOwned) (paired.playerView_other nextOwned) nextRecall
+  · intro entryRef currentRef prepared
+    have actual := refineStores entryRef currentRef prepared
+    simpa only [first, second, ReactiveApplication.Execution.includePending,
+      MessageNetwork.includePending, found, rightFound,
+      show (app).handle left.application message = some next from accepted,
+      show (app).handle right.application message = some image from imageHandled,
+      Option.getD_some] using actual
 
 end Vegas.EventGraphRuntime.BindingShadow

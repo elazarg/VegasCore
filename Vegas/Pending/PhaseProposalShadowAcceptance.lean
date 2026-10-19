@@ -2,6 +2,7 @@
 
 import Vegas.Pending.PhaseProposalShadowNormalization
 import Vegas.Pending.PhaseBindingCompletionMemory
+import Vegas.Pending.PhaseProposalSubmittedBindings
 
 /-! # Actual accepted bindings followed by general recovery normalization
 
@@ -50,7 +51,12 @@ theorem PhaseStateFrame.handle_binding {memory : BindingShadow graph} {owner : P
       repaired.handle runtime message = some second ∧
       next.OwnBindings owner ∧ next.candidates = memory.candidates ∧
       PhaseStateFrame next owner first second ∧
-      next.CompletedAt second.current.native.config := by
+      next.CompletedAt second.current.native.config ∧
+      (original.entry.native.config.store.BindingRefines repaired.entry.native.config.store →
+        original.current.native.config.store.BindingRefines repaired.current.native.config.store →
+        PreparedBindingResult original.current.native repaired.current.native candidate payload →
+        first.entry.native.config.store.BindingRefines second.entry.native.config.store ∧
+        first.current.native.config.store.BindingRefines second.current.native.config.store) := by
   classical
   let result := (memory.native owner repaired.current.native).bindingResult candidate payload
   let oldAction := cast (congrArg EventField.Action outputEq.symm) result
@@ -61,6 +67,21 @@ theorem PhaseStateFrame.handle_binding {memory : BindingShadow graph} {owner : P
       outputEq codeEq node message.id candidate sender candidateOwner ready timely vacant unused
       fixed originalFixed
   have sameRemembered : remembered.native owner secondNative = firstNative := reconstructed
+  let targetResult := repaired.current.native.bindingResult candidate payload
+  let targetAction := cast (congrArg EventField.Action outputEq.symm) targetResult
+  let targetValue := cast (congrArg EventField.Value outputEq.symm) targetResult
+  have firstConfig : firstNative.config =
+      (memory.native owner repaired.current.native).config.complete event ready oldAction
+        oldValue := by
+    have actual := handle_commitment_eq runtime (memory.native owner repaired.current.native)
+      message.id event candidate owner payload outputEq codeEq node ready timely sender
+        candidateOwner vacant unused
+    exact congrArg State.config (Option.some.inj (firstHandled.symm.trans actual))
+  have secondConfig : secondNative.config =
+      repaired.current.native.config.complete event ready targetAction targetValue := by
+    have actual := handle_commitment_eq runtime repaired.current.native message.id event candidate
+      owner payload outputEq codeEq node ready timely sender candidateOwner vacant unused
+    exact congrArg State.config (Option.some.inj (secondHandled.symm.trans actual))
   have nextCompleted : event ∈ secondNative.config.cut.completed := by
     obtain ⟨named, addressed, _, completed⟩ := handle_completes runtime
       repaired.current.native secondNative ⟨message.id, .commitment event candidate⟩ secondHandled
@@ -88,8 +109,30 @@ theorem PhaseStateFrame.handle_binding {memory : BindingShadow graph} {owner : P
         ⟨remembered.native owner secondNative, repaired.current.excluded⟩
       rw [sameRemembered, frame.current]
       rfl
-  obtain ⟨next, nextOwned, candidates, normalized, normalizedSupport⟩ :=
+  obtain ⟨next, nextOwned, candidates, normalized, normalizedSupport, refineStores⟩ :=
     rawFrame.normalize nextOwned nextSupport
+  have rawRefinement
+      (preserved : original.current.native.config.store.BindingRefines
+        repaired.current.native.config.store)
+      (prepared : PreparedBindingResult original.current.native repaired.current.native
+        candidate payload) :
+      firstRaw.current.native.config.store.BindingRefines
+        secondRaw.current.native.config.store := by
+    have nativeEq : original.current.native = memory.native owner repaired.current.native := by
+      rw [frame.current]
+      rfl
+    rw [nativeEq] at preserved
+    change firstNative.config.store.BindingRefines secondNative.config.store
+    rw [firstConfig, secondConfig]
+    apply Config.bindingRefines_complete preserved event ready ready oldAction targetAction
+      oldValue targetValue
+    apply EventField.BindingRefines.cast_some outputEq.symm
+    intro value successful
+    have originalResult : original.current.native.bindingResult candidate payload =
+        .success value := by
+      rw [nativeEq]
+      exact Option.some.inj successful
+    exact congrArg some (prepared.2.2.2 value originalResult)
   have attempts : original.attempt = repaired.attempt := by
     simp only [PhaseRuntimeState.attempt, frame.phases, frame.generation]
   have allows : original.allows message.payload.packet.call =
@@ -105,7 +148,7 @@ theorem PhaseStateFrame.handle_binding {memory : BindingShadow graph} {owner : P
     rw [attempts, allows, excluded]
     exact admitted
   refine ⟨next, firstRaw.normalize, secondRaw.normalize, ?_, ?_, nextOwned,
-    candidates, normalized, normalizedSupport⟩
+    candidates, normalized, normalizedSupport, ?_⟩
   · unfold PhaseRuntimeState.handle
     rw [originalAdmitted]
     simp only [↓reduceIte]
@@ -119,5 +162,7 @@ theorem PhaseStateFrame.handle_binding {memory : BindingShadow graph} {owner : P
     simp only [↓reduceIte]
     rw [call, secondHandled]
     rfl
+  · intro entryRef currentRef prepared
+    exact refineStores entryRef (rawRefinement currentRef prepared)
 
 end Vegas.EventGraphRuntime.BindingShadow

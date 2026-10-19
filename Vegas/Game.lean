@@ -1360,3 +1360,7 @@ import Vegas.Game.PhaseProposalReservedDebt
 import Vegas.Game.PhaseProposalOrdinaryDraw
 import Vegas.Game.PhaseProposalEmittedDraw
 import Vegas.Game.PhaseProposalRepairChance
+import Vegas.Game.PhaseCommitmentProposalArchive
+import Vegas.Game.ReservedEpochStoppedImage
+import Vegas.Game.PhaseProposalCommitReadback
+import Vegas.Game.PhaseProposalCommitWord

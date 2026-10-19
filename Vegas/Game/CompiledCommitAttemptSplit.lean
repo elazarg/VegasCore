@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.CompiledCommitAttempt
+import Vegas.Source.CommitRecoveryInstructions
 import Vegas.Source.CommitPrefixWord
 
 /-! # Exact prefix composition of the physical commitment decoder -/
@@ -69,9 +70,17 @@ theorem decodeCommitAttempt_append
       (decodeCommitAttempt whole mode later suffix tailEmbedding native
         decodedEarlier.1 decodedEarlier.2.1).1 = complete.1 ∧
         (decodeCommitAttempt whole mode later suffix tailEmbedding native
-          decodedEarlier.1 decodedEarlier.2.1).2.1 = complete.2.1 := by
+          decodedEarlier.1 decodedEarlier.2.1).2.1 = complete.2.1 ∧
+        complete.2.2.joints = decodedEarlier.2.2.joints ++
+          (decodeCommitAttempt whole mode later suffix tailEmbedding native
+            decodedEarlier.1 decodedEarlier.2.1).2.2.joints ∧
+        ∀ offset, (∀ index, (embedding.event index).val = offset + index.val) →
+          ∀ index, (tailEmbedding.event index).val = offset + earlier.length + index.val := by
   induction earlier generalizing excluded with
-  | nil => exact ⟨embedding, rfl, rfl⟩
+  | nil =>
+      refine ⟨embedding, rfl, rfl, rfl, ?_⟩
+      intro offset ranked index
+      simpa only [SourceProgram.CommitPrefix.length, Nat.add_zero] using ranked index
   | @commit Γ O Δ P name owner payload fresh guard rest ih =>
       let nextEmbedding := embedding.tail ((rest.append later).prepend suffix)
         (by simp only [SourceProgram.CommitPrefix.append, SourceProgram.CommitPrefix.prepend,
@@ -83,13 +92,40 @@ theorem decodeCommitAttempt_append
           SourceProgram.CommitPrefix.prepend]
         rw [dite_eq_left inactive, dite_eq_left inactive]
         rw [tail]
-        exact ih later nextEmbedding (automaticCommit name owner payload entry) excluded
+        obtain ⟨tailEmbedding, sameConfig, sameExcluded, word, positioned⟩ :=
+          ih later nextEmbedding (automaticCommit name owner payload entry) excluded
+        refine ⟨tailEmbedding, sameConfig, sameExcluded, ?_, ?_⟩
+        · exact congrArg (List.cons (fun _ => none)) word
+        · intro offset ranked index
+          have nextRanked : ∀ index, (nextEmbedding.event index).val = offset + 1 + index.val := by
+            intro index
+            change (embedding.event (Fin.succ index)).val = _
+            rw [ranked]
+            simp only [Fin.val_succ]
+            omega
+          have nextPosition := positioned (offset + 1) nextRanked index
+          simpa only [SourceProgram.CommitPrefix.length, Nat.add_assoc, Nat.add_left_comm 1]
+            using nextPosition
       · dsimp only [decodeCommitAttempt, SourceProgram.CommitPrefix.append,
           SourceProgram.CommitPrefix.prepend]
         rw [dite_eq_right inactive, dite_eq_right inactive]
         dsimp only
+        simp only [CommitPrefix.Attempt.joints]
         rw [tail, head]
-        exact ih later nextEmbedding _ _
+        obtain ⟨tailEmbedding, sameConfig, sameExcluded, word, positioned⟩ :=
+          ih later nextEmbedding _ _
+        refine ⟨tailEmbedding, sameConfig, sameExcluded, ?_, ?_⟩
+        · exact congrArg (List.cons _) word
+        · intro offset ranked index
+          have nextRanked : ∀ index, (nextEmbedding.event index).val = offset + 1 + index.val := by
+            intro index
+            change (embedding.event (Fin.succ index)).val = _
+            rw [ranked]
+            simp only [Fin.val_succ]
+            omega
+          have nextPosition := positioned (offset + 1) nextRanked index
+          simpa only [SourceProgram.CommitPrefix.length, Nat.add_assoc, Nat.add_left_comm 1]
+            using nextPosition
 
 /-- The actual earlier decoder is the middle of a genuine remaining typed
 attempt ending at the whole physical decoder, with the same exclusion set. -/
@@ -110,7 +146,7 @@ theorem decodeCommitAttempt_append_attempt
       embedding native entry excluded
     Nonempty (later.Attempt decodedEarlier.1 decodedEarlier.2.1 complete.1 complete.2.1) := by
   intro prefixEmbedding decodedEarlier complete
-  obtain ⟨tailEmbedding, sameConfig, sameExcluded⟩ :=
+  obtain ⟨tailEmbedding, sameConfig, sameExcluded, _word, _positioned⟩ :=
     decodeCommitAttempt_append whole mode earlier later suffix embedding native entry excluded
   have actual := (decodeCommitAttempt whole mode later suffix tailEmbedding native
     decodedEarlier.1 decodedEarlier.2.1).2.2

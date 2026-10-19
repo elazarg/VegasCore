@@ -92,7 +92,11 @@ theorem PhaseStateFrame.handle_opening {memory : BindingShadow graph} {owner : P
       repaired.handle runtime message = some second ∧
       next.OwnBindings owner ∧ next.candidates = memory.candidates ∧
       PhaseStateFrame next owner first second ∧
-      next.CompletedAt second.current.native.config := by
+      next.CompletedAt second.current.native.config ∧
+      (original.entry.native.config.store.BindingRefines repaired.entry.native.config.store →
+        original.current.native.config.store.BindingRefines repaired.current.native.config.store →
+        first.entry.native.config.store.BindingRefines second.entry.native.config.store ∧
+        first.current.native.config.store.BindingRefines second.current.native.config.store) := by
   classical
   have publicEq : original.current.native.publicView = repaired.current.native.publicView := by
     rw [frame.current]
@@ -152,8 +156,16 @@ theorem PhaseStateFrame.handle_opening {memory : BindingShadow graph} {owner : P
     exact congrArg₂ RecoveryState.mk remembered.symm exclusions
   have rawSupport : memory.CompletedAt secondRaw.current.native.config :=
     supported.complete event rightReady action output
-  obtain ⟨next, nextOwned, candidates, nextFrame, nextSupport⟩ :=
+  obtain ⟨next, nextOwned, candidates, nextFrame, nextSupport, refineStores⟩ :=
     rawFrame.normalize onlyBindings rawSupport
+  have rawRefinement
+      (preserved : original.current.native.config.store.BindingRefines
+        repaired.current.native.config.store) :
+      firstRaw.current.native.config.store.BindingRefines
+        secondRaw.current.native.config.store := by
+    apply Config.bindingRefines_complete preserved event ready rightReady action action
+      output output
+    exact EventField.BindingRefines.cast_some outputEq.symm (by trivial)
   have attempts : original.attempt = repaired.attempt := by
     simp only [PhaseRuntimeState.attempt, frame.phases, frame.generation]
   have allows : original.allows message.payload.packet.call =
@@ -166,10 +178,12 @@ theorem PhaseStateFrame.handle_opening {memory : BindingShadow graph} {owner : P
       !repaired.current.excludedCall message.payload.packet.call) = true := by
     rwa [attempts, allows, excluded] at admitted
   refine ⟨next, firstRaw.normalize, secondRaw.normalize, ?_, ?_, nextOwned, candidates,
-    nextFrame, nextSupport⟩
+    nextFrame, nextSupport, ?_⟩
   · simp only [PhaseRuntimeState.handle, admitted, ↓reduceIte, firstHandled, Option.map_some]
     rfl
   · simp only [PhaseRuntimeState.handle, rightAdmitted, ↓reduceIte, secondHandled, Option.map_some]
     rfl
+  · intro entryRef currentRef
+    exact refineStores entryRef (rawRefinement currentRef)
 
 end Vegas.EventGraphRuntime.BindingShadow

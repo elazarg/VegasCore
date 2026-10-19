@@ -35,6 +35,22 @@ theorem finished_of_normalize_attempt_ne (state : PhaseRuntimeState graph)
 
 end PhaseRuntimeState
 
+/-- The actual recorded environment reply identifies the primitive native
+result before normalization. Packet lookup and handling, or the native
+environment draw, remain literal even when normalization restores a checkpoint. -/
+def PhaseClosingEffect (before after : (app).Execution) (current : RecoveryState graph) : Prop :=
+  (∃ (id : MessageId Player) (message : Message Player (CommitAttemptPacket graph))
+      (native : State graph),
+    before.network.lookup id = some message ∧
+      after ∈ (before.environmentStep app (.include id)).support ∧
+      handle runtime before.application.current.native
+        ⟨message.id, message.payload.packet.call⟩ = some native ∧
+      current = before.application.current.inclusionResult message.payload.packet.call native) ∨
+  (∃ (command : EnvironmentCommand graph) (native : State graph),
+    after ∈ (before.environmentStep app (.application command)).support ∧
+      native ∈ (environmentStep runtime before.application.current.native command).support ∧
+      current = before.application.current.environmentResult command native)
+
 /-- Every actual namespace-changing transition has its original completed
 physical snapshot before normalization. Its accepted bindings carry actual
 old-attempt true receipts. The snapshot is retained separately from both
@@ -55,10 +71,11 @@ theorem phase_closed_transition_receipt_snapshot (plan : RuntimePhasePlan graph)
       phase.Finished (phase.drain current) ∧
       (phase.drain current).native.BindingInvariant ∧ (phase.drain current).FailureCoverage ∧
       (phase.drain current).excluded = after.execution.application.current.excluded ∧
-      ∀ event candidate, before.execution.application.attempt.phase ≤ event.val →
+      (∀ event candidate, before.execution.application.attempt.phase ≤ event.val →
         (phase.drain current).native.accepted (.inr event) = some candidate →
         PhaseService.BindingAccepted runtime leaks
-          ⟨before.execution.application.attempt, event⟩ candidate.1 after.execution := by
+          ⟨before.execution.application.attempt, event⟩ candidate.1 after.execution) ∧
+      PhaseClosingEffect runtime leaks before.execution after.execution current := by
   classical
   have binding :=
     (phaseBindingRecord_history runtime leaks plan inputs horizon scheduler trace).active
@@ -72,7 +89,8 @@ theorem phase_closed_transition_receipt_snapshot (plan : RuntimePhasePlan graph)
       (receipts : ∀ event candidate, before.execution.application.attempt.phase ≤ event.val →
         current.native.accepted (.inr event) = some candidate →
           PhaseService.BindingAccepted runtime leaks
-            ⟨before.execution.application.attempt, event⟩ candidate.1 after.execution) :
+            ⟨before.execution.application.attempt, event⟩ candidate.1 after.execution)
+      (effect : PhaseClosingEffect runtime leaks before.execution after.execution current) :
       ∃ current : RecoveryState graph, after.actor = none ∧
         after.execution.application =
           ({ before.execution.application with
@@ -80,10 +98,11 @@ theorem phase_closed_transition_receipt_snapshot (plan : RuntimePhasePlan graph)
         phase.Finished (phase.drain current) ∧
         (phase.drain current).native.BindingInvariant ∧ (phase.drain current).FailureCoverage ∧
         (phase.drain current).excluded = after.execution.application.current.excluded ∧
-        ∀ event candidate, before.execution.application.attempt.phase ≤ event.val →
+        (∀ event candidate, before.execution.application.attempt.phase ≤ event.val →
           (phase.drain current).native.accepted (.inr event) = some candidate →
           PhaseService.BindingAccepted runtime leaks
-            ⟨before.execution.application.attempt, event⟩ candidate.1 after.execution := by
+            ⟨before.execution.application.attempt, event⟩ candidate.1 after.execution) ∧
+        PhaseClosingEffect runtime leaks before.execution after.execution current := by
     have finished := PhaseRuntimeState.finished_of_normalize_attempt_ne
       ({ before.execution.application with current := current } : PhaseRuntimeState graph)
         phase installed (by
@@ -92,7 +111,7 @@ theorem phase_closed_transition_receipt_snapshot (plan : RuntimePhasePlan graph)
       rw [normalized]
       exact (PhaseRuntimeState.settle_physical _ _ _ _ _).1
     refine ⟨current, idle, normalized, finished, phase.drain_bindingInvariant current nativeBinding,
-      covered.drain phase, (phase.drain_excluded current).trans physical.symm, ?_⟩
+      covered.drain phase, (phase.drain_excluded current).trans physical.symm, ?_, effect⟩
     intro event candidate lower accepted
     apply receipts event candidate lower
     rwa [(phase.drain_tables current).1] at accepted
@@ -123,6 +142,7 @@ theorem phase_closed_transition_receipt_snapshot (plan : RuntimePhasePlan graph)
         obtain ⟨sample, _supported, rfl⟩ := PMF.support_map .. ▸ selected
         exact (closed rfl).elim
       | «include» id =>
+        have physicalStep := stepped
         simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map] at stepped
         cases (PMF.mem_support_pure_iff ..).mp stepped
         cases found : execution.network.lookup id with
@@ -142,7 +162,7 @@ theorem phase_closed_transition_receipt_snapshot (plan : RuntimePhasePlan graph)
               phase_inclusion_snapshot_bindingAccepted runtime leaks plan inputs horizon scheduler
                 trace id message found state handled
             refine finish (execution.application.current.inclusionResult
-              message.payload.packet.call native) rfl ?_ ?_ ?_ ?_
+              message.payload.packet.call native) rfl ?_ ?_ ?_ ?_ ?_
             · simpa only [ReactiveApplication.Execution.includePending,
                 MessageNetwork.includePending,
                 found, show (app).handle execution.application message = some state from handled,
@@ -151,7 +171,9 @@ theorem phase_closed_transition_receipt_snapshot (plan : RuntimePhasePlan graph)
                 ⟨message.id, message.payload.packet.call⟩ binding nativeHandled
             · exact coverage.inclusionResult runtime _ native nativeHandled
             · exact receipted
+            · exact Or.inl ⟨id, message, native, found, physicalStep, nativeHandled, rfl⟩
       | application operation =>
+        have physicalStep := stepped
         obtain ⟨updated, selected, rfl⟩ := PMF.support_map .. ▸ stepped
         obtain ⟨state, supported, rfl⟩ := PMF.support_map .. ▸ selected
         change state ∈ (execution.application.environment runtime operation).support at supported
@@ -159,7 +181,7 @@ theorem phase_closed_transition_receipt_snapshot (plan : RuntimePhasePlan graph)
         split at supported
         · obtain ⟨native, nativeMoved, rfl⟩ := PMF.support_map .. ▸ supported
           refine finish (execution.application.current.environmentResult operation native)
-            rfl rfl ?_ ?_ ?_
+            rfl rfl ?_ ?_ ?_ ?_
           · exact environmentStep_bindingInvariant runtime execution.application.current.native
               native operation binding nativeMoved
           · exact coverage.environmentResult runtime operation native nativeMoved
@@ -171,6 +193,7 @@ theorem phase_closed_transition_receipt_snapshot (plan : RuntimePhasePlan graph)
                 rwa [(environmentStep_tables runtime _ _ operation nativeMoved).1] at accepted
             exact phase_live_bindingAccepted runtime leaks plan inputs horizon scheduler trace
               event lower candidate old
+          · exact Or.inr ⟨operation, native, physicalStep, nativeMoved, rfl⟩
         · cases (PMF.mem_support_pure_iff ..).mp supported
           exact (closed rfl).elim
 
@@ -206,10 +229,26 @@ theorem phase_attempt_stopped_receipt_snapshot
         ending.actor = none ∧ ∃ snapshot : RecoveryState graph,
           phase.Finished snapshot ∧ snapshot.native.BindingInvariant ∧ snapshot.FailureCoverage ∧
           snapshot.excluded = ending.execution.application.current.excluded ∧
-          ∀ event candidate, start.execution.application.attempt.phase ≤ event.val →
+          (∀ event candidate, start.execution.application.attempt.phase ≤ event.val →
             snapshot.native.accepted (.inr event) = some candidate →
             PhaseService.BindingAccepted runtime leaks
-              ⟨start.execution.application.attempt, event⟩ candidate.1 ending.execution := by
+              ⟨start.execution.application.attempt, event⟩ candidate.1 ending.execution) ∧
+          ∃ (before : (app).Control) (prior : (menu.protocol
+              (inputs.map (PhaseRuntimeState.initial plan)) horizon scheduler).Trace (some before))
+            (joint : Player → Option (app).Action)
+            (legal : (menu.protocol (inputs.map (PhaseRuntimeState.initial plan))
+              horizon scheduler).Legal (some before) joint)
+            (realized : some ending ∈ ((app).transition
+              (inputs.map (PhaseRuntimeState.initial plan)) horizon scheduler
+                (some before) joint).support) (raw : RecoveryState graph),
+            TracePrefix trace prior ∧
+              TracePrefix (prior.extend joint legal realized) final.trace ∧
+              before.execution.application.attempt = start.execution.application.attempt ∧
+              phase ∈ before.execution.application.phases.head? ∧ snapshot = phase.drain raw ∧
+              ending.execution.application =
+                ({ before.execution.application with current := raw } :
+                  PhaseRuntimeState graph).normalize ∧
+              PhaseClosingEffect runtime leaks before.execution ending.execution raw := by
   classical
   intro stopped final supported
   let initial := inputs.map (PhaseRuntimeState.initial plan)
@@ -219,10 +258,21 @@ theorem phase_attempt_stopped_receipt_snapshot
     ∃ snapshot : RecoveryState graph,
     phase.Finished snapshot ∧ snapshot.native.BindingInvariant ∧ snapshot.FailureCoverage ∧
       snapshot.excluded = ending.execution.application.current.excluded ∧
-      ∀ event candidate, start.execution.application.attempt.phase ≤ event.val →
+      (∀ event candidate, start.execution.application.attempt.phase ≤ event.val →
         snapshot.native.accepted (.inr event) = some candidate →
         PhaseService.BindingAccepted runtime leaks
-          ⟨start.execution.application.attempt, event⟩ candidate.1 ending.execution
+          ⟨start.execution.application.attempt, event⟩ candidate.1 ending.execution) ∧
+      ∃ (before : (app).Control) (prior : E.Trace (some before))
+        (joint : Player → Option (app).Action) (legal : E.Legal (some before) joint)
+        (realized : some ending ∈ ((app).transition initial horizon scheduler
+          (some before) joint).support) (raw : RecoveryState graph),
+        TracePrefix trace prior ∧ TracePrefix (prior.extend joint legal realized) final.trace ∧
+          before.execution.application.attempt = start.execution.application.attempt ∧
+          phase ∈ before.execution.application.phases.head? ∧ snapshot = phase.drain raw ∧
+          ending.execution.application =
+            ({ before.execution.application with current := raw } :
+              PhaseRuntimeState graph).normalize ∧
+          PhaseClosingEffect runtime leaks before.execution ending.execution raw
   have initialized : ∀ state ∈ initial.support, state.Ordered := by
     intro state member
     obtain ⟨draw, _, rfl⟩ := PMF.support_map .. ▸ member
@@ -269,11 +319,13 @@ theorem phase_attempt_stopped_receipt_snapshot
       · intro closed
         have installedNow : phase ∈ middle.execution.application.phases.head? := by
           simpa only [phasesKept same] using installed
-        obtain ⟨raw, idle, _normalized, finished, binding, covered, excluded, receipts⟩ :=
+        obtain ⟨raw, idle, normalized, finished, binding, covered, excluded, receipts, effect⟩ :=
           phase_closed_transition_receipt_snapshot runtime leaks plan inputs horizon scheduler
             middle next (menu.toRawTrace initial horizon scheduler earlier) joint moved phase
               installedNow (fun equal => closed (equal.trans same))
-        refine ⟨idle, phase.drain raw, finished, binding, covered, excluded, ?_⟩
+        refine ⟨idle, phase.drain raw, finished, binding, covered, excluded, ?_,
+          middle, earlier, joint, legal, realized, raw, kept, beforeFinal, same, installedNow,
+          rfl, normalized, effect⟩
         simpa only [same] using receipts
   obtain ⟨ending, stateEq, _prefix, changed, _completed, _retried, _failed⟩ :=
     phase_attempt_stopped_results runtime leaks menu plan inputs horizon scheduler delay bound
@@ -319,7 +371,7 @@ theorem phase_attempt_stopped_survivor_iff_receipts
   classical
   intro stopped final supported
   obtain ⟨ending, stateEq, _changed, _idle, snapshot, finished, valid, covered, excluded,
-    receipts⟩ :=
+    receipts, _origin⟩ :=
     phase_attempt_stopped_receipt_snapshot runtime leaks menu plan inputs horizon scheduler
       delay bound contract profile start trace phase installed final supported
   refine ⟨ending, stateEq, ?_⟩

@@ -2712,3 +2712,14 @@ and [environment transport](../Vegas/Pending/PhaseProposalShadowEnvironment.lean
 The [fixed chance and word bounds](../Vegas/Game/PhaseProposalRepairChance.lean)
 reuse continuation own-play factorization; they do not supply source likelihood
 transport or the whole history repair.
+
+[Complete counted history repair](../Vegas/Pending/PhaseProposalShadowHistory.lean)
+folds the actual response and environment operations with persistent typed
+preparations, original initial inputs and every external owner's whole own-play.
+It derives matching rejection as well as acceptance and retains successful
+values through actual normalization. The resulting trace theorem is separate
+from its quantitative posterior estimate.
+[Original stopped images](../Vegas/Game/ReservedEpochStoppedImage.lean) retain
+the actual pre-restoration closing operation, accepted table and proposal
+archive. [Ranked preparation readback](../Vegas/Game/PhaseProposalCommitWord.lean)
+uses the same decoder append induction and literal emitted typed values.

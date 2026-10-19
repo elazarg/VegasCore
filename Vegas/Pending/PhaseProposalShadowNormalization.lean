@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.PhaseProposalShadowDrain
+import Vegas.Pending.PhaseProposalShadowRefinement
 import Vegas.Pending.PhaseBindingRepairObservation
 
 /-! # Actual normalization under a current-generation binding shadow
@@ -67,11 +68,20 @@ theorem settle_phaseStateFrame (memory : BindingShadow graph) (owner : Player)
           (memory.recovery owner current) originalRetired)
         (PhaseRuntimeState.settle phases generation entry current repairedRetired) ∧
       next.CompletedAt (PhaseRuntimeState.settle phases generation entry current
-        repairedRetired).current.native.config := by
+        repairedRetired).current.native.config ∧
+      ((memory.native owner entry.native).config.store.BindingRefines entry.native.config.store →
+        (memory.native owner current.native).config.store.BindingRefines
+          current.native.config.store →
+        let first := PhaseRuntimeState.settle phases generation (memory.recovery owner entry)
+          (memory.recovery owner current) originalRetired
+        let second := PhaseRuntimeState.settle phases generation entry current repairedRetired
+        first.entry.native.config.store.BindingRefines second.entry.native.config.store ∧
+          first.current.native.config.store.BindingRefines second.current.native.config.store) := by
   classical
   induction phases generalizing memory generation entry current originalRetired repairedRetired with
   | nil =>
-      exact ⟨memory, owned, rfl, ⟨rfl, rfl, rfl, rfl, archives⟩, supported⟩
+      exact ⟨memory, owned, rfl, ⟨rfl, rfl, rfl, rfl, archives⟩, supported,
+        fun entryRef currentRef => ⟨entryRef, currentRef⟩⟩
   | cons phase remaining ih =>
       let drained := phase.drain current
       have drainedEq : memory.recovery owner drained =
@@ -104,6 +114,26 @@ theorem settle_phaseStateFrame (memory : BindingShadow graph) (owner : Player)
           have rebuiltSupport : masked.CompletedAt rebuilt.native.config :=
             (restrictCompleted_completedAt memory entry.native.config.cut.completed
               checkpoint.native.config (fun _ member => member)).phase_drain phase
+          have checkpointRef
+              (entryRef : (memory.native owner entry.native).config.store.BindingRefines
+                entry.native.config.store) :
+              (masked.native owner checkpoint.native).config.store.BindingRefines
+                checkpoint.native.config.store := by
+            have stored := congrArg (fun state : RecoveryState graph => state.native.config.store)
+              checkpointEq
+            change (masked.native owner checkpoint.native).config.store =
+              (memory.native owner entry.native).config.store at stored
+            change (masked.native owner checkpoint.native).config.store.BindingRefines
+              entry.native.config.store
+            rw [stored]
+            exact entryRef
+          have rebuiltRef (entryRef : (memory.native owner entry.native).config.store.BindingRefines
+              entry.native.config.store) :
+              (masked.native owner rebuilt.native).config.store.BindingRefines
+                rebuilt.native.config.store :=
+            (restrictCompleted_completedAt memory entry.native.config.cut.completed
+              checkpoint.native.config (fun _ member => member)).phase_drain_refinement owner
+                (checkpointRef entryRef) phase
           have appended : (originalRetired ++
                 [(⟨⟨phase.low, generation⟩, (memory.recovery owner drained).native⟩ :
                   RetiredCommitAttempt graph)]).map
@@ -120,23 +150,42 @@ theorem settle_phaseStateFrame (memory : BindingShadow graph) (owner : Player)
                 (phase.owners \ (memory.recovery owner drained).excluded).Nonempty := survives
             rw [ite_eq_left survivesOriginal, ite_eq_left survives]
             exact ⟨masked, maskedOwned, rfl,
-              ⟨rfl, rfl, checkpointEq.symm, rebuiltEq.symm, appended⟩, rebuiltSupport⟩
+              ⟨rfl, rfl, checkpointEq.symm, rebuiltEq.symm, appended⟩, rebuiltSupport, by
+                intro entryRef _currentRef
+                change (PhaseRuntimeState.restore (memory.recovery owner entry)
+                    (memory.recovery owner drained)).native.config.store.BindingRefines
+                    checkpoint.native.config.store ∧
+                  (phase.drain (PhaseRuntimeState.restore (memory.recovery owner entry)
+                    (memory.recovery owner drained))).native.config.store.BindingRefines
+                    rebuilt.native.config.store
+                constructor
+                · rw [← checkpointEq]
+                  exact checkpointRef entryRef
+                · rw [← rebuiltEq]
+                  exact rebuiltRef entryRef⟩
           · have noSurvivorOriginal :
                 ¬ (phase.owners \ (memory.recovery owner drained).excluded).Nonempty := survives
             rw [ite_eq_right noSurvivorOriginal, ite_eq_right survives]
             rw [← rebuiltEq]
-            obtain ⟨next, nextOwned, candidates, frame, nextSupport⟩ :=
+            obtain ⟨next, nextOwned, candidates, frame, nextSupport, nextRef⟩ :=
               ih masked maskedOwned generation rebuilt rebuilt _ _ appended rebuiltSupport
-            exact ⟨next, nextOwned, candidates, frame, nextSupport⟩
+            exact ⟨next, nextOwned, candidates, frame, nextSupport,
+              fun entryRef _currentRef => nextRef (rebuiltRef entryRef) (rebuiltRef entryRef)⟩
         · have failedOriginal : ¬ (phase.kind = .commitment ∧
               (((memory.recovery owner drained).excluded \
                 (memory.recovery owner entry).excluded) ∩ phase.owners).Nonempty) := failed
           rw [ite_eq_right failedOriginal, ite_eq_right failed]
-          exact ih memory owned generation drained drained originalRetired repairedRetired archives
-            drainedSupport
+          obtain ⟨next, nextOwned, candidates, frame, nextSupport, nextRef⟩ :=
+            ih memory owned generation drained drained originalRetired repairedRetired archives
+              drainedSupport
+          exact ⟨next, nextOwned, candidates, frame, nextSupport, fun _entryRef currentRef =>
+            let refined := supported.phase_drain_refinement owner currentRef phase
+            nextRef refined refined⟩
       · have notFinished : ¬ phase.Finished (phase.drain current) := finished
         simp only [finished, notFinished, ite_false]
-        exact ⟨memory, owned, rfl, ⟨rfl, rfl, rfl, rfl, archives⟩, drainedSupport⟩
+        exact ⟨memory, owned, rfl, ⟨rfl, rfl, rfl, rfl, archives⟩, drainedSupport,
+          fun entryRef currentRef =>
+            ⟨entryRef, supported.phase_drain_refinement owner currentRef phase⟩⟩
 
 /-- Apply the actual normalizer to a live paired phase frame. The returned
 mask retains physical candidates and discards only canceled logical producers. -/
@@ -147,7 +196,13 @@ theorem PhaseStateFrame.normalize {memory : BindingShadow graph} {owner : Player
     ∃ next : BindingShadow graph, next.OwnBindings owner ∧
       next.candidates = memory.candidates ∧ PhaseStateFrame next owner
         original.normalize repaired.normalize ∧
-      next.CompletedAt repaired.normalize.current.native.config := by
+      next.CompletedAt repaired.normalize.current.native.config ∧
+      (original.entry.native.config.store.BindingRefines repaired.entry.native.config.store →
+        original.current.native.config.store.BindingRefines repaired.current.native.config.store →
+        original.normalize.entry.native.config.store.BindingRefines
+          repaired.normalize.entry.native.config.store ∧
+        original.normalize.current.native.config.store.BindingRefines
+          repaired.normalize.current.native.config.store) := by
   unfold PhaseRuntimeState.normalize
   rw [frame.phases, frame.generation, frame.entry, frame.current]
   exact settle_phaseStateFrame memory owner owned repaired.phases repaired.generation

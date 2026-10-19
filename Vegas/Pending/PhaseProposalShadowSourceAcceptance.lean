@@ -48,7 +48,15 @@ theorem PhaseStateFrame.repair_owned_binding_of_history
       nextMemory.OwnBindings owner ∧ nextMemory.candidates = memory.candidates ∧
       (∀ slot, nextMemory.candidates slot ≠ some .fresh) ∧
       PhaseStateFrame nextMemory owner next image ∧
-      nextMemory.CompletedAt image.current.native.config := by
+      nextMemory.CompletedAt image.current.native.config ∧
+      (left.execution.application.entry.native.config.store.BindingRefines
+          right.execution.application.entry.native.config.store →
+        left.execution.application.current.native.config.store.BindingRefines
+          right.execution.application.current.native.config.store →
+        PreparedBindingResult left.execution.application.current.native
+          right.execution.application.current.native candidate payload →
+        next.entry.native.config.store.BindingRefines image.entry.native.config.store ∧
+        next.current.native.config.store.BindingRefines image.current.native.config.store) := by
   classical
   have rawLeft := (PhaseCount.onePacketMenu runtime leaks bounds).toRawTrace
     (inputs.map (PhaseRuntimeState.initial plan)) horizon scheduler leftTrace
@@ -132,12 +140,14 @@ theorem PhaseStateFrame.repair_owned_binding_of_history
   have savedMissing := PhaseBindingRepair.saved_uncompleted_of_ready
     right.execution.application stored event rightReady
   obtain ⟨nextMemory, first, image, firstHandled, imageHandled, nextOwned, candidates,
-      nextFrame, nextSupport⟩ := frame.handle_binding owned supported runtime event payload outputEq
-        codeEq node message candidate call rightAdmitted sender candidateOwner rightReady
-          rightTimely rightVacant rightUnused fixed originalFixed' savedMissing
+      nextFrame, nextSupport, refineStores⟩ :=
+    frame.handle_binding owned supported runtime event payload outputEq codeEq node message
+      candidate call rightAdmitted sender candidateOwner rightReady rightTimely rightVacant
+        rightUnused fixed originalFixed' savedMissing
   have firstEq : first = next := Option.some.inj (firstHandled.symm.trans accepted)
   subst first
-  refine ⟨nextMemory, image, imageHandled, nextOwned, candidates, ?_, nextFrame, nextSupport⟩
+  refine ⟨nextMemory, image, imageHandled, nextOwned, candidates, ?_, nextFrame, nextSupport,
+    refineStores⟩
   intro slot
   rw [candidates]
   exact valid slot
