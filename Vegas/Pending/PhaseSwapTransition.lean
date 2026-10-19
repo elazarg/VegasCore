@@ -182,7 +182,10 @@ theorem phaseTransition_swap
           change _ = some (⟨remaining, none, (swap.phaseExecution current).respond app who
             ((swap.phaseJoint joint who).getD ⟨none⟩)⟩ : app.Control)
           rw [swap.getD_phaseJoint, swap.respond_phaseExecution current who _
-            (swap.phaseRequestFixed_of_respond current who _ afterGuard)]
+            (fun submission sent => PhaseRuntimeState.emit_swap swap
+              (current.application.submit who submission) who (current.network.known who)
+              submission ((swap.phaseRequestFixed_of_respond current who _ afterGuard)
+                submission sent))]
           rfl
       | none =>
           cases remaining with

@@ -214,7 +214,7 @@ quantifiers and a passing build. The labels below never enter Lean names.
 
 Compact progress display: **Source 5/5 · Runtime 2/5 · Transport 1/6 · E2E 0/2**.
 Runtime frontier: binding WAIT-to-SEND survival and paired full failure/address/archive comparison checked; publication emission/acceptance and clean boundary law are next.
-Transport frontier: actual installed phase-word law, both past-bad posteriors and observable saved-debt zero gain checked; conditional likelihood, chronological source law and current-debt/reset joins remain.
+Transport frontier: whole lost-value replay, unchanged foreign information and matched intrinsic chance atoms checked; initialized joint likelihood, chronological source law and current-debt/reset joins remain.
 Update counts from checked statements and name the current bottleneck. Existing
 reusable proofs are dependencies, not new completed milestones.
 Current bottlenecks are the stopped service coupling, cross-world likelihood
@@ -589,3 +589,23 @@ there is no additional opportunity or deadline-slack premise. Foreign accepted
 rows and the old proposal archive remain equal. The theorem compares admission
 and records; ordinary source values, fresh reset continuations and publication
 timing dominance require their own law proofs.
+
+The [lost binding replay](../Vegas/Game/PhaseProposalLostBindingReplay.lean)
+changes the private value attached to a submitted binding that never became
+accepted before its original commitment attempt closed. Given a genuine paired
+starting prefix, it constructs the complete genuine continuation through the
+actual closing command and every later step. The
+[information readout](../Vegas/Game/PhaseProposalLostBindingInformation.lean)
+preserves the original joint inputs and every other player's full recall,
+current view and own action word. The
+[intrinsic chance comparison](../Vegas/Pending/PhaseProposalLostPreparationMass.lean)
+preserves each matched environment atom's probability. These statements do not
+yet construct the paired initial SEND or sum the actual reference-policy weights;
+the initialized full-information likelihood identity remains open.
+
+The [canonical disclosure readback](../Vegas/Game/PhaseProposalDisclosure.lean)
+retains equality of the recorded native Boolean and the chosen source action
+at every active disclosure, including false actions and guard-rejected true
+actions. This concerns that same chosen canonical replay. It does not require
+every statistical source refinement used in a likelihood argument to share its
+physical delivery label, and does not close the paired publication comparison.

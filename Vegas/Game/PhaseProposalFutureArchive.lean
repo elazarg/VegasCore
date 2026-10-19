@@ -67,7 +67,8 @@ theorem source_replay_future_delta_none
         source_proposal_readback_origin setup image state readback joint proposal decoded'
       by_cases semantic : OwnAction.disclosure ((event.joint owner).map (·.action)) = true
       · obtain ⟨actual, payload, publication, action, ranked, recorded, disclosed⟩ :=
-          disclosure owner acting surviving semantic
+          disclosure owner acting surviving
+        have disclosedTrue := disclosed.trans semantic
         simp only [Nat.zero_add] at ranked
         have inside : actual ∈ phase.events := (phase.mem_events actual).mpr
           ⟨by omega, by omega⟩
@@ -76,7 +77,7 @@ theorem source_replay_future_delta_none
           ⟨actual, action⟩ inside recorded
         have present : PhaseProposal.publicationDiscloses
             (((toEventGraph setup.program).withMode mode).outputLayout actual) action = true :=
-          (PhaseProposal.publicationDiscloses_cast publication action).symm.trans disclosed
+          (PhaseProposal.publicationDiscloses_cast publication action).symm.trans disclosedTrue
         rw [absent] at present
         cases present
       · have silent := Bool.eq_false_of_not_eq_true semantic

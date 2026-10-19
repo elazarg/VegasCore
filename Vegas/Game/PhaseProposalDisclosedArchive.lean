@@ -75,13 +75,14 @@ theorem source_replay_disclosure_in_archive
       setup.proposalRecoveryProposalOf (some sourceState) joint = some proposal ∧
       proposal ∈ PhaseProposal.sourceArchive current.execution.network.inputs := by
   obtain ⟨event, payload, publication, action, ranked, recorded, selected⟩ :=
-    disclosure owner acting surviving disclosed
+    disclosure owner acting surviving
+  have selectedTrue := selected.trans disclosed
   simp only [Nat.zero_add] at ranked
   have inside : event ∈ phase.events := phase.mem_events event |>.mpr (by omega)
   obtain ⟨value, archived, stored⟩ :=
     PhaseProposal.publication_image_disclosure_typed_archive runtime leaks bounds plan ordered
       inputs horizon scheduler current trace phase installed image origins kept ⟨event, action⟩
-      inside recorded payload publication selected
+      inside recorded payload publication selectedTrue
   let coordinate : CommitAttemptEvent ((toEventGraph setup.program).withMode mode) :=
     ⟨current.execution.application.attempt, event⟩
   let initial := inputs.map (PhaseRuntimeState.initial plan)

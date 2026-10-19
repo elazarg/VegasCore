@@ -1417,3 +1417,11 @@ import Vegas.Game.ReservedEpochResponseWord
 import Vegas.Game.ReservedEpochResponseFrame
 import Vegas.Game.ReservedEpochPairedWord
 import Vegas.Game.ReservedEpochFocalWord
+import Vegas.Game.PhaseProposalLostBindingWord
+import Vegas.Game.PhaseProposalLostBindingSilence
+import Vegas.Game.PhaseProposalLostBindingSuffix
+import Vegas.Game.PhaseProposalLostBindingBeforeClosure
+import Vegas.Game.PhaseProposalLostBindingAfterClosure
+import Vegas.Game.PhaseProposalLostBindingClosingReplay
+import Vegas.Game.PhaseProposalLostBindingReplay
+import Vegas.Game.PhaseProposalLostBindingInformation

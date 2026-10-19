@@ -4707,3 +4707,27 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.completed_reveal_phase_source_path
+
+/-- info: 'Vegas.native_public_path_history' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.native_public_path_history
+
+/-- info: 'Vegas.source_replay_disclosure_in_archive' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.source_replay_disclosure_in_archive
+
+/-- info: 'Vegas.source_replay_delta_in_archive' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.source_replay_delta_in_archive
+
+/-- info: 'Vegas.source_replay_future_delta_none' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.source_replay_future_delta_none

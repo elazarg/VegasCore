@@ -4936,3 +4936,117 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms
   Vegas.phaseProposalUnflagged_wait_send_stopped_word
+
+/-- info: 'Vegas.EventGraphRuntime.WitnessedSubmission.emit_swap_of_own_handles' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.WitnessedSubmission.emit_swap_of_own_handles
+
+/-- info: 'Vegas.EventGraphRuntime.HiddenSwap.respond_phaseExecution_of_onePacket' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.HiddenSwap.respond_phaseExecution_of_onePacket
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseCount.submitted_handle_unused_of_unaccepted' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseCount.submitted_handle_unused_of_unaccepted
+
+/-- info: 'Vegas.EventGraphRuntime.phase_closing_inclusion_call_ne_of_omission' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.phase_closing_inclusion_call_ne_of_omission
+
+/-- info: 'Vegas.EventGraphRuntime.phase_lost_binding_include_rejected' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.phase_lost_binding_include_rejected
+
+/-- info: 'Vegas.EventGraphRuntime.HiddenSwap.environmentStep_preparationOnly' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.HiddenSwap.environmentStep_preparationOnly
+
+/-- info: 'Vegas.EventGraphRuntime.phase_lost_binding_callback_silent' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.phase_lost_binding_callback_silent
+
+/-- info: 'Vegas.EventGraphRuntime.HiddenSwap.preparationOnly_foreign_respond_erased' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.HiddenSwap.preparationOnly_foreign_respond_erased
+
+/-- info: 'Vegas.EventGraphRuntime.HiddenSwap.preparationOnly_environment_erased' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.HiddenSwap.preparationOnly_environment_erased
+
+/-- info: 'Vegas.EventGraphRuntime.phase_lost_binding_suffix_replay' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.phase_lost_binding_suffix_replay
+
+/-- info: 'Vegas.EventGraphRuntime.phase_lost_binding_replay_before_close' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.phase_lost_binding_replay_before_close
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseRuntimeState.handle_commitment_none_of_handle_owner_excluded' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseRuntimeState.handle_commitment_none_of_handle_owner_excluded
+
+/-- info: 'Vegas.EventGraphRuntime.phaseApplication_excluded_unused_preparation' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.phaseApplication_excluded_unused_preparation
+
+/-- info: 'Vegas.EventGraphRuntime.phase_lost_binding_replay_after_close' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.phase_lost_binding_replay_after_close
+
+/-- info: 'Vegas.EventGraphRuntime.phase_lost_binding_closing_include_rejected' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.phase_lost_binding_closing_include_rejected
+
+/-- info: 'Vegas.EventGraphRuntime.phase_lost_binding_closing_environment_replay' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.phase_lost_binding_closing_environment_replay
+
+/-- info: 'Vegas.EventGraphRuntime.phase_lost_binding_replay' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.phase_lost_binding_replay
+
+/-- info: 'Vegas.EventGraphRuntime.HiddenSwap.preparationOnly_environment_atom' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.HiddenSwap.preparationOnly_environment_atom
+
+/-- info: 'Vegas.EventGraphRuntime.HiddenSwap.preparationOnly_full_information' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.HiddenSwap.preparationOnly_full_information

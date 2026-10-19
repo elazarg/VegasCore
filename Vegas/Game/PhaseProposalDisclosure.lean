@@ -12,21 +12,21 @@ open SourceProgram EventGraph EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
-/-- A genuine active source disclosure retains the actual native completion
-that selected its Boolean action. Failure of its guard does not remove it. -/
+/-- The chosen canonical source replay retains its exact native completion
+Boolean at every active disclosure. Guard rejection preserves the TRUE action. -/
 def NativeDisclosureReadback {graph : Vegas.EventGraph Player L}
     {Γ : SourceCtx Player L} {O : Finset VarId}
     (native : EventGraphRuntime.State graph) (offset : Nat)
     (program : SourceProgram Player L Γ O) (point : ProtocolState program)
     (excluded : Finset Player) (joint : Player → Option (CommitRecoveryMove Player L)) : Prop :=
   ∀ owner, ProtocolState.actor program point = some owner → owner ∉ excluded →
-    OwnAction.disclosure ((joint owner).map (·.action)) = true →
     ∃ (event : graph.EventId) (payload : L.Ty)
       (publication : graph.outputLayout event = .publication payload)
       (action : (graph.outputLayout event).Action),
       event.val = offset + (instructionCount program - ProtocolState.remaining program point) ∧
       ⟨event, action⟩ ∈ native.config.history ∧
-      cast (congrArg EventField.Action publication) action = true
+      cast (congrArg EventField.Action publication) action =
+        OwnAction.disclosure ((joint owner).map (·.action))
 
 theorem NativeDisclosureReadback.of_disclosure_eq {graph : Vegas.EventGraph Player L}
     {Γ : SourceCtx Player L} {O : Finset VarId}
@@ -38,8 +38,11 @@ theorem NativeDisclosureReadback.of_disclosure_eq {graph : Vegas.EventGraph Play
       OwnAction.disclosure ((second owner).map (·.action)) =
         OwnAction.disclosure ((first owner).map (·.action))) :
     NativeDisclosureReadback native offset program point excluded second := by
-  intro owner acting surviving disclosed
-  exact readback owner acting surviving ((same owner acting surviving).symm.trans disclosed)
+  intro owner acting surviving
+  obtain ⟨event, payload, publication, action, ranked, recorded, selected⟩ :=
+    readback owner acting surviving
+  exact ⟨event, payload, publication, action, ranked, recorded,
+    selected.trans (same owner acting surviving).symm⟩
 
 theorem NativeDisclosureReadback.lift {graph : Vegas.EventGraph Player L}
     {wholeΓ Γ : SourceCtx Player L} {wholeO O : Finset VarId}
@@ -52,10 +55,10 @@ theorem NativeDisclosureReadback.lift {graph : Vegas.EventGraph Player L}
     (joint : Player → Option (CommitRecoveryMove Player L))
     (readback : NativeDisclosureReadback native offset program point excluded joint) :
     NativeDisclosureReadback native outerOffset whole (embed point) excluded joint := by
-  intro owner acting surviving disclosed
+  intro owner acting surviving
   rw [origin.actor_lift] at acting
   obtain ⟨event, payload, publication, action, ranked, recorded, selected⟩ :=
-    readback owner acting surviving disclosed
+    readback owner acting surviving
   refine ⟨event, payload, publication, action, ?_, recorded, selected⟩
   have remaining := origin.remaining_lift point
   have bounded := ProtocolState.remaining_le_instructionCount program point
@@ -80,12 +83,12 @@ theorem nativeDisclosureReadback_reveal {graph : Vegas.EventGraph Player L}
       (.reveal published owner name fresh source unresolved next) (.inl config) excluded
       (Function.update (fun _ => none) owner
         (some ⟨.reveal owner name disclose, false⟩)) := by
-  intro who acting _surviving disclosed
+  intro who acting _surviving
   have same : owner = who := Option.some.inj acting
   subst who
-  simp only [Function.update_self, Option.map_some, OwnAction.disclosure] at disclosed
-  refine ⟨event, payload, publication, action, ?_, recorded, selected.trans disclosed⟩
-  simpa only [instructionCount, ProtocolState.remaining, Sum.elim_inl,
-    Nat.sub_self, Nat.add_zero] using ranked
+  refine ⟨event, payload, publication, action, ?_, recorded, ?_⟩
+  · simpa only [instructionCount, ProtocolState.remaining, Sum.elim_inl,
+      Nat.sub_self, Nat.add_zero] using ranked
+  · simpa only [Function.update_self, Option.map_some, OwnAction.disclosure] using selected
 
 end Vegas

@@ -875,3 +875,13 @@ import Vegas.Pending.PhaseProposalPreparedUsability
 import Vegas.Pending.ReservedEpochReceiptTiming
 import Vegas.Pending.ReservedEpochUnsentRequest
 import Vegas.Pending.PhaseEntryExclusion
+import Vegas.Pending.PhaseProposalForeignEvidence
+import Vegas.Pending.PhaseProposalLostHandle
+import Vegas.Pending.PhaseProposalLostCandidateReplay
+import Vegas.Pending.PhaseProposalLostRecallReplay
+import Vegas.Pending.PhaseProposalLostBinding
+import Vegas.Pending.PhaseProposalLostBindingClosure
+import Vegas.Pending.PhaseProposalEmissionOrder
+import Vegas.Pending.PhaseProposalLostBindingInclusion
+import Vegas.Pending.PhaseProposalUnusedPreparation
+import Vegas.Pending.PhaseProposalLostPreparationMass

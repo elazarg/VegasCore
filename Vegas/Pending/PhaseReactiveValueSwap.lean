@@ -106,12 +106,16 @@ theorem observeEnvironment_phaseExecution (current : (phaseApplication runtime l
   rw [PhaseRuntimeState.swap_publicView]
   rfl
 
-/-- A complete actual response commutes with the phased swap when its requested
-certificate value is fixed, retaining silence and every authentic emitted packet. -/
+/-- A complete actual response commutes with the phased swap when its
+post-registration emitted packet is unchanged. Private evidence-request
+syntax may refer to an unavailable foreign certificate. -/
 theorem respond_phaseExecution (current : (phaseApplication runtime leaks).Execution)
     (who : Player) (response : (phaseApplication runtime leaks).Action)
-    (fixed : ∀ submission, response.transmission = some submission →
-      submission.evidence.FixedBy swap) :
+    (emission : ∀ submission, response.transmission = some submission →
+      ((current.application.submit who submission).swap swap).emit who
+          (current.network.known who) (submission.swap swap) =
+        (current.application.submit who submission).emit who (current.network.known who)
+          submission) :
     (swap.phaseExecution current).respond (phaseApplication runtime leaks) who
       (swap.phaseAction response) =
       swap.phaseExecution (current.respond (phaseApplication runtime leaks) who response) := by
@@ -139,8 +143,7 @@ theorem respond_phaseExecution (current : (phaseApplication runtime leaks).Execu
       · simp only [same, ↓reduceIte]
   | some submission =>
       have submitted := PhaseRuntimeState.submit_swap swap current.application who submission
-      have emitted := PhaseRuntimeState.emit_swap swap (current.application.submit who submission)
-        who (current.network.known who) submission (fixed submission rfl)
+      have emitted := emission submission rfl
       let after := current.application.submit who submission
       let sent := current.network.submit who (after.emit who (current.network.known who) submission)
       change (⟨(current.application.swap swap).submit who (submission.swap swap),

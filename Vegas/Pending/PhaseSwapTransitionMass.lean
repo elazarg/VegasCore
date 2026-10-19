@@ -72,7 +72,10 @@ theorem phaseTransition_apply_swap (swap : HiddenSwap graph)
         (swap.phaseExecution current).respond app who ((swap.phaseJoint joint who).getD ⟨none⟩)⟩ :
           app.Control))) (some (swap.phaseControl _)) = _
       rw [swap.getD_phaseJoint, swap.respond_phaseExecution current who _
-        (swap.phaseRequestFixed_of_respond current who _ guarded)]
+        (fun submission sent => PhaseRuntimeState.emit_swap swap
+          (current.application.submit who submission) who (current.network.known who)
+          submission ((swap.phaseRequestFixed_of_respond current who _ guarded)
+            submission sent))]
       simp only [ReactiveApplication.transition, phaseControl, PMF.pure_apply_self]
   | none =>
       cases remaining with
