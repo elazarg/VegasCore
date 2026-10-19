@@ -2,7 +2,7 @@
 
 import Vegas.Game.RecoveryPublicSourceChronology
 import Vegas.Game.RecoveryPublicPhaseArchive
-import Vegas.Game.RecoveryArchivedRetry
+import Vegas.Game.RecoveryRetryPhaseArchive
 import Vegas.Game.RecoveryArchivedSourceOrigin
 import Vegas.Pending.PhaseSurvivingHistory
 import Vegas.Game.RecoveryCommitCheckpoint
@@ -224,31 +224,15 @@ theorem RecoverySourceCheckpoint.normalized_archived
             by_cases missed : ((image.excluded \ entry.excluded) ∩ phase.owners).Nonempty
             · by_cases survives : (phase.owners \ image.excluded).Nonempty
               · dsimp only [image] at survives
-                obtain ⟨next, nextAligned, fuel, path, instructions⟩ :=
-                  checkpoint.after_commit_retry_archived aligned archives
-                    committing phase remaining rfl kind maximal binding receipts remembered native
-                    finished missed survives
-                have normalized := PhaseRuntimeState.settle_retry phase remaining generation entry
-                  current retired finished kind missed survives
-                refine ⟨next, nextAligned, ?_, fuel, path, ?_, ?_⟩
-                · apply PublicChronology.failed_commit checkpoint next plan chronology phase
-                    remaining rfl planMember kind frontier maximal archiveExclusions
-                    savedFailures finished
-                  · simp only [PhaseRuntimeState.normalize, normalized]
-                  · simp only [PhaseRuntimeState.normalize, normalized, PhaseRuntimeState.restore]
-                  · simp only [PhaseRuntimeState.normalize, normalized, survives, ↓reduceIte]
-                  · simp only [PhaseRuntimeState.normalize, normalized, survives, ↓reduceIte,
-                      PhaseRuntimeState.attempt, List.head?_cons, Option.map_some,
-                      Option.getD_some]
-                  · exact path
-                  · exact instructions
-                · change ArchivedSourceOrigins setup mode
-                    (PhaseRuntimeState.settle (phase :: remaining) generation entry current
-                      retired).retired ⟨_, next.trace⟩
-                  rw [normalized]
-                  exact archivedSource committing path instructions
-                · exact checkpoint.commit_proposal_delta plan next phase remaining rfl kind
-                    committing image.native path instructions
+                obtain ⟨next, _point, ⟨fuel, path, instructions⟩, word⟩ :=
+                  checkpoint.after_commit_retry committing phase remaining rfl maximal
+                    binding receipts remembered native finished missed survives
+                obtain ⟨nextAligned, nextChronology, nextOrigins, nextDelta⟩ :=
+                  checkpoint.retry_phase_archive plan phase remaining rfl planMember maximal
+                    kind committing aligned chronology origins archiveExclusions savedFailures
+                      archives receipts stored remembered finished missed survives next path
+                        instructions word
+                exact ⟨next, nextAligned, nextChronology, fuel, path, nextOrigins, nextDelta⟩
               · dsimp only [image] at survives
                 obtain ⟨⟨nextCheckpoint, sourcePrefix, word⟩, normalized⟩ :=
                   checkpoint.after_commit_exhausted committing

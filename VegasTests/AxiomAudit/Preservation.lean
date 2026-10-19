@@ -2918,10 +2918,10 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #print axioms Vegas.decodeCommitAttempt_history_of_surviving_owner
 
 /-- info:
-'Vegas.RecoverySourceCheckpoint.after_commit_retry_archived'
+'Vegas.RecoverySourceCheckpoint.retry_phase_archive'
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.RecoverySourceCheckpoint.after_commit_retry_archived
+#print axioms Vegas.RecoverySourceCheckpoint.retry_phase_archive
 
 /-- info:
 'Vegas.RecoverySourceCheckpoint.normalized_archived'
@@ -5009,11 +5009,11 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #print axioms Vegas.PhaseProposalNativeSourceMatch.decision
 
 /-- info:
-'Vegas.phaseProposalUnflagged_wait_send_reset_boundary'
+'Vegas.phaseProposalUnflagged_available_send_reset_boundary'
 
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.phaseProposalUnflagged_wait_send_reset_boundary
+#print axioms Vegas.phaseProposalUnflagged_available_send_reset_boundary
 
 /-- info:
 'Vegas.RecoverySourceCheckpoint.failed_commit_history_eq_of_scan'

@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.ReservedEpochPairedWord
+import Vegas.Game.ReservedEpochBindingAliases
 
 /-! # Earlier current binding responses preserve focal qualification -/
 
@@ -205,11 +205,11 @@ local notation "inputs" => setup.initialLaw.map encodeInputs
 
 
 open scoped Classical in
-/-- At the same actual current binding callback, immediate SEND preserves
-every focal row that WAIT would preserve, on every pair of actual stopped
+/-- At the same actual current binding callback, an available SEND preserves
+every focal row that any current response preserves, on every pair of actual stopped
 supported futures of the same tape. On that branch the complete original
 failure footprint and retired control/address word coincide. -/
-theorem phaseProposalUnflagged_wait_send_stopped_word
+theorem phaseProposalUnflagged_available_send_stopped_word
     (complete : leaks = MessageNetwork.completePendingObservation)
     (coveredValues : bounds.CoversOutputValues)
     (maximal : plan.phases.IsChain fun first last =>
@@ -235,7 +235,6 @@ theorem phaseProposalUnflagged_wait_send_stopped_word
     (rightAvailable : rightResponse ∈ (menu).actions actor
       (active.recall actor) (active.observe app actor))
     (leftSends : leftResponse.transmission ≠ none)
-    (rightSilent : rightResponse = ⟨none⟩)
     (phase : RuntimePhase graph) (installed : phase ∈ active.application.phases.head?)
     (commitment : phase.kind = .commitment) :
     let initial := (inputs).map (PhaseRuntimeState.initial plan)
@@ -382,10 +381,18 @@ theorem phaseProposalUnflagged_wait_send_stopped_word
       ReservedEpoch.ownedAcceptanceWord runtime leaks tape (anchor rightResponse) actor event →
         ReservedEpoch.ownedAcceptanceWord runtime leaks tape (anchor leftResponse) actor event := by
     dsimp only [anchor]
-    rw [rightSilent, sent]
-    exact ReservedEpoch.ownedAcceptanceWord_wait_imp_available_binding runtime leaks tape
-      bounds plan ordered inputs horizon scheduler remaining actor active activeTrace material
-        sendAvailable phase installed commitment event
+    rw [sent]
+    cases rightResponse with
+    | mk transmission =>
+        cases transmission with
+        | none =>
+            exact ReservedEpoch.ownedAcceptanceWord_wait_imp_available_binding runtime leaks tape
+              bounds plan ordered inputs horizon scheduler remaining actor active activeTrace
+                material sendAvailable phase installed commitment event
+        | some other =>
+            exact (ReservedEpoch.ownedAcceptanceWord_available_bindings_eq runtime leaks tape
+              bounds plan ordered inputs horizon scheduler remaining actor active activeTrace
+                material other sendAvailable rightAvailable phase installed commitment event).mpr
   have leftSurvives : ∀ event ∈ phase.events, ∀ payload,
       (graph).outputLayout event = .binding actor payload →
         leftRaw.native.accepted (.inr event) ≠ none := by

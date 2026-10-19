@@ -1475,3 +1475,10 @@ import Vegas.Game.PhaseProposalSampleHistoryCoupling
 import Vegas.Game.PhaseProposalAttemptArchive
 import Vegas.Game.PhaseProposalFreshTerminalCoupling
 import Vegas.Game.ReservedEpochBindingReset
+import Vegas.Game.RecoveryRetryPhaseArchive
+import Vegas.Game.RecoveryRetryWitness
+import Vegas.Game.PhaseProposalInitializedTerminal
+import Vegas.Game.PhaseProposalInitializedLawError
+import Vegas.Game.PhaseProposalNativeFutureFlags
+import Vegas.Game.ReservedEpochBindingAliases
+import Vegas.Game.PhaseProposalResetPayoff

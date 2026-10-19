@@ -428,10 +428,10 @@ private theorem binding_reset_sources_of_actual_closings
     simp only [setup.proposalRecoveryLiftTrace_length, sameLength]
 
 open scoped Classical in
-/-- Every actual stopped WAIT-surviving pair with a new foreign omission
+/-- Every actual stopped comparator-surviving pair with a new foreign omission
 reaches SAME erased source reset histories from the original checkpoint.
 The actual surviving receipt word is derived, never assumed. -/
-theorem phaseProposalUnflagged_wait_send_reset_boundary
+theorem phaseProposalUnflagged_available_send_reset_boundary
     (complete : leaks = MessageNetwork.completePendingObservation)
     (coveredValues : bounds.CoversOutputValues)
     (maximal : plan.phases.IsChain fun first last =>
@@ -457,7 +457,6 @@ theorem phaseProposalUnflagged_wait_send_reset_boundary
     (rightAvailable : rightResponse ∈ (menu).actions actor
       (active.recall actor) (active.observe app actor))
     (leftSends : leftResponse.transmission ≠ none)
-    (rightSilent : rightResponse = ⟨none⟩)
     (phase : RuntimePhase graph) (installed : phase ∈ active.application.phases.head?)
     (commitment : phase.kind = .commitment)
     (checkpoint : RecoverySourceCheckpoint setup mode active.application) :
@@ -556,10 +555,10 @@ theorem phaseProposalUnflagged_wait_send_reset_boundary
   classical
   intro initial horizon scheduler anchor
   obtain ⟨leftTrace, rightTrace, leftResponsePrefix, rightResponsePrefix, paired⟩ :=
-    phaseProposalUnflagged_wait_send_stopped_word setup mode runtime leaks bounds plan complete
+    phaseProposalUnflagged_available_send_stopped_word setup mode runtime leaks bounds plan complete
       coveredValues maximal ordered values fullValues tape activationGap processingGap gaps margin
       capacity remaining active actor leftResponse rightResponse activeTrace leftAvailable
-      rightAvailable leftSends rightSilent phase installed commitment
+      rightAvailable leftSends phase installed commitment
   refine ⟨leftTrace, rightTrace, leftResponsePrefix, rightResponsePrefix, ?_⟩
   intro law leftFinal leftSupported rightFinal rightSupported
   obtain ⟨leftEnding, rightEnding, leftBefore, rightBefore, leftPrior, rightPrior, leftJoint,

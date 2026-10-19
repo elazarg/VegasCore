@@ -2808,21 +2808,38 @@ traces FALSE disclosures to actual original requests and expiry.
 [Noncommitment value preservation](../Vegas/Source/CommitRecoveryNonCommitValues.lean)
 retains surviving owners' existing typed bindings along the same public source path.
 [Same-attempt controls](../Vegas/Pending/PhaseAttemptControls.lean) retain both
-installed phases and the literal retired archive. Initialized terminal
-continuation and conditional belief transport remain separate obligations.
+installed phases and the literal retired archive. Conditional belief transport
+remains a separate obligation.
 
 The [binding reset boundary](../Vegas/Game/ReservedEpochBindingReset.lean)
 derives the complete source omission word from the actual native failure scan.
-Its SEND-versus-WAIT consumer retains both original closing paths and produces
+Its arbitrary-current-response consumer retains both original closing paths and produces
 equal semantic and ordered proposal histories after a shared reset. All owned
 receipts are derived from comparator survival.
+The [native future-flag comparison](../Vegas/Game/PhaseProposalNativeFutureFlags.lean)
+retains arbitrary current response laws and bounds actual terminal-history and
+finish laws uniformly. The
+[reset payoff transport](../Vegas/Game/PhaseProposalResetPayoff.lean) consumes
+the fresh terminal coupling at separate physical endpoints with the same
+enriched erased source history.
 
 The [fresh terminal coupling](../Vegas/Game/PhaseProposalFreshTerminalCoupling.lean)
 couples complete runtime and enriched source terminal histories from a supplied
 fresh witness, separately for every supported reserved tape. Its exact
 marginals and supported pairs preserve original inputs, typed terminal state,
-permanent exclusions and the entire payoff vector. The original scheduler
-mixture, selected retry-witness packaging and conditional likelihood transport
-remain separate consumers. Raw inclusions and environment steps share their
+permanent exclusions and the entire payoff vector. The
+[initialized coupling](../Vegas/Game/PhaseProposalInitializedTerminal.lean)
+integrates the original joint inputs and hidden tape law, retaining the full
+source-history marginal. The
+[initialized perturbation bound](../Vegas/Game/PhaseProposalInitializedLawError.lean)
+compares the same domain laws with separate source/native rates. The
+[scheduler-mixture marginal](../Interaction/ReactiveSchedulerTerminalMixture.lean)
+integrates each endpoint's own original posterior. The
+[selected retry witness](../Vegas/Game/RecoveryRetryWitness.lean) packages the
+same checkpoint with full invariants and archive; its metadata is shared with
+the archived normalizer through
+[RecoveryRetryPhaseArchive](../Vegas/Game/RecoveryRetryPhaseArchive.lean).
+Conditional likelihood transport and the complete native gain joins remain open.
+Raw inclusions and environment steps share their
 pre-normalization witness producers in
 [PhaseProposalTransition](../Vegas/Game/PhaseProposalTransition.lean).

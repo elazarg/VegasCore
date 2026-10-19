@@ -197,3 +197,4 @@ import Interaction.ReactiveSchedulerRelabel
 import Interaction.ReactiveSchedulerSeedContinuation
 import Interaction.ReactiveEmptyInputs
 import Interaction.ReactiveRoundTracePrefix
+import Interaction.ReactiveSchedulerTerminalMixture

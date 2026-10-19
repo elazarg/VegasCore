@@ -6,3 +6,5 @@ import VegasTests.AxiomAudit.Preservation
 import VegasTests.AxiomAudit.Runtime
 import VegasTests.AxiomAudit.Source
 import VegasTests.AxiomAudit.OrdinaryTerminal
+import VegasTests.AxiomAudit.InitializedOrdinary
+import VegasTests.AxiomAudit.NativeContinuation

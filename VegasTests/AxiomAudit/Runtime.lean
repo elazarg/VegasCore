@@ -4925,11 +4925,11 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #print axioms
   Vegas.EventGraphRuntime.ReservedEpoch.ownedAcceptanceWord_wait_imp_available_binding
 
-/-- info: 'Vegas.phaseProposalUnflagged_wait_send_stopped_word' depends on axioms:
+/-- info: 'Vegas.phaseProposalUnflagged_available_send_stopped_word' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms
-  Vegas.phaseProposalUnflagged_wait_send_stopped_word
+  Vegas.phaseProposalUnflagged_available_send_stopped_word
 
 /-- info: 'Vegas.EventGraphRuntime.WitnessedSubmission.emit_swap_of_own_handles' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/

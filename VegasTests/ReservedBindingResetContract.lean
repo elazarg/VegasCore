@@ -1,8 +1,9 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.ReservedEpochBindingReset
+import Vegas.Game.PhaseProposalResetPayoff
 
-/-! # Original stopped SEND-versus-WAIT binding reset contract -/
+/-! # Original stopped available-SEND binding reset contract -/
 
 noncomputable section
 
@@ -54,7 +55,6 @@ example
     (rightAvailable : rightResponse ∈ (menu).actions actor
       (active.recall actor) (active.observe app actor))
     (leftSends : leftResponse.transmission ≠ none)
-    (rightSilent : rightResponse = ⟨none⟩)
     (phase : RuntimePhase graph) (installed : phase ∈ active.application.phases.head?)
     (commitment : phase.kind = .commitment)
     (checkpoint : RecoverySourceCheckpoint setup mode active.application) :
@@ -150,9 +150,87 @@ example
           (((phase.drain rightRaw).excluded \ active.application.entry.excluded).Nonempty →
             PairedBindingResetSources checkpoint leftEnding.execution.application
               rightEnding.execution.application)) := by
-  exact phaseProposalUnflagged_wait_send_reset_boundary setup mode runtime leaks bounds plan
+  exact phaseProposalUnflagged_available_send_reset_boundary setup mode runtime leaks bounds plan
     complete coveredValues maximal ordered values fullValues tape activationGap processingGap
     gaps margin capacity remaining active actor leftResponse rightResponse activeTrace
-    leftAvailable rightAvailable leftSends rightSilent phase installed commitment checkpoint
+    leftAvailable rightAvailable leftSends phase installed commitment checkpoint
+
+end VegasTests
+
+namespace VegasTests
+
+open Vegas Vegas.SourceProgram Vegas.EventGraph Vegas.EventGraphRuntime Interaction
+  GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol GameTheory.Math.Probability
+
+variable {Player : Type} [DecidableEq Player] [Fintype Player]
+  {L : IExpr} [IExpr.ResultTypes L]
+  (setup : Setup (Player := Player) (L := L)) (mode : ExecutionMode)
+  (runtime : EventGraphRuntime (serviceGraph setup mode))
+  (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket (serviceGraph setup mode)))
+  (bounds : MessageBounds (serviceGraph setup mode))
+  (plan : RuntimePhasePlan (serviceGraph setup mode))
+
+local notation "app" => phaseApplication runtime leaks
+local notation "menu" => PhaseCount.onePacketMenu runtime leaks bounds
+local notation "initial" => PMF.map (PhaseRuntimeState.initial plan)
+  (PMF.map encodeInputs setup.initialLaw)
+local notation "horizon" => ReservedEpoch.executionHorizon runtime
+
+example
+    (complete : leaks = MessageNetwork.completePendingObservation)
+    (covered : bounds.CoversOutputValues)
+    (maximal : plan.phases.IsChain fun first last =>
+      first.kind ≠ last.kind ∨ first.kind = .sample)
+    (values : ∀ who (key : setup.ProposalRecoveryComponent who),
+      PMF (setup.CommitRecoveryValueChoice who key.1))
+    (fullValues : ∀ who key, FullSupport (values who key))
+    {length : Nat} (tape : ReservedEpoch.Tape Player length)
+    (activationGap processingGap : Nat)
+    (gaps : tape.BoundedGaps (ReservedEpoch.completionCycles runtime)
+      activationGap processingGap)
+    (margin : runtime.AsyncTimely (fun _ => activationGap + 1) (fun _ => processingGap + 1))
+    (capacity : horizon ≤ bounds.candidateCount)
+    (utility : State L setup.program.terminalCtx → Player → ℝ)
+    (excludedPayoff : Player → ℝ)
+    (anchor : Bool → (app).Control) (idle : ∀ side, (anchor side).actor = none)
+    (traces : ∀ side, ((menu).protocol initial horizon
+      (ReservedEpoch.family runtime leaks (ReservedEpoch.packetCapacity runtime) tape)).Trace
+        (some (anchor side)))
+    (entryExcluded : ∀ side, (anchor side).execution.application.entry.excluded =
+      (anchor side).execution.application.current.excluded)
+    (fresh : ∀ side who, ∀ record ∈ (anchor side).execution.recall who,
+      record.beforeView.application.2.attempt ≠ (anchor side).execution.application.attempt)
+    (witness : ∀ side, RecoverySourceWitness setup mode plan (anchor side).execution.application)
+    (archived : ∀ side, (witness side).checkpoint.ArchivedProposals
+      (anchor side).execution.network.inputs)
+    (proper : ∀ side who, who ∉ (anchor side).execution.application.current.excluded →
+      (witness side).checkpoint.source.BindingsHoldValues who)
+    (same : setup.proposalRecoveryErasedHistory
+        ⟨_, setup.proposalRecoveryLiftTrace
+          (nativeArchiveLabels setup
+            (PhaseProposal.sourceArchive (anchor false).execution.network.inputs))
+              (witness false).checkpoint.trace⟩ =
+      setup.proposalRecoveryErasedHistory
+        ⟨_, setup.proposalRecoveryLiftTrace
+          (nativeArchiveLabels setup
+            (PhaseProposal.sourceArchive (anchor true).execution.network.inputs))
+              (witness true).checkpoint.trace⟩) :
+    let scheduler := ReservedEpoch.family runtime leaks (ReservedEpoch.packetCapacity runtime) tape
+    let model := (menu).information initial horizon scheduler
+    let certificate := ((menu).bounded initial horizon scheduler).wellFoundedHistories
+    let profile := fun side who => (menu).restrictPolicy initial horizon scheduler who
+      (ReactiveApplication.anchoredPolicy (anchor side).execution
+        (phaseProposalUnflaggedPolicy setup mode runtime leaks bounds plan values) who)
+    ∀ who, (model.runBehavioralTerminalFrom certificate (profile false)
+        ⟨some (anchor false), traces false⟩).map
+          (fun final => phaseExclusionBase setup mode runtime leaks utility excludedPayoff
+            final.state who) =
+      (model.runBehavioralTerminalFrom certificate (profile true)
+        ⟨some (anchor true), traces true⟩).map
+          (fun final => phaseExclusionBase setup mode runtime leaks utility excludedPayoff
+            final.state who) := by
+  exact phaseProposal_fresh_payoff_law_eq_of_erased_source setup mode runtime leaks bounds plan
+    complete covered maximal values fullValues tape activationGap processingGap gaps margin capacity
+      utility excludedPayoff anchor idle traces entryExcluded fresh witness archived proper same
 
 end VegasTests

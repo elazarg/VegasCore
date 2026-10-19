@@ -18,3 +18,5 @@ import VegasTests.ReservedPublicationContract
 import VegasTests.PhaseProposalInformationContract
 import VegasTests.PhaseProposalTerminalContract
 import VegasTests.ReservedBindingResetContract
+import VegasTests.PhaseProposalFutureFlagsContract
+import VegasTests.PhaseProposalInitializedContract
