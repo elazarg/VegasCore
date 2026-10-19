@@ -243,3 +243,9 @@ import Vegas.Examples.CommitTimingInformation
 import Vegas.Examples.ReservedEpochConcurrency
 import Vegas.Examples.ReservedEpochConcurrencyValidity
 import Vegas.Examples.ReservedEpochUsableConcurrency
+import Vegas.Examples.CommitSeedBroadcastFirstLateReferenceDensity
+import Vegas.Examples.CommitSeedBroadcastRealization
+import Vegas.Examples.CommitSeedSignallingSeedTrace
+import Vegas.Examples.ReservedEpochBoundedGaps
+import Vegas.Examples.ReservedEpochBudgetConcurrency
+import Vegas.Examples.ReservedEpochCertifiedConcurrency

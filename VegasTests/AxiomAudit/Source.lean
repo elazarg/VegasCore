@@ -2976,3 +2976,87 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.SourceProgram.Setup.proposalRecovery_conditional_gain_eq
+
+/-- info:
+'Vegas.SourceProgram.Setup.proposalRecovery_query_ordinary_of_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.proposalRecovery_query_ordinary_of_history
+
+/-- info:
+'Vegas.SourceProgram.Setup.proposalRecovery_query_fiber_cases'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.proposalRecovery_query_fiber_cases
+
+/-- info:
+'Vegas.SourceProgram.Setup.proposalRecovery_failed_attempt_terminal_eq'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.proposalRecovery_failed_attempt_terminal_eq
+
+/-- info:
+'Vegas.SourceProgram.Setup.proposalRecovery_stopped_window_omission_eq'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.proposalRecovery_stopped_window_omission_eq
+
+/-- info:
+'Vegas.SourceProgram.Setup.proposalRecovery_stopped_window_boundary'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.proposalRecovery_stopped_window_boundary
+
+open Vegas.SourceProgram.Setup in
+/-- info:
+'Vegas.SourceProgram.Setup.proposalRecoveryNormalizedTrembledProfile_failed_local_terminal_eq'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms proposalRecoveryNormalizedTrembledProfile_failed_local_terminal_eq
+
+/-- info:
+'Vegas.SourceProgram.Setup.proposalRecovery_normalized_failed_conditional_gain_eq_zero'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.proposalRecovery_normalized_failed_conditional_gain_eq_zero
+
+/-- info:
+'Vegas.SourceProgram.Setup.exists_consistent_proposalRecovery_pool'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.exists_consistent_proposalRecovery_pool
+
+/-- info:
+'Vegas.SourceProgram.Setup.proposalRecoveryPooledDomainLaw_lower'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.proposalRecoveryPooledDomainLaw_lower
+
+/-- info:
+'Vegas.SourceProgram.Setup.proposalRecovery_pool_complement_known_failed'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.proposalRecovery_pool_complement_known_failed
+
+/-- info:
+'Vegas.SourceProgram.Setup.proposalRecovery_pooled_component_gain_eq'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.proposalRecovery_pooled_component_gain_eq
+
+/-- info:
+'Vegas.SourceProgram.Setup.proposalRecovery_pooled_ordinary_gain_sum'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.proposalRecovery_pooled_ordinary_gain_sum
+
+/-- info:
+'Vegas.SourceProgram.Setup.proposalRecovery_pooled_ordinary_component_optimal'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.proposalRecovery_pooled_ordinary_component_optimal

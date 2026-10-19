@@ -3401,3 +3401,117 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.EventGraphRuntime.PhaseProposal.sourceArchive_future_bucket_empty
+
+/-- info:
+'Vegas.EventGraphRuntime.PhaseRuntimeState.normalize_preserves_accepted'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.PhaseRuntimeState.normalize_preserves_accepted
+
+/-- info:
+'Vegas.EventGraphRuntime.PhaseRuntimeState.accepted_progress'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.PhaseRuntimeState.accepted_progress
+
+/-- info:
+'Vegas.EventGraphRuntime.phase_runRounds_accepted'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.phase_runRounds_accepted
+
+/-- info:
+'Vegas.EventGraphRuntime.PhaseCount.opening_accepted_of_certificate'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.PhaseCount.opening_accepted_of_certificate
+
+/-- info:
+'Vegas.EventGraphRuntime.ReservedEpoch.readyCall_accepts'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.readyCall_accepts
+
+/-- info:
+'Vegas.EventGraphRuntime.ReservedEpoch.ReadyCall.environment'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.ReadyCall.environment
+
+/-- info:
+'Vegas.EventGraphRuntime.ReservedEpoch.ReadyCall.runRounds'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.ReadyCall.runRounds
+
+/-- info:
+'Vegas.EventGraphRuntime.ReservedEpoch.processing_segment_receipt'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.processing_segment_receipt
+
+/-- info:
+'Vegas.EventGraphRuntime.ReservedEpoch.receipt_at_processing_boundary'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.receipt_at_processing_boundary
+
+/-- info:
+'Vegas.EventGraphRuntime.ReservedEpoch.protected_pending_receipt'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.protected_pending_receipt
+
+/-- info:
+'Vegas.EventGraphRuntime.ReservedEpoch.first_response_receipt'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.first_response_receipt
+
+/-- info:
+'Vegas.EventGraphRuntime.ReservedEpoch.implementation_first_response_receipt'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.implementation_first_response_receipt
+
+/-- info:
+'Vegas.EventGraphRuntime.ReservedEpoch.receipt_of_later_processing_deadline'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.receipt_of_later_processing_deadline
+
+/-- info:
+'Vegas.Examples.ReservedEpochCertifiedConcurrency.valid_concurrent_service'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.ReservedEpochCertifiedConcurrency.valid_concurrent_service
+
+/-- info:
+'Vegas.recoverySourceCheckpoint_proposalArchive_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.recoverySourceCheckpoint_proposalArchive_history
+
+/-- info:
+'Vegas.RecoverySourceWitness.respond_archivedProposals'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.RecoverySourceWitness.respond_archivedProposals
+
+/-- info:
+'Vegas.RecoverySourceWitness.environment_archivedProposals'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.RecoverySourceWitness.environment_archivedProposals
+
+/-- info:
+'Vegas.RecoverySourceWitness.initialized_archivedProposals'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.RecoverySourceWitness.initialized_archivedProposals
+
+/-- info:
+'Vegas.RecoverySourceCheckpoint.ArchivedProposals.binding'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.RecoverySourceCheckpoint.ArchivedProposals.binding

@@ -18,7 +18,7 @@ theorem raw_trace_fixed_seed (current : app.Control)
     (trace : (app.protocol initial horizon scheduler).Trace (some current)) :
     ∃ seed ∈ nativeSeedLaw.support,
       Nonempty ((app.protocol initial horizon (family seed)).Trace (some current)) := by
-  exact app.schedulerMixture_trace_fixed_seed nativeSeedLaw family initialState horizon current
+  exact app.schedulerMixture_trace_fixed_seed nativeSeedLaw family initial horizon current
     trace
 
 /-- The actually installed scheduler completes all graph events under every

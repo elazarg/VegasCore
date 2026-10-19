@@ -1,5 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
+import Vegas.Pending.PhaseOpeningService
 import Vegas.Pending.PhaseLatestBindingHistory
 import Vegas.Pending.PhasePacketEvidence
 import Vegas.Pending.PhaseFailureCoverage
@@ -200,7 +201,7 @@ theorem opening_accepted_of_history [Fintype Player] (bounds : MessageBounds gra
   unfold CountCallCorrect at correct
   dsimp only [nativeMessage] at correct
   rw [opening] at correct
-  obtain ⟨certified, resolves⟩ := correct
+  obtain ⟨_certified, resolves⟩ := correct
   have latest := permitted.2.2.2
   unfold OpeningBinding at latest
   rw [opening] at latest
@@ -209,7 +210,7 @@ theorem opening_accepted_of_history [Fintype Player] (bounds : MessageBounds gra
   | bind | sample => simp only [node] at resolves
   | resolve owner payload binding checks outputEq codeEq =>
       simp only [node] at resolves latest
-      obtain ⟨sender, typed, signed⟩ := resolves
+      obtain ⟨sender, _typed, _signed⟩ := resolves
       have sender' : message.sender = owner := sender
       have associated := accepted_of_latest runtime leaks control.execution physical
         invariant.active covered.active
@@ -217,69 +218,8 @@ theorem opening_accepted_of_history [Fintype Player] (bounds : MessageBounds gra
         ((app).uniqueIds_history scheduler initial horizon control rawTrace)
         message member event candidate raw opening owner payload binding checks outputEq codeEq node
         ready request sender' latest
-      have owned : candidate.1 = owner := by
-        obtain ⟨ty, kind⟩ := invariant.active.accepted_typed binding.field candidate associated
-        exact (EventField.binding.inj (binding.layout_eq.symm.trans kind)).1.symm
-      have certificate : message.payload.packet.evidence = some ⟨candidate, raw⟩ := by
-        unfold certifiedOpening at certified
-        rw [opening] at certified
-        cases evidence : message.payload.packet.evidence with
-        | none => simp only [evidence, Bool.false_eq_true] at certified
-        | some fact =>
-            simp only [evidence, decide_eq_true_eq] at certified
-            exact congrArg some certified
-      have sound := (phasePacketEvidence runtime leaks).history_sound initial horizon scheduler
-        rawTrace
-      have verified := sound.inputs message member ⟨candidate, raw⟩ (by
-        simp only [phasePacketEvidence, certificate, Option.toList_some, List.mem_singleton])
-      change control.execution.application.current.native.candidates.lookup candidate =
-        .openable raw at verified
-      rcases raw with ⟨rawType, value⟩
-      change rawType = payload at typed
-      subst rawType
-      have stored := invariant.active.opening_stored binding candidate value associated verified
-      have defined := EventCode.resolveOutput?_isSome binding checks true
-        control.execution.application.current.native.config.store (by
-          intro field read
-          apply control.execution.application.current.native.config.read_available ready
-          rw [← EventCode.readFields_cast outputEq (graph.nodes event), codeEq]
-          exact read)
-      obtain ⟨result, resolved⟩ := Option.isSome_iff_exists.mp defined
-      have rawAccepted := handle_opening_eq runtime control.execution.application.current.native
-        message.id event candidate owner payload binding checks outputEq codeEq node ready timely
-        sender' owned associated value verified stored result resolved
-      obtain ⟨native, accepted⟩ : ∃ native,
-          handle runtime control.execution.application.current.native
-            ⟨message.id, message.payload.packet.call⟩ = some native := by
-        rw [opening]
-        exact ⟨_, rawAccepted⟩
-      obtain ⟨named, addressed, unfinished, completed⟩ :=
-        handle_completes runtime _ native _ accepted
-      have same : named = event := Option.some.inj (addressed.symm.trans (by
-        simp only [opening, Payload.event?]))
-      let next := ({control.execution.application with current :=
-        control.execution.application.current.inclusionResult message.payload.packet.call native} :
-          PhaseRuntimeState graph).normalize
-      refine ⟨native, next, accepted, by rwa [same] at completed, rfl, ?_⟩
-      change control.execution.application.handle runtime message = some next
-      have current : message.payload.attempt = control.execution.application.attempt := request.1
-      have token : message.payload.tokenValid control.execution.application.attempt = true :=
-        Bool.and_eq_true_iff.mpr ⟨decide_eq_true_eq.mpr current, permitted.1⟩
-      have allowed : control.execution.application.allows message.payload.packet.call = true := by
-        obtain ⟨phase, member, inside⟩ := request.2.1
-        have head : control.execution.application.phases.head? = some phase := member
-        simp only [PhaseRuntimeState.allows, head, opening, Payload.event?, decide_eq_true_eq]
-        exact inside
-      have active : control.execution.application.current.excludedCall
-          message.payload.packet.call = false := by
-        rw [opening]
-        change (graph.actor? event).any
-          (fun owner => decide (owner ∈ control.execution.application.current.excluded)) = false
-        have acting : graph.actor? event = some message.sender := request.2.2.2.1
-        rw [acting, Option.any_some]
-        exact decide_eq_false (request.2.2.2.2 :
-          message.sender ∉ control.execution.application.current.excluded)
-      simp only [PhaseRuntimeState.handle, token, allowed, active, Bool.not_false,
-        Bool.and_self, ↓reduceIte, accepted, Option.map_some, next]
+      exact opening_accepted_of_certificate runtime leaks plan inputs horizon scheduler rawTrace
+        message member event candidate raw opening request timely (physical.clean.2 message member)
+          owner payload binding checks outputEq codeEq node associated
 
 end Vegas.EventGraphRuntime.PhaseCount

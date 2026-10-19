@@ -159,7 +159,8 @@ theorem commitRecovery_query_fiber_of_history (who : Player)
               (setup.commitRecoveryModel.infoOf who ordinaryTrace) =
             setup.commitRecoveryErasedInformation who
               (setup.commitRecoveryModel.infoOf who otherTrace) ∨ other.NewFailure := by
-  obtain ⟨ordinary, ordinaryTrace, excluded, entryExcluded, _saved, _generation, _view, info⟩ :=
+  obtain ⟨ordinary, ordinaryTrace, excluded, entryExcluded, _saved, _generation,
+      _view, info, _prefix⟩ :=
     setup.commitRecoveryNoMissInformation_genuine who current trace committing survives
   have unchanged : ordinary.excluded = ordinary.entryExcluded :=
     excluded.trans entryExcluded.symm

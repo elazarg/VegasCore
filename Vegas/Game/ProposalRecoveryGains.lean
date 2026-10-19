@@ -33,7 +33,7 @@ private theorem actual_bayes
       assessment.strategy mixed who site) history
 
 open Classical in
-private theorem local_terminal_prescribed
+theorem proposalRecovery_local_terminal_prescribed
     (assessment : setup.proposalRecoveryModel.BehavioralAssessment)
     (prescription : ∀ who, setup.ProposalRecoveryPrescription who)
     (prescribed : ∀ who (history : setup.proposalRecoveryProtocol.History)
@@ -133,7 +133,8 @@ theorem proposalRecovery_conditional_value_eq
     apply congrArg (PMF.map _)
     apply congrArg (PMF.bind _)
     funext history
-    exact setup.local_terminal_prescribed assessment prescription prescribed certificate
+    exact setup.proposalRecovery_local_terminal_prescribed
+      assessment prescription prescribed certificate
       focal site.1 current history.1
   have shared := setup.proposalRecovery_bayes_local_terminal_eq finite assessment.strategy mixed
     prescription certificate focal target source semantic archive law

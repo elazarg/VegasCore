@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.RecoverySourceBoundary
-import Vegas.Game.CompiledRevealPhase
+import Vegas.Game.PhaseProposalReplayPath
 import Vegas.Game.CompiledSampleReadback
 import Vegas.Pending.PhaseExclusionRecord
 import Vegas.Pending.PhaseStoredCheckpoint
@@ -70,7 +70,9 @@ theorem RecoverySourceCheckpoint.after_sample
       ProtocolState.Intended setup.program (checkpoint.residual.lift
         (ProtocolState.entry checkpoint.residual.tail checkpoint.source)) →
       ProtocolState.Intended setup.program (next.residual.lift
-        (ProtocolState.entry next.residual.tail next.source))) := by
+        (ProtocolState.entry next.residual.tail next.source))) ∧
+      NativeSourceReplayExtension setup (phase.drain state.current).native state.generation
+        checkpoint.trace next.trace := by
   let priorTrace := checkpoint.trace
   rcases checkpoint with ⟨⟨Γ, O, program, lift⟩, source, refs, registry, embedding, before,
     compiled, terminalAligned, agrees, guards, failures, unique, ranks, actors, commits,
@@ -178,7 +180,8 @@ theorem RecoverySourceCheckpoint.after_sample
       have publicPath : Relation.ReflTransGen
           (NativePublicSourceStep image.native 0 setup.program)
           (lift (Sum.inl source), state.entry.excluded)
-          (lift (Sum.inr (ProtocolState.entry next after)), state.entry.excluded) := by
+          (lift (Sum.inr (ProtocolState.entry next after)), image.excluded) := by
+        rw [excludedEq]
         apply Relation.ReflTransGen.single
         refine ⟨⟨?_, ?_, (fun _ => none), ?_⟩, ?_, ?_, (fun _ => none), ?_, ?_⟩
         · intro stopped
@@ -216,17 +219,10 @@ theorem RecoverySourceCheckpoint.after_sample
         · intro who acting
           rw [actors] at acting
           cases acting
-      obtain ⟨states, joints, chain, ending, instructions⟩ :=
-        CommitRecoveryState.instructions_of_nonCommit_path setup.program sourceInitial
-          state.generation (fun _ _ moved => moved.1) _ _ publicPath
-      obtain ⟨sourceTrace, reachedPrefix, _length, _word, numeric⟩ :=
-        setup.recoveryInstructionPath_information sourceInitial instructions priorTrace
-      let targetTrace : setup.commitRecoveryProtocol.Trace
-          (some (CommitRecoveryState.atPoint
-            (lift (Sum.inr (ProtocolState.entry next after))) image.excluded state.generation)) :=
-        (congrArg (fun excluded => some (CommitRecoveryState.atPoint
-          (lift (Sum.inr (ProtocolState.entry next after))) excluded state.generation))
-            excludedEq).symm ▸ sourceTrace
+      obtain ⟨sourceTrace, states, joints, events, chain, ending, reachedPrefix, _length, _word,
+        numeric, replaySteps, replayAnnotations, eventCount, replayCursors⟩ :=
+        native_public_path_history setup image.native sourceInitial state.generation _ _ publicPath
+          priorTrace
       have adjacent := exclusion.frontier.adjacent
       have last := exclusion.frontier.last
       rw [installed] at adjacent last
@@ -269,11 +265,11 @@ theorem RecoverySourceCheckpoint.after_sample
           step := ?_
           menus := fun who point => menus who (Sum.inr point)
           readout := fun point => readouts (Sum.inr point)
-          trace := targetTrace
+          trace := sourceTrace
           views := ProtocolViewSuffix.sampleTail setup.program fresh law next refs embedding
             lift views
           origin := .sampleTail fresh law next origin
-          historyAlignment := ?_ }, ?_, ?_, ?_, ?_, ?_⟩
+          historyAlignment := ?_ }, ?_, ?_, ?_, ?_, ?_, ?_⟩
       · rw [address]
         exact compiled.sampleTail (_openNames := O) setup.program fresh law next refs
           source.revelations registry embedding before state.attempt.phase
@@ -307,30 +303,18 @@ theorem RecoverySourceCheckpoint.after_sample
           (remembered.trans (phase.drain_history_prefix state.current)) saved prefixEnd
           (fun owner _survives => congrFun (historyAlignment oldClear) owner) who
           (by rw [clear]; exact Finset.notMem_empty _)
-      · refine ⟨joints.length, ?_⟩
-        change setup.commitRecoveryProtocol.ReachesWithin joints.length
-          ⟨_, priorTrace⟩ ⟨_, targetTrace⟩
-        rw [show (⟨_, targetTrace⟩ : setup.commitRecoveryProtocol.History) =
-            ⟨_, sourceTrace⟩ from
-          GameTheory.Protocol.ExecutionProtocol.StateSymmetry.history_cast _ sourceTrace]
-        exact reachedPrefix
+      · exact ⟨joints.length, reachedPrefix⟩
       · change Relation.ReflTransGen
           (NativePublicSourceStep image.native 0 setup.program)
           (lift (Sum.inl source), state.entry.excluded)
           (lift (Sum.inr (ProtocolState.entry next after)), image.excluded)
-        rw [excludedEq]
         exact publicPath
       · refine ⟨states, chain, ?_, ?_⟩
         · change ((lift (Sum.inl source), state.entry.excluded) :: states).getLast
             (List.cons_ne_nil _ _) =
               (lift (Sum.inr (ProtocolState.entry next after)), image.excluded)
-          rw [excludedEq]
           exact ending
-        · have sameHistory : (⟨_, targetTrace⟩ : setup.commitRecoveryProtocol.History) =
-              ⟨_, sourceTrace⟩ :=
-            GameTheory.Protocol.ExecutionProtocol.StateSymmetry.history_cast _ sourceTrace
-          exact (congrArg (fun history => setup.recoveryAddressWord history.trace)
-            sameHistory).trans numeric
+        · exact numeric
       · intro who active
         obtain ⟨⟨selected, action⟩, recorded, named⟩ :=
           List.mem_map.mp ((image.native.config.history_exact event).mpr completed)
@@ -357,5 +341,10 @@ theorem RecoverySourceCheckpoint.after_sample
       · intro clear intended
         exact origin.intended_of_clear_nonCommit_path _ _ path intended
           (excludedEq.symm.trans clear)
+      · refine ⟨events, _, chain, rfl, replaySteps, replayAnnotations, ?_, ?_⟩
+        · change events.length = sourceTrace.length - priorTrace.length
+          omega
+        · simpa only [Option.map_some, CommitRecoveryState.atPoint, ProtocolState.entry]
+            using replayCursors
 
 end Vegas

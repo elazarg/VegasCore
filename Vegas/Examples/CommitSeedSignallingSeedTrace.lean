@@ -20,13 +20,6 @@ theorem raw_trace_fixed_seed (current : app.Control)
     (trace : (app.protocol initial horizon scheduler).Trace (some current)) :
     ∃ seeds ∈ seedPrior.support,
       Nonempty ((app.protocol initial horizon (family seeds)).Trace (some current)) := by
-  have pureTrace : (app.protocol (PMF.pure initialState) horizon scheduler).Trace
-      (some current) := by
-    rw [← initial_eq_pure]
-    exact trace
-  have actual := app.schedulerMixture_trace_fixed_seed seedPrior family initialState horizon
-    current pureTrace
-  rw [← initial_eq_pure] at actual
-  exact actual
+  exact app.schedulerMixture_trace_fixed_seed seedPrior family initial horizon current trace
 
 end Vegas.Examples.CommitSeedSignalling

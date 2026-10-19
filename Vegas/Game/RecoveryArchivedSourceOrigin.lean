@@ -4,7 +4,7 @@ import Vegas.Game.RecoveryArchivedSavedWord
 import Vegas.Game.RecoveryArchivedInitialization
 import Vegas.Game.RecoverySettledCommitCheckpoint
 import Vegas.Game.RecoveryChosenCommitControl
-import Vegas.Game.CompiledRevealPhase
+import Vegas.Game.PhaseProposalReplayPath
 
 /-! # Actual archived checkpoints in one linked chosen source chronology -/
 
@@ -109,7 +109,10 @@ inductive ArchivedSourceOrigins (setup : Setup (Player := Player) (L := L)) (mod
             state.entry.excluded state.generation).IntervalAddresses word ∧
           word.getLast? = some (CommitRecoveryState.atPoint
             (next.residual.lift (ProtocolState.entry next.residual.tail next.source))
-            nextState.entry.excluded nextState.generation).publicAddress) :
+            nextState.entry.excluded nextState.generation).publicAddress)
+      (replay : phase.kind ≠ .commitment →
+        NativeSourceReplayExtension setup nextState.entry.native state.generation
+          checkpoint.trace next.trace) :
       ArchivedSourceOrigins setup mode nextState.retired ⟨_, next.trace⟩
 
 namespace ArchivedSourceOrigins
@@ -176,7 +179,7 @@ theorem get {setup : Setup (Player := Player) (L := L)} {mode : ExecutionMode}
             List.getElem_cons_zero] using instructions
   | advance _checkpoint _next _previous _phase _remaining _installed _advanced _generation archives
       _boundary _aligned _saved _retained _stored _finished _reachable path _instructions
-      _publicSteps _publicAddresses _addresses ih =>
+      _publicSteps _publicAddresses _addresses _replay ih =>
       obtain ⟨old, source, sourceAligned, earlierOrigins, archive, oldAttempt, oldRetained,
         oldSaved, oldAgrees, oldPositive, oldClosed, oldSteps, oldLater, sourcePath,
         oldInstructions, onward⟩ := ih index (by simpa only [archives] using bound)

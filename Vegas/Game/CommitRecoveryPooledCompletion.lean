@@ -104,7 +104,8 @@ theorem commitRecoveryPooledDomainLaw_fullSupport
     (setup.commitRecoveryValueReference_fullSupport finite who info value)
 
 omit [Fintype Player] in
-private theorem tremble_bind (who : Player) (info : setup.commitRecoveryModel.InfoState who)
+theorem commitRecoveryValueTremble_bind (who : Player)
+    (info : setup.commitRecoveryModel.InfoState who)
     (omission : ℝ) (omissionNonnegative : 0 ≤ omission) (omissionBounded : omission ≤ 1)
     (bad : ℝ) (badNonnegative : 0 ≤ bad) (badBounded : bad ≤ 1)
     {Part : Type} (weights : PMF Part)
@@ -201,7 +202,7 @@ theorem commitRecoveryPoolComponent_bind (finite : setup.program.FiniteBindingTy
     rfl
   rw [pointwise]
   unfold commitRecoveryPoolComponent
-  rw [← PMF.map_bind, setup.tremble_bind]
+  rw [← PMF.map_bind, setup.commitRecoveryValueTremble_bind]
   apply congrArg (fun law => (setup.commitRecoveryValueTremble agent.1
     (setup.commitRecoveryAgentPool finite agent).2.val
     omission omissionNonnegative omissionBounded bad badNonnegative badBounded law).map

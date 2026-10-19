@@ -56,7 +56,7 @@ theorem firstLate_reference_history_weights
         (congrArg ReactiveApplication.PlayerView.receipts sameView).trans empty
       have rawTrace := rawMenu.toRawTrace initial horizon scheduler trace
       obtain ⟨seed, _prior, ⟨fixed⟩⟩ := app.schedulerMixture_trace_fixed_seed
-        nativeSeedLaw family initialState horizon ⟨remaining, some owner, execution⟩ rawTrace
+        nativeSeedLaw family initial horizon ⟨remaining, some owner, execution⟩ rawTrace
       have placement := original_first_late_input_placement seed
         ⟨remaining, some owner, execution⟩ fixed owner rfl originalHere clockHere
       have late : 5 ≤

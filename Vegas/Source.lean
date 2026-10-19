@@ -219,3 +219,12 @@ import Vegas.Source.ProposalRecoveryWordSplice
 import Vegas.Source.CommitRecoveryRevealMenu
 import Vegas.Source.ProposalRecoveryTraceReadback
 import Vegas.Source.ProposalRecoveryEvolution
+import Vegas.Source.ProposalRecoveryPrefixLift
+import Vegas.Source.ProposalRecoveryCommitment
+import Vegas.Source.ProposalRecoveryCommitWindow
+import Vegas.Source.ProposalRecoveryNoMissRepresentative
+import Vegas.Source.ProposalRecoveryNoMissFixed
+import Vegas.Source.ProposalRecoveryAttemptReset
+import Vegas.Source.ProposalRecoveryLabelCongruence
+import Vegas.Source.ProposalRecoveryPrefixRank
+import Vegas.Source.ProposalRecoveryMenuKind
