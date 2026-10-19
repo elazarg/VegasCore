@@ -1238,10 +1238,10 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.RecoverySourceCheckpoint.after_reveal
 
-/-- info: 'Vegas.RecoverySourceCheckpoint.after_sample'
+/-- info: 'Vegas.RecoverySourceCheckpoint.after_sample_history'
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.RecoverySourceCheckpoint.after_sample
+#print axioms Vegas.RecoverySourceCheckpoint.after_sample_history
 
 /-- info: 'Vegas.RecoverySourceCheckpoint.after_commit_retry'
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
@@ -5007,3 +5007,17 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.PhaseProposalNativeSourceMatch.decision
+
+/-- info:
+'Vegas.phaseProposalUnflagged_wait_send_reset_boundary'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseProposalUnflagged_wait_send_reset_boundary
+
+/-- info:
+'Vegas.RecoverySourceCheckpoint.failed_commit_history_eq_of_scan'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.RecoverySourceCheckpoint.failed_commit_history_eq_of_scan

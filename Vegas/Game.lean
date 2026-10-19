@@ -747,7 +747,7 @@ import Vegas.Game.CompiledCommitTail
 import Vegas.Game.RecoverySourceCheckpoint
 import Vegas.Game.RecoverySourceReadout
 import Vegas.Game.RevealRecoveryResidual
-import Vegas.Game.RecoverySampleCheckpoint
+import Vegas.Game.RecoverySampleHistory
 import Vegas.Game.RecoverySourceBoundary
 import Vegas.Game.CompiledRevealTail
 import Vegas.Game.RecoveryInitialCheckpoint
@@ -1461,3 +1461,17 @@ import Vegas.Game.CompiledRevealBindingRow
 import Vegas.Game.CompiledRevealBindingOrigins
 import Vegas.Game.PhaseProposalSourceFiber
 import Vegas.Game.PhaseProposalNativeSourceInformation
+import Vegas.Game.RecoverySourceEnvironment
+import Vegas.Game.PhaseProposalSourceUsability
+import Vegas.Game.RecoveryPublicPhaseArchive
+import Vegas.Game.RecoveryCompletedPhaseWitness
+import Vegas.Game.PhaseProposalFreshTerminal
+import Vegas.Game.RecoveryCommitPhaseArchive
+import Vegas.Game.PhaseProposalBindingWitness
+import Vegas.Game.PhaseProposalSampleHistory
+import Vegas.Game.PhaseProposalSampleHistoryJoin
+import Vegas.Game.PhaseProposalStoppedSample
+import Vegas.Game.PhaseProposalSampleHistoryCoupling
+import Vegas.Game.PhaseProposalAttemptArchive
+import Vegas.Game.PhaseProposalFreshTerminalCoupling
+import Vegas.Game.ReservedEpochBindingReset

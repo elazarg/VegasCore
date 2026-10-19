@@ -201,7 +201,7 @@ Useful existing boundaries are the
 [all-phase source checkpoint normalization](../Vegas/Game/RecoveryCheckpointNormalization.lean),
 [reachable saved source checkpoints at every initialized history](../Vegas/Game/RecoveryCheckpointHistory.lean),
 [completed reveal checkpoint transitions](../Vegas/Game/RecoveryRevealCheckpoint.lean),
-[completed sample checkpoint transitions](../Vegas/Game/RecoverySampleCheckpoint.lean),
+[completed sample checkpoint transitions](../Vegas/Game/RecoverySampleHistory.lean),
 [actual retry checkpoints](../Vegas/Game/RecoveryCommitCheckpoint.lean),
 [clean and exhausted commitment checkpoints](../Vegas/Game/RecoverySettledCommitCheckpoint.lean),
 [actual terminal source-history and payoff-vector correspondence](../Vegas/Game/RecoverySourceTerminal.lean),
@@ -959,7 +959,7 @@ Operational replay and supported execution:
 [Recovery Ready Commit Witness](../Vegas/Game/RecoveryReadyCommitWitness.lean),
 [Reveal Recovery Residual](../Vegas/Game/RevealRecoveryResidual.lean),
 [Recovery Reveal Checkpoint](../Vegas/Game/RecoveryRevealCheckpoint.lean),
-[Recovery Sample Checkpoint](../Vegas/Game/RecoverySampleCheckpoint.lean),
+[Recovery Sample History](../Vegas/Game/RecoverySampleHistory.lean),
 [Recovery Settled Commit Checkpoint](../Vegas/Game/RecoverySettledCommitCheckpoint.lean),
 [Reactive Frontier Execution](../Vegas/Pending/ReactiveFrontierExecution.lean),
 [Source Service Reactive Law](../Vegas/Game/SourceServiceReactiveLaw.lean),
@@ -1035,7 +1035,7 @@ Exact chosen source checkpoint successors:
 [Compiled Commit Completion](../Vegas/Game/CompiledCommitCompletion.lean),
 [Recovery Settled Commit Checkpoint](../Vegas/Game/RecoverySettledCommitCheckpoint.lean),
 [Recovery Reveal Checkpoint](../Vegas/Game/RecoveryRevealCheckpoint.lean),
-[Recovery Sample Checkpoint](../Vegas/Game/RecoverySampleCheckpoint.lean),
+[Recovery Sample History](../Vegas/Game/RecoverySampleHistory.lean),
 [Recovery Checkpoint Normalization](../Vegas/Game/RecoveryCheckpointNormalization.lean).
 Clear completed attempts equal physical prefix completion. The chosen commitment, sample and reveal successors retain whole intendedness under the stated admission/clarity hypotheses; the actual clear canonical-history consumer below supplies admission and threads the chosen checkpoint.
 
@@ -2808,5 +2808,21 @@ traces FALSE disclosures to actual original requests and expiry.
 [Noncommitment value preservation](../Vegas/Source/CommitRecoveryNonCommitValues.lean)
 retains surviving owners' existing typed bindings along the same public source path.
 [Same-attempt controls](../Vegas/Pending/PhaseAttemptControls.lean) retain both
-installed phases and the literal retired archive. Full terminal continuation
-and initialized conditional belief transport remain separate obligations.
+installed phases and the literal retired archive. Initialized terminal
+continuation and conditional belief transport remain separate obligations.
+
+The [binding reset boundary](../Vegas/Game/ReservedEpochBindingReset.lean)
+derives the complete source omission word from the actual native failure scan.
+Its SEND-versus-WAIT consumer retains both original closing paths and produces
+equal semantic and ordered proposal histories after a shared reset. All owned
+receipts are derived from comparator survival.
+
+The [fresh terminal coupling](../Vegas/Game/PhaseProposalFreshTerminalCoupling.lean)
+couples complete runtime and enriched source terminal histories from a supplied
+fresh witness, separately for every supported reserved tape. Its exact
+marginals and supported pairs preserve original inputs, typed terminal state,
+permanent exclusions and the entire payoff vector. The original scheduler
+mixture, selected retry-witness packaging and conditional likelihood transport
+remain separate consumers. Raw inclusions and environment steps share their
+pre-normalization witness producers in
+[PhaseProposalTransition](../Vegas/Game/PhaseProposalTransition.lean).

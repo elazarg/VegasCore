@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.PhaseProposalTransition
+import Vegas.Game.RecoverySourceEnvironment
 import Vegas.Game.PhaseProposalExecution
 import Vegas.Pending.PhaseProposalFrameStep
 import Interaction.ReactiveTrafficIdentity
@@ -19,7 +20,7 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
 /-- This uses the real external counted prefix to discharge the normalizer's
 packet frame. Its selected source checkpoint is exactly the one returned by
 the shared raw transition producer. -/
-theorem RecoverySourceWitness.environment_archivedProposals
+theorem RecoverySourceWitness.environment_archived_source
     {setup : Setup (Player := Player) (L := L)} {mode : ExecutionMode}
     (runtime : EventGraphRuntime ((toEventGraph setup.program).withMode mode))
     (leaks : MessageNetwork.ObservationRule Player
@@ -40,7 +41,9 @@ theorem RecoverySourceWitness.environment_archivedProposals
     (reached : next ∈ (control.execution.environmentStep
       (phaseApplication runtime leaks) command).support) :
     ∃ nextWitness : RecoverySourceWitness setup mode plan next.application,
-      nextWitness.checkpoint.ArchivedProposals next.network.inputs := by
+      nextWitness.checkpoint.ArchivedProposals next.network.inputs ∧
+      ∃ fuel, setup.commitRecoveryProtocol.ReachesWithin fuel
+        ⟨_, witness.checkpoint.trace⟩ ⟨_, nextWitness.checkpoint.trace⟩ := by
   let app := phaseApplication runtime leaks
   let inputs := setup.initialLaw.map encodeInputs
   have rawTrace := (PhaseCount.onePacketMenu runtime leaks bounds).toRawTrace
@@ -59,35 +62,37 @@ theorem RecoverySourceWitness.environment_archivedProposals
   | wait =>
       simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map] at reached
       cases (PMF.mem_support_pure_iff _ _).mp reached
-      exact ⟨witness, prior⟩
+      exact ⟨witness, prior, 0, .refl 0 _⟩
   | activate owner =>
       obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
       obtain ⟨selected, _supported, rfl⟩ := PMF.support_map .. ▸ supported
-      exact ⟨witness, prior⟩
+      exact ⟨witness, prior, 0, .refl 0 _⟩
   | «include» id =>
       simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map] at reached
       cases (PMF.mem_support_pure_iff _ _).mp reached
       unfold ReactiveApplication.Execution.includePending MessageNetwork.includePending
       cases found : control.execution.network.lookup id with
-      | none => exact ⟨witness, prior⟩
+      | none => exact ⟨witness, prior, 0, .refl 0 _⟩
       | some message =>
           change ∃ nextWitness : RecoverySourceWitness setup mode plan
               ((app.handle control.execution.application message).getD
                 control.execution.application),
             nextWitness.checkpoint.ArchivedProposals control.execution.network.inputs
+              ∧ ∃ fuel, setup.commitRecoveryProtocol.ReachesWithin fuel
+                ⟨_, witness.checkpoint.trace⟩ ⟨_, nextWitness.checkpoint.trace⟩
           cases accepted : app.handle control.execution.application message with
-          | none => exact ⟨witness, prior⟩
+          | none => exact ⟨witness, prior, 0, .refl 0 _⟩
           | some state =>
               change control.execution.application.handle runtime message = some state at accepted
               unfold PhaseRuntimeState.handle at accepted
               split at accepted
               · rename_i allowed
                 obtain ⟨result, handled, rfl⟩ := Option.map_eq_some_iff.mp accepted
-                obtain ⟨nextWitness, delta, _fuel, _sourcePath⟩ :=
+                obtain ⟨nextWitness, delta, fuel, sourcePath⟩ :=
                   witness.after_handle runtime leaks maximal
                   message result
                   allowed handled
-                refine ⟨nextWitness, ?_⟩
+                refine ⟨nextWitness, ?_, fuel, sourcePath⟩
                 let raw : PhaseRuntimeState ((toEventGraph setup.program).withMode mode) :=
                   {control.execution.application with current :=
                     (control.execution.application.current.inclusionResult
@@ -115,11 +120,11 @@ theorem RecoverySourceWitness.environment_archivedProposals
       split at changed
       · rename_i authorized
         obtain ⟨result, nativeSupport, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp changed
-        obtain ⟨nextWitness, delta, _fuel, _sourcePath⟩ :=
-          witness.after_environment runtime leaks maximal
+        obtain ⟨nextWitness, delta, fuel, sourcePath⟩ :=
+          witness.after_environment_source runtime leaks maximal
           command result
           authorized nativeSupport
-        refine ⟨nextWitness, ?_⟩
+        refine ⟨nextWitness, ?_, fuel, sourcePath⟩
         let raw : PhaseRuntimeState ((toEventGraph setup.program).withMode mode) :=
           {control.execution.application with current :=
             (control.execution.application.current.environmentResult command result)}
@@ -135,6 +140,6 @@ theorem RecoverySourceWitness.environment_archivedProposals
                   nextWitness.checkpoint runtime leaks bounds inputs
           horizon scheduler control counted frame witness.order.frontier.adjacent old delta
       · cases (PMF.mem_support_pure_iff _ _).mp changed
-        exact ⟨witness, prior⟩
+        exact ⟨witness, prior, 0, .refl 0 _⟩
 
 end Vegas

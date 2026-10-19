@@ -58,6 +58,7 @@ theorem phaseProposalUnflagged_response_acceptance_word
       (ReservedEpoch.executionHorizon runtime)
         (ReservedEpoch.family runtime leaks (ReservedEpoch.packetCapacity runtime) tape)).Trace
           (some ⟨remaining, none, anchor⟩),
+    TracePrefix activeTrace trace ∧
     let initial := (inputs).map (PhaseRuntimeState.initial plan)
     let horizon := ReservedEpoch.executionHorizon runtime
     let scheduler := ReservedEpoch.family runtime leaks (ReservedEpoch.packetCapacity runtime) tape
@@ -85,6 +86,11 @@ theorem phaseProposalUnflagged_response_acceptance_word
         phase ∈ before.execution.application.phases.head? ∧
         PhaseClosingEffect runtime leaks before.execution ending.execution raw ∧
         phase.Finished (phase.drain raw) ∧
+        ending.execution.application =
+          ({ before.execution.application with current := raw } :
+            PhaseRuntimeState graph).normalize ∧
+        (phase.drain raw).FailureCoverage ∧
+        (phase.drain raw).excluded = ending.execution.application.current.excluded ∧
         (phase.drain raw).native.accepted = raw.native.accepted ∧
         (phase.drain raw).native.candidates = raw.native.candidates ∧
         PhaseProposal.sourceArchive ending.execution.network.inputs =
@@ -112,8 +118,27 @@ theorem phaseProposalUnflagged_response_acceptance_word
   let initial := (inputs).map (PhaseRuntimeState.initial plan)
   let horizon := ReservedEpoch.executionHorizon runtime
   let scheduler := ReservedEpoch.family runtime leaks (ReservedEpoch.packetCapacity runtime) tape
-  obtain ⟨trace⟩ := (menu).trace_respond initial horizon scheduler remaining active actor response
-    activeTrace available
+  let responseJoint := fun who => if who = actor then some response else none
+  have legal : ((menu).protocol initial horizon scheduler).Legal
+      (some ⟨remaining, some actor, active⟩) responseJoint := by
+    constructor
+    · simp [ReactiveApplication.ResponseMenu.protocol, ReactiveApplication.terminal]
+    · intro who
+      by_cases same : who = actor
+      · subst who
+        simpa [responseJoint, ReactiveApplication.ResponseMenu.protocol,
+          ReactiveApplication.actor, ReactiveApplication.ResponseMenu.available]
+          using available
+      · simp [responseJoint, ReactiveApplication.ResponseMenu.protocol,
+          ReactiveApplication.actor, same, Ne.symm same]
+  have realized : some (⟨remaining, none, anchor⟩ : (app).Control) ∈
+      ((app).transition initial horizon scheduler
+        (some ⟨remaining, some actor, active⟩) responseJoint).support := by
+    change _ ∈ (PMF.pure _).support
+    simp only [responseJoint, ↓reduceIte, Option.getD_some,
+      PMF.mem_support_pure_iff _ _]
+    rfl
+  let trace := activeTrace.extend responseJoint legal realized
   have positioned := ReservedEpoch.active_after_processing runtime leaks
     (ReservedEpoch.packetCapacity runtime) tape initial horizon ⟨remaining, some actor, active⟩
       ((menu).toRawTrace initial horizon scheduler activeTrace) actor rfl
@@ -125,7 +150,7 @@ theorem phaseProposalUnflagged_response_acceptance_word
     cases transmission with
     | none => exact installed
     | some material => exact installed
-  refine ⟨trace, ?_⟩
+  refine ⟨trace, .extend .refl _ _ _, ?_⟩
   exact phaseProposalUnflagged_stopped_acceptance_word setup mode runtime leaks bounds plan
     complete coveredValues maximal ordered values fullValues tape activationGap processingGap gaps
       margin capacity remaining anchor trace phase installedAfter commitment afterProcessing

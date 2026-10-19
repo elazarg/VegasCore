@@ -11,7 +11,7 @@ import Vegas.Source.CommitRecoveryPathLift
 import Vegas.Source.CommitRecoveryNonCommitIntended
 import GameTheoryExtensions.Protocol.StateSymmetry
 
-/-! # Saved source checkpoints after actual singleton sample phases -/
+/-! # Selected sample checkpoints retain their actual typed public draw -/
 
 noncomputable section
 
@@ -23,7 +23,7 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
 /-- A completed actual sampling interval supplies its supported source draw and
 advances the saved source checkpoint, retaining the one initialized setup trace. -/
-theorem RecoverySourceCheckpoint.after_sample
+theorem RecoverySourceCheckpoint.after_sample_history
     {setup : Setup (Player := Player) (L := L)} {mode : EventGraph.ExecutionMode}
     {state : PhaseRuntimeState ((toEventGraph setup.program).withMode mode)}
     (checkpoint : RecoverySourceCheckpoint setup mode state)
@@ -72,7 +72,28 @@ theorem RecoverySourceCheckpoint.after_sample
       ProtocolState.Intended setup.program (next.residual.lift
         (ProtocolState.entry next.residual.tail next.source))) ∧
       NativeSourceReplayExtension setup (phase.drain state.current).native state.generation
-        checkpoint.trace next.trace := by
+        checkpoint.trace next.trace ∧
+      (phase.drain state.current).excluded = state.entry.excluded ∧
+      (let observed : ∀ {Γ : SourceCtx Player L} {O : Finset VarId}
+          (program : SourceProgram Player L Γ O),
+          SourceProgram.Config Player L Γ →
+            (ProtocolState program → ProtocolState setup.program) → Prop :=
+        (fun {_Γ} {_O} program => match program with
+      | .sample (payload := payload) name _fresh law suffix => fun source lift =>
+          ∃ (event : ((toEventGraph setup.program).withMode mode).EventId)
+            (output : ((toEventGraph setup.program).withMode mode).outputLayout event =
+              .publicData payload) (sampled : L.Val payload),
+            sampled ∈ (L.evalDist law (sourcePublicEnv source.state)).support ∧
+            event.val = state.attempt.phase ∧
+            (⟨.inr event, output⟩ : FieldRef (graphLayout setup.program)
+              (.publicData payload)).get? (phase.drain state.current).native.config.store =
+                some sampled ∧
+            next.residual.lift (ProtocolState.entry next.residual.tail next.source) =
+              lift (.inr (ProtocolState.entry suffix (sampleSuccessor name source sampled)))
+      | .ret _ => fun _ _ => False
+      | .commit _ _ _ _ _ => fun _ _ => False
+      | .reveal _ _ _ _ _ _ _ => fun _ _ => False);
+        observed checkpoint.residual.tail checkpoint.source checkpoint.residual.lift) := by
   let priorTrace := checkpoint.trace
   rcases checkpoint with ⟨⟨Γ, O, program, lift⟩, source, refs, registry, embedding, before,
     compiled, terminalAligned, agrees, guards, failures, unique, ranks, actors, commits,
@@ -269,7 +290,7 @@ theorem RecoverySourceCheckpoint.after_sample
           views := ProtocolViewSuffix.sampleTail setup.program fresh law next refs embedding
             lift views
           origin := .sampleTail fresh law next origin
-          historyAlignment := ?_ }, ?_, ?_, ?_, ?_, ?_, ?_⟩
+          historyAlignment := ?_ }, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
       · rw [address]
         exact compiled.sampleTail (_openNames := O) setup.program fresh law next refs
           source.revelations registry embedding before state.attempt.phase
@@ -346,5 +367,8 @@ theorem RecoverySourceCheckpoint.after_sample
           omega
         · simpa only [Option.map_some, CommitRecoveryState.atPoint, ProtocolState.entry]
             using replayCursors
+      · exact excludedEq
+      · refine ⟨event, outputEq, sampled, supported, ranked.trans low, ?_, rfl⟩
+        exact finalAgree HasVar.here
 
 end Vegas

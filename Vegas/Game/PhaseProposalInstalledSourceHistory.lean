@@ -140,7 +140,8 @@ theorem phaseProposalBindingPotentialProfile_source_checkpoint_history
           setup.recoveryJointRecall (setup.proposalRecoveryEraseTrace cursor.trace)) :
     (⟨closed.state, setup.proposalRecoveryEraseTrace closed.trace⟩ :
       setup.commitRecoveryProtocol.History) = ⟨_, next.trace⟩ ∧
-    closed = ⟨_, setup.proposalRecoveryLiftTrace labels next.trace⟩ := by
+    closed = ⟨_, setup.proposalRecoveryLiftTrace labels next.trace⟩ ∧
+      ∀ who, who ∉ nativeState.entry.excluded → next.source.BindingsHoldValues who := by
   let strategy := setup.proposalRecoveryNormalizedTrembledProfile
     0 le_rfl zero_le_one 0 le_rfl zero_le_one 0 le_rfl zero_le_one values
   have reached := setup.proposalRecoveryModel.runBehavioralFrom_reachesWithin strategy block.length
@@ -150,7 +151,7 @@ theorem phaseProposalBindingPotentialProfile_source_checkpoint_history
       horizon scheduler anchor anchorTrace phase values block suffix cursor
   rw [← first] at supported
   obtain ⟨pair, member, same⟩ := (PMF.mem_support_map_iff _ _ _).mp supported
-  obtain ⟨source, state, trace, attempt, exactHistory, _point, _excluded, _generation, _live,
+  obtain ⟨source, state, trace, attempt, exactHistory, point, _excluded, _generation, live,
     _agreement, semanticWord, _labels⟩ := related pair member
   have exactClosed : closed = ⟨some state, trace⟩ := same.symm.trans exactHistory
   cases exactClosed
@@ -178,14 +179,27 @@ theorem phaseProposalBindingPotentialProfile_source_checkpoint_history
       (by simpa only [setup.proposalRecoveryEraseTrace_length] using within)
   have enriched := lifted_commit_window setup labels cursor.current cursor.trace ordinary committing
     trace reached.tracePrefix within
-  refine ⟨semantic, ?_⟩
-  have lifted := congrArg (fun history : setup.commitRecoveryProtocol.History =>
-    (⟨history.state, setup.proposalRecoveryLiftTrace labels history.trace⟩ :
-      setup.proposalRecoveryProtocol.History)) semantic
-  exact (show (⟨some state, trace⟩ : setup.proposalRecoveryProtocol.History) =
-    ⟨_, setup.proposalRecoveryLiftTrace labels
-      (setup.proposalRecoveryEraseTrace trace)⟩ from congrArg (History.mk _) enriched.symm).trans
-        lifted
+  refine ⟨semantic, ?_, ?_⟩
+  · have lifted := congrArg (fun history : setup.commitRecoveryProtocol.History =>
+      (⟨history.state, setup.proposalRecoveryLiftTrace labels history.trace⟩ :
+        setup.proposalRecoveryProtocol.History)) semantic
+    exact (show (⟨some state, trace⟩ : setup.proposalRecoveryProtocol.History) =
+      ⟨_, setup.proposalRecoveryLiftTrace labels
+        (setup.proposalRecoveryEraseTrace trace)⟩ from congrArg (History.mk _) enriched.symm).trans
+          lifted
+  · intro who active
+    have stateEq := Option.some.inj (congrArg History.state semantic)
+    have activeState : who ∉ state.excluded := by rw [stateEq]; exact active
+    have stateLive : ProtocolState.BindingsHoldValues who setup.program state.point := by
+      rw [point]
+      apply (cursor.origin.bindingsHoldValues_lift who _).mpr
+      apply (block.bindingsHoldValues_liftPoint suffix who _).mpr
+      exact (ProtocolState.bindingsHoldValues_entry who suffix source).mpr
+        (live who activeState)
+    rw [stateEq] at stateLive
+    intro name payload cell
+    exact (ProtocolState.bindingsHoldValues_entry who next.residual.tail next.source).mp
+      ((next.origin.bindingsHoldValues_lift who _).mp stateLive) cell
 
 omit [Fintype Player] in
 private theorem maximal_commit_phase
@@ -206,7 +220,7 @@ private theorem maximal_commit_phase
       exact congrArg extend (ih suffix boundary)
 
 omit [Fintype Player] in
-private theorem transferred_history
+theorem RecoverySourceCheckpoint.transfer_history
     {setup : Setup (Player := Player) (L := L)} {mode : ExecutionMode}
     {state other : PhaseRuntimeState (serviceGraph setup mode)}
     (checkpoint : RecoverySourceCheckpoint setup mode state)
@@ -350,6 +364,9 @@ theorem RecoverySourceWitness.ordinary_installed_binding_history
             final.state = some ending ∧ TracePrefix anchorTrace prior ∧
             TracePrefix (prior.extend joint legal realized) final.trace ∧
             PhaseClosingEffect runtime leaks before.execution ending.execution raw ∧
+            before.execution.application.attempt = anchor.execution.application.attempt ∧
+            before.execution.application.phases = phase :: remaining ∧
+            phase.Finished (phase.drain raw) ∧
             image final = phase.drain raw ∧
             ending.execution.application = PhaseRuntimeState.settle remaining
               before.execution.application.generation (phase.drain raw) (phase.drain raw)
@@ -357,12 +374,19 @@ theorem RecoverySourceWitness.ordinary_installed_binding_history
             (image final).excluded = anchor.execution.application.current.excluded ∧
             PhaseProposal.sourceArchive ending.execution.network.inputs =
               PhaseProposal.sourceArchive anchor.execution.network.inputs ∧
+            (∃ fuel, setup.commitRecoveryProtocol.ReachesWithin fuel
+              ⟨_, witness.checkpoint.trace⟩ ⟨_, next.trace⟩) ∧
+            setup.recoveryJointRecall
+                (setup.proposalRecoveryEraseTrace (sourceImage final).trace) =
+              (witness.checkpoint.commitInstructionWord (phase.drain raw).native).reverse ++
+                setup.recoveryJointRecall witness.checkpoint.trace ∧
             (⟨(sourceImage final).state,
               setup.proposalRecoveryEraseTrace (sourceImage final).trace⟩ :
                 setup.commitRecoveryProtocol.History) = ⟨_, next.trace⟩ ∧
             sourceImage final = ⟨_, setup.proposalRecoveryLiftTrace
               (nativeArchiveLabels setup
-                (PhaseProposal.sourceArchive ending.execution.network.inputs)) next.trace⟩ := by
+                (PhaseProposal.sourceArchive ending.execution.network.inputs)) next.trace⟩ ∧
+            (∀ who, who ∉ (phase.drain raw).excluded → next.source.BindingsHoldValues who) := by
   intro initial horizon scheduler model profile stopped law
   obtain ⟨Δ, P, block, suffix, cursor, size, sourceEq, current, entry, refsEq, reconstruct,
     embeddingEq, liftEq⟩ := witness.ordinary_installed_binding_cursor setup mode runtime leaks
@@ -434,7 +458,7 @@ theorem RecoverySourceWitness.ordinary_installed_binding_history
     have erased := congrArg (fun history : setup.proposalRecoveryProtocol.History =>
       (⟨history.state, setup.proposalRecoveryEraseTrace history.trace⟩ :
         setup.commitRecoveryProtocol.History)) entry
-    exact (transferred_history witness.checkpoint sameEntry sameGeneration sameOffset).trans
+    exact (witness.checkpoint.transfer_history sameEntry sameGeneration sameOffset).trans
       (by simpa only [setup.proposalRecoveryEraseTrace_lift] using erased.symm)
   have savedSame : cursor.current.saved = cursor.current.point := by
     have state := Option.some.inj (congrArg History.state entry)
@@ -487,15 +511,38 @@ theorem RecoverySourceWitness.ordinary_installed_binding_history
     have identical := lifted.trans entry.symm
     exact eq_of_heq (History.mk.inj identical).2
   rw [checkpointStart] at path
-  obtain ⟨semantic, enriched⟩ :=
+  obtain ⟨semantic, enriched, nextProper⟩ :=
     phaseProposalBindingPotentialProfile_source_checkpoint_history setup mode runtime leaks plan
       initial horizon scheduler anchor ((menu).toRawTrace initial horizon scheduler anchorTrace)
         phase values block suffix cursor positive
         (nativeArchiveLabels setup (PhaseProposal.sourceArchive anchor.execution.network.inputs))
         ordinaryLift (sourceImage final) (selected final supported).1 _ next path fullWord
+  have sourceStart := witness.checkpoint.transfer_history sameEntry sameGeneration sameOffset
+  have fromWitness : setup.commitRecoveryProtocol.ReachesWithin fuel
+      ⟨_, witness.checkpoint.trace⟩ ⟨_, next.trace⟩ := by
+    have restored := path
+    rw [← checkpointStart] at restored
+    rw [sourceStart] at restored
+    exact restored
+  have sameInstructionWord : checkpoint.commitInstructionWord (phase.drain raw).native =
+      witness.checkpoint.commitInstructionWord (phase.drain raw).native := by
+    simp only [checkpoint, RecoverySourceCheckpoint.transfer,
+      RecoverySourceCheckpoint.commitInstructionWord]
+    rw [congrArg RecoveryState.excluded sameEntry]
+  have sourceWord : setup.recoveryJointRecall
+        (setup.proposalRecoveryEraseTrace (sourceImage final).trace) =
+      (witness.checkpoint.commitInstructionWord (phase.drain raw).native).reverse ++
+        setup.recoveryJointRecall witness.checkpoint.trace := by
+    have actual := congrArg (fun history : setup.commitRecoveryProtocol.History =>
+      setup.recoveryJointRecall history.trace) semantic
+    have retained := congrArg (fun history : setup.commitRecoveryProtocol.History =>
+      setup.recoveryJointRecall history.trace) sourceStart
+    exact actual.trans (instructions.trans (by rw [sameInstructionWord, retained]))
   rw [← archiveEq] at enriched
   exact ⟨ending, before, prior, joint, legal, realized, raw, remaining, next, stateEq, fromAnchor,
-    toFinal, effect, imageEq, settled, imageE, archiveEq, semantic, enriched⟩
+    toFinal, effect, sameAttempt, phases, imageEq ▸ finished,
+    imageEq, settled, imageE, archiveEq, ⟨fuel, fromWitness⟩, sourceWord, semantic, enriched,
+    nextProper⟩
 
 end Installed
 end Vegas

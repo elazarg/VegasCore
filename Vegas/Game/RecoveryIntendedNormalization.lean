@@ -88,13 +88,13 @@ theorem RecoverySourceCheckpoint.normalized_intended
               nextIntended, _replay⟩ := result
             exact ⟨next, nextIntended clear intended⟩
         | sample =>
-            have result := checkpoint.after_sample
+            have result := checkpoint.after_sample_history
               phase remaining rfl kind receipts.exclusion
               stored remembered (phase.drain_invariant current native.active).reachable
                 finishedDrain
             rw [drained] at result
             obtain ⟨next, _sourcePrefix, _publicSteps, _publicAddresses, _history,
-              nextIntended, _replay⟩ := result
+              nextIntended, _replay, _sameExcluded, _sampled⟩ := result
             exact ⟨next, nextIntended clear intended⟩
       · have unchanged : state.normalize = state := by
           change PhaseRuntimeState.settle (phase :: remaining) generation entry current retired =

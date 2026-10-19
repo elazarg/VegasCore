@@ -204,21 +204,21 @@ quantifiers and a passing build. The labels below never enter Lean names.
 | Runtime | Complete proposal reconstruction and required fresh-slot reserve | Checked: actual full raw inputs reconstruct all submitted proposals, and the horizon reserve supplies fresh active slots; the counted execution fold identifies the same source archive; see the runtime evidence below |
 | Runtime | Supported concurrent instance with variable service orders | Checked: both orders have supported actual prefixes with distinct owners' typed, timely, handler-admissible packets pending together; see the fixture evidence below |
 | Transport | Genuine enriched native query, alias masses and full counted support | Checked: actual genuine enriched query, exact alias projection and full reference support on every original-law counted input, including earlier deviations |
-| Transport | Good-store likelihood transport, including failed proposals | Partial: complete native information determines one entire labeled source information set across every matched preimage, including distinct initial draws and failed-disclosure refinements; initialized likelihood weights and chronological terminal-kernel identification remain open |
-| Transport | Uniform foreign-bad posterior bound and separate own-debt cases | Partial: native and source full-input foreign-bad posterior bounds and observable saved-debt zero gain checked; current cancelable-debt reset comparison remains open |
+| Transport | Good-store likelihood transport, including failed proposals | Partial: full information correspondence and full terminal-history coupling from fresh boundaries are checked, preserving original inputs, exclusions, typed readout and the payoff vector; initialized likelihood weights and the original scheduler-mixture law remain open |
+| Transport | Uniform foreign-bad posterior bound and separate own-debt cases | Partial: full-input foreign-bad posterior bounds, saved-debt zero gain and the SEND-versus-WAIT reset boundary are checked; arbitrary current-submission and payoff comparisons remain open |
 | Transport | Publication timing dominance with actual early observations | Open |
 | Transport | Whole-policy binding/retry comparison with the same reset continuation | Open |
 | Transport | One native Bayes sequence with vanishing gain and initialized-law errors | Open |
 | End-to-end | Counted SE and exact initialized joint law | Open |
 | End-to-end | Raw SE, exact settled joint law, zero exclusions/charges and instantiated service | Open |
 
-Compact progress display: **Source 5/5 · Runtime 2/5 · Transport 1/6 · E2E 0/2**.
-Runtime frontier: binding WAIT-to-SEND survival and paired full failure/address/archive comparison checked; the complete publication WAIT-to-SEND boundary is checked; the clean terminal boundary law is next.
-Transport frontier: **full information correspondence checked; initialized probability identity and terminal coupling open**. Current-debt/reset and native gain comparisons also remain.
-Update counts from checked statements and name the current bottleneck. Existing
+Progress: **fresh terminal coupling ✓ · SEND/WAIT reset ✓ · initialized probabilities open · native gains open · full SE open**.
+Runtime frontier: binding WAIT-to-SEND survival, the complete paired publication boundary and the SEND-versus-WAIT source reset boundary are checked.
+Transport frontier: **full information and fresh terminal coupling checked; initialized probability identity and native gains open**. Mixing the terminal coupling over the original scheduler law also remains.
+Update the display from checked statements and name the current bottleneck. Existing
 reusable proofs are dependencies, not new completed milestones.
-Current bottlenecks are full terminal source/runtime correspondence, initialized
-full-input likelihood weights and native deviation comparisons. The raw concurrent capstone remains open.
+Current bottlenecks are initialized full-input likelihood weights, the original
+scheduler-mixture law and native deviation comparisons. The raw concurrent capstone remains open.
 
 `PhaseProposalNativeSourceMatch.info_eq_of_information` proves the complete
 source-information equality for any two actual matched histories with equal full
@@ -528,7 +528,20 @@ the SAME actual saved source checkpoint, retaining canceled own attempts only
 as memory. The [information-fiber payoff](../Vegas/Game/PhaseProposalObservableDebtPayoff.lean)
 proves `phaseProposalSavedBindingFailure_gain_eq_zero` for arbitrary beliefs
 and whole-policy alternatives on the ENTIRE full native information fiber.
-Current cancelable debt still needs the separate paired reset comparison.
+The [binding reset boundary](../Vegas/Game/ReservedEpochBindingReset.lean)
+proves `phaseProposalUnflagged_wait_send_reset_boundary`: comparator survival
+derives all owned accepting receipts, and a new omission yields two actual
+source retry paths with equal erased states and ordered proposal transcripts.
+The current SEND remains arbitrary. Comparing arbitrary nonsilent alternatives
+and deriving the resulting payoff bound remain open.
+
+The [fresh terminal coupling](../Vegas/Game/PhaseProposalFreshTerminalCoupling.lean)
+proves `RecoverySourceWitness.ordinary_fresh_terminal_coupling` for every
+supported reserved tape and supplied fresh source witness. Both complete
+terminal-history marginals are the actual continuation laws. Supported pairs
+agree on the original input, typed readout, exclusions and entire payoff vector.
+The initialized mixture and application at the selected retry witnesses remain
+separate consumers.
 
 The [stopped pending tape word](../Vegas/Game/ReservedEpochStoppedTapeWord.lean)
 extends the literal closed prefix using the existing behavioral evaluator.

@@ -3,7 +3,7 @@
 import Vegas.Game.RecoveryCommitCheckpoint
 import Vegas.Game.RecoverySettledCommitCheckpoint
 import Vegas.Game.RecoveryRevealCheckpoint
-import Vegas.Game.RecoverySampleCheckpoint
+import Vegas.Game.RecoverySampleHistory
 import Vegas.Game.CompiledCommitControl
 import Vegas.Pending.PhaseFailureOrderHistory
 
@@ -158,8 +158,8 @@ theorem RecoverySourceCheckpoint.normalized
               imageCoverage ⟨nextCheckpoint⟩
         | sample =>
             obtain ⟨nextCheckpoint, _sourcePrefix, _publicSteps, _publicAddresses,
-              _history, _intended, _replay⟩ :=
-              checkpoint.after_sample phase remaining rfl kind
+              _history, _intended, _replay, _sameExcluded, _sampled⟩ :=
+              checkpoint.after_sample_history phase remaining rfl kind
               receipts.exclusion stored remembered imageNative.reachable finished
             have noRetry : ¬ (phase.kind = .commitment ∧
                 ((image.excluded \ entry.excluded) ∩ phase.owners).Nonempty) := by

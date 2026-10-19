@@ -23,7 +23,7 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
 /-- The real response may add a live current-phase proposal, but cannot alter
 any proposal label of the same already consumed source prefix. No observer
 forgets earlier packets, and no proposal is filtered by its author's survival. -/
-theorem RecoverySourceWitness.respond_archivedProposals
+theorem RecoverySourceWitness.respond_archived_source
     {setup : Setup (Player := Player) (L := L)} {mode : ExecutionMode}
     {plan : RuntimePhasePlan ((toEventGraph setup.program).withMode mode)}
     (runtime : EventGraphRuntime ((toEventGraph setup.program).withMode mode))
@@ -36,13 +36,15 @@ theorem RecoverySourceWitness.respond_archivedProposals
     ∃ next : RecoverySourceWitness setup mode plan
         (execution.respond (phaseApplication runtime leaks) owner response).application,
       next.checkpoint.ArchivedProposals
-        (execution.respond (phaseApplication runtime leaks) owner response).network.inputs := by
+        (execution.respond (phaseApplication runtime leaks) owner response).network.inputs ∧
+      ∃ fuel, setup.commitRecoveryProtocol.ReachesWithin fuel
+        ⟨_, witness.checkpoint.trace⟩ ⟨_, next.checkpoint.trace⟩ := by
   rcases response with ⟨transmission⟩
   cases transmission with
-  | none => exact ⟨witness, prior⟩
+  | none => exact ⟨witness, prior, 0, .refl 0 _⟩
   | some material =>
       let next := witness.submit runtime leaks owner material
-      refine ⟨next, ?_⟩
+      refine ⟨next, ?_, 0, .refl 0 _⟩
       intro observer active
       let first := PhaseProposal.sourceArchive execution.network.inputs
       let second := PhaseProposal.sourceArchive

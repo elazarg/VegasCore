@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.PhaseProposalTransition
+import Vegas.Game.RecoverySourceEnvironment
 import Interaction.ReactiveInvariant
 
 /-! # Actual initialized phased histories have reachable typed source checkpoints -/
@@ -46,7 +46,7 @@ private theorem phase_source_invariant
     · rename_i authorized
       obtain ⟨result, supported, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp reached
       obtain ⟨nextWitness, _delta, _fuel, _sourcePath⟩ :=
-        witness.after_environment runtime leaks maximal command result
+        witness.after_environment_source runtime leaks maximal command result
         authorized supported
       exact ⟨nextWitness⟩
     · rw [PMF.mem_support_pure_iff] at reached

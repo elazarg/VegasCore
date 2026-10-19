@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.PhaseProposalTransition
+import Vegas.Game.RecoverySourceEnvironment
 import Vegas.Game.RecoverySourceTerminal
 import Vegas.Source.CommitRecoveryAttemptDebt
 import Vegas.Source.CommitRecoveryFailureCoverage
@@ -136,7 +136,8 @@ theorem phaseCheckpointDebt_invariant
     split at supported
     · rename_i authorized
       obtain ⟨result, reached, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp supported
-      obtain ⟨nextWitness, _delta, fuel, path⟩ := witness.after_environment runtime leaks maximal
+      obtain ⟨nextWitness, _delta, fuel, path⟩ := witness.after_environment_source runtime leaks
+        maximal
         command result authorized reached
       exact ⟨nextWitness, RecoverySourceWitness.debt_of_source_reaches who witness owed
         nextWitness fuel path⟩

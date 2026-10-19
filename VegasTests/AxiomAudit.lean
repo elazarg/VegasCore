@@ -5,3 +5,4 @@ import VegasTests.AxiomAudit.Foundations
 import VegasTests.AxiomAudit.Preservation
 import VegasTests.AxiomAudit.Runtime
 import VegasTests.AxiomAudit.Source
+import VegasTests.AxiomAudit.OrdinaryTerminal

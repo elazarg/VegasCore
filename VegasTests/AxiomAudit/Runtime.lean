@@ -3493,16 +3493,16 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #print axioms Vegas.recoverySourceCheckpoint_proposalArchive_history
 
 /-- info:
-'Vegas.RecoverySourceWitness.respond_archivedProposals'
+'Vegas.RecoverySourceWitness.respond_archived_source'
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.RecoverySourceWitness.respond_archivedProposals
+#print axioms Vegas.RecoverySourceWitness.respond_archived_source
 
 /-- info:
-'Vegas.RecoverySourceWitness.environment_archivedProposals'
+'Vegas.RecoverySourceWitness.environment_archived_source'
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.RecoverySourceWitness.environment_archivedProposals
+#print axioms Vegas.RecoverySourceWitness.environment_archived_source
 
 /-- info:
 'Vegas.RecoverySourceWitness.initialized_archivedProposals'

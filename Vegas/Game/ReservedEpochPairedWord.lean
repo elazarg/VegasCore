@@ -66,6 +66,7 @@ theorem phaseProposalUnflagged_paired_response_word
         (some ⟨remaining, none, anchor leftResponse⟩),
     ∃ rightTrace : ((menu).protocol initial horizon scheduler).Trace
         (some ⟨remaining, none, anchor rightResponse⟩),
+    TracePrefix activeTrace leftTrace ∧ TracePrefix activeTrace rightTrace ∧
     let law := fun response (trace : ((menu).protocol initial horizon scheduler).Trace
         (some ⟨remaining, none, anchor response⟩)) =>
       let players := ReactiveApplication.anchoredPolicy (anchor response)
@@ -104,6 +105,19 @@ theorem phaseProposalUnflagged_paired_response_word
         phase ∈ leftBefore.execution.application.phases.head? ∧
         phase ∈ rightBefore.execution.application.phases.head? ∧
         phase.Finished (phase.drain leftRaw) ∧ phase.Finished (phase.drain rightRaw) ∧
+        leftEnding.actor = none ∧ rightEnding.actor = none ∧
+        leftEnding.execution.application.attempt ≠ active.application.attempt ∧
+        rightEnding.execution.application.attempt ≠ active.application.attempt ∧
+        leftEnding.execution.application =
+          ({ leftBefore.execution.application with current := leftRaw } :
+            PhaseRuntimeState graph).normalize ∧
+        rightEnding.execution.application =
+          ({ rightBefore.execution.application with current := rightRaw } :
+            PhaseRuntimeState graph).normalize ∧
+        (phase.drain leftRaw).FailureCoverage ∧
+        (phase.drain rightRaw).FailureCoverage ∧
+        (phase.drain leftRaw).excluded = leftEnding.execution.application.current.excluded ∧
+        (phase.drain rightRaw).excluded = rightEnding.execution.application.current.excluded ∧
         PhaseProposal.sourceArchive leftEnding.execution.network.inputs =
           PhaseProposal.sourceArchive rightEnding.execution.network.inputs ∧
         (∀ event ∈ phase.events, ∀ owner payload,
@@ -126,6 +140,7 @@ theorem phaseProposalUnflagged_paired_response_word
             rightRaw.native.accepted (.inr event) ≠ none) →
           (phase.drain leftRaw).native.sourceFailureFootprint =
             (phase.drain rightRaw).native.sourceFailureFootprint ∧
+          (phase.drain leftRaw).excluded = (phase.drain rightRaw).excluded ∧
           PhaseRuntimeState.sourceControlRecords leftEnding.execution.application.retired =
             PhaseRuntimeState.sourceControlRecords rightEnding.execution.application.retired) := by
   classical
@@ -162,25 +177,27 @@ theorem phaseProposalUnflagged_paired_response_word
               material offered
         exact PhaseProposal.commitment_response_archive runtime leaks active actor material
           coordinate.event (actor, .prepared serial) (by rw [shape])
-  obtain ⟨leftTrace, leftLaw⟩ :=
+  obtain ⟨leftTrace, leftResponsePrefix, leftLaw⟩ :=
     phaseProposalUnflagged_response_acceptance_word setup mode runtime leaks bounds plan complete
       coveredValues maximal ordered values fullValues tape activationGap processingGap gaps margin
         capacity remaining active actor leftResponse activeTrace leftAvailable phase installed
           commitment
-  obtain ⟨rightTrace, rightLaw⟩ :=
+  obtain ⟨rightTrace, rightResponsePrefix, rightLaw⟩ :=
     phaseProposalUnflagged_response_acceptance_word setup mode runtime leaks bounds plan complete
       coveredValues maximal ordered values fullValues tape activationGap processingGap gaps margin
         capacity remaining active actor rightResponse activeTrace rightAvailable phase installed
           commitment
-  refine ⟨leftTrace, rightTrace, ?_⟩
+  refine ⟨leftTrace, rightTrace, leftResponsePrefix, rightResponsePrefix, ?_⟩
   intro law leftFinal leftSupported rightFinal rightSupported
   obtain ⟨leftEnding, leftBefore, leftPrior, leftJoint, leftLegal, leftRealized, leftRaw,
     leftState, leftIdle, leftChanged, leftPrefix, leftEndPrefix, leftSame, leftInstalled,
-    leftEffect, leftFinished, leftTables, leftCandidates, leftArchive, leftRetired,
+    leftEffect, leftFinished, leftNormalized, leftCoverage, leftExcluded, leftTables,
+    leftCandidates, leftArchive, leftRetired,
     leftAppend, leftWord, leftFootprint⟩ := leftLaw leftFinal leftSupported
   obtain ⟨rightEnding, rightBefore, rightPrior, rightJoint, rightLegal, rightRealized, rightRaw,
     rightState, rightIdle, rightChanged, rightPrefix, rightEndPrefix, rightSame, rightInstalled,
-    rightEffect, rightFinished, rightTables, rightCandidates, rightArchive, rightRetired,
+    rightEffect, rightFinished, rightNormalized, rightCoverage, rightExcluded,
+    rightTables, rightCandidates, rightArchive, rightRetired,
     rightAppend, rightWord, rightFootprint⟩ := rightLaw rightFinal rightSupported
   have attempt (response : (app).Action) :
       (active.respond app actor response).application.attempt = active.application.attempt := by
@@ -212,7 +229,12 @@ theorem phaseProposalUnflagged_paired_response_word
     rightRaw, leftState, rightState, leftPrefix, rightPrefix, leftEndPrefix, rightEndPrefix,
     leftSame.trans (attempt leftResponse),
     rightSame.trans (attempt rightResponse), leftEffect, rightEffect, leftInstalled, rightInstalled,
-    leftFinished, rightFinished, archive, leftWord, rightWord, foreignWord, ?_⟩
+    leftFinished, rightFinished, leftIdle, rightIdle,
+    (by simpa only [attempt leftResponse] using leftChanged),
+    (by simpa only [attempt rightResponse] using rightChanged),
+    leftNormalized, rightNormalized,
+    leftCoverage, rightCoverage, leftExcluded, rightExcluded,
+    archive, leftWord, rightWord, foreignWord, ?_⟩
   intro focal
   have savedLeft : leftBefore.execution.application.entry = active.application.entry := by
     have initialized : ∀ state ∈ initial.support, state.Ordered := by
@@ -292,7 +314,7 @@ theorem phaseProposalUnflagged_paired_response_word
     rw [leftExcluded owner, rightExcluded owner, savedLeft, savedRight]
     exact or_congr Iff.rfl (exists_congr fun event => and_congr_right fun _ =>
       and_congr_right fun _ => verdict event)
-  refine ⟨footprint, ?_⟩
+  refine ⟨footprint, exclusions, ?_⟩
   rw [leftAppend, rightAppend]
   simp only [saved, retired, attempt, exclusions, PhaseRuntimeState.sourceControlRecords,
     List.map_append]

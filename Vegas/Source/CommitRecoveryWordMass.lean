@@ -23,7 +23,7 @@ namespace CommitRecoveryState
 variable {Γ : SourceCtx Player L} {O : Finset VarId}
   {program : SourceProgram Player L Γ O}
 
-private theorem noncommit_map (state : CommitRecoveryState program)
+theorem step_noncommit_law (state : CommitRecoveryState program)
     (frontier : state.BlockFrontier)
     (notCommit : ProtocolState.atCommit program state.point = false)
     (joint : Player → Option (CommitRecoveryMove Player L)) :
@@ -54,7 +54,7 @@ private theorem noncommit_atom (state : CommitRecoveryState program)
     (result : ProtocolState program × Finset Player) :
     state.step joint (atPoint result.1 result.2 state.generation) =
       ProtocolState.recoveryStep program state.point state.excluded joint result := by
-  rw [state.noncommit_map frontier notCommit joint]
+  rw [state.step_noncommit_law frontier notCommit joint]
   apply pmf_map_apply_of_injective
   intro first second same
   exact Prod.ext (congrArg (fun state => state.point) same)

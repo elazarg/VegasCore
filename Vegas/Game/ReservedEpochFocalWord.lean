@@ -246,6 +246,7 @@ theorem phaseProposalUnflagged_wait_send_stopped_word
         (some ⟨remaining, none, anchor leftResponse⟩),
     ∃ rightTrace : ((menu).protocol initial horizon scheduler).Trace
         (some ⟨remaining, none, anchor rightResponse⟩),
+    TracePrefix activeTrace leftTrace ∧ TracePrefix activeTrace rightTrace ∧
     let law := fun response (trace : ((menu).protocol initial horizon scheduler).Trace
         (some ⟨remaining, none, anchor response⟩)) =>
       let players := ReactiveApplication.anchoredPolicy (anchor response)
@@ -284,6 +285,19 @@ theorem phaseProposalUnflagged_wait_send_stopped_word
         phase ∈ leftBefore.execution.application.phases.head? ∧
         phase ∈ rightBefore.execution.application.phases.head? ∧
         phase.Finished (phase.drain leftRaw) ∧ phase.Finished (phase.drain rightRaw) ∧
+        leftEnding.actor = none ∧ rightEnding.actor = none ∧
+        leftEnding.execution.application.attempt ≠ active.application.attempt ∧
+        rightEnding.execution.application.attempt ≠ active.application.attempt ∧
+        leftEnding.execution.application =
+          ({ leftBefore.execution.application with current := leftRaw } :
+            PhaseRuntimeState graph).normalize ∧
+        rightEnding.execution.application =
+          ({ rightBefore.execution.application with current := rightRaw } :
+            PhaseRuntimeState graph).normalize ∧
+        (phase.drain leftRaw).FailureCoverage ∧
+        (phase.drain rightRaw).FailureCoverage ∧
+        (phase.drain leftRaw).excluded = leftEnding.execution.application.current.excluded ∧
+        (phase.drain rightRaw).excluded = rightEnding.execution.application.current.excluded ∧
         PhaseProposal.sourceArchive leftEnding.execution.network.inputs =
           PhaseProposal.sourceArchive rightEnding.execution.network.inputs ∧
         (∀ event ∈ phase.events, ∀ owner payload,
@@ -300,37 +314,58 @@ theorem phaseProposalUnflagged_wait_send_stopped_word
           (graph).outputLayout event = .binding owner payload →
           (leftRaw.native.accepted (.inr event) ≠ none ↔
             rightRaw.native.accepted (.inr event) ≠ none)) ∧
-        ((∀ event ∈ phase.events, ∀ payload,
-          (graph).outputLayout event = .binding actor payload →
-          rightRaw.native.accepted (.inr event) ≠ none) →
+        (actor ∉ rightEnding.execution.application.current.excluded →
+          actor ∉ leftEnding.execution.application.current.excluded ∧
+          (∀ event ∈ phase.events, ∀ payload,
+            (graph).outputLayout event = .binding actor payload →
+            rightRaw.native.accepted (.inr event) ≠ none) ∧
           (∀ event ∈ phase.events, ∀ payload,
             (graph).outputLayout event = .binding actor payload →
             leftRaw.native.accepted (.inr event) ≠ none) ∧
           (phase.drain leftRaw).native.sourceFailureFootprint =
             (phase.drain rightRaw).native.sourceFailureFootprint ∧
+          (phase.drain leftRaw).excluded = (phase.drain rightRaw).excluded ∧
           PhaseRuntimeState.sourceControlRecords leftEnding.execution.application.retired =
             PhaseRuntimeState.sourceControlRecords rightEnding.execution.application.retired) := by
   classical
   intro initial horizon scheduler anchor
-  obtain ⟨leftTrace, rightTrace, paired⟩ :=
+  obtain ⟨leftTrace, rightTrace, leftResponsePrefix, rightResponsePrefix, paired⟩ :=
     phaseProposalUnflagged_paired_response_word setup mode runtime leaks bounds plan complete
       coveredValues maximal ordered values fullValues tape activationGap processingGap gaps
         margin capacity remaining active actor leftResponse rightResponse activeTrace
           leftAvailable rightAvailable phase installed commitment
-  refine ⟨leftTrace, rightTrace, ?_⟩
+  refine ⟨leftTrace, rightTrace, leftResponsePrefix, rightResponsePrefix, ?_⟩
   intro law leftFinal leftSupported rightFinal rightSupported
   obtain ⟨leftEnding, rightEnding, leftBefore, rightBefore, leftPrior, rightPrior, leftJoint,
     rightJoint, leftLegal, rightLegal, leftRealized, rightRealized, leftRaw, rightRaw,
     leftState, rightState, leftPrefix, rightPrefix, leftEndPrefix, rightEndPrefix,
     leftAttempt, rightAttempt, leftEffect, rightEffect, leftInstalled, rightInstalled,
-    leftFinished, rightFinished, archive, leftWord, rightWord, foreignWord, sameRecord⟩ :=
+    leftFinished, rightFinished, leftIdle, rightIdle, leftChanged, rightChanged,
+    leftNormalized, rightNormalized, leftCoverage, rightCoverage, leftExcluded,
+    rightExcluded, archive, leftWord, rightWord, foreignWord, sameRecord⟩ :=
       paired leftFinal leftSupported rightFinal rightSupported
   refine ⟨leftEnding, rightEnding, leftBefore, rightBefore, leftPrior, rightPrior, leftJoint,
     rightJoint, leftLegal, rightLegal, leftRealized, rightRealized, leftRaw, rightRaw,
     leftState, rightState, leftPrefix, rightPrefix, leftEndPrefix, rightEndPrefix,
     leftAttempt, rightAttempt, leftEffect, rightEffect, leftInstalled, rightInstalled,
-    leftFinished, rightFinished, archive, leftWord, rightWord, foreignWord, ?_⟩
+    leftFinished, rightFinished, leftIdle, rightIdle, leftChanged, rightChanged,
+    leftNormalized, rightNormalized, leftCoverage, rightCoverage, leftExcluded,
+    rightExcluded, archive, leftWord, rightWord, foreignWord, ?_⟩
   intro rightSurvives
+  have rightImageSurvives : actor ∉ (phase.drain rightRaw).excluded := by
+    rw [rightExcluded]
+    exact rightSurvives
+  have rightAccepted : ∀ event ∈ phase.events, ∀ payload,
+      (graph).outputLayout event = .binding actor payload →
+        rightRaw.native.accepted (.inr event) ≠ none := by
+    intro event inside payload binding omitted
+    apply rightImageSurvives
+    apply rightCoverage.covered event actor
+      ((graph).actor?_of_outputLayout_binding binding)
+    apply ((phase.drain rightRaw).native.publicFailure_iff_accepted_none
+      event actor payload binding (rightFinished inside)).mpr
+    rw [(phase.drain_tables rightRaw).1]
+    exact omitted
   obtain ⟨material, sent⟩ : ∃ material : WitnessedSubmission graph,
       leftResponse = ⟨some material⟩ := by
     rcases leftResponse with ⟨transmission⟩
@@ -357,8 +392,13 @@ theorem phaseProposalUnflagged_wait_send_stopped_word
     intro event inside payload binding
     apply (leftWord event inside actor payload binding).mpr
     exact focalWord event ((rightWord event inside actor payload binding).mp
-      (rightSurvives event inside payload binding))
-  exact ⟨leftSurvives, sameRecord (fun event inside payload binding =>
-    ⟨leftSurvives event inside payload binding, rightSurvives event inside payload binding⟩)⟩
+      (rightAccepted event inside payload binding))
+  have record := sameRecord (fun event inside payload binding =>
+    ⟨leftSurvives event inside payload binding, rightAccepted event inside payload binding⟩)
+  refine ⟨?_, rightAccepted, leftSurvives, record⟩
+  intro excluded
+  apply rightImageSurvives
+  rw [← record.2.1, leftExcluded]
+  exact excluded
 
 end Vegas

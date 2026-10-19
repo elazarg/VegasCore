@@ -124,6 +124,11 @@ theorem phaseProposalUnflagged_stopped_acceptance_word
         phase ∈ before.execution.application.phases.head? ∧
         PhaseClosingEffect runtime leaks before.execution ending.execution raw ∧
         phase.Finished (phase.drain raw) ∧
+        ending.execution.application =
+          ({ before.execution.application with current := raw } :
+            PhaseRuntimeState graph).normalize ∧
+        (phase.drain raw).FailureCoverage ∧
+        (phase.drain raw).excluded = ending.execution.application.current.excluded ∧
         (phase.drain raw).native.accepted = raw.native.accepted ∧
         (phase.drain raw).native.candidates = raw.native.candidates ∧
         PhaseProposal.sourceArchive ending.execution.network.inputs =
@@ -263,7 +268,8 @@ theorem phaseProposalUnflagged_stopped_acceptance_word
         · exact completed owner blocked (fun frontier request =>
             remainingRequest ⟨frontier, request⟩) event member payload binding
   refine ⟨ending, before, prior, joint, legal, realized, raw, stateEq, idle, changed, fromStart,
-    toFinal, same, phaseInstalled, effect, finished, tables, candidates, archive, retiredBefore,
+    toFinal, same, phaseInstalled, effect, finished, normalized, coverage, excluded, tables,
+    candidates, archive, retiredBefore,
     retiredActual, wordLaw, ?_⟩
   intro failed
   have verdict (event : (graph).EventId) :
