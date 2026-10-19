@@ -2843,3 +2843,13 @@ Conditional likelihood transport and the complete native gain joins remain open.
 Raw inclusions and environment steps share their
 pre-normalization witness producers in
 [PhaseProposalTransition](../Vegas/Game/PhaseProposalTransition.lean).
+
+The [common perturbations](../Vegas/Game/PhaseProposalCommonPerturbations.lean)
+select separate source and native bad rates from the actual response floors
+before free pooled weights. Their full-input foreign-failure posteriors and
+initialized joint-law errors vanish uniformly in those weights. The
+[shared sequence](../Vegas/Game/PhaseProposalConsistentSequence.lean) uses one
+source equilibrium construction and its strict index for the actual source
+assessments, native Bayes assessments, posterior bounds and bounded-run joint
+laws. Native local gain comparisons and the native equilibrium limit remain
+separate obligations.

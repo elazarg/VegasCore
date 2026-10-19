@@ -1482,3 +1482,5 @@ import Vegas.Game.PhaseProposalInitializedLawError
 import Vegas.Game.PhaseProposalNativeFutureFlags
 import Vegas.Game.ReservedEpochBindingAliases
 import Vegas.Game.PhaseProposalResetPayoff
+import Vegas.Game.PhaseProposalCommonPerturbations
+import Vegas.Game.PhaseProposalConsistentSequence

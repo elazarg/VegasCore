@@ -208,17 +208,28 @@ quantifiers and a passing build. The labels below never enter Lean names.
 | Transport | Uniform foreign-bad posterior bound and separate own-debt cases | Partial: full-input foreign-bad posterior bounds, saved-debt zero gain, arbitrary-current reset boundaries and reset payoff transport are checked; the complete current-debt gain remains open |
 | Transport | Publication timing dominance with actual early observations | Open |
 | Transport | Whole-policy binding/retry comparison with the same reset continuation | Open |
-| Transport | One native Bayes sequence with vanishing gain and initialized-law errors | Partial: initialized joint-law error and uniform current/future perturbation bounds are checked; rate selection, complete gain comparisons and common-sequence assembly remain open |
+| Transport | One native Bayes sequence with vanishing gain and initialized-law errors | Partial: concrete common rates, uniform preparation posteriors, actual native Bayes assessments and initialized-law error on the same selected source index are checked; complete gain comparisons and native equilibrium limit remain open |
 | End-to-end | Counted SE and exact initialized joint law | Open |
 | End-to-end | Raw SE, exact settled joint law, zero exclusions/charges and instantiated service | Open |
 
-Progress: **initialized outcome law/error ✓ · reset transport ✓ · belief weights open · native gains open · full SE open**.
+Progress: **outcome law/error ✓ · reset transport ✓ · shared sequence ✓ · belief weights open · native gains open · full SE open**.
 Runtime frontier: arbitrary available binding comparators, the complete paired publication boundary and the source reset boundary are checked.
 Transport frontier: **full information and initialized joint-law/error checked; conditional belief weights and complete native gains open**.
 Update the display from checked statements and name the current bottleneck. Existing
 reusable proofs are dependencies, not new completed milestones.
 Current bottlenecks are full-input conditional likelihood weights and native
 deviation comparisons. The raw concurrent capstone remains open.
+
+`exists_phaseProposal_common_perturbations` selects positive source and native
+bad-preparation rates after the actual response floors and before any free
+pooled weights. Both full-input foreign-failure posteriors and the initialized
+joint-law error tend to zero under these rates.
+`exists_phaseProposal_consistent_sequence` calls the source equilibrium
+constructor once and uses its same strict index for the actual native Bayes
+assessments, source assessments, posterior bounds and initialized joint laws.
+It retains the source equilibrium and full-history extension of the selected
+intended assessment. It does not assert native sequential rationality; the
+conditional likelihood and complete local gain comparisons are still needed.
 
 `PhaseProposalNativeSourceMatch.info_eq_of_information` proves the complete
 source-information equality for any two actual matched histories with equal full

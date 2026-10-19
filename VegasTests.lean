@@ -20,3 +20,5 @@ import VegasTests.PhaseProposalTerminalContract
 import VegasTests.ReservedBindingResetContract
 import VegasTests.PhaseProposalFutureFlagsContract
 import VegasTests.PhaseProposalInitializedContract
+import VegasTests.PhaseProposalCommonRateContract
+import VegasTests.PhaseProposalConsistentSequenceContract
