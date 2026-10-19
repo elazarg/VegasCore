@@ -193,17 +193,17 @@ quantifiers and a passing build. The labels below never enter Lean names.
 
 | Track | Checked statement | Status |
 | --- | --- | --- |
-| Source | Proposal moves/signals retain guard- and delivery-failed values; intended restriction is unchanged | Partial: semantic trace erasure and stored-value disclosure readback checked; intended restriction remains open |
+| Source | Proposal moves/signals retain guard- and delivery-failed values; intended restriction is unchanged | Checked: concrete intended restriction, information embedding and initialized full-history law; failed truthful disclosures remain in the proposal trace |
 | Source | Archive-preserving erasure/NoMiss queries and pool antichains | Checked: genuine normalized representatives preserve the same labeled attempt-entry archive; full failure-control classification and query antichains are checked; see the source evidence below |
 | Source | Actual conditional Bayes/action-vector exchange at fixed controls | Checked: original fully mixed Bayes beliefs, arbitrary legal action values and deviation gains agree on equal old erased-information/archive fibers; see the source evidence below |
-| Source | Affine NoMiss comparison and one joint pooled consistency witness | Partial: one caller-rate Bayes sequence, common consistent limit and ordinary pooled optimality checked; the limiting affine retry comparison remains open |
-| Source | Enriched source SE extending the selected intended SE and joint law | Open |
+| Source | Affine NoMiss comparison and one joint pooled consistency witness | Checked: one caller-rate pooled Bayes witness, ordinary-copy gain equality, failed-copy indifference and limiting retry comparison |
+| Source | Enriched source SE extending the selected intended SE and joint law | Checked: all legal information sites, selected intended strategy and exact initialized full-history law; see the source evidence below |
 | Runtime | Concrete correlated, block-frozen reserved scheduler family | Partial: joint tape and exact scheduler-mixture realization checked; block service certification remains open |
 | Runtime | All-raw opportunity/receipt/completion, timely-valid acceptance and noncircular budgets | Partial: actual correlated-mixture AsyncContract, noncircular budgets and accepting delivery for certified valid first-offered responses checked; complete retry/successor sender coverage remains open |
 | Runtime | Same-tape admission monotonicity and foreign-service invariance | Open |
 | Runtime | Complete proposal reconstruction and required fresh-slot reserve | Checked: actual full raw inputs reconstruct all submitted proposals, and the horizon reserve supplies fresh active slots; the counted execution fold identifies the same source archive; see the runtime evidence below |
 | Runtime | Supported concurrent instance with variable service orders | Checked: both orders have supported actual prefixes with distinct owners' typed, timely, handler-admissible packets pending together; see the fixture evidence below |
-| Transport | Genuine enriched native query, alias masses and full counted support | Partial: archive reconstruction, counted uniqueness, actual proposal origins/typed meanings and local alias splitting checked; enriched trace correspondence and full native reference support remain open |
+| Transport | Genuine enriched native query, alias masses and full counted support | Checked: actual genuine enriched query, exact alias projection and full reference support on every original-law counted input, including earlier deviations |
 | Transport | Good-store likelihood transport, including failed proposals | Open |
 | Transport | Uniform foreign-bad posterior bound and separate own-debt cases | Open |
 | Transport | Publication timing dominance with actual early observations | Open |
@@ -212,11 +212,11 @@ quantifiers and a passing build. The labels below never enter Lean names.
 | End-to-end | Counted SE and exact initialized joint law | Open |
 | End-to-end | Raw SE, exact settled joint law, zero exclusions/charges and instantiated service | Open |
 
-Compact progress display: **Source 2/5 · Runtime 2/5 · Transport 0/6 · E2E 0/2**.
+Compact progress display: **Source 5/5 · Runtime 2/5 · Transport 1/6 · E2E 0/2**.
 Update counts from checked statements and name the current bottleneck. Existing
 reusable proofs are dependencies, not new completed milestones.
-Current bottlenecks are the selected source SE, genuine enriched native query
-and full reference support, and the stopped service/likelihood comparisons.
+Current bottlenecks are the stopped service coupling, cross-world likelihood
+transport and native deviation comparisons. The raw concurrent capstone remains open.
 
 Checked prerequisites: `proposalRecoveryEraseTrace` preserves semantic endpoints;
 `recoveryProposal_reveal_success` reads disclosed values from the pre-state;
@@ -249,8 +249,8 @@ requires matching physical publication attempts to source generations.
 `consumed_publication_phase_archive` identifies the exact archive of one
 consumed publication phase on that same annotated source replay, retaining
 guard-failed and expired submitted disclosures. The global normalization and
-counted execution archive fold are checked below; virtual query repair remains
-a separate correspondence obligation.
+counted execution archive fold and archive-preserving virtual query repair are
+checked below.
 `PhaseProposal.sourceArchive_future_bucket_empty` rules out submitted proposal
 buckets from future physical phases on arbitrary raw histories; it also applies
 to later phases drained inside one environment step.
@@ -283,7 +283,7 @@ menu, so these comparisons cover arbitrary legal action laws, including all
 valid proposal labels. The shared prescription is an internal strategy
 representation, not an assumed belief or continuation-law equality.
 These are fixed-control copies: their old erased information and proposal
-archive agree. The affine NoMiss comparison and source SE remain separate.
+archive agree. The limiting retry comparison and selected source SE are checked below.
 The source dependency tests pin the standard axioms for these hard consumers.
 `ReservedEpoch.implementation_asyncContract` supplies opportunity, receipts and
 completion under the actual mixed scheduler, for every raw history and
@@ -310,7 +310,26 @@ floors. `proposalRecovery_pooled_ordinary_component_optimal` transfers its poole
 conditional bound to each ordinary component. The ordinary agents have the same
 actual conditional gain and positive cardinality; the complement contributes
 zero by the actual failed-attempt law and the derived common omission marginal.
-The selected intended assessment, its law and enriched source SE remain open.
+`proposalRecovery_normalized_accepted_failure_conditional_value_le` compares an
+unusable declaration with the same attempt's domain choices under the actual
+stopped law. `proposalRecovery_pooled_ordinary_limit_domain_optimal` and
+`proposalRecovery_normalized_failed_limit_localOptimal` transfer the pooled
+inequality through the same limit: ordinary copies share their conditional
+gain, and failed copies are indifferent at the same omission marginal.
+`proposalRecovery_pooled_commitment_limit_localOptimal` covers the entire
+legal commitment menu; the noncommit consumer covers all other sites.
+
+`exists_proposalRecovery_sequentialEquilibrium_construction` supplies the
+enriched source SE extending the selected intended SE. It returns the original
+caller-rate sequence, shared domain weights and fully mixed Bayes assessments,
+with one strict subsequence for their common limit. Its initialized law is an
+exact pushforward of the entire intended history, retaining the original
+initializer and Nature draws; the outcome and payoff vector follow jointly.
+`exists_proposalRecovery_sequentialEquilibrium_extension` derives the auxiliary
+sequence, positive reach bounds and rates directly from any supplied intended
+SE, with no extra witness or history-finiteness assumption at that interface.
+The floor assumption here is the source payoff lower bound. Native settlement
+and its required deterrence bounds remain separate obligations.
 
 `ReservedEpoch.implementation_first_response_receipt` proves accepting delivery
 for a certified valid response at the first offered callback, with the sender's
@@ -326,8 +345,19 @@ executions from the original setup law, retaining the same chosen source
 checkpoint and its consumed archive. It covers submissions, inclusion, expiry
 and automatic normalization. Surviving observers retain proposals from every
 author, including authors subsequently excluded. `ArchivedProposals.binding`
-reads the complete archive at commitment decisions. The enriched query's
-subsequent virtual repair still needs its own archive-preservation proof.
+reads the complete archive at commitment decisions.
+`proposalRecovery_virtual_labeled_archive` preserves that same archive through
+the actual virtual repair. `phaseProposalQuery?_genuine_of_counted_binding`
+then derives a genuine enriched source decision, its actor and rank from the
+actual counted trace, with proposals from every author retained.
+
+`phaseProposalBaseClasses_fullSupport_of_counted` proves full support at every
+original-law counted input, with arbitrary earlier deviations, omissions and
+debt. `phaseProposalReferenceClasses_eq_of_counted` removes the support fallback
+there, and `phaseProposalReferenceResponses_project_of_counted` identifies the
+actual alias marginal. These use complete pending observation, covered typed
+values, maximal phases, full-support domain laws and positive tremble rates;
+they require neither a clean history nor a supplied source counterpart.
 
 The concrete fixture is checked for every source input bit and both service
 orders. `ReservedEpochConcurrency.concurrent_prefix_supported` supplies the
@@ -337,8 +367,12 @@ actual mixed-scheduler prefixes; `two_packets_pending` and
 `pending_binding_usable` give actual deadline, handler and typed-preparation
 validity. `correlated_order_and_epochs` ties the activation order to processing
 availability, so this is not an independent-delay or fixed-order instance.
-The immediate joins are the enriched query's virtual repair and the complete
-reserved-service coupling. None of these prerequisites is an equilibrium theorem.
+`ReservedEpoch.processing_epoch_application` reads the actual FIFO evaluator;
+`processing_owned_packet_congr`, `phase_owned_expiry_pair` and
+`phase_binding_successor_pair` transport real receipts and normalization under
+the same initial world. These are operational consumers, not the whole stopped
+service coupling or a cross-world likelihood theorem. Those joins and the
+native incentive/consistency assembly remain open.
 
 Use the existing component/pooled completion, asymptotic likelihood, affine
 comparison, local-simulation limit and terminal-audit engines. The underlying

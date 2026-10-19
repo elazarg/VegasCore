@@ -44,11 +44,12 @@ theorem empty_processing_segment {length : Nat} (packetBudget : Nat) (tape : Tap
     (reached : after ∈ ((app).runRounds (family runtime leaks packetBudget tape) players
       count before).support) :
     after.network = before.network ∧ after.receipts = before.receipts ∧
-      after.environmentRecall.length = before.environmentRecall.length + count := by
+      after.environmentRecall.length = before.environmentRecall.length + count ∧
+      after.application = before.application := by
   induction count generalizing slot before after with
   | zero =>
       cases (PMF.mem_support_pure_iff _ _).mp reached
-      exact ⟨rfl, rfl, by omega⟩
+      exact ⟨rfl, rfl, by omega, rfl⟩
   | succ count ih =>
       obtain ⟨middle, moved, rest⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       rw [empty_processing_round runtime leaks packetBudget tape players cycle slot before
@@ -62,11 +63,11 @@ theorem empty_processing_segment {length : Nat} (packetBudget : Nat) (tape : Tap
         dsimp [padded]
         rw [List.length_append, List.length_singleton, cursor]
         omega
-      obtain ⟨network, receipts, recalled⟩ := ih (slot + 1) padded after nextCursor (by omega)
-        empty rest
+      obtain ⟨network, receipts, recalled, application⟩ := ih (slot + 1) padded after nextCursor
+        (by omega) empty rest
       exact ⟨network, receipts, by
         simp only [padded, List.length_append, List.length_singleton] at recalled
-        omega⟩
+        omega, application⟩
 
 theorem full_processing_epoch_clears {length : Nat} (packetBudget : Nat)
     (tape : Tape Player length) (players : Player → (app).Policy) (cycle : Nat)
@@ -95,7 +96,8 @@ theorem full_processing_epoch_clears {length : Nat} (packetBudget : Nat)
     (family runtime leaks packetBudget tape) players before.network.pending.length before middle
       prefixReached
   rw [cursor] at middleCursor
-  obtain ⟨network, receipts, _recalled⟩ := empty_processing_segment runtime leaks packetBudget tape
+  obtain ⟨network, receipts, _recalled, _application⟩ :=
+    empty_processing_segment runtime leaks packetBudget tape
     players cycle before.network.pending.length (packetBudget - before.network.pending.length)
       middle after middleCursor (by omega) epoch cleared.1 suffixReached
   rw [network, receipts]

@@ -556,4 +556,51 @@ theorem phasePolicyDispatch_indexed_cases {Index : Type}
           exact Or.inl ⟨PMF.pure ⟨none⟩, fun _ => by
             simp only [phasePolicyDispatch, offered, eventPolicyDispatch, node]⟩
 
+omit [Fintype Player] in
+/-- Pointwise component domination passes through the SAME actual public
+request dispatcher. Forced silence needs only that the retained mass is at
+most one; no source query, reach, or qualification premise is involved. -/
+theorem phasePolicyDispatch_probability_domination
+    (firstOpen secondOpen : ∀ (owner : Player) (_event : (serviceGraph setup mode).EventId)
+      (payload : L.Ty), FieldRef (serviceGraph setup mode).layout (.binding owner payload) →
+      (phaseApplication runtime leaks).Policy)
+    (firstBind secondBind : ∀ (owner : Player) (event : (serviceGraph setup mode).EventId)
+      (payload : L.Ty), (serviceGraph setup mode).outputLayout event = .binding owner payload →
+      (phaseApplication runtime leaks).Policy)
+    (factor : ℝ) (bounded : factor ≤ 1) (who : Player)
+    (past : List (phaseApplication runtime leaks).PlayerEntry)
+    (view : (phaseApplication runtime leaks).PlayerView)
+    (openLower : ∀ owner event payload binding response,
+      factor * (firstOpen owner event payload binding past view response).toReal ≤
+        (secondOpen owner event payload binding past view response).toReal)
+    (bindLower : ∀ owner event payload binding response,
+      factor * (firstBind owner event payload binding past view response).toReal ≤
+        (secondBind owner event payload binding past view response).toReal)
+    (response : (phaseApplication runtime leaks).Action) :
+    factor * (phasePolicyDispatch setup mode runtime leaks firstOpen firstBind who
+      past view response).toReal ≤
+      (phasePolicyDispatch setup mode runtime leaks secondOpen secondBind who
+        past view response).toReal := by
+  classical
+  have silent : factor * ((PMF.pure (⟨none⟩ : (phaseApplication runtime leaks).Action))
+      response).toReal ≤ (PMF.pure (⟨none⟩ : (phaseApplication runtime leaks).Action)
+        response).toReal :=
+    mul_le_of_le_one_left ENNReal.toReal_nonneg bounded
+  cases offered : requestedEvent setup mode who view.application.2 with
+  | none => simpa only [phasePolicyDispatch, offered] using silent
+  | some event =>
+      cases node : nodeView (serviceGraph setup mode) event with
+      | bind owner payload binding code =>
+          simp only [phasePolicyDispatch, offered, eventPolicyDispatch, node]
+          split
+          · exact bindLower owner event payload binding response
+          · exact silent
+      | resolve owner payload binding checks outputEq codeEq =>
+          simp only [phasePolicyDispatch, offered, eventPolicyDispatch, node]
+          split
+          · exact openLower owner event payload binding response
+          · exact silent
+      | sample payload law outputEq codeEq =>
+          simpa only [phasePolicyDispatch, offered, eventPolicyDispatch, node] using silent
+
 end Vegas

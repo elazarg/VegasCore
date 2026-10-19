@@ -823,3 +823,8 @@ import Vegas.Pending.ReservedEpochAdmissionOrder
 import Vegas.Pending.PhaseProposalNormalizationFrame
 import Vegas.Pending.PhaseProposalFuture
 import Vegas.Pending.PhaseProposalFrameStep
+import Vegas.Pending.PhaseProposalBindingSlots
+import Vegas.Pending.PhaseProposalCanonicalBinding
+import Vegas.Pending.PhaseProposalCanonicalOpening
+import Vegas.Pending.ReservedEpochActivationWord
+import Vegas.Pending.ReservedEpochBatchApplication

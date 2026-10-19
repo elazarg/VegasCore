@@ -2624,3 +2624,43 @@ selects precisely that query's domain law and encodes only successful typed
 payloads. It has the counted service policy's literal value-callback type.
 The original domain-table posterior, joint typed-word transport, same-event
 relative repairs and native incentive composition remain separate.
+
+
+Enriched proposal source equilibria:
+[the concrete intended restriction](../Vegas/Game/ProposalRecoveryRestriction.lean)
+and [initialized laws](../Vegas/Game/ProposalRecoveryInitializedLaw.lean)
+retain the full initialized intended history, including Nature draws.
+[The accepted-failure comparison](../Vegas/Game/ProposalRecoveryAcceptedFailure.lean)
+and [ordinary pooled limit](../Vegas/Game/ProposalRecoveryOrdinaryLimit.lean)
+use the same stopped reset continuation and assessment limit.
+[All commitment sites](../Vegas/Game/ProposalRecoveryCommitmentRationality.lean)
+and [noncommit sites](../Vegas/Game/ProposalRecoveryNoncommitLimit.lean)
+cover arbitrary legal action lotteries.
+[The source constructor](../Vegas/Game/ProposalRecoveryEquilibriumConstruction.lean)
+selects the enriched SE, shared weights and Bayes subsequence at the supplied
+caller rates, preserving the selected intended strategy and full history law.
+[The unconditional extension](../Vegas/Game/ProposalRecoveryEquilibriumExtension.lean)
+derives the consistency sequence, reach bounds and rates from any supplied
+intended SE.
+
+Genuine native proposal queries:
+[labeled virtual replay](../Vegas/Source/ProposalRecoveryVirtualLift.lean)
+preserves the archive on the same supplied repaired trace.
+[The actual query consumer](../Vegas/Game/PhaseProposalGenuineQuery.lean)
+derives the enriched source decision from the original counted trace.
+[All counted inputs](../Vegas/Game/PhaseProposalGenuineSupport.lean)
+have full reference support, and
+[the genuine reference law](../Vegas/Game/PhaseProposalGenuineReference.lean)
+removes fallback and identifies the alias marginal. Arbitrary earlier counted
+deviations and guard-failed truthful proposals are retained.
+
+Reserved-service operational comparisons:
+[actual FIFO processing](../Vegas/Pending/ReservedEpochBatchApplication.lean)
+and [activation words](../Vegas/Pending/ReservedEpochActivationWord.lean)
+use the existing runtime evaluator.
+[Matched owned packets](../Vegas/Game/ReservedEpochMatchedPacket.lean),
+[expiry transport](../Vegas/Game/ReservedEpochPhaseExpiryPair.lean), and
+[successor transport](../Vegas/Game/ReservedEpochBindingSuccessor.lean)
+construct actual handler and normalization counterparts at unequal processing
+slots. Their owner frames compare the same initial world; whole stopped-attempt
+coupling and cross-world likelihood transport remain distinct consumers.

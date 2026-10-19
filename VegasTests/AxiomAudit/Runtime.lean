@@ -3515,3 +3515,135 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.RecoverySourceCheckpoint.ArchivedProposals.binding
+
+/-- info:
+'Vegas.phaseProposalBaseClasses_fullSupport_of_counted'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseProposalBaseClasses_fullSupport_of_counted
+
+/-- info:
+'Vegas.phaseProposalReferenceClasses_eq_of_counted'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseProposalReferenceClasses_eq_of_counted
+
+/-- info:
+'Vegas.phaseProposalReferenceResponses_project_of_counted'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseProposalReferenceResponses_project_of_counted
+
+/-- info:
+'Vegas.phaseProposalReferencePolicy_fullSupport'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseProposalReferencePolicy_fullSupport
+
+/-- info:
+'Vegas.phaseProposalReferenceStrategy_fullSupport'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseProposalReferenceStrategy_fullSupport
+
+/-- info:
+'Vegas.phaseProposalReferencePolicy_decompose'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseProposalReferencePolicy_decompose
+
+/-- info:
+'Vegas.phaseProposalQuery?_genuine_of_counted_binding'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseProposalQuery?_genuine_of_counted_binding
+
+/-- info:
+'Vegas.EventGraphRuntime.ReservedEpoch.empty_processing_segment'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.empty_processing_segment
+
+/-- info:
+'Vegas.EventGraphRuntime.ReservedEpoch.processing_prefix_application'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.processing_prefix_application
+
+/-- info:
+'Vegas.EventGraphRuntime.ReservedEpoch.processing_epoch_application'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.processing_epoch_application
+
+/-- info:
+'Vegas.EventGraphRuntime.ReservedEpoch.trace_activation_words_congr'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.trace_activation_words_congr
+
+/-- info:
+'Vegas.EventGraphRuntime.ReservedEpoch.trace_response_ordinals_congr'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.trace_response_ordinals_congr
+
+/-- info:
+'Vegas.EventGraphRuntime.ReservedEpoch.BindingFrame.handle_binding'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.BindingFrame.handle_binding
+
+/-- info:
+'Vegas.EventGraphRuntime.ReservedEpoch.commitment_drain_frame'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.commitment_drain_frame
+
+/-- info:
+'Vegas.EventGraphRuntime.ReservedEpoch.phase_binding_handler_counterpart'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.phase_binding_handler_counterpart
+
+/-- info:
+'Vegas.EventGraphRuntime.ReservedEpoch.foreign_processing_prefix_frame'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.foreign_processing_prefix_frame
+
+/-- info:
+'Vegas.EventGraphRuntime.ReservedEpoch.processing_owned_packet_congr'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.processing_owned_packet_congr
+
+/-- info:
+'Vegas.EventGraphRuntime.ReservedEpoch.BindingFrame.expire_owned'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.BindingFrame.expire_owned
+
+/-- info:
+'Vegas.EventGraphRuntime.ReservedEpoch.binding_expiry_pair'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.binding_expiry_pair
+
+/-- info:
+'Vegas.EventGraphRuntime.ReservedEpoch.normalize_binding_pair_unfinished'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.normalize_binding_pair_unfinished
+
+/-- info:
+'Vegas.EventGraphRuntime.ReservedEpoch.phase_owned_expiry_pair'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.phase_owned_expiry_pair
+
+/-- info:
+'Vegas.EventGraphRuntime.ReservedEpoch.phase_binding_successor_pair'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.ReservedEpoch.phase_binding_successor_pair

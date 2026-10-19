@@ -3060,3 +3060,186 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms
   Vegas.SourceProgram.Setup.proposalRecovery_pooled_ordinary_component_optimal
+
+/-- info:
+'Vegas.SourceProgram.ProtocolState.recoveryProposal_virtual_eq'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.ProtocolState.recoveryProposal_virtual_eq
+
+/-- info:
+'Vegas.SourceProgram.Setup.proposalRecovery_virtual_event_delta'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.proposalRecovery_virtual_event_delta
+
+/-- info:
+'Vegas.SourceProgram.Setup.proposalRecovery_virtual_labeled_trace'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.proposalRecovery_virtual_labeled_trace
+
+/-- info:
+'Vegas.SourceProgram.Setup.proposalRecovery_virtual_labeled_archive'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.proposalRecovery_virtual_labeled_archive
+
+/-- info:
+'Vegas.SourceProgram.Setup.proposalRecovery_isDecisionInfo_of_surviving_actor'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.proposalRecovery_isDecisionInfo_of_surviving_actor
+
+/-- info:
+'Vegas.SourceProgram.Setup.proposalRecovery_clear_ordinary_archive'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.proposalRecovery_clear_ordinary_archive
+
+/-- info:
+'Vegas.SourceProgram.Setup.proposalRecoveryInformation_observed'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.proposalRecoveryInformation_observed
+
+/-- info:
+'Vegas.SourceProgram.Setup.proposalRecoveryInformation_menu'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.proposalRecoveryInformation_menu
+
+/-- info:
+'Vegas.SourceProgram.Setup.proposalRecovery_initialized_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.proposalRecovery_initialized_history
+
+/-- info:
+'Vegas.SourceProgram.Setup.proposalRecovery_initialized_joint'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.proposalRecovery_initialized_joint
+
+/-- info:
+'Vegas.SourceProgram.Setup.proposalRecoveryHonestPoolPins_raw'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.proposalRecoveryHonestPoolPins_raw
+
+/-- info:
+'Vegas.SourceProgram.Setup.proposalRecovery_terminal_payoff_of_checkpointed_debt'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.proposalRecovery_terminal_payoff_of_checkpointed_debt
+
+/-- info:
+'Vegas.SourceProgram.Setup.proposalRecovery_voluntaryFailure_context_value'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.proposalRecovery_voluntaryFailure_context_value
+
+/-- info:
+'Vegas.SourceProgram.Setup.proposalRecovery_failed_commit_prefix_payoff'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.proposalRecovery_failed_commit_prefix_payoff
+
+/-- info:
+'Vegas.SourceProgram.Setup.proposalRecovery_normalized_accepted_failure_conditional_value_le'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.proposalRecovery_normalized_accepted_failure_conditional_value_le
+
+/-- info:
+'Vegas.SourceProgram.Setup.proposalRecovery_pooled_ordinary_limit_domain_optimal'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.proposalRecovery_pooled_ordinary_limit_domain_optimal
+
+/-- info:
+'Vegas.SourceProgram.Setup.proposalRecovery_normalized_honest_raw_lower'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.proposalRecovery_normalized_honest_raw_lower
+
+/-- info:
+'Vegas.SourceProgram.Setup.proposalRecovery_normalized_honest_beliefs_of_rates'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.proposalRecovery_normalized_honest_beliefs_of_rates
+
+/-- info:
+'Vegas.SourceProgram.Setup.proposalRecovery_hidden_commit_terminal_debt'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.proposalRecovery_hidden_commit_terminal_debt
+
+/-- info:
+'Vegas.SourceProgram.Setup.proposalRecovery_deviation_payoff'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.proposalRecovery_deviation_payoff
+
+/-- info:
+'Vegas.SourceProgram.Setup.proposalRecovery_normalized_honest_limit'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.proposalRecovery_normalized_honest_limit
+
+/-- info:
+'Vegas.SourceProgram.Setup.proposalRecovery_normalized_limit_localOptimal_of_domain'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.proposalRecovery_normalized_limit_localOptimal_of_domain
+
+/-- info:
+'Vegas.SourceProgram.Setup.proposalRecovery_normalized_noncommit_limit_localOptimal'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.proposalRecovery_normalized_noncommit_limit_localOptimal
+
+/-- info:
+'Vegas.SourceProgram.Setup.proposalRecovery_normalized_failed_limit_localOptimal'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.proposalRecovery_normalized_failed_limit_localOptimal
+
+/-- info:
+'Vegas.SourceProgram.Setup.proposalRecovery_normalized_limit_localOptimal_of_erased_copy'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.proposalRecovery_normalized_limit_localOptimal_of_erased_copy
+
+/-- info:
+'Vegas.SourceProgram.Setup.proposalRecoveryHonestPoolPins_ordinary_witness'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.proposalRecoveryHonestPoolPins_ordinary_witness
+
+/-- info:
+'Vegas.SourceProgram.Setup.proposalRecovery_pooled_commitment_limit_localOptimal'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.proposalRecovery_pooled_commitment_limit_localOptimal
+
+/-- info:
+'Vegas.SourceProgram.Setup.proposalRecovery_normalized_pooled_limit_sequentialEquilibrium'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.proposalRecovery_normalized_pooled_limit_sequentialEquilibrium
+
+/-- info:
+'Vegas.SourceProgram.Setup.exists_proposalRecovery_sequentialEquilibrium_construction'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.exists_proposalRecovery_sequentialEquilibrium_construction
+
+/-- info:
+'Vegas.SourceProgram.Setup.exists_proposalRecovery_sequentialEquilibrium_extension'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.exists_proposalRecovery_sequentialEquilibrium_extension

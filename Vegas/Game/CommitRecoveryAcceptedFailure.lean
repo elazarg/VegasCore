@@ -25,7 +25,7 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L] (setup : Setup (Player := Player) (L := L))
 
 omit [Fintype Player] in
-private theorem joint_word_prefix
+theorem commitRecovery_joint_word_prefix
     {state : setup.commitRecoveryProtocol.State}
     (prior : setup.commitRecoveryProtocol.Trace state)
     (joint : Player → Option (CommitRecoveryMove Player L))
@@ -100,7 +100,8 @@ theorem commitRecovery_local_failed_window_recorded
     (setup.commitRecoveryModel.runBehavioralFrom_reachesWithin altered rest
       ((⟨some first, prior⟩ : setup.commitRecoveryProtocol.History).extend
         draw.property realized) final child)
-  obtain ⟨added, word, length⟩ := setup.joint_word_prefix prior draw.val draw.property
+  obtain ⟨added, word, length⟩ :=
+    setup.commitRecovery_joint_word_prefix prior draw.val draw.property
     realized final kept
   let initial := setup.initialConfig setup.initialLaw.support_nonempty.choose
   obtain ⟨_last, _joints, _addresses, _state, _count, _path, consumed, _word, _signals⟩ :=

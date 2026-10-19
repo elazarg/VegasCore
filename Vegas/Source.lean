@@ -228,3 +228,10 @@ import Vegas.Source.ProposalRecoveryAttemptReset
 import Vegas.Source.ProposalRecoveryLabelCongruence
 import Vegas.Source.ProposalRecoveryPrefixRank
 import Vegas.Source.ProposalRecoveryMenuKind
+import Vegas.Source.ProposalRecoveryOrdinaryCommit
+import Vegas.Source.ProposalRecoverySuccessfulObservation
+import Vegas.Source.ProposalRecoverySuccessfulStep
+import Vegas.Source.ProposalRecoverySuccessfulTrace
+import Vegas.Source.ProposalRecoveryVirtualLift
+import Vegas.Source.ProposalRecoveryVirtualStep
+import Vegas.Source.ProposalRecoveryVoluntaryFailure

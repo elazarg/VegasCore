@@ -122,7 +122,7 @@ def phaseVirtualSourceQuery? (setup : Setup (Player := Player) (L := L))
 /-- Every actual surviving binding callback reads the combined label of a
 genuine original source decision. The public scan is derived from the entire
 initialized native trace; no decoder agreement or source endpoint is supplied. -/
-theorem phaseVirtualSourceQuery?_genuine_of_ready_binding
+theorem RecoverySourceCheckpoint.virtual_source_query
     (setup : Setup (Player := Player) (L := L)) (mode : ExecutionMode)
     (runtime : EventGraphRuntime (serviceGraph setup mode))
     (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket (serviceGraph setup mode)))
@@ -133,11 +133,15 @@ theorem phaseVirtualSourceQuery?_genuine_of_ready_binding
     (trace : ((phaseApplication runtime leaks).protocol
       (setup.initialLaw.map fun draw => PhaseRuntimeState.initial plan (encodeInputs draw))
       horizon scheduler).Trace (some control))
+    (checkpoint : RecoverySourceCheckpoint setup mode control.execution.application)
+    (archivedRecall : checkpoint.ArchivedRecall)
+    (publicChronology : checkpoint.PublicChronology plan)
     (who : Player) (event : (serviceGraph setup mode).EventId) (payload : L.Ty)
     (binding : (serviceGraph setup mode).outputLayout event = .binding who payload)
     (request : control.execution.application.SeedRequest who
       ⟨control.execution.application.attempt, event⟩) :
-    ∃ (current : CommitRecoveryState setup.program)
+    ∃ (original current : CommitRecoveryState setup.program)
+      (originalTrace : setup.commitRecoveryProtocol.Trace (some original))
       (sourceTrace : setup.commitRecoveryProtocol.Trace (some current)),
       ProtocolState.actor setup.program current.point = some who ∧
       instructionCount setup.program - ProtocolState.remaining setup.program current.point =
@@ -148,11 +152,20 @@ theorem phaseVirtualSourceQuery?_genuine_of_ready_binding
           (control.execution.observe (phaseApplication runtime leaks) who) =
         some (setup.commitRecoveryErasedInformation who
           (setup.commitRecoveryNoMissInformation who
-            (setup.commitRecoveryModel.infoOf who sourceTrace))) := by
-  obtain ⟨_original, current, _originalTrace, sourceTrace, excluded, _generation,
-    actor, position, played, typed, _publicRecall, controls, addresses⟩ :=
-    phaseVirtualSourceView?_genuine_of_ready_binding setup mode runtime leaks plan maximal
-      horizon scheduler trace who event payload binding request
+            (setup.commitRecoveryModel.infoOf who sourceTrace))) ∧
+      (∀ (labels : setup.commitRecoveryProtocol.StepEvent → Player → Bool) observer,
+        setup.proposalRecoveryArchive observer (setup.proposalRecoveryModel.infoOf observer
+            (setup.proposalRecoveryLiftTrace labels originalTrace)) =
+          setup.proposalRecoveryArchive observer (setup.proposalRecoveryModel.infoOf observer
+            (setup.proposalRecoveryLiftTrace labels checkpoint.trace))) ∧
+      List.Forall₂ (setup.CommitRecoveryVirtualEvent who)
+        (setup.commitRecoveryEventRecall originalTrace)
+        (setup.commitRecoveryEventRecall sourceTrace) ∧ who ∉ current.excluded := by
+  obtain ⟨original, current, originalTrace, sourceTrace, excluded, _generation,
+    actor, position, played, typed, _publicRecall, controls, addresses, archive, paired⟩ :=
+    RecoverySourceCheckpoint.virtual_binding_source setup mode runtime leaks plan maximal
+      horizon scheduler trace checkpoint archivedRecall publicChronology who event payload binding
+        request
   let inputs := setup.initialLaw.map encodeInputs
   have raw : ((phaseApplication runtime leaks).protocol
       (inputs.map (PhaseRuntimeState.initial plan)) horizon scheduler).Trace (some control) := by
@@ -182,7 +195,8 @@ theorem phaseVirtualSourceQuery?_genuine_of_ready_binding
       State.sourceFailureFootprint_read, State.sourceFailureFootprint] using failures
   have read := setup.commitRecovery_erasedInformation_read who current sourceTrace active
   rw [controls, addresses] at read
-  refine ⟨current, sourceTrace, actor, position, played, ?_⟩
+  refine ⟨original, current, originalTrace, sourceTrace, actor, position, played, ?_,
+    archive, paired, active⟩
   unfold phaseVirtualSourceQuery?
   rw [typed, Option.map_some]
   change some (setup.commitRecoveryErasedInformation who
@@ -214,5 +228,43 @@ theorem phaseVirtualSourceQuery?_genuine_of_ready_binding
     setup.commitRecoveryErasedInformation_idempotent] using
     congrArg (fun information => some (setup.commitRecoveryErasedInformation who
       (setup.commitRecoveryNoMissInformation who information))) erasedRead
+
+/-- Every actual surviving binding callback reads the combined label of a
+genuine original source decision. The public scan is derived from the entire
+initialized native trace; no decoder agreement or source endpoint is supplied. -/
+theorem phaseVirtualSourceQuery?_genuine_of_ready_binding
+    (setup : Setup (Player := Player) (L := L)) (mode : ExecutionMode)
+    (runtime : EventGraphRuntime (serviceGraph setup mode))
+    (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket (serviceGraph setup mode)))
+    (plan : RuntimePhasePlan (serviceGraph setup mode))
+    (maximal : plan.phases.IsChain fun before after =>
+      before.kind ≠ after.kind ∨ before.kind = .sample)
+    (horizon : Nat) (scheduler : (phaseApplication runtime leaks).Scheduler) {control}
+    (trace : ((phaseApplication runtime leaks).protocol
+      (setup.initialLaw.map fun draw => PhaseRuntimeState.initial plan (encodeInputs draw))
+      horizon scheduler).Trace (some control))
+    (who : Player) (event : (serviceGraph setup mode).EventId) (payload : L.Ty)
+    (binding : (serviceGraph setup mode).outputLayout event = .binding who payload)
+    (request : control.execution.application.SeedRequest who
+      ⟨control.execution.application.attempt, event⟩) :
+    ∃ (current : CommitRecoveryState setup.program)
+      (sourceTrace : setup.commitRecoveryProtocol.Trace (some current)),
+      ProtocolState.actor setup.program current.point = some who ∧
+      instructionCount setup.program - ProtocolState.remaining setup.program current.point =
+        event.val ∧
+      setup.commitRecoveryModel.IsDecisionInfo who
+        (setup.commitRecoveryModel.infoOf who sourceTrace) ∧
+      phaseVirtualSourceQuery? setup mode runtime leaks plan who event
+          (control.execution.observe (phaseApplication runtime leaks) who) =
+        some (setup.commitRecoveryErasedInformation who
+          (setup.commitRecoveryNoMissInformation who
+            (setup.commitRecoveryModel.infoOf who sourceTrace))) := by
+  obtain ⟨checkpoint, aligned, chronology, _origin⟩ :=
+    recoverySourceCheckpoint_history setup mode runtime leaks plan maximal horizon scheduler trace
+  obtain ⟨_original, current, _originalTrace, sourceTrace, actor, rank, played, queried,
+      _archive, _paired, _active⟩ :=
+    RecoverySourceCheckpoint.virtual_source_query setup mode runtime leaks plan maximal horizon
+      scheduler trace checkpoint aligned chronology who event payload binding request
+  exact ⟨current, sourceTrace, actor, rank, played, queried⟩
 
 end Vegas

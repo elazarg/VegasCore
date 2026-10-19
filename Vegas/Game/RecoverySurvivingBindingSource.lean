@@ -4,6 +4,7 @@ import Vegas.Compile.ExcludedCommitPrefixObservation
 import Vegas.Game.RecoveryReadyCommitWitness
 import Vegas.Game.RecoveryReadyCommitInformation
 import Vegas.Game.RevealService
+import Vegas.Source.ProposalRecoveryCommitWindow
 
 /-! # Surviving source decisions with saved permanent exclusions -/
 
@@ -98,7 +99,12 @@ theorem RecoverySourceCheckpoint.surviving_prefix_trace
       setup.recoveryAddressWord trace = setup.recoveryAddressWord checkpoint.trace ++
         (List.range earlier.length).map (fun index =>
           (some (state.attempt.phase + index + 1), state.entry.excluded,
-            state.generation, state.attempt.phase)) := by
+            state.generation, state.attempt.phase)) ∧
+      (∀ (labels : setup.commitRecoveryProtocol.StepEvent → Player → Bool) observer,
+        setup.proposalRecoveryArchive observer (setup.proposalRecoveryModel.infoOf observer
+            (setup.proposalRecoveryLiftTrace labels trace)) =
+          setup.proposalRecoveryArchive observer (setup.proposalRecoveryModel.infoOf observer
+            (setup.proposalRecoveryLiftTrace labels checkpoint.trace))) := by
   have savedPosition := checkpoint.saved_position
   rcases checkpoint with ⟨⟨Γ, O, program, lift⟩, entry, refs, registry, embedding, before,
     compiled, terminalAlignment, agrees, guards, failures, unique, ranks, actors, commits, owners,
@@ -164,7 +170,7 @@ theorem RecoverySourceCheckpoint.surviving_prefix_trace
       (fun point who => menus who point) steps first rfl rfl committing beforeEnd
   change CommitRecoveryState.InstructionPath setup.program _ attempt.joints _ first after
     at instructions
-  obtain ⟨sourceTrace, _prefix, _length, _joints, numeric⟩ :=
+  obtain ⟨sourceTrace, sourcePrefix, sourceLength, _joints, numeric⟩ :=
     setup.recoveryInstructionPath_information _ instructions initialized
   have addressLength : addresses.length = earlier.length :=
     instructions.addresses_length.trans attempt.joints_length
@@ -243,16 +249,30 @@ theorem RecoverySourceCheckpoint.surviving_prefix_trace
     rw [savedPosition]
   refine ⟨after, sourceTrace, rfl, rfl, publicSignal, actor,
     commitRecovery_isDecisionInfo_of_surviving_actor setup after sourceTrace owner survives actor,
-    ?_, wholeView, exactNumeric⟩
-  change (fillCommitPrefix setup.program earlier suffix embedding state.current.native.config.store
-    entry).history owner = _
-  rw [← word]
-  symm
-  change ProtocolState.history setup.program
-    (lift (earlier.liftPoint suffix (ProtocolState.entry suffix finished))) owner = finished.history
-      owner
-  rw [histories, earlier.liftPoint_history]
-  rfl
+    ?_, wholeView, exactNumeric, ?_⟩
+  · change (fillCommitPrefix setup.program earlier suffix embedding
+      state.current.native.config.store entry).history owner = _
+    rw [← word]
+    symm
+    change ProtocolState.history setup.program
+      (lift (earlier.liftPoint suffix (ProtocolState.entry suffix finished))) owner =
+        finished.history owner
+    rw [histories, earlier.liftPoint_history]
+    rfl
+  · intro labels observer
+    apply setup.proposalRecoveryArchive_eq_of_commit_window observer first
+      (setup.proposalRecoveryLiftTrace labels initialized) committing
+      (setup.proposalRecoveryLiftTrace labels sourceTrace)
+      (setup.proposalRecoveryLiftTrace_prefix labels sourcePrefix.tracePrefix)
+    simp only [setup.proposalRecoveryLiftTrace_length]
+    have count := attempt.joints_length
+    have savedEnd : ProtocolState.commitEnd setup.program first.point < instructionCount suffix :=
+      beforeEnd
+    have remaining : ProtocolState.remaining setup.program first.point =
+        earlier.length + instructionCount suffix := by
+      dsimp only [first, CommitRecoveryState.atPoint]
+      rw [ranks, ProtocolState.remaining_entry, earlier.instructionCount_prepend]
+    omega
 
 /-- The actual commitment descriptor supplies the typed prefix needed for a
 surviving source decision. The decoded own word is the whole source word;
@@ -292,7 +312,7 @@ theorem RecoverySourceCheckpoint.surviving_ready_binding_trace
     rw [binding]
     exact id
   obtain ⟨source, trace, excluded, generation, publicSignal, sourceActor, played, word, decoded,
-    _numeric⟩ :=
+    _numeric, _archive⟩ :=
     checkpoint.surviving_prefix_trace fresh guard next earlier reconstruct stored survives selected
       atEnd (selectedEq.symm ▸ ready) (selectedEq.symm ▸ acting)
       (selectedEq.symm ▸ notPublication)
