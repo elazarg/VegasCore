@@ -3,9 +3,9 @@
 This is a proposed argument for preservation under protected shared service,
 retaining concurrent commitments, permanent expulsion and commitment-phase
 restart. The end-to-end Lean preservation theorem remains unproved. The
-initialized native likelihood argument has reviewed local identities, but its
-global weighted inverse and preparation provenance remain open mathematically
-and in Lean. The linked reviews are agent reviews, not human review or a proof.
+initialized likelihood argument, weighted inverse and preparation provenance
+have mathematical agent review; their Lean proofs remain open. The linked
+reviews are not human review or checked theorem evidence.
 The network tape may be correlated and its epoch times unknown.
 The [exact target](../Vegas/Game/ConcurrentRawSequentialPreservation.lean)
 and [likelihood analysis](se-concurrent-likelihood.md) specify the active proof
@@ -30,9 +30,10 @@ guards of the existing language, not restricted to TRUE.
 
 Use the current public-barrier compilation and actual runtime semantics.
 Bindings of one owner follow its source order; inside a private binding block
-there are no cross-owner private predecessor edges. Publication readiness also
-retains the owner's earlier-event dependencies: only different owners' reveals
-can overlap. A phase drains before
+there are no cross-owner private predecessor edges. In literal `.concurrent`,
+each public event waits for its whole source prefix and later events wait for
+that public result. Independent concurrent reveals are outside this contract.
+A phase drains before
 closure. A commitment retry restores its checkpoint after permanent exclusion;
 publication failure never restores the consumed commitment block. Exclusion
 is irreversible.

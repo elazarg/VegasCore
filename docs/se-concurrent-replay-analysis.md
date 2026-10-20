@@ -1,10 +1,9 @@
 # Replay analysis: an exact foreign-alias reduction
 
 The stopped chronological construction in
-[the likelihood note](se-concurrent-likelihood.md) remains a candidate global
-reconstruction. Its exhaustive weighted coverage and preparation provenance
-are open mathematical obligations. Its Lean theorem and end-to-end
-preservation remain unproved.
+[the likelihood note](se-concurrent-likelihood.md) has agent mathematical review,
+including exhaustive weighted coverage and preparation provenance. Its Lean
+theorem and end-to-end preservation remain unproved.
 The following reductions record reviewed local
 parts of that argument: foreign private syntax aliases do not require equal
 alias counts, or a bijection of raw aliases, between different target catalogues.
