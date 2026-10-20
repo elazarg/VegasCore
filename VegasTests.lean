@@ -26,3 +26,4 @@ import VegasTests.ProposalRecoveryClassProductContract
 import VegasTests.OriginalBindingDebtContract
 import VegasTests.OriginalBindingPayoffContract
 import VegasTests.CurrentBindingGainContract
+import VegasTests.ProposalRecoveryClassConstancyContract

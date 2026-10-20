@@ -1495,3 +1495,4 @@ import Vegas.Game.PhaseProposalSavedBindingValues
 import Vegas.Game.RecoveryOriginalRetryWitness
 import Vegas.Game.PhaseProposalOriginalResetPayoff
 import Vegas.Game.PhaseProposalCurrentBindingGain
+import Vegas.Game.ProposalRecoveryPublicClassConstancy

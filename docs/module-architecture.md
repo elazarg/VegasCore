@@ -2857,7 +2857,12 @@ separate obligations.
 The [source reach factorization](../Vegas/Game/ProposalRecoveryPublicClassFactorization.lean)
 separates original intrinsic mass and the entire focal own play from actual
 foreign class, value and conditional-cause factors, including failed and
-zero atoms. Acting-source-step determinism belongs to
+zero atoms. The [full-information source factor](../Vegas/Game/ProposalRecoveryPublicClassConstancy.lean)
+proves constancy and positivity of the actual foreign class coefficient on
+equal full focal information without foreign generated bad preparations.
+It retains the original initializer/Nature mass and entire focal own word
+as separate factors. Its active-owner properness and actual publication
+row cases are reusable in conditional source refinement. Acting-source-step determinism belongs to
 [the source layer](../Vegas/Source/CommitRecoveryOwnedStep.lean).
 [Original clean-close debt](../Vegas/Game/PhaseProposalStandingBindingDebt.lean)
 and [actual reset payoff laws](../Vegas/Game/PhaseProposalOriginalResetPayoff.lean)
