@@ -1,22 +1,20 @@
 # Independent agent review of concurrent likelihood
 
-**Local identities reviewed; the global mathematical reconstruction is open.**
+**Qualified ready-information reconstruction reviewed; Lean transport is open.**
 The [likelihood derivation](se-concurrent-likelihood.md) uses a partial-issued
 ledger for literal `.concurrent` with complete pending observation, the original
-correlated input law and one whole-execution tape prior. Independent agent
-reviews and a root-agent audit support individual transition and conditioning
-arguments. The all-target induction still needs a representative-independent
-ordinary source law and an explicit observable compatibility predicate, with
-exhaustive weighted preimages through close and restore. A law restricted to one
-selected native history's source fiber does not supply that coverage. This is
-not human review or Lean verification. No counterexample to preservation is known.
+correlated input law and one whole-execution tape prior. Independent Astra
+reviews and a root-agent audit cover the qualified ready-information rectangle,
+its weighted inverse, common qualification mass and causal payoff attachment.
+An unrestricted density identity at every native prefix is not claimed. This
+is not human review or Lean verification.
 
 ## Mathematical review boundary
 
-The proposed global argument has the following local ingredients:
+The scoped argument uses the following ingredients:
 
 * Initialization retains the single original joint atom `mu(theta)`. The
-  density is established before selecting a future native decision.
+  actual annotated joint is restricted to qualified ready-information fibers.
 * The commitment-close inverse reconstructs every compatible target from its
   same-parent source prefix. It preserves all five focal before-view components,
   keeps admitted canceled values, and integrates only terminal lost leaves and
@@ -31,18 +29,19 @@ The proposed global argument has the following local ingredients:
   updated future value word through the terminal payoff map. An averaged
   physical marginal is insufficient.
 
-These local arguments do not establish their global composition. In particular,
-the ordinary source law must be defined for every compatible source history,
-without requiring membership in a selected native history's conditional fiber.
-Its static cut is determined by the public phase rank using the existing
-residual-uniqueness theorems. The remaining compatibility reader must reconstruct
-closed observable history and live focal/public overlays, without assuming
-replay, query equality or hidden-store agreement. Its exhaustive weighted inverse
-and the retained causal tail must then establish the full transport identity.
+The direct ordinary law uses each source history's own entry. At the qualified
+ready cut, full focal information fixes historical proposals and current masks;
+the inverse constructs every compatible good source history before deriving
+membership in that reconstructed native history's actual source fiber.
+Issued-word cylinders remain local to native paths and disappear only after
+their value children are summed. Post-insertion typed-steering kernels have
+unit mass for each compatible word, with updated queries and the original tape.
+The source static cut supplies finite-n past factors; the future is source0.
 
-These are mathematical obligations, not checked theorem evidence.
-`QualifiedBindingLaw` is still only a proposition. The clean gain comparison
-and unconditional concurrent preservation theorem also remain unproved.
+This is a mathematical argument, not checked theorem evidence.
+`QualifiedBindingLaw` transport, the clean gain comparison and unconditional
+concurrent preservation remain unproved in Lean. Stronger arbitrary-prefix
+identities are outside this review's conclusion.
 
 ## Exact finite diagnostic
 
@@ -161,9 +160,8 @@ source targets, independent initial types or desired continuation law is assumed
   Truthful rejection and failed disclosure retain their distinct source
   weights; their class normalizers are positive under strict rates. Ordered
   proposals and addresses remain in the archive.
-* **Both directions and multiplicity.** Skeletons are projections of actual
-  positive qualified paths for ONE literal current choice, defined before
-  choosing a target. Their coordinates retain only public native prefixes,
+* **Both directions and multiplicity.** Mechanical indices project actual
+  qualified pre-I paths before choosing a source target. Their coordinates retain public native prefixes,
   freshness, the original tape and literal pre-I focal recall. Source witnesses,
   cause-read words and label weights are excluded: retaining a source cause-read
   word would retain hidden commitment values and invalidate the common weight.
@@ -174,26 +172,28 @@ source targets, independent initial types or desired continuation law is assumed
   prefix times its conditional tail is the original full owner-chain law.
   Only finished never-admitted leaves sum to one; accepted canceled and
   pending values remain fixed. No individual domain atom is divided out.
-* **Uniform gate and causal kernel.** Value changes at a fixed serial preserve
-  opaque packets. Different fresh encodings use order-rank handle renaming,
-  preserving later least-fresh choices, message IDs and service times under
-  complete pending observation. Old raw requests remain literal. The
-  chosen source/graph joint starts at the actual reconstructed fresh entry;
-  only its residual cursor advances after v. Foreign F is retained while
-  focal future innovations are resampled. No independently chosen coupling
-  or baseline conditioned on v substitutes for that joint. First prove the
-  zero-safe weight identity for each fixed choice; actual admission-word
-  symmetry gives the common qualification mass after aggregation. No common
-  fine mechanical coordinate across encodings is needed.
+* **Uniform gate and causal kernel.** The actual acceptance-word theorem,
+  focal available-binding alias equality and foreign response invariance give
+  one gate bit for each anchor and original tape, across all proper encodings.
+  For each compatible typed word, condition actual future response laws on
+  their next typed value. Full support makes each steering kernel a PMF;
+  immutable own-prefix readback gives the updated query. Its mechanical suffix
+  may depend on private syntax, but its mass is one. On the qualified branch,
+  the actual fresh endpoint and enriched erased source history attach the same
+  source0 payoff kernel before summing the causal focal word. Later failures
+  remain unfiltered. No refreshed tape or mechanical-independence premise enters.
 
 ## Signed comparison and assembly
 
-Let q=P(native-good | I), p be the proper typed mass of the arbitrary current
-lottery, and L its typed pushforward. The legal source comparison lottery is
+Let q=P(native-good | I), a=T/Z_N(I) be qualification probability, p the proper typed
+mass of the current lottery, and L its typed pushforward. The final legal
+source comparison uses the actual prescribed source strategy sigma:
 
-    (1-q*p*t) D + q*p*t L.
+    (1-a*p) sigma(J) + a*p encode_*L.
 
-All coefficients remain even when source gain is negative. At q=0 or t=0 use
+The ordinary-D comparison is intermediate; current and future flag errors
+must be included when replacing it by sigma. All coefficients remain even
+when source gain is negative. At a=0 use
 the error-only branch without normalizing a nonexistent conditional law.
 BAD, WAIT, debt and unqualified reset cases retain their separate pointwise
 comparisons and exclusion floor, including the default-zero readout. With

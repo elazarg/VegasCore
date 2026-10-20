@@ -30,9 +30,10 @@ sequence is a capstone assumption.
 ## Current proof boundary
 
 **Contract, joint satisfiability and waiting payoff bound checked. The
-local mathematics has agent review and exact finite diagnostics; the global
-all-target reconstruction remains open in mathematics;
-transport, clean commitment gain and unconditional SE remain unproved in Lean.**
+qualified ready-information mathematical reconstruction has independent Astra
+review; an unrestricted prefix density theorem is not claimed.
+Conditional-belief transport, clean commitment gain and unconditional SE remain
+unproved in Lean.**
 Checked dependencies do not close the remaining Lean obligations.
 
 The [concurrent hypothesis test](../VegasTests/ConcurrentRawHypotheses.lean)
@@ -42,8 +43,8 @@ owned Boolean bindings; its service supports both activation orders, with
 nonconstant utility and a positive funded deposit. This establishes that the
 contract's premises are jointly satisfiable, not preservation.
 
-The [likelihood analysis](se-concurrent-likelihood.md) states the candidate
-reconstruction and local identities. The [independent review](se-concurrent-likelihood-review.md)
+The [likelihood analysis](se-concurrent-likelihood.md) gives the qualified
+ready-information reconstruction. The [independent review](se-concurrent-likelihood-review.md)
 records the mathematical review and the finite diagnostic's limits. These
 are independent agent reviews and a root-agent model audit, not human review
 or Lean verification.
@@ -58,20 +59,17 @@ must give one scalar times the genuine source conditional law, uniformly over
 legal proper typed insertions. The same construction must identify the actual
 causal payoff continuation. This is a theorem to derive, never a premise to add.
 Unqualified branches use their separate floor/reset comparison. A product law
-against every full mechanical history is not required merely because an older
-proof draft attempted it.
+against every full mechanical history is not required by this comparison.
 
-The proposed mathematical derivation starts with the actual joint experiment, its
-original initializer, source labels and archives. It derives successor weights,
-the exhaustive close/restore inverse, whole-history preparation provenance,
-and normalization including zero mass. Its direct source law and observable
-compatibility reader must first be defined for all compatible source histories,
-independently of a selected native history's conditional fiber. The
-post-insertion joint must retain the
-focal future word until applying the causal payoff map. These are outstanding
-mathematical and mechanization obligations, not checked intermediate laws. Conditional laws given a supplied
-cursor alone establish neither coverage nor weights of arbitrary source
-explanations. The exact reviewed claim determines the mechanization boundary.
+The reviewed derivation retains the actual initializer, source labels and
+archives. Its qualified inverse covers every good source history at the common
+full information, preserving canceled preparations and the original joint prior.
+Normalized typed-steering kernels retain updated focal queries through the
+same-tape payoff attachment. The finite-n source past and zero-flag future are
+separated before normalization, including zero qualification. These arguments
+still require Lean proofs; conditional laws given a supplied cursor alone do
+not establish the required coverage or weights. The scoped qualified identity,
+not an unrestricted prefix density, determines the mechanization boundary.
 
 ## Owning components
 

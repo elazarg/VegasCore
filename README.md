@@ -13,7 +13,9 @@ recovery sequential-equilibrium preservation. Concurrent asynchronous SE
 preservation under reserved service remains unproved; the
 [concrete contract](Vegas/Game/ConcurrentRawSequentialPreservation.lean) and
 [active proof plan](docs/se-concurrent-mechanization.md) state its exact scope
-and remaining mathematical and Lean transport obligations. The weaker general asynchronous contract
+and remaining Lean transport obligations. The qualified ready-information
+likelihood argument has independent Astra review; an unrestricted prefix
+density theorem is not claimed. The weaker general asynchronous contract
 also has [checked preservation obstructions](docs/standard-runtime-se-status.md).
 Honest outcome simulation alone does not establish equilibrium preservation.
 The concurrent contract permits arbitrary correlated initial inputs with
