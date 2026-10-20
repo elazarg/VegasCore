@@ -1,16 +1,19 @@
 # Independent agent review of concurrent likelihood
 
-**Mathematical reconstruction reviewed by agents; transport unproved in Lean.**
+**Local identities reviewed; the global mathematical reconstruction is open.**
 The [likelihood derivation](se-concurrent-likelihood.md) uses a partial-issued
 ledger for literal `.concurrent` with complete pending observation, the original
 correlated input law and one whole-execution tape prior. Independent agent
-reviews and a root-agent audit find no remaining assumed coverage or transport
-premise in its mathematical induction. This is not human review or Lean
-verification. No counterexample to preservation is known.
+reviews and a root-agent audit support individual transition and conditioning
+arguments. The all-target induction still needs a representative-independent
+ordinary source law and an explicit observable compatibility predicate, with
+exhaustive weighted preimages through close and restore. A law restricted to one
+selected native history's source fiber does not supply that coverage. This is
+not human review or Lean verification. No counterexample to preservation is known.
 
 ## Mathematical review boundary
 
-The reviewed argument includes the substantive global steps:
+The proposed global argument has the following local ingredients:
 
 * Initialization retains the single original joint atom `mu(theta)`. The
   density is established before selecting a future native decision.
@@ -28,7 +31,16 @@ The reviewed argument includes the substantive global steps:
   updated future value word through the terminal payoff map. An averaged
   physical marginal is insufficient.
 
-These are mathematical arguments to mechanize, not checked theorem evidence.
+These local arguments do not establish their global composition. In particular,
+the ordinary source law must be defined for every compatible source history,
+without requiring membership in a selected native history's conditional fiber.
+Its static cut is determined by the public phase rank using the existing
+residual-uniqueness theorems. The remaining compatibility reader must reconstruct
+closed observable history and live focal/public overlays, without assuming
+replay, query equality or hidden-store agreement. Its exhaustive weighted inverse
+and the retained causal tail must then establish the full transport identity.
+
+These are mathematical obligations, not checked theorem evidence.
 `QualifiedBindingLaw` is still only a proposition. The clean gain comparison
 and unconditional concurrent preservation theorem also remain unproved.
 

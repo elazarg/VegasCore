@@ -1,11 +1,16 @@
 # Concurrent qualified likelihood and causal payoff
 
-This document gives the mathematical argument for the exact
+This document gives a candidate mathematical route to the exact
 `PhaseProposalQualifiedBinding.QualifiedBindingLaw` proposition. Independent
 agent reviews and a root-agent model audit reviewed the argument. These are
-not human reviews or a Lean proof. The proposition is type-checked; its global
-transport theorem and full sequential-equilibrium preservation remain unproved
-in Lean. Exact-rational normalized experiments are falsification checks, not verification of the full raw-action likelihood argument below.
+not human reviews or a Lean proof. The global reconstruction remains open in
+mathematics: the direct ordinary source law and observable compatibility reader
+must cover all compatible source histories, independently of a selected native
+history's conditional fiber. Existing local identities do not establish that
+coverage. The proposition is type-checked; its transport theorem and full
+sequential-equilibrium preservation remain unproved in Lean. Exact-rational
+normalized experiments are falsification checks, not verification of the full
+raw-action likelihood argument below.
 
 The scope is the actual reserved implementation in mode `.concurrent`, with
 its existing `Operational` hypotheses. Binding types are finite. The initial
@@ -145,7 +150,8 @@ Pending calibration is not an admitted source action. Let O_t=O_closed o_t.
 B_t(m) is the original tape atom times crossed family command atoms and
 foreign mechanical coefficients: WAIT, proper-BIND/no-BAD/fresh-slot and PUB
 SEND/WAIT. Exact foreign raw-history normalization sums their alias fibers;
-focal raw aliases remain literal in N. Matched mu/Nature atoms stay in r_S. The following finite induction proves the weighted identity
+focal raw aliases remain literal in N. Matched mu/Nature atoms stay in r_S. The
+intended finite induction must establish the weighted identity
 
     O_t C(q) Lambda_t(m,q,z)
       = N_t(m) B_t(m) chi(m,q) r_S(q) Q_q(z) o_t(q,m).              (F)

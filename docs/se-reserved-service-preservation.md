@@ -3,9 +3,10 @@
 This is a proposed argument for preservation under protected shared service,
 retaining concurrent commitments, permanent expulsion and commitment-phase
 restart. The end-to-end Lean preservation theorem remains unproved. The
-initialized likelihood argument, weighted inverse and preparation provenance
-have mathematical agent review; their Lean proofs remain open. The linked
-reviews are not human review or checked theorem evidence.
+local likelihood and provenance arguments have mathematical agent review.
+The global all-target reconstruction and weighted inverse remain open in
+mathematics and Lean. The linked reviews are not human review or checked theorem
+evidence.
 The network tape may be correlated and its epoch times unknown.
 The [exact target](../Vegas/Game/ConcurrentRawSequentialPreservation.lean)
 and [likelihood analysis](se-concurrent-likelihood.md) specify the active proof

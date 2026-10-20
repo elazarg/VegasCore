@@ -34,8 +34,9 @@ Public-prefix-adaptive block priors are outside this contract. There is
 no independent-private-cell hypothesis. The
 [likelihood derivation](se-concurrent-likelihood.md) retains its literal atom in
 the replay and source weights; the [independent review](se-concurrent-likelihood-review.md)
-reviews the initialized reconstruction, exhaustive inverse and causal payoff
-argument. These remain unproved in Lean.
+reviews local reconstruction, inverse and causal payoff arguments. Their global
+composition remains open in mathematics and Lean: a selected source fiber does
+not supply the required all-target source law and weighted coverage.
 
 The initial-coordinate reader is fixed by the implementation, not supplied by a
 caller. `phaseProposalUnflagged_initialized_terminal_coupling` in

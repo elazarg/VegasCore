@@ -30,7 +30,8 @@ sequence is a capstone assumption.
 ## Current proof boundary
 
 **Contract, joint satisfiability and waiting payoff bound checked. The
-mathematical reconstruction has agent review and exact finite diagnostics;
+local mathematics has agent review and exact finite diagnostics; the global
+all-target reconstruction remains open in mathematics;
 transport, clean commitment gain and unconditional SE remain unproved in Lean.**
 Checked dependencies do not close the remaining Lean obligations.
 
@@ -60,12 +61,15 @@ Unqualified branches use their separate floor/reset comparison. A product law
 against every full mechanical history is not required merely because an older
 proof draft attempted it.
 
-The mathematical derivation starts with the actual joint experiment, its
+The proposed mathematical derivation starts with the actual joint experiment, its
 original initializer, source labels and archives. It derives successor weights,
 the exhaustive close/restore inverse, whole-history preparation provenance,
-and normalization including zero mass. The post-insertion joint retains the
-focal future word until applying the causal payoff map. These are arguments
-to mechanize, not checked intermediate laws. Conditional laws given a supplied
+and normalization including zero mass. Its direct source law and observable
+compatibility reader must first be defined for all compatible source histories,
+independently of a selected native history's conditional fiber. The
+post-insertion joint must retain the
+focal future word until applying the causal payoff map. These are outstanding
+mathematical and mechanization obligations, not checked intermediate laws. Conditional laws given a supplied
 cursor alone establish neither coverage nor weights of arbitrary source
 explanations. The exact reviewed claim determines the mechanization boundary.
 
