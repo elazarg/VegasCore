@@ -11,6 +11,7 @@ import Vegas.Game.PhaseProposalSourceFiber
 import Vegas.Source.ProposalRecoveryEvolution
 import Vegas.Source.CommitRecoveryInitialInputs
 import Vegas.Source.CommitRecoveryPublicObservation
+import Vegas.Source.CommitRecoveryPublicDeterminacy
 import GameTheoryExtensions.Analysis.Protocol.ReachBounds
 
 /-! # Full-information constancy of the foreign source class coefficient -/
@@ -4154,6 +4155,302 @@ theorem proposalRecoveryClosedMass_cause
   · rfl
   · exact (readSame (equivalent.mp keySame.symm).symm).elim
   · exact (keySame (equivalent.mpr readSame.symm).symm).elim
+  · rfl
+
+private theorem proposalRecovery_cause_row_mass
+    (values : ∀ owner (key : setup.ProposalRecoveryComponent owner),
+      PMF (setup.CommitRecoveryValueChoice owner key.1))
+    (omission bad delivery : Set.Icc (0 : ℝ) 1) (focal : Player)
+    (current : CommitRecoveryState setup.program)
+    (trace : setup.proposalRecoveryProtocol.Trace (some current))
+    (joint : Player → Option (ProposalRecoveryMove Player L))
+    (legal : setup.proposalRecoveryProtocol.Legal (some current) joint)
+    {after} (supported : after ∈ (setup.proposalRecoveryProtocol.step (some current)
+      ⟨joint, legal⟩).support) :
+    let profile := setup.proposalRecoveryNormalizedTrembledProfile
+      omission.val omission.property.1 omission.property.2
+      bad.val bad.property.1 bad.property.2
+      delivery.val delivery.property.1 delivery.property.2 values
+    let parent : setup.proposalRecoveryProtocol.History := ⟨some current, trace⟩
+    let child := parent.extend legal supported
+    let row := setup.proposalRecoveryForeignRowFactors values omission bad delivery focal
+      parent joint legal supported
+    (((setup.proposalRecoveryModel.runBehavioralFrom profile 1 parent).map
+      (setup.proposalRecoveryForeignCauseRead focal))
+        (setup.proposalRecoveryForeignCauseRead focal child)).toReal =
+      (setup.proposalRecoveryProtocol.step (some current) ⟨joint, legal⟩ after).toReal *
+        setup.proposalRecoveryModel.playerStepProb profile focal trace ⟨joint, legal⟩ *
+          row.1.toReal * row.2.1.toReal := by
+  classical
+  intro profile parent child row
+  by_cases publication : ∃ owner move author name bit,
+      ProtocolState.actor setup.program current.point = some owner ∧ owner ≠ focal ∧
+        joint owner = some move ∧ move.semantic.action = .reveal author name bit
+  · obtain ⟨owner, move, author, name, bit, acting, foreign, chosen, revealing⟩ := publication
+    have absent : joint focal = none := by
+      apply LegalOption.eq_none_of_inactive _
+        (setup.proposalRecoveryProtocol.legalOption_of_legal legal focal)
+      intro active
+      exact foreign (Option.some.inj (acting.symm.trans active.1))
+    have own : setup.proposalRecoveryModel.playerStepProb profile focal trace ⟨joint, legal⟩ =
+        1 := by
+      have inactive : ¬ setup.proposalRecoveryProtocol.active (some current) focal := by
+        have offered := setup.proposalRecoveryProtocol.legalOption_of_legal legal focal
+        simpa only [absent, LegalOption] using offered
+      let _ := setup.proposalRecoveryModel.subsingleton_choice_of_not_active trace inactive
+      unfold InformationModel.playerStepProb
+      rw [eq_pure_of_subsingleton (profile focal
+        (setup.proposalRecoveryModel.infoOf focal trace))
+          (setup.proposalRecoveryModel.choicesOfLegal trace ⟨joint, legal⟩ focal)]
+      simp
+    have intrinsic : setup.proposalRecoveryProtocol.step (some current) ⟨joint, legal⟩ after =
+        1 := by
+      obtain ⟨next, member, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp supported
+      change ((current.step (proposalRecoveryJoint joint)).map some) (some next) = 1
+      rw [pmf_map_apply_of_injective _ (Option.some_injective _)]
+      apply (PMF.apply_eq_one_iff _ _).mpr
+      ext other
+      constructor
+      · intro reached
+        exact Set.mem_singleton_iff.mpr
+          (setup.commitRecovery_step_unique_of_actor current owner acting _ other next
+            reached member)
+      · intro same
+        exact (Set.mem_singleton_iff.mp same).symm ▸ member
+    simp only [row, parent, proposalRecoveryForeignRowFactors, acting, foreign, ite_false,
+      chosen, revealing, intrinsic, own, ENNReal.toReal_one, one_mul, mul_one]
+    rfl
+  · have residual : row.2.2 = 1 := by
+      dsimp only [row, parent, proposalRecoveryForeignRowFactors]
+      cases acting : ProtocolState.actor setup.program current.point with
+      | none => rfl
+      | some owner =>
+        by_cases same : owner = focal
+        · simp only [same, ite_true]
+        · simp only [same, ite_false]
+          cases chosen : joint owner with
+          | none => rfl
+          | some move =>
+            dsimp only
+            cases action : move.semantic.action with
+            | commit author name payload binding =>
+              dsimp only
+              split <;> try rfl
+              cases binding <;> rfl
+            | reveal author name bit =>
+              exact (publication ⟨owner, move, author, name, bit, acting, same, chosen,
+                action⟩).elim
+    let law := setup.proposalRecoveryModel.runBehavioralFrom profile 1 parent
+    have inverse (other : setup.proposalRecoveryProtocol.History) (present : other ∈ law.support)
+        (same : setup.proposalRecoveryForeignCauseRead focal other =
+          setup.proposalRecoveryForeignCauseRead focal child) : other = child := by
+      change other ∈ (setup.proposalRecoveryModel.runBehavioralFrom profile 1 parent).support
+        at present
+      rw [InformationModel.runBehavioralFrom_succ_of_not_terminal _ _ 0 legal.1,
+        PMF.mem_support_bind_iff] at present
+      obtain ⟨⟨moves, offered⟩, _, present⟩ := present
+      obtain ⟨next, reached, landed⟩ := (PMF.mem_support_bindOnSupport_iff _ _).mp present
+      change other ∈ (PMF.pure (parent.extend offered reached)).support at landed
+      cases (PMF.mem_support_pure_iff _ _).mp landed
+      have labels := proposalRecovery_labels_of_cause_joint setup focal moves joint offered legal
+        (Option.some.inj (congrArg Prod.snd same))
+      have joints : moves = joint := by
+        rcases labels with equal | ⟨owner, name, foreign, _, cases⟩
+        · exact equal
+        · rcases cases with ⟨_, chosen⟩ | ⟨chosen, _⟩
+          all_goals
+            have active := legal.2 owner
+            rw [chosen] at active
+            exact (publication ⟨owner, _, owner, name, _, active.1.1, foreign, chosen,
+              rfl⟩).elim
+      subst moves
+      obtain ⟨ln, ls, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp reached
+      obtain ⟨rn, rs, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp supported
+      have signal := congrArg (fun read => read.1.1.1) same
+      have publicSignal : setup.attemptPublicSignal focal (some ln) =
+          setup.attemptPublicSignal focal (some rn) := by
+        exact congrArg (fun read =>
+          (read.1.map (ProtocolView.publicOnly focal setup.program), read.2.1)) signal
+      have equal := setup.commitRecovery_step_eq_of_public focal current
+        (setup.proposalRecoveryEraseTrace trace) (proposalRecoveryJoint joint) ln rn ls rs
+          publicSignal
+      cases equal
+      rfl
+    have singleton : (law.map (setup.proposalRecoveryForeignCauseRead focal))
+        (setup.proposalRecoveryForeignCauseRead focal child) = law child := by
+      rw [PMF.map_apply, tsum_eq_single child]
+      · simp
+      · intro other different
+        by_cases zero : law other = 0
+        · simp [zero]
+        · by_cases same : setup.proposalRecoveryForeignCauseRead focal other =
+              setup.proposalRecoveryForeignCauseRead focal child
+          · exact (different (inverse other ((PMF.mem_support_iff _ _).mpr zero) same)).elim
+          · simp [same, eq_comm]
+    rw [singleton, setup.proposalRecoveryModel.runBehavioralFrom_one_prob_extend profile parent
+      legal.1 ⟨joint, legal⟩ after supported,
+      setup.proposalRecoveryModel.stepProb_eq_player_mul_counterfactual profile focal,
+      InformationModel.counterfactualStepProb]
+    have opponents := setup.proposalRecovery_foreign_row_opponents values omission bad delivery
+      focal parent joint legal supported
+    change setup.proposalRecoveryModel.opponentsStepProb profile focal trace ⟨joint, legal⟩ =
+      row.1.toReal * row.2.1.toReal * row.2.2.toReal at opponents
+    rw [opponents, residual, ENNReal.toReal_one]
+    ring
+
+open Classical in
+/-- The actual closed source fiber has the intrinsic, focal, class and proper-value
+mass. Its zero-safe posterior identity retains exactly the residual PUB factor. -/
+theorem proposalRecoveryClosedMass_foreign_products
+    (values : ∀ owner (key : setup.ProposalRecoveryComponent owner),
+      PMF (setup.CommitRecoveryValueChoice owner key.1))
+    (omission bad delivery : Set.Icc (0 : ℝ) 1) (wellFormed : setup.WellFormed)
+    (focal : Player) (canonical : setup.proposalRecoveryProtocol.History)
+    (good : setup.proposalRecoveryForeignGood focal canonical) :
+    let profile := setup.proposalRecoveryNormalizedTrembledProfile
+      omission.val omission.property.1 omission.property.2
+      bad.val bad.property.1 bad.property.2
+      delivery.val delivery.property.1 delivery.property.2 values
+    let factors : {state : setup.proposalRecoveryProtocol.State} →
+        setup.proposalRecoveryProtocol.Trace state → ℝ≥0∞ × ℝ≥0∞ × ℝ≥0∞ :=
+      setup.proposalRecoveryForeignProducts values omission bad delivery focal
+    setup.proposalRecoveryClosedMass profile focal canonical =
+      ENNReal.ofReal canonical.trace.transitionMass *
+        ENNReal.ofReal (setup.proposalRecoveryModel.ownPlayReachProbability (profile focal)
+          (setup.proposalRecoveryModel.ownPlay focal canonical.trace)) *
+            (factors canonical.trace).1 * (factors canonical.trace).2.1 ∧
+    ∀ target, setup.proposalRecoveryClosedMass profile focal canonical *
+        setup.proposalRecoveryClosedLaw profile focal canonical target =
+      if setup.proposalRecoveryClosedKey focal target =
+          setup.proposalRecoveryClosedKey focal canonical then
+        setup.proposalRecoveryClosedMass profile focal canonical * (factors target.trace).2.2
+      else 0 := by
+  classical
+  intro profile factors
+  let prescription := fun owner key => setup.proposalRecoveryComponentTrembledLaw owner key
+    omission.val omission.property.1 omission.property.2
+    bad.val bad.property.1 bad.property.2
+    delivery.val delivery.property.1 delivery.property.2 (values owner key)
+  have realMass : ∀ (history : setup.proposalRecoveryProtocol.History),
+      setup.proposalRecoveryForeignGood focal history →
+      (setup.proposalRecoveryClosedMass profile focal history).toReal =
+        history.trace.transitionMass *
+          setup.proposalRecoveryModel.playerReachProbability profile focal history.trace *
+            (factors history.trace).1.toReal * (factors history.trace).2.1.toReal := by
+    intro ⟨state, trace⟩
+    induction trace with
+    | start =>
+      intro _good
+      simp only [Trace.transitionMass_start, InformationModel.playerReachProbability_start,
+        factors, proposalRecoveryForeignProducts, ENNReal.toReal_one, mul_one]
+      change (((PMF.pure setup.proposalRecoveryProtocol.initHistory).map
+        (setup.proposalRecoveryClosedKey focal))
+          (setup.proposalRecoveryClosedKey focal setup.proposalRecoveryProtocol.initHistory)).toReal
+        = 1
+      rw [PMF.pure_map]
+      simp
+    | @extend source target prior joint legal supported ih =>
+      intro good
+      cases source with
+      | none =>
+        have root : (⟨none, prior⟩ : setup.proposalRecoveryProtocol.History) =
+            setup.proposalRecoveryProtocol.initHistory := by
+          obtain initial | ⟨theta, _, first, _, retained⟩ :=
+            proposalRecovery_initialized_prefix setup prior
+          · exact initial
+          · obtain ⟨actual, impossible, _, _⟩ := setup.commitRecovery_base_of_prefix _
+              (setup.proposalRecoveryEraseTrace first) rfl (setup.proposalRecoveryEraseTrace prior)
+              (setup.proposalRecoveryEraseTrace_prefix retained)
+            cases impossible
+        cases root
+        let child : setup.proposalRecoveryProtocol.History := ⟨target, .extend .start joint legal
+          supported⟩
+        have unique (other : setup.proposalRecoveryProtocol.History)
+            (same : setup.proposalRecoveryClosedKey focal other =
+              setup.proposalRecoveryClosedKey focal child) : other = child := by
+          have depth := setup.proposalRecoveryClosedKey_depth focal child other same
+          rcases other with ⟨otherState, otherTrace⟩
+          cases otherTrace with
+          | start => simp only [child, Trace.length] at depth; omega
+          | extend earlier moves offered reached =>
+            cases earlier with
+            | extend => simp only [child, Trace.length] at depth; omega
+            | start =>
+              obtain ⟨left, _, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp reached
+              obtain ⟨right, _, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp supported
+              have bases := congrArg Prod.fst same
+              have inputs : left = right := by
+                simpa only [proposalRecoveryClosedKey, child, Option.map_some,
+                  Option.some.injEq, CommitRecoveryState.atPoint, ProtocolState.base_entry,
+                  Setup.initialConfig] using bases
+              subst right
+              exact congrArg (fun tr => (⟨_, tr⟩ : setup.proposalRecoveryProtocol.History))
+                (setup.proposalRecovery_initialized_trace_unique _ _ _ rfl rfl)
+        have atom : setup.proposalRecoveryClosedMass profile focal child =
+            setup.proposalRecoveryModel.historyReachWeight profile child := by
+          unfold proposalRecoveryClosedMass
+          rw [PMF.map_apply, tsum_eq_single child]
+          · simp only [ite_true, InformationModel.historyReachWeight]
+          · intro other different
+            by_cases same : setup.proposalRecoveryClosedKey focal child =
+                setup.proposalRecoveryClosedKey focal other
+            · exact (different (unique other same.symm)).elim
+            · simp only [same, ite_false]
+        change (setup.proposalRecoveryClosedMass profile focal child).toReal = _
+        rw [atom, setup.proposalRecovery_historyReach_foreign_products values omission bad delivery
+          focal child]
+        rw [setup.proposalRecoveryModel.playerReachProbability_eq_ownPlayReachProbability]
+        have initial : setup.proposalRecoveryProtocol.init = none := rfl
+        simp only [child, factors, proposalRecoveryForeignProducts,
+          proposalRecoveryForeignRowFactors, initial, ENNReal.toReal_one, mul_one]
+        rfl
+      | some current =>
+        have beforeGood := (proposalRecovery_good_extend_iff setup focal ⟨some current, prior⟩
+          joint legal supported).mp good
+        have mass := setup.proposalRecoveryClosedMass_cause prescription wellFormed focal current
+          prior joint legal supported good
+        change setup.proposalRecoveryClosedMass profile focal
+            ⟨target, prior.extend joint legal supported⟩ =
+          setup.proposalRecoveryClosedMass profile focal ⟨some current, prior⟩ *
+            ((setup.proposalRecoveryModel.runBehavioralFrom profile 1 ⟨some current, prior⟩).map
+              (setup.proposalRecoveryForeignCauseRead focal))
+                (setup.proposalRecoveryForeignCauseRead focal
+                  ((⟨some current, prior⟩ : setup.proposalRecoveryProtocol.History).extend legal
+                    supported)) at mass
+        rw [mass, ENNReal.toReal_mul, ih beforeGood.1,
+          proposalRecovery_cause_row_mass setup values omission bad delivery focal current prior
+            joint legal supported]
+        simp only [factors, proposalRecoveryForeignProducts, Trace.transitionMass_extend,
+          InformationModel.playerReachProbability, ENNReal.toReal_mul]
+        ring
+  have mass (history : setup.proposalRecoveryProtocol.History)
+      (regular : setup.proposalRecoveryForeignGood focal history) :
+      setup.proposalRecoveryClosedMass profile focal history =
+        ENNReal.ofReal history.trace.transitionMass *
+          ENNReal.ofReal (setup.proposalRecoveryModel.ownPlayReachProbability (profile focal)
+            (setup.proposalRecoveryModel.ownPlay focal history.trace)) *
+              (factors history.trace).1 * (factors history.trace).2.1 := by
+    have finite := setup.proposalRecoveryForeignProducts_finite values omission bad delivery focal
+      history.trace
+    apply (ENNReal.toReal_eq_toReal_iff' (PMF.apply_ne_top _ _) (ENNReal.mul_ne_top
+      (ENNReal.mul_ne_top (ENNReal.mul_ne_top ENNReal.ofReal_ne_top ENNReal.ofReal_ne_top)
+        finite.1) finite.2.1)).mp
+    simp only [ENNReal.toReal_mul, ENNReal.toReal_ofReal history.trace.transitionMass_pos.le,
+      ENNReal.toReal_ofReal (setup.proposalRecoveryModel.ownPlayReachProbability_nonneg _ _)]
+    rw [← setup.proposalRecoveryModel.playerReachProbability_eq_ownPlayReachProbability]
+    exact realMass history regular
+  refine ⟨mass canonical good, fun target => ?_⟩
+  rw [setup.proposalRecoveryClosedMass_mul_law]
+  split_ifs with same
+  · have targetGood : setup.proposalRecoveryForeignGood focal target := by
+      have bit := congrArg (fun key => key.2.2.2) same
+      simpa only [proposalRecoveryClosedKey, good, decide_true, decide_eq_true_eq] using bit
+    have masses : setup.proposalRecoveryClosedMass profile focal target =
+        setup.proposalRecoveryClosedMass profile focal canonical := by
+      unfold proposalRecoveryClosedMass
+      rw [setup.proposalRecoveryClosedKey_depth focal canonical target same, same]
+    rw [setup.proposalRecovery_historyReachWeight_foreign_products values omission bad delivery
+      focal target, ← masses, mass target targetGood]
   · rfl
 
 end Vegas.SourceProgram.Setup

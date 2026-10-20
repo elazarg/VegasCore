@@ -5106,3 +5106,21 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.SourceProgram.Setup.proposalRecoveryClosedKey_step_law
+
+/-- info:
+'Vegas.SourceProgram.Setup.proposalRecoveryClosedMass_foreign_products'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.proposalRecoveryClosedMass_foreign_products
+
+/-- info:
+'Vegas.PhaseProposalQualifiedBinding.foreign_binding_response_atom'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.PhaseProposalQualifiedBinding.foreign_binding_response_atom
+
+/-- info:
+'Vegas.PhaseProposalQualifiedBinding.annotatedPrefixWeight_support'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.PhaseProposalQualifiedBinding.annotatedPrefixWeight_support

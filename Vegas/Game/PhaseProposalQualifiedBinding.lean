@@ -10,6 +10,7 @@ import Interaction.ReactiveLocalContinuation
 import GameTheoryExtensions.Analysis.Protocol.StoppedTerminalBound
 import GameTheory.Math.Probability.FiniteSampling
 import Vegas.Game.ProposalRecoveryPublicClassConstancy
+import Vegas.Game.PhaseProposalNativeSourceInformation
 import Vegas.Game.ProposalRecoveryPools
 import Vegas.Game.PhaseProposalAttemptArchive
 import GameTheory.Protocol.Predraw
@@ -1108,11 +1109,73 @@ theorem qualifiedPayoff_isSome (assessment : (N).BehavioralAssessment)
   simp only [Function.comp_def]
   split_ifs <;> simp_all
 
-/-- The source continuation uses the same ordinary table with all three future
-flag rates set to zero. Its past belief is supplied by the actual assessment. -/
-def sourceUnflaggedStrategy : ∀ who, setup.proposalRecoveryModel.BehavioralPolicy who :=
-  setup.proposalRecoveryNormalizedTrembledProfile
-    0 le_rfl zero_le_one 0 le_rfl zero_le_one 0 le_rfl zero_le_one values
+open Classical in
+/-- Bayes normalization of the literal qualified experiment uses the original
+native information mass and original history reach weights. -/
+theorem qualifiedPayoff_mul_informationMass
+    (assessment : (N).BehavioralAssessment)
+    (bayes : InformationModel.BehavioralAssessment.IsBayesConsistent (N) assessment
+      ((menu).decisionInformationAntichain initial horizon scheduler))
+    (who : Player) (site : (N).InformationSite who)
+    (positive : 0 < (N).informationMass assessment.strategy who site)
+    (choice : (N).Choice who site.1)
+    (utility : State L setup.program.terminalCtx → Player → ℝ)
+    (excludedPayoff : Player → ℝ) (outcome : Option ℝ) :
+    (N).informationMass assessment.strategy who site *
+        qualifiedPayoff setup mode runtime leaks bounds plan prior values assessment who site
+          choice utility excludedPayoff outcome =
+      ∑' history : (N).InformationHistory who site.1,
+        (N).historyReachWeight assessment.strategy history.val *
+          ((stoppedFinish setup mode runtime leaks bounds plan prior values who history.val
+            (history.property.symm ▸ choice)).map fun result =>
+              if foreignGood setup mode runtime leaks bounds plan prior who history.val ∧
+                  originalAdmissionGate setup mode runtime leaks bounds plan prior
+                    history.val result.1 then
+                some (phaseExclusionBase setup mode runtime leaks utility excludedPayoff
+                  result.2.state who)
+              else none) outcome := by
+  have finite : (N).informationMass assessment.strategy who site ≠ ⊤ :=
+    ne_top_of_le_ne_top ENNReal.one_ne_top
+      ((N).informationMass_le_one assessment.strategy who site
+        ((menu).decisionInformationAntichain initial horizon scheduler who site))
+  rw [qualifiedPayoff, PMF.bind_apply, ← ENNReal.tsum_mul_left]
+  apply tsum_congr
+  intro history
+  rw [bayes who site positive history]
+  rw [div_eq_mul_inv, ← mul_assoc, ← mul_assoc,
+    mul_right_comm ((N).informationMass assessment.strategy who site)
+      ((N).historyReachWeight assessment.strategy history.val),
+    ENNReal.mul_inv_cancel (ne_of_gt positive) finite, one_mul]
+
+/-- Zero qualification leaves only the explicit unqualified outcome. -/
+theorem qualifiedPayoff_eq_pure_none
+    (assessment : (N).BehavioralAssessment)
+    (who : Player) (site : (N).InformationSite who) (choice : (N).Choice who site.1)
+    (zero : qualificationMass setup mode runtime leaks bounds plan prior values
+      assessment who site choice = 0)
+    (utility : State L setup.program.terminalCtx → Player → ℝ)
+    (excludedPayoff : Player → ℝ) :
+    qualifiedPayoff setup mode runtime leaks bounds plan prior values assessment who site choice
+      utility excludedPayoff = PMF.pure none := by
+  have probabilityZero :
+      qualificationLaw setup mode runtime leaks bounds plan prior values assessment who site choice
+        true = 0 := by
+    change (qualificationLaw setup mode runtime leaks bounds plan prior values assessment who
+      site choice true).toReal = 0 at zero
+    rcases (ENNReal.toReal_eq_zero_iff _).mp zero with zero | infinite
+    · exact zero
+    · exact False.elim ((qualificationLaw setup mode runtime leaks bounds plan prior values
+        assessment who site choice).apply_ne_top true infinite)
+  apply pmf_eq_pure_of_support_subset_singleton
+  intro result reached
+  cases result with
+  | none => exact Set.mem_singleton_iff.mpr rfl
+  | some amount =>
+      have mapped : true ∈ ((qualifiedPayoff setup mode runtime leaks bounds plan prior values
+          assessment who site choice utility excludedPayoff).map Option.isSome).support :=
+        (PMF.mem_support_map_iff Option.isSome _ true).mpr ⟨some amount, reached, rfl⟩
+      rw [qualifiedPayoff_isSome] at mapped
+      exact False.elim (mapped probabilityZero)
 
 open Classical in
 /-- Causally insert the selected source atom and then use the zero-flag
@@ -1135,6 +1198,43 @@ def sourceCausalPayoff (assessment : setup.proposalRecoveryModel.BehavioralAsses
         ((profile who).commit site.1 choice)) 1 history.val).bind
       (setup.proposalRecoveryModel.runBehavioralTerminalFrom sourceCertificate profile)).map
         (fun terminal => some (setup.proposalRecoveryPayoff utility excludedPayoff who terminal))
+
+/-- Splitting the actual ordinary continuation at the current block does not
+change the forced causal terminal law. All later flags remain zero. -/
+theorem sourceCausalPayoff_block
+    (assessment : setup.proposalRecoveryModel.BehavioralAssessment)
+    (who : Player) (site : setup.proposalRecoveryModel.InformationSite who)
+    (choice : setup.proposalRecoveryModel.Choice who site.1)
+    (positive : ∃ history ∈
+        {history : setup.proposalRecoveryModel.InformationHistory who site.1 |
+          setup.proposalRecoveryForeignGood who history.val},
+      history ∈ (assessment.belief who site).support)
+    (utility : State L setup.program.terminalCtx → Player → ℝ)
+    (excludedPayoff : Player → ℝ) :
+    sourceCausalPayoff setup values assessment who site choice positive utility excludedPayoff =
+      ((assessment.belief who site).filter
+        {history | setup.proposalRecoveryForeignGood who history.val} positive).bind fun history =>
+          ((sourceForcedBlock setup values who history.val (history.property.symm ▸ choice)).bind
+            (setup.proposalRecoveryModel.runBehavioralTerminalFrom
+              setup.proposalRecoveryProtocol_bounded.wellFoundedHistories
+              (sourceUnflaggedStrategy setup values))).map
+                (fun terminal => some
+                  (setup.proposalRecoveryPayoff utility excludedPayoff who terminal)) := by
+  rcases site with ⟨information, occurs⟩
+  unfold sourceCausalPayoff sourceForcedBlock
+  simp only [PMF.bind_bind, PMF.map_bind]
+  apply bind_congr_on_support
+  intro history _
+  rcases history with ⟨history, same⟩
+  cases same
+  apply bind_congr_on_support
+  intro after _
+  simpa only [PMF.map_bind] using congrArg (PMF.map fun terminal => some
+    (setup.proposalRecoveryPayoff utility excludedPayoff who terminal))
+      (setup.proposalRecoveryModel.runBehavioralTerminalFrom_eq_bind_runBehavioralFrom
+        setup.proposalRecoveryProtocol_bounded.wellFoundedHistories
+        (sourceUnflaggedStrategy setup values)
+        (sourceCommitFuel setup history - 1) after)
 
 omit mode runtime leaks bounds plan prior values in
 /-- Exact qualified payoff transport at a clean concurrent binding information.

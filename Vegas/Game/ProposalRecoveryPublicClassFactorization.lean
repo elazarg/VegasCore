@@ -224,7 +224,7 @@ private theorem source_acting_one_step_opponents
     focalMass, InformationModel.counterfactualStepProb, transition, ENNReal.toReal_one,
     one_mul, mul_one]
 
-private theorem proposalRecovery_foreign_row_opponents
+theorem proposalRecovery_foreign_row_opponents
     (values : ∀ owner (key : setup.ProposalRecoveryComponent owner),
       PMF (setup.CommitRecoveryValueChoice owner key.1))
     (omission bad delivery : Set.Icc (0 : ℝ) 1) (focal : Player)
