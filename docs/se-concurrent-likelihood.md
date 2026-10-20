@@ -71,7 +71,7 @@ kernel: command selection, pending observation, public samples and deterministic
 include/expiry/restore transitions. Impossible native paths have weight zero.
 Summing t gives the original implementation scheduler law, not a new fixed-tape
 game. At a decision antichain the sum over first hits of I is the actual reach
-of I; terminal nonhits contribute zero to that occupation measure.
+of I; terminal nonhits contribute zero to that first-hit measure.
 
 For an enriched source history g write s(g) for its actual initialized reach.
 Let O_i(g) be its ENTIRE focal own-reach product, including accepted canceled
@@ -461,10 +461,12 @@ Nature remain causal. Only genuinely lost leaves integrate to one; focal
 causal tails are pushed forward, never replaced by one. Original tapes are
 disintegrated before the comparison, without refreshing a stop-time posterior.
 
-Bayes normalization is explicit. Native seeded occupation is a common constant
-times nativeReach at I; source occupation has its own common constant at J.
-Each cancels only in its own conditional numerator/denominator. On the positive
-branch, full mixing and foreign-good class positivity give O_i(J) C_-(J)>0. Set
+Bayes normalization uses exact history reach weights. Z_N(I) is the native
+information-site mass, and native belief assigns nativeReach(h)/Z_N(I).
+Conditioning source belief at J on foreign-good gives s(g)/Z_J; the foreign
+suffix H has total mass one. No occupation scaling factor enters these
+formulas. On the positive branch, full mixing and foreign-good class
+positivity give O_i(J) C_-(J)>0. Set
 
     B_c(m)=N_i(I)c_N(m)/(O_i(J)C_-(J)),
     nu_J=rho_J/Z_J,    A_c(m)=B_c(m)Z_J/Z_N(I),    a_c=sum_m A_c(m).
@@ -484,6 +486,22 @@ a=q*t(I); these are two normalizations of the same measure. This proves the
 common-a qualified identity and its causal payoff
 attachment at the stated mathematical scope. It does not assert a checked
 Lean transport theorem or the final preservation theorem.
+
+The sufficient aggregate Lean obligation has a simpler form. Let Ubar_c(z)
+be the actual native reach-weighted stopped/terminal payoff submeasure,
+filtered by foreign-good and the original first-close admission gate. Let
+T_c be its total mass. Let S_J be the foreign-good source reach at J, and
+V_J,c(z) that same reach followed by the genuine zero-flag causal insertion
+and terminal continuation. The required zero-safe identity is
+
+    S_J Ubar_c(z) = T_c V_J,c(z).
+
+The positive branch must also establish S_J>0, one source J and faithful typed
+encoding chosen before all current choices and utilities, the native/source
+query equality, the exact source-zero D pushforward, and one common T_c across
+proper encodings. Then a=T_c/Z_N(I); the zero branch gives pure `none`.
+This aggregate statement is sufficient for `QualifiedBindingLaw`. Its global
+weighted reconstruction remains unproved in Lean.
 
 ## Signed gain and quantitative errors
 
