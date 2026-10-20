@@ -1,26 +1,36 @@
 # Independent agent review of concurrent likelihood
 
-**Local identities and the aggregate target reviewed; global transport open.**
-The [likelihood derivation](se-concurrent-likelihood.md) proposes a partial-issued
-ledger reconstruction and initialized weight identity for literal `.concurrent`
-with complete pending observation. It keeps the original correlated input law
-and whole-execution tape prior. The local algebra does not establish the
-exhaustive inverse or whole-history preparation provenance required by that
-identity. These are agent reviews and a root-agent audit, not human review,
-a complete mathematical transport proof or Lean verification.
+**Mathematical reconstruction reviewed by agents; transport unproved in Lean.**
+The [likelihood derivation](se-concurrent-likelihood.md) uses a partial-issued
+ledger for literal `.concurrent` with complete pending observation, the original
+correlated input law and one whole-execution tape prior. Independent agent
+reviews and a root-agent audit find no remaining assumed coverage or transport
+premise in its mathematical induction. This is not human review or Lean
+verification. No counterexample to preservation is known.
 
-## Open global obligations
+## Mathematical review boundary
 
-* Prove both directions of the raw COMMIT close/restore inverse, preserving
-  all focal before-views and exactly integrating the lost auxiliary draws.
-* Derive whole-history source-good provenance from native-good preparations
-  along the same parent-linked source fold; current-state properness is insufficient.
-* Lift the original tape disintegration along the actual annotated trace and
-  attach the causal terminal law. A physical marginal alone does not transport
-  an arbitrary source annotation.
+The reviewed argument includes the substantive global steps:
 
-The mathematical global reconstruction must be completed and reviewed before
-further transport mechanization. No counterexample to preservation is known.
+* Initialization retains the single original joint atom `mu(theta)`. The
+  density is established before selecting a future native decision.
+* The commitment-close inverse reconstructs every compatible target from its
+  same-parent source prefix. It preserves all five focal before-view components,
+  keeps admitted canceled values, and integrates only terminal lost leaves and
+  unused tails. Restore retains saved handle associations and the catalogue.
+* Every nonmissing source BAD has an accepted native BAD origin, including in
+  canceled attempts; this supplies whole-history source-good provenance.
+* Live publications constrain their accepted binding values immediately.
+  Completed public rows form a deterministic prefix overlay; their source label
+  law advances at whole-phase close using exhaustive chronological-key fibers.
+* The original tape is disintegrated along the actual annotated native trace.
+  After forcing the focal value, the joint explicitly retains its causally
+  updated future value word through the terminal payoff map. An averaged
+  physical marginal is insufficient.
+
+These are mathematical arguments to mechanize, not checked theorem evidence.
+`QualifiedBindingLaw` is still only a proposition. The clean gain comparison
+and unconditional concurrent preservation theorem also remain unproved.
 
 ## Exact finite diagnostic
 
@@ -76,18 +86,20 @@ Tape coordinates may correlate across owners/time; no public-prefix-adaptive
 block prior or tape refresh is covered. Posterior updates condition the same
 original tape, rather than resample its prior.
 
-For each legal typed current insertion v, construct X=(g,F), where g is a
-genuine enriched source prefix at one full information J and F is its
-remaining foreign commitment word. The proposed conclusion is
+For each legal typed current insertion v, let U be the actual native
+reach-weighted terminal payoff submeasure, retaining pre-decision foreign-good
+history and the original all-accepted binding gate. Let T be its total mass.
+Let S be the genuine source-good reach at one full source information J, and V
+that same reach followed by forced v and the actual zero-flag causal terminal
+continuation. The sufficient conclusion is
 
-    E[beta * 1_{X=x} | I, native-good] = t(I) nu_J(x)
+    S * U(y) = T * V(y)
 
-for every target x, with one t(I) for all typed values and legal proper
-encodings. Here beta is the all-accepted BIND gate, not guard acceptance;
-nu_J is actual source-good Bayes reach followed by the original foreign-word
-law. The construction must also identify the actual causal payoff Phi_v(g,F).
-It does not assume a matching cursor for arbitrary source targets, independent
-initial types, or a desired continuation law.
+for every terminal payoff atom y, with one J and T across all proper typed
+values and encodings. Positive T gives positive finite S; zero T yields the
+all-none native law. Native and source Bayes normalization then gives exactly
+the existing qualified payoff proposition. No matching cursor for arbitrary
+source targets, independent initial types or desired continuation law is assumed.
 
 ## Local checks and required replay properties
 
@@ -130,8 +142,8 @@ initial types, or a desired continuation law.
   its entire private catalogue, including unused/dead preparations. After I,
   focal future values and views are causal auxiliaries, not a fixed baseline
   future. Public events are source-ordered barriers; private binding events
-  may interleave. Reconstructing every focal before-view componentwise remains
-  part of the open global inverse.
+  may interleave. The inverse preserves public application data, own live
+  cells, the entire own catalogue, network observation and raw recall.
 * **Guards and disclosure labels.** Only actually completed obligations are
   evaluated. Guard reads cannot inspect raw hidden inputs or commitments.
   Truthful rejection and failed disclosure retain their distinct source
@@ -143,8 +155,8 @@ initial types, or a desired continuation law.
   freshness, the original tape and literal pre-I focal recall. Source witnesses,
   cause-read words and label weights are excluded: retaining a source cause-read
   word would retain hidden commitment values and invalidate the common weight.
-  The required reconstruction must produce every positive target on that
-  domain; this exhaustive coverage remains open. Live ledgers contain
+  The inverse reconstructs every compatible positive target from its
+  predecessor fiber. Live ledgers contain
   only issued values; unissued static-earlier coordinates enter retrospectively.
   The inverse retains lost draws and causal future kernels. An emitted owned
   prefix times its conditional tail is the original full owner-chain law.

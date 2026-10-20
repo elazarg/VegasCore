@@ -29,9 +29,9 @@ sequence is a capstone assumption.
 
 ## Current proof boundary
 
-**Contract, joint satisfiability and waiting payoff bound checked; local
-mathematical identities reviewed. Global weighted reconstruction remains open
-in mathematics and Lean; clean commitment gain and unconditional SE are open.**
+**Contract, joint satisfiability and waiting payoff bound checked. The
+mathematical reconstruction has agent review and exact finite diagnostics;
+transport, clean commitment gain and unconditional SE remain unproved in Lean.**
 Checked dependencies do not close the remaining Lean obligations.
 
 The [concurrent hypothesis test](../VegasTests/ConcurrentRawHypotheses.lean)
@@ -43,7 +43,7 @@ contract's premises are jointly satisfiable, not preservation.
 
 The [likelihood analysis](se-concurrent-likelihood.md) states the candidate
 reconstruction and local identities. The [independent review](se-concurrent-likelihood-review.md)
-records the remaining global mathematical obligations. These
+records the mathematical review and the finite diagnostic's limits. These
 are independent agent reviews and a root-agent model audit, not human review
 or Lean verification.
 The [code inventory](se-concurrent-code-inventory.md) identifies owning APIs and
@@ -60,18 +60,14 @@ Unqualified branches use their separate floor/reset comparison. A product law
 against every full mechanical history is not required merely because an older
 proof draft attempted it.
 
-The mathematical derivation specifies the actual joint experiment,
-its original initializer, source labels and archives; support and weights through
-response/service/close cases; and proposed normalization including zero mass.
-The partial-issued ledger supplies local successor calculations. Exhaustive
-weighted inverse coverage through close/restore and whole-history preparation
-provenance remain mathematical obligations; enumerating constructors does not
-prove them. The physical skeleton stops at the current binding close; later
-payoffs use a separate causal
-kernel. Conditional laws given a supplied cursor establish neither the
-coverage nor the weights of arbitrary source explanations of a native input.
-The exact reviewed claim, rather than the stronger private draft, determines
-the next mechanization boundary.
+The mathematical derivation starts with the actual joint experiment, its
+original initializer, source labels and archives. It derives successor weights,
+the exhaustive close/restore inverse, whole-history preparation provenance,
+and normalization including zero mass. The post-insertion joint retains the
+focal future word until applying the causal payoff map. These are arguments
+to mechanize, not checked intermediate laws. Conditional laws given a supplied
+cursor alone establish neither coverage nor weights of arbitrary source
+explanations. The exact reviewed claim determines the mechanization boundary.
 
 ## Owning components
 
@@ -111,9 +107,9 @@ handoff notes and research archives are not committed.
 
 ## Completion gate
 
-Complete and review the mathematical weighted inverse and preparation
-provenance before further transport mechanization. Keep the frozen actual
-qualified-payoff type. Then mechanize transport and the clean gain comparison, and use the existing
+Keep the reviewed weighted inverse and preparation provenance explicit in the
+mechanization, with the frozen actual qualified-payoff type. Prove transport
+and the clean gain comparison, and use the existing
 common-sequence, limit and audit APIs to prove the exact capstone. Keep its
 external hypotheses fixed. If the mathematical argument appears incorrect,
 stop implementation and report the precise issue.
@@ -143,6 +139,9 @@ actual unproved premises of partial results. Review the shared interfaces before
 delegating implementation; add a helper only for an identified consumer. Keep
 probability, incentive and final composition work in cohesive owning components,
 with one root-controlled in-tree build. Do not count new code as progress.
+Work toward whole component statements in parallel, then compile the complete
+batch. Add no modules for this integration. Stop before exceeding an agreed
+component budget and identify the concrete missing API or mathematical step.
 
 Only the checked capstone closes concurrent preservation. Protect it before
 broader assumption minimization or porting existing NE/nonconcurrent SE to the
