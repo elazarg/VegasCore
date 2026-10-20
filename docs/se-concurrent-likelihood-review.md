@@ -22,6 +22,44 @@ a complete mathematical transport proof or Lean verification.
 The mathematical global reconstruction must be completed and reviewed before
 further transport mechanization. No counterexample to preservation is known.
 
+## Exact finite diagnostic
+
+The [rational probe](../scripts/experiments/reserved_binding_rational.py) uses
+independent native and source interpreters and checks the aggregate identity
+`S*U = T*V` atom by atom, with common qualification mass across proper values
+and encodings. All arithmetic is exact.
+
+| Configuration | Native information sites | Proper choices | Result |
+| --- | ---: | ---: | --- |
+| Two candidates per owner | 6,744 | 14,208 | Pass |
+| Three candidates per owner | 14,136 | 57,600 | Pass |
+| Two candidates, correlated private inputs | 9,232 | 19,456 | Pass |
+
+Each run includes a retry after a lost emitted SEND, a retry after silence,
+canceled focal BAD before a later clean decision, and a decision before a
+statically earlier foreign declaration is issued. Positive and zero qualified
+mass both occur. Replacing only the source prior fails as expected. In the
+correlated case the replacement preserves both individual marginals, yet gives
+`S*U = 15/512` and `T*V = 5/256`.
+
+This is a normalized Python rule implementation, **not execution of Lean or
+verification of `QualifiedBindingLaw`**. It uses the two-owner Boolean source
+shape with literal `.concurrent` public barriers; the existing
+`CommitTimingInformation` fixture itself uses `.concurrentReveals`. Candidate
+capacities are smaller than the contract's bound. Raw focal aliases, a binding
+after historical publications, and updated focal future queries within one
+binding block are outside the probe. Passing it does not close a mathematical
+or Lean obligation.
+
+Run, for example:
+
+```text
+python scripts/experiments/reserved_binding_rational.py --capacity 2 --correlated-inputs
+python scripts/experiments/reserved_binding_rational.py --capacity 2 --correlated-inputs --negative-control wrong-source-prior
+```
+
+The second command must report a mismatch and exit with status 2.
+
 ## Reviewed domain and conclusion
 
 The domain is the finite, well-formed compiled concurrent source game with
