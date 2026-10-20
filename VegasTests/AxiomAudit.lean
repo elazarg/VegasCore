@@ -13,3 +13,4 @@ import VegasTests.AxiomAudit.PublicClassProduct
 import VegasTests.AxiomAudit.OriginalBindingContinuation
 import VegasTests.AxiomAudit.CurrentBindingGain
 import VegasTests.AxiomAudit.PublicClassConstancy
+import VegasTests.AxiomAudit.PublicationGain

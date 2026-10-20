@@ -657,6 +657,13 @@ def PairedPublicationBoundary [Fintype Player]
         (some waitingBefore) waitingJoint).support)
       (promptRaw waitingRaw : RecoveryState graph),
       promptFinal.state = some promptEnding ∧ waitingFinal.state = some waitingEnding ∧
+      promptEnding.actor = none ∧ waitingEnding.actor = none ∧
+      promptEnding.execution.application =
+        ({promptBefore.execution.application with current := promptRaw} :
+          PhaseRuntimeState graph).normalize ∧
+      waitingEnding.execution.application =
+        ({waitingBefore.execution.application with current := waitingRaw} :
+          PhaseRuntimeState graph).normalize ∧
       GameTheory.Protocol.ExecutionProtocol.TracePrefix promptTrace promptPrior ∧
       GameTheory.Protocol.ExecutionProtocol.TracePrefix waitingTrace waitingPrior ∧
       GameTheory.Protocol.ExecutionProtocol.TracePrefix
@@ -709,6 +716,64 @@ def PairedPublicationBoundary [Fintype Player]
         ∃ waitingNext : RecoverySourceCheckpoint setup mode
             (⟨active.application.phases.tail, active.application.generation, phase.drain waitingRaw,
               phase.drain waitingRaw, active.application.retired⟩ : PhaseRuntimeState graph),
+          (∃ fuel, setup.commitRecoveryProtocol.ReachesWithin fuel
+            ⟨_, checkpoint.trace⟩ ⟨_, promptNext.trace⟩) ∧
+          Relation.ReflTransGen (NativePublicSourceStep (phase.drain promptRaw).native 0
+            setup.program)
+            (checkpoint.residual.lift
+              (ProtocolState.entry checkpoint.residual.tail checkpoint.source),
+                active.application.entry.excluded)
+            (promptNext.residual.lift (ProtocolState.entry promptNext.residual.tail
+              promptNext.source), (phase.drain promptRaw).excluded) ∧
+          (∃ states : List (ProtocolState setup.program × Finset Player),
+            ((checkpoint.residual.lift
+              (ProtocolState.entry checkpoint.residual.tail checkpoint.source),
+                active.application.entry.excluded) :: states).IsChain
+              (NativePublicSourceStep (phase.drain promptRaw).native 0 setup.program) ∧
+            ((checkpoint.residual.lift
+              (ProtocolState.entry checkpoint.residual.tail checkpoint.source),
+                active.application.entry.excluded) :: states).getLast
+              (List.cons_ne_nil _ _) = (promptNext.residual.lift (ProtocolState.entry
+                promptNext.residual.tail promptNext.source), (phase.drain promptRaw).excluded) ∧
+            setup.recoveryAddressWord promptNext.trace = setup.recoveryAddressWord checkpoint.trace
+              ++
+              states.map (fun point => (CommitRecoveryState.atPoint point.1 point.2
+                active.application.generation).publicAddress)) ∧
+          (∀ owner, owner ∉ (phase.drain promptRaw).excluded → promptNext.source.history owner =
+            checkpoint.source.history owner ++
+              (decodeHistory setup.program ((phase.drain promptRaw).native.config.history.map
+                ((toEventGraph setup.program).fromModeCompletion mode)) owner).drop
+                  (decodeHistory setup.program (active.application.entry.native.config.history.map
+                    ((toEventGraph setup.program).fromModeCompletion mode)) owner).length) ∧
+          (∃ fuel, setup.commitRecoveryProtocol.ReachesWithin fuel
+            ⟨_, checkpoint.trace⟩ ⟨_, waitingNext.trace⟩) ∧
+          Relation.ReflTransGen (NativePublicSourceStep (phase.drain waitingRaw).native 0
+            setup.program)
+            (checkpoint.residual.lift
+              (ProtocolState.entry checkpoint.residual.tail checkpoint.source),
+                active.application.entry.excluded)
+            (waitingNext.residual.lift (ProtocolState.entry waitingNext.residual.tail
+              waitingNext.source), (phase.drain waitingRaw).excluded) ∧
+          (∃ states : List (ProtocolState setup.program × Finset Player),
+            ((checkpoint.residual.lift
+              (ProtocolState.entry checkpoint.residual.tail checkpoint.source),
+                active.application.entry.excluded) :: states).IsChain
+              (NativePublicSourceStep (phase.drain waitingRaw).native 0 setup.program) ∧
+            ((checkpoint.residual.lift
+              (ProtocolState.entry checkpoint.residual.tail checkpoint.source),
+                active.application.entry.excluded) :: states).getLast
+              (List.cons_ne_nil _ _) = (waitingNext.residual.lift (ProtocolState.entry
+                waitingNext.residual.tail waitingNext.source), (phase.drain waitingRaw).excluded) ∧
+            setup.recoveryAddressWord waitingNext.trace = setup.recoveryAddressWord checkpoint.trace
+              ++
+              states.map (fun point => (CommitRecoveryState.atPoint point.1 point.2
+                active.application.generation).publicAddress)) ∧
+          (∀ owner, owner ∉ (phase.drain waitingRaw).excluded → waitingNext.source.history owner =
+            checkpoint.source.history owner ++
+              (decodeHistory setup.program ((phase.drain waitingRaw).native.config.history.map
+                ((toEventGraph setup.program).fromModeCompletion mode)) owner).drop
+                  (decodeHistory setup.program (active.application.entry.native.config.history.map
+                    ((toEventGraph setup.program).fromModeCompletion mode)) owner).length) ∧
           NativeSourceReplayExtension setup (phase.drain promptRaw).native
             active.application.generation checkpoint.trace promptNext.trace ∧
           NativeSourceReplayExtension setup (phase.drain waitingRaw).native
@@ -2729,7 +2794,8 @@ theorem phaseProposalUnflagged_paired_publication_boundary
   refine ⟨endings false, endings true, closings false, closings true, priors false, priors true,
     joints false, joints true, closureLegal false, closureLegal true,
     closureRealized false, closureRealized true, raw false, raw true,
-    finalStates false, finalStates true, kept false, kept true, finalKept false, finalKept true,
+    finalStates false, finalStates true, idle false, idle true,
+    normalized false, normalized true, kept false, kept true, finalKept false, finalKept true,
     sameAnchor false, sameAnchor true, changedAnchor false, changedAnchor true,
     effects false, effects true, closingInstalled false, closingInstalled true,
     finishedRaw false, finishedRaw true, by simpa only [imageEq false] using coverage false,
@@ -2787,6 +2853,25 @@ theorem phaseProposalUnflagged_paired_publication_boundary
             checkpoint.source), active.application.entry.excluded)
           (next.residual.lift (ProtocolState.entry next.residual.tail next.source),
             (image side).excluded) ∧
+        (∃ states : List (ProtocolState setup.program × Finset Player),
+          ((checkpoint.residual.lift
+            (ProtocolState.entry checkpoint.residual.tail checkpoint.source),
+            active.application.entry.excluded) :: states).IsChain
+              (NativePublicSourceStep (image side).native 0 setup.program) ∧
+          ((checkpoint.residual.lift
+            (ProtocolState.entry checkpoint.residual.tail checkpoint.source),
+            active.application.entry.excluded) :: states).getLast (List.cons_ne_nil _ _) =
+              (next.residual.lift (ProtocolState.entry next.residual.tail next.source),
+                (image side).excluded) ∧
+          setup.recoveryAddressWord next.trace = setup.recoveryAddressWord checkpoint.trace ++
+            states.map (fun point => (CommitRecoveryState.atPoint point.1 point.2
+              active.application.generation).publicAddress)) ∧
+        (∀ owner, owner ∉ (image side).excluded → next.source.history owner =
+          checkpoint.source.history owner ++
+            (decodeHistory setup.program ((image side).native.config.history.map
+              ((toEventGraph setup.program).fromModeCompletion mode)) owner).drop
+                (decodeHistory setup.program (active.application.entry.native.config.history.map
+                  ((toEventGraph setup.program).fromModeCompletion mode)) owner).length) ∧
         NativeSourceReplayExtension setup (image side).native active.application.generation
           checkpoint.trace next.trace := by
       intro side
@@ -2810,11 +2895,11 @@ theorem phaseProposalUnflagged_paired_publication_boundary
       rw [entries side] at order
       let cp : RecoverySourceCheckpoint setup mode (rawState side) :=
         checkpoint.transfer rfl rfl rfl
-      obtain ⟨next, reaches, path, _word, _own, _intended, extension⟩ :=
+      obtain ⟨next, reaches, path, addresses, own, _intended, extension⟩ :=
         cp.after_reveal phase remainingPhases phases kind exclusion saved savedHistory
           (phase.drain_reachable (raw side) native.active.reachable) order (finishedRaw side)
-      exact ⟨next, reaches, path, extension⟩
-    choose next reaches paths extension using replayEach
+      exact ⟨next, reaches, path, addresses, own, extension⟩
+    choose next reaches paths addresses own extension using replayEach
     have frontier := (phaseExclusionRecord_history runtime leaks plan inputs horizon scheduler
       ((menu).toRawTrace initial horizon scheduler activeTrace)).frontier
     have low : active.application.attempt.phase = phase.low := by
@@ -3092,6 +3177,62 @@ theorem phaseProposalUnflagged_paired_publication_boundary
     rw [phases]
     change ∃ promptNext : RecoverySourceCheckpoint setup mode (nextState false),
         ∃ waitingNext : RecoverySourceCheckpoint setup mode (nextState true),
+          (∃ fuel, setup.commitRecoveryProtocol.ReachesWithin fuel
+            ⟨_, checkpoint.trace⟩ ⟨_, promptNext.trace⟩) ∧
+          Relation.ReflTransGen (NativePublicSourceStep (image false).native 0 setup.program)
+            (checkpoint.residual.lift
+              (ProtocolState.entry checkpoint.residual.tail checkpoint.source),
+                active.application.entry.excluded)
+            (promptNext.residual.lift (ProtocolState.entry promptNext.residual.tail
+              promptNext.source), (image false).excluded) ∧
+          (∃ states : List (ProtocolState setup.program × Finset Player),
+            ((checkpoint.residual.lift
+              (ProtocolState.entry checkpoint.residual.tail checkpoint.source),
+                active.application.entry.excluded) :: states).IsChain
+              (NativePublicSourceStep (image false).native 0 setup.program) ∧
+            ((checkpoint.residual.lift
+              (ProtocolState.entry checkpoint.residual.tail checkpoint.source),
+                active.application.entry.excluded) :: states).getLast
+              (List.cons_ne_nil _ _) = (promptNext.residual.lift (ProtocolState.entry
+                promptNext.residual.tail promptNext.source), (image false).excluded) ∧
+            setup.recoveryAddressWord promptNext.trace = setup.recoveryAddressWord checkpoint.trace
+              ++
+              states.map (fun point => (CommitRecoveryState.atPoint point.1 point.2
+                active.application.generation).publicAddress)) ∧
+          (∀ owner, owner ∉ (image false).excluded → promptNext.source.history owner =
+            checkpoint.source.history owner ++
+              (decodeHistory setup.program ((image false).native.config.history.map
+                ((toEventGraph setup.program).fromModeCompletion mode)) owner).drop
+                  (decodeHistory setup.program (active.application.entry.native.config.history.map
+                    ((toEventGraph setup.program).fromModeCompletion mode)) owner).length) ∧
+          (∃ fuel, setup.commitRecoveryProtocol.ReachesWithin fuel
+            ⟨_, checkpoint.trace⟩ ⟨_, waitingNext.trace⟩) ∧
+          Relation.ReflTransGen (NativePublicSourceStep (image true).native 0 setup.program)
+            (checkpoint.residual.lift
+              (ProtocolState.entry checkpoint.residual.tail checkpoint.source),
+                active.application.entry.excluded)
+            (waitingNext.residual.lift (ProtocolState.entry waitingNext.residual.tail
+              waitingNext.source), (image true).excluded) ∧
+          (∃ states : List (ProtocolState setup.program × Finset Player),
+            ((checkpoint.residual.lift
+              (ProtocolState.entry checkpoint.residual.tail checkpoint.source),
+                active.application.entry.excluded) :: states).IsChain
+              (NativePublicSourceStep (image true).native 0 setup.program) ∧
+            ((checkpoint.residual.lift
+              (ProtocolState.entry checkpoint.residual.tail checkpoint.source),
+                active.application.entry.excluded) :: states).getLast
+              (List.cons_ne_nil _ _) = (waitingNext.residual.lift (ProtocolState.entry
+                waitingNext.residual.tail waitingNext.source), (image true).excluded) ∧
+            setup.recoveryAddressWord waitingNext.trace = setup.recoveryAddressWord checkpoint.trace
+              ++
+              states.map (fun point => (CommitRecoveryState.atPoint point.1 point.2
+                active.application.generation).publicAddress)) ∧
+          (∀ owner, owner ∉ (image true).excluded → waitingNext.source.history owner =
+            checkpoint.source.history owner ++
+              (decodeHistory setup.program ((image true).native.config.history.map
+                ((toEventGraph setup.program).fromModeCompletion mode)) owner).drop
+                  (decodeHistory setup.program (active.application.entry.native.config.history.map
+                    ((toEventGraph setup.program).fromModeCompletion mode)) owner).length) ∧
           NativeSourceReplayExtension setup (image false).native active.application.generation
             checkpoint.trace promptNext.trace ∧
           NativeSourceReplayExtension setup (image true).native active.application.generation
@@ -3112,8 +3253,9 @@ theorem phaseProposalUnflagged_paired_publication_boundary
           ∀ owner, owner ∉ (image false).excluded → ProtocolState.BindingsHoldValues owner
             setup.program (promptNext.residual.lift
               (ProtocolState.entry promptNext.residual.tail promptNext.source))
-    exact ⟨next false, next true, extension false, extension true, point, histories, lifted,
-          address, live⟩
+    exact ⟨next false, next true, reaches false, paths false, addresses false, own false,
+      reaches true, paths true, addresses true, own true, extension false, extension true, point,
+      histories, lifted, address, live⟩
 
 
 end Vegas

@@ -200,19 +200,19 @@ quantifiers and a passing build. The labels below never enter Lean names.
 | Source | Enriched source SE extending the selected intended SE and joint law | Checked: all legal information sites, selected intended strategy and exact initialized full-history law; see the source evidence below |
 | Runtime | Concrete correlated, block-frozen reserved scheduler family | Partial: joint tape and exact scheduler-mixture realization checked; block service certification remains open |
 | Runtime | All-raw opportunity/receipt/completion, timely-valid acceptance and noncircular budgets | Partial: actual correlated-mixture AsyncContract, noncircular budgets, paired counted successor requests and protected fresh-successor receipts checked; whole retry/chain coverage remains open |
-| Runtime | Same-tape admission monotonicity and foreign-service invariance | Partial: paired actual-response stopped runs have identical foreign acceptance words and proposal archives; WAIT focal survival implies available-SEND survival with equal full failure/address words; the complete paired publication boundary is checked, including failed guards and full labeled histories; local payoff and boundary-kernel joins remain open |
+| Runtime | Same-tape admission monotonicity and foreign-service invariance | Partial: paired actual-response stopped runs have identical foreign acceptance words and proposal archives; WAIT focal survival implies available-SEND survival with equal full failure/address words; the complete paired publication boundary is checked, including failed guards and full labeled histories; selected publication endpoint payoff and timing-gain joins are checked; clean binding kernel joins remain open |
 | Runtime | Complete proposal reconstruction and required fresh-slot reserve | Checked: actual full raw inputs reconstruct all submitted proposals, and the horizon reserve supplies fresh active slots; the counted execution fold identifies the same source archive; see the runtime evidence below |
 | Runtime | Supported concurrent instance with variable service orders | Checked: both orders have supported actual prefixes with distinct owners' typed, timely, handler-admissible packets pending together; see the fixture evidence below |
 | Transport | Genuine enriched native query, alias masses and full counted support | Checked: actual genuine enriched query, exact alias projection and full reference support on every original-law counted input, including earlier deviations |
 | Transport | Good-store likelihood transport, including failed proposals | Partial: full source-information likelihood factorization, native information correspondence, terminal coupling and initialized joint-law error bounds are checked, preserving original inputs, exclusions, typed readout and the payoff vector; native conditional likelihood weights remain open |
 | Transport | Uniform foreign-bad posterior bound and separate own-debt cases | Checked: full-input foreign-bad posterior bounds, saved-debt zero gain and the arbitrary-current-law gain bound for binding failure or an observable forced reset; the proof uses actual original clean-close debt and selected reset payoff laws |
-| Transport | Publication timing dominance with actual early observations | Open |
+| Transport | Publication timing dominance with actual early observations | Checked: arbitrary current-action lotteries at full original information are bounded by the foreign-failure posterior and finite-horizon flag error; actual prompt/WAIT comparison and direct opening-alias payoff laws retain the original callback posterior |
 | Transport | Whole-policy binding/retry comparison with the same reset continuation | Partial: arbitrary current-law gain at binding failures and observable forced resets is checked; clean binding transport remains open |
 | Transport | One native Bayes sequence with vanishing gain and initialized-law errors | Partial: concrete common rates, uniform preparation posteriors, actual native Bayes assessments and initialized-law error on the same selected source index are checked; complete gain comparisons and native equilibrium limit remain open |
 | End-to-end | Counted SE and exact initialized joint law | Open |
 | End-to-end | Raw SE, exact settled joint law, zero exclusions/charges and instantiated service | Open |
 
-Progress: **source reach ✓ · source information factor ✓ · outcome law/error ✓ · shared sequence ✓ · binding failure gains ✓ · native beliefs open · clean/timing gains open · full SE open**.
+Progress: **source reach ✓ · source information factor ✓ · outcome law/error ✓ · shared sequence ✓ · binding failure gains ✓ · publication gains ✓ · native beliefs open · clean binding gains open · full SE open**.
 Runtime frontier: arbitrary available binding comparators, the complete paired publication boundary and the source reset boundary are checked.
 Transport frontier: **full information and initialized joint-law/error checked; conditional belief weights and complete native gains open**.
 Update the display from checked statements and name the current bottleneck. Existing
@@ -237,7 +237,7 @@ source witnesses and usable saved bindings are derived before comparing
 the complete continuation payoff laws. The arbitrary-current-law binding gain at saved/current failure or an
 observable forced reset is bounded by the foreign-failure posterior and
 finite-horizon flag error, retaining the original callback posterior. Clean
-binding transport and publication timing gains remain open.
+binding transport remains open.
 
 `exists_phaseProposal_common_perturbations` selects positive source and native
 bad-preparation rates after the actual response floors and before any free
@@ -568,7 +568,7 @@ words need not agree. The
 [fresh payoff consumer](../Vegas/Game/PhaseProposalResetPayoff.lean) applies the
 actual terminal coupling separately at the two supplied endpoints and transports
 their common enriched erased source image through the prescribed continuation.
-The complete current-debt gain still requires the actual checkpoint-debt and
+The checked current binding gain uses the actual checkpoint-debt and
 selected full-witness joins.
 
 The [native flag comparison](../Vegas/Game/PhaseProposalNativeFutureFlags.lean)
@@ -732,3 +732,14 @@ proposal archive, source control/address word and full semantic and enriched
 source histories. General rejecting guards and arbitrary available opening
 aliases are retained. This operational comparison does not establish the
 remaining local payoff inequality or the concurrent SE theorem.
+
+The [publication gain](../Vegas/Game/PhaseProposalPublicationGain.lean)
+proves `phaseProposal_publication_gain_le` for every current-action lottery at
+full original information. Its bound is the foreign-failure posterior plus
+the explicit finite-horizon flag error, multiplied by twice the payoff bound.
+It derives prompt/WAIT ordering from the actual selected closing checkpoints;
+[opening aliases](../Vegas/Game/PhaseProposalPublicationAliases.lean) have equal
+payoff laws directly. The [selected endpoint payoff law](../Vegas/Game/PhaseProposalPublicationPayoff.lean)
+uses the shared [normalization/archive closure](../Vegas/Game/RecoveryPublicClosingWitness.lean).
+The exclusion payoff lies below zero and every terminal utility. Conditional
+belief weights, clean binding comparison and the final equilibrium limit remain open.

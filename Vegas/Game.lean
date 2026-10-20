@@ -1496,3 +1496,7 @@ import Vegas.Game.RecoveryOriginalRetryWitness
 import Vegas.Game.PhaseProposalOriginalResetPayoff
 import Vegas.Game.PhaseProposalCurrentBindingGain
 import Vegas.Game.ProposalRecoveryPublicClassConstancy
+import Vegas.Game.RecoveryPublicClosingWitness
+import Vegas.Game.PhaseProposalPublicationAliases
+import Vegas.Game.PhaseProposalPublicationPayoff
+import Vegas.Game.PhaseProposalPublicationGain

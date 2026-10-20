@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.PhaseProposalFreshTerminal
+import Vegas.Game.RecoveryPublicClosingWitness
 import Vegas.Game.PhaseProposalBindingWitness
 import Vegas.Game.PhaseProposalSampleHistoryJoin
 import Vegas.Game.PhaseProposalSampleHistoryCoupling
@@ -59,15 +60,6 @@ private theorem witness_cast_history
   cases same
   rfl
 
-omit [Fintype Player] in
-private theorem checkpoint_cast_archive
-    {state other : PhaseRuntimeState graph} (same : state = other)
-    (checkpoint : RecoverySourceCheckpoint setup mode state)
-    (messages : List (Message Player (CommitAttemptPacket graph))) :
-    (same ▸ checkpoint).ArchivedProposals messages ↔ checkpoint.ArchivedProposals messages := by
-  cases same
-  rfl
-
 private theorem witness_cast_archive
     {state other : PhaseRuntimeState graph} (same : state = other)
     (witness : RecoverySourceWitness setup mode plan state)
@@ -82,14 +74,6 @@ private theorem witness_cast_bindings
     (witness : RecoverySourceWitness setup mode plan state) (who : Player) :
     (same ▸ witness).checkpoint.source.BindingsHoldValues who ↔
       witness.checkpoint.source.BindingsHoldValues who := by
-  cases same
-  rfl
-
-private theorem proposalDelta_cast_target
-    {state middle other : PhaseRuntimeState graph} (same : middle = other)
-    (checkpoint : RecoverySourceCheckpoint setup mode state)
-    (next : RecoverySourceCheckpoint setup mode middle) :
-    checkpoint.ProposalDelta plan (same ▸ next) ↔ checkpoint.ProposalDelta plan next := by
   cases same
   rfl
 
@@ -585,12 +569,6 @@ theorem RecoverySourceWitness.ordinary_fresh_terminal_coupling
             (noRetry : ¬ (phase.kind = .commitment ∧
               (((phase.drain raw).excluded \ before.execution.application.entry.excluded) ∩
                 phase.owners).Nonempty)) : continuation pair := by
-          obtain ⟨next, nextPath, sourceKernel, nextDelta⟩ :=
-            completed.fresh_normalized_terminal_law mode plan maximal rest
-              before.execution.application.generation (phase.drain raw)
-                before.execution.application.retired sourceCertificate sourceProfile
-                  (nativeArchiveLabels setup
-                    (PhaseProposal.sourceArchive ending.execution.network.inputs))
           have settled : ending.execution.application = PhaseRuntimeState.settle rest
               before.execution.application.generation (phase.drain raw) (phase.drain raw)
                 before.execution.application.retired := by
@@ -601,6 +579,11 @@ theorem RecoverySourceWitness.ordinary_fresh_terminal_coupling
             rw [beforePhases, PhaseRuntimeState.settle_clean phase rest
               before.execution.application.generation before.execution.application.entry
                 raw before.execution.application.retired finished noRetry]
+          obtain ⟨next, nextPath, sourceKernel, _nextDelta, nextArchive⟩ :=
+            RecoverySourceWitness.completed_normalized_archived_source setup mode runtime leaks
+              bounds plan maximal horizon scheduler before ending prior beforeWitness beforeArchived
+                raw effect rawWitness rawCheckpoint phase rest beforePhases finished normalized
+                  settled completed phaseDelta sourceCertificate sourceProfile
           let finalWitness : RecoverySourceWitness setup mode plan
               ending.execution.application := settled.symm ▸ next
           have finalHistory := witness_cast_history setup mode plan settled.symm next
@@ -722,103 +705,9 @@ theorem RecoverySourceWitness.ordinary_fresh_terminal_coupling
               at workEq
             omega
           have nextArchived : finalWitness.checkpoint.ArchivedProposals
-              ending.execution.network.inputs := by
-            let rawState : PhaseRuntimeState graph :=
-              {before.execution.application with current := raw}
-            let completedState : PhaseRuntimeState graph :=
-              ⟨rest, before.execution.application.generation, phase.drain raw,
-                phase.drain raw, before.execution.application.retired⟩
-            have origins := PhaseProposal.openingOrigins_history runtime leaks plan
-              (setup.initialLaw.map encodeInputs) horizon scheduler before
-                ((menu).toRawTrace initial horizon scheduler prior)
-            have rawFrame : PhaseProposal.NormalizationFrame runtime leaks before
-                rawState := by
-              rcases effect with ⟨id, message, result, found, moved, handled, rawEq⟩ |
-                  ⟨command, result, moved, sampled, rawEq⟩
-              · have present := ((app).retained_envelopes_mem_inputs before.execution
-                  ((app).history_provenance initial horizon scheduler
-                    ((menu).toRawTrace initial horizon scheduler prior))
-                  ((app).history_inputRecall initial horizon scheduler
-                    ((menu).toRawTrace initial horizon scheduler prior))).lookup
-                      id message found
-                change PhaseProposal.NormalizationFrame runtime leaks before
-                  ({before.execution.application with current := raw} : PhaseRuntimeState graph)
-                rw [rawEq]
-                exact PhaseProposal.NormalizationFrame.inclusion runtime leaks before
-                  origins message present result handled
-              · change PhaseProposal.NormalizationFrame runtime leaks before
-                  ({before.execution.application with current := raw} : PhaseRuntimeState graph)
-                rw [rawEq]
-                exact PhaseProposal.NormalizationFrame.environment runtime leaks before
-                  origins command result sampled
-            have inherited : before.execution.application.current.excluded ⊆
-                raw.excluded := by
-              rcases effect with ⟨id, message, result, found, moved, handled, rfl⟩ |
-                  ⟨command, result, moved, sampled, rfl⟩
-              · exact before.execution.application.current.inclusionResult_excluded_subset
-                  message.payload.packet.call result
-              · exact before.execution.application.current.environmentResult_excluded_subset
-                  command result
-            have closingInputs : ending.execution.network.inputs =
-                before.execution.network.inputs := by
-              rcases effect with ⟨id, message, result, found, moved, handled, rawEq⟩ |
-                  ⟨command, result, moved, sampled, rawEq⟩
-              · exact (app).environmentStep_inputs before.execution ending.execution
-                  (.include id) moved
-              · exact (app).environmentStep_inputs before.execution ending.execution
-                  (.application command) moved
-            have old : rawWitness.checkpoint.ArchivedProposals
-                before.execution.network.inputs := by
-              intro who active
-              rw [rawCheckpoint]
-              exact beforeArchived who (fun absent => active (inherited absent))
-            have adjacent := rawWitness.order.frontier.adjacent
-            change before.execution.application.phases.IsChain
-              (fun first last => first.high = last.low) at adjacent
-            rw [beforePhases] at adjacent
-            have afterPhase : rawState.attempt.phase < completedState.attempt.phase := by
-              have rawLow : rawState.attempt.phase = phase.low := by
-                simp only [rawState, PhaseRuntimeState.attempt, beforePhases,
-                  List.head?_cons, Option.map_some, Option.getD_some]
-              rw [rawLow]
-              change phase.low < PhaseRuntimeState.phaseLow rest
-              cases rest with
-              | nil => exact phase.nonempty.trans_le phase.bounded
-              | cons next rest =>
-                  exact phase.nonempty.trans_eq (List.isChain_cons_cons.mp adjacent).1
-            have normalizedPhase : completedState.attempt.phase ≤
-                (PhaseRuntimeState.settle rest before.execution.application.generation
-                  (phase.drain raw) (phase.drain raw)
-                    before.execution.application.retired).attempt.phase :=
-              (PhaseRuntimeState.settle_namespace rest
-                before.execution.application.generation (phase.drain raw) (phase.drain raw)
-                  before.execution.application.retired completed.order.frontier.adjacent).2
-            have combined := RecoverySourceCheckpoint.ProposalDelta.trans plan
-              rawWitness.checkpoint completed.checkpoint next.checkpoint phaseDelta nextDelta
-                afterPhase.le
-                normalizedPhase (by
-                  intro otherRuntime otherLeaks external frame
-                  have imageOrigins := frame.currentOrigins.drain raw.excluded phase
-                  exact PhaseProposal.NormalizationFrame.future external completedState
-                    (frame.lower.trans_lt afterPhase) imageOrigins imageOrigins)
-            have rawSettled : rawState.normalize = PhaseRuntimeState.settle rest
-                before.execution.application.generation (phase.drain raw) (phase.drain raw)
-                  before.execution.application.retired := normalized.symm.trans settled
-            let normalizedCheckpoint : RecoverySourceCheckpoint setup mode
-                rawState.normalize := rawSettled.symm ▸ next.checkpoint
-            have delta : rawWitness.checkpoint.ProposalDelta plan normalizedCheckpoint := by
-              exact (proposalDelta_cast_target setup mode plan rawSettled.symm
-                rawWitness.checkpoint next.checkpoint).mpr combined
-            have normalizedArchive := RecoverySourceCheckpoint.ArchivedProposals.normalize
-              plan rawWitness.checkpoint normalizedCheckpoint runtime leaks bounds
-                (setup.initialLaw.map encodeInputs)
-                horizon scheduler before prior rawFrame rawWitness.order.frontier.adjacent
-                  old delta
-            rw [closingInputs]
-            apply (witness_cast_archive setup mode plan settled.symm next
-              before.execution.network.inputs).mpr
-            exact (checkpoint_cast_archive setup mode rawSettled.symm next.checkpoint
-              before.execution.network.inputs).mp normalizedArchive
+              ending.execution.network.inputs :=
+            (witness_cast_archive setup mode plan settled.symm next
+              ending.execution.network.inputs).mpr nextArchive
           refine ⟨ending, finalWitness, finalState, nextIdle, nativePrefix, nextEntry,
             nextFresh, nextArchived, nextProper, smaller, sourcePrefix, ?_⟩
           rw [exactHistory]

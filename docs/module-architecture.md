@@ -2876,5 +2876,14 @@ reset/debt continuations. It requires an exclusion payoff below both the
 default zero payoff and all typed terminal utilities. Its response-kernel
 adapter reuses the retained actual states in
 [the flag comparison](../Vegas/Game/PhaseProposalNativeFutureFlags.lean).
-Full conditional belief weights, clean binding gains and publication timing
-gains remain open.
+Full conditional belief weights and clean binding gains remain open.
+
+[RecoveryPublicClosingWitness](../Vegas/Game/RecoveryPublicClosingWitness.lean)
+owns normalization and archive closure shared by the fresh terminal coupling
+and the [original publication endpoint payoff law](../Vegas/Game/PhaseProposalPublicationPayoff.lean).
+That consumer uses the supplied drained source checkpoint and its actual path.
+[Publication aliases](../Vegas/Game/PhaseProposalPublicationAliases.lean) prove
+equal payoff laws for legal nonsilent openings. The
+[publication gain](../Vegas/Game/PhaseProposalPublicationGain.lean) combines
+those laws with actual prompt/WAIT ordering, the original callback posterior
+and uniform flag errors for arbitrary lotteries at full information.
