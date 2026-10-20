@@ -2,6 +2,9 @@
 
 import Vegas.Game.ConcurrentRawSequentialPreservation
 import Vegas.Game.PhaseProposalConsistentSequence
+import Vegas.Game.PhaseProposalCurrentBindingGain
+import Vegas.Game.PhaseProposalPublicationGain
+import Vegas.Game.PhaseProposalCleanBindingGain
 import Vegas.Game.ProposalRecoveryInitializedLaw
 import Vegas.Source.ProposalRecoveryFiniteness
 import Vegas.Pending.ReservedEpochFinite
@@ -10,19 +13,25 @@ import GameTheoryExtensions.Analysis.Protocol.SuccessRanking
 
 /-! # Raw concurrent equilibrium from local gain comparisons
 
-The remaining analytic premise compares local gains along the actual prescribed
-source and native sequences. The composition constructs the counted equilibrium,
-its initialized joint law and its raw audited extension. It does not discharge
-the local comparison premise or assert concurrent preservation unconditionally.
+Native decisions are classified at their original complete information and
+compared with legal source deviations along one shared sequence. The limit
+retains the initialized joint law through the raw audited extension.
 -/
 
 noncomputable section
 
 namespace Vegas
 
+
 open SourceProgram EventGraph EventGraphRuntime Interaction GameTheory.Protocol
   GameTheory.Protocol.ExecutionProtocol GameTheory.Math.Probability
   GameTheory.Enforcement Filter
+
+attribute [local implicit_reducible] ReservedConcurrentImplementation.initial
+  ReservedConcurrentImplementation.scheduler PhaseCount.onePacketMenu
+  EventGraph.withMode Setup.eventGraph toEventGraph InformationModel.InformationSite
+  ReactiveApplication.ResponseMenu.protocol
+
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -42,6 +51,369 @@ local notation "E" => ReactiveApplication.ResponseMenu.protocol
 local notation "S" => setup.proposalRecoveryModel
 local notation "Hs" => (Fintype.card Player + 1) * (instructionCount setup.program + 1)
 local notation "Hn" => 2 * implementation.horizon + 1
+
+private theorem concurrent_payoff_bound (bounded : payoffs.Bounded) :
+    let bound := ∑ who, (|payoffs.lowerUtility who| + |payoffs.upperUtility who| +
+      |payoffs.excludedPayoff who|)
+    0 ≤ bound ∧ (∀ terminal who, |payoffs.utility terminal who| ≤ bound) ∧
+      (∀ who, |payoffs.excludedPayoff who| ≤ bound) := by
+  classical
+  intro bound
+  have component (who : Player) :
+      |payoffs.lowerUtility who| + |payoffs.upperUtility who| +
+        |payoffs.excludedPayoff who| ≤ bound :=
+    Finset.single_le_sum (f := fun owner : Player =>
+      |payoffs.lowerUtility owner| + |payoffs.upperUtility owner| +
+        |payoffs.excludedPayoff owner|) (fun owner _ =>
+      add_nonneg (add_nonneg (abs_nonneg _) (abs_nonneg _)) (abs_nonneg _))
+        (Finset.mem_univ who)
+  refine ⟨Finset.sum_nonneg (fun owner _ =>
+    add_nonneg (add_nonneg (abs_nonneg _) (abs_nonneg _)) (abs_nonneg _)), ?_, ?_⟩
+  · intro terminal who
+    apply abs_le.mpr
+    have lower := bounded.lower_le terminal who
+    have upper := bounded.le_upper terminal who
+    have total := component who
+    constructor
+    · linarith [neg_abs_le (payoffs.lowerUtility who),
+        abs_nonneg (payoffs.upperUtility who), abs_nonneg (payoffs.excludedPayoff who)]
+    · linarith [le_abs_self (payoffs.upperUtility who),
+        abs_nonneg (payoffs.lowerUtility who), abs_nonneg (payoffs.excludedPayoff who)]
+  · intro who
+    linarith [component who, abs_nonneg (payoffs.lowerUtility who),
+      abs_nonneg (payoffs.upperUtility who)]
+
+private theorem concurrent_error_le_scale
+    (bound : ℝ) (nonnegative : 0 ≤ bound) (nativeCount sourceCount : ℕ)
+    (scale sourceBad nativeBad : Set.Icc (0 : ℝ) 1)
+    (sourceSmall : sourceBad.val ≤ scale.val) (nativeSmall : nativeBad.val ≤ scale.val)
+    (nativePast sourcePast : ℝ) (nativePastSmall : nativePast ≤ scale.val)
+    (sourcePastSmall : sourcePast ≤ scale.val) :
+    2 * bound * (nativePast + (2 * nativeCount + 1) *
+        (⟨nativeBad, scale, scale, scale⟩ : PhaseProposalRates).flagBound) +
+        4 * bound * (sourcePast + sourceCount * (2 * scale.val + sourceBad.val)) ≤
+      bound * (14 + 16 * nativeCount + 12 * sourceCount) * scale.val := by
+  have nativeFlags : (⟨nativeBad, scale, scale, scale⟩ : PhaseProposalRates).flagBound ≤
+      4 * scale.val := by
+    dsimp only [PhaseProposalRates.flagBound]
+    linarith
+  have sourceFlags : 2 * scale.val + sourceBad.val ≤ 3 * scale.val := by linarith
+  have nativeLoss := mul_le_mul_of_nonneg_left
+    (add_le_add nativePastSmall
+      (mul_le_mul_of_nonneg_left nativeFlags (by positivity :
+        (0 : ℝ) ≤ 2 * nativeCount + 1))) (by positivity : 0 ≤ 2 * bound)
+  have sourceLoss := mul_le_mul_of_nonneg_left
+    (add_le_add sourcePastSmall
+      (mul_le_mul_of_nonneg_left sourceFlags (by positivity : (0 : ℝ) ≤ sourceCount)))
+    (by positivity : 0 ≤ 4 * bound)
+  nlinarith [nativeLoss, sourceLoss]
+
+open Classical in
+/-- Each actual native local deviation has negligible gain or is bounded by a
+legal local deviation at the same finite-index source assessment. -/
+theorem concurrentRaw_local_gain_le
+    [setup.FiniteInitialLaw] [Fintype setup.proposalRecoveryProtocol.History]
+    [(app).FiniteNature implementation.initial implementation.scheduler]
+    (operational : implementation.Operational) (bounded : payoffs.Bounded)
+    (qualified : PhaseProposalQualifiedBinding.QualifiedBindingLaw setup implementation)
+    (scale sourceBad nativeBad : Set.Icc (0 : ℝ) 1)
+    (positive : 0 < scale.val ∧ scale.val ≤ 1 / 4 ∧
+      0 < sourceBad.val ∧ sourceBad.val ≤ scale.val ∧
+      0 < nativeBad.val ∧ nativeBad.val ≤ scale.val)
+    (values : ∀ who (key : setup.ProposalRecoveryComponent who),
+      PMF (setup.CommitRecoveryValueChoice who key.1))
+    (fullValues : ∀ who key, FullSupport (values who key))
+    (source : (S).BehavioralAssessment) (native : (N).BehavioralAssessment)
+    (sourcePrescribed : ∀ who (history : setup.proposalRecoveryProtocol.History),
+      ¬ setup.proposalRecoveryProtocol.terminal history.state →
+      source.strategy who ((S).infoOf who history.trace) =
+        setup.proposalRecoveryNormalizedTrembledProfile
+          scale.val scale.property.1 scale.property.2
+          sourceBad.val sourceBad.property.1 sourceBad.property.2
+          scale.val scale.property.1 scale.property.2 values who
+            ((S).infoOf who history.trace))
+    (sourceMixed : source.IsFullyMixed)
+    (sourceBayes : InformationModel.BehavioralAssessment.IsBayesConsistent S source
+      setup.proposalRecoveryModel_decisionAntichain)
+    (nativePrescribed : native.strategy = phaseProposalReferenceStrategy setup .concurrent
+      implementation.runtime implementation.leaks implementation.bounds implementation.plan
+      implementation.initial implementation.horizon implementation.scheduler values
+      ⟨nativeBad, scale, scale, scale⟩)
+    (nativeMixed : native.IsFullyMixed)
+    (nativeBayes : InformationModel.BehavioralAssessment.IsBayesConsistent N native
+      ((menu).decisionInformationAntichain implementation.initial implementation.horizon
+        implementation.scheduler))
+    (sourcePosterior : ∀ who (site : (S).InformationSite who),
+      0 < (S).informationMass source.strategy who site →
+      (∑ history : (S).InformationHistory who site.1 with
+        (∃ owner : Player, who ≠ owner ∧
+          setup.GeneratedPreparationHistory owner history.val),
+        (source.belief who site history).toReal) ≤ scale.val)
+    (nativePosterior : ∀ who (site : (N).InformationSite who),
+      0 < (N).informationMass native.strategy who site →
+      (∑ history : (N).InformationHistory who site.1 with
+        (∃ owner : Player, who ≠ owner ∧
+          PhaseProposal.GeneratedUnusableBindingHistory implementation.runtime
+            implementation.leaks implementation.bounds implementation.initial
+            implementation.horizon implementation.scheduler owner history.val),
+        (native.belief who site history).toReal) ≤ scale.val)
+    (who : Player) (site : (N).InformationSite who) (law : PMF ((N).Choice who site.1)) :
+    let bound := ∑ owner, (|payoffs.lowerUtility owner| + |payoffs.upperUtility owner| +
+      |payoffs.excludedPayoff owner|)
+    let error := bound * (14 + 16 * (Fintype.card Player * Hn : ℕ) +
+      12 * (Fintype.card Player * Hs : ℕ)) * scale.val
+    (N).localGain Hn (fun history => history.state) (implementation.base payoffs)
+        native site law ≤ error ∨
+      ∃ (sourceSite : (S).InformationSite who)
+        (sourceLaw : PMF ((S).Choice who sourceSite.1)),
+        (N).localGain Hn (fun history => history.state) (implementation.base payoffs)
+            native site law ≤
+          (S).localGain Hs id
+            (fun history owner => setup.proposalRecoveryPayoff payoffs.utility
+              payoffs.excludedPayoff owner history) source sourceSite sourceLaw + error := by
+  classical
+  intro bound error
+  obtain ⟨nonnegative, utilityBound, excludedBound⟩ :=
+    concurrent_payoff_bound setup payoffs bounded
+  change 0 ≤ bound at nonnegative
+  have scaleNonnegative := scale.property.1
+  have sourceNonnegative := sourceBad.property.1
+  let rates : PhaseProposalRates := ⟨nativeBad, scale, scale, scale⟩
+  let nativePast := ∑ history : (N).InformationHistory who site.1 with
+    (∃ owner : Player, who ≠ owner ∧
+      PhaseProposal.GeneratedUnusableBindingHistory implementation.runtime
+        implementation.leaks implementation.bounds implementation.initial implementation.horizon
+        implementation.scheduler owner history.val), (native.belief who site history).toReal
+  have nativePastSmall : nativePast ≤ scale.val := nativePosterior who site
+    ((N).informationMass_pos_of_fullSupport _ nativeMixed who site)
+  have scaleBelow : scale.val < 1 := lt_of_le_of_lt positive.2.1 (by norm_num)
+  have sourceBelow : sourceBad.val < 1 := positive.2.2.2.1.trans_lt scaleBelow
+  have nativeBelow : nativeBad.val < 1 := positive.2.2.2.2.2.trans_lt scaleBelow
+  have negligible : 2 * bound *
+      (nativePast + (2 * (Fintype.card Player * Hn : ℕ) + 1) * rates.flagBound) ≤ error := by
+    have estimate := concurrent_error_le_scale bound nonnegative
+      (Fintype.card Player * Hn) (Fintype.card Player * Hs) scale sourceBad nativeBad
+      positive.2.2.2.1 positive.2.2.2.2.2 nativePast 0 nativePastSmall scale.property.1
+    have extra : (0 : ℝ) ≤ 4 * bound *
+        (0 + (Fintype.card Player * Hs : ℕ) * (2 * scale.val + sourceBad.val)) := by
+      positivity
+    change _ ≤ error at estimate
+    dsimp only [rates]
+    linarith
+  have errorNonnegative : 0 ≤ error := by dsimp only [error]; positivity
+  obtain ⟨history, _running, action, offered⟩ := site.property
+  obtain ⟨past, view, information⟩ : ∃ past view, site.1 = some (past, view) := by
+    cases observed : site.1 with
+    | none =>
+        have impossible := offered
+        change some action ∈ (N).menu who site.1 at impossible
+        simp only [observed, ReactiveApplication.ResponseMenu.information,
+          Set.mem_singleton_iff] at impossible
+        cases impossible
+    | some pair => exact ⟨pair.1, pair.2, rfl⟩
+  have actual : ∃ control : (app).Control, history.val.state = some control ∧
+      control.actor = some who ∧ control.execution.recall who = past ∧
+        control.execution.observe app who = view := by
+    have observed := ((menu).info implementation.initial implementation.horizon
+      implementation.scheduler who history.val.trace).symm.trans
+        (history.property.trans information)
+    cases current : history.val.state with
+    | none => rw [current] at observed; cases observed
+    | some control =>
+        rw [current] at observed
+        change (if control.actor = some who then
+          some (control.execution.recall who, control.execution.observe app who) else none) =
+            some (past, view) at observed
+        split at observed
+        · rename_i active
+          exact ⟨control, rfl, active, (Prod.mk.inj (Option.some.inj observed)).1,
+            (Prod.mk.inj (Option.some.inj observed)).2⟩
+        · cases observed
+  obtain ⟨control, current, active, recalled, observed⟩ := actual
+  have counted : (E).Trace (some control) := current ▸ history.val.trace
+  have initialEq : (setup.initialLaw.map encodeInputs).map
+      (PhaseRuntimeState.initial implementation.plan) = implementation.initial :=
+    PMF.map_comp _ _ _
+  have nestedCounted := initialEq.symm ▸ counted
+  have callback : (E).Trace (some ⟨control.remaining, some who, control.execution⟩) := by
+    simpa only [← active] using counted
+  have nestedCallback := initialEq.symm ▸ callback
+  let _ : (phaseApplication implementation.runtime implementation.leaks).FiniteNature
+      ((setup.initialLaw.map encodeInputs).map (PhaseRuntimeState.initial implementation.plan))
+      implementation.scheduler := by rw [initialEq]; infer_instance
+  let _ : Fintype (((menu).protocol
+      ((setup.initialLaw.map encodeInputs).map (PhaseRuntimeState.initial implementation.plan))
+      (ReservedEpoch.executionHorizon implementation.runtime)
+      (ReservedEpoch.implementation implementation.runtime implementation.leaks
+        (ReservedEpoch.packetCapacity implementation.runtime)
+          implementation.prior).scheduler).History)
+      := by
+    rw [PMF.map_comp]
+    change Fintype (E).History
+    infer_instance
+  have silent (singleton : (menu).actions who past view = {⟨none⟩}) :
+      (N).localGain Hn (fun final => final.state) (implementation.base payoffs)
+        native site law = 0 := by
+    have unique : ∀ first second : (N).Choice who site.1, first = second := by
+      intro first second
+      apply Subtype.ext
+      have firstLegal := first.property
+      have secondLegal := second.property
+      simp only [information] at firstLegal secondLegal
+      obtain ⟨firstAction, firstOffered, firstEq⟩ := firstLegal
+      obtain ⟨secondAction, secondOffered, secondEq⟩ := secondLegal
+      rw [singleton] at firstOffered secondOffered
+      exact firstEq.trans ((congrArg some ((Finset.mem_singleton.mp firstOffered).trans
+        (Finset.mem_singleton.mp secondOffered).symm)).trans secondEq.symm)
+    let : Subsingleton ((N).Choice who site.1) := ⟨unique⟩
+    let choice := (native.strategy who site.1).support_nonempty.choose
+    have same : law = native.strategy who site.1 :=
+      (eq_pure_of_subsingleton law choice).trans
+        (eq_pure_of_subsingleton (native.strategy who site.1) choice).symm
+    rw [same, (N).localGain_self]
+  by_cases absent : ∀ coordinate, ¬control.execution.application.SeedRequest who coordinate
+  · left
+    have singleton := PhaseCount.onePacketActions_eq_singleton_of_no_request
+      implementation.runtime implementation.leaks implementation.bounds implementation.plan
+      (setup.initialLaw.map encodeInputs) implementation.horizon implementation.scheduler
+      control.remaining who control.execution nestedCallback absent
+    rw [recalled, observed] at singleton
+    rw [silent singleton]
+    exact errorNonnegative
+  obtain ⟨coordinate, requested⟩ := not_forall.mp absent
+  have request : control.execution.application.SeedRequest who coordinate := not_not.mp requested
+  have sameAttempt := request.1
+  cases coordinate with
+  | mk attempt event =>
+    dsimp only at sameAttempt
+    subst attempt
+    have rawTrace := (menu).toRawTrace _ implementation.horizon implementation.scheduler
+      nestedCounted
+    obtain ⟨_draw, valid⟩ := phaseNativeInvariant_history implementation.runtime
+      implementation.leaks implementation.plan (setup.initialLaw.map encodeInputs)
+        implementation.horizon implementation.scheduler rawTrace
+    have publicRequest : PhaseRuntimeState.requests view.application.2 who
+        ⟨view.application.2.attempt, event⟩ := by
+      rw [← observed]
+      exact (control.execution.application.requests_publicView valid who _).mpr request
+    by_cases sent : ∃ message ∈ (app).outputs (control.execution.recall who),
+        PhaseSeedScheduler.ownPacket ⟨control.execution.application.attempt, event⟩
+          who message = true
+    · left
+      have singleton := PhaseCount.onePacketActions_eq_singleton_of_sent implementation.runtime
+        implementation.leaks implementation.bounds implementation.plan
+        (serviceGraph_revealRelaxedOrdered setup .concurrent) (setup.initialLaw.map encodeInputs)
+        implementation.horizon implementation.scheduler control.remaining who control.execution
+        nestedCallback _ request sent
+      rw [recalled, observed] at singleton
+      rw [silent singleton]
+      exact errorNonnegative
+    have unsent : ∀ message ∈ (app).outputs past,
+        PhaseCount.event? message.payload ≠ some ⟨view.application.2.attempt, event⟩ := by
+      intro message output named
+      rw [← recalled] at output
+      have recalledInputs := (app).history_inputRecall _ implementation.horizon
+        implementation.scheduler rawTrace who
+      rw [← recalledInputs] at output
+      have ownerEq : message.sender = who := of_decide_eq_true (List.mem_filter.mp output).2
+      obtain ⟨actualEvent, actualNamed, coordinateEq⟩ := Option.map_eq_some_iff.mp named
+      have coordinates := CommitAttemptEvent.mk.inj coordinateEq
+      apply sent
+      refine ⟨message, ?_, ?_⟩
+      · rw [← recalledInputs]; exact output
+      · apply decide_eq_true
+        exact ⟨ownerEq, coordinates.1.trans (by rw [← observed]; rfl),
+          coordinates.2 ▸ actualNamed⟩
+    cases node : nodeView (serviceGraph setup .concurrent) event with
+    | bind actor payload binding code =>
+      have ownerEq : actor = who := Option.some.inj
+        (((serviceGraph setup .concurrent).actor?_of_outputLayout_binding binding).symm.trans
+          request.2.2.2.1)
+      subst actor
+      by_cases branch : phaseProposalSavedBindingFailure setup .concurrent
+          implementation.runtime implementation.leaks who event view ∨
+        phaseProposalCurrentBindingFailure setup .concurrent implementation.runtime
+          implementation.leaks who event view ∨
+        (view.application.2.excluded \
+          ((view.application.2.retired.map fun record =>
+              record.2.sourceFailureFootprint.2).foldr (fun first rest => first ∪ rest) ∅ ∪
+            view.application.2.native.sourceFailureFootprint.1
+              view.application.2.attempt.phase)).Nonempty
+      · left
+        have debt := fun [finite : Fintype (((menu).protocol
+          ((setup.initialLaw.map encodeInputs).map (PhaseRuntimeState.initial implementation.plan))
+          (ReservedEpoch.executionHorizon implementation.runtime)
+          (ReservedEpoch.implementation implementation.runtime implementation.leaks
+            (ReservedEpoch.packetCapacity implementation.runtime)
+              implementation.prior).scheduler).History)] =>
+          phaseProposal_current_binding_gain_le setup .concurrent
+          implementation.runtime implementation.leaks implementation.bounds implementation.plan
+          implementation.prior operational.completePending operational.outputValues
+          operational.maximalPhases operational.wellFormed implementation.activationGap
+          implementation.processingGap operational.boundedGaps operational.timely
+          operational.candidateReserve values fullValues rates positive.1 scaleBelow positive.1
+          positive.2.2.2.2.1 nativeBelow
+        rw [PMF.map_comp] at debt
+        exact (debt (finite := inferInstanceAs (Fintype (E).History)) native nativePrescribed
+          who site past view information event payload binding
+          publicRequest branch payoffs.utility payoffs.excludedPayoff bound nonnegative
+          utilityBound (excludedBound who) (bounded.excluded_nonpositive who)
+          (fun terminal => bounded.excluded_le terminal who) law).trans negligible
+      have regular := not_or.mp branch
+      have remaining := not_or.mp regular.2
+      have comparison := phaseProposal_clean_binding_gain_le setup implementation payoffs
+        operational bounded qualified
+        scale sourceBad nativeBad positive.1 scaleBelow positive.2.2.1 sourceBelow
+        positive.2.2.2.2.1 nativeBelow values fullValues source sourcePrescribed sourceMixed
+        sourceBayes native nativePrescribed nativeMixed nativeBayes who site past view information
+        event payload binding publicRequest unsent regular.1 remaining.1 remaining.2
+        bound nonnegative utilityBound excludedBound law
+      rcases comparison with small | ⟨sourceSite, sourceLaw, reached, comparison⟩
+      · left
+        exact small.trans negligible
+      · right
+        refine ⟨sourceSite, sourceLaw, ?_⟩
+        have estimate := concurrent_error_le_scale bound nonnegative
+          (Fintype.card Player * Hn) (Fintype.card Player * Hs) scale sourceBad nativeBad
+          positive.2.2.2.1 positive.2.2.2.2.2 nativePast _ nativePastSmall
+          (sourcePosterior who sourceSite reached)
+        change _ ≤ error at estimate
+        linarith
+    | resolve actor payload publication checks outputEq codeEq =>
+      left
+      have actualActor : (serviceGraph setup .concurrent).actor? event = some actor := by
+        change (((serviceGraph setup .concurrent).nodes event).actor) = _
+        rw [← EventCode.actor_cast outputEq ((serviceGraph setup .concurrent).nodes event), codeEq]
+        rfl
+      have ownerEq : actor = who := Option.some.inj (actualActor.symm.trans request.2.2.2.1)
+      subst actor
+      have publicationGain := fun [finite : Fintype (((menu).protocol
+          ((setup.initialLaw.map encodeInputs).map (PhaseRuntimeState.initial implementation.plan))
+          (ReservedEpoch.executionHorizon implementation.runtime)
+          (ReservedEpoch.implementation implementation.runtime implementation.leaks
+            (ReservedEpoch.packetCapacity implementation.runtime)
+              implementation.prior).scheduler).History)] =>
+          phaseProposal_publication_gain_le setup .concurrent
+        implementation.runtime implementation.leaks implementation.bounds implementation.plan
+        implementation.prior operational.completePending operational.outputValues
+        operational.maximalPhases operational.wellFormed implementation.activationGap
+        implementation.processingGap operational.boundedGaps operational.timely
+        operational.candidateReserve values fullValues rates positive.1 scaleBelow positive.1
+        positive.2.2.2.2.1 nativeBelow
+      rw [PMF.map_comp] at publicationGain
+      exact (publicationGain (finite := inferInstanceAs (Fintype (E).History))
+        native nativePrescribed who site past view information event payload
+        outputEq publicRequest payoffs.utility payoffs.excludedPayoff bound nonnegative
+        utilityBound (excludedBound who) (bounded.excluded_nonpositive who)
+        (fun terminal => bounded.excluded_le terminal who) law).trans negligible
+    | sample payload sampleLaw outputEq codeEq =>
+      have actualActor : (serviceGraph setup .concurrent).actor? event = none := by
+        change (((serviceGraph setup .concurrent).nodes event).actor) = _
+        rw [← EventCode.actor_cast outputEq ((serviceGraph setup .concurrent).nodes event), codeEq]
+        rfl
+      have impossible := request.2.2.2.1
+      rw [actualActor] at impossible
+      cases impossible
 
 open Classical in
 /-- Actual prescribed local comparisons suffice for the complete fixed raw
@@ -363,5 +735,30 @@ theorem concurrentRawSequentialPreservation_of_local_comparisons
     have reached' : original ∈ ((N).runBehavioral counted.strategy Hn).support :=
       countedTerminal ▸ reached
     exact countedClear original reached' who
+
+/-- Exact qualified binding transport suffices for preservation of every
+intended equilibrium and its initialized joint outcome and audited payoff law. -/
+theorem concurrentRawSequentialPreservation_of_qualified_binding_law
+    (qualified : PhaseProposalQualifiedBinding.QualifiedBindingLaw setup implementation) :
+    ConcurrentRawSequentialPreservation setup implementation payoffs countAudit := by
+  classical
+  intro valid
+  apply (concurrentRawSequentialPreservation_of_local_comparisons setup implementation payoffs
+    countAudit ?_) valid
+  intro finiteInitial finiteSource finiteNature scale sourceBad nativeBad values source native
+    positive scaleLimit fullValues sourcePrescribed sourceMixed sourceBayes nativePrescribed
+    nativeMixed nativeBayes sourcePosterior nativePosterior
+  let bound := ∑ who, (|payoffs.lowerUtility who| + |payoffs.upperUtility who| +
+    |payoffs.excludedPayoff who|)
+  let coefficient : ℝ := bound * (14 + 16 * (Fintype.card Player * Hn : ℕ) +
+    12 * (Fintype.card Player * Hs : ℕ))
+  refine ⟨fun n => coefficient * (scale n).val, ?_, ?_⟩
+  · simpa only [mul_zero] using tendsto_const_nhds.mul scaleLimit
+  · intro n who site law
+    simpa only [bound, coefficient] using concurrentRaw_local_gain_le setup implementation
+      payoffs valid.operational valid.payoffs qualified (scale n) (sourceBad n) (nativeBad n)
+        (positive n) (values n) (fullValues n) (source n) (native n) (sourcePrescribed n)
+        (sourceMixed n) (sourceBayes n) (nativePrescribed n) (nativeMixed n) (nativeBayes n)
+        (sourcePosterior n) (nativePosterior n) who site law
 
 end Vegas

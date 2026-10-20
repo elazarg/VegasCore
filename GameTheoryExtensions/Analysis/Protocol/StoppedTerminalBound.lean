@@ -255,6 +255,48 @@ theorem runBehavioralUntil_support_closed_of_going (certificate : E.WellFoundedH
   exact ih next ⟨joint, legal, realized⟩
     (step history halt ended joint legal _ holds realized) stop reached
 
+/-- A pure current commitment is consumed at the first step. Its continuation
+uses the original profile because the information state cannot matter twice. -/
+theorem runBehavioralTerminalFrom_commit_eq_bind [DecidableEq ι]
+    [∀ i, DecidableEq (M.InfoState i)]
+    (certificate : E.WellFoundedHistories) (actsOnce : M.ActsOnceWhereItMatters)
+    (profile : ∀ i, M.BehavioralPolicy i) (who : ι) (history : E.History)
+    (choice : M.Choice who (M.infoOf who history.trace)) :
+    let forced := Profile.update (sig := M.behavioralSignature) profile who
+      ((profile who).commit (M.infoOf who history.trace) choice)
+    M.runBehavioralTerminalFrom certificate forced history =
+      (M.runBehavioralFrom forced 1 history).bind
+        (M.runBehavioralTerminalFrom certificate profile) := by
+  classical
+  intro forced
+  rw [M.runBehavioralTerminalFrom_eq_bind_runBehavioralFrom certificate forced 1 history]
+  apply bind_congr_on_support
+  intro next supported
+  by_cases ended : E.terminal history.state
+  · rw [M.runBehavioralFrom_of_terminal forced 1 ended,
+      PMF.mem_support_pure_iff] at supported
+    subst next
+    simp only [runBehavioralTerminalFrom, E.randomizedBackwardLaw_of_terminal ended]
+  rw [M.runBehavioralFrom_succ_of_not_terminal forced 0 ended,
+    PMF.mem_support_bind_iff] at supported
+  obtain ⟨joint, _drawn, supported⟩ := supported
+  rw [PMF.mem_support_bindOnSupport_iff] at supported
+  obtain ⟨target, realized, exactNext⟩ := supported
+  change next ∈ (PMF.pure (history.extend joint.property realized)).support at exactNext
+  cases (PMF.mem_support_pure_iff _ _).mp exactNext
+  let draws : ∀ owner, M.Choice owner (M.infoOf owner history.trace) := fun owner =>
+    if same : owner = who then same.symm ▸ choice
+    else (profile owner (M.infoOf owner history.trace)).support_nonempty.choose
+  apply M.runBehavioralTerminalFrom_congr certificate
+  intro later reachable running owner
+  by_cases own : owner = who
+  · subst owner
+    obtain ⟨fuel, reachable⟩ := reachable
+    have agree := M.commit_agree_of_actsOnce actsOnce profile draws joint.property realized
+      later reachable running who
+    simpa only [forced, Profile.update_same, draws, dite_true, eq_rec_constant] using agree
+  · simp only [forced, Profile.update_of_ne _ _ own]
+
 /-- **Terminal play splits at a stopping set.** Terminal play from a history is
 play until the stopping set followed by terminal play from there. -/
 theorem runBehavioralTerminalFrom_eq_bind_runBehavioralUntil

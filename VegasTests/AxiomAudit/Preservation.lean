@@ -5052,3 +5052,9 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.phaseProposal_unflagged_wait_finish_le
+
+/-- info: 'Vegas.concurrentRawSequentialPreservation_of_qualified_binding_law'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.concurrentRawSequentialPreservation_of_qualified_binding_law

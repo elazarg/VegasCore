@@ -425,6 +425,7 @@ end PhaseRuntimeState
 
 /-- The physical network, receipts and player/environment recall are the
 ordinary reactive execution carrier, with automatic phase normalization internal. -/
+@[implicit_reducible]
 def phaseApplication (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket graph)) :
     ReactiveApplication Player where

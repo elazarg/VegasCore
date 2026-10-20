@@ -13,7 +13,12 @@ import Vegas.Game.ProposalRecoveryPools
 import Vegas.Game.PhaseProposalAttemptArchive
 import GameTheory.Protocol.Predraw
 import Interaction.ReactiveAnchoredStopped
+import Interaction.ReactiveSchedulerStoppedSeed
+import Interaction.ReactiveSchedulerFinishSeed
+import Interaction.ReactiveRawRoundTrace
+import Interaction.ReactiveTerminalEvaluation
 import Vegas.Game.ConcurrentRawSequentialPreservation
+import Vegas.Pending.ReservedEpochService
 
 /-! # Qualified binding payoffs at the original native information
 
@@ -41,28 +46,17 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
 
 local notation "app" => phaseApplication runtime leaks
 local notation "menu" => PhaseCount.onePacketMenu runtime leaks bounds
-local notation "initial" =>
-  PMF.map (PhaseRuntimeState.initial plan) (PMF.map encodeInputs setup.initialLaw)
 local notation "horizon" => ReservedEpoch.executionHorizon runtime
 local notation "scheduler" => ReactiveApplication.SchedulerImplementation.scheduler
   (ReservedEpoch.implementation runtime leaks (ReservedEpoch.packetCapacity runtime) prior)
-local notation "E" => ReactiveApplication.ResponseMenu.protocol
-  (PhaseCount.onePacketMenu runtime leaks bounds) initial horizon scheduler
-local notation "N" => ReactiveApplication.ResponseMenu.information
-  (PhaseCount.onePacketMenu runtime leaks bounds) initial horizon scheduler
-
-/-- Zero future flags use the original ordinary value table. -/
-def unflaggedStrategy
-    (values : ∀ who (key : setup.ProposalRecoveryComponent who),
-      PMF (setup.CommitRecoveryValueChoice who key.1)) :
-    ∀ who, (N).BehavioralPolicy who :=
-  fun who => (menu).restrictPolicy initial horizon scheduler who
-    (phaseProposalUnflaggedPolicy setup mode runtime leaks bounds plan values who)
 
 variable (values : ∀ who (key : setup.ProposalRecoveryComponent who),
   PMF (setup.CommitRecoveryValueChoice who key.1))
 
-local notation "clean" => unflaggedStrategy setup mode runtime leaks bounds plan prior values
+section AliasSampling
+
+local notation "initial" =>
+  PMF.map (PhaseRuntimeState.initial plan) (PMF.map encodeInputs setup.initialLaw)
 
 /-- Expand the original response aliases after the ordinary response class.
 No support totalization is applied to a table-conditioned value law. -/
@@ -781,6 +775,22 @@ theorem sampled_base_stopped_marginal
 
 end Sampling
 
+end AliasSampling
+
+local notation "initial" =>
+  setup.initialLaw.map (fun draw => PhaseRuntimeState.initial plan (encodeInputs draw))
+local notation "E" => ReactiveApplication.ResponseMenu.protocol
+  (PhaseCount.onePacketMenu runtime leaks bounds) initial horizon scheduler
+local notation "N" => ReactiveApplication.ResponseMenu.information
+  (PhaseCount.onePacketMenu runtime leaks bounds) initial horizon scheduler
+
+/-- Zero future flags use the original ordinary value table. -/
+def unflaggedStrategy : ∀ who, (N).BehavioralPolicy who :=
+  fun who => (menu).restrictPolicy initial horizon scheduler who
+    (phaseProposalUnflaggedPolicy setup mode runtime leaks bounds plan values who)
+
+local notation "clean" => unflaggedStrategy setup mode runtime leaks bounds plan prior values
+
 open Classical in
 /-- One actual response, with the chosen atom committed at this history's
 actual information. Subsequent play is defined separately. -/
@@ -868,7 +878,9 @@ theorem stoppedFinish_state (who : Player) (history : (E).History)
         Prod.snd).map History.state := (PMF.map_comp _ _ _).symm
     _ = _ := by
       rw [stoppedFinish_terminal]
-      exact phaseProposal_response_kernel_finish setup mode runtime leaks bounds plan prior clean
+      have finish := phaseProposal_response_kernel_finish setup mode runtime leaks bounds plan prior
+      rw [PMF.map_comp] at finish
+      exact finish clean
         (fun _ => currentStep setup mode runtime leaks bounds plan prior values who history choice)
         remaining who execution response
         (currentStep_state setup mode runtime leaks bounds plan prior values who history choice
@@ -892,7 +904,7 @@ theorem stoppedFinish_seed_marginal (who : Player) (history : (E).History)
           (some ⟨remaining, none, execution.respond app who response⟩) := by
   rw [stoppedFinish_state setup mode runtime leaks bounds plan prior values who history choice
     remaining execution current response selected]
-  simpa only [PMF.pure_bind] using
+  simpa only [PMF.pure_bind, PMF.map_comp, Function.comp_def] using
     (phaseProposal_current_finish_seed_marginal setup mode runtime leaks plan prior
       ((menu).decodeProfile initial horizon scheduler clean) remaining who execution
       (PMF.pure response))
@@ -949,7 +961,7 @@ theorem closing_all_admitted_no_new_failure
   classical
   obtain ⟨_native, _binding, receipts, _stored, _remembered, _coverage⟩ :=
     phaseClosingEffect_checkpoint_facts setup mode runtime leaks bounds plan horizon scheduler
-      before ending priorTrace raw effect changed
+      before ending (by rw [PMF.map_comp]; exact priorTrace) raw effect changed
   have record := (receipts.exclusion.installed phase (by
     simpa only using installed)).phase_drain phase
   rintro ⟨owner, member⟩
@@ -959,7 +971,8 @@ theorem closing_all_admitted_no_new_failure
   · exact excluded.2 inherited
   · have read := ReservedEpoch.original_binding_publicFailure_iff runtime leaks
       (serviceGraph_revealRelaxedOrdered setup mode) plan (setup.initialLaw.map encodeInputs)
-      horizon scheduler before ((menu).toRawTrace initial horizon scheduler priorTrace)
+      horizon scheduler before (by rw [PMF.map_comp]; exact
+      ((menu).toRawTrace initial horizon scheduler priorTrace))
       ending.execution raw changed effect phase installed commitment finished event
     have notEarlier : ¬ event.val < phase.low := Nat.not_lt.mpr lower
     have upper : event.val < phase.high := by
@@ -1005,15 +1018,8 @@ theorem exists_closing_source_word
           (witness.checkpoint.commitInstructionWord (phase.drain raw).native).reverse ++
             setup.recoveryJointRecall witness.checkpoint.trace := by
   classical
-  have initialEq : initial = setup.initialLaw.map
-      (fun draw => PhaseRuntimeState.initial plan (encodeInputs draw)) := PMF.map_comp _ _ _
-  have counted : ((menu).protocol
-      (setup.initialLaw.map fun draw => PhaseRuntimeState.initial plan (encodeInputs draw))
-      horizon scheduler).Trace (some before) := by
-    rw [← initialEq]
-    exact priorTrace
   obtain ⟨witness, archived⟩ := recoverySourceCheckpoint_proposalArchive_history setup mode runtime
-    leaks bounds plan maximal horizon scheduler counted
+    leaks bounds plan maximal horizon scheduler priorTrace
   obtain ⟨remaining, phases⟩ := List.head?_eq_some_iff.mp (Option.mem_def.mp installed)
   have low : phase.low = before.execution.application.attempt.phase := by
     simp only [PhaseRuntimeState.attempt, phases, List.head?_cons, Option.map_some,
@@ -1024,10 +1030,11 @@ theorem exists_closing_source_word
     before.execution.application.attempt.phase phase commitment low witness.checkpoint.source
   have chain := (phasePlanGeometry_history runtime leaks plan maximal
     (setup.initialLaw.map encodeInputs) horizon scheduler
-    ((menu).toRawTrace initial horizon scheduler priorTrace)).2.2
+    (by rw [PMF.map_comp]; exact
+      ((menu).toRawTrace initial horizon scheduler priorTrace))).2.2
   obtain ⟨native, binding, receipts, stored, remembered, coverage⟩ :=
     phaseClosingEffect_checkpoint_facts setup mode runtime leaks bounds plan horizon scheduler
-      before ending priorTrace raw effect changed
+      before ending (by rw [PMF.map_comp]; exact priorTrace) raw effect changed
   obtain ⟨draw, invariant⟩ := native
   let frame : PhaseRuntimeState (serviceGraph setup mode) :=
     { before.execution.application with current := raw }
@@ -1139,8 +1146,7 @@ omit mode runtime leaks bounds plan prior values in
 The original assessed beliefs determine the qualification mass and the source
 causal law. This proposition asserts no proof of their correspondence. -/
 def QualifiedBindingLaw (implementation : ReservedConcurrentImplementation setup) : Prop :=
-  let nativeInitial := (setup.initialLaw.map encodeInputs).map
-    (PhaseRuntimeState.initial implementation.plan)
+  let nativeInitial := implementation.initial
   let nativeMenu := PhaseCount.onePacketMenu implementation.runtime implementation.leaks
     implementation.bounds
   let nativeModel := nativeMenu.information nativeInitial implementation.horizon
@@ -1230,5 +1236,578 @@ def QualifiedBindingLaw (implementation : ReservedConcurrentImplementation setup
               mix retained.val retained.property.1.le retained.property.2
                 (sourceCausalPayoff setup ordinary source who sourceSite (encode value) positive
                   utility excludedPayoff) (PMF.pure none)
+
+omit values in
+private theorem closing_all_admitted_excluded_eq
+    (before ending : (app).Control) (priorTrace : (E).Trace (some before))
+    (phase : RuntimePhase (serviceGraph setup mode))
+    (installed : phase ∈ before.execution.application.phases.head?)
+    (commitment : phase.kind = .commitment)
+    (raw : RecoveryState (serviceGraph setup mode))
+    (effect : PhaseClosingEffect runtime leaks before.execution ending.execution raw)
+    (changed : ending.execution.application.attempt ≠ before.execution.application.attempt)
+    (finished : phase.Finished (phase.drain raw))
+    (admitted : ∀ event ∈ phase.events, ∀ owner,
+      (serviceGraph setup mode).actor? event = some owner →
+      owner ∉ before.execution.application.entry.excluded →
+      (phase.drain raw).native.accepted (.inr event) ≠ none) :
+    (phase.drain raw).excluded = before.execution.application.entry.excluded := by
+  classical
+  obtain ⟨_native, _binding, receipts, _stored, _remembered, _coverage⟩ :=
+    phaseClosingEffect_checkpoint_facts setup mode runtime leaks bounds plan horizon scheduler
+      before ending (by rw [PMF.map_comp]; exact priorTrace) raw effect changed
+  have record := (receipts.exclusion.installed phase (by simpa only using installed)).phase_drain
+    phase
+  apply Finset.ext
+  intro owner
+  constructor
+  · intro member
+    rcases (record.excluded owner).mp member with inherited |
+        ⟨event, lower, acting, failed⟩
+    · exact inherited
+    · by_contra active
+      have read := ReservedEpoch.original_binding_publicFailure_iff runtime leaks
+        (serviceGraph_revealRelaxedOrdered setup mode) plan (setup.initialLaw.map encodeInputs)
+        horizon scheduler before (by rw [PMF.map_comp]; exact
+      ((menu).toRawTrace initial horizon scheduler priorTrace))
+        ending.execution raw changed effect phase installed commitment finished event
+      have notEarlier : ¬ event.val < phase.low := Nat.not_lt.mpr lower
+      have upper : event.val < phase.high := by
+        by_contra beyond
+        have impossible := read.mp failed
+        simp only [notEarlier, beyond, ↓reduceIte] at impossible
+      have absent : raw.native.accepted (.inr event) = none := by
+        simpa only [notEarlier, upper, ↓reduceIte] using read.mp failed
+      have present := admitted event ((phase.mem_events event).mpr ⟨lower, upper⟩)
+        owner acting active
+      rw [(phase.drain_tables raw).1] at present
+      exact present absent
+  · intro inherited
+    exact (record.excluded owner).mpr (Or.inl inherited)
+
+omit values in
+/-- On the actual first commitment exit, the original trace gate is precisely
+equality with the exclusion saved at the original entry. -/
+theorem attemptUntil_gate_iff
+    (delay bound : (serviceGraph setup mode).EventId → Nat)
+    (contract : PhaseService.AsyncContract runtime leaks initial horizon scheduler delay bound)
+    (profile : ∀ owner, (N).BehavioralPolicy owner)
+    (start : (app).Control) (trace : (E).Trace (some start))
+    (origin : (app).Control) (originTrace : (E).Trace (some origin))
+    (originKept : TracePrefix originTrace trace)
+    (sameAttempt : start.execution.application.attempt = origin.execution.application.attempt)
+    (samePhases : start.execution.application.phases = origin.execution.application.phases)
+    (phase : RuntimePhase (serviceGraph setup mode))
+    (installed : phase ∈ start.execution.application.phases.head?)
+    (commitment : phase.kind = .commitment)
+    (final : (E).History)
+    (supported : final ∈ ((N).runBehavioralUntil
+      ((menu).bounded initial horizon scheduler).wellFoundedHistories profile
+      (attemptExit setup mode runtime leaks bounds plan prior ⟨some start, trace⟩)
+      ⟨some start, trace⟩).support) :
+    originalAdmissionGate setup mode runtime leaks bounds plan prior
+      ⟨some origin, originTrace⟩ final ↔
+      ∃ ending : (app).Control, final.state = some ending ∧
+        ending.execution.application.attempt ≠ origin.execution.application.attempt ∧
+        ending.execution.application.current.excluded =
+          origin.execution.application.entry.excluded := by
+  classical
+  have initialized : ∀ state ∈ (initial).support, state.Ordered := by
+    intro state member
+    obtain ⟨inputs, _, rfl⟩ := PMF.support_map .. ▸ member
+    exact PhaseRuntimeState.initial_ordered plan (encodeInputs inputs)
+  have ordered := (phaseApplication_seedOrder runtime leaks).history initial horizon scheduler
+    initialized ((menu).toRawTrace initial horizon scheduler originTrace)
+  constructor
+  · rintro ⟨original, before, ending, currentPhase, priorTrace, joint, legal, realized, raw,
+      initialState, finalEq, kept, _originalPhase, installedNow, kind, same, changed, effect,
+      normalized, finished, admitted⟩
+    cases Option.some.inj initialState
+    have entryEq := (phase_attempt_progress_of_prefix runtime leaks menu initial initialized
+      horizon scheduler origin before originTrace priorTrace kept ordered).2.2 same.symm
+    have excluded := closing_all_admitted_excluded_eq setup mode runtime leaks bounds plan prior
+      before ending priorTrace currentPhase installedNow kind raw effect
+      (fun equal => changed (equal.trans same)) finished (by simpa only [← entryEq] using admitted)
+    have actualExcluded : ending.execution.application.current.excluded =
+        (currentPhase.drain raw).excluded := by
+      rw [normalized]
+      simpa only [PhaseRuntimeState.normalize, RuntimePhase.drain_excluded] using
+        (PhaseRuntimeState.settle_physical before.execution.application.phases
+          before.execution.application.generation before.execution.application.entry raw
+          before.execution.application.retired).1
+    exact ⟨ending, congrArg History.state finalEq, changed,
+      actualExcluded.trans (excluded.trans (congrArg RecoveryState.excluded entryEq.symm))⟩
+  · rintro ⟨ending, finalState, changed, excludedEq⟩
+    have stopEq : attemptExit setup mode runtime leaks bounds plan prior ⟨some start, trace⟩ =
+        (fun history : (E).History => match history.state with
+          | none => False
+          | some control => control.execution.application.attempt ≠
+              start.execution.application.attempt) := by
+      funext history
+      cases state : history.state <;> simp only [attemptExit, state]
+    have snapshotSupported := supported
+    rw [stopEq] at snapshotSupported
+    have snapshotLaw := phase_attempt_stopped_receipt_snapshot runtime leaks menu plan
+      (setup.initialLaw.map encodeInputs) horizon scheduler delay bound
+    rw [PMF.map_comp] at snapshotLaw
+    dsimp only [Function.comp_def] at snapshotLaw
+    obtain ⟨actual, actualState, actualChanged, _idle, snapshot, finished, valid, covered,
+      excluded, _receipts, before, priorTrace, joint, legal, realized, raw, kept, edgeKept,
+      same, installedNow, snapshotEq, normalized, effect⟩ :=
+      snapshotLaw contract profile start trace phase installed final
+          (by
+            convert snapshotSupported using 1; congr 1
+            all_goals
+              congr 1
+              funext history
+              cases state : history.state <;> rfl)
+    cases Option.some.inj (actualState.symm.trans finalState)
+    have first := (N).runBehavioralUntil_support_first
+      ((menu).bounded initial horizon scheduler).wellFoundedHistories profile
+        (attemptExit setup mode runtime leaks bounds plan prior ⟨some start, trace⟩)
+        ⟨some start, trace⟩ final supported
+    have edgeEq :
+        (⟨some ending, priorTrace.extend joint legal realized⟩ : (E).History) = final := by
+      apply edgeKept.eq_of_length
+      have lower := edgeKept.length_le
+      by_contra different
+      have shorter : (priorTrace.extend joint legal realized).length < final.trace.length := by
+        omega
+      exact first ⟨some ending, priorTrace.extend joint legal realized⟩
+        (kept.extend joint legal realized) edgeKept shorter actualChanged
+    refine ⟨origin, before, ending, phase, priorTrace, joint, legal, realized, raw, rfl,
+      edgeEq.symm, originKept.trans kept, ?_, installedNow, commitment,
+      same.trans sameAttempt, changed, effect,
+      normalized, snapshotEq ▸ finished, ?_⟩
+    · simpa only [← samePhases] using installed
+    · intro event inside owner acting active absent
+      obtain ⟨author, payload, layout⟩ := commitment ▸
+        phase.fields event ((phase.mem_events event).mp inside).1
+          ((phase.mem_events event).mp inside).2
+      have authorEq : author = owner := Option.some.inj
+        ((actor?_of_outputLayout_binding (serviceGraph setup mode) layout).symm.trans acting)
+      subst author
+      have missing : snapshot.native.PublicFailure event := Or.inl
+        ((snapshot.native.publicView_missedBinding event owner payload layout).mpr
+          ⟨finished inside, by simpa only [snapshotEq] using absent⟩)
+      exact active (excludedEq ▸ excluded ▸ covered.covered event owner acting missing)
+
+omit prior values in
+/-- At an idle counted history, stopping on the original namespace change has
+exactly the existing physical stopped-round law. The full stopped control is
+retained, so supported physical endpoints have supported counted preimages. -/
+theorem attemptUntil_state
+    (initialLaw : PMF (app).State)
+    (serviceScheduler : (app).Scheduler)
+    (profile : ∀ owner, ((menu).information initialLaw horizon serviceScheduler).BehavioralPolicy
+      owner)
+    (attempt : CommitAttemptId) (remaining : Nat) (execution : (app).Execution)
+    (trace : ((menu).protocol initialLaw horizon serviceScheduler).Trace
+      (some ⟨remaining, none, execution⟩)) :
+    (((menu).information initialLaw horizon serviceScheduler).runBehavioralUntil
+      ((menu).bounded initialLaw horizon serviceScheduler).wellFoundedHistories profile
+      (fun history => match history.state with
+        | none => False
+        | some control => control.execution.application.attempt ≠ attempt)
+      ⟨some ⟨remaining, none, execution⟩, trace⟩).map History.state =
+    ((app).runUntil serviceScheduler ((menu).decodeProfile initialLaw horizon serviceScheduler
+      profile) (fun next => next.application.attempt ≠ attempt) remaining execution).map
+      (fun next => some ⟨horizon - next.environmentRecall.length, none, next⟩) := by
+  classical
+  let model := (menu).information initialLaw horizon serviceScheduler
+  let protocol := (menu).protocol initialLaw horizon serviceScheduler
+  let certificate := ((menu).bounded initialLaw horizon serviceScheduler).wellFoundedHistories
+  let players := (menu).decodeProfile initialLaw horizon serviceScheduler profile
+  let halted := fun next : (app).Execution => next.application.attempt ≠ attempt
+  let stopped := fun history : protocol.History => match history.state with
+    | none => False
+    | some control => halted control.execution
+  let pack := fun next : (app).Execution =>
+    (some ⟨horizon - next.environmentRecall.length, none, next⟩ : (app).ProtocolState)
+  let physical := fun state : (app).ProtocolState => match state with
+    | none => PMF.pure none
+    | some control =>
+        if halted control.execution then PMF.pure (some control)
+        else ((app).resume players control.actor control.execution).bind fun next =>
+          ((app).runUntil serviceScheduler players halted control.remaining next).map pack
+  have packed (control : (app).Control)
+      (actual : protocol.Trace (some control)) (idle : control.actor = none) :
+      pack control.execution = some control := by
+    have accounted := (app).raw_trace_horizon initialLaw horizon serviceScheduler
+      ((menu).toRawTrace initialLaw horizon serviceScheduler actual)
+    rcases control with ⟨rounds, actor, current⟩
+    change actor = none at idle
+    subst actor
+    change current.environmentRecall.length + rounds = horizon at accounted
+    dsimp only [pack]
+    congr 2
+    omega
+  have loop : ∀ history : protocol.History, ∀ control : (app).Control,
+      history.state = some control →
+      (model.runBehavioralUntil certificate profile stopped history).map History.state =
+        physical (some control) := by
+    intro history
+    induction history using certificate.induction with
+    | _ history ih =>
+      intro control current
+      by_cases halt : stopped history
+      · have haltedControl : halted control.execution := by
+          simpa only [stopped, current] using halt
+        rw [model.runBehavioralUntil_of_stopped certificate profile halt, PMF.pure_map]
+        simp only [physical, haltedControl, ↓reduceIte, current]
+      by_cases ended : protocol.terminal history.state
+      · have terminal : control.remaining = 0 ∧ control.actor = none := by
+          have actual := ended
+          rw [current] at actual
+          change control.remaining = 0 ∧ control.actor = none at actual
+          exact actual
+        rw [model.runBehavioralUntil_of_terminal certificate profile ended, PMF.pure_map]
+        have notHalted : ¬ halted control.execution := by
+          simpa only [stopped, current] using halt
+        simp only [physical, notHalted, ↓reduceIte, terminal.1, terminal.2,
+          ReactiveApplication.resume, PMF.pure_bind, ReactiveApplication.runUntil,
+          PMF.pure_map, packed control (current ▸ history.trace) terminal.2, current]
+      have notHalted : ¬ halted control.execution := by
+        simpa only [stopped, current] using halt
+      rw [model.runBehavioralUntil_of_running certificate profile halt ended, PMF.map_bind]
+      calc
+        _ = (model.runBehavioralFrom profile 1 history).bind
+            (fun next => physical next.state) := by
+          apply bind_congr_on_support
+          intro next member
+          have realized := model.mem_support_runBehavioralFrom_one profile ended member
+          obtain ⟨joint, _legal, moved⟩ := realized.1
+          change next.state ∈ ((app).transition initialLaw horizon serviceScheduler
+            history.state joint).support at moved
+          rw [current] at moved
+          obtain ⟨child, nextState, _recall⟩ := (app).transition_recall_prefix initialLaw horizon
+            serviceScheduler control next.state joint moved
+          simpa only [nextState] using ih next realized.1 child nextState
+        _ = ((model.runBehavioralFrom profile 1 history).map History.state).bind physical :=
+          (show ((model.runBehavioralFrom profile 1 history).map History.state).bind physical =
+            (model.runBehavioralFrom profile 1 history).bind
+              (fun next => physical next.state) from
+                by simpa only [Function.comp_def] using
+                  (PMF.bind_map (model.runBehavioralFrom profile 1 history)
+                    History.state physical)).symm
+        _ = ((app).controlStep initialLaw horizon serviceScheduler players
+            (some control)).bind physical := by
+          rw [(menu).run_map_controlSteps, Function.iterate_one, PMF.pure_bind, current]
+        _ = physical (some control) := by
+          rcases control with ⟨rounds, actor, before⟩
+          cases actor with
+          | some owner =>
+              have responseAttempt (response : (app).Action) :
+                  (before.respond app owner response).application.attempt =
+                    before.application.attempt := by
+                rcases response with ⟨_ | material⟩ <;> rfl
+              simp only [ReactiveApplication.controlStep, ReactiveApplication.actor,
+                Option.bind_some, ReactiveApplication.transition, ↓reduceIte,
+                Option.getD_some, PMF.bind_bind, PMF.pure_bind, physical, notHalted,
+                ↓reduceIte, ReactiveApplication.resume, ReactiveApplication.invoke,
+                PMF.bind_map, Function.comp_def]
+              apply bind_congr_on_support
+              intro response _
+              have unchanged : ¬ halted (before.respond app owner response) := by
+                simpa only [halted, responseAttempt] using notHalted
+              simp only [unchanged, ↓reduceIte]
+          | none =>
+              cases rounds with
+              | zero =>
+                  apply (ended ?_).elim
+                  rw [current]
+                  change (0 : Nat) = 0 ∧ (none : Option Player) = none
+                  exact ⟨rfl, rfl⟩
+              | succ rounds =>
+                  simp only [ReactiveApplication.controlStep, ReactiveApplication.actor,
+                    Option.bind_some, ReactiveApplication.transition,
+                    PMF.bind_bind, PMF.bind_map, Function.comp_def]
+                  change ((serviceScheduler before.environmentRecall
+                    (before.observeEnvironment app)).bind fun command =>
+                      (before.environmentStep app command).bind fun next =>
+                        physical (some ⟨rounds, command.actor? app, next⟩)) = _
+                  have unfolded : physical (some ⟨rounds + 1, none, before⟩) =
+                      ((app).runUntil serviceScheduler players halted (rounds + 1) before).map
+                        pack := by
+                    simp only [physical, notHalted, ↓reduceIte, ReactiveApplication.resume,
+                      PMF.pure_bind]
+                  rw [unfolded]
+                  simp only [ReactiveApplication.runUntil, notHalted, ↓reduceIte,
+                    PMF.map_bind, ReactiveApplication.round, ReactiveApplication.dispatch,
+                    PMF.bind_bind]
+                  apply bind_congr_on_support
+                  intro command selected
+                  apply bind_congr_on_support
+                  intro next moved
+                  have actual := (menu).toRawTrace initialLaw horizon serviceScheduler
+                    (current ▸ history.trace)
+                  obtain ⟨nextTrace⟩ := (app).raw_trace_environment initialLaw horizon
+                    serviceScheduler rounds before next command actual selected moved
+                  have accounted := (app).raw_trace_horizon initialLaw horizon serviceScheduler
+                    nextTrace
+                  have aligned : horizon - next.environmentRecall.length = rounds := by
+                    change next.environmentRecall.length + rounds = horizon at accounted
+                    omega
+                  cases selectedActor : command.actor? app with
+                  | none =>
+                      by_cases atExit : halted next
+                      · simp only [physical, atExit, ↓reduceIte,
+                          ReactiveApplication.resume, PMF.pure_bind,
+                          (app).runUntil_of_stop serviceScheduler players halted rounds next
+                            atExit, PMF.pure_map,
+                          pack, aligned]
+                      · simp only [physical, atExit, ↓reduceIte,
+                          ReactiveApplication.resume, PMF.pure_bind]
+                  | some owner =>
+                      have sameApplication : next.application = before.application := by
+                        cases command with
+                        | activate responder =>
+                            dsimp only [ReactiveApplication.Execution.environmentStep] at moved
+                            obtain ⟨updated, observed, rfl⟩ :=
+                              (PMF.mem_support_map_iff _ _ _).mp moved
+                            obtain ⟨_seen, _supported, rfl⟩ :=
+                              (PMF.mem_support_map_iff _ _ _).mp observed
+                            rfl
+                        | «include» id => cases selectedActor
+                        | application call => cases selectedActor
+                        | wait => cases selectedActor
+                      have unchanged : ¬ halted next := by
+                        simpa only [halted, sameApplication] using notHalted
+                      simp only [physical, unchanged, ↓reduceIte]
+  change (model.runBehavioralUntil certificate profile stopped
+    ⟨some ⟨remaining, none, execution⟩, trace⟩).map History.state =
+      ((app).runUntil serviceScheduler players halted remaining execution).map pack
+  have actual := loop ⟨some ⟨remaining, none, execution⟩, trace⟩
+    ⟨remaining, none, execution⟩ rfl
+  by_cases halt : halted execution
+  · rw [(app).runUntil_of_stop serviceScheduler players halted remaining execution halt,
+      PMF.pure_map, packed ⟨remaining, none, execution⟩ trace rfl]
+    simpa only [physical, halt, ↓reduceIte] using actual
+  · simpa only [physical, halt, ↓reduceIte, ReactiveApplication.resume, PMF.pure_bind]
+      using actual
+
+open Classical in
+/-- The original first-exit gate, terminal state and immutable tape have one
+joint law. The tape posterior is taken at the original callback and the same
+tape drives both the existing stopped evaluator and its terminal finish. -/
+theorem stoppedFinish_gate_seed_joint
+    (activationGap processingGap : Nat)
+    (gaps : ∀ tape ∈ prior.support, tape.BoundedGaps (ReservedEpoch.completionCycles runtime)
+      activationGap processingGap)
+    (maximal : plan.phases.IsChain fun first last => first.kind ≠ last.kind ∨ first.kind = .sample)
+    (who : Player) (history : (E).History)
+    (choice : (N).Choice who ((N).infoOf who history.trace))
+    (remaining : Nat) (execution : (app).Execution)
+    (current : history.state = some ⟨remaining, some who, execution⟩)
+    (response : (app).Action) (selected : choice.1 = some response)
+    (phase : RuntimePhase (serviceGraph setup mode))
+    (installed : phase ∈ execution.application.phases.head?)
+    (commitment : phase.kind = .commitment) :
+    let family := ReservedEpoch.family runtime leaks (ReservedEpoch.packetCapacity runtime)
+    let mixture := (app).schedulerMixture prior family
+    let players := phaseProposalUnflaggedPolicy setup mode runtime leaks bounds plan values
+    let stop := fun next : (app).Execution =>
+      next.application.attempt ≠ execution.application.attempt
+    let seedAt := fun state : (app).ProtocolState => match state with
+      | none => prior
+      | some control => mixture.posterior control.execution.environmentRecall
+    ((stoppedFinish setup mode runtime leaks bounds plan prior values who history choice).bind
+      fun result => (seedAt result.2.state).map fun tape =>
+        ((decide (originalAdmissionGate setup mode runtime leaks bounds plan prior
+            history result.1),
+          result.2.state), tape)) =
+    (mixture.posterior execution.environmentRecall).bind fun tape =>
+      ((app).runUntil (family tape) players stop remaining
+        (execution.respond app who response)).bind fun ending =>
+          ((app).finish initial horizon (family tape) players
+            (some ⟨horizon - ending.environmentRecall.length, none, ending⟩)).map fun terminal =>
+              ((decide (ending.application.attempt ≠ execution.application.attempt ∧
+                  ending.application.current.excluded = execution.application.entry.excluded),
+                terminal), tape) := by
+  classical
+  intro family mixture players stop seedAt
+  let certificate := ((menu).bounded initial horizon scheduler).wellFoundedHistories
+  let afterExecution := execution.respond app who response
+  let pack := fun ending : (app).Execution =>
+    (some ⟨horizon - ending.environmentRecall.length, none, ending⟩ : (app).ProtocolState)
+  let gate := fun state : (app).ProtocolState => decide (∃ ending : (app).Control,
+    state = some ending ∧ ending.execution.application.attempt ≠ execution.application.attempt ∧
+      ending.execution.application.current.excluded = execution.application.entry.excluded)
+  have packGate (ending : (app).Execution) : gate (pack ending) =
+      decide (ending.application.attempt ≠ execution.application.attempt ∧
+        ending.application.current.excluded = execution.application.entry.excluded) := by
+    dsimp only [gate, pack]
+    apply decide_eq_decide.mpr
+    constructor
+    · rintro ⟨actual, same, changed, excluded⟩
+      cases Option.some.inj same
+      exact ⟨changed, excluded⟩
+    · rintro ⟨changed, excluded⟩
+      exact ⟨_, rfl, changed, excluded⟩
+  have decoded : (menu).decodeProfile initial horizon scheduler clean = players := by
+    funext owner
+    exact (menu).decode_restrictPolicy_of_covered initial horizon scheduler owner _
+      (phaseProposalUnflaggedPolicy_covered setup mode runtime leaks bounds plan values owner)
+  have contract := ReservedEpoch.implementation_asyncContract runtime leaks prior
+    activationGap processingGap gaps plan (serviceGraph_revealRelaxedOrdered setup mode) maximal
+    (setup.initialLaw.map encodeInputs)
+  simp only [PMF.map_comp, Function.comp_def] at contract
+  have responseState := currentStep_state setup mode runtime leaks bounds plan prior values who
+    history choice remaining execution current response selected
+  have actual : (stoppedFinish setup mode runtime leaks bounds plan prior values who history
+      choice).bind (fun result => (seedAt result.2.state).map fun tape =>
+        ((decide (originalAdmissionGate setup mode runtime leaks bounds plan prior
+            history result.1),
+          result.2.state), tape)) =
+      ((app).runUntil scheduler players stop remaining afterExecution).bind fun ending =>
+        ((app).finish initial horizon scheduler players (pack ending)).bind fun terminal =>
+          (seedAt terminal).map fun tape => ((gate (pack ending), terminal), tape) := by
+    unfold stoppedFinish
+    rw [PMF.bind_bind]
+    calc
+      _ = (currentStep setup mode runtime leaks bounds plan prior values who history choice).bind
+          (fun _ => ((app).runUntil scheduler players stop remaining afterExecution).bind
+            fun ending => ((app).finish initial horizon scheduler players (pack ending)).bind
+              fun terminal => (seedAt terminal).map fun tape =>
+                ((gate (pack ending), terminal), tape)) := by
+        apply bind_congr_on_support
+        intro after reached
+        have afterState : after.state = some ⟨remaining, none, afterExecution⟩ := by
+          have member := (PMF.mem_support_map_iff History.state _ _).mpr ⟨after, reached, rfl⟩
+          rw [responseState, PMF.mem_support_pure_iff] at member
+          exact member
+        let afterTrace : (E).Trace (some ⟨remaining, none, afterExecution⟩) :=
+          afterState ▸ after.trace
+        let originTrace : (E).Trace (some ⟨remaining, some who, execution⟩) :=
+          current ▸ history.trace
+        have recast (original : (E).History) (state : (E).State)
+            (same : original.state = state) :
+            (⟨state, same ▸ original.trace⟩ : (E).History) = original := by
+          rcases original with ⟨source, trace⟩
+          cases same
+          rfl
+        have originEq : (⟨some ⟨remaining, some who, execution⟩, originTrace⟩ : (E).History) =
+            history := recast history _ current
+        have afterEq : (⟨some ⟨remaining, none, afterExecution⟩, afterTrace⟩ : (E).History) =
+            after := recast after _ afterState
+        have retained : TracePrefix history.trace after.trace := by
+          change after ∈ ((N).runBehavioralFrom _ 1 history).support at reached
+          exact ((N).runBehavioralFrom_reachesWithin _ 1 history after reached).tracePrefix
+        have sameAttempt : afterExecution.application.attempt = execution.application.attempt := by
+          rcases response with ⟨_ | material⟩ <;> rfl
+        have samePhases : afterExecution.application.phases = execution.application.phases := by
+          rcases response with ⟨_ | material⟩ <;> rfl
+        let exit := fun final : (E).History => match final.state with
+          | none => False
+          | some control => control.execution.application.attempt ≠ execution.application.attempt
+        have originExit :
+            attemptExit setup mode runtime leaks bounds plan prior history = exit := by
+          funext final
+          cases state : final.state <;> simp only [attemptExit, current, state, exit]
+        have afterExit : attemptExit setup mode runtime leaks bounds plan prior
+            ⟨some ⟨remaining, none, afterExecution⟩, afterTrace⟩ = exit := by
+          funext final
+          cases state : final.state <;> simp only [attemptExit, state, sameAttempt, exit]
+        let stops := (N).runBehavioralUntil certificate clean
+          (attemptExit setup mode runtime leaks bounds plan prior history) after
+        let normalStops := (N).runBehavioralUntil certificate clean exit
+          ⟨some ⟨remaining, none, afterExecution⟩, afterTrace⟩
+        have normalizedStops : stops = normalStops :=
+          congrArg₂ (fun predicate start =>
+            (N).runBehavioralUntil certificate clean predicate start)
+            originExit afterEq.symm
+        have stopsLaw : stops.map History.state =
+            ((app).runUntil scheduler players stop remaining afterExecution).map pack := by
+          have law := attemptUntil_state setup mode runtime leaks bounds initial scheduler clean
+            execution.application.attempt remaining afterExecution afterTrace
+          have normalLaw : normalStops.map History.state =
+              ((app).runUntil scheduler players stop remaining afterExecution).map pack := by
+            dsimp only [normalStops, exit, certificate, stop, pack]
+            rw [decoded] at law
+            convert law using 1; congr 1; congr 1
+            all_goals
+              funext final
+              cases state : final.state <;> rfl
+          exact (congrArg (PMF.map History.state) normalizedStops).trans normalLaw
+        calc
+          _ = stops.bind (fun ending => ((app).finish initial horizon scheduler players
+              ending.state).bind fun terminal => (seedAt terminal).map fun tape =>
+                ((gate ending.state, terminal), tape)) := by
+            simp only [PMF.bind_bind, PMF.bind_map, Function.comp_def]
+            apply bind_congr_on_support
+            intro ending supported
+            have retainedCasted : TracePrefix originTrace afterTrace := by
+              have same := congrArg₂ (fun left right : (E).History =>
+                TracePrefix left.trace right.trace) originEq afterEq
+              exact same.symm ▸ retained
+            have normalSupported : ending ∈ normalStops.support := normalizedStops ▸ supported
+            have gateSupported : ending ∈ ((N).runBehavioralUntil certificate clean
+                (attemptExit setup mode runtime leaks bounds plan prior
+                  ⟨some ⟨remaining, none, afterExecution⟩, afterTrace⟩)
+                ⟨some ⟨remaining, none, afterExecution⟩, afterTrace⟩).support := by
+              simpa only [normalStops, afterExit] using normalSupported
+            have gateEq := attemptUntil_gate_iff setup mode runtime leaks bounds plan prior
+              _ _ contract clean ⟨remaining, none, afterExecution⟩ afterTrace
+              ⟨remaining, some who, execution⟩ originTrace retainedCasted
+              sameAttempt samePhases phase (by simpa only [samePhases] using installed)
+              commitment ending gateSupported
+            have gateValue : decide (originalAdmissionGate setup mode runtime leaks bounds plan
+                prior history ending) = gate ending.state := by
+              dsimp only [gate]
+              exact decide_eq_decide.mpr (by simpa only [originEq] using gateEq)
+            have retag := congrArg (fun admitted : Bool =>
+              ((N).runBehavioralTerminalFrom certificate clean ending).bind fun terminal =>
+                (seedAt terminal.state).map fun tape => ((admitted, terminal.state), tape))
+                  gateValue
+            have terminalLaw := (menu).terminal_run_eq_finish initial horizon scheduler
+              certificate clean ending
+            rw [decoded] at terminalLaw
+            let kernel := fun terminal : (app).ProtocolState =>
+              (seedAt terminal).map fun tape => ((gate ending.state, terminal), tape)
+            have projected := congrArg (fun law : PMF (app).ProtocolState => law.bind kernel)
+              terminalLaw
+            have composed := (PMF.bind_map
+              ((N).runBehavioralTerminalFrom certificate clean ending) History.state kernel).symm
+            exact retag.trans (composed.trans projected)
+          _ = _ := by
+            simpa only [PMF.bind_map, Function.comp_def] using
+              congrArg (fun law => law.bind fun state =>
+                ((app).finish initial horizon scheduler players state).bind fun terminal =>
+                  (seedAt terminal).map fun tape => ((gate state, terminal), tape)) stopsLaw
+      _ = _ := PMF.bind_const _ _
+  rw [actual]
+  symm
+  have stoppedJoint := (app).schedulerMixture_runUntil_joint prior family players stop
+    remaining afterExecution
+  have transformed := congrArg (fun law => law.bind fun result : (app).Execution ×
+      ReservedEpoch.Tape Player tapeLength =>
+        ((app).finish initial horizon (family result.2) players (pack result.1)).map
+          fun terminal => ((gate (pack result.1), terminal), result.2)) stoppedJoint
+  simp only [PMF.bind_bind, PMF.bind_map, Function.comp_def] at transformed
+  have startRecall : afterExecution.environmentRecall = execution.environmentRecall :=
+    (app).respond_environmentRecall execution who response
+  rw [startRecall] at transformed
+  calc
+    _ = ((app).runUntil scheduler players stop remaining afterExecution).bind fun ending =>
+        (mixture.posterior ending.environmentRecall).bind fun tape =>
+          ((app).finish initial horizon (family tape) players (pack ending)).map
+            fun terminal => ((gate (pack ending), terminal), tape) := by
+      simp only [packGate] at transformed ⊢
+      simpa only [family, mixture, ReservedEpoch.implementation, pack, afterExecution]
+        using transformed
+    _ = _ := by
+      apply bind_congr_on_support
+      intro ending _
+      have finished := (app).schedulerMixture_finish_joint prior family initial horizon players
+        (pack ending)
+      have mapped := congrArg (PMF.map fun result : (app).ProtocolState ×
+          ReservedEpoch.Tape Player tapeLength => ((gate (pack ending), result.1), result.2))
+            finished
+      simp only [pack, family, PMF.map_bind, PMF.map_comp, Function.comp_def] at mapped
+      convert mapped using 1; congr 1
+      all_goals
+        funext terminal
+        dsimp only [seedAt, pack, mixture, family]
+        congr 1; first | rfl | (cases terminal <;> rfl)
 
 end Vegas.PhaseProposalQualifiedBinding

@@ -6,6 +6,8 @@ import Vegas.Game.PhaseProposalAttemptArchive
 import Vegas.Game.PhaseProposalCoupledQuery
 import Vegas.EventGraph.ReadySemanticStability
 import Vegas.EventGraph.PrivateInputs
+import Vegas.Pending.PhaseFiniteNature
+import Interaction.ReactiveFiniteAssessment
 import Vegas.Pending.PhaseSemanticProgress
 import Vegas.Pending.PhaseReadyBindingDeclaration
 import Vegas.Game.PhaseProposalBindingSettlement
@@ -20,6 +22,7 @@ import Vegas.Source.CommitRecoveryCommitUnique
 import Interaction.ReactiveAnchoredStopped
 import Interaction.ReactiveStoppedState
 import GameTheoryExtensions.Analysis.Protocol.StoppedHistoryInvariant
+import GameTheoryExtensions.Math.Probability.PresentConditional
 
 /-! # Clean binding comparisons at the original native information
 
@@ -2243,5 +2246,2310 @@ theorem phaseProposal_unflagged_wait_finish_le
     simpa only [expect_constant] using averaged
   · exact payoffIntegrable_of_bounded _ _ (fun _ => evaluateBound _)
   · exact payoffIntegrable_of_bounded _ _ (fun _ => evaluateBound _)
+
+omit runtime leaks bounds in
+/-- A newly failed current-block field is unresolved at the completed source
+point. This uses the actual decoded attempt, including inherited exclusions. -/
+private theorem completed_binding_failed_field
+    (maximal : plan.phases.IsChain fun first last =>
+      first.kind ≠ last.kind ∨ first.kind = .sample)
+    (state : PhaseRuntimeState (graph))
+    (witness : RecoverySourceWitness setup mode plan state)
+    (phase : RuntimePhase (graph)) (rest : List (RuntimePhase (graph)))
+    (installed : state.phases = phase :: rest) (kind : phase.kind = .commitment)
+    (finished : phase.Finished (phase.drain state.current))
+    (clean : (phase.drain state.current).excluded = state.entry.excluded)
+    (coverage : state.FailureCoverage)
+    (who : Player) (active : who ∉ state.entry.excluded)
+    (event : (graph).EventId) (inside : event ∈ phase.events) (payload : L.Ty)
+    (binding : (graph).outputLayout event = .binding who payload)
+    (failed : (⟨.inr event, binding⟩ : FieldRef (graph).layout (.binding who payload)).get?
+      (phase.drain state.current).native.config.store = some .failure) :
+    ProtocolState.FailedBinding who setup.program
+      (witness.checkpoint.commitResultPoint (phase.drain state.current)) := by
+  classical
+  have geometry := witness.checkpoint.commit_phase_geometry phase rest installed kind
+    witness.order.frontier (maximal.suffix witness.suffix)
+  apply witness.checkpoint.commitResultPoint_failedBinding (phase.drain state.current) who
+  generalize decomposition : commitPhase witness.checkpoint.residual.tail = segment at geometry ⊢
+  rcases segment with ⟨Δ, names, suffix, block, reconstruct, boundary⟩
+  dsimp only at geometry ⊢
+  let embedding := cast (congrArg (fun program => OutputEmbedding
+    (inputLayout setup.context) (outputLayout setup.program) program) reconstruct.symm)
+      witness.checkpoint.embedding
+  let image := phase.drain state.current
+  let decoded := decodeCommitAttempt setup.program mode block suffix embedding image.native
+    witness.checkpoint.source state.entry.excluded
+  have rankTransport {first second : SourceProgram Player L
+      witness.checkpoint.residual.context witness.checkpoint.residual.names}
+      (eq : first = second)
+      (e : OutputEmbedding (inputLayout setup.context) (outputLayout setup.program) second)
+      (rank : ∀ i, (e.event i).val = state.attempt.phase + i.val) :
+      ∀ i, ((cast (congrArg (fun p => OutputEmbedding (inputLayout setup.context)
+        (outputLayout setup.program) p) eq.symm) e).event i).val =
+          state.attempt.phase + i.val := by cases eq; exact rank
+  have ranks := rankTransport reconstruct witness.checkpoint.embedding
+    witness.checkpoint.compiled.rankEq
+  have low : state.attempt.phase = phase.low := by
+    simp only [PhaseRuntimeState.attempt, installed, List.head?_cons, Option.map_some,
+      Option.getD_some]
+  have interval := (phase.mem_events event).mp inside
+  let index : Fin (eventCount (block.prepend suffix)) :=
+    ⟨event.val - state.attempt.phase, by
+      have bound := block.eventCount_prepend suffix
+      omega⟩
+  have indexed : embedding.event index = event := Fin.ext (by
+    rw [ranks]
+    dsimp only [index]
+    omega)
+  have typed : outputLayout (block.prepend suffix) index = .binding who payload :=
+    (embedding.layout_eq index).symm.trans (indexed.symm ▸ binding)
+  have debt := filled_failed_binding_field setup block suffix embedding
+    image.native.config.store witness.checkpoint.source witness.checkpoint.unique who payload
+      index (by dsimp only [index]; omega) typed ⟨.inr event, binding⟩
+        (congrArg Sum.inr indexed.symm) failed
+  have after : decoded.2.1 = state.entry.excluded := by
+    rw [decodeCommitAttempt_excluded_eq_public_prefix setup.program mode block suffix embedding
+      state.attempt.phase ranks image.native (fun i hi => finished (geometry.2 i hi))]
+    apply Finset.union_eq_left.mpr
+    intro owner member
+    obtain ⟨selected, _lower, _upper, actor, missing⟩ := (Finset.mem_filter.mp member).2
+    rw [← clean]
+    exact (coverage.active.drain phase).covered selected owner actor missing
+  have same := decodeCommitAttempt_surviving_view_eq_fill setup.program mode block suffix
+    embedding image.native (phase.drain_bindingInvariant state.current witness.binding.active)
+      who witness.checkpoint.source witness.checkpoint.source state.entry.excluded rfl
+        (fun i hi _ => finished (geometry.2 i hi)) (after.symm ▸ active)
+  exact debt.of_sourceObserve_eq (congrArg Prod.fst same).symm
+
+omit mode runtime leaks bounds plan in
+open Classical in
+/-- Removing source flags keeps the same installed local law on both sides;
+all other focal and foreign future responses retain their ordinary values. -/
+private theorem source_flags_after_same_local_law
+    (scale bad : Set.Icc (0 : ℝ) 1)
+    (values : ∀ owner (key : setup.ProposalRecoveryComponent owner),
+      PMF (setup.CommitRecoveryValueChoice owner key.1))
+    (who : Player) (information : setup.proposalRecoveryModel.InfoState who)
+    (law : PMF (setup.proposalRecoveryModel.Choice who information))
+    (history : setup.proposalRecoveryProtocol.History) (fuel : Nat) :
+    let ordinary := PhaseProposalQualifiedBinding.sourceUnflaggedStrategy setup values
+    let flagged := setup.proposalRecoveryNormalizedTrembledProfile
+      scale.val scale.property.1 scale.property.2 bad.val bad.property.1 bad.property.2
+      scale.val scale.property.1 scale.property.2 values
+    PMF.WithinTV ((Fintype.card Player * fuel : Nat) * (2 * scale.val + bad.val))
+      (setup.proposalRecoveryModel.runBehavioralFrom
+        (Profile.update (sig := setup.proposalRecoveryModel.behavioralSignature) ordinary who
+          ((ordinary who).withLaw information law)) fuel history)
+      (setup.proposalRecoveryModel.runBehavioralFrom
+        (Profile.update (sig := setup.proposalRecoveryModel.behavioralSignature) flagged who
+          ((flagged who).withLaw information law)) fuel history) := by
+  intro ordinary flagged
+  let keep := (1 - scale.val) * (1 - bad.val) * (1 - scale.val)
+  have firstNonnegative : 0 ≤ (1 - scale.val) * (1 - bad.val) :=
+    mul_nonneg (sub_nonneg.mpr scale.property.2) (sub_nonneg.mpr bad.property.2)
+  have firstSmall : (1 - scale.val) * (1 - bad.val) ≤ 1 :=
+    (mul_le_of_le_one_right (sub_nonneg.mpr scale.property.2)
+      (by linarith [bad.property.1])).trans (by linarith [scale.property.1])
+  have keepNonnegative : 0 ≤ keep :=
+    mul_nonneg firstNonnegative (sub_nonneg.mpr scale.property.2)
+  have keepSmall : keep ≤ 1 :=
+    (mul_le_of_le_one_right firstNonnegative
+      (by linarith [scale.property.1])).trans firstSmall
+  have missing : 1 - keep ≤ 2 * scale.val + bad.val := by
+    have second := mul_le_of_le_one_left bad.property.1
+      (by linarith [scale.property.1] : 1 - scale.val ≤ 1)
+    have third := mul_le_of_le_one_left scale.property.1 firstSmall
+    dsimp only [keep]
+    nlinarith [second, third]
+  have lower (owner : Player)
+      (info : setup.proposalRecoveryModel.InfoState owner)
+      (choice : setup.proposalRecoveryModel.Choice owner info) :
+      keep * ((ordinary owner info) choice).toReal ≤ ((flagged owner info) choice).toReal :=
+    setup.proposalRecoveryNormalizedTrembledProfile_ordinary_lower
+      scale.val scale.property.1 scale.property.2 bad.val bad.property.1 bad.property.2
+      scale.val scale.property.1 scale.property.2 values owner info choice
+  have close := setup.proposalRecoveryModel.runBehavioralFrom_withinTV_of_supported_choices
+    (Profile.update (sig := setup.proposalRecoveryModel.behavioralSignature) ordinary who
+      ((ordinary who).withLaw information law))
+    (Profile.update (sig := setup.proposalRecoveryModel.behavioralSignature) flagged who
+      ((flagged who).withLaw information law)) keep keepNonnegative keepSmall history (by
+        intro _ next _ owner choice
+        by_cases own : owner = who
+        · subst owner
+          simp only [Profile.update_same]
+          by_cases current : setup.proposalRecoveryModel.infoOf who next.trace = information
+          · have same : (ordinary who).withLaw information law
+                (setup.proposalRecoveryModel.infoOf who next.trace) =
+              (flagged who).withLaw information law
+                (setup.proposalRecoveryModel.infoOf who next.trace) := by
+              rw [current, InformationModel.BehavioralPolicy.withLaw_self,
+                InformationModel.BehavioralPolicy.withLaw_self]
+            rw [same]
+            exact mul_le_of_le_one_left ENNReal.toReal_nonneg keepSmall
+          · rw [InformationModel.BehavioralPolicy.withLaw_of_ne _ _ _ current,
+              InformationModel.BehavioralPolicy.withLaw_of_ne _ _ _ current]
+            exact lower who _ choice
+        · simp only [Profile.update_of_ne _ _ own]
+          exact lower owner _ choice) fuel
+  apply close.mono
+  exact (one_sub_pow_le_mul keepNonnegative (Fintype.card Player * fuel)).trans
+    (mul_le_mul_of_nonneg_left missing (Nat.cast_nonneg _))
+
+omit mode runtime leaks bounds plan in
+open Classical in
+private theorem conditioned_gain_le [Fintype setup.proposalRecoveryProtocol.History]
+    (who : Player) (site : setup.proposalRecoveryModel.InformationSite who)
+    (source : setup.proposalRecoveryModel.BehavioralAssessment)
+    (present : ∃ history ∈
+        {history : setup.proposalRecoveryModel.InformationHistory who site.1 |
+          PhaseProposalQualifiedBinding.sourceForeignGood setup who history.val},
+      history ∈ (source.belief who site).support)
+    (gain : setup.proposalRecoveryModel.InformationHistory who site.1 → ℝ)
+    (bound : ℝ) (bounded : ∀ history, |gain history| ≤ 2 * bound) :
+    expect ((source.belief who site).filter
+        {history | PhaseProposalQualifiedBinding.sourceForeignGood setup who history.val} present)
+        gain ≤ expect (source.belief who site) gain +
+      4 * bound * (∑ history : setup.proposalRecoveryModel.InformationHistory who site.1 with
+        (∃ owner : Player, who ≠ owner ∧ setup.GeneratedPreparationHistory owner history.val),
+        (source.belief who site history).toReal) := by
+  let belief := source.belief who site
+  let good : Set (setup.proposalRecoveryModel.InformationHistory who site.1) :=
+    {history | PhaseProposalQualifiedBinding.sourceForeignGood setup who history.val}
+  let mass : ℝ := (∑' history, good.indicator belief history).toReal
+  have small : mass ≤ 1 := by
+    have restricted : (∑' history, good.indicator belief history) ≤ 1 := by
+      calc
+        (∑' history, good.indicator belief history) ≤ ∑' history, belief history := by
+          apply ENNReal.tsum_le_tsum
+          intro history
+          by_cases member : history ∈ good
+          · simpa only [Set.indicator_of_mem member] using le_refl (belief history)
+          · simpa only [Set.indicator_of_notMem member] using
+              (show (0 : ENNReal) ≤ belief history from zero_le)
+        _ = 1 := belief.tsum_coe
+    exact (ENNReal.toReal_mono ENNReal.one_ne_top restricted).trans_eq ENNReal.toReal_one
+  have dominated (history) : mass * ((belief.filter good present) history).toReal ≤
+      (belief history).toReal := by
+    have restricted := congrArg ENNReal.toReal (filter_mass_mul belief good present history)
+    rw [ENNReal.toReal_mul] at restricted
+    change mass * ((belief.filter good present) history).toReal = _ at restricted
+    rw [restricted]
+    by_cases included : history ∈ good
+    · rw [Set.indicator_of_mem included]
+    · rw [Set.indicator_of_notMem included, ENNReal.toReal_zero]
+      exact ENNReal.toReal_nonneg
+  have close := PMF.WithinTV.of_domination (belief.filter good present) belief mass small dominated
+  have comparison := close.expect_sub_le gain (-2 * bound) (4 * bound) (by
+    intro history _
+    have interval := abs_le.mp (bounded history)
+    constructor <;> linarith)
+  have complement : 1 - mass =
+      ∑ history : setup.proposalRecoveryModel.InformationHistory who site.1 with
+        (∃ owner : Player, who ≠ owner ∧ setup.GeneratedPreparationHistory owner history.val),
+        (belief history).toReal := by
+    have finiteMass : mass = ∑ history, if history ∈ good then (belief history).toReal else 0 := by
+      dsimp only [mass]
+      rw [tsum_fintype, ENNReal.toReal_sum]
+      · apply Finset.sum_congr rfl
+        intro history _
+        by_cases member : history ∈ good <;> simp only [Set.indicator, member, ite_true, ite_false,
+          ENNReal.toReal_zero]
+      · intro history _
+        by_cases member : history ∈ good <;> simp only [Set.indicator, member, ite_true, ite_false]
+        · exact belief.apply_ne_top history
+        · exact ENNReal.zero_ne_top
+    have negated (history) : history ∉ good ↔
+        ∃ owner : Player, who ≠ owner ∧ setup.GeneratedPreparationHistory owner history.val := by
+      simp only [good, Set.mem_ofPred_eq, PhaseProposalQualifiedBinding.sourceForeignGood]
+      push Not
+      simp only [ne_comm]
+    rw [finiteMass, ← pmf_sum_toReal_eq_one belief, ← Finset.sum_sub_distrib,
+      Finset.sum_filter]
+    apply Finset.sum_congr rfl
+    intro history _
+    by_cases member : history ∈ good
+    · simp only [member, ite_true, sub_self, ← negated, not_true_eq_false, ite_false]
+    · simp only [member, ite_false, sub_zero, ← negated, not_false_eq_true, ite_true]
+  rw [complement] at comparison
+  dsimp only [belief, good] at comparison
+  linarith
+
+omit mode runtime leaks bounds plan in
+open Classical in
+private theorem source_unflagged_gain_le
+    (scale bad : Set.Icc (0 : ℝ) 1)
+    (values : ∀ owner (key : setup.ProposalRecoveryComponent owner),
+      PMF (setup.CommitRecoveryValueChoice owner key.1))
+    (source : setup.proposalRecoveryModel.BehavioralAssessment)
+    (prescribed : ∀ owner (history : setup.proposalRecoveryProtocol.History)
+      (_running : ¬ setup.proposalRecoveryProtocol.terminal history.state),
+      source.strategy owner (setup.proposalRecoveryModel.infoOf owner history.trace) =
+        setup.proposalRecoveryNormalizedTrembledProfile
+          scale.val scale.property.1 scale.property.2 bad.val bad.property.1 bad.property.2
+          scale.val scale.property.1 scale.property.2 values owner
+            (setup.proposalRecoveryModel.infoOf owner history.trace))
+    (who : Player) (site : setup.proposalRecoveryModel.InformationSite who)
+    (law : PMF (setup.proposalRecoveryModel.Choice who site.1))
+    (payoff : setup.proposalRecoveryProtocol.History → Player → ℝ)
+    (bound : ℝ) (payoffBound : ∀ history, |payoff history who| ≤ bound) (fuel : Nat) :
+    let ordinary : setup.proposalRecoveryModel.BehavioralAssessment :=
+      ⟨PhaseProposalQualifiedBinding.sourceUnflaggedStrategy setup values, source.belief⟩
+    setup.proposalRecoveryModel.localGain fuel id payoff ordinary site law ≤
+      setup.proposalRecoveryModel.localGain fuel id payoff source site law +
+        4 * bound * ((Fintype.card Player * fuel : Nat) * (2 * scale.val + bad.val)) := by
+  intro ordinary
+  let flagged := setup.proposalRecoveryNormalizedTrembledProfile
+    scale.val scale.property.1 scale.property.2 bad.val bad.property.1 bad.property.2
+    scale.val scale.property.1 scale.property.2 values
+  let error : ℝ := (Fintype.card Player * fuel : Nat) * (2 * scale.val + bad.val)
+  have actual (history : setup.proposalRecoveryProtocol.History) :
+      setup.proposalRecoveryModel.runBehavioralFrom flagged fuel history =
+        setup.proposalRecoveryModel.runBehavioralFrom source.strategy fuel history := by
+    apply setup.proposalRecoveryModel.runBehavioralFrom_congr
+    intro later _ running owner
+    exact (prescribed owner later running).symm
+  have alternative (history : setup.proposalRecoveryProtocol.History) :
+      setup.proposalRecoveryModel.runBehavioralFrom
+        (Profile.update (sig := setup.proposalRecoveryModel.behavioralSignature) flagged who
+          ((flagged who).withLaw site.1 law)) fuel history =
+      setup.proposalRecoveryModel.runBehavioralFrom
+        (Profile.update (sig := setup.proposalRecoveryModel.behavioralSignature)
+          source.strategy who ((source.strategy who).withLaw site.1 law)) fuel history := by
+    apply setup.proposalRecoveryModel.runBehavioralFrom_congr
+    intro later _ running owner
+    by_cases own : owner = who
+    · subst owner
+      simp only [Profile.update_same]
+      by_cases selected : setup.proposalRecoveryModel.infoOf who later.trace = site.1
+      · rw [selected, InformationModel.BehavioralPolicy.withLaw_self,
+          InformationModel.BehavioralPolicy.withLaw_self]
+      · rw [InformationModel.BehavioralPolicy.withLaw_of_ne _ _ _ selected,
+          InformationModel.BehavioralPolicy.withLaw_of_ne _ _ _ selected]
+        exact (prescribed who later running).symm
+    · simp only [Profile.update_of_ne _ _ own]
+      exact (prescribed owner later running).symm
+  have closeAlternative : PMF.WithinTV error
+      (setup.proposalRecoveryModel.localRun fuel ordinary site law)
+      (setup.proposalRecoveryModel.localRun fuel source site law) := by
+    rw [InformationModel.localRun_eq_bind, InformationModel.localRun_eq_bind]
+    apply PMF.WithinTV.bind_right (source.belief who site)
+    intro history _
+    change PMF.WithinTV error
+      (setup.proposalRecoveryModel.runBehavioralFrom _ fuel history.val)
+      (setup.proposalRecoveryModel.runBehavioralFrom _ fuel history.val)
+    rw [← alternative]
+    exact source_flags_after_same_local_law setup scale bad values who site.1 law history.val fuel
+  have closeBaseline : PMF.WithinTV error
+      (setup.proposalRecoveryModel.localRun fuel ordinary site (ordinary.strategy who site.1))
+      (setup.proposalRecoveryModel.localRun fuel source site (source.strategy who site.1)) := by
+    change PMF.WithinTV error
+      ((source.belief who site).bind fun history => setup.proposalRecoveryModel.runBehavioralFrom
+        (Profile.update (sig := setup.proposalRecoveryModel.behavioralSignature) ordinary.strategy
+          who ((ordinary.strategy who).withLaw site.1
+            (ordinary.strategy who site.1))) fuel history.val)
+      ((source.belief who site).bind fun history => setup.proposalRecoveryModel.runBehavioralFrom
+        (Profile.update (sig := setup.proposalRecoveryModel.behavioralSignature) source.strategy
+          who ((source.strategy who).withLaw site.1
+            (source.strategy who site.1))) fuel history.val)
+    simp only [InformationModel.BehavioralPolicy.withLaw_eq_self,
+      Profile.update_eq_self]
+    apply PMF.WithinTV.bind_right (source.belief who site)
+    intro history _
+    rw [← actual]
+    change PMF.WithinTV error
+      (setup.proposalRecoveryModel.runBehavioralFrom
+        (PhaseProposalQualifiedBinding.sourceUnflaggedStrategy setup values) fuel history.val)
+      (setup.proposalRecoveryModel.runBehavioralFrom flagged fuel history.val)
+    simpa only [error, PhaseProposalQualifiedBinding.sourceUnflaggedStrategy, flagged,
+      two_mul, add_assoc, add_comm, add_left_comm] using
+      setup.proposalRecovery_future_flags_withinTV scale.val scale.property.1 scale.property.2
+        bad.val bad.property.1 bad.property.2 scale.val scale.property.1 scale.property.2
+          values history.val fuel
+  have interval : ∀ history : setup.proposalRecoveryProtocol.History,
+      -bound ≤ payoff history who ∧ payoff history who ≤ -bound + 2 * bound := by
+    intro history
+    have limited := abs_le.mp (payoffBound history)
+    constructor <;> linarith
+  have first := closeAlternative.expect_sub_le (payoff · who) (-bound) (2 * bound)
+    (fun history _ => interval history)
+  have second := closeBaseline.symm.expect_sub_le (payoff · who) (-bound) (2 * bound)
+    (fun history _ => interval history)
+  simp only [InformationModel.localGain_eq_sub,
+    InformationModel.localValue_eq_expect_localRun, id_eq] at first second ⊢
+  dsimp only [error] at first second
+  linarith
+
+omit mode runtime leaks bounds plan in
+open Classical in
+private theorem source_causal_gain_le [Fintype setup.proposalRecoveryProtocol.History]
+    (scale bad : Set.Icc (0 : ℝ) 1)
+    (values : ∀ owner (key : setup.ProposalRecoveryComponent owner),
+      PMF (setup.CommitRecoveryValueChoice owner key.1))
+    (source : setup.proposalRecoveryModel.BehavioralAssessment)
+    (prescribed : ∀ owner (history : setup.proposalRecoveryProtocol.History)
+      (_running : ¬ setup.proposalRecoveryProtocol.terminal history.state),
+      source.strategy owner (setup.proposalRecoveryModel.infoOf owner history.trace) =
+        setup.proposalRecoveryNormalizedTrembledProfile
+          scale.val scale.property.1 scale.property.2 bad.val bad.property.1 bad.property.2
+          scale.val scale.property.1 scale.property.2 values owner
+            (setup.proposalRecoveryModel.infoOf owner history.trace))
+    (who : Player) (site : setup.proposalRecoveryModel.InformationSite who)
+    (positive : ∃ history ∈
+        {history : setup.proposalRecoveryModel.InformationHistory who site.1 |
+          PhaseProposalQualifiedBinding.sourceForeignGood setup who history.val},
+      history ∈ (source.belief who site).support)
+    (choice : setup.proposalRecoveryModel.Choice who site.1)
+    (utility : State L setup.program.terminalCtx → Player → ℝ) (excludedPayoff : Player → ℝ)
+    (bound : ℝ) (nonnegative : 0 ≤ bound)
+    (payoffBound : ∀ history,
+      |setup.proposalRecoveryPayoff utility excludedPayoff who history| ≤ bound) :
+    let ordinary := PhaseProposalQualifiedBinding.sourceUnflaggedStrategy setup values
+    let causal := fun selected => PhaseProposalQualifiedBinding.sourceCausalPayoff setup values
+      source who site selected positive utility excludedPayoff
+    expect (causal choice) (fun result => result.getD 0) -
+        expect ((ordinary who site.1).bind causal) (fun result => result.getD 0) ≤
+      setup.proposalRecoveryModel.localGain
+        ((Fintype.card Player + 1) * (instructionCount setup.program + 1)) id
+        (fun history owner => setup.proposalRecoveryPayoff utility excludedPayoff owner history)
+        source site (PMF.pure choice) +
+      4 * bound * ((∑ history : setup.proposalRecoveryModel.InformationHistory who site.1 with
+          (∃ owner : Player, who ≠ owner ∧ setup.GeneratedPreparationHistory owner history.val),
+          (source.belief who site history).toReal) +
+        (Fintype.card Player * ((Fintype.card Player + 1) *
+          (instructionCount setup.program + 1)) : Nat) * (2 * scale.val + bad.val)) := by
+  intro ordinary causal
+  let certificate := setup.proposalRecoveryProtocol_bounded.wellFoundedHistories
+  let fuel := (Fintype.card Player + 1) * (instructionCount setup.program + 1)
+  let payoff := setup.proposalRecoveryPayoff utility excludedPayoff who
+  let belief := (source.belief who site).filter
+    {history | PhaseProposalQualifiedBinding.sourceForeignGood setup who history.val} positive
+  let mean := fun history : setup.proposalRecoveryModel.InformationHistory who site.1 =>
+    expect (setup.proposalRecoveryModel.runBehavioralTerminalFrom certificate ordinary history.val)
+      payoff
+  let selected := fun (history : setup.proposalRecoveryModel.InformationHistory who site.1)
+      (move : setup.proposalRecoveryModel.Choice who site.1) =>
+    expect (setup.proposalRecoveryModel.runBehavioralTerminalFrom certificate
+      (Profile.update (sig := setup.proposalRecoveryModel.behavioralSignature) ordinary who
+        ((ordinary who).commit site.1 move)) history.val) payoff
+  have meanBound (history) : |mean history| ≤ bound :=
+    expect_abs_le_of_bounded nonnegative payoffBound
+  have selectedBound (history) (move) : |selected history move| ≤ bound :=
+    expect_abs_le_of_bounded nonnegative payoffBound
+  have causalLaw (move) : causal move =
+      (belief.bind fun history => setup.proposalRecoveryModel.runBehavioralTerminalFrom
+        certificate (Profile.update (sig := setup.proposalRecoveryModel.behavioralSignature)
+          ordinary who ((ordinary who).commit site.1 move)) history.val).map
+            (fun terminal => some (payoff terminal)) := by
+    change (belief.bind fun history =>
+      ((setup.proposalRecoveryModel.runBehavioralFrom _ 1 history.val).bind
+        (setup.proposalRecoveryModel.runBehavioralTerminalFrom certificate ordinary)).map
+          (fun terminal => some (payoff terminal))) = _
+    rw [PMF.map_bind]
+    apply bind_congr_on_support
+    intro history _
+    have consumed := setup.proposalRecoveryModel.runBehavioralTerminalFrom_commit_eq_bind
+      certificate (setup.proposalRecoveryModel.actsOnceWhereItMatters_of_perfectRecall
+        setup.proposalRecoveryModel_perfectRecall) ordinary who history.val
+          (history.property.symm ▸ move)
+    have commitCast {first second : setup.proposalRecoveryModel.InfoState who}
+        (same : first = second) (selected : setup.proposalRecoveryModel.Choice who second) :
+        (ordinary who).commit first (same.symm ▸ selected) =
+          (ordinary who).commit second selected := by
+      cases same
+      rfl
+    rw [commitCast history.property move] at consumed
+    exact congrArg (PMF.map fun terminal => some (payoff terminal)) consumed.symm
+  have causalBound (move) (result) (member : result ∈ (causal move).support) :
+      |result.getD 0| ≤ bound := by
+    rw [causalLaw] at member
+    obtain ⟨terminal, _supported, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp member
+    exact payoffBound terminal
+  have causalMean (move) : expect (causal move) (fun result => result.getD 0) =
+      expect belief (fun history => selected history move) := by
+    rw [causalLaw, expect_map]
+    exact expect_bind_tower_bounded _ _ _ payoffBound
+  have baseline (history : setup.proposalRecoveryModel.InformationHistory who site.1) :
+      expect (ordinary who site.1) (selected history) = mean history := by
+    by_cases ended : setup.proposalRecoveryProtocol.terminal history.val.state
+    · have fixed (profile : ∀ owner, setup.proposalRecoveryModel.BehavioralPolicy owner) :
+          setup.proposalRecoveryModel.runBehavioralTerminalFrom certificate profile history.val =
+            PMF.pure history.val := by
+          exact setup.proposalRecoveryProtocol.randomizedBackwardLaw_of_terminal ended
+      simp only [selected, mean, fixed, expect_pure, expect_constant]
+    · have affine := setup.proposalRecoveryModel.runBehavioralTerminalFrom_update_withLaw_eq_bind
+        certificate (setup.proposalRecoveryModel.actsOnceWhereItMatters_of_perfectRecall
+          setup.proposalRecoveryModel_perfectRecall) ordinary who (ordinary who) site.1
+          (ordinary who site.1) history.val history.property ended
+            (InformationModel.InformationSite.active setup.proposalRecoveryModel site history)
+      simp only [InformationModel.BehavioralPolicy.withLaw_eq_self, Profile.update_eq_self]
+        at affine
+      have integrated := congrArg (fun law => expect law payoff) affine
+      rw [expect_bind_tower_bounded _ _ _ payoffBound] at integrated
+      exact integrated.symm
+  have baselineMean : expect ((ordinary who site.1).bind causal) (fun result => result.getD 0) =
+      expect belief mean := by
+    have integrable : PayoffIntegrable ((ordinary who site.1).bind causal)
+        (fun result => result.getD 0) := by
+      refine payoffIntegrable_of_bounded_on_support _ _ (C := bound) ?_
+      intro result member
+      obtain ⟨move, _supported, drawn⟩ := (PMF.mem_support_bind_iff ..).mp member
+      exact causalBound move result drawn
+    rw [expect_bind_tower _ _ _ integrable]
+    simp_rw [causalMean]
+    let _ := setup.proposalRecoveryModel.finite_choice_of_played
+      (setup.proposalRecoveryModel.site_mem_playedInformation site)
+    rw [expect_comm_of_support_finite_left (ordinary who site.1) belief (Set.toFinite _)
+      (fun move history => selected history move)
+      (fun move _ => payoffIntegrable_of_bounded _ _ (fun history => selectedBound history move))]
+    exact expect_congr_on_support (fun history _ => baseline history)
+  let ordinaryAssessment : setup.proposalRecoveryModel.BehavioralAssessment :=
+    ⟨ordinary, source.belief⟩
+  have unfiltered : expect (source.belief who site)
+      (fun history => selected history choice - mean history) =
+      setup.proposalRecoveryModel.localGain fuel id
+        (fun history owner => setup.proposalRecoveryPayoff utility excludedPayoff owner history)
+        ordinaryAssessment site (PMF.pure choice) := by
+    rw [expect_sub (payoffIntegrable_of_bounded _ _ (fun h => selectedBound h choice))
+      (payoffIntegrable_of_bounded _ _ meanBound), InformationModel.localGain_eq_sub,
+      InformationModel.localValue_eq_expect_localRun,
+      InformationModel.localValue_eq_expect_localRun,
+      setup.proposalRecoveryModel.expect_localRun,
+      setup.proposalRecoveryModel.expect_localRun]
+    congr 1
+    · apply expect_congr_on_support
+      intro history _
+      change expect (setup.proposalRecoveryModel.runBehavioralTerminalFrom certificate
+          (Profile.update (sig := setup.proposalRecoveryModel.behavioralSignature) ordinary who
+            ((ordinary who).commit site.1 choice)) history.val) payoff =
+        expect (setup.proposalRecoveryModel.runBehavioralFrom
+          (Profile.update (sig := setup.proposalRecoveryModel.behavioralSignature) ordinary who
+            ((ordinary who).commit site.1 choice)) fuel history.val) payoff
+      exact congrArg (fun law => expect law payoff)
+        (setup.proposalRecoveryModel.runBehavioralTerminalFrom_eq_runBehavioralFrom_of_bounded
+          certificate setup.proposalRecoveryProtocol_bounded _ _)
+    · apply expect_congr_on_support
+      intro history _
+      change mean history = expect (setup.proposalRecoveryModel.runBehavioralFrom
+        (Profile.update (sig := setup.proposalRecoveryModel.behavioralSignature) ordinary who
+          ((ordinary who).withLaw site.1 (ordinary who site.1))) fuel history.val) payoff
+      rw [InformationModel.BehavioralPolicy.withLaw_eq_self, Profile.update_eq_self]
+      exact congrArg (fun law => expect law payoff)
+        (setup.proposalRecoveryModel.runBehavioralTerminalFrom_eq_runBehavioralFrom_of_bounded
+          certificate setup.proposalRecoveryProtocol_bounded _ _)
+  have conditioning := conditioned_gain_le setup who site source positive
+    (fun history => selected history choice - mean history) bound (by
+      intro history
+      exact (abs_sub _ _).trans (by linarith [selectedBound history choice, meanBound history]))
+  rw [expect_sub (payoffIntegrable_of_bounded _ _ (fun h => selectedBound h choice))
+    (payoffIntegrable_of_bounded _ _ meanBound), unfiltered] at conditioning
+  have flags := source_unflagged_gain_le setup scale bad values source prescribed who site
+    (PMF.pure choice) (fun history owner =>
+      setup.proposalRecoveryPayoff utility excludedPayoff owner history) bound payoffBound fuel
+  rw [causalMean, baselineMean]
+  dsimp only [ordinaryAssessment, fuel] at conditioning flags
+  linarith
+
+private theorem failed_current_binding_finish
+    (maximal : plan.phases.IsChain fun first last =>
+      first.kind ≠ last.kind ∨ first.kind = .sample)
+    {length : Nat} (tape : ReservedEpoch.Tape Player length)
+    (before ending : (app).Control)
+    (prior : ((menu).protocol initial (ReservedEpoch.executionHorizon runtime)
+      (ReservedEpoch.family runtime leaks (ReservedEpoch.packetCapacity runtime) tape)).Trace
+        (some before))
+    (trace : ((menu).protocol initial (ReservedEpoch.executionHorizon runtime)
+      (ReservedEpoch.family runtime leaks (ReservedEpoch.packetCapacity runtime) tape)).Trace
+        (some ending))
+    (witness : RecoverySourceWitness setup mode plan before.execution.application)
+    (phase : RuntimePhase (graph)) (rest : List (RuntimePhase (graph)))
+    (installed : before.execution.application.phases = phase :: rest)
+    (kind : phase.kind = .commitment) (raw : RecoveryState (graph))
+    (effect : PhaseClosingEffect runtime leaks before.execution ending.execution raw)
+    (changed : ending.execution.application.attempt ≠ before.execution.application.attempt)
+    (finished : phase.Finished (phase.drain raw))
+    (clean : (phase.drain raw).excluded = before.execution.application.entry.excluded)
+    (normalized : ending.execution.application =
+      ({ before.execution.application with current := raw } : PhaseRuntimeState (graph)).normalize)
+    (idle : ending.actor = none) (who : Player)
+    (active : who ∉ before.execution.application.entry.excluded)
+    (event : (graph).EventId) (inside : event ∈ phase.events) (payload : L.Ty)
+    (binding : (graph).outputLayout event = .binding who payload)
+    (failed : (⟨.inr event, binding⟩ : FieldRef (graph).layout (.binding who payload)).get?
+      (phase.drain raw).native.config.store = some .failure)
+    (sourceProfile : ∀ owner, setup.proposalRecoveryModel.BehavioralPolicy owner)
+    (players : Player → (app).Policy)
+    (utility : State L setup.program.terminalCtx → Player → ℝ) (excludedPayoff : Player → ℝ) :
+    expect ((app).finish initial (ReservedEpoch.executionHorizon runtime)
+      (ReservedEpoch.family runtime leaks (ReservedEpoch.packetCapacity runtime) tape) players
+        (some ending)) (fun state =>
+          phaseExclusionBase setup mode runtime leaks utility excludedPayoff state who) =
+      excludedPayoff who := by
+  classical
+  let horizon := ReservedEpoch.executionHorizon runtime
+  let scheduler := ReservedEpoch.family runtime leaks (ReservedEpoch.packetCapacity runtime) tape
+  obtain ⟨rawWitness, _checkpoint, _history⟩ := RecoverySourceWitness.raw_closing_checkpoint
+    setup mode runtime leaks plan before ending witness raw effect changed
+  obtain ⟨_native, _binding, _receipts, _stored, _remembered, coverage⟩ :=
+    phaseClosingEffect_checkpoint_facts setup mode runtime leaks bounds plan horizon scheduler
+      before ending prior raw effect changed
+  have debt := completed_binding_failed_field setup mode plan maximal
+    ({ before.execution.application with current := raw } : PhaseRuntimeState (graph)) rawWitness
+      phase rest installed kind finished clean coverage who active event inside payload
+        binding failed
+  obtain ⟨next, owed, _rest⟩ := rawWitness.completed_binding_checkpointDebt mode plan maximal
+    phase rest installed kind finished (by rw [clean]; simp) who debt
+      setup.proposalRecoveryProtocol_bounded.wellFoundedHistories sourceProfile (fun _ _ => false)
+  have checkpointDebt : PhaseCheckpointDebt setup mode plan who ending.execution.application := by
+    rw [normalized]
+    exact ⟨next, owed⟩
+  have rawTrace := (menu).toRawTrace initial horizon scheduler trace
+  have idleTrace : ((app).protocol initial horizon scheduler).Trace
+      (some ⟨ending.remaining, none, ending.execution⟩) := by
+    simpa only [← idle] using rawTrace
+  change expect ((app).finish initial horizon scheduler players (some ending)) _ = _
+  simp only [ReactiveApplication.finish, idle, ReactiveApplication.resume, PMF.pure_bind,
+    expect_map]
+  rw [expect_congr_on_support (g := fun _ => excludedPayoff who)]
+  · exact expect_constant _ _
+  intro final reached
+  obtain ⟨finalTrace⟩ := (app).raw_trace_runRounds initial horizon scheduler players 0
+    ending.remaining ending.execution final (by simpa only [Nat.zero_add] using idleTrace)
+      reached
+  have completed := (ReservedEpoch.terminal_history_complete runtime leaks tape plan
+    (serviceGraph_revealRelaxedOrdered setup mode) maximal inputs
+      ⟨0, none, final⟩ finalTrace ⟨rfl, rfl⟩).1
+  exact phaseCheckpointDebt_terminal_payoff setup mode runtime leaks plan maximal inputs horizon
+    scheduler players ending.remaining ending.execution final idleTrace who checkpointDebt reached
+      completed utility excludedPayoff
+
+private theorem clean_send_complement
+    (complete : leaks = MessageNetwork.completePendingObservation)
+    (covered : bounds.CoversOutputValues)
+    (maximal : plan.phases.IsChain fun first last =>
+      first.kind ≠ last.kind ∨ first.kind = .sample)
+    (wellFormed : setup.WellFormed)
+    (values : ∀ owner (key : setup.ProposalRecoveryComponent owner),
+      PMF (setup.CommitRecoveryValueChoice owner key.1))
+    (fullValues : ∀ owner key, FullSupport (values owner key))
+    {length : Nat} (tape : ReservedEpoch.Tape Player length)
+    (activationGap processingGap : Nat)
+    (gaps : tape.BoundedGaps (ReservedEpoch.completionCycles runtime)
+      activationGap processingGap)
+    (timely : runtime.AsyncTimely (fun _ => activationGap + 1) (fun _ => processingGap + 1))
+    (capacity : ReservedEpoch.executionHorizon runtime ≤ bounds.candidateCount)
+    (remaining : Nat) (who : Player) (execution : (app).Execution)
+    (trace : ((menu).protocol initial (ReservedEpoch.executionHorizon runtime)
+      (ReservedEpoch.family runtime leaks (ReservedEpoch.packetCapacity runtime) tape)).Trace
+        (some ⟨remaining, some who, execution⟩))
+    (event : (graph).EventId) (payload : L.Ty)
+    (binding : (graph).outputLayout event = .binding who payload)
+    (request : execution.application.SeedRequest who ⟨execution.application.attempt, event⟩)
+    (unsent : ∀ message ∈ (app).outputs (execution.recall who),
+      PhaseCount.event? message.payload ≠ some ⟨execution.application.attempt, event⟩)
+    (noSaved : ¬ phaseProposalSavedBindingFailure setup mode runtime leaks who event
+      (execution.observe app who))
+    (foreign : ∀ owner, owner ≠ who → owner ∉ execution.application.current.excluded →
+      ¬ PhaseProposal.GeneratedUnusableBindingHistory runtime leaks bounds initial
+        (ReservedEpoch.executionHorizon runtime)
+        (ReservedEpoch.family runtime leaks (ReservedEpoch.packetCapacity runtime) tape) owner
+          ⟨some ⟨remaining, some who, execution⟩, trace⟩)
+    (left right : (app).Action)
+    (leftSupported : left ∈ (phaseProposalUnflaggedPolicy setup mode runtime leaks bounds plan
+      values who (execution.recall who) (execution.observe app who)).support)
+    (rightAvailable : right ∈ (menu).actions who (execution.recall who)
+      (execution.observe app who))
+    (nonsilent : right.transmission ≠ none)
+    (removeQualified : Bool)
+    (bad : removeQualified = false → right.transmission.bind PhaseProposal.bindingPreparation =
+      none)
+    (utility : State L setup.program.terminalCtx → Player → ℝ) (excludedPayoff : Player → ℝ)
+    (bound : ℝ) (nonnegative : 0 ≤ bound)
+    (utilityBound : ∀ terminal owner, |utility terminal owner| ≤ bound)
+    (excludedBound : |excludedPayoff who| ≤ bound)
+    (defaultFloor : excludedPayoff who ≤ 0)
+    (terminalFloor : ∀ terminal, excludedPayoff who ≤ utility terminal who) :
+    let horizon := ReservedEpoch.executionHorizon runtime
+    let scheduler := ReservedEpoch.family runtime leaks (ReservedEpoch.packetCapacity runtime) tape
+    let players := phaseProposalUnflaggedPolicy setup mode runtime leaks bounds plan values
+    let stop := fun next : (app).Execution =>
+      next.application.attempt ≠ execution.application.attempt
+    let value := fun ending : (app).Execution =>
+      if removeQualified = true ∧ ending.application.attempt ≠ execution.application.attempt ∧
+          ending.application.current.excluded = execution.application.entry.excluded then 0 else
+        expect ((app).finish initial horizon scheduler players
+          (some ⟨horizon - ending.environmentRecall.length, none, ending⟩))
+            (fun state => phaseExclusionBase setup mode runtime leaks utility excludedPayoff
+              state who)
+    expect ((app).runUntil scheduler players stop remaining (execution.respond app who right))
+        value ≤
+      expect ((app).runUntil scheduler players stop remaining (execution.respond app who left))
+        value := by
+  classical
+  intro horizon scheduler players stop value
+  let model := (menu).information initial horizon scheduler
+  let certificate := ((menu).bounded initial horizon scheduler).wellFoundedHistories
+  let payoff := fun state => phaseExclusionBase setup mode runtime leaks utility excludedPayoff
+    state who
+  let finishValue := fun state => expect ((app).finish initial horizon scheduler players state)
+    payoff
+  have bounded : ∀ state, |payoff state| ≤ bound := by
+    intro state
+    have interval := phaseExclusionBase_mem_Icc setup mode runtime leaks utility excludedPayoff
+      (fun _ => -bound) (fun _ => bound)
+      (fun terminal owner => (abs_le.mp (utilityBound terminal owner)).1)
+      (fun terminal owner => (abs_le.mp (utilityBound terminal owner)).2) state who
+    have excluded := abs_le.mp excludedBound
+    apply abs_le.mpr
+    simpa only [min_eq_right excluded.1, min_eq_right (neg_nonpos.mpr nonnegative),
+      max_eq_right excluded.2, max_eq_right nonnegative, Set.mem_Icc] using interval
+  have floor : ∀ state, excludedPayoff who ≤ payoff state := by
+    intro state
+    cases state with
+    | none => exact defaultFloor
+    | some control =>
+        change excludedPayoff who ≤ if who ∈ control.execution.application.current.excluded then
+          excludedPayoff who else (phaseSourceReadout setup mode runtime leaks (some control)).elim
+            0 (fun terminal => utility terminal who)
+        split_ifs
+        · exact le_rfl
+        · cases phaseSourceReadout setup mode runtime leaks (some control) with
+          | none => exact defaultFloor
+          | some terminal => exact terminalFloor terminal
+  have finishBound : ∀ state, |finishValue state| ≤ bound := fun _ =>
+    expect_abs_le_of_bounded nonnegative bounded
+  have finishFloor : ∀ state, excludedPayoff who ≤ finishValue state := by
+    intro state
+    simpa only [expect_constant] using expect_mono
+      (μ := (app).finish initial horizon scheduler players state)
+      (f := fun _ => excludedPayoff who) (g := payoff) (fun state _ => floor state)
+        (payoffIntegrable_constant _ _) (payoffIntegrable_of_bounded _ _ bounded)
+  let anchor : (app).Control := ⟨remaining, some who, execution⟩
+  have initialEq : initial = setup.initialLaw.map
+      (fun draw => PhaseRuntimeState.initial plan (encodeInputs draw)) := PMF.map_comp _ _ _
+  obtain ⟨witness, archived⟩ := recoverySourceCheckpoint_proposalArchive_history setup mode runtime
+    leaks bounds plan maximal horizon scheduler (initialEq ▸ trace)
+  have proper := witness.bindingsHoldValues_of_no_saved_failure_and_foreign_good setup mode
+    wellFormed runtime leaks bounds plan maximal horizon scheduler anchor trace who event payload
+      binding request noSaved foreign
+  obtain ⟨phase, rest, installed, kind, inside⟩ := phase_ready_binding_phase runtime leaks plan
+    (serviceGraph_revealRelaxedOrdered setup mode) maximal inputs horizon scheduler
+      ((menu).toRawTrace initial horizon scheduler trace) who event payload binding request.2.2.1
+  have phaseInstalled : phase ∈ execution.application.phases.head? :=
+    Option.mem_def.mpr ((congrArg List.head? installed).trans rfl)
+  obtain ⟨_material, _value, sent, _typed⟩ := phaseProposalUnflaggedBinding_supported_usable setup
+    mode runtime leaks bounds plan complete covered maximal values fullValues horizon scheduler
+      capacity remaining who execution (initialEq ▸ trace) event payload binding request unsent
+        left leftSupported
+  obtain ⟨leftTrace, rightTrace, leftOrigin, rightOrigin, paired⟩ :=
+    phaseProposalUnflagged_available_send_reset_boundary setup mode runtime leaks bounds plan
+      complete covered maximal (serviceGraph_revealRelaxedOrdered setup mode) values fullValues
+        tape activationGap processingGap gaps timely capacity remaining execution who left right
+          trace (phaseProposalUnflaggedPolicy_covered setup mode runtime leaks bounds plan values
+            who _ _ left leftSupported) rightAvailable
+          (fun absent => by rw [absent] at sent; cases sent) phase
+          phaseInstalled kind witness.checkpoint
+  let responseAnchor := fun response : (app).Action => execution.respond app who response
+  let anchored := fun response => ReactiveApplication.anchoredPolicy (responseAnchor response)
+    players
+  let profile := fun response owner => (menu).restrictPolicy initial horizon scheduler owner
+    (anchored response owner)
+  let stopped := fun final : ((menu).protocol initial horizon scheduler).History =>
+    match final.state with | none => False | some control => stop control.execution
+  let reward := fun state : (app).ProtocolState => match state with
+    | none => 0
+    | some control => if removeQualified = true ∧
+        control.execution.application.attempt ≠ execution.application.attempt ∧
+        control.execution.application.current.excluded = execution.application.entry.excluded
+      then 0 else finishValue state
+  have rewardBound : ∀ state, |reward state| ≤ bound := by
+    intro state
+    cases state <;> dsimp only [reward]
+    · simpa only [abs_zero] using nonnegative
+    · split_ifs
+      · simpa only [abs_zero] using nonnegative
+      · exact finishBound _
+  have physical (response : (app).Action)
+      (responseTrace : ((menu).protocol initial horizon scheduler).Trace
+        (some ⟨remaining, none, responseAnchor response⟩)) :
+      expect (model.runBehavioralUntil certificate (profile response) stopped
+        ⟨some ⟨remaining, none, responseAnchor response⟩, responseTrace⟩)
+          (fun final => reward final.state) =
+        expect ((app).runUntil scheduler players stop remaining
+          (responseAnchor response)) value := by
+    have decoded : (menu).decodeProfile initial horizon scheduler (profile response) =
+        anchored response := by
+      funext owner
+      apply (menu).decode_restrictPolicy_of_covered initial horizon scheduler owner
+      exact (menu).anchoredPolicy_covered initial horizon scheduler
+        ⟨remaining, none, responseAnchor response⟩ responseTrace players owner
+          (phaseProposalUnflaggedPolicy_covered setup mode runtime leaks bounds plan values owner)
+    have law := PhaseProposalQualifiedBinding.attemptUntil_state setup mode runtime leaks bounds
+      initial scheduler (profile response) execution.application.attempt remaining
+        (responseAnchor response) responseTrace
+    rw [decoded, ReactiveApplication.runUntil_anchoredPolicy_of_extends scheduler
+      (responseAnchor response) players stop remaining (responseAnchor response)
+        (fun _ => List.prefix_rfl)] at law
+    have runner : (model.runBehavioralUntil certificate (profile response) stopped
+        ⟨some ⟨remaining, none, responseAnchor response⟩, responseTrace⟩).map History.state =
+        ((app).runUntil scheduler players stop remaining (responseAnchor response)).map
+          (fun ending => (some ⟨horizon - ending.environmentRecall.length, none, ending⟩ :
+            (app).ProtocolState)) := by
+      convert law using 1
+      dsimp only [model, stopped, stop, horizon, certificate]
+      congr 2
+      funext final
+      cases final.state <;> rfl
+    have integrated := congrArg (fun distribution => expect distribution reward) runner
+    simpa only [expect_map, reward, finishValue, value, Function.comp_def] using integrated
+  rw [← physical right rightTrace, ← physical left leftTrace]
+  suffices order : ∀ leftFinal ∈ (model.runBehavioralUntil certificate (profile left) stopped
+      ⟨some ⟨remaining, none, responseAnchor left⟩, leftTrace⟩).support,
+      ∀ rightFinal ∈ (model.runBehavioralUntil certificate (profile right) stopped
+        ⟨some ⟨remaining, none, responseAnchor right⟩, rightTrace⟩).support,
+      reward rightFinal.state ≤ reward leftFinal.state by
+    have averaged := expect_mono
+      (μ := model.runBehavioralUntil certificate (profile left) stopped
+        ⟨some ⟨remaining, none, responseAnchor left⟩, leftTrace⟩)
+      (f := fun _ => expect (model.runBehavioralUntil certificate (profile right) stopped
+        ⟨some ⟨remaining, none, responseAnchor right⟩, rightTrace⟩) (fun final => reward
+          final.state))
+      (g := fun final => reward final.state)
+      (fun left member => expect_le_const _ _
+        (payoffIntegrable_of_bounded _ _ (fun final :
+          ((menu).protocol initial horizon scheduler).History => rewardBound final.state)) _
+          (order left member)) (payoffIntegrable_constant _ _)
+      (payoffIntegrable_of_bounded _ _ (fun final :
+        ((menu).protocol initial horizon scheduler).History => rewardBound final.state))
+    simpa only [expect_constant] using averaged
+  intro leftFinal leftReached rightFinal rightReached
+  dsimp only at paired
+  have responseAttempt (response : (app).Action) :
+      (execution.respond app who response).application.attempt =
+        execution.application.attempt := by
+    rcases response with ⟨_ | material⟩ <;> rfl
+  obtain ⟨leftEnding, rightEnding, leftBefore, rightBefore, leftPrior, rightPrior,
+    leftJoint, rightJoint, leftLegal, rightLegal, leftRealized, rightRealized, leftRaw, rightRaw,
+    leftState, rightState, leftPrefix, rightPrefix, leftEndPrefix, rightEndPrefix,
+    leftSame, rightSame, leftEffect, rightEffect, _leftHead, _rightHead,
+    leftFinished, rightFinished, leftIdle, rightIdle, leftChanged, rightChanged,
+    leftNormalized, rightNormalized, _leftCoverage, _rightCoverage, leftExcluded, rightExcluded,
+    archiveEq, _leftAcceptance, _rightAcceptance, _foreignAcceptance, survival⟩ :=
+      paired leftFinal (by
+        convert leftReached using 1
+        dsimp only [model, certificate, horizon, players, scheduler]
+        congr 2
+        funext final
+        dsimp only [stopped, stop]
+        cases final.state <;> simp only [responseAttempt])
+        rightFinal (by
+          convert rightReached using 1
+          dsimp only [model, certificate, horizon, players, scheduler]
+          congr 2
+          funext final
+          dsimp only [stopped, stop]
+          cases final.state <;> simp only [responseAttempt])
+  by_cases excluded : who ∈ rightEnding.execution.application.current.excluded
+  · have fixed : finishValue rightFinal.state = excludedPayoff who := by
+      have terminalLaw := (menu).terminal_run_restrict_eq_finish initial horizon scheduler
+        certificate players ((menu).admissible_of_covered initial horizon scheduler players
+          (phaseProposalUnflaggedPolicy_covered setup mode runtime leaks bounds plan values))
+            rightFinal
+      have forced := phase_excluded_expected_payoff setup mode runtime leaks utility excludedPayoff
+        menu initial horizon scheduler certificate
+        (fun owner => (menu).restrictPolicy initial horizon scheduler owner (players owner)) who
+          rightFinal (by simpa only [PhaseExcluded, rightState] using excluded)
+      have expectation := congrArg (fun law => expect law payoff) terminalLaw
+      simp only [expect_map, Function.comp_def] at expectation
+      exact expectation.symm.trans forced
+    have leftFloor : excludedPayoff who ≤ reward leftFinal.state := by
+      rw [leftState]
+      dsimp only [reward]
+      split_ifs
+      · exact defaultFloor
+      · exact finishFloor _
+    have active : who ∉ execution.application.entry.excluded := by
+      exact fun member => request.2.2.2.2
+        (witness.exclusions.coverage.inherited member)
+    have notClean : rightEnding.execution.application.current.excluded ≠
+        execution.application.entry.excluded := fun same => active (same ▸ excluded)
+    simpa only [reward, rightState, notClean, and_false, ite_false] using fixed.le.trans leftFloor
+  obtain ⟨leftSurvives, _rightAccepted, _leftAccepted, _footprint, excludedEq, _retired,
+    resetSources⟩ := survival excluded
+  let before : Bool → (app).Control := fun side => if side then rightBefore else leftBefore
+  let ending : Bool → (app).Control := fun side => if side then rightEnding else leftEnding
+  let raw : Bool → RecoveryState (graph) := fun side => if side then rightRaw else leftRaw
+  let priors : ∀ side, ((menu).protocol initial horizon scheduler).Trace (some (before side)) :=
+    fun side => match side with | false => leftPrior | true => rightPrior
+  let traces : ∀ side, ((menu).protocol initial horizon scheduler).Trace (some (ending side)) :=
+    fun side => match side with | false => leftState ▸ leftFinal.trace | true => rightState ▸
+      rightFinal.trace
+  have kept : ∀ side, TracePrefix trace (priors side) := by
+    intro side; cases side
+    · exact leftOrigin.trans leftPrefix
+    · exact rightOrigin.trans rightPrefix
+  have same : ∀ side, (before side).execution.application.attempt =
+      execution.application.attempt := by intro side; cases side <;> assumption
+  have effects : ∀ side, PhaseClosingEffect runtime leaks (before side).execution
+      (ending side).execution (raw side) := by intro side; cases side <;> assumption
+  have changed : ∀ side, (ending side).execution.application.attempt ≠
+      (before side).execution.application.attempt := by
+    intro side; cases side
+    · exact fun equal => leftChanged (equal.trans leftSame)
+    · exact fun equal => rightChanged (equal.trans rightSame)
+  have normalized : ∀ side, (ending side).execution.application =
+      ({ (before side).execution.application with current := raw side } :
+        PhaseRuntimeState (graph)).normalize := by intro side; cases side <;> assumption
+  have finished : ∀ side, phase.Finished (phase.drain (raw side)) := by
+    intro side; cases side <;> assumption
+  have initialized : ∀ state ∈ (initial).support, state.Ordered := by
+    intro state member
+    obtain ⟨draw, _, rfl⟩ := PMF.support_map .. ▸ member
+    exact PhaseRuntimeState.initial_ordered plan draw
+  have ordered := (phaseApplication_seedOrder runtime leaks).history initial horizon scheduler
+    initialized ((menu).toRawTrace initial horizon scheduler trace)
+  have entries : ∀ side, (before side).execution.application.entry = execution.application.entry
+    := by
+    intro side
+    exact ((phase_attempt_progress_of_prefix runtime leaks menu initial initialized horizon
+      scheduler
+      anchor (before side) trace (priors side) (kept side) ordered).2.2 (same side).symm).symm
+  have rightEntry : rightBefore.execution.application.entry = execution.application.entry :=
+    entries true
+  have beforeInstalled : ∀ side, (before side).execution.application.phases = phase :: rest := by
+    intro side
+    exact (phaseProposal_same_attempt_archive_metadata setup mode runtime leaks bounds plan horizon
+      scheduler anchor (before side) trace (priors side) (kept side) (same side).symm).1.trans
+        installed
+  have beforeHead (side) : phase ∈ (before side).execution.application.phases.head? :=
+    Option.mem_def.mpr ((congrArg List.head? (beforeInstalled side)).trans rfl)
+  have idle : ∀ side, (ending side).actor = none := by
+    intro side
+    cases side <;> assumption
+  have images : ∀ side, (phase.drain (raw side)).excluded =
+      (ending side).execution.application.current.excluded := by intro side; cases side <;>
+        assumption
+  have cleanEq : leftEnding.execution.application.current.excluded =
+      rightEnding.execution.application.current.excluded := leftExcluded.symm.trans
+        (excludedEq.trans rightExcluded)
+  by_cases clean : rightEnding.execution.application.current.excluded =
+    execution.application.entry.excluded
+  · by_cases remove : removeQualified = true
+    · have leftNew : leftEnding.execution.application.attempt ≠
+          execution.application.attempt := leftChanged
+      have rightNew : rightEnding.execution.application.attempt ≠
+          execution.application.attempt := rightChanged
+      have zeroRight : reward rightFinal.state = 0 := by
+        rw [rightState]
+        exact ite_eq_left ⟨remove, rightNew, clean⟩
+      have zeroLeft : reward leftFinal.state = 0 := by
+        rw [leftState]
+        exact ite_eq_left ⟨remove, leftNew, cleanEq.trans clean⟩
+      exact le_of_eq (zeroRight.trans zeroLeft.symm)
+    have retain : removeQualified = false := Bool.eq_false_of_not_eq_true remove
+    have missingPreparation := bad retain
+    obtain ⟨material, transmitted⟩ := Option.ne_none_iff_exists'.mp nonsilent
+    have rightEq : right = ⟨some material⟩ := by
+      cases right
+      exact congrArg ReactiveApplication.Action.mk transmitted
+    have available : (⟨some material⟩ : (app).Action) ∈ (menu).actions who
+        (execution.recall who) (execution.observe app who) := rightEq ▸ rightAvailable
+    obtain ⟨serial, opening, evidence, shape, _bounded, _fresh⟩ :=
+      PhaseCount.onePacket_binding_shape runtime leaks bounds plan
+        (serviceGraph_revealRelaxedOrdered setup mode) inputs horizon scheduler remaining who
+          execution trace event payload binding request material available
+    have badValue : opening.bind (fun value => value.as? payload) = none := by
+      rw [rightEq, shape] at missingPreparation
+      simpa only [PhaseProposal.bindingPreparation, binding, Option.bind_some,
+        Option.map_eq_none_iff] using missingPreparation
+    obtain ⟨rightWitness, _archive, _history, _saved, _cp⟩ :=
+      RecoverySourceWitness.prefix_at_same_attempt setup mode runtime leaks bounds plan maximal
+        scheduler anchor rightBefore trace rightPrior (rightOrigin.trans rightPrefix) rightSame
+          witness archived
+    obtain ⟨emitted, recalled⟩ := (app).respond_recall_entry execution who right
+    change ((responseAnchor right).recall who = execution.recall who ++
+      [⟨execution.observe app who, right, emitted⟩]) at recalled
+    let record : (app).PlayerEntry := ⟨execution.observe app who, right, emitted⟩
+    have recordPresent : record ∈ rightBefore.execution.recall who := by
+      have retainedRecall := (app).reaches_recall_prefix initial horizon scheduler
+        ((menu).reaches_raw initial horizon scheduler rightPrefix.reachesWithin)
+          ⟨remaining, none, responseAnchor right⟩ rightBefore rfl rfl who
+      apply List.IsPrefix.subset retainedRecall
+      rw [recalled]
+      exact List.mem_append_right _ (List.mem_singleton_self record)
+    have lower : rightBefore.execution.application.attempt.phase ≤ event.val := by
+      rw [rightSame]
+      have ranks := (phase.mem_events event).mp inside
+      change execution.application.phases = phase :: rest at installed
+      simpa only [PhaseRuntimeState.attempt, installed, List.head?_cons, Option.map_some,
+        Option.getD_some] using ranks.1
+    have failed := closing_recorded_binding_material setup mode runtime leaks bounds plan horizon
+      scheduler rightBefore rightEnding rightPrior phase rightRaw rightEffect
+        (changed true) rightFinished who event inside payload binding lower
+          (rightExcluded.symm ▸ excluded) serial opening evidence record recordPresent
+          (by dsimp only [record]; rw [rightEq, shape])
+          (by dsimp only [record]; exact rightSame.symm)
+    rw [badValue] at failed
+    have active : who ∉ rightBefore.execution.application.entry.excluded := by
+      rw [rightEntry, ← clean]
+      exact excluded
+    have fixed := failed_current_binding_finish setup mode runtime leaks bounds plan maximal tape
+      rightBefore rightEnding rightPrior (rightState ▸ rightFinal.trace) rightWitness phase
+        rest (beforeInstalled true) kind rightRaw rightEffect (changed true) rightFinished
+          ((rightExcluded.trans clean).trans (congrArg RecoveryState.excluded rightEntry).symm)
+            rightNormalized rightIdle who
+            active event inside payload binding failed
+              (PhaseProposalQualifiedBinding.sourceUnflaggedStrategy setup values) players utility
+                excludedPayoff
+    simpa only [reward, leftState, rightState, retain, Bool.false_eq_true, false_and, ite_false,
+      finishValue] using fixed.le.trans (finishFloor leftFinal.state)
+  · have reset : ((phase.drain rightRaw).excluded \
+    execution.application.entry.excluded).Nonempty := by
+      apply Finset.sdiff_nonempty.mpr
+      intro contained
+      apply clean
+      apply Finset.Subset.antisymm
+      · rwa [← rightExcluded]
+      · have facts := phaseClosingEffect_checkpoint_facts setup mode runtime leaks bounds plan
+          horizon scheduler rightBefore rightEnding rightPrior rightRaw rightEffect (changed true)
+        have record := (facts.2.2.1.exclusion.installed phase (beforeHead true)).phase_drain phase
+        intro owner member
+        rw [← rightExcluded]
+        exact (record.excluded owner).mpr
+          (Or.inl ((congrArg RecoveryState.excluded rightEntry).symm ▸ member))
+    have missed : ∀ side, (((phase.drain (raw side)).excluded \
+        (before side).execution.application.entry.excluded) ∩ phase.owners).Nonempty := by
+      intro side
+      obtain ⟨_native, _binding, receipts, _stored, _remembered, _coverage⟩ :=
+        phaseClosingEffect_checkpoint_facts setup mode runtime leaks bounds plan horizon scheduler
+          (before side) (ending side) (priors side) (raw side) (effects side) (changed side)
+      obtain ⟨owner, member⟩ := reset
+      have present : owner ∈ (phase.drain (raw side)).excluded := by
+        cases side
+        · change owner ∈ (phase.drain leftRaw).excluded
+          rw [excludedEq]
+          exact (Finset.mem_sdiff.mp member).1
+        · change owner ∈ (phase.drain rightRaw).excluded
+          exact (Finset.mem_sdiff.mp member).1
+      have active : owner ∉ (before side).execution.application.entry.excluded := by
+        rw [entries side]; exact (Finset.mem_sdiff.mp member).2
+      have record := (receipts.exclusion.installed phase (beforeHead side)).phase_drain phase
+      rcases (record.excluded owner).mp present with old | ⟨failedEvent, lower, acting, failed⟩
+      · exact (active old).elim
+      · have positioned := receipts.exclusion.frontier.positioned
+        change PhaseRuntimeState.Positioned _ _ _ at positioned
+        rw [show ({ (before side).execution.application with current := raw side } :
+          PhaseRuntimeState (graph)).phases = phase :: rest from beforeInstalled side] at positioned
+        have upper := (phase.drain_within (raw side) positioned.2).2 failedEvent failed.completed
+        exact ⟨owner, Finset.mem_inter.mpr ⟨Finset.mem_sdiff.mpr ⟨present, active⟩,
+          Finset.mem_biUnion.mpr ⟨failedEvent, (phase.mem_events failedEvent).mpr ⟨lower, upper⟩,
+            by simpa only [Option.mem_toFinset, Option.mem_def] using acting⟩⟩⟩
+    have owned : who ∈ phase.owners := Finset.mem_biUnion.mpr ⟨event, inside,
+      by simpa only [Option.mem_toFinset, Option.mem_def] using request.2.2.2.1⟩
+    have survivors : ∀ side, (phase.owners \ (phase.drain (raw side)).excluded).Nonempty := by
+      intro side
+      refine ⟨who, Finset.mem_sdiff.mpr ⟨owned, ?_⟩⟩
+      cases side
+      · change who ∉ (phase.drain leftRaw).excluded
+        rwa [leftExcluded]
+      · change who ∉ (phase.drain rightRaw).excluded
+        rwa [rightExcluded]
+    have inherited : ∀ side, execution.application.current.excluded ⊆
+        (ending side).execution.application.current.excluded := by
+      intro side owner member
+      let invariant : (app).Invariant (fun state => owner ∈ state.current.excluded) :=
+        { submit := fun state player material present =>
+            (phaseApplication_exclusion_monotone runtime leaks).submit state player material present
+          handle := fun state message next present accepted =>
+            (phaseApplication_exclusion_monotone runtime leaks).handle state message next
+              accepted present
+          environment := fun state command next present supported =>
+            (phaseApplication_exclusion_monotone runtime leaks).environment state command next
+              supported present }
+      have atBefore := invariant.tracePrefix menu initial horizon scheduler anchor (before side)
+        trace (priors side) (kept side) member
+      cases side
+      · exact (phaseApplication_exclusion_monotone runtime leaks).transition
+          initial horizon scheduler leftBefore leftEnding leftJoint leftRealized atBefore
+      · exact (phaseApplication_exclusion_monotone runtime leaks).transition
+          initial horizon scheduler rightBefore rightEnding rightJoint rightRealized atBefore
+    have equalLaw := phaseProposal_original_reset_payoff_law_eq setup mode runtime leaks bounds
+      plan complete covered maximal values fullValues tape activationGap processingGap gaps timely
+        capacity utility excludedPayoff anchor trace witness archived proper phase rest installed
+          kind
+          before ending priors traces kept same idle changed
+            raw effects normalized finished missed survivors inherited archiveEq (resetSources
+              reset) who
+    have finishLaw (side) :
+        (((menu).information initial horizon scheduler).runBehavioralTerminalFrom certificate
+          (fun owner => (menu).restrictPolicy initial horizon scheduler owner
+            (ReactiveApplication.anchoredPolicy (ending side).execution players owner))
+          ⟨some (ending side), traces side⟩).map (fun final => payoff final.state) =
+        ((app).finish initial horizon scheduler players (some (ending side))).map payoff := by
+      have law := (menu).terminal_run_eq_finish initial horizon scheduler certificate
+        (fun owner => (menu).restrictPolicy initial horizon scheduler owner
+          (ReactiveApplication.anchoredPolicy (ending side).execution players owner))
+        ⟨some (ending side), traces side⟩
+      have decoded : (menu).decodeProfile initial horizon scheduler
+          (fun owner => (menu).restrictPolicy initial horizon scheduler owner
+            (ReactiveApplication.anchoredPolicy (ending side).execution players owner)) =
+          ReactiveApplication.anchoredPolicy (ending side).execution players := by
+        funext owner
+        apply (menu).decode_restrictPolicy_of_covered initial horizon scheduler owner
+        exact (menu).anchoredPolicy_covered initial horizon scheduler (ending side) (traces side)
+          players owner (phaseProposalUnflaggedPolicy_covered setup mode runtime leaks bounds
+            plan values owner)
+      rw [decoded] at law
+      have finish := congrArg (PMF.map payoff) law
+      simpa only [ReactiveApplication.finish, idle side, ReactiveApplication.resume,
+        PMF.pure_bind, PMF.bind_bind,
+        ReactiveApplication.runRounds_anchoredPolicy, PMF.map_comp, Function.comp_def] using finish
+    have exactLaw := (finishLaw false).symm.trans (equalLaw.trans (finishLaw true))
+    have expectation := congrArg (fun law => expect law id) exactLaw
+    have equality : finishValue leftFinal.state = finishValue rightFinal.state := by
+      simpa only [finishValue, leftState, rightState, ending, Bool.false_eq_true, ite_false,
+        ite_true,
+        expect_map, Function.comp_def, id_eq] using expectation
+    simpa only [reward, leftState, rightState, clean, cleanEq, and_false, ite_false] using
+      equality.symm.le
+
+
+private theorem retained_history_gain_le {α : Type*} [Finite α]
+    (baseline : PMF α) (mean retained : α → ℝ) (residual : α → Bool → ℝ)
+    (bad : Prop) [Decidable bad] (bound flag gain : ℝ) (choice : α) (keep : Bool)
+    (nonnegative : 0 ≤ bound) (meanBound : ∀ selected, |mean selected| ≤ bound)
+    (retainedEq : ∀ selected, retained selected =
+      if bad then 0 else mean selected - residual selected true)
+    (residualFalse : ∀ selected, residual selected false = mean selected)
+    (flags : gain ≤ mean choice - expect baseline mean + flag)
+    (comparison : ¬ bad → residual choice keep ≤
+      expect baseline (fun selected => residual selected keep)) :
+    gain ≤ (if keep = true then retained choice - expect baseline retained else 0) +
+      (if bad then 2 * bound else 0) + flag := by
+  by_cases failed : bad
+  · have zero : retained = fun _ => 0 := funext (fun selected => by
+      rw [retainedEq selected, ite_eq_left failed])
+    have lower := expect_abs_le_of_bounded (μ := baseline) nonnegative meanBound
+    rw [zero, expect_constant]
+    simp only [sub_self, ite_self, failed, ite_true]
+    linarith only [flags, (abs_le.mp (meanBound choice)).2, (abs_le.mp lower).1]
+  · have ordered := comparison failed
+    cases keep with
+    | false =>
+        have clean : (fun selected => residual selected false) = mean :=
+          funext residualFalse
+        rw [residualFalse, clean] at ordered
+        simp only [Bool.false_eq_true, ite_false, failed, zero_add]
+        linarith only [flags, ordered]
+    | true =>
+        have kept : retained = fun selected => mean selected - residual selected true :=
+          funext (fun selected => by rw [retainedEq selected, ite_eq_right failed])
+        simp only [ite_true, failed, ite_false, add_zero]
+        rw [kept, expect_sub (payoffIntegrable_of_finite _ _)
+          (payoffIntegrable_of_finite _ _)]
+        linarith only [flags, ordered]
+
+
+private theorem averaged_retained_gain_le {α β : Type*} [Finite α] [Finite β]
+    (belief : PMF α) (baseline : PMF β) (gain : α → ℝ) (retained : α → β → ℝ)
+    (qualified : β → ℝ) (penalty : α → ℝ) (flag : ℝ) (choice : β) (keep : Bool)
+    (mean : ∀ selected, qualified selected =
+      expect belief (fun history => retained history selected))
+    (pointwise : ∀ history, gain history ≤
+      (if keep = true then retained history choice - expect baseline (retained history) else 0) +
+        penalty history + flag) :
+    expect belief gain ≤
+      (if keep = true then qualified choice - expect baseline qualified else 0) +
+        expect belief penalty + flag := by
+  apply le_trans (expect_mono (fun history _ => pointwise history)
+    (payoffIntegrable_of_finite _ _) (payoffIntegrable_of_finite _ _))
+  have commute := expect_comm_of_support_finite_left baseline belief (Set.toFinite _)
+    (fun selected history => retained history selected)
+    (fun selected _ => payoffIntegrable_of_finite _ _)
+  have average : expect belief (fun history => expect baseline (retained history)) =
+      expect baseline qualified :=
+    commute.symm.trans (expect_congr_on_support (μ := baseline)
+      (fun selected _ => (mean selected).symm))
+  cases keep with
+  | false =>
+      simp only [Bool.false_eq_true, ite_false, zero_add]
+      rw [expect_add (payoffIntegrable_of_finite _ _) (payoffIntegrable_constant _ _),
+        expect_constant]
+  | true =>
+      simp only [ite_true]
+      rw [expect_add (payoffIntegrable_of_finite _ _) (payoffIntegrable_constant _ _),
+        expect_add (payoffIntegrable_of_finite _ _) (payoffIntegrable_of_finite _ _),
+        expect_sub (payoffIntegrable_of_finite _ _) (payoffIntegrable_of_finite _ _),
+        expect_constant, average, ← mean choice]
+
+section CleanBindingComparison
+
+attribute [local implicit_reducible] ReservedConcurrentImplementation.initial
+  ReservedConcurrentImplementation.scheduler PhaseCount.onePacketMenu
+  EventGraph.withMode Setup.eventGraph toEventGraph InformationModel.InformationSite
+  ReactiveApplication.ResponseMenu.protocol
+
+variable (implementation : ReservedConcurrentImplementation setup)
+  (payoffs : ConcurrentPayoffs setup)
+
+local notation "cmenu" => PhaseCount.onePacketMenu implementation.runtime
+  implementation.leaks implementation.bounds
+local notation "cN" => ReactiveApplication.ResponseMenu.information
+  (PhaseCount.onePacketMenu implementation.runtime implementation.leaks implementation.bounds)
+    implementation.initial implementation.horizon implementation.scheduler
+local notation "cE" => ReactiveApplication.ResponseMenu.protocol
+  (PhaseCount.onePacketMenu implementation.runtime implementation.leaks implementation.bounds)
+    implementation.initial implementation.horizon implementation.scheduler
+local notation "cS" => setup.proposalRecoveryModel
+local notation "cHn" => 2 * implementation.horizon + 1
+local notation "cHs" => (Fintype.card Player + 1) * (instructionCount setup.program + 1)
+
+omit mode runtime leaks bounds plan in
+open Classical in
+theorem phaseProposal_clean_binding_gain_le
+    [Fintype (cE).History] [Fintype setup.proposalRecoveryProtocol.History]
+    (operational : implementation.Operational) (bounded : payoffs.Bounded)
+    (qualified : PhaseProposalQualifiedBinding.QualifiedBindingLaw setup implementation)
+    (scale sourceBad nativeBad : Set.Icc (0 : ℝ) 1)
+    (scalePositive : 0 < scale.val) (scaleBelow : scale.val < 1)
+    (sourceBadPositive : 0 < sourceBad.val) (sourceBadBelow : sourceBad.val < 1)
+    (nativeBadPositive : 0 < nativeBad.val) (nativeBadBelow : nativeBad.val < 1)
+    (values : ∀ owner (key : setup.ProposalRecoveryComponent owner),
+      PMF (setup.CommitRecoveryValueChoice owner key.1))
+    (fullValues : ∀ owner key, FullSupport (values owner key))
+    (source : (cS).BehavioralAssessment)
+    (sourcePrescribed : ∀ owner (history : setup.proposalRecoveryProtocol.History)
+      (_running : ¬ setup.proposalRecoveryProtocol.terminal history.state),
+      source.strategy owner ((cS).infoOf owner history.trace) =
+        setup.proposalRecoveryNormalizedTrembledProfile
+          scale.val scale.property.1 scale.property.2
+          sourceBad.val sourceBad.property.1 sourceBad.property.2
+          scale.val scale.property.1 scale.property.2 values owner
+            ((cS).infoOf owner history.trace))
+    (sourceMixed : source.IsFullyMixed)
+    (sourceBayes : InformationModel.BehavioralAssessment.IsBayesConsistent cS source
+      setup.proposalRecoveryModel_decisionAntichain)
+    (native : (cN).BehavioralAssessment)
+    (nativePrescribed : native.strategy = phaseProposalReferenceStrategy setup .concurrent
+      implementation.runtime implementation.leaks implementation.bounds implementation.plan
+      implementation.initial implementation.horizon implementation.scheduler values
+      ⟨nativeBad, scale, scale, scale⟩)
+    (nativeMixed : native.IsFullyMixed)
+    (nativeBayes : InformationModel.BehavioralAssessment.IsBayesConsistent cN native
+      ((cmenu).decisionInformationAntichain implementation.initial implementation.horizon
+        implementation.scheduler))
+    (who : Player) (site : (cN).InformationSite who)
+    (past : List implementation.application.PlayerEntry)
+    (view : implementation.application.PlayerView)
+    (information : site.1 = some (past, view))
+    (event : (serviceGraph setup .concurrent).EventId) (payload : L.Ty)
+    (binding : (serviceGraph setup .concurrent).outputLayout event = .binding who payload)
+    (requested : PhaseRuntimeState.requests view.application.2 who
+      ⟨view.application.2.attempt, event⟩)
+    (unsent : ∀ message ∈ implementation.application.outputs past,
+      PhaseCount.event? message.payload ≠ some ⟨view.application.2.attempt, event⟩)
+    (noSaved : ¬ phaseProposalSavedBindingFailure setup .concurrent
+      implementation.runtime implementation.leaks who event view)
+    (noCurrent : ¬ phaseProposalCurrentBindingFailure setup .concurrent
+      implementation.runtime implementation.leaks who event view)
+    (noForcedReset : ¬ (view.application.2.excluded \
+      ((view.application.2.retired.map fun record =>
+          record.2.sourceFailureFootprint.2).foldr (fun first rest => first ∪ rest) ∅ ∪
+        view.application.2.native.sourceFailureFootprint.1
+          view.application.2.attempt.phase)).Nonempty)
+    (bound : ℝ) (nonnegative : 0 ≤ bound)
+    (utilityBound : ∀ terminal owner, |payoffs.utility terminal owner| ≤ bound)
+    (excludedBound : ∀ owner, |payoffs.excludedPayoff owner| ≤ bound)
+    (law : PMF ((cN).Choice who site.1)) :
+    let nativePast := ∑ history : (cN).InformationHistory who site.1 with
+      (∃ owner : Player, who ≠ owner ∧
+        PhaseProposal.GeneratedUnusableBindingHistory implementation.runtime
+          implementation.leaks implementation.bounds implementation.initial
+          implementation.horizon implementation.scheduler owner history.val),
+      (native.belief who site history).toReal
+    let nativeError := 2 * bound * (nativePast +
+      (2 * (Fintype.card Player * cHn : Nat) + 1) *
+        (⟨nativeBad, scale, scale, scale⟩ : PhaseProposalRates).flagBound)
+    (cN).localGain cHn (fun history => history.state) (implementation.base payoffs)
+        native site law ≤ nativeError ∨
+      ∃ (sourceSite : (cS).InformationSite who)
+        (sourceLaw : PMF ((cS).Choice who sourceSite.1)),
+        0 < (cS).informationMass source.strategy who sourceSite ∧
+        let sourcePast := ∑ history : (cS).InformationHistory who sourceSite.1 with
+          (∃ owner : Player, who ≠ owner ∧
+            setup.GeneratedPreparationHistory owner history.val),
+          (source.belief who sourceSite history).toReal
+        (cN).localGain cHn (fun history => history.state) (implementation.base payoffs)
+            native site law ≤
+          (cS).localGain cHs id
+            (fun history owner => setup.proposalRecoveryPayoff payoffs.utility
+              payoffs.excludedPayoff owner history) source sourceSite sourceLaw +
+          nativeError + 4 * bound * (sourcePast +
+            (Fintype.card Player * cHs : Nat) * (2 * scale.val + sourceBad.val))
+ := by
+  classical
+  intro nativePast nativeError
+  let _ : setup.FiniteInitialLaw := operational.finiteInitial
+  let _ : implementation.leaks.FiniteSupport := by
+    rw [operational.completePending]
+    infer_instance
+  let players := phaseProposalUnflaggedPolicy setup .concurrent implementation.runtime
+    implementation.leaks implementation.bounds implementation.plan values
+  let ordinary := fun owner => (cmenu).restrictPolicy implementation.initial implementation.horizon
+    implementation.scheduler owner (players owner)
+  let baseline := ordinary who site.1
+  let proper := fun (value : L.Val payload) (choice : (cN).Choice who site.1) =>
+    ∃ (serial : Nat) (material : WitnessedSubmission (serviceGraph setup .concurrent)),
+      choice.1 = some ⟨some material⟩ ∧
+      material.call.packet = .commitment event (who, .prepared serial) ∧
+      PhaseProposal.bindingPreparation material = some ⟨payload, value⟩
+  let preparation := fun choice : (cN).Choice who site.1 =>
+    choice.1.bind fun response => response.transmission.bind PhaseProposal.bindingPreparation
+  let payoffAt := PhaseProposalQualifiedBinding.qualifiedPayoff setup .concurrent
+    implementation.runtime implementation.leaks implementation.bounds implementation.plan
+      implementation.prior values
+  let qualifiedValue := fun choice =>
+    expect (payoffAt native who site choice payoffs.utility payoffs.excludedPayoff)
+      (fun result => result.getD 0)
+  let gain := fun choice : (cN).Choice who site.1 =>
+    (cN).localGain cHn (fun history => history.state) (implementation.base payoffs)
+      native site (PMF.pure choice)
+  let _ := (cN).finite_choice_of_played ((cN).site_mem_playedInformation site)
+  have nativeAffine : (cN).localGain cHn (fun history => history.state)
+      (implementation.base payoffs) native site law = expect law gain := by
+    simpa only [PMF.bind_pure] using (cN).localGain_bind cHn (fun history => history.state)
+      (implementation.base payoffs) native site
+      ((cmenu).bounded implementation.initial implementation.horizon implementation.scheduler)
+      ((cmenu).decisionRecall implementation.initial implementation.horizon
+        implementation.scheduler).actsOnceWhereItMatters law (fun choice => PMF.pure choice)
+  suffices core :
+      (∀ choice, (∃ value, proper value choice) → gain choice ≤ qualifiedValue choice -
+        expect baseline qualifiedValue + nativeError) ∧
+      (∀ choice, (¬ ∃ value, proper value choice) → gain choice ≤ nativeError) ∧
+      (∀ choice ∈ baseline.support, ∃ value, proper value choice) ∧
+      (∀ key, phaseProposalQuery? setup .concurrent implementation.runtime implementation.leaks
+        implementation.plan who event past view = some key →
+        baseline.map preparation = (values who key).map (fun sampled => some
+          (⟨payload, phaseRecoveryDomainValue setup .concurrent event who payload binding
+            sampled.val.val⟩ : Raw L))) by
+    have transport := qualified
+    obtain zero | ⟨sourceSite, retained, encode, positive, queryEq, faithful, ordinaryEq, image⟩ :=
+      transport operational scale sourceBad nativeBad scalePositive scaleBelow sourceBadPositive
+        sourceBadBelow nativeBadPositive nativeBadBelow values fullValues source native sourceMixed
+          sourceBayes sourcePrescribed nativeMixed nativeBayes nativePrescribed who site past view
+            information event payload binding requested unsent noSaved noCurrent noForcedReset
+    · left
+      have qualifiedZero (choice) (typed : ∃ value, proper value choice) :
+          qualifiedValue choice = 0 := by
+        obtain ⟨value, typed⟩ := typed
+        have exactLaw := (zero value choice typed).2 payoffs.utility payoffs.excludedPayoff
+        change expect (payoffAt native who site choice payoffs.utility payoffs.excludedPayoff)
+          (fun result => result.getD 0) = 0
+        dsimp only [payoffAt]
+        rw [exactLaw, expect_pure]
+        rfl
+      have baselineZero : expect baseline qualifiedValue = 0 := by
+        rw [expect_congr_on_support (g := fun _ => 0)
+          (fun choice member => qualifiedZero choice (core.2.2.1 choice member)), expect_constant]
+      rw [nativeAffine]
+      apply expect_le_const _ _ (payoffIntegrable_of_finite _ _)
+      intro choice _
+      by_cases typed : ∃ value, proper value choice
+      · simpa only [qualifiedZero choice typed, baselineZero, sub_self, zero_add] using
+          core.1 choice typed
+      · exact core.2.1 choice typed
+    · right
+      obtain ⟨defaultChoice, supportedDefault⟩ := baseline.support_nonempty
+      obtain ⟨defaultValue, _typedDefault⟩ := core.2.2.1 defaultChoice supportedDefault
+      let selected := fun choice : (cN).Choice who site.1 =>
+        if typed : ∃ value, proper value choice then typed.choose else defaultValue
+      have selectedProper (choice) (typed : ∃ value, proper value choice) :
+          proper (selected choice) choice := by
+        dsimp only [selected]
+        rw [dite_eq_left typed]
+        exact typed.choose_spec
+      have preparationOf (choice) (value) (typed : proper value choice) :
+          preparation choice = some (⟨payload, value⟩ : Raw L) := by
+        obtain ⟨serial, material, chosen, _packet, prepared⟩ := typed
+        simp only [preparation, chosen, Option.bind_some, prepared]
+      have sampled : baseline.map selected = (values who
+          (setup.proposalRecoveryQuery who sourceSite.1)).map (fun sampled =>
+            phaseRecoveryDomainValue setup .concurrent event who payload binding sampled.val.val)
+              := by
+        apply pmf_map_injective (f := fun value => some (⟨payload, value⟩ : Raw L))
+        · intro first second same
+          have decoded := congrArg (fun raw : Option (Raw L) => raw.bind fun value => value.as?
+            payload) same
+          exact Option.some.inj (by
+            simpa only [Option.bind_some, Raw.as?_mk] using decoded)
+        · rw [PMF.map_comp, PMF.map_comp]
+          exact (map_congr_on_support baseline (fun choice member =>
+            (preparationOf choice (selected choice)
+              (selectedProper choice (core.2.2.1 choice member))).symm)).trans
+                (core.2.2.2 _ queryEq)
+      let causal := fun choice => PhaseProposalQualifiedBinding.sourceCausalPayoff setup values
+        source who sourceSite choice positive payoffs.utility payoffs.excludedPayoff
+      let mean := fun choice => expect (causal choice) (fun result => result.getD 0)
+      have payoffBound (history) :
+          |setup.proposalRecoveryPayoff payoffs.utility payoffs.excludedPayoff who history| ≤
+            bound := by
+        have limited := setup.proposalRecoveryPayoff_mem_Icc payoffs.utility payoffs.excludedPayoff
+          (fun _ => -bound) (fun _ => bound) (fun terminal owner => abs_le.mp (utilityBound
+            terminal owner))
+          who history
+        have excluded := abs_le.mp (excludedBound who)
+        apply abs_le.mpr
+        simpa only [min_eq_right excluded.1, min_eq_right (neg_nonpos.mpr nonnegative),
+          max_eq_right excluded.2, max_eq_right nonnegative, Set.mem_Icc] using limited
+      have causalIntegrable (choice) : PayoffIntegrable (causal choice) (fun result =>
+        result.getD 0) := by
+        apply payoffIntegrable_of_bounded_on_support (C := bound)
+        intro result member
+        change (result ∈ (((source.belief who sourceSite).filter _ positive).bind _).support)
+          at member
+        obtain ⟨history, _drawn, member⟩ := (PMF.mem_support_bind_iff _ _ _).mp member
+        obtain ⟨terminal, _drawn, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp member
+        exact payoffBound terminal
+      have qualifiedMean (choice) (typed : ∃ value, proper value choice) :
+          qualifiedValue choice = retained.val * mean (encode (selected choice)) := by
+        have exactLaw := (image (selected choice) choice (selectedProper choice typed)).2
+          payoffs.utility payoffs.excludedPayoff
+        change expect (payoffAt native who site choice payoffs.utility payoffs.excludedPayoff)
+          (fun result => result.getD 0) = _
+        dsimp only [payoffAt]
+        rw [exactLaw, expect_mix _ _ _ _ _ _ (causalIntegrable _) (payoffIntegrable_pure _ _),
+          expect_pure]
+        simp only [Option.getD_none, mul_zero, add_zero]
+        rfl
+      have baselineMean : expect baseline qualifiedValue = retained.val *
+          expect ((PhaseProposalQualifiedBinding.sourceUnflaggedStrategy setup values) who
+            sourceSite.1) mean := by
+        have encoded : (baseline.map selected).map encode =
+            PhaseProposalQualifiedBinding.sourceUnflaggedStrategy setup values who
+              sourceSite.1 := by
+          rw [sampled, PMF.map_comp]
+          exact ordinaryEq.symm
+        have averaged := congrArg (fun lottery => expect lottery mean) encoded
+        rw [expect_map, expect_map] at averaged
+        change expect baseline (fun choice => mean (encode (selected choice))) =
+          expect (PhaseProposalQualifiedBinding.sourceUnflaggedStrategy setup values who
+            sourceSite.1) mean at averaged
+        rw [expect_congr_on_support (g := fun choice => retained.val * mean (encode (selected
+          choice)))
+          (fun choice member => qualifiedMean choice (core.2.2.1 choice member)), expect_const_mul,
+          averaged]
+      let sourcePast := ∑ history : (cS).InformationHistory who sourceSite.1 with
+        (∃ owner : Player, who ≠ owner ∧ setup.GeneratedPreparationHistory owner history.val),
+        (source.belief who sourceSite history).toReal
+      let sourceError := 4 * bound * (sourcePast +
+        (Fintype.card Player * cHs : Nat) * (2 * scale.val + sourceBad.val))
+      have sourceErrorNonnegative : 0 ≤ sourceError := by
+        dsimp only [sourceError, sourcePast]
+        positivity
+      let component := fun choice => if typed : ∃ value, proper value choice then
+        mix retained.val retained.property.1.le retained.property.2
+          (PMF.pure (encode (selected choice))) (source.strategy who sourceSite.1)
+        else source.strategy who sourceSite.1
+      have atomBound (choice) : gain choice ≤
+          (cS).localGain cHs id (fun history owner =>
+            setup.proposalRecoveryPayoff payoffs.utility payoffs.excludedPayoff owner history)
+              source sourceSite (component choice) + nativeError + sourceError := by
+        by_cases typed : ∃ value, proper value choice
+        · have first := core.1 choice typed
+          rw [qualifiedMean choice typed, baselineMean] at first
+          have close := source_causal_gain_le setup scale sourceBad values source sourcePrescribed
+            who sourceSite positive (encode (selected choice)) payoffs.utility
+              payoffs.excludedPayoff
+              bound nonnegative payoffBound
+          have signed := (cS).localValue_mix cHs id
+            (fun history owner => setup.proposalRecoveryPayoff payoffs.utility
+              payoffs.excludedPayoff owner history)
+            source sourceSite setup.proposalRecoveryProtocol_bounded
+              ((cS).actsOnceWhereItMatters_of_perfectRecall
+                setup.proposalRecoveryModel_perfectRecall)
+              retained.val retained.property.1.le retained.property.2
+                (PMF.pure (encode (selected choice))) (source.strategy who sourceSite.1)
+          let _ := (cS).finite_choice_of_played ((cS).site_mem_playedInformation sourceSite)
+          have integrable := payoffIntegrable_bind_of_finite_support
+            (PhaseProposalQualifiedBinding.sourceUnflaggedStrategy setup values who sourceSite.1)
+            causal (fun result => result.getD 0) (Set.toFinite _)
+            (fun choice _ => causalIntegrable choice)
+          have baselineCausal := expect_bind_tower _ _ _ integrable
+          change expect ((PhaseProposalQualifiedBinding.sourceUnflaggedStrategy setup values who
+            sourceSite.1).bind causal) (fun result => result.getD 0) =
+              expect (PhaseProposalQualifiedBinding.sourceUnflaggedStrategy setup values who
+                sourceSite.1) mean at baselineCausal
+          change mean (encode (selected choice)) -
+              expect ((PhaseProposalQualifiedBinding.sourceUnflaggedStrategy setup values who
+                sourceSite.1).bind causal) (fun result => result.getD 0) ≤
+            (cS).localGain cHs id (fun history owner => setup.proposalRecoveryPayoff
+              payoffs.utility payoffs.excludedPayoff owner history) source sourceSite
+                (PMF.pure (encode (selected choice))) + sourceError at close
+          rw [baselineCausal, InformationModel.localGain_eq_sub] at close
+          simp only [component, dite_eq_left typed, InformationModel.localGain_eq_sub] at signed ⊢
+          nlinarith [mul_le_mul_of_nonneg_left close retained.property.1.le,
+            mul_le_of_le_one_left sourceErrorNonnegative retained.property.2]
+        · simp only [component, dite_eq_right typed, InformationModel.localGain_self]
+          exact (core.2.1 choice typed).trans (by linarith)
+      refine ⟨sourceSite, law.bind component,
+        (cS).informationMass_pos_of_fullSupport source.strategy sourceMixed who sourceSite, ?_⟩
+      rw [nativeAffine, (cS).localGain_bind cHs id
+        (fun history owner => setup.proposalRecoveryPayoff payoffs.utility payoffs.excludedPayoff
+          owner history)
+        source sourceSite setup.proposalRecoveryProtocol_bounded
+          ((cS).actsOnceWhereItMatters_of_perfectRecall setup.proposalRecoveryModel_perfectRecall)]
+      calc
+        _ ≤ expect law (fun choice => (cS).localGain cHs id
+            (fun history owner => setup.proposalRecoveryPayoff payoffs.utility
+              payoffs.excludedPayoff owner history)
+            source sourceSite (component choice) + nativeError + sourceError) :=
+          expect_mono (fun choice _ => atomBound choice) (payoffIntegrable_of_finite _ _)
+            (payoffIntegrable_of_finite _ _)
+        _ = _ := by
+          rw [expect_add (payoffIntegrable_of_finite _ _) (payoffIntegrable_constant _ _),
+            expect_add (payoffIntegrable_of_finite _ _) (payoffIntegrable_constant _ _),
+            expect_constant, expect_constant]
+  let outcome := fun state => implementation.base payoffs state who
+  let certificate := ((cmenu).bounded implementation.initial implementation.horizon
+    implementation.scheduler).wellFoundedHistories
+  let responseOf : (cN).Choice who site.1 → implementation.application.Action :=
+    fun choice => choice.1.getD ⟨none⟩
+  let bad := fun history : (cN).InformationHistory who site.1 =>
+    ∃ owner : Player, who ≠ owner ∧ PhaseProposal.GeneratedUnusableBindingHistory
+      implementation.runtime implementation.leaks implementation.bounds implementation.initial
+        implementation.horizon implementation.scheduler owner history.val
+  have outcomeBound (state) : |outcome state| ≤ bound := by
+    change |phaseExclusionBase setup .concurrent implementation.runtime implementation.leaks
+      payoffs.utility payoffs.excludedPayoff state who| ≤ bound
+    have interval := phaseExclusionBase_mem_Icc setup .concurrent implementation.runtime
+      implementation.leaks payoffs.utility payoffs.excludedPayoff (fun _ => -bound)
+        (fun _ => bound) (fun terminal owner => (abs_le.mp (utilityBound terminal owner)).1)
+          (fun terminal owner => (abs_le.mp (utilityBound terminal owner)).2) state who
+    have excluded := abs_le.mp (excludedBound who)
+    apply abs_le.mpr
+    simpa only [min_eq_right excluded.1, min_eq_right (neg_nonpos.mpr nonnegative),
+      max_eq_right excluded.2, max_eq_right nonnegative, Set.mem_Icc] using interval
+  have callback (history : (cN).InformationHistory who site.1) :
+      ∃ control : implementation.application.Control, history.val.state = some control ∧
+        control.actor = some who ∧ control.execution.recall who = past ∧
+          control.execution.observe implementation.application who = view := by
+    have observed := ((cmenu).info implementation.initial implementation.horizon
+      implementation.scheduler who history.val.trace).symm.trans
+        (history.property.trans information)
+    cases current : history.val.state with
+    | none => rw [current] at observed; cases observed
+    | some control =>
+        rw [current] at observed
+        change (if control.actor = some who then some (control.execution.recall who,
+          control.execution.observe implementation.application who) else none) =
+            some (past, view) at observed
+        split at observed
+        · rename_i active
+          exact ⟨control, rfl, active, (Prod.mk.inj (Option.some.inj observed)).1,
+            (Prod.mk.inj (Option.some.inj observed)).2⟩
+        · cases observed
+  have offered (choice : (cN).Choice who site.1) :
+      choice.1 = some (responseOf choice) ∧
+        responseOf choice ∈ (cmenu).actions who past view := by
+    have permitted := choice.property
+    simp only [information] at permitted
+    obtain ⟨response, member, selected⟩ := permitted
+    constructor
+    · simp only [responseOf, selected, Option.getD_some]
+    · simpa only [responseOf, selected, Option.getD_some] using member
+  have rawBaseline : baseline.map responseOf = players who past view := by
+    have projection := congrArg (PMF.map fun response => response.getD ⟨none⟩)
+      ((cmenu).restrictPolicy_map_val implementation.initial implementation.horizon
+        implementation.scheduler who (players who) past view
+          (phaseProposalUnflaggedPolicy_covered setup .concurrent implementation.runtime
+            implementation.leaks implementation.bounds implementation.plan values who past view))
+    have atInformation := congrArg (fun input =>
+      ((ordinary who input).map fun choice => choice.1.getD ⟨none⟩)) information
+    change baseline.map responseOf = _ at atInformation
+    refine atInformation.trans ?_
+    simp only [PMF.map_comp, Function.comp_def, Option.getD_some] at projection
+    change _ = (players who past view).map id at projection
+    rw [PMF.map_id] at projection
+    exact projection
+  obtain ⟨representative, _positiveRepresentative⟩ := (native.belief who site).support_nonempty
+  obtain ⟨origin, originState, originActor, originPast, originView⟩ := callback representative
+  have originTrace : (cE).Trace (some ⟨origin.remaining, some who, origin.execution⟩) := by
+    simpa only [← originActor] using (originState ▸ representative.val.trace)
+  have publicRequest (control : implementation.application.Control)
+      (trace : (cE).Trace (some ⟨control.remaining, some who, control.execution⟩))
+      (observed : control.execution.observe implementation.application who = view) :
+      control.execution.application.SeedRequest who
+        ⟨control.execution.application.attempt, event⟩ := by
+    have invariant := phaseNativeInvariant_history implementation.runtime
+      implementation.leaks implementation.plan (setup.initialLaw.map encodeInputs)
+        implementation.horizon implementation.scheduler
+        (control := ⟨control.remaining, some who, control.execution⟩)
+    rw [PMF.map_comp] at invariant
+    obtain ⟨_draw, valid⟩ := invariant ((cmenu).toRawTrace implementation.initial
+      implementation.horizon implementation.scheduler trace)
+    apply (control.execution.application.requests_publicView valid who _).mp
+    change PhaseRuntimeState.requests
+      (control.execution.observe implementation.application who).application.2 who _
+    have sameAttempt := congrArg
+      (fun observation : implementation.application.PlayerView => observation.application.2.attempt)
+      observed
+    change control.execution.application.attempt = view.application.2.attempt at sameAttempt
+    simpa only [observed, sameAttempt] using requested
+  have originRequest := publicRequest origin originTrace originView
+  have originAttempt : origin.execution.application.attempt = view.application.2.attempt := by
+    exact congrArg (fun observed : implementation.application.PlayerView =>
+      observed.application.2.attempt) originView
+  have supportedProper (choice) (member : choice ∈ baseline.support) : ∃ value, proper value
+    choice := by
+    have emitted : responseOf choice ∈ (baseline.map responseOf).support :=
+      (PMF.mem_support_map_iff _ _ _).mpr ⟨choice, member, rfl⟩
+    rw [rawBaseline, ← originPast, ← originView] at emitted
+    obtain ⟨material, value, transmitted, typed⟩ :=
+      phaseProposalUnflaggedBinding_supported_usable setup .concurrent implementation.runtime
+        implementation.leaks implementation.bounds implementation.plan operational.completePending
+          operational.outputValues operational.maximalPhases values fullValues
+            implementation.horizon implementation.scheduler operational.candidateReserve
+              origin.remaining who origin.execution originTrace event payload binding originRequest
+                (by simpa only [originPast, originAttempt] using unsent) (responseOf choice) emitted
+    have available := (offered choice).2
+    rw [← originPast, ← originView] at available
+    have shape := PhaseCount.onePacket_binding_shape implementation.runtime implementation.leaks
+      implementation.bounds implementation.plan (serviceGraph_revealRelaxedOrdered setup
+        .concurrent)
+        (setup.initialLaw.map encodeInputs) implementation.horizon implementation.scheduler
+    rw [PMF.map_comp] at shape
+    have responseEq : responseOf choice = ⟨some material⟩ :=
+      congrArg (fun transmission =>
+        ({ transmission := transmission } : implementation.application.Action)) transmitted
+    have shaped := shape origin.remaining who origin.execution originTrace event payload binding
+      originRequest material (by simpa only [responseEq, PhaseCount.onePacketMenu] using available)
+    obtain ⟨serial, preparation, evidence, materialEq, _bounded, _fresh⟩ := shaped
+    refine ⟨value, serial, material, ?_, ?_, typed⟩
+    · rw [(offered choice).1]
+      exact congrArg some responseEq
+    · rw [materialEq]
+  have preparationLaw (key) (queried : phaseProposalQuery? setup .concurrent
+      implementation.runtime implementation.leaks implementation.plan who event past view = some
+        key) :
+      baseline.map preparation = (values who key).map (fun sampled => some
+        (⟨payload, phaseRecoveryDomainValue setup .concurrent event who payload binding
+          sampled.val.val⟩ : Raw L)) := by
+    have projected := phaseProposalUnflaggedBinding_preparation_law_of_query setup .concurrent
+      implementation.runtime implementation.leaks implementation.bounds implementation.plan
+        operational.outputValues values implementation.horizon implementation.scheduler
+          operational.candidateReserve origin.remaining who origin.execution originTrace event
+            payload binding originRequest (by simpa only [originPast, originAttempt] using unsent)
+              key (by simpa only [originPast, originView] using queried)
+    have mapped := congrArg
+      (PMF.map fun response => response.transmission.bind PhaseProposal.bindingPreparation)
+        rawBaseline
+    have exactRead : baseline.map preparation = (baseline.map responseOf).map
+        (fun response => response.transmission.bind PhaseProposal.bindingPreparation) := by
+      rw [PMF.map_comp]
+      apply congrArg (PMF.map · baseline)
+      funext choice
+      simp only [preparation, (offered choice).1, Option.bind_some, Function.comp_def]
+    apply exactRead.trans
+    apply mapped.trans
+    rw [originPast, originView] at projected
+    convert projected using 1
+  let experiment := PhaseProposalQualifiedBinding.stoppedFinish setup .concurrent
+    implementation.runtime implementation.leaks implementation.bounds implementation.plan
+      implementation.prior values
+  let gateAt := PhaseProposalQualifiedBinding.originalAdmissionGate setup .concurrent
+    implementation.runtime implementation.leaks implementation.bounds implementation.plan
+      implementation.prior
+  let goodAt := PhaseProposalQualifiedBinding.foreignGood setup .concurrent
+    implementation.runtime implementation.leaks implementation.bounds implementation.plan
+      implementation.prior
+  let mean := fun (history : (cN).InformationHistory who site.1) choice =>
+    expect (experiment who history.val (history.property.symm ▸ choice))
+      (fun result => outcome result.2.state)
+  let residual := fun (history : (cN).InformationHistory who site.1) choice (remove : Bool) =>
+    expect (experiment who history.val (history.property.symm ▸ choice)) (fun result =>
+      if remove = true ∧ gateAt history.val result.1 then 0 else outcome result.2.state)
+  let retained := fun history choice => if bad history then 0 else
+    mean history choice - residual history choice true
+  have meanBound (history) (choice) : |mean history choice| ≤ bound :=
+    expect_abs_le_of_bounded nonnegative (fun result => outcomeBound result.2.state)
+  have residualBound (history) (choice) (remove) : |residual history choice remove| ≤ bound := by
+    apply expect_abs_le_of_bounded nonnegative
+    intro result
+    split
+    · simpa only [abs_zero] using nonnegative
+    · exact outcomeBound _
+  have qualifiedMean (choice) : qualifiedValue choice =
+      expect (native.belief who site) (fun history => retained history choice) := by
+    have integrable : PayoffIntegrable
+        (payoffAt native who site choice payoffs.utility payoffs.excludedPayoff)
+          (fun result : Option ℝ => result.getD 0) := by
+      apply payoffIntegrable_of_bounded_on_support (C := bound)
+      intro result member
+      dsimp only [payoffAt, PhaseProposalQualifiedBinding.qualifiedPayoff] at member
+      obtain ⟨history, _drawn, member⟩ := (PMF.mem_support_bind_iff _ _ _).mp member
+      obtain ⟨pair, _drawn, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp member
+      split <;> simp only [Option.getD_some, Option.getD_none, abs_zero]
+      · exact outcomeBound _
+      · exact nonnegative
+    dsimp only [qualifiedValue, payoffAt, PhaseProposalQualifiedBinding.qualifiedPayoff]
+    rw [expect_bind_tower _ _ _ integrable]
+    apply expect_congr_on_support
+    intro history _
+    rw [expect_map]
+    dsimp only [retained, mean, residual]
+    change expect (experiment who history.val (history.property.symm ▸ choice))
+      (fun result => (if goodAt who history.val ∧ gateAt history.val result.1
+        then some (outcome result.2.state) else none).getD 0) = _
+    have meanIntegrable := payoffIntegrable_of_bounded
+      (experiment who history.val (history.property.symm ▸ choice))
+      (fun result => outcome result.2.state) (fun result => outcomeBound result.2.state)
+    have removedIntegrable := payoffIntegrable_of_bounded
+      (experiment who history.val (history.property.symm ▸ choice))
+      (fun result => if true = true ∧ gateAt history.val result.1 then 0
+        else outcome result.2.state) (fun result => by
+          split
+          · simpa only [abs_zero] using nonnegative
+          · exact outcomeBound result.2.state)
+    rw [← expect_sub meanIntegrable removedIntegrable]
+    by_cases foreignBad : bad history
+    · have notGood : ¬ goodAt who history.val := by
+        obtain ⟨owner, different, generated⟩ := foreignBad
+        exact fun good => good owner different.symm generated
+      simp only [foreignBad, ite_true, notGood, false_and, ite_false, Option.getD_none,
+        expect_constant]
+    · have good : goodAt who history.val := by
+        intro owner different generated
+        exact foreignBad ⟨owner, different.symm, generated⟩
+      simp only [foreignBad, ite_false, good, true_and]
+      apply expect_congr_on_support
+      intro result _
+      split_ifs <;> simp_all only [Option.getD_some, Option.getD_none] <;> ring
+  have physicalResidual (history : (cN).InformationHistory who site.1)
+      (control : implementation.application.Control) (current : history.val.state = some control)
+      (active : control.actor = some who)
+      (phase : RuntimePhase (serviceGraph setup .concurrent))
+      (installed : phase ∈ control.execution.application.phases.head?)
+      (kind : phase.kind = .commitment) (choice) (remove : Bool) :
+      residual history choice remove =
+        expect (((implementation.application).schedulerMixture implementation.prior
+          (ReservedEpoch.family implementation.runtime implementation.leaks
+            (ReservedEpoch.packetCapacity implementation.runtime))).posterior
+              control.execution.environmentRecall) (fun tape =>
+          expect ((implementation.application).runUntil
+            (ReservedEpoch.family implementation.runtime implementation.leaks
+              (ReservedEpoch.packetCapacity implementation.runtime) tape) players
+            (fun next => next.application.attempt ≠ control.execution.application.attempt)
+              control.remaining (control.execution.respond implementation.application who
+                (responseOf choice))) (fun ending =>
+            if remove = true ∧ ending.application.attempt ≠ control.execution.application.attempt ∧
+                ending.application.current.excluded = control.execution.application.entry.excluded
+            then 0 else expect ((implementation.application).finish implementation.initial
+              implementation.horizon (ReservedEpoch.family implementation.runtime
+                implementation.leaks (ReservedEpoch.packetCapacity implementation.runtime) tape)
+                  players (some ⟨implementation.horizon - ending.environmentRecall.length,
+                    none, ending⟩)) outcome)) := by
+    have joint := PhaseProposalQualifiedBinding.stoppedFinish_gate_seed_joint setup .concurrent
+      implementation.runtime implementation.leaks implementation.bounds implementation.plan
+        implementation.prior values implementation.activationGap implementation.processingGap
+          operational.boundedGaps operational.maximalPhases
+    have exactJoint := joint who history.val (history.property.symm ▸ choice) control.remaining
+      control.execution (by simpa only [← active] using current) (responseOf choice)
+        (by
+          have castVal : ∀ (first second : (cN).InfoState who) (same : first = second)
+              (atom : (cN).Choice who first),
+              ((same ▸ atom : (cN).Choice who second).val) = atom.val := by
+            intro first second same atom
+            cases same
+            rfl
+          exact (castVal _ _ history.property.symm choice).trans (offered choice).1)
+        phase installed kind
+    have read := congrArg (fun law => expect law (fun result =>
+      if remove = true ∧ result.1.1 = true then 0 else outcome result.1.2)) exactJoint
+    have rewardBound : ∀ result : (Bool × implementation.application.ProtocolState) ×
+        ReservedEpoch.Tape Player implementation.tapeLength,
+        |(if remove = true ∧ result.1.1 = true then 0 else outcome result.1.2 : ℝ)| ≤ bound := by
+      intro result
+      split
+      · simpa only [abs_zero] using nonnegative
+      · exact outcomeBound result.1.2
+    simp only [expect_bind_tower_bounded _ _ _ rewardBound, expect_map,
+      Function.comp_def, decide_eq_true_eq, expect_constant] at read
+    dsimp only [residual, experiment, gateAt]
+    rw [read]
+    apply expect_congr_on_support
+    intro tape _
+    apply expect_congr_on_support
+    intro ending _
+    split_ifs <;> first | rfl | exact expect_constant _ _
+  have physicalOrder (history : (cN).InformationHistory who site.1) (good : ¬ bad history)
+      (choice) (remove : Bool)
+      (typed : remove = true → ∃ value, proper value choice)
+      (untyped : remove = false → ¬ ∃ value, proper value choice) :
+      residual history choice remove ≤ expect baseline (fun left => residual history left remove)
+        := by
+    obtain ⟨control, current, active, recalled, observed⟩ := callback history
+    have counted : (cE).Trace (some ⟨control.remaining, some who, control.execution⟩) := by
+      simpa only [← active] using (current ▸ history.val.trace)
+    have rawTrace := (cmenu).toRawTrace implementation.initial implementation.horizon
+      implementation.scheduler counted
+    have request := publicRequest control counted observed
+    have phaseRead := phase_ready_binding_phase
+      implementation.runtime implementation.leaks implementation.plan
+        (serviceGraph_revealRelaxedOrdered setup .concurrent) operational.maximalPhases
+          (setup.initialLaw.map encodeInputs) implementation.horizon implementation.scheduler
+          (control := ⟨control.remaining, some who, control.execution⟩)
+    rw [PMF.map_comp] at phaseRead
+    obtain ⟨phase, rest, installed, kind, _inside⟩ := phaseRead
+      rawTrace who event payload binding request.2.2.1
+    let family : ReservedEpoch.Tape Player implementation.tapeLength →
+        implementation.application.Scheduler :=
+      ReservedEpoch.family implementation.runtime implementation.leaks
+        (ReservedEpoch.packetCapacity implementation.runtime)
+    let valueAt := fun tape response => expect ((implementation.application).runUntil
+      (family tape) players (fun next => next.application.attempt ≠
+        control.execution.application.attempt)
+        control.remaining (control.execution.respond implementation.application who response))
+      (fun ending => if remove = true ∧
+        ending.application.attempt ≠ control.execution.application.attempt ∧
+          ending.application.current.excluded = control.execution.application.entry.excluded then 0
+        else expect ((implementation.application).finish implementation.initial
+          implementation.horizon
+          (family tape) players (some ⟨implementation.horizon - ending.environmentRecall.length,
+            none, ending⟩)) outcome)
+    have valueBound (tape) (response) : |valueAt tape response| ≤ bound := by
+      apply expect_abs_le_of_bounded nonnegative
+      intro ending
+      split
+      · simpa only [abs_zero] using nonnegative
+      · exact expect_abs_le_of_bounded nonnegative outcomeBound
+    have phaseHead : phase ∈ control.execution.application.phases.head? := by
+      change control.execution.application.phases = phase :: rest at installed
+      rw [installed]
+      exact Option.mem_some_iff.mpr rfl
+    rw [physicalResidual history control current active phase phaseHead kind choice remove]
+    have baselineResidual := expect_congr_on_support (μ := baseline) (fun left _ =>
+      physicalResidual history control current active phase phaseHead kind left remove)
+    refine le_of_le_of_eq ?_ baselineResidual.symm
+    rw [expect_comm_of_support_finite_left baseline _ (Set.toFinite _)
+      (fun left tape => valueAt tape (responseOf left))
+      (fun left _ => payoffIntegrable_of_bounded _ _
+        (fun tape => valueBound tape (responseOf left)))]
+    change expect _ (fun tape => valueAt tape (responseOf choice)) ≤
+      expect _ (fun tape => expect baseline (fun left => valueAt tape (responseOf left)))
+    apply expect_mono _
+      (payoffIntegrable_of_bounded _ _ (fun tape => valueBound tape (responseOf choice)))
+      (payoffIntegrable_of_bounded _ _ (fun tape =>
+        expect_abs_le_of_bounded nonnegative (fun left => valueBound tape (responseOf left))))
+    intro tape tapeSupported
+    have finiteInitial : implementation.initial.support.Finite := by
+      simpa only [ReservedConcurrentImplementation.initial, PMF.support_map] using
+        setup.initialLaw_support_finite.image
+          (fun theta => PhaseRuntimeState.initial implementation.plan (encodeInputs theta))
+    let fixedNature : implementation.application.FiniteNature implementation.initial
+        (family tape) :=
+      phaseApplication_finiteNature implementation.runtime implementation.leaks
+        implementation.initial (family tape) finiteInitial (by
+          intro earlier seen
+          simp only [family, ReservedEpoch.family, PMF.support_pure]
+          exact Set.finite_singleton _)
+    let _ : implementation.application.FiniteNature
+        ((setup.initialLaw.map encodeInputs).map
+              (PhaseRuntimeState.initial implementation.plan))
+        (family tape) := by
+      rw [PMF.map_comp]
+      exact fixedNature
+    let fixedValue := valueAt tape
+    change fixedValue (responseOf choice) ≤ expect baseline (fun left => fixedValue (responseOf
+      left))
+    obtain ⟨tapeInPrior, ⟨fixedRawTrace⟩⟩ :=
+      (implementation.application).schedulerMixture_trace_of_posterior_support implementation.prior
+        family implementation.initial implementation.horizon
+          ⟨control.remaining, some who, control.execution⟩ rawTrace tape tapeSupported
+    obtain ⟨fixedTrace⟩ := (cmenu).trace_of_recorded_actions
+      (PhaseCount.silence_onePacket implementation.runtime implementation.leaks
+        implementation.bounds)
+        implementation.initial implementation.horizon (family tape) _ fixedRawTrace (by
+          intro owner earlier entry later recorded
+          obtain ⟨before, _prior, _kept, _acting, _past, viewed, permitted⟩ :=
+            (cmenu).recorded_response_at implementation.initial implementation.horizon
+              implementation.scheduler _ counted owner earlier entry later recorded
+          rwa [← viewed] at permitted)
+    have fixedCounted : ((cmenu).protocol
+        ((setup.initialLaw.map encodeInputs).map
+              (PhaseRuntimeState.initial implementation.plan))
+        implementation.horizon (family tape)).Trace
+          (some ⟨control.remaining, some who, control.execution⟩) := by
+      rw [PMF.map_comp]
+      exact fixedTrace
+    have foreign (owner : Player) (different : owner ≠ who)
+        (_surviving : owner ∉ control.execution.application.current.excluded)
+        (generated : PhaseProposal.GeneratedUnusableBindingHistory implementation.runtime
+          implementation.leaks implementation.bounds
+            ((setup.initialLaw.map encodeInputs).map
+              (PhaseRuntimeState.initial implementation.plan))
+            implementation.horizon (family tape) owner
+              ⟨some ⟨control.remaining, some who, control.execution⟩, fixedCounted⟩) : False := by
+      apply good
+      refine ⟨owner, different.symm, ?_⟩
+      change ∃ record ∈ ((cmenu).signals implementation.initial implementation.horizon
+        implementation.scheduler).ownPlay owner history.val.trace, _
+      change ∃ record ∈ ((cmenu).signals
+        ((setup.initialLaw.map encodeInputs).map
+              (PhaseRuntimeState.initial implementation.plan))
+        implementation.horizon (family tape)).ownPlay owner fixedCounted, _ at generated
+      rw [← (cmenu).ownPlay_toRawTrace _ implementation.horizon
+        (family tape) owner fixedCounted, (implementation.application).trace_ownPlay] at generated
+      rw [← (cmenu).ownPlay_toRawTrace implementation.initial implementation.horizon
+        implementation.scheduler owner history.val.trace,
+          (implementation.application).trace_ownPlay]
+      simp only [ReactiveApplication.recallAt, current] at generated ⊢
+      change ∃ record ∈ implementation.application.recallOwnPlay
+        (control.execution.recall owner),
+        PhaseProposal.GeneratedUnusableBindingAction implementation.runtime implementation.leaks
+          owner record.2 at generated ⊢
+      exact generated
+    have currentAttempt : control.execution.application.attempt = view.application.2.attempt :=
+      congrArg (fun observation : implementation.application.PlayerView =>
+        observation.application.2.attempt) observed
+    have unsentHere : ∀ message ∈ implementation.application.outputs
+        (control.execution.recall who), PhaseCount.event? message.payload ≠
+          some ⟨control.execution.application.attempt, event⟩ := by
+      simpa only [recalled, currentAttempt] using unsent
+    have available : responseOf choice ∈ (cmenu).actions who (control.execution.recall who)
+        (control.execution.observe implementation.application who) := by
+      simpa only [recalled, observed] using (offered choice).2
+    have stopFinish (response : implementation.application.Action) :
+        (implementation.application).finish implementation.initial implementation.horizon
+          (family tape) players (some ⟨control.remaining, none,
+            control.execution.respond implementation.application who response⟩) =
+        ((implementation.application).runUntil (family tape) players
+          (fun next => next.application.attempt ≠ control.execution.application.attempt)
+            control.remaining (control.execution.respond implementation.application who
+              response)).bind
+          (fun ending => (implementation.application).finish implementation.initial
+            implementation.horizon (family tape) players
+              (some ⟨implementation.horizon - ending.environmentRecall.length, none, ending⟩)) := by
+      have accounted := implementation.application.raw_trace_horizon implementation.initial
+        implementation.horizon (family tape) fixedRawTrace
+      change control.execution.environmentRecall.length + control.remaining =
+        implementation.horizon at accounted
+      have responseRecall := implementation.application.respond_environmentRecall
+        control.execution who response
+      rw [implementation.application.finish_eq_runToHorizon _ _ _ _ _ _
+        (by simpa only [responseRecall] using accounted)]
+      rw [implementation.application.runToHorizon_eq_runUntilHorizon_bind _ _
+        (fun next => next.application.attempt ≠ control.execution.application.attempt)]
+      simp only [ReactiveApplication.runUntilHorizon, responseRecall,
+        show implementation.horizon - control.execution.environmentRecall.length =
+          control.remaining by omega, PMF.map_bind]
+      apply bind_congr_on_support
+      intro ending _
+      simp only [ReactiveApplication.finish, ReactiveApplication.resume, PMF.pure_bind,
+        ReactiveApplication.runToHorizon]
+    cases transmitted : (responseOf choice).transmission with
+    | none =>
+        have notRemove : remove = false := by
+          cases remove with
+          | false => rfl
+          | true =>
+              obtain ⟨value, serial, material, selected, _packet, _prepared⟩ := typed rfl
+              have impossible := congrArg (fun action => action.bind
+                (fun response => response.transmission)) selected
+              simp only [(offered choice).1, Option.bind_some, transmitted] at impossible
+              cases impossible
+        have waiting := phaseProposal_unflagged_wait_finish_le setup .concurrent
+          implementation.runtime implementation.leaks implementation.bounds implementation.plan
+            operational.completePending operational.outputValues operational.maximalPhases
+              operational.wellFormed values fullValues tape implementation.activationGap
+                implementation.processingGap (operational.boundedGaps tape tapeInPrior)
+                  operational.timely operational.candidateReserve control.remaining who
+                    control.execution fixedCounted event payload binding request unsentHere
+                      (by simpa only [observed] using noSaved)
+                      (by simpa only [observed] using noCurrent)
+        obtain ⟨witness, _archive⟩ := recoverySourceCheckpoint_proposalArchive_history setup
+          .concurrent implementation.runtime implementation.leaks implementation.bounds
+            implementation.plan operational.maximalPhases implementation.horizon (family tape)
+              fixedTrace
+        have savedE : control.execution.application.entry.excluded =
+            PhaseRuntimeState.archivedFailureOwners control.execution.application.retired ∪
+              control.execution.application.current.native.failureOwnersBefore
+                control.execution.application.attempt.phase :=
+          PhaseRuntimeState.saved_excluded_eq_public_failures witness.exclusions
+            witness.failures witness.receipts.exclusion.frontier phase rest installed
+        have equalE : control.execution.application.current.excluded =
+            control.execution.application.entry.excluded := by
+          apply Finset.Subset.antisymm
+          · intro owner member
+            by_contra absent
+            apply noForcedReset
+            rw [← observed]
+            change (control.execution.application.publicView.excluded \
+              ((control.execution.application.publicView.retired.map fun record =>
+                record.2.sourceFailureFootprint.2).foldr (fun first rest => first ∪ rest) ∅ ∪
+                control.execution.application.publicView.native.sourceFailureFootprint.1
+                  control.execution.application.publicView.attempt.phase)).Nonempty
+            simpa only [PhaseRuntimeState.publicView, State.sourceFailureFootprint_read,
+              PhaseRuntimeState.sourceRecordFailures_sourceControlRecords,
+              PhaseRuntimeState.archivedFailureOwners, List.map_map, Function.comp_def,
+              State.sourceFailureFootprint, List.foldr_map, savedE] using
+                (show (control.execution.application.current.excluded \
+                  control.execution.application.entry.excluded).Nonempty from
+                    ⟨owner, Finset.mem_sdiff.mpr ⟨member, absent⟩⟩)
+          · exact witness.exclusions.coverage.inherited
+        have comparison := waiting equalE foreign payoffs.utility payoffs.excludedPayoff bound
+          nonnegative utilityBound (excludedBound who) (bounded.excluded_nonpositive who)
+            (fun terminal => bounded.excluded_le terminal who)
+        have waitingEq : responseOf choice = ⟨none⟩ :=
+          congrArg (fun transmission =>
+            ({ transmission := transmission } : implementation.application.Action)) transmitted
+        have fullBaseline : (implementation.application).finish implementation.initial
+            implementation.horizon (family tape) players
+              (some ⟨control.remaining, some who, control.execution⟩) =
+            (baseline.map responseOf).bind fun response =>
+              (implementation.application).finish implementation.initial implementation.horizon
+                (family tape) players (some ⟨control.remaining, none,
+                  control.execution.respond implementation.application who response⟩) := by
+          rw [rawBaseline, ← recalled, ← observed]
+          simp only [ReactiveApplication.finish, ReactiveApplication.resume,
+            ReactiveApplication.invoke, PMF.bind_map, PMF.pure_bind, PMF.map_bind,
+            Function.comp_def]
+        dsimp only at comparison
+        rw [PMF.map_comp] at comparison
+        change expect (implementation.application.finish implementation.initial
+          implementation.horizon
+          (family tape) players (some ⟨control.remaining, none,
+            control.execution.respond implementation.application who ⟨none⟩⟩)) outcome ≤
+          expect (implementation.application.finish implementation.initial implementation.horizon
+            (family tape) players (some ⟨control.remaining, some who, control.execution⟩)) outcome
+          at comparison
+        rw [fullBaseline, expect_bind_tower_bounded _ _ _ outcomeBound, expect_map] at comparison
+        have fixedFinish (response) : fixedValue response =
+            expect (implementation.application.finish implementation.initial implementation.horizon
+              (family tape) players (some ⟨control.remaining, none,
+                control.execution.respond implementation.application who response⟩)) outcome := by
+          dsimp only [fixedValue, valueAt]
+          simp only [notRemove, Bool.false_eq_true, false_and, ite_false]
+          rw [← expect_bind_tower_bounded _ _ _ outcomeBound, ← stopFinish]
+        have baselineFinish := expect_congr_on_support (μ := baseline)
+          (fun left _ => fixedFinish (responseOf left))
+        rw [fixedFinish, baselineFinish]
+        simpa only [waitingEq, Function.comp_def] using comparison
+    | some material =>
+        have responseEq : responseOf choice = ⟨some material⟩ :=
+          congrArg (fun transmission =>
+            ({ transmission := transmission } : implementation.application.Action)) transmitted
+        have ordered : ∀ left ∈ baseline.support,
+            fixedValue (responseOf choice) ≤ fixedValue (responseOf left) := by
+          intro left leftSupported
+          have supported : responseOf left ∈ (baseline.map responseOf).support :=
+            (PMF.mem_support_map_iff _ _ _).mpr ⟨left, leftSupported, rfl⟩
+          rw [rawBaseline, ← recalled, ← observed] at supported
+          have badPreparation : remove = false →
+              (responseOf choice).transmission.bind PhaseProposal.bindingPreparation = none := by
+            intro isFalse
+            cases prepared : PhaseProposal.bindingPreparation material with
+            | none => simp only [transmitted, prepared, Option.bind_some]
+            | some raw =>
+                obtain ⟨serial, opening, evidence, materialEq, _bound, _fresh⟩ :=
+                  PhaseCount.onePacket_binding_shape implementation.runtime implementation.leaks
+                    implementation.bounds implementation.plan
+                      (serviceGraph_revealRelaxedOrdered setup .concurrent)
+                        (setup.initialLaw.map encodeInputs) implementation.horizon (family tape)
+                          control.remaining who control.execution fixedCounted event payload binding
+                            request material (by
+                              simpa only [responseEq, PhaseCount.onePacketMenu] using available)
+                have typedRaw : ∃ value, raw = (⟨payload, value⟩ : Raw L) := by
+                  have mapped := prepared
+                  simp only [PhaseProposal.bindingPreparation, materialEq, binding] at mapped
+                  obtain ⟨value, _supported, same⟩ := Option.map_eq_some_iff.mp mapped
+                  exact ⟨value, same.symm⟩
+                obtain ⟨value, rfl⟩ := typedRaw
+                have chosen : choice.1 = some ⟨some material⟩ := by
+                  rw [(offered choice).1]
+                  exact congrArg some responseEq
+                have packet : material.call.packet = .commitment event (who, .prepared serial) := by
+                  rw [materialEq]
+                exact (untyped isFalse ⟨value, serial, material, chosen, packet, prepared⟩).elim
+          have comparison := clean_send_complement setup .concurrent implementation.runtime
+            implementation.leaks
+            implementation.bounds implementation.plan operational.completePending
+              operational.outputValues operational.maximalPhases operational.wellFormed values
+                fullValues tape implementation.activationGap implementation.processingGap
+                  (operational.boundedGaps tape tapeInPrior) operational.timely
+                    operational.candidateReserve control.remaining who control.execution
+                      fixedCounted
+                      event payload binding request unsentHere
+                        (by simpa only [observed] using noSaved) foreign
+                          (responseOf left) (responseOf choice) supported available
+                            (by rw [transmitted]; exact Option.some_ne_none _) remove badPreparation
+                              payoffs.utility payoffs.excludedPayoff bound nonnegative utilityBound
+                                (excludedBound who) (bounded.excluded_nonpositive who)
+                                  (fun terminal => bounded.excluded_le terminal who)
+          simpa only [fixedValue, valueAt, family, PMF.map_comp, Function.comp_def,
+            players, outcome, ReservedConcurrentImplementation.initial,
+            ReservedConcurrentImplementation.base] using comparison
+        simpa only [expect_constant] using expect_mono ordered
+          (payoffIntegrable_constant baseline _)
+          (payoffIntegrable_of_bounded _ _ (fun left => valueBound tape (responseOf left)))
+  let flagError := (2 * (Fintype.card Player * cHn : Nat) + 1) *
+    (⟨nativeBad, scale, scale, scale⟩ : PhaseProposalRates).flagBound * (2 * bound)
+  let deviation := fun choice : (cN).Choice who site.1 =>
+    (⟨site, (native.strategy who).withLaw site.1 (PMF.pure choice)⟩ :
+      (cN).AssessmentDeviation who)
+  have historyFlag (history : (cN).InformationHistory who site.1) (choice) :
+      (cN).historyGain ((cN).runBehavioralTerminalFrom certificate)
+        (fun final => final.state) (implementation.base payoffs) native (deviation choice) history ≤
+          mean history choice - expect baseline (mean history) + flagError := by
+    obtain ⟨control, current, active, recalled, observed⟩ := callback history
+    have callbackCurrent : history.val.state =
+        some ⟨control.remaining, some who, control.execution⟩ := by
+      simpa only [← active] using current
+    let counted : (cE).Trace (some ⟨control.remaining, some who, control.execution⟩) :=
+      callbackCurrent ▸ history.val.trace
+    have estimate := phaseProposal_current_gain_flag_error setup .concurrent
+      implementation.runtime implementation.leaks implementation.bounds implementation.plan
+        operational.completePending operational.outputValues operational.maximalPhases values
+          fullValues (⟨nativeBad, scale, scale, scale⟩ : PhaseProposalRates)
+            scalePositive scaleBelow scalePositive nativeBadPositive nativeBadBelow
+              implementation.horizon implementation.scheduler
+    rw [PMF.map_comp] at estimate
+    obtain ⟨kernel, responseLaw, responseStates, estimate⟩ := estimate control.remaining who
+      control.execution counted payoffs.utility payoffs.excludedPayoff bound nonnegative
+        utilityBound (excludedBound who)
+    let value := fun (profile : ∀ owner, (cN).BehavioralPolicy owner)
+        (responses : PMF implementation.application.Action) => expect ((responses.bind kernel).bind
+      ((cN).runBehavioralTerminalFrom certificate profile)) (fun final => outcome final.state)
+    have localDecoded (profile : ∀ owner, (cN).BehavioralPolicy owner)
+        (lottery : PMF ((cN).Choice who site.1)) :
+        (cmenu).decodeProfile implementation.initial implementation.horizon implementation.scheduler
+          (Profile.update (sig := (cN).behavioralSignature) profile who
+            ((profile who).withLaw site.1 lottery)) who (control.execution.recall who)
+              (control.execution.observe implementation.application who) = lottery.map responseOf
+                := by
+      simp only [ReactiveApplication.ResponseMenu.decodeProfile, ReactiveApplication.decodePolicy,
+        ReactiveApplication.ResponseMenu.embedPolicy, Profile.update_same, PMF.map_comp,
+        Function.comp_def, ReactiveApplication.ResponseMenu.rawChoice]
+      rw [recalled, observed, ← information, InformationModel.BehavioralPolicy.withLaw_self]
+    have presentation (profile : ∀ owner, (cN).BehavioralPolicy owner)
+        (lottery : PMF ((cN).Choice who site.1)) :
+        expect ((cN).runBehavioralTerminalFrom certificate
+          (Profile.update (sig := (cN).behavioralSignature) profile who
+            ((profile who).withLaw site.1 lottery)) history.val) (fun final => outcome
+              final.state) =
+          value profile (lottery.map responseOf) := by
+      have enough : implementation.application.rank implementation.horizon history.val.state ≤
+          2 * implementation.horizon + 1 := by
+        have bounded := implementation.application.trace_bound implementation.initial
+          implementation.horizon implementation.scheduler
+            ((cmenu).toRawTrace implementation.initial implementation.horizon
+              implementation.scheduler history.val.trace)
+        omega
+      have direct := (cmenu).run_local_law_finish_of_information implementation.initial
+        implementation.horizon implementation.scheduler profile history.val who control.remaining
+          control.execution callbackCurrent site.1 history.property lottery
+            (2 * implementation.horizon) enough
+      have physical : (((lottery.map responseOf).bind kernel).bind
+          ((cN).runBehavioralTerminalFrom certificate profile)).map History.state =
+          (lottery.map responseOf).bind (fun response => implementation.application.finish
+            implementation.initial implementation.horizon implementation.scheduler
+              ((cmenu).decodeProfile implementation.initial implementation.horizon
+                implementation.scheduler profile) (some ⟨control.remaining, none,
+                  control.execution.respond implementation.application who response⟩)) := by
+        rw [PMF.map_bind, PMF.bind_bind]
+        apply bind_congr_on_support
+        intro response member
+        have stateLaw := responseStates
+          (Profile.update (sig := (cN).behavioralSignature) profile who
+            ((profile who).withLaw site.1 lottery)) response (by
+              change response ∈ ((cmenu).decodeProfile implementation.initial implementation.horizon
+                implementation.scheduler (Profile.update (sig := (cN).behavioralSignature)
+                  profile who ((profile who).withLaw site.1 lottery)) who
+                    (control.execution.recall who)
+                    (control.execution.observe implementation.application who)).support
+              rwa [localDecoded])
+        have physical := phaseProposal_response_kernel_finish setup .concurrent
+          implementation.runtime implementation.leaks implementation.bounds implementation.plan
+            implementation.prior
+        rw [PMF.map_comp] at physical
+        simpa only [PMF.map_bind, ReservedConcurrentImplementation.initial,
+          ReservedConcurrentImplementation.scheduler, Function.comp_def] using
+          physical profile kernel control.remaining who control.execution response stateLaw
+      have equation : ((cN).runBehavioralTerminalFrom certificate
+          (Profile.update (sig := (cN).behavioralSignature) profile who
+            ((profile who).withLaw site.1 lottery)) history.val).map History.state =
+          (((lottery.map responseOf).bind kernel).bind
+            ((cN).runBehavioralTerminalFrom certificate profile)).map History.state := by
+        rw [(cN).runBehavioralTerminalFrom_eq_runBehavioralFrom_of_bounded certificate
+          ((cmenu).bounded implementation.initial implementation.horizon implementation.scheduler),
+          direct, physical]
+      simpa only [expect_map, Function.comp_def, value] using
+        congrArg (fun law => expect law outcome) equation
+    have meanKernel (selected) : mean history selected =
+        value ordinary (PMF.pure (responseOf selected)) := by
+      have terminalLaw := PhaseProposalQualifiedBinding.stoppedFinish_terminal setup .concurrent
+        implementation.runtime implementation.leaks implementation.bounds implementation.plan
+          implementation.prior values
+      have first := responseLaw (Profile.update (sig := (cN).behavioralSignature) ordinary who
+        ((ordinary who).withLaw site.1 (PMF.pure selected)))
+      have actualHistory : (⟨some ⟨control.remaining, some who, control.execution⟩, counted⟩ :
+          (cE).History) = history.val := by
+        dsimp only [counted]
+        rcases history with ⟨⟨state, trace⟩, _atSite⟩
+        cases callbackCurrent
+        rfl
+      change (cN).runBehavioralFrom _ 1 _ =
+        (((cmenu).decodeProfile implementation.initial implementation.horizon
+          implementation.scheduler _ who (control.execution.recall who)
+            (control.execution.observe implementation.application who)).bind kernel) at first
+      rw [actualHistory] at first
+      rw [localDecoded ordinary (PMF.pure selected), PMF.pure_map, PMF.pure_bind] at first
+      change expect (experiment who history.val (history.property.symm ▸ selected))
+        (fun result => outcome result.2.state) = _
+      have projected := expect_map (Prod.snd : (cE).History × (cE).History → (cE).History)
+        (experiment who history.val (history.property.symm ▸ selected))
+        (fun final => outcome final.state)
+      dsimp only [Function.comp_def] at projected
+      refine projected.symm.trans ?_
+      dsimp only [experiment]
+      have finished := terminalLaw who history.val (history.property.symm ▸ selected)
+      refine (congrArg (fun law : PMF (cE).History =>
+        expect law (fun final => outcome final.state)) finished).trans ?_
+      have commitTransport : ∀ (first second : (cN).InfoState who) (same : first = second)
+          (atom : (cN).Choice who second),
+          (ordinary who).commit first (same.symm ▸ atom) =
+            (ordinary who).withLaw second (PMF.pure atom) := by
+        intro first second same atom
+        cases same
+        rfl
+      change expect (((cN).runBehavioralFrom
+        (Profile.update (sig := (cN).behavioralSignature) ordinary who
+          ((ordinary who).commit ((cN).infoOf who history.val.trace)
+            (history.property.symm ▸ selected))) 1 history.val).bind
+              ((cN).runBehavioralTerminalFrom certificate ordinary))
+                (fun final => outcome final.state) = _
+      rw [commitTransport _ _ history.property selected, first]
+      simp only [value, PMF.pure_bind]
+    have cleanBaseline : expect baseline (mean history) =
+        value ordinary (players who (control.execution.recall who)
+          (control.execution.observe implementation.application who)) := by
+      rw [expect_congr_on_support (fun selected _ => meanKernel selected)]
+      calc
+        _ = expect (baseline.map responseOf) (fun response => value ordinary (PMF.pure response)) :=
+          (expect_map responseOf baseline (fun response => value ordinary (PMF.pure response))).symm
+        _ = _ := by
+          rw [rawBaseline, ← recalled, ← observed]
+          simp only [value, PMF.pure_bind]
+          rw [PMF.bind_bind]
+          exact (expect_bind_tower_bounded _ _ _
+            (fun final : (cE).History => outcomeBound final.state)).symm
+    have decodedNative : (cmenu).decodeProfile implementation.initial implementation.horizon
+        implementation.scheduler native.strategy = phaseProposalReferencePolicy setup .concurrent
+          implementation.runtime implementation.leaks implementation.bounds implementation.plan
+            values ⟨nativeBad, scale, scale, scale⟩ := by
+      rw [nativePrescribed]
+      funext owner
+      exact (cmenu).decode_restrictPolicy_of_covered _ _ _ _ _
+        (phaseProposalReferencePolicy_covered setup .concurrent implementation.runtime
+          implementation.leaks implementation.bounds implementation.plan values _ owner)
+    have reference := localDecoded native.strategy (native.strategy who site.1)
+    rw [InformationModel.BehavioralPolicy.withLaw_eq_self, Profile.update_eq_self,
+      decodedNative] at reference
+    have referenceValue := presentation native.strategy (native.strategy who site.1)
+    rw [InformationModel.BehavioralPolicy.withLaw_eq_self, Profile.update_eq_self, ← reference]
+      at referenceValue
+    have historyEq : (cN).historyGain ((cN).runBehavioralTerminalFrom certificate)
+        (fun final => final.state) (implementation.base payoffs) native (deviation choice) history =
+        value native.strategy (PMF.pure (responseOf choice)) - value native.strategy
+          (phaseProposalReferencePolicy setup .concurrent implementation.runtime
+            implementation.leaks
+            implementation.bounds implementation.plan values ⟨nativeBad, scale, scale, scale⟩ who
+              (control.execution.recall who) (control.execution.observe
+                implementation.application who)) := by
+      simp only [InformationModel.historyGain, deviation, expect_map, Function.comp_def,
+        Profile.update_eq_self]
+      rw [presentation native.strategy (PMF.pure choice), PMF.pure_map, referenceValue]
+    have error := estimate (PMF.pure (responseOf choice))
+    change (value (phaseProposalReferenceStrategy setup .concurrent implementation.runtime
+      implementation.leaks implementation.bounds implementation.plan implementation.initial
+        implementation.horizon implementation.scheduler values ⟨nativeBad, scale, scale, scale⟩) _ -
+      value (phaseProposalReferenceStrategy setup .concurrent implementation.runtime
+      implementation.leaks implementation.bounds implementation.plan implementation.initial
+        implementation.horizon implementation.scheduler values
+          ⟨nativeBad, scale, scale, scale⟩) _) -
+      (value ordinary _ - value ordinary _) ≤ flagError at error
+    rw [← nativePrescribed] at error
+    change (value native.strategy _ - value native.strategy _) -
+      (value ordinary _ - value ordinary _) ≤ flagError at error
+    rw [historyEq, meanKernel, cleanBaseline]
+    linarith only [error]
+  have pureComparison (choice) (typed : Bool)
+      (properChoice : typed = true → ∃ value, proper value choice)
+      (notProper : typed = false → ¬ ∃ value, proper value choice) :
+      gain choice ≤ (if typed = true then qualifiedValue choice - expect baseline qualifiedValue
+        else 0) + nativeError := by
+    have pointwise (history : (cN).InformationHistory who site.1) :
+        (cN).historyGain ((cN).runBehavioralTerminalFrom certificate)
+          (fun final => final.state) (implementation.base payoffs) native (deviation choice)
+            history ≤
+        (if typed = true then retained history choice - expect baseline (retained history) else 0) +
+          (if bad history then 2 * bound else 0) + flagError := by
+      exact retained_history_gain_le baseline (mean history) (retained history)
+        (residual history) (bad history) bound flagError _ choice typed nonnegative
+        (meanBound history) (fun _ => rfl)
+        (fun selected => by
+          simp only [residual, mean, Bool.false_eq_true, false_and, ite_false])
+        (historyFlag history choice)
+        (fun good => physicalOrder history good choice typed properChoice notProper)
+    have presentation : gain choice = expect (native.belief who site)
+        ((cN).historyGain ((cN).runBehavioralTerminalFrom certificate)
+          (fun final => final.state) (implementation.base payoffs) native (deviation choice)) := by
+      change (cN).localGain cHn (fun final => final.state) _ native site (PMF.pure choice) = _
+      change expect ((cN).assessmentComparisonWith ((cN).truncatedRunner cHn)
+        (fun final => final.state) native who (deviation choice)).alternative _ -
+          expect ((cN).assessmentComparisonWith ((cN).truncatedRunner cHn)
+            (fun final => final.state) native who (deviation choice)).prescribed _ = _
+      have runner : (cN).truncatedRunner cHn = (cN).runBehavioralTerminalFrom certificate := by
+        funext profile history
+        exact ((cN).runBehavioralTerminalFrom_eq_runBehavioralFrom_of_bounded certificate
+          ((cmenu).bounded implementation.initial implementation.horizon implementation.scheduler)
+            profile history).symm
+      rw [runner, (cN).gain_eq_expect_historyGain]
+    rw [presentation]
+    have badMean : expect (native.belief who site) (fun history =>
+        if bad history then 2 * bound else 0) = 2 * bound * nativePast := by
+      rw [expect_eq_sum]
+      dsimp only [nativePast]
+      rw [Finset.mul_sum]
+      simp only [Finset.sum_filter]
+      apply Finset.sum_congr rfl
+      intro history _
+      by_cases generated : bad history
+      · simp only [bad] at generated ⊢
+        simp only [generated, ite_true]
+        ring
+      · simp only [bad] at generated ⊢
+        simp only [generated, ite_false, mul_zero]
+    have errorEq : 2 * bound * nativePast + flagError = nativeError := by
+      dsimp only [nativeError, flagError]
+      ring
+    have estimate := averaged_retained_gain_le (native.belief who site) baseline
+      ((cN).historyGain ((cN).runBehavioralTerminalFrom certificate)
+        (fun final => final.state) (implementation.base payoffs) native (deviation choice))
+      retained qualifiedValue (fun history => if bad history then 2 * bound else 0)
+      flagError choice typed qualifiedMean pointwise
+    rw [badMean] at estimate
+    calc
+      _ ≤ (if typed = true then qualifiedValue choice - expect baseline qualifiedValue else 0) +
+          2 * bound * nativePast + flagError := estimate
+      _ = _ := by rw [add_assoc, errorEq]
+  refine ⟨?_, ?_, supportedProper, preparationLaw⟩
+  · intro choice typed
+    simpa only [ite_true] using pureComparison choice true (fun _ => typed)
+      (fun impossible => by cases impossible)
+  · intro choice untyped
+    simpa only [Bool.false_eq_true, ite_false, zero_add] using
+      pureComparison choice false (fun impossible => by cases impossible) (fun _ => untyped)
+
+end CleanBindingComparison
 
 end Vegas
