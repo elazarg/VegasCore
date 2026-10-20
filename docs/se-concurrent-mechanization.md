@@ -12,6 +12,9 @@ The initial law has arbitrary correlation and finite support; binding types
 are finite. Auctions with unbounded binding bid/value choices are outside this
 contract.
 There is no fixed-calendar target.
+The literal `.concurrent` mode allows distinct owners' private commitments to
+overlap between source-ordered public barriers. Independent concurrent reveals
+belong to the separate `.concurrentReveals` mode and are outside this contract.
 
 The external hypotheses are well-formed finite source data, complete pending
 observation, bounded resources, one unconditional exogenous reserved tape prior

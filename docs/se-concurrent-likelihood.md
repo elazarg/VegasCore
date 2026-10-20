@@ -16,6 +16,16 @@ finite-support correlated initial inputs, finite binding types, the original
 reserved tape mixture, and the joint initial-state, terminal-state,
 public-result and realized-payoff law.
 
+The execution mode is the contract's literal `.concurrent`. The compiled
+graph retains `barrierOrder`: different owners' private commitments can
+overlap, but each public event waits for every earlier event and every later
+event waits for earlier public results. A ready public event therefore has
+exactly its source prefix completed. Activations and deliveries are still
+asynchronous. The separate `.concurrentReveals` mode is outside this contract;
+out-of-order publication reconstruction is not required here. These facts are
+the existing `barrierOrder_ready_public_completed_iff` and
+`barrierOrder_ready_public_field_iff` laws, not additional hypotheses.
+
 ## Actual probabilities and the initialization issue
 
 Fix the focal owner i, one positive native binding information set I, the finite
@@ -422,12 +432,19 @@ Propagate the invariant by the ACTUAL primitive transition:
   fresh slots cannot overwrite a prior signed occurrence. Old public sample,
   proposal and numeric address data are retained.
 
-Each case preserves the listed fields and the next literal focal before-view.
-For a historical publication callback, the physical interleaving may already
-expose a rank-later public result. Its value is in the complete public word of
-J; the skeleton's actual completion/arrival order determines whether it is in
-that before-view. Equality is not inferred from only a same-rank source prefix.
-Consequently targets with different foreign meanings give actual normalized
+The required induction must preserve the listed fields and the next literal
+focal before-view. At a ready publication the public-barrier order gives the
+exact source prefix, so no rank-later public result can already be exposed.
+Its compiled guard list is fixed; each store operand is public and available
+by the node's declared dependencies. Equal public stores and the same proposed
+plaintext therefore give the same checked output, even when unrelated hidden
+bindings differ. Transporting admission also requires the accepted handle's
+catalogue entry and typed store cell to retain that same value, as established
+by the issued-occurrence ledger and save/restore steps. These are the premises
+of `opening_right_facts`; `GuardCheck.eval?_publicStore` alone proves only
+guard equality. Neither requires equality of unrelated hidden saved stores.
+If the full reconstruction induction holds, targets with different foreign
+meanings give actual normalized
 paths at the same skeleton. This derives legality from the primitive tests,
 rather than from equal residual scores.
 
