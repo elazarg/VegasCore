@@ -3,9 +3,10 @@
 This is a proposed argument for preservation under protected shared service,
 retaining concurrent commitments, permanent expulsion and commitment-phase
 restart. The end-to-end Lean preservation theorem remains unproved. The
-initialized native likelihood argument has independent agent reviews and a
-root-agent model audit in the linked analysis. This is neither human review
-nor a Lean proof. The network tape may be correlated and its epoch times unknown.
+initialized native likelihood argument has reviewed local identities, but its
+global weighted inverse and preparation provenance remain open mathematically
+and in Lean. The linked reviews are agent reviews, not human review or a proof.
+The network tape may be correlated and its epoch times unknown.
 The [exact target](../Vegas/Game/ConcurrentRawSequentialPreservation.lean)
 and [likelihood analysis](se-concurrent-likelihood.md) specify the active proof
 obligation. No new backend assumptions are adopted by this proposal.
@@ -344,8 +345,8 @@ In the limit the selected intended values and prompt timing occur surely.
 Protected service and well-formed intended guards cause no failures. Source
 commutation/read stability identifies the original joint input/outcome law;
 zero net intended fees and sound audit preserve its payoff law in the mathematical
-argument. The initialized transport and this final composition still require Lean
-proofs.
+candidate argument. The initialized transport still requires a complete global
+mathematical proof before Lean implementation; final composition is also unproved.
 
 ## Scope
 

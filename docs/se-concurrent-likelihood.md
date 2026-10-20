@@ -4,11 +4,13 @@ This is a proposed derivation of the qualified initialized likelihood and
 causal payoff comparison, reviewed by agents in
 [the likelihood review](se-concurrent-likelihood-review.md) and
 [the replay analysis](se-concurrent-replay-analysis.md), with a root-agent
-model audit. The partial-ledger reconstruction and its explicit reach-level
-weight identity have passed these mathematical reviews for the frozen
-`.concurrent` contract with complete pending observation. These are not human
-reviews or Lean verification. Its Lean theorem is
-**not proved**, and concurrent SE preservation is not claimed here.
+model audit. Local probability identities and the sufficient aggregate target
+have been reviewed. **The global weighted reconstruction remains open in
+mathematics and Lean.** The candidate inverse has not established exhaustive
+fibers through raw COMMIT close/restore with full focal observations, or
+whole-history native-good to source-good provenance. These are substantive
+proof obligations. The reviews are neither human reviews nor Lean verification;
+concurrent SE preservation is not claimed here.
 The preservation target remains the actual concurrent raw game with arbitrary
 finite-support correlated initial inputs, finite binding types, the original
 reserved tape mixture, and the joint initial-state, terminal-state,
@@ -411,8 +413,9 @@ from its own input/admitted word fixed by J, raw catalogue/actions fixed by I,
 and m's public traffic. They are derived, not extra filters. At close the
 static word and deterministic COMMIT steps determine the linked source child;
 automatic normalization adds only excluded NONE rows. Deleting the last
-native constructor recovers its predecessor and exposed draw. These give the
-exhaustive finite pushforward with its actual multiplicities.
+native constructor should recover its predecessor and exposed draw. Proving
+these assertions through every close/restore, including full focal before-views
+and all lost leaves, is the missing exhaustive weighted pushforward argument.
 
 The current block's partition is by STATIC focal rank, not exposure time.
 Statically later foreign values issued before I belong to the source q0
@@ -482,10 +485,10 @@ It does not require a common fine M_c. Positive qualification supplies Z_J>0;
 otherwise every proper qualified law is pure `none`, with no source site
 needed. Write a for this common mass. It uses the original native posterior, including the foreign-good
 gate. If (2) first conditions on foreign-good with probability q>0, then
-a=q*t(I); these are two normalizations of the same measure. This proves the
-common-a qualified identity and its causal payoff
-attachment at the stated mathematical scope. It does not assert a checked
-Lean transport theorem or the final preservation theorem.
+a=q*t(I); these are two normalizations of the same measure. Conditional on
+the still-open global reconstruction, this algebra yields the common-a
+qualified identity and its causal payoff attachment. It does not establish
+that reconstruction, a Lean transport theorem or preservation.
 
 The sufficient aggregate Lean obligation has a simpler form. Let Ubar_c(z)
 be the actual native reach-weighted stopped/terminal payoff submeasure,
@@ -550,10 +553,9 @@ not by conditioning on an unknown limiting reach. If q=0 or the qualified
 gate has zero mass, the corresponding typed contribution is zero and no J
 normalizer is required.
 
-The mathematical argument uses aggregate qualified coverage, not a terminal
-product law for every mechanical record. Lean must still establish this
-initialized reconstruction/weight identity and connect its actual causal
-completion to the local comparison. Existing conditional results do not by
-themselves check those interfaces. Final consistency/limit/raw-audit assembly
-and the full preservation theorem remain unproved. No Lean proof authoring,
-reader or build is part of this mathematical review.
+The candidate argument requires aggregate qualified coverage. Its global
+initialized reconstruction/weight identity and causal attachment remain
+mathematical obligations before their Lean implementation. Existing conditional
+results do not establish exhaustive coverage or whole-history preparation
+provenance. Final consistency/limit/raw-audit assembly and full preservation
+remain unproved.
