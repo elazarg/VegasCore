@@ -2,7 +2,7 @@
 
 **Qualified transport accepted as a mathematical argument.** The
 [likelihood derivation](se-concurrent-likelihood.md) gives a partial-issued
-ledger reconstruction, common mechanical domain, explicit initialized reach
+ledger reconstruction, fixed-choice mechanical domains, explicit initialized reach
 identity and causal payoff attachment. Two agents independently reviewed this
 assembly, alongside the root-agent model audit, for literal `.concurrent`
 with complete pending observation. It keeps the original correlated input
@@ -87,7 +87,12 @@ initial types, or a desired continuation law.
   weights; their class normalizers are positive under strict rates. Ordered
   proposals and addresses remain in the archive.
 * **Both directions and multiplicity.** Skeletons are projections of actual
-  positive qualified paths, defined before choosing a target. Reconstruction
+  positive qualified paths for ONE literal current choice, defined before
+  choosing a target. Their coordinates retain only public native prefixes,
+  freshness, the original tape and literal pre-I focal recall. Source witnesses,
+  cause-read words and label weights are excluded: retaining a source cause-read
+  word would retain hidden commitment values and invalidate the common weight.
+  Reconstruction
   produces every positive target on that common domain. Live ledgers contain
   only issued values; unissued static-earlier coordinates enter retrospectively.
   The inverse retains lost draws and causal future kernels. An emitted owned
@@ -101,7 +106,10 @@ initial types, or a desired continuation law.
   chosen source/graph joint starts at the actual reconstructed fresh entry;
   only its residual cursor advances after v. Foreign F is retained while
   focal future innovations are resampled. No independently chosen coupling
-  or baseline conditioned on v substitutes for that joint.
+  or baseline conditioned on v substitutes for that joint. First prove the
+  zero-safe weight identity for each fixed choice; actual admission-word
+  symmetry gives the common qualification mass after aggregation. No common
+  fine mechanical coordinate across encodings is needed.
 
 ## Signed comparison and assembly
 

@@ -380,30 +380,39 @@ automatic excluded rows have factor one. The existing arbitrary-same-J
 source class theorem makes their normalizers J-common. Commitment values
 stay literal; latest-read equality alone does not determine the label law.
 
-#### Common domain, weights and inverse
+#### Fixed-choice domain, weights and inverse
 
-Let M be the image of actual positive qualified normalized paths under the
-mechanical projection just described, stopped at the FIRST current commitment
-close. It is defined before choosing a source target. Remove foreign private
-input/preparation meanings and post-I focal private causal draws, but retain
-their occurrence positions. Pre-I focal raw I and handles remain literal.
-Post-I handle names are allocation occurrences, reconstructed for each legal
-current encoding. Fix occupied pre-I handles and pair the kth remaining fresh
-slot after one current choice with the kth after the other. This preserves
-the canonical least-fresh allocator and the uniform fresh-slot law. Old raw
-requests stay literal; future ordinary policies ignore their unused syntax
-through outputs/count/view congruence. Thus M contains neither a prospective g nor fixed future
-publications or Nature. Its prefix contains no future-extendability test.
+Fix one literal proper current choice c encoding v. Let M_c be the finite
+image of actual positive qualified normalized paths, retaining their original
+tape and the following projection of EVERY native prefix through first close:
+remaining fuel, actor, application public view, network public view, receipts,
+prepared-slot freshness, environment recall, and focal raw recall truncated
+at its pre-I length. This coordinate contains NO source history or witness,
+source cause-read word, conditional label weight, foreign private meanings,
+or post-I focal private meanings. Those belong to the annotation/invariant,
+not to M_c. Retaining the source cause-read word would retain unrevealed foreign
+commitment values and invalidate target-independent weights. No common fine
+coordinate across different current encodings is required.
 
-For any supported regular target g at the resulting J, split its past by
-those same phase/generation masks. Replay each exposed admitted declaration
-with its target occurrence's meaning; retain lost values and post-I focal
-causal actions as auxiliaries with their ACTUAL kernels. The preceding cases
-give legality, getter, handle, public-store and every focal before-view
-equality at each step. They therefore preserve the same mechanical record
-m in M. Removing the last transition recovers its predecessor. At close,
-the static decoder determines its source word. This is an exhaustive finite
-pushforward; it is not a bare bijection from (g,m) to raw histories.
+For a target g at the resulting J, its initializer and admitted occurrence
+values, together with m, leave precisely two kinds of free draws: historical
+proper-but-lost foreign values and current post-I causal focal draws. The
+former range over their FULL actual conditional D law. Permanent exclusion
+makes their meanings irrelevant to all later callbacks, so only these laws
+sum to one. Accepted canceled values remain in g. Current focal draws keep
+their actual updated-query weights inside the causal payoff kernel.
+
+Reconstruct prefixes using m's commands/slots, literal pre-I focal actions,
+the target's admitted values, and those free draws. Immutable registration
+links each accepted handle to its meaning; restore copies saved config and
+accepted handles while retaining the catalogue. Own issued prefixes determine
+foreign queries, without unissued foreign values. Focal before-views follow
+from its own input/admitted word fixed by J, raw catalogue/actions fixed by I,
+and m's public traffic. They are derived, not extra filters. At close the
+static word and deterministic COMMIT steps determine the linked source child;
+automatic normalization adds only excluded NONE rows. Deleting the last
+native constructor recovers its predecessor and exposed draw. These give the
+exhaustive finite pushforward with its actual multiplicities.
 
 The current block's partition is by STATIC focal rank, not exposure time.
 Statically later foreign values issued before I belong to the source q0
@@ -417,21 +426,32 @@ Write
     Z_J = sum_(g,F) rho_J(g,F),
     Z_N(I) = sum_[h at I] nativeReach(h).
 
-Here sourceReach uses the ACTUAL finite-flag profile and literal correlated
-mu. For the actual reach-level augmented qualified payoff measure U, the
-finite product calculation gives
+Let O_i(J) and C_-(J) be the checked source focal own-reach and foreign class
+factors, ending before the forced current row. Let N_i(I) be the product of
+literal native focal pre-I raw response atoms. Define c_N(m) directly as the
+original tape atom times native FOREIGN mechanical response factors: WAIT,
+proper BIND SEND/slot/BAD-absence coefficients, historical PUB wait/send
+coefficients, forced WAIT, and their post-I zero-rate specializations. PUB
+has no ordinary-value or preparation draw. Normalized raw alias fibers sum
+to one. These factors contain neither private D atoms nor source labels.
 
-    U_v(g,F,m) = B_I,J(m) rho_J(g,F) Phi_v(g,F).
+For actual annotated reach-level qualified payoff submeasure U_c, the
+zero-safe finite product identity is
 
-The coefficient B is independent of g,F,v and legal proper encoding. Literal
-mu, public Nature atoms and ordinary foreign-chain atoms agree coordinatewise.
-Hidden-cause atoms are retained through Z K=row-weight. Source focal reach
-and source class factors are J-common; native focal likelihood is I-common.
-The remaining mechanical factors are those preserved by the replay. Zero
-atoms are handled by forward support and the inverse above, without dividing
-by a zero past D factor. All retained auxiliaries keep their actual weights.
+    (O_i(J) C_-(J)) U_c(g,F,m)
+      = N_i(I) c_N(m) rho_J(g,F) Phi_c(g,F).
 
-Phi is identified before averaging. Preserve the actual causal current-block
+Literal mu, public Nature atoms and ordinary foreign-chain atoms agree
+coordinatewise. K is ALREADY the source conditional fiber factor R; the
+source class factor C contains its normalizer. There is no second division
+by that normalizer. Hidden cause alternatives have equal erased typed state,
+public controls and proposal delta, hence equal later normalized queries and
+class transitions. They change annotation weights, never mechanical factors.
+Zero target atoms have zero native weight by the same forward/inverse
+construction; no target atom, mu or D is divided out.
+
+Phi is identified before averaging. Keep the m-specific terminal kernel until
+the endpoint transport identifies it. Preserve the actual causal current-block
 suffix after v, including focal draws at UPDATED queries. The shared completed
 word from the same old source prefix identifies the selected source extension
 by the clean checkpoint word formula and commit-window uniqueness. The exact
@@ -443,17 +463,22 @@ disintegrated before the comparison, without refreshing a stop-time posterior.
 
 Bayes normalization is explicit. Native seeded occupation is a common constant
 times nativeReach at I; source occupation has its own common constant at J.
-Each cancels only in its own conditional numerator/denominator. Set
+Each cancels only in its own conditional numerator/denominator. On the positive
+branch, full mixing and foreign-good class positivity give O_i(J) C_-(J)>0. Set
 
-    nu_J=rho_J/Z_J,    A_I(m)=B_I,J(m) Z_J/Z_N(I),    a=sum_m A_I(m).
+    B_c(m)=N_i(I)c_N(m)/(O_i(J)C_-(J)),
+    nu_J=rho_J/Z_J,    A_c(m)=B_c(m)Z_J/Z_N(I),    a_c=sum_m A_c(m).
 
 Then the actual qualified payoff law on `some` is
 
-    a sum_(g,F) nu_J(g,F) Phi_v(g,F),
+    a_c sum_(g,F) nu_J(g,F) Phi_c(g,F),
 
-with remaining mass 1-a on `none`. Positive qualification supplies Z_J>0;
+with remaining mass 1-a_c on `none`. The checked actual admission-word symmetry
+makes a_c common across all proper current values and encodings, after this
+aggregation. Full source information uniqueness fixes the same J from I.
+It does not require a common fine M_c. Positive qualification supplies Z_J>0;
 otherwise every proper qualified law is pure `none`, with no source site
-needed. Here a uses the original native posterior, including the foreign-good
+needed. Write a for this common mass. It uses the original native posterior, including the foreign-good
 gate. If (2) first conditions on foreign-good with probability q>0, then
 a=q*t(I); these are two normalizations of the same measure. This proves the
 common-a qualified identity and its causal payoff
