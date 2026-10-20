@@ -27,8 +27,8 @@ sequence is a capstone assumption.
 ## Current proof boundary
 
 **Contract and joint satisfiability checked; mathematical transport reviewed;
-Lean transport, clean commitment gain and final SE assembly open.** Checked
-dependencies do not close the remaining Lean obligations.
+qualified transport, clean commitment gain and unconditional final SE open.**
+Checked dependencies do not close the remaining Lean obligations.
 
 The [concurrent hypothesis test](../VegasTests/ConcurrentRawHypotheses.lean)
 discharges every operational, payoff and audit assumption together, and supplies
@@ -103,14 +103,30 @@ handoff notes and research archives are not committed.
 
 ## Completion gate
 
-The owner has authorized workspace stabilization, the theorem contract,
-mathematical review and code reduction. Report their outcome **before** beginning
-the end-to-end mechanization. Mathematical review must either close the necessary
-transport claim or name the precise remaining obstruction. A dependency build,
-conditional helper or new module count is not a substitute.
+Mechanize the agreed transport and clean gain comparison, then use the existing
+common-sequence, limit and audit APIs to prove the exact capstone. Keep its
+external hypotheses fixed. If the mathematical argument appears incorrect,
+stop implementation and report the precise issue.
 
-Once authorized, mechanize the agreed missing transport and clean gain comparison,
-then use the existing common-sequence, limit and audit APIs to prove the exact
-capstone. Only that checked theorem closes concurrent preservation. Protect it
-before broader assumption minimization or porting existing NE/nonconcurrent SE
-to the shared phase runtime.
+Track the remaining obligations directly:
+
+| Required result | Checked status |
+| --- | --- |
+| Actual native qualified payoff law | Native experiment, original tape posterior and initialized clean-close source word checked. Common source site, weight identity and causal payoff matching open. |
+| Clean binding deviation bound | Retained-ready query and value-law stability checked. Weighted waiting comparison and clean gain open. |
+| Full raw concurrent SE preservation | Joint-law, limit and raw-audit assembly checked conditional on local gain comparisons. That comparison premise remains open. |
+
+The checked reductions are in the [qualified experiment](../Vegas/Game/PhaseProposalQualifiedBinding.lean),
+[binding comparison](../Vegas/Game/PhaseProposalCleanBindingGain.lean) and
+[conditional assembly](../Vegas/Game/ConcurrentRawEquilibrium.lean) components.
+None proves the unconditional preservation contract.
+
+Partial lemmas and conditional composition do not close these rows. State the
+actual unproved premises of partial results. Review the shared interfaces before
+delegating implementation; add a helper only for an identified consumer. Keep
+probability, incentive and final composition work in cohesive owning components,
+with one root-controlled in-tree build. Do not count new code as progress.
+
+Only the checked capstone closes concurrent preservation. Protect it before
+broader assumption minimization or porting existing NE/nonconcurrent SE to the
+shared phase runtime.

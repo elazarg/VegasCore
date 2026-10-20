@@ -1501,3 +1501,6 @@ import Vegas.Game.PhaseProposalPublicationAliases
 import Vegas.Game.PhaseProposalPublicationPayoff
 import Vegas.Game.PhaseProposalPublicationGain
 import Vegas.Game.ConcurrentRawSequentialPreservation
+import Vegas.Game.PhaseProposalQualifiedBinding
+import Vegas.Game.PhaseProposalCleanBindingGain
+import Vegas.Game.ConcurrentRawEquilibrium

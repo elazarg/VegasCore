@@ -6,6 +6,26 @@ import Vegas
 
 /-! # Preservation proof dependency regressions -/
 
+/-- info: 'Vegas.concurrentRawSequentialPreservation_of_local_comparisons'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.concurrentRawSequentialPreservation_of_local_comparisons
+
+/-- info: 'Vegas.PhaseProposalQualifiedBinding.stoppedFinish_seed_marginal'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.PhaseProposalQualifiedBinding.stoppedFinish_seed_marginal
+
+/-- info: 'Vegas.PhaseProposalQualifiedBinding.exists_closing_source_word'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.PhaseProposalQualifiedBinding.exists_closing_source_word
+
+/-- info: 'Vegas.phaseProposal_unflagged_value_law_at_retained_binding'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseProposal_unflagged_value_law_at_retained_binding
+
 /-- info: 'Vegas.SourceServiceSpec.completeAudit_raw_sequentialEquilibrium_preserved'
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
