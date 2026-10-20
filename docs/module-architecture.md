@@ -14,8 +14,9 @@
 | Test libraries and Paper | Regressions and checked capstone axiom guards. |
 
 The [active plan](se-schedule-generalization.md) governs work beyond the fixed calendar.
-The [concurrent mechanization plan](se-concurrent-mechanization.md) prioritizes
-the reviewed reserved-service capstone and subsequent common-runtime cleanup.
+The [concurrent mechanization plan](se-concurrent-mechanization.md) fixes the
+[concrete target](../Vegas/Game/ConcurrentRawSequentialPreservation.lean) and
+the mathematical transport obligation that remains open before mechanization.
 The [calendar checklist](se-proof-checklist.md) records checked evidence. The
 [archive](../archive/se-generalization/README.md) is searchable reference material,
 outside the Lean source and default build roots.

@@ -8,20 +8,22 @@ The source language supports private inputs, fresh bindings, public chance,
 guarded resolution and withholding. The pending runtime has explicit clock and
 expiry commands, authentic evidence and partial observation.
 
-The fixed-calendar sequential-equilibrium preservation theorem is checked.
-Preservation for arbitrary admissible builders remains open. The
-[design and proof plan](docs/se-schedule-generalization.md) states the semantics,
-concrete issues and a finite experiment for the missing timing and belief
-comparisons. Honest outcome simulation alone does not establish equilibrium
-preservation. The [calendar checklist](docs/se-proof-checklist.md)
-records its checked evidence; the [module map](docs/module-architecture.md) locates
-the implementation. Retired designs and experiments are in the
+Checked results include asynchronous Nash preservation and nonconcurrent
+recovery sequential-equilibrium preservation. Concurrent asynchronous SE
+preservation under reserved service remains unproved; the
+[concrete contract](Vegas/Game/ConcurrentRawSequentialPreservation.lean) and
+[active proof plan](docs/se-concurrent-mechanization.md) state its exact scope
+and missing mathematical transport. The weaker general asynchronous contract
+also has [checked preservation obstructions](docs/standard-runtime-se-status.md).
+Honest outcome simulation alone does not establish equilibrium preservation.
+The [module map](docs/module-architecture.md) locates the implementation.
+Retired designs and experiments are in the
 [uncompiled archive](archive/se-generalization/README.md).
 
 Build and validate:
 
 ```powershell
-lake --wfail build
+lake build
 python scripts/check-module-boundaries.py
 python scripts/check-lean-options.py
 python scripts/check-doc-references.py

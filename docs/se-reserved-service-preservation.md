@@ -1,10 +1,13 @@
 # Sequential preservation with reserved shared service
 
-For a finite compiled source game, a protected shared service can preserve any
-selected source sequential equilibrium while retaining concurrent commitments,
-permanent expulsion and commitment-phase restart. The network tape may be
-correlated and its epoch times unknown. The proof below is mathematical,
-not a newly checked Lean theorem or an adoption of new backend assumptions.
+This is a proposed argument for preservation under protected shared service,
+retaining concurrent commitments, permanent expulsion and commitment-phase
+restart. The end-to-end Lean preservation theorem remains unproved. The
+initialized native likelihood argument is derived and independently reviewed in
+the linked likelihood analysis. The network tape may be correlated
+and its epoch times unknown. The [exact target](../Vegas/Game/ConcurrentRawSequentialPreservation.lean)
+and [likelihood analysis](se-concurrent-likelihood.md) specify the active proof
+obligation. No new backend assumptions are adopted by this proposal.
 
 The service is an ideal reserved ledger. Reservation against arbitrary modeled
 raw traffic, complete pending observation, a global exclusion floor and the
@@ -16,7 +19,7 @@ deliverable, parallel proof tracks and later common-runtime consolidation.
 
 ## The theorem's exact class
 
-Fix a finite well-formed source setup, independent initial private input cells,
+Fix a finite well-formed source setup with its original arbitrary joint initial law,
 finite represented values and a selected intended source sequential equilibrium
 sigma. Preserve the original joint input law throughout: later public histories
 can correlate types, and retries do not redraw them. Source guards are general
@@ -335,8 +338,9 @@ It preserves the counted initialized law with zero audit charges.
 In the limit the selected intended values and prompt timing occur surely.
 Protected service and well-formed intended guards cause no failures. Source
 commutation/read stability identifies the original joint input/outcome law;
-zero net intended fees and sound audit preserve its payoff law. This proves
-the stated mathematical theorem for the explicit ideal class.
+zero net intended fees and sound audit preserve its payoff law in the mathematical
+argument. The initialized transport and this final composition still require Lean
+proofs.
 
 ## Scope
 
@@ -355,6 +359,7 @@ Existing components underlying this argument include the
 [original genuine phase query](../Vegas/Game/PhaseObservableSourceQuery.lean),
 [complete packet observation](../Interaction/ReactiveCompleteObservation.lean),
 and [terminal audit extension](../GameTheoryExtensions/Analysis/Protocol/TerminalAudit.lean).
-The proposal-archive enrichment, its extended exchange and the approximate
-reserved-service transport are proved mathematically here; those existing
-declarations are not a Lean certification of the new theorem.
+The proposal-archive enrichment and conditional transport arguments motivate the
+construction. The initialized reserved-service transport is derived in the
+likelihood analysis; those existing declarations alone do not certify the
+proposed preservation theorem in Lean.
