@@ -42,6 +42,68 @@ theorem phaseProposalUnflaggedPolicy_preparation_law
   simpa only [phaseProposalUnflaggedPolicy, phaseProposalBaseClasses, PMF.map_comp,
     Function.comp_def, PhaseProposal.projectResponse, PhaseProposal.responseClass] using projected
 
+/-- At an actual fresh unspent binding with a computed query, the encoder
+preserves any ordinary value law, including a fixed table coordinate. -/
+theorem phaseProposalUnflaggedBinding_preparation_law_of_query
+    (covered : bounds.CoversOutputValues)
+    (values : ∀ who (key : setup.ProposalRecoveryComponent who),
+      PMF (setup.CommitRecoveryValueChoice who key.1))
+    (horizon : Nat) (scheduler : (app).Scheduler)
+    (capacity : horizon ≤ bounds.candidateCount) (remaining : Nat) (who : Player)
+    (execution : (app).Execution)
+    (trace : ((PhaseCount.onePacketMenu runtime leaks bounds).protocol
+      (setup.initialLaw.map fun draw => PhaseRuntimeState.initial plan (encodeInputs draw))
+      horizon scheduler).Trace (some ⟨remaining, some who, execution⟩))
+    (event : (serviceGraph setup mode).EventId) (payload : L.Ty)
+    (binding : (serviceGraph setup mode).outputLayout event = .binding who payload)
+    (request : execution.application.SeedRequest who ⟨execution.application.attempt, event⟩)
+    (unsent : ∀ message ∈ (app).outputs (execution.recall who),
+      PhaseCount.event? message.payload ≠ some ⟨execution.application.attempt, event⟩)
+    (key : setup.ProposalRecoveryComponent who)
+    (queried : phaseProposalQuery? setup mode runtime leaks plan who event (execution.recall who)
+      (execution.observe app who) = some key) :
+    (phaseProposalUnflaggedPolicy setup mode runtime leaks bounds plan values who
+      (execution.recall who) (execution.observe app who)).map
+        (fun response => response.transmission.bind (PhaseProposal.bindingPreparation)) =
+      (values who key).map (fun choice => some (⟨payload,
+        phaseRecoveryDomainValue setup mode event who payload binding
+          choice.val.val⟩ : Raw L)) := by
+  classical
+  let inputs := setup.initialLaw.map encodeInputs
+  have counted : ((PhaseCount.onePacketMenu runtime leaks bounds).protocol
+      (inputs.map (PhaseRuntimeState.initial plan)) horizon scheduler).Trace
+        (some ⟨remaining, some who, execution⟩) := by
+    dsimp only [inputs]
+    rw [PMF.map_comp]
+    exact trace
+  have bounded := covered event
+  rw [binding] at bounded
+  let results := phaseProposalBindingResults setup mode runtime leaks plan values
+    PhaseProposalRates.zero who event payload binding
+  obtain ⟨serial, _below, bindingLaw, _storedLaw⟩ :=
+    PhaseCount.phaseBindingPolicy_of_history runtime
+    leaks bounds who event payload binding results (PhaseCount.onePacketMenu runtime leaks bounds)
+      plan inputs horizon scheduler capacity ⟨remaining, some who, execution⟩ counted rfl request
+        unsent bounded
+  have native := (phaseNativeInvariant_history runtime leaks plan inputs horizon scheduler
+    ((PhaseCount.onePacketMenu runtime leaks bounds).toRawTrace _ horizon scheduler counted))
+  obtain ⟨draw, invariant⟩ := native
+  have dispatch : phaseProposalBasePolicy setup mode runtime leaks bounds plan values
+      PhaseProposalRates.zero who (execution.recall who) (execution.observe app who) =
+        PhaseCount.phaseBindingPolicy runtime leaks bounds who event payload results
+          (execution.recall who) (execution.observe app who) := by
+    unfold phaseProposalBasePolicy
+    rw [phasePolicyDispatch_binding setup mode runtime leaks _ _ execution invariant who event
+      payload binding request]
+    simp only [PhaseProposalRates.zero, PhaseCount.bindingResultEncoder, mix_zero]
+    rfl
+  rw [phaseProposalUnflaggedPolicy_preparation_law, dispatch, bindingLaw, PMF.map_comp]
+  dsimp only [results, phaseProposalBindingResults]
+  rw [queried]
+  simp only [PhaseProposalRates.zero, mix_zero, PMF.map_comp, Function.comp_def,
+    phaseBindingResponse, PhaseProposal.bindingPreparation, binding, Option.bind_some,
+    Raw.as?_mk, Option.map_some]
+
 /-- At a genuine fresh unspent binding, zero future flags preserve every
 ordinary value draw and emit a usable typed preparation. A guard may reject
 that value later; guard debt is not removed or classified as a rare flag. -/
@@ -73,47 +135,13 @@ theorem phaseProposalUnflaggedBinding_preparation_law
         (values who key).map (fun choice => some (⟨payload,
           phaseRecoveryDomainValue setup mode event who payload binding
             choice.val.val⟩ : Raw L)) := by
-  classical
-  let inputs := setup.initialLaw.map encodeInputs
-  have counted : ((PhaseCount.onePacketMenu runtime leaks bounds).protocol
-      (inputs.map (PhaseRuntimeState.initial plan)) horizon scheduler).Trace
-        (some ⟨remaining, some who, execution⟩) := by
-    dsimp only [inputs]
-    rw [PMF.map_comp]
-    exact trace
   have raw := (PhaseCount.onePacketMenu runtime leaks bounds).toRawTrace _ horizon scheduler trace
   obtain ⟨key, queried, _ordinary⟩ := phaseProposalDomainValues_fullSupport_of_binding setup mode
     runtime leaks complete plan maximal values fullValues horizon scheduler raw who rfl event
-      payload
-      binding request
-  have bounded := covered event
-  rw [binding] at bounded
-  let results := phaseProposalBindingResults setup mode runtime leaks plan values
-    PhaseProposalRates.zero who event payload binding
-  obtain ⟨serial, _below, bindingLaw, _storedLaw⟩ :=
-    PhaseCount.phaseBindingPolicy_of_history runtime
-    leaks bounds who event payload binding results (PhaseCount.onePacketMenu runtime leaks bounds)
-      plan inputs horizon scheduler capacity ⟨remaining, some who, execution⟩ counted rfl request
-        unsent bounded
-  have native := (phaseNativeInvariant_history runtime leaks plan inputs horizon scheduler
-    ((PhaseCount.onePacketMenu runtime leaks bounds).toRawTrace _ horizon scheduler counted))
-  obtain ⟨draw, invariant⟩ := native
-  have dispatch : phaseProposalBasePolicy setup mode runtime leaks bounds plan values
-      PhaseProposalRates.zero who (execution.recall who) (execution.observe app who) =
-        PhaseCount.phaseBindingPolicy runtime leaks bounds who event payload results
-          (execution.recall who) (execution.observe app who) := by
-    unfold phaseProposalBasePolicy
-    rw [phasePolicyDispatch_binding setup mode runtime leaks _ _ execution invariant who event
-      payload binding request]
-    simp only [PhaseProposalRates.zero, PhaseCount.bindingResultEncoder, mix_zero]
-    rfl
-  refine ⟨key, queried, ?_⟩
-  rw [phaseProposalUnflaggedPolicy_preparation_law, dispatch, bindingLaw, PMF.map_comp]
-  dsimp only [results, phaseProposalBindingResults]
-  rw [queried]
-  simp only [PhaseProposalRates.zero, mix_zero, PMF.map_comp, Function.comp_def,
-    phaseBindingResponse, PhaseProposal.bindingPreparation, binding, Option.bind_some,
-    Raw.as?_mk, Option.map_some]
+      payload binding request
+  exact ⟨key, queried, phaseProposalUnflaggedBinding_preparation_law_of_query setup mode runtime
+    leaks bounds plan covered values horizon scheduler capacity remaining who execution trace
+      event payload binding request unsent key queried⟩
 
 /-- Every supported response at a fresh unspent binding carries a typed usable
 preparation. The value remains an unrestricted ordinary source draw. -/

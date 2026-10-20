@@ -113,7 +113,7 @@ Track the remaining obligations directly:
 | Required result | Checked status |
 | --- | --- |
 | Actual native qualified payoff law | Native experiment, original tape posterior and initialized clean-close source word checked. Common source site, weight identity and causal payoff matching open. |
-| Clean binding deviation bound | Retained-ready query and value-law stability checked. Weighted waiting comparison and clean gain open. |
+| Clean binding deviation bound | Query stability, query nonreuse, full native value-table first-close law and same-table completed values checked. Waiting payoff bound and clean gain open. |
 | Full raw concurrent SE preservation | Joint-law, limit and raw-audit assembly checked conditional on local gain comparisons. That comparison premise remains open. |
 
 The checked reductions are in the [qualified experiment](../Vegas/Game/PhaseProposalQualifiedBinding.lean),

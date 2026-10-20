@@ -16,6 +16,11 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.PhaseProposalQualifiedBinding.stoppedFinish_seed_marginal
 
+/-- info: 'Vegas.PhaseProposalQualifiedBinding.sampled_base_stopped_marginal'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.PhaseProposalQualifiedBinding.sampled_base_stopped_marginal
+
 /-- info: 'Vegas.PhaseProposalQualifiedBinding.exists_closing_source_word'
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
