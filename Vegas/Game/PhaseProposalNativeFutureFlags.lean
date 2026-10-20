@@ -265,6 +265,11 @@ theorem phaseProposal_current_gain_flag_error
         (N).runBehavioralFrom profile 1 ⟨some ⟨remaining, some who, execution⟩, trace⟩ =
           ((menu).decodeProfile initial horizon scheduler profile who (execution.recall who)
             (execution.observe app who)).bind kernel) ∧
+      (∀ profile : ∀ owner, (N).BehavioralPolicy owner, ∀ action,
+        action ∈ ((menu).decodeProfile initial horizon scheduler profile who
+          (execution.recall who) (execution.observe app who)).support →
+        (kernel action).map History.state =
+          PMF.pure (some ⟨remaining, none, execution.respond app who action⟩)) ∧
       let payoff := fun final : (E).History => phaseExclusionBase setup mode runtime leaks utility
         excludedPayoff final.state who
       let cleanValue := fun law : PMF (app).Action =>
@@ -283,10 +288,10 @@ theorem phaseProposal_current_gain_flag_error
           (2 * (Fintype.card Player * (2 * horizon + 1) : Nat) + 1) *
             rates.flagBound * (2 * bound) := by
   intro certificate
-  obtain ⟨kernel, responseLaw, _states⟩ :=
+  obtain ⟨kernel, responseLaw, states⟩ :=
     (menu).exists_response_history_kernel initial horizon scheduler clean who remaining execution
       trace
-  refine ⟨kernel, responseLaw, ?_⟩
+  refine ⟨kernel, responseLaw, states, ?_⟩
   intro payoff cleanValue noisyValue referenceClean referenceNoisy law
   have bounded (final : (E).History) : -bound ≤ payoff final ∧
       payoff final ≤ -bound + (2 * bound) := by

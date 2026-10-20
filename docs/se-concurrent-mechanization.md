@@ -205,14 +205,14 @@ quantifiers and a passing build. The labels below never enter Lean names.
 | Runtime | Supported concurrent instance with variable service orders | Checked: both orders have supported actual prefixes with distinct owners' typed, timely, handler-admissible packets pending together; see the fixture evidence below |
 | Transport | Genuine enriched native query, alias masses and full counted support | Checked: actual genuine enriched query, exact alias projection and full reference support on every original-law counted input, including earlier deviations |
 | Transport | Good-store likelihood transport, including failed proposals | Partial: full information correspondence, fresh and initialized terminal coupling, and initialized joint-law error bounds are checked, preserving original inputs, exclusions, typed readout and the payoff vector; conditional likelihood weights remain open |
-| Transport | Uniform foreign-bad posterior bound and separate own-debt cases | Partial: full-input foreign-bad posterior bounds, saved-debt zero gain, actual original clean-close debt, derived saved properness and actual selected reset-endpoint payoff laws are checked; the complete current-debt gain remains open |
+| Transport | Uniform foreign-bad posterior bound and separate own-debt cases | Checked: full-input foreign-bad posterior bounds, saved-debt zero gain and the arbitrary-current-law gain bound for binding failure or an observable forced reset; the proof uses actual original clean-close debt and selected reset payoff laws |
 | Transport | Publication timing dominance with actual early observations | Open |
-| Transport | Whole-policy binding/retry comparison with the same reset continuation | Open |
+| Transport | Whole-policy binding/retry comparison with the same reset continuation | Partial: arbitrary current-law gain at binding failures and observable forced resets is checked; clean binding transport remains open |
 | Transport | One native Bayes sequence with vanishing gain and initialized-law errors | Partial: concrete common rates, uniform preparation posteriors, actual native Bayes assessments and initialized-law error on the same selected source index are checked; complete gain comparisons and native equilibrium limit remain open |
 | End-to-end | Counted SE and exact initialized joint law | Open |
 | End-to-end | Raw SE, exact settled joint law, zero exclusions/charges and instantiated service | Open |
 
-Progress: **source reach ✓ · outcome law/error ✓ · shared sequence ✓ · debt/reset endpoints ✓ · belief weights open · native gains open · full SE open**.
+Progress: **source reach ✓ · outcome law/error ✓ · shared sequence ✓ · binding failure gains ✓ · belief weights open · clean/timing gains open · full SE open**.
 Runtime frontier: arbitrary available binding comparators, the complete paired publication boundary and the source reset boundary are checked.
 Transport frontier: **full information and initialized joint-law/error checked; conditional belief weights and complete native gains open**.
 Update the display from checked statements and name the current bottleneck. Existing
@@ -230,8 +230,10 @@ native conditional likelihood identity remain open.
 At an actual original clean binding closure, a current failed binding
 becomes checkpoint debt. At the actual selected retry endpoints, full
 source witnesses and usable saved bindings are derived before comparing
-the complete continuation payoff laws. These boundary results do not yet
-prove the arbitrary-current-law or publication timing gain bounds.
+the complete continuation payoff laws. The arbitrary-current-law binding gain at saved/current failure or an
+observable forced reset is bounded by the foreign-failure posterior and
+finite-horizon flag error, retaining the original callback posterior. Clean
+binding transport and publication timing gains remain open.
 
 `exists_phaseProposal_common_perturbations` selects positive source and native
 bad-preparation rates after the actual response floors and before any free

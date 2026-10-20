@@ -67,6 +67,11 @@ example
         (N).runBehavioralFrom profile 1 ⟨some ⟨remaining, some who, execution⟩, trace⟩ =
           ((menu).decodeProfile initial horizon scheduler profile who (execution.recall who)
             (execution.observe app who)).bind kernel) ∧
+      (∀ profile : ∀ owner, (N).BehavioralPolicy owner, ∀ action,
+        action ∈ ((menu).decodeProfile initial horizon scheduler profile who
+          (execution.recall who) (execution.observe app who)).support →
+        (kernel action).map History.state =
+          PMF.pure (some ⟨remaining, none, execution.respond app who action⟩)) ∧
       let payoff := fun final : (E).History => phaseExclusionBase setup mode runtime leaks utility
         excludedPayoff final.state who
       let cleanValue := fun law : PMF (app).Action =>

@@ -25,3 +25,4 @@ import VegasTests.PhaseProposalConsistentSequenceContract
 import VegasTests.ProposalRecoveryClassProductContract
 import VegasTests.OriginalBindingDebtContract
 import VegasTests.OriginalBindingPayoffContract
+import VegasTests.CurrentBindingGainContract

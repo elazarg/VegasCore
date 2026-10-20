@@ -2864,4 +2864,12 @@ and [actual reset payoff laws](../Vegas/Game/PhaseProposalOriginalResetPayoff.le
 derive their selected source witnesses at the physical endpoints.
 [Saved properness](../Vegas/Game/PhaseProposalSavedBindingValues.lean) uses
 observable absence of saved debt and actual foreign-history regularity.
-Full conditional belief weights and complete native gain bounds remain open.
+The [current binding gain](../Vegas/Game/PhaseProposalCurrentBindingGain.lean)
+bounds every current-action lottery at saved/current binding failure or an
+observable forced reset, using the original callback posterior and actual
+reset/debt continuations. It requires an exclusion payoff below both the
+default zero payoff and all typed terminal utilities. Its response-kernel
+adapter reuses the retained actual states in
+[the flag comparison](../Vegas/Game/PhaseProposalNativeFutureFlags.lean).
+Full conditional belief weights, clean binding gains and publication timing
+gains remain open.
