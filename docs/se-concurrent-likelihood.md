@@ -4,12 +4,10 @@ This is a proposed derivation of the qualified initialized likelihood and
 causal payoff comparison, reviewed by agents in
 [the likelihood review](se-concurrent-likelihood-review.md) and
 [the replay analysis](se-concurrent-replay-analysis.md), with a root-agent
-model audit. The global reconstruction and weight identity still have a
-mathematical gap: local action-fiber identities do not establish closure and
-exhaustive coverage of the full native/source prefix relation. In particular,
-the source annotation and literal focal recall must be preserved together by
-every transition. This is not merely an outstanding Lean implementation.
-These are not human reviews or Lean verification. Its Lean theorem is
+model audit. The partial-ledger reconstruction and its explicit reach-level
+weight identity have passed these mathematical reviews for the frozen
+`.concurrent` contract with complete pending observation. These are not human
+reviews or Lean verification. Its Lean theorem is
 **not proved**, and concurrent SE preservation is not claimed here.
 The preservation target remains the actual concurrent raw game with arbitrary
 finite-support correlated initial inputs, finite binding types, the original
@@ -246,294 +244,221 @@ record.
 
 ### Finite chronological reconstruction
 
-The construction in this section is not a completed proof. It must establish
-a relation on exposed native/source prefixes and prove both successor closure
-and exhaustive weighted coverage. Summing an entire local raw-alias fiber is
-insufficient when the successor relation also constrains recalled actions,
-catalogues and the canonical source annotation. Compatibility cannot condition
-on a future extension or include future source probabilities at initialization.
+This argument concerns the reserved implementation in mode `.concurrent`
+under its `Operational` assumptions. In particular, observation is exactly
+`completePendingObservation`, and the compiled order is barrier order.
+Different-owner bindings can overlap; a public event requires its exact
+preceding source prefix complete. No relaxed-reveal extension is asserted.
+The original correlated input law and unconditional whole-execution tape
+prior are retained. The argument below is mathematical, not a Lean theorem.
 
-Work after the exact foreign-alias projection: only foreign syntax is
-normalized; focal raw actions, focal full information and the initialized law
-are retained. Its history marginal already sums the original local preimages,
-so an inverse for each evidence-request spelling is unnecessary.
+First apply the exact foreign raw-history normalization. It sums the original
+proper foreign alias fibers while retaining the initializer and full focal
+raw recall. Choose the existing source witness fold on this normalized
+history and pull its annotation back. No separate witness-equivariance
+assumption on raw aliases is needed. The enriched canonical trace is the
+actual checkpoint trace lifted with `nativeArchiveLabels` of the submitted
+proposal archive, including failed-but-submitted proposals.
 
-A skeleton records the original tape/commands, clock and callback order,
-namespaces, signed headers and fresh serials, emitted envelopes with opaque
-binding meanings erased, receipts, current/saved/retired accepted HANDLE
-tables, and all public samples and proposed opening plaintexts. Up to I it also
-retains focal raw actions and before-views. AFTER I only mechanical headers/times
-are fixed: focal future values/views are causal chain auxiliaries, not a retained
-baseline sample. It does not erase a binding handle or
-confuse its original generation with a later occurrence of the same event.
-STOP the skeleton at the CURRENT commitment block's first close, when beta is
-decided, before any subsequent publication or sample. Historical publications
-and samples before I are included; future ones are NOT. This stopping scope is
-essential: future plaintexts/sample paths can depend on inserted v and F.
-The skeleton set is DEFINED as projections of actual positive qualified
-normalized paths, before selecting a source target. It is not defined by
-target-relative compatibility. Reconstruction below must work for every
-regular source target at the J obtained from such a path.
+#### Exposed prefixes
 
-The source mask is recoverable from FULL J, not just its final E:
+At physical depth k retain only data already exposed:
 
-| COMMIT owner j at the recorded rank | Actual source row |
-| --- | --- |
-| j in E_before | automatic NONE |
-| j not in E_before, j in E_after | missing |
-| j not in E_after | nonmissing |
+- commands, actor, clocks, activation clocks, cuts, receipts, pending order,
+  packet addresses, accepted handles, candidate occupancy and submission counts;
+- the currently exposed public store and public opening plaintexts;
+- the focal raw actions, before-views and entire catalogue before I;
+- the closed source past at the installed phase entry, separate current and
+  saved typed-state correspondences, and indexed retired attempted words;
+- a partial ledger of issued declarations, indexed by full generation,
+  phase-low and event, with owner, slot, typed meaning and actual receipt;
+- the entire chronological cause-read word and conditional label mass of
+  source rows already emitted by the checkpoint fold.
 
-Every source signal retains the rank and E, so adjacent signals give this
-table. The source COMMIT transition immediately inserts exactly a missing
-active owner. close_excluded retains that insertion at the last row even if
-the same transition restores, increments generation or exhausts. Regularity
-makes a nonmissing foreign row proper; the focal labeled word fixes its BAD
-or proper result. Thus differing first-miss positions cannot hide in the same
-full J. A normalized action-pool key would not establish this fact.
+An unresolved declaration is not classified by its eventual admission.
+Unissued events have no ledger entry, source action or probability factor.
+The source word of a live commitment phase is decoded only when it closes.
+For example, if native B acts before statically earlier A has issued anything,
+reach to B contains no A-domain atom. A's coordinate may be attached later;
+it cannot be inserted into the initializer or an earlier prefix weight.
 
-If the qualified measure is zero there is nothing to construct. Otherwise fix
-ONE actual positive qualified path. Replay its source instructions in static
-order, retaining the original input and public samples, each admitted binding
-meaning (including canceled focal BAD), each miss and restored checkpoint,
-and the complete proposal archive. Supply not-yet-emitted current binding
-coordinates by their original owner chains. Earlier blocks have closed: their
-decoded masks and words are literal. The current block has all admissions TRUE
-on this path, so its added ordinary coordinates are nonmissing proper values.
-At publication choose an allowed T/F/W label from the displayed table. This
-constructs a genuine source prefix at the selected focal static rank; call its
-full focal information J. Positive ordinary support supplies its unobserved
-coordinates, so J has positive regular source reach with that original input.
-The current block's prefix has E=entryE: all current admissions on this
-qualified path are TRUE, and new proper ordinary choices add no exclusion.
-Full J retains E at both the matching saved entry and the selected rank.
-Every other target at this J therefore has the SAME E=entryE; it is derived
-from the qualified construction, not an extra target-cursor hypothesis.
+Full source J fixes the historical per-row masks, not merely final exclusion.
+At a binding row with owner j, membership in E_before gives automatic NONE;
+otherwise new membership in E_after gives omission; otherwise it is admitted.
+The final-row close preserves E even across retry or exhaustion. Historical
+focal admitted BAD is retained literally. A surviving focal owner has no
+unsubmitted historical commitment synthesized by a foreign retry: phase close
+requires every event finished after drain, and an unfinished surviving focal
+event must be admitted or expire. Expiry would exclude it permanently.
 
-J is independent of these choices. Its initial focal observation is fixed by
-I. Its entire public word is fixed by the public address/record scan and the
-archive. Its entire owned coordinate word is fixed by focal raw preparations,
-accepted receipts and retired attempt masks in I. A surviving focal owner has
-no consumed missing binding or failed publication. Unobserved foreign private
-coordinates affect none of these components. Full source information is fixed
-by this initial observation/public-word/owned-word data. In particular its
-focal source observation agrees at EVERY earlier static position, not just at
-the selected row. This uses full recall, not a normalized action-pool key.
-There is no unobserved historical focal choice canceled by an early foreign
-miss: settle tests Finished for EVERY phase event only after drain, and drain
-can complete an automatic event only for an already excluded owner. By
-drainFuel_completed_survivor an unsubmitted surviving focal event remains
-unfinished. It must be physically admitted or expire before retry; expiry
-excludes the focal owner permanently. At this later active I, therefore,
-every historical focal commitment was actually admitted, even when canceled.
+#### Response and application steps
 
-For a target (g,F), associate values with SOURCE OCCURRENCES, not physical
-times. The occurrence is (generation, saved rank, static event rank). Give
-every accepted historical handle its target occurrence's value, and each
-current emitted handle its coordinate in the target current block word.
-Restore a persistent handle with its original occurrence's SAME value.
-Unsubmitted coordinates are auxiliary ordinary draws. A finished lost
-declaration has its own unconstrained draw, not the value of a later event.
-Focal future values after the literal current insertion are newly sampled
-from the original table at updated focal queries.
+At a genuine ready UNSENT foreign binding, the eligible slots are exactly
+the bounded fresh slots F. This follows from
+`phaseBindingSlots_eq_fresh_of_history`; the test has no hidden value guard.
+`reactiveFreshSlot_congr` shows that the canonical slot s0 depends on freshness,
+not catalogue meanings. With waiting w, BAD rate b and slot rate z, a proper
+class with typed value v and slot s has mass
 
-The reconstruction retains the following state invariant at EVERY actual
-primitive transition, including before a foreign callback after restore:
+    (1-w)(1-b) [z/|F| + (1-z) 1[s=s0]] D_j(actualKey)(v).
 
-1. Cut, clocks, accepted handles, signed-header occupancy, failure masks and
-   selected checkpoint/generation are the skeleton's literal data.
-2. Current and saved graph cells, separately, have the target source meanings
-   at their respective source occurrences. Initial cells use the target
-   theta. Retired cells retain the attempted meanings before restore. Dead
-   catalogue entries are not identified with current/saved cells.
-3. All source-public values, ordered numeric source addresses and proposal
-   archive agree with the target public word. The focal initial observation,
-   complete owned coordinate word and current/saved own observations agree;
-   hence its full source observation at every earlier source position agrees.
-   The WHOLE focal private catalogue also agrees: initial own entries are fixed
-   by its initial observation in J, its registrations are the literal raw
-   actions in I, and foreign registration changes only the foreign catalogue.
-   This includes dead/unused focal preparations. Together with the same network
-   and receipt record this gives every literal focal raw before-view.
-4. A foreign callback's actual normalized getter is the target owner's
-   normalized source getter at that occurrence, even if foreign private
-   events have been interleaved differently.
+The native getter equals the corresponding owner-chain query componentwise.
+Its typed projection reads that owner's original input, saved cells below
+saved-low and earlier own live cells. Its controls and ordered address word
+use the saved entry exclusions, generation and low; its proposal component
+is the actual submitted archive. NoMiss removes EVERY exclusion difference
+inside the current attempt, including an earlier-static miss whose physical
+expiry happens after this SEND. It does not erase retired attempts.
+Same-owner readiness ensures earlier own values needed by this query have
+already been exposed. Unissued foreign values do not enter the query.
 
-Item 4 follows component by component from items 1--3, rather than from equal
-complete latent histories. The native query is literally
+Registration adds the value to its exact fresh handle without completing the
+source row. Acceptance then records that handle at the event and writes the
+same typed result. The invariant retains BOTH catalogue lookup=openable(v)
+and binding-field value=success(v). Initial handles obtain these facts from
+encoding the literal target input. A proposed opening is attached to its
+issued occurrence using actual count/certificate and accepted-handle facts,
+not an assumption that all reference proposals are truthful.
 
-    (Erase(NoMiss(ErasedRead(typedView, controls, addressWord))), Z).
+Public store equality is propagated at each physical completion. In this
+mode public readiness gives the complete earlier source prefix. Guard code
+is fixed, and `GuardCheck.eval?_publicStore` reads that public store and the
+literal proposal. The two handle/value facts above permit opening transport;
+equal proposal plaintext alone would not. Public results, exclusion, cuts
+and subsequent readiness consequently agree. Nature likewise uses the actual
+public distribution operands and keeps its original atom.
 
-typedView reads the actor's original own inputs, currently live own binding
-cells and public cells at the selected static rank; item 2 supplies them.
-Unrelated foreign private cells are absent. controls consists of the inherited
-failure footprint plus failures STRICTLY BEFORE THE SAVED BLOCK RANK low,
-generation and low. Its E is entryE, not the current total exclusion set.
-addressWord scans old/retired footprints; its current range uses the CONSTANT
-(entryE,generation,low) at every intermediate rank. Items 1 and 3 supply
-its ENTIRE list. Z is the complete typed address-keyed submitted-proposal
-archive (a finite set), from item 3. The full source public chronology is
-retained separately; Z alone does not assert a physical arrival order.
-Erase discards recalled private action tags. NoMiss applies the same explicit
-normalization to both readouts. In particular no canceled private value is
-reintroduced after restore. For restore, item 2 copies the target SAVED cells,
-not the pre-restore current cells; masks/generation and retained address/archive
-are updated by the same source restore rule. This accounts for every argument
-of the getter, without requiring equality of latent trace labels.
-The footprint cutoff here is the SAVED BLOCK RANK, not the queried event rank.
-For example, in an old failed attempt, static-earlier foreign j' can miss while
-static-later j physically SENDs BEFORE j' expires. At j's source row the source
-already sees j' excluded; at the earlier physical callback the runtime does
-not. NoMiss resets EVERY exclusion signal from the current attempt's entry
-cut onward, including its own-play tags, to entryE. The subsequent Erase drops
-past private observations and action tags. Foreign binding failure is hidden
-from j's current typed view, and no publication occurs inside the commitment
-block. Hence the normalized getters still agree. This is not justified by
-truncating only currently known failures. Old RETIRED attempt words lie before
-the cut, remain unchanged, and agree from the already closed mask/archive.
+Reserved service commands depend on the original tape, command cursor and
+pending/public data. Complete-pending observation reveals all pending IDs
+deterministically. Future fresh-handle occurrence renaming transports the
+emitted packets and their observations. Old focal raw syntax, including an
+evidence request mentioning a future-unallocated handle, stays LITERAL.
+This argument does not cover an arbitrary handle-sensitive observation rule.
 
-Propagate the invariant by the ACTUAL primitive transition:
+Every focal before-view is preserved inductively. Its public phase/native
+views come from the retained public store, cut, accepted handles, clocks,
+exclusions and retired records. Its own typed cells come from its original
+input and chronological admitted/canceled word fixed by full J. Its entire
+private catalogue comes from that input and its literal raw preparations in
+I, including wrong-typed BAD preparations. Its network observations and
+receipts come from the retained packets and receipt record. Appending the
+next literal raw action with this computed view gives the next before-view
+in I; final-I equality is not an unexplained successor filter.
 
-* Initialization encodes the target theta in both current and saved stores.
-  Public and focal projections agree by J; foreign private components may
-  differ. Initial accepted handles are the fixed input identities.
-* At a proper foreign binding callback, getter equality gives D at the target
-  coordinate. Freshness uses the same signed headers/handles. Canonical
-  preparation is legal at that serial and changes only the foreign catalogue
-  at its new slot. The opaque envelope is unchanged. A lost declaration uses
-  its own original D draw. Focal callbacks keep the literal raw action and
-  entire catalogue. WAIT/SENT/disabled cases register no new value/envelope.
-  Token/readiness and response class use the retained cut/header data.
-* Binding INCLUDE tests the same namespace, owner, token, clock, vacancy and
-  unused handle, not the binding meaning. Its accepted handle, receipt and
-  completion cut agree; its store write uses the assigned target value.
-  Expiry writes failure at the same coordinate. Both refresh the same
-  event-relative activation clocks.
-* At opening, source legality equates the proposed value in Z with the stored
-  target value. A generated handle was registered immutably at its original
-  occurrence; an initial handle has the target theta value. The canonical
-  evidence request therefore materializes an ACTUAL accepted-handle
-  certificate. Its plaintext/envelope match the skeleton. No equality of
-  foreign whole catalogues is needed.
-* Opening INCLUDE evaluates exactly the obligations completed by that reveal.
-  Their subject/input publications agree by item 3, hence the actual check
-  conjunction and output agree. Pending obligations are not evaluated early.
-  Failed inclusion or expiry inserts the owner into E BEFORE normalization.
-  Same-owner reveal dependencies prevent a later own proposal from already
-  being ready/pending; excluded rows then drain as automatic NONE. Thus archive,
-  result and later opportunities agree even at the first publication failure.
-* Public Nature uses the same public operands and actual sampled value; its
-  atom is retained, and the full public word fixes its intrinsic product.
-  ACTIVATE, WAIT and clock commands see the same public readiness/time data.
-* Clean save copies the assigned CURRENT store and accepted table to saved.
-  Retry retains the pre-restore word in its retired generation, then copies
-  the assigned SAVED store/table to current. This literal field copy preserves
-  item 2 without identifying independently chosen checkpoints. The mask table
-  determines the matching source close/generation. Private catalogues persist;
-  fresh slots cannot overwrite a prior signed occurrence. Old public sample,
-  proposal and numeric address data are retained.
+#### Close, restore and hidden causes
 
-The required induction must preserve the listed fields and the next literal
-focal before-view. At a ready publication the public-barrier order gives the
-exact source prefix, so no rank-later public result can already be exposed.
-Its compiled guard list is fixed; each store operand is public and available
-by the node's declared dependencies. Equal public stores and the same proposed
-plaintext therefore give the same checked output, even when unrelated hidden
-bindings differ. Transporting admission also requires the accepted handle's
-catalogue entry and typed store cell to retain that same value, as established
-by the issued-occurrence ledger and save/restore steps. These are the premises
-of `opening_right_facts`; `GuardCheck.eval?_publicStore` alone proves only
-guard equality. Neither requires equality of unrelated hidden saved stores.
-If the full reconstruction induction holds, targets with different foreign
-meanings give actual normalized
-paths at the same skeleton. This derives legality from the primitive tests,
-rather than from equal residual scores.
+At commitment close, `decodeCommitAttempt` reads the known masks and accepted
+meanings in static order. Per owner, admitted values form an ordinary-chain
+prefix. A sent-but-missed proper value is a terminal auxiliary draw: owned
+readiness prevents a later own event already being ready, and expiry excludes
+its owner permanently. The draw product is therefore
 
-For the inverse retain lost draws and future focal draws as auxiliary
-coordinates until summation. Source owner order makes emitted coordinates an
-initial OWNED prefix: no later own SEND is ready before an unresolved owned
-predecessor. If that prefix is v_1,...,v_l, its actual value factor is
-the product of D_jk(v_<k) for k<=l. Sample the unobserved tail with factors
-D_jk(v_<k) for k>l. Their product is the FULL owner-chain law, with no extra
-normalizer. This remains true under adaptive physical interleaving, since the
-next queried coordinate has exactly that conditional law. Thus ordinary chains
-may equivalently be sampled at entry. Unused continuations sum to one.
+    product_j D_j(admitted prefix) * product_lost D_j(auxiliary | prefix).
 
-The augmented normalized path determines its skeleton, theta, historical source
-word and all current chains by inspection. Conversely the primitive recursion
-reconstructs that path from those coordinates. This is a bijection BEFORE
-forgetting lost draws and focal future draws, not on bare (g,F,m). The exact
-alias marginal and conditional-chain sums forget the extra coordinates with
-their actual weights. Every original preparation belongs to an accepted
-occurrence, a retained current prefix or a finished lost leaf. A lost leaf
-has no later own binding choice because its predecessor did not complete;
-its eventual miss excludes the owner. The publication barrier prevents an
-intervening new value choice. Its actual D therefore sums to one; its native
-bad-rate complement remains. Accepted canceled prefixes stay in g. Auxiliary
-publication labels have exactly their displayed r_l law. This accounts for
-every original preimage and its multiplicity.
+Only the lost factors sum to one. Their meanings affect no accepted cell,
+proposal or later active own choice; occupancy is retained separately.
+Admitted-but-canceled values remain in the chronological source history.
+Native restore copies entry config and accepted handles while retaining
+catalogue, clock and exclusions, and archives the attempted word. Source
+restore copies saved typed state with attempted history. Saved accepted
+handles keep their immutable meanings; later fresh slots cannot overwrite
+them. Retry changes generation; exhaustion consumes its automatic suffix.
 
-The resulting unnormalized weight is
+Attach source causes only when their source rows are actually emitted.
+At a foreign rejected-guard failure with a submitted proposal, put
+u=1-omission, f=omission*delivery and Z=u+f>0. The legal truthful and failed
+disclosure rows have source masses u and f and conditional masses u/Z,f/Z.
+For the summed normalized native class mass B, including B=0,
 
-    mu(theta) P(J) N_i(I) A_I(m) D_-(g,F) R_-(g),
+    Z sum_h mass(h) K(T) = u B,    Z sum_h mass(h) K(F) = f B.
 
-where A_I(m) contains all physical timing/slot/service and retained bad-rate
-complements, including complements of integrated lost preparations. The source
-weight is mu(theta)P(J)O_i(J)C_-(J)D_-(g,F)R_-(g). Multiply the local factors:
-every accepted foreign value contributes exactly one D; a lost value sums to
-one; each ambiguous source label contributes one r_l. Timing/slot/admission
-tests use value-blind fields, and opening/public-data coefficients are fixed
-by J. Therefore A_I(m) is independent of target g,F. The current all-TRUE gate
-also ignores inserted typed meaning: it tests binding admission, not later
-guard success. Future focal values are resampled after v and sum to one.
+These are the exact `proposalRecoveryFailureDisclosureLaw_rows` identities.
+Keep the previous label prefix on BOTH sides. The conditional fiber is
+positive because the retained target row is a supported member. Other
+publication classes use their permitted singleton or corresponding rows;
+automatic excluded rows have factor one. The existing arbitrary-same-J
+source class theorem makes their normalizers J-common. Commitment values
+stay literal; latest-read equality alone does not determine the label law.
 
-At a fixed proper serial, changing v keeps the opaque packet unchanged.
-For different legal fresh serials a and b, fix old occupied handles, send a
-to b, and pair the kth remaining fresh serial after a with the kth remaining
-fresh serial after b. This order-rank bijection, unlike an arbitrary permutation,
-pairs each subsequent least-fresh canonical choice. Initial handles are fixed.
-Retain event, message ID, token and time.
-Reserved service eligibility uses pending coordinate/order, not serial meaning;
-vacancy and HandleUnused are unchanged under this injective renaming. Thus
-admission/completion times and the all-TRUE gate agree. This naming argument
-is distinct from fixing headers while retargeting a value.
+#### Common domain, weights and inverse
 
-Sum the product identity over skeletons with the gate and over the ORIGINAL
-tape prior. Its common coefficient cancels when normalizing: the source sum
-is actual regular source reach of J; the native sum is actual qualified gate
-mass. This yields (2) with t its actual probability. Zero prior, incompatible
-path/lock or disallowed-cause atoms stay zero in the product identity; no
-individual D atom is divided out. Legal D atoms in this actual finite-index
-construction are positive by the stated domain floor.
-For positive t the construction explicitly gives preimages of every positive
-source target. At zero t every qualified mass is zero.
+Let M be the image of actual positive qualified normalized paths under the
+mechanical projection just described, stopped at the FIRST current commitment
+close. It is defined before choosing a source target. Remove foreign private
+input/preparation meanings and post-I focal private causal draws, but retain
+their occurrence positions. Pre-I focal raw I and handles remain literal.
+Post-I handle names are allocation occurrences, reconstructed for each legal
+current encoding. Fix occupied pre-I handles and pair the kth remaining fresh
+slot after one current choice with the kth after the other. This preserves
+the canonical least-fresh allocator and the uniform fresh-slot law. Old raw
+requests stay literal; future ordinary policies ignore their unused syntax
+through outputs/count/view congruence. Thus M contains neither a prospective g nor fixed future
+publications or Nature. Its prefix contains no future-extendability test.
 
-If the missing reconstruction and coverage lemma holds, this gives the
-initialized identity. It supplies current/saved
-meanings by construction rather than assuming a target cursor. The existing
-conditional cursor law can then identify Phi on this SAME completed word/joint;
-commit-window history uniqueness retains the full source history. An advanced
-after-v cursor is not treated as a fresh whole block.
-Specifically, first take the actual full source prefix at the CURRENT BLOCK'S
-FRESH ENTRY inside the target g. The fieldwise reconstruction produces the
-retargeted native entry configuration with those same typed cells and source
-references. Instantiate the chosen source/graph block joint there, retaining
-that original full source prefix (not a decoded replacement history). Deferred
-owner-chain sampling and the actual emitted-prefix cylinder give its SAME
-conditional completion. At the selected source rank insert the literal v,
-use the actual advanced cursor for only the residual suffix, and resample its
-focal future at the updated original queries. Foreign F is unchanged, with the
-required NONE head/tail bookkeeping. Commit-window history uniqueness lifts
-the complete semantic word to the literal enriched source G. The actual clean
-closing/terminal comparison applies to that same G, giving Phi_v. This never
-conditions a previously sampled baseline focal future on v, nor asserts
-fresh-entry geometry for an advanced cursor.
-After the binding stop, apply the existing actual fresh terminal coupling
-separately for EACH supported residual tape and this constructed source state.
-Protected prompt q0 continuation has the same source terminal payoff law on
-each such tape. Hence integrating the original conditional tape posterior
-gives Phi_v. This is a per-tape law calculation, not independence of the
-residual tape from the source state. No future Nature mass is silently omitted
-from a path factor: all postclose randomness is inside that continuation law.
+For any supported regular target g at the resulting J, split its past by
+those same phase/generation masks. Replay each exposed admitted declaration
+with its target occurrence's meaning; retain lost values and post-I focal
+causal actions as auxiliaries with their ACTUAL kernels. The preceding cases
+give legality, getter, handle, public-store and every focal before-view
+equality at each step. They therefore preserve the same mechanical record
+m in M. Removing the last transition recovers its predecessor. At close,
+the static decoder determines its source word. This is an exhaustive finite
+pushforward; it is not a bare bijection from (g,m) to raw histories.
+
+The current block's partition is by STATIC focal rank, not exposure time.
+Statically later foreign values issued before I belong to the source q0
+suffix F. Earlier unissued foreign values enter sourceReach(g) retrospectively
+at close. Finite-source reach stops immediately BEFORE forced current v;
+there is no D_current(v) factor. F covers only the current binding block.
+
+Write
+
+    rho_J(g,F) = 1[info(g)=J, foreignGood(g)] sourceReach(g) H_g(F),
+    Z_J = sum_(g,F) rho_J(g,F),
+    Z_N(I) = sum_[h at I] nativeReach(h).
+
+Here sourceReach uses the ACTUAL finite-flag profile and literal correlated
+mu. For the actual reach-level augmented qualified payoff measure U, the
+finite product calculation gives
+
+    U_v(g,F,m) = B_I,J(m) rho_J(g,F) Phi_v(g,F).
+
+The coefficient B is independent of g,F,v and legal proper encoding. Literal
+mu, public Nature atoms and ordinary foreign-chain atoms agree coordinatewise.
+Hidden-cause atoms are retained through Z K=row-weight. Source focal reach
+and source class factors are J-common; native focal likelihood is I-common.
+The remaining mechanical factors are those preserved by the replay. Zero
+atoms are handled by forward support and the inverse above, without dividing
+by a zero past D factor. All retained auxiliaries keep their actual weights.
+
+Phi is identified before averaging. Preserve the actual causal current-block
+suffix after v, including focal draws at UPDATED queries. The shared completed
+word from the same old source prefix identifies the selected source extension
+by the clean checkpoint word formula and commit-window uniqueness. The exact
+archive/lift and fixed-tape fresh-payoff transport then identify the actual
+terminal payoff law with this source q0 continuation. Later publication and
+Nature remain causal. Only genuinely lost leaves integrate to one; focal
+causal tails are pushed forward, never replaced by one. Original tapes are
+disintegrated before the comparison, without refreshing a stop-time posterior.
+
+Bayes normalization is explicit. Native seeded occupation is a common constant
+times nativeReach at I; source occupation has its own common constant at J.
+Each cancels only in its own conditional numerator/denominator. Set
+
+    nu_J=rho_J/Z_J,    A_I(m)=B_I,J(m) Z_J/Z_N(I),    a=sum_m A_I(m).
+
+Then the actual qualified payoff law on `some` is
+
+    a sum_(g,F) nu_J(g,F) Phi_v(g,F),
+
+with remaining mass 1-a on `none`. Positive qualification supplies Z_J>0;
+otherwise every proper qualified law is pure `none`, with no source site
+needed. Here a uses the original native posterior, including the foreign-good
+gate. If (2) first conditions on foreign-good with probability q>0, then
+a=q*t(I); these are two normalizations of the same measure. This proves the
+common-a qualified identity and its causal payoff
+attachment at the stated mathematical scope. It does not assert a checked
+Lean transport theorem or the final preservation theorem.
 
 ## Signed gain and quantitative errors
 

@@ -1,15 +1,14 @@
 # Independent agent review of concurrent likelihood
 
-**Incomplete mathematical proof.** The local calculations in the
-[likelihood derivation](se-concurrent-likelihood.md) have been reviewed, but
-they do not yet establish the global qualified posterior identity. The
-missing step is closure and exhaustive coverage of the actual noisy native
-prefix classes under each transition, including the source annotation and
-literal focal recall. A local action-fiber probability identity alone does
-not establish that step. Its causal payoff attachment and the preservation
-conclusion therefore remain conditional on an unproved mathematical lemma.
-No counterexample to preservation is established. These are agent reviews and
-a root-agent model audit, not human review or Lean verification.
+**Qualified transport accepted as a mathematical argument.** The
+[likelihood derivation](se-concurrent-likelihood.md) gives a partial-issued
+ledger reconstruction, common mechanical domain, explicit initialized reach
+identity and causal payoff attachment. Two agents independently reviewed this
+assembly, alongside the root-agent model audit, for literal `.concurrent`
+with complete pending observation. It keeps the original correlated input
+law and whole-execution tape prior. This accepts that mathematical transport
+argument, not a checked Lean theorem or full SE preservation. These are agent
+reviews, not human review or Lean verification.
 
 ## Reviewed domain and conclusion
 
@@ -29,7 +28,7 @@ original tape, rather than resample its prior.
 
 For each legal typed current insertion v, construct X=(g,F), where g is a
 genuine enriched source prefix at one full information J and F is its
-remaining foreign commitment word. The proposed, unproved conclusion is
+remaining foreign commitment word. The mathematically reviewed conclusion is
 
     E[beta * 1_{X=x} | I, native-good] = t(I) nu_J(x)
 
@@ -80,8 +79,8 @@ initial types, or a desired continuation law.
 * **Full focal observations.** Before I, retain literal own raw recall and
   its entire private catalogue, including unused/dead preparations. After I,
   focal future values and views are causal auxiliaries, not a fixed baseline
-  future. Historical publication interleavings use the complete public word
-  and the actual physical order, not just a same-rank source prefix.
+  future. Public events are source-ordered barriers; private binding events
+  may interleave. Every focal before-view is reconstructed componentwise.
 * **Guards and disclosure labels.** Only actually completed obligations are
   evaluated. Guard reads cannot inspect raw hidden inputs or commitments.
   Truthful rejection and failed disclosure retain their distinct source
@@ -89,14 +88,16 @@ initial types, or a desired continuation law.
   proposals and addresses remain in the archive.
 * **Both directions and multiplicity.** Skeletons are projections of actual
   positive qualified paths, defined before choosing a target. Reconstruction
-  produces every positive target on that common domain. The inverse retains
-  lost draws and unused future innovations until summation. An emitted owned
+  produces every positive target on that common domain. Live ledgers contain
+  only issued values; unissued static-earlier coordinates enter retrospectively.
+  The inverse retains lost draws and causal future kernels. An emitted owned
   prefix times its conditional tail is the original full owner-chain law.
   Only finished never-admitted leaves sum to one; accepted canceled and
   pending values remain fixed. No individual domain atom is divided out.
 * **Uniform gate and causal kernel.** Value changes at a fixed serial preserve
   opaque packets. Different fresh encodings use order-rank handle renaming,
-  preserving later least-fresh choices, message IDs and service times. The
+  preserving later least-fresh choices, message IDs and service times under
+  complete pending observation. Old raw requests remain literal. The
   chosen source/graph joint starts at the actual reconstructed fresh entry;
   only its residual cursor advances after v. Foreign F is retained while
   focal future innovations are resampled. No independently chosen coupling

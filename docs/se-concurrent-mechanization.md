@@ -29,9 +29,9 @@ sequence is a capstone assumption.
 
 ## Current proof boundary
 
-**Contract and joint satisfiability checked; global mathematical transport
-incomplete; qualified transport, clean commitment gain and unconditional final
-SE open.**
+**Contract and joint satisfiability checked; mathematical qualified transport
+reviewed; Lean qualified transport, clean commitment gain and unconditional
+final SE open.**
 Checked dependencies do not close the remaining Lean obligations.
 
 The [concurrent hypothesis test](../VegasTests/ConcurrentRawHypotheses.lean)
@@ -41,9 +41,9 @@ owned Boolean bindings; its service supports both activation orders, with
 nonconstant utility and a positive funded deposit. This establishes that the
 contract's premises are jointly satisfiable, not preservation.
 
-The [likelihood analysis](se-concurrent-likelihood.md) states the actual remaining
-mathematical obligation. The [independent review](se-concurrent-likelihood-review.md)
-records the reviewed local calculations and the remaining global gap. These
+The [likelihood analysis](se-concurrent-likelihood.md) states the reviewed
+mathematical argument and remaining Lean obligation. The [independent review](se-concurrent-likelihood-review.md)
+records the reviewed reconstruction and initialized weight identity. These
 are independent agent reviews and a root-agent model audit, not human review
 or Lean verification.
 The [code inventory](se-concurrent-code-inventory.md) identifies owning APIs and
@@ -63,9 +63,9 @@ proof draft attempted it.
 The mathematical derivation specifies the actual joint experiment,
 its original initializer, source labels and archives; support and weights through
 response/service/close cases; and proposed normalization including zero mass.
-Successor closure and exhaustive weighted coverage of the full prefix relation
-remain unproved in mathematics; transport mechanization must wait for that
-argument. The physical skeleton stops at the current binding close; later
+The partial-issued ledger and inverse replay give the mathematical successor
+and coverage argument, with explicit reach and Bayes normalization. Its global
+Lean theorem remains open. The physical skeleton stops at the current binding close; later
 payoffs use a separate causal
 kernel. Conditional laws given a supplied cursor establish neither the
 coverage nor the weights of arbitrary source explanations of a native input.
@@ -110,9 +110,9 @@ handoff notes and research archives are not committed.
 
 ## Completion gate
 
-First prove successor closure and exhaustive weighted coverage in mathematics
-and review that argument. Only then mechanize the transport and clean gain
-comparison, and use the existing
+Freeze the actual qualified-payoff theorem type against the reviewed ledger
+and weighted replay argument before implementing its proof. Mechanize that
+transport and the clean gain comparison, and use the existing
 common-sequence, limit and audit APIs to prove the exact capstone. Keep its
 external hypotheses fixed. If the mathematical argument appears incorrect,
 stop implementation and report the precise issue.

@@ -1,13 +1,14 @@
 # Replay analysis: an exact foreign-alias reduction
 
 The stopped chronological construction in
-[the likelihood note](se-concurrent-likelihood.md) remains incomplete: its
-global prefix reconstruction and weighted coverage are not established.
-Its Lean theorem and the end-to-end preservation theorem remain unproved.
+[the likelihood note](se-concurrent-likelihood.md), including its mathematical
+reconstruction and weighted coverage, has passed agent reviews
+and a root-agent model audit at the frozen contract's scope. Its Lean theorem
+and the end-to-end preservation theorem remain unproved.
 The following reductions record reviewed local
 parts of that argument: foreign private syntax aliases do not require equal
 alias counts, or a bijection of raw aliases, between different target catalogues.
-The likelihood derivation proposes the full target reconstruction and coverage
+The likelihood derivation gives the full target reconstruction and coverage
 argument; the local reductions here do not prove that global claim.
 
 ## The quotient and its operational effect
