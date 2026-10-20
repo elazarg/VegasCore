@@ -30,10 +30,11 @@ sequence is a capstone assumption.
 ## Current proof boundary
 
 **Contract, joint satisfiability and waiting payoff bound checked. The
-qualified ready-information mathematical reconstruction has independent Astra
-review; an unrestricted prefix density theorem is not claimed.
-Conditional-belief transport, clean commitment gain and unconditional SE remain
-unproved in Lean.**
+complete qualified ready-information finite derivation has independent Astra
+review, including the annotated inverse, weight telescoping and lost-tail
+independence. An unrestricted prefix density theorem is not claimed.
+The clean commitment gain comparison and final assembly are checked conditional
+on `QualifiedBindingLaw`. Its transport proof and unconditional SE remain open.**
 Checked dependencies do not close the remaining Lean obligations.
 
 The [concurrent hypothesis test](../VegasTests/ConcurrentRawHypotheses.lean)
@@ -43,7 +44,7 @@ owned Boolean bindings; its service supports both activation orders, with
 nonconstant utility and a positive funded deposit. This establishes that the
 contract's premises are jointly satisfiable, not preservation.
 
-The [likelihood analysis](se-concurrent-likelihood.md) gives the qualified
+The [likelihood analysis](se-concurrent-likelihood.md) proposes the qualified
 ready-information reconstruction. The [independent review](se-concurrent-likelihood-review.md)
 records the mathematical review and the finite diagnostic's limits. These
 are independent agent reviews and a root-agent model audit, not human review
@@ -61,13 +62,14 @@ causal payoff continuation. This is a theorem to derive, never a premise to add.
 Unqualified branches use their separate floor/reset comparison. A product law
 against every full mechanical history is not required by this comparison.
 
-The reviewed derivation retains the actual initializer, source labels and
-archives. Its qualified inverse covers every good source history at the common
-full information, preserving canceled preparations and the original joint prior.
+The proposed derivation retains the actual initializer, source labels and
+archives. Its required qualified inverse must cover every good source history
+at the common full information, preserving canceled preparations and the joint prior.
 Normalized typed-steering kernels retain updated focal queries through the
 same-tape payoff attachment. The finite-n source past and zero-flag future are
-separated before normalization, including zero qualification. These arguments
-still require Lean proofs; conditional laws given a supplied cursor alone do
+separated before normalization, including zero qualification. The reviewed
+global inverse and weight identities still require Lean proofs; conditional
+laws given a supplied cursor alone do
 not establish the required coverage or weights. The scoped qualified identity,
 not an unrestricted prefix density, determines the mechanization boundary.
 
@@ -79,7 +81,7 @@ not an unrestricted prefix density, determines the mechanization boundary.
 | Reserved service and resources | `ReservedEpochResources`, `ReservedEpochCompletion` |
 | Original initialized laws and common sequence | `PhaseProposalInitializedTerminal`, `PhaseProposalInitializedLawError`, `PhaseProposalConsistentSequence` |
 | Source reach factors and source information | `ProposalRecoveryPublicClassFactorization`, `ProposalRecoveryPublicClassConstancy`, `PhaseProposalNativeSourceInformation` |
-| Actual local incentives | `PhaseProposalCurrentBindingGain`, `PhaseProposalPublicationGain`; clean binding remains open |
+| Actual local incentives | `PhaseProposalCurrentBindingGain`, `PhaseProposalPublicationGain`, `PhaseProposalCleanBindingGain`; clean binding is checked assuming `QualifiedBindingLaw` |
 | Equilibrium limit and raw enforcement | `LocalSimulationLimit`, `PhaseOnePacketExtension` |
 
 Detailed consumers and their actual hypothesis scopes are listed in the inventory.
@@ -109,10 +111,10 @@ handoff notes and research archives are not committed.
 
 ## Completion gate
 
-Keep the reviewed weighted inverse and preparation provenance explicit in the
+Derive the actual weighted inverse and retain preparation provenance in the
 mechanization, with the frozen actual qualified-payoff type. Prove transport
-and the clean gain comparison, and use the existing
-common-sequence, limit and audit APIs to prove the exact capstone. Keep its
+and instantiate the checked clean gain comparison and final assembly to prove
+the exact capstone. Keep its
 external hypotheses fixed. If the mathematical argument appears incorrect,
 stop implementation and report the precise issue.
 
@@ -121,8 +123,8 @@ Track the remaining obligations directly:
 | Required result | Checked status |
 | --- | --- |
 | Actual native qualified payoff law | Native experiment, original tape posterior and initialized clean-close source word checked. Common source site, weight identity and causal payoff matching open. |
-| Clean binding deviation bound | Query stability, query nonreuse, full native value-table first-close law, same-table completed values and waiting payoff bound checked. Proper-SEND transport, discarded-branch floor/reset comparison and the full gain bound remain open. |
-| Full raw concurrent SE preservation | Joint-law, limit and raw-audit assembly checked conditional on local gain comparisons. That comparison premise remains open. |
+| Clean binding deviation bound | Full gain bound, including discarded-branch floor/reset comparison, checked assuming `QualifiedBindingLaw`. That transport premise remains open. |
+| Full raw concurrent SE preservation | `concurrentRawSequentialPreservation_of_qualified_binding_law` checks joint-law, limit and raw-audit assembly assuming `QualifiedBindingLaw`. That transport premise remains open. |
 
 The checked reductions are in the [qualified experiment](../Vegas/Game/PhaseProposalQualifiedBinding.lean),
 [binding comparison](../Vegas/Game/PhaseProposalCleanBindingGain.lean) and

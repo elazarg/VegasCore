@@ -2403,19 +2403,19 @@ private theorem conditioned_gain_le [Fintype setup.proposalRecoveryProtocol.Hist
     (source : setup.proposalRecoveryModel.BehavioralAssessment)
     (present : ∃ history ∈
         {history : setup.proposalRecoveryModel.InformationHistory who site.1 |
-          PhaseProposalQualifiedBinding.sourceForeignGood setup who history.val},
+          setup.proposalRecoveryForeignGood who history.val},
       history ∈ (source.belief who site).support)
     (gain : setup.proposalRecoveryModel.InformationHistory who site.1 → ℝ)
     (bound : ℝ) (bounded : ∀ history, |gain history| ≤ 2 * bound) :
     expect ((source.belief who site).filter
-        {history | PhaseProposalQualifiedBinding.sourceForeignGood setup who history.val} present)
+        {history | setup.proposalRecoveryForeignGood who history.val} present)
         gain ≤ expect (source.belief who site) gain +
       4 * bound * (∑ history : setup.proposalRecoveryModel.InformationHistory who site.1 with
         (∃ owner : Player, who ≠ owner ∧ setup.GeneratedPreparationHistory owner history.val),
         (source.belief who site history).toReal) := by
   let belief := source.belief who site
   let good : Set (setup.proposalRecoveryModel.InformationHistory who site.1) :=
-    {history | PhaseProposalQualifiedBinding.sourceForeignGood setup who history.val}
+    {history | setup.proposalRecoveryForeignGood who history.val}
   let mass : ℝ := (∑' history, good.indicator belief history).toReal
   have small : mass ≤ 1 := by
     have restricted : (∑' history, good.indicator belief history) ≤ 1 := by
@@ -2461,7 +2461,7 @@ private theorem conditioned_gain_le [Fintype setup.proposalRecoveryProtocol.Hist
         · exact ENNReal.zero_ne_top
     have negated (history) : history ∉ good ↔
         ∃ owner : Player, who ≠ owner ∧ setup.GeneratedPreparationHistory owner history.val := by
-      simp only [good, Set.mem_ofPred_eq, PhaseProposalQualifiedBinding.sourceForeignGood]
+      simp only [good, Set.mem_ofPred_eq, Setup.proposalRecoveryForeignGood]
       push Not
       simp only [ne_comm]
     rw [finiteMass, ← pmf_sum_toReal_eq_one belief, ← Finset.sum_sub_distrib,
@@ -2597,7 +2597,7 @@ private theorem source_causal_gain_le [Fintype setup.proposalRecoveryProtocol.Hi
     (who : Player) (site : setup.proposalRecoveryModel.InformationSite who)
     (positive : ∃ history ∈
         {history : setup.proposalRecoveryModel.InformationHistory who site.1 |
-          PhaseProposalQualifiedBinding.sourceForeignGood setup who history.val},
+          setup.proposalRecoveryForeignGood who history.val},
       history ∈ (source.belief who site).support)
     (choice : setup.proposalRecoveryModel.Choice who site.1)
     (utility : State L setup.program.terminalCtx → Player → ℝ) (excludedPayoff : Player → ℝ)
@@ -2623,7 +2623,7 @@ private theorem source_causal_gain_le [Fintype setup.proposalRecoveryProtocol.Hi
   let fuel := (Fintype.card Player + 1) * (instructionCount setup.program + 1)
   let payoff := setup.proposalRecoveryPayoff utility excludedPayoff who
   let belief := (source.belief who site).filter
-    {history | PhaseProposalQualifiedBinding.sourceForeignGood setup who history.val} positive
+    {history | setup.proposalRecoveryForeignGood who history.val} positive
   let mean := fun history : setup.proposalRecoveryModel.InformationHistory who site.1 =>
     expect (setup.proposalRecoveryModel.runBehavioralTerminalFrom certificate ordinary history.val)
       payoff

@@ -5058,3 +5058,51 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.concurrentRawSequentialPreservation_of_qualified_binding_law
+
+/-- info:
+'Vegas.SourceProgram.Setup.proposalRecoveryClosedMass_mul_law_extend'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.proposalRecoveryClosedMass_mul_law_extend
+
+/-- info:
+'Vegas.SourceProgram.Setup.proposalRecoveryClosedMass_extend'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.proposalRecoveryClosedMass_extend
+
+/-- info:
+'Vegas.SourceProgram.Setup.proposalRecoveryClosedMass_publication_atom'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.proposalRecoveryClosedMass_publication_atom
+
+/-- info:
+'Vegas.SourceProgram.Setup.proposalRecovery_commit_key_atom'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.proposalRecovery_commit_key_atom
+
+/-- info:
+'Vegas.SourceProgram.Setup.proposalRecoveryClosedMass_commit'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.proposalRecoveryClosedMass_commit
+
+/-- info:
+'Vegas.SourceProgram.Setup.proposalRecoveryClosedMass_cause'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.proposalRecoveryClosedMass_cause
+
+/-- info:
+'Vegas.SourceProgram.Setup.ProposalRecoveryForeignRefinement.erasedHistory'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.ProposalRecoveryForeignRefinement.erasedHistory
+
+/-- info:
+'Vegas.SourceProgram.Setup.proposalRecoveryClosedKey_step_law'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.proposalRecoveryClosedKey_step_law

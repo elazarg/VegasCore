@@ -9,6 +9,7 @@ import Vegas.Source.ProposalRecoveryPreparationRepairMoves
 import Interaction.ReactiveLocalContinuation
 import GameTheoryExtensions.Analysis.Protocol.StoppedTerminalBound
 import GameTheory.Math.Probability.FiniteSampling
+import Vegas.Game.ProposalRecoveryPublicClassConstancy
 import Vegas.Game.ProposalRecoveryPools
 import Vegas.Game.PhaseProposalAttemptArchive
 import GameTheory.Protocol.Predraw
@@ -1113,12 +1114,6 @@ def sourceUnflaggedStrategy : ∀ who, setup.proposalRecoveryModel.BehavioralPol
   setup.proposalRecoveryNormalizedTrembledProfile
     0 le_rfl zero_le_one 0 le_rfl zero_le_one 0 le_rfl zero_le_one values
 
-omit values in
-/-- The source qualification retains generated preparations in canceled
-attempts; only foreign generated preparation failures are filtered. -/
-def sourceForeignGood (who : Player) (history : setup.proposalRecoveryProtocol.History) : Prop :=
-  ∀ owner, owner ≠ who → ¬ setup.GeneratedPreparationHistory owner history
-
 open Classical in
 /-- Causally insert the selected source atom and then use the zero-flag
 continuation. This never conditions a baseline future on the selected value. -/
@@ -1127,14 +1122,14 @@ def sourceCausalPayoff (assessment : setup.proposalRecoveryModel.BehavioralAsses
     (choice : setup.proposalRecoveryModel.Choice who site.1)
     (positive : ∃ history ∈
         {history : setup.proposalRecoveryModel.InformationHistory who site.1 |
-          sourceForeignGood setup who history.val},
+          setup.proposalRecoveryForeignGood who history.val},
       history ∈ (assessment.belief who site).support)
     (utility : State L setup.program.terminalCtx → Player → ℝ)
     (excludedPayoff : Player → ℝ) : PMF (Option ℝ) :=
   let profile := sourceUnflaggedStrategy setup values
   let sourceCertificate := setup.proposalRecoveryProtocol_bounded.wellFoundedHistories
   ((assessment.belief who site).filter
-      {history | sourceForeignGood setup who history.val} positive).bind fun history =>
+      {history | setup.proposalRecoveryForeignGood who history.val} positive).bind fun history =>
     ((setup.proposalRecoveryModel.runBehavioralFrom
       (Profile.update (sig := setup.proposalRecoveryModel.behavioralSignature) profile who
         ((profile who).commit site.1 choice)) 1 history.val).bind
@@ -1217,7 +1212,7 @@ def QualifiedBindingLaw (implementation : ReservedConcurrentImplementation setup
       (encode : L.Val payload → setup.proposalRecoveryModel.Choice who sourceSite.1)
       (positive : ∃ history ∈
           {history : setup.proposalRecoveryModel.InformationHistory who sourceSite.1 |
-            sourceForeignGood setup who history.val},
+            setup.proposalRecoveryForeignGood who history.val},
         history ∈ (source.belief who sourceSite).support),
       phaseProposalQuery? setup .concurrent implementation.runtime implementation.leaks
           implementation.plan who event past view =

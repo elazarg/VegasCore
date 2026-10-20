@@ -3,8 +3,9 @@
 This is a proposed argument for preservation under protected shared service,
 retaining concurrent commitments, permanent expulsion and commitment-phase
 restart. The end-to-end Lean preservation theorem remains unproved. The
-qualified ready-information likelihood argument and weighted inverse have
-independent Astra review. An unrestricted prefix density theorem is not claimed.
+complete qualified ready-information finite derivation has independent Astra
+review, including the annotated inverse, weight telescoping and lost-tail
+independence. An unrestricted prefix density theorem is not claimed.
 Conditional-belief transport and unconditional preservation remain unproved in
 Lean. The linked reviews are not human review or checked theorem evidence.
 The network tape may be correlated and its epoch times unknown.
@@ -347,8 +348,8 @@ In the limit the selected intended values and prompt timing occur surely.
 Protected service and well-formed intended guards cause no failures. Source
 commutation/read stability identifies the original joint input/outcome law;
 zero net intended fees and sound audit preserve its payoff law in the mathematical
-argument. The qualified ready-information transport has mathematical agent
-review; its Lean proof and the unconditional final composition remain open.
+argument. The complete qualified finite derivation has independent Astra review;
+its Lean transport proof and unconditional preservation remain open.
 
 ## Scope
 

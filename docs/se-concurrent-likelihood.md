@@ -1,13 +1,12 @@
 # Concurrent qualified likelihood and causal payoff
 
-This document records an agent-reviewed mathematical argument for the exact
-`PhaseProposalQualifiedBinding.QualifiedBindingLaw` proposition. Independent
-Astra reviews and a root-agent model audit cover the qualified, ready-information
-rectangle below. This is neither human verification nor a Lean proof.
-Transport and unconditional sequential-equilibrium preservation remain
-unproved in Lean. The argument does not establish an unrestricted density
-identity at every native prefix. Exact-rational experiments are falsification
-checks, not proofs of the reconstruction.
+This document gives a finite mathematical argument for the exact
+`PhaseProposalQualifiedBinding.QualifiedBindingLaw` proposition. Independent Astra
+reviews cover the actual annotated-domain inverse with source-fiber normalizers,
+common mechanical-coefficient telescoping, lost-tail factor independence and
+causal payoff attachment. This review is not Lean verification.
+Transport and unconditional sequential-equilibrium preservation remain open.
+An unrestricted density identity at every native prefix is not claimed.
 
 The scope is the actual reserved implementation in mode `.concurrent`, with
 its existing `Operational` hypotheses. Binding types are finite; mu is the

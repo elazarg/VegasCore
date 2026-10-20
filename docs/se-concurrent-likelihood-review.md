@@ -1,17 +1,18 @@
 # Independent agent review of concurrent likelihood
 
-**Qualified ready-information reconstruction reviewed; Lean transport is open.**
-The [likelihood derivation](se-concurrent-likelihood.md) uses a partial-issued
-ledger for literal `.concurrent` with complete pending observation, the original
-correlated input law and one whole-execution tape prior. Independent Astra
-reviews and a root-agent audit cover the qualified ready-information rectangle,
-its weighted inverse, common qualification mass and causal payoff attachment.
-An unrestricted density identity at every native prefix is not claimed. This
-is not human review or Lean verification.
+**Complete finite derivation Astra-reviewed; Lean transport open.**
+The [likelihood derivation](se-concurrent-likelihood.md) uses literal concurrent
+execution, complete pending observation, the original correlated input law and
+one whole-execution tape prior. Independent Astra reviews cover local origin
+assignment, all-depth address alignment, actual normalized alias kernels, the
+inverse on the actual annotated domain with K normalizers, the common
+mechanical-coefficient telescoping identity and lost-tail factor independence.
+An unrestricted prefix density theorem is not claimed. This is not human review
+or Lean verification.
 
 ## Mathematical review boundary
 
-The scoped argument uses the following ingredients:
+The reviewed finite argument assembles these ingredients:
 
 * Initialization retains the single original joint atom `mu(theta)`. The
   actual annotated joint is restricted to qualified ready-information fibers.
@@ -39,8 +40,9 @@ unit mass for each compatible word, with updated queries and the original tape.
 The source static cut supplies finite-n past factors; the future is source0.
 
 This is a mathematical argument, not checked theorem evidence.
-`QualifiedBindingLaw` transport, the clean gain comparison and unconditional
-concurrent preservation remain unproved in Lean. Stronger arbitrary-prefix
+The clean gain comparison and final preservation assembly are checked assuming
+`QualifiedBindingLaw`. Its transport proof and unconditional concurrent
+preservation remain open. Stronger arbitrary-prefix
 identities are outside this review's conclusion.
 
 ## Exact finite diagnostic
@@ -81,7 +83,7 @@ python scripts/experiments/reserved_binding_rational.py --capacity 2 --correlate
 
 The second command must report a mismatch and exit with status 2.
 
-## Reviewed domain and conclusion
+## Proposed domain and sufficient conclusion
 
 The domain is the finite, well-formed compiled concurrent source game with
 its original arbitrary finite-support joint initial law, finite binding
@@ -207,5 +209,5 @@ comparison lottery may vary with index, native site and current law; a Dirac
 source deviation suffices. Use the same indexed source/native assessments
 throughout. Retain the inner raw extension's history and settlement laws
 until projecting the original initialized joint state, typed terminal state,
-public result and whole payoff vector. Their Lean instantiation is still
-required; this review does not assert a checked preservation theorem.
+public result and whole payoff vector. This assembly is checked assuming
+`QualifiedBindingLaw`; deriving that premise remains open.

@@ -34,11 +34,13 @@ Public-prefix-adaptive block priors are outside this contract. There is
 no independent-private-cell hypothesis. The
 [likelihood derivation](se-concurrent-likelihood.md) retains its literal atom in
 the replay and source weights; the [independent review](se-concurrent-likelihood-review.md)
-records independent Astra review of the qualified ready-information
-reconstruction, weighted inverse and causal payoff attachment. This does not
-claim an unrestricted prefix density theorem. Conditional-belief transport and
+records independent Astra review of the complete qualified ready-information
+finite derivation, including its annotated inverse, weight telescoping and
+lost-tail independence. An unrestricted prefix density theorem is not claimed. Conditional-belief transport and
 unconditional preservation remain unproved in Lean; a selected source fiber
-alone does not supply the required all-target weighted coverage.
+alone does not supply the required all-target weighted coverage. The clean gain
+comparison and `concurrentRawSequentialPreservation_of_qualified_binding_law`
+are checked with `QualifiedBindingLaw` as an explicit premise.
 
 The initial-coordinate reader is fixed by the implementation, not supplied by a
 caller. `phaseProposalUnflagged_initialized_terminal_coupling` in
@@ -63,7 +65,7 @@ none supplies the missing initialized conditional-belief comparison by itself.
 | [`PhaseProposalCommonPerturbations`](../Vegas/Game/PhaseProposalCommonPerturbations.lean), [`PhaseProposalConsistentSequence`](../Vegas/Game/PhaseProposalConsistentSequence.lean) | Shared rate choices, actual Bayes assessments, source convergence and vanishing joint-law errors; native optimality remains separate. |
 | [`ProposalRecoveryPublicClassFactorization`](../Vegas/Game/ProposalRecoveryPublicClassFactorization.lean), [`ProposalRecoveryPublicClassConstancy`](../Vegas/Game/ProposalRecoveryPublicClassConstancy.lean) | Actual source reach factors and a source-information-measurable class coefficient on the specified regular slice. Original initializer mass and focal own reach remain separate. |
 | [`PhaseProposalNativeSourceInformation`](../Vegas/Game/PhaseProposalNativeSourceInformation.lean) | Full source information agrees for actual matched preimages with equal complete native information. This gives uniqueness, not all-preimage coverage or weights. |
-| [`PhaseProposalPublicationGain`](../Vegas/Game/PhaseProposalPublicationGain.lean), [`PhaseProposalCurrentBindingGain`](../Vegas/Game/PhaseProposalCurrentBindingGain.lean) | Publication comparisons and binding comparisons on the stated failure/debt/reset branches. Clean binding comparisons remain open. |
+| [`PhaseProposalPublicationGain`](../Vegas/Game/PhaseProposalPublicationGain.lean), [`PhaseProposalCurrentBindingGain`](../Vegas/Game/PhaseProposalCurrentBindingGain.lean) | Publication comparisons and binding comparisons on the stated failure/debt/reset branches. The clean binding comparison in `PhaseProposalCleanBindingGain` is checked assuming `QualifiedBindingLaw`. |
 | [`LocalSimulationLimit`](../GameTheoryExtensions/Analysis/Protocol/LocalSimulationLimit.lean) | Native equilibrium and law limits once the required local comparisons are proved. |
 | [`PhaseOnePacketExtension`](../Vegas/Game/PhaseOnePacketExtension.lean) | `PhaseCount.onePacket_raw_sequentialEquilibrium` extends a counted equilibrium to raw play, preserving both terminal history and realized-payoff joint laws, with zero charges. |
 
