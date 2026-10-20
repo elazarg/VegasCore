@@ -108,7 +108,7 @@ theorem phaseTimingWordPlanPolicy_posterior_filled_of_history
   have originalFill : later.entryView who original = filled.view who :=
     phaseCommitWord_sourceView_eq_fill_of_accepted setup mode runtime leaks bounds earlier later
       suffix profile entry embedding low rank actions who runtimePlan inputs horizon scheduler
-        trace clear selected request atEnd original originalAgrees admitted
+        trace selected request atEnd original originalAgrees admitted
   have projection : prior.map (later.entryView who) =
       before.map (SourceProgram.Config.view who) :=
     earlier.prefixLaw_split_entryView later suffix profile entry who
@@ -127,7 +127,7 @@ theorem phaseTimingWordPlanPolicy_posterior_filled_of_history
   · intro agrees
     exact phaseCommitWord_sourceView_eq_fill_of_accepted setup mode runtime leaks bounds earlier
       later suffix profile entry embedding low rank actions who runtimePlan inputs horizon scheduler
-        trace clear selected request atEnd word agrees supported
+        trace selected request atEnd word agrees supported
   · intro sameView event payload binding candidate interval accepted
     have meaning := originalAgrees event payload binding candidate interval accepted
     have bounded : event.val - low < earlier.length := by omega

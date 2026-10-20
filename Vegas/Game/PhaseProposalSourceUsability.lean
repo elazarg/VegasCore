@@ -26,7 +26,7 @@ open SourceProgram EventGraph EventGraphRuntime Interaction GameTheory.Protocol
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
 
-private theorem recalled_binding_preparation_value
+theorem phaseProposal_recalled_binding_preparation_value
     {graph : Vegas.EventGraph Player L} (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket graph))
     (bounds : MessageBounds graph) (initial : PMF (phaseApplication runtime leaks).State)
@@ -117,8 +117,8 @@ private theorem saved_binding_result_value
   have declared : entry.action =
       ⟨some ⟨⟨.commitment event (owner, .prepared serial), opening⟩, evidence⟩⟩ :=
     congrArg (fun transmission => (⟨transmission⟩ : app.Action)) sent
-  obtain ⟨value, decoded⟩ := recalled_binding_preparation_value runtime leaks bounds initial
-    horizon scheduler control trace owner good event payload typed serial opening evidence
+  obtain ⟨value, decoded⟩ := phaseProposal_recalled_binding_preparation_value runtime leaks bounds
+    initial horizon scheduler control trace owner good event payload typed serial opening evidence
       entry recorded declared
   obtain ⟨before, prior, _prefix, _acting, viewed, offered, _recalled⟩ :=
     menu.recorded_response_prefix initial horizon scheduler control trace owner entry recorded

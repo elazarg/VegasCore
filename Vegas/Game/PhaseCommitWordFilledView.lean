@@ -40,7 +40,6 @@ theorem phaseCommitWord_sourceView_eq_fill_of_accepted
     {control : (phaseApplication runtime leaks).Control}
     (trace : ((PhaseCount.onePacketMenu runtime leaks bounds).protocol
       (inputs.map (PhaseRuntimeState.initial plan)) horizon scheduler).Trace (some control))
-    (clear : control.execution.application.current.excluded = ∅)
     (selected : (serviceGraph setup mode).EventId)
     (request : control.execution.application.SeedRequest who
       ⟨control.execution.application.attempt, selected⟩)
@@ -108,8 +107,7 @@ theorem phaseCommitWord_sourceView_eq_fill_of_accepted
           ((native.publicView_missedBinding (embedding.event index) who payload binding).mpr
             ⟨done, absent⟩)
         have excluded := coverage.covered (embedding.event index) who actor failed
-        rw [clear] at excluded
-        exact Finset.notMem_empty _ excluded
+        exact request.2.2.2.2 excluded
       obtain ⟨candidate, accepted⟩ := Option.ne_none_iff_exists'.mp present
       have meaning := agrees (embedding.event index) payload binding candidate
         ⟨by rw [rank]; omega, below⟩ accepted
@@ -214,6 +212,6 @@ theorem phaseCommitWord_sourceView_eq_fill_of_history
     exact meaning
   exact phaseCommitWord_sourceView_eq_fill_of_accepted setup mode runtime leaks bounds earlier
     later suffix profile entry embedding low rank actions who plan inputs horizon scheduler trace
-      clear selected request atEnd word agrees supported
+      selected request atEnd word agrees supported
 
 end Vegas

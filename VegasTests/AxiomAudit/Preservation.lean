@@ -5046,3 +5046,9 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.RecoverySourceCheckpoint.failed_commit_history_eq_of_scan
+
+/-- info: 'Vegas.phaseProposal_unflagged_wait_finish_le'
+
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseProposal_unflagged_wait_finish_le

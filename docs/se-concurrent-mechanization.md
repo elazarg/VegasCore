@@ -122,13 +122,20 @@ Track the remaining obligations directly:
 | Required result | Checked status |
 | --- | --- |
 | Actual native qualified payoff law | Native experiment, original tape posterior and initialized clean-close source word checked. Common source site, weight identity and causal payoff matching open. |
-| Clean binding deviation bound | Query stability, query nonreuse, full native value-table first-close law and same-table completed values checked. Waiting payoff bound and clean gain open. |
+| Clean binding deviation bound | Query stability, query nonreuse, full native value-table first-close law, same-table completed values and waiting payoff bound checked. Proper-SEND transport, discarded-branch floor/reset comparison and the full gain bound remain open. |
 | Full raw concurrent SE preservation | Joint-law, limit and raw-audit assembly checked conditional on local gain comparisons. That comparison premise remains open. |
 
 The checked reductions are in the [qualified experiment](../Vegas/Game/PhaseProposalQualifiedBinding.lean),
 [binding comparison](../Vegas/Game/PhaseProposalCleanBindingGain.lean) and
 [conditional assembly](../Vegas/Game/ConcurrentRawEquilibrium.lean) components.
 None proves the unconditional preservation contract.
+
+`Vegas.phaseProposal_unflagged_wait_finish_le` proves the waiting comparison:
+at an authentic clean unsent binding, literal WAIT followed by the ordinary
+zero-flag policy has no larger expected finishing payoff than that policy
+starting immediately. It uses an original supported reserved tape, the actual
+runtime trace and the exclusion floor. It does not establish the comparison
+for arbitrary SEND deviations or the source/native probability transport.
 
 Partial lemmas and conditional composition do not close these rows. State the
 actual unproved premises of partial results. Review the shared interfaces before

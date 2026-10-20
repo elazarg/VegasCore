@@ -13,6 +13,7 @@ import Vegas.Game.ProposalRecoveryPools
 import Vegas.Game.PhaseProposalAttemptArchive
 import GameTheory.Protocol.Predraw
 import Interaction.ReactiveAnchoredStopped
+import Vegas.Game.ConcurrentRawSequentialPreservation
 
 /-! # Qualified binding payoffs at the original native information
 
@@ -1132,5 +1133,102 @@ def sourceCausalPayoff (assessment : setup.proposalRecoveryModel.BehavioralAsses
         ((profile who).commit site.1 choice)) 1 history.val).bind
       (setup.proposalRecoveryModel.runBehavioralTerminalFrom sourceCertificate profile)).map
         (fun terminal => some (setup.proposalRecoveryPayoff utility excludedPayoff who terminal))
+
+omit mode runtime leaks bounds plan prior values in
+/-- Exact qualified payoff transport at a clean concurrent binding information.
+The original assessed beliefs determine the qualification mass and the source
+causal law. This proposition asserts no proof of their correspondence. -/
+def QualifiedBindingLaw (implementation : ReservedConcurrentImplementation setup) : Prop :=
+  let nativeInitial := (setup.initialLaw.map encodeInputs).map
+    (PhaseRuntimeState.initial implementation.plan)
+  let nativeMenu := PhaseCount.onePacketMenu implementation.runtime implementation.leaks
+    implementation.bounds
+  let nativeModel := nativeMenu.information nativeInitial implementation.horizon
+    implementation.scheduler
+  ∀ _operational : implementation.Operational,
+  ∀ (scale sourceBad nativeBad : Set.Icc (0 : ℝ) 1),
+    0 < scale.val → scale.val < 1 →
+    0 < sourceBad.val → sourceBad.val < 1 →
+    0 < nativeBad.val → nativeBad.val < 1 →
+  ∀ (ordinary : ∀ owner (key : setup.ProposalRecoveryComponent owner),
+      PMF (setup.CommitRecoveryValueChoice owner key.1)),
+    (∀ owner key, FullSupport (ordinary owner key)) →
+  ∀ (source : setup.proposalRecoveryModel.BehavioralAssessment)
+    (native : (nativeModel).BehavioralAssessment),
+    source.IsFullyMixed →
+    InformationModel.BehavioralAssessment.IsBayesConsistent setup.proposalRecoveryModel source
+      setup.proposalRecoveryModel_decisionAntichain →
+    (∀ owner (history : setup.proposalRecoveryProtocol.History)
+        (_running : ¬ setup.proposalRecoveryProtocol.terminal history.state),
+      source.strategy owner (setup.proposalRecoveryModel.infoOf owner history.trace) =
+        setup.proposalRecoveryNormalizedTrembledProfile
+          scale.val scale.property.1 scale.property.2
+          sourceBad.val sourceBad.property.1 sourceBad.property.2
+          scale.val scale.property.1 scale.property.2 ordinary owner
+            (setup.proposalRecoveryModel.infoOf owner history.trace)) →
+    native.IsFullyMixed →
+    InformationModel.BehavioralAssessment.IsBayesConsistent nativeModel native
+      (nativeMenu.decisionInformationAntichain nativeInitial implementation.horizon
+        implementation.scheduler) →
+    native.strategy = phaseProposalReferenceStrategy setup .concurrent
+      implementation.runtime implementation.leaks implementation.bounds implementation.plan
+      nativeInitial implementation.horizon implementation.scheduler ordinary
+      ⟨nativeBad, scale, scale, scale⟩ →
+  ∀ (who : Player) (site : (nativeModel).InformationSite who)
+    (past : List (phaseApplication implementation.runtime implementation.leaks).PlayerEntry)
+    (view : (phaseApplication implementation.runtime implementation.leaks).PlayerView),
+    site.1 = some (past, view) →
+  ∀ (event : (serviceGraph setup .concurrent).EventId) (payload : L.Ty)
+    (binding : (serviceGraph setup .concurrent).outputLayout event = .binding who payload),
+    PhaseRuntimeState.requests view.application.2 who
+      ⟨view.application.2.attempt, event⟩ →
+    (∀ message ∈ (phaseApplication implementation.runtime implementation.leaks).outputs past,
+      PhaseCount.event? message.payload ≠ some ⟨view.application.2.attempt, event⟩) →
+    ¬ phaseProposalSavedBindingFailure setup .concurrent implementation.runtime
+      implementation.leaks who event view →
+    ¬ phaseProposalCurrentBindingFailure setup .concurrent implementation.runtime
+      implementation.leaks who event view →
+    ¬ (view.application.2.excluded \
+      ((view.application.2.retired.map fun record =>
+          record.2.sourceFailureFootprint.2).foldr (fun first rest => first ∪ rest) ∅ ∪
+        view.application.2.native.sourceFailureFootprint.1
+          view.application.2.attempt.phase)).Nonempty →
+    let proper := fun (value : L.Val payload) (choice : (nativeModel).Choice who site.1) =>
+      ∃ (serial : Nat) (material : WitnessedSubmission (serviceGraph setup .concurrent)),
+        choice.1 = some ⟨some material⟩ ∧
+        material.call.packet = .commitment event (who, .prepared serial) ∧
+        PhaseProposal.bindingPreparation material = some ⟨payload, value⟩
+    let mass := qualificationMass setup .concurrent implementation.runtime implementation.leaks
+      implementation.bounds implementation.plan implementation.prior ordinary native who site
+    let payoff := qualifiedPayoff setup .concurrent implementation.runtime implementation.leaks
+      implementation.bounds implementation.plan implementation.prior ordinary native who site
+    (∀ (value : L.Val payload) (choice : (nativeModel).Choice who site.1),
+      proper value choice → mass choice = 0 ∧
+        ∀ (utility : State L setup.program.terminalCtx → Player → ℝ)
+          (excludedPayoff : Player → ℝ), payoff choice utility excludedPayoff = PMF.pure none) ∨
+    ∃ (sourceSite : setup.proposalRecoveryModel.InformationSite who)
+      (retained : Set.Ioc (0 : ℝ) 1)
+      (encode : L.Val payload → setup.proposalRecoveryModel.Choice who sourceSite.1)
+      (positive : ∃ history ∈
+          {history : setup.proposalRecoveryModel.InformationHistory who sourceSite.1 |
+            sourceForeignGood setup who history.val},
+        history ∈ (source.belief who sourceSite).support),
+      phaseProposalQuery? setup .concurrent implementation.runtime implementation.leaks
+          implementation.plan who event past view =
+        some (setup.proposalRecoveryQuery who sourceSite.1) ∧
+      (∀ value, phaseRecoveryBindingData setup .concurrent event who payload binding
+        ((encode value).1.map (fun move => move.semantic)) = (.success value, false)) ∧
+      sourceUnflaggedStrategy setup ordinary who sourceSite.1 =
+        (ordinary who (setup.proposalRecoveryQuery who sourceSite.1)).map (fun sampled =>
+          encode (phaseRecoveryDomainValue setup .concurrent event who payload binding
+            sampled.val.val)) ∧
+      ∀ (value : L.Val payload) (choice : (nativeModel).Choice who site.1),
+        proper value choice → mass choice = retained.val ∧
+          ∀ (utility : State L setup.program.terminalCtx → Player → ℝ)
+            (excludedPayoff : Player → ℝ),
+            payoff choice utility excludedPayoff =
+              mix retained.val retained.property.1.le retained.property.2
+                (sourceCausalPayoff setup ordinary source who sourceSite (encode value) positive
+                  utility excludedPayoff) (PMF.pure none)
 
 end Vegas.PhaseProposalQualifiedBinding
