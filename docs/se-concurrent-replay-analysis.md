@@ -1,14 +1,14 @@
 # Replay analysis: an exact foreign-alias reduction
 
 The stopped chronological construction in
-[the likelihood note](se-concurrent-likelihood.md) is accepted here as a
-paper-level derivation of qualified identity (2) on its stated clean-information
-and full-support domain. Its Lean theorem and the end-to-end preservation
-theorem remain unproved. The following reductions record independently checked
+[the likelihood note](se-concurrent-likelihood.md) remains incomplete: its
+global prefix reconstruction and weighted coverage are not established.
+Its Lean theorem and the end-to-end preservation theorem remain unproved.
+The following reductions record reviewed local
 parts of that argument: foreign private syntax aliases do not require equal
 alias counts, or a bijection of raw aliases, between different target catalogues.
-The full target reconstruction, source getter equality and coverage argument
-are in the likelihood derivation; the reductions here are supporting results.
+The likelihood derivation proposes the full target reconstruction and coverage
+argument; the local reductions here do not prove that global claim.
 
 ## The quotient and its operational effect
 

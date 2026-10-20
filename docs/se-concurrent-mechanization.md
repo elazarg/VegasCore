@@ -26,8 +26,9 @@ sequence is a capstone assumption.
 
 ## Current proof boundary
 
-**Contract and joint satisfiability checked; mathematical transport reviewed;
-qualified transport, clean commitment gain and unconditional final SE open.**
+**Contract and joint satisfiability checked; global mathematical transport
+incomplete; qualified transport, clean commitment gain and unconditional final
+SE open.**
 Checked dependencies do not close the remaining Lean obligations.
 
 The [concurrent hypothesis test](../VegasTests/ConcurrentRawHypotheses.lean)
@@ -39,7 +40,7 @@ contract's premises are jointly satisfiable, not preservation.
 
 The [likelihood analysis](se-concurrent-likelihood.md) states the actual remaining
 mathematical obligation. The [independent review](se-concurrent-likelihood-review.md)
-records the accepted mathematical construction and its precise domain. These
+records the reviewed local calculations and the remaining global gap. These
 are independent agent reviews and a root-agent model audit, not human review
 or Lean verification.
 The [code inventory](se-concurrent-code-inventory.md) identifies owning APIs and
@@ -47,7 +48,7 @@ which proposed intermediate statements exceed what the final gain proof needs.
 The [reserved-service proposal](se-reserved-service-preservation.md) supplies
 motivation and assumptions; the likelihood analysis supplies the detailed argument.
 
-At a clean binding decision, the reviewed transport is the qualified
+At a clean binding decision, the proposed transport is the qualified
 source measure: weighting actual native continuations by the clean binding gate
 must give one scalar times the genuine source conditional law, uniformly over
 legal proper typed insertions. The same construction must identify the actual
@@ -58,8 +59,11 @@ proof draft attempted it.
 
 The mathematical derivation specifies the actual joint experiment,
 its original initializer, source labels and archives; support and weights through
-response/service/close cases; and normalization including zero mass. The physical
-skeleton stops at the current binding close; later payoffs use a separate causal
+response/service/close cases; and proposed normalization including zero mass.
+Successor closure and exhaustive weighted coverage of the full prefix relation
+remain unproved in mathematics; transport mechanization must wait for that
+argument. The physical skeleton stops at the current binding close; later
+payoffs use a separate causal
 kernel. Conditional laws given a supplied cursor establish neither the
 coverage nor the weights of arbitrary source explanations of a native input.
 The exact reviewed claim, rather than the stronger private draft, determines
@@ -103,7 +107,9 @@ handoff notes and research archives are not committed.
 
 ## Completion gate
 
-Mechanize the agreed transport and clean gain comparison, then use the existing
+First prove successor closure and exhaustive weighted coverage in mathematics
+and review that argument. Only then mechanize the transport and clean gain
+comparison, and use the existing
 common-sequence, limit and audit APIs to prove the exact capstone. Keep its
 external hypotheses fixed. If the mathematical argument appears incorrect,
 stop implementation and report the precise issue.

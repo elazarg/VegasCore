@@ -1,13 +1,15 @@
 # Independent agent review of concurrent likelihood
 
-**Accepted as a paper-level proof.** The revised
-[likelihood derivation](se-concurrent-likelihood.md) establishes the qualified
-posterior identity, its causal payoff attachment and the signed clean-binding
-gain comparison under the existing assumptions below. I found no remaining
-logical gap or valid counterexample in this construction. It is not a checked
-Lean theorem; the local comparison and final preservation composition remain
-to be mechanized. This is an independent agent review alongside the root-agent
-model audit, not human review or Lean verification.
+**Incomplete mathematical proof.** The local calculations in the
+[likelihood derivation](se-concurrent-likelihood.md) have been reviewed, but
+they do not yet establish the global qualified posterior identity. The
+missing step is closure and exhaustive coverage of the actual noisy native
+prefix classes under each transition, including the source annotation and
+literal focal recall. A local action-fiber probability identity alone does
+not establish that step. Its causal payoff attachment and the preservation
+conclusion therefore remain conditional on an unproved mathematical lemma.
+No counterexample to preservation is established. These are agent reviews and
+a root-agent model audit, not human review or Lean verification.
 
 ## Reviewed domain and conclusion
 
@@ -27,7 +29,7 @@ original tape, rather than resample its prior.
 
 For each legal typed current insertion v, construct X=(g,F), where g is a
 genuine enriched source prefix at one full information J and F is its
-remaining foreign commitment word. The reviewed conclusion is
+remaining foreign commitment word. The proposed, unproved conclusion is
 
     E[beta * 1_{X=x} | I, native-good] = t(I) nu_J(x)
 

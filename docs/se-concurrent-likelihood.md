@@ -1,11 +1,16 @@
 # Concurrent initialized likelihood
 
-This is a paper-level derivation of the qualified initialized likelihood and
-causal payoff comparison, independently reviewed by agents in
+This is a proposed derivation of the qualified initialized likelihood and
+causal payoff comparison, reviewed by agents in
 [the likelihood review](se-concurrent-likelihood-review.md) and
 [the replay analysis](se-concurrent-replay-analysis.md), with a root-agent
-model audit. These are not human reviews or Lean verification. Its Lean theorem
-is **not proved**, and concurrent SE preservation is not claimed here.
+model audit. The global reconstruction and weight identity still have a
+mathematical gap: local action-fiber identities do not establish closure and
+exhaustive coverage of the full native/source prefix relation. In particular,
+the source annotation and literal focal recall must be preserved together by
+every transition. This is not merely an outstanding Lean implementation.
+These are not human reviews or Lean verification. Its Lean theorem is
+**not proved**, and concurrent SE preservation is not claimed here.
 The preservation target remains the actual concurrent raw game with arbitrary
 finite-support correlated initial inputs, finite binding types, the original
 reserved tape mixture, and the joint initial-state, terminal-state,
@@ -230,6 +235,13 @@ weight. This is aggregate qualified coverage, not coverage for every mechanical
 record.
 
 ### Finite chronological reconstruction
+
+The construction in this section is not a completed proof. It must establish
+a relation on exposed native/source prefixes and prove both successor closure
+and exhaustive weighted coverage. Summing an entire local raw-alias fiber is
+insufficient when the successor relation also constrains recalled actions,
+catalogues and the canonical source annotation. Compatibility cannot condition
+on a future extension or include future source probabilities at initialization.
 
 Work after the exact foreign-alias projection: only foreign syntax is
 normalized; focal raw actions, focal full information and the initialized law
@@ -478,7 +490,8 @@ construction are positive by the stated domain floor.
 For positive t the construction explicitly gives preimages of every positive
 source target. At zero t every qualified mass is zero.
 
-This gives the paper-level initialized identity. It supplies current/saved
+If the missing reconstruction and coverage lemma holds, this gives the
+initialized identity. It supplies current/saved
 meanings by construction rather than assuming a target cursor. The existing
 conditional cursor law can then identify Phi on this SAME completed word/joint;
 commit-window history uniqueness retains the full source history. An advanced
