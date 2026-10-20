@@ -78,6 +78,38 @@ does not identify the class laws across two different hidden-value targets.
 Cross-target identification instead uses the chronological source-query and
 addressed saved/restore construction at every retained proper SEND.
 
+## Attach the auxiliary source history after projection
+
+Use the existing full-history projection `pi` from
+[`phaseProposalReference_alias_history`](../Vegas/Game/PhaseProposalAliasHistory.lean).
+It preserves the complete application and network history and the focal
+player's literal information. Choose the auxiliary source witness and its
+source-cause annotation kernel `K` on `pi(h)`, retaining the literal initial
+draw, and pull that choice back to the original experiment. Then summing raw
+aliases before attaching `K` is exactly the same probability law as attaching
+`K(pi(h))` to each raw history and summing afterward. This is ordinary finite
+`map`/`bind` composition; it does not require uniqueness of independently
+chosen source witnesses.
+
+Project the predecision reference experiment, the literal focal response and
+the subsequent ordinary continuation separately, then compose their kernels.
+The generic history-projection API applies from a supplied starting history;
+the ordinary continuation has the required outputs/count/view congruence.
+There is no need to represent the change of policy at the selected decision
+as one global behavioral policy. Foreign policies that inspect their raw
+alias names are outside this argument.
+
+Use the actual operational normalizer, which preserves registered raw values,
+including unusable preparations. It is finer than the response-class quotient
+on arbitrary BAD actions. On genuine proper binding and opening actions its
+fibers agree with the relevant response classes. Generated-BAD qualification,
+the first-close admission gate and physical finish payoffs are preserved.
+
+This removes the same-input raw-alias issue from the proposed mathematical
+transport. It does not establish reconstruction across different hidden
+inputs or values, their weighted source marginal, or the source payoff law.
+Those remain open. No additional Lean theorem is claimed by this reduction.
+
 ## The remaining getter obligation is smaller than full-history equality
 
 The definitions `phaseVirtualSourceView?`, `phaseVirtualSourceQuery?`, and
