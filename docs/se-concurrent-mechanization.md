@@ -8,25 +8,40 @@ concurrent graph, concrete phase runtime, reserved service law and economics
 before quantifying over intended source sequential equilibria. The conclusion
 preserves the joint law of original inputs, typed terminal state, public results
 and the whole realized net payoff vector, with no exclusions or audit charges.
-The initial law is arbitrary and correlated. There is no fixed-calendar target.
+The initial law has arbitrary correlation and finite support; binding types
+are finite. Auctions with unbounded binding bid/value choices are outside this
+contract.
+There is no fixed-calendar target.
 
 The external hypotheses are well-formed finite source data, complete pending
-observation, bounded resources, a correlated reserved tape with bounded gaps,
-timely deadlines, sufficient fresh candidates, state-based utilities and a global
+observation, bounded resources, one unconditional exogenous reserved tape prior
+sampled for the entire execution, bounded gaps and timely deadlines, sufficient fresh candidates, state-based utilities and a global
 exclusion floor, and authentic funded audit coverage. These are sufficient
 conditions, not a claim of minimality or a chain implementation guarantee.
+Tape coordinates may correlate across owners and time, but the prior is not
+refreshed or selected from a public prefix at block entry. Scheduler posterior
+updates condition the same sampled tape; adaptive block priors are not covered.
 No posterior identity, counterpart, source cursor, gain comparison or consistency
 sequence is a capstone assumption.
 
 ## Current proof boundary
 
-**Contract checked; mathematical transport reviewed; Lean transport and clean
-commitment gain open; concurrent preservation unproved.** Checked dependencies
-do not close the remaining Lean obligations.
+**Contract and joint satisfiability checked; mathematical transport reviewed;
+Lean transport, clean commitment gain and final SE assembly open.** Checked
+dependencies do not close the remaining Lean obligations.
+
+The [concurrent hypothesis test](../VegasTests/ConcurrentRawHypotheses.lean)
+discharges every operational, payoff and audit assumption together, and supplies
+a source SE witness. Its actual concurrent graph has two simultaneously ready
+owned Boolean bindings; its service supports both activation orders, with
+nonconstant utility and a positive funded deposit. This establishes that the
+contract's premises are jointly satisfiable, not preservation.
 
 The [likelihood analysis](se-concurrent-likelihood.md) states the actual remaining
 mathematical obligation. The [independent review](se-concurrent-likelihood-review.md)
-records the accepted mathematical construction and its precise domain.
+records the accepted mathematical construction and its precise domain. These
+are independent agent reviews and a root-agent model audit, not human review
+or Lean verification.
 The [code inventory](se-concurrent-code-inventory.md) identifies owning APIs and
 which proposed intermediate statements exceed what the final gain proof needs.
 The [reserved-service proposal](se-reserved-service-preservation.md) supplies

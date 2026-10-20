@@ -1,4 +1,4 @@
-# Independent review of concurrent likelihood
+# Independent agent review of concurrent likelihood
 
 **Accepted as a paper-level proof.** The revised
 [likelihood derivation](se-concurrent-likelihood.md) establishes the qualified
@@ -6,19 +6,24 @@ posterior identity, its causal payoff attachment and the signed clean-binding
 gain comparison under the existing assumptions below. I found no remaining
 logical gap or valid counterexample in this construction. It is not a checked
 Lean theorem; the local comparison and final preservation composition remain
-to be mechanized.
+to be mechanized. This is an independent agent review alongside the root-agent
+model audit, not human review or Lean verification.
 
 ## Reviewed domain and conclusion
 
 The domain is the finite, well-formed compiled concurrent source game with
-its original arbitrary joint initial law, complete pending observation,
-reserved correlated service, stated resource/value coverage, strict positive
-perturbation rates and full-support ordinary value tables. At a surviving
+its original arbitrary finite-support joint initial law, finite binding
+types, complete pending observation, reserved correlated service with one
+unconditional exogenous tape prior sampled for the entire execution,
+stated resource/value coverage, strict positive perturbation rates and full-support ordinary value tables. At a surviving
 UNSENT binding information set I, the clean branch has no saved/current focal
 binding debt and no new current-attempt exclusion. Foreign generated BAD is
 conditioned out; its posterior error is restored separately. The future
 comparison uses actual Unflagged BASE with zero future flags. General guards,
 raw aliases, canceled focal BAD and the original hidden tape remain present.
+Tape coordinates may correlate across owners/time; no public-prefix-adaptive
+block prior or tape refresh is covered. Posterior updates condition the same
+original tape, rather than resample its prior.
 
 For each legal typed current insertion v, construct X=(g,F), where g is a
 genuine enriched source prefix at one full information J and F is its

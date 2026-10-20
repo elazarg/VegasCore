@@ -135,7 +135,7 @@ fiber; that physical/source alignment remains part of chronological replay.
 
 A historical concurrent attempt cannot retry before an unsubmitted surviving
 focal row resolves. `PhaseRuntimeState.settle` checks `phase.Finished` only
-after `phase.drain`; `Finished` requires every event of the installed phase
+after `RuntimePhase.drain`; `Finished` requires every event of the installed phase
 completed. The drain selects only `AutomaticReady` events whose owner is
 already excluded. Accordingly `drainFuel_completed_survivor` preserves the
 completion status of every surviving focal event. A foreign miss alone cannot

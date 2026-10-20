@@ -3,14 +3,34 @@
 The semantic target is
 [`Vegas.ConcurrentRawSequentialPreservation`](../Vegas/Game/ConcurrentRawSequentialPreservation.lean).
 It is a proposition, not a preservation theorem. It fixes the concurrent graph,
-actual phase runtime, reserved correlated tape law, observation rule, resource
+actual phase runtime, one unconditional exogenous tape prior for the whole
+execution (correlated across owners/time), observation rule, resource
 bounds, utility, exclusion settlement and authentic audit before quantifying over
 intended source sequential equilibria. Its conclusion uses the actual raw game
 and terminal audit settlement, preserving the **joint** law of the complete
 initial source state, typed terminal state, public result and entire realized net
 payoff vector. Exclusions and collected audit charges vanish on supported paths.
 
-`setup.initialLaw` remains an arbitrary joint law with finite support. There is
+`ReservedConcurrentImplementation` names the fixed runtime, observation rule,
+resource bounds, phase plan and unconditional tape prior. `ConcurrentPayoffs`
+names the source utility, its bounds and exclusion floor; `ConcurrentCountAudit`
+names the authentic evidence service and settlement funding. Implementation
+`Valid` means exactly `Operational`, payoff `Bounded` and audit `Funded`
+together. The top-level proposition therefore reads: every valid fixed
+implementation preserves every intended source equilibrium. Its
+`PreservesAssessment` conclusion names the raw equilibrium, one joint law of
+`ConcurrentTerminalObservation`, and supportwise zero exclusions and charges.
+
+The [hypothesis instance](../VegasTests/ConcurrentRawHypotheses.lean) checks
+joint validity for two concurrently ready owners,
+both supported activation orders, nonconstant utilities and a funded authentic
+audit. It also supplies an intended source equilibrium witness. It proves
+joint satisfiability of the assumptions, not the preservation conclusion.
+
+The original setup law remains an arbitrary joint law with finite support, and
+binding types are finite. The tape prior is not refreshed from block-entry
+public data; Bayesian posterior updates condition the same original tape.
+Public-prefix-adaptive block priors are outside this contract. There is
 no independent-private-cell hypothesis. The
 [likelihood derivation](se-concurrent-likelihood.md) retains its literal atom in
 the replay and source weights; the [independent review](se-concurrent-likelihood-review.md)
@@ -22,6 +42,9 @@ caller. `phaseProposalUnflagged_initialized_terminal_coupling` in
 identifies the recovered initial state with the literal original draw on every
 supported pair. Its joint-readout theorem preserves that coordinate together
 with exclusions, the complete typed state and whole base-payoff vector.
+
+The mathematical reviews are independent agent reviews with a root-agent
+model audit. They are not human review or a Lean proof.
 
 ## Existing checked owning APIs
 

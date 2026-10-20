@@ -3,9 +3,10 @@
 This is a proposed argument for preservation under protected shared service,
 retaining concurrent commitments, permanent expulsion and commitment-phase
 restart. The end-to-end Lean preservation theorem remains unproved. The
-initialized native likelihood argument is derived and independently reviewed in
-the linked likelihood analysis. The network tape may be correlated
-and its epoch times unknown. The [exact target](../Vegas/Game/ConcurrentRawSequentialPreservation.lean)
+initialized native likelihood argument has independent agent reviews and a
+root-agent model audit in the linked analysis. This is neither human review
+nor a Lean proof. The network tape may be correlated and its epoch times unknown.
+The [exact target](../Vegas/Game/ConcurrentRawSequentialPreservation.lean)
 and [likelihood analysis](se-concurrent-likelihood.md) specify the active proof
 obligation. No new backend assumptions are adopted by this proposal.
 
@@ -19,10 +20,11 @@ deliverable, parallel proof tracks and later common-runtime consolidation.
 
 ## The theorem's exact class
 
-Fix a finite well-formed source setup with its original arbitrary joint initial law,
-finite represented values and a selected intended source sequential equilibrium
-sigma. Preserve the original joint input law throughout: later public histories
-can correlate types, and retries do not redraw them. Source guards are general
+Fix a well-formed source setup with its original arbitrary finite-support
+joint initial law, finite binding types and a selected intended source
+sequential equilibrium sigma. Unbounded binding bid/value choices are outside
+this finite binding-type contract. Preserve the original joint input law throughout:
+later public histories can correlate types, and retries do not redraw them. Source guards are general
 guards of the existing language, not restricted to TRUE.
 
 Use the current public-barrier compilation and actual runtime semantics.
@@ -36,12 +38,14 @@ is irreversible.
 
 Impose the following proposed service/observation conditions.
 
-* Nature supplies an exogenous mechanical tape. Its law may depend on the
-  source-public prefix at block entry. Freeze that law throughout the ENTIRE
-  commitment and associated mandatory-publication resolution, including partial
-  reveals and late publication inputs. Only a new fresh logical block can use
-  the updated prefix. Hidden meanings, private catalogs and arbitrary packet
-  tags do not change the tape or foreign opportunities.
+* Nature samples one exogenous mechanical tape from one unconditional prior
+  for the entire execution, independently of the original source draw. Its
+  coordinates may be correlated across owners and time. Neither block entry
+  nor a new public prefix refreshes that prior. The scheduler may update its
+  posterior from observed environment recall; that is Bayesian conditioning
+  of the same sampled tape. Public-prefix-adaptive block priors are outside
+  this contract and this derivation. Hidden meanings, private catalogs and
+  arbitrary packet tags do not change the tape or foreign opportunities.
 * Shared processing epochs and owner activation opportunities have known finite
   gap bounds. Every eligible coordinate has an authenticated reservation immune
   to all bounded modeled raw traffic. Process its packet before expiry/drain
@@ -217,7 +221,8 @@ FULL counted action support, including private aliases and failed preparation.
 For a compatible enriched source history and physical skeleton, multiply actual
 transition probabilities chronologically. Source choices contribute their
 ordinary laws; Nature keeps its ORIGINAL joint law. The remaining weights use
-the block-entry public prefix and source-neutral mechanics. Integrate virtual
+the retained public prefix and source-neutral mechanics under the same
+whole-execution tape prior. Integrate virtual
 unsubmitted foreign values, sum their private packet preimages and cancel the
 focal own-reach factor. Failure/address controls and Z are retained. This is
 causal factorization at the ACTUAL full input, not a desired posterior premise

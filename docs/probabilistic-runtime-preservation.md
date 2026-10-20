@@ -99,7 +99,7 @@ The probability statements are formalized in
 - `global_outage_totalVariation_lower_bound` covers the initial unrecovered
   outage lottery with an arbitrary normal branch.
 
-The targeted `lake --wfail build` passes for this module.
+The targeted `lake build` passes for this module.
 
 ## The obstruction in the actual compiled runtime
 

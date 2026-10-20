@@ -9,7 +9,7 @@ headline never uses. Restatements in Paper.lean (`Vegas.Paper.*`) are skipped;
 that file delegates each one to its owning theorem.
 
 The check elaborates a small Lean program against the built project with
-`lake env lean`, so run it after `lake --wfail build`. It is a script rather
+`lake env lean`, so run it after `lake build`. It is a script rather
 than a library module because Lake does not rebuild a module when only the
 checklist changes.
 """

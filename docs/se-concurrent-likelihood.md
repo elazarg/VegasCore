@@ -1,13 +1,15 @@
 # Concurrent initialized likelihood
 
 This is a paper-level derivation of the qualified initialized likelihood and
-causal payoff comparison, independently reviewed in
+causal payoff comparison, independently reviewed by agents in
 [the likelihood review](se-concurrent-likelihood-review.md) and
-[the replay analysis](se-concurrent-replay-analysis.md). Its Lean theorem is
-**not proved**, and concurrent SE preservation is not claimed here.
+[the replay analysis](se-concurrent-replay-analysis.md), with a root-agent
+model audit. These are not human reviews or Lean verification. Its Lean theorem
+is **not proved**, and concurrent SE preservation is not claimed here.
 The preservation target remains the actual concurrent raw game with arbitrary
-correlated `setup.initialLaw`, the original reserved tape mixture, and the joint
-initial-state, terminal-state, public-result and realized-payoff law.
+finite-support correlated initial inputs, finite binding types, the original
+reserved tape mixture, and the joint initial-state, terminal-state,
+public-result and realized-payoff law.
 
 ## Actual probabilities and the initialization issue
 
@@ -38,8 +40,12 @@ from an unexplained chosen source witness. Equality of those two public
 readouts, when needed, is a property of I itself.
 
 Write theta for the COMPLETE initial source state and mu(theta) for its original
-atom. Let t be the original reserved tape, with joint tape prior pi independent
-of theta. Conditioning on t is only a calculation: t is not revealed to players.
+atom. Let t be the original reserved tape, sampled once from one unconditional
+joint prior pi independently of theta for the whole execution. Coordinates may
+be correlated across owners and time. No new block or observed public prefix
+selects a replacement prior; public-prefix-adaptive block laws are not covered.
+The scheduler posterior conditions this same prior on environment recall.
+Conditioning on t is only a calculation: t is not revealed to players.
 For an actual finite native path h from theta, its unnormalized tagged weight is
 
     w_N(theta,t,h) = mu(theta) pi(t)
@@ -82,9 +88,8 @@ conditional on theta. It does not replace mu by a product of marginal priors.
 Subsequent finite sums preserve that original joint law. Independence of the
 initial private cells is therefore unnecessary for (1), the local calculations
 below, and the conditional source word argument. It would not prove the missing
-initialized coverage theorem either. The independence hypothesis in the earlier
-[proposal](se-reserved-service-preservation.md) is not used to justify the
-broader [preservation contract](../Vegas/Game/ConcurrentRawSequentialPreservation.lean).
+initialized coverage theorem either. No independent-private-input hypothesis is needed for the
+[preservation contract](../Vegas/Game/ConcurrentRawSequentialPreservation.lean).
 
 ## A source-only conditional independence that does hold
 

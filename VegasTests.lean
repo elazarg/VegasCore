@@ -28,3 +28,4 @@ import VegasTests.OriginalBindingPayoffContract
 import VegasTests.CurrentBindingGainContract
 import VegasTests.ProposalRecoveryClassConstancyContract
 import VegasTests.PublicationGainContract
+import VegasTests.ConcurrentRawHypotheses

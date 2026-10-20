@@ -30,8 +30,8 @@ jobs:
       - name: Report open proof obligations
         run: python scripts/report-open-obligations.py
       - uses: leanprover/lean-action@v1
-      - name: Require a warning-free Lean build
-        run: lake --wfail build
+      - name: Build with centralized warning-as-error options
+        run: lake build
       - name: Check that SE checklist evidence is load-bearing
         run: python scripts/check-se-evidence.py
       # docgen-action builds any existing `homepage` folder as a Jekyll site.
