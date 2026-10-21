@@ -58,10 +58,10 @@ Progress within that remaining proof:
 
 | Work | Checked material | Still open |
 | --- | --- | --- |
-| Source-phase correspondence | Local row and retained-origin lemmas | Complete visit, initialization and restore induction; publication and query coverage |
-| Supported runtime replay | Initializer, environment and focal steps; alias kernels | Foreign callback case and whole-trace construction with prescribed reach, tape and admission |
-| Recovery and coverage | No completed recovery proof | Both recovery directions and exhaustive coverage |
-| Exact weights | Source posterior/mass identities and local probability kernels | Chronological atom calculation, auxiliary normalization and the weighted theorem |
+| Source-phase correspondence | Initial assignment, local rows and retained origins | Complete visit and restore induction; publication and query coverage |
+| Supported runtime replay | Quantitative whole-trace construction conditional on source alignment, with actual callback kernels | Produce source alignment; derive prescribed reach, original tape support, admission and foreign-good qualification |
+| Recovery and coverage | Positive original pair support and word uniqueness; ordinary source Good/depth | Common full source site, both recovery directions and exhaustive coverage |
+| Exact weights | Source mass identities and normalized sequential script law with literal callback atoms | Native/source atom partition, auxiliary recovery and the weighted theorem |
 
 The mathematical review gate for weighted mechanization is satisfied. The
 derivation explicitly covers the simultaneous source invariant, every positive

@@ -367,7 +367,7 @@ private theorem filled_prefix_rank_readback
   exact decoded.trans wholeRank.symm
 
 omit [Fintype Player] in
-private theorem source_binding_prefix_addresses
+theorem source_binding_prefix_addresses
     (setup : Setup (Player := Player) (L := L)) (who : Player)
     (point : SourceProgram.ProtocolState setup.program) (excluded : Finset Player)
     (generation : Nat)
