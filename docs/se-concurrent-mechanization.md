@@ -31,16 +31,17 @@ sequence is a capstone assumption.
 
 **Contract, joint satisfiability and waiting payoff bound checked. All four
 primitive mathematical derivations have independent agent review against their
-exact statements. Checked primitives: **1/4**. The source-site primitive and
-mechanical-weight representative independence use only standard Lean axioms;
-the other three primitive bodies remain admitted. The clean commitment gain comparison
+exact statements. Checked primitives: **2/4**. The source-site and foreign-posterior
+pair primitives, and mechanical-weight representative independence, use only
+standard Lean axioms; the other two primitive bodies remain admitted.
+The clean commitment gain comparison
 and final assembly are checked conditional on `QualifiedBindingLaw`; its
 transport and unconditional SE remain
 unproved. An unrestricted prefix density theorem is not claimed.**
 Checked dependencies do not close the remaining Lean obligations.
 
 The four primitive interfaces and their complete aggregation compile with
-`lake build +Vegas.Game.ConcurrentRawEquilibrium`. Three named `sorry` bodies
+`lake build +Vegas.Game.ConcurrentRawEquilibrium`. Two named `sorry` bodies
 remain; the unconditional theorem depends on admitted proof axioms.
 No new source or runtime assumptions are introduced by these interfaces.
 The [likelihood derivation](se-concurrent-likelihood.md) gives the mathematical
@@ -50,14 +51,15 @@ Lean verification or human certification.
 
 | Remaining proof | Guarantee | Reviewed argument |
 | --- | --- | --- |
-| `foreign_posterior_cut_pair` | Actual source cut/completion law under both issued-ledger and focal-only conditioning | Likelihood analysis: forced current action and retained causal focal tail |
 | `qualified_annotation_pushforward` | Exact native/source weights across every qualified mechanical and full source-word fiber | Likelihood analysis: inverse, source fibers and weights |
 | `annotated_stopped_payoff` | Complete qualified payoff numerator, including rejected branches, on the original tape | Likelihood analysis: payoff attachment and Bayes |
 
 `qualified_source_site` proves one supported source information site and faithful
-value encoding. `mechanicalCoefficient_eq_of_anchor` proves representative
+value encoding. `foreign_posterior_cut_pair` proves the source cut/completion law
+under both issued-ledger and focal-only conditioning.
+`mechanicalCoefficient_eq_of_anchor` proves representative
 independence of the mechanical weight on actual supported histories. Both have
-standard-axiom audit guards.
+standard-axiom audit guards, as does the pair theorem.
 
 `CleanUnsentBinding` packages the shared ready-binding conditions;
 `foreignBindingFailureFootprint` names their exclusion test.
@@ -75,9 +77,10 @@ contain no proof holes and compile against the primitive statements. The uncondi
 `concurrentRawSequentialPreservation` then applies the existing conditional
 preservation theorem to that law; its composition body contains no additional
 hole. Each mathematical argument has agent scope review, not human certification;
-the source-site argument also has a checked Lean proof. Closing an obligation means replacing its whole
+the source-site and pair arguments also have checked Lean proofs.
+Closing an obligation means replacing its whole
 `sorry` body without weakening its statement, then checking its axiom dependencies.
-The source checker maintains the three allowed declaration locations and their
+The source checker maintains the two allowed declaration locations and their
 review references. A new hole requires an explicit change to that registry.
 The public payoff primitive and unconditional assembly have axiom guards that
 expose their admitted dependencies; neither is evidence of proved preservation.
@@ -85,7 +88,7 @@ Passing `pairLaw` to a primitive records an intended proof dependency. While
 that primitive contains `sorry`, Lean does not establish that the pair law
 suffices to prove it or that its proof needs the pair law. Compilation checks
 that the downstream aggregation follows from the four complete primitive
-statements. The three admitted primitive statements still require proofs.
+statements. The two admitted primitive statements still require proofs.
 
 The [concurrent hypothesis test](../VegasTests/ConcurrentRawHypotheses.lean)
 discharges every operational, payoff and audit assumption together, and supplies
