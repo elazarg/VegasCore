@@ -38,6 +38,41 @@ conditional on `QualifiedBindingLaw`; its transport and unconditional SE remain
 unproved. An unrestricted prefix density theorem is not claimed.**
 Checked dependencies do not close the remaining Lean obligations.
 
+The four primitive interfaces and their complete aggregation compile with
+`lake build +Vegas.Game.ConcurrentRawEquilibrium`. Four named `sorry` bodies
+remain; the unconditional theorem depends on admitted proof axioms.
+No new source or runtime assumptions are introduced by these interfaces.
+
+| Remaining proof | Guarantee | Reviewed argument |
+| --- | --- | --- |
+| `qualified_source_site` | One supported source information site and faithful value encoding | Likelihood analysis: common information and reverse coverage |
+| `foreign_posterior_cut_pair` | Actual source cut/completion law under both issued-ledger and focal-only conditioning | Likelihood analysis: forced current action and retained causal focal tail |
+| `qualified_annotation_pushforward` | Exact native/source weights across every qualified mechanical and full source-word fiber | Likelihood analysis: inverse, source fibers and weights |
+| `annotated_stopped_payoff` | Complete qualified payoff numerator, including rejected branches, on the original tape | Likelihood analysis: payoff attachment and Bayes |
+
+`CleanUnsentBinding` packages the shared ready-binding conditions;
+`foreignBindingFailureFootprint` names their exclusion test.
+`QualifiedBindingSource` ties the source information, encoding and supported
+anchor to actual native decision cuts. The weighted primitive takes that same
+package and the concrete `ForeignPosteriorCutPair` law. Its conclusion includes
+the entry-to-decision weight conversion and common positive finite factors.
+The payoff primitive covers all native branches and annotation mass, including
+the complement at none, rather than only positive annotation fibers.
+
+`qualified_reconstruction` actually supplies the source package and pair theorem
+to weighted transport. `qualified_binding_law` actually applies reconstruction
+and payoff transport and normalizes their measures. Both composition bodies
+contain no proof holes and compile against the primitive statements. The unconditional
+`concurrentRawSequentialPreservation` then applies the existing conditional
+preservation theorem to that law; its composition body contains no additional
+hole. Each of the four mathematical arguments has agent scope review, not human
+certification or a Lean proof. Closing an obligation means replacing its whole
+`sorry` body without weakening its statement, then checking its axiom dependencies.
+The source checker maintains the four allowed declaration locations and their
+review references. A new hole requires an explicit change to that registry.
+The public payoff primitive and unconditional assembly have axiom guards that
+expose their admitted dependencies; neither is evidence of proved preservation.
+
 The [concurrent hypothesis test](../VegasTests/ConcurrentRawHypotheses.lean)
 discharges every operational, payoff and audit assumption together, and supplies
 a source SE witness. Its actual concurrent graph has two simultaneously ready

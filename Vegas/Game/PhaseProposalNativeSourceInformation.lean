@@ -43,6 +43,9 @@ import Vegas.Game.PhaseProposalSourceUsability
 import GameTheoryExtensions.Protocol.OwnPlayPrefix
 import Vegas.Game.PhaseProposalCommitWord
 import Vegas.Source.ProposalRecoveryPreparationMenuInverse
+import Vegas.Game.RecoverySameAttemptWitness
+import Vegas.Game.PhaseProposalOrdinaryBindingCheckpoint
+import Vegas.Game.PhaseProposalOwnBindingFailure
 
 /-! # Complete source information under foreign disclosure refinements
 
@@ -1510,7 +1513,7 @@ private theorem suffix_injective
 open Classical in
 /-- Pull a point through the actual suffix and its entry constructor. This
 partial inverse does not inspect a source posterior or a selected source tag. -/
-private def residualEntry?
+def residualEntry?
     {wholeΓ Γ : SourceCtx Player L} {wholeO O : Finset VarId}
     {whole : SourceProgram Player L wholeΓ wholeO} (program : SourceProgram Player L Γ O)
     (lift : ProtocolState program → ProtocolState whole) (point : ProtocolState whole) :
@@ -1520,7 +1523,7 @@ private def residualEntry?
   else none
 
 omit [Fintype Player] in
-private theorem residualEntry?_eq_some_iff
+theorem residualEntry?_eq_some_iff
     {wholeΓ Γ : SourceCtx Player L} {wholeO O : Finset VarId}
     {whole : SourceProgram Player L wholeΓ wholeO} {program : SourceProgram Player L Γ O}
     {lift : ProtocolState program → ProtocolState whole}
@@ -4187,6 +4190,9 @@ private theorem accepted_binding_inclusion
       (realized : some last ∈ ((nativeProtocol).step (some first) ⟨joint, legal⟩).support)
       (native : EventGraphRuntime.State (serviceGraph setup .concurrent)),
       TracePrefix (retainedTrace.extend joint legal realized) trace ∧
+      message ∈ reference.execution.network.inputs ∧
+      (message.id, true) ∈ reference.execution.receipts ∧
+      message.sender = handle.1 ∧
       message.payload.packet.call = .commitment event handle ∧
       message.payload.attempt = first.execution.application.attempt ∧
       first.execution.application.handle implementation.runtime message =
@@ -4201,7 +4207,7 @@ private theorem accepted_binding_inclusion
         current := first.execution.application.current.inclusionResult
           message.payload.packet.call native } :
           PhaseRuntimeState (serviceGraph setup .concurrent)).normalize := by
-  obtain ⟨entry, recorded, message, emitted, _sender, call, receipt⟩ :=
+  obtain ⟨entry, recorded, message, emitted, sender, call, receipt⟩ :=
     accepted_snapshot_receipt setup implementation reference trace before prior retained
       snapshot selected event handle accepted
   have rawTrace := (nativeMenu).toRawTrace nativeInitial implementation.horizon
@@ -4226,7 +4232,7 @@ private theorem accepted_binding_inclusion
     message packet input found
   subst packet
   refine ⟨message, first, last, retainedTrace, joint, legal, realized, native,
-    onward, call, attempt, acceptedCall, found, handled, ?_,
+    onward, input, receipt, sender, call, attempt, acceptedCall, found, handled, ?_,
     Or.inl ⟨message.id, message, native, found, included, handled, rfl⟩, normalized⟩
   have tables := handle_commitment_tables implementation.runtime
     first.execution.application.current.native native message.id event handle
@@ -5867,6 +5873,120 @@ private theorem submittedArchived
       (setup.proposalRecoveryLiftTrace labels history.trace))) unchanged
   exact sameArchive.symm.trans (weakArchived observer survives)
 
+private def checkpointSelectionStep (operational : implementation.Operational)
+    {before after : (nativeProtocol).State} (priorTrace : (nativeProtocol).Trace before)
+    (joint : Player → Option (nativeApplication).Action)
+    (legal : (nativeProtocol).Legal before joint)
+    (realized : after ∈ ((nativeProtocol).step before ⟨joint, legal⟩).support)
+    (previous : before.elim PUnit (fun control =>
+      {witness : RecoverySourceWitness setup .concurrent implementation.plan
+          control.execution.application //
+        witness.checkpoint.ArchivedProposals control.execution.network.inputs})) :
+    {selected : after.elim PUnit (fun control =>
+      {witness : RecoverySourceWitness setup .concurrent implementation.plan
+          control.execution.application //
+        witness.checkpoint.ArchivedProposals control.execution.network.inputs}) //
+      match before, after, previous, selected with
+      | none, _, _, _ => True
+      | some _, none, _, _ => False
+      | some _, some _, first, last =>
+          ∃ fuel, setup.commitRecoveryProtocol.ReachesWithin fuel
+            ⟨_, first.val.checkpoint.trace⟩ ⟨_, last.val.checkpoint.trace⟩} := by
+  classical
+  change after ∈ ((nativeApplication).transition nativeInitial implementation.horizon
+    implementation.scheduler before joint).support at realized
+  cases before with
+  | none =>
+    have initialized : ∃ draw : State L setup.context,
+        draw ∈ setup.initialLaw.support ∧ after = some
+          ⟨implementation.horizon, none, ReactiveApplication.Execution.initial nativeApplication
+            (PhaseRuntimeState.initial implementation.plan (encodeInputs draw))⟩ := by
+      change after ∈ ((nativeInitial).map fun state => some
+        (⟨implementation.horizon, none, ReactiveApplication.Execution.initial nativeApplication
+          state⟩ : (nativeApplication).Control)).support at realized
+      obtain ⟨physical, physicalSupport, rfl⟩ := PMF.support_map .. ▸ realized
+      have initialEq : nativeInitial = setup.initialLaw.map
+          (fun draw => PhaseRuntimeState.initial implementation.plan (encodeInputs draw)) :=
+        rfl
+      rw [initialEq] at physicalSupport
+      obtain ⟨draw, drawn, rfl⟩ := PMF.support_map .. ▸ physicalSupport
+      exact ⟨draw, drawn, rfl⟩
+    let draw := Classical.choose initialized
+    have drawn := (Classical.choose_spec initialized).1
+    have targetEq := (Classical.choose_spec initialized).2
+    refine ⟨?_, True.intro⟩
+    rw [targetEq]
+    exact ⟨RecoverySourceWitness.initialized setup .concurrent implementation.plan draw drawn,
+      RecoverySourceWitness.initialized_archivedProposals setup .concurrent
+        implementation.plan draw drawn⟩
+  | some control =>
+    change {witness : RecoverySourceWitness setup .concurrent implementation.plan
+        control.execution.application //
+      witness.checkpoint.ArchivedProposals control.execution.network.inputs} at previous
+    let witness := previous.val
+    have archived := previous.property
+    rcases control with ⟨remaining, actor, execution⟩
+    cases actor with
+    | some owner =>
+      have offered := legal.2 owner
+      cases selected : joint owner with
+      | none =>
+        simp [selected, ReactiveApplication.ResponseMenu.protocol,
+          ReactiveApplication.actor] at offered
+      | some action =>
+        change after ∈ ((nativeApplication).transition nativeInitial implementation.horizon
+          implementation.scheduler (some ⟨remaining, some owner, execution⟩) joint).support
+          at realized
+        simp only [ReactiveApplication.transition, selected, Option.getD_some] at realized
+        cases (PMF.mem_support_pure_iff _ _).mp realized
+        rcases action with ⟨transmission⟩
+        cases transmission with
+        | none => exact ⟨previous, 0, .refl 0 _⟩
+        | some material =>
+          -- Keep the concrete SAME checkpoint at a callback. An arbitrary
+          -- witness of the weaker existential would lose this equation.
+          let next := witness.submit implementation.runtime implementation.leaks owner material
+          have nextArchived := submittedArchived setup implementation execution
+            witness archived owner material
+          exact ⟨⟨next, nextArchived⟩, 0, .refl 0 _⟩
+    | none =>
+      cases remaining with
+      | zero =>
+        change after ∈ (PMF.pure (some ⟨0, none, execution⟩)).support at realized
+        cases (PMF.mem_support_pure_iff _ _).mp realized
+        exact ⟨previous, 0, .refl 0 _⟩
+      | succ remaining =>
+        have selected : ∃ command : (nativeApplication).Command,
+            command ∈ (implementation.scheduler execution.environmentRecall
+              (execution.observeEnvironment nativeApplication)).support ∧
+            ∃ next : (nativeApplication).Execution,
+              next ∈ (execution.environmentStep nativeApplication command).support ∧
+              after = some ⟨remaining, command.actor? nativeApplication, next⟩ := by
+          obtain ⟨command, chosen, moved⟩ := Set.mem_iUnion₂.mp
+            (PMF.support_bind .. ▸ realized)
+          obtain ⟨next, reached, same⟩ := PMF.support_map .. ▸ moved
+          exact ⟨command, chosen, next, reached, same.symm⟩
+        let command := Classical.choose selected
+        let next := Classical.choose (Classical.choose_spec selected).2
+        have reached := (Classical.choose_spec (Classical.choose_spec selected).2).1
+        have targetEq := (Classical.choose_spec (Classical.choose_spec selected).2).2
+        change next ∈ (execution.environmentStep nativeApplication command).support at reached
+        change after = some ⟨remaining, command.actor? nativeApplication, next⟩ at targetEq
+        generalize nextEq : next = nextExecution at reached targetEq
+        generalize commandEq : command = nextCommand at reached targetEq
+        have counted : ((nativeMenu).protocol
+            (setup.initialLaw.map fun draw => PhaseRuntimeState.initial implementation.plan
+              (encodeInputs draw)) implementation.horizon implementation.scheduler).Trace
+            (some ⟨remaining + 1, none, execution⟩) := by
+          exact priorTrace
+        let continuation := witness.environment_archived_source implementation.runtime
+          implementation.leaks implementation.bounds implementation.plan
+          operational.maximalPhases implementation.horizon implementation.scheduler
+          ⟨remaining + 1, none, execution⟩ counted archived nextCommand nextExecution reached
+        subst after
+        exact ⟨⟨Classical.choose continuation, (Classical.choose_spec continuation).1⟩,
+          (Classical.choose_spec continuation).2⟩
+
 /-- The actual chronological source witness and its retained proposal archive.
 Its checkpoint describes the saved entry used by `canonicalSource`. -/
 def checkpointSelection (operational : implementation.Operational)
@@ -5882,105 +6002,74 @@ def checkpointSelection (operational : implementation.Operational)
       {witness : RecoverySourceWitness setup .concurrent implementation.plan
           control.execution.application //
         witness.checkpoint.ArchivedProposals control.execution.network.inputs})
-  let chooseStep := fun {before after : (nativeProtocol).State}
-      (priorTrace : (nativeProtocol).Trace before)
-      (joint : Player → Option (nativeApplication).Action)
-      (legal : (nativeProtocol).Legal before joint)
-      (realized : after ∈ ((nativeProtocol).step before ⟨joint, legal⟩).support)
-      (previous : witnessFiber before) => show witnessFiber after from by
-      change after ∈ ((nativeApplication).transition nativeInitial implementation.horizon
-        implementation.scheduler before joint).support at realized
-      cases before with
-      | none =>
-        have initialized : ∃ draw : State L setup.context,
-            draw ∈ setup.initialLaw.support ∧ after = some
-              ⟨implementation.horizon, none, ReactiveApplication.Execution.initial nativeApplication
-                (PhaseRuntimeState.initial implementation.plan (encodeInputs draw))⟩ := by
-          change after ∈ ((nativeInitial).map fun state => some
-            (⟨implementation.horizon, none, ReactiveApplication.Execution.initial nativeApplication
-              state⟩ : (nativeApplication).Control)).support at realized
-          obtain ⟨physical, physicalSupport, rfl⟩ := PMF.support_map .. ▸ realized
-          have initialEq : nativeInitial = setup.initialLaw.map
-              (fun draw => PhaseRuntimeState.initial implementation.plan (encodeInputs draw)) :=
-            rfl
-          rw [initialEq] at physicalSupport
-          obtain ⟨draw, drawn, rfl⟩ := PMF.support_map .. ▸ physicalSupport
-          exact ⟨draw, drawn, rfl⟩
-        let draw := Classical.choose initialized
-        have drawn := (Classical.choose_spec initialized).1
-        have targetEq := (Classical.choose_spec initialized).2
-        rw [targetEq]
-        exact ⟨RecoverySourceWitness.initialized setup .concurrent implementation.plan draw drawn,
-          RecoverySourceWitness.initialized_archivedProposals setup .concurrent
-            implementation.plan draw drawn⟩
-      | some control =>
-        change {witness : RecoverySourceWitness setup .concurrent implementation.plan
-            control.execution.application //
-          witness.checkpoint.ArchivedProposals control.execution.network.inputs} at previous
-        let witness := previous.val
-        have archived := previous.property
-        rcases control with ⟨remaining, actor, execution⟩
-        cases actor with
-        | some owner =>
-          have offered := legal.2 owner
-          cases selected : joint owner with
-          | none =>
-            simp [selected, ReactiveApplication.ResponseMenu.protocol,
-              ReactiveApplication.actor] at offered
-          | some action =>
-            change after ∈ ((nativeApplication).transition nativeInitial implementation.horizon
-              implementation.scheduler (some ⟨remaining, some owner, execution⟩) joint).support
-              at realized
-            simp only [ReactiveApplication.transition, selected, Option.getD_some] at realized
-            cases (PMF.mem_support_pure_iff _ _).mp realized
-            rcases action with ⟨transmission⟩
-            cases transmission with
-            | none => exact previous
-            | some material =>
-              -- Keep the concrete SAME checkpoint at a callback. An arbitrary
-              -- witness of the weaker existential would lose this equation.
-              let next := witness.submit implementation.runtime implementation.leaks owner material
-              have nextArchived := submittedArchived setup implementation execution
-                witness archived owner material
-              exact ⟨next, nextArchived⟩
-        | none =>
-          cases remaining with
-          | zero =>
-            change after ∈ (PMF.pure (some ⟨0, none, execution⟩)).support at realized
-            cases (PMF.mem_support_pure_iff _ _).mp realized
-            exact previous
-          | succ remaining =>
-            have selected : ∃ command : (nativeApplication).Command,
-                command ∈ (implementation.scheduler execution.environmentRecall
-                  (execution.observeEnvironment nativeApplication)).support ∧
-                ∃ next : (nativeApplication).Execution,
-                  next ∈ (execution.environmentStep nativeApplication command).support ∧
-                  after = some ⟨remaining, command.actor? nativeApplication, next⟩ := by
-              obtain ⟨command, chosen, moved⟩ := Set.mem_iUnion₂.mp
-                (PMF.support_bind .. ▸ realized)
-              obtain ⟨next, reached, same⟩ := PMF.support_map .. ▸ moved
-              exact ⟨command, chosen, next, reached, same.symm⟩
-            let command := Classical.choose selected
-            let next := Classical.choose (Classical.choose_spec selected).2
-            have reached := (Classical.choose_spec (Classical.choose_spec selected).2).1
-            have targetEq := (Classical.choose_spec (Classical.choose_spec selected).2).2
-            have counted : ((nativeMenu).protocol
-                (setup.initialLaw.map fun draw => PhaseRuntimeState.initial implementation.plan
-                  (encodeInputs draw)) implementation.horizon implementation.scheduler).Trace
-                (some ⟨remaining + 1, none, execution⟩) := by
-              exact priorTrace
-            let continuation := witness.environment_archived_source implementation.runtime
-              implementation.leaks implementation.bounds implementation.plan
-              operational.maximalPhases implementation.horizon implementation.scheduler
-              ⟨remaining + 1, none, execution⟩ counted archived command next reached
-            rw [targetEq]
-            exact ⟨Classical.choose continuation, (Classical.choose_spec continuation).1⟩
   let rec cofold {state : (nativeProtocol).State} (trace : (nativeProtocol).Trace state) :
       witnessFiber state := match trace with
     | .start => PUnit.unit
     | .extend priorTrace joint legal realized =>
-        chooseStep priorTrace joint legal realized (cofold priorTrace)
+        (checkpointSelectionStep setup implementation operational priorTrace joint legal realized
+          (cofold priorTrace)).val
   exact cofold trace
+
+/-- The chronological selection retains its own earlier source checkpoint. -/
+theorem checkpointSelection_prefix (operational : implementation.Operational)
+    (first last : (nativeApplication).Control)
+    (prior : (nativeProtocol).Trace (some first))
+    (trace : (nativeProtocol).Trace (some last)) (kept : TracePrefix prior trace) :
+    TracePrefix (checkpointSelection setup implementation operational prior).val.checkpoint.trace
+      (checkpointSelection setup implementation operational trace).val.checkpoint.trace := by
+  classical
+  have retained : ∀ {state : (nativeProtocol).State} (trace : (nativeProtocol).Trace state),
+      TracePrefix prior trace →
+      match state, checkpointSelection setup implementation operational trace with
+      | none, _ => False
+      | some _, selected =>
+          TracePrefix
+            (checkpointSelection setup implementation operational prior).val.checkpoint.trace
+            selected.val.checkpoint.trace := by
+    intro state trace initialKept
+    induction initialKept with
+    | refl => exact .refl
+    | @extend before after previous earlier joint legal realized ih =>
+        have moved := (checkpointSelectionStep setup implementation operational previous joint
+          legal realized (checkpointSelection setup implementation operational previous)).property
+        cases before with
+        | none => exact False.elim ih
+        | some control =>
+            cases after with
+            | none => exact moved
+            | some next =>
+                obtain ⟨fuel, path⟩ := moved
+                exact ih.trans path.tracePrefix
+  exact retained trace kept
+
+/-- Selection keeps the same full source entry while its native attempt is unchanged. -/
+theorem checkpointSelection_eq_of_attempt (operational : implementation.Operational)
+    (first last : (nativeApplication).Control)
+    (prior : (nativeProtocol).Trace (some first))
+    (trace : (nativeProtocol).Trace (some last)) (kept : TracePrefix prior trace)
+    (attemptEq : first.execution.application.attempt = last.execution.application.attempt) :
+    (⟨_, (checkpointSelection setup implementation operational prior).val.checkpoint.trace⟩ :
+      setup.commitRecoveryProtocol.History) =
+      ⟨_, (checkpointSelection setup implementation operational trace).val.checkpoint.trace⟩ := by
+  let firstCheckpoint :=
+    (checkpointSelection setup implementation operational prior).val.checkpoint
+  let lastCheckpoint :=
+    (checkpointSelection setup implementation operational trace).val.checkpoint
+  have retained := checkpointSelection_prefix setup implementation operational first last
+    prior trace kept
+  have phase := congrArg CommitAttemptId.phase attemptEq
+  have generation : first.execution.application.generation =
+      last.execution.application.generation := congrArg CommitAttemptId.generation attemptEq
+  apply setup.commitRecovery_ancestor_eq_of_control_eq retained.reachesWithin (.refl 0 _)
+  change first.execution.application.generation * (instructionCount setup.program + 1) +
+      (instructionCount setup.program - ProtocolState.remaining setup.program
+        (firstCheckpoint.residual.lift
+          (ProtocolState.entry firstCheckpoint.residual.tail firstCheckpoint.source))) + 1 =
+    last.execution.application.generation * (instructionCount setup.program + 1) +
+      (instructionCount setup.program - ProtocolState.remaining setup.program
+        (lastCheckpoint.residual.lift
+          (ProtocolState.entry lastCheckpoint.residual.tail lastCheckpoint.source))) + 1
+  rw [firstCheckpoint.saved_position, lastCheckpoint.saved_position, generation, phase]
 
 /-- The closed source annotation selected by the actual chronological native
 prefix. Publication labels are read from that prefix's own original archive. -/
@@ -8742,6 +8831,100 @@ def mechanicalCoefficient (rates : PhaseProposalRates)
             implementation.scheduler).ownPlay who history.trace)) *
       mechanicalPathAtom setup implementation rates who index.2 history.trace
   else 0
+
+/-- Exclusions not accounted for by the public archived/current omission footprint. -/
+def foreignBindingFailureFootprint (view : (nativeApplication).PlayerView) : Finset Player :=
+  view.application.2.excluded \
+    ((view.application.2.retired.map fun record =>
+        record.2.sourceFailureFootprint.2).foldr (fun first rest => first ∪ rest) ∅ ∪
+      view.application.2.native.sourceFailureFootprint.1 view.application.2.attempt.phase)
+
+/-- The actual ready, unsent binding domain, with its existing failure tests. -/
+structure CleanUnsentBinding (who : Player)
+    (past : List (nativeApplication).PlayerEntry) (view : (nativeApplication).PlayerView)
+    (event : (serviceGraph setup .concurrent).EventId) (payload : L.Ty) : Prop where
+  binding : (serviceGraph setup .concurrent).outputLayout event = .binding who payload
+  request : PhaseRuntimeState.requests view.application.2 who
+    ⟨view.application.2.attempt, event⟩
+  unsent : ∀ message ∈ (nativeApplication).outputs past,
+    PhaseCount.event? message.payload ≠ some ⟨view.application.2.attempt, event⟩
+  noSaved : ¬ phaseProposalSavedBindingFailure setup .concurrent implementation.runtime
+    implementation.leaks who event view
+  noCurrent : ¬ phaseProposalCurrentBindingFailure setup .concurrent implementation.runtime
+    implementation.leaks who event view
+  noForeignFailure : ¬ (foreignBindingFailureFootprint setup implementation view).Nonempty
+
+/-- A source witness tied to the actual before-action cuts at one native information site. -/
+structure QualifiedBindingSource
+    (sourceProfile : ∀ owner, setup.proposalRecoveryModel.BehavioralPolicy owner)
+    (who : Player)
+    (nativeSite : ((nativeMenu).information nativeInitial implementation.horizon
+      implementation.scheduler).InformationSite who)
+    (past : List (nativeApplication).PlayerEntry) (view : (nativeApplication).PlayerView)
+    (event : (serviceGraph setup .concurrent).EventId) (payload : L.Ty)
+    (binding : (serviceGraph setup .concurrent).outputLayout event = .binding who payload) where
+  site : setup.proposalRecoveryModel.InformationSite who
+  encode : L.Val payload → setup.proposalRecoveryModel.Choice who site.1
+  anchor : setup.proposalRecoveryProtocol.History
+  anchorInfo : setup.proposalRecoveryModel.infoOf who anchor.trace = site.1
+  anchorGood : setup.proposalRecoveryForeignGood who anchor
+  anchorReach : 0 < setup.proposalRecoveryModel.historyReachWeight sourceProfile anchor
+  query : phaseProposalQuery? setup .concurrent implementation.runtime implementation.leaks
+      implementation.plan who event past view =
+    some (setup.proposalRecoveryQuery who site.1)
+  encoded : ∀ value, phaseRecoveryBindingData setup .concurrent event who payload binding
+    ((encode value).val.map (fun move => move.semantic)) = (.success value, false)
+  ordinary : sourceUnflaggedStrategy setup values who site.1 =
+    (values who (setup.proposalRecoveryQuery who site.1)).map (fun sampled =>
+      encode (phaseRecoveryDomainValue setup .concurrent event who payload binding sampled.val.val))
+  actualCut : ∀ (control : (nativeApplication).Control)
+    (trace : ((nativeMenu).protocol
+      ((setup.initialLaw.map encodeInputs).map (PhaseRuntimeState.initial implementation.plan))
+      implementation.horizon implementation.scheduler).Trace (some control))
+    (cut : PhaseProposalCanonicalBindingCut setup .concurrent implementation.runtime
+      implementation.leaks implementation.bounds implementation.plan values
+      implementation.horizon implementation.scheduler control trace who event),
+    ((nativeMenu).information
+      ((setup.initialLaw.map encodeInputs).map (PhaseRuntimeState.initial implementation.plan))
+      implementation.horizon implementation.scheduler).infoOf who trace = nativeSite.1 →
+    setup.proposalRecoveryModel.infoOf who cut.trace = site.1
+
+-- OPEN OBLIGATION: qualified_source_site - Supported source site and faithful binding encoding
+theorem qualified_source_site
+    (operational : implementation.Operational)
+    (scale sourceBad nativeBad : Set.Icc (0 : ℝ) 1)
+    (scalePositive : 0 < scale.val) (scaleBelow : scale.val < 1)
+    (sourceBadPositive : 0 < sourceBad.val) (sourceBadBelow : sourceBad.val < 1)
+    (nativeBadPositive : 0 < nativeBad.val) (nativeBadBelow : nativeBad.val < 1)
+    (fullValues : ∀ owner key, FullSupport (values owner key))
+    (sourceProfile : ∀ owner, setup.proposalRecoveryModel.BehavioralPolicy owner)
+    (nativeProfile : ∀ owner,
+      ((nativeMenu).information nativeInitial implementation.horizon
+        implementation.scheduler).BehavioralPolicy owner)
+    (sourcePrescribed : ∀ owner (history : setup.proposalRecoveryProtocol.History),
+      ¬ setup.proposalRecoveryProtocol.terminal history.state →
+      sourceProfile owner (setup.proposalRecoveryModel.infoOf owner history.trace) =
+        setup.proposalRecoveryNormalizedTrembledProfile
+          scale.val scale.property.1 scale.property.2
+          sourceBad.val sourceBad.property.1 sourceBad.property.2
+          scale.val scale.property.1 scale.property.2 values owner
+            (setup.proposalRecoveryModel.infoOf owner history.trace))
+    (nativePrescribed : nativeProfile = phaseProposalReferenceStrategy setup .concurrent
+      implementation.runtime implementation.leaks implementation.bounds implementation.plan
+      nativeInitial implementation.horizon implementation.scheduler values
+      ⟨nativeBad, scale, scale, scale⟩)
+    (who : Player)
+    (site : ((nativeMenu).information nativeInitial implementation.horizon
+      implementation.scheduler).InformationSite who)
+    (past : List (nativeApplication).PlayerEntry) (view : (nativeApplication).PlayerView)
+    (siteEq : site.1 = some (past, view))
+    (event : (serviceGraph setup .concurrent).EventId) (payload : L.Ty)
+    (clean : CleanUnsentBinding setup implementation who past view event payload)
+    (qualified : 0 < qualifiedPrefixMass setup implementation nativeProfile who site event) :
+    Nonempty (QualifiedBindingSource setup values implementation sourceProfile who site past view
+      event payload clean.binding) := by
+  sorry
+
 
 end NativeCheckpoint
 end Vegas.PhaseProposalQualifiedBinding

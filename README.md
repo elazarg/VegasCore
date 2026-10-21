@@ -30,6 +30,9 @@ Retired designs and experiments are in the
 Build and validate:
 
 Local builds and CI use `lake build`; `lakefile.toml` makes Lean warnings errors.
+Registered named proof obligations may contain one `sorry`; the source checker
+lists them and rejects unregistered holes. Run it with the build before committing.
+A successful build checks their types, not their missing proofs.
 
 ```powershell
 lake build

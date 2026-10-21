@@ -7,21 +7,47 @@ import sys
 import tomllib
 
 
+# Only the reviewed primitive obligations may contain holes. Assembly results
+# must have proof bodies; adding a primitive requires an explicit registry diff.
+APPROVED_OPEN_OBLIGATIONS = {
+    ("Vegas/Game/PhaseProposalNativeSourceInformation.lean", "qualified_source_site"):
+        "docs/se-concurrent-likelihood-review.md#mathematical-review-boundary",
+    ("Vegas/Game/PhaseProposalQualifiedBinding.lean", "foreign_posterior_cut_pair"):
+        "docs/se-concurrent-likelihood-review.md#mathematical-review-boundary",
+    ("Vegas/Game/PhaseProposalQualifiedBinding.lean", "qualified_annotation_pushforward"):
+        "docs/se-concurrent-likelihood-review.md#mathematical-review-boundary",
+    ("Vegas/Game/PhaseProposalQualifiedBinding.lean", "annotated_stopped_payoff"):
+        "docs/se-concurrent-likelihood-review.md#signed-comparison-and-assembly",
+}
+
+
 def check_central_options(options: dict) -> list[str]:
-    """Require explicit theorem binders and warning-strict compilation."""
+    """Require explicit binders and centrally permit tracked proof warnings."""
     required = {
         "autoImplicit": False,
         "relaxedAutoImplicit": False,
         "warningAsError": True,
+        "warn.sorry": False,
     }
+
+    def lookup(name: str):
+        current = options
+        for part in name.split("."):
+            if not isinstance(current, dict):
+                return None
+            current = current.get(part)
+        return current
+
     return [
         f"lakefile.toml: leanOptions.{name} must be {str(value).lower()}"
         for name, value in required.items()
-        if options.get(name) is not value
+        if lookup(name) is not value
     ]
 
 
-def strip_lean_comments_and_strings(text: str) -> str:
+def strip_lean_comments_and_strings(
+    text: str, line_comments: list[tuple[int, str]] | None = None,
+) -> str:
     """Blank nested comments and string contents while preserving line numbers."""
     result = []
     depth = 0
@@ -57,6 +83,8 @@ def strip_lean_comments_and_strings(text: str) -> str:
             pos += 2
         elif pair == "--":
             end = text.find("\n", pos)
+            if line_comments is not None:
+                line_comments.append((pos, text[pos:end if end >= 0 else len(text)]))
             if end < 0:
                 result.extend(" " * (len(text) - pos))
                 pos = len(text)
@@ -84,39 +112,85 @@ def admission_tokens(text: str) -> list[tuple[int, str]]:
     ]
 
 
-def check_admissions(relative: Path, text: str) -> list[str]:
-    """Permit Paper admissions only when their warning is explicitly guarded.
+def obligation_ranges(text: str) -> tuple[list[tuple[int, int, int, str]], list[str]]:
+    """Recognize named markers immediately before flat theorem declarations.
 
-    `warningAsError` rejects an ordinary `sorry`.  Paper may state an openly
-    prospective theorem only by wrapping that declaration in `#guard_msgs`,
-    which both documents and checks the expected diagnostic.
+    The supported layout is deliberately small, like the audit-pin layout:
+    `-- OPEN OBLIGATION: declaration_name - explanation`, followed by a
+    theorem/lemma (optionally private/protected), with an indented body.
+    Blank lines are allowed; intervening commands or comments are not.
     """
-    tokens = admission_tokens(text)
-    if relative != Path("Paper.lean"):
-        return [
-            f"{relative}:{number}: forbidden proof admission `{token}`"
-            for number, token in tokens
-        ]
-    if not tokens:
-        return []
-    clean = strip_lean_comments_and_strings(text)
+    comments: list[tuple[int, str]] = []
+    clean = strip_lean_comments_and_strings(text, comments)
     commands = list(re.finditer(r"(?m)^\S[^\n]*", clean))
-    guarded_ranges: list[tuple[int, int]] = []
-    for index, command in enumerate(commands):
-        if not re.match(r"(?:theorem|lemma)\s+\w+\b", command.group()):
-            continue
-        previous = commands[index - 1].group() if index else ""
-        if not re.match(r"#guard_msgs\b[^\n]*\bin\s*$", previous):
-            continue
-        end = commands[index + 1].start() if index + 1 < len(commands) else len(clean)
-        guarded_ranges.append((command.start(), end))
+    markers = {}
     failures = []
-    for number, token in tokens:
-        position = sum(len(line) + 1 for line in clean.splitlines()[:number - 1])
-        if not any(start <= position < end for start, end in guarded_ranges):
+    for offset, comment in comments:
+        if not comment.startswith("-- OPEN OBLIGATION:"):
+            continue
+        line = text.count("\n", 0, offset) + 1
+        match = re.fullmatch(r"-- OPEN OBLIGATION: ([\w'.]+) - (\S.*)", comment)
+        if not match:
+            # Existing prose-only obligation notes grant no admission permission.
+            continue
+        if text[text.rfind("\n", 0, offset) + 1:offset].strip():
+            failures.append(f"{line}: named OPEN OBLIGATION must be on its own line")
+            continue
+        following = next((command for command in commands if command.start() > offset), None)
+        if following is None or text[offset + len(comment):following.start()].strip():
+            failures.append(f"{line}: OPEN OBLIGATION must immediately precede its theorem")
+            continue
+        declaration = re.match(
+            r"(?:(?:private|protected)\s+)?(?:theorem|lemma)\s+([\w'.]+)\b",
+            following.group(),
+        )
+        if declaration is None or declaration.group(1) != match.group(1):
+            failures.append(f"{line}: OPEN OBLIGATION must name the following theorem")
+            continue
+        markers[following.start()] = (line, match.group(1))
+    ranges = []
+    for index, command in enumerate(commands):
+        if command.start() in markers:
+            line, name = markers[command.start()]
+            end = commands[index + 1].start() if index + 1 < len(commands) else len(clean)
+            ranges.append((command.start(), end, line, name))
+    return ranges, failures
+
+
+def check_admissions(
+    relative: Path, text: str,
+    approved: dict[tuple[str, str], str] | None = None,
+) -> list[str]:
+    """Allow one literal sorry per explicitly named outstanding theorem.
+
+    No file is exempt. `admit` and direct `sorryAx` remain forbidden, including
+    inside a marked declaration or a guarded Paper command.
+    """
+    registry = APPROVED_OPEN_OBLIGATIONS if approved is None else approved
+    ranges, marker_errors = obligation_ranges(text)
+    failures = [f"{relative}:{error}" for error in marker_errors]
+    clean = strip_lean_comments_and_strings(text)
+    tokens = list(re.finditer(r"\b(?:sorryAx|sorry|admit)\b", clean))
+    for token in tokens:
+        number = clean.count("\n", 0, token.start()) + 1
+        if token.group() != "sorry" or not any(
+            start <= token.start() < end for start, end, _, _ in ranges
+        ):
             failures.append(
-                f"{relative}:{number}: Paper admission `{token}` must be wrapped "
-                "in #guard_msgs under warningAsError"
+                f"{relative}:{number}: forbidden proof admission `{token.group()}`; "
+                "only literal sorry in a named OPEN OBLIGATION is permitted"
+            )
+    for start, end, line, name in ranges:
+        if not registry.get((relative.as_posix(), name), "").strip():
+            failures.append(
+                f"{relative}:{line}: unregistered OPEN OBLIGATION {name}; "
+                "an explicit approved registry entry with a mathematical review reference is required"
+            )
+        count = sum(start <= token.start() < end and token.group() == "sorry" for token in tokens)
+        if count != 1:
+            failures.append(
+                f"{relative}:{line}: OPEN OBLIGATION {name} must contain exactly one sorry "
+                f"(found {count})"
             )
     return failures
 
@@ -208,22 +282,28 @@ def main() -> int:
     for directory in ("GameTheoryExtensions", "GameTheoryExtensionsTests", "Interaction", "InteractionTests", "Vegas",
                       "VegasTests", "Paper"):
         paths.extend((root / directory).rglob("*.lean"))
+    obligations = []
     for path in sorted(paths):
         text = path.read_text(encoding="utf-8")
         relative = path.relative_to(root)
         failures.extend(check_forbidden_constructs(relative, text))
         failures.extend(check_admissions(relative, text))
+        for _, _, line, name in obligation_ranges(text)[0]:
+            obligations.append(f"{relative}:{line}: {name}")
         failures.extend(check_axiom_prints(relative, text))
         if relative == Path("Paper.lean"):
             failures.extend(check_audit_pins(text))
+    print(f"Tracked OPEN OBLIGATION declarations: {len(obligations)}")
+    for obligation in obligations:
+        print(f"  {obligation}")
     if failures:
         print("Lean source policy violations:")
         print("\n".join(failures))
         return 1
     print("Explicit binders and warning-strict compilation configured centrally; "
-          "no unchecked trust or code-generation escape hatches; guarded Paper "
-          "admissions only; dependency audits confined to Paper capstone pins "
-          "and guarded VegasTests/AxiomAudit regressions.")
+          "sorry diagnostics replaced by the explicit obligation report; "
+          "only registered named single-sorry obligations permitted; other trust/code-generation "
+          "escape hatches rejected; existing dependency audit guards enforced.")
     return 0
 
 

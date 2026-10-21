@@ -761,4 +761,13 @@ theorem concurrentRawSequentialPreservation_of_qualified_binding_law
         (sourceMixed n) (sourceBayes n) (nativePrescribed n) (nativeMixed n) (nativeBayes n)
         (sourcePosterior n) (nativePosterior n) who site law
 
+/-- Compose qualified binding transport with the checked raw-equilibrium reduction.
+The qualified binding transport currently depends on explicit unfinished obligations. -/
+theorem concurrentRawSequentialPreservation :
+    ConcurrentRawSequentialPreservation setup implementation payoffs countAudit := by
+  exact concurrentRawSequentialPreservation_of_qualified_binding_law
+    setup implementation payoffs countAudit
+    (PhaseProposalQualifiedBinding.qualified_binding_law setup implementation)
+
+
 end Vegas
