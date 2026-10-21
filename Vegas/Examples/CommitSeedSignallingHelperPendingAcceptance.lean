@@ -233,7 +233,7 @@ theorem helper_pending_binding_accepted_next (seed : Seeds) (remaining : Nat)
       | some packet => pendingCommand packet.id (after.observeEnvironment app)) = _
     rw [selected]
     simp only [pendingCommand, available, ite_true]
-  obtain ⟨actualNative, actualHandled, _normalized, receipt⟩ :=
+  obtain ⟨actualNative, actualHandled, _normalized, receipt, _rawStamp⟩ :=
     phase_inclusion_snapshot_bindingAccepted runtime leaks plan (setup.initialLaw.map encodeInputs)
       horizon (family seed) afterRaw message.id message found next handled
   have sameNative : actualNative = native := Option.some.inj

@@ -233,7 +233,7 @@ theorem bob_early_binding_accepted_six (seed : Seeds) (material : app.Submission
     PhaseCount.binding_accepted_of_history runtime leaks bounds plan
       (setup.initialLaw.map encodeInputs) horizon (family seed) trace message input bobBinding
         (bob, .prepared serial) called packetRequest timely
-  obtain ⟨actualNative, actualHandled, _actualNormalized, receipt⟩ :=
+  obtain ⟨actualNative, actualHandled, _actualNormalized, receipt, _rawStamp⟩ :=
     phase_inclusion_snapshot_bindingAccepted runtime leaks plan (setup.initialLaw.map encodeInputs)
       horizon (family seed) raw message.id message found next phaseHandled
   have sameNative : actualNative = native :=

@@ -76,12 +76,15 @@ theorem phase_closed_transition_receipt_snapshot (plan : RuntimePhasePlan graph)
         (phase.drain current).native.accepted (.inr event) = some candidate →
         PhaseService.BindingAccepted runtime leaks
           ⟨before.execution.application.attempt, event⟩ candidate.1 after.execution) ∧
-      PhaseClosingEffect runtime leaks before.execution after.execution current := by
+      PhaseClosingEffect runtime leaks before.execution after.execution current ∧
+      BindingStamp (fun who => (app).outputs (before.execution.recall who))
+        before.execution.application.attempt (phase.drain current).native := by
   classical
   have binding :=
     (phaseBindingRecord_history runtime leaks plan inputs horizon scheduler trace).active
   have coverage :=
     (phaseFailureCoverage_history runtime leaks plan inputs horizon scheduler trace).active
+  have stamped := phaseLiveBindingStamp_history runtime leaks plan inputs horizon scheduler trace
   have finish (current : RecoveryState graph) (idle : after.actor = none)
       (normalized : after.execution.application =
         ({ before.execution.application with
@@ -91,7 +94,10 @@ theorem phase_closed_transition_receipt_snapshot (plan : RuntimePhasePlan graph)
         current.native.accepted (.inr event) = some candidate →
           PhaseService.BindingAccepted runtime leaks
             ⟨before.execution.application.attempt, event⟩ candidate.1 after.execution)
-      (effect : PhaseClosingEffect runtime leaks before.execution after.execution current) :
+      (effect : PhaseClosingEffect runtime leaks before.execution after.execution current)
+      (rawStamp : BindingStamp
+        (fun who => (app).outputs (before.execution.recall who))
+        before.execution.application.attempt current.native) :
       ∃ current : RecoveryState graph, after.actor = none ∧
         after.execution.application =
           ({ before.execution.application with
@@ -103,7 +109,9 @@ theorem phase_closed_transition_receipt_snapshot (plan : RuntimePhasePlan graph)
           (phase.drain current).native.accepted (.inr event) = some candidate →
           PhaseService.BindingAccepted runtime leaks
             ⟨before.execution.application.attempt, event⟩ candidate.1 after.execution) ∧
-        PhaseClosingEffect runtime leaks before.execution after.execution current := by
+        PhaseClosingEffect runtime leaks before.execution after.execution current ∧
+        BindingStamp (fun who => (app).outputs (before.execution.recall who))
+          before.execution.application.attempt (phase.drain current).native := by
     have finished := PhaseRuntimeState.finished_of_normalize_attempt_ne
       ({ before.execution.application with current := current } : PhaseRuntimeState graph)
         phase installed (by
@@ -112,7 +120,8 @@ theorem phase_closed_transition_receipt_snapshot (plan : RuntimePhasePlan graph)
       rw [normalized]
       exact (PhaseRuntimeState.settle_physical _ _ _ _ _).1
     refine ⟨current, idle, normalized, finished, phase.drain_bindingInvariant current nativeBinding,
-      covered.drain phase, (phase.drain_excluded current).trans physical.symm, ?_, effect⟩
+      covered.drain phase, (phase.drain_excluded current).trans physical.symm, ?_, effect,
+      rawStamp.copy (phase.drain_tables current).1⟩
     intro event candidate lower accepted
     apply receipts event candidate lower
     rwa [(phase.drain_tables current).1] at accepted
@@ -159,11 +168,11 @@ theorem phase_closed_transition_receipt_snapshot (plan : RuntimePhasePlan graph)
               Option.getD_none] at closed
             exact (closed rfl).elim
           | some state =>
-            obtain ⟨native, nativeHandled, normalized, receipted⟩ :=
+            obtain ⟨native, nativeHandled, normalized, receipted, rawStamp⟩ :=
               phase_inclusion_snapshot_bindingAccepted runtime leaks plan inputs horizon scheduler
                 trace id message found state handled
             refine finish (execution.application.current.inclusionResult
-              message.payload.packet.call native) rfl ?_ ?_ ?_ ?_ ?_
+              message.payload.packet.call native) rfl ?_ ?_ ?_ ?_ ?_ ?_
             · simpa only [ReactiveApplication.Execution.includePending,
                 MessageNetwork.includePending,
                 found, show (app).handle execution.application message = some state from handled,
@@ -173,6 +182,7 @@ theorem phase_closed_transition_receipt_snapshot (plan : RuntimePhasePlan graph)
             · exact coverage.inclusionResult runtime _ native nativeHandled
             · exact receipted
             · exact Or.inl ⟨id, message, native, found, physicalStep, nativeHandled, rfl⟩
+            · exact rawStamp
       | application operation =>
         have physicalStep := stepped
         obtain ⟨updated, selected, rfl⟩ := PMF.support_map .. ▸ stepped
@@ -182,7 +192,7 @@ theorem phase_closed_transition_receipt_snapshot (plan : RuntimePhasePlan graph)
         split at supported
         · obtain ⟨native, nativeMoved, rfl⟩ := PMF.support_map .. ▸ supported
           refine finish (execution.application.current.environmentResult operation native)
-            rfl rfl ?_ ?_ ?_ ?_
+            rfl rfl ?_ ?_ ?_ ?_ ?_
           · exact environmentStep_bindingInvariant runtime execution.application.current.native
               native operation binding nativeMoved
           · exact coverage.environmentResult runtime operation native nativeMoved
@@ -195,6 +205,7 @@ theorem phase_closed_transition_receipt_snapshot (plan : RuntimePhasePlan graph)
             exact phase_live_bindingAccepted runtime leaks plan inputs horizon scheduler trace
               event lower candidate old
           · exact Or.inr ⟨operation, native, physicalStep, nativeMoved, rfl⟩
+          · exact stamped.copy (environmentStep_tables runtime _ _ operation nativeMoved).1
         · cases (PMF.mem_support_pure_iff ..).mp supported
           exact (closed rfl).elim
 
@@ -320,7 +331,8 @@ theorem phase_attempt_stopped_receipt_snapshot
       · intro closed
         have installedNow : phase ∈ middle.execution.application.phases.head? := by
           simpa only [phasesKept same] using installed
-        obtain ⟨raw, idle, normalized, finished, binding, covered, excluded, receipts, effect⟩ :=
+        obtain ⟨raw, idle, normalized, finished, binding, covered, excluded, receipts, effect,
+          _rawStamp⟩ :=
           phase_closed_transition_receipt_snapshot runtime leaks plan inputs horizon scheduler
             middle next (menu.toRawTrace initial horizon scheduler earlier) joint moved phase
               installedNow (fun equal => closed (equal.trans same))

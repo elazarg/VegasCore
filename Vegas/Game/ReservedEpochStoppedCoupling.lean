@@ -344,7 +344,7 @@ theorem original_binding_receipt_accepted (bounds : MessageBounds graph)
       cases last : before.execution.application.attempt
       simp only [first, middle, last] at startProgress endProgress generation phase
       congr <;> omega
-    obtain ⟨sameNative, handled, normalized, _receipts⟩ :=
+    obtain ⟨sameNative, handled, normalized, _receipts, _rawStamp⟩ :=
       phase_inclusion_snapshot_bindingAccepted runtime leaks plan inputs horizon scheduler
         rawAccepting message.id message found following phaseHandled
     have typedHandle : handle runtime acceptingBefore.execution.application.current.native

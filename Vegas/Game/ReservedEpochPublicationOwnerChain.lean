@@ -551,7 +551,7 @@ theorem publication_exclusion_original_result (menu : (app).ResponseMenu)
         after.execution message input absent acceptingMove receipt
     have sameNative : actualNative = native := Option.some.inj (nativeHandled.symm.trans handled)
     subst actualNative
-    obtain ⟨actualNative, actualHandled, normalized, _receipts⟩ :=
+    obtain ⟨actualNative, actualHandled, normalized, _receipts, _rawStamp⟩ :=
       phase_inclusion_snapshot_bindingAccepted runtime leaks plan inputs horizon scheduler rawTrace
         id message found following phaseHandled
     have nativeEq : actualNative = native := Option.some.inj (actualHandled.symm.trans handled)

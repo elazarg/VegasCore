@@ -4699,7 +4699,7 @@ private theorem accepting_receipt_handler
           · exact (absent earlier).elim
           · cases impossible
       | some next =>
-          obtain ⟨native, accepted, normalized, _receipts⟩ :=
+          obtain ⟨native, accepted, normalized, _receipts, _rawStamp⟩ :=
             phase_inclusion_snapshot_bindingAccepted implementation.runtime implementation.leaks
               implementation.plan inputs implementation.horizon implementation.scheduler
               raw identifier message found next handled
@@ -4765,7 +4765,8 @@ theorem accepted_closing_image
       implementation.scheduler (some before) joint).support := by
     rw [← initialEq]
     exact realized
-  obtain ⟨current, _idle, normalized, finished, binding, coverage, _excluded, _receipts, effect⟩ :=
+  obtain ⟨current, _idle, normalized, finished, binding, coverage, _excluded, _receipts, effect,
+    _rawStamp⟩ :=
     phase_closed_transition_receipt_snapshot implementation.runtime implementation.leaks
       implementation.plan inputs implementation.horizon implementation.scheduler before after
         raw joint moved phase installed closed

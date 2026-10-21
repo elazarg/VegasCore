@@ -334,11 +334,13 @@ theorem phase_inclusion_snapshot_bindingAccepted (plan : RuntimePhasePlan graph)
       next = ({ control.execution.application with current :=
         control.execution.application.current.inclusionResult message.payload.packet.call native } :
           PhaseRuntimeState graph).normalize ∧
-      ∀ event candidate, control.execution.application.attempt.phase ≤ event.val →
+      (∀ event candidate, control.execution.application.attempt.phase ≤ event.val →
         native.accepted (.inr event) = some candidate →
         PhaseService.BindingAccepted runtime leaks
           ⟨control.execution.application.attempt, event⟩ candidate.1
-            (control.execution.includePending app id) := by
+            (control.execution.includePending app id)) ∧
+      BindingStamp (fun who => (app).outputs (control.execution.recall who))
+        control.execution.application.attempt native := by
   classical
   let outputs := acceptingBindingOutputs runtime leaks (control.execution.includePending app id)
   have stamp := (phaseBindingAcceptedReceipts_history runtime leaks plan inputs horizon scheduler
@@ -351,30 +353,35 @@ theorem phase_inclusion_snapshot_bindingAccepted (plan : RuntimePhasePlan graph)
   unfold PhaseRuntimeState.handle at handled
   split at handled
   · obtain ⟨native, accepted, normalized⟩ := Option.map_eq_some_iff.mp handled
-    refine ⟨native, accepted, normalized.symm, ?_⟩
     have signed := (phaseBindingAcceptedReceipts_history runtime leaks plan inputs horizon
       scheduler trace).live.mono
         (includePending_acceptingBindingOutputs runtime leaks control.execution id)
     have rawStamp := (bindingAccepted_handle runtime outputs control.execution.application
       native message stamp signed present current accepted).1
-    intro event candidate lower installed
-    rcases rawStamp event candidate installed with earlier |
-      ⟨packet, member, sender, called, attemptEq⟩
-    · omega
-    · obtain ⟨authored, received⟩ := List.mem_filter.mp member
-      have recallEq : (control.execution.includePending app id).recall =
-          control.execution.recall := by
-        simp only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
-          found]
-      have inputsEq : (control.execution.includePending app id).network.inputs =
-          control.execution.network.inputs := by
-        simp only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
-          found]
-      have recalled := (app).history_inputRecall (inputs.map (PhaseRuntimeState.initial plan))
-        horizon scheduler trace candidate.1
-      rw [recallEq, ← recalled] at authored
-      exact ⟨packet, by rw [inputsEq]; exact (List.mem_filter.mp authored).1,
-        sender, attemptEq, by simp only [called, Payload.event?], of_decide_eq_true received⟩
+    refine ⟨native, accepted, normalized.symm, ?_, ?_⟩
+    · intro event candidate lower installed
+      rcases rawStamp event candidate installed with earlier |
+        ⟨packet, member, sender, called, attemptEq⟩
+      · omega
+      · obtain ⟨authored, received⟩ := List.mem_filter.mp member
+        have recallEq : (control.execution.includePending app id).recall =
+            control.execution.recall := by
+          simp only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
+            found]
+        have inputsEq : (control.execution.includePending app id).network.inputs =
+            control.execution.network.inputs := by
+          simp only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
+            found]
+        have recalled := (app).history_inputRecall (inputs.map (PhaseRuntimeState.initial plan))
+          horizon scheduler trace candidate.1
+        rw [recallEq, ← recalled] at authored
+        exact ⟨packet, by rw [inputsEq]; exact (List.mem_filter.mp authored).1,
+          sender, attemptEq, by simp only [called, Payload.event?], of_decide_eq_true received⟩
+    · apply rawStamp.mono
+      intro who packet member
+      have unfiltered := (List.mem_filter.mp member).1
+      simpa only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
+        found] using unfiltered
   · cases handled
 
 /-- Current-attempt accepted bindings certify actual true receipts without

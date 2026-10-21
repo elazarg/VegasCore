@@ -215,7 +215,7 @@ theorem proper_late_inclusion (seed : Seeds) (owner : Player) (remaining : Nat)
   rw [call] at nativeHandled
   have sameTyped : typedNative = native := Option.some.inj (handled.symm.trans nativeHandled)
   subst typedNative
-  obtain ⟨actualNative, actualHandled, _actualNormalized, acceptedReceipt⟩ :=
+  obtain ⟨actualNative, actualHandled, _actualNormalized, acceptedReceipt, _rawStamp⟩ :=
     phase_inclusion_snapshot_bindingAccepted runtime leaks plan (setup.initialLaw.map encodeInputs)
       horizon (family seed) rawTrace message.id message found next phaseHandled
   have sameNative : actualNative = native := by

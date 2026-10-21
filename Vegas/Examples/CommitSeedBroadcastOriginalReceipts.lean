@@ -97,7 +97,8 @@ theorem survivor_original_receipt_or_open (selected : app.Scheduler) (current : 
                 have compiledPrior := prior
                 rw [initial_eq_compiled] at compiledPrior
                 obtain ⟨snapshot, _idle, _normalized, finished, binding, covered, excluded,
-                    receipts, _effect⟩ := phase_closed_transition_receipt_snapshot runtime leaks
+                    receipts, _effect, _rawStamp⟩ :=
+                  phase_closed_transition_receipt_snapshot runtime leaks
                   plan
                   (setup.initialLaw.map encodeInputs) horizon selected before after compiledPrior
                     joint

@@ -101,7 +101,7 @@ theorem accepting_include_native (plan : RuntimePhasePlan graph)
             Bool.true_eq_false, and_false, or_false] at accepted
           exact (absent accepted).elim
       | some following =>
-          obtain ⟨native, nativeHandled, _normalized, _receipts⟩ :=
+          obtain ⟨native, nativeHandled, _normalized, _receipts, _rawStamp⟩ :=
             phase_inclusion_snapshot_bindingAccepted runtime leaks plan inputs horizon scheduler
               trace message.id message found following handled
           exact ⟨native, following, rfl, nativeHandled⟩
