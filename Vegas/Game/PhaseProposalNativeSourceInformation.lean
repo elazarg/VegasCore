@@ -3750,6 +3750,142 @@ theorem source_information_metadata
   cases firstState <;> cases secondState <;> exact metadata
 
 omit [Fintype Player] in
+/-- A closed source fiber keeps every historical binding value, including
+accepted values canceled by a later retry. Its hidden label changes are only
+foreign publications, which cannot change an addressed binding read. -/
+theorem sourceBindingAt_closed_key
+    (wellFormed : setup.WellFormed) (focal owner : Player)
+    (attempt : CommitAttemptId) (event : (serviceGraph setup .concurrent).EventId)
+    (payload : L.Ty)
+    (binding : (serviceGraph setup .concurrent).outputLayout event = .binding owner payload)
+    (leftCurrent rightCurrent : CommitRecoveryState setup.program)
+    (left : setup.proposalRecoveryProtocol.Trace (some leftCurrent))
+    (right : setup.proposalRecoveryProtocol.Trace (some rightCurrent))
+    (same : setup.proposalRecoveryClosedKey focal ⟨some leftCurrent, left⟩ =
+      setup.proposalRecoveryClosedKey focal ⟨some rightCurrent, right⟩)
+    (leftGood : setup.proposalRecoveryForeignGood focal ⟨some leftCurrent, left⟩)
+    (rightGood : setup.proposalRecoveryForeignGood focal ⟨some rightCurrent, right⟩) :
+    sourceBindingAt setup attempt event owner payload binding left =
+      sourceBindingAt setup attempt event owner payload binding right := by
+  have noReveal : ∀ {Γ : SourceCtx Player L} {O : Finset VarId}
+      (program : SourceProgram Player L Γ O) (named : Fin (eventCount program))
+      (bound : outputLayout program named = .binding owner payload)
+      (actor : Player) (name : VarId) (bit : Bool),
+      encodeEventAction? program named (.reveal actor name bit) = none := by
+    intro Γ O program
+    induction program with
+    | ret => intro named; exact Fin.elim0 named
+    | sample name fresh law next ih =>
+      intro named bound actor selected bit
+      refine Fin.cases ?_ ?_ named bound
+      · intro impossible; cases impossible
+      · intro tail bound
+        exact ih tail bound actor selected bit
+    | commit name actor fresh guard next ih =>
+      intro named bound selected field bit
+      refine Fin.cases ?_ ?_ named bound
+      · intro _bound
+        rfl
+      · intro tail bound
+        exact ih tail bound selected field bit
+    | reveal published actor name fresh selected unresolved next ih =>
+      intro named bound author field bit
+      refine Fin.cases ?_ ?_ named bound
+      · intro impossible; cases impossible
+      · intro tail bound
+        exact ih tail bound author field bit
+  have dataEq {first second : Player → Option (ProposalRecoveryMove Player L)}
+      (labels : SourceProgram.Setup.ForeignDisclosureLabels focal first second) :
+      phaseRecoveryBindingData setup .concurrent event owner payload binding
+          ((first owner).map (·.semantic)) =
+        phaseRecoveryBindingData setup .concurrent event owner payload binding
+          ((second owner).map (·.semantic)) := by
+    rcases labels with identical | ⟨author, name, _foreign, other, changed⟩
+    · rw [identical]
+    · by_cases owned : owner = author
+      · subst author
+        rcases changed with ⟨firstEq, secondEq⟩ | ⟨secondEq, firstEq⟩ <;>
+          simp only [firstEq, secondEq, Option.map_some, phaseRecoveryBindingData,
+            ProposalRecoveryMove.ordinary, ProposalRecoveryMove.failedDisclosure,
+            Option.elim_some, Bool.false_eq_true, ↓reduceIte, Option.bind_some,
+            noReveal setup.program event binding, Option.map_none, Option.getD_none]
+      · rw [other owner owned]
+  have preserved {first : CommitRecoveryState setup.program}
+      {prior : setup.proposalRecoveryProtocol.Trace (some first)}
+      {a b : setup.proposalRecoveryProtocol.History}
+      (refines : setup.ProposalRecoveryForeignRefinement focal first prior a b) :
+      sourceBindingAt setup attempt event owner payload binding a.trace =
+        sourceBindingAt setup attempt event owner payload binding b.trace := by
+    induction refines with
+    | initial => rfl
+    | @extend leftState rightState leftAfter rightAfter earlierLeft earlierRight earlier
+        leftJoint rightJoint leftLegal rightLegal leftSupported rightSupported labels
+        _public _proposal _changed _excluded ih =>
+      have metadata := source_information_metadata setup focal
+        ⟨leftState, earlierLeft⟩ ⟨rightState, earlierRight⟩ earlier.info_eq
+      cases leftState with
+      | none =>
+        cases rightState with
+        | none => simpa only [sourceBindingAt] using ih
+        | some current => exact metadata.elim
+      | some current =>
+        cases rightState with
+        | none => exact metadata.elim
+        | some other =>
+          have live := (ProtocolState.MetadataEq.controls setup.program current.point
+            other.point metadata.1).1
+          have saved := (ProtocolState.MetadataEq.controls setup.program current.saved
+            other.saved metadata.2.1).1
+          have addressEq : (current.generation = attempt.generation ∧
+              instructionCount setup.program -
+                ProtocolState.remaining setup.program current.saved = attempt.phase ∧
+              instructionCount setup.program -
+                ProtocolState.remaining setup.program current.point = event.val) ↔
+              (other.generation = attempt.generation ∧
+              instructionCount setup.program -
+                ProtocolState.remaining setup.program other.saved = attempt.phase ∧
+              instructionCount setup.program -
+                ProtocolState.remaining setup.program other.point = event.val) := by
+            rw [← live, ← saved, ← metadata.2.2.2.2]
+          by_cases addressed : current.generation = attempt.generation ∧
+              instructionCount setup.program -
+                ProtocolState.remaining setup.program current.saved = attempt.phase ∧
+              instructionCount setup.program -
+                ProtocolState.remaining setup.program current.point = event.val
+          · have rightAddress := addressEq.mp addressed
+            have data := dataEq labels
+            simp only [sourceBindingAt, ite_eq_left addressed, ite_eq_left rightAddress]
+            split
+            · split
+              · rename_i _ _ leftEq _ _ rightEq
+                exact congrArg some (PublicationResult.success.inj
+                  (congrArg Prod.fst (leftEq.symm.trans (data.trans rightEq))))
+              · have missing : ∀ value, phaseRecoveryBindingData setup .concurrent event
+                    owner payload binding ((rightJoint owner).map (·.semantic)) =
+                      (.success value, false) → False := by assumption
+                apply False.elim
+                apply missing
+                exact data.symm.trans (by assumption)
+            · split
+              · have missing : ∀ value, phaseRecoveryBindingData setup .concurrent event
+                    owner payload binding ((leftJoint owner).map (·.semantic)) =
+                      (.success value, false) → False := by assumption
+                apply False.elim
+                apply missing
+                exact data.trans (by assumption)
+              · rfl
+          · have rightAddress : ¬ (other.generation = attempt.generation ∧
+                instructionCount setup.program -
+                  ProtocolState.remaining setup.program other.saved = attempt.phase ∧
+                instructionCount setup.program -
+                  ProtocolState.remaining setup.program other.point = event.val) :=
+              fun matched => addressed (addressEq.mpr matched)
+            simpa only [sourceBindingAt, ite_eq_right addressed, ite_eq_right rightAddress] using ih
+  obtain ⟨first, prior, refines⟩ := setup.proposalRecovery_refinement_of_closed_key focal
+    wellFormed leftCurrent rightCurrent left right same leftGood rightGood
+  exact preserved refines
+
+omit [Fintype Player] in
 theorem sourceBindingAt_same_information
     (focal owner : Player) (attempt : CommitAttemptId)
     (event : (serviceGraph setup .concurrent).EventId) (payload : L.Ty)
