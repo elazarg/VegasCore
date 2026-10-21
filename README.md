@@ -13,8 +13,9 @@ recovery sequential-equilibrium preservation. Concurrent asynchronous SE
 preservation under reserved service remains unproved; the
 [concrete contract](Vegas/Game/ConcurrentRawSequentialPreservation.lean) and
 [active proof plan](docs/se-concurrent-mechanization.md) state its exact scope
-and remaining transport obligations. The complete mathematical derivations of
-the four primitive obligations have independent agent review. The source-site,
+and remaining transport obligations. The global weighted argument is incomplete:
+source-phase invariants, exhaustive annotated coverage and chronological atom
+accounting still need mathematical derivations. The source-site,
 foreign-posterior pair and stopped-payoff primitives are Lean-checked; the
 weighted transport primitive remains admitted. An unrestricted
 prefix density theorem is not claimed. The weaker general asynchronous contract

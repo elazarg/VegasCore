@@ -1,6 +1,6 @@
 # Independent agent review of concurrent likelihood
 
-**All four derivations passed independent agent review; 3/4 primitive proofs are Lean-checked.**
+**Local calculations have agent review; the global weighted derivation is incomplete.**
 The [likelihood derivation](se-concurrent-likelihood.md) uses literal concurrent
 execution, the original correlated input law and one whole-execution tape prior.
 This is agent mathematical review, not human approval or Lean verification.
@@ -8,10 +8,11 @@ The global transport and unconditional concurrent preservation remain unproved.
 
 ## Mathematical review boundary
 
-The finite argument establishes the following connections, without supplying
-query equality, source goodness or an inverse as an external premise. Its
-global correspondence and attachment steps are derived explicitly, alongside
-the local identities.
+The following lists the intended connections. The local calculations support
+this route, but the global source invariant, coverage of every positive annotated
+summand and chronological atom identity still require explicit derivations.
+These must be proved, never supplied as external premises. The list is not
+evidence that the global implications hold.
 
 * Construct legal raw traces before evaluating query probabilities.
   `phaseProposalReferenceStrategy_fullSupport` supplies foreign support from
@@ -52,20 +53,33 @@ is still required.
 
 ## Exact primitive proof status
 
-The four primitive statements and downstream aggregation compile. Each primitive
-has a detailed derivation that passed separate adversarial agent review against
-its exact hypotheses and conclusions. Historical reconstruction received both
-structural and probability reviews. This is mathematical review, not a Lean
-proof. The source-site and foreign posterior pair primitives, together with
+The four primitive statements and downstream aggregation compile. The
+source-site, foreign posterior pair and stopped-payoff primitives, together with
 mechanical-weight representative independence, are Lean-checked using only
-standard axioms. Weighted transport and payoff attachment remain open.
+standard axioms. Weighted transport remains admitted; its mathematical argument
+is also incomplete. A proposed route and reviewed local identities do not supply
+its missing global proof.
 
 | Primitive | Mathematical status |
 | --- | --- |
 | `qualified_source_site` | Reviewed: one conditioned source/runtime coupling supplies the entire cut and both locks; full information identifies its common site and encoder. |
 | `foreign_posterior_cut_pair` | Detailed derivation reviewed: exact selected-entry row induction and owner-word disintegration give both posterior laws and their positive normalizers. Structural excluded-player placeholder histories are retained separately from actual automatic source actions. |
-| `qualified_annotation_pushforward` | Reviewed: depthwise row correspondence and raw-image induction cover every exit, both augmented inverses, every-prefix queries and the exact mechanical, source and auxiliary factors. |
+| `qualified_annotation_pushforward` | Open: simultaneous source-image induction, exhaustive positive-annotation coverage and literal chronological atom accounting are not fully derived. Local identities and conditional cancellation are available. |
 | `annotated_stopped_payoff` | Reviewed: constructive all-posterior cylinder positivity, original-tape full-word gluing and the actual completed archived witness give the aggregate payoff and its complement. |
+
+The sharpest missing implication starts with an arbitrary positive original
+annotated summand `(h, tape, q, z, g, G)`. It must derive the common full source
+information and goodness of `g`, supported forced completion `G`, the unique
+prefix `q`, the exact structural foreign word `z`, and consistent accepted,
+canceled and current-issued origins under one assignment. Extracted auxiliary
+choices must be supported and replay must recover the entire annotated tuple.
+Constructing a replay from a supported `(g, G)` does not prove this converse.
+
+The atom calculation must also prove exhaustive, disjoint allocation of each
+actual proper SEND to historical accepted, current issued or historical
+never-admitted factors, with its actual query and multiplicity. Sequential PMF
+normalization and cancellation are justified only after that identity and the
+augmented correspondence are proved.
 
 For weights, representative independence is a separate actual-history theorem.
 Fresh-slot laws give the binding case; proper live bindings give the exact

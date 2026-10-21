@@ -1,14 +1,15 @@
 # Concurrent qualified likelihood and causal payoff
 
-This document gives the complete agent-reviewed mathematical argument for the
+This document records the mathematical route and local arguments for the
 four primitive obligations used by `QualifiedBindingLaw`: `qualified_source_site`,
 `foreign_posterior_cut_pair`, `qualified_annotation_pushforward`, and
 `annotated_stopped_payoff`. Their Lean statements and the downstream aggregation
 compile. The source-site, foreign posterior pair and stopped-payoff primitives
-are Lean-checked (3/4). Weighted transport remains open. The
-mathematical derivation is reviewed; concurrent sequential-equilibrium preservation remains
-unproved in Lean. Checked declaration names identify existing tools; the finite
-constructions connecting them are given below.
+are Lean-checked. Weighted transport remains open in mathematics and Lean.
+The simultaneous source-phase invariant, exhaustive positive-annotation coverage
+and chronological atom identity are not fully derived here. Conditional local
+calculations and cancellation do not prove these global steps. Checked
+declaration names identify existing tools, not a completed preservation argument.
 
 ## Scope and exact conclusions
 
@@ -286,6 +287,11 @@ in this source-only identity. This proves the arbitrary-profile pair contract.
 
 ## Historical alignment through complete visit windows
 
+The local cases below describe the required calculations. A simultaneous
+invariant covering every visit, public phase and unfinished current block still
+needs a complete derivation; typed entry/saved agreement does not follow from
+metadata equality alone.
+
 Fix an index with qualified actual anchor h*. Construct its actual cut g*,
 entry q* and completion G*. The package's actualCut gives info_i(g*)=J.
 Expand each normalization into its finite settle recursion for bookkeeping,
@@ -483,8 +489,10 @@ failure branch keeps failure and pair=none; rejection uses
 `sourceSnapshotAssignment_handle_opening` with RevealFixed, including rejection.
 Expiry/environment use `sourceSnapshotAssignment_environment`; normalization
 uses `sourceSnapshotAssignment_normalize` and the raw closing-image induction.
-This yields an
-actual supported h at I with the same word,tape and admission bit.
+These steps would yield an actual supported h at I with the same word, tape
+and admission bit once the simultaneous source image and whole replay
+nonfailure induction are established. The local commutation and support
+calculations alone do not establish this global conclusion.
 
 Its canonical c(h) and q have the same base, full focal information, literal
 commitments, public outcomes and foreign proposal classes. The actual
@@ -494,6 +502,11 @@ z is uniquely recovered from q,G: full active history prefixes plus block
 actions, deterministic excluded synthetic failure suffixes, focal empty.
 Those excluded suffixes are not free inverse variables. Issued-ledger and
 local row equations give positive Q(z,true) and forced-pair mass.
+
+**Open global coverage step.** The following extraction and recovery are required,
+but their hypotheses have not been derived for every positive original summand.
+In particular, a forward construction from a supported source pair does not
+prove exhaustive coverage of the native annotated domain.
 
 From a positive W atom (h,q,z,g,G), extract actual aliases and historical lost
 proper values. Replay returns h by raw-depth induction, including raw/saved/
@@ -533,12 +546,13 @@ rowwise products; terminal policy differences never execute. Positive finite
 M0 permits K=R0. Zero cases retain the multiplied identity. Hidden PUB labels
 carry the source posterior factor, not an alias count or native cause law.
 
-Every actual foreign SEND has exactly one location: historical accepted D0,
+The required chronological atom identity must prove that every actual foreign
+SEND has exactly one location: historical accepted D0,
 current issued U_hq, or historical never-admitted Lambda. INCLUDE, copying and
 restore add no draw. U includes issued static-later rows, and is their owner-
 prefix product by the owner-word factorization. Each query is the actual one
 proved above. Focal raw factors remain in A_m. Original scheduler disintegration
-and actual mechanical constancy give
+and actual mechanical constancy would then give
 
     r_N(h) T_h(tau)=A_m T0 D0 U_hq Lambda_h.
 
@@ -701,7 +715,8 @@ Current ordinary-versus-prescribed error and future same-override error remain
 in the stated bounds, along with native-bad and source-Good conditioning errors.
 The existing shared limiting sequence controls those errors.
 
-This completes the reviewed mathematical derivations and their composition.
-The weighted transport primitive remains to be proved in Lean. Compilation of
-its admitted interface and the actual aggregators does not remove their sorryAx
-dependence, and this document does not mark concurrent preservation checked.
+This conditional composition does not complete the weighted mathematical
+argument. The global source invariant, exhaustive annotated coverage and exact
+atom accounting remain open. The weighted transport primitive is admitted in
+Lean; compilation of its interface and aggregators does not remove their
+sorryAx dependence. Concurrent preservation remains unproved.
