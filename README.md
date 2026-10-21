@@ -14,8 +14,8 @@ preservation under reserved service remains unproved; the
 [concrete contract](Vegas/Game/ConcurrentRawSequentialPreservation.lean) and
 [active proof plan](docs/se-concurrent-mechanization.md) state its exact scope
 and remaining transport obligations. The complete mathematical derivations of
-the four primitive obligations have independent agent review; their Lean proofs
-remain admitted. An unrestricted
+the four primitive obligations have independent agent review. The source-site
+primitive is Lean-checked; three primitive proofs remain admitted. An unrestricted
 prefix density theorem is not claimed. The weaker general asynchronous contract
 also has [checked preservation obstructions](docs/standard-runtime-se-status.md).
 Honest outcome simulation alone does not establish equilibrium preservation.

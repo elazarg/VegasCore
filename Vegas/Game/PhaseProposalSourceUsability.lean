@@ -148,7 +148,7 @@ private theorem stored_binding_available
       exact congrArg Option.isSome stored
 
 omit [Fintype Player] in
-private theorem input_binding_value
+theorem input_binding_value
     (setup : Setup (Player := Player) (L := L)) (mode : ExecutionMode)
     (wellFormed : setup.WellFormed)
     (draw : State L setup.context) (supported : draw ∈ setup.initialLaw.support)

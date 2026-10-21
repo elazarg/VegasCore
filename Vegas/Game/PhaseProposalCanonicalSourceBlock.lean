@@ -95,7 +95,7 @@ def ordinaryBlockProfile
 omit [Fintype Player] in
 /-- The structural block row reads the actual updated source query, including
 its complete public address word and unchanged original proposal archive. -/
-private theorem ordinary_source_query_readback
+theorem ordinary_source_query_readback
     (setup : Setup (Player := Player) (L := L))
     (who : Player) (current : CommitRecoveryState setup.program)
     (trace : setup.proposalRecoveryProtocol.Trace (some current))

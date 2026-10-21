@@ -2345,11 +2345,14 @@ theorem phaseProposalUnflagged_stopped_binding_word_from_retained_entry
           (legal : ((menu).protocol startLaw horizon scheduler).Legal (some before) joint)
           (realized : some ending ∈ ((app).transition startLaw horizon scheduler
             (some before) joint).support) (raw : RecoveryState (graph)),
-          final.state = some ending ∧ TracePrefix anchorTrace prior ∧
+          final.state = some ending ∧ ending.actor = none ∧
+            ending.execution.application.attempt ≠ anchor.execution.application.attempt ∧
+            TracePrefix anchorTrace prior ∧
             TracePrefix (prior.extend joint legal realized) final.trace ∧
             PhaseClosingEffect runtime leaks before.execution ending.execution raw ∧
             image final = phase.drain raw ∧ phase.Finished (image final) ∧
             (image final).excluded = anchor.execution.application.current.excluded ∧
+            (image final).excluded = ending.execution.application.current.excluded ∧
             PhaseProposal.sourceArchive ending.execution.network.inputs =
               PhaseProposal.sourceArchive anchor.execution.network.inputs ∧
             before.execution.application.attempt = anchor.execution.application.attempt ∧
@@ -2390,11 +2393,14 @@ theorem phaseProposalUnflagged_stopped_binding_word_from_retained_entry
         (legal : ((menu).protocol startLaw horizon scheduler).Legal (some before) joint)
         (realized : some ending ∈ ((app).transition startLaw horizon scheduler
           (some before) joint).support) (raw : RecoveryState (graph)),
-        final.state = some ending ∧ TracePrefix anchorTrace prior ∧
+        final.state = some ending ∧ ending.actor = none ∧
+          ending.execution.application.attempt ≠ anchor.execution.application.attempt ∧
+          TracePrefix anchorTrace prior ∧
           TracePrefix (prior.extend joint legal realized) final.trace ∧
           PhaseClosingEffect runtime leaks before.execution ending.execution raw ∧
           phase.Finished (phase.drain raw) ∧
           (phase.drain raw).excluded = anchor.execution.application.current.excluded ∧
+          (phase.drain raw).excluded = ending.execution.application.current.excluded ∧
           PhaseProposal.sourceArchive ending.execution.network.inputs =
             PhaseProposal.sourceArchive anchor.execution.network.inputs ∧
           (∀ event ∈ phase.events, event ∈ (frontier final).cut.completed) ∧
@@ -2414,7 +2420,7 @@ theorem phaseProposalUnflagged_stopped_binding_word_from_retained_entry
     rcases anchor with ⟨remaining, actor, execution⟩
     change actor = none at idle
     subst actor
-    obtain ⟨ending, before, prior, joint, legal, realized, raw, stateEq, _idleEnd, changed,
+    obtain ⟨ending, before, prior, joint, legal, realized, raw, stateEq, idleEnd, changed,
         fromAnchor, toFinal, sameAttempt, beforeInstalled, normalized, effect, finished,
         bindingInvariant, coverage, snapshotE, _accepted, _candidates, oldArchive, _tail⟩ :=
       phaseProposalUnflagged_stopped_binding_image setup mode runtime leaks bounds plan complete
@@ -2531,8 +2537,9 @@ theorem phaseProposalUnflagged_stopped_binding_word_from_retained_entry
         ite_eq_left (by
           simpa only [(menu).toRawTrace_length] using (retained.trans fromAnchor).length_le)]
       simp only [phaseProposalBindingFrontierAdvance, sameOrigin, ↓reduceIte, beforeIdle]
-    refine ⟨ending, before, prior, joint, legal, realized, raw, stateEq, fromAnchor, toFinal,
-      effect, finished, snapshotE.trans finalE, oldArchive, ?_, ?_, sameAttempt,
+    refine ⟨ending, before, prior, joint, legal, realized, raw, stateEq, idleEnd, changed,
+      fromAnchor, toFinal,
+      effect, finished, snapshotE.trans finalE, snapshotE, oldArchive, ?_, ?_, sameAttempt,
       beforeInstalled, normalized, bindingInvariant, coverage⟩
     · simpa only [frontierEq] using scalar.1
     · simpa only [entryE, frontierEq] using scalar.2
@@ -2546,13 +2553,16 @@ theorem phaseProposalUnflagged_stopped_binding_word_from_retained_entry
     simp only [image, dite_eq_left member]
   refine ⟨image, ?_, ?_⟩
   · intro final member
-    obtain ⟨stateEq, fromAnchor, toFinal, effect, finished, imageE, oldArchive,
+    obtain ⟨stateEq, idleEnd, changed, fromAnchor, toFinal, effect, finished, imageE,
+      snapshotE, oldArchive,
       _completed, _scalar, sameAttempt, beforeInstalled, normalized, valid, coverage⟩ :=
         facts final member
     exact ⟨ending final member, before final member, prior final member, joint final member,
-      legal final member, realized final member, raw final member, stateEq, fromAnchor, toFinal,
+      legal final member, realized final member, raw final member, stateEq, idleEnd, changed,
+      fromAnchor, toFinal,
       effect, imageEq final member, (imageEq final member).symm ▸ finished,
-      (congrArg RecoveryState.excluded (imageEq final member)).trans imageE, oldArchive,
+      (congrArg RecoveryState.excluded (imageEq final member)).trans imageE,
+      (congrArg RecoveryState.excluded (imageEq final member)).trans snapshotE, oldArchive,
       sameAttempt, beforeInstalled, normalized, (imageEq final member).symm ▸ valid,
       (imageEq final member).symm ▸ coverage⟩
   let graphProfile := phaseProposalBindingPotentialProfile setup mode runtime leaks plan
@@ -2565,7 +2575,8 @@ theorem phaseProposalUnflagged_stopped_binding_word_from_retained_entry
         phaseProposalBindingWord setup.program block suffix embedding
           anchor.execution.application.current.excluded (frontier final).store entry := by
     intro final member
-    obtain ⟨_stateEq, _fromAnchor, _toFinal, _effect, _finished, _imageE, _oldArchive,
+    obtain ⟨_stateEq, _idleEnd, _changed, _fromAnchor, _toFinal, _effect, _finished, _imageE,
+      _snapshotE, _oldArchive,
       _completed, same, _sameAttempt, _beforeInstalled, _normalized, _valid, _coverage⟩ :=
         facts final member
     rw [imageEq final member]
@@ -2603,7 +2614,8 @@ theorem phaseProposalUnflagged_stopped_binding_word_from_retained_entry
             (image final).native.config.store entry)) := by
         apply bind_congr_on_support
         intro final member
-        have completed := (facts final member).2.2.2.2.2.2.2.1
+        obtain ⟨_stateEq, _idleEnd, _changed, _fromAnchor, _toFinal, _effect, _finished,
+          _imageE, _snapshotE, _oldArchive, completed, _rest⟩ := facts final member
         have pointmass := completed_word_canonical setup mode block suffix embedding
           anchor.execution.application.current.excluded entry graphProfile (frontier final)
             (fun index inside => completed (embedding.event index) (locations index inside))

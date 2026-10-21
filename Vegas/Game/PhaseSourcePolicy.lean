@@ -21,7 +21,7 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   (bounds : MessageBounds (serviceGraph setup mode))
 
 open Classical in
-private def requestedEvent (who : Player) (view : PhasePublicView (serviceGraph setup mode)) :
+def requestedEvent (who : Player) (view : PhasePublicView (serviceGraph setup mode)) :
     Option (serviceGraph setup mode).EventId :=
   if offered : ∃ event, PhaseRuntimeState.requests view who ⟨view.attempt, event⟩ then
     some offered.choose else none
@@ -45,7 +45,7 @@ private theorem requestedEvent_of_request
   exact congrArg some same
 
 open Classical in
-private def eventPolicyDispatch
+def eventPolicyDispatch
     (openings : ∀ (owner : Player) (_event : (serviceGraph setup mode).EventId)
       (payload : L.Ty), FieldRef (serviceGraph setup mode).layout (.binding owner payload) →
       (phaseApplication runtime leaks).Policy)

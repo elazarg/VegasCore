@@ -268,7 +268,7 @@ private theorem recovery_values_of_not_generated :
           exact ih point excluded joint after who legal survives notGenerated proper member
 
 omit [Fintype Player] in
-private theorem source_signal_depth (focal : Player) :
+theorem source_signal_depth (focal : Player) :
     ∀ {state : setup.proposalRecoveryProtocol.State}
       (trace : setup.proposalRecoveryProtocol.Trace state),
       (setup.proposalRecoverySignals.infoOf focal trace).2.length = trace.length
@@ -530,7 +530,7 @@ private theorem foreign_commit_class_of_next_excluded
           exact ⟨rfl, trivial⟩
 
 omit [Fintype Player] in
-private theorem metadata_restrict_to_suffix
+theorem metadata_restrict_to_suffix
     {wholeΓ Γ : SourceCtx Player L} {wholeO O : Finset VarId}
     {whole : SourceProgram Player L wholeΓ wholeO} {program : SourceProgram Player L Γ O}
     {lift : Vegas.SourceProgram.ProtocolState program → Vegas.SourceProgram.ProtocolState whole}

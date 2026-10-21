@@ -4,7 +4,8 @@ This document gives the complete agent-reviewed mathematical argument for the
 four primitive obligations used by `QualifiedBindingLaw`: `qualified_source_site`,
 `foreign_posterior_cut_pair`, `qualified_annotation_pushforward`, and
 `annotated_stopped_payoff`. Their Lean statements and the downstream aggregation
-compile, but the four primitive bodies still contain `sorry`. The mathematical
+compile. The source-site primitive is Lean-checked; the other three primitive
+bodies still contain `sorry`. The mathematical
 derivation is reviewed; concurrent sequential-equilibrium preservation remains
 unproved in Lean. Checked declaration names identify existing tools; the finite
 constructions connecting them are given below.
@@ -701,6 +702,6 @@ in the stated bounds, along with native-bad and source-Good conditioning errors.
 The existing shared limiting sequence controls those errors.
 
 This completes the reviewed mathematical derivations and their composition.
-The four primitive Lean proofs remain required. Compilation of the admitted
+Three primitive Lean proofs remain required. Compilation of the admitted
 interfaces and actual aggregators does not remove their sorryAx dependence,
 and this document does not mark concurrent preservation checked.

@@ -31,7 +31,7 @@ private theorem reaches_semantic (setup : Setup (Player := Player) (L := L))
         realized ih
 
 omit [Fintype Player] in
-private theorem lifted_commit_joint (setup : Setup (Player := Player) (L := L))
+theorem proposalRecovery_liftTrace_commit_joint (setup : Setup (Player := Player) (L := L))
     (labels : setup.commitRecoveryProtocol.StepEvent → Player → Bool)
     (current : CommitRecoveryState setup.program)
     (committing : ProtocolState.atCommit setup.program current.point = true)
@@ -66,7 +66,7 @@ private theorem lifted_commit_joint (setup : Setup (Player := Player) (L := L))
           cases impossible
 
 omit [Fintype Player] in
-private theorem lifted_commit_window (setup : Setup (Player := Player) (L := L))
+theorem proposalRecovery_liftTrace_commit_window (setup : Setup (Player := Player) (L := L))
     (labels : setup.commitRecoveryProtocol.StepEvent → Player → Bool)
     (first : CommitRecoveryState setup.program)
     (prior : setup.proposalRecoveryProtocol.Trace (some first))
@@ -93,8 +93,8 @@ private theorem lifted_commit_window (setup : Setup (Player := Player) (L := L))
           (by simpa only [setup.proposalRecoveryEraseTrace_length] using inside)
       cases same
       have earlier := ih inside.le
-      have currentJoint := lifted_commit_joint setup labels current currentCommit joint legal
-        supported
+      have currentJoint := proposalRecovery_liftTrace_commit_joint setup labels current
+        currentCommit joint legal supported
       change (setup.proposalRecoveryLiftTrace labels
         (setup.proposalRecoveryEraseTrace middle)).extend _ _ _ = _
       simp only [earlier, currentJoint]
@@ -177,8 +177,8 @@ theorem phaseProposalBindingPotentialProfile_source_checkpoint_history
       (reaches_semantic setup reached) path
       (semanticWord.trans (by rw [word, takeWord]))
       (by simpa only [setup.proposalRecoveryEraseTrace_length] using within)
-  have enriched := lifted_commit_window setup labels cursor.current cursor.trace ordinary committing
-    trace reached.tracePrefix within
+  have enriched := proposalRecovery_liftTrace_commit_window setup labels cursor.current
+    cursor.trace ordinary committing trace reached.tracePrefix within
   refine ⟨semantic, ?_, ?_⟩
   · have lifted := congrArg (fun history : setup.commitRecoveryProtocol.History =>
       (⟨history.state, setup.proposalRecoveryLiftTrace labels history.trace⟩ :
@@ -202,7 +202,7 @@ theorem phaseProposalBindingPotentialProfile_source_checkpoint_history
       ((next.origin.bindingsHoldValues_lift who _).mp stateLive) cell
 
 omit [Fintype Player] in
-private theorem maximal_commit_phase
+theorem maximal_commit_phase
     {Γ Δ : SourceCtx Player L} {O P : Finset VarId}
     (block : SourceProgram.CommitPrefix Γ O Δ P) (suffix : SourceProgram Player L Δ P)
     (boundary : IsCommitBoundary suffix) :
@@ -236,7 +236,7 @@ theorem RecoverySourceCheckpoint.transfer_history
   rfl
 
 omit [Fintype Player] in
-private theorem binding_word_of_reconstruct
+theorem phaseProposalBindingWord_of_reconstruct
     (setup : Setup (Player := Player) (L := L))
     {Γ Δ : SourceCtx Player L} {O P : Finset VarId}
     (program : SourceProgram Player L Γ O)
@@ -389,8 +389,9 @@ theorem RecoverySourceWitness.ordinary_installed_binding_history
             (∀ who, who ∉ (phase.drain raw).excluded → next.source.BindingsHoldValues who) := by
   intro initial horizon scheduler model profile stopped law
   obtain ⟨Δ, P, block, suffix, cursor, size, sourceEq, current, entry, refsEq, reconstruct,
-    embeddingEq, liftEq⟩ := witness.ordinary_installed_binding_cursor setup mode runtime leaks
-      bounds plan maximal horizon scheduler anchor anchorTrace phase installed kind entryExcluded
+    embeddingEq, liftEq, _views, _boundary⟩ :=
+    witness.ordinary_installed_binding_cursor setup mode runtime leaks bounds plan maximal horizon
+      scheduler anchor anchorTrace phase installed kind entryExcluded
         fresh archived ordinary
   have positive : 0 < block.length := by
     have nonempty := phase.nonempty
@@ -485,7 +486,8 @@ theorem RecoverySourceWitness.ordinary_installed_binding_history
       checkpoint.commitInstructionWord (phase.drain raw).native := by
     rw [imageEq]
     rw [sourceEq, cursor.excluded, ← entryExcluded, ← sameEntry]
-    exact binding_word_of_reconstruct setup checkpoint.residual.tail checkpoint.embedding block
+    exact phaseProposalBindingWord_of_reconstruct setup checkpoint.residual.tail
+      checkpoint.embedding block
       suffix reconstruct cursor.embedding embeddingEq checkpoint.source
         before.execution.application.entry.excluded (phase.drain raw).native.config.store
           (checkpoint.commitInstructionWord (phase.drain raw).native) boundary decodedWord

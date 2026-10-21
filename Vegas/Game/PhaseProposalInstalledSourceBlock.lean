@@ -63,8 +63,11 @@ theorem RecoverySourceWitness.ordinary_installed_binding_cursor
         cursor.embedding = cast (congrArg (fun program => OutputEmbedding
           (inputLayout setup.context) (outputLayout setup.program) program) reconstruct.symm)
             witness.checkpoint.embedding ∧
-        ∀ point, cursor.lift point = witness.checkpoint.residual.lift
-          (cast (congrArg ProtocolState reconstruct) point) := by
+        (∀ point, cursor.lift point = witness.checkpoint.residual.lift
+          (cast (congrArg ProtocolState reconstruct) point)) ∧
+        (∀ owner view, cursor.views.view owner view = witness.checkpoint.views.view owner
+          (cast (congrArg (ProtocolView owner) reconstruct) view)) ∧
+        IsCommitBoundary suffix := by
   let inputs := setup.initialLaw.map encodeInputs
   let initial := inputs.map (PhaseRuntimeState.initial plan)
   let menu := PhaseCount.onePacketMenu runtime leaks bounds
@@ -230,6 +233,7 @@ theorem RecoverySourceWitness.ordinary_installed_binding_cursor
           exact RecoverySourceCheckpoint.ArchivedProposals.binding runtime leaks bounds plan inputs
             horizon scheduler anchor anchorTrace _ archived phase installed commitment who
               (entryExcluded ▸ surviving) }
-    exact ⟨Δ, P, block, tail, cursor, blockSize, rfl, rfl, rfl, rfl, rfl, rfl, fun _ => rfl⟩
+    exact ⟨Δ, P, block, tail, cursor, blockSize, rfl, rfl, rfl, rfl, rfl, rfl,
+      (fun _ => rfl), (fun _ _ => rfl), boundary⟩
 
 end Vegas

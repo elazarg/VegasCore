@@ -293,10 +293,11 @@ class LeanOptionTests(unittest.TestCase):
             self.assertTrue(any("unregistered" in error for error in
                 CHECKER.check_admissions(Path("Vegas/Test.lean"), text, registry)))
 
-    def test_registry_contains_only_the_four_reviewed_primitives(self):
+    def test_registry_contains_exactly_the_approved_primitives(self):
         self.assertEqual({name for _, name in CHECKER.APPROVED_OPEN_OBLIGATIONS}, {
-            "qualified_source_site", "foreign_posterior_cut_pair",
-            "qualified_annotation_pushforward", "annotated_stopped_payoff",
+            "foreign_posterior_cut_pair",
+            "qualified_annotation_pushforward",
+            "annotated_stopped_payoff",
         })
         self.assertTrue(all(CHECKER.APPROVED_OPEN_OBLIGATIONS.values()))
 

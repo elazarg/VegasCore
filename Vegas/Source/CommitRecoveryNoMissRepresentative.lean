@@ -181,6 +181,39 @@ theorem commitRecoveryNoMissInformation_erased (who : Player)
       setup.commitRecoveryWithAttemptExclusions_erased]
   · rw [ite_eq_right (by assumption)]
 
+/-- Equal live reads and complete old public windows give equal normalized
+queries. Current-attempt exclusions may differ, while the genuine saved-entry
+depth and exclusions remain fixed. -/
+theorem commitRecoveryNoMissInformation_eq_of_window (who : Player)
+    (left right : setup.commitRecoveryModel.InfoState who)
+    (cut : Nat) (excluded : Finset Player)
+    (leftOwn : left.2 = []) (rightOwn : right.2 = [])
+    (leftCommit : left.1.1.1.elim false (ProtocolView.atCommit who setup.program) = true)
+    (rightCommit : right.1.1.1.elim false (ProtocolView.atCommit who setup.program) = true)
+    (leftActive : who ∉ left.1.1.2.1) (rightActive : who ∉ right.1.1.2.1)
+    (entryActive : who ∉ excluded)
+    (leftCut : setup.commitRecoveryAttemptStart who left = cut)
+    (rightCut : setup.commitRecoveryAttemptStart who right = cut)
+    (leftEntry : setup.commitRecoverySavedExclusions who left = excluded)
+    (rightEntry : setup.commitRecoverySavedExclusions who right = excluded)
+    (controls : List.Forall₂ (fun first second =>
+      first.1 = second.1 ∧ first.2.2 = second.2.2)
+        (left.1.1 :: left.1.2) (right.1.1 :: right.1.2))
+    (past : (left.1.1 :: left.1.2).reverse.take cut =
+      (right.1.1 :: right.1.2).reverse.take cut) :
+    setup.commitRecoveryNoMissInformation who left =
+      setup.commitRecoveryNoMissInformation who right := by
+  have leftGuard : left.1.1.1.elim false (ProtocolView.atCommit who setup.program) = true ∧
+      who ∉ left.1.1.2.1 ∧ who ∉ setup.commitRecoverySavedExclusions who left := by
+    exact ⟨leftCommit, leftActive, leftEntry.symm ▸ entryActive⟩
+  have rightGuard : right.1.1.1.elim false (ProtocolView.atCommit who setup.program) = true ∧
+      who ∉ right.1.1.2.1 ∧ who ∉ setup.commitRecoverySavedExclusions who right := by
+    exact ⟨rightCommit, rightActive, rightEntry.symm ▸ entryActive⟩
+  unfold commitRecoveryNoMissInformation
+  rw [ite_eq_left leftGuard, ite_eq_left rightGuard, leftCut, rightCut, leftEntry, rightEntry]
+  exact setup.commitRecoveryWithAttemptExclusions_eq_of_window who cut excluded
+    left right leftOwn rightOwn controls past
+
 /-- The total transformation preserves the original legal source menu, even
 at labels that are not produced by a source history. -/
 theorem commitRecoveryNoMissInformation_menu (who : Player)

@@ -10,8 +10,6 @@ import tomllib
 # Only the reviewed primitive obligations may contain holes. Assembly results
 # must have proof bodies; adding a primitive requires an explicit registry diff.
 APPROVED_OPEN_OBLIGATIONS = {
-    ("Vegas/Game/PhaseProposalNativeSourceInformation.lean", "qualified_source_site"):
-        "docs/se-concurrent-likelihood-review.md#mathematical-review-boundary",
     ("Vegas/Game/PhaseProposalQualifiedBinding.lean", "foreign_posterior_cut_pair"):
         "docs/se-concurrent-likelihood-review.md#mathematical-review-boundary",
     ("Vegas/Game/PhaseProposalQualifiedBinding.lean", "qualified_annotation_pushforward"):
