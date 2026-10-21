@@ -29,15 +29,15 @@ sequence is a capstone assumption.
 
 ## Current proof boundary
 
-**Contract, joint satisfiability and waiting payoff bound checked. All four
+Contract, joint satisfiability and waiting payoff bound are checked. All four
 primitive mathematical derivations have independent agent review against their
-exact statements. Checked primitives: **3/4**. The source-site, foreign-posterior
+exact statements. The source-site, foreign-posterior
 pair and stopped-payoff primitives, and mechanical-weight representative
 independence, use only standard Lean axioms. Weighted transport remains admitted.
 The clean commitment gain comparison
 and final assembly are checked conditional on `QualifiedBindingLaw`; its
 transport and unconditional SE remain
-unproved. An unrestricted prefix density theorem is not claimed.**
+unproved. An unrestricted prefix density theorem is not claimed.
 Checked dependencies do not close the remaining Lean obligations.
 
 The four primitive interfaces and their complete aggregation compile with
@@ -52,6 +52,19 @@ Lean verification or human certification.
 | Remaining proof | Guarantee | Reviewed argument |
 | --- | --- | --- |
 | `qualified_annotation_pushforward` | Exact native/source weights across every qualified mechanical and full source-word fiber | Likelihood analysis: inverse, source fibers and weights |
+
+Progress within that remaining proof:
+
+| Work | Checked material | Still open |
+| --- | --- | --- |
+| Source-phase correspondence | Local row and retained-origin lemmas | Complete visit, initialization and restore induction; publication and query coverage |
+| Supported runtime replay | Initializer, environment and focal steps; alias kernels | Foreign callback case and whole-trace construction with prescribed reach, tape and admission |
+| Recovery and coverage | No completed recovery proof | Both recovery directions and exhaustive coverage |
+| Exact weights | Source posterior/mass identities and local probability kernels | Chronological atom calculation, auxiliary normalization and the weighted theorem |
+
+These rows track implementation work inside the unchanged weighted statement;
+they introduce no extra admitted theorem or preservation assumption. Local
+lemmas do not close a row's complete obligation.
 
 `qualified_source_site` proves one supported source information site and faithful
 value encoding. `foreign_posterior_cut_pair` proves the source cut/completion law
