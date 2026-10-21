@@ -34,9 +34,9 @@ Public-prefix-adaptive block priors are outside this contract. There is
 no independent-private-cell hypothesis. The
 [likelihood derivation](se-concurrent-likelihood.md) retains its literal atom in
 the replay and source weights; the [independent review](se-concurrent-likelihood-review.md)
-records independent Astra review of the complete qualified ready-information
-finite derivation, including its annotated inverse, weight telescoping and
-lost-tail independence. An unrestricted prefix density theorem is not claimed. Conditional-belief transport and
+records independent agent review of the proposed qualified ready-information
+derivation and the remaining mathematical gaps in source-site construction,
+historical correspondence, weights and payoff attachment. An unrestricted prefix density theorem is not claimed. Conditional-belief transport and
 unconditional preservation remain unproved in Lean; a selected source fiber
 alone does not supply the required all-target weighted coverage. The clean gain
 comparison and `concurrentRawSequentialPreservation_of_qualified_binding_law`

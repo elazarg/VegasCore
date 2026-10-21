@@ -13,8 +13,8 @@ recovery sequential-equilibrium preservation. Concurrent asynchronous SE
 preservation under reserved service remains unproved; the
 [concrete contract](Vegas/Game/ConcurrentRawSequentialPreservation.lean) and
 [active proof plan](docs/se-concurrent-mechanization.md) state its exact scope
-and remaining Lean transport obligations. The complete finite derivation at
-qualified ready-information fibers has independent Astra review. An unrestricted
+and remaining transport obligations. The proposed finite derivation has independent
+agent review, but mathematical gaps remain in reconstruction, weights and payoff attachment. An unrestricted
 prefix density theorem is not claimed. The weaker general asynchronous contract
 also has [checked preservation obstructions](docs/standard-runtime-se-status.md).
 Honest outcome simulation alone does not establish equilibrium preservation.

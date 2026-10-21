@@ -1,6 +1,6 @@
 # Independent agent review of concurrent likelihood
 
-**Finite mathematical derivation independently agent-reviewed; Lean transport open.**
+**Exact pair-law argument reviewed; global mathematical derivation incomplete.**
 The [likelihood derivation](se-concurrent-likelihood.md) uses literal concurrent
 execution, the original correlated input law and one whole-execution tape prior.
 This is agent mathematical review, not human approval or Lean verification.
@@ -8,8 +8,9 @@ The global transport and unconditional concurrent preservation remain unproved.
 
 ## Mathematical review boundary
 
-The finite argument establishes the following connections, without supplying
-query equality, source goodness or an inverse as an external premise.
+The proposed finite argument uses the following connections, without supplying
+query equality, source goodness or an inverse as an external premise. Its local
+identities do not establish the global correspondence and attachment steps.
 
 * Construct legal raw traces before evaluating query probabilities.
   `phaseProposalReferenceStrategy_fullSupport` supplies foreign support from
@@ -47,6 +48,35 @@ This review concerns the qualified full-information domain. It does not claim
 an arbitrary-prefix density identity. The gain and preservation assembly remain
 checked only conditional on `QualifiedBindingLaw`; its global Lean transport
 is still required.
+
+## Exact primitive proof status
+
+The four primitive statements and downstream aggregation compile. Only the
+pair law currently has a detailed derivation that passed a separate adversarial
+agent review against its exact hypotheses and conclusions. This is mathematical
+review, not a Lean proof; all four primitive bodies still contain `sorry`.
+
+| Primitive | Mathematical status |
+| --- | --- |
+| `qualified_source_site` | Open: construct one jointly supported source/runtime cut satisfying all readback and emission locks. Separate source and graph witnesses do not suffice. |
+| `foreign_posterior_cut_pair` | Detailed derivation reviewed: exact selected-entry row induction and owner-word disintegration give both posterior laws and their positive normalizers. Structural excluded-player placeholder histories are retained separately from actual automatic source actions. |
+| `qualified_annotation_pushforward` | Open: total historical occurrence assignment, both inverse directions through clean/retry/exhausted exits, every-prefix query correspondence, and representative-independent mechanical factors. |
+| `annotated_stopped_payoff` | Open: positive issued cylinders for every source-posterior target and their joint alignment with actual stopped continuations, including the same erased entry and enriched closing word. |
+
+For weights, a one-input atom factorization does not justify using the
+mechanical coefficient chosen from another representative. The genuine unsent
+binding subcase has a reviewed derivation using the same fresh-slot set and
+public packet law. Reaching that branch under historical reconstruction, and
+the publication and query cases, still require proof.
+
+For payoff attachment, `binding_close_erased_history` already proves the
+deterministic closing equality once its same-entry and same-enriched-word
+hypotheses hold. The unresolved step is deriving those hypotheses for every
+relevant coupled runtime/source outcome. Equality of word marginals alone
+does not supply that supported relation.
+
+These are gaps in the mathematical derivation, not just unfinished Lean
+transcriptions. No counterexample to the preservation contract is established.
 
 ## Historical profiles and fixed continuation laws
 

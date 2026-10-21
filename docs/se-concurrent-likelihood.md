@@ -1,9 +1,11 @@
 # Concurrent qualified likelihood and causal payoff
 
-This document gives the independently agent-reviewed finite mathematical argument
+This document gives a proposed finite mathematical argument
 for the exact `PhaseProposalQualifiedBinding.QualifiedBindingLaw` proposition.
-The review covers the reconstruction, both inverse directions and the original
-source-fiber, issued-word and tape normalizers. It is not Lean verification:
+The exact pair-law derivation has independent agent review. Mathematical gaps
+remain in the supported source-cut construction, both historical inverse
+directions, the common mechanical factor and actual payoff attachment.
+The likelihood review identifies these unresolved implications. It is not Lean verification:
 the global transport and unconditional sequential-equilibrium theorem remain
 unproved. The mathematical review is by agents, not a human approval.
 An unrestricted density identity at every native prefix is not claimed.
@@ -213,6 +215,11 @@ unrevealed-value restriction at J.
 
 ## Inverse, source fibers and weights
 
+The following inverse is proposed. Its total historical occurrence assignment,
+both compositions through attempt exits, and mechanical-factor invariance have
+not been established. The factor cancellations below are conditional on those
+steps; local atom factorization does not prove exhaustive weighted coverage.
+
 The inverse retains native and source prefixes, source-cause tags, lost values
 and actual input-specific raw aliases. Construct the legal native trace first:
 `phaseProposalReferenceStrategy_fullSupport` requires positive alias perturbation,
@@ -337,6 +344,11 @@ never fixed to a baseline future. Literal pre-I focal recall stays fixed.
 
 ## Static cut, common site, payoff attachment, and Bayes
 
+The argument below requires the same-entry and same-word relation between
+every relevant source-posterior continuation and the actual clean runtime
+stop. That universal relation and its cylinder positivity remain unproved;
+a common binding-word marginal alone does not establish them.
+
 Let g end immediately before static rank k and G(q,u,z,v,eta) at whole binding
 close. The qualified closing image has no new failure, hence no failure retry
 at this close. Completed-binding history and BindingWord congruence identify
@@ -389,7 +401,8 @@ submeasures vanish at none; their totals are T and S_J. Bayes gives the exact
 mixture with a=T/Z_N in (0,1] and complement mass 1-a at none. Zero T gives
 pure none without normalizing a source site; no proper choices makes the
 zero branch vacuous. This derives the mathematical QualifiedBindingLaw
-identity; its transport theorem remains unproved in Lean.
+identity conditional on the unresolved correspondence and attachment steps;
+its transport theorem remains unproved in Lean.
 
 ## Signed gain consequence
 
