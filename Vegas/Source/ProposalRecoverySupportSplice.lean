@@ -2,6 +2,7 @@
 
 import Vegas.Source.ProposalRecoveryProjection
 import Vegas.Source.ProposalRecoveryErasedStep
+import Vegas.Source.ProposalRecoveryWordLift
 import Vegas.Source.CommitRecoverySupportSplice
 
 /-! # Genuine proposal-preserving source suffixes after memory substitution -/
@@ -125,7 +126,8 @@ theorem proposalRecovery_supported_step_of_erased_history_eq
     (congrArg Prod.snd same)
 
 /-- A whole genuine suffix retains every labeled action, every proposal
-delta, and the original chance support through actual retries and exhaustion. -/
+delta, and the original chance support through actual retries and exhaustion.
+The literal added word and its length remain available to endpoint readback. -/
 theorem proposalRecovery_supported_suffix_of_erased_history_eq
     (first second : setup.proposalRecoveryProtocol.History)
     (same : setup.proposalRecoveryErasedHistory first =
@@ -133,18 +135,36 @@ theorem proposalRecovery_supported_suffix_of_erased_history_eq
     {targetState : setup.proposalRecoveryProtocol.State}
     (targetTrace : setup.proposalRecoveryProtocol.Trace targetState)
     (retained : TracePrefix first.trace targetTrace) :
-    ∃ right : setup.proposalRecoveryProtocol.History,
+    ∃ (right : setup.proposalRecoveryProtocol.History)
+      (word : List (Player → Option (ProposalRecoveryMove Player L))),
       TracePrefix second.trace right.trace ∧
       setup.proposalRecoveryErasedHistory ⟨targetState, targetTrace⟩ =
-        setup.proposalRecoveryErasedHistory right := by
+        setup.proposalRecoveryErasedHistory right ∧
+      setup.proposalRecoveryJointRecall targetTrace =
+        word ++ setup.proposalRecoveryJointRecall first.trace ∧
+      setup.proposalRecoveryJointRecall right.trace =
+        word ++ setup.proposalRecoveryJointRecall second.trace ∧
+      targetTrace.length = first.trace.length + word.length ∧
+      right.trace.length = second.trace.length + word.length := by
   induction retained with
-  | refl => exact ⟨second, .refl, same⟩
+  | refl => exact ⟨second, [], .refl, same, rfl, rfl, rfl, rfl⟩
   | @extend before after earlier kept joint legal supported ih =>
-      obtain ⟨right, rightRetained, erased⟩ := ih
+      obtain ⟨right, word, rightRetained, erased, leftWord, rightWord,
+        leftLength, rightLength⟩ := ih
       obtain ⟨rightLegal, rightTarget, rightSupported, nextErased⟩ :=
         setup.proposalRecovery_supported_step_of_erased_history_eq
           ⟨before, earlier⟩ right erased joint legal supported
-      exact ⟨right.extend rightLegal rightSupported,
-        .extend rightRetained joint rightLegal rightSupported, nextErased⟩
+      refine ⟨right.extend rightLegal rightSupported, joint :: word,
+        .extend rightRetained joint rightLegal rightSupported, nextErased, ?_, ?_, ?_, ?_⟩
+      · change joint :: setup.proposalRecoveryJointRecall earlier = _
+        rw [leftWord]
+        rfl
+      · change joint :: setup.proposalRecoveryJointRecall right.trace = _
+        rw [rightWord]
+        rfl
+      · simp only [Trace.length, List.length_cons]
+        omega
+      · simp only [History.extend, Trace.length, List.length_cons]
+        omega
 
 end Vegas.SourceProgram.Setup

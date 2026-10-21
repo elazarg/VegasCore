@@ -4399,10 +4399,10 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #print axioms Vegas.phaseProposalUnflagged_stopped_binding_image
 
 /-- info:
-'Vegas.decodeCommitAttempt_joint_at_typed_admission'
+'Vegas.decodeCommitAttempt_joint_at_rank'
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.decodeCommitAttempt_joint_at_typed_admission
+#print axioms Vegas.decodeCommitAttempt_joint_at_rank
 
 /-- info:
 'Vegas.decodeCommitAttempt_joint_of_recorded_preparation'

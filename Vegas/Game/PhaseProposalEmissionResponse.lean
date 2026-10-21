@@ -60,7 +60,15 @@ theorem phaseProposalEmissionFrontier_binding_step
     PhaseProposalEmittedBindings runtime leaks (execution.respond (app) who response) phase
       (phaseProposalEmissionFrontier setup mode runtime leaks anchor phase anchorLength
         initialFrontier initial horizon scheduler
-          ((menu).toRawTrace initial horizon scheduler (prior.extend joint legal realized))) := by
+          ((menu).toRawTrace initial horizon scheduler (prior.extend joint legal realized))) ∧
+      ∀ final : (graph).Config,
+        PhaseProposalEmittedBindings runtime leaks (execution.respond (app) who response)
+            phase final ↔
+          PhaseProposalEmittedBindings runtime leaks execution phase final ∧
+            (⟨.inr event, binding⟩ : FieldRef (graph).layout (.binding who payload)).get?
+                final.store = some (((response.transmission.bind
+                  PhaseProposal.bindingPreparation).bind (fun raw => raw.as? payload)).elim
+                    PublicationResult.failure PublicationResult.success) := by
   intro frontier emissions ready
   let rawPrior := (menu).toRawTrace initial horizon scheduler prior
   let postTrace := prior.extend joint legal realized
@@ -126,27 +134,84 @@ theorem phaseProposalEmissionFrontier_binding_step
   have meaning := phase_recorded_material_binding_result runtime leaks (menu) initial horizon
     scheduler ⟨remaining, none, after⟩ postTrace who event payload serial opening evidence entry
       recorded declared fresh
-  intro other member current query queryInside candidate named owner ty kind
-  rw [inputWord] at member
-  rcases List.mem_append.mp member with previous | newest
-  · exact phaseProposalEmittedBinding_kept runtime leaks execution after phase frontier
-      afterFrontier
-      emissions other previous query queryInside candidate named current (by
-        dsimp only [after]
-        rw [responseEq]
-        rfl)
-        (phaseProposal_input_binding_fixed runtime leaks bounds plan inputs horizon scheduler
-          ⟨remaining, some who, execution⟩ prior other previous query candidate named)
-        ((phaseApplication_preservesFixedCandidates runtime leaks).respond execution who response)
-        kept owner ty kind
-  · cases List.mem_singleton.mp newest
-    have coordinates := Payload.commitment.inj (packet.symm.trans named)
-    rcases coordinates with ⟨rfl, rfl⟩
-    have kinds := EventField.binding.inj (binding.symm.trans kind)
-    rcases kinds with ⟨rfl, rfl⟩
-    rw [meaning]
-    cases decoded : opening.bind (fun raw => raw.as? payload) <;>
-      simpa only [decoded, Option.map_none, Option.bind_none, Option.map_some, Option.bind_some,
-        Raw.as?_mk] using written
+  constructor
+  · intro other member current query queryInside candidate named owner ty kind
+    rw [inputWord] at member
+    rcases List.mem_append.mp member with previous | newest
+    · exact phaseProposalEmittedBinding_kept runtime leaks execution after phase frontier
+        afterFrontier
+        emissions other previous query queryInside candidate named current (by
+          dsimp only [after]
+          rw [responseEq]
+          rfl)
+          (phaseProposal_input_binding_fixed runtime leaks bounds plan inputs horizon scheduler
+            ⟨remaining, some who, execution⟩ prior other previous query candidate named)
+          ((phaseApplication_preservesFixedCandidates runtime leaks).respond execution who response)
+          kept owner ty kind
+    · cases List.mem_singleton.mp newest
+      have coordinates := Payload.commitment.inj (packet.symm.trans named)
+      rcases coordinates with ⟨rfl, rfl⟩
+      have kinds := EventField.binding.inj (binding.symm.trans kind)
+      rcases kinds with ⟨rfl, rfl⟩
+      rw [meaning]
+      cases decoded : opening.bind (fun raw => raw.as? payload) <;>
+        simpa only [decoded, Option.map_none, Option.bind_none, Option.map_some, Option.bind_some,
+          Raw.as?_mk] using written
+  · intro final
+    have sameAttempt : after.application.attempt = execution.application.attempt := by
+      dsimp only [after]
+      rw [responseEq]
+      rfl
+    have actualAttempt : message.payload.attempt = after.application.attempt := by
+      dsimp only [message, after]
+      rw [responseEq]
+      rfl
+    have actualResult : after.application.current.native.bindingResult
+        (who, .prepared serial) payload =
+        (((response.transmission.bind PhaseProposal.bindingPreparation).bind
+          (fun raw => raw.as? payload)).elim PublicationResult.failure
+            PublicationResult.success) := by
+      rw [meaning]
+      simp only [transmitted, Option.bind_some, materialEq, PhaseProposal.bindingPreparation,
+        binding]
+      cases opening.bind (fun raw => raw.as? payload) <;>
+        simp only [Option.map_none, Option.bind_none, Option.map_some, Option.bind_some,
+          Raw.as?_mk, Option.elim_none, Option.elim_some]
+    have fixed := (phaseApplication_preservesFixedCandidates runtime leaks).respond
+      execution who response
+    constructor
+    · intro emissions
+      constructor
+      · intro other member current query queryInside candidate named owner ty kind
+        have newer : other ∈ after.network.inputs := by
+          rw [inputWord]
+          exact List.mem_append_left _ member
+        have stored := emissions other newer (current.trans sameAttempt.symm) query queryInside
+          candidate named owner ty kind
+        have lookup := fixed candidate
+          (phaseProposal_input_binding_fixed runtime leaks bounds plan inputs horizon scheduler
+            ⟨remaining, some who, execution⟩ prior other member query candidate named)
+        simpa only [State.bindingResult, lookup] using stored
+      · have member : message ∈ after.network.inputs := by
+          rw [inputWord]
+          exact List.mem_append_right _ (List.mem_singleton_self _)
+        exact (emissions message member actualAttempt event inside (who, .prepared serial) packet
+          who payload binding).trans (congrArg some actualResult)
+    · rintro ⟨emissions, written⟩ other member current query queryInside candidate named
+        owner ty kind
+      change other ∈ after.network.inputs at member
+      rw [inputWord] at member
+      rcases List.mem_append.mp member with previous | newest
+      · exact phaseProposalEmittedBinding_kept runtime leaks execution after phase final final
+          emissions other previous query queryInside candidate named current sameAttempt.symm
+          (phaseProposal_input_binding_fixed runtime leaks bounds plan inputs horizon scheduler
+            ⟨remaining, some who, execution⟩ prior other previous query candidate named)
+          fixed (fun _ _ stored => stored) owner ty kind
+      · cases List.mem_singleton.mp newest
+        have coordinates := Payload.commitment.inj (packet.symm.trans named)
+        rcases coordinates with ⟨rfl, rfl⟩
+        have kinds := EventField.binding.inj (binding.symm.trans kind)
+        rcases kinds with ⟨rfl, rfl⟩
+        exact written.trans (congrArg some actualResult.symm)
 
 end Vegas

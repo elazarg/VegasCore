@@ -83,27 +83,36 @@ theorem phaseProposalEmittedBinding_kept
   exact (⟨.inr event, binding⟩ : FieldRef graph.layout (.binding owner payload)).get?_preserved
     frontier.store after.store kept _ before
 
-/-- Every actual service command preserves all retained emission meanings in
-the original namespace. The network inputs are literal, including pending,
-negative receipts and retired catalogue occupancy. -/
+/-- Every actual service command preserves exactly the retained emission
+cylinder in the original namespace. Pending and rejected packets remain in
+that same cylinder; their immutable preparation meanings are not redrawn. -/
 theorem phaseProposalEmittedBindings_environment
     (control : (app).Control)
     (trace : ((menu).protocol initial horizon scheduler).Trace (some control))
     (next : (app).Execution) (command : (app).Command)
     (supported : next ∈ (control.execution.environmentStep (app) command).support)
-    (phase : RuntimePhase graph) (frontier after : graph.Config)
-    (emissions : PhaseProposalEmittedBindings runtime leaks control.execution phase frontier)
-    (attempt : control.execution.application.attempt = next.application.attempt)
-    (kept : ∀ field value, frontier.store field = some value → after.store field = some value) :
-    PhaseProposalEmittedBindings runtime leaks next phase after := by
-  intro message member current event inside candidate named owner payload binding
-  have old : message ∈ control.execution.network.inputs := by
-    rwa [(app).environmentStep_inputs control.execution next command supported] at member
-  exact phaseProposalEmittedBinding_kept runtime leaks control.execution next phase frontier after
-    emissions message old event inside candidate named current attempt
+    (phase : RuntimePhase graph) (frontier : graph.Config)
+    (attempt : control.execution.application.attempt = next.application.attempt) :
+    PhaseProposalEmittedBindings runtime leaks control.execution phase frontier ↔
+      PhaseProposalEmittedBindings runtime leaks next phase frontier := by
+  have inputsEq := (app).environmentStep_inputs control.execution next command supported
+  have fixed := (phaseApplication_preservesFixedCandidates runtime leaks).environmentStep
+    control.execution next command supported
+  constructor
+  · intro emissions message member current event inside candidate named owner payload binding
+    have old : message ∈ control.execution.network.inputs := by rwa [inputsEq] at member
+    exact phaseProposalEmittedBinding_kept runtime leaks control.execution next phase frontier
+      frontier emissions message old event inside candidate named current attempt
       (phaseProposal_input_binding_fixed runtime leaks bounds plan inputs horizon scheduler control
-        trace message old event candidate named)
-      ((phaseApplication_preservesFixedCandidates runtime leaks).environmentStep
-        control.execution next command supported) kept owner payload binding
+        trace message old event candidate named) fixed (fun _ _ stored => stored)
+      owner payload binding
+  · intro emissions message member current event inside candidate named owner payload binding
+    have newer : message ∈ next.network.inputs := by rwa [inputsEq]
+    have stored := emissions message newer (current.trans attempt) event inside candidate named
+      owner payload binding
+    have lookup := fixed candidate
+      (phaseProposal_input_binding_fixed runtime leaks bounds plan inputs horizon scheduler control
+        trace message member event candidate named)
+    simpa only [State.bindingResult, lookup] using stored
 
 end Vegas

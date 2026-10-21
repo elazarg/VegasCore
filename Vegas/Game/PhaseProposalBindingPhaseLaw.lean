@@ -158,7 +158,7 @@ theorem phaseProposalEmissionFrontier_geometry
 
 /-- A genuine offered nonsilent response in the installed commitment interval
 has the actual typed binding shape at its requested coordinate. -/
-private theorem nonsilent_binding_request
+theorem phaseProposal_nonsilent_binding_request
     (phase : RuntimePhase (graph)) (commitment : phase.kind = .commitment)
     (remaining : Nat) (who : Player) (execution : (app).Execution)
     (trace : ((menu).protocol initial horizon scheduler).Trace
@@ -386,8 +386,9 @@ theorem phaseProposalEmissionFrontier_traceInvariant
             change response ∈ PhaseCount.onePacketActions runtime leaks bounds who
               (execution.recall who) (execution.observe (app) who) at member
             simpa only [equal] using member
-          obtain ⟨event, payload, binding, code, inside, request⟩ := nonsilent_binding_request
-            setup mode runtime leaks bounds plan inputs horizon scheduler phase commitment remaining
+          obtain ⟨event, payload, binding, code, inside, request⟩ :=
+            phaseProposal_nonsilent_binding_request setup mode runtime leaks bounds plan inputs
+              horizon scheduler phase commitment remaining
               who execution earlier installedMiddle material offered
           have unsent := PhaseCount.unsent_of_nonsilent runtime leaks bounds plan ordered inputs
             horizon scheduler remaining who execution earlier _ request material offered
@@ -397,12 +398,12 @@ theorem phaseProposalEmissionFrontier_traceInvariant
                 entryEMiddle initialOrigins prior holds.emissions
                   (by simpa only [← entryEMiddle] using holds.quiet) holds.within.2 who event
                     request.2.2.1 request.2.2.2.1 request.2.2.2.2 unsent
-          exact phaseProposalEmissionFrontier_binding_step setup mode runtime leaks bounds plan
+          exact (phaseProposalEmissionFrontier_binding_step setup mode runtime leaks bounds plan
             inputs horizon scheduler anchorControl.execution phase anchorTrace.length first
               remaining
               who execution earlier joint legal response selected reached material transmitted event
                 payload binding code request inside middleSame kept.length_le holds.emissions
-                  ready.1
+                  ready.1).1
       | none =>
         have stepF : phaseProposalEmissionFrontier setup mode runtime leaks
             anchorControl.execution phase anchorTrace.length first initial horizon scheduler
@@ -424,10 +425,9 @@ theorem phaseProposalEmissionFrontier_traceInvariant
           have sameExecution : next.execution = after :=
             congrArg ReactiveApplication.Control.execution (Option.some.inj equality.symm)
           rw [sameExecution]
-          exact phaseProposalEmittedBindings_environment runtime leaks bounds plan inputs horizon
+          exact (phaseProposalEmittedBindings_environment runtime leaks bounds plan inputs horizon
             scheduler ⟨remaining + 1, none, execution⟩ earlier after command moved phase frontier
-              frontier holds.emissions (by simpa only [sameExecution] using stepSame)
-                (fun _ _ written => written)
+              (by simpa only [sameExecution] using stepSame)).mp holds.emissions
   obtain ⟨next, equal, _ordered, _generation, _phase, _excluded, result⟩ := along trace retained
   cases Option.some.inj equal
   exact (result sameAttempt).2.2 sameExcluded
@@ -1164,8 +1164,9 @@ theorem phaseProposalUnflagged_stopped_potential_of_callback_frames
             PhaseCount.onePacketActions runtime leaks bounds who (execution.recall who)
               (execution.observe (app) who)
       · obtain ⟨material, allowed⟩ := offered
-        obtain ⟨event, payload, binding, code, inside, request⟩ := nonsilent_binding_request
-          setup mode runtime leaks bounds plan inputs horizon scheduler phase commitment remaining
+        obtain ⟨event, payload, binding, code, inside, request⟩ :=
+          phaseProposal_nonsilent_binding_request setup mode runtime leaks bounds plan inputs
+            horizon scheduler phase commitment remaining
             who execution trace frame.installed material allowed
         have unsent := PhaseCount.unsent_of_nonsilent runtime leaks bounds plan
           (serviceGraph_revealRelaxedOrdered setup mode) inputs horizon scheduler remaining who

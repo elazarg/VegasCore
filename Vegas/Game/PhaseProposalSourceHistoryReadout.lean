@@ -18,7 +18,9 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
 
 omit [Fintype Player] in
-private theorem proposalRecovery_reaches_semantic
+/-- Erasing proposal labels retains the same genuine bounded source path,
+including its original initial history and every recovery transition. -/
+theorem proposalRecovery_reaches_semantic
     (setup : Setup (Player := Player) (L := L))
     {fuel : Nat} {first last : setup.proposalRecoveryProtocol.History}
     (reached : setup.proposalRecoveryProtocol.ReachesWithin fuel first last) :
