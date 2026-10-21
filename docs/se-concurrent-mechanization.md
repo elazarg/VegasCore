@@ -29,10 +29,11 @@ sequence is a capstone assumption.
 
 ## Current proof boundary
 
-Contract, joint satisfiability and waiting payoff bound are checked. Local
-mathematical arguments have agent review, but the global weighted derivation is
-incomplete. The source-site, foreign-posterior
-pair and stopped-payoff primitives, and mechanical-weight representative
+Contract, joint satisfiability and waiting payoff bound are checked. The complete
+qualified weighted derivation has independent agent mathematical review under
+the original hypotheses. Its global source image, supported replay, inverses
+and chronological atom calculation remain unproved in Lean. The source-site,
+foreign-posterior pair and stopped-payoff primitives, and mechanical-weight representative
 independence, use only standard Lean axioms. Weighted transport remains admitted.
 The clean commitment gain comparison
 and final assembly are checked conditional on `QualifiedBindingLaw`; its
@@ -62,10 +63,11 @@ Progress within that remaining proof:
 | Recovery and coverage | No completed recovery proof | Both recovery directions and exhaustive coverage |
 | Exact weights | Source posterior/mass identities and local probability kernels | Chronological atom calculation, auxiliary normalization and the weighted theorem |
 
-New mechanization of weighted transport is paused until the simultaneous source
-invariant, coverage of every positive annotated summand and chronological atom
-identity are derived explicitly and independently reviewed. The local calculations
-and conditional cancellation do not establish these global implications.
+The mathematical review gate for weighted mechanization is satisfied. The
+derivation explicitly covers the simultaneous source invariant, every positive
+original annotated summand, both supported recovery directions and chronological
+atom accounting. Implementation proceeds against those arguments; a newly found
+mathematical gap stops the affected work for review.
 
 These rows track implementation work inside the unchanged weighted statement;
 they introduce no extra admitted theorem or preservation assumption. Local
@@ -139,7 +141,8 @@ at the common full information, preserving canceled preparations and the joint p
 Normalized typed-steering kernels retain updated focal queries through the
 same-tape payoff attachment. The finite-n source past and zero-flag future are
 separated before normalization, including zero qualification. The global inverse
-and weight identities still require mathematical derivations and Lean proofs.
+and weight identities have reviewed mathematical derivations and still require
+Lean proofs.
 The proposed route constructs raw support first, then prefix refinement and exact query atoms;
 conditional laws given a supplied cursor alone do not establish coverage or weights. The scoped qualified identity,
 not an unrestricted prefix density, determines the mechanization boundary.
@@ -193,7 +196,7 @@ Track the remaining obligations directly:
 
 | Required result | Checked status |
 | --- | --- |
-| Actual native qualified payoff law | Source site, foreign posterior pair and aggregate stopped payoff are checked. The exact source/native weight identity remains mathematically incomplete and admitted in Lean. |
+| Actual native qualified payoff law | Source site, foreign posterior pair and aggregate stopped payoff are checked. The exact source/native weight identity has an independently agent-reviewed mathematical derivation and remains admitted in Lean. |
 | Clean binding deviation bound | Full gain bound, including discarded-branch floor/reset comparison, checked assuming `QualifiedBindingLaw`. That transport premise remains open. |
 | Full raw concurrent SE preservation | `concurrentRawSequentialPreservation_of_qualified_binding_law` checks joint-law, limit and raw-audit assembly assuming `QualifiedBindingLaw`. That transport premise remains open. |
 

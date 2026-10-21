@@ -1,107 +1,85 @@
-# Independent agent review of concurrent likelihood
+# Mathematical review of concurrent likelihood
 
-**Local calculations have agent review; the global weighted derivation is incomplete.**
-The [likelihood derivation](se-concurrent-likelihood.md) uses literal concurrent
+**The complete qualified weighted derivation has independent mathematical review.**
+The [likelihood derivation](se-concurrent-likelihood.md) retains literal concurrent
 execution, the original correlated input law and one whole-execution tape prior.
-This is agent mathematical review, not human approval or Lean verification.
-The global transport and unconditional concurrent preservation remain unproved.
+This verdict concerns the mathematical argument, not Lean verification. The
+weighted transport primitive remains admitted, and unconditional concurrent
+preservation remains unproved in Lean.
 
-## Mathematical review boundary
+## Reviewed mathematical scope
 
-The following lists the intended connections. The local calculations support
-this route, but the global source invariant, coverage of every positive annotated
-summand and chronological atom identity still require explicit derivations.
-These must be proved, never supplied as external premises. The list is not
-evidence that the global implications hold.
+The review covers the original qualified full-information domain and hypotheses.
+It does not claim a density identity at arbitrary native prefixes or add a source
+image, query agreement, inverse or factorization premise. The global steps are
+established in the following parts of the derivation:
 
-* Construct legal raw traces before evaluating query probabilities.
-  `phaseProposalReferenceStrategy_fullSupport` supplies foreign support from
-  positive alias perturbation. Focal full inputs/actions and fixed-tape public
-  observations stay literal; supported source initialization supplies mu(theta).
-* Actual neighboring archives delimit clean or fully excluded native visits.
-  `sourceArchiveAddresses` advances an exhausted cursor to high, resets retry
-  to low with the next generation, and emits no row for an empty gap.
-  `sourcePublicAddressWord_gap_provider` supplies the accepted handle; later
-  consumed-field retention identifies its unique clean visit. All admitted
-  canceled rows remain. FULL interval masks exclude abstract source exhaustion:
-  same generation alone does not imply a clean source close.
-* Prefix truncation of the full cause word retains initializer, every COMMIT
-  and focal information. `proposalRecoveryClosedKey_prior` and
-  `proposalRecovery_refinement_of_closed_key` apply before each SEND;
-  `surviving_info_eq` uses survival there, including senders excluded later.
-* A live prepared PUB handle cannot survive dirty origin restore and cannot be
-  reaccepted through its stale packet or a fresh SEND. Full target masks force
-  a clean source save. Start `source_suffix_cells_of_prefix` AFTER that close;
-  `reveal_binding_origin_at` selects the same typed name. The proposal delta
-  fixes its success before the guard, including failed disclosure.
-* Terminal never-admitted draws use actual supported target aliases. The
-  preparationOnly suffix preserves all other owners' complete inputs; the
-  changed owner must WAIT before close and after exclusion. Its source COMMIT
-  remains literal missing failure. Thus keys and queries are unchanged, and
-  actual alias and lost-value conditional sums are one.
-* Both inverse directions retain full active foreign histories, deterministic
-  excluded failure histories, source-cause tags and the uniquely cut q prefix.
-  The atom ledger counts canceled admissions once, separates lost draws and
-  current issued coordinates, and retains the single joint mu(theta).
-  Original tape, actual ClosedMass, issued-word and focal/foreign conditional
-  normalizers cancel only on their positive supports; zero fibers are separate.
+* [Positive original summands](se-concurrent-likelihood.md#positive-original-summand-entry-pair-cut-word):
+  closed-posterior support fixes the entire initializer and erased entry history.
+  The concrete per-word pair identity gives an actual ordinary source pair,
+  its ledger observation and the unique structural word. The focal row induction
+  identifies full source information; equal cut depth minus the common row offset
+  fixes the entry prefix across mechanical representatives. Structural excluded
+  failure suffixes remain separate from the actual completed Config.
+* [Simultaneous source image](se-concurrent-likelihood.md#source-image-for-reconstruction-simultaneous-finite-invariant):
+  initialization, inherited/omitted/proper/BAD rows and clean/retry/exhausted
+  closure preserve typed refs, saved data, target attempted histories and signed
+  origins together. Raw accepted stamps identify the same visit; restore copies
+  saved typed fields and replaces history with the target attempted history.
+  Public samples and proposal readback supply public extensions and RevealFixed
+  without assuming guards invariant under arbitrary private changes.
+* [Unfinished image and queries](se-concurrent-likelihood.md#unfinished-current-image-and-every-callback-query):
+  the current block has a partial-field relation, not a fictitious completed
+  image. Own receipt order, historical windows, current-only NoMiss normalization
+  and the actual initialized traffic archive give every pre-SEND query. Retirement
+  requires the entire phase finished, so foreign failure cannot cancel an active
+  focal owner's never-admitted SEND before its row completes. Accepted canceled
+  focal values remain literal and are not auxiliary lost draws.
+* [Replay and both inverses](se-concurrent-likelihood.md#actual-replay-extraction-and-both-readbacks):
+  actual-input response support is constructed before mechanical constancy.
+  Fresh lost-coordinate locality prevents future choices from changing earlier
+  kernels. Both coverage directions retain the original tape and true admission
+  bit. Reverse extraction proves prefix equality and conditional alias support
+  simultaneously. Equal mechanical chronology fixes signed origins and lost
+  slots across representatives; it does not assume equal alias menus.
+* [Chronological atoms](se-concurrent-likelihood.md#exact-chronological-product-with-no-missing-or-doubled-draws):
+  proper foreign SENDs partition disjointly into historical accepted, current
+  issued and historical never-admitted registrations. Every factor uses its
+  actual query; copying, restore and INCLUDE add no draw. The correlated joint
+  initializer and original tape occur once each. The supported augmented
+  correspondence and sequential kernel normalization justify the subsequent
+  cancellation, including arbitrary packages and zero fibers.
 
-This review concerns the qualified full-information domain. It does not claim
-an arbitrary-prefix density identity. The gain and preservation assembly remain
-checked only conditional on `QualifiedBindingLaw`; its global Lean transport
-is still required.
+These arguments form an acyclic derivation. Static source-image equations use
+original reference-trace invariants; they do not assume a supported reconstructed
+trace. The raw induction constructs that trace. Reverse coverage starts with
+an arbitrary positive original annotation, not the desired weighted identity.
+The conditional algebra then proves the exact original weighted rectangle.
 
 ## Exact primitive proof status
 
-The four primitive statements and downstream aggregation compile. The
-source-site, foreign posterior pair and stopped-payoff primitives, together with
-mechanical-weight representative independence, are Lean-checked using only
-standard axioms. Weighted transport remains admitted; its mathematical argument
-is also incomplete. A proposed route and reviewed local identities do not supply
-its missing global proof.
+The four statements and downstream aggregation compile. The source-site,
+foreign posterior pair and stopped-payoff primitives, together with mechanical
+representative independence, are Lean-checked using only standard axioms.
+Weighted transport has a reviewed mathematical derivation but remains admitted.
+The global source-image producer, supported whole replay, both inverses/coverage
+and exact atom ledger remain implementation obligations; local checked helpers
+or record declarations do not close them.
 
-| Primitive | Mathematical status |
-| --- | --- |
-| `qualified_source_site` | Reviewed: one conditioned source/runtime coupling supplies the entire cut and both locks; full information identifies its common site and encoder. |
-| `foreign_posterior_cut_pair` | Detailed derivation reviewed: exact selected-entry row induction and owner-word disintegration give both posterior laws and their positive normalizers. Structural excluded-player placeholder histories are retained separately from actual automatic source actions. |
-| `qualified_annotation_pushforward` | Open: simultaneous source-image induction, exhaustive positive-annotation coverage and literal chronological atom accounting are not fully derived. Local identities and conditional cancellation are available. |
-| `annotated_stopped_payoff` | Reviewed: constructive all-posterior cylinder positivity, original-tape full-word gluing and the actual completed archived witness give the aggregate payoff and its complement. |
-
-The sharpest missing implication starts with an arbitrary positive original
-annotated summand `(h, tape, q, z, g, G)`. It must derive the common full source
-information and goodness of `g`, supported forced completion `G`, the unique
-prefix `q`, the exact structural foreign word `z`, and consistent accepted,
-canceled and current-issued origins under one assignment. Extracted auxiliary
-choices must be supported and replay must recover the entire annotated tuple.
-Constructing a replay from a supported `(g, G)` does not prove this converse.
-
-The atom calculation must also prove exhaustive, disjoint allocation of each
-actual proper SEND to historical accepted, current issued or historical
-never-admitted factors, with its actual query and multiplicity. Sequential PMF
-normalization and cancellation are justified only after that identity and the
-augmented correspondence are proved.
-
-For weights, representative independence is a separate actual-history theorem.
-Fresh-slot laws give the binding case; proper live bindings give the exact
-publication wait/send atoms; the fixed-tape scheduler reads retained public
-data. Historical reconstruction first supplies legal actual histories, then
-uses this invariance. The current-only NoMiss readback is proved at every
-sender's pre-SEND prefix, including senders excluded later.
+| Primitive | Mathematical status | Lean status |
+| --- | --- | --- |
+| `qualified_source_site` | Reviewed full-information site and one joint store/emission coupling. | Checked. |
+| `foreign_posterior_cut_pair` | Reviewed ordinary row induction, both posterior laws and per-word support, with structural excluded histories distinguished. | Checked. |
+| `qualified_annotation_pushforward` | Reviewed simultaneous source image, exhaustive positive-annotation coverage, both augmented inverses and exact chronological factors. | Admitted; global proof unfinished. |
+| `annotated_stopped_payoff` | Reviewed all-posterior cylinder positivity, same-tape full-word gluing and actual completed archived witness. | Checked. |
 
 For payoff attachment, `binding_close_erased_history` supplies deterministic
-closing equality. Its same-entry hypothesis follows by transferring the
-selected checkpoint to the actual entry witness; its same-enriched-word
-hypothesis follows from the actual closing decoder and ordinary COMMIT labels.
-The actual raw closing and completed-history constructors provide the full
-witness and proposal delta. Thus full-word gluing retains the required
-supported relation, beyond equality of word marginals.
-
-The dependency graph is acyclic. The local ordinary row/coupling argument is
-independent of the pair theorem and constructs the source site directly.
-The pair theorem supplies its explicit internal law to payoff and weighted
-transport; historical row reconstruction supplies their actual read relations.
-The checked aggregation then derives `QualifiedBindingLaw` and the capstone.
-No initial-law independence or new external hypothesis is introduced.
+closing equality. Its same-entry hypothesis transfers the selected checkpoint
+to the actual entry witness; its same-enriched-word hypothesis follows from the
+closing decoder and ordinary COMMIT labels. Full-word gluing retains the
+supported completed-history relation and proposal delta, beyond word marginals.
+The checked gain and preservation assembly remains conditional on
+`QualifiedBindingLaw`; its unconditional Lean transport is still required.
 
 ## Historical profiles and fixed continuation laws
 
@@ -149,9 +127,9 @@ and native strategies for its likelihood factorization.
 Profile-independence alone proves neither primitive. The mathematical derivation
 also supplies actual cursor recovery, proper issued-cylinder positivity,
 coverage of every posterior target, representative-gate invariance and the
-same-tape stopped payoff attachment. Their Lean proofs remain substantive
-obligations. The compiled aggregation consumes these interfaces; it does not
-verify the primitive transport proofs.
+same-tape stopped payoff attachment. The weighted Lean proof remains a substantive obligation. The compiled
+aggregation consumes the primitive interfaces; it does not discharge their
+implementations.
 
 ## Exact finite diagnostic
 
@@ -191,7 +169,7 @@ python scripts/experiments/reserved_binding_rational.py --capacity 2 --correlate
 
 The second command must report a mismatch and exit with status 2.
 
-## Proposed domain and sufficient conclusion
+## Domain and sufficient conclusion
 
 The domain is the finite, well-formed compiled concurrent source game with
 its original arbitrary finite-support joint initial law, finite binding
@@ -222,76 +200,20 @@ all-none native law. Native and source Bayes normalization then gives exactly
 the existing qualified payoff proposition. No matching cursor for arbitrary
 source targets, independent initial types or desired continuation law is assumed.
 
-## Local checks and required replay properties
+## Replay and continuation boundary
 
-* **Original initialization.** Every target retains literal theta and
-  mu(theta). Lost draws are integrated conditional on that theta. No product
-  of player marginals replaces the joint prior. Public Nature's
-  postinitializer product is common on full J; it is accounted for rather
-  than incorrectly included in the initializer.
-* **Exact masks and occurrences.** Full source information retains every
-  cursor, excluded set, generation and saved rank. At COMMIT owner j,
-  prior exclusion means automatic NONE, a new insertion means missing, and
-  continued survival means nonmissing. Close preserves E even on the final
-  retry/exhaustion step. Values are indexed by generation, saved rank and
-  event, so canceled values cannot be confused with later attempts.
-* **No invented focal past.** Retry requires every phase event finished;
-  automatic drain applies only to excluded owners. Every other missing
-  completion excludes its owner permanently. A later surviving I therefore
-  cannot contain a canceled focal binding that was never admitted. Canceled
-  focal BAD remains literal. Earlier focal publication failures are likewise
-  impossible, because publication does not roll back.
-* **Actual normalized responses.** Foreign alias fibers have identical
-  operational effects and future class laws; their original probabilities
-  are summed exactly, not matched by alias counts. Proper binding classes,
-  freshness and opening certificates are reconstructed from actual headers,
-  owned prepared values and accepted handles. Initial handles use theta.
-* **Fieldwise replay.** Current, saved and retired meanings are tracked
-  separately. Restore copies saved fields, not unrelated equal public data.
-  The getter uses actual typed cells, rank-truncated failure footprints,
-  complete address words and archive without latent-history equality.
-  NoMiss replaces EVERY exclusion signal in the current attempt by its saved
-  entry exclusions, not merely failures already physically observed. The
-  native query likewise constructs that entire current address suffix with
-  constant saved exclusions. Thus a later-ranked owner may SEND before an
-  earlier-ranked foreign omission physically occurs: its domain key still
-  equals the retrospective source key. Older retired footprints remain and
-  are already known at the new attempt. The NoMiss representative may add
-  foreign failed cells; only the acting owner's observation/properness is
-  needed, not an all-proper historical replay.
-* **Full focal observations.** Before I, retain literal own raw recall and
-  its entire private catalogue, including unused/dead preparations. After I,
-  focal future values and views are causal auxiliaries, not a fixed baseline
-  future. Public events are source-ordered barriers; private binding events
-  may interleave. The inverse preserves public application data, own live
-  cells, the entire own catalogue, network observation and raw recall.
-* **Guards and disclosure labels.** Only actually completed obligations are
-  evaluated. Guard reads cannot inspect raw hidden inputs or commitments.
-  Truthful rejection and failed disclosure retain their distinct source
-  weights; their class normalizers are positive under strict rates. Ordered
-  proposals and addresses remain in the archive.
-* **Both directions and multiplicity.** Mechanical indices project actual
-  qualified pre-I paths before choosing a source target. Their coordinates retain public native prefixes,
-  freshness, the original tape and literal pre-I focal recall. Source witnesses,
-  cause-read words and label weights are excluded: retaining a source cause-read
-  word would retain hidden commitment values and invalidate the common weight.
-  The inverse reconstructs every compatible positive target from its
-  predecessor fiber. Live ledgers contain
-  only issued values; unissued static-earlier coordinates enter retrospectively.
-  The inverse retains lost draws and causal future kernels. An emitted owned
-  prefix times its conditional tail is the original full owner-chain law.
-  Only finished never-admitted leaves sum to one; accepted canceled and
-  pending values remain fixed. No individual domain atom is divided out.
-* **Uniform gate and causal kernel.** The actual acceptance-word theorem,
-  focal available-binding alias equality and foreign response invariance give
-  one gate bit for each anchor and original tape, across all proper encodings.
-  For each compatible typed word, condition actual future response laws on
-  their next typed value. Full support makes each steering kernel a PMF;
-  immutable own-prefix readback gives the updated query. Its mechanical suffix
-  may depend on private syntax, but its mass is one. On the qualified branch,
-  the actual fresh endpoint and enriched erased source history attach the same
-  source0 payoff kernel before summing the causal focal word. Later failures
-  remain unfiltered. No refreshed tape or mechanical-independence premise enters.
+The global replay properties are reviewed above and derived in the linked proof,
+including every historical query, all saved/retired images, both supported
+readbacks and exact multiplicity. Alias kernels are evaluated sequentially at
+actual inputs; later menus may depend on earlier aliases and lost values.
+
+After the decision, focal future values and views are causal auxiliaries, not a
+fixed baseline future. The actual acceptance-word theorem and response
+invariance give one gate across proper current encodings. Full-support steering
+kernels use updated queries and have mass one. The actual fresh endpoint and
+enriched erased source history attach the same unflagged payoff kernel. Later
+failures remain unfiltered; no refreshed tape or mechanical-independence premise
+is introduced.
 
 ## Signed comparison and assembly
 
