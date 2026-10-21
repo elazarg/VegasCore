@@ -702,6 +702,6 @@ in the stated bounds, along with native-bad and source-Good conditioning errors.
 The existing shared limiting sequence controls those errors.
 
 This completes the reviewed mathematical derivations and their composition.
-Three primitive Lean proofs remain required. Compilation of the admitted
-interfaces and actual aggregators does not remove their sorryAx dependence,
-and this document does not mark concurrent preservation checked.
+The weighted transport primitive remains to be proved in Lean. Compilation of
+its admitted interface and the actual aggregators does not remove their sorryAx
+dependence, and this document does not mark concurrent preservation checked.
