@@ -1,49 +1,52 @@
 # Independent agent review of concurrent likelihood
 
-**Complete finite derivation Astra-reviewed; Lean transport open.**
+**Finite mathematical derivation independently agent-reviewed; Lean transport open.**
 The [likelihood derivation](se-concurrent-likelihood.md) uses literal concurrent
-execution, complete pending observation, the original correlated input law and
-one whole-execution tape prior. Independent Astra reviews cover local origin
-assignment, all-depth address alignment, actual normalized alias kernels, the
-inverse on the actual annotated domain with K normalizers, the common
-mechanical-coefficient telescoping identity and lost-tail factor independence.
-An unrestricted prefix density theorem is not claimed. This is not human review
-or Lean verification.
+execution, the original correlated input law and one whole-execution tape prior.
+This is agent mathematical review, not human approval or Lean verification.
+The global transport and unconditional concurrent preservation remain unproved.
 
 ## Mathematical review boundary
 
-The reviewed finite argument assembles these ingredients:
+The finite argument establishes the following connections, without supplying
+query equality, source goodness or an inverse as an external premise.
 
-* Initialization retains the single original joint atom `mu(theta)`. The
-  actual annotated joint is restricted to qualified ready-information fibers.
-* The commitment-close inverse reconstructs every compatible target from its
-  same-parent source prefix. It preserves all five focal before-view components,
-  keeps admitted canceled values, and integrates only terminal lost leaves and
-  unused tails. Restore retains saved handle associations and the catalogue.
-* Every nonmissing source BAD has an accepted native BAD origin, including in
-  canceled attempts; this supplies whole-history source-good provenance.
-* Live publications constrain their accepted binding values immediately.
-  Completed public rows form a deterministic prefix overlay; their source label
-  law advances at whole-phase close using exhaustive chronological-key fibers.
-* The original tape is disintegrated along the actual annotated native trace.
-  After forcing the focal value, the joint explicitly retains its causally
-  updated future value word through the terminal payoff map. An averaged
-  physical marginal is insufficient.
+* Construct legal raw traces before evaluating query probabilities.
+  `phaseProposalReferenceStrategy_fullSupport` supplies foreign support from
+  positive alias perturbation. Focal full inputs/actions and fixed-tape public
+  observations stay literal; supported source initialization supplies mu(theta).
+* Actual neighboring archives delimit clean or fully excluded native visits.
+  `sourceArchiveAddresses` advances an exhausted cursor to high, resets retry
+  to low with the next generation, and emits no row for an empty gap.
+  `sourcePublicAddressWord_gap_provider` supplies the accepted handle; later
+  consumed-field retention identifies its unique clean visit. All admitted
+  canceled rows remain. FULL interval masks exclude abstract source exhaustion:
+  same generation alone does not imply a clean source close.
+* Prefix truncation of the full cause word retains initializer, every COMMIT
+  and focal information. `proposalRecoveryClosedKey_prior` and
+  `proposalRecovery_refinement_of_closed_key` apply before each SEND;
+  `surviving_info_eq` uses survival there, including senders excluded later.
+* A live prepared PUB handle cannot survive dirty origin restore and cannot be
+  reaccepted through its stale packet or a fresh SEND. Full target masks force
+  a clean source save. Start `source_suffix_cells_of_prefix` AFTER that close;
+  `reveal_binding_origin_at` selects the same typed name. The proposal delta
+  fixes its success before the guard, including failed disclosure.
+* Terminal never-admitted draws use actual supported target aliases. The
+  preparationOnly suffix preserves all other owners' complete inputs; the
+  changed owner must WAIT before close and after exclusion. Its source COMMIT
+  remains literal missing failure. Thus keys and queries are unchanged, and
+  actual alias and lost-value conditional sums are one.
+* Both inverse directions retain full active foreign histories, deterministic
+  excluded failure histories, source-cause tags and the uniquely cut q prefix.
+  The atom ledger counts canceled admissions once, separates lost draws and
+  current issued coordinates, and retains the single joint mu(theta).
+  Original tape, actual ClosedMass, issued-word and focal/foreign conditional
+  normalizers cancel only on their positive supports; zero fibers are separate.
 
-The direct ordinary law uses each source history's own entry. At the qualified
-ready cut, full focal information fixes historical proposals and current masks;
-the inverse constructs every compatible good source history before deriving
-membership in that reconstructed native history's actual source fiber.
-Issued-word cylinders remain local to native paths and disappear only after
-their value children are summed. Post-insertion typed-steering kernels have
-unit mass for each compatible word, with updated queries and the original tape.
-The source static cut supplies finite-n past factors; the future is source0.
-
-This is a mathematical argument, not checked theorem evidence.
-The clean gain comparison and final preservation assembly are checked assuming
-`QualifiedBindingLaw`. Its transport proof and unconditional concurrent
-preservation remain open. Stronger arbitrary-prefix
-identities are outside this review's conclusion.
+This review concerns the qualified full-information domain. It does not claim
+an arbitrary-prefix density identity. The gain and preservation assembly remain
+checked only conditional on `QualifiedBindingLaw`; its global Lean transport
+is still required.
 
 ## Exact finite diagnostic
 

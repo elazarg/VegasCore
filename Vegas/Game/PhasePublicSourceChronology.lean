@@ -2,6 +2,7 @@
 
 import Vegas.Pending.PhaseSavedExclusionReadback
 import Vegas.Pending.PhaseArchiveGeneration
+import Vegas.Pending.PhaseArchivedBindingInterval
 import Vegas.Game.CompiledRevealPhase
 import Vegas.Source.CommitRecoveryInstructions
 
@@ -470,6 +471,160 @@ theorem sourceArchiveCursor_after_completed
   · simp only [Option.any_some, kind, true_and, survives, decide_false, Bool.false_eq_true,
       ↓reduceIte, Option.map_some, Option.getD_some]
 
+/-- Every archived prefix of an actual history ends before the next archived
+entry; the whole archive ends before the current saved entry. -/
+theorem sourceArchivePrefix_history (runtime : EventGraphRuntime graph)
+    (leaks : Interaction.MessageNetwork.ObservationRule Player (CommitAttemptPacket graph))
+    (plan : RuntimePhasePlan graph) (inputs : PMF graph.Inputs) (horizon : Nat)
+    (scheduler : (phaseApplication runtime leaks).Scheduler) {control}
+    (trace : ((phaseApplication runtime leaks).protocol
+      (inputs.map (initial plan)) horizon scheduler).Trace (some control)) :
+    let state := control.execution.application
+    plan.sourceArchiveCursor (sourceControlRecords state.retired) 0 ∅ ≤ state.attempt.phase ∧
+      ∀ j : Fin state.retired.length,
+        plan.sourceArchiveCursor (sourceControlRecords (state.retired.take j.val)) 0 ∅ ≤
+          state.retired[j].attempt.phase := by
+  classical
+  let bounded : PhaseRuntimeState graph → Prop := fun state =>
+    plan.sourceArchiveCursor (sourceControlRecords state.retired) 0 ∅ ≤ state.attempt.phase ∧
+      ∀ j : Fin state.retired.length,
+        plan.sourceArchiveCursor (sourceControlRecords (state.retired.take j.val)) 0 ∅ ≤
+          state.retired[j].attempt.phase
+  have settleBound (phases : List (RuntimePhase graph)) (generation : Nat)
+      (entry current : RecoveryState graph) (retired : List (RetiredCommitAttempt graph))
+      (suffix : phases <:+ plan.phases)
+      (failures : (⟨phases, generation, entry, current, retired⟩ :
+        PhaseRuntimeState graph).ArchivedExclusions)
+      (prior : bounded ⟨phases, generation, entry, current, retired⟩) :
+      bounded (settle phases generation entry current retired) := by
+    have ordered := plan.adjacent.suffix suffix
+    cases phases with
+    | nil => exact prior
+    | cons phase remaining =>
+      have member : phase ∈ plan.phases := suffix.subset List.mem_cons_self
+      have tailBound : phase.high ≤ phaseLow remaining := by
+        cases remaining with
+        | nil => exact phase.bounded
+        | cons next rest => exact le_of_eq (List.isChain_cons_cons.mp ordered).1
+      have tailOrdered := ordered.tail
+      let record : RetiredCommitAttempt graph :=
+        ⟨⟨phase.low, generation⟩, (phase.drain current).native⟩
+      have archiveBound : ∀ j : Fin (retired ++ [record]).length,
+          plan.sourceArchiveCursor (sourceControlRecords
+            ((retired ++ [record]).take j.val)) 0 ∅ ≤
+              (retired ++ [record])[j].attempt.phase := by
+        intro j
+        by_cases old : j.val < retired.length
+        · simpa only [Fin.getElem_fin, List.take_append_of_le_length (Nat.le_of_lt old),
+            List.getElem_append_left old] using prior.2 ⟨j.val, old⟩
+        · have last : j.val = retired.length := by
+            have bound := j.isLt
+            simp only [List.length_append, List.length_singleton] at bound
+            omega
+          simpa only [Fin.getElem_fin, record, last, List.take_left,
+            List.getElem_append_right (le_refl _), Nat.sub_self,
+            List.getElem_cons_zero, PhaseRuntimeState.attempt, List.head?_cons,
+            Option.map_some, Option.getD_some] using prior.1
+      simp only [settle]
+      split
+      · split
+        · rename_i missed
+          have consumed := sourceArchiveCursor_after_completed plan
+            (⟨phase :: remaining, generation, entry, current, retired⟩ : PhaseRuntimeState graph)
+            phase member missed.1 failures
+          split
+          · rename_i survivors
+            refine ⟨?_, archiveBound⟩
+            change plan.sourceArchiveCursor (sourceControlRecords
+              (retired ++ [⟨⟨phase.low, generation⟩,
+                (phase.drain current).native⟩])) 0 ∅ ≤ phase.low
+            rw [consumed, ite_eq_left survivors]
+          · rename_i exhausted
+            let rebuilt := phase.drain (restore entry (phase.drain current))
+            let records := retired ++ [⟨⟨phase.low, generation⟩, (phase.drain current).native⟩]
+            have fresh := settle_generation_archive_of_same_excluded remaining generation
+              rebuilt rebuilt records rfl
+            have later :=
+              (settle_namespace remaining generation rebuilt rebuilt records tailOrdered).2
+            change bounded (settle remaining generation rebuilt rebuilt records)
+            dsimp only [bounded]
+            refine ⟨?_, ?_⟩
+            · rw [fresh.2]
+              have consumedBound :
+                  plan.sourceArchiveCursor (sourceControlRecords records) 0 ∅ ≤ phase.high := by
+                rw [consumed, ite_eq_right exhausted]
+              exact consumedBound.trans (tailBound.trans later)
+            · intro j
+              have inside : j.val < records.length := Eq.mp
+                (congrArg (fun bound : Nat => j.val < bound) (congrArg List.length fresh.2)) j.isLt
+              simpa only [Fin.getElem_fin, fresh.2] using archiveBound ⟨j.val, inside⟩
+        · have fresh := settle_generation_archive_of_same_excluded remaining generation
+            (phase.drain current) (phase.drain current) retired rfl
+          have later := (settle_namespace remaining generation (phase.drain current)
+            (phase.drain current) retired tailOrdered).2
+          change bounded (settle remaining generation (phase.drain current)
+            (phase.drain current) retired)
+          dsimp only [bounded]
+          refine ⟨?_, ?_⟩
+          · rw [fresh.2]
+            exact prior.1.trans (phase.nonempty.le.trans (tailBound.trans later))
+          · intro j
+            have inside : j.val < retired.length := Eq.mp
+              (congrArg (fun bound : Nat => j.val < bound) (congrArg List.length fresh.2)) j.isLt
+            simpa only [Fin.getElem_fin, fresh.2] using prior.2 ⟨j.val, inside⟩
+      · exact prior
+  have invariant : (phaseApplication runtime leaks).Invariant
+      (fun state => state.ArchivedExclusions ∧ state.phases <:+ plan.phases ∧ bounded state) := {
+    submit := by
+      intro state who material valid
+      exact ⟨(phaseApplication_archivedExclusions runtime leaks).submit _ _ _ valid.1,
+        valid.2.1, valid.2.2⟩
+    handle := by
+      intro state message next valid accepted
+      refine ⟨(phaseApplication_archivedExclusions runtime leaks).handle _ _ _ valid.1 accepted,
+        (phaseApplication_planSuffix runtime leaks plan).handle _ _ _ valid.2.1 accepted, ?_⟩
+      change state.handle runtime message = some next at accepted
+      unfold PhaseRuntimeState.handle at accepted
+      split at accepted
+      · obtain ⟨native, handled, rfl⟩ := Option.map_eq_some_iff.mp accepted
+        apply settleBound state.phases state.generation state.entry
+          (state.current.inclusionResult message.payload.packet.call native) state.retired
+          valid.2.1 _ valid.2.2
+        exact ⟨⟨valid.1.coverage.saved,
+            valid.1.coverage.active.inclusionResult runtime _ native handled,
+            valid.1.coverage.inherited.trans (state.current.inclusionResult_excluded_subset _ _)⟩,
+          valid.1.saved, valid.1.active.inclusionResult runtime _ native handled⟩
+      · cases accepted
+    environment := by
+      intro state command next valid reached
+      refine ⟨(phaseApplication_archivedExclusions runtime leaks).environment _ _ _ valid.1 reached,
+        (phaseApplication_planSuffix runtime leaks plan).environment _ _ _ valid.2.1 reached, ?_⟩
+      change next ∈ (state.environment runtime command).support at reached
+      unfold PhaseRuntimeState.environment at reached
+      split at reached
+      · obtain ⟨native, supported, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp reached
+        apply settleBound state.phases state.generation state.entry
+          (state.current.environmentResult command native) state.retired valid.2.1 _ valid.2.2
+        exact ⟨⟨valid.1.coverage.saved,
+            valid.1.coverage.active.environmentResult runtime command native supported,
+            valid.1.coverage.inherited.trans (state.current.environmentResult_excluded_subset _ _)⟩,
+          valid.1.saved, valid.1.active.environmentResult runtime command native supported⟩
+      · rw [PMF.mem_support_pure_iff] at reached
+        subst next
+        exact valid.2.2 }
+  have result := invariant.history _ horizon scheduler (fun state supported => ?_) trace
+  · exact result.2.2
+  · obtain ⟨input, _supported, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp supported
+    refine ⟨initial_archivedExclusions plan input, settle_suffix .., ?_⟩
+    apply settleBound plan.phases 0 ⟨State.initial input, ∅⟩ ⟨State.initial input, ∅⟩ []
+      (List.suffix_refl _) _
+      ⟨Nat.zero_le _, fun j => Fin.elim0 j⟩
+    have record : SuffixExclusionRecord 0 ∅
+        (⟨State.initial input, ∅⟩ : RecoveryState graph) :=
+      (RecoveryState.FailureCoverage.initial input).suffixRecord
+    exact ⟨⟨RecoveryState.FailureCoverage.initial input,
+      RecoveryState.FailureCoverage.initial input, Finset.Subset.refl _⟩, record, record⟩
+
 /-- Appending the genuine completed image retains its old native prefix,
 all interior slots and exactly one original retry or exhausted close. -/
 theorem sourceArchiveAddresses_after_completed
@@ -553,6 +708,280 @@ theorem sourcePublicAddressWord_saved (plan : RuntimePhasePlan graph)
   simp only [sourcePublicAddressWord, State.sourceFailureFootprint, Nat.sub_self,
     List.range_zero, List.map_nil, List.append_nil]
   rfl
+
+
+/-- An active adjacent row outside every retired namespace obtains its handle
+from the immutable native image providing that exact public gap. -/
+theorem sourcePublicAddressWord_gap_provider (runtime : EventGraphRuntime graph)
+    (leaks : Interaction.MessageNetwork.ObservationRule Player (CommitAttemptPacket graph))
+    (plan : RuntimePhasePlan graph) (inputs : PMF graph.Inputs) (horizon : Nat)
+    (scheduler : (phaseApplication runtime leaks).Scheduler) {control}
+    (trace : ((phaseApplication runtime leaks).protocol
+      (inputs.map (initial plan)) horizon scheduler).Trace (some control))
+    (event : graph.EventId) (owner : Player) (payload : L.Ty)
+    (binding : graph.outputLayout event = .binding owner payload)
+    (index : Nat) (before after : Option Nat × (Finset Player × Nat × Nat))
+    (first : (control.execution.application.sourcePublicAddressWord plan
+      control.execution.application.attempt.phase)[index]? = some before)
+    (second : (control.execution.application.sourcePublicAddressWord plan
+      control.execution.application.attempt.phase)[index + 1]? = some after)
+    (rank : before.1 = some event.val) (active : owner ∉ after.2.1)
+    (unarchived : ∀ record ∈ control.execution.application.retired,
+      before.2.2 ≠ (record.attempt.generation, record.attempt.phase)) :
+    ∃ provider : State graph,
+      (provider = control.execution.application.current.native ∧
+          event.val < control.execution.application.attempt.phase ∨
+        ∃ j : Fin control.execution.application.retired.length,
+          provider = control.execution.application.retired[j].state ∧
+          event.val < control.execution.application.retired[j].attempt.phase) ∧
+      owner ∉ provider.failureOwnersBefore (event.val + 1) ∧
+      event ∈ provider.config.cut.completed ∧
+      ∃ handle, provider.accepted (.inr event) = some handle := by
+  classical
+  let state := control.execution.application
+  let Address := Option Nat × (Finset Player × Nat × Nat)
+  let R : Address → Address → Prop := fun left right => ∀ r,
+    left.1 = some r → owner ∉ right.2.1 →
+      (r < state.attempt.phase ∧ owner ∉ state.current.native.failureOwnersBefore (r + 1)) ∨
+      (∃ record ∈ state.retired,
+        r < record.attempt.phase ∧ owner ∉ record.state.failureOwnersBefore (r + 1)) ∨
+      ∃ record ∈ state.retired,
+        left.2.2 = (record.attempt.generation, record.attempt.phase)
+  have intervalChain (failures : Nat → Finset Player) (inherited : Finset Player)
+      (generation low high : Nat) (start : Address) (startRank : start.1 = some low)
+      (provided : ∀ r, low ≤ r → r < high → ∀ left right : Address,
+        left.1 = some r → right.2.1 = inherited ∪ failures (r + 1) → R left right) :
+      List.IsChain R (start :: plan.sourceAddressInterval failures inherited
+        generation low high) := by
+    apply List.isChain_iff_getElem.mpr
+    intro i bound
+    simp only [RuntimePhasePlan.sourceAddressInterval, List.length_cons,
+      List.length_map, List.length_range] at bound
+    cases i with
+    | zero =>
+        simpa only [RuntimePhasePlan.sourceAddressInterval, List.getElem_cons_zero,
+          List.getElem_cons_succ, List.getElem_map, List.getElem_range, Nat.add_zero]
+          using provided low le_rfl (by omega) start
+            (some (low + 1), inherited ∪ failures (low + 1),
+              generation, plan.sourceSavedRank (low + 1)) startRank rfl
+    | succ i =>
+        simpa only [RuntimePhasePlan.sourceAddressInterval, List.getElem_cons_succ,
+          List.getElem_map, List.getElem_range, Nat.succ_eq_add_one, Nat.add_assoc]
+          using provided (low + i + 1) (by omega) (by omega)
+            (some (low + i + 1), inherited ∪ failures (low + i + 1),
+              generation, plan.sourceSavedRank (low + i + 1))
+            (some (low + i + 1 + 1), inherited ∪ failures (low + i + 1 + 1),
+              generation, plan.sourceSavedRank (low + i + 1 + 1)) rfl rfl
+  have intervalLast (failures : Nat → Finset Player) (inherited : Finset Player)
+      (generation low high : Nat) (start : Address) (lower : low ≤ high)
+      (startNamespace : start.2.2 = (generation, low))
+      (boundary : plan.sourceSavedRank high = high) :
+      ∀ last ∈ (start :: plan.sourceAddressInterval failures inherited
+        generation low high).getLast?, last.2.2 = (generation, high) := by
+    by_cases equal : high = low
+    · subst high
+      intro last member
+      simp only [RuntimePhasePlan.sourceAddressInterval, Nat.sub_self, List.range_zero,
+        List.map_nil, List.getLast?_singleton, Option.mem_some_iff] at member
+      cases member
+      exact startNamespace
+    · have positive : high - low ≠ 0 := by omega
+      have endpoint : low + (high - low - 1) + 1 = high := by omega
+      intro last member
+      have nonempty : plan.sourceAddressInterval failures inherited generation low high ≠ [] := by
+        intro empty
+        have lengths := congrArg List.length empty
+        simp only [RuntimePhasePlan.sourceAddressInterval, List.length_map,
+          List.length_range, List.length_nil] at lengths
+        exact positive lengths
+      rw [List.getLast?_cons_of_ne_nil nonempty, RuntimePhasePlan.sourceAddressInterval,
+        List.getLast?_map, List.getLast?_range, ite_eq_right positive, Option.map_some] at member
+      have equal := Option.mem_some_iff.mp member
+      subst last
+      simp only [endpoint, boundary]
+  have scans : ∀ (records : List (RetiredCommitAttempt graph)) (cursor : Nat)
+      (inherited : Finset Player) (generation : Nat) (start : Address),
+      records ⊆ state.retired →
+      ArchiveGenerationFrom plan inherited generation records →
+      plan.sourceArchiveCursor (sourceControlRecords records) cursor inherited ≤
+        state.attempt.phase →
+      (∀ j : Fin records.length,
+        plan.sourceArchiveCursor (sourceControlRecords (records.take j.val)) cursor inherited ≤
+          records[j].attempt.phase) →
+      start.1 = some cursor → start.2.2 = (generation, cursor) →
+      List.IsChain R (start :: plan.sourceArchiveAddresses state.current.native.failureOwnersBefore
+        state.generation state.attempt.phase (sourceControlRecords records) cursor inherited) := by
+    intro records
+    induction records with
+    | nil =>
+        intro cursor inherited generation start _ _ bounded _ startRank _
+        apply intervalChain _ _ _ _ _ _ startRank
+        intro r _ upper left right positioned mask query equal active
+        have same := Option.some.inj (positioned.symm.trans equal)
+        subst query
+        exact Or.inl ⟨upper, fun failed => active (mask.symm ▸ Finset.mem_union_right _ failed)⟩
+    | cons record records ih =>
+        intro cursor inherited generation start subset generations bounded bounds startRank startNs
+        have member : record ∈ state.retired := subset List.mem_cons_self
+        have actual := phaseRetiredCompletion_history runtime leaks plan inputs horizon
+          scheduler trace
+        obtain ⟨phase, installed, low, kind, _, _, _⟩ := actual.archives record member
+        have found := plan.find_low_eq_of_mem phase installed
+        let ending := inherited ∪ record.state.failureOwners
+        let retries := (phase.owners \ ending).Nonempty
+        have retryEq : RetiredRetry plan ending record ↔ retries := by
+          constructor
+          · rintro ⟨other, otherMember, sameLow, _, surviving⟩
+            have equal := plan.phase_eq_of_low_eq other phase otherMember installed
+              (sameLow.trans low)
+            simpa only [equal, retries] using surviving
+          · exact fun surviving => ⟨phase, installed, low.symm, kind, surviving⟩
+        have generationEq : record.attempt.generation = generation := generations.1
+        let next := if retries then phase.low else phase.high
+        let nextGeneration := record.attempt.generation + if retries then 1 else 0
+        let closing : Address := (some next, ending, nextGeneration, next)
+        have lower : cursor ≤ phase.low := by
+          have firstBound := bounds ⟨0, by simp⟩
+          simpa only [Fin.getElem_fin, List.take_zero, sourceControlRecords, List.map_nil,
+            RuntimePhasePlan.sourceArchiveCursor, List.getElem_cons_zero, low] using firstBound
+        have nextBound : plan.sourceArchiveCursor (sourceControlRecords records) next ending ≤
+            state.attempt.phase := by
+          simpa only [sourceControlRecords, List.map_cons, RuntimePhasePlan.sourceArchiveCursor,
+            State.sourceFailureFootprint, found, Option.map_some, Option.getD_some,
+            Option.any_some, kind, true_and, decide_eq_true_eq, low, ending, next,
+            retries] using bounded
+        have nextBounds : ∀ j : Fin records.length,
+            plan.sourceArchiveCursor (sourceControlRecords (records.take j.val)) next ending ≤
+              records[j].attempt.phase := by
+          intro j
+          have previous := bounds ⟨j.val + 1, by simp only [List.length_cons]; omega⟩
+          simpa only [Fin.getElem_fin, List.take_succ_cons, sourceControlRecords, List.map_cons,
+            RuntimePhasePlan.sourceArchiveCursor, State.sourceFailureFootprint, found,
+            Option.map_some, Option.getD_some, Option.any_some, kind, true_and,
+            decide_eq_true_eq, low, ending, next, retries,
+            List.getElem_cons_succ] using previous
+        have nextGenerations : ArchiveGenerationFrom plan ending nextGeneration records := by
+          have tail := generations.2
+          simpa only [← generationEq, retryEq, ending, nextGeneration] using tail
+        have tail := ih next ending nextGeneration closing
+          (fun item inside => subset (List.mem_cons_of_mem record inside))
+          nextGenerations nextBound nextBounds rfl rfl
+        let gap := plan.sourceAddressInterval record.state.failureOwnersBefore inherited
+          record.attempt.generation cursor phase.low
+        let middle := (plan.sourceAddressInterval record.state.failureOwnersBefore inherited
+          record.attempt.generation phase.low phase.high).dropLast
+        have gapChain : List.IsChain R (start :: gap) := by
+          apply intervalChain _ _ _ _ _ _ startRank
+          intro r _ upper left right positioned mask query equal active
+          have same := Option.some.inj (positioned.symm.trans equal)
+          subst query
+          exact Or.inr (Or.inl ⟨record, member, low.symm ▸ upper,
+            fun failed => active (mask.symm ▸ Finset.mem_union_right _ failed)⟩)
+        have gapLast : ∀ last ∈ (start :: gap).getLast?,
+            last.2.2 = (record.attempt.generation, record.attempt.phase) := by
+          have boundary := plan.sourceSavedRank_of_commitment_interval phase installed kind
+            phase.low le_rfl phase.nonempty
+          simpa only [low] using intervalLast record.state.failureOwnersBefore inherited
+            record.attempt.generation cursor phase.low start lower
+            (by simpa only [generationEq] using startNs) boundary
+        have middleNamespaces : ∀ address ∈ middle,
+            address.2.2 = (record.attempt.generation, record.attempt.phase) := by
+          intro address inside
+          rw [show middle = _ from plan.sourceAddressInterval_commit_dropLast
+            record.state.failureOwnersBefore inherited record.attempt.generation
+              phase installed kind] at inside
+          obtain ⟨i, _, rfl⟩ := List.mem_map.mp inside
+          exact congrArg (record.attempt.generation, ·) low.symm
+        have blockChain : ∀ address : Address,
+            address.2.2 = (record.attempt.generation, record.attempt.phase) →
+            List.IsChain R (address :: middle ++ [closing]) := by
+          have build : ∀ (entries : List Address),
+              (∀ address ∈ entries,
+                address.2.2 = (record.attempt.generation, record.attempt.phase)) →
+              ∀ address : Address,
+                address.2.2 = (record.attempt.generation, record.attempt.phase) →
+                List.IsChain R (address :: entries ++ [closing]) := by
+            intro entries
+            induction entries with
+            | nil =>
+                intro _ address matching
+                exact List.isChain_pair.mpr (fun _ _ _ =>
+                  Or.inr (Or.inr ⟨record, member, matching⟩))
+            | cons item rest ih =>
+                intro all address matching
+                apply List.isChain_cons_cons.mpr
+                exact ⟨fun _ _ _ => Or.inr (Or.inr ⟨record, member, matching⟩),
+                  ih (fun other inside => all other (List.mem_cons_of_mem item inside))
+                    item (all item List.mem_cons_self)⟩
+          exact build middle middleNamespaces
+        let entry : Address := (some phase.low, inherited,
+          record.attempt.generation, record.attempt.phase)
+        have closed : List.IsChain R ((start :: gap) ++ (middle ++ [closing])) :=
+          gapChain.append (blockChain entry rfl).tail (fun left present right head =>
+            (blockChain left (gapLast left present)).rel_head? head)
+        have combined := (show List.IsChain R (((start :: gap) ++ middle) ++ [closing]) by
+          simpa only [List.append_assoc] using closed).append_overlap tail (by simp)
+        simpa only [sourceControlRecords, List.map_cons, RuntimePhasePlan.sourceArchiveAddresses,
+          State.sourceFailureFootprint, found, Option.map_some, Option.getD_some, Option.any_some,
+          kind, true_and, decide_eq_true_eq, low, gap, middle, closing, ending, next,
+          nextGeneration, retries,
+          List.cons_append, List.singleton_append, List.append_assoc] using combined
+  have bounds := sourceArchivePrefix_history runtime leaks plan inputs horizon scheduler trace
+  have generations := phaseArchiveGeneration_history runtime leaks plan inputs horizon scheduler
+    trace
+  have chain := scans state.retired 0 ∅ 0 (some 0, ∅, 0, 0)
+    (List.Subset.refl _) generations.1 bounds.1 bounds.2 rfl rfl
+  have allChain : List.IsChain R (state.sourcePublicAddressWord plan state.attempt.phase) := by
+    simpa only [sourcePublicAddressWord_saved, List.singleton_append] using chain
+  obtain ⟨firstBound, firstValue⟩ := List.getElem?_eq_some_iff.mp first
+  obtain ⟨indexBound, secondValue⟩ := List.getElem?_eq_some_iff.mp second
+  have edge := allChain.getElem index indexBound
+  rw [firstValue, secondValue] at edge
+  have provided := edge event.val rank active
+  have completedCurrent : ∀ r : graph.EventId, r.val < state.attempt.phase →
+      r ∈ state.current.native.config.cut.completed := by
+    have frontier := (phaseApplication_frontier runtime leaks).history _ horizon scheduler
+      (fun current supported => by
+        obtain ⟨input, _, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp supported
+        exact initial_frontier plan input) trace
+    intro r below
+    cases phases : state.phases with
+    | nil => exact (frontier.terminal phases).symm ▸ Finset.mem_univ r
+    | cons phase rest =>
+        have positioned := frontier.positioned
+        rw [phases] at positioned
+        have lower : r.val < phase.low := by
+          simpa only [PhaseRuntimeState.attempt, phases, List.head?_cons,
+            Option.map_some, Option.getD_some] using below
+        exact positioned.2.1 r lower
+  have accepted (provider : State graph)
+      (unflagged : owner ∉ provider.failureOwnersBefore (event.val + 1))
+      (completed : event ∈ provider.config.cut.completed) :
+      ∃ handle, provider.accepted (.inr event) = some handle := by
+    cases present : provider.accepted (.inr event) with
+    | some handle => exact ⟨handle, rfl⟩
+    | none =>
+        have failed := (provider.publicFailure_iff_accepted_none event owner payload
+          binding completed).mpr present
+        exact (unflagged (Finset.mem_filter.mpr ⟨Finset.mem_univ _,
+          ⟨event, Nat.lt_succ_self _, graph.actor?_of_outputLayout_binding binding, failed⟩⟩)).elim
+  rcases provided with final | archived | forbidden
+  · exact ⟨state.current.native, Or.inl ⟨rfl, final.1⟩, final.2,
+      completedCurrent event final.1, accepted _ final.2 (completedCurrent event final.1)⟩
+  · obtain ⟨record, member, below, unflagged⟩ := archived
+    obtain ⟨phase, low, _, finished⟩ :=
+      phaseRetiredBindingInterval_history runtime leaks plan inputs horizon scheduler trace
+        record member
+    have completed := (finished.2 event).mpr (below.trans_le (low.symm ▸ phase.nonempty.le))
+    obtain ⟨j, bounded, equal⟩ := List.mem_iff_getElem.mp member
+    refine ⟨record.state, Or.inr ⟨⟨j, bounded⟩, ?_, ?_⟩, unflagged,
+      completed, accepted _ unflagged completed⟩
+    · exact congrArg RetiredCommitAttempt.state equal.symm
+    · change event.val < state.retired[j].attempt.phase
+      rw [equal]
+      exact below
+  · obtain ⟨record, member, same⟩ := forbidden
+    exact (unarchived record member same).elim
 
 /-- The whole proposed numeric scan is a function of actual public native
 information. All retired private words and candidate meanings may differ. -/

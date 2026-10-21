@@ -1,11 +1,11 @@
 # Concurrent qualified likelihood and causal payoff
 
-This document gives a finite mathematical argument for the exact
-`PhaseProposalQualifiedBinding.QualifiedBindingLaw` proposition. Independent Astra
-reviews cover the actual annotated-domain inverse with source-fiber normalizers,
-common mechanical-coefficient telescoping, lost-tail factor independence and
-causal payoff attachment. This review is not Lean verification.
-Transport and unconditional sequential-equilibrium preservation remain open.
+This document gives the independently agent-reviewed finite mathematical argument
+for the exact `PhaseProposalQualifiedBinding.QualifiedBindingLaw` proposition.
+The review covers the reconstruction, both inverse directions and the original
+source-fiber, issued-word and tape normalizers. It is not Lean verification:
+the global transport and unconditional sequential-equilibrium theorem remain
+unproved. The mathematical review is by agents, not a human approval.
 An unrestricted density identity at every native prefix is not claimed.
 
 The scope is the actual reserved implementation in mode `.concurrent`, with
@@ -213,10 +213,22 @@ unrevealed-value restriction at J.
 
 ## Inverse, source fibers and weights
 
-The inverse is on expanded coordinates: native trace truncation, fixed-depth
-source truncation, retained source-cause tags, latent words and raw aliases.
-Hidden PUB causes are not recoverable from bare physical paths. Prefixes and
-closed source keys recover the same parent uniquely.
+The inverse retains native and source prefixes, source-cause tags, lost values
+and actual input-specific raw aliases. Construct the legal native trace first:
+`phaseProposalReferenceStrategy_fullSupport` requires positive alias perturbation,
+not query equality. Source support supplies the original joint input atom;
+unchanged environment observations and tape supply scheduler support. Focal
+full input and action remain literal. Only then derive canonical source keys
+and use `proposalRecoveryClosedKey_prior`,
+`proposalRecovery_refinement_of_closed_key` and `surviving_info_eq` at EACH
+pre-SEND prefix. A sender later excluded still survives at its own query prefix.
+
+Extraction recovers q at depth g.length minus the current static prefix length.
+Active foreign words include their entire q-entry history; excluded coordinates
+are the ordinary block's deterministic failure histories. Reconstruction and
+extraction therefore retain both inverse directions, including hidden PUB tags.
+Neither the selected source witness nor the input-specific alias menus must be
+equal across histories. Their conditional alias masses each sum to one.
 
 For an actual parent key k of mass H_k and a fixed static COMMIT word w, let
 delta_w append its rows and deterministic close. The child key retains the

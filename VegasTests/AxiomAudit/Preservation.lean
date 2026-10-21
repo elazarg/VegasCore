@@ -5165,3 +5165,9 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.phaseProposalUnflagged_stopped_binding_word_from_retained_entry
+
+/-- info:
+'Vegas.PhaseProposalQualifiedBinding.canonicalSource_foreignGood'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.PhaseProposalQualifiedBinding.canonicalSource_foreignGood
