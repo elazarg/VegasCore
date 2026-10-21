@@ -1,6 +1,6 @@
 # Independent agent review of concurrent likelihood
 
-**All four derivations passed independent agent review; 2/4 primitive proofs are Lean-checked.**
+**All four derivations passed independent agent review; 3/4 primitive proofs are Lean-checked.**
 The [likelihood derivation](se-concurrent-likelihood.md) uses literal concurrent
 execution, the original correlated input law and one whole-execution tape prior.
 This is agent mathematical review, not human approval or Lean verification.

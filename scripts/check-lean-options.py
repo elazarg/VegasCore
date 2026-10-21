@@ -12,8 +12,6 @@ import tomllib
 APPROVED_OPEN_OBLIGATIONS = {
     ("Vegas/Game/PhaseProposalQualifiedBinding.lean", "qualified_annotation_pushforward"):
         "docs/se-concurrent-likelihood-review.md#mathematical-review-boundary",
-    ("Vegas/Game/PhaseProposalQualifiedBinding.lean", "annotated_stopped_payoff"):
-        "docs/se-concurrent-likelihood-review.md#signed-comparison-and-assembly",
 }
 
 

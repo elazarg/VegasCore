@@ -4,8 +4,8 @@ This document gives the complete agent-reviewed mathematical argument for the
 four primitive obligations used by `QualifiedBindingLaw`: `qualified_source_site`,
 `foreign_posterior_cut_pair`, `qualified_annotation_pushforward`, and
 `annotated_stopped_payoff`. Their Lean statements and the downstream aggregation
-compile. The source-site and foreign posterior pair primitives are
-Lean-checked (2/4). Weighted transport and payoff attachment remain open. The
+compile. The source-site, foreign posterior pair and stopped-payoff primitives
+are Lean-checked (3/4). Weighted transport remains open. The
 mathematical derivation is reviewed; concurrent sequential-equilibrium preservation remains
 unproved in Lean. Checked declaration names identify existing tools; the finite
 constructions connecting them are given below.
