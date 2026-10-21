@@ -1,6 +1,6 @@
 # Independent agent review of concurrent likelihood
 
-**All four exact mathematical derivations independently agent-reviewed; source-site Lean proof checked, three primitive proofs open.**
+**All four derivations passed independent agent review; 2/4 primitive proofs are Lean-checked.**
 The [likelihood derivation](se-concurrent-likelihood.md) uses literal concurrent
 execution, the original correlated input law and one whole-execution tape prior.
 This is agent mathematical review, not human approval or Lean verification.
@@ -56,9 +56,9 @@ The four primitive statements and downstream aggregation compile. Each primitive
 has a detailed derivation that passed separate adversarial agent review against
 its exact hypotheses and conclusions. Historical reconstruction received both
 structural and probability reviews. This is mathematical review, not a Lean
-proof. The source-site primitive and mechanical-weight representative
-independence are now Lean-checked using only standard axioms; the other three
-primitive bodies still contain `sorry`.
+proof. The source-site and foreign posterior pair primitives, together with
+mechanical-weight representative independence, are Lean-checked using only
+standard axioms. Weighted transport and payoff attachment remain open.
 
 | Primitive | Mathematical status |
 | --- | --- |

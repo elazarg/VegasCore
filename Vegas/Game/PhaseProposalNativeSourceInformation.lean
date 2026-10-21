@@ -9905,9 +9905,7 @@ def ordinaryForeignJoint (operational : implementation.Operational) (who : Playe
       let checkpoint := (checkpointSelection setup implementation operational trace).val.checkpoint
       let pulled := target.state.bind fun current =>
         residualEntry? checkpoint.residual.tail checkpoint.residual.lift current.point
-      cases _entryEq : pulled with
-      | none => exact PMF.pure (fun _ => [], false)
-      | some entry =>
+      exact pulled.elim (PMF.pure (fun _ => [], false)) fun entry => by
         by_cases committing : ProtocolState.atCommit checkpoint.residual.tail
             (ProtocolState.entry checkpoint.residual.tail entry) = true
         · let block := SourceProgram.commitPhase checkpoint.residual.tail

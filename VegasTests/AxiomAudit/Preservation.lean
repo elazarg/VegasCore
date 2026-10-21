@@ -5186,6 +5186,11 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.PhaseProposalQualifiedBinding.mechanicalCoefficient_eq_of_anchor
 
+/-- info: 'Vegas.PhaseProposalQualifiedBinding.foreign_posterior_cut_pair'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.PhaseProposalQualifiedBinding.foreign_posterior_cut_pair
+
 /- The public primitive remains an explicit unfinished proof obligation. -/
 /-- info: 'Vegas.PhaseProposalQualifiedBinding.annotated_stopped_payoff'
 depends on axioms: [propext, sorryAx, Classical.choice, Quot.sound] -/

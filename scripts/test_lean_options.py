@@ -295,7 +295,6 @@ class LeanOptionTests(unittest.TestCase):
 
     def test_registry_contains_exactly_the_approved_primitives(self):
         self.assertEqual({name for _, name in CHECKER.APPROVED_OPEN_OBLIGATIONS}, {
-            "foreign_posterior_cut_pair",
             "qualified_annotation_pushforward",
             "annotated_stopped_payoff",
         })
