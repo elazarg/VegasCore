@@ -9,6 +9,7 @@ import Vegas.Pending.PhaseAttemptCheckpoint
 import Vegas.Pending.PhaseSemanticProgress
 import Vegas.Game.PhaseCommitmentProposalArchive
 import Vegas.Game.ReservedEpochStoppedImage
+import Vegas.Game.ReservedEpochOriginalWord
 import Interaction.ReactiveLocalContinuation
 import Interaction.ReactiveAnchoredMixture
 import GameTheoryExtensions.Analysis.Protocol.StoppedHistoryInvariant
@@ -1041,9 +1042,9 @@ theorem phaseProposalEmissionFrontier_callback_frame
           invariant.within.2 who event ready actor active unsent).2
 
 /-- The actual stopped runner preserves the frozen-entry canonical potential.
-The structural frame is required on actual running prefixes, not on synthetic
-source histories. The original chance law, chronological signed word and all
-pending emitted assignments remain in those prefixes. -/
+The literal start may already contain emissions, while the frozen original
+entry supplies the query potential. Their attempt is the same. Structural
+frames refer to actual running prefixes and retain all pending assignments. -/
 theorem phaseProposalUnflagged_stopped_potential_of_callback_frames
     (complete : leaks = MessageNetwork.completePendingObservation)
     (covered : bounds.CoversOutputValues)
@@ -1056,6 +1057,8 @@ theorem phaseProposalUnflagged_stopped_potential_of_callback_frames
     (original : inputs = setup.initialLaw.map encodeInputs)
     (anchor : (app).Control)
     (anchorTrace : ((menu).protocol initial horizon scheduler).Trace (some anchor))
+    (origin : (app).Execution)
+    (originAttempt : origin.application.attempt = anchor.execution.application.attempt)
     (phase : RuntimePhase (graph)) (commitment : phase.kind = .commitment)
     (first : (graph).Config)
     (frames : ∀ (current : (app).Control)
@@ -1086,8 +1089,8 @@ theorem phaseProposalUnflagged_stopped_potential_of_callback_frames
               anchor.execution.application.attempt) ⟨some anchor, anchorTrace⟩).support) →
       TracePrefix anchorTrace trace →
       current.execution.application.attempt = anchor.execution.application.attempt →
-      PhaseProposalBindingCallbackFrame setup mode runtime leaks anchor.execution phase
-        current.execution (phaseProposalEmissionFrontier setup mode runtime leaks anchor.execution
+      PhaseProposalBindingCallbackFrame setup mode runtime leaks origin phase
+        current.execution (phaseProposalEmissionFrontier setup mode runtime leaks origin
           phase anchorTrace.length first initial horizon scheduler
             ((menu).toRawTrace initial horizon scheduler trace)) current.actor) :
     let model := (menu).information initial horizon scheduler
@@ -1100,15 +1103,15 @@ theorem phaseProposalUnflagged_stopped_potential_of_callback_frames
       | some current => current.execution.application.attempt ≠ anchor.execution.application.attempt
     let potential := fun history : ((menu).protocol initial horizon scheduler).History =>
       (graph).canonicalContinuation
-        (phaseProposalBindingPotentialProfile setup mode runtime leaks plan anchor.execution phase
+        (phaseProposalBindingPotentialProfile setup mode runtime leaks plan origin phase
           values)
-        (phaseProposalEmissionFrontier setup mode runtime leaks anchor.execution phase
+        (phaseProposalEmissionFrontier setup mode runtime leaks origin phase
           anchorTrace.length first initial horizon scheduler
             ((menu).toRawTrace initial horizon scheduler history.trace))
     (model.runBehavioralUntil ((menu).bounded initial horizon scheduler).wellFoundedHistories
       profile stopped ⟨some anchor, anchorTrace⟩).bind potential =
         (graph).canonicalContinuation
-          (phaseProposalBindingPotentialProfile setup mode runtime leaks plan anchor.execution phase
+          (phaseProposalBindingPotentialProfile setup mode runtime leaks plan origin phase
             values) first := by
   intro model profile stopped potential
   let certificate := ((menu).bounded initial horizon scheduler).wellFoundedHistories
@@ -1137,15 +1140,17 @@ theorem phaseProposalUnflagged_stopped_potential_of_callback_frames
     subst state
     have same : current.execution.application.attempt = anchor.execution.application.attempt :=
       Classical.not_not.mp going
+    have sameOrigin : current.execution.application.attempt = origin.application.attempt :=
+      same.trans originAttempt.symm
     have frame := frames current trace supported context kept same
     rcases current with ⟨remaining, actor, execution⟩
     cases actor with
     | none =>
       exact frontier_one_environment setup mode runtime leaks bounds plan inputs horizon scheduler
-        anchor.execution phase anchorTrace.length first values profile remaining execution trace
+        origin phase anchorTrace.length first values profile remaining execution trace
     | some who =>
       rw [frontier_one_response setup mode runtime leaks bounds plan inputs horizon scheduler
-        anchor.execution phase anchorTrace.length first values profile remaining who execution trace
+        origin phase anchorTrace.length first values profile remaining who execution trace
           kept.length_le, decoded]
       have recalledPrefix : anchor.execution.recall who <+: execution.recall who :=
         (app).reaches_recall_prefix initial horizon scheduler
@@ -1172,9 +1177,9 @@ theorem phaseProposalUnflagged_stopped_potential_of_callback_frames
           exact trace
         exact phaseProposalUnflagged_binding_response_harmonic setup mode runtime leaks bounds plan
           complete covered maximal values fullValues horizon scheduler capacity remaining who
-            execution anchor.execution sourceTrace phase commitment event payload binding code
+            execution origin sourceTrace phase commitment event payload binding code
               inside
-              (by simpa only [← frame.excluded] using request.2.2.2.2) request unsent same
+              (by simpa only [← frame.excluded] using request.2.2.2.2) request unsent sameOrigin
                 frame.retired frame.failures (frame.archive who rfl) _ frame.agreement frame.inputs
                   (frame.hidden who event request.2.2.1 request.2.2.2.1 request.2.2.2.2 unsent)
       · have onlyWait : ∀ response ∈ PhaseCount.onePacketActions runtime leaks bounds who
@@ -1187,7 +1192,7 @@ theorem phaseProposalUnflagged_stopped_potential_of_callback_frames
             | some material => exact (offered ⟨material, member⟩).elim
         rw [phaseProposalUnflaggedPolicy_forced_wait setup mode runtime leaks bounds plan values
           who (execution.recall who) (execution.observe (app) who) onlyWait, PMF.pure_bind]
-        simp only [phaseProposalBindingFrontierAdvance, same, ↓reduceIte,
+        simp only [phaseProposalBindingFrontierAdvance, sameOrigin, ↓reduceIte,
           Function.update_self, Option.getD_some]
         rfl
   have stoppedLaw : ∀ history : ((menu).protocol initial horizon scheduler).History,
@@ -1249,7 +1254,7 @@ theorem phaseProposalUnflagged_stopped_potential_of_callback_frames
     ⟨0, (PMF.mem_support_pure_iff _ _).mpr rfl⟩
   have result := stoppedLaw ⟨some anchor, anchorTrace⟩ .refl initially (fun _ member => member)
     ⟨anchor, rfl⟩
-  have originalFrontier : phaseProposalEmissionFrontier setup mode runtime leaks anchor.execution
+  have originalFrontier : phaseProposalEmissionFrontier setup mode runtime leaks origin
       phase anchorTrace.length first initial horizon scheduler
         ((menu).toRawTrace initial horizon scheduler anchorTrace) = first := by
     apply phaseProposalEmissionFrontier_before_anchor
@@ -1360,7 +1365,7 @@ theorem phaseProposalUnflagged_stopped_word_of_callback_frames
     embedding anchor.execution.application.current.excluded key.2.1 entry
   have potential := phaseProposalUnflagged_stopped_potential_of_callback_frames setup mode runtime
     leaks bounds plan inputs horizon scheduler complete covered maximal values fullValues capacity
-      original anchor anchorTrace phase commitment first frames
+      original anchor anchorTrace anchor.execution rfl phase commitment first frames
   have projected := congrArg (fun law => law.map read) potential
   rw [PMF.map_bind] at projected
   have endpoints : (stoppedLaw.bind fun final =>
@@ -1708,7 +1713,7 @@ theorem phaseProposalUnflagged_stopped_potential_of_fresh_entry
   have result := phaseProposalUnflagged_stopped_potential_of_callback_frames setup mode runtime
     leaks bounds
     plan (setup.initialLaw.map encodeInputs) horizon scheduler complete covered maximal values
-      fullValues capacity rfl anchor anchorTrace phase commitment
+      fullValues capacity rfl anchor anchorTrace anchor.execution rfl phase commitment
         anchor.execution.application.current.native.config (by
     intro current trace _supported context kept same
     obtain ⟨last, continuation⟩ :=
@@ -1776,6 +1781,185 @@ theorem phaseProposalUnflagged_stopped_potential_of_fresh_entry
   funext history
   dsimp only [stopped]
   cases history.state <;> rfl
+
+/-- From an actual retained entry, the admitted original tape preserves the
+causal emitted-frontier potential after a literal mid-block response. Every
+callback frame and every prefix exclusion equality is derived from the actual
+trace and acceptance word, including already pending owned bindings. -/
+theorem phaseProposalUnflagged_stopped_potential_from_retained_entry
+    (complete : leaks = MessageNetwork.completePendingObservation)
+    (covered : bounds.CoversOutputValues)
+    (maximal : plan.phases.IsChain fun before after =>
+      before.kind ≠ after.kind ∨ before.kind = .sample)
+    (values : ∀ who (key : setup.ProposalRecoveryComponent who),
+      PMF (setup.CommitRecoveryValueChoice who key.1))
+    (fullValues : ∀ who key, FullSupport (values who key))
+    {length : Nat} (tape : ReservedEpoch.Tape Player length)
+    (activationGap processingGap : Nat)
+    (gaps : tape.BoundedGaps (ReservedEpoch.completionCycles runtime)
+      activationGap processingGap)
+    (margin : runtime.AsyncTimely (fun _ => activationGap + 1) (fun _ => processingGap + 1))
+    (capacity : ReservedEpoch.executionHorizon runtime ≤ bounds.candidateCount)
+    (anchor : (app).Control) (idle : anchor.actor = none)
+    (anchorTrace : ((menu).protocol
+      ((setup.initialLaw.map encodeInputs).map (PhaseRuntimeState.initial plan))
+      (ReservedEpoch.executionHorizon runtime)
+      (ReservedEpoch.family runtime leaks (ReservedEpoch.packetCapacity runtime) tape)).Trace
+        (some anchor))
+    (phase : RuntimePhase (graph))
+    (installed : anchor.execution.application.phases.head? = some phase)
+    (commitment : phase.kind = .commitment)
+    (origin : (app).Control)
+    (originTrace : ((menu).protocol
+      ((setup.initialLaw.map encodeInputs).map (PhaseRuntimeState.initial plan))
+      (ReservedEpoch.executionHorizon runtime)
+      (ReservedEpoch.family runtime leaks (ReservedEpoch.packetCapacity runtime) tape)).Trace
+        (some origin))
+    (retained : TracePrefix originTrace anchorTrace)
+    (sameAttempt : origin.execution.application.attempt = anchor.execution.application.attempt)
+    (originInstalled : origin.execution.application.phases.head? = some phase)
+    (entryExcluded : origin.execution.application.entry.excluded =
+      origin.execution.application.current.excluded)
+    (fresh : ∀ who, ∀ record ∈ origin.execution.recall who,
+      record.beforeView.application.2.attempt ≠ origin.execution.application.attempt)
+    (clean : anchor.execution.application.current.excluded =
+      origin.execution.application.current.excluded)
+    (afterProcessing : ReservedEpoch.packetCapacity runtime ≤
+      anchor.execution.environmentRecall.length %
+        ReservedEpoch.cycleWidth («graph» := graph) (ReservedEpoch.packetCapacity runtime))
+    (admitted : ∀ owner, owner ∉ anchor.execution.application.current.excluded →
+      ∀ event ∈ phase.events, ∀ payload,
+      (graph).outputLayout event = .binding owner payload →
+      ReservedEpoch.ownedAcceptanceWord runtime leaks tape anchor.execution owner event) :
+    let startLaw := (setup.initialLaw.map encodeInputs).map (PhaseRuntimeState.initial plan)
+    let horizon := ReservedEpoch.executionHorizon runtime
+    let scheduler := ReservedEpoch.family runtime leaks (ReservedEpoch.packetCapacity runtime) tape
+    let model := (menu).information startLaw horizon scheduler
+    let profile := fun who => (menu).restrictPolicy startLaw horizon scheduler who
+      (ReactiveApplication.anchoredPolicy anchor.execution
+        (phaseProposalUnflaggedPolicy setup mode runtime leaks bounds plan values) who)
+    let stopped := fun history : ((menu).protocol startLaw horizon scheduler).History =>
+      match history.state with
+      | none => False
+      | some current => current.execution.application.attempt ≠ anchor.execution.application.attempt
+    let frontier := fun history : ((menu).protocol startLaw horizon scheduler).History =>
+      phaseProposalEmissionFrontier setup mode runtime leaks origin.execution phase
+        originTrace.length origin.execution.application.current.native.config startLaw horizon
+          scheduler ((menu).toRawTrace startLaw horizon scheduler history.trace)
+    let potential := fun history : ((menu).protocol startLaw horizon scheduler).History =>
+      (graph).canonicalContinuation
+        (phaseProposalBindingPotentialProfile setup mode runtime leaks plan origin.execution phase
+          values) (frontier history)
+    (model.runBehavioralUntil ((menu).bounded startLaw horizon scheduler).wellFoundedHistories
+      profile stopped ⟨some anchor, anchorTrace⟩).bind potential =
+        (graph).canonicalContinuation
+          (phaseProposalBindingPotentialProfile setup mode runtime leaks plan origin.execution phase
+            values) (frontier ⟨some anchor, anchorTrace⟩) := by
+  classical
+  intro startLaw horizon scheduler model profile stopped frontier potential
+  let first := frontier ⟨some anchor, anchorTrace⟩
+  have restart {state} (trace : ((menu).protocol startLaw horizon scheduler).Trace state)
+      (kept : TracePrefix anchorTrace trace) :
+      frontier ⟨state, trace⟩ = phaseProposalEmissionFrontier setup mode runtime leaks
+        origin.execution phase anchorTrace.length first startLaw horizon scheduler
+          ((menu).toRawTrace startLaw horizon scheduler trace) := by
+    have rawKept := ((menu).reaches_raw startLaw horizon scheduler kept.reachesWithin).tracePrefix
+    have equation := phaseProposalEmissionFrontier_restart setup mode runtime leaks startLaw
+      horizon scheduler origin.execution phase originTrace.length
+        origin.execution.application.current.native.config
+        ((menu).toRawTrace startLaw horizon scheduler anchorTrace)
+        (by rw [(menu).toRawTrace_length]; exact retained.length_le)
+        ((menu).toRawTrace startLaw horizon scheduler trace) rawKept
+    simpa only [(menu).toRawTrace_length, frontier, first] using equation
+  obtain ⟨_noInputs, emissions, initialOrigins⟩ :=
+    phaseProposal_fresh_entry_binding_origins setup mode runtime leaks bounds plan
+      (setup.initialLaw.map encodeInputs) horizon scheduler origin originTrace phase
+        originInstalled commitment fresh
+  have result := phaseProposalUnflagged_stopped_potential_of_callback_frames setup mode runtime
+    leaks bounds plan (setup.initialLaw.map encodeInputs) horizon scheduler complete covered maximal
+      values fullValues capacity rfl anchor anchorTrace origin.execution sameAttempt phase
+        commitment
+        first (by
+    intro current trace _supported context kept same
+    obtain ⟨last, continuation⟩ :=
+      (model.runBehavioralUntil ((menu).bounded startLaw horizon scheduler).wellFoundedHistories
+        profile stopped ⟨some current, trace⟩).support_nonempty
+    have rootMember := context last (by
+      convert continuation using 1
+      congr 3
+      funext history
+      dsimp only [stopped]
+      cases history.state <;> rfl)
+    rcases anchor with ⟨remaining, actor, execution⟩
+    change actor = none at idle
+    subst actor
+    obtain ⟨ending, before, prior, joint, legal, realized, raw, stateEq, _idle, _changed,
+      _fromStart, _toFinal, _same, _installed, _effect, _finished, _normalized, _coverage,
+      _excluded, _tables, _candidates, _archive, _retiredBefore, _retiredAfter, _word,
+      survives, _footprint⟩ :=
+      phaseProposalUnflagged_stopped_acceptance_word setup mode runtime leaks bounds plan complete
+        covered maximal (serviceGraph_revealRelaxedOrdered setup mode) values fullValues tape
+          activationGap processingGap gaps margin capacity remaining execution anchorTrace phase
+            (Option.mem_def.mpr installed) commitment afterProcessing last (by
+              convert rootMember using 1
+              congr 3
+              funext history
+              dsimp only [stopped]
+              cases history.state <;> rfl)
+    have toLast := model.runBehavioralUntil_support_prefix
+      ((menu).bounded startLaw horizon scheduler).wellFoundedHistories profile stopped
+        ⟨some current, trace⟩ last continuation
+    let lastTrace : ((menu).protocol startLaw horizon scheduler).Trace (some ending) :=
+      stateEq ▸ last.trace
+    have through : TracePrefix trace lastTrace := by
+      dsimp only [lastTrace]
+      cases last
+      cases stateEq
+      exact toLast
+    have currentE : current.execution.application.current.excluded =
+        execution.application.current.excluded := by
+      apply Finset.Subset.antisymm
+      · intro owner excluded
+        by_contra active
+        exact survives owner active (admitted owner active)
+          ((excluded_prefix_grows setup mode runtime leaks bounds plan
+            (setup.initialLaw.map encodeInputs) horizon scheduler current ending trace lastTrace
+              through) excluded)
+      · exact excluded_prefix_grows setup mode runtime leaks bounds plan
+          (setup.initialLaw.map encodeInputs) horizon scheduler
+            ⟨remaining, none, execution⟩ current anchorTrace trace kept
+    have frame := phaseProposalEmissionFrontier_callback_frame setup mode runtime leaks bounds
+      plan
+      (setup.initialLaw.map encodeInputs) horizon scheduler complete maximal origin originTrace
+        phase
+        originInstalled commitment entryExcluded initialOrigins emissions current trace
+          (retained.trans kept) (same.trans sameAttempt.symm) (currentE.trans clean)
+    change PhaseProposalBindingCallbackFrame setup mode runtime leaks origin.execution phase
+      current.execution (frontier ⟨some current, trace⟩) current.actor at frame
+    rw [restart trace kept] at frame
+    exact frame)
+  calc
+    _ = (model.runBehavioralUntil ((menu).bounded startLaw horizon scheduler).wellFoundedHistories
+        profile stopped ⟨some anchor, anchorTrace⟩).bind (fun history =>
+          (graph).canonicalContinuation
+            (phaseProposalBindingPotentialProfile setup mode runtime leaks plan origin.execution
+              phase values)
+            (phaseProposalEmissionFrontier setup mode runtime leaks origin.execution phase
+              anchorTrace.length first startLaw horizon scheduler
+                ((menu).toRawTrace startLaw horizon scheduler history.trace))) := by
+      apply bind_congr_on_support
+      intro history supported
+      have kept := model.runBehavioralUntil_support_prefix
+        ((menu).bounded startLaw horizon scheduler).wellFoundedHistories profile stopped
+          ⟨some anchor, anchorTrace⟩ history supported
+      dsimp only [potential]
+      rw [restart history.trace kept]
+    _ = _ := by
+      convert result using 1
+      congr 3
+      funext history
+      dsimp only [stopped]
+      cases history.state <;> rfl
 
 /-- The original drained image has the emitted addressed word law. -/
 theorem phaseProposalUnflagged_stopped_binding_word
@@ -1954,7 +2138,8 @@ theorem phaseProposalUnflagged_stopped_binding_word
             tailPrefix) (excluded_prefix_grows setup mode runtime leaks bounds plan
               (setup.initialLaw.map encodeInputs) horizon scheduler
                 ⟨remaining, none, execution⟩ before anchorTrace prior fromAnchor)
-    have frame := phaseProposalEmissionFrontier_callback_frame setup mode runtime leaks bounds plan
+    have frame := phaseProposalEmissionFrontier_callback_frame setup mode runtime leaks bounds
+      plan
       (setup.initialLaw.map encodeInputs) horizon scheduler complete maximal
         ⟨remaining, none, execution⟩ anchorTrace phase installed commitment entryExcluded
           initialOrigins emissions before prior fromAnchor sameAttempt beforeE
@@ -2065,6 +2250,346 @@ theorem phaseProposalUnflagged_stopped_binding_word
   have harmonic := phaseProposalUnflagged_stopped_potential_of_fresh_entry setup mode runtime leaks
     bounds plan complete covered maximal values fullValues tape activationGap processingGap gaps
       margin capacity anchor idle anchorTrace phase installed commitment entryExcluded fresh
+  have projected := congrArg (fun distribution => distribution.map read) harmonic
+  rw [PMF.map_bind] at projected
+  have images : (law.bind fun final =>
+      ((graph).canonicalContinuation graphProfile (frontier final)).map read) =
+      law.map (fun final => phaseProposalBindingWord setup.program block suffix embedding
+        anchor.execution.application.current.excluded (image final).native.config.store entry) := by
+    calc
+      _ = law.bind (fun final => PMF.pure (phaseProposalBindingWord setup.program block suffix
+          embedding anchor.execution.application.current.excluded
+            (image final).native.config.store entry)) := by
+        apply bind_congr_on_support
+        intro final member
+        have completed := (facts final member).2.2.2.2.2.2.2.1
+        have pointmass := completed_word_canonical setup mode block suffix embedding
+          anchor.execution.application.current.excluded entry graphProfile (frontier final)
+            (fun index inside => completed (embedding.event index) (locations index inside))
+        exact pointmass.trans (congrArg PMF.pure (imageWord final member).symm)
+      _ = _ := PMF.bind_pure_comp _ _
+  exact images.symm.trans projected
+
+/-- The admitted original attempt closes with the actual pending-and-emitted
+word law from its retained entry, even when the continuation starts mid-block. -/
+theorem phaseProposalUnflagged_stopped_binding_word_from_retained_entry
+    (complete : leaks = MessageNetwork.completePendingObservation)
+    (covered : bounds.CoversOutputValues)
+    (maximal : plan.phases.IsChain fun before after =>
+      before.kind ≠ after.kind ∨ before.kind = .sample)
+    (values : ∀ who (key : setup.ProposalRecoveryComponent who),
+      PMF (setup.CommitRecoveryValueChoice who key.1))
+    (fullValues : ∀ who key, FullSupport (values who key))
+    {length : Nat} (tape : ReservedEpoch.Tape Player length)
+    (activationGap processingGap : Nat)
+    (gaps : tape.BoundedGaps (ReservedEpoch.completionCycles runtime)
+      activationGap processingGap)
+    (margin : runtime.AsyncTimely (fun _ => activationGap + 1) (fun _ => processingGap + 1))
+    (capacity : ReservedEpoch.executionHorizon runtime ≤ bounds.candidateCount)
+    (anchor : (app).Control) (idle : anchor.actor = none)
+    (anchorTrace : ((menu).protocol
+      ((setup.initialLaw.map encodeInputs).map (PhaseRuntimeState.initial plan))
+      (ReservedEpoch.executionHorizon runtime)
+      (ReservedEpoch.family runtime leaks (ReservedEpoch.packetCapacity runtime) tape)).Trace
+        (some anchor))
+    (phase : RuntimePhase (graph))
+    (installed : anchor.execution.application.phases.head? = some phase)
+    (commitment : phase.kind = .commitment)
+    (origin : (app).Control)
+    (originTrace : ((menu).protocol
+      ((setup.initialLaw.map encodeInputs).map (PhaseRuntimeState.initial plan))
+      (ReservedEpoch.executionHorizon runtime)
+      (ReservedEpoch.family runtime leaks (ReservedEpoch.packetCapacity runtime) tape)).Trace
+        (some origin))
+    (retained : TracePrefix originTrace anchorTrace)
+    (originAttempt : origin.execution.application.attempt = anchor.execution.application.attempt)
+    (originInstalled : origin.execution.application.phases.head? = some phase)
+    (entryExcluded : origin.execution.application.entry.excluded =
+      origin.execution.application.current.excluded)
+    (fresh : ∀ who, ∀ record ∈ origin.execution.recall who,
+      record.beforeView.application.2.attempt ≠ origin.execution.application.attempt)
+    (clean : anchor.execution.application.current.excluded =
+      origin.execution.application.current.excluded)
+    (afterProcessing : ReservedEpoch.packetCapacity runtime ≤
+      anchor.execution.environmentRecall.length %
+        ReservedEpoch.cycleWidth («graph» := graph) (ReservedEpoch.packetCapacity runtime))
+    (admitted : ∀ owner, owner ∉ anchor.execution.application.current.excluded →
+      ∀ event ∈ phase.events, ∀ payload,
+      (graph).outputLayout event = .binding owner payload →
+      ReservedEpoch.ownedAcceptanceWord runtime leaks tape anchor.execution owner event)
+    (block : SourceProgram.CommitPrefix Γ O Δ P) (suffix : SourceProgram Player L Δ P)
+    (embedding : OutputEmbedding (inputLayout setup.context) (outputLayout setup.program)
+      (block.prepend suffix)) (entry : SourceProgram.Config Player L Γ)
+    (locations : ∀ index : Fin (eventCount (block.prepend suffix)), index.val < block.length →
+      embedding.event index ∈ phase.events) :
+    let startLaw := (setup.initialLaw.map encodeInputs).map (PhaseRuntimeState.initial plan)
+    let horizon := ReservedEpoch.executionHorizon runtime
+    let scheduler := ReservedEpoch.family runtime leaks (ReservedEpoch.packetCapacity runtime) tape
+    let model := (menu).information startLaw horizon scheduler
+    let profile := fun who => (menu).restrictPolicy startLaw horizon scheduler who
+      (ReactiveApplication.anchoredPolicy anchor.execution
+        (phaseProposalUnflaggedPolicy setup mode runtime leaks bounds plan values) who)
+    let stopped := fun history : ((menu).protocol startLaw horizon scheduler).History =>
+      match history.state with
+      | none => False
+      | some current => current.execution.application.attempt ≠ anchor.execution.application.attempt
+    let law := model.runBehavioralUntil
+      ((menu).bounded startLaw horizon scheduler).wellFoundedHistories profile stopped
+        ⟨some anchor, anchorTrace⟩
+    ∃ image : ((menu).protocol startLaw horizon scheduler).History → RecoveryState (graph),
+      (∀ final ∈ law.support,
+        ∃ (ending before : (app).Control)
+          (prior : ((menu).protocol startLaw horizon scheduler).Trace (some before))
+          (joint : Player → Option (app).Action)
+          (legal : ((menu).protocol startLaw horizon scheduler).Legal (some before) joint)
+          (realized : some ending ∈ ((app).transition startLaw horizon scheduler
+            (some before) joint).support) (raw : RecoveryState (graph)),
+          final.state = some ending ∧ TracePrefix anchorTrace prior ∧
+            TracePrefix (prior.extend joint legal realized) final.trace ∧
+            PhaseClosingEffect runtime leaks before.execution ending.execution raw ∧
+            image final = phase.drain raw ∧ phase.Finished (image final) ∧
+            (image final).excluded = anchor.execution.application.current.excluded ∧
+            PhaseProposal.sourceArchive ending.execution.network.inputs =
+              PhaseProposal.sourceArchive anchor.execution.network.inputs ∧
+            before.execution.application.attempt = anchor.execution.application.attempt ∧
+            phase ∈ before.execution.application.phases.head? ∧
+            ending.execution.application =
+              ({ before.execution.application with current := raw } :
+                PhaseRuntimeState graph).normalize ∧
+            (image final).native.BindingInvariant ∧ (image final).FailureCoverage) ∧
+      law.map (fun final => phaseProposalBindingWord setup.program block suffix embedding
+        anchor.execution.application.current.excluded (image final).native.config.store entry) =
+          ((graph).canonicalContinuation
+            (phaseProposalBindingPotentialProfile setup mode runtime leaks plan origin.execution
+              phase values) (phaseProposalEmissionFrontier setup mode runtime leaks origin.execution
+                phase originTrace.length origin.execution.application.current.native.config startLaw
+                  horizon scheduler ((menu).toRawTrace startLaw horizon scheduler anchorTrace))).map
+                (fun key => phaseProposalBindingWord setup.program block suffix embedding
+                  anchor.execution.application.current.excluded key.2.1 entry) := by
+  classical
+  intro startLaw horizon scheduler model profile stopped law
+  let frontier := fun history : ((menu).protocol startLaw horizon scheduler).History =>
+    phaseProposalEmissionFrontier setup mode runtime leaks origin.execution phase originTrace.length
+      origin.execution.application.current.native.config startLaw horizon scheduler
+        ((menu).toRawTrace startLaw horizon scheduler history.trace)
+  obtain ⟨_noInputs, emissions, initialOrigins⟩ :=
+    phaseProposal_fresh_entry_binding_origins setup mode runtime
+    leaks bounds plan (setup.initialLaw.map encodeInputs) horizon scheduler origin originTrace phase
+      originInstalled commitment fresh
+  have initialized : ∀ state ∈ startLaw.support, state.Ordered := by
+    intro state supported
+    obtain ⟨draw, _supported, rfl⟩ := PMF.support_map .. ▸ supported
+    exact PhaseRuntimeState.initial_ordered plan draw
+  have originOrdered := (phaseApplication_seedOrder runtime leaks).history startLaw horizon
+    scheduler initialized ((menu).toRawTrace startLaw horizon scheduler originTrace)
+  have endpoint : ∀ final ∈ law.support,
+      ∃ (ending before : (app).Control)
+        (prior : ((menu).protocol startLaw horizon scheduler).Trace (some before))
+        (joint : Player → Option (app).Action)
+        (legal : ((menu).protocol startLaw horizon scheduler).Legal (some before) joint)
+        (realized : some ending ∈ ((app).transition startLaw horizon scheduler
+          (some before) joint).support) (raw : RecoveryState (graph)),
+        final.state = some ending ∧ TracePrefix anchorTrace prior ∧
+          TracePrefix (prior.extend joint legal realized) final.trace ∧
+          PhaseClosingEffect runtime leaks before.execution ending.execution raw ∧
+          phase.Finished (phase.drain raw) ∧
+          (phase.drain raw).excluded = anchor.execution.application.current.excluded ∧
+          PhaseProposal.sourceArchive ending.execution.network.inputs =
+            PhaseProposal.sourceArchive anchor.execution.network.inputs ∧
+          (∀ event ∈ phase.events, event ∈ (frontier final).cut.completed) ∧
+          (∀ event ∈ phase.events, ∀ owner ∉ anchor.execution.application.current.excluded,
+            ∀ payload (binding : (graph).outputLayout event = .binding owner payload),
+              (⟨.inr event, binding⟩ : FieldRef (graph).layout (.binding owner payload)).get?
+                  (phase.drain raw).native.config.store =
+                (⟨.inr event, binding⟩ : FieldRef (graph).layout (.binding owner payload)).get?
+                  (frontier final).store) ∧
+          before.execution.application.attempt = anchor.execution.application.attempt ∧
+          phase ∈ before.execution.application.phases.head? ∧
+          ending.execution.application =
+            ({ before.execution.application with current := raw } :
+              PhaseRuntimeState graph).normalize ∧
+          (phase.drain raw).native.BindingInvariant ∧ (phase.drain raw).FailureCoverage := by
+    intro final supported
+    rcases anchor with ⟨remaining, actor, execution⟩
+    change actor = none at idle
+    subst actor
+    obtain ⟨ending, before, prior, joint, legal, realized, raw, stateEq, _idleEnd, changed,
+        fromAnchor, toFinal, sameAttempt, beforeInstalled, normalized, effect, finished,
+        bindingInvariant, coverage, snapshotE, _accepted, _candidates, oldArchive, _tail⟩ :=
+      phaseProposalUnflagged_stopped_binding_image setup mode runtime leaks bounds plan complete
+        covered maximal (serviceGraph_revealRelaxedOrdered setup mode) values fullValues tape
+          activationGap processingGap gaps margin capacity remaining execution anchorTrace phase
+            (Option.mem_def.mpr installed) commitment final (by
+              convert supported using 1
+              congr 3
+              funext history
+              dsimp only [stopped]
+              cases history.state <;> rfl)
+    let endingTrace : ((menu).protocol startLaw horizon scheduler).Trace (some ending) :=
+      stateEq ▸ final.trace
+    have wholePrefix : TracePrefix anchorTrace endingTrace := by
+      dsimp only [endingTrace]
+      cases final
+      cases stateEq
+      exact fromAnchor.trans ((TracePrefix.extend .refl joint legal realized).trans toFinal)
+    have finalE : ending.execution.application.current.excluded =
+        execution.application.current.excluded := by
+      apply Finset.Subset.antisymm
+      · intro owner excluded
+        by_contra active
+        obtain ⟨actualEnding, _before, _prior, _joint, _legal, _realized, _raw,
+          actualState, _idle, _changed, _from, _to, _same, _installed, _effect, _finished,
+          _normalized, _coverage, _excluded, _tables, _candidates, _archive, _retired,
+          _retiredAfter, _word, survives, _footprint⟩ :=
+          phaseProposalUnflagged_stopped_acceptance_word setup mode runtime leaks bounds plan
+            complete covered maximal (serviceGraph_revealRelaxedOrdered setup mode) values
+              fullValues tape activationGap processingGap gaps margin capacity remaining execution
+                anchorTrace phase (Option.mem_def.mpr installed) commitment afterProcessing
+                  final (by
+                  convert supported using 1
+                  congr 3
+                  funext history
+                  dsimp only [stopped]
+                  cases history.state <;> rfl)
+        have endingEq : actualEnding = ending := Option.some.inj (actualState.symm.trans stateEq)
+        subst actualEnding
+        exact survives owner active (admitted owner active) excluded
+      · exact excluded_prefix_grows setup mode runtime leaks bounds plan
+          (setup.initialLaw.map encodeInputs) horizon scheduler
+            ⟨remaining, none, execution⟩ ending anchorTrace endingTrace wholePrefix
+    have beforeE : before.execution.application.current.excluded =
+        execution.application.current.excluded :=
+      Finset.Subset.antisymm (by
+        have tailPrefix : TracePrefix prior endingTrace := by
+          dsimp only [endingTrace]
+          cases final
+          cases stateEq
+          exact (TracePrefix.extend .refl joint legal realized).trans toFinal
+        simpa only [finalE] using excluded_prefix_grows setup mode runtime leaks bounds plan
+          (setup.initialLaw.map encodeInputs) horizon scheduler before ending prior endingTrace
+            tailPrefix) (excluded_prefix_grows setup mode runtime leaks bounds plan
+              (setup.initialLaw.map encodeInputs) horizon scheduler
+                ⟨remaining, none, execution⟩ before anchorTrace prior fromAnchor)
+    have sameOrigin : before.execution.application.attempt =
+        origin.execution.application.attempt := sameAttempt.trans originAttempt.symm
+    have frame := phaseProposalEmissionFrontier_callback_frame setup mode runtime leaks bounds
+      plan
+      (setup.initialLaw.map encodeInputs) horizon scheduler complete maximal origin originTrace
+        phase
+        originInstalled commitment entryExcluded initialOrigins emissions before prior
+          (retained.trans fromAnchor) sameOrigin (beforeE.trans clean)
+    have entryEq := phase_attempt_progress_of_prefix runtime leaks menu startLaw initialized horizon
+      scheduler origin before originTrace prior (retained.trans fromAnchor) originOrdered
+    have entryE : before.execution.application.entry.excluded =
+        execution.application.current.excluded :=
+      (congrArg (fun entry => entry.excluded)
+        (entryEq.2.2 sameOrigin.symm).symm).trans (entryExcluded.trans clean.symm)
+    have rawFields := closing_raw_bindings setup mode runtime leaks bounds plan
+      (setup.initialLaw.map encodeInputs) horizon scheduler before ending prior raw effect
+        (by intro equal; exact changed (equal.trans sameAttempt))
+    have scalar := closing_image_frontier setup mode runtime leaks bounds plan
+      (setup.initialLaw.map encodeInputs) horizon scheduler before prior phase
+        (Option.mem_def.mp beforeInstalled) commitment _ frame.within (by
+          simpa only [entryE, ← clean] using frame.quiet) frame.emissions raw
+            rawFields.1 rawFields.2
+            finished
+            bindingInvariant coverage (snapshotE.trans (finalE.trans entryE.symm))
+    have beforeIdle : before.actor = none := by
+      cases acting : before.actor with
+      | none => rfl
+      | some owner =>
+        have literal := realized
+        simp only [ReactiveApplication.transition, acting, PMF.mem_support_pure_iff] at literal
+        have target := Option.some.inj literal
+        have equal : ending.execution.application.attempt =
+            before.execution.application.attempt := by
+          apply (congrArg (fun control : (app).Control =>
+            control.execution.application.attempt) target).trans
+          generalize (joint owner).getD ⟨none⟩ = response
+          rcases response with ⟨_ | material⟩ <;> rfl
+        exact (changed (equal.trans sameAttempt)).elim
+    have finalExact : (⟨some ending, prior.extend joint legal realized⟩ :
+        ((menu).protocol startLaw horizon scheduler).History) = final := by
+      apply toFinal.eq_of_length
+      have upper := toFinal.length_le
+      by_contra unequal
+      have shorter : (prior.extend joint legal realized).length < final.trace.length := by omega
+      have first := model.runBehavioralUntil_support_first
+        ((menu).bounded startLaw horizon scheduler).wellFoundedHistories profile stopped
+          ⟨some ⟨remaining, none, execution⟩, anchorTrace⟩ final supported
+          ⟨some ending, prior.extend joint legal realized⟩
+          (.extend fromAnchor joint legal realized) toFinal shorter
+      exact first changed
+    have frontierEq : frontier final = phaseProposalEmissionFrontier setup mode runtime leaks
+        origin.execution phase originTrace.length
+          origin.execution.application.current.native.config startLaw
+          horizon scheduler ((menu).toRawTrace startLaw horizon scheduler prior) := by
+      rw [← finalExact]
+      dsimp only [frontier]
+      rw [ReactiveApplication.ResponseMenu.toRawTrace, phaseProposalEmissionFrontier,
+        ite_eq_left (by
+          simpa only [(menu).toRawTrace_length] using (retained.trans fromAnchor).length_le)]
+      simp only [phaseProposalBindingFrontierAdvance, sameOrigin, ↓reduceIte, beforeIdle]
+    refine ⟨ending, before, prior, joint, legal, realized, raw, stateEq, fromAnchor, toFinal,
+      effect, finished, snapshotE.trans finalE, oldArchive, ?_, ?_, sameAttempt,
+      beforeInstalled, normalized, bindingInvariant, coverage⟩
+    · simpa only [frontierEq] using scalar.1
+    · simpa only [entryE, frontierEq] using scalar.2
+  choose ending before prior joint legal realized raw facts using endpoint
+  let image := fun final : ((menu).protocol startLaw horizon scheduler).History =>
+    if member : final ∈ law.support then phase.drain (raw final member)
+    else anchor.execution.application.current
+  have imageEq : ∀ final (member : final ∈ law.support),
+      image final = phase.drain (raw final member) := by
+    intro final member
+    simp only [image, dite_eq_left member]
+  refine ⟨image, ?_, ?_⟩
+  · intro final member
+    obtain ⟨stateEq, fromAnchor, toFinal, effect, finished, imageE, oldArchive,
+      _completed, _scalar, sameAttempt, beforeInstalled, normalized, valid, coverage⟩ :=
+        facts final member
+    exact ⟨ending final member, before final member, prior final member, joint final member,
+      legal final member, realized final member, raw final member, stateEq, fromAnchor, toFinal,
+      effect, imageEq final member, (imageEq final member).symm ▸ finished,
+      (congrArg RecoveryState.excluded (imageEq final member)).trans imageE, oldArchive,
+      sameAttempt, beforeInstalled, normalized, (imageEq final member).symm ▸ valid,
+      (imageEq final member).symm ▸ coverage⟩
+  let graphProfile := phaseProposalBindingPotentialProfile setup mode runtime leaks plan
+    origin.execution phase values
+  let read := fun key : (graph).SemanticKey => phaseProposalBindingWord setup.program block suffix
+    embedding anchor.execution.application.current.excluded key.2.1 entry
+  have imageWord : ∀ final ∈ law.support,
+      phaseProposalBindingWord setup.program block suffix embedding
+          anchor.execution.application.current.excluded (image final).native.config.store entry =
+        phaseProposalBindingWord setup.program block suffix embedding
+          anchor.execution.application.current.excluded (frontier final).store entry := by
+    intro final member
+    obtain ⟨_stateEq, _fromAnchor, _toFinal, _effect, _finished, _imageE, _oldArchive,
+      _completed, same, _sameAttempt, _beforeInstalled, _normalized, _valid, _coverage⟩ :=
+        facts final member
+    rw [imageEq final member]
+    apply phaseProposalBindingWord_congr setup.program block suffix embedding
+    intro who active index inside owned
+    obtain ⟨owner, payload, _member, layout⟩ := block.binding_before_length suffix index inside
+    have ownerEq : owner = who := Option.some.inj
+      (((eventOwner?_eq_actor (block.prepend suffix) index).trans
+        (EventGraph.actor?_of_outputLayout_binding _ layout)).symm.trans owned)
+    subst owner
+    have binding : (graph).outputLayout (embedding.event index) = .binding who payload :=
+      (embedding.layout_eq index).trans layout
+    have scalar := same (embedding.event index) (locations index inside) who active payload binding
+    have outputEq : (phase.drain (raw final member)).native.config.outputs
+        (embedding.event index) = (frontier final).outputs (embedding.event index) := by
+      apply (cast_inj (congrArg (fun field : EventField Player L => Option field.Value) binding)).mp
+      exact scalar
+    change cast _ ((phase.drain (raw final member)).native.config.outputs (embedding.event index)) =
+      cast _ ((frontier final).outputs (embedding.event index))
+    rw [outputEq]
+  have harmonic := phaseProposalUnflagged_stopped_potential_from_retained_entry setup mode runtime
+    leaks
+    bounds plan complete covered maximal values fullValues tape activationGap processingGap gaps
+      margin capacity anchor idle anchorTrace phase installed commitment origin originTrace retained
+        originAttempt originInstalled entryExcluded fresh clean afterProcessing admitted
   have projected := congrArg (fun distribution => distribution.map read) harmonic
   rw [PMF.map_bind] at projected
   have images : (law.bind fun final =>

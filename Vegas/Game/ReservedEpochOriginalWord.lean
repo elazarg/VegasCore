@@ -142,6 +142,11 @@ theorem phaseProposalUnflagged_stopped_acceptance_word
           (graph).outputLayout event = .binding owner payload →
           (raw.native.accepted (.inr event) ≠ none ↔
             ReservedEpoch.ownedAcceptanceWord runtime leaks tape anchor owner event)) ∧
+        (∀ owner, owner ∉ anchor.application.current.excluded →
+          (∀ event ∈ phase.events, ∀ payload,
+            (graph).outputLayout event = .binding owner payload →
+            ReservedEpoch.ownedAcceptanceWord runtime leaks tape anchor owner event) →
+          owner ∉ ending.execution.application.current.excluded) ∧
         (let failed := fun event : (graph).EventId =>
           if event.val < phase.low then anchor.application.entry.native.PublicFailure event
           else if event.val < phase.high then ∃ owner, (graph).actor? event = some owner ∧
@@ -267,10 +272,40 @@ theorem phaseProposalUnflagged_stopped_acceptance_word
               qualifies)
         · exact completed owner blocked (fun frontier request =>
             remainingRequest ⟨frontier, request⟩) event member payload binding
+  have survives (owner : Player) (active : owner ∉ anchor.application.current.excluded)
+      (admitted : ∀ event ∈ phase.events, ∀ payload,
+        (graph).outputLayout event = .binding owner payload →
+        ReservedEpoch.ownedAcceptanceWord runtime leaks tape anchor owner event) :
+      owner ∉ ending.execution.application.current.excluded := by
+    intro lost
+    obtain ⟨event, inside, request, _recorded, unaccepted⟩ :=
+      phaseProposalUnflagged_stopped_exclusion_request setup mode runtime leaks bounds plan
+        complete coveredValues maximal ordered values fullValues tape activationGap processingGap
+          gaps margin capacity remaining anchor trace phase installed commitment owner active
+            final supported ending stateEq lost
+    obtain ⟨actualOwner, payload, binding⟩ := commitment ▸ phase.fields event
+      ((phase.mem_events event).mp inside).1 ((phase.mem_events event).mp inside).2
+    have ownerEq : actualOwner = owner := Option.some.inj
+      (((graph).actor?_of_outputLayout_binding binding).symm.trans request.2.2.2.1)
+    subst actualOwner
+    obtain ⟨candidate, accepted⟩ := Option.ne_none_iff_exists'.mp
+      ((wordLaw event inside owner payload binding).mpr (admitted event inside payload binding))
+    have acceptedSnapshot : (phase.drain raw).native.accepted (.inr event) = some candidate := by
+      rwa [tables]
+    obtain ⟨candidatePayload, candidateBinding⟩ := valid.accepted_typed (.inr event) candidate
+      acceptedSnapshot
+    have candidateOwner : candidate.1 = owner := Option.some.inj
+      (((graph).actor?_of_outputLayout_binding candidateBinding).symm.trans request.2.2.2.1)
+    have lower : anchor.application.attempt.phase ≤ event.val := by
+      have head := Option.mem_def.mp installed
+      simpa only [PhaseRuntimeState.attempt, head, Option.map_some, Option.getD_some] using
+        ((phase.mem_events event).mp inside).1
+    have received := receipts event candidate lower acceptedSnapshot
+    exact unaccepted (by simpa only [candidateOwner] using received)
   refine ⟨ending, before, prior, joint, legal, realized, raw, stateEq, idle, changed, fromStart,
     toFinal, same, phaseInstalled, effect, finished, normalized, coverage, excluded, tables,
     candidates, archive, retiredBefore,
-    retiredActual, wordLaw, ?_⟩
+    retiredActual, wordLaw, survives, ?_⟩
   intro failed
   have verdict (event : (graph).EventId) :
       (phase.drain raw).native.PublicFailure event ↔ failed event := by

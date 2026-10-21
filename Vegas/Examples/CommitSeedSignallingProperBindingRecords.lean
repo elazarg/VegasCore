@@ -158,7 +158,7 @@ theorem accepted_binding_success_of_true_records
     (EventField.binding.inj (typed.symm.trans (bindingEvent_layout owner))).1
   have signed := phaseSignedBindings_history runtime leaks plan (setup.initialLaw.map encodeInputs)
     horizon (family seed) raw
-  obtain ⟨message, output, sender, named⟩ := signed.2.2 (bindingEvent owner) candidate accepted
+  obtain ⟨message, output, sender, named⟩ := signed.2.1.2 (bindingEvent owner) candidate accepted
   rw [owned] at output
   have senderOwner : message.sender = owner := sender.trans owned
   change message ∈ app.outputs (control.execution.recall owner) at output

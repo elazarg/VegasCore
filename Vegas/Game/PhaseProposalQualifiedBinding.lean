@@ -1905,4 +1905,5 @@ theorem stoppedFinish_gate_seed_joint
         dsimp only [seedAt, pack, mixture, family]
         congr 1; first | rfl | (cases terminal <;> rfl)
 
+
 end Vegas.PhaseProposalQualifiedBinding

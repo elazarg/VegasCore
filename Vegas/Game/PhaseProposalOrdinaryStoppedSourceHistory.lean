@@ -132,10 +132,10 @@ theorem phaseProposalUnflagged_stopped_source_history
     have present : selected (sourceWord history) := ⟨history, supported, rfl⟩
     rw [show decode (sourceWord history) = present.choose by
       dsimp only [decode]; rw [dite_eq_left present]]
-    exact phaseProposalBindingPotentialProfile_source_history_injective setup mode runtime leaks
-      plan startLaw horizon scheduler anchor
-        ((menu).toRawTrace startLaw horizon scheduler anchorTrace) phase values block suffix cursor
-          positive present.choose history present.choose_spec.1 supported present.choose_spec.2
+    exact proposalRecovery_ordinary_commit_history_injective setup values block suffix
+      cursor.lift cursor.origin cursor.source cursor.current cursor.trace cursor.point
+        (cursor.excluded.trans cursor.entryExcluded.symm) positive present.choose history
+          present.choose_spec.1 supported present.choose_spec.2
   have decodedLaw : (sourceLaw.map sourceWord).map decode = sourceLaw := by
     rw [PMF.map_comp]
     exact (map_congr_on_support sourceLaw inverse).trans (PMF.map_id sourceLaw)

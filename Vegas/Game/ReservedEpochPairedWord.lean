@@ -193,12 +193,12 @@ theorem phaseProposalUnflagged_paired_response_word
     leftState, leftIdle, leftChanged, leftPrefix, leftEndPrefix, leftSame, leftInstalled,
     leftEffect, leftFinished, leftNormalized, leftCoverage, leftExcluded, leftTables,
     leftCandidates, leftArchive, leftRetired,
-    leftAppend, leftWord, leftFootprint⟩ := leftLaw leftFinal leftSupported
+    leftAppend, leftWord, _leftSurvives, leftFootprint⟩ := leftLaw leftFinal leftSupported
   obtain ⟨rightEnding, rightBefore, rightPrior, rightJoint, rightLegal, rightRealized, rightRaw,
     rightState, rightIdle, rightChanged, rightPrefix, rightEndPrefix, rightSame, rightInstalled,
     rightEffect, rightFinished, rightNormalized, rightCoverage, rightExcluded,
     rightTables, rightCandidates, rightArchive, rightRetired,
-    rightAppend, rightWord, rightFootprint⟩ := rightLaw rightFinal rightSupported
+    rightAppend, rightWord, _rightSurvives, rightFootprint⟩ := rightLaw rightFinal rightSupported
   have attempt (response : (app).Action) :
       (active.respond app actor response).application.attempt = active.application.attempt := by
     rcases response with ⟨transmission⟩

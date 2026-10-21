@@ -4,6 +4,7 @@ import Vegas.Game.PhaseObservableDomainWord
 import Vegas.Game.PhaseCountServiceTableGood
 import Vegas.Game.CommitRecoveryDomainPlan
 import Vegas.Pending.PhaseReadyBindingDeclaration
+import Vegas.Pending.PhaseProposalEmissionOrder
 
 /-! # Original domain declarations in the counted service experiment
 
@@ -256,6 +257,71 @@ theorem phase_attempt_metadata_of_prefix
   obtain ⟨next, equality, _ordered, result⟩ := along retained
   cases Option.some.inj equality
   exact (result same).symm
+
+/-- An emitted binding has no gap in its owner's earlier static binding
+prefix. Every earlier row in the same attempt already has an actual emitted
+packet, including when another owner was excluded before this attempt. -/
+theorem phase_recorded_binding_earlier_output [Fintype Player]
+    (bounds : MessageBounds graph) (plan : RuntimePhasePlan graph)
+    (inputs : PMF graph.Inputs) (horizon : Nat)
+    (ordered : graph.RevealRelaxedOrdered) (scheduler : (phaseApplication runtime leaks).Scheduler)
+    {control : (phaseApplication runtime leaks).Control}
+    (trace : ((PhaseCount.onePacketMenu runtime leaks bounds).protocol
+      (inputs.map (PhaseRuntimeState.initial plan)) horizon scheduler).Trace (some control))
+    (phase : RuntimePhase graph)
+    (installed : control.execution.application.phases.head? = some phase)
+    (owner : Player) (entry : (phaseApplication runtime leaks).PlayerEntry)
+    (recorded : entry ∈ control.execution.recall owner)
+    (material : WitnessedSubmission graph)
+    (transmitted : entry.action.transmission = some material)
+    (event : graph.EventId) (candidate : Handle graph)
+    (named : material.call.packet = .commitment event candidate)
+    (sameAttempt : entry.beforeView.application.2.attempt = control.execution.application.attempt)
+    (payload : L.Ty) (binding : graph.outputLayout event = .binding owner payload)
+    (earlier : graph.EventId) (priorPayload : L.Ty)
+    (priorBinding : graph.outputLayout earlier = .binding owner priorPayload)
+    (inside : earlier ∈ phase.events) (rank : earlier.val < event.val) :
+    ∃ (priorCandidate : Handle graph) (message : Message Player (CommitAttemptPacket graph)),
+      message ∈ (phaseApplication runtime leaks).outputs (control.execution.recall owner) ∧
+      message.payload.attempt = control.execution.application.attempt ∧
+      message.payload.packet.call = .commitment earlier priorCandidate := by
+  let menu := PhaseCount.onePacketMenu runtime leaks bounds
+  let initial := inputs.map (PhaseRuntimeState.initial plan)
+  obtain ⟨before, prior, kept, _acting, viewed, request⟩ :=
+    phase_recorded_binding_request runtime leaks bounds plan inputs horizon ordered scheduler
+      trace owner entry recorded material transmitted event candidate named
+  have same : before.execution.application.attempt = control.execution.application.attempt := by
+    rw [viewed] at sameAttempt
+    exact sameAttempt
+  have initialized : ∀ state ∈ initial.support, state.Ordered := by
+    intro state supported
+    obtain ⟨draw, _, rfl⟩ := PMF.support_map .. ▸ supported
+    exact PhaseRuntimeState.initial_ordered plan draw
+  have raw := menu.toRawTrace initial horizon scheduler prior
+  have beforeOrdered := (phaseApplication_seedOrder runtime leaks).history initial horizon
+    scheduler initialized raw
+  have metadata := phase_attempt_metadata_of_prefix runtime leaks menu initial initialized horizon
+    scheduler before control prior trace kept beforeOrdered same
+  have beforeInstalled : before.execution.application.phases.head? = some phase :=
+    (congrArg (fun pair => pair.1.head?) metadata).trans installed
+  obtain ⟨priorCandidate, owned, accepted, _read⟩ := phase_ready_earlier_binding_read runtime leaks
+    bounds plan inputs horizon scheduler prior ordered phase beforeInstalled owner event payload
+      binding request.2.2.1 request.2.2.2.2 earlier priorPayload priorBinding inside rank
+  have stamped := phaseLiveBindingStamp_history runtime leaks plan inputs horizon scheduler raw
+  have lower := ((phase.mem_events earlier).mp inside).1
+  have address : before.execution.application.attempt.phase = phase.low := by
+    simp only [PhaseRuntimeState.attempt, beforeInstalled, Option.map_some, Option.getD_some]
+  rcases stamped earlier priorCandidate accepted with old | ⟨message, member, _, packet, attempt⟩
+  · rw [address] at old
+    omega
+  · rw [owned] at member
+    obtain ⟨recalled, remembered, emitted⟩ := List.mem_filterMap.mp member
+    have retainedRecall := (phaseApplication runtime leaks).reaches_recall_prefix initial horizon
+      scheduler (menu.reaches_raw initial horizon scheduler kept.reachesWithin)
+        before control rfl rfl owner
+    exact ⟨priorCandidate, message,
+      List.mem_filterMap.mpr ⟨recalled, retainedRecall.subset remembered, emitted⟩,
+      attempt.trans same, packet⟩
 
 end Vegas.EventGraphRuntime
 

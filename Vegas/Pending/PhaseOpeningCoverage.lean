@@ -62,7 +62,7 @@ theorem phaseOpeningResponse_of_history
     (onePacketMenu runtime leaks bounds) (onePacketMenu_in_raw runtime leaks bounds)
     plan inputs horizon scheduler trace).2 binding.field candidate accepted
   have permitted := phaseOpeningResponse_permitted runtime leaks control.execution physical
-    (fun input candidate installed => Prod.ext rfl (signed.2.1 input candidate installed))
+    (fun input candidate installed => Prod.ext rfl (signed.2.1.1 input candidate installed))
     owner event payload binding checks outputEq codeEq node candidate value owned accepted verified
     request unsent
   refine ⟨candidate, accepted, owned, verified, ?_⟩

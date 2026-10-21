@@ -49,11 +49,11 @@ theorem submitted_handle_unused_of_unaccepted
   intro field accepted
   cases field with
   | inl input =>
-      have kind := signed.2.1 input (owner, .prepared serial) accepted
+      have kind := signed.2.1.1 input (owner, .prepared serial) accepted
       cases kind
   | inr other =>
       obtain ⟨previous, output, previousSender, previousCall⟩ :=
-        signed.2.2 other (owner, .prepared serial) accepted
+        signed.2.1.2 other (owner, .prepared serial) accepted
       have input : previous ∈ control.execution.network.inputs := by
         change previous ∈ (app).outputs (control.execution.recall owner) at output
         rw [← recalled owner] at output

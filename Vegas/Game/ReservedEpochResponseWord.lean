@@ -104,6 +104,11 @@ theorem phaseProposalUnflagged_response_acceptance_word
           (graph).outputLayout event = .binding owner payload →
           (raw.native.accepted (.inr event) ≠ none ↔
             ReservedEpoch.ownedAcceptanceWord runtime leaks tape anchor owner event)) ∧
+        (∀ owner, owner ∉ anchor.application.current.excluded →
+          (∀ event ∈ phase.events, ∀ payload,
+            (graph).outputLayout event = .binding owner payload →
+            ReservedEpoch.ownedAcceptanceWord runtime leaks tape anchor owner event) →
+          owner ∉ ending.execution.application.current.excluded) ∧
         (let failed := fun event : (graph).EventId =>
           if event.val < phase.low then anchor.application.entry.native.PublicFailure event
           else if event.val < phase.high then ∃ owner, (graph).actor? event = some owner ∧

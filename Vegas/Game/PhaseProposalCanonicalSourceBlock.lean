@@ -5,6 +5,7 @@ import Vegas.Source.CommitRecoveryAttemptExtraction
 import Vegas.Source.CommitRecoveryClear
 import Vegas.Source.ProposalRecoveryOrdinaryCommit
 import Vegas.Compile.EventGraphState
+import Vegas.Compile.CommitPrefixReadStability
 
 /-! # The ordinary source commitment telescope and its frozen graph potential -/
 
@@ -17,6 +18,196 @@ open SourceProgram SourceProgram.Setup EventGraph EventGraphRuntime Interaction 
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
+
+/-- The ordinary owner-word profile at the actual residual source entry. -/
+def ordinaryBlockProfile
+    (setup : Setup (Player := Player) (L := L)) (mode : ExecutionMode)
+    (plan : RuntimePhasePlan (serviceGraph setup mode))
+    (values : ∀ who (key : setup.ProposalRecoveryComponent who),
+      PMF (setup.CommitRecoveryValueChoice who key.1))
+    {Γ Δ : SourceCtx Player L} {O P : Finset VarId}
+    (block : SourceProgram.CommitPrefix Γ O Δ P) (suffix : SourceProgram Player L Δ P)
+    (embedding : OutputEmbedding (inputLayout setup.context)
+      (outputLayout setup.program) (block.prepend suffix))
+    (wholeViews : ∀ owner, ProtocolView owner (block.prepend suffix) →
+      ProtocolView owner setup.program)
+    (controls : Finset Player × Nat × Nat)
+    (publicFrame : PhasePublicView (serviceGraph setup mode))
+    (archive : Finset (ProposalRecoveryProposal L)) :
+    SourceProgram.BehavioralProfile (block.prepend suffix) := by
+  classical
+  let keyAt := fun (owner : Player)
+      (wholeView : SourceProgram.ProtocolView owner setup.program)
+      (controls : Finset Player × Nat × Nat)
+      (publicFrame : PhasePublicView (serviceGraph setup mode))
+      (archive : Finset (ProposalRecoveryProposal L)) =>
+    let rank := ProtocolView.position owner setup.program wholeView
+    let addresses :=
+      (publicFrame.sourcePublicAddressWord plan rank).reverse ++
+        [(none, (∅, 0, 0))]
+    let typed := ProtocolView.virtualBindings owner (setup.context.map Prod.fst).toFinset
+      setup.program wholeView
+    (setup.commitRecoveryErasedInformation owner
+      (setup.commitRecoveryNoMissInformation owner
+        (setup.commitRecoveryErasedRead owner typed controls addresses)), archive)
+  let rec buildProfile
+      {Γ Δ : SourceCtx Player L} {O P : Finset VarId}
+      (block : SourceProgram.CommitPrefix Γ O Δ P)
+      (suffix : SourceProgram Player L Δ P)
+      (embedding : OutputEmbedding (inputLayout setup.context)
+        (outputLayout setup.program) (block.prepend suffix))
+      (wholeViews : ∀ owner,
+        SourceProgram.ProtocolView owner (block.prepend suffix) →
+          SourceProgram.ProtocolView owner setup.program)
+      (controls : Finset Player × Nat × Nat)
+      (publicFrame : PhasePublicView (serviceGraph setup mode))
+      (archive : Finset (ProposalRecoveryProposal L)) :
+      SourceProgram.BehavioralProfile (block.prepend suffix) :=
+    match Γ, O, Δ, P, block with
+    | _, _, _, _, .nil => SourceProgram.failureProfile suffix
+    | _, _, _, _,
+        @SourceProgram.CommitPrefix.commit _ _ Γ O Δ P name owner valueType fresh guard rest =>
+        fun observer => by
+          refine ⟨?_, ?_⟩
+          · intro owned observed
+            subst observer
+            let first : Fin (eventCount
+                ((SourceProgram.CommitPrefix.commit name owner fresh guard rest).prepend
+                  suffix)) :=
+              ⟨0, by simp only [SourceProgram.CommitPrefix.prepend, eventCount]; omega⟩
+            have shape : (serviceGraph setup mode).outputLayout
+                (embedding.event first) = .binding owner valueType :=
+              (embedding.layout_eq first).trans (by rfl)
+            exact if owner ∈ controls.1 then PMF.pure .failure else
+              (values owner
+                (keyAt owner (wholeViews owner (Sum.inl observed)) controls
+                  publicFrame archive)).map
+                  fun sampled => PublicationResult.success
+                    (phaseRecoveryDomainValue setup mode (embedding.event first) owner
+                      valueType shape sampled.val.val)
+          · let later := embedding.tail (rest.prepend suffix)
+              (by simp only [SourceProgram.CommitPrefix.prepend, eventCount]) (fun _ => rfl)
+            exact buildProfile rest suffix later
+              (fun owner laterView => wholeViews owner (Sum.inr laterView))
+              controls publicFrame archive observer
+  exact buildProfile block suffix embedding wholeViews controls publicFrame archive
+
+omit [Fintype Player] in
+/-- The structural block row reads the actual updated source query, including
+its complete public address word and unchanged original proposal archive. -/
+private theorem ordinary_source_query_readback
+    (setup : Setup (Player := Player) (L := L))
+    (who : Player) (current : CommitRecoveryState setup.program)
+    (trace : setup.proposalRecoveryProtocol.Trace (some current))
+    (survives : who ∉ current.excluded)
+    (ordinary : ProtocolState.BindingsHoldValues who setup.program current.point) :
+    (setup.commitRecoveryErasedInformation who
+      (setup.commitRecoveryNoMissInformation who
+        (setup.commitRecoveryErasedRead who
+          (ProtocolView.virtualBindings who (setup.context.map Prod.fst).toFinset setup.program
+            (ProtocolState.observe who setup.program current.point))
+          (setup.commitRecoveryPublic (some current))
+          ((setup.attemptPublicRecall who (setup.proposalRecoveryEraseTrace trace)).map
+            (setup.commitRecoveryPublicAddress who)))),
+      setup.proposalRecoveryArchive who (setup.proposalRecoveryModel.infoOf who trace)) =
+        setup.proposalRecoveryQuery who (setup.proposalRecoveryModel.infoOf who trace) := by
+  have read := setup.commitRecovery_erasedInformation_read who current
+    (setup.proposalRecoveryEraseTrace trace) survives
+  have erasedRead : setup.commitRecoveryErasedRead who
+      (ProtocolView.eraseHistory who setup.program
+        (ProtocolState.observe who setup.program current.point))
+      (setup.commitRecoveryPublic (some current))
+      ((setup.attemptPublicRecall who (setup.proposalRecoveryEraseTrace trace)).map
+        (setup.commitRecoveryPublicAddress who)) =
+      setup.commitRecoveryErasedInformation who
+        (setup.commitRecoveryModel.infoOf who (setup.proposalRecoveryEraseTrace trace)) := by
+    simpa only [Setup.commitRecoveryErasedRead, ProtocolView.eraseHistory_idempotent,
+      ProtocolView.publicPadding_eraseHistory] using read.symm
+  rw [ProtocolState.virtualBindings_observe_eq who _ setup.program current.point ordinary,
+    erasedRead]
+  unfold Setup.proposalRecoveryQuery
+  rw [setup.proposalRecoveryEraseInfo_observed]
+  apply Prod.ext
+  · rw [← setup.commitRecoveryNoMissInformation_erased,
+      setup.commitRecoveryErasedInformation_idempotent]
+  · rfl
+
+/-- At an active source binding, the single structural block profile uses
+exactly the ordinary value law at that trace's updated full query. -/
+private theorem ordinary_block_head_law
+    (setup : Setup (Player := Player) (L := L)) (mode : ExecutionMode)
+    (plan : RuntimePhasePlan (serviceGraph setup mode))
+    (values : ∀ who (key : setup.ProposalRecoveryComponent who),
+      PMF (setup.CommitRecoveryValueChoice who key.1))
+    {Γ Δ : SourceCtx Player L} {O P : Finset VarId}
+    {name : VarId} {owner : Player} {payload : L.Ty}
+    (fresh : name ∉ Γ.map Prod.fst) (guard : SourceGuard L Γ owner name payload)
+    (rest : SourceProgram.CommitPrefix ((name, .commitment owner payload) :: Γ)
+      (insert name O) Δ P) (suffix : SourceProgram Player L Δ P)
+    (embedding : OutputEmbedding (inputLayout setup.context) (outputLayout setup.program)
+      ((SourceProgram.CommitPrefix.commit name owner fresh guard rest).prepend suffix))
+    (wholeViews : ∀ who, ProtocolView who
+      ((SourceProgram.CommitPrefix.commit name owner fresh guard rest).prepend suffix) →
+        ProtocolView who setup.program)
+    (controls : Finset Player × Nat × Nat)
+    (publicFrame : PhasePublicView (serviceGraph setup mode))
+    (archive : Finset (ProposalRecoveryProposal L))
+    (observed : DecisionView owner Γ)
+    (current : CommitRecoveryState setup.program)
+    (trace : setup.proposalRecoveryProtocol.Trace (some current))
+    (survives : owner ∉ current.excluded)
+    (ordinary : ProtocolState.BindingsHoldValues owner setup.program current.point)
+    (read : wholeViews owner (Sum.inl observed) =
+      ProtocolState.observe owner setup.program current.point)
+    (controlRead : setup.commitRecoveryPublic (some current) = controls)
+    (addressRead : (setup.attemptPublicRecall owner
+      (setup.proposalRecoveryEraseTrace trace)).map (setup.commitRecoveryPublicAddress owner) =
+        (publicFrame.sourcePublicAddressWord plan
+          (ProtocolView.position owner setup.program
+            (ProtocolState.observe owner setup.program current.point))).reverse ++
+              [(none, (∅, 0, 0))])
+    (archiveRead : setup.proposalRecoveryArchive owner
+      (setup.proposalRecoveryModel.infoOf owner trace) = archive) :
+    let first : Fin (eventCount
+      ((SourceProgram.CommitPrefix.commit name owner fresh guard rest).prepend suffix)) :=
+        ⟨0, by simp only [SourceProgram.CommitPrefix.prepend, eventCount]; omega⟩
+    let shape : (serviceGraph setup mode).outputLayout (embedding.event first) =
+      .binding owner payload := (embedding.layout_eq first).trans (by rfl)
+    SourceProgram.commitKernel
+      (ordinaryBlockProfile setup mode plan values
+        (.commit name owner fresh guard rest) suffix embedding wholeViews
+          controls publicFrame archive) observed =
+      (values owner (setup.proposalRecoveryQuery owner
+        (setup.proposalRecoveryModel.infoOf owner trace))).map (fun sampled =>
+          PublicationResult.success (phaseRecoveryDomainValue setup mode
+            (embedding.event first) owner payload shape sampled.val.val)) := by
+  classical
+  intro first shape
+  have active : owner ∉ controls.1 := by
+    rw [← controlRead]
+    exact survives
+  have queried := ordinary_source_query_readback setup owner current trace survives ordinary
+  rw [controlRead, addressRead, archiveRead] at queried
+  let drawAt := fun key : setup.ProposalRecoveryComponent owner =>
+    (values owner key).map (fun sampled => PublicationResult.success
+      (phaseRecoveryDomainValue setup mode (embedding.event first) owner payload shape
+        sampled.val.val))
+  change (if owner ∈ controls.1 then PMF.pure .failure else drawAt
+    (setup.commitRecoveryErasedInformation owner
+      (setup.commitRecoveryNoMissInformation owner
+        (setup.commitRecoveryErasedRead owner
+          (ProtocolView.virtualBindings owner (setup.context.map Prod.fst).toFinset
+            setup.program (wholeViews owner (Sum.inl observed))) controls
+          ((publicFrame.sourcePublicAddressWord plan
+            (ProtocolView.position owner setup.program
+              (wholeViews owner (Sum.inl observed)))).reverse ++ [(none, (∅, 0, 0))]))),
+      archive)) = drawAt
+        (setup.proposalRecoveryQuery owner (setup.proposalRecoveryModel.infoOf owner trace))
+  rw [ite_eq_right active]
+  apply congrArg drawAt
+  rw [read]
+  exact queried
+
 
 omit [Fintype Player] in
 /-- The graph may have computed inherited excluded fields ahead of the source
@@ -96,7 +287,7 @@ structure PhaseProposalOrdinarySourceCursor
     PhaseProposal.sourceArchive anchor.execution.network.inputs
 
 omit [DecidableEq Player] [Fintype Player] in
-private theorem runPlan_retains_store
+theorem runPlan_retains_store
     {graph : Vegas.EventGraph Player L} (plan : graph.EventPlan) :
     ∀ fuel (config final : graph.Config), final ∈ (graph.runPlan plan fuel config).support →
       ∀ field value, config.store field = some value → final.store field = some value := by
@@ -353,7 +544,7 @@ private theorem ordinarySourceChoices_labelled
   simp only [ProposalRecoveryMove.label_false]
 
 omit [Fintype Player] in
-private theorem ordinary_commit_close_metadata
+theorem ordinary_commit_close_metadata
     (setup : Setup (Player := Player) (L := L))
     (current : CommitRecoveryState setup.program)
     (ordinary : current.excluded = current.entryExcluded)
@@ -389,7 +580,7 @@ private theorem ordinary_commit_close_saved
   exact CommitRecoveryState.close_eq_self_of_remaining_gt _ committing beforeEnd
 
 omit [Fintype Player] in
-private theorem ordinary_localStep_commit_attempt
+theorem proposalRecovery_localStep_commit_attempt
     (setup : Setup (Player := Player) (L := L))
     {Γ : SourceCtx Player L} {O : Finset VarId}
     {name : VarId} {owner : Player} {payload : L.Ty}
@@ -401,29 +592,30 @@ private theorem ordinary_localStep_commit_attempt
     (current : CommitRecoveryState setup.program)
     (trace : setup.proposalRecoveryProtocol.Trace (some current))
     (point : current.point = lift (.inl source))
-    (draws : ∀ who, setup.CommitRecoveryValueChoice who
-      (setup.proposalRecoveryQuery who (setup.proposalRecoveryModel.infoOf who trace)).1)
+    (choices : ∀ who, setup.proposalRecoveryModel.Choice who
+      (setup.proposalRecoveryModel.infoOf who trace))
     (next : setup.proposalRecoveryProtocol.History)
     (realized : next ∈ (setup.proposalRecoveryModel.localStep ⟨some current, trace⟩
-      (ordinarySourceChoices setup current trace draws)).support) :
+      choices).support) :
     ∃ (finished : SourceProgram.Config Player L ((name, .commitment owner payload) :: Γ))
       (after : Finset Player)
       (attempt : (SourceProgram.CommitPrefix.commit (O := O)
         name owner fresh guard .nil).Attempt source current.excluded finished after)
       (monotone : current.excluded ⊆ after),
-      attempt.joints = [fun who => (draws who).val.val] ∧
+      attempt.joints = [proposalRecoveryJoint (fun who => (choices who).val)] ∧
       next.state = some ((current.install
         (lift (.inr (ProtocolState.entry tail finished)), after) monotone).close) ∧
       setup.recoveryJointRecall (setup.proposalRecoveryEraseTrace next.trace) =
         attempt.joints.reverse ++
-          setup.recoveryJointRecall (setup.proposalRecoveryEraseTrace trace) := by
+          setup.recoveryJointRecall (setup.proposalRecoveryEraseTrace trace) ∧
+      setup.proposalRecoveryJointRecall next.trace =
+        (fun who => (choices who).val) :: setup.proposalRecoveryJointRecall trace := by
   have running : ¬ setup.proposalRecoveryProtocol.terminal (some current) := by
     intro stopped
     have zero := (ProtocolState.remaining_zero_iff_terminal setup.program current.point).mpr stopped
     rw [point, origin.remaining_lift] at zero
     change instructionCount tail + 1 = 0 at zero
     omega
-  let choices := ordinarySourceChoices setup current trace draws
   let joint := fun who => (choices who).val
   let legal : setup.proposalRecoveryProtocol.Legal (some current) joint :=
     setup.proposalRecoveryProtocol.legal_of_legalOption running fun who =>
@@ -447,8 +639,6 @@ private theorem ordinary_localStep_commit_attempt
   obtain ⟨finished, after, attempt, word, rawEq⟩ := commitRecovery_commit_instruction_attempt
     (setup.initialConfig setup.initialLaw.support_nonempty.choose) guard tail origin source current
       point (proposalRecoveryJoint joint) semanticLegal raw.1 rawSupport
-  have semantic : proposalRecoveryJoint joint = fun who => (draws who).val.val :=
-    ordinarySourceChoices_semantic setup current trace draws
   have afterEq : raw.val.2 = after := congrArg Prod.snd rawEq
   have monotone : current.excluded ⊆ after := afterEq ▸ raw.2
   have rawSame : raw = ⟨(lift (.inr (ProtocolState.entry tail finished)), after), monotone⟩ :=
@@ -456,14 +646,15 @@ private theorem ordinary_localStep_commit_attempt
   have closes : target = (current.install
       (lift (.inr (ProtocolState.entry tail finished)), after) monotone).close := by
     simpa only [rawSame] using closed
-  refine ⟨finished, after, attempt, monotone, word.trans (congrArg List.singleton semantic),
-    ?_, ?_⟩
+  refine ⟨finished, after, attempt, monotone, word,
+    ?_, ?_, ?_⟩
   · exact congrArg some closes
   · rw [word]
     rfl
+  · rfl
 
 omit [Fintype Player] [IExpr.ResultTypes L] in
-private theorem ordinary_single_commit_attempt
+theorem proper_single_commit_attempt
     {Γ : SourceCtx Player L} {O : Finset VarId}
     {name : VarId} {owner : Player} {payload : L.Ty}
     {fresh : name ∉ Γ.map Prod.fst} {guard : SourceGuard L Γ owner name payload}
@@ -474,10 +665,10 @@ private theorem ordinary_single_commit_attempt
       name owner fresh guard .nil).Attempt entry excluded finished after)
     (joint : Player → Option (CommitRecoveryMove Player L)) (word : attempt.joints = [joint])
     (proper : ∀ who move, joint who = some move →
-      move.missing = false ∧ ¬ move.action.IsFailure)
-    (live : ∀ who, who ∉ excluded → entry.BindingsHoldValues who) :
+      move.missing = false ∧ ¬ move.action.IsFailure) :
     after = excluded ∧
-      (∀ who, who ∉ after → finished.BindingsHoldValues who) ∧
+      ((∀ who, who ∉ excluded → entry.BindingsHoldValues who) →
+        ∀ who, who ∉ after → finished.BindingsHoldValues who) ∧
       (owner ∈ excluded → finished = automaticCommit name owner payload entry) ∧
       (owner ∉ excluded → ∃ value : L.Val payload,
         finished = commitSuccessor name guard entry (.success value) ∧
@@ -486,7 +677,7 @@ private theorem ordinary_single_commit_attempt
   | excluded inactive later =>
       cases later
       refine ⟨rfl, ?_, fun _ => rfl, fun active => (active inactive).elim⟩
-      intro who surviving readName readPayload cell
+      intro live who surviving readName readPayload cell
       cases cell with
       | here => exact (surviving inactive).elim
       | there cell => exact live who surviving cell
@@ -504,7 +695,7 @@ private theorem ordinary_single_commit_attempt
       | failure => exact (notFailed rfl).elim
       | success value =>
           refine ⟨rfl, ?_, fun inactive => (active inactive).elim, fun _ => ⟨value, rfl, selected⟩⟩
-          intro who surviving readName readPayload cell
+          intro live who surviving readName readPayload cell
           cases cell with
           | here => exact ⟨value, rfl⟩
           | there cell => exact live who surviving cell
@@ -754,6 +945,28 @@ private def OrdinaryCommitGraphSuccessor
       (cast (congrArg EventField.Action binding.symm) result)
       (cast (congrArg EventField.Value binding.symm) result)
 
+omit [DecidableEq Player] [Fintype Player] in
+private theorem completed_binding_read
+    {graph : Vegas.EventGraph Player L} (config : graph.Config)
+    (event : graph.EventId) (ready : config.cut.Ready event)
+    (owner : Player) (payload : L.Ty)
+    (binding : graph.outputLayout event = .binding owner payload)
+    (result : PublicationResult (L.Val payload)) :
+    (⟨.inr event, binding⟩ : FieldRef graph.layout (.binding owner payload)).get?
+      (config.complete event ready
+        (cast (congrArg EventField.Action binding.symm) result)
+        (cast (congrArg EventField.Value binding.symm) result)).store = some result := by
+  rw [FieldRef.get?, EventGraph.store_complete]
+  simp only [Function.update_self]
+  change cast (congrArg (fun kind => Option kind.Value) binding)
+    (some (cast (congrArg EventField.Value binding.symm) result)) = _
+  have castSome {A B : Type} (same : A = B) (item : A) :
+      cast (congrArg Option same) (some item) = some (cast same item) := by
+    cases same
+    rfl
+  rw [castSome (congrArg EventField.Value binding)]
+  simp only [cast_cast, cast_eq]
+
 private theorem PhaseProposalOrdinarySourceCursor.row_coupling
     (setup : Setup (Player := Player) (L := L)) (mode : ExecutionMode)
     (runtime : EventGraphRuntime (serviceGraph setup mode))
@@ -792,6 +1005,15 @@ private theorem PhaseProposalOrdinarySourceCursor.row_coupling
         (serviceGraph setup mode).canonicalContinuation
           (phaseProposalBindingPotentialProfile setup mode runtime leaks plan anchor.execution phase
             values) cursor.config ∧
+      joint.map (fun pair =>
+        (⟨.inr event, binding⟩ : FieldRef (graphLayout setup.program)
+          (.binding owner payload)).get? pair.2.store) =
+        (if owner ∈ cursor.current.excluded then PMF.pure .failure else
+          (values owner (setup.proposalRecoveryQuery owner
+            (setup.proposalRecoveryModel.infoOf owner cursor.trace))).map
+              (fun choice => PublicationResult.success
+                (phaseRecoveryDomainValue setup mode event owner payload binding
+                  choice.val.val))).map some ∧
       ∀ pair ∈ joint.support,
         ∃ draws : ∀ who, setup.CommitRecoveryValueChoice who
           (setup.proposalRecoveryQuery who
@@ -840,7 +1062,7 @@ private theorem PhaseProposalOrdinarySourceCursor.row_coupling
           owner payload binding code (cursor.excluded ▸ inactive)).2
     let joint := (setup.proposalRecoveryModel.runBehavioralFrom source 1 history).map
       (fun nextHistory => (nextHistory, next))
-    refine ⟨binding, joint, ?_, ?_, ?_⟩
+    refine ⟨binding, joint, ?_, ?_, ?_, ?_⟩
     · rw [PMF.map_comp]
       change (setup.proposalRecoveryModel.runBehavioralFrom source 1 history).map id = _
       exact PMF.map_id _
@@ -849,6 +1071,21 @@ private theorem PhaseProposalOrdinarySourceCursor.row_coupling
         (fun _ => graph.canonicalContinuation profile next) = _
       rw [PMF.bind_const]
       exact harmonic
+    · have stored : (⟨.inr event, binding⟩ : FieldRef (graphLayout setup.program)
+          (.binding owner payload)).get? next.store = some .failure := by
+        dsimp only [next]
+        split
+        · rename_i done
+          obtain ⟨_inside, actor, kind, typed, _excluded, failed⟩ :=
+            cursor.ahead event done rank.ge
+          obtain ⟨sameOwner, sameKind⟩ := EventField.binding.inj (typed.symm.trans binding)
+          subst actor
+          subst kind
+          exact failed
+        · exact completed_binding_read cursor.config event _ owner payload binding .failure
+      simp only [joint, PMF.map_comp, Function.comp_def, stored,
+        inactive, ↓reduceIte, PMF.pure_map]
+      exact PMF.map_const _ _
     · intro pair member
       obtain ⟨nextHistory, supported, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp member
       rw [setup.proposalRecovery_ordinary_run_succ values 0 history] at supported
@@ -882,11 +1119,29 @@ private theorem PhaseProposalOrdinarySourceCursor.row_coupling
         anchor.execution phase values cursor.config event ready owner payload binding code
           (cursor.interval head (Nat.zero_lt_succ _)) (cursor.excluded ▸ inactive) cursor.current
           cursor.trace queried
-    refine ⟨binding, joint, first, ?_, ?_⟩
+    refine ⟨binding, joint, first, ?_, ?_, ?_⟩
     · change joint.bind ((graph.canonicalContinuation profile) ∘ Prod.snd) = _
       rw [← PMF.bind_map, second]
       exact phaseProposalBindingPotentialProfile_harmonic setup mode runtime leaks plan
         anchor.execution phase values cursor.config event ready
+    · change joint.map ((fun config =>
+          (⟨.inr event, binding⟩ : FieldRef (graphLayout setup.program)
+            (.binding owner payload)).get? config.store) ∘ Prod.snd) = _
+      rw [← PMF.map_comp, second,
+        (phaseProposalBindingPotentialProfile_source_draw setup mode runtime leaks plan
+          anchor.execution phase values cursor.config event ready owner payload binding code
+            (cursor.interval head (Nat.zero_lt_succ _)) (cursor.excluded ▸ inactive)
+              cursor.current cursor.trace queried).1]
+      simp only [PMF.map_bind, commit_step cursor.config event ready binding code,
+        PMF.pure_map, PMF.map_comp, Function.comp_def, inactive, ↓reduceIte]
+      rw [← pmf_bind_pure_eq_map]
+      apply congrArg (PMF.bind (values owner (setup.proposalRecoveryQuery owner
+        (setup.proposalRecoveryModel.infoOf owner cursor.trace))))
+      funext sampled
+      apply congrArg PMF.pure
+      exact completed_binding_read cursor.config event ready owner payload binding
+        (.success (phaseRecoveryDomainValue setup mode event owner payload binding
+          sampled.val.val))
     · intro pair member
       obtain ⟨draws, _drawn, localSupport, graphSupport⟩ := supported pair member
       refine ⟨draws, localSupport, Or.inr ⟨ready, ?_⟩⟩
@@ -951,6 +1206,13 @@ theorem phaseProposalBindingPotentialProfile_source_block_coupling
       PMF (setup.CommitRecoveryValueChoice who key.1))
     {Γ Δ : SourceCtx Player L} {O P : Finset VarId}
     (block : SourceProgram.CommitPrefix Γ O Δ P) :
+    let controls : Finset Player × Nat × Nat :=
+      ((anchor.execution.application.publicView.retired.map fun record =>
+        record.2.sourceFailureFootprint.2).foldr (fun first last => first ∪ last) ∅ ∪
+          anchor.execution.application.current.native.publicView.sourceFailureFootprint.1
+            anchor.execution.application.attempt.phase,
+        anchor.execution.application.attempt.generation,
+        anchor.execution.application.attempt.phase)
     ∀ (suffix : SourceProgram Player L Δ P)
       (cursor : PhaseProposalOrdinarySourceCursor setup mode runtime leaks plan anchor phase
         block suffix),
@@ -963,9 +1225,19 @@ theorem phaseProposalBindingPotentialProfile_source_block_coupling
       joint.map Prod.snd = (serviceGraph setup mode).canonicalContinuation
         (phaseProposalBindingPotentialProfile setup mode runtime leaks plan anchor.execution phase
           values) cursor.config ∧
-      ∀ pair ∈ joint.support, PhaseProposalOrdinarySourceBlockResult setup mode block suffix
+      (∀ pair ∈ joint.support, PhaseProposalOrdinarySourceBlockResult setup mode block suffix
         cursor.refs cursor.embedding cursor.lift cursor.source cursor.current cursor.trace
-          pair := by
+          pair) ∧
+      ∀ (filler : SourceProgram.Config Player L Γ),
+        (∀ who, who ∉ cursor.current.excluded → filler.view who = cursor.source.view who) →
+        joint.map (fun pair => fillCommitPrefix setup.program block suffix cursor.embedding
+          pair.2.2.1 filler) =
+        block.prefixLaw suffix (ordinaryBlockProfile setup mode plan values block suffix
+          cursor.embedding
+            (fun who view => cursor.views.view who view) controls
+            anchor.execution.application.publicView
+            (PhaseProposal.sourceArchive anchor.execution.network.inputs)) filler := by
+  intro controls
   classical
   let graph := serviceGraph setup mode
   let profile := phaseProposalBindingPotentialProfile setup mode runtime leaks plan
@@ -978,7 +1250,7 @@ theorem phaseProposalBindingPotentialProfile_source_block_coupling
       let history : setup.proposalRecoveryProtocol.History := ⟨some cursor.current, cursor.trace⟩
       let joint := (graph.canonicalContinuation profile cursor.config).map
         (fun key => (history, key))
-      refine ⟨joint, ?_, ?_, ?_⟩
+      refine ⟨joint, ?_, ?_, ?_, ?_⟩
       · rw [PMF.map_comp]
         change (graph.canonicalContinuation profile cursor.config).map
           (fun _ => history) = PMF.pure history
@@ -992,13 +1264,22 @@ theorem phaseProposalBindingPotentialProfile_source_block_coupling
           cursor.live,
           canonicalContinuation_retains_context profile cursor.refs cursor.source.state
             cursor.config cursor.agrees key reached, rfl, rfl⟩
+      · intro filler _same
+        change joint.map (fun _ => filler) = PMF.pure filler
+        exact PMF.map_const _ _
   | @commit Γ O Δ P name owner payload fresh guard rest ih =>
       intro suffix cursor
       let head : Fin (eventCount
         ((SourceProgram.CommitPrefix.commit name owner fresh guard rest).prepend suffix)) :=
         ⟨0, by simp [CommitPrefix.prepend, eventCount]⟩
       let event := cursor.embedding.event head
-      obtain ⟨binding, row, first, harmonic, rowSupport⟩ := cursor.row_coupling setup mode runtime
+      let typed := ordinaryBlockProfile setup mode plan values
+        (.commit name owner fresh guard rest) suffix cursor.embedding
+          (fun who view => cursor.views.view who view) controls
+          anchor.execution.application.publicView
+          (PhaseProposal.sourceArchive anchor.execution.network.inputs)
+      obtain ⟨binding, row, first, harmonic, rowRead, rowSupport⟩ :=
+        cursor.row_coupling setup mode runtime
         leaks plan initial horizon scheduler anchor anchorTrace phase values fresh guard rest suffix
       let result := fun draws : ∀ who, setup.CommitRecoveryValueChoice who
           (setup.proposalRecoveryQuery who
@@ -1012,17 +1293,30 @@ theorem phaseProposalBindingPotentialProfile_source_block_coupling
             joint.map Prod.fst = setup.proposalRecoveryModel.runBehavioralFrom source
               rest.length pair.1 ∧
             joint.map Prod.snd = graph.canonicalContinuation profile pair.2 ∧
-            ∀ final ∈ joint.support,
+            (∀ final ∈ joint.support,
               PhaseProposalOrdinarySourceBlockResult setup mode
                 (.commit name owner fresh guard rest) suffix cursor.refs cursor.embedding
-                  cursor.lift cursor.source cursor.current cursor.trace final := by
+                  cursor.lift cursor.source cursor.current cursor.trace final) ∧
+            ∀ (filler : SourceProgram.Config Player L Γ),
+              (∀ who, who ∉ cursor.current.excluded →
+                filler.view who = cursor.source.view who) →
+              joint.map (fun final => fillCommitPrefix setup.program
+                (.commit name owner fresh guard rest) suffix cursor.embedding
+                  final.2.2.1 filler) =
+              rest.prefixLaw suffix (afterCommit typed)
+                (commitSuccessor name guard filler
+                  (((⟨.inr event, binding⟩ : FieldRef (graphLayout setup.program)
+                    (.binding owner payload)).get? pair.2.store).getD .failure)) := by
         obtain ⟨draws, localSupport, graphStep⟩ := rowSupport pair member
-        obtain ⟨middleSource, after, headAttempt, monotone, headWord, middleState, middleWord⟩ :=
-          ordinary_localStep_commit_attempt setup fresh guard (rest.prepend suffix) cursor.lift
-            cursor.origin cursor.source cursor.current cursor.trace cursor.point draws pair.1
-              localSupport
-        obtain ⟨afterEq, middleLive, automatic, value⟩ := ordinary_single_commit_attempt headAttempt
-          _ headWord (fun who move selected => (draws who).property move selected) cursor.live
+        obtain ⟨middleSource, after, headAttempt, monotone, headWord, middleState, middleWord,
+            _middleLabels⟩ :=
+          proposalRecovery_localStep_commit_attempt setup fresh guard (rest.prepend suffix)
+            cursor.lift cursor.origin cursor.source cursor.current cursor.trace cursor.point
+              (ordinarySourceChoices setup cursor.current cursor.trace draws) pair.1 localSupport
+        rw [ordinarySourceChoices_semantic] at headWord
+        obtain ⟨afterEq, middleLive, automatic, value⟩ := proper_single_commit_attempt headAttempt
+          _ headWord (fun who move selected => (draws who).property move selected)
+        have middleLive := middleLive cursor.live
         cases afterEq
         let field : FieldRef (graphLayout setup.program) (.binding owner payload) :=
           ⟨.inr event, binding⟩
@@ -1116,49 +1410,115 @@ theorem phaseProposalBindingPotentialProfile_source_block_coupling
         let nextCursor := cursor.advance setup mode runtime leaks plan anchor phase fresh guard rest
           suffix middleSource sourceJoint legal middleLive nextConfig actualSupport nextData.1
             nextData.2.1 nextData.2.2
-        obtain ⟨joint, left, right, related⟩ := ih suffix nextCursor
-        refine ⟨joint, left, right, ?_⟩
-        intro final reached
-        obtain ⟨finished, last, lastTrace, tailAttempt, historyEq, lastPoint, lastExcluded,
-          lastGeneration, lastLive, agreement, lastWord, lastLabelledWord⟩ := related final reached
-        have nextExcluded : nextCursor.current.excluded = cursor.current.excluded := by
-          exact ordinary_commit_close_metadata setup cursor.current
-            (cursor.excluded.trans cursor.entryExcluded.symm) _ |>.2.1
-        let tailTyped : rest.Attempt middleSource cursor.current.excluded finished last.excluded :=
-          nextExcluded ▸ tailAttempt
-        let attempt := headAttempt.prepend tailTyped
-        have nextGeneration : nextCursor.current.generation = cursor.current.generation := by
-          exact ordinary_commit_close_metadata setup cursor.current
-            (cursor.excluded.trans cursor.entryExcluded.symm) _ |>.2.2.2
-        have tailWord : tailTyped.joints = tailAttempt.joints := by
-          have transport {first second : Finset Player} (same : first = second)
-              (attempt : rest.Attempt middleSource first finished last.excluded) :
-              (same ▸ attempt).joints = attempt.joints := by cases same; rfl
-          exact transport nextExcluded tailAttempt
-        refine ⟨finished, last, lastTrace, attempt, historyEq, lastPoint,
-          lastExcluded.trans nextExcluded, lastGeneration.trans nextGeneration, lastLive,
-          agreement, ?_, ?_⟩
-        · have nextWord : setup.recoveryJointRecall
-              (setup.proposalRecoveryEraseTrace nextCursor.trace) = headAttempt.joints.reverse ++
-                setup.recoveryJointRecall (setup.proposalRecoveryEraseTrace cursor.trace) :=
-            middleWord
-          rw [lastWord, nextWord]
-          rw [CommitPrefix.Attempt.prepend_joints, List.reverse_append, tailWord]
-          exact (List.append_assoc _ _ _).symm
-        · have nextWord : setup.proposalRecoveryJointRecall nextCursor.trace =
-              headAttempt.joints.reverse.map
-                (fun joint who => (joint who).map ProposalRecoveryMove.ordinary) ++
-                  setup.proposalRecoveryJointRecall cursor.trace := by
-            change sourceJoint :: setup.proposalRecoveryJointRecall cursor.trace = _
-            rw [headWord]
-            simp only [List.reverse_singleton, List.map_singleton, List.singleton_append]
-            exact congrArg (List.cons · (setup.proposalRecoveryJointRecall cursor.trace))
-              (ordinarySourceChoices_labelled setup cursor.current cursor.trace draws)
-          rw [lastLabelledWord, nextWord]
-          rw [CommitPrefix.Attempt.prepend_joints, List.reverse_append, List.map_append, tailWord]
-          exact (List.append_assoc _ _ _).symm
+        obtain ⟨joint, left, right, related, tailMarginal⟩ := ih suffix nextCursor
+        refine ⟨joint, left, right, ?_, ?_⟩
+        · intro final reached
+          obtain ⟨finished, last, lastTrace, tailAttempt, historyEq, lastPoint, lastExcluded,
+            lastGeneration, lastLive, agreement, lastWord, lastLabelledWord⟩ :=
+              related final reached
+          have nextExcluded : nextCursor.current.excluded = cursor.current.excluded := by
+            exact ordinary_commit_close_metadata setup cursor.current
+              (cursor.excluded.trans cursor.entryExcluded.symm) _ |>.2.1
+          let tailTyped : rest.Attempt middleSource cursor.current.excluded finished
+              last.excluded :=
+            nextExcluded ▸ tailAttempt
+          let attempt := headAttempt.prepend tailTyped
+          have nextGeneration : nextCursor.current.generation = cursor.current.generation := by
+            exact ordinary_commit_close_metadata setup cursor.current
+              (cursor.excluded.trans cursor.entryExcluded.symm) _ |>.2.2.2
+          have tailWord : tailTyped.joints = tailAttempt.joints := by
+            have transport {first second : Finset Player} (same : first = second)
+                (attempt : rest.Attempt middleSource first finished last.excluded) :
+                (same ▸ attempt).joints = attempt.joints := by cases same; rfl
+            exact transport nextExcluded tailAttempt
+          refine ⟨finished, last, lastTrace, attempt, historyEq, lastPoint,
+            lastExcluded.trans nextExcluded, lastGeneration.trans nextGeneration, lastLive,
+            agreement, ?_, ?_⟩
+          · have nextWord : setup.recoveryJointRecall
+                (setup.proposalRecoveryEraseTrace nextCursor.trace) = headAttempt.joints.reverse ++
+                  setup.recoveryJointRecall (setup.proposalRecoveryEraseTrace cursor.trace) :=
+              middleWord
+            rw [lastWord, nextWord]
+            rw [CommitPrefix.Attempt.prepend_joints, List.reverse_append, tailWord]
+            exact (List.append_assoc _ _ _).symm
+          · have nextWord : setup.proposalRecoveryJointRecall nextCursor.trace =
+                headAttempt.joints.reverse.map
+                  (fun joint who => (joint who).map ProposalRecoveryMove.ordinary) ++
+                    setup.proposalRecoveryJointRecall cursor.trace := by
+              change sourceJoint :: setup.proposalRecoveryJointRecall cursor.trace = _
+              rw [headWord]
+              simp only [List.reverse_singleton, List.map_singleton, List.singleton_append]
+              exact congrArg (List.cons · (setup.proposalRecoveryJointRecall cursor.trace))
+                (ordinarySourceChoices_labelled setup cursor.current cursor.trace draws)
+            rw [lastLabelledWord, nextWord]
+            rw [CommitPrefix.Attempt.prepend_joints, List.reverse_append, List.map_append, tailWord]
+            exact (List.append_assoc _ _ _).symm
+        · intro filler sameViews
+          have nextExcluded : nextCursor.current.excluded = cursor.current.excluded :=
+            (ordinary_commit_close_metadata setup cursor.current
+              (cursor.excluded.trans cursor.entryExcluded.symm) _).2.1
+          have headStored : field.get? nextConfig.store = some (result draws) := by
+            have stored := nextData.1 HasVar.here
+            change field.get? nextConfig.store = some (middleSource.state.get HasVar.here)
+              at stored
+            exact stored.trans (congrArg some sourceResult)
+          let nextFiller := commitSuccessor name guard filler (result draws)
+          have nextViews : ∀ who, who ∉ nextCursor.current.excluded →
+              nextFiller.view who = nextCursor.source.view who := by
+            intro who active
+            rw [nextExcluded] at active
+            change nextFiller.view who = middleSource.view who
+            by_cases inactive : owner ∈ cursor.current.excluded
+            · have foreign : owner ≠ who := fun same => active (same ▸ inactive)
+              rw [automatic inactive]
+              exact (Config.view_commit_congr name guard filler cursor.source
+                (sameViews who active) (result draws) .failure
+                  (fun same => (foreign same).elim)).trans
+                    (Config.automaticCommit_view_eq_failure who owner foreign
+                      name guard cursor.source).symm
+            · obtain ⟨actualValue, same, _selected⟩ := value inactive
+              have chosen : result draws = .success actualValue := by
+                rw [same] at sourceResult
+                exact sourceResult.symm
+              rw [same]
+              exact Config.view_commit_congr name guard filler cursor.source
+                (sameViews who active) (result draws) (.success actualValue)
+                  (fun _ => chosen)
+          have tailLaw := tailMarginal nextFiller nextViews
+          have readEq : joint.map (fun final => fillCommitPrefix setup.program
+                (.commit name owner fresh guard rest) suffix cursor.embedding
+                  final.2.2.1 filler) =
+              joint.map (fun final => fillCommitPrefix setup.program rest suffix
+                nextCursor.embedding final.2.2.1 nextFiller) := by
+            apply map_congr_on_support joint
+            intro final supported
+            have graphSupport : final.2 ∈
+                (graph.canonicalContinuation profile nextConfig).support := by
+              have mapped : joint.map Prod.snd =
+                  graph.canonicalContinuation profile nextConfig := right
+              rw [← mapped]
+              exact (PMF.mem_support_map_iff ..).mpr ⟨final, supported, rfl⟩
+            have kept : (cursor.refs.cons
+                (name := name) (cell := .commitment owner payload) field).Agrees
+                  middleSource.state final.2.2.1 :=
+              canonicalContinuation_retains_context profile
+                (cursor.refs.cons (name := name) (cell := .commitment owner payload) field)
+                middleSource.state nextConfig nextData.1 final.2 graphSupport
+            have stored : field.get? final.2.2.1 = some (result draws) := by
+              have read := kept HasVar.here
+              change field.get? final.2.2.1 = some (middleSource.state.get HasVar.here) at read
+              exact read.trans (congrArg some sourceResult)
+            change fillCommitPrefix setup.program rest suffix nextCursor.embedding
+              final.2.2.1
+                (commitSuccessor name guard filler ((field.get? final.2.2.1).getD .failure)) = _
+            rw [stored]
+            rfl
+          rw [readEq, tailLaw]
+          change rest.prefixLaw suffix (afterCommit typed) nextFiller = _
+          rw [headStored]
+          rfl
       let branch := fun pair member => (branches pair member).choose
-      refine ⟨row.bindOnSupport branch, ?_, ?_, ?_⟩
+      refine ⟨row.bindOnSupport branch, ?_, ?_, ?_, ?_⟩
       · rw [map_bindOnSupport]
         rw [show (SourceProgram.CommitPrefix.commit name owner fresh guard rest).length =
           1 + rest.length by simp only [CommitPrefix.length]; omega]
@@ -1174,6 +1534,192 @@ theorem phaseProposalBindingPotentialProfile_source_block_coupling
       · intro final supported
         obtain ⟨pair, member, reached⟩ :=
           Set.mem_iUnion₂.mp (PMF.support_bindOnSupport .. ▸ supported)
-        exact (branches pair member).choose_spec.2.2 final reached
+        exact (branches pair member).choose_spec.2.2.1 final reached
+      · intro filler sameViews
+        rw [map_bindOnSupport]
+        have mixed : (row.bindOnSupport fun pair member =>
+            (branch pair member).map (fun final => fillCommitPrefix setup.program
+              (.commit name owner fresh guard rest) suffix cursor.embedding
+                final.2.2.1 filler)) =
+            row.bind (fun pair => rest.prefixLaw suffix (afterCommit typed)
+              (commitSuccessor name guard filler
+                (((⟨.inr event, binding⟩ : FieldRef (graphLayout setup.program)
+                  (.binding owner payload)).get? pair.2.store).getD .failure))) := by
+          apply bindOnSupport_eq_bind_of_eq_on_support
+          intro pair member
+          exact (branches pair member).choose_spec.2.2.2 filler sameViews
+        rw [mixed]
+        change row.bind ((fun result => rest.prefixLaw suffix (afterCommit typed)
+          (commitSuccessor name guard filler (result.getD .failure))) ∘
+            (fun pair => (⟨.inr event, binding⟩ : FieldRef (graphLayout setup.program)
+              (.binding owner payload)).get? pair.2.store)) = _
+        rw [← PMF.bind_map, rowRead, PMF.bind_map]
+        change (if owner ∈ cursor.current.excluded then PMF.pure .failure else
+          (values owner (setup.proposalRecoveryQuery owner
+            (setup.proposalRecoveryModel.infoOf owner cursor.trace))).map
+              (fun choice => PublicationResult.success
+                (phaseRecoveryDomainValue setup mode event owner payload binding
+                  choice.val.val))).bind
+                    (fun result => rest.prefixLaw suffix (afterCommit typed)
+                      (commitSuccessor name guard filler result)) = _
+        change _ = (commitKernel typed (filler.view owner)).bind (fun result =>
+          rest.prefixLaw suffix (afterCommit typed) (commitSuccessor name guard filler result))
+        apply congrArg (fun law : PMF (PublicationResult (L.Val payload)) =>
+          law.bind (fun result =>
+          rest.prefixLaw suffix (afterCommit typed) (commitSuccessor name guard filler result)))
+        have positive : 0 < (CommitPrefix.commit name owner fresh guard rest).length :=
+          Nat.zero_lt_succ _
+        have controlsEq := cursor.controls positive
+        have excludedEq : controls.1 = cursor.current.excluded :=
+          (congrArg Prod.fst controlsEq).symm
+        by_cases inactive : owner ∈ cursor.current.excluded
+        · simp only [typed, ordinaryBlockProfile, ordinaryBlockProfile.buildProfile,
+            commitKernel, excludedEq, inactive,
+            ↓reduceIte]
+        · rw [ite_eq_right inactive]
+          have live : ProtocolState.BindingsHoldValues owner setup.program
+              cursor.current.point := by
+            rw [cursor.point, cursor.origin.bindingsHoldValues_lift,
+              ProtocolState.bindingsHoldValues_entry]
+            exact cursor.live owner inactive
+          have observed : cursor.views.view owner (Sum.inl (filler.view owner)) =
+              ProtocolState.observe owner setup.program cursor.current.point := by
+            rw [sameViews owner inactive, cursor.point, cursor.views.observe]
+            rfl
+          have rank : ProtocolView.position owner setup.program
+              (ProtocolState.observe owner setup.program cursor.current.point) =
+                cursor.offset := by
+            have position := ProtocolView.position_add_remaining owner setup.program
+              cursor.current.point
+            have remaining : ProtocolState.remaining setup.program cursor.current.point =
+                instructionCount
+                  ((CommitPrefix.commit name owner fresh guard rest).prepend suffix) := by
+              rw [cursor.point, cursor.origin.remaining_lift, ProtocolState.remaining_entry]
+            rw [remaining] at position
+            have count := cursor.compiled.countEq
+            simp only [eventCount_eq_instructionCount] at count
+            omega
+          exact (ordinary_block_head_law setup mode plan values fresh guard rest suffix
+            cursor.embedding (fun who view => cursor.views.view who view) controls
+              anchor.execution.application.publicView
+              (PhaseProposal.sourceArchive anchor.execution.network.inputs) (filler.view owner)
+              cursor.current cursor.trace inactive live observed controlsEq
+              (by rw [rank]; exact cursor.addresses positive owner)
+              (cursor.proposals owner inactive)).symm
+
+/-- Ordinary source play completes the literal commitment prefix without new
+exclusions. Its actual joint word contains only proper preparations, even when
+an older stored binding has failed. -/
+theorem proposalRecovery_ordinary_commit_block_support
+    (setup : Setup (Player := Player) (L := L))
+    (values : ∀ who (key : setup.ProposalRecoveryComponent who),
+      PMF (setup.CommitRecoveryValueChoice who key.1))
+    {Γ Δ : SourceCtx Player L} {O P : Finset VarId}
+    (block : SourceProgram.CommitPrefix Γ O Δ P) :
+    ∀ (suffix : SourceProgram Player L Δ P)
+      (lift : ProtocolState (block.prepend suffix) → ProtocolState setup.program)
+      (_origin : ProtocolSuffix setup.program (block.prepend suffix) lift)
+      (source : SourceProgram.Config Player L Γ)
+      (current : CommitRecoveryState setup.program)
+      (trace : setup.proposalRecoveryProtocol.Trace (some current))
+      (_point : current.point = lift (ProtocolState.entry (block.prepend suffix) source))
+      (_ordinary : current.excluded = current.entryExcluded)
+      (final : setup.proposalRecoveryProtocol.History),
+      final ∈ (setup.proposalRecoveryModel.runBehavioralFrom
+        (setup.proposalRecoveryNormalizedTrembledProfile
+          0 le_rfl zero_le_one 0 le_rfl zero_le_one 0 le_rfl zero_le_one values)
+        block.length ⟨some current, trace⟩).support →
+      ∃ (finished : SourceProgram.Config Player L Δ)
+        (last : CommitRecoveryState setup.program)
+        (lastTrace : setup.proposalRecoveryProtocol.Trace (some last))
+        (attempt : block.Attempt source current.excluded finished last.excluded),
+        final = ⟨some last, lastTrace⟩ ∧
+        last.point = lift (block.liftPoint suffix (ProtocolState.entry suffix finished)) ∧
+        last.excluded = current.excluded ∧ last.entryExcluded = current.excluded ∧
+        last.generation = current.generation ∧
+        setup.recoveryJointRecall (setup.proposalRecoveryEraseTrace lastTrace) =
+          attempt.joints.reverse ++ setup.recoveryJointRecall
+            (setup.proposalRecoveryEraseTrace trace) ∧
+        setup.proposalRecoveryJointRecall lastTrace =
+          attempt.joints.reverse.map
+              (fun joint who => (joint who).map ProposalRecoveryMove.ordinary)
+            ++ setup.proposalRecoveryJointRecall trace ∧
+        (∀ joint ∈ attempt.joints, ∀ who move, joint who = some move →
+          move.missing = false ∧ ¬ move.action.IsFailure) := by
+  classical
+  induction block with
+  | nil =>
+      intro suffix lift origin source current trace point ordinary final supported
+      have same : final = ⟨some current, trace⟩ := (PMF.mem_support_pure_iff ..).mp supported
+      subst final
+      refine ⟨source, current, trace, .nil _ _, rfl, point, rfl, ordinary.symm, rfl, ?_, ?_, ?_⟩
+      · rfl
+      · rfl
+      · intro joint member
+        cases member
+  | @commit Γ O Δ P name owner payload fresh guard rest ih =>
+      intro suffix lift origin source current trace point ordinary final supported
+      rw [show (SourceProgram.CommitPrefix.commit name owner fresh guard rest).length =
+        rest.length + 1 from rfl,
+        setup.proposalRecovery_ordinary_run_succ values] at supported
+      obtain ⟨draws, _drawSupport, restSupport⟩ := (PMF.mem_support_bind_iff _ _ _).mp supported
+      obtain ⟨middle, localSupport, finalSupport⟩ := (PMF.mem_support_bind_iff _ _ _).mp restSupport
+      obtain ⟨middleSource, after, headAttempt, monotone, headWord, middleState, middleWord,
+          middleLabels⟩ :=
+        proposalRecovery_localStep_commit_attempt setup fresh guard (rest.prepend suffix)
+          lift origin source current trace point
+            (ordinarySourceChoices setup current trace draws) middle localSupport
+      rw [ordinarySourceChoices_semantic] at headWord
+      have proper : ∀ who move, (draws who).val.val = some move →
+          move.missing = false ∧ ¬ move.action.IsFailure :=
+        fun who move selected => (draws who).property move selected
+      obtain ⟨afterEq, _live, _automatic, _value⟩ :=
+        proper_single_commit_attempt headAttempt _ headWord proper
+      cases afterEq
+      let next := (current.install
+        (lift (.inr (ProtocolState.entry (rest.prepend suffix) middleSource)), current.excluded)
+          (Finset.Subset.refl _)).close
+      have metadata := ordinary_commit_close_metadata setup current ordinary
+        (lift (.inr (ProtocolState.entry (rest.prepend suffix) middleSource)))
+      rcases middle with ⟨middleState', middleTrace⟩
+      change middleState' = some next at middleState
+      subst middleState'
+      obtain ⟨finished, last, lastTrace, tailAttempt, finalEq, lastPoint, lastExcluded,
+          lastEntry, lastGeneration, lastWord, lastLabels, tailProper⟩ :=
+        ih suffix (fun point => lift (.inr point))
+          (ProtocolSuffix.commitTail fresh guard (rest.prepend suffix) origin)
+          middleSource next middleTrace metadata.1
+          (metadata.2.1.trans metadata.2.2.1.symm) final finalSupport
+      let tailTyped : rest.Attempt middleSource current.excluded finished last.excluded :=
+        metadata.2.1 ▸ tailAttempt
+      have tailWord : tailTyped.joints = tailAttempt.joints := by
+        have transport {first second : Finset Player} (same : first = second)
+            (attempt : rest.Attempt middleSource first finished last.excluded) :
+            (same ▸ attempt).joints = attempt.joints := by cases same; rfl
+        exact transport metadata.2.1 tailAttempt
+      refine ⟨finished, last, lastTrace, headAttempt.prepend tailTyped, finalEq, lastPoint,
+        lastExcluded.trans metadata.2.1, lastEntry.trans metadata.2.1,
+        lastGeneration.trans metadata.2.2.2, ?_, ?_, ?_⟩
+      · rw [lastWord, middleWord, CommitPrefix.Attempt.prepend_joints,
+          List.reverse_append, tailWord]
+        exact (List.append_assoc _ _ _).symm
+      · have headLabels : setup.proposalRecoveryJointRecall middleTrace =
+            headAttempt.joints.reverse.map
+              (fun joint who => (joint who).map ProposalRecoveryMove.ordinary) ++
+                setup.proposalRecoveryJointRecall trace := by
+          rw [middleLabels, headWord]
+          simp only [List.reverse_singleton, List.map_singleton, List.singleton_append]
+          exact congrArg (List.cons · (setup.proposalRecoveryJointRecall trace))
+            (ordinarySourceChoices_labelled setup current trace draws)
+        rw [lastLabels, headLabels, CommitPrefix.Attempt.prepend_joints,
+          List.reverse_append, List.map_append, tailWord]
+        exact (List.append_assoc _ _ _).symm
+      · intro joint member who move selected
+        rw [CommitPrefix.Attempt.prepend_joints, tailWord] at member
+        rcases List.mem_append.mp member with head | tail
+        · rw [headWord, List.mem_singleton] at head
+          subst joint
+          exact proper who move selected
+        · exact tailProper joint tail who move selected
 
 end Vegas

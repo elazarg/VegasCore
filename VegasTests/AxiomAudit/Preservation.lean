@@ -4823,11 +4823,16 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #print axioms
   Vegas.phaseProposalBindingPotentialProfile_source_word_law
 
-/-- info: 'Vegas.phaseProposalBindingPotentialProfile_source_history_injective' depends on axioms:
+/-- info: 'Vegas.ordinaryBlockProfile_source_word_law' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.ordinaryBlockProfile_source_word_law
+
+/-- info: 'Vegas.proposalRecovery_ordinary_commit_history_injective' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms
-  Vegas.phaseProposalBindingPotentialProfile_source_history_injective
+  Vegas.proposalRecovery_ordinary_commit_history_injective
 
 /-- info: 'Vegas.phaseProposal_fresh_entry_binding_origins' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
@@ -5124,3 +5129,39 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.PhaseProposalQualifiedBinding.annotatedPrefixWeight_support
+
+/-- info:
+'Vegas.EventGraphRuntime.phaseSignedBindings_history'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.phaseSignedBindings_history
+
+/-- info:
+'Vegas.PhaseProposalQualifiedBinding.issuedLedger_owned_word_conditional'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.PhaseProposalQualifiedBinding.issuedLedger_owned_word_conditional
+
+/-- info:
+'Vegas.PhaseProposalQualifiedBinding.issuedLedger_foreign_product'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.PhaseProposalQualifiedBinding.issuedLedger_foreign_product
+
+/-- info:
+'Vegas.phaseProposalUnflagged_stopped_potential_of_callback_frames'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseProposalUnflagged_stopped_potential_of_callback_frames
+
+/-- info:
+'Vegas.phaseProposalUnflagged_stopped_potential_from_retained_entry'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseProposalUnflagged_stopped_potential_from_retained_entry
+
+/-- info:
+'Vegas.phaseProposalUnflagged_stopped_binding_word_from_retained_entry'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseProposalUnflagged_stopped_binding_word_from_retained_entry

@@ -155,7 +155,7 @@ theorem accepted_binding_of_recorded_completed (bounds : MessageBounds graph)
   change graph.outputLayout event = .binding candidate.1 actualPayload at typed
   have ownerEq : candidate.1 = who := (EventField.binding.inj (binding.symm.trans typed)).1.symm
   obtain ⟨other, otherOutput, otherSender, otherCall⟩ :=
-    (phaseSignedBindings_history runtime leaks plan inputs horizon scheduler raw).2.2
+    (phaseSignedBindings_history runtime leaks plan inputs horizon scheduler raw).2.1.2
       event candidate accepted
   rw [ownerEq] at otherOutput otherSender
   obtain ⟨message, emitted, sender, sent⟩ := PhaseCount.recalled_submission_emitted runtime leaks

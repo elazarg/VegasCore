@@ -64,37 +64,51 @@ end SignedBindingTable
 
 namespace PhaseRuntimeState
 
-/-- Saved and live accepted tables refer only to actual author recall. -/
+/-- Saved, live and retired accepted tables refer only to actual author recall. -/
 def SignedBindings (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket graph))
     (execution : (phaseApplication runtime leaks).Execution) : Prop :=
   SignedBindingTable (fun who => (phaseApplication runtime leaks).outputs (execution.recall who))
       execution.application.entry.native ∧
     SignedBindingTable (fun who => (phaseApplication runtime leaks).outputs (execution.recall who))
-      execution.application.current.native
+      execution.application.current.native ∧
+    ∀ record ∈ execution.application.retired,
+      SignedBindingTable (fun who => (phaseApplication runtime leaks).outputs
+        (execution.recall who)) record.state
 
 theorem settle_signedBindings
     (outputs : Player → List (Message Player (CommitAttemptPacket graph)))
     (phases : List (RuntimePhase graph)) (generation : Nat) (entry current : RecoveryState graph)
     (retired : List (RetiredCommitAttempt graph))
     (saved : SignedBindingTable outputs entry.native)
-    (active : SignedBindingTable outputs current.native) :
+    (active : SignedBindingTable outputs current.native)
+    (archives : ∀ record ∈ retired, SignedBindingTable outputs record.state) :
     SignedBindingTable outputs (settle phases generation entry current retired).entry.native ∧
       SignedBindingTable outputs
-        (settle phases generation entry current retired).current.native := by
+        (settle phases generation entry current retired).current.native ∧
+      ∀ record ∈ (settle phases generation entry current retired).retired,
+        SignedBindingTable outputs record.state := by
   induction phases generalizing generation entry current retired with
-  | nil => exact ⟨saved, active⟩
+  | nil => exact ⟨saved, active, archives⟩
   | cons phase rest ih =>
       have drained := active.copy (phase.drain_tables current).1
       have rebuilt := saved.copy (phase.drain_tables (restore entry (phase.drain current))).1
+      have appended : ∀ record ∈ retired ++
+          [⟨⟨phase.low, generation⟩, (phase.drain current).native⟩],
+          SignedBindingTable outputs record.state := by
+        intro record member
+        rcases List.mem_append.mp member with previous | newest
+        · exact archives record previous
+        · cases List.mem_singleton.mp newest
+          exact drained
       simp only [settle]
       split
       · split
         · split
-          · exact ⟨saved, rebuilt⟩
-          · exact ih _ _ _ _ rebuilt rebuilt
-        · exact ih _ _ _ _ drained drained
-      · exact ⟨saved, drained⟩
+          · exact ⟨saved, rebuilt, appended⟩
+          · exact ih _ _ _ _ rebuilt rebuilt appended
+        · exact ih _ _ _ _ drained drained archives
+      · exact ⟨saved, drained, archives⟩
 
 end PhaseRuntimeState
 
@@ -116,10 +130,13 @@ private theorem signedBindings_respond (execution : (app).Execution)
   cases response with
   | mk transmission =>
       cases transmission with
-      | none => exact ⟨valid.1.mono contains, valid.2.mono contains⟩
+      | none =>
+          exact ⟨valid.1.mono contains, valid.2.1.mono contains,
+            fun record member => (valid.2.2 record member).mono contains⟩
       | some material =>
-          refine ⟨valid.1.mono contains, ?_⟩
-          apply (valid.2.mono contains).copy
+          refine ⟨valid.1.mono contains, ?_,
+            fun record member => (valid.2.2 record member).mono contains⟩
+          apply (valid.2.1.mono contains).copy
           change (submitStep (material.call.register execution.application.current.native who)
             who material.call.packet).accepted = _
           rw [submitStep_accepted, Submission.register_accepted]
@@ -141,7 +158,7 @@ private theorem signedBindings_handle (execution : (app).Execution)
         · intro input handle installed
           change native.accepted (.inl input) = some handle at installed
           rw [table, Function.update_of_ne (by simp)] at installed
-          exact valid.2.1 input handle installed
+          exact valid.2.1.1 input handle installed
         · intro field handle installed
           change native.accepted (.inr field) = some handle at installed
           rw [table] at installed
@@ -153,8 +170,9 @@ private theorem signedBindings_handle (execution : (app).Execution)
             exact ⟨message, List.mem_filterMap.mpr ⟨entry,
               by simpa only [Message.sender, owner] using present, emitted⟩, owner.symm, call⟩
           · rw [Function.update_of_ne (by simpa using same)] at installed
-            exact valid.2.2 field handle installed
-      · exact valid.2.copy table
+            exact valid.2.1.2 field handle installed
+      · exact valid.2.1.copy table
+    · exact valid.2.2
   · cases handled
 
 private theorem signedBindings_environment (execution next : (app).Execution)
@@ -194,13 +212,13 @@ private theorem signedBindings_environment (execution next : (app).Execution)
       · rw [PMF.support_map] at changed
         obtain ⟨native, nativeMoved, rfl⟩ := changed
         exact PhaseRuntimeState.settle_signedBindings _ _ _ _ _ _ valid.1
-          (valid.2.copy (environmentStep_tables runtime _ _ command nativeMoved).1)
+          (valid.2.1.copy (environmentStep_tables runtime _ _ command nativeMoved).1) valid.2.2
       · rw [PMF.mem_support_pure_iff] at changed
         subst state
         exact valid
 
 /-- Arbitrary initialized physical histories retain concrete signed binding
-origins at both the saved checkpoint and current semantic frontier. -/
+origins at the saved checkpoint, current frontier and every retired snapshot. -/
 theorem phaseSignedBindings_history (plan : RuntimePhasePlan graph) (inputs : PMF graph.Inputs)
     (horizon : Nat) (scheduler : (app).Scheduler) {control}
     (trace : ((app).protocol (inputs.map (PhaseRuntimeState.initial plan)) horizon scheduler).Trace
@@ -217,7 +235,8 @@ theorem phaseSignedBindings_history (plan : RuntimePhasePlan graph) (inputs : PM
     intro state supported
     obtain ⟨draw, _, rfl⟩ := PMF.support_map .. ▸ supported
     exact ⟨PhaseRuntimeState.settle_signedBindings _ _ _ _ _ _
-      (SignedBindingTable.initial draw) (SignedBindingTable.initial draw),
+      (SignedBindingTable.initial draw) (SignedBindingTable.initial draw)
+      (fun _ impossible => (List.not_mem_nil impossible).elim),
       MessageNetwork.Satisfies.empty⟩) trace).1
 
 end Vegas.EventGraphRuntime

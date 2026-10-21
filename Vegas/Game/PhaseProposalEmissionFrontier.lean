@@ -333,4 +333,31 @@ theorem phaseProposalEmissionFrontier_binding_recorded
     rfl
   exact cancel (congrArg EventField.Value binding) result
 
+/-- Restart the emitted ideal at an actual retained prefix, keeping every
+already emitted value in the initial ideal of the remaining raw trace. -/
+theorem phaseProposalEmissionFrontier_restart
+    (initial : PMF (app).State) (horizon : Nat) (scheduler : (app).Scheduler)
+    (anchor : (app).Execution) (phase : RuntimePhase (serviceGraph setup mode))
+    (anchorLength : Nat) (first : (serviceGraph setup mode).Config)
+    {before : (app).ProtocolState}
+    (past : ((app).protocol initial horizon scheduler).Trace before)
+    (afterAnchor : anchorLength ≤ past.length) :
+    ∀ {after : (app).ProtocolState}
+      (trace : ((app).protocol initial horizon scheduler).Trace after),
+      TracePrefix past trace →
+      phaseProposalEmissionFrontier setup mode runtime leaks anchor phase anchorLength first
+          initial horizon scheduler trace =
+        phaseProposalEmissionFrontier setup mode runtime leaks anchor phase past.length
+          (phaseProposalEmissionFrontier setup mode runtime leaks anchor phase anchorLength first
+            initial horizon scheduler past) initial horizon scheduler trace
+  | _, _, .refl =>
+      (phaseProposalEmissionFrontier_before_anchor setup mode runtime leaks anchor phase past.length
+        (phaseProposalEmissionFrontier setup mode runtime leaks anchor phase anchorLength first
+          initial horizon scheduler past) initial horizon scheduler past (Nat.le_refl _)).symm
+  | _, _, .extend kept joint legal realized => by
+      have previous := phaseProposalEmissionFrontier_restart initial horizon scheduler anchor
+        phase anchorLength first past afterAnchor _ kept
+      rw [phaseProposalEmissionFrontier, phaseProposalEmissionFrontier,
+        ite_eq_left (afterAnchor.trans kept.length_le), ite_eq_left kept.length_le, previous]
+
 end Vegas

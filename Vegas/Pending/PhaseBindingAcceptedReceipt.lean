@@ -77,13 +77,19 @@ private theorem includePending_accepting_message (execution : (app).Execution)
     Option.isSome_some, addressed]
   exact List.mem_append_right _ (List.mem_singleton.mpr rfl)
 
-/-- Both live and old-attempt stamps use the actual true-receipt filtered
-output list. In particular rejected packets cannot witness these stamps. -/
-def BindingAcceptedReceipts (execution : (app).Execution) : Prop :=
-  BindingStamp (acceptingBindingOutputs runtime leaks execution)
-      execution.application.attempt execution.application.current.native ∧
-    ∀ record ∈ execution.application.retired,
-      BindingStamp (acceptingBindingOutputs runtime leaks execution) record.attempt record.state
+/-- True receipts retain both each attempt's exact namespace and every inherited
+accepted handle in saved, live and retired snapshots. -/
+structure BindingAcceptedReceipts (execution : (app).Execution) : Prop where
+  liveStamp : BindingStamp (acceptingBindingOutputs runtime leaks execution)
+    execution.application.attempt execution.application.current.native
+  retiredStamp : ∀ record ∈ execution.application.retired,
+    BindingStamp (acceptingBindingOutputs runtime leaks execution) record.attempt record.state
+  saved : SignedBindingTable (acceptingBindingOutputs runtime leaks execution)
+    execution.application.entry.native
+  live : SignedBindingTable (acceptingBindingOutputs runtime leaks execution)
+    execution.application.current.native
+  retired : ∀ record ∈ execution.application.retired,
+    SignedBindingTable (acceptingBindingOutputs runtime leaks execution) record.state
 
 private theorem bindingAcceptedReceipts_respond (execution : (app).Execution)
     (owner : Player) (response : (app).Action)
@@ -93,41 +99,61 @@ private theorem bindingAcceptedReceipts_respond (execution : (app).Execution)
     (execution.respond app owner response)
     ((app).respond_recall_mono execution owner · response)
     (by rw [(app).respond_receipts])
-  have live := valid.1.mono more
-  have archived := fun record member => (valid.2 record member).mono more
+  have liveStamp := valid.liveStamp.mono more
+  have retiredStamp := fun record member => (valid.retiredStamp record member).mono more
+  have saved := valid.saved.mono more
+  have live := valid.live.mono more
+  have retired := fun record member => (valid.retired record member).mono more
   rcases response with ⟨transmission⟩
   cases transmission with
-  | none => exact ⟨live, archived⟩
+  | none => exact ⟨liveStamp, retiredStamp, saved, live, retired⟩
   | some material =>
-    refine ⟨live.copy ?_, archived⟩
-    change (submitStep (material.call.register execution.application.current.native owner)
-      owner material.call.packet).accepted = _
-    rw [submitStep_accepted, Submission.register_accepted]
+    have table : (submitStep (material.call.register execution.application.current.native owner)
+        owner material.call.packet).accepted = execution.application.current.native.accepted := by
+      rw [submitStep_accepted, Submission.register_accepted]
+    exact ⟨liveStamp.copy table, retiredStamp, saved, live.copy table, retired⟩
 
-private theorem bindingStamp_accepted_handle
+private theorem bindingAccepted_handle
     (outputs : Player → List (Message Player (CommitAttemptPacket graph)))
     (state : PhaseRuntimeState graph) (native : State graph)
     (message : Message Player (CommitAttemptPacket graph))
     (old : BindingStamp outputs state.attempt state.current.native)
+    (signed : SignedBindingTable outputs state.current.native)
     (present : message ∈ outputs message.sender)
     (current : message.payload.attempt = state.attempt)
     (accepted : EventGraphRuntime.handle runtime state.current.native
       ⟨message.id, message.payload.packet.call⟩ = some native) :
-    BindingStamp outputs state.attempt native := by
+    BindingStamp outputs state.attempt native ∧ SignedBindingTable outputs native := by
   rcases handle_tables_cases runtime state.current.native native _ accepted with
     ⟨event, candidate, called, _, table, owner⟩ | ⟨table, _⟩
-  · intro field handle installed
-    change native.accepted (.inr field) = some handle at installed
-    rw [table] at installed
-    by_cases same : field = event
-    · subst field
-      rw [Function.update_self] at installed
-      cases Option.some.inj installed
-      exact Or.inr ⟨message, by simpa only [Message.sender, owner] using present,
-        owner.symm, called, current⟩
-    · rw [Function.update_of_ne (by simpa using same)] at installed
-      exact old field handle installed
-  · exact old.copy table
+  · constructor
+    · intro field handle installed
+      change native.accepted (.inr field) = some handle at installed
+      rw [table] at installed
+      by_cases same : field = event
+      · subst field
+        rw [Function.update_self] at installed
+        cases Option.some.inj installed
+        exact Or.inr ⟨message, by simpa only [Message.sender, owner] using present,
+          owner.symm, called, current⟩
+      · rw [Function.update_of_ne (by simpa using same)] at installed
+        exact old field handle installed
+    · constructor
+      · intro input handle installed
+        change native.accepted (.inl input) = some handle at installed
+        rw [table, Function.update_of_ne (by simp)] at installed
+        exact signed.1 input handle installed
+      · intro field handle installed
+        change native.accepted (.inr field) = some handle at installed
+        rw [table] at installed
+        by_cases same : field = event
+        · subst field
+          rw [Function.update_self] at installed
+          cases Option.some.inj installed
+          exact ⟨message, by simpa only [Message.sender, owner] using present, owner.symm, called⟩
+        · rw [Function.update_of_ne (by simpa using same)] at installed
+          exact signed.2 field handle installed
+  · exact ⟨old.copy table, signed.copy table⟩
 
 private theorem bindingAcceptedReceipts_includePending (execution : (app).Execution)
     (id : MessageId Player) (valid : BindingAcceptedReceipts runtime leaks execution)
@@ -137,25 +163,31 @@ private theorem bindingAcceptedReceipts_includePending (execution : (app).Execut
   let outputs := acceptingBindingOutputs runtime leaks (execution.includePending app id)
   have live : BindingStamp outputs execution.application.attempt
       execution.application.current.native :=
-    valid.1.mono (includePending_acceptingBindingOutputs runtime leaks execution id)
+    valid.liveStamp.mono (includePending_acceptingBindingOutputs runtime leaks execution id)
   have archives : ∀ retired ∈ execution.application.retired,
       BindingStamp outputs retired.attempt retired.state :=
-    fun retired member => (valid.2 retired member).mono
+    fun retired member => (valid.retiredStamp retired member).mono
       (includePending_acceptingBindingOutputs runtime leaks execution id)
-  change BindingStamp outputs (execution.includePending app id).application.attempt
-      (execution.includePending app id).application.current.native ∧
-    ∀ retired ∈ (execution.includePending app id).application.retired,
-      BindingStamp outputs retired.attempt retired.state
+  have saved := valid.saved.mono
+    (includePending_acceptingBindingOutputs runtime leaks execution id)
+  have signed := valid.live.mono
+    (includePending_acceptingBindingOutputs runtime leaks execution id)
+  have signedArchives := fun retired member => (valid.retired retired member).mono
+    (includePending_acceptingBindingOutputs runtime leaks execution id)
   cases found : execution.network.lookup id with
   | none =>
     simpa only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
-      found] using ⟨live, archives⟩
+      found] using (show BindingAcceptedReceipts runtime leaks
+        {execution.includePending app id with application := execution.application} from
+          ⟨live, archives, saved, signed, signedArchives⟩)
   | some message =>
     cases handled : execution.application.handle runtime message with
     | none =>
       simpa only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
         found, show (app).handle execution.application message = none from handled,
-        Option.getD_none] using ⟨live, archives⟩
+        Option.getD_none] using (show BindingAcceptedReceipts runtime leaks
+          {execution.includePending app id with application := execution.application} from
+            ⟨live, archives, saved, signed, signedArchives⟩)
     | some next =>
       have present : message ∈ outputs message.sender := by
         exact includePending_accepting_message runtime leaks execution id message next found
@@ -168,8 +200,9 @@ private theorem bindingAcceptedReceipts_includePending (execution : (app).Execut
       · rename_i allowed
         obtain ⟨native, accepted, rfl⟩ := Option.map_eq_some_iff.mp handled
         have authorized := (Bool.and_eq_true_iff.mp (Bool.and_eq_true_iff.mp allowed).1).2
-        have rawStamp := bindingStamp_accepted_handle runtime outputs execution.application native
-          message live present current accepted
+        have raw := bindingAccepted_handle runtime outputs execution.application native
+          message live signed present current accepted
+        have rawStamp := raw.1
         have frontier := PhaseRuntimeState.raw_handle_frontier runtime _ record.frontier
           _ native authorized accepted
         have complete := record.active.step (completionStep_handle runtime _ native _ accepted)
@@ -177,9 +210,18 @@ private theorem bindingAcceptedReceipts_includePending (execution : (app).Execut
           complete rawStamp
         have retired := PhaseRuntimeState.normalize_archivedBindingStamp outputs _ frontier
           record.saved complete rawStamp archives
+        have signedResult := PhaseRuntimeState.settle_signedBindings outputs
+          execution.application.phases execution.application.generation execution.application.entry
+          (execution.application.current.inclusionResult message.payload.packet.call native)
+          execution.application.retired saved raw.2 signedArchives
         simpa only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
           found, show (app).handle execution.application message = some _ from actualHandled,
-          Option.getD_some] using ⟨result, retired⟩
+          Option.getD_some] using (show BindingAcceptedReceipts runtime leaks
+            {execution.includePending app id with application :=
+              ({execution.application with current :=
+                (execution.application.current.inclusionResult message.payload.packet.call native)}
+                : PhaseRuntimeState graph).normalize} from
+            ⟨result, retired, signedResult.1, signedResult.2.1, signedResult.2.2⟩)
       · cases handled
 
 private theorem bindingAcceptedReceipts_environment (execution next : (app).Execution)
@@ -191,15 +233,17 @@ private theorem bindingAcceptedReceipts_environment (execution next : (app).Exec
   | wait =>
     simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map] at reached
     cases (PMF.mem_support_pure_iff ..).mp reached
-    exact valid
+    exact ⟨valid.liveStamp, valid.retiredStamp, valid.saved, valid.live, valid.retired⟩
   | activate owner =>
     obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
     obtain ⟨sample, _selected, rfl⟩ := PMF.support_map .. ▸ supported
-    exact valid
+    exact ⟨valid.liveStamp, valid.retiredStamp, valid.saved, valid.live, valid.retired⟩
   | «include» id =>
     simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map] at reached
     cases (PMF.mem_support_pure_iff ..).mp reached
-    exact bindingAcceptedReceipts_includePending runtime leaks execution id valid record origins
+    have kept := bindingAcceptedReceipts_includePending runtime leaks execution id
+      valid record origins
+    exact ⟨kept.liveStamp, kept.retiredStamp, kept.saved, kept.live, kept.retired⟩
   | application operation =>
     obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
     obtain ⟨state, moved, rfl⟩ := PMF.support_map .. ▸ supported
@@ -212,12 +256,18 @@ private theorem bindingAcceptedReceipts_environment (execution next : (app).Exec
         _ native allowed nativeMoved
       have complete := record.active.step
         (completionStep_environmentStep runtime _ native operation nativeMoved)
-      have rawStamp := valid.1.copy (environmentStep_tables runtime _ _ operation nativeMoved).1
+      have rawStamp := valid.liveStamp.copy
+        (environmentStep_tables runtime _ _ operation nativeMoved).1
+      have signed := PhaseRuntimeState.settle_signedBindings _
+        execution.application.phases execution.application.generation execution.application.entry
+        (execution.application.current.environmentResult operation native)
+        execution.application.retired valid.saved
+        (valid.live.copy (environmentStep_tables runtime _ _ operation nativeMoved).1) valid.retired
       exact ⟨PhaseRuntimeState.normalize_bindingStamp _ _ frontier record.saved complete rawStamp,
         PhaseRuntimeState.normalize_archivedBindingStamp _ _ frontier record.saved complete
-          rawStamp valid.2⟩
+          rawStamp valid.retiredStamp, signed.1, signed.2.1, signed.2.2⟩
     · cases (PMF.mem_support_pure_iff ..).mp moved
-      exact valid
+      exact ⟨valid.liveStamp, valid.retiredStamp, valid.saved, valid.live, valid.retired⟩
 
 /-- Every actual live or archived accepted binding has a real true-receipted
 owner output, retaining its original full attempt through normalization. -/
@@ -256,10 +306,15 @@ theorem phaseBindingAcceptedReceipts_history (plan : RuntimePhasePlan graph)
     have active : BindingStamp (fun _ => []) ⟨PhaseRuntimeState.phaseLow plan.phases, 0⟩
         (State.initial draw) := fun event candidate accepted =>
           (empty event candidate accepted).elim
+    have signed := PhaseRuntimeState.settle_signedBindings (fun _ => []) plan.phases 0
+      ⟨State.initial draw, ∅⟩ ⟨State.initial draw, ∅⟩ []
+      (SignedBindingTable.initial draw) (SignedBindingTable.initial draw)
+      (fun _ impossible => (List.not_mem_nil impossible).elim)
     exact ⟨⟨PhaseRuntimeState.settle_bindingStamp _ plan.phases 0 _ _ [] plan.adjacent
         saved bounded active,
       PhaseRuntimeState.settle_archivedBindingStamp _ plan.phases 0 _ _ [] plan.adjacent
-        saved bounded active (fun _ impossible => (List.not_mem_nil impossible).elim)⟩,
+        saved bounded active (fun _ impossible => (List.not_mem_nil impossible).elim),
+      signed.1, signed.2.1, signed.2.2⟩,
       PhaseRuntimeState.initial_exclusionRecord plan draw, MessageNetwork.Satisfies.empty⟩) trace).1
 
 /-- A successful physical inclusion exposes its original native snapshot and
@@ -287,7 +342,8 @@ theorem phase_inclusion_snapshot_bindingAccepted (plan : RuntimePhasePlan graph)
   classical
   let outputs := acceptingBindingOutputs runtime leaks (control.execution.includePending app id)
   have stamp := (phaseBindingAcceptedReceipts_history runtime leaks plan inputs horizon scheduler
-    trace).1.mono (includePending_acceptingBindingOutputs runtime leaks control.execution id)
+    trace).liveStamp.mono
+      (includePending_acceptingBindingOutputs runtime leaks control.execution id)
   have present := includePending_accepting_message runtime leaks control.execution id message next
     found handled ((app).history_provenance _ horizon scheduler trace)
   have current := PhaseRuntimeState.handle_attempt_eq runtime control.execution.application next
@@ -296,8 +352,11 @@ theorem phase_inclusion_snapshot_bindingAccepted (plan : RuntimePhasePlan graph)
   split at handled
   · obtain ⟨native, accepted, normalized⟩ := Option.map_eq_some_iff.mp handled
     refine ⟨native, accepted, normalized.symm, ?_⟩
-    have rawStamp := bindingStamp_accepted_handle runtime outputs control.execution.application
-      native message stamp present current accepted
+    have signed := (phaseBindingAcceptedReceipts_history runtime leaks plan inputs horizon
+      scheduler trace).live.mono
+        (includePending_acceptingBindingOutputs runtime leaks control.execution id)
+    have rawStamp := (bindingAccepted_handle runtime outputs control.execution.application
+      native message stamp signed present current accepted).1
     intro event candidate lower installed
     rcases rawStamp event candidate installed with earlier |
       ⟨packet, member, sender, called, attemptEq⟩
@@ -331,7 +390,7 @@ theorem phase_live_bindingAccepted (plan : RuntimePhasePlan graph)
       candidate.1 control.execution := by
   classical
   have stamped := (phaseBindingAcceptedReceipts_history runtime leaks plan inputs horizon scheduler
-    trace).1 event candidate accepted
+    trace).liveStamp event candidate accepted
   rcases stamped with earlier | ⟨message, member, sender, called, attemptEq⟩
   · omega
   · obtain ⟨authored, received⟩ := List.mem_filter.mp member
@@ -354,7 +413,7 @@ theorem phase_archived_bindingAccepted (plan : RuntimePhasePlan graph)
       control.execution := by
   classical
   have stamped := (phaseBindingAcceptedReceipts_history runtime leaks plan inputs horizon scheduler
-    trace).2 record retired event candidate accepted
+    trace).retiredStamp record retired event candidate accepted
   rcases stamped with earlier | ⟨message, member, sender, called, attemptEq⟩
   · omega
   · obtain ⟨authored, received⟩ := List.mem_filter.mp member

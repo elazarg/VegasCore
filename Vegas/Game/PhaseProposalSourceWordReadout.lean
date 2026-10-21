@@ -205,7 +205,7 @@ theorem phaseProposalBindingPotentialProfile_source_word_law
         block.length ⟨some cursor.current, cursor.trace⟩).map
           (fun history => ((setup.recoveryJointRecall
             (setup.proposalRecoveryEraseTrace history.trace)).take block.length).reverse) := by
-  obtain ⟨joint, first, second, supported⟩ :=
+  obtain ⟨joint, first, second, supported, _prefixMarginal⟩ :=
     phaseProposalBindingPotentialProfile_source_block_coupling setup mode runtime leaks plan
       initial horizon scheduler anchor anchorTrace phase values block suffix cursor
   rw [← second, PMF.map_comp, ← first, PMF.map_comp]
@@ -229,5 +229,64 @@ theorem phaseProposalBindingPotentialProfile_source_word_law
         attempt.joints.reverse := by
     rw [← attempt.joints_length, ← List.length_reverse, List.take_left]
   rw [takeWord, List.reverse_reverse]
+
+
+/-- The single structural owner-word law, after masking inherited excluded
+rows, is exactly the actual ordinary enriched-source block law. The source
+coordinate retains its original prior history; synthetic excluded actions
+are used only by the structural readout. -/
+theorem ordinaryBlockProfile_source_word_law
+    (setup : Setup (Player := Player) (L := L)) (mode : ExecutionMode)
+    (runtime : EventGraphRuntime (serviceGraph setup mode))
+    (leaks : MessageNetwork.ObservationRule Player
+      (CommitAttemptPacket (serviceGraph setup mode)))
+    (plan : RuntimePhasePlan (serviceGraph setup mode))
+    (initial : PMF (phaseApplication runtime leaks).State) (horizon : Nat)
+    (scheduler : (phaseApplication runtime leaks).Scheduler)
+    (anchor : (phaseApplication runtime leaks).Control)
+    (anchorTrace : ((phaseApplication runtime leaks).protocol
+      initial horizon scheduler).Trace (some anchor))
+    (phase : RuntimePhase (serviceGraph setup mode))
+    (values : ∀ who (key : setup.ProposalRecoveryComponent who),
+      PMF (setup.CommitRecoveryValueChoice who key.1))
+    (block : SourceProgram.CommitPrefix Γ O Δ P) (suffix : SourceProgram Player L Δ P)
+    (cursor : PhaseProposalOrdinarySourceCursor setup mode runtime leaks plan anchor phase
+      block suffix) :
+    let controls : Finset Player × Nat × Nat :=
+      ((anchor.execution.application.publicView.retired.map fun record =>
+        record.2.sourceFailureFootprint.2).foldr (fun first last => first ∪ last) ∅ ∪
+          anchor.execution.application.current.native.publicView.sourceFailureFootprint.1
+            anchor.execution.application.attempt.phase,
+        anchor.execution.application.attempt.generation,
+        anchor.execution.application.attempt.phase)
+    let typed := ordinaryBlockProfile setup mode plan values block suffix cursor.embedding
+      (fun who view => cursor.views.view who view) controls
+        anchor.execution.application.publicView
+        (PhaseProposal.sourceArchive anchor.execution.network.inputs)
+    (block.prefixLaw suffix typed cursor.source).map (fun completed =>
+      (List.range block.length).map fun index who =>
+        if who ∈ cursor.current.excluded then none else
+          (block.wordAction who index (completed.view who)).map
+            (fun action => (⟨action, false⟩ : CommitRecoveryMove Player L))) =
+      (setup.proposalRecoveryModel.runBehavioralFrom
+        (setup.proposalRecoveryNormalizedTrembledProfile
+          0 le_rfl zero_le_one 0 le_rfl zero_le_one 0 le_rfl zero_le_one values)
+        block.length ⟨some cursor.current, cursor.trace⟩).map
+          (fun history => ((setup.recoveryJointRecall
+            (setup.proposalRecoveryEraseTrace history.trace)).take block.length).reverse) := by
+  classical
+  intro controls typed
+  obtain ⟨joint, _first, second, _supported, marginal⟩ :=
+    phaseProposalBindingPotentialProfile_source_block_coupling setup mode runtime leaks plan
+      initial horizon scheduler anchor anchorTrace phase values block suffix cursor
+  have filled := marginal cursor.source (fun _ _ => rfl)
+  change joint.map (fun pair => fillCommitPrefix setup.program block suffix cursor.embedding
+    pair.2.2.1 cursor.source) = block.prefixLaw suffix typed cursor.source at filled
+  rw [← filled, PMF.map_comp]
+  change joint.map ((fun key => phaseProposalBindingWord setup.program block suffix
+    cursor.embedding cursor.current.excluded key.2.1 cursor.source) ∘ Prod.snd) = _
+  rw [← PMF.map_comp, second]
+  exact phaseProposalBindingPotentialProfile_source_word_law setup mode runtime leaks plan
+    initial horizon scheduler anchor anchorTrace phase values block suffix cursor
 
 end Vegas

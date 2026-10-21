@@ -146,7 +146,7 @@ theorem phaseProposalBindingPotentialProfile_source_checkpoint_history
     0 le_rfl zero_le_one 0 le_rfl zero_le_one 0 le_rfl zero_le_one values
   have reached := setup.proposalRecoveryModel.runBehavioralFrom_reachesWithin strategy block.length
     ⟨some cursor.current, cursor.trace⟩ closed supported
-  obtain ⟨joint, first, _second, related⟩ :=
+  obtain ⟨joint, first, _second, related, _prefixMarginal⟩ :=
     phaseProposalBindingPotentialProfile_source_block_coupling setup mode runtime leaks plan initial
       horizon scheduler anchor anchorTrace phase values block suffix cursor
   rw [← first] at supported

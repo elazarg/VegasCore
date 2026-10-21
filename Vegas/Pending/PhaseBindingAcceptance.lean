@@ -77,11 +77,12 @@ theorem binding_handle_unused (execution : (app).Execution)
   intro field accepted
   cases field with
   | inl input =>
-      have initial := signed.2.1 input candidate accepted
+      have initial := signed.2.1.1 input candidate accepted
       rw [prepared] at initial
       cases initial
   | inr other =>
-      obtain ⟨previous, output, previousSender, previousCall⟩ := signed.2.2 other candidate accepted
+      obtain ⟨previous, output, previousSender, previousCall⟩ :=
+        signed.2.1.2 other candidate accepted
       have previousInput : previous ∈ execution.network.inputs := by
         change previous ∈ (app).outputs (execution.recall candidate.1) at output
         rw [← recalled candidate.1] at output

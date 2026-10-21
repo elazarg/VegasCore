@@ -102,6 +102,6 @@ theorem phaseAcceptedHandles_history (menu : (app).ResponseMenu)
         have packet := network.inputs message (List.mem_filter.mp member).1
         rw [sent] at packet
         exact packet
-  exact ⟨bounded _ signed.1, bounded _ signed.2⟩
+  exact ⟨bounded _ signed.1, bounded _ signed.2.1⟩
 
 end Vegas.EventGraphRuntime.MessageBounds
