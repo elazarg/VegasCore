@@ -48,6 +48,55 @@ an arbitrary-prefix density identity. The gain and preservation assembly remain
 checked only conditional on `QualifiedBindingLaw`; its global Lean transport
 is still required.
 
+## Historical profiles and fixed continuation laws
+
+The arbitrary historical profiles in `ForeignPosteriorCutPair` are intentional.
+They occur in canonical reach and `annotatedPrefixWeight` positivity, not in
+its continuation kernels. The source pair runs `sourceUnflaggedStrategy`;
+`ordinaryForeignJoint` uses `ordinaryBlockProfile`; and
+`sourceForcedBlockJoint` uses the same supplied `values` table. Thus the
+identity compares two constructions of a fixed ordinary continuation, not
+the continuation laws of arbitrary source and native strategies.
+
+`annotatedPrefixWeight_support` extracts the matching ClosedKey and positive
+foreign ledger cylinder from a positive annotation. Native foreign goodness
+comes from its explicit guard; `canonicalSource_foreignGood` and
+`proposalRecovery_refinement_of_closed_key` supply the corresponding source
+refinement. Full support of `values` makes proper issued atoms possible under
+the ordinary continuation even when a different historical policy chose them.
+The clean-site and canonical-support hypotheses remain essential: arbitrary
+profiles do not license arbitrary histories, targets or unsupported ledgers.
+
+The native assessment in `annotated_stopped_payoff` is likewise historical.
+`qualifiedPayoff` samples its original belief, but `currentStep` and
+`stoppedFinish` use the fixed values-based clean future. The checked
+`qualifiedPayoff_mul_informationMass` expands a Bayes-consistent belief into
+original native reach weights. Write that reach weight as `r(h)` and let
+`L_h(y)` be the actual stopped payoff kernel at history `h`. The intended
+pointwise attachment has the form
+
+    r(h) * L_h(y) = r(h) * annotatedContinuation_h(y).
+
+Here the annotation includes the original conditional tape law, source
+posterior, foreign ledger and unqualified complement. `annotatedPrefixWeight`
+contains exactly the same `r(h)`. Summing this identity over the information
+fiber yields the aggregate numerator; it does not compare the arbitrary
+native policy's probabilities with ordinary value probabilities. Native full
+mixing and Bayes consistency provide positive information mass and this
+normalization. No native prescription is needed for that weighting step.
+
+The endpoint retains its source-prescription hypothesis: strict source support is
+used to cover every canonical history and every relevant source-posterior
+fiber, rather than assuming positive annotation covers the entire experiment.
+The final weighted reconstruction separately requires the prescribed source
+and native strategies for its likelihood factorization.
+
+Profile-independence alone proves neither primitive. Actual cursor recovery,
+proper issued-cylinder positivity, coverage of every posterior target,
+representative-gate invariance and the same-tape stopped payoff attachment
+remain substantive proof obligations. The compiled aggregation consumes these
+interfaces; it does not verify the primitive transport proofs.
+
 ## Exact finite diagnostic
 
 The [rational probe](../scripts/experiments/reserved_binding_rational.py) uses

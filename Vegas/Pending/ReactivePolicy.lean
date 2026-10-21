@@ -300,7 +300,7 @@ def compileReactivePolicy (runtime : EventGraphRuntime graph)
 
 end Vegas.EventGraphRuntime
 
--- OPEN OBLIGATION: Reactive graph-policy compiler correctness
+-- Compiler correctness remains to be proved:
 -- Prove source observation reconstruction and realization of each sampled
 -- decision throughout protected service, then compose the compiler and deviation laws.
 -- The command-service theorem does not supply this edge.

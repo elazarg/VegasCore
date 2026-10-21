@@ -72,6 +72,11 @@ The source checker maintains the four allowed declaration locations and their
 review references. A new hole requires an explicit change to that registry.
 The public payoff primitive and unconditional assembly have axiom guards that
 expose their admitted dependencies; neither is evidence of proved preservation.
+Passing `pairLaw` to a primitive records an intended proof dependency. While
+that primitive contains `sorry`, Lean does not establish that the pair law
+suffices to prove it or that its proof needs the pair law. Compilation checks
+that the downstream aggregation follows from the four complete primitive
+statements. The primitive statements themselves still require proofs.
 
 The [concurrent hypothesis test](../VegasTests/ConcurrentRawHypotheses.lean)
 discharges every operational, payoff and audit assumption together, and supplies
