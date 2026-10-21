@@ -20,7 +20,7 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
 local notation "app" => phaseApplication runtime leaks
 
 omit [Fintype Player] in
-private theorem response_request_iff (execution : (app).Execution) (actor : Player)
+theorem response_request_iff (execution : (app).Execution) (actor : Player)
     (response : (app).Action) (owner : Player) (coordinate : CommitAttemptEvent graph) :
     (execution.respond app actor response).application.SeedRequest owner coordinate ↔
       execution.application.SeedRequest owner coordinate := by

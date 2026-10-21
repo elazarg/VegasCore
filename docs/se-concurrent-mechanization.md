@@ -58,10 +58,10 @@ Progress within that remaining proof:
 
 | Work | Checked material | Still open |
 | --- | --- | --- |
-| Source-phase correspondence | Initial assignment, local rows and retained origins | Complete visit and restore induction; publication and query coverage |
-| Supported runtime replay | Quantitative whole-trace construction conditional on source alignment, with actual callback kernels | Produce source alignment; derive prescribed reach, original tape support, admission and foreign-good qualification |
-| Recovery and coverage | Positive original pair support and word uniqueness; ordinary source Good/depth | Common full source site, both recovery directions and exhaustive coverage |
-| Exact weights | Source mass identities and normalized sequential script law with literal callback atoms | Native/source atom partition, auxiliary recovery and the weighted theorem |
+| Source-phase correspondence | Initial assignment, local rows, retained origins, selected dirty intervals and clean word readback | Complete visit and restore induction; publication and query coverage |
+| Supported runtime replay | Quantitative whole-trace construction, prescribed reach, original tape support, admission and foreign-good qualification, conditional on source alignment | Produce and consume source alignment for the global replay |
+| Recovery and coverage | Original positive summands have the common full source site, Good/depth and encoded completion support; literal entry and structural-word comparison | Both augmented recovery directions and exhaustive coverage |
+| Exact weights | Literal native/tape, response and mechanical factors; normalized sequential script law; exact normalization consumed by the original theorem | Historical/current/lost atom partition, auxiliary recovery and the pointwise weighted rectangle |
 
 The mathematical review gate for weighted mechanization is satisfied. The
 derivation explicitly covers the simultaneous source invariant, every positive

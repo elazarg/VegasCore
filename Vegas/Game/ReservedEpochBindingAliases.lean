@@ -17,7 +17,7 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
 
 local notation "app" => phaseApplication runtime leaks
 
-private theorem frontierQualification_sent_binding_iff {length : Nat}
+theorem frontierQualification_sent_binding_iff {length : Nat}
     (tape : Tape Player length) (execution : (app).Execution) (owner : Player)
     (event : graph.EventId) (candidate : Handle graph) (material : WitnessedSubmission graph)
     (call : material.call.packet = .commitment event candidate) :

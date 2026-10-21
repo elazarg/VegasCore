@@ -4075,7 +4075,7 @@ theorem source_commit_chunk
               exact (Bool.false_ne_true (step.1.2.1.symm.trans impossible)).elim
 
 omit [Fintype Player] in
-private theorem source_suffix_cells_of_prefix
+theorem source_suffix_cells_of_prefix
     {Γ : SourceCtx Player L} {O : Finset VarId}
     (program : SourceProgram Player L Γ O)
     (lift : ProtocolState program → ProtocolState setup.program)
@@ -4157,7 +4157,7 @@ private theorem source_suffix_cells_of_prefix
 
 omit [Fintype Player] in
 open Classical in
-private theorem source_saved_cell_readback
+theorem source_saved_cell_readback
     {firstState lastState : PhaseRuntimeState (serviceGraph setup .concurrent)}
     (first : RecoverySourceCheckpoint setup .concurrent firstState)
     (last : RecoverySourceCheckpoint setup .concurrent lastState)
@@ -10879,7 +10879,7 @@ private theorem mechanicalForeignPolicy_covered (rates : PhaseProposalRates)
         implementation.bounds actor event payload _ rates.slots.val rates.slots.property.1
           rates.slots.property.2 before observed action sending
 
-private theorem mechanicalForeignPolicy_packet_eq_base (rates : PhaseProposalRates)
+theorem mechanicalForeignPolicy_packet_eq_base (rates : PhaseProposalRates)
     (owner : Player) (past : List (nativeApplication).PlayerEntry)
     (view : (nativeApplication).PlayerView) :
     (mechanicalForeignPolicy setup implementation rates owner past view).map
@@ -10911,7 +10911,7 @@ private theorem mechanicalForeignPolicy_packet_eq_base (rates : PhaseProposalRat
       | sample payload law output code =>
           simp only [eventPolicyDispatch, node]
 
-private theorem mechanicalForeignPolicy_packet_supported
+theorem mechanicalForeignPolicy_packet_supported
     (operational : implementation.Operational)
     (fullValues : ∀ owner key, FullSupport (values owner key))
     (rates : PhaseProposalRates) (waitPositive : 0 < rates.waiting.val)
@@ -12628,7 +12628,7 @@ theorem NativeBindingEntry.before_event
 /-- A clean callback admits one canonical before-event cut obtained from one
 complete supported source/graph word. The same word retains the entire physical
 store and every current emitted field, including static-later fields. -/
-theorem NativeBindingEntry.canonical_cut
+def NativeBindingEntry.canonicalCut
     (operational : implementation.Operational)
     (fullValues : ∀ owner key, FullSupport (values owner key))
     (control : (nativeApplication).Control)
@@ -12642,12 +12642,9 @@ theorem NativeBindingEntry.canonical_cut
         implementation.bounds nativeInitial implementation.horizon implementation.scheduler owner
           ⟨some control, trace⟩)
     (entry : NativeBindingEntry setup implementation operational control trace who event) :
-    ∃ cut : PhaseProposalCanonicalBindingCut setup .concurrent implementation.runtime
+    PhaseProposalCanonicalBindingCut setup .concurrent implementation.runtime
       implementation.leaks implementation.bounds implementation.plan values implementation.horizon
-        implementation.scheduler control (sourceCutTrace setup implementation trace) who event,
-      cut.payload = payload ∧
-        (⟨some cut.cursor.current, cut.cursor.trace⟩ : setup.proposalRecoveryProtocol.History) =
-          canonicalSource setup implementation operational ⟨some control, trace⟩ := by
+        implementation.scheduler control (sourceCutTrace setup implementation trace) who event := by
   classical
   have initialEq : ((setup.initialLaw.map encodeInputs).map
       (PhaseRuntimeState.initial implementation.plan)) = nativeInitial := PMF.map_comp _ _ _
@@ -12656,14 +12653,39 @@ theorem NativeBindingEntry.canonical_cut
       entry.entry.execution.application.current.native.config nativeInitial implementation.horizon
         implementation.scheduler ((nativeMenu).toRawTrace nativeInitial implementation.horizon
           implementation.scheduler trace)
-  obtain ⟨completed, key, result, supported, graphSupported, retained⟩ :=
-    entry.supported_completion setup values implementation operational fullValues control trace
-      who event payload clean foreign
-  obtain ⟨current, prior, past, future, clock, rank, actor, atCommit, survives⟩ :=
-    entry.before_event setup values implementation operational control trace who event payload
-      clean completed key result supported
-  obtain ⟨theta, drawn, original, initial, first, initialized, sourceRetained⟩ :=
-    entry.initializer setup implementation operational control trace who event
+  let completion := entry.supported_completion setup values implementation operational fullValues
+    control trace who event payload clean foreign
+  let completed := Classical.choose completion
+  let key := Classical.choose (Classical.choose_spec completion)
+  have completionFields := Classical.choose_spec (Classical.choose_spec completion)
+  have result := completionFields.1
+  have supported := completionFields.2.1
+  have graphSupported := completionFields.2.2.1
+  have retained := completionFields.2.2.2
+  let cutExists := entry.before_event setup values implementation operational control trace who
+    event payload clean completed key result supported
+  let current := Classical.choose cutExists
+  let prior := Classical.choose (Classical.choose_spec cutExists)
+  have cutFields := Classical.choose_spec (Classical.choose_spec cutExists)
+  have past := cutFields.1
+  have future := cutFields.2.1
+  have clock := cutFields.2.2.1
+  have rank := cutFields.2.2.2.1
+  have actor := cutFields.2.2.2.2.1
+  have atCommit := cutFields.2.2.2.2.2.1
+  have survives := cutFields.2.2.2.2.2.2
+  let initializerExists := entry.initializer setup implementation operational control trace who
+    event
+  let theta := Classical.choose initializerExists
+  have drawn : theta ∈ setup.initialLaw.support :=
+    Classical.choose (Classical.choose_spec initializerExists)
+  have initializerFields := Classical.choose_spec (Classical.choose_spec initializerExists)
+  have original := initializerFields.1
+  let initial := Classical.choose initializerFields.2
+  let first := Classical.choose (Classical.choose_spec initializerFields.2)
+  have initializedFields := Classical.choose_spec (Classical.choose_spec initializerFields.2)
+  have initialized := initializedFields.1
+  have sourceRetained := initializedFields.2
   have frame := entry.callback_frame setup implementation operational control trace who event
   have request : control.execution.application.SeedRequest who
       ⟨control.execution.application.attempt, event⟩ := by
@@ -12794,7 +12816,7 @@ theorem NativeBindingEntry.canonical_cut
               exact (eq_of_heq sameValue) ▸ decoded
             rw [meaning, decoded, Option.elim_some] at field
             exact (FieldRef.get?_preserved _ frontier.store key.2.1 retained _ field)
-  exact ⟨{
+  exact {
     active := acting
     request := request
     unsent := clean.unsent
@@ -12853,7 +12875,7 @@ theorem NativeBindingEntry.canonical_cut
     rank := rank
     actor := actor
     atCommit := atCommit
-    survives := survives }, rfl, entry.canonicalHistory⟩
+    survives := survives }
 
 omit [Fintype Player] in
 private theorem generated_preparation_iff_joint_word (owner : Player)
@@ -13223,13 +13245,17 @@ theorem qualified_source_site
       obtain ⟨entry⟩ := qualified_binding_entry setup implementation operational control
         trace
         who event payload nativeClean foreign
-      obtain ⟨cut, samePayload, canonical⟩ := entry.canonical_cut setup values implementation
+      let cut := entry.canonicalCut setup values implementation
         operational fullValues control trace who acting event payload nativeClean foreign
-      cases samePayload
+      have canonical : (⟨some cut.cursor.current, cut.cursor.trace⟩ :
+          setup.proposalRecoveryProtocol.History) =
+          canonicalSource setup implementation operational ⟨some control, trace⟩ :=
+        entry.canonicalHistory
       obtain ⟨encode, encoded, ordinary⟩ :=
         PhaseProposalCanonicalBindingCut.binding_encoder setup values implementation
           control trace who event cut
       have inhabited : Nonempty (L.Val cut.payload) := by
+        change Nonempty (L.Val payload)
         change bindingAdmissionBit setup implementation who event ⟨some control, trace⟩ tape = true
           at admitted
         dsimp only [bindingAdmissionBit] at admitted
