@@ -1,9 +1,9 @@
 # Replay analysis: an exact foreign-alias reduction
 
-The proposed stopped chronological construction in
-[the likelihood note](se-concurrent-likelihood.md) has agent review of local
-arguments. Exhaustive weighted coverage and preparation provenance still have
-mathematical gaps. Its Lean theorem and end-to-end preservation remain unproved.
+The stopped chronological construction in
+[the likelihood note](se-concurrent-likelihood.md) has independent agent review
+against the exact weighted statement, including exhaustive coverage and
+preparation provenance. Its Lean theorem and end-to-end preservation remain unproved.
 The following reductions record reviewed local
 parts of that argument: foreign private syntax aliases do not require equal
 alias counts, or a bijection of raw aliases, between different target catalogues.
@@ -108,7 +108,8 @@ the first-close admission gate and physical finish payoffs are preserved.
 This removes the same-input raw-alias issue from the proposed mathematical
 transport. It does not establish reconstruction across different hidden
 inputs or values, their weighted source marginal, or the source payoff law.
-Those remain open. No additional Lean theorem is claimed by this reduction.
+Those require the separate global derivation and remain unproved in Lean.
+No additional Lean theorem is claimed by this reduction.
 
 ## The remaining getter obligation is smaller than full-history equality
 

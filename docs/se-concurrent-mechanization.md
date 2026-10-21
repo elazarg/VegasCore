@@ -29,10 +29,9 @@ sequence is a capstone assumption.
 
 ## Current proof boundary
 
-**Contract, joint satisfiability and waiting payoff bound checked. The exact
-pair-law argument has independent agent mathematical review. The source-site,
-weighted reconstruction and payoff attachment arguments still have mathematical
-gaps, detailed in the likelihood review. The clean commitment gain comparison
+**Contract, joint satisfiability and waiting payoff bound checked. All four
+primitive mathematical derivations have independent agent review against their
+exact statements. Their Lean proof bodies remain admitted. The clean commitment gain comparison
 and final assembly are checked conditional on `QualifiedBindingLaw`; its
 transport and unconditional SE remain
 unproved. An unrestricted prefix density theorem is not claimed.**
@@ -42,8 +41,10 @@ The four primitive interfaces and their complete aggregation compile with
 `lake build +Vegas.Game.ConcurrentRawEquilibrium`. Four named `sorry` bodies
 remain; the unconditional theorem depends on admitted proof axioms.
 No new source or runtime assumptions are introduced by these interfaces.
-Further transport mechanization waits for exact mathematical derivations and
-adversarial review of the unresolved source-site, weighting and payoff joins.
+The [likelihood derivation](se-concurrent-likelihood.md) gives the mathematical
+constructions to implement; the [review](se-concurrent-likelihood-review.md)
+records their scope and dependencies. This is agent mathematical review, not
+Lean verification or human certification.
 
 | Remaining proof | Guarantee | Reviewed argument |
 | --- | --- | --- |
