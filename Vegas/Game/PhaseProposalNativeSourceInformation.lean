@@ -2784,7 +2784,7 @@ theorem sourceBindingAt_origin
               TracePrefix.extend priorPrefix joint legal realized, rest⟩
 
 omit [Fintype Player] in
-private theorem source_initial_base_supported
+theorem source_initial_base_supported
     (current : CommitRecoveryState setup.program)
     (trace : setup.proposalRecoveryProtocol.Trace (some current)) :
     ProtocolState.base setup.program current.point ∈ setup.initialLaw.support ∧
@@ -2812,7 +2812,7 @@ private theorem source_initial_base_supported
             exact ⟨bases.1.symm ▸ ih.1, bases.2.trans bases.1.symm⟩
   exact invariant (setup.proposalRecoveryEraseTrace trace)
 
-private def source_native_initializer
+def source_native_initializer
     (current : CommitRecoveryState setup.program)
     (trace : setup.proposalRecoveryProtocol.Trace (some current)) :
     (nativeProtocol).Trace (some ⟨implementation.horizon, none,
@@ -5919,7 +5919,7 @@ private theorem sourceSnapshot_handle_failed_binding
   rw [replay, accepted, Option.map_some]
 
 omit [Fintype Player] in
-private theorem sourceSnapshotPair_submit
+theorem sourceSnapshotPair_submit
     (target : setup.proposalRecoveryProtocol.History)
     (reference : (nativeApplication).Control)
     (lost : Handle (serviceGraph setup .concurrent) → Option (Raw L))
