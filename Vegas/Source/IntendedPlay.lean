@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Source.IntendedGame
+import Vegas.Source.IntendedBetween
 import Vegas.Source.Forfeit
 import Vegas.Source.Accounting
 import Vegas.Source.ProtocolEvaluation
@@ -461,6 +462,34 @@ def base : {Γ : SourceCtx Player L} → {O : Finset VarId} →
     (program : SourceProgram Player L Γ O) (config : Config Player L Γ) :
     base program (entry program config) = config.state := by
   cases program <;> rfl
+
+/-- Lookup of a residual entry cell reads its value in the point's base. -/
+theorem cell?_eq_of_base [DecidableEq (CellTy Player L)] (name : VarId) (kind : CellTy Player L) :
+    ∀ {Γ : SourceCtx Player L} {O : Finset VarId}
+      (program : SourceProgram Player L Γ O) (point : ProtocolState program),
+      (Γ.map Prod.fst).Nodup → ∀ (cell : HasVar Γ name kind),
+      ProtocolState.cell? program point name kind =
+        some ((ProtocolState.base program point).get cell) := by
+  intro Γ O program
+  induction program with
+  | ret payoffs =>
+      intro point unique cell
+      exact SourceProgram.State.cell?_eq_of_hasVar cell unique point.state
+  | sample _ fresh _ _ ih =>
+      intro point unique cell
+      cases point with
+      | inl config => exact SourceProgram.State.cell?_eq_of_hasVar cell unique config.state
+      | inr point => exact ih point (List.nodup_cons.mpr ⟨fresh, unique⟩) (.there cell)
+  | commit _ _ fresh _ _ ih =>
+      intro point unique cell
+      cases point with
+      | inl config => exact SourceProgram.State.cell?_eq_of_hasVar cell unique config.state
+      | inr point => exact ih point (List.nodup_cons.mpr ⟨fresh, unique⟩) (.there cell)
+  | reveal _ _ _ fresh _ _ _ ih =>
+      intro point unique cell
+      cases point with
+      | inl config => exact SourceProgram.State.cell?_eq_of_hasVar cell unique config.state
+      | inr point => exact ih point (List.nodup_cons.mpr ⟨fresh, unique⟩) (.there cell)
 
 /-- A step never changes a cell that already exists. -/
 theorem base_step : {Γ : SourceCtx Player L} → {O : Finset VarId} →

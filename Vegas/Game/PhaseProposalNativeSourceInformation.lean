@@ -4335,31 +4335,6 @@ theorem source_saved_cell_readback
     ((terminalRefs setup.program).get terminalCell).get?
       lastState.entry.native.config.store = some (cellValue value) := by
   classical
-  have baseCell : ∀ {Γ : SourceCtx Player L} {O : Finset VarId}
-      (program : SourceProgram Player L Γ O) (point : ProtocolState program),
-      (Γ.map Prod.fst).Nodup → ∀ (cell : HasVar Γ name kind),
-      ProtocolState.cell? program point name kind =
-        some ((ProtocolState.base program point).get cell) := by
-    intro Γ O program
-    induction program with
-    | ret payoffs =>
-        intro point unique cell
-        exact SourceProgram.State.cell?_eq_of_hasVar cell unique point.state
-    | sample _ fresh _ _ ih =>
-        intro point unique cell
-        cases point with
-        | inl config => exact SourceProgram.State.cell?_eq_of_hasVar cell unique config.state
-        | inr point => exact ih point (List.nodup_cons.mpr ⟨fresh, unique⟩) (.there cell)
-    | commit _ _ fresh _ _ ih =>
-        intro point unique cell
-        cases point with
-        | inl config => exact SourceProgram.State.cell?_eq_of_hasVar cell unique config.state
-        | inr point => exact ih point (List.nodup_cons.mpr ⟨fresh, unique⟩) (.there cell)
-    | reveal _ _ _ fresh _ _ _ ih =>
-        intro point unique cell
-        cases point with
-        | inl config => exact SourceProgram.State.cell?_eq_of_hasVar cell unique config.state
-        | inr point => exact ih point (List.nodup_cons.mpr ⟨fresh, unique⟩) (.there cell)
   have liftCell : ∀ {Γ : SourceCtx Player L} {O : Finset VarId}
       {program : SourceProgram Player L Γ O}
       {lift : ProtocolState program → ProtocolState setup.program},
@@ -4393,7 +4368,7 @@ theorem source_saved_cell_readback
   have finalPoint := congrArg CommitRecoveryState.point (Option.some.inj ending)
   have found : SourceProgram.State.cell? last.source.state name kind =
       some (source.state.get selected) := by
-    have read := baseCell program live unique selected
+    have read := ProtocolState.cell?_eq_of_base name kind program live unique selected
     rw [cells, ProtocolState.base_entry] at read
     rw [← liftCell origin live, ← point, ← finalPoint] at read
     exact (ProtocolState.cell?_entry last.residual.tail last.source name kind).symm.trans
