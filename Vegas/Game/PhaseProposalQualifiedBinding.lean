@@ -5626,7 +5626,10 @@ private def ForeignPosteriorCutPairAtoms : Prop :=
                   (setup.proposalRecoveryEraseTrace cursor.trace) ∧
               setup.proposalRecoveryJointRecall lastTrace = attempt.joints.reverse.map
                 (fun row owner => (row owner).map ProposalRecoveryMove.ordinary) ++
-                  setup.proposalRecoveryJointRecall cursor.trace
+                  setup.proposalRecoveryJointRecall cursor.trace ∧
+              last.point = cursor.lift (block.block.liftPoint block.suffix
+                (ProtocolState.entry block.suffix finished)) ∧
+              last.excluded = cursor.current.excluded
 
 omit [Fintype Player] [L.ResultTypes] in
 private theorem structural_owned_history_of_joints
@@ -6845,9 +6848,9 @@ private theorem foreign_posterior_cut_pair_atoms :
         exact lift point
       · intro history member
         rw [pairComplete] at member
-        obtain ⟨finished, last, lastTrace, attempt, historyEq, replay, _point, _excluded,
+        obtain ⟨finished, last, lastTrace, attempt, historyEq, replay, point, excluded,
             word, labels, _views, _proper⟩ := related history member
-        refine ⟨finished, last, lastTrace, attempt, historyEq, ?_, word, labels⟩
+        refine ⟨finished, last, lastTrace, attempt, historyEq, ?_, word, labels, point, excluded⟩
         simp only [read, foreignRead, replay]
 
 /-- The actual ordinary source continuation has both binding posterior laws. -/
@@ -13791,6 +13794,122 @@ private theorem sourceReplayTargetPrefix_same_attempt
   exact firstKept.eq_of_same_length secondKept
     (firstLength.trans (depth.trans secondLength.symm))
 
+/- Equal actual phase addresses select the same typed reference environment.
+Both compiled readouts identify each old reference through its terminal cell;
+no equality of the mutable checkpoint records is needed. -/
+omit [Fintype Player] in
+private theorem sourceReplayCheckpointRefsEq
+    {first second : PhaseRuntimeState (serviceGraph setup .concurrent)}
+    (left : RecoverySourceCheckpoint setup .concurrent first)
+    (right : RecoverySourceCheckpoint setup .concurrent second)
+    (phase : first.attempt.phase = second.attempt.phase) :
+    cast (congrArg (fun residual : ResidualProgram setup.program =>
+      ContextRefs (graphLayout setup.program) residual.context)
+        (left.residual_eq_of_phase_eq right phase)) left.refs = right.refs := by
+  classical
+  have sameResidual := left.residual_eq_of_phase_eq right phase
+  rcases left with ⟨⟨Γ, O, program, lift⟩, source, refs, registry, embedding, before,
+    compiled, alignment, agrees, guards, failures, unique, ranks, actors, commits, owners,
+    endpoints, automatic, history, memory, steps, menus, readout, leftTrace, views,
+    historyAlignment, origin⟩
+  rcases right with ⟨otherResidual, otherSource, otherRefs, otherRegistry,
+    otherEmbedding, otherBefore, otherCompiled, otherAlignment, otherAgrees,
+    otherGuards, otherFailures, otherUnique, otherRanks, otherActors,
+    otherCommits, otherOwners, otherEndpoints, otherAutomatic, otherHistory,
+    otherMemory, otherSteps, otherMenus, otherReadout, rightTrace, otherViews,
+    otherHistoryAlignment, otherOrigin⟩
+  change (⟨Γ, O, program, lift⟩ : ResidualProgram setup.program) =
+    otherResidual at sameResidual
+  subst otherResidual
+  change refs = otherRefs
+  have sameContext : alignment.contextEq = otherAlignment.contextEq :=
+    Subsingleton.elim _ _
+  have cast_cancel {α β : Type} (equal : α = β) (first second : α)
+      (same : cast equal first = cast equal second) : first = second := by
+    cases equal
+    exact same
+  have terminalEq : terminalRefsWith program refs embedding.ref =
+      terminalRefsWith program otherRefs otherEmbedding.ref := by
+    have firstRead := alignment.refsEq
+    have secondRead := otherAlignment.refsEq
+    rw [sameContext] at firstRead
+    have castEq := firstRead.trans secondRead.symm
+    exact cast_cancel
+      (congrArg (ContextRefs (graphLayout setup.program)) otherAlignment.contextEq)
+        _ _ castEq
+  cases refs with
+  | mk firstGet =>
+      cases otherRefs with
+      | mk secondGet =>
+          congr 1
+          funext name cell selected
+          have read := congrArg
+            (fun terminal => terminal.get (terminalRef program selected)) terminalEq
+          simpa only [terminalRefsWith_get_terminalRef] using read
+
+/- On one factual native attempt the saved physical entry is literally the
+same. The selected residual syntax and typed references also agree, so the
+target entry's assigned-store agreement transports without replaying raw
+operator cases or selecting another source prefix. -/
+private theorem sourceReplaySameAttemptSavedAgreement
+    (operational : implementation.Operational)
+    (before after : (nativeApplication).Control)
+    (prior : (nativeProtocol).Trace (some before))
+    (trace : (nativeProtocol).Trace (some after))
+    (retained : TracePrefix prior trace)
+    (same : before.execution.application.attempt =
+      after.execution.application.attempt)
+    (target : setup.proposalRecoveryProtocol.History)
+    (reference : (nativeApplication).Control)
+    (lost : Handle (serviceGraph setup .concurrent) → Option (Raw L))
+    (entry : SourceProgram.Config Player L
+      (checkpointSelection setup implementation operational prior).val.checkpoint.residual.context)
+    (agrees : (checkpointSelection setup implementation
+      operational prior).val.checkpoint.refs.Agrees
+      entry.state (sourceSnapshotState setup implementation target reference lost
+        before.execution.application.entry.native).config.store) :
+    let first := (checkpointSelection setup implementation operational prior).val.checkpoint
+    let last := (checkpointSelection setup implementation operational trace).val.checkpoint
+    let contextEq := congrArg (fun residual : ResidualProgram setup.program => residual.context)
+      (first.residual_eq_of_phase_eq last (congrArg CommitAttemptId.phase same))
+    last.refs.Agrees
+      (cast (congrArg (SourceProgram.Config Player L) contextEq) entry).state
+      (sourceSnapshotState setup implementation target reference lost
+        after.execution.application.entry.native).config.store := by
+  dsimp only
+  obtain ⟨_witness, _archived, _history, savedEq, _transfer⟩ :=
+    checkpointSelection_at_entry setup implementation operational before after prior trace
+      retained same
+  have residualEq :=
+    (checkpointSelection setup implementation
+      operational prior).val.checkpoint.residual_eq_of_phase_eq
+      (checkpointSelection setup implementation operational trace).val.checkpoint
+        (congrArg CommitAttemptId.phase same)
+  have refsEq := sourceReplayCheckpointRefsEq setup
+    (checkpointSelection setup implementation operational prior).val.checkpoint
+    (checkpointSelection setup implementation operational trace).val.checkpoint
+      (congrArg CommitAttemptId.phase same)
+  have transport {left right : ResidualProgram setup.program}
+      (equal : left = right)
+      (leftRefs : ContextRefs (graphLayout setup.program) left.context)
+      (rightRefs : ContextRefs (graphLayout setup.program) right.context)
+      (refsEqual : cast (congrArg (fun residual : ResidualProgram setup.program =>
+        ContextRefs (graphLayout setup.program) residual.context) equal) leftRefs = rightRefs)
+      (source : SourceProgram.Config Player L left.context)
+      (store : Store (graphLayout setup.program)) :
+      leftRefs.Agrees source.state store →
+        rightRefs.Agrees
+          (cast (congrArg (fun residual : ResidualProgram setup.program =>
+            SourceProgram.Config Player L residual.context) equal) source).state store := by
+    cases equal
+    cases refsEqual
+    exact id
+  rw [← savedEq]
+  intro name cell source
+  exact (transport residualEq _ _ refsEq entry
+    (sourceSnapshotState setup implementation target reference lost
+      before.execution.application.entry.native).config.store agrees) source
+
 open Classical in
 /-- A source prescription at nonterminal histories suffices for the literal
 closed-fiber factorization. Terminal policy values never enter either the
@@ -16344,6 +16463,43 @@ private theorem sourceRawReplay_wait_extend
   rw [extendingLost] at related
   exact ⟨history, replay, retained, related, nextWord⟩
 
+/-- The literal normalized foreign callback is either its actual alias law or
+its actual-query value law followed by aliases at that same input. -/
+private def SourceReplayCallbackLaw
+    (scale : Set.Icc (0 : ℝ) 1) (owner : Player)
+    (execution : (nativeApplication).Execution)
+    (target : setup.proposalRecoveryProtocol.History)
+    (reference : (nativeApplication).Control)
+    (kernel : PMF (RawReplayChoice setup implementation)) : Prop :=
+  ((∃ canonical : PhaseProposal.Response implementation.runtime implementation.leaks
+    implementation.bounds owner (execution.recall owner)
+      (execution.observe nativeApplication owner),
+    kernel = sourceReplayAliases setup implementation scale owner execution
+      none (PhaseProposal.projectResponse implementation.runtime implementation.leaks
+        implementation.bounds owner (execution.recall owner)
+          (execution.observe nativeApplication owner) canonical)) ∨
+  ∃ (event : (serviceGraph setup .concurrent).EventId) (payload : L.Ty)
+    (binding : (serviceGraph setup .concurrent).outputLayout event = .binding owner payload)
+    (key : setup.ProposalRecoveryComponent owner) (serial : Nat)
+    (canonical : ∀ _value : L.Val payload,
+      PhaseProposal.Response implementation.runtime implementation.leaks
+        implementation.bounds owner (execution.recall owner)
+          (execution.observe nativeApplication owner)),
+    phaseProposalQuery? setup .concurrent implementation.runtime implementation.leaks
+        implementation.plan owner event (execution.recall owner)
+          (execution.observe nativeApplication owner) = some key ∧
+    sourceHandleMeaning setup implementation target reference
+      (owner, .prepared serial) = none ∧
+    (∀ value, (canonical value).val = phaseBindingResponse implementation.runtime
+      implementation.leaks owner event payload (.success value) serial) ∧
+    kernel = ((values owner key).map (fun sampled => phaseRecoveryDomainValue setup
+      .concurrent event owner payload binding sampled.val.val)).bind (fun value =>
+        sourceReplayAliases setup implementation scale owner execution
+          (some ((owner, .prepared serial), (⟨payload, value⟩ : Raw L)))
+          (PhaseProposal.projectResponse implementation.runtime implementation.leaks
+            implementation.bounds owner (execution.recall owner)
+              (execution.observe nativeApplication owner) (canonical value))))
+
 /- Every factual foreign callback has a normalized actual response kernel.
 The emitted packet class is retained, while only a fresh historical lost
 preparation receives an auxiliary value coordinate. -/
@@ -16394,6 +16550,9 @@ private theorem sourceRawReplay_foreign_law
       SourceReplayCallbackAtoms (setup := setup) (values := values)
         (implementation := implementation) scale owner actualControl.execution
           ⟨some targetCurrent, targetTrace⟩ reference ((joint owner).getD ⟨none⟩) kernel ∧
+      SourceReplayCallbackLaw (setup := setup) (values := values)
+        (implementation := implementation) scale owner actualControl.execution
+          ⟨some targetCurrent, targetTrace⟩ reference kernel ∧
       ∀ choice ∈ kernel.support,
         SourceReplayLostRestricted setup implementation ⟨some targetCurrent, targetTrace⟩
           reference who (rawReplayLost setup implementation (choice :: script)) ∧
@@ -16464,7 +16623,7 @@ private theorem sourceRawReplay_foreign_law
               have absent := congrArg
                 (fun response : (nativeApplication).Action => response.transmission) action
               change none = some _ at absent
-              cases absent), ?_⟩
+              cases absent), Or.inl ⟨canonical, rfl⟩, ?_⟩
       intro choice supported
       obtain ⟨response, choiceEq, responseClass⟩ := sourceReplayAliases_support setup implementation
         scale owner actualControl.execution none _ choice supported
@@ -16608,31 +16767,37 @@ private theorem sourceRawReplay_foreign_law
                 prior joint legal moved onward owner foreign acting script restricted recalls
                   actualControl assigned actual replayed past word scale event payload binding
                     requestEvent serial old evidence selected allValues notDrawn
-          refine ⟨kernel, kernelAtoms, ?_⟩
-          intro choice supported
-          obtain ⟨restrictedNext, history, replay, retained, related, nextWord⟩ := produced
-            choice supported
-          refine ⟨restrictedNext, ?_, history, replay, retained, related, nextWord⟩
-          intro handle raw drawn
-          rcases description with ⟨value, canonical, _meaning, _canonicalEq, kernelEq⟩ |
-            ⟨_missing, canonical, _canonicalEq, kernelEq⟩
-          · rw [kernelEq] at supported
-            obtain ⟨response, choiceEq, _class⟩ := sourceReplayAliases_support setup implementation
-              scale owner actualControl.execution none _ choice supported
-            rw [choiceEq] at drawn
-            exact carry handle (introduced handle raw drawn)
-          · rw [kernelEq] at supported
-            obtain ⟨value, _valueSupported, supported⟩ := (PMF.mem_support_bind_iff ..).mp supported
-            obtain ⟨response, choiceEq, _class⟩ := sourceReplayAliases_support setup implementation
-              scale owner actualControl.execution (some ((owner, .prepared serial),
-                (⟨payload, value⟩ : Raw L))) _ choice supported
-            rw [choiceEq, rawReplayLost_register] at drawn
-            by_cases same : handle = (owner, .prepared serial)
-            · rw [same, registered]
-              intro impossible
-              cases impossible
-            · rw [Function.update_of_ne same] at drawn
+          refine ⟨kernel, kernelAtoms, ?_, ?_⟩
+          · rcases description with ⟨_value, canonical, _meaning, _canonicalEq, kernelEq⟩ |
+              ⟨missing, canonical, canonicalEq, kernelEq⟩
+            · exact Or.inl ⟨canonical, kernelEq⟩
+            · exact Or.inr ⟨event, payload, binding, key, serial, canonical, query, missing,
+                canonicalEq, kernelEq⟩
+          · intro choice supported
+            obtain ⟨restrictedNext, history, replay, retained, related, nextWord⟩ := produced
+              choice supported
+            refine ⟨restrictedNext, ?_, history, replay, retained, related, nextWord⟩
+            intro handle raw drawn
+            rcases description with ⟨value, canonical, _meaning, _canonicalEq, kernelEq⟩ |
+              ⟨_missing, canonical, _canonicalEq, kernelEq⟩
+            · rw [kernelEq] at supported
+              obtain ⟨response, choiceEq, _class⟩ := sourceReplayAliases_support setup
+                implementation scale owner actualControl.execution none _ choice supported
+              rw [choiceEq] at drawn
               exact carry handle (introduced handle raw drawn)
+            · rw [kernelEq] at supported
+              obtain ⟨value, _valueSupported, supported⟩ :=
+                (PMF.mem_support_bind_iff ..).mp supported
+              obtain ⟨response, choiceEq, _class⟩ := sourceReplayAliases_support setup
+                implementation scale owner actualControl.execution (some ((owner, .prepared serial),
+                  (⟨payload, value⟩ : Raw L))) _ choice supported
+              rw [choiceEq, rawReplayLost_register] at drawn
+              by_cases same : handle = (owner, .prepared serial)
+              · rw [same, registered]
+                intro impossible
+                cases impossible
+              · rw [Function.update_of_ne same] at drawn
+                exact carry handle (introduced handle raw drawn)
       | opening event handle raw =>
         have eventEq : coordinate.event = event := Option.some.inj named.symm
         have requestEvent := request
@@ -16666,7 +16831,7 @@ private theorem sourceRawReplay_foreign_law
                     response.transmission.map (fun material => material.call.packet)) action
                   rw [canonicalEq] at wire
                   simp only [PhaseCount.phaseOpeningResponse, Option.map_some] at wire
-                  cases wire), ?_⟩
+                  cases wire), Or.inl ⟨canonical, rfl⟩, ?_⟩
           intro choice supported
           obtain ⟨response, choiceEq, _class⟩ := sourceReplayAliases_support setup implementation
             scale owner actualControl.execution none _ choice supported
@@ -16743,6 +16908,8 @@ private inductive SourceReplayScriptMass
       (atoms : SourceReplayCallbackAtoms (setup := setup) (values := values)
         (implementation := implementation) scale owner actual.execution target reference
           ((joint owner).getD ⟨none⟩) kernel)
+      (description : SourceReplayCallbackLaw (setup := setup) (values := values)
+        (implementation := implementation) scale owner actual.execution target reference kernel)
       (choice : RawReplayChoice setup implementation) (supported : choice ∈ kernel.support)
       (earlier : SourceReplayScriptMass scale who target reference ⟨some before, prior⟩ script
         mass) :
@@ -16931,7 +17098,7 @@ private theorem sourceRawReplay_readback
     rw [sourceRawReplayReadback, priorEq, previousRead, Option.bind_some]
     rcases quiet with quiet | quiet <;> simp only [quiet, ↓reduceIte]
   | @foreign before after prior joint legal moved script mass owner different acting previous
-      previousTrace previousReplay _related kernel atoms choice member earlier ih =>
+      previousTrace previousReplay _related kernel atoms _description choice member earlier ih =>
     obtain ⟨action, actionEq, tagEq⟩ := sourceReplayCallbackAtoms_readback
       (setup := setup) (values := values) (implementation := implementation)
         scale owner previous.execution target reference ((joint owner).getD ⟨none⟩)
@@ -16967,1553 +17134,6 @@ private theorem SourceRawReplayLaw.replay_injective
   have secondRead := sourceRawReplay_readback setup values implementation scale who target reference
     original second (law.choices second) (law.atoms second secondSupported) actual secondReplay
   exact Option.some.inj (firstRead.symm.trans secondRead)
-
-/- The source alignment is consumed once, at each actual initialized prefix.
-All foreign laws are normalized at that prefix's actual raw input. -/
-private theorem sourceRawReplay_law
-    (operational : implementation.Operational)
-    (who : Player) (reference : (nativeApplication).Control)
-    (referenceTrace : (nativeProtocol).Trace (some reference))
-    (event : (serviceGraph setup .concurrent).EventId)
-    (cut : PhaseProposalCanonicalBindingCut setup .concurrent implementation.runtime
-      implementation.leaks implementation.bounds implementation.plan values
-      implementation.horizon implementation.scheduler reference
-      (sourceCutTrace setup implementation referenceTrace) who event)
-    (g : setup.proposalRecoveryProtocol.History)
-    (sourceChoice : setup.proposalRecoveryModel.Choice who
-      (setup.proposalRecoveryModel.infoOf who g.trace))
-    (targetCurrent : CommitRecoveryState setup.program)
-    (targetTrace : setup.proposalRecoveryProtocol.Trace (some targetCurrent))
-    (alignment : SourceReplayAlignment (setup := setup) (values := values)
-      (implementation := implementation) operational who reference
-      referenceTrace event cut g sourceChoice targetCurrent targetTrace)
-    (good : ∀ owner, owner ≠ who →
-      ¬ PhaseProposal.GeneratedUnusableBindingHistory implementation.runtime implementation.leaks
-        implementation.bounds nativeInitial implementation.horizon implementation.scheduler owner
-          ⟨some reference, referenceTrace⟩)
-    (scale : Set.Icc (0 : ℝ) 1) :
-    Nonempty (SourceRawReplayLaw (setup := setup) (values := values)
-      (implementation := implementation) scale who ⟨some targetCurrent, targetTrace⟩
-        reference ⟨some reference, referenceTrace⟩) := by
-  classical
-  let target : setup.proposalRecoveryProtocol.History := ⟨some targetCurrent, targetTrace⟩
-  let valid := fun (original : (nativeProtocol).History)
-      (script : List (RawReplayChoice setup implementation)) =>
-    SourceReplayLostRestricted setup implementation target reference who
-        (rawReplayLost setup implementation script) ∧
-    (∀ (control : (nativeApplication).Control), original.state = some control →
-      ∀ handle raw, rawReplayLost setup implementation script handle = some raw →
-        control.execution.application.current.native.candidates.lookup handle ≠ .fresh) ∧
-    ∃ actual : (nativeProtocol).History,
-      sourceRawReplay setup implementation who target reference original script = some actual ∧
-      RawReplayState setup implementation who target reference
-        (rawReplayLost setup implementation script) original actual ∧
-      mechanicalWord setup implementation who actual.trace =
-        mechanicalWord setup implementation who original.trace ∧
-      SourceReplayPrepared setup implementation who actual.state
-  have neverNone (state : (nativeProtocol).State)
-      (joint : Player → Option (nativeApplication).Action) :
-      none ∉ ((nativeApplication).transition nativeInitial implementation.horizon
-        implementation.scheduler state joint).support := by
-    cases state with
-    | none => simp [ReactiveApplication.transition]
-    | some control =>
-      cases active : control.actor with
-      | some owner => simp [ReactiveApplication.transition, active]
-      | none =>
-        cases remaining : control.remaining with
-        | zero => simp [ReactiveApplication.transition, active, remaining]
-        | succ remaining =>
-          simp [ReactiveApplication.transition, active, remaining]
-  have uninitialized : ∀ {state : (nativeProtocol).State}
-      (trace : (nativeProtocol).Trace state), state = none →
-      HEq trace (Trace.start : (nativeProtocol).Trace (nativeProtocol).init) := by
-    intro state trace stateEq
-    cases trace with
-    | start => rfl
-    | @extend before after prior joint legal moved =>
-      cases stateEq
-      exact (neverNone before joint moved).elim
-  have produce : ∀ {state : (nativeProtocol).State}
-      (trace : (nativeProtocol).Trace state), TracePrefix trace referenceTrace →
-      ∃ law : PMF (List (RawReplayChoice setup implementation)),
-        ∀ script ∈ law.support, valid ⟨state, trace⟩ script ∧
-          SourceReplayScriptMass (setup := setup) (values := values) (implementation :=
-            implementation)
-            scale who target reference ⟨state, trace⟩ script (law script) := by
-    intro state trace
-    induction trace with
-    | start =>
-      intro retained
-      refine ⟨PMF.pure [], ?_⟩
-      intro script supported
-      cases (PMF.mem_support_pure_iff ..).mp supported
-      refine ⟨⟨?_, ?_, (nativeProtocol).initHistory, rfl, trivial, rfl, trivial⟩, ?_⟩
-      · intro handle raw drawn
-        cases drawn
-      · intro control impossible
-        cases impossible
-      · simp only [PMF.pure_apply_self]
-        exact SourceReplayScriptMass.start
-    | @extend before after prior joint legal moved ih =>
-      intro onward
-      have kept : TracePrefix prior referenceTrace :=
-        (TracePrefix.extend (TracePrefix.refl (prefixTrace := prior)) joint legal moved).trans
-          onward
-      obtain ⟨previous, previousValid⟩ := ih kept
-      have advance (script : List (RawReplayChoice setup implementation))
-          (supported : script ∈ previous.support) :
-          ∃ law : PMF (List (RawReplayChoice setup implementation)),
-            ∀ next ∈ law.support,
-              valid ⟨after, prior.extend joint legal moved⟩ next ∧ next.tail = script ∧
-              SourceReplayScriptMass (setup := setup) (values := values)
-                (implementation := implementation) scale who target reference
-                  ⟨after, prior.extend joint legal moved⟩ next (previous script * law next) := by
-        obtain ⟨previousState, previousMass⟩ := previousValid script supported
-        obtain ⟨restricted, introduced, actualHistory, replayed, related, word, prepared⟩ :=
-          previousState
-        cases before with
-        | none =>
-          have priorEq : prior = (Trace.start : (nativeProtocol).Trace none) :=
-            eq_of_heq (uninitialized prior rfl)
-          cases priorEq
-          cases script with
-          | cons choice rest =>
-            simp only [sourceRawReplay] at replayed
-            cases replayed
-          | nil =>
-            have initialMoved := moved
-            change after ∈ ((nativeInitial).map fun state => some
-              (⟨implementation.horizon, none,
-                ReactiveApplication.Execution.initial nativeApplication state⟩ :
-                (nativeApplication).Control)).support at initialMoved
-            obtain ⟨initialStateDraw, initialSupported, afterEq⟩ :=
-              (PMF.mem_support_map_iff ..).mp initialMoved
-            change initialStateDraw ∈ (setup.initialLaw.map fun theta =>
-              PhaseRuntimeState.initial implementation.plan (encodeInputs theta)).support
-              at initialSupported
-            obtain ⟨theta, _thetaSupported, initialEq⟩ :=
-              (PMF.mem_support_map_iff ..).mp initialSupported
-            cases initialEq
-            cases afterEq
-            let original : (nativeApplication).Control := ⟨implementation.horizon, none,
-              ReactiveApplication.Execution.initial nativeApplication
-                (PhaseRuntimeState.initial implementation.plan (encodeInputs theta))⟩
-            have native := (phaseApplication_invariant implementation.runtime implementation.leaks
-              (encodeInputs theta)).tracePrefix (nativeMenu) nativeInitial implementation.horizon
-                implementation.scheduler original reference (Trace.start.extend joint legal moved)
-                  referenceTrace onward
-                  (PhaseRuntimeState.initial_invariant implementation.plan (encodeInputs theta)).1
-            have inputsEq : encodeInputs theta = encodeInputs cut.theta :=
-              native.active.reachable.inputs_eq.symm.trans cut.originalInputs
-            have initialAssigned := alignment.initialized (rawReplayLost setup implementation [])
-              restricted
-            rw [← inputsEq] at initialAssigned
-            have image := alignment.images (rawReplayLost setup implementation []) restricted
-              original (Trace.start.extend joint legal moved) onward
-            obtain ⟨actual, replay, actualState, actualWord⟩ := sourceRawReplay_initialize
-              setup implementation who reference targetCurrent targetTrace _ joint legal moved
-            have actualRelated : RawReplayState setup implementation who target reference
-                (rawReplayLost setup implementation [(none, none)])
-                ⟨some original, Trace.start.extend joint legal moved⟩ actual := by
-              unfold RawReplayState
-              rw [actualState]
-              refine ⟨rfl, rfl, ?_, rfl, ?_⟩
-              · change ReactiveApplication.Execution.initial nativeApplication
-                    (PhaseRuntimeState.initial implementation.plan
-                      (encodeInputs (ProtocolState.base setup.program targetCurrent.point))) =
-                  sourceReplayExecution setup implementation target reference
-                    (rawReplayLost setup implementation []) (fun _ => []) original.execution
-                dsimp only [sourceReplayExecution, original,
-                  ReactiveApplication.Execution.initial]
-                rw [initialAssigned]
-              · have observed := image.focalView (fun _ => []) rfl
-                dsimp only [sourceReplayExecution, original,
-                  ReactiveApplication.Execution.initial] at observed
-                rw [initialAssigned] at observed
-                exact observed
-            have actualWordEq : mechanicalWord setup implementation who actual.trace =
-                mechanicalWord setup implementation who (Trace.start.extend joint legal moved) := by
-              rw [actualWord]
-              change _ = [_, _]
-              apply congrArg (fun last : Set.range (mechanicalProjection setup implementation
-                  who) =>
-                [⟨mechanicalProjection setup implementation who none, none, rfl⟩, last])
-              apply Subtype.ext
-              simpa only [actualState] using RawReplayState.mechanicalProjection setup
-                implementation who target reference (rawReplayLost setup implementation [(none,
-                  none)])
-                  ⟨some original, Trace.start.extend joint legal moved⟩ actual actualRelated
-            refine ⟨PMF.pure [(none, none)], ?_⟩
-            intro next nextSupported
-            cases (PMF.mem_support_pure_iff ..).mp nextSupported
-            refine ⟨⟨restricted, ?_, actual, replay, actualRelated, actualWordEq, ?_⟩, rfl, ?_⟩
-            · intro control stateEq handle raw drawn
-              cases drawn
-            · rw [actualState]
-              intro owner foreign record member
-              simp only [ReactiveApplication.Execution.initial,
-                ReactiveApplication.recallOwnPlay, ReactiveApplication.ownPlayFrom,
-                List.not_mem_nil] at member
-            · simp only [PMF.pure_apply_self, mul_one]
-              exact SourceReplayScriptMass.deterministic (Or.inl rfl) previousMass
-        | some before =>
-          cases after with
-          | none => exact (neverNone (some before) joint moved).elim
-          | some after =>
-            rcases actualHistory with ⟨actualState, actual⟩
-            cases actualState with
-            | none => cases related
-            | some actualControl =>
-              obtain ⟨remaining, actor, execution, recalled, _observed⟩ := related
-              let recalls := actualControl.execution.recall
-              have assigned : actualControl = { before with
-                  execution := sourceReplayExecution setup implementation target reference
-                    (rawReplayLost setup implementation script) recalls before.execution } := by
-                cases actualControl
-                cases before
-                simp only [ReactiveApplication.Control.mk.injEq] at remaining actor ⊢
-                exact ⟨remaining, actor, execution⟩
-              have introducedBefore := introduced before rfl
-              have image := alignment.images (rawReplayLost setup implementation script)
-                restricted before prior kept
-              have nextImage := alignment.images (rawReplayLost setup implementation script)
-                restricted after (prior.extend joint legal moved) onward
-              have carry (handle : Handle (serviceGraph setup .concurrent))
-                  (fixed : before.execution.application.current.native.candidates.lookup handle ≠
-                    .fresh) :
-                  after.execution.application.current.native.candidates.lookup handle ≠ .fresh := by
-                let stable := phaseApplication_preservesFixedCandidates implementation.runtime
-                  implementation.leaks
-                have invariant : (nativeApplication).Invariant (fun state =>
-                    state.current.native.candidates.lookup handle =
-                      before.execution.application.current.native.candidates.lookup handle) := by
-                  constructor
-                  · intro state owner material known
-                    exact (stable.submit state owner material handle
-                      (by rw [known]; exact fixed)).trans known
-                  · intro state message next known handled
-                    exact (stable.handle state message next handled handle
-                      (by rw [known]; exact fixed)).trans known
-                  · intro state command next known reached
-                    exact (stable.environment state command next reached handle
-                      (by rw [known]; exact fixed)).trans known
-                rw [invariant.tracePrefix (nativeMenu) nativeInitial implementation.horizon
-                  implementation.scheduler before after prior (prior.extend joint legal moved)
-                    (TracePrefix.extend (TracePrefix.refl (prefixTrace := prior)) joint legal
-                      moved) rfl]
-                exact fixed
-              cases acting : before.actor with
-              | none =>
-                obtain ⟨history, replay, ending, _retained, nextRelated, nextWord⟩ :=
-                  sourceRawReplay_environment_extend setup implementation who target reference
-                    referenceTrace before after prior joint legal moved acting script recalls
-                      actualControl assigned actual replayed image nextImage recalled word
-                refine ⟨PMF.pure ((none, none) :: script), ?_⟩
-                intro next nextSupported
-                cases (PMF.mem_support_pure_iff ..).mp nextSupported
-                refine ⟨⟨restricted, ?_, history, replay, nextRelated, nextWord, ?_⟩, rfl, ?_⟩
-                · intro control stateEq handle raw drawn
-                  cases Option.some.inj stateEq
-                  exact carry handle (introducedBefore handle raw drawn)
-                · rw [ending]
-                  exact prepared
-                · simp only [PMF.pure_apply_self, mul_one]
-                  exact SourceReplayScriptMass.deterministic (Or.inl acting) previousMass
-              | some owner =>
-                by_cases focal : owner = who
-                · subst owner
-                  obtain ⟨history, replay, _retained, nextRelated, nextWord⟩ :=
-                    sourceRawReplay_focal_extend setup implementation who target reference
-                      referenceTrace before after prior joint legal moved onward acting script
-                        recalls actualControl assigned actual replayed image nextImage recalled word
-                  have offered := legal.2 who
-                  obtain ⟨action, selected, member⟩ : ∃ action : (nativeApplication).Action,
-                      joint who = some action ∧ action ∈ (nativeMenu).actions who
-                        (before.execution.recall who)
-                          (before.execution.observe nativeApplication who) := by
-                    cases chosen : joint who with
-                    | none =>
-                      rw [chosen] at offered
-                      exact (offered (by exact acting)).elim
-                    | some action => exact ⟨action, rfl, (chosen ▸ offered).2⟩
-                  let response : PhaseProposal.Response implementation.runtime implementation.leaks
-                      implementation.bounds who (actualControl.execution.recall who)
-                        (actualControl.execution.observe nativeApplication who) :=
-                    ⟨action, by
-                      change action ∈ PhaseCount.onePacketActions implementation.runtime
-                        implementation.leaks implementation.bounds who
-                          (before.execution.recall who)
-                            (before.execution.observe nativeApplication who) at member
-                      simpa only [recalled, _observed] using member⟩
-                  obtain ⟨copied, copiedReplay, copiedState, _prefix, _suffix⟩ :=
-                    sourceRawReplay_callback_extend setup implementation who target reference
-                      before (some after) prior joint legal moved who acting script (none, none)
-                        actualControl actual replayed (actor.trans acting) response (by
-                          simpa only [↓reduceIte] using selected)
-                  have copiedEq : history = copied :=
-                    Option.some.inj (replay.symm.trans copiedReplay)
-                  have preparedNext : SourceReplayPrepared setup implementation who
-                      history.state := by
-                    rw [copiedEq, copiedState]
-                    exact sourceReplayPrepared_respond setup implementation who actualControl who
-                      response.val prepared (fun impossible => (impossible rfl).elim)
-                  refine ⟨PMF.pure ((none, none) :: script), ?_⟩
-                  intro next nextSupported
-                  cases (PMF.mem_support_pure_iff ..).mp nextSupported
-                  refine ⟨⟨restricted, ?_, history, replay, nextRelated, nextWord, preparedNext⟩,
-                    rfl, ?_⟩
-                  · intro control stateEq handle raw drawn
-                    cases Option.some.inj stateEq
-                    exact carry handle (introducedBefore handle raw drawn)
-                  · simp only [PMF.pure_apply_self, mul_one]
-                    exact SourceReplayScriptMass.deterministic (Or.inr acting) previousMass
-                · obtain ⟨kernel, kernelAtoms, produced⟩ := sourceRawReplay_foreign_law (setup
-                  := setup) (values := values)
-                    (implementation := implementation) operational who reference before after
-                      referenceTrace event cut g
-                      sourceChoice targetCurrent targetTrace alignment prior joint legal moved
-                        onward
-                        owner focal acting (good owner focal) script restricted introducedBefore
-                          recalls actualControl assigned actual replayed recalled word scale
-                  refine ⟨kernel.map (fun choice => choice :: script), ?_⟩
-                  intro next nextSupported
-                  obtain ⟨choice, choiceSupported, nextEq⟩ :=
-                    (PMF.mem_support_map_iff ..).mp nextSupported
-                  cases nextEq
-                  obtain ⟨restrictedNext, introducedNext, history, replay, _retained,
-                    nextRelated, nextWord⟩ := produced choice choiceSupported
-                  obtain ⟨_slot, response, selectedResponse, clean, _atom⟩ :=
-                    kernelAtoms choice choiceSupported
-                  obtain ⟨copied, copiedReplay, copiedState, _prefix, _suffix⟩ :=
-                    sourceRawReplay_callback_extend setup implementation who target reference
-                      before (some after) prior joint legal moved owner acting script choice
-                        actualControl actual replayed (actor.trans acting) response (by
-                          simpa only [focal, ↓reduceIte] using selectedResponse)
-                  have copiedEq : history = copied :=
-                    Option.some.inj (replay.symm.trans copiedReplay)
-                  have preparedNext : SourceReplayPrepared setup implementation who
-                      history.state := by
-                    rw [copiedEq, copiedState]
-                    exact sourceReplayPrepared_respond setup implementation who actualControl owner
-                      response.val prepared (fun _ => clean)
-                  refine ⟨⟨restrictedNext, ?_, history, replay, nextRelated, nextWord,
-                    preparedNext⟩,
-                    rfl, ?_⟩
-                  · intro control stateEq
-                    cases Option.some.inj stateEq
-                    exact introducedNext
-                  · have atom : (kernel.map (fun chosen => chosen :: script))
-                        (choice :: script) = kernel choice := by
-                      apply pmf_map_apply_of_injective
-                      intro first second same
-                      exact (List.cons.inj same).1
-                    rw [atom]
-                    exact SourceReplayScriptMass.foreign owner focal acting actualControl actual
-                      replayed ⟨remaining, actor, execution, recalled, _observed⟩ kernel kernelAtoms
-                        choice choiceSupported previousMass
-      let next := fun script supported => (advance script supported).choose
-      refine ⟨previous.bindOnSupport next, ?_⟩
-      intro script supported
-      obtain ⟨earlier, earlierSupported, nextSupported⟩ :=
-        (PMF.mem_support_bindOnSupport_iff ..).mp supported
-      obtain ⟨nextValid, tailEq, nextMass⟩ :=
-        (advance earlier earlierSupported).choose_spec script nextSupported
-      refine ⟨nextValid, ?_⟩
-      have atom : previous.bindOnSupport next script =
-          previous earlier * next earlier earlierSupported script := by
-        rw [PMF.bindOnSupport_apply, tsum_eq_single earlier]
-        · simp only [dite_eq_right earlierSupported]
-        · intro other different
-          by_cases absent : previous other = 0
-          · simp only [absent, zero_mul]
-          · have missing : next other absent script = 0 := by
-              apply (PMF.apply_eq_zero_iff _ _).mpr
-              intro offered
-              have otherTail := (advance other absent).choose_spec script offered |>.2.1
-              exact different (otherTail.symm.trans tailEq)
-            simp only [dite_eq_right absent, missing, mul_zero]
-      rw [atom]
-      exact nextMass
-  obtain ⟨law, supported⟩ := produce referenceTrace TracePrefix.refl
-  exact ⟨{
-    choices := law
-    restricted := fun script member => (supported script member).1.1
-    introduced := fun script member => (supported script member).1.2.1
-    atoms := fun script member => (supported script member).2
-    replayed := by
-      intro script member
-      obtain ⟨actual, replay, related, word, prepared⟩ := (supported script member).1.2.2
-      exact ⟨actual, replay, related, word,
-        sourceReplayPrepared_good setup implementation who actual prepared⟩ }⟩
-
-private theorem sourceReplay_focal_sent_word_congr
-    (first second : (nativeApplication).Execution)
-    (publicEq : first.application.publicView = second.application.publicView)
-    (service : first.environmentRecall = second.environmentRecall)
-    (tape : ReservedEpoch.Tape Player implementation.tapeLength) (who : Player)
-    (frontier event : (serviceGraph setup .concurrent).EventId)
-    (firstRequest : first.application.SeedRequest who
-      ⟨first.application.attempt, frontier⟩)
-    (secondRequest : second.application.SeedRequest who
-      ⟨second.application.attempt, frontier⟩)
-    (firstHandle secondHandle : Handle (serviceGraph setup .concurrent))
-    (firstMaterial secondMaterial : WitnessedSubmission (serviceGraph setup .concurrent))
-    (firstCall : firstMaterial.call.packet = .commitment frontier firstHandle)
-    (secondCall : secondMaterial.call.packet = .commitment frontier secondHandle) :
-    ReservedEpoch.ownedAcceptanceWord implementation.runtime implementation.leaks tape
-        (first.respond nativeApplication who ⟨some firstMaterial⟩) who event ↔
-      ReservedEpoch.ownedAcceptanceWord implementation.runtime implementation.leaks tape
-        (second.respond nativeApplication who ⟨some secondMaterial⟩) who event := by
-  classical
-  have leftRequest := respond_request implementation.runtime implementation.leaks first who
-    ⟨some firstMaterial⟩ who ⟨first.application.attempt, frontier⟩ firstRequest
-  have rightRequest := respond_request implementation.runtime implementation.leaks second who
-    ⟨some secondMaterial⟩ who ⟨second.application.attempt, frontier⟩ secondRequest
-  have leftActive : who ∉ (first.respond nativeApplication who
-      ⟨some firstMaterial⟩).application.current.excluded := firstRequest.2.2.2.2
-  have rightActive : who ∉ (second.respond nativeApplication who
-      ⟨some secondMaterial⟩).application.current.excluded := secondRequest.2.2.2.2
-  have activated := congrArg (fun view => view.native.activatedAt) publicEq
-  change first.application.current.native.activatedAt =
-    second.application.current.native.activatedAt at activated
-  have frontierEq : ReservedEpoch.frontierQualification implementation.runtime
-        implementation.leaks tape (first.respond nativeApplication who ⟨some firstMaterial⟩)
-          who frontier ↔
-      ReservedEpoch.frontierQualification implementation.runtime implementation.leaks tape
-        (second.respond nativeApplication who ⟨some secondMaterial⟩) who frontier := by
-    rw [ReservedEpoch.frontierQualification_sent_binding_iff implementation.runtime
-      implementation.leaks tape first who frontier firstHandle firstMaterial firstCall,
-      ReservedEpoch.frontierQualification_sent_binding_iff implementation.runtime
-        implementation.leaks tape second who frontier secondHandle secondMaterial secondCall]
-    rw [activated, service]
-  simp only [ReservedEpoch.ownedAcceptanceWord, leftActive, rightActive, ↓reduceIte]
-  constructor
-  · intro survived other requested
-    have same : other = frontier :=
-      (serviceGraph_revealRelaxedOrdered setup .concurrent).ready_actor_unique _
-        rightRequest.2.2.1 requested.2.2.1 rightRequest.2.2.2.1 requested.2.2.2.1
-    subst other
-    exact (survived frontier leftRequest).imp_right frontierEq.mp
-  · intro survived other requested
-    have same : other = frontier :=
-      (serviceGraph_revealRelaxedOrdered setup .concurrent).ready_actor_unique _
-        leftRequest.2.2.1 requested.2.2.1 leftRequest.2.2.2.1 requested.2.2.2.1
-    subst other
-    exact (survived frontier rightRequest).imp_right frontierEq.mpr
-
-private theorem sourceReplay_owned_word_congr
-    (first second : (nativeApplication).Execution)
-    (publicEq : first.application.publicView = second.application.publicView)
-    (requests : ∀ owner coordinate,
-      first.application.SeedRequest owner coordinate ↔
-        second.application.SeedRequest owner coordinate)
-    (network : first.network = second.network)
-    (service : first.environmentRecall = second.environmentRecall)
-    (outputs : ∀ owner, (nativeApplication).outputs (first.recall owner) =
-      (nativeApplication).outputs (second.recall owner))
-    (tape : ReservedEpoch.Tape Player implementation.tapeLength)
-    (owner : Player) (event : (serviceGraph setup .concurrent).EventId) :
-    ReservedEpoch.ownedAcceptanceWord implementation.runtime implementation.leaks tape
-        first owner event ↔
-      ReservedEpoch.ownedAcceptanceWord implementation.runtime implementation.leaks tape
-        second owner event := by
-  classical
-  have excluded := congrArg PhasePublicView.excluded publicEq
-  change first.application.current.excluded = second.application.current.excluded at excluded
-  have accepted := congrArg (fun view => view.native.accepted) publicEq
-  change first.application.current.native.accepted = second.application.current.native.accepted
-    at accepted
-  have activated := congrArg (fun view => view.native.activatedAt) publicEq
-  change first.application.current.native.activatedAt =
-    second.application.current.native.activatedAt at activated
-  have attempt := congrArg PhasePublicView.attempt publicEq
-  change first.application.attempt = second.application.attempt at attempt
-  have frontier (named : (serviceGraph setup .concurrent).EventId) :
-      ReservedEpoch.frontierQualification implementation.runtime implementation.leaks tape
-          first owner named ↔
-        ReservedEpoch.frontierQualification implementation.runtime implementation.leaks tape
-          second owner named := by
-    unfold ReservedEpoch.frontierQualification
-    rw [outputs owner, activated, attempt, network, service]
-  by_cases absent : owner ∈ second.application.current.excluded
-  · simp only [ReservedEpoch.ownedAcceptanceWord, excluded, accepted, absent, ↓reduceIte]
-  · simp only [ReservedEpoch.ownedAcceptanceWord, excluded, absent, ↓reduceIte]
-    apply forall_congr'
-    intro named
-    apply imp_congr
-    · rw [attempt]
-      exact requests owner _
-    · exact or_congr Iff.rfl (frontier named)
-
-private theorem RawReplayState.admission
-    (who : Player) (target : setup.proposalRecoveryProtocol.History)
-    (reference first second : (nativeApplication).Control)
-    (lost : Handle (serviceGraph setup .concurrent) → Option (Raw L))
-    (firstTrace : (nativeProtocol).Trace (some first))
-    (secondTrace : (nativeProtocol).Trace (some second))
-    (related : RawReplayState setup implementation who target reference lost
-      ⟨some first, firstTrace⟩ ⟨some second, secondTrace⟩)
-    (event : (serviceGraph setup .concurrent).EventId)
-    (request : first.execution.application.SeedRequest who
-      ⟨first.execution.application.attempt, event⟩)
-    (tape : ReservedEpoch.Tape Player implementation.tapeLength) :
-    bindingAdmissionBit setup implementation who event ⟨some second, secondTrace⟩ tape =
-      bindingAdmissionBit setup implementation who event ⟨some first, firstTrace⟩ tape := by
-  classical
-  obtain ⟨_remaining, _actor, execution, recalled, observed⟩ := related
-  have application := congrArg (fun execution : (nativeApplication).Execution =>
-    execution.application) execution
-  change second.execution.application = sourceSnapshotAssignment setup implementation
-    target reference lost first.execution.application at application
-  have publicEq : second.execution.application.publicView =
-      first.execution.application.publicView := by
-    rw [application]
-    exact sourceSnapshotAssignment_public setup implementation target reference lost _
-  have network := congrArg (fun execution : (nativeApplication).Execution => execution.network)
-    execution
-  change second.execution.network = first.execution.network at network
-  have service := congrArg
-    (fun execution : (nativeApplication).Execution => execution.environmentRecall) execution
-  change second.execution.environmentRecall = first.execution.environmentRecall at service
-  have requests (owner : Player) (coordinate : CommitAttemptEvent
-      (serviceGraph setup .concurrent)) :
-      second.execution.application.SeedRequest owner coordinate ↔
-        first.execution.application.SeedRequest owner coordinate := by
-    rw [application]
-    exact Iff.rfl
-  have actualRequest : second.execution.application.SeedRequest who
-      ⟨second.execution.application.attempt, event⟩ := by
-    rw [application]
-    exact request
-  have firstCount := PhaseCount.countRecall_history implementation.runtime implementation.leaks
-    ((nativeMenu).toRawTrace nativeInitial implementation.horizon implementation.scheduler
-      firstTrace)
-  have secondCount := PhaseCount.countRecall_history implementation.runtime implementation.leaks
-    ((nativeMenu).toRawTrace nativeInitial implementation.horizon implementation.scheduler
-      secondTrace)
-  have outputs (owner : Player) :
-      (nativeApplication).outputs (second.execution.recall owner) =
-        (nativeApplication).outputs (first.execution.recall owner) := by
-    rw [← secondCount.1 owner, ← firstCount.1 owner, network]
-  have phases := congrArg (fun state : PhaseRuntimeState (serviceGraph setup .concurrent) =>
-    state.phases) application
-  change second.execution.application.phases = first.execution.application.phases at phases
-  have entry := congrArg (fun state : PhaseRuntimeState (serviceGraph setup .concurrent) =>
-    state.entry.excluded) application
-  change second.execution.application.entry.excluded =
-    first.execution.application.entry.excluded at entry
-  have word (leftMaterial rightMaterial : WitnessedSubmission (serviceGraph setup .concurrent))
-      (leftHandle rightHandle : Handle (serviceGraph setup .concurrent))
-      (leftCall : leftMaterial.call.packet = .commitment event leftHandle)
-      (rightCall : rightMaterial.call.packet = .commitment event rightHandle)
-      (owner : Player) (named : (serviceGraph setup .concurrent).EventId) :
-      ReservedEpoch.ownedAcceptanceWord implementation.runtime implementation.leaks tape
-          (second.execution.respond nativeApplication who ⟨some leftMaterial⟩) owner named ↔
-        ReservedEpoch.ownedAcceptanceWord implementation.runtime implementation.leaks tape
-          (first.execution.respond nativeApplication who ⟨some rightMaterial⟩) owner named := by
-    by_cases focal : owner = who
-    · subst owner
-      exact sourceReplay_focal_sent_word_congr setup implementation second.execution
-        first.execution publicEq service tape who event named actualRequest request
-          leftHandle rightHandle leftMaterial rightMaterial leftCall rightCall
-    · exact (ReservedEpoch.ownedAcceptanceWord_respond_foreign implementation.runtime
-        implementation.leaks tape second.execution who owner focal ⟨some leftMaterial⟩
-          named).trans
-        ((sourceReplay_owned_word_congr setup implementation second.execution first.execution
-          publicEq requests network service outputs tape owner named).trans
-            (ReservedEpoch.ownedAcceptanceWord_respond_foreign implementation.runtime
-              implementation.leaks tape first.execution who owner focal ⟨some rightMaterial⟩
-                named).symm)
-  dsimp only [bindingAdmissionBit]
-  split
-  next actualOffered =>
-    split
-    next originalOffered =>
-      obtain ⟨_leftAvailable, _leftPayload, _leftValue, leftSerial, _leftBinding, leftCall,
-          _leftPrepared⟩ := Classical.choose_spec actualOffered
-      obtain ⟨_rightAvailable, _rightPayload, _rightValue, rightSerial, _rightBinding, rightCall,
-          _rightPrepared⟩ := Classical.choose_spec originalOffered
-      apply decide_eq_decide.mpr
-      rw [phases, entry]
-      apply exists_congr
-      intro phase
-      apply and_congr Iff.rfl
-      apply and_congr Iff.rfl
-      apply forall_congr'
-      intro named
-      apply imp_congr Iff.rfl
-      apply forall_congr'
-      intro owner
-      apply imp_congr Iff.rfl
-      apply imp_congr Iff.rfl
-      exact word (Classical.choose actualOffered) (Classical.choose originalOffered)
-        (who, .prepared leftSerial) (who, .prepared rightSerial) leftCall rightCall owner named
-    next absent =>
-      apply (absent ?_).elim
-      obtain ⟨material, available, proper⟩ := actualOffered
-      exact ⟨material, by simpa only [recalled, observed] using available, proper⟩
-  next absent =>
-    split
-    next originalOffered =>
-      apply (absent ?_).elim
-      obtain ⟨material, available, proper⟩ := originalOffered
-      exact ⟨material, by simpa only [recalled, observed] using available, proper⟩
-    next _ => rfl
-
-private theorem sourceRawReplay_qualified
-    (operational : implementation.Operational)
-    (who : Player) (reference : (nativeApplication).Control)
-    (referenceTrace : (nativeProtocol).Trace (some reference))
-    (event : (serviceGraph setup .concurrent).EventId)
-    (cut : PhaseProposalCanonicalBindingCut setup .concurrent implementation.runtime
-      implementation.leaks implementation.bounds implementation.plan values
-      implementation.horizon implementation.scheduler reference
-      (sourceCutTrace setup implementation referenceTrace) who event)
-    (g : setup.proposalRecoveryProtocol.History)
-    (sourceChoice : setup.proposalRecoveryModel.Choice who
-      (setup.proposalRecoveryModel.infoOf who g.trace))
-    (targetCurrent : CommitRecoveryState setup.program)
-    (targetTrace : setup.proposalRecoveryProtocol.Trace (some targetCurrent))
-    (alignment : SourceReplayAlignment (setup := setup) (values := values)
-      (implementation := implementation) operational who reference referenceTrace event cut g
-        sourceChoice targetCurrent targetTrace)
-    (good : ∀ owner, owner ≠ who →
-      ¬ PhaseProposal.GeneratedUnusableBindingHistory implementation.runtime implementation.leaks
-        implementation.bounds nativeInitial implementation.horizon implementation.scheduler
-          owner ⟨some reference, referenceTrace⟩)
-    (scale nativeBad : Set.Icc (0 : ℝ) 1) (scalePositive : 0 < scale.val)
-    (nativeProfile : ∀ owner, ((nativeMenu).information nativeInitial implementation.horizon
-      implementation.scheduler).BehavioralPolicy owner)
-    (nativePrescribed : nativeProfile = phaseProposalReferenceStrategy setup .concurrent
-      implementation.runtime implementation.leaks implementation.bounds implementation.plan
-        nativeInitial implementation.horizon implementation.scheduler values
-          ⟨nativeBad, scale, scale, scale⟩)
-    (tape : ReservedEpoch.Tape Player implementation.tapeLength)
-    (tapeSupported : prefixTapeLaw setup implementation ⟨some reference, referenceTrace⟩ tape ≠ 0)
-    (admitted : bindingAdmissionBit setup implementation who event
-      ⟨some reference, referenceTrace⟩ tape = true) :
-    ∃ law : SourceRawReplayLaw (setup := setup) (values := values)
-        (implementation := implementation) scale who ⟨some targetCurrent, targetTrace⟩ reference
-          ⟨some reference, referenceTrace⟩,
-      ∀ script ∈ law.choices.support,
-        ∃ actual : ((nativeMenu).information nativeInitial implementation.horizon
-            implementation.scheduler).InformationHistory who
-              (((nativeMenu).information nativeInitial implementation.horizon
-                implementation.scheduler).infoOf who referenceTrace),
-          sourceRawReplay setup implementation who ⟨some targetCurrent, targetTrace⟩ reference
-              ⟨some reference, referenceTrace⟩ script = some actual.val ∧
-          mechanicalWord setup implementation who actual.val.trace =
-            mechanicalWord setup implementation who referenceTrace ∧
-          ((nativeMenu).information nativeInitial implementation.horizon
-            implementation.scheduler).historyReachWeight nativeProfile actual.val ≠ 0 ∧
-          prefixTapeLaw setup implementation actual.val tape ≠ 0 ∧
-          (∀ owner, owner ≠ who →
-            ¬ PhaseProposal.GeneratedUnusableBindingHistory implementation.runtime
-              implementation.leaks implementation.bounds nativeInitial implementation.horizon
-                implementation.scheduler owner actual.val) ∧
-          actual.val.state.elim True (fun control =>
-            who ∉ control.execution.application.current.excluded) ∧
-          bindingAdmissionBit setup implementation who event actual.val tape = true := by
-  classical
-  have full : ∀ owner
-      (site : ((nativeMenu).information nativeInitial implementation.horizon
-        implementation.scheduler).InformationSite owner)
-      (choice : ((nativeMenu).information nativeInitial implementation.horizon
-        implementation.scheduler).Choice owner site.1),
-      choice ∈ (nativeProfile owner site.1).support := by
-    rw [nativePrescribed]
-    exact phaseProposalReferenceStrategy_fullSupport setup .concurrent implementation.runtime
-      implementation.leaks implementation.bounds implementation.plan nativeInitial
-        implementation.horizon implementation.scheduler values ⟨nativeBad, scale, scale, scale⟩
-          scalePositive
-  obtain ⟨law⟩ := sourceRawReplay_law (setup := setup) (values := values)
-    (implementation := implementation) operational who reference referenceTrace event cut g
-      sourceChoice targetCurrent targetTrace alignment good scale
-  refine ⟨law, ?_⟩
-  intro script member
-  obtain ⟨actual, replayed, related, word, actualGood⟩ := law.replayed script member
-  rcases actual with ⟨state, trace⟩
-  cases state with
-  | none => cases related
-  | some control =>
-    obtain ⟨remaining, actor, execution, recalled, observed⟩ := related
-    have active : control.actor = some who := actor.trans cut.active
-    have information : ((nativeMenu).information nativeInitial implementation.horizon
-        implementation.scheduler).infoOf who trace =
-      ((nativeMenu).information nativeInitial implementation.horizon
-        implementation.scheduler).infoOf who referenceTrace := by
-      change ((nativeMenu).signals nativeInitial implementation.horizon
-          implementation.scheduler).infoOf who trace =
-        ((nativeMenu).signals nativeInitial implementation.horizon
-          implementation.scheduler).infoOf who referenceTrace
-      rw [(nativeMenu).info nativeInitial implementation.horizon implementation.scheduler
-        who trace, (nativeMenu).info nativeInitial implementation.horizon
-          implementation.scheduler who referenceTrace]
-      simp only [ReactiveApplication.observe, active, cut.active, ↓reduceIte]
-      exact congrArg some (Prod.ext recalled observed)
-    let selected : ((nativeMenu).information nativeInitial implementation.horizon
-        implementation.scheduler).InformationHistory who
-          (((nativeMenu).information nativeInitial implementation.horizon
-            implementation.scheduler).infoOf who referenceTrace) :=
-      ⟨⟨some control, trace⟩, information⟩
-    refine ⟨selected, replayed, word, ?_, ?_, actualGood, ?_, ?_⟩
-    · exact ne_of_gt (((nativeMenu).information nativeInitial implementation.horizon
-        implementation.scheduler).historyReachWeight_pos_of_fullSupport nativeProfile full
-          selected.val)
-    · have service := congrArg
-        (fun execution : (nativeApplication).Execution => execution.environmentRecall) execution
-      change control.execution.environmentRecall = reference.execution.environmentRecall
-        at service
-      simpa only [selected, prefixTapeLaw, service] using tapeSupported
-    · change who ∉ control.execution.application.current.excluded
-      have application := congrArg (fun execution : (nativeApplication).Execution =>
-        execution.application) execution
-      change control.execution.application = sourceSnapshotAssignment setup implementation
-        ⟨some targetCurrent, targetTrace⟩ reference (rawReplayLost setup implementation script)
-          reference.execution.application at application
-      rw [application]
-      exact cut.request.2.2.2.2
-    · exact (RawReplayState.admission setup implementation who ⟨some targetCurrent, targetTrace⟩
-        reference reference control (rawReplayLost setup implementation script) referenceTrace
-          trace ⟨remaining, actor, execution, recalled, observed⟩ event cut.request tape).trans
-            admitted
-
-/-- The actual trace's behavioral atoms and its transition mass form the
-literal finite-history likelihood, before any source-coordinate partition. -/
-private theorem sourceReplay_native_history_factor
-    (profile : ∀ owner, ((nativeMenu).information nativeInitial implementation.horizon
-      implementation.scheduler).BehavioralPolicy owner)
-    {state : (nativeProtocol).State} (trace : (nativeProtocol).Trace state) :
-    (((nativeMenu).information nativeInitial implementation.horizon
-        implementation.scheduler).historyReachWeight profile ⟨state, trace⟩).toReal =
-      trace.transitionMass *
-        ∏ owner, ((nativeMenu).information nativeInitial implementation.horizon
-          implementation.scheduler).ownPlayReachProbability (profile owner)
-            (((nativeMenu).information nativeInitial implementation.horizon
-              implementation.scheduler).ownPlay owner trace) := by
-  let model := (nativeMenu).information nativeInitial implementation.horizon
-    implementation.scheduler
-  obtain ⟨records, recordsEq, _provenance, chance, _nonnegative, mass, factor⟩ :=
-    model.exists_continuation_ownPlay_factor
-      (Trace.start : (nativeProtocol).Trace (nativeProtocol).init) trace
-        (TracePrefix.start trace)
-  have chanceEq : chance = trace.transitionMass := by
-    simpa only [Trace.transitionMass_start, mul_one] using mass
-  have recordsActual (owner : Player) : records owner = model.ownPlay owner trace := by
-    simpa only [InfoSignals.ownPlay, List.append_nil] using (recordsEq owner).symm
-  have exactFactor := factor profile
-  simp only [Trace.length, Nat.sub_zero, chanceEq, recordsActual] at exactFactor
-  exact exactFactor
-
-/-- One actual command disintegrates against the posterior of the original
-whole tape, including at zero command atoms. -/
-private theorem sourceReplay_scheduler_density
-    (past : List (nativeApplication).EnvironmentEntry)
-    (view : (nativeApplication).EnvironmentView) (command : (nativeApplication).Command)
-    (tape : ReservedEpoch.Tape Player implementation.tapeLength) :
-    implementation.scheduler past view command *
-        ((nativeApplication).schedulerMixture implementation.prior
-          (ReservedEpoch.family implementation.runtime implementation.leaks
-            (ReservedEpoch.packetCapacity implementation.runtime))).posterior
-              (past ++ [⟨view, command⟩]) tape =
-      ((nativeApplication).schedulerMixture implementation.prior
-          (ReservedEpoch.family implementation.runtime implementation.leaks
-            (ReservedEpoch.packetCapacity implementation.runtime))).posterior past tape *
-        ReservedEpoch.family implementation.runtime implementation.leaks
-          (ReservedEpoch.packetCapacity implementation.runtime) tape past view command := by
-  let mixture := (nativeApplication).schedulerMixture implementation.prior
-    (ReservedEpoch.family implementation.runtime implementation.leaks
-      (ReservedEpoch.packetCapacity implementation.runtime))
-  let joint := (mixture.posterior past).bind fun selected =>
-    mixture.respond selected (past, view)
-  have marginal : joint.map Prod.fst = implementation.scheduler past view := rfl
-  have density := mul_fiberPosterior_map_snd_apply joint command tape
-  rw [marginal] at density
-  have atom : joint (command, tape) = mixture.posterior past tape *
-      ReservedEpoch.family implementation.runtime implementation.leaks
-        (ReservedEpoch.packetCapacity implementation.runtime) tape past view command := by
-    exact bind_map_tag_apply (mixture.posterior past)
-      (fun selected => ReservedEpoch.family implementation.runtime implementation.leaks
-        (ReservedEpoch.packetCapacity implementation.runtime) selected past view) command tape
-  change implementation.scheduler past view command *
-      mixture.posterior (past ++ [⟨view, command⟩]) tape = _
-  rw [ReactiveApplication.SchedulerImplementation.posterior_snoc]
-  exact density.trans atom
-
-/-- Evaluate the existing transition kernel on the actual recorded path with
-the original whole tape fixed. No new trace or support totalization is used. -/
-private def sourceReplayFixedTransitionMass
-    (tape : ReservedEpoch.Tape Player implementation.tapeLength) :
-    ∀ {state : (nativeProtocol).State}, (nativeProtocol).Trace state → ℝ
-  | _, .start => 1
-  | after, @Trace.extend _ _ before _ prior joint _ _ =>
-      sourceReplayFixedTransitionMass tape prior *
-        ((nativeApplication).transition nativeInitial implementation.horizon
-          (ReservedEpoch.family implementation.runtime implementation.leaks
-            (ReservedEpoch.packetCapacity implementation.runtime) tape) before joint after).toReal
-
-private theorem sourceReplay_tape_step_density
-    (tape : ReservedEpoch.Tape Player implementation.tapeLength)
-    {before after : (nativeProtocol).State} (prior : (nativeProtocol).Trace before)
-    (joint : Player → Option (nativeApplication).Action)
-    (legal : (nativeProtocol).Legal before joint)
-    (moved : after ∈ ((nativeProtocol).step before ⟨joint, legal⟩).support) :
-    ((nativeProtocol).step before ⟨joint, legal⟩) after *
-        prefixTapeLaw setup implementation ⟨after, prior.extend joint legal moved⟩ tape =
-      prefixTapeLaw setup implementation ⟨before, prior⟩ tape *
-        (nativeApplication).transition nativeInitial implementation.horizon
-          (ReservedEpoch.family implementation.runtime implementation.leaks
-            (ReservedEpoch.packetCapacity implementation.runtime) tape) before joint after := by
-  cases before with
-  | none =>
-    change after ∈ ((nativeInitial).map fun state =>
-      some (⟨implementation.horizon, none,
-        ReactiveApplication.Execution.initial nativeApplication state⟩ :
-          (nativeApplication).Control)).support at moved
-    obtain ⟨state, _supported, rfl⟩ := PMF.support_map .. ▸ moved
-    change _ * implementation.prior tape = implementation.prior tape * _
-    exact mul_comm _ _
-  | some control =>
-    rcases control with ⟨remaining, actor, execution⟩
-    cases actor with
-    | some owner =>
-      change after ∈ (PMF.pure (some (⟨remaining, none,
-        execution.respond nativeApplication owner ((joint owner).getD ⟨none⟩)⟩ :
-          (nativeApplication).Control))).support at moved
-      cases (PMF.mem_support_pure_iff ..).mp moved
-      simp only [ReactiveApplication.ResponseMenu.protocol, ReactiveApplication.transition,
-        PMF.pure_apply, ↓reduceIte, prefixTapeLaw,
-        ReactiveApplication.respond_environmentRecall, one_mul, mul_one]
-    | none =>
-      cases remaining with
-      | zero => exact (legal.1 ⟨rfl, rfl⟩).elim
-      | succ remaining =>
-        change after ∈ ((implementation.scheduler execution.environmentRecall
-          (execution.observeEnvironment nativeApplication)).bind fun command =>
-            (execution.environmentStep nativeApplication command).map fun next =>
-              some (⟨remaining, command.actor? nativeApplication, next⟩ :
-                (nativeApplication).Control)).support at moved
-        obtain ⟨command, _chosen, supported⟩ :=
-          Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ moved)
-        obtain ⟨next, advanced, rfl⟩ := PMF.support_map .. ▸ supported
-        change (nativeApplication).transition nativeInitial implementation.horizon
-          implementation.scheduler (some ⟨remaining + 1, none, execution⟩) joint
-            (some ⟨remaining, command.actor? nativeApplication, next⟩) * _ = _
-        rw [(nativeApplication).transition_environment_apply nativeInitial
-            implementation.horizon implementation.scheduler remaining execution next command
-              advanced joint,
-          (nativeApplication).transition_environment_apply nativeInitial
-            implementation.horizon
-              (ReservedEpoch.family implementation.runtime implementation.leaks
-                (ReservedEpoch.packetCapacity implementation.runtime) tape) remaining execution
-                  next command advanced joint]
-        have recorded := (nativeApplication).environmentStep_environmentRecall execution next
-          command advanced
-        simp only [prefixTapeLaw, recorded]
-        have density := sourceReplay_scheduler_density setup implementation
-          execution.environmentRecall (execution.observeEnvironment nativeApplication) command tape
-        let mixture := (nativeApplication).schedulerMixture implementation.prior
-          (ReservedEpoch.family implementation.runtime implementation.leaks
-            (ReservedEpoch.packetCapacity implementation.runtime))
-        calc
-          _ = (implementation.scheduler execution.environmentRecall
-              (execution.observeEnvironment nativeApplication) command *
-                mixture.posterior (execution.environmentRecall ++
-                  [⟨execution.observeEnvironment nativeApplication, command⟩]) tape) *
-                    (execution.environmentStep nativeApplication command) next := by ac_rfl
-          _ = _ := by rw [density]; ac_rfl
-
-/-- The original tape posterior telescopes along the actual trace. All
-initializer and public Nature atoms stay in the fixed-tape transition product. -/
-private theorem sourceReplay_transition_tape_factor
-    (tape : ReservedEpoch.Tape Player implementation.tapeLength)
-    {state : (nativeProtocol).State} (trace : (nativeProtocol).Trace state) :
-    trace.transitionMass * (prefixTapeLaw setup implementation ⟨state, trace⟩ tape).toReal =
-      (implementation.prior tape).toReal *
-        sourceReplayFixedTransitionMass setup implementation tape trace := by
-  induction trace with
-  | start =>
-    change 1 * (implementation.prior tape).toReal = (implementation.prior tape).toReal * 1
-    ring
-  | @extend before after prior joint legal moved ih =>
-    have density := congrArg ENNReal.toReal
-      (sourceReplay_tape_step_density setup implementation tape prior joint legal moved)
-    simp only [ENNReal.toReal_mul] at density
-    rw [Trace.transitionMass_extend, sourceReplayFixedTransitionMass]
-    calc
-      _ = prior.transitionMass * _ := by ring
-      _ = prior.transitionMass *
-          ((prefixTapeLaw setup implementation ⟨before, prior⟩ tape).toReal * _) :=
-            congrArg (prior.transitionMass * ·) density
-      _ = _ := by rw [← mul_assoc, ih]; ring
-
-/-- Literal native reach with its original whole tape is the fixed-tape
-Nature product times every actual own-response product. -/
-private theorem sourceReplay_native_tape_factor
-    (profile : ∀ owner, ((nativeMenu).information nativeInitial implementation.horizon
-      implementation.scheduler).BehavioralPolicy owner)
-    (tape : ReservedEpoch.Tape Player implementation.tapeLength)
-    {state : (nativeProtocol).State} (trace : (nativeProtocol).Trace state) :
-    (((nativeMenu).information nativeInitial implementation.horizon
-        implementation.scheduler).historyReachWeight profile ⟨state, trace⟩).toReal *
-          (prefixTapeLaw setup implementation ⟨state, trace⟩ tape).toReal =
-      (implementation.prior tape).toReal *
-        sourceReplayFixedTransitionMass setup implementation tape trace *
-          ∏ owner, ((nativeMenu).information nativeInitial implementation.horizon
-            implementation.scheduler).ownPlayReachProbability (profile owner)
-              (((nativeMenu).information nativeInitial implementation.horizon
-                implementation.scheduler).ownPlay owner trace) := by
-  rw [sourceReplay_native_history_factor setup implementation profile trace]
-  let own := ∏ owner, ((nativeMenu).information nativeInitial implementation.horizon
-    implementation.scheduler).ownPlayReachProbability (profile owner)
-      (((nativeMenu).information nativeInitial implementation.horizon
-        implementation.scheduler).ownPlay owner trace)
-  change (trace.transitionMass * own) *
-    (prefixTapeLaw setup implementation ⟨state, trace⟩ tape).toReal =
-      (implementation.prior tape).toReal *
-        sourceReplayFixedTransitionMass setup implementation tape trace * own
-  calc
-    _ = (trace.transitionMass *
-        (prefixTapeLaw setup implementation ⟨state, trace⟩ tape).toReal) * own := by ring
-    _ = _ := by rw [sourceReplay_transition_tape_factor setup implementation tape trace]
-
-/-- Menu restriction preserves the literal product of reference-response atoms
-at every original private input on the actual native trace. -/
-private theorem sourceReplay_prescribed_own_atom
-    (rates : PhaseProposalRates) (owner : Player) (control : (nativeApplication).Control)
-    (trace : (nativeProtocol).Trace (some control)) :
-    ((nativeMenu).information nativeInitial implementation.horizon
-        implementation.scheduler).ownPlayReachProbability
-      (phaseProposalReferenceStrategy setup .concurrent implementation.runtime implementation.leaks
-        implementation.bounds implementation.plan nativeInitial implementation.horizon
-          implementation.scheduler values rates owner)
-      (((nativeMenu).information nativeInitial implementation.horizon
-        implementation.scheduler).ownPlay owner trace) =
-      (((nativeApplication).privateTranscriptFrom [] (control.execution.recall owner)).map
-        (fun record => phaseProposalReferencePolicy setup .concurrent implementation.runtime
-          implementation.leaks implementation.bounds implementation.plan values rates owner
-            record.1.1 record.1.2 record.2)).prod.toReal := by
-  have own : ((nativeMenu).information nativeInitial implementation.horizon
-        implementation.scheduler).ownPlay owner trace =
-      (nativeApplication).recallOwnPlay (control.execution.recall owner) := by
-    change ((nativeMenu).signals nativeInitial implementation.horizon
-      implementation.scheduler).ownPlay owner trace = _
-    rw [← (nativeMenu).ownPlay_toRawTrace nativeInitial implementation.horizon
-      implementation.scheduler owner trace, (nativeApplication).trace_ownPlay]
-    rfl
-  rw [own]
-  exact (nativeMenu).ownPlayFrom_restrictPolicy nativeInitial implementation.horizon
-    implementation.scheduler owner
-      (phaseProposalReferencePolicy setup .concurrent implementation.runtime implementation.leaks
-        implementation.bounds implementation.plan values rates owner)
-      (fun past view response supported => phaseProposalReferencePolicy_covered setup .concurrent
-        implementation.runtime implementation.leaks implementation.bounds implementation.plan
-          values rates owner past view response supported) [] (control.execution.recall owner)
-
-/-- The prescribed native atom retains the whole initial law, original tape,
-public Nature and each literal response probability at its actual input. -/
-private theorem sourceReplay_prescribed_native_atom
-    (rates : PhaseProposalRates)
-    (tape : ReservedEpoch.Tape Player implementation.tapeLength)
-    (control : (nativeApplication).Control)
-    (trace : (nativeProtocol).Trace (some control)) :
-    (((nativeMenu).information nativeInitial implementation.horizon
-        implementation.scheduler).historyReachWeight
-      (phaseProposalReferenceStrategy setup .concurrent implementation.runtime implementation.leaks
-        implementation.bounds implementation.plan nativeInitial implementation.horizon
-          implementation.scheduler values rates) ⟨some control, trace⟩).toReal *
-            (prefixTapeLaw setup implementation ⟨some control, trace⟩ tape).toReal =
-      (implementation.prior tape).toReal *
-        sourceReplayFixedTransitionMass setup implementation tape trace *
-          ∏ owner, (((nativeApplication).privateTranscriptFrom []
-            (control.execution.recall owner)).map (fun record =>
-              phaseProposalReferencePolicy setup .concurrent implementation.runtime
-                implementation.leaks implementation.bounds implementation.plan values rates owner
-                  record.1.1 record.1.2 record.2)).prod.toReal := by
-  rw [sourceReplay_native_tape_factor setup implementation
-    (phaseProposalReferenceStrategy setup .concurrent implementation.runtime implementation.leaks
-      implementation.bounds implementation.plan nativeInitial implementation.horizon
-        implementation.scheduler values rates) tape trace]
-  apply congrArg (fun product => (implementation.prior tape).toReal *
-    sourceReplayFixedTransitionMass setup implementation tape trace * product)
-  exact Finset.prod_congr rfl fun owner _ =>
-    sourceReplay_prescribed_own_atom setup values implementation rates owner control trace
-
-/-- At an actual counted input, the physical response atom separates into
-its genuine class atom and the literal alias-script atom at that same input. -/
-private theorem sourceReplay_counted_response_atom
-    (operational : implementation.Operational)
-    (fullValues : ∀ owner key, FullSupport (values owner key))
-    (rates : PhaseProposalRates) (waitPositive : 0 < rates.waiting.val)
-    (waitBelow : rates.waiting.val < 1) (slotPositive : 0 < rates.slots.val)
-    (badPositive : 0 < rates.badPreparation.val) (badBelow : rates.badPreparation.val < 1)
-    (remaining : Nat) (owner : Player) (execution : (nativeApplication).Execution)
-    (trace : (nativeProtocol).Trace (some ⟨remaining, some owner, execution⟩))
-    (tag : Option (Handle (serviceGraph setup .concurrent) × Raw L))
-    (response : PhaseProposal.Response implementation.runtime implementation.leaks
-      implementation.bounds owner (execution.recall owner)
-        (execution.observe nativeApplication owner)) :
-    phaseProposalReferencePolicy setup .concurrent implementation.runtime implementation.leaks
-        implementation.bounds implementation.plan values rates owner (execution.recall owner)
-          (execution.observe nativeApplication owner) response.val =
-      phaseProposalBaseClasses setup .concurrent implementation.runtime implementation.leaks
-          implementation.bounds implementation.plan values rates owner (execution.recall owner)
-            (execution.observe nativeApplication owner)
-              (PhaseProposal.projectResponse implementation.runtime implementation.leaks
-                implementation.bounds owner (execution.recall owner)
-                  (execution.observe nativeApplication owner) response) *
-        sourceReplayAliases setup implementation rates.aliases owner execution tag
-          (PhaseProposal.projectResponse implementation.runtime implementation.leaks
-            implementation.bounds owner (execution.recall owner)
-              (execution.observe nativeApplication owner) response) (tag, some response.val) := by
-  classical
-  unfold phaseProposalReferencePolicy
-  rw [pmf_map_apply_of_injective _ Subtype.val_injective response]
-  unfold phaseProposalReferenceResponses PhaseProposal.splitResponseLaw
-  rw [phaseProposalReferenceClasses_eq_of_counted setup .concurrent implementation.runtime
-    implementation.leaks implementation.bounds implementation.plan operational.completePending
-      operational.outputValues operational.maximalPhases values fullValues rates waitPositive
-        waitBelow slotPositive badPositive badBelow implementation.horizon implementation.scheduler
-          remaining owner execution trace]
-  rw [sourceReplayAliases_atom setup implementation rates.aliases owner execution tag _ response]
-  exact bind_apply_of_unique_branch _ _ response
-    (PhaseProposal.projectResponse implementation.runtime implementation.leaks
-      implementation.bounds owner (execution.recall owner)
-        (execution.observe nativeApplication owner) response)
-    (fun selected _ supported => (PMF.splitKernel_supported _ _ _ _ _ _ selected response
-      supported).symm)
-
-/-- A silent or noncommitment packet has no hidden preparation coordinate.
-Its genuine class atom is exactly its mechanical packet atom, and its private
-syntax contributes the alias atom at the actual counted input. -/
-private theorem sourceReplay_noncommit_response_atom
-    (operational : implementation.Operational)
-    (fullValues : ∀ owner key, FullSupport (values owner key))
-    (rates : PhaseProposalRates) (waitPositive : 0 < rates.waiting.val)
-    (waitBelow : rates.waiting.val < 1) (slotPositive : 0 < rates.slots.val)
-    (badPositive : 0 < rates.badPreparation.val) (badBelow : rates.badPreparation.val < 1)
-    (remaining : Nat) (owner : Player) (execution : (nativeApplication).Execution)
-    (trace : (nativeProtocol).Trace (some ⟨remaining, some owner, execution⟩))
-    (tag : Option (Handle (serviceGraph setup .concurrent) × Raw L))
-    (response : PhaseProposal.Response implementation.runtime implementation.leaks
-      implementation.bounds owner (execution.recall owner)
-        (execution.observe nativeApplication owner))
-    (noncommit : ∀ material, response.val.transmission = some material →
-      ∀ event handle, material.call.packet ≠ .commitment event handle) :
-    phaseProposalReferencePolicy setup .concurrent implementation.runtime implementation.leaks
-        implementation.bounds implementation.plan values rates owner (execution.recall owner)
-          (execution.observe nativeApplication owner) response.val =
-      foreignMechanicalAtom setup implementation rates execution owner response.val *
-        sourceReplayAliases setup implementation rates.aliases owner execution tag
-          (PhaseProposal.projectResponse implementation.runtime implementation.leaks
-            implementation.bounds owner (execution.recall owner)
-              (execution.observe nativeApplication owner) response) (tag, some response.val) := by
-  classical
-  let past := execution.recall owner
-  let view := execution.observe nativeApplication owner
-  let packet := fun action : (nativeApplication).Action => action.transmission.map
-    (fun material => (PhaseCount.localEnvelope implementation.runtime implementation.leaks
-      owner past view material).payload)
-  let project := PhaseProposal.projectResponse implementation.runtime implementation.leaks
-    implementation.bounds owner past view
-  let classes := phaseProposalBaseClasses setup .concurrent implementation.runtime
-    implementation.leaks implementation.bounds implementation.plan values rates owner past view
-  have preparation (action : (nativeApplication).Action)
-      (same : packet action = packet response.val) :
-      action.transmission.bind PhaseProposal.bindingPreparation = none := by
-    cases transmitted : action.transmission with
-    | none => simp only [Option.bind_none]
-    | some material =>
-        cases original : response.val.transmission with
-        | none =>
-            simp only [packet, transmitted, original, Option.map_some, Option.map_none,
-              reduceCtorEq] at same
-        | some fixed =>
-            have calls := congrArg (fun selected => selected.map
-              (fun entry : CommitAttemptPacket (serviceGraph setup .concurrent) =>
-                entry.packet.call)) same
-            have call : material.call.packet = fixed.call.packet := by
-              simpa only [packet, transmitted, original, Option.map_some,
-                PhaseCount.localEnvelope, PhaseCount.maskPacket_call, Option.some.injEq]
-                using calls
-            cases shape : material.call.packet with
-            | commitment event handle =>
-                exact False.elim (noncommit fixed original event handle (call.symm.trans shape))
-            | opening event handle raw =>
-                simp only [Option.bind_some, PhaseProposal.bindingPreparation, shape]
-            | malformed raw =>
-                simp only [Option.bind_some, PhaseProposal.bindingPreparation, shape]
-  have unique (selected : PhaseProposal.ResponseClass implementation.runtime
-      implementation.leaks implementation.bounds owner past view)
-      (same : selected.val.2 = (project response).val.2) : selected = project response := by
-    obtain ⟨other, represented⟩ := selected.property
-    have packets := same
-    rw [← represented] at packets
-    change packet other.val = packet response.val at packets
-    apply Subtype.ext
-    rw [← represented]
-    apply Prod.ext
-    · exact (preparation other.val packets).trans
-        (preparation response.val rfl).symm
-    · exact packets
-  have classAtom : (classes.map fun selected => selected.val.2) (project response).val.2 =
-      classes (project response) := by
-    rw [← pmf_bind_pure_eq_map,
-      bind_apply_of_unique_branch classes (fun selected => PMF.pure selected.val.2)
-        (project response).val.2 (project response)]
-    · rw [PMF.pure_apply_self, mul_one]
-    · intro selected _ supported
-      exact unique selected ((PMF.mem_support_pure_iff ..).mp supported).symm
-  have marginal : (classes.map fun selected => selected.val.2) =
-      (phaseProposalBasePolicy setup .concurrent implementation.runtime implementation.leaks
-        implementation.bounds implementation.plan values rates owner past view).map packet := by
-    dsimp only [classes]
-    rw [phaseProposalBaseClasses, PMF.map_comp,
-      ← phaseProposalBaseResponses_map_val setup .concurrent implementation.runtime
-        implementation.leaks implementation.bounds implementation.plan values rates owner
-          past view, PMF.map_comp]
-    rfl
-  have mechanical : foreignMechanicalAtom setup implementation rates execution owner response.val =
-      classes (project response) := by
-    dsimp only [foreignMechanicalAtom]
-    rw [mechanicalForeignPolicy_packet_eq_base setup values implementation, ← marginal]
-    change (classes.map fun selected => selected.val.2) (project response).val.2 * _ = _
-    rw [classAtom]
-    cases transmitted : response.val.transmission with
-    | none => simp only [mul_one]
-    | some material =>
-        cases shape : material.call.packet with
-        | commitment event handle => exact (noncommit material transmitted event handle shape).elim
-        | opening event handle raw => simp only [shape, mul_one]
-        | malformed raw => simp only [shape, mul_one]
-  rw [sourceReplay_counted_response_atom setup values implementation operational fullValues rates
-    waitPositive waitBelow slotPositive badPositive badBelow remaining owner execution trace tag
-      response, mechanical]
-
-/-- One actual proper foreign response charges its mapped ordinary draw once;
-the preparation flag stays inside the mechanical atom and the alias stays at
-the actual reconstructed input. -/
-private theorem sourceReplay_proper_response_atom
-    (operational : implementation.Operational)
-    (fullValues : ∀ owner key, FullSupport (values owner key))
-    (rates : PhaseProposalRates) (waitPositive : 0 < rates.waiting.val)
-    (waitBelow : rates.waiting.val < 1) (slotPositive : 0 < rates.slots.val)
-    (badPositive : 0 < rates.badPreparation.val) (badBelow : rates.badPreparation.val < 1)
-    (remaining : Nat) (owner : Player) (execution : (nativeApplication).Execution)
-    (trace : (nativeProtocol).Trace (some ⟨remaining, some owner, execution⟩))
-    (event : (serviceGraph setup .concurrent).EventId) (payload : L.Ty)
-    (binding : (serviceGraph setup .concurrent).outputLayout event = .binding owner payload)
-    (request : execution.application.SeedRequest owner ⟨execution.application.attempt, event⟩)
-    (key : setup.ProposalRecoveryComponent owner)
-    (query : phaseProposalQuery? setup .concurrent implementation.runtime implementation.leaks
-      implementation.plan owner event (execution.recall owner)
-        (execution.observe nativeApplication owner) = some key)
-    (response : PhaseProposal.Response implementation.runtime implementation.leaks
-      implementation.bounds owner (execution.recall owner)
-        (execution.observe nativeApplication owner))
-    (material : WitnessedSubmission (serviceGraph setup .concurrent))
-    (sent : response.val.transmission = some material)
-    (value : L.Val payload)
-    (prepared : PhaseProposal.bindingPreparation material = some (⟨payload, value⟩ : Raw L))
-    (serial : Nat) (packet : material.call.packet = .commitment event (owner, .prepared serial))
-    (tag : Option (Handle (serviceGraph setup .concurrent) × Raw L)) :
-    phaseProposalReferencePolicy setup .concurrent implementation.runtime implementation.leaks
-        implementation.bounds implementation.plan values rates owner (execution.recall owner)
-          (execution.observe nativeApplication owner) response.val =
-      foreignMechanicalAtom setup implementation rates execution owner response.val *
-        ((values owner key).map (fun choice => phaseRecoveryDomainValue setup .concurrent event
-          owner payload binding choice.val.val)) value *
-        sourceReplayAliases setup implementation rates.aliases owner execution tag
-          (PhaseProposal.projectResponse implementation.runtime implementation.leaks
-            implementation.bounds owner (execution.recall owner)
-              (execution.observe nativeApplication owner) response) (tag, some response.val) := by
-  unfold phaseProposalReferencePolicy
-  rw [pmf_map_apply_of_injective _ Subtype.val_injective response,
-    foreign_binding_response_atom setup values implementation operational fullValues rates
-      waitPositive waitBelow slotPositive badPositive badBelow remaining owner execution trace event
-        payload binding request key query response material sent value prepared serial packet,
-    sourceReplayAliases_atom setup implementation rates.aliases owner execution tag _ response]
-
-/-- A proper counted SEND supplies its genuine typed query and its literal
-draw atom at that actual input. Neither is an additional ledger premise. -/
-private theorem sourceReplay_proper_callback_atom
-    (operational : implementation.Operational)
-    (fullValues : ∀ owner key, FullSupport (values owner key))
-    (rates : PhaseProposalRates) (waitPositive : 0 < rates.waiting.val)
-    (waitBelow : rates.waiting.val < 1) (slotPositive : 0 < rates.slots.val)
-    (badPositive : 0 < rates.badPreparation.val) (badBelow : rates.badPreparation.val < 1)
-    (remaining : Nat) (owner : Player) (execution : (nativeApplication).Execution)
-    (trace : (nativeProtocol).Trace (some ⟨remaining, some owner, execution⟩))
-    (response : PhaseProposal.Response implementation.runtime implementation.leaks
-      implementation.bounds owner (execution.recall owner)
-        (execution.observe nativeApplication owner))
-    (clean : ¬ PhaseProposal.GeneratedUnusableBindingAction implementation.runtime
-      implementation.leaks owner response.val)
-    (material : WitnessedSubmission (serviceGraph setup .concurrent))
-    (sent : response.val.transmission = some material)
-    (event : (serviceGraph setup .concurrent).EventId)
-    (handle : Handle (serviceGraph setup .concurrent))
-    (packet : material.call.packet = .commitment event handle)
-    (tag : Option (Handle (serviceGraph setup .concurrent) × Raw L)) :
-    ∃ (payload : L.Ty)
-      (binding : (serviceGraph setup .concurrent).outputLayout event = .binding owner payload)
-      (key : setup.ProposalRecoveryComponent owner) (serial : Nat) (value : L.Val payload),
-      handle = (owner, .prepared serial) ∧
-      execution.application.SeedRequest owner ⟨execution.application.attempt, event⟩ ∧
-      phaseProposalQuery? setup .concurrent implementation.runtime implementation.leaks
-        implementation.plan owner event (execution.recall owner)
-          (execution.observe nativeApplication owner) = some key ∧
-      PhaseProposal.bindingPreparation material = some (⟨payload, value⟩ : Raw L) ∧
-      phaseProposalReferencePolicy setup .concurrent implementation.runtime implementation.leaks
-          implementation.bounds implementation.plan values rates owner (execution.recall owner)
-            (execution.observe nativeApplication owner) response.val =
-        foreignMechanicalAtom setup implementation rates execution owner response.val *
-          ((values owner key).map (fun choice => phaseRecoveryDomainValue setup .concurrent event
-            owner payload binding choice.val.val)) value *
-          sourceReplayAliases setup implementation rates.aliases owner execution tag
-            (PhaseProposal.projectResponse implementation.runtime implementation.leaks
-              implementation.bounds owner (execution.recall owner)
-                (execution.observe nativeApplication owner) response) (tag, some response.val) := by
-  classical
-  have action : response.val = (⟨some material⟩ : (nativeApplication).Action) :=
-    congrArg (fun selected => (⟨selected⟩ : (nativeApplication).Action)) sent
-  have available : (⟨some material⟩ : (nativeApplication).Action) ∈
-      PhaseCount.onePacketActions implementation.runtime implementation.leaks
-        implementation.bounds owner (execution.recall owner)
-          (execution.observe nativeApplication owner) := action ▸ response.property
-  have initialEq : (setup.initialLaw.map encodeInputs).map
-      (PhaseRuntimeState.initial implementation.plan) = nativeInitial := PMF.map_comp _ _ _
-  have counted : ((nativeMenu).protocol
-      ((setup.initialLaw.map encodeInputs).map (PhaseRuntimeState.initial implementation.plan))
-        implementation.horizon implementation.scheduler).Trace
-          (some ⟨remaining, some owner, execution⟩) := by
-    rw [initialEq]
-    exact trace
-  obtain ⟨coordinate, requested⟩ := PhaseCount.onePacket_request_of_nonsilent
-    implementation.runtime implementation.leaks implementation.bounds implementation.plan
-      (setup.initialLaw.map encodeInputs) implementation.horizon implementation.scheduler
-        remaining owner execution counted material available
-  have named := PhaseCount.onePacket_event_of_request implementation.runtime implementation.leaks
-    implementation.bounds implementation.plan (serviceGraph_revealRelaxedOrdered setup .concurrent)
-      (setup.initialLaw.map encodeInputs) implementation.horizon implementation.scheduler
-        remaining owner execution counted coordinate requested material available
-  rw [packet] at named
-  have eventEq : coordinate.event = event := Option.some.inj named.symm
-  have request := requested
-  change execution.application.SeedRequest owner ⟨coordinate.attempt, coordinate.event⟩ at request
-  rw [requested.1, eventEq] at request
-  have permitted : PhaseCount.permits ((nativeApplication).outputs (execution.recall owner))
-      (PhaseCount.localEnvelope implementation.runtime implementation.leaks owner
-        (execution.recall owner) (execution.observe nativeApplication owner) material) = true := by
-    rcases ((PhaseCount.mem_onePacketActions implementation.runtime implementation.leaks
-      implementation.bounds owner _ _ _).mp available).2 with impossible |
-        ⟨other, same, permitted⟩
-    · cases impossible
-    · cases Option.some.inj same
-      exact permitted
-  have correct := ((PhaseCount.permits_eq_true_iff _ _).mp permitted).2.1
-  have call : (PhaseCount.nativeMessage (PhaseCount.localEnvelope implementation.runtime
-      implementation.leaks owner (execution.recall owner)
-        (execution.observe nativeApplication owner) material)).payload.call =
-      material.call.packet := PhaseCount.maskPacket_call _ _
-  unfold CountCallCorrect at correct
-  rw [call, packet] at correct
-  obtain ⟨owned, _evidence, handleOwned, ⟨serial, slot⟩, _unused⟩ := correct
-  change handle.1 = owner at handleOwned
-  have handleEq : handle = (owner, .prepared serial) := Prod.ext handleOwned slot
-  have owned' : bindingOwnedBy (serviceGraph setup .concurrent) owner event = true := owned
-  obtain ⟨payload, binding⟩ : ∃ payload,
-      (serviceGraph setup .concurrent).outputLayout event = .binding owner payload := by
-    cases output : (serviceGraph setup .concurrent).outputLayout event with
-    | binding actor payload =>
-        have same : actor = owner := by
-          simpa only [bindingOwnedBy, output, decide_eq_true_eq] using owned'
-        subst actor
-        exact ⟨payload, rfl⟩
-    | publicData payload => simp only [bindingOwnedBy, output, Bool.false_eq_true] at owned'
-    | privateInput actor payload =>
-        simp only [bindingOwnedBy, output, Bool.false_eq_true] at owned'
-    | publication payload => simp only [bindingOwnedBy, output, Bool.false_eq_true] at owned'
-  have shape : response.val =
-      (⟨some ⟨⟨.commitment event (owner, .prepared serial), material.call.opening⟩,
-        material.evidence⟩⟩ : (nativeApplication).Action) := by
-    rw [← handleEq, ← packet]
-    exact action
-  have usable : material.call.opening.bind (fun raw => raw.as? payload) ≠ none := by
-    intro missing
-    exact clean ⟨event, payload, serial, material.call.opening, material.evidence, binding,
-      shape, missing⟩
-  obtain ⟨value, decoded⟩ := Option.ne_none_iff_exists'.mp usable
-  have prepared : PhaseProposal.bindingPreparation material =
-      some (⟨payload, value⟩ : Raw L) := by
-    simp only [PhaseProposal.bindingPreparation, packet, binding, decoded, Option.map_some]
-  have rawTrace := (nativeMenu).toRawTrace nativeInitial implementation.horizon
-    implementation.scheduler trace
-  obtain ⟨key, query, _positive⟩ := phaseProposalDomainValues_fullSupport_of_binding setup
-    .concurrent implementation.runtime implementation.leaks operational.completePending
-      implementation.plan operational.maximalPhases values fullValues implementation.horizon
-        implementation.scheduler rawTrace owner rfl event payload binding request
-  refine ⟨payload, binding, key, serial, value, handleEq, request, query, prepared, ?_⟩
-  exact sourceReplay_proper_response_atom setup values implementation operational fullValues rates
-    waitPositive waitBelow slotPositive badPositive badBelow remaining owner execution trace event
-      payload binding request key query response material sent value prepared serial
-        (packet.trans (congrArg (Payload.commitment event) handleEq)) tag
-
-/-- The literal initializer and public Nature probability at an actual row.
-Scheduler and behavioral response probabilities are excluded. -/
-private def sourceReplayNatureStepAtom
-    (before after : (nativeProtocol).State) : ℝ≥0∞ :=
-  match before with
-  | none => (nativeApplication).transition nativeInitial implementation.horizon
-      implementation.scheduler none (fun _ => none) after
-  | some control => match control.actor with
-    | some _ => 1
-    | none => if control.remaining = 0 then 1 else
-        match after with
-        | none => 0
-        | some next => match next.execution.environmentRecall.getLast? with
-          | none => 0
-          | some entry => (control.execution.environmentStep nativeApplication entry.command)
-              next.execution
-
-/-- The physical foreign-packet factors in the original chronological trace. -/
-private def sourceReplayPacketStepAtom (rates : PhaseProposalRates) (who : Player)
-    (before : (nativeProtocol).State) (joint : Player → Option (nativeApplication).Action) :
-    ℝ≥0∞ :=
-  match before with
-  | none => 1
-  | some control => match control.actor with
-    | none => 1
-    | some owner => if owner = who then 1 else
-        match joint owner with
-        | none => 0
-        | some response => foreignMechanicalAtom setup implementation rates control.execution
-            owner response
-
-private theorem sourceReplay_mechanical_step_factor
-    (rates : PhaseProposalRates) (who : Player)
-    (tape : ReservedEpoch.Tape Player implementation.tapeLength)
-    {before after : (nativeProtocol).State} (joint : Player → Option (nativeApplication).Action)
-    (legal : (nativeProtocol).Legal before joint)
-    (moved : after ∈ ((nativeProtocol).step before ⟨joint, legal⟩).support) :
-    (nativeApplication).transition nativeInitial implementation.horizon
-        (ReservedEpoch.family implementation.runtime implementation.leaks
-          (ReservedEpoch.packetCapacity implementation.runtime) tape) before joint after *
-      sourceReplayPacketStepAtom setup implementation rates who before joint =
-    sourceReplayNatureStepAtom setup implementation before after *
-      mechanicalStepAtom setup implementation rates who tape before after joint := by
-  cases before with
-  | none =>
-    simp only [sourceReplayPacketStepAtom, sourceReplayNatureStepAtom, mechanicalStepAtom,
-      ReactiveApplication.transition, mul_one]
-  | some control =>
-    rcases control with ⟨remaining, actor, execution⟩
-    cases actor with
-    | some owner =>
-      change after ∈ (PMF.pure (some (⟨remaining, none,
-        execution.respond nativeApplication owner ((joint owner).getD ⟨none⟩)⟩ :
-          (nativeApplication).Control))).support at moved
-      cases (PMF.mem_support_pure_iff ..).mp moved
-      simp only [ReactiveApplication.transition, PMF.pure_apply_self,
-        sourceReplayPacketStepAtom, sourceReplayNatureStepAtom, mechanicalStepAtom, one_mul]
-      cases joint owner <;> rfl
-    | none =>
-      cases remaining with
-      | zero => exact (legal.1 ⟨rfl, rfl⟩).elim
-      | succ remaining =>
-        change after ∈ ((implementation.scheduler execution.environmentRecall
-          (execution.observeEnvironment nativeApplication)).bind fun command =>
-            (execution.environmentStep nativeApplication command).map fun next =>
-              some (⟨remaining, command.actor? nativeApplication, next⟩ :
-                (nativeApplication).Control)).support at moved
-        obtain ⟨command, _selected, supported⟩ :=
-          Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ moved)
-        obtain ⟨next, advanced, rfl⟩ := PMF.support_map .. ▸ supported
-        have recorded := (nativeApplication).environmentStep_environmentRecall execution next
-          command advanced
-        have last : next.environmentRecall.getLast? =
-            some ⟨execution.observeEnvironment nativeApplication, command⟩ := by
-          rw [recorded, List.getLast?_concat]
-        change (nativeApplication).transition nativeInitial implementation.horizon
-          (ReservedEpoch.family implementation.runtime implementation.leaks
-            (ReservedEpoch.packetCapacity implementation.runtime) tape)
-              (some ⟨remaining + 1, none, execution⟩) joint
-                (some ⟨remaining, command.actor? nativeApplication, next⟩) * _ = _
-        rw [(nativeApplication).transition_environment_apply nativeInitial implementation.horizon
-          (ReservedEpoch.family implementation.runtime implementation.leaks
-            (ReservedEpoch.packetCapacity implementation.runtime) tape) remaining execution next
-              command advanced joint]
-        simp only [sourceReplayPacketStepAtom, sourceReplayNatureStepAtom, mechanicalStepAtom,
-          Nat.succ_ne_zero, ↓reduceIte, last, mul_one]
-        exact mul_comm _ _
-
-/-- Every counted physical packet has positive mechanical weight at the
-actual initialized input. Properness contributes its literal positive flag. -/
-private theorem sourceReplay_foreign_packet_positive
-    (operational : implementation.Operational)
-    (fullValues : ∀ owner key, FullSupport (values owner key))
-    (rates : PhaseProposalRates) (waitPositive : 0 < rates.waiting.val)
-    (waitBelow : rates.waiting.val < 1) (slotPositive : 0 < rates.slots.val)
-    (badPositive : 0 < rates.badPreparation.val) (badBelow : rates.badPreparation.val < 1)
-    (remaining : Nat) (owner : Player) (execution : (nativeApplication).Execution)
-    (trace : (nativeProtocol).Trace (some ⟨remaining, some owner, execution⟩))
-    (response : (nativeApplication).Action)
-    (available : response ∈ PhaseCount.onePacketActions implementation.runtime
-      implementation.leaks implementation.bounds owner (execution.recall owner)
-        (execution.observe nativeApplication owner)) :
-    0 < (foreignMechanicalAtom setup implementation rates execution owner response).toReal := by
-  have packet := mechanicalForeignPolicy_packet_supported setup values implementation operational
-    fullValues rates waitPositive waitBelow slotPositive badPositive badBelow remaining owner
-      execution trace response available
-  have flag : 0 < ENNReal.ofReal (1 - rates.badPreparation.val) :=
-    ENNReal.ofReal_pos.mpr (sub_pos.mpr badBelow)
-  apply ENNReal.toReal_pos
-  · dsimp only [foreignMechanicalAtom]
-    apply mul_ne_zero packet
-    cases transmitted : response.transmission with
-    | none => exact one_ne_zero
-    | some material =>
-        cases shape : material.call.packet with
-        | commitment event handle => simpa only [shape] using flag.ne'
-        | opening event handle raw => simpa only [shape] using (one_ne_zero : (1 : ℝ≥0∞) ≠ 0)
-        | malformed raw => simpa only [shape] using (one_ne_zero : (1 : ℝ≥0∞) ≠ 0)
-  · dsimp only [foreignMechanicalAtom]
-    refine ENNReal.mul_ne_top (PMF.apply_ne_top _ _) ?_
-    cases transmitted : response.transmission with
-    | none => exact ENNReal.one_ne_top
-    | some material =>
-        cases shape : material.call.packet with
-        | commitment event handle =>
-            simpa only [shape] using (ENNReal.ofReal_ne_top :
-              ENNReal.ofReal (1 - rates.badPreparation.val) ≠ ∞)
-        | opening event handle raw => simpa only [shape] using ENNReal.one_ne_top
-        | malformed raw => simpa only [shape] using ENNReal.one_ne_top
-
-private def sourceReplayNatureMass :
-    ∀ {state : (nativeProtocol).State}, (nativeProtocol).Trace state → ℝ
-  | _, .start => 1
-  | after, @Trace.extend _ _ before _ prior _ _ _ =>
-      sourceReplayNatureMass prior *
-        (sourceReplayNatureStepAtom setup implementation before after).toReal
-
-private def sourceReplayPacketMass (rates : PhaseProposalRates) (who : Player) :
-    ∀ {state : (nativeProtocol).State}, (nativeProtocol).Trace state → ℝ
-  | _, .start => 1
-  | _, @Trace.extend _ _ before _ prior joint _ _ =>
-      sourceReplayPacketMass rates who prior *
-        (sourceReplayPacketStepAtom setup implementation rates who before joint).toReal
-
-/-- The literal finite packet product is strictly positive on every actual
-counted trace. Subsequent atom cancellation therefore uses no zero convention. -/
-private theorem sourceReplay_packet_mass_positive
-    (operational : implementation.Operational)
-    (fullValues : ∀ owner key, FullSupport (values owner key))
-    (rates : PhaseProposalRates) (waitPositive : 0 < rates.waiting.val)
-    (waitBelow : rates.waiting.val < 1) (slotPositive : 0 < rates.slots.val)
-    (badPositive : 0 < rates.badPreparation.val) (badBelow : rates.badPreparation.val < 1)
-    (who : Player) {state : (nativeProtocol).State}
-    (trace : (nativeProtocol).Trace state) :
-    0 < sourceReplayPacketMass setup implementation rates who trace := by
-  induction trace with
-  | start => exact zero_lt_one
-  | @extend before after prior joint legal moved ih =>
-      rw [sourceReplayPacketMass]
-      apply mul_pos ih
-      cases before with
-      | none => exact zero_lt_one
-      | some control =>
-          rcases control with ⟨remaining, actor, execution⟩
-          cases actor with
-          | none => exact zero_lt_one
-          | some owner =>
-              by_cases same : owner = who
-              · simp only [sourceReplayPacketStepAtom, same, ↓reduceIte, ENNReal.toReal_one,
-                  zero_lt_one]
-              · obtain ⟨response, selected, available⟩ :
-                    ∃ response : (nativeApplication).Action, joint owner = some response ∧
-                      response ∈ PhaseCount.onePacketActions implementation.runtime
-                        implementation.leaks implementation.bounds owner (execution.recall owner)
-                          (execution.observe nativeApplication owner) := by
-                  have offered := legal.2 owner
-                  cases chosen : joint owner with
-                  | none => rw [chosen] at offered; exact (offered rfl).elim
-                  | some response => exact ⟨response, rfl, (chosen ▸ offered).2⟩
-                simpa only [sourceReplayPacketStepAtom, same, ↓reduceIte, selected] using
-                  sourceReplay_foreign_packet_positive setup values implementation operational
-                    fullValues rates waitPositive waitBelow slotPositive badPositive badBelow
-                      remaining owner execution prior response available
-
-/-- On the actual trace, the fixed-tape transition factors and the foreign
-packet factors are exactly public Nature times the existing mechanical path.
-The whole initializer is retained once, before the first source row. -/
-private theorem sourceReplay_mechanical_path_factor
-    (rates : PhaseProposalRates) (who : Player)
-    (tape : ReservedEpoch.Tape Player implementation.tapeLength)
-    {state : (nativeProtocol).State} (trace : (nativeProtocol).Trace state) :
-    sourceReplayFixedTransitionMass setup implementation tape trace *
-        sourceReplayPacketMass setup implementation rates who trace =
-      sourceReplayNatureMass setup implementation trace *
-        (mechanicalPathAtom setup implementation rates who tape trace).toReal := by
-  induction trace with
-  | start =>
-    simp only [sourceReplayFixedTransitionMass, sourceReplayPacketMass, sourceReplayNatureMass,
-      mechanicalPathAtom, ENNReal.toReal_one, mul_one]
-  | @extend before after prior joint legal moved ih =>
-    have row := congrArg ENNReal.toReal
-      (sourceReplay_mechanical_step_factor setup implementation rates who tape joint legal moved)
-    simp only [ENNReal.toReal_mul] at row
-    rw [sourceReplayFixedTransitionMass, sourceReplayPacketMass, sourceReplayNatureMass,
-      mechanicalPathAtom, ENNReal.toReal_mul]
-    calc
-      _ = (sourceReplayFixedTransitionMass setup implementation tape prior *
-          sourceReplayPacketMass setup implementation rates who prior) *
-            (((nativeApplication).transition nativeInitial implementation.horizon
-              (ReservedEpoch.family implementation.runtime implementation.leaks
-                (ReservedEpoch.packetCapacity implementation.runtime) tape) before joint after
-                  ).toReal *
-              (sourceReplayPacketStepAtom setup implementation rates who before joint).toReal) :=
-                by ring
-      _ = _ := by rw [ih, row]; ring
-
-/-- The actual native atom separates scheduler/packet mechanics from public
-Nature. The packet product is retained literally for the subsequent proper-draw
-and alias partition; no division or zero-case convention is introduced. -/
-private theorem sourceReplay_prescribed_mechanical_atom
-    (rates : PhaseProposalRates) (who : Player)
-    (tape : ReservedEpoch.Tape Player implementation.tapeLength)
-    (control : (nativeApplication).Control)
-    (trace : (nativeProtocol).Trace (some control)) :
-    (((nativeMenu).information nativeInitial implementation.horizon
-        implementation.scheduler).historyReachWeight
-      (phaseProposalReferenceStrategy setup .concurrent implementation.runtime implementation.leaks
-        implementation.bounds implementation.plan nativeInitial implementation.horizon
-          implementation.scheduler values rates) ⟨some control, trace⟩).toReal *
-        (prefixTapeLaw setup implementation ⟨some control, trace⟩ tape).toReal *
-          sourceReplayPacketMass setup implementation rates who trace =
-      (implementation.prior tape).toReal *
-        sourceReplayNatureMass setup implementation trace *
-          (mechanicalPathAtom setup implementation rates who tape trace).toReal *
-            ∏ owner, (((nativeApplication).privateTranscriptFrom []
-              (control.execution.recall owner)).map (fun record =>
-                phaseProposalReferencePolicy setup .concurrent implementation.runtime
-                  implementation.leaks implementation.bounds implementation.plan values rates owner
-                    record.1.1 record.1.2 record.2)).prod.toReal := by
-  have native := sourceReplay_prescribed_native_atom setup values implementation rates tape
-    control trace
-  rw [native]
-  calc
-    _ = (implementation.prior tape).toReal *
-        (sourceReplayFixedTransitionMass setup implementation tape trace *
-          sourceReplayPacketMass setup implementation rates who trace) *
-            ∏ owner, (((nativeApplication).privateTranscriptFrom []
-              (control.execution.recall owner)).map (fun record =>
-                phaseProposalReferencePolicy setup .concurrent implementation.runtime
-                  implementation.leaks implementation.bounds implementation.plan values rates owner
-                    record.1.1 record.1.2 record.2)).prod.toReal := by ring
-    _ = _ := by
-      rw [sourceReplay_mechanical_path_factor setup implementation rates who tape trace]
-      ring
 
 /-- A supported ordinary commitment interval preserves the absence of generated
 foreign failures and has its literal source depth, including an empty interval. -/
@@ -18662,7 +17282,10 @@ private theorem positive_original_annotated_pair
               (setup.proposalRecoveryEraseTrace cursor.trace) ∧
           setup.proposalRecoveryJointRecall lastTrace = attempt.joints.reverse.map
             (fun row owner => (row owner).map ProposalRecoveryMove.ordinary) ++
-              setup.proposalRecoveryJointRecall cursor.trace := by
+              setup.proposalRecoveryJointRecall cursor.trace ∧
+          last.point = cursor.lift (block.block.liftPoint block.suffix
+            (ProtocolState.entry block.suffix result)) ∧
+          last.excluded = cursor.current.excluded := by
   classical
   intro checkpoint block low high k ordinary pair completed observed
   have factors := mul_ne_zero_iff.mp positive
@@ -18731,10 +17354,11 @@ private theorem positive_original_annotated_pair
   · have complete : finished ∈ (pair.map Prod.snd).support :=
       (PMF.mem_support_map_iff ..).mpr ⟨(cut, finished), supported.1, rfl⟩
     obtain ⟨phase, cursor, targetEq, cursorLift, related⟩ := structural
-    obtain ⟨result, lastState, lastTrace, attempt, finishedEq, readEq, rows, labels⟩ :=
+    obtain ⟨result, lastState, lastTrace, attempt, finishedEq, readEq, rows, labels,
+        point, excluded⟩ :=
       related finished complete
     exact ⟨phase, cursor, result, lastState, lastTrace, attempt, targetEq, cursorLift, finishedEq,
-      supported.2.2.symm.trans readEq, rows, labels⟩
+      supported.2.2.symm.trans readEq, rows, labels, point, excluded⟩
 
 open Classical in
 /-- The canonical source completion retains the entire actual issued ledger.
@@ -20118,6 +18742,2260 @@ private theorem positive_original_annotated_coverage
       sourceBadPositive sourceBadBelow fullValues sourceProfile sourcePrescribed cut,
     pair.2.2.2.2.1, pair.2.2.2.2.2.1, geometry.2.2.2.1, geometry.2.2.2.2,
     pos_iff_ne_zero.mpr ((PMF.mem_support_iff ..).mp encodedSupport), annotation.2.2, unique⟩
+
+open Classical in
+/-- Permanent acceptance of an immutable signed coordinate is fixed by the
+retained mechanical input, even after automatic close or rollback. -/
+private theorem bindingAccepted_iff_of_mechanicalProjection
+    (who : Player) (first second : (nativeApplication).Control)
+    (same : mechanicalProjection setup implementation who (some first) =
+      mechanicalProjection setup implementation who (some second))
+    (coordinate : CommitAttemptEvent (serviceGraph setup .concurrent)) (owner : Player) :
+    PhaseService.BindingAccepted implementation.runtime implementation.leaks coordinate owner
+        first.execution ↔
+      PhaseService.BindingAccepted implementation.runtime implementation.leaks coordinate owner
+        second.execution := by
+  have projection := same
+  simp only [mechanicalProjection, Option.map_some, Option.some.injEq,
+    Prod.mk.injEq] at projection
+  obtain ⟨_remaining, _actor, _application, network, receipts, _focal, _fresh,
+    _environment, _own⟩ := projection
+  have inputs := congrArg (fun view : MessageNetwork.PublicView Player
+    (CommitAttemptPacket (serviceGraph setup .concurrent)) => view.inputs) network
+  change first.execution.network.inputs = second.execution.network.inputs at inputs
+  simp only [PhaseService.BindingAccepted, inputs, receipts]
+
+omit [Fintype Player] in
+/-- The closed source key preserves every historical signed binding value,
+including values from canceled commitment visits. -/
+private theorem sourceHandleMeaning_eq_of_closed_key
+    (wellFormed : setup.WellFormed) (who : Player)
+    (first second : CommitRecoveryState setup.program)
+    (firstTrace : setup.proposalRecoveryProtocol.Trace (some first))
+    (secondTrace : setup.proposalRecoveryProtocol.Trace (some second))
+    (same : setup.proposalRecoveryClosedKey who ⟨some first, firstTrace⟩ =
+      setup.proposalRecoveryClosedKey who ⟨some second, secondTrace⟩)
+    (firstGood : setup.proposalRecoveryForeignGood who ⟨some first, firstTrace⟩)
+    (secondGood : setup.proposalRecoveryForeignGood who ⟨some second, secondTrace⟩)
+    (reference : (nativeApplication).Control)
+    (handle : Handle (serviceGraph setup .concurrent)) :
+    sourceHandleMeaning setup implementation ⟨some first, firstTrace⟩ reference handle =
+      sourceHandleMeaning setup implementation ⟨some second, secondTrace⟩ reference handle := by
+  classical
+  have base : ProtocolState.base setup.program first.point =
+      ProtocolState.base setup.program second.point := by
+    have baseKey := congrArg Prod.fst same
+    exact Option.some.inj baseKey
+  have reads (attempt : CommitAttemptId) (event : (serviceGraph setup .concurrent).EventId)
+      (owner : Player) (payload : L.Ty)
+      (binding : (serviceGraph setup .concurrent).outputLayout event = .binding owner payload) :=
+    sourceBindingAt_closed_key setup wellFormed who owner attempt event payload binding
+      first second firstTrace secondTrace same firstGood secondGood
+  cases slot : handle.2 with
+  | «initial» _serial =>
+    simp only [sourceHandleMeaning, slot, Option.bind_some, base]
+  | prepared _serial =>
+    simp only [sourceHandleMeaning, slot, reads]
+
+open Classical in
+/-- Equal retained public inputs identify the source meaning of every signed
+handle, independently of the raw aliases in the two owner recalls. -/
+private theorem sourceHandleMeaning_eq_of_mechanicalProjection
+    (who : Player) (target : setup.proposalRecoveryProtocol.History)
+    (first second : (nativeApplication).Control)
+    (firstTrace : (nativeProtocol).Trace (some first))
+    (secondTrace : (nativeProtocol).Trace (some second))
+    (same : mechanicalProjection setup implementation who (some first) =
+      mechanicalProjection setup implementation who (some second))
+    (handle : Handle (serviceGraph setup .concurrent)) :
+    sourceHandleMeaning setup implementation target first handle =
+      sourceHandleMeaning setup implementation target second handle := by
+  classical
+  have outputs := (mechanicalProjection_foreign_input setup implementation who handle.1
+    first second firstTrace secondTrace same).2.1
+  let locate := fun message : Message Player
+      (CommitAttemptPacket (serviceGraph setup .concurrent)) =>
+    match message.payload.packet.call with
+    | .commitment event candidate =>
+        if candidate = handle then
+          match binding : (serviceGraph setup .concurrent).outputLayout event with
+          | .binding owner payload =>
+              (sourceBindingAt setup message.payload.attempt event owner payload binding
+                target.trace).map fun value => (⟨payload, value⟩ : Raw L)
+          | _ => none
+        else none
+    | _ => none
+  have normalize (records : List (nativeApplication).PlayerEntry) :
+      records.findSome? (fun record => record.emitted.bind locate) =
+        ((nativeApplication).outputs records).findSome? locate := by
+    unfold ReactiveApplication.outputs
+    induction records with
+    | nil => rfl
+    | cons record records ih =>
+      simp only [List.findSome?_cons, List.filterMap_cons]
+      cases emitted : record.emitted with
+      | none =>
+        simpa only [emitted, Option.bind_none, Option.orElse_none] using ih
+      | some message =>
+        cases found : locate message with
+        | none =>
+          simpa only [emitted, Option.bind_some, List.findSome?_cons, found] using ih
+        | some raw =>
+          simp only [Option.bind_some, List.findSome?_cons, found]
+  cases slot : handle.2 with
+  | «initial» _serial => simp only [sourceHandleMeaning, slot]
+  | prepared _serial =>
+    simp only [sourceHandleMeaning, slot]
+    change (first.execution.recall handle.1).findSome?
+        (fun record => record.emitted.bind locate) =
+      (second.execution.recall handle.1).findSome?
+        (fun record => record.emitted.bind locate)
+    rw [normalize, normalize, outputs]
+
+open Classical in
+/-- A common signed call and retained public input select the same auxiliary
+handle on both native histories. -/
+private theorem sourceReplayLostSlot_eq_of_signed_call
+    (who : Player) (target : setup.proposalRecoveryProtocol.History)
+    (first second : (nativeApplication).Control)
+    (firstTrace : (nativeProtocol).Trace (some first))
+    (secondTrace : (nativeProtocol).Trace (some second))
+    (same : mechanicalProjection setup implementation who (some first) =
+      mechanicalProjection setup implementation who (some second))
+    (firstAction secondAction : (nativeApplication).Action)
+    (packet : firstAction.transmission.map (fun material => material.call.packet) =
+      secondAction.transmission.map (fun material => material.call.packet)) :
+    sourceReplayLostSlot setup implementation target first firstAction =
+      sourceReplayLostSlot setup implementation target second secondAction := by
+  classical
+  have meaning := sourceHandleMeaning_eq_of_mechanicalProjection setup implementation who target
+    first second firstTrace secondTrace same
+  cases sentFirst : firstAction.transmission with
+  | none =>
+    cases sentSecond : secondAction.transmission with
+    | none => simp only [sourceReplayLostSlot, sentFirst, sentSecond, Option.bind_none]
+    | some material =>
+      simp only [sentFirst, sentSecond, Option.map_none, Option.map_some,
+        reduceCtorEq] at packet
+  | some material =>
+    cases sentSecond : secondAction.transmission with
+    | none =>
+      simp only [sentFirst, sentSecond, Option.map_none, Option.map_some,
+        reduceCtorEq] at packet
+    | some other =>
+      have calls := Option.some.inj (by
+        simpa only [sentFirst, sentSecond, Option.map_some] using packet)
+      simp only [sourceReplayLostSlot, sentFirst, sentSecond, Option.bind_some, calls, meaning]
+
+/-- A completed source attempt reads the literal value of each signed issued
+binding, including a native packet that is still pending. -/
+private theorem sourceBindingAt_of_issued_attempt
+    {Γ Δ : SourceCtx Player L} {O P : Finset VarId}
+    (block : SourceProgram.CommitPrefix Γ O Δ P) (suffix : SourceProgram Player L Δ P)
+    (embedding : OutputEmbedding (inputLayout setup.context) (outputLayout setup.program)
+      (block.prepend suffix))
+    (entry : SourceProgram.Config Player L Γ) (excluded : Finset Player)
+    (finished : SourceProgram.Config Player L Δ) (after : Finset Player)
+    (attempt : block.Attempt entry excluded finished after) (same : after = excluded)
+    (owner : Player) (active : owner ∉ excluded)
+    (index : Fin (eventCount (block.prepend suffix))) (inside : index.val < block.length)
+    (payload : L.Ty)
+    (binding : (serviceGraph setup .concurrent).outputLayout (embedding.event index) =
+      .binding owner payload) (value : L.Val payload)
+    (control : (nativeApplication).Control) (trace : (nativeProtocol).Trace (some control))
+    (low high : Nat)
+    (ledger : issuedLedger setup implementation block low control high owner (finished.view owner))
+    (message : Message Player (CommitAttemptPacket (serviceGraph setup .concurrent)))
+    (emitted : message ∈ (nativeApplication).outputs (control.execution.recall owner))
+    (currentAttempt : message.payload.attempt = control.execution.application.attempt)
+    (handle : Handle (serviceGraph setup .concurrent))
+    (call : message.payload.packet.call = .commitment (embedding.event index) handle)
+    (rank : (embedding.event index).val = low + index.val)
+    (upper : (embedding.event index).val < high)
+    (result : control.execution.application.current.native.bindingResult handle payload =
+      .success value)
+    (start : CommitRecoveryState setup.program)
+    (prior : setup.proposalRecoveryProtocol.Trace (some start))
+    (committing : ProtocolState.atCommit setup.program start.point = true)
+    (final : setup.proposalRecoveryProtocol.History) (retained : TracePrefix prior final.trace)
+    (instructions : setup.recoveryJointRecall (setup.proposalRecoveryEraseTrace final.trace) =
+      attempt.joints.reverse ++ setup.recoveryJointRecall (setup.proposalRecoveryEraseTrace prior))
+    (coordinate : CommitAttemptId) (generation : start.generation = coordinate.generation)
+    (saved : instructionCount setup.program -
+      ProtocolState.remaining setup.program start.saved = coordinate.phase)
+    (position : (embedding.event index).val = instructionCount setup.program -
+      ProtocolState.remaining setup.program start.point + index.val)
+    (within : (embedding.event index).val < instructionCount setup.program -
+      ProtocolState.commitEnd setup.program start.saved) :
+    sourceBindingAt setup coordinate (embedding.event index) owner payload binding final.trace =
+      some value := by
+  have slots : index.val < attempt.joints.length := by
+    simpa only [attempt.joints_length] using inside
+  obtain ⟨current, next, row, joint, legal, moved, kept, _depth, semantic,
+      rowSaved, rowGeneration, rowPosition⟩ :=
+    source_commit_chunk_at_rank setup start prior committing final retained attempt.joints
+      instructions index.val slots (embedding.event index).val position within
+  have actual : (joint owner).map (·.semantic) =
+      CommitRecoveryMove.lift (block.wordAction owner index.val (finished.view owner)) := by
+    have own := congrFun semantic owner
+    have word := congrArg (fun joints => (joints[index.val]?).map (fun row => row owner))
+      (commitAttempt_wordAction block suffix entry excluded finished after attempt same)
+    have selected : attempt.joints[index.val] owner =
+        CommitRecoveryMove.lift (block.wordAction owner index.val (finished.view owner)) := by
+      simpa [List.getElem?_eq_getElem, slots, inside, active] using word
+    exact own.trans selected
+  have slot : (embedding.event index).val - low = index.val := by omega
+  have first := ((issuedLedger_iff_binding_results setup implementation block low control trace
+    high owner (finished.view owner)).mp ledger) (embedding.event index) payload binding handle
+      message emitted currentAttempt call ⟨by omega, upper⟩
+  rw [slot, result] at first
+  rw [← actual] at first
+  have data : phaseRecoveryBindingData setup .concurrent (embedding.event index) owner payload
+      binding ((joint owner).map (·.semantic)) = (.success value, false) := by
+    unfold phaseRecoveryBindingData at first ⊢
+    split at first
+    next missing => cases first
+    next nonmissing =>
+      rw [ite_eq_right nonmissing]
+      exact Prod.ext first rfl
+  exact sourceBindingAt_of_origin setup coordinate (embedding.event index) owner payload binding
+    current row joint legal (some next) moved (rowGeneration.trans generation)
+      (by rw [rowSaved]; exact saved) rowPosition (.success value, false) data final.trace kept
+
+/-- Every actual history with the retained mechanical word has a literal
+callback readback, with one coordinate at every original raw transition. -/
+private theorem sourceRawReplayReadback_of_mechanicalWord
+    (who : Player) (target : setup.proposalRecoveryProtocol.History)
+    (reference : (nativeApplication).Control)
+    (original actual : (nativeProtocol).History)
+    (same : mechanicalWord setup implementation who original.trace =
+      mechanicalWord setup implementation who actual.trace) :
+    ∃ script : List (RawReplayChoice setup implementation),
+      sourceRawReplayReadback setup implementation who target reference original actual =
+        some script ∧ script.length = original.trace.length := by
+  classical
+  rcases original with ⟨state, trace⟩
+  induction trace generalizing actual with
+  | start =>
+    refine ⟨[], ?_, rfl⟩
+    simp only [sourceRawReplayReadback]
+  | @extend before after prior joint legal moved ih =>
+    rcases actual with ⟨actualState, actualTrace⟩
+    cases actualTrace with
+    | start =>
+      have length := congrArg List.length same
+      simp only [mechanicalWord_length, Trace.length] at length
+      omega
+    | @extend otherBefore otherAfter other otherJoint otherLegal otherMoved =>
+      have length := congrArg List.length same
+      simp only [mechanicalWord_length, Trace.length] at length
+      have prefixLength : (mechanicalWord setup implementation who prior).length =
+          (mechanicalWord setup implementation who other).length := by
+        simp only [mechanicalWord_length]
+        omega
+      simp only [mechanicalWord] at same
+      obtain ⟨samePrior, _sameAfter⟩ := List.append_inj same prefixLength
+      obtain ⟨script, read, count⟩ := ih ⟨otherBefore, other⟩ samePrior
+      have last := congrArg List.getLast? samePrior
+      rw [mechanicalWord_last, mechanicalWord_last] at last
+      have projection := congrArg Subtype.val (Option.some.inj last)
+      cases before with
+      | none =>
+        refine ⟨(none, none) :: script, ?_, congrArg Nat.succ count⟩
+        simp only [sourceRawReplayReadback, History.prior, read, Option.bind_some,
+          ReactiveApplication.actor, Option.bind_none]
+      | some before =>
+        cases acting : before.actor with
+        | none =>
+          refine ⟨(none, none) :: script, ?_, congrArg Nat.succ count⟩
+          simp only [sourceRawReplayReadback, History.prior, read, Option.bind_some,
+            ReactiveApplication.actor, acting]
+        | some owner =>
+          by_cases focal : owner = who
+          · refine ⟨(none, none) :: script, ?_, congrArg Nat.succ count⟩
+            simp only [sourceRawReplayReadback, History.prior, read, Option.bind_some,
+              ReactiveApplication.actor, acting, focal, ↓reduceIte]
+          · cases otherBefore with
+            | none =>
+              simp only [mechanicalProjection, Option.map_some, Option.map_none,
+                reduceCtorEq] at projection
+            | some current =>
+              simp only [mechanicalProjection, Option.map_some, Option.some.injEq,
+                Prod.mk.injEq] at projection
+              have actualActing : current.actor = some owner := projection.2.1.symm.trans acting
+              obtain ⟨action, selected⟩ : ∃ action : (nativeApplication).Action,
+                  otherJoint owner = some action := by
+                have offered := otherLegal.2 owner
+                cases chosen : otherJoint owner with
+                | none =>
+                  rw [chosen] at offered
+                  exact (offered (by exact actualActing)).elim
+                | some action => exact ⟨action, rfl⟩
+              have ending : actualState = some (⟨current.remaining, none,
+                  current.execution.respond nativeApplication owner action⟩ :
+                    (nativeApplication).Control) := by
+                have reached := otherMoved
+                change actualState ∈ ((nativeApplication).transition nativeInitial
+                  implementation.horizon implementation.scheduler (some current)
+                    otherJoint).support at reached
+                simpa only [ReactiveApplication.transition, actualActing, selected,
+                  Option.getD_some, PMF.mem_support_pure_iff] using reached
+              have latest := sourceReplayLastAction_respond setup implementation owner current
+                action ⟨actualState, other.extend otherJoint otherLegal otherMoved⟩ ending
+              let tag := (sourceReplayLostSlot setup implementation target reference
+                ((joint owner).getD ⟨none⟩)).bind fun handle =>
+                  (action.transmission.bind PhaseProposal.bindingPreparation).map
+                    (fun raw => (handle, raw))
+              refine ⟨(tag, some action) :: script, ?_, congrArg Nat.succ count⟩
+              simp only [sourceRawReplayReadback, History.prior, read, Option.bind_some,
+                ReactiveApplication.actor, acting, focal, ↓reduceIte, latest,
+                Option.map_some]
+              rfl
+
+/- The source alignment is consumed once, at each actual initialized prefix.
+All foreign laws are normalized at that prefix's actual raw input. -/
+private theorem sourceRawReplay_law
+    (operational : implementation.Operational)
+    (who : Player) (reference : (nativeApplication).Control)
+    (referenceTrace : (nativeProtocol).Trace (some reference))
+    (event : (serviceGraph setup .concurrent).EventId)
+    (cut : PhaseProposalCanonicalBindingCut setup .concurrent implementation.runtime
+      implementation.leaks implementation.bounds implementation.plan values
+      implementation.horizon implementation.scheduler reference
+      (sourceCutTrace setup implementation referenceTrace) who event)
+    (g : setup.proposalRecoveryProtocol.History)
+    (sourceChoice : setup.proposalRecoveryModel.Choice who
+      (setup.proposalRecoveryModel.infoOf who g.trace))
+    (targetCurrent : CommitRecoveryState setup.program)
+    (targetTrace : setup.proposalRecoveryProtocol.Trace (some targetCurrent))
+    (alignment : SourceReplayAlignment (setup := setup) (values := values)
+      (implementation := implementation) operational who reference
+      referenceTrace event cut g sourceChoice targetCurrent targetTrace)
+    (good : ∀ owner, owner ≠ who →
+      ¬ PhaseProposal.GeneratedUnusableBindingHistory implementation.runtime implementation.leaks
+        implementation.bounds nativeInitial implementation.horizon implementation.scheduler owner
+          ⟨some reference, referenceTrace⟩)
+    (scale : Set.Icc (0 : ℝ) 1) :
+    Nonempty (SourceRawReplayLaw (setup := setup) (values := values)
+      (implementation := implementation) scale who ⟨some targetCurrent, targetTrace⟩
+        reference ⟨some reference, referenceTrace⟩) := by
+  classical
+  let target : setup.proposalRecoveryProtocol.History := ⟨some targetCurrent, targetTrace⟩
+  let valid := fun (original : (nativeProtocol).History)
+      (script : List (RawReplayChoice setup implementation)) =>
+    SourceReplayLostRestricted setup implementation target reference who
+        (rawReplayLost setup implementation script) ∧
+    (∀ (control : (nativeApplication).Control), original.state = some control →
+      ∀ handle raw, rawReplayLost setup implementation script handle = some raw →
+        control.execution.application.current.native.candidates.lookup handle ≠ .fresh) ∧
+    ∃ actual : (nativeProtocol).History,
+      sourceRawReplay setup implementation who target reference original script = some actual ∧
+      RawReplayState setup implementation who target reference
+        (rawReplayLost setup implementation script) original actual ∧
+      mechanicalWord setup implementation who actual.trace =
+        mechanicalWord setup implementation who original.trace ∧
+      SourceReplayPrepared setup implementation who actual.state
+  have neverNone (state : (nativeProtocol).State)
+      (joint : Player → Option (nativeApplication).Action) :
+      none ∉ ((nativeApplication).transition nativeInitial implementation.horizon
+        implementation.scheduler state joint).support := by
+    cases state with
+    | none => simp [ReactiveApplication.transition]
+    | some control =>
+      cases active : control.actor with
+      | some owner => simp [ReactiveApplication.transition, active]
+      | none =>
+        cases remaining : control.remaining with
+        | zero => simp [ReactiveApplication.transition, active, remaining]
+        | succ remaining =>
+          simp [ReactiveApplication.transition, active, remaining]
+  have uninitialized : ∀ {state : (nativeProtocol).State}
+      (trace : (nativeProtocol).Trace state), state = none →
+      HEq trace (Trace.start : (nativeProtocol).Trace (nativeProtocol).init) := by
+    intro state trace stateEq
+    cases trace with
+    | start => rfl
+    | @extend before after prior joint legal moved =>
+      cases stateEq
+      exact (neverNone before joint moved).elim
+  have produce : ∀ {state : (nativeProtocol).State}
+      (trace : (nativeProtocol).Trace state), TracePrefix trace referenceTrace →
+      ∃ law : PMF (List (RawReplayChoice setup implementation)),
+        ∀ script ∈ law.support, valid ⟨state, trace⟩ script ∧
+          SourceReplayScriptMass (setup := setup) (values := values) (implementation :=
+            implementation)
+            scale who target reference ⟨state, trace⟩ script (law script) := by
+    intro state trace
+    induction trace with
+    | start =>
+      intro retained
+      refine ⟨PMF.pure [], ?_⟩
+      intro script supported
+      cases (PMF.mem_support_pure_iff ..).mp supported
+      refine ⟨⟨?_, ?_, (nativeProtocol).initHistory, rfl, trivial, rfl, trivial⟩, ?_⟩
+      · intro handle raw drawn
+        cases drawn
+      · intro control impossible
+        cases impossible
+      · simp only [PMF.pure_apply_self]
+        exact SourceReplayScriptMass.start
+    | @extend before after prior joint legal moved ih =>
+      intro onward
+      have kept : TracePrefix prior referenceTrace :=
+        (TracePrefix.extend (TracePrefix.refl (prefixTrace := prior)) joint legal moved).trans
+          onward
+      obtain ⟨previous, previousValid⟩ := ih kept
+      have advance (script : List (RawReplayChoice setup implementation))
+          (supported : script ∈ previous.support) :
+          ∃ law : PMF (List (RawReplayChoice setup implementation)),
+            ∀ next ∈ law.support,
+              valid ⟨after, prior.extend joint legal moved⟩ next ∧ next.tail = script ∧
+              SourceReplayScriptMass (setup := setup) (values := values)
+                (implementation := implementation) scale who target reference
+                  ⟨after, prior.extend joint legal moved⟩ next (previous script * law next) := by
+        obtain ⟨previousState, previousMass⟩ := previousValid script supported
+        obtain ⟨restricted, introduced, actualHistory, replayed, related, word, prepared⟩ :=
+          previousState
+        cases before with
+        | none =>
+          have priorEq : prior = (Trace.start : (nativeProtocol).Trace none) :=
+            eq_of_heq (uninitialized prior rfl)
+          cases priorEq
+          cases script with
+          | cons choice rest =>
+            simp only [sourceRawReplay] at replayed
+            cases replayed
+          | nil =>
+            have initialMoved := moved
+            change after ∈ ((nativeInitial).map fun state => some
+              (⟨implementation.horizon, none,
+                ReactiveApplication.Execution.initial nativeApplication state⟩ :
+                (nativeApplication).Control)).support at initialMoved
+            obtain ⟨initialStateDraw, initialSupported, afterEq⟩ :=
+              (PMF.mem_support_map_iff ..).mp initialMoved
+            change initialStateDraw ∈ (setup.initialLaw.map fun theta =>
+              PhaseRuntimeState.initial implementation.plan (encodeInputs theta)).support
+              at initialSupported
+            obtain ⟨theta, _thetaSupported, initialEq⟩ :=
+              (PMF.mem_support_map_iff ..).mp initialSupported
+            cases initialEq
+            cases afterEq
+            let original : (nativeApplication).Control := ⟨implementation.horizon, none,
+              ReactiveApplication.Execution.initial nativeApplication
+                (PhaseRuntimeState.initial implementation.plan (encodeInputs theta))⟩
+            have native := (phaseApplication_invariant implementation.runtime implementation.leaks
+              (encodeInputs theta)).tracePrefix (nativeMenu) nativeInitial implementation.horizon
+                implementation.scheduler original reference (Trace.start.extend joint legal moved)
+                  referenceTrace onward
+                  (PhaseRuntimeState.initial_invariant implementation.plan (encodeInputs theta)).1
+            have inputsEq : encodeInputs theta = encodeInputs cut.theta :=
+              native.active.reachable.inputs_eq.symm.trans cut.originalInputs
+            have initialAssigned := alignment.initialized (rawReplayLost setup implementation [])
+              restricted
+            rw [← inputsEq] at initialAssigned
+            have image := alignment.images (rawReplayLost setup implementation []) restricted
+              original (Trace.start.extend joint legal moved) onward
+            obtain ⟨actual, replay, actualState, actualWord⟩ := sourceRawReplay_initialize
+              setup implementation who reference targetCurrent targetTrace _ joint legal moved
+            have actualRelated : RawReplayState setup implementation who target reference
+                (rawReplayLost setup implementation [(none, none)])
+                ⟨some original, Trace.start.extend joint legal moved⟩ actual := by
+              unfold RawReplayState
+              rw [actualState]
+              refine ⟨rfl, rfl, ?_, rfl, ?_⟩
+              · change ReactiveApplication.Execution.initial nativeApplication
+                    (PhaseRuntimeState.initial implementation.plan
+                      (encodeInputs (ProtocolState.base setup.program targetCurrent.point))) =
+                  sourceReplayExecution setup implementation target reference
+                    (rawReplayLost setup implementation []) (fun _ => []) original.execution
+                dsimp only [sourceReplayExecution, original,
+                  ReactiveApplication.Execution.initial]
+                rw [initialAssigned]
+              · have observed := image.focalView (fun _ => []) rfl
+                dsimp only [sourceReplayExecution, original,
+                  ReactiveApplication.Execution.initial] at observed
+                rw [initialAssigned] at observed
+                exact observed
+            have actualWordEq : mechanicalWord setup implementation who actual.trace =
+                mechanicalWord setup implementation who (Trace.start.extend joint legal moved) := by
+              rw [actualWord]
+              change _ = [_, _]
+              apply congrArg (fun last : Set.range (mechanicalProjection setup implementation
+                  who) =>
+                [⟨mechanicalProjection setup implementation who none, none, rfl⟩, last])
+              apply Subtype.ext
+              simpa only [actualState] using RawReplayState.mechanicalProjection setup
+                implementation who target reference (rawReplayLost setup implementation [(none,
+                  none)])
+                  ⟨some original, Trace.start.extend joint legal moved⟩ actual actualRelated
+            refine ⟨PMF.pure [(none, none)], ?_⟩
+            intro next nextSupported
+            cases (PMF.mem_support_pure_iff ..).mp nextSupported
+            refine ⟨⟨restricted, ?_, actual, replay, actualRelated, actualWordEq, ?_⟩, rfl, ?_⟩
+            · intro control stateEq handle raw drawn
+              cases drawn
+            · rw [actualState]
+              intro owner foreign record member
+              simp only [ReactiveApplication.Execution.initial,
+                ReactiveApplication.recallOwnPlay, ReactiveApplication.ownPlayFrom,
+                List.not_mem_nil] at member
+            · simp only [PMF.pure_apply_self, mul_one]
+              exact SourceReplayScriptMass.deterministic (Or.inl rfl) previousMass
+        | some before =>
+          cases after with
+          | none => exact (neverNone (some before) joint moved).elim
+          | some after =>
+            rcases actualHistory with ⟨actualState, actual⟩
+            cases actualState with
+            | none => cases related
+            | some actualControl =>
+              obtain ⟨remaining, actor, execution, recalled, _observed⟩ := related
+              let recalls := actualControl.execution.recall
+              have assigned : actualControl = { before with
+                  execution := sourceReplayExecution setup implementation target reference
+                    (rawReplayLost setup implementation script) recalls before.execution } := by
+                cases actualControl
+                cases before
+                simp only [ReactiveApplication.Control.mk.injEq] at remaining actor ⊢
+                exact ⟨remaining, actor, execution⟩
+              have introducedBefore := introduced before rfl
+              have image := alignment.images (rawReplayLost setup implementation script)
+                restricted before prior kept
+              have nextImage := alignment.images (rawReplayLost setup implementation script)
+                restricted after (prior.extend joint legal moved) onward
+              have carry (handle : Handle (serviceGraph setup .concurrent))
+                  (fixed : before.execution.application.current.native.candidates.lookup handle ≠
+                    .fresh) :
+                  after.execution.application.current.native.candidates.lookup handle ≠ .fresh := by
+                let stable := phaseApplication_preservesFixedCandidates implementation.runtime
+                  implementation.leaks
+                have invariant : (nativeApplication).Invariant (fun state =>
+                    state.current.native.candidates.lookup handle =
+                      before.execution.application.current.native.candidates.lookup handle) := by
+                  constructor
+                  · intro state owner material known
+                    exact (stable.submit state owner material handle
+                      (by rw [known]; exact fixed)).trans known
+                  · intro state message next known handled
+                    exact (stable.handle state message next handled handle
+                      (by rw [known]; exact fixed)).trans known
+                  · intro state command next known reached
+                    exact (stable.environment state command next reached handle
+                      (by rw [known]; exact fixed)).trans known
+                rw [invariant.tracePrefix (nativeMenu) nativeInitial implementation.horizon
+                  implementation.scheduler before after prior (prior.extend joint legal moved)
+                    (TracePrefix.extend (TracePrefix.refl (prefixTrace := prior)) joint legal
+                      moved) rfl]
+                exact fixed
+              cases acting : before.actor with
+              | none =>
+                obtain ⟨history, replay, ending, _retained, nextRelated, nextWord⟩ :=
+                  sourceRawReplay_environment_extend setup implementation who target reference
+                    referenceTrace before after prior joint legal moved acting script recalls
+                      actualControl assigned actual replayed image nextImage recalled word
+                refine ⟨PMF.pure ((none, none) :: script), ?_⟩
+                intro next nextSupported
+                cases (PMF.mem_support_pure_iff ..).mp nextSupported
+                refine ⟨⟨restricted, ?_, history, replay, nextRelated, nextWord, ?_⟩, rfl, ?_⟩
+                · intro control stateEq handle raw drawn
+                  cases Option.some.inj stateEq
+                  exact carry handle (introducedBefore handle raw drawn)
+                · rw [ending]
+                  exact prepared
+                · simp only [PMF.pure_apply_self, mul_one]
+                  exact SourceReplayScriptMass.deterministic (Or.inl acting) previousMass
+              | some owner =>
+                by_cases focal : owner = who
+                · subst owner
+                  obtain ⟨history, replay, _retained, nextRelated, nextWord⟩ :=
+                    sourceRawReplay_focal_extend setup implementation who target reference
+                      referenceTrace before after prior joint legal moved onward acting script
+                        recalls actualControl assigned actual replayed image nextImage recalled word
+                  have offered := legal.2 who
+                  obtain ⟨action, selected, member⟩ : ∃ action : (nativeApplication).Action,
+                      joint who = some action ∧ action ∈ (nativeMenu).actions who
+                        (before.execution.recall who)
+                          (before.execution.observe nativeApplication who) := by
+                    cases chosen : joint who with
+                    | none =>
+                      rw [chosen] at offered
+                      exact (offered (by exact acting)).elim
+                    | some action => exact ⟨action, rfl, (chosen ▸ offered).2⟩
+                  let response : PhaseProposal.Response implementation.runtime implementation.leaks
+                      implementation.bounds who (actualControl.execution.recall who)
+                        (actualControl.execution.observe nativeApplication who) :=
+                    ⟨action, by
+                      change action ∈ PhaseCount.onePacketActions implementation.runtime
+                        implementation.leaks implementation.bounds who
+                          (before.execution.recall who)
+                            (before.execution.observe nativeApplication who) at member
+                      simpa only [recalled, _observed] using member⟩
+                  obtain ⟨copied, copiedReplay, copiedState, _prefix, _suffix⟩ :=
+                    sourceRawReplay_callback_extend setup implementation who target reference
+                      before (some after) prior joint legal moved who acting script (none, none)
+                        actualControl actual replayed (actor.trans acting) response (by
+                          simpa only [↓reduceIte] using selected)
+                  have copiedEq : history = copied :=
+                    Option.some.inj (replay.symm.trans copiedReplay)
+                  have preparedNext : SourceReplayPrepared setup implementation who
+                      history.state := by
+                    rw [copiedEq, copiedState]
+                    exact sourceReplayPrepared_respond setup implementation who actualControl who
+                      response.val prepared (fun impossible => (impossible rfl).elim)
+                  refine ⟨PMF.pure ((none, none) :: script), ?_⟩
+                  intro next nextSupported
+                  cases (PMF.mem_support_pure_iff ..).mp nextSupported
+                  refine ⟨⟨restricted, ?_, history, replay, nextRelated, nextWord, preparedNext⟩,
+                    rfl, ?_⟩
+                  · intro control stateEq handle raw drawn
+                    cases Option.some.inj stateEq
+                    exact carry handle (introducedBefore handle raw drawn)
+                  · simp only [PMF.pure_apply_self, mul_one]
+                    exact SourceReplayScriptMass.deterministic (Or.inr acting) previousMass
+                · obtain ⟨kernel, kernelAtoms, kernelDescription, produced⟩ :=
+                    sourceRawReplay_foreign_law (setup
+                  := setup) (values := values)
+                    (implementation := implementation) operational who reference before after
+                      referenceTrace event cut g
+                      sourceChoice targetCurrent targetTrace alignment prior joint legal moved
+                        onward
+                        owner focal acting (good owner focal) script restricted introducedBefore
+                          recalls actualControl assigned actual replayed recalled word scale
+                  refine ⟨kernel.map (fun choice => choice :: script), ?_⟩
+                  intro next nextSupported
+                  obtain ⟨choice, choiceSupported, nextEq⟩ :=
+                    (PMF.mem_support_map_iff ..).mp nextSupported
+                  cases nextEq
+                  obtain ⟨restrictedNext, introducedNext, history, replay, _retained,
+                    nextRelated, nextWord⟩ := produced choice choiceSupported
+                  obtain ⟨_slot, response, selectedResponse, clean, _atom⟩ :=
+                    kernelAtoms choice choiceSupported
+                  obtain ⟨copied, copiedReplay, copiedState, _prefix, _suffix⟩ :=
+                    sourceRawReplay_callback_extend setup implementation who target reference
+                      before (some after) prior joint legal moved owner acting script choice
+                        actualControl actual replayed (actor.trans acting) response (by
+                          simpa only [focal, ↓reduceIte] using selectedResponse)
+                  have copiedEq : history = copied :=
+                    Option.some.inj (replay.symm.trans copiedReplay)
+                  have preparedNext : SourceReplayPrepared setup implementation who
+                      history.state := by
+                    rw [copiedEq, copiedState]
+                    exact sourceReplayPrepared_respond setup implementation who actualControl owner
+                      response.val prepared (fun _ => clean)
+                  refine ⟨⟨restrictedNext, ?_, history, replay, nextRelated, nextWord,
+                    preparedNext⟩,
+                    rfl, ?_⟩
+                  · intro control stateEq
+                    cases Option.some.inj stateEq
+                    exact introducedNext
+                  · have atom : (kernel.map (fun chosen => chosen :: script))
+                        (choice :: script) = kernel choice := by
+                      apply pmf_map_apply_of_injective
+                      intro first second same
+                      exact (List.cons.inj same).1
+                    rw [atom]
+                    exact SourceReplayScriptMass.foreign owner focal acting actualControl actual
+                      replayed ⟨remaining, actor, execution, recalled, _observed⟩ kernel kernelAtoms
+                        kernelDescription choice choiceSupported previousMass
+      let next := fun script supported => (advance script supported).choose
+      refine ⟨previous.bindOnSupport next, ?_⟩
+      intro script supported
+      obtain ⟨earlier, earlierSupported, nextSupported⟩ :=
+        (PMF.mem_support_bindOnSupport_iff ..).mp supported
+      obtain ⟨nextValid, tailEq, nextMass⟩ :=
+        (advance earlier earlierSupported).choose_spec script nextSupported
+      refine ⟨nextValid, ?_⟩
+      have atom : previous.bindOnSupport next script =
+          previous earlier * next earlier earlierSupported script := by
+        rw [PMF.bindOnSupport_apply, tsum_eq_single earlier]
+        · simp only [dite_eq_right earlierSupported]
+        · intro other different
+          by_cases absent : previous other = 0
+          · simp only [absent, zero_mul]
+          · have missing : next other absent script = 0 := by
+              apply (PMF.apply_eq_zero_iff _ _).mpr
+              intro offered
+              have otherTail := (advance other absent).choose_spec script offered |>.2.1
+              exact different (otherTail.symm.trans tailEq)
+            simp only [dite_eq_right absent, missing, mul_zero]
+      rw [atom]
+      exact nextMass
+  obtain ⟨law, supported⟩ := produce referenceTrace TracePrefix.refl
+  exact ⟨{
+    choices := law
+    restricted := fun script member => (supported script member).1.1
+    introduced := fun script member => (supported script member).1.2.1
+    atoms := fun script member => (supported script member).2
+    replayed := by
+      intro script member
+      obtain ⟨actual, replay, related, word, prepared⟩ := (supported script member).1.2.2
+      exact ⟨actual, replay, related, word,
+        sourceReplayPrepared_good setup implementation who actual prepared⟩ }⟩
+
+private theorem sourceReplay_focal_sent_word_congr
+    (first second : (nativeApplication).Execution)
+    (publicEq : first.application.publicView = second.application.publicView)
+    (service : first.environmentRecall = second.environmentRecall)
+    (tape : ReservedEpoch.Tape Player implementation.tapeLength) (who : Player)
+    (frontier event : (serviceGraph setup .concurrent).EventId)
+    (firstRequest : first.application.SeedRequest who
+      ⟨first.application.attempt, frontier⟩)
+    (secondRequest : second.application.SeedRequest who
+      ⟨second.application.attempt, frontier⟩)
+    (firstHandle secondHandle : Handle (serviceGraph setup .concurrent))
+    (firstMaterial secondMaterial : WitnessedSubmission (serviceGraph setup .concurrent))
+    (firstCall : firstMaterial.call.packet = .commitment frontier firstHandle)
+    (secondCall : secondMaterial.call.packet = .commitment frontier secondHandle) :
+    ReservedEpoch.ownedAcceptanceWord implementation.runtime implementation.leaks tape
+        (first.respond nativeApplication who ⟨some firstMaterial⟩) who event ↔
+      ReservedEpoch.ownedAcceptanceWord implementation.runtime implementation.leaks tape
+        (second.respond nativeApplication who ⟨some secondMaterial⟩) who event := by
+  classical
+  have leftRequest := respond_request implementation.runtime implementation.leaks first who
+    ⟨some firstMaterial⟩ who ⟨first.application.attempt, frontier⟩ firstRequest
+  have rightRequest := respond_request implementation.runtime implementation.leaks second who
+    ⟨some secondMaterial⟩ who ⟨second.application.attempt, frontier⟩ secondRequest
+  have leftActive : who ∉ (first.respond nativeApplication who
+      ⟨some firstMaterial⟩).application.current.excluded := firstRequest.2.2.2.2
+  have rightActive : who ∉ (second.respond nativeApplication who
+      ⟨some secondMaterial⟩).application.current.excluded := secondRequest.2.2.2.2
+  have activated := congrArg (fun view => view.native.activatedAt) publicEq
+  change first.application.current.native.activatedAt =
+    second.application.current.native.activatedAt at activated
+  have frontierEq : ReservedEpoch.frontierQualification implementation.runtime
+        implementation.leaks tape (first.respond nativeApplication who ⟨some firstMaterial⟩)
+          who frontier ↔
+      ReservedEpoch.frontierQualification implementation.runtime implementation.leaks tape
+        (second.respond nativeApplication who ⟨some secondMaterial⟩) who frontier := by
+    rw [ReservedEpoch.frontierQualification_sent_binding_iff implementation.runtime
+      implementation.leaks tape first who frontier firstHandle firstMaterial firstCall,
+      ReservedEpoch.frontierQualification_sent_binding_iff implementation.runtime
+        implementation.leaks tape second who frontier secondHandle secondMaterial secondCall]
+    rw [activated, service]
+  simp only [ReservedEpoch.ownedAcceptanceWord, leftActive, rightActive, ↓reduceIte]
+  constructor
+  · intro survived other requested
+    have same : other = frontier :=
+      (serviceGraph_revealRelaxedOrdered setup .concurrent).ready_actor_unique _
+        rightRequest.2.2.1 requested.2.2.1 rightRequest.2.2.2.1 requested.2.2.2.1
+    subst other
+    exact (survived frontier leftRequest).imp_right frontierEq.mp
+  · intro survived other requested
+    have same : other = frontier :=
+      (serviceGraph_revealRelaxedOrdered setup .concurrent).ready_actor_unique _
+        leftRequest.2.2.1 requested.2.2.1 leftRequest.2.2.2.1 requested.2.2.2.1
+    subst other
+    exact (survived frontier rightRequest).imp_right frontierEq.mpr
+
+private theorem sourceReplay_owned_word_congr
+    (first second : (nativeApplication).Execution)
+    (publicEq : first.application.publicView = second.application.publicView)
+    (requests : ∀ owner coordinate,
+      first.application.SeedRequest owner coordinate ↔
+        second.application.SeedRequest owner coordinate)
+    (network : first.network = second.network)
+    (service : first.environmentRecall = second.environmentRecall)
+    (outputs : ∀ owner, (nativeApplication).outputs (first.recall owner) =
+      (nativeApplication).outputs (second.recall owner))
+    (tape : ReservedEpoch.Tape Player implementation.tapeLength)
+    (owner : Player) (event : (serviceGraph setup .concurrent).EventId) :
+    ReservedEpoch.ownedAcceptanceWord implementation.runtime implementation.leaks tape
+        first owner event ↔
+      ReservedEpoch.ownedAcceptanceWord implementation.runtime implementation.leaks tape
+        second owner event := by
+  classical
+  have excluded := congrArg PhasePublicView.excluded publicEq
+  change first.application.current.excluded = second.application.current.excluded at excluded
+  have accepted := congrArg (fun view => view.native.accepted) publicEq
+  change first.application.current.native.accepted = second.application.current.native.accepted
+    at accepted
+  have activated := congrArg (fun view => view.native.activatedAt) publicEq
+  change first.application.current.native.activatedAt =
+    second.application.current.native.activatedAt at activated
+  have attempt := congrArg PhasePublicView.attempt publicEq
+  change first.application.attempt = second.application.attempt at attempt
+  have frontier (named : (serviceGraph setup .concurrent).EventId) :
+      ReservedEpoch.frontierQualification implementation.runtime implementation.leaks tape
+          first owner named ↔
+        ReservedEpoch.frontierQualification implementation.runtime implementation.leaks tape
+          second owner named := by
+    unfold ReservedEpoch.frontierQualification
+    rw [outputs owner, activated, attempt, network, service]
+  by_cases absent : owner ∈ second.application.current.excluded
+  · simp only [ReservedEpoch.ownedAcceptanceWord, excluded, accepted, absent, ↓reduceIte]
+  · simp only [ReservedEpoch.ownedAcceptanceWord, excluded, absent, ↓reduceIte]
+    apply forall_congr'
+    intro named
+    apply imp_congr
+    · rw [attempt]
+      exact requests owner _
+    · exact or_congr Iff.rfl (frontier named)
+
+private theorem RawReplayState.admission
+    (who : Player) (target : setup.proposalRecoveryProtocol.History)
+    (reference first second : (nativeApplication).Control)
+    (lost : Handle (serviceGraph setup .concurrent) → Option (Raw L))
+    (firstTrace : (nativeProtocol).Trace (some first))
+    (secondTrace : (nativeProtocol).Trace (some second))
+    (related : RawReplayState setup implementation who target reference lost
+      ⟨some first, firstTrace⟩ ⟨some second, secondTrace⟩)
+    (event : (serviceGraph setup .concurrent).EventId)
+    (request : first.execution.application.SeedRequest who
+      ⟨first.execution.application.attempt, event⟩)
+    (tape : ReservedEpoch.Tape Player implementation.tapeLength) :
+    bindingAdmissionBit setup implementation who event ⟨some second, secondTrace⟩ tape =
+      bindingAdmissionBit setup implementation who event ⟨some first, firstTrace⟩ tape := by
+  classical
+  obtain ⟨_remaining, _actor, execution, recalled, observed⟩ := related
+  have application := congrArg (fun execution : (nativeApplication).Execution =>
+    execution.application) execution
+  change second.execution.application = sourceSnapshotAssignment setup implementation
+    target reference lost first.execution.application at application
+  have publicEq : second.execution.application.publicView =
+      first.execution.application.publicView := by
+    rw [application]
+    exact sourceSnapshotAssignment_public setup implementation target reference lost _
+  have network := congrArg (fun execution : (nativeApplication).Execution => execution.network)
+    execution
+  change second.execution.network = first.execution.network at network
+  have service := congrArg
+    (fun execution : (nativeApplication).Execution => execution.environmentRecall) execution
+  change second.execution.environmentRecall = first.execution.environmentRecall at service
+  have requests (owner : Player) (coordinate : CommitAttemptEvent
+      (serviceGraph setup .concurrent)) :
+      second.execution.application.SeedRequest owner coordinate ↔
+        first.execution.application.SeedRequest owner coordinate := by
+    rw [application]
+    exact Iff.rfl
+  have actualRequest : second.execution.application.SeedRequest who
+      ⟨second.execution.application.attempt, event⟩ := by
+    rw [application]
+    exact request
+  have firstCount := PhaseCount.countRecall_history implementation.runtime implementation.leaks
+    ((nativeMenu).toRawTrace nativeInitial implementation.horizon implementation.scheduler
+      firstTrace)
+  have secondCount := PhaseCount.countRecall_history implementation.runtime implementation.leaks
+    ((nativeMenu).toRawTrace nativeInitial implementation.horizon implementation.scheduler
+      secondTrace)
+  have outputs (owner : Player) :
+      (nativeApplication).outputs (second.execution.recall owner) =
+        (nativeApplication).outputs (first.execution.recall owner) := by
+    rw [← secondCount.1 owner, ← firstCount.1 owner, network]
+  have phases := congrArg (fun state : PhaseRuntimeState (serviceGraph setup .concurrent) =>
+    state.phases) application
+  change second.execution.application.phases = first.execution.application.phases at phases
+  have entry := congrArg (fun state : PhaseRuntimeState (serviceGraph setup .concurrent) =>
+    state.entry.excluded) application
+  change second.execution.application.entry.excluded =
+    first.execution.application.entry.excluded at entry
+  have word (leftMaterial rightMaterial : WitnessedSubmission (serviceGraph setup .concurrent))
+      (leftHandle rightHandle : Handle (serviceGraph setup .concurrent))
+      (leftCall : leftMaterial.call.packet = .commitment event leftHandle)
+      (rightCall : rightMaterial.call.packet = .commitment event rightHandle)
+      (owner : Player) (named : (serviceGraph setup .concurrent).EventId) :
+      ReservedEpoch.ownedAcceptanceWord implementation.runtime implementation.leaks tape
+          (second.execution.respond nativeApplication who ⟨some leftMaterial⟩) owner named ↔
+        ReservedEpoch.ownedAcceptanceWord implementation.runtime implementation.leaks tape
+          (first.execution.respond nativeApplication who ⟨some rightMaterial⟩) owner named := by
+    by_cases focal : owner = who
+    · subst owner
+      exact sourceReplay_focal_sent_word_congr setup implementation second.execution
+        first.execution publicEq service tape who event named actualRequest request
+          leftHandle rightHandle leftMaterial rightMaterial leftCall rightCall
+    · exact (ReservedEpoch.ownedAcceptanceWord_respond_foreign implementation.runtime
+        implementation.leaks tape second.execution who owner focal ⟨some leftMaterial⟩
+          named).trans
+        ((sourceReplay_owned_word_congr setup implementation second.execution first.execution
+          publicEq requests network service outputs tape owner named).trans
+            (ReservedEpoch.ownedAcceptanceWord_respond_foreign implementation.runtime
+              implementation.leaks tape first.execution who owner focal ⟨some rightMaterial⟩
+                named).symm)
+  dsimp only [bindingAdmissionBit]
+  split
+  next actualOffered =>
+    split
+    next originalOffered =>
+      obtain ⟨_leftAvailable, _leftPayload, _leftValue, leftSerial, _leftBinding, leftCall,
+          _leftPrepared⟩ := Classical.choose_spec actualOffered
+      obtain ⟨_rightAvailable, _rightPayload, _rightValue, rightSerial, _rightBinding, rightCall,
+          _rightPrepared⟩ := Classical.choose_spec originalOffered
+      apply decide_eq_decide.mpr
+      rw [phases, entry]
+      apply exists_congr
+      intro phase
+      apply and_congr Iff.rfl
+      apply and_congr Iff.rfl
+      apply forall_congr'
+      intro named
+      apply imp_congr Iff.rfl
+      apply forall_congr'
+      intro owner
+      apply imp_congr Iff.rfl
+      apply imp_congr Iff.rfl
+      exact word (Classical.choose actualOffered) (Classical.choose originalOffered)
+        (who, .prepared leftSerial) (who, .prepared rightSerial) leftCall rightCall owner named
+    next absent =>
+      apply (absent ?_).elim
+      obtain ⟨material, available, proper⟩ := actualOffered
+      exact ⟨material, by simpa only [recalled, observed] using available, proper⟩
+  next absent =>
+    split
+    next originalOffered =>
+      apply (absent ?_).elim
+      obtain ⟨material, available, proper⟩ := originalOffered
+      exact ⟨material, by simpa only [recalled, observed] using available, proper⟩
+    next _ => rfl
+
+private theorem sourceRawReplay_qualified
+    (operational : implementation.Operational)
+    (who : Player) (reference : (nativeApplication).Control)
+    (referenceTrace : (nativeProtocol).Trace (some reference))
+    (event : (serviceGraph setup .concurrent).EventId)
+    (cut : PhaseProposalCanonicalBindingCut setup .concurrent implementation.runtime
+      implementation.leaks implementation.bounds implementation.plan values
+      implementation.horizon implementation.scheduler reference
+      (sourceCutTrace setup implementation referenceTrace) who event)
+    (g : setup.proposalRecoveryProtocol.History)
+    (sourceChoice : setup.proposalRecoveryModel.Choice who
+      (setup.proposalRecoveryModel.infoOf who g.trace))
+    (targetCurrent : CommitRecoveryState setup.program)
+    (targetTrace : setup.proposalRecoveryProtocol.Trace (some targetCurrent))
+    (alignment : SourceReplayAlignment (setup := setup) (values := values)
+      (implementation := implementation) operational who reference referenceTrace event cut g
+        sourceChoice targetCurrent targetTrace)
+    (good : ∀ owner, owner ≠ who →
+      ¬ PhaseProposal.GeneratedUnusableBindingHistory implementation.runtime implementation.leaks
+        implementation.bounds nativeInitial implementation.horizon implementation.scheduler
+          owner ⟨some reference, referenceTrace⟩)
+    (scale nativeBad : Set.Icc (0 : ℝ) 1) (scalePositive : 0 < scale.val)
+    (nativeProfile : ∀ owner, ((nativeMenu).information nativeInitial implementation.horizon
+      implementation.scheduler).BehavioralPolicy owner)
+    (nativePrescribed : nativeProfile = phaseProposalReferenceStrategy setup .concurrent
+      implementation.runtime implementation.leaks implementation.bounds implementation.plan
+        nativeInitial implementation.horizon implementation.scheduler values
+          ⟨nativeBad, scale, scale, scale⟩)
+    (tape : ReservedEpoch.Tape Player implementation.tapeLength)
+    (tapeSupported : prefixTapeLaw setup implementation ⟨some reference, referenceTrace⟩ tape ≠ 0)
+    (admitted : bindingAdmissionBit setup implementation who event
+      ⟨some reference, referenceTrace⟩ tape = true) :
+    ∃ law : SourceRawReplayLaw (setup := setup) (values := values)
+        (implementation := implementation) scale who ⟨some targetCurrent, targetTrace⟩ reference
+          ⟨some reference, referenceTrace⟩,
+      ∃ selected : ∀ script, script ∈ law.choices.support →
+        ((nativeMenu).information nativeInitial implementation.horizon
+          implementation.scheduler).InformationHistory who
+            (((nativeMenu).information nativeInitial implementation.horizon
+              implementation.scheduler).infoOf who referenceTrace),
+        let nativeLaw := law.choices.bindOnSupport
+          (fun script member => PMF.pure (selected script member))
+        (∀ script (member : script ∈ law.choices.support),
+          sourceRawReplay setup implementation who ⟨some targetCurrent, targetTrace⟩ reference
+              ⟨some reference, referenceTrace⟩ script = some (selected script member).val ∧
+          mechanicalWord setup implementation who (selected script member).val.trace =
+            mechanicalWord setup implementation who referenceTrace ∧
+          ((nativeMenu).information nativeInitial implementation.horizon
+            implementation.scheduler).historyReachWeight nativeProfile
+              (selected script member).val ≠ 0 ∧
+          prefixTapeLaw setup implementation (selected script member).val tape ≠ 0 ∧
+          (∀ owner, owner ≠ who →
+            ¬ PhaseProposal.GeneratedUnusableBindingHistory implementation.runtime
+              implementation.leaks implementation.bounds nativeInitial implementation.horizon
+                implementation.scheduler owner (selected script member).val) ∧
+          (selected script member).val.state.elim True (fun control =>
+            who ∉ control.execution.application.current.excluded) ∧
+          bindingAdmissionBit setup implementation who event
+            (selected script member).val tape = true) ∧
+        (∀ script (member : script ∈ law.choices.support),
+          sourceRawReplayReadback setup implementation who
+            ⟨some targetCurrent, targetTrace⟩ reference ⟨some reference, referenceTrace⟩
+              (selected script member).val = some script) ∧
+        (∀ actual, actual ∈ nativeLaw.support ↔
+          ∃ script, ∃ member : script ∈ law.choices.support,
+            selected script member = actual) ∧
+        (∀ script (member : script ∈ law.choices.support),
+          nativeLaw (selected script member) = law.choices script) := by
+  classical
+  have full : ∀ owner
+      (site : ((nativeMenu).information nativeInitial implementation.horizon
+        implementation.scheduler).InformationSite owner)
+      (choice : ((nativeMenu).information nativeInitial implementation.horizon
+        implementation.scheduler).Choice owner site.1),
+      choice ∈ (nativeProfile owner site.1).support := by
+    rw [nativePrescribed]
+    exact phaseProposalReferenceStrategy_fullSupport setup .concurrent implementation.runtime
+      implementation.leaks implementation.bounds implementation.plan nativeInitial
+        implementation.horizon implementation.scheduler values ⟨nativeBad, scale, scale, scale⟩
+          scalePositive
+  obtain ⟨law⟩ := sourceRawReplay_law (setup := setup) (values := values)
+    (implementation := implementation) operational who reference referenceTrace event cut g
+      sourceChoice targetCurrent targetTrace alignment good scale
+  have qualified : ∀ script ∈ law.choices.support,
+        ∃ actual : ((nativeMenu).information nativeInitial implementation.horizon
+            implementation.scheduler).InformationHistory who
+              (((nativeMenu).information nativeInitial implementation.horizon
+                implementation.scheduler).infoOf who referenceTrace),
+          sourceRawReplay setup implementation who ⟨some targetCurrent, targetTrace⟩ reference
+              ⟨some reference, referenceTrace⟩ script = some actual.val ∧
+          mechanicalWord setup implementation who actual.val.trace =
+            mechanicalWord setup implementation who referenceTrace ∧
+          ((nativeMenu).information nativeInitial implementation.horizon
+            implementation.scheduler).historyReachWeight nativeProfile actual.val ≠ 0 ∧
+          prefixTapeLaw setup implementation actual.val tape ≠ 0 ∧
+          (∀ owner, owner ≠ who →
+            ¬ PhaseProposal.GeneratedUnusableBindingHistory implementation.runtime
+              implementation.leaks implementation.bounds nativeInitial implementation.horizon
+                implementation.scheduler owner actual.val) ∧
+          actual.val.state.elim True (fun control =>
+            who ∉ control.execution.application.current.excluded) ∧
+          bindingAdmissionBit setup implementation who event actual.val tape = true := by
+    intro script member
+    obtain ⟨actual, replayed, related, word, actualGood⟩ := law.replayed script member
+    rcases actual with ⟨state, trace⟩
+    cases state with
+    | none => cases related
+    | some control =>
+      obtain ⟨remaining, actor, execution, recalled, observed⟩ := related
+      have active : control.actor = some who := actor.trans cut.active
+      have information : ((nativeMenu).information nativeInitial implementation.horizon
+          implementation.scheduler).infoOf who trace =
+        ((nativeMenu).information nativeInitial implementation.horizon
+          implementation.scheduler).infoOf who referenceTrace := by
+        change ((nativeMenu).signals nativeInitial implementation.horizon
+            implementation.scheduler).infoOf who trace =
+          ((nativeMenu).signals nativeInitial implementation.horizon
+            implementation.scheduler).infoOf who referenceTrace
+        rw [(nativeMenu).info nativeInitial implementation.horizon implementation.scheduler
+          who trace, (nativeMenu).info nativeInitial implementation.horizon
+            implementation.scheduler who referenceTrace]
+        simp only [ReactiveApplication.observe, active, cut.active, ↓reduceIte]
+        exact congrArg some (Prod.ext recalled observed)
+      let selected : ((nativeMenu).information nativeInitial implementation.horizon
+          implementation.scheduler).InformationHistory who
+            (((nativeMenu).information nativeInitial implementation.horizon
+              implementation.scheduler).infoOf who referenceTrace) :=
+        ⟨⟨some control, trace⟩, information⟩
+      refine ⟨selected, replayed, word, ?_, ?_, actualGood, ?_, ?_⟩
+      · exact ne_of_gt (((nativeMenu).information nativeInitial implementation.horizon
+          implementation.scheduler).historyReachWeight_pos_of_fullSupport nativeProfile full
+            selected.val)
+      · have service := congrArg
+          (fun execution : (nativeApplication).Execution => execution.environmentRecall) execution
+        change control.execution.environmentRecall = reference.execution.environmentRecall
+          at service
+        simpa only [selected, prefixTapeLaw, service] using tapeSupported
+      · change who ∉ control.execution.application.current.excluded
+        have application := congrArg (fun execution : (nativeApplication).Execution =>
+          execution.application) execution
+        change control.execution.application = sourceSnapshotAssignment setup implementation
+          ⟨some targetCurrent, targetTrace⟩ reference (rawReplayLost setup implementation script)
+            reference.execution.application at application
+        rw [application]
+        exact cut.request.2.2.2.2
+      · exact (RawReplayState.admission setup implementation who ⟨some targetCurrent, targetTrace⟩
+          reference reference control (rawReplayLost setup implementation script) referenceTrace
+            trace ⟨remaining, actor, execution, recalled, observed⟩ event cut.request tape).trans
+              admitted
+  let selected := fun script member => (qualified script member).choose
+  have properties := fun script member => (qualified script member).choose_spec
+  refine ⟨law, selected, properties, ?_, ?_, ?_⟩
+  · intro script member
+    exact sourceRawReplay_readback setup values implementation scale who
+      ⟨some targetCurrent, targetTrace⟩ reference ⟨some reference, referenceTrace⟩
+        script (law.choices script) (law.atoms script member)
+          (selected script member).val (properties script member).1
+  · intro actual
+    constructor
+    · intro supported
+      obtain ⟨script, member, image⟩ :=
+        (PMF.mem_support_bindOnSupport_iff ..).mp supported
+      exact ⟨script, member,
+        ((PMF.mem_support_pure_iff ..).mp image).symm⟩
+    · rintro ⟨script, member, rfl⟩
+      apply (PMF.mem_support_bindOnSupport_iff ..).mpr
+      exact ⟨script, member, by simp⟩
+  · intro script member
+    apply bindOnSupport_pure_apply_of_injective law.choices
+    · intro first firstMember second secondMember same
+      apply SourceRawReplayLaw.replay_injective setup values implementation scale who
+        ⟨some targetCurrent, targetTrace⟩ reference ⟨some reference, referenceTrace⟩ law
+          first second firstMember secondMember (selected first firstMember).val
+            (properties first firstMember).1
+      exact (properties second secondMember).1.trans
+        (congrArg (fun h => some (Subtype.val h)) same.symm)
+    · exact member
+
+/-- The actual trace's behavioral atoms and its transition mass form the
+literal finite-history likelihood, before any source-coordinate partition. -/
+private theorem sourceReplay_native_history_factor
+    (profile : ∀ owner, ((nativeMenu).information nativeInitial implementation.horizon
+      implementation.scheduler).BehavioralPolicy owner)
+    {state : (nativeProtocol).State} (trace : (nativeProtocol).Trace state) :
+    (((nativeMenu).information nativeInitial implementation.horizon
+        implementation.scheduler).historyReachWeight profile ⟨state, trace⟩).toReal =
+      trace.transitionMass *
+        ∏ owner, ((nativeMenu).information nativeInitial implementation.horizon
+          implementation.scheduler).ownPlayReachProbability (profile owner)
+            (((nativeMenu).information nativeInitial implementation.horizon
+              implementation.scheduler).ownPlay owner trace) := by
+  let model := (nativeMenu).information nativeInitial implementation.horizon
+    implementation.scheduler
+  obtain ⟨records, recordsEq, _provenance, chance, _nonnegative, mass, factor⟩ :=
+    model.exists_continuation_ownPlay_factor
+      (Trace.start : (nativeProtocol).Trace (nativeProtocol).init) trace
+        (TracePrefix.start trace)
+  have chanceEq : chance = trace.transitionMass := by
+    simpa only [Trace.transitionMass_start, mul_one] using mass
+  have recordsActual (owner : Player) : records owner = model.ownPlay owner trace := by
+    simpa only [InfoSignals.ownPlay, List.append_nil] using (recordsEq owner).symm
+  have exactFactor := factor profile
+  simp only [Trace.length, Nat.sub_zero, chanceEq, recordsActual] at exactFactor
+  exact exactFactor
+
+/-- One actual command disintegrates against the posterior of the original
+whole tape, including at zero command atoms. -/
+private theorem sourceReplay_scheduler_density
+    (past : List (nativeApplication).EnvironmentEntry)
+    (view : (nativeApplication).EnvironmentView) (command : (nativeApplication).Command)
+    (tape : ReservedEpoch.Tape Player implementation.tapeLength) :
+    implementation.scheduler past view command *
+        ((nativeApplication).schedulerMixture implementation.prior
+          (ReservedEpoch.family implementation.runtime implementation.leaks
+            (ReservedEpoch.packetCapacity implementation.runtime))).posterior
+              (past ++ [⟨view, command⟩]) tape =
+      ((nativeApplication).schedulerMixture implementation.prior
+          (ReservedEpoch.family implementation.runtime implementation.leaks
+            (ReservedEpoch.packetCapacity implementation.runtime))).posterior past tape *
+        ReservedEpoch.family implementation.runtime implementation.leaks
+          (ReservedEpoch.packetCapacity implementation.runtime) tape past view command := by
+  let mixture := (nativeApplication).schedulerMixture implementation.prior
+    (ReservedEpoch.family implementation.runtime implementation.leaks
+      (ReservedEpoch.packetCapacity implementation.runtime))
+  let joint := (mixture.posterior past).bind fun selected =>
+    mixture.respond selected (past, view)
+  have marginal : joint.map Prod.fst = implementation.scheduler past view := rfl
+  have density := mul_fiberPosterior_map_snd_apply joint command tape
+  rw [marginal] at density
+  have atom : joint (command, tape) = mixture.posterior past tape *
+      ReservedEpoch.family implementation.runtime implementation.leaks
+        (ReservedEpoch.packetCapacity implementation.runtime) tape past view command := by
+    exact bind_map_tag_apply (mixture.posterior past)
+      (fun selected => ReservedEpoch.family implementation.runtime implementation.leaks
+        (ReservedEpoch.packetCapacity implementation.runtime) selected past view) command tape
+  change implementation.scheduler past view command *
+      mixture.posterior (past ++ [⟨view, command⟩]) tape = _
+  rw [ReactiveApplication.SchedulerImplementation.posterior_snoc]
+  exact density.trans atom
+
+/-- Evaluate the existing transition kernel on the actual recorded path with
+the original whole tape fixed. No new trace or support totalization is used. -/
+private def sourceReplayFixedTransitionMass
+    (tape : ReservedEpoch.Tape Player implementation.tapeLength) :
+    ∀ {state : (nativeProtocol).State}, (nativeProtocol).Trace state → ℝ
+  | _, .start => 1
+  | after, @Trace.extend _ _ before _ prior joint _ _ =>
+      sourceReplayFixedTransitionMass tape prior *
+        ((nativeApplication).transition nativeInitial implementation.horizon
+          (ReservedEpoch.family implementation.runtime implementation.leaks
+            (ReservedEpoch.packetCapacity implementation.runtime) tape) before joint after).toReal
+
+private theorem sourceReplay_tape_step_density
+    (tape : ReservedEpoch.Tape Player implementation.tapeLength)
+    {before after : (nativeProtocol).State} (prior : (nativeProtocol).Trace before)
+    (joint : Player → Option (nativeApplication).Action)
+    (legal : (nativeProtocol).Legal before joint)
+    (moved : after ∈ ((nativeProtocol).step before ⟨joint, legal⟩).support) :
+    ((nativeProtocol).step before ⟨joint, legal⟩) after *
+        prefixTapeLaw setup implementation ⟨after, prior.extend joint legal moved⟩ tape =
+      prefixTapeLaw setup implementation ⟨before, prior⟩ tape *
+        (nativeApplication).transition nativeInitial implementation.horizon
+          (ReservedEpoch.family implementation.runtime implementation.leaks
+            (ReservedEpoch.packetCapacity implementation.runtime) tape) before joint after := by
+  cases before with
+  | none =>
+    change after ∈ ((nativeInitial).map fun state =>
+      some (⟨implementation.horizon, none,
+        ReactiveApplication.Execution.initial nativeApplication state⟩ :
+          (nativeApplication).Control)).support at moved
+    obtain ⟨state, _supported, rfl⟩ := PMF.support_map .. ▸ moved
+    change _ * implementation.prior tape = implementation.prior tape * _
+    exact mul_comm _ _
+  | some control =>
+    rcases control with ⟨remaining, actor, execution⟩
+    cases actor with
+    | some owner =>
+      change after ∈ (PMF.pure (some (⟨remaining, none,
+        execution.respond nativeApplication owner ((joint owner).getD ⟨none⟩)⟩ :
+          (nativeApplication).Control))).support at moved
+      cases (PMF.mem_support_pure_iff ..).mp moved
+      simp only [ReactiveApplication.ResponseMenu.protocol, ReactiveApplication.transition,
+        PMF.pure_apply, ↓reduceIte, prefixTapeLaw,
+        ReactiveApplication.respond_environmentRecall, one_mul, mul_one]
+    | none =>
+      cases remaining with
+      | zero => exact (legal.1 ⟨rfl, rfl⟩).elim
+      | succ remaining =>
+        change after ∈ ((implementation.scheduler execution.environmentRecall
+          (execution.observeEnvironment nativeApplication)).bind fun command =>
+            (execution.environmentStep nativeApplication command).map fun next =>
+              some (⟨remaining, command.actor? nativeApplication, next⟩ :
+                (nativeApplication).Control)).support at moved
+        obtain ⟨command, _chosen, supported⟩ :=
+          Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ moved)
+        obtain ⟨next, advanced, rfl⟩ := PMF.support_map .. ▸ supported
+        change (nativeApplication).transition nativeInitial implementation.horizon
+          implementation.scheduler (some ⟨remaining + 1, none, execution⟩) joint
+            (some ⟨remaining, command.actor? nativeApplication, next⟩) * _ = _
+        rw [(nativeApplication).transition_environment_apply nativeInitial
+            implementation.horizon implementation.scheduler remaining execution next command
+              advanced joint,
+          (nativeApplication).transition_environment_apply nativeInitial
+            implementation.horizon
+              (ReservedEpoch.family implementation.runtime implementation.leaks
+                (ReservedEpoch.packetCapacity implementation.runtime) tape) remaining execution
+                  next command advanced joint]
+        have recorded := (nativeApplication).environmentStep_environmentRecall execution next
+          command advanced
+        simp only [prefixTapeLaw, recorded]
+        have density := sourceReplay_scheduler_density setup implementation
+          execution.environmentRecall (execution.observeEnvironment nativeApplication) command tape
+        let mixture := (nativeApplication).schedulerMixture implementation.prior
+          (ReservedEpoch.family implementation.runtime implementation.leaks
+            (ReservedEpoch.packetCapacity implementation.runtime))
+        calc
+          _ = (implementation.scheduler execution.environmentRecall
+              (execution.observeEnvironment nativeApplication) command *
+                mixture.posterior (execution.environmentRecall ++
+                  [⟨execution.observeEnvironment nativeApplication, command⟩]) tape) *
+                    (execution.environmentStep nativeApplication command) next := by ac_rfl
+          _ = _ := by rw [density]; ac_rfl
+
+/-- The original tape posterior telescopes along the actual trace. All
+initializer and public Nature atoms stay in the fixed-tape transition product. -/
+private theorem sourceReplay_transition_tape_factor
+    (tape : ReservedEpoch.Tape Player implementation.tapeLength)
+    {state : (nativeProtocol).State} (trace : (nativeProtocol).Trace state) :
+    trace.transitionMass * (prefixTapeLaw setup implementation ⟨state, trace⟩ tape).toReal =
+      (implementation.prior tape).toReal *
+        sourceReplayFixedTransitionMass setup implementation tape trace := by
+  induction trace with
+  | start =>
+    change 1 * (implementation.prior tape).toReal = (implementation.prior tape).toReal * 1
+    ring
+  | @extend before after prior joint legal moved ih =>
+    have density := congrArg ENNReal.toReal
+      (sourceReplay_tape_step_density setup implementation tape prior joint legal moved)
+    simp only [ENNReal.toReal_mul] at density
+    rw [Trace.transitionMass_extend, sourceReplayFixedTransitionMass]
+    calc
+      _ = prior.transitionMass * _ := by ring
+      _ = prior.transitionMass *
+          ((prefixTapeLaw setup implementation ⟨before, prior⟩ tape).toReal * _) :=
+            congrArg (prior.transitionMass * ·) density
+      _ = _ := by rw [← mul_assoc, ih]; ring
+
+/-- Literal native reach with its original whole tape is the fixed-tape
+Nature product times every actual own-response product. -/
+private theorem sourceReplay_native_tape_factor
+    (profile : ∀ owner, ((nativeMenu).information nativeInitial implementation.horizon
+      implementation.scheduler).BehavioralPolicy owner)
+    (tape : ReservedEpoch.Tape Player implementation.tapeLength)
+    {state : (nativeProtocol).State} (trace : (nativeProtocol).Trace state) :
+    (((nativeMenu).information nativeInitial implementation.horizon
+        implementation.scheduler).historyReachWeight profile ⟨state, trace⟩).toReal *
+          (prefixTapeLaw setup implementation ⟨state, trace⟩ tape).toReal =
+      (implementation.prior tape).toReal *
+        sourceReplayFixedTransitionMass setup implementation tape trace *
+          ∏ owner, ((nativeMenu).information nativeInitial implementation.horizon
+            implementation.scheduler).ownPlayReachProbability (profile owner)
+              (((nativeMenu).information nativeInitial implementation.horizon
+                implementation.scheduler).ownPlay owner trace) := by
+  rw [sourceReplay_native_history_factor setup implementation profile trace]
+  let own := ∏ owner, ((nativeMenu).information nativeInitial implementation.horizon
+    implementation.scheduler).ownPlayReachProbability (profile owner)
+      (((nativeMenu).information nativeInitial implementation.horizon
+        implementation.scheduler).ownPlay owner trace)
+  change (trace.transitionMass * own) *
+    (prefixTapeLaw setup implementation ⟨state, trace⟩ tape).toReal =
+      (implementation.prior tape).toReal *
+        sourceReplayFixedTransitionMass setup implementation tape trace * own
+  calc
+    _ = (trace.transitionMass *
+        (prefixTapeLaw setup implementation ⟨state, trace⟩ tape).toReal) * own := by ring
+    _ = _ := by rw [sourceReplay_transition_tape_factor setup implementation tape trace]
+
+/-- Menu restriction preserves the literal product of reference-response atoms
+at every original private input on the actual native trace. -/
+private theorem sourceReplay_prescribed_own_atom
+    (rates : PhaseProposalRates) (owner : Player) (control : (nativeApplication).Control)
+    (trace : (nativeProtocol).Trace (some control)) :
+    ((nativeMenu).information nativeInitial implementation.horizon
+        implementation.scheduler).ownPlayReachProbability
+      (phaseProposalReferenceStrategy setup .concurrent implementation.runtime implementation.leaks
+        implementation.bounds implementation.plan nativeInitial implementation.horizon
+          implementation.scheduler values rates owner)
+      (((nativeMenu).information nativeInitial implementation.horizon
+        implementation.scheduler).ownPlay owner trace) =
+      (((nativeApplication).privateTranscriptFrom [] (control.execution.recall owner)).map
+        (fun record => phaseProposalReferencePolicy setup .concurrent implementation.runtime
+          implementation.leaks implementation.bounds implementation.plan values rates owner
+            record.1.1 record.1.2 record.2)).prod.toReal := by
+  have own : ((nativeMenu).information nativeInitial implementation.horizon
+        implementation.scheduler).ownPlay owner trace =
+      (nativeApplication).recallOwnPlay (control.execution.recall owner) := by
+    change ((nativeMenu).signals nativeInitial implementation.horizon
+      implementation.scheduler).ownPlay owner trace = _
+    rw [← (nativeMenu).ownPlay_toRawTrace nativeInitial implementation.horizon
+      implementation.scheduler owner trace, (nativeApplication).trace_ownPlay]
+    rfl
+  rw [own]
+  exact (nativeMenu).ownPlayFrom_restrictPolicy nativeInitial implementation.horizon
+    implementation.scheduler owner
+      (phaseProposalReferencePolicy setup .concurrent implementation.runtime implementation.leaks
+        implementation.bounds implementation.plan values rates owner)
+      (fun past view response supported => phaseProposalReferencePolicy_covered setup .concurrent
+        implementation.runtime implementation.leaks implementation.bounds implementation.plan
+          values rates owner past view response supported) [] (control.execution.recall owner)
+
+/-- The prescribed native atom retains the whole initial law, original tape,
+public Nature and each literal response probability at its actual input. -/
+private theorem sourceReplay_prescribed_native_atom
+    (rates : PhaseProposalRates)
+    (tape : ReservedEpoch.Tape Player implementation.tapeLength)
+    (control : (nativeApplication).Control)
+    (trace : (nativeProtocol).Trace (some control)) :
+    (((nativeMenu).information nativeInitial implementation.horizon
+        implementation.scheduler).historyReachWeight
+      (phaseProposalReferenceStrategy setup .concurrent implementation.runtime implementation.leaks
+        implementation.bounds implementation.plan nativeInitial implementation.horizon
+          implementation.scheduler values rates) ⟨some control, trace⟩).toReal *
+            (prefixTapeLaw setup implementation ⟨some control, trace⟩ tape).toReal =
+      (implementation.prior tape).toReal *
+        sourceReplayFixedTransitionMass setup implementation tape trace *
+          ∏ owner, (((nativeApplication).privateTranscriptFrom []
+            (control.execution.recall owner)).map (fun record =>
+              phaseProposalReferencePolicy setup .concurrent implementation.runtime
+                implementation.leaks implementation.bounds implementation.plan values rates owner
+                  record.1.1 record.1.2 record.2)).prod.toReal := by
+  rw [sourceReplay_native_tape_factor setup implementation
+    (phaseProposalReferenceStrategy setup .concurrent implementation.runtime implementation.leaks
+      implementation.bounds implementation.plan nativeInitial implementation.horizon
+        implementation.scheduler values rates) tape trace]
+  apply congrArg (fun product => (implementation.prior tape).toReal *
+    sourceReplayFixedTransitionMass setup implementation tape trace * product)
+  exact Finset.prod_congr rfl fun owner _ =>
+    sourceReplay_prescribed_own_atom setup values implementation rates owner control trace
+
+/-- At an actual counted input, the physical response atom separates into
+its genuine class atom and the literal alias-script atom at that same input. -/
+private theorem sourceReplay_counted_response_atom
+    (operational : implementation.Operational)
+    (fullValues : ∀ owner key, FullSupport (values owner key))
+    (rates : PhaseProposalRates) (waitPositive : 0 < rates.waiting.val)
+    (waitBelow : rates.waiting.val < 1) (slotPositive : 0 < rates.slots.val)
+    (badPositive : 0 < rates.badPreparation.val) (badBelow : rates.badPreparation.val < 1)
+    (remaining : Nat) (owner : Player) (execution : (nativeApplication).Execution)
+    (trace : (nativeProtocol).Trace (some ⟨remaining, some owner, execution⟩))
+    (tag : Option (Handle (serviceGraph setup .concurrent) × Raw L))
+    (response : PhaseProposal.Response implementation.runtime implementation.leaks
+      implementation.bounds owner (execution.recall owner)
+        (execution.observe nativeApplication owner)) :
+    phaseProposalReferencePolicy setup .concurrent implementation.runtime implementation.leaks
+        implementation.bounds implementation.plan values rates owner (execution.recall owner)
+          (execution.observe nativeApplication owner) response.val =
+      phaseProposalBaseClasses setup .concurrent implementation.runtime implementation.leaks
+          implementation.bounds implementation.plan values rates owner (execution.recall owner)
+            (execution.observe nativeApplication owner)
+              (PhaseProposal.projectResponse implementation.runtime implementation.leaks
+                implementation.bounds owner (execution.recall owner)
+                  (execution.observe nativeApplication owner) response) *
+        sourceReplayAliases setup implementation rates.aliases owner execution tag
+          (PhaseProposal.projectResponse implementation.runtime implementation.leaks
+            implementation.bounds owner (execution.recall owner)
+              (execution.observe nativeApplication owner) response) (tag, some response.val) := by
+  classical
+  unfold phaseProposalReferencePolicy
+  rw [pmf_map_apply_of_injective _ Subtype.val_injective response]
+  unfold phaseProposalReferenceResponses PhaseProposal.splitResponseLaw
+  rw [phaseProposalReferenceClasses_eq_of_counted setup .concurrent implementation.runtime
+    implementation.leaks implementation.bounds implementation.plan operational.completePending
+      operational.outputValues operational.maximalPhases values fullValues rates waitPositive
+        waitBelow slotPositive badPositive badBelow implementation.horizon implementation.scheduler
+          remaining owner execution trace]
+  rw [sourceReplayAliases_atom setup implementation rates.aliases owner execution tag _ response]
+  exact bind_apply_of_unique_branch _ _ response
+    (PhaseProposal.projectResponse implementation.runtime implementation.leaks
+      implementation.bounds owner (execution.recall owner)
+        (execution.observe nativeApplication owner) response)
+    (fun selected _ supported => (PMF.splitKernel_supported _ _ _ _ _ _ selected response
+      supported).symm)
+
+/-- A silent or noncommitment packet has no hidden preparation coordinate.
+Its genuine class atom is exactly its mechanical packet atom, and its private
+syntax contributes the alias atom at the actual counted input. -/
+private theorem sourceReplay_noncommit_response_atom
+    (operational : implementation.Operational)
+    (fullValues : ∀ owner key, FullSupport (values owner key))
+    (rates : PhaseProposalRates) (waitPositive : 0 < rates.waiting.val)
+    (waitBelow : rates.waiting.val < 1) (slotPositive : 0 < rates.slots.val)
+    (badPositive : 0 < rates.badPreparation.val) (badBelow : rates.badPreparation.val < 1)
+    (remaining : Nat) (owner : Player) (execution : (nativeApplication).Execution)
+    (trace : (nativeProtocol).Trace (some ⟨remaining, some owner, execution⟩))
+    (tag : Option (Handle (serviceGraph setup .concurrent) × Raw L))
+    (response : PhaseProposal.Response implementation.runtime implementation.leaks
+      implementation.bounds owner (execution.recall owner)
+        (execution.observe nativeApplication owner))
+    (noncommit : ∀ material, response.val.transmission = some material →
+      ∀ event handle, material.call.packet ≠ .commitment event handle) :
+    phaseProposalBaseClasses setup .concurrent implementation.runtime implementation.leaks
+        implementation.bounds implementation.plan values rates owner (execution.recall owner)
+          (execution.observe nativeApplication owner)
+          (PhaseProposal.projectResponse implementation.runtime implementation.leaks
+            implementation.bounds owner (execution.recall owner)
+              (execution.observe nativeApplication owner) response) =
+      foreignMechanicalAtom setup implementation rates execution owner response.val ∧
+    phaseProposalReferencePolicy setup .concurrent implementation.runtime implementation.leaks
+        implementation.bounds implementation.plan values rates owner (execution.recall owner)
+          (execution.observe nativeApplication owner) response.val =
+      foreignMechanicalAtom setup implementation rates execution owner response.val *
+        sourceReplayAliases setup implementation rates.aliases owner execution tag
+          (PhaseProposal.projectResponse implementation.runtime implementation.leaks
+            implementation.bounds owner (execution.recall owner)
+              (execution.observe nativeApplication owner) response) (tag, some response.val) := by
+  classical
+  let past := execution.recall owner
+  let view := execution.observe nativeApplication owner
+  let packet := fun action : (nativeApplication).Action => action.transmission.map
+    (fun material => (PhaseCount.localEnvelope implementation.runtime implementation.leaks
+      owner past view material).payload)
+  let project := PhaseProposal.projectResponse implementation.runtime implementation.leaks
+    implementation.bounds owner past view
+  let classes := phaseProposalBaseClasses setup .concurrent implementation.runtime
+    implementation.leaks implementation.bounds implementation.plan values rates owner past view
+  have preparation (action : (nativeApplication).Action)
+      (same : packet action = packet response.val) :
+      action.transmission.bind PhaseProposal.bindingPreparation = none := by
+    cases transmitted : action.transmission with
+    | none => simp only [Option.bind_none]
+    | some material =>
+        cases original : response.val.transmission with
+        | none =>
+            simp only [packet, transmitted, original, Option.map_some, Option.map_none,
+              reduceCtorEq] at same
+        | some fixed =>
+            have calls := congrArg (fun selected => selected.map
+              (fun entry : CommitAttemptPacket (serviceGraph setup .concurrent) =>
+                entry.packet.call)) same
+            have call : material.call.packet = fixed.call.packet := by
+              simpa only [packet, transmitted, original, Option.map_some,
+                PhaseCount.localEnvelope, PhaseCount.maskPacket_call, Option.some.injEq]
+                using calls
+            cases shape : material.call.packet with
+            | commitment event handle =>
+                exact False.elim (noncommit fixed original event handle (call.symm.trans shape))
+            | opening event handle raw =>
+                simp only [Option.bind_some, PhaseProposal.bindingPreparation, shape]
+            | malformed raw =>
+                simp only [Option.bind_some, PhaseProposal.bindingPreparation, shape]
+  have unique (selected : PhaseProposal.ResponseClass implementation.runtime
+      implementation.leaks implementation.bounds owner past view)
+      (same : selected.val.2 = (project response).val.2) : selected = project response := by
+    obtain ⟨other, represented⟩ := selected.property
+    have packets := same
+    rw [← represented] at packets
+    change packet other.val = packet response.val at packets
+    apply Subtype.ext
+    rw [← represented]
+    apply Prod.ext
+    · exact (preparation other.val packets).trans
+        (preparation response.val rfl).symm
+    · exact packets
+  have classAtom : (classes.map fun selected => selected.val.2) (project response).val.2 =
+      classes (project response) := by
+    rw [← pmf_bind_pure_eq_map,
+      bind_apply_of_unique_branch classes (fun selected => PMF.pure selected.val.2)
+        (project response).val.2 (project response)]
+    · rw [PMF.pure_apply_self, mul_one]
+    · intro selected _ supported
+      exact unique selected ((PMF.mem_support_pure_iff ..).mp supported).symm
+  have marginal : (classes.map fun selected => selected.val.2) =
+      (phaseProposalBasePolicy setup .concurrent implementation.runtime implementation.leaks
+        implementation.bounds implementation.plan values rates owner past view).map packet := by
+    dsimp only [classes]
+    rw [phaseProposalBaseClasses, PMF.map_comp,
+      ← phaseProposalBaseResponses_map_val setup .concurrent implementation.runtime
+        implementation.leaks implementation.bounds implementation.plan values rates owner
+          past view, PMF.map_comp]
+    rfl
+  have mechanical : foreignMechanicalAtom setup implementation rates execution owner response.val =
+      classes (project response) := by
+    dsimp only [foreignMechanicalAtom]
+    rw [mechanicalForeignPolicy_packet_eq_base setup values implementation, ← marginal]
+    change (classes.map fun selected => selected.val.2) (project response).val.2 * _ = _
+    rw [classAtom]
+    cases transmitted : response.val.transmission with
+    | none => simp only [mul_one]
+    | some material =>
+        cases shape : material.call.packet with
+        | commitment event handle => exact (noncommit material transmitted event handle shape).elim
+        | opening event handle raw => simp only [shape, mul_one]
+        | malformed raw => simp only [shape, mul_one]
+  refine ⟨mechanical.symm, ?_⟩
+  rw [sourceReplay_counted_response_atom setup values implementation operational fullValues rates
+    waitPositive waitBelow slotPositive badPositive badBelow remaining owner execution trace tag
+      response, mechanical]
+
+/-- One actual proper foreign response charges its mapped ordinary draw once;
+the preparation flag stays inside the mechanical atom and the alias stays at
+the actual reconstructed input. -/
+private theorem sourceReplay_proper_response_atom
+    (operational : implementation.Operational)
+    (fullValues : ∀ owner key, FullSupport (values owner key))
+    (rates : PhaseProposalRates) (waitPositive : 0 < rates.waiting.val)
+    (waitBelow : rates.waiting.val < 1) (slotPositive : 0 < rates.slots.val)
+    (badPositive : 0 < rates.badPreparation.val) (badBelow : rates.badPreparation.val < 1)
+    (remaining : Nat) (owner : Player) (execution : (nativeApplication).Execution)
+    (trace : (nativeProtocol).Trace (some ⟨remaining, some owner, execution⟩))
+    (event : (serviceGraph setup .concurrent).EventId) (payload : L.Ty)
+    (binding : (serviceGraph setup .concurrent).outputLayout event = .binding owner payload)
+    (request : execution.application.SeedRequest owner ⟨execution.application.attempt, event⟩)
+    (key : setup.ProposalRecoveryComponent owner)
+    (query : phaseProposalQuery? setup .concurrent implementation.runtime implementation.leaks
+      implementation.plan owner event (execution.recall owner)
+        (execution.observe nativeApplication owner) = some key)
+    (response : PhaseProposal.Response implementation.runtime implementation.leaks
+      implementation.bounds owner (execution.recall owner)
+        (execution.observe nativeApplication owner))
+    (material : WitnessedSubmission (serviceGraph setup .concurrent))
+    (sent : response.val.transmission = some material)
+    (value : L.Val payload)
+    (prepared : PhaseProposal.bindingPreparation material = some (⟨payload, value⟩ : Raw L))
+    (serial : Nat) (packet : material.call.packet = .commitment event (owner, .prepared serial))
+    (tag : Option (Handle (serviceGraph setup .concurrent) × Raw L)) :
+    phaseProposalReferencePolicy setup .concurrent implementation.runtime implementation.leaks
+        implementation.bounds implementation.plan values rates owner (execution.recall owner)
+          (execution.observe nativeApplication owner) response.val =
+      foreignMechanicalAtom setup implementation rates execution owner response.val *
+        ((values owner key).map (fun choice => phaseRecoveryDomainValue setup .concurrent event
+          owner payload binding choice.val.val)) value *
+        sourceReplayAliases setup implementation rates.aliases owner execution tag
+          (PhaseProposal.projectResponse implementation.runtime implementation.leaks
+            implementation.bounds owner (execution.recall owner)
+              (execution.observe nativeApplication owner) response) (tag, some response.val) := by
+  unfold phaseProposalReferencePolicy
+  rw [pmf_map_apply_of_injective _ Subtype.val_injective response,
+    (foreign_binding_response_atom setup values implementation operational fullValues rates
+      waitPositive waitBelow slotPositive badPositive badBelow remaining owner execution trace event
+        payload binding request key query response material sent value prepared serial packet).2,
+    sourceReplayAliases_atom setup implementation rates.aliases owner execution tag _ response]
+
+/-- A proper counted SEND supplies its genuine typed query and its literal
+draw atom at that actual input. Neither is an additional ledger premise. -/
+private theorem sourceReplay_proper_callback_atom
+    (operational : implementation.Operational)
+    (fullValues : ∀ owner key, FullSupport (values owner key))
+    (rates : PhaseProposalRates) (waitPositive : 0 < rates.waiting.val)
+    (waitBelow : rates.waiting.val < 1) (slotPositive : 0 < rates.slots.val)
+    (badPositive : 0 < rates.badPreparation.val) (badBelow : rates.badPreparation.val < 1)
+    (remaining : Nat) (owner : Player) (execution : (nativeApplication).Execution)
+    (trace : (nativeProtocol).Trace (some ⟨remaining, some owner, execution⟩))
+    (response : PhaseProposal.Response implementation.runtime implementation.leaks
+      implementation.bounds owner (execution.recall owner)
+        (execution.observe nativeApplication owner))
+    (clean : ¬ PhaseProposal.GeneratedUnusableBindingAction implementation.runtime
+      implementation.leaks owner response.val)
+    (material : WitnessedSubmission (serviceGraph setup .concurrent))
+    (sent : response.val.transmission = some material)
+    (event : (serviceGraph setup .concurrent).EventId)
+    (handle : Handle (serviceGraph setup .concurrent))
+    (packet : material.call.packet = .commitment event handle)
+    (tag : Option (Handle (serviceGraph setup .concurrent) × Raw L)) :
+    ∃ (payload : L.Ty)
+      (binding : (serviceGraph setup .concurrent).outputLayout event = .binding owner payload)
+      (key : setup.ProposalRecoveryComponent owner) (serial : Nat) (value : L.Val payload),
+      handle = (owner, .prepared serial) ∧
+      execution.application.SeedRequest owner ⟨execution.application.attempt, event⟩ ∧
+      phaseProposalQuery? setup .concurrent implementation.runtime implementation.leaks
+        implementation.plan owner event (execution.recall owner)
+          (execution.observe nativeApplication owner) = some key ∧
+      PhaseProposal.bindingPreparation material = some (⟨payload, value⟩ : Raw L) ∧
+      phaseProposalBaseClasses setup .concurrent implementation.runtime implementation.leaks
+          implementation.bounds implementation.plan values rates owner (execution.recall owner)
+            (execution.observe nativeApplication owner)
+            (PhaseProposal.projectResponse implementation.runtime implementation.leaks
+              implementation.bounds owner (execution.recall owner)
+                (execution.observe nativeApplication owner) response) =
+        foreignMechanicalAtom setup implementation rates execution owner response.val *
+          ((values owner key).map (fun choice => phaseRecoveryDomainValue setup .concurrent event
+            owner payload binding choice.val.val)) value ∧
+      phaseProposalReferencePolicy setup .concurrent implementation.runtime implementation.leaks
+          implementation.bounds implementation.plan values rates owner (execution.recall owner)
+            (execution.observe nativeApplication owner) response.val =
+        foreignMechanicalAtom setup implementation rates execution owner response.val *
+          ((values owner key).map (fun choice => phaseRecoveryDomainValue setup .concurrent event
+            owner payload binding choice.val.val)) value *
+          sourceReplayAliases setup implementation rates.aliases owner execution tag
+            (PhaseProposal.projectResponse implementation.runtime implementation.leaks
+              implementation.bounds owner (execution.recall owner)
+                (execution.observe nativeApplication owner) response) (tag, some response.val) := by
+  classical
+  have action : response.val = (⟨some material⟩ : (nativeApplication).Action) :=
+    congrArg (fun selected => (⟨selected⟩ : (nativeApplication).Action)) sent
+  have available : (⟨some material⟩ : (nativeApplication).Action) ∈
+      PhaseCount.onePacketActions implementation.runtime implementation.leaks
+        implementation.bounds owner (execution.recall owner)
+          (execution.observe nativeApplication owner) := action ▸ response.property
+  have initialEq : (setup.initialLaw.map encodeInputs).map
+      (PhaseRuntimeState.initial implementation.plan) = nativeInitial := PMF.map_comp _ _ _
+  have counted : ((nativeMenu).protocol
+      ((setup.initialLaw.map encodeInputs).map (PhaseRuntimeState.initial implementation.plan))
+        implementation.horizon implementation.scheduler).Trace
+          (some ⟨remaining, some owner, execution⟩) := by
+    rw [initialEq]
+    exact trace
+  obtain ⟨coordinate, requested⟩ := PhaseCount.onePacket_request_of_nonsilent
+    implementation.runtime implementation.leaks implementation.bounds implementation.plan
+      (setup.initialLaw.map encodeInputs) implementation.horizon implementation.scheduler
+        remaining owner execution counted material available
+  have named := PhaseCount.onePacket_event_of_request implementation.runtime implementation.leaks
+    implementation.bounds implementation.plan (serviceGraph_revealRelaxedOrdered setup .concurrent)
+      (setup.initialLaw.map encodeInputs) implementation.horizon implementation.scheduler
+        remaining owner execution counted coordinate requested material available
+  rw [packet] at named
+  have eventEq : coordinate.event = event := Option.some.inj named.symm
+  have request := requested
+  change execution.application.SeedRequest owner ⟨coordinate.attempt, coordinate.event⟩ at request
+  rw [requested.1, eventEq] at request
+  have permitted : PhaseCount.permits ((nativeApplication).outputs (execution.recall owner))
+      (PhaseCount.localEnvelope implementation.runtime implementation.leaks owner
+        (execution.recall owner) (execution.observe nativeApplication owner) material) = true := by
+    rcases ((PhaseCount.mem_onePacketActions implementation.runtime implementation.leaks
+      implementation.bounds owner _ _ _).mp available).2 with impossible |
+        ⟨other, same, permitted⟩
+    · cases impossible
+    · cases Option.some.inj same
+      exact permitted
+  have correct := ((PhaseCount.permits_eq_true_iff _ _).mp permitted).2.1
+  have call : (PhaseCount.nativeMessage (PhaseCount.localEnvelope implementation.runtime
+      implementation.leaks owner (execution.recall owner)
+        (execution.observe nativeApplication owner) material)).payload.call =
+      material.call.packet := PhaseCount.maskPacket_call _ _
+  unfold CountCallCorrect at correct
+  rw [call, packet] at correct
+  obtain ⟨owned, _evidence, handleOwned, ⟨serial, slot⟩, _unused⟩ := correct
+  change handle.1 = owner at handleOwned
+  have handleEq : handle = (owner, .prepared serial) := Prod.ext handleOwned slot
+  have owned' : bindingOwnedBy (serviceGraph setup .concurrent) owner event = true := owned
+  obtain ⟨payload, binding⟩ : ∃ payload,
+      (serviceGraph setup .concurrent).outputLayout event = .binding owner payload := by
+    cases output : (serviceGraph setup .concurrent).outputLayout event with
+    | binding actor payload =>
+        have same : actor = owner := by
+          simpa only [bindingOwnedBy, output, decide_eq_true_eq] using owned'
+        subst actor
+        exact ⟨payload, rfl⟩
+    | publicData payload => simp only [bindingOwnedBy, output, Bool.false_eq_true] at owned'
+    | privateInput actor payload =>
+        simp only [bindingOwnedBy, output, Bool.false_eq_true] at owned'
+    | publication payload => simp only [bindingOwnedBy, output, Bool.false_eq_true] at owned'
+  have shape : response.val =
+      (⟨some ⟨⟨.commitment event (owner, .prepared serial), material.call.opening⟩,
+        material.evidence⟩⟩ : (nativeApplication).Action) := by
+    rw [← handleEq, ← packet]
+    exact action
+  have usable : material.call.opening.bind (fun raw => raw.as? payload) ≠ none := by
+    intro missing
+    exact clean ⟨event, payload, serial, material.call.opening, material.evidence, binding,
+      shape, missing⟩
+  obtain ⟨value, decoded⟩ := Option.ne_none_iff_exists'.mp usable
+  have prepared : PhaseProposal.bindingPreparation material =
+      some (⟨payload, value⟩ : Raw L) := by
+    simp only [PhaseProposal.bindingPreparation, packet, binding, decoded, Option.map_some]
+  have rawTrace := (nativeMenu).toRawTrace nativeInitial implementation.horizon
+    implementation.scheduler trace
+  obtain ⟨key, query, _positive⟩ := phaseProposalDomainValues_fullSupport_of_binding setup
+    .concurrent implementation.runtime implementation.leaks operational.completePending
+      implementation.plan operational.maximalPhases values fullValues implementation.horizon
+        implementation.scheduler rawTrace owner rfl event payload binding request
+  refine ⟨payload, binding, key, serial, value, handleEq, request, query, prepared, ?_, ?_⟩
+  · exact (foreign_binding_response_atom setup values implementation operational fullValues rates
+      waitPositive waitBelow slotPositive badPositive badBelow remaining owner execution trace event
+        payload binding request key query response material sent value prepared serial
+          (packet.trans (congrArg (Payload.commitment event) handleEq))).1
+  · exact sourceReplay_proper_response_atom setup values implementation operational fullValues rates
+      waitPositive waitBelow slotPositive badPositive badBelow remaining owner execution trace event
+        payload binding request key query response material sent value prepared serial
+          (packet.trans (congrArg (Payload.commitment event) handleEq)) tag
+
+open Classical in
+/-- Every recalled callback contributes its class and alias atoms at the
+literal earlier input. The indexed products retain silent callbacks and all
+historical preparations, including those of a subsequently excluded owner. -/
+private theorem sourceReplay_foreign_callback_product
+    (operational : implementation.Operational)
+    (fullValues : ∀ owner key, FullSupport (values owner key))
+    (rates : PhaseProposalRates) (waitPositive : 0 < rates.waiting.val)
+    (waitBelow : rates.waiting.val < 1) (slotPositive : 0 < rates.slots.val)
+    (badPositive : 0 < rates.badPreparation.val) (badBelow : rates.badPreparation.val < 1)
+    (control : (nativeApplication).Control)
+    (trace : (nativeProtocol).Trace (some control)) :
+    ∃ selected : (owner : Player) →
+        (index : Fin (control.execution.recall owner).length) →
+        PhaseProposal.Response implementation.runtime implementation.leaks implementation.bounds
+          owner ((control.execution.recall owner).take index.val)
+            (control.execution.recall owner)[index.val].beforeView,
+      (∀ owner index, (selected owner index).val =
+        (control.execution.recall owner)[index.val].action) ∧
+      (∀ (owner : Player) (first second : Fin (control.execution.recall owner).length)
+        (message : Message Player (CommitAttemptPacket (serviceGraph setup .concurrent))),
+        (control.execution.recall owner)[first.val].emitted = some message →
+        (control.execution.recall owner)[second.val].emitted = some message → first = second) ∧
+      (∀ (owner : Player) (index : Fin (control.execution.recall owner).length),
+        ∃ (before : (nativeApplication).Control)
+          (prior : (nativeProtocol).Trace (some before)),
+        TracePrefix prior trace ∧ before.actor = some owner ∧
+          before.execution.recall owner = (control.execution.recall owner).take index.val ∧
+          (control.execution.recall owner)[index.val].beforeView =
+            before.execution.observe nativeApplication owner) ∧
+      let classes := fun (owner : Player)
+          (index : Fin (control.execution.recall owner).length) =>
+        phaseProposalBaseClasses setup .concurrent implementation.runtime implementation.leaks
+          implementation.bounds implementation.plan values rates owner
+            ((control.execution.recall owner).take index.val)
+            (control.execution.recall owner)[index.val].beforeView
+            (PhaseProposal.projectResponse implementation.runtime implementation.leaks
+              implementation.bounds owner ((control.execution.recall owner).take index.val)
+                (control.execution.recall owner)[index.val].beforeView (selected owner index))
+      let aliases := fun (owner : Player)
+          (index : Fin (control.execution.recall owner).length) =>
+        PMF.splitKernel
+          (PhaseProposal.projectResponse implementation.runtime implementation.leaks
+            implementation.bounds owner ((control.execution.recall owner).take index.val)
+              (control.execution.recall owner)[index.val].beforeView)
+          (PhaseProposal.canonicalResponse implementation.runtime implementation.leaks
+            implementation.bounds owner ((control.execution.recall owner).take index.val)
+              (control.execution.recall owner)[index.val].beforeView)
+          (PhaseProposal.project_canonicalResponse implementation.runtime implementation.leaks
+            implementation.bounds owner ((control.execution.recall owner).take index.val)
+              (control.execution.recall owner)[index.val].beforeView)
+          rates.aliases.val rates.aliases.property.1 rates.aliases.property.2
+          (PhaseProposal.projectResponse implementation.runtime implementation.leaks
+            implementation.bounds owner ((control.execution.recall owner).take index.val)
+              (control.execution.recall owner)[index.val].beforeView (selected owner index))
+          (selected owner index)
+      (∀ owner index, phaseProposalReferencePolicy setup .concurrent implementation.runtime
+          implementation.leaks implementation.bounds implementation.plan values rates owner
+          ((control.execution.recall owner).take index.val)
+          (control.execution.recall owner)[index.val].beforeView
+          (control.execution.recall owner)[index.val].action =
+        classes owner index * aliases owner index) ∧
+      (∀ who : Player,
+        (∏ owner ∈ Finset.univ.erase who,
+          (((nativeApplication).privateTranscriptFrom [] (control.execution.recall owner)).map
+            (fun record => phaseProposalReferencePolicy setup .concurrent implementation.runtime
+              implementation.leaks implementation.bounds implementation.plan values rates owner
+                record.1.1 record.1.2 record.2)).prod.toReal) =
+        (∏ owner ∈ Finset.univ.erase who, ∏ index, (classes owner index).toReal) *
+          (∏ owner ∈ Finset.univ.erase who, ∏ index, (aliases owner index).toReal)) ∧
+      ∀ (who : Player) (tape : ReservedEpoch.Tape Player implementation.tapeLength),
+        (((nativeMenu).information nativeInitial implementation.horizon
+            implementation.scheduler).historyReachWeight
+          (phaseProposalReferenceStrategy setup .concurrent implementation.runtime
+            implementation.leaks implementation.bounds implementation.plan nativeInitial
+              implementation.horizon implementation.scheduler values rates)
+          ⟨some control, trace⟩).toReal *
+            (prefixTapeLaw setup implementation ⟨some control, trace⟩ tape).toReal =
+          (implementation.prior tape).toReal *
+            sourceReplayFixedTransitionMass setup implementation tape trace *
+            ((nativeMenu).information nativeInitial implementation.horizon
+              implementation.scheduler).ownPlayReachProbability
+              (phaseProposalReferenceStrategy setup .concurrent implementation.runtime
+                implementation.leaks implementation.bounds implementation.plan nativeInitial
+                  implementation.horizon implementation.scheduler values rates who)
+              (((nativeMenu).information nativeInitial implementation.horizon
+                implementation.scheduler).ownPlay who trace) *
+            (∏ owner ∈ Finset.univ.erase who, ∏ index, (classes owner index).toReal) *
+            (∏ owner ∈ Finset.univ.erase who, ∏ index, (aliases owner index).toReal) := by
+  have factual (owner : Player) (index : Fin (control.execution.recall owner).length) :
+      ∃ (before : (nativeApplication).Control)
+        (prior : (nativeProtocol).Trace (some before)),
+        TracePrefix prior trace ∧ before.actor = some owner ∧
+          before.execution.recall owner = (control.execution.recall owner).take index.val ∧
+          (control.execution.recall owner)[index.val].beforeView =
+            before.execution.observe nativeApplication owner ∧
+          (control.execution.recall owner)[index.val].action ∈ (nativeMenu).actions owner
+            ((control.execution.recall owner).take index.val)
+            (before.execution.observe nativeApplication owner) := by
+    have recalled : control.execution.recall owner =
+        (control.execution.recall owner).take index.val ++
+          (control.execution.recall owner)[index.val] ::
+            (control.execution.recall owner).drop (index.val + 1) := by
+      rw [← List.drop_eq_getElem_cons index.isLt]
+      exact (List.take_append_drop index.val _).symm
+    exact (nativeMenu).recorded_response_at nativeInitial implementation.horizon
+      implementation.scheduler control trace owner
+        ((control.execution.recall owner).take index.val)
+        (control.execution.recall owner)[index.val]
+        ((control.execution.recall owner).drop (index.val + 1)) recalled
+  have available (owner : Player) (index : Fin (control.execution.recall owner).length) :
+      (control.execution.recall owner)[index.val].action ∈ (nativeMenu).actions owner
+        ((control.execution.recall owner).take index.val)
+        (control.execution.recall owner)[index.val].beforeView := by
+    obtain ⟨before, _prior, _kept, _acting, _past, viewed, offered⟩ := factual owner index
+    simpa only [viewed] using offered
+  let selected := fun (owner : Player)
+      (index : Fin (control.execution.recall owner).length) =>
+    (⟨(control.execution.recall owner)[index.val].action, available owner index⟩ :
+      PhaseProposal.Response implementation.runtime implementation.leaks implementation.bounds
+        owner ((control.execution.recall owner).take index.val)
+          (control.execution.recall owner)[index.val].beforeView)
+  refine ⟨selected, fun _ _ => rfl, ?_, ?_, ?_⟩
+  · intro owner first second message firstSent secondSent
+    have order := (nativeApplication).emissionOrder_history implementation.scheduler nativeInitial
+      implementation.horizon ((nativeMenu).toRawTrace nativeInitial implementation.horizon
+        implementation.scheduler trace)
+    have outputUnique : ((nativeApplication).outputs (control.execution.recall owner)).Nodup := by
+      apply List.Nodup.of_map Message.id
+      rw [order owner]
+      exact List.nodup_range.map (fun _ _ equal => (Prod.mk.inj equal).2)
+    change ((control.execution.recall owner).filterMap
+      ReactiveApplication.PlayerEntry.emitted).Pairwise (· ≠ ·) at outputUnique
+    have distinct := List.pairwise_filterMap.mp outputUnique
+    apply Fin.ext
+    rcases lt_trichotomy first.val second.val with earlier | equal | later
+    · exact False.elim ((distinct.rel_getElem_of_lt first.isLt second.isLt earlier)
+        message firstSent message secondSent rfl)
+    · exact equal
+    · exact False.elim ((distinct.rel_getElem_of_lt second.isLt first.isLt later)
+        message secondSent message firstSent rfl)
+  · intro owner index
+    obtain ⟨before, prior, kept, acting, past, viewed, _offered⟩ := factual owner index
+    exact ⟨before, prior, kept, acting, past, viewed⟩
+  · intro classes aliases
+    have atoms (owner : Player) (index : Fin (control.execution.recall owner).length) :
+        phaseProposalReferencePolicy setup .concurrent implementation.runtime implementation.leaks
+          implementation.bounds implementation.plan values rates owner
+          ((control.execution.recall owner).take index.val)
+          (control.execution.recall owner)[index.val].beforeView
+          (control.execution.recall owner)[index.val].action =
+            classes owner index * aliases owner index := by
+      obtain ⟨⟨remaining, actor, execution⟩, prior, _kept, acting, past, viewed, offered⟩ :=
+        factual owner index
+      change actor = some owner at acting
+      subst actor
+      let response : PhaseProposal.Response implementation.runtime implementation.leaks
+          implementation.bounds owner (execution.recall owner)
+            (execution.observe nativeApplication owner) :=
+        ⟨(control.execution.recall owner)[index.val].action, by
+          change (control.execution.recall owner)[index.val].action ∈
+            PhaseCount.onePacketActions implementation.runtime implementation.leaks
+              implementation.bounds owner ((control.execution.recall owner).take index.val)
+                (execution.observe nativeApplication owner) at offered
+          rw [← past] at offered
+          exact offered⟩
+      have atom := sourceReplay_counted_response_atom setup values implementation operational
+        fullValues rates waitPositive waitBelow slotPositive badPositive badBelow remaining owner
+          execution prior none response
+      rw [sourceReplayAliases_atom setup implementation rates.aliases owner execution none _
+        response] at atom
+      let factor (past : List (nativeApplication).PlayerEntry)
+          (view : (nativeApplication).PlayerView)
+          (chosen : PhaseProposal.Response implementation.runtime implementation.leaks
+            implementation.bounds owner past view) : Prop :=
+        phaseProposalReferencePolicy setup .concurrent implementation.runtime implementation.leaks
+            implementation.bounds implementation.plan values rates owner past view chosen.val =
+          phaseProposalBaseClasses setup .concurrent implementation.runtime implementation.leaks
+              implementation.bounds implementation.plan values rates owner past view
+              (PhaseProposal.projectResponse implementation.runtime implementation.leaks
+                implementation.bounds owner past view chosen) *
+            PMF.splitKernel
+              (PhaseProposal.projectResponse implementation.runtime implementation.leaks
+                implementation.bounds owner past view)
+              (PhaseProposal.canonicalResponse implementation.runtime implementation.leaks
+                implementation.bounds owner past view)
+              (PhaseProposal.project_canonicalResponse implementation.runtime implementation.leaks
+                implementation.bounds owner past view)
+              rates.aliases.val rates.aliases.property.1 rates.aliases.property.2
+              (PhaseProposal.projectResponse implementation.runtime implementation.leaks
+                implementation.bounds owner past view chosen) chosen
+      have transport (firstPast secondPast : List (nativeApplication).PlayerEntry)
+          (firstView secondView : (nativeApplication).PlayerView)
+          (samePast : firstPast = secondPast) (sameView : firstView = secondView)
+          (first : PhaseProposal.Response implementation.runtime implementation.leaks
+            implementation.bounds owner firstPast firstView)
+          (second : PhaseProposal.Response implementation.runtime implementation.leaks
+            implementation.bounds owner secondPast secondView)
+          (sameAction : first.val = second.val) :
+          factor firstPast firstView first → factor secondPast secondView second := by
+        subst secondPast
+        subst secondView
+        have sameResponse : first = second := Subtype.ext sameAction
+        cases sameResponse
+        exact id
+      exact transport _ _ _ _ past viewed.symm response (selected owner index) rfl atom
+    have foreignProduct (who : Player) :
+        (∏ owner ∈ Finset.univ.erase who,
+          (((nativeApplication).privateTranscriptFrom [] (control.execution.recall owner)).map
+            (fun record => phaseProposalReferencePolicy setup .concurrent implementation.runtime
+              implementation.leaks implementation.bounds implementation.plan values rates owner
+                record.1.1 record.1.2 record.2)).prod.toReal) =
+          (∏ owner ∈ Finset.univ.erase who, ∏ index, (classes owner index).toReal) *
+            (∏ owner ∈ Finset.univ.erase who, ∏ index, (aliases owner index).toReal) := by
+      calc
+        _ = ∏ owner ∈ Finset.univ.erase who,
+          ∏ index : Fin (control.execution.recall owner).length,
+            (phaseProposalReferencePolicy setup .concurrent implementation.runtime
+              implementation.leaks implementation.bounds implementation.plan values rates owner
+              ((control.execution.recall owner).take index.val)
+              (control.execution.recall owner)[index.val].beforeView
+              (control.execution.recall owner)[index.val].action).toReal := by
+          apply Finset.prod_congr rfl
+          intro owner _member
+          simpa only [List.nil_append] using
+            (nativeApplication).privateTranscriptFrom_product
+              (phaseProposalReferencePolicy setup .concurrent implementation.runtime
+                implementation.leaks implementation.bounds implementation.plan values rates owner)
+              [] (control.execution.recall owner)
+        _ = ∏ owner ∈ Finset.univ.erase who,
+          ∏ index : Fin (control.execution.recall owner).length,
+            (classes owner index * aliases owner index).toReal := by
+          apply Finset.prod_congr rfl
+          intro owner _member
+          apply Finset.prod_congr rfl
+          intro index _present
+          exact congrArg ENNReal.toReal (atoms owner index)
+        _ = _ := by simp only [ENNReal.toReal_mul, Finset.prod_mul_distrib]
+    refine ⟨atoms, foreignProduct, ?_⟩
+    intro who tape
+    let responseProduct := fun owner =>
+      (((nativeApplication).privateTranscriptFrom [] (control.execution.recall owner)).map
+        (fun record => phaseProposalReferencePolicy setup .concurrent implementation.runtime
+          implementation.leaks implementation.bounds implementation.plan values rates owner
+            record.1.1 record.1.2 record.2)).prod.toReal
+    have splitProduct : (∏ owner, responseProduct owner) =
+        responseProduct who * ∏ owner ∈ Finset.univ.erase who, responseProduct owner :=
+      (Finset.mul_prod_erase Finset.univ responseProduct (Finset.mem_univ who)).symm
+    have focal := sourceReplay_prescribed_own_atom setup values implementation rates who
+      control trace
+    change _ = responseProduct who at focal
+    rw [sourceReplay_prescribed_native_atom setup values implementation rates tape control trace]
+    change (implementation.prior tape).toReal *
+        sourceReplayFixedTransitionMass setup implementation tape trace *
+          (∏ owner, responseProduct owner) = _
+    rw [splitProduct, ← focal]
+    rw [show (∏ owner ∈ Finset.univ.erase who, responseProduct owner) =
+        (∏ owner ∈ Finset.univ.erase who, ∏ index, (classes owner index).toReal) *
+          (∏ owner ∈ Finset.univ.erase who, ∏ index, (aliases owner index).toReal) from
+      foreignProduct who]
+    ring
+
+omit [Fintype Player] in
+/-- At a decoded binding query, the ordinary enriched source atom is exactly
+the queried domain law's typed-value atom. The original domain law is retained;
+neither a uniform payload law nor a representative source query is substituted. -/
+private theorem sourceReplay_source_value_atom
+    {Field : Type} {layout : Field → EventField Player L}
+    (refs : ContextRefs layout setup.context)
+    (outputs : ∀ event, FieldRef layout (outputLayout setup.program event))
+    (who : Player) (information : setup.proposalRecoveryModel.InfoState who)
+    (event : (serviceGraph setup .concurrent).EventId) (payload : L.Ty)
+    (binding : (serviceGraph setup .concurrent).outputLayout event = .binding who payload)
+    (store : Store layout) (past : List (OwnAction Player L))
+    (view : ProtocolView who setup.program)
+    (decoded : decodeEventView? setup.program refs outputs who event store past = some view)
+    (typed : ((setup.proposalRecoveryQuery who information).1).1.1.1 =
+      some (ProtocolView.virtualBindings who (setup.context.map Prod.fst).toFinset
+        setup.program view))
+    (active : setup.commitRecoveryActive who
+      ((setup.proposalRecoveryQuery who information).1).1.1)
+    (selected : setup.CommitRecoveryValueChoice who
+      (setup.proposalRecoveryQuery who information).1) :
+    ((sourceUnflaggedStrategy setup values who information).map Subtype.val)
+        (selected.val.val.map ProposalRecoveryMove.ordinary) =
+      ((values who (setup.proposalRecoveryQuery who information)).map (fun choice =>
+        phaseRecoveryDomainValue setup .concurrent event who payload binding choice.val.val))
+          (phaseRecoveryDomainValue setup .concurrent event who payload binding
+            selected.val.val) := by
+  let key := setup.proposalRecoveryQuery who information
+  let raw := fun choice : setup.CommitRecoveryValueChoice who key.1 =>
+    choice.val.val.map ProposalRecoveryMove.ordinary
+  have rawInjective : Function.Injective raw := by
+    intro first second equal
+    apply Subtype.ext
+    apply Subtype.ext
+    have semantic := congrArg (Option.map (fun move : ProposalRecoveryMove Player L =>
+      move.semantic)) equal
+    simpa only [raw, Option.map_map, Function.comp_def, ProposalRecoveryMove.ordinary,
+      Option.map_id'] using semantic
+  have rawLaw : (sourceUnflaggedStrategy setup values who information).map Subtype.val =
+      (values who key).map raw := by
+    unfold sourceUnflaggedStrategy
+    rw [setup.proposalRecovery_ordinary_choice_law, PMF.map_comp]
+    apply congrArg (fun transform => (values who key).map transform)
+    funext choice
+    change choice.val.val.map (fun move => ProposalRecoveryMove.label move false) =
+      choice.val.val.map ProposalRecoveryMove.ordinary
+    simp only [ProposalRecoveryMove.label_false]
+  rw [rawLaw]
+  change ((values who key).map raw) (raw selected) = _
+  rw [pmf_map_apply_of_injective _ rawInjective selected,
+    pmf_map_apply_of_injective _
+      (phaseRecoveryDomainValue_injective setup .concurrent refs outputs who event payload
+        binding store past view decoded key.1 typed active) selected]
+
+/-- The literal initializer and public Nature probability at an actual row.
+Scheduler and behavioral response probabilities are excluded. -/
+private def sourceReplayNatureStepAtom
+    (before after : (nativeProtocol).State) : ℝ≥0∞ :=
+  match before with
+  | none => (nativeApplication).transition nativeInitial implementation.horizon
+      implementation.scheduler none (fun _ => none) after
+  | some control => match control.actor with
+    | some _ => 1
+    | none => if control.remaining = 0 then 1 else
+        match after with
+        | none => 0
+        | some next => match next.execution.environmentRecall.getLast? with
+          | none => 0
+          | some entry => (control.execution.environmentStep nativeApplication entry.command)
+              next.execution
+
+/-- The physical foreign-packet factors in the original chronological trace. -/
+private def sourceReplayPacketStepAtom (rates : PhaseProposalRates) (who : Player)
+    (before : (nativeProtocol).State) (joint : Player → Option (nativeApplication).Action) :
+    ℝ≥0∞ :=
+  match before with
+  | none => 1
+  | some control => match control.actor with
+    | none => 1
+    | some owner => if owner = who then 1 else
+        match joint owner with
+        | none => 0
+        | some response => foreignMechanicalAtom setup implementation rates control.execution
+            owner response
+
+private theorem sourceReplay_mechanical_step_factor
+    (rates : PhaseProposalRates) (who : Player)
+    (tape : ReservedEpoch.Tape Player implementation.tapeLength)
+    {before after : (nativeProtocol).State} (joint : Player → Option (nativeApplication).Action)
+    (legal : (nativeProtocol).Legal before joint)
+    (moved : after ∈ ((nativeProtocol).step before ⟨joint, legal⟩).support) :
+    (nativeApplication).transition nativeInitial implementation.horizon
+        (ReservedEpoch.family implementation.runtime implementation.leaks
+          (ReservedEpoch.packetCapacity implementation.runtime) tape) before joint after *
+      sourceReplayPacketStepAtom setup implementation rates who before joint =
+    sourceReplayNatureStepAtom setup implementation before after *
+      mechanicalStepAtom setup implementation rates who tape before after joint := by
+  cases before with
+  | none =>
+    simp only [sourceReplayPacketStepAtom, sourceReplayNatureStepAtom, mechanicalStepAtom,
+      ReactiveApplication.transition, mul_one]
+  | some control =>
+    rcases control with ⟨remaining, actor, execution⟩
+    cases actor with
+    | some owner =>
+      change after ∈ (PMF.pure (some (⟨remaining, none,
+        execution.respond nativeApplication owner ((joint owner).getD ⟨none⟩)⟩ :
+          (nativeApplication).Control))).support at moved
+      cases (PMF.mem_support_pure_iff ..).mp moved
+      simp only [ReactiveApplication.transition, PMF.pure_apply_self,
+        sourceReplayPacketStepAtom, sourceReplayNatureStepAtom, mechanicalStepAtom, one_mul]
+      cases joint owner <;> rfl
+    | none =>
+      cases remaining with
+      | zero => exact (legal.1 ⟨rfl, rfl⟩).elim
+      | succ remaining =>
+        change after ∈ ((implementation.scheduler execution.environmentRecall
+          (execution.observeEnvironment nativeApplication)).bind fun command =>
+            (execution.environmentStep nativeApplication command).map fun next =>
+              some (⟨remaining, command.actor? nativeApplication, next⟩ :
+                (nativeApplication).Control)).support at moved
+        obtain ⟨command, _selected, supported⟩ :=
+          Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ moved)
+        obtain ⟨next, advanced, rfl⟩ := PMF.support_map .. ▸ supported
+        have recorded := (nativeApplication).environmentStep_environmentRecall execution next
+          command advanced
+        have last : next.environmentRecall.getLast? =
+            some ⟨execution.observeEnvironment nativeApplication, command⟩ := by
+          rw [recorded, List.getLast?_concat]
+        change (nativeApplication).transition nativeInitial implementation.horizon
+          (ReservedEpoch.family implementation.runtime implementation.leaks
+            (ReservedEpoch.packetCapacity implementation.runtime) tape)
+              (some ⟨remaining + 1, none, execution⟩) joint
+                (some ⟨remaining, command.actor? nativeApplication, next⟩) * _ = _
+        rw [(nativeApplication).transition_environment_apply nativeInitial implementation.horizon
+          (ReservedEpoch.family implementation.runtime implementation.leaks
+            (ReservedEpoch.packetCapacity implementation.runtime) tape) remaining execution next
+              command advanced joint]
+        simp only [sourceReplayPacketStepAtom, sourceReplayNatureStepAtom, mechanicalStepAtom,
+          Nat.succ_ne_zero, ↓reduceIte, last, mul_one]
+        exact mul_comm _ _
+
+/-- Every counted physical packet has positive mechanical weight at the
+actual initialized input. Properness contributes its literal positive flag. -/
+private theorem sourceReplay_foreign_packet_positive
+    (operational : implementation.Operational)
+    (fullValues : ∀ owner key, FullSupport (values owner key))
+    (rates : PhaseProposalRates) (waitPositive : 0 < rates.waiting.val)
+    (waitBelow : rates.waiting.val < 1) (slotPositive : 0 < rates.slots.val)
+    (badPositive : 0 < rates.badPreparation.val) (badBelow : rates.badPreparation.val < 1)
+    (remaining : Nat) (owner : Player) (execution : (nativeApplication).Execution)
+    (trace : (nativeProtocol).Trace (some ⟨remaining, some owner, execution⟩))
+    (response : (nativeApplication).Action)
+    (available : response ∈ PhaseCount.onePacketActions implementation.runtime
+      implementation.leaks implementation.bounds owner (execution.recall owner)
+        (execution.observe nativeApplication owner)) :
+    0 < (foreignMechanicalAtom setup implementation rates execution owner response).toReal := by
+  have packet := mechanicalForeignPolicy_packet_supported setup values implementation operational
+    fullValues rates waitPositive waitBelow slotPositive badPositive badBelow remaining owner
+      execution trace response available
+  have flag : 0 < ENNReal.ofReal (1 - rates.badPreparation.val) :=
+    ENNReal.ofReal_pos.mpr (sub_pos.mpr badBelow)
+  apply ENNReal.toReal_pos
+  · dsimp only [foreignMechanicalAtom]
+    apply mul_ne_zero packet
+    cases transmitted : response.transmission with
+    | none => exact one_ne_zero
+    | some material =>
+        cases shape : material.call.packet with
+        | commitment event handle => simpa only [shape] using flag.ne'
+        | opening event handle raw => simpa only [shape] using (one_ne_zero : (1 : ℝ≥0∞) ≠ 0)
+        | malformed raw => simpa only [shape] using (one_ne_zero : (1 : ℝ≥0∞) ≠ 0)
+  · dsimp only [foreignMechanicalAtom]
+    refine ENNReal.mul_ne_top (PMF.apply_ne_top _ _) ?_
+    cases transmitted : response.transmission with
+    | none => exact ENNReal.one_ne_top
+    | some material =>
+        cases shape : material.call.packet with
+        | commitment event handle =>
+            simpa only [shape] using (ENNReal.ofReal_ne_top :
+              ENNReal.ofReal (1 - rates.badPreparation.val) ≠ ∞)
+        | opening event handle raw => simpa only [shape] using ENNReal.one_ne_top
+        | malformed raw => simpa only [shape] using ENNReal.one_ne_top
+
+private def sourceReplayNatureMass :
+    ∀ {state : (nativeProtocol).State}, (nativeProtocol).Trace state → ℝ
+  | _, .start => 1
+  | after, @Trace.extend _ _ before _ prior _ _ _ =>
+      sourceReplayNatureMass prior *
+        (sourceReplayNatureStepAtom setup implementation before after).toReal
+
+private def sourceReplayPacketMass (rates : PhaseProposalRates) (who : Player) :
+    ∀ {state : (nativeProtocol).State}, (nativeProtocol).Trace state → ℝ
+  | _, .start => 1
+  | _, @Trace.extend _ _ before _ prior joint _ _ =>
+      sourceReplayPacketMass rates who prior *
+        (sourceReplayPacketStepAtom setup implementation rates who before joint).toReal
+
+/-- The literal finite packet product is strictly positive on every actual
+counted trace. Subsequent atom cancellation therefore uses no zero convention. -/
+private theorem sourceReplay_packet_mass_positive
+    (operational : implementation.Operational)
+    (fullValues : ∀ owner key, FullSupport (values owner key))
+    (rates : PhaseProposalRates) (waitPositive : 0 < rates.waiting.val)
+    (waitBelow : rates.waiting.val < 1) (slotPositive : 0 < rates.slots.val)
+    (badPositive : 0 < rates.badPreparation.val) (badBelow : rates.badPreparation.val < 1)
+    (who : Player) {state : (nativeProtocol).State}
+    (trace : (nativeProtocol).Trace state) :
+    0 < sourceReplayPacketMass setup implementation rates who trace := by
+  induction trace with
+  | start => exact zero_lt_one
+  | @extend before after prior joint legal moved ih =>
+      rw [sourceReplayPacketMass]
+      apply mul_pos ih
+      cases before with
+      | none => exact zero_lt_one
+      | some control =>
+          rcases control with ⟨remaining, actor, execution⟩
+          cases actor with
+          | none => exact zero_lt_one
+          | some owner =>
+              by_cases same : owner = who
+              · simp only [sourceReplayPacketStepAtom, same, ↓reduceIte, ENNReal.toReal_one,
+                  zero_lt_one]
+              · obtain ⟨response, selected, available⟩ :
+                    ∃ response : (nativeApplication).Action, joint owner = some response ∧
+                      response ∈ PhaseCount.onePacketActions implementation.runtime
+                        implementation.leaks implementation.bounds owner (execution.recall owner)
+                          (execution.observe nativeApplication owner) := by
+                  have offered := legal.2 owner
+                  cases chosen : joint owner with
+                  | none => rw [chosen] at offered; exact (offered rfl).elim
+                  | some response => exact ⟨response, rfl, (chosen ▸ offered).2⟩
+                simpa only [sourceReplayPacketStepAtom, same, ↓reduceIte, selected] using
+                  sourceReplay_foreign_packet_positive setup values implementation operational
+                    fullValues rates waitPositive waitBelow slotPositive badPositive badBelow
+                      remaining owner execution prior response available
+
+/-- On the actual trace, the fixed-tape transition factors and the foreign
+packet factors are exactly public Nature times the existing mechanical path.
+The whole initializer is retained once, before the first source row. -/
+private theorem sourceReplay_mechanical_path_factor
+    (rates : PhaseProposalRates) (who : Player)
+    (tape : ReservedEpoch.Tape Player implementation.tapeLength)
+    {state : (nativeProtocol).State} (trace : (nativeProtocol).Trace state) :
+    sourceReplayFixedTransitionMass setup implementation tape trace *
+        sourceReplayPacketMass setup implementation rates who trace =
+      sourceReplayNatureMass setup implementation trace *
+        (mechanicalPathAtom setup implementation rates who tape trace).toReal := by
+  induction trace with
+  | start =>
+    simp only [sourceReplayFixedTransitionMass, sourceReplayPacketMass, sourceReplayNatureMass,
+      mechanicalPathAtom, ENNReal.toReal_one, mul_one]
+  | @extend before after prior joint legal moved ih =>
+    have row := congrArg ENNReal.toReal
+      (sourceReplay_mechanical_step_factor setup implementation rates who tape joint legal moved)
+    simp only [ENNReal.toReal_mul] at row
+    rw [sourceReplayFixedTransitionMass, sourceReplayPacketMass, sourceReplayNatureMass,
+      mechanicalPathAtom, ENNReal.toReal_mul]
+    calc
+      _ = (sourceReplayFixedTransitionMass setup implementation tape prior *
+          sourceReplayPacketMass setup implementation rates who prior) *
+            (((nativeApplication).transition nativeInitial implementation.horizon
+              (ReservedEpoch.family implementation.runtime implementation.leaks
+                (ReservedEpoch.packetCapacity implementation.runtime) tape) before joint after
+                  ).toReal *
+              (sourceReplayPacketStepAtom setup implementation rates who before joint).toReal) :=
+                by ring
+      _ = _ := by rw [ih, row]; ring
+
+/-- The actual native atom separates scheduler/packet mechanics from public
+Nature. The packet product is retained literally for the subsequent proper-draw
+and alias partition; no division or zero-case convention is introduced. -/
+private theorem sourceReplay_prescribed_mechanical_atom
+    (rates : PhaseProposalRates) (who : Player)
+    (tape : ReservedEpoch.Tape Player implementation.tapeLength)
+    (control : (nativeApplication).Control)
+    (trace : (nativeProtocol).Trace (some control)) :
+    (((nativeMenu).information nativeInitial implementation.horizon
+        implementation.scheduler).historyReachWeight
+      (phaseProposalReferenceStrategy setup .concurrent implementation.runtime implementation.leaks
+        implementation.bounds implementation.plan nativeInitial implementation.horizon
+          implementation.scheduler values rates) ⟨some control, trace⟩).toReal *
+        (prefixTapeLaw setup implementation ⟨some control, trace⟩ tape).toReal *
+          sourceReplayPacketMass setup implementation rates who trace =
+      (implementation.prior tape).toReal *
+        sourceReplayNatureMass setup implementation trace *
+          (mechanicalPathAtom setup implementation rates who tape trace).toReal *
+            ∏ owner, (((nativeApplication).privateTranscriptFrom []
+              (control.execution.recall owner)).map (fun record =>
+                phaseProposalReferencePolicy setup .concurrent implementation.runtime
+                  implementation.leaks implementation.bounds implementation.plan values rates owner
+                    record.1.1 record.1.2 record.2)).prod.toReal := by
+  have native := sourceReplay_prescribed_native_atom setup values implementation rates tape
+    control trace
+  rw [native]
+  calc
+    _ = (implementation.prior tape).toReal *
+        (sourceReplayFixedTransitionMass setup implementation tape trace *
+          sourceReplayPacketMass setup implementation rates who trace) *
+            ∏ owner, (((nativeApplication).privateTranscriptFrom []
+              (control.execution.recall owner)).map (fun record =>
+                phaseProposalReferencePolicy setup .concurrent implementation.runtime
+                  implementation.leaks implementation.bounds implementation.plan values rates owner
+                    record.1.1 record.1.2 record.2)).prod.toReal := by ring
+    _ = _ := by
+      rw [sourceReplay_mechanical_path_factor setup implementation rates who tape trace]
+      ring
 
 local notation "nativeModel" => ReactiveApplication.ResponseMenu.information
   (PhaseCount.onePacketMenu implementation.runtime implementation.leaks implementation.bounds)

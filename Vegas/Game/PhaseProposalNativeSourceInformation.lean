@@ -5782,7 +5782,7 @@ def sourceSnapshotAssignment
       state := sourceSnapshotState setup implementation target reference lost record.state } }
 
 omit [Fintype Player] in
-private theorem sourceSnapshotPair_accept_other
+theorem sourceSnapshotPair_accept_other
     (target : setup.proposalRecoveryProtocol.History)
     (reference : (nativeApplication).Control)
     (lost : Handle (serviceGraph setup .concurrent) → Option (Raw L))
@@ -6106,7 +6106,7 @@ private theorem sourceSnapshot_submit
   rw [pairsEq]
 
 omit [Fintype Player] in
-private theorem sourceSnapshotPair_complete_public
+theorem sourceSnapshotPair_complete_public
     (target : setup.proposalRecoveryProtocol.History)
     (reference : (nativeApplication).Control)
     (lost : Handle (serviceGraph setup .concurrent) → Option (Raw L))
@@ -6139,7 +6139,7 @@ private theorem sourceSnapshotPair_complete_public
       rfl
 
 omit [Fintype Player] in
-private theorem sourceSnapshotPair_sample
+theorem sourceSnapshotPair_sample
     (target : setup.proposalRecoveryProtocol.History)
     (reference : (nativeApplication).Control)
     (lost : Handle (serviceGraph setup .concurrent) → Option (Raw L))
@@ -10226,7 +10226,7 @@ def mechanicalWord (who : Player) : ∀ {state : (nativeProtocol).State},
   | target, .extend prior _ _ _ => mechanicalWord who prior ++
       [⟨mechanicalProjection setup implementation who target, target, rfl⟩]
 
-private theorem mechanicalWord_last (who : Player) {state : (nativeProtocol).State}
+theorem mechanicalWord_last (who : Player) {state : (nativeProtocol).State}
     (trace : (nativeProtocol).Trace state) :
     (mechanicalWord setup implementation who trace).getLast? =
       some ⟨mechanicalProjection setup implementation who state, state, rfl⟩ := by
@@ -10637,6 +10637,15 @@ theorem foreign_binding_response_atom
     (value : L.Val payload)
     (prepared : PhaseProposal.bindingPreparation material = some (⟨payload, value⟩ : Raw L))
     (serial : Nat) (packet : material.call.packet = .commitment event (owner, .prepared serial)) :
+    phaseProposalBaseClasses setup .concurrent implementation.runtime implementation.leaks
+        implementation.bounds implementation.plan values rates owner (execution.recall owner)
+          (execution.observe nativeApplication owner)
+          (PhaseProposal.projectResponse implementation.runtime implementation.leaks
+            implementation.bounds owner (execution.recall owner)
+              (execution.observe nativeApplication owner) response) =
+      foreignMechanicalAtom setup implementation rates execution owner response.val *
+        ((values owner key).map (fun choice => phaseRecoveryDomainValue setup .concurrent event
+          owner payload binding choice.val.val)) value ∧
     phaseProposalReferenceResponses setup .concurrent implementation.runtime implementation.leaks
         implementation.bounds implementation.plan values rates owner (execution.recall owner)
           (execution.observe nativeApplication owner) response =
@@ -10739,6 +10748,26 @@ theorem foreign_binding_response_atom
         (fun _ _ same => PublicationResult.success.inj same) value)
     rw [mapped]
     simp
+  have properClass : phaseProposalBaseClasses setup .concurrent implementation.runtime
+      implementation.leaks implementation.bounds implementation.plan values rates owner past view
+        (PhaseProposal.projectResponse implementation.runtime implementation.leaks
+          implementation.bounds owner past view response) =
+      foreignMechanicalAtom setup implementation rates execution owner response.val *
+        ((values owner key).map (fun choice => phaseRecoveryDomainValue setup .concurrent event
+          owner payload binding choice.val.val)) value := by
+    rw [classAtom, proper]
+    change _ = (((mechanicalForeignPolicy setup implementation rates owner past view).map packetOf)
+      (packetOf response.val) *
+        (match response.val.transmission with
+        | none => 1
+        | some material => match material.call.packet with
+          | .commitment .. => ENNReal.ofReal (1 - rates.badPreparation.val)
+          | _ => 1)) * _
+    rw [mechanical, transmitted]
+    dsimp only
+    rw [packet]
+    ring
+  refine ⟨properClass, ?_⟩
   unfold phaseProposalReferenceResponses PhaseProposal.splitResponseLaw
   rw [phaseProposalReferenceClasses_eq_of_counted setup .concurrent implementation.runtime
     implementation.leaks implementation.bounds implementation.plan operational.completePending
@@ -10751,18 +10780,7 @@ theorem foreign_binding_response_atom
     (PhaseProposal.projectResponse implementation.runtime implementation.leaks implementation.bounds
       owner past view response) (fun chosen _ supported =>
         (PMF.splitKernel_supported _ _ _ _ _ _ chosen response supported).symm)]
-  rw [classAtom, proper]
-  change _ = (((mechanicalForeignPolicy setup implementation rates owner past view).map packetOf)
-    (packetOf response.val) *
-      (match response.val.transmission with
-      | none => 1
-      | some material => match material.call.packet with
-        | .commitment .. => ENNReal.ofReal (1 - rates.badPreparation.val)
-        | _ => 1)) * _ * _
-  rw [mechanical, transmitted]
-  dsimp only
-  rw [packet]
-  ring
+  rw [properClass]
 
 def mechanicalStepAtom (rates : PhaseProposalRates) (who : Player)
     (tape : ReservedEpoch.Tape Player implementation.tapeLength)
@@ -11110,7 +11128,7 @@ theorem mechanicalForeignPolicy_packet_supported
 
 /-- Equal mechanical inputs retain the public request, every owner's submitted
 word, and the physical fresh-slot predicates. -/
-private theorem mechanicalProjection_foreign_input (who owner : Player)
+theorem mechanicalProjection_foreign_input (who owner : Player)
     (first second : (nativeApplication).Control)
     (firstTrace : (nativeProtocol).Trace (some first))
     (secondTrace : (nativeProtocol).Trace (some second))
@@ -11827,7 +11845,7 @@ private theorem mechanicalStepAtom_eq_of_projection
                           firstResponse secondResponse firstChosenLegal.2 secondChosenLegal.2
                           same packets
 
-private theorem mechanicalWord_length (who : Player)
+theorem mechanicalWord_length (who : Player)
     {state : (nativeProtocol).State} (trace : (nativeProtocol).Trace state) :
     (mechanicalWord setup implementation who trace).length = trace.length + 1 := by
   induction trace with
