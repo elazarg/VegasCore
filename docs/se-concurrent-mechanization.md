@@ -73,6 +73,35 @@ These rows track implementation work inside the unchanged weighted statement;
 they introduce no extra admitted theorem or preservation assumption. Local
 lemmas do not close a row's complete obligation.
 
+**Remaining implementation checkpoints.** Each item below closes only when its
+complete result is Lean-checked with standard axioms. Draft bodies and local
+helpers do not close it. These refine the work above without changing the
+contract or the asynchronous checklist. Detailed mathematical derivations for
+all items have independent agent review; that is not Lean verification.
+
+Already checked: whole initializer/Nature mass and its likelihood consumer
+(`61a5fe94`); universal reverse coverage by the same replay law, conditional on
+source alignment (`bfe581fb`). The forward direction below remains separate.
+
+| Checkpoint | Current state | Owner |
+| --- | --- | --- |
+| Complete selected-entry chronology through clean/retry/exhausted closes and automatic phases, including reveal/sample public agreement | Draft, unchecked; public-step agreement unfinished | Source correspondence |
+| Derive and retain actual visit/Attempt/same-snapshot relations, signed origins, address words and issued ledgers | Open | Source correspondence |
+| Derive final publication handling, fixed focal view/action, actual binding queries and proper/lost classification | Open | Source correspondence |
+| Prove every supported replay has the original fixed source entry/structural word and positive annotation | Open; reverse coverage does not prove this | Replay correspondence |
+| Factor the whole qualified native likelihood into mechanical, queried proper-value and alias products | Draft, unchecked; whole trace consumer underway | Weights |
+| Match historical accepted, current issued and historical never-accepted callbacks bijectively to their source rows/lost draws | Open | Weights |
+| Prove the full foreign issued-prefix probability product and its separation from the focal prefix | One-coordinate update checked; whole product open | Weights |
+| Prove the positive per-history weight identity using the original pair-law mixture; remove the original weighted admission | Open; zero cases and final summation already checked | Weights |
+| Verify the weighted theorem and concurrent capstone have only standard axioms, and pass the final build/checks | Pending; conditional assembly already checked | Integration |
+
+The source chronology supplies the retained relations and final image clauses;
+these feed forward annotation readback and the callback/source-row matching.
+Native factorization, row matching and the issued-prefix product then feed the
+per-history identity. Its checked summation and existing equilibrium assembly
+lead to the final admission-free audit. Updates must identify the checked
+theorem and build/axiom evidence; no item closes from a smaller helper alone.
+
 `qualified_source_site` proves one supported source information site and faithful
 value encoding. `foreign_posterior_cut_pair` proves the source cut/completion law
 under both issued-ledger and focal-only conditioning. `annotated_stopped_payoff`
