@@ -4657,7 +4657,7 @@ private theorem accepted_snapshot_receipt
   exact ⟨entry, recalled.subset member, message, emitted, sender, call,
     receipts.subset (of_decide_eq_true received)⟩
 
-private theorem accepting_receipt_transition
+theorem accepting_receipt_transition
     (identifier : MessageId Player)
     {state : (nativeProtocol).State} (trace : (nativeProtocol).Trace state)
     (received : ∃ control, state = some control ∧
@@ -4723,7 +4723,7 @@ private theorem accepting_receipt_transition
             exact ⟨before, after, prior, joint, legal, realized, .refl,
               earlier, accepted, environment.1, environment.2.1, environment.2.2⟩
 
-private theorem receipt_lookup_eq
+theorem receipt_lookup_eq
     (reference before : (nativeApplication).Control)
     (trace : (nativeProtocol).Trace (some reference))
     (prior : (nativeProtocol).Trace (some before)) (retained : TracePrefix prior trace)
@@ -4770,7 +4770,7 @@ private theorem receipt_lookup_eq
     implementation.horizon implementation.scheduler reference rawTrace selected message
       (List.mem_filter.mp authored).1 input same
 
-private theorem accepting_receipt_handler
+theorem accepting_receipt_handler
     (before after : (nativeApplication).Control)
     (prior : (nativeProtocol).Trace (some before)) (identifier : MessageId Player)
     (absent : (identifier, true) ∉ before.execution.receipts)
@@ -7760,7 +7760,7 @@ theorem source_commit_chunk_at_rank
     saved, generation, atRank⟩
 
 
-private theorem accepted_snapshot_value_of_no_generated_unusable
+theorem accepted_snapshot_value_of_no_generated_unusable
     (reference : (nativeApplication).Control)
     (trace : (nativeProtocol).Trace (some reference))
     (snapshot : EventGraphRuntime.State (serviceGraph setup .concurrent))

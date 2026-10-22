@@ -85,11 +85,11 @@ source alignment (`bfe581fb`). The forward direction below remains separate.
 
 | Checkpoint | Current state | Owner |
 | --- | --- | --- |
-| Complete selected-entry chronology through clean/retry/exhausted closes and automatic phases, including reveal/sample public agreement | Draft, unchecked; public-step agreement unfinished | Source correspondence |
+| Complete selected-entry chronology through clean/retry/exhausted closes and automatic phases, including reveal/sample public agreement | Draft, unchecked; reveal/sample branch bodies authored | Source correspondence |
 | Derive and retain actual visit/Attempt/same-snapshot relations, signed origins, address words and issued ledgers | Open | Source correspondence |
 | Derive final publication handling, fixed focal view/action, actual binding queries and proper/lost classification | Open | Source correspondence |
 | Prove every supported replay has the original fixed source entry/structural word and positive annotation | Open; reverse coverage does not prove this | Replay correspondence |
-| Factor the whole qualified native likelihood into mechanical, queried proper-value and alias products | Draft, unchecked; whole trace consumer underway | Weights |
+| Factor the whole qualified native likelihood into mechanical, queried proper-value and alias products | Checked: `sourceReplay_prescribed_response_atom`; ordinary Concurrent build and exact standard-axiom audit | Weights |
 | Match historical accepted, current issued and historical never-accepted callbacks bijectively to their source rows/lost draws | Open | Weights |
 | Prove the full foreign issued-prefix probability product and its separation from the focal prefix | One-coordinate update checked; whole product open | Weights |
 | Prove the positive per-history weight identity using the original pair-law mixture; remove the original weighted admission | Open; zero cases and final summation already checked | Weights |
