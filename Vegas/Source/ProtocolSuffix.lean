@@ -2,6 +2,7 @@
 
 import Vegas.Source.IntendedPlay
 import Vegas.Source.CommitRecoveryBlockEmbedding
+import Vegas.Source.CellSwap
 
 /-! # Exact syntactic source suffixes and preserved entry cells -/
 
@@ -138,6 +139,22 @@ theorem intended_of_base_eq (origin : ProtocolSuffix whole program lift) :
       change (fun _ _ cell => (ProtocolState.base next target).get (.there cell)) =
         (fun _ _ cell => (ProtocolState.base next reference).get (.there cell))
       rw [sameBase]
+
+open Classical in
+/-- A literal suffix lift retains the typed source cell readout. -/
+theorem cell?_lift
+    {wholeΓ Γ : SourceCtx Player L} {wholeO O : Finset VarId}
+    {whole : SourceProgram Player L wholeΓ wholeO} {program : SourceProgram Player L Γ O}
+    {lift : ProtocolState program → ProtocolState whole}
+    (origin : ProtocolSuffix whole program lift) (point : ProtocolState program)
+    (name : VarId) (kind : CellTy Player L) :
+    ProtocolState.cell? whole (lift point) name kind =
+      ProtocolState.cell? program point name kind := by
+  induction origin with
+  | initial => rfl
+  | sampleTail _ _ _ _ ih => exact ih (.inr point)
+  | commitTail _ _ _ _ ih => exact ih (.inr point)
+  | revealTail _ _ _ _ _ ih => exact ih (.inr point)
 
 end ProtocolSuffix
 

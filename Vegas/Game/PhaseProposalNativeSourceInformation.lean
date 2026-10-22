@@ -2610,7 +2610,7 @@ private theorem trace_initializer_length
   cases same
   rfl
 
-private theorem tracePrefix_initializer
+theorem tracePrefix_initializer
     {first second : PMF (nativeApplication).State} (same : first = second)
     {before after : (nativeProtocol).State}
     {prior : ((nativeMenu).protocol first implementation.horizon
@@ -4294,15 +4294,21 @@ theorem source_suffix_cells_of_prefix
 omit [Fintype Player] in
 open Classical in
 theorem source_saved_cell_readback
-    {firstState lastState : PhaseRuntimeState (serviceGraph setup .concurrent)}
-    (first : RecoverySourceCheckpoint setup .concurrent firstState)
+    {Γ : SourceCtx Player L} {O : Finset VarId}
+    (program : SourceProgram Player L Γ O)
+    (lift : ProtocolState program → ProtocolState setup.program)
+    (origin : ProtocolSuffix setup.program program lift)
+    (source : SourceProgram.Config Player L Γ) (unique : (Γ.map Prod.fst).Nodup)
+    (first : CommitRecoveryState setup.program)
+    (prior : setup.commitRecoveryProtocol.Trace (some first))
+    (startPoint : first.point = lift (ProtocolState.entry program source))
+    (startSaved : first.saved = lift (ProtocolState.entry program source))
+    {lastState : PhaseRuntimeState (serviceGraph setup .concurrent)}
     (last : RecoverySourceCheckpoint setup .concurrent lastState)
-    (retained : TracePrefix first.trace last.trace)
+    (retained : TracePrefix prior last.trace)
     {name : VarId} {kind : CellTy Player L}
     (terminalCell : HasVar setup.program.terminalCtx name kind) (value : CellVal L kind)
-    (readback : ProtocolState.cell? setup.program
-      (first.residual.lift (ProtocolState.entry first.residual.tail first.source)) name kind =
-        some value) :
+    (readback : ProtocolState.cell? setup.program first.point name kind = some value) :
     ((terminalRefs setup.program).get terminalCell).get?
       lastState.entry.native.config.store = some (cellValue value) := by
   classical
@@ -4337,14 +4343,10 @@ theorem source_saved_cell_readback
       ProtocolSuffix setup.program program lift → ∀ point,
       ProtocolState.cell? setup.program (lift point) name kind =
         ProtocolState.cell? program point name kind := by
-    intro Γ O program lift origin
-    induction origin with
-    | initial => intro point; rfl
-    | sampleTail _ _ _ _ ih => intro point; exact ih (.inr point)
-    | commitTail _ _ _ _ ih => intro point; exact ih (.inr point)
-    | revealTail _ _ _ _ _ ih => intro point; exact ih (.inr point)
-  have initialRead : SourceProgram.State.cell? first.source.state name kind = some value := by
-    simpa only [liftCell first.origin, ProtocolState.cell?_entry] using readback
+    intro Γ O program lift origin point
+    exact origin.cell?_lift point name kind
+  have initialRead : SourceProgram.State.cell? source.state name kind = some value := by
+    simpa only [startPoint, liftCell origin, ProtocolState.cell?_entry] using readback
   have lookupWitness : ∀ {Γ : SourceCtx Player L} (cells : Vegas.State L Γ)
       {value : CellVal L kind}, SourceProgram.State.cell? cells name kind = some value →
       ∃ selected : HasVar Γ name kind, cells.get selected = value := by
@@ -4362,15 +4364,15 @@ theorem source_saved_cell_readback
           exact ⟨.there selected, equal⟩
   obtain ⟨selected, initialValue⟩ := lookupWitness _ initialRead
   obtain ⟨current, live, saved, ending, point, _saved, cells, _kept⟩ :=
-    source_suffix_cells_of_prefix setup first.residual.tail first.residual.lift first.origin
-      _ first.trace (ProtocolState.entry first.residual.tail first.source)
-      (ProtocolState.entry first.residual.tail first.source) rfl rfl rfl last.trace retained
+    source_suffix_cells_of_prefix setup program lift origin first prior
+      (ProtocolState.entry program source) (ProtocolState.entry program source)
+      startPoint startSaved rfl last.trace retained
   have finalPoint := congrArg CommitRecoveryState.point (Option.some.inj ending)
   have found : SourceProgram.State.cell? last.source.state name kind =
-      some (first.source.state.get selected) := by
-    have read := baseCell first.residual.tail live first.unique selected
+      some (source.state.get selected) := by
+    have read := baseCell program live unique selected
     rw [cells, ProtocolState.base_entry] at read
-    rw [← liftCell first.origin live, ← point, ← finalPoint] at read
+    rw [← liftCell origin live, ← point, ← finalPoint] at read
     exact (ProtocolState.cell?_entry last.residual.tail last.source name kind).symm.trans
       ((liftCell last.origin (ProtocolState.entry last.residual.tail last.source)).symm.trans
         read)
@@ -4394,25 +4396,15 @@ theorem source_saved_cell_readback
     intro Γ Δ same refs cell
     cases same
     rfl
-  let firstCell := cast (congrArg (fun context => HasVar context name kind)
-    first.terminalAlignment.contextEq) (terminalRef first.residual.tail selected)
   let finalCell := cast (congrArg (fun context => HasVar context name kind)
     last.terminalAlignment.contextEq) (terminalRef last.residual.tail lastCell)
-  have firstRef : (terminalRefs setup.program).get firstCell = first.refs.get selected := by
-    rw [← first.terminalAlignment.refsEq]
-    exact (terminalRead first.terminalAlignment.contextEq _ _).trans
-      (terminalRefsWith_get_terminalRef first.residual.tail first.refs first.embedding.ref selected)
   have finalRef : (terminalRefs setup.program).get finalCell = last.refs.get lastCell := by
     rw [← last.terminalAlignment.refsEq]
     exact (terminalRead last.terminalAlignment.contextEq _ _).trans
       (terminalRefsWith_get_terminalRef last.residual.tail last.refs last.embedding.ref lastCell)
-  have same : firstCell = finalCell :=
+  have terminalEq : terminalCell = finalCell :=
     HasVar.eq_of_nodup (terminalUnique setup.program setup.namesNodup) _ _
-  have refs : first.refs.get selected = last.refs.get lastCell := by
-    rw [← firstRef, ← finalRef, same]
-  have terminalEq : terminalCell = firstCell :=
-    HasVar.eq_of_nodup (terminalUnique setup.program setup.namesNodup) _ _
-  rw [terminalEq, firstRef, refs, last.agrees lastCell, finalValue, initialValue]
+  rw [terminalEq, finalRef, last.agrees lastCell, finalValue, initialValue]
 
 omit [Fintype Player] in
 theorem settle_retains_entry_history
@@ -4567,8 +4559,9 @@ theorem source_saved_binding_readback
     (action : (serviceGraph setup .concurrent).Action event)
     (recorded : ⟨event, action⟩ ∈ reference.execution.application.entry.native.config.history) :
     value = cast (congrArg EventField.Action binding) action := by
-  have sourceRead := source_saved_cell_readback setup first last sourceRetained
-    terminalCell value readback
+  have sourceRead := source_saved_cell_readback setup first.residual.tail first.residual.lift
+    first.origin first.source first.unique _ first.trace rfl rfl last sourceRetained
+      terminalCell value readback
   let ref : FieldRef (serviceGraph setup .concurrent).layout (.binding owner payload) :=
     ⟨.inr event, binding⟩
   have refEq : (terminalRefs setup.program).get terminalCell = ref := by
@@ -5187,12 +5180,8 @@ theorem source_clean_decoded_point
       ProtocolSuffix setup.program program lift → ∀ point name kind,
         ProtocolState.cell? setup.program (lift point) name kind =
           ProtocolState.cell? program point name kind := by
-    intro Γ O program lift origin
-    induction origin with
-    | initial => intro point name kind; rfl
-    | sampleTail _ _ _ _ ih => intro point name kind; exact ih (.inr point) name kind
-    | commitTail _ _ _ _ ih => intro point name kind; exact ih (.inr point) name kind
-    | revealTail _ _ _ _ _ ih => intro point name kind; exact ih (.inr point) name kind
+    intro Γ O program lift origin point name kind
+    exact origin.cell?_lift point name kind
   have castCell : ∀ {Γ : SourceCtx Player L} {O : Finset VarId}
       {first last : SourceProgram Player L Γ O} (same : first = last)
       (point : ProtocolState first) (name : VarId) (kind : CellTy Player L),
@@ -5289,12 +5278,8 @@ theorem source_decoded_failure_point
       ProtocolSuffix setup.program program lift → ∀ point name kind,
         ProtocolState.cell? setup.program (lift point) name kind =
           ProtocolState.cell? program point name kind := by
-    intro Γ O program lift origin
-    induction origin with
-    | initial => intro point name kind; rfl
-    | sampleTail _ _ _ _ ih => intro point name kind; exact ih (.inr point) name kind
-    | commitTail _ _ _ _ ih => intro point name kind; exact ih (.inr point) name kind
-    | revealTail _ _ _ _ _ ih => intro point name kind; exact ih (.inr point) name kind
+    intro Γ O program lift origin point name kind
+    exact origin.cell?_lift point name kind
   have blockCell : ∀ {Γ Δ : SourceCtx Player L} {O P : Finset VarId}
       (block : SourceProgram.CommitPrefix Γ O Δ P) (suffix : SourceProgram Player L Δ P)
       (point : ProtocolState suffix) (name : VarId) (kind : CellTy Player L),
@@ -7094,7 +7079,7 @@ private theorem submittedArchived
       (setup.proposalRecoveryLiftTrace labels history.trace))) unchanged
   exact sameArchive.symm.trans (weakArchived observer survives)
 
-private def checkpointSelectionStep (operational : implementation.Operational)
+def checkpointSelectionStep (operational : implementation.Operational)
     {before after : (nativeProtocol).State} (priorTrace : (nativeProtocol).Trace before)
     (joint : Player → Option (nativeApplication).Action)
     (legal : (nativeProtocol).Legal before joint)
@@ -8379,7 +8364,9 @@ theorem canonicalSource_foreignGood (operational : implementation.Operational)
     have failurePoint := source_decoded_failure_point setup checkpoint nextCheckpoint image
       sourceCommit path instructions sameGeneration (Ξ := Δ) (Q := P)
     rw [decomposition] at failurePoint
-    have read := source_saved_cell_readback setup nextCheckpoint witness.checkpoint
+    have read := source_saved_cell_readback setup nextCheckpoint.residual.tail
+      nextCheckpoint.residual.lift nextCheckpoint.origin nextCheckpoint.source
+      nextCheckpoint.unique _ nextCheckpoint.trace rfl rfl witness.checkpoint
       onward.tracePrefix terminalCell .failure
       (failurePoint earlier name owner payload fresh guard rest splitBlock
         (cell.trans (congrArg some failed)))
