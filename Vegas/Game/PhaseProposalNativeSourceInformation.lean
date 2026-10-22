@@ -452,7 +452,7 @@ private theorem checkpoint_history_cast
   rfl
 
 omit [Fintype Player] in
-private theorem initialized_checkpoint_history
+theorem initialized_checkpoint_history
     (setup : Setup (Player := Player) (L := L)) (mode : ExecutionMode)
     (plan : RuntimePhasePlan (serviceGraph setup mode))
     (theta : State L setup.context) (supported : theta ∈ setup.initialLaw.support) :
