@@ -5,8 +5,9 @@ obligations used by `QualifiedBindingLaw`: `qualified_source_site`,
 `foreign_posterior_cut_pair`, `qualified_annotation_pushforward`, and
 `annotated_stopped_payoff`. The argument retains their original hypotheses.
 The source-site, foreign posterior pair and stopped-payoff primitives are
-Lean-checked. Weighted transport remains admitted: its global source-image,
-supported replay, augmented inverse and atom-ledger proofs are not yet
+Lean-checked. The global source image, supported replay and reverse coverage are
+also checked from the original runtime data. Weighted transport remains admitted:
+forward annotation readback and the remaining atom-ledger identity are not yet
 Lean-verified. The mathematical derivation below does not close that obligation
 or establish unconditional concurrent preservation in Lean. The derivation
 includes the actual foreign pre-SEND query, complete source

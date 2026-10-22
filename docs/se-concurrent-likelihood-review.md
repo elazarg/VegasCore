@@ -10,11 +10,12 @@ its restriction changes no primitive or preservation hypothesis. No
 sequential-equilibrium refutation is claimed.
 
 The source-image, visible-prefix, chronological-window, archive, forward
-annotation and weight joins have reviewed derivations. They still require Lean
-implementation and standard-axiom checks. The next checked goal is the actual
-source producer from the original runtime data, consumed by the existing
-qualified replay law with no source-alignment hypothesis. Weighted transport
-remains admitted, and unconditional concurrent preservation remains unproved.
+annotation and weight joins have reviewed derivations. The source producer and
+its consumption by the existing qualified replay law are Lean-checked from the
+original runtime data, with no source-alignment hypothesis. Forward annotation
+readback and the remaining weight joins still require Lean implementation.
+Weighted transport remains admitted, and unconditional concurrent preservation
+remains unproved.
 
 ## Reviewed mathematical scope
 
@@ -43,7 +44,7 @@ steps have the following dependencies:
   and the actual initialized traffic archive derive pre-SEND queries for foreign
   owners. The reviewed argument identifies the visible decoder and actual recall
   without requiring equality of all historical masks or foreign private state.
-  Its partial-prefix/view/window/archive joins remain to be mechanized. Retirement
+  Its partial-prefix/view/window/archive joins are Lean-checked. Retirement
   requires the entire phase finished, so foreign failure cannot cancel an active
   focal owner's never-admitted SEND before its row completes. Accepted canceled
   focal values remain literal and are not auxiliary lost draws.
@@ -74,10 +75,9 @@ The four statements and downstream aggregation compile. The source-site,
 foreign posterior pair and stopped-payoff primitives, together with mechanical
 representative independence, are Lean-checked using only standard axioms.
 Weighted transport has a reviewed mathematical derivation but remains admitted.
-The global source-image producer, forward annotation readback and remaining
-exact atom ledger are implementation obligations. Supported replay and reverse
-coverage are checked conditional on source alignment; local checked helpers or
-record declarations do not discharge the source producer.
+The global source-image producer, supported replay and reverse coverage are
+Lean-checked from the original runtime data. Forward annotation readback and
+the remaining exact atom ledger are implementation obligations.
 
 | Primitive | Mathematical status | Lean status |
 | --- | --- | --- |

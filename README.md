@@ -18,9 +18,10 @@ written mathematical derivation reviewed against the inspected proof APIs.
 That agent review is not Lean verification: the source-site, foreign-posterior
 pair and stopped-payoff primitives are Lean-checked; weighted transport remains
 admitted. Its internal query relation has the required foreign-owner scope;
-no sequential-equilibrium refutation is claimed. The next checked goal is to
-construct source alignment from the original runtime data and consume it in
-the existing qualified replay law without an alignment hypothesis. An
+no sequential-equilibrium refutation is claimed. Source alignment and qualified
+replay are checked from the original runtime data, without an alignment
+hypothesis. Forward annotation readback and the remaining weight identity are
+still open. An
 unrestricted prefix density theorem is not claimed. The weaker general
 asynchronous contract also has [checked preservation obstructions](docs/standard-runtime-se-status.md).
 Honest outcome simulation alone does not establish equilibrium preservation.

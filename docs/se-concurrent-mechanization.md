@@ -36,9 +36,10 @@ query relation is restricted to foreign owners, as its existing consumer
 requires; the broader all-owner clause is false. This internal correction does
 not refute sequential-equilibrium preservation or change the external contract.
 
-The global source-image construction, forward annotation readback and remaining
-chronological weight calculation are still unproved in Lean. Supported replay
-and reverse coverage are checked conditional on source alignment. The
+The global source-image construction, supported replay and reverse coverage
+are checked from the original runtime data, with no source-alignment
+hypothesis in the qualified replay theorem. Forward annotation readback and
+the remaining chronological weight calculation are still unproved in Lean. The
 source-site, foreign-posterior pair and stopped-payoff primitives, and
 mechanical-weight representative independence, use only standard Lean axioms.
 Weighted transport remains admitted. The clean commitment gain comparison and
@@ -63,17 +64,16 @@ Progress within that remaining proof:
 
 | Work | Checked material | Still open |
 | --- | --- | --- |
-| Source-phase correspondence | Initial assignment; fixed-snapshot table reads paired at the pre-request cut and read at the final completion; unified actual selected clean/dirty intervals with the same drained decoder word; paired rows including accepted failures, selected-prefix and saved/restore adapters, and typed reference transport using the stored successful bindings; original-data selected-entry and completed-visit correspondence through all phase branches | Assemble publication, focal and properness fields with the checked foreign query to obtain source alignment |
-| Supported runtime replay | Quantitative whole-trace construction, prescribed reach, original tape support, admission and foreign-good qualification; normalized native-history PMF with exact supported point masses and readback, conditional on source alignment; supported environment outcomes identified by their public results under complete pending observation | Produce source alignment to instantiate this law from the original hypotheses |
-| Recovery and coverage | Original positive summands have the common full source site, Good/depth and encoded completion support; literal entry and structural-word comparison; factual script extraction, supported left inverse and replay injectivity; one actual replay law covers every positive original annotation in the same native information and mechanical fiber, conditional on source alignment, and the qualified law retains this coverage; current and historical value readbacks, including permanent historical acceptance receipts and the correlated input tuple | Derive the forward annotation readback for every supported reconstructed script and instantiate complete augmented coverage from the global source producer |
+| Source-phase correspondence | Initial assignment; fixed-snapshot table reads paired at the pre-request cut and read at the final completion; unified actual selected clean/dirty intervals with the same drained decoder word; paired rows including accepted failures, selected-prefix and saved/restore adapters, and typed reference transport using the stored successful bindings; original-data selected-entry and completed-visit correspondence through all phase branches; complete publication, focal, foreign-query and proper/lost alignment fields | Derive the remaining address/issued relations consumed by forward annotation and callback-row matching |
+| Supported runtime replay | Quantitative whole-trace construction, prescribed reach, original tape support, admission and foreign-good qualification; normalized native-history PMF with exact supported point masses and readback from the original runtime data; supported environment outcomes identified by their public results under complete pending observation | Complete; consumed by `sourceRawReplay_qualified` without an alignment hypothesis |
+| Recovery and coverage | Original positive summands have the common full source site, Good/depth and encoded completion support; literal entry and structural-word comparison; factual script extraction, supported left inverse and replay injectivity; one actual replay law covers every positive original annotation in the same native information and mechanical fiber, and the original-data qualified law retains this coverage; current and historical value readbacks, including permanent historical acceptance receipts and the correlated input tuple | Derive the forward annotation readback for every supported reconstructed script and instantiate complete augmented coverage |
 | Exact weights | Literal native/tape and whole indexed callback class × alias products with unique emitted-packet indices; proper callbacks supply their actual query and D × mechanical × alias atom; chronological lost-draw × alias script mass consumed by the native-history point mass; whole correlated initializer and selected-history Nature mass equality, including original public sample atoms, consumed by the actual native/mechanical factorization; actual query-to-source-origin identification and issued-cylinder mass updates at the actual queried law; zero cases, per-history summation and normalization consumed by the original theorem | Identify historical/current/lost products with source factors, including the foreign-only issued-cylinder telescope, proving the per-history atom balance and pointwise weighted rectangle |
 
 The complete derivation supplies the foreign-query, source-image, forward
 readback and weight arguments to mechanize; none is supplied as a new
-assumption. The next acceptance checkpoint is the complete source producer
-from the original runtime data, consumed by the existing qualified replay law
-with no source-alignment hypothesis. Further conditional weight layers are
-deferred until that checkpoint.
+assumption. The complete source producer is consumed by the existing qualified
+replay law from the original runtime data, with no source-alignment hypothesis.
+The next proof step is forward annotation readback for that same replay law.
 
 These rows track implementation work inside the unchanged weighted statement;
 they introduce no extra admitted theorem or preservation assumption. Local
@@ -93,7 +93,7 @@ source alignment (`bfe581fb`). The forward direction below remains separate.
 | --- | --- | --- |
 | Complete selected-entry chronology through clean/retry/exhausted closes and automatic phases, including reveal/sample public agreement | Checked: `sourceReplayCorrespondence` derives selected-entry agreement and literal completed visits from the original runtime inputs; owning build and standard-axiom audit passed | Source correspondence |
 | Derive and retain actual visit/Attempt/same-snapshot relations, signed origins, address words and issued ledgers | Completed-visit/Attempt relation checked; final address and issued-ledger consumers remain open | Source correspondence |
-| Derive final publication handling, fixed focal view/action, actual binding queries and proper/lost classification | Foreign query checked from the exact selected-entry and completed-visit conclusions (`sourceReplay_query_binding`); producing those conclusions and the other fields remains open | Source correspondence |
+| Derive final publication handling, fixed focal view/action, actual binding queries and proper/lost classification | Checked: `sourceReplayAlignment` assembles all fields; `sourceRawReplay_qualified` constructs and consumes it from the original runtime inputs, with ordinary build and standard-axiom audit | Source correspondence |
 | Prove every supported replay has the original fixed source entry/structural word and positive annotation | Open; reverse coverage does not prove this | Replay correspondence |
 | Factor the whole qualified native likelihood into mechanical, queried proper-value and alias products | Checked: `sourceReplay_prescribed_response_atom`; ordinary Concurrent build and exact standard-axiom audit | Weights |
 | Match historical accepted, current issued and historical never-accepted callbacks bijectively to their source rows/lost draws | Open | Weights |

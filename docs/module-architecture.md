@@ -2903,8 +2903,9 @@ assembly. Its weighted pushforward remains the registered open obligation.
 | [SourceImage](../Vegas/Game/QualifiedBinding/SourceImage.lean) | Snapshot assignments, factual visit relations and the source-image/alignment contracts | BindingReadback |
 | [SourceCorrespondence](../Vegas/Game/QualifiedBinding/SourceCorrespondence.lean) | Original-data selected-entry agreement and literal completed commitment visits, including retry, exhaustion and automatic public phases | SourceImage, RecoveryRetryChronology |
 | [SourceQueryTransport](../Vegas/Game/QualifiedBinding/SourceQueryTransport.lean) | Actual foreign callback queries from the exact selected-entry and completed-visit relations | SourceImage |
+| [SourceAlignment](../Vegas/Game/QualifiedBinding/SourceAlignment.lean) | Publication, focal and proper/lost image clauses assembled with actual foreign queries | SourceQueryTransport |
 | [RawReplay](../Vegas/Game/QualifiedBinding/RawReplay.lean) | Deterministic replay, callback kernels, script mass and supported-script readback | SourceImage |
-| [ReplayCoverage](../Vegas/Game/QualifiedBinding/ReplayCoverage.lean) | Original-positive value reconstruction and normalized conditional replay coverage | RawReplay, ForeignPosterior |
+| [ReplayCoverage](../Vegas/Game/QualifiedBinding/ReplayCoverage.lean) | Original-positive value reconstruction and normalized replay coverage from original runtime data | RawReplay, ForeignPosterior, SourceCorrespondence, SourceAlignment |
 | [Likelihood](../Vegas/Game/QualifiedBinding/Likelihood.lean) | Native likelihood, callback products and canonical source Nature mass | ReplayCoverage |
 | [AnnotationMass](../Vegas/Game/QualifiedBinding/AnnotationMass.lean) | Original annotation sums, zero cases and normalization | ReplayCoverage |
 | [StoppedPayoff](../Vegas/Game/QualifiedBinding/StoppedPayoff.lean) | Fixed-tape stopped source payoff transport | AnnotationMass |
@@ -2915,13 +2916,15 @@ a component remain private. The factual `sourceBindingAt_of_issued_attempt`
 belongs to BindingReadback so source-image construction can consume it without
 importing replay coverage.
 
-`sourceRawReplay_law` and `sourceRawReplay_qualified` construct normalized replay
-laws conditional on the actual `SourceReplayAlignment` certificate. The
-certificate's query relation is restricted to an owner different from the fixed
+`sourceRawReplay_law` constructs normalized replay conditional on the actual
+`SourceReplayAlignment` certificate. The existing `sourceRawReplay_qualified`
+constructs that certificate internally from the original runtime data and
+retains the supported replay, readback, point-mass and reverse-coverage results.
+The certificate's query relation is restricted to an owner different from the fixed
 focal player. `sourceReplay_query_binding` derives that relation from the named
 selected-entry and completed-visit conclusions, on the same literal target
 prefix. `sourceReplayCorrespondence` constructs both conclusions from the
-original runtime data in one factual chronology. Assembling the remaining image
-fields and eliminating the alignment hypothesis from the replay consumer
-remains open. The checked canonical Nature and native likelihood identities do
-not supply that assembly or the final weighted rectangle identity.
+original runtime data in one factual chronology. `sourceReplayAlignment`
+assembles the publication, focal and proper/lost fields from those exact
+conclusions. Forward annotation readback and the final weighted rectangle
+identity remain open.

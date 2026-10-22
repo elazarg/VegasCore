@@ -1,6 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.QualifiedBinding.RawReplay
+import Vegas.Game.QualifiedBinding.SourceAlignment
+import Vegas.Game.QualifiedBinding.SourceCorrespondence
 import Vegas.Game.QualifiedBinding.ForeignPosterior
 
 /-! # Original annotation readback and normalized replay coverage -/
@@ -5245,25 +5247,36 @@ private theorem sourceReplayScriptMass_factor
 
 theorem sourceRawReplay_qualified
     (operational : implementation.Operational)
+    (fullValues : ∀ owner key, FullSupport (values owner key))
     (who : Player) (reference : (nativeApplication).Control)
     (referenceTrace : (nativeProtocol).Trace (some reference))
+    (acting : reference.actor = some who)
     (event : (serviceGraph setup .concurrent).EventId)
-    (cut : PhaseProposalCanonicalBindingCut setup .concurrent implementation.runtime
-      implementation.leaks implementation.bounds implementation.plan values
-      implementation.horizon implementation.scheduler reference
-      (sourceCutTrace setup implementation referenceTrace) who event)
-    (g : setup.proposalRecoveryProtocol.History)
-    (sourceChoice : setup.proposalRecoveryModel.Choice who
-      (setup.proposalRecoveryModel.infoOf who g.trace))
-    (targetCurrent : CommitRecoveryState setup.program)
-    (targetTrace : setup.proposalRecoveryProtocol.Trace (some targetCurrent))
-    (alignment : SourceReplayAlignment (setup := setup) (values := values)
-      (implementation := implementation) operational who reference referenceTrace event cut g
-        sourceChoice targetCurrent targetTrace)
+    (payload : L.Ty)
+    (clean : CleanUnsentBinding setup implementation who
+      (reference.execution.recall who)
+      (reference.execution.observe nativeApplication who) event payload)
     (good : ∀ owner, owner ≠ who →
       ¬ PhaseProposal.GeneratedUnusableBindingHistory implementation.runtime implementation.leaks
         implementation.bounds nativeInitial implementation.horizon implementation.scheduler
           owner ⟨some reference, referenceTrace⟩)
+    (entry : NativeBindingEntry setup implementation operational reference referenceTrace
+      who event)
+    (g : setup.proposalRecoveryProtocol.History)
+    (sameInfo : setup.proposalRecoveryModel.infoOf who g.trace =
+      setup.proposalRecoveryModel.infoOf who
+        (entry.canonicalCut setup values implementation operational fullValues reference
+          referenceTrace who acting event payload clean good).trace)
+    (sourceGood : setup.proposalRecoveryForeignGood who g)
+    (sourceChoice : setup.proposalRecoveryModel.Choice who
+      (setup.proposalRecoveryModel.infoOf who g.trace))
+    (properChoice : ∀ move, sourceChoice.val.map (·.semantic) = some move →
+      move.missing = false ∧ ¬ move.action.IsFailure)
+    (targetCurrent : CommitRecoveryState setup.program)
+    (targetTrace : setup.proposalRecoveryProtocol.Trace (some targetCurrent))
+    (supported : (⟨some targetCurrent, targetTrace⟩ :
+      setup.proposalRecoveryProtocol.History) ∈
+        (sourceForcedBlock setup values who g sourceChoice).support)
     (scale nativeBad : Set.Icc (0 : ℝ) 1) (scalePositive : 0 < scale.val)
     (nativeProfile : ∀ owner, ((nativeMenu).information nativeInitial implementation.horizon
       implementation.scheduler).BehavioralPolicy owner)
@@ -5316,6 +5329,18 @@ theorem sourceRawReplay_qualified
         SourceRawReplayLaw.coversOriginalAnnotations setup values implementation operational who
           reference referenceTrace event g targetCurrent targetTrace scale law := by
   classical
+  let cut := entry.canonicalCut setup values implementation operational fullValues reference
+    referenceTrace who acting event payload clean good
+  obtain ⟨selectedAgreement, completedVisits⟩ :=
+    sourceReplayCorrespondence setup values implementation operational fullValues who reference
+      referenceTrace acting event payload clean good entry g sameInfo sourceGood sourceChoice
+        properChoice targetCurrent targetTrace supported
+  have alignment : SourceReplayAlignment (setup := setup) (values := values)
+      (implementation := implementation) operational who reference referenceTrace event cut g
+        sourceChoice targetCurrent targetTrace :=
+    sourceReplayAlignment setup values implementation operational fullValues who reference
+      referenceTrace acting event payload clean good entry g sameInfo sourceGood sourceChoice
+        properChoice targetCurrent targetTrace supported selectedAgreement completedVisits
   have full : ∀ owner
       (site : ((nativeMenu).information nativeInitial implementation.horizon
         implementation.scheduler).InformationSite owner)
