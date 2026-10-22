@@ -13,14 +13,16 @@ recovery sequential-equilibrium preservation. Concurrent asynchronous SE
 preservation under reserved service remains unproved; the
 [concrete contract](Vegas/Game/ConcurrentRawSequentialPreservation.lean) and
 [active proof plan](docs/se-concurrent-mechanization.md) state its exact scope
-and remaining transport obligations. The global weighted argument has a written
-derivation and agent reviews, but its actual-query bridge remains mathematically
-open. Mechanization is paused pending a complete reviewed derivation of the
-partial-prefix, visible-view, chronological-window and archive joins. The source-site,
-foreign-posterior pair and stopped-payoff primitives are Lean-checked; the
-weighted transport primitive remains admitted. An unrestricted
-prefix density theorem is not claimed. The weaker general asynchronous contract
-also has [checked preservation obstructions](docs/standard-runtime-se-status.md).
+and remaining transport obligations. The complete weighted argument has a
+written mathematical derivation reviewed against the inspected proof APIs.
+That agent review is not Lean verification: the source-site, foreign-posterior
+pair and stopped-payoff primitives are Lean-checked; weighted transport remains
+admitted. Its internal query relation has the required foreign-owner scope;
+no sequential-equilibrium refutation is claimed. The next checked goal is to
+construct source alignment from the original runtime data and consume it in
+the existing qualified replay law without an alignment hypothesis. An
+unrestricted prefix density theorem is not claimed. The weaker general
+asynchronous contract also has [checked preservation obstructions](docs/standard-runtime-se-status.md).
 Honest outcome simulation alone does not establish equilibrium preservation.
 The concurrent contract permits arbitrary correlated initial inputs with
 finite support and requires finite binding types. Auctions with unbounded

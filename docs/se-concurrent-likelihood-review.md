@@ -1,14 +1,20 @@
 # Mathematical review of concurrent likelihood
 
-**Mathematical review remains open at actual pre-SEND query transport.**
-The [likelihood derivation](se-concurrent-likelihood.md) retains literal concurrent
+**The complete mathematical derivation has agent review against the inspected
+owning APIs; the weighted Lean proof remains open.** The
+[likelihood derivation](se-concurrent-likelihood.md) retains literal concurrent
 execution, the original correlated input law and one whole-execution tape prior.
-The owner-visible partial prefix, chronological window and actual archive joins
-require a complete derivation over the exact query domain. Exact current
-native/source exclusion equality is too strong; the existing window API allows
-current-mask differences. This does not refute the original query clause or
-preservation. Weighted transport remains admitted, and unconditional concurrent
-preservation remains unproved. Mechanization is paused pending the weaker proof.
+Its query argument uses the required foreign-owner domain. The broader
+all-owner internal clause is false, but is not needed by the actual consumer;
+its restriction changes no primitive or preservation hypothesis. No
+sequential-equilibrium refutation is claimed.
+
+The source-image, visible-prefix, chronological-window, archive, forward
+annotation and weight joins have reviewed derivations. They still require Lean
+implementation and standard-axiom checks. The next checked goal is the actual
+source producer from the original runtime data, consumed by the existing
+qualified replay law with no source-alignment hypothesis. Weighted transport
+remains admitted, and unconditional concurrent preservation remains unproved.
 
 ## Reviewed mathematical scope
 
@@ -24,18 +30,20 @@ steps have the following dependencies:
   identifies full source information; equal cut depth minus the common row offset
   fixes the entry prefix across mechanical representatives. Structural excluded
   failure suffixes remain separate from the actual completed Config.
-* [Simultaneous source image](se-concurrent-likelihood.md#source-image-for-reconstruction-simultaneous-finite-invariant):
+* [Simultaneous source image](se-concurrent-likelihood.md#source-image-for-reconstruction-one-factual-chronology):
   initialization, inherited/omitted/proper/BAD rows and clean/retry/exhausted
   closure preserve typed refs, saved data, target attempted histories and signed
   origins together. Raw accepted stamps identify the same visit; restore copies
   saved typed fields and replaces history with the target attempted history.
   Public samples and proposal readback supply public extensions and RevealFixed
   without assuming guards invariant under arbitrary private changes.
-* [Unfinished image and queries](se-concurrent-likelihood.md#unfinished-current-image-and-every-callback-query):
+* [Actual foreign callback queries](se-concurrent-likelihood.md#actual-foreign-callback-queries-and-the-exact-live-window):
   the current block has a partial-field relation, not a fictitious completed
   image. Own receipt order, historical windows, current-only NoMiss normalization
-  and the actual initialized traffic archive are the intended route to pre-SEND
-  queries. Their exact partial-prefix/view/window/archive join remains open. Retirement
+  and the actual initialized traffic archive derive pre-SEND queries for foreign
+  owners. The reviewed argument identifies the visible decoder and actual recall
+  without requiring equality of all historical masks or foreign private state.
+  Its partial-prefix/view/window/archive joins remain to be mechanized. Retirement
   requires the entire phase finished, so foreign failure cannot cancel an active
   focal owner's never-admitted SEND before its row completes. Accepted canceled
   focal values remain literal and are not auxiliary lost draws.
@@ -54,11 +62,11 @@ steps have the following dependencies:
   correspondence and sequential kernel normalization justify the subsequent
   cancellation, including arbitrary packages and zero fibers.
 
-The intended dependency graph is acyclic, but query transport remains an
-unproved link. Static source-image equations must use original reference-trace
-invariants. Reverse coverage starts with an arbitrary positive original
-annotation. Neither conditional coverage nor the rectangle algebra supplies
-the missing actual-query construction.
+The reviewed dependency graph is acyclic. Static source-image equations use
+original reference-trace invariants; reverse coverage starts with an arbitrary
+positive original annotation. The actual-query construction is derived before
+it is consumed by replay and weight transport. Neither conditional coverage nor
+rectangle algebra substitutes for its Lean implementation.
 
 ## Exact primitive proof status
 
@@ -66,9 +74,10 @@ The four statements and downstream aggregation compile. The source-site,
 foreign posterior pair and stopped-payoff primitives, together with mechanical
 representative independence, are Lean-checked using only standard axioms.
 Weighted transport has a reviewed mathematical derivation but remains admitted.
-The global source-image producer, supported whole replay, both inverses/coverage
-and exact atom ledger remain implementation obligations; local checked helpers
-or record declarations do not close them.
+The global source-image producer, forward annotation readback and remaining
+exact atom ledger are implementation obligations. Supported replay and reverse
+coverage are checked conditional on source alignment; local checked helpers or
+record declarations do not discharge the source producer.
 
 | Primitive | Mathematical status | Lean status |
 | --- | --- | --- |
@@ -207,8 +216,8 @@ source targets, independent initial types or desired continuation law is assumed
 ## Replay and continuation boundary
 
 The global replay properties are reviewed above and derived in the linked proof,
-including every historical query, all saved/retired images, both supported
-readbacks and exact multiplicity. Alias kernels are evaluated sequentially at
+including every required foreign historical query, all saved/retired images,
+both supported readbacks and exact multiplicity. Alias kernels are evaluated sequentially at
 actual inputs; later menus may depend on earlier aliases and lost values.
 
 After the decision, focal future values and views are causal auxiliaries, not a
