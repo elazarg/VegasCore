@@ -11074,6 +11074,108 @@ private theorem sourceReplaySettleSavedStore
       · simp only [PhaseRuntimeState.settle, ite_eq_right finished]
         exact fun _ _ stored => stored
 
+/- Automatic clean settlement retains the accepted table of the saved
+snapshot. A drain only fills missing results; it does not change accepted
+handles, including handles issued before this phase. -/
+omit [Fintype Player] in
+private theorem sourceReplaySettleSavedAccepted
+    (phases : List (RuntimePhase (serviceGraph setup .concurrent)))
+    (generation : Nat)
+    (current : RecoveryState (serviceGraph setup .concurrent))
+    (retired : List (RetiredCommitAttempt (serviceGraph setup .concurrent))) :
+    (PhaseRuntimeState.settle phases generation current current retired).entry.native.accepted =
+      current.native.accepted := by
+  induction phases generalizing generation current retired with
+  | nil => rfl
+  | cons phase remaining ih =>
+      have noFailure : ¬ (phase.kind = .commitment ∧
+          (((phase.drain current).excluded \ current.excluded) ∩
+            phase.owners).Nonempty) := by
+        rw [phase.drain_excluded current]
+        simp only [Finset.sdiff_self, Finset.empty_inter,
+          Finset.not_nonempty_empty, and_false, not_false_eq_true]
+      by_cases finished : phase.Finished (phase.drain current)
+      · rw [PhaseRuntimeState.settle_clean phase remaining generation current current
+          retired finished noFailure]
+        exact (ih generation (phase.drain current) retired).trans
+          (phase.drain_tables current).1
+      · simp only [PhaseRuntimeState.settle, ite_eq_right finished]
+
+/- The selected target entry agreement passes through automatic clean
+settlement. The factual source entry supplies occupancy of each old reference;
+the drain preserves that value and its accepted handle. -/
+omit [Fintype Player] in
+private theorem sourceReplaySettleAssignedSavedAgreement
+    {Γ : SourceCtx Player L}
+    (refs : ContextRefs (graphLayout setup.program) Γ)
+    (original targetEntry : SourceProgram.Config Player L Γ)
+    (target : setup.proposalRecoveryProtocol.History)
+    (reference : (nativeApplication).Control)
+    (lost : Handle (serviceGraph setup .concurrent) → Option (Raw L))
+    (phases : List (RuntimePhase (serviceGraph setup .concurrent)))
+    (generation : Nat)
+    (current : RecoveryState (serviceGraph setup .concurrent))
+    (retired : List (RetiredCommitAttempt (serviceGraph setup .concurrent)))
+    (rawAgrees : refs.Agrees original.state current.native.config.store)
+    (targetAgrees : refs.Agrees targetEntry.state
+      (sourceSnapshotState setup implementation target reference lost
+        current.native).config.store) :
+    refs.Agrees targetEntry.state
+      (sourceSnapshotState setup implementation target reference lost
+        ((PhaseRuntimeState.settle phases generation current current
+          retired).entry.native)).config.store := by
+  have castOptionNone {first second : EventField Player L} (equal : first = second) :
+      cast (congrArg (fun kind : EventField Player L => Option kind.Value) equal)
+        (none : Option first.Value) = (none : Option second.Value) := by
+    cases equal
+    rfl
+  apply sourceReplayEntryAgreesOfPreserved setup implementation refs targetEntry target
+    reference lost current.native
+    (PhaseRuntimeState.settle phases generation current current retired).entry.native
+    targetAgrees
+  · intro name cell source
+    have occupied := rawAgrees source
+    have kept := sourceReplaySettleSavedStore setup phases generation current retired
+    let field := (refs.get source).field
+    cases stored : current.native.config.store field with
+    | none =>
+        have emptyRead : (refs.get source).get? current.native.config.store = none := by
+          unfold FieldRef.get?
+          rw [stored]
+          exact castOptionNone (refs.get source).layout_eq
+        rw [emptyRead] at occupied
+        cases occupied
+    | some value =>
+        exact (kept field value stored).symm
+  · intro name cell source
+    exact (congrFun (sourceReplaySettleSavedAccepted setup phases generation current retired)
+      (refs.get source).field).symm
+
+/- Retrying restores the prior entry's semantic store and accepted handles
+literally. Its physical catalogue and clock may advance without changing any
+assigned value read by that source entry. -/
+omit [Fintype Player] in
+private theorem sourceReplayRestoredEntryAgreement
+    {Γ : SourceCtx Player L}
+    (refs : ContextRefs (graphLayout setup.program) Γ)
+    (source : SourceProgram.Config Player L Γ)
+    (target : setup.proposalRecoveryProtocol.History)
+    (reference : (nativeApplication).Control)
+    (lost : Handle (serviceGraph setup .concurrent) → Option (Raw L))
+    (entry current : RecoveryState (serviceGraph setup .concurrent))
+    (agrees : refs.Agrees source.state
+      (sourceSnapshotState setup implementation target reference lost
+        entry.native).config.store) :
+    refs.Agrees source.state
+      (sourceSnapshotState setup implementation target reference lost
+        (PhaseRuntimeState.restore entry current).native).config.store := by
+  apply sourceReplayEntryAgreesOfPreserved setup implementation refs source target reference
+    lost entry.native (PhaseRuntimeState.restore entry current).native agrees
+  · intro _name _cell _selected
+    rfl
+  · intro _name _cell _selected
+    rfl
+
 /- A dirty close archives the exact drained native snapshot before any
 automatic exhaustion settlement. The selected after-witness therefore reads
 that same snapshot at the original retired-list index. -/
@@ -12760,6 +12862,659 @@ private def SourceReplayLostRestricted
       ¬ PhaseService.BindingAccepted implementation.runtime implementation.leaks
         ⟨message.payload.attempt, event⟩ handle.1 reference.execution
 
+private theorem sourceReplayCloseEvidence
+    (reference before after : (nativeApplication).Control)
+    (referenceTrace : (nativeProtocol).Trace (some reference))
+    (beforeTrace : (nativeProtocol).Trace (some before))
+    (retained : TracePrefix beforeTrace referenceTrace)
+    (witness : RecoverySourceWitness setup .concurrent implementation.plan
+      before.execution.application)
+    (phase : RuntimePhase (serviceGraph setup .concurrent))
+    (installed : phase ∈ before.execution.application.phases.head?)
+    (commitment : phase.kind = .commitment)
+    (current : RecoveryState (serviceGraph setup .concurrent))
+    (effect : PhaseClosingEffect implementation.runtime implementation.leaks
+      before.execution after.execution current)
+    (changed : after.execution.application.attempt ≠ before.execution.application.attempt)
+    (stamp : BindingStamp (fun owner =>
+      (nativeApplication).outputs (before.execution.recall owner))
+        before.execution.application.attempt (phase.drain current).native) :
+    BindingReceiptOrder phase.low before.execution.application.entry.excluded
+        (phase.drain current).native.accepted ∧
+      BindingStamp (fun owner => (nativeApplication).outputs (reference.execution.recall owner))
+        before.execution.application.attempt (phase.drain current).native := by
+  obtain ⟨raw, _checkpoint, _history⟩ := RecoverySourceWitness.raw_closing_checkpoint setup
+    .concurrent implementation.runtime implementation.leaks implementation.plan before after
+      witness current effect changed
+  have present : phase ∈ ({ before.execution.application with current := current } :
+      PhaseRuntimeState (serviceGraph setup .concurrent)).phases.head? := installed
+  have receipts := (raw.receipts.ordered phase present commitment).congr
+    (phase.drain_tables current).1
+  refine ⟨receipts, stamp.mono ?_⟩
+  intro owner message emitted
+  have recalled := (nativeApplication).reaches_recall_prefix nativeInitial implementation.horizon
+    implementation.scheduler ((nativeMenu).reaches_raw nativeInitial implementation.horizon
+      implementation.scheduler retained.reachesWithin) before reference rfl rfl owner
+  obtain ⟨record, member, sent⟩ := List.mem_filterMap.mp emitted
+  exact List.mem_filterMap.mpr ⟨record, recalled.subset member, sent⟩
+
+private theorem sourceReplayAssignedActiveRow
+    (operational : implementation.Operational)
+    (reference : (nativeApplication).Control)
+    (trace : ((nativeMenu).protocol
+      ((setup.initialLaw.map encodeInputs).map (PhaseRuntimeState.initial implementation.plan))
+      implementation.horizon implementation.scheduler).Trace (some reference))
+    (who : Player) (event : (serviceGraph setup .concurrent).EventId)
+    (cut : PhaseProposalCanonicalBindingCut setup .concurrent implementation.runtime
+      implementation.leaks implementation.bounds implementation.plan values
+      implementation.horizon implementation.scheduler reference trace who event)
+    (g : setup.proposalRecoveryProtocol.History)
+    (sameInfo : setup.proposalRecoveryModel.infoOf who g.trace =
+      setup.proposalRecoveryModel.infoOf who cut.trace)
+    (good : setup.proposalRecoveryForeignGood who g)
+    (choice : setup.proposalRecoveryModel.Choice who
+      (setup.proposalRecoveryModel.infoOf who g.trace))
+    (properChoice : ∀ move, choice.val.map (·.semantic) = some move →
+      move.missing = false ∧ ¬ move.action.IsFailure)
+    (G : setup.proposalRecoveryProtocol.History)
+    (supported : G ∈ (sourceForcedBlock setup values who g choice).support)
+    (lost : Handle (serviceGraph setup .concurrent) → Option (Raw L))
+    (after : (nativeApplication).Control)
+    (afterTrace : ((nativeMenu).protocol
+      ((setup.initialLaw.map encodeInputs).map (PhaseRuntimeState.initial implementation.plan))
+      implementation.horizon implementation.scheduler).Trace (some after))
+    (afterRetained : TracePrefix afterTrace trace)
+    (phase : RuntimePhase (serviceGraph setup .concurrent))
+    (remaining : List (RuntimePhase (serviceGraph setup .concurrent))) (generation : Nat)
+    (entry current : RecoveryState (serviceGraph setup .concurrent))
+    (retired : List (RetiredCommitAttempt (serviceGraph setup .concurrent)))
+    (finished : phase.Finished (phase.drain current))
+    (normalized : after.execution.application =
+      PhaseRuntimeState.settle (phase :: remaining) generation entry current retired)
+    (valid : (phase.drain current).native.BindingInvariant)
+    (restricted : SourceReplayLostRestricted setup implementation G reference who lost)
+    {state : PhaseRuntimeState (serviceGraph setup .concurrent)}
+    (checkpoint : RecoverySourceCheckpoint setup .concurrent state)
+    (closed : setup.commitRecoveryProtocol.History) {fuel : Nat}
+    (path : setup.commitRecoveryProtocol.ReachesWithin fuel ⟨_, checkpoint.trace⟩ closed)
+    (instructions : setup.recoveryJointRecall closed.trace =
+      (checkpoint.commitInstructionWord (phase.drain current).native).reverse ++
+        setup.recoveryJointRecall checkpoint.trace)
+    (sourceFinal : setup.proposalRecoveryProtocol.History)
+    (closedKept : TracePrefix closed.trace (setup.proposalRecoveryEraseTrace sourceFinal.trace))
+    (same : setup.proposalRecoveryModel.infoOf who sourceFinal.trace =
+      setup.proposalRecoveryModel.infoOf who G.trace)
+    (sourceGood : setup.proposalRecoveryForeignGood who sourceFinal)
+    (targetGood : setup.proposalRecoveryForeignGood who G)
+    (stamp : BindingStamp (fun owner =>
+      (nativeApplication).outputs (reference.execution.recall owner))
+        state.attempt (phase.drain current).native)
+    (targetBefore targetAfter : CommitRecoveryState setup.program)
+    (targetPrior : setup.proposalRecoveryProtocol.Trace (some targetBefore))
+    (targetJoint : Player → Option (ProposalRecoveryMove Player L))
+    (targetLegal : setup.proposalRecoveryProtocol.Legal (some targetBefore) targetJoint)
+    (targetMoved : some targetAfter ∈
+      (setup.proposalRecoveryProtocol.step (some targetBefore) ⟨targetJoint, targetLegal⟩).support)
+    (targetKept : TracePrefix (targetPrior.extend targetJoint targetLegal targetMoved) G.trace)
+    (named : (serviceGraph setup .concurrent).EventId) (owner : Player) (payload : L.Ty)
+    (binding : (serviceGraph setup .concurrent).outputLayout named = .binding owner payload)
+    (eventLower : state.attempt.phase ≤ named.val)
+    (position : named.val = instructionCount setup.program -
+      ProtocolState.remaining setup.program targetBefore.point)
+    (active : owner ∉ targetBefore.excluded)
+    (completed : named ∈ (phase.drain current).native.config.cut.completed)
+    (lower : checkpoint.trace.length ≤ targetPrior.length)
+    (upper : targetPrior.length < closed.trace.length) :
+    let data := phaseRecoveryBindingData setup .concurrent named owner payload binding
+      ((targetJoint owner).map (·.semantic))
+    let assigned := sourceSnapshotState setup implementation G reference lost
+      (phase.drain current).native
+    (assigned.accepted (.inr named)).elim PublicationResult.failure
+        (fun handle => assigned.bindingResult handle payload) = data.1 ∧
+      (assigned.accepted (.inr named)).isNone = data.2 ∧
+      (⟨.inr named, binding⟩ : FieldRef (serviceGraph setup .concurrent).layout
+        (.binding owner payload)).get?
+        assigned.config.store = some data.1 := by
+  classical
+  intro data assigned
+  have initialEq : nativeInitial = (setup.initialLaw.map encodeInputs).map
+      (PhaseRuntimeState.initial implementation.plan) := by
+    simp only [ReservedConcurrentImplementation.initial, PMF.map_comp, Function.comp_def]
+  have nativeTrace : (nativeProtocol).Trace (some reference) := by
+    rw [initialEq]
+    exact trace
+  obtain ⟨sourceBefore, sourceAfter, sourcePrior, sourceJoint, sourceLegal, sourceMoved,
+      sourceKept, _length, beforeInfo, _afterInfo, _own, _saved, _generation, physical,
+      transported, successful, failed⟩ := sourceReplayPhysicalPairedRow setup checkpoint
+    (phase.drain current).native closed path instructions who sourceFinal G closedKept same
+      sourceGood targetGood targetBefore targetAfter targetPrior targetJoint targetLegal
+        targetMoved targetKept named owner payload binding position lower upper
+  have metadata := source_information_metadata setup who ⟨some sourceBefore, sourcePrior⟩
+    ⟨some targetBefore, targetPrior⟩ beforeInfo
+  have sourceActive : owner ∉ sourceBefore.excluded := by
+    rw [metadata.2.2.1]
+    exact active
+  have sourcePosition : named.val = instructionCount setup.program -
+      ProtocolState.remaining setup.program sourceBefore.point := by
+    rw [(ProtocolState.MetadataEq.controls setup.program sourceBefore.point
+      targetBefore.point metadata.1).1]
+    exact position
+  cases accepted : (phase.drain current).native.accepted (.inr named) with
+  | none =>
+    have targetData := transported sourceActive
+    change data = _ at targetData
+    simp only [accepted, Option.isNone_none, ↓reduceIte] at targetData
+    have head := sourceReplayUnacceptedRow setup implementation G reference lost
+      (phase.drain current).native named owner payload binding valid completed accepted
+    rw [targetData]
+    exact ⟨by rw [head.1]; rfl, by rw [head.1]; rfl, head.2⟩
+  | some handle =>
+    cases originalResult : (phase.drain current).native.bindingResult handle payload with
+    | failure =>
+      have sourceRow := physical sourceActive
+      simp only [accepted, Option.elim_some, originalResult, Option.isNone_some] at sourceRow
+      obtain ⟨targetData, absent⟩ := failed sourceActive sourceRow
+      change data = _ at targetData
+      have sourceRetained : owner ∉ sourceAfter.excluded := by
+        intro excluded
+        have missing := (source_binding_missing_iff setup sourceBefore sourceAfter sourceJoint
+          sourceLegal sourceMoved owner named payload binding sourcePosition sourceActive).mpr
+            excluded
+        rw [sourceRow] at missing
+        cases missing
+      have focal : owner = who := by
+        by_contra foreign
+        obtain ⟨value, proper⟩ := source_foreign_binding_success setup who owner foreign named
+          payload binding sourceBefore sourcePrior sourceJoint sourceLegal sourceAfter sourceMoved
+            sourcePosition sourceActive sourceRetained
+              (source_good_prefix setup who _ sourceFinal.trace sourceKept sourceGood)
+        rw [sourceRow] at proper
+        cases proper
+      have owned : handle.1 = owner := by
+        obtain ⟨_payload, typed⟩ := valid.accepted_typed (.inr named) handle accepted
+        exact (EventField.binding.inj (typed.symm.trans binding)).1
+      have noLost : lost handle = none := by
+        cases drawn : lost handle with
+        | none => rfl
+        | some raw => exact ((restricted handle raw drawn).1 (owned.trans focal)).elim
+      have noMeaning := sourceReplayStampedFailure setup implementation reference nativeTrace G
+        state.attempt (phase.drain current).native stamp named owner payload binding handle
+          eventLower accepted absent
+      have unchanged : sourceHandlePairs setup implementation G reference lost handle = none := by
+        unfold sourceHandlePairs
+        cases reference.execution.application.current.native.candidates.lookup handle <;>
+          simp only [noMeaning, noLost, Option.orElse_none, Option.map_none]
+      have head := sourceReplayAcceptedFailureRow setup implementation G reference lost
+        (phase.drain current).native named owner payload binding handle accepted originalResult
+          unchanged valid completed
+      simpa only [targetData] using head
+    | success old =>
+      have sourceRow := physical sourceActive
+      simp only [accepted, Option.elim_some, originalResult, Option.isNone_some] at sourceRow
+      obtain ⟨value, read, targetData⟩ := successful sourceActive old sourceRow
+      change data = _ at targetData
+      have castSome {A B : Type} (same : A = B) (item : A) :
+          cast (congrArg Option same) (some item) = some (cast same item) := by
+        cases same
+        rfl
+      have typed := valid.binding_read (⟨.inr named, binding⟩ :
+        FieldRef (serviceGraph setup .concurrent).layout (.binding owner payload)) named rfl
+          completed
+      simp only [accepted, Option.elim_some, originalResult] at typed
+      have rawRead := congrArg
+        (cast (congrArg (fun kind : EventField Player L => Option kind.Value) binding.symm)) typed
+      have stored : (phase.drain current).native.config.store (.inr named) =
+          some (cast (congrArg EventField.Value binding.symm) (.success old)) := by
+        have rawEq : (phase.drain current).native.config.store (.inr named) =
+            cast (congrArg Option (congrArg EventField.Value binding.symm))
+              (some (.success old)) := by
+          simpa only [FieldRef.get?, cast_cast, cast_eq] using rawRead
+        exact rawEq.trans (castSome (congrArg EventField.Value binding.symm) (.success old))
+      obtain ⟨next, meaning, assignedStore, assignedResult, _ownValue⟩ :=
+        assigned_completed_binding_read setup values implementation operational reference trace who
+          event cut g sameInfo good choice properChoice G supported lost after afterTrace
+            afterRetained phase remaining generation entry current retired finished normalized
+              valid owner payload named binding handle old accepted stored
+      have head := sourceReplayAcceptedRow setup implementation reference nativeTrace G lost
+        state.attempt (phase.drain current).native stamp named owner payload binding handle
+          eventLower accepted next meaning assignedStore assignedResult value read
+      simpa only [targetData] using head
+
+omit [Fintype Player] in
+private theorem sourceReplayCompiledHeadData
+    {Γ Δ : SourceCtx Player L} {O P : Finset VarId}
+    (name : VarId) (owner : Player) (payload : L.Ty)
+    (fresh : name ∉ Γ.map Prod.fst) (guard : SourceGuard L Γ owner name payload)
+    (rest : SourceProgram.CommitPrefix
+      ((name, .commitment owner payload) :: Γ) (insert name O) Δ P)
+    (suffix : SourceProgram Player L Δ P)
+    (embedding : OutputEmbedding (inputLayout setup.context) (outputLayout setup.program)
+      ((SourceProgram.CommitPrefix.commit name owner fresh guard rest).prepend suffix))
+    (actions : ∀ index action,
+      decodeEventAction setup.program (embedding.event index) action =
+        decodeEventAction
+          ((SourceProgram.CommitPrefix.commit name owner fresh guard rest).prepend suffix) index
+          (cast (congrArg EventField.Action (embedding.layout_eq index)) action))
+    (choice : PublicationResult (L.Val payload)) (missed : Bool)
+    (missingFailure : missed = true → choice = .failure)
+    (joint : Player → Option (ProposalRecoveryMove Player L))
+    (semantic : SourceProgram.Setup.proposalRecoveryJoint joint = fun player =>
+      if player = owner then some ⟨OwnAction.commit owner name payload choice, missed⟩ else none) :
+    let index : Fin (eventCount
+      ((SourceProgram.CommitPrefix.commit name owner fresh guard rest).prepend suffix)) :=
+        ⟨0, by simp only [SourceProgram.CommitPrefix.prepend, eventCount]; omega⟩
+    let named := embedding.event index
+    ∀ binding : (serviceGraph setup .concurrent).outputLayout named = .binding owner payload,
+      phaseRecoveryBindingData setup .concurrent named owner payload binding
+        ((joint owner).map (·.semantic)) = (choice, missed) := by
+  classical
+  intro index named binding
+  have own := congrFun semantic owner
+  change (joint owner).map ProposalRecoveryMove.semantic =
+    (if owner = owner then some ⟨OwnAction.commit owner name payload choice, missed⟩ else none)
+      at own
+  simp only [ite_true] at own
+  let encoded := cast (congrArg EventField.Action binding.symm) choice
+  have decoded : decodeEventAction setup.program named encoded =
+      some (OwnAction.commit owner name payload choice) := by
+    rw [actions]
+    simp only [encoded, index, named, SourceProgram.CommitPrefix.prepend, decodeEventAction,
+      Fin.mk_zero, Fin.cases_zero, cast_cast, cast_eq]
+  have encoding := encodeEventAction?_decodeEventAction_eq_some setup.program named encoded
+    (OwnAction.commit owner name payload choice) decoded
+  cases missed with
+  | false =>
+    simp only [phaseRecoveryBindingData, own, Option.elim_some, Bool.false_eq_true, ↓reduceIte,
+      Option.bind_some, encoding, Option.map_some, Option.getD_some, encoded, cast_cast, cast_eq]
+  | true =>
+    simp only [phaseRecoveryBindingData, own, Option.elim_some, ↓reduceIte, missingFailure rfl]
+
+private theorem sourceReplayTargetTableReads
+    (operational : implementation.Operational)
+    (reference : (nativeApplication).Control)
+    (trace : ((nativeMenu).protocol
+      ((setup.initialLaw.map encodeInputs).map (PhaseRuntimeState.initial implementation.plan))
+      implementation.horizon implementation.scheduler).Trace (some reference))
+    (who : Player) (event : (serviceGraph setup .concurrent).EventId)
+    (cut : PhaseProposalCanonicalBindingCut setup .concurrent implementation.runtime
+      implementation.leaks implementation.bounds implementation.plan values
+      implementation.horizon implementation.scheduler reference trace who event)
+    (g : setup.proposalRecoveryProtocol.History)
+    (sameInfo : setup.proposalRecoveryModel.infoOf who g.trace =
+      setup.proposalRecoveryModel.infoOf who cut.trace)
+    (good : setup.proposalRecoveryForeignGood who g)
+    (choice : setup.proposalRecoveryModel.Choice who
+      (setup.proposalRecoveryModel.infoOf who g.trace))
+    (properChoice : ∀ move, choice.val.map (·.semantic) = some move →
+      move.missing = false ∧ ¬ move.action.IsFailure)
+    (G : setup.proposalRecoveryProtocol.History)
+    (supported : G ∈ (sourceForcedBlock setup values who g choice).support)
+    (lost : Handle (serviceGraph setup .concurrent) → Option (Raw L))
+    (after : (nativeApplication).Control)
+    (afterTrace : ((nativeMenu).protocol
+      ((setup.initialLaw.map encodeInputs).map (PhaseRuntimeState.initial implementation.plan))
+      implementation.horizon implementation.scheduler).Trace (some after))
+    (afterRetained : TracePrefix afterTrace trace)
+    (phase : RuntimePhase (serviceGraph setup .concurrent))
+    (remaining : List (RuntimePhase (serviceGraph setup .concurrent))) (generation : Nat)
+    (entry current : RecoveryState (serviceGraph setup .concurrent))
+    (retired : List (RetiredCommitAttempt (serviceGraph setup .concurrent)))
+    (finished : phase.Finished (phase.drain current))
+    (normalized : after.execution.application =
+      PhaseRuntimeState.settle (phase :: remaining) generation entry current retired)
+    (valid : (phase.drain current).native.BindingInvariant)
+    (restricted : SourceReplayLostRestricted setup implementation G reference who lost)
+    {state : PhaseRuntimeState (serviceGraph setup .concurrent)}
+    (checkpoint : RecoverySourceCheckpoint setup .concurrent state)
+    (closed : setup.commitRecoveryProtocol.History) {fuel : Nat}
+    (path : setup.commitRecoveryProtocol.ReachesWithin fuel ⟨_, checkpoint.trace⟩ closed)
+    (instructions : setup.recoveryJointRecall closed.trace =
+      (checkpoint.commitInstructionWord (phase.drain current).native).reverse ++
+        setup.recoveryJointRecall checkpoint.trace)
+    (sourceFinal : setup.proposalRecoveryProtocol.History)
+    (closedKept : TracePrefix closed.trace (setup.proposalRecoveryEraseTrace sourceFinal.trace))
+    (same : setup.proposalRecoveryModel.infoOf who sourceFinal.trace =
+      setup.proposalRecoveryModel.infoOf who G.trace)
+    (sourceGood : setup.proposalRecoveryForeignGood who sourceFinal)
+    (targetGood : setup.proposalRecoveryForeignGood who G)
+    (stamp : BindingStamp (fun owner =>
+      (nativeApplication).outputs (reference.execution.recall owner))
+        state.attempt (phase.drain current).native)
+    (phaseLow : phase.low = state.attempt.phase) :
+    ∀ {Γ Δ : SourceCtx Player L} {O P : Finset VarId}
+      {block : SourceProgram.CommitPrefix Γ O Δ P}
+      {targetEntry : SourceProgram.Config Player L Γ} {excluded : Finset Player}
+      {result : SourceProgram.Config Player L Δ} {finalExcluded : Finset Player}
+      (attempt : block.Attempt targetEntry excluded result finalExcluded)
+      (suffix : SourceProgram Player L Δ P)
+      (embedding : OutputEmbedding (inputLayout setup.context) (outputLayout setup.program)
+        (block.prepend suffix))
+      (_actions : ∀ index action,
+        decodeEventAction setup.program (embedding.event index) action =
+          decodeEventAction (block.prepend suffix) index
+            (cast (congrArg EventField.Action (embedding.layout_eq index)) action))
+      (low : Nat)
+      (_ranking : ∀ index, (embedding.event index).val = low + index.val)
+      (_clock : low + instructionCount (block.prepend suffix) = instructionCount setup.program)
+      (_interval : ∀ index, index.val < block.length → embedding.event index ∈ phase.events)
+      (lift : ProtocolState (block.prepend suffix) → ProtocolState setup.program)
+      (_origin : ProtocolSuffix setup.program (block.prepend suffix) lift)
+      (start : CommitRecoveryState setup.program)
+      (prior : setup.proposalRecoveryProtocol.Trace (some start))
+      (targetEnd : setup.proposalRecoveryProtocol.History)
+      (_endKept : TracePrefix targetEnd.trace G.trace)
+      (_retained : TracePrefix prior targetEnd.trace)
+      (_point : start.point = lift (ProtocolState.entry (block.prepend suffix) targetEntry))
+      (_mask : start.excluded = excluded)
+      (_saved : ProtocolState.atCommit setup.program start.saved = true)
+      (_endpoint : ProtocolState.commitEnd setup.program start.saved ≤ instructionCount suffix)
+      (_word : setup.recoveryJointRecall (setup.proposalRecoveryEraseTrace targetEnd.trace) =
+        attempt.joints.reverse ++
+          setup.recoveryJointRecall (setup.proposalRecoveryEraseTrace prior))
+      (_lower : checkpoint.trace.length ≤ prior.length)
+      (_upper : prior.length + block.length ≤ closed.trace.length)
+      (_receipts : BindingReceiptOrder low excluded (phase.drain current).native.accepted),
+      sourceAttemptTableReads setup attempt suffix embedding
+        (sourceSnapshotState setup implementation G reference lost
+          (phase.drain current).native) := by
+  classical
+  intro Γ Δ O P block targetEntry excluded result finalExcluded attempt
+  induction attempt with
+  | nil => intros; trivial
+  | @active Γ Δ O P name owner payload fresh guard rest targetEntry excluded result finalExcluded
+      active resultChoice missed missing later ih =>
+    intro suffix embedding actions low ranking clock interval lift origin start prior targetEnd
+      endKept retained point mask saved endpoint word lower upper receipts
+    let index : Fin (eventCount
+        ((SourceProgram.CommitPrefix.commit name owner fresh guard rest).prepend suffix)) :=
+      ⟨0, by simp only [SourceProgram.CommitPrefix.prepend, eventCount]; omega⟩
+    let named := embedding.event index
+    have binding : (serviceGraph setup .concurrent).outputLayout named =
+        .binding owner payload := by
+      change outputLayout setup.program named = .binding owner payload
+      simpa only [named, index, SourceProgram.CommitPrefix.prepend, outputLayout,
+        Fin.mk_zero, Fin.cases_zero] using embedding.layout_eq index
+    have eventRank : named.val = low := by
+      simpa only [named, index, Nat.add_zero] using ranking index
+    have inside : named ∈ phase.events := interval index (by
+      simp only [index, SourceProgram.CommitPrefix.length]; omega)
+    have completed := finished inside
+    have eventLower : state.attempt.phase ≤ named.val := by
+      rw [← phaseLow]
+      exact ((phase.mem_events named).mp inside).1
+    have position : named.val = instructionCount setup.program -
+        ProtocolState.remaining setup.program start.point := by
+      rw [point, origin.remaining_lift, ProtocolState.remaining_entry, eventRank]
+      omega
+    have committing : ProtocolState.atCommit setup.program start.point = true := by
+      rw [point, origin.atCommit_lift]
+      rfl
+    have within : named.val < instructionCount setup.program -
+        ProtocolState.commitEnd setup.program start.saved := by
+      simp only [SourceProgram.CommitPrefix.prepend, instructionCount,
+        rest.instructionCount_prepend] at clock
+      omega
+    obtain ⟨next, joint, legal, moved, rowKept, semantic, _rank⟩ := sourceReplayHeadRow setup start
+      prior committing targetEnd retained _ word (by
+        simp only [SourceProgram.CommitPrefix.Attempt.joints, List.length_cons]; omega)
+          named.val position within
+    have canonical : SourceProgram.Setup.proposalRecoveryJoint joint = fun player =>
+        if player = owner then some ⟨OwnAction.commit owner name payload resultChoice, missed⟩
+          else none := by
+      simpa only [SourceProgram.CommitPrefix.Attempt.joints, List.getElem_cons_zero] using semantic
+    have read := sourceReplayCompiledHeadData setup name owner payload fresh guard rest suffix
+      embedding actions resultChoice missed missing joint canonical binding
+    have targetActive : owner ∉ start.excluded := by rwa [mask]
+    have head := sourceReplayAssignedActiveRow setup values implementation operational reference
+      trace who event cut g sameInfo good choice properChoice G supported lost after afterTrace
+        afterRetained phase remaining generation entry current retired finished normalized valid
+          restricted checkpoint closed path instructions sourceFinal closedKept same sourceGood
+            targetGood stamp start next prior joint legal moved (rowKept.trans endKept) named owner
+              payload binding eventLower position targetActive completed lower (by
+                simp only [SourceProgram.CommitPrefix.length] at upper; omega)
+    rw [read] at head
+    have tailReads : sourceAttemptTableReads setup later suffix
+        (embedding.tail (rest.prepend suffix) (by
+          simp only [SourceProgram.CommitPrefix.prepend, eventCount]) (fun _ => rfl))
+        (sourceSnapshotState setup implementation G reference lost
+          (phase.drain current).native) := by
+      by_cases nonfinal : 0 < rest.length
+      · obtain ⟨nextActual, nextJoint, nextLegal, nextMoved, nextKept, nextPoint, nextMask,
+          nextSaved, _nextGeneration, nextSemantic⟩ := sourceReplayActiveHeadStep setup active
+            resultChoice missed missing later suffix lift origin start prior targetEnd point mask
+              saved endpoint retained word nonfinal
+        have nextWord := sourceReplayTailWord setup targetEnd start prior nextActual nextJoint
+          nextLegal nextMoved _ later.joints nextSemantic word
+        have tailReceipts : BindingReceiptOrder (low + 1)
+            (excludeCommit excluded owner missed) (phase.drain current).native.accepted := by
+          have missedEq : ((phase.drain current).native.accepted (.inr named)).isNone = missed := by
+            simpa only [sourceSnapshotState, State.swap_accepted] using head.2.1
+          cases missed with
+          | false =>
+            simpa only [excludeCommit, Bool.false_eq_true, ↓reduceIte] using
+              receipts.raise_low (show low ≤ low + 1 by omega)
+          | true =>
+            have absent : (phase.drain current).native.accepted (.inr named) = none := by
+              cases accepted : (phase.drain current).native.accepted (.inr named) with
+              | none => rfl
+              | some handle =>
+                simp only [accepted, Option.isNone_some] at missedEq
+                cases missedEq
+            simpa only [excludeCommit, ↓reduceIte] using receipts.after_missing named eventRank
+              owner payload binding absent
+        apply ih suffix _ (fun index action => ?_) (low + 1) (fun index => ?_) (by
+          simp only [SourceProgram.CommitPrefix.prepend, instructionCount] at clock ⊢; omega)
+          (fun index bound => ?_) (fun point => lift (.inr point))
+          (ProtocolSuffix.commitTail fresh guard (rest.prepend suffix) origin) nextActual
+          (prior.extend nextJoint nextLegal nextMoved) targetEnd endKept nextKept nextPoint nextMask
+          (by rw [nextSaved]; exact saved) (by rw [nextSaved]; exact endpoint) nextWord
+          (by simp only [Trace.length]; omega)
+          (by simp only [Trace.length, SourceProgram.CommitPrefix.length] at upper ⊢; omega)
+          tailReceipts
+        · simpa only [OutputEmbedding.tail, Fin.cast_eq_self, SourceProgram.CommitPrefix.prepend,
+            decodeEventAction, Fin.cases_succ] using actions index.succ action
+        · have rank := ranking index.succ
+          dsimp only [OutputEmbedding.tail] at rank ⊢
+          simp only [Fin.cast_eq_self, Fin.val_succ] at rank ⊢
+          omega
+        · simpa only [OutputEmbedding.tail, Fin.cast_eq_self] using interval index.succ (by
+            simp only [Fin.val_succ, SourceProgram.CommitPrefix.length]; omega)
+      · cases rest with
+        | nil => cases later; trivial
+        | commit => simp only [SourceProgram.CommitPrefix.length] at nonfinal; omega
+    exact ⟨head.1, head.2.1, head.2.2, tailReads⟩
+  | @excluded Γ Δ O P name owner payload fresh guard rest targetEntry excluded result
+      finalExcluded inactive later ih =>
+    intro suffix embedding actions low ranking clock interval lift origin start prior targetEnd
+      endKept retained point mask saved endpoint word lower upper receipts
+    let index : Fin (eventCount
+        ((SourceProgram.CommitPrefix.commit name owner fresh guard rest).prepend suffix)) :=
+      ⟨0, by simp only [SourceProgram.CommitPrefix.prepend, eventCount]; omega⟩
+    let named := embedding.event index
+    have binding : (serviceGraph setup .concurrent).outputLayout named =
+        .binding owner payload := by
+      change outputLayout setup.program named = .binding owner payload
+      simpa only [named, index, SourceProgram.CommitPrefix.prepend, outputLayout,
+        Fin.mk_zero, Fin.cases_zero] using embedding.layout_eq index
+    have eventRank : named.val = low := by
+      simpa only [named, index, Nat.add_zero] using ranking index
+    have inside : named ∈ phase.events := interval index (by
+      simp only [index, SourceProgram.CommitPrefix.length]; omega)
+    have head := sourceReplayInheritedRow setup implementation G reference lost
+      (phase.drain current).native named owner payload binding valid (finished inside) low excluded
+        receipts eventRank.ge inactive
+    have tailReads : sourceAttemptTableReads setup later suffix
+        (embedding.tail (rest.prepend suffix) (by
+          simp only [SourceProgram.CommitPrefix.prepend, eventCount]) (fun _ => rfl))
+        (sourceSnapshotState setup implementation G reference lost
+          (phase.drain current).native) := by
+      by_cases nonfinal : 0 < rest.length
+      · obtain ⟨next, joint, legal, moved, rowKept, nextPoint, nextMask, nextSaved,
+          _nextGeneration, semantic⟩ := sourceReplayExcludedHeadStep setup inactive later suffix
+            lift origin start prior targetEnd point mask saved endpoint retained word nonfinal
+        have nextWord := sourceReplayTailWord setup targetEnd start prior next joint legal moved
+          _ later.joints semantic word
+        apply ih suffix _ (fun index action => ?_) (low + 1) (fun index => ?_) (by
+          simp only [SourceProgram.CommitPrefix.prepend, instructionCount] at clock ⊢; omega)
+          (fun index bound => ?_) (fun point => lift (.inr point))
+          (ProtocolSuffix.commitTail fresh guard (rest.prepend suffix) origin) next
+          (prior.extend joint legal moved) targetEnd endKept rowKept nextPoint nextMask
+          (by rw [nextSaved]; exact saved) (by rw [nextSaved]; exact endpoint) nextWord
+          (by simp only [Trace.length]; omega)
+          (by simp only [Trace.length, SourceProgram.CommitPrefix.length] at upper ⊢; omega)
+          (receipts.raise_low (show low ≤ low + 1 by omega))
+        · simpa only [OutputEmbedding.tail, Fin.cast_eq_self, SourceProgram.CommitPrefix.prepend,
+            decodeEventAction, Fin.cases_succ] using actions index.succ action
+        · have rank := ranking index.succ
+          dsimp only [OutputEmbedding.tail] at rank ⊢
+          simp only [Fin.cast_eq_self, Fin.val_succ] at rank ⊢
+          omega
+        · simpa only [OutputEmbedding.tail, Fin.cast_eq_self] using interval index.succ (by
+            simp only [Fin.val_succ, SourceProgram.CommitPrefix.length]; omega)
+      · cases rest with
+        | nil => cases later; trivial
+        | commit => simp only [SourceProgram.CommitPrefix.length] at nonfinal; omega
+    exact ⟨head, tailReads⟩
+
+private theorem sourceReplayFixedSnapshotTableReads
+    (operational : implementation.Operational)
+    (reference : (nativeApplication).Control)
+    (trace : ((nativeMenu).protocol
+      ((setup.initialLaw.map encodeInputs).map (PhaseRuntimeState.initial implementation.plan))
+      implementation.horizon implementation.scheduler).Trace (some reference))
+    (who : Player) (event : (serviceGraph setup .concurrent).EventId)
+    (cut : PhaseProposalCanonicalBindingCut setup .concurrent implementation.runtime
+      implementation.leaks implementation.bounds implementation.plan values
+      implementation.horizon implementation.scheduler reference trace who event)
+    (g : setup.proposalRecoveryProtocol.History)
+    (sameInfo : setup.proposalRecoveryModel.infoOf who g.trace =
+      setup.proposalRecoveryModel.infoOf who cut.trace)
+    (good : setup.proposalRecoveryForeignGood who g)
+    (choice : setup.proposalRecoveryModel.Choice who
+      (setup.proposalRecoveryModel.infoOf who g.trace))
+    (properChoice : ∀ move, choice.val.map (·.semantic) = some move →
+      move.missing = false ∧ ¬ move.action.IsFailure)
+    (G : setup.proposalRecoveryProtocol.History)
+    (supported : G ∈ (sourceForcedBlock setup values who g choice).support)
+    (lost : Handle (serviceGraph setup .concurrent) → Option (Raw L))
+    (after : (nativeApplication).Control)
+    (afterTrace : ((nativeMenu).protocol
+      ((setup.initialLaw.map encodeInputs).map (PhaseRuntimeState.initial implementation.plan))
+      implementation.horizon implementation.scheduler).Trace (some after))
+    (afterRetained : TracePrefix afterTrace trace)
+    (before : (nativeApplication).Control)
+    (beforeTrace : ((nativeMenu).protocol
+      ((setup.initialLaw.map encodeInputs).map (PhaseRuntimeState.initial implementation.plan))
+      implementation.horizon implementation.scheduler).Trace (some before))
+    (beforeRetained : TracePrefix beforeTrace trace)
+    (witness : RecoverySourceWitness setup .concurrent implementation.plan
+      before.execution.application)
+    (phase : RuntimePhase (serviceGraph setup .concurrent))
+    (remaining : List (RuntimePhase (serviceGraph setup .concurrent)))
+    (installed : before.execution.application.phases = phase :: remaining)
+    (commitment : phase.kind = .commitment)
+    (current : RecoveryState (serviceGraph setup .concurrent))
+    (finished : phase.Finished (phase.drain current))
+    (normalized : after.execution.application = PhaseRuntimeState.settle (phase :: remaining)
+      before.execution.application.generation before.execution.application.entry current
+        before.execution.application.retired)
+    (valid : (phase.drain current).native.BindingInvariant)
+    (effect : PhaseClosingEffect implementation.runtime implementation.leaks
+      before.execution after.execution current)
+    (changed : after.execution.application.attempt ≠ before.execution.application.attempt)
+    (rawStamp : BindingStamp (fun owner =>
+      (nativeApplication).outputs (before.execution.recall owner))
+        before.execution.application.attempt (phase.drain current).native)
+    (restricted : SourceReplayLostRestricted setup implementation G reference who lost)
+    (checkpoint : RecoverySourceCheckpoint setup .concurrent before.execution.application)
+    (closed : setup.commitRecoveryProtocol.History) {fuel : Nat}
+    (path : setup.commitRecoveryProtocol.ReachesWithin fuel ⟨_, checkpoint.trace⟩ closed)
+    (instructions : setup.recoveryJointRecall closed.trace =
+      (checkpoint.commitInstructionWord (phase.drain current).native).reverse ++
+        setup.recoveryJointRecall checkpoint.trace)
+    (sourceFinal : setup.proposalRecoveryProtocol.History)
+    (closedKept : TracePrefix closed.trace (setup.proposalRecoveryEraseTrace sourceFinal.trace))
+    (same : setup.proposalRecoveryModel.infoOf who sourceFinal.trace =
+      setup.proposalRecoveryModel.infoOf who G.trace)
+    (sourceGood : setup.proposalRecoveryForeignGood who sourceFinal)
+    (targetGood : setup.proposalRecoveryForeignGood who G) :
+    match SourceProgram.commitPhase checkpoint.residual.tail with
+    | ⟨Δ, _P, suffix, block, reconstruct, _⟩ =>
+      let embedding := cast (congrArg (fun program => OutputEmbedding
+        (inputLayout setup.context) (outputLayout setup.program) program) reconstruct.symm)
+          checkpoint.embedding
+      ∀ (targetEntry : SourceProgram.Config Player L checkpoint.residual.context)
+        (start : CommitRecoveryState setup.program)
+        (prior : setup.proposalRecoveryProtocol.Trace (some start))
+        (result : SourceProgram.Config Player L Δ) (finalExcluded : Finset Player)
+        (attempt : block.Attempt targetEntry start.excluded result finalExcluded)
+        (targetEnd : setup.proposalRecoveryProtocol.History)
+        (_endKept : TracePrefix targetEnd.trace G.trace)
+        (_retained : TracePrefix prior targetEnd.trace)
+        (_point : start.point = checkpoint.residual.lift
+          (cast (congrArg ProtocolState reconstruct)
+            (ProtocolState.entry (block.prepend suffix) targetEntry)))
+        (_mask : start.excluded = before.execution.application.entry.excluded)
+        (_saved : ProtocolState.atCommit setup.program start.saved = true)
+        (_endpoint : ProtocolState.commitEnd setup.program start.saved ≤ instructionCount suffix)
+        (_word : setup.recoveryJointRecall (setup.proposalRecoveryEraseTrace targetEnd.trace) =
+          attempt.joints.reverse ++
+            setup.recoveryJointRecall (setup.proposalRecoveryEraseTrace prior))
+        (_lower : checkpoint.trace.length ≤ prior.length)
+        (_upper : prior.length + block.length ≤ closed.trace.length),
+        sourceAttemptTableReads setup attempt suffix embedding
+          (sourceSnapshotState setup implementation G reference lost
+            (phase.drain current).native) := by
+  classical
+  have initialEq : nativeInitial = (setup.initialLaw.map encodeInputs).map
+      (PhaseRuntimeState.initial implementation.plan) := by
+    simp only [ReservedConcurrentImplementation.initial, PMF.map_comp, Function.comp_def]
+  obtain ⟨referenceNative, beforeNative, nativeKept⟩ :
+      ∃ (referenceNative : (nativeProtocol).Trace (some reference))
+        (beforeNative : (nativeProtocol).Trace (some before)),
+        TracePrefix beforeNative referenceNative := by
+    rw [initialEq]
+    exact ⟨trace, beforeTrace, beforeRetained⟩
+  have present : phase ∈ before.execution.application.phases.head? := by
+    simp only [installed, List.head?_cons, Option.mem_some_iff]
+  obtain ⟨receipts, stamp⟩ := sourceReplayCloseEvidence setup implementation reference before after
+    referenceNative beforeNative nativeKept witness phase present commitment current effect changed
+      rawStamp
+  have phaseLow : phase.low = before.execution.application.attempt.phase := by
+    simp only [PhaseRuntimeState.attempt, installed, List.head?_cons, Option.map_some,
+      Option.getD_some]
+  have geometry := checkpoint.commit_phase_geometry phase remaining installed commitment
+    witness.order.frontier (operational.maximalPhases.suffix witness.suffix)
+  have table := fun {Γ Δ : SourceCtx Player L} {O P : Finset VarId}
+      {block : SourceProgram.CommitPrefix Γ O Δ P}
+      {targetEntry : SourceProgram.Config Player L Γ} {excluded : Finset Player}
+      {result : SourceProgram.Config Player L Δ} {finalExcluded : Finset Player}
+      (attempt : block.Attempt targetEntry excluded result finalExcluded) =>
+    sourceReplayTargetTableReads setup values implementation operational reference trace who event
+      cut g sameInfo good choice properChoice G supported lost after afterTrace afterRetained phase
+        remaining before.execution.application.generation before.execution.application.entry current
+          before.execution.application.retired finished normalized valid restricted checkpoint
+            closed path instructions sourceFinal closedKept same sourceGood targetGood stamp
+              phaseLow attempt
+  rcases checkpoint with ⟨⟨Γ, O, program, lift⟩, source, refs, registry, embedding, beforeRefs,
+    compiled, alignment, agrees, guards, failures, unique, ranks, actors, commits, owners,
+    endpoints, automatic, histories, memories, steps, menus, readout, checkpointTrace, views,
+    historyAlignment, origin⟩
+  dsimp only at geometry table ⊢
+  generalize decomposition : SourceProgram.commitPhase program = segment at geometry ⊢
+  rcases segment with ⟨Δ, P, suffix, block, reconstruct, boundary⟩
+  subst program
+  dsimp only [cast_eq] at geometry ⊢
+  intro targetEntry start prior result finalExcluded attempt targetEnd endKept retained point mask
+    saved endpoint word lower upper
+  have clock : before.execution.application.attempt.phase +
+      instructionCount (block.prepend suffix) = instructionCount setup.program := by
+    simpa only [eventCount_eq_instructionCount] using compiled.countEq
+  apply table attempt suffix embedding views.actionEq before.execution.application.attempt.phase
+    compiled.rankEq clock geometry.2 lift origin start prior targetEnd endKept retained point rfl
+      saved endpoint word lower upper
+  simpa only [phaseLow, mask] using receipts
+
 private structure SourceReplayImage
     (target : setup.proposalRecoveryProtocol.History)
     (reference : (nativeApplication).Control)
@@ -12909,6 +13664,132 @@ private structure SourceReplayAlignment
         SourceReplayLostRestricted setup implementation
           ⟨some targetCurrent, targetTrace⟩ reference who
           (Function.update lost handle (some raw)))
+
+/- Every factual native prefix selects an original source prefix. Full focal
+information maps that literal prefix to the same completed target chronology;
+the target private actions may differ, while its depth and enriched focal
+information agree. -/
+private theorem sourceReplayTargetPrefix
+    (operational : implementation.Operational)
+    (who : Player)
+    (reference : (nativeApplication).Control)
+    (referenceTrace : (nativeProtocol).Trace (some reference))
+    (target : setup.proposalRecoveryProtocol.History)
+    (same : setup.proposalRecoveryModel.infoOf who
+        (canonicalSource setup implementation operational
+          ⟨some reference, referenceTrace⟩).trace =
+      setup.proposalRecoveryModel.infoOf who target.trace)
+    (choice : setup.proposalRecoveryModel.Choice who
+      (setup.proposalRecoveryModel.infoOf who target.trace))
+    (completed : setup.proposalRecoveryProtocol.History)
+    (supported : completed ∈ (sourceForcedBlock setup values who target choice).support)
+    (before : (nativeApplication).Control)
+    (prior : (nativeProtocol).Trace (some before))
+    (retained : TracePrefix prior referenceTrace) :
+    ∃ earlier : setup.proposalRecoveryProtocol.History,
+      earlier = ⟨_, setup.proposalRecoveryLiftTrace
+        (nativeArchiveLabels setup
+          (PhaseProposal.sourceArchive reference.execution.network.inputs))
+        (checkpointSelection setup implementation operational prior).val.checkpoint.trace⟩ ∧
+      ∃ mapped : setup.proposalRecoveryProtocol.History,
+        TracePrefix mapped.trace target.trace ∧
+        TracePrefix mapped.trace completed.trace ∧
+        mapped.trace.length = earlier.trace.length ∧
+        setup.proposalRecoveryModel.infoOf who earlier.trace =
+          setup.proposalRecoveryModel.infoOf who mapped.trace ∧
+        ∃ (mappedCurrent : CommitRecoveryState setup.program)
+          (mappedLive mappedSaved : SourceProgram.Config Player L
+          ((checkpointSelection setup implementation operational
+            prior).val.checkpoint.residual.context)),
+          mapped.state = some mappedCurrent ∧
+          mappedCurrent.point =
+            (checkpointSelection setup implementation operational
+              prior).val.checkpoint.residual.lift
+              (ProtocolState.entry
+                (checkpointSelection setup implementation operational
+                  prior).val.checkpoint.residual.tail
+                mappedLive) ∧
+          mappedCurrent.saved =
+            (checkpointSelection setup implementation operational
+              prior).val.checkpoint.residual.lift
+              (ProtocolState.entry
+                (checkpointSelection setup implementation operational
+                  prior).val.checkpoint.residual.tail
+                mappedSaved) ∧
+          mappedCurrent.excluded = before.execution.application.entry.excluded ∧
+          mappedCurrent.generation = before.execution.application.generation := by
+  let labels := nativeArchiveLabels setup
+    (PhaseProposal.sourceArchive reference.execution.network.inputs)
+  let selected := (checkpointSelection setup implementation operational prior).val
+  let earlier : setup.proposalRecoveryProtocol.History :=
+    ⟨some (CommitRecoveryState.atPoint
+      (selected.checkpoint.residual.lift
+        (ProtocolState.entry selected.checkpoint.residual.tail selected.checkpoint.source))
+      before.execution.application.entry.excluded before.execution.application.generation),
+      setup.proposalRecoveryLiftTrace labels selected.checkpoint.trace⟩
+  have originalPrefix := checkpointSelection_prefix setup implementation operational
+    before reference prior referenceTrace retained
+  have labeledPrefix := setup.proposalRecoveryLiftTrace_prefix labels originalPrefix
+  have kept : TracePrefix earlier.trace
+      (canonicalSource setup implementation operational
+        ⟨some reference, referenceTrace⟩).trace := by
+    exact labeledPrefix
+  obtain ⟨mapped, mappedKept, length, information⟩ :=
+    source_information_prefix setup who
+      (canonicalSource setup implementation operational
+        ⟨some reference, referenceTrace⟩) target earlier same kept
+  have targetKept : TracePrefix target.trace completed.trace := by
+    have support := supported
+    unfold sourceForcedBlock at support
+    obtain ⟨middle, first, last⟩ := (PMF.mem_support_bind_iff ..).mp support
+    exact ((setup.proposalRecoveryModel.runBehavioralFrom_reachesWithin _ 1
+      target middle first).tracePrefix).trans
+        ((setup.proposalRecoveryModel.runBehavioralFrom_reachesWithin _ _
+          middle completed last).tracePrefix)
+  obtain ⟨mappedCurrent, mappedLive, mappedSaved, mappedState, livePoint,
+    savedPoint, _liveMetadata, _savedMetadata, mask, _entryMask, generation⟩ :=
+    source_target_entries setup who
+      (CommitRecoveryState.atPoint
+        (selected.checkpoint.residual.lift
+          (ProtocolState.entry selected.checkpoint.residual.tail
+            selected.checkpoint.source)) before.execution.application.entry.excluded
+          before.execution.application.generation)
+      earlier.trace mapped information selected.checkpoint.residual.tail
+        selected.checkpoint.residual.tail selected.checkpoint.residual.lift
+          selected.checkpoint.residual.lift selected.checkpoint.origin
+            selected.checkpoint.origin selected.checkpoint.source selected.checkpoint.source
+              rfl rfl
+  exact ⟨earlier, rfl, mapped, mappedKept, mappedKept.trans targetKept,
+    length, information,
+    mappedCurrent, mappedLive, mappedSaved, mappedState, livePoint, savedPoint,
+    mask.symm, generation.symm⟩
+
+/- Within one factual native attempt, the selected source entry cannot move.
+Both mapped target entries are actual prefixes of the same target history, and
+the original selected checkpoint keeps its literal depth. -/
+private theorem sourceReplayTargetPrefix_same_attempt
+    (operational : implementation.Operational)
+    (first second : (nativeApplication).Control)
+    (firstTrace : (nativeProtocol).Trace (some first))
+    (secondTrace : (nativeProtocol).Trace (some second))
+    (retained : TracePrefix firstTrace secondTrace)
+    (same : first.execution.application.attempt = second.execution.application.attempt)
+    (target firstTarget secondTarget : setup.proposalRecoveryProtocol.History)
+    (firstKept : TracePrefix firstTarget.trace target.trace)
+    (secondKept : TracePrefix secondTarget.trace target.trace)
+    (firstLength : firstTarget.trace.length =
+      (checkpointSelection setup implementation operational
+        firstTrace).val.checkpoint.trace.length)
+    (secondLength : secondTarget.trace.length =
+      (checkpointSelection setup implementation operational
+        secondTrace).val.checkpoint.trace.length) :
+    firstTarget = secondTarget := by
+  have selected := checkpointSelection_eq_of_attempt setup implementation operational
+    first second firstTrace secondTrace retained same
+  have depth := congrArg (fun history : setup.commitRecoveryProtocol.History =>
+    history.trace.length) selected
+  exact firstKept.eq_of_same_length secondKept
+    (firstLength.trans (depth.trans secondLength.symm))
 
 open Classical in
 /-- A source prescription at nonterminal histories suffices for the literal
@@ -20393,6 +21274,60 @@ private theorem qualified_annotation_normalization
     coefficientPositive, coefficientFinite, constant, summed.symm⟩
 
 open Classical in
+/-- Summing the literal native atom balance gives the original weighted
+rectangle. The replay law remains normalized when either displayed source
+or mechanical factor is zero; this calculation uses no cancellation. -/
+private theorem qualified_annotation_rectangle_of_native_atoms
+    (operational : implementation.Operational)
+    (scale sourceBad nativeBad : Set.Icc (0 : ℝ) 1)
+    (sourceProfile : ∀ owner, setup.proposalRecoveryModel.BehavioralPolicy owner)
+    (nativeProfile : ∀ owner, (nativeModel).BehavioralPolicy owner)
+    (who : Player) (site : (nativeModel).InformationSite who)
+    (past : List (nativeApplication).PlayerEntry) (view : (nativeApplication).PlayerView)
+    (event : (serviceGraph setup .concurrent).EventId) (payload : L.Ty)
+    (binding : (serviceGraph setup .concurrent).outputLayout event = .binding who payload)
+    (source : QualifiedBindingSource setup values implementation sourceProfile who site past view
+      event payload binding)
+    (index : MechanicalIndex setup implementation who) (value : L.Val payload)
+    (cut completed : setup.proposalRecoveryProtocol.History)
+    (law : PMF ((nativeModel).InformationHistory who site.1)) :
+    let own := ENNReal.ofReal (setup.proposalRecoveryModel.ownPlayReachProbability
+      (sourceProfile who) (setup.proposalRecoveryModel.ownPlay who source.anchor.trace))
+    let classes := (setup.proposalRecoveryForeignProducts values scale sourceBad scale
+      who source.anchor.trace).1
+    let coefficient := mechanicalCoefficient setup implementation
+      ⟨nativeBad, scale, scale, scale⟩ nativeProfile who site event
+    let density :=
+      if same : setup.proposalRecoveryModel.infoOf who cut.trace = source.site.1 then
+        if setup.proposalRecoveryForeignGood who cut then
+          setup.proposalRecoveryModel.historyReachWeight sourceProfile cut *
+            sourceForcedBlock setup values who cut (same.symm ▸ source.encode value) completed
+        else 0
+      else 0
+    (∀ history : (nativeModel).InformationHistory who site.1,
+      own * classes *
+        (if mechanicalWord setup implementation who history.val.trace = index.1.val then
+          ∑' entry : setup.proposalRecoveryProtocol.History,
+            ∑' word : SourceProgram.History Player L,
+              annotatedPrefixWeight setup values implementation operational sourceProfile
+                  nativeProfile who history.val index.2 entry word *
+                (if bindingAdmissionBit setup implementation who event history.val index.2
+                  then 1 else 0) *
+                sourceForcedBlockJoint setup values implementation who history.val event payload
+                  entry word value (cut, completed)
+        else 0) = coefficient index * density * law history) →
+      own * classes * annotatedForcedBlockWeight setup values implementation operational
+        sourceProfile nativeProfile who site index event payload value cut completed =
+          coefficient index * density := by
+  intro own classes coefficient density balanced
+  rw [annotatedForcedBlockWeight, ← ENNReal.tsum_mul_left]
+  calc
+    _ = ∑' history : (nativeModel).InformationHistory who site.1,
+        coefficient index * density * law history := tsum_congr balanced
+    _ = coefficient index * density := by
+      rw [ENNReal.tsum_mul_left, law.tsum_coe, mul_one]
+
+open Classical in
 -- OPEN OBLIGATION: qualified_annotation_pushforward - Exact qualified decision-cut weights
 theorem qualified_annotation_pushforward
     (operational : implementation.Operational)
@@ -20473,7 +21408,32 @@ theorem qualified_annotation_pushforward
               sourceForcedBlock setup values who cut (same.symm ▸ encode value) completed
           else 0
         else 0) := by
-    sorry
+    intro index value cut completed
+    let density :=
+      if same : setup.proposalRecoveryModel.infoOf who cut.trace = sourceSite.1 then
+        if setup.proposalRecoveryForeignGood who cut then
+          setup.proposalRecoveryModel.historyReachWeight sourceProfile cut *
+            sourceForcedBlock setup values who cut (same.symm ▸ encode value) completed
+        else 0
+      else 0
+    obtain ⟨law, balanced⟩ :
+        ∃ law : PMF ((nativeModel).InformationHistory who site.1),
+          ∀ history : (nativeModel).InformationHistory who site.1,
+            own * classes *
+              (if mechanicalWord setup implementation who history.val.trace = index.1.val then
+                ∑' entry : setup.proposalRecoveryProtocol.History,
+                  ∑' word : SourceProgram.History Player L,
+                    annotatedPrefixWeight setup values implementation operational sourceProfile
+                        nativeProfile who history.val index.2 entry word *
+                      (if bindingAdmissionBit setup implementation who event history.val index.2
+                        then 1 else 0) *
+                      sourceForcedBlockJoint setup values implementation who history.val event
+                        payload entry word value (cut, completed)
+              else 0) = coefficient index * density * law history := by
+      sorry
+    exact qualified_annotation_rectangle_of_native_atoms setup values implementation operational
+      scale sourceBad nativeBad sourceProfile nativeProfile who site past view event payload
+        cleanSite.binding source index value cut completed law balanced
   obtain ⟨ownPositive, ownFinite, classesPositive, classesFinite, massPositive, massFinite,
       coefficientPositive, coefficientFinite, constant, _normalization⟩ :=
     qualified_annotation_normalization setup values implementation operational scale sourceBad

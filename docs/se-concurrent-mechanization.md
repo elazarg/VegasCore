@@ -58,10 +58,10 @@ Progress within that remaining proof:
 
 | Work | Checked material | Still open |
 | --- | --- | --- |
-| Source-phase correspondence | Initial assignment, paired physical/source rows including accepted failures, retained origins, selected dirty intervals and clean word readback | Complete visit and restore induction; publication and query coverage |
+| Source-phase correspondence | Initial assignment, complete fixed-snapshot table reads from actual closing evidence, paired physical/source rows including accepted failures, retained origins, selected-prefix and saved/restore agreement adapters | Complete visit and restore induction assembling source alignment; publication and query coverage |
 | Supported runtime replay | Quantitative whole-trace construction, prescribed reach, original tape support, admission and foreign-good qualification, conditional on source alignment | Produce and consume source alignment for the global replay |
 | Recovery and coverage | Original positive summands have the common full source site, Good/depth and encoded completion support; literal entry and structural-word comparison; script extraction is a left inverse and gives replay injectivity on supported scripts | Reverse coverage of arbitrary positive annotations and the full augmented correspondence |
-| Exact weights | Literal native/tape, response and mechanical factors; proper callbacks supply their actual query and D × mechanical × alias atom; normalized sequential script law; exact normalization consumed by the original theorem | Historical/current/lost atom partition, auxiliary recovery and the pointwise weighted rectangle |
+| Exact weights | Literal native/tape, response and mechanical factors; proper callbacks supply their actual query and D × mechanical × alias atom; normalized sequential script law; exact per-history balance summation and normalization consumed by the original theorem | Construct the replay-derived history law and prove its historical/current/lost atom balance, auxiliary recovery and the pointwise weighted rectangle |
 
 The mathematical review gate for weighted mechanization is satisfied. The
 derivation explicitly covers the simultaneous source invariant, every positive
