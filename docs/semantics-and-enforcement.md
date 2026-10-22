@@ -179,7 +179,32 @@ reaches the record. Coverage of observed or included packets may then suffice,
 instead of coverage of all traffic. This would let coverage be derived from the
 observation rule.
 
-### I.7 Guarantees cost different amounts
+### I.7 Concurrency
+
+[argued] When distinct owners' commitments may overlap between public
+barriers, three further conditions matter. The
+[commit–reveal note](se-preservation-commit-reveal.md), Section 4.6, gives an
+example for each showing that some such condition is needed.
+
+- **A missed binding voids the surviving bindings of its phase.** Otherwise a
+  player who has committed is held to a value chosen against a mixture that
+  includes another player's failure, which no source history produces.
+- **The failure payoff lies below every payoff the player could receive while
+  participating**, not only below its intended payoffs.
+- **The service must not couple a late packet's success to other events.**
+  The note states this as success separability: a late packet's success may
+  depend only on its owner and on luck private to its event.
+
+A reset reruns a commitment phase after a public miss. In a sequential source
+an earlier committer never gets that second choice, so a reset is a consequence
+of silence for the other players, in the sense of I.4. The concurrent result
+(II.3) has a rollback and a global failure floor. For the service it assumes
+something different from success separability: one exogenous tape, sampled
+before play and independent of the inputs, whose coordinates may correlate
+across owners and time, with every pending packet delivered at each processing
+cycle. Whether this implies a form of separability is not established here.
+
+### I.8 Guarantees cost different amounts
 
 [argued] Different preserved notions need different compilers, as stronger
 security criteria need stronger compilers in secure compilation. A Nash
@@ -200,12 +225,12 @@ this (II.3).
 | Source semantics | [`SourceProgram`](../Vegas/Source) execution: a failure is a `Result` value and play continues |
 | Analysis views | The intended game (`Setup.intendedModel`); payoff rewrites `forfeitUtility` and `exclusionUtility` ([Forfeit](../Vegas/Source/Forfeit.lean)) |
 | Intermediate representation | [Event graph compiler](../Vegas/Compile/EventGraphCompiler.lean) |
-| Compiled output | `EventGraphRuntime` handlers and deadlines; the forced-exit contract `recoveryApplication`; the settled-record verdict (`SettledRecord.Permits` with binding omissions, `sourceServiceAudit`) and the count verdict (`CountPermits`, `Recovery.countAudit`); client profiles |
+| Compiled output | `EventGraphRuntime` handlers and deadlines; the forced-exit contract `recoveryApplication`; the phase contract `phaseApplication` (forced exit with commitment-phase rollback); the settled-record verdict (`SettledRecord.Permits` with binding omissions, `sourceServiceAudit`) and the count verdicts (`CountPermits`, `Recovery.countAudit`; `PhaseCount.audit`); client profiles |
 | Gadgets | Readiness tokens (`PublicView.tokenFor`) and opening certificates (`WitnessedSubmission.emit`), formed by the application's `packet` function |
 | Chain model | The [`Interaction`](../Interaction) layer: `MessageNetwork`, `ReactiveApplication`, schedulers, observation rules |
-| Environment assumptions | `AsyncContract` and `Recovery.AsyncContract` (timely builders), calendar rosters, observation-rule finiteness, audit-service coverage |
+| Environment assumptions | `AsyncContract` and `Recovery.AsyncContract` (timely builders), calendar rosters, the reserved-epoch service with an exogenous tape (`ReservedEpoch.Tape`), complete or finitely branching pending observation, audit-service coverage |
 
-There are two compiled contracts on one chain model:
+There are three compiled contracts on one chain model:
 
 - **Plain.** A failure is recorded and play continues. Its verdict is the
   settled-record verdict, which forbids any packet the final record does not
@@ -218,6 +243,15 @@ There are two compiled contracts on one chain model:
   call by the right owner, and is its sender's first packet for its event; the
   verdict reads no inclusion. The exited player's payoff is a fixed
   exit payoff, minus any charge (`recoveryExclusionBase`).
+- **Phase contract.** The forced-exit contract on the concurrent graph,
+  partitioned into source phases (`PhaseRuntimeState`). When a commitment phase
+  finishes with an owner newly excluded by a missed binding, the phase rolls
+  back: accepted bindings and the graph configuration return to the phase
+  entry, while prepared candidates, exclusions and the clock persist, and the
+  survivors commit again with fresh candidates (`PhaseRuntimeState.settle`,
+  `restore`). Packets carry commit-attempt identifiers (`CommitAttemptPacket`).
+  Its verdict is a count verdict over phase evidence (`PhaseCount.audit`), and
+  the exited player's payoff is fixed as above (`phaseExclusionBase`).
 
 ### II.2 Deviations under the current contracts
 
@@ -234,6 +268,10 @@ There are two compiled contracts on one chain model:
 | Timing, private channels, fee fields | Limitation | Limitation |
 | Builder misbehavior, biased randomness | Assumption | Assumption |
 
+The phase contract treats these deviations as the forced-exit contract does,
+except that a missed binding in a commitment phase also rolls the phase back
+for the survivors.
+
 The post-exit packet rule holds in the code: every call by an exited owner lacks
 a token, commitments must be the sender's own bindings, and openings must come
 from the owner. No lemma states the resulting dominance of silence.
@@ -248,6 +286,7 @@ from the owner. No lemma states the resulting dominance of silence.
 | SE (`thm:sequential`) | Source game | Plain contract, settled-record verdict | Calendar | `Vegas.Paper.source_audited_raw_sequential_equilibrium` |
 | SE (`cor:intended-ledger`) | Intended game via forfeit | As above | Calendar | `Vegas.SourceServiceSpec.intended_audited_raw_sequentialEquilibrium` |
 | SE (`thm:recovery`) | Intended game | Forced exit, count verdict | Any builder meeting `Recovery.AsyncContract`; independent private inputs | `Vegas.recovery_intended_raw_sequentialEquilibrium_preserved` |
+| SE, concurrent (`Vegas.Paper.concurrent_source_raw_sequential_equilibrium`; not yet in the paper) | Intended game, terminal-state utilities, correlated initial inputs of finite support, finite binding types | Phase contract on the concurrent graph, phase count verdict | Reserved-epoch service driven by one exogenous tape sampled from a fixed prior, independent of the inputs; bounded activation and processing gaps; complete pending observation; exit payoff at most zero and at most every terminal utility | `Vegas.concurrentRawSequentialPreservation` |
 | SE, conditional | Intended game with exit payoff | Plain contract with exit payoff, count verdict | Timely builder | `Vegas.onePacket_intended_raw_sequentialEquilibrium` (assumes certificates; superseded by the row above) |
 | Negative (`thm:late-leak`) | Intended game with forfeit | Continued play after failure; dropped late openings charged | An abstract game, not the ledger | `Vegas.Paper.late_leak_intended_outcome_not_preserved` |
 | Intended to source (`thm:intended`) | Intended game to source game | None | None | `Vegas.Paper.intended_sequential_equilibrium` |
@@ -257,27 +296,44 @@ from the owner. No lemma states the resulting dominance of silence.
 These must appear in the paper as assumptions, future work or TODOs while they
 stand.
 
-1. **Nash and SE concern different compiled outputs.** The Nash correspondence
-   under timely builders is proved for the plain contract. SE under timely
-   builders is proved for the forced-exit contract and the count verdict. No
-   result covers Nash for the forced-exit contract.
-2. **Forced exit is not a source semantics.** The source has no operational
+1. **The results concern three compiled outputs.** The Nash correspondence
+   under timely builders is proved for the plain contract, SE for turn-based
+   programs for the forced-exit contract, and concurrent SE for the phase
+   contract. No result covers Nash for either forced-exit contract, and the
+   turn-based SE result is not stated for the phase contract.
+2. **The two forced-exit SE results assume different environments and
+   payoffs.**
+
+   | Assumption | Turn-based (`thm:recovery`) | Concurrent |
+   | --- | --- | --- |
+   | Builder | Any finitely branching builder meeting `Recovery.AsyncContract`; may adapt to the public record and read pending payloads | The reserved-epoch scheduler on one exogenous tape; non-adaptive |
+   | Pending observation | Any rule | Every player sees every pending packet |
+   | Private initial inputs | Independent across players | Arbitrarily correlated, finite support |
+   | Utilities | Of the parameter and the public outcome | Of the terminal state |
+   | Exit payoff | At most every intended terminal payoff | At most zero and at most every terminal payoff |
+   | Binding types | Covered by finite bounds | Finite |
+
+   Neither result implies the other.
+3. **Forced exit is not a source semantics.** The source has no operational
    exit. `exclusionUtility` fixes a failing player's payoff but lets it keep
    acting, so its later publications still affect others' payoffs; the
-   forced-exit contract instead fails its later events. The SE theorem starts
-   from the intended game, where nothing fails, so it is unaffected.
-3. **Missed bindings have no source counterpart.** They are charged as
+   forced-exit contracts instead fail its later events, and the phase contract
+   also reruns the commitment phase for the survivors, a step with no sequential
+   source counterpart. Both SE theorems start from the intended game, where
+   nothing fails, so they are unaffected.
+4. **Missed bindings have no source counterpart.** They are charged as
    omissions by the plain contract and cause exit under forced exit.
-4. **Two audit-service models.** The settled-record audit is an authentic
+5. **Two audit-service models.** The settled-record audit is an authentic
    sampler with coverage $p_i$ over all traffic. The count audit is an
    `EvidenceReportService` with observation and conditional delivery rates in a
-   challenge window (`CountEvidenceCoverage`). Their deposit conditions differ.
-5. **A gadget is formed in the contract layer.** The application's `packet`
+   challenge window (`CountEvidenceCoverage`), used by both forced-exit
+   results. Their deposit conditions differ.
+6. **A gadget is formed in the contract layer.** The application's `packet`
    function forms readiness tokens, and the forced-exit contract changes it.
    Draining completes the affected events, so they would carry no token anyway.
-6. **The exit payoff is a utility.** The exit payoff, a real number per player, fixes the
+7. **The exit payoff is a utility.** The exit payoff, a real number per player, fixes the
    exit utility directly; the realism assumption of I.5 is not stated.
-7. **Naming.** "Runtime", "recovery runtime", "exclusion" and "forced-exit
+8. **Naming.** "Runtime", "recovery runtime", "exclusion" and "forced-exit
    ledger" name a compiled contract as if it were a chain.
 
 ## Part III. Proposals
@@ -303,12 +359,16 @@ language defines the consequence of silence.
 ### III.2 Target development
 
 One source semantics (III.1), one compiled contract and verdict, one audit
-model, and Nash and SE results for that combination. Steps:
+model, and Nash and SE results for that combination. The phase contract is the
+natural single contract: it already carries forced exit and the concurrent SE
+result, and the [concurrent mechanization note](se-concurrent-mechanization.md)
+lists porting the Nash and turn-based SE results to it as next work. Steps:
 
 1. Operational exit in the source semantics; re-establish publication
    accounting, guard safety and the source–graph correspondence.
-2. Nash correspondence for the forced-exit contract and the count verdict,
-   adapting the first-turn client argument.
+2. Nash correspondence for the phase contract and its count verdict, adapting
+   the first-turn client argument; the turn-based SE result restated for the
+   phase contract.
 3. An equivalence between source-level exit and the contract's draining, so
    that the SE theorem is stated from the source semantics.
 4. One audit-service model and one deposit condition.
@@ -316,11 +376,18 @@ model, and Nash and SE results for that combination. Steps:
    contract, each with its stated functionality.
 6. Named lemmas, when the code is stable: post-exit dominance of silence; that
    a dropped owner packet witnesses a late send.
-7. The calendar, the forfeit, the plain contract and the settled-record verdict
-   become documented alternatives, with the reasons they were not chosen.
+7. The calendar, the forfeit, the plain contract, the sequential forced-exit
+   contract and the settled-record verdict become documented alternatives, with
+   the reasons they were not chosen.
+8. One environment for both SE results, or a stated reason for two: the
+   adaptive timely builder with any observation, or the exogenous reserved
+   tape with complete pending observation (II.4, item 2).
 
 ### III.3 Open questions
 
+- How the source semantics should express the rerun of a commitment phase
+  after a miss (I.7), given that a sequential source gives an earlier committer
+  no second choice.
 - Whether the free first packet should cover bindings as well as openings.
 - Whether the exit payoff is per player or may depend on the public history
   before exit.
