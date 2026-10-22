@@ -1,18 +1,21 @@
 # Mathematical review of concurrent likelihood
 
-**The complete qualified weighted derivation has independent mathematical review.**
+**Mathematical review remains open at actual pre-SEND query transport.**
 The [likelihood derivation](se-concurrent-likelihood.md) retains literal concurrent
 execution, the original correlated input law and one whole-execution tape prior.
-This verdict concerns the mathematical argument, not Lean verification. The
-weighted transport primitive remains admitted, and unconditional concurrent
-preservation remains unproved in Lean.
+The owner-visible partial prefix, chronological window and actual archive joins
+require a complete derivation over the exact query domain. Exact current
+native/source exclusion equality is too strong; the existing window API allows
+current-mask differences. This does not refute the original query clause or
+preservation. Weighted transport remains admitted, and unconditional concurrent
+preservation remains unproved. Mechanization is paused pending the weaker proof.
 
 ## Reviewed mathematical scope
 
 The review covers the original qualified full-information domain and hypotheses.
 It does not claim a density identity at arbitrary native prefixes or add a source
-image, query agreement, inverse or factorization premise. The global steps are
-established in the following parts of the derivation:
+image, query agreement, inverse or factorization premise. The proposed global
+steps have the following dependencies:
 
 * [Positive original summands](se-concurrent-likelihood.md#positive-original-summand-entry-pair-cut-word):
   closed-posterior support fixes the entire initializer and erased entry history.
@@ -31,7 +34,8 @@ established in the following parts of the derivation:
 * [Unfinished image and queries](se-concurrent-likelihood.md#unfinished-current-image-and-every-callback-query):
   the current block has a partial-field relation, not a fictitious completed
   image. Own receipt order, historical windows, current-only NoMiss normalization
-  and the actual initialized traffic archive give every pre-SEND query. Retirement
+  and the actual initialized traffic archive are the intended route to pre-SEND
+  queries. Their exact partial-prefix/view/window/archive join remains open. Retirement
   requires the entire phase finished, so foreign failure cannot cancel an active
   focal owner's never-admitted SEND before its row completes. Accepted canceled
   focal values remain literal and are not auxiliary lost draws.
@@ -50,11 +54,11 @@ established in the following parts of the derivation:
   correspondence and sequential kernel normalization justify the subsequent
   cancellation, including arbitrary packages and zero fibers.
 
-These arguments form an acyclic derivation. Static source-image equations use
-original reference-trace invariants; they do not assume a supported reconstructed
-trace. The raw induction constructs that trace. Reverse coverage starts with
-an arbitrary positive original annotation, not the desired weighted identity.
-The conditional algebra then proves the exact original weighted rectangle.
+The intended dependency graph is acyclic, but query transport remains an
+unproved link. Static source-image equations must use original reference-trace
+invariants. Reverse coverage starts with an arbitrary positive original
+annotation. Neither conditional coverage nor the rectangle algebra supplies
+the missing actual-query construction.
 
 ## Exact primitive proof status
 

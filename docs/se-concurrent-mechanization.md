@@ -29,9 +29,12 @@ sequence is a capstone assumption.
 
 ## Current proof boundary
 
-Contract, joint satisfiability and waiting payoff bound are checked. The complete
-qualified weighted derivation has independent agent mathematical review under
-the original hypotheses. Its global source image, supported replay, inverses
+Contract, joint satisfiability and waiting payoff bound are checked. Mathematical
+review remains open at actual pre-SEND query transport: owner-visible partial
+fields, chronological windows and archives must be joined over its exact domain.
+Exact current native/source exclusion equality is too strong; the existing
+window API permits current-mask differences. Mechanization is paused pending a
+complete reviewed derivation of the weaker bridge. Its global source image, supported replay, inverses
 and chronological atom calculation remain unproved in Lean. The source-site,
 foreign-posterior pair and stopped-payoff primitives, and mechanical-weight representative
 independence, use only standard Lean axioms. Weighted transport remains admitted.
@@ -63,11 +66,11 @@ Progress within that remaining proof:
 | Recovery and coverage | Original positive summands have the common full source site, Good/depth and encoded completion support; literal entry and structural-word comparison; factual script extraction, supported left inverse and replay injectivity; one actual replay law covers every positive original annotation in the same native information and mechanical fiber, conditional on source alignment, and the qualified law retains this coverage; current and historical value readbacks, including permanent historical acceptance receipts and the correlated input tuple | Derive the forward annotation readback for every supported reconstructed script and instantiate complete augmented coverage from the global source producer |
 | Exact weights | Literal native/tape and whole indexed callback class × alias products with unique emitted-packet indices; proper callbacks supply their actual query and D × mechanical × alias atom; chronological lost-draw × alias script mass consumed by the native-history point mass; whole correlated initializer and selected-history Nature mass equality, including original public sample atoms, consumed by the actual native/mechanical factorization; actual query-to-source-origin identification and issued-cylinder mass updates at the actual queried law; zero cases, per-history summation and normalization consumed by the original theorem | Identify historical/current/lost products with source factors, including the foreign-only issued-cylinder telescope, proving the per-history atom balance and pointwise weighted rectangle |
 
-The mathematical review gate for weighted mechanization is satisfied. The
-derivation explicitly covers the simultaneous source invariant, every positive
-original annotated summand, both supported recovery directions and chronological
-atom accounting. Implementation proceeds against those arguments; a newly found
-mathematical gap stops the affected work for review.
+The mathematical review gate is open at query transport. Checked conditional
+results and reviewed local routes do not establish that bridge. The next
+acceptance checkpoint is the complete source producer consumed by the existing
+qualified replay law, with no source-alignment hypothesis. Further conditional
+weight layers are deferred until that checkpoint.
 
 These rows track implementation work inside the unchanged weighted statement;
 they introduce no extra admitted theorem or preservation assumption. Local
@@ -76,8 +79,9 @@ lemmas do not close a row's complete obligation.
 **Remaining implementation checkpoints.** Each item below closes only when its
 complete result is Lean-checked with standard axioms. Draft bodies and local
 helpers do not close it. These refine the work above without changing the
-contract or the asynchronous checklist. Detailed mathematical derivations for
-all items have independent agent review; that is not Lean verification.
+contract or the asynchronous checklist. Local mathematical routes have agent
+review, but a complete reviewed query derivation is still required. Agent review
+is not Lean verification.
 
 Already checked: whole initializer/Nature mass and its likelihood consumer
 (`61a5fe94`); universal reverse coverage by the same replay law, conditional on
@@ -225,7 +229,7 @@ Track the remaining obligations directly:
 
 | Required result | Checked status |
 | --- | --- |
-| Actual native qualified payoff law | Source site, foreign posterior pair and aggregate stopped payoff are checked. The exact source/native weight identity has an independently agent-reviewed mathematical derivation and remains admitted in Lean. |
+| Actual native qualified payoff law | Source site, foreign posterior pair and aggregate stopped payoff are checked. The exact weight identity remains mathematically open at the actual-query bridge and admitted in Lean. |
 | Clean binding deviation bound | Full gain bound, including discarded-branch floor/reset comparison, checked assuming `QualifiedBindingLaw`. That transport premise remains open. |
 | Full raw concurrent SE preservation | `concurrentRawSequentialPreservation_of_qualified_binding_law` checks joint-law, limit and raw-audit assembly assuming `QualifiedBindingLaw`. That transport premise remains open. |
 

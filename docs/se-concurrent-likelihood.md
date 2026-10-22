@@ -1,6 +1,6 @@
 # Concurrent qualified likelihood and causal payoff
 
-This document gives the reviewed mathematical argument for the four primitive
+This document records the mathematical argument for the four primitive
 obligations used by `QualifiedBindingLaw`: `qualified_source_site`,
 `foreign_posterior_cut_pair`, `qualified_annotation_pushforward`, and
 `annotated_stopped_payoff`. The argument retains their original hypotheses.
@@ -8,7 +8,10 @@ The source-site, foreign posterior pair and stopped-payoff primitives are
 Lean-checked. Weighted transport remains admitted: its global source-image,
 supported replay, augmented inverse and atom-ledger proofs are not yet
 Lean-verified. The mathematical derivation below does not close that obligation
-or establish unconditional concurrent preservation in Lean.
+or establish unconditional concurrent preservation in Lean. The actual pre-SEND
+query bridge remains mathematically open: its owner-visible partial-prefix,
+chronological window and proposal-archive joins need a complete reviewed
+derivation. Mechanization is paused at this boundary.
 
 ## Scope and exact conclusions
 
@@ -465,6 +468,12 @@ registry/revelation extension agree. Retain the target history, not its referenc
 label. This closes every simultaneous boundary clause for public instructions.
 
 ## Unfinished current image and every callback query
+
+The following is the intended route, not a completed proof of the query clause.
+Exact current native/source exclusion equality is too strong for historical
+dirty attempts. The existing window API accommodates current-mask differences;
+the literal target prefix, visible-cell readback, past/window signal relation
+and archive transfer remain to be established over the exact actual-trace domain.
 
 There is no claimed completed-visit equality for the unfinished final block.
 Retain its old saved refs and the assigned value of each actually accepted
