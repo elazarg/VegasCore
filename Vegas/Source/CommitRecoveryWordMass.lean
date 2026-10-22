@@ -3,6 +3,8 @@
 import Vegas.Source.CommitRecoveryMetadata
 import Vegas.Source.CommitRecoveryPublicSuccessorMass
 import Vegas.Source.CommitRecoveryNonCommitObservation
+import Vegas.Source.CommitRecoveryAttemptExit
+import GameTheoryExtensions.Analysis.Protocol.ContinuationOwnPlay
 
 /-! # Original Nature weights along a common source public word
 
@@ -60,7 +62,7 @@ private theorem noncommit_atom (state : CommitRecoveryState program)
   exact Prod.ext (congrArg (fun state => state.point) same)
     (congrArg (fun state => state.excluded) same)
 
-private theorem commit_atom (state : CommitRecoveryState program)
+theorem commit_atom (state : CommitRecoveryState program)
     (committing : ProtocolState.atCommit program state.point = true)
     (joint : Player → Option (CommitRecoveryMove Player L))
     (target : CommitRecoveryState program) (supported : target ∈ (state.step joint).support) :
@@ -81,6 +83,60 @@ end CommitRecoveryState
 namespace Setup
 
 variable (setup : Setup (Player := Player) (L := L))
+
+/-- Every actual prefix through one commitment attempt has unit Nature
+product, including its final clean, retry or exhausted closing row. -/
+theorem commitRecovery_commit_interval_mass
+    (distance : Nat) (start : CommitRecoveryState setup.program)
+    (prior : setup.commitRecoveryProtocol.Trace (some start))
+    (committing : ProtocolState.atCommit setup.program start.point = true)
+    (final : setup.commitRecoveryProtocol.History)
+    (retained : TracePrefix prior final.trace)
+    (length : final.trace.length = prior.length + distance)
+    (within : distance + ProtocolState.commitEnd setup.program start.saved ≤
+      ProtocolState.remaining setup.program start.point) :
+    final.trace.transitionMass = prior.transitionMass := by
+  induction distance generalizing start final with
+  | zero =>
+      have same := retained.eq_of_length (by omega)
+      exact (congrArg (fun history : setup.commitRecoveryProtocol.History =>
+        history.trace.transitionMass) same).symm
+  | succ distance ih =>
+      rcases retained.reachesWithin.eq_or_step with same |
+        ⟨joint, legal, reached, realized, restFuel, rest⟩
+      · have depths := congrArg (fun history : setup.commitRecoveryProtocol.History =>
+          history.trace.length) same
+        change prior.length = final.trace.length at depths
+        omega
+      · obtain ⟨next, supported, rfl⟩ := (PMF.mem_support_map_iff ..).mp realized
+        have atom : (setup.commitRecoveryProtocol.step (some start) ⟨joint, legal⟩)
+            (some next) = 1 := by
+          change ((start.step joint).map some) (some next) = 1
+          rw [pmf_map_apply_of_injective _ (Option.some_injective _),
+            start.commit_atom committing joint next supported]
+        have mass : (prior.extend joint legal realized).transitionMass =
+            prior.transitionMass := by
+          rw [Trace.transitionMass_extend, atom, ENNReal.toReal_one, mul_one]
+        rcases start.step_commit_inside_or_exit (setup.commitRecovery_blockFrontier prior)
+          committing joint next supported with
+          ⟨saved, _generation, nextCommit, consumed, _beforeEnd⟩ | ⟨_changed, last⟩
+        · have nextLength : final.trace.length =
+              (prior.extend joint legal realized).length + distance := by
+            simp only [Trace.length]
+            omega
+          have nextWithin : distance + ProtocolState.commitEnd setup.program next.saved ≤
+              ProtocolState.remaining setup.program next.point := by
+            rw [saved]
+            omega
+          exact (ih next (prior.extend joint legal realized) nextCommit final rest.tracePrefix
+            nextLength nextWithin).trans mass
+        · have zero : distance = 0 := by omega
+          have same := rest.tracePrefix.eq_of_length (by
+            simp only [History.extend, Trace.length]
+            omega)
+          exact (congrArg (fun history : setup.commitRecoveryProtocol.History =>
+            history.trace.transitionMass) same).symm.trans mass
+
 
 /-- At any later source phase, equal complete public words retain the exact
 original Nature atom of the actual supported instruction. Hidden values,
