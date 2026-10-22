@@ -8,28 +8,27 @@ The source language supports private inputs, fresh bindings, public chance,
 guarded resolution and withholding. The pending runtime has explicit clock and
 expiry commands, authentic evidence and partial observation.
 
-Checked results include asynchronous Nash preservation and nonconcurrent
-recovery sequential-equilibrium preservation. Concurrent asynchronous SE
-preservation under reserved service remains unproved; the
-[concrete contract](Vegas/Game/ConcurrentRawSequentialPreservation.lean) and
-[active proof plan](docs/se-concurrent-mechanization.md) state its exact scope
-and remaining transport obligations. The complete weighted argument has a
-written mathematical derivation reviewed against the inspected proof APIs.
-That agent review is not Lean verification: the source-site, foreign-posterior
-pair and stopped-payoff primitives are Lean-checked; weighted transport remains
-admitted. Its internal query relation has the required foreign-owner scope;
-no sequential-equilibrium refutation is claimed. Source alignment and qualified
-replay are checked from the original runtime data, without an alignment
-hypothesis. Forward annotation readback and the remaining weight identity are
-still open. An
-unrestricted prefix density theorem is not claimed. The weaker general
-asynchronous contract also has [checked preservation obstructions](docs/standard-runtime-se-status.md).
+Checked results include asynchronous Nash preservation, nonconcurrent recovery
+sequential-equilibrium preservation, and
+[concurrent sequential-equilibrium preservation under reserved service](Vegas/Game/ConcurrentRawEquilibrium.lean).
+The original weighted transport, reconstruction and preservation theorems are
+Lean-checked using only `propext`, `Classical.choice` and `Quot.sound`.
+The [concrete contract](Vegas/Game/ConcurrentRawSequentialPreservation.lean) and
+[proof status](docs/se-concurrent-mechanization.md) state the hypotheses and
+remaining acceptance work: final integration checks and restoration of the
+original heartbeat budget.
+
+The concurrent result covers private commitments in literal `.concurrent` mode,
+with source-ordered public barriers, arbitrary correlated initial inputs of
+finite support, and finite binding types. Its service samples one unconditional
+exogenous tape prior for the whole execution; tape coordinates may correlate
+across owners and time. Public-prefix-adaptive block priors and unbounded
+binding bid/value choices are outside the contract. The operational and funded
+audit hypotheses are sufficient conditions, not minimality or a chain
+implementation guarantee. An unrestricted prefix density theorem is not claimed.
+The weaker general asynchronous contract has
+[checked preservation obstructions](docs/standard-runtime-se-status.md).
 Honest outcome simulation alone does not establish equilibrium preservation.
-The concurrent contract permits arbitrary correlated initial inputs with
-finite support and requires finite binding types. Auctions with unbounded
-binding bid/value choices are outside that contract. Its service uses one
-unconditional exogenous tape prior for the whole execution, not
-public-prefix-adaptive block priors.
 The [module map](docs/module-architecture.md) locates the implementation.
 Retired designs and experiments are in the
 [uncompiled archive](archive/se-generalization/README.md).
@@ -37,9 +36,9 @@ Retired designs and experiments are in the
 Build and validate:
 
 Local builds and CI use `lake build`; `lakefile.toml` makes Lean warnings errors.
-Registered named proof obligations may contain one `sorry`; the source checker
-lists them and rejects unregistered holes. Run it with the build before committing.
-A successful build checks their types, not their missing proofs.
+The source policy rejects unregistered proof holes. The concurrent preservation
+theorem has a standard-axiom regression guard. Run the checks with the build
+before committing.
 
 ```powershell
 lake build

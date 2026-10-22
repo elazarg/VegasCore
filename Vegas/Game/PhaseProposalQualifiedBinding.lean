@@ -50,7 +50,6 @@ local notation "nativeModel" => ReactiveApplication.ResponseMenu.information
   nativeMenu nativeInitial implementation.horizon implementation.scheduler
 
 open Classical in
--- OPEN OBLIGATION: qualified_annotation_pushforward - Exact qualified decision-cut weights
 theorem qualified_annotation_pushforward
     (operational : implementation.Operational)
     (scale sourceBad nativeBad : Set.Icc (0 : ℝ) 1)
@@ -170,7 +169,11 @@ theorem qualified_annotation_pushforward
                           sourceForcedBlockJoint setup values implementation who history.val event
                             payload entry word value (cut, completed)
                   else 0) = coefficient index * density * law history := by
-          sorry
+          exact qualified_annotation_native_balance setup values implementation operational
+            scale sourceBad nativeBad scalePositive scaleBelow sourceBadPositive sourceBadBelow
+              nativeBadPositive nativeBadBelow fullValues sourceProfile nativeProfile
+                sourcePrescribed nativePrescribed who site past view siteEq event payload cleanSite
+                  qualified source pairLaw index value cut completed noMechanics zero
         exact qualified_annotation_rectangle_of_native_atoms setup values implementation operational
           scale sourceBad nativeBad sourceProfile nativeProfile who site past view event payload
             cleanSite.binding source index value cut completed law balanced

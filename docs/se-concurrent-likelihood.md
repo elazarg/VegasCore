@@ -4,16 +4,17 @@ This document records the mathematical argument for the four primitive
 obligations used by `QualifiedBindingLaw`: `qualified_source_site`,
 `foreign_posterior_cut_pair`, `qualified_annotation_pushforward`, and
 `annotated_stopped_payoff`. The argument retains their original hypotheses.
-The source-site, foreign posterior pair and stopped-payoff primitives are
-Lean-checked. The global source image, supported replay and reverse coverage are
-also checked from the original runtime data. Weighted transport remains admitted:
-forward annotation readback and the remaining atom-ledger identity are not yet
-Lean-verified. The mathematical derivation below does not close that obligation
-or establish unconditional concurrent preservation in Lean. The derivation
-includes the actual foreign pre-SEND query, complete source
-image, forward annotation and exact atom accounting. It has been reviewed
-against the owning APIs. The remaining dependent adapters and their global
-assembly still require Lean proofs; mathematical review is not kernel checking.
+All four complete primitive proofs are Lean-checked, including the original
+`qualified_annotation_pushforward` statement. The global source image,
+supported replay, both coverage directions, forward annotation readback and
+exact atom accounting are derived from the original runtime inputs.
+`qualified_reconstruction`, `qualified_binding_law` and
+`Vegas.concurrentRawSequentialPreservation` consume these proofs and pass the
+exact standard-axiom audit with only `propext`, `Classical.choice` and
+`Quot.sound`. No source-alignment, annotation or factorization premise is added
+to the capstone. Final integration acceptance and restoration of the original
+heartbeat budget remain pending; the
+[implementation checkpoints](se-concurrent-mechanization.md) are eight of nine.
 
 ## Scope and exact conclusions
 
@@ -1294,17 +1295,18 @@ Current ordinary-versus-prescribed error and future same-override error remain
 in the stated bounds, along with native-bad and source-Good conditioning errors.
 The existing shared limiting sequence controls those errors.
 
-The mathematical derivation covers the source correspondence, full pending
-handling, foreign actual-query window, same-law forward/reverse coverage,
-occurrence bijections, owner-cylinder telescope and zero-safe original rectangle.
-It uses only the original operational hypotheses and derives its intermediate
-relations internally. The first Lean checkpoint must construct Alignment from
-those original inputs and consume it in `sourceRawReplay_qualified`, leaving no
-Alignment/provider hypothesis. Subsequent adapters must preserve the same
-selected histories, physical drains, signed occurrences and original laws.
+The checked derivation covers source correspondence, full pending handling,
+the foreign actual-query window, same-law forward/reverse coverage, occurrence
+bijections, the owner-cylinder telescope and the zero-safe original rectangle.
+It uses the original operational hypotheses and derives its intermediate
+relations internally. `sourceReplayAlignment` is constructed from those inputs
+and consumed in `sourceRawReplay_qualified`. The forward annotation and weight
+proofs retain the same selected histories, physical drains, signed occurrences,
+source entry and original laws.
 
-The weighted transport primitive remains admitted in Lean. The unverified
-chronology/Alignment implementation and the forward/atom adapters must still be
-checked; compilation of interfaces or aggregators does not remove their sorryAx
-dependence. The mathematical argument does not establish unconditional
-concurrent preservation in Lean.
+`sourceRawReplay_annotation_atom` proves the per-history balance used by the
+original `qualified_annotation_pushforward` theorem, including the entire
+pair-law mixture and zero cases. Reconstruction and the preservation capstone
+are Lean-checked with only standard axioms. The remaining acceptance work is
+the final integration gates and restoration and verification of the original
+heartbeat budget, without changing the theorem's scope or hypotheses.

@@ -3,9 +3,12 @@
 ## Deliverable
 
 The exact target is [`Vegas.ConcurrentRawSequentialPreservation`](../Vegas/Game/ConcurrentRawSequentialPreservation.lean).
-This is a checked proposition, **not a proved preservation theorem**. It fixes the
-concurrent graph, concrete phase runtime, reserved service law and economics
-before quantifying over intended source sequential equilibria. The conclusion
+Its preservation theorem is
+[`Vegas.concurrentRawSequentialPreservation`](../Vegas/Game/ConcurrentRawEquilibrium.lean).
+The original theorem is Lean-checked using only `propext`, `Classical.choice`
+and `Quot.sound`. The contract fixes the concurrent graph, concrete phase
+runtime, reserved service law and economics before quantifying over intended
+source sequential equilibria. The conclusion
 preserves the joint law of original inputs, typed terminal state, public results
 and the whole realized net payoff vector, with no exclusions or audit charges.
 The initial law has arbitrary correlation and finite support; binding types
@@ -18,8 +21,9 @@ belong to the separate `.concurrentReveals` mode and are outside this contract.
 
 The external hypotheses are well-formed finite source data, complete pending
 observation, bounded resources, one unconditional exogenous reserved tape prior
-sampled for the entire execution, bounded gaps and timely deadlines, sufficient fresh candidates, state-based utilities and a global
-exclusion floor, and authentic funded audit coverage. These are sufficient
+sampled for the entire execution, bounded gaps and timely deadlines, sufficient
+fresh candidates, state-based utilities and a global exclusion floor, and
+authentic funded audit coverage. These are sufficient
 conditions, not a claim of minimality or a chain implementation guarantee.
 Tape coordinates may correlate across owners and time, but the prior is not
 refreshed or selected from a public prefix at block entry. Scheduler posterior
@@ -29,83 +33,71 @@ sequence is a capstone assumption.
 
 ## Current proof boundary
 
-Contract, joint satisfiability and waiting payoff bound are checked. The complete
-mathematical derivation of the remaining transport has been agent-reviewed
-against the inspected owning APIs under the original hypotheses. The internal
-query relation is restricted to foreign owners, as its existing consumer
-requires; the broader all-owner clause is false. This internal correction does
-not refute sequential-equilibrium preservation or change the external contract.
+The original weighted transport, reconstruction and concurrent preservation
+capstone are Lean-checked. The exact axiom audit of
+`qualified_annotation_pushforward`, `qualified_reconstruction`,
+`qualified_binding_law` and `Vegas.concurrentRawSequentialPreservation` reports
+only `propext`, `Classical.choice` and `Quot.sound`. The ordinary build of
+`Vegas.Game.ConcurrentRawEquilibrium` passes. No admitted weighted proof or
+source-alignment hypothesis remains.
 
-The global source-image construction, supported replay and reverse coverage
-are checked from the original runtime data, with no source-alignment
-hypothesis in the qualified replay theorem. Forward annotation readback and
-the remaining chronological weight calculation are still unproved in Lean. The
-source-site, foreign-posterior pair and stopped-payoff primitives, and
-mechanical-weight representative independence, use only standard Lean axioms.
-Weighted transport remains admitted. The clean commitment gain comparison and
-final assembly are checked conditional on `QualifiedBindingLaw`; its transport
-and unconditional SE remain unproved. An unrestricted prefix density theorem
-is not claimed. Mathematical review does not close the Lean obligations.
+The source-image construction, physical-close origins, supported replay, both
+coverage directions, forward annotation positivity, chronological callback
+products and original per-history weight identity are proved from the original
+runtime inputs. The query relation has the required foreign-owner scope;
+no all-owner historical query identity is used. The source-site, foreign
+posterior pair and stopped-payoff primitives and the clean gain comparison feed
+the proved `QualifiedBindingLaw` and the original capstone. An unrestricted
+prefix density theorem is not claimed.
 
-The four primitive interfaces and their complete aggregation compile with
-`lake build +Vegas.Game.ConcurrentRawEquilibrium`. One named `sorry` body
-remains; the unconditional theorem depends on an admitted proof axiom.
-No new source or runtime assumptions are introduced by these interfaces.
-The [likelihood derivation](se-concurrent-likelihood.md) gives the mathematical
-constructions to implement; the [review](se-concurrent-likelihood-review.md)
-records their scope and dependencies. This is agent mathematical review, not
-Lean verification or human certification.
+Eight of nine implementation checkpoints are checked. Final acceptance gates
+and removal of the temporary heartbeat increase, followed by verification at
+the original budget, remain pending. This acceptance work does not add a
+hypothesis or change the theorem's scope.
 
-| Remaining proof | Guarantee | Reviewed argument |
+The [likelihood derivation](se-concurrent-likelihood.md) describes the proved
+construction; the [review](se-concurrent-likelihood-review.md) explains its
+mathematical scope and the finite diagnostic's limits.
+
+| Checked weighted statement | Guarantee | Owning proof |
 | --- | --- | --- |
-| `qualified_annotation_pushforward` | Exact native/source weights across every qualified mechanical and full source-word fiber | Likelihood analysis: inverse, source fibers and weights |
+| `qualified_annotation_pushforward` | Exact native/source weights across every qualified mechanical and full source-word fiber | `sourceRawReplay_annotation_atom` and the normalized replay balance |
 
-Progress within that remaining proof:
+Progress within the weighted proof:
 
-| Work | Checked material | Still open |
+| Work | Checked material | Status |
 | --- | --- | --- |
-| Source-phase correspondence | Initial assignment; fixed-snapshot table reads paired at the pre-request cut and read at the final completion; unified actual selected clean/dirty intervals with the same drained decoder word; paired rows including accepted failures, selected-prefix and saved/restore adapters, and typed reference transport using the stored successful bindings; original-data selected-entry and completed-visit correspondence through all phase branches; complete publication, focal, foreign-query and proper/lost alignment fields; actual physical-close signed origins and source address/issued-ledger relations | Complete; forward annotation positivity and callback-row matching are tracked separately |
+| Source-phase correspondence | Initial assignment; fixed-snapshot table reads paired at the pre-request cut and read at the final completion; unified actual selected clean/dirty intervals with the same drained decoder word; paired rows including accepted failures, selected-prefix and saved/restore adapters, and typed reference transport using the stored successful bindings; original-data selected-entry and completed-visit correspondence through all phase branches; complete publication, focal, foreign-query and proper/lost alignment fields; actual physical-close signed origins and source address/issued-ledger relations | Complete |
 | Supported runtime replay | Quantitative whole-trace construction, prescribed reach, original tape support, admission and foreign-good qualification; normalized native-history PMF with exact supported point masses and readback from the original runtime data; supported environment outcomes identified by their public results under complete pending observation | Complete; consumed by `sourceRawReplay_qualified` without an alignment hypothesis |
-| Recovery and coverage | Original positive summands have the common full source site, Good/depth and encoded completion support; literal entry and structural-word comparison; factual script extraction, supported left inverse and replay injectivity; one actual replay law covers every positive original annotation in the same native information and mechanical fiber, and the original-data qualified law retains this coverage; current and historical value readbacks, including permanent historical acceptance receipts and the correlated input tuple; every supported reconstructed script has the original fixed entry and structural word with positive original annotation | Complete; the remaining augmented weight identity is tracked under exact weights |
-| Exact weights | Literal native/tape and whole indexed callback class × alias products with unique emitted-packet indices; proper callbacks supply their actual query and D × mechanical × alias atom; chronological lost-draw × alias script mass consumed by the native-history point mass; whole correlated initializer and selected-history Nature mass equality, including original public sample atoms, consumed by the actual native/mechanical factorization; actual query-to-source-origin identification and issued-cylinder mass updates at the actual queried law; zero cases, per-history summation and normalization consumed by the original theorem | Identify historical/current/lost products with source factors, including the foreign-only issued-cylinder telescope, proving the per-history atom balance and pointwise weighted rectangle |
+| Recovery and coverage | Original positive summands have the common full source site, Good/depth and encoded completion support; literal entry and structural-word comparison; factual script extraction, supported left inverse and replay injectivity; one actual replay law covers every positive original annotation in the same native information and mechanical fiber, and the original-data qualified law retains this coverage; current and historical value readbacks, including permanent historical acceptance receipts and the correlated input tuple; every supported reconstructed script has the original fixed entry and structural word with positive original annotation | Complete |
+| Exact weights | Literal native/tape and whole indexed callback class × alias products with unique emitted-packet indices; proper callbacks supply their actual query and D × mechanical × alias atom; chronological lost-draw × alias script mass consumed by the native-history point mass; whole correlated initializer and selected-history Nature mass equality, including original public sample atoms, consumed by the actual native/mechanical factorization; actual query-to-source-origin identification and issued-cylinder mass updates at the actual queried law; zero cases, per-history summation and normalization consumed by the original theorem | Complete: `sourceRawReplay_foreign_draw_products`, `sourceRawReplay_current_issued_mass` and `sourceRawReplay_annotation_atom` prove the original per-history balance and weighted rectangle |
 
-The complete derivation supplies the foreign-query, source-image, forward
-readback and weight arguments to mechanize; none is supplied as a new
-assumption. The complete source producer is consumed by the existing qualified
-replay law from the original runtime data, with no source-alignment hypothesis.
-The next proof step is forward annotation readback for that same replay law.
+The complete source producer is consumed by the qualified replay law from the
+original runtime data. The same replay law supplies forward annotation readback,
+reverse coverage and exact weights, retaining the same selected histories,
+physical drains, signed occurrences, source entry and tape.
 
-These rows track implementation work inside the unchanged weighted statement;
-they introduce no extra admitted theorem or preservation assumption. Local
-lemmas do not close a row's complete obligation.
-
-**Remaining implementation checkpoints.** Each item below closes only when its
-complete result is Lean-checked with standard axioms. Draft bodies and local
-helpers do not close it. These refine the work above without changing the
-contract or the asynchronous checklist. The complete mathematical derivation
-has agent review against the inspected APIs; that review is not Lean verification.
-
-Already checked: whole initializer/Nature mass and its likelihood consumer
-(`61a5fe94`); universal reverse coverage by the same replay law, conditional on
-source alignment (`bfe581fb`). The forward direction below remains separate.
+These checkpoints refine implementation work inside the unchanged weighted
+statement and preservation contract. Each checked item denotes its complete
+result and exact standard-axiom audit; local helpers alone do not close an item.
 
 | Checkpoint | Current state | Owner |
 | --- | --- | --- |
 | Complete selected-entry chronology through clean/retry/exhausted closes and automatic phases, including reveal/sample public agreement | Checked: `sourceReplayCorrespondence` derives selected-entry agreement and literal completed visits from the original runtime inputs; owning build and standard-axiom audit passed | Source correspondence |
-| Derive and retain actual visit/Attempt/same-snapshot relations, signed origins, address words and issued ledgers | Checked: `source_commit_row_closing_origin` and `sourceRawReplay_ordinary_completion` retain the actual physical close, signed origin, canonical interval and current issued ledgers; owning build (52s) and seven-root standard-axiom audit passed (`af41dee7`) | Source correspondence |
+| Derive and retain actual visit/Attempt/same-snapshot relations, signed origins, address words and issued ledgers | Checked: `source_commit_row_closing_origin` and `sourceRawReplay_ordinary_completion` retain the actual physical close, signed origin, canonical interval and current issued ledgers; owning build and exact standard-axiom audit passed | Source correspondence |
 | Derive final publication handling, fixed focal view/action, actual binding queries and proper/lost classification | Checked: `sourceReplayAlignment` assembles all fields; `sourceRawReplay_qualified` constructs and consumes it from the original runtime inputs, with ordinary build and standard-axiom audit | Source correspondence |
 | Prove every supported replay has the original fixed source entry/structural word and positive annotation | Checked: `sourceRawReplay_closed_key`, `sourceRawReplay_ordinary_completion` and `sourceRawReplay_forward_annotation` use the same fixed entry and supported script; ordinary owning builds and exact standard-axiom audits passed | Replay correspondence |
 | Factor the whole qualified native likelihood into mechanical, queried proper-value and alias products | Checked: `sourceReplay_prescribed_response_atom`; ordinary Concurrent build and exact standard-axiom audit | Weights |
 | Match historical accepted, current issued and historical never-accepted callbacks bijectively to their source rows/lost draws | Checked: `sourceRawReplay_foreign_draw_products` identifies the actual historical/current/lost and alias products; ordinary owning build and exact standard-axiom audit passed | Weights |
 | Prove the full foreign issued-prefix probability product and its separation from the focal prefix | Checked: `sourceRawReplay_current_issued_mass` identifies the actual queried-draw product with the original foreign cylinder mass; `sourceRawReplay_annotation_atom` separates the focal prefix using the original pair-law mixture; ordinary owning build and exact standard-axiom audit passed | Weights |
-| Prove the positive per-history weight identity using the original pair-law mixture; remove the original weighted admission | Open; zero cases and final summation already checked | Weights |
-| Verify the weighted theorem and concurrent capstone have only standard axioms, and pass the final build/checks | Pending; conditional assembly already checked | Integration |
+| Prove the positive per-history weight identity using the original pair-law mixture; remove the original weighted admission | Checked: `sourceRawReplay_annotation_atom` supplies the original per-history identity; `qualified_annotation_pushforward` consumes it with zero cases and full summation; owning build and exact standard-axiom audit passed | Weights |
+| Verify the weighted theorem and concurrent capstone have only standard axioms, and pass the final build/checks | Pending final acceptance: original weighted theorem and capstone build and standard-axiom audit passed; final integration gates and original-heartbeat-budget verification remain | Integration |
 
 The source chronology supplies the retained relations and final image clauses;
 these feed forward annotation readback and the callback/source-row matching.
 Native factorization, row matching and the issued-prefix product then feed the
-per-history identity. Its checked summation and existing equilibrium assembly
-lead to the final admission-free audit. Updates must identify the checked
+per-history identity. Its checked summation and equilibrium assembly establish
+the original capstone with only standard axioms. Updates must identify the checked
 theorem and build/axiom evidence; no item closes from a smaller helper alone.
 
 `qualified_source_site` proves one supported source information site and faithful
@@ -125,25 +117,13 @@ the entry-to-decision weight conversion and common positive finite factors.
 The payoff primitive covers all native branches and annotation mass, including
 the complement at none, rather than only positive annotation fibers.
 
-`qualified_reconstruction` actually supplies the source package and pair theorem
-to weighted transport. `qualified_binding_law` actually applies reconstruction
-and payoff transport and normalizes their measures. Both composition bodies
-contain no proof holes and compile against the primitive statements. The unconditional
-`concurrentRawSequentialPreservation` then applies the existing conditional
-preservation theorem to that law; its composition body contains no additional
-hole. Each mathematical argument has agent scope review, not human certification;
-the source-site, pair and payoff arguments also have checked Lean proofs.
-Closing an obligation means replacing its whole
-`sorry` body without weakening its statement, then checking its axiom dependencies.
-The source checker maintains the one allowed declaration location and its
-review reference. A new hole requires an explicit change to that registry.
-The unconditional assembly has an axiom guard that exposes its remaining
-admitted dependency; it is not evidence of proved preservation.
-Passing `pairLaw` to a primitive records an intended proof dependency. While
-that primitive contains `sorry`, Lean does not establish that the pair law
-suffices to prove it or that its proof needs the pair law. Compilation checks
-that the downstream aggregation follows from the four complete primitive
-statements. The weighted primitive still requires a proof.
+`qualified_reconstruction` supplies the source package and original pair theorem
+to the proved weighted transport. `qualified_binding_law` applies reconstruction
+and payoff transport and normalizes their measures.
+`concurrentRawSequentialPreservation` then applies the gain and equilibrium
+assembly to this derived law. All three complete proofs and the original
+weighted theorem pass the standard-axiom audit. The full pair-law mixture,
+including zero fibers and unqualified branches, remains in the proof.
 
 The [concurrent hypothesis test](../VegasTests/ConcurrentRawHypotheses.lean)
 discharges every operational, payoff and audit assumption together, and supplies
@@ -152,35 +132,34 @@ owned Boolean bindings; its service supports both activation orders, with
 nonconstant utility and a positive funded deposit. This establishes that the
 contract's premises are jointly satisfiable, not preservation.
 
-The [likelihood analysis](se-concurrent-likelihood.md) proposes the qualified
+The [likelihood analysis](se-concurrent-likelihood.md) describes the qualified
 ready-information reconstruction. The [independent review](se-concurrent-likelihood-review.md)
-records the mathematical review and the finite diagnostic's limits. These
-are independent agent reviews and a root-agent model audit, not human review
-or Lean verification.
+records the mathematical scope and the finite diagnostic's limits. The checked
+Lean theorems, rather than the diagnostic or mathematical review, establish
+preservation.
 The [code inventory](se-concurrent-code-inventory.md) identifies owning APIs and
 which proposed intermediate statements exceed what the final gain proof needs.
 The [reserved-service proposal](se-reserved-service-preservation.md) supplies
 motivation and assumptions; the likelihood analysis supplies the detailed argument.
 
-At a clean binding decision, the proposed transport is the qualified
+At a clean binding decision, the proved transport is the qualified
 source measure: weighting actual native continuations by the clean binding gate
-must give one scalar times the genuine source conditional law, uniformly over
-legal proper typed insertions. The same construction must identify the actual
-causal payoff continuation. This is a theorem to derive, never a premise to add.
+gives one scalar times the genuine source conditional law, uniformly over
+legal proper typed insertions. The same construction identifies the actual
+causal payoff continuation. Both conclusions are derived internally.
 Unqualified branches use their separate floor/reset comparison. A product law
 against every full mechanical history is not required by this comparison.
 
-The proposed derivation retains the actual initializer, source labels and
-archives. Its required qualified inverse must cover every good source history
+The derivation retains the actual initializer, source labels and
+archives. Its qualified inverse covers every good source history
 at the common full information, preserving canceled preparations and the joint prior.
 Normalized typed-steering kernels retain updated focal queries through the
 same-tape payoff attachment. The finite-n source past and zero-flag future are
 separated before normalization, including zero qualification. The global inverse
-and weight identities have reviewed mathematical derivations and still require
-Lean proofs.
-The proposed route constructs raw support first, then prefix refinement and exact query atoms;
-conditional laws given a supplied cursor alone do not establish coverage or weights. The scoped qualified identity,
-not an unrestricted prefix density, determines the mechanization boundary.
+and weight identities have checked Lean proofs. The construction establishes raw
+support first, then prefix refinement and exact query atoms. Conditional laws
+given a supplied cursor alone do not establish coverage or weights. The scoped
+qualified identity determines the mechanization boundary.
 
 ## Owning components
 
@@ -190,7 +169,7 @@ not an unrestricted prefix density, determines the mechanization boundary.
 | Reserved service and resources | `ReservedEpochResources`, `ReservedEpochCompletion` |
 | Original initialized laws and common sequence | `PhaseProposalInitializedTerminal`, `PhaseProposalInitializedLawError`, `PhaseProposalConsistentSequence` |
 | Source reach factors and source information | `ProposalRecoveryPublicClassFactorization`, `ProposalRecoveryPublicClassConstancy`, `PhaseProposalNativeSourceInformation` |
-| Actual local incentives | `PhaseProposalCurrentBindingGain`, `PhaseProposalPublicationGain`, `PhaseProposalCleanBindingGain`; clean binding is checked assuming `QualifiedBindingLaw` |
+| Actual local incentives | `PhaseProposalCurrentBindingGain`, `PhaseProposalPublicationGain`, `PhaseProposalCleanBindingGain`; clean binding consumes the derived `QualifiedBindingLaw` |
 | Equilibrium limit and raw enforcement | `LocalSimulationLimit`, `PhaseOnePacketExtension` |
 
 Detailed consumers and their actual hypothesis scopes are listed in the inventory.
@@ -220,42 +199,30 @@ handoff notes and research archives are not committed.
 
 ## Completion gate
 
-Derive the actual weighted inverse and retain preparation provenance in the
-mechanization, with the frozen actual qualified-payoff type. Prove transport
-and instantiate the checked clean gain comparison and final assembly to prove
-the exact capstone. Keep its
-external hypotheses fixed. If the mathematical argument appears incorrect,
-stop implementation and report the precise issue.
-
-Track the remaining obligations directly:
+The original weighted transport and concurrent capstone are proved with the
+external hypotheses fixed. The exact standard-axiom audit passes for the
+original weighted, reconstruction, payoff-law and preservation roots.
 
 | Required result | Checked status |
 | --- | --- |
-| Actual native qualified payoff law | Source site, foreign posterior pair and aggregate stopped payoff are checked. The exact weight identity has a complete agent-reviewed mathematical derivation and remains admitted in Lean. |
-| Clean binding deviation bound | Full gain bound, including discarded-branch floor/reset comparison, checked assuming `QualifiedBindingLaw`. That transport premise remains open. |
-| Full raw concurrent SE preservation | `concurrentRawSequentialPreservation_of_qualified_binding_law` checks joint-law, limit and raw-audit assembly assuming `QualifiedBindingLaw`. That transport premise remains open. |
+| Actual native qualified payoff law | Source site, foreign posterior pair, original weighted rectangle and aggregate stopped payoff are checked; `qualified_binding_law` derives the complete law. |
+| Clean binding deviation bound | Full gain bound, including discarded-branch floor/reset comparison, is checked and instantiated with the derived qualified law. |
+| Full raw concurrent SE preservation | `Vegas.concurrentRawSequentialPreservation` proves the original contract using only standard axioms. |
+| Final acceptance | Final integration gates and removal of the temporary heartbeat increase with a successful original-budget build remain pending. |
 
-The checked reductions are in the [qualified experiment](../Vegas/Game/PhaseProposalQualifiedBinding.lean),
+The [qualified experiment](../Vegas/Game/PhaseProposalQualifiedBinding.lean),
 [binding comparison](../Vegas/Game/PhaseProposalCleanBindingGain.lean) and
-[conditional assembly](../Vegas/Game/ConcurrentRawEquilibrium.lean) components.
-None proves the unconditional preservation contract.
+[preservation assembly](../Vegas/Game/ConcurrentRawEquilibrium.lean) retain the
+original source inputs, full pair-law mixture and economics.
 
 `Vegas.phaseProposal_unflagged_wait_finish_le` proves the waiting comparison:
 at an authentic clean unsent binding, literal WAIT followed by the ordinary
 zero-flag policy has no larger expected finishing payoff than that policy
 starting immediately. It uses an original supported reserved tape, the actual
-runtime trace and the exclusion floor. It does not establish the comparison
-for arbitrary SEND deviations or the source/native probability transport.
+runtime trace and the exclusion floor. Other SEND deviations and probability
+transport use their separate checked comparisons.
 
-Partial lemmas and conditional composition do not close these rows. State the
-actual unproved premises of partial results. Review the shared interfaces before
-delegating implementation; add a helper only for an identified consumer. Keep
-probability, incentive and final composition work in cohesive owning components,
-with one root-controlled in-tree build. Do not count new code as progress.
-Work toward whole component statements in parallel, then compile the complete
-batch. Add no modules for this integration. Stop before exceeding an agreed
-component budget and identify the concrete missing API or mathematical step.
-
-Only the checked capstone closes concurrent preservation. Protect it before
-broader assumption minimization or porting existing NE/nonconcurrent SE to the
-shared phase runtime.
+The final checkpoint closes only after its complete gates pass. Protect the
+checked capstone before broader assumption minimization or porting existing
+NE/nonconcurrent SE to the shared phase runtime. No acceptance step changes the
+source semantics, reserved tape law or external preservation hypotheses.

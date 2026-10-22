@@ -1,28 +1,26 @@
 # Mathematical review of concurrent likelihood
 
-**The complete mathematical derivation has agent review against the inspected
-owning APIs; the weighted Lean proof remains open.** The
+**The original weighted transport and concurrent preservation theorem are
+Lean-checked using only `propext`, `Classical.choice` and `Quot.sound`.** The
 [likelihood derivation](se-concurrent-likelihood.md) retains literal concurrent
 execution, the original correlated input law and one whole-execution tape prior.
-Its query argument uses the required foreign-owner domain. The broader
-all-owner internal clause is false, but is not needed by the actual consumer;
-its restriction changes no primitive or preservation hypothesis. No
-sequential-equilibrium refutation is claimed.
+The source-image producer, supported replay, both coverage directions, forward
+annotation positivity, occurrence products and per-history weight identity are
+proved from the original runtime data, with no source-alignment hypothesis.
 
-The source-image, visible-prefix, chronological-window, archive, forward
-annotation and weight joins have reviewed derivations. The source producer and
-its consumption by the existing qualified replay law are Lean-checked from the
-original runtime data, with no source-alignment hypothesis. Forward annotation
-readback and the remaining weight joins still require Lean implementation.
-Weighted transport remains admitted, and unconditional concurrent preservation
-remains unproved.
+The actual-query argument has the required foreign-owner domain. It does not
+use an all-owner historical query identity. The original qualified weighted
+statement and `Vegas.concurrentRawSequentialPreservation` pass the exact
+standard-axiom audit. Final integration acceptance and restoration of the
+original heartbeat budget remain pending; the
+[implementation checkpoints](se-concurrent-mechanization.md) are eight of nine.
 
 ## Reviewed mathematical scope
 
 The review covers the original qualified full-information domain and hypotheses.
 It does not claim a density identity at arbitrary native prefixes or add a source
-image, query agreement, inverse or factorization premise. The proposed global
-steps have the following dependencies:
+image, query agreement, inverse or factorization premise. The global proof steps
+have the following dependencies:
 
 * [Positive original summands](se-concurrent-likelihood.md#positive-original-summand-entry-pair-cut-word):
   closed-posterior support fixes the entire initializer and erased entry history.
@@ -67,23 +65,22 @@ The reviewed dependency graph is acyclic. Static source-image equations use
 original reference-trace invariants; reverse coverage starts with an arbitrary
 positive original annotation. The actual-query construction is derived before
 it is consumed by replay and weight transport. Neither conditional coverage nor
-rectangle algebra substitutes for its Lean implementation.
+rectangle algebra substitutes for the actual replay and query arguments.
 
 ## Exact primitive proof status
 
-The four statements and downstream aggregation compile. The source-site,
-foreign posterior pair and stopped-payoff primitives, together with mechanical
-representative independence, are Lean-checked using only standard axioms.
-Weighted transport has a reviewed mathematical derivation but remains admitted.
-The global source-image producer, supported replay and reverse coverage are
-Lean-checked from the original runtime data. Forward annotation readback and
-the remaining exact atom ledger are implementation obligations.
+All four complete primitive proofs and the downstream preservation assembly
+pass their ordinary owning builds and exact standard-axiom audits. This includes
+the original `qualified_annotation_pushforward` statement, its reconstruction
+consumer and `Vegas.concurrentRawSequentialPreservation`. Source-image,
+supported replay, forward/reverse coverage and exact chronological weights are
+proved internally from the original runtime inputs.
 
 | Primitive | Mathematical status | Lean status |
 | --- | --- | --- |
 | `qualified_source_site` | Reviewed full-information site and one joint store/emission coupling. | Checked. |
 | `foreign_posterior_cut_pair` | Reviewed ordinary row induction, both posterior laws and per-word support, with structural excluded histories distinguished. | Checked. |
-| `qualified_annotation_pushforward` | Reviewed simultaneous source image, exhaustive positive-annotation coverage, both augmented inverses and exact chronological factors. | Admitted; global proof unfinished. |
+| `qualified_annotation_pushforward` | Reviewed simultaneous source image, exhaustive positive-annotation coverage, both augmented inverses and exact chronological factors. | Checked with standard axioms. |
 | `annotated_stopped_payoff` | Reviewed all-posterior cylinder positivity, same-tape full-word gluing and actual completed archived witness. | Checked. |
 
 For payoff attachment, `binding_close_erased_history_of_semantic_word` supplies
@@ -91,8 +88,8 @@ deterministic closing equality from the same erased entry and full semantic
 commitment word. The closing decoder and ordinary COMMIT labels identify the
 actual archive lift within the commitment window. Full-word gluing retains the
 supported completed-history relation and proposal delta, beyond word marginals.
-The checked gain and preservation assembly remains conditional on
-`QualifiedBindingLaw`; its unconditional Lean transport is still required.
+The gain and preservation assembly consumes `QualifiedBindingLaw` proved by
+`qualified_binding_law`; no transport premise is added to the original capstone.
 
 ## Historical profiles and fixed continuation laws
 
@@ -140,9 +137,8 @@ and native strategies for its likelihood factorization.
 Profile-independence alone proves neither primitive. The mathematical derivation
 also supplies actual cursor recovery, proper issued-cylinder positivity,
 coverage of every posterior target, representative-gate invariance and the
-same-tape stopped payoff attachment. The weighted Lean proof remains a substantive obligation. The compiled
-aggregation consumes the primitive interfaces; it does not discharge their
-implementations.
+same-tape stopped payoff attachment. The checked weighted proof supplies these
+constructions, and the aggregation consumes their complete proofs.
 
 ## Exact finite diagnostic
 
@@ -252,5 +248,8 @@ comparison lottery may vary with index, native site and current law; a Dirac
 source deviation suffices. Use the same indexed source/native assessments
 throughout. Retain the inner raw extension's history and settlement laws
 until projecting the original initialized joint state, typed terminal state,
-public result and whole payoff vector. This assembly is checked assuming
-`QualifiedBindingLaw`; deriving that premise remains open.
+public result and whole payoff vector. `qualified_binding_law` derives the
+required transport from the original inputs, and
+`Vegas.concurrentRawSequentialPreservation` checks this complete assembly with
+only standard axioms. The sufficient operational and audit hypotheses are not a
+minimality claim or a chain implementation guarantee.

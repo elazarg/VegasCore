@@ -5196,8 +5196,7 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.PhaseProposalQualifiedBinding.annotated_stopped_payoff
 
-/- The unconditional statement is an admitted-interface assembly, not checked preservation. -/
 /-- info: 'Vegas.concurrentRawSequentialPreservation'
-depends on axioms: [propext, sorryAx, Classical.choice, Quot.sound] -/
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.concurrentRawSequentialPreservation

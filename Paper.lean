@@ -19,6 +19,25 @@ open GameTheory.Math.Probability
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr}
 
+open Vegas.SourceProgram in
+theorem concurrent_source_raw_sequential_equilibrium
+    [Fintype Player] [IExpr.ResultTypes L]
+    (setup : Setup (Player := Player) (L := L))
+    (implementation : ReservedConcurrentImplementation setup)
+    (payoffs : ConcurrentPayoffs setup) (countAudit : ConcurrentCountAudit setup)
+    (valid : implementation.Valid payoffs countAudit)
+    (source : setup.intendedModel.BehavioralAssessment)
+    (equilibrium : payoffs.SourceEquilibrium source) :
+    ∃ target : implementation.model.BehavioralAssessment,
+      implementation.PreservesAssessment payoffs countAudit source target :=
+  Vegas.concurrentRawSequentialPreservation setup implementation payoffs countAudit
+    valid source equilibrium
+
+/-- info: 'Vegas.Paper.concurrent_source_raw_sequential_equilibrium' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.concurrent_source_raw_sequential_equilibrium
+
 open Vegas.SourceProgram Vegas.EventGraphRuntime
   GameTheory.Protocol GameTheory.Enforcement in
 theorem source_audited_raw_sequential_equilibrium [Fintype Player] [IExpr.ResultTypes L]

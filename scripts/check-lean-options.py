@@ -9,10 +9,7 @@ import tomllib
 
 # Only the reviewed primitive obligations may contain holes. Assembly results
 # must have proof bodies; adding a primitive requires an explicit registry diff.
-APPROVED_OPEN_OBLIGATIONS = {
-    ("Vegas/Game/PhaseProposalQualifiedBinding.lean", "qualified_annotation_pushforward"):
-        "docs/se-concurrent-likelihood-review.md#mathematical-review-boundary",
-}
+APPROVED_OPEN_OBLIGATIONS: dict[tuple[str, str], str] = {}
 
 
 def check_central_options(options: dict) -> list[str]:
