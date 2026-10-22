@@ -3702,6 +3702,152 @@ theorem issuedLedger_iff_recalled_word_actions
     exact agrees record member _ indexed
 
 open Classical in
+/-- Each actual issued owner cylinder has its chronological conditional word mass.
+The complete prior and its supported reference word stay fixed throughout. -/
+theorem issuedLedger_owner_cylinder_telescope
+    {Γ Δ : SourceCtx Player L} {O P : Finset VarId}
+    (block : SourceProgram.CommitPrefix Γ O Δ P) (suffix : SourceProgram Player L Δ P)
+    (embedding : OutputEmbedding (inputLayout setup.context) (outputLayout setup.program)
+      (block.prepend suffix)) (low : Nat)
+    (rank : ∀ index, (embedding.event index).val = low + index.val)
+    (actions : ∀ index action, decodeEventAction setup.program (embedding.event index) action =
+      decodeEventAction (block.prepend suffix) index
+        (cast (congrArg EventField.Action (embedding.layout_eq index)) action))
+    {control : (nativeApplication).Control} (trace : (nativeProtocol).Trace (some control))
+    (profile : SourceProgram.BehavioralProfile (block.prepend suffix))
+    (entry : SourceProgram.Config Player L Γ) (owner : Player)
+    (reference : SourceProgram.Config Player L Δ)
+    (supported : reference ∈ (block.prefixLaw suffix profile entry).support)
+    (retained : issuedLedger setup implementation block low control
+      (low + block.length) owner (reference.view owner)) :
+    ((((block.prefixLaw suffix profile entry).map (SourceProgram.Config.view owner)).map
+      (fun word => decide (issuedLedger setup implementation block low control
+        (low + block.length) owner word))) true) =
+      ∏ index ∈ Finset.range (control.execution.recall owner).length,
+        match (control.execution.recall owner)[index]? with
+        | none => 1
+        | some record =>
+            match sourceIssuedRecordPosition setup implementation block low control owner
+                record with
+            | none => 1
+            | some position =>
+                ((fiberPosterior
+                  ((block.prefixLaw suffix profile entry).map (SourceProgram.Config.view owner))
+                  (fun word => decide (sourceIssuedOwnObservation setup implementation block low
+                    control owner (reference.view owner) index word)) true).map
+                      (block.wordAction owner position))
+                    (block.wordAction owner position (reference.view owner)) := by
+  classical
+  let law := (block.prefixLaw suffix profile entry).map (SourceProgram.Config.view owner)
+  let past := control.execution.recall owner
+  let observe := fun count word => decide (sourceIssuedOwnObservation setup implementation
+    block low control owner (reference.view owner) count word)
+  let atom : Nat → ℝ≥0∞ := fun index => match past[index]? with
+    | none => 1
+    | some record =>
+        match sourceIssuedRecordPosition setup implementation block low control owner record with
+        | none => 1
+        | some position => ((fiberPosterior law (observe index) true).map
+            (block.wordAction owner position))
+              (block.wordAction owner position (reference.view owner))
+  have referenceSupport : reference.view owner ∈ law.support :=
+    (PMF.mem_support_map_iff _ _ _).mpr ⟨reference, supported, rfl⟩
+  have referenceMatches (count : Nat) : observe count (reference.view owner) = true := by
+    apply decide_eq_true
+    intro _record _member _position _indexed
+    rfl
+  have matchesStep (index : Nat) (inside : index < past.length) (word : DecisionView owner Δ) :
+      sourceIssuedOwnObservation setup implementation block low control owner
+          (reference.view owner) (index + 1) word ↔
+        sourceIssuedOwnObservation setup implementation block low control owner
+          (reference.view owner) index word ∧
+        (∀ position, sourceIssuedRecordPosition setup implementation block low control owner
+            past[index] = some position →
+          block.wordAction owner position word =
+            block.wordAction owner position (reference.view owner)) := by
+    unfold sourceIssuedOwnObservation
+    change (∀ record ∈ past.take (index + 1), _) ↔ _
+    rw [List.take_succ_eq_append_getElem inside]
+    constructor
+    · intro next
+      refine ⟨?_, ?_⟩
+      · intro record member position indexed
+        exact next record (List.mem_append_left _ member) position indexed
+      · intro position indexed
+        exact next past[index] (List.mem_append_right _ (List.mem_singleton_self _))
+          position indexed
+    · rintro ⟨previous, next⟩ record member position indexed
+      rcases List.mem_append.mp member with earlier | last
+      · exact previous record earlier position indexed
+      · have sameRecord : record = past[index] := List.mem_singleton.mp last
+        subst record
+        exact next position indexed
+  have mass : ∀ count ≤ past.length,
+      (law.map (observe count)) true = ∏ index ∈ Finset.range count, atom index := by
+    intro count
+    induction count with
+    | zero =>
+        intro _bounded
+        have all : observe 0 = fun _ => true := by
+          funext word
+          apply decide_eq_true
+          intro record member
+          cases member
+        rw [all, Finset.prod_range_zero]
+        change (law.map (Function.const _ true)) true = 1
+        rw [PMF.map_const, PMF.pure_apply_self]
+    | succ count ih =>
+        intro bounded
+        have inside : count < past.length := by omega
+        have previous := ih (by omega)
+        have possible : true ∈ (law.map (observe count)).support :=
+          (PMF.mem_support_map_iff _ _ _).mpr
+            ⟨reference.view owner, referenceSupport, referenceMatches count⟩
+        have current : past[count]? = some past[count] := List.getElem?_eq_getElem inside
+        cases indexed : sourceIssuedRecordPosition setup implementation block low control
+            owner past[count] with
+        | none =>
+            have same : observe (count + 1) = observe count := by
+              funext word
+              apply decide_eq_decide.mpr
+              rw [matchesStep count inside word]
+              constructor
+              · exact And.left
+              · intro earlier
+                refine ⟨earlier, ?_⟩
+                intro position impossible
+                rw [indexed] at impossible
+                cases impossible
+            rw [same, previous, Finset.prod_range_succ]
+            simp only [atom, current, indexed, mul_one]
+        | some position =>
+            have increment := observation_fiber_mass law (observe count) (observe (count + 1))
+              (block.wordAction owner position)
+              (block.wordAction owner position (reference.view owner)) possible (by
+                intro word _drawn
+                rw [decide_eq_true_eq, decide_eq_true_eq, matchesStep count inside word]
+                constructor
+                · rintro ⟨old, next⟩
+                  exact ⟨old, next position indexed⟩
+                · rintro ⟨old, next⟩
+                  refine ⟨old, ?_⟩
+                  intro selected selectedAt
+                  have samePosition : position = selected :=
+                    Option.some.inj (indexed.symm.trans selectedAt)
+                  exact samePosition ▸ next)
+            rw [increment, previous, Finset.prod_range_succ]
+            simp only [atom, current, indexed]
+  have ledger : (fun word => decide (issuedLedger setup implementation block low control
+      (low + block.length) owner word)) = observe past.length := by
+    funext word
+    exact decide_eq_decide.mpr (issuedLedger_iff_recalled_word_actions setup implementation
+      block suffix embedding low rank actions trace owner (reference.view owner) word
+        retained)
+  change (law.map _) true = ∏ index ∈ Finset.range past.length, atom index
+  rw [ledger]
+  exact mass _ le_rfl
+
+open Classical in
 /-- A supported complete source word witnesses every earlier issued cylinder.
 Successive actual registrations therefore multiply their chronological owner
 atoms without dividing by a possibly zero mass. -/
@@ -3734,114 +3880,8 @@ theorem issuedLedger_foreign_cylinder_telescope
   by_cases own : owner = focal
   · simp only [own, ite_true]
   · simp only [own, ite_false]
-    let law := (block.prefixLaw suffix profile entry).map (SourceProgram.Config.view owner)
-    let past := control.execution.recall owner
-    let observe := fun count word => decide (sourceIssuedOwnObservation setup implementation
-      block low control owner (reference.view owner) count word)
-    let atom : Nat → ℝ≥0∞ := fun index => match past[index]? with
-      | none => 1
-      | some record =>
-          match sourceIssuedRecordPosition setup implementation block low control owner record with
-          | none => 1
-          | some position => ((fiberPosterior law (observe index) true).map
-              (block.wordAction owner position))
-                (block.wordAction owner position (reference.view owner))
-    have referenceSupport : reference.view owner ∈ law.support :=
-      (PMF.mem_support_map_iff _ _ _).mpr ⟨reference, supported, rfl⟩
-    have referenceMatches (count : Nat) : observe count (reference.view owner) = true := by
-      apply decide_eq_true
-      intro _record _member _position _indexed
-      rfl
-    have matchesStep (index : Nat) (inside : index < past.length) (word : DecisionView owner Δ) :
-        sourceIssuedOwnObservation setup implementation block low control owner
-            (reference.view owner) (index + 1) word ↔
-          sourceIssuedOwnObservation setup implementation block low control owner
-            (reference.view owner) index word ∧
-          (∀ position, sourceIssuedRecordPosition setup implementation block low control owner
-              past[index] = some position →
-            block.wordAction owner position word =
-              block.wordAction owner position (reference.view owner)) := by
-      unfold sourceIssuedOwnObservation
-      change (∀ record ∈ past.take (index + 1), _) ↔ _
-      rw [List.take_succ_eq_append_getElem inside]
-      constructor
-      · intro next
-        refine ⟨?_, ?_⟩
-        · intro record member position indexed
-          exact next record (List.mem_append_left _ member) position indexed
-        · intro position indexed
-          exact next past[index] (List.mem_append_right _ (List.mem_singleton_self _))
-            position indexed
-      · rintro ⟨previous, next⟩ record member position indexed
-        rcases List.mem_append.mp member with earlier | last
-        · exact previous record earlier position indexed
-        · have sameRecord : record = past[index] := List.mem_singleton.mp last
-          subst record
-          exact next position indexed
-    have mass : ∀ count ≤ past.length,
-        (law.map (observe count)) true = ∏ index ∈ Finset.range count, atom index := by
-      intro count
-      induction count with
-      | zero =>
-          intro _bounded
-          have all : observe 0 = fun _ => true := by
-            funext word
-            apply decide_eq_true
-            intro record member
-            cases member
-          rw [all, Finset.prod_range_zero]
-          change (law.map (Function.const _ true)) true = 1
-          rw [PMF.map_const, PMF.pure_apply_self]
-      | succ count ih =>
-          intro bounded
-          have inside : count < past.length := by omega
-          have previous := ih (by omega)
-          have possible : true ∈ (law.map (observe count)).support :=
-            (PMF.mem_support_map_iff _ _ _).mpr
-              ⟨reference.view owner, referenceSupport, referenceMatches count⟩
-          have current : past[count]? = some past[count] := List.getElem?_eq_getElem inside
-          cases indexed : sourceIssuedRecordPosition setup implementation block low control
-              owner past[count] with
-          | none =>
-              have same : observe (count + 1) = observe count := by
-                funext word
-                apply decide_eq_decide.mpr
-                rw [matchesStep count inside word]
-                constructor
-                · exact And.left
-                · intro earlier
-                  refine ⟨earlier, ?_⟩
-                  intro position impossible
-                  rw [indexed] at impossible
-                  cases impossible
-              rw [same, previous, Finset.prod_range_succ]
-              simp only [atom, current, indexed, mul_one]
-          | some position =>
-              have increment := observation_fiber_mass law (observe count) (observe (count + 1))
-                (block.wordAction owner position)
-                (block.wordAction owner position (reference.view owner)) possible (by
-                  intro word _drawn
-                  rw [decide_eq_true_eq, decide_eq_true_eq, matchesStep count inside word]
-                  constructor
-                  · rintro ⟨old, next⟩
-                    exact ⟨old, next position indexed⟩
-                  · rintro ⟨old, next⟩
-                    refine ⟨old, ?_⟩
-                    intro selected selectedAt
-                    have samePosition : position = selected :=
-                      Option.some.inj (indexed.symm.trans selectedAt)
-                    exact samePosition ▸ next)
-              rw [increment, previous, Finset.prod_range_succ]
-              simp only [atom, current, indexed]
-    have ledger : (fun word => decide (issuedLedger setup implementation block low control
-        (low + block.length) owner word)) = observe past.length := by
-      funext word
-      exact decide_eq_decide.mpr (issuedLedger_iff_recalled_word_actions setup implementation
-        block suffix embedding low rank actions trace owner (reference.view owner) word
-          (retained owner own))
-    change (law.map _) true = ∏ index ∈ Finset.range past.length, atom index
-    rw [ledger]
-    exact mass _ le_rfl
+    exact issuedLedger_owner_cylinder_telescope setup implementation block suffix embedding low
+      rank actions trace profile entry owner reference supported (retained owner own)
 
 open Classical in
 /-- The true-bit mass of the original foreign joint is its finite chronological
