@@ -2888,3 +2888,35 @@ equal payoff laws for legal nonsilent openings. The
 [publication gain](../Vegas/Game/PhaseProposalPublicationGain.lean) combines
 those laws with actual prompt/WAIT ordering, the original callback posterior
 and uniform flag errors for arbitrary lotteries at full information.
+
+Qualified binding transport uses a directed component graph under
+[QualifiedBinding](../Vegas/Game/QualifiedBinding/OrdinaryContinuation.lean).
+The [aggregation](../Vegas/Game/PhaseProposalQualifiedBinding.lean) contains the
+original weighted pushforward, reconstruction, stopped-payoff and binding-law
+assembly. Its weighted pushforward remains the registered open obligation.
+
+| Component | Owns | Component imports |
+| --- | --- | --- |
+| [OrdinaryContinuation](../Vegas/Game/QualifiedBinding/OrdinaryContinuation.lean) | Alias sampling, ordinary source continuation laws and the binding-law contract | Existing source and runtime layers |
+| [ForeignPosterior](../Vegas/Game/QualifiedBinding/ForeignPosterior.lean) | Foreign cut pairs, ordinary structural atoms and posterior disintegration | OrdinaryContinuation |
+| [BindingReadback](../Vegas/Game/QualifiedBinding/BindingReadback.lean) | Literal signed origins, issued-binding reads and source table adapters | OrdinaryContinuation |
+| [SourceImage](../Vegas/Game/QualifiedBinding/SourceImage.lean) | Snapshot assignments, factual visit relations and the source-image/alignment contracts | BindingReadback |
+| [RawReplay](../Vegas/Game/QualifiedBinding/RawReplay.lean) | Deterministic replay, callback kernels, script mass and supported-script readback | SourceImage |
+| [ReplayCoverage](../Vegas/Game/QualifiedBinding/ReplayCoverage.lean) | Original-positive value reconstruction and normalized conditional replay coverage | RawReplay, ForeignPosterior |
+| [Likelihood](../Vegas/Game/QualifiedBinding/Likelihood.lean) | Native likelihood, callback products and canonical source Nature mass | ReplayCoverage |
+| [AnnotationMass](../Vegas/Game/QualifiedBinding/AnnotationMass.lean) | Original annotation sums, zero cases and normalization | ReplayCoverage |
+| [StoppedPayoff](../Vegas/Game/QualifiedBinding/StoppedPayoff.lean) | Fixed-tape stopped source payoff transport | AnnotationMass |
+
+The aggregation imports Likelihood and StoppedPayoff. Crossing APIs keep the
+shared `Vegas.PhaseProposalQualifiedBinding` namespace; proofs used only within
+a component remain private. The factual `sourceBindingAt_of_issued_attempt`
+belongs to BindingReadback so source-image construction can consume it without
+importing replay coverage.
+
+`sourceRawReplay_law` and `sourceRawReplay_qualified` construct normalized replay
+laws conditional on the actual `SourceReplayAlignment` certificate. The
+certificate's query relation is restricted to an owner different from the fixed
+focal player. Constructing that certificate from the original runtime data, and
+then eliminating it from the replay consumer's hypotheses, remains open. The
+checked canonical Nature and native likelihood identities do not supply that
+missing source-image producer or the final weighted rectangle identity.

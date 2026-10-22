@@ -806,8 +806,8 @@ The source coupling retains its Attempt joints and ordinary enriched labels.
 The actual archive selector is false at binding events and Valid forbids a
 REVEAL proposal on COMMIT. Equal semantic words therefore lift to equal enriched
 suffixes, both retaining their entries and having length n within the maximal
-commit window. `binding_close_erased_history` gives FULL erased completed-history
-equality. Old hidden PUB labels are handled by entry refinement, not by asserting
+commit window. `binding_close_erased_history_of_semantic_word` gives full
+erased completed-history equality. Old hidden PUB labels are handled by entry refinement, not by asserting
 equality of the enriched entries themselves.
 
 Proper survivor cells transfer from supported ordinary completion.

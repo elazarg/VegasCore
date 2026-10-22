@@ -77,10 +77,10 @@ or record declarations do not close them.
 | `qualified_annotation_pushforward` | Reviewed simultaneous source image, exhaustive positive-annotation coverage, both augmented inverses and exact chronological factors. | Admitted; global proof unfinished. |
 | `annotated_stopped_payoff` | Reviewed all-posterior cylinder positivity, same-tape full-word gluing and actual completed archived witness. | Checked. |
 
-For payoff attachment, `binding_close_erased_history` supplies deterministic
-closing equality. Its same-entry hypothesis transfers the selected checkpoint
-to the actual entry witness; its same-enriched-word hypothesis follows from the
-closing decoder and ordinary COMMIT labels. Full-word gluing retains the
+For payoff attachment, `binding_close_erased_history_of_semantic_word` supplies
+deterministic closing equality from the same erased entry and full semantic
+commitment word. The closing decoder and ordinary COMMIT labels identify the
+actual archive lift within the commitment window. Full-word gluing retains the
 supported completed-history relation and proposal delta, beyond word marginals.
 The checked gain and preservation assembly remains conditional on
 `QualifiedBindingLaw`; its unconditional Lean transport is still required.
