@@ -5181,7 +5181,7 @@ def sourceReplayScriptProducts
   | _, _, _ => (0, 0)
 
 /-- The chronological product at an actual trace extension. -/
-private theorem sourceReplayScriptProducts_extend
+theorem sourceReplayScriptProducts_extend
     (scale : Set.Icc (0 : ℝ) 1) (who : Player)
     {before after : (nativeProtocol).State} (prior : (nativeProtocol).Trace before)
     (joint : Player → Option (nativeApplication).Action)

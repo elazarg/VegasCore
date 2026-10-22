@@ -13,7 +13,7 @@ open SourceProgram EventGraph
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
-private theorem decodeCommitPrefix_binding
+theorem decodeCommitPrefix_binding
     {Γ Δ : SourceCtx Player L} {O P : Finset VarId} {name : VarId} {who : Player}
     {payload : L.Ty} (fresh : name ∉ Δ.map Prod.fst)
     (guard : SourceGuard L Δ who name payload)

@@ -46,7 +46,7 @@ private theorem commitKernel_cast_tail
   cases same
   rfl
 
-private theorem afterCommit_cast_tail
+theorem afterCommit_cast_tail
     {name : VarId} {owner : Player} {payload : L.Ty}
     (fresh : name ∉ Γ.map Prod.fst) (guard : SourceGuard L Γ owner name payload)
     {first second : SourceProgram Player L ((name, .commitment owner payload) :: Γ)
