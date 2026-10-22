@@ -91,7 +91,7 @@ source alignment (`bfe581fb`). The forward direction below remains separate.
 | Prove every supported replay has the original fixed source entry/structural word and positive annotation | Open; reverse coverage does not prove this | Replay correspondence |
 | Factor the whole qualified native likelihood into mechanical, queried proper-value and alias products | Checked: `sourceReplay_prescribed_response_atom`; ordinary Concurrent build and exact standard-axiom audit | Weights |
 | Match historical accepted, current issued and historical never-accepted callbacks bijectively to their source rows/lost draws | Open | Weights |
-| Prove the full foreign issued-prefix probability product and its separation from the focal prefix | One-coordinate update checked; whole product open | Weights |
+| Prove the full foreign issued-prefix probability product and its separation from the focal prefix | One-coordinate update and foreign-only next-row kernel checked (`issuedLedger_foreign_owned_word_conditional`); native-query identification and full telescope open | Weights |
 | Prove the positive per-history weight identity using the original pair-law mixture; remove the original weighted admission | Open; zero cases and final summation already checked | Weights |
 | Verify the weighted theorem and concurrent capstone have only standard axioms, and pass the final build/checks | Pending; conditional assembly already checked | Integration |
 
