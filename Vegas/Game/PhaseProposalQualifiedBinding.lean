@@ -19998,6 +19998,66 @@ private theorem positive_original_annotated_initial_value
       initialOpen
 
 open Classical in
+/-- An actual historical preparation without an accepting receipt has no source
+meaning in a positive original annotation. -/
+private theorem positive_original_annotated_unaccepted_meaning
+    (operational : implementation.Operational)
+    (fullValues : ∀ owner key, FullSupport (values owner key))
+    (sourceProfile : ∀ owner, setup.proposalRecoveryModel.BehavioralPolicy owner)
+    (nativeProfile : ∀ owner,
+      ((nativeMenu).information nativeInitial implementation.horizon
+        implementation.scheduler).BehavioralPolicy owner)
+    (who : Player) (control : (nativeApplication).Control)
+    (trace : (nativeProtocol).Trace (some control))
+    (active : control.actor = some who)
+    (tape : ReservedEpoch.Tape Player implementation.tapeLength)
+    (target cut finished : setup.proposalRecoveryProtocol.History)
+    (word : SourceProgram.History Player L)
+    (canonicalSupported : setup.proposalRecoveryModel.historyReachWeight sourceProfile
+      (canonicalSource setup implementation operational ⟨some control, trace⟩) ≠ 0)
+    (event : (serviceGraph setup .concurrent).EventId) (payload : L.Ty)
+    (clean : CleanUnsentBinding setup implementation who (control.execution.recall who)
+      (control.execution.observe nativeApplication who) event payload)
+    (value : L.Val payload)
+    (positive : annotatedPrefixWeight setup values implementation operational sourceProfile
+      nativeProfile who ⟨some control, trace⟩ tape target word *
+        (if bindingAdmissionBit setup implementation who event ⟨some control, trace⟩ tape
+          then 1 else 0) *
+        sourceForcedBlockJoint setup values implementation who ⟨some control, trace⟩
+          event payload target word value (cut, finished) ≠ 0)
+    (owner : Player) (record : (nativeApplication).PlayerEntry)
+    (recorded : record ∈ control.execution.recall owner)
+    (material : WitnessedSubmission (serviceGraph setup .concurrent))
+    (transmitted : record.action.transmission = some material)
+    (message : Message Player (CommitAttemptPacket (serviceGraph setup .concurrent)))
+    (emitted : record.emitted = some message)
+    (named : (serviceGraph setup .concurrent).EventId) (ty : L.Ty)
+    (binding : (serviceGraph setup .concurrent).outputLayout named = .binding owner ty)
+    (handle : Handle (serviceGraph setup .concurrent))
+    (call : message.payload.packet.call = .commitment named handle)
+    (historical : message.payload.attempt ≠ control.execution.application.attempt)
+    (handleOwner : handle.1 = owner)
+    (unaccepted : ¬ PhaseService.BindingAccepted implementation.runtime implementation.leaks
+      ⟨message.payload.attempt, named⟩ owner control.execution) :
+    sourceHandleMeaning setup implementation finished control handle = none := by
+  classical
+  by_contra nonempty
+  obtain ⟨raw, meaning⟩ := Option.ne_none_iff_exists'.mp nonempty
+  have recalled : record ∈ control.execution.recall handle.1 := by
+    rw [handleOwner]
+    exact recorded
+  have literal := sourceHandleMeaning_of_emission setup implementation finished control trace
+    handle record recalled message emitted named call owner ty binding
+      (sourceBindingAt setup message.payload.attempt named owner ty binding finished.trace) rfl
+  rw [meaning] at literal
+  obtain ⟨recovered, read, _rawEq⟩ := Option.map_eq_some_iff.mp literal.symm
+  exact unaccepted (positive_original_annotated_historical_result setup values implementation
+    operational fullValues sourceProfile nativeProfile who control trace active tape target cut
+      finished word canonicalSupported event payload clean value positive owner record recorded
+        material transmitted message emitted named ty binding handle call historical recovered
+          read).2
+
+open Classical in
 /-- A prepared handle with a source meaning in the completed annotation has
 that exact immutable original native value, including pending and canceled origins. -/
 private theorem positive_original_annotated_prepared_value
@@ -24660,6 +24720,1464 @@ private theorem sourceReplay_initial_nature_mass
   rw [controlEq]
   exact congrArg ENNReal.toReal (sourceReplay_initial_native_atom setup implementation theta)
 
+
+omit [Fintype Player] in
+private theorem sourceReplay_close_within_saved
+    (current : CommitRecoveryState setup.program)
+    (within : ProtocolState.remaining setup.program current.point ≤
+      ProtocolState.remaining setup.program current.saved) :
+    ProtocolState.remaining setup.program current.close.point ≤
+      ProtocolState.remaining setup.program current.close.saved := by
+  unfold CommitRecoveryState.close
+  split
+  · split
+    · split <;> exact le_rfl
+    · exact le_rfl
+  · split
+    · exact within
+    · exact le_rfl
+
+omit [Fintype Player] in
+private theorem sourceReplay_trace_within_saved
+    {state : setup.commitRecoveryProtocol.State}
+    (trace : setup.commitRecoveryProtocol.Trace state) :
+    state.elim True (fun current =>
+      ProtocolState.remaining setup.program current.point ≤
+        ProtocolState.remaining setup.program current.saved) := by
+  induction trace with
+  | start => trivial
+  | @extend before after prior joint legal moved ih =>
+      cases before with
+      | none =>
+          obtain ⟨inputs, supported, rfl⟩ := (PMF.mem_support_map_iff ..).mp moved
+          exact le_rfl
+      | some current =>
+          obtain ⟨next, supported, rfl⟩ := (PMF.mem_support_map_iff ..).mp moved
+          obtain ⟨raw, rawSupported, rfl⟩ := current.step_raw_result joint next supported
+          have consumed := ProtocolState.recoveryStep_remaining setup.program current.point
+            current.excluded joint raw.1 legal.1 rawSupported
+          apply sourceReplay_close_within_saved
+          change ProtocolState.remaining setup.program raw.1.1 ≤
+            ProtocolState.remaining setup.program current.saved
+          change ProtocolState.remaining setup.program current.point ≤
+            ProtocolState.remaining setup.program current.saved at ih
+          omega
+
+omit [Fintype Player] in
+private theorem sourceReplay_saved_remaining_step
+    {before after : setup.commitRecoveryProtocol.State}
+    (trace : setup.commitRecoveryProtocol.Trace before)
+    (joint : Player → Option (CommitRecoveryMove Player L))
+    (legal : setup.commitRecoveryProtocol.Legal before joint)
+    (moved : after ∈ (setup.commitRecoveryProtocol.step before ⟨joint, legal⟩).support) :
+    after.elim (instructionCount setup.program)
+        (fun current => ProtocolState.remaining setup.program current.saved) ≤
+      before.elim (instructionCount setup.program)
+        (fun current => ProtocolState.remaining setup.program current.saved) := by
+  cases before with
+  | none =>
+      obtain ⟨inputs, supported, rfl⟩ := (PMF.mem_support_map_iff ..).mp moved
+      simp only [Option.elim_some, Option.elim_none, CommitRecoveryState.atPoint,
+        ProtocolState.remaining_entry, le_refl]
+  | some current =>
+      obtain ⟨next, supported, rfl⟩ := (PMF.mem_support_map_iff ..).mp moved
+      obtain ⟨raw, rawSupported, rfl⟩ := current.step_raw_result joint next supported
+      have within := sourceReplay_trace_within_saved setup trace
+      have consumed := ProtocolState.recoveryStep_remaining setup.program current.point
+        current.excluded joint raw.1 legal.1 rawSupported
+      exact close_saved_remaining_le (current.install raw.1 raw.2) (by
+        change ProtocolState.remaining setup.program raw.1.1 ≤
+          ProtocolState.remaining setup.program current.saved
+        change ProtocolState.remaining setup.program current.point ≤
+          ProtocolState.remaining setup.program current.saved at within
+        omega)
+
+omit [Fintype Player] in
+private theorem sourceReplay_saved_remaining_le_of_prefix
+    {first last : setup.commitRecoveryProtocol.State}
+    (prior : setup.commitRecoveryProtocol.Trace first)
+    (trace : setup.commitRecoveryProtocol.Trace last) (retained : TracePrefix prior trace) :
+    last.elim (instructionCount setup.program)
+        (fun current => ProtocolState.remaining setup.program current.saved) ≤
+      first.elim (instructionCount setup.program)
+        (fun current => ProtocolState.remaining setup.program current.saved) := by
+  induction retained with
+  | refl => exact le_rfl
+  | @extend before after middle earlier joint legal moved ih =>
+      exact (sourceReplay_saved_remaining_step setup middle joint legal moved).trans ih
+
+omit [Fintype Player] in
+private theorem sourceReplay_actor_at_rank :
+    ∀ {Γ : SourceCtx Player L} {O : Finset VarId}
+      (program : SourceProgram Player L Γ O) (point : ProtocolState program)
+      (event : Fin (eventCount program)),
+      event.val = instructionCount program - ProtocolState.remaining program point →
+        ProtocolState.actor program point = eventOwner? program event := by
+  intro Γ O program
+  induction program with
+  | ret payoffs => intro point event; exact Fin.elim0 event
+  | sample name fresh law suffix ih =>
+      intro point event rank
+      cases point with
+      | inl source =>
+          have same : event = ⟨0, by simp only [eventCount]; omega⟩ := by
+            apply Fin.ext
+            simpa only [instructionCount, ProtocolState.remaining, Sum.elim_inl,
+              Nat.sub_self] using rank
+          rw [same]
+          rfl
+      | inr point =>
+          have bound := ProtocolState.remaining_le_instructionCount suffix point
+          have width := event.isLt
+          have counts := eventCount_eq_instructionCount suffix
+          simp only [instructionCount, ProtocolState.remaining, Sum.elim_inr] at rank
+          simp only [eventCount] at width
+          let tail : Fin (eventCount suffix) := ⟨event.val - 1, by omega⟩
+          have same : event = tail.succ := Fin.ext (by
+            change event.val = event.val - 1 + 1
+            omega)
+          have tailRank : tail.val = instructionCount suffix -
+              ProtocolState.remaining suffix point := by
+            dsimp only [tail]
+            omega
+          rw [same]
+          exact ih point tail tailRank
+  | commit name owner fresh guard suffix ih =>
+      intro point event rank
+      cases point with
+      | inl source =>
+          have same : event = ⟨0, by simp only [eventCount]; omega⟩ := by
+            apply Fin.ext
+            simpa only [instructionCount, ProtocolState.remaining, Sum.elim_inl,
+              Nat.sub_self] using rank
+          rw [same]
+          rfl
+      | inr point =>
+          have bound := ProtocolState.remaining_le_instructionCount suffix point
+          have width := event.isLt
+          have counts := eventCount_eq_instructionCount suffix
+          simp only [instructionCount, ProtocolState.remaining, Sum.elim_inr] at rank
+          simp only [eventCount] at width
+          let tail : Fin (eventCount suffix) := ⟨event.val - 1, by omega⟩
+          have same : event = tail.succ := Fin.ext (by
+            change event.val = event.val - 1 + 1
+            omega)
+          have tailRank : tail.val = instructionCount suffix -
+              ProtocolState.remaining suffix point := by
+            dsimp only [tail]
+            omega
+          rw [same]
+          exact ih point tail tailRank
+  | reveal published owner name fresh selected unresolved suffix ih =>
+      intro point event rank
+      cases point with
+      | inl source =>
+          have same : event = ⟨0, by simp only [eventCount]; omega⟩ := by
+            apply Fin.ext
+            simpa only [instructionCount, ProtocolState.remaining, Sum.elim_inl,
+              Nat.sub_self] using rank
+          rw [same]
+          rfl
+      | inr point =>
+          have bound := ProtocolState.remaining_le_instructionCount suffix point
+          have width := event.isLt
+          have counts := eventCount_eq_instructionCount suffix
+          simp only [instructionCount, ProtocolState.remaining, Sum.elim_inr] at rank
+          simp only [eventCount] at width
+          let tail : Fin (eventCount suffix) := ⟨event.val - 1, by omega⟩
+          have same : event = tail.succ := Fin.ext (by
+            change event.val = event.val - 1 + 1
+            omega)
+          have tailRank : tail.val = instructionCount suffix -
+              ProtocolState.remaining suffix point := by
+            dsimp only [tail]
+            omega
+          rw [same]
+          exact ih point tail tailRank
+
+omit [Fintype Player] in
+private theorem sourceReplay_owned_step_atom
+    (current : CommitRecoveryState setup.program) (owner : Player)
+    (acting : ProtocolState.actor setup.program current.point = some owner)
+    (joint : Player → Option (CommitRecoveryMove Player L))
+    (legal : setup.commitRecoveryProtocol.Legal (some current) joint)
+    (next : CommitRecoveryState setup.program)
+    (moved : some next ∈
+      (setup.commitRecoveryProtocol.step (some current) ⟨joint, legal⟩).support) :
+    (setup.commitRecoveryProtocol.step (some current) ⟨joint, legal⟩) (some next) = 1 := by
+  have supported : next ∈ (current.step joint).support := by
+    change some next ∈ ((current.step joint).map some).support at moved
+    obtain ⟨other, supported, same⟩ := (PMF.mem_support_map_iff ..).mp moved
+    cases Option.some.inj same
+    exact supported
+  change ((current.step joint).map some) (some next) = 1
+  rw [pmf_map_apply_of_injective _ (Option.some_injective _)]
+  apply (PMF.apply_eq_one_iff _ _).mpr
+  ext result
+  constructor
+  · intro member
+    exact Set.mem_singleton_iff.mpr
+      (setup.commitRecovery_step_unique_of_actor current owner acting joint
+        result next member supported)
+  · intro same
+    cases Set.mem_singleton_iff.mp same
+    exact supported
+
+omit [Fintype Player] in
+private theorem sourceReplay_owned_interval_mass
+    {first last : setup.commitRecoveryProtocol.State}
+    (prior : setup.commitRecoveryProtocol.Trace first)
+    (trace : setup.commitRecoveryProtocol.Trace last)
+    (retained : TracePrefix prior trace)
+    (owned : ∀ {before after : setup.commitRecoveryProtocol.State}
+      (middle : setup.commitRecoveryProtocol.Trace before)
+      (joint : Player → Option (CommitRecoveryMove Player L))
+      (legal : setup.commitRecoveryProtocol.Legal before joint)
+      (moved : after ∈ (setup.commitRecoveryProtocol.step before ⟨joint, legal⟩).support),
+      TracePrefix prior middle → TracePrefix (middle.extend joint legal moved) trace →
+        ∃ (current : CommitRecoveryState setup.program) (owner : Player),
+          before = some current ∧
+          ProtocolState.actor setup.program current.point = some owner) :
+    trace.transitionMass = prior.transitionMass := by
+  induction retained with
+  | refl => rfl
+  | @extend before after middle earlier joint legal moved ih =>
+      have lastKept : TracePrefix middle (middle.extend joint legal moved) :=
+        .extend .refl joint legal moved
+      have mass : middle.transitionMass = prior.transitionMass := by
+        apply ih
+        intro source target initialTrace row rowLegal rowMoved left right
+        exact owned initialTrace row rowLegal rowMoved left (right.trans lastKept)
+      obtain ⟨current, owner, source, acting⟩ :=
+        owned middle joint legal moved earlier .refl
+      cases source
+      obtain ⟨next, supported, same⟩ := (PMF.mem_support_map_iff ..).mp moved
+      cases same
+      have atom := sourceReplay_owned_step_atom setup current owner acting
+        joint legal next moved
+      rw [Trace.transitionMass_extend, atom, ENNReal.toReal_one, mul_one, mass]
+
+omit [Fintype Player] in
+private theorem sourceReplay_prefix_some
+    (first : CommitRecoveryState setup.program)
+    (prior : setup.commitRecoveryProtocol.Trace (some first))
+    {state : setup.commitRecoveryProtocol.State}
+    (trace : setup.commitRecoveryProtocol.Trace state) (retained : TracePrefix prior trace) :
+    ∃ current, state = some current := by
+  cases retained with
+  | refl => exact ⟨first, rfl⟩
+  | @extend source target middle earlier joint legal moved =>
+      cases source with
+      | none =>
+          obtain ⟨inputs, supported, same⟩ := (PMF.mem_support_map_iff ..).mp moved
+          exact ⟨_, same.symm⟩
+      | some current =>
+          obtain ⟨next, supported, same⟩ := (PMF.mem_support_map_iff ..).mp moved
+          exact ⟨next, same.symm⟩
+
+omit [Fintype Player] in
+private theorem sourceReplay_actor_none_not_commit :
+    ∀ {Γ : SourceCtx Player L} {O : Finset VarId}
+      (program : SourceProgram Player L Γ O) (point : ProtocolState program),
+      ProtocolState.actor program point = none →
+        ProtocolState.atCommit program point = false := by
+  intro Γ O program
+  induction program with
+  | ret payoffs => intro point; exact fun _ => rfl
+  | sample name fresh law suffix ih =>
+      intro point
+      cases point with
+      | inl source => exact fun _ => rfl
+      | inr point => exact ih point
+  | commit name owner fresh guard suffix ih =>
+      intro point
+      cases point with
+      | inl source => intro impossible; cases impossible
+      | inr point => exact ih point
+  | reveal published owner name fresh selected unresolved suffix ih =>
+      intro point
+      cases point with
+      | inl source => exact fun _ => rfl
+      | inr point => exact ih point
+
+omit [Fintype Player] in
+private theorem sourceReplay_sample_free_interval_mass
+    (first last : CommitRecoveryState setup.program)
+    (prior : setup.commitRecoveryProtocol.Trace (some first))
+    (trace : setup.commitRecoveryProtocol.Trace (some last))
+    (retained : TracePrefix prior trace)
+    (nonchance : ∀ event : Fin (eventCount setup.program),
+      instructionCount setup.program - ProtocolState.remaining setup.program first.saved ≤
+        event.val →
+      event.val < instructionCount setup.program -
+        ProtocolState.remaining setup.program last.saved →
+      ∃ owner, eventOwner? setup.program event = some owner) :
+    trace.transitionMass = prior.transitionMass := by
+  apply sourceReplay_owned_interval_mass setup prior trace retained
+  intro before after middle joint legal moved left right
+  obtain ⟨current, rfl⟩ := sourceReplay_prefix_some setup first prior middle left
+  cases acting : ProtocolState.actor setup.program current.point with
+  | some owner => exact ⟨current, owner, rfl, acting⟩
+  | none =>
+      have notCommit := sourceReplay_actor_none_not_commit setup.program current.point acting
+      have saved := (setup.commitRecovery_blockFrontier middle).saved_eq_point_of_not_atCommit
+        notCommit
+      obtain ⟨next, supported, rfl⟩ := (PMF.mem_support_map_iff ..).mp moved
+      obtain ⟨raw, rawSupported, nextEq⟩ := current.step_noncommit_atPoint
+        (setup.commitRecovery_blockFrontier middle) notCommit joint next supported
+      have consumed := ProtocolState.recoveryStep_remaining setup.program current.point
+        current.excluded joint raw legal.1 rawSupported
+      have lower := sourceReplay_saved_remaining_le_of_prefix setup prior middle left
+      have upper := sourceReplay_saved_remaining_le_of_prefix setup
+        (middle.extend joint legal moved) trace right
+      change ProtocolState.remaining setup.program current.saved ≤
+        ProtocolState.remaining setup.program first.saved at lower
+      change ProtocolState.remaining setup.program last.saved ≤
+        ProtocolState.remaining setup.program next.saved at upper
+      rw [saved] at lower
+      rw [nextEq] at upper
+      change ProtocolState.remaining setup.program last.saved ≤
+        ProtocolState.remaining setup.program raw.1 at upper
+      have bound := ProtocolState.remaining_le_instructionCount setup.program current.point
+      have positive : 0 < ProtocolState.remaining setup.program current.point := by omega
+      let event : Fin (eventCount setup.program) :=
+        ⟨instructionCount setup.program - ProtocolState.remaining setup.program current.point,
+          by rw [eventCount_eq_instructionCount]; omega⟩
+      obtain ⟨owner, owned⟩ := nonchance event (by dsimp only [event]; omega)
+        (by dsimp only [event]; omega)
+      have sourceActor := sourceReplay_actor_at_rank setup.program current.point event rfl
+      rw [acting, owned] at sourceActor
+      cases sourceActor
+
+omit [Fintype Player] in
+private theorem sourceReplay_drain_ownerless_output
+    (phase : RuntimePhase (serviceGraph setup .concurrent)) (fuel : Nat)
+    (current : RecoveryState (serviceGraph setup .concurrent))
+    (event : (serviceGraph setup .concurrent).EventId)
+    (ownerless : (serviceGraph setup .concurrent).actor? event = none) :
+    (phase.drainFuel fuel current).native.config.outputs event =
+      current.native.config.outputs event := by
+  induction fuel generalizing current with
+  | zero => rfl
+  | succ fuel ih =>
+      unfold RuntimePhase.drainFuel
+      split
+      · rename_i pending
+        rw [ih]
+        obtain ⟨owner, acting, _excluded⟩ := (Classical.choose_spec pending).2.owned
+        have different : event ≠ Classical.choose pending := by
+          intro same
+          rw [← same, ownerless] at acting
+          cases acting
+        obtain ⟨action, supported⟩ := current.completeAutomatic_step
+          (Classical.choose pending) (Classical.choose_spec pending).2
+        rw [Config.step, PMF.support_map] at supported
+        obtain ⟨value, _supported, completed⟩ := supported
+        rw [← completed]
+        exact Config.complete_output_of_ne _ _ _ _ _ _ different
+      · rfl
+
+omit [Fintype Player] in
+private theorem sourceReplay_settle_ownerless_output
+    (phases : List (RuntimePhase (serviceGraph setup .concurrent)))
+    (generation : Nat) (entry current : RecoveryState (serviceGraph setup .concurrent))
+    (retired : List (RetiredCommitAttempt (serviceGraph setup .concurrent)))
+    (event : (serviceGraph setup .concurrent).EventId)
+    (ownerless : (serviceGraph setup .concurrent).actor? event = none)
+    (same : entry.native.config.outputs event = current.native.config.outputs event) :
+    (PhaseRuntimeState.settle phases generation entry current retired).current.native.config.outputs
+      event = current.native.config.outputs event := by
+  induction phases generalizing generation entry current retired with
+  | nil => rfl
+  | cons phase remaining ih =>
+      have drain (state : RecoveryState (serviceGraph setup .concurrent)) :
+          (phase.drain state).native.config.outputs event = state.native.config.outputs event :=
+        sourceReplay_drain_ownerless_output setup phase _ state event ownerless
+      have rebuilt :
+          (phase.drain (PhaseRuntimeState.restore entry
+            (phase.drain current))).native.config.outputs event =
+              current.native.config.outputs event :=
+        (drain _).trans same
+      unfold PhaseRuntimeState.settle
+      dsimp only
+      split
+      · split
+        · split
+          · exact rebuilt
+          · exact (ih generation _ _ _ rfl).trans rebuilt
+        · exact (ih generation _ _ _ rfl).trans (drain current)
+      · exact drain current
+
+omit [Fintype Player] in
+private theorem sourceReplay_frontier_completed_before
+    (state : PhaseRuntimeState (serviceGraph setup .concurrent)) (frontier : state.Frontier)
+    (event : (serviceGraph setup .concurrent).EventId)
+    (below : event.val < state.attempt.phase) :
+    event ∈ state.current.native.config.cut.completed := by
+  have positioned := frontier.positioned
+  cases phases : state.phases with
+  | nil =>
+      rw [phases] at positioned
+      have positioned : state.current.native.config.cut.IsPrefix _ := positioned
+      exact (positioned.2 event).mpr event.isLt
+  | cons phase remaining =>
+      rw [phases] at positioned
+      apply positioned.2.1 event
+      simpa only [PhaseRuntimeState.attempt, phases, List.head?_cons,
+        Option.map_some, Option.getD_some] using below
+
+omit [Fintype Player] in
+private theorem sourceReplay_live_ownerless_missing
+    (state : PhaseRuntimeState (serviceGraph setup .concurrent))
+    (frontier : state.Frontier) (live : state.Live)
+    (event : (serviceGraph setup .concurrent).EventId)
+    (ownerless : (serviceGraph setup .concurrent).actor? event = none)
+    (lower : state.attempt.phase ≤ event.val) :
+    event ∉ state.current.native.config.cut.completed := by
+  intro completed
+  have positioned := frontier.positioned
+  cases installed : state.phases with
+  | nil =>
+      have bound := event.isLt
+      simp only [PhaseRuntimeState.attempt, installed, List.head?_nil, Option.map_none,
+        Option.getD_none] at lower
+      omega
+  | cons phase remaining =>
+      rw [installed] at positioned
+      have above : phase.low ≤ event.val := by
+        simpa only [PhaseRuntimeState.attempt, installed, List.head?_cons, Option.map_some,
+          Option.getD_some] using lower
+      have below := positioned.2.2 event completed
+      have publicOutput := EventCode.output_public_of_actor_none
+        ((serviceGraph setup .concurrent).nodes event) ownerless
+      have notPublication := EventCode.not_publication_of_actor_none
+        ((serviceGraph setup .concurrent).nodes event) ownerless
+      have typed := phase.fields event above below
+      have kind : phase.kind = .sample := by
+        cases kind : phase.kind with
+        | sample => rfl
+        | commitment =>
+            rw [kind] at typed
+            obtain ⟨owner, payload, shape⟩ := typed
+            rw [shape] at publicOutput
+            exact publicOutput.elim
+        | reveal =>
+            rw [kind] at typed
+            obtain ⟨payload, shape⟩ := typed
+            exact (notPublication (by rw [shape]; trivial)).elim
+      have singleton := phase.sample_singleton kind
+      apply live phase (by rw [installed]; exact Option.mem_some_iff.mpr rfl)
+      intro query inside
+      have bounds := (phase.mem_events query).mp inside
+      have same : query = event := Fin.ext (by omega)
+      exact same ▸ completed
+
+omit [Fintype Player] in
+private theorem sourceReplay_live_ownerless_saved_output
+    (state : PhaseRuntimeState (serviceGraph setup .concurrent))
+    (frontier : state.Frontier) (live : state.Live) (stored : state.StoredCheckpoint)
+    (nonempty : state.phases ≠ [])
+    (event : (serviceGraph setup .concurrent).EventId)
+    (ownerless : (serviceGraph setup .concurrent).actor? event = none) :
+    state.entry.native.config.outputs event = state.current.native.config.outputs event := by
+  have entryPrefix : state.entry.native.config.cut.IsPrefix state.attempt.phase := by
+    have positioned := frontier.positioned
+    cases installed : state.phases with
+    | nil => exact (nonempty installed).elim
+    | cons phase remaining =>
+        rw [installed] at positioned
+        simpa only [PhaseRuntimeState.attempt, installed, List.head?_cons, Option.map_some,
+          Option.getD_some] using positioned.1
+  by_cases below : event.val < state.attempt.phase
+  · have completed := (entryPrefix.2 event).mpr below
+    have present := (state.entry.native.config.output_available event).mpr completed
+    obtain ⟨value, entryRead⟩ := Option.isSome_iff_exists.mp present
+    have currentRead := stored (.inr event) value entryRead
+    exact entryRead.trans currentRead.symm
+  · have entryMissing : state.entry.native.config.outputs event = none := by
+      cases reading : state.entry.native.config.outputs event with
+      | none => rfl
+      | some value =>
+          have completed := (state.entry.native.config.output_available event).mp (by
+            rw [reading]; rfl)
+          exact (below ((entryPrefix.2 event).mp completed)).elim
+    have currentMissing : state.current.native.config.outputs event = none := by
+      cases reading : state.current.native.config.outputs event with
+      | none => rfl
+      | some value =>
+          have completed := (state.current.native.config.output_available event).mp (by
+            rw [reading]; rfl)
+          exact (sourceReplay_live_ownerless_missing setup state frontier live event ownerless
+            (by omega) completed).elim
+    exact entryMissing.trans currentMissing.symm
+
+omit [Fintype Player] in
+private theorem sourceReplay_expire_ownerless
+    (current : EventGraphRuntime.State (serviceGraph setup .concurrent))
+    (event : (serviceGraph setup .concurrent).EventId)
+    (ownerless : (serviceGraph setup .concurrent).actor? event = none) :
+    environmentStep implementation.runtime current (.expire event) = PMF.pure current := by
+  by_cases ready : current.config.cut.Ready event
+  · cases activated : current.activatedAt event with
+    | none =>
+        exact environmentStep_expire_of_not_activated implementation.runtime current event
+          ready activated
+    | some entered =>
+        by_cases due : implementation.runtime.deadline event ≤ current.clock - entered
+        · cases view : nodeView (serviceGraph setup .concurrent) event with
+          | bind owner payload output code =>
+              have acting := (EventCode.actor_cast output
+                ((serviceGraph setup .concurrent).nodes event)).symm.trans
+                  (congrArg EventCode.actor code)
+              change (serviceGraph setup .concurrent).actor? event = some owner at acting
+              rw [ownerless] at acting
+              cases acting
+          | resolve owner payload binding checks output code =>
+              have acting := (EventCode.actor_cast output
+                ((serviceGraph setup .concurrent).nodes event)).symm.trans
+                  (congrArg EventCode.actor code)
+              change (serviceGraph setup .concurrent).actor? event = some owner at acting
+              rw [ownerless] at acting
+              cases acting
+          | sample payload law output code =>
+              exact environmentStep_expire_sample_eq implementation.runtime current event ready
+                entered activated due payload law output code view
+        · exact environmentStep_expire_of_not_due implementation.runtime current event ready
+            entered activated due
+  · exact environmentStep_expire_of_not_ready implementation.runtime current event ready
+
+omit [Fintype Player] in
+private theorem sourceReplay_environment_ownerless_output
+    (current next : EventGraphRuntime.State (serviceGraph setup .concurrent))
+    (command : EnvironmentCommand (serviceGraph setup .concurrent))
+    (event : (serviceGraph setup .concurrent).EventId)
+    (ownerless : (serviceGraph setup .concurrent).actor? event = none)
+    (other : command ≠ .executeSample event)
+    (moved : next ∈ (environmentStep implementation.runtime current command).support) :
+    next.config.outputs event = current.config.outputs event := by
+  have stepOther (address : (serviceGraph setup .concurrent).EventId)
+      (different : event ≠ address) (ready : current.config.cut.Ready address)
+      (action : (serviceGraph setup .concurrent).Action address)
+      (supported : next.config ∈ (current.config.step address ready action).support) :
+      next.config.outputs event = current.config.outputs event := by
+    rw [Config.step, PMF.support_map] at supported
+    obtain ⟨value, _supported, same⟩ := supported
+    rw [← same]
+    exact Config.complete_output_of_ne _ _ _ _ _ _ different
+  cases command with
+  | advanceClock =>
+      rw [environmentStep, PMF.mem_support_pure_iff] at moved
+      cases moved
+      rfl
+  | expire address =>
+      by_cases same : event = address
+      · subst address
+        rw [sourceReplay_expire_ownerless setup implementation current event ownerless,
+          PMF.mem_support_pure_iff] at moved
+        cases moved
+        rfl
+      · rcases environmentStep_expire_config_eq_or_mem_step implementation.runtime current next
+          address moved with unchanged | ⟨ready, action, supported⟩
+        · rw [unchanged]
+        · exact stepOther address same ready action supported
+  | executeSample address =>
+      have different : event ≠ address := fun same => other (by cases same; rfl)
+      rcases (environmentStep_executeSample_config_activated implementation.runtime current next
+        address moved).2 with ⟨unchanged, _activated⟩ | ⟨ready, action, supported, _activated⟩
+      · rw [unchanged]
+      · exact stepOther address different ready action supported
+
+omit [Fintype Player] in
+private theorem sourceReplay_handle_ownerless_output
+    (current next : EventGraphRuntime.State (serviceGraph setup .concurrent))
+    (message : Message Player (Payload (serviceGraph setup .concurrent)))
+    (event : (serviceGraph setup .concurrent).EventId)
+    (ownerless : (serviceGraph setup .concurrent).actor? event = none)
+    (accepted : EventGraphRuntime.handle implementation.runtime current message = some next) :
+    next.config.outputs event = current.config.outputs event := by
+  obtain ⟨address, named, acting⟩ := handle_event_actor implementation.runtime current next
+    message accepted
+  obtain ⟨actual, actualNamed, ready, action, supported⟩ :=
+    handle_config_mem_step implementation.runtime current next message accepted
+  have same : actual = address := Option.some.inj (actualNamed.symm.trans named)
+  subst actual
+  have different : event ≠ address := by
+    intro same
+    rw [← same, ownerless] at acting
+    cases acting
+  rw [Config.step, PMF.support_map] at supported
+  obtain ⟨value, _supported, same⟩ := supported
+  rw [← same]
+  exact Config.complete_output_of_ne _ _ _ _ _ _ different
+
+omit [Fintype Player] in
+private theorem sourceReplay_phase_handle_ownerless_output
+    (current next : PhaseRuntimeState (serviceGraph setup .concurrent))
+    (message : Message Player (CommitAttemptPacket (serviceGraph setup .concurrent)))
+    (event : (serviceGraph setup .concurrent).EventId)
+    (ownerless : (serviceGraph setup .concurrent).actor? event = none)
+    (same : current.entry.native.config.outputs event = current.current.native.config.outputs event)
+    (accepted : current.handle implementation.runtime message = some next) :
+    next.current.native.config.outputs event = current.current.native.config.outputs event := by
+  unfold PhaseRuntimeState.handle at accepted
+  split at accepted
+  · obtain ⟨native, rawAccepted, rfl⟩ := Option.map_eq_some_iff.mp accepted
+    have raw := sourceReplay_handle_ownerless_output setup implementation current.current.native
+      native ⟨message.id, message.payload.packet.call⟩ event ownerless rawAccepted
+    have normalized := sourceReplay_settle_ownerless_output setup current.phases
+      current.generation current.entry
+      (current.current.inclusionResult message.payload.packet.call native) current.retired event
+      ownerless (same.trans raw.symm)
+    exact normalized.trans raw
+  · cases accepted
+
+omit [Fintype Player] in
+private theorem sourceReplay_phase_environment_ownerless_output
+    (current next : PhaseRuntimeState (serviceGraph setup .concurrent))
+    (command : EnvironmentCommand (serviceGraph setup .concurrent))
+    (event : (serviceGraph setup .concurrent).EventId)
+    (ownerless : (serviceGraph setup .concurrent).actor? event = none)
+    (same : current.entry.native.config.outputs event = current.current.native.config.outputs event)
+    (other : command ≠ .executeSample event)
+    (moved : next ∈ (current.environment implementation.runtime command).support) :
+    next.current.native.config.outputs event = current.current.native.config.outputs event := by
+  unfold PhaseRuntimeState.environment at moved
+  split at moved
+  · obtain ⟨native, rawMoved, rfl⟩ := (PMF.mem_support_map_iff ..).mp moved
+    have raw := sourceReplay_environment_ownerless_output setup implementation
+      current.current.native native command event ownerless other rawMoved
+    have normalized := sourceReplay_settle_ownerless_output setup current.phases
+      current.generation current.entry (current.current.environmentResult command native)
+      current.retired event ownerless (same.trans raw.symm)
+    exact normalized.trans raw
+  · cases (PMF.mem_support_pure_iff _ _).mp moved
+    rfl
+
+omit [Fintype Player] in
+private theorem sourceReplay_reactive_environment_ownerless_output
+    (current next : (nativeApplication).Execution) (command : (nativeApplication).Command)
+    (event : (serviceGraph setup .concurrent).EventId)
+    (ownerless : (serviceGraph setup .concurrent).actor? event = none)
+    (same : current.application.entry.native.config.outputs event =
+      current.application.current.native.config.outputs event)
+    (other : command ≠ .application (.executeSample event))
+    (moved : next ∈ (current.environmentStep nativeApplication command).support) :
+    next.application.current.native.config.outputs event =
+      current.application.current.native.config.outputs event := by
+  unfold ReactiveApplication.Execution.environmentStep at moved
+  rw [PMF.support_map] at moved
+  obtain ⟨updated, supported, rfl⟩ := moved
+  cases command with
+  | wait =>
+      cases (PMF.mem_support_pure_iff _ _).mp supported
+      rfl
+  | activate owner =>
+      obtain ⟨network, _supported, rfl⟩ := (PMF.mem_support_map_iff ..).mp supported
+      rfl
+  | «include» id =>
+      cases (PMF.mem_support_pure_iff _ _).mp supported
+      change (current.includePending nativeApplication id).application.current.native.config.outputs
+        event = current.application.current.native.config.outputs event
+      unfold ReactiveApplication.Execution.includePending
+      cases included : current.network.includePending id with
+      | mk envelope network =>
+          cases envelope with
+          | none => rfl
+          | some message =>
+              dsimp only
+              change ((current.application.handle implementation.runtime message).getD
+                current.application).current.native.config.outputs event = _
+              cases accepted : current.application.handle implementation.runtime message with
+              | none => rfl
+              | some application =>
+                  exact sourceReplay_phase_handle_ownerless_output setup implementation
+                    current.application application message event ownerless same accepted
+  | application operation =>
+      obtain ⟨application, applicationMoved, rfl⟩ := (PMF.mem_support_map_iff ..).mp supported
+      exact sourceReplay_phase_environment_ownerless_output setup implementation
+        current.application application operation event ownerless same
+          (fun equal => other (by cases equal; rfl))
+            applicationMoved
+
+private theorem sourceReplay_environment_crossed_rank_owned
+    (current next : (nativeApplication).Execution)
+    (first : RecoverySourceWitness setup .concurrent implementation.plan current.application)
+    (last : RecoverySourceWitness setup .concurrent implementation.plan next.application)
+    (live : current.application.Live) (nonempty : current.application.phases ≠ [])
+    (command : (nativeApplication).Command)
+    (event : (serviceGraph setup .concurrent).EventId)
+    (other : command ≠ .application (.executeSample event))
+    (moved : next ∈ (current.environmentStep nativeApplication command).support)
+    (lower : current.application.attempt.phase ≤ event.val)
+    (upper : event.val < next.application.attempt.phase) :
+    ∃ owner, eventOwner? setup.program event = some owner := by
+  cases acting : (serviceGraph setup .concurrent).actor? event with
+  | some owner =>
+      refine ⟨owner, ?_⟩
+      rw [eventOwner?_eq_actor]
+      exact acting
+  | none =>
+      have missing := sourceReplay_live_ownerless_missing setup current.application
+        first.order.frontier live event acting lower
+      have same := sourceReplay_live_ownerless_saved_output setup current.application
+        first.order.frontier live first.stored nonempty event acting
+      have output := sourceReplay_reactive_environment_ownerless_output setup implementation
+        current next command event acting same other moved
+      have completed := sourceReplay_frontier_completed_before setup next.application
+        last.order.frontier event upper
+      have present := (next.application.current.native.config.output_available event).mpr completed
+      rw [output] at present
+      exact False.elim (missing
+        ((current.application.current.native.config.output_available event).mp present))
+
+private theorem sourceReplay_nonsample_interval_mass
+    (current next : (nativeApplication).Execution)
+    (first : RecoverySourceWitness setup .concurrent implementation.plan current.application)
+    (last : RecoverySourceWitness setup .concurrent implementation.plan next.application)
+    (live : current.application.Live) (nonempty : current.application.phases ≠ [])
+    (command : (nativeApplication).Command)
+    (nonsample : ∀ event : (serviceGraph setup .concurrent).EventId,
+      command ≠ .application (.executeSample event))
+    (moved : next ∈ (current.environmentStep nativeApplication command).support)
+    (retained : TracePrefix first.checkpoint.trace last.checkpoint.trace) :
+    last.checkpoint.trace.transitionMass = first.checkpoint.trace.transitionMass := by
+  apply sourceReplay_sample_free_interval_mass setup _ _ first.checkpoint.trace
+    last.checkpoint.trace retained
+  intro event lower upper
+  change instructionCount setup.program - ProtocolState.remaining setup.program
+    (first.checkpoint.residual.lift
+      (ProtocolState.entry first.checkpoint.residual.tail first.checkpoint.source)) ≤ event.val
+    at lower
+  change event.val < instructionCount setup.program - ProtocolState.remaining setup.program
+    (last.checkpoint.residual.lift
+      (ProtocolState.entry last.checkpoint.residual.tail last.checkpoint.source)) at upper
+  rw [first.checkpoint.saved_position] at lower
+  rw [last.checkpoint.saved_position] at upper
+  exact sourceReplay_environment_crossed_rank_owned setup implementation current next first last
+    live nonempty command event (nonsample event) moved lower upper
+
+omit [Fintype Player] in
+private theorem sourceReplay_sample_interval_mass
+    {Γ : SourceCtx Player L} {O : Finset VarId}
+    (name : VarId) (payload : L.Ty) (fresh : name ∉ Γ.map Prod.fst)
+    (law : L.DistExpr (SourcePublicCtx L Γ) payload)
+    (suffix : SourceProgram Player L ((name, .publicData payload) :: Γ) O)
+    (lift : ProtocolState (.sample name fresh law suffix) → ProtocolState setup.program)
+    (origin : ProtocolSuffix setup.program (.sample name fresh law suffix) lift)
+    (source : Config Player L Γ) (unique : (Γ.map Prod.fst).Nodup)
+    (refs : ContextRefs (graphLayout setup.program) Γ)
+    (embedding : OutputEmbedding (inputLayout setup.context) (outputLayout setup.program)
+      (.sample name fresh law suffix))
+    (aligned : CompiledReadoutSuffix setup.program (.sample name fresh law suffix) refs embedding)
+    (excluded : Finset Player) (generation : Nat)
+    (prior : setup.commitRecoveryProtocol.Trace (some (CommitRecoveryState.atPoint
+      (lift (ProtocolState.entry (.sample name fresh law suffix) source)) excluded generation)))
+    {state : PhaseRuntimeState (serviceGraph setup .concurrent)}
+    (last : RecoverySourceCheckpoint setup .concurrent state) (stored : state.StoredCheckpoint)
+    (retained : TracePrefix prior last.trace) (longer : prior.length < last.trace.length)
+    (value : L.Val payload)
+    (observed :
+      let head : Fin (eventCount (.sample name fresh law suffix)) := ⟨0, by simp [eventCount]⟩
+      let field : FieldRef (graphLayout setup.program) (.publicData payload) := by
+        simpa only [head, outputLayout, Fin.mk_zero, Fin.cases_zero] using embedding.ref head
+      field.get? state.current.native.config.store = some value)
+    (nonchance : ∀ event : Fin (eventCount setup.program),
+      instructionCount setup.program - instructionCount suffix ≤ event.val →
+      event.val < instructionCount setup.program - ProtocolState.remaining setup.program
+        (last.residual.lift (ProtocolState.entry last.residual.tail last.source)) →
+      ∃ owner, eventOwner? setup.program event = some owner) :
+    last.trace.transitionMass =
+      prior.transitionMass * (L.evalDist law (sourcePublicEnv source.state) value).toReal := by
+  let sourceStart := CommitRecoveryState.atPoint
+    (lift (ProtocolState.entry (.sample name fresh law suffix) source)) excluded generation
+  rcases retained.reachesWithin.eq_or_step with sameHistory | firstStep
+  · have lengths := congrArg (fun history : setup.commitRecoveryProtocol.History =>
+      history.trace.length) sameHistory
+    change prior.length = last.trace.length at lengths
+    omega
+  · obtain ⟨joint, legal, reached, moved, fuel, onward⟩ := firstStep
+    obtain ⟨next, supported, rfl⟩ := (PMF.mem_support_map_iff ..).mp moved
+    have notCommit : ProtocolState.atCommit setup.program sourceStart.point = false := by
+      simp only [sourceStart, CommitRecoveryState.atPoint, origin.atCommit_lift,
+        ProtocolState.entry, ProtocolState.atCommit, Sum.elim_inl]
+    have kernel : sourceStart.step joint =
+        (L.evalDist law (sourcePublicEnv source.state)).map (fun sampled =>
+          CommitRecoveryState.atPoint
+            (lift (.inr (ProtocolState.entry suffix (sampleSuccessor name source sampled))))
+            excluded generation) := by
+      rw [sourceStart.step_noncommit_law (CommitRecoveryState.atPoint_blockFrontier _ _ _)
+        notCommit joint]
+      change (ProtocolState.recoveryStep setup.program
+        (lift (ProtocolState.entry (.sample name fresh law suffix) source)) excluded joint).map _ =
+          _
+      rw [origin.recoveryStep_lift]
+      simp only [ProtocolState.recoveryStep, ProtocolState.entry, Sum.elim_inl, PMF.map_comp,
+        Function.comp_def]
+      rfl
+    change next ∈ (sourceStart.step joint).support at supported
+    rw [kernel] at supported
+    obtain ⟨sampled, _sampledSupport, rfl⟩ := (PMF.mem_support_map_iff ..).mp supported
+    let head : Fin (eventCount (.sample name fresh law suffix)) := ⟨0, by simp [eventCount]⟩
+    let field : FieldRef (graphLayout setup.program) (.publicData payload) := by
+      simpa only [head, outputLayout, Fin.mk_zero, Fin.cases_zero] using embedding.ref head
+    let nextRefs := ContextRefs.cons (name := name) (cell := .publicData payload) field refs
+    let nextEmbedding := embedding.tail suffix (by simp only [eventCount]) (fun _ => rfl)
+    have nextAligned : CompiledReadoutSuffix setup.program suffix nextRefs nextEmbedding :=
+      aligned.sampleTail setup.program fresh law suffix refs embedding
+    have nextUnique : (((name, .publicData payload) :: Γ).map Prod.fst).Nodup := by
+      simpa only [List.map_cons] using List.nodup_cons.mpr ⟨fresh, unique⟩
+    have agreement : nextRefs.Agrees (sampleSuccessor name source sampled).state
+        state.entry.native.config.store :=
+      sourceReplaySuffixSavedAgreement setup suffix
+        (fun point => lift (.inr point)) (origin.sampleTail fresh law suffix)
+        (sampleSuccessor name source sampled) nextUnique nextRefs nextEmbedding nextAligned _
+        (prior.extend joint legal moved) rfl rfl last onward.tracePrefix
+    have savedRead : field.get? state.entry.native.config.store = some sampled :=
+      agreement .here
+    have currentRead : field.get? state.current.native.config.store = some sampled :=
+      field.get?_preserved _ _ (fun query result present => stored query result present)
+        sampled savedRead
+    change field.get? state.current.native.config.store = some value at observed
+    have sameValue : sampled = value := Option.some.inj (currentRead.symm.trans observed)
+    subst sampled
+    have tailMass : last.trace.transitionMass =
+        (prior.extend joint legal moved).transitionMass := by
+      apply sourceReplay_sample_free_interval_mass setup _ _
+        (prior.extend joint legal moved) last.trace onward.tracePrefix
+      intro event lower upper
+      apply nonchance event
+      · simpa only [CommitRecoveryState.atPoint, origin.remaining_lift,
+          ProtocolState.remaining, Sum.elim_inr, ProtocolState.remaining_entry] using lower
+      · exact upper
+    have atom : (setup.commitRecoveryProtocol.step (some sourceStart) ⟨joint, legal⟩)
+        (some (CommitRecoveryState.atPoint
+          (lift (.inr (ProtocolState.entry suffix (sampleSuccessor name source value))))
+          excluded generation)) = L.evalDist law (sourcePublicEnv source.state) value := by
+      change ((sourceStart.step joint).map some) _ = _
+      rw [pmf_map_apply_of_injective _ (Option.some_injective _)]
+      exact sourceReplay_source_sample_atom setup name payload fresh law suffix lift origin
+        source excluded generation joint value
+    rw [tailMass, Trace.transitionMass_extend, atom]
+
+private theorem sourceReplay_nonsample_environment_atom
+    (operational : implementation.Operational)
+    (current next : (nativeApplication).Execution) (command : (nativeApplication).Command)
+    (nonsample : ∀ event : (serviceGraph setup .concurrent).EventId,
+      command ≠ .application (.executeSample event))
+    (moved : next ∈ (current.environmentStep nativeApplication command).support) :
+    current.environmentStep nativeApplication command next = 1 := by
+  have deterministic : ∃ ending,
+      current.environmentStep nativeApplication command = PMF.pure ending := by
+    cases command with
+    | activate owner =>
+        have complete : (nativeApplication).observePending =
+            MessageNetwork.completePendingObservation := operational.completePending
+        rw [ReactiveApplication.Execution.activation_samples, complete]
+        simp only [MessageNetwork.completePendingObservation, PMF.pure_map]
+        exact ⟨_, rfl⟩
+    | wait =>
+        simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map]
+        exact ⟨_, rfl⟩
+    | «include» id =>
+        simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map]
+        exact ⟨_, rfl⟩
+    | application operation =>
+        cases operation with
+        | executeSample event => exact (nonsample event rfl).elim
+        | advanceClock =>
+            change ∃ ending, (PMF.map _ (PMF.map _
+              (PhaseRuntimeState.environment implementation.runtime current.application
+                .advanceClock))) =
+                PMF.pure ending
+            simp only [PhaseRuntimeState.environment, environmentStep]
+            split <;> simp only [PMF.pure_map] <;> exact ⟨_, rfl⟩
+        | expire event =>
+            change ∃ ending, (PMF.map _ (PMF.map _
+              (PhaseRuntimeState.environment implementation.runtime current.application
+                (.expire event)))) =
+                PMF.pure ending
+            simp only [PhaseRuntimeState.environment, environmentStep]
+            split <;> simp only [PMF.pure_map] <;> exact ⟨_, rfl⟩
+  obtain ⟨ending, kernel⟩ := deterministic
+  rw [kernel, PMF.mem_support_pure_iff] at moved
+  cases moved
+  rw [kernel, PMF.pure_apply_self]
+
+private theorem sourceReplay_sample_command_interval_mass
+    (current next : (nativeApplication).Execution)
+    (first : RecoverySourceWitness setup .concurrent implementation.plan current.application)
+    (last : RecoverySourceWitness setup .concurrent implementation.plan next.application)
+    (live : current.application.Live)
+    (phase : RuntimePhase (serviceGraph setup .concurrent))
+    (remaining : List (RuntimePhase (serviceGraph setup .concurrent)))
+    (installed : current.application.phases = phase :: remaining) (kind : phase.kind = .sample)
+    (event : (serviceGraph setup .concurrent).EventId)
+    (ready : current.application.current.native.config.cut.Ready event)
+    (allowed : current.application.commandAllowed (.executeSample event) = true)
+    (moved : next ∈
+      (current.environmentStep nativeApplication (.application (.executeSample event))).support)
+    (retained : TracePrefix first.checkpoint.trace last.checkpoint.trace) :
+    last.checkpoint.trace.transitionMass = first.checkpoint.trace.transitionMass *
+      (current.environmentStep nativeApplication
+        (.application (.executeSample event)) next).toReal := by
+  have nonempty : current.application.phases ≠ [] := by
+    rw [installed]
+    exact List.cons_ne_nil _ _
+  have low : phase.low = current.application.attempt.phase := by
+    simp only [PhaseRuntimeState.attempt, installed, List.head?_cons, Option.map_some,
+      Option.getD_some]
+  have inside : event ∈ phase.events := by
+    simpa only [PhaseRuntimeState.commandAllowed, installed, List.head?_cons, Option.any_some,
+      decide_eq_true_eq] using allowed
+  have bounds := (phase.mem_events event).mp inside
+  have singleton := phase.sample_singleton kind
+  have eventRank : event.val = current.application.attempt.phase := by omega
+  have applicationMoved : next.application ∈
+      (current.application.environment implementation.runtime (.executeSample event)).support := by
+    have supported := moved
+    unfold ReactiveApplication.Execution.environmentStep at supported
+    obtain ⟨updated, supported, endingEq⟩ := (PMF.mem_support_map_iff ..).mp supported
+    have applicationEq := congrArg (fun execution : (nativeApplication).Execution =>
+      execution.application) endingEq
+    change updated.application = next.application at applicationEq
+    obtain ⟨application, supported, updatedEq⟩ := (PMF.mem_support_map_iff ..).mp supported
+    have updatedApplication := congrArg (fun execution : (nativeApplication).Execution =>
+      execution.application) updatedEq
+    change application = updated.application at updatedApplication
+    rw [← applicationEq, ← updatedApplication]
+    exact supported
+  have ownerless : (serviceGraph setup .concurrent).actor? event = none := by
+    have output := phase.fields event bounds.1 bounds.2
+    rw [kind] at output
+    obtain ⟨payload, output⟩ := output
+    cases viewed : nodeView (serviceGraph setup .concurrent) event with
+    | bind owner ty shape code => cases shape.symm.trans output
+    | resolve owner ty binding checks shape code => cases shape.symm.trans output
+    | sample ty law shape code =>
+        exact (EventCode.actor_cast shape _).symm.trans (congrArg EventCode.actor code)
+  have advanced := PhaseRuntimeState.sample_advances_phase implementation.runtime
+    current.application next.application first.order.frontier phase
+      (by rw [installed]; rfl) kind event (by omega) ready ownerless applicationMoved
+  have longer : first.checkpoint.trace.length < last.checkpoint.trace.length := by
+    have bounded := retained.length_le
+    by_contra notLonger
+    have same := retained.eq_of_length (by omega)
+    have ranks := congrArg (fun history : setup.commitRecoveryProtocol.History =>
+      history.state.map (fun state => instructionCount setup.program -
+        ProtocolState.remaining setup.program state.saved)) same
+    have sameRank : current.application.attempt.phase = next.application.attempt.phase := by
+      simpa only [Option.map_some, CommitRecoveryState.atPoint,
+        first.checkpoint.saved_position, last.checkpoint.saved_position] using Option.some.inj ranks
+    omega
+  generalize checkpointEq : first.checkpoint = checkpoint at retained longer ⊢
+  rcases checkpoint with ⟨⟨Γ, O, program, lift⟩, source, refs, registry, embedding, before,
+    compiled, terminalAligned, agrees, guards, failures, unique, ranks, actors, commits,
+    owners, endpoints, automatic, histories, memories, steps, menus, readouts, prior,
+    views, historyAlignment, origin⟩
+  have total := compiled.countEq
+  have positive : 0 < eventCount program := by
+    have bounded := event.isLt
+    change event.val < eventCount setup.program at bounded
+    change current.application.attempt.phase + eventCount program = eventCount setup.program
+      at total
+    omega
+  let zero : Fin (eventCount program) := ⟨0, positive⟩
+  have ranked : (embedding.event zero).val = current.application.attempt.phase := by
+    have ranked := compiled.rankEq zero
+    dsimp only [zero] at ranked
+    omega
+  have sameEvent : event = embedding.event zero := Fin.ext (eventRank.trans ranked.symm)
+  have headSample : RuntimePhaseKind.sample.Matches (outputLayout program zero) := by
+    have typed := phase.fields (embedding.event zero) (by omega) (by omega)
+    rw [kind] at typed
+    change RuntimePhaseKind.sample.Matches (outputLayout setup.program (embedding.event zero))
+      at typed
+    rw [embedding.layout_eq] at typed
+    exact typed
+  cases program with
+  | ret payoffs => simp only [eventCount] at positive; omega
+  | commit name owner fresh guard suffix =>
+      obtain ⟨payload, impossible⟩ := headSample
+      cases impossible
+  | reveal published owner name fresh selected unresolved suffix =>
+      obtain ⟨payload, impossible⟩ := headSample
+      cases impossible
+  | @sample _ _ name payload fresh law suffix =>
+      subst event
+      have output : (serviceGraph setup .concurrent).outputLayout (embedding.event zero) =
+          .publicData payload := by
+        change outputLayout setup.program (embedding.event zero) = .publicData payload
+        simpa only [zero, outputLayout, Fin.mk_zero, Fin.cases_zero] using embedding.layout_eq zero
+      have code : cast (congrArg (EventCode (graphLayout setup.program)) output)
+          ((serviceGraph setup .concurrent).nodes (embedding.event zero)) =
+            .sample payload (compilePublicDist refs law) := by
+        change cast (congrArg (EventCode (graphLayout setup.program)) output)
+          ((toEventGraph setup.program).nodes (embedding.event zero)) =
+            .sample payload (compilePublicDist refs law)
+        simpa only [zero, compileRankedNodes, outputLayout, Fin.mk_zero, Fin.cases_zero]
+          using compiled.nodeEq zero
+      have currentAgrees :
+          refs.Agrees source.state current.application.current.native.config.store := by
+        intro readName cell selected
+        exact (refs.get selected).get?_preserved _ _
+          (fun field value present => first.stored field value present) _ (agrees selected)
+      let draw := L.evalDist law (sourcePublicEnv source.state)
+      have evaluates : (compilePublicDist refs law).eval?
+          current.application.current.native.config.store = some draw := by
+        rw [PublicDist.eval?, compilePublicDist_evalLaw? refs source.state _ currentAgrees law]
+        rfl
+      have kernel := PhaseBindingRepair.sample_environment_law implementation.runtime
+        implementation.leaks current (embedding.event zero) ready payload
+          (compilePublicDist refs law) output code (nodeView_eq_sample output code) allowed
+            draw evaluates
+      have supported := moved
+      rw [kernel] at supported
+      obtain ⟨value, _sampled, nextEq⟩ := (PMF.mem_support_map_iff ..).mp supported
+      cases nextEq
+      let raw := PhaseBindingRepair.rawSample implementation.runtime implementation.leaks current
+        (embedding.event zero) payload output ready value
+      have kept := PhaseRuntimeState.normalize_keepsStore_of_noncommitment raw.application phase
+        remaining installed (by rw [kind]; decide)
+      have nativeRead :
+          let head : Fin (eventCount (.sample name fresh law suffix)) :=
+            ⟨0, by simp only [eventCount]; omega⟩
+          let field : FieldRef (graphLayout setup.program) (.publicData payload) := by
+            simpa only [head, outputLayout, Fin.mk_zero, Fin.cases_zero] using embedding.ref head
+          field.get? (PhaseRuntimeState.normalizeExecution implementation.runtime
+            implementation.leaks raw).application.current.native.config.store = some value := by
+        dsimp only
+        apply FieldRef.get?_preserved _ _ _
+          (fun field result present => kept field result present)
+        change cast (congrArg (fun kind => Option kind.Value) output)
+          ((current.application.current.native.complete (embedding.event zero) ready
+            (cast (congrArg EventField.Action output.symm) PUnit.unit)
+            (cast (congrArg EventField.Value output.symm) value)).config.outputs
+              (embedding.event zero)) = some value
+        change cast (congrArg (fun kind => Option kind.Value) output)
+          ((current.application.current.native.config.complete (embedding.event zero) ready
+            (cast (congrArg EventField.Action output.symm) PUnit.unit)
+            (cast (congrArg EventField.Value output.symm) value)).outputs
+              (embedding.event zero)) = some value
+        rw [Config.complete_output_same]
+        have castSome {A B : Type} (same : A = B) (item : A) :
+            cast (congrArg Option same) (some item) = some (cast same item) := by
+          cases same
+          rfl
+        rw [castSome (congrArg EventField.Value output), cast_cast]
+        simp only [cast_eq]
+      have sourceMass := sourceReplay_sample_interval_mass setup name payload fresh law suffix
+        lift origin source unique refs embedding terminalAligned current.application.entry.excluded
+          current.application.generation prior last.checkpoint last.stored retained longer value
+            nativeRead (by
+              intro query lower upper
+              have afterSample : current.application.attempt.phase + 1 =
+                  instructionCount setup.program - instructionCount suffix := by
+                simp only [eventCount, eventCount_eq_instructionCount] at total
+                omega
+              have queryLower : current.application.attempt.phase ≤ query.val := by omega
+              have queryUpper : query.val <
+                  (PhaseRuntimeState.normalizeExecution implementation.runtime
+                    implementation.leaks raw).application.attempt.phase := by
+                change query.val < instructionCount setup.program -
+                  ProtocolState.remaining setup.program
+                    (last.checkpoint.residual.lift (ProtocolState.entry
+                      last.checkpoint.residual.tail last.checkpoint.source)) at upper
+                rwa [last.checkpoint.saved_position] at upper
+              exact sourceReplay_environment_crossed_rank_owned setup implementation current _
+                first last live nonempty (.application (.executeSample (embedding.event zero)))
+                  query (by intro equal; cases equal; omega) moved queryLower queryUpper)
+      have atom := sourceReplay_sample_atom setup implementation current (embedding.event zero)
+        ready payload (compilePublicDist refs law) output code allowed draw evaluates value
+      rw [sourceMass, atom]
+
+omit [Fintype Player] in
+private theorem sourceReplay_same_attempt_interval_mass
+    {before after : PhaseRuntimeState (serviceGraph setup .concurrent)}
+    (first : RecoverySourceCheckpoint setup .concurrent before)
+    (last : RecoverySourceCheckpoint setup .concurrent after)
+    (same : before.attempt = after.attempt) (retained : TracePrefix first.trace last.trace) :
+    last.trace.transitionMass = first.trace.transitionMass := by
+  have generation := congrArg CommitAttemptId.generation same
+  have phases := congrArg CommitAttemptId.phase same
+  have counts := setup.commitRecovery_same_generation_length retained.reachesWithin _ _ rfl rfl
+    generation
+  have firstPosition := first.saved_position
+  have lastPosition := last.saved_position
+  have firstBound := ProtocolState.remaining_le_instructionCount setup.program
+    (first.residual.lift (ProtocolState.entry first.residual.tail first.source))
+  have lastBound := ProtocolState.remaining_le_instructionCount setup.program
+    (last.residual.lift (ProtocolState.entry last.residual.tail last.source))
+  have lengths : first.trace.length = last.trace.length := by
+    change ProtocolState.remaining setup.program
+        (last.residual.lift (ProtocolState.entry last.residual.tail last.source)) +
+          last.trace.length =
+      ProtocolState.remaining setup.program
+        (first.residual.lift (ProtocolState.entry first.residual.tail first.source)) +
+          first.trace.length at counts
+    omega
+  have histories := retained.eq_of_length lengths
+  exact (congrArg (fun history : setup.commitRecoveryProtocol.History =>
+    history.trace.transitionMass) histories).symm
+
+private theorem sourceReplay_stuttering_sample_interval_mass
+    (current next : (nativeApplication).Execution)
+    (first : RecoverySourceWitness setup .concurrent implementation.plan current.application)
+    (last : RecoverySourceWitness setup .concurrent implementation.plan next.application)
+    (live : current.application.Live) (nonempty : current.application.phases ≠ [])
+    (event : (serviceGraph setup .concurrent).EventId)
+    (allowed : current.application.commandAllowed (.executeSample event) = true)
+    (rawKernel : environmentStep implementation.runtime current.application.current.native
+      (.executeSample event) = PMF.pure current.application.current.native)
+    (moved : next ∈
+      (current.environmentStep nativeApplication (.application (.executeSample event))).support)
+    (retained : TracePrefix first.checkpoint.trace last.checkpoint.trace) :
+    last.checkpoint.trace.transitionMass = first.checkpoint.trace.transitionMass *
+      (current.environmentStep nativeApplication
+        (.application (.executeSample event)) next).toReal := by
+  have rawState : current.application.current.environmentResult (.executeSample event)
+      current.application.current.native = current.application.current := by
+    cases current.application.current
+    rfl
+  have kernel : current.environmentStep nativeApplication (.application (.executeSample event)) =
+      PMF.pure { current with
+        application := current.application.normalize
+        environmentRecall := current.environmentRecall ++
+          [⟨current.observeEnvironment nativeApplication,
+            .application (.executeSample event)⟩] } := by
+    change PMF.map _ (PMF.map _
+      (PhaseRuntimeState.environment implementation.runtime current.application
+        (.executeSample event))) = _
+    simp only [PhaseRuntimeState.environment,
+      allowed, ↓reduceIte, rawKernel, PMF.pure_map]
+    rw [rawState]
+    rfl
+  have supported := moved
+  rw [kernel, PMF.mem_support_pure_iff] at supported
+  cases supported
+  have sourceMass : last.checkpoint.trace.transitionMass =
+      first.checkpoint.trace.transitionMass := by
+    apply sourceReplay_sample_free_interval_mass setup _ _ first.checkpoint.trace
+      last.checkpoint.trace retained
+    intro query lower upper
+    change instructionCount setup.program - ProtocolState.remaining setup.program
+      (first.checkpoint.residual.lift
+        (ProtocolState.entry first.checkpoint.residual.tail first.checkpoint.source)) ≤ query.val
+      at lower
+    change query.val < instructionCount setup.program - ProtocolState.remaining setup.program
+      (last.checkpoint.residual.lift
+        (ProtocolState.entry last.checkpoint.residual.tail last.checkpoint.source)) at upper
+    rw [first.checkpoint.saved_position] at lower
+    rw [last.checkpoint.saved_position] at upper
+    cases acting : (serviceGraph setup .concurrent).actor? query with
+    | some owner =>
+        refine ⟨owner, ?_⟩
+        rw [eventOwner?_eq_actor]
+        exact acting
+    | none =>
+        have same := sourceReplay_live_ownerless_saved_output setup current.application
+          first.order.frontier live first.stored nonempty query acting
+        have output := sourceReplay_settle_ownerless_output setup current.application.phases
+          current.application.generation current.application.entry current.application.current
+          current.application.retired query acting same
+        have completed := sourceReplay_frontier_completed_before setup _ last.order.frontier query
+          upper
+        have available := current.application.normalize.current.native.config.output_available query
+        have present := available.mpr completed
+        unfold PhaseRuntimeState.normalize at present
+        rw [output] at present
+        have oldCompleted := (current.application.current.native.config.output_available query).mp
+          present
+        exact (sourceReplay_live_ownerless_missing setup current.application first.order.frontier
+          live query acting lower oldCompleted).elim
+  rw [sourceMass, kernel, PMF.pure_apply_self, ENNReal.toReal_one, mul_one]
+
+private theorem sourceReplay_disallowed_sample_interval_mass
+    (current next : (nativeApplication).Execution)
+    (first : RecoverySourceWitness setup .concurrent implementation.plan current.application)
+    (last : RecoverySourceWitness setup .concurrent implementation.plan next.application)
+    (event : (serviceGraph setup .concurrent).EventId)
+    (disallowed : current.application.commandAllowed (.executeSample event) = false)
+    (moved : next ∈
+      (current.environmentStep nativeApplication (.application (.executeSample event))).support)
+    (retained : TracePrefix first.checkpoint.trace last.checkpoint.trace) :
+    last.checkpoint.trace.transitionMass = first.checkpoint.trace.transitionMass *
+      (current.environmentStep nativeApplication
+        (.application (.executeSample event)) next).toReal := by
+  have kernel : current.environmentStep nativeApplication (.application (.executeSample event)) =
+      PMF.pure { current with environmentRecall := current.environmentRecall ++
+        [⟨current.observeEnvironment nativeApplication,
+          .application (.executeSample event)⟩] } := by
+    change PMF.map _ (PMF.map _
+      (PhaseRuntimeState.environment implementation.runtime current.application
+        (.executeSample event))) = _
+    simp only [PhaseRuntimeState.environment,
+      disallowed, Bool.false_eq_true, ↓reduceIte, PMF.pure_map]
+  have supported := moved
+  rw [kernel, PMF.mem_support_pure_iff] at supported
+  cases supported
+  have sourceMass := sourceReplay_same_attempt_interval_mass setup first.checkpoint
+    last.checkpoint rfl retained
+  rw [sourceMass, kernel, PMF.pure_apply_self, ENNReal.toReal_one, mul_one]
+
+private theorem sourceReplay_environment_interval_mass
+    (operational : implementation.Operational)
+    (current next : (nativeApplication).Execution)
+    (first : RecoverySourceWitness setup .concurrent implementation.plan current.application)
+    (last : RecoverySourceWitness setup .concurrent implementation.plan next.application)
+    (live : current.application.Live) (command : (nativeApplication).Command)
+    (moved : next ∈ (current.environmentStep nativeApplication command).support)
+    (retained : TracePrefix first.checkpoint.trace last.checkpoint.trace) :
+    last.checkpoint.trace.transitionMass = first.checkpoint.trace.transitionMass *
+      ((current.environmentStep nativeApplication command) next).toReal := by
+  have nonsampleCase (nonsample : ∀ event : (serviceGraph setup .concurrent).EventId,
+      command ≠ .application (.executeSample event)) :
+      last.checkpoint.trace.transitionMass = first.checkpoint.trace.transitionMass *
+        ((current.environmentStep nativeApplication command) next).toReal := by
+    have atom := sourceReplay_nonsample_environment_atom setup implementation operational current
+      next command nonsample moved
+    have sourceMass : last.checkpoint.trace.transitionMass =
+        first.checkpoint.trace.transitionMass := by
+      by_cases empty : current.application.phases = []
+      · apply sourceReplay_sample_free_interval_mass setup _ _ first.checkpoint.trace
+          last.checkpoint.trace retained
+        intro event lower _upper
+        change instructionCount setup.program - ProtocolState.remaining setup.program
+          (first.checkpoint.residual.lift
+            (ProtocolState.entry first.checkpoint.residual.tail first.checkpoint.source)) ≤
+              event.val
+          at lower
+        rw [first.checkpoint.saved_position] at lower
+        simp only [PhaseRuntimeState.attempt, empty, List.head?_nil, Option.map_none,
+          Option.getD_none] at lower
+        have bounded := event.isLt
+        change event.val < eventCount setup.program at bounded
+        have counts := eventCount_eq_instructionCount setup.program
+        change eventCount setup.program ≤ event.val at lower
+        exact (by omega : False).elim
+      · exact sourceReplay_nonsample_interval_mass setup implementation current next first last live
+          empty command nonsample moved retained
+    rw [sourceMass, atom, ENNReal.toReal_one, mul_one]
+  cases command with
+  | activate owner => exact nonsampleCase (by intro event impossible; cases impossible)
+  | wait => exact nonsampleCase (by intro event impossible; cases impossible)
+  | «include» id => exact nonsampleCase (by intro event impossible; cases impossible)
+  | application operation =>
+      cases operation with
+      | advanceClock => exact nonsampleCase (by intro event impossible; cases impossible)
+      | expire address => exact nonsampleCase (by intro event impossible; cases impossible)
+      | executeSample event =>
+          by_cases allowed : current.application.commandAllowed (.executeSample event) = true
+          · have nonempty : current.application.phases ≠ [] := by
+              intro empty
+              simp only [PhaseRuntimeState.commandAllowed, empty, List.head?_nil, Option.any_none,
+                Bool.false_eq_true] at allowed
+            by_cases ready : current.application.current.native.config.cut.Ready event
+            · cases viewed : nodeView (serviceGraph setup .concurrent) event with
+              | bind owner payload output code =>
+                  have kernel := environmentStep_executeSample_of_nonsample implementation.runtime
+                    current.application.current.native event ready (by
+                      intro ty law shape code impossible
+                      rw [viewed] at impossible
+                      cases impossible)
+                  exact sourceReplay_stuttering_sample_interval_mass setup implementation current
+                    next first last live nonempty event allowed kernel moved retained
+              | resolve owner payload binding checks output code =>
+                  have kernel := environmentStep_executeSample_of_nonsample implementation.runtime
+                    current.application.current.native event ready (by
+                      intro ty law shape code impossible
+                      rw [viewed] at impossible
+                      cases impossible)
+                  exact sourceReplay_stuttering_sample_interval_mass setup implementation current
+                    next first last live nonempty event allowed kernel moved retained
+              | sample payload law output code =>
+                  obtain ⟨phase, remaining, installed⟩ : ∃ phase remaining,
+                      current.application.phases = phase :: remaining := by
+                    cases installed : current.application.phases with
+                    | nil => exact (nonempty installed).elim
+                    | cons phase remaining => exact ⟨phase, remaining, rfl⟩
+                  have inside : event ∈ phase.events := by
+                    simpa only [PhaseRuntimeState.commandAllowed, installed, List.head?_cons,
+                      Option.any_some, decide_eq_true_eq] using allowed
+                  have bounds := (phase.mem_events event).mp inside
+                  have typed := phase.fields event bounds.1 bounds.2
+                  have kind : phase.kind = .sample := by
+                    cases kind : phase.kind with
+                    | sample => rfl
+                    | commitment =>
+                        rw [kind] at typed
+                        obtain ⟨owner, ty, impossible⟩ := typed
+                        cases impossible.symm.trans output
+                    | reveal =>
+                        rw [kind] at typed
+                        obtain ⟨ty, impossible⟩ := typed
+                        cases impossible.symm.trans output
+                  exact sourceReplay_sample_command_interval_mass setup implementation current next
+                    first last live phase remaining installed kind event ready allowed moved
+                      retained
+            · have kernel := environmentStep_executeSample_of_not_ready implementation.runtime
+                current.application.current.native event ready
+              exact sourceReplay_stuttering_sample_interval_mass setup implementation current next
+                first last live nonempty event allowed kernel moved retained
+          · exact sourceReplay_disallowed_sample_interval_mass setup implementation current next
+              first last event (Bool.eq_false_iff.mpr allowed) moved retained
+
+private theorem sourceReplay_native_step_some
+    {before after : (nativeProtocol).State}
+    (joint : Player → Option (nativeApplication).Action)
+    (legal : (nativeProtocol).Legal before joint)
+    (moved : after ∈ ((nativeProtocol).step before ⟨joint, legal⟩).support) :
+    ∃ current, after = some current := by
+  cases before with
+  | none =>
+      obtain ⟨physical, _supported, same⟩ := (PMF.mem_support_map_iff ..).mp moved
+      exact ⟨_, same.symm⟩
+  | some current =>
+      rcases current with ⟨remaining, actor, execution⟩
+      cases actor with
+      | some owner =>
+          change after ∈ (PMF.pure (some
+            { remaining := remaining, actor := none,
+              execution := execution.respond nativeApplication owner ((joint owner).getD ⟨none⟩) })
+              : PMF (nativeProtocol).State).support at moved
+          cases (PMF.mem_support_pure_iff _ _).mp moved
+          exact ⟨_, rfl⟩
+      | none =>
+          cases remaining with
+          | zero =>
+              change after ∈ (PMF.pure (some ⟨0, none, execution⟩) :
+                PMF (nativeProtocol).State).support at moved
+              cases (PMF.mem_support_pure_iff _ _).mp moved
+              exact ⟨_, rfl⟩
+          | succ remaining =>
+              change after ∈ ((implementation.scheduler execution.environmentRecall
+                (execution.observeEnvironment nativeApplication)).bind fun command =>
+                  (execution.environmentStep nativeApplication command).map fun next =>
+                    some (⟨remaining, command.actor? nativeApplication, next⟩ :
+                      (nativeApplication).Control)).support at moved
+              obtain ⟨command, _chosen, supported⟩ :=
+                Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ moved)
+              obtain ⟨next, _advanced, same⟩ := (PMF.mem_support_map_iff ..).mp supported
+              exact ⟨_, same.symm⟩
+
+private theorem sourceReplay_native_none_trace
+    (trace : (nativeProtocol).Trace none) : trace = .start := by
+  have unique : ∀ {state : (nativeProtocol).State} (history : (nativeProtocol).Trace state),
+      state = none → HEq history (Trace.start : (nativeProtocol).Trace (nativeProtocol).init) := by
+    intro state history stateEq
+    cases history with
+    | start => rfl
+    | extend prior joint legal moved =>
+        obtain ⟨current, present⟩ := sourceReplay_native_step_some setup implementation
+          joint legal moved
+        rw [stateEq] at present
+        cases present
+  exact eq_of_heq (unique trace rfl)
+
+private theorem sourceReplay_native_live
+    (current : (nativeApplication).Control)
+    (trace : (nativeProtocol).Trace (some current)) : current.execution.application.Live := by
+  have raw := (nativeMenu).toRawTrace nativeInitial implementation.horizon
+    implementation.scheduler trace
+  have living := (phaseApplication_live implementation.runtime implementation.leaks).history
+    nativeInitial implementation.horizon implementation.scheduler
+      (fun (state : PhaseRuntimeState (serviceGraph setup .concurrent)) supported => by
+      change state ∈ (setup.initialLaw.map fun draw =>
+        PhaseRuntimeState.initial implementation.plan (encodeInputs draw)).support at supported
+      obtain ⟨inputs, _supported, rfl⟩ := (PMF.mem_support_map_iff ..).mp supported
+      exact ⟨PhaseRuntimeState.initial_frontier implementation.plan _,
+        PhaseRuntimeState.initial_live implementation.plan _⟩) raw
+  exact living.2
+
+/-- The actual selected source chronology retains the whole correlated
+initializer and every original public Nature atom. -/
+private theorem sourceReplay_nature_mass_eq_canonical
+    (operational : implementation.Operational)
+    (control : (nativeApplication).Control)
+    (trace : (nativeProtocol).Trace (some control)) :
+    sourceReplayNatureMass setup implementation trace =
+      (canonicalSource setup implementation operational ⟨_, trace⟩).trace.transitionMass := by
+  have semantic : ∀ {state : (nativeProtocol).State} (trace : (nativeProtocol).Trace state),
+      match state, checkpointSelection setup implementation operational trace with
+      | none, _ => sourceReplayNatureMass setup implementation trace = 1
+      | some _, selected => sourceReplayNatureMass setup implementation trace =
+          selected.val.checkpoint.trace.transitionMass := by
+    intro state trace
+    induction trace with
+    | start => rfl
+    | @extend before after prior joint legal moved ih =>
+        obtain ⟨ending, rfl⟩ := sourceReplay_native_step_some setup implementation joint legal moved
+        cases before with
+        | none =>
+            cases sourceReplay_native_none_trace setup implementation prior
+            have sourceStart := sourceReplay_initial_nature_mass setup implementation operational
+              ending joint legal moved
+            simpa only [canonicalSource, sourceReplay_lift_mass] using sourceStart
+        | some current =>
+            let first := (checkpointSelection setup implementation operational prior).val
+            let last := (checkpointSelection setup implementation operational
+              (prior.extend joint legal moved)).val
+            have retained := checkpointSelection_prefix setup implementation operational current
+              ending prior (prior.extend joint legal moved) (.extend .refl joint legal moved)
+            change sourceReplayNatureMass setup implementation prior =
+              first.checkpoint.trace.transitionMass at ih
+            change sourceReplayNatureMass setup implementation prior *
+              (sourceReplayNatureStepAtom setup implementation (some current)
+                (some ending)).toReal =
+                last.checkpoint.trace.transitionMass
+            rw [ih]
+            rcases current with ⟨remaining, actor, execution⟩
+            cases actor with
+            | some owner =>
+                change some ending ∈ (PMF.pure (some
+                  { remaining := remaining, actor := none,
+                    execution := execution.respond nativeApplication owner
+                      ((joint owner).getD ⟨none⟩) }) : PMF (nativeProtocol).State).support at moved
+                cases (PMF.mem_support_pure_iff _ _).mp moved
+                have same : execution.application.attempt =
+                    (execution.respond nativeApplication owner
+                      ((joint owner).getD ⟨none⟩)).application.attempt := by
+                  cases (joint owner).getD ⟨none⟩ with
+                  | mk transmission => cases transmission <;> rfl
+                have mass := sourceReplay_same_attempt_interval_mass setup first.checkpoint
+                  last.checkpoint same retained
+                simpa only [sourceReplayNatureStepAtom, ENNReal.toReal_one, mul_one] using mass.symm
+            | none =>
+                cases remaining with
+                | zero =>
+                    change some ending ∈ (PMF.pure (some ⟨0, none, execution⟩) :
+                      PMF (nativeProtocol).State).support at moved
+                    cases (PMF.mem_support_pure_iff _ _).mp moved
+                    have mass := sourceReplay_same_attempt_interval_mass setup first.checkpoint
+                      last.checkpoint rfl retained
+                    simpa only [sourceReplayNatureStepAtom, ↓reduceIte, ENNReal.toReal_one,
+                      mul_one] using mass.symm
+                | succ remaining =>
+                    change some ending ∈ ((implementation.scheduler execution.environmentRecall
+                      (execution.observeEnvironment nativeApplication)).bind fun command =>
+                        (execution.environmentStep nativeApplication command).map fun next =>
+                          some (⟨remaining, command.actor? nativeApplication, next⟩ :
+                            (nativeApplication).Control)).support at moved
+                    obtain ⟨command, _chosen, supported⟩ :=
+                      Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ moved)
+                    obtain ⟨next, advanced, same⟩ := (PMF.mem_support_map_iff ..).mp supported
+                    cases Option.some.inj same
+                    have living := sourceReplay_native_live setup implementation _ prior
+                    have mass := sourceReplay_environment_interval_mass setup implementation
+                      operational execution next first last living command advanced retained
+                    have recorded := (nativeApplication).environmentStep_environmentRecall
+                      execution next command advanced
+                    have latest : next.environmentRecall.getLast? =
+                        some ⟨execution.observeEnvironment nativeApplication, command⟩ := by
+                      rw [recorded, List.getLast?_concat]
+                    simpa only [sourceReplayNatureStepAtom, Nat.succ_ne_zero, ↓reduceIte, latest]
+                      using mass.symm
+  change sourceReplayNatureMass setup implementation trace =
+    (setup.proposalRecoveryLiftTrace _
+      (checkpointSelection setup implementation operational trace).val.checkpoint.trace
+      ).transitionMass
+  rw [sourceReplay_lift_mass]
+  exact semantic trace
+
 private def sourceReplayPacketMass (rates : PhaseProposalRates) (who : Player) :
     ∀ {state : (nativeProtocol).State}, (nativeProtocol).Trace state → ℝ
   | _, .start => 1
@@ -24743,6 +26261,7 @@ private theorem sourceReplay_mechanical_path_factor
 Nature. The packet product is retained literally for the subsequent proper-draw
 and alias partition; no division or zero-case convention is introduced. -/
 private theorem sourceReplay_prescribed_mechanical_atom
+    (operational : implementation.Operational)
     (rates : PhaseProposalRates) (who : Player)
     (tape : ReservedEpoch.Tape Player implementation.tapeLength)
     (control : (nativeApplication).Control)
@@ -24755,7 +26274,8 @@ private theorem sourceReplay_prescribed_mechanical_atom
         (prefixTapeLaw setup implementation ⟨some control, trace⟩ tape).toReal *
           sourceReplayPacketMass setup implementation rates who trace =
       (implementation.prior tape).toReal *
-        sourceReplayNatureMass setup implementation trace *
+        (canonicalSource setup implementation operational
+          ⟨some control, trace⟩).trace.transitionMass *
           (mechanicalPathAtom setup implementation rates who tape trace).toReal *
             ∏ owner, (((nativeApplication).privateTranscriptFrom []
               (control.execution.recall owner)).map (fun record =>
@@ -24776,6 +26296,7 @@ private theorem sourceReplay_prescribed_mechanical_atom
                     record.1.1 record.1.2 record.2)).prod.toReal := by ring
     _ = _ := by
       rw [sourceReplay_mechanical_path_factor setup implementation rates who tape trace]
+      rw [sourceReplay_nature_mass_eq_canonical setup implementation operational control trace]
       ring
 
 local notation "nativeModel" => ReactiveApplication.ResponseMenu.information
@@ -24837,10 +26358,11 @@ private theorem sourceReplay_mechanicalCoefficient_ne_zero
         fullValues ⟨nativeBad, scale, scale, scale⟩ scalePositive scaleBelow scalePositive
           nativeBadPositive nativeBadBelow who trace
       have atom := sourceReplay_prescribed_mechanical_atom setup values implementation
-        ⟨nativeBad, scale, scale, scale⟩ who index.2 control trace
+        operational ⟨nativeBad, scale, scale, scale⟩ who index.2 control trace
       rw [← nativePrescribed] at atom
       have nonzero : (implementation.prior index.2).toReal *
-          sourceReplayNatureMass setup implementation trace *
+          (canonicalSource setup implementation operational
+            ⟨some control, trace⟩).trace.transitionMass *
           (mechanicalPathAtom setup implementation ⟨nativeBad, scale, scale, scale⟩ who
             index.2 trace).toReal *
           ∏ owner, (((nativeApplication).privateTranscriptFrom []
