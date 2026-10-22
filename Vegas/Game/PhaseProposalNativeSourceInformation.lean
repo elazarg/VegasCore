@@ -1768,7 +1768,9 @@ private theorem binding_potential_emitted_posterior
         (fun key => field.get? key.2.1)).support ∧
       fiberPosterior ((serviceGraph setup mode).canonicalContinuation profile config)
         (fun key => field.get? key.2.1) (some result) =
-      (serviceGraph setup mode).canonicalContinuation profile (completed result) := by
+      (serviceGraph setup mode).canonicalContinuation profile (completed result) ∧
+      (((serviceGraph setup mode).canonicalContinuation profile config).map
+        (fun key => field.get? key.2.1)) (some result) = prior result := by
   classical
   intro profile prior completed field supported
   let graph := serviceGraph setup mode
@@ -1818,7 +1820,7 @@ private theorem binding_potential_emitted_posterior
     apply pmf_eq_pure_of_support_subset_singleton
     intro chosen reached
     exact Option.some.inj (mem_support_fiberPosterior present reached).1
-  constructor
+  refine ⟨?_, ?_, ?_⟩
   · obtain ⟨key, reached⟩ := (kernel result).support_nonempty
     apply (PMF.mem_support_map_iff ..).mpr
     refine ⟨key, ?_, recovers result supported key reached⟩
@@ -1826,6 +1828,18 @@ private theorem binding_potential_emitted_posterior
     exact (PMF.mem_support_bind_iff ..).mpr ⟨result, supported, reached⟩
   · rw [← harmonic, fiberPosterior_bind_of_observation prior kernel some
       (fun key => field.get? key.2.1) recovers (some result) present, posterior, PMF.pure_bind]
+  · have marginal :
+        ((graph.canonicalContinuation profile config).map
+          (fun key => field.get? key.2.1)) = prior.map some := by
+      rw [← harmonic, PMF.map_bind, ← PMF.bind_pure_comp]
+      apply bind_congr_on_support prior
+      intro chosen member
+      apply pmf_eq_pure_of_support_subset_singleton
+      intro observed reached
+      obtain ⟨key, keySupport, rfl⟩ := (PMF.mem_support_map_iff ..).mp reached
+      exact recovers chosen member key keySupport
+    rw [marginal]
+    exact pmf_map_apply_of_injective prior (Option.some_injective _) result
 
 /-- A proper value at the actual callback has positive conditional mass at
 its emitted frontier. Both query agreement and inherited automatic closure
@@ -1868,7 +1882,12 @@ theorem binding_frontier_proper_posterior
       fiberPosterior ((serviceGraph setup mode).canonicalContinuation profile frontier)
           (fun key => field.get? key.2.1) (some (.success value)) =
         (serviceGraph setup mode).canonicalContinuation profile
-          (phaseProposalBindingFrontierDrain setup mode runtime leaks anchor phase filled) := by
+          (phaseProposalBindingFrontierDrain setup mode runtime leaks anchor phase filled) ∧
+      (((serviceGraph setup mode).canonicalContinuation profile frontier).map
+        (fun key => field.get? key.2.1)) (some (.success value)) =
+        phaseProposalBindingResults setup mode runtime leaks plan values
+          PhaseProposalRates.zero who event payload binding (execution.recall who)
+            (execution.observe (app) who) (.success value) := by
   classical
   let graph := serviceGraph setup mode
   have actor : graph.actor? event = some who := graph.actor?_of_outputLayout_binding binding
@@ -1920,7 +1939,10 @@ theorem binding_frontier_proper_posterior
     phase commitment values
     (⟨{ anchor.application.current.native with config := filled },
       anchor.application.current.excluded⟩ : RecoveryState graph) rfl
-  exact ⟨posterior.1, posterior.2.trans drained.symm⟩
+  refine ⟨posterior.1, posterior.2.1.trans drained.symm, ?_⟩
+  have atom := posterior.2.2
+  rw [← same, ← frozen] at atom
+  exact atom
 
 open Classical in
 /-- Appending one observed coordinate conditions the original joint on the
@@ -2209,7 +2231,8 @@ theorem emitted_frontier_conditional
                       ((menu).toRawTrace sourceInitial fuel serviceScheduler
                         (earlier.extend joint legal reached)) TracePrefix.refl
           obtain ⟨value, resultEq⟩ := nextProper event inside who active payload binding _ recorded
-          obtain ⟨ready', rowPresent, rowLaw⟩ := binding_frontier_proper_posterior setup mode
+          obtain ⟨ready', rowPresent, rowLaw, _rowAtom⟩ :=
+            binding_frontier_proper_posterior setup mode
             runtime leaks bounds plan values complete maximal fullValues fuel serviceScheduler
               remaining who execution anchor.execution
                 (by

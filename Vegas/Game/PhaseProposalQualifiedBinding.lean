@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.PhaseProposalCurrentBindingGain
+import GameTheoryExtensions.Math.Probability.NestedPosterior
 import Vegas.Pending.PhaseAttemptReceiptSnapshot
 import Vegas.Pending.PhaseClearSemanticProgress
 import Vegas.Game.PhaseProposalOrdinaryBindingCheckpoint
@@ -3501,7 +3502,13 @@ theorem binding_value_frontier_posterior
               (frontier.complete event ready
                 (cast (congrArg EventField.Action unsentBinding.binding.symm) (.success value))
                 (cast (congrArg EventField.Value unsentBinding.binding.symm) (.success value)))) =
-          fiberPosterior original observed true := by
+          fiberPosterior original observed true ∧
+      (original.map observed) true =
+        (original.map (issuedBindingObservation setup implementation control entry.phase)) true *
+          phaseProposalBindingResults setup .concurrent implementation.runtime implementation.leaks
+            implementation.plan values PhaseProposalRates.zero who event payload
+              unsentBinding.binding (control.execution.recall who)
+                (control.execution.observe nativeApplication who) (.success value) := by
   classical
   intro profile original observed frontier
   let derivedInitial := (setup.initialLaw.map encodeInputs).map
@@ -3602,27 +3609,16 @@ theorem binding_value_frontier_posterior
       implementation.leaks entry.entry.execution entry.phase control.execution frontier
         (some who) := by
     simpa only [frontier, active] using frame
-  obtain ⟨ready, rowPresent, rowLaw⟩ := binding_frontier_proper_posterior setup .concurrent
+  obtain ⟨ready, rowPresent, rowLaw, rowAtom⟩ := binding_frontier_proper_posterior setup .concurrent
     implementation.runtime implementation.leaks implementation.bounds implementation.plan values
       operational.completePending operational.maximalPhases fullValues implementation.horizon
       implementation.scheduler control.remaining who control.execution entry.entry.execution
       traceActive entry.phase entry.commitment frontier frameActive entry.sameAttempt.symm
       event payload unsentBinding.binding code entry.inside nativeActive request unsent value
-  refine ⟨ready, ?_⟩
-  apply posterior_append_observation original
-    (issuedBindingObservation setup implementation control entry.phase) observed
-    (fun key => (⟨.inr event, unsentBinding.binding⟩ :
-      FieldRef (serviceGraph setup .concurrent).layout
-      (.binding who payload)).get? key.2.1) (some (.success value))
-    ((serviceGraph setup .concurrent).canonicalContinuation profile frontier)
-    ((serviceGraph setup .concurrent).canonicalContinuation profile
-      (phaseProposalBindingFrontierDrain setup .concurrent implementation.runtime
-        implementation.leaks entry.entry.execution entry.phase
-          (frontier.complete event ready
-            (cast (congrArg EventField.Action unsentBinding.binding.symm) (.success value))
-            (cast (congrArg EventField.Value unsentBinding.binding.symm) (.success value)))))
-    (by simpa [original, profile, issuedBindingObservation] using oldPresent)
-    (by
+  have beforeEq :
+      (serviceGraph setup .concurrent).canonicalContinuation profile frontier =
+        fiberPosterior original
+          (issuedBindingObservation setup implementation control entry.phase) true := by
       have transported := transport_two_indexed
         (fun law
           (before : ((nativeMenu).protocol law implementation.horizon
@@ -3652,10 +3648,28 @@ theorem binding_value_frontier_posterior
           (β := fun law => ((nativeMenu).protocol law implementation.horizon
             implementation.scheduler).Trace (some control)) initialEq trace
       simpa only [earlierBack, countedBack, profile, original, frontier]
-        using transported)
-    rowPresent rowLaw.symm
-  intro key _
-  simp only [observed, Bool.and_eq_true, decide_eq_true_eq]
+        using transported
+  have oldSupported : true ∈ (original.map
+      (issuedBindingObservation setup implementation control entry.phase)).support := by
+    simpa [original, profile, issuedBindingObservation] using oldPresent
+  let field : FieldRef (serviceGraph setup .concurrent).layout (.binding who payload) :=
+    ⟨.inr event, unsentBinding.binding⟩
+  have same : ∀ key ∈ original.support, observed key = true ↔
+      issuedBindingObservation setup implementation control entry.phase key = true ∧
+        field.get? key.2.1 = some (.success value) := by
+    intro key _
+    simp only [observed, Bool.and_eq_true, decide_eq_true_eq, field]
+  have appended := posterior_append_observation original
+    (issuedBindingObservation setup implementation control entry.phase) observed
+    (fun key => field.get? key.2.1) (some (.success value))
+    ((serviceGraph setup .concurrent).canonicalContinuation profile frontier)
+    _ oldSupported beforeEq rowPresent rowLaw.symm same
+  refine ⟨ready, appended.1, appended.2, ?_⟩
+  have mass := observation_fiber_mass original
+    (issuedBindingObservation setup implementation control entry.phase) observed
+    (fun key => field.get? key.2.1) (some (.success value)) oldSupported same
+  rw [← beforeEq, rowAtom] at mass
+  exact mass
 
 /-- The maximal ordinary cursor at the callback uses the literal selected
 checkpoint's block, maps and views. Its graph configuration remains the
@@ -6043,7 +6057,7 @@ private theorem foreign_posterior_cut_pair_atoms :
       bindPairLaw ownLaw (fun _ => words) :=
     owner_and_foreign_word_law ordinary (fun history => (reconstruct history).history)
       who [] ownGate product
-  obtain ⟨_ready, graphPresent, _graphLaw⟩ :=
+  obtain ⟨_ready, graphPresent, _graphLaw, _graphMass⟩ :=
     binding_value_frontier_posterior setup values implementation operational fullValues
       control trace who active event payload cleanSiteProof nativeForeign entry value
   obtain ⟨sourcePresent, _wordLaw, _supported⟩ := closed_entry_binding_word setup values
@@ -25661,7 +25675,8 @@ private theorem annotated_prefix_mass
     apply (PMF.mem_support_iff ..).mp
     exact (PMF.mem_support_map_iff ..).mpr
       ⟨canonical, (PMF.mem_support_iff ..).mpr canonicalSupported, rfl⟩
-  obtain ⟨_ready, graphPresent, _posterior⟩ := binding_value_frontier_posterior setup values
+  obtain ⟨_ready, graphPresent, _posterior, _graphMass⟩ :=
+    binding_value_frontier_posterior setup values
     implementation operational fullValues control trace who active event payload clean foreign
       entry value
   have length := (selected_binding_observation setup implementation operational control trace
@@ -27182,7 +27197,7 @@ private theorem inserted_binding_frontier_posterior
       entry.entry.execution.application.current.native.config nativeInitial implementation.horizon
         implementation.scheduler ((nativeMenu).toRawTrace nativeInitial implementation.horizon
           implementation.scheduler trace)
-  obtain ⟨ready, present, posterior⟩ := binding_value_frontier_posterior setup values
+  obtain ⟨ready, present, posterior, _graphMass⟩ := binding_value_frontier_posterior setup values
     implementation operational fullValues control trace who active event payload clean foreign
       entry value
   have code : cast (congrArg (EventCode (serviceGraph setup .concurrent).layout)
@@ -28131,7 +28146,8 @@ private theorem annotated_admitted_tape
     apply (PMF.mem_support_iff _ _).mp
     exact (PMF.mem_support_map_iff ..).mpr
       ⟨canonical, (PMF.mem_support_iff _ _).mpr canonicalSupported, rfl⟩
-  obtain ⟨_ready, graphPresent, _posterior⟩ := binding_value_frontier_posterior setup values
+  obtain ⟨_ready, graphPresent, _posterior, _graphMass⟩ :=
+    binding_value_frontier_posterior setup values
     implementation operational fullValues control trace who active event payload clean foreign
       entry value
   have length := (selected_binding_observation setup implementation operational control trace
