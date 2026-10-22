@@ -14,7 +14,7 @@ open GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol GameTheory.Math.P
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
-private theorem close_saved_remaining_le
+theorem close_saved_remaining_le
     {Γ : SourceCtx Player L} {O : Finset VarId} {program : SourceProgram Player L Γ O}
     (state : CommitRecoveryState program)
     (within : ProtocolState.remaining program state.point ≤
