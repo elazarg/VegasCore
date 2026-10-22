@@ -5898,12 +5898,12 @@ private theorem sourceSnapshot_handle_binding
     (id : MessageId Player) (event : (serviceGraph setup .concurrent).EventId)
     (handle : Handle (serviceGraph setup .concurrent)) (owner : Player) (payload : L.Ty)
     (shape : (serviceGraph setup .concurrent).outputLayout event = .binding owner payload)
-    (old next : L.Val payload)
+    (old : L.Val payload) (next : Option (L.Val payload))
     (original : before.candidates.lookup handle = .openable (⟨payload, old⟩ : Raw L))
     (registered : reference.execution.application.current.native.candidates.lookup handle =
       .openable (⟨payload, old⟩ : Raw L))
-    (meaning : sourceHandleMeaning setup implementation target reference handle =
-      some (⟨payload, next⟩ : Raw L))
+    (meaning : (sourceHandleMeaning setup implementation target reference handle).orElse
+      (fun _ => lost handle) = next.map (fun value => (⟨payload, value⟩ : Raw L)))
     (accepted : EventGraphRuntime.handle runtime before ⟨id, .commitment event handle⟩ =
       some after) :
     EventGraphRuntime.handle runtime
@@ -5934,22 +5934,40 @@ private theorem sourceSnapshot_handle_binding
   let swap := HiddenSwap.ofPairs
     (sourceSnapshotPairs setup implementation target reference lost after)
     (sourceHandlePairs setup implementation target reference lost)
-  have handlePair : sourceHandlePairs setup implementation target reference lost handle =
-      some ((⟨payload, old⟩ : Raw L), (⟨payload, next⟩ : Raw L)) := by
-    simp only [sourceHandlePairs, registered, meaning, Option.orElse_some, Option.map_some]
-  have fieldPair :
-      (sourceSnapshotPairs setup implementation target reference lost after).pair (.inr event) =
-        some (cast (congrArg EventField.Value shape.symm) (.success old),
-          cast (congrArg EventField.Value shape.symm) (.success next)) := by
-    apply sourceSnapshotPair_binding_value setup implementation target reference lost after
-      event owner payload shape code node handle old next
-    · rw [afterEq]
-      exact Config.complete_output_same _ _ _ _ _
-    · rw [afterEq]
-      simp only [Function.update_self]
-    · exact meaning
-  have compatible : BindCompatible swap event handle :=
-    HiddenSwap.bindCompatible_ofPairs _ _ shape old next fieldPair handlePair
+  have compatible : BindCompatible swap event handle := by
+    cases next with
+    | none =>
+        have handleNone : sourceHandlePairs setup implementation target reference lost handle =
+            none := by
+          simp only [sourceHandlePairs, registered, meaning, Option.map_none]
+        have eventNone : (sourceSnapshotPairs setup implementation target reference lost
+            after).pair (.inr event) = none := by
+          have hidden : ¬ (serviceGraph setup .concurrent).fieldPublic (.inr event) := by
+            change ¬ ((serviceGraph setup .concurrent).outputLayout event).IsPublic
+            rw [shape]
+            exact not_false
+          simp only [sourceSnapshotPairs, sourceSnapshotPair, hidden, ↓reduceIte, afterEq,
+            State.complete, Config.store, Config.complete_output_same, Option.bind_some, node,
+            cast_cast, cast_eq, Function.update_self, meaning, Option.map_none, Option.bind_none]
+        exact HiddenSwap.bindCompatible_ofPairs_none _ _ eventNone handleNone
+    | some next =>
+        have handlePair : sourceHandlePairs setup implementation target reference lost handle =
+            some ((⟨payload, old⟩ : Raw L), (⟨payload, next⟩ : Raw L)) := by
+          simp only [sourceHandlePairs, registered, meaning, Option.map_some]
+        have fieldPair :
+            (sourceSnapshotPairs setup implementation target reference lost after).pair
+                (.inr event) =
+              some (cast (congrArg EventField.Value shape.symm) (.success old),
+                cast (congrArg EventField.Value shape.symm) (.success next)) := by
+          have hidden : ¬ (serviceGraph setup .concurrent).fieldPublic (.inr event) := by
+            change ¬ ((serviceGraph setup .concurrent).outputLayout event).IsPublic
+            rw [shape]
+            exact not_false
+          simp only [sourceSnapshotPairs, sourceSnapshotPair, hidden, ↓reduceIte, afterEq,
+            State.complete, Config.store, Config.complete_output_same, Option.bind_some, node,
+            cast_cast, cast_eq, Function.update_self, meaning, Option.map_some, Raw.as?,
+            ↓reduceDIte]
+        exact HiddenSwap.bindCompatible_ofPairs _ _ shape old next fieldPair handlePair
   have preEq : before.swap swap =
       before.swap (HiddenSwap.ofPairs
         (sourceSnapshotPairs setup implementation target reference lost before)
@@ -5981,7 +5999,8 @@ private theorem sourceSnapshot_handle_failed_binding
     (handle : Handle (serviceGraph setup .concurrent)) (owner : Player) (payload : L.Ty)
     (shape : (serviceGraph setup .concurrent).outputLayout event = .binding owner payload)
     (failed : before.bindingResult handle payload = .failure)
-    (unchanged : sourceHandlePairs setup implementation target reference lost handle = none)
+    (unchanged : EventGraph.pairSwap
+      (sourceHandlePairs setup implementation target reference lost handle) = (fun value => value))
     (accepted : EventGraphRuntime.handle runtime before ⟨id, .commitment event handle⟩ =
       some after) :
     EventGraphRuntime.handle runtime
@@ -6015,8 +6034,15 @@ private theorem sourceSnapshot_handle_failed_binding
     · rfl
     · simp only [afterEq, State.complete, Config.store, Config.complete_output_same,
         Option.bind_some, node, cast_cast, cast_eq]
-  have compatible : BindCompatible swap event handle :=
-    HiddenSwap.bindCompatible_ofPairs_none _ _ eventNone unchanged
+  have compatible : BindCompatible swap event handle := by
+    intro actualOwner actualPayload actualShape candidate
+    change EventGraph.pairSwap
+      ((sourceSnapshotPairs setup implementation target reference lost after).pair
+        (.inr event)) _ = cast _ (candidateResult (swapCandidate
+          (EventGraph.pairSwap (sourceHandlePairs setup implementation target reference lost
+            handle)) candidate) actualPayload)
+    rw [eventNone, unchanged]
+    cases candidate <;> rfl
   have beforeEq : before.swap swap =
       sourceSnapshotState setup implementation target reference lost before := by
     dsimp only [swap, sourceSnapshotState]
@@ -6670,14 +6696,15 @@ theorem sourceSnapshotAssignment_handle_binding
     (shape : (serviceGraph setup .concurrent).outputLayout event = .binding owner payload)
     (packet : message.payload.packet.call = .commitment event handle)
     (meaning :
-      (∃ old next : L.Val payload,
+      (∃ (old : L.Val payload) (next : Option (L.Val payload)),
         before.current.native.candidates.lookup handle = .openable (⟨payload, old⟩ : Raw L) ∧
         reference.execution.application.current.native.candidates.lookup handle =
           .openable (⟨payload, old⟩ : Raw L) ∧
-        sourceHandleMeaning setup implementation target reference handle =
-          some (⟨payload, next⟩ : Raw L)) ∨
+        (sourceHandleMeaning setup implementation target reference handle).orElse
+          (fun _ => lost handle) = next.map (fun value => (⟨payload, value⟩ : Raw L))) ∨
       (before.current.native.bindingResult handle payload = .failure ∧
-        sourceHandlePairs setup implementation target reference lost handle = none))
+        EventGraph.pairSwap
+          (sourceHandlePairs setup implementation target reference lost handle) = id))
     (accepted : before.handle runtime message = some after) :
     (sourceSnapshotAssignment setup implementation target reference lost before).handle
         runtime message =
