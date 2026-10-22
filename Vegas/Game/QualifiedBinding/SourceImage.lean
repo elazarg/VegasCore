@@ -259,14 +259,14 @@ private theorem sourceReplayBaseObservation
   exact ProtocolState.sourceObserve_base_eq_of_observe_eq who setup.program
     first.point second.point views
 
-/- Equality of the source observation fixes every public initial graph input,
+/- Equality of the source observation fixes every visible initial graph input,
 while leaving other players' private and binding values unrestricted. -/
 omit [Fintype Player] in
 omit [IExpr.ResultTypes L] in
-private theorem sourceReplayPublicInputs {Γ : SourceCtx Player L}
+theorem sourceReplayVisibleInputs {Γ : SourceCtx Player L}
     (who : Player) (first second : State L Γ)
     (same : sourceObserve who first = sourceObserve who second) :
-    ∀ input, (inputLayout Γ input).IsPublic →
+    ∀ input, (inputLayout Γ input).VisibleTo who →
       encodeInputs first input = encodeInputs second input := by
   have locate : ∀ (Δ : SourceCtx Player L) (input : Fin Δ.length),
       ∃ (name : VarId) (cell : CellTy Player L),
@@ -308,18 +308,34 @@ private theorem sourceReplayPublicInputs {Γ : SourceCtx Player L}
         _ = cellValue (second.get member) := congrArg cellValue observed
         _ = _ := (encodeInputs_get second member).symm
   | privateInput owner payload =>
-      have impossible : False := by
-        simp only [cellField, EventField.IsPublic] at visible
-      exact impossible.elim
+      have own : owner = who := visible
+      subst owner
+      have observed := congrArg
+        (fun view => view.cells name (.privateInput who payload) member) same
+      simp only [sourceObserve_privateInput, ↓reduceIte] at observed
+      apply (Equiv.cast (congrArg EventField.Value
+        (inputLayout_inputId member))).injective
+      calc
+        _ = cellValue (first.get member) := encodeInputs_get first member
+        _ = cellValue (second.get member) := congrArg cellValue (Option.some.inj observed)
+        _ = _ := (encodeInputs_get second member).symm
   | commitment owner payload =>
-      have impossible : False := by
-        simp only [cellField, EventField.IsPublic] at visible
-      exact impossible.elim
+      have own : owner = who := visible
+      subst owner
+      have observed := congrArg
+        (fun view => view.cells name (.commitment who payload) member) same
+      simp only [sourceObserve_commitment, ↓reduceIte] at observed
+      apply (Equiv.cast (congrArg EventField.Value
+        (inputLayout_inputId member))).injective
+      calc
+        _ = cellValue (first.get member) := encodeInputs_get first member
+        _ = cellValue (second.get member) := congrArg cellValue (Option.some.inj observed)
+        _ = _ := (encodeInputs_get second member).symm
 
 /- A supported forced source suffix keeps the original setup draw. Equal
-focal information at the static cut therefore fixes each public input of the
+focal information at the static cut therefore fixes each visible input of the
 whole target initializer, including publication results. -/
-private theorem sourceReplayTargetPublicInputs
+theorem sourceReplayTargetVisibleInputs
     (who : Player) (reference : (nativeApplication).Control)
     (referenceTrace : (nativeProtocol).Trace (some reference))
     (event : (serviceGraph setup .concurrent).EventId)
@@ -337,7 +353,7 @@ private theorem sourceReplayTargetPublicInputs
     (supported : (⟨some targetCurrent, targetTrace⟩ :
       setup.proposalRecoveryProtocol.History) ∈
         (sourceForcedBlock setup values who g choice).support) :
-    ∀ input, (serviceGraph setup .concurrent).fieldPublic (.inl input) →
+    ∀ input, (serviceGraph setup .concurrent).fieldVisibleTo who (.inl input) →
       encodeInputs cut.theta input =
         encodeInputs (ProtocolState.base setup.program targetCurrent.point) input := by
   rcases g with ⟨state, gTrace⟩
@@ -368,9 +384,9 @@ private theorem sourceReplayTargetPublicInputs
       subst current
       rw [← targetBase] at baseObservation
       intro input visible
-      exact sourceReplayPublicInputs who cut.theta
+      exact sourceReplayVisibleInputs who cut.theta
         (ProtocolState.base setup.program targetCurrent.point) baseObservation input
-          (by change (inputLayout setup.context input).IsPublic at visible; exact visible)
+          (by change (inputLayout setup.context input).VisibleTo who at visible; exact visible)
 
 /- The initial hidden input fields read the whole target source tuple. Public
 input fields are fixed by their observed equality on the focal information
@@ -757,8 +773,17 @@ theorem sourceReplayInitialFromCut
         (encodeInputs (ProtocolState.base setup.program targetCurrent.point)) := by
   have catalogue := sourceReplayReferenceInitialCatalogue setup implementation
     operational reference referenceTrace cut.theta cut.thetaSupported cut.originalInputs
-  have publicInput := sourceReplayTargetPublicInputs setup values implementation who
+  have visibleInput := sourceReplayTargetVisibleInputs setup values implementation who
     reference referenceTrace event cut g sameInfo choice targetCurrent targetTrace supported
+  have publicInput : ∀ input, (serviceGraph setup .concurrent).fieldPublic (.inl input) →
+      encodeInputs cut.theta input =
+        encodeInputs (ProtocolState.base setup.program targetCurrent.point) input := by
+    intro input publicField
+    apply visibleInput input
+    change (inputLayout setup.context input).VisibleTo who
+    change (inputLayout setup.context input).IsPublic at publicField
+    cases kind : inputLayout setup.context input <;>
+      simp_all only [EventField.IsPublic, EventField.VisibleTo]
   have native := sourceReplayInitialNative setup implementation operational
     ⟨some targetCurrent, targetTrace⟩ reference lost cut.theta
     (ProtocolState.base setup.program targetCurrent.point) cut.thetaSupported
@@ -771,7 +796,7 @@ theorem sourceReplayInitialFromCut
 stored value and its accepted handle. This is the transport used at a genuine
 close and inside automatic normalization, with the same fixed target and map. -/
 omit [Fintype Player] in
-private theorem sourceReplayAssignedStoreCongr
+theorem sourceReplayAssignedStoreCongr
     (target : setup.proposalRecoveryProtocol.History)
     (reference : (nativeApplication).Control)
     (lost : Handle (serviceGraph setup .concurrent) → Option (Raw L))
@@ -1916,7 +1941,7 @@ theorem sourceReplayPhysicalPairedRow
 prefix. Equality of prefixes at the same depth identifies the whole state,
 including the exclusion mask; rank and saved metadata alone do not. -/
 omit [Fintype Player] in
-private theorem sourceReplayHeadRow
+theorem sourceReplayHeadRow
     (start : CommitRecoveryState setup.program)
     (entry : setup.proposalRecoveryProtocol.Trace (some start))
     (committing : ProtocolState.atCommit setup.program start.point = true)
@@ -1956,7 +1981,7 @@ private theorem sourceReplayHeadRow
 /- Removing the first actual instruction leaves the same endpoint with the
 remaining source word based at the one-step extended target prefix. -/
 omit [Fintype Player] in
-private theorem sourceReplayTailWord
+theorem sourceReplayTailWord
     (final : setup.proposalRecoveryProtocol.History)
     (start : CommitRecoveryState setup.program)
     (entry : setup.proposalRecoveryProtocol.Trace (some start))
@@ -1990,7 +2015,7 @@ private theorem sourceReplayTailWord
 its given Attempt. The supported proposal step is decoded directly at that
 head; no second target Attempt is selected. -/
 omit [Fintype Player] in
-private theorem sourceReplayActiveHeadStep
+theorem sourceReplayActiveHeadStep
     {Γ Δ : SourceCtx Player L} {O P : Finset VarId}
     {name : VarId} {owner : Player} {payload : L.Ty}
     {fresh : name ∉ Γ.map Prod.fst}
@@ -2124,7 +2149,7 @@ private theorem sourceReplayActiveHeadStep
 /- The inherited-owner head uses the literal automatic commitment. Before
 the last slot its supported close is inert, leaving the indexed tail point. -/
 omit [Fintype Player] in
-private theorem sourceReplayExcludedHeadStep
+theorem sourceReplayExcludedHeadStep
     {Γ Δ : SourceCtx Player L} {O P : Finset VarId}
     {name : VarId} {owner : Player} {payload : L.Ty}
     {fresh : name ∉ Γ.map Prod.fst}
@@ -3200,7 +3225,7 @@ private theorem sourceReplayAssignedActiveRow
       simpa only [targetData] using head
 
 omit [Fintype Player] in
-private theorem sourceReplayCompiledHeadData
+theorem sourceReplayCompiledHeadData
     {Γ Δ : SourceCtx Player L} {O P : Finset VarId}
     (name : VarId) (owner : Player) (payload : L.Ty)
     (fresh : name ∉ Γ.map Prod.fst) (guard : SourceGuard L Γ owner name payload)
@@ -3710,35 +3735,15 @@ structure SourceReplayImage
 /- The simultaneous source image consumed by literal raw replay. Every image
 uses the same completed target and reference checkpoint; auxiliary values may
 be assigned only to factual, signed, historically unaccepted preparations. -/
-structure SourceReplayAlignment
+def SourceReplaySelectedAgreement
     (operational : implementation.Operational)
     (who : Player)
     (reference : (nativeApplication).Control)
     (referenceTrace : (nativeProtocol).Trace (some reference))
-    (event : (serviceGraph setup .concurrent).EventId)
-    (cut : PhaseProposalCanonicalBindingCut setup .concurrent implementation.runtime
-      implementation.leaks implementation.bounds implementation.plan values
-      implementation.horizon implementation.scheduler reference
-      (sourceCutTrace setup implementation referenceTrace) who event)
     (g : setup.proposalRecoveryProtocol.History)
-    (choice : setup.proposalRecoveryModel.Choice who
-      (setup.proposalRecoveryModel.infoOf who g.trace))
     (targetCurrent : CommitRecoveryState setup.program)
-    (targetTrace : setup.proposalRecoveryProtocol.Trace (some targetCurrent)) where
-  canonical : (⟨some cut.cursor.current, cut.cursor.trace⟩ :
-    setup.proposalRecoveryProtocol.History) =
-      canonicalSource setup implementation operational
-        ⟨some reference, referenceTrace⟩
-  sameInfo : setup.proposalRecoveryModel.infoOf who g.trace =
-    setup.proposalRecoveryModel.infoOf who cut.trace
-  cutGood : setup.proposalRecoveryForeignGood who ⟨some cut.current, cut.trace⟩
-  good : setup.proposalRecoveryForeignGood who g
-  properChoice : ∀ move, choice.val.map (·.semantic) = some move →
-    move.missing = false ∧ ¬ move.action.IsFailure
-  supported : (⟨some targetCurrent, targetTrace⟩ :
-    setup.proposalRecoveryProtocol.History) ∈
-      (sourceForcedBlock setup values who g choice).support
-  selectedAgreement : ∀ lost, SourceReplayLostRestricted setup implementation
+    (targetTrace : setup.proposalRecoveryProtocol.Trace (some targetCurrent)) : Prop :=
+  ∀ lost, SourceReplayLostRestricted setup implementation
       ⟨some targetCurrent, targetTrace⟩ reference who lost →
     ∀ (before : (nativeApplication).Control)
       (prior : (nativeProtocol).Trace (some before)),
@@ -3767,7 +3772,16 @@ structure SourceReplayAlignment
           (sourceSnapshotState setup implementation
             ⟨some targetCurrent, targetTrace⟩ reference lost
               before.execution.application.entry.native).config.store
-  completedVisit : ∀ lost, SourceReplayLostRestricted setup implementation
+
+def SourceReplayCompletedVisit
+    (operational : implementation.Operational)
+    (who : Player)
+    (reference : (nativeApplication).Control)
+    (referenceTrace : (nativeProtocol).Trace (some reference))
+    (g : setup.proposalRecoveryProtocol.History)
+    (targetCurrent : CommitRecoveryState setup.program)
+    (targetTrace : setup.proposalRecoveryProtocol.Trace (some targetCurrent)) : Prop :=
+  ∀ lost, SourceReplayLostRestricted setup implementation
       ⟨some targetCurrent, targetTrace⟩ reference who lost →
     ∀ (before after : (nativeApplication).Control)
       (prior : (nativeProtocol).Trace (some before))
@@ -3844,6 +3858,41 @@ structure SourceReplayAlignment
         BindingStamp (fun owner => (nativeApplication).outputs
           (reference.execution.recall owner)) before.execution.application.attempt
             (phase.drain physical).native
+
+structure SourceReplayAlignment
+    (operational : implementation.Operational)
+    (who : Player)
+    (reference : (nativeApplication).Control)
+    (referenceTrace : (nativeProtocol).Trace (some reference))
+    (event : (serviceGraph setup .concurrent).EventId)
+    (cut : PhaseProposalCanonicalBindingCut setup .concurrent implementation.runtime
+      implementation.leaks implementation.bounds implementation.plan values
+      implementation.horizon implementation.scheduler reference
+      (sourceCutTrace setup implementation referenceTrace) who event)
+    (g : setup.proposalRecoveryProtocol.History)
+    (choice : setup.proposalRecoveryModel.Choice who
+      (setup.proposalRecoveryModel.infoOf who g.trace))
+    (targetCurrent : CommitRecoveryState setup.program)
+    (targetTrace : setup.proposalRecoveryProtocol.Trace (some targetCurrent)) where
+  canonical : (⟨some cut.cursor.current, cut.cursor.trace⟩ :
+    setup.proposalRecoveryProtocol.History) =
+      canonicalSource setup implementation operational
+        ⟨some reference, referenceTrace⟩
+  sameInfo : setup.proposalRecoveryModel.infoOf who g.trace =
+    setup.proposalRecoveryModel.infoOf who cut.trace
+  cutGood : setup.proposalRecoveryForeignGood who ⟨some cut.current, cut.trace⟩
+  good : setup.proposalRecoveryForeignGood who g
+  properChoice : ∀ move, choice.val.map (·.semantic) = some move →
+    move.missing = false ∧ ¬ move.action.IsFailure
+  supported : (⟨some targetCurrent, targetTrace⟩ :
+    setup.proposalRecoveryProtocol.History) ∈
+      (sourceForcedBlock setup values who g choice).support
+  selectedAgreement : SourceReplaySelectedAgreement
+    (setup := setup) (implementation := implementation)
+    operational who reference referenceTrace g targetCurrent targetTrace
+  completedVisit : SourceReplayCompletedVisit
+    (setup := setup) (implementation := implementation)
+    operational who reference referenceTrace g targetCurrent targetTrace
   initialized : ∀ lost, SourceReplayLostRestricted setup implementation
       ⟨some targetCurrent, targetTrace⟩ reference who lost →
     sourceSnapshotAssignment setup implementation ⟨some targetCurrent, targetTrace⟩

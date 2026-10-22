@@ -2901,6 +2901,7 @@ assembly. Its weighted pushforward remains the registered open obligation.
 | [ForeignPosterior](../Vegas/Game/QualifiedBinding/ForeignPosterior.lean) | Foreign cut pairs, ordinary structural atoms and posterior disintegration | OrdinaryContinuation |
 | [BindingReadback](../Vegas/Game/QualifiedBinding/BindingReadback.lean) | Literal signed origins, issued-binding reads and source table adapters | OrdinaryContinuation |
 | [SourceImage](../Vegas/Game/QualifiedBinding/SourceImage.lean) | Snapshot assignments, factual visit relations and the source-image/alignment contracts | BindingReadback |
+| [SourceQueryTransport](../Vegas/Game/QualifiedBinding/SourceQueryTransport.lean) | Actual foreign callback queries from the exact selected-entry and completed-visit relations | SourceImage |
 | [RawReplay](../Vegas/Game/QualifiedBinding/RawReplay.lean) | Deterministic replay, callback kernels, script mass and supported-script readback | SourceImage |
 | [ReplayCoverage](../Vegas/Game/QualifiedBinding/ReplayCoverage.lean) | Original-positive value reconstruction and normalized conditional replay coverage | RawReplay, ForeignPosterior |
 | [Likelihood](../Vegas/Game/QualifiedBinding/Likelihood.lean) | Native likelihood, callback products and canonical source Nature mass | ReplayCoverage |
@@ -2916,7 +2917,9 @@ importing replay coverage.
 `sourceRawReplay_law` and `sourceRawReplay_qualified` construct normalized replay
 laws conditional on the actual `SourceReplayAlignment` certificate. The
 certificate's query relation is restricted to an owner different from the fixed
-focal player. Constructing that certificate from the original runtime data, and
+focal player. `sourceReplay_query_binding` derives that relation from the named
+selected-entry and completed-visit conclusions, on the same literal target
+prefix. Constructing those conclusions and the full certificate from the original runtime data, and
 then eliminating it from the replay consumer's hypotheses, remains open. The
 checked canonical Nature and native likelihood identities do not supply that
 missing source-image producer or the final weighted rectangle identity.

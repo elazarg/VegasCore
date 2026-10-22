@@ -4,6 +4,10 @@ buildDir = ".lake/build-stable"
 keywords = ["math"]
 defaultTargets = ["GameTheoryExtensions", "GameTheoryExtensionsTests", "Interaction", "InteractionTests", "Vegas", "VegasTests", "Paper"]
 
+# Large dependent correspondence proofs need a larger elaboration budget.
+# This resource setting does not change build traces or kernel checking.
+weakLeanArgs = ["-DmaxHeartbeats=1000000"]
+
 [leanOptions]
 pp.unicode.fun = true
 autoImplicit = false

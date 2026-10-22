@@ -11851,7 +11851,7 @@ private theorem mechanicalForeignAtom_eq
     exact congrArg multiplier calls
   exact congrArg₂ (· * ·) packetAtom factor
 
-private theorem no_generated_of_tracePrefix (owner : Player)
+theorem no_generated_of_tracePrefix (owner : Player)
     {before after : (nativeProtocol).State}
     {prior : (nativeProtocol).Trace before} {trace : (nativeProtocol).Trace after}
     (retained : TracePrefix prior trace)
@@ -13145,7 +13145,7 @@ def NativeBindingEntry.canonicalCut
     survives := survives }
 
 omit [Fintype Player] in
-private theorem generated_preparation_iff_joint_word (owner : Player)
+theorem generated_preparation_iff_joint_word (owner : Player)
     {state : setup.proposalRecoveryProtocol.State}
     (trace : setup.proposalRecoveryProtocol.Trace state) :
     setup.GeneratedPreparationHistory owner ⟨state, trace⟩ ↔
