@@ -10014,6 +10014,107 @@ theorem issuedLedger_foreign_product
   exact filter_independentProduct laws restriction coordinate
 
 open Classical in
+/-- The next ready foreign row under the complete foreign issued cylinder
+uses its chronological owner kernel. Other owners' restrictions do not alter
+that kernel, and the focal ordinary word remains unrestricted. -/
+theorem issuedLedger_foreign_owned_word_conditional
+    {Γ Δ Ξ : SourceCtx Player L} {O P Q : Finset VarId}
+    {name : VarId} {owner : Player} {payload : L.Ty}
+    (fresh : name ∉ Δ.map Prod.fst) (guard : SourceGuard L Δ owner name payload)
+    (earlier : SourceProgram.CommitPrefix Γ O Δ P)
+    (later : SourceProgram.CommitPrefix ((name, .commitment owner payload) :: Δ)
+      (insert name P) Ξ Q) (suffix : SourceProgram Player L Ξ Q)
+    (embedding : OutputEmbedding (inputLayout setup.context) (outputLayout setup.program)
+      ((earlier.append (.commit name owner fresh guard later)).prepend suffix)) (low : Nat)
+    (rank : ∀ index, (embedding.event index).val = low + index.val)
+    (actions : ∀ index action, decodeEventAction setup.program (embedding.event index) action =
+      decodeEventAction ((earlier.append (.commit name owner fresh guard later)).prepend suffix)
+        index (cast (congrArg EventField.Action (embedding.layout_eq index)) action))
+    {control : (nativeApplication).Control} (trace : (nativeProtocol).Trace (some control))
+    (phase : RuntimePhase (serviceGraph setup .concurrent))
+    (installed : control.execution.application.phases.head? = some phase)
+    (phaseLow : phase.low = low)
+    (phaseHigh : phase.high = low + (earlier.append (.commit name owner fresh guard later)).length)
+    (selected : (serviceGraph setup .concurrent).EventId)
+    (shape : (serviceGraph setup .concurrent).outputLayout selected = .binding owner payload)
+    (request : control.execution.application.SeedRequest owner
+      ⟨control.execution.application.attempt, selected⟩)
+    (selectedInside : low ≤ selected.val ∧
+      selected.val < low + (earlier.append (.commit name owner fresh guard later)).length)
+    (selectedRank : selected.val - low = earlier.length)
+    (unsent : ∀ message ∈ (nativeApplication).outputs (control.execution.recall owner),
+      PhaseCount.event? message.payload ≠ some ⟨control.execution.application.attempt, selected⟩)
+    (profile : SourceProgram.BehavioralProfile
+      (earlier.prepend (.commit name owner fresh guard (later.prepend suffix))))
+    (entry : SourceProgram.Config Player L Γ) (reference : DecisionView owner Ξ)
+    (focal : Player) (foreign : owner ≠ focal) :
+    let block := earlier.append (.commit name owner fresh guard later)
+    let current := earlier.tailProfile (.commit name owner fresh guard (later.prepend suffix))
+      profile
+    let before := earlier.prefixLaw (.commit name owner fresh guard (later.prepend suffix))
+      profile entry
+    let complete := before.bind fun config =>
+      ((SourceProgram.CommitPrefix.commit name owner fresh guard later).prefixLaw suffix
+        current config)
+    let prior := complete.map (SourceProgram.Config.view owner)
+    let observed := (later.entryView owner reference).back true
+    reference ∈ prior.support →
+    issuedLedger setup implementation block low control (low + block.length) owner reference →
+    (∃ final ∈ complete.support, ∀ other, other ≠ focal →
+      issuedLedger setup implementation block low control (low + block.length)
+        other (final.view other)) →
+    (fiberPosterior complete (fun final => decide (∀ other, other ≠ focal →
+      issuedLedger setup implementation block low control (low + block.length)
+        other (final.view other))) true).map
+          (fun final => block.wordAction owner earlier.length (final.view owner)) =
+      (SourceProgram.commitKernel current observed).map (fun result =>
+        some (OwnAction.commit owner name payload result)) := by
+  intro block current before complete prior observed supported retained present
+  let fullProfile := cast (congrArg SourceProgram.BehavioralProfile
+    (earlier.prepend_append (.commit name owner fresh guard later) suffix).symm) profile
+  have fullLaw : block.prefixLaw suffix fullProfile entry = complete := by
+    simpa only [block, fullProfile, complete, before, current,
+      SourceProgram.CommitPrefix.prepend, cast_cast, cast_eq] using
+      earlier.prefixLaw_append (.commit name owner fresh guard later) suffix fullProfile entry
+  have fullPresent : ∃ final ∈ (block.prefixLaw suffix fullProfile entry).support,
+      ∀ other, other ≠ focal → issuedLedger setup implementation block low control
+        (low + block.length) other (final.view other) := by
+    rwa [fullLaw]
+  have product := issuedLedger_foreign_product setup implementation block suffix fullProfile
+    entry low (low + block.length) control focal fullPresent
+  rw [fullLaw] at product
+  let read := fun final : SourceProgram.Config Player L Ξ => fun other => final.view other
+  let test := fun views : ∀ other, DecisionView other Ξ => decide (∀ other, other ≠ focal →
+    issuedLedger setup implementation block low control (low + block.length) other (views other))
+  have possible : true ∈ (complete.map (test ∘ read)).support := by
+    obtain ⟨final, member, ledger⟩ := present
+    exact (PMF.mem_support_map_iff _ _ _).mpr ⟨final, member, by
+      simpa only [test, read, Function.comp_def, decide_eq_true_eq] using ledger⟩
+  have mapped := congrArg (PMF.map (fun views : ∀ other, DecisionView other Ξ => views owner))
+    (map_fiberPosterior_readout complete read test true possible)
+  rw [PMF.map_comp] at mapped
+  have ownerPosterior :
+      (fiberPosterior complete (fun final => decide (∀ other, other ≠ focal →
+        issuedLedger setup implementation block low control (low + block.length)
+          other (final.view other))) true).map (SourceProgram.Config.view owner) =
+      fiberPosterior prior (fun word => decide (issuedLedger setup implementation block low
+        control (low + block.length) owner word)) true := by
+    change (fiberPosterior complete (test ∘ read) true).map
+      ((fun views : ∀ other, DecisionView other Ξ => views owner) ∘ read) = _
+    rw [mapped]
+    rw [product, independentProduct_map_eval]
+    apply fiberPosterior_eq_of_support_fiber
+    intro word _member
+    rw [decide_eq_true_eq, decide_eq_true_eq]
+    exact ⟨fun ledger => ledger foreign, fun ledger _ => ledger⟩
+  have actionPosterior := congrArg (PMF.map (block.wordAction owner earlier.length)) ownerPosterior
+  rw [PMF.map_comp] at actionPosterior
+  exact actionPosterior.trans (issuedLedger_owned_word_conditional setup implementation fresh
+    guard earlier later suffix embedding low rank actions trace phase installed phaseLow phaseHigh
+    selected shape request selectedInside selectedRank unsent profile entry reference supported
+      retained)
+
+open Classical in
 /-- Ordinary complete foreign owner words with the original issued cylinder.
 The source entry is pulled from the target itself, without a posterior-support gate. -/
 def ordinaryForeignJoint (operational : implementation.Operational) (who : Player)
