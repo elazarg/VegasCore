@@ -12,9 +12,9 @@ exact atom accounting are derived from the original runtime inputs.
 `Vegas.concurrentRawSequentialPreservation` consume these proofs and pass the
 exact standard-axiom audit with only `propext`, `Classical.choice` and
 `Quot.sound`. No source-alignment, annotation or factorization premise is added
-to the capstone. Final integration acceptance and restoration of the original
-heartbeat budget remain pending; the
-[implementation checkpoints](se-concurrent-mechanization.md) are eight of nine.
+to the capstone. The full ordinary build and repository checks pass at the
+original proof budget; all nine
+[implementation checkpoints](se-concurrent-mechanization.md) are checked.
 
 ## Scope and exact conclusions
 
@@ -1307,6 +1307,6 @@ source entry and original laws.
 `sourceRawReplay_annotation_atom` proves the per-history balance used by the
 original `qualified_annotation_pushforward` theorem, including the entire
 pair-law mixture and zero cases. Reconstruction and the preservation capstone
-are Lean-checked with only standard axioms. The remaining acceptance work is
-the final integration gates and restoration and verification of the original
-heartbeat budget, without changing the theorem's scope or hypotheses.
+are Lean-checked with only standard axioms. The full ordinary build and
+repository checks pass at the original proof budget, with the temporary
+heartbeat increase removed and the theorem's scope and hypotheses unchanged.

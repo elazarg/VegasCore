@@ -15,8 +15,7 @@ The original weighted transport, reconstruction and preservation theorems are
 Lean-checked using only `propext`, `Classical.choice` and `Quot.sound`.
 The [concrete contract](Vegas/Game/ConcurrentRawSequentialPreservation.lean) and
 [proof status](docs/se-concurrent-mechanization.md) state the hypotheses and
-remaining acceptance work: final integration checks and restoration of the
-original heartbeat budget.
+checked construction.
 
 The concurrent result covers private commitments in literal `.concurrent` mode,
 with source-ordered public barriers, arbitrary correlated initial inputs of

@@ -11,9 +11,9 @@ proved from the original runtime data, with no source-alignment hypothesis.
 The actual-query argument has the required foreign-owner domain. It does not
 use an all-owner historical query identity. The original qualified weighted
 statement and `Vegas.concurrentRawSequentialPreservation` pass the exact
-standard-axiom audit. Final integration acceptance and restoration of the
-original heartbeat budget remain pending; the
-[implementation checkpoints](se-concurrent-mechanization.md) are eight of nine.
+standard-axiom audit. The full ordinary build and repository checks pass at the
+original proof budget; all nine
+[implementation checkpoints](se-concurrent-mechanization.md) are checked.
 
 ## Reviewed mathematical scope
 

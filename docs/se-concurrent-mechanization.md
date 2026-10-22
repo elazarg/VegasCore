@@ -50,10 +50,10 @@ posterior pair and stopped-payoff primitives and the clean gain comparison feed
 the proved `QualifiedBindingLaw` and the original capstone. An unrestricted
 prefix density theorem is not claimed.
 
-Eight of nine implementation checkpoints are checked. Final acceptance gates
-and removal of the temporary heartbeat increase, followed by verification at
-the original budget, remain pending. This acceptance work does not add a
-hypothesis or change the theorem's scope.
+All nine implementation checkpoints are checked. The temporary heartbeat
+increase is removed. The full ordinary build and repository checks pass at the
+original proof budget, without adding a hypothesis or changing the theorem's
+scope.
 
 The [likelihood derivation](se-concurrent-likelihood.md) describes the proved
 construction; the [review](se-concurrent-likelihood-review.md) explains its
@@ -91,7 +91,7 @@ result and exact standard-axiom audit; local helpers alone do not close an item.
 | Match historical accepted, current issued and historical never-accepted callbacks bijectively to their source rows/lost draws | Checked: `sourceRawReplay_foreign_draw_products` identifies the actual historical/current/lost and alias products; ordinary owning build and exact standard-axiom audit passed | Weights |
 | Prove the full foreign issued-prefix probability product and its separation from the focal prefix | Checked: `sourceRawReplay_current_issued_mass` identifies the actual queried-draw product with the original foreign cylinder mass; `sourceRawReplay_annotation_atom` separates the focal prefix using the original pair-law mixture; ordinary owning build and exact standard-axiom audit passed | Weights |
 | Prove the positive per-history weight identity using the original pair-law mixture; remove the original weighted admission | Checked: `sourceRawReplay_annotation_atom` supplies the original per-history identity; `qualified_annotation_pushforward` consumes it with zero cases and full summation; owning build and exact standard-axiom audit passed | Weights |
-| Verify the weighted theorem and concurrent capstone have only standard axioms, and pass the final build/checks | Pending final acceptance: original weighted theorem and capstone build and standard-axiom audit passed; final integration gates and original-heartbeat-budget verification remain | Integration |
+| Verify the weighted theorem and concurrent capstone have only standard axioms, and pass the final build/checks | Checked: original weighted theorem and capstone have only standard axioms; the full ordinary build at the original proof budget and source-policy, module-boundary, documentation and SE-evidence checks passed | Integration |
 
 The source chronology supplies the retained relations and final image clauses;
 these feed forward annotation readback and the callback/source-row matching.
@@ -208,7 +208,7 @@ original weighted, reconstruction, payoff-law and preservation roots.
 | Actual native qualified payoff law | Source site, foreign posterior pair, original weighted rectangle and aggregate stopped payoff are checked; `qualified_binding_law` derives the complete law. |
 | Clean binding deviation bound | Full gain bound, including discarded-branch floor/reset comparison, is checked and instantiated with the derived qualified law. |
 | Full raw concurrent SE preservation | `Vegas.concurrentRawSequentialPreservation` proves the original contract using only standard axioms. |
-| Final acceptance | Final integration gates and removal of the temporary heartbeat increase with a successful original-budget build remain pending. |
+| Final acceptance | Checked: the temporary heartbeat increase is removed; the full ordinary build at the original proof budget, exact standard-axiom audit and repository checks passed. |
 
 The [qualified experiment](../Vegas/Game/PhaseProposalQualifiedBinding.lean),
 [binding comparison](../Vegas/Game/PhaseProposalCleanBindingGain.lean) and
