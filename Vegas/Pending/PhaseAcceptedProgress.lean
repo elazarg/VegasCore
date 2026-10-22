@@ -16,6 +16,44 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
 namespace PhaseRuntimeState
 
+/-- Every handle accepted at the saved checkpoint is still accepted in the
+live state. A retry restores the saved associations before draining again. -/
+def AcceptedCheckpoint (state : PhaseRuntimeState graph) : Prop :=
+  ∀ field candidate, state.entry.native.accepted field = some candidate →
+    state.current.native.accepted field = some candidate
+
+/-- Automatic settlement retains saved accepted handles, including when a
+dirty phase restores and immediately exhausts several subsequent phases. -/
+theorem settle_acceptedCheckpoint (phases : List (RuntimePhase graph)) (generation : Nat)
+    (entry current : RecoveryState graph) (retired : List (RetiredCommitAttempt graph))
+    (saved : ∀ field candidate, entry.native.accepted field = some candidate →
+      current.native.accepted field = some candidate) :
+    (settle phases generation entry current retired).AcceptedCheckpoint := by
+  induction phases generalizing generation entry current retired with
+  | nil => exact saved
+  | cons phase rest ih =>
+      have drained : ∀ field candidate, entry.native.accepted field = some candidate →
+          (phase.drain current).native.accepted field = some candidate := by
+        intro field candidate present
+        rw [(phase.drain_tables current).1]
+        exact saved field candidate present
+      simp only [settle]
+      split
+      · split
+        · split
+          · intro field candidate present
+            change (phase.drain (restore entry (phase.drain current))).native.accepted field =
+              some candidate
+            rw [(phase.drain_tables _).1]
+            exact present
+          · exact ih _ _ _ _ (fun _ _ present => present)
+        · exact ih _ _ _ _ (fun _ _ present => present)
+      · exact drained
+
+theorem initial_acceptedCheckpoint (plan : RuntimePhasePlan graph) (inputs : graph.Inputs) :
+    (initial plan inputs).AcceptedCheckpoint :=
+  settle_acceptedCheckpoint _ _ _ _ _ (fun _ _ present => present)
+
 /-- Same-attempt settlement only drains, and draining preserves accepted handles. -/
 theorem normalize_preserves_accepted (state : PhaseRuntimeState graph) (ordered : state.Ordered)
     (same : state.attempt = state.normalize.attempt) (field : graph.Field)
@@ -75,6 +113,54 @@ theorem accepted_progress (runtime : EventGraphRuntime graph)
       exact present
 
 end PhaseRuntimeState
+
+/-- Submitting, including and servicing packets preserve every accepted
+association already in the saved checkpoint. -/
+theorem phaseApplication_acceptedCheckpoint (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket graph)) :
+    (phaseApplication runtime leaks).Invariant PhaseRuntimeState.AcceptedCheckpoint where
+  submit state who material valid := by
+    intro field candidate present
+    change (submitStep (material.call.register state.current.native who) who
+      material.call.packet).accepted field = some candidate
+    rw [submitStep_accepted, Submission.register_accepted]
+    exact valid field candidate present
+  handle state message next valid accepted := by
+    change state.handle runtime message = some next at accepted
+    unfold PhaseRuntimeState.handle at accepted
+    split at accepted
+    · obtain ⟨native, handled, rfl⟩ := Option.map_eq_some_iff.mp accepted
+      apply PhaseRuntimeState.settle_acceptedCheckpoint
+      intro field candidate present
+      exact handle_preserves_accepted runtime _ native _ handled field candidate
+        (valid field candidate present)
+    · cases accepted
+  environment state command next valid reached := by
+    change next ∈ (state.environment runtime command).support at reached
+    unfold PhaseRuntimeState.environment at reached
+    split at reached
+    · obtain ⟨native, supported, rfl⟩ := PMF.support_map .. ▸ reached
+      apply PhaseRuntimeState.settle_acceptedCheckpoint
+      intro field candidate present
+      change native.accepted field = some candidate
+      rw [(environmentStep_tables runtime _ native command supported).1]
+      exact valid field candidate present
+    · cases (PMF.mem_support_pure_iff _ _).mp reached
+      exact valid
+
+/-- Actual initialized traces retain their saved accepted handles in the
+current physical state, without requiring a source execution witness. -/
+theorem phaseAcceptedCheckpoint_history (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket graph))
+    (plan : RuntimePhasePlan graph) (inputs : PMF graph.Inputs) (horizon : Nat)
+    (scheduler : (phaseApplication runtime leaks).Scheduler) {control}
+    (trace : ((phaseApplication runtime leaks).protocol
+      (inputs.map (PhaseRuntimeState.initial plan)) horizon scheduler).Trace (some control)) :
+    control.execution.application.AcceptedCheckpoint :=
+  (phaseApplication_acceptedCheckpoint runtime leaks).history _ _ _
+    (fun state supported => by
+      obtain ⟨draw, _supported, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp supported
+      exact PhaseRuntimeState.initial_acceptedCheckpoint plan draw) trace
 
 private theorem same_attempt_accepted_invariant (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket graph))

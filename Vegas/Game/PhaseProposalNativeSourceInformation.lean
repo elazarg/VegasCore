@@ -2592,7 +2592,7 @@ def sourceCutTrace {state : (nativeProtocol).State}
     (PhaseRuntimeState.initial implementation.plan)) = nativeInitial from
       PMF.map_comp _ _ _).symm ▸ trace
 
-private theorem trace_initializer_inverse
+theorem trace_initializer_inverse
     {first second : PMF (nativeApplication).State} (same : first = second)
     {state : (nativeProtocol).State}
     (trace : ((nativeMenu).protocol second implementation.horizon
@@ -3114,7 +3114,7 @@ private theorem source_rank_address_transfer
   · rw [← word, List.getElem?_append_left (by omega), second]
     rfl
 
-private theorem attempt_exit_of_prefix
+theorem attempt_exit_of_prefix
     (before : (nativeApplication).Control)
     (prior : (nativeProtocol).Trace (some before))
     {state : (nativeProtocol).State} (trace : (nativeProtocol).Trace state)
