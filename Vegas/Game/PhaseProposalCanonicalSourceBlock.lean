@@ -134,7 +134,7 @@ theorem ordinary_source_query_readback
 
 /-- At an active source binding, the single structural block profile uses
 exactly the ordinary value law at that trace's updated full query. -/
-private theorem ordinary_block_head_law
+theorem ordinary_block_head_law
     (setup : Setup (Player := Player) (L := L)) (mode : ExecutionMode)
     (plan : RuntimePhasePlan (serviceGraph setup mode))
     (values : ∀ who (key : setup.ProposalRecoveryComponent who),

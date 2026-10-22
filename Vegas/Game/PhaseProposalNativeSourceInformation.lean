@@ -6484,7 +6484,7 @@ theorem sourceSnapshot_handle_opening
       simpa only [step, Option.map_some, sourceSnapshotState, pairEq, swap] using replay
 
 omit [Fintype Player] in
-private theorem sourceSnapshotPair_drain
+theorem sourceSnapshotPair_drain
     (target : setup.proposalRecoveryProtocol.History)
     (reference : (nativeApplication).Control)
     (lost : Handle (serviceGraph setup .concurrent) → Option (Raw L))
@@ -6511,7 +6511,7 @@ private theorem sourceSnapshotPair_drain
       · rfl
 
 omit [Fintype Player] in
-private theorem sourceSnapshotPair_restore
+theorem sourceSnapshotPair_restore
     (target : setup.proposalRecoveryProtocol.History)
     (reference : (nativeApplication).Control)
     (lost : Handle (serviceGraph setup .concurrent) → Option (Raw L))

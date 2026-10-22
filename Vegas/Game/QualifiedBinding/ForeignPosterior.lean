@@ -453,93 +453,6 @@ theorem annotated_entry_erased_history
   exact ⟨entry, current, targetTrace, targetEq, good, erased⟩
 
 open Classical in
-/-- The actual foreign joint is the structural ordinary law at the pulled
-source entry. The selected residual, compiler codec and native callback frame
-are used literally, so neither posterior fallback branch is invoked. -/
-theorem ordinaryForeignJoint_of_selected_cursor
-    (operational : implementation.Operational)
-    (who : Player) (control : (nativeApplication).Control)
-    (trace : (nativeProtocol).Trace (some control))
-    (phase : RuntimePhase (serviceGraph setup .concurrent)) :
-    let checkpoint := (checkpointSelection setup implementation operational trace).val.checkpoint
-    let block := SourceProgram.commitPhase checkpoint.residual.tail
-    ∀ cursor : PhaseProposalOrdinarySourceCursor setup .concurrent implementation.runtime
-        implementation.leaks implementation.plan control phase block.block block.suffix,
-      0 < block.block.length →
-      cursor.embedding = cast (congrArg (fun program => OutputEmbedding
-        (inputLayout setup.context) (outputLayout setup.program) program)
-          block.reconstruct.symm) checkpoint.embedding →
-      (∀ point, cursor.lift point = checkpoint.residual.lift
-        (cast (congrArg ProtocolState block.reconstruct) point)) →
-      (∀ owner view, cursor.views.view owner view = checkpoint.views.view owner
-        (cast (congrArg (ProtocolView owner) block.reconstruct) view)) →
-      ordinaryForeignJoint setup values implementation operational who ⟨some control, trace⟩
-          ⟨some cursor.current, cursor.trace⟩ =
-        (block.block.prefixLaw block.suffix
-          (ordinaryBlockProfile setup .concurrent implementation.plan values block.block
-            block.suffix cursor.embedding (fun owner view => cursor.views.view owner view)
-              (control.execution.application.entry.excluded,
-                control.execution.application.generation,
-                  control.execution.application.attempt.phase)
-              control.execution.application.publicView
-              (PhaseProposal.sourceArchive control.execution.network.inputs)) cursor.source).map
-            (fun final => ((fun owner => if owner = who then [] else final.history owner),
-              decide (∀ owner, owner ≠ who → issuedLedger setup implementation block.block
-                control.execution.application.attempt.phase control
-                  (control.execution.application.attempt.phase + block.block.length) owner
-                    (final.view owner)))) := by
-  classical
-  intro checkpoint block cursor positive embedding lift views
-  have entryCast (first second : SourceProgram Player L checkpoint.residual.context
-      checkpoint.residual.names) (same : first = second)
-      (source : SourceProgram.Config Player L checkpoint.residual.context) :
-      cast (congrArg ProtocolState same) (ProtocolState.entry first source) =
-        ProtocolState.entry second source := by
-    cases same
-    rfl
-  have lifted : checkpoint.residual.lift
-      (ProtocolState.entry checkpoint.residual.tail cursor.source) = cursor.current.point := by
-    calc
-      checkpoint.residual.lift (ProtocolState.entry checkpoint.residual.tail cursor.source) =
-          checkpoint.residual.lift (cast (congrArg ProtocolState block.reconstruct)
-            (ProtocolState.entry (block.block.prepend block.suffix) cursor.source)) :=
-        congrArg checkpoint.residual.lift
-          (entryCast _ _ block.reconstruct cursor.source).symm
-      _ = cursor.lift (ProtocolState.entry (block.block.prepend block.suffix) cursor.source) :=
-        (lift _).symm
-      _ = cursor.current.point := cursor.point.symm
-  have pulled : residualEntry? checkpoint.residual.tail checkpoint.residual.lift
-      cursor.current.point = some cursor.source :=
-    (residualEntry?_eq_some_iff checkpoint.origin cursor.current.point cursor.source).mpr lifted
-  have committingPrefix {Γ Δ : SourceCtx Player L} {O P : Finset VarId}
-      (commitBlock : SourceProgram.CommitPrefix Γ O Δ P) (suffix : SourceProgram Player L Δ P)
-      (source : SourceProgram.Config Player L Γ) (nonempty : 0 < commitBlock.length) :
-      ProtocolState.atCommit (commitBlock.prepend suffix)
-        (ProtocolState.entry (commitBlock.prepend suffix) source) = true := by
-    cases commitBlock with
-    | nil =>
-        simp only [SourceProgram.CommitPrefix.length] at nonempty
-        omega
-    | commit => rfl
-  have commitCast (first second : SourceProgram Player L checkpoint.residual.context
-      checkpoint.residual.names) (same : first = second)
-      (source : SourceProgram.Config Player L checkpoint.residual.context) :
-      ProtocolState.atCommit first (ProtocolState.entry first source) =
-        ProtocolState.atCommit second (ProtocolState.entry second source) := by
-    cases same
-    rfl
-  have committing : ProtocolState.atCommit checkpoint.residual.tail
-      (ProtocolState.entry checkpoint.residual.tail cursor.source) = true :=
-    (commitCast _ _ block.reconstruct cursor.source).symm.trans
-      (committingPrefix block.block block.suffix cursor.source positive)
-  have wholeViews : (fun owner view => cursor.views.view owner view) =
-      (fun owner view => checkpoint.views.view owner
-        (cast (congrArg (ProtocolView owner) block.reconstruct) view)) := by
-    funext owner view
-    exact views owner view
-  simp [ordinaryForeignJoint, checkpoint, block, pulled, committing, embedding, wholeViews]
-
-open Classical in
 /-- Conditioning the complete source/graph coupling on all literal issued
 bindings and a proper selected value retains the whole chronological block
 word on both marginals. Already excluded rows remain automatic source slots. -/
@@ -657,7 +570,7 @@ theorem ordinary_binding_conditioned_word_coupling
 /-- The original source run and its structural owner words have one joint
 law. The structural coordinate is the actual attempt with synthetic excluded
 rows inserted; the source coordinate keeps its automatic NONE instructions. -/
-private theorem ordinary_source_structural_joint
+theorem ordinary_source_structural_joint
     (anchor : (nativeApplication).Control)
     (anchorTrace : (nativeProtocol).Trace (some anchor))
     (phase : RuntimePhase (serviceGraph setup .concurrent))

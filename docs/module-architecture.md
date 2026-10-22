@@ -2897,7 +2897,7 @@ assembly. Its weighted pushforward remains the registered open obligation.
 
 | Component | Owns | Component imports |
 | --- | --- | --- |
-| [OrdinaryContinuation](../Vegas/Game/QualifiedBinding/OrdinaryContinuation.lean) | Alias sampling, ordinary source continuation laws and the binding-law contract | Existing source and runtime layers |
+| [OrdinaryContinuation](../Vegas/Game/QualifiedBinding/OrdinaryContinuation.lean) | Alias sampling, ordinary source continuation laws, foreign issued-cylinder products and the binding-law contract | Existing source and runtime layers |
 | [ForeignPosterior](../Vegas/Game/QualifiedBinding/ForeignPosterior.lean) | Foreign cut pairs, ordinary structural atoms and posterior disintegration | OrdinaryContinuation |
 | [BindingReadback](../Vegas/Game/QualifiedBinding/BindingReadback.lean) | Literal signed origins, issued-binding reads and source table adapters | OrdinaryContinuation |
 | [SourceImage](../Vegas/Game/QualifiedBinding/SourceImage.lean) | Snapshot assignments, factual visit relations and the source-image/alignment contracts | BindingReadback |
@@ -2928,3 +2928,10 @@ original runtime data in one factual chronology. `sourceReplayAlignment`
 assembles the publication, focal and proper/lost fields from those exact
 conclusions. Forward annotation readback and the final weighted rectangle
 identity remain open.
+
+`ordinaryForeignJoint_issued_source_product` identifies the original joint's
+true-bit mass with the foreign-only chronological source cylinder product.
+`issuedLedger_foreign_cylinder_telescope` keeps the focal restriction sure and
+normalizes the unissued owner tails under one fixed ordinary block law.
+Matching these source factors to the actual native queried draws remains a
+separate downstream obligation.

@@ -3352,4 +3352,550 @@ theorem source_word_run_conditioned
   funext history
   exact decide_eq_decide.mpr Iff.rfl
 
+section IssuedCylinders
+
+open scoped ENNReal
+
+variable (implementation : ReservedConcurrentImplementation setup)
+
+local notation "nativeApplication" => implementation.application
+local notation "nativeMenu" => PhaseCount.onePacketMenu implementation.runtime
+  implementation.leaks implementation.bounds
+local notation "nativeInitial" => implementation.initial
+local notation "nativeProtocol" => ReactiveApplication.ResponseMenu.protocol
+  nativeMenu nativeInitial implementation.horizon implementation.scheduler
+
+open Classical in
+/-- The actual foreign joint is the structural ordinary law at the pulled
+source entry. The selected residual, compiler codec and native callback frame
+are used literally, so neither posterior fallback branch is invoked. -/
+theorem ordinaryForeignJoint_of_selected_cursor
+    (operational : implementation.Operational)
+    (who : Player) (control : (nativeApplication).Control)
+    (trace : (nativeProtocol).Trace (some control))
+    (phase : RuntimePhase (serviceGraph setup .concurrent)) :
+    let checkpoint := (checkpointSelection setup implementation operational trace).val.checkpoint
+    let block := SourceProgram.commitPhase checkpoint.residual.tail
+    ∀ cursor : PhaseProposalOrdinarySourceCursor setup .concurrent implementation.runtime
+        implementation.leaks implementation.plan control phase block.block block.suffix,
+      0 < block.block.length →
+      cursor.embedding = cast (congrArg (fun program => OutputEmbedding
+        (inputLayout setup.context) (outputLayout setup.program) program)
+          block.reconstruct.symm) checkpoint.embedding →
+      (∀ point, cursor.lift point = checkpoint.residual.lift
+        (cast (congrArg ProtocolState block.reconstruct) point)) →
+      (∀ owner view, cursor.views.view owner view = checkpoint.views.view owner
+        (cast (congrArg (ProtocolView owner) block.reconstruct) view)) →
+      ordinaryForeignJoint setup values implementation operational who ⟨some control, trace⟩
+          ⟨some cursor.current, cursor.trace⟩ =
+        (block.block.prefixLaw block.suffix
+          (ordinaryBlockProfile setup .concurrent implementation.plan values block.block
+            block.suffix cursor.embedding (fun owner view => cursor.views.view owner view)
+              (control.execution.application.entry.excluded,
+                control.execution.application.generation,
+                  control.execution.application.attempt.phase)
+              control.execution.application.publicView
+              (PhaseProposal.sourceArchive control.execution.network.inputs)) cursor.source).map
+            (fun final => ((fun owner => if owner = who then [] else final.history owner),
+              decide (∀ owner, owner ≠ who → issuedLedger setup implementation block.block
+                control.execution.application.attempt.phase control
+                  (control.execution.application.attempt.phase + block.block.length) owner
+                    (final.view owner)))) := by
+  classical
+  intro checkpoint block cursor positive embedding lift views
+  have entryCast (first second : SourceProgram Player L checkpoint.residual.context
+      checkpoint.residual.names) (same : first = second)
+      (source : SourceProgram.Config Player L checkpoint.residual.context) :
+      cast (congrArg ProtocolState same) (ProtocolState.entry first source) =
+        ProtocolState.entry second source := by
+    cases same
+    rfl
+  have lifted : checkpoint.residual.lift
+      (ProtocolState.entry checkpoint.residual.tail cursor.source) = cursor.current.point := by
+    calc
+      checkpoint.residual.lift (ProtocolState.entry checkpoint.residual.tail cursor.source) =
+          checkpoint.residual.lift (cast (congrArg ProtocolState block.reconstruct)
+            (ProtocolState.entry (block.block.prepend block.suffix) cursor.source)) :=
+        congrArg checkpoint.residual.lift
+          (entryCast _ _ block.reconstruct cursor.source).symm
+      _ = cursor.lift (ProtocolState.entry (block.block.prepend block.suffix) cursor.source) :=
+        (lift _).symm
+      _ = cursor.current.point := cursor.point.symm
+  have pulled : residualEntry? checkpoint.residual.tail checkpoint.residual.lift
+      cursor.current.point = some cursor.source :=
+    (residualEntry?_eq_some_iff checkpoint.origin cursor.current.point cursor.source).mpr lifted
+  have committingPrefix {Γ Δ : SourceCtx Player L} {O P : Finset VarId}
+      (commitBlock : SourceProgram.CommitPrefix Γ O Δ P) (suffix : SourceProgram Player L Δ P)
+      (source : SourceProgram.Config Player L Γ) (nonempty : 0 < commitBlock.length) :
+      ProtocolState.atCommit (commitBlock.prepend suffix)
+        (ProtocolState.entry (commitBlock.prepend suffix) source) = true := by
+    cases commitBlock with
+    | nil =>
+        simp only [SourceProgram.CommitPrefix.length] at nonempty
+        omega
+    | commit => rfl
+  have commitCast (first second : SourceProgram Player L checkpoint.residual.context
+      checkpoint.residual.names) (same : first = second)
+      (source : SourceProgram.Config Player L checkpoint.residual.context) :
+      ProtocolState.atCommit first (ProtocolState.entry first source) =
+        ProtocolState.atCommit second (ProtocolState.entry second source) := by
+    cases same
+    rfl
+  have committing : ProtocolState.atCommit checkpoint.residual.tail
+      (ProtocolState.entry checkpoint.residual.tail cursor.source) = true :=
+    (commitCast _ _ block.reconstruct cursor.source).symm.trans
+      (committingPrefix block.block block.suffix cursor.source positive)
+  have wholeViews : (fun owner view => cursor.views.view owner view) =
+      (fun owner view => checkpoint.views.view owner
+        (cast (congrArg (ProtocolView owner) block.reconstruct) view)) := by
+    funext owner view
+    exact views owner view
+  simp [ordinaryForeignJoint, checkpoint, block, pulled, committing, embedding, wholeViews]
+
+open Classical in
+/-- The original foreign issued cylinder has the product of its owner-word
+masses at the same source entry. The focal owner contributes the sure event. -/
+theorem ordinaryForeignJoint_issued_mass
+    (operational : implementation.Operational)
+    (who : Player) (control : (nativeApplication).Control)
+    (trace : (nativeProtocol).Trace (some control))
+    (phase : RuntimePhase (serviceGraph setup .concurrent)) :
+    let checkpoint := (checkpointSelection setup implementation operational trace).val.checkpoint
+    let block := SourceProgram.commitPhase checkpoint.residual.tail
+    ∀ cursor : PhaseProposalOrdinarySourceCursor setup .concurrent implementation.runtime
+        implementation.leaks implementation.plan control phase block.block block.suffix,
+      0 < block.block.length →
+      cursor.embedding = cast (congrArg (fun program => OutputEmbedding
+        (inputLayout setup.context) (outputLayout setup.program) program)
+          block.reconstruct.symm) checkpoint.embedding →
+      (∀ point, cursor.lift point = checkpoint.residual.lift
+        (cast (congrArg ProtocolState block.reconstruct) point)) →
+      (∀ owner view, cursor.views.view owner view = checkpoint.views.view owner
+        (cast (congrArg (ProtocolView owner) block.reconstruct) view)) →
+      let profile := ordinaryBlockProfile setup .concurrent implementation.plan values block.block
+        block.suffix cursor.embedding (fun owner view => cursor.views.view owner view)
+          (control.execution.application.entry.excluded,
+            control.execution.application.generation, control.execution.application.attempt.phase)
+          control.execution.application.publicView
+          (PhaseProposal.sourceArchive control.execution.network.inputs)
+      let law := block.block.prefixLaw block.suffix profile cursor.source
+      ((ordinaryForeignJoint setup values implementation operational who ⟨some control, trace⟩
+        ⟨some cursor.current, cursor.trace⟩).map Prod.snd) true =
+        ∏ owner, if owner = who then 1 else
+          ((law.map (SourceProgram.Config.view owner)).map (fun word => decide (
+            issuedLedger setup implementation block.block
+              control.execution.application.attempt.phase control
+                (control.execution.application.attempt.phase + block.block.length)
+                owner word))) true := by
+  classical
+  intro checkpoint block cursor positive embedding lift views profile law
+  let laws := fun owner => law.map (SourceProgram.Config.view owner)
+  let restriction := fun owner => {word | owner ≠ who → issuedLedger setup implementation
+    block.block control.execution.application.attempt.phase control
+      (control.execution.application.attempt.phase + block.block.length) owner word}
+  have wholeMass :
+      (law.map (fun final => decide (∀ owner, owner ≠ who → issuedLedger setup implementation
+        block.block control.execution.application.attempt.phase control
+          (control.execution.application.attempt.phase + block.block.length)
+            owner (final.view owner)))) true =
+        (law.map (fun final owner => final.view owner)).toOuterMeasure
+          (Set.pi Set.univ restriction) := by
+    rw [← PMF.toOuterMeasure_apply_singleton, PMF.toOuterMeasure_map_apply,
+      PMF.toOuterMeasure_map_apply]
+    congr 1
+    ext final
+    change decide (∀ owner, owner ≠ who → issuedLedger setup implementation
+      block.block control.execution.application.attempt.phase control
+        (control.execution.application.attempt.phase + block.block.length)
+          owner (final.view owner)) = true ↔
+      ∀ owner, owner ∈ Set.univ → owner ≠ who → issuedLedger setup implementation
+        block.block control.execution.application.attempt.phase control
+          (control.execution.application.attempt.phase + block.block.length)
+            owner (final.view owner)
+    rw [decide_eq_true_eq]
+    exact ⟨fun retained owner _ => retained owner,
+      fun retained owner => retained owner (Set.mem_univ owner)⟩
+  have coordinateMass (owner : Player) :
+      (laws owner).toOuterMeasure (restriction owner) =
+        if owner = who then 1 else
+          ((laws owner).map (fun word => decide (issuedLedger setup implementation block.block
+            control.execution.application.attempt.phase control
+              (control.execution.application.attempt.phase + block.block.length)
+                owner word))) true := by
+    by_cases same : owner = who
+    · subst owner
+      simp only [ite_true]
+      apply ((laws who).toOuterMeasure_apply_eq_one_iff _).mpr
+      intro word _supported different
+      exact (different rfl).elim
+    · simp only [same, ite_false]
+      conv_rhs => rw [← PMF.toOuterMeasure_apply_singleton, PMF.toOuterMeasure_map_apply]
+      apply congrArg (laws owner).toOuterMeasure
+      ext word
+      change (owner ≠ who → issuedLedger setup implementation block.block
+        control.execution.application.attempt.phase control
+          (control.execution.application.attempt.phase + block.block.length) owner word) ↔
+        decide (issuedLedger setup implementation block.block
+          control.execution.application.attempt.phase control
+            (control.execution.application.attempt.phase + block.block.length) owner word) = true
+      rw [decide_eq_true_eq]
+      exact ⟨fun retained => retained same, fun retained _ => retained⟩
+  rw [ordinaryForeignJoint_of_selected_cursor setup values implementation operational who control
+    trace phase cursor positive embedding lift views, PMF.map_comp]
+  change (law.map (fun final => decide (∀ owner, owner ≠ who → issuedLedger setup implementation
+    block.block control.execution.application.attempt.phase control
+      (control.execution.application.attempt.phase + block.block.length)
+        owner (final.view owner)))) true = _
+  rw [wholeMass, block.block.prefixLaw_views_product block.suffix profile cursor.source,
+    independentProduct_outerMeasure_pi]
+  exact Finset.prod_congr rfl fun owner _ => coordinateMass owner
+
+open Classical in
+/-- The proper typed draw at one literal binding callback. Silent callbacks
+and nonbinding packets contribute one; the queried law uses this actual input. -/
+def sourceReplayBindingDrawAtom
+    (owner : Player) (past : List (nativeApplication).PlayerEntry)
+    (view : (nativeApplication).PlayerView) (action : (nativeApplication).Action) : ℝ≥0∞ :=
+  match action.transmission with
+  | none => 1
+  | some material => match material.call.packet with
+    | .commitment event _ => match PhaseProposal.bindingPreparation material with
+      | none => 0
+      | some ⟨payload, value⟩ =>
+        if binding : (serviceGraph setup .concurrent).outputLayout event = .binding owner payload
+          then match phaseProposalQuery? setup .concurrent implementation.runtime
+              implementation.leaks implementation.plan owner event past view with
+          | none => 0
+          | some key => ((values owner key).map (fun choice => phaseRecoveryDomainValue setup
+              .concurrent event owner payload binding choice.val.val)) value
+        else 0
+    | .opening .. | .malformed .. => 1
+
+open Classical in
+/-- The typed draws at the actual foreign registrations in the final signed
+attempt. Each factor reads its literal earlier own recall and callback view. -/
+def sourceReplayCurrentIssuedProduct (who : Player) (history : (nativeProtocol).History) :
+    ℝ≥0∞ :=
+  match history.state with
+  | none => 1
+  | some control => ∏ owner, if owner = who then 1 else
+      (((control.execution.recall owner).zipIdx).map fun indexed =>
+        match indexed.1.emitted with
+        | none => 1
+        | some message =>
+            if message.payload.attempt = control.execution.application.attempt then
+              match message.payload.packet.call with
+              | .commitment _ _ => sourceReplayBindingDrawAtom setup values implementation owner
+                  ((control.execution.recall owner).take indexed.2)
+                    indexed.1.beforeView indexed.1.action
+              | .opening .. | .malformed .. => 1
+            else 1).prod
+
+open Classical in
+/-- The static slot addressed by one actual recalled registration in the
+current signed attempt. The owner and interval tests are the ledger's tests. -/
+def sourceIssuedRecordPosition
+    {Γ Δ : SourceCtx Player L} {O P : Finset VarId}
+    (block : SourceProgram.CommitPrefix Γ O Δ P) (low : Nat)
+    (control : (nativeApplication).Control) (owner : Player)
+    (record : (nativeApplication).PlayerEntry) : Option Nat :=
+  match record.emitted with
+  | none => none
+  | some message =>
+      if message.payload.attempt = control.execution.application.attempt then
+        match message.payload.packet.call with
+        | .commitment named _ =>
+            if low ≤ named.val ∧ named.val < low + block.length ∧
+                ∃ payload, (serviceGraph setup .concurrent).outputLayout named =
+                  .binding owner payload then some (named.val - low) else none
+        | .opening .. | .malformed .. => none
+      else none
+
+/-- The literal source actions fixed by the first recalled registrations.
+The complete source word and its law stay fixed as the observation grows. -/
+def sourceIssuedOwnObservation
+    {Γ Δ : SourceCtx Player L} {O P : Finset VarId}
+    (block : SourceProgram.CommitPrefix Γ O Δ P) (low : Nat)
+    (control : (nativeApplication).Control) (owner : Player)
+    (reference : DecisionView owner Δ) (count : Nat) (word : DecisionView owner Δ) : Prop :=
+  ∀ record ∈ (control.execution.recall owner).take count, ∀ position,
+    sourceIssuedRecordPosition setup implementation block low control owner record = some position →
+      block.wordAction owner position word = block.wordAction owner position reference
+
+open Classical in
+/-- The current foreign source product uses the chronological conditional
+owner kernels of the original complete ordinary word law. -/
+def sourceReplayIssuedSourceProduct
+    {Γ Δ : SourceCtx Player L} {O P : Finset VarId}
+    (block : SourceProgram.CommitPrefix Γ O Δ P) (suffix : SourceProgram Player L Δ P)
+    (profile : SourceProgram.BehavioralProfile (block.prepend suffix))
+    (entry : SourceProgram.Config Player L Γ) (low : Nat)
+    (control : (nativeApplication).Control) (focal : Player)
+    (reference : SourceProgram.Config Player L Δ) : ℝ≥0∞ :=
+  ∏ owner, if owner = focal then 1 else
+    ∏ index ∈ Finset.range (control.execution.recall owner).length,
+      match (control.execution.recall owner)[index]? with
+      | none => 1
+      | some record =>
+          match sourceIssuedRecordPosition setup implementation block low control owner record with
+          | none => 1
+          | some position =>
+              ((fiberPosterior
+                ((block.prefixLaw suffix profile entry).map (SourceProgram.Config.view owner))
+                (fun word => decide (sourceIssuedOwnObservation setup implementation block low
+                  control owner (reference.view owner) index word)) true).map
+                    (block.wordAction owner position))
+                  (block.wordAction owner position (reference.view owner))
+
+/-- On the actual emitted ledger, its source action constraints are exactly
+the constraints retained by the complete recalled-registration observation. -/
+theorem issuedLedger_iff_recalled_word_actions
+    {Γ Δ : SourceCtx Player L} {O P : Finset VarId}
+    (block : SourceProgram.CommitPrefix Γ O Δ P) (suffix : SourceProgram Player L Δ P)
+    (embedding : OutputEmbedding (inputLayout setup.context) (outputLayout setup.program)
+      (block.prepend suffix)) (low : Nat)
+    (rank : ∀ index, (embedding.event index).val = low + index.val)
+    (actions : ∀ index action, decodeEventAction setup.program (embedding.event index) action =
+      decodeEventAction (block.prepend suffix) index
+        (cast (congrArg EventField.Action (embedding.layout_eq index)) action))
+    {control : (nativeApplication).Control} (trace : (nativeProtocol).Trace (some control))
+    (owner : Player) (reference word : DecisionView owner Δ)
+    (retained : issuedLedger setup implementation block low control (low + block.length)
+      owner reference) :
+    issuedLedger setup implementation block low control (low + block.length) owner word ↔
+      sourceIssuedOwnObservation setup implementation block low control owner reference
+        (control.execution.recall owner).length word := by
+  rw [issuedLedger_iff_actions setup implementation block suffix embedding low rank actions
+    trace owner reference word retained]
+  unfold sourceIssuedOwnObservation
+  rw [List.take_length]
+  constructor
+  · intro agrees record member position indexed
+    unfold sourceIssuedRecordPosition at indexed
+    cases emitted : record.emitted with
+    | none => simp only [emitted] at indexed; cases indexed
+    | some message =>
+        simp only [emitted] at indexed
+        split at indexed
+        · rename_i sameAttempt
+          cases call : message.payload.packet.call with
+          | malformed | opening => simp only [call] at indexed; cases indexed
+          | commitment named candidate =>
+              simp only [call] at indexed
+              split at indexed
+              · rename_i admitted
+                obtain ⟨lower, upper, payload, shape⟩ := admitted
+                have samePosition : named.val - low = position := Option.some.inj indexed
+                rw [← samePosition]
+                exact agrees named payload shape candidate message
+                  (List.mem_filterMap.mpr ⟨record, member, emitted⟩) sameAttempt call ⟨lower, upper⟩
+              · cases indexed
+        · cases indexed
+  · intro agrees named payload shape candidate message emitted sameAttempt call interval
+    obtain ⟨record, member, emittedRecord⟩ := List.mem_filterMap.mp emitted
+    have indexed : sourceIssuedRecordPosition setup implementation block low control owner
+        record = some (named.val - low) := by
+      unfold sourceIssuedRecordPosition
+      rw [emittedRecord]
+      simp only [sameAttempt, ite_true, call]
+      exact ite_eq_left ⟨interval.1, interval.2, payload, shape⟩
+    exact agrees record member _ indexed
+
+open Classical in
+/-- A supported complete source word witnesses every earlier issued cylinder.
+Successive actual registrations therefore multiply their chronological owner
+atoms without dividing by a possibly zero mass. -/
+theorem issuedLedger_foreign_cylinder_telescope
+    {Γ Δ : SourceCtx Player L} {O P : Finset VarId}
+    (block : SourceProgram.CommitPrefix Γ O Δ P) (suffix : SourceProgram Player L Δ P)
+    (embedding : OutputEmbedding (inputLayout setup.context) (outputLayout setup.program)
+      (block.prepend suffix)) (low : Nat)
+    (rank : ∀ index, (embedding.event index).val = low + index.val)
+    (actions : ∀ index action, decodeEventAction setup.program (embedding.event index) action =
+      decodeEventAction (block.prepend suffix) index
+        (cast (congrArg EventField.Action (embedding.layout_eq index)) action))
+    {control : (nativeApplication).Control} (trace : (nativeProtocol).Trace (some control))
+    (profile : SourceProgram.BehavioralProfile (block.prepend suffix))
+    (entry : SourceProgram.Config Player L Γ) (focal : Player)
+    (reference : SourceProgram.Config Player L Δ)
+    (supported : reference ∈ (block.prefixLaw suffix profile entry).support)
+    (retained : ∀ owner, owner ≠ focal → issuedLedger setup implementation block low control
+      (low + block.length) owner (reference.view owner)) :
+    ∏ owner, (if owner = focal then 1 else
+      (((block.prefixLaw suffix profile entry).map (SourceProgram.Config.view owner)).map
+        (fun word => decide (issuedLedger setup implementation block low control
+          (low + block.length) owner word))) true) =
+      sourceReplayIssuedSourceProduct setup implementation block suffix profile entry low control
+        focal reference := by
+  classical
+  unfold sourceReplayIssuedSourceProduct
+  apply Finset.prod_congr rfl
+  intro owner _member
+  by_cases own : owner = focal
+  · simp only [own, ite_true]
+  · simp only [own, ite_false]
+    let law := (block.prefixLaw suffix profile entry).map (SourceProgram.Config.view owner)
+    let past := control.execution.recall owner
+    let observe := fun count word => decide (sourceIssuedOwnObservation setup implementation
+      block low control owner (reference.view owner) count word)
+    let atom : Nat → ℝ≥0∞ := fun index => match past[index]? with
+      | none => 1
+      | some record =>
+          match sourceIssuedRecordPosition setup implementation block low control owner record with
+          | none => 1
+          | some position => ((fiberPosterior law (observe index) true).map
+              (block.wordAction owner position))
+                (block.wordAction owner position (reference.view owner))
+    have referenceSupport : reference.view owner ∈ law.support :=
+      (PMF.mem_support_map_iff _ _ _).mpr ⟨reference, supported, rfl⟩
+    have referenceMatches (count : Nat) : observe count (reference.view owner) = true := by
+      apply decide_eq_true
+      intro _record _member _position _indexed
+      rfl
+    have matchesStep (index : Nat) (inside : index < past.length) (word : DecisionView owner Δ) :
+        sourceIssuedOwnObservation setup implementation block low control owner
+            (reference.view owner) (index + 1) word ↔
+          sourceIssuedOwnObservation setup implementation block low control owner
+            (reference.view owner) index word ∧
+          (∀ position, sourceIssuedRecordPosition setup implementation block low control owner
+              past[index] = some position →
+            block.wordAction owner position word =
+              block.wordAction owner position (reference.view owner)) := by
+      unfold sourceIssuedOwnObservation
+      change (∀ record ∈ past.take (index + 1), _) ↔ _
+      rw [List.take_succ_eq_append_getElem inside]
+      constructor
+      · intro next
+        refine ⟨?_, ?_⟩
+        · intro record member position indexed
+          exact next record (List.mem_append_left _ member) position indexed
+        · intro position indexed
+          exact next past[index] (List.mem_append_right _ (List.mem_singleton_self _))
+            position indexed
+      · rintro ⟨previous, next⟩ record member position indexed
+        rcases List.mem_append.mp member with earlier | last
+        · exact previous record earlier position indexed
+        · have sameRecord : record = past[index] := List.mem_singleton.mp last
+          subst record
+          exact next position indexed
+    have mass : ∀ count ≤ past.length,
+        (law.map (observe count)) true = ∏ index ∈ Finset.range count, atom index := by
+      intro count
+      induction count with
+      | zero =>
+          intro _bounded
+          have all : observe 0 = fun _ => true := by
+            funext word
+            apply decide_eq_true
+            intro record member
+            cases member
+          rw [all, Finset.prod_range_zero]
+          change (law.map (Function.const _ true)) true = 1
+          rw [PMF.map_const, PMF.pure_apply_self]
+      | succ count ih =>
+          intro bounded
+          have inside : count < past.length := by omega
+          have previous := ih (by omega)
+          have possible : true ∈ (law.map (observe count)).support :=
+            (PMF.mem_support_map_iff _ _ _).mpr
+              ⟨reference.view owner, referenceSupport, referenceMatches count⟩
+          have current : past[count]? = some past[count] := List.getElem?_eq_getElem inside
+          cases indexed : sourceIssuedRecordPosition setup implementation block low control
+              owner past[count] with
+          | none =>
+              have same : observe (count + 1) = observe count := by
+                funext word
+                apply decide_eq_decide.mpr
+                rw [matchesStep count inside word]
+                constructor
+                · exact And.left
+                · intro earlier
+                  refine ⟨earlier, ?_⟩
+                  intro position impossible
+                  rw [indexed] at impossible
+                  cases impossible
+              rw [same, previous, Finset.prod_range_succ]
+              simp only [atom, current, indexed, mul_one]
+          | some position =>
+              have increment := observation_fiber_mass law (observe count) (observe (count + 1))
+                (block.wordAction owner position)
+                (block.wordAction owner position (reference.view owner)) possible (by
+                  intro word _drawn
+                  rw [decide_eq_true_eq, decide_eq_true_eq, matchesStep count inside word]
+                  constructor
+                  · rintro ⟨old, next⟩
+                    exact ⟨old, next position indexed⟩
+                  · rintro ⟨old, next⟩
+                    refine ⟨old, ?_⟩
+                    intro selected selectedAt
+                    have samePosition : position = selected :=
+                      Option.some.inj (indexed.symm.trans selectedAt)
+                    exact samePosition ▸ next)
+              rw [increment, previous, Finset.prod_range_succ]
+              simp only [atom, current, indexed]
+    have ledger : (fun word => decide (issuedLedger setup implementation block low control
+        (low + block.length) owner word)) = observe past.length := by
+      funext word
+      exact decide_eq_decide.mpr (issuedLedger_iff_recalled_word_actions setup implementation
+        block suffix embedding low rank actions trace owner (reference.view owner) word
+          (retained owner own))
+    change (law.map _) true = ∏ index ∈ Finset.range past.length, atom index
+    rw [ledger]
+    exact mass _ le_rfl
+
+open Classical in
+/-- The true-bit mass of the original foreign joint is its finite chronological
+issued-owner product at the same pulled source entry. -/
+theorem ordinaryForeignJoint_issued_source_product
+    (operational : implementation.Operational)
+    (who : Player) (control : (nativeApplication).Control)
+    (trace : (nativeProtocol).Trace (some control))
+    (phase : RuntimePhase (serviceGraph setup .concurrent)) :
+    let checkpoint := (checkpointSelection setup implementation operational trace).val.checkpoint
+    let block := SourceProgram.commitPhase checkpoint.residual.tail
+    ∀ cursor : PhaseProposalOrdinarySourceCursor setup .concurrent implementation.runtime
+        implementation.leaks implementation.plan control phase block.block block.suffix,
+      0 < block.block.length →
+      cursor.embedding = cast (congrArg (fun program => OutputEmbedding
+        (inputLayout setup.context) (outputLayout setup.program) program)
+          block.reconstruct.symm) checkpoint.embedding →
+      (∀ point, cursor.lift point = checkpoint.residual.lift
+        (cast (congrArg ProtocolState block.reconstruct) point)) →
+      (∀ owner view, cursor.views.view owner view = checkpoint.views.view owner
+        (cast (congrArg (ProtocolView owner) block.reconstruct) view)) →
+      let profile := ordinaryBlockProfile setup .concurrent implementation.plan values block.block
+        block.suffix cursor.embedding (fun owner view => cursor.views.view owner view)
+          (control.execution.application.entry.excluded,
+            control.execution.application.generation, control.execution.application.attempt.phase)
+          control.execution.application.publicView
+          (PhaseProposal.sourceArchive control.execution.network.inputs)
+      ∀ reference : SourceProgram.Config Player L block.context,
+        reference ∈ (block.block.prefixLaw block.suffix profile cursor.source).support →
+        (∀ owner, owner ≠ who → issuedLedger setup implementation block.block
+          control.execution.application.attempt.phase control
+            (control.execution.application.attempt.phase + block.block.length) owner
+              (reference.view owner)) →
+        ((ordinaryForeignJoint setup values implementation operational who ⟨some control, trace⟩
+          ⟨some cursor.current, cursor.trace⟩).map Prod.snd) true =
+          sourceReplayIssuedSourceProduct setup implementation block.block block.suffix profile
+            cursor.source control.execution.application.attempt.phase control who reference := by
+  intro checkpoint block cursor positive embedding lift views profile reference supported retained
+  have offset : cursor.offset = control.execution.application.attempt.phase := by
+    have sourceCount := cursor.compiled.countEq
+    have selectedCount := checkpoint.compiled.countEq
+    have reconstructed : eventCount (block.block.prepend block.suffix) =
+        eventCount checkpoint.residual.tail := congrArg eventCount block.reconstruct
+    omega
+  have rank : ∀ index, (cursor.embedding.event index).val =
+      control.execution.application.attempt.phase + index.val := by
+    intro index
+    rw [cursor.compiled.rankEq, offset]
+  rw [ordinaryForeignJoint_issued_mass setup values implementation operational who control trace
+    phase cursor positive embedding lift views]
+  exact issuedLedger_foreign_cylinder_telescope setup implementation block.block block.suffix
+    cursor.embedding control.execution.application.attempt.phase rank cursor.views.actionEq
+      trace profile cursor.source who reference supported retained
+
+end IssuedCylinders
+
 end Vegas.PhaseProposalQualifiedBinding

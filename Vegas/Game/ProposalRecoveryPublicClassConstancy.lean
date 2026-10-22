@@ -562,7 +562,7 @@ theorem metadata_restrict_to_suffix
       | inr inside => exact ⟨inside, image, paired⟩
 
 omit [Fintype Player] in
-private theorem source_reveal_entry :
+theorem source_reveal_entry :
     ∀ {Γ : SourceCtx Player L} {O : Finset VarId}
       (program : SourceProgram Player L Γ O) (point : Vegas.SourceProgram.ProtocolState program)
       (owner : Player), (Γ.map Prod.fst).Nodup →
@@ -1685,7 +1685,7 @@ omit [Fintype Player] in
 /-- Equal proposal reads reflect to one common syntax suffix. The added
 absolute source-rank offsets are injective and retain the literal typed
 value; no compiler or native source decoder is used. -/
-private theorem suffix_proposal_eq_iff
+theorem suffix_proposal_eq_iff
     {wholeΓ Γ : SourceCtx Player L} {wholeO O : Finset VarId}
     {whole : SourceProgram Player L wholeΓ wholeO} {program : SourceProgram Player L Γ O}
     {lift : Vegas.SourceProgram.ProtocolState program → Vegas.SourceProgram.ProtocolState whole}
@@ -1733,7 +1733,7 @@ private theorem suffix_proposal_eq_iff
       exact mapped _ _
 
 omit [Fintype Player] in
-private theorem proposal_read_eq_of_public_proposal
+theorem proposal_read_eq_of_public_proposal
     (left right : CommitRecoveryState setup.program)
     (leftJoint rightJoint : Player → Option (ProposalRecoveryMove Player L))
     (same : setup.proposalRecoveryProposalOf (some left) leftJoint =
@@ -1753,7 +1753,7 @@ private theorem proposal_read_eq_of_public_proposal
   simpa only [Option.map_id, id_eq] using decoded
 
 omit [Fintype Player] in
-private theorem source_current_of_signals (focal : Player)
+theorem source_current_of_signals (focal : Player)
     (left right : setup.proposalRecoveryProtocol.History)
     (same : setup.proposalRecoverySignals.infoOf focal left.trace =
       setup.proposalRecoverySignals.infoOf focal right.trace) :
