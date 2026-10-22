@@ -59,6 +59,40 @@ theorem normalize_keepsStore_of_noncommitment (state : PhaseRuntimeState graph)
       (phase.drain_keepsStore state.current field value present)
   · simpa only [settle, ite_eq_right finished] using phase.drain_keepsStore state.current
 
+/-- An allowed public sample survives every subsequent automatic phase. -/
+theorem normalize_sample_output (state : PhaseRuntimeState graph)
+    (event : graph.EventId) (ready : state.current.native.config.cut.Ready event)
+    (payload : L.Ty) (outputEq : graph.outputLayout event = .publicData payload)
+    (allowed : state.commandAllowed (.executeSample event) = true)
+    (value : (graph.outputLayout event).Value) :
+    ({ state with current := (state.current.environmentResult (.executeSample event)
+      (state.current.native.complete event ready
+        (cast (congrArg EventField.Action outputEq.symm) PUnit.unit) value)) } :
+      PhaseRuntimeState graph).normalize.current.native.config.outputs event = some value := by
+  obtain ⟨phase, remaining, installed⟩ :
+      ∃ phase remaining, state.phases = phase :: remaining := by
+    cases phases : state.phases with
+    | nil => simp only [commandAllowed, phases, List.head?_nil, Option.any_none,
+        Bool.false_eq_true] at allowed
+    | cons phase remaining => exact ⟨phase, remaining, rfl⟩
+  have inside : event ∈ phase.events := by
+    simpa only [commandAllowed, installed, List.head?_cons, Option.any_some,
+      decide_eq_true_eq] using allowed
+  have notCommitment : phase.kind ≠ .commitment := by
+    intro commitment
+    have fields := phase.fields event ((phase.mem_events event).mp inside).1
+      ((phase.mem_events event).mp inside).2
+    rw [commitment] at fields
+    obtain ⟨owner, ty, binding⟩ := fields
+    rw [outputEq] at binding
+    cases binding
+  have kept := normalize_keepsStore_of_noncommitment
+    ({ state with current := (state.current.environmentResult (.executeSample event)
+      (state.current.native.complete event ready
+        (cast (congrArg EventField.Action outputEq.symm) PUnit.unit) value)) } :
+      PhaseRuntimeState graph) phase remaining installed notCommitment
+  exact kept (.inr event) value (Config.complete_output_same _ _ _ _ _)
+
 /-- At one fixed physical state, the public result identifies every supported
 application-command outcome. The only random command writes a public sample,
 and that sample survives all subsequent automatic phase installation. -/
@@ -107,32 +141,13 @@ theorem environment_eq_of_publicView (runtime : EventGraphRuntime graph)
               rw [Config.step] at firstStep secondStep
               obtain ⟨firstValue, _firstDraw, rfl⟩ := (PMF.mem_support_map_iff ..).mp firstStep
               obtain ⟨secondValue, _secondDraw, rfl⟩ := (PMF.mem_support_map_iff ..).mp secondStep
-              obtain ⟨phase, remaining, installed⟩ :
-                  ∃ phase remaining, state.phases = phase :: remaining := by
-                cases phases : state.phases with
-                | nil => simp only [commandAllowed, phases, List.head?_nil, Option.any_none,
-                    Bool.false_eq_true] at allowed
-                | cons phase remaining => exact ⟨phase, remaining, rfl⟩
-              have inside : event ∈ phase.events := by
-                simpa only [commandAllowed, installed, List.head?_cons, Option.any_some,
-                  decide_eq_true_eq] using allowed
-              have notCommitment : phase.kind ≠ .commitment := by
-                intro commitment
-                have fields := phase.fields event ((phase.mem_events event).mp inside).1
-                  ((phase.mem_events event).mp inside).2
-                rw [commitment] at fields
-                obtain ⟨owner, ty, binding⟩ := fields
-                rw [outputEq] at binding
-                cases binding
               let next (value : (graph.outputLayout event).Value) : PhaseRuntimeState graph :=
                 { state with current := (state.current.environmentResult (.executeSample event)
                   (state.current.native.complete event ready
                     (cast (congrArg EventField.Action outputEq.symm) PUnit.unit) value)) }
               have output (value : (graph.outputLayout event).Value) :
                   (next value).normalize.current.native.config.outputs event = some value := by
-                have kept := normalize_keepsStore_of_noncommitment (next value) phase remaining
-                  installed notCommitment
-                exact kept (.inr event) value (Config.complete_output_same _ _ _ _ _)
+                exact normalize_sample_output state event ready payload outputEq allowed value
               have observed := congrArg (fun view : PhasePublicView graph =>
                 view.native.observation.store) same
               have visible : graph.fieldPublic (.inr event) := by
