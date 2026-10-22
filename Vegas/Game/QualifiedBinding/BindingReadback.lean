@@ -3013,7 +3013,7 @@ theorem target_attempt_state_agrees
 omit [Fintype Player] in
 /-- The assigned accepted proper handle has its target typed result. No
 supported assigned trace or source guard invariance is used in this equation. -/
-private theorem assigned_binding_result
+theorem assigned_binding_result
     (target : setup.proposalRecoveryProtocol.History)
     (reference : (nativeApplication).Control)
     (lost : Handle (serviceGraph setup .concurrent) → Option (Raw L))

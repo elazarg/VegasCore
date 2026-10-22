@@ -83,7 +83,7 @@ private theorem sourceSnapshotPair_lost_congr
 omit [Fintype Player] in
 /-- Lost draws at still fresh handles cannot affect an earlier assigned
 snapshot, even though the handle assignment uses the final reference control. -/
-private theorem sourceSnapshotState_lost_congr
+theorem sourceSnapshotState_lost_congr
     (target : setup.proposalRecoveryProtocol.History)
     (reference : (nativeApplication).Control)
     (first second : Handle (serviceGraph setup .concurrent) → Option (Raw L))

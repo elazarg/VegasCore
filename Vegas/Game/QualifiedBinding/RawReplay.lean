@@ -3089,7 +3089,7 @@ def sourceRawReplayReadback
                   (action.transmission.bind PhaseProposal.bindingPreparation).map
                     (fun raw => (handle, raw))), some action) :: script
 
-private theorem sourceReplayAppend_prior_state
+theorem sourceReplayAppend_prior_state
     (previous actual : (nativeProtocol).History) (next : (nativeProtocol).State)
     (joint : Player → Option (nativeApplication).Action)
     (appended : sourceReplayAppend setup implementation previous next joint = some actual) :
