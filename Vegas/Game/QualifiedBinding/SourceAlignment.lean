@@ -1252,20 +1252,30 @@ theorem sourceReplayAlignment
                 implementation.leaks state) referenceTrace
         cases packet : message.payload.packet.call with
         | malformed raw =>
-            simp only [phaseApplication, PhaseRuntimeState.handle, packet,
-              EventGraphRuntime.handle, Option.map_none, ite_self]
+            constructor
+            · simp only [phaseApplication, PhaseRuntimeState.handle, packet,
+                EventGraphRuntime.handle, Option.map_none, ite_self]
+            · intro _
+              simp only [EventGraphRuntime.handle, Option.map_none]
         | opening named handle raw =>
-            exact sourceSnapshotAssignment_handle_opening setup implementation G reference lost
-              implementation.runtime before.execution.application message named handle raw packet
-                (fun admitted ready => openingFixed message named handle raw ownLookup packet
-                  admitted ready)
+            constructor
+            · exact sourceSnapshotAssignment_handle_opening setup implementation G reference lost
+                implementation.runtime before.execution.application message named handle raw packet
+                  (fun admitted ready => openingFixed message named handle raw ownLookup packet
+                    admitted ready)
+            · intro admitted
+              simpa only [packet] using sourceSnapshot_handle_opening setup implementation G
+                reference lost implementation.runtime before.execution.application.current.native
+                  message.id named handle raw
+                    (fun ready => openingFixed message named handle raw ownLookup packet
+                      (by simpa only [packet] using admitted) ready)
         | commitment named handle =>
             cases handled : before.execution.application.handle implementation.runtime message with
             | none =>
                 have replay := sourceSnapshotAssignment_rejected_binding setup implementation
                   G reference lost implementation.runtime before.execution.application message
                     named handle packet handled
-                simpa only [phaseApplication, handled, Option.map_none] using replay
+                simpa only [phaseApplication, handled, Option.map_none, packet] using replay
             | some after =>
                 have nativeAccepted : ∃ native,
                     EventGraphRuntime.handle implementation.runtime
@@ -1403,7 +1413,8 @@ theorem sourceReplayAlignment
                 have replay := sourceSnapshotAssignment_handle_binding setup implementation
                   G reference lost implementation.runtime before.execution.application after message
                     named handle owner domain binding packet suitable handled
-                simpa only [phaseApplication, handled, Option.map_some] using replay
+                refine ⟨?_, fun _ => by simpa only [packet] using replay.2⟩
+                simpa only [phaseApplication, handled, Option.map_some] using replay.1
       openingFixed := openingFixed
       focalView := by
         intro recalls _focalRecall

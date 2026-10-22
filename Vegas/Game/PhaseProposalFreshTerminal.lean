@@ -381,7 +381,7 @@ theorem SourceProgram.Setup.proposalRecovery_excluded_owned_step_law
   exact (PMF.mem_support_pure_iff _ _).mp landed
 
 omit [Fintype Player] in
-private theorem source_path_controls
+theorem source_path_controls
     (setup : Setup (Player := Player) (L := L))
     {fuel : Nat} {first last : setup.commitRecoveryProtocol.History}
     (path : setup.commitRecoveryProtocol.ReachesWithin fuel first last)

@@ -3668,7 +3668,18 @@ structure SourceReplayImage
         (sourceSnapshotAssignment setup implementation target reference lost
           before.execution.application) message =
       ((nativeApplication).handle before.execution.application message).map
-        (sourceSnapshotAssignment setup implementation target reference lost)
+        (sourceSnapshotAssignment setup implementation target reference lost) ∧
+      ((message.payload.tokenValid before.execution.application.attempt &&
+          before.execution.application.allows message.payload.packet.call &&
+          !before.execution.application.current.excludedCall message.payload.packet.call) = true →
+        EventGraphRuntime.handle implementation.runtime
+            (sourceSnapshotState setup implementation target reference lost
+              before.execution.application.current.native)
+            ⟨message.id, message.payload.packet.call⟩ =
+          (EventGraphRuntime.handle implementation.runtime
+            before.execution.application.current.native
+              ⟨message.id, message.payload.packet.call⟩).map
+                (sourceSnapshotState setup implementation target reference lost))
   openingFixed : ∀ (message : Message Player
       (CommitAttemptPacket (serviceGraph setup .concurrent)))
       (event : (serviceGraph setup .concurrent).EventId)

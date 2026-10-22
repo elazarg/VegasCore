@@ -123,6 +123,24 @@ theorem settle_publicFailureCheckpoint (phases : List (RuntimePhase graph)) (gen
       · exact ih _ _ _ _ (State.PublicFailureExtension.refl _)
     · exact drained
 
+/-- Fresh finite settlement preserves every original completed failure verdict. -/
+theorem fresh_settle_publicFailureExtension
+    (phases : List (RuntimePhase graph)) (generation : Nat)
+    (entry : RecoveryState graph) (retired : List (RetiredCommitAttempt graph)) :
+    entry.native.PublicFailureExtension
+      (settle phases generation entry entry retired).current.native := by
+  induction phases generalizing entry with
+  | nil => exact State.PublicFailureExtension.refl _
+  | cons phase remaining ih =>
+      have noFailure : ¬ (phase.kind = .commitment ∧
+          (((phase.drain entry).excluded \ entry.excluded) ∩ phase.owners).Nonempty) := by
+        simp only [RuntimePhase.drain_excluded, Finset.sdiff_self, Finset.empty_inter,
+          Finset.not_nonempty_empty, and_false, not_false_eq_true]
+      simp only [settle, noFailure, ↓reduceIte]
+      split
+      · exact (phase.drain_publicFailureExtension entry).trans (ih (phase.drain entry))
+      · exact phase.drain_publicFailureExtension entry
+
 theorem initial_publicFailureCheckpoint (plan : RuntimePhasePlan graph)
     (inputs : graph.Inputs) : (initial plan inputs).PublicFailureCheckpoint :=
   settle_publicFailureCheckpoint _ _ _ _ _ (State.PublicFailureExtension.refl _)

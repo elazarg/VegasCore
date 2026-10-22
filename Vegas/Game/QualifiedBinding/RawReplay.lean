@@ -329,7 +329,7 @@ omit [Fintype Player] in
 /-- Every environment branch has the exact assigned application and the
 original physical observations. This derives the replay transition support
 from the original branch, including its public Nature probability. -/
-private theorem sourceReplayExecution_environment
+theorem sourceReplayExecution_environment
     (target : setup.proposalRecoveryProtocol.History)
     (reference : (nativeApplication).Control)
     (lost : Handle (serviceGraph setup .concurrent) → Option (Raw L))
@@ -1428,7 +1428,7 @@ theorem sourceRawReplay_environment_extend
     change _ ∈ ((nativeApplication).transition nativeInitial implementation.horizon
       implementation.scheduler (some first) (fun _ => none)).support
     rw [sourceReplayExecution_transition setup implementation target reference lost recalls
-      before idle _image.handling]
+      before idle (fun id message found => (_image.handling id message found).1)]
     exact (PMF.mem_support_map_iff ..).mpr ⟨some after, originalMoved, rfl⟩
   let next : (nativeProtocol).History := ⟨some last,
     actual.extend (fun _ => none) offered transported⟩
@@ -3004,6 +3004,13 @@ inductive SourceReplayScriptMass
       {script : List (RawReplayChoice setup implementation)} {mass : ℝ≥0∞}
       (quiet : (nativeApplication).actor before = none ∨
         (nativeApplication).actor before = some who)
+      (actual : (nativeProtocol).History)
+      (replayed : sourceRawReplay setup implementation who target reference ⟨before, prior⟩
+        script = some actual)
+      (related : RawReplayState setup implementation who target reference
+        (rawReplayLost setup implementation script) ⟨before, prior⟩ actual)
+      (restricted : SourceReplayLostRestricted setup implementation target reference who
+        (rawReplayLost setup implementation script))
       (earlier : SourceReplayScriptMass scale who target reference ⟨before, prior⟩ script mass) :
       SourceReplayScriptMass scale who target reference
         ⟨after, prior.extend joint legal moved⟩ ((none, none) :: script) mass
@@ -3021,6 +3028,8 @@ inductive SourceReplayScriptMass
       (related : RawReplayState setup implementation who target reference
         (rawReplayLost setup implementation script) ⟨some before, prior⟩
           ⟨some actual, actualTrace⟩)
+      (restricted : SourceReplayLostRestricted setup implementation target reference who
+        (rawReplayLost setup implementation script))
       (kernel : PMF (RawReplayChoice setup implementation))
       (atoms : SourceReplayCallbackAtoms (setup := setup) (values := values)
         (implementation := implementation) scale owner actual.execution target reference
@@ -3208,14 +3217,16 @@ theorem sourceRawReplay_readback
   induction supported generalizing actual with
   | start =>
     simp only [sourceRawReplayReadback]
-  | @deterministic before after prior joint legal moved script mass quiet earlier ih =>
+  | @deterministic before after prior joint legal moved script mass quiet _priorActual
+      _priorReplay _priorRelated _priorRestricted earlier ih =>
     obtain ⟨previous, previousReplay, priorEq⟩ := sourceRawReplay_step_prior setup implementation
       who target reference prior joint legal moved (none, none) script actual replayed
     have previousRead := ih previous previousReplay
     rw [sourceRawReplayReadback, priorEq, previousRead, Option.bind_some]
     rcases quiet with quiet | quiet <;> simp only [quiet, ↓reduceIte]
   | @foreign before after prior joint legal moved script mass owner different acting previous
-      previousTrace previousReplay _related kernel atoms _description choice member earlier ih =>
+      previousTrace previousReplay _related _restricted kernel atoms _description choice member
+      earlier ih =>
     obtain ⟨action, actionEq, tagEq⟩ := sourceReplayCallbackAtoms_readback
       (setup := setup) (values := values) (implementation := implementation)
         scale owner previous.execution target reference ((joint owner).getD ⟨none⟩)

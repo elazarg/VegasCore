@@ -2912,6 +2912,31 @@ theorem source_address_length
         List.length_singleton, Trace.length, ih]
 
 omit [Fintype Player] in
+/-- The actual initialized endpoint is retained at its exact chronological index. -/
+theorem source_address_endpoint
+    (current : CommitRecoveryState setup.program)
+    (prior : setup.commitRecoveryProtocol.Trace (some current)) :
+    0 < prior.length ∧
+      (setup.recoveryAddressWord prior)[prior.length - 1]? = some current.publicAddress := by
+  have endpoint (ending : setup.commitRecoveryProtocol.History)
+      (current : CommitRecoveryState setup.program) (present : ending.state = some current) :
+      0 < ending.trace.length ∧
+        (setup.recoveryAddressWord ending.trace)[ending.trace.length - 1]? =
+          some current.publicAddress := by
+    rcases ending with ⟨state, endingTrace⟩
+    cases endingTrace with
+    | start => cases present
+    | @extend before after earlier actions offered moved =>
+        cases present
+        constructor
+        · exact Nat.zero_lt_succ _
+        · rw [Trace.length, Nat.add_sub_cancel, setup.recoveryAddressWord_extend,
+            List.getElem?_append_right (by rw [source_address_length]),
+            source_address_length, Nat.sub_self]
+          rfl
+  exact endpoint ⟨some current, prior⟩ current rfl
+
+omit [Fintype Player] in
 private theorem source_row_addresses
     (current next : CommitRecoveryState setup.program)
     (prior : setup.commitRecoveryProtocol.Trace (some current))
@@ -2925,22 +2950,9 @@ private theorem source_row_addresses
     ∃ index, index + 1 < trace.length ∧
       (setup.recoveryAddressWord trace)[index]? = some current.publicAddress ∧
       (setup.recoveryAddressWord trace)[index + 1]? = some next.publicAddress := by
-  have endpoint : ∀ {state : setup.commitRecoveryProtocol.State}
-      (path : setup.commitRecoveryProtocol.Trace state)
-      (current : CommitRecoveryState setup.program),
-      state = some current → ∃ index, path.length = index + 1 ∧
-        (setup.recoveryAddressWord path)[index]? = some current.publicAddress := by
-    intro state path
-    cases path with
-    | start => intro current impossible; cases impossible
-    | @extend before after earlier actions offered moved =>
-        intro current equal
-        cases equal
-        refine ⟨earlier.length, rfl, ?_⟩
-        rw [setup.recoveryAddressWord_extend, List.getElem?_append_right
-          (by rw [source_address_length]), source_address_length, Nat.sub_self]
-        rfl
-  obtain ⟨index, depth, last⟩ := endpoint prior current rfl
+  obtain ⟨positive, last⟩ := source_address_endpoint setup current prior
+  let index := prior.length - 1
+  have depth : prior.length = index + 1 := by dsimp only [index]; omega
   have bounded := retained.length_le
   obtain ⟨tail, word⟩ := source_address_prefix setup retained
   refine ⟨index, by simp only [Trace.length, depth] at bounded; omega, ?_, ?_⟩
@@ -3452,7 +3464,7 @@ theorem source_address_row
             List.length_reverse, wordLengths, depth, Nat.sub_self, List.getElem?_cons_zero]
 
 omit [Fintype Player] in
-private theorem source_instruction_chunk_row
+theorem source_instruction_chunk_row
     {first last : setup.proposalRecoveryProtocol.State}
     (entry : setup.proposalRecoveryProtocol.Trace first)
     (trace : setup.proposalRecoveryProtocol.Trace last)
@@ -6297,7 +6309,7 @@ private theorem sourceSnapshotPair_expiry
   · exact stutter (environmentStep_expire_of_not_ready runtime before event ready)
 
 omit [Fintype Player] in
-private theorem sourceSnapshot_environment
+theorem sourceSnapshot_environment
     (target : setup.proposalRecoveryProtocol.History)
     (reference : (nativeApplication).Control)
     (lost : Handle (serviceGraph setup .concurrent) → Option (Raw L))
@@ -6708,7 +6720,13 @@ theorem sourceSnapshotAssignment_handle_binding
     (accepted : before.handle runtime message = some after) :
     (sourceSnapshotAssignment setup implementation target reference lost before).handle
         runtime message =
-      some (sourceSnapshotAssignment setup implementation target reference lost after) := by
+      some (sourceSnapshotAssignment setup implementation target reference lost after) ∧
+      EventGraphRuntime.handle runtime
+          (sourceSnapshotState setup implementation target reference lost before.current.native)
+          ⟨message.id, message.payload.packet.call⟩ =
+        (EventGraphRuntime.handle runtime before.current.native
+          ⟨message.id, message.payload.packet.call⟩).map
+            (sourceSnapshotState setup implementation target reference lost) := by
   classical
   unfold PhaseRuntimeState.handle at accepted ⊢
   have gate :
@@ -6746,25 +6764,27 @@ theorem sourceSnapshotAssignment_handle_binding
           before.current.inclusionResult message.payload.packet.call native } :
             PhaseRuntimeState (serviceGraph setup .concurrent)).normalize = after := by
         exact Option.some.inj (by simpa only [nativeStep, Option.map_some] using accepted)
-      change Option.map _ (EventGraphRuntime.handle runtime
-        (sourceSnapshotState setup implementation target reference lost before.current.native)
-        ⟨message.id, message.payload.packet.call⟩) = _
-      rw [packet, replay, Option.map_some]
-      have updated :
-          ({ sourceSnapshotAssignment setup implementation target reference lost before with
-            current :=
-              (sourceSnapshotAssignment setup implementation target reference lost
-                  before).current.inclusionResult (.commitment event handle)
-                  (sourceSnapshotState setup implementation target reference lost native) } :
-                    PhaseRuntimeState (serviceGraph setup .concurrent)) =
-          sourceSnapshotAssignment setup implementation target reference lost
-            { before with
-              current := before.current.inclusionResult (.commitment event handle) native } := rfl
-      rw [updated, sourceSnapshotAssignment_normalize]
-      simpa only [packet] using congrArg
-        (fun state => some
-          (sourceSnapshotAssignment setup implementation target reference lost state))
-        actual
+      constructor
+      · change Option.map _ (EventGraphRuntime.handle runtime
+          (sourceSnapshotState setup implementation target reference lost before.current.native)
+          ⟨message.id, message.payload.packet.call⟩) = _
+        rw [packet, replay, Option.map_some]
+        have updated :
+            ({ sourceSnapshotAssignment setup implementation target reference lost before with
+              current :=
+                (sourceSnapshotAssignment setup implementation target reference lost
+                    before).current.inclusionResult (.commitment event handle)
+                    (sourceSnapshotState setup implementation target reference lost native) } :
+                      PhaseRuntimeState (serviceGraph setup .concurrent)) =
+            sourceSnapshotAssignment setup implementation target reference lost
+              { before with
+                current := before.current.inclusionResult (.commitment event handle) native } := rfl
+        rw [updated, sourceSnapshotAssignment_normalize]
+        simpa only [packet] using congrArg
+          (fun state => some
+            (sourceSnapshotAssignment setup implementation target reference lost state))
+          actual
+      · simpa only [packet, Option.map_some] using replay
   · cases accepted
 
 omit [Fintype Player] in
@@ -6882,7 +6902,15 @@ theorem sourceSnapshotAssignment_rejected_binding
     (packet : message.payload.packet.call = .commitment event handle)
     (rejected : before.handle runtime message = none) :
     (sourceSnapshotAssignment setup implementation target reference lost before).handle
-        runtime message = none := by
+        runtime message = none ∧
+      ((message.payload.tokenValid before.attempt && before.allows message.payload.packet.call &&
+          !before.current.excludedCall message.payload.packet.call) = true →
+        EventGraphRuntime.handle runtime
+            (sourceSnapshotState setup implementation target reference lost before.current.native)
+            ⟨message.id, message.payload.packet.call⟩ =
+          (EventGraphRuntime.handle runtime before.current.native
+            ⟨message.id, message.payload.packet.call⟩).map
+              (sourceSnapshotState setup implementation target reference lost)) := by
   classical
   let swap := HiddenSwap.ofPairs
     (sourceSnapshotPairs setup implementation target reference lost before.current.native)
@@ -6900,7 +6928,6 @@ theorem sourceSnapshotAssignment_rejected_binding
   rw [gate]
   split at rejected
   · rename_i admitted
-    rw [ite_eq_left admitted]
     have nativeNone : EventGraphRuntime.handle runtime before.current.native
         ⟨message.id, message.payload.packet.call⟩ = none :=
       Option.map_eq_none_iff.mp rejected
@@ -6915,11 +6942,20 @@ theorem sourceSnapshotAssignment_rejected_binding
         obtain ⟨candidate, raw, impossible⟩ := opening
         rw [packet] at impossible
         cases impossible)
-    change Option.map _ (EventGraphRuntime.handle runtime
-      (before.current.native.swap swap) ⟨message.id, message.payload.packet.call⟩) = none
-    rw [replay, nativeNone, Option.map_none, Option.map_none]
+    constructor
+    · rw [ite_eq_left admitted]
+      change Option.map _ (EventGraphRuntime.handle runtime
+        (before.current.native.swap swap) ⟨message.id, message.payload.packet.call⟩) = none
+      rw [replay, nativeNone, Option.map_none, Option.map_none]
+    · intro _
+      change EventGraphRuntime.handle runtime (before.current.native.swap swap)
+        ⟨message.id, message.payload.packet.call⟩ = _
+      simpa only [nativeNone, Option.map_none] using replay
   · rename_i denied
-    rw [ite_eq_right denied]
+    constructor
+    · rw [ite_eq_right denied]
+    · intro admitted
+      exact (denied admitted).elim
 
 omit [Fintype Player] in
 theorem sourceSnapshotAssignment_public

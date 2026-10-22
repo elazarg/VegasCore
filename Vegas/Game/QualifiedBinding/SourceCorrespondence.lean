@@ -30,6 +30,69 @@ local notation "nativeInitial" => implementation.initial
 local notation "nativeProtocol" => ReactiveApplication.ResponseMenu.protocol
   nativeMenu nativeInitial implementation.horizon implementation.scheduler
 
+omit [Fintype Player] in
+theorem source_automatic_completed_owner
+    (phase : RuntimePhase (serviceGraph setup .concurrent))
+    (start : RecoveryState (serviceGraph setup .concurrent))
+    (event : (serviceGraph setup .concurrent).EventId)
+    (completed : event ∈ (phase.drain start).native.config.cut.completed)
+    (newly : event ∉ start.native.config.cut.completed) :
+    ∃ owner, (serviceGraph setup .concurrent).actor? event = some owner ∧
+      owner ∈ start.excluded ∧ event ∈ phase.events := by
+  have along (last : RecoveryState (serviceGraph setup .concurrent))
+      (path : Relation.ReflTransGen (phase.AutomaticStep) start last) :
+      last.excluded = start.excluded ∧
+        ∀ event, event ∈ last.native.config.cut.completed →
+          event ∉ start.native.config.cut.completed →
+            ∃ owner, (serviceGraph setup .concurrent).actor? event = some owner ∧
+              owner ∈ start.excluded ∧ event ∈ phase.events := by
+    induction path with
+    | refl =>
+        exact ⟨rfl, by intro event present absent; exact (absent present).elim⟩
+    | @tail middle _ _ step ih =>
+        obtain ⟨changed, eligible, rfl⟩ := step
+        refine ⟨ih.1, ?_⟩
+        intro event present absent
+        by_cases old : event ∈ middle.native.config.cut.completed
+        · exact ih.2 event old absent
+        · obtain ⟨action, supported⟩ :=
+            middle.completeAutomatic_step changed eligible.2
+          have same := SuffixExclusionRecord.new_event_eq supported old present
+          subst event
+          obtain ⟨owner, actor, excluded⟩ := eligible.2.owned
+          exact ⟨owner, actor, ih.1 ▸ excluded, eligible.1⟩
+  exact (along _ (phase.drain_trace start)).2 event completed newly
+omit [Fintype Player] in
+theorem source_automatic_finished_event_owner
+    (phase : RuntimePhase (serviceGraph setup .concurrent))
+    (start : RecoveryState (serviceGraph setup .concurrent))
+    (atStart : start.native.config.cut.IsPrefix phase.low)
+    (finished : phase.Finished (phase.drain start)) :
+    ∀ event ∈ phase.events, ∃ owner,
+      (serviceGraph setup .concurrent).actor? event = some owner ∧
+        owner ∈ start.excluded := by
+  intro event member
+  have absent : event ∉ start.native.config.cut.completed := by
+    rw [atStart.2 event]
+    exact Nat.not_lt.mpr ((phase.mem_events event).mp member).1
+  obtain ⟨owner, acting, excluded, _⟩ :=
+    source_automatic_completed_owner setup phase start event (finished member) absent
+  exact ⟨owner, acting, excluded⟩
+omit [Fintype Player] in
+theorem source_automatic_finished_owners_subset
+    (phase : RuntimePhase (serviceGraph setup .concurrent))
+    (start : RecoveryState (serviceGraph setup .concurrent))
+    (atStart : start.native.config.cut.IsPrefix phase.low)
+    (finished : phase.Finished (phase.drain start)) :
+    phase.owners ⊆ start.excluded := by
+  intro owner member
+  obtain ⟨event, inside, owned⟩ := Finset.mem_biUnion.mp member
+  obtain ⟨actor, acting, excluded⟩ :=
+    source_automatic_finished_event_owner setup phase start atStart finished event inside
+  have same : owner = actor := by
+    simpa only [acting, Option.toFinset_some, Finset.mem_singleton] using owned
+  exact same.symm ▸ excluded
+
 /- The factual native chronology is paired once with the target entry cut.
 Each selected checkpoint carries the same target prefix and typed saved
 agreement through callbacks; a changed attempt consumes its actual drained
@@ -137,65 +200,6 @@ theorem sourceReplayCorrespondence
       selected.refs.Agrees saved.state
         (sourceSnapshotState setup implementation G reference
           lost before.execution.application.entry.native).config.store
-  have automaticOwner
-      (phase : RuntimePhase (serviceGraph setup .concurrent))
-      (start : RecoveryState (serviceGraph setup .concurrent))
-      (event : (serviceGraph setup .concurrent).EventId)
-      (completed : event ∈ (phase.drain start).native.config.cut.completed)
-      (newly : event ∉ start.native.config.cut.completed) :
-      ∃ owner, (serviceGraph setup .concurrent).actor? event = some owner ∧
-        owner ∈ start.excluded ∧ event ∈ phase.events := by
-    have along (last : RecoveryState (serviceGraph setup .concurrent))
-        (path : Relation.ReflTransGen (phase.AutomaticStep) start last) :
-        last.excluded = start.excluded ∧
-          ∀ event, event ∈ last.native.config.cut.completed →
-            event ∉ start.native.config.cut.completed →
-              ∃ owner, (serviceGraph setup .concurrent).actor? event = some owner ∧
-                owner ∈ start.excluded ∧ event ∈ phase.events := by
-      induction path with
-      | refl =>
-          exact ⟨rfl, by intro event present absent; exact (absent present).elim⟩
-      | @tail middle _ _ step ih =>
-          obtain ⟨changed, eligible, rfl⟩ := step
-          refine ⟨ih.1, ?_⟩
-          intro event present absent
-          by_cases old : event ∈ middle.native.config.cut.completed
-          · exact ih.2 event old absent
-          · obtain ⟨action, supported⟩ :=
-              middle.completeAutomatic_step changed eligible.2
-            have same := SuffixExclusionRecord.new_event_eq supported old present
-            subst event
-            obtain ⟨owner, actor, excluded⟩ := eligible.2.owned
-            exact ⟨owner, actor, ih.1 ▸ excluded, eligible.1⟩
-    exact (along _ (phase.drain_trace start)).2 event completed newly
-  have automaticFinishedOwners
-      (phase : RuntimePhase (serviceGraph setup .concurrent))
-      (start : RecoveryState (serviceGraph setup .concurrent))
-      (atStart : start.native.config.cut.IsPrefix phase.low)
-      (finished : phase.Finished (phase.drain start)) :
-      ∀ event ∈ phase.events, ∃ owner,
-        (serviceGraph setup .concurrent).actor? event = some owner ∧
-          owner ∈ start.excluded := by
-    intro event member
-    have absent : event ∉ start.native.config.cut.completed := by
-      rw [atStart.2 event]
-      exact Nat.not_lt.mpr ((phase.mem_events event).mp member).1
-    obtain ⟨owner, acting, excluded, _⟩ :=
-      automaticOwner phase start event (finished member) absent
-    exact ⟨owner, acting, excluded⟩
-  have automaticFinishedOwnersSubset
-      (phase : RuntimePhase (serviceGraph setup .concurrent))
-      (start : RecoveryState (serviceGraph setup .concurrent))
-      (atStart : start.native.config.cut.IsPrefix phase.low)
-      (finished : phase.Finished (phase.drain start)) :
-      phase.owners ⊆ start.excluded := by
-    intro owner member
-    obtain ⟨event, inside, owned⟩ := Finset.mem_biUnion.mp member
-    obtain ⟨actor, acting, excluded⟩ :=
-      automaticFinishedOwners phase start atStart finished event inside
-    have same : owner = actor := by
-      simpa only [acting, Option.toFinset_some, Finset.mem_singleton] using owned
-    exact same.symm ▸ excluded
   have automaticSampleUnfinished
       (phase : RuntimePhase (serviceGraph setup .concurrent))
       (start : RecoveryState (serviceGraph setup .concurrent))
@@ -208,7 +212,7 @@ theorem sourceReplayCorrespondence
     have member : event ∈ phase.events :=
       (phase.mem_events event).mpr ⟨le_refl _, phase.nonempty⟩
     obtain ⟨owner, acting, _⟩ :=
-      automaticFinishedOwners phase start atStart finished event member
+      source_automatic_finished_event_owner setup phase start atStart finished event member
     obtain ⟨payload, output⟩ :=
       sample ▸ phase.fields event (le_refl _) phase.nonempty
     have publicActorNone {Field : Type} [DecidableEq Field]
@@ -236,7 +240,7 @@ theorem sourceReplayCorrespondence
       start valid coverage (Finset.Subset.rfl) ordered
     intro event member publication
     obtain ⟨owner, acting, excluded⟩ :=
-      automaticFinishedOwners phase start atStart finished event member
+      source_automatic_finished_event_owner setup phase start atStart finished event member
     exact drained event owner ((phase.mem_events event).mp member).1
       publication acting (finished member) (Or.inl excluded)
   have automaticFinishedBindingRows
@@ -258,7 +262,7 @@ theorem sourceReplayCorrespondence
             (phase.drain start).native).config.store = some .failure := by
     have actor := (serviceGraph setup .concurrent).actor?_of_outputLayout_binding binding
     obtain ⟨actualOwner, actualActor, inherited⟩ :=
-      automaticFinishedOwners phase start atStart finished event member
+      source_automatic_finished_event_owner setup phase start atStart finished event member
     have ownerEq : actualOwner = owner := Option.some.inj (actualActor.symm.trans actor)
     have ownerInherited : owner ∈ start.excluded := ownerEq ▸ inherited
     have receipts := BindingReceiptOrder.of_prefix
@@ -1511,7 +1515,7 @@ theorem sourceReplayCorrespondence
                          by_cases followingFinished : following.Finished
                            (following.drain live)
                          · have inheritedOwners :=
-                             automaticFinishedOwnersSubset following live
+                             source_automatic_finished_owners_subset setup following live
                                followingStart followingFinished
                            have noNewMiss : ¬ (following.kind = .commitment ∧
                                (((following.drain live).excluded \ live.excluded) ∩
@@ -2742,7 +2746,8 @@ theorem sourceReplayCorrespondence
                                                ⟨lower, upper⟩
                                            obtain ⟨actualOwner, actualActor,
                                              inherited⟩ :=
-                                             automaticFinishedOwners following live
+                                             source_automatic_finished_event_owner setup
+                                               following live
                                                followingStart followingFinished
                                                  (cursor.embedding.event index)
                                                    member
