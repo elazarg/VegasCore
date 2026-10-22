@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Compile.EventGraphReadout
+import Vegas.Source.PrivateInputs
 
 /-! # Canonical terminal references along actual compiler suffix traversal
 
@@ -27,6 +28,55 @@ structure CompiledReadoutSuffix {Γ : SourceCtx Player L} {O : Finset VarId}
   contextEq : program.terminalCtx = whole.terminalCtx
   refsEq : cast (congrArg (ContextRefs (graphLayout whole)) contextEq)
     (terminalRefsWith program refs embedding.ref) = terminalRefs whole
+
+/-- Terminal references of an initial cell read its initial reference. -/
+theorem terminalRefsWith_get_terminalRef {Field : Type} [DecidableEq Field]
+    {layout : Field → EventGraph.EventField Player L} {name : VarId} {cell : CellTy Player L} :
+    ∀ {Γ : SourceCtx Player L} {openNames : Finset VarId}
+      (program : SourceProgram Player L Γ openNames) (refs : ContextRefs layout Γ)
+      (outputs : ∀ event, EventGraph.FieldRef layout (outputLayout program event))
+      (source : HasVar Γ name cell),
+      (terminalRefsWith program refs outputs).get (terminalRef program source) =
+        refs.get source
+  | _, _, .ret _, _, _, _ => rfl
+  | _, _, .sample _ _ _ next, _, _, source =>
+      terminalRefsWith_get_terminalRef next _ _ (.there source)
+  | _, _, .commit _ _ _ _ next, _, _, source =>
+      terminalRefsWith_get_terminalRef next _ _ (.there source)
+  | _, _, .reveal _ _ _ _ _ _ next, _, _, source =>
+      terminalRefsWith_get_terminalRef next _ _ (.there source)
+
+/-- Canonical terminal readout fixes every reference already in the suffix
+context, independently of its output embedding. -/
+theorem CompiledReadoutSuffix.refs_eq
+    {Γ : SourceCtx Player L} {O : Finset VarId}
+    {program : SourceProgram Player L Γ O}
+    {first second : ContextRefs (graphLayout whole) Γ}
+    {firstEmbedding secondEmbedding :
+      OutputEmbedding (inputLayout wholeΓ) (outputLayout whole) program}
+    (left : CompiledReadoutSuffix whole program first firstEmbedding)
+    (right : CompiledReadoutSuffix whole program second secondEmbedding) : first = second := by
+  have sameContext : left.contextEq = right.contextEq := Subsingleton.elim _ _
+  have cast_cancel {α β : Type} (equal : α = β) (first second : α)
+      (same : cast equal first = cast equal second) : first = second := by
+    cases equal
+    exact same
+  have terminalEq : terminalRefsWith program first firstEmbedding.ref =
+      terminalRefsWith program second secondEmbedding.ref := by
+    have firstRead := left.refsEq
+    have secondRead := right.refsEq
+    rw [sameContext] at firstRead
+    exact cast_cancel (congrArg (ContextRefs (graphLayout whole)) right.contextEq)
+      _ _ (firstRead.trans secondRead.symm)
+  cases first with
+  | mk firstGet =>
+      cases second with
+      | mk secondGet =>
+          congr 1
+          funext name cell selected
+          have read := congrArg
+            (fun terminal => terminal.get (terminalRef program selected)) terminalEq
+          simpa only [terminalRefsWith_get_terminalRef] using read
 
 /-- Initial compilation uses the actual whole-program terminal references. -/
 theorem CompiledReadoutSuffix.initial :

@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.ServiceRevealCongruence
+import Vegas.Compile.CompiledReadoutSuffix
 import Vegas.Source.Forfeit
 
 /-! # A withheld disclosure is a forfeit
@@ -48,23 +49,6 @@ theorem resolveOutput?_false {Field : Type} [DecidableEq Field]
           simp only [bound, accepted, Bool.false_eq_true, ↓reduceIte, ite_self, Option.bind_eq_bind,
             Option.bind_some, Option.pure_def, Option.some.injEq] at resolved
           exact resolved.symm
-
-/-- Terminal references of an initial cell read its initial reference. -/
-theorem terminalRefsWith_get_terminalRef {Field : Type} [DecidableEq Field]
-    {layout : Field → EventGraph.EventField Player L} {name : VarId} {cell : CellTy Player L} :
-    ∀ {Γ : SourceCtx Player L} {openNames : Finset VarId}
-      (program : SourceProgram Player L Γ openNames) (refs : ContextRefs layout Γ)
-      (outputs : ∀ event, EventGraph.FieldRef layout (outputLayout program event))
-      (source : HasVar Γ name cell),
-      (terminalRefsWith program refs outputs).get (terminalRef program source) =
-        refs.get source
-  | _, _, .ret _, _, _, _ => rfl
-  | _, _, .sample _ _ _ next, _, _, source =>
-      terminalRefsWith_get_terminalRef next _ _ (.there source)
-  | _, _, .commit _ _ _ _ next, _, _, source =>
-      terminalRefsWith_get_terminalRef next _ _ (.there source)
-  | _, _, .reveal _ _ _ _ _ _ next, _, _, source =>
-      terminalRefsWith_get_terminalRef next _ _ (.there source)
 
 /-- **Every disclosure is a reveal cell.** Each publication event of a program
 is a reveal cell of its terminal context, owned by the event's owner, whose
