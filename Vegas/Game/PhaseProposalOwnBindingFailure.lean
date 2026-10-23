@@ -42,17 +42,6 @@ theorem phaseProposalObservedBindingFailure_observe
   · intro failed
     exact ⟨point, rfl, failed⟩
 
-/-- Remembering an arbitrary private action word cannot manufacture a failed
-binding in a restored semantic point. -/
-theorem phaseProposalObservedBindingFailure_withHistory
-    (setup : Setup (Player := Player) (L := L)) (who : Player)
-    (point : SourceProgram.ProtocolState setup.program) (past : History Player L) :
-    phaseProposalObservedBindingFailure setup who
-        (some (ProtocolState.observe who setup.program
-          (ProtocolState.withHistory setup.program point past))) ↔
-      ProtocolState.FailedBinding who setup.program point := by
-  rw [phaseProposalObservedBindingFailure_observe, ProtocolState.failedBinding_withHistory]
-
 /-- The ORIGINAL live typed view is used before virtual binding repair. -/
 def phaseProposalCurrentBindingFailure
     (setup : Setup (Player := Player) (L := L)) (mode : ExecutionMode)
@@ -74,17 +63,6 @@ def phaseProposalSavedBindingFailure
   phaseProposalObservedBindingFailure setup who
     ((phaseSurvivingSourceView? setup mode runtime leaks who event view).bind
       (ProtocolView.atRank who setup.program view.application.2.attempt.phase))
-
-/-- A live failure not present at the saved checkpoint is current-attempt debt.
-Its reset-versus-standing payoff comparison is a separate operational result. -/
-def phaseProposalCancelableBindingFailure
-    (setup : Setup (Player := Player) (L := L)) (mode : ExecutionMode)
-    (runtime : EventGraphRuntime (serviceGraph setup mode))
-    (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket (serviceGraph setup mode)))
-    (who : Player) (event : (serviceGraph setup mode).EventId)
-    (view : (phaseApplication runtime leaks).PlayerView) : Prop :=
-  ¬ phaseProposalSavedBindingFailure setup mode runtime leaks who event view ∧
-    phaseProposalCurrentBindingFailure setup mode runtime leaks who event view
 
 variable (setup : Setup (Player := Player) (L := L)) (mode : ExecutionMode)
   (runtime : EventGraphRuntime (serviceGraph setup mode))
@@ -134,38 +112,5 @@ theorem phaseProposalCurrentBindingFailure_iff_of_readback
   unfold phaseProposalCurrentBindingFailure
   rw [readback]
   exact phaseProposalObservedBindingFailure_observe setup who point
-
-/-- Only the live semantic point matters, even when the original decoder
-retains the entire canceled private word. -/
-theorem phaseProposalCurrentBindingFailure_iff_of_restored_readback
-    (who : Player) (event : (serviceGraph setup mode).EventId)
-    (view : (app).PlayerView) (point : SourceProgram.ProtocolState setup.program)
-    (past : History Player L)
-    (readback : phaseSurvivingSourceView? setup mode runtime leaks who event view =
-      some (ProtocolState.observe who setup.program
-        (ProtocolState.withHistory setup.program point past))) :
-    phaseProposalCurrentBindingFailure setup mode runtime leaks who event view ↔
-      ProtocolState.FailedBinding who setup.program point := by
-  unfold phaseProposalCurrentBindingFailure
-  rw [readback]
-  exact phaseProposalObservedBindingFailure_withHistory setup who point past
-
-/-- The same actual typed readbacks identify current-attempt failure while
-excluding saved failure. No payoff or continuation equality is assumed. -/
-theorem phaseProposalCancelableBindingFailure_iff_of_readbacks
-    (who : Player) (event : (serviceGraph setup mode).EventId)
-    (view : (app).PlayerView) (saved current : SourceProgram.ProtocolState setup.program)
-    (savedReadback : (phaseSurvivingSourceView? setup mode runtime leaks who event view).bind
-      (ProtocolView.atRank who setup.program view.application.2.attempt.phase) =
-        some (ProtocolState.observe who setup.program saved))
-    (currentReadback : phaseSurvivingSourceView? setup mode runtime leaks who event view =
-      some (ProtocolState.observe who setup.program current)) :
-    phaseProposalCancelableBindingFailure setup mode runtime leaks who event view ↔
-      ¬ ProtocolState.FailedBinding who setup.program saved ∧
-        ProtocolState.FailedBinding who setup.program current := by
-  unfold phaseProposalCancelableBindingFailure phaseProposalSavedBindingFailure
-    phaseProposalCurrentBindingFailure
-  rw [savedReadback, currentReadback, phaseProposalObservedBindingFailure_observe,
-    phaseProposalObservedBindingFailure_observe]
 
 end Vegas

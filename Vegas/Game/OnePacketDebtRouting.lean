@@ -4,11 +4,12 @@ import Vegas.Game.OnePacketProjectedDecision
 
 /-! # Owing sites and debt-free sites
 
-At a decision input of `who` in the one-packet game, either every history owes
-a failure of `who` as a decoded state property, for every source profile, or no
-history's decoded point has `who` owing a failure
-(`Vegas.owes_or_debtFree_of_infoOf`). The second alternative is exactly the
-debt-freedom premise of `Vegas.projectedDecision_of_forcedAgent`.
+At a decision input of `who` in the one-packet game, if `who` owes a failure at
+the decoded point of one history, it owes one as a decoded state property of
+every history of the input, for every source profile
+(`Vegas.decodedState_owesFailure_of_infoOf`). Otherwise `who` owes no failure at
+the decoded point of any history, which is the debt-freedom premise of
+`Vegas.projectedDecision_of_forcedAgent`.
 -/
 
 noncomputable section
@@ -84,29 +85,5 @@ theorem decodedState_owesFailure_of_infoOf (profile : BehavioralProfile setup.pr
   obtain ⟨other, otherDecoded⟩ := nativeDecodedState_isSome history.1 current
   exact decodedState_of_nativeDecodedState profile history.1 otherDecoded
     ((owesFailure_iff_of_infoOf owing history decoded otherDecoded).mp owes)
-
-/-- **Owing sites and debt-free sites.** At a decision input of `who`, either
-every history owes a failure of `who` as a decoded state property, for every
-source profile, or `who` owes no failure at the decoded point of any history. -/
-theorem owes_or_debtFree_of_infoOf {who : Player}
-    {past : List (application setup leaks).PlayerEntry}
-    {view : (application setup leaks).PlayerView} :
-    (∀ (profile : BehavioralProfile setup.program)
-      (history : (onePacketInformation setup leaks bounds horizon scheduler).InformationHistory
-        who (some (past, view))),
-      DecodedState setup leaks profile (ProtocolState.OwesFailure who setup.program)
-        history.1.state) ∨
-    ∀ (history : (onePacketInformation setup leaks bounds horizon scheduler).InformationHistory
-        who (some (past, view))) point,
-      nativeDecodedState setup leaks history.1.state = some point →
-        ¬ ProtocolState.OwesFailure who setup.program point := by
-  by_cases owing : ∃ (history : (onePacketInformation setup leaks bounds horizon
-      scheduler).InformationHistory who (some (past, view))) (point : ProtocolState setup.program),
-      nativeDecodedState setup leaks history.1.state = some point ∧
-        ProtocolState.OwesFailure who setup.program point
-  · obtain ⟨history, point, decoded, owes⟩ := owing
-    exact Or.inl fun profile other =>
-      decodedState_owesFailure_of_infoOf profile history decoded owes other
-  · exact Or.inr fun history point decoded owes => owing ⟨history, point, decoded, owes⟩
 
 end Vegas

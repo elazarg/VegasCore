@@ -67,16 +67,6 @@ def AcceptedRecorded (state : State graph) : Prop :=
   state.accepted = (bindingRecords state.config.inputs
     (graph.publicObserve state.config).completionOrder).2
 
-theorem acceptedRecorded_initial (inputs : graph.Inputs) :
-    (initial inputs).AcceptedRecorded := rfl
-
-theorem AcceptedRecorded.accepted_eq_of_order {left right : State graph}
-    (leftRecorded : left.AcceptedRecorded) (rightRecorded : right.AcceptedRecorded)
-    (order : (graph.publicObserve left.config).completionOrder =
-      (graph.publicObserve right.config).completionOrder) : left.accepted = right.accepted := by
-  rw [leftRecorded, rightRecorded, order,
-    bindingRecords_inputs left.config.inputs right.config.inputs]
-
 theorem AcceptedRecorded.transport {before after : State graph}
     (recorded : before.AcceptedRecorded) (accepted : after.accepted = before.accepted)
     (order : (graph.publicObserve after.config).completionOrder =
@@ -100,32 +90,6 @@ theorem AcceptedRecorded.complete {state : State graph} (recorded : state.Accept
       simpa only [allocationStep, kind, publicObserve] using
         (show state.accepted = _ from recorded)
   | binding owner payload => exact (nonbinding owner payload kind).elim
-
-theorem AcceptedRecorded.complete_of_config {before after : State graph}
-    (recorded : before.AcceptedRecorded) (event : graph.EventId)
-    (ready : before.config.cut.Ready event)
-    (action : graph.Action event) (value : (graph.outputLayout event).Value)
-    (nonbinding : ∀ owner payload, graph.outputLayout event ≠ .binding owner payload)
-    (config : after.config = before.config.complete event ready action value)
-    (accepted : after.accepted = before.accepted) : after.AcceptedRecorded := by
-  exact (recorded.complete event ready action value nonbinding).transport accepted
-    (congrArg (fun config => (graph.publicObserve config).completionOrder) config)
-
-/-- Equal semantic observations reconstruct the dynamic private catalogue
-without assuming any equality of accepted handles or initial catalogues. -/
-theorem AcceptedRecorded.candidates_eq_of_observation {left right : State graph}
-    (leftRecorded : left.AcceptedRecorded) (rightRecorded : right.AcceptedRecorded)
-    (leftRepresented : left.CandidatesRepresented)
-    (rightRepresented : right.CandidatesRepresented)
-    (leftValid : left.BindingInvariant) (rightValid : right.BindingInvariant)
-    (who : Player)
-    (observed : graph.playerObserve who left.config = graph.playerObserve who right.config) :
-    (fun slot => left.candidates.lookup (who, slot)) =
-      fun slot => right.candidates.lookup (who, slot) := by
-  have publicEq := publicObserve_eq_of_playerObserve_eq who left.config right.config observed
-  exact leftRepresented.candidates_eq_of_observation rightRepresented leftValid rightValid who
-    (leftRecorded.accepted_eq_of_order rightRecorded
-      (congrArg PublicObservation.completionOrder publicEq)) observed
 
 /-- The actual canonical association advances exactly the public allocation
 record; its private result does not appear in this equation. -/

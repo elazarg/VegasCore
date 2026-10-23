@@ -100,34 +100,5 @@ theorem phaseBindingResponse_available (who : Player)
   | failure => trivial
   | success value => exact values value
 
-/-- Every actual active physical history has a bounded fresh prepared slot
-representing every source result. Earlier arbitrary raw actions and rollback
-are accounted for by the actual response-count and catalogue invariants. -/
-theorem exists_phaseBindingResponse_of_history
-    (menu : (phaseApplication runtime leaks).ResponseMenu)
-    (plan : RuntimePhasePlan graph) (inputs : PMF graph.Inputs) (horizon : Nat)
-    (scheduler : (phaseApplication runtime leaks).Scheduler)
-    (capacity : horizon ≤ bounds.candidateCount)
-    (control : (phaseApplication runtime leaks).Control)
-    (trace : (menu.protocol (inputs.map (PhaseRuntimeState.initial plan))
-      horizon scheduler).Trace (some control)) (who : Player) (active : control.actor = some who)
-    (event : graph.EventId) (payload : L.Ty)
-    (values : ∀ value : L.Val payload, (⟨payload, value⟩ : Raw L) ∈ bounds.values) :
-    ∃ serial, serial < horizon ∧ ∀ result : PublicationResult (L.Val payload),
-      phaseBindingResponse runtime leaks who event payload result serial ∈
-        (PhaseCount.rawMenu runtime leaks bounds).actions who (control.execution.recall who)
-          (control.execution.observe (phaseApplication runtime leaks) who) ∧
-      let next := control.execution.respond (phaseApplication runtime leaks) who
-        (phaseBindingResponse runtime leaks who event payload result serial)
-      next.application.current.native.bindingResult (who, .prepared serial) payload = result := by
-  have raw := menu.toRawTrace (inputs.map (PhaseRuntimeState.initial plan)) horizon scheduler trace
-  obtain ⟨serial, bounded, selected⟩ := PhaseCandidates.reactiveFreshSlot_lt_horizon runtime leaks
-    plan inputs horizon scheduler control raw who active
-  refine ⟨serial, bounded, fun result => ⟨?_, ?_⟩⟩
-  · exact phaseBindingResponse_available runtime leaks bounds who _ _ event payload values
-      result serial (bounded.trans_le capacity)
-  · exact phaseBindingResponse_result runtime leaks control.execution who event payload result
-      serial (reactiveFreshSlot_spec _ serial selected)
-
 end FiniteMenu
 end Vegas.EventGraphRuntime

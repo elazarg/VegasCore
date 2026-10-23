@@ -118,40 +118,5 @@ theorem withoutMisses_surviving_view
           sameEntry).trans
             (Config.automaticCommit_view_eq_failure who owner different name guard replacement)
 
-/-- Replaying an already nonomitting attempt leaves its exact endpoint fixed,
-including all original histories and pending guard obligations. -/
-theorem withoutMisses_eq_of_unchanged_exclusions
-    {Γ Δ : SourceCtx Player L} {O P : Finset VarId} {block : CommitPrefix Γ O Δ P}
-    {entry : Config Player L Γ} {excluded : Finset Player} {finished : Config Player L Δ}
-    (attempt : block.Attempt entry excluded finished excluded) :
-    attempt.withoutMisses excluded entry = finished := by
-  induction block generalizing excluded with
-  | nil => cases attempt; rfl
-  | @commit Γ O Δ P name owner payload fresh guard rest ih =>
-      cases attempt with
-      | active active choice missed missingFailure later =>
-          cases missed with
-          | false =>
-              simp only [withoutMisses]
-              exact ih later
-          | true =>
-              have included : owner ∈ excludeCommit excluded owner true := by
-                simp only [excludeCommit, ↓reduceIte, Finset.mem_insert, true_or]
-              exact (active (later.excluded_subset included)).elim
-      | excluded inactive later =>
-          simp only [withoutMisses, inactive, ↓reduceIte]
-          exact ih later
-
-/-- The actual replay introduces no failed owner, even when its typed choices
-contain accepted failures. -/
-theorem withoutMisses_failedOwners
-    {Γ Δ : SourceCtx Player L} {O P : Finset VarId} {block : CommitPrefix Γ O Δ P}
-    {entry : Config Player L Γ} {excluded : Finset Player} {finished : Config Player L Δ}
-    {after : Finset Player} (attempt : block.Attempt entry excluded finished after)
-    (saved : Finset Player) (inherited : saved ⊆ excluded) (replacement : Config Player L Γ) :
-    (attempt.withoutMisses_attempt saved inherited replacement).failedOwners = ∅ := by
-  have fresh := (attempt.withoutMisses_attempt saved inherited replacement).newly_excluded
-  simpa only [Finset.sdiff_self] using fresh.symm
-
 end CommitPrefix.Attempt
 end Vegas.SourceProgram

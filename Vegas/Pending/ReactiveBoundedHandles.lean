@@ -129,30 +129,6 @@ theorem executionHandles_environment (runtime : EventGraphRuntime graph)
         (environmentStep_tables runtime execution.application state command changed).1]
         using valid.1
 
-theorem executionHandles_history [Fintype Player] (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (inputs : PMF graph.Inputs) (horizon : Nat)
-    (scheduler : (runtime.reactiveApplication leaks).Scheduler) :
-    ∀ {state} (_trace : ((bounds.menu runtime leaks).protocol (inputs.map State.initial)
-      horizon scheduler).Trace state),
-      ReactiveApplication.serviceInvariant
-        (bounds.ExecutionHandles runtime leaks) state := by
-  have invariant : (bounds.menu runtime leaks).ServiceInvariant scheduler
-      (bounds.ExecutionHandles runtime leaks) := {
-    respond := fun execution who response valid legal =>
-      bounds.executionHandles_respond runtime leaks execution who response valid (by
-        intro material submitted
-        have bounded := ((bounds.menu_mem runtime leaks who _ _ response).mp legal).1
-        rw [submitted] at bounded
-        exact bounded.1.1)
-    environment := fun execution next command valid _ reached =>
-      bounds.executionHandles_environment runtime leaks execution next command valid reached }
-  intro state trace
-  exact invariant.history (inputs.map State.initial) horizon (by
-    intro state supported
-    obtain ⟨input, _, rfl⟩ := PMF.support_map .. ▸ supported
-    exact ⟨bounds.acceptedHandles_initial input, MessageNetwork.Satisfies.empty⟩) trace
-
 /-- The same bounds hold before normalization, for every raw response admitted
 by the complete finite menu. -/
 theorem executionHandles_raw_history [Fintype Player] (runtime : EventGraphRuntime graph)

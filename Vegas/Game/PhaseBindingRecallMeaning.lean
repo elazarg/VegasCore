@@ -34,32 +34,6 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
 
 local notation "app" => phaseApplication runtime leaks
 
-/-- The original menu history derives freshness of every remembered encoded
-binding; no current fresh-handle premise is imposed after it has been sent. -/
-theorem phaseBindingRecall_fresh (bounds : MessageBounds ((toEventGraph whole).withMode mode))
-    (plan : RuntimePhasePlan ((toEventGraph whole).withMode mode))
-    (inputs : PMF ((toEventGraph whole).withMode mode).Inputs) (horizon : Nat)
-    (scheduler : (app).Scheduler) {control : (app).Control}
-    (trace : ((PhaseCount.onePacketMenu runtime leaks bounds).protocol
-      (inputs.map (PhaseRuntimeState.initial plan)) horizon scheduler).Trace (some control))
-    (who : Player) (event : ((toEventGraph whole).withMode mode).EventId) (payload : L.Ty)
-    (result : PublicationResult (L.Val payload)) (serial : Nat) (entry : (app).PlayerEntry)
-    (retained : entry ∈ control.execution.recall who)
-    (declared : entry.action = phaseBindingResponse runtime leaks who event payload result serial) :
-    entry.beforeView.application.1.candidates (.prepared serial) = .fresh := by
-  obtain ⟨before, prior, _prefix, _acting, viewed, member, _after, _recalled⟩ :=
-    (PhaseCount.onePacketMenu runtime leaks bounds).recorded_response_prefix
-      (inputs.map (PhaseRuntimeState.initial plan)) horizon scheduler control trace who entry
-        retained
-  rw [declared] at member
-  cases result with
-  | failure =>
-      exact viewed ▸ PhaseCount.onePacket_binding_fresh runtime leaks bounds plan inputs horizon
-        scheduler prior who event serial none .none member
-  | success value =>
-      exact viewed ▸ PhaseCount.onePacket_binding_fresh runtime leaks bounds plan inputs horizon
-        scheduler prior who event serial (some ⟨payload, value⟩) .none member
-
 omit [Fintype Player] in
 /-- A retained raw entry with this physical address contributes exactly its
 decoded effective action to the chronological block word. -/

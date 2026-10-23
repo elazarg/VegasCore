@@ -50,21 +50,6 @@ def normalization : (phaseApplication runtime leaks).SubmissionNormalization whe
     exact congrArg (fun current : RecoveryState graph =>
       ({ state with current := current } : PhaseRuntimeState graph)) native
 
-/-- The local signed packet is unchanged even before imposing reachability of
-the supplied local input. Its permanent audit verdict therefore stays fixed. -/
-theorem localEnvelope_normalize (who : Player)
-    (past : List (phaseApplication runtime leaks).PlayerEntry)
-    (view : (phaseApplication runtime leaks).PlayerView) (material : WitnessedSubmission graph) :
-    localEnvelope runtime leaks who past view
-        ((normalization runtime leaks).normalize who view.application
-          (ReactiveApplication.ResponseMenu.knownPackets past view) material) =
-      localEnvelope runtime leaks who past view material := by
-  have candidates := funext (Submission.normalizeReactive_candidateAfter who
-    view.application.1 material.call)
-  unfold localEnvelope
-  dsimp only [normalization, WitnessedSubmission.normalizeReactive]
-  rw [Submission.normalizeReactive_packet, candidates, EvidenceRequest.resolve_normalize]
-
 private theorem maskPacket_evidence (view : PhasePublicView graph)
     (packet : WitnessedPacket graph) : (maskPacket view packet).evidence = packet.evidence := by
   unfold maskPacket
@@ -102,55 +87,5 @@ theorem normalize_binding_evidence_none (who : Player)
   rfl
 
 variable [Fintype Player] (bounds : MessageBounds graph)
-
-/-- Canonicalization preserves the actual bounded raw menu. -/
-theorem normalize_mem_rawMenu (who : Player)
-    (past : List (phaseApplication runtime leaks).PlayerEntry)
-    (view : (phaseApplication runtime leaks).PlayerView)
-    (response : (phaseApplication runtime leaks).Action)
-    (member : response ∈ (rawMenu runtime leaks bounds).actions who past view) :
-    (normalization runtime leaks).action who past view response ∈
-      (rawMenu runtime leaks bounds).actions who past view := by
-  change response ∈ (ReactiveApplication.ResponseMenu.fromSubmissions _).actions _ _ _ at member
-  rw [ReactiveApplication.ResponseMenu.fromSubmissions_mem] at member
-  change (normalization runtime leaks).action who past view response ∈
-    (ReactiveApplication.ResponseMenu.fromSubmissions _).actions _ _ _
-  rw [ReactiveApplication.ResponseMenu.fromSubmissions_mem]
-  rcases response with ⟨transmission⟩
-  cases transmission with
-  | none => trivial
-  | some material =>
-      change material ∈ bounds.submissions _ at member
-      change material.normalizeReactive who view.application.1
-        ((ReactiveApplication.ResponseMenu.knownPackets past view).map nativeMessage) ∈
-          bounds.submissions _
-      exact bounds.normalize_submission_mem who view.application.1 _ material member
-
-/-- The physical count menu is closed under operational normalization;
-first packets of voided attempts retain the same verdict. -/
-theorem normalize_mem_onePacketActions (who : Player)
-    (past : List (phaseApplication runtime leaks).PlayerEntry)
-    (view : (phaseApplication runtime leaks).PlayerView)
-    (response : (phaseApplication runtime leaks).Action)
-    (member : response ∈ onePacketActions runtime leaks bounds who past view) :
-    (normalization runtime leaks).action who past view response ∈
-      onePacketActions runtime leaks bounds who past view := by
-  rw [mem_onePacketActions] at member ⊢
-  refine ⟨normalize_mem_rawMenu runtime leaks bounds who past view response member.1, ?_⟩
-  rcases member.2 with silent | ⟨material, transmitted, permitted⟩
-  · left
-    rcases response with ⟨transmission⟩
-    change transmission = none at silent
-    subst silent
-    rfl
-  · right
-    refine ⟨(normalization runtime leaks).normalize who view.application
-      (ReactiveApplication.ResponseMenu.knownPackets past view) material, ?_, ?_⟩
-    · rcases response with ⟨transmission⟩
-      change transmission = some material at transmitted
-      subst transmitted
-      rfl
-    · rw [localEnvelope_normalize]
-      exact permitted
 
 end Vegas.EventGraphRuntime.PhaseCount

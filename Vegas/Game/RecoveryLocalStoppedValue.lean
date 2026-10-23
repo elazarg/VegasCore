@@ -97,38 +97,6 @@ private theorem stopped_eq_of_clear_laws
   intro next member
   exact ih next ((N).mem_support_runBehavioralFrom_one second terminal member).1
 
-/-- The unchanged common weights have exactly the projected recovery
-continuation law until the first public exclusion or another stopping condition. -/
-theorem nativeComparison_stopped_eq [Fintype (RP).History]
-  [(application setup leaks).FiniteNature (initialLaw setup) (NativeScheduler)]
-  [∀ who, DecidableEq ((R).InfoState who)] [∀ who, DecidableEq ((N).InfoState who)]
-  (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
-  (scale : ℕ → ℝ) (positive : ∀ n, 0 < scale n) (le_one : ∀ n, scale n ≤ 1)
-  {slots : Nat}
-  (weights : ℕ → ∀ p, PMF (Part setup leaks bounds Initial horizon scheduler slots p))
-  (n : ℕ) (fallback : ∀ who, (R).Policy who) (strategy : ∀ who, (R).BehavioralPolicy who)
-  (assembled : strategy = (R).agentBehavior (R).playedInformation fallback
-    (fun agent => (weights n (pool setup leaks bounds Initial horizon scheduler agent)).bind
-      (component setup leaks bounds Initial horizon scheduler (sequence n) (scale n)
-        (positive n).le (le_one n) agent)))
-    (certificate : (NP).WellFoundedHistories) (extraStop : (NP).History → Prop)
-    (start : (NP).History) :
-    (N).runBehavioralUntil certificate
-        (nativeComparisonStrategy setup leaks bounds horizon scheduler sequence scale positive
-          le_one weights n) (fun history => ¬ Clear history.state ∨ extraStop history) start =
-      (N).runBehavioralUntil certificate
-        (sourceNativeProfile setup leaks bounds horizon scheduler strategy)
-        (fun history => ¬ Clear history.state ∨ extraStop history) start := by
-  apply stopped_eq_of_clear_laws
-  intro history clear running who
-  have valid : ∀ control, history.state = some control →
-      PublicExclusionRecord (RecoveryState.mk control.execution.application ∅) := by
-    intro control state
-    rw [state] at clear
-    exact clear
-  exact nativeComparisonStrategy_eq_projection_at_clear setup leaks bounds horizon scheduler
-    sequence scale positive le_one weights n fallback strategy assembled history.trace valid
-      running who
 /-- The baseline and every local deviation use exactly the same native stopped
 law as their actual recovery projection, until exclusion or an additional stop. -/
 theorem nativeComparison_stopped_localLaw_eq [Fintype (RP).History]

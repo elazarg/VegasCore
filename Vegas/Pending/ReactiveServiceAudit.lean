@@ -47,27 +47,6 @@ theorem PublicView.missedBindingBy_clear (view : PublicView graph)
   rw [clear event] at missed
   cases missed
 
-/-- A graph without binding events has no binding to omit. -/
-theorem PublicView.missedBindingBy_of_publications (view : PublicView graph)
-    (publications : ∀ event owner payload, graph.outputLayout event ≠ .binding owner payload)
-    (who : Player) : view.missedBindingBy who = false :=
-  view.missedBindingBy_clear
-    (fun event => view.missedBinding_of_not_binding event (publications event)) who
-
-/-- **An expired resolution is never charged as an omission.** Expiry of a
-non-binding event leaves every player's public binding-omission verdict
-unchanged. -/
-theorem missedBindingBy_expire_of_not_binding (runtime : EventGraphRuntime graph)
-    (state next : State graph) (event : graph.EventId)
-    (notBinding : ∀ owner payload, graph.outputLayout event ≠ .binding owner payload)
-    (reached : next ∈ (environmentStep runtime state (.expire event)).support)
-    (who : Player) :
-    next.publicView.missedBindingBy who = state.publicView.missedBindingBy who := by
-  classical
-  apply Bool.eq_iff_iff.mpr
-  simp only [PublicView.missedBindingBy, decide_eq_true_eq,
-    missedBinding_expire_of_not_binding runtime state next event notBinding reached]
-
 /-- The contract's settled record at an execution: its public view and the
 receipts of every inclusion. -/
 def settledRecord (runtime : EventGraphRuntime graph)
@@ -98,26 +77,6 @@ def serviceAudit (runtime : EventGraphRuntime graph)
   | some record => (trafficAudit record observed.1).map fun verdict who =>
       verdict who || record.view.missedBindingBy who
 
-theorem serviceAuditObservation_normalization (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (normal : (runtime.reactiveApplication leaks).SubmissionNormalization)
-    (state : (runtime.reactiveApplication leaks).ProtocolState) :
-    runtime.serviceAuditObservation leaks (normal.state state) =
-      runtime.serviceAuditObservation leaks state := by
-  cases state <;> rfl
-
-/-- Nothing is collected before initialization. -/
-theorem serviceAudit_charge_none (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (trafficAudit : SettledRecord graph →
-      List (runtime.reactiveApplication leaks).TrafficRecord → PMF (Player → Bool))
-    (who : Player) :
-    TerminalAudit.charge (runtime.serviceAuditObservation leaks)
-      (runtime.serviceAudit leaks trafficAudit) none who = 0 := by
-  unfold TerminalAudit.charge serviceAudit serviceAuditObservation
-  simp only [Option.map_none, PMF.pure_map]
-  rw [PMF.pure_apply_of_ne _ _ Bool.noConfusion, ENNReal.toReal_zero]
-
 /-- The public branch collects with certainty; otherwise the actual traffic
 collection probability is retained exactly. There is no independence premise. -/
 theorem serviceAudit_charge (runtime : EventGraphRuntime graph)
@@ -141,117 +100,5 @@ theorem serviceAudit_charge (runtime : EventGraphRuntime graph)
       Bool.eq_false_iff.mpr missing
     simp only [settledRecord, clear, Bool.or_false, Bool.false_eq_true, ↓reduceIte]
     rfl
-
-theorem serviceAudit_charge_of_omission (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (trafficAudit : SettledRecord graph →
-      List (runtime.reactiveApplication leaks).TrafficRecord → PMF (Player → Bool))
-    (control : (runtime.reactiveApplication leaks).Control) (who : Player)
-    (event : graph.EventId) (owned : graph.actor? event = some who)
-    (missed : control.execution.application.publicView.missedBinding event = true) :
-    TerminalAudit.charge (runtime.serviceAuditObservation leaks)
-      (runtime.serviceAudit leaks trafficAudit) (some control) who = 1 := by
-  rw [runtime.serviceAudit_charge]
-  simp only [control.execution.application.publicView.missedBindingBy_of_event who event owned
-    missed, ↓reduceIte]
-
-open Classical in
-/-- The settlement observation: the traffic history and the settled record,
-read once the declared service horizon has ended. Before settlement nothing is
-observed. -/
-def settlementObservation (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (state : (runtime.reactiveApplication leaks).ProtocolState) :
-    List (runtime.reactiveApplication leaks).TrafficRecord × Option (SettledRecord graph) :=
-  if (runtime.reactiveApplication leaks).terminal state then
-    runtime.serviceAuditObservation leaks state
-  else ([], none)
-
-theorem settlementObservation_normalization (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (normal : (runtime.reactiveApplication leaks).SubmissionNormalization)
-    (state : (runtime.reactiveApplication leaks).ProtocolState) :
-    runtime.settlementObservation leaks (normal.state state) =
-      runtime.settlementObservation leaks state := by
-  cases state <;> rfl
-
-/-- Nothing is collected before settlement. -/
-theorem settlementAudit_charge_unsettled (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (trafficAudit : SettledRecord graph →
-      List (runtime.reactiveApplication leaks).TrafficRecord → PMF (Player → Bool))
-    (state : (runtime.reactiveApplication leaks).ProtocolState)
-    (unsettled : ¬ (runtime.reactiveApplication leaks).terminal state) (who : Player) :
-    TerminalAudit.charge (runtime.settlementObservation leaks)
-      (runtime.serviceAudit leaks trafficAudit) state who = 0 := by
-  classical
-  unfold TerminalAudit.charge settlementObservation
-  rw [ite_eq_right_iff.mpr fun settled => (unsettled settled).elim]
-  simp only [serviceAudit, PMF.pure_map]
-  rw [PMF.pure_apply_of_ne _ _ Bool.noConfusion, ENNReal.toReal_zero]
-
-/-- At settlement the charge is the service audit's charge. -/
-theorem settlementAudit_charge_settled (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (trafficAudit : SettledRecord graph →
-      List (runtime.reactiveApplication leaks).TrafficRecord → PMF (Player → Bool))
-    (state : (runtime.reactiveApplication leaks).ProtocolState)
-    (settled : (runtime.reactiveApplication leaks).terminal state) (who : Player) :
-    TerminalAudit.charge (runtime.settlementObservation leaks)
-        (runtime.serviceAudit leaks trafficAudit) state who =
-      TerminalAudit.charge (runtime.serviceAuditObservation leaks)
-        (runtime.serviceAudit leaks trafficAudit) state who := by
-  classical
-  unfold TerminalAudit.charge settlementObservation
-  rw [ite_eq_left settled]
-
-/-- A charge of the traffic branch is a lower bound for the collected charge. -/
-theorem serviceAudit_charge_ge_traffic (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (trafficAudit : SettledRecord graph →
-      List (runtime.reactiveApplication leaks).TrafficRecord → PMF (Player → Bool))
-    (control : (runtime.reactiveApplication leaks).Control) (who : Player) :
-    ((((trafficAudit (runtime.settledRecord leaks control.execution)
-        ((runtime.reactiveApplication leaks).executionTraffic control.execution)).map
-          (fun verdict => verdict who)) true).toReal) ≤
-      TerminalAudit.charge (runtime.serviceAuditObservation leaks)
-        (runtime.serviceAudit leaks trafficAudit) (some control) who := by
-  rw [runtime.serviceAudit_charge]
-  split
-  · exact pmf_toReal_apply_le_one _ _
-  · exact le_refl _
-
-/-- A forbidden record in the actual traffic, judged against the settled record
-of the same state, bounds the collected charge below by its sampling rate. -/
-theorem serviceAudit_charge_from_record (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    {Evidence : Type}
-    (project : SettledRecord graph → (runtime.reactiveApplication leaks).TrafficRecord → Evidence)
-    (attribution : Evidence → Player) (permitted : Evidence → Bool)
-    (sample : List Evidence → PMF (List Evidence))
-    (who : Player) (rate : ℝ)
-    (coverage : ∀ actual record, record ∈ actual →
-      attribution record = who → permitted record = false →
-      rate ≤ ((sample actual).toOuterMeasure {observed | record ∈ observed}).toReal)
-    (control : (runtime.reactiveApplication leaks).Control)
-    (record : (runtime.reactiveApplication leaks).TrafficRecord)
-    (present : record ∈ (runtime.reactiveApplication leaks).executionTraffic control.execution)
-    (owner : attribution (project (runtime.settledRecord leaks control.execution) record) = who)
-    (forbidden : permitted (project (runtime.settledRecord leaks control.execution) record) =
-      false) :
-    rate ≤ TerminalAudit.charge (runtime.serviceAuditObservation leaks)
-      (runtime.serviceAudit leaks fun settled =>
-        (runtime.reactiveApplication leaks).sampledTrafficAudit (project settled) attribution
-          permitted sample) (some control) who := by
-  have lower := (runtime.reactiveApplication leaks).sampledTrafficAudit_collection_from_record
-    (project (runtime.settledRecord leaks control.execution)) attribution permitted sample
-    (PMF.pure control.execution) (runtime.reactiveApplication leaks).executionTraffic who rate
-    coverage record (fun outcome supported => by
-      cases (PMF.mem_support_pure_iff _ _).mp supported
-      exact present) owner forbidden
-  simp only [PMF.pure_map, PMF.pure_bind] at lower
-  exact lower.trans (runtime.serviceAudit_charge_ge_traffic leaks (fun settled =>
-    (runtime.reactiveApplication leaks).sampledTrafficAudit (project settled) attribution
-      permitted sample) control who)
 
 end Vegas.EventGraphRuntime

@@ -73,42 +73,4 @@ theorem commitRecoveryPayoff_mem_Icc
         exact ⟨(min_le_right _ _).trans ((min_le_right _ _).trans (bounds terminal who).1),
           (bounds terminal who).2.trans ((le_max_right _ _).trans (le_max_right _ _))⟩
 
-/-- Every profile extending intended play has the exact joint typed-readout
-and realized payoff-vector law. The original private initialization remains in
-the readout, so arbitrary exogenous parameters can be read jointly afterwards. -/
-theorem commitRecovery_initialized_joint [Fintype Player] (wellFormed : setup.WellFormed)
-    (utility : State L setup.program.terminalCtx → Player → ℝ) (excludedPayoff : Player → ℝ)
-    (source : ∀ who, setup.intendedModel.BehavioralPolicy who)
-    (target : ∀ who, setup.commitRecoveryModel.BehavioralPolicy who)
-    (agrees : (setup.commitRecoveryRestriction wellFormed).ExtendsProfile source target)
-    (fuel : Nat) :
-    (setup.intendedModel.runBehavioral source fuel).map
-        (fun history => (setup.protocolReadout history.state,
-          fun who => (setup.protocolReadout history.state).elim 0
-            (fun terminal => utility terminal who))) =
-      (setup.commitRecoveryModel.runBehavioral target fuel).map
-        (fun history => (setup.protocolReadout (setup.commitRecoverySourceState history.state),
-          fun who => setup.commitRecoveryPayoff utility excludedPayoff who history)) := by
-  have law := (setup.commitRecoveryRestriction wellFormed).initialized_law source target agrees fuel
-  have projected := congrArg (PMF.map (fun history : setup.commitRecoveryProtocol.History =>
-    (setup.protocolReadout (setup.commitRecoverySourceState history.state),
-      fun who => setup.commitRecoveryPayoff utility excludedPayoff who history))) law
-  simpa only [PMF.map_comp, commitRecoveryRestriction, Function.comp_def,
-    Function.Embedding.coeFn_mk, commitRecoveryLiftHistory_source, commitRecoveryPayoff_lift]
-    using projected
-
-/-- Intended copied play never has a public exclusion, at any supported
-intermediate history or terminal history. -/
-theorem commitRecovery_run_clear [Fintype Player] (wellFormed : setup.WellFormed)
-    (source : ∀ who, setup.intendedModel.BehavioralPolicy who)
-    (target : ∀ who, setup.commitRecoveryModel.BehavioralPolicy who)
-    (agrees : (setup.commitRecoveryRestriction wellFormed).ExtendsProfile source target)
-    (fuel : Nat) (history : setup.commitRecoveryProtocol.History)
-    (supported : history ∈ (setup.commitRecoveryModel.runBehavioral target fuel).support) :
-    setup.CommitRecoveryClear history.state := by
-  rw [← (setup.commitRecoveryRestriction wellFormed).initialized_law source target agrees fuel,
-    PMF.support_map] at supported
-  obtain ⟨original, _member, rfl⟩ := supported
-  exact setup.commitRecoveryLiftHistory_clear wellFormed original
-
 end Vegas.SourceProgram.Setup

@@ -284,22 +284,6 @@ def nativeTrace (initial : PMF (RecoveryState graph)) (horizon : Nat)
         (projected_transition_support runtime leaks initial horizon scheduler prior joint
           realized clear)
 
-/-- Native projection preserves the number of realized transitions. -/
-theorem nativeTrace_length (initial : PMF (RecoveryState graph)) (horizon : Nat)
-    (scheduler : (runtime.recoveryApplication leaks).Scheduler) :
-    ∀ {state} (trace : ((runtime.recoveryApplication leaks).protocol initial horizon
-        scheduler).Trace state)
-      (clear : ∀ current, state = some current → current.execution.application.excluded = ∅),
-      (nativeTrace runtime leaks initial horizon scheduler trace clear).length = trace.length := by
-  intro state trace
-  induction trace with
-  | start => intro _clear; rfl
-  | extend prior joint legal realized ih =>
-    intro clear
-    change (nativeTrace runtime leaks initial horizon scheduler prior _).length + 1 =
-      prior.length + 1
-    exact congrArg (fun length => length + 1) (ih _)
-
 /-- Projection retains the realized predecessor and the projected joint action. -/
 @[simp] theorem nativeTrace_extend
     (initial : PMF (RecoveryState graph)) (horizon : Nat)

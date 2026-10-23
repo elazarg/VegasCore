@@ -68,18 +68,6 @@ theorem exists_transitionMass_floor
     exact Finset.min'_le masses _ (Finset.mem_image.mpr ⟨history, Finset.mem_univ _, rfl⟩)
   exact ⟨lower, positive, bounded (E).initHistory, bounded⟩
 
-/-- A fixed finite game also bounds every actual response word. The bound is
-chosen before behavioral weights, without any horizon arithmetic convention. -/
-theorem exists_ownPlay_length_bound
-    [(phaseApplication runtime leaks).FiniteNature initial scheduler] :
-    ∃ bound : Nat, ∀ (history : (E).History) (owner : Player),
-      ((N).ownPlay owner history.trace).length ≤ bound := by
-  classical
-  let length := fun pair : (E).History × Player => ((N).ownPlay pair.2 pair.1.trace).length
-  refine ⟨(Finset.univ : Finset ((E).History × Player)).sup length, ?_⟩
-  intro history owner
-  exact Finset.le_sup (f := length) (Finset.mem_univ (history, owner))
-
 /-- The existing continuation factorization at the literal empty prefix
 separates every actual own-action factor from the original chance product. -/
 theorem historyReach_eq_transitionMass_mul_ownPlay

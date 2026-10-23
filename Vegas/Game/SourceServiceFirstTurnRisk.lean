@@ -251,41 +251,4 @@ theorem sourceServiceFirstTurn_recallFacts {horizon : Nat}
       exact firstTurn_recallFacts_round contract timely follows trace answered atTurn slots valid
         clear moved
 
-/-- The current actual private recall is also clear at a pending activation,
-not only after a completed scheduler round. -/
-theorem sourceServiceFirstTurn_recallFacts_roundSupported {horizon : Nat}
-    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
-    {delay bound : (serviceGraph setup mode).EventId → Nat}
-    (contract : AsyncContract (serviceRuntime setup mode deadline) leaks
-        (serviceInitialLaw setup mode) horizon scheduler delay bound)
-    (timely : AsyncTimely (serviceRuntime setup mode deadline) delay bound)
-    (players : Player → (serviceApplication setup mode deadline leaks).Policy) (who : Player)
-    (turns : Nat) (profile : BehavioralProfile setup.program)
-    (follows : players who =
-      serviceTurnPolicy setup mode deadline leaks bound turns (firstTurnTiming setup turns mode)
-          profile who)
-    (control : (serviceApplication setup mode deadline leaks).Control)
-    (reached : (serviceApplication setup mode deadline leaks).RoundSupported
-        (serviceInitialLaw setup mode) horizon scheduler players (some control)) :
-    BindingTurnsRecorded setup leaks control.execution who ∧
-      (serviceRuntime setup mode deadline).recalledBindingOpportunityRisk leaks bound who
-        (control.execution.recall who) = false := by
-  obtain ⟨remaining, actor, execution⟩ := control
-  cases actor with
-  | none =>
-      have within : execution.environmentRecall.length ≤ horizon := by
-        have lengths := reached.1
-        change execution.environmentRecall.length + remaining = horizon at lengths
-        omega
-      exact sourceServiceFirstTurn_recallFacts contract timely players who turns profile follows
-        _ within execution reached.2
-  | some responder =>
-      obtain ⟨lengthEq, count, prior, command, counted, priorMem, _, _, moved⟩ := reached
-      obtain ⟨valid, clear⟩ := sourceServiceFirstTurn_recallFacts contract timely players who turns
-        profile follows count (by omega) prior priorMem
-      refine ⟨bindingTurnsRecorded_environment who valid moved, ?_⟩
-      rw [(serviceApplication setup mode deadline leaks).environmentStep_recall prior execution
-              command moved]
-      exact clear
-
 end Vegas

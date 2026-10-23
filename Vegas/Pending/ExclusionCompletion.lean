@@ -268,8 +268,5 @@ theorem drain_eq_of_empty (state : RecoveryState graph) (empty : state.excluded 
   obtain ⟨owner, _, member⟩ := eligible.owned
   simp only [empty, Finset.notMem_empty] at member
 
-theorem drain_idempotent (state : RecoveryState graph) : state.drain.drain = state.drain :=
-  state.drain.drain_eq_of_clear state.drain_quiescent
-
 end RecoveryState
 end Vegas.EventGraphRuntime

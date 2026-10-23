@@ -26,41 +26,10 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
 
 omit [DecidableEq Player] [IExpr.ResultTypes L] in
-/-- Under a global horizon, terminal play from a history reached by play of
-some length from `start` is reached by play from `start` of that length plus
-the horizon. -/
-private theorem mem_runBehavioralFrom_of_terminalFrom [Fintype Player]
-    {E : ExecutionProtocol Player}
-    (M : InformationModel E) (certificate : E.WellFoundedHistories) {bound : Nat}
-    (bounded : E.BoundedHorizon bound) (profile : ∀ who, M.BehavioralPolicy who) {fuel : Nat}
-    {start history final : E.History}
-    (reached : history ∈ (M.runBehavioralFrom profile fuel start).support)
-    (finished : final ∈ (M.runBehavioralTerminalFrom certificate profile history).support) :
-    final ∈ (M.runBehavioralFrom profile (fuel + bound) start).support := by
-  rw [M.runBehavioralTerminalFrom_eq_runBehavioralFrom_of_bounded certificate bounded] at finished
-  rw [M.runBehavioralFrom_add]
-  exact (PMF.mem_support_bind_iff _ _ _).mpr ⟨history, reached, finished⟩
-
-omit [DecidableEq Player] [IExpr.ResultTypes L] in
 private theorem apply_eq_one_of_subsingleton {α : Type} [Subsingleton α] (law : PMF α) (a : α) :
     law a = 1 := by
   rw [← law.tsum_coe, tsum_eq_single a (fun other different =>
     (different (Subsingleton.elim other a)).elim)]
-
-variable (setup leaks) in
-/-- An information state of `who` at some history as-if-honest play reaches
-from `start` in the one-packet game. -/
-def HonestReachedFrom [Fintype Player] (bounds : MessageBounds (graph setup)) (horizon : Nat)
-    (scheduler : (application setup leaks).Scheduler)
-    (assessment : setup.intendedModel.BehavioralAssessment)
-    (start : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
-      scheduler).History) (who : Player) (info : (application setup leaks).Info) : Prop :=
-  ∃ fuel, ∃ history ∈ ((onePacketModel setup leaks bounds (initialLaw setup) horizon
-      scheduler).runBehavioralFrom
-      (honestProfile setup leaks bounds (initialLaw setup) horizon scheduler assessment) fuel
-      start).support,
-    (onePacketModel setup leaks bounds (initialLaw setup) horizon scheduler).infoOf who
-      history.trace = info
 
 /-- **One-packet boundaries are reached boundaries.** A history of the
 one-packet game ending between rounds at an execution whose configuration is a

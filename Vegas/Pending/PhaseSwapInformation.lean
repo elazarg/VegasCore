@@ -18,28 +18,6 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket graph)}
   (swap : HiddenSwap graph)
 
-/-- Fixing visible fields, owned actions and owned candidate values fixes the
-actual native view; public phase observations alone would not suffice. -/
-theorem phaseView_observe_eq_of_fixed (who : Player)
-    (fields : ∀ field, graph.fieldVisibleTo who field → swap.values.value field = id)
-    (actions : ∀ event, graph.actor? event = some who → swap.values.action event = id)
-    (handles : ∀ slot, swap.raw (who, slot) = id)
-    (current : (phaseApplication runtime leaks).Execution) :
-    swap.phaseView (current.observe (phaseApplication runtime leaks) who) =
-      current.observe (phaseApplication runtime leaks) who := by
-  change (⟨current.network.observe who,
-    (PlayerView.swap swap (current.application.current.native.playerView who),
-      current.application.publicView), current.receipts⟩ :
-      (phaseApplication runtime leaks).PlayerView) = _
-  congr 1
-  unfold PlayerView.swap State.playerView
-  simp only [PlayerObservation.swap_eq_self swap.values fields actions]
-  congr 1
-  congr 1
-  funext slot
-  rw [handles slot]
-  cases current.application.current.native.candidates.lookup (who, slot) <;> rfl
-
 /-- A counted commitment changes only its sender's prepared value. Hence a
 swap fixing that sender's handles fixes the complete original response. -/
 theorem phaseAction_eq_of_onePacket [Fintype Player] (bounds : MessageBounds graph)
@@ -79,52 +57,5 @@ theorem phaseAction_eq_of_onePacket [Fintype Player] (bounds : MessageBounds gra
             rw [same, handles candidate.2, Option.map_id]
             rfl
         | opening | malformed => rfl
-
-/-- Actual recalled entries have their original legal response and actual
-pre-response view. These two facts fix the observer's whole private recall. -/
-theorem phaseRecall_eq_of_fixed [Fintype Player] (bounds : MessageBounds graph)
-    (initial : PMF (phaseApplication runtime leaks).State) (horizon : Nat)
-    (scheduler : (phaseApplication runtime leaks).Scheduler)
-    (control : (phaseApplication runtime leaks).Control)
-    (trace : ((PhaseCount.onePacketMenu runtime leaks bounds).protocol initial
-      horizon scheduler).Trace (some control)) (who : Player)
-    (fields : ∀ field, graph.fieldVisibleTo who field → swap.values.value field = id)
-    (actions : ∀ event, graph.actor? event = some who → swap.values.action event = id)
-    (handles : ∀ slot, swap.raw (who, slot) = id) :
-    (control.execution.recall who).map swap.phaseEntry = control.execution.recall who := by
-  conv_rhs => rw [← List.map_id (control.execution.recall who)]
-  apply List.map_congr_left
-  intro entry member
-  obtain ⟨before, _, _prefix, _, viewed, legal, _⟩ :=
-    (PhaseCount.onePacketMenu runtime leaks bounds).recorded_response_prefix initial horizon
-      scheduler control trace who entry member
-  rcases entry with ⟨beforeView, action, emitted⟩
-  change beforeView = before.execution.observe (phaseApplication runtime leaks) who at viewed
-  change (⟨swap.phaseView beforeView, swap.phaseAction action, emitted⟩ :
-    (phaseApplication runtime leaks).PlayerEntry) = _
-  rw [swap.phaseAction_eq_of_onePacket bounds who handles _ _ action legal, viewed,
-    swap.phaseView_observe_eq_of_fixed who fields actions handles]
-  rfl
-
-/-- The swapped full execution presents exactly the same information input
-to a fixed observer at every actual counted history. -/
-theorem phaseInput_eq_of_fixed [Fintype Player] (bounds : MessageBounds graph)
-    (initial : PMF (phaseApplication runtime leaks).State) (horizon : Nat)
-    (scheduler : (phaseApplication runtime leaks).Scheduler)
-    (control : (phaseApplication runtime leaks).Control)
-    (trace : ((PhaseCount.onePacketMenu runtime leaks bounds).protocol initial
-      horizon scheduler).Trace (some control)) (who : Player)
-    (fields : ∀ field, graph.fieldVisibleTo who field → swap.values.value field = id)
-    (actions : ∀ event, graph.actor? event = some who → swap.values.action event = id)
-    (handles : ∀ slot, swap.raw (who, slot) = id) :
-    ((swap.phaseExecution control.execution).recall who,
-        (swap.phaseExecution control.execution).observe (phaseApplication runtime leaks) who) =
-      (control.execution.recall who,
-        control.execution.observe (phaseApplication runtime leaks) who) := by
-  rw [swap.observe_phaseExecution,
-    swap.phaseView_observe_eq_of_fixed who fields actions handles]
-  change ((control.execution.recall who).map swap.phaseEntry, _) = _
-  rw [swap.phaseRecall_eq_of_fixed bounds initial horizon scheduler control trace
-    who fields actions handles]
 
 end Vegas.EventGraphRuntime.HiddenSwap

@@ -57,50 +57,6 @@ theorem normalized_opening_eq (frame : Frame runtime leaks memory owner original
   simp only [EvidenceRequest.resolve, owned, leftLocal, rightLocal, and_self,
     ↓reduceIte, frame.network]
 
-/-- The source disclosure decision is exactly the same physical action on the
-two sides when its publication succeeds. Private catalog repairs are invisible
-even to the certificate-request normal form. -/
-theorem successful_serviceDecision_eq
-    (frame : Frame runtime leaks memory owner original repaired)
-    (leftRecall : original.InputRecall (runtime.reactiveApplication leaks))
-    (rightRecall : repaired.InputRecall (runtime.reactiveApplication leaks))
-    (leftBinding : original.application.BindingInvariant)
-    (rightBinding : repaired.application.BindingInvariant)
-    (event : graph.EventId) (payload : L.Ty)
-    (binding : FieldRef graph.layout (.binding owner payload))
-    (checks : List (GuardCheck graph.layout payload))
-    (outputEq : graph.outputLayout event = .publication payload)
-    (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
-      (graph.nodes event) = .resolve owner payload binding checks)
-    (node : nodeView graph event = .resolve owner payload binding checks outputEq codeEq)
-    (ready : original.application.config.cut.Ready event)
-    (timely : original.application.WithinDeadline runtime event)
-    (value : L.Val payload)
-    (stored : binding.get? original.application.config.store = some (.success value))
-    (resolved : EventCode.resolveOutput? binding checks true original.application.config.store =
-      some (.success value)) :
-    let app := runtime.reactiveApplication leaks
-    runtime.serviceDecision leaks owner (original.recall owner) (original.observe app owner)
-        event (cast (congrArg EventField.Action outputEq.symm) true) =
-      runtime.serviceDecision leaks owner (repaired.recall owner) (repaired.observe app owner)
-        event (cast (congrArg EventField.Action outputEq.symm) true) := by
-  obtain ⟨rightStored, candidate, leftAssociated, rightAssociated, owned,
-    leftFixed, rightFixed⟩ := frame.successful_opening leftBinding rightBinding binding value stored
-  have rightResolved := (opening_right_facts runtime original.application repaired.application
-    frame.publicView event owner payload binding checks candidate ready timely leftAssociated
-      value stored rightStored (.success value) resolved).2.2.2
-  have left := runtime.serviceDecision_successful_opening leaks original leftRecall owner event
-    payload binding checks outputEq codeEq node candidate value leftAssociated owned leftFixed
-      resolved
-  have right := runtime.serviceDecision_successful_opening leaks repaired rightRecall owner event
-    payload binding checks outputEq codeEq node candidate value rightAssociated owned rightFixed
-      rightResolved
-  exact left.trans ((congrArg (fun submission => (⟨some submission⟩ :
-    (runtime.reactiveApplication leaks).Action))
-      (frame.normalized_opening_eq event candidate ⟨payload, value⟩
-        owned leftFixed rightFixed)).trans
-        right.symm)
-
 /-- The finite effective menu admits the same normalized successful opening
 after repair. Raw payload bounds and known forwarding references are unchanged. -/
 theorem normalized_opening_available [Fintype Player]
@@ -146,78 +102,5 @@ theorem normalized_opening_available [Fintype Player]
         (ReactiveApplication.ResponseMenu.knownPackets
           (repaired.recall owner) (repaired.observe app owner)))⟩ : app.Action) = _
   rw [← rightKnown, WitnessedSubmission.normalizeReactive_idempotent]
-
-/-- A successful clean opening remains a legal full-source response after
-repair, with the same own-history first-opening test. -/
-theorem successful_serviceDecision_retained [Fintype Player]
-    (frame : Frame runtime leaks memory owner original repaired) (bounds : MessageBounds graph)
-    (leftRecall : original.InputRecall (runtime.reactiveApplication leaks))
-    (rightRecall : repaired.InputRecall (runtime.reactiveApplication leaks))
-    (leftBinding : original.application.BindingInvariant)
-    (rightBinding : repaired.application.BindingInvariant)
-    (event : graph.EventId) (payload : L.Ty)
-    (binding : FieldRef graph.layout (.binding owner payload))
-    (checks : List (GuardCheck graph.layout payload))
-    (outputEq : graph.outputLayout event = .publication payload)
-    (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
-      (graph.nodes event) = .resolve owner payload binding checks)
-    (node : nodeView graph event = .resolve owner payload binding checks outputEq codeEq)
-    (turn : original.application.publicView.OwnTurn owner event)
-    (actor : graph.actor? event = some owner)
-    (ready : original.application.config.cut.Ready event)
-    (timely : original.application.WithinDeadline runtime event)
-    (value : L.Val payload)
-    (stored : binding.get? original.application.config.store = some (.success value))
-    (resolved : EventCode.resolveOutput? binding checks true original.application.config.store =
-      some (.success value))
-    (response : (runtime.reactiveApplication leaks).Action)
-    (originalResponse : response = runtime.serviceDecision leaks owner (original.recall owner)
-      (original.observe (runtime.reactiveApplication leaks) owner) event
-        (cast (congrArg EventField.Action outputEq.symm) true))
-    (available : response ∈ (bounds.menu runtime leaks).actions owner (original.recall owner)
-      (original.observe (runtime.reactiveApplication leaks) owner))
-    (first : runtime.firstSubmission leaks (original.recall owner) response = true) :
-    response ∈ bounds.compiledActions runtime leaks owner (repaired.recall owner)
-      (repaired.observe (runtime.reactiveApplication leaks) owner) := by
-  classical
-  have turnSome := original.application.publicView.ownTurn?_of_ownTurn owner event turn
-  let app := runtime.reactiveApplication leaks
-  obtain ⟨rightStored, candidate, leftAssociated, rightAssociated, owned,
-    leftFixed, rightFixed⟩ := frame.successful_opening leftBinding rightBinding binding value stored
-  have rightFacts := opening_right_facts runtime original.application repaired.application
-    frame.publicView event owner payload binding checks candidate ready timely leftAssociated
-      value stored rightStored (.success value) resolved
-  have left := runtime.serviceDecision_successful_opening leaks original leftRecall owner event
-    payload binding checks outputEq codeEq node candidate value leftAssociated owned leftFixed
-      resolved
-  have right := runtime.serviceDecision_successful_opening leaks repaired rightRecall owner event
-    payload binding checks outputEq codeEq node candidate value rightAssociated owned rightFixed
-      rightFacts.2.2.2
-  have same := frame.successful_serviceDecision_eq leftRecall rightRecall leftBinding rightBinding
-    event payload binding checks outputEq codeEq node ready timely value stored resolved
-  have rightAvailable : response ∈ (bounds.menu runtime leaks).actions owner
-      (repaired.recall owner) (repaired.observe app owner) := by
-    have leftAvailable := available
-    rw [originalResponse, left] at leftAvailable
-    have moved := frame.normalized_opening_available bounds leftRecall rightRecall event
-      candidate ⟨payload, value⟩ owned leftFixed rightFixed leftAvailable
-    rw [← right, ← same, ← originalResponse] at moved
-    exact moved
-  apply bounds.decision_compiled runtime leaks owner (repaired.recall owner)
-    (repaired.observe app owner) response _ _ rightAvailable
-  · have rightTurn : repaired.application.publicView.ownTurn? owner = some event := by
-      rw [← frame.publicView]
-      exact turnSome
-    have rightReady := (repaired.application.publicView_eventReady event).mpr rightFacts.1
-    have turnView : (repaired.observe app owner).application.publicView.ownTurn? owner =
-        some event := rightTurn
-    have readyView : (repaired.observe app owner).application.publicView.EventReady event :=
-      rightReady
-    rw [originalResponse, same]
-    simp only [MessageBounds.decisionActions, turnView, actor, readyView,
-      and_self, ↓reduceIte, node]
-    exact Finset.mem_image.mpr ⟨true, Finset.mem_univ _, rfl⟩
-  · rw [← frame.firstSubmission response]
-    exact first
 
 end Vegas.EventGraphRuntime.BindingMemory.Frame

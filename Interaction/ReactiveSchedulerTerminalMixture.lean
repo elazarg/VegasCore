@@ -36,29 +36,4 @@ theorem schedulerMixture_finish_marginal {Seed : Type} (prior : PMF Seed)
     simpa only [PMF.map_bind, PMF.map_comp, Function.comp_def, identity, constant,
       bindIdentity] using joint
 
-/-- A common readout law for every supported residual seed survives integration
-under that endpoint's own posterior. Different endpoints need no common seed
-posterior. -/
-theorem schedulerMixture_finish_map_eq_of_supported {Seed Outcome : Type}
-    (prior : PMF Seed) (family : Seed → app.Scheduler)
-    (initial : PMF app.State) (horizon : Nat)
-    (players : Principal → app.Policy) (state : app.ProtocolState)
-    (readout : app.ProtocolState → Outcome) (law : PMF Outcome)
-    (same : ∀ seed ∈ (match state with
-      | none => prior
-      | some current => (app.schedulerMixture prior family).posterior
-          current.execution.environmentRecall).support,
-      (app.finish initial horizon (family seed) players state).map readout = law) :
-    (app.finish initial horizon (app.schedulerMixture prior family).scheduler players state).map
-      readout = law := by
-  rw [← app.schedulerMixture_finish_marginal prior family initial horizon players state,
-    PMF.map_bind]
-  calc
-    _ = (match state with
-        | none => prior
-        | some current => (app.schedulerMixture prior family).posterior
-            current.execution.environmentRecall).bind (fun _ => law) :=
-      bind_congr_on_support _ same
-    _ = law := PMF.bind_const _ _
-
 end Interaction.ReactiveApplication

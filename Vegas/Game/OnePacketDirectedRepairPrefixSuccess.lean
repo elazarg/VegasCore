@@ -143,17 +143,6 @@ theorem decodedPoint_binding_cell {config : (graph setup).Config}
             point setup.namesNodup decoded event earlier layoutEq value stored
   · cases decoded
 
-omit [DecidableEq (CellTy Player L)] in
-private theorem bindingInvariant_atTrace {control : (application setup leaks).Control}
-    (trace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some control)) :
-    control.execution.application.BindingInvariant :=
-  ((runtime setup).reactiveBindingInvariant leaks).history (initialLaw setup) horizon scheduler
-    (fun state member => by
-      obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ member
-      exact State.initial_bindingInvariant _)
-    ((bounds.onePacketMenu (runtime setup) leaks).toRawTrace (initialLaw setup) horizon
-      scheduler trace)
-
 section Witness
 
 variable {p q : ProtocolState setup.program}
@@ -214,52 +203,6 @@ theorem binding_success_of_tracePrefix {event : (graph setup).EventId}
   obtain ⟨value, resultEq⟩ := ProtocolState.cell?_commitment_success
     (intended_of_history wellFormed second.trace q secondState) (agree.symm.trans found)
   exact ⟨value, read.trans (congrArg some resultEq)⟩
-
-omit [DecidableEq (CellTy Player L)] in
-/-- The repair preserves the owner's currently delivered value at every prefix. -/
-theorem deliveredValue_of_tracePrefix {memory : BindingMemory (runtime setup) leaks}
-    {owner : Player} {repaired : (application setup leaks).Execution}
-    (frame : DirectedBindingFrame memory owner before.execution repaired) :
-    deliveredValue setup leaks owner (before.execution.observe (application setup leaks) owner) =
-      deliveredValue setup leaks owner (repaired.observe (application setup leaks) owner) := by
-  apply frame.deliveredValue_of_successful
-  intro event payload binding checks outputEq codeEq turn view
-  exact binding_success_of_tracePrefix wellFormed secondState who sameView trace decodedP staticQ
-    readyOwn prior isPrefix
-    ((before.execution.application.publicView_eventReady event).mp
-      (before.execution.application.publicView.ownTurn?_spec owner event turn).1)
-    binding checks outputEq codeEq view
-
-omit [DecidableEq (CellTy Player L)] in
-/-- Both authentic candidate catalogues agree on every binding opened along the
-history; their common raw value follows from actual binding provenance. -/
-theorem opening_candidates_of_tracePrefix {memory : BindingMemory (runtime setup) leaks}
-    {observer : Player} {repaired : (application setup leaks).Control}
-    (frame : DirectedBindingFrame memory observer before.execution repaired.execution)
-    (imageTrace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some repaired))
-    {event : (graph setup).EventId}
-    (ready : before.execution.application.config.cut.Ready event)
-    {owner : Player} {payload : L.Ty}
-    (binding : EventGraph.FieldRef (graph setup).layout (.binding owner payload))
-    (checks : List (EventGraph.GuardCheck (graph setup).layout payload))
-    (outputEq : (graph setup).outputLayout event = .publication payload)
-    (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .resolve owner payload binding checks)
-    (view : nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq) :
-    ∃ value, binding.get? before.execution.application.config.store = some (.success value) ∧
-      binding.get? repaired.execution.application.config.store = some (.success value) ∧
-      ∃ candidate,
-        before.execution.application.accepted binding.field = some candidate ∧
-        repaired.execution.application.accepted binding.field = some candidate ∧
-        candidate.1 = owner ∧
-        before.execution.application.candidates.lookup candidate =
-          .openable ⟨payload, value⟩ ∧
-        repaired.execution.application.candidates.lookup candidate =
-          .openable ⟨payload, value⟩ := by
-  obtain ⟨value, read⟩ := binding_success_of_tracePrefix wellFormed secondState who sameView trace
-    decodedP staticQ readyOwn prior isPrefix ready binding checks outputEq codeEq view
-  exact ⟨value, read, frame.toFrame.successful_opening (bindingInvariant_atTrace prior)
-    (bindingInvariant_atTrace imageTrace) binding value read⟩
 
 end Witness
 

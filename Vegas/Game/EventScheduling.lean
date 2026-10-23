@@ -142,24 +142,4 @@ def eventSchedulingSimulationOn {Ω : Type} (ordered : graph.BarrierOrdered)
     exact bind_congr_on_support _ fun alternative _ =>
       (graph.map_some_observe observe decode factors _).symm
 
-/-- Same-error Nash correspondence for every utility of the typed terminal
-store. -/
-theorem eventScheduling_approximate_nash_iff
-    (ordered : graph.BarrierOrdered) (finite : graph.FiniteActions)
-    (inputs : PMF graph.Inputs) (finiteInputs : inputs.support.Finite)
-    (scheduler : graph.PublicScheduler)
-    (utility : EventGraph.Store graph.layout → Player → ℝ)
-    (ε : ℝ) (profile : graph.BehavioralProfile) :
-    IsεNash (graph.gameForm inputs scheduler)
-        (fun outcome who => utility (graph.terminalStore outcome) who) ε
-        (graph.normalizeProfile profile) ↔
-      IsεNash (graph.canonicalGame inputs)
-        (fun outcome who => utility (graph.terminalStore outcome) who) ε profile := by
-  refine ((graph.eventSchedulingSimulation ordered finite inputs finiteInputs scheduler
-    ).isεNash_compileProfile_iff utility ε profile (fun _ _ => trivial)).trans ?_
-  exact and_iff_left fun who replacement =>
-    hasExpectation_of_payoffIntegrable (payoffIntegrable_of_finite_support _ _
-      (graph.gameForm_play_support_finite inputs finiteInputs scheduler _
-        (finite.profileFiniteSupport _)))
-
 end Vegas.EventGraph

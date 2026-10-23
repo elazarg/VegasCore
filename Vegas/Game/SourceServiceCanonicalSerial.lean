@@ -2,20 +2,18 @@
 
 import Vegas.Game.SourceServiceCanonicalConformance
 
-/-! # Prescribed fresh calls carry the send-time conformance serial
+/-! # Prescribed fresh calls carry the ledger count as their serial
 
-A fresh call carries its author's next serial, and the send-time conformance
-rule (`Vegas.EventGraphRuntime.permittedServiceEnvelope`) expects the number of
-distinct identifiers of that author already on the ledger
-(`Interaction.Message.distinctAuthoredCount`). That rule is a proof device, not
-the audit: the settled verdict (`Vegas.EventGraphRuntime.SettledRecord.permits`)
-reads no send-time ledger and counts the author's bindings settled before the
-event (`Vegas.EventGraphRuntime.PublicView.bindingCountBefore`). Under the
-asynchronous contract, on the support of the turn-counted policy, deferral
-trembles included and whatever everyone else does, serial and ledger count
-agree at every fresh call (`Vegas.sourceServiceTurnPolicy_serial`), so every
-prescribed fresh call passes the send-time rule
-(`Vegas.sourceServiceTurnPolicy_permittedServiceEnvelope`).
+A fresh call carries its author's next serial. Under the asynchronous contract,
+at the author's turn for an event it has not yet submitted for, that serial is
+the number of distinct identifiers of the author already on the ledger
+(`Vegas.nextSerial_eq_distinctAuthoredCount`,
+`Interaction.Message.distinctAuthoredCount`). On the support of every profile
+in which the author follows the turn-counted policy, deferral trembles included
+and whatever everyone else does, every fresh call of the author is addressed to
+its event, fits its deadline within the inclusion bound, is the author's only
+identifier for that event, and carries that count as its serial
+(`Vegas.serialFacts_roundsFrom`).
 
 Each earlier fresh call of the owner was for an event that has completed by
 the time of the next one: an owner acts at most at one ready event, and an
@@ -417,69 +415,6 @@ theorem serialFacts_roundsFrom {horizon : Nat}
           players count (by omega) prior priorMem
       rw [show horizon - count = (horizon - (count + 1)) + 1 by omega] at trace
       exact serialFacts_round contract follows trace atTurn valid conform calls once counted moved
-
-/-- **Prescribed fresh calls carry the send-time serial.** Under the asynchronous
-contract, in every profile in which `who` follows the turn-counted policy,
-deferral trembles included and whatever everyone else does, every fresh
-submission of `who` within the horizon carries the number of distinct
-identifiers of `who` on the ledger it saw. -/
-theorem sourceServiceTurnPolicy_serial {horizon : Nat}
-    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
-    {delay bound : (serviceGraph setup mode).EventId → Nat}
-    (contract : AsyncContract (serviceRuntime setup mode deadline) leaks
-        (serviceInitialLaw setup mode) horizon scheduler delay bound)
-    (players : Player → (serviceApplication setup mode deadline leaks).Policy) (who : Player)
-    {turns : Nat} (timing : TurnTiming setup turns mode) (profile : BehavioralProfile setup.program)
-    (follows : players who = serviceTurnPolicy setup mode deadline leaks bound turns timing
-        profile who)
-    (count : Nat) (bounded : count ≤ horizon)
-    (execution : (serviceApplication setup mode deadline leaks).Execution)
-    (reached : execution ∈
-        ((serviceApplication setup mode deadline leaks).roundsFrom (serviceInitialLaw setup mode)
-        scheduler players count).support)
-    (entry : (serviceApplication setup mode deadline leaks).PlayerEntry)
-    (member : entry ∈ execution.recall who)
-    (material : (serviceApplication setup mode deadline leaks).Submission)
-    (fresh : entry.action.transmission = some material)
-    (message : Message Player (WitnessedPacket (serviceGraph setup mode)))
-    (emitted : entry.emitted = some message) :
-    message.id.2 = Message.distinctAuthoredCount entry.beforeView.messages.ledger
-      message.sender :=
-  (serialFacts_roundsFrom contract players who timing profile follows count bounded execution
-    reached).2.2 entry member material message fresh emitted
-
-/-- **Prescribed fresh calls pass the send-time conformance rule.** Under the
-asynchronous contract, in every profile in which `who` follows the
-turn-counted policy, deferral trembles included and whatever everyone else
-does, every fresh submission of `who` within the horizon passes the send-time
-per-packet rule on the view and ledger it was made from. -/
-theorem sourceServiceTurnPolicy_permittedServiceEnvelope {horizon : Nat}
-    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
-    {delay bound : (serviceGraph setup mode).EventId → Nat}
-    (contract : AsyncContract (serviceRuntime setup mode deadline) leaks
-        (serviceInitialLaw setup mode) horizon scheduler delay bound)
-    (players : Player → (serviceApplication setup mode deadline leaks).Policy) (who : Player)
-    {turns : Nat} (timing : TurnTiming setup turns mode) (profile : BehavioralProfile setup.program)
-    (follows : players who = serviceTurnPolicy setup mode deadline leaks bound turns timing
-        profile who)
-    (count : Nat) (bounded : count ≤ horizon)
-    (execution : (serviceApplication setup mode deadline leaks).Execution)
-    (reached : execution ∈
-        ((serviceApplication setup mode deadline leaks).roundsFrom (serviceInitialLaw setup mode)
-        scheduler players count).support)
-    (entry : (serviceApplication setup mode deadline leaks).PlayerEntry)
-    (member : entry ∈ execution.recall who)
-    (material : (serviceApplication setup mode deadline leaks).Submission)
-    (fresh : entry.action.transmission = some material)
-    (message : Message Player (WitnessedPacket (serviceGraph setup mode)))
-    (emitted : entry.emitted = some message) :
-    (serviceRuntime setup mode deadline).permittedServiceEnvelope
-    entry.beforeView.application.publicView entry.beforeView.messages.ledger message = true :=
-  ((serviceRuntime setup mode deadline).permittedServiceEnvelope_iff _ _ _).mpr (Or.inr
-    ⟨sourceServiceTurnPolicy_serial contract players who timing profile follows count bounded
-        execution reached entry member material fresh message emitted,
-      sourceServiceTurnPolicy_freshServiceEnvelope scheduler players who timing profile follows
-        count execution reached entry member material fresh message emitted⟩)
 
 end Support
 

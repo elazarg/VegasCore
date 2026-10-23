@@ -65,17 +65,6 @@ theorem SerialsBeforeNext.includePending (valid : network.SerialsBeforeNext)
   cases found : network.lookup id <;>
     simpa only [SerialsBeforeNext, MessageNetwork.includePending, found] using retained
 
-/-- No choice of eligibility can make the next identifier an old candidate. -/
-theorem SerialsBeforeNext.next_not_eligible (valid : network.SerialsBeforeNext)
-    (eligible : Message Principal Payload → Bool) (who : Principal) :
-    (who, network.nextSerial who) ∉ eligibleIds eligible network.pending := by
-  intro member
-  obtain ⟨packet, member, same⟩ := List.mem_map.mp (List.mem_toFinset.mp member)
-  have bound := valid.pending packet (List.mem_filter.mp member).1
-  change packet.id.2 < network.nextSerial packet.id.1 at bound
-  rw [same] at bound
-  exact Nat.lt_irrefl _ bound
-
 omit [DecidableEq Principal] in
 theorem SerialsBeforeNext.next_unpublished (valid : network.SerialsBeforeNext)
     (who : Principal) : (who, network.nextSerial who) ∉ network.ledger.map Message.id := by
@@ -85,28 +74,5 @@ theorem SerialsBeforeNext.next_unpublished (valid : network.SerialsBeforeNext)
   change packet.id.2 < network.nextSerial packet.id.1 at bound
   rw [same] at bound
   exact Nat.lt_irrefl _ bound
-
-/-- When every earlier serial has been settled, submitting and including the
-new envelope restores the public counter equality. Application acceptance is
-irrelevant: inclusion also consumes an envelope whose call is rejected. -/
-theorem SerialsBeforeNext.submit_include_serials_match_ledger
-    (valid : network.SerialsBeforeNext)
-    (who : Principal) (payload : Payload) (observer : Principal)
-    (settled : network.nextSerial observer =
-      Message.distinctAuthoredCount network.ledger observer) :
-    ((network.submit who payload).2.includePending (who, network.nextSerial who)).2.nextSerial
-        observer =
-      Message.distinctAuthoredCount
-        ((network.submit who payload).2.includePending (who, network.nextSerial who)).2.ledger
-        observer := by
-  rw [MessageNetwork.includePending, valid.lookup_submit who payload]
-  have fresh := valid.next_unpublished who
-  change _ = Message.distinctAuthoredCount
-    (network.ledger ++ [⟨(who, network.nextSerial who), payload⟩]) observer
-  rw [Message.distinctAuthoredCount_append_of_not_mem _ _ _ fresh, ← settled]
-  by_cases same : observer = who
-  · subst observer
-    simp [MessageNetwork.submit, Message.sender]
-  · simp [MessageNetwork.submit, Message.sender, same, Ne.symm same]
 
 end Interaction.MessageNetwork

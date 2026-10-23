@@ -133,27 +133,3 @@ theorem onePacketActions_eq_singleton_of_no_request (bounds : MessageBounds grap
     exact silence_onePacket runtime leaks bounds owner _ _
 
 end Vegas.EventGraphRuntime.PhaseCount
-
-namespace Vegas.EventGraphRuntime.PhaseBindingRepair.Frame
-
-open Interaction EventGraph
-
-variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
-  {graph : Vegas.EventGraph Player L} {runtime : EventGraphRuntime graph}
-  {leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket graph)}
-  {memory : BindingMemory runtime (nativeLeaks (graph := graph))} {owner : Player}
-  {original repaired : (phaseApplication runtime leaks).Execution}
-
-/-- Directed repairs preserve the complete public request predicate, including
-its physical attempt address, rather than only the static ready event. -/
-theorem seedRequest_iff (frame : Frame runtime leaks memory owner original repaired)
-    (who : Player) (coordinate : CommitAttemptEvent graph) :
-    original.application.SeedRequest who coordinate ↔
-      repaired.application.SeedRequest who coordinate := by
-  have visible : original.application.current.native.publicView =
-      repaired.application.current.native.publicView := frame.live.publicView
-  simp only [PhaseRuntimeState.SeedRequest, PhaseRuntimeState.attempt, frame.phases,
-    frame.generation, frame.clearOriginal, frame.clearRepaired, ← State.publicView_eventReady,
-    visible]
-
-end Vegas.EventGraphRuntime.PhaseBindingRepair.Frame

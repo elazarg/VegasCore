@@ -54,36 +54,4 @@ theorem proposalRecoveryEraseTrace_prefix_inverse
     exact eq_of_heq (History.mk.inj same).2
   exact ⟨labeled, retained, projected⟩
 
-/-- The existing labeled joint constructor lifts an actual semantic suffix
-from its SAME already labeled prefix. Chance realizations and the endpoint
-are inherited from the original semantic path. -/
-theorem proposalRecovery_lift_suffix
-    (labels : setup.commitRecoveryProtocol.StepEvent → Player → Bool)
-    {first last : setup.commitRecoveryProtocol.State}
-    (prior : setup.commitRecoveryProtocol.Trace first)
-    (trace : setup.commitRecoveryProtocol.Trace last) (kept : TracePrefix prior trace)
-    (labeled : setup.proposalRecoveryProtocol.Trace first)
-    (erased : setup.proposalRecoveryEraseTrace labeled = prior) :
-    ∃ result : setup.proposalRecoveryProtocol.Trace last,
-      TracePrefix labeled result ∧ setup.proposalRecoveryEraseTrace result = trace := by
-  induction kept with
-  | refl => exact ⟨labeled, .refl, erased⟩
-  | @extend before after earlier kept joint legal supported ih =>
-      obtain ⟨previous, retained, projected⟩ := ih
-      let event : setup.commitRecoveryProtocol.StepEvent := ⟨before, joint, legal, after, supported⟩
-      let selected := setup.proposalRecoveryLiftJoint labels event
-      have allowed := setup.proposalRecoveryLiftJoint_legal labels event
-      have reached : after ∈
-          (setup.proposalRecoveryProtocol.step before ⟨selected, allowed⟩).support := by
-        change event.target ∈ (setup.proposalRecoveryProtocol.step event.source
-          ⟨setup.proposalRecoveryLiftJoint labels event,
-            setup.proposalRecoveryLiftJoint_legal labels event⟩).support
-        rw [setup.proposalRecoveryLiftJoint_step]
-        exact event.realized
-      refine ⟨previous.extend selected allowed reached,
-        retained.extend selected allowed reached, ?_⟩
-      simp only [proposalRecoveryEraseTrace, selected,
-        setup.proposalRecoveryLiftJoint_semantic, projected]
-      rfl
-
 end Vegas.SourceProgram.Setup

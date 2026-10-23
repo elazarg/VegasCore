@@ -274,19 +274,6 @@ theorem regular_nonneg (w : NearProductWeights π ω) (h : Ω) : 0 ≤ w.regular
   have close := (abs_le.mp (w.regular_close h)).1
   nlinarith [w.factorError_lt_one]
 
-/-- The error bound vanishes when the three relative errors do. -/
-theorem tendsto_errorBound {ι : Type*} {l : Filter ι} (w : ι → NearProductWeights π ω)
-    (factor : Tendsto (fun n => (w n).factorError) l (𝓝 0))
-    (fiber : Tendsto (fun n => (w n).fiberError) l (𝓝 0))
-    (remainder : Tendsto (fun n => (w n).remainderRatio) l (𝓝 0)) :
-    Tendsto (fun n => (w n).errorBound) l (𝓝 0) := by
-  have numerator := ((factor.add fiber).add (factor.mul fiber)).const_mul 2
-  have denominator := ((tendsto_const_nhds (x := (1 : ℝ))).sub factor).mul
-    ((tendsto_const_nhds (x := (1 : ℝ))).sub fiber)
-  have limit := (numerator.div denominator (by norm_num)).add (remainder.const_mul 2)
-  norm_num at limit
-  exact limit
-
 variable [Fintype O] [Fintype E]
 
 /-- The normalized law of the retained coordinate under all regular and
@@ -332,43 +319,6 @@ theorem sum_abs_nativeLaw_sub_sourceLaw_le (w : NearProductWeights π ω) :
         rw [sum_add_distrib]
         exact add_le_add contamination regular
     _ = w.errorBound := add_comm _ _
-
-/-- Along any filter on stages where the three relative errors vanish, the
-`ℓ¹` distance between the native and source retained-coordinate laws
-vanishes. Composing `w` with a subsequence gives the subsequence form. -/
-theorem tendsto_sum_abs_nativeLaw_sub_sourceLaw {ι : Type*} {l : Filter ι}
-    (w : ι → NearProductWeights π ω)
-    (factor : Tendsto (fun n => (w n).factorError) l (𝓝 0))
-    (fiber : Tendsto (fun n => (w n).fiberError) l (𝓝 0))
-    (remainder : Tendsto (fun n => (w n).remainderRatio) l (𝓝 0)) :
-    Tendsto (fun n => ∑ o, |(w n).nativeLaw o - (w n).sourceLaw o|) l (𝓝 0) :=
-  squeeze_zero (fun _ => sum_nonneg fun _ _ => abs_nonneg _)
-    (fun n => (w n).sum_abs_nativeLaw_sub_sourceLaw_le)
-    (tendsto_errorBound w factor fiber remainder)
-
-/-- Along any filter on stages where the three relative errors vanish, the
-native and source laws of each retained coordinate have the same limits. -/
-theorem tendsto_nativeLaw_iff_tendsto_sourceLaw {ι : Type*} {l : Filter ι}
-    (w : ι → NearProductWeights π ω)
-    (factor : Tendsto (fun n => (w n).factorError) l (𝓝 0))
-    (fiber : Tendsto (fun n => (w n).fiberError) l (𝓝 0))
-    (remainder : Tendsto (fun n => (w n).remainderRatio) l (𝓝 0)) (o : O) (L : ℝ) :
-    Tendsto (fun n => (w n).nativeLaw o) l (𝓝 L) ↔
-      Tendsto (fun n => (w n).sourceLaw o) l (𝓝 L) := by
-  have gap : Tendsto (fun n => (w n).nativeLaw o - (w n).sourceLaw o) l (𝓝 0) :=
-    (tendsto_zero_iff_abs_tendsto_zero _).2 <| squeeze_zero (fun _ => abs_nonneg _)
-      (fun n => single_le_sum (f := fun o => |(w n).nativeLaw o - (w n).sourceLaw o|)
-        (fun _ _ => abs_nonneg _) (mem_univ o))
-      (tendsto_sum_abs_nativeLaw_sub_sourceLaw w factor fiber remainder)
-  constructor
-  · intro native
-    have source := native.sub gap
-    rw [sub_zero] at source
-    exact source.congr fun n => sub_sub_cancel _ _
-  · intro source
-    have native := source.add gap
-    rw [add_zero] at native
-    exact native.congr fun n => add_sub_cancel _ _
 
 end NearProductWeights
 

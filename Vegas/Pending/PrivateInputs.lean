@@ -17,18 +17,6 @@ open Interaction EventGraph
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 variable {graph : Vegas.EventGraph Player L}
 
-omit [DecidableEq Player] in
-/-- Private inputs have no accepted handle in any state satisfying provenance. -/
-theorem BindingInvariant.privateInput_no_handle {state : State graph}
-    (invariant : state.BindingInvariant) (field : graph.Field) (owner : Player) (payload : L.Ty)
-    (kind : graph.layout field = .privateInput owner payload) : state.accepted field = none := by
-  cases accepted : state.accepted field with
-  | none => rfl
-  | some handle =>
-      obtain ⟨_, binding⟩ := invariant.accepted_typed field handle accepted
-      rw [kind] at binding
-      cases binding
-
 /-- Supplying a private input installs no candidate meaning for any principal. -/
 theorem initial_privateInput_candidate (inputs : graph.Inputs) (input : graph.InputId)
     (owner who : Player) (payload : L.Ty)

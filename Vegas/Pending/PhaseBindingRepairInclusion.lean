@@ -49,13 +49,5 @@ def failedBinding (owner : Player) (event : graph.EventId) (payload : L.Ty)
     event (cast (congrArg EventField.Action outputEq.symm) PublicationResult.failure)
       (cast (congrArg EventField.Value outputEq.symm) PublicationResult.failure)
 
-omit [DecidableEq Player] in
-theorem failedBinding_owned (owner : Player) (event : graph.EventId) (payload : L.Ty)
-    (outputEq : graph.outputLayout event = .binding owner payload)
-    (serial : Nat) (original : CommitmentCandidate (Raw L)) :
-    (failedBinding owner event payload outputEq serial original).OwnBindings owner :=
-  ((ownBindings_empty owner).rememberCandidate _ original).rememberCompletion event payload
-    outputEq _ _
-
 end BindingShadow
 end Vegas.EventGraphRuntime

@@ -44,14 +44,6 @@ def owners : {Γ Δ : SourceCtx Player L} → {O P : Finset VarId} →
   | _, _, _, _, .nil => ∅
   | _, _, _, _, .commit _ owner _ _ rest => insert owner rest.owners
 
-omit [IExpr.ResultTypes L] in
-theorem owners_card_le_length (block : CommitPrefix Γ O Δ P) :
-    block.owners.card ≤ block.length := by
-  induction block with
-  | nil => simp [owners, length]
-  | commit _ owner _ _ rest ih =>
-      exact (Finset.card_insert_le _ _).trans (Nat.add_le_add_right ih 1)
-
 end CommitPrefix
 
 /-- A commit phase stops before a sample, reveal, or return. -/

@@ -4,7 +4,7 @@ import Vegas.Game.SourceServiceReachedDecoding
 import Vegas.Game.IntendedPreservation
 import GameTheoryExtensions.Protocol.ContinuationHorizon
 
-/-! # Source debts read through the native decoding
+/-! # Step-closed properties read through the native decoding
 
 Every native configuration reached under any players and any scheduler decodes
 to a point of the source program at its completed prefix
@@ -16,15 +16,7 @@ step therefore persists along every native protocol transition, under arbitrary
 responses and scheduler choices (`Vegas.decodedHolds_transition`).
 
 A source debt is such a property
-(`Vegas.SourceProgram.ProtocolState.indebted_step`). If the configuration of a
-native history decodes to a point at which a player is indebted, every terminal
-history of terminal play from it, under any players, has a readout recording a
-failed reveal of that player, provided the scheduler completes play
-(`Vegas.decoded_indebted_failedReveals`).
-
-From a decoding in the intended game, one native completion either stays in the
-intended game or is a departure of the event's actor, who is then indebted
-unless the departure is a failed binding (`Vegas.SourceResidual.intended_or_departure`).
+(`Vegas.SourceProgram.ProtocolState.indebted_step`).
 -/
 
 noncomputable section
@@ -75,44 +67,6 @@ theorem SourceResidual.decodedHolds_configStep
     rw [successor.decode, Option.some.injEq] at decoded
     subst decoded
     exact closed _ _ _ (holds _ residual.decode) reached
-
-/-- **Leaving the intended game at a native completion.** Completing the ready
-event of a configuration whose decoding is a point of the intended game
-reaches a configuration whose decoding is again a point of the intended game,
-unless the event's actor departs: its decoded action is not offered by the
-intended game there, and, when it is a source action under the value interface
-(any binding value or disclosure decision, but not a failed binding), the actor
-is indebted at the new decoding. -/
-theorem SourceResidual.intended_or_departure {rank : Nat}
-    {before : (graph setup).Config} (residual : SourceResidual setup profile rank before)
-    (intended : ProtocolState.Intended setup.program
-      (residual.lift (ProtocolState.entry residual.program residual.source)))
-    (event : (graph setup).EventId) (ready : before.cut.Ready event)
-    (action : (graph setup).Action event) (after : (graph setup).Config)
-    (member : after ∈ (before.step event ready action).support) :
-    ∃ next : SourceResidual setup profile (rank + 1) after,
-      ProtocolState.Intended setup.program
-          (next.lift (ProtocolState.entry next.program next.source)) ∨
-        ∃ who, ProtocolView.actor who setup.program (ProtocolState.observe who setup.program
-            (residual.lift (ProtocolState.entry residual.program residual.source))) = some who ∧
-          ∀ chosen, decodeEventAction setup.program event action = some chosen →
-            chosen ∉ ProtocolView.intendedAvailable who setup.program
-              (ProtocolState.observe who setup.program
-                (residual.lift (ProtocolState.entry residual.program residual.source))) ∧
-            (chosen ∈ ProtocolView.available who setup.program
-                (CommitmentInterface.values setup.program)
-                (ProtocolState.observe who setup.program
-                  (residual.lift (ProtocolState.entry residual.program residual.source))) →
-              ProtocolState.Indebted who setup.program
-                (next.lift (ProtocolState.entry next.program next.source))) := by
-  obtain ⟨next, reached⟩ := residual.step event ready action after member
-  refine ⟨next, ?_⟩
-  rcases ProtocolState.intended_or_departure setup.program _ _ _ intended reached with
-    kept | ⟨who, acts, departs⟩
-  · exact Or.inl kept
-  · refine Or.inr ⟨who, acts, fun chosen decoded => ⟨departs chosen decoded, fun available => ?_⟩⟩
-    exact ProtocolState.indebted_of_deviation who setup.program _ (fun _ => rfl) _ intended _
-      chosen decoded acts available (departs chosen decoded) _ reached
 
 variable (setup) in
 /-- An initialized native protocol state whose configuration has a source
@@ -206,69 +160,5 @@ theorem isPrefix_eventCount_of_terminal {cut : (graph setup).order.Cut} {rank : 
     rw [terminal]
     exact Finset.mem_univ _
   exact Nat.lt_irrefl _ ((ordered.2 _).mp completed)
-
-/-- A player's debt is closed under every source step. -/
-theorem indebted_stepClosed (who : Player) :
-    StepClosed setup (ProtocolState.Indebted who setup.program) :=
-  fun state joint target indebted reached =>
-    ProtocolState.indebted_step who setup.program state joint target indebted reached
-
-/-- **Decoded debts are paid.** Suppose a native history of a response menu,
-under a scheduler that completes play, has a configuration that decodes at its
-prefix to a source point at which `who` is indebted. Then every terminal history
-of terminal play from it, under any players, has a source readout recording at
-least one failed reveal of `who`. -/
-theorem decoded_indebted_failedReveals [Fintype Player]
-    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-    (menu : (application setup leaks).ResponseMenu) (horizon : Nat)
-    (scheduler : (application setup leaks).Scheduler)
-    (completes : CompletesPlay (runtime setup) leaks (initialLaw setup) horizon scheduler)
-    (certificate : (menu.protocol (initialLaw setup) horizon scheduler).WellFoundedHistories)
-    (players : ∀ who, (menu.information (initialLaw setup) horizon scheduler).BehavioralPolicy who)
-    (who : Player) (history : (menu.protocol (initialLaw setup) horizon scheduler).History)
-    (indebted : DecodedState setup leaks profile (ProtocolState.Indebted who setup.program)
-      history.state) :
-    ∀ final ∈ ((menu.information (initialLaw setup) horizon scheduler).runBehavioralTerminalFrom
-        certificate players history).support,
-      ∃ terminal, sourceReadout setup leaks final.state = some terminal ∧
-        1 ≤ failedReveals setup.program who (publicOutcome setup.program terminal) := by
-  intro final supported
-  have reachedDebt := (menu.information (initialLaw setup) horizon
-    scheduler).runBehavioralTerminalFrom_support_closed certificate players
-    (DecodedState setup leaks profile (ProtocolState.Indebted who setup.program))
-    (fun state joint _ target holds reached =>
-      decodedHolds_transition (indebted_stepClosed who) (initialLaw setup) horizon scheduler
-        state target joint holds reached)
-    history indebted final supported
-  have stopped := (menu.information (initialLaw setup) horizon
-    scheduler).runBehavioralTerminalFrom_support_terminal certificate players history final
-    supported
-  cases state : final.state with
-  | none =>
-      rw [state] at reachedDebt
-      exact reachedDebt.elim
-  | some control =>
-      rw [state] at reachedDebt stopped
-      obtain ⟨rank, ⟨residual⟩, decoded⟩ := reachedDebt
-      have trace : ((application setup leaks).protocol (initialLaw setup) horizon
-          scheduler).Trace (some control) :=
-        state ▸ menu.toRawTrace (initialLaw setup) horizon scheduler final.trace
-      have terminalCut := completes control trace stopped
-      have full := isPrefix_eventCount_of_terminal residual.checkpoint.ordered terminalCut
-      subst full
-      have read := sourceServicePrefix?_terminal_readout setup control.execution.application.config
-      obtain ⟨point, decodedEq⟩ :
-          ∃ point, sourceServicePrefix? setup (eventCount setup.program)
-            control.execution.application.config = some point :=
-        ⟨_, residual.decode⟩
-      have pointDebt := decoded point decodedEq
-      rw [decodedEq] at read
-      obtain ⟨terminal, terminalRead⟩ :=
-        ProtocolState.exists_readout_of_terminal setup.program point
-          (decodeSourcePrefix?_terminal setup.program _ _ _ _ _ _ point decodedEq)
-      refine ⟨terminal, ?_, ProtocolState.failedReveals_pos_of_indebted who setup.program point
-        pointDebt terminalRead⟩
-      rw [sourceReadout_eq_decode, ← read]
-      exact terminalRead
 
 end Vegas

@@ -177,16 +177,6 @@ theorem initial_invariant (inputs : graph.Inputs) :
 
 end State
 
-/-- Principal-local preparation does not affect the graph execution,
-clock, or activation frontier. -/
-theorem privateStep_invariant {inputs : graph.Inputs} (state : State graph)
-    (invariant : state.Invariant inputs) (who : Player)
-    (command : PrivateCommand graph) :
-    (privateStep state who command).Invariant inputs := by
-  cases command with
-  | prepare serial raw =>
-      apply invariant.copy <;> rfl
-
 /-- Private commands leave every graph/service timing field unchanged. -/
 theorem privateStep_facts (state : State graph) (who : Player)
     (command : PrivateCommand graph) :
@@ -195,13 +185,6 @@ theorem privateStep_facts (state : State graph) (who : Player)
       (privateStep state who command).activatedAt = state.activatedAt := by
   cases command with
   | prepare serial raw => exact ⟨rfl, rfl, rfl⟩
-
-/-- Private commands cannot undo any completed event. -/
-theorem privateStep_completed_subset (state : State graph) (who : Player)
-    (command : PrivateCommand graph) :
-    state.config.cut.completed ⊆
-      (privateStep state who command).config.cut.completed := by
-  rw [(privateStep_facts state who command).1]
 
 /-- Accepted pending packets preserve the runtime invariant. -/
 theorem handle_invariant {inputs : graph.Inputs} (runtime : EventGraphRuntime graph)
@@ -408,50 +391,6 @@ theorem handle_completes (runtime : EventGraphRuntime graph)
   refine ⟨event, addressed, ready.1, ?_⟩
   rw [state.config.step_cut event ready action next.config member]
   simp
-
-/-- **No call takes effect at a completed event.** -/
-theorem handle_eq_none_of_completed (runtime : EventGraphRuntime graph)
-    (state : State graph) (message : Message Player (Payload graph)) (event : graph.EventId)
-    (addressed : Payload.event? graph message.payload = some event)
-    (completed : event ∈ state.config.cut.completed) :
-    handle runtime state message = none := by
-  cases result : handle runtime state message with
-  | none => rfl
-  | some next =>
-      obtain ⟨named, namedAddressed, unfinished, _⟩ :=
-        handle_completes runtime state next message result
-      rw [addressed, Option.some.injEq] at namedAddressed
-      subst named
-      exact (unfinished completed).elim
-
-/-- **No commitment takes effect at an already bound event.** -/
-theorem handle_commitment_eq_none_of_bound (runtime : EventGraphRuntime graph)
-    (state : State graph) (id : MessageId Player) (event : graph.EventId)
-    (candidate : Handle graph) (bound : state.accepted (.inr event) ≠ none) :
-    handle runtime state ⟨id, .commitment event candidate⟩ = none := by
-  by_cases ready : state.config.cut.Ready event
-  · by_cases timely : state.WithinDeadline runtime event
-    · cases view : nodeView graph event with
-      | resolve | sample => simp [handle, ready, timely, view]
-      | bind owner payload outputEq codeEq => simp [handle, ready, timely, view, bound]
-    · simp [handle, ready, timely]
-  · simp [handle, ready]
-
-/-- **An accepted call cannot be accepted again** at any state that keeps the
-events completed by its acceptance, in particular immediately afterwards. -/
-theorem handle_eq_none_of_accepted (runtime : EventGraphRuntime graph)
-    (state next later : State graph) (message : Message Player (Payload graph))
-    (accepted : handle runtime state message = some next)
-    (kept : next.config.cut.completed ⊆ later.config.cut.completed) :
-    handle runtime later message = none := by
-  obtain ⟨event, addressed, _, completed⟩ := handle_completes runtime state next message accepted
-  exact handle_eq_none_of_completed runtime later message event addressed (kept completed)
-
-theorem handle_eq_none_after_accepted (runtime : EventGraphRuntime graph)
-    (state next : State graph) (message : Message Player (Payload graph))
-    (accepted : handle runtime state message = some next) :
-    handle runtime next message = none :=
-  handle_eq_none_of_accepted runtime state next next message accepted Finset.Subset.rfl
 
 end EventGraphRuntime
 end Vegas

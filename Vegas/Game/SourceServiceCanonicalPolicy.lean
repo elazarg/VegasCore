@@ -7,12 +7,13 @@ import Interaction.ReactiveRoundsFiniteness
 
 /-! # Source decisions at the audit's canonical slot
 
-`sourceServiceCanonicalPolicy` reads the source compiler's policy table at the
-player's turn exactly as `sourceServicePolicy` does, and realizes the chosen
-action by the canonical decision (`EventGraphRuntime.canonicalServiceDecision`),
-which submits a binding at the slot the audit's conformance rule expects.
+`Vegas.sourceServiceCanonicalPolicy` reads the source compiler's policy table at
+the player's turn exactly as `Vegas.sourceServicePolicy` does, and realizes the
+chosen action by the canonical decision
+(`Vegas.EventGraphRuntime.canonicalServiceDecision`), which submits a binding at
+the slot the audit's conformance rule expects.
 
-`sourceServiceCanonicalOpportunity` is one opportunity of the turn-counted
+`Vegas.serviceCanonicalOpportunity` is one opportunity of the turn-counted
 policy: it remains silent once the event is recorded in the owner's recall, and
 it makes a fresh call only while a packet included within `bound event` slots
 is included strictly before the event's deadline.
@@ -78,12 +79,6 @@ variable (setup : Setup (Player := Player) (L := L))
 abbrev sourceServiceCanonicalPolicy : BehavioralProfile setup.program → Player →
     (application setup leaks).Policy :=
   serviceCanonicalPolicy setup .sequential (rankDeadline setup .sequential) leaks
-
-/-- One opportunity of the turn-counted policy on the default runtime. -/
-abbrev sourceServiceCanonicalOpportunity : ((graph setup).EventId → Nat) →
-    BehavioralProfile setup.program → Player → (graph setup).EventId →
-      (application setup leaks).Policy :=
-  serviceCanonicalOpportunity setup .sequential (rankDeadline setup .sequential) leaks
 
 section Generic
 
@@ -302,40 +297,6 @@ theorem sourceServiceCanonicalPolicy_reveal {Γ : SourceCtx Player L}
   rw [actionLaw, PMF.map_comp]
   rfl
 
-
-theorem sourceServiceCanonicalPolicy_finiteSupport (finite : setup.program.FiniteBindingTypes)
-    (profile : BehavioralProfile setup.program) (who : Player) :
-    ReactiveApplication.Policy.FiniteSupport _
-      (serviceCanonicalPolicy setup mode deadline leaks profile who) := by
-  intro past view
-  have finiteActions := Vegas.toEventGraph_finiteActions setup.program finite
-  unfold serviceCanonicalPolicy
-  split
-  · split
-    · simp
-    · split
-      · rw [PMF.support_map]
-        exact ((Set.finite_univ_iff.mpr (finiteActions _)).subset (Set.subset_univ _)).image _
-      · simp
-  · simp
-
-theorem sourceServiceCanonicalOpportunity_finiteSupport
-    (bound : (serviceGraph setup mode).EventId → Nat) (finite : setup.program.FiniteBindingTypes)
-    (profile : BehavioralProfile setup.program) (who : Player)
-    (event : (serviceGraph setup mode).EventId) : ReactiveApplication.Policy.FiniteSupport _
-      (serviceCanonicalOpportunity setup mode deadline leaks bound profile who event) := by
-  intro past view
-  unfold serviceCanonicalOpportunity
-  split
-  · exact (serviceApplication setup mode deadline leaks).silentPolicy_finiteSupport past view
-  · split
-    · refine bind_support_finite
-        (sourceServiceCanonicalPolicy_finiteSupport setup leaks finite profile who past view)
-        fun response _ => ?_
-      split
-      · exact (serviceApplication setup mode deadline leaks).silentPolicy_finiteSupport past view
-      · simp
-    · exact (serviceApplication setup mode deadline leaks).silentPolicy_finiteSupport past view
 
 end Generic
 

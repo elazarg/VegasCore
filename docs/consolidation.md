@@ -79,6 +79,7 @@ run 10–20% larger. `#print axioms` pins do not count as uses.
 | Whole tree after Step 3 pass one | 597k | |
 | In modules no Paper theorem, test or example reaches, after Step 0 (438 modules) | 80k | |
 | Whole tree after Step 3 pass two | 494k | |
+| Whole tree after unreached declarations | 445k | |
 
 The concurrent SE cone by layer: Vegas/Game 136k, Vegas/Pending 32k,
 Vegas/Source 24k (17k of it the `CommitRecovery*` and `ProposalRecovery*`
@@ -217,8 +218,17 @@ Pass two:
       407 declarations in 143 kept modules (23k lines) that use them. Each import
       of a removed module became the surviving modules it imported, and module
       docstrings that described removed results were rewritten.
-- [ ] Unreached declarations inside kept modules that use nothing removed, then
-      unused imports. The calendar's remaining `ServiceRoster` and
+- [x] Unreached declarations inside kept modules: 1,812 declarations (48k
+      lines) in 572 modules, and the 5 modules that left empty. A declaration
+      stays when surviving source outside comments mentions its name (rfl
+      lemmas used by `simp`, `show` types, `variable` binders), when it is an
+      instance or an rfl `@[simp]` lemma, or when it lies in
+      `ExclusionMoveGame` (decision D3) or in the language and compiler layers.
+- [ ] Unreached declarations in `Vegas/Foundation`, `Vegas/Expr`,
+      `Vegas/EventGraph` and `Vegas/Compile` (about 2.5k lines), reviewed by
+      hand: some state what the interface promises (`Vegas.IExpr.expr_deps_sound`)
+      or the compiler's payout laws (`Vegas.canonical_payout_law`).
+- [ ] Unused imports. The calendar's remaining `ServiceRoster` and
       `SourceService*` modules, `MessagePool`, `SourceProgram.Initial` and most
       of `OnePacket*` stay because the turn-based SE and asynchronous Nash
       theorems use them on the plain and forced-exit contracts; they wait for
@@ -390,9 +400,10 @@ perfect recall proved for every model, horizons equal to proved bounds.
 
 - [x] **F-S1 (H, Step 3).** 2,165 of 3,777 modules (about 428k lines) contain no
   declaration used by Paper or by a test declaration; 35% of declarations are
-  reached from Paper. After Step 3 pass two the report lists 2 of 1,759 modules
-  (`RevealServiceWatcher`, `ServiceRosterEvaluation`; 160 lines), left for the
-  next removal.
+  reached from Paper. After the removal of unreached declarations one module is
+  left (`Vegas.Pending.PhaseBindingClockReplay`, 29 lines), whose only
+  definition shares its name with a local hypothesis elsewhere; it goes with
+  the unused imports.
 - [ ] **F-S2 (H, Step 4).** Parallel runtime stacks: 269k lines mention
   `WitnessedPacket`, 244k `CommitAttemptPacket`, 46 files both. Three copies of
   the one-packet raw extension theorem (`OnePacketExtension.lean`,
@@ -439,8 +450,9 @@ perfect recall proved for every model, horizons equal to proved bounds.
 - [x] **F-D6 (L, Step 7).** scripts/README.md says investigation scripts are in
   the archive; 14 are tracked in scripts/experiments.
 - [ ] **F-D7 (L, Step 7).** About 22 documentation sites encode history.
-- [ ] **F-D8 (L, Step 2).** AGENTS.md says to commit and push every checkpoint;
-  the owner pushes only on request.
+- [x] **F-D8 (L, Step 2).** AGENTS.md says to commit and push every checkpoint;
+  an agent's note said to push only on request. The owner keeps the AGENTS.md
+  rule.
 
 ### CI
 
@@ -494,3 +506,6 @@ show, and the models they need. They are checked at the tagged commit only.
 | [`Vegas.phase_counted_raw_sequentialEquilibrium`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/PhaseRawReadoutLaw.lean#L27) | The raw count-audit extension of a phase-contract equilibrium keeps the typed readout jointly with the realized payoffs, for every scheduler | Phase contract, count audit |
 | [`Vegas.SourceProgram.Setup.intended_sequentialEquilibrium_extends_without_voluntary_failure`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/ExclusionMoveExtension.lean#L64) | Intended SE extends to the full exclusion game without voluntary failure at nonexcluded decisions, under a continuation payoff floor | Source exclusion-move game (decision D3) |
 | [`Vegas.watched_raw_equilibrium_extends`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/RevealServiceWatcher.lean#L123) | An equilibrium with a silent watcher extends to the full bounded raw game of the reveal service | Plain contract, reveal service |
+| [`Vegas.onePacket_intended_sequentialEquilibrium_of_certificates`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/OnePacketSequentialPreservation.lean#L71), [`Vegas.onePacket_intended_raw_sequentialEquilibrium`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/OnePacketSequentialPreservation.lean#L131) | Intended SE extends to the one-packet game and its bounded raw runtime, given the one-packet certificates and a deposit covering the spread of the exclusion payoff | Plain contract with exit payoff, count audit |
+| [`GameTheory.Protocol.InformationModel.ActionRestriction.exists_deposits_preserving_sequential_equilibria`](https://github.com/elazarg/VegasCore/blob/research-tree/GameTheoryExtensions/Analysis/Protocol/TerminalAudit.lean#L269) | One finite nonnegative deposit vector extends every source SE to an audited target when each excluded action is collected with positive conditional probability | An action restriction and a sound terminal audit |
+| [`GameTheory.Enforcement.exists_sound_deterrent_iff`](https://github.com/elazarg/VegasCore/blob/research-tree/GameTheoryExtensions/Analysis/ObservableEnforcement.lean#L168) | A sound alarm with a finite penalty deters one profitable deviation iff the deviation puts positive observable mass outside the admitted observations | None |

@@ -101,48 +101,5 @@ theorem recoveryInstructionPath_information
       · simpa only [next, recoveryAddressWord_extend, Option.elim_some, List.append_assoc,
           List.singleton_append] using controls
 
-/-- The no-new-omission representative is a genuine replay of the saved
-source history, with all prior signals and the full new own-play record.
-The original setup draw is retained. -/
-theorem commitRecovery_noMiss_information
-    {Γ Δ : SourceCtx Player L} {O P : Finset VarId}
-    {block : CommitPrefix Γ O Δ P} {entry : Config Player L Γ}
-    {excluded : Finset Player} {finished : Config Player L Δ} {after : Finset Player}
-    (attempt : block.Attempt entry excluded finished after)
-    (saved : Finset Player) (inherited : saved ⊆ excluded)
-    (replacement : Config Player L Γ) (suffix : SourceProgram Player L Δ P)
-    {lift : SourceProgram.ProtocolState (block.prepend suffix) →
-      SourceProgram.ProtocolState setup.program}
-    (origin : ProtocolSuffix setup.program (block.prepend suffix) lift)
-    (state : CommitRecoveryState setup.program)
-    (prior : setup.commitRecoveryProtocol.Trace (some state))
-    (atEntry : state.point = lift (ProtocolState.entry (block.prepend suffix) replacement))
-    (stateExcluded : state.excluded = saved)
-    (committing : ProtocolState.atCommit setup.program state.saved = true)
-    (endpoint : ProtocolState.commitEnd setup.program state.saved ≤ instructionCount suffix)
-    (positive : 0 < block.length) :
-    let replay := attempt.withoutMisses_attempt saved inherited replacement
-    let last := (state.install
-      (lift (block.liftPoint suffix (ProtocolState.entry suffix
-        (attempt.withoutMisses saved replacement))), saved)
-      (fun _ member => stateExcluded ▸ member)).close
-    ∃ trace : setup.commitRecoveryProtocol.Trace (some last),
-      setup.commitRecoveryProtocol.ReachesWithin block.length
-        ⟨some state, prior⟩ ⟨some last, trace⟩ ∧
-      trace.length = prior.length + block.length ∧
-      setup.recoveryJointRecall trace =
-        replay.joints.reverse ++ setup.recoveryJointRecall prior := by
-  let replay := attempt.withoutMisses_attempt saved inherited replacement
-  obtain ⟨_addresses, path, _exclusions⟩ := replay.instructions_closed_lift setup.program
-    (setup.initialConfig setup.initialLaw.support_nonempty.choose)
-    suffix lift origin.remaining_lift origin.actor_lift (fun point who =>
-      origin.recoveryAvailable who point) origin.recoveryStep_lift state atEntry stateExcluded
-    committing endpoint positive
-  obtain ⟨trace, reached, length, word, _controls⟩ :=
-    setup.recoveryInstructionPath_information
-      (setup.initialConfig setup.initialLaw.support_nonempty.choose) path prior
-  exact ⟨trace, by simpa only [replay.joints_length] using reached,
-    by simpa only [replay.joints_length] using length, word⟩
-
 end Setup
 end Vegas.SourceProgram

@@ -35,10 +35,6 @@ def owner [Fintype Player] (tape : Tape Player length) (cycle : Nat)
     (position : Fin (Fintype.card Player)) : Player :=
   tape.order (index cycle) ((Fintype.equivFin Player).symm position)
 
-theorem owner_injective [Fintype Player] (tape : Tape Player length) (cycle : Nat) :
-    Function.Injective (tape.owner cycle) :=
-  (tape.order (index cycle)).injective.comp (Fintype.equivFin Player).symm.injective
-
 theorem owner_surjective [Fintype Player] (tape : Tape Player length) (cycle : Nat) :
     Function.Surjective (tape.owner cycle) :=
   (tape.order (index cycle)).surjective.comp (Fintype.equivFin Player).symm.surjective
@@ -50,15 +46,6 @@ structure BoundedGaps (tape : Tape Player length) (cycles activationGap processi
     cycle ≤ later ∧ later < cycle + activationGap ∧ tape.activates later owner = true
   processing : ∀ cycle < cycles, ∃ later,
     cycle ≤ later ∧ later < cycle + processingGap ∧ tape.processes later = true
-
-/-- Every cycle offers service, with an arbitrary exogenous owner permutation. -/
-def continuous (order : Fin (length + 1) → Equiv.Perm Player) : Tape Player length :=
-  ⟨order, fun _ _ => true, fun _ => true⟩
-
-theorem continuous_boundedGaps (order : Fin (length + 1) → Equiv.Perm Player)
-    (cycles : Nat) : (continuous order).BoundedGaps cycles 1 1 where
-  activation cycle _ owner := ⟨cycle, le_rfl, by omega, rfl⟩
-  processing cycle _ := ⟨cycle, le_rfl, by omega, rfl⟩
 
 end Tape
 end Vegas.EventGraphRuntime.ReservedEpoch

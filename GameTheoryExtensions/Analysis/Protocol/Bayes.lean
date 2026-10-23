@@ -60,20 +60,6 @@ theorem BehavioralAssessment.IsFullyMixed.history_supported
       · rw [PMF.support_bindOnSupport]
         exact Set.mem_iUnion₂.mpr ⟨_, realized, (PMF.mem_support_pure_iff _ _).mpr rfl⟩
 
-/-- Every legal terminal history remains supported when evaluation is padded
-to any larger horizon. No particular equilibrium needs to reach that history. -/
-theorem BehavioralAssessment.IsFullyMixed.terminal_supported
-    {assessment : M.BehavioralAssessment} (mixed : assessment.IsFullyMixed)
-    (history : E.History) (terminal : E.terminal history.state)
-    (fuel : Nat) (enough : history.trace.length ≤ fuel) :
-    history ∈ (M.runBehavioral assessment.strategy fuel).support := by
-  rw [show fuel = history.trace.length + (fuel - history.trace.length) by omega]
-  change history ∈ (M.runBehavioralFrom assessment.strategy _ E.initHistory).support
-  rw [M.runBehavioralFrom_add, PMF.support_bind]
-  refine Set.mem_iUnion₂.mpr ⟨history, mixed.history_supported history.trace, ?_⟩
-  rw [M.runBehavioralFrom_of_terminal assessment.strategy _ terminal]
-  exact (PMF.mem_support_pure_iff _ _).mpr rfl
-
 omit [Fintype ι] in
 /-- A bounded protocol admitting full mixing has only finitely many legal
 histories when its choices and transitions branch finitely, even when its

@@ -69,13 +69,6 @@ theorem recall_append_action (who : Principal) (past : List app.PlayerEntry)
       [{ entry with action := normal.action who past entry.beforeView entry.action }] := by
   rw [recall_append, action_recall]
 
-@[simp] theorem recall_idempotent (who : Principal) (past : List app.PlayerEntry) :
-    normal.recall who (normal.recall who past) = normal.recall who past := by
-  induction past using List.reverseRecOn with
-  | nil => rfl
-  | append_singleton past entry ih =>
-      simp only [recall_append_action, ih, action_recall, action_idempotent]
-
 def execution (original : app.Execution) : app.Execution :=
   { original with recall := fun who => normal.recall who (original.recall who) }
 
@@ -86,22 +79,7 @@ def execution (original : app.Execution) : app.Execution :=
 @[simp] theorem execution_observeEnvironment (original : app.Execution) :
     (normal.execution original).observeEnvironment app = original.observeEnvironment app := rfl
 
-@[simp] theorem execution_idempotent (original : app.Execution) :
-    normal.execution (normal.execution original) = normal.execution original := by
-  simp only [execution, recall_idempotent]
-
 variable [DecidableEq Principal]
-
-theorem execution_inputRecall (original : app.Execution) (valid : original.InputRecall app) :
-    (normal.execution original).InputRecall app := by
-  intro who
-  change _ = app.outputs (normal.recall who (original.recall who))
-  rw [recall_outputs]
-  exact valid who
-
-omit [DecidableEq Principal] in
-theorem execution_initial (state : app.State) :
-    normal.execution (.initial app state) = .initial app state := rfl
 
 theorem execution_environmentStep (original : app.Execution) (command : app.Command) :
     (original.environmentStep app command).map normal.execution =

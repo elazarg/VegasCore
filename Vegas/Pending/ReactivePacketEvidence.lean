@@ -63,38 +63,4 @@ def packetEvidence (runtime : EventGraphRuntime graph)
       apply received message member fact
       simp [evidence]) fact (by simpa using certified)
 
-/-- One response may fix a fresh commitment and disclose its authentic opening.
-No preparation turn or intervening inclusion is required. -/
-theorem reactive_commitment_disclosure (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (execution : (runtime.reactiveApplication leaks).Execution) (who : Player)
-    (event : graph.EventId) (serial : Nat) (raw : Raw L)
-    (fresh : execution.application.candidates.lookup (who, .prepared serial) = .fresh) :
-    let fact : OpeningFact graph := ⟨(who, .prepared serial), raw⟩
-    let submission : WitnessedSubmission graph :=
-      ⟨⟨.commitment event fact.handle, some raw⟩, .owned fact⟩
-    (execution.respond (runtime.reactiveApplication leaks) who
-      ⟨some submission⟩).network.pending = execution.network.pending ++
-        [⟨(who, execution.network.nextSerial who),
-          ⟨.commitment event fact.handle, some fact,
-            execution.application.publicView.tokenFor (.commitment event fact.handle)⟩⟩] := by
-  let fact : OpeningFact graph := ⟨(who, .prepared serial), raw⟩
-  let call : Submission graph := ⟨.commitment event fact.handle, some raw⟩
-  let state := submitStep (call.register execution.application who) who call.packet
-  have valid : fact.Holds state := by
-    change (submitStep (call.register execution.application who) who call.packet).candidates.lookup
-      (who, .prepared serial) = .openable raw
-    simpa [call, fact, Submission.register, submitStep] using
-      execution.application.candidates.lookup_freeze_prepare who (.prepared serial) raw fresh
-  have verified : state.candidates.verify fact.handle raw = true :=
-    (CommitmentCandidates.verify_eq_true_iff _ _ _).mpr valid
-  change execution.network.pending ++
-    [⟨(who, execution.network.nextSerial who),
-      (WitnessedSubmission.mk call (.owned fact)).emit state who
-        (execution.network.known who)⟩] = _
-  have publicEq : state.publicView = execution.application.publicView :=
-    reactiveApplication_submit_publicView runtime leaks execution.application who
-      ⟨call, .owned fact⟩
-  simp [WitnessedSubmission.emit, verified, call, fact, publicEq]
-
 end Vegas.EventGraphRuntime

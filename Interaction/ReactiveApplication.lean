@@ -102,10 +102,6 @@ theorem mem_silentPolicy_support {past : List app.PlayerEntry} {view : app.Playe
     {action : app.Action} : action ∈ (app.silentPolicy past view).support ↔ action = ⟨none⟩ :=
   PMF.mem_support_pure_iff _ _
 
-theorem silentPolicy_support (past : List app.PlayerEntry) (view : app.PlayerView) :
-    (⟨none⟩ : app.Action) ∈ (app.silentPolicy past view).support :=
-  app.mem_silentPolicy_support.mpr rfl
-
 theorem silentPolicy_cases (past : List app.PlayerEntry) (view : app.PlayerView)
     (action : app.Action) (supported : action ∈ (app.silentPolicy past view).support) :
     action = ⟨none⟩ :=

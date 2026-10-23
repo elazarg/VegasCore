@@ -9,7 +9,7 @@ Composing Nash preservation for the intended game
 (`Vegas.SourceProgram.Setup.intended_isεNash_preserved`) with the forward
 transfer to turn-counted clients
 (`Vegas.AsyncServiceSpec.isεNash_clientProfile_of_firstTurn_bounds`) and their
-honest execution (`Vegas.sourceServiceClients_settlement_lawError`), at the
+honest execution (`Vegas.sourceServiceClients_clientPolicy_settlement_lawError`), at the
 forfeited utility: if every native policy against the first-turn clients is
 bounded by a source deviation, the turn-counted clients of every source profile
 extending an `ε`-Nash equilibrium of the intended game are an

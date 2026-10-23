@@ -3,7 +3,7 @@
 import Vegas.Game.OnePacketCanonicalPermits
 import Vegas.Game.SourceServiceAsyncTimeliness
 
-/-! # Canonical packets sent on time settle
+/-! # Canonical packets sent on time are accepted
 
 At every history of the service runtime, under arbitrary responses and
 scheduler choices, the canonical decision of `who` at its turn, while the event
@@ -18,10 +18,7 @@ call (`Vegas.canonical_freshCall`).
 At a history of the one-packet game every own packet is permitted by the count
 verdict on the traffic, so no own packet other than a given one names the same
 event: of two own packets for one event, the later is forbidden
-(`Vegas.onePacket_not_emitsOtherFor`). Under protected inclusion, a fresh call
-of the owner in its recall therefore gets an accepting receipt once its bound
-has passed, and is the only way the event completes
-(`Vegas.onePacket_freshCall_settles`).
+(`Vegas.onePacket_not_emitsOtherFor`).
 -/
 
 noncomputable section
@@ -328,46 +325,6 @@ theorem onePacket_not_emitsOtherFor {horizon : Nat}
       (otherSender.trans messageSender.symm) lower (otherNamed.trans named.symm)
   · exact firstFor other message (inputOf other otherMember) (inputOf message member)
       (messageSender.trans otherSender.symm) higher (named.trans otherNamed.symm)
-
-/-- **A fresh call of the one-packet game settles.** At a history of the
-one-packet game of the default runtime, under a scheduler with protected
-inclusion within `bound`, a fresh call of `who` for its event in its recall has
-an accepting receipt once the bound has passed since it was sent, and has one
-whenever the event has completed. -/
-theorem onePacket_freshCall_settles {horizon : Nat}
-    {scheduler : (application setup leaks).Scheduler} {bound : (graph setup).EventId → Nat}
-    (inclusion : ProtectedInclusion (runtime setup) leaks (initialLaw setup) horizon scheduler
-      bound)
-    {control : (application setup leaks).Control}
-    (trace : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
-      scheduler).Trace (some control))
-    (who : Player) (event : (graph setup).EventId)
-    (owned : (graph setup).actor? event = some who)
-    (earlier later : List (application setup leaks).PlayerEntry)
-    (entry : (application setup leaks).PlayerEntry)
-    (message : Message Player (WitnessedPacket (graph setup)))
-    (split : control.execution.recall who = earlier ++ entry :: later)
-    (call : FreshCall setup leaks who event bound entry message) :
-    (entry.beforeView.application.publicView.clock + bound event <
-        control.execution.application.clock →
-      (message.id, true) ∈ control.execution.receipts) ∧
-      (event ∈ control.execution.application.config.cut.completed →
-        (message.id, true) ∈ control.execution.receipts) := by
-  have rawTrace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
-      (some control) :=
-    (bounds.onePacketMenu (runtime setup) leaks).toRawTrace (initialLaw setup) horizon scheduler
-      trace
-  have member : message ∈ (application setup leaks).outputs (control.execution.recall who) := by
-    rw [split]
-    exact List.mem_filterMap.mpr ⟨entry, by simp, call.emitted⟩
-  exact prescribed_packet_settles setup leaks inclusion rawTrace event who owned earlier later
-    entry message split call fun other otherMember =>
-      onePacket_not_emitsOtherFor bounds trace who event message member call.addressed other
-        (by
-          rw [split]
-          rcases List.mem_append.mp otherMember with old | new
-          · exact List.mem_append_left _ old
-          · exact List.mem_append_right _ (List.mem_cons_of_mem _ new))
 
 end OnePacket
 

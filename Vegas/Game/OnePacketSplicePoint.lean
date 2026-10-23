@@ -13,21 +13,18 @@ every cell that is not hidden for `who` (`Vegas.CellTy.hiddenOwner?`) swapped
 to the value `others` holds there: it keeps `who`'s private inputs and
 commitments from `mine` and takes every other player's from `others`.
 
-Fix a point `p` and a point `w` agreeing with `p` on public cells, with
-successful commitments where they differ, and splice them for a player `r`.
+Fix a point `p` and a point `w` agreeing with `p` on public cells, and splice
+them for a player `r`.
 
-* The splice agrees with `p` on public cells, and the cells where they differ are
-  successful commitments
-  (`Vegas.publicCellsAgree_splicePoint`, `Vegas.commitmentCellsSucceed_splicePoint`).
-  So the swap between `p` and the splice is a swap between two points, and it is
-  an instance of the same lemma chain as the swap between `p` and `w`.
-* It agrees with `p` on every cell `r` sees (`Vegas.cell?_splicePoint_of_visible`),
-  so the swap between them fixes `r` (`Vegas.fixes_between_of_visible`).
+* The splice agrees with `p` on public cells
+  (`Vegas.publicCellsAgree_splicePoint`).
+* It agrees with `p` on every cell `r` sees (`Vegas.cell?_splicePoint_of_visible`).
+  A swap between two points agreeing on every cell a player sees fixes that
+  player when every accepted handle belongs to the owner of its field
+  (`Vegas.fixes_between_of_visible`).
 * It agrees with `p` wherever `w` does (`Vegas.cell?_splicePoint_eq_of_agree`).
 * With independent hidden initial cells, it finds the cells of a supported draw
   when `p` and `w` do (`Vegas.drawn_splicePoint`).
-* Every other player observes its cells as at `w`
-  (`Vegas.observedAlike_splicePoint`).
 -/
 
 noncomputable section
@@ -269,23 +266,6 @@ theorem publicCellsAgree_splicePoint (publicAgree : PublicCellsAgree setup p w) 
   rw [kept, leftFound] at rightFound
   exact Option.some.inj rightFound
 
-/-- **The cells where the splice differs from the first point are successful
-commitments.** -/
-theorem commitmentCellsSucceed_splicePoint (succeed : CommitmentCellsSucceed setup p w) :
-    CommitmentCellsSucceed setup p (ProtocolState.splicePoint setup.program r p w) := by
-  intro name owner payload left right leftFound rightFound different
-  cases othersFound : ProtocolState.cell? setup.program w name (.commitment owner payload) with
-  | none =>
-      rw [ProtocolState.cell?_splicePoint_of_none othersFound, leftFound] at rightFound
-      exact absurd (Option.some.inj rightFound) different
-  | some other =>
-      by_cases hidden : (CellTy.commitment owner payload : CellTy Player L).hiddenOwner? = some r
-      · rw [ProtocolState.cell?_splicePoint_of_hidden hidden, leftFound] at rightFound
-        exact absurd (Option.some.inj rightFound) different
-      · rw [ProtocolState.cell?_splicePoint_of_found hidden leftFound othersFound] at rightFound
-        cases Option.some.inj rightFound
-        exact succeed name owner payload left right leftFound othersFound different
-
 /-- **The splice agrees with the first point on every cell the player sees**,
 when the two points agree on public cells. -/
 theorem cell?_splicePoint_of_visible (publicAgree : PublicCellsAgree setup p w) (name : VarId)
@@ -336,25 +316,6 @@ theorem drawn_splicePoint (independent : setup.PrivateInputsIndependent)
   obtain ⟨others, othersMember, othersCells⟩ := drawnW
   exact ⟨_, Setup.splice_mem_support setup independent r mineMember othersMember,
     initialCellsAt_splicePoint mineCells othersCells⟩
-
-/-- **Every other player observes the splice's cells as at the second point**,
-when the two points are at the same position. -/
-theorem observedAlike_splicePoint (shape : ProtocolState.SameShape setup.program p w)
-    {other : Player} (different : other ≠ r) :
-    ProtocolState.ObservedAlike other setup.program
-      (ProtocolState.splicePoint setup.program r p w) w := by
-  refine ProtocolState.observedAlike_of_cell? other setup.program setup.namesNodup _ _
-    (ProtocolState.sameShape_swap_left _ setup.program p w shape) fun name kind visible => ?_
-  refine ProtocolState.cell?_splicePoint_of_not_hidden ?_ shape
-  cases kind with
-  | publicData => simp [CellTy.hiddenOwner?]
-  | publication => simp [CellTy.hiddenOwner?]
-  | commitment owner payload =>
-      cases (visible : owner = other)
-      simpa [CellTy.hiddenOwner?] using different
-  | privateInput owner payload =>
-      cases (visible : owner = other)
-      simpa [CellTy.hiddenOwner?] using different
 
 section Fixes
 

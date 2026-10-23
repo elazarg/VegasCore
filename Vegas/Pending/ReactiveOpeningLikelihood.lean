@@ -22,58 +22,6 @@ open Interaction GameTheory.Math.Probability
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
 
-theorem bindingTraffic_opening (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (left right : (runtime.reactiveApplication leaks).Execution) (owner focal : Player)
-    (event : graph.EventId) (candidate : Handle graph) (raw : Raw L)
-    (owned : candidate.1 = owner)
-    (leftValid : left.application.candidates.lookup candidate = .openable raw)
-    (rightValid : right.application.candidates.lookup candidate = .openable raw)
-    (same : runtime.bindingTraffic leaks focal left = runtime.bindingTraffic leaks focal right) :
-    runtime.bindingTraffic leaks focal
-        (left.respond (runtime.reactiveApplication leaks) owner
-          (runtime.windowOpening leaks event candidate raw)) =
-      runtime.bindingTraffic leaks focal
-        (right.respond (runtime.reactiveApplication leaks) owner
-          (runtime.windowOpening leaks event candidate raw)) := by
-  let app := runtime.reactiveApplication leaks
-  have networks := congrArg Prod.fst same
-  have receipts := congrArg (fun value => value.2.1) same
-  have environments := congrArg (fun value => value.2.2.1) same
-  have recalled := congrArg (fun value => value.2.2.2.1) same
-  have views := congrArg (fun value => value.2.2.2.2.1) same
-  have publics := congrArg (fun value => value.2.2.2.2.2) same
-  dsimp only [bindingTraffic] at networks receipts environments recalled views publics
-  have observed : left.observe app focal = right.observe app focal := by
-    change ReactiveApplication.PlayerView.mk _ _ _ = _
-    rw [networks]
-    exact congrArg₂ (fun view receipts =>
-      (⟨right.network.observe focal, view, receipts⟩ : app.PlayerView)) views receipts
-  have emitted : app.packet left.application owner (left.network.known owner)
-        (disclosureSubmission (.opening event candidate raw)) =
-      app.packet right.application owner (right.network.known owner)
-        (disclosureSubmission (.opening event candidate raw)) :=
-    (runtime.windowOpening_packet leaks owner event candidate raw left.application
-      (left.network.known owner) owned leftValid).trans
-        ((congrArg (fun view : PublicView graph => (⟨.opening event candidate raw,
-          some ⟨candidate, raw⟩, view.tokenFor (.opening event candidate raw)⟩ :
-            WitnessedPacket graph)) publics).trans
-        (runtime.windowOpening_packet leaks owner event candidate raw right.application
-          (right.network.known owner) owned rightValid).symm)
-  have recallEq := app.respond_focal_recall_eq left right owner focal
-    (runtime.windowOpening leaks event candidate raw) networks observed recalled (by
-      intro submission transmitted
-      have selected : disclosureSubmission (.opening event candidate raw) = submission :=
-        Option.some.inj transmitted
-      subst submission
-      exact emitted)
-  refine Prod.ext ?_ (Prod.ext receipts (Prod.ext environments
-    (Prod.ext recallEq (Prod.ext views publics))))
-  change (left.network.submit owner (app.packet left.application owner
-    (left.network.known owner) (disclosureSubmission (.opening event candidate raw)))).2 = _
-  rw [emitted, networks]
-  rfl
-
 theorem bindingTraffic_include_of_handler (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (left right : (runtime.reactiveApplication leaks).Execution) (focal : Player)

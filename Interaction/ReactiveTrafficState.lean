@@ -221,18 +221,6 @@ theorem stateTraffic_inputs
   rw [← app.trafficAudit_eq_stateTraffic initial horizon scheduler trace]
   exact app.trafficAudit_inputs initial horizon scheduler trace
 
-/-- Actual transmissions append their records to the state readout as well as
-to the history readout. No obedience or eventual settlement is required. -/
-theorem stateTraffic_transition
-    (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
-    (history : (app.protocol initial horizon scheduler).History)
-    (joint : Principal → Option app.Action) (next : app.ProtocolState)
-    (reached : next ∈ (app.transition initial horizon scheduler history.state joint).support) :
-    app.stateTraffic next = app.stateTraffic history.state ++
-      app.trafficStep history.state next :=
-  (app.traffic_transition initial horizon scheduler history.state next joint
-    (app.traffic_invariant initial horizon scheduler history.trace).2 reached).1
-
 omit [DecidableEq Principal] in
 /-- Ineffective private response representations leave the entire traffic
 audit unchanged, so audit utility may use the existing state-payoff SE lift. -/

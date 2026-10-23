@@ -33,12 +33,6 @@ structure NormalizationFrame (anchor : (app).Control) (state : PhaseRuntimeState
 
 variable {runtime leaks}
 
-/-- The real execution supplies its own frame before any native handling. -/
-theorem NormalizationFrame.self (anchor : (app).Control)
-    (origins : ExecutionOpeningOrigins runtime leaks anchor.execution) :
-    NormalizationFrame runtime leaks anchor anchor.execution.application :=
-  ⟨le_rfl, origins.2, origins.1, fun _ => ⟨rfl, rfl, rfl, fun _ _ present => present⟩⟩
-
 /-- Draining automatic instructions keeps every submitted-packet origin and
 all previously installed cells; it does not create an external callback. -/
 theorem NormalizationFrame.drain {anchor : (app).Control} {state : PhaseRuntimeState graph}

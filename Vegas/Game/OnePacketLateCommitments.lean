@@ -87,53 +87,6 @@ def siteCommitValue (assessment : (onePacketN).BehavioralAssessment)
     decodedCommitValue setup leaks bounds horizon scheduler parameter utility excludedPayoff
       profile who (siteRank site.1) choice history.1
 
-/-- **Value-blind late commitments.** At every forced late delivery at which the
-player owes no failure, every choice at the player's own turn committing, at a
-prepared slot below `slots`, a value whose decoded source choice is intended
-fails within `blindError n` of the late option sending at that slot, and its
-completion value is within `blindError n` of its success probability times the
-value of committing that source choice at the site. -/
-def LateCommitBlind (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
-    (scale : ℕ → ℝ) (scale_pos : ∀ n, 0 < scale n) (scale_le_one : ∀ n, scale n ≤ 1)
-    {slots : Nat} (targetSequence : ℕ → (onePacketN).BehavioralAssessment)
-    (blindError : ℕ → ℝ) : Prop :=
-  ∀ n who (site : (onePacketN).InformationSite who),
-    ¬ FreeAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
-    ¬ OwingAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
-    ownedKeyed (FreeAgent setup leaks bounds horizon scheduler)
-      (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
-      ((onePacketN).agentAt site) →
-    SiteDebtFree setup leaks bounds horizon scheduler site →
-    ∀ (choice : (onePacketN).Choice who site.1)
-      (past : List (application setup leaks).PlayerEntry)
-      (view : (application setup leaks).PlayerView) (response : (application setup leaks).Action)
-      (material : (application setup leaks).Submission) (event : (graph setup).EventId)
-      (serial : Nat) (payload : L.Ty)
-      (outputEq : (graph setup).outputLayout event = .binding who payload) (value : L.Val payload),
-      site.1 = some (past, view) → choice.1 = some response →
-      response.transmission = some material →
-      material.call.packet = .commitment event (who, .prepared serial) →
-      view.application.publicView.ownTurn? who = some event →
-      material.call.candidateAfter who view.application.candidates (.prepared serial) =
-        .openable ⟨payload, value⟩ →
-      sourceOfValue setup event outputEq value ∈
-        setup.intendedMenu who (projectView setup leaks who site.1) →
-      ∀ inRange : serial < slots,
-        |onePacketSiteFailure setup leaks bounds horizon scheduler (targetSequence n) site
-            (PMF.pure choice) -
-          onePacketSiteFailure setup leaks bounds horizon scheduler (targetSequence n) site
-            (onePacketLate setup leaks bounds horizon scheduler sequence scale scale_pos
-              scale_le_one (slots := slots) n ((onePacketN).agentAt site)
-              (some ⟨serial, inRange⟩))| ≤ blindError n ∧
-        |siteStopValue setup leaks bounds horizon scheduler parameter utility excludedPayoff
-            (targetSequence n) (setup.intendedOpeningProfile (sequence n).strategy) site
-            (PMF.pure choice) -
-          (1 - onePacketSiteFailure setup leaks bounds horizon scheduler (targetSequence n) site
-            (PMF.pure choice)) *
-            siteCommitValue setup leaks bounds horizon scheduler parameter utility excludedPayoff
-              (targetSequence n) (setup.intendedOpeningProfile (sequence n).strategy) site
-              (sourceOfValue setup event outputEq value)| ≤ blindError n
-
 omit [(application setup leaks).FiniteNature (initialLaw setup) scheduler]
   [∀ who, DecidableEq ((onePacketModel setup leaks bounds (initialLaw setup) horizon
     scheduler).InfoState who)] in
@@ -435,42 +388,5 @@ theorem onePacket_commitment_serial_lt {who : Player}
   have handle := allowed.1.1.1
   rw [packet] at handle
   exact handle
-
-omit [DecidableEq Player] [Fintype Player] [IExpr.ResultTypes L] in
-/-- **Late commitments against late options, algebraically.** -/
-private theorem lateGain_le {gainChoice gainOption valueChoice valueOption successChoice
-    successOption stopChoice stopOption failChoice failOption commitValue siteValue sourceGain
-    excluded successError optionError commitError transport bound : ℝ}
-    (gainEq : gainChoice - gainOption = valueChoice - valueOption)
-    (valueChoiceEq : valueChoice = successChoice + failChoice * excluded)
-    (valueOptionEq : valueOption = successOption + failOption * excluded)
-    (successChoiceNear : |successChoice - stopChoice| ≤ successError)
-    (successOptionNear : |successOption - stopOption| ≤ successError)
-    (stopChoiceNear : |stopChoice - (1 - failChoice) * commitValue| ≤ commitError)
-    (stopOptionNear : |stopOption - (1 - failOption) * siteValue| ≤ optionError)
-    (failNear : |failChoice - failOption| ≤ commitError)
-    (transportNear : |commitValue - siteValue - sourceGain| ≤ transport)
-    (siteBounded : |siteValue| ≤ bound) (excludedBounded : |excluded| ≤ bound)
-    (failNonneg : 0 ≤ failChoice) (failLe : failChoice ≤ 1) :
-    gainChoice ≤ gainOption + (1 - failChoice) * sourceGain +
-      (2 * successError + optionError + commitError + 2 * bound * commitError + transport) := by
-  have weightNonneg : 0 ≤ 1 - failChoice := by linarith
-  have scaled := mul_le_mul_of_nonneg_left (abs_le.mp transportNear).2 weightNonneg
-  have transportNonneg : 0 ≤ transport := (abs_nonneg _).trans transportNear
-  have weightTransport : (1 - failChoice) * transport ≤ transport := by nlinarith
-  have productExcluded : |(failChoice - failOption) * excluded| ≤ commitError * bound := by
-    rw [abs_mul]
-    exact mul_le_mul failNear excludedBounded (abs_nonneg _) ((abs_nonneg _).trans failNear)
-  have productSite : |(failOption - failChoice) * siteValue| ≤ commitError * bound := by
-    rw [abs_mul, abs_sub_comm]
-    exact mul_le_mul failNear siteBounded (abs_nonneg _) ((abs_nonneg _).trans failNear)
-  have a := abs_le.mp successChoiceNear
-  have b := abs_le.mp successOptionNear
-  have c := abs_le.mp stopChoiceNear
-  have d := abs_le.mp stopOptionNear
-  have e := abs_le.mp productExcluded
-  have f := abs_le.mp productSite
-  nlinarith
-
 
 end Vegas

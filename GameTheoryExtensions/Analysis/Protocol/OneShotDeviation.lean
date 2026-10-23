@@ -68,33 +68,4 @@ theorem one_step_then_baseline_eq_local_law (antichain : M.DecisionInformationAn
       exact (BehavioralPolicy.withLaw_of_ne _ _ _ different).symm
     · rw [Profile.update_of_ne _ _ same]
 
-/-- When the player does not act, changing its whole policy has no effect on
-this one step. Later play in both branches is explicitly the same baseline. -/
-theorem one_step_then_baseline_eq_of_inactive
-    (profile : ∀ player, M.BehavioralPolicy player) (who : Player)
-    (alternative : M.BehavioralPolicy who) (history : E.History)
-    (inactive : ¬ E.active history.state who) (fuel : Nat) :
-    (M.runBehavioralFrom (Profile.update (sig := M.behavioralSignature)
-      profile who alternative) 1 history).bind (M.runBehavioralFrom profile fuel) =
-      M.runBehavioralFrom profile (fuel + 1) history := by
-  have first : M.runBehavioralFrom (Profile.update (sig := M.behavioralSignature)
-      profile who alternative) 1 history = M.runBehavioralFrom profile 1 history := by
-    apply M.runBehavioralFrom_congr_before
-    intro later reached _ before player
-    have sameHistory : later = history := by
-      cases reached with
-      | refl => rfl
-      | step joint legal realized rest =>
-          have after := rest.trace_length_le
-          simp only [History.extend, Trace.length] at after
-          omega
-    subst later
-    by_cases same : player = who
-    · subst player
-      exact M.behavioral_eq_of_not_active _ _ history.trace inactive
-    · rw [Profile.update_of_ne _ _ same]
-  rw [first, ← M.runBehavioralFrom_add]
-  congr 1
-  omega
-
 end GameTheory.Protocol.InformationModel

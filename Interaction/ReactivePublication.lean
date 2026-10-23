@@ -30,20 +30,6 @@ def atMostOnceCommand (view : app.EnvironmentView) : app.Command → app.Command
   | .include id => if view.Unpublished app id then .include id else .wait
   | command => command
 
-def AtMostOnce (scheduler : app.Scheduler) : Prop :=
-  ∀ history view id, (.include id) ∈ (scheduler history view).support →
-    view.Unpublished app id
-
-theorem atMostOnceCommand_fresh (view : app.EnvironmentView) (command : app.Command)
-    (id : MessageId Principal) (included : app.atMostOnceCommand view command = .include id) :
-    view.Unpublished app id := by
-  cases command <;> simp only [atMostOnceCommand] at included
-  all_goals try cases included
-  case «include» prior =>
-    split at included
-    · cases included; assumption
-    · cases included
-
 theorem includePending_network (execution : app.Execution) (id : MessageId Principal) :
     (execution.includePending app id).network = (execution.network.includePending id).2 := by
   cases found : execution.network.lookup id <;>

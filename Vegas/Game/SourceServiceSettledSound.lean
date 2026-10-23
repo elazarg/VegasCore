@@ -4,15 +4,17 @@ import Vegas.Game.ServiceSettledEvidence
 import Vegas.Game.SourceServiceCanonicalSerial
 import GameTheory.Analysis.Protocol.CounterfactualDecomposition
 
-/-! # Retained packets are good
+/-! # Good packets and retained play
 
 A retained packet is good when it is on track, or accepted with the content the
 record accepts (`Vegas.SettledGood`); a good packet is permitted by the settled
-record (`Vegas.SettledGood.permits`). Under a scheduler with protected
-inclusion, a response menu whose fresh submissions conform on the current
-public view and submit once per event keeps, at every history, conforming
+record (`Vegas.SettledGood.permits`). Retained play is play with conforming
 fresh calls, one submission per event and good emitted packets
-(`Vegas.retainedFacts_history`).
+(`Vegas.RetainedFacts`). A response keeps a packet good
+(`Vegas.SettledGood.respond`). Under a scheduler with protected inclusion, a
+scheduler command keeps good every emitted packet sent by its event's actor,
+when fresh calls conform and each player submits once per event after the
+command (`Vegas.SettledGood.environment`).
 -/
 
 noncomputable section
@@ -412,17 +414,6 @@ structure RetainedFacts (execution : (serviceApplication setup mode deadline lea
 
 variable {setup leaks}
 
-theorem retainedFacts_initial (state : (serviceApplication setup mode deadline leaks).State) :
-    RetainedFacts setup leaks
-        (ReactiveApplication.Execution.initial (serviceApplication setup mode deadline leaks)
-      state) where
-  conform who entry member := by
-    simp [ReactiveApplication.Execution.initial] at member
-  once who first member := by
-    simp [ReactiveApplication.Execution.initial] at member
-  good message emitted := by
-    simp [Emitted, ReactiveApplication.Execution.initial, MessageNetwork.empty] at emitted
-
 /-- A response keeps a packet good: it changes no contract state or receipt. -/
 theorem SettledGood.respond {execution : (serviceApplication setup mode deadline leaks).Execution}
     {message : Message Player (WitnessedPacket (serviceGraph setup mode))}
@@ -533,241 +524,6 @@ theorem SettledGood.environment {horizon : Nat}
   · refine ⟨event, named, Or.inr ⟨prefixOf.subset accepted, step.completed_mono completed, ?_⟩⟩
     exact settledContent_step step execution.receipts next.receipts message event named
       completed content
-
-/-- A response that keeps the recall of every other player and appends one
-entry to the responder's. -/
-theorem respond_recall_cases (execution : (serviceApplication setup mode deadline leaks).Execution)
-    (who : Player) (action : (serviceApplication setup mode deadline leaks).Action)
-    (observer : Player) (entry : (serviceApplication setup mode deadline leaks).PlayerEntry)
-    (member : entry ∈
-        (execution.respond (serviceApplication setup mode deadline leaks) who action).recall
-        observer) : entry ∈ execution.recall observer ∨
-    (observer = who ∧ entry.beforeView = execution.observe
-        (serviceApplication setup mode deadline leaks) who ∧ entry.action = action ∧ ∀ material,
-        action.transmission = some material → entry.emitted = some
-        ⟨(who, execution.network.nextSerial who),
-        (serviceApplication setup mode deadline leaks).packet
-        ((serviceApplication setup mode deadline leaks).submit
-              execution.application who material) who (execution.network.known who) material⟩) := by
-  by_cases same : observer = who
-  · subst observer
-    rcases action with ⟨transmission⟩
-    cases transmission with
-    | none =>
-        simp only [ReactiveApplication.Execution.respond, ↓reduceIte, List.mem_append,
-          List.mem_singleton] at member
-        rcases member with prior | fresh
-        · exact Or.inl prior
-        · subst fresh
-          exact Or.inr ⟨rfl, rfl, rfl, fun material submitted => by cases submitted⟩
-    | some material =>
-        simp only [ReactiveApplication.Execution.respond, ↓reduceIte, List.mem_append,
-          List.mem_singleton] at member
-        rcases member with prior | fresh
-        · exact Or.inl prior
-        · subst fresh
-          refine Or.inr ⟨rfl, rfl, rfl, fun other submitted => ?_⟩
-          cases submitted
-          rfl
-  · left
-    have recallEq := (serviceApplication setup mode deadline leaks).respond_recall_other execution
-        who observer same action
-    rw [recallEq] at member
-    exact member
-
-/-- A first submission names an event no earlier own entry submitted for. -/
-theorem unrecorded_of_firstSubmission
-    (past : List (serviceApplication setup mode deadline leaks).PlayerEntry)
-    (response : (serviceApplication setup mode deadline leaks).Action)
-    (event : (serviceGraph setup mode).EventId)
-    (first : (serviceRuntime setup mode deadline).firstSubmission leaks past response = true)
-    (submitted : (serviceRuntime setup mode deadline).submittedEvent? leaks response = some event) :
-    ∀ entry ∈ past, (serviceRuntime setup mode deadline).submittedEvent? leaks entry.action ≠ some
-        event := by
-  intro entry member recorded
-  have found : (serviceRuntime setup mode deadline).eventRecorded leaks past event = true :=
-    List.any_eq_true.mpr ⟨entry, member, decide_eq_true recorded⟩
-  rw [(serviceRuntime setup mode deadline).firstSubmission_false_of_recorded leaks past event found
-          response submitted] at first
-  cases first
-
-/-- **Retained play keeps its facts.** Under a scheduler with protected
-inclusion, a response menu whose fresh submissions conform on the current
-public view and submit once per event keeps the retained facts at every
-history. -/
-theorem retainedFacts_history {horizon : Nat}
-    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
-    (inclusion : ProtectedInclusion (serviceRuntime setup mode deadline) leaks
-        (serviceInitialLaw setup mode) horizon scheduler (fun _ => 0))
-    (menu : (serviceApplication setup mode deadline leaks).ResponseMenu)
-    (fresh : ∀ {remaining who execution},
-        (menu.protocol (serviceInitialLaw setup mode) horizon scheduler).Trace
-        (some ⟨remaining, some who, execution⟩) → ∀ response ∈ menu.actions who
-        (execution.recall who)
-        (execution.observe (serviceApplication setup mode deadline leaks) who), ∀ material,
-        response.transmission = some material →
-        (serviceRuntime setup mode deadline).freshServiceEnvelope execution.application.publicView
-        ⟨(who, execution.network.nextSerial who),
-        (serviceApplication setup mode deadline leaks).packet
-        ((serviceApplication setup mode deadline leaks).submit execution.application who material)
-        who (execution.network.known who) material⟩)
-    (first : ∀ who past view response, response ∈ menu.actions who past view →
-        (serviceRuntime setup mode deadline).firstSubmission leaks past response = true) : ∀ {state}
-    (_ : (menu.protocol (serviceInitialLaw setup mode) horizon scheduler).Trace state),
-    ReactiveApplication.serviceInvariant (RetainedFacts setup leaks) state
-  | _, .start => trivial
-  | _, .extend (source := before) prior joint legal reached => by
-      let app := serviceApplication setup mode deadline leaks
-      have valid := retainedFacts_history inclusion menu fresh first prior
-      have rawPrior := menu.toRawTrace (serviceInitialLaw setup mode) horizon scheduler prior
-      have rawNext := menu.toRawTrace (serviceInitialLaw setup mode) horizon scheduler
-        (.extend prior joint legal reached)
-      cases before with
-      | none =>
-          obtain ⟨state, _, rfl⟩ := PMF.support_map .. ▸ reached
-          exact retainedFacts_initial state
-      | some control =>
-          rcases control with ⟨remaining, actor, execution⟩
-          change RetainedFacts setup leaks execution at valid
-          have facts := settledFacts_history (serviceInitialLaw setup mode) _ _ rawPrior
-          cases actor with
-          | some who =>
-              obtain ⟨response, choice, member⟩ : ∃ response, joint who = some response ∧
-                  response ∈ menu.actions who (execution.recall who)
-                    (execution.observe app who) := by
-                have legalChoice := legal.2 who
-                cases chosen : joint who with
-                | none =>
-                    rw [chosen] at legalChoice
-                    exact (legalChoice rfl).elim
-                | some response =>
-                    rw [chosen] at legalChoice
-                    exact ⟨response, rfl, legalChoice.2⟩
-              have freshNew := fresh prior response member
-              cases (PMF.mem_support_pure_iff _ _).mp reached
-              simp only [choice, Option.getD_some]
-              change RetainedFacts setup leaks (execution.respond app who response)
-              have firstSubmitted := first who _ _ response member
-              obtain ⟨configEq, publicEq⟩ :=
-                  (serviceRuntime setup mode deadline).reactive_respond_application leaks execution
-                  who response
-              refine ⟨fun observer entry entryMember material message transmission emitted => ?_,
-                fun observer => ?_, fun message emitted => ?_⟩
-              · rcases respond_recall_cases execution who response observer entry entryMember with
-                  prior | ⟨_, viewEq, actionEq, emittedEq⟩
-                · exact valid.conform observer entry prior material message transmission emitted
-                · rw [actionEq] at transmission
-                  rw [emittedEq material transmission] at emitted
-                  cases Option.some.inj emitted
-                  rw [viewEq]
-                  exact freshNew material transmission
-              · intro first firstMember second secondMember event firstMessage secondMessage
-                  firstEvent secondEvent firstEmitted secondEmitted
-                have submittedOf : ∀ entry : app.PlayerEntry,
-                    (serviceRuntime setup mode deadline).submittedEvent? leaks entry.action =
-                    some event →
-                    ∃ material, entry.action.transmission = some material := by
-                  intro entry submitted
-                  rcases entry with ⟨view, ⟨transmission⟩, emittedOption⟩
-                  rcases transmission with _ | material
-                  · cases submitted
-                  · exact ⟨material, rfl⟩
-                rcases respond_recall_cases execution who response observer first firstMember with
-                    firstPrior | ⟨firstWho, _, firstAction, firstEmittedEq⟩ <;>
-                  rcases respond_recall_cases execution who response observer second secondMember
-                    with secondPrior | ⟨secondWho, _, secondAction, secondEmittedEq⟩
-                · exact valid.once observer first firstPrior second secondPrior event firstMessage
-                    secondMessage firstEvent secondEvent firstEmitted secondEmitted
-                · subst secondWho
-                  rw [secondAction] at secondEvent
-                  exact (unrecorded_of_firstSubmission _ response event firstSubmitted
-                    secondEvent first firstPrior firstEvent).elim
-                · subst firstWho
-                  rw [firstAction] at firstEvent
-                  exact (unrecorded_of_firstSubmission _ response event firstSubmitted
-                    firstEvent second secondPrior secondEvent).elim
-                · obtain ⟨material, submitted⟩ := submittedOf first firstEvent
-                  rw [firstAction] at submitted
-                  rw [firstEmittedEq material submitted] at firstEmitted
-                  rw [secondEmittedEq material submitted] at secondEmitted
-                  rw [← Option.some.inj firstEmitted, ← Option.some.inj secondEmitted]
-              · rcases respond_emitted facts who response message emitted with prior |
-                    ⟨material, submitted, rfl⟩
-                · exact (valid.good message prior).respond who response
-                · have fresh := freshNew material submitted
-                  obtain ⟨event, named, readyView⟩ :=
-                    (serviceRuntime setup mode deadline).freshServiceEnvelope_ready _ _ fresh
-                  refine ⟨event, named, Or.inl ⟨?_, ?_, ?_⟩⟩
-                  · change (execution.respond app who response).application.config.cut.Ready
-                      event
-                    rw [configEq]
-                    exact (execution.application.publicView_eventReady event).mp readyView
-                  · rw [app.respond_receipts execution who response]
-                    intro accepted
-                    obtain ⟨other, otherMember, same⟩ :=
-                      List.mem_map.mp (facts.receipt_published accepted)
-                    have bound := facts.serials.ledger other otherMember
-                    rw [same] at bound
-                    exact Nat.lt_irrefl _ bound
-                  · exact pendingContent_congr (congrArg PublicView.observation publicEq)
-                      (pendingContent_of_fresh execution.application _ fresh)
-          | none =>
-              cases remaining with
-              | zero =>
-                  cases (PMF.mem_support_pure_iff _ _).mp reached
-                  exact valid
-              | succ remaining =>
-                  obtain ⟨command, _, moved⟩ :=
-                    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
-                  obtain ⟨next, supported, rfl⟩ := PMF.support_map .. ▸ moved
-                  have recallEq := app.environmentStep_recall execution next command supported
-                  have conform : ∀ who, FreshCallsConform setup leaks next who := by
-                    intro who
-                    unfold FreshCallsConform
-                    rw [recallEq]
-                    exact valid.conform who
-                  have once : ∀ who, OneCallPerEvent setup leaks next who := by
-                    intro who
-                    unfold OneCallPerEvent
-                    rw [recallEq]
-                    exact valid.once who
-                  obtain ⟨inputsEq, _, _⟩ :=
-                    environmentStep_shape setup leaks execution next command supported
-                  refine ⟨conform, once, fun message emitted => ?_⟩
-                  have emittedBefore : Emitted setup leaks execution message := by
-                    unfold Emitted at emitted ⊢
-                    rw [← inputsEq]
-                    exact emitted
-                  have owned : ∀ event,
-                      message.payload.call.event? (serviceGraph setup mode) = some event →
-                      (serviceGraph setup mode).actor? event = some message.sender := by
-                    intro event named
-                    have legal := legalFacts setup leaks horizon scheduler _ rawPrior
-                    obtain ⟨issuer, issuerMember, material, transmission, issuerEmitted, _, _, _⟩ :=
-                      legal.provenance.inputs message emittedBefore
-                    have conforming := valid.conform message.sender issuer issuerMember material
-                      message transmission issuerEmitted
-                    obtain ⟨named', namedEq, _, actor⟩ :=
-                      (serviceRuntime setup mode deadline).freshServiceEnvelope_owned _ message
-                        conforming
-                    rw [named] at namedEq
-                    cases Option.some.inj namedEq
-                    exact actor
-                  exact (valid.good message emittedBefore).environment inclusion facts supported
-                    rawNext conform once emittedBefore owned
-
-
-
-
-section Sequential
-
-variable (setup : Setup (Player := Player) (L := L))
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-
-variable {setup} {leaks}
-
-
-end Sequential
 end Retained
 
 end Vegas

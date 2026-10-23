@@ -91,12 +91,6 @@ theorem close_of_exhausted (state : CommitRecoveryState program)
     · rfl
   · split <;> rfl
 
-theorem retry_restore (state : CommitRecoveryState program) :
-    ProtocolState.withHistory program state.retry.point
-      (ProtocolState.history program state.saved) = state.saved := by
-  simp only [retry, atPoint, restored, ProtocolState.withHistory_withHistory,
-    ProtocolState.withHistory_history]
-
 theorem entryExcluded_close (state : CommitRecoveryState program) :
     state.entryExcluded ⊆ state.close.entryExcluded := by
   unfold close

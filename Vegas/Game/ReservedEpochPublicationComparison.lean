@@ -2529,59 +2529,6 @@ private theorem publication_focal_word
     rw [lockedClaim true alleged member]
     exact emitted false
 
-/-- The original closing primitive supplies the SAME saved-checkpoint reveal
-replay, with its actual source states, address word and native annotations.
-No source path or guard-success hypothesis is supplied by the caller. -/
-theorem publication_original_closing_replay
-    (horizon : Nat) (scheduler : (app).Scheduler)
-    (before ending : (app).Control)
-    (prior : ((menu).protocol initial horizon scheduler).Trace (some before))
-    (checkpoint : RecoverySourceCheckpoint setup mode before.execution.application)
-    (phase : RuntimePhase graph) (remaining : List (RuntimePhase graph))
-    (installed : before.execution.application.phases = phase :: remaining)
-    (kind : phase.kind = .reveal) (raw : RecoveryState graph)
-    (effect : PhaseClosingEffect runtime leaks before.execution ending.execution raw)
-    (changed : ending.execution.application.attempt ≠ before.execution.application.attempt)
-    (finished : phase.Finished (phase.drain raw)) :
-    ∃ next : RecoverySourceCheckpoint setup mode
-        (⟨remaining, before.execution.application.generation, phase.drain raw, phase.drain raw,
-          before.execution.application.retired⟩ : PhaseRuntimeState graph),
-      (∃ fuel, setup.commitRecoveryProtocol.ReachesWithin fuel
-        ⟨_, checkpoint.trace⟩ ⟨_, next.trace⟩) ∧
-      Relation.ReflTransGen (NativePublicSourceStep (phase.drain raw).native 0 setup.program)
-        (checkpoint.residual.lift (ProtocolState.entry checkpoint.residual.tail checkpoint.source),
-          before.execution.application.entry.excluded)
-        (next.residual.lift (ProtocolState.entry next.residual.tail next.source),
-          (phase.drain raw).excluded) ∧
-      (∃ states : List (ProtocolState setup.program × Finset Player),
-        ((checkpoint.residual.lift
-          (ProtocolState.entry checkpoint.residual.tail checkpoint.source),
-          before.execution.application.entry.excluded) :: states).IsChain
-            (NativePublicSourceStep (phase.drain raw).native 0 setup.program) ∧
-        ((checkpoint.residual.lift
-          (ProtocolState.entry checkpoint.residual.tail checkpoint.source),
-          before.execution.application.entry.excluded) :: states).getLast
-            (List.cons_ne_nil _ _) =
-          (next.residual.lift (ProtocolState.entry next.residual.tail next.source),
-            (phase.drain raw).excluded) ∧
-        setup.recoveryAddressWord next.trace = setup.recoveryAddressWord checkpoint.trace ++
-          states.map (fun point => (CommitRecoveryState.atPoint point.1 point.2
-            before.execution.application.generation).publicAddress)) ∧
-      NativeSourceReplayExtension setup (phase.drain raw).native
-        before.execution.application.generation checkpoint.trace next.trace := by
-  have head : before.execution.application.phases.head? = some phase := by rw [installed]; rfl
-  have sourceOrder := phaseClosingEffect_publication_order setup mode runtime leaks bounds plan
-    horizon scheduler before ending prior phase head raw effect changed
-  obtain ⟨⟨draw, native⟩, _binding, receipts, stored, remembered, _coverage⟩ :=
-    phaseClosingEffect_checkpoint_facts setup mode runtime leaks bounds plan horizon scheduler
-      before ending prior raw effect changed
-  let state : PhaseRuntimeState graph := { before.execution.application with current := raw }
-  let transferred : RecoverySourceCheckpoint setup mode state := checkpoint.transfer rfl rfl rfl
-  obtain ⟨next, reaches, path, states, _own, _intended, extension⟩ :=
-    transferred.after_reveal phase remaining installed kind receipts.exclusion stored remembered
-      (phase.drain_reachable raw native.active.reachable) sourceOrder finished
-  exact ⟨next, reaches, path, states, extension⟩
-
 /-- Every pair of actual stopped publication supports has the same complete
 foreign word. Focal WAIT survival gives prompt survival and identical complete
 semantic and archive-lifted source histories at the original boundary. -/

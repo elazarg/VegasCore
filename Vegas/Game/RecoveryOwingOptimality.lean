@@ -97,21 +97,4 @@ theorem owingAgent_localGain_eq_zero [recoveryHistoryFintype : Fintype (E).Histo
     excludedPayoff completes ((menu).bounded Initial horizon scheduler).wellFoundedHistories
     assessment site owing ((assessment.strategy who).withLaw site.1 law))
 
-/-- Owing agents are sequentially rational against arbitrary whole-policy
-deviations, independently of how any nonowing site is completed. -/
-theorem owingAgent_isSequentiallyRationalAt [recoveryHistoryFintype : Fintype (E).History]
-    [recoveryInfoDecidable : ∀ who,
-      DecidableEq ((model setup leaks bounds Initial horizon scheduler).InfoState who)]
-    (completes : Recovery.CompletesPlay (runtime setup) leaks Initial horizon scheduler)
-    (certificate : (E).WellFoundedHistories)
-    (assessment : (N).BehavioralAssessment) {who : Player} (site : (N).InformationSite who)
-    (owing : OwingAgent setup leaks bounds Initial horizon scheduler ((N).agentAt site)) :
-    assessment.IsSequentiallyRationalAt site (assessment.continuationContext certificate site
-      (fun final => recoveryExclusionBase parameter utility excludedPayoff final.state who)) := by
-  apply (Context.isLocallyOptimal_iff_of_integrable (payoffIntegrable_of_finite _ _)
-    (fun _ _ => payoffIntegrable_of_finite _ _)).mpr
-  intro alternative _allowed
-  exact le_of_eq (owingAgent_value_eq setup leaks bounds horizon scheduler parameter utility
-    excludedPayoff completes certificate assessment site owing alternative)
-
 end Vegas.RecoveryOnePacket

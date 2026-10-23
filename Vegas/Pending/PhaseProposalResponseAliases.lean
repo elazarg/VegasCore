@@ -91,20 +91,4 @@ theorem splitResponseLaw_fullSupport
       law weight nonnegative atMostOne) :=
   PMF.split_fullSupport _ _ _ law mixed weight nonnegative atMostOne positive
 
-/-- The exact local probability factor after summing submission aliases. -/
-theorem splitResponseLaw_probability
-    (law : PMF (ResponseClass runtime leaks bounds who past view))
-    (weight : ℝ) (nonnegative : 0 ≤ weight) (atMostOne : weight ≤ 1)
-    (response : Response runtime leaks bounds who past view) :
-    ((splitResponseLaw runtime leaks bounds who past view law weight nonnegative atMostOne)
-        response).toReal =
-      (law (projectResponse runtime leaks bounds who past view response)).toReal *
-        ((PMF.splitKernel (projectResponse runtime leaks bounds who past view)
-          (canonicalResponse runtime leaks bounds who past view)
-          (project_canonicalResponse runtime leaks bounds who past view)
-          weight nonnegative atMostOne
-          (projectResponse runtime leaks bounds who past view response))
-            response).toReal :=
-  PMF.split_prob _ _ _ law weight nonnegative atMostOne response
-
 end Vegas.EventGraphRuntime.PhaseProposal

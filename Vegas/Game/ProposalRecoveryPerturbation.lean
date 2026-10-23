@@ -140,29 +140,6 @@ theorem proposalRecoveryComponentTrembledLaw_bind (who : Player)
   unfold proposalRecoveryComponentTrembledLaw
   rw [← PMF.bind_bind, setup.commitRecoveryValueTremble_bind]
 
-/-- The current binding omission coin is independent of the archived source
-values and of every ordinary domain law. This is an actual law marginal. -/
-theorem proposalRecoveryComponentTrembledLaw_missed_law (who : Player)
-    (key : setup.ProposalRecoveryComponent who)
-    (active : setup.commitRecoveryActive who key.1.1.1)
-    (committing : key.1.1.1.1.elim false (ProtocolView.atCommit who setup.program) = true)
-    (omission : ℝ) (omissionNonnegative : 0 ≤ omission) (omissionBounded : omission ≤ 1)
-    (bad : ℝ) (badNonnegative : 0 ≤ bad) (badBounded : bad ≤ 1)
-    (delivery : ℝ) (deliveryNonnegative : 0 ≤ delivery) (deliveryBounded : delivery ≤ 1)
-    (values : PMF (setup.CommitRecoveryValueChoice who key.1)) :
-    (setup.proposalRecoveryComponentTrembledLaw who key omission omissionNonnegative omissionBounded
-        bad badNonnegative badBounded delivery deliveryNonnegative deliveryBounded values).map
-          (fun choice => CommitRecoveryMove.missed (choice.1.map (·.semantic))) =
-      mix omission omissionNonnegative omissionBounded (PMF.pure true) (PMF.pure false) := by
-  have semantic := setup.proposalRecoveryComponentTrembledLaw_semantic who key
-    omission omissionNonnegative omissionBounded bad badNonnegative badBounded
-    delivery deliveryNonnegative deliveryBounded values
-  have marginal := congrArg (PMF.map fun choice : setup.commitRecoveryModel.Choice who key.1 =>
-    CommitRecoveryMove.missed choice.1) semantic
-  rw [setup.commitRecoveryValueTremble_missed_law who key.1 active committing] at marginal
-  simpa only [PMF.map_comp, Function.comp_def, proposalRecoveryComponentSemanticChoice]
-    using marginal
-
 /-- The ordinary value law can read the enriched archive; neutral flags retain
 exactly the original semantic marginal on each common source coordinate. -/
 def proposalRecoveryNormalizedTrembledProfile

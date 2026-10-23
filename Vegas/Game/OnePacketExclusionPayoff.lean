@@ -15,19 +15,14 @@ readout version is the utility on the outcome type shared by the intended game
 (`Vegas.SourceProgram.Setup.protocolReadout`) and the runtime
 (`Vegas.sourceReadout`).
 
-A source debt or failed binding read through the native decoding is paid: every
-terminal continuation, under any players and a scheduler that completes play,
-records a failed reveal of its owner
-(`Vegas.decoded_owesFailure_failedReveals`), so the owner receives exactly its
-exclusion payoff there (`Vegas.decoded_owesFailure_exclusionBase`), and in
-expectation from that history (`Vegas.decoded_owesFailure_expect_exclusionBase`).
+A player owing a failure keeps owing it under every source step
+(`Vegas.owesFailure_stepClosed`).
 
 Bounds on the utility bound the native payoff over all protocol states, hence
-under every scheduler (`Vegas.exclusionBase_mem_Icc`), and the payoff ignores
-private response normalization (`Vegas.exclusionBase_normalization`). No
-intended history has a failed reveal, so the exclusion payoff of the intended
-readout is the intended payoff, and every sequential equilibrium of the intended
-game is sequentially rational against it
+under every scheduler (`Vegas.exclusionBase_mem_Icc`). No intended history has
+a failed reveal, so the exclusion payoff of the intended readout is the
+intended payoff, and every sequential equilibrium of the intended game is
+sequentially rational against it
 (`Vegas.SourceProgram.Setup.intended_exclusionSource`).
 -/
 
@@ -114,13 +109,6 @@ theorem exclusionBase_eq_readout (state : (application setup leaks).ProtocolStat
       exclusionReadoutUtility setup parameter utility excludedPayoff
         (sourceReadout setup leaks state) who := rfl
 
-/-- The native exclusion payoff ignores private response normalization. -/
-theorem exclusionBase_normalization (state : (application setup leaks).ProtocolState) :
-    exclusionBase setup parameter utility excludedPayoff leaks
-        (((runtime setup).reactiveNormalization leaks).state state) =
-      exclusionBase setup parameter utility excludedPayoff leaks state :=
-  baseUtility_normalization setup leaks _ state
-
 /-- **Scheduler-independent bounds.** Bounds on the utility and the exclusion
 payoff bound the native exclusion payoff at every protocol state. -/
 theorem exclusionBase_mem_Icc (lower upper : Player → ℝ)
@@ -142,115 +130,6 @@ theorem owesFailure_stepClosed {setup : Setup (Player := Player) (L := L)} (who 
     ProtocolState.owesFailure_step who setup.program state joint target owed reached
 
 variable {setup : Setup (Player := Player) (L := L)} {profile : BehavioralProfile setup.program}
-
-/-- **Decoded failures are paid.** Suppose a native history of a response menu,
-under a scheduler that completes play, has a configuration that decodes at its
-prefix to a source point at which `who` owes a failed reveal: one of its reveals
-failed, it is indebted to a guard, or it holds a failed binding. Then every
-terminal history of terminal play from it, under any players, has a source
-readout recording at least one failed reveal of `who`. -/
-theorem decoded_owesFailure_failedReveals [Fintype Player]
-    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-    (menu : (application setup leaks).ResponseMenu) (horizon : Nat)
-    (scheduler : (application setup leaks).Scheduler)
-    (completes : CompletesPlay (runtime setup) leaks (initialLaw setup) horizon scheduler)
-    (certificate : (menu.protocol (initialLaw setup) horizon scheduler).WellFoundedHistories)
-    (players : ∀ who, (menu.information (initialLaw setup) horizon scheduler).BehavioralPolicy who)
-    (who : Player) (history : (menu.protocol (initialLaw setup) horizon scheduler).History)
-    (owed : DecodedState setup leaks profile (ProtocolState.OwesFailure who setup.program)
-      history.state) :
-    ∀ final ∈ ((menu.information (initialLaw setup) horizon scheduler).runBehavioralTerminalFrom
-        certificate players history).support,
-      ∃ terminal, sourceReadout setup leaks final.state = some terminal ∧
-        1 ≤ failedReveals setup.program who (publicOutcome setup.program terminal) := by
-  intro final supported
-  have reachedOwed := (menu.information (initialLaw setup) horizon
-    scheduler).runBehavioralTerminalFrom_support_closed certificate players
-    (DecodedState setup leaks profile (ProtocolState.OwesFailure who setup.program))
-    (fun state joint _ target holds reached =>
-      decodedHolds_transition (owesFailure_stepClosed who) (initialLaw setup) horizon scheduler
-        state target joint holds reached)
-    history owed final supported
-  have stopped := (menu.information (initialLaw setup) horizon
-    scheduler).runBehavioralTerminalFrom_support_terminal certificate players history final
-    supported
-  cases state : final.state with
-  | none =>
-      rw [state] at reachedOwed
-      exact reachedOwed.elim
-  | some control =>
-      rw [state] at reachedOwed stopped
-      obtain ⟨rank, ⟨residual⟩, decoded⟩ := reachedOwed
-      have trace : ((application setup leaks).protocol (initialLaw setup) horizon
-          scheduler).Trace (some control) :=
-        state ▸ menu.toRawTrace (initialLaw setup) horizon scheduler final.trace
-      have terminalCut := completes control trace stopped
-      have full := isPrefix_eventCount_of_terminal residual.checkpoint.ordered terminalCut
-      subst full
-      have read := sourceServicePrefix?_terminal_readout setup control.execution.application.config
-      obtain ⟨point, decodedEq⟩ :
-          ∃ point, sourceServicePrefix? setup (eventCount setup.program)
-            control.execution.application.config = some point :=
-        ⟨_, residual.decode⟩
-      have pointOwed := decoded point decodedEq
-      rw [decodedEq] at read
-      obtain ⟨terminal, terminalRead⟩ :=
-        ProtocolState.exists_readout_of_terminal setup.program point
-          (decodeSourcePrefix?_terminal setup.program _ _ _ _ _ _ point decodedEq)
-      refine ⟨terminal, ?_, ProtocolState.failedReveals_pos_of_owesFailure who setup.program point
-        pointOwed terminalRead⟩
-      rw [sourceReadout_eq_decode, ← read]
-      exact terminalRead
-
-/-- **A decoded failure fixes the payoff.** Under the hypotheses of
-`decoded_owesFailure_failedReveals`, the native exclusion payoff of `who` is its
-exclusion payoff on every terminal continuation, whatever anyone plays. -/
-theorem decoded_owesFailure_exclusionBase [Fintype Player]
-    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-    {Parameter : Type} (parameter : State L setup.context → Parameter)
-    (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
-    (excludedPayoff : Player → ℝ)
-    (menu : (application setup leaks).ResponseMenu) (horizon : Nat)
-    (scheduler : (application setup leaks).Scheduler)
-    (completes : CompletesPlay (runtime setup) leaks (initialLaw setup) horizon scheduler)
-    (certificate : (menu.protocol (initialLaw setup) horizon scheduler).WellFoundedHistories)
-    (players : ∀ who, (menu.information (initialLaw setup) horizon scheduler).BehavioralPolicy who)
-    (who : Player) (history : (menu.protocol (initialLaw setup) horizon scheduler).History)
-    (owed : DecodedState setup leaks profile (ProtocolState.OwesFailure who setup.program)
-      history.state) :
-    ∀ final ∈ ((menu.information (initialLaw setup) horizon scheduler).runBehavioralTerminalFrom
-        certificate players history).support,
-      exclusionBase setup parameter utility excludedPayoff leaks final.state who =
-        excludedPayoff who := by
-  intro final supported
-  obtain ⟨terminal, read, failed⟩ := decoded_owesFailure_failedReveals menu horizon scheduler
-    completes certificate players who history owed final supported
-  rw [exclusionBase_eq_readout, read]
-  exact exclusionTerminalUtility_of_failed setup parameter utility excludedPayoff failed
-
-/-- Under the hypotheses of `decoded_owesFailure_exclusionBase`, the expected
-native exclusion payoff of `who` from the history is its exclusion payoff. -/
-theorem decoded_owesFailure_expect_exclusionBase [Fintype Player]
-    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-    {Parameter : Type} (parameter : State L setup.context → Parameter)
-    (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
-    (excludedPayoff : Player → ℝ)
-    (menu : (application setup leaks).ResponseMenu) (horizon : Nat)
-    (scheduler : (application setup leaks).Scheduler)
-    (completes : CompletesPlay (runtime setup) leaks (initialLaw setup) horizon scheduler)
-    (certificate : (menu.protocol (initialLaw setup) horizon scheduler).WellFoundedHistories)
-    (players : ∀ who, (menu.information (initialLaw setup) horizon scheduler).BehavioralPolicy who)
-    (who : Player) (history : (menu.protocol (initialLaw setup) horizon scheduler).History)
-    (owed : DecodedState setup leaks profile (ProtocolState.OwesFailure who setup.program)
-      history.state) :
-    expect ((menu.information (initialLaw setup) horizon scheduler).runBehavioralTerminalFrom
-        certificate players history)
-      (fun final => exclusionBase setup parameter utility excludedPayoff leaks final.state who) =
-      excludedPayoff who := by
-  rw [expect_congr_on_support (g := fun _ => excludedPayoff who)
-    (decoded_owesFailure_exclusionBase parameter utility excludedPayoff menu horizon scheduler
-      completes certificate players who history owed)]
-  exact expect_constant _ _
 
 end Vegas
 

@@ -146,38 +146,4 @@ theorem SourceCheckpoint.reveal
   rw [complete_source_history, decoded, checkpoint.history]
   rfl
 
-/-- A supported result of the runtime's actual public-sampling transition
-is precisely a supported original source sample and its new checkpoint. -/
-theorem SourceCheckpoint.sample_environment
-    {setup : Setup (Player := Player) (L := L)} {mode : EventGraph.ExecutionMode}
-    {deadline : (serviceGraph setup mode).EventId → Nat}
-    {Γ : SourceCtx Player L} {source : Config Player L Γ}
-    {refs : ContextRefs (serviceGraph setup mode).layout Γ} {rank : Nat}
-    {native : EventGraphRuntime.State (serviceGraph setup mode)}
-    (checkpoint : SourceCheckpoint setup source refs rank native.config)
-    {payload : L.Ty} (name : VarId) (law : L.DistExpr (SourcePublicCtx L Γ) payload)
-    (event : (serviceGraph setup mode).EventId) (eventRank : event.val = rank)
-    (ready : native.config.cut.Ready event)
-    (outputEq : (serviceGraph setup mode).outputLayout event = .publicData payload)
-    (codeEq : cast (congrArg (EventGraph.EventCode (serviceGraph setup mode).layout) outputEq)
-      ((serviceGraph setup mode).nodes event) = .sample payload (compilePublicDist refs law))
-    (node : nodeView (serviceGraph setup mode) event =
-      .sample payload (compilePublicDist refs law) outputEq codeEq)
-    (before : ∀ {readName cell} (ref : HasVar Γ readName cell),
-      FieldBefore event (refs.get ref).field)
-    (decoded : decodeEventAction setup.program event
-      (cast (congrArg EventGraph.EventField.Action outputEq.symm) PUnit.unit) = none)
-    (after : EventGraphRuntime.State (serviceGraph setup mode))
-    (supported : after ∈
-        (environmentStep (serviceRuntime setup mode deadline) native
-        (.executeSample event)).support) :
-    ∃ value ∈ (L.evalDist law (sourcePublicEnv source.state)).support,
-      SourceCheckpoint setup (sampleSuccessor name source value)
-        (refs.cons (name := name) ⟨.inr event, outputEq⟩) (rank + 1) after.config := by
-  rw [source_sample_environment (serviceRuntime setup mode deadline) native event ready outputEq
-          refs law codeEq node source.state checkpoint.agrees, PMF.support_map] at supported
-  obtain ⟨value, member, rfl⟩ := supported
-  exact ⟨value, member,
-    checkpoint.sample name event eventRank ready outputEq before decoded value⟩
-
 end Vegas

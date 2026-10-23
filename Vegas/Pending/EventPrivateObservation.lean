@@ -40,30 +40,6 @@ theorem submitStep_candidates_congr (left right : State graph) (who : Player)
       · simpa only [submitStep, owned, ↓reduceIte] using congrFun same slot
   | opening event candidate raw | malformed raw => exact congrFun same slot
 
-/-- Another player's arbitrary private command preserves every component of
-the observer's application view, including its own candidate catalogue. -/
-theorem privateStep_other_playerView (state : State graph) (owner observer : Player)
-    (different : observer ≠ owner) (command : PrivateCommand graph) :
-    (privateStep state owner command).playerView observer = state.playerView observer := by
-  cases command with
-  | prepare serial raw =>
-      have candidates :
-          (fun slot => (state.candidates.prepare owner (.prepared serial) raw).lookup
-            (observer, slot)) = (fun slot => state.candidates.lookup (observer, slot)) := by
-        funext slot
-        apply CommitmentCandidates.lookup_prepare_other
-        exact fun same => different (congrArg Prod.fst same)
-      simp only [privateStep, State.playerView]
-      rw [candidates]
-      rfl
-
-/-- Private commands do not advance the semantic event configuration. -/
-theorem privateStep_config (state : State graph) (owner : Player)
-    (command : PrivateCommand graph) :
-    (privateStep state owner command).config = state.config := by
-  cases command with
-  | prepare => rfl
-
 /-- Equal authenticated focal views remain equal after applying the same
 focal private command. Foreign candidate meanings are not compared. -/
 theorem privateStep_focal_playerView_congr

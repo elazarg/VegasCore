@@ -64,24 +64,6 @@ theorem splitPolicy_project (who : Principal)
   let := Fintype.ofFinite ((raw.information initial horizon scheduler).Choice who observed)
   exact PMF.split_project _ _ _ _ weight nonnegative atMostOne
 
-/-- Each raw choice contributes its normalized choice probability times an
-alias factor independent of the source profile. This includes zero masses. -/
-theorem splitPolicy_prob (who : Principal)
-    (source : ((normal.menu raw).information initial horizon scheduler).BehavioralPolicy who)
-    (weight : ℝ) (nonnegative : 0 ≤ weight) (atMostOne : weight ≤ 1) (observed : app.Info)
-    (chosen : (raw.information initial horizon scheduler).Choice who observed) :
-    (((normal.splitPolicy raw stable closed initial horizon scheduler who source
-      weight nonnegative atMostOne) observed) chosen).toReal =
-      ((source (normal.info who observed))
-        (normal.choice raw stable initial horizon scheduler who observed chosen)).toReal *
-        ((normal.aliasKernel raw stable closed initial horizon scheduler who observed
-          weight nonnegative atMostOne
-          (normal.choice raw stable initial horizon scheduler who observed chosen))
-          chosen).toReal :=
-    by
-  let := Fintype.ofFinite ((raw.information initial horizon scheduler).Choice who observed)
-  exact PMF.split_prob _ _ _ _ weight nonnegative atMostOne chosen
-
 theorem canonicalPolicy_project (who : Principal)
     (source : ((normal.menu raw).information initial horizon scheduler).BehavioralPolicy who)
     (observed : app.Info) :

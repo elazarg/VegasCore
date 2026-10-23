@@ -94,15 +94,6 @@ def includePending (network : MessageNetwork Principal Payload) (id : MessageId 
       pending := MessagePool.removeFirst id network.pending
       ledger := network.ledger ++ [envelope] })
 
-theorem submit_observe (network : MessageNetwork Principal Payload) (who observer : Principal)
-    (payload : Payload) :
-    (network.submit who payload).2.observe observer = network.observe observer :=
-  rfl
-
-theorem learn_publicView (network : MessageNetwork Principal Payload) (who : Principal)
-    (selected : Finset (MessageId Principal)) :
-    (network.learn who selected).publicView = network.publicView := rfl
-
 @[simp] theorem learn_empty (network : MessageNetwork Principal Payload) (who : Principal) :
     network.learn who ∅ = network := by
   have same : (fun observer => if observer = who then network.leaked who

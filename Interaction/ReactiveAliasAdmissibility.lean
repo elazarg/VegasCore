@@ -73,18 +73,6 @@ theorem aliasImplementation_policy_admissible
   exact normal.aliasImplementation_respond_admissible raw stable who reference policy admitted
     names past view result supported
 
-include stable in
-theorem aliasImplementation_admissible [DecidableEq Principal]
-    (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
-    (who : Principal) (reference : List app.PlayerEntry) (policy : app.Policy)
-    (admitted : ∀ past view response, response ∈ (policy past view).support →
-      response ∈ raw.actions who past view) :
-    (normal.menu raw).Admissible initial horizon scheduler who
-      (normal.aliasImplementation who reference policy).policy := by
-  intro control _history _active response supported
-  exact normal.aliasImplementation_policy_admissible raw stable who reference policy admitted
-    _ _ response supported
-
 variable [DecidableEq Principal]
   (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
 

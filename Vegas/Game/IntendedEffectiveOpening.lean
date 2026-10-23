@@ -35,10 +35,6 @@ def intendedSourceProfile (intended : ∀ who, setup.intendedModel.BehavioralPol
   fun who info => (intended who info).map
     ((setup.intendedRestriction (CommitmentInterface.values setup.program)).choice who info)
 
-theorem intendedSourceProfile_extends (intended : ∀ who, setup.intendedModel.BehavioralPolicy who) :
-    (setup.intendedRestriction (CommitmentInterface.values setup.program)).ExtendsProfile
-      intended (setup.intendedSourceProfile intended) := fun _ _ => rfl
-
 /-- The intended source profile never refuses a disclosure. -/
 theorem intendedSourceProfile_notRefusal
     (intended : ∀ who, setup.intendedModel.BehavioralPolicy who) (who : Player)
@@ -70,12 +66,6 @@ def intendedOpeningProfile (intended : ∀ who, setup.intendedModel.BehavioralPo
   (setup.decodeBehavioralProfile (CommitmentInterface.values setup.program)
     (setup.intendedSourceProfile intended) who).effectiveOpening setup.program []
       (Revelations.initial setup.context)
-
-theorem intendedOpeningProfile_opensEffectively
-    (intended : ∀ who, setup.intendedModel.BehavioralPolicy who) (who : Player) :
-    (setup.intendedOpeningProfile intended who).OpensEffectively setup.program []
-      (Revelations.initial setup.context) :=
-  BehavioralPolicy.opensEffectively_effectiveOpening _ _ _ _
 
 theorem intendedOpeningProfile_admitted
     (intended : ∀ who, setup.intendedModel.BehavioralPolicy who) (who : Player) :

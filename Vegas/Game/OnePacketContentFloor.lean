@@ -211,12 +211,6 @@ theorem combinedFloor_le_one (assessment : setup.intendedModel.BehavioralAssessm
     combinedFloor setup leaks bounds horizon scheduler assessment ≤ 1 :=
   (min_le_left _ _).trans (setup.intendedStepFloor_le_one assessment)
 
-theorem combinedFloor_le_intendedStepFloor
-    (assessment : setup.intendedModel.BehavioralAssessment) :
-    combinedFloor setup leaks bounds horizon scheduler assessment ≤
-      setup.intendedStepFloor assessment :=
-  min_le_left _ _
-
 theorem combinedFloor_le_contentFloor (assessment : setup.intendedModel.BehavioralAssessment) :
     combinedFloor setup leaks bounds horizon scheduler assessment ≤
       contentFloor setup leaks bounds horizon scheduler assessment :=

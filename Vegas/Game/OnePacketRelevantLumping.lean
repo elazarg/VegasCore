@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.OnePacketSiteLumping
+import Vegas.Game.OnePacketSiteLaws
 import Vegas.Game.OnePacketPathwise
 
 /-! # One-step lumping at relevant sites
@@ -11,10 +11,9 @@ the late deliveries: at a first activation the key still decides an event, but
 the owner plays its prescribed component rather than a late component.
 `Vegas.PendingLumpingOn` asks for the lumping only at sites satisfying a
 predicate `relevant`, and gives the same pathwise failure bound there
-(`Vegas.PendingLumpingOn.pathwise`). Every lumping at all sites is one at every
-predicate (`Vegas.PendingLumping.toOn`). The native kernel lumps onto the
-decision image at the relevant sites whose owner plays the certificate's
-components from the site (`Vegas.onePacketSiteLumpingOn`).
+(`Vegas.PendingLumpingOn.pathwise`). The native kernel lumps onto the decision
+image at the relevant sites whose owner steps and laws of moves are close to
+keyed kernels at allowed states (`Vegas.onePacketLateLumpingOn`).
 -/
 
 noncomputable section
@@ -76,29 +75,6 @@ structure PendingLumpingOn (assessment : (onePacketInformation setup leaks bound
       (kernel key option (image key state))
   failure_eq : ∀ site, relevant site → ∀ key, ∀ state ∈ keep site key,
     (if failedState key state then (1 : ℝ) else 0) = failure key (image key state)
-
-/-- A lumping at every site is a lumping at the sites of every predicate. -/
-def PendingLumping.toOn {assessment : (onePacketInformation setup leaks bounds horizon
-      scheduler).BehavioralAssessment} {who : Player} {LateOption : Type}
-    {profileOf : (onePacketInformation setup leaks bounds horizon scheduler).InformationSite who →
-      LateOption → ∀ player,
-        (onePacketInformation setup leaks bounds horizon scheduler).BehavioralPolicy player}
-    {failedState : LateKey setup leaks → (application setup leaks).ProtocolState → Prop} {δ : ℝ}
-    {Y : Type} (lumping : PendingLumping assessment who profileOf failedState δ Y)
-    (relevant : (onePacketInformation setup leaks bounds horizon scheduler).InformationSite who →
-      Prop) :
-    PendingLumpingOn assessment who relevant profileOf failedState δ Y where
-  image := lumping.image
-  kernel := lumping.kernel
-  start := lumping.start
-  keep := lumping.keep
-  failure := lumping.failure
-  failure_unit := lumping.failure_unit
-  start_eq site _ := lumping.start_eq site
-  start_kept site _ := lumping.start_kept site
-  kept site _ := lumping.kept site
-  close site _ := lumping.close site
-  failure_eq site _ := lumping.failure_eq site
 
 open Classical in
 /-- **Failure from lumping at a kept history.** Under one-step lumping at
@@ -190,9 +166,15 @@ theorem PendingLumpingOn.pathwise {assessment : (onePacketInformation setup leak
     history.1 (lumping.start_kept site isRelevant key siteKey history supported forced)
   rwa [lumping.start_eq site isRelevant key siteKey history supported forced] at bound
 
-/-- **The one-step lumping at late decisions, at relevant sites.**
-`Vegas.onePacketLateLumping` with its allowed states, owner steps and laws of
-moves asked only at the sites satisfying `relevant`. -/
+/-- **The one-step lumping at late decisions, at relevant sites.** For the
+owner `who`, a profile installing each option at each site, and a set of
+allowed states per site that contains the forced histories of every relevant
+site and is kept by the control step of its installed profiles, if at every
+relevant site the owner's step at a publication turn is within `δ` of a kernel
+of the key, the option and the operational state, and its law of moves at a
+binding turn is within `δBinding ≤ δ / 2` of a keyed law, both at allowed
+states, the native kernel lumps onto the decision image at the relevant sites,
+with failure the failed completion of the decided event. -/
 def onePacketLateLumpingOn
     (assessment : (onePacketInformation setup leaks bounds horizon
       scheduler).BehavioralAssessment) (who : Player)
@@ -252,47 +234,5 @@ def onePacketLateLumpingOn
     (owner site isRelevant key siteKey option) (law site isRelevant key siteKey option) kept.1
     kept.2
   failure_eq _ _ key _ kept := decisionFailed_eq key kept.1
-
-/-- **The one-step lumping at relevant late sites.** For the owner `who` and a
-profile installing each option at each site, if at every relevant site the
-owner plays the certificate's components along play from the site (shape),
-every binding value is a bounded value, and the capacity is at least one and
-covers the late options' slots, the native kernel lumps onto the decision image
-at the relevant sites with drift twice the cube of the scale. -/
-def onePacketSiteLumpingOn
-    (target : (onePacketInformation setup leaks bounds horizon
-      scheduler).BehavioralAssessment) (who : Player)
-    (relevant : (onePacketInformation setup leaks bounds horizon scheduler).InformationSite who →
-      Prop) {LateOption' : Type}
-    (profileOf : (onePacketInformation setup leaks bounds horizon scheduler).InformationSite who →
-      LateOption' → ∀ player,
-        (onePacketInformation setup leaks bounds horizon scheduler).BehavioralPolicy player)
-    (assessment : setup.intendedModel.BehavioralAssessment)
-    (covers : bounds.CoversOutputValues) (capacity : 1 ≤ bounds.candidateCount) {slots : Nat}
-    (slotsLe : slots ≤ bounds.candidateCount)
-    (scale : ℝ) (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1)
-    (options : LateKey setup leaks → LateOption' → LateKey setup leaks →
-      PMF (LateOption slots))
-    (shape : ∀ site, relevant site → ∀ key, lateKey setup leaks who site.1 = some key →
-      ∀ option, SiteComponentShape assessment scale nonnegative le_one (options key option) key
-        (profileOf site option) (SiteConsistent who site.1)) :
-    PendingLumpingOn target who relevant profileOf DecisionFailed (scale ^ 3 + scale ^ 3)
-      (DecisionImage (setup := setup) (leaks := leaks)) :=
-  onePacketLateLumpingOn target who relevant profileOf
-    (by have := pow_nonneg nonnegative 3; linarith) (pow_nonneg nonnegative 3)
-    (by linarith) (openingKernel bounds horizon scheduler
-      (fun key option => lateOpeningSilence bounds horizon scheduler assessment scale
-        nonnegative le_one (options key option) key))
-    (fun key option => lateBindingMoves bounds horizon scheduler scale nonnegative le_one
-      (options key option) key)
-    (fun site => SiteConsistent who site.1)
-    (fun _ _ _ siteKey history _ _ => siteConsistent_of_history siteKey history)
-    (fun site _ _ _ consistent _ member => siteConsistent_step _ who site.1 consistent member)
-    (fun site isRelevant key siteKey option => ownerStepClose_of_openingLaw bounds _ key option _
-      (ownerOpeningLaw_of_siteComponents assessment covers scale nonnegative le_one options key
-        option (profileOf site option) _ (shape site isRelevant key siteKey option)))
-    (fun site isRelevant key siteKey option => ownerBindingLaw_of_siteComponents assessment
-      covers capacity slotsLe scale nonnegative le_one options key option (profileOf site option)
-      _ (shape site isRelevant key siteKey option))
 
 end Vegas

@@ -40,17 +40,4 @@ theorem proposalRecoveryQuery_trace_length (who : Player)
   (setup.proposalRecoveryQuery_word_length who _).trans
     (setup.proposalRecoveryModel_word_length who trace)
 
-/-- Copies sharing one normalized archive key cannot occur twice on a path.
-No exclusion, intendedness or positive reach hypothesis is required. -/
-theorem proposalRecovery_prefix_eq_of_same_query (who : Player)
-    {before after : setup.proposalRecoveryProtocol.State}
-    (first : setup.proposalRecoveryProtocol.Trace before)
-    (last : setup.proposalRecoveryProtocol.Trace after) (kept : TracePrefix first last)
-    (same : setup.proposalRecoveryQuery who (setup.proposalRecoveryModel.infoOf who first) =
-      setup.proposalRecoveryQuery who (setup.proposalRecoveryModel.infoOf who last)) :
-    (⟨before, first⟩ : setup.proposalRecoveryProtocol.History) = ⟨after, last⟩ := by
-  have length := congrArg (fun key => key.1.1.2.length) same
-  rw [setup.proposalRecoveryQuery_trace_length, setup.proposalRecoveryQuery_trace_length] at length
-  exact kept.eq_of_length length
-
 end Vegas.SourceProgram.Setup

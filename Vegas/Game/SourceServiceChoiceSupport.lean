@@ -51,21 +51,4 @@ theorem sourceService_finiteBindingTypes (setup : Setup (Player := Player) (L :=
   finiteBindingTypes_of_outputs setup.program (fun event owner payload kind =>
     bounds.finite_binding_values covered event owner payload kind)
 
-/-- Full support of an original source policy at abstract views supplies all
-effective guarded choices to the actual compiler, through its existing
-conditional private-memory normalization. -/
-theorem sourceService_normalized_support
-    (setup : Setup (Player := Player) (L := L))
-    (profile : Profile (setup.informationModel
-      (CommitmentInterface.values setup.program)).behavioralSignature)
-    (full : ∀ who info, FullSupport (profile who info)) (who : Player) :
-    (normalizeDisclosureProfile setup.program [] (Revelations.initial setup.context)
-      (setup.decodeBehavioralProfile (CommitmentInterface.values setup.program) profile)
-        who).SupportsEffectiveChoices setup.program (CommitmentInterface.values setup.program)
-          [] (Revelations.initial setup.context) := by
-  apply normalizeDisclosureProfile_supports
-  intro player
-  exact BehavioralPolicy.fromProtocol_supports setup.program
-    (CommitmentInterface.values setup.program) _ (fun view => full player (some view))
-
 end Vegas

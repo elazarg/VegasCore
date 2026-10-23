@@ -59,15 +59,6 @@ proposal deltas agree. The observer's literal labeled choices are retained.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.Setup
-
-open GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol GameTheory.Math.Probability
-
-variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
-  (setup : Setup (Player := Player) (L := L))
-
-end Vegas.SourceProgram.Setup
-
 namespace Vegas
 
 open SourceProgram SourceProgram.Setup EventGraph EventGraphRuntime Interaction
@@ -1328,25 +1319,6 @@ structure PhaseProposalNativeSourceMatch
   refined : setup.ProposalRecoveryForeignRefinement who canonical.initializer
     canonical.initializerTrace ⟨some canonical.current, canonical.trace⟩ history
 
-namespace PhaseProposalNativeSourceMatch
-
-variable {setup : Setup (Player := Player) (L := L)} {mode : ExecutionMode}
-  {runtime : EventGraphRuntime (serviceGraph setup mode)}
-  {leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket (serviceGraph setup mode))}
-  {bounds : MessageBounds (serviceGraph setup mode)}
-  {plan : RuntimePhasePlan (serviceGraph setup mode)}
-  {values : ∀ owner (key : setup.ProposalRecoveryComponent owner),
-    PMF (setup.CommitRecoveryValueChoice owner key.1)}
-  {horizon : Nat} {scheduler : (phaseApplication runtime leaks).Scheduler}
-  {control : (phaseApplication runtime leaks).Control}
-  {nativeTrace : ((PhaseCount.onePacketMenu runtime leaks bounds).protocol
-    ((setup.initialLaw.map encodeInputs).map (PhaseRuntimeState.initial plan))
-    horizon scheduler).Trace (some control)}
-  {who : Player} {event : (serviceGraph setup mode).EventId}
-  {history : setup.proposalRecoveryProtocol.History}
-
-end PhaseProposalNativeSourceMatch
-
 /-- Every permitted latent preimage of the same complete native information
 has the same ENTIRE labeled source information. Original setup draws and
 foreign failure-cause refinements remain literal quantified witnesses. -/
@@ -2503,17 +2475,6 @@ theorem residualEntry?_eq_some_iff
     · intro same
       exact False.elim (present ⟨entry, same⟩)
 
-omit [Fintype Player] in
-private theorem residualEntry?_entry
-    {wholeΓ Γ : SourceCtx Player L} {wholeO O : Finset VarId}
-    {whole : SourceProgram Player L wholeΓ wholeO} {program : SourceProgram Player L Γ O}
-    {lift : ProtocolState program → ProtocolState whole}
-    (origin : ProtocolSuffix whole program lift) (entry : SourceProgram.Config Player L Γ) :
-    residualEntry? program lift (lift (ProtocolState.entry program entry)) = some entry :=
-  (residualEntry?_eq_some_iff origin _ entry).mpr rfl
-
-
-
 section NativeCheckpoint
 
 variable (implementation : ReservedConcurrentImplementation setup)
@@ -2546,15 +2507,6 @@ theorem trace_initializer_inverse
     (trace : ((nativeMenu).protocol second implementation.horizon
       implementation.scheduler).Trace state) :
     same ▸ (same.symm ▸ trace) = trace := by
-  cases same
-  rfl
-
-private theorem trace_initializer_length
-    {first second : PMF (nativeApplication).State} (same : first = second)
-    {state : (nativeProtocol).State}
-    (trace : ((nativeMenu).protocol first implementation.horizon
-      implementation.scheduler).Trace state) :
-    (same ▸ trace).length = trace.length := by
   cases same
   rfl
 
@@ -2627,34 +2579,6 @@ def sourceBindingAt
           | (.success value, false) => some value
           | _ => none
         else sourceBindingAt attempt event owner payload binding prior
-
-omit [Fintype Player] in
-private theorem sourceBindingAt_extend
-    (attempt : CommitAttemptId) (event : (serviceGraph setup .concurrent).EventId)
-    (owner : Player) (payload : L.Ty)
-    (binding : (serviceGraph setup .concurrent).outputLayout event = .binding owner payload)
-    (current : CommitRecoveryState setup.program)
-    (prior : setup.proposalRecoveryProtocol.Trace (some current))
-    (joint : Player → Option (ProposalRecoveryMove Player L))
-    (legal : setup.proposalRecoveryProtocol.Legal (some current) joint)
-    (after : setup.proposalRecoveryProtocol.State)
-    (realized : after ∈ (setup.proposalRecoveryProtocol.step (some current)
-      ⟨joint, legal⟩).support)
-    (generation : current.generation = attempt.generation)
-    (saved : instructionCount setup.program -
-      ProtocolState.remaining setup.program current.saved = attempt.phase)
-    (position : instructionCount setup.program -
-      ProtocolState.remaining setup.program current.point = event.val)
-    (value : L.Val payload)
-    (read : phaseRecoveryBindingData setup .concurrent event owner payload binding
-      ((joint owner).map (·.semantic)) = (.success value, false)) :
-    sourceBindingAt setup attempt event owner payload binding
-      (prior.extend joint legal realized) = some value := by
-  simp only [sourceBindingAt, generation, saved, position, and_self, ↓reduceIte]
-  exact congrArg (fun data : PublicationResult (L.Val payload) × Bool =>
-    match data with
-    | (.success result, false) => some result
-    | _ => none) read
 
 omit [Fintype Player] in
 private theorem sourceBindingAt_other_address
@@ -2759,57 +2683,6 @@ theorem source_initial_base_supported
               rfl ih.2 joint after moved
             exact ⟨bases.1.symm ▸ ih.1, bases.2.trans bases.1.symm⟩
   exact invariant (setup.proposalRecoveryEraseTrace trace)
-
-def source_native_initializer
-    (current : CommitRecoveryState setup.program)
-    (trace : setup.proposalRecoveryProtocol.Trace (some current)) :
-    (nativeProtocol).Trace (some ⟨implementation.horizon, none,
-      ReactiveApplication.Execution.initial nativeApplication
-        (PhaseRuntimeState.initial implementation.plan
-          (encodeInputs (ProtocolState.base setup.program current.point)))⟩) := by
-  let joint : Player → Option (nativeApplication).Action := fun _ => none
-  have legal : (nativeProtocol).Legal none joint := by
-    constructor
-    · simp [ReactiveApplication.ResponseMenu.protocol, ReactiveApplication.terminal]
-    · intro who
-      simp [joint, ReactiveApplication.ResponseMenu.protocol, ReactiveApplication.actor]
-  have moved : some (⟨implementation.horizon, none,
-      ReactiveApplication.Execution.initial nativeApplication
-        (PhaseRuntimeState.initial implementation.plan
-          (encodeInputs (ProtocolState.base setup.program current.point)))⟩ :
-        (nativeApplication).Control) ∈
-      ((nativeProtocol).step none ⟨joint, legal⟩).support := by
-    change _ ∈ ((setup.initialLaw.map fun theta =>
-      PhaseRuntimeState.initial implementation.plan (encodeInputs theta)).map fun state =>
-        some (⟨implementation.horizon, none,
-          ReactiveApplication.Execution.initial nativeApplication state⟩ :
-          (nativeApplication).Control)).support
-    apply (PMF.mem_support_map_iff ..).mpr
-    refine ⟨_, (PMF.mem_support_map_iff ..).mpr ?_, rfl⟩
-    exact ⟨ProtocolState.base setup.program current.point,
-      (source_initial_base_supported setup current trace).1, rfl⟩
-  exact Trace.start.extend joint legal moved
-
-omit [Fintype Player] in
-private theorem source_initial_observation (who : Player)
-    (first second : Vegas.State L setup.context)
-    (same : sourceObserve who first = sourceObserve who second) :
-    (serviceGraph setup .concurrent).playerObserve who
-        (EventGraph.Config.initial (encodeInputs first)) =
-      (serviceGraph setup .concurrent).playerObserve who
-        (EventGraph.Config.initial (encodeInputs second)) := by
-  let refs := ContextRefs.initial setup.context (outputLayout setup.program)
-  have observed (state : Vegas.State L setup.context) :=
-    checkpoint_playerStore setup (mode := .concurrent) refs 0
-      (ContextRefs.initial_coversPrefix setup.program)
-      (EventGraph.Config.initial (encodeInputs state))
-      (EventOrder.Cut.empty_isPrefix (serviceGraph setup .concurrent).order)
-      state (initialConfig_agrees setup.program state) who
-  refine EventGraph.PlayerObservation.ext (serviceGraph setup .concurrent) ?_ ?_ ?_
-  · rfl
-  · exact (observed first).trans ((congrArg (encodeObservationStore who refs) same).trans
-      (observed second).symm)
-  · rfl
 
 omit [Fintype Player] in
 theorem source_address_prefix
@@ -3142,44 +3015,6 @@ def sourceHandlePairs
       ((sourceHandleMeaning setup implementation target control handle).orElse
         (fun _ => lost handle)).map fun after => (before, after)
   | .fresh | .unopenable => none
-
-omit [Fintype Player] in
-private theorem sourceHandlePairs_maps
-    (target : setup.proposalRecoveryProtocol.History)
-    (control : (nativeApplication).Control)
-    (lost : Handle (serviceGraph setup .concurrent) → Option (Raw L))
-    (handle : Handle (serviceGraph setup .concurrent)) (before after : Raw L)
-    (registered : control.execution.application.current.native.candidates.lookup handle =
-      .openable before)
-    (read : sourceHandleMeaning setup implementation target control handle = some after) :
-    EventGraph.pairSwap (sourceHandlePairs setup implementation target control lost handle)
-      before = after := by
-  classical
-  simp only [sourceHandlePairs, registered, read, Option.orElse_some, Option.map_some,
-    EventGraph.pairSwap, Equiv.swap_apply_left]
-
-omit [Fintype Player] in
-private theorem sourceHandlePairs_none_of_absent
-    (target : setup.proposalRecoveryProtocol.History)
-    (reference : (nativeApplication).Control)
-    (lost : Handle (serviceGraph setup .concurrent) → Option (Raw L))
-    (handle : Handle (serviceGraph setup .concurrent))
-    (absent : sourceHandleMeaning setup implementation target reference handle = none)
-    (retained : lost handle = none) :
-    sourceHandlePairs setup implementation target reference lost handle = none := by
-  unfold sourceHandlePairs
-  cases reference.execution.application.current.native.candidates.lookup handle <;>
-    simp only [absent, retained, Option.orElse_none, Option.map_none]
-
-omit [Fintype Player] in
-private theorem sourceHandlePairs_involutive
-    (target : setup.proposalRecoveryProtocol.History)
-    (control : (nativeApplication).Control)
-    (lost : Handle (serviceGraph setup .concurrent) → Option (Raw L))
-    (handle : Handle (serviceGraph setup .concurrent)) :
-    Function.Involutive
-      (EventGraph.pairSwap (sourceHandlePairs setup implementation target control lost handle)) :=
-  EventGraph.pairSwap_involutive _
 
 omit [Fintype Player] in
 theorem sourceBindingAt_of_origin
@@ -4375,40 +4210,6 @@ theorem settle_retains_entry_history
         · exact ⟨[], by simp⟩
   exact ⟨saved, saved.trans
     (PhaseRuntimeState.settle_historyCheckpoint phases generation entry current retired kept)⟩
-
-omit [Fintype Player] in
-private theorem completed_image_retained
-    (phase : RuntimePhase (serviceGraph setup .concurrent))
-    (remaining : List (RuntimePhase (serviceGraph setup .concurrent))) (generation : Nat)
-    (entry current : RecoveryState (serviceGraph setup .concurrent))
-    (retired : List (RetiredCommitAttempt (serviceGraph setup .concurrent)))
-    (finished : phase.Finished (phase.drain current)) :
-    (⟨⟨phase.low, generation⟩, (phase.drain current).native⟩ :
-      RetiredCommitAttempt (serviceGraph setup .concurrent)) ∈
-        (PhaseRuntimeState.settle (phase :: remaining) generation entry current retired).retired ∨
-    ((phase.drain current).native.config.history.IsPrefix
-      (PhaseRuntimeState.settle (phase :: remaining) generation entry current
-        retired).entry.native.config.history ∧
-    (phase.drain current).native.config.history.IsPrefix
-      (PhaseRuntimeState.settle (phase :: remaining) generation entry current
-        retired).current.native.config.history) := by
-  classical
-  by_cases failed : phase.kind = .commitment ∧
-      (((phase.drain current).excluded \ entry.excluded) ∩ phase.owners).Nonempty
-  · left
-    by_cases surviving : (phase.owners \ (phase.drain current).excluded).Nonempty
-    · rw [PhaseRuntimeState.settle_retry phase remaining generation entry current retired
-        finished failed.1 failed.2 surviving]
-      exact List.mem_append_right _ (List.mem_singleton_self _)
-    · rw [PhaseRuntimeState.settle_exhausted phase remaining generation entry current retired
-        finished failed.1 failed.2 surviving]
-      exact (PhaseRuntimeState.settle_archive _ _ _ _ _).subset
-        (List.mem_append_right _ (List.mem_singleton_self _))
-  · right
-    rw [PhaseRuntimeState.settle_clean phase remaining generation entry current retired
-      finished failed]
-    exact settle_retains_entry_history setup remaining generation
-      (phase.drain current) (phase.drain current) retired ⟨[], by simp⟩
 
 theorem saved_history_of_prefix
     (reference : (nativeApplication).Control)
@@ -6448,16 +6249,6 @@ theorem sourceSnapshotPair_drain
       · rfl
 
 omit [Fintype Player] in
-theorem sourceSnapshotPair_restore
-    (target : setup.proposalRecoveryProtocol.History)
-    (reference : (nativeApplication).Control)
-    (lost : Handle (serviceGraph setup .concurrent) → Option (Raw L))
-    (entry current : RecoveryState (serviceGraph setup .concurrent)) :
-    sourceSnapshotPair setup implementation target reference lost
-        (PhaseRuntimeState.restore entry current).native =
-      sourceSnapshotPair setup implementation target reference lost entry.native := rfl
-
-omit [Fintype Player] in
 theorem sourceSnapshotAssignment_normalize
     (target : setup.proposalRecoveryProtocol.History)
     (reference : (nativeApplication).Control)
@@ -6982,45 +6773,6 @@ theorem sourceSnapshot_binding_available
     refine ⟨replacement, rfl, ?_⟩
     rw [← outputs, ← envelope]
     exact permitted
-
-def sourceSnapshot_binding_trace
-    (target : setup.proposalRecoveryProtocol.History)
-    (reference : (nativeApplication).Control)
-    (lost : Handle (serviceGraph setup .concurrent) → Option (Raw L))
-    (left : (nativeApplication).Execution) (right : (nativeApplication).Control)
-    (prior : (nativeProtocol).Trace (some right))
-    (application : right.execution.application = sourceSnapshotAssignment setup implementation
-      target reference lost left.application)
-    (network : left.network = right.execution.network)
-    (leftRecall : PhaseCount.CountRecall implementation.runtime implementation.leaks left)
-    (owner : Player) (acting : right.actor = some owner)
-    (event : (serviceGraph setup .concurrent).EventId) (serial : Nat)
-    (first second : Option (Raw L))
-    (evidence : EvidenceRequest (serviceGraph setup .concurrent))
-    (bounded : implementation.bounds.AllowsOpening second)
-    (member : (⟨some ⟨⟨.commitment event (owner, .prepared serial), first⟩, evidence⟩⟩ :
-      (nativeApplication).Action) ∈ PhaseCount.onePacketActions implementation.runtime
-        implementation.leaks implementation.bounds owner (left.recall owner)
-          (left.observe nativeApplication owner)) :
-    (nativeProtocol).Trace (some {
-      right with
-      actor := none
-      execution := right.execution.respond nativeApplication owner
-        ⟨some ⟨⟨.commitment event (owner, .prepared serial), second⟩, .none⟩⟩ }) := by
-  classical
-  let replacement : (nativeApplication).Action :=
-    ⟨some ⟨⟨.commitment event (owner, .prepared serial), second⟩, .none⟩⟩
-  have rightRecall := PhaseCount.countRecall_history implementation.runtime implementation.leaks
-    ((nativeMenu).toRawTrace nativeInitial implementation.horizon implementation.scheduler prior)
-  have available := sourceSnapshot_binding_available setup implementation target reference lost
-    left right.execution application network leftRecall rightRecall owner event serial
-      first second evidence bounded member
-  rcases right with ⟨remaining, actor, execution⟩
-  dsimp only at acting
-  subst actor
-  exact Classical.choose (HiddenSwap.phase_respond_trace_prefix
-    implementation.bounds nativeInitial implementation.horizon implementation.scheduler
-    remaining execution owner replacement prior available)
 
 private theorem submittedArchived
     (execution : (nativeApplication).Execution)
@@ -9930,179 +9682,6 @@ theorem issuedLedger_owned_word_conditional
     observed possible
 
 open Classical in
-/-- The actual foreign issued rectangle conditions only foreign owner words.
-Each retained owner marginal keeps its original chronological dependence.
-The unused focal ordinary marginal is left unconditioned. -/
-theorem issuedLedger_foreign_product
-    {Γ Δ : SourceCtx Player L} {O P : Finset VarId}
-    (block : SourceProgram.CommitPrefix Γ O Δ P) (suffix : SourceProgram Player L Δ P)
-    (profile : SourceProgram.BehavioralProfile (block.prepend suffix))
-    (entry : SourceProgram.Config Player L Γ) (low high : Nat)
-    (control : (nativeApplication).Control) (focal : Player)
-    (present : ∃ final ∈ (block.prefixLaw suffix profile entry).support,
-      ∀ owner, owner ≠ focal →
-        issuedLedger setup implementation block low control high owner (final.view owner)) :
-    fiberPosterior
-      ((block.prefixLaw suffix profile entry).map (fun final owner => final.view owner))
-      (fun views => decide (∀ owner, owner ≠ focal →
-        issuedLedger setup implementation block low control high owner (views owner))) true =
-      independentProduct (fun owner => fiberPosterior
-        ((block.prefixLaw suffix profile entry).map (SourceProgram.Config.view owner))
-        (fun word => decide (owner ≠ focal →
-          issuedLedger setup implementation block low control high owner word)) true) := by
-  let laws := fun owner =>
-    (block.prefixLaw suffix profile entry).map (SourceProgram.Config.view owner)
-  let restriction := fun owner => {word | owner ≠ focal →
-    issuedLedger setup implementation block low control high owner word}
-  have coordinate (owner : Player) : ∃ word ∈ restriction owner, word ∈ (laws owner).support := by
-    obtain ⟨final, supported, retained⟩ := present
-    exact ⟨final.view owner, retained owner,
-      (PMF.mem_support_map_iff _ _ _).mpr ⟨final, supported, rfl⟩⟩
-  have rectangle : ∃ views ∈ Set.pi Set.univ restriction,
-      views ∈ (independentProduct laws).support := by
-    obtain ⟨final, supported, retained⟩ := present
-    refine ⟨fun owner => final.view owner, fun owner _ => retained owner, ?_⟩
-    rw [← block.prefixLaw_views_product suffix profile entry]
-    exact (PMF.mem_support_map_iff _ _ _).mpr ⟨final, supported, rfl⟩
-  have marginal (owner : Player) :
-      fiberPosterior (laws owner) (fun word => decide (owner ≠ focal →
-        issuedLedger setup implementation block low control high owner word)) true =
-        (laws owner).filter (restriction owner) (coordinate owner) := by
-    have meets : ∃ word ∈ {word | decide (owner ≠ focal →
-        issuedLedger setup implementation block low control high owner word) = true},
-        word ∈ (laws owner).support := by
-      simpa only [Set.mem_ofPred_eq, decide_eq_true_eq, restriction] using coordinate owner
-    simpa only [decide_eq_true_eq] using fiberPosterior_eq_filter (laws owner)
-      (fun word => decide (owner ≠ focal →
-        issuedLedger setup implementation block low control high owner word)) meets
-  have total : fiberPosterior (independentProduct laws)
-      (fun views => decide (∀ owner, owner ≠ focal →
-        issuedLedger setup implementation block low control high owner (views owner))) true =
-        (independentProduct laws).filter (Set.pi Set.univ restriction) rectangle := by
-    have meets : ∃ views ∈ {views | decide (∀ owner, owner ≠ focal →
-        issuedLedger setup implementation block low control high owner (views owner)) = true},
-        views ∈ (independentProduct laws).support := by
-      obtain ⟨views, belongs, supported⟩ := rectangle
-      exact ⟨views, by
-        simp only [Set.mem_ofPred_eq, decide_eq_true_eq]
-        exact fun owner => belongs owner (Set.mem_univ owner), supported⟩
-    have same : {views | decide (∀ owner, owner ≠ focal →
-        issuedLedger setup implementation block low control high owner (views owner)) = true} =
-        Set.pi Set.univ restriction := by
-      ext views
-      simp only [Set.mem_ofPred_eq, decide_eq_true_eq, Set.mem_pi, Set.mem_univ,
-        forall_true_left, restriction]
-    rw [fiberPosterior_eq_filter _ _ meets]
-    simp only [same]
-  rw [block.prefixLaw_views_product suffix profile entry]
-  change fiberPosterior (independentProduct laws) _ true = independentProduct
-    (fun owner => fiberPosterior (laws owner) _ true)
-  rw [total]
-  simp_rw [marginal]
-  exact filter_independentProduct laws restriction coordinate
-
-open Classical in
-/-- The next ready foreign row under the complete foreign issued cylinder
-uses its chronological owner kernel. Other owners' restrictions do not alter
-that kernel, and the focal ordinary word remains unrestricted. -/
-theorem issuedLedger_foreign_owned_word_conditional
-    {Γ Δ Ξ : SourceCtx Player L} {O P Q : Finset VarId}
-    {name : VarId} {owner : Player} {payload : L.Ty}
-    (fresh : name ∉ Δ.map Prod.fst) (guard : SourceGuard L Δ owner name payload)
-    (earlier : SourceProgram.CommitPrefix Γ O Δ P)
-    (later : SourceProgram.CommitPrefix ((name, .commitment owner payload) :: Δ)
-      (insert name P) Ξ Q) (suffix : SourceProgram Player L Ξ Q)
-    (embedding : OutputEmbedding (inputLayout setup.context) (outputLayout setup.program)
-      ((earlier.append (.commit name owner fresh guard later)).prepend suffix)) (low : Nat)
-    (rank : ∀ index, (embedding.event index).val = low + index.val)
-    (actions : ∀ index action, decodeEventAction setup.program (embedding.event index) action =
-      decodeEventAction ((earlier.append (.commit name owner fresh guard later)).prepend suffix)
-        index (cast (congrArg EventField.Action (embedding.layout_eq index)) action))
-    {control : (nativeApplication).Control} (trace : (nativeProtocol).Trace (some control))
-    (phase : RuntimePhase (serviceGraph setup .concurrent))
-    (installed : control.execution.application.phases.head? = some phase)
-    (phaseLow : phase.low = low)
-    (phaseHigh : phase.high = low + (earlier.append (.commit name owner fresh guard later)).length)
-    (selected : (serviceGraph setup .concurrent).EventId)
-    (shape : (serviceGraph setup .concurrent).outputLayout selected = .binding owner payload)
-    (request : control.execution.application.SeedRequest owner
-      ⟨control.execution.application.attempt, selected⟩)
-    (selectedInside : low ≤ selected.val ∧
-      selected.val < low + (earlier.append (.commit name owner fresh guard later)).length)
-    (selectedRank : selected.val - low = earlier.length)
-    (unsent : ∀ message ∈ (nativeApplication).outputs (control.execution.recall owner),
-      PhaseCount.event? message.payload ≠ some ⟨control.execution.application.attempt, selected⟩)
-    (profile : SourceProgram.BehavioralProfile
-      (earlier.prepend (.commit name owner fresh guard (later.prepend suffix))))
-    (entry : SourceProgram.Config Player L Γ) (reference : DecisionView owner Ξ)
-    (focal : Player) (foreign : owner ≠ focal) :
-    let block := earlier.append (.commit name owner fresh guard later)
-    let current := earlier.tailProfile (.commit name owner fresh guard (later.prepend suffix))
-      profile
-    let before := earlier.prefixLaw (.commit name owner fresh guard (later.prepend suffix))
-      profile entry
-    let complete := before.bind fun config =>
-      ((SourceProgram.CommitPrefix.commit name owner fresh guard later).prefixLaw suffix
-        current config)
-    let prior := complete.map (SourceProgram.Config.view owner)
-    let observed := (later.entryView owner reference).back true
-    reference ∈ prior.support →
-    issuedLedger setup implementation block low control (low + block.length) owner reference →
-    (∃ final ∈ complete.support, ∀ other, other ≠ focal →
-      issuedLedger setup implementation block low control (low + block.length)
-        other (final.view other)) →
-    (fiberPosterior complete (fun final => decide (∀ other, other ≠ focal →
-      issuedLedger setup implementation block low control (low + block.length)
-        other (final.view other))) true).map
-          (fun final => block.wordAction owner earlier.length (final.view owner)) =
-      (SourceProgram.commitKernel current observed).map (fun result =>
-        some (OwnAction.commit owner name payload result)) := by
-  intro block current before complete prior observed supported retained present
-  let fullProfile := cast (congrArg SourceProgram.BehavioralProfile
-    (earlier.prepend_append (.commit name owner fresh guard later) suffix).symm) profile
-  have fullLaw : block.prefixLaw suffix fullProfile entry = complete := by
-    simpa only [block, fullProfile, complete, before, current,
-      SourceProgram.CommitPrefix.prepend, cast_cast, cast_eq] using
-      earlier.prefixLaw_append (.commit name owner fresh guard later) suffix fullProfile entry
-  have fullPresent : ∃ final ∈ (block.prefixLaw suffix fullProfile entry).support,
-      ∀ other, other ≠ focal → issuedLedger setup implementation block low control
-        (low + block.length) other (final.view other) := by
-    rwa [fullLaw]
-  have product := issuedLedger_foreign_product setup implementation block suffix fullProfile
-    entry low (low + block.length) control focal fullPresent
-  rw [fullLaw] at product
-  let read := fun final : SourceProgram.Config Player L Ξ => fun other => final.view other
-  let test := fun views : ∀ other, DecisionView other Ξ => decide (∀ other, other ≠ focal →
-    issuedLedger setup implementation block low control (low + block.length) other (views other))
-  have possible : true ∈ (complete.map (test ∘ read)).support := by
-    obtain ⟨final, member, ledger⟩ := present
-    exact (PMF.mem_support_map_iff _ _ _).mpr ⟨final, member, by
-      simpa only [test, read, Function.comp_def, decide_eq_true_eq] using ledger⟩
-  have mapped := congrArg (PMF.map (fun views : ∀ other, DecisionView other Ξ => views owner))
-    (map_fiberPosterior_readout complete read test true possible)
-  rw [PMF.map_comp] at mapped
-  have ownerPosterior :
-      (fiberPosterior complete (fun final => decide (∀ other, other ≠ focal →
-        issuedLedger setup implementation block low control (low + block.length)
-          other (final.view other))) true).map (SourceProgram.Config.view owner) =
-      fiberPosterior prior (fun word => decide (issuedLedger setup implementation block low
-        control (low + block.length) owner word)) true := by
-    change (fiberPosterior complete (test ∘ read) true).map
-      ((fun views : ∀ other, DecisionView other Ξ => views owner) ∘ read) = _
-    rw [mapped]
-    rw [product, independentProduct_map_eval]
-    apply fiberPosterior_eq_of_support_fiber
-    intro word _member
-    rw [decide_eq_true_eq, decide_eq_true_eq]
-    exact ⟨fun ledger => ledger foreign, fun ledger _ => ledger⟩
-  have actionPosterior := congrArg (PMF.map (block.wordAction owner earlier.length)) ownerPosterior
-  rw [PMF.map_comp] at actionPosterior
-  exact actionPosterior.trans (issuedLedger_owned_word_conditional setup implementation fresh
-    guard earlier later suffix embedding low rank actions trace phase installed phaseLow phaseHigh
-    selected shape request selectedInside selectedRank unsent profile entry reference supported
-      retained)
-
-open Classical in
 /-- Ordinary complete foreign owner words with the original issued cylinder.
 The source entry is pulled from the target itself, without a posterior-support gate. -/
 def ordinaryForeignJoint (operational : implementation.Operational) (who : Player)
@@ -10393,65 +9972,6 @@ def annotatedForcedBlockWeight (operational : implementation.Operational)
     else 0
 
 open Classical in
-private theorem annotatedForcedBlockWeight_anchor
-    (operational : implementation.Operational)
-    (sourceProfile : ∀ owner, setup.proposalRecoveryModel.BehavioralPolicy owner)
-    (nativeProfile : ∀ owner,
-      ((nativeMenu).information nativeInitial implementation.horizon
-        implementation.scheduler).BehavioralPolicy owner)
-    (who : Player)
-    (site : ((nativeMenu).information nativeInitial implementation.horizon
-      implementation.scheduler).InformationSite who)
-    (index : MechanicalIndex setup implementation who)
-    (event : (serviceGraph setup .concurrent).EventId) (payload : L.Ty) (value : L.Val payload)
-    (cut completed : setup.proposalRecoveryProtocol.History)
-    (positive : annotatedForcedBlockWeight setup values implementation operational sourceProfile
-      nativeProfile who site index event payload value cut completed ≠ 0) :
-    ∃ history : ((nativeMenu).information nativeInitial implementation.horizon
-        implementation.scheduler).InformationHistory who site.1,
-      mechanicalWord setup implementation who history.val.trace = index.1.val ∧
-      ((nativeMenu).information nativeInitial implementation.horizon
-        implementation.scheduler).historyReachWeight nativeProfile history.val ≠ 0 ∧
-      prefixTapeLaw setup implementation history.val index.2 ≠ 0 ∧
-      (∀ owner, owner ≠ who →
-        ¬ EventGraphRuntime.PhaseProposal.GeneratedUnusableBindingHistory implementation.runtime
-          implementation.leaks implementation.bounds nativeInitial implementation.horizon
-          implementation.scheduler owner history.val) ∧
-      history.val.state.elim True (fun control =>
-        who ∉ control.execution.application.current.excluded) ∧
-      bindingAdmissionBit setup implementation who event history.val index.2 = true := by
-  classical
-  by_contra absent
-  apply positive
-  unfold annotatedForcedBlockWeight
-  apply ENNReal.tsum_eq_zero.mpr
-  intro history
-  by_cases same : mechanicalWord setup implementation who history.val.trace = index.1.val
-  · rw [ite_eq_left same]
-    apply ENNReal.tsum_eq_zero.mpr
-    intro entry
-    apply ENNReal.tsum_eq_zero.mpr
-    intro word
-    by_contra nonzero
-    have first := (mul_ne_zero_iff.mp nonzero).1
-    have prefixWeight := (mul_ne_zero_iff.mp first).1
-    have gate := (mul_ne_zero_iff.mp first).2
-    have admitted : bindingAdmissionBit setup implementation who event history.val index.2 =
-        true := by
-      by_contra failed
-      exact gate (ite_eq_right failed)
-    unfold annotatedPrefixWeight at prefixWeight
-    dsimp only at prefixWeight
-    have initial := (mul_ne_zero_iff.mp prefixWeight).1
-    have kept := (mul_ne_zero_iff.mp prefixWeight).2
-    split at kept
-    · rename_i good
-      exact absent ⟨history, same, (mul_ne_zero_iff.mp initial).1,
-        (mul_ne_zero_iff.mp initial).2, good.1, good.2, admitted⟩
-    · exact kept rfl
-  · exact ite_eq_right same
-
-open Classical in
 /-- Qualification mass before selecting a proper value or a utility. -/
 def qualifiedPrefixMass
     (nativeProfile : ∀ owner,
@@ -10528,17 +10048,6 @@ theorem qualifiedPrefixMass_anchor
             simp only [rejected, Bool.false_eq_true, ↓reduceIte, mul_zero]
       · exact mul_zero _
   exact positive.ne' zero
-
-omit [Fintype Player] in
-theorem pulled_entry_history
-    (control : (nativeApplication).Control)
-    (checkpoint : RecoverySourceCheckpoint setup .concurrent control.execution.application)
-    (point : ProtocolState setup.program)
-    (entry : SourceProgram.Config Player L checkpoint.residual.context)
-    (pulled : residualEntry? checkpoint.residual.tail checkpoint.residual.lift point = some entry) :
-    ProtocolState.history setup.program point = entry.history := by
-  have pointEq := (residualEntry?_eq_some_iff checkpoint.origin point entry).mp pulled
-  rw [← pointEq, checkpoint.history, ProtocolState.history_entry]
 
 omit [Fintype Player] in
 theorem ordinaryBlockWord_drop

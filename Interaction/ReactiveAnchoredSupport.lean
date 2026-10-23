@@ -2,13 +2,14 @@
 
 import Interaction.ReactiveSupportedRounds
 
-/-! # Supported play from a round boundary stays in the round evaluator
+/-! # Round support from an anchor execution
 
-From a history at scheduler control, every state that behavioral play of a
-response menu reaches with positive probability is the result of complete
-rounds of the decoded profile from that history's execution, or, at a pending
+A protocol state is round-supported from an anchor execution when it is the
+result of complete rounds of a profile from that execution, or, at a pending
 activation, follows an environment step from such a result
-(`Interaction.ReactiveApplication.ResponseMenu.runRoundsSupported_of_mem_run`).
+(`Interaction.ReactiveApplication.RunRoundsSupported`). One step of the
+canonical kernel of the profile keeps round support
+(`Interaction.ReactiveApplication.runRoundsSupported_controlStep`).
 -/
 
 noncomputable section
@@ -99,52 +100,5 @@ theorem runRoundsSupported_controlStep (initial : PMF app.State) (horizon : Nat)
                   rw [dispatch, PMF.support_bind]
                   apply Set.mem_iUnion₂.mpr
                   exact ⟨next, stepped, by simp [resume, active]⟩
-
-/-- Every state the canonical kernel of a profile reaches from a round boundary
-is round-supported from its execution. -/
-theorem runRoundsSupported_of_mem_iterate (initial : PMF app.State) (horizon : Nat)
-    (scheduler : app.Scheduler) (players : Principal → app.Policy) (remaining : Nat)
-    (anchor : app.Execution) (fuel : Nat) (result : app.ProtocolState)
-    (reached : result ∈ ((fun law => law.bind (app.controlStep initial horizon scheduler
-      players))^[fuel] (PMF.pure (some ⟨remaining, none, anchor⟩))).support) :
-    app.RunRoundsSupported scheduler players anchor result := by
-  induction fuel generalizing result with
-  | zero =>
-      cases (PMF.mem_support_pure_iff _ _).mp reached
-      exact ⟨0, (PMF.mem_support_pure_iff _ _).mpr rfl⟩
-  | succ fuel ih =>
-      rw [Function.iterate_succ_apply'] at reached
-      obtain ⟨before, prior, stepped⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
-      exact runRoundsSupported_controlStep initial horizon scheduler players anchor before
-        result (ih before prior) stepped
-
-namespace ResponseMenu
-
-variable [Fintype Principal] (menu : app.ResponseMenu) (initial : PMF app.State)
-  (horizon : Nat) (scheduler : app.Scheduler)
-
-/-- **Supported play from a round boundary is round-supported.** Every history
-that behavioral play of a response menu reaches with positive probability from
-a history at scheduler control is round-supported, for the decoded profile,
-from that history's execution. -/
-theorem runRoundsSupported_of_mem_run
-    (profile : ∀ who, (menu.information initial horizon scheduler).BehavioralPolicy who)
-    (fuel : Nat) (start history : (menu.protocol initial horizon scheduler).History)
-    {remaining : Nat} {anchor : app.Execution}
-    (state : start.state = some ⟨remaining, none, anchor⟩)
-    (reached : history ∈ ((menu.information initial horizon scheduler).runBehavioralFrom profile
-      fuel start).support) :
-    app.RunRoundsSupported scheduler (menu.decodeProfile initial horizon scheduler profile) anchor
-      history.state := by
-  have stateReached : history.state ∈ ((fun law => law.bind (app.controlStep initial horizon
-      scheduler (menu.decodeProfile initial horizon scheduler profile)))^[fuel]
-        (PMF.pure start.state)).support := by
-    rw [← menu.run_map_state_eq_iterate initial horizon scheduler profile fuel]
-    exact (PMF.mem_support_map_iff _ _ _).mpr ⟨history, reached, rfl⟩
-  rw [state] at stateReached
-  exact runRoundsSupported_of_mem_iterate initial horizon scheduler _ remaining anchor fuel
-    history.state stateReached
-
-end ResponseMenu
 
 end Interaction.ReactiveApplication

@@ -32,45 +32,6 @@ def commitRecoveryContinuingChoice (who : Player)
     setup.CommitRecoveryContinuingChoice who info ↪ setup.commitRecoveryModel.Choice who info :=
   ⟨Subtype.val, Subtype.val_injective⟩
 
-theorem commitRecoveryContinuingChoice_finite (finite : setup.program.FiniteBindingTypes)
-    (who : Player) (info : setup.commitRecoveryModel.InfoState who) :
-    Finite (setup.CommitRecoveryContinuingChoice who info) := by
-  let := setup.commitRecovery_finite_choice finite who info
-  exact Finite.of_injective (setup.commitRecoveryContinuingChoice who info)
-    (setup.commitRecoveryContinuingChoice who info).injective
-
-theorem commitRecoveryContinuingChoice_nonempty (who : Player)
-    (info : setup.commitRecoveryModel.InfoState who) :
-    Nonempty (setup.CommitRecoveryContinuingChoice who info) := by
-  classical
-  by_cases active : setup.commitRecoveryActive who info.1.1
-  · cases current : info.1.1.1 with
-    | none => simp only [commitRecoveryActive, current, Option.elim_none] at active
-    | some view =>
-        have acting := active
-        simp only [commitRecoveryActive, current, Option.elim_some] at acting
-        obtain ⟨choice, legal, continues⟩ := ProtocolView.exists_move_menu who setup.program
-          (CommitmentInterface.forfeiture setup.program) view
-        cases choice with
-        | none => exact (legal acting.1).elim
-        | some action =>
-            have offered : some (⟨action, false⟩ : CommitRecoveryMove Player L) ∈
-                setup.commitRecoveryModel.menu who info := by
-              refine ⟨active, ?_⟩
-              simp only [current, Option.elim_some]
-              refine ⟨legal.2, ?_⟩
-              dsimp only
-              split
-              · intro impossible; cases impossible
-              · rfl
-            refine ⟨⟨⟨some ⟨action, false⟩, offered⟩, ?_⟩⟩
-            intro move selected
-            cases Option.some.inj selected
-            exact ⟨rfl, fun _ => continues action rfl⟩
-  · refine ⟨⟨⟨none, active⟩, ?_⟩⟩
-    intro move impossible
-    cases impossible
-
 theorem commitRecovery_atCommit_info (who : Player)
     {state : setup.commitRecoveryProtocol.State}
     (trace : setup.commitRecoveryProtocol.Trace state) :

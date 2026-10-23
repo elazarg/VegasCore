@@ -78,22 +78,6 @@ theorem initial_ordered (plan : RuntimePhasePlan graph) (inputs : graph.Inputs) 
     (initial plan inputs).Ordered :=
   settle_ordered _ _ _ _ _ plan.adjacent
 
-omit [DecidableEq Player] in
-/-- A newly selected namespace strictly after an earlier namespace cannot read
-any seed belonging to that earlier namespace. -/
-theorem SeedRequest.ne_of_earlier {state : PhaseRuntimeState graph} {owner : Player}
-    {coordinate : CommitAttemptEvent graph} (request : state.SeedRequest owner coordinate)
-    {earlier : CommitAttemptId}
-    (fresh : earlier.generation < state.attempt.generation ∨ earlier.phase < state.attempt.phase) :
-    coordinate.attempt ≠ earlier := by
-  rw [request.1]
-  intro same
-  rcases fresh with generation | phase
-  · have := congrArg CommitAttemptId.generation same
-    omega
-  · have := congrArg CommitAttemptId.phase same
-    omega
-
 end PhaseRuntimeState
 
 /-- Ordered phase descriptors remain ordered through the actual reset application. -/

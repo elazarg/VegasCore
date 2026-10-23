@@ -59,44 +59,6 @@ theorem countCallCorrect_owned_event
       | bind _ _ _ _ => rw [view] at owned; exact owned.elim
       | sample _ _ _ _ => rw [view] at owned; exact owned.elim
 
-private def CountedSurvivors (execution : (runtime.reactiveApplication leaks).Execution) : Prop :=
-  ∀ message ∈ execution.network.inputs, ∀ event,
-    message.payload.call.event? graph = some event →
-    execution.application.publicView.missedBindingBy message.sender = false →
-    event ∉ execution.application.config.cut.completed →
-    execution.application.WithinDeadline runtime event → message ∈ execution.network.pending
-
-private theorem countedSurvivors_respond
-    (execution : (runtime.reactiveApplication leaks).Execution)
-    (valid : CountedSurvivors runtime leaks execution) (who : Player)
-    (action : (runtime.reactiveApplication leaks).Action) :
-    CountedSurvivors runtime leaks
-      (execution.respond (runtime.reactiveApplication leaks) who action) := by
-  intro message member event named unmissed unfinished timely
-  have same := runtime.reactive_respond_application leaks execution who action
-  have unmissedBefore : execution.application.publicView.missedBindingBy message.sender = false :=
-    same.2 ▸ unmissed
-  have unfinishedBefore : event ∉ execution.application.config.cut.completed :=
-    same.1 ▸ unfinished
-  have timelyBefore : execution.application.WithinDeadline runtime event := by
-    unfold State.WithinDeadline at timely ⊢
-    have clock := congrArg PublicView.clock same.2
-    have active := congrArg PublicView.activatedAt same.2
-    dsimp only [State.publicView] at clock active
-    rwa [clock, active] at timely
-  cases action with
-  | mk transmission =>
-      cases transmission with
-      | none => exact valid message member event named unmissedBefore unfinishedBefore timelyBefore
-      | some material =>
-          change message ∈ execution.network.inputs ++ [_] at member
-          rcases List.mem_append.mp member with old | latest
-          · exact (runtime.reactiveApplication leaks).respond_pending_mono execution who
-              ⟨some material⟩ (valid message old event named unmissedBefore unfinishedBefore
-                timelyBefore)
-          · change message ∈ execution.network.pending ++ [_]
-            exact List.mem_append_right _ latest
-
 variable [Fintype Player]
 
 end Vegas.EventGraphRuntime

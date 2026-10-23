@@ -224,27 +224,6 @@ theorem aliasImplementation_run (who : Principal) (reference : List app.PlayerEn
       intro next reached
       exact ih next (round_inputRecall _ scheduler execution next valid reached)
 
-/-- The external execution law of a deviation is available to a behavioral
-strategy in the normalized game. The initial raw own recall is fixed at the
-continuation being compared; no hidden environment state enters the policy. -/
-theorem aliasImplementation_behavioral_run (who : Principal) (policy : app.Policy)
-    (players : Principal → app.Policy)
-    (fixed : ∀ other past view response, response ∈ (players other past view).support →
-      normal.action other past view response = response)
-    (scheduler : app.Scheduler) (count : Nat)
-    (execution : app.Execution) (valid : execution.InputRecall app) :
-    app.runRounds scheduler (Function.update players who
-        (normal.aliasImplementation who (execution.recall who) policy).policy)
-        count (normal.execution execution) =
-      (app.runRounds scheduler (Function.update
-        (fun other past view => players other (normal.recall other past) view) who policy)
-          count execution).map normal.execution := by
-  rw [← Implementation.realize]
-  change ((normal.aliasImplementation who (execution.recall who) policy).posterior
-    (normal.recall who (execution.recall who))).bind _ = _
-  rw [normal.aliasImplementation_posterior_reference, PMF.pure_bind]
-  exact normal.aliasImplementation_run who _ policy players fixed scheduler count execution valid
-
 /-- The same deviation simulation starts at a decision information set, after
 activation and before its response, and preserves the final external state. -/
 theorem aliasImplementation_behavioral_continuation (who : Principal) (policy : app.Policy)

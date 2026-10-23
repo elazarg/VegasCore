@@ -15,8 +15,10 @@ take the swap between `p` and `q` at the table of handles accepted at the end of
 history.
 
 * The inputs of `h` are those of a setup draw whose cells its decoded point
-  finds (`Vegas.decoded_initialCellsAt`), so they are allowed
-  (`Vegas.inputs_mem_swapAllowed_of_decoded`).
+  finds (`Vegas.decoded_initialCellsAt`), and `q` finds the cells of a supported
+  setup draw (`Vegas.exists_initialCellsAt`), so they are allowed when the
+  initial handles are compatible with the swap
+  (`Vegas.inputs_mem_swapAllowed_of_drawn`).
 * A completed reveal publishes a value at `q`, hence at `p`, where the revealed
   commitment then holds that value, since publications carry their bindings or
   fail; a ready reveal is `who`'s own. So `p` and `q` agree on every binding a
@@ -204,22 +206,6 @@ theorem inputs_mem_swapAllowed_of_drawn
     funext (inputs_betweenPairs found otherFound)
   rw [swapped]
   exact drawnMember other otherMember
-
-/-- **The inputs of a native history are allowed** by the swap between its
-decoded point and the end of an intended history, when the initial handles are
-compatible with the swap. -/
-theorem inputs_mem_swapAllowed_of_decoded {second : setup.intendedProtocol.History}
-    (secondState : second.state = some q)
-    (handlePairs : Handle (graph setup) → Option (Raw L × Raw L))
-    (compatible : (HiddenSwap.ofPairs (betweenPairs publicAgree succeed)
-      handlePairs).InitialHandlesCompatible)
-    {control : (application setup leaks).Control}
-    (trace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some control))
-    (decodedP : decodedPoint setup control.execution.application.config = some p) :
-    control.execution.application.config.inputs ∈
-      swapAllowed (HiddenSwap.ofPairs (betweenPairs publicAgree succeed) handlePairs) :=
-  inputs_mem_swapAllowed_of_drawn (exists_initialCellsAt second.trace secondState) handlePairs
-    compatible trace decodedP
 
 /-- **Ready or completed reveals read agreeing commitments.** At the end of a
 native history whose decoded point `p` a player `who` observes like the state

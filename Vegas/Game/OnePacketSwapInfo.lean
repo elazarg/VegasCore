@@ -7,9 +7,7 @@ import Vegas.Game.OnePacketSwapRecord
 A hidden swap acts on an information state of the one-packet game entry by entry
 on the recall and on the current view (`Vegas.EventGraphRuntime.HiddenSwap.info`).
 The image of a history under the swap symmetry is in the swapped information
-state of the history, for every player (`Vegas.infoOf_mapTrace`). When the swap
-fixes the binding read at the player's reveal turn, the swapped information
-state has the same late-delivery key (`Vegas.lateKey_swapInfo`).
+state of the history, for every player (`Vegas.infoOf_mapTrace`).
 -/
 
 noncomputable section
@@ -83,21 +81,5 @@ theorem infoOf_mapTrace (swap : HiddenSwap (graph setup))
       · rw [swap.observe_execution]
         rfl
       · rfl
-
-omit [Fintype Player] in
-/-- **The swap keeps the late-delivery key** of an information state when it
-fixes every binding read at a reveal turn of the player. -/
-theorem lateKey_swapInfo (swap : HiddenSwap (graph setup)) (who : Player)
-    (info : (application setup leaks).Info)
-    (fixed : ∀ past observed event, info = some (past, observed) →
-      observed.application.publicView.ownTurn? who = some event →
-        EventGraph.ResolutionFixed swap.values event) :
-    lateKey setup leaks who (swap.info info) = lateKey setup leaks who info := by
-  cases info with
-  | none => rfl
-  | some current =>
-      obtain ⟨past, observed⟩ := current
-      exact swap.lateKey_swap who past observed
-        (fun event turn => fixed past observed event rfl turn)
 
 end Vegas

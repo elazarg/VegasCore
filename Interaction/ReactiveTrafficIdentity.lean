@@ -54,46 +54,4 @@ theorem input_identifier_injective_history (initial : PMF app.State) (horizon : 
   have unique := app.uniqueIds_history scheduler initial horizon control trace
   exact (unique.inputs second secondInput).inputs first firstInput same
 
-/-- A ledger entry bearing an authored input's identifier is that exact
-input envelope, including its certificate and payload. -/
-theorem input_envelope_eq_ledger_of_id_eq (initial : PMF app.State) (horizon : Nat)
-    (scheduler : app.Scheduler) (control : app.Control)
-    (trace : (app.protocol initial horizon scheduler).Trace (some control))
-    (message published : Message Principal app.Payload)
-    (input : message ∈ control.execution.network.inputs)
-    (ledger : published ∈ control.execution.network.ledger)
-    (same : message.id = published.id) : message = published := by
-  have unique := app.uniqueIds_history scheduler initial horizon control trace
-  exact ((unique.inputs message input).ledger published ledger same.symm).symm
-
-/-- Identifier matching against the public ledger certifies the actual
-envelope from the execution's complete traffic readout. -/
-theorem traffic_envelope_eq_ledger_of_id_eq (initial : PMF app.State) (horizon : Nat)
-    (scheduler : app.Scheduler) (control : app.Control)
-    (trace : (app.protocol initial horizon scheduler).Trace (some control))
-    (traffic : app.TrafficRecord) (member : traffic ∈ app.executionTraffic control.execution)
-    (published : Message Principal app.Payload)
-    (ledger : published ∈ control.execution.network.ledger)
-    (same : traffic.envelope.id = published.id) : traffic.envelope = published := by
-  have inputs := app.stateTraffic_inputs initial horizon scheduler trace
-  change (app.executionTraffic control.execution).map TrafficRecord.envelope =
-    control.execution.network.inputs at inputs
-  apply app.input_envelope_eq_ledger_of_id_eq initial horizon scheduler control trace
-    traffic.envelope published _ ledger same
-  rw [← inputs]
-  exact List.mem_map.mpr ⟨traffic, member, rfl⟩
-
-/-- If an actual traffic identifier is published, its original complete
-envelope is present in the ledger. -/
-theorem traffic_envelope_mem_ledger_of_published (initial : PMF app.State) (horizon : Nat)
-    (scheduler : app.Scheduler) (control : app.Control)
-    (trace : (app.protocol initial horizon scheduler).Trace (some control))
-    (traffic : app.TrafficRecord) (member : traffic ∈ app.executionTraffic control.execution)
-    (published : traffic.envelope.id ∈ control.execution.network.ledger.map Message.id) :
-    traffic.envelope ∈ control.execution.network.ledger := by
-  obtain ⟨message, ledger, same⟩ := List.mem_map.mp published
-  have actual := app.traffic_envelope_eq_ledger_of_id_eq initial horizon scheduler control trace
-    traffic member message ledger same.symm
-  exact actual.symm ▸ ledger
-
 end Interaction.ReactiveApplication

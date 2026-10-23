@@ -37,12 +37,6 @@ theorem inclusionResult_swap (swap : HiddenSwap graph) (state : RecoveryState gr
       (state.inclusionResult call native).swap swap := by
   cases call <;> simp only [inclusionResult, publicationFailed_swap, RecoveryState.swap]
 
-theorem environmentResult_swap (swap : HiddenSwap graph) (state : RecoveryState graph)
-    (command : EnvironmentCommand graph) (native : State graph) :
-    (state.swap swap).environmentResult command (native.swap swap) =
-      (state.environmentResult command native).swap swap := by
-  cases command <;> rfl
-
 theorem submit_swap (swap : HiddenSwap graph) (state : RecoveryState graph) (who : Player)
     (submission : WitnessedSubmission graph) :
     (state.swap swap).submit who (submission.swap swap) = (state.submit who submission).swap swap :=
@@ -131,32 +125,6 @@ theorem handle_swap (runtime : EventGraphRuntime graph) (swap : HiddenSwap graph
     simp only [Function.comp_apply]
     rw [updated, normalize_swap swap _ expiry]
   · rfl
-
-/-- Actual clock, sample and expiry laws commute before and after normalization;
-no new expiry-readout semantics is introduced. -/
-theorem environment_swap (runtime : EventGraphRuntime graph) (swap : HiddenSwap graph)
-    (state : PhaseRuntimeState graph) (command : EnvironmentCommand graph)
-    (expiry : ∀ event, swap.values.ExpiryFixed event) :
-    (state.swap swap).environment runtime command = (state.environment runtime command).map
-      (PhaseRuntimeState.swap swap) := by
-  unfold environment
-  rw [swap_commandAllowed]
-  split
-  · simp only [PhaseRuntimeState.swap_current, RecoveryState.swap_native]
-    rw [EventGraphRuntime.environmentStep_swap runtime swap state.current.native command
-      (fun event _ _ _ _ _ => expiry event), PMF.map_comp, PMF.map_comp]
-    congr 1
-    funext native
-    have updated : ({ state.swap swap with current :=
-        (state.current.swap swap).environmentResult command (native.swap swap) } :
-          PhaseRuntimeState graph) =
-        ({ state with current := state.current.environmentResult command native } :
-          PhaseRuntimeState graph).swap swap := by
-      rw [RecoveryState.environmentResult_swap]
-      rfl
-    simp only [Function.comp_apply]
-    rw [updated, normalize_swap swap _ expiry]
-  · rw [PMF.pure_map]
 
 end PhaseRuntimeState
 end Vegas.EventGraphRuntime

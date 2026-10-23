@@ -119,47 +119,5 @@ theorem close_success_readout (state : CommitRecoveryState program) (who : Playe
     rw [state.close_point_of_no_new_failure clear]
   · simp only [same, false_and]
 
-/-- The original success readout is measurable after private-word erasure. -/
-theorem eraseHistory_success_readout (state : CommitRecoveryState program) (who : Player) :
-    (state.eraseHistory.excluded = state.entryExcluded ∧
-      ProtocolState.BindingsHoldValues who program state.eraseHistory.point) ↔
-    (state.excluded = state.entryExcluded ∧
-      ProtocolState.BindingsHoldValues who program state.point) := by
-  exact and_congr Iff.rfl (ProtocolState.bindingsHoldValues_withHistory who program _ _)
-
 end CommitRecoveryState
-
-namespace CommitPrefix.Attempt
-
-/-- Install the completed ORIGINAL typed attempt and apply the actual close.
-Its no-omission/no-own-accepted-failure event is the erased boundary readout,
-with no supplied success or post-restore binding equality. -/
-theorem no_failure_iff_closed_readout
-    {Γ Δ : SourceCtx Player L} {O P : Finset VarId} {block : CommitPrefix Γ O Δ P}
-    {entry : Config Player L Γ} {excluded : Finset Player} {finished : Config Player L Δ}
-    {after : Finset Player} (attempt : block.Attempt entry excluded finished after)
-    (suffix : SourceProgram Player L Δ P) (generation : Nat) (who : Player)
-    (unique : (Γ.map Prod.fst).Nodup) (initial : entry.BindingsHoldValues who)
-    (active : who ∉ excluded) :
-    let original := CommitRecoveryState.atPoint
-      (ProtocolState.entry (block.prepend suffix) entry) excluded generation
-    let pending := original.install
-      (block.liftPoint suffix (ProtocolState.entry suffix finished), after) attempt.excluded_subset
-    (attempt.failedOwners = ∅ ∧
-      ∀ joint ∈ attempt.joints, ∀ move, joint who = some move → ¬ move.action.IsFailure) ↔
-    (pending.close.excluded = excluded ∧
-      ProtocolState.BindingsHoldValues who (block.prepend suffix) pending.close.point) := by
-  let original := CommitRecoveryState.atPoint
-    (ProtocolState.entry (block.prepend suffix) entry) excluded generation
-  let pending := original.install
-    (block.liftPoint suffix (ProtocolState.entry suffix finished), after) attempt.excluded_subset
-  change _ ↔ pending.close.excluded = pending.entryExcluded ∧ _
-  rw [pending.close_success_readout who]
-  change _ ↔ after = excluded ∧
-    ProtocolState.BindingsHoldValues who (block.prepend suffix)
-      (block.liftPoint suffix (ProtocolState.entry suffix finished))
-  rw [block.bindingsHoldValues_liftPoint, ProtocolState.bindingsHoldValues_entry]
-  exact attempt.no_failure_iff_completed_readout who unique initial active
-
-end CommitPrefix.Attempt
 end Vegas.SourceProgram

@@ -81,24 +81,6 @@ def eventPhase (plan : RuntimePhasePlan graph) (event : graph.EventId) : Nat :=
   ((plan.phases.find? fun phase => event ∈ phase.events).map RuntimePhase.low).getD
     graph.order.eventCount
 
-omit [DecidableEq Player] in
-theorem eventPhase_of_mem (plan : RuntimePhasePlan graph) (phase : RuntimePhase graph)
-    (member : phase ∈ plan.phases) (event : graph.EventId) (inside : event ∈ phase.events) :
-    plan.eventPhase event = phase.low := by
-  classical
-  cases found : plan.phases.find? (fun current => event ∈ current.events) with
-  | none =>
-      have absent := (List.find?_eq_none.mp found) phase member
-      exact (absent (decide_eq_true inside)).elim
-  | some selected =>
-      have selectedMember := List.mem_of_find?_eq_some found
-      have selectedInside : event ∈ selected.events :=
-        of_decide_eq_true (List.find?_some
-          (p := fun current : RuntimePhase graph => decide (event ∈ current.events)) found)
-      have same := containing_unique plan.phases plan.adjacent event selected phase
-        selectedMember member selectedInside inside
-      simp only [eventPhase, found, Option.map_some, Option.getD_some, same]
-
 /-- Retag a native packet with its unique no-reset physical source address. -/
 def stampPacket (plan : RuntimePhasePlan graph) (packet : WitnessedPacket graph) :
     CommitAttemptPacket graph :=

@@ -53,7 +53,7 @@ never reaches a rewritten branch. Composed with the target theorem for
 `S_exp`, it says the runtime implements every equilibrium of the intended game
 under a deposit.
 
-`exists_disclosing_expect_le` is the existing conditional form: under
+[`exists_disclosing_expect_le`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Source/Disclosure.lean#L237) is the existing conditional form: under
 `DisclosesProfitably` a player loses nothing by being held to `Disclosing`. The
 forfeit pass is what discharges that premise for every program instead of
 assuming it.

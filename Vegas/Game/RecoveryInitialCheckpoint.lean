@@ -72,20 +72,4 @@ theorem RecoverySourceCheckpoint.initialized_point
   exact checkpoint_point_cast (phaseInitial_eq_raw plan (encodeInputs initial)).symm
     (RecoverySourceCheckpoint.initial setup mode plan initial supported)
 
-/-- A supported setup draw gives whole intendedness at the actual chosen
-initial checkpoint, including future guard satisfiability. -/
-theorem RecoverySourceCheckpoint.initialized_intended
-    (setup : Setup (Player := Player) (L := L)) (mode : ExecutionMode)
-    (plan : RuntimePhasePlan ((toEventGraph setup.program).withMode mode))
-    (wellFormed : setup.WellFormed)
-    (initial : State L setup.context) (supported : initial ∈ setup.initialLaw.support) :
-    let checkpoint := RecoverySourceCheckpoint.initialized setup mode plan initial supported
-    ProtocolState.Intended setup.program (checkpoint.residual.lift
-      (ProtocolState.entry checkpoint.residual.tail checkpoint.source)) := by
-  dsimp only
-  rw [RecoverySourceCheckpoint.initialized_point]
-  exact ProtocolState.intended_entry setup.program _
-    (setup.initialConfig_intended wellFormed supported)
-    (wellFormed.guardsSatisfiable initial supported)
-
 end Vegas

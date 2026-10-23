@@ -67,48 +67,6 @@ theorem runBehavioralFrom_remaining
   refine Eq.trans (bind_congr_on_support _ fun last supported => ?_) (PMF.bind_pure _)
   exact M.runBehavioralFrom_of_terminal profile _ (terminal last supported)
 
-theorem BehavioralAssessment.truncatedContinuationContext_remaining
-    (assessment : M.BehavioralAssessment) (horizon : Nat)
-    (bounded : E.BoundedHorizon horizon) (who : Player) (site : M.InformationSite who)
-    (depth : Nat) (clock : InformationSite.CommonDepth M site depth)
-    (payoff : E.History → ℝ) :
-    assessment.truncatedContinuationContext site payoff (horizon - depth) =
-      assessment.truncatedContinuationContext site payoff horizon := by
-  have outcomes : (fun alternative : M.BehavioralPolicy who =>
-      (assessment.belief who site).bind fun history =>
-        M.runBehavioralFrom
-          (GameTheory.Profile.update (sig := M.behavioralSignature)
-            assessment.strategy who alternative) (horizon - depth) history.1) =
-      (fun alternative => (assessment.belief who site).bind fun history =>
-        M.runBehavioralFrom
-          (GameTheory.Profile.update (sig := M.behavioralSignature)
-            assessment.strategy who alternative) horizon history.1) := by
-    funext alternative
-    apply bind_congr_on_support _
-    intro history _
-    rw [← clock history]
-    exact M.runBehavioralFrom_remaining _ horizon bounded history.1
-  exact congrArg (fun outcome => GameTheory.Protocol.Context.mk outcome payoff) outcomes
-
-theorem BehavioralAssessment.sequentialEquilibrium_remaining_iff
-    [∀ who (site : M.InformationSite who), Finite (M.InformationHistory who site.1)]
-    (assessment : M.BehavioralAssessment) (antichain : M.DecisionInformationAntichain)
-    (horizon : Nat) (bounded : E.BoundedHorizon horizon)
-    (depth : ∀ who, M.InformationSite who → Nat)
-    (clock : ∀ who site, InformationSite.CommonDepth M site (depth who site))
-    (payoff : Player → E.History → ℝ) :
-    assessment.IsSequentialEquilibriumFor antichain (fun who site =>
-      assessment.truncatedContinuationContext site (payoff who) (horizon - depth who site)) ↔
-    assessment.IsSequentialEquilibriumFor antichain (fun who site =>
-      assessment.truncatedContinuationContext site (payoff who) horizon) := by
-  have contexts : (fun who site => assessment.truncatedContinuationContext site
-      (payoff who) (horizon - depth who site)) =
-      (fun who site => assessment.truncatedContinuationContext site (payoff who) horizon) := by
-    funext who site
-    exact assessment.truncatedContinuationContext_remaining M horizon bounded who site
-      (depth who site) (clock who site) (payoff who)
-  rw [contexts]
-
 omit [DecidableEq Player] in
 /-- Under a global horizon, terminal play from a history is play for the
 remaining steps. -/
@@ -149,52 +107,10 @@ theorem BehavioralAssessment.isSequentialEquilibrium_iff_truncated_of_bounded
       (payoff who)
   rw [BehavioralAssessment.IsSequentialEquilibrium, contexts]
 
-/-- At a site of common decision depth, terminal play is play for the steps
-that remain before the global horizon. -/
-theorem BehavioralAssessment.continuationContext_eq_remaining
-    (assessment : M.BehavioralAssessment) (certificate : E.WellFoundedHistories)
-    {horizon : Nat} (bounded : E.BoundedHorizon horizon) {who : Player}
-    (site : M.InformationSite who) {depth : Nat}
-    (clock : InformationSite.CommonDepth M site depth) (payoff : E.History → ℝ) :
-    assessment.continuationContext certificate site payoff =
-      assessment.truncatedContinuationContext site payoff (horizon - depth) := by
-  rw [assessment.truncatedContinuationContext_remaining M horizon bounded who site depth clock,
-    assessment.continuationContext_eq_truncated_of_bounded certificate bounded]
-
-/-- Under a global horizon and a common decision clock, sequential equilibrium
-is equilibrium against play for the remaining steps at each site. -/
-theorem BehavioralAssessment.isSequentialEquilibrium_iff_remaining
-    [∀ who (site : M.InformationSite who), Finite (M.InformationHistory who site.1)]
-    (assessment : M.BehavioralAssessment) (antichain : M.DecisionInformationAntichain)
-    (certificate : E.WellFoundedHistories) {horizon : Nat}
-    (bounded : E.BoundedHorizon horizon) (depth : ∀ who, M.InformationSite who → Nat)
-    (clock : ∀ who site, InformationSite.CommonDepth M site (depth who site))
-    (payoff : Player → E.History → ℝ) :
-    assessment.IsSequentialEquilibrium antichain certificate payoff ↔
-      assessment.IsSequentialEquilibriumFor antichain (fun who site =>
-        assessment.truncatedContinuationContext site (payoff who) (horizon - depth who site)) :=
-  (assessment.isSequentialEquilibrium_iff_truncated_of_bounded M antichain certificate bounded
-    payoff).trans (assessment.sequentialEquilibrium_remaining_iff M antichain horizon bounded
-      depth clock payoff).symm
-
 namespace ActionRestriction
 
 variable {E T : ExecutionProtocol Player} {M : InformationModel E} {N : InformationModel T}
   (restriction : M.ActionRestriction N)
-
-omit [DecidableEq Player] in
-/-- At a retained site of common depth, terminal play of the larger protocol from
-an embedded history is play for the steps remaining before its horizon. -/
-theorem runBehavioralTerminalFrom_history_eq_remaining (certificate : T.WellFoundedHistories)
-    {horizon : Nat} (bounded : T.BoundedHorizon horizon)
-    (profile : ∀ who, N.BehavioralPolicy who) {who : Player} {site : M.InformationSite who}
-    {depth : Nat} (clock : InformationSite.CommonDepth N (restriction.site who site) depth)
-    (history : M.InformationHistory who site.1) :
-    N.runBehavioralTerminalFrom certificate profile (restriction.history history.1) =
-      N.runBehavioralFrom profile (horizon - depth) (restriction.history history.1) := by
-  rw [N.runBehavioralTerminalFrom_eq_remaining certificate profile bounded,
-    ← informationHistory_val restriction who site history,
-    clock (restriction.informationHistory who site history)]
 
 omit [DecidableEq Player] in
 /-- At a retained site of common depth, terminal play of the smaller protocol is

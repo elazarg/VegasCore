@@ -252,7 +252,6 @@ directory's aggregator imports every module in it.
 - [Phase Binding Clock Replay](../Vegas/Pending/PhaseBindingClockReplay.lean)
 - [Phase Binding Completion Memory](../Vegas/Pending/PhaseBindingCompletionMemory.lean)
 - [Phase Binding Count Transport](../Vegas/Pending/PhaseBindingCountTransport.lean)
-- [Phase Binding Encoding Law](../Vegas/Pending/PhaseBindingEncodingLaw.lean)
 - [Phase Binding Foreign Memory](../Vegas/Pending/PhaseBindingForeignMemory.lean)
 - [Phase Binding Foreign Submission](../Vegas/Pending/PhaseBindingForeignSubmission.lean)
 - [Global fresh-handle provenance for permitted raw bindings](../Vegas/Pending/PhaseBindingFreshness.lean)

@@ -102,25 +102,4 @@ theorem withLaw_eq_self_of_unpending_notOwing (wellFormed : setup.WellFormed)
   rw [(oneLaw law).trans (oneLaw (policy site.1)).symm]
   exact BehavioralPolicy.withLaw_eq_self _ _
 
-/-- Every local-law deviation has zero gain at an unpending clear nonlate
-debt-free recovery site, independently of the assessment beliefs and payoff. -/
-theorem localGain_eq_zero_of_unpending_notOwing (wellFormed : setup.WellFormed)
-    {who : Player} (site : (R).InformationSite who)
-    (notFree : ¬ FreeAgent setup leaks bounds Initial horizon scheduler ((R).agentAt site))
-    (notOwing : ¬ OwingAgent setup leaks bounds Initial horizon scheduler ((R).agentAt site))
-    (nonlate : ¬ KeyedAgent setup leaks bounds Initial horizon scheduler ((R).agentAt site))
-    {past : List (recoveryApplication (runtime setup) leaks).PlayerEntry}
-    {view : (recoveryApplication (runtime setup) leaks).PlayerView}
-    (atSite : site.1 = some (past, view))
-    (unpending : pendingEvent setup leaks who
-      (RecoveryProjection.information (runtime setup) leaks site.1) = none)
-    (assessment : (R).BehavioralAssessment) (law : PMF ((R).Choice who site.1))
-    (payoff : (RP).History → ℝ) (fuel : Nat) :
-    (assessment.truncatedContinuationContext site payoff fuel).value
-        ((assessment.strategy who).withLaw site.1 law) -
-      (assessment.truncatedContinuationContext site payoff fuel).value
-        (assessment.strategy who) = 0 := by
-  rw [withLaw_eq_self_of_unpending_notOwing setup leaks bounds horizon scheduler wellFormed site
-    notFree notOwing nonlate atSite unpending (assessment.strategy who) law, sub_self]
-
 end Vegas.RecoveryOnePacket

@@ -55,14 +55,4 @@ theorem BehavioralPolicy.admitted_of_valueBinding {who : Player} :
   | _, _, .reveal _ _ _ _ _ _ next, policy, binding, admission =>
       admitted_of_valueBinding next policy.2 binding admission
 
-/-- The policies admitted by the value interface are the value-binding
-policies. -/
-def valueBindingAdmittedEquiv {Γ : SourceCtx Player L} {O : Finset VarId}
-    (program : SourceProgram Player L Γ O) (who : Player) :
-    {policy : BehavioralPolicy who program //
-      policy.Admitted program (CommitmentInterface.values program)} ≃
-      ValueBindingPolicy who program :=
-  Equiv.subtypeEquivRight fun policy =>
-    BehavioralPolicy.admitted_values_iff_valueBinding program policy
-
 end Vegas.SourceProgram

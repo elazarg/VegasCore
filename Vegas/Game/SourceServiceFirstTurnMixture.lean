@@ -2,18 +2,16 @@
 
 import Vegas.Game.SourceServiceReachedDecoding
 
-/-! # The first-turn decision as a mixture over source actions
+/-! # First-turn decisions of a fixed source action
 
-At a completion boundary the owner of the current event decides at its first
-turn there. Its response at that turn is the source decision kernel of the
-decoded source position, compiled to a native response; at every other input
-it is silent. Since the configuration does not change before the event
-completes, the kernel is the same at whichever input the first turn falls, so
-the owner's policy is a behavioral mixture over source actions of the policies
-that decide one fixed action at the first turn
-(`Vegas.firstTurn_runUntil_mixture_update`). The source side has the matching
-decomposition: the continuation from the boundary draws the head action and
-continues from the configuration completed with it
+The owner's policy deciding one fixed source action at its first turn at an
+event, and silent at every other input (`Vegas.decidedTurnPolicy`), makes the
+canonical compiled decision of that action while a fresh call still fits the
+deadline (`Vegas.decidedOpportunity`). An action is effective when the compiled
+decision realizes it (`Vegas.EffectiveAction`), and silent when it is a
+disclosure of `false` (`Vegas.SilentAction`). On the source side, the
+continuation from a decoded configuration draws the head event's source action
+and continues from the configuration completed with it
 (`Vegas.SourceResidual.head_law`).
 -/
 
@@ -83,182 +81,11 @@ def SilentAction (event : (serviceGraph setup mode).EventId)
 
 variable {leaks}
 
-/-- Before its first turn at `event`, an owner's recorded entries were not
-turns at `event`, so a first-turn family is silent at all of them. -/
-private theorem turn_none_of_first (owner : Player) (event : (serviceGraph setup mode).EventId)
-    (past : List (serviceApplication setup mode deadline leaks).PlayerEntry)
-    (view : (serviceApplication setup mode deadline leaks).PlayerView)
-    (first : serviceTurn setup mode deadline leaks owner event past view = some 0)
-    (before : List (serviceApplication setup mode deadline leaks).PlayerEntry)
-    (entry : (serviceApplication setup mode deadline leaks).PlayerEntry)
-    (member : before ++ [entry] <+: past) :
-    serviceTurn setup mode deadline leaks owner event before entry.beforeView = none := by
-  apply sourceServiceTurn_of_not_turn
-  intro turn
-  unfold serviceTurn at first
-  split at first
-  · have counted := Option.some.inj first
-    rw [List.countP_eq_zero] at counted
-    have inPast : entry ∈ past :=
-      member.subset (List.mem_append_right _ (List.mem_singleton_self _))
-    exact counted entry inPast (decide_eq_true turn)
-  · cases first
-
 section Sequential
 
 variable {setup : Setup (Player := Player) (L := L)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
 
-/-- **First-turn mixture against any other players.** From a completion
-boundary of any players, if the source decision at the boundary configuration is
-`law` compiled to native responses, the owner's first-turn family runs, whatever
-the other players do, as the `law`-mixture of the policies deciding one fixed
-action. -/
-theorem firstTurn_runUntil_mixture_update {scheduler : (application setup leaks).Scheduler}
-    {players : Player → (application setup leaks).Policy} (event : (graph setup).EventId)
-    (execution : (application setup leaks).Execution)
-    (boundary : CompletionBoundary setup leaks scheduler players event.val execution)
-    (owner : Player) (owned : (graph setup).actor? event = some owner)
-    (bound : (graph setup).EventId → Nat) (turns : Nat)
-    (profile : BehavioralProfile setup.program) (law : PMF ((graph setup).Action event))
-    (policy : ∀ current : (application setup leaks).Execution,
-      current.application.config = execution.application.config →
-      sourceServiceCanonicalPolicy setup leaks profile owner (current.recall owner)
-          (current.observe (application setup leaks) owner) =
-        law.map fun action => (runtime setup).canonicalServiceDecision leaks owner
-          (current.recall owner) (current.observe (application setup leaks) owner) event action)
-    (others : Player → (application setup leaks).Policy) (count : Nat) :
-    (application setup leaks).runUntil scheduler
-        (Function.update others owner
-          (sourceServiceTurnFamily setup leaks bound profile owner event turns 0))
-        (fun final => event ∈ final.application.config.cut.completed) count execution =
-      law.bind fun action => (application setup leaks).runUntil scheduler
-        (Function.update others owner (decidedTurnPolicy setup leaks bound owner event action))
-        (fun final => event ∈ final.application.config.cut.completed) count execution := by
-  let app := application setup leaks
-  let stop := fun final : app.Execution => event ∈ final.application.config.cut.completed
-  let mixture := app.policyMixture law (decidedTurnPolicy setup leaks bound owner event)
-  let family := sourceServiceTurnFamily setup leaks bound profile owner event turns 0
-  obtain ⟨rank, ranked, seen⟩ := roundsFrom_ranked setup leaks scheduler players _ execution
-    boundary.supported
-  have rankEq := isPrefix_unique ranked boundary.ordered
-  subst rankEq
-  -- The first-turn family agrees with the mixture wherever the configuration is unchanged.
-  have agree (current : app.Execution)
-      (same : current.application.config = execution.application.config) :
-      family (current.recall owner) (current.observe app owner) =
-        mixture.policy (current.recall owner) (current.observe app owner) := by
-    rw [app.policyMixture_policy]
-    cases turn : serviceTurn setup .sequential (rankDeadline setup .sequential) leaks owner event
-        (current.recall owner) (current.observe app owner) with
-    | none =>
-        rw [show family (current.recall owner) (current.observe app owner) = _ from
-          app.turnScheduledPolicy_of_none _ _ _ _ _ _ turn]
-        have members : ∀ action, decidedTurnPolicy setup leaks bound owner event action
-            (current.recall owner) (current.observe app owner) =
-              app.silentPolicy (current.recall owner) (current.observe app owner) :=
-          fun action => app.turnScheduledPolicy_of_none _ _ _ _ _ _ turn
-        simp only [members, PMF.bind_const]
-        rfl
-    | some index =>
-        by_cases zero : index = 0
-        · subst zero
-          have prior : mixture.posterior (current.recall owner) = law := by
-            apply app.policyMixture_posterior_of_agree _ _ app.silentPolicy
-            intro before entry member action
-            exact app.turnScheduledPolicy_of_none _ _ _ _ _ _
-              (turn_none_of_first owner event _ _ turn before entry member)
-          rw [prior]
-          have selected : family (current.recall owner) (current.observe app owner) =
-              sourceServiceCanonicalOpportunity setup leaks bound profile owner event
-                (current.recall owner) (current.observe app owner) :=
-            app.turnScheduledPolicy_selected _ (0 : Fin (turns + 1)) _ _ _ _ turn
-          have members : ∀ action, decidedTurnPolicy setup leaks bound owner event action
-              (current.recall owner) (current.observe app owner) =
-                decidedOpportunity setup leaks bound owner event action (current.recall owner)
-                  (current.observe app owner) :=
-            fun action => app.turnScheduledPolicy_selected _ (0 : Fin 1) _ _ _ _ turn
-          rw [selected]
-          simp only [members]
-          unfold sourceServiceCanonicalOpportunity serviceCanonicalOpportunity decidedOpportunity
-          by_cases recorded : (runtime setup).eventRecorded leaks (current.recall owner) event
-          · simp only [recorded, ↓reduceIte, PMF.bind_const]
-          · by_cases fits : PublicView.InclusionFitsDeadline (runtime setup) bound
-                (current.observe app owner).application.publicView event
-            · simp only [recorded, fits, Bool.false_eq_true, ↓reduceIte]
-              have policyEq := policy current same
-              simp only [sourceServiceCanonicalPolicy] at policyEq
-              rw [policyEq, PMF.bind_map]
-              rfl
-            · simp only [recorded, fits, Bool.false_eq_true, ↓reduceIte, PMF.bind_const]
-        · have other : ∀ slot : Fin 1, some index ≠ some slot.val := by
-            intro slot equal
-            exact zero ((Option.some.inj equal).trans (Fin.val_eq_zero slot))
-          have otherFamily : ∀ slot : Fin (turns + 1), some (0 : Fin (turns + 1)) = some slot →
-              some index ≠ some slot.val := by
-            intro slot chosen equal
-            rw [← Option.some.inj chosen] at equal
-            exact zero (Option.some.inj equal)
-          rw [show family (current.recall owner) (current.observe app owner) = _ from
-            app.turnScheduledPolicy_unselected _ _ _ _ _ _ (fun slot chosen => by
-              simp only [turn]; exact otherFamily slot chosen)]
-          have members : ∀ action, decidedTurnPolicy setup leaks bound owner event action
-              (current.recall owner) (current.observe app owner) =
-                app.silentPolicy (current.recall owner) (current.observe app owner) :=
-            fun action => app.turnScheduledPolicy_unselected _ _ _ _ _ _ (fun slot chosen => by
-              simp only [turn]; exact other slot)
-          simp only [members, PMF.bind_const]
-          rfl
-  let invariant := fun current : app.Execution =>
-    ReadySeen setup leaks event.val current ∧
-      (current.application.config = execution.application.config ∨
-        current.application.config.cut.IsPrefix (event.val + 1))
-  have sameOf (current : app.Execution) (holds : invariant current) (running : ¬ stop current) :
-      current.application.config = execution.application.config := by
-    rcases holds.2 with same | advanced
-    · exact same
-    · exact (running ((advanced.2 event).mpr (Nat.lt_succ_self _))).elim
-  have congruent : app.runUntil scheduler
-      (Function.update others owner family) stop count execution =
-      app.runUntil scheduler (Function.update others owner mixture.policy)
-        stop count execution := by
-    apply app.runUntil_congr_of_agree scheduler _ _ _ invariant
-    · intro current holds running command _ middle moved who active
-      cases command with
-      | activate actor =>
-          have sameApp := activation_application setup leaks current middle actor moved
-          by_cases isOwner : who = owner
-          · subst isOwner
-            simp only [Function.update_self]
-            exact agree middle (by rw [sameApp]; exact sameOf current holds running)
-          · simp only [Function.update_of_ne isOwner]
-      | «include» _ => cases active
-      | application _ => cases active
-      | wait => cases active
-    · intro current holds running next reached
-      obtain ⟨nextSeen, nextConfig⟩ := round_prefix setup leaks scheduler _ event.val current
-        next (by rw [sameOf current holds running]; exact boundary.ordered) holds.1 reached
-      refine ⟨nextSeen, ?_⟩
-      rcases nextConfig with same | advanced
-      · exact Or.inl (same.trans (sameOf current holds running))
-      · exact Or.inr advanced
-    · exact ⟨seen, Or.inl rfl⟩
-  change app.runUntil scheduler (Function.update others owner family) stop
-    count execution = _
-  rw [congruent, ← app.runUntil_policyMixture scheduler law
-    (decidedTurnPolicy setup leaks bound owner event) owner _ stop count execution]
-  have prior : mixture.posterior (execution.recall owner) = law := by
-    apply app.policyMixture_posterior_of_agree _ _ app.silentPolicy
-    intro before entry member action
-    apply app.turnScheduledPolicy_of_none
-    apply sourceServiceTurn_of_not_turn
-    intro turn
-    have entryMember : entry ∈ execution.recall owner :=
-      member.subset (List.mem_append_right _ (List.mem_singleton_self _))
-    exact boundary.untouched event le_rfl owner entry entryMember
-      (PublicView.ownTurn?_spec _ owner event turn).1
-  change (mixture.posterior (execution.recall owner)).bind _ = _
-  rw [prior]
 section Head
 
 variable [Finite Player] (leaks) {profile : BehavioralProfile setup.program}

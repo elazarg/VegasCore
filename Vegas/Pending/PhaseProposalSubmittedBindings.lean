@@ -33,23 +33,6 @@ def PreparedBindingResult (original repaired : State graph)
     ∀ value, original.bindingResult candidate payload = .success value →
       repaired.bindingResult candidate payload = .success value
 
-/-- This is exactly the physical tail of the existing submission record;
-its logical old-generation record is deliberately not transported here. -/
-theorem preparedBindingResult_of_recorded
-    {nativeLeaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)}
-    {memory : BindingMemory runtime nativeLeaks} {owner : Player}
-    {original repaired : (runtime.reactiveApplication nativeLeaks).Execution}
-    (recorded : memory.RecordsSubmittedBindings runtime nativeLeaks owner original repaired)
-    (message : Message Player (WitnessedPacket graph)) (member : message ∈ original.network.inputs)
-    (sender : message.sender = owner) (event : graph.EventId) (candidate : Handle graph)
-    (call : message.payload.call = .commitment event candidate)
-    (payload : L.Ty) (outputEq : graph.outputLayout event = .binding owner payload)
-    (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
-      (graph.nodes event) = .bind owner payload)
-    (node : nodeView graph event = .bind owner payload outputEq codeEq) :
-    PreparedBindingResult original.application repaired.application candidate payload :=
-  (recorded message member sender event candidate call payload outputEq codeEq node).2
-
 omit [DecidableEq Player] in
 /-- Fixed physical candidate meanings transport the extracted typed tail
 through operations that may discard logical old-generation records. -/

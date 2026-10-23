@@ -13,34 +13,6 @@ The binding encoder chooses its physical slot before its private typed result.
 
 noncomputable section
 
-namespace Vegas.EventGraphRuntime.PhaseProposal
-
-open Interaction GameTheory.Math.Probability
-
-variable {Player : Type} [DecidableEq Player] [Fintype Player]
-  {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
-  (runtime : EventGraphRuntime graph)
-  (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket graph))
-  (bounds : MessageBounds graph) (who : Player)
-  (past : List (phaseApplication runtime leaks).PlayerEntry)
-  (view : (phaseApplication runtime leaks).PlayerView)
-
-/-- Exact packet pushforward after summing the actual local private preimages.
-No assumption equates the sizes of different alias fibers. -/
-theorem splitResponseLaw_packet
-    (law : PMF (ResponseClass runtime leaks bounds who past view))
-    (weight : ℝ) (nonnegative : 0 ≤ weight) (atMostOne : weight ≤ 1) :
-    (splitResponseLaw runtime leaks bounds who past view law weight nonnegative atMostOne).map
-        (fun response => (responseClass runtime leaks bounds who past view response).2) =
-      law.map (fun chosen => chosen.val.2) := by
-  have projected := congrArg (fun distribution :
-      PMF (ResponseClass runtime leaks bounds who past view) =>
-      distribution.map (fun chosen => chosen.val.2))
-    (splitResponseLaw_project runtime leaks bounds who past view law weight nonnegative atMostOne)
-  simpa only [PMF.map_comp, Function.comp_def, projectResponse] using projected
-
-end Vegas.EventGraphRuntime.PhaseProposal
-
 namespace Vegas.EventGraphRuntime.PhaseCount
 
 open Interaction EventGraph GameTheory.Math.Probability

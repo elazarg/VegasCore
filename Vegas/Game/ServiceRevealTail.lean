@@ -381,29 +381,6 @@ theorem CompiledPolicySuffix.revealTailMany (wholeProfile : BehavioralProfile se
           rw [show offset + (count + 1) = offset + 1 + count by omega]
           exact later
 
-/-- The residual profile keeps effective disclosures. -/
-theorem effective_revealTail {who : Player} :
-    ∀ (count : Nat) {Γ : SourceCtx Player L} {names : Finset VarId}
-      (program : SourceProgram Player L Γ names) (prefixed : RevealPrefix program count)
-      (profile : BehavioralProfile program) (registry : Registry Γ)
-      (revelations : Revelations Γ),
-      (profile who).EffectiveDisclosures program registry revelations →
-      ((revealTailProfile count program prefixed profile) who).EffectiveDisclosures
-        (revealTail count program prefixed).tail
-        (revealTailRegistry count program prefixed registry)
-        (revealTailRevelations count program prefixed revelations) := by
-  intro count
-  induction count with
-  | zero => intro Γ names program prefixed profile registry revelations effective; exact effective
-  | succ count ih =>
-      intro Γ names program prefixed profile registry revelations effective
-      cases program with
-      | ret _ => exact prefixed.elim
-      | sample _ _ _ _ => exact prefixed.elim
-      | commit _ _ _ _ _ => exact prefixed.elim
-      | reveal published owner name fresh selected unresolved next =>
-          exact ih next prefixed (afterReveal profile) _ _ effective.2
-
 /-- **The prefix decoder reads through leading disclosures.** -/
 theorem decodeSourcePrefix?_revealTail :
     ∀ (count : Nat) {Γ : SourceCtx Player L} {names : Finset VarId}

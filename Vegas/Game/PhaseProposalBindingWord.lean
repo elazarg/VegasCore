@@ -37,19 +37,6 @@ def phaseProposalBindingWord (block : CommitPrefix Γ O Δ P)
         ((fillCommitPrefix whole block suffix embedding store entry).view who)).map
           (fun action => ⟨action, false⟩)
 
-/-- No source word of an excluded owner is synthesized from a latent filled
-cell. Its automatic absent joints are fixed by the block-entry exclusions. -/
-theorem phaseProposalBindingWord_excluded (block : CommitPrefix Γ O Δ P)
-    (suffix : SourceProgram Player L Δ P)
-    (embedding : OutputEmbedding (inputLayout wholeΓ) (outputLayout whole)
-      (block.prepend suffix)) (excluded : Finset Player)
-    (store : Store (graphLayout whole)) (entry : SourceProgram.Config Player L Γ)
-    (who : Player) (inactive : who ∈ excluded) :
-    (phaseProposalBindingWord whole block suffix embedding excluded store entry).map
-        (fun joint => joint who) = List.replicate block.length none := by
-  simp only [phaseProposalBindingWord, List.map_map, Function.comp_def, inactive, ↓reduceIte]
-  simp
-
 /-- Equal current binding fields of surviving owners give the same complete
 addressed word. Foreign history, output order, and outside fields are irrelevant
 to this readout; the source reconstruction itself still uses actual joints. -/

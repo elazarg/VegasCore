@@ -87,17 +87,6 @@ theorem boundedRecoveryLaw_fullSupport (who : Player)
   · let := Fintype.ofFinite ((RecoveryModel).Choice who input)
     exact PMF.mem_support_uniformOfFintype choice
 
-/-- The lifted profile has full support at every full input if the original
-profile does, including inputs that are not genuine recovery decisions. -/
-theorem boundedRecoveryProfile_fullSupport
-    (profile : ∀ who, (NativeModel).BehavioralPolicy who)
-    (full : ∀ who input, FullSupport (profile who input)) :
-    ∀ who input, FullSupport
-      (boundedRecoveryProfile runtime leaks bounds initial horizon scheduler profile who input) :=
-  fun who input => boundedRecoveryLaw_fullSupport runtime leaks bounds initial horizon scheduler
-    who input _ (full who _)
-
-
 private theorem cast_choice_val (who : Player)
     {first second : (runtime.recoveryApplication leaks).Info} (same : first = second)
     (choice : (RecoveryModel).Choice who first) :
@@ -140,44 +129,5 @@ theorem boundedRecoveryLaw_map_val (who : Player)
   funext choice
   exact boundedRecoveryChoiceEquiv_projected_val runtime leaks bounds initial horizon scheduler
     who input clear choice
-
-open Classical in
-/-- The inverse choice relabeling recovers the native law exactly at every
-complete clear recovery input. -/
-theorem boundedRecoveryLaw_projected (who : Player)
-    (input : (runtime.recoveryApplication leaks).Info) (clear : ClearInput runtime leaks input)
-    (law : PMF ((NativeModel).Choice who (information runtime leaks input))) :
-    (boundedRecoveryLaw runtime leaks bounds initial horizon scheduler who input law).map
-        (boundedRecoveryChoiceEquiv runtime leaks bounds initial horizon scheduler who input
-          clear).symm = law := by
-  rw [boundedRecoveryLaw, dite_eq_left clear, PMF.map_comp]
-  convert PMF.map_id law using 1
-  congr 1
-  funext choice
-  exact (boundedRecoveryChoiceEquiv runtime leaks bounds initial horizon scheduler who input clear)
-    |>.symm_apply_apply choice
-
-omit [Fintype Player] in
-/-- Every full input actually observed at a clear recovery prefix is a complete
-clear lift, including all recalled private inputs and traffic. -/
-theorem clearInput_of_history
-    (history : ((runtime.recoveryApplication leaks).protocol initial horizon scheduler).History)
-    (clear : ∀ current, history.state = some current →
-      current.execution.application.excluded = ∅) (who : Player) :
-    ClearInput runtime leaks
-      (((runtime.recoveryApplication leaks).information initial horizon scheduler).infoOf who
-        history.trace) := by
-  simp only [ReactiveApplication.information, ReactiveApplication.info]
-  cases state : history.state with
-  | none => rfl
-  | some current =>
-      have restored : liftProtocolState runtime leaks
-          (protocolState runtime leaks (some current)) = some current := by
-        change some ⟨current.remaining, current.actor,
-          liftExecution runtime leaks (execution runtime leaks current.execution)⟩ = some current
-        rw [liftExecution_execution_of_history_clear runtime leaks initial horizon scheduler current
-          (state ▸ history.trace) (clear current state)]
-      unfold ClearInput
-      rw [← observe_projection, ← observe_lift, restored]
 
 end Vegas.EventGraphRuntime.RecoveryProjection

@@ -56,35 +56,4 @@ theorem binding_accepted_of_own_history
     ((app).uniqueIds_history scheduler initial horizon control trace)
     binding.active.toAssociationInvariant message member sender event candidate call request timely
 
-/-- A genuine counted current-attempt binding is physically accepted while
-ready and timely, without assuming its private value is openable or typed. -/
-theorem binding_accepted_of_history (bounds : MessageBounds graph)
-    (plan : RuntimePhasePlan graph) (inputs : PMF graph.Inputs) (horizon : Nat)
-    (scheduler : (app).Scheduler) {control : (app).Control}
-    (trace : ((onePacketMenu runtime leaks bounds).protocol
-      (inputs.map (PhaseRuntimeState.initial plan)) horizon scheduler).Trace (some control))
-    (message : Message Player (CommitAttemptPacket graph))
-    (member : message ∈ control.execution.network.inputs) (event : graph.EventId)
-    (candidate : Handle graph)
-    (call : message.payload.packet.call = .commitment event candidate)
-    (request : control.execution.application.SeedRequest message.sender
-      ⟨message.payload.attempt, event⟩)
-    (timely : control.execution.application.current.native.WithinDeadline runtime event) :
-    ∃ native next,
-      handle runtime control.execution.application.current.native
-        ⟨message.id, message.payload.packet.call⟩ = some native ∧
-      event ∈ native.config.cut.completed ∧
-      native.accepted (.inr event) = some candidate ∧
-      next = ({control.execution.application with current :=
-        control.execution.application.current.inclusionResult message.payload.packet.call native} :
-          PhaseRuntimeState graph).normalize ∧
-      (app).handle control.execution.application message = some next := by
-  let initial := inputs.map (PhaseRuntimeState.initial plan)
-  have raw := (onePacketMenu runtime leaks bounds).toRawTrace initial horizon scheduler trace
-  have clean := (onePacketMenu_countClean runtime leaks bounds scheduler).history initial horizon
-    (fun state _ => countClean_initial runtime leaks state) trace
-  exact binding_accepted_of_own_history runtime leaks plan inputs horizon scheduler raw
-    message.sender (fun other present _ => clean.2 other present) message member rfl event
-      candidate call request timely
-
 end Vegas.EventGraphRuntime.PhaseCount

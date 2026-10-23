@@ -89,14 +89,4 @@ theorem nativeProfile_option_apply
   rw [back] at mass
   exact mass
 
-theorem nativeProfile_fullSupport
-    (profile : ∀ who, (RecoveryModel).BehavioralPolicy who)
-    (full : ∀ who input, FullSupport (profile who input)) :
-    ∀ who input, FullSupport (nativeProfile runtime leaks initial horizon scheduler profile
-      who input) := by
-  intro who input choice
-  rw [nativeProfile, PMF.mem_support_map_iff]
-  let equivalent := choiceEquiv runtime leaks initial horizon scheduler who input
-  exact ⟨equivalent.symm choice, full who _ _, equivalent.apply_symm_apply choice⟩
-
 end Vegas.EventGraphRuntime.RecoveryProjection

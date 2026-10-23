@@ -13,14 +13,14 @@ import GameTheory.Math.Probability.Mixture
 **Tremble scale.** The intended step floor of an intended assessment is the
 smallest positive probability of one step of intended play under its strategy:
 a player's choice together with Nature's draw, including the initial draw
-(`Vegas.SourceProgram.Setup.intendedStepFloor`); every step of positive
-probability has at least that probability
-(`Vegas.SourceProgram.Setup.intendedStepFloor_le`). The tremble scale at index
-`n` and depth `T` is the floor to the power `T + 1`, divided by `n + 4`
+(`Vegas.SourceProgram.Setup.intendedStepFloor`), and lies in `(0, 1]`
+(`Vegas.SourceProgram.Setup.intendedStepFloor_pos`,
+`Vegas.SourceProgram.Setup.intendedStepFloor_le_one`). The tremble scale at
+index `n` and depth `T` is the floor to the power `T + 1`, divided by `n + 4`
 (`Vegas.trembleScale`). Along any sequence of floors in `(0, 1]` it is at most
-a quarter, and both the scale divided by the floor and its square divided by
-the floor to the power `T` tend to zero
-(`Vegas.tendsto_trembleScale_div`, `Vegas.tendsto_trembleScale_sq_div_pow`).
+a quarter (`Vegas.trembleScale_le_quarter`), and both the scale and the scale
+divided by the floor tend to zero
+(`Vegas.tendsto_trembleScale`, `Vegas.tendsto_trembleScale_div`).
 
 **As-if-honest play.** The intended game offers its intended menu at every
 source view, including views at which the owner holds a bad binding: the values
@@ -37,13 +37,9 @@ silence where there is no turn or the action does not encode
 **Components.** At an information state of the one-packet game, a trembled
 component puts the square of the scale on the uniform law over the menu, and
 the rest on a mixture giving the scale to an alternative and the remainder to a
-main law (`Vegas.trembledChoice`), so a main choice has probability
-`(1 - scale²)(1 - scale)` times its main law at every information state. The
-prescribed component sends the as-if-honest response, with silence as the
-timing deviation (`Vegas.prescribedComponent`); the waiting component keeps
-silence, with the as-if-honest response as the timing deviation
-(`Vegas.waitComponent`); the silent component keeps silence
-(`Vegas.silentComponent`). Each is fully supported for a positive scale.
+main law (`Vegas.trembledChoice`). The prescribed component sends the
+as-if-honest response, with silence as the timing deviation
+(`Vegas.prescribedComponent`).
 
 **Late-delivery key.** The pool key of a late-delivery decision is its owner,
 the operational part of its current view and of its recall (the contract's
@@ -113,26 +109,6 @@ theorem intendedStepFloor_le_one [Finite setup.intendedProtocol.History]
     exact (setup.mem_intendedStepMasses assessment
       ((setup.intendedStepMasses assessment).min'_mem nonempty)).2
   · exact le_rfl
-
-/-- Every step of intended play with positive probability has probability at
-least the intended step floor. -/
-theorem intendedStepFloor_le [Finite setup.intendedProtocol.History]
-    (assessment : setup.intendedModel.BehavioralAssessment)
-    (history next : setup.intendedProtocol.History)
-    (supported : next ∈ (setup.intendedModel.runBehavioralFrom assessment.strategy 1
-      history).support) :
-    setup.intendedStepFloor assessment ≤
-      (setup.intendedModel.runBehavioralFrom assessment.strategy 1 history next).toReal := by
-  classical
-  have member : (setup.intendedModel.runBehavioralFrom assessment.strategy 1 history
-      next).toReal ∈ setup.intendedStepMasses assessment := by
-    unfold intendedStepMasses
-    rw [Finset.mem_filter, Finset.mem_image]
-    exact ⟨⟨(history, next), by simp, rfl⟩,
-      ENNReal.toReal_pos ((PMF.mem_support_iff _ _).mp supported) (PMF.apply_ne_top _ _)⟩
-  unfold intendedStepFloor
-  rw [dite_eq_left ⟨_, member⟩]
-  exact Finset.min'_le _ _ member
 
 end Vegas.SourceProgram.Setup
 
@@ -206,25 +182,6 @@ theorem tendsto_trembleScale_div :
   have cast : (0 : ℝ) ≤ n := Nat.cast_nonneg n
   rw [div_le_div_iff₀ (by positivity) (by positivity)]
   nlinarith [pow_nonneg floorPos.le depth]
-
-/-- **The squared tremble scale is negligible against the floor to the power
-of the depth.** -/
-theorem tendsto_trembleScale_sq_div_pow :
-    Tendsto (fun n => trembleScale (floors n) depth n ^ 2 / floors n ^ depth) atTop
-      (nhds 0) := by
-  refine tendsto_of_le_inverse _
-    (fun n => div_nonneg (sq_nonneg _) (pow_nonneg (positive n).le _)) fun n => ?_
-  have floorPos := positive n
-  have rewritten : trembleScale (floors n) depth n ^ 2 / floors n ^ depth =
-      floors n ^ (depth + 2) / ((n : ℝ) + 4) ^ 2 := by
-    unfold trembleScale
-    field_simp
-    ring
-  rw [rewritten]
-  have power : floors n ^ (depth + 2) ≤ 1 := pow_le_one₀ floorPos.le (le_one n)
-  have cast : (0 : ℝ) ≤ n := Nat.cast_nonneg n
-  rw [div_le_div_iff₀ (by positivity) (by positivity)]
-  nlinarith [pow_nonneg floorPos.le (depth + 2)]
 
 end Scale
 
@@ -318,51 +275,6 @@ def prescribedComponent (assessment : setup.intendedModel.BehavioralAssessment) 
   trembledChoice setup leaks bounds initial horizon scheduler scale nonnegative le_one who info
     (honestChoice setup leaks bounds initial horizon scheduler assessment who info)
     (PMF.pure (silenceChoice setup leaks bounds initial horizon scheduler who info))
-
-/-- **The waiting component.** Keep silence; the timing deviation is the
-as-if-honest response. -/
-def waitComponent (assessment : setup.intendedModel.BehavioralAssessment) (scale : ℝ)
-    (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1) (who : Player)
-    (info : (application setup leaks).Info) :
-    PMF ((onePacketModel setup leaks bounds initial horizon scheduler).Choice who info) :=
-  trembledChoice setup leaks bounds initial horizon scheduler scale nonnegative le_one who info
-    (PMF.pure (silenceChoice setup leaks bounds initial horizon scheduler who info))
-    (honestChoice setup leaks bounds initial horizon scheduler assessment who info)
-
-/-- **The silent component.** Keep silence, with no timing deviation. -/
-def silentComponent (scale : ℝ) (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1) (who : Player)
-    (info : (application setup leaks).Info) :
-    PMF ((onePacketModel setup leaks bounds initial horizon scheduler).Choice who info) :=
-  trembledChoice setup leaks bounds initial horizon scheduler scale nonnegative le_one who info
-    (PMF.pure (silenceChoice setup leaks bounds initial horizon scheduler who info))
-    (PMF.pure (silenceChoice setup leaks bounds initial horizon scheduler who info))
-
-/-- A trembled component with a positive scale is fully supported. -/
-theorem trembledChoice_fullSupport {scale : ℝ} (positive : 0 < scale) (le_one : scale ≤ 1)
-    (who : Player) (info : (application setup leaks).Info)
-    (main alternative :
-      PMF ((onePacketModel setup leaks bounds initial horizon scheduler).Choice who info)) :
-    FullSupport (trembledChoice setup leaks bounds initial horizon scheduler scale positive.le
-      le_one who info main alternative) := by
-  intro choice
-  let := Fintype.ofFinite
-    ((onePacketModel setup leaks bounds initial horizon scheduler).Choice who info)
-  exact mem_support_mix_left _ _ _ (pow_pos positive 2) (PMF.mem_support_uniformOfFintype choice)
-
-/-- The real mass a trembled component gives a choice. -/
-theorem trembledChoice_apply_toReal (scale : ℝ) (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1)
-    (who : Player) (info : (application setup leaks).Info)
-    (main alternative :
-      PMF ((onePacketModel setup leaks bounds initial horizon scheduler).Choice who info))
-    (choice : (onePacketModel setup leaks bounds initial horizon scheduler).Choice who info) :
-    (trembledChoice setup leaks bounds initial horizon scheduler scale nonnegative le_one who info
-        main alternative choice).toReal =
-      scale ^ 2 * ((bounds.onePacketMenu (runtime setup) leaks).uniformPolicy initial horizon
-          scheduler who info choice).toReal +
-        (1 - scale ^ 2) * (scale * (alternative choice).toReal +
-          (1 - scale) * (main choice).toReal) := by
-  unfold trembledChoice
-  rw [mix_apply_toReal, mix_apply_toReal]
 
 end Components
 

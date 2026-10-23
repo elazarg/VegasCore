@@ -100,36 +100,36 @@ joint law. It is not pursued.
   none in the future, at every initialized history
   (`reactive_history_invariant`); a timestamp is set to the clock of the
   transition in which its event becomes ready and is never restarted
-  (`reactive_transition_activationStart`); it is kept until the event completes
+  ([`reactive_transition_activationStart`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/ReactiveServiceOpportunity.lean#L64)); it is kept until the event completes
   (`reactive_respond_progress`, `reactive_environment_progress`). The state has
   no grant cursor (`EventGraphRuntime.State`).
   Clock: a response never moves the clock (`reactive_respond_clock`) and a
   scheduler command moves it by one exactly for `EnvironmentCommand.advanceClock`
   (`reactive_environmentStep_clock`); the source runtime's deadline is the
-  event index plus one (`runtime_deadline`).
+  event index plus one ([`runtime_deadline`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/RevealService.lean#L130)).
   Binding: acceptance records the submitted handle and its immutable typed
   meaning, failure for an unprepared or wrong-typed candidate
   (`handle_commitment_eq`, `submitStep_commitment_fixed`,
   `handle_lookup_of_not_fresh`); the environment sees the same envelope for
-  every private meaning (`reactiveBinding_observation`).
+  every private meaning ([`reactiveBinding_observation`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/ReactiveRuntime.lean#L258)).
   Resolution: canonical FALSE is silence
   (`canonicalServiceDecision_resolution_false`); TRUE whose owner-local
   validation fails is silence (`canonicalServiceDecision_resolution_unvalidated`);
   TRUE whose validation succeeds emits the opening of the owner's accepted
   handle with the validated value and its authentic certificate
-  (`history_canonicalServiceDecision_resolution_validated`). The packet
+  ([`history_canonicalServiceDecision_resolution_validated`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/ReactiveCanonicalResolution.lean#L162)). The packet
   language (`EventGraphRuntime.Payload`) has no withholding payload.
-  Silence: a silent response transmits nothing (`trafficStep_silent`);
+  Silence: a silent response transmits nothing ([`trafficStep_silent`](https://github.com/elazarg/VegasCore/blob/research-tree/Interaction/ReactiveTrafficAudit.lean#L79));
   resolution expiry executes source FALSE with publication failure
   (`environmentStep_expire_resolve_eq`) and changes no public binding omission
-  (`missedBinding_expire_of_not_binding`, `missedBindingBy_expire_of_not_binding`),
+  ([`missedBinding_expire_of_not_binding`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/ReactiveBindingOmission.lean#L100), [`missedBindingBy_expire_of_not_binding`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/ReactiveServiceAudit.lean#L60)),
   and a charge needs a traffic verdict or such an omission
   (`serviceAudit_charge`).
   Binding expiry: executes source failure (`environmentStep_expire_bind_eq`)
   and, without an accepted handle, produces the public omission read from the
   record (`missedBinding_expire`, `State.publicView_missedBinding`).
   Authorship: every envelope in the network is a fresh emission recorded in its
-  author's recall (`history_provenance`, `trafficStep_submit`), and pending and
+  author's recall (`history_provenance`, [`trafficStep_submit`](https://github.com/elazarg/VegasCore/blob/research-tree/Interaction/ReactiveTrafficAudit.lean#L84)), and pending and
   ledger identifiers stay distinct (`idsDistinct_history`).
   Causal evidence: every emitted packet carries exactly the token issued by the
   public view recorded with its response, so a present token means the
@@ -138,14 +138,14 @@ joint law. It is not pursued.
   a missing or foreign token (`reactiveApplication_handle_of_not_tokenValid`).
   Packet verdict: the audit's verdict depends on the traffic only through the
   signed envelopes and otherwise only on the settled record of final public view
-  and receipts (`sourceServiceAudit_congr`); a packet of a completed event is
+  and receipts ([`sourceServiceAudit_congr`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceAudit.lean#L64)); a packet of a completed event is
   permitted only with an accepting receipt and settled content
   (`SettledRecord.permits_eq_false_of_settled`, `SettledRecord.permits_of_accepted`).
   Enforcement: one charge per owner, from the sampled authentic traffic or a
   public binding omission (`serviceAudit_charge`,
-  `serviceAudit_charge_of_omission`), collected only at settlement
-  (`settlementAudit_charge_unsettled`), while play continues and the omission
-  persists (`reactiveMissedBindingInvariant`).
+  [`serviceAudit_charge_of_omission`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/ReactiveServiceAudit.lean#L145)), collected only at settlement
+  ([`settlementAudit_charge_unsettled`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/ReactiveServiceAudit.lean#L179)), while play continues and the omission
+  persists ([`reactiveMissedBindingInvariant`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/ReactiveBindingOmission.lean#L129)).
 - [x] **A2. A non-calendar builder satisfies the contract.** Evidence: the
   fixed linear scheduler of
   [CommittedResolutionService](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommittedResolutionService.lean)
@@ -200,7 +200,7 @@ joint law. It is not pursued.
   results and realized settlement, up to an error that vanishes with the
   deferral weight, and their every transmitted packet is permitted by the final
   record against arbitrary foreign raw play.
-  Evidence: `sourceServiceClients_honestExecution`
+  Evidence: [`sourceServiceClients_honestExecution`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceTurnSettlement.lean#L232)
   ([SourceServiceTurnSettlement](../Vegas/Game/SourceServiceTurnSettlement.lean)).
   For every scheduler satisfying `AsyncContract` and `AsyncTimely`, every turn
   timing and every source profile, the clients (the turn-counted policy of the
@@ -220,7 +220,7 @@ joint law. It is not pursued.
   first-turn limit's joint law is exact (`sourceServiceFirstTurn_settlement_law`:
   no public binding omission by `sourceServiceFirstTurn_no_miss`, permitted packets by
   `sourceServiceTurnPolicy_owner_settled`). The information-model form for
-  admissible menus is `sourceServiceClients_settlement_lawError`.
+  admissible menus is [`sourceServiceClients_settlement_lawError`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceTurnSettlement.lean#L358).
 - [ ] **S2. One common native consistency sequence.** One fully mixed family
   over source trembles, timing and raw responses, with exceptional mass
   negligible relative to clean reach on every information set that clean play
@@ -240,20 +240,20 @@ joint law. It is not pursued.
   ([ReachBounds](../GameTheoryExtensions/Analysis/Protocol/ReachBounds.lean)):
   a history's weight is its predecessor's times its last step
   (`historyReachWeight_eq_prior_mul`), so a history through a light step is
-  light (`historyReachWeight_le_of_step`), a history whose every step has mass
+  light ([`historyReachWeight_le_of_step`](https://github.com/elazarg/VegasCore/blob/research-tree/GameTheoryExtensions/Analysis/Protocol/ReachBounds.lean#L87)), a history whose every step has mass
   at least `c` weighs at least `c` to the power of the fuel
-  (`pow_fuel_le_historyReachWeight`, with per-player step bounds from
-  `ofReal_prod_mul_le_runBehavioralFrom_one`), and on a finite set the light
+  ([`pow_fuel_le_historyReachWeight`](https://github.com/elazarg/VegasCore/blob/research-tree/GameTheoryExtensions/Analysis/Protocol/ReachBounds.lean#L128), with per-player step bounds from
+  [`ofReal_prod_mul_le_runBehavioralFrom_one`](https://github.com/elazarg/VegasCore/blob/research-tree/GameTheoryExtensions/Analysis/Protocol/ReachBounds.lean#L142)), and on a finite set the light
   mass is at most `card · τ / m` times the heavy mass
-  (`sum_light_le_mul_sum_heavy`). No native sequence over the actual runtime is
+  ([`sum_light_le_mul_sum_heavy`](https://github.com/elazarg/VegasCore/blob/research-tree/GameTheoryExtensions/Analysis/Protocol/ReachBounds.lean#L207)). No native sequence over the actual runtime is
   constructed.
 - [ ] **S3. Joint source and traffic law at every native information set.**
   Actual reach weights couple legal source actions, chance, public results,
   original own recall and traffic, including foreign WAIT likelihoods and
   hidden builder history, so that native beliefs are derived, not chosen.
   Partial evidence: [`mixed_bob_reach_bound`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommittedResolutionService.lean#L1519) for the example;
-  `bayesBelief_bind_eq_conditional_passage` (beliefs at a site as conditional
-  passage laws, abstract); `bayesBelief_light_le` (a site's Bayes belief of
+  [`bayesBelief_bind_eq_conditional_passage`](https://github.com/elazarg/VegasCore/blob/research-tree/GameTheoryExtensions/Analysis/Protocol/PassageBayes.lean#L137) (beliefs at a site as conditional
+  passage laws, abstract); [`bayesBelief_light_le`](https://github.com/elazarg/VegasCore/blob/research-tree/GameTheoryExtensions/Analysis/Protocol/ReachBounds.lean#L163) (a site's Bayes belief of
   histories whose mass is at most `η` times the rest's is at most `η`, abstract).
 - [ ] **S4. WAIT comparisons.** At every retained owner input, every whole
   continuation that waits, including later attempts under selective inclusion
@@ -267,10 +267,10 @@ joint law. It is not pursued.
   (`SourceResidual.step`); from a decoding in the intended game a completion
   stays in it or is a departure of the event's actor, who is then indebted
   unless the departure is a failed binding
-  (`SourceResidual.intended_or_departure`); and a decoded debt is paid by a
+  ([`SourceResidual.intended_or_departure`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceDecodedDebt.lean#L86)); and a decoded debt is paid by a
   failed reveal on every terminal history of terminal play from it, under any
   players and any scheduler that completes play
-  (`decoded_indebted_failedReveals`,
+  ([`decoded_indebted_failedReveals`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceDecodedDebt.lean#L221),
   [SourceServiceDecodedDebt](../Vegas/Game/SourceServiceDecodedDebt.lean)).
   No WAIT comparison is proved.
 - [ ] **S5. Charged deviations before the first charge.** Every forbidden or
@@ -300,7 +300,7 @@ joint law. It is not pursued.
   private material); every excluded response transmits and is not such a
   submission ([`AsyncServiceSpec.riskRestriction_extra_charged`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceRiskExtension.lean#L146)). Committing it
   dooms its author ([`respond_doomed`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceDoomedCollection.lean#L88)): a failed send-time check is a breach
-  (`doomed_of_breach`), and a second call for a recorded event leaves two
+  ([`doomed_of_breach`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/ServiceSettledEvidence.lean#L1072)), and a second call for a recorded event leaves two
   identifiers for one event ([`recalled_call_emitted`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceDoomedCollection.lean#L38)). Doom persists to every
   complete settlement, which then forbids some actual packet of the author
   ([`doomedAt_forbidden_reaches`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceDoomedCollection.lean#L218)), and final-record coverage bounds the
@@ -334,7 +334,7 @@ joint law. It is not pursued.
   history. At every other site play is free, chosen by rational completion. H and S1–S7 compose into
   the target theorem for stage S, with the joint law and no charge or forfeit
   on paths.
-  Partial evidence: `exists_sequentialEquilibrium_limit_of_copied_comparisons_of_lawError`
+  Partial evidence: [`exists_sequentialEquilibrium_limit_of_copied_comparisons_of_lawError`](https://github.com/elazarg/VegasCore/blob/research-tree/GameTheoryExtensions/Analysis/Protocol/CopiedSiteLimit.lean#L602)
   ([CopiedSiteLimit](../GameTheoryExtensions/Analysis/Protocol/CopiedSiteLimit.lean)),
   the abstract limit theorem for this split: copied information agents play
   prescribed laws converging to a compiled limit, free agents are completed
@@ -344,7 +344,7 @@ joint law. It is not pursued.
   perturbed source laws, there is a native sequential equilibrium with the
   source law that agrees with the compiled limit at every copied site. Its
   premises are not constructed for the actual runtime. It is the pinned-tremble
-  case of `exists_sequentialEquilibrium_limit_of_component_comparisons_of_lawError`
+  case of [`exists_sequentialEquilibrium_limit_of_component_comparisons_of_lawError`](https://github.com/elazarg/VegasCore/blob/research-tree/GameTheoryExtensions/Analysis/Protocol/CopiedSiteLimit.lean#L455)
   (same module), which covers sites where the timing is completed: every agent
   plays a mixture of finitely many fully supported component laws with weights
   chosen by rational completion (`exists_consistent_component_completion`,
@@ -354,13 +354,13 @@ joint law. It is not pursued.
   single choice is negligible, bounded by a source gain mixture, or bounded by
   the gain of a mixture of the agent's own components at the same index (the
   latter discharged for a choice trembled inside its component by
-  `withLaw_comparison_gain_le_mix_add`), and both obligations may assume the
+  [`withLaw_comparison_gain_le_mix_add`](https://github.com/elazarg/VegasCore/blob/research-tree/GameTheoryExtensions/Analysis/Protocol/CopiedSiteLimit.lean#L86)), and both obligations may assume the
   weights are optimal among component mixtures. Source side for the
-  intended game: `Setup.intended_auditedSource` (every intended SE is the limit
+  intended game: [`Setup.intended_auditedSource`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/IntendedAuditedOutcome.lean#L82) (every intended SE is the limit
   of a fully mixed Bayes sequence and is rational for the audited utility of
   store and collection probabilities, at the intended horizon), with
-  `Setup.auditedUtility_runtime` (the same utility is the audited terminal
-  payoff on the runtime) and `TerminalAudit.clean_of_law_eq` (a law equality on
+  [`Setup.auditedUtility_runtime`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/IntendedAuditedOutcome.lean#L128) (the same utility is the audited terminal
+  payoff on the runtime) and [`TerminalAudit.clean_of_law_eq`](https://github.com/elazarg/VegasCore/blob/research-tree/GameTheoryExtensions/Analysis/Protocol/TerminalAudit.lean#L116) (a law equality on
   readout and collection probabilities with a charge-free source gives no charge
   on paths and the joint settlement law)
   ([IntendedAuditedOutcome](../Vegas/Game/IntendedAuditedOutcome.lean)).
@@ -385,7 +385,7 @@ joint law. It is not pursued.
   Pooled completion and composition: agents in one pool share a weight vector
   (`exists_consistent_pooled_completion`, rational for the sum of its
   members' conditional continuation gains, so a part within error of the best
-  for every member is near-optimal for each, `pooled_member_le_of_common_best`);
+  for every member is near-optimal for each, [`pooled_member_le_of_common_best`](https://github.com/elazarg/VegasCore/blob/research-tree/GameTheoryExtensions/Analysis/Protocol/ComponentCompletion.lean#L244));
   `PooledLimitCertificate` bundles the pools, components and obligations of
   `exists_sequentialEquilibrium_limit_of_pooled_comparisons_of_lawError` for one
   source sequence. Given such a certificate on the risk-menu model for every
@@ -431,11 +431,11 @@ joint law. It is not pursued.
   duration, counted by the runtime from the clock at which the event became
   ready (`serviceRuntime setup mode deadline`); the default `graph setup` and
   `runtime setup` are its sequential instance with `rankDeadline`
-  (`graph_eq_serviceGraph`, `runtime_eq_serviceRuntime`), so every existing
+  ([`graph_eq_serviceGraph`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/RevealService.lean#L86), [`runtime_eq_serviceRuntime`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/RevealService.lean#L126)), so every existing
   statement is unchanged. In every mode a ready event is its actor's turn
   (`serviceOwnTurn?_of_ready`); a ready public event is the only ready event in
-  every mode that keeps reveal dependencies (`soleReady_of_ready_public`) and a
-  ready sample is in every mode (`soleReady_of_ready_public_data`).
+  every mode that keeps reveal dependencies ([`soleReady_of_ready_public`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/RevealService.lean#L169)) and a
+  ready sample is in every mode ([`soleReady_of_ready_public_data`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/RevealService.lean#L182)).
   `AsyncServiceSpec` carries the dependency mode and a configured deadline
   per event, with the contract and timeliness stated against that deadline;
   the application, initial law, readout, base utility, audit, canonical, turn
@@ -451,7 +451,7 @@ joint law. It is not pursued.
   a maximal run of commitments is one phase, `asyncDeviation_block_factorization`)
   and the first-turn clients have the source law (`Vegas.honestLaw`,
   `firstTurn_readout_law`), so the settlement law
-  (`sourceServiceClients_settlement_lawError`) and the asynchronous Nash pins
+  ([`sourceServiceClients_settlement_lawError`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceTurnSettlement.lean#L358)) and the asynchronous Nash pins
   (`async_client_nash_correspondence` and the four related pins) take
   `(serviceGraph service.setup service.mode).BarrierOrdered` instead of the
   default configuration. The extension of an audited risk-menu equilibrium to

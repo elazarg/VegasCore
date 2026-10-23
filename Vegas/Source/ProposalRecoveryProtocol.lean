@@ -96,28 +96,11 @@ def proposalRecoveryEraseTrace : ∀ {state : setup.proposalRecoveryProtocol.Sta
   | start => rfl
   | extend _ _ _ _ ih => exact congrArg Nat.succ ih
 
-theorem proposalRecovery_rank_step [Fintype Player]
-    {before after : setup.proposalRecoveryProtocol.State}
-    (joint : Player → Option (ProposalRecoveryMove Player L))
-    (legal : setup.proposalRecoveryProtocol.Legal before joint)
-    (supported : after ∈ (setup.proposalRecoveryProtocol.step before ⟨joint, legal⟩).support) :
-    setup.commitRecoveryRank after < setup.commitRecoveryRank before :=
-  setup.commitRecoveryRank_step (proposalRecoveryJoint joint)
-    (setup.proposalRecovery_erase_legal joint legal) supported
-
 theorem proposalRecoveryProtocol_bounded [Fintype Player] :
     setup.proposalRecoveryProtocol.BoundedHorizon
       ((Fintype.card Player + 1) * (instructionCount setup.program + 1)) := by
   intro state trace enough
   apply setup.commitRecoveryProtocol_bounded state (setup.proposalRecoveryEraseTrace trace)
   simpa only [setup.proposalRecoveryEraseTrace_length] using enough
-
-theorem proposalRecoveryProtocol_terminates [Finite Player] :
-    setup.proposalRecoveryProtocol.WellFoundedPlay := by
-  let := Fintype.ofFinite Player
-  apply wellFoundedPlay_of_rank (E := setup.proposalRecoveryProtocol) setup.commitRecoveryRank
-  intro before after event
-  obtain ⟨joint, legal, supported⟩ := event
-  exact setup.proposalRecovery_rank_step joint legal supported
 
 end Vegas.SourceProgram.Setup

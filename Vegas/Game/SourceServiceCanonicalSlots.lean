@@ -6,14 +6,13 @@ import Vegas.Pending.ReactiveCandidateBudget
 /-! # Canonical slots on the support of the turn-counted policy
 
 The audit expects a commitment of `who` at the prepared slot numbered by
-`who`'s completed bindings. Play on the support of the turn-counted policy,
-deferral trembles included and under every scheduler, keeps every prepared slot
-of `who` at or above that count fresh, except the count itself while a binding
-of `who` it has already submitted for is unfinished
-(`Vegas.sourceServiceTurnPolicy_canonicalSlotsFresh`). Consequently, at each of
+`who`'s completed bindings. On the support of rounds in which `who` follows the
+turn-counted policy, deferral trembles included and under every scheduler,
+`who` submits only at its turns, and every prepared slot it has used lies below
+that count, or at it while a binding of `who` it has already submitted for is
+unfinished (`Vegas.canonicalSlots_roundsFrom`). Consequently, at each of
 `who`'s turns at an event it has not yet submitted for, the counted slot is
-fresh and the canonical decision commits there
-(`Vegas.canonicalSlot_fresh_at_turn`).
+unused and therefore fresh (`Vegas.canonicalSlot_fresh_of_used`).
 
 The invariant is carried by the slots `who` has actually used: a prepared
 slot that `who` never named is fresh on every legal history
@@ -266,15 +265,6 @@ def PendingBinding (execution : (serviceApplication setup mode deadline leaks).E
     (who : Player) : Prop := ∃ event payload, (serviceGraph setup mode).outputLayout event =
     .binding who payload ∧ event ∉ execution.application.config.cut.completed ∧
     (serviceRuntime setup mode deadline).eventRecorded leaks (execution.recall who) event = true
-
-/-- Every prepared slot of `who` at or above its public binding count is fresh,
-except the count slot itself while a binding of `who` it has submitted for is
-unfinished. -/
-def CanonicalSlotsFresh (execution : (serviceApplication setup mode deadline leaks).Execution)
-    (who : Player) : Prop := ∀ serial, execution.application.publicView.bindingCount who ≤ serial →
-    execution.application.candidates.lookup (who, .prepared serial) = .fresh ∨
-    (serial = execution.application.publicView.bindingCount who ∧ PendingBinding setup leaks
-        execution who)
 
 /-- Every prepared slot `who` has used lies below its public binding count, or
 at it while a binding of `who` it has submitted for is unfinished. -/
@@ -587,64 +577,6 @@ theorem canonicalSlots_roundsFrom
         (follows ▸ serviceTurnPolicy_submitsCanonically bound turns timing profile who)
         (follows ▸ sourceServiceTurnPolicy_submitsAtTurn setup leaks bound turns timing profile
           who) trace atTurn valid moved
-
-/-- **Canonical slots stay fresh on the support of the turn-counted policy.**
-Under every scheduler, in every profile in which `who` follows the
-turn-counted policy, deferral trembles included, every prepared slot of `who`
-at or above its public binding count is fresh, except the count slot itself
-while a binding of `who` it has submitted for is unfinished. -/
-theorem sourceServiceTurnPolicy_canonicalSlotsFresh
-    (scheduler : (serviceApplication setup mode deadline leaks).Scheduler)
-    (players : Player → (serviceApplication setup mode deadline leaks).Policy) (who : Player)
-    {bound : (serviceGraph setup mode).EventId → Nat} {turns : Nat}
-    (timing : TurnTiming setup turns mode)
-    (profile : BehavioralProfile setup.program)
-    (follows : players who = serviceTurnPolicy setup mode deadline leaks bound turns timing
-        profile who)
-    (count : Nat) (execution : (serviceApplication setup mode deadline leaks).Execution)
-    (reached : execution ∈
-        ((serviceApplication setup mode deadline leaks).roundsFrom (serviceInitialLaw setup mode)
-        scheduler players count).support) :
-    CanonicalSlotsFresh setup leaks execution who := by
-  obtain ⟨_, valid⟩ := canonicalSlots_roundsFrom scheduler players who timing profile follows
-    count execution reached
-  obtain ⟨trace⟩ := (serviceApplication setup mode deadline leaks).raw_trace_roundsFrom
-      (serviceInitialLaw setup mode) count scheduler players count le_rfl execution reached
-  rw [serviceInitialLaw_eq_inputs] at trace
-  have candidates : (serviceRuntime setup mode deadline).CandidateRecall leaks execution :=
-    (serviceRuntime setup mode deadline).candidateRecall_history leaks _ count scheduler trace
-  intro serial above
-  by_cases used : serial ∈ (serviceRuntime setup mode deadline).submittedCandidateSlots leaks
-      (execution.recall who)
-  · rcases valid serial used with lower | pending
-    · omega
-    · exact Or.inr pending
-  · exact Or.inl (candidates who serial used)
-
-/-- At `who`'s turn at an event it has not submitted for, the counted slot is
-fresh, so the canonical decision commits there. -/
-theorem canonicalSlot_fresh_at_turn
-    (scheduler : (serviceApplication setup mode deadline leaks).Scheduler)
-    (players : Player → (serviceApplication setup mode deadline leaks).Policy) (who : Player)
-    {bound : (serviceGraph setup mode).EventId → Nat} {turns : Nat}
-    (timing : TurnTiming setup turns mode) (profile : BehavioralProfile setup.program)
-    (follows : players who = serviceTurnPolicy setup mode deadline leaks bound turns timing profile
-        who) (count : Nat) (execution : (serviceApplication setup mode deadline leaks).Execution)
-    (reached : execution ∈
-        ((serviceApplication setup mode deadline leaks).roundsFrom (serviceInitialLaw setup mode)
-        scheduler players count).support) (event : (serviceGraph setup mode).EventId)
-    (turn : execution.application.publicView.ownTurn? who = some event)
-    (unrecorded : (serviceRuntime setup mode deadline).eventRecorded leaks (execution.recall who)
-        event = false) : execution.application.candidates.lookup
-      (who, .prepared (execution.application.publicView.bindingCount who)) = .fresh := by
-  obtain ⟨atTurn, _⟩ := canonicalSlots_roundsFrom scheduler players who timing profile follows
-    count execution reached
-  obtain ⟨trace⟩ := (serviceApplication setup mode deadline leaks).raw_trace_roundsFrom
-      (serviceInitialLaw setup mode) count scheduler players count le_rfl execution reached
-  rcases sourceServiceTurnPolicy_canonicalSlotsFresh scheduler players who timing profile follows
-      count execution reached _ le_rfl with fresh | ⟨_, pending⟩
-  · exact fresh
-  · exact (not_pendingBinding_at_turn trace who atTurn event turn unrecorded pending).elim
 
 end Invariant
 

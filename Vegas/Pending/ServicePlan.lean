@@ -52,15 +52,6 @@ def serviceTicks (plan : List (ServiceInstruction graph)) : Nat :=
     (rest : List (ServiceInstruction graph)) :
     serviceTicks (instruction :: rest) = instruction.ticks + serviceTicks rest := rfl
 
-theorem serviceTicks_append (first second : List (ServiceInstruction graph)) :
-    serviceTicks (first ++ second) = serviceTicks first + serviceTicks second := by
-  simp [serviceTicks, List.sum_append]
-
-/-- Every deadline is at least two clock ticks long, so an event enabled during
-one sweep remains includable throughout the following clock-free sweep. -/
-def ServiceFeasible (runtime : EventGraphRuntime graph) : Prop :=
-  ∀ event, 2 ≤ runtime.deadline event
-
 /-- Uniform upper bound on all local deadline lengths. -/
 def maxDeadline (runtime : EventGraphRuntime graph) : Nat :=
   Finset.univ.sup runtime.deadline

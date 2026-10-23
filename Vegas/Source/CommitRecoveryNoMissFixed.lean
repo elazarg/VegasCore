@@ -130,46 +130,4 @@ theorem commitRecovery_query_fiber_cases (who : Player)
     intro included
     exact rightUnchanged (Finset.Subset.antisymm included second.entered)
 
-/-- Every actual surviving commitment query has a genuine ordinary member
-of its normalized pool, produced by the SAME initialized no-new-miss replay.
-The ENTIRE actual pool fiber then consists of that ordinary erased class and
-members with a genuinely new excluded owner. -/
-theorem commitRecovery_query_fiber_of_history (who : Player)
-    (current : CommitRecoveryState setup.program)
-    (trace : setup.commitRecoveryProtocol.Trace (some current))
-    (committing : ProtocolState.atCommit setup.program current.point = true)
-    (survives : who ∉ current.excluded) :
-    ∃ ordinary : CommitRecoveryState setup.program,
-      ∃ ordinaryTrace : setup.commitRecoveryProtocol.Trace (some ordinary),
-        ordinary.excluded = ordinary.entryExcluded ∧
-        setup.commitRecoveryErasedInformation who
-            (setup.commitRecoveryModel.infoOf who ordinaryTrace) =
-          setup.commitRecoveryErasedInformation who
-            (setup.commitRecoveryNoMissInformation who
-              (setup.commitRecoveryModel.infoOf who trace)) ∧
-        ∀ (other : CommitRecoveryState setup.program)
-          (otherTrace : setup.commitRecoveryProtocol.Trace (some other)),
-          setup.commitRecoveryErasedInformation who
-              (setup.commitRecoveryNoMissInformation who
-                (setup.commitRecoveryModel.infoOf who trace)) =
-            setup.commitRecoveryErasedInformation who
-              (setup.commitRecoveryNoMissInformation who
-                (setup.commitRecoveryModel.infoOf who otherTrace)) →
-          setup.commitRecoveryErasedInformation who
-              (setup.commitRecoveryModel.infoOf who ordinaryTrace) =
-            setup.commitRecoveryErasedInformation who
-              (setup.commitRecoveryModel.infoOf who otherTrace) ∨ other.NewFailure := by
-  obtain ⟨ordinary, ordinaryTrace, excluded, entryExcluded, _saved, _generation,
-      _view, info, _prefix⟩ :=
-    setup.commitRecoveryNoMissInformation_genuine who current trace committing survives
-  have unchanged : ordinary.excluded = ordinary.entryExcluded :=
-    excluded.trans entryExcluded.symm
-  have key := congrArg (setup.commitRecoveryErasedInformation who) info
-  refine ⟨ordinary, ordinaryTrace, unchanged, key, ?_⟩
-  intro other otherTrace same
-  apply setup.commitRecovery_query_fiber_cases who ordinary other ordinaryTrace otherTrace unchanged
-  rw [setup.commitRecoveryNoMissInformation_eq_of_unchanged_exclusions
-    who ordinary ordinaryTrace unchanged]
-  exact key.trans same
-
 end Vegas.SourceProgram.Setup

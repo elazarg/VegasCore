@@ -14,20 +14,6 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {wholeΓ : SourceCtx Player L} {wholeOpen : Finset VarId}
   (whole : SourceProgram Player L wholeΓ wholeOpen) (mode : EventGraph.ExecutionMode)
 
-/-- The newly failed owners of the genuine decoded attempt are exactly its
-actual missing-receipt owners outside the inherited exclusion set. Repeated
-automatic failures of already excluded owners do not introduce new failures. -/
-theorem decodeCommitAttempt_failedOwners_eq {Γ Δ : SourceCtx Player L} {O P : Finset VarId}
-    (block : CommitPrefix Γ O Δ P) (suffix : SourceProgram Player L Δ P)
-    (embedding : OutputEmbedding (inputLayout wholeΓ) (outputLayout whole)
-      (block.prepend suffix))
-    (native : EventGraphRuntime.State ((toEventGraph whole).withMode mode))
-    (entry : Config Player L Γ) (excluded : Finset Player) :
-    (decodeCommitAttempt whole mode block suffix embedding native entry excluded).2.2.failedOwners =
-      commitMissingOwners whole mode block suffix embedding native \ excluded := by
-  rw [← CommitPrefix.Attempt.newly_excluded, decodeCommitAttempt_excluded_eq,
-    Finset.union_sdiff_left]
-
 variable [Fintype Player]
 
 open Classical in
@@ -107,30 +93,6 @@ theorem decodeCommitAttempt_excluded_eq_public_prefix
             ((toEventGraph whole).withMode mode).actor? event = some who ∧
               native.PublicFailure event) := by
   rw [decodeCommitAttempt_excluded_eq,
-    commitMissingOwners_eq_public_failures whole mode block suffix embedding offset ranks
-      native completed]
-
-open Classical in
-/-- Exact newly excluded source owners are read from the processed native
-prefix; inherited excluded owners remain automatic, and accepted failures
-remain ordinary source choices. -/
-theorem decodeCommitAttempt_failedOwners_eq_public_prefix
-    {Γ Δ : SourceCtx Player L} {O P : Finset VarId}
-    (block : CommitPrefix Γ O Δ P) (suffix : SourceProgram Player L Δ P)
-    (embedding : OutputEmbedding (inputLayout wholeΓ) (outputLayout whole)
-      (block.prepend suffix)) (offset : Nat)
-    (ranks : ∀ index, (embedding.event index).val = offset + index.val)
-    (native : EventGraphRuntime.State ((toEventGraph whole).withMode mode))
-    (completed : ∀ index, index.val < block.length →
-      embedding.event index ∈ native.config.cut.completed)
-    (entry : Config Player L Γ) (excluded : Finset Player) :
-    (decodeCommitAttempt whole mode block suffix embedding native entry excluded).2.2.failedOwners =
-      (Finset.univ.filter (fun who =>
-        ∃ event : ((toEventGraph whole).withMode mode).EventId,
-          offset ≤ event.val ∧ event.val < offset + block.length ∧
-            ((toEventGraph whole).withMode mode).actor? event = some who ∧
-              native.PublicFailure event)) \ excluded := by
-  rw [decodeCommitAttempt_failedOwners_eq,
     commitMissingOwners_eq_public_failures whole mode block suffix embedding offset ranks
       native completed]
 

@@ -45,7 +45,7 @@ Unused commit-reveal pairs ("yield") do **not** reproduce that channel. Yield is
 - `learn_empty` gives `learn who ∅ = network`.
 
 **Submission is invisible to others.**
-- `MessageNetwork.submit_observe`: no player's network view changes.
+- [`MessageNetwork.submit_observe`](https://github.com/elazarg/VegasCore/blob/research-tree/Interaction/MessageNetwork.lean#L97): no player's network view changes.
 - `reactiveApplication_submit_publicView`: the public view does not change.
 - The message id `(sender, nextSerial sender)` is assigned at submission, but `MessageNetwork.nextSerial` and `inputs` are in the *environment* view only, not in any `PlayerView`.
 - To confirm: `Submission.register` leaves `config` and other players' candidate catalogues untouched. Its docstring and `register_facts` suggest so.
@@ -58,7 +58,7 @@ Unused commit-reveal pairs ("yield") do **not** reproduce that channel. Yield is
 **The native game is sequentialized.** One event is ready at a time, so a packet for event e+1 can carry a readiness token only after e completes. The block of e ends with no player activations after `includeLatest`. A *permitted* packet is therefore pending only inside its own block's roster.
 
 **The audit.**
-- `sourceServiceAudit` samples from the full transmitted traffic (`stateTraffic`) and the settled record. It does not use the leak rule.
+- [`sourceServiceAudit`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceAudit.lean#L53) samples from the full transmitted traffic (`stateTraffic`) and the settled record. It does not use the leak rule.
 - `SettledRecord.Permits` forbids the following:
   - every malformed packet;
   - every packet for a settled event that was not accepted with settled content;
@@ -75,7 +75,7 @@ Unused commit-reveal pairs ("yield") do **not** reproduce that channel. Yield is
 | Owner's latest packet, if forbidden (e.g. an opening with an arbitrary raw value) | **Public broadcast on the ledger, charged.** | Same. Leaks are irrelevant. |
 | Message-id serials on the ledger and receipts (a "nonce" channel: the serial counts *all* of the sender's submissions) | Public, charged: surplus packets are forbidden. | Same. |
 | Builder randomness (a public correlation device) | None: the calendar never calls `network`. | None. |
-| Private aliases (opening material, representation) | Private to the author; normalized away (`canonicalRaw_historyLaw`, `baseUtility_normalization`, `serviceAuditObservation_normalization`). | Same. |
+| Private aliases (opening material, representation) | Private to the author; normalized away ([`canonicalRaw_historyLaw`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/ReactiveAliasEquilibrium.lean#L101), [`baseUtility_normalization`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/RevealServicePayoffs.lean#L110), [`serviceAuditObservation_normalization`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/ReactiveServiceAudit.lean#L101)). | Same. |
 | Off-chain talk | Outside the model; a stated limitation. | Same. |
 
 **Conclusion [read/claim].** With leaks off on the calendar, every non-source channel is *charged*. Uncharged non-source behavior changes no other player's view.
@@ -116,7 +116,7 @@ This is the precise form of "a naive player does not need to think about the run
 ### 1.4 Proof sketch and reuse
 
 **1. Silence invariance (small, about 150 lines).**
-- Under `Silent`, `observePending` is `pure ∅`. By `learn_empty`, `submit_observe` and `reactiveApplication_submit_publicView`, plus the `register` frame fact, another player's submission at a roster visit leaves every other player's view unchanged until `includeLatest`.
+- Under `Silent`, `observePending` is `pure ∅`. By `learn_empty`, [`submit_observe`](https://github.com/elazarg/VegasCore/blob/research-tree/Interaction/MessageNetwork.lean#L97) and `reactiveApplication_submit_publicView`, plus the `register` frame fact, another player's submission at a roster visit leaves every other player's view unchanged until `includeLatest`.
 - Hence a player's view on a forbidden-free path is a function of the source-level public and private history and its *own* past responses.
 
 **2. Timing irrelevance against arbitrary opponents (core; 1–2.5k lines; medium risk).**
@@ -129,7 +129,7 @@ Statement: for any permitted-menu profile `π` and player `i`, the readout law o
 - Induct over the finite player set: law(π) = law(timed(dec π)). Then [`sourceServiceTimedProfile_protocol_law`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceTimedLaw.lean#L100) gives the source law of `dec π`. That proves outcome-law abstraction.
 
 **3. Raw to menu at an equilibrium (0.5–1.5k lines; the main risk).**
-- **(a) Aliases.** Normalize all players simultaneously. `canonicalRaw_historyLaw` and `SubmissionNormalization.aliasDeviation_historyLaw` are stated against canonical raw opponents, so check that the all-player version is available or is a short corollary.
+- **(a) Aliases.** Normalize all players simultaneously. [`canonicalRaw_historyLaw`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/ReactiveAliasEquilibrium.lean#L101) and `SubmissionNormalization.aliasDeviation_historyLaw` are stated against canonical raw opponents, so check that the all-player version is available or is a short corollary.
 - **(b) Forbidden mass is zero.** Replace `i`'s policy by its fixed repair. It loses at most R base payoff on the histories where `i` sends a forbidden packet ([`rosterAuditDeposit_covers_gain`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/ServicePayoffBounds.lean#L54) is history-pointwise), and avoids an expected charge of at least ρD > R there.
   - Reuse [`sourceService_continuation_settlement_comparison`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceContinuationComparison.lean#L29), [`remaining_events_stopped_coupling`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceRemainingRepair.lean#L63) at rank 0, and [`sourceService_repair_range_settlement_le`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceRepairSettlement.lean#L167), as [`exists_menu_deviation_ge`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceNash.lean#L374) already does.
   - Gap: these assume the opponents *extend a source profile in the permitted menu* (`agrees : … ExtendsProfile source target`). The NE argument needs the repair against arbitrary raw opponents. Charges depend only on own packets (`includeLatest` filters by sender, the audit reads own envelopes), so this should go through, but the Frame/coupling hypotheses must be re-derived. **This is the riskiest step.**

@@ -94,30 +94,10 @@ def native (memory : BindingShadow graph) (owner : Player) (state : State graph)
 def recovery (memory : BindingShadow graph) (owner : Player) (state : RecoveryState graph) :
     RecoveryState graph := ⟨memory.native owner state.native, state.excluded⟩
 
-/-- The original hidden meaning is reconstructed in both semantic checkpoints
-and archived native states. Physical coordinates and exclusion never change. -/
-def phased (memory : BindingShadow graph) (owner : Player) (state : PhaseRuntimeState graph) :
-    PhaseRuntimeState graph :=
-  { state with
-    entry := memory.recovery owner state.entry
-    current := memory.recovery owner state.current
-    retired := state.retired.map fun prior => ⟨prior.attempt, memory.native owner prior.state⟩ }
-
 @[simp] theorem recovery_empty (owner : Player) (state : RecoveryState graph) :
     (empty : BindingShadow graph).recovery owner state = state := by
   cases state
   simp only [recovery, native_empty]
-
-@[simp] theorem phased_empty (owner : Player) (state : PhaseRuntimeState graph) :
-    (empty : BindingShadow graph).phased owner state = state := by
-  simp only [phased, recovery_empty, native_empty]
-  have unchanged : state.retired.map (fun prior =>
-      (⟨prior.attempt, prior.state⟩ : RetiredCommitAttempt graph)) = state.retired := by
-    apply List.map_id''
-    intro prior
-    cases prior
-    rfl
-  rw [unchanged]
 
 /-- The catalogue comes from the current physical state even when semantic
 restoration reads an older private binding from the entry checkpoint. -/
@@ -130,45 +110,6 @@ theorem restore_phased (memory : BindingShadow graph) (owner : Player)
 theorem phased_finished (memory : BindingShadow graph) (owner : Player)
     (phase : RuntimePhase graph) (state : RecoveryState graph) :
     phase.Finished (memory.recovery owner state) ↔ phase.Finished state := Iff.rfl
-
-/-- Clear normalization saves the reconstructed live checkpoint at exactly the
-same phase boundaries. No reset or fresh exclusion is introduced by the shadow. -/
-theorem settle_phased_of_clear (memory : BindingShadow graph) (owner : Player)
-    (phases : List (RuntimePhase graph)) (generation : Nat)
-    (entry current : RecoveryState graph) (retired : List (RetiredCommitAttempt graph))
-    (clear : current.excluded = ∅) :
-    PhaseRuntimeState.settle phases generation (memory.recovery owner entry)
-        (memory.recovery owner current)
-        (retired.map fun prior => ⟨prior.attempt, memory.native owner prior.state⟩) =
-      memory.phased owner (PhaseRuntimeState.settle phases generation entry current retired) := by
-  classical
-  induction phases generalizing entry with
-  | nil => rfl
-  | cons phase remaining ih =>
-      have leftDrain := phase.drain_eq_of_clear (memory.recovery owner current) (by
-        rintro event ⟨_, eligible⟩
-        obtain ⟨who, _, excluded⟩ := eligible.owned
-        simp only [recovery, clear, Finset.notMem_empty] at excluded)
-      have rightDrain := phase.drain_eq_of_clear current (by
-        rintro event ⟨_, eligible⟩
-        obtain ⟨who, _, excluded⟩ := eligible.owned
-        simp only [clear, Finset.notMem_empty] at excluded)
-      simp only [PhaseRuntimeState.settle, leftDrain, rightDrain,
-        show (memory.recovery owner current).excluded = current.excluded from rfl, clear,
-        Finset.empty_sdiff, Finset.empty_inter, Finset.not_nonempty_empty, and_false, ite_false,
-        phased_finished]
-      split
-      · exact ih current
-      · rfl
-
-theorem normalize_phased_of_clear (memory : BindingShadow graph) (owner : Player)
-    (state : PhaseRuntimeState graph) (clear : state.current.excluded = ∅) :
-    (memory.phased owner state).normalize = memory.phased owner state.normalize := by
-  change PhaseRuntimeState.settle state.phases state.generation
-    (memory.recovery owner state.entry) (memory.recovery owner state.current)
-    (state.retired.map fun prior => ⟨prior.attempt, memory.native owner prior.state⟩) = _
-  exact settle_phased_of_clear memory owner state.phases state.generation state.entry state.current
-    state.retired clear
 
 end BindingShadow
 

@@ -26,8 +26,7 @@ the history is at most `(1 + error) / (1 - error)` times `ratio` times the
 reach of the counterpart (`Vegas.reach_le_of_counterpart`). No hypothesis on
 the scheduler enters: the operational masses of the two histories are equal,
 whatever they are. This yields the counterpart inputs of forced beliefs
-(`Vegas.counterpart_fields_of_domination`), assembled at own-turn sites in
-`Vegas.ForcedBeliefInputs.ofCounterpartWeights`.
+(`Vegas.counterpart_fields_of_domination`).
 -/
 
 noncomputable section
@@ -364,115 +363,5 @@ theorem counterpart_fields_of_domination {α : Type*} (reach : α → ℝ) (coun
       mul_le_mul_of_nonneg_left bound factorNonneg
     _ = slack * reach (counterpart history) := by
       field_simp
-
-section Assembly
-
-variable {who : Player}
-  {site : (onePacketInformation setup leaks bounds horizon scheduler).InformationSite who}
-  {sourceSite : setup.intendedModel.InformationSite who}
-  {past : List (application setup leaks).PlayerEntry}
-  {view : (application setup leaks).PlayerView}
-
-/-- Histories of a decision site share the observer's recall. -/
-theorem ownerRecall_of_site (decision : site.1 = some (past, view))
-    (history : (onePacketInformation setup leaks bounds horizon scheduler).InformationHistory who
-      site.1) :
-    ownerRecall setup leaks who history.1.state = past := by
-  apply ownerRecall_eq_of_infoOf setup leaks (view := view)
-  rw [← onePacket_infoOf who history.1.trace, history.2, decision]
-
-open Classical in
-/-- **Forced-belief inputs from counterpart weights.** At an own-turn forced
-decision site of a well-formed setup whose projected view is an intended site,
-under a fully mixed intended assessment at stage `n`, the inputs of forced
-beliefs follow from: intended own completions; common operational fibers; an
-irregular step bound; and, for every irregular history of the site, a regular
-counterpart in the site with the same operational record whose source weight is
-at least the irregular history's upper source weight divided by `ratio`, where
-`ratio`, inflated by the factorization error, is at most
-`slack * scale n / floors n ^ depth`. -/
-def ForcedBeliefInputs.ofCounterpartWeights
-    {sequence : ℕ → setup.intendedModel.BehavioralAssessment}
-    {profiles : ℕ → ∀ player,
-      (onePacketInformation setup leaks bounds horizon scheduler).BehavioralPolicy player}
-    {steps : OperationalSteps setup leaks bounds horizon scheduler sequence profiles who}
-    [Fintype ((onePacketInformation setup leaks bounds horizon scheduler).InformationHistory who
-      site.1)]
-    [DecidableEq (setup.intendedModel.InformationHistory who sourceSite.1)]
-    {scale floors : ℕ → ℝ} {depth : ℕ} {slack : ℝ} {n : ℕ} (wellFormed : setup.WellFormed)
-    (forced : forcedAgent (bounds.onePacketMenu (runtime setup) leaks) (initialLaw setup) horizon
-      scheduler who site.1)
-    (decision : site.1 = some (past, view)) {event : (graph setup).EventId}
-    (turn : view.application.publicView.ownTurn? who = some event)
-    (projected : sourceSite.1 = projectView setup leaks who site.1)
-    (mixed : (sequence n).IsFullyMixed)
-    (ownIntended : ∀ history : (onePacketInformation setup leaks bounds horizon
-        scheduler).InformationHistory who site.1,
-      RegularTrace setup leaks bounds horizon scheduler (sequence n) who history.1.trace →
-      OwnCompletionsIntended (bounds := bounds) (horizon := horizon) (scheduler := scheduler)
-        who history.1.trace)
-    (fiberMass : ℝ)
-    (fiber : ∀ point, ∑ history with RegularTrace setup leaks bounds horizon scheduler
-        (sequence n) who history.1.trace ∧
-        replayProjection setup leaks bounds horizon scheduler sourceSite site decision projected
-          history = point,
-      operationalWeight setup leaks who (steps.mass n)
-        (operationalRecord setup leaks bounds horizon scheduler history.1.trace) = fiberMass)
-    (irregular : IrregularStepBound setup leaks bounds horizon scheduler steps)
-    (counterpart : (onePacketInformation setup leaks bounds horizon scheduler).InformationHistory
-        who site.1 →
-      (onePacketInformation setup leaks bounds horizon scheduler).InformationHistory who site.1)
-    (counterpart_regular : ∀ history, ¬ RegularTrace setup leaks bounds horizon scheduler
-        (sequence n) who history.1.trace →
-      RegularTrace setup leaks bounds horizon scheduler (sequence n) who
-        (counterpart history).1.trace)
-    (counterpart_record : ∀ history, ¬ RegularTrace setup leaks bounds horizon scheduler
-        (sequence n) who history.1.trace →
-      operationalRecord setup leaks bounds horizon scheduler (counterpart history).1.trace =
-        operationalRecord setup leaks bounds horizon scheduler history.1.trace)
-    {ratio : ℝ} (ratioNonneg : 0 ≤ ratio)
-    (counterpart_weight : ∀ history, ¬ RegularTrace setup leaks bounds horizon scheduler
-        (sequence n) who history.1.trace →
-      upperSourceWeight irregular n history.1.trace ≤
-        ratio * othersSourceWeight setup leaks bounds horizon scheduler (sequence n) who
-          (counterpart history).1.trace)
-    (scalePos : 0 < scale n) (floorPos : 0 < floors n)
-    (small : (1 + steps.error n) ^ (2 * horizon + 1) - 1 < 1)
-    (ratioSmall : (1 + ((1 + steps.error n) ^ (2 * horizon + 1) - 1)) /
-        (1 - ((1 + steps.error n) ^ (2 * horizon + 1) - 1)) * ratio ≤
-      slack * scale n / floors n ^ depth) :
-    ForcedBeliefInputs setup leaks bounds horizon scheduler sequence profiles steps site
-      sourceSite (replayProjection setup leaks bounds horizon scheduler sourceSite site decision
-        projected) scale floors depth slack n :=
-  have dominated : ∀ history : (onePacketInformation setup leaks bounds horizon
-      scheduler).InformationHistory who site.1,
-      ¬ RegularTrace setup leaks bounds horizon scheduler (sequence n) who history.1.trace →
-      ((onePacketInformation setup leaks bounds horizon scheduler).historyReachWeight
-          (profiles n) history.1).toReal ≤
-        slack * scale n / floors n ^ depth *
-          ((onePacketInformation setup leaks bounds horizon scheduler).historyReachWeight
-            (profiles n) (counterpart history).1).toReal := fun history bad => by
-    have bound := reach_le_of_counterpart irregular n history.1.trace
-      (counterpart history).1.trace (counterpart_regular history bad)
-      (counterpart_record history bad)
-      ((ownerRecall_of_site decision (counterpart history)).trans
-        (ownerRecall_of_site decision history).symm)
-      ratioNonneg (counterpart_weight history bad) small
-    exact bound.trans (mul_le_mul_of_nonneg_right ratioSmall ENNReal.toReal_nonneg)
-  have fields := counterpart_fields_of_domination
-    (fun history : (onePacketInformation setup leaks bounds horizon
-      scheduler).InformationHistory who site.1 =>
-      ((onePacketInformation setup leaks bounds horizon scheduler).historyReachWeight
-        (profiles n) history.1).toReal)
-    counterpart scalePos floorPos (depth := depth) (slack := slack)
-    (fun history => ¬ RegularTrace setup leaks bounds horizon scheduler (sequence n) who
-      history.1.trace) dominated
-  ForcedBeliefInputs.ofRegularHistories wellFormed forced decision turn projected mixed
-    ownIntended fiberMass fiber counterpart
-    (fun history => ((onePacketInformation setup leaks bounds horizon
-      scheduler).historyReachWeight (profiles n) history.1).toReal / scale n ^ 3)
-    counterpart_regular fields.1 fields.2
-
-end Assembly
 
 end Vegas

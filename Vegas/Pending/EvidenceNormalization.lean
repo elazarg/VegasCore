@@ -78,22 +78,6 @@ theorem forwardingPacket_exists (known : List (Message Player (WitnessedPacket g
           simp only [identified, available, decide_true] at excluded
           contradiction
 
-theorem forwardingPacket_eq_none (known : List (Message Player (WitnessedPacket graph)))
-    (fact : OpeningFact graph)
-    (absent : ∀ message ∈ known, message.payload.evidence ≠ some fact) :
-    forwardingPacket known fact = Option.none := by
-  cases selected : forwardingPacket known fact with
-  | none => rfl
-  | some message =>
-      have forwarded := forwardingPacket_resolves known fact message selected
-      cases origin : known.find? (fun envelope => envelope.id = message.id) with
-      | none =>
-          simp only [forwardedEvidence, origin, Option.bind_none] at forwarded
-          cases forwarded
-      | some envelope =>
-          exact False.elim (absent envelope (List.mem_of_find?_eq_some origin) (by
-            simpa only [forwardedEvidence, origin, Option.bind_some] using forwarded))
-
 theorem resolve_owned_of_no_forward (who : Player)
     (candidates : CandidateSlot graph → CommitmentCandidate (Raw L))
     (known : List (Message Player (WitnessedPacket graph))) (request : EvidenceRequest graph)
@@ -159,14 +143,6 @@ theorem normalize_eq_iff_resolve_eq (who : Player)
     (known : List (Message Player (WitnessedPacket graph))) :
     (EvidenceRequest.none (graph := graph)).normalize who candidates known = .none := rfl
 
-theorem normalize_owned_of_no_forward (who : Player)
-    (candidates : CandidateSlot graph → CommitmentCandidate (Raw L))
-    (known : List (Message Player (WitnessedPacket graph))) (fact : OpeningFact graph)
-    (owned : fact.handle.1 = who) (valid : candidates fact.handle.2 = .openable fact.raw)
-    (absent : forwardingPacket known fact = Option.none) :
-    (EvidenceRequest.owned fact).normalize who candidates known = .owned fact := by
-  simp [normalize, resolve, owned, valid, canonical, absent]
-
 theorem normalize_owned_nil (who : Player)
     (candidates : CandidateSlot graph → CommitmentCandidate (Raw L)) (fact : OpeningFact graph) :
     (EvidenceRequest.owned fact).normalize who candidates [] =
@@ -175,25 +151,6 @@ theorem normalize_owned_nil (who : Player)
   classical
   by_cases available : fact.handle.1 = who ∧ candidates fact.handle.2 = .openable fact.raw <;>
     simp [normalize, resolve, available, canonical, forwardingPacket]
-
-theorem normalize_empty_forward (who : Player)
-    (candidates : CandidateSlot graph → CommitmentCandidate (Raw L))
-    (known : List (Message Player (WitnessedPacket graph))) (id : MessageId Player)
-    (empty : forwardedEvidence known id = Option.none) :
-    (EvidenceRequest.forward (graph := graph) id).normalize who candidates known = .none := by
-  simp only [normalize, resolve, empty, canonical]
-
-theorem normalize_unknown (who : Player)
-    (candidates : CandidateSlot graph → CommitmentCandidate (Raw L))
-    (known : List (Message Player (WitnessedPacket graph))) (id : MessageId Player)
-    (absent : ¬ ∃ message ∈ known, message.id = id) :
-    (EvidenceRequest.forward (graph := graph) id).normalize who candidates known = .none := by
-  apply normalize_empty_forward
-  have missing : known.find? (fun message => message.id = id) = Option.none := by
-    apply List.find?_eq_none.mpr
-    intro message member found
-    exact absent ⟨message, member, of_decide_eq_true found⟩
-  simp only [forwardedEvidence, missing, Option.bind_none]
 
 end Vegas.EventGraphRuntime.EvidenceRequest
 

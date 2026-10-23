@@ -2,19 +2,18 @@
 
 import Vegas.Game.SourceServiceAsyncStep
 
-/-! # Decoding every reached configuration to a source checkpoint
+/-! # Source residuals of native configurations
 
-A native configuration at a completed prefix has a *source residual*: the
+A *source residual* of a native configuration at a completed prefix is the
 remaining source program and source configuration, aligned with the compiled
 policy suffix from that rank, agreeing with the native store and history, and
-through which the whole-program prefix decoder factors. Residuals exist at
-initialization and survive every configuration step, whatever action completes
-the ready event, so every configuration reached by any players under any
-scheduler has one (`Vegas.roundsFrom_sourceResidual`).
-
-At the terminal rank the decoded source state is terminal, so the source
-continuation of a terminal completion boundary is the point mass at its readout
-(`Vegas.CompletionBoundary.terminal_continuation`).
+through which the whole-program prefix decoder factors
+(`Vegas.SourceResidual`, `Vegas.SourceResidual.decode`). Residuals exist at
+initialization (`Vegas.SourceResidual.initial`) and survive every
+configuration step, whatever action completes the ready event
+(`Vegas.SourceResidual.configStep`). One scheduler round changes the
+configuration by one configuration step, whatever the players
+(`Vegas.round_configStep`).
 -/
 
 noncomputable section
@@ -439,81 +438,6 @@ theorem round_configStep
 
 end Generic
 
-/-- **Scheduler-generic decoding.** Every execution reached by rounds of any
-players under any scheduler from the initial law has a source residual at its
-completed prefix. -/
-theorem roundsFrom_sourceResidual
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-    (scheduler : (application setup leaks).Scheduler)
-    (players : Player → (application setup leaks).Policy) (count rank : Nat)
-    (execution : (application setup leaks).Execution)
-    (supported : execution ∈ ((application setup leaks).roundsFrom (initialLaw setup) scheduler
-      players count).support)
-    (ordered : execution.application.config.cut.IsPrefix rank) :
-    Nonempty (SourceResidual setup profile rank execution.application.config) := by
-  suffices reached : ∀ (count : Nat) (execution : (application setup leaks).Execution),
-      execution ∈ ((application setup leaks).roundsFrom (initialLaw setup) scheduler
-        players count).support →
-      ∃ current, Nonempty (SourceResidual setup profile current execution.application.config) by
-    obtain ⟨current, ⟨residual⟩⟩ := reached count execution supported
-    rw [isPrefix_unique ordered residual.checkpoint.ordered]
-    exact ⟨residual⟩
-  intro count
-  induction count with
-  | zero =>
-      intro execution supported
-      obtain ⟨state, stateMem, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
-      cases (PMF.mem_support_pure_iff _ _).mp reached
-      obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ stateMem
-      exact ⟨0, ⟨SourceResidual.initial setup profile initial⟩⟩
-  | succ count ih =>
-      intro execution supported
-      rw [ReactiveApplication.roundsFrom_succ] at supported
-      obtain ⟨prior, priorMem, moved⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
-      obtain ⟨current, ⟨residual⟩⟩ := ih prior priorMem
-      have step := round_configStep setup leaks scheduler players prior execution moved
-      rcases step.prefix current residual.checkpoint.ordered with same | advanced
-      · exact ⟨current, residual.configStep step current (by
-          rw [same]
-          exact residual.checkpoint.ordered)⟩
-      · exact ⟨current + 1, residual.configStep step (current + 1) advanced⟩
-
 variable {setup}
-
-/-- Every completion boundary, of any players under any scheduler, has a
-source residual at its rank. -/
-theorem CompletionBoundary.sourceResidual
-    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-    {scheduler : (application setup leaks).Scheduler}
-    {players : Player → (application setup leaks).Policy} {rank : Nat}
-    {execution : (application setup leaks).Execution}
-    (boundary : CompletionBoundary setup leaks scheduler players rank execution) :
-    Nonempty (SourceResidual setup profile rank execution.application.config) :=
-  roundsFrom_sourceResidual setup leaks scheduler players _ rank execution
-    boundary.supported boundary.ordered
-
-/-- **Terminal continuation.** At a terminal completion boundary of any
-players, the source continuation is the point mass at the readout. -/
-theorem CompletionBoundary.terminal_continuation
-    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-    {scheduler : (application setup leaks).Scheduler}
-    {players : Player → (application setup leaks).Policy}
-    {execution : (application setup leaks).Execution}
-    (boundary : CompletionBoundary setup leaks scheduler players
-      (graph setup).order.eventCount execution) :
-    sourceContinuation setup profile (graph setup).order.eventCount
-        execution.application.config =
-      PMF.pure (sourceReadout setup leaks ((application setup leaks).finished execution)) := by
-  obtain ⟨residual⟩ := boundary.sourceResidual (profile := profile)
-  have decoded := residual.decode
-  have stopped := decodeSourcePrefix?_terminal setup.program _ _ _ _ _ _ _ decoded
-  simp only [sourceServicePrefix?] at decoded
-  have readout := sourceServicePrefix?_terminal_readout setup execution.application.config
-  unfold sourceContinuation
-  rw [Setup.continuationLaw_terminal setup profile _ (by rw [decoded]; exact stopped)]
-  change PMF.pure (setup.protocolReadout (sourceServicePrefix? setup
-    (eventCount setup.program) execution.application.config)) = _
-  rw [readout]
-  exact congrArg PMF.pure (sourceReadout_eq_decode setup leaks ⟨0, none, execution⟩).symm
 
 end Vegas

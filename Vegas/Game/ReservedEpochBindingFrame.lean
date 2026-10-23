@@ -136,43 +136,4 @@ variable {Player : Type} [DecidableEq Player]
 local notation "graph" =>
   EventGraph.withMode (toEventGraph program) EventGraph.ExecutionMode.concurrentReveals
 
-private theorem unused_after_binding (runtime : EventGraphRuntime graph)
-    (left right : State graph) (id : MessageId Player) (event : (graph).EventId)
-    (candidate queried : Handle graph)
-    (handled : handle runtime left ⟨id, .commitment event candidate⟩ = some right) :
-    right.HandleUnused queried ↔ queried ≠ candidate ∧ left.HandleUnused queried := by
-  have table := (handle_commitment_tables runtime left right id event candidate handled).2.1
-  obtain ⟨_, _, _, _, _, _, _, _, _, vacant, _⟩ :=
-    handle_commitment_conditions runtime left right id event candidate handled
-  constructor
-  · intro unused
-    refine ⟨?_, ?_⟩
-    · intro same
-      apply unused (.inr event)
-      rw [table, Function.update_self, same]
-    · intro field present
-      by_cases selected : field = .inr event
-      · subst field
-        rw [vacant] at present
-        cases present
-      · apply unused field
-        rw [table, Function.update_of_ne selected]
-        exact present
-  · rintro ⟨different, unused⟩ field present
-    rw [table] at present
-    by_cases selected : field = .inr event
-    · subst field
-      have same : candidate = queried := Option.some.inj (by
-        simpa only [Function.update_self] using present)
-      exact different same.symm
-    · exact unused field (by simpa only [Function.update_of_ne selected] using present)
-
-private theorem binding_getD_invariant (runtime : EventGraphRuntime graph)
-    (state : State graph) (inputs : (graph).Inputs) (valid : state.Invariant inputs)
-    (message : Message Player (Payload graph)) :
-    ((handle runtime state message).getD state).Invariant inputs := by
-  cases handled : handle runtime state message with
-  | none => exact valid
-  | some next => exact handle_invariant runtime state next message valid handled
-
 end Vegas.EventGraphRuntime.ReservedEpoch

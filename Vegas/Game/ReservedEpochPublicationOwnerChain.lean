@@ -218,67 +218,6 @@ theorem publication_exclusion_cause (initial : PMF (app).State) (horizon : Nat)
       exact ⟨event, inside, request, Or.inr ⟨native, actual, nativeMoved, completed⟩⟩
 
 
-/-- At the real first exit, a newly excluded publication owner has its exact
-first exclusion transition and physical rejection/expiry cause. The actual
-closing history is retained instead of an invented source-order execution. -/
-theorem stopped_publication_exclusion_cause (menu : (app).ResponseMenu)
-    (plan : RuntimePhasePlan graph) (inputs : PMF graph.Inputs) (horizon : Nat)
-    (scheduler : (app).Scheduler) (ordered : graph.RevealRelaxedOrdered)
-    (profile : ∀ who, (menu.information (inputs.map (PhaseRuntimeState.initial plan)) horizon
-      scheduler).BehavioralPolicy who)
-    (start : (app).Control)
-    (trace : (menu.protocol (inputs.map (PhaseRuntimeState.initial plan)) horizon
-      scheduler).Trace (some start))
-    (phase : RuntimePhase graph) (installed : phase ∈ start.execution.application.phases.head?)
-    (owner : Player) (active : owner ∉ start.execution.application.current.excluded) :
-    let E := menu.protocol (inputs.map (PhaseRuntimeState.initial plan)) horizon scheduler
-    let N := menu.information (inputs.map (PhaseRuntimeState.initial plan)) horizon scheduler
-    let stopped := fun history : E.History => match history.state with
-      | none => False
-      | some current => current.execution.application.attempt ≠ start.execution.application.attempt
-    ∀ final ∈ (N.runBehavioralUntil (menu.bounded _ horizon scheduler).wellFoundedHistories
-      profile stopped ⟨some start, trace⟩).support,
-      ∀ ending, final.state = some ending → owner ∈ ending.execution.application.current.excluded →
-        ∃ (before after : (app).Control) (prior : E.Trace (some before))
-          (joint : Player → Option (app).Action) (legal : E.Legal (some before) joint)
-          (realized : some after ∈ ((app).transition (inputs.map (PhaseRuntimeState.initial plan))
-            horizon scheduler (some before) joint).support) (event : graph.EventId),
-          TracePrefix trace prior ∧ TracePrefix (prior.extend joint legal realized) final.trace ∧
-          before.execution.application.attempt = start.execution.application.attempt ∧
-          phase ∈ before.execution.application.phases.head? ∧
-          owner ∉ before.execution.application.current.excluded ∧
-          owner ∈ after.execution.application.current.excluded ∧ event ∈ phase.events ∧
-          before.execution.application.SeedRequest owner
-            ⟨start.execution.application.attempt, event⟩ ∧
-          ((∃ (id : MessageId Player) (message : Message Player (CommitAttemptPacket graph))
-              (candidate : Handle graph) (value : Raw L) (native : State graph),
-            before.execution.network.lookup id = some message ∧
-            after.execution ∈ (before.execution.environmentStep app (.include id)).support ∧
-            message.payload.packet.call = .opening event candidate value ∧
-            handle runtime before.execution.application.current.native
-              ⟨message.id, message.payload.packet.call⟩ = some native ∧
-            RecoveryState.publicationFailed native event = true ∧
-            (message.id, true) ∈ after.execution.receipts) ∨
-          ∃ native : State graph,
-            after.execution ∈
-              (before.execution.environmentStep app (.application (.expire event))).support ∧
-            native ∈ (environmentStep runtime before.execution.application.current.native
-              (.expire event)).support ∧ event ∈ native.config.cut.completed) := by
-  intro E N stopped final supported ending finalState excluded
-  obtain ⟨before, after, prior, joint, legal, realized, event, fromStart, toFinal, same,
-      installedBefore, wasActive, nowExcluded, inside, request⟩ :=
-    phase_attempt_stopped_exclusion_origin runtime leaks menu plan inputs horizon scheduler profile
-      start trace phase installed owner active final supported ending finalState excluded
-  obtain ⟨physical, _inside, physicalRequest, cause⟩ := publication_exclusion_cause runtime leaks
-    (inputs.map (PhaseRuntimeState.initial plan)) horizon scheduler before after joint realized
-      phase installedBefore owner wasActive nowExcluded
-  have equal : physical = event := ordered.ready_actor_unique _ request.2.2.1
-    physicalRequest.2.2.1 request.2.2.2.1 physicalRequest.2.2.2.1
-  subst physical
-  exact ⟨before, after, prior, joint, legal, realized, event, fromStart, toFinal, same,
-    installedBefore, wasActive, nowExcluded, inside, request, cause⟩
-
-
 omit [Fintype Player] in
 /-- The actual original drained image contains no failure before an owner's
 ready request. Immutable publication values, the literal closing primitive and

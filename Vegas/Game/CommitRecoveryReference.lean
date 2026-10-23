@@ -34,21 +34,4 @@ theorem commitRecoveryReference_fullSupport (finite : setup.program.FiniteBindin
   let := setup.commitRecovery_choice_nonempty who information
   exact PMF.mem_support_uniformOfFintype choice
 
-theorem commitRecoveryReference_fullyMixed (finite : setup.program.FiniteBindingTypes) :
-    (setup.commitRecoveryReference finite).IsFullyMixed :=
-  fun who site choice => setup.commitRecoveryReference_fullSupport finite who site.1 choice
-
-/-- Finiteness covers all legal histories of all attempts, rather than only
-the support of the eventual equilibrium or of honest play. -/
-theorem commitRecovery_finite_history [Finite Player]
-    (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialLaw] :
-    Finite setup.commitRecoveryProtocol.History := by
-  let := Fintype.ofFinite Player
-  exact (setup.commitRecoveryReference_fullyMixed finite).finite_history
-    setup.commitRecoveryProtocol_bounded
-    (fun who information =>
-      have := setup.commitRecovery_finite_choice finite who information
-      Set.toFinite _)
-    (fun {state} draw => setup.commitRecovery_step_support_finite state draw)
-
 end Vegas.SourceProgram.Setup

@@ -68,30 +68,6 @@ theorem reveal_view_reflects {Γ : SourceCtx Player L} {name : VarId}
   have prior := congrArg (DecisionView.back (decide (owner = who))) same
   simpa only [back_reveal_view] using prior
 
-omit [IExpr.ResultTypes L] in
-/-- For successful initialized bindings and an empty guard registry, the
-public result also identifies the Boolean reveal choice for every observer. -/
-theorem reveal_choice_eq_of_view_eq {Γ : SourceCtx Player L} {name : VarId}
-    {owner : Player} {payload : L.Ty} (who : Player) (published : VarId)
-    (selected : HasVar Γ name (.commitment owner payload))
-    (left right : Config Player L Γ) (leftChoice rightChoice : Bool)
-    (leftEmpty : left.registry = []) (rightEmpty : right.registry = [])
-    (leftValue rightValue : L.Val payload)
-    (leftOpen : left.state.get selected = .success leftValue)
-    (rightOpen : right.state.get selected = .success rightValue)
-    (same : (revealSuccessor published selected left leftChoice).view who =
-      (revealSuccessor published selected right rightChoice).view who) :
-    leftChoice = rightChoice := by
-  have result := congrArg (fun view : DecisionView who ((published, .publication payload) :: Γ) =>
-    view.1.cells.get (HasVar.here : HasVar ((published, CellTy.publication payload) :: Γ)
-      published (.publication payload))) same
-  change (revealSuccessor published selected left leftChoice).state.get .here =
-    (revealSuccessor published selected right rightChoice).state.get .here at result
-  rw [revealSuccessor_result_of_registry_empty published selected left leftEmpty leftChoice,
-    revealSuccessor_result_of_registry_empty published selected right rightEmpty rightChoice,
-    leftOpen, rightOpen] at result
-  cases leftChoice <;> cases rightChoice <;> simp_all
-
 namespace ProtocolView
 
 /-- The entry view of a source suffix, read from any later observation in that
@@ -313,69 +289,6 @@ theorem atRank_step (who : Player) : {Γ : SourceCtx Player L} → {O : Finset V
                   Nat.add_le_add_iff_right] using within
               exact congrArg (Option.map Sum.inr)
                 (atRank_step who next rest after joint reached rank earlier)
-
-theorem position_trace {Γ : SourceCtx Player L} {O : Finset VarId}
-    (who : Player) (program : SourceProgram Player L Γ O)
-    (admission : CommitmentInterface program) (initial : Config Player L Γ)
-    {state : ProtocolState program}
-    (trace : (executionProtocol program admission initial).Trace state) :
-    position who program (ProtocolState.observe who program state) = trace.length := by
-  have positionEq := position_add_remaining who program state
-  have lengthEq := protocol_history_length program admission initial trace
-  omega
-
-theorem atRank_reaches {Γ : SourceCtx Player L} {O : Finset VarId}
-    (who : Player) (program : SourceProgram Player L Γ O)
-    (admission : CommitmentInterface program) (initial : Config Player L Γ)
-    {fuel : Nat} {before after : (executionProtocol program admission initial).History}
-    (reached : (executionProtocol program admission initial).ReachesWithin fuel before after)
-    (rank : Nat) (within : rank ≤ before.trace.length) :
-    atRank who program rank (ProtocolState.observe who program after.state) =
-      atRank who program rank (ProtocolState.observe who program before.state) := by
-  induction reached with
-  | refl => rfl
-  | @step fuel before after joint legal target realized rest ih =>
-      have withinNext : rank ≤ (before.extend legal realized).trace.length := by
-        simp only [ExecutionProtocol.History.extend, ExecutionProtocol.Trace.length]
-        omega
-      refine (ih withinNext).trans ?_
-      apply atRank_step who program before.state target joint realized rank
-      rw [position_trace who program admission initial before.trace]
-      exact within
-
-/-- An actual later source observation reconstructs each of its earlier
-protocol observations at the requested rank. -/
-theorem recover_prefix {Γ : SourceCtx Player L} {O : Finset VarId}
-    (who : Player) (program : SourceProgram Player L Γ O)
-    (admission : CommitmentInterface program) (initial : Config Player L Γ)
-    {fuel : Nat} {before after : (executionProtocol program admission initial).History}
-    (reached : (executionProtocol program admission initial).ReachesWithin fuel before after) :
-    atRank who program before.trace.length (ProtocolState.observe who program after.state) =
-      some (ProtocolState.observe who program before.state) := by
-  rw [atRank_reaches who program admission initial reached _ le_rfl,
-    ← position_trace who program admission initial before.trace, atRank_position]
-
-/-- Equal endpoint observations imply equal earlier observations at matching
-source ranks, even across different (possibly correlated) initial states. -/
-theorem prefix_observations_eq {Γ : SourceCtx Player L} {O : Finset VarId}
-    (who : Player) (program : SourceProgram Player L Γ O)
-    (admission : CommitmentInterface program) (leftInitial rightInitial : Config Player L Γ)
-    {leftFuel rightFuel : Nat}
-    {leftBefore leftAfter : (executionProtocol program admission leftInitial).History}
-    {rightBefore rightAfter : (executionProtocol program admission rightInitial).History}
-    (leftReached : (executionProtocol program admission leftInitial).ReachesWithin
-      leftFuel leftBefore leftAfter)
-    (rightReached : (executionProtocol program admission rightInitial).ReachesWithin
-      rightFuel rightBefore rightAfter)
-    (depth : leftBefore.trace.length = rightBefore.trace.length)
-    (same : ProtocolState.observe who program leftAfter.state =
-      ProtocolState.observe who program rightAfter.state) :
-    ProtocolState.observe who program leftBefore.state =
-      ProtocolState.observe who program rightBefore.state := by
-  have left := recover_prefix who program admission leftInitial leftReached
-  have right := recover_prefix who program admission rightInitial rightReached
-  rw [depth, same] at left
-  exact Option.some.inj (left.symm.trans right)
 
 /-- Encoding an entry configuration in the actual source protocol preserves
 an observation-local auxiliary law. The source entry view is recovered from

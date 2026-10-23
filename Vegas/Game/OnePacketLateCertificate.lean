@@ -1,19 +1,18 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.OnePacketLateHistoryNear
+import Vegas.Game.OnePacketLateBadMass
 
 /-! # The certificate's late bindings
 
-At a late delivery of a binding, a profile assembled from the certificate's
-components with a late option or silence installed at the site plays the late
-owner shape (`Vegas.certificate_lateOwnerShape`): at the site the installed
-law, and later the late component of the key's weights while the owner has
-sent nothing. The relevant-site lumping of the certificate makes success after
-a commitment value-free (`Vegas.certificate_lateSuccessFree`), so the
-completion value from each forced history of the site whose decoded point the
-intended game reaches is one less its failure probability times its
-continuation value, up to a multiple of the cube of the scale
-(`Vegas.certificate_lateBinding_historyNear`).
+At a history of a decision site, the state is a decision of the site's owner
+with the site's recall and view (`Vegas.state_of_site`). The key of a late
+delivery of a binding with nothing sent decides that binding
+(`Vegas.lateKey_decides_binding`). The certificate's lumping
+(`Vegas.certificateLumping`) makes success after a commitment value-free: at a
+late delivery or first activation of a pending binding at which the owner owes
+no failure, after an as-if-honest commitment at a permitted slot, the completion
+mass depends on the slot alone up to the horizon times twice the cube of the
+scale (`Vegas.certificate_lateSuccessFree`).
 -/
 
 noncomputable section
@@ -67,79 +66,6 @@ theorem state_of_site {who : Player} {site : (onePacketN).InformationSite who}
         exact ⟨remaining, execution, rfl, observed.1, observed.2⟩
       · simp only [acting, ↓reduceIte] at observed
         cases observed
-
-/-- **The certificate's late owner shape.** At a late delivery of `who` for its
-pending `event`, from a forced history of the site, the profile assembled from
-the certificate's components with a late option or silence installed at the
-site plays the late owner shape. -/
-theorem certificate_lateOwnerShape (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
-    (scale : ℕ → ℝ) (scale_pos : ∀ n, 0 < scale n) (scale_le_one : ∀ n, scale n ≤ 1)
-    {slots : Nat}
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup leaks bounds horizon scheduler slots p))
-    (targetSequence : ℕ → (onePacketN).BehavioralAssessment)
-    (assembled : OnePacketAssembled setup leaks bounds horizon scheduler sequence scale scale_pos
-      scale_le_one weights targetSequence) (n : ℕ) {who : Player}
-    (site : (onePacketN).InformationSite who) (late : LateDelivery setup leaks who site.1)
-    {event : (graph setup).EventId} (pending : pendingEvent setup leaks who site.1 = some event)
-    (law : PMF ((onePacketN).Choice who site.1))
-    (lawShape : (∃ option : LateOption slots, law = onePacketLate setup leaks bounds horizon
-        scheduler sequence scale scale_pos scale_le_one n ((onePacketN).agentAt site) option) ∨
-      law = PMF.pure (silenceChoice setup leaks bounds (initialLaw setup) horizon scheduler who
-        site.1))
-    (history : (onePacketN).InformationHistory who site.1)
-    {remaining : Nat} {execution : (application setup leaks).Execution}
-    (current : history.1.state = some ⟨remaining, some who, execution⟩)
-    (atSite : site.1 = some (execution.recall who,
-      execution.observe (application setup leaks) who))
-    (forced : ForcedState setup leaks who history.1.state) :
-    LateOwnerShape setup leaks bounds horizon scheduler (sequence n) (scale_pos n).le
-      (scale_le_one n) slots
-      (Profile.update (sig := (onePacketN).behavioralSignature) (targetSequence n).strategy who
-        (((targetSequence n).strategy who).withLaw site.1 law)) who event
-      execution.application.config (execution.recall who) := by
-  intro later laterRemaining reached state holds
-  obtain ⟨atSent, extends_, unrecordedHere⟩ := (by simpa only [state] using holds :
-    LateUnsent setup leaks who event execution.application.config (execution.recall who)
-      (some ⟨laterRemaining, some who, reached⟩))
-  rw [Profile.update_same]
-  by_cases same : (some (reached.recall who, reached.observe (application setup leaks) who) :
-      (application setup leaks).Info) = site.1
-  · -- At the site, the installed law.
-    obtain ⟨siteInfo, decision⟩ := site
-    change _ = siteInfo at same
-    subst same
-    rw [BehavioralPolicy.withLaw_self]
-    rcases lawShape with ⟨option, lawEq⟩ | lawEq
-    · left
-      refine ⟨PMF.pure option, ?_⟩
-      rw [lawEq, PMF.pure_bind]
-      rfl
-    · right
-      exact lawEq
-  · -- Later, the late component of the key's weights.
-    rw [BehavioralPolicy.withLaw_of_ne _ _ _ same]
-    left
-    have forcedHere : ForcedState setup leaks who later.state := by
-      rw [current] at forced
-      obtain ⟨forcedRank, forcedPoint, forcedOrdered, forcedDecoded, forcedHolds⟩ := forced
-      rw [state]
-      exact ⟨forcedRank, forcedPoint, by rw [atSent]; exact forcedOrdered,
-        by rw [atSent]; exact forcedDecoded, forcedHolds⟩
-    obtain ⟨past, view, lateEvent, lateAt, latePending, entry, member, activatedAt⟩ := late
-    rw [lateAt] at latePending
-    rw [atSite] at lateAt
-    cases Option.some.inj lateAt
-    rw [atSite] at pending
-    cases Option.some.inj (latePending.symm.trans pending)
-    obtain ⟨turn, readyView, _, _⟩ := pendingEvent_spec pending
-    have ready : reached.application.config.cut.Ready event := by
-      rw [atSent]
-      exact (execution.application.publicView_eventReady event).mp readyView
-    have activated : ∃ entry ∈ reached.recall who, ActivatedAt setup leaks who event entry :=
-      ⟨entry, extends_.subset member, activatedAt⟩
-    exact ⟨_, (certificate_strategyShape setup leaks bounds horizon scheduler sequence scale
-      scale_pos scale_le_one weights targetSequence assembled n who later laterRemaining reached
-      event state forcedHere ready activated).1 unrecordedHere⟩
 
 omit [Fintype Player] [(application setup leaks).FiniteNature (initialLaw setup) scheduler] in
 /-- The key of a late delivery of a binding with nothing sent decides that
@@ -342,162 +268,5 @@ theorem certificate_lateSuccessFree (sequence : ℕ → setup.intendedModel.Beha
       rw [BehavioralPolicy.withLaw_of_ne _ _ _ different,
         BehavioralPolicy.withLaw_of_ne _ _ _ different]
     · simp only [Profile.update_of_ne _ _ same]
-
-section Value
-
-variable {Parameter : Type} (parameter : State L setup.context → Parameter)
-  (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
-  (excludedPayoff : Player → ℝ)
-
-/-- **The certificate's completion value at a pending binding.** At a late
-delivery or first activation of the binding `event` of `who` at which `who` owes
-no failure, from a forced history of the site whose decoded point at the site's
-rank is intended and reached by the intended game, with every binding value
-bounded and a positive capacity covering the late options' slots, under a
-scheduler completing play, a law installed at the site under which the owner
-plays the late owner shape from the history has completion value within a
-multiple of the cube of the scale, times the payoff bound, of one less its
-failure probability times the history's continuation value. -/
-theorem certificate_pendingBinding_historyNear
-    [Finite ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
-      scheduler).History]
-    (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
-    (scale : ℕ → ℝ) (scale_pos : ∀ n, 0 < scale n) (scale_le_one : ∀ n, scale n ≤ 1)
-    {slots : Nat}
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup leaks bounds horizon scheduler slots p))
-    (targetSequence : ℕ → (onePacketN).BehavioralAssessment)
-    (assembled : OnePacketAssembled setup leaks bounds horizon scheduler sequence scale scale_pos
-      scale_le_one weights targetSequence) (n : ℕ)
-    (completes : CompletesPlay (runtime setup) leaks (initialLaw setup) horizon scheduler)
-    (covers : bounds.CoversOutputValues) (capacity : 1 ≤ bounds.candidateCount)
-    (slotsLe : slots ≤ bounds.candidateCount) {who : Player}
-    (site : (onePacketN).InformationSite who)
-    (pendingSite : LateDelivery setup leaks who site.1 ∨ FirstActivation setup leaks who site.1)
-    (debtFree : SiteDebtFree setup leaks bounds horizon scheduler site)
-    {key : LateKey setup leaks} (siteKey : lateKey setup leaks who site.1 = some key)
-    {event : (graph setup).EventId} (pending : pendingEvent setup leaks who site.1 = some event)
-    (law : PMF ((onePacketN).Choice who site.1))
-    (history : (onePacketN).InformationHistory who site.1)
-    {remaining : Nat} {execution : (application setup leaks).Execution}
-    (current : history.1.state = some ⟨remaining, some who, execution⟩)
-    (atSite : site.1 = some (execution.recall who,
-      execution.observe (application setup leaks) who))
-    (forced : ForcedState setup leaks who history.1.state)
-    (shape : LateOwnerShapeFrom setup leaks bounds horizon scheduler (sequence n)
-      (scale_pos n).le (scale_le_one n) slots
-      (Profile.update (sig := (onePacketN).behavioralSignature) (targetSequence n).strategy who
-        (((targetSequence n).strategy who).withLaw site.1 law)) who event execution)
-    {payload : L.Ty} {outputEq : (graph setup).outputLayout event = .binding who payload}
-    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .bind who payload}
-    (node : nodeView (graph setup) event = .bind who payload outputEq codeEq)
-    (ordered : execution.application.config.cut.IsPrefix (siteRank site.1))
-    {point : ProtocolState setup.program}
-    (decoded : sourceServicePrefix? setup (siteRank site.1) execution.application.config =
-      some point)
-    (intendedPoint : ProtocolState.Intended setup.program point)
-    (reachedPoint : IntendedReached setup point)
-    {bound : ℝ} (readoutBounded : ∀ readout,
-      |exclusionReadoutUtility setup parameter utility excludedPayoff readout who| ≤ bound) :
-    |historyStopValue setup leaks bounds horizon scheduler parameter utility excludedPayoff
-        (targetSequence n) (setup.intendedOpeningProfile (sequence n).strategy) site law
-        history.1 -
-      (1 - siteHistoryFailure setup leaks bounds horizon scheduler (targetSequence n) site law
-          history) *
-        decodedPointValue setup leaks bounds horizon scheduler parameter utility excludedPayoff
-          (setup.intendedOpeningProfile (sequence n).strategy) who (siteRank site.1) history.1| ≤
-      (2 * (scale n ^ 3 + (2 * horizon + 1 : ℕ) * (scale n ^ 3 + scale n ^ 3)) *
-          (2 * horizon + 1) + 2 * (scale n ^ 3 * (2 * horizon + 1))) * bound := by
-  have rawTrace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
-      (some ⟨remaining, some who, execution⟩) :=
-    (bounds.onePacketMenu (runtime setup) leaks).toRawTrace (initialLaw setup) horizon scheduler
-      (current ▸ history.1.trace)
-  have pendingHere := pending
-  rw [atSite] at pendingHere
-  obtain ⟨turn, _, _, unrecorded⟩ := pendingEvent_spec pendingHere
-  have siteKeyHere := siteKey
-  rw [atSite] at siteKeyHere
-  obtain ⟨_, _, _, decided⟩ := lateKey_decides_binding setup leaks horizon scheduler rawTrace rfl
-    siteKeyHere turn unrecorded node
-  exact lateBinding_historyNear setup leaks bounds horizon scheduler parameter utility
-    excludedPayoff completes covers capacity (sequence n) (scale_pos n) (scale_le_one n) slotsLe
-    (targetSequence n) site decided pending law history current node turn
-    unrecorded ordered decoded intendedPoint reachedPoint shape
-    (mul_nonneg (Nat.cast_nonneg _) (by have := pow_nonneg (scale_pos n).le 3; linarith))
-    (certificate_lateSuccessFree setup leaks bounds horizon scheduler sequence scale scale_pos
-      scale_le_one weights targetSequence assembled n covers capacity slotsLe site
-      pendingSite debtFree siteKey pending law history current atSite forced node ordered decoded
-      (fun final trace ended _same => by
-        rw [completes final trace ended]
-        exact Finset.mem_univ _) intendedPoint)
-    readoutBounded
-
-/-- **The certificate's completion value at a late binding.** At a late delivery
-of the binding `event` of `who` at which `who` owes no failure, from a forced
-history of the site whose decoded point at the site's rank is intended and
-reached by the intended game, with every binding value bounded and a positive
-capacity covering the late options' slots, under a scheduler completing play,
-the profile installing a late option or silence at the site has completion value
-within a multiple of the cube of the scale, times the payoff bound, of one less
-its failure probability times the history's continuation value. -/
-theorem certificate_lateBinding_historyNear
-    [Finite ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
-      scheduler).History]
-    (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
-    (scale : ℕ → ℝ) (scale_pos : ∀ n, 0 < scale n) (scale_le_one : ∀ n, scale n ≤ 1)
-    {slots : Nat}
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup leaks bounds horizon scheduler slots p))
-    (targetSequence : ℕ → (onePacketN).BehavioralAssessment)
-    (assembled : OnePacketAssembled setup leaks bounds horizon scheduler sequence scale scale_pos
-      scale_le_one weights targetSequence) (n : ℕ)
-    (completes : CompletesPlay (runtime setup) leaks (initialLaw setup) horizon scheduler)
-    (covers : bounds.CoversOutputValues) (capacity : 1 ≤ bounds.candidateCount)
-    (slotsLe : slots ≤ bounds.candidateCount) {who : Player}
-    (site : (onePacketN).InformationSite who) (late : LateDelivery setup leaks who site.1)
-    (debtFree : SiteDebtFree setup leaks bounds horizon scheduler site)
-    {key : LateKey setup leaks} (siteKey : lateKey setup leaks who site.1 = some key)
-    {event : (graph setup).EventId} (pending : pendingEvent setup leaks who site.1 = some event)
-    (law : PMF ((onePacketN).Choice who site.1))
-    (lawShape : (∃ option : LateOption slots, law = onePacketLate setup leaks bounds horizon
-        scheduler sequence scale scale_pos scale_le_one n ((onePacketN).agentAt site) option) ∨
-      law = PMF.pure (silenceChoice setup leaks bounds (initialLaw setup) horizon scheduler who
-        site.1))
-    (history : (onePacketN).InformationHistory who site.1)
-    {remaining : Nat} {execution : (application setup leaks).Execution}
-    (current : history.1.state = some ⟨remaining, some who, execution⟩)
-    (atSite : site.1 = some (execution.recall who,
-      execution.observe (application setup leaks) who))
-    (forced : ForcedState setup leaks who history.1.state)
-    {payload : L.Ty} {outputEq : (graph setup).outputLayout event = .binding who payload}
-    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .bind who payload}
-    (node : nodeView (graph setup) event = .bind who payload outputEq codeEq)
-    (ordered : execution.application.config.cut.IsPrefix (siteRank site.1))
-    {point : ProtocolState setup.program}
-    (decoded : sourceServicePrefix? setup (siteRank site.1) execution.application.config =
-      some point)
-    (intendedPoint : ProtocolState.Intended setup.program point)
-    (reachedPoint : IntendedReached setup point)
-    {bound : ℝ} (readoutBounded : ∀ readout,
-      |exclusionReadoutUtility setup parameter utility excludedPayoff readout who| ≤ bound) :
-    |historyStopValue setup leaks bounds horizon scheduler parameter utility excludedPayoff
-        (targetSequence n) (setup.intendedOpeningProfile (sequence n).strategy) site law
-        history.1 -
-      (1 - siteHistoryFailure setup leaks bounds horizon scheduler (targetSequence n) site law
-          history) *
-        decodedPointValue setup leaks bounds horizon scheduler parameter utility excludedPayoff
-          (setup.intendedOpeningProfile (sequence n).strategy) who (siteRank site.1) history.1| ≤
-      (2 * (scale n ^ 3 + (2 * horizon + 1 : ℕ) * (scale n ^ 3 + scale n ^ 3)) *
-          (2 * horizon + 1) + 2 * (scale n ^ 3 * (2 * horizon + 1))) * bound := by
-  exact certificate_pendingBinding_historyNear setup leaks bounds horizon scheduler parameter
-    utility excludedPayoff sequence scale scale_pos scale_le_one weights targetSequence assembled n
-    completes covers capacity slotsLe site (Or.inl late) debtFree siteKey pending law history
-    current atSite forced
-    (LateOwnerShape.from (certificate_lateOwnerShape setup leaks bounds horizon scheduler
-      sequence scale scale_pos scale_le_one weights targetSequence assembled n site late pending
-      law lawShape history current atSite forced))
-    node ordered decoded intendedPoint reachedPoint readoutBounded
-
-end Value
 
 end Vegas

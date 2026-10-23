@@ -51,18 +51,4 @@ theorem rawMenu_recall (who : Player)
   rawMenu_eq_of_outputs runtime leaks bounds who _ _ view
     ((normalization runtime leaks).recall_outputs who past)
 
-theorem menu_recall (who : Player)
-    (past : List (runtime.recoveryApplication leaks).PlayerEntry)
-    (view : (runtime.recoveryApplication leaks).PlayerView) :
-    (menu runtime leaks bounds).actions who
-        ((normalization runtime leaks).recall who past) view =
-      (menu runtime leaks bounds).actions who past view := by
-  classical
-  change ((rawMenu runtime leaks bounds).actions who
-      ((normalization runtime leaks).recall who past) view).image _ = _
-  rw [rawMenu_recall runtime leaks bounds]
-  congr 1
-  funext response
-  exact (normalization runtime leaks).action_recall who past view response
-
 end Vegas.EventGraphRuntime.Recovery

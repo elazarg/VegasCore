@@ -149,13 +149,6 @@ theorem LateKey.respond_lastEmitted (execution : (application setup leaks).Execu
 variable {horizon : Nat} {scheduler : (application setup leaks).Scheduler}
   {control : (application setup leaks).Control}
 
-/-- Along every history, the key's turn is the player's turn. -/
-theorem LateKey.ofView_turn (who : Player) :
-    (LateKey.ofView setup leaks who (control.execution.recall who)
-      (control.execution.observe (application setup leaks) who)).turn =
-      control.execution.application.publicView.ownTurn? who :=
-  rfl
-
 /-- Along every history, the key records exactly the events the player's
 recall has submitted for. -/
 theorem LateKey.ofView_recorded

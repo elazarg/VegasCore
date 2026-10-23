@@ -192,7 +192,7 @@ accepted field. Authentic emission uniqueness identifies that field's immutable
 preparation. The original genuine view still contains this unresolved COMMIT
 cell: there is no intervening REVEAL inside B. A failure would therefore witness
 FailedBinding, contradicting clean.noCurrent through
-`phaseProposalCurrentBindingFailure_genuine`. This proves focal properness
+[`phaseProposalCurrentBindingFailure_genuine`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/PhaseProposalObservableDebt.lean#L108). This proves focal properness
 directly. Enumerate B: use each constrained proper
 value, otherwise any supported D atom at its current query; additionally choose
 v at row k for payoff. FullValues makes each fixed proper atom positive after
@@ -202,7 +202,7 @@ positive, without assuming equality of unrelated intermediate queries.
 For EVERY q in K_h support, first obtain positive canonical source reach from
 strict prescription. ClosedLaw_support supplies equal ClosedKey; the Good bit
 and `canonicalSource_foreignGood` supply both Good hypotheses. Refinement's
-`erasedHistory`, `publicRecall`, `surviving_info_eq` give the same erased entry
+`erasedHistory`, `publicRecall`, [`surviving_info_eq`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/ProposalRecoveryPublicClassConstancy.lean#L2667) give the same erased entry
 and full active information. If q.state=some s, apply withHistory using s's
 history to the erased-point equality. The equations withHistory_history,
 withHistory_withHistory, C.origin.withHistory_lift and withHistory_entry give
@@ -755,7 +755,7 @@ literally equal. All signal views and (generation,saved phase) pairs agree:
 publicRead uses common padding/rank, and the current typed view already agrees.
 Thus the exact `Forall₂ (fun x y => x.1=y.1 ∧ x.2.2=y.2.2)` relation holds.
 
-These are every premise of `source_query_of_live_window`: current typed view,
+These are every premise of [`source_query_of_live_window`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/QualifiedBinding/BindingReadback.lean#L113): current typed view,
 archive, commitment flags, current/entry survival, both cutoffs and saved masks,
 Forall₂ and pre-window take equality. NoMiss removes only the within-attempt
 mask differences. Its conclusion is the complete actual query equality at the
@@ -780,7 +780,7 @@ conditional alias mass is one; equal menu cardinalities are unnecessary.
 No request/already-sent branches are pure silence, using
 `onePacketActions_eq_singleton_of_sent`. For unsent BIND,
 `phaseBindingSlots_eq_fresh_of_history` gives the common eligible set S;
-capacity and `phaseBindingSlots_nonempty_of_history` make it nonempty.
+capacity and [`phaseBindingSlots_nonempty_of_history`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/PhaseBindingSlotHistory.lean#L88) make it nonempty.
 reactiveFreshSlot chooses the same Nat.find s0. The result-independent packet
 p_s has the same attempt,event,serial,public mask/token and empty evidence.
 `phaseBindingPolicy_of_history` gives exactly
@@ -1067,7 +1067,7 @@ sure event. If C_h is the foreign issued cylinder, this yields
 
 Equivalently a new foreign callback extends one own prefix and multiplies its
 cylinder mass by D_t; other callbacks leave it unchanged. The owning
-`issuedLedger_foreign_owned_word_conditional` and fiber-mass identity give this
+[`issuedLedger_foreign_owned_word_conditional`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/PhaseProposalNativeSourceInformation.lean#L10083) and fiber-mass identity give this
 same zero-safe telescope with the supported literal target word. Do not apply a
 whole-history focal posterior theorem after rotating its focal owner: canceled
 BAD by i would violate that rotated goodness premise.
@@ -1159,7 +1159,7 @@ the per-history identity for every native information-history h. Sum over h and
 use nu's total mass one to obtain the exact original rectangle.
 
 This support argument is used only in the positive A_m/rho domain. If A_m=0,
-`annotatedForcedBlockWeight_anchor` gives zero directly. If source density is
+[`annotatedForcedBlockWeight_anchor`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/PhaseProposalNativeSourceInformation.lean#L10471) gives zero directly. If source density is
 zero (including wrong information, non-Good or unsupported completion), use
 the direct original-positive-annotation source-support reduction and
 `annotated_forced_block_zero_of_source_zero`, not the conditional replay law.

@@ -28,14 +28,6 @@ private def proposalBackground (focal : Player)
     (setup.proposalRecoveryJointRecall exchanged.trace).map (fun joint => joint who) =
       (setup.proposalRecoveryJointRecall original.trace).map (fun joint => joint who)
 
-private theorem proposalBackground_symm (focal : Player)
-    {original exchanged : setup.proposalRecoveryProtocol.History}
-    (same : setup.proposalBackground focal original exchanged) :
-    setup.proposalBackground focal exchanged original := by
-  obtain ⟨⟨first, prior, length, originalKept, exchangedKept⟩, publicWord, coordinates⟩ := same
-  exact ⟨⟨first, prior, length, exchangedKept, originalKept⟩,
-    fun who => (publicWord who).symm, fun who foreign => (coordinates who foreign).symm⟩
-
 private theorem proposalBackground_trans (focal : Player)
     {first middle last : setup.proposalRecoveryProtocol.History}
     (left : setup.proposalBackground focal first middle)

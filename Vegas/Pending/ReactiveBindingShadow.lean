@@ -72,18 +72,6 @@ def view (memory : BindingShadow graph) (observed : PlayerView graph) :
   simp only [view, store_empty, unchanged, List.map_id]
   rfl
 
-theorem store_available (memory : BindingShadow graph)
-    (observed : EventGraph.Store graph.layout) (field : graph.Field) :
-    (memory.store observed field).isSome = (observed field).isSome := by
-  simp [store]
-
-theorem view_public (memory : BindingShadow graph) (observed : PlayerView graph) :
-    (memory.view observed).publicView = observed.publicView := rfl
-
-theorem view_order (memory : BindingShadow graph) (observed : PlayerView graph) :
-    (memory.view observed).observation.completionOrder =
-      observed.observation.completionOrder := rfl
-
 open Classical in
 def rememberCandidate (memory : BindingShadow graph) (slot : CandidateSlot graph)
     (value : CommitmentCandidate (Raw L)) : BindingShadow graph :=
@@ -463,79 +451,6 @@ def implementation (who : Player)
       let repaired := memory.repairResponse runtime leaks who input.2 original
       (repaired.1, if input.1.length < reference.length then memory else
         { shadow := repaired.2, responses := memory.responses ++ [(view, original)] })
-
-theorem implementation_respond (who : Player)
-    (reference : List (runtime.reactiveApplication leaks).PlayerEntry)
-    (policy : (runtime.reactiveApplication leaks).Policy)
-    (memory : BindingMemory runtime leaks)
-    (past : List (runtime.reactiveApplication leaks).PlayerEntry)
-    (view : (runtime.reactiveApplication leaks).PlayerView)
-    (started : reference.length ≤ past.length) :
-    (implementation runtime leaks who reference policy).respond memory (past, view) =
-      (policy (memory.restoreRecall runtime leaks past)
-        (memory.shadow.inputView runtime leaks view)).map (fun original =>
-          let repaired := memory.repairResponse runtime leaks who view original
-          (repaired.1, ⟨repaired.2, memory.responses ++
-            [(memory.shadow.inputView runtime leaks view, original)]⟩)) := by
-  simp only [implementation, Nat.not_lt.mpr started, ↓reduceIte]
-
-theorem implementation_posterior_prefix (who : Player)
-    (reference past : List (runtime.reactiveApplication leaks).PlayerEntry)
-    (policy : (runtime.reactiveApplication leaks).Policy)
-    (short : past.length ≤ reference.length) :
-    (implementation runtime leaks who reference policy).posterior past =
-      PMF.pure (atRecall runtime leaks reference) := by
-  induction past using List.reverseRecOn with
-  | nil => rfl
-  | append_singleton past entry ih =>
-      have earlier : past.length ≤ reference.length := by
-        simp only [List.length_append, List.length_singleton] at short
-        omega
-      have shorter : past.length < reference.length := by
-        simp only [List.length_append, List.length_singleton] at short
-        omega
-      rw [ReactiveApplication.Implementation.posterior_snoc, ih earlier, PMF.pure_bind]
-      apply pmf_eq_pure_of_support_subset_singleton
-      intro memory member
-      obtain ⟨response, supported, rfl⟩ := PMF.support_map .. ▸ member
-      have original : response ∈
-          ((implementation runtime leaks who reference policy).respond
-            (atRecall runtime leaks reference) (past, entry.beforeView)).support := by
-        unfold fiberPosterior at supported
-        split at supported
-        · exact ((PMF.mem_support_filter_iff _).mp supported).2
-        · exact supported
-      simp only [implementation, shorter, ↓reduceIte, PMF.support_map] at original
-      obtain ⟨chosen, _, rfl⟩ := original
-      rfl
-
-theorem implementation_posterior_reference (who : Player)
-    (reference : List (runtime.reactiveApplication leaks).PlayerEntry)
-    (policy : (runtime.reactiveApplication leaks).Policy) :
-    (implementation runtime leaks who reference policy).posterior reference =
-      PMF.pure (atRecall runtime leaks reference) :=
-  implementation_posterior_prefix runtime leaks who reference reference policy (Nat.le_refl _)
-
-/-- The same fixed owner-local memory realizes the continuation at every hidden
-execution with this own recall. No initial memory is selected from hidden state. -/
-theorem implementation_behavioral_continuation (who : Player)
-    (reference : List (runtime.reactiveApplication leaks).PlayerEntry)
-    (policy : (runtime.reactiveApplication leaks).Policy)
-    (players : Player → (runtime.reactiveApplication leaks).Policy)
-    (scheduler : (runtime.reactiveApplication leaks).Scheduler)
-    (count : Nat) (execution : (runtime.reactiveApplication leaks).Execution)
-    (recalled : execution.recall who = reference) :
-    let strategy := implementation runtime leaks who reference policy
-    (strategy.resume who players (some who) execution (atRecall runtime leaks reference)).bind
-        (fun result => strategy.run who players scheduler count result.1 result.2) =
-      ((runtime.reactiveApplication leaks).resume
-        (Function.update players who strategy.policy) (some who) execution).bind
-          ((runtime.reactiveApplication leaks).runRounds scheduler
-            (Function.update players who strategy.policy) count) := by
-  let strategy := implementation runtime leaks who reference policy
-  have realized := strategy.realize_continuation who players scheduler count (some who) execution
-  rw [recalled, implementation_posterior_reference, PMF.pure_bind] at realized
-  exact realized
 
 end BindingMemory
 

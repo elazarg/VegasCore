@@ -154,41 +154,6 @@ theorem proposalRecovery_pooled_component_gain_eq
       pins alternative]
   exact shared
 
-open Classical in
-/-- The finite ordinary contribution is its cardinality times one actual
-conditional gain. The positive coefficient is supplied by the original site. -/
-theorem proposalRecovery_pooled_ordinary_gain_sum
-    (focal : Player) (source : setup.proposalRecoveryModel.InformationSite focal) :
-    let _ := Fintype.ofFinite (setup.proposalRecoveryModel.InformationSite focal)
-    let members := (Finset.univ : Finset (setup.proposalRecoveryModel.InformationSite focal)).filter
-      (fun site => setup.commitRecoveryErasedInformation focal
-          (setup.proposalRecoveryEraseInfo focal site.1) =
-            setup.commitRecoveryErasedInformation focal
-              (setup.proposalRecoveryEraseInfo focal source.1) ∧
-        setup.proposalRecoveryArchive focal site.1 = setup.proposalRecoveryArchive focal source.1)
-    let gain := setup.proposalRecoveryPooledGain finite assessment
-      omission omissionNonnegative omissionBounded bad badNonnegative badBounded
-      delivery deliveryNonnegative deliveryBounded floor floorNonnegative floorBounded
-      pins alternative utility excludedPayoff focal
-    ∑ site ∈ members, gain site = (members.card : ℝ) * gain source ∧
-      (0 : ℝ) < members.card := by
-  classical
-  let _ := Fintype.ofFinite (setup.proposalRecoveryModel.InformationSite focal)
-  dsimp only
-  constructor
-  · rw [Finset.sum_eq_card_nsmul]
-    · rw [nsmul_eq_mul]
-    · intro site member
-      obtain ⟨semantic, archive⟩ := (Finset.mem_filter.mp member).2
-      exact (setup.proposalRecovery_pooled_component_gain_eq finite assessment mixed bayes
-        omission omissionNonnegative omissionBounded bad badNonnegative badBounded
-        delivery deliveryNonnegative deliveryBounded floor floorNonnegative floorBounded
-        pins weights alternative prescribed utility excludedPayoff focal site source
-        semantic archive).symm
-  · apply Nat.cast_pos.mpr
-    exact Finset.card_pos.mpr ⟨source,
-      Finset.mem_filter.mpr ⟨Finset.mem_univ _, rfl, rfl⟩⟩
-
 end Components
 
 end Vegas.SourceProgram.Setup

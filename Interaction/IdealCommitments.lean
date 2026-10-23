@@ -61,26 +61,6 @@ def lookup (state : IdealCommitments Principal Slot Value)
     (handle : CommitmentHandle Principal Slot) : Option Value :=
   state.table handle.1 handle.2
 
-/-- Capture one opaque commitment's meaning at acceptance. An absent opening
-remains absent in the captured verifier, even if the preparation service later
-registers that handle. The captured table is private ideal-service state. -/
-def freezeAt [DecidableEq Principal] [DecidableEq Slot]
-    (state : IdealCommitments Principal Slot Value)
-    (handle : CommitmentHandle Principal Slot) : IdealCommitments Principal Slot Value where
-  table owner slot := if (owner, slot) = handle then state.lookup handle else none
-
-@[simp] theorem lookup_freezeAt [DecidableEq Principal] [DecidableEq Slot]
-    (state : IdealCommitments Principal Slot Value)
-    (handle : CommitmentHandle Principal Slot) :
-    (state.freezeAt handle).lookup handle = state.lookup handle := by
-  simp [freezeAt, lookup]
-
-theorem lookup_freezeAt_other [DecidableEq Principal] [DecidableEq Slot]
-    (state : IdealCommitments Principal Slot Value)
-    (handle other : CommitmentHandle Principal Slot) (hne : other ≠ handle) :
-    (state.freezeAt handle).lookup other = none := by
-  simp [freezeAt, lookup, hne]
-
 /-- The result of a private authenticated seal request. -/
 structure SealResult where
   accepted : Bool
@@ -116,103 +96,6 @@ def verify (state : IdealCommitments Principal Slot Value)
 @[simp] theorem lookup_empty (handle : CommitmentHandle Principal Slot) :
     (empty : IdealCommitments Principal Slot Value).lookup handle = none := rfl
 
-/-- The first seal succeeds and stores exactly its private value. -/
-theorem seal_first (state : IdealCommitments Principal Slot Value)
-    [DecidableEq Principal] [DecidableEq Slot]
-    (owner : Principal) (slot : Slot) (value : Value)
-    (hempty : state.table owner slot = none) :
-    (state.sealValue owner slot value).accepted = true ∧
-      (state.sealValue owner slot value).state.lookup (owner, slot) = some value := by
-  simp [sealValue, hempty, lookup]
-
-/-- Once occupied, a slot rejects another seal and leaves all state unchanged. -/
-theorem seal_occupied (state : IdealCommitments Principal Slot Value)
-    [DecidableEq Principal] [DecidableEq Slot]
-    (owner : Principal) (slot : Slot) (stored value : Value)
-    (hstored : state.table owner slot = some stored) :
-    state.sealValue owner slot value = ⟨false, state⟩ := by
-  simp [sealValue, hstored]
-
-/-- In particular, a repeated seal cannot overwrite the fixed value. -/
-theorem seal_cannot_overwrite (state : IdealCommitments Principal Slot Value)
-    [DecidableEq Principal] [DecidableEq Slot]
-    (owner : Principal) (slot : Slot) (stored value : Value)
-    (hstored : state.table owner slot = some stored) :
-    (state.sealValue owner slot value).state.lookup (owner, slot) = some stored := by
-  rw [seal_occupied state owner slot stored value hstored]
-  exact hstored
-
-/-- A successful first seal leaves every other owner/slot entry unchanged. -/
-theorem seal_other (state : IdealCommitments Principal Slot Value)
-    [DecidableEq Principal] [DecidableEq Slot]
-    (owner otherOwner : Principal) (slot otherSlot : Slot) (value : Value)
-    (hempty : state.table owner slot = none)
-    (hother : otherOwner ≠ owner ∨ otherSlot ≠ slot) :
-    (state.sealValue owner slot value).state.lookup (otherOwner, otherSlot) =
-      state.lookup (otherOwner, otherSlot) := by
-  rcases hother with howner | hslot
-  · simp [sealValue, hempty, lookup, howner]
-  · simp [sealValue, hempty, lookup, hslot]
-
-/-- Sealing any slot preserves every value that was already registered,
-including values stored at other owner-scoped handles. -/
-theorem lookup_sealValue_of_eq_some (state : IdealCommitments Principal Slot Value)
-    [DecidableEq Principal] [DecidableEq Slot]
-    (owner : Principal) (slot : Slot) (replacement : Value)
-    (handle : CommitmentHandle Principal Slot) (stored : Value)
-    (hstored : state.lookup handle = some stored) :
-    (state.sealValue owner slot replacement).state.lookup handle = some stored := by
-  unfold sealValue
-  split
-  · exact hstored
-  · rename_i hempty
-    simp only [lookup]
-    change state.table handle.1 handle.2 = some stored at hstored
-    by_cases hhandle : handle.1 = owner ∧ handle.2 = slot
-    · rw [hhandle.1, hhandle.2] at hstored
-      have himpossible : (none : Option Value) = some stored := hempty.symm.trans hstored
-      contradiction
-    · simp [hhandle]
-      exact hstored
-
-/-- A seal updates the acting owner's first-value cache at exactly its slot. -/
-theorem lookup_sealValue (service : IdealCommitments Principal Slot Value)
-    [DecidableEq Principal] [DecidableEq Slot]
-    (owner query : Principal) (slot target : Slot) (value : Value) :
-    (service.sealValue owner slot value).state.lookup (query, target) =
-      if query = owner then
-        (service.lookup (query, target)).orElse
-          (fun _ => if slot = target then some value else none)
-      else service.lookup (query, target) := by
-  by_cases howner : query = owner
-  · subst query
-    by_cases hslot : slot = target
-    · subst target
-      cases hlookup : service.table owner slot <;>
-        simp [sealValue, lookup, hlookup]
-    · cases hlookup : service.table owner slot <;>
-        cases htarget : service.table owner target <;>
-        simp [sealValue, lookup, hlookup, hslot, Ne.symm hslot, htarget]
-  · cases hlookup : service.table owner slot <;>
-      simp [sealValue, lookup, hlookup, howner]
-
-/-- Sealing introduces only the submitted value at the authenticated handle;
-every other stored entry already existed. -/
-theorem lookup_sealValue_origin (state : IdealCommitments Principal Slot Value)
-    [DecidableEq Principal] [DecidableEq Slot]
-    (owner : Principal) (slot : Slot) (submitted : Value)
-    (handle : CommitmentHandle Principal Slot) (stored : Value)
-    (hlookup : (state.sealValue owner slot submitted).state.lookup handle = some stored) :
-    state.lookup handle = some stored ∨ handle = (owner, slot) ∧ stored = submitted := by
-  unfold sealValue at hlookup
-  split at hlookup
-  · exact Or.inl hlookup
-  · simp only [lookup] at hlookup
-    split at hlookup
-    · rename_i heq
-      exact Or.inr ⟨Prod.ext heq.1 heq.2, (Option.some.inj hlookup).symm⟩
-    · exact Or.inl hlookup
-
 /-- A claim is accepted exactly when that claimed value is stored at its
 owner-scoped handle. -/
 theorem verify_eq_true_iff (state : IdealCommitments Principal Slot Value)
@@ -221,42 +104,6 @@ theorem verify_eq_true_iff (state : IdealCommitments Principal Slot Value)
     state.verify opening = true ↔
       state.lookup opening.handle = some opening.claimed := by
   simp [verify]
-
-/-- Rejection is the exact complement of successful claimed-value opening. -/
-theorem verify_eq_false_iff (state : IdealCommitments Principal Slot Value)
-    [DecidableEq Value]
-    (opening : Opening (Principal := Principal) (Slot := Slot) (Value := Value)) :
-    state.verify opening = false ↔
-      state.lookup opening.handle ≠ some opening.claimed := by
-  simp [verify]
-
-/-- An accepted claimed opening equals the fixed privately stored value. -/
-theorem accepted_opening_eq_stored (state : IdealCommitments Principal Slot Value)
-    [DecidableEq Value]
-    (handle : CommitmentHandle Principal Slot) (stored claimed : Value)
-    (hstored : state.lookup handle = some stored)
-    (haccepted : state.verify ⟨handle, claimed⟩ = true) :
-    claimed = stored := by
-  have hclaimed := (verify_eq_true_iff state ⟨handle, claimed⟩).mp haccepted
-  exact Option.some.inj (hclaimed.symm.trans hstored)
-
-/-- A claim of the stored value verifies successfully. -/
-theorem verify_stored (state : IdealCommitments Principal Slot Value)
-    [DecidableEq Value]
-    (handle : CommitmentHandle Principal Slot) (value : Value)
-    (hstored : state.lookup handle = some value) :
-    state.verify ⟨handle, value⟩ = true :=
-  (verify_eq_true_iff state _).mpr hstored
-
-/-- A different claimed value verifies unsuccessfully. -/
-theorem verify_other (state : IdealCommitments Principal Slot Value)
-    [DecidableEq Value]
-    (handle : CommitmentHandle Principal Slot) (stored claimed : Value)
-    (hstored : state.lookup handle = some stored) (hne : claimed ≠ stored) :
-    state.verify ⟨handle, claimed⟩ = false := by
-  apply (verify_eq_false_iff state _).mpr
-  intro hclaimed
-  exact hne (Option.some.inj (hclaimed.symm.trans hstored))
 
 end IdealCommitments
 

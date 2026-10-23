@@ -71,12 +71,4 @@ theorem encode_decodePolicy (policy : (info : app.Info) →
 
 variable [DecidableEq Principal]
 
-def policyEquiv (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
-    (who : Principal) :
-    app.Policy ≃ (app.information initial horizon scheduler).BehavioralPolicy who where
-  toFun := app.encodePolicy
-  invFun := app.decodePolicy
-  left_inv := app.decode_encodePolicy
-  right_inv := app.encode_decodePolicy
-
 end Interaction.ReactiveApplication

@@ -86,36 +86,4 @@ theorem rebase
   · simpa only [State.bindingResult, leftLookup, rightLookup] using successes
 
 end BindingMemory.RecordsSubmittedBindings
-
-namespace PhaseBindingRepair
-
-variable {runtime : EventGraphRuntime graph}
-  {leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket graph)}
-  {memory : BindingMemory runtime (nativeLeaks (graph := graph))} {owner : Player}
-  {original repaired nextOriginal nextRepaired : (phaseApplication runtime leaks).Execution}
-
-/-- Real physical environment steps preserve submitted records even when
-local drain or checkpoint installation prevents a literal native-step image. -/
-theorem submittedRecords_environmentStep
-    (recorded : memory.RecordsSubmittedBindings runtime (nativeLeaks (graph := graph)) owner
-      (execution runtime leaks original) (execution runtime leaks repaired))
-    (command : (phaseApplication runtime leaks).Command)
-    (left : nextOriginal ∈
-      (original.environmentStep (phaseApplication runtime leaks) command).support)
-    (right : nextRepaired ∈
-      (repaired.environmentStep (phaseApplication runtime leaks) command).support) :
-    memory.RecordsSubmittedBindings runtime (nativeLeaks (graph := graph)) owner
-      (execution runtime leaks nextOriginal) (execution runtime leaks nextRepaired) := by
-  apply recorded.rebase
-  · exact congrArg (List.map PhaseCount.nativeMessage)
-      ((phaseApplication runtime leaks).environmentStep_inputs original nextOriginal command left)
-  · exact (phaseApplication_preservesFixedCandidates runtime leaks).environmentStep
-      original nextOriginal command left
-  · exact (phaseApplication_preservesFixedCandidates runtime leaks).environmentStep
-      repaired nextRepaired command right
-  · rfl
-
-variable [Fintype Player]
-
-end PhaseBindingRepair
 end Vegas.EventGraphRuntime

@@ -80,33 +80,6 @@ theorem decodedState_intended_or_owes (wellFormed : setup.WellFormed)
           exact decodedHolds_transition intendedOrOwed_stepClosed (initialLaw setup) horizon
             scheduler (some previous) (some control) joint (ih previous rfl) realized
 
-section Forced
-
-variable [Fintype Player] (bounds : MessageBounds (graph setup))
-
-omit [DecidableEq Player] [IExpr.ResultTypes L] in
-/-- Under a global horizon, terminal play from a history reached by play of
-some length is reached by play to the horizon. -/
-theorem mem_runBehavioral_of_terminalFrom {E : ExecutionProtocol Player}
-    (M : InformationModel E) (certificate : E.WellFoundedHistories) {bound : Nat}
-    (bounded : E.BoundedHorizon bound) (profile : ∀ who, M.BehavioralPolicy who) {fuel : Nat}
-    {history final : E.History} (reached : history ∈ (M.runBehavioral profile fuel).support)
-    (finished : final ∈ (M.runBehavioralTerminalFrom certificate profile history).support) :
-    final ∈ (M.runBehavioral profile bound).support := by
-  rw [M.runBehavioralTerminalFrom_eq_runBehavioralFrom_of_bounded certificate bounded] at finished
-  have longer : E.BoundedHorizon (fuel + bound) := fun state trace long =>
-    bounded state trace (by omega)
-  have same : M.runBehavioral profile (fuel + bound) = M.runBehavioral profile bound := by
-    unfold InformationModel.runBehavioral
-    rw [← M.runBehavioralTerminalFrom_eq_runBehavioralFrom_of_bounded certificate longer,
-      M.runBehavioralTerminalFrom_eq_runBehavioralFrom_of_bounded certificate bounded]
-  rw [← same]
-  unfold InformationModel.runBehavioral at reached ⊢
-  rw [M.runBehavioralFrom_add]
-  exact (PMF.mem_support_bind_iff _ _ _).mpr ⟨history, reached, finished⟩
-
-end Forced
-
 section Domination
 
 variable [Fintype Player] (bounds : MessageBounds (graph setup))
@@ -117,27 +90,6 @@ private theorem apply_eq_one_of_subsingleton {α : Type} [Subsingleton α] (law 
   rw [← law.tsum_coe, tsum_eq_single a (fun other different =>
     (different (Subsingleton.elim other a)).elim)]
 
-variable (setup leaks) in
-/-- An information state of `who` at some history as-if-honest play reaches
-from initialization in the one-packet game. -/
-def HonestReached (horizon : Nat) (scheduler : (application setup leaks).Scheduler)
-    (assessment : setup.intendedModel.BehavioralAssessment) (who : Player)
-    (info : (application setup leaks).Info) : Prop :=
-  ∃ fuel, ∃ history ∈ ((onePacketModel setup leaks bounds (initialLaw setup) horizon
-      scheduler).runBehavioral
-      (honestProfile setup leaks bounds (initialLaw setup) horizon scheduler assessment)
-      fuel).support,
-    (onePacketModel setup leaks bounds (initialLaw setup) horizon scheduler).infoOf who
-      history.trace = info
-
 end Domination
-
-section LawApproximation
-
-open Filter
-
-variable [Fintype Player] (bounds : MessageBounds (graph setup))
-
-end LawApproximation
 
 end Vegas

@@ -79,30 +79,6 @@ theorem publicView (frame : Frame runtime leaks memory owner original repaired) 
     frame.clearOriginal, frame.clearRepaired, frame.phases, frame.generation,
     frame.archiveOriginal, frame.archiveRepaired, native]
 
-theorem foreign_input (frame : Frame runtime leaks memory owner original repaired)
-    (who : Player) (different : who ≠ owner) :
-    (original.recall who, original.observe (phaseApplication runtime leaks) who) =
-      (repaired.recall who, repaired.observe (phaseApplication runtime leaks) who) := by
-  apply Prod.ext (frame.foreignRecall who different)
-  change (⟨original.network.observe who,
-    (original.application.current.native.playerView who, original.application.publicView),
-    original.receipts⟩ : (phaseApplication runtime leaks).PlayerView) =
-      ⟨repaired.network.observe who,
-        (repaired.application.current.native.playerView who, repaired.application.publicView),
-        repaired.receipts⟩
-  have native : original.application.current.native.playerView who =
-      repaired.application.current.native.playerView who := frame.live.views who different
-  rw [frame.network, frame.receipts, frame.publicView, native]
-
-theorem environment_input
-    (frame : Frame runtime leaks memory owner original repaired) :
-    original.observeEnvironment (phaseApplication runtime leaks) =
-      repaired.observeEnvironment (phaseApplication runtime leaks) := by
-  change (⟨original.network.publicView, original.application.publicView,
-    original.receipts⟩ : (phaseApplication runtime leaks).EnvironmentView) =
-      ⟨repaired.network.publicView, repaired.application.publicView, repaired.receipts⟩
-  rw [frame.network, frame.publicView, frame.receipts]
-
 /-- Count tests see exactly the same physical signed word. This follows from
 actual recall correctness and the frame, including retired envelope identities. -/
 theorem outputs (frame : Frame runtime leaks memory owner original repaired)

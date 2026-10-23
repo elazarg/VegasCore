@@ -49,18 +49,6 @@ class NetworkPolicy.FiniteSupport {runtime : EventGraphRuntime graph}
     (network : runtime.NetworkPolicy leaks) : Prop where
   support_finite : ∀ history view, (network history view).support.Finite
 
-def interactionVisit (networkTurns : Nat) (event : graph.EventId) :
-    List (ServiceInstruction graph) :=
-  (match graph.actor? event with
-    | none => []
-    | some owner => [.player owner] ++ List.replicate networkTurns .wire ++
-      [.includeLatest event owner]) ++ [.sample event]
-
-def interactionEpoch (chosen : ServiceOrder graph) (networkTurns : Nat) :
-    List (ServiceInstruction graph) :=
-  chosen.val.flatMap (interactionVisit networkTurns) ++ [.tick] ++
-    (List.finRange graph.order.eventCount).map .expire
-
 /-- Selection is by event and authenticated author, excluding spent identifiers. -/
 def reactiveLatest (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
@@ -87,18 +75,6 @@ def interactionInstruction (runtime : EventGraphRuntime graph)
   | .tick => PMF.pure (.application .advanceClock)
   | .expire event => PMF.pure (.application (.expire event))
 
-/-- A reserved instruction does not consult the discretionary network policy.
-This equality preserves the actual command, not just its actor or effect. -/
-theorem interactionInstruction_network_independent (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (left right : runtime.NetworkPolicy leaks)
-    (history : List (runtime.reactiveApplication leaks).EnvironmentEntry)
-    (view : (runtime.reactiveApplication leaks).EnvironmentView)
-    (instruction : ServiceInstruction graph) (reserved : instruction ≠ .wire) :
-    runtime.interactionInstruction leaks left history view instruction =
-      runtime.interactionInstruction leaks right history view instruction := by
-  cases instruction <;> simp_all [interactionInstruction]
-
 /-- A reserved instruction branches finitely without any restriction on the
 discretionary network policy, because it never calls that policy. -/
 theorem interactionInstruction_support_finite_of_not_wire (runtime : EventGraphRuntime graph)
@@ -109,39 +85,6 @@ theorem interactionInstruction_support_finite_of_not_wire (runtime : EventGraphR
     (instruction : ServiceInstruction graph) (reserved : instruction ≠ .wire) :
     (runtime.interactionInstruction leaks network history view instruction).support.Finite := by
   cases instruction <;> simp_all [interactionInstruction]
-
-/-- Only network opportunities randomize a service instruction. -/
-theorem interactionInstruction_support_finite (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (network : runtime.NetworkPolicy leaks) [network.FiniteSupport]
-    (history : List (runtime.reactiveApplication leaks).EnvironmentEntry)
-    (view : (runtime.reactiveApplication leaks).EnvironmentView)
-    (instruction : ServiceInstruction graph) :
-    (runtime.interactionInstruction leaks network history view instruction).support.Finite := by
-  cases instruction with
-  | wire =>
-      rw [interactionInstruction, PMF.support_map]
-      exact (NetworkPolicy.FiniteSupport.support_finite history view).image _
-  | _ => simp [interactionInstruction]
-
-/-- A fixed service order is a concrete scheduler instance. Its position is
-recovered from its own command recall, which advances once per scheduler choice,
-including activations. Player responses do not consume another service step. -/
-def interactionScheduler (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (chosen : ServiceOrder graph)
-    (networkTurns : Nat) (network : runtime.NetworkPolicy leaks) :
-    (runtime.reactiveApplication leaks).Scheduler :=
-  fun history view =>
-    let epoch := interactionEpoch chosen networkTurns
-    match epoch[history.length % epoch.length]? with
-    | none => PMF.pure .wait
-    | some instruction => runtime.interactionInstruction leaks network history view instruction
-
-def interactionHorizon (runtime : EventGraphRuntime graph)
-    (chosen : ServiceOrder graph)
-    (networkTurns : Nat) : Nat :=
-  runtime.serviceEpochs * (interactionEpoch chosen networkTurns).length
 
 end Vegas.EventGraphRuntime
 

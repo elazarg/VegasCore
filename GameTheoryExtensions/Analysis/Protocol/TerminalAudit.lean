@@ -107,51 +107,6 @@ theorem settlement_clean (base : Outcome → Player → ℝ) (observe : Outcome 
       simp only [quiet verdict supported who, Bool.false_eq_true, ite_false, sub_zero]
     _ = _ := by simp only [← PMF.bind_pure_comp, Function.comp_def, PMF.bind_const]
 
-/-- **Clean settlement from a charge-free law.** Suppose a terminal law and a
-reference law agree on the joint law of a readout and the vector of collection
-probabilities, and the reference charges nobody. Then no outcome in the
-terminal law's support is charged, and its joint law of readout and realized
-settlement is the reference law of readout and base payoff, when the base payoff
-is a function of the readout. -/
-theorem clean_of_law_eq {Readout Source : Type*} (base : Outcome → Player → ℝ)
-    (observe : Outcome → Observation) (audit : Observation → PMF (Player → Bool))
-    (deposit : Player → ℝ) (readout : Outcome → Readout) (value : Readout → Player → ℝ)
-    (baseEq : ∀ outcome, base outcome = value (readout outcome))
-    (law : PMF Outcome) (source : PMF Source) (sourceReadout : Source → Readout)
-    (equal : law.map (fun outcome =>
-        (readout outcome, fun who => charge observe audit outcome who)) =
-      source.map (fun state => (sourceReadout state, (0 : Player → ℝ)))) :
-    (∀ outcome ∈ law.support, ∀ who, charge observe audit outcome who = 0) ∧
-      law.bind (fun outcome => (settlement base observe audit deposit outcome).map
-          (fun payoffs => (readout outcome, payoffs))) =
-        source.map (fun state => (sourceReadout state, value (sourceReadout state))) := by
-  have clean (outcome : Outcome) (supported : outcome ∈ law.support) (who : Player) :
-      charge observe audit outcome who = 0 := by
-    have member : (readout outcome, fun who => charge observe audit outcome who) ∈
-        (law.map (fun outcome =>
-          (readout outcome, fun who => charge observe audit outcome who))).support :=
-      (PMF.mem_support_map_iff _ _ _).mpr ⟨outcome, supported, rfl⟩
-    rw [equal, PMF.mem_support_map_iff] at member
-    obtain ⟨_, _, same⟩ := member
-    exact (congrFun (congrArg Prod.snd same) who).symm
-  refine ⟨clean, ?_⟩
-  calc
-    _ = law.map (fun outcome => (readout outcome, value (readout outcome))) := by
-      rw [← PMF.bind_pure_comp]
-      apply bind_congr_on_support
-      intro outcome supported
-      rw [settlement_clean base observe audit deposit outcome (clean outcome supported),
-        PMF.pure_map, baseEq]
-      rfl
-    _ = (law.map (fun outcome =>
-          (readout outcome, fun who => charge observe audit outcome who))).map
-          (fun pair => (pair.1, value pair.1)) := by
-      rw [PMF.map_comp]
-      rfl
-    _ = _ := by
-      rw [equal, PMF.map_comp]
-      rfl
-
 end GameTheory.Enforcement.TerminalAudit
 
 namespace GameTheory.Protocol.InformationModel.ActionRestriction
@@ -263,67 +218,5 @@ theorem sequential_equilibrium_extends_of_terminal_audit
     rw [← laws, PMF.support_map] at supported
     obtain ⟨original, _, rfl⟩ := supported
     exact sound original who
-
-/-- One finite nonnegative deposit vector preserves every source SE when each
-excluded action has positive conditional collection under all remaining play. -/
-theorem exists_deposits_preserving_sequential_equilibria
-    (sourceAntichain : M.DecisionInformationAntichain)
-    (sourceCertificate : E.WellFoundedHistories) (targetCertificate : T.WellFoundedHistories)
-    (fallback : ∀ who, N.Policy who)
-    (decisionRecall : N.DecisionRecall)
-    (sourcePayoff : E.History → Player → ℝ) (base : T.History → Player → ℝ)
-    (observe : T.History → Observation) (audit : Observation → PMF (Player → Bool))
-    (matching : ∀ history who, base (restriction.history history) who = sourcePayoff history who)
-    (sound : ∀ history who, charge observe audit (restriction.history history) who = 0)
-    (lower upper detection : Player → ℝ)
-    (source_lower : ∀ history who, lower who ≤ sourcePayoff history who)
-    (target_upper : ∀ history who, base history who ≤ upper who)
-    (positive : ∀ who, 0 < detection who)
-    (collection : ∀ (profile : ∀ who, N.BehavioralPolicy who) who
-      (site : M.InformationSite who)
-      (action : N.Choice who (restriction.site who site).1),
-      action ∉ Set.range (restriction.choice who site.1) →
-      ∀ history : M.InformationHistory who site.1,
-        detection who ≤ (((((N.runBehavioralTerminalFrom targetCertificate
-          (Profile.update (sig := N.behavioralSignature) profile who
-            ((profile who).commit (restriction.site who site).1 action))
-          (restriction.history history.1)).map observe).bind audit).map
-            (fun verdict => verdict who)) true).toReal) :
-    ∃ deposit : Player → ℝ, (∀ who, 0 ≤ deposit who) ∧
-      ∀ source : M.BehavioralAssessment,
-        source.IsSequentialEquilibrium sourceAntichain sourceCertificate
-          (fun who history => sourcePayoff history who) →
-        ∃ target : N.BehavioralAssessment,
-          target.IsSequentialEquilibrium decisionRecall.decisionInformationAntichain
-            targetCertificate (fun who history => utility base observe audit deposit history who) ∧
-          restriction.ExtendsProfile source.strategy target.strategy ∧
-          (∀ who site, target.belief who (restriction.site who site) =
-            (source.belief who site).map (restriction.informationHistory who site)) ∧
-          (M.runBehavioralTerminalFrom sourceCertificate source.strategy E.initHistory).map
-              restriction.history =
-            N.runBehavioralTerminalFrom targetCertificate target.strategy T.initHistory ∧
-          (M.runBehavioralTerminalFrom sourceCertificate source.strategy E.initHistory).map
-              (fun history => (restriction.history history, sourcePayoff history)) =
-            (N.runBehavioralTerminalFrom targetCertificate target.strategy T.initHistory).bind
-              (fun history => (settlement base observe audit deposit history).map
-                (fun payoffs => (history, payoffs))) ∧
-          ∀ history ∈ (N.runBehavioralTerminalFrom targetCertificate target.strategy
-              T.initHistory).support, ∀ who, charge observe audit history who = 0 := by
-  obtain ⟨reference, referenceMixed, _, _, _⟩ :=
-    N.exists_uniformTremble_locallyOptimal_bayesAssessment fallback
-      decisionRecall.actsOnceWhereItMatters decisionRecall.decisionInformationAntichain
-      1 zero_lt_one le_rfl (fun _ _ => 0) targetCertificate
-  let deposit : Player → ℝ := fun who => max 0 ((upper who - lower who) / detection who)
-  have nonnegative (who : Player) : 0 ≤ deposit who := le_max_left _ _
-  have sufficient (who : Player) : upper who - detection who * deposit who ≤ lower who := by
-    have bound : (upper who - lower who) / detection who ≤ deposit who := le_max_right _ _
-    have multiplied := (div_le_iff₀ (positive who)).mp bound
-    nlinarith [multiplied]
-  refine ⟨deposit, nonnegative, ?_⟩
-  intro source equilibrium
-  exact restriction.sequential_equilibrium_extends_of_terminal_audit
-    sourceAntichain sourceCertificate targetCertificate reference referenceMixed decisionRecall
-    sourcePayoff base observe audit matching sound lower upper detection deposit nonnegative
-    source_lower target_upper sufficient collection source equilibrium
 
 end GameTheory.Protocol.InformationModel.ActionRestriction

@@ -107,37 +107,4 @@ theorem proposalRecovery_normalized_failed_conditional_value_eq
       setup.proposalRecoveryErasedHistory
       (setup.proposalRecoveryImagePayoff utility excludedPayoff focal) image
 
-open Classical in
-/-- The known-failed remainder contributes exactly zero gain for every
-component alternative that preserves the prescribed omission marginal. -/
-theorem proposalRecovery_normalized_failed_conditional_gain_eq_zero
-    (assessment : setup.proposalRecoveryModel.BehavioralAssessment)
-    (prescribed : ∀ who (history : setup.proposalRecoveryProtocol.History)
-      (_running : ¬ setup.proposalRecoveryProtocol.terminal history.state),
-      assessment.strategy who (setup.proposalRecoveryModel.infoOf who history.trace) =
-        baseline who (setup.proposalRecoveryModel.infoOf who history.trace))
-    (utility : State L setup.program.terminalCtx → Player → ℝ) (excludedPayoff : Player → ℝ)
-    (certificate : setup.proposalRecoveryProtocol.WellFoundedHistories)
-    (focal : Player) (site : setup.proposalRecoveryModel.InformationSite focal)
-    (failed : ∀ history : setup.proposalRecoveryModel.InformationHistory focal site.1,
-      ∃ first, history.1.state = some first ∧
-        ProtocolState.atCommit setup.program first.point = true ∧ first.NewFailure)
-    (law : PMF (setup.proposalRecoveryModel.Choice focal site.1))
-    (marginals : law.map
-        (fun choice => CommitRecoveryMove.missed (choice.val.map (·.semantic))) =
-      (assessment.strategy focal site.1).map
-        (fun choice => CommitRecoveryMove.missed (choice.val.map (·.semantic)))) :
-    (assessment.continuationContext certificate site
-      (setup.proposalRecoveryPayoff utility excludedPayoff focal)).value
-        ((assessment.strategy focal).withLaw site.1 law) -
-      (assessment.continuationContext certificate site
-        (setup.proposalRecoveryPayoff utility excludedPayoff focal)).value
-          (assessment.strategy focal) = 0 := by
-  apply sub_eq_zero.mpr
-  have shared := setup.proposalRecovery_normalized_failed_conditional_value_eq omission
-    omissionNonnegative omissionBounded bad badNonnegative badBounded
-    delivery deliveryNonnegative deliveryBounded values assessment prescribed utility excludedPayoff
-    certificate focal site failed law (assessment.strategy focal site.1) marginals
-  simpa only [InformationModel.BehavioralPolicy.withLaw_eq_self] using shared
-
 end Vegas.SourceProgram.Setup

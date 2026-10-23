@@ -199,52 +199,6 @@ theorem proposalRecovery_future_flags_withinTV
   exact close.mono (no_flag_error_le omission bad delivery omissionNonnegative omissionBounded
     badNonnegative badBounded deliveryNonnegative deliveryBounded (Fintype.card Player * fuel))
 
-/-- An arbitrary focal policy is kept literally the same in both future laws;
-only the prescribed foreign flags are removed. -/
-theorem proposalRecovery_future_foreign_flags_withinTV
-    (omission : ℝ) (omissionNonnegative : 0 ≤ omission) (omissionBounded : omission ≤ 1)
-    (bad : ℝ) (badNonnegative : 0 ≤ bad) (badBounded : bad ≤ 1)
-    (delivery : ℝ) (deliveryNonnegative : 0 ≤ delivery) (deliveryBounded : delivery ≤ 1)
-    (values : (who : Player) → (key : setup.ProposalRecoveryComponent who) →
-      PMF (setup.CommitRecoveryValueChoice who key.1))
-    (focal : Player) (policy : setup.proposalRecoveryModel.BehavioralPolicy focal)
-    (history : setup.proposalRecoveryProtocol.History) (fuel : Nat) :
-    let ordinary := setup.proposalRecoveryNormalizedTrembledProfile
-      0 le_rfl zero_le_one 0 le_rfl zero_le_one 0 le_rfl zero_le_one values
-    let flagged := setup.proposalRecoveryNormalizedTrembledProfile
-      omission omissionNonnegative omissionBounded bad badNonnegative badBounded
-      delivery deliveryNonnegative deliveryBounded values
-    PMF.WithinTV ((Fintype.card Player * fuel : Nat) * (omission + bad + delivery))
-      (setup.proposalRecoveryModel.runBehavioralFrom
-        (Profile.update (sig := setup.proposalRecoveryModel.behavioralSignature)
-          ordinary focal policy) fuel history)
-      (setup.proposalRecoveryModel.runBehavioralFrom
-        (Profile.update (sig := setup.proposalRecoveryModel.behavioralSignature)
-          flagged focal policy) fuel history) := by
-  intro ordinary flagged
-  have fractionSmall := no_flag_fraction_le_one omission bad delivery
-    omissionNonnegative omissionBounded badNonnegative badBounded deliveryNonnegative
-  have close := setup.proposalRecoveryModel.runBehavioralFrom_withinTV_of_supported_choices
-    (Profile.update (sig := setup.proposalRecoveryModel.behavioralSignature)
-      ordinary focal policy)
-    (Profile.update (sig := setup.proposalRecoveryModel.behavioralSignature)
-      flagged focal policy)
-    ((1 - omission) * (1 - bad) * (1 - delivery))
-    (mul_nonneg (mul_nonneg (sub_nonneg.mpr omissionBounded) (sub_nonneg.mpr badBounded))
-      (sub_nonneg.mpr deliveryBounded)) fractionSmall history (by
-        intro _ next _ who choice
-        by_cases own : who = focal
-        · subst who
-          simp only [Profile.update_same]
-          exact mul_le_of_le_one_left ENNReal.toReal_nonneg fractionSmall
-        · simp only [Profile.update_of_ne _ _ own]
-          exact setup.proposalRecoveryNormalizedTrembledProfile_ordinary_lower
-            omission omissionNonnegative omissionBounded bad badNonnegative badBounded
-            delivery deliveryNonnegative deliveryBounded values who
-            (setup.proposalRecoveryModel.infoOf who next.trace) choice) fuel
-  exact close.mono (no_flag_error_le omission bad delivery omissionNonnegative omissionBounded
-    badNonnegative badBounded deliveryNonnegative deliveryBounded (Fintype.card Player * fuel))
-
 end Continuations
 
 end Vegas.SourceProgram.Setup

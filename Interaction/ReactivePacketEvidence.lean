@@ -52,15 +52,6 @@ private theorem sound_mono (execution : app.Execution) (next : app.State)
       ∀ fact ∈ evidence.decode message.payload, evidence.valid next fact) :=
   sound.mono fun _ valid fact member => preserved fact (valid fact member)
 
-theorem observed_valid (execution : app.Execution) (who : Principal)
-    (sound : evidence.Sound execution) (fact : evidence.Fact)
-    (observed : fact ∈ evidence.observe (execution.observe app who)) :
-    evidence.valid execution.application fact := by
-  obtain ⟨message, member, decoded⟩ := List.mem_flatMap.mp observed
-  rcases List.mem_append.mp member with leaked | published
-  · exact sound.leaked who message leaked fact decoded
-  · exact sound.ledger message published fact decoded
-
 variable [DecidableEq Principal]
 
 theorem sound_respond (execution : app.Execution) (who : Principal) (action : app.Action)

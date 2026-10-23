@@ -75,25 +75,4 @@ theorem processing_segment {length : Nat} (packetBudget : Nat) (tape : Tape Play
         simp only [List.length_cons]
         omega
 
-theorem processing_epoch_clears {length : Nat} (packetBudget : Nat)
-    (tape : Tape Player length) (players : Player → (app).Policy) (cycle : Nat)
-    (execution next : (app).Execution)
-    (cursor : execution.environmentRecall.length =
-      cycle * cycleWidth (graph := graph) packetBudget)
-    (traffic : execution.network.pending.length ≤ packetBudget)
-    (epoch : tape.processes cycle = true)
-    (reached : next ∈ ((app).runRounds (family runtime leaks packetBudget tape) players
-      execution.network.pending.length execution).support) :
-    next.network.pending = [] ∧
-      (∀ message ∈ execution.network.pending,
-        message ∈ next.network.ledger ∧ ∃ accepted, (message.id, accepted) ∈ next.receipts) := by
-  have delivered := processing_segment runtime leaks packetBudget tape players cycle 0
-    execution.network.pending execution next (by simpa using cursor) (by simpa using traffic)
-    epoch rfl reached
-  refine ⟨delivered.1, ?_⟩
-  intro message member
-  refine ⟨?_, delivered.2.2.2.1 message member⟩
-  rw [delivered.2.1]
-  exact List.mem_append_right _ member
-
 end Vegas.EventGraphRuntime.ReservedEpoch

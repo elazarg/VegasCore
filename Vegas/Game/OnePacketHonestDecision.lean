@@ -8,20 +8,14 @@ import Vegas.Game.SourceServiceFirstTurnRisk
 import Interaction.ReactiveTrafficIdentity
 import Vegas.Game.OnePacketRetention
 
-/-! # First-turn clients answer their turns once
+/-! # Committed values and emitted transmissions
 
 A source action binds a successful value whenever it is a commitment
-(`Vegas.SourceProgram.OwnAction.CommitsValue`), as intended actions do
-(`Vegas.SourceProgram.ProtocolView.intendedAvailable_commitsValue`). After an
-earlier turn at an event the first-turn clients are silent at it
-(`Vegas.openingClients_later_silent`) and never submit for it if they did not
-then (`Vegas.openingClients_keeps_unrecorded`); for a well-formed setup under
-the asynchronous contract with timely delays, an owner that had a turn at its
-event has submitted for it (`Vegas.openingClients_recorded_of_seen`). Every
-transmitting recall entry emitted the packet of its submission, at every
-history (`Vegas.transmissionsEmitted_serviceInvariant`), so a canonical
-decision that transmits after its recall has submitted for the event is not in
-the one-packet menu (`Vegas.canonical_not_onePacket_of_recorded`).
+(`Vegas.SourceProgram.OwnAction.CommitsValue`); such an action encodes, at a
+binding event, to a successful binding value
+(`Vegas.encodeEventAction?_commitsValue`). Every transmitting recall entry
+emitted the packet of its submission, at every history under arbitrary
+responses and scheduler choices (`Vegas.transmissionsEmitted_serviceInvariant`).
 -/
 
 noncomputable section
@@ -43,30 +37,6 @@ section Effective
 def SourceProgram.OwnAction.CommitsValue : OwnAction Player L → Prop
   | .commit _ _ _ choice => ∃ value, choice = .success value
   | .reveal .. => True
-
-/-- An intended action binds a successful value whenever it is a commitment. -/
-theorem SourceProgram.ProtocolView.intendedAvailable_commitsValue (who : Player) :
-    {Γ : SourceCtx Player L} → {O : Finset VarId} →
-    (program : SourceProgram Player L Γ O) → (view : ProtocolView who program) →
-      ∀ action ∈ ProtocolView.intendedAvailable who program view, action.CommitsValue
-  | _, _, .ret _, _, _, member => member.elim
-  | _, _, .sample _ _ _ next, view, action, member => by
-      cases view with
-      | inl _ => exact member.elim
-      | inr later => exact intendedAvailable_commitsValue who next later action member
-  | _, _, .commit _ _ _ _ next, view, action, member => by
-      cases view with
-      | inl _ =>
-          obtain ⟨value, _, rfl⟩ := member
-          exact ⟨value, rfl⟩
-      | inr later => exact intendedAvailable_commitsValue who next later action member
-  | _, _, .reveal _ _ _ _ _ _ next, view, action, member => by
-      cases view with
-      | inl _ =>
-          change action = _ at member
-          subst member
-          trivial
-      | inr later => exact intendedAvailable_commitsValue who next later action member
 
 /-- A source action binding a successful value encodes, at a binding event, to a
 successful binding value. -/
@@ -111,175 +81,6 @@ theorem encodeEventAction?_commitsValue :
 
 end Effective
 
-section Recorded
-
-/-- An earlier turn of `who` at `event` in its recall. -/
-def SeenTurn (who : Player) (event : (graph setup).EventId)
-    (past : List (application setup leaks).PlayerEntry) : Prop :=
-  ∃ entry ∈ past, entry.beforeView.application.publicView.ownTurn? who = some event
-
-/-- After an earlier turn at an event, the first-turn clients are silent at
-every later turn at it. -/
-theorem openingClients_later_silent (bound : (graph setup).EventId → Nat) (turns : Nat)
-    (intended : ∀ who, setup.intendedModel.BehavioralPolicy who) (who : Player)
-    (past : List (application setup leaks).PlayerEntry)
-    (view : (application setup leaks).PlayerView) (event : (graph setup).EventId)
-    (turn : view.application.publicView.ownTurn? who = some event)
-    (seen : SeenTurn who event past) :
-    openingClients setup leaks bound turns intended who past view = PMF.pure ⟨none⟩ := by
-  have owned := (PublicView.ownTurn?_spec _ who event turn).2
-  rw [openingClients, firstTurnPolicy_eq_family owned turn]
-  unfold serviceTurnFamily
-  rw [(application setup leaks).turnScheduledPolicy_unselected _ _ _ _ past view]
-  · rfl
-  · intro slot selected counted
-    cases selected
-    change (if view.application.publicView.ownTurn? who = some event then
-      some (past.countP fun entry =>
-        decide (entry.beforeView.application.publicView.ownTurn? who = some event))
-      else none) = some 0 at counted
-    rw [ite_eq_left turn ..] at counted
-    rw [Option.some.injEq, List.countP_eq_zero] at counted
-    obtain ⟨entry, member, earlier⟩ := seen
-    exact counted entry member (decide_eq_true earlier)
-
-/-- The first-turn clients never submit for an event after an earlier turn at it
-at which they did not. -/
-theorem openingClients_keeps_unrecorded (scheduler : (application setup leaks).Scheduler)
-    (bound : (graph setup).EventId → Nat) (turns : Nat)
-    (intended : ∀ who, setup.intendedModel.BehavioralPolicy who) (who : Player)
-    (event : (graph setup).EventId) :
-    ∀ (more : Nat) (execution : (application setup leaks).Execution),
-      (runtime setup).eventRecorded leaks (execution.recall who) event = false →
-      SeenTurn who event (execution.recall who) →
-      ∀ final ∈ ((application setup leaks).runRounds scheduler
-          (openingClients setup leaks bound turns intended) more execution).support,
-        (runtime setup).eventRecorded leaks (final.recall who) event = false ∧
-          SeenTurn who event (final.recall who) := by
-  let app := application setup leaks
-  intro more
-  induction more with
-  | zero =>
-      intro execution unrecorded seen final reached
-      cases (PMF.mem_support_pure_iff _ _).mp reached
-      exact ⟨unrecorded, seen⟩
-  | succ more ih =>
-      intro execution unrecorded seen final reached
-      obtain ⟨middle, moved, rest⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
-      refine ih middle ?_ ?_ final rest
-      all_goals
-        obtain ⟨command, _, between, stepped, cases⟩ := round_cases setup leaks moved
-        have recallEq := app.environmentStep_recall execution between command stepped
-      · rcases cases with ⟨_, rfl⟩ | ⟨responder, _, response, chosen, rfl⟩
-        · rw [recallEq]
-          exact unrecorded
-        · by_cases same : responder = who
-          · subst responder
-            obtain ⟨emitted, recalled, _⟩ := respond_recall_self setup leaks between who response
-            rw [recalled]
-            apply Bool.eq_false_of_not_eq_true
-            intro recorded
-            obtain ⟨entry, member, submitted⟩ :=
-              ((runtime setup).eventRecorded_iff leaks _ event).mp recorded
-            rcases List.mem_append.mp member with old | new
-            · have before := ((runtime setup).eventRecorded_iff leaks _ event).mpr
-                ⟨entry, old, submitted⟩
-              rw [recallEq, unrecorded] at before
-              cases before
-            · cases List.mem_singleton.mp new
-              have turn := sourceServiceTurnPolicy_submitsAtTurn setup leaks bound turns
-                (firstTurnTiming setup turns .sequential) (setup.intendedOpeningProfile intended)
-                who _ _ response chosen event submitted
-              have earlier : SeenTurn who event (between.recall who) := by
-                rw [recallEq]
-                exact seen
-              rw [openingClients_later_silent bound turns intended who _ _ event turn earlier,
-                PMF.mem_support_pure_iff] at chosen
-              subst chosen
-              cases submitted
-          · rw [app.respond_recall_other between responder who (Ne.symm same) response, recallEq]
-            exact unrecorded
-      · obtain ⟨entry, member, earlier⟩ := seen
-        refine ⟨entry, ?_, earlier⟩
-        rcases cases with ⟨_, rfl⟩ | ⟨responder, _, response, _, rfl⟩
-        · rw [recallEq]
-          exact member
-        · have grown := app.respond_recall_mono between responder who response
-          rw [recallEq] at grown
-          exact grown member
-
-/-- **Earlier turns are answered.** For a well-formed setup, under the
-asynchronous contract with timely delays, at every execution the first-turn
-clients of the intended effective opening reach within the horizon, an owner
-that had a turn at its event has submitted for it. -/
-theorem openingClients_recorded_of_seen [Finite Player] (wellFormed : setup.WellFormed)
-    {horizon : Nat} {scheduler : (application setup leaks).Scheduler}
-    {delay bound : (graph setup).EventId → Nat}
-    (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler delay
-      bound)
-    (timely : AsyncTimely (runtime setup) delay bound) (turns : Nat)
-    (intended : ∀ who, setup.intendedModel.BehavioralPolicy who) {count : Nat}
-    (within : count ≤ horizon) {execution : (application setup leaks).Execution}
-    (supported : execution ∈ ((application setup leaks).roundsFrom (initialLaw setup) scheduler
-      (openingClients setup leaks bound turns intended) count).support)
-    (who : Player) (event : (graph setup).EventId) (owned : (graph setup).actor? event = some who)
-    (seen : SeenTurn who event (execution.recall who)) :
-    (runtime setup).eventRecorded leaks (execution.recall who) event = true := by
-  let app := application setup leaks
-  let players := openingClients setup leaks bound turns intended
-  apply Bool.eq_true_of_not_eq_false
-  intro unrecorded
-  cases node : nodeView (graph setup) event with
-  | sample payload law outputEq codeEq =>
-      have none := nodeView_sample_actor outputEq codeEq
-      rw [owned] at none
-      cases none
-  | bind actor payload outputEq codeEq =>
-      obtain ⟨entry, member, turn⟩ := seen
-      have recorded := (sourceServiceFirstTurn_recallFacts contract timely players who turns
-        (setup.intendedOpeningProfile intended) rfl count within execution supported).1 entry
-        member event actor payload turn outputEq
-      rw [unrecorded] at recorded
-      cases recorded
-  | resolve actor payload binding checks outputEq codeEq =>
-      obtain ⟨final, finalMem⟩ :=
-        (app.runRounds scheduler players (horizon - count) execution).support_nonempty
-      have kept := (openingClients_keeps_unrecorded scheduler bound turns intended who event
-        (horizon - count) execution unrecorded seen final finalMem).1
-      have atHorizon := mem_roundsFrom_of_runRounds (app := app) supported finalMem
-      rw [show count + (horizon - count) = horizon by omega] at atHorizon
-      obtain ⟨trace⟩ := app.raw_trace_roundsFrom (initialLaw setup) horizon scheduler players
-        horizon le_rfl final atHorizon
-      rw [Nat.sub_self] at trace
-      have terminalCut := contract.completes ⟨0, none, final⟩ trace ⟨rfl, rfl⟩
-      have completed : event ∈ final.application.config.cut.completed := by
-        change final.application.config.cut.completed = Finset.univ at terminalCut
-        rw [terminalCut]
-        exact Finset.mem_univ _
-      obtain ⟨rank, ⟨residual⟩, intendedHolds⟩ := openingClients_intended (profile :=
-        setup.intendedOpeningProfile intended) wellFormed contract timely turns intended horizon
-        le_rfl final atHorizon
-      obtain ⟨recordRank, ⟨recordResidual⟩, record⟩ :=
-        publicationRecord_history (setup.intendedOpeningProfile intended) horizon scheduler trace
-      rcases record with failed | accepted
-      · have sameRank := isPrefix_unique recordResidual.checkpoint.ordered
-          residual.checkpoint.ordered
-        subst sameRank
-        obtain ⟨other, revealFailed⟩ := failed _ residual.decode
-        exact ProtocolState.not_excluded_of_intended other setup.program _
-          (intendedHolds _ residual.decode)
-          (ProtocolState.RevealFailed.excluded setup.program _ revealFailed)
-      · obtain ⟨message, present, _, named, sender⟩ := accepted event completed payload outputEq
-        have senderEq : message.sender = who := Option.some.inj (sender.symm.trans owned)
-        have input := app.ledger_subset_inputs_history (initialLaw setup) horizon scheduler
-          ⟨0, none, final⟩ trace present
-        have output : message ∈ app.outputs (final.recall who) := by
-          rw [← app.history_inputRecall (initialLaw setup) horizon scheduler trace who]
-          exact List.mem_filter.mpr ⟨input, by simp [senderEq]⟩
-        exact output_event trace who event kept message output named
-
-end Recorded
-
 section Repeated
 
 /-- Every transmitting recall entry emitted the packet of its submission. -/
@@ -308,74 +109,6 @@ theorem transmissionsEmitted_serviceInvariant (scheduler : (application setup le
     intro who entry member
     rw [(application setup leaks).environmentStep_recall execution next command moved] at member
     exact valid who entry member
-
-/-- **A repeated packet is not a one-packet response.** At every history, under
-arbitrary responses and scheduler choices, a canonical decision of `who` at its
-turn `event` that transmits, after its recall has submitted for `event`, is not
-in the one-packet menu. -/
-theorem canonical_not_onePacket_of_recorded [Fintype Player] (bounds : MessageBounds (graph setup))
-    {horizon : Nat} {scheduler : (application setup leaks).Scheduler}
-    {control : (application setup leaks).Control}
-    (trace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
-      (some control))
-    (who : Player) (event : (graph setup).EventId)
-    (recorded : (runtime setup).eventRecorded leaks (control.execution.recall who) event = true)
-    (action : (graph setup).Action event)
-    (material : (application setup leaks).Submission)
-    (submits : ((runtime setup).canonicalServiceDecision leaks who (control.execution.recall who)
-      (control.execution.observe (application setup leaks) who) event action).transmission =
-        some material) :
-    (runtime setup).canonicalServiceDecision leaks who (control.execution.recall who)
-        (control.execution.observe (application setup leaks) who) event action ∉
-      bounds.onePacketActions (runtime setup) leaks who (control.execution.recall who)
-        (control.execution.observe (application setup leaks) who) := by
-  let app := application setup leaks
-  intro member
-  obtain ⟨_, sent⟩ := (bounds.mem_onePacketActions (runtime setup) leaks who _ _ _).mp member
-  rcases sent with silent | ⟨chosen, transmits, permitted⟩
-  · rw [silent] at submits
-    cases submits
-  · rw [submits] at transmits
-    have same := Option.some.inj transmits
-    subst same
-    have named : material.call.packet.event? (graph setup) = some event := by
-      rcases (runtime setup).canonicalServiceDecision_cases leaks who
-          (control.execution.recall who) (control.execution.observe app who) event action with
-        silent | submitted
-      · rw [silent] at submits
-        cases submits
-      · unfold EventGraphRuntime.submittedEvent? at submitted
-        rw [submits] at submitted
-        exact submitted
-    have recalled := (runtime setup).countRecall_history leaks trace
-    rw [(runtime setup).localEnvelope_eq_of_recall leaks control.execution recalled.1
-      recalled.2.1 who material, countPermits_eq_true_iff] at permitted
-    obtain ⟨entry, entryMember, submitted⟩ :=
-      ((runtime setup).eventRecorded_iff leaks _ event).mp recorded
-    obtain ⟨entryMaterial, entryTransmits⟩ : ∃ entryMaterial,
-        entry.action.transmission = some entryMaterial := by
-      unfold EventGraphRuntime.submittedEvent? at submitted
-      cases transmission : entry.action.transmission with
-      | none => rw [transmission] at submitted; cases submitted
-      | some entryMaterial => exact ⟨entryMaterial, rfl⟩
-    have entryNamed : entryMaterial.call.packet.event? (graph setup) = some event := by
-      unfold EventGraphRuntime.submittedEvent? at submitted
-      rw [entryTransmits] at submitted
-      exact submitted
-    obtain ⟨message, emitted, call⟩ :=
-      ((transmissionsEmitted_serviceInvariant scheduler).history (initialLaw setup) horizon
-        (fun _ _ _ entry member => (List.not_mem_nil member).elim) trace) who entry entryMember
-        entryMaterial entryTransmits
-    have output : message ∈ app.outputs (control.execution.recall who) :=
-      List.mem_filterMap.mpr ⟨entry, entryMember, emitted⟩
-    have earlier := earlierOwnPacket_of_output trace who
-      (app.packet (app.submit control.execution.application who material) who
-        (control.execution.network.known who) material) message output
-    have distinct := permitted.2.2 message earlier
-    apply distinct
-    change message.payload.call.event? (graph setup) =
-      material.call.packet.event? (graph setup)
-    rw [call, entryNamed, named]
 
 end Repeated
 

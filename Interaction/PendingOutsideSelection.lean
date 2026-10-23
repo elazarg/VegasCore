@@ -132,34 +132,4 @@ theorem chooseWithOutside_insert (weight : ℝ) (nonnegative : 0 ≤ weight)
           ring
         · simp [same, member, PMF.pure_apply]
 
-omit [DecidableEq Principal] in
-/-- A single identifier's inclusion probability can approach one arbitrarily closely. -/
-theorem chooseWithOutside_singleton_toReal (weight : ℝ) (nonnegative : 0 ≤ weight)
-    (id : MessageId Principal) :
-    ((chooseWithOutside weight nonnegative {id}) (some id)).toReal = weight / (1 + weight) := by
-  classical
-  simp [chooseWithOutside_some_toReal]
-
-omit [DecidableEq Principal] in
-/-- Every inclusion probability strictly below one is realized with finite weight. -/
-theorem chooseWithOutside_realizes_probability (probability : ℝ)
-    (nonnegative : 0 ≤ probability) (belowOne : probability < 1)
-    (id : MessageId Principal) :
-    ((chooseWithOutside (probability / (1 - probability)) (by positivity) {id})
-      (some id)).toReal = probability ∧
-      ((chooseWithOutside (probability / (1 - probability)) (by positivity) {id})
-        none).toReal = 1 - probability := by
-  have denominator : 1 - probability ≠ 0 := by linarith
-  have total : 1 + probability / (1 - probability) ≠ 0 := by
-    have nonnegativeWeight : 0 ≤ probability / (1 - probability) := by positivity
-    linarith
-  constructor
-  · rw [chooseWithOutside_singleton_toReal]
-    field_simp
-    ring
-  · rw [chooseWithOutside_none_toReal]
-    simp only [Finset.card_singleton, Nat.cast_one, one_mul]
-    field_simp
-    ring
-
 end Interaction.MessageNetwork

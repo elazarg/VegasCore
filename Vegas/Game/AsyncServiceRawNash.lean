@@ -10,7 +10,7 @@ native response within the service's message bounds, including every packet
 error. It admits the turn-counted clients of every source profile
 (`Vegas.AsyncServiceSpec.rawMenu_admits`): each client completes its
 turn-counted policy by silence after its own off-policy responses
-(`Vegas.sourceServiceClientPolicy`), and on every bounded raw history where its
+(`Vegas.serviceClientPolicy`), and on every bounded raw history where its
 own responses follow that policy, its canonical decisions fit the bounds
 (`Vegas.sourceServiceClientPolicy_raw_admissible`). This uses only the
 service's own fields: binding-value coverage, initial candidate values and

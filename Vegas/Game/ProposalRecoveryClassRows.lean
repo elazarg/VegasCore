@@ -17,60 +17,6 @@ open SourceProgram GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
 
-/-- The conditional source-cause coin at a foreign failure with a retained
-truthful proposal. Its arguments do not include the physical receipt. A
-rejecting evaluated guard permits both source preimages; an accepting one
-permits only failed disclosure. -/
-def proposalRecoveryFailureDisclosureLaw
-    (omission delivery : Set.Icc (0 : ℝ) 1) (omissionBelow : omission.val < 1)
-    (accepted : Bool) : PMF Bool := by
-  let truthful := 1 - omission.val
-  let failed := omission.val * delivery.val
-  have positive : 0 < truthful + failed :=
-    add_pos_of_pos_of_nonneg (sub_pos.mpr omissionBelow)
-      (mul_nonneg omission.property.1 delivery.property.1)
-  exact if accepted then PMF.pure false else
-    mix (truthful / (truthful + failed))
-      (div_nonneg (sub_nonneg.mpr omission.property.2) positive.le)
-      ((div_le_one positive).mpr
-        (le_add_of_nonneg_right (mul_nonneg omission.property.1 delivery.property.1)))
-      (PMF.pure true) (PMF.pure false)
-
-/-- Aggregating the two source preimages gives their actual source row
-weights. The row normalization is independent of the native receipt cause. -/
-theorem proposalRecoveryFailureDisclosureLaw_rows
-    (omission delivery : Set.Icc (0 : ℝ) 1) (omissionBelow : omission.val < 1)
-    (accepted : Bool) :
-    let total := (if accepted then 0 else 1 - omission.val) +
-      omission.val * delivery.val
-    total * (proposalRecoveryFailureDisclosureLaw omission delivery omissionBelow accepted
-      true).toReal = (if accepted then 0 else 1 - omission.val) ∧
-    total * (proposalRecoveryFailureDisclosureLaw omission delivery omissionBelow accepted
-      false).toReal = omission.val * delivery.val := by
-  have positive : 0 < (1 - omission.val) + omission.val * delivery.val :=
-    add_pos_of_pos_of_nonneg (sub_pos.mpr omissionBelow)
-      (mul_nonneg omission.property.1 delivery.property.1)
-  cases accepted with
-  | true => simp [proposalRecoveryFailureDisclosureLaw]
-  | false =>
-      simp only [proposalRecoveryFailureDisclosureLaw, Bool.false_eq_true, ite_false,
-        mix_apply_toReal, PMF.pure_apply, Bool.true_eq_false, ite_true, ENNReal.toReal_one,
-        ENNReal.toReal_zero, mul_one, mul_zero, zero_add, add_zero]
-      constructor
-      · exact mul_div_cancel₀ _ positive.ne'
-      · field_simp [positive.ne']
-        ring
-
-/-- Turn the public-prefix-measurable cause coin into actual source labels.
-Both labels disclose the same stored value; their semantic public outcome
-agreement is proved by the actual reveal-step adapter, not by this PMF. -/
-def proposalRecoveryForeignFailureLabelLaw
-    (omission delivery : Set.Icc (0 : ℝ) 1) (omissionBelow : omission.val < 1)
-    (accepted : Bool) (owner : Player) (name : VarId) : PMF (ProposalRecoveryMove Player L) :=
-  (proposalRecoveryFailureDisclosureLaw omission delivery omissionBelow accepted).map
-    fun truthful => if truthful then ProposalRecoveryMove.ordinary ⟨.reveal owner name true, false⟩
-      else ProposalRecoveryMove.failedDisclosure owner name
-
 omit [Fintype Player] in
 /-- An ordinary source coordinate never carries the extra label reserved
 for a withheld reveal. Thus summing the conditional label coin keeps its

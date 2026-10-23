@@ -18,7 +18,7 @@ import Vegas.Pending.ReactiveOpeningSettlement
 import Vegas.Game.SourceInformation
 import Vegas.Pending.ReactiveResolutionEvidence
 import Vegas.Game.RevealServiceRosterContinuation
-import Vegas.Game.ServiceRosterEvaluation
+import Vegas.Compile.EventGraphResolutionFields
 import Interaction.ReactiveRestrictedContinuation
 import GameTheoryExtensions.Math.Probability.Support
 import GameTheory.Analysis.Protocol.CounterfactualDecomposition

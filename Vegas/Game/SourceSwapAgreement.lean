@@ -54,17 +54,6 @@ def ProtocolState.RevealedInto {Γ : SourceCtx Player L} {O : Finset VarId}
     (payload : L.Ty) (name published : VarId) : Prop :=
   (ProtocolState.currentConfig program state).2.RevealedInto owner payload name published
 
-omit [IExpr.ResultTypes L] in
-/-- A reveal records its commitment as revealed into the new publication cell. -/
-theorem Config.revealedInto_revealSuccessor {Γ : SourceCtx Player L} {owner : Player}
-    {payload : L.Ty} {name : VarId} (published : VarId)
-    (source : HasVar Γ name (.commitment owner payload)) (config : Config Player L Γ)
-    (disclose : Bool) :
-    (revealSuccessor published source config disclose).RevealedInto owner payload name
-      published :=
-  ⟨.there source, .here,
-    Revelations.reveal_source (published := published) config.revelations source⟩
-
 /-- A cell swap leaves the current context and acts on the current configuration. -/
 theorem ProtocolState.currentConfig_swap (swap : CellSwap Player L) :
     ∀ {Γ : SourceCtx Player L} {O : Finset VarId} (program : SourceProgram Player L Γ O)

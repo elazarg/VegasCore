@@ -29,32 +29,6 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {graph : Vegas.EventGraph Player L}
 
 omit [DecidableEq Player] in
-/-- The actual environment sample, including refreshed activation clocks, has
-the original source distribution under typed store agreement. -/
-theorem source_sample_environment (runtime : EventGraphRuntime graph)
-    {Γ : SourceCtx Player L} {payload : L.Ty}
-    (native : EventGraphRuntime.State graph) (event : graph.EventId)
-    (ready : native.config.cut.Ready event)
-    (outputEq : graph.outputLayout event = .publicData payload)
-    (refs : ContextRefs graph.layout Γ)
-    (law : L.DistExpr (SourcePublicCtx L Γ) payload)
-    (codeEq : cast (congrArg (EventGraph.EventCode graph.layout) outputEq)
-      (graph.nodes event) = .sample payload (compilePublicDist refs law))
-    (node : nodeView graph event =
-      .sample payload (compilePublicDist refs law) outputEq codeEq)
-    (source : State L Γ) (agree : refs.Agrees source native.config.store) :
-    environmentStep runtime native (.executeSample event) =
-      (L.evalDist law (sourcePublicEnv source)).map fun value =>
-        native.complete event ready
-          (cast (congrArg EventGraph.EventField.Action outputEq.symm) PUnit.unit)
-          (cast (congrArg EventGraph.EventField.Value outputEq.symm) value) := by
-  rw [environmentStep_executeSample_eq runtime native event ready payload
-    (compilePublicDist refs law) outputEq codeEq node]
-  rw [sample_step native.config event ready outputEq refs law codeEq source agree,
-    PMF.map_comp]
-  rfl
-
-omit [DecidableEq Player] in
 /-- Sampling extends the existing source environment by the actual sampled
 value while keeping every earlier typed cell unchanged. -/
 theorem complete_sample_agrees {Γ : SourceCtx Player L} {payload : L.Ty}
@@ -146,72 +120,5 @@ theorem compiled_disclosure_result {Γ : SourceCtx Player L}
       have member : value ∈ (PMF.pure value).support := by simp
       rw [evaluated, PMF.mem_support_pure_iff _ _] at member
       exact congrArg some member
-
-/-- Guard normalization leaves the actual emitted response unchanged. This
-does not identify the source owner's private intention histories: their
-strategic aggregation is supplied by the source disclosure comparison. -/
-theorem serviceDecision_effectiveDisclosure (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    {Γ : SourceCtx Player L} {name : VarId} {owner : Player} {payload : L.Ty}
-    (published : VarId) (selected : HasVar Γ name (.commitment owner payload))
-    (source : Config Player L Γ) (refs : ContextRefs graph.layout Γ)
-    (execution : (runtime.reactiveApplication leaks).Execution)
-    (agree : refs.Agrees source.state execution.application.config.store)
-    (event : graph.EventId) (outputEq : graph.outputLayout event = .publication payload)
-    (codeEq : cast (congrArg (EventGraph.EventCode graph.layout) outputEq)
-      (graph.nodes event) = .resolve owner payload (refs.get selected)
-        (compileChecks (published := published) refs source.registry source.revelations selected))
-    (node : nodeView graph event = .resolve owner payload (refs.get selected)
-      (compileChecks (published := published) refs source.registry source.revelations selected)
-      outputEq codeEq) (disclose : Bool) :
-    runtime.serviceDecision leaks owner (execution.recall owner)
-        (execution.observe (runtime.reactiveApplication leaks) owner) event
-        (cast (congrArg EventGraph.EventField.Action outputEq.symm) disclose) =
-      runtime.serviceDecision leaks owner (execution.recall owner)
-        (execution.observe (runtime.reactiveApplication leaks) owner) event
-        (cast (congrArg EventGraph.EventField.Action outputEq.symm)
-          (effectiveDisclosure published selected source disclose)) := by
-  cases disclose with
-  | false => rw [effectiveDisclosure_false]
-  | true =>
-      cases result : disclosureResult published selected source true with
-      | success value => simp only [effectiveDisclosure, result]
-      | failure =>
-          have resolved := compiled_disclosure_result published selected source refs
-            execution.application.config.store agree true
-          rw [result] at resolved
-          change EventGraph.EventCode.resolveOutput? (refs.get selected)
-            (compileChecks (published := published) refs source.registry
-              source.revelations selected) true
-            (execution.observe (runtime.reactiveApplication leaks)
-              owner).application.observation.store = some PublicationResult.failure at resolved
-          simp only [effectiveDisclosure, result, serviceDecision, reactiveDecision, node,
-            reactiveResolutionPacket, cast_cast, cast_eq, ↓reduceIte,
-            Bool.false_eq_true, resolved, Option.map_none]
-
-/-- At a fresh binding checkpoint, the physical compiler response is already
-normal. The successful-evidence normalizer does not alter the selected value. -/
-theorem serviceDecision_binding_fresh (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (execution : (runtime.reactiveApplication leaks).Execution) (owner : Player)
-    (event : graph.EventId) (payload : L.Ty)
-    (outputEq : graph.outputLayout event = .binding owner payload)
-    (codeEq : cast (congrArg (EventGraph.EventCode graph.layout) outputEq)
-      (graph.nodes event) = .bind owner payload)
-    (node : nodeView graph event = .bind owner payload outputEq codeEq)
-    (serial : Nat)
-    (selected : reactiveFreshSlot (execution.observe
-      (runtime.reactiveApplication leaks) owner).application = some serial)
-    (fresh : execution.application.candidates.lookup (owner, .prepared serial) = .fresh)
-    (choice : PublicationResult (L.Val payload)) :
-    runtime.serviceDecision leaks owner (execution.recall owner)
-        (execution.observe (runtime.reactiveApplication leaks) owner) event
-        (cast (congrArg EventGraph.EventField.Action outputEq.symm) choice) =
-      runtime.reactiveBinding leaks owner event payload choice serial := by
-  rw [runtime.serviceDecision_binding leaks owner (execution.recall owner)
-    (execution.observe (runtime.reactiveApplication leaks) owner) event payload outputEq
-    codeEq node serial selected]
-  exact runtime.reactiveBinding_normal_of_fresh leaks owner (execution.recall owner)
-    (execution.observe (runtime.reactiveApplication leaks) owner) event payload choice serial fresh
 
 end Vegas

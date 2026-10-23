@@ -14,40 +14,6 @@ variable {Player : Type} [DecidableEq Player]
 variable {L : IExpr} [IExpr.ResultTypes L]
 variable {graph : Vegas.EventGraph Player L}
 
-omit [DecidableEq Player] in
-private theorem focalReadFields_cast {Field : Type} [DecidableEq Field]
-    {layout : Field → EventField Player L} {left right : EventField Player L}
-    (same : left = right) (code : EventCode layout left) :
-    (cast (congrArg (EventCode layout) same) code).readFields = code.readFields := by
-  cases same
-  rfl
-
-omit [DecidableEq Player] in
-private theorem focalResolveFalse_of_ready (state : State graph)
-    (event : graph.EventId) (ready : state.config.cut.Ready event)
-    (owner : Player) (payload : L.Ty)
-    (binding : FieldRef graph.layout (.binding owner payload))
-    (checks : List (GuardCheck graph.layout payload))
-    (outputEq : graph.outputLayout event = .publication payload)
-    (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
-      (graph.nodes event) = .resolve owner payload binding checks) :
-    EventCode.resolveOutput? binding checks false state.config.store = some .failure := by
-  apply EventCode.resolveOutput?_false_eq_failure binding checks state.config.store
-  intro field read
-  apply state.config.read_available ready
-  have readsEq : (graph.nodes event).readFields =
-      insert binding.field (GuardCheck.listReadFields checks) := by
-    calc
-      (graph.nodes event).readFields =
-          (cast (congrArg (EventCode graph.layout) outputEq)
-            (graph.nodes event)).readFields :=
-        (focalReadFields_cast outputEq (graph.nodes event)).symm
-      _ = (EventCode.resolve owner payload binding checks).readFields :=
-        congrArg EventCode.readFields codeEq
-      _ = insert binding.field (GuardCheck.listReadFields checks) := rfl
-  rw [readsEq]
-  exact read
-
 private def focalAcceptResolution (state : State graph) (event : graph.EventId)
     (ready : state.config.cut.Ready event) (focal : Player) (payload : L.Ty)
     (binding : FieldRef graph.layout (.binding focal payload))
@@ -504,15 +470,5 @@ theorem handle_commitment_playerView_congr
       simp [handle, leftReady, rightReady, leftTimely, rightLate]
   · have rightNotReady : ¬right.config.cut.Ready event := by simpa [← cutEq] using leftReady
     simp [handle, leftReady, rightNotReady]
-
-/-- Malformed traffic is rejected independently of all application state. -/
-@[simp] theorem handle_malformed_playerView_congr
-    (runtime : EventGraphRuntime graph) (left right : State graph) (focal : Player)
-    (id : MessageId Player) (raw : Raw L) :
-    Option.map (fun state => state.playerView focal)
-        (handle runtime left ⟨id, .malformed raw⟩) =
-      Option.map (fun state => state.playerView focal)
-        (handle runtime right ⟨id, .malformed raw⟩) := by
-  simp [handle]
 
 end Vegas.EventGraphRuntime

@@ -86,23 +86,4 @@ theorem exists_nativePrefixSite [Fintype (RP).History]
   · intro keyed
     exact nonlate keyed.1
 
-omit [Fintype Player] in
-/-- A ready recovery input whose actual recall has submitted no call for the
-event projects to a pending native input. -/
-theorem pendingEvent_of_recoveryRecall {who : Player}
-    {past : List (recoveryApplication (runtime setup) leaks).PlayerEntry}
-    {view : (recoveryApplication (runtime setup) leaks).PlayerView}
-    {event : (graph setup).EventId}
-    (turn : view.application.1.publicView.ownTurn? who = some event)
-    (unsent : ∀ entry ∈ past,
-      (runtime setup).submittedEvent? leaks
-        (RecoveryProjection.action (runtime setup) leaks entry.action) ≠ some event) :
-    pendingEvent setup leaks who
-      (RecoveryProjection.information (runtime setup) leaks (some (past, view))) = some event := by
-  apply pendingEvent_of_spec turn
-  simp only [eventRecorded, List.any_eq_false, List.mem_map]
-  intro entry member
-  obtain ⟨original, member, rfl⟩ := member
-  exact fun equal => unsent original member (of_decide_eq_true equal)
-
 end Vegas.RecoveryOnePacket

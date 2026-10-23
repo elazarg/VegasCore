@@ -34,7 +34,7 @@ of the operational states before and after. The runtime's types do not give
 this by themselves in the form needed downstream: the scheduler and the
 observation rule read whole pending payloads, and only on forced histories do
 those carry no hidden value other than the delivered one
-(`Vegas.onePacket_pending_disclosed_of_forced`). *Component steps*: at a
+(`Vegas.onePacket_pending_of_forced`). *Component steps*: at a
 regular response of another player, the response mass is its content factor
 times a function of the operational states, up to a relative error `error n`.
 

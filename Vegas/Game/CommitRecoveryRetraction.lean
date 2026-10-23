@@ -14,14 +14,6 @@ open GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
 
-/-- Project an actual clear recovery history, retaining its effective source
-actions and the original private setup draw. -/
-def commitRecoveryClearHistory (history : setup.commitRecoveryProtocol.History)
-    (clear : setup.CommitRecoveryClear history.state) :
-    (setup.executionProtocol (CommitmentInterface.forfeiture setup.program)).History :=
-  ⟨setup.commitRecoverySourceState history.state,
-    setup.commitRecoveryClearTrace history.trace clear⟩
-
 theorem commitRecoveryLiftHistory_injective (wellFormed : setup.WellFormed) :
     Function.Injective (setup.commitRecoveryLiftHistory wellFormed) := by
   intro first second same
@@ -30,32 +22,6 @@ theorem commitRecoveryLiftHistory_injective (wellFormed : setup.WellFormed) :
     (fun history : setup.commitRecoveryProtocol.History =>
       setup.commitRecoverySourceState history.state) same
   simpa only [commitRecoveryLiftHistory_source] using projected
-
-/-- Lifting and then projecting recovers the complete original source history,
-including choices made at histories outside any selected equilibrium support. -/
-theorem commitRecoveryClearHistory_lift (wellFormed : setup.WellFormed)
-    (original : setup.intendedProtocol.History) :
-    setup.commitRecoveryClearHistory (setup.commitRecoveryLiftHistory wellFormed original)
-      (setup.commitRecoveryLiftHistory_clear wellFormed original) =
-      (setup.intendedRestriction (CommitmentInterface.forfeiture setup.program)).history
-        original := by
-  have state : (setup.commitRecoveryClearHistory
-        (setup.commitRecoveryLiftHistory wellFormed original)
-        (setup.commitRecoveryLiftHistory_clear wellFormed original)).state =
-      ((setup.intendedRestriction (CommitmentInterface.forfeiture setup.program)).history
-        original).state := setup.commitRecoveryLiftHistory_source wellFormed original
-  generalize setup.commitRecoveryClearHistory
-    (setup.commitRecoveryLiftHistory wellFormed original)
-    (setup.commitRecoveryLiftHistory_clear wellFormed original) = first at state ⊢
-  generalize (setup.intendedRestriction (CommitmentInterface.forfeiture setup.program)).history
-    original = second at state ⊢
-  obtain ⟨firstPoint, firstTrace⟩ := first
-  obtain ⟨secondPoint, secondTrace⟩ := second
-  change firstPoint = secondPoint at state
-  subst secondPoint
-  have unique := setup.executionProtocol_isTreeShaped
-    (CommitmentInterface.forfeiture setup.program) firstPoint
-  rw [Subsingleton.elim firstTrace secondTrace]
 
 theorem commitRecoveryLiftHistory_terminal (wellFormed : setup.WellFormed)
     (original : setup.intendedProtocol.History) :

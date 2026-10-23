@@ -27,14 +27,4 @@ theorem BehavioralAssessment.IsFullyMixed.finite_choice
     Finite (M.Choice who site.1) :=
   FullSupport.finite finiteSupport (mixed who site)
 
-/-- An infinite legal menu admits no finitely supported fully mixed law. -/
-theorem BehavioralAssessment.not_isFullyMixed_of_infinite_choice
-    (assessment : M.BehavioralAssessment) (who : ι) (site : M.InformationSite who)
-    [Infinite (M.Choice who site.1)]
-    (finiteSupport : (assessment.strategy who site.1).support.Finite) :
-    ¬ assessment.IsFullyMixed := by
-  intro mixed
-  have := mixed.finite_choice who site finiteSupport
-  exact not_finite (M.Choice who site.1)
-
 end GameTheory.Protocol.InformationModel

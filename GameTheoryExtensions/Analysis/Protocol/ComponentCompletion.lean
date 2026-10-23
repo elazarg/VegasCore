@@ -17,14 +17,13 @@ acting with a prescribed law, each with its own trembles.
 
 Agents may be pooled: the members of a pool mix their own components with one
 common weight vector, and the completion makes the pool's weights optimal for
-the sum of its members' conditional gains (`exists_pooled_bestResponses`,
-`exists_consistent_pooled_completion`). Pooling agents that differ only in
-private information makes a move whose law is chosen by the pool uninformative
-about that information, as babbling does for cheap talk; each member is then
-optimal up to an error whenever some part is nearly best for every member
-(`pooled_member_le_of_common_best`). Without pooling, at every index the
-weights of each agent are optimal among its own component mixtures, stated for
-the Bayes continuation value of the fully mixed assessment. Along one common
+the sum of its members' conditional gains (`GameTheory.exists_pooled_bestResponses`,
+`GameTheory.Protocol.InformationModel.exists_consistent_pooled_completion`).
+Pooling agents that differ only in private information makes a move whose law
+is chosen by the pool uninformative about that information, as babbling does
+for cheap talk. Without pooling, at every index the weights of each agent are
+optimal among its own component mixtures, stated for the Bayes continuation
+value of the fully mixed assessment. Along one common
 subsequence the assessments converge to a consistent limit. Wherever the
 components of an agent converge, its limit law is a mixture of the limit
 components, and it is optimal among such mixtures when the agent's gains along
@@ -206,82 +205,6 @@ theorem exists_pooled_bestResponses [Finite F.sig.Outcome]
   rw [← spreadWeights]
   simp only [mul_sub, Finset.sum_sub_distrib]
   linarith
-
-/-- **Simultaneous best component mixtures.** Each player plays a mixture of
-finitely many component laws. Finite Nash existence selects the weights of all
-players together, each optimal among its own component mixtures against the
-same play of the others. -/
-theorem exists_component_bestResponses [Finite F.sig.Outcome]
-    {Component : ι → Type*} [∀ who, Finite (Component who)]
-    [∀ who, Nonempty (Component who)]
-    (utility : F.sig.Outcome → ι → ℝ)
-    (component : ∀ who, Component who → PMF (F.sig.Strategy who)) :
-    ∃ weights : ∀ who, PMF (Component who), ∀ who (alternative : PMF (Component who)),
-      expectedUtility utility who (F.mixed.play
-          (Profile.update (sig := F.sig.mixed)
-            (fun player => (weights player).bind (component player))
-            who (alternative.bind (component who)))) ≤
-        expectedUtility utility who
-          (F.mixed.play fun player => (weights player).bind (component player)) := by
-  classical
-  obtain ⟨weights, pooled⟩ := exists_pooled_bestResponses (F := F) (Part := Component) id
-    utility component (fun _ _ => 1) (fun _ => continuousOn_const)
-  refine ⟨weights, fun who alternative => ?_⟩
-  have single := pooled (Function.update weights who alternative) who
-  rw [show Finset.univ.filter (fun player : ι => id player = who) = {who} by
-    ext player; simp, Finset.sum_singleton] at single
-  simp only [id, Function.update_self, one_mul] at single
-  linarith
-
-/-- **Pooled rationality is member rationality when members share a best
-part.** Each member of a pool values the pool's parts, and the pool's current
-mixture is optimal for the unweighted sum of the members' gains. If one part is
-within `error` of the best for every member, then every member's gain from any
-mixture is at most the pool's size times `error`. A cheap-talk move that every
-type ranks the same way, such as acting at once rather than waiting when the
-wait can only lose inclusion probability, is pooled at a loss of at most this
-error for each type. -/
-theorem pooled_member_le_of_common_best {Member Part : Type*} [Finite Part]
-    (members : Finset Member) (value : Member → Part → ℝ) (current : PMF Part)
-    (best : Part) (error : ℝ)
-    (nearBest : ∀ member ∈ members, ∀ part, value member part ≤ value member best + error)
-    (pooled : ∀ alternative : PMF Part,
-      ∑ member ∈ members, (expect alternative (value member) - expect current (value member)) ≤
-        0) :
-    ∀ member ∈ members, ∀ alternative : PMF Part,
-      expect alternative (value member) - expect current (value member) ≤
-        members.card * error := by
-  classical
-  intro chosen present alternative
-  have errorNonnegative : 0 ≤ error := by
-    have := nearBest chosen present best
-    linarith
-  have currentBound (member : Member) (inside : member ∈ members) :
-      expect current (value member) ≤ value member best + error :=
-    expect_le_const current _ (payoffIntegrable_of_finite _ _) _ fun part _ =>
-      nearBest member inside part
-  have alternativeBound : expect alternative (value chosen) ≤ value chosen best + error :=
-    expect_le_const alternative _ (payoffIntegrable_of_finite _ _) _ fun part _ =>
-      nearBest chosen present part
-  have atBest := pooled (PMF.pure best)
-  simp only [expect_pure] at atBest
-  rw [← Finset.add_sum_erase members _ present] at atBest
-  have others : -(((members.erase chosen).card : ℝ) * error) ≤
-      ∑ member ∈ members.erase chosen,
-        (value member best - expect current (value member)) := by
-    have constant : ((members.erase chosen).card : ℝ) * error =
-        ∑ _member ∈ members.erase chosen, error := by
-      rw [Finset.sum_const, nsmul_eq_mul]
-    rw [constant, ← Finset.sum_neg_distrib]
-    refine Finset.sum_le_sum fun member inside => ?_
-    have := currentBound member (Finset.mem_of_mem_erase inside)
-    linarith
-  have card : ((members.erase chosen).card : ℝ) + 1 = members.card := by
-    rw [Finset.card_erase_of_mem present]
-    have : 1 ≤ members.card := Finset.card_pos.mpr ⟨chosen, present⟩
-    push_cast [Nat.cast_sub this]
-    ring
-  nlinarith
 
 /-- The components that recover `pinnedTremble`: a free player has one
 component per choice, the choice trembled toward the reference; every

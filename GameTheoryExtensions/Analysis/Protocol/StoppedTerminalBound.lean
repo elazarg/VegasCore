@@ -3,7 +3,7 @@
 import GameTheory.Protocol.BehavioralTerminal
 import GameTheory.Math.Probability.ExpectationComposition
 
-/-! # Play until a stopping set, and terminal expectations at it
+/-! # Play until a stopping set
 
 Behavioral play from a history until it reaches a stopping set or a terminal
 history (`GameTheory.Protocol.InformationModel.runBehavioralUntil`) is a law on
@@ -11,11 +11,14 @@ the first such histories. Terminal play is play until the stopping set followed
 by terminal play from there
 (`GameTheory.Protocol.InformationModel.runBehavioralTerminalFrom_eq_bind_runBehavioralUntil`).
 
-So a terminal payoff whose expectation from each stopped history play reaches
-is within `ε` of a value there has expectation within `ε` of the expected
-value at the first stopped history, the payoff itself standing in at the
-terminal histories reached without stopping
-(`GameTheory.Protocol.InformationModel.abs_expect_runBehavioralTerminalFrom_sub_le_of_stopped`).
+Play until a stopping set depends only on the policies' answers at the
+nonterminal histories it can reach
+(`GameTheory.Protocol.InformationModel.runBehavioralUntil_congr`), stays in
+every set of states closed under legal steps
+(`GameTheory.Protocol.InformationModel.runBehavioralUntil_support_closed`), and,
+from a decision whose information state cannot matter twice, is affine in the
+law installed there
+(`GameTheory.Protocol.InformationModel.runBehavioralUntil_update_withLaw_eq_bind`).
 -/
 
 noncomputable section
@@ -316,77 +319,6 @@ theorem runBehavioralTerminalFrom_eq_bind_runBehavioralUntil
   apply bind_congr_on_support
   intro next member
   exact ih next (M.mem_support_runBehavioralFrom_one policies ended member).1
-
-/-- **Terminal expectations at a stopping set.** Let `reach` hold at `start` and
-pass from every unstopped nonterminal history it holds at to the unstopped
-histories one step of play reaches. Suppose a bounded terminal payoff has
-expectation within `ε` of `value` under terminal play from every stopped
-history one step of play reaches from such a history. Then its expectation
-under terminal play from `start` is within `ε` of the expectation, under play
-until the stopping set, of `value` at stopped histories and of the payoff at
-the others. -/
-theorem abs_expect_runBehavioralTerminalFrom_sub_le_of_stopped
-    (certificate : E.WellFoundedHistories) (policies : (i : ι) → M.BehavioralPolicy i)
-    (reach stopped : E.History → Prop) [DecidablePred stopped] (payoff value : E.History → ℝ)
-    {bound ε : ℝ} (payoffBounded : ∀ history, |payoff history| ≤ bound)
-    (valueBounded : ∀ history, |value history| ≤ bound) (nonnegative : 0 ≤ ε)
-    (extend : ∀ history next, reach history → ¬ stopped history →
-      ¬ E.terminal history.state → next ∈ (M.runBehavioralFrom policies 1 history).support →
-      ¬ stopped next → reach next)
-    (atStop : ∀ history next, reach history → ¬ stopped history →
-      ¬ E.terminal history.state → next ∈ (M.runBehavioralFrom policies 1 history).support →
-      stopped next →
-      |expect (M.runBehavioralTerminalFrom certificate policies next) payoff - value next| ≤ ε)
-    (start : E.History) (reached : reach start) (going : ¬ stopped start) :
-    |expect (M.runBehavioralTerminalFrom certificate policies start) payoff -
-      expect (M.runBehavioralUntil certificate policies stopped start)
-        (fun stop => if stopped stop then value stop else payoff stop)| ≤ ε := by
-  classical
-  let stand := fun stop => if stopped stop then value stop else payoff stop
-  have standBounded : ∀ history, |stand history| ≤ bound := fun history => by
-    by_cases stop : stopped history
-    · simp only [stand, stop, ↓reduceIte]
-      exact valueBounded history
-    · simp only [stand, stop, ↓reduceIte]
-      exact payoffBounded history
-  change |_ - expect _ stand| ≤ ε
-  induction start using certificate.induction with
-  | _ history ih =>
-  by_cases ended : E.terminal history.state
-  · rw [M.runBehavioralUntil_of_terminal certificate policies ended,
-      runBehavioralTerminalFrom, ExecutionProtocol.randomizedBackwardLaw_of_terminal E ended,
-      expect_pure, expect_pure]
-    simp only [stand, going, ↓reduceIte, sub_self, abs_zero]
-    exact nonnegative
-  have terminalIntegrable : PayoffIntegrable (M.runBehavioralFrom policies 1 history)
-      fun next => expect (M.runBehavioralTerminalFrom certificate policies next) payoff :=
-    payoffIntegrable_of_bounded _ _ (C := bound) fun next =>
-      expect_abs_le_of_bounded ((abs_nonneg _).trans (payoffBounded next)) payoffBounded
-  have untilIntegrable : PayoffIntegrable (M.runBehavioralFrom policies 1 history)
-      fun next => expect (M.runBehavioralUntil certificate policies stopped next) stand :=
-    payoffIntegrable_of_bounded _ _ (C := bound) fun next =>
-      expect_abs_le_of_bounded ((abs_nonneg _).trans (payoffBounded next)) standBounded
-  rw [M.runBehavioralTerminalFrom_eq_bind_runBehavioralFrom certificate policies 1 history,
-    M.runBehavioralUntil_of_running certificate policies going ended,
-    expect_bind_tower_bounded _ _ _ payoffBounded, expect_bind_tower_bounded _ _ _ standBounded,
-    ← expect_sub terminalIntegrable untilIntegrable]
-  rw [expect_congr_on_support (g := fun next =>
-    if next ∈ (M.runBehavioralFrom policies 1 history).support then
-      expect (M.runBehavioralTerminalFrom certificate policies next) payoff -
-        expect (M.runBehavioralUntil certificate policies stopped next) stand else 0)
-    (fun next member => by rw [ite_eq_left member ..])]
-  apply expect_abs_le_of_bounded nonnegative
-  intro next
-  split
-  · rename_i member
-    by_cases stop : stopped next
-    · rw [M.runBehavioralUntil_of_stopped certificate policies stop, expect_pure]
-      simp only [stand, stop, ↓reduceIte]
-      exact atStop history next reached going ended member stop
-    · exact ih next (M.mem_support_runBehavioralFrom_one policies ended member).1
-        (extend history next reached going ended member stop) stop
-  · rw [abs_zero]
-    exact nonnegative
 
 end InformationModel
 

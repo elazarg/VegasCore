@@ -171,7 +171,7 @@ after constructing one consistent native sequence and its comparisons.
 already proves `exists_consistent_extension_unclocked`, giving consistent rational
 completion at genuinely new sites, and `sequentialEquilibrium_extends_of_continuation_unclocked`,
 which consumes whole-policy comparisons at retained sites. Public binding omission
-gives certain capped collection via `serviceAudit_charge_of_omission` in
+gives certain capped collection via [`serviceAudit_charge_of_omission`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/ReactiveServiceAudit.lean#L145) in
 [ReactiveServiceAudit](../Vegas/Pending/ReactiveServiceAudit.lean); later comparisons
 use base payoff and rational completion, not renewed collateral. Hidden departures
 pooling at a retained input are not thereby new free sites.
@@ -309,7 +309,7 @@ Use each side's own evidence; prove the joint Boolean audit law factors through
 the declared observation/backend, rather than infer this from a collection bound.
 
 The history-integrated terminal-audit interface does not require coverage of each
-final list. In contrast, `sampledTrafficAudit_collection_from_record` in
+final list. In contrast, [`sampledTrafficAudit_collection_from_record`](https://github.com/elazarg/VegasCore/blob/research-tree/Interaction/ReactiveAuditCollection.lean#L100) in
 [ReactiveAuditCollection](../Interaction/ReactiveAuditCollection.lean) propagates
 a persistent attributed forbidden record only after pointwise sampler coverage
 is supplied. Authenticity supplies the separate zero-charge soundness direction.
@@ -353,7 +353,7 @@ Censored T's FALSE receipt separates it from clean expiry. [`silent_bob_input_la
 one common full first-Bob input under literal silent initialized play at both types,
 including empty own recall and public Alice failure, without characterizing the entire fiber.
 [`prescribed_packets_clean`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommittedResolutionService.lean#L1211) derives TRUE receipts and final permissions for all transmitted
-envelopes on initialized ALL-prescribed `sourceServiceTurnPolicy`/`firstTurnTiming` play,
+envelopes on initialized ALL-prescribed [`sourceServiceTurnPolicy`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceTurnPolicy.lean#L123)/`firstTurnTiming` play,
 for any source behavioral profile. [`prescribed_settlement`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommittedResolutionService.lean#L1275) gives the full joint payoff vector
 as pure arbitrary base utility under any authentic sampler and arbitrary deposit.
 [`first_true_bob_output_law`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommittedResolutionService.lean#L1418) checks the actual canonical first H opening's prompt stage-2

@@ -77,82 +77,12 @@ namespace Close
 variable {block : CommitPrefix Γ O Δ P} {entry : CommitCheckpoint Γ}
   {result : CommitCloseResult Γ Δ}
 
-theorem exists_result {finished : Config Player L Δ} {excluded : Finset Player}
-    (attempt : block.Attempt entry.config entry.excluded finished excluded) :
-    ∃ result, Close block entry result := by
-  by_cases empty : attempt.failedOwners = ∅
-  · exact ⟨_, .clean attempt empty⟩
-  · have failed : attempt.failedOwners.Nonempty := Finset.nonempty_iff_ne_empty.mpr empty
-    by_cases survives : (block.owners \ excluded).Nonempty
-    · exact ⟨_, .retry attempt failed survives⟩
-    · refine ⟨_, .exhausted attempt failed ?_⟩
-      intro who member
-      by_contra outside
-      exact survives ⟨who, Finset.mem_sdiff.mpr ⟨member, outside⟩⟩
-
 theorem excluded_subset (closed : Close block entry result) :
     entry.excluded ⊆ result.excluded := by
   cases closed with
   | retry attempt _ _ => exact attempt.excluded_subset
   | clean attempt _ => exact attempt.excluded_subset
   | exhausted attempt _ _ => exact attempt.excluded_subset
-
-/-- A retry restores the entire semantic checkpoint, with full attempted recall. -/
-theorem retry_checkpoint {next : CommitCheckpoint Γ}
-    (closed : Close block entry (.retry next)) :
-    ∃ (finished : Config Player L Δ) (excluded : Finset Player),
-      Nonempty (block.Attempt entry.config entry.excluded finished excluded) ∧
-      next.config.state = entry.config.state ∧
-      next.config.registry = entry.config.registry ∧
-      @next.config.revelations = @entry.config.revelations ∧
-      next.config.history = finished.history ∧ next.excluded = excluded ∧
-      next.attempt = entry.attempt + 1 ∧
-      ∀ who, (entry.config.history who).IsPrefix (next.config.history who) := by
-  cases closed with
-  | retry attempt _ _ =>
-      exact ⟨_, _, ⟨attempt⟩, rfl, rfl, rfl, rfl, rfl, rfl, attempt.history_prefix⟩
-
-private theorem excluded_ssubset {finished : Config Player L Δ} {excluded : Finset Player}
-    (attempt : block.Attempt entry.config entry.excluded finished excluded)
-    (failed : attempt.failedOwners.Nonempty) : entry.excluded ⊂ excluded := by
-  refine ⟨attempt.excluded_subset, ?_⟩
-  intro reverse
-  obtain ⟨who, member⟩ := failed
-  have fresh : who ∉ entry.excluded := Finset.disjoint_left.mp attempt.failed_disjoint member
-  apply fresh
-  apply reverse
-  rw [attempt.excluded_eq]
-  exact Finset.mem_union_right _ member
-
-/-- The permanent excluded set supplies a potential for counting actual resets. -/
-theorem card_potential (closed : Close block entry result) :
-    entry.excluded.card + result.resets ≤ result.excluded.card := by
-  cases closed with
-  | retry attempt failed _ =>
-      exact Finset.card_lt_card (excluded_ssubset attempt failed)
-  | clean attempt _ =>
-      exact Finset.card_le_card attempt.excluded_subset
-  | exhausted attempt _ _ =>
-      exact Finset.card_le_card attempt.excluded_subset
-
-/-- A phase with at most one owner has no surviving co-phase binding to void. -/
-theorem not_retry_of_single_owner (single : block.owners.card ≤ 1)
-    {next : CommitCheckpoint Γ} (closed : Close block entry (.retry next)) : False := by
-  cases closed with
-  | @retry finished excluded attempt failed survives =>
-      obtain ⟨who, failedMember⟩ := failed
-      obtain ⟨other, survivor⟩ := survives
-      have same := Finset.card_le_one.mp single who (attempt.failed_subset_owners failedMember)
-        other (Finset.mem_sdiff.mp survivor).1
-      have recorded : who ∈ excluded := by
-        rw [attempt.excluded_eq]
-        exact Finset.mem_union_right _ failedMember
-      exact (Finset.mem_sdiff.mp survivor).2 (same ▸ recorded)
-
-/-- In particular, a singleton commit phase never resets. -/
-theorem not_retry_of_singleton (single : block.length ≤ 1)
-    {next : CommitCheckpoint Γ} (closed : Close block entry (.retry next)) : False :=
-  not_retry_of_single_owner (block.owners_card_le_length.trans single) closed
 
 end Close
 end CommitPrefix
@@ -167,24 +97,4 @@ inductive CommitCloseChain : Finset Player → Finset Player → Nat → Prop wh
       (closed : block.Close entry result)
       (later : CommitCloseChain result.excluded last count) :
       CommitCloseChain entry.excluded last (result.resets + count)
-
-namespace CommitCloseChain
-
-variable {first last : Finset Player} {count : Nat}
-
-theorem card_bound (chain : CommitCloseChain (L := L) first last count) :
-    first.card + count ≤ last.card := by
-  induction chain with
-  | nil => omega
-  | close closed later ih =>
-      have step := closed.card_potential
-      omega
-
-theorem reset_bound [Fintype Player] (chain : CommitCloseChain (L := L) first last count) :
-    count ≤ Fintype.card Player := by
-  have potential := chain.card_bound
-  have bounded := Finset.card_le_univ last
-  omega
-
-end CommitCloseChain
 end Vegas.SourceProgram

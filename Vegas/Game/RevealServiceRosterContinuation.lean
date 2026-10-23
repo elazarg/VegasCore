@@ -28,47 +28,6 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
 
 omit [Fintype Player] in
-private theorem decodePrefix_terminal_readout
-    {Field : Type} [DecidableEq Field] {layout : Field → EventGraph.EventField Player L}
-    {Γ : SourceCtx Player L} {openNames : Finset VarId}
-    (program : SourceProgram Player L Γ openNames) (reveals : program.RevealOnly)
-    (refs : ContextRefs layout Γ) (revelations : Revelations Γ)
-    (outputs : ∀ event, EventGraph.FieldRef layout (outputLayout program event))
-    (store : EventGraph.Store layout) (history : History Player L) :
-    (decodePrefix? program refs revelations outputs (eventCount program) store history).bind
-        (ProtocolState.readout program) =
-      decodeState? (terminalRefsWith program refs outputs) store := by
-  induction program with
-  | ret payoffs =>
-      simp only [eventCount, decodePrefix?, terminalRefsWith]
-      cases decoded : decodeState? refs store <;> rfl
-  | sample name fresh law next ih => exact reveals.elim
-  | commit name owner fresh guard next ih => exact reveals.elim
-  | reveal published owner name fresh selected unresolved next ih =>
-      simp only [eventCount, decodePrefix?, terminalRefsWith, Option.bind_map]
-      exact ih reveals _ _ _
-
-private theorem source_prefix_terminal_readout
-    {Γ : SourceCtx Player L} {openNames : Finset VarId}
-    (program : SourceProgram Player L Γ openNames) (reveals : program.RevealOnly)
-    (profile : BehavioralProfile program) (source : Config Player L Γ) :
-    ((fun law => law.bind (ProtocolState.behavioralStateStep program profile))^[eventCount program]
-      (PMF.pure (ProtocolState.entry program source))).map (ProtocolState.readout program) =
-      (runFrom program profile source).map some := by
-  induction program with
-  | ret payoffs =>
-      simp [eventCount, runFrom, runWith, ProtocolState.readout, ProtocolState.entry, PMF.pure_map]
-  | sample name fresh law next ih => exact reveals.elim
-  | commit name owner fresh guard next ih => exact reveals.elim
-  | reveal published owner name fresh selected unresolved next ih =>
-      rw [eventCount, ProtocolState.behavioralStatePrefix_reveal, PMF.map_bind,
-        runFrom_reveal, PMF.map_bind]
-      apply bind_congr_on_support _
-      intro disclose _
-      rw [PMF.map_comp]
-      exact ih reveals (afterReveal profile) (revealSuccessor published selected source disclose)
-
-omit [Fintype Player] in
 /-- The compiler's terminal context contains every event output. Consequently
 the explicit terminal-cut guard is redundant with successful typed decoding,
 even at an arbitrary structurally valid native control state, in every

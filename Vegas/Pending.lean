@@ -96,7 +96,6 @@ import Vegas.Pending.PhaseBindingCheckpointSubmission
 import Vegas.Pending.PhaseBindingClockReplay
 import Vegas.Pending.PhaseBindingCompletionMemory
 import Vegas.Pending.PhaseBindingCountTransport
-import Vegas.Pending.PhaseBindingEncodingLaw
 import Vegas.Pending.PhaseBindingForeignMemory
 import Vegas.Pending.PhaseBindingForeignSubmission
 import Vegas.Pending.PhaseBindingFreshness

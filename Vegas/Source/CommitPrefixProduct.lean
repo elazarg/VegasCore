@@ -15,22 +15,6 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {Γ Δ : SourceCtx Player L} {O P : Finset VarId}
 
-omit [Fintype Player] in
-/-- A maximal block at a committing entry contains an actual instruction. -/
-theorem length_pos_of_committing (block : CommitPrefix Γ O Δ P)
-    (suffix : SourceProgram Player L Δ P) (entry : Config Player L Γ)
-    (boundary : IsCommitBoundary suffix)
-    (committing : ProtocolState.atCommit (block.prepend suffix)
-      (ProtocolState.entry (block.prepend suffix) entry) = true) : 0 < block.length := by
-  cases block with
-  | nil =>
-      cases suffix with
-      | ret => cases committing
-      | sample => cases committing
-      | reveal => cases committing
-      | commit => cases boundary
-  | commit => simp only [length]; omega
-
 /-- Conditional on the actual entry configuration, distinct owners' full
 block views are independent. Repeated choices of one owner remain in its
 chronological marginal, evaluated at updated views and own-action histories. -/

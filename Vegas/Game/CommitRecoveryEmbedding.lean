@@ -92,16 +92,4 @@ theorem commitRecoveryLiftHistory_private (wellFormed : setup.WellFormed) (who :
   rw [observed, setup.commitRecoveryLiftHistory_source wellFormed history,
     setup.intended_info]
 
-theorem commitRecoveryLiftHistory_generation (wellFormed : setup.WellFormed)
-    (history : setup.intendedProtocol.History) (current : CommitRecoveryState setup.program)
-    (state : (setup.commitRecoveryLiftHistory wellFormed history).state = some current) :
-    current.generation = 0 := by
-  have bound := setup.commitRecovery_generation_bound
-    (setup.commitRecoveryLiftHistory wellFormed history).trace current state
-  have clear := setup.commitRecoveryLiftHistory_clear wellFormed history
-  rw [state] at clear
-  have empty : current.entryExcluded = ∅ := Finset.subset_empty.mp (clear ▸ current.entered)
-  rw [empty, Finset.card_empty] at bound
-  omega
-
 end Vegas.SourceProgram.Setup

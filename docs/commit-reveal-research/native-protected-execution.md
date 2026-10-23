@@ -309,7 +309,7 @@ finite `n` the source witness need not be an equilibrium, but its local comparis
 converges to the source equilibrium comparison. The fixed finite tree makes all
 these payoff expressions continuous, even at sites whose reach probability
 vanishes. Equivalently, instantiate the existing
-`exists_sequentialEquilibrium_limit_of_local_simulations` after the stopped-prefix
+[`exists_sequentialEquilibrium_limit_of_local_simulations`](https://github.com/elazarg/VegasCore/blob/research-tree/GameTheoryExtensions/Analysis/Protocol/LocalSimulationLimit.lean#L476) after the stopped-prefix
 and local continuation adapters have been supplied.
 
 Opening and waiting menus are singletons. Their one-shot comparisons are
@@ -357,7 +357,7 @@ the composition proved in this note has not been implemented or checked in Lean.
 | Net audit charge is zero | `sourceServiceFirstTurn_charge_zero`, `sourceServiceFirstTurn_settlement_law` | Checked copied-policy laws for authentic sampling. The paper all-clean-history conformance induction gives the stronger local use. |
 | Adaptive first-ready likelihood is normalized and constant on the source fiber | Equations (1)–(2) and the native primitive coupling above | Paper adapter. Existing `SourceServicePrefixFactorization` and `SourceServicePrefixPosterior` prove fixed-roster versions, not this scheduler-independent composition. |
 | Full posterior transport | `bayesBelief_projection_of_proportional_reach` | Checked general theorem once the adaptive fiber likelihood is established. |
-| One global consistent, rational assessment | `exists_sequentialEquilibrium_limit_of_local_simulations` and finite native recall | Checked general theorem; paper adapters give its local-law and initialized-law hypotheses. |
+| One global consistent, rational assessment | [`exists_sequentialEquilibrium_limit_of_local_simulations`](https://github.com/elazarg/VegasCore/blob/research-tree/GameTheoryExtensions/Analysis/Protocol/LocalSimulationLimit.lean#L476) and finite native recall | Checked general theorem; paper adapters give its local-law and initialized-law hypotheses. |
 
 ## What this does and does not resolve for the concrete model
 

@@ -32,50 +32,6 @@ end PlayerView
 
 variable [DecidableEq Principal]
 
-/-- Further passive observation preserves every report for a fixed checker. -/
-theorem reports_learn (network : MessageNetwork Principal Payload)
-    (violation : Message Principal Payload → Bool) (who observer : Principal)
-    (selected : Finset (MessageId Principal)) :
-    (network.observe observer).reports violation ⊆
-      ((network.learn who selected).observe observer).reports violation := by
-  intro message member
-  obtain ⟨observed, offending⟩ := (PlayerView.mem_reports ..).mp member
-  apply (PlayerView.mem_reports ..).mpr
-  refine ⟨?_, offending⟩
-  rcases observed with leaked | included
-  · left
-    by_cases same : observer = who
-    · subst observer
-      simp only [observe, learn, ↓reduceIte]
-      exact List.mem_append_left _ leaked
-    · simpa only [observe, learn, ite_eq_right same] using leaked
-  · exact Or.inr included
-
-/-- Another observer's private sample cannot change this observer's reports. -/
-theorem reports_learn_other (network : MessageNetwork Principal Payload)
-    (violation : Message Principal Payload → Bool) (who observer : Principal)
-    (selected : Finset (MessageId Principal)) (different : observer ≠ who) :
-    ((network.learn who selected).observe observer).reports violation =
-      (network.observe observer).reports violation := by
-  simp only [PlayerView.reports, observe, learn, ite_eq_right different]
-
-/-- Inclusion may remove a pending packet, but not a retained report about it. -/
-theorem reports_includePending (network : MessageNetwork Principal Payload)
-    (violation : Message Principal Payload → Bool) (who : Principal)
-    (id : MessageId Principal) :
-    (network.observe who).reports violation ⊆
-      ((network.includePending id).2.observe who).reports violation := by
-  intro message member
-  obtain ⟨observed, offending⟩ := (PlayerView.mem_reports ..).mp member
-  apply (PlayerView.mem_reports ..).mpr
-  refine ⟨?_, offending⟩
-  unfold includePending
-  split
-  · exact observed
-  · rcases observed with leaked | included
-    · exact Or.inl leaked
-    · exact Or.inr (List.mem_append_left _ included)
-
 /-- A selected, previously unknown foreign pending packet becomes report
 material when it satisfies the checker. Selection itself is an assumption. -/
 theorem reports_learn_selected (network : MessageNetwork Principal Payload)

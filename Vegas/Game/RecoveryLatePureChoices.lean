@@ -176,32 +176,4 @@ theorem lateChoice_eq_pure_opening
   rw [choiceEq]
   exact lateEq
 
-open Classical in
-theorem keyed_wait_value_sub_le [Fintype (RP).History]
-    [(application setup leaks).FiniteNature (initialLaw setup) NativeScheduler]
-    [∀ who, DecidableEq ((R).InfoState who)]
-    (source : setup.intendedModel.BehavioralAssessment) {slots : Nat}
-    (scale : ℝ) (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1) (who : Player)
-    (past : List (application setup leaks).PlayerEntry)
-    (view : (application setup leaks).PlayerView)
-    (decision : (R).IsDecisionInfo who
-      (liftInformation (runtime setup) leaks (some (past, view))))
-    (assessment : (R).BehavioralAssessment)
-    {Outcome : Type*} (observe : (RP).History → Outcome) (utility : Outcome → Player → ℝ)
-    {bound : ℝ} (bounded : ∀ final : (RP).History, |utility (observe final) who| ≤ bound) :
-    let input := some (past, view)
-    let site : (R).InformationSite who :=
-      ⟨liftInformation (runtime setup) leaks input, decision⟩
-    |localValue (2 * horizon + 1) observe utility assessment site
-        (PMF.pure ((sourceNativeChoiceEquiv setup leaks bounds horizon scheduler who input).symm
-          (silenceChoice setup leaks bounds (initialLaw setup) horizon NativeScheduler who
-            input))) -
-      localValue (2 * horizon + 1) observe utility assessment site
-        (keyedComponent setup leaks bounds Initial horizon scheduler source scale nonnegative le_one
-          ((R).agentAt site) (none : LateOption slots))| ≤ 6 * scale * bound := by
-  intro input site
-  exact keyed_main_value_sub_le setup leaks bounds horizon scheduler source scale nonnegative
-    le_one who input decision none _ (lateChoice_none source who past view) assessment observe
-    utility bounded
-
 end Vegas.RecoveryOnePacket

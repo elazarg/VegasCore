@@ -10,7 +10,7 @@ import Vegas.Game.RevealServiceRosterContinuation
 import Interaction.ReactiveRestrictedContinuation
 import Vegas.Game.SourceServiceBoundary
 import Vegas.Game.SourceServicePrefixSupport
-import Vegas.Game.ServiceRosterEvaluation
+import Vegas.Compile.EventGraphResolutionFields
 import Vegas.Source.ObservationRecall
 import Vegas.Compile.EventGraphParameterReadout
 import Vegas.Game.SourcePrefixKernel
@@ -39,67 +39,6 @@ open GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
-
-/-- The actual initialized joint law factors through the original source
-observation, without independence assumptions on the supplied private types.
-The protocol observation explicitly recovers the typed entry view. -/
-theorem sourceService_initial_prefix_factorization
-    (setup : Setup (Player := Player) (L := L))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-    (focal : Player) :
-    ∃ noise : setup.ProtocolView focal → PMF _,
-      ((initialLaw setup).map
-        (ReactiveApplication.Execution.initial (application setup leaks))).map
-          (fun execution =>
-            (sourceServicePrefix? setup 0 execution.application.config,
-              (runtime setup).bindingTraffic leaks focal execution)) =
-      (setup.initialLaw.map fun initial =>
-        some (ProtocolState.entry setup.program (setup.initialConfig initial))).bind fun state =>
-          (noise (setup.protocolObserve focal state)).map fun extra => (state, extra) := by
-  obtain ⟨sourceNoise, initialFactor⟩ := source_initial_memory_factorization setup leaks focal
-  let execution := fun initial : State L setup.context =>
-    ReactiveApplication.Execution.initial (application setup leaks)
-      (EventGraphRuntime.State.initial (graph := graph setup) (setup.eventInputs initial))
-  let traffic := fun initial => (runtime setup).bindingTraffic leaks focal (execution initial)
-  have sourceFactor : setup.initialLaw.map (fun initial =>
-      (setup.initialConfig initial, traffic initial)) =
-      (setup.initialLaw.map setup.initialConfig).bind fun source =>
-        (sourceNoise (source.view focal)).map fun extra => (source, extra) := by
-    have projected := congrArg (PMF.map fun pair => (pair.1.1, pair.2)) initialFactor
-    simpa only [PMF.map_comp, PMF.map_bind, PMF.bind_map, Function.comp_def,
-      execution, traffic] using projected
-  obtain ⟨noise, factor⟩ := ProtocolView.entry_noise_factor setup.program focal setup.initialLaw
-    setup.initialConfig traffic sourceNoise sourceFactor
-  refine ⟨noise, ?_⟩
-  dsimp only at factor
-  rw [PMF.map_comp] at factor
-  have native : (((initialLaw setup).map
-      (ReactiveApplication.Execution.initial (application setup leaks))).map fun state =>
-        (sourceServicePrefix? setup 0 state.application.config,
-          (runtime setup).bindingTraffic leaks focal state)) =
-      setup.initialLaw.map (fun initial =>
-        (some (ProtocolState.entry setup.program (setup.initialConfig initial)),
-          traffic initial)) := by
-    simp only [initialLaw, serviceInitialLaw, PMF.map_comp, Function.comp_def]
-    apply map_congr_on_support _
-    intro initial _
-    exact Prod.ext (serviceSourcePrefix?_initial setup initial) rfl
-  rw [native]
-  exact factor
-
-/-- The observation at the entry of a source suffix, read from the entry view. -/
-def sourceEntryObservation (who : Player) {Γ : SourceCtx Player L} {names : Finset VarId}
-    (program : SourceProgram Player L Γ names) (view : DecisionView who Γ) :
-    ProtocolView who program :=
-  match program with
-  | .ret _ => view
-  | .sample _ _ _ _ | .commit _ _ _ _ _ | .reveal _ _ _ _ _ _ _ => .inl view
-
-theorem observe_entry_eq_sourceEntryObservation {Γ : SourceCtx Player L} {names : Finset VarId}
-    (program : SourceProgram Player L Γ names) (who : Player) (source : Config Player L Γ) :
-    ProtocolState.observe who program (ProtocolState.entry program source) =
-      sourceEntryObservation who program (source.view who) := by
-  cases program <;> rfl
 
 /-- The actual typed decoder determines the next source configuration. Its
 law supplies the source marginal; the ordered cut is supplied by actual

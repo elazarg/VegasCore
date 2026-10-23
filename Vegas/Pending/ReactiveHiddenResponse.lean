@@ -148,38 +148,4 @@ theorem reactive_respond_hidden_congr
         app.respond_recall_other right actor who same response]
       exact recall who ordinary
 
-/-- One common random response couples the complete vector of opponent inputs.
-This is joint-law equality, not merely equality of individual marginals. -/
-theorem reactive_invoke_hidden_congr
-    (players : Player → (runtime.reactiveApplication leaks).Policy)
-    (left right : (runtime.reactiveApplication leaks).Execution) (hidden actor : Player)
-    (foreign : actor ≠ hidden)
-    (network : left.network = right.network) (receipts : left.receipts = right.receipts)
-    (serviceRecall : left.environmentRecall = right.environmentRecall)
-    (views : ∀ who, who ≠ hidden →
-      left.application.playerView who = right.application.playerView who)
-    (recall : ∀ who, who ≠ hidden → left.recall who = right.recall who) :
-    let readout := fun next : (runtime.reactiveApplication leaks).Execution =>
-      (next.network, next.receipts, next.environmentRecall, fun who =>
-        if who = hidden then none else some (next.recall who, next.application.playerView who))
-    ((runtime.reactiveApplication leaks).invoke players actor left).map readout =
-      ((runtime.reactiveApplication leaks).invoke players actor right).map readout := by
-  dsimp only
-  have input := observed_eq runtime leaks left right actor network receipts (views actor foreign)
-  have past := recall actor foreign
-  simp only [ReactiveApplication.invoke, PMF.map_comp, input, past]
-  apply map_congr_on_support _
-  intro response _
-  obtain ⟨networks, charges, observed, recalled⟩ := reactive_respond_hidden_congr runtime leaks
-    left right hidden actor foreign network receipts views recall response
-  apply Prod.ext networks
-  apply Prod.ext charges
-  apply Prod.ext serviceRecall
-  funext who
-  dsimp only [Function.comp_apply]
-  split
-  · rfl
-  · rename_i ordinary
-    exact congrArg some (Prod.ext (recalled who ordinary) (observed who ordinary))
-
 end Vegas.EventGraphRuntime

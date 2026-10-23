@@ -108,33 +108,4 @@ theorem own_bindings_success_iff (attempt : block.Attempt entry excluded finishe
       | there cell => exact initial cell
       | here => exact (survives (later.excluded_subset inactive)).elim
 
-/-- The original attempt's joint no-omission/no-own-failed-binding event is
-read exactly from its ending exclusions and focal typed cells. This uses the
-completed pre-restore attempt, so a retry cannot erase evidence of failure. -/
-theorem no_failure_iff_completed_readout
-    (attempt : block.Attempt entry excluded finished after) (who : Player)
-    (unique : (Γ.map Prod.fst).Nodup)
-    (initial : ∀ {name : VarId} {payload : L.Ty}
-      (cell : HasVar Γ name (.commitment who payload)),
-      ∃ value, entry.state.get cell = .success value)
-    (active : who ∉ excluded) :
-    (attempt.failedOwners = ∅ ∧
-      ∀ joint ∈ attempt.joints, ∀ move, joint who = some move → ¬ move.action.IsFailure) ↔
-    (after = excluded ∧ ∀ {name : VarId} {payload : L.Ty}
-      (cell : HasVar Δ name (.commitment who payload)),
-      ∃ value, finished.state.get cell = .success value) := by
-  have noMiss : attempt.failedOwners = ∅ ↔ after = excluded := by
-    constructor
-    · intro empty
-      rw [attempt.excluded_eq, empty, Finset.union_empty]
-    · intro same
-      exact attempt.newly_excluded.symm.trans (by rw [same, Finset.sdiff_self])
-  constructor
-  · rintro ⟨none, safe⟩
-    have same := noMiss.mp none
-    exact ⟨same, (attempt.own_bindings_success_iff who unique initial
-      (same ▸ active)).mpr safe⟩
-  · rintro ⟨same, bound⟩
-    exact ⟨noMiss.mpr same, attempt.own_joints_not_failed_of_bound who unique bound⟩
-
 end Vegas.SourceProgram.CommitPrefix.Attempt

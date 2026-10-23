@@ -37,19 +37,6 @@ theorem include_head (execution : (app).Execution)
   simp [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
     found, pending, MessagePool.removeFirst]
 
-/-- Processing an invalid envelope still delivers it and records rejection. -/
-theorem include_head_rejected (execution : (app).Execution)
-    (message : Message Player (app).Payload)
-    (rest : List (Message Player (app).Payload))
-    (pending : execution.network.pending = message :: rest)
-    (rejected : (app).handle execution.application message = none) :
-    (execution.includePending app message.id).application = execution.application ∧
-      (message.id, false) ∈ (execution.includePending app message.id).receipts := by
-  have found : execution.network.lookup message.id = some message := by
-    simp [MessageNetwork.lookup, pending]
-  simp [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
-    found, rejected]
-
 theorem process_dispatch (players : Player → (app).Policy) (execution : (app).Execution)
     (message : Message Player (app).Payload)
     (rest : List (Message Player (app).Payload))

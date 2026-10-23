@@ -100,79 +100,9 @@ theorem finiteBindingTypes : {Γ : SourceCtx Player L} → {O : Finset VarId} �
   | _, _, .commit .., impossible => impossible.elim
   | _, _, .reveal _ _ _ _ _ _ next, reveals => finiteBindingTypes next reveals
 
-theorem uniformPolicy_admitted (who : Player) :
-    {Γ : SourceCtx Player L} → {O : Finset VarId} →
-    (program : SourceProgram Player L Γ O) → (reveals : program.RevealOnly) →
-    (admission : CommitmentInterface program) →
-      (uniformPolicy who program reveals).Admitted program admission
-  | _, _, .ret _, _, _ => trivial
-  | _, _, .sample .., impossible, _ => impossible.elim
-  | _, _, .commit .., impossible, _ => impossible.elim
-  | _, _, .reveal _ _ _ _ _ _ next, reveals, admission =>
-      uniformPolicy_admitted who next reveals admission
-
-theorem uniformPolicy_support (who : Player) :
-    {Γ : SourceCtx Player L} → {O : Finset VarId} →
-    (program : SourceProgram Player L Γ O) → (reveals : program.RevealOnly) →
-    (admission : CommitmentInterface program) → (view : ProtocolView who program) →
-    (choice : Option (OwnAction Player L)) → ProtocolView.menu who program admission view choice →
-      choice ∈ ((uniformPolicy who program reveals).protocolAction program view).support
-  | _, _, .ret _, _, _, _, none, _ => (PMF.mem_support_pure_iff _ _).mpr rfl
-  | _, _, .ret _, _, _, _, some _, legal => by
-      have impossible : (none : Option Player) = some who := legal.1
-      cases impossible
-  | _, _, .sample .., impossible, _, _, _, _ => impossible.elim
-  | _, _, .commit .., impossible, _, _, _, _ => impossible.elim
-  | _, _, .reveal _ owner name _ _ _ next, reveals, admission, view, choice, legal => by
-      cases view with
-      | inr later => exact uniformPolicy_support who next reveals admission later choice legal
-      | inl current =>
-          by_cases own : owner = who
-          · cases choice with
-            | none =>
-                simp only [ProtocolView.menu, ProtocolView.actor, Sum.elim_inl, own] at legal
-                exact (legal rfl).elim
-            | some action =>
-                obtain ⟨_actor, disclose, rfl⟩ := legal
-                simp only [uniformPolicy, BehavioralPolicy.protocolAction, Sum.elim_inl,
-                  dite_eq_left own, PMF.support_map, Set.mem_image]
-                exact ⟨disclose, PMF.mem_support_uniformOfFintype _, rfl⟩
-          · cases choice with
-            | none =>
-                simp only [uniformPolicy, BehavioralPolicy.protocolAction, Sum.elim_inl,
-                  dite_eq_right own, PMF.mem_support_pure_iff _ _]
-            | some action => exact (own (Option.some.inj legal.1)).elim
-
 end RevealOnly
 
 namespace Setup
-
-def revealReference (setup : Setup (Player := Player) (L := L))
-    (reveals : setup.program.RevealOnly) (admission : CommitmentInterface setup.program) :
-    (setup.informationModel admission).BehavioralAssessment :=
-  .ofStrategy fun who => setup.toProtocolBehavioralPolicy admission who
-    (RevealOnly.uniformPolicy who setup.program reveals)
-    (RevealOnly.uniformPolicy_admitted who setup.program reveals admission)
-
-theorem revealReference_fullyMixed (setup : Setup (Player := Player) (L := L))
-    (reveals : setup.program.RevealOnly) (admission : CommitmentInterface setup.program) :
-    (setup.revealReference reveals admission).IsFullyMixed := by
-  intro who site choice
-  suffices choice.1 ∈ (((setup.revealReference reveals admission).strategy who site.1).map
-      Subtype.val).support by
-    obtain ⟨other, supported, same⟩ := PMF.support_map .. ▸ this
-    exact (Subtype.ext same) ▸ supported
-  change choice.1 ∈ ((setup.toProtocolBehavioralPolicy admission who _ _ site.1).map
-    Subtype.val).support
-  rw [setup.toProtocolBehavioralPolicy_map_val]
-  rcases site with ⟨info, occurs⟩
-  cases info with
-  | none =>
-      change choice.1 ∈ (PMF.pure none).support
-      exact (PMF.mem_support_pure_iff _ _).mpr choice.2
-  | some view =>
-      exact RevealOnly.uniformPolicy_support who setup.program reveals admission view choice.1
-        choice.2
 
 /-- The uniform law over the legal choices at every information value. -/
 def uniformReference (setup : Setup (Player := Player) (L := L))

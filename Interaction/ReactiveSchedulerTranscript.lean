@@ -46,36 +46,4 @@ theorem commandConsistent_snoc
         choose seed past entry.beforeView = entry.command := by
   simp only [commandConsistentFrom_append, commandConsistentFrom, List.nil_append, and_true]
 
-/-- Reparameterizing an immutable original seed reparameterizes concrete
-command consistency, without changing any recorded view or command. -/
-theorem commandConsistentFrom_comp {Original : Type}
-    (choose : Seed → List app.EnvironmentEntry → app.EnvironmentView → app.Command)
-    (read : Original → Seed) (seed : Original) (earlier past : List app.EnvironmentEntry) :
-    app.commandConsistentFrom (fun original => choose (read original)) seed earlier past ↔
-      app.commandConsistentFrom choose (read seed) earlier past := by
-  induction past generalizing earlier with
-  | nil => rfl
-  | cons entry rest ih => simp only [commandConsistentFrom, ih]
-
-private theorem filter_eq_of_support_eq (prior : PMF Seed) (first second : Set Seed)
-    (firstPositive : ∃ seed ∈ first, seed ∈ prior.support)
-    (secondPositive : ∃ seed ∈ second, seed ∈ prior.support)
-    (matching : ∀ seed ∈ prior.support, seed ∈ first ↔ seed ∈ second) :
-    prior.filter first firstPositive = prior.filter second secondPositive := by
-  classical
-  have indicatorEq : first.indicator prior = second.indicator prior := by
-    funext seed
-    by_cases supported : seed ∈ prior.support
-    · by_cases member : seed ∈ first
-      · simp only [Set.indicator_of_mem member,
-          Set.indicator_of_mem ((matching seed supported).mp member)]
-      · simp only [Set.indicator_of_notMem member,
-          Set.indicator_of_notMem (fun h => member ((matching seed supported).mpr h))]
-    · have zero : prior seed = 0 := by
-        change ¬ prior seed ≠ 0 at supported
-        exact Classical.not_not.mp supported
-      simp only [Set.indicator, zero, ite_self]
-  ext seed
-  simp only [PMF.filter_apply, indicatorEq]
-
 end Interaction.ReactiveApplication

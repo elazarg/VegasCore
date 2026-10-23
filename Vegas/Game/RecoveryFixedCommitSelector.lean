@@ -80,38 +80,4 @@ theorem RecoverySourceCheckpoint.fixed_binding_prefix
     _ = block.prepend suffix := congrArg (fun segment => segment.prepend suffix) sameBlock
     _ = checkpoint.residual.tail := reconstruct
 
-/-- Actual namespace persistence transports the SAME source checkpoint and
-its original entry word law to a later physical prefix. Every semantic field
-is inherited through the existing checkpoint transfer constructor. -/
-def RecoverySourceCheckpoint.transfer_of_same_attempt_prefix
-    {setup : Setup (Player := Player) (L := L)} {mode : ExecutionMode}
-    (runtime : EventGraphRuntime (serviceGraph setup mode))
-    (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket (serviceGraph setup mode)))
-    (plan : RuntimePhasePlan (serviceGraph setup mode))
-    (inputs : PMF (serviceGraph setup mode).Inputs) (horizon : Nat)
-    (scheduler : (phaseApplication runtime leaks).Scheduler)
-    (menu : (phaseApplication runtime leaks).ResponseMenu)
-    (before after : (phaseApplication runtime leaks).Control)
-    (prior : (menu.protocol (inputs.map (PhaseRuntimeState.initial plan)) horizon scheduler).Trace
-      (some before))
-    (trace : (menu.protocol (inputs.map (PhaseRuntimeState.initial plan)) horizon scheduler).Trace
-      (some after))
-    (retained : TracePrefix prior trace)
-    (same : before.execution.application.attempt = after.execution.application.attempt)
-    (checkpoint : RecoverySourceCheckpoint setup mode before.execution.application) :
-    RecoverySourceCheckpoint setup mode after.execution.application := by
-  have initialized : ∀ state ∈ (inputs.map (PhaseRuntimeState.initial plan)).support,
-      state.Ordered := by
-    intro state reached
-    obtain ⟨input, _supported, rfl⟩ := PMF.support_map .. ▸ reached
-    exact PhaseRuntimeState.initial_ordered plan input
-  have ordered := (phaseApplication_seedOrder runtime leaks).history
-    (inputs.map (PhaseRuntimeState.initial plan)) horizon scheduler initialized
-      (menu.toRawTrace (inputs.map (PhaseRuntimeState.initial plan)) horizon scheduler prior)
-  have entry := (phase_attempt_progress_of_prefix runtime leaks menu
-    (inputs.map (PhaseRuntimeState.initial plan)) initialized horizon scheduler before after
-      prior trace retained ordered).2.2 same
-  exact checkpoint.transfer entry.symm (congrArg CommitAttemptId.generation same).symm
-    (congrArg CommitAttemptId.phase same).symm
-
 end Vegas

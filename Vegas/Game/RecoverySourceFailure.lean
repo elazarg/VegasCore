@@ -295,28 +295,6 @@ theorem environment (valid : RecoveryFailureRecord profile state)
   obtain ⟨native, realized, rfl⟩ := reached
   exact (valid.environmentResult runtime command native realized).drain
 
-/-- Every permanent exclusion is source debt at the actual decoded prefix. -/
-theorem owesFailure (valid : RecoveryFailureRecord profile state) {rank : Nat}
-    (ordered : state.native.config.cut.IsPrefix rank) {point : ProtocolState setup.program}
-    (decoded : sourceServicePrefix? setup rank state.native.config = some point)
-    {owner : Player} (member : owner ∈ state.excluded) :
-    ProtocolState.OwesFailure owner setup.program point := by
-  obtain ⟨event, completed, acting, failed⟩ := valid.excluded owner member
-  exact valid.source.owesFailure ordered decoded completed acting failed
-
-/-- The public permanent-exclusion classifier implies source debt at the
-configuration's actual decoded point. -/
-theorem owesFailure_of_decodedPoint (valid : RecoveryFailureRecord profile state)
-    {point : ProtocolState setup.program}
-    (decoded : decodedPoint setup state.native.config = some point)
-    {owner : Player} (member : owner ∈ state.excluded) :
-    ProtocolState.OwesFailure owner setup.program point := by
-  obtain ⟨rank, ⟨residual⟩, _⟩ := valid.source
-  rw [decodedPoint_eq residual] at decoded
-  have same := Option.some.inj decoded
-  rw [← same]
-  exact valid.owesFailure residual.checkpoint.ordered residual.decode member
-
 end RecoveryFailureRecord
 
 /-- Actual recovery histories retain source failure provenance through arbitrary

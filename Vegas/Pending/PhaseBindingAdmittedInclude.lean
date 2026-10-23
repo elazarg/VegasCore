@@ -54,36 +54,4 @@ theorem inclusion_exclusion_congr (left right : RecoveryState graph)
 variable (runtime : EventGraphRuntime graph)
   (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket graph))
 
-/-- Actual clear survival determines the raw exclusion update before phase
-normalization. This is derived from the original physical include outcome. -/
-theorem inclusion_clear_of_actual
-    (physical : (phaseApplication runtime leaks).Execution) (id : MessageId Player)
-    (message : Message Player (CommitAttemptPacket graph))
-    (found : physical.network.lookup id = some message)
-    (admitted : (message.payload.tokenValid physical.application.attempt &&
-      physical.application.allows message.payload.packet.call &&
-      !physical.application.current.excludedCall message.payload.packet.call) = true)
-    (native : State graph)
-    (handled : handle runtime physical.application.current.native
-      ⟨message.id, message.payload.packet.call⟩ = some native)
-    (clear : (physical.includePending (phaseApplication runtime leaks)
-      id).application.current.excluded = ∅) :
-    (physical.application.current.inclusionResult message.payload.packet.call native).excluded =
-      ∅ := by
-  let raw : PhaseRuntimeState graph := { physical.application with
-    current := physical.application.current.inclusionResult message.payload.packet.call native }
-  have accepted : (phaseApplication runtime leaks).handle physical.application message =
-      some raw.normalize := by
-    change physical.application.handle runtime message = some raw.normalize
-    simp only [PhaseRuntimeState.handle, admitted, ↓reduceIte, handled, Option.map_some]
-    rfl
-  have cleared : raw.normalize.current.excluded = ∅ := by
-    simpa only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
-      found, accepted, Option.getD_some] using clear
-  have same := (PhaseRuntimeState.settle_physical physical.application.phases
-    physical.application.generation physical.application.entry
-    (physical.application.current.inclusionResult message.payload.packet.call native)
-    physical.application.retired).1
-  exact same.symm.trans cleared
-
 end Vegas.EventGraphRuntime.PhaseBindingRepair

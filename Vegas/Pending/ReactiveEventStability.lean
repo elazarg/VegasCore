@@ -599,41 +599,4 @@ theorem freshServiceAcceptable_accepted_of_extends (relaxed : graph.RevealRelaxe
           rw [node] at absent
           exact absent.elim
 
-/-- A recorded ready strategic callback shares the current readiness episode. -/
-theorem recorded_ready_activatedAt
-    (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (inputs : PMF graph.Inputs) (horizon : Nat)
-    (scheduler : (runtime.reactiveApplication leaks).Scheduler)
-    (control : (runtime.reactiveApplication leaks).Control)
-    (trace : ((runtime.reactiveApplication leaks).protocol (inputs.map State.initial)
-      horizon scheduler).Trace (some control))
-    (who : Player) (entry : (runtime.reactiveApplication leaks).PlayerEntry)
-    (retained : entry ∈ control.execution.recall who) (event : graph.EventId)
-    (beforeReady : entry.beforeView.application.publicView.EventReady event)
-    (owner : graph.actor? event = some who)
-    (ready : control.execution.application.config.cut.Ready event)
-    (entered : Nat) (activated : control.execution.application.activatedAt event = some entered) :
-    entry.beforeView.application.publicView.activatedAt event = some entered := by
-  let app := runtime.reactiveApplication leaks
-  obtain ⟨before, ⟨prior⟩, active, viewed⟩ :=
-    app.recorded_response_prefix (inputs.map State.initial) horizon scheduler control trace
-      who entry retained
-  obtain ⟨setup, _, invariant⟩ := runtime.reactive_history_invariant leaks inputs horizon
-    scheduler prior
-  have priorReady : before.execution.application.config.cut.Ready event := by
-    apply (before.execution.application.publicView_eventReady event).mp
-    simpa only [viewed, ReactiveApplication.Execution.observe, app, reactiveApplication,
-      State.playerView] using beforeReady
-  obtain ⟨oldEntered, oldActivated⟩ := invariant.activatedAt_eq_some_of_ready_actor event
-    priorReady (by simp only [owner, Option.isSome_some])
-  have recorded : entry.beforeView.application.publicView.activatedAt event = some oldEntered := by
-    simpa only [viewed, ReactiveApplication.Execution.observe, app, reactiveApplication,
-      State.playerView, State.publicView] using oldActivated
-  obtain ⟨_, _, _, stable, _⟩ := (runtime.entryEventStable_history leaks (inputs.map State.initial)
-    horizon scheduler trace) who entry retained event beforeReady ready.1
-  have current := stable who owner oldEntered recorded
-  rw [activated] at current
-  exact Option.some.inj current ▸ recorded
-
 end Vegas.EventGraphRuntime

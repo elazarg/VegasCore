@@ -56,32 +56,4 @@ theorem RecordsBinding.rememberCompletion_of_ne
 
 end BindingShadow
 
-namespace BindingMemory
-
-variable (runtime : EventGraphRuntime graph)
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-
-/-- The actual repair response records its original typed result, including
-absence and wrongly typed private material. This holds before any inclusion. -/
-theorem repairResponse_recordsBinding (who : Player) (memory : BindingMemory runtime leaks)
-    (view : (runtime.reactiveApplication leaks).PlayerView)
-    (event : graph.EventId) (payload : L.Ty)
-    (outputEq : graph.outputLayout event = .binding who payload)
-    (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
-      (graph.nodes event) = .bind who payload)
-    (node : nodeView graph event = .bind who payload outputEq codeEq)
-    (serial : Nat) (opening : Option (Raw L))
-    (originalFresh : (memory.shadow.inputView runtime leaks view).application.candidates
-      (.prepared serial) = .fresh)
-    (actualFresh : view.application.candidates (.prepared serial) = .fresh) :
-    (memory.repairResponse runtime leaks who view
-      ⟨some ⟨⟨.commitment event (who, .prepared serial), opening⟩, .none⟩⟩).2.RecordsBinding
-        event outputEq
-          ((opening.bind (fun raw => raw.as? payload)).elim .failure
-            PublicationResult.success) := by
-  simp only [repairResponse, node, originalFresh, actualFresh, and_self, ↓reduceIte,
-    BindingShadow.RecordsBinding, BindingShadow.rememberCompletion, Function.update_self]
-
-end BindingMemory
-
 end Vegas.EventGraphRuntime

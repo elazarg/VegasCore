@@ -506,27 +506,4 @@ theorem environment (valid : PublicExclusionRecord state) (runtime : EventGraphR
 
 end PublicExclusionRecord
 
-/-- Arbitrary actual recovery histories reconstruct permanent exclusions from
-public omissions and public failed resolutions. -/
-theorem publicExclusionRecord_history (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (initial : PMF (State graph))
-    (initialized : ∀ native ∈ initial.support, ∃ inputs, native = State.initial inputs)
-    (horizon : Nat) (scheduler : (recoveryApplication runtime leaks).Scheduler)
-    (control : (recoveryApplication runtime leaks).Control)
-    (trace : ((recoveryApplication runtime leaks).protocol
-      (initial.map fun native => (⟨native, ∅⟩ : RecoveryState graph)) horizon scheduler).Trace
-      (some control)) : PublicExclusionRecord control.execution.application := by
-  let app := recoveryApplication runtime leaks
-  have preserved : app.Invariant PublicExclusionRecord :=
-    ⟨fun _ who material valid => valid.submit who material,
-      fun _ message next valid accepted => valid.handle _ message next accepted,
-      fun _ command next valid realized => valid.environment _ command next realized⟩
-  apply preserved.history _ horizon scheduler ?_ trace
-  intro state supported
-  rw [PMF.support_map] at supported
-  obtain ⟨native, supported, rfl⟩ := supported
-  obtain ⟨inputs, rfl⟩ := initialized native supported
-  exact PublicExclusionRecord.initial inputs
-
 end Vegas.EventGraphRuntime

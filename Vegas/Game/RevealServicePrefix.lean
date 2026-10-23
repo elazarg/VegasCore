@@ -82,28 +82,6 @@ theorem decodePrefix?_reveal
         (revelations.reveal selected) (fun tail => outputs tail.succ) count store history).map
           Sum.inr := rfl
 
-/-- The public service position selects the existing source protocol position;
-private source cells are retained by the typed store decoder. -/
-def sourcePrefix? (setup : Setup (Player := Player) (L := L))
-    (rank : Nat) (config : (graph setup).Config) : setup.ProtocolState :=
-  decodePrefix? setup.program (ContextRefs.initial setup.context (outputLayout setup.program))
-    (Revelations.initial setup.context) (outputRef setup.program) rank config.store
-    (decodeHistory setup.program (config.history.map
-      (setup.eventGraph.fromModeCompletion .sequential)))
-
-/-- Decoding the initialized native state gives the actual initialized source
-protocol state, for every supplied private input. -/
-theorem sourcePrefix?_initial (setup : Setup (Player := Player) (L := L))
-    (initial : State L setup.context) :
-    sourcePrefix? setup 0
-        (EventGraphRuntime.State.initial (graph := graph setup)
-          (setup.eventInputs initial)).config =
-      some (ProtocolState.entry setup.program (setup.initialConfig initial)) := by
-  unfold sourcePrefix?
-  rw [initial_history setup initial]
-  exact decodePrefix?_zero_of_agrees setup.program _ _ (setup.initialConfig initial) rfl _
-    (initial_agrees setup initial)
-
 /-- Checkpoints along an existing source protocol position. The recursion only
 locates the residual source configuration in `ProtocolState`; all operational
 facts remain the fields of `Checkpoint`. It imposes no policy marginal. -/
@@ -194,81 +172,6 @@ theorem PrefixCheckpoint.decode
               rw [decodePrefix?_reveal]
               rw [ih _ _ _ (offset + 1) count rest execution related]
               rfl
-
-/-- A fact holding at every typed checkpoint holds at its existing source
-protocol position. This only eliminates the static sum nesting. -/
-theorem PrefixCheckpoint.runtime_fact
-    {setup : Setup (Player := Player) (L := L)}
-    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-    {initial : State L setup.context} (fact : (application setup leaks).Execution → Prop)
-    (fromCheckpoint : ∀ {Γ : SourceCtx Player L} (source : Config Player L Γ)
-      (refs : ContextRefs (graph setup).layout Γ) rank execution,
-      Checkpoint setup leaks initial source refs rank execution → fact execution) :
-    ∀ {Γ : SourceCtx Player L} {openNames : Finset VarId}
-      (program : SourceProgram Player L Γ openNames)
-      (refs : ContextRefs (graph setup).layout Γ) (revelations : Revelations Γ)
-      (outputs : ∀ event, EventGraph.FieldRef (graph setup).layout
-        (outputLayout program event))
-      (offset count : Nat) (state : ProtocolState program)
-      (execution : (application setup leaks).Execution),
-      PrefixCheckpoint setup leaks initial program refs revelations outputs
-        offset count state execution → fact execution := by
-  intro Γ openNames program refs revelations outputs offset count
-  induction count generalizing Γ openNames program refs revelations outputs offset with
-  | zero =>
-      intro state execution related
-      cases program <;>
-        obtain ⟨source, _state, _revelations, checkpoint⟩ := related <;>
-        exact fromCheckpoint source refs offset execution checkpoint
-  | succ count ih =>
-      intro state execution related
-      cases program with
-      | ret payoffs => exact related.elim
-      | sample name fresh law next => exact related.elim
-      | commit name owner fresh guard next => exact related.elim
-      | reveal published owner name fresh selected unresolved next =>
-          cases state with
-          | inl source => exact related.elim
-          | inr state => exact ih next _ _ _ (offset + 1) state execution related
-
-/-- Preserve a prefix relation by preserving each actual typed checkpoint;
-native execution and private response recall remain explicit arguments. -/
-theorem PrefixCheckpoint.map_execution
-    {setup : Setup (Player := Player) (L := L)}
-    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-    {initial : State L setup.context}
-    (before after : (application setup leaks).Execution)
-    (preserves : ∀ {Γ : SourceCtx Player L} (source : Config Player L Γ)
-      (refs : ContextRefs (graph setup).layout Γ) rank,
-      Checkpoint setup leaks initial source refs rank before →
-        Checkpoint setup leaks initial source refs rank after) :
-    ∀ {Γ : SourceCtx Player L} {openNames : Finset VarId}
-      (program : SourceProgram Player L Γ openNames)
-      (refs : ContextRefs (graph setup).layout Γ) (revelations : Revelations Γ)
-      (outputs : ∀ event, EventGraph.FieldRef (graph setup).layout
-        (outputLayout program event))
-      (offset count : Nat) (state : ProtocolState program),
-      PrefixCheckpoint setup leaks initial program refs revelations outputs
-        offset count state before →
-      PrefixCheckpoint setup leaks initial program refs revelations outputs
-        offset count state after := by
-  intro Γ openNames program refs revelations outputs offset count
-  induction count generalizing Γ openNames program refs revelations outputs offset with
-  | zero =>
-      intro state related
-      cases program <;>
-        obtain ⟨source, stateEq, revelationsEq, checkpoint⟩ := related <;>
-        exact ⟨source, stateEq, revelationsEq, preserves source refs offset checkpoint⟩
-  | succ count ih =>
-      intro state related
-      cases program with
-      | ret payoffs => exact related.elim
-      | sample name fresh law next => exact related.elim
-      | commit name owner fresh guard next => exact related.elim
-      | reveal published owner name fresh selected unresolved next =>
-          cases state with
-          | inl source => exact related.elim
-          | inr state => exact ih next _ _ _ (offset + 1) state related
 
 def PublicPrefixCheckpoint (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
@@ -445,45 +348,6 @@ theorem PrefixCheckpoint.toPublic
           cases state with
           | inl source => exact related.elim
           | inr rest => exact ih next _ _ _ (offset + 1) rest execution related
-
-/-- Preserve a prefix relation by preserving each actual typed checkpoint;
-native execution and private response recall remain explicit arguments. -/
-theorem PublicPrefixCheckpoint.map_execution
-    {setup : Setup (Player := Player) (L := L)}
-    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-    {initial : State L setup.context}
-    (before after : (application setup leaks).Execution)
-    (preserves : ∀ {Γ : SourceCtx Player L} (source : Config Player L Γ)
-      (refs : ContextRefs (graph setup).layout Γ) rank,
-      PublicCheckpoint setup leaks initial source refs rank before →
-        PublicCheckpoint setup leaks initial source refs rank after) :
-    ∀ {Γ : SourceCtx Player L} {openNames : Finset VarId}
-      (program : SourceProgram Player L Γ openNames)
-      (refs : ContextRefs (graph setup).layout Γ) (revelations : Revelations Γ)
-      (outputs : ∀ event, EventGraph.FieldRef (graph setup).layout
-        (outputLayout program event))
-      (offset count : Nat) (state : ProtocolState program),
-      PublicPrefixCheckpoint setup leaks initial program refs revelations outputs
-        offset count state before →
-      PublicPrefixCheckpoint setup leaks initial program refs revelations outputs
-        offset count state after := by
-  intro Γ openNames program refs revelations outputs offset count
-  induction count generalizing Γ openNames program refs revelations outputs offset with
-  | zero =>
-      intro state related
-      cases program <;>
-        obtain ⟨source, stateEq, revelationsEq, checkpoint⟩ := related <;>
-        exact ⟨source, stateEq, revelationsEq, preserves source refs offset checkpoint⟩
-  | succ count ih =>
-      intro state related
-      cases program with
-      | ret payoffs => exact related.elim
-      | sample name fresh law next => exact related.elim
-      | commit name owner fresh guard next => exact related.elim
-      | reveal published owner name fresh selected unresolved next =>
-          cases state with
-          | inl source => exact related.elim
-          | inr state => exact ih next _ _ _ (offset + 1) state related
 
 /-- A decoded prefix has exactly the source actor at the corresponding static
 event rank. This fact is independent of private values and source policies. -/

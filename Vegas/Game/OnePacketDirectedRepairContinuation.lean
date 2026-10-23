@@ -25,22 +25,6 @@ namespace DirectedBindingFrame
 variable {memory : BindingMemory (runtime setup) leaks} {owner : Player}
   {original repaired : (application setup leaks).Execution}
 
-/-- A silent response records its actual current input without exposing the
-private binding repair. -/
-theorem silent_response (frame : DirectedBindingFrame memory owner original repaired) :
-    let app := application setup leaks
-    let response : app.Action := ⟨none⟩
-    let remembered := memory.record (runtime setup) leaks
-      (memory.shadow.inputView (runtime setup) leaks (repaired.observe app owner)) response
-    DirectedBindingFrame remembered owner (original.respond app owner response)
-      (repaired.respond app owner response) := by
-  refine ⟨frame.toFrame.transport_response ⟨none⟩ (fun _ absent => by cases absent), ?_⟩
-  simp only [ReactiveApplication.Execution.respond, operationalRecall, List.map_append,
-    List.map_cons, List.map_nil, ite_true]
-  change operationalRecall (original.recall owner) ++ [_] =
-    operationalRecall (repaired.recall owner) ++ [_]
-  rw [frame.recalled, frame.toFrame.operationalView]
-
 /-- Advancing the actual clock preserves the repaired owner's recorded inputs. -/
 theorem advanceClock (frame : DirectedBindingFrame memory owner original repaired) :
     let app := application setup leaks

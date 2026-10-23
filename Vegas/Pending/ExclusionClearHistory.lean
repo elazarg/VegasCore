@@ -181,26 +181,4 @@ theorem recoveryHistory_nativeHistory
       (liftProtocolState_protocolState_of_history_clear runtime leaks initial horizon scheduler
         (.extend prior joint legal realized) clear)
 
-/-- Actual clear recovery histories and genuine public-clear native histories
-are in bijection, retaining all realized transitions and private recalls. -/
-def clearHistoryEquiv (initial : PMF (RecoveryState graph))
-    (initialized : ∀ state ∈ initial.support, ∃ inputs,
-      state = (⟨State.initial inputs, ∅⟩ : RecoveryState graph))
-    (horizon : Nat) (scheduler : (runtime.recoveryApplication leaks).Scheduler) :
-    { history : ((runtime.recoveryApplication leaks).protocol initial horizon scheduler).History //
-      ∀ current, history.state = some current → current.execution.application.excluded = ∅ } ≃
-    { history : ((runtime.reactiveApplication leaks).protocol (initial.map RecoveryState.native)
-        horizon (nativeScheduler runtime leaks scheduler)).History //
-      ∀ current, history.state = some current →
-        PublicExclusionRecord (⟨current.execution.application, ∅⟩ : RecoveryState graph) } where
-  toFun history := ⟨nativeHistory runtime leaks initial horizon scheduler history.1 history.2,
-    nativeHistory_record runtime leaks initial initialized horizon scheduler
-      history.1.trace history.2⟩
-  invFun history := ⟨recoveryHistory runtime leaks initial initialized horizon scheduler
-    history.1 history.2, liftProtocolState_clear runtime leaks history.1.state⟩
-  left_inv history := Subtype.ext (recoveryHistory_nativeHistory runtime leaks initial initialized
-    horizon scheduler history.1.trace history.2)
-  right_inv history := Subtype.ext (nativeHistory_recoveryHistory runtime leaks initial initialized
-    horizon scheduler history.1.trace history.2)
-
 end Vegas.EventGraphRuntime.RecoveryProjection

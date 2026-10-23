@@ -156,15 +156,5 @@ theorem commitRecoveryClearTrace_length : ∀ {state : setup.commitRecoveryProto
   | _, .extend prior _ _ _, _ => by
       simp only [commitRecoveryClearTrace, Trace.length, commitRecoveryClearTrace_length prior]
 
-theorem commitRecoveryClearTrace_observe (who : Player)
-    {state : setup.commitRecoveryProtocol.State} (trace : setup.commitRecoveryProtocol.Trace state)
-    (clear : setup.CommitRecoveryClear state) :
-    (setup.informationModel (CommitmentInterface.forfeiture setup.program)).infoOf who
-      (setup.commitRecoveryClearTrace trace clear) = setup.commitRecoveryPrivate who state := by
-  change (setup.protocolSignals (CommitmentInterface.forfeiture setup.program)).infoOf who
-    (setup.commitRecoveryClearTrace trace clear) = _
-  rw [setup.protocol_info]
-  cases state <;> rfl
-
 end Setup
 end Vegas.SourceProgram

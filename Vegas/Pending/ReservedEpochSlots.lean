@@ -59,44 +59,4 @@ theorem activation_at {length : Nat} (packetBudget : Nat) (tape : Tape Player le
     notProcessing, ↓reduceIte, Nat.add_sub_cancel_left]
   simp only [position.isLt, ↓reduceDIte, offered, ↓reduceIte]
 
-/-- An owner's reserved offer position is independent of every application,
-packet and receipt observation, including foreign responses earlier in the cycle. -/
-theorem activation_view_independent {length : Nat} (packetBudget : Nat)
-    (tape : Tape Player length) (cycle : Nat) (position : Fin (Fintype.card Player))
-    (left right : (app).EnvironmentView)
-    (offered : tape.activates cycle (tape.owner cycle position) = true) :
-    command runtime leaks packetBudget tape
-        (cycle * cycleWidth (graph := graph) packetBudget + (packetBudget + position.val)) left =
-      command runtime leaks packetBudget tape
-        (cycle * cycleWidth (graph := graph) packetBudget +
-          (packetBudget + position.val)) right := by
-  rw [activation_at runtime leaks packetBudget tape cycle position left offered,
-    activation_at runtime leaks packetBudget tape cycle position right offered]
-
-omit [DecidableEq Player] in
-theorem every_owner_position {length : Nat} (tape : Tape Player length)
-    (cycle : Nat) (owner : Player) :
-    ∃ position : Fin (Fintype.card Player), tape.owner cycle position = owner :=
-  tape.owner_surjective cycle owner
-
-theorem advance_at {length : Nat} (packetBudget : Nat) (tape : Tape Player length)
-    (cycle : Nat) (view : (app).EnvironmentView) :
-    command runtime leaks packetBudget tape
-      (cycle * cycleWidth (graph := graph) packetBudget +
-        (packetBudget + Fintype.card Player + graph.order.eventCount + 1)) view =
-          .application .advanceClock := by
-  let slot := packetBudget + Fintype.card Player + graph.order.eventCount + 1
-  have bounded : slot < cycleWidth (graph := graph) packetBudget := by
-    dsimp [slot, cycleWidth]
-    omega
-  have processing : ¬ slot < packetBudget := by dsimp [slot]; omega
-  have owner : ¬ slot - packetBudget < Fintype.card Player := by dsimp [slot]; omega
-  have sampling : slot ≠ packetBudget + Fintype.card Player := by dsimp [slot]; omega
-  have expiry : ¬ slot - (packetBudget + Fintype.card Player + 1) <
-      graph.order.eventCount := by dsimp [slot]; omega
-  change command runtime leaks packetBudget tape
-    (cycle * cycleWidth (graph := graph) packetBudget + slot) view = _
-  simp [command, cursor_mod _ _ _ bounded,
-    processing, owner, sampling, expiry]
-
 end Vegas.EventGraphRuntime.ReservedEpoch

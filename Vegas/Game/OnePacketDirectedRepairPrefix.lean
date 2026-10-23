@@ -69,21 +69,6 @@ theorem readyOrCompleted_of_tracePrefix {before : (application setup leaks).Cont
                 realized) event activeMiddle
   exact carry prior trace isPrefix before rfl active
 
-/-- A reveal excluded at the final native cut was excluded at every initialized
-prefix; this needs no independence or scheduler-service hypothesis. -/
-theorem not_readyOrCompleted_at_prefix {before after : (application setup leaks).Control}
-    (prior : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some before))
-    {trace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some after)}
-    (isPrefix : TracePrefix prior trace) {event : (graph setup).EventId}
-    (hidden : ¬ (after.execution.application.config.cut.Ready event ∨
-      event ∈ after.execution.application.config.cut.completed)) :
-    ¬ (before.execution.application.config.cut.Ready event ∨
-      event ∈ before.execution.application.config.cut.completed) := by
-  intro exposed
-  obtain ⟨next, same, active⟩ := readyOrCompleted_of_tracePrefix prior isPrefix exposed
-  cases Option.some.inj same
-  exact hidden active
-
 /-- An available typed field keeps its value through every actual history
 extension, including arbitrary admitted responses and environment commands. -/
 theorem storedValue_of_tracePrefix {before after : (application setup leaks).Control}

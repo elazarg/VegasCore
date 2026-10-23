@@ -71,10 +71,6 @@ theorem settle_seedBudget (phases : List (RuntimePhase graph)) (generation : Nat
       · refine ⟨bounded, ?_⟩
         simpa only [phase.drain_excluded] using monotone
 
-theorem normalize_seedBudget {state : PhaseRuntimeState graph} (valid : state.SeedBudget) :
-    state.normalize.SeedBudget :=
-  settle_seedBudget _ _ _ _ _ valid.generation valid.excluded
-
 theorem initial_seedBudget (plan : RuntimePhasePlan graph) (inputs : graph.Inputs) :
     (initial plan inputs).SeedBudget :=
   settle_seedBudget _ _ _ _ _ (Nat.zero_le _) (Finset.Subset.refl _)

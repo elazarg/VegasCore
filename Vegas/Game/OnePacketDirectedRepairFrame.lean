@@ -30,12 +30,6 @@ def operationalRecall (past : List (application setup leaks).PlayerEntry) :
       Option (Message Player (application setup leaks).Payload)) :=
   past.map fun entry => (operationalView setup leaks entry.beforeView, entry.emitted)
 
-/-- Reconstructing private candidate material changes no operational view. -/
-theorem operationalView_shadow (memory : BindingShadow (graph setup))
-    (view : (application setup leaks).PlayerView) :
-    operationalView setup leaks (memory.inputView (runtime setup) leaks view) =
-      operationalView setup leaks view := rfl
-
 namespace EventGraphRuntime.BindingMemory.Frame
 
 variable {memory : BindingMemory (runtime setup) leaks} {owner : Player}

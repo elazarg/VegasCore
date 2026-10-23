@@ -102,23 +102,4 @@ theorem reactive_history_invariant (runtime : EventGraphRuntime graph)
     obtain ⟨setup, chosen, rfl⟩ := PMF.support_map .. ▸ supported
     exact ⟨setup, chosen, State.initial_invariant setup⟩) trace
 
-/-- Every initialized native history retains a configuration reachable by
-the original graph rules from a supported setup. This allows arbitrary player
-responses, scheduling, and passive observations. It asserts legality of game
-effects, not equality of strategy spaces or equilibrium outcomes. -/
-theorem reactive_history_graph_reachable (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (inputs : PMF graph.Inputs) (horizon : Nat)
-    (scheduler : (runtime.reactiveApplication leaks).Scheduler) {state}
-    (trace : ((runtime.reactiveApplication leaks).protocol
-      (inputs.map State.initial) horizon scheduler).Trace state) :
-    ReactiveApplication.stateInvariant (fun state : State graph =>
-      ∃ setup ∈ inputs.support, state.config.Reachable setup) state := by
-  have valid := runtime.reactive_history_invariant leaks inputs horizon scheduler trace
-  cases state with
-  | none => trivial
-  | some control =>
-      obtain ⟨setup, supported, invariant⟩ := valid
-      exact ⟨setup, supported, invariant.reachable⟩
-
 end Vegas.EventGraphRuntime

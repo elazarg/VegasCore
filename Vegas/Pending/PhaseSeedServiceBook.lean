@@ -36,15 +36,4 @@ theorem nonempty_of_namespace_progress (before after : PhaseRuntimeState graph)
       have upper := phase.bounded
       omega
 
-omit [Fintype Player] in
-private theorem command_of_actor (command : (app).Command) (owner : Player)
-    (actor : command.actor? app = some owner) : command = .activate owner := by
-  cases command with
-  | activate actual =>
-      have same : actual = owner := Option.some.inj actor
-      exact congrArg ReactiveApplication.Command.activate same
-  | wait => cases actor
-  | «include» identifier => cases actor
-  | application native => cases actor
-
 end Vegas.EventGraphRuntime.PhaseSeedCalendar

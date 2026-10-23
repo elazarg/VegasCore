@@ -97,42 +97,6 @@ theorem serialRecall_history (scheduler : app.Scheduler) (initial : PMF app.Stat
   (app.serialRecallInvariant scheduler).history initial horizon
     (fun state _ => app.initial_serialRecall state) trace
 
-/-- During a phase with no inclusion, the serial equals the settled baseline
-exactly when no new own submission has occurred. The suffix may include any
-number of waits. -/
-theorem serial_eq_ledger_iff_no_submission
-    (before after : app.Execution) (who : Principal)
-    (beforeRecall : before.SerialRecall app) (afterRecall : after.SerialRecall app)
-    (settled : before.network.nextSerial who =
-      Message.distinctAuthoredCount before.network.ledger who)
-    (ledger : after.network.ledger = before.network.ledger)
-    (suffix : List app.PlayerEntry)
-    (recalled : after.recall who = before.recall who ++ suffix) :
-    after.network.nextSerial who =
-        Message.distinctAuthoredCount after.network.ledger who ↔
-      app.submissionCount suffix = 0 := by
-  rw [afterRecall who, recalled, app.submissionCount_append, ← beforeRecall who, ledger,
-    ← settled]
-  omega
-
-/-- A completed fresh submission restores the public serial test for the next
-phase. The fact concerns network inclusion, so rejected application calls have
-the same accounting as successful calls. -/
-theorem submit_include_serials_match_ledger (execution : app.Execution)
-    (serials : execution.network.SerialsBeforeNext)
-    (who : Principal) (submission : app.Submission) (observer : Principal)
-    (settled : execution.network.nextSerial observer =
-      Message.distinctAuthoredCount execution.network.ledger observer) :
-    let next := (execution.respond app who ⟨some submission⟩).includePending app
-      (who, execution.network.nextSerial who)
-    next.network.nextSerial observer =
-      Message.distinctAuthoredCount next.network.ledger observer := by
-  dsimp only
-  rw [app.includePending_network]
-  exact serials.submit_include_serials_match_ledger who
-    (app.packet (app.submit execution.application who submission) who
-      (execution.network.known who) submission) observer settled
-
 /-- Every serial allocated to an author was emitted by one of its recorded
 fresh submissions. -/
 def Execution.SerialsIssued (execution : app.Execution) : Prop :=

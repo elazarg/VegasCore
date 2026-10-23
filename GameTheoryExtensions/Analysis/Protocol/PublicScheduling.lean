@@ -293,11 +293,6 @@ def model : InformationModel S.protocol where
             simp only [LegalOption, active_waiting, Set.mem_singleton_iff, reduceCtorEq,
               false_and]
 
-/-- Choices at a ready information value are source choices. -/
-theorem choice_ready (i : ι) (info : M.InfoState i) (τ : List View) :
-    (S.model M).Choice i (info, τ, 0) = M.Choice i info :=
-  rfl
-
 instance (i : ι) [DecidableEq (M.InfoState i)] [DecidableEq View] :
     DecidableEq ((S.model M).InfoState i) :=
   inferInstanceAs (DecidableEq (M.InfoState i × List View × ℕ))

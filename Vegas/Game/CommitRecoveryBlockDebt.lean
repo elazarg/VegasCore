@@ -38,23 +38,6 @@ def HiddenCommitDebt (wellFormed : setup.WellFormed) (who : Player)
               setup.commitRecoveryModel.infoOf observer
                 (setup.commitRecoveryLiftHistory wellFormed ⟨some point, original⟩).trace
 
-private theorem terminal_not_atCommit : ∀ {Γ : SourceCtx Player L} {O : Finset VarId}
-    (program : SourceProgram Player L Γ O) (point : SourceProgram.ProtocolState program),
-    ProtocolState.terminal program point → ProtocolState.atCommit program point = false
-  | _, _, .ret _, _, _ => rfl
-  | _, _, .sample _ _ _ next, point, terminal => by
-      cases point with
-      | inl _ => exact terminal.elim
-      | inr point => exact terminal_not_atCommit next point terminal
-  | _, _, .commit _ _ _ _ next, point, terminal => by
-      cases point with
-      | inl _ => exact terminal.elim
-      | inr point => exact terminal_not_atCommit next point terminal
-  | _, _, .reveal _ _ _ _ _ _ next, point, terminal => by
-      cases point with
-      | inl _ => exact terminal.elim
-      | inr point => exact terminal_not_atCommit next point terminal
-
 /-- A supported copied-policy step either retains the hidden intended
 counterpart, excludes the focal owner, or saves its latent debt at block closure. -/
 theorem commitRecovery_debt_progress [Fintype Player] (wellFormed : setup.WellFormed)
@@ -137,55 +120,5 @@ theorem commitRecovery_debt_progress [Fintype Player] (wellFormed : setup.WellFo
         have saved : next.saved = next.point :=
           frontier.saved_eq_point_of_not_atCommit notCommit
         exact Or.inr ⟨saved.symm ▸ nextOwed, nextOwed⟩
-
-/-- Terminal support after a hidden extra binding has either already excluded
-its owner or retained the debt in both saved and live semantics. Foreign
-policies need stay copied only while the first bad commitment block is open. -/
-theorem hidden_commit_terminal_debt [Fintype Player] (wellFormed : setup.WellFormed)
-    (certificate : setup.commitRecoveryProtocol.WellFoundedHistories)
-    (source : ∀ who, setup.intendedModel.BehavioralPolicy who)
-    (target policies : ∀ who, setup.commitRecoveryModel.BehavioralPolicy who)
-    (copies : (setup.commitRecoveryRestriction wellFormed).ExtendsProfile source target)
-    (who : Player)
-    (foreignPolicies : ∀ observer, observer ≠ who → policies observer = target observer)
-    (history : setup.commitRecoveryProtocol.History)
-    (initial : setup.CheckpointedDebt who history.state ∨
-      setup.HiddenCommitDebt wellFormed who history)
-    (final : setup.commitRecoveryProtocol.History)
-    (supported : final ∈ (setup.commitRecoveryModel.runBehavioralTerminalFrom certificate
-      policies history).support) : setup.CheckpointedDebt who final.state := by
-  have persists : ∀ start : setup.commitRecoveryProtocol.History,
-      setup.CheckpointedDebt who start.state ∨ setup.HiddenCommitDebt wellFormed who start →
-      ∀ last ∈ (setup.commitRecoveryModel.runBehavioralTerminalFrom certificate policies
-        start).support,
-        setup.CheckpointedDebt who last.state ∨ setup.HiddenCommitDebt wellFormed who last := by
-    intro start
-    induction start using certificate.induction with
-    | _ start ih =>
-        intro initial last member
-        by_cases terminal : setup.commitRecoveryProtocol.terminal start.state
-        · rw [InformationModel.runBehavioralTerminalFrom,
-            setup.commitRecoveryProtocol.randomizedBackwardLaw_of_terminal terminal,
-            PMF.mem_support_pure_iff] at member
-          subst last
-          exact initial
-        · rw [InformationModel.runBehavioralTerminalFrom_of_not_terminal _ _ _ terminal,
-            PMF.support_bind] at member
-          obtain ⟨draw, drawn, continued⟩ := Set.mem_iUnion₂.mp member
-          rw [PMF.mem_support_bindOnSupport_iff] at continued
-          obtain ⟨after, realized, child⟩ := continued
-          exact ih (start.extend draw.2 realized) ⟨draw.1, draw.2, realized⟩
-            (setup.commitRecovery_debt_progress wellFormed source target policies copies who
-              foreignPolicies start initial terminal draw drawn after realized) last child
-  rcases persists history initial final supported with settled | unsettled
-  · exact settled
-  · obtain ⟨current, _point, _original, state, _clear, _owed, active, _related, _observed⟩ :=
-      unsettled
-    have terminal := setup.commitRecoveryModel.runBehavioralTerminalFrom_support_terminal
-      certificate policies history final supported
-    rw [state] at terminal
-    have noCommit := terminal_not_atCommit setup.program current.point terminal
-    rw [noCommit] at active
-    cases active
 
 end Vegas.SourceProgram.Setup

@@ -127,36 +127,4 @@ theorem decodeCommitAttempt_append
           simpa only [SourceProgram.CommitPrefix.length, Nat.add_assoc, Nat.add_left_comm 1]
             using nextPosition
 
-/-- The actual earlier decoder is the middle of a genuine remaining typed
-attempt ending at the whole physical decoder, with the same exclusion set. -/
-theorem decodeCommitAttempt_append_attempt
-    {Γ Δ Ξ : SourceCtx Player L} {O P Q : Finset VarId}
-    (earlier : SourceProgram.CommitPrefix Γ O Δ P)
-    (later : SourceProgram.CommitPrefix Δ P Ξ Q) (suffix : SourceProgram Player L Ξ Q)
-    (embedding : OutputEmbedding (inputLayout wholeΓ) (outputLayout whole)
-      ((earlier.append later).prepend suffix))
-    (native : EventGraphRuntime.State ((toEventGraph whole).withMode mode))
-    (entry : SourceProgram.Config Player L Γ) (excluded : Finset Player) :
-    let prefixEmbedding := cast
-      (congrArg (OutputEmbedding (inputLayout wholeΓ) (outputLayout whole))
-        (earlier.prepend_append later suffix)) embedding
-    let decodedEarlier := decodeCommitAttempt whole mode earlier (later.prepend suffix)
-      prefixEmbedding native entry excluded
-    let complete := decodeCommitAttempt whole mode (earlier.append later) suffix
-      embedding native entry excluded
-    Nonempty (later.Attempt decodedEarlier.1 decodedEarlier.2.1 complete.1 complete.2.1) := by
-  intro prefixEmbedding decodedEarlier complete
-  obtain ⟨tailEmbedding, sameConfig, sameExcluded, _word, _positioned⟩ :=
-    decodeCommitAttempt_append whole mode earlier later suffix embedding native entry excluded
-  have actual := (decodeCommitAttempt whole mode later suffix tailEmbedding native
-    decodedEarlier.1 decodedEarlier.2.1).2.2
-  have moved : later.Attempt decodedEarlier.1 decodedEarlier.2.1 complete.1
-      (decodeCommitAttempt whole mode later suffix tailEmbedding native
-        decodedEarlier.1 decodedEarlier.2.1).2.1 :=
-    cast (congrArg (fun config => later.Attempt decodedEarlier.1 decodedEarlier.2.1 config
-      (decodeCommitAttempt whole mode later suffix tailEmbedding native
-        decodedEarlier.1 decodedEarlier.2.1).2.1) sameConfig) actual
-  exact ⟨cast (congrArg (fun owners => later.Attempt decodedEarlier.1 decodedEarlier.2.1
-    complete.1 owners) sameExcluded) moved⟩
-
 end Vegas

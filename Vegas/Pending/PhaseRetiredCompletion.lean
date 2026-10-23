@@ -118,45 +118,6 @@ theorem settle_generation_archive_of_same_excluded (phases : List (RuntimePhase 
       · exact ih _ _ _ rfl
       · exact ⟨rfl, rfl⟩
 
-/-- A generation change with a surviving owner archives the very attempt
-containing its event. That event has completed without public failure before
-rollback; surviving retry is therefore not a focal delivery-failure branch. -/
-theorem settle_retry_survivor_record (phase : RuntimePhase graph)
-    (remaining : List (RuntimePhase graph)) (generation : Nat)
-    (entry current : RecoveryState graph) (retired : List (RetiredCommitAttempt graph))
-    (event : graph.EventId) (inside : event ∈ phase.events) (owner : Player)
-    (acting : graph.actor? event = some owner) (surviving : owner ∉ current.excluded)
-    (active : current.FailureCoverage)
-    (changed : (settle (phase :: remaining) generation entry current retired).generation ≠
-      generation) :
-    ∃ record ∈ (settle (phase :: remaining) generation entry current retired).retired,
-      record.attempt = ⟨phase.low, generation⟩ ∧
-        event ∈ record.state.config.cut.completed ∧ record.state.ReceiptsComplete ∧
-          ¬ record.state.PublicFailure event := by
-  have ownerMember : owner ∈ phase.owners := by
-    apply Finset.mem_biUnion.mpr
-    refine ⟨event, inside, ?_⟩
-    simp only [acting, Option.toFinset_some, Finset.mem_singleton]
-  have survivesDrain : owner ∉ (phase.drain current).excluded := by
-    simpa only [RuntimePhase.drain_excluded] using surviving
-  have survivors : (phase.owners \ (phase.drain current).excluded).Nonempty :=
-    ⟨owner, Finset.mem_sdiff.mpr ⟨ownerMember, survivesDrain⟩⟩
-  have drained := active.drain phase
-  by_cases finished : phase.Finished (phase.drain current)
-  · by_cases failure : phase.kind = .commitment ∧
-        (((phase.drain current).excluded \ entry.excluded) ∩ phase.owners).Nonempty
-    · rw [settle_retry phase remaining generation entry current retired finished failure.1
-        failure.2 survivors]
-      refine ⟨⟨⟨phase.low, generation⟩, (phase.drain current).native⟩, ?_, rfl,
-        finished inside, drained.receipts, ?_⟩
-      · exact List.mem_append_right _ (List.mem_singleton_self _)
-      · exact fun failure => survivesDrain (drained.covered event owner acting failure)
-    · rw [settle_clean phase remaining generation entry current retired finished failure] at changed
-      exact (changed (settle_generation_archive_of_same_excluded remaining generation
-        (phase.drain current) (phase.drain current) retired rfl).1).elim
-  · simp only [settle, finished, ↓reduceIte] at changed
-    exact (changed rfl).elim
-
 end PhaseRuntimeState
 
 /-- Arbitrary actual submissions, includes and scheduler commands preserve
@@ -216,25 +177,5 @@ theorem phaseRetiredCompletion_history (runtime : EventGraphRuntime graph)
     (fun state supported => by
       obtain ⟨draw, _, rfl⟩ := PMF.support_map .. ▸ supported
       exact PhaseRuntimeState.initial_retiredCompletion plan draw) trace
-
-/-- A surviving owner in an actual retired phase has a completed event with
-no public delivery failure. An accepted failed binding remains admissible. -/
-theorem phase_retired_survivor_completed (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket graph))
-    (plan : RuntimePhasePlan graph) (inputs : PMF graph.Inputs) (horizon : Nat)
-    (scheduler : (phaseApplication runtime leaks).Scheduler) {control}
-    (trace : ((phaseApplication runtime leaks).protocol
-      (inputs.map (PhaseRuntimeState.initial plan)) horizon scheduler).Trace (some control))
-    (record : RetiredCommitAttempt graph)
-    (retired : record ∈ control.execution.application.retired) :
-    ∃ phase ∈ plan.phases, record.attempt.phase = phase.low ∧ phase.kind = .commitment ∧
-      ∀ event ∈ phase.events, ∀ owner, graph.actor? event = some owner →
-        owner ∉ control.execution.application.current.excluded →
-        event ∈ record.state.config.cut.completed ∧ ¬ record.state.PublicFailure event := by
-  obtain ⟨phase, member, low, kind, completed, _receipts, covered⟩ :=
-    (phaseRetiredCompletion_history runtime leaks plan inputs horizon scheduler trace).archives
-      record retired
-  exact ⟨phase, member, low, kind, fun event inside owner acting surviving =>
-    ⟨completed inside, fun failure => surviving (covered event owner acting failure)⟩⟩
 
 end Vegas.EventGraphRuntime

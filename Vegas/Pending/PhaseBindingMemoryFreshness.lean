@@ -36,14 +36,6 @@ theorem rememberCandidate_candidates_not_fresh (memory : BindingShadow graph)
   · simpa only [rememberCandidate, Function.update_of_ne same] using valid query
 
 omit [DecidableEq Player] in
-/-- Result bookkeeping changes neither catalogue meanings nor their freshness. -/
-theorem rememberCompletion_candidates_not_fresh (memory : BindingShadow graph)
-    (valid : ∀ slot, memory.candidates slot ≠ some .fresh)
-    (event : graph.EventId) (action : graph.Action event)
-    (value : (graph.outputLayout event).Value) :
-    ∀ query, (memory.rememberCompletion event action value).candidates query ≠ some .fresh := valid
-
-omit [DecidableEq Player] in
 /-- Under the actual memory constraint, reconstruction preserves physical
 freshness even for slots observed before a later preparation was remembered. -/
 theorem candidate_fresh_iff (memory : BindingShadow graph)
@@ -64,26 +56,5 @@ theorem candidate_fresh_iff (memory : BindingShadow graph)
       | some value =>
           have fixed : value ≠ .fresh := fun same => valid slot (stored.trans (congrArg some same))
           simpa only [candidate, stored, Option.getD_some, reduceCtorEq, iff_false] using fixed
-
-/-- A real nonmissing commitment response consumes its named handle before it
-can be remembered, independently of the result and the old slot meaning. -/
-theorem response_candidate_not_fresh (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket graph))
-    (execution : (phaseApplication runtime leaks).Execution) (owner : Player)
-    (event : graph.EventId) (payload : L.Ty)
-    (result : PublicationResult (L.Val payload)) (serial : Nat) :
-    let after := execution.respond (phaseApplication runtime leaks) owner
-      (phaseBindingResponse runtime leaks owner event payload result serial)
-    after.application.current.native.candidates.lookup (owner, .prepared serial) ≠ .fresh := by
-  intro after
-  let material : WitnessedSubmission graph :=
-    ⟨⟨.commitment event (owner, .prepared serial), match result with
-      | .failure => none
-      | .success value => some ⟨payload, value⟩⟩, .none⟩
-  change (submitStep (Submission.register material.call execution.application.current.native owner)
-    owner (.commitment event (owner, .prepared serial))).candidates.lookup
-      (owner, .prepared serial) ≠ .fresh
-  simp only [submitStep, ite_true]
-  exact CommitmentCandidates.lookup_freeze_ne_fresh _ _
 
 end Vegas.EventGraphRuntime.BindingShadow

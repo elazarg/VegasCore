@@ -74,32 +74,4 @@ theorem known (current : (P).Execution) (who : Player) :
       (current.network.known who).map (Message.mapPayload CommitAttemptPacket.packet) :=
   MessageNetwork.mapPayload_known _ _ _
 
-/-- Count authorization rules out either public token mask at actual emission. -/
-theorem maskPacket_eq_of_authorized (view : PhasePublicView graph)
-    (packet : WitnessedPacket graph)
-    (authorized : (PhaseCount.maskPacket view packet).tokenValid = true) :
-    PhaseCount.maskPacket view packet = packet := by
-  unfold PhaseCount.maskPacket at authorized ⊢
-  cases excluded : PhaseCount.excludedCall view packet.call <;>
-    cases allowed : PhaseCount.allows view packet.call <;>
-      simp_all only [Bool.false_eq_true, ↓reduceIte, WitnessedPacket.tokenValid_none]
-
-/-- Erasing an authorized actual emission yields exactly the native emission. -/
-theorem emit_of_authorized (state : PhaseRuntimeState graph) (who : Player)
-    (known : List (Message Player (CommitAttemptPacket graph)))
-    (material : WitnessedSubmission graph)
-    (authorized : ((state.submit who material).emit who known material).packet.tokenValid = true) :
-    ((state.submit who material).emit who known material).packet =
-      material.emit ((N).submit state.current.native who material) who
-        (known.map (Message.mapPayload CommitAttemptPacket.packet)) := by
-  rw [PhaseCount.emit_after_submit] at authorized ⊢
-  have unmasked := maskPacket_eq_of_authorized state.publicView _ authorized
-  rw [unmasked]
-  have candidates : (fun slot => ((N).submit state.current.native who material).candidates.lookup
-      (who, slot)) = material.call.candidateAfter who
-        (state.current.native.playerView who).candidates :=
-    funext fun slot => material.call.candidateAfter_eq who state.current.native slot
-  rw [WitnessedSubmission.emit_eq_resolve, candidates, reactiveApplication_submit_publicView]
-  rfl
-
 end Vegas.EventGraphRuntime.PhaseNativeProjection

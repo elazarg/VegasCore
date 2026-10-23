@@ -34,8 +34,7 @@ assessments and native profiles, the inputs at stage `n` are
   doomed, so such a counterpart exists.
 
 The scale and the floor are parameters: the results hold for every scale
-sequence negligible against the floor to the depth. The tremble scale of a
-floor sequence in `(0, 1]` is one (`Vegas.tendsto_trembleScale_div_floor_pow`).
+sequence negligible against the floor to the depth.
 
 Each input quantifies only over what the proofs read: the regular histories
 of the site, the irregular histories of the site, and the intended histories
@@ -45,11 +44,13 @@ the two sites differ only in values hidden from `who`. The inputs are meant at
 own-turn sites with no pending reveal; elsewhere the fibers need not be
 common.
 
-**Negligible irregular histories.** When the scale is negligible against the
-floor to the depth, the Bayes belief of the irregular histories at the site
-is at most the number of its histories times the slack times that ratio
-(`Vegas.ForcedBeliefInputs.irregular_belief_le`), and vanishes
-(`Vegas.tendsto_irregular_belief`).
+**Negligible irregular histories.** At each stage the reach of an irregular
+history is at most `slack * scale / floor ^ depth` times the reach of its
+counterpart (`Vegas.ForcedBeliefInputs.reach_le_counterpart`), so the irregular
+reach is at most the number of the site's histories times that ratio times the
+regular reach (`Vegas.ForcedBeliefInputs.irregular_reach_le`). When the scale is
+negligible against the floor to the depth, this bound's factor vanishes
+(`Vegas.tendsto_irregularRatio`).
 
 **Honest beliefs.** With the uniform operational factorization of
 `Vegas.onePacketReachFactorization`, under which the observer's own mass is
@@ -57,11 +58,9 @@ constant on a decision site (`Vegas.ownerRecall_eq_of_infoOf`), the native
 Bayes belief pushed forward along `project` is within an explicit bound of the
 intended Bayes belief at the same stage
 (`Vegas.ForcedBeliefInputs.sum_abs_projectedBelief_sub_le`). The bound vanishes,
-so the distance vanishes (`Vegas.tendsto_projectedBelief_sub`) and, along an
-intended sequence converging to an intended assessment, the projected native
-beliefs converge to that assessment's belief at the intended site
-(`Vegas.tendsto_projectedBelief`). The claims concern the other players'
-values only: the observer's own commitments are fixed by its information.
+so the distance vanishes (`Vegas.tendsto_projectedBelief_sub`). The claims
+concern the other players' values only: the observer's own commitments are
+fixed by its information.
 -/
 
 noncomputable section
@@ -75,22 +74,6 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
   EventGraphRuntime Filter Finset
 
 section Scale
-
-/-- **The tremble scale is negligible against the floor to the depth.** -/
-theorem tendsto_trembleScale_div_floor_pow (floors : ℕ → ℝ) (positive : ∀ n, 0 < floors n)
-    (le_one : ∀ n, floors n ≤ 1) (depth : ℕ) :
-    Tendsto (fun n => trembleScale (floors n) depth n / floors n ^ depth) atTop (nhds 0) := by
-  refine squeeze_zero (fun n => div_nonneg (trembleScale_nonneg (positive n).le)
-    (pow_nonneg (positive n).le _)) (fun n => ?_) tendsto_one_div_add_atTop_nhds_zero_nat
-  have floorPos := positive n
-  have rewritten : trembleScale (floors n) depth n / floors n ^ depth =
-      floors n / ((n : ℝ) + 4) := by
-    unfold trembleScale
-    field_simp
-    ring
-  rw [rewritten, div_le_div_iff₀ (by positivity) (by positivity)]
-  have cast : (0 : ℝ) ≤ n := Nat.cast_nonneg n
-  nlinarith [le_one n]
 
 /-- **An irregular history against its counterpart.** A reach at most the cube
 of the scale times a common weight is at most `slack * scale / floor ^ depth`
@@ -237,35 +220,6 @@ theorem ForcedBeliefInputs.reach_le_counterpart
           (profiles n) (inputs.counterpart history).1).toReal :=
   le_mul_of_tremble_counterpart (scaleNonneg) floorPos
     (inputs.irregular_le history irregular) (inputs.counterpart_ge history irregular)
-
-open Classical in
-/-- **Irregular histories are negligible at one stage.** Under a Bayes
-consistent native assessment playing the stage-`n` profile at a site of
-positive mass, the belief of the irregular histories is at most the number of
-the site's histories times `slack * scale / floor ^ depth`. -/
-theorem ForcedBeliefInputs.irregular_belief_le
-    (inputs : ForcedBeliefInputs setup leaks bounds horizon scheduler sequence profiles steps site
-      sourceSite project scale floors depth slack n)
-    {target : (onePacketInformation setup leaks bounds horizon scheduler).BehavioralAssessment}
-    {antichain : (onePacketInformation setup leaks bounds horizon
-      scheduler).DecisionInformationAntichain}
-    (played : target.strategy = profiles n)
-    (bayes : BehavioralAssessment.IsBayesConsistent _ target antichain)
-    (positive : 0 < (onePacketInformation setup leaks bounds horizon scheduler).informationMass
-      target.strategy who site)
-    (floorPos : 0 < floors n) (scaleNonneg : 0 ≤ scale n) (slackNonneg : 0 ≤ slack) :
-    ∑ history with ¬ RegularTrace setup leaks bounds horizon scheduler (sequence n) who
-        history.1.trace, (target.belief who site history).toReal ≤
-      Fintype.card ((onePacketInformation setup leaks bounds horizon
-          scheduler).InformationHistory who site.1) *
-        (slack * scale n / floors n ^ depth) := by
-  refine sum_belief_le_of_counterpart _ inputs.counterpart bayes positive
-    (div_nonneg (mul_nonneg slackNonneg (scaleNonneg))
-      (pow_nonneg floorPos.le _))
-    (fun history irregular => not_not.mpr (inputs.counterpart_regular history irregular))
-    fun history irregular => ?_
-  rw [played]
-  exact inputs.reach_le_counterpart floorPos scaleNonneg history irregular
 
 open Classical in
 /-- The irregular reach is at most the number of the site's histories times
@@ -472,33 +426,6 @@ theorem tendsto_irregularRatio
   ring
 
 open Classical in
-/-- **Irregular histories are negligible.** Along native assessments playing the
-native profiles, fully mixed and Bayes consistent, with the inputs at every
-stage and floors in `(0, 1]`, the belief of the irregular histories at the site
-vanishes. -/
-theorem tendsto_irregular_belief
-    (inputs : ∀ n, ForcedBeliefInputs setup leaks bounds horizon scheduler sequence profiles steps
-      site sourceSite project scale floors depth slack n)
-    {targetSequence : ℕ →
-      (onePacketInformation setup leaks bounds horizon scheduler).BehavioralAssessment}
-    {antichain : (onePacketInformation setup leaks bounds horizon
-      scheduler).DecisionInformationAntichain}
-    (played : ∀ n, (targetSequence n).strategy = profiles n)
-    (mixed : ∀ n, (targetSequence n).IsFullyMixed)
-    (bayes : ∀ n, BehavioralAssessment.IsBayesConsistent _ (targetSequence n) antichain)
-    (positive : ∀ n, 0 < floors n) (scaleNonneg : ∀ n, 0 ≤ scale n)
-    (negligible : Tendsto (fun n => scale n / floors n ^ depth) atTop (nhds 0))
-    (slackNonneg : 0 ≤ slack) :
-    Tendsto (fun n => ∑ history with ¬ RegularTrace setup leaks bounds horizon scheduler
-        (sequence n) who history.1.trace, ((targetSequence n).belief who site history).toReal)
-      atTop (nhds 0) :=
-  squeeze_zero (fun _ => sum_nonneg fun _ _ => ENNReal.toReal_nonneg)
-    (fun n => (inputs n).irregular_belief_le (played n) (bayes n)
-      (InformationModel.informationMass_pos_of_fullSupport _ _ (mixed n) who site) (positive n)
-      (scaleNonneg n) slackNonneg)
-    (tendsto_irregularRatio negligible _)
-
-open Classical in
 /-- **Honest forced beliefs.** At a decision site of `who`, along native
 assessments playing the native profiles and intended assessments of the
 intended sequence, all fully mixed and Bayes consistent, with the inputs at
@@ -552,40 +479,6 @@ theorem tendsto_projectedBelief_sub [Fintype (setup.intendedModel.InformationHis
     (fun n => by
       rw [played n]
       exact (inputs n).irregular_reach_le (positive n) (scaleNonneg n) slackNonneg)
-
-open Classical in
-/-- **Forced beliefs converge to the intended limit.** Under the hypotheses of
-`Vegas.tendsto_projectedBelief_sub`, if the intended sequence converges to an
-intended assessment, the projected native belief of every intended history at
-the site converges to that assessment's belief. -/
-theorem tendsto_projectedBelief [Finite (setup.intendedModel.InformationHistory who
-      sourceSite.1)]
-    (inputs : ∀ n, ForcedBeliefInputs setup leaks bounds horizon scheduler sequence profiles steps
-      site sourceSite project scale floors depth slack n)
-    {past : List (application setup leaks).PlayerEntry}
-    {view : (application setup leaks).PlayerView} (decision : site.1 = some (past, view))
-    {targetSequence : ℕ →
-      (onePacketInformation setup leaks bounds horizon scheduler).BehavioralAssessment}
-    {antichain : (onePacketInformation setup leaks bounds horizon
-      scheduler).DecisionInformationAntichain}
-    {sourceAntichain : setup.intendedModel.DecisionInformationAntichain}
-    {intended : setup.intendedModel.BehavioralAssessment}
-    (played : ∀ n, (targetSequence n).strategy = profiles n)
-    (mixed : ∀ n, (targetSequence n).IsFullyMixed)
-    (bayes : ∀ n, BehavioralAssessment.IsBayesConsistent _ (targetSequence n) antichain)
-    (sourceMixed : ∀ n, (sequence n).IsFullyMixed)
-    (sourceBayes : ∀ n, BehavioralAssessment.IsBayesConsistent _ (sequence n) sourceAntichain)
-    (converges : BehavioralAssessmentConvergesPointwise sequence intended)
-    (positive : ∀ n, 0 < floors n) (scaleNonneg : ∀ n, 0 ≤ scale n)
-    (negligible : Tendsto (fun n => scale n / floors n ^ depth) atTop (nhds 0))
-    (slackNonneg : 0 ≤ slack)
-    (point : setup.intendedModel.InformationHistory who sourceSite.1) :
-    Tendsto (fun n => ((((targetSequence n).belief who site).map project) point).toReal) atTop
-      (nhds ((intended.belief who sourceSite point).toReal)) := by
-  let := Fintype.ofFinite (setup.intendedModel.InformationHistory who sourceSite.1)
-  exact InformationModel.tendsto_projectedBelief_of_converges converges project
-    (tendsto_projectedBelief_sub inputs decision played mixed bayes sourceMixed sourceBayes
-      positive scaleNonneg negligible slackNonneg) point
 
 end Sequence
 

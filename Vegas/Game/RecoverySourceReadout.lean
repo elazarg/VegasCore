@@ -25,25 +25,6 @@ theorem RecoverySourceCheckpoint.current_agrees
   exact (checkpoint.refs.get selected).get?_preserved _ _ stored _ (checkpoint.agrees selected)
 
 
-/-- The compiler decoder at the saved source entry has the actual whole-source
-view when supplied that source's effective own past. Identifying this past with
-live native own completions is a separate history-alignment obligation. -/
-theorem RecoverySourceCheckpoint.source_entry_view
-    {setup : Setup (Player := Player) (L := L)} {mode : EventGraph.ExecutionMode}
-    {state : PhaseRuntimeState ((toEventGraph setup.program).withMode mode)}
-    (checkpoint : RecoverySourceCheckpoint setup mode state) (stored : state.StoredCheckpoint)
-    (nonempty : 0 < eventCount checkpoint.residual.tail) (who : Player) :
-    decodeEventView? setup.program (ContextRefs.initial setup.context (outputLayout setup.program))
-        (outputEmbedding setup.program).ref who (checkpoint.embedding.event ⟨0, nonempty⟩)
-        ((toEventGraph setup.program).playerStore who state.current.native.config.store)
-        (checkpoint.source.history who) =
-      some (ProtocolState.observe who setup.program
-        (checkpoint.residual.lift
-          (ProtocolState.entry checkpoint.residual.tail checkpoint.source))) :=
-  checkpoint.views.decode_entry setup.program checkpoint.residual.tail checkpoint.refs
-    checkpoint.embedding checkpoint.residual.lift nonempty who checkpoint.source
-    state.current.native.config.store (checkpoint.current_agrees stored)
-
 private theorem terminal_readback_of_zero
     {wholeΓ Γ : SourceCtx Player L} {wholeO O : Finset VarId}
     (whole : SourceProgram Player L wholeΓ wholeO) (program : SourceProgram Player L Γ O)

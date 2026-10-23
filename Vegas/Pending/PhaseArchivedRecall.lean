@@ -95,10 +95,6 @@ def archivedHistory (retired : List (RetiredCommitAttempt graph))
     (effective : List graph.Completion) : List graph.Completion :=
   retired.foldr RetiredCommitAttempt.insertHistory effective
 
-/-- Without retries the recovered history is the effective history. -/
-theorem archivedHistory_nil (effective : List graph.Completion) :
-    archivedHistory ([] : List (RetiredCommitAttempt graph)) effective = effective := rfl
-
 /-- Appending the newest archive inserts it before replaying older archives. -/
 theorem archivedHistory_append (first second : List (RetiredCommitAttempt graph))
     (effective : List graph.Completion) :

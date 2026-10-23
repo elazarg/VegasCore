@@ -95,45 +95,4 @@ theorem RecoverySourceCheckpoint.terminal_history
         (fun terminal => utility terminal who)
   rw [flags, readout]
 
-/-- Every actually initialized completed phased history represents an actual
-terminal auxiliary source history with exactly its typed readout and payoff
-vector. Its reachable checkpoint is derived from the physical history. -/
-theorem recoverySourceTerminal_history [Finite Player]
-    (setup : Setup (Player := Player) (L := L)) (mode : EventGraph.ExecutionMode)
-    (runtime : EventGraphRuntime (serviceGraph setup mode))
-    (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket (serviceGraph setup mode)))
-    (plan : RuntimePhasePlan (serviceGraph setup mode))
-    (maximal : plan.phases.IsChain fun before after =>
-      before.kind ≠ after.kind ∨ before.kind = .sample)
-    (horizon : Nat) (scheduler : (phaseApplication runtime leaks).Scheduler)
-    (control : (phaseApplication runtime leaks).Control)
-    (trace : ((phaseApplication runtime leaks).protocol
-      (setup.initialLaw.map fun draw => PhaseRuntimeState.initial plan (encodeInputs draw))
-      horizon scheduler).Trace (some control))
-    (finished : control.execution.application.phases = [])
-    (utility : State L setup.program.terminalCtx → Player → ℝ) (excludedPayoff : Player → ℝ) :
-    ∃ history : setup.commitRecoveryProtocol.History,
-      setup.commitRecoveryProtocol.terminal history.state ∧
-      phaseSourceReadout setup mode runtime leaks (some control) =
-        setup.protocolReadout (setup.commitRecoverySourceState history.state) ∧
-      (fun who => phaseExclusionBase setup mode runtime leaks utility excludedPayoff
-        (some control) who) = fun who => setup.commitRecoveryPayoff utility excludedPayoff who
-          history := by
-  let := Fintype.ofFinite Player
-  obtain ⟨checkpoint, _archivedRecall, _publicChronology, _sourceOrigin⟩ :=
-    recoverySourceCheckpoint_history setup mode runtime leaks plan maximal
-      horizon scheduler trace
-  have initialized : ((phaseApplication runtime leaks).protocol
-      ((setup.initialLaw.map encodeInputs).map (PhaseRuntimeState.initial plan))
-      horizon scheduler).Trace (some control) := by
-    have same : (setup.initialLaw.map encodeInputs).map (PhaseRuntimeState.initial plan) =
-        setup.initialLaw.map (fun draw => PhaseRuntimeState.initial plan (encodeInputs draw)) :=
-      PMF.map_comp _ _ _
-    exact Eq.mp (congrArg (fun initial => ((phaseApplication runtime leaks).protocol
-      initial horizon scheduler).Trace (some control)) same.symm) trace
-  obtain ⟨history, _state, terminal, readout, payoffs⟩ := checkpoint.terminal_history runtime leaks
-    plan (setup.initialLaw.map encodeInputs) horizon scheduler control initialized finished
-      utility excludedPayoff
-  exact ⟨history, terminal, readout, payoffs⟩
-
 end Vegas

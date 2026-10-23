@@ -118,17 +118,6 @@ theorem forfeitUtility_of_successful {Parameter : Type} (p : SourceProgram Playe
       utility (parameter, publicOutcome p terminal) who := by
   simp [forfeitUtility, failedReveals_publicOutcome_of_successful p terminal successful]
 
-/-- A nonnegative forfeit never raises a payoff. -/
-theorem forfeitUtility_le {Parameter : Type} (p : SourceProgram Player L Γ O)
-    {forfeit : ℝ} (nonnegative : 0 ≤ forfeit)
-    (utility : Parameter × PublicOutcome p → Player → ℝ)
-    (outcome : Parameter × PublicOutcome p) (who : Player) :
-    forfeitUtility p forfeit utility outcome who ≤ utility outcome who := by
-  have : 0 ≤ forfeit * (failedReveals p who outcome.2 : ℝ) :=
-    mul_nonneg nonnegative (Nat.cast_nonneg _)
-  simp only [forfeitUtility]
-  linarith
-
 /-- A utility under exclusion: a player with a failed reveal receives its fixed
 exclusion payoff, every other player its utility. -/
 def exclusionUtility {Parameter : Type} (p : SourceProgram Player L Γ O)
@@ -150,17 +139,6 @@ theorem exclusionUtility_of_failedReveals_pos {Parameter : Type}
     {who : Player} (failed : 1 ≤ failedReveals p who outcome.2) :
     exclusionUtility p excludedPayoff utility outcome who = excludedPayoff who := by
   simp [exclusionUtility, Nat.one_le_iff_ne_zero.mp failed]
-
-/-- Exclusion changes no payoff on a terminal state in which no cell records a
-failure. -/
-theorem exclusionUtility_of_successful {Parameter : Type} (p : SourceProgram Player L Γ O)
-    (excludedPayoff : Player → ℝ) (utility : Parameter × PublicOutcome p → Player → ℝ)
-    (parameter : Parameter) (terminal : State L p.terminalCtx)
-    (successful : Successful terminal) (who : Player) :
-    exclusionUtility p excludedPayoff utility (parameter, publicOutcome p terminal) who =
-      utility (parameter, publicOutcome p terminal) who :=
-  exclusionUtility_of_failedReveals_eq_zero p excludedPayoff utility
-    (failedReveals_publicOutcome_of_successful p terminal successful who)
 
 end SourceProgram
 

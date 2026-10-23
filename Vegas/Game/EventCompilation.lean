@@ -125,26 +125,4 @@ theorem eventGame_approximate_nash_iff
       hasExpectation_of_payoffIntegrable (payoffIntegrable_of_finite_support _ _
         (setup.eventGame_play_support_finite finite scheduler _)))
 
-/-- Every source lower bound against unilateral deviations holds against
-arbitrary asynchronous graph replacements as well. -/
-theorem eventGame_deviation_guarantee
-    (setup : Setup (Player := Player) (L := L))
-    (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialLaw]
-    (scheduler : setup.eventGraph.PublicScheduler)
-    (profile : BehavioralProfile setup.program) (who : Player)
-    (value : PublicOutcome setup.program → ℝ) (bound : ℝ)
-    (sourceBound : ∀ alternative : BehavioralPolicy who setup.program,
-      bound ≤ expect (setup.publicRun
-        (Profile.update (sig := SourceProgram.gameSignature setup.program)
-          profile who alternative)) value)
-    (replacement : setup.eventGraph.BehavioralPolicy who) :
-    bound ≤ expect ((setup.eventGame scheduler).play
-      (Profile.update (sig := setup.eventGraph.gameSignature)
-        (compileEventProfile setup.program profile) who replacement))
-          (fun outcome => value (setup.eventPublicOutcome outcome)) :=
-  (setup.eventSimulation finite scheduler).guarantee profile who value bound
-    (fun alternative _ => sourceBound alternative) replacement trivial
-    (payoffIntegrable_of_finite_support _ _
-      (setup.eventGame_play_support_finite finite scheduler _))
-
 end Vegas.SourceProgram.Setup

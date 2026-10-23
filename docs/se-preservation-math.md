@@ -388,7 +388,7 @@ WAIT factors alone would not establish this deletion. Sent and inert
 singleton-WAIT callbacks need no restriction: integrate their unread labels.
 
 For the actual [`phaseCountServicePolicy`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/PhaseCountServicePolicy.lean#L29), the RAW encoder is
-`countedSendLaw`. At a genuine unsent binding its atoms are all SENDs for
+[`countedSendLaw`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/PhaseCountServiceReference.lean#L33). At a genuine unsent binding its atoms are all SENDs for
 that requested event at a fresh bounded slot; there is no RAW-WAIT case
 there. Put r=zeta_n^3, take slot weight zeta_n, let C bound the number of
 slots, and let rho_n lower-bound the selected domain atoms. Eventually each
@@ -3252,7 +3252,7 @@ law's convergence is derived in [`Vegas/Game/CommitRecoverySuccessLimit.lean`](h
 regret for the same selected domain law, uniformly over its finite pure menu.
 No equality of the pre- and post-conditioning information-history laws is used.
 
-`Vegas.SourceProgram.CommitRecoveryState.step_preserves_intendedFor` keeps a
+[`Vegas.SourceProgram.CommitRecoveryState.step_preserves_intendedFor`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Source/CommitRecoveryPlayerValidity.lean#L272) keeps a
 surviving player's existing validity predicate in current and saved states
 through actual recovery and close, with arbitrary foreign actions. Its
 current guard-satisfiability hypothesis is explicit; it does not derive
@@ -3291,7 +3291,7 @@ the actual runtime completion contract, including after a legal one-shot
 response. Its joint readout retains arbitrary original posterior tags.
 The coherent service optimizer and final incentive consumer remain open.
 
-`Vegas.SourceProgram.Setup.commitRecoveryNoMissInformation_genuine_history`
+[`Vegas.SourceProgram.Setup.commitRecoveryNoMissInformation_genuine_history`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Source/CommitRecoveryNoMissRepresentative.lean#L437)
 gives a genuine source witness for the no-new-miss transformation of every
 original query, preserving nonterminality. Its idempotence, erasure commutation,
 menu transport and combined-query clock preservation are checked in

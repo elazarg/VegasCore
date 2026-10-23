@@ -95,12 +95,6 @@ theorem countPermits_eq_true_iff (traffic : List (Message Player (WitnessedPacke
   classical
   simp only [countPermits, decide_eq_true_eq]
 
-theorem countPermits_eq_false_iff (traffic : List (Message Player (WitnessedPacket graph)))
-    (message : Message Player (WitnessedPacket graph)) :
-    countPermits traffic message = false ↔ ¬ CountPermits traffic message := by
-  classical
-  simp only [countPermits, decide_eq_false_iff_not]
-
 /-- The verdict reads `traffic` only through the sender's packets with lower
 serials. -/
 theorem countPermits_congr (left right : List (Message Player (WitnessedPacket graph)))
@@ -136,68 +130,5 @@ theorem countPermits_append_self (traffic : List (Message Player (WitnessedPacke
     countPermits (traffic ++ [message]) message = countPermits traffic message :=
   countPermits_append_later traffic [message] message fun other member _ => by
     rw [List.mem_singleton.mp member]
-
-/-- **A second packet is forbidden.** A packet with a lower-serial packet of the
-same sender for the same event is forbidden, whatever either packet contains
-and whether or not either was ever included. -/
-theorem countPermits_eq_false_of_earlier
-    (traffic : List (Message Player (WitnessedPacket graph)))
-    (message other : Message Player (WitnessedPacket graph))
-    (earlier : EarlierOwnPacket traffic message other)
-    (sameEvent : other.payload.call.event? graph = message.payload.call.event? graph) :
-    countPermits traffic message = false :=
-  (countPermits_eq_false_iff traffic message).mpr fun permitted =>
-    permitted.2.2 other earlier sameEvent
-
-/-- A packet without a valid readiness token for its own event is forbidden. -/
-theorem countPermits_eq_false_of_token
-    (traffic : List (Message Player (WitnessedPacket graph)))
-    (message : Message Player (WitnessedPacket graph))
-    (invalid : message.payload.tokenValid = false) :
-    countPermits traffic message = false :=
-  (countPermits_eq_false_iff traffic message).mpr fun permitted => by
-    rw [permitted.1] at invalid
-    cases invalid
-
-/-- A malformed call is forbidden. -/
-theorem countPermits_eq_false_of_malformed
-    (traffic : List (Message Player (WitnessedPacket graph)))
-    (message : Message Player (WitnessedPacket graph)) (raw : Raw L)
-    (malformed : message.payload.call = .malformed raw) :
-    countPermits traffic message = false := by
-  apply (countPermits_eq_false_iff traffic message).mpr
-  rintro ⟨_, correct, _⟩
-  unfold CountCallCorrect at correct
-  rw [malformed] at correct
-  exact correct
-
-/-- A commitment carrying evidence is forbidden. -/
-theorem countPermits_eq_false_of_commitment_evidence
-    (traffic : List (Message Player (WitnessedPacket graph)))
-    (message : Message Player (WitnessedPacket graph)) (event : graph.EventId)
-    (candidate : Handle graph) (committed : message.payload.call = .commitment event candidate)
-    (evidence : message.payload.evidence ≠ none) :
-    countPermits traffic message = false := by
-  apply (countPermits_eq_false_iff traffic message).mpr
-  rintro ⟨_, correct, _⟩
-  unfold CountCallCorrect at correct
-  rw [committed] at correct
-  exact evidence correct.2.1
-
-/-- An opening without exactly its own certificate is forbidden; this covers
-every disclosure of a value other than the opened one. -/
-theorem countPermits_eq_false_of_uncertified_opening
-    (traffic : List (Message Player (WitnessedPacket graph)))
-    (message : Message Player (WitnessedPacket graph)) (event : graph.EventId)
-    (candidate : Handle graph) (raw : Raw L)
-    (opened : message.payload.call = .opening event candidate raw)
-    (uncertified : certifiedOpening message.payload = false) :
-    countPermits traffic message = false := by
-  apply (countPermits_eq_false_iff traffic message).mpr
-  rintro ⟨_, correct, _⟩
-  unfold CountCallCorrect at correct
-  rw [opened] at correct
-  rw [correct.1] at uncertified
-  cases uncertified
 
 end Vegas.EventGraphRuntime

@@ -151,55 +151,6 @@ theorem permits_append_self (traffic : List (Message Player (CommitAttemptPacket
   permits_append_later traffic [message] message fun other member _ => by
     rw [List.mem_singleton.mp member]
 
-/-- An extra packet for the same retired or active event is forbidden even if
-it is never included; neither reset nor retirement changes signed identity. -/
-theorem permits_eq_false_of_earlier (traffic : List (Message Player (CommitAttemptPacket graph)))
-    (message other : Message Player (CommitAttemptPacket graph))
-    (earlier : Earlier traffic message other)
-    (same : event? other.payload = event? message.payload) :
-    permits traffic message = false :=
-  (permits_eq_false_iff traffic message).mpr fun permitted => permitted.2.2.1 other earlier same
-
-omit [DecidableEq Player] in
-/-- Namespace changes separate event allowances without reusing old readiness. -/
-theorem event_ne_of_attempt_ne (left right : CommitAttemptPacket graph)
-    (different : left.attempt ≠ right.attempt) (event : graph.EventId)
-    (named : left.packet.call.event? graph = some event) : event? left ≠ event? right := by
-  unfold event?
-  rw [named, Option.map_some]
-  cases other : right.packet.call.event? graph with
-  | none => intro impossible; cases impossible
-  | some next =>
-      intro same
-      exact different (congrArg CommitAttemptEvent.attempt (Option.some.inj same))
-
-/-- Every actual packet emitted for an out-of-phase event has no authorizing
-native token and is forbidden, even if this is its first signed appearance. -/
-theorem permits_eq_false_of_token (traffic : List (Message Player (CommitAttemptPacket graph)))
-    (message : Message Player (CommitAttemptPacket graph))
-    (invalid : message.payload.packet.tokenValid = false) : permits traffic message = false :=
-  (permits_eq_false_iff traffic message).mpr fun permitted => by
-    rw [permitted.1] at invalid
-    cases invalid
-
-/-- Freshness of prepared handles is GLOBAL: a lower-serial own commitment
-forbids reusing its handle even after that binding was voided by a retry. -/
-theorem permits_eq_false_of_used_handle
-    (traffic : List (Message Player (CommitAttemptPacket graph)))
-    (message other : Message Player (CommitAttemptPacket graph))
-    (event prior : graph.EventId) (candidate : Handle graph)
-    (sent : message.payload.packet.call = .commitment event candidate)
-    (earlier : Earlier traffic message other)
-    (used : other.payload.packet.call = .commitment prior candidate) :
-    permits traffic message = false := by
-  apply (permits_eq_false_iff traffic message).mpr
-  rintro ⟨_, correct, _⟩
-  unfold CountCallCorrect at correct
-  dsimp only [nativeMessage] at correct
-  rw [sent] at correct
-  exact correct.2.2.2.2 (nativeMessage other)
-    ((earlier_native traffic message _).mpr ⟨other, earlier, rfl⟩) prior used
-
 /-- On a count-clean prefix, every earlier signed commitment is eligible,
 so the dynamic binding reference is exactly the last such own commitment. -/
 theorem eligibleBinding_of_permitted
@@ -249,16 +200,5 @@ theorem latestSignedBinding_iff_last_of_clean
       candidate before (clean message before.1) sent, ?_⟩
     intro later older handle eligible
     exact latest later older handle eligible.1
-
-/-- The opening-origin refinement imposes NO new condition on a binding's
-signed first-packet verdict, including after that binding is voided. -/
-theorem commitment_permits_iff
-    (traffic : List (Message Player (CommitAttemptPacket graph)))
-    (message : Message Player (CommitAttemptPacket graph)) (event : graph.EventId)
-    (candidate : Handle graph) (sent : message.payload.packet.call = .commitment event candidate) :
-    Permits traffic message ↔ message.payload.packet.tokenValid = true ∧
-      CountCallCorrect (EarlierOwnPacket (traffic.map nativeMessage) (nativeMessage message))
-        (nativeMessage message) ∧ First traffic message := by
-  simp only [Permits, OpeningBinding, sent, and_true]
 
 end Vegas.EventGraphRuntime.PhaseCount

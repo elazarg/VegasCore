@@ -6,7 +6,7 @@ import Interaction.ReactiveRecovery
 
 /-! # Turn-counted clients completed after their own off-policy responses
 
-The client policy (`Vegas.sourceServiceClientPolicy`) is the turn-counted
+The client policy (`Vegas.serviceClientPolicy`) is the turn-counted
 policy, completed by silence at every history where the player's own recorded
 responses do not all follow it. Completion changes no execution law, against
 arbitrary other players (`Vegas.sourceServiceClientPolicy_roundsFrom`,
@@ -58,12 +58,6 @@ end Configured
 
 variable (setup : Setup (Player := Player) (L := L))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-
-/-- The client policy on the default runtime. -/
-abbrev sourceServiceClientPolicy : ((graph setup).EventId → Nat) → (turns : Nat) →
-    TurnTiming setup turns → BehavioralProfile setup.program → Player →
-      (application setup leaks).Policy :=
-  serviceClientPolicy setup .sequential (rankDeadline setup .sequential) leaks
 
 section Configured
 

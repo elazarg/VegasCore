@@ -26,23 +26,4 @@ def rawClock (physical : (phaseApplication runtime leaks).Execution) :
     environmentRecall := physical.environmentRecall ++
       [⟨physical.observeEnvironment (phaseApplication runtime leaks), .application .advanceClock⟩] }
 
-/-- The real environment kernel performs the raw clock edge and then its
-existing normalizer, including the original physical scheduler observation. -/
-theorem clock_environment (physical : (phaseApplication runtime leaks).Execution) :
-    physical.environmentStep (phaseApplication runtime leaks) (.application .advanceClock) =
-      PMF.pure (PhaseRuntimeState.normalizeExecution runtime leaks (rawClock runtime leaks
-        physical)) := by
-  simp only [ReactiveApplication.Execution.environmentStep, phaseApplication,
-    PhaseRuntimeState.environment, PhaseRuntimeState.commandAllowed, ite_true, environmentStep,
-    PMF.pure_map]
-  rfl
-
-namespace Frame
-
-variable {runtime leaks}
-  {memory : BindingMemory runtime (nativeLeaks (graph := graph))} {owner : Player}
-  {original repaired : (phaseApplication runtime leaks).Execution}
-
-end Frame
-
 end Vegas.EventGraphRuntime.PhaseBindingRepair

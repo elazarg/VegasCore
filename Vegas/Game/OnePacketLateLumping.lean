@@ -2,17 +2,20 @@
 
 import Vegas.Game.OnePacketBindingOwner
 
-/-! # The one-step lumping of the one-packet game at a late decision
+/-! # One step of the one-packet game at a late decision
 
 A late-delivery key decides a publication event when it is the owner's turn
 at a reveal (`Vegas.PublicationTurn`), and a binding event when it is the
 owner's turn at a commitment for which the owner has sent nothing
 (`Vegas.BindingTurn`). At a binding, the image also records the success of
 the owner's pending commitments to it (`Vegas.bindingImage`); at the site they
-are none. Every step of the native kernel from a forced state with the event
-ready is read off the image, except the owner's own, which enters as a
-hypothesis per kind of turn. Under it the late-delivery failure lumps
-(`Vegas.onePacketLateLumping`).
+are none. At a kept state (`Vegas.decisionKept`), failure of the decided event
+is read off the image (`Vegas.decisionFailed_eq`), and every step of the native
+kernel is read off the image except the owner's own, which enters as a
+hypothesis per kind of turn: within `δ` at a publication, and a law of moves
+within `δ / 2` at a binding (`Vegas.OwnerBindingLaw`). Under it the control step
+of a decoded profile, read through the image, is within `δ` on unit payoffs of
+the key's kernel (`Vegas.decisionKernel_close`).
 -/
 
 noncomputable section
@@ -656,70 +659,5 @@ theorem decisionKernel_close {LateOption : Type}
           rw [imageEq, ← PMF.map_comp]
           simp only [decisionKernel, turn, binding, Function.comp]
           exact unitClose_mono close bindingLe
-
-/-- **The one-step lumping at late decisions.** For the owner `who`, a profile
-installing each option at each site, and a set of allowed states per site that
-contains the site's forced histories and is kept by the control step of the
-site's installed profiles, if at every site the owner's step at a publication
-turn is within `δ` of a kernel of the key, the option and the operational
-state, and its law of moves at a binding turn is within `δ / 2` of a keyed law,
-both at allowed states, the native kernel lumps onto the decision image at
-every key, with failure the failed completion of the decided event. -/
-def onePacketLateLumping
-    (assessment : (onePacketInformation setup leaks bounds horizon
-      scheduler).BehavioralAssessment) (who : Player) {LateOption : Type}
-    (profileOf : (onePacketInformation setup leaks bounds horizon scheduler).InformationSite who →
-      LateOption → ∀ player,
-        (onePacketInformation setup leaks bounds horizon scheduler).BehavioralPolicy player)
-    {δ δBinding : ℝ} (nonneg : 0 ≤ δ) (bindingNonneg : 0 ≤ δBinding)
-    (bindingLe : 2 * δBinding ≤ δ)
-    (ownerKernel : LateKey setup leaks → LateOption → Option (OperationalState setup leaks) →
-      PMF (PendingImage (setup := setup) (leaks := leaks)))
-    (moves : LateKey setup leaks → LateOption →
-      Option (OperationalState setup leaks) × List (MessageId Player × Bool) →
-        PMF (Option (Handle (graph setup))))
-    (allowed : (onePacketInformation setup leaks bounds horizon scheduler).InformationSite who →
-      (application setup leaks).ProtocolState → Prop)
-    (allowedStart : ∀ site key, lateKey setup leaks who site.1 = some key →
-      ∀ history ∈ (assessment.belief who site).support,
-        ForcedState setup leaks who history.1.state → allowed site history.1.state)
-    (allowedStep : ∀ site option state, allowed site state →
-      ∀ next ∈ ((application setup leaks).controlStep (initialLaw setup) horizon scheduler
-        ((bounds.onePacketMenu (runtime setup) leaks).decodeProfile (initialLaw setup) horizon
-          scheduler (profileOf site option)) state).support, allowed site next)
-    (owner : ∀ site key, lateKey setup leaks who site.1 = some key → ∀ option,
-      OwnerStepClose ownerKernel key option (profileOf site option) δ (allowed site))
-    (law : ∀ site key, lateKey setup leaks who site.1 = some key → ∀ option,
-      OwnerBindingLaw bounds horizon scheduler moves key option (profileOf site option)
-        δBinding (allowed site)) :
-    PendingLumping assessment who profileOf DecisionFailed δ
-      (DecisionImage (setup := setup) (leaks := leaks)) where
-  image := decisionImage
-  kernel := decisionKernel bounds horizon scheduler ownerKernel moves
-  start := decisionRecordImage
-  keep site key := {state | state ∈ decisionKept bounds horizon scheduler key ∧
-    allowed site state}
-  failure _ := decisionFailure
-  failure_unit _ image := by
-    rcases image with pending | binding
-    · rcases pending with _ | failed
-      · simp only [decisionFailure, imageFailure, le_refl, zero_le_one, and_self]
-      · cases failed <;> simp only [decisionFailure, imageFailure, Bool.false_eq_true,
-          ↓reduceIte, le_refl, zero_le_one, and_self]
-    · rcases binding with _ | failed
-      · simp only [decisionFailure, le_refl, zero_le_one, and_self]
-      · cases failed <;> simp only [decisionFailure, Bool.false_eq_true, ↓reduceIte, le_refl,
-          zero_le_one, and_self]
-  start_eq _ _ siteKey history _ forced := decisionImage_of_history siteKey history forced
-  start_kept site key siteKey history supported forced :=
-    ⟨decisionKept_of_history siteKey history forced,
-      allowedStart site key siteKey history supported forced⟩
-  kept site key _ option _ kept _ member :=
-    ⟨decisionKept_step key (profileOf site option) kept.1 member,
-      allowedStep site option _ kept.2 _ member⟩
-  close site key siteKey option _ kept := decisionKernel_close ownerKernel moves key option
-    (profileOf site option) nonneg bindingNonneg bindingLe (owner site key siteKey option)
-    (law site key siteKey option) kept.1 kept.2
-  failure_eq _ key _ kept := decisionFailed_eq key kept.1
 
 end Vegas

@@ -80,14 +80,6 @@ theorem submittedEvent_normalization (who : Player)
   | none => rfl
   | some material => rfl
 
-theorem firstSubmission_normalization (who : Player)
-    (past : List (runtime.reactiveApplication leaks).PlayerEntry)
-    (view : (runtime.reactiveApplication leaks).PlayerView)
-    (response : (runtime.reactiveApplication leaks).Action) :
-    runtime.firstSubmission leaks past ((runtime.reactiveNormalization leaks).action
-      who past view response) = runtime.firstSubmission leaks past response := by
-  simp only [firstSubmission, runtime.submittedEvent_normalization]
-
 theorem eventRecorded_iff (past : List (runtime.reactiveApplication leaks).PlayerEntry)
     (event : graph.EventId) :
     runtime.eventRecorded leaks past event = true ↔
@@ -108,16 +100,6 @@ theorem eventRecorded_respond
   simp only [ReactiveApplication.Execution.respond, ↓reduceIte]
   exact ⟨_, List.mem_append_right _ (List.mem_singleton_self _), submitted⟩
 
-/-- Any later own recall containing the actual previous submission rejects a
-second fresh call of the event. -/
-theorem firstSubmission_false_of_recorded
-    (past : List (runtime.reactiveApplication leaks).PlayerEntry)
-    (event : graph.EventId) (recorded : runtime.eventRecorded leaks past event = true)
-    (response : (runtime.reactiveApplication leaks).Action)
-    (submitted : runtime.submittedEvent? leaks response = some event) :
-    runtime.firstSubmission leaks past response = false := by
-  simp only [firstSubmission, submitted, recorded, Bool.not_true]
-
 /-- The discipline persists when any player takes another native response. -/
 theorem eventRecorded_respond_of_recorded
     (execution : (runtime.reactiveApplication leaks).Execution) (who observer : Player)
@@ -130,22 +112,5 @@ theorem eventRecorded_respond_of_recorded
   apply (runtime.eventRecorded_iff leaks _ event).mpr
   exact ⟨entry, (runtime.reactiveApplication leaks).respond_recall_mono execution who observer
     response member, submitted⟩
-
-/-- A response which does not submit this event leaves its recorded status
-unchanged. Foreign responses also leave the observer's own record unchanged. -/
-theorem eventRecorded_respond_other
-    (execution : (runtime.reactiveApplication leaks).Execution) (who observer : Player)
-    (response : (runtime.reactiveApplication leaks).Action) (event : graph.EventId)
-    (other : who = observer → runtime.submittedEvent? leaks response ≠ some event) :
-    runtime.eventRecorded leaks
-      ((execution.respond (runtime.reactiveApplication leaks) who response).recall observer)
-        event = runtime.eventRecorded leaks (execution.recall observer) event := by
-  classical
-  by_cases same : observer = who
-  · subst observer
-    simp only [eventRecorded, ReactiveApplication.Execution.respond, ↓reduceIte,
-      List.any_append, List.any_cons, List.any_nil, other rfl, decide_false,
-      Bool.or_false]
-  · simp only [ReactiveApplication.Execution.respond, ite_eq_right same]
 
 end Vegas.EventGraphRuntime

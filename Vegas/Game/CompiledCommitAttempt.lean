@@ -55,18 +55,4 @@ def decodeCommitAttempt : {Γ Δ : SourceCtx Player L} → {O P : Finset VarId} 
           (commitSuccessor name guard entry choice) (excludeCommit excluded owner missed)
         ⟨later.1, later.2.1, .active inactive choice missed missingFailure later.2.2⟩
 
-/-- The decoded attempt retains every earlier owned source action, including
-those whose semantic bindings will subsequently be rolled back. -/
-theorem decodeCommitAttempt_history_prefix {Γ Δ : SourceCtx Player L} {O P : Finset VarId}
-    (block : SourceProgram.CommitPrefix Γ O Δ P) (suffix : SourceProgram Player L Δ P)
-    (embedding : OutputEmbedding (inputLayout wholeΓ) (outputLayout whole)
-      (block.prepend suffix))
-    (native : EventGraphRuntime.State ((toEventGraph whole).withMode mode))
-    (entry : SourceProgram.Config Player L Γ) (excluded : Finset Player) (who : Player) :
-    (entry.history who).IsPrefix
-      ((decodeCommitAttempt whole mode block suffix embedding native entry excluded).1.history
-        who) :=
-  (decodeCommitAttempt whole mode block suffix embedding native entry excluded).2.2.history_prefix
-    who
-
 end Vegas

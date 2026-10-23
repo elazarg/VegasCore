@@ -77,20 +77,4 @@ theorem schedulerMixture_trace_of_posterior_support (prior : PMF Seed)
       rw [actor] at fixedTrace
       exact ⟨fixedTrace⟩
 
-/-- A whole legal raw history has at least one realization under an original
-supported persistent seed, with its original initialized law unchanged. -/
-theorem schedulerMixture_trace_fixed_seed (prior : PMF Seed)
-    (family : Seed → app.Scheduler) (initial : PMF app.State) (horizon : Nat)
-    (current : app.Control)
-    (trace : (app.protocol initial horizon
-      (app.schedulerMixture prior family).scheduler).Trace (some current)) :
-    ∃ seed ∈ prior.support,
-      Nonempty ((app.protocol initial horizon (family seed)).Trace (some current)) := by
-  obtain ⟨seed, supported⟩ :=
-    ((app.schedulerMixture prior family).posterior
-      current.execution.environmentRecall).support_nonempty
-  obtain ⟨original, fixed⟩ := app.schedulerMixture_trace_of_posterior_support prior family
-    initial horizon current trace seed supported
-  exact ⟨seed, original, fixed⟩
-
 end Interaction.ReactiveApplication

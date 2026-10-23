@@ -646,55 +646,6 @@ theorem sequentialEquilibrium_extends_of_comparator_unclocked
     comparison sourceProfile targetProfile agrees who site action extra history)
     (payoffIntegrable_of_finite _ _) (payoffIntegrable_of_finite _ _)
 
-omit [∀ i, DecidableEq (N.InfoState i)] in
-/-- **Extension when new choices are harmless.** Every sequential equilibrium
-extends when each player either keeps all its choices or is indifferent over
-all outcomes of the larger protocol. Indifference must hold at every history,
-not merely along equilibrium play. -/
-theorem sequentialEquilibrium_extends_of_indifference_unclocked
-    (sourceAntichain : M.DecisionInformationAntichain)
-    (sourceCertificate : E.WellFoundedHistories) (targetCertificate : T.WellFoundedHistories)
-    (reference : N.BehavioralAssessment) (referenceMixed : reference.IsFullyMixed)
-    (decisionRecall : N.DecisionRecall)
-    (sourcePayoff : ι → E.History → ℝ) (targetPayoff : ι → T.History → ℝ)
-    (matching : ∀ who history,
-      targetPayoff who (restriction.history history) = sourcePayoff who history)
-    (unchangedOrIndifferent : ∀ who,
-      (∀ info, Function.Surjective (restriction.choice who info)) ∨
-        ∃ constant, ∀ history, targetPayoff who history = constant)
-    (source : M.BehavioralAssessment)
-    (sourceEquilibrium : source.IsSequentialEquilibrium sourceAntichain sourceCertificate
-      sourcePayoff) :
-    ∃ target : N.BehavioralAssessment,
-      target.IsSequentialEquilibrium decisionRecall.decisionInformationAntichain
-        targetCertificate targetPayoff ∧
-      restriction.ExtendsProfile source.strategy target.strategy ∧
-      (∀ who site, target.belief who (restriction.site who site) =
-        (source.belief who site).map (restriction.informationHistory who site)) ∧
-      (M.runBehavioralTerminalFrom sourceCertificate source.strategy E.initHistory).map
-          restriction.history =
-        N.runBehavioralTerminalFrom targetCertificate target.strategy T.initHistory ∧
-      (M.runBehavioralTerminalFrom sourceCertificate source.strategy E.initHistory).map
-          (fun history => (restriction.history history, fun who => sourcePayoff who history)) =
-        (N.runBehavioralTerminalFrom targetCertificate target.strategy T.initHistory).map
-          (fun history => (history, fun who => targetPayoff who history)) := by
-  classical
-  let comparator (who : ι) (site : M.InformationSite who)
-      (_ : N.Choice who (restriction.site who site).1) : PMF (M.Choice who site.1) :=
-    PMF.pure ⟨some site.2.choose_spec.2.choose, site.2.choose_spec.2.choose_spec⟩
-  apply restriction.sequentialEquilibrium_extends_of_comparator_unclocked sourceAntichain
-    sourceCertificate targetCertificate reference referenceMixed decisionRecall
-    sourcePayoff targetPayoff matching comparator _ source sourceEquilibrium
-  intro sourceProfile targetProfile _ who site action extra history
-  rcases unchangedOrIndifferent who with unchanged | ⟨constant, indifferent⟩
-  · exact (extra (unchanged site.1 action)).elim
-  · have sourceConstant (final : E.History) : sourcePayoff who final = constant := by
-      rw [← matching]
-      exact indifferent _
-    rw [show targetPayoff who = fun _ => constant from funext indifferent,
-      show sourcePayoff who = fun _ => constant from funext sourceConstant, expect_constant,
-      expect_constant]
-
 end Extension
 
 end ActionRestriction

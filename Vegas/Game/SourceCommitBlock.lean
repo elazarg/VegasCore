@@ -373,30 +373,6 @@ theorem listChain_factorization (who : Player) :
             simp only [commitKernel, Function.update_of_ne own]
             rfl
 
-/-- With every owner drawing from its kernel, the chain is the kernel chain of
-the profile itself. -/
-theorem listChain_all (who : Player) :
-    ∀ (count : Nat) {Γ : SourceCtx Player L} {names : Finset VarId}
-      (program : SourceProgram Player L Γ names) (profile : BehavioralProfile program)
-      (prefixed : CommitPrefix program count) (config : Config Player L Γ)
-      (choices : List (OwnAction Player L)),
-      listChain (fun _ => True) count program profile prefixed config choices =
-        kernelChain who count program profile (profile who) prefixed config := by
-  intro count
-  induction count with
-  | zero => intro Γ names program profile prefixed config choices; rfl
-  | succ count ih =>
-      intro Γ names program profile prefixed config choices
-      cases program with
-      | ret _ => exact prefixed.elim
-      | sample _ _ _ _ => exact prefixed.elim
-      | reveal _ _ _ _ _ _ _ => exact prefixed.elim
-      | commit name owner fresh guard next =>
-          simp only [listChain, ↓reduceIte, kernelChain, Function.update_eq_self]
-          apply bind_congr_on_support _
-          intro choice _
-          exact ih next (afterCommit profile) prefixed _ choices
-
 /-- The commitment kernels depend only on the deciding player's kernel at the
 first commitment. -/
 private theorem commitKernel_update_head {Γ : SourceCtx Player L} {names : Finset VarId}

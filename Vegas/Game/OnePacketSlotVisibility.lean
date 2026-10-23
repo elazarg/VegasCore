@@ -14,16 +14,6 @@ capacity, the one-packet menu offers the response exactly when the count
 verdict permits that envelope, which does not depend on the value
 (`Vegas.slotResponse_mem_onePacket_iff`).
 
-The visible outcome of a one-packet choice is the envelope it transmits, if any
-(`Vegas.visibleEnvelope`). For a covered choice at a slot within capacity it is
-the slot's envelope when the count verdict permits it and nothing otherwise
-(`Vegas.visibleEnvelope_slotResponse`, `Vegas.slotVisible`). Hence, when every
-as-if-honest choice is covered and the capacity is at least one, the joint law
-of visible outcome and source choice in the slot tier is the product of the law
-of the visible outcome and the as-if-honest law
-(`Vegas.slotTier_visible_value_law`): given any visible outcome, a slot or
-silence, the source choice follows as-if-honest play.
-
 At fresh slots, distinct slots or distinct values give distinct responses
 (`Vegas.slotResponse_injective`).
 -/
@@ -35,17 +25,6 @@ namespace Vegas
 open SourceProgram
 
 open GameTheory GameTheory.Math.Probability Interaction EventGraphRuntime
-
-/-- Pushing a product law forward along the first coordinate keeps it a
-product. -/
-theorem bind_map_pair_map_fst {α β γ : Type} (first : PMF α) (second : PMF β) (f : α → γ) :
-    (first.bind fun x => second.map (Prod.mk x)).map (fun pair => (f pair.1, pair.2)) =
-      (first.map f).bind fun y => second.map (Prod.mk y) := by
-  rw [PMF.map_bind, PMF.bind_map]
-  congr 1
-  funext x
-  rw [PMF.map_comp]
-  rfl
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
@@ -152,99 +131,8 @@ theorem slotResponse_mem_onePacket_iff (who : Player)
     cases same
     exact included
 
-/-- The envelope a one-packet choice transmits, if any. -/
-def visibleEnvelope (who : Player) (past : List (application setup leaks).PlayerEntry)
-    (view : (application setup leaks).PlayerView)
-    (choice : Option (application setup leaks).Action) :
-    Option (Message Player (WitnessedPacket (graph setup))) :=
-  choice.bind fun response =>
-    response.transmission.map ((runtime setup).localEnvelope leaks who past view)
-
-/-- The visible outcome of committing at a slot: its envelope when the count
-verdict permits it, nothing otherwise. -/
-def slotVisible (who : Player) (past : List (application setup leaks).PlayerEntry)
-    (view : (application setup leaks).PlayerView) (event : (graph setup).EventId) (slot : Nat) :
-    Option (Message Player (WitnessedPacket (graph setup))) :=
-  if countPermits ((application setup leaks).outputs past)
-      (slotEnvelope setup leaks who past view event slot) = true then
-    some (slotEnvelope setup leaks who past view event slot)
-  else none
-
 variable (initial : PMF (application setup leaks).State) (horizon : Nat)
   (scheduler : (application setup leaks).Scheduler)
-
-/-- **The visible outcome of a slot-tier choice.** At a binding, the choice of
-the response to a covered source choice committed at a slot within capacity
-transmits the slot's visible outcome. -/
-theorem visibleEnvelope_slotResponse (who : Player)
-    (past : List (application setup leaks).PlayerEntry)
-    (view : (application setup leaks).PlayerView) (event : (graph setup).EventId)
-    {owner : Player} {payload : L.Ty}
-    {outputEq : (graph setup).outputLayout event = .binding owner payload}
-    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .bind owner payload}
-    (node : nodeView (graph setup) event = .bind owner payload outputEq codeEq) (slot : Nat)
-    (capacity : slot < bounds.candidateCount) (choice : Option (OwnAction Player L))
-    (covered : CoveredBinding setup bounds event choice) :
-    visibleEnvelope setup leaks who past view
-        (responseChoice setup leaks bounds initial horizon scheduler who (some (past, view))
-          (slotResponse setup leaks who past view event slot choice)).1 =
-      slotVisible setup leaks who past view event slot := by
-  classical
-  have membership := slotResponse_mem_onePacket_iff setup leaks bounds who past view event node
-    slot capacity choice covered
-  obtain ⟨action, encoded, _⟩ := covered
-  obtain ⟨material, transmits, envelope⟩ :=
-    slotResponse_transmission setup leaks who past view event node slot choice action encoded
-  unfold slotVisible
-  by_cases permitted : countPermits ((application setup leaks).outputs past)
-      (slotEnvelope setup leaks who past view event slot) = true
-  · have member := membership.mpr permitted
-    simp only [responseChoice, member, ↓reduceDIte, permitted, ↓reduceIte, visibleEnvelope,
-      Option.bind_some, transmits, Option.map_some, envelope]
-  · have notMember : slotResponse setup leaks who past view event slot choice ∉
-        bounds.onePacketActions (runtime setup) leaks who past view :=
-      fun member => permitted (membership.mp member)
-    simp only [responseChoice, notMember, ↓reduceDIte, permitted, Bool.false_eq_true,
-      ↓reduceIte, visibleEnvelope, Option.bind_some, Option.map_none]
-
-/-- **Given what is visible, the value is as-if-honest.** At the player's turn
-at a binding, when every as-if-honest choice is covered and the candidate
-capacity is at least one, the joint law, in the slot tier, of the visible
-outcome of the chosen response and the source choice is the law of the visible
-outcome times the as-if-honest law. -/
-theorem slotTier_visible_value_law (assessment : setup.intendedModel.BehavioralAssessment)
-    (who : Player) (past : List (application setup leaks).PlayerEntry)
-    (view : (application setup leaks).PlayerView) (event : (graph setup).EventId)
-    {owner : Player} {payload : L.Ty}
-    {outputEq : (graph setup).outputLayout event = .binding owner payload}
-    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .bind owner payload}
-    (node : nodeView (graph setup) event = .bind owner payload outputEq codeEq)
-    (capacity : 1 ≤ bounds.candidateCount)
-    (covered : ∀ choice ∈ (asIfHonestProfile setup leaks assessment who
-      (some (past, view))).support, CoveredBinding setup bounds event choice) :
-    (slotPairs setup leaks bounds assessment who past view).map (fun pair =>
-        (visibleEnvelope setup leaks who past view
-          (responseChoice setup leaks bounds initial horizon scheduler who (some (past, view))
-            (slotResponse setup leaks who past view event pair.1 pair.2)).1, pair.2)) =
-      ((PMF.uniformOfFinset (trembleSlots setup bounds) (trembleSlots_nonempty setup bounds)).map
-          (slotVisible setup leaks who past view event)).bind fun visible =>
-        (asIfHonestProfile setup leaks assessment who (some (past, view))).map
-          (Prod.mk visible) := by
-  rw [← bind_map_pair_map_fst]
-  refine map_congr_on_support _ fun pair supported => ?_
-  rw [Prod.mk.injEq]
-  refine ⟨?_, rfl⟩
-  obtain ⟨slot, chosen, inner⟩ := (PMF.mem_support_bind_iff _ _ _).mp supported
-  obtain ⟨value, drawn, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp inner
-  have below : slot < bounds.candidateCount := by
-    have member := (PMF.mem_support_uniformOfFinset_iff _ _).mp chosen
-    unfold trembleSlots at member
-    rw [Finset.mem_range, max_eq_right capacity] at member
-    exact member
-  exact visibleEnvelope_slotResponse setup leaks bounds initial horizon scheduler who past view
-    event node slot below _ (covered _ drawn)
 
 omit [Fintype Player] in
 /-- **Distinct slots or values give distinct responses** at fresh slots. -/

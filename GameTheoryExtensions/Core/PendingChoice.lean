@@ -101,44 +101,6 @@ theorem optimal_response (weight : ℝ) (nonnegative : 0 ≤ weight) (atMostOne 
         retainedIntegrable, retainedValue]
       exact add_le_add (mul_le_mul_of_nonneg_left (best action) nonnegative) le_rfl
 
-/-- Reusing any supported choice of an optimal lottery is also optimal. The
-recovery policy need not resample the lottery or rank its supported actions. -/
-theorem optimal_response_of_support (weight : ℝ) (nonnegative : 0 ≤ weight)
-    (atMostOne : weight ≤ 1) (retained prescribed recovered : PMF Action)
-    (continuation : Action → PMF Outcome) (utility : Outcome → ℝ)
-    (actionIntegrable : ∀ action, PayoffIntegrable (continuation action) utility)
-    (prescribedIntegrable : PayoffIntegrable (prescribed.bind continuation) utility)
-    (recoveredIntegrable : PayoffIntegrable (recovered.bind continuation) utility)
-    (retainedIntegrable : PayoffIntegrable (retained.bind continuation) utility)
-    (optimal : ∀ action, expect (continuation action) utility ≤
-      expect (prescribed.bind continuation) utility)
-    (supported : recovered.support ⊆ prescribed.support)
-    (alternative : PMF (Option Action))
-    (alternativeIntegrable : PayoffIntegrable
-      ((responseLaw weight nonnegative atMostOne retained alternative).bind continuation)
-        utility) :
-    expect ((responseLaw weight nonnegative atMostOne retained alternative).bind continuation)
-      utility ≤
-    expect ((responseLaw weight nonnegative atMostOne retained (recovered.map some)).bind
-      continuation) utility := by
-  let value := fun action => expect (continuation action) utility
-  have prescribedValue := expect_bind_tower _ _ _ prescribedIntegrable
-  have best (action : Action) : value action ≤ expect prescribed value := by
-    simpa only [prescribedValue] using optimal action
-  have equal := expect_eq_const_of_le_on_support prescribed value _
-    (payoffIntegrable_bind_conditionalExpectation _ _ _ prescribedIntegrable)
-    (fun action _ => best action) rfl
-  have sameValue : expect recovered value = expect prescribed value := by
-    calc
-      expect recovered value = expect recovered (fun _ => expect prescribed value) :=
-        expect_congr_on_support fun action member => equal action (supported member)
-      _ = _ := expect_constant ..
-  apply optimal_response weight nonnegative atMostOne retained recovered continuation utility
-    actionIntegrable recoveredIntegrable retainedIntegrable ?_ alternative alternativeIntegrable
-  intro action
-  rw [expect_bind_tower _ _ _ recoveredIntegrable]
-  simpa only [← sameValue] using best action
-
 /-- The source and native continuation games share the same downstream law. -/
 def sourceGame (continuation : Action → PMF Outcome) : GameForm Unit where
   sig := { Strategy := fun _ => PMF Action, Outcome := Outcome }

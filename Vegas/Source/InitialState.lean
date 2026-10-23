@@ -76,15 +76,6 @@ def parameterRun {Parameter : Type} (setup : Setup (Player := Player) (L := L))
     (SourceProgram.run setup.program profile initial).map fun terminal =>
       (parameter initial, publicOutcome setup.program terminal)
 
-/-- Forgetting the analysis parameter recovers exactly the public source game. -/
-theorem parameterRun_map_snd {Parameter : Type}
-    (setup : Setup (Player := Player) (L := L))
-    (parameter : State L setup.context → Parameter)
-    (profile : BehavioralProfile setup.program) :
-    (setup.parameterRun parameter profile).map Prod.snd = setup.publicRun profile := by
-  simp only [parameterRun, publicRun, run, PMF.map_bind, PMF.map_comp,
-    Function.comp_def]
-
 /-- The joint law is a semantic projection of the full-store law. -/
 theorem run_map_parameterOutcome {Parameter : Type}
     (setup : Setup (Player := Player) (L := L))
@@ -100,16 +91,6 @@ theorem run_map_parameterOutcome {Parameter : Type}
   unfold parameterOutcome
   rw [initialState_runFrom setup.program profile
     ⟨initial, [], Revelations.initial setup.context, fun _ => []⟩ terminal supported]
-
-/-- A game interpretation for utilities of private initial parameters and public
-results. Its strategy space and information restrictions are unchanged. -/
-@[reducible] def parameterGame {Parameter : Type}
-    (setup : Setup (Player := Player) (L := L))
-    (parameter : State L setup.context → Parameter) : GameForm Player where
-  sig :=
-    { Strategy := fun who => BehavioralPolicy who setup.program
-      Outcome := Parameter × PublicOutcome setup.program }
-  play := setup.parameterRun parameter
 
 end Setup
 end Vegas.SourceProgram

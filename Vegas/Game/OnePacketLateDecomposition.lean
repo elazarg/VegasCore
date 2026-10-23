@@ -15,20 +15,15 @@ the intended effective opening at the decoded point when that point is
 intended and the site's pending event, if any, did not fail
 (`Vegas.siteStopValue`).
 
-**The continuation value.** The continuation value of an agent is the belief
-average, over its site, of the source continuation value at the decoded point
-of the site's rank, at points the intended game reaches
-(`Vegas.siteContinuation`). It lies between the exclusion payoff and the upper
-utility whenever exclusion is a punishment at every terminal readout of the
-intended game (`Vegas.excludedPayoff_le_of_reached`,
-`Vegas.siteContinuation_mem_Icc`).
-
-**Value-blind success.** When, from every history of the site, the completion
-value of a law is its success probability times the history's continuation
-value up to one error, and failure and continuation value are uncorrelated
-under the belief up to another, the site's completion value is its success
-probability times the site's continuation value up to their sum
-(`Vegas.abs_siteStopValue_sub_le_of_valueFree`).
+**The continuation value.** The continuation value of a site is the belief
+average, over its histories, of the source continuation value of a profile at
+the decoded point of the site's rank, at points the intended game reaches, and
+the exclusion payoff elsewhere (`Vegas.siteValue`). It lies between the
+exclusion payoff and the upper utility whenever exclusion is a punishment at
+every terminal state the profile's continuation reaches from such a point
+(`Vegas.siteValue_mem_Icc`). For the intended effective opening this holds
+when exclusion is a punishment at every terminal readout of the intended game
+(`Vegas.excludedPayoff_le_of_reached`).
 -/
 
 noncomputable section
@@ -145,111 +140,6 @@ def siteStopValue (assessment : (onePacketN).BehavioralAssessment)
       assessment profile site law history.1
 
 end Values
-
-section Site
-
-variable {Parameter : Type} (parameter : State L setup.context → Parameter)
-  (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
-  (excludedPayoff : Player → ℝ)
-
-omit [DecidableEq Player] [Fintype Player] [IExpr.ResultTypes L] in
-/-- A belief average of quantities within `error` of their targets is within
-`error` of the average target. -/
-private theorem abs_expect_sub_le_of_near {α : Type*} [Finite α] (belief : PMF α)
-    (value target : α → ℝ) {error : ℝ} (nonnegative : 0 ≤ error)
-    (near : ∀ point ∈ belief.support, |value point - target point| ≤ error) :
-    |expect belief value - expect belief target| ≤ error := by
-  classical
-  rw [← expect_sub (payoffIntegrable_of_finite _ _) (payoffIntegrable_of_finite _ _)]
-  rw [expect_congr_on_support (g := fun point =>
-    if point ∈ belief.support then value point - target point else 0)
-    (fun point member => by rw [ite_eq_left member ..])]
-  apply expect_abs_le_of_bounded nonnegative
-  intro point
-  split
-  · rename_i member
-    exact near point member
-  · rw [abs_zero]
-    exact nonnegative
-
-end Site
-
-section ValueBlind
-
-variable [Finite ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
-    scheduler).History]
-  {Parameter : Type} (parameter : State L setup.context → Parameter)
-  (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
-  (excludedPayoff : Player → ℝ)
-
-open Classical in
-/-- The failure probability of the site's failure set, from one history of the
-site, when `law` is installed there. -/
-def siteHistoryFailure (assessment : (onePacketN).BehavioralAssessment) {who : Player}
-    (site : (onePacketN).InformationSite who) (law : PMF ((onePacketN).Choice who site.1))
-    (history : (onePacketN).InformationHistory who site.1) : ℝ :=
-  expect (localHistoryRun (2 * horizon + 1) assessment site law history) fun final =>
-    if final ∈ onePacketFailed setup leaks bounds horizon scheduler ((onePacketN).agentAt site)
-    then 1 else 0
-
-/-- **Value-blind success from its two parts.** Suppose, from every history of a
-site's belief, the completion value of a law is its success probability from
-that history times the history's continuation value up to valueFree
-(value-free success: the committed value is the source decision at the decoded
-point and its success does not depend on it), and the belief average of these
-products is the average success probability times the average continuation
-value up to decorrelated (the failure probability and the continuation value
-are uncorrelated under the belief). Then the site's completion value is its
-success probability times the site's continuation value up to their sum. -/
-theorem abs_siteStopValue_sub_le_of_valueFree (assessment : (onePacketN).BehavioralAssessment)
-    (profile : BehavioralProfile setup.program) {who : Player}
-    (site : (onePacketN).InformationSite who) (law : PMF ((onePacketN).Choice who site.1))
-    {valueFree decorrelated : ℝ}
-    (historyNear : ∀ history ∈ (assessment.belief who site).support,
-      |historyStopValue setup leaks bounds horizon scheduler parameter utility excludedPayoff
-          assessment profile site law history.1 -
-        (1 - siteHistoryFailure setup leaks bounds horizon scheduler assessment site law
-          history) *
-          decodedPointValue setup leaks bounds horizon scheduler parameter utility
-            excludedPayoff profile who (siteRank site.1) history.1| ≤ valueFree)
-    (uncorrelated : |expect (assessment.belief who site) (fun history =>
-        (1 - siteHistoryFailure setup leaks bounds horizon scheduler assessment site law
-          history) *
-          decodedPointValue setup leaks bounds horizon scheduler parameter utility
-            excludedPayoff profile who (siteRank site.1) history.1) -
-      (1 - expect (assessment.belief who site)
-          (siteHistoryFailure setup leaks bounds horizon scheduler assessment site law)) *
-        expect (assessment.belief who site) (fun history =>
-          decodedPointValue setup leaks bounds horizon scheduler parameter utility
-            excludedPayoff profile who (siteRank site.1) history.1)| ≤ decorrelated) :
-    |siteStopValue setup leaks bounds horizon scheduler parameter utility excludedPayoff
-        assessment profile site law -
-      (1 - onePacketSiteFailure setup leaks bounds horizon scheduler assessment site law) *
-        siteValue setup leaks bounds horizon scheduler parameter utility excludedPayoff
-          assessment profile site| ≤ valueFree + decorrelated := by
-  obtain ⟨witness, witnessed⟩ := (assessment.belief who site).support_nonempty
-  have freeNonneg : 0 ≤ valueFree := (abs_nonneg _).trans (historyNear witness witnessed)
-  have failureEq : onePacketSiteFailure setup leaks bounds horizon scheduler assessment site law =
-      expect (assessment.belief who site)
-        (siteHistoryFailure setup leaks bounds horizon scheduler assessment site law) := by
-    unfold onePacketSiteFailure localFailure siteHistoryFailure
-    exact expect_localRun _ _ _ _ _
-  rw [failureEq]
-  unfold siteStopValue siteValue
-  have first := abs_expect_sub_le_of_near (assessment.belief who site) _ _ freeNonneg
-    historyNear
-  calc _ ≤ |expect (assessment.belief who site) (fun history =>
-          historyStopValue setup leaks bounds horizon scheduler parameter utility excludedPayoff
-            assessment profile site law history.1) -
-        expect (assessment.belief who site) (fun history =>
-          (1 - siteHistoryFailure setup leaks bounds horizon scheduler assessment site law
-            history) *
-            decodedPointValue setup leaks bounds horizon scheduler parameter utility
-              excludedPayoff profile who (siteRank site.1) history.1)| + |_ - _| :=
-        abs_sub_le _ _ _
-    _ ≤ _ := add_le_add first uncorrelated
-
-end ValueBlind
 
 section Bounds
 
@@ -382,65 +272,5 @@ theorem excludedPayoff_le_of_reached [Finite Player] (wellFormed : setup.WellFor
   exact below final terminal read who
 
 end Bounds
-
-section Decomposition
-
-variable {Parameter : Type} (parameter : State L setup.context → Parameter)
-  (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
-  (excludedPayoff : Player → ℝ)
-
-open Classical in
-/-- **The continuation value of an agent.** At a decision information state, the
-continuation value of its site (`Vegas.siteValue`); the exclusion payoff
-elsewhere. -/
-def siteContinuation (assessment : (onePacketN).BehavioralAssessment)
-    (profile : BehavioralProfile setup.program)
-    (agent : (onePacketN).InformationAgent (onePacketN).playedInformation) : ℝ :=
-  if decision : (onePacketN).IsDecisionInfo agent.1 agent.2.1 then
-    siteValue setup leaks bounds horizon scheduler parameter utility excludedPayoff assessment
-      profile ⟨agent.2.1, decision⟩
-  else excludedPayoff agent.1
-
-theorem siteContinuation_agentAt (assessment : (onePacketN).BehavioralAssessment)
-    (profile : BehavioralProfile setup.program) {who : Player}
-    (site : (onePacketN).InformationSite who) :
-    siteContinuation setup leaks bounds horizon scheduler parameter utility excludedPayoff
-        assessment profile ((onePacketN).agentAt site) =
-      siteValue setup leaks bounds horizon scheduler parameter utility excludedPayoff
-        assessment profile site := by
-  unfold siteContinuation
-  rw [dite_eq_left_of_eq_true (eq_true site.2)]
-  rfl
-
-/-- Under the hypotheses of `Vegas.siteValue_mem_Icc`, the continuation value of
-every agent lies in `[excludedPayoff who, max (excludedPayoff who) upper]`. -/
-theorem siteContinuation_mem_Icc (assessment : (onePacketN).BehavioralAssessment)
-    (profile : BehavioralProfile setup.program)
-    (agent : (onePacketN).InformationAgent (onePacketN).playedInformation)
-    (upper : ℝ) (le_upper : ∀ outcome, utility outcome agent.1 ≤ upper)
-    (below : ∀ point, IntendedReached setup point →
-      ∀ terminal ∈ (ProtocolState.continuationLaw setup.program profile point).support,
-        excludedPayoff agent.1 ≤ utility (setup.parameterOutcome parameter terminal) agent.1) :
-    excludedPayoff agent.1 ≤ siteContinuation setup leaks bounds horizon scheduler parameter
-        utility excludedPayoff assessment profile agent ∧
-      siteContinuation setup leaks bounds horizon scheduler parameter utility excludedPayoff
-        assessment profile agent ≤ max (excludedPayoff agent.1) upper := by
-  unfold siteContinuation
-  split
-  · exact siteValue_mem_Icc setup leaks bounds horizon scheduler parameter utility
-      excludedPayoff assessment profile _ upper le_upper below
-  · exact ⟨le_rfl, le_max_left _ _⟩
-
-end Decomposition
-
-section Field
-
-variable [Finite ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
-    scheduler).History]
-  {Parameter : Type} (parameter : State L setup.context → Parameter)
-  (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
-  (excludedPayoff : Player → ℝ)
-
-end Field
 
 end Vegas

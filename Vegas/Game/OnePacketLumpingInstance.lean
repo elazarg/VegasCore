@@ -2,7 +2,7 @@
 
 import Vegas.Game.OnePacketPendingLumping
 
-/-! # The one-step lumping of the one-packet game at a pending publication
+/-! # The image kernel of the one-packet game at a pending publication
 
 At a late-delivery key whose owner's turn is a publication event, the image of
 a protocol state is its operational state while the event is pending and
@@ -13,9 +13,10 @@ silent responses of the other players (`Vegas.controlStep_other_of_pending`),
 and the absorbing completed states. Only the owner's own responses remain, and
 they enter as one hypothesis: read through the image, the owner's step is
 within `δ` on unit payoffs of a kernel of the key, the option and the
-operational state. Under it, the late-delivery failure probability lumps
-(`Vegas.onePacketPendingLumping`). At a key whose owner's turn is not a
-publication event, the image is constant and nothing is claimed.
+operational state (`Vegas.OwnerStepClose`). Under it, the step of the native
+kernel from every kept state, read through the image, is within `δ` of the
+key's image kernel (`Vegas.lateKernel_close`). At a key whose owner's turn is
+not a publication event, the image is constant and nothing is claimed.
 -/
 
 noncomputable section
@@ -58,16 +59,6 @@ theorem publicationTurn_of_turnEvent {key : LateKey setup leaks} {event : (graph
 
 /-- The image of the pending lumping. -/
 abbrev PendingImage := Option (OperationalState setup leaks) ⊕ Bool
-
-open Classical in
-/-- **Failure at a key.** At a key deciding a publication event, the event has
-completed with a failed output; at any other key, never. -/
-def LateEventFailed (key : LateKey setup leaks) : (application setup leaks).ProtocolState → Prop
-  | none => False
-  | some control => match turnEvent key with
-    | none => False
-    | some event => event ∈ control.execution.application.config.cut.completed ∧
-        StoreEventFailed control.execution.application.config.store event
 
 open Classical in
 /-- The image at a key: the pending image of the decided event, constant at a
@@ -217,28 +208,6 @@ variable {who : Player}
   {key : LateKey setup leaks} (siteKey : lateKey setup leaks who site.1 = some key)
 include siteKey
 
-/-- A forced history of a site is kept at its key. -/
-theorem lateKept_of_history
-    (history : (onePacketInformation setup leaks bounds horizon scheduler).InformationHistory who
-      site.1)
-    (forced : ForcedState setup leaks who history.1.state) :
-    history.1.state ∈ lateKept bounds horizon scheduler key := by
-  unfold lateKept
-  cases turn : turnEvent key with
-  | none => trivial
-  | some event =>
-      cases current : history.1.state with
-      | none =>
-          rw [current] at forced
-          exact forced.elim
-      | some control =>
-          rw [current] at forced
-          refine ⟨⟨history.1, current⟩, control, rfl, Or.inr ⟨?_, ?_⟩⟩
-          · rw [owner_of_lateKey siteKey]
-            exact forced
-          · exact ready_of_publicationTurn siteKey history current
-              (publicationTurn_of_turnEvent turn)
-
 omit siteKey in
 /-- The image of a forced history's state is read off its operational record. -/
 theorem lateImage_of_history
@@ -264,54 +233,6 @@ theorem lateImage_of_history
           exact pendingImage_of_pending control ready.1
 
 end Fields
-
-/-- Kept states stay kept along the control step of every decoded profile. -/
-theorem lateKept_step (key : LateKey setup leaks)
-    (profile : ∀ player,
-      (onePacketInformation setup leaks bounds horizon scheduler).BehavioralPolicy player)
-    {state : (application setup leaks).ProtocolState}
-    (kept : state ∈ lateKept bounds horizon scheduler key)
-    {next : (application setup leaks).ProtocolState}
-    (member : next ∈ ((application setup leaks).controlStep (initialLaw setup) horizon scheduler
-      ((bounds.onePacketMenu (runtime setup) leaks).decodeProfile (initialLaw setup) horizon
-        scheduler profile) state).support) :
-    next ∈ lateKept bounds horizon scheduler key := by
-  unfold lateKept at kept ⊢
-  cases turn : turnEvent key with
-  | none => trivial
-  | some event =>
-      rw [turn] at kept
-      obtain ⟨⟨history, current⟩, control, rfl, status⟩ := kept
-      obtain ⟨extended, reached⟩ := controlStep_history bounds horizon scheduler profile history
-        (by rw [current]; exact member)
-      obtain ⟨control', rfl, step⟩ := controlStep_configStep horizon scheduler _ control member
-      refine ⟨⟨extended, reached⟩, control', rfl, ?_⟩
-      rcases status with completed | ⟨forced, ready⟩
-      · exact Or.inl (completed_of_configStep step completed)
-      · exact forced_or_completed_of_configStep step forced ready
-
-open Classical in
-/-- Failure of a kept state is read off its image. -/
-theorem lateEventFailed_eq (key : LateKey setup leaks)
-    {state : (application setup leaks).ProtocolState}
-    (kept : state ∈ lateKept bounds horizon scheduler key) :
-    (if LateEventFailed key state then (1 : ℝ) else 0) = imageFailure (lateImage key state) := by
-  unfold lateKept at kept
-  cases turn : turnEvent key with
-  | none =>
-      cases state with
-      | none => simp only [LateEventFailed, ↓reduceIte, lateImage, turn, imageFailure,
-          Bool.false_eq_true]
-      | some control => simp only [LateEventFailed, turn, ↓reduceIte, lateImage, imageFailure,
-          Bool.false_eq_true]
-  | some event =>
-      rw [turn] at kept
-      obtain ⟨_, control, rfl, status⟩ := kept
-      by_cases completed : event ∈ control.execution.application.config.cut.completed
-      · simp only [LateEventFailed, turn, completed, true_and, lateImage, pendingImage, ↓reduceIte,
-          imageFailure, decide_eq_true_eq]
-      · simp only [LateEventFailed, turn, completed, false_and, ↓reduceIte, lateImage,
-          pendingImage, imageFailure]
 
 /-- **The owner's step at a key.** Read through the pending image, the
 owner's control step from an allowed forced state with the decided event ready
@@ -467,41 +388,5 @@ theorem lateKernel_close {LateOption : Type}
                 exact round_image_congr_of_forced bounds horizon scheduler key.owner remaining
                   history represented.choose current repCurrent (by rw [current]; exact forced)
                   (stateEq.trans repSame.symm) pending ready view
-
-/-- **The one-step lumping of the one-packet game.** For the owner `who` and a
-profile installing each option at each site, if at every site the owner's own
-step is within `δ` of a kernel of the key, the option and the operational state
-(`Vegas.OwnerStepClose`), the native kernel lumps onto the pending image at
-every key, with failure the failed completion of the decided publication
-event. -/
-def onePacketPendingLumping
-    (assessment : (onePacketInformation setup leaks bounds horizon
-      scheduler).BehavioralAssessment) (who : Player) {LateOption : Type}
-    (profileOf : (onePacketInformation setup leaks bounds horizon scheduler).InformationSite who →
-      LateOption → ∀ player,
-        (onePacketInformation setup leaks bounds horizon scheduler).BehavioralPolicy player)
-    {δ : ℝ} (nonneg : 0 ≤ δ)
-    (ownerKernel : LateKey setup leaks → LateOption → Option (OperationalState setup leaks) →
-      PMF (PendingImage (setup := setup) (leaks := leaks)))
-    (owner : ∀ site key, lateKey setup leaks who site.1 = some key → ∀ option,
-      OwnerStepClose ownerKernel key option (profileOf site option) δ) :
-    PendingLumping assessment who profileOf LateEventFailed δ
-      (PendingImage (setup := setup) (leaks := leaks)) where
-  image := lateImage
-  kernel := lateKernel bounds horizon scheduler ownerKernel
-  start := recordImage
-  keep _ := lateKept bounds horizon scheduler
-  failure _ := imageFailure
-  failure_unit _ image := by
-    cases image with
-    | inl _ => simp only [imageFailure, le_refl, zero_le_one, and_self]
-    | inr failed => cases failed <;> simp only [imageFailure, Bool.false_eq_true, ↓reduceIte,
-        le_refl, zero_le_one, and_self]
-  start_eq _ _ siteKey history _ forced := lateImage_of_history siteKey history forced
-  start_kept _ _ siteKey history _ forced := lateKept_of_history siteKey history forced
-  kept site key _ option _ kept _ member := lateKept_step key (profileOf site option) kept member
-  close site key siteKey option _ kept := lateKernel_close ownerKernel key option
-    (profileOf site option) nonneg (owner site key siteKey option) kept trivial
-  failure_eq _ key _ kept := lateEventFailed_eq key kept
 
 end Vegas

@@ -48,37 +48,4 @@ theorem runRounds_namespace_progress
         valid.1 moved, valid.2.1.trans progress.1, valid.2.2.trans progress.2⟩
   exact (invariant.runRounds players count before after ⟨ordered, le_rfl, le_rfl⟩ reached).2
 
-/-- Every original coordinate resolves when its genuine continuation consumes
-the remaining runtime budget. Resolution follows from completion and namespace
-monotonicity, including retirement by retry or exhausted restoration. -/
-theorem CompletesPlay.resolved_runRounds
-    (scheduler : (app).Scheduler)
-    (complete : CompletesPlay runtime leaks initial horizon scheduler)
-    (players : Player → (app).Policy)
-    (covered : ∀ who past view action, action ∈ (players who past view).support →
-      action ∈ (menu).actions who past view)
-    (count : Nat) (before after : (app).Execution)
-    (trace : ((menu).protocol initial horizon scheduler).Trace
-      (some ⟨count, none, before⟩))
-    (coordinate : CommitAttemptEvent graph)
-    (current : coordinate.attempt = before.application.attempt)
-    (reached : after ∈ ((app).runRounds scheduler players count before).support) :
-    coordinate.Resolved after.application := by
-  have raw := (menu).toRawTrace initial horizon scheduler trace
-  have ordered : before.application.Ordered :=
-    (phaseApplication_seedOrder runtime leaks).history initial horizon scheduler (by
-      intro state supported
-      obtain ⟨input, _member, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp supported
-      exact PhaseRuntimeState.initial_ordered plan input) raw
-  obtain ⟨last⟩ := (menu).trace_runRounds initial horizon scheduler players covered 0 count
-    before after (by simpa only [Nat.zero_add] using trace) reached
-  have completed := complete ⟨0, none, after⟩
-    ((menu).toRawTrace initial horizon scheduler last) ⟨rfl, rfl⟩
-  apply CommitAttemptEvent.Resolved.of_step coordinate before.application after.application current
-    (runRounds_namespace_progress runtime leaks scheduler players count before after ordered
-      reached)
-  right
-  rw [completed]
-  exact Finset.mem_univ _
-
 end Vegas.EventGraphRuntime.PhaseService

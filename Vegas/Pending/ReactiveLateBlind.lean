@@ -67,13 +67,4 @@ def BlindToLatePackets (scheduler : (runtime.reactiveApplication leaks).Schedule
             (ReactiveApplication.EnvironmentView.erase _ message.id view)).map
           (ReactiveApplication.Command.restore _ message.id))
 
-/-- The scheduler that always waits is blind to late packets. -/
-theorem blindToLatePackets_wait :
-    runtime.BlindToLatePackets leaks bound (fun _ _ => PMF.pure .wait) := by
-  intro recall view message _ _
-  refine ⟨0, le_rfl, zero_le_one, ?_⟩
-  ext chosen
-  rw [mix_apply, PMF.pure_map]
-  simp [ReactiveApplication.Command.restore]
-
 end Vegas.EventGraphRuntime

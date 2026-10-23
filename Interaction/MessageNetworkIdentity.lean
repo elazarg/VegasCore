@@ -52,15 +52,6 @@ theorem UniqueIds.submit (valid : network.UniqueIds) (serials : network.SerialsB
   apply (fresh.mono fun _ different same => False.elim (different same)).submit who payload
   exact fun _ => rfl
 
-/-- When a known identifier is already public, the very same envelope is in
-the ledger. Equality of identifiers cannot conceal a different certificate. -/
-theorem UniqueIds.known_published (valid : network.UniqueIds) (who : Principal)
-    (message : Message Principal Payload) (known : message ∈ network.known who)
-    (published : message.id ∈ network.ledger.map Message.id) : message ∈ network.ledger := by
-  obtain ⟨record, present, same⟩ := List.mem_map.mp published
-  have equal := (valid.known who message known).ledger record present same
-  exact equal ▸ present
-
 /-- Pending and published identifiers are pairwise distinct. -/
 def IdsDistinct (network : MessageNetwork Principal Payload) : Prop :=
   ((network.pending ++ network.ledger).map Message.id).Nodup

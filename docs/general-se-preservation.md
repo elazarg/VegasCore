@@ -61,7 +61,7 @@ raw equilibrium back to H.
 Both the no-clock audit extension and the finite-deposit capstone are checked
 in [TerminalAudit](../GameTheoryExtensions/Analysis/Protocol/TerminalAudit.lean),
 as `sequential_equilibrium_extends_of_terminal_audit` and
-`exists_deposits_preserving_sequential_equilibria`. The latter constructs its
+[`exists_deposits_preserving_sequential_equilibria`](https://github.com/elazarg/VegasCore/blob/research-tree/GameTheoryExtensions/Analysis/Protocol/TerminalAudit.lean#L269). The latter constructs its
 fully mixed reference internally, using the existing finite-game perturbation
 machinery. No common-depth calendar is required.
 
@@ -290,7 +290,7 @@ information refinement fails the clean structural premise.
 There is also a sharp checked audit boundary. For a single strictly profitable
 comparison, a sound final-transcript audit can deter it with a finite penalty
 iff it has positive observable probability outside the admitted clean
-transcript family. See `exists_sound_deterrent_iff` in
+transcript family. See [`exists_sound_deterrent_iff`](https://github.com/elazarg/VegasCore/blob/research-tree/GameTheoryExtensions/Analysis/ObservableEnforcement.lean#L168) in
 [ObservableEnforcement](../GameTheoryExtensions/Analysis/ObservableEnforcement.lean).
 If a profitable pending-leak deviation's entire final observation law is
 supported on admitted transcripts, that audit cannot punish it soundly. This

@@ -186,35 +186,6 @@ def OpenedAt (config : (serviceGraph setup mode).Config)
               some (.success value))
   | _ => True
 
-/-- A list sorted by rank, filtered below one more than the rank of one of its
-members, adds exactly that member to the filter below its rank. -/
-private theorem filter_rank_succ {α : Type} (rank : α → Nat) :
-    ∀ (items : List α), items.Pairwise (fun first second => rank first < rank second) →
-      ∀ item ∈ items,
-      items.filter (fun other => decide (rank other < rank item + 1)) =
-        items.filter (fun other => decide (rank other < rank item)) ++ [item]
-  | [], _, _, member => (List.not_mem_nil member).elim
-  | head :: tail, sorted, item, member => by
-      obtain ⟨headBelow, tailSorted⟩ := List.pairwise_cons.mp sorted
-      rcases List.mem_cons.mp member with same | later
-      · subst same
-        have tailEmpty : tail.filter (fun other => decide (rank other < rank item + 1)) = [] :=
-          List.filter_eq_nil_iff.mpr fun other inTail => by
-            have := headBelow other inTail
-            simp only [decide_eq_true_eq]
-            omega
-        have tailEmpty' : tail.filter (fun other => decide (rank other < rank item)) = [] :=
-          List.filter_eq_nil_iff.mpr fun other inTail => by
-            have := headBelow other inTail
-            simp only [decide_eq_true_eq]
-            omega
-        rw [List.filter_cons, List.filter_cons, tailEmpty, tailEmpty']
-        simp
-      · have headLess := headBelow item later
-        have rest := filter_rank_succ rank tail tailSorted item later
-        rw [List.filter_cons, List.filter_cons, rest]
-        simp [headLess, show rank head < rank item + 1 by omega]
-
 /-- **One owner's completions after a block are the accumulated ones.** Two
 lists of completions of block disclosures with the same members, one sorted by
 rank and the other appended by a run, have the same completions of every

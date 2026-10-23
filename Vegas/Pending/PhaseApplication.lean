@@ -275,19 +275,6 @@ theorem settle_exhausted (phase : RuntimePhase graph) (remaining : List (Runtime
         (retired ++ [⟨⟨phase.low, generation⟩, (phase.drain current).native⟩]) := by
   simp only [settle, finished, kind, true_and, missed, exhausted, ↓reduceIte]
 
-omit [DecidableEq Player] in
-/-- Retrying cannot authorize any packet from the just-retired namespace. -/
-theorem retry_namespace (phase : RuntimePhase graph) (remaining : List (RuntimePhase graph))
-    (generation : Nat) (entry current : RecoveryState graph)
-    (retired : List (RetiredCommitAttempt graph)) :
-    (⟨phase.low, generation⟩ : CommitAttemptId) ≠
-      (⟨phase :: remaining, generation + 1, entry, current, retired⟩ :
-        PhaseRuntimeState graph).attempt := by
-  intro same
-  have impossible := congrArg CommitAttemptId.generation same
-  change generation = generation + 1 at impossible
-  omega
-
 /-- A current packet must address the installed rank interval. -/
 def allows (state : PhaseRuntimeState graph) (call : Payload graph) : Bool :=
   match state.phases.head?, call.event? graph with
@@ -386,34 +373,6 @@ theorem requests_publicView {inputs : graph.Inputs} (state : PhaseRuntimeState g
       Option.map_some], lower, upper⟩,
       (valid.active.activated_iff _).mpr ⟨ready, by simp only [acting, Option.isSome_some]⟩,
       acting, unexcluded⟩
-
-omit [DecidableEq Player] in
-/-- The current attempt's restored checkpoint is the exact saved semantic state. -/
-theorem restore_semantics (entry current : RecoveryState graph) :
-    (restore entry current).native.config = entry.native.config ∧
-      (restore entry current).native.accepted = entry.native.accepted ∧
-      (restore entry current).excluded = current.excluded ∧
-      (restore entry current).native.candidates = current.native.candidates ∧
-      (restore entry current).native.clock = current.native.clock :=
-  ⟨rfl, rfl, rfl, rfl, rfl⟩
-
-omit [DecidableEq Player] in
-/-- Freshly ready retry events begin at the physical endpoint's clock. -/
-theorem restore_ready_clock (entry current : RecoveryState graph) (event : graph.EventId)
-    (ready : entry.native.config.cut.Ready event) {owner : Player}
-    (acting : graph.actor? event = some owner) :
-    (restore entry current).native.activatedAt event = some current.native.clock := by
-  simp only [restore, State.refreshActivated, ready, ↓reduceDIte, acting]
-  rfl
-
-omit [DecidableEq Player] in
-/-- The discarded semantic state restricts to the exact saved checkpoint. -/
-theorem restore_restrict_store (entry current : RecoveryState graph)
-    (agreement : entry.native.config.CompletedOutputAgreement current.native.config)
-    (inputs : entry.native.config.inputs = current.native.config.inputs) :
-    (restore entry current).native.config.store =
-      (current.native.config.restrict entry.native.config.cut).store :=
-  (agreement.restrict_store _ _ inputs).symm
 
 /-- Previously excluded automatic failures cannot be interpreted as a fresh miss. -/
 theorem automatic_no_new_miss (phase : RuntimePhase graph) (entry : RecoveryState graph) :
@@ -523,15 +482,6 @@ variable (runtime : EventGraphRuntime graph)
 def normalizeExecution (execution : (phaseApplication runtime leaks).Execution) :
     (phaseApplication runtime leaks).Execution :=
   { execution with application := execution.application.normalize }
-
-theorem normalizeExecution_transcript
-    (execution : (phaseApplication runtime leaks).Execution) :
-    (normalizeExecution runtime leaks execution).network = execution.network ∧
-      (normalizeExecution runtime leaks execution).receipts = execution.receipts ∧
-      (normalizeExecution runtime leaks execution).recall = execution.recall ∧
-      (normalizeExecution runtime leaks execution).environmentRecall =
-        execution.environmentRecall :=
-  ⟨rfl, rfl, rfl, rfl⟩
 
 end PhaseRuntimeState
 end Vegas.EventGraphRuntime

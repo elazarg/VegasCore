@@ -218,41 +218,4 @@ theorem submitStep_associationInvariant (state : State graph) (who : Player)
     (fun candidate fixed => submitStep_lookup_of_not_fresh state who packet candidate fixed)
     (fun field value stored => by rw [submitStep_config]; exact stored)
 
-theorem handle_associationInvariant (runtime : EventGraphRuntime graph)
-    (state next : State graph) (message : Message Player (Payload graph))
-    (valid : state.AssociationInvariant)
-    (accepted : handle runtime state message = some next) : next.AssociationInvariant := by
-  rcases message with ⟨id, packet⟩
-  cases packet with
-  | malformed raw => simp [handle] at accepted
-  | opening event candidate raw =>
-      exact valid.transport
-        (handle_resolution_tables runtime state next _ (by intros; simp) accepted).1
-        (fun queried fixed =>
-          handle_lookup_of_not_fresh runtime state next _ queried fixed accepted)
-        (handle_store_of_some runtime state next _ accepted)
-  | commitment event selected =>
-      by_cases ready : state.config.cut.Ready event
-      · by_cases timely : state.WithinDeadline runtime event
-        · cases view : nodeView graph event with
-          | resolve | sample => simp [handle, ready, timely, view] at accepted
-          | bind owner payload outputEq codeEq =>
-              simp only [handle, dite_eq_left ready, dite_eq_left timely, view] at accepted
-              split at accepted
-              · simp_all only [dite_eq_ite, Option.ite_none_right_eq_some, Option.some.injEq]
-                rcases accepted with ⟨_, _, _, rfl⟩
-                exact valid.acceptBinding event ready owner payload outputEq selected
-              · simp_all only [reduceCtorEq]
-        · simp [handle, ready, timely] at accepted
-      · simp [handle, ready] at accepted
-omit [DecidableEq Player] in
-theorem environmentStep_associationInvariant (runtime : EventGraphRuntime graph)
-    (state next : State graph) (command : EnvironmentCommand graph)
-    (valid : state.AssociationInvariant)
-    (reached : next ∈ (environmentStep runtime state command).support) :
-    next.AssociationInvariant :=
-  valid.transport (environmentStep_tables runtime state next command reached).1
-    (fun _ _ => by rw [(environmentStep_tables runtime state next command reached).2])
-    (environmentStep_store_of_some runtime state next command reached)
-
 end Vegas.EventGraphRuntime

@@ -154,79 +154,6 @@ def reactiveBinding (runtime : EventGraphRuntime graph)
       | .failure => none
       | .success value => some ⟨payload, value⟩⟩, .none⟩
 
-/-- A call the contract accepts at a state is ready there, so a packet
-emitted from that public view carries a valid token. -/
-theorem tokenFor_tokenValid_of_handle (runtime : EventGraphRuntime graph)
-    (state next : State graph) (id : MessageId Player) (call : Payload graph)
-    (evidence : Option (OpeningFact graph))
-    (accepted : handle runtime state ⟨id, call⟩ = some next) :
-    (WitnessedPacket.mk call evidence (state.publicView.tokenFor call)).tokenValid = true := by
-  obtain ⟨event, named, ready, _⟩ := handle_config_mem_step runtime state next _ accepted
-  rw [state.publicView_tokenFor_of_ready call event named ready]
-  exact WitnessedPacket.tokenValid_of_event call evidence event named
-
-/-- A packet whose token was issued in the state it is included at is handled
-exactly as its call: the contract accepts only ready calls, whose tokens are
-issued there. -/
-theorem reactiveApplication_handle_of_current_token (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (state : State graph) (message : Message Player (WitnessedPacket graph))
-    (current : message.payload.token = state.publicView.tokenFor message.payload.call) :
-    (runtime.reactiveApplication leaks).handle state message =
-      handle runtime state ⟨message.id, message.payload.call⟩ := by
-  cases accepted : handle runtime state ⟨message.id, message.payload.call⟩ with
-  | none => exact reactiveHandle_none accepted
-  | some next =>
-      have valid := tokenFor_tokenValid_of_handle runtime state next message.id
-        message.payload.call message.payload.evidence accepted
-      rw [← current] at valid
-      rw [reactiveApplication_handle_of_tokenValid runtime leaks state message valid, accepted]
-
-/-- An evidence-free submission enters the network as its call with the token
-issued in the state the sender saw. -/
-theorem respond_submit_lookup (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (execution : (runtime.reactiveApplication leaks).Execution) (who : Player)
-    (call : Submission graph) (serials : execution.network.SerialsBeforeNext) :
-    (execution.respond (runtime.reactiveApplication leaks) who
-      ⟨some ⟨call, .none⟩⟩).network.lookup (who, execution.network.nextSerial who) =
-      some ⟨(who, execution.network.nextSerial who),
-        ⟨call.packet, none, execution.application.publicView.tokenFor call.packet⟩⟩ := by
-  simpa only [ReactiveApplication.Execution.respond, reactiveApplication_packet_none] using
-    serials.lookup_submit who
-      ⟨call.packet, none, execution.application.publicView.tokenFor call.packet⟩
-
-/-- An evidence-free submission for a ready event enters the network with that
-event's readiness token. -/
-theorem respond_submit_lookup_of_ready (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (execution : (runtime.reactiveApplication leaks).Execution) (who : Player)
-    (call : Submission graph) (serials : execution.network.SerialsBeforeNext)
-    (event : graph.EventId) (named : call.packet.event? graph = some event)
-    (ready : execution.application.config.cut.Ready event) :
-    (execution.respond (runtime.reactiveApplication leaks) who
-      ⟨some ⟨call, .none⟩⟩).network.lookup (who, execution.network.nextSerial who) =
-      some ⟨(who, execution.network.nextSerial who), ⟨call.packet, none, some ⟨event⟩⟩⟩ := by
-  rw [← execution.application.publicView_tokenFor_of_ready call.packet event named ready]
-  exact respond_submit_lookup runtime leaks execution who call serials
-
-/-- A compiled binding response at a ready event enters the network with the
-event's readiness token. -/
-theorem reactiveBinding_lookup (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (execution : (runtime.reactiveApplication leaks).Execution) (who : Player)
-    (event : graph.EventId) (payload : L.Ty) (result : PublicationResult (L.Val payload))
-    (serial : Nat) (serials : execution.network.SerialsBeforeNext)
-    (ready : execution.application.config.cut.Ready event) :
-    (execution.respond (runtime.reactiveApplication leaks) who
-      (runtime.reactiveBinding leaks who event payload result serial)).network.lookup
-        (who, execution.network.nextSerial who) =
-      some ⟨(who, execution.network.nextSerial who),
-        ⟨.commitment event (who, .prepared serial), none, some ⟨event⟩⟩⟩ := by
-  rw [← execution.application.publicView_tokenFor_of_ready
-    (.commitment event (who, .prepared serial)) event rfl ready]
-  exact respond_submit_lookup runtime leaks execution who _ serials
-
 theorem reactiveBinding_result (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (who : Player)
@@ -252,36 +179,5 @@ theorem reactiveBinding_result (runtime : EventGraphRuntime graph)
       rw [submitStep_bindingResult]
       simp only [State.bindingResult, CommitmentCandidates.lookup_prepare_self,
         fresh, Raw.as?_mk, Option.elim_some]
-
-/-- The environment receives the same envelope and public application state
-for all private binding meanings, including an unopenable candidate. -/
-theorem reactiveBinding_observation (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (who : Player)
-    (event : graph.EventId) (payload : L.Ty)
-    (first second : PublicationResult (L.Val payload)) (serial : Nat)
-    (execution : (runtime.reactiveApplication leaks).Execution) :
-    (execution.respond (runtime.reactiveApplication leaks) who
-      (runtime.reactiveBinding leaks who event payload first serial)).observeEnvironment
-        (runtime.reactiveApplication leaks) =
-    (execution.respond (runtime.reactiveApplication leaks) who
-      (runtime.reactiveBinding leaks who event payload second serial)).observeEnvironment
-        (runtime.reactiveApplication leaks) := by
-  have unchanged (result : PublicationResult (L.Val payload)) :
-      (execution.respond (runtime.reactiveApplication leaks) who
-        (runtime.reactiveBinding leaks who event payload result serial)).application.publicView =
-          execution.application.publicView := by
-    change (submitStep (Submission.register _ execution.application who) who _).publicView = _
-    rw [submitStep_publicView]
-    exact (Submission.register_facts _ who execution.application).2
-  change ReactiveApplication.EnvironmentView.mk (app := (runtime.reactiveApplication leaks)) _
-    (execution.respond (runtime.reactiveApplication leaks) who
-      (runtime.reactiveBinding leaks who event payload first serial)).application.publicView _ =
-    ReactiveApplication.EnvironmentView.mk (app := (runtime.reactiveApplication leaks)) _
-      (execution.respond (runtime.reactiveApplication leaks) who
-        (runtime.reactiveBinding leaks who event payload second serial)).application.publicView _
-  rw [unchanged first, unchanged second]
-  simp only [ReactiveApplication.Execution.respond, reactiveBinding,
-    reactiveApplication_packet_none]
 
 end Vegas.EventGraphRuntime

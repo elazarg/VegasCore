@@ -34,12 +34,6 @@ def restrictCompleted (memory : BindingShadow graph) (completed : Finset graph.E
     (completed : Finset graph.EventId) :
     (memory.restrictCompleted completed).candidates = memory.candidates := rfl
 
-@[simp] theorem restrictCompleted_candidate (memory : BindingShadow graph)
-    (completed : Finset graph.EventId) (slot : CandidateSlot graph)
-    (value : CommitmentCandidate (Raw L)) :
-    (memory.restrictCompleted completed).candidate slot value = memory.candidate slot value := by
-  cases value <;> rfl
-
 theorem restrictCompleted_pending (memory : BindingShadow graph)
     (completed : Finset graph.EventId) (event : graph.EventId) (missing : event ∉ completed) :
     (memory.restrictCompleted completed).values (.inr event) = none ∧

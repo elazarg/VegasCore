@@ -77,48 +77,8 @@ def eligible (view : (app).EnvironmentView) : Finset (PhaseSeedAddress graph) :=
   Finset.univ.filter fun coordinate =>
     ∃ owner, PhaseRuntimeState.requests view.application owner coordinate.1
 
-@[simp]
-theorem mem_eligible (view : (app).EnvironmentView) (coordinate : PhaseSeedAddress graph) :
-    coordinate ∈ eligible runtime leaks view ↔
-      ∃ owner, PhaseRuntimeState.requests view.application owner coordinate.1 := by
-  simp only [eligible, Finset.mem_filter, Finset.mem_univ, true_and]
-
 def select (view : (app).EnvironmentView) (priority : Nat) : Option (PhaseSeedAddress graph) :=
   (eligible runtime leaks view).toList[priority]?.or (eligible runtime leaks view).toList.head?
-
-theorem select_mem {view : (app).EnvironmentView} {priority : Nat}
-    {coordinate : PhaseSeedAddress graph}
-    (selected : select runtime leaks view priority = some coordinate) :
-    coordinate ∈ eligible runtime leaks view := by
-  unfold select at selected
-  cases indexed : (eligible runtime leaks view).toList[priority]? with
-  | none =>
-      simp only [indexed, Option.none_or] at selected
-      exact Finset.mem_toList.mp (List.mem_of_mem_head? selected)
-  | some value =>
-      simp only [indexed, Option.some_or, Option.some.injEq] at selected
-      subst value
-      exact Finset.mem_toList.mp (List.mem_of_getElem? indexed)
-
-/-- Actual native metadata turns the public selector into a genuine ready request. -/
-theorem select_sound {execution : (app).Execution} {inputs : graph.Inputs}
-    (valid : execution.application.Invariant inputs) {priority : Nat}
-    {coordinate : PhaseSeedAddress graph}
-    (selected : select runtime leaks (execution.observeEnvironment app) priority =
-      some coordinate) :
-    ∃ owner, execution.application.SeedRequest owner coordinate.1 := by
-  obtain ⟨owner, requested⟩ := (mem_eligible runtime leaks _ _).mp
-    (select_mem runtime leaks selected)
-  exact ⟨owner, (PhaseRuntimeState.requests_publicView _ valid _ _).mp requested⟩
-
-/-- Every genuine seed request occurs in the selector's fixed finite roster. -/
-theorem request_covered {execution : (app).Execution} {inputs : graph.Inputs}
-    (valid : execution.application.Invariant inputs) (budget : execution.application.SeedBudget)
-    {owner : Player} {coordinate : CommitAttemptEvent graph}
-    (request : execution.application.SeedRequest owner coordinate) :
-    request.coordinate budget ∈ eligible runtime leaks (execution.observeEnvironment app) := by
-  apply (mem_eligible runtime leaks _ _).mpr
-  exact ⟨owner, (PhaseRuntimeState.requests_publicView _ valid _ _).mpr request⟩
 
 def reply (decideLocal : PhaseSeedAddress graph → LocalSeed → PhaseSeedInput graph →
     PhaseSeedDecision) (coordinate : PhaseSeedAddress graph) (seed : LocalSeed)
@@ -144,37 +104,6 @@ def controller
       (coordinate, localInput runtime leaks coordinate.1 owner past view)
   fallback := fallback
   reply := reply runtime leaks decideLocal
-
-/-- A coordinate belonging to any other attempt is never requested, regardless
-of the remainder's priority or the values of any local seed. -/
-theorem request_ne_of_namespace
-    (priority : RestSeed → List (app).EnvironmentEntry → (app).EnvironmentView → Nat)
-    (fallback : RestSeed → List (app).EnvironmentEntry → (app).EnvironmentView → (app).Command)
-    (decideLocal : PhaseSeedAddress graph → LocalSeed → PhaseSeedInput graph → PhaseSeedDecision)
-    (selected : PhaseSeedAddress graph) (past : List (app).EnvironmentEntry)
-    (view : (app).EnvironmentView) (different : selected.1.attempt ≠ view.application.attempt)
-    (rest : RestSeed) :
-    ((controller runtime leaks priority fallback decideLocal).request rest past view).map Prod.fst ≠
-      some selected := by
-  intro requested
-  cases selectedCoordinate : select runtime leaks view (priority rest past view) with
-  | none =>
-      simp only [controller, selectedCoordinate, Option.bind_none, Option.map_none] at requested
-      cases requested
-  | some coordinate =>
-      cases acting : graph.actor? coordinate.1.event with
-      | none =>
-          simp only [controller, selectedCoordinate, Option.bind_some, acting,
-            Option.map_none] at requested
-          cases requested
-      | some owner =>
-          have same : coordinate = selected := by
-            simpa only [controller, selectedCoordinate, Option.bind_some, acting,
-              Option.map_some, Option.some.injEq] using requested
-          subst coordinate
-          obtain ⟨owner, ready⟩ := (mem_eligible runtime leaks _ _).mp
-            (select_mem runtime leaks selectedCoordinate)
-          exact different ready.1
 
 end PhaseSeedScheduler
 end Vegas.EventGraphRuntime

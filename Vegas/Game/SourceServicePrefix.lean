@@ -289,24 +289,4 @@ theorem SourcePrefixCheckpoint.decode {setup : Setup (Player := Player) (L := L)
               rw [decodeSourcePrefix?_reveal, ih next _ _ _ _ (offset + 1) rest native related]
               rfl
 
-/-- The same actual native checkpoint cannot decode to two source states.
-This does not identify native histories with source histories. -/
-theorem SourcePrefixCheckpoint.state_unique {setup : Setup (Player := Player) (L := L)}
-    {mode : EventGraph.ExecutionMode} {Γ : SourceCtx Player L} {openNames : Finset VarId}
-    (program : SourceProgram Player L Γ openNames)
-    (refs : ContextRefs (serviceGraph setup mode).layout Γ) (registry : Registry Γ)
-    (revelations : Revelations Γ)
-    (outputs : ∀ event, EventGraph.FieldRef (serviceGraph setup mode).layout
-        (outputLayout program event)) (offset count : Nat) (left right : ProtocolState program)
-    (native : (serviceGraph setup mode).Config)
-    (first : SourcePrefixCheckpoint setup program refs registry revelations outputs offset count
-        left native)
-    (second : SourcePrefixCheckpoint setup program refs registry revelations outputs
-      offset count right native) : left = right := by
-  have firstRead := SourcePrefixCheckpoint.decode program refs registry revelations outputs
-    offset count left native first
-  have secondRead := SourcePrefixCheckpoint.decode program refs registry revelations outputs
-    offset count right native second
-  exact Option.some.inj (firstRead.symm.trans secondRead)
-
 end Vegas

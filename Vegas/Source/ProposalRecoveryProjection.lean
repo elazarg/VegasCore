@@ -94,20 +94,4 @@ def proposalRecoveryQuery (who : Player)
         (setup.proposalRecoveryEraseInfo who information)),
     setup.proposalRecoveryArchive who information)
 
-theorem proposalRecoveryQuery_semantic_genuine (who : Player)
-    {state : setup.proposalRecoveryProtocol.State}
-    (trace : setup.proposalRecoveryProtocol.Trace state) :
-    ∃ replay : setup.commitRecoveryProtocol.History,
-      (setup.proposalRecoveryQuery who
-        (setup.proposalRecoveryModel.infoOf who trace)).1 =
-          setup.commitRecoveryErasedInformation who
-            (setup.commitRecoveryModel.infoOf who replay.trace) ∧
-      (¬ setup.proposalRecoveryProtocol.terminal state →
-        ¬ setup.commitRecoveryProtocol.terminal replay.state) := by
-  obtain ⟨replay, observed, running⟩ := setup.commitRecoveryNoMissInformation_genuine_history who
-    ⟨state, setup.proposalRecoveryEraseTrace trace⟩
-  refine ⟨replay, ?_, running⟩
-  dsimp only [proposalRecoveryQuery]
-  rw [setup.proposalRecoveryEraseInfo_observed, ← observed]
-
 end Vegas.SourceProgram.Setup

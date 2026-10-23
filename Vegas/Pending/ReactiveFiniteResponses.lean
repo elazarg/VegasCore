@@ -241,58 +241,5 @@ theorem menu_mem (runtime : EventGraphRuntime graph)
   | none => rfl
   | some submission => exact and_congr_left fun _ => bounds.submissions_mem _ submission
 
-/-- Ineffective private opening material need not satisfy a bound. Certificate
-requests are independently checked against the bounded facts and known messages. -/
-theorem normalized_submission_available (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)) (who : Player)
-    (past : List (runtime.reactiveApplication leaks).PlayerEntry)
-    (view : (runtime.reactiveApplication leaks).PlayerView)
-    (submission : WitnessedSubmission graph)
-    (packet : bounds.AllowsPacket submission.call.packet)
-    (opening : bounds.AllowsOpening
-      (submission.call.normalizeReactive who view.application).opening)
-    (evidence : bounds.AllowsEvidence (ReactiveApplication.ResponseMenu.knownPackets past view)
-      (submission.evidence.normalize who
-        (submission.call.candidateAfter who view.application.candidates)
-        (ReactiveApplication.ResponseMenu.knownPackets past view))) :
-    (runtime.reactiveNormalization leaks).action who past view ⟨some submission⟩ ∈
-      (bounds.menu runtime leaks).actions who past view := by
-  rw [bounds.menu_mem]
-  exact ⟨⟨⟨packet, opening⟩, evidence⟩,
-    (runtime.reactiveNormalization leaks).action_idempotent who past view _⟩
-
-/-- Forwarding can refer to any actually known envelope. Its numeric identifier
-does not need to fit a static bound, and the call may be malformed or rejected. -/
-theorem known_forward_available (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)) (who : Player)
-    (past : List (runtime.reactiveApplication leaks).PlayerEntry)
-    (view : (runtime.reactiveApplication leaks).PlayerView) (call : Submission graph)
-    (packet : bounds.AllowsPacket call.packet)
-    (opening : bounds.AllowsOpening (call.normalizeReactive who view.application).opening)
-    (id : MessageId Player)
-    (known : ∃ message ∈ ReactiveApplication.ResponseMenu.knownPackets past view, message.id = id) :
-    (runtime.reactiveNormalization leaks).action who past view
-        ⟨some ⟨call, .forward id⟩⟩ ∈
-      (bounds.menu runtime leaks).actions who past view := by
-  apply bounds.normalized_submission_available runtime leaks who past view _ packet opening
-  exact bounds.normalize_evidence_mem who _ _ _ known
-
-omit [Fintype Player] in
-/-- A guessed reference with no known envelope cannot manufacture evidence.
-Erasing that request preserves the emitted packet, as certified by normalization. -/
-theorem unknown_forward_normalizes (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)) (who : Player)
-    (past : List (runtime.reactiveApplication leaks).PlayerEntry)
-    (view : (runtime.reactiveApplication leaks).PlayerView) (call : Submission graph)
-    (id : MessageId Player)
-    (unknown : ¬ ∃ message ∈ ReactiveApplication.ResponseMenu.knownPackets past view,
-      message.id = id) :
-    (runtime.reactiveNormalization leaks).action who past view
-        ⟨some ⟨call, .forward id⟩⟩ =
-      ⟨some ⟨call.normalizeReactive who view.application, .none⟩⟩ := by
-  simp only [ReactiveApplication.SubmissionNormalization.action, reactiveNormalization,
-    WitnessedSubmission.normalizeReactive]
-  rw [EvidenceRequest.normalize_unknown _ _ _ id unknown]
-
 end MessageBounds
 end Vegas.EventGraphRuntime

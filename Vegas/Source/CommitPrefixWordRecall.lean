@@ -101,27 +101,4 @@ theorem prefixLaw_view_eq_of_history_eq (block : CommitPrefix Γ O Δ P)
   exact Attempt.view_eq_of_history_eq block first second who entryView left right leftAttempt
     rightAttempt history
 
-/-- At a genuine current source view, conditioning the actual prefix law on
-the complete owned view is exactly conditioning it on the effective owned
-word. This does not discard the original hidden foreign choices. -/
-theorem prefixPosterior_eq_history (block : CommitPrefix Γ O Δ P)
-    (suffix : SourceProgram Player L Δ P) (profile : BehavioralProfile (block.prepend suffix))
-    (entry : Config Player L Γ) (who : Player) (observed : DecisionView who Δ)
-    (present : observed ∈ ((block.prefixLaw suffix profile entry).map
-      (Config.view who)).support) :
-    block.prefixPosterior suffix profile entry who observed =
-      fiberPosterior (block.prefixLaw suffix profile entry) (fun final => final.history who)
-        observed.2 := by
-  obtain ⟨witness, member, equal⟩ := (PMF.mem_support_map_iff ..).mp present
-  apply fiberPosterior_eq_of_support_fiber
-  intro final supported
-  constructor
-  · intro same
-    exact congrArg Prod.snd same
-  · intro same
-    have word : final.history who = witness.history who :=
-      same.trans (congrArg Prod.snd equal).symm
-    exact (block.prefixLaw_view_eq_of_history_eq suffix profile profile entry entry who rfl final
-      witness supported member word).trans equal
-
 end Vegas.SourceProgram.CommitPrefix

@@ -61,24 +61,6 @@ def rosterScheduler (setup : Setup (Player := Player) (L := L))
     | none => PMF.pure .wait
     | some instruction => (runtime setup).interactionInstruction leaks network past view instruction
 
-/-- The reserved roster's command law is independent of the discretionary
-network policy, at every scheduler history and environment view. -/
-theorem rosterScheduler_network_independent (setup : Setup (Player := Player) (L := L))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-    (rosters : (graph setup).EventId → List Player)
-    (left right : (runtime setup).NetworkPolicy leaks) :
-    rosterScheduler setup leaks rosters left = rosterScheduler setup leaks rosters right := by
-  funext past view
-  unfold rosterScheduler
-  split
-  · rfl
-  · rename_i instruction selected
-    apply (runtime setup).interactionInstruction_network_independent
-    intro same
-    have member := List.mem_of_getElem? selected
-    rw [same] at member
-    exact rosterPlan_no_wire setup rosters member
-
 /-- A finitely supported prior and leak rule make all of the roster service's
 nature branch finitely. The roster never calls its network policy. -/
 instance rosterScheduler_finiteNature (setup : Setup (Player := Player) (L := L))
@@ -135,14 +117,6 @@ theorem ActorOpportunities.binding {setup : Setup (Player := Player) (L := L)}
   fun event owner payload kind =>
     opportunities event owner (binding_actor setup event owner payload kind)
 
-theorem rosterBlock_of_owner (setup : Setup (Player := Player) (L := L))
-    (rosters : (graph setup).EventId → List Player) (event : (graph setup).EventId)
-    (owner : Player) (owned : (graph setup).actor? event = some owner) :
-    rosterBlock setup rosters event =
-      ((rosters event).map ServiceInstruction.player ++ [.includeLatest event owner]) ++
-        List.replicate (event.val + 1) .tick ++ [.expire event] := by
-  simp only [rosterBlock, owned, List.append_assoc]
-
 theorem rosterBlock_length (setup : Setup (Player := Player) (L := L))
     (rosters : (graph setup).EventId → List Player) (event : (graph setup).EventId) :
     (rosterBlock setup rosters event).length = (rosters event).length + event.val + 3 := by
@@ -172,12 +146,6 @@ def rosterPhaseEnding (setup : Setup (Player := Player) (L := L))
     | some owner => [.includeLatest event owner]) ++
     List.replicate (event.val + 1) .tick ++ [.expire event]
 
-theorem rosterPhaseEnding_no_wire (setup : Setup (Player := Player) (L := L))
-    (event : (graph setup).EventId) :
-    ServiceInstruction.wire ∉ rosterPhaseEnding setup event := by
-  unfold rosterPhaseEnding
-  cases (graph setup).actor? event <;> simp
-
 theorem rosterBlock_eq_ending (setup : Setup (Player := Player) (L := L))
     (rosters : (graph setup).EventId → List Player) (event : (graph setup).EventId) :
     rosterBlock setup rosters event =
@@ -189,35 +157,6 @@ def rosterPlanSuffix (setup : Setup (Player := Player) (L := L))
     (rosters : (graph setup).EventId → List Player) (rank : Nat) :
     List (ServiceInstruction (graph setup)) :=
   ((List.finRange (graph setup).order.eventCount).drop rank).flatMap (rosterBlock setup rosters)
-
-theorem rosterPlanPrefix_append_suffix (setup : Setup (Player := Player) (L := L))
-    (rosters : (graph setup).EventId → List Player) (rank : Nat) :
-    rosterPlanPrefix setup rosters rank ++ rosterPlanSuffix setup rosters rank =
-      rosterPlan setup rosters := by
-  simp only [rosterPlanPrefix, rosterPlanSuffix, rosterPlan, ← List.flatMap_append,
-    List.take_append_drop]
-
-theorem rosterPlanPrefix_no_wire (setup : Setup (Player := Player) (L := L))
-    (rosters : (graph setup).EventId → List Player) (rank : Nat) :
-    ServiceInstruction.wire ∉ rosterPlanPrefix setup rosters rank := by
-  intro member
-  obtain ⟨event, _, inside⟩ := List.mem_flatMap.mp member
-  exact rosterBlock_no_wire setup rosters event inside
-
-omit [DecidableEq Player] in
-/-- A nonempty suffix of the event order starts at its rank. -/
-theorem finRange_drop_cons {count rank : Nat} {event : Fin count} {rest : List (Fin count)}
-    (same : event :: rest = (List.finRange count).drop rank) :
-    event.val = rank ∧ rest = (List.finRange count).drop (rank + 1) := by
-  have inside : rank < count := by
-    by_contra outside
-    rw [List.drop_eq_nil_of_le (by simpa only [List.length_finRange] using not_lt.mp outside)]
-      at same
-    cases same
-  rw [List.drop_eq_getElem_cons (by simpa only [List.length_finRange] using inside),
-    List.getElem_finRange] at same
-  obtain ⟨head, tail⟩ := List.cons.inj same
-  exact ⟨by rw [head]; rfl, tail⟩
 
 theorem rosterPlan_split (setup : Setup (Player := Player) (L := L))
     (rosters : (graph setup).EventId → List Player) (event : (graph setup).EventId) :

@@ -2,22 +2,21 @@
 
 import GameTheoryExtensions.Math.Probability.ProductTransport
 
-/-! # Normalized laws related by a weight-preserving swap
+/-! # Normalized laws with a common base law
 
 Two finite weight vectors are normalized into laws. Each splits into a regular
 part, within relative error `ε` of a positive multiple of a base weight, and an
-irregular part of total at most `ρ` times the regular total. If a bijection
-between the regular parts keeps the base weight and a record, then every payoff
-of the record with values in `[0, 1]` has expectations under the two laws
-within `4 ρ + 4 ε / (1 - ε)`
-(`GameTheory.Math.Probability.abs_normalized_sub_le_of_swap`). More generally it
-suffices that the normalized regular base weights give every unit payoff of
-the record the same expectation on both sides
-(`GameTheory.Math.Probability.abs_normalized_sub_le_of_base_agree`); this holds
-with correlated priors, where no weight-preserving bijection exists. The multiples on
-the two sides need not agree: normalization cancels them. The swap may exchange
-any coordinates the record and the base weight do not read, such as one
-player's hidden values or the other players' hidden values.
+irregular part of total at most `ρ` times the regular total. If the normalized
+regular base weights give a payoff of a record with values in `[0, 1]` the same
+expectation on both sides, the two normalized laws give it expectations within
+`4 ρ + 4 ε / (1 - ε)`
+(`GameTheory.Math.Probability.abs_normalized_sub_le_of_base_agree`). The
+multiples on the two sides need not agree: normalization cancels them. A
+bijection between the regular parts that keeps the base weight and the record
+gives the agreement; it may exchange any coordinates the record and the base
+weight do not read, such as one player's hidden values or the other players'
+hidden values. The agreement also holds with correlated priors, where no
+weight-preserving bijection exists.
 -/
 
 noncomputable section
@@ -37,12 +36,6 @@ theorem abs_sum_mul_sub_le_sum_abs {α : Type*} [Fintype α] (p q payoff : α �
   refine (abs_sum_le_sum_abs _ _).trans (sum_le_sum fun a _ => ?_)
   rw [← sub_mul, abs_mul, abs_of_nonneg (unit a).1]
   exact mul_le_of_le_one_right (abs_nonneg _) (unit a).2
-
-open Classical in
-private theorem sum_ite_eq_sum_subtype {γ : Type*} [Fintype γ] (p : γ → Prop) (f : γ → ℝ) :
-    ∑ a, (if p a then f a else 0) = ∑ x : {a // p a}, f x.1 := by
-  rw [Finset.sum_ite, Finset.sum_const_zero, add_zero, ← Finset.sum_subtype_eq_sum_filter,
-    Finset.subtype_univ]
 
 open Classical in
 /-- One side of a swap: the normalized weight is within `2 ρ + 2 ε / (1 - ε)` of
@@ -163,61 +156,5 @@ theorem abs_normalized_sub_le_of_base_agree {α β : Type*} [Fintype α] [Fintyp
   rw [doubled]
   rw [abs_le] at one two ⊢
   constructor <;> linarith [one.1, one.2, two.1, two.2]
-
-open Classical in
-/-- **Normalized laws related by a swap.** -/
-theorem abs_normalized_sub_le_of_swap {α β : Type*} [Fintype α] [Fintype β]
-    (weight₁ : α → ℝ) (weight₂ : β → ℝ) (base₁ : α → ℝ) (base₂ : β → ℝ)
-    (regular₁ : α → Prop) (regular₂ : β → Prop)
-    (swap : {a // regular₁ a} ≃ {b // regular₂ b})
-    (record₁ : α → R) (record₂ : β → R)
-    (baseEq : ∀ a, base₂ (swap a).1 = base₁ a.1)
-    (recordEq : ∀ a, record₂ (swap a).1 = record₁ a.1)
-    (weight₁_nonneg : ∀ a, 0 ≤ weight₁ a) (weight₂_nonneg : ∀ b, 0 ≤ weight₂ b)
-    (base₁_nonneg : ∀ a, regular₁ a → 0 ≤ base₁ a)
-    (scale₁ scale₂ : ℝ) (scale₁_pos : 0 < scale₁) (scale₂_pos : 0 < scale₂)
-    (ε ρ : ℝ) (ε_lt : ε < 1)
-    (close₁ : ∀ a, regular₁ a → |weight₁ a - scale₁ * base₁ a| ≤ ε * (scale₁ * base₁ a))
-    (close₂ : ∀ b, regular₂ b → |weight₂ b - scale₂ * base₂ b| ≤ ε * (scale₂ * base₂ b))
-    (base_pos : 0 < ∑ a, if regular₁ a then base₁ a else 0)
-    (irregular₁ : ∑ a, (if regular₁ a then 0 else weight₁ a) ≤
-      ρ * ∑ a, if regular₁ a then weight₁ a else 0)
-    (irregular₂ : ∑ b, (if regular₂ b then 0 else weight₂ b) ≤
-      ρ * ∑ b, if regular₂ b then weight₂ b else 0)
-    (payoff : R → ℝ) (unit : ∀ r, 0 ≤ payoff r ∧ payoff r ≤ 1) :
-    |∑ a, weight₁ a / (∑ c, weight₁ c) * payoff (record₁ a) -
-        ∑ b, weight₂ b / (∑ c, weight₂ c) * payoff (record₂ b)| ≤
-      4 * ρ + 4 * ε / (1 - ε) := by
-  have base₂_nonneg : ∀ b, regular₂ b → 0 ≤ base₂ b := fun b reg => by
-    have := baseEq (swap.symm ⟨b, reg⟩)
-    rw [Equiv.apply_symm_apply] at this
-    rw [this]
-    exact base₁_nonneg _ (swap.symm ⟨b, reg⟩).2
-  have baseTotal : (∑ b, if regular₂ b then base₂ b else 0) =
-      ∑ a, if regular₁ a then base₁ a else 0 := by
-    rw [sum_ite_eq_sum_subtype regular₂ base₂, sum_ite_eq_sum_subtype regular₁ base₁]
-    exact (Equiv.sum_comp swap (fun b => base₂ b.1)).symm.trans
-      (Finset.sum_congr rfl fun a _ => baseEq a)
-  have sameLaw : (∑ b, (if regular₂ b then base₂ b else 0) /
-      (∑ c, if regular₂ c then base₂ c else 0) * payoff (record₂ b)) =
-      ∑ a, (if regular₁ a then base₁ a else 0) /
-        (∑ c, if regular₁ c then base₁ c else 0) * payoff (record₁ a) := by
-    rw [baseTotal]
-    set total := ∑ c, if regular₁ c then base₁ c else 0
-    have left := sum_ite_eq_sum_subtype regular₂ fun b => base₂ b / total * payoff (record₂ b)
-    have right := sum_ite_eq_sum_subtype regular₁ fun a => base₁ a / total * payoff (record₁ a)
-    have reshape₂ : (∑ b, (if regular₂ b then base₂ b else 0) / total * payoff (record₂ b)) =
-        ∑ b, if regular₂ b then base₂ b / total * payoff (record₂ b) else 0 :=
-      Finset.sum_congr rfl fun b _ => by split <;> simp
-    have reshape₁ : (∑ a, (if regular₁ a then base₁ a else 0) / total * payoff (record₁ a)) =
-        ∑ a, if regular₁ a then base₁ a / total * payoff (record₁ a) else 0 :=
-      Finset.sum_congr rfl fun a _ => by split <;> simp
-    rw [reshape₂, reshape₁, left, right]
-    exact (Equiv.sum_comp swap (fun b => base₂ b.1 / total * payoff (record₂ b.1))).symm.trans
-      (Finset.sum_congr rfl fun a _ => by rw [baseEq, recordEq])
-  exact abs_normalized_sub_le_of_base_agree weight₁ weight₂ base₁ base₂ regular₁ regular₂
-    record₁ record₂ weight₁_nonneg weight₂_nonneg base₁_nonneg base₂_nonneg scale₁ scale₂
-    scale₁_pos scale₂_pos ε ρ ε_lt close₁ close₂ base_pos (by rw [baseTotal]; exact base_pos)
-    irregular₁ irregular₂ payoff unit sameLaw
 
 end GameTheory.Math.Probability

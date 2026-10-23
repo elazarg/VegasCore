@@ -73,35 +73,4 @@ theorem responseMenu_exclusion_or_classified_eq
     PMF.map_comp] at compared
   exact compared
 
-/-- The actual finite-menu continuation has the native classified stopped law,
-including each exact first excluded-owner set and complete surviving history. -/
-theorem responseMenu_exclusion_classified_eq
-    (initialized : ∀ state ∈ initial.support, ∃ inputs,
-      state = (⟨State.initial inputs, ∅⟩ : RecoveryState graph))
-    (menu : (runtime.recoveryApplication leaks).ResponseMenu)
-    (profile : ∀ who, (menu.information initial horizon scheduler).BehavioralPolicy who)
-    (nativeCertificate : (NativeProtocol).WellFoundedHistories)
-    (recoveryCertificate : (RecoveryProtocol).WellFoundedHistories)
-    (menuCertificate : (menu.protocol initial horizon scheduler).WellFoundedHistories)
-    (history : (menu.protocol initial horizon scheduler).History)
-    (clear : ∀ current, history.state = some current →
-      current.execution.application.excluded = ∅) :
-    let raw := menu.toRawHistory initial horizon scheduler history
-    ((NativeModel).runBehavioralUntil nativeCertificate
-      (nativeProfile runtime leaks initial horizon scheduler
-        (fun who => menu.embedPolicy initial horizon scheduler who (profile who)))
-      (fun history => ¬ NativeClear runtime leaks initial horizon scheduler history)
-      (nativeHistory runtime leaks initial horizon scheduler raw clear)).map
-        (nativeClassifiedReadout runtime leaks initial horizon scheduler) =
-    ((menu.information initial horizon scheduler).runBehavioralUntil menuCertificate profile
-      (fun history => ¬ RecoveryClear runtime leaks initial horizon scheduler
-        (menu.toRawHistory initial horizon scheduler history)) history).map
-      (fun history => recoveryClassifiedReadout runtime leaks initial horizon scheduler
-        (menu.toRawHistory initial horizon scheduler history)) := by
-  classical
-  simpa only [or_false] using
-    responseMenu_exclusion_or_classified_eq runtime leaks initial horizon scheduler initialized
-      menu profile nativeCertificate recoveryCertificate menuCertificate (fun _ => False)
-      (fun _ => False) (fun _ _ => Iff.rfl) history clear
-
 end Vegas.EventGraphRuntime.RecoveryProjection

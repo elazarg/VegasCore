@@ -93,17 +93,4 @@ theorem native_playerView_other (owned : memory.OwnBindings owner) (state : Stat
   simp only [different, ↓reduceIte]
   rfl
 
-theorem phased_publicView (owned : memory.OwnBindings owner) (state : PhaseRuntimeState graph) :
-    (memory.phased owner state).publicView = state.publicView := by
-  simp only [PhaseRuntimeState.publicView, phased, recovery, native_publicView owned,
-    PhaseRuntimeState.attempt, List.map_map, Function.comp_def]
-
-theorem phased_playerView_other (owned : memory.OwnBindings owner)
-    (state : PhaseRuntimeState graph) (who : Player) (different : who ≠ owner) :
-    (memory.phased owner state).playerView who = state.playerView who := by
-  change ((memory.native owner state.current.native).playerView who,
-    (memory.phased owner state).publicView) = _
-  rw [native_playerView_other owned state.current.native who different, phased_publicView owned]
-  rfl
-
 end Vegas.EventGraphRuntime.BindingShadow

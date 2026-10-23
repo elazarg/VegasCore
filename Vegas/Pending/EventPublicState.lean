@@ -81,14 +81,6 @@ theorem ownTurn?_of_ownTurn (view : PublicView graph) (who : Player) (event : gr
 def Idle (view : PublicView graph) (who : Player) : Prop :=
   ∀ event, view.EventReady event → graph.actor? event ≠ some who
 
-theorem ownTurn?_eq_none (view : PublicView graph) (who : Player) (idle : view.Idle who) :
-    view.ownTurn? who = none := by
-  classical
-  unfold ownTurn?
-  apply List.find?_eq_none.mpr
-  intro event _ selected
-  exact idle event (of_decide_eq_true selected).1 (of_decide_eq_true selected).2
-
 /-- `event` is the only ready event. In a sequentialized graph every ready event
 is; under the barrier order a ready public event is. Other players then have
 no turn while it is served. -/
@@ -106,11 +98,6 @@ theorem SoleReady.idle {view : PublicView graph} {event : graph.EventId}
     (sole : view.SoleReady event) {who : Player} (foreign : graph.actor? event ≠ some who) :
     view.Idle who :=
   fun other ready actor => foreign (sole.2 other ready ▸ actor)
-
-theorem SoleReady.ownTurn?_foreign {view : PublicView graph} {event : graph.EventId}
-    (sole : view.SoleReady event) {who : Player} (foreign : graph.actor? event ≠ some who) :
-    view.ownTurn? who = none :=
-  view.ownTurn?_eq_none who (sole.idle foreign)
 
 end PublicView
 

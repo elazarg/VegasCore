@@ -38,22 +38,4 @@ theorem idleNetwork_instruction (runtime : EventGraphRuntime graph)
   simp [interactionInstruction, idleNetwork, NetworkChoice.command,
     ReactiveApplication.atMostOnceCommand, PMF.pure_map]
 
-/-- Rejection depends on the current ready event, not merely the author.
-This also covers premature packets for a later event owned by the same player. -/
-theorem handle_eq_none_of_other_event_ready_public
-    (runtime : EventGraphRuntime graph) (ordered : graph.BarrierOrdered)
-    (state : State graph) (current : graph.EventId)
-    (isPublic : (graph.outputLayout current).IsPublic)
-    (ready : state.config.cut.Ready current)
-    (message : Message Player (Payload graph))
-    (other : Payload.event? graph message.payload ≠ some current) :
-    runtime.handle state message = none := by
-  cases accepted : runtime.handle state message with
-  | none => rfl
-  | some next =>
-      obtain ⟨actual, addressed, actualReady, _, _⟩ :=
-        runtime.handle_config_mem_step state next message accepted
-      have same := ordered.ready_public_unique state.config.cut isPublic ready actualReady
-      exact (other (addressed.trans (congrArg some same))).elim
-
 end Vegas.EventGraphRuntime

@@ -112,41 +112,4 @@ theorem runBehavioralFrom_readout
     same] at law
   exact law
 
-theorem runBehavioralFrom_value
-    (profile : Profile (setup.informationModel admission).behavioralSignature)
-    (utility : State L setup.program.terminalCtx → ℝ)
-    (fuel : Nat) (history : (setup.executionProtocol admission).History)
-    (enough : setup.protocolRemaining history.state ≤ fuel) :
-    expect ((setup.informationModel admission).runBehavioralFrom profile fuel history)
-        (fun final => (setup.protocolReadout final.state).elim 0 utility) =
-      expect (setup.continuationLaw (setup.decodeBehavioralProfile admission profile)
-        history.state) utility := by
-  have law := congrArg (fun distribution => expect distribution (fun state => state.elim 0 utility))
-    (setup.runBehavioralFrom_readout admission profile fuel history enough)
-  simpa only [expect_map, Function.comp_def, Option.elim_some] using law
-
-/-- The original assessment and its whole-policy deviations are retained.
-Only the belief is pushed to the actual source state for evaluating utility.
-Finitely many legal histories make every utility integrable. -/
-theorem truncatedContinuationContext_value_stateBelief
-    [Finite (setup.executionProtocol admission).History]
-    (assessment : (setup.informationModel admission).BehavioralAssessment)
-    (who : Player) (site : (setup.informationModel admission).InformationSite who)
-    (alternative : (setup.informationModel admission).BehavioralPolicy who)
-    (utility : State L setup.program.terminalCtx → ℝ) (fuel : Nat)
-    (enough : ∀ history : (setup.informationModel admission).InformationHistory who site.1,
-      setup.protocolRemaining history.1.state ≤ fuel) :
-    (assessment.truncatedContinuationContext site
-      (fun final => (setup.protocolReadout final.state).elim 0 utility) fuel).value alternative =
-      expect (assessment.stateBelief who site) (fun state =>
-        expect (setup.continuationLaw (setup.decodeBehavioralProfile admission
-          (Profile.update (sig := (setup.informationModel admission).behavioralSignature)
-            assessment.strategy who alternative)) state) utility) := by
-  rw [InformationModel.BehavioralAssessment.truncatedContinuationContext_value,
-    expect_bind_of_finite, InformationModel.BehavioralAssessment.stateBelief, expect_map,
-    Function.comp_def]
-  apply expect_congr_on_support
-  intro history _supported
-  exact setup.runBehavioralFrom_value admission _ utility fuel history.1 (enough history)
-
 end Vegas.SourceProgram.Setup

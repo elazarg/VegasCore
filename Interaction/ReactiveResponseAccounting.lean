@@ -93,15 +93,6 @@ private theorem accounted_history (initial : PMF app.State) (horizon : Nat)
                     exact ⟨execution.environmentRecall, execution.observeEnvironment app,
                       command, advanced, active⟩
 
-/-- Counts the player's completed responses and the currently pending
-response against activations in the actual environment transcript. -/
-theorem response_count_history (initial : PMF app.State) (horizon : Nat)
-    (scheduler : app.Scheduler) (control : app.Control)
-    (trace : (app.protocol initial horizon scheduler).Trace (some control)) (who : Principal) :
-    (control.execution.recall who).length + (if control.actor = some who then 1 else 0) =
-      (app.activationHistory control.execution).count who :=
-  (accounted_history app initial horizon scheduler trace).1 who
-
 /-- An active callback was introduced by the final recorded environment
 command, even when earlier commands and activation decisions were conditional. -/
 theorem active_environment_entry (initial : PMF app.State) (horizon : Nat)

@@ -97,16 +97,6 @@ theorem remaining_step : {Γ : SourceCtx Player L} → {O : Finset VarId} →
 
 end ProtocolState
 
-theorem protocol_terminates {Γ : SourceCtx Player L} {O : Finset VarId}
-    (program : SourceProgram Player L Γ O) (admission : CommitmentInterface program)
-    (initial : Config Player L Γ) :
-    (executionProtocol program admission initial).WellFoundedPlay := by
-  apply wellFoundedPlay_of_rank (ProtocolState.remaining program)
-  intro before after step
-  obtain ⟨joint, legal, reached⟩ := step
-  have consumed := ProtocolState.remaining_step program before after joint legal.1 reached
-  omega
-
 theorem protocol_history_length {Γ : SourceCtx Player L} {O : Finset VarId}
     (program : SourceProgram Player L Γ O) (admission : CommitmentInterface program)
     (initial : Config Player L Γ) :

@@ -55,18 +55,4 @@ theorem terminal_run_restrict_eq_finish
   rw [menu.toRawTrace_length initial horizon scheduler history.trace] at bounded
   omega
 
-/-- At the initial history, the terminal game law retains the full execution
-law of the original covered policies, including every private recall and receipt. -/
-theorem terminal_run_restrict_eq_rounds
-    (certificate : (menu.protocol initial horizon scheduler).WellFoundedHistories)
-    (profile : Principal → app.Policy)
-    (covered : ∀ who, menu.Admissible initial horizon scheduler who (profile who)) :
-    ((menu.information initial horizon scheduler).runBehavioralTerminalFrom certificate
-      (fun who => menu.restrictPolicy initial horizon scheduler who (profile who))
-      (menu.protocol initial horizon scheduler).initHistory).map History.state =
-      (app.roundsFrom initial scheduler profile horizon).map app.finished := by
-  rw [menu.terminal_run_restrict_eq_finish initial horizon scheduler certificate profile covered]
-  change app.finish initial horizon scheduler profile none = _
-  simp only [ReactiveApplication.finish, ReactiveApplication.roundsFrom, PMF.map_bind]
-
 end Interaction.ReactiveApplication.ResponseMenu

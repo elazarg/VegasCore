@@ -48,31 +48,4 @@ theorem encoded_prefix_state (setup : Setup (Player := Player) (L := L))
       exact bind_congr_on_support _ fun state _ =>
         setup.behavioralStateStep_encoded_some admission profile permitted state
 
-/-- A source-kernel support witness gives an actual source history at the
-same depth, preserving its complete existing protocol state. -/
-theorem exists_history_of_prefix_support
-    (setup : Setup (Player := Player) (L := L))
-    (admission : CommitmentInterface setup.program)
-    (profile : BehavioralProfile setup.program)
-    (permitted : ∀ who, (profile who).Admitted setup.program admission)
-    (initial : State L setup.context) (initialSupport : initial ∈ setup.initialLaw.support)
-    (count : Nat) (state : SourceProgram.ProtocolState setup.program)
-    (supported : state ∈ ((fun law => law.bind
-      (ProtocolState.behavioralStateStep setup.program profile))^[count]
-        (PMF.pure (ProtocolState.entry setup.program (setup.initialConfig initial)))).support) :
-    ∃ history : (setup.executionProtocol admission).History,
-      history ∈ ((setup.informationModel admission).runBehavioral
-        (fun who => setup.toProtocolBehavioralPolicy admission who (profile who) (permitted who))
-        (count + 1)).support ∧ history.state = some state := by
-  have member : some state ∈ (((setup.informationModel admission).runBehavioral
-      (fun who => setup.toProtocolBehavioralPolicy admission who (profile who) (permitted who))
-      (count + 1)).map History.state).support := by
-    rw [setup.encoded_prefix_state, PMF.support_bind]
-    apply Set.mem_iUnion₂.mpr
-    refine ⟨initial, initialSupport, ?_⟩
-    rw [PMF.support_map]
-    exact ⟨state, supported, rfl⟩
-  obtain ⟨history, supported, same⟩ := PMF.support_map .. ▸ member
-  exact ⟨history, supported, same⟩
-
 end Vegas.SourceProgram.Setup

@@ -17,12 +17,6 @@ def failedDisclosure (owner : Player) (name : VarId) : ProposalRecoveryMove Play
   ⟨⟨.reveal owner name false, false⟩, true⟩
 
 omit [DecidableEq Player] [IExpr.ResultTypes L] in
-theorem failedDisclosure_valid (owner : Player) (name : VarId) :
-    (failedDisclosure (L := L) owner name).Valid := by
-  intro _
-  exact ⟨owner, name, rfl⟩
-
-omit [DecidableEq Player] [IExpr.ResultTypes L] in
 @[simp] theorem failedDisclosure_discloses (owner : Player) (name : VarId) :
     (failedDisclosure (L := L) owner name).discloses = true := rfl
 
@@ -44,18 +38,6 @@ theorem recoveryProposal_reveal_success
     recoveryProposal (.reveal published owner name fresh source unresolved next)
         (Sum.inl config) joint = some (0, ⟨payload, value⟩) := by
   simp [recoveryProposal, exposed, stored]
-
-theorem recoveryProposal_reveal_failure (stored : config.state.get source = .failure) :
-    recoveryProposal (.reveal published owner name fresh source unresolved next)
-        (Sum.inl config) joint = none := by
-  simp only [recoveryProposal, Sum.elim_inl, stored]
-  split <;> rfl
-
-theorem recoveryProposal_reveal_withheld
-    (hidden : ((joint owner).map (·.discloses)).getD false = false) :
-    recoveryProposal (.reveal published owner name fresh source unresolved next)
-        (Sum.inl config) joint = none := by
-  simp only [recoveryProposal, Sum.elim_inl, hidden, Bool.false_eq_true, ite_false]
 
 end ProtocolState
 end Vegas.SourceProgram

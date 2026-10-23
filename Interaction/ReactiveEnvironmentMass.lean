@@ -53,25 +53,4 @@ theorem transition_environment_apply (initial : PMF app.State) (horizon : Nat)
         moved)
     rw [(PMF.apply_eq_zero_iff _ _).mpr absent, mul_zero]
 
-/-- Activation probability depends on the resulting physical network, not on
-whether two pending-observation draws happen to produce that same network. -/
-theorem environmentStep_activate_apply (before after : app.Execution) (who : Principal)
-    (moved : after ∈ (before.environmentStep app (.activate who)).support) :
-    (before.environmentStep app (.activate who)) after =
-      ((app.observePending who before.network.pending).map fun selected =>
-        before.network.learn who selected) after.network := by
-  let learned := (app.observePending who before.network.pending).map fun selected =>
-    before.network.learn who selected
-  let install (network : MessageNetwork Principal app.Payload) : app.Execution :=
-    { before with network := network, environmentRecall := before.environmentRecall ++
-      [⟨before.observeEnvironment app, .activate who⟩] }
-  have law : before.environmentStep app (.activate who) = learned.map install := by
-    simp only [Execution.environmentStep, learned, PMF.map_comp, Function.comp_def, install]
-  have injective : Function.Injective install := by
-    intro first second same
-    exact congrArg Execution.network same
-  rw [law, PMF.support_map] at moved
-  obtain ⟨network, _supported, rfl⟩ := moved
-  rw [law, pmf_map_apply_of_injective _ injective]
-
 end Interaction.ReactiveApplication

@@ -37,87 +37,8 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   {profiles : ℕ → ∀ player,
     (onePacketInformation setup leaks bounds horizon scheduler).BehavioralPolicy player}
 
-variable (setup leaks bounds horizon scheduler sequence profiles) in
-/-- **Response masses compared under hidden swaps.** At stage `n`, every
-response of a player other than `who`, acting at an information state forced for
-it with a canonical disclosure, along a history ending at a state guarded for a
-hidden swap, whose image under the swap is regular, has response mass at most
-`K₁` times that of its image. -/
-def SwapResponseBound (n : ℕ) (who : Player) (K₁ : ℝ) : Prop :=
-  ∀ (swap : HiddenSwap (graph setup)) (allowed : Set (graph setup).Inputs) {before after}
-    (_ : (onePacketProtocol setup leaks bounds horizon scheduler).Trace before) joint
-    (legal : (onePacketProtocol setup leaks bounds horizon scheduler).Legal before joint)
-    (_ : after ∈ ((onePacketProtocol setup leaks bounds horizon scheduler).step before
-      ⟨joint, legal⟩).support) (_ : SwapGuardState setup swap allowed after)
-    (_ : (onePacketProtocol setup leaks bounds horizon scheduler).Trace
-      (swap.protocolState before))
-    (imageLegal : (onePacketProtocol setup leaks bounds horizon scheduler).Legal
-      (swap.protocolState before) (swap.joint joint))
-    (_ : swap.protocolState after ∈ ((onePacketProtocol setup leaks bounds horizon scheduler).step
-      (swap.protocolState before) ⟨swap.joint joint, imageLegal⟩).support)
-    (control next : (application setup leaks).Control) (actor : Player),
-    before = some control → after = some next → control.actor = some actor → actor ≠ who →
-    forcedAgent (bounds.onePacketMenu (runtime setup) leaks) (initialLaw setup) horizon scheduler
-      actor ((application setup leaks).observe actor (some control)) →
-    DisclosureCanonical setup leaks bounds actor (control.execution.recall actor)
-      (control.execution.observe (application setup leaks) actor) →
-    RegularStep setup leaks bounds horizon scheduler (sequence n) who
-      (swap.protocolState before) (swap.joint joint) (swap.protocolState after) →
-    responseMass setup leaks bounds horizon scheduler (profiles n) control joint ≤
-      K₁ * responseMass setup leaks bounds horizon scheduler (profiles n) (swap.control control)
-        (swap.joint joint)
-
-variable (setup leaks bounds horizon scheduler sequence profiles) in
-/-- **The first irregular response compared under hidden swaps.** At stage `n`,
-an irregular response of a forced player other than `who` from a state forced
-for `who`, after a regular history, whose image under a hidden swap is regular,
-has response mass at most `ε` times that of its image. -/
-def SwapFirstBound (n : ℕ) (who : Player) (ε : ℝ) : Prop :=
-  ∀ (swap : HiddenSwap (graph setup)) (allowed : Set (graph setup).Inputs) {before after}
-    (prior : (onePacketProtocol setup leaks bounds horizon scheduler).Trace before) joint
-    (legal : (onePacketProtocol setup leaks bounds horizon scheduler).Legal before joint)
-    (_ : after ∈ ((onePacketProtocol setup leaks bounds horizon scheduler).step before
-      ⟨joint, legal⟩).support) (_ : SwapGuardState setup swap allowed after)
-    (_ : (onePacketProtocol setup leaks bounds horizon scheduler).Trace
-      (swap.protocolState before))
-    (imageLegal : (onePacketProtocol setup leaks bounds horizon scheduler).Legal
-      (swap.protocolState before) (swap.joint joint))
-    (_ : swap.protocolState after ∈ ((onePacketProtocol setup leaks bounds horizon scheduler).step
-      (swap.protocolState before) ⟨swap.joint joint, imageLegal⟩).support)
-    (control next : (application setup leaks).Control) (actor : Player),
-    before = some control → after = some next → control.actor = some actor → actor ≠ who →
-    ForcedState setup leaks who (some control) →
-    forcedAgent (bounds.onePacketMenu (runtime setup) leaks) (initialLaw setup) horizon scheduler
-      actor ((application setup leaks).observe actor (some control)) →
-    RegularStep setup leaks bounds horizon scheduler (sequence n) who
-      (swap.protocolState before) (swap.joint joint) (swap.protocolState after) →
-    RegularTrace setup leaks bounds horizon scheduler (sequence n) who prior →
-    ¬ RegularStep setup leaks bounds horizon scheduler (sequence n) who before joint after →
-    responseMass setup leaks bounds horizon scheduler (profiles n) control joint ≤
-      ε * responseMass setup leaks bounds horizon scheduler (profiles n) (swap.control control)
-        (swap.joint joint)
-
 variable [DecidableEq (CellTy Player L)]
   [Finite (onePacketProtocol setup leaks bounds horizon scheduler).History]
-
-omit [DecidableEq (CellTy Player L)]
-  [Finite (onePacketProtocol setup leaks bounds horizon scheduler).History] in
-private theorem observe_of_infoOf'' {who : Player}
-    {past : List (application setup leaks).PlayerEntry}
-    {view : (application setup leaks).PlayerView}
-    (native : (onePacketProtocol setup leaks bounds horizon scheduler).History)
-    (seen : (onePacketInformation setup leaks bounds horizon scheduler).infoOf who native.trace =
-      some (past, view)) {control : (application setup leaks).Control}
-    (current : native.state = some control) :
-    control.execution.observe (application setup leaks) who = view := by
-  obtain ⟨state, trace⟩ := native
-  change state = some control at current
-  subst current
-  rw [onePacket_infoOf] at seen
-  by_cases active : control.actor = some who
-  · simp only [ReactiveApplication.observe, active, ↓reduceIte] at seen
-    exact (Prod.mk.inj (Option.some.inj seen)).2
-  · simp [ReactiveApplication.observe, active] at seen
 
 omit [DecidableEq (CellTy Player L)]
   [Finite (onePacketProtocol setup leaks bounds horizon scheduler).History] in

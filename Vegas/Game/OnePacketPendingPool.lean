@@ -28,9 +28,8 @@ currently ready event by its actor, with exactly its own certificate
 its event was ready when it was sent. Had the event completed since, either a
 second packet of the actor for it was accepted, which the count verdict
 forbids, or the reveal expired, which is a failed reveal and leaves the forced
-region. Hence every value disclosed in the pending pool, which the scheduler
-and the observation rule read, is the value of the ready event's opening
-(`Vegas.onePacket_pending_disclosed_of_forced`).
+region. Hence no pending packet carries the value of any event other than the
+ready one.
 -/
 
 noncomputable section
@@ -142,21 +141,6 @@ theorem revealFailed_of_decode_withhold {Field : Type} [DecidableEq Field]
           exact ⟨who, Or.inr failed⟩
 
 end Vegas.SourceProgram.ProtocolState
-
-namespace Vegas.EventGraphRuntime
-
-variable {Player : Type} {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
-
-/-- The values a packet discloses to whoever reads it: the value in an opening
-or malformed call, and the value of attached evidence. A commitment call
-carries a handle and no value. -/
-def WitnessedPacket.disclosedValues (packet : WitnessedPacket graph) : List (Raw L) :=
-  (match packet.call with
-    | .commitment _ _ => []
-    | .opening _ _ raw => [raw]
-    | .malformed raw => [raw]) ++ (packet.evidence.map OpeningFact.raw).toList
-
-end Vegas.EventGraphRuntime
 
 namespace Vegas
 
@@ -607,33 +591,6 @@ theorem onePacket_pending_of_forced (horizon : Nat)
                   (otherNamed.trans messageNamed.symm)
           exact Or.inr ⟨event, candidate, raw, rfl, evidence,
             ⟨open_, fun predecessor member => issued predecessor member⟩, actor⟩
-
-/-- **The scheduler and the observation rule read no other unopened value.**
-Both read the public environment view and the pending payloads. At a history
-of the one-packet game in a forced state, every value a pending packet
-discloses is the value of an opening of the currently ready event, the only
-ready event of the sequential graph, sent by that event's actor. -/
-theorem onePacket_pending_disclosed_of_forced (horizon : Nat)
-    (scheduler : (application setup leaks).Scheduler) (who : Player)
-    (history : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
-      scheduler).History)
-    (forced : ForcedState setup leaks who history.state)
-    {control : (application setup leaks).Control} (current : history.state = some control)
-    (message : Message Player (WitnessedPacket (graph setup)))
-    (pending : message ∈ control.execution.network.pending) :
-    ∀ raw ∈ message.payload.disclosedValues, ∃ event candidate,
-      message.payload.call = .opening event candidate raw ∧
-        control.execution.application.config.cut.Ready event ∧
-        (graph setup).actor? event = some message.sender := by
-  intro disclosed member
-  rcases onePacket_pending_of_forced bounds horizon scheduler who history forced current message
-    pending with ⟨event, candidate, call, evidence⟩ |
-      ⟨event, candidate, raw, call, evidence, ready, actor⟩
-  · simp [WitnessedPacket.disclosedValues, call, evidence] at member
-  · have same : disclosed = raw := by
-      simpa [WitnessedPacket.disclosedValues, call, evidence] using member
-    subst same
-    exact ⟨event, candidate, call, ready, actor⟩
 
 end PendingPool
 

@@ -125,31 +125,6 @@ def WitnessedSubmission.emit (submission : WitnessedSubmission graph)
     (submission.emit state who known).token =
       state.publicView.tokenFor submission.call.packet := rfl
 
-theorem WitnessedSubmission.tokenValid_emit (submission : WitnessedSubmission graph)
-    (state : State graph) (who : Player)
-    (known : List (Message Player (WitnessedPacket graph))) :
-    (submission.emit state who known).tokenValid =
-      (WitnessedPacket.mk submission.call.packet none
-        (state.publicView.tokenFor submission.call.packet)).tokenValid := rfl
-
-/-- A token is attached only when the contract state the sender sees has
-issued it: every direct prerequisite of the call's event has completed. -/
-theorem WitnessedSubmission.emit_token_issued (submission : WitnessedSubmission graph)
-    (state : State graph) (who : Player)
-    (known : List (Message Player (WitnessedPacket graph))) (token : ReadinessToken graph)
-    (attached : (submission.emit state who known).token = some token) :
-    submission.call.packet.event? graph = some token.event ∧
-      ∀ predecessor ∈ graph.order.predecessors token.event,
-        predecessor ∈ state.publicView.observation.completionOrder := by
-  rw [emit_token, PublicView.tokenFor] at attached
-  cases named : submission.call.packet.event? graph with
-  | none => simp [named] at attached
-  | some event =>
-      rw [named, Option.bind_some] at attached
-      obtain ⟨rfl, complete⟩ :=
-        (state.publicView.readinessToken?_eq_some_iff event token).mp attached
-      exact ⟨rfl, complete⟩
-
 @[simp] theorem WitnessedSubmission.emit_none (call : Submission graph)
     (state : State graph) (who : Player)
     (known : List (Message Player (WitnessedPacket graph))) :
@@ -164,31 +139,6 @@ theorem WitnessedSubmission.emit_owned (call : Submission graph)
   have verified : state.candidates.verify fact.handle fact.raw = true :=
     (CommitmentCandidates.verify_eq_true_iff _ _ _).mpr valid
   simp [emit, owner, verified]
-
-/-- A foreign candidate cannot be tested by requesting its certificate. -/
-theorem WitnessedSubmission.emit_foreign (call : Submission graph)
-    (state : State graph) (who : Player)
-    (known : List (Message Player (WitnessedPacket graph))) (fact : OpeningFact graph)
-    (foreign : fact.handle.1 ≠ who) :
-    (WitnessedSubmission.mk call (.owned fact) |>.emit state who known).evidence = none := by
-  simp [emit, foreign]
-
-theorem WitnessedSubmission.emit_forward (call : Submission graph)
-    (state : State graph) (who : Player)
-    (known : List (Message Player (WitnessedPacket graph))) (id : MessageId Player)
-    (message : Message Player (WitnessedPacket graph))
-    (found : known.find? (fun message => message.id = id) = some message) :
-    (WitnessedSubmission.mk call (.forward id) |>.emit state who known).evidence =
-      message.payload.evidence := by
-  simp [emit, found]
-
-/-- Invalid or guessed references create no certificate. -/
-theorem WitnessedSubmission.emit_unknown (call : Submission graph)
-    (state : State graph) (who : Player)
-    (known : List (Message Player (WitnessedPacket graph))) (id : MessageId Player)
-    (absent : known.find? (fun message => message.id = id) = none) :
-    (WitnessedSubmission.mk call (.forward id) |>.emit state who known).evidence = none := by
-  simp [emit, absent]
 
 /-- Every emitted certificate was available by ownership or earlier observation. -/
 theorem WitnessedSubmission.emit_origin (submission : WitnessedSubmission graph)

@@ -54,21 +54,6 @@ theorem reactive_respond_progress (runtime : EventGraphRuntime graph)
         rw [activationEq]
         exact activated
 
-theorem reactive_resume_progress (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (inputs : graph.Inputs)
-    (players : Player → (runtime.reactiveApplication leaks).Policy) (actor : Option Player)
-    (execution next : (runtime.reactiveApplication leaks).Execution)
-    (invariant : execution.application.Invariant inputs)
-    (reached : next ∈ ((runtime.reactiveApplication leaks).resume players actor
-      execution).support) :
-    State.ServiceProgress inputs 0 execution.application next.application := by
-  cases actor with
-  | none => cases (PMF.mem_support_pure_iff _ _).mp reached; exact .refl invariant
-  | some who =>
-      obtain ⟨action, _, rfl⟩ := PMF.support_map .. ▸ reached
-      exact runtime.reactive_respond_progress leaks inputs execution who action invariant
-
 def reactiveTicks (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)) :
       (runtime.reactiveApplication leaks).Command → Nat
@@ -188,69 +173,5 @@ theorem reactive_environment_progress (runtime : EventGraphRuntime graph)
         cases command <;> simpa [reactiveTicks, EnvironmentCommand.clockTicks] using clock
       · exact environmentStep_activatedAt_of_not_completed runtime
           execution.application state command invariant changed
-
-theorem reactive_dispatch_progress (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (inputs : graph.Inputs)
-    (players : Player → (runtime.reactiveApplication leaks).Policy)
-    (execution next : (runtime.reactiveApplication leaks).Execution)
-    (command : (runtime.reactiveApplication leaks).Command)
-    (invariant : execution.application.Invariant inputs)
-    (reached : next ∈ ((runtime.reactiveApplication leaks).dispatch players command
-      execution).support) :
-    State.ServiceProgress inputs (runtime.reactiveTicks leaks command)
-      execution.application next.application := by
-  obtain ⟨middle, supported, moved⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
-  have environment := runtime.reactive_environment_progress leaks inputs execution middle command
-    invariant supported
-  have response := runtime.reactive_resume_progress leaks inputs players _ middle next
-    environment.invariant moved
-  simpa only [Nat.add_zero] using environment.trans response
-
-theorem interactionInstruction_ticks (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (network : runtime.NetworkPolicy leaks)
-    (history : List (runtime.reactiveApplication leaks).EnvironmentEntry)
-    (view : (runtime.reactiveApplication leaks).EnvironmentView)
-    (instruction : ServiceInstruction graph)
-    (command : (runtime.reactiveApplication leaks).Command)
-    (supported : command ∈
-      (runtime.interactionInstruction leaks network history view instruction).support) :
-    runtime.reactiveTicks leaks command = instruction.ticks := by
-  cases instruction with
-  | wire =>
-      obtain ⟨choice, _, rfl⟩ := PMF.support_map .. ▸ supported
-      cases choice with
-      | activate who | wait => rfl
-      | «include» id =>
-          dsimp only [NetworkChoice.command, ReactiveApplication.atMostOnceCommand]
-          split <;> rfl
-  | includeLatest event owner =>
-      cases (PMF.mem_support_pure_iff _ _).mp supported
-      unfold reactiveLatest
-      split <;> rfl
-  | player who | sample event | tick | expire event =>
-      cases (PMF.mem_support_pure_iff _ _).mp supported
-      rfl
-
-omit [DecidableEq Player] in
-theorem interactionVisit_ticks (networkTurns : Nat) (event : graph.EventId) :
-    serviceTicks (interactionVisit networkTurns event) = 0 := by
-  simp only [interactionVisit, serviceTicks_append]
-  cases graph.actor? event <;>
-    simp [serviceTicks, ServiceInstruction.ticks]
-
-omit [DecidableEq Player] in
-theorem interactionEpoch_ticks (chosen : ServiceOrder graph) (networkTurns : Nat) :
-    serviceTicks (interactionEpoch chosen networkTurns) = 1 := by
-  have sweep : ∀ events : List graph.EventId,
-      serviceTicks (events.flatMap (interactionVisit networkTurns)) = 0 := by
-    intro events
-    induction events with
-    | nil => rfl
-    | cons event rest ih =>
-        rw [List.flatMap_cons, serviceTicks_append, interactionVisit_ticks, ih]
-  simp only [interactionEpoch, serviceTicks_append, sweep]
-  simp [serviceTicks, ServiceInstruction.ticks, Function.comp_def]
 
 end Vegas.EventGraphRuntime

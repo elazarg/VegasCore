@@ -37,55 +37,6 @@ local notation "app" => phaseApplication runtime leaks
 local notation "graph" => serviceGraph setup mode
 
 omit [Fintype Player] in
-/-- Normalize response aliases only for the selected owners. Every other
-owner's actual raw recall, in particular the focal information, is retained. -/
-def phaseCountServiceNormalization (owners : Finset Player) : (app).SubmissionNormalization where
-  normalize who view known material := if who ∈ owners then
-    (PhaseCount.normalization runtime leaks).normalize who view known material else material
-  idempotent who view known material := by
-    by_cases inside : who ∈ owners
-    · simpa only [ite_eq_left inside] using
-        (PhaseCount.normalization runtime leaks).idempotent who view known material
-    · simp only [ite_eq_right inside]
-  packet state who known material := by
-    by_cases inside : who ∈ owners
-    · simpa only [ite_eq_left inside] using
-        (PhaseCount.normalization runtime leaks).packet state who known material
-    · simp only [ite_eq_right inside]
-  submit state who known material := by
-    by_cases inside : who ∈ owners
-    · simpa only [ite_eq_left inside] using
-        (PhaseCount.normalization runtime leaks).submit state who known material
-    · simp only [ite_eq_right inside]
-
-omit [Fintype Player] in
-theorem phaseCountServiceNormalization_recall_fixed (owners : Finset Player) (who : Player)
-    (outside : who ∉ owners) (past : List (app).PlayerEntry) :
-    (phaseCountServiceNormalization setup mode runtime leaks owners).recall who past = past := by
-  induction past using List.reverseRecOn with
-  | nil => rfl
-  | append_singleton past entry ih =>
-      rw [ReactiveApplication.SubmissionNormalization.recall_append_action, ih]
-      rcases entry with ⟨before, ⟨transmitted⟩, emitted⟩
-      cases transmitted <;>
-        simp only [ReactiveApplication.SubmissionNormalization.action,
-          phaseCountServiceNormalization, ite_eq_right outside]
-
-omit [Fintype Player] in
-/-- A nonselected observer's complete native information is unchanged,
-including its original raw actions rather than only an operational projection. -/
-theorem phaseCountServiceNormalization_info_fixed (owners : Finset Player) (who : Player)
-    (outside : who ∉ owners) (observed : (app).Info) :
-    (phaseCountServiceNormalization setup mode runtime leaks owners).info who observed =
-      observed := by
-  cases observed with
-  | none => rfl
-  | some pair =>
-      rcases pair with ⟨past, view⟩
-      simp only [ReactiveApplication.SubmissionNormalization.info, Option.map_some,
-        phaseCountServiceNormalization_recall_fixed setup mode runtime leaks owners who outside]
-
-omit [Fintype Player] in
 theorem phaseCountService_submissionCount_normal_recall (normal : (app).SubmissionNormalization)
     (who : Player) (past : List (app).PlayerEntry) :
     (app).submissionCount (normal.recall who past) = (app).submissionCount past := by

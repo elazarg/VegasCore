@@ -84,35 +84,4 @@ theorem mem_commitMissingOwners {Γ Δ : SourceCtx Player L} {O P : Finset VarId
             change later.val + 1 < rest.length + 1 at inside
             omega, acting, omitted⟩
 
-/-- A completed actual commitment phase has precisely the inherited and newly
-missing owners. No condition excludes accepted unusable candidate meanings. -/
-theorem phase_excluded_iff_missing {graph : Vegas.EventGraph Player L}
-    (runtime : EventGraphRuntime graph)
-    (leaks : Interaction.MessageNetwork.ObservationRule Player (CommitAttemptPacket graph))
-    (plan : RuntimePhasePlan graph) (inputs : PMF graph.Inputs)
-    (horizon : Nat) (scheduler : (phaseApplication runtime leaks).Scheduler) {control}
-    (trace : ((phaseApplication runtime leaks).protocol
-      (inputs.map (PhaseRuntimeState.initial plan)) horizon scheduler).Trace (some control))
-    (phase : RuntimePhase graph) (current : phase ∈ control.execution.application.phases.head?)
-    (commitment : phase.kind = .commitment) (who : Player) :
-    who ∈ control.execution.application.current.excluded ↔
-      who ∈ control.execution.application.entry.excluded ∨
-        ∃ event ∈ phase.events,
-          event ∈ control.execution.application.current.native.config.cut.completed ∧
-          control.execution.application.current.native.accepted (.inr event) = none ∧
-          graph.actor? event = some who := by
-  have valid := phaseExclusionRecord_history runtime leaks plan inputs horizon scheduler trace
-  have record := valid.installed phase current
-  have within : control.execution.application.current.native.config.cut.Within
-      phase.low phase.high := by
-    cases phases : control.execution.application.phases with
-    | nil => simp only [phases, List.head?_nil, Option.not_mem_none] at current
-    | cons first remaining =>
-        simp only [phases, List.head?_cons, Option.mem_some_iff] at current
-        subst first
-        have positioned := valid.frontier.positioned
-        rw [phases] at positioned
-        exact positioned.2
-  exact record.commitment_owners phase commitment within who
-
 end Vegas

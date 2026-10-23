@@ -197,24 +197,4 @@ def recoveryTrace (initial : PMF (RecoveryState graph))
             (native_initial_inputs initial initialized) horizon
             (nativeScheduler runtime leaks scheduler) prior joint realized clear) clear realized)
 
-theorem recoveryTrace_length (initial : PMF (RecoveryState graph))
-    (initialized : ∀ state ∈ initial.support, ∃ inputs,
-      state = (⟨State.initial inputs, ∅⟩ : RecoveryState graph))
-    (horizon : Nat) (scheduler : (runtime.recoveryApplication leaks).Scheduler) :
-    ∀ {state} (trace : ((runtime.reactiveApplication leaks).protocol
-        (initial.map RecoveryState.native) horizon
-        (nativeScheduler runtime leaks scheduler)).Trace state)
-      (clear : ∀ current, state = some current →
-        PublicExclusionRecord (⟨current.execution.application, ∅⟩ : RecoveryState graph)),
-      (recoveryTrace runtime leaks initial initialized horizon scheduler trace clear).length =
-        trace.length := by
-  intro state trace
-  induction trace with
-  | start => intro _clear; rfl
-  | extend prior joint legal realized ih =>
-    intro clear
-    change (recoveryTrace runtime leaks initial initialized horizon scheduler prior _).length + 1 =
-      prior.length + 1
-    exact congrArg (fun length => length + 1) (ih _)
-
 end Vegas.EventGraphRuntime.RecoveryProjection

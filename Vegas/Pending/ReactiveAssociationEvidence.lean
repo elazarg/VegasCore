@@ -37,29 +37,6 @@ theorem reactiveBindingInvariant (runtime : EventGraphRuntime graph)
   environment state command next valid reached :=
     environmentStep_bindingInvariant runtime state next command valid reached
 
-/-- A carried candidate opening and its public graph association are jointly
-recognizable from the recipient's own current view. -/
-def bindingEvidenceObserved (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (view : (runtime.reactiveApplication leaks).PlayerView)
-    (fact : Vegas.EventGraph.CommitmentEvidence graph) : Prop :=
-  ∃ candidate, view.application.publicView.accepted fact.binding.field = some candidate ∧
-    (⟨candidate, ⟨fact.payload, fact.value⟩⟩ : OpeningFact graph) ∈
-      (runtime.packetEvidence leaks).observe view
-
-theorem observed_bindingEvidence_valid (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (execution : (runtime.reactiveApplication leaks).Execution) (who : Player)
-    (valid : execution.application.BindingInvariant)
-    (sound : (runtime.packetEvidence leaks).Sound execution)
-    (fact : Vegas.EventGraph.CommitmentEvidence graph)
-    (observed : runtime.bindingEvidenceObserved leaks
-      (execution.observe (runtime.reactiveApplication leaks) who) fact) :
-    fact.Holds execution.application.config.store := by
-  obtain ⟨candidate, associated, certificate⟩ := observed
-  exact valid.opening_stored fact.binding candidate fact.value associated
-    ((runtime.packetEvidence leaks).observed_valid execution who sound _ certificate)
-
 theorem reactiveBindingInvariant_history (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (inputs : PMF graph.Inputs) (horizon : Nat)

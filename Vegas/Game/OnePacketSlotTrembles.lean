@@ -16,20 +16,22 @@ encoded value at the drawn slot, normalized as a canonical decision is, and any
 other event takes the canonical
 decision (`Vegas.slotResponse`). The joint law of slot and value is the
 product (`Vegas.slotPairs_apply`), so the value law given any slot is the
-as-if-honest law, and the value marginal is that law (`Vegas.slotPairs_map_snd`).
+as-if-honest law.
 
 **Components.** A slot-trembled component puts the cube of the scale on the
 uniform law over the one-packet menu, then its square on the slot tier, then
 the scale on an alternative, and the rest on a main law
 (`Vegas.slotTrembledChoice`). A main choice keeps at least
 `(1 - scale³)(1 - scale²)(1 - scale)` of its main mass, which is at least
-`1 - 3 scale` (`Vegas.slotTrembledChoice_ge_main`, `Vegas.slotFactor_ge`); a
-choice outside the main law has mass at most `scale³ + scale² + scale`, one
-outside the main and alternative laws at most `scale³ + scale²`, and one
-outside all three at most `scale³`. The prescribed, waiting and silent
-components mirror the trembled ones; any other main law, such as a late
-choice, is slot-trembled by `Vegas.slotTrembledChoice` with silence as its
-alternative and the slot tier.
+`1 - 3 scale` (`Vegas.slotTrembledChoice_ge_main`, `Vegas.slotFactor_ge`). A
+choice has mass at most `scale³`, plus `scale²` times its slot-tier mass, plus
+`scale` times its alternative mass, plus its main mass
+(`Vegas.slotTrembledChoice_le`), so one outside all three laws has mass at most
+`scale³` (`Vegas.slotTrembledChoice_le_of_unprescribed`). The prescribed
+component sends the as-if-honest response with silence as its alternative
+(`Vegas.slotPrescribedComponent`); any other main law, such as a late choice,
+is slot-trembled by `Vegas.slotTrembledChoice` with silence as its alternative
+and the slot tier.
 -/
 
 noncomputable section
@@ -54,13 +56,6 @@ theorem bind_map_pair_apply {α β : Type} (first : PMF α) (second : PMF β) (a
   · intro other different
     rw [PMF.map_apply]
     simp [Ne.symm different]
-
-theorem bind_map_pair_map_snd {α β : Type} (first : PMF α) (second : PMF β) :
-    (first.bind fun x => second.map (Prod.mk x)).map Prod.snd = second := by
-  rw [PMF.map_bind]
-  simp only [PMF.map_comp]
-  change first.bind (fun _ => second.map id) = second
-  rw [PMF.map_id, PMF.bind_const]
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
@@ -115,14 +110,6 @@ theorem slotPairs_apply (assessment : setup.intendedModel.BehavioralAssessment) 
       PMF.uniformOfFinset (trembleSlots setup bounds) (trembleSlots_nonempty setup bounds) slot *
         asIfHonestProfile setup leaks assessment who (some (past, view)) choice :=
   bind_map_pair_apply _ _ slot choice
-
-/-- The slot tier's source choices follow as-if-honest play. -/
-theorem slotPairs_map_snd (assessment : setup.intendedModel.BehavioralAssessment)
-    (who : Player) (past : List (application setup leaks).PlayerEntry)
-    (view : (application setup leaks).PlayerView) :
-    (slotPairs setup leaks bounds assessment who past view).map Prod.snd =
-      asIfHonestProfile setup leaks assessment who (some (past, view)) :=
-  bind_map_pair_map_snd _ _
 
 /-- The responses of the slot tier at a player view: silence away from the
 player's turn. -/
@@ -252,31 +239,6 @@ theorem slotFactor_le_one {scale : ℝ} (nonnegative : 0 ≤ scale) (le_one : sc
         mul_le_mul this (by linarith) (by linarith) zero_le_one
     _ = 1 := one_mul 1
 
-/-- A slot-trembled component gives a choice at least `(1 - scale³) scale²`
-times its slot mass. -/
-theorem slotTrembledChoice_ge_slot {scale : ℝ} (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1)
-    (who : Player) (info : (application setup leaks).Info)
-    (main alternative slot :
-      PMF ((onePacketModel setup leaks bounds initial horizon scheduler).Choice who info))
-    (choice : (onePacketModel setup leaks bounds initial horizon scheduler).Choice who info) :
-    (1 - scale ^ 3) * scale ^ 2 * (slot choice).toReal ≤
-      (slotTrembledChoice setup leaks bounds initial horizon scheduler scale nonnegative le_one
-        who info main alternative slot choice).toReal := by
-  rw [slotTrembledChoice_apply_toReal]
-  have uniform := unit_mass ((bounds.onePacketMenu (runtime setup) leaks).uniformPolicy initial
-    horizon scheduler who info) choice
-  have other := unit_mass alternative choice
-  have prescribed := unit_mass main choice
-  have cube : 0 ≤ 1 - scale ^ 3 := by linarith [pow_le_one₀ (n := 3) nonnegative le_one]
-  have square : 0 ≤ 1 - scale ^ 2 := by linarith [pow_le_one₀ (n := 2) nonnegative le_one]
-  have : 0 ≤ scale ^ 3 * ((bounds.onePacketMenu (runtime setup) leaks).uniformPolicy initial
-      horizon scheduler who info choice).toReal := mul_nonneg (pow_nonneg nonnegative 3) uniform.1
-  have : 0 ≤ (1 - scale ^ 3) * ((1 - scale ^ 2) * (scale * (alternative choice).toReal +
-      (1 - scale) * (main choice).toReal)) :=
-    mul_nonneg cube (mul_nonneg square (add_nonneg (mul_nonneg nonnegative other.1)
-      (mul_nonneg (by linarith) prescribed.1)))
-  nlinarith
-
 /-- The general upper bound: the uniform tier at most the cube of the scale,
 the slot tier at most its square, the alternative at most the scale. -/
 theorem slotTrembledChoice_le {scale : ℝ} (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1)
@@ -315,40 +277,6 @@ theorem slotTrembledChoice_le {scale : ℝ} (nonnegative : 0 ≤ scale) (le_one 
   nlinarith [mul_le_mul_of_nonneg_left uniform.2 cubeNonneg,
     mul_nonneg cubeNonneg middleNonneg]
 
-/-- **Timing deviations are of the order of the scale.** A choice outside the
-main law has mass at most `scale³ + scale² + scale`. -/
-theorem slotTrembledChoice_le_of_main_zero {scale : ℝ} (nonnegative : 0 ≤ scale)
-    (le_one : scale ≤ 1) (who : Player) (info : (application setup leaks).Info)
-    (main alternative slot :
-      PMF ((onePacketModel setup leaks bounds initial horizon scheduler).Choice who info))
-    (choice : (onePacketModel setup leaks bounds initial horizon scheduler).Choice who info)
-    (outside : main choice = 0) :
-    (slotTrembledChoice setup leaks bounds initial horizon scheduler scale nonnegative le_one
-        who info main alternative slot choice).toReal ≤ scale ^ 3 + scale ^ 2 + scale := by
-  have bound := slotTrembledChoice_le setup leaks bounds initial horizon scheduler nonnegative
-    le_one who info main alternative slot choice
-  rw [outside, ENNReal.toReal_zero] at bound
-  have tier := unit_mass slot choice
-  have other := unit_mass alternative choice
-  nlinarith [mul_le_mul_of_nonneg_left tier.2 (sq_nonneg scale),
-    mul_le_mul_of_nonneg_left other.2 nonnegative]
-
-/-- **Slot trembles are of the order of the square of the scale.** A choice
-outside the main and alternative laws has mass at most `scale³ + scale²`. -/
-theorem slotTrembledChoice_le_of_main_alternative_zero {scale : ℝ} (nonnegative : 0 ≤ scale)
-    (le_one : scale ≤ 1) (who : Player) (info : (application setup leaks).Info)
-    (main alternative slot :
-      PMF ((onePacketModel setup leaks bounds initial horizon scheduler).Choice who info))
-    (choice : (onePacketModel setup leaks bounds initial horizon scheduler).Choice who info)
-    (outsideMain : main choice = 0) (outsideAlternative : alternative choice = 0) :
-    (slotTrembledChoice setup leaks bounds initial horizon scheduler scale nonnegative le_one
-        who info main alternative slot choice).toReal ≤ scale ^ 3 + scale ^ 2 := by
-  have bound := slotTrembledChoice_le setup leaks bounds initial horizon scheduler nonnegative
-    le_one who info main alternative slot choice
-  rw [outsideMain, outsideAlternative, ENNReal.toReal_zero] at bound
-  have tier := unit_mass slot choice
-  nlinarith [mul_le_mul_of_nonneg_left tier.2 (sq_nonneg scale)]
-
 /-- **The full-menu tremble is of the order of the cube of the scale.** A
 choice outside all three laws has mass at most `scale³`. -/
 theorem slotTrembledChoice_le_of_unprescribed {scale : ℝ} (nonnegative : 0 ≤ scale)
@@ -374,28 +302,6 @@ def slotPrescribedComponent (assessment : setup.intendedModel.BehavioralAssessme
     PMF ((onePacketModel setup leaks bounds initial horizon scheduler).Choice who info) :=
   slotTrembledChoice setup leaks bounds initial horizon scheduler scale nonnegative le_one who info
     (honestChoice setup leaks bounds initial horizon scheduler assessment who info)
-    (PMF.pure (silenceChoice setup leaks bounds initial horizon scheduler who info))
-    (slotChoice setup leaks bounds initial horizon scheduler assessment who info)
-
-/-- **The slot-trembled waiting component.** Keep silence; the timing
-deviation is the as-if-honest response. -/
-def slotWaitComponent (assessment : setup.intendedModel.BehavioralAssessment)
-    (scale : ℝ) (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1) (who : Player)
-    (info : (application setup leaks).Info) :
-    PMF ((onePacketModel setup leaks bounds initial horizon scheduler).Choice who info) :=
-  slotTrembledChoice setup leaks bounds initial horizon scheduler scale nonnegative le_one who info
-    (PMF.pure (silenceChoice setup leaks bounds initial horizon scheduler who info))
-    (honestChoice setup leaks bounds initial horizon scheduler assessment who info)
-    (slotChoice setup leaks bounds initial horizon scheduler assessment who info)
-
-/-- **The slot-trembled silent component.** Keep silence, with no timing
-deviation. -/
-def slotSilentComponent (assessment : setup.intendedModel.BehavioralAssessment)
-    (scale : ℝ) (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1) (who : Player)
-    (info : (application setup leaks).Info) :
-    PMF ((onePacketModel setup leaks bounds initial horizon scheduler).Choice who info) :=
-  slotTrembledChoice setup leaks bounds initial horizon scheduler scale nonnegative le_one who info
-    (PMF.pure (silenceChoice setup leaks bounds initial horizon scheduler who info))
     (PMF.pure (silenceChoice setup leaks bounds initial horizon scheduler who info))
     (slotChoice setup leaks bounds initial horizon scheduler assessment who info)
 

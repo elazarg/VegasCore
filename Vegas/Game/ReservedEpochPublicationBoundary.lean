@@ -175,59 +175,6 @@ theorem publication_unfinished_source_active_anchor_active
     exact scan (Finset.mem_filter.mpr ⟨Finset.mem_univ owner,
       ⟨prior, earlier, priorActor, retained⟩⟩)
 
-/-- Rows already completed at the common actual callback retain the SAME
-canonical disclosure and complete source successor in both original images.
-Only the real common history prefix is used, including earlier guard rejection. -/
-theorem publication_completed_source_step_eq
-    {graph : Vegas.EventGraph Player L} {Γ : SourceCtx Player L} {O : Finset VarId}
-    (program : SourceProgram Player L Γ O) (offset : Nat)
-    (anchor leftNative rightNative : EventGraphRuntime.State graph)
-    (leftPrefix : anchor.config.history.IsPrefix leftNative.config.history)
-    (rightPrefix : anchor.config.history.IsPrefix rightNative.config.history)
-    (point left right : ProtocolState program × Finset Player)
-    (leftStep : NativePublicSourceStep leftNative offset program point left)
-    (rightStep : NativePublicSourceStep rightNative offset program point right)
-    (owner : Player) (acting : ProtocolState.actor program point.1 = some owner)
-    (event : graph.EventId)
-    (ranked : event.val = offset +
-      (instructionCount program - ProtocolState.remaining program point.1))
-    (completed : event ∈ anchor.config.cut.completed) : left = right := by
-  obtain ⟨leftJoint, leftSupport, leftReadback⟩ := leftStep.2.2.2
-  obtain ⟨rightJoint, rightSupport, rightReadback⟩ := rightStep.2.2.2
-  apply publication_source_step_eq program point.1 point.2 owner acting leftStep.1.2.1
-    leftJoint rightJoint _ left leftSupport right rightSupport
-  intro active
-  obtain ⟨leftEvent, leftPayload, leftPublication, leftAction, leftRank, leftRecorded,
-      leftDisclosure⟩ := leftReadback owner acting active
-  obtain ⟨rightEvent, rightPayload, rightPublication, rightAction, rightRank, rightRecorded,
-      rightDisclosure⟩ := rightReadback owner acting active
-  have leftEventEq : leftEvent = event := Fin.ext (leftRank.trans ranked.symm)
-  have rightEventEq : rightEvent = event := Fin.ext (rightRank.trans ranked.symm)
-  subst leftEvent
-  subst rightEvent
-  obtain ⟨common, commonRecorded, commonEvent⟩ := List.mem_map.mp
-    ((anchor.config.history_exact event).mpr completed)
-  rcases common with ⟨commonEventId, commonAction⟩
-  change commonEventId = event at commonEvent
-  subst commonEventId
-  have leftEqual : (⟨event, leftAction⟩ : graph.Completion) = ⟨event, commonAction⟩ :=
-    List.inj_on_of_nodup_map leftNative.config.history_nodup leftRecorded
-      (leftPrefix.subset commonRecorded) rfl
-  have rightEqual : (⟨event, rightAction⟩ : graph.Completion) = ⟨event, commonAction⟩ :=
-    List.inj_on_of_nodup_map rightNative.config.history_nodup rightRecorded
-      (rightPrefix.subset commonRecorded) rfl
-  have equalActions : leftAction = rightAction :=
-    eq_of_heq (EventGraph.Completion.mk.inj (leftEqual.trans rightEqual.symm)).2
-  cases equalActions
-  have selectedLeft : PhaseProposal.publicationDiscloses (graph.outputLayout event) leftAction =
-      OwnAction.disclosure ((leftJoint owner).map (·.action)) :=
-    (PhaseProposal.publicationDiscloses_cast leftPublication leftAction).symm.trans leftDisclosure
-  have selectedRight : PhaseProposal.publicationDiscloses (graph.outputLayout event) leftAction =
-      OwnAction.disclosure ((rightJoint owner).map (·.action)) :=
-    (PhaseProposal.publicationDiscloses_cast rightPublication leftAction).symm.trans
-      rightDisclosure
-  exact selectedLeft.symm.trans selectedRight
-
 end Vegas
 
 namespace Vegas
@@ -469,59 +416,5 @@ theorem publication_unresolved_receipt_iff_recorded (bounds : MessageBounds grap
     have sender : message.sender = owner := Option.some.inj (actualOwner.symm.trans owned)
     exact ⟨message, input, sender, address.trans same.symm, by rw [call]; rfl, receipt⟩
 
-
-/-- An actual old ready opening has exactly its physical receipt Boolean in
-the SAME chosen canonical source step, even when no proposal was emitted. -/
-theorem publication_request_receipt_iff_canonical_disclosure (bounds : MessageBounds graph)
-    (plan : RuntimePhasePlan graph) (inputs : PMF graph.Inputs) (horizon : Nat)
-    (scheduler : (app).Scheduler) (start before ending : (app).Control)
-    (startTrace : ((PhaseCount.onePacketMenu runtime leaks bounds).protocol
-      (inputs.map (PhaseRuntimeState.initial plan)) horizon scheduler).Trace (some start))
-    (prior : ((PhaseCount.onePacketMenu runtime leaks bounds).protocol
-      (inputs.map (PhaseRuntimeState.initial plan)) horizon scheduler).Trace (some before))
-    (physicalJoint : Player → Option (app).Action)
-    (legal : ((PhaseCount.onePacketMenu runtime leaks bounds).protocol
-      (inputs.map (PhaseRuntimeState.initial plan)) horizon scheduler).Legal
-        (some before) physicalJoint)
-    (realized : some ending ∈ ((app).transition (inputs.map (PhaseRuntimeState.initial plan))
-      horizon scheduler (some before) physicalJoint).support)
-    (fromStart : TracePrefix startTrace prior)
-    (same : start.execution.application.attempt = before.execution.application.attempt)
-    (raw : RecoveryState graph)
-    (effect : PhaseClosingEffect runtime leaks before.execution ending.execution raw)
-    (event : graph.EventId)
-    (phase : RuntimePhase graph) (installed : phase ∈ before.execution.application.phases.head?)
-    (inside : event ∈ phase.events) (payload : L.Ty)
-    (_publication : graph.outputLayout event = .publication payload)
-    (ordered : graph.RevealRelaxedOrdered)
-    (changed : ending.execution.application.attempt ≠ before.execution.application.attempt)
-    {Γ : SourceCtx Player L} {O : Finset VarId}
-    (program : SourceProgram Player L Γ O) (offset : Nat)
-    (first last : SourceProgram.ProtocolState program × Finset Player)
-    (step : NativePublicSourceStep (phase.drain raw).native offset program first last)
-    (owner : Player) (acting : SourceProgram.ProtocolState.actor program first.1 = some owner)
-    (active : owner ∉ first.2)
-    (request : start.execution.application.SeedRequest owner
-      ⟨start.execution.application.attempt, event⟩)
-    (owned : graph.actor? event = some owner)
-    (rank : event.val = offset + (SourceProgram.instructionCount program -
-      SourceProgram.ProtocolState.remaining program first.1)) :
-    ∃ joint,
-      last ∈ (SourceProgram.ProtocolState.recoveryStep program first.1 first.2 joint).support ∧
-      NativeDisclosureReadback (phase.drain raw).native offset program first.1 first.2 joint ∧
-      (PhaseService.BindingAccepted runtime leaks ⟨start.execution.application.attempt, event⟩
-          owner ending.execution ↔
-        SourceProgram.OwnAction.disclosure ((joint owner).map (·.action)) = true) := by
-  obtain ⟨joint, reached, readback⟩ := step.2.2.2
-  obtain ⟨actual, actualPayload, actualPublication, action, actualRank, recorded, selected⟩ :=
-    readback owner acting active
-  have eventEq : actual = event := Fin.ext (actualRank.trans rank.symm)
-  subst actual
-  have physical := publication_unresolved_receipt_iff_recorded runtime leaks bounds plan inputs
-    horizon scheduler start before ending startTrace prior physicalJoint legal realized fromStart
-      same raw effect event phase installed inside actualPayload actualPublication ordered changed
-        action recorded owner
-          (fun resolved => resolved.not_request _ _ owner request) owned
-  exact ⟨joint, reached, readback, physical.trans (by rw [selected])⟩
 
 end Vegas.EventGraphRuntime.ReservedEpoch

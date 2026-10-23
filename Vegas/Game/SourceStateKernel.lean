@@ -31,12 +31,6 @@ def behavioralStateStep {Γ : SourceCtx Player L} {O : Finset VarId}
     (independentProduct fun who => (profile who).protocolAction program
       (observe who program state)).bind (step program state)
 
-theorem behavioralStateStep_ret {Γ : SourceCtx Player L}
-    (result : List (Player × L.Expr (SourcePublicCtx L Γ) L.int))
-    (profile : BehavioralProfile (.ret result)) (state : Config Player L Γ) :
-    behavioralStateStep (.ret result) profile state = PMF.pure state := by
-  simp [behavioralStateStep, terminal]
-
 section Sample
 
 variable {Γ : SourceCtx Player L} {O : Finset VarId} {name : VarId} {payload : L.Ty}

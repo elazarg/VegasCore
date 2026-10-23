@@ -122,31 +122,6 @@ theorem runUntil_stopped (stop : app.Execution → Prop) [DecidablePred stop] (c
           rw [spent, app.round_environmentRecall_length scheduler players execution middle moved]
           omega
 
-/-- Extra budget changes nothing once every stopped point satisfies the
-predicate. -/
-theorem runUntil_add_of_stopped (stop : app.Execution → Prop) [DecidablePred stop]
-    (count extra : Nat) (execution : app.Execution)
-    (stopped : ∀ final ∈ (app.runUntil scheduler players stop count execution).support,
-      stop final) :
-    app.runUntil scheduler players stop (count + extra) execution =
-      app.runUntil scheduler players stop count execution := by
-  induction count generalizing execution with
-  | zero =>
-      have halt : stop execution := stopped execution (by simp [runUntil])
-      rw [app.runUntil_of_stop scheduler players stop _ execution halt]
-      rfl
-  | succ count ih =>
-      by_cases halt : stop execution
-      · rw [app.runUntil_of_stop scheduler players stop _ execution halt,
-          app.runUntil_of_stop scheduler players stop _ execution halt]
-      · rw [show count + 1 + extra = (count + extra) + 1 by omega]
-        simp only [runUntil, halt, ↓reduceIte] at stopped ⊢
-        apply bind_congr_on_support _
-        intro middle moved
-        apply ih middle
-        intro final reached
-        exact stopped final (PMF.support_bind .. ▸ Set.mem_iUnion₂.mpr ⟨middle, moved, reached⟩)
-
 /-- **Markov property at a stopping time.** Running to the horizon is running
 until `stop`, then on to the horizon from the stopped point. -/
 theorem runToHorizon_eq_runUntilHorizon_bind (stop : app.Execution → Prop) [DecidablePred stop]
@@ -247,79 +222,5 @@ theorem runUntil_stop_congr (first second : app.Execution → Prop) [DecidablePr
         apply bind_congr_on_support _
         intro next reached
         exact ih next (preserved execution holds halt next reached)
-
-section Finite
-
-variable {app scheduler players} [app.FiniteEnvironment]
-  (schedulerFinite : ∀ recall view, (scheduler recall view).support.Finite)
-  (finite : ∀ who, Policy.FiniteSupport app (players who))
-include schedulerFinite finite
-
-theorem round_support_finite (execution : app.Execution) :
-    (app.round scheduler players execution).support.Finite :=
-  bind_support_finite (schedulerFinite _ _)
-    fun command _ => app.dispatch_support_finite finite command execution
-
-theorem runRounds_support_finite (count : Nat) (execution : app.Execution) :
-    (app.runRounds scheduler players count execution).support.Finite := by
-  induction count generalizing execution with
-  | zero => simp [runRounds]
-  | succ count ih =>
-      exact bind_support_finite (round_support_finite schedulerFinite finite execution)
-        fun next _ => ih next
-
-theorem runUntil_support_finite (stop : app.Execution → Prop) [DecidablePred stop]
-    (count : Nat) (execution : app.Execution) :
-    (app.runUntil scheduler players stop count execution).support.Finite := by
-  induction count generalizing execution with
-  | zero => simp [runUntil]
-  | succ count ih =>
-      by_cases halt : stop execution
-      · rw [app.runUntil_of_stop scheduler players stop _ execution halt]
-        simp
-      · simp only [runUntil, halt, ↓reduceIte]
-        exact bind_support_finite (round_support_finite schedulerFinite finite execution)
-          fun next _ => ih next
-
-theorem runToHorizon_support_finite (horizon : Nat) (execution : app.Execution) :
-    (app.runToHorizon scheduler players horizon execution).support.Finite :=
-  runRounds_support_finite schedulerFinite finite _ execution
-
-theorem runUntilHorizon_support_finite (stop : app.Execution → Prop) [DecidablePred stop]
-    (horizon : Nat) (execution : app.Execution) :
-    (app.runUntilHorizon scheduler players stop horizon execution).support.Finite :=
-  runUntil_support_finite schedulerFinite finite stop _ execution
-
-end Finite
-
-namespace ResponseMenu
-
-variable {app} (menu : app.ResponseMenu) (initial : PMF app.State) (horizon : Nat)
-  (scheduler : app.Scheduler)
-
-/-- Every stopped point of a legal idle history is itself a legal idle history,
-with the horizon still accounted by the environment recall. -/
-theorem trace_runUntilHorizon (players : Principal → app.Policy)
-    (admissible : ∀ who, menu.Admissible initial horizon scheduler who (players who))
-    (stop : app.Execution → Prop) [DecidablePred stop]
-    (remaining : Nat) (execution stopped : app.Execution)
-    (accounted : execution.environmentRecall.length + remaining = horizon)
-    (trace : (menu.protocol initial horizon scheduler).Trace (some ⟨remaining, none, execution⟩))
-    (reached : stopped ∈ (app.runUntilHorizon scheduler players stop horizon execution).support) :
-    stopped.environmentRecall.length ≤ horizon ∧
-      Nonempty ((menu.protocol initial horizon scheduler).Trace
-        (some ⟨horizon - stopped.environmentRecall.length, none, stopped⟩)) := by
-  obtain ⟨used, within, rounds, length⟩ :=
-    app.runUntil_runRounds scheduler players stop _ execution stopped reached
-  have count : horizon - execution.environmentRecall.length = remaining := by omega
-  rw [count] at within
-  refine ⟨by omega, ?_⟩
-  have left : horizon - stopped.environmentRecall.length = remaining - used := by omega
-  rw [left]
-  exact menu.trace_runRounds_of_admissible initial horizon scheduler players admissible
-    (remaining - used) used
-    execution stopped (by rwa [Nat.sub_add_cancel within]) rounds
-
-end ResponseMenu
 
 end Interaction.ReactiveApplication

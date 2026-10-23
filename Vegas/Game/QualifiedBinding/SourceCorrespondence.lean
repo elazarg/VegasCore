@@ -282,30 +282,6 @@ private theorem sourceReplay_automatic_binding_reads
                   (fun _ => rfl)) tailFailed later⟩
 
 omit [Fintype Player] in
-private theorem sourceReplay_mapped_prefix_at_depth
-    (g : setup.proposalRecoveryProtocol.History)
-    (prior : setup.proposalRecoveryProtocol.History)
-    (retained : TracePrefix prior.trace g.trace)
-    (depth : Nat) (lower : prior.trace.length ≤ depth)
-    (upper : depth ≤ g.trace.length) :
-    ∃ (state : setup.proposalRecoveryProtocol.State)
-      (trace : setup.proposalRecoveryProtocol.Trace state),
-      TracePrefix prior.trace trace ∧ TracePrefix trace g.trace ∧
-        trace.length = depth := by
-  classical
-  obtain ⟨state, trace, toG, length⟩ :=
-    setup.proposalRecovery_prefix_at_depth g.trace depth upper
-  have priorToTrace : TracePrefix prior.trace trace := by
-    obtain ⟨earlier, atPrior, kept, sameLength⟩ :=
-      setup.proposalRecovery_prefix_at_depth trace prior.trace.length (by
-        rw [length]
-        exact lower)
-    have same := retained.eq_of_same_length (kept.trans toG) sameLength.symm
-    cases same
-    exact kept
-  exact ⟨state, trace, priorToTrace, toG, length⟩
-
-omit [Fintype Player] in
 private theorem sourceReplay_common_prefix_order
     (first second final : setup.proposalRecoveryProtocol.History)
     (firstKept : TracePrefix first.trace final.trace)

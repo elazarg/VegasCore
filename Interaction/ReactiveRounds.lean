@@ -50,29 +50,6 @@ def runRounds (scheduler : app.Scheduler) (players : Principal → app.Policy) :
   | count + 1, execution => (app.round scheduler players execution).bind
       (runRounds scheduler players count)
 
-/-- One dispatched command records exactly one response by its selected actor.
-Passive observations and application commands add no private response entry. -/
-theorem dispatch_recall_length (players : Principal → app.Policy) (command : app.Command)
-    (before after : app.Execution)
-    (reached : after ∈ (app.dispatch players command before).support) (who : Principal) :
-    (after.recall who).length = (before.recall who).length +
-      if command.actor? app = some who then 1 else 0 := by
-  obtain ⟨activated, observed, responded⟩ :=
-    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
-  have prior := app.environmentStep_recall before activated command observed
-  cases actor : command.actor? app with
-  | none =>
-      change after ∈ (app.resume players (command.actor? app) activated).support at responded
-      rw [actor] at responded
-      cases (PMF.mem_support_pure_iff _ _).mp responded
-      simp only [prior, reduceCtorEq, ↓reduceIte, Nat.add_zero]
-  | some owner =>
-      change after ∈ (app.resume players (command.actor? app) activated).support at responded
-      rw [actor] at responded
-      obtain ⟨response, _, rfl⟩ := PMF.support_map .. ▸ responded
-      rw [app.respond_recall_length, prior]
-      simp only [Option.some.injEq]
-
 theorem resume_environmentRecall (players : Principal → app.Policy) (actor : Option Principal)
     (execution next : app.Execution)
     (reached : next ∈ (app.resume players actor execution).support) :
@@ -226,23 +203,5 @@ theorem iterate_eq_finish (initial : PMF app.State) (horizon : Nat)
                 state next stopped supported
               exact ih next (by omega)
           _ = _ := app.finish_step initial horizon scheduler players state
-
-/-- The scheduler-round evaluator is the final-state law of the canonical
-behavioral game, for every player profile and observation-local scheduler. -/
-theorem canonical_run_rounds (initial : PMF app.State) (horizon : Nat)
-    (scheduler : app.Scheduler) (players : Principal → app.Policy) :
-    ((app.information initial horizon scheduler).runSingleMoverBehavioralFrom
-      (app.singleMover initial horizon scheduler) (fun who => app.encodePolicy (players who))
-      (2 * horizon + 1) (app.protocol initial horizon scheduler).initHistory).map
-        ExecutionProtocol.History.state =
-      initial.bind (fun state =>
-        (app.runRounds scheduler players horizon (Execution.initial app state)).map
-          app.finished) := by
-  rw [app.run_map_state]
-  change
-    (fun law => law.bind (app.controlStep initial horizon scheduler players))^[2 * horizon + 1]
-      (PMF.pure none) = _
-  rw [app.iterate_eq_finish initial horizon scheduler players _ _ (by rfl)]
-  rfl
 
 end Interaction.ReactiveApplication

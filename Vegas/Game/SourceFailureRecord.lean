@@ -150,18 +150,5 @@ theorem step {before after : (graph setup).Config}
         (record other earlier owner acting kept)
         (Or.inr ⟨completed, ready, action, member⟩) advanced
 
-/-- Reading at any matching prefix of a recorded failed event exposes its debt. -/
-theorem owesFailure {config : (graph setup).Config} (valid : SourceFailureRecord profile config)
-    {rank : Nat} (ordered : config.cut.IsPrefix rank) {point : ProtocolState setup.program}
-    (decoded : sourceServicePrefix? setup rank config = some point)
-    {event : (graph setup).EventId} (completed : event ∈ config.cut.completed)
-    {owner : Player} (acting : (graph setup).actor? event = some owner)
-    (failed : StoreEventFailed config.store event) :
-    ProtocolState.OwesFailure owner setup.program point := by
-  obtain ⟨recordRank, ⟨residual⟩, record⟩ := valid
-  have same := isPrefix_unique ordered residual.checkpoint.ordered
-  subst recordRank
-  exact record event completed owner acting failed point decoded
-
 end SourceFailureRecord
 end Vegas

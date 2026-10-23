@@ -31,19 +31,6 @@ theorem anchoredPolicy_consistent (anchor : app.Execution)
           exact (PMF.mem_support_pure_iff _ _).mpr rfl
   exact prefixConsistent _ (List.prefix_refl _)
 
-omit [DecidableEq Principal] in
-/-- Old recorded responses carry unit, memory-independent likelihood. The
-original private prior is therefore unchanged at the full authentic entry. -/
-theorem anchoredPolicy_mixture_posterior {Index : Type} (prior : PMF Index)
-    (anchor : app.Execution) (family : Index → Principal → app.Policy) (who : Principal) :
-    (app.policyMixture prior (fun index => anchoredPolicy anchor (family index) who)).posterior
-      (anchor.recall who) = prior := by
-  let baseline := anchoredPolicy anchor (fun _ _ _ => PMF.pure ⟨none⟩) who
-  apply app.policyMixture_posterior_of_agree prior _ baseline
-  intro past entry within index
-  rw [anchoredPolicy_of_recorded anchor (family index) who past entry within]
-  exact (anchoredPolicy_of_recorded anchor _ who past entry within).symm
-
 /-- The existing stopped runner preserves the exact continuing execution law
 after an authentic anchor; network and all environment/player recall remain. -/
 theorem runUntil_anchoredPolicy_of_extends (scheduler : app.Scheduler)

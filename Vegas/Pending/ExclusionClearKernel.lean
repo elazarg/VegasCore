@@ -40,19 +40,6 @@ theorem environmentResult_eq_of_record (state : RecoveryState graph)
   have empty := rawRecord.excluded_eq_of_publicView_eq clear rfl
   rw [RecoveryState.environmentResult_drain_of_empty state chosen native empty]
 
-/-- A native accepted call with no public failure has exactly the same recovery
-result, including empty permanent exclusion. -/
-theorem handle_lift_of_record (state : RecoveryState graph)
-    (valid : PublicExclusionRecord state) (empty : state.excluded = ∅)
-    (message : Message Player (WitnessedPacket graph)) (native : State graph)
-    (accepted : (runtime.reactiveApplication leaks).handle state.native message = some native)
-    (clear : PublicExclusionRecord (⟨native, ∅⟩ : RecoveryState graph)) :
-    (runtime.recoveryApplication leaks).handle state message = some ⟨native, ∅⟩ := by
-  obtain ⟨token, raw⟩ := reactiveApplication_handle_eq_some runtime leaks _ _ _ accepted
-  simp only [recoveryApplication, RecoveryState.handle,
-    RecoveryState.excludedCall_of_empty state empty, Bool.false_eq_true, ↓reduceIte,
-    token, raw, Option.map_some, inclusionResult_eq_of_record runtime state valid _ _ raw clear]
-
 /-- Native and recovery application kernels give the same mass to every
 publicly clear native outcome. Distinct native draws cannot merge into that
 clear outcome during automatic closure. -/
@@ -81,15 +68,5 @@ theorem environment_apply_clear (state : RecoveryState graph)
       environmentResult_eq_of_record runtime state valid chosen native supported clear
     rw [selected, PMF.pure_apply_self, mul_one]
   · rw [(PMF.apply_eq_zero_iff _ _).mpr supported, zero_mul]
-
-theorem environment_lift_support (state : RecoveryState graph)
-    (valid : PublicExclusionRecord state) (chosen : EnvironmentCommand graph)
-    (native : State graph)
-    (clear : PublicExclusionRecord (⟨native, ∅⟩ : RecoveryState graph)) :
-    (⟨native, ∅⟩ : RecoveryState graph) ∈ (state.environment runtime chosen).support ↔
-      native ∈ (environmentStep runtime state.native chosen).support := by
-  change (state.environment runtime chosen) ⟨native, ∅⟩ ≠ 0 ↔
-    (environmentStep runtime state.native chosen) native ≠ 0
-  rw [environment_apply_clear runtime state valid chosen native clear]
 
 end Vegas.EventGraphRuntime.RecoveryProjection

@@ -96,20 +96,4 @@ theorem activation_response_or_current
                       rfl
   exact origin trace activation recorded owner chosen
 
-/-- An activation at an idle endpoint already has its actual response in full
-own recall, with the exact physical public view before that activation. -/
-theorem recalled_response_of_activation
-    (initial : PMF (P).State) (horizon : Nat) (scheduler : (P).Scheduler)
-    (current : (P).Control) (trace : ((P).protocol initial horizon scheduler).Trace (some current))
-    (idle : current.actor = none) (activation : (P).EnvironmentEntry)
-    (recorded : activation ∈ current.execution.environmentRecall)
-    (owner : Player) (chosen : activation.command = .activate owner) :
-    ∃ response ∈ current.execution.recall owner,
-      response.beforeView.application.2 = activation.beforeView.application := by
-  rcases activation_response_or_current runtime leaks initial horizon scheduler current trace
-      activation recorded owner chosen with pairedBefore | waiting
-  · exact pairedBefore
-  · rw [idle] at waiting
-    cases waiting.1
-
 end Vegas.EventGraphRuntime.PhaseService

@@ -59,16 +59,6 @@ theorem ServiceProgress.ready_or_completed {inputs : graph.Inputs} {ticks : Nat}
 
 end State
 
-theorem privateStep_progress (inputs : graph.Inputs) (state : State graph)
-    (who : Player) (command : PrivateCommand graph) (invariant : state.Invariant inputs) :
-    State.ServiceProgress inputs 0 state (privateStep state who command) := by
-  obtain ⟨config, clock, activated⟩ := privateStep_facts state who command
-  refine ⟨privateStep_invariant state invariant who command, ?_, by simpa using clock, ?_⟩
-  · rw [config]
-  · intro event entered value _
-    rw [activated]
-    exact value
-
 theorem handle_progress (runtime : EventGraphRuntime graph)
     (inputs : graph.Inputs) (state next : State graph)
     (message : Message Player (Payload graph)) (invariant : state.Invariant inputs)

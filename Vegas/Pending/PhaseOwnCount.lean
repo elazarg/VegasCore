@@ -23,10 +23,6 @@ def OwnCountClean (owner : Player) (execution : (app).Execution) : Prop :=
     ∀ message ∈ execution.network.inputs, message.sender = owner →
       permits execution.network.inputs message = true
 
-theorem ownCountClean_initial (owner : Player) (state : (app).State) :
-    OwnCountClean runtime leaks owner (ReactiveApplication.Execution.initial app state) :=
-  ⟨(countClean_initial runtime leaks state).1, fun _ member => (List.not_mem_nil member).elim⟩
-
 theorem ownCountClean_respond (owner actor : Player) (execution : (app).Execution)
     (action : (app).Action) (clean : OwnCountClean runtime leaks owner execution)
     (allowed : actor = owner → action.transmission = none ∨

@@ -37,23 +37,6 @@ def CheckpointDebt (witness : RecoverySourceWitness setup mode plan state) (who 
     (witness.checkpoint.residual.lift
       (ProtocolState.entry witness.checkpoint.residual.tail witness.checkpoint.source))
 
-/-- An unresolved unusable binding is read through the actual checkpoint
-references. Earlier publication failures and guard debt require no repair. -/
-theorem checkpointDebt_of_failed_binding
-    (witness : RecoverySourceWitness setup mode plan state) (who : Player)
-    {name : VarId} {payload : L.Ty}
-    (cell : HasVar witness.checkpoint.residual.context name (.commitment who payload))
-    (unresolved : name ∈ witness.checkpoint.residual.names)
-    (failed : (witness.checkpoint.refs.get cell).get? state.entry.native.config.store =
-      some .failure) : witness.CheckpointDebt who := by
-  have stored : witness.checkpoint.source.state.get cell = .failure :=
-    Option.some.inj ((witness.checkpoint.agrees cell).symm.trans failed)
-  have localFailure : witness.checkpoint.source.FailedBinding who
-      witness.checkpoint.residual.names :=
-    ⟨witness.checkpoint.unique, name, payload, cell, unresolved, stored⟩
-  exact Or.inr (Or.inr (witness.checkpoint.origin.failedBinding_lift who _
-    (ProtocolState.failedBinding_entry _ _ localFailure)))
-
 theorem checkpointDebt_of_source_reaches
     (who : Player) (witness : RecoverySourceWitness setup mode plan state)
     (owed : witness.CheckpointDebt who)

@@ -519,7 +519,7 @@ They do not exclude unseen later Alice packets or give a complete posterior.
 Identifier zero does exclude every **earlier** emission, including malformed
 packets: actual remembered output identifiers are precisely their allocated
 serial order. The general checked lemma is
-`Interaction.ReactiveApplication.emitted_zero_has_no_prior_outputs` in
+[`Interaction.ReactiveApplication.emitted_zero_has_no_prior_outputs`](https://github.com/elazarg/VegasCore/blob/research-tree/Interaction/ReactiveEmissionOrder.lean#L96) in
 [ReactiveEmissionOrder.lean](../../Interaction/ReactiveEmissionOrder.lean).
 
 The complete decoder retains the original Boolean and private label alongside
@@ -804,7 +804,7 @@ and
 [`Vegas.Examples.LateOpeningRuntimeAliceOpeningAudit.nongenuine_envelope_utility_bound`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeAliceOpeningAudit.lean#L261)
 in [LateOpeningRuntimeAliceOpeningAudit.lean](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeAliceOpeningAudit.lean).
 The underlying identity theorem is application- and scheduler-general:
-`Interaction.ReactiveApplication.traffic_envelope_eq_ledger_of_id_eq`
+[`Interaction.ReactiveApplication.traffic_envelope_eq_ledger_of_id_eq`](https://github.com/elazarg/VegasCore/blob/research-tree/Interaction/ReactiveTrafficIdentity.lean#L71)
 in [ReactiveTrafficIdentity.lean](../../Interaction/ReactiveTrafficIdentity.lean).
 These statements classify actual traffic; they do not forbid genuine opening
 packets sent at different legal times.

@@ -32,10 +32,6 @@ theorem swap_involutive (swap : HiddenSwap graph) : Function.Involutive (Recover
   exact congrArg (fun native => RecoveryState.mk native excluded)
     (State.swap_involutive swap native)
 
-@[simp] theorem swap_automaticReady (swap : HiddenSwap graph) (state : RecoveryState graph)
-    (event : graph.EventId) : (state.swap swap).AutomaticReady event ↔ state.AutomaticReady event :=
-  Iff.rfl
-
 end RecoveryState
 
 namespace RetiredCommitAttempt

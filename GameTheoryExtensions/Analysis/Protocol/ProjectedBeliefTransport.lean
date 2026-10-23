@@ -30,11 +30,7 @@ the source Bayes belief in `ℓ¹`
 (`GameTheory.Protocol.InformationModel.sum_abs_projectedBelief_sub_le`). This
 is `GameTheory.Math.Probability.NearProductWeights` with a trivial excluded
 coordinate. Along sequences whose three errors vanish the distance vanishes
-(`GameTheory.Protocol.InformationModel.tendsto_sum_abs_projectedBelief_sub`),
-so the projected native beliefs converge to the limit of the source beliefs
-(`GameTheory.Protocol.InformationModel.tendsto_projectedBelief_of_converges`),
-and expectations of bounded functions of the projected history follow
-(`GameTheory.Protocol.InformationModel.abs_expect_projectedBelief_sub_le`).
+(`GameTheory.Protocol.InformationModel.tendsto_sum_abs_projectedBelief_sub`).
 -/
 
 noncomputable section
@@ -397,49 +393,6 @@ theorem tendsto_sum_abs_projectedBelief_sub {A : ℕ → M.BehavioralAssessment}
         (fiberMass_nonneg n) (factorError_nonneg n) small.1 (fiberError_nonneg n) small.2
         (factor_close n) (fiber_close n) (remainder_le n))
     (tendsto_projectionErrorBound factor fiber remainder)
-
-omit [Fintype ι] [Fintype (M.InformationHistory who site.1)]
-    [DecidableEq (S.InformationHistory who sourceSite.1)] in
-/-- **Projected beliefs converge to the source limit.** If the projected native
-beliefs approach the source beliefs in `ℓ¹` and the source assessments
-converge, the projected native belief of every source history converges to the
-limit source belief. -/
-theorem tendsto_projectedBelief_of_converges {A : ℕ → M.BehavioralAssessment}
-    {B : ℕ → S.BehavioralAssessment} {limit : S.BehavioralAssessment}
-    (converges : BehavioralAssessmentConvergesPointwise B limit)
-    (project : M.InformationHistory who site.1 → S.InformationHistory who sourceSite.1)
-    (close : Tendsto (fun n => ∑ point, |((((A n).belief who site).map project) point).toReal -
-        ((B n).belief who sourceSite point).toReal|) atTop (nhds 0))
-    (point : S.InformationHistory who sourceSite.1) :
-    Tendsto (fun n => ((((A n).belief who site).map project) point).toReal) atTop
-      (nhds ((limit.belief who sourceSite point).toReal)) := by
-  have gap : Tendsto (fun n => ((((A n).belief who site).map project) point).toReal -
-      ((B n).belief who sourceSite point).toReal) atTop (nhds 0) :=
-    (tendsto_zero_iff_abs_tendsto_zero _).2 <| squeeze_zero (fun _ => abs_nonneg _)
-      (fun n => single_le_sum (f := fun point =>
-        |((((A n).belief who site).map project) point).toReal -
-          ((B n).belief who sourceSite point).toReal|) (fun _ _ => abs_nonneg _)
-        (mem_univ point)) close
-  have sourceLimit := (converges.2 who sourceSite).toReal point
-  have sum := sourceLimit.add gap
-  rw [add_zero] at sum
-  exact sum.congr fun n => add_sub_cancel _ _
-
-omit [Fintype ι] [Fintype (M.InformationHistory who site.1)]
-    [DecidableEq (S.InformationHistory who sourceSite.1)] in
-/-- Expectations of a bounded function of the projected history under two
-laws differ by at most the bound times their `ℓ¹` distance. -/
-theorem abs_expect_projectedBelief_sub_le (native : PMF (M.InformationHistory who site.1))
-    (source : PMF (S.InformationHistory who sourceSite.1))
-    (project : M.InformationHistory who site.1 → S.InformationHistory who sourceSite.1)
-    (payoff : S.InformationHistory who sourceSite.1 → ℝ) {bound : ℝ}
-    (bounded : ∀ point, |payoff point| ≤ bound) :
-    |expect (native.map project) payoff - expect source payoff| ≤
-      bound * ∑ point, |((native.map project) point).toReal - (source point).toReal| := by
-  rw [expect_eq_sum, expect_eq_sum, ← sum_sub_distrib, mul_sum]
-  refine (abs_sum_le_sum_abs _ _).trans (sum_le_sum fun point _ => ?_)
-  rw [← sub_mul, abs_mul, mul_comm]
-  exact mul_le_mul_of_nonneg_right (bounded point) (abs_nonneg _)
 
 end Projection
 

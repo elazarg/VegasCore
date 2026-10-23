@@ -189,19 +189,6 @@ theorem step_blockFrontier (state : CommitRecoveryState program) (valid : state.
     rw [ite_eq_right unfinished, ite_eq_right imageCommit]
     exact Or.inr rfl
 
-/-- Leaving a block checkpoints any live debt, which can then use permanent
-saved/live debt preservation under arbitrary subsequent source behavior. -/
-theorem step_checkpoint_owesFailure (who : Player) (state : CommitRecoveryState program)
-    (valid : state.BlockFrontier) (joint : Player → Option (CommitRecoveryMove Player L))
-    (next : CommitRecoveryState program) (supported : next ∈ (state.step joint).support)
-    (notCommit : ProtocolState.atCommit program next.point = false)
-    (owed : ProtocolState.OwesFailure who program next.point) :
-    ProtocolState.OwesFailure who program next.saved ∧
-      ProtocolState.OwesFailure who program next.point := by
-  have frontier := state.step_blockFrontier valid joint next supported
-  have same := frontier.saved_eq_point_of_not_atCommit notCommit
-  exact ⟨same.symm ▸ owed, owed⟩
-
 end CommitRecoveryState
 
 namespace Setup

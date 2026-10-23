@@ -68,40 +68,4 @@ theorem emissionOrder_history (scheduler : app.Scheduler) (initial : PMF app.Sta
   (app.emissionOrderInvariant scheduler).history initial horizon
     (fun state _ => app.initial_emissionOrder state) trace
 
-omit [DecidableEq Principal] in
-/-- A packet's serial counts the remembered packets emitted before it,
-including every malformed submission. -/
-theorem emitted_serial_of_recall_split (execution : app.Execution)
-    (valid : execution.EmissionOrder app) (who : Principal)
-    (before after : List app.PlayerEntry) (entry : app.PlayerEntry)
-    (recalled : execution.recall who = before ++ entry :: after)
-    (message : Message Principal app.Payload) (emitted : entry.emitted = some message) :
-    message.id = (who, (app.outputs before).length) := by
-  have identifiers := valid who
-  rw [recalled] at identifiers
-  have lengths := congrArg List.length identifiers
-  simp only [outputs, List.filterMap_append, List.filterMap_cons, emitted,
-    List.length_map, List.length_append, List.length_cons, List.length_range] at lengths
-  have selected := congrArg (fun ids => ids[(app.outputs before).length]?) identifiers
-  simp only [outputs, List.filterMap_append, List.filterMap_cons, emitted,
-    List.map_append, List.map_cons] at selected
-  rw [List.getElem?_append_right (by simp), List.length_map, Nat.sub_self] at selected
-  simp only [List.getElem?_cons_zero, List.getElem?_map] at selected
-  rw [List.getElem?_range (by omega), Option.map_some] at selected
-  exact Option.some.inj selected
-
-omit [DecidableEq Principal] in
-/-- Serial zero identifies the first actual emitted packet, rather than a
-later retry after an unobserved malformed submission. -/
-theorem emitted_zero_has_no_prior_outputs (execution : app.Execution)
-    (valid : execution.EmissionOrder app) (who : Principal)
-    (before after : List app.PlayerEntry) (entry : app.PlayerEntry)
-    (recalled : execution.recall who = before ++ entry :: after)
-    (message : Message Principal app.Payload) (emitted : entry.emitted = some message)
-    (identified : message.id = (who, 0)) : app.outputs before = [] := by
-  have serial := app.emitted_serial_of_recall_split execution valid who
-    before after entry recalled message emitted
-  rw [identified] at serial
-  exact List.eq_nil_of_length_eq_zero (Prod.mk.inj serial).2.symm
-
 end Interaction.ReactiveApplication

@@ -78,25 +78,6 @@ def OnePacketCounterpartInputs.ofDomination
 
 variable [DecidableEq (CellTy Player L)]
 
-variable (setup leaks bounds horizon scheduler) in
-/-- **Counterpart cells succeed.** At every decision input, the commitment cells
-where the decoded point of a history and the decoded point of a debt-free
-history of the input differ hold successes at both. This is required by the raw-value swap toward a
-debt-free witness: guarded raw-value swaps preserve failure at every completed
-binding. Repair of failed bindings
-requires a map that can change the candidate itself. -/
-def CounterpartCellsSucceed : Prop :=
-  ∀ (who : Player) (past : List (application setup leaks).PlayerEntry)
-    (view : (application setup leaks).PlayerView)
-    (history witness : (onePacketN).InformationHistory who (some (past, view)))
-    (current witnessControl : (application setup leaks).Control)
-    (p w : ProtocolState setup.program),
-    history.1.state = some current → witness.1.state = some witnessControl →
-    decodedPoint setup current.execution.application.config = some p →
-    decodedPoint setup witnessControl.execution.application.config = some w →
-    (∀ player, ¬ ProtocolState.OwesFailure player setup.program w) →
-    CommitmentCellsSucceed setup p w
-
 omit [Finite setup.intendedProtocol.History] [DecidableEq (CellTy Player L)]
   [(application setup leaks).FiniteNature (initialLaw setup) scheduler]
   [∀ who, DecidableEq ((onePacketModel setup leaks bounds (initialLaw setup) horizon

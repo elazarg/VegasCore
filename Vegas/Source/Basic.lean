@@ -209,14 +209,6 @@ def weaken {name : VarId} {cell : CellTy Player L}
       guard.readsRevealed revelations := by
   simp only [readsRevealed, weaken, SourceGuardRead.revealed_weaken]
 
-@[simp] theorem accepts_weaken {name : VarId} {cell : CellTy Player L}
-    (guard : SourceGuard L Γ author subject payload)
-    (subjectResult : PublicationResult (L.Val payload)) (revelations : Revelations Γ)
-    (head : CellVal L cell) (state : State L Γ) :
-    (guard.weaken (name := name)).accepts subjectResult revelations.weaken
-        (Env.cons head state) = guard.accepts subjectResult revelations state := by
-  simp only [accepts, weaken, SourceGuardRead.result_weaken]
-
 end SourceGuard
 
 def SourcePublicCtx {Player : Type} (L : IExpr) [R : IExpr.ResultTypes L] :

@@ -96,26 +96,4 @@ theorem PolicyInvariant.controlStep (invariant : app.PolicyInvariant players pre
               obtain ⟨next, moved, rfl⟩ := PMF.support_map .. ▸ supported
               exact invariant.environment execution next command valid moved
 
-/-- Includes intermediate scheduler and player states, for any amount of fuel.
-Only the chosen players' supported responses constrain the invariant. -/
-theorem PolicyInvariant.canonical_run (invariant : app.PolicyInvariant players predicate)
-    (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
-    (setup : ∀ state ∈ initial.support, predicate (Execution.initial app state))
-    (fuel : Nat) (result : app.ProtocolState)
-    (supported : result ∈ (((app.information initial horizon scheduler).runSingleMoverBehavioralFrom
-      (app.singleMover initial horizon scheduler)
-        (fun who => app.encodePolicy (players who)) fuel
-        (app.protocol initial horizon scheduler).initHistory).map
-          ExecutionProtocol.History.state).support) : executionInvariant predicate result := by
-  rw [app.run_map_state] at supported
-  change result ∈ ((fun law => law.bind (app.controlStep initial horizon scheduler players))^[fuel]
-    (PMF.pure none)).support at supported
-  induction fuel generalizing result with
-  | zero => cases (PMF.mem_support_pure_iff _ _).mp supported; trivial
-  | succ fuel ih =>
-      rw [Function.iterate_succ_apply'] at supported
-      obtain ⟨before, prior, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
-      exact invariant.controlStep initial horizon scheduler setup before result (ih before prior)
-        reached
-
 end Interaction.ReactiveApplication

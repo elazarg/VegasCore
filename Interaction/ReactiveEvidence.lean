@@ -54,15 +54,6 @@ private theorem sound_mono (execution : app.Execution) (next : app.State)
   intro message receipt valid
   exact ⟨valid.1, fun accepted fact member => preserved fact (valid.2 accepted fact member)⟩
 
-theorem observed_valid (execution : app.Execution) (who : Principal)
-    (sound : evidence.Sound execution) (fact : evidence.Fact)
-    (observed : fact ∈ evidence.observe (execution.observe app who)) :
-    evidence.valid execution.application fact := by
-  obtain ⟨⟨message, id, accepted⟩, member, decoded⟩ := List.mem_flatMap.mp observed
-  cases accepted with
-  | false => simp at decoded
-  | true => exact (List.forall₂_zip sound member).2 rfl fact decoded
-
 variable [DecidableEq Principal]
 
 theorem sound_respond (execution : app.Execution) (who : Principal) (action : app.Action)

@@ -66,15 +66,6 @@ def commitRecoveryProtocol (program : SourceProgram Player L Γ O)
   step state joint := state.step joint.1
   progress state _ := state.progress
 
-theorem commitRecoveryProtocol_terminates [Finite Player]
-    (program : SourceProgram Player L Γ O) (initial : Config Player L Γ) :
-    (commitRecoveryProtocol program initial).WellFoundedPlay := by
-  let := Fintype.ofFinite Player
-  apply wellFoundedPlay_of_rank CommitRecoveryState.potential
-  intro before after event
-  obtain ⟨joint, legal, supported⟩ := event
-  exact before.step_potential_lt joint after legal.1 supported
-
 namespace Setup
 
 /-- A single private setup draw precedes all phase attempts. Retries never
@@ -122,14 +113,6 @@ theorem commitRecoveryRank_step [Fintype Player]
       obtain ⟨next, member, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp supported
       exact current.step_potential_lt joint next legal.1 member
 
-theorem commitRecoveryProtocol_terminates [Finite Player]
-    (setup : Setup (Player := Player) (L := L)) : setup.commitRecoveryProtocol.WellFoundedPlay := by
-  let := Fintype.ofFinite Player
-  apply wellFoundedPlay_of_rank setup.commitRecoveryRank
-  intro before after event
-  obtain ⟨joint, legal, supported⟩ := event
-  exact setup.commitRecoveryRank_step joint legal supported
-
 theorem commitRecovery_generation_bound
     (setup : Setup (Player := Player) (L := L))
     {state : setup.commitRecoveryProtocol.State}
@@ -150,13 +133,6 @@ theorem commitRecovery_generation_bound
           have same := Option.some.inj (target.trans equality)
           subst current
           exact previous.step_generation_bound (ih previous rfl) joint next member
-
-theorem commitRecovery_generation_le_players [Fintype Player]
-    (setup : Setup (Player := Player) (L := L))
-    {state : setup.commitRecoveryProtocol.State} (trace : setup.commitRecoveryProtocol.Trace state)
-    (current : CommitRecoveryState setup.program) (equality : state = some current) :
-    current.generation ≤ Fintype.card Player :=
-  (setup.commitRecovery_generation_bound trace current equality).trans (Finset.card_le_univ _)
 
 theorem commitRecovery_history_budget [Fintype Player]
     (setup : Setup (Player := Player) (L := L)) :

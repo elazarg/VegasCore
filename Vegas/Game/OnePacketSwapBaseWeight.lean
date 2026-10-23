@@ -258,31 +258,6 @@ theorem othersSourceWeight_mapTrace_scaled (swap : HiddenSwap (graph setup))
   othersSourceWeight_mapTrace_aux swap initialClosed bounded assessment who fixesOthers c
     priorScaled trace guarded
 
-/-- **The swap keeps positive source weight** when the ratio of initial masses is
-positive. -/
-theorem othersSourceWeight_pos_mapTrace_iff (swap : HiddenSwap (graph setup))
-    (initialClosed : ∀ state ∈ (initialLaw setup).support, state.config.inputs ∈ allowed →
-      state.swap swap ∈ (initialLaw setup).support)
-    (bounded : ∀ handle raw, raw ∈ bounds.values → swap.raw handle raw ∈ bounds.values)
-    (assessment : setup.intendedModel.BehavioralAssessment) (who : Player)
-    (fixesOthers : ∀ other, other ≠ who → swap.Fixes other) {c : ℝ} (positive : 0 < c)
-    (priorScaled : ∀ state ∈ (initialLaw setup).support, state.config.inputs ∈ allowed →
-      (initialLaw setup (state.swap swap)).toReal = c * (initialLaw setup state).toReal)
-    {state : (application setup leaks).ProtocolState}
-    (trace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace state)
-    (guarded : SwapGuardState setup swap allowed state) :
-    0 < othersSourceWeight setup leaks bounds horizon scheduler assessment who
-        ((onePacketSwapSymmetry bounds (initialLaw setup) horizon scheduler swap initialClosed
-          bounded).mapTrace trace guarded) ↔
-      0 < othersSourceWeight setup leaks bounds horizon scheduler assessment who trace := by
-  rw [othersSourceWeight_mapTrace_aux swap initialClosed bounded assessment who fixesOthers c
-    priorScaled trace guarded]
-  have factor : 0 < state.elim 1 (fun _ => c) := by
-    cases state
-    · exact zero_lt_one
-    · exact positive
-  exact mul_pos_iff_of_pos_left factor
-
 /-- A player the swap fixes has the same information at the swapped state of a
 history. -/
 theorem observe_swap_of_fixes (swap : HiddenSwap (graph setup))

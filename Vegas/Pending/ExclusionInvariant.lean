@@ -85,14 +85,6 @@ theorem initial (inputs : graph.Inputs) :
   obtain ⟨owner, _, member⟩ := eligible.owned
   exact Finset.notMem_empty _ member
 
-omit [DecidableEq Player] in
-theorem excluded_not_ready (valid : state.Invariant inputs) {event : graph.EventId}
-    {owner : Player} (excluded : owner ∈ state.excluded)
-    (acting : graph.actor? event = some owner) : ¬ state.native.config.cut.Ready event := by
-  intro ready
-  apply valid.quiescent event
-  exact ⟨ready, by simpa only [acting] using excluded⟩
-
 theorem submit (valid : state.Invariant inputs) (who : Player)
     (submission : WitnessedSubmission graph) : (state.submit who submission).Invariant inputs := by
   refine ⟨?_, state.submit_quiescent who submission valid.quiescent⟩
@@ -130,15 +122,6 @@ theorem environment (valid : state.Invariant inputs) (runtime : EventGraphRuntim
 end Invariant
 end RecoveryState
 
-/-- Generic reactive history invariants apply to the concrete recovery handlers. -/
-theorem recoveryApplication_invariant (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (inputs : graph.Inputs) :
-    (recoveryApplication runtime leaks).Invariant (RecoveryState.Invariant inputs) where
-  submit _ who material valid := valid.submit who material
-  handle _ message next valid accepted := valid.handle runtime message next accepted
-  environment _ command next valid realized := valid.environment runtime command next realized
-
 /-- Permanent exclusions can only grow under actual recovery execution steps. -/
 theorem recoveryApplication_exclusion_monotone (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)) :
@@ -149,38 +132,5 @@ theorem recoveryApplication_exclusion_monotone (runtime : EventGraphRuntime grap
   handle state message next accepted := state.handle_excluded_subset runtime next message accepted
   environment state command next realized :=
     state.environment_excluded_subset runtime next command realized
-
-/-- Every actual history from a coherent native initial law automatically
-suppresses all subsequent readiness of permanently excluded owners. -/
-theorem recoveryApplication_history_invariant (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (initial : PMF (State graph))
-    (initialized : ∀ native ∈ initial.support, native.Invariant native.config.inputs)
-    (horizon : Nat) (scheduler : (recoveryApplication runtime leaks).Scheduler)
-    (control : (recoveryApplication runtime leaks).Control)
-    (trace : ((recoveryApplication runtime leaks).protocol
-      (initial.map fun native => (⟨native, ∅⟩ : RecoveryState graph)) horizon scheduler).Trace
-        (some control)) :
-    ∃ inputs, control.execution.application.Invariant inputs := by
-  let app := recoveryApplication runtime leaks
-  have preserved : app.Invariant (fun state => ∃ inputs, state.Invariant inputs) := by
-    refine ⟨?_, ?_, ?_⟩
-    · intro state who material valid
-      obtain ⟨inputs, valid⟩ := valid
-      exact ⟨inputs, valid.submit who material⟩
-    · intro state message next valid accepted
-      obtain ⟨inputs, valid⟩ := valid
-      exact ⟨inputs, valid.handle runtime message next accepted⟩
-    · intro state command next valid realized
-      obtain ⟨inputs, valid⟩ := valid
-      exact ⟨inputs, valid.environment runtime command next realized⟩
-  apply preserved.history _ horizon scheduler ?_ trace
-  intro state member
-  rw [PMF.support_map] at member
-  obtain ⟨native, member, rfl⟩ := member
-  refine ⟨native.config.inputs, initialized native member, ?_⟩
-  intro event eligible
-  obtain ⟨owner, _, impossible⟩ := eligible.owned
-  exact Finset.notMem_empty _ impossible
 
 end Vegas.EventGraphRuntime

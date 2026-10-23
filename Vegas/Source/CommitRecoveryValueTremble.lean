@@ -286,44 +286,4 @@ variable {Γ : SourceCtx Player L} {O : Finset VarId} {owner : Player} {name : V
   {lift : SourceProgram.ProtocolState (.commit name owner fresh guard next) →
     SourceProgram.ProtocolState setup.program}
 
-private theorem bindingQuery_atCommit
-    (origin : ProtocolSuffix setup.program (.commit name owner fresh guard next) lift)
-    (current : CommitRecoveryState setup.program)
-    (trace : setup.commitRecoveryProtocol.Trace (some current)) (config : Config Player L Γ)
-    (atPoint : current.point = lift (.inl config)) :
-    (setup.commitRecoveryModel.infoOf owner trace).1.1.1.elim false
-      (ProtocolView.atCommit owner setup.program) = true := by
-  rw [setup.commitRecovery_atCommit_info owner trace]
-  change ProtocolState.atCommit setup.program current.point = true
-  rw [atPoint, origin.atCommit_lift]
-  rfl
-
-/-- At a genuine binding the fixed failure selector is exactly its original
-accepted-failure or omission atom, independent of any ordinary value. -/
-theorem commitRecoveryFailureChoice_binding
-    (origin : ProtocolSuffix setup.program (.commit name owner fresh guard next) lift)
-    (current : CommitRecoveryState setup.program)
-    (trace : setup.commitRecoveryProtocol.Trace (some current)) (config : Config Player L Γ)
-    (atPoint : current.point = lift (.inl config)) (survives : owner ∉ current.excluded)
-    (omitted : Bool) :
-    setup.commitRecoveryFailureChoice owner (setup.commitRecoveryModel.infoOf owner trace)
-        omitted =
-      setup.commitRecoveryBindingAtom origin current trace config atPoint survives
-        (.inr omitted) := by
-  let info := setup.commitRecoveryModel.infoOf owner trace
-  obtain ⟨atom, same⟩ := setup.commitRecoveryBindingAtom_surjective origin current trace config
-    atPoint survives (setup.commitRecoveryFailureChoice owner info omitted)
-  have properties := setup.commitRecoveryFailureChoice_spec owner info omitted
-    (CommitRecoveryMove.bindingAtom owner name payload atom)
-    (congrArg Subtype.val same).symm
-  have committing := setup.bindingQuery_atCommit origin current trace config atPoint
-  change info.1.1.1.elim false (ProtocolView.atCommit owner setup.program) = true at committing
-  cases atom with
-  | inl value => cases properties.1
-  | inr flag =>
-      have equal : flag = omitted := by
-        simpa only [CommitRecoveryMove.bindingAtom, committing, Bool.true_and] using properties.2
-      subst flag
-      exact same.symm
-
 end Vegas.SourceProgram.Setup

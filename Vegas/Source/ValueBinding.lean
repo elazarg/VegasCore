@@ -55,12 +55,6 @@ theorem valueBinding_bindingPolicy (who : Player) :
       ⟨fun _ _ => by simp [bindingPolicy], valueBinding_bindingPolicy who k⟩
   | _, _, .reveal _ _ _ _ _ _ k => valueBinding_bindingPolicy who k
 
-/-- The value-binding policies are inhabited for every program. -/
-theorem exists_valueBinding (who : Player) {Γ : SourceCtx Player L} {O : Finset VarId}
-    (p : SourceProgram Player L Γ O) :
-    ∃ policy : BehavioralPolicy who p, ValueBinding p policy :=
-  ⟨bindingPolicy who p, valueBinding_bindingPolicy who p⟩
-
 /-- The decision view one step earlier: drop the newest cell, and drop the
 newest own action when that step was this player's own. How far back a view has
 to be carried is fixed by position in the program, which is why a pure policy
@@ -581,32 +575,6 @@ theorem sourcePublicEnv_congr :
         (fun h => publicEq (HasVar.there h)) (fun h => publicationEq (HasVar.there h))
       simp only [sourcePublicEnv, publicationEq HasVar.here, tailEq]
 
-/-- A cell bound to failure publishes failure whatever its owner decides. The
-disclosure decision is still recorded, because the owner may condition on it;
-only the publication is settled in advance.
-
-This is why binding an unopenable candidate adds nothing to the public result
-that refusing to open a bound value does not already add. -/
-theorem runWith_reveal_of_failure_bound
-    {fresh : published ∉ Γ.map Prod.fst}
-    {source : HasVar Γ name (.commitment owner payload)} {unresolved : name ∈ O}
-    {next : SourceProgram Player L ((published, .publication payload) :: Γ) (O.erase name)}
-    (profile : BehavioralProfile
-      (SourceProgram.reveal published owner name fresh source unresolved next))
-    (state : State L Γ) (registry : Registry Γ) (revelations : Revelations Γ)
-    (history : History Player L)
-    (bound : state.get source = .failure) :
-    runWith (.reveal published owner name fresh source unresolved next) profile state registry
-        revelations history =
-      (revealKernel profile (sourceObserve owner state, history owner)).bind fun disclose =>
-        runWith next (afterReveal profile)
-          (Env.cons (Val := CellVal (Player := Player) L) (x := published)
-            (τ := .publication payload) PublicationResult.failure state)
-          registry.weaken (revelations.reveal (published := published) source)
-          (Function.update history owner
-            (history owner ++ [OwnAction.reveal owner name disclose])) := by
-  simp only [runWith, bound, ite_self]
-
 /-! ## The certificate: the translation preserves the public outcome law -/
 
 omit [DecidableEq Player] [IExpr.ResultTypes L] in
@@ -816,32 +784,6 @@ theorem bindValues_run_publicOutcome_eq {who : Player} {Γ : SourceCtx Player L}
     (Function.update_self ..) (Function.update_self ..) state state _ _ _ _
     (patched_initial state)
 
-/-- The same across a private setup law: one translation serves the whole law,
-because it never consults the draw. -/
-theorem bindValues_publicRun_eq {who : Player} (setup : Setup (Player := Player) (L := L))
-    (profile : BehavioralProfile setup.program) (policy : PurePolicy who setup.program) :
-    setup.publicRun (Function.update profile who
-        (PurePolicy.toBehavioral setup.program (PurePolicy.bindValues setup.program policy))) =
-      setup.publicRun (Function.update profile who
-        (PurePolicy.toBehavioral setup.program policy)) := by
-  simp only [Setup.publicRun, Setup.run, PMF.map_bind]
-  exact bind_congr_on_support _ fun initial _ =>
-    bindValues_run_publicOutcome_eq setup.program profile policy initial
-
-/-- Every pure policy is matched by a policy that binds a value and has the
-same public result law, against unchanged opponents. Binding an unopenable
-candidate buys a pure deviator nothing. -/
-theorem exists_valueBinding_publicRun_eq {who : Player}
-    (setup : Setup (Player := Player) (L := L)) (profile : BehavioralProfile setup.program)
-    (policy : PurePolicy who setup.program) :
-    ∃ alternative : BehavioralPolicy who setup.program, ValueBinding setup.program alternative ∧
-      setup.publicRun (Function.update profile who alternative) =
-        setup.publicRun (Function.update profile who
-          (PurePolicy.toBehavioral setup.program policy)) :=
-  ⟨PurePolicy.toBehavioral setup.program (PurePolicy.bindValues setup.program policy),
-    valueBinding_bindValues setup.program policy,
-    bindValues_publicRun_eq setup profile policy⟩
-
 /-! ## The value-binding game
 
 The game a source program presents once a binding must carry a value. Only the
@@ -878,17 +820,6 @@ to `ValueBindingPolicy`, which is what rewriting through the game's laws needs.
 @[simp] theorem valueBindingGame_play (setup : Setup (Player := Player) (L := L))
     (profile : Profile setup.valueBindingGame.sig) :
     setup.valueBindingGame.play profile = setup.publicRun (valueBindingProfile profile) := rfl
-
-/-- Replacing one strategy of a value-binding profile replaces one policy. -/
-@[simp] theorem valueBindingProfile_update (setup : Setup (Player := Player) (L := L))
-    (profile : Profile setup.valueBindingGame.sig) (who : Player)
-    (replacement : setup.valueBindingGame.sig.Strategy who) :
-    valueBindingProfile (Profile.update profile who replacement) =
-      Function.update (valueBindingProfile profile) who replacement.val := by
-  funext actor
-  by_cases h : actor = who
-  · subst h; simp [valueBindingProfile]
-  · simp [valueBindingProfile, Profile.update_of_ne _ _ h, Function.update_of_ne h]
 
 end Setup
 

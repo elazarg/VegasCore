@@ -55,56 +55,6 @@ def freshServiceEnvelope (view : PublicView graph)
         | .bind .. | .sample .. => False)
   | .malformed .. => False
 
-open Classical in
-/-- A published envelope keeps its author's serial. The checker does not
-attribute a fresh violation to that author when it is included again.
-A fresh envelope's serial must equal the number of distinct identifiers of its
-author already on the ledger (`Interaction.Message.distinctAuthoredCount`), the
-number of the author's calls the contract has processed; repeated inclusions of
-one envelope do not advance it. -/
-def permittedServiceEnvelope (view : PublicView graph)
-    (ledger : List (Message Player (WitnessedPacket graph)))
-    (message : Message Player (WitnessedPacket graph)) : Bool :=
-  decide (message.id ∈ ledger.map Message.id ∨
-    (message.id.2 = Message.distinctAuthoredCount ledger message.sender ∧
-      runtime.freshServiceEnvelope view message))
-
-theorem permittedServiceEnvelope_iff (view : PublicView graph)
-    (ledger : List (Message Player (WitnessedPacket graph)))
-    (message : Message Player (WitnessedPacket graph)) :
-    runtime.permittedServiceEnvelope view ledger message = true ↔
-      message.id ∈ ledger.map Message.id ∨
-        (message.id.2 = Message.distinctAuthoredCount ledger message.sender ∧
-          runtime.freshServiceEnvelope view message) := by
-  classical
-  simp only [permittedServiceEnvelope, decide_eq_true_eq]
-
-theorem permittedServiceEnvelope_published (view : PublicView graph)
-    (ledger : List (Message Player (WitnessedPacket graph)))
-    (message : Message Player (WitnessedPacket graph))
-    (published : message.id ∈ ledger.map Message.id) :
-    runtime.permittedServiceEnvelope view ledger message = true :=
-  (runtime.permittedServiceEnvelope_iff view ledger message).mpr (Or.inl published)
-
-theorem permittedServiceEnvelope_unpublished_iff (view : PublicView graph)
-    (ledger : List (Message Player (WitnessedPacket graph)))
-    (message : Message Player (WitnessedPacket graph))
-    (unpublished : message.id ∉ ledger.map Message.id) :
-    runtime.permittedServiceEnvelope view ledger message = true ↔
-      message.id.2 = Message.distinctAuthoredCount ledger message.sender ∧
-        runtime.freshServiceEnvelope view message := by
-  rw [runtime.permittedServiceEnvelope_iff]
-  simp only [unpublished, false_or]
-
-theorem permittedServiceEnvelope_wrong_serial (view : PublicView graph)
-    (ledger : List (Message Player (WitnessedPacket graph)))
-    (message : Message Player (WitnessedPacket graph))
-    (unpublished : message.id ∉ ledger.map Message.id)
-    (wrong : message.id.2 ≠ Message.distinctAuthoredCount ledger message.sender) :
-    runtime.permittedServiceEnvelope view ledger message = false := by
-  classical
-  simp only [permittedServiceEnvelope, unpublished, wrong, false_and, or_self, decide_false]
-
 theorem freshServiceEnvelope_binding_iff (view : PublicView graph)
     (id : MessageId Player) (event : graph.EventId) (candidate : Handle graph)
     (evidence : Option (OpeningFact graph)) (token : Option (ReadinessToken graph)) :
@@ -181,28 +131,6 @@ theorem freshServiceEnvelope_owned (view : PublicView graph)
   | malformed =>
       simp only [freshServiceEnvelope, call] at permitted
 
-/-- While one event is the only ready event, every conforming fresh call names
-it, whoever sends it. -/
-theorem freshServiceEnvelope_event_of_sole (view : PublicView graph) (event : graph.EventId)
-    (sole : view.SoleReady event) (message : Message Player (WitnessedPacket graph))
-    (permitted : runtime.freshServiceEnvelope view message) :
-    message.payload.call.event? graph = some event := by
-  obtain ⟨named, addressed, ready⟩ := runtime.freshServiceEnvelope_ready view message permitted
-  rw [addressed, sole.2 named ready]
-
-/-- When one event is the only ready event owned by the sender, every
-conforming fresh call names it. Under the barrier order each player owns at
-most one ready event, and a ready public event is the only ready event. -/
-theorem freshServiceEnvelope_event_of_owned_unique (view : PublicView graph)
-    (event : graph.EventId) (message : Message Player (WitnessedPacket graph))
-    (unique : ∀ other, view.EventReady other → graph.actor? other = some message.sender →
-      other = event)
-    (permitted : runtime.freshServiceEnvelope view message) :
-    message.payload.call.event? graph = some event := by
-  obtain ⟨named, addressed, ready, actor⟩ := runtime.freshServiceEnvelope_owned view message
-    permitted
-  rw [addressed, unique named ready actor]
-
 /-- For a call addressed to a binding node, the public checker determines the
 entire emitted packet and its author, without an assumed packet-shape premise. -/
 theorem freshServiceEnvelope_binding_shape
@@ -236,21 +164,6 @@ theorem freshServiceEnvelope_binding_shape
       simp only [freshServiceEnvelope, node, and_false] at permitted
   | malformed =>
       simp only [freshServiceEnvelope] at permitted
-
-/-- A public canonical binding remains acceptable for every private opening
-that emits this packet, including missing or mistyped material. -/
-theorem permittedServiceEnvelope_binding
-    (state : State graph) (who : Player) (event : graph.EventId)
-    (ledger : List (Message Player (WitnessedPacket graph))) (serial : Nat)
-    (includable : state.publicView.BindingIncludable runtime
-      ⟨(who, serial), .commitment event (who, .prepared (state.publicView.bindingCount who))⟩)
-    (counted : serial = Message.distinctAuthoredCount ledger who) :
-    runtime.permittedServiceEnvelope state.publicView ledger
-      ⟨(who, serial),
-        ⟨.commitment event (who, .prepared (state.publicView.bindingCount who)), none,
-          some ⟨event⟩⟩⟩ = true :=
-  (runtime.permittedServiceEnvelope_iff _ _ _).mpr
-    (Or.inr ⟨counted, includable, rfl, rfl, rfl⟩)
 
 /-- The opening branch exposes exactly the phase, association, certificate and
 public-guard facts used by the existing guarded-response classification. -/

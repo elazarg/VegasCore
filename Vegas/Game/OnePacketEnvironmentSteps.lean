@@ -12,9 +12,6 @@ the recall and view before it, and at an activation multiplies by the mass the
 observation rule gives the leaked packets (`Vegas.environmentMass`). The network
 is recorded whole in the operational state (`Vegas.OperationalState.network`),
 so no hypothesis on the scheduler or the observation rule is needed for this.
-What the operational record contains is a separate matter: on forced histories
-the only hidden value in its pending payloads is the delivered one
-(`Vegas.onePacket_pending_disclosed_of_forced`).
 
 So the operational steps of the factorization reduce to their component part:
 any response mass satisfying the component bound at regular responses of other
@@ -66,11 +63,6 @@ def environmentMass :
   | _, _ => 1
 
 variable {setup leaks scheduler}
-
-theorem operationalState_network (control : (application setup leaks).Control) :
-    ∃ state, operationalState setup leaks (some control) = some state ∧
-      state.network = control.execution.network :=
-  ⟨_, rfl, rfl⟩
 
 theorem completionMass_of_config_eq {before after : EventGraphRuntime.State (graph setup)}
     (same : after.config = before.config) : completionMass setup before after = 1 := by

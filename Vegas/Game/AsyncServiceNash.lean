@@ -13,7 +13,7 @@ contract, the turn-counted clients of a source profile
 menu that admits them; the bounded raw menu does
 (`Vegas.AsyncServiceSpec.rawMenu_admits`). Their joint law of typed outcome and realized
 settlement is within the total deferral weight `δ` of the source law in total
-variation (`Vegas.sourceServiceClients_settlement_lawError`). When every
+variation (`Vegas.sourceServiceClients_clientPolicy_settlement_lawError`). When every
 realized payoff value lies in an interval of length `R`, expected payoffs are
 within `δ * R`. Each player's client depends only on its own source policy, so
 a compiled source deviation is a native deviation, and a native `ε`-Nash
@@ -53,7 +53,7 @@ abbrev sourceModel := service.setup.informationModel admission
 /-- **The turn-counted clients** of a source profile in a response menu: each
 player follows the turn-counted policy of its disclosure-normalized source
 policy, completed by silence after its own off-policy responses
-(`Vegas.sourceServiceClientPolicy`). -/
+(`Vegas.serviceClientPolicy`). -/
 def clientProfile (menu : (serviceApplication service.setup service.mode service.deadline
     service.leaks).ResponseMenu)
     {turns : Nat} (timing : TurnTiming service.setup turns service.mode)

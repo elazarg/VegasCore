@@ -11,16 +11,13 @@ failed result (`Vegas.EventGraph.EventField.IsFailure`). An event failed in a
 graph store when its output field holds a failure
 (`Vegas.StoreEventFailed`), and in a terminal source state when a cell of the
 terminal context read from the event's output holds a failure
-(`Vegas.EventCellFailed`). The readout reads the store: a failure of the event
-in the readout is a failure of the event in the store
-(`Vegas.storeEventFailed_of_readout`).
+(`Vegas.EventCellFailed`). Reading a failure through any reference to the
+event's output field is a failure of the event in the store
+(`Vegas.storeEventFailed_of_ref`).
 
 The event-level failed readouts of a player are those recording a failure of
 the event together with a failed reveal of that player
-(`Vegas.EventFailedReadout`). They pay exactly the exclusion payoff
-(`Vegas.exclusionReadoutUtility_of_eventFailedReadout`), and a readout of a
-store whose event output is not a failure is not one of them
-(`Vegas.not_mem_eventFailedReadout_of_store`).
+(`Vegas.EventFailedReadout`).
 -/
 
 noncomputable section
@@ -70,40 +67,6 @@ def EventFailedReadout (who : Player) (event : (graph setup).EventId) :
     1 ≤ failedReveals setup.program who (publicOutcome setup.program terminal) ∧
     EventCellFailed setup event terminal}
 
-/-- **Event failure pays the exclusion payoff.** -/
-theorem exclusionReadoutUtility_of_eventFailedReadout {Parameter : Type}
-    (parameter : State L setup.context → Parameter)
-    (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
-    (excludedPayoff : Player → ℝ) (who : Player) (event : (graph setup).EventId) :
-    ∀ readout ∈ EventFailedReadout setup who event,
-      exclusionReadoutUtility setup parameter utility excludedPayoff readout who =
-        excludedPayoff who := by
-  rintro _ ⟨terminal, rfl, failed, _⟩
-  exact exclusionTerminalUtility_of_failed setup parameter utility excludedPayoff failed
-
 variable (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-
-/-- **The readout reads the store.** A failure of the event in the readout of
-a native state is a failure of the event in its store. -/
-theorem storeEventFailed_of_readout (control : (application setup leaks).Control)
-    (event : (graph setup).EventId) {terminal : State L setup.program.terminalCtx}
-    (read : sourceReadout setup leaks (some control) = some terminal)
-    (failed : EventCellFailed setup event terminal) :
-    StoreEventFailed control.execution.application.config.store event := by
-  rw [sourceReadout_eq_decode] at read
-  obtain ⟨name, cell, source, field, cellFailed⟩ := failed
-  have agrees : (terminalRefs setup.program).Agrees terminal
-      control.execution.application.config.store :=
-    decodeState?_agrees _ _ _ read
-  exact storeEventFailed_of_ref _ event _ field (agrees source) cellFailed
-
-/-- A readout of a native state whose store does not record a failure of the
-event is not an event-level failed readout. -/
-theorem not_mem_eventFailedReadout_of_store (control : (application setup leaks).Control)
-    (who : Player) (event : (graph setup).EventId)
-    (success : ¬ StoreEventFailed control.execution.application.config.store event) :
-    sourceReadout setup leaks (some control) ∉ EventFailedReadout setup who event := by
-  rintro ⟨terminal, read, _, failed⟩
-  exact success (storeEventFailed_of_readout setup leaks control event read failed)
 
 end Vegas

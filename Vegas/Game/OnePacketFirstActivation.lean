@@ -4,25 +4,14 @@ import Vegas.Game.OnePacketCanonicalAcceptance
 import Vegas.Game.SourceServiceFirstTurnOpportunity
 import Vegas.Pending.ReactiveOwnerOpportunity
 
-/-! # Sending at the first activation succeeds surely
+/-! # Recorded response entries
 
 A response appends one entry to its author's recall
 (`Vegas.respondEntry`), and every later transition keeps that entry in place
 (`Vegas.recordsEntry_transition`): at every later history the author's recall
-splits around it (`Vegas.RecordsEntry`).
-
-Under the asynchronous contract and the timeliness margin, the owner's first
-activation for an event comes within the reaction delay of the event's
-activation, so a packet sent then is included before the deadline whenever its
-inclusion takes at most the inclusion bound
-(`Vegas.firstActivation_inclusionFits`). The canonical decision sent at the
-first activation is therefore a fresh call, and at every later history of the
-one-packet game, under any responses of everyone and any scheduler, it has an
-accepting receipt once the bound has passed and whenever the event has
-completed (`Vegas.firstActivation_canonical_settles`). Under terminal play
-from any history recording it, the event completes and the packet is accepted
-on every terminal history: sending at the first activation fails with
-probability zero (`Vegas.firstActivation_canonical_accepted`).
+splits around it (`Vegas.RecordsEntry`). A decision state is reached from an
+idle state by activating its actor, which changes neither the application state
+nor any recall (`Vegas.decision_predecessor`).
 -/
 
 noncomputable section
@@ -158,48 +147,6 @@ theorem decision_predecessor {horizon : Nat} {scheduler : (application setup lea
                   | wait => cases same
                   | application command => cases same
 
-/-- **The first activation fits.** Under the asynchronous contract and the
-timeliness margin, at a decision of `who` at its turn `event` such that `event`
-was its turn at none of its recalled views, a packet included within
-`bound event` slots is included before the deadline. -/
-theorem firstActivation_inclusionFits {horizon : Nat}
-    {scheduler : (application setup leaks).Scheduler} {delay bound : (graph setup).EventId → Nat}
-    (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler delay
-      bound)
-    (timely : (runtime setup).AsyncTimely delay bound)
-    {state : (application setup leaks).ProtocolState}
-    (trace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
-      state)
-    {remaining : Nat} {who : Player} {execution : (application setup leaks).Execution}
-    (current : state = some ⟨remaining, some who, execution⟩) (event : (graph setup).EventId)
-    (turn : execution.application.publicView.ownTurn? who = some event)
-    (never : ∀ entry ∈ execution.recall who, ¬ ActivatedAt setup leaks who event entry) :
-    execution.application.publicView.InclusionFitsDeadline (runtime setup) bound event := by
-  obtain ⟨previous, ⟨previousTrace⟩, application, recallEq⟩ := decision_predecessor trace current
-  have spec := PublicView.ownTurn?_spec _ who event turn
-  have ready := (execution.application.publicView_eventReady event).mp spec.1
-  have strategic : ((graph setup).actor? event).isSome = true := by rw [spec.2]; rfl
-  obtain ⟨inputs, invariant⟩ := (roster_trace_facts setup leaks horizon scheduler
-    previousTrace).1
-  rw [application] at invariant
-  obtain ⟨entered, activated⟩ := invariant.activatedAt_eq_some_of_ready_actor event ready
-    strategic
-  apply PublicView.inclusionFitsDeadline_of_response_delay (runtime setup) delay bound timely _
-    event entered strategic activated
-  by_contra late
-  push Not at late
-  have since := contract.opportunity ⟨remaining + 1, none, previous⟩ previousTrace event who
-    entered spec.2 (by rw [application]; exact spec.1) (by rw [application]; exact activated)
-    (by rw [application]; exact late)
-  obtain ⟨before, _, _, response, member, viewed, beforeTurn, _⟩ :=
-    (runtime setup).owner_response_within_delay leaks (initialLaw setup) horizon scheduler delay
-      contract.opportunity (serviceGraph_revealRelaxedOrdered setup .sequential)
-      ⟨remaining + 1, none, previous⟩ previousTrace rfl event who entered spec.2 since
-  apply never response (recallEq ▸ member)
-  change response.beforeView.application.publicView.ownTurn? who = some event
-  rw [viewed]
-  exact beforeTurn
-
 section OnePacket
 
 variable [Fintype Player] (bounds : MessageBounds (graph setup))
@@ -216,121 +163,6 @@ theorem respondEntry_of_transmission (execution : (application setup leaks).Exec
   unfold respondEntry
   rw [submits]
   rfl
-
-/-- **The canonical packet sent at the first activation settles.** Under the
-asynchronous contract and the timeliness margin, let `who` send the canonical
-decision at its first activation for `event`, at a history of the one-packet
-game. At every later history of the one-packet game recording that response,
-under any responses of everyone and any scheduler, the packet has an accepting
-receipt once the inclusion bound has passed since it was sent, and whenever the
-event has completed. -/
-theorem firstActivation_canonical_settles {horizon : Nat}
-    {scheduler : (application setup leaks).Scheduler} {delay bound : (graph setup).EventId → Nat}
-    (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler delay
-      bound)
-    (timely : (runtime setup).AsyncTimely delay bound)
-    {remaining : Nat} {who : Player} {execution : (application setup leaks).Execution}
-    (trace : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
-      scheduler).Trace (some ⟨remaining, some who, execution⟩))
-    (event : (graph setup).EventId)
-    (turn : execution.application.publicView.ownTurn? who = some event)
-    (never : ∀ entry ∈ execution.recall who, ¬ ActivatedAt setup leaks who event entry)
-    (action : (graph setup).Action event) (material : (application setup leaks).Submission)
-    (submits : ((runtime setup).canonicalServiceDecision leaks who (execution.recall who)
-      (execution.observe (application setup leaks) who) event action).transmission =
-        some material)
-    {control : (application setup leaks).Control}
-    (later : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
-      scheduler).Trace (some control))
-    (records : RecordsEntry setup leaks who (respondEntry setup leaks execution who
-      ((runtime setup).canonicalServiceDecision leaks who (execution.recall who)
-        (execution.observe (application setup leaks) who) event action)) (some control)) :
-    (execution.application.publicView.clock + bound event < control.execution.application.clock →
-      ((sentEnvelope setup leaks execution who material).id, true) ∈
-        control.execution.receipts) ∧
-      (event ∈ control.execution.application.config.cut.completed →
-        ((sentEnvelope setup leaks execution who material).id, true) ∈
-          control.execution.receipts) := by
-  have rawTrace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
-      (some ⟨remaining, some who, execution⟩) :=
-    (bounds.onePacketMenu (runtime setup) leaks).toRawTrace (initialLaw setup) horizon scheduler
-      trace
-  have fits := firstActivation_inclusionFits contract timely rawTrace rfl event turn never
-  have call := canonical_freshCall (control := ⟨remaining, some who, execution⟩) rawTrace bound
-    who event turn fits action material submits
-  have owned := (PublicView.ownTurn?_spec _ who event turn).2
-  obtain ⟨earlier, rest, split⟩ := records
-  rw [respondEntry_of_transmission execution who _ material submits] at split
-  exact onePacket_freshCall_settles bounds contract.inclusion later who event owned earlier rest
-    _ _ split call
-
-/-- **Sending at the first activation fails with probability zero.** Under the
-asynchronous contract and the timeliness margin, let `who` send the canonical
-decision at its first activation for `event`, at a history of the one-packet
-game. From every history of the one-packet game recording that response, under
-terminal play of any players, the event has completed and the packet has an
-accepting receipt on every terminal history. -/
-theorem firstActivation_canonical_accepted {horizon : Nat}
-    {scheduler : (application setup leaks).Scheduler} {delay bound : (graph setup).EventId → Nat}
-    (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler delay
-      bound)
-    (timely : (runtime setup).AsyncTimely delay bound)
-    {remaining : Nat} {who : Player} {execution : (application setup leaks).Execution}
-    (trace : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
-      scheduler).Trace (some ⟨remaining, some who, execution⟩))
-    (event : (graph setup).EventId)
-    (turn : execution.application.publicView.ownTurn? who = some event)
-    (never : ∀ entry ∈ execution.recall who, ¬ ActivatedAt setup leaks who event entry)
-    (action : (graph setup).Action event) (material : (application setup leaks).Submission)
-    (submits : ((runtime setup).canonicalServiceDecision leaks who (execution.recall who)
-      (execution.observe (application setup leaks) who) event action).transmission =
-        some material)
-    (certificate : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup)
-      horizon scheduler).WellFoundedHistories)
-    (players : ∀ player, ((bounds.onePacketMenu (runtime setup) leaks).information
-      (initialLaw setup) horizon scheduler).BehavioralPolicy player)
-    (history : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup)
-      horizon scheduler).History)
-    (records : RecordsEntry setup leaks who (respondEntry setup leaks execution who
-      ((runtime setup).canonicalServiceDecision leaks who (execution.recall who)
-        (execution.observe (application setup leaks) who) event action)) history.state) :
-    ∀ final ∈ (((bounds.onePacketMenu (runtime setup) leaks).information (initialLaw setup)
-        horizon scheduler).runBehavioralTerminalFrom certificate players history).support,
-      ∃ control, final.state = some control ∧
-        event ∈ control.execution.application.config.cut.completed ∧
-        ((sentEnvelope setup leaks execution who material).id, true) ∈
-          control.execution.receipts := by
-  intro final supported
-  have recorded := ((bounds.onePacketMenu (runtime setup) leaks).information (initialLaw setup)
-    horizon scheduler).runBehavioralTerminalFrom_support_closed certificate players
-    (RecordsEntry setup leaks who (respondEntry setup leaks execution who
-      ((runtime setup).canonicalServiceDecision leaks who (execution.recall who)
-        (execution.observe (application setup leaks) who) event action)))
-    (fun state joint _ target holds reached =>
-      recordsEntry_transition who _ (initialLaw setup) horizon scheduler state target joint holds
-        reached)
-    history records final supported
-  have stopped := ((bounds.onePacketMenu (runtime setup) leaks).information (initialLaw setup)
-    horizon scheduler).runBehavioralTerminalFrom_support_terminal certificate players history
-    final supported
-  cases state : final.state with
-  | none =>
-      rw [state] at recorded
-      exact recorded.elim
-  | some control =>
-      rw [state] at recorded stopped
-      have finalTrace : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup)
-          horizon scheduler).Trace (some control) := state ▸ final.trace
-      have rawTrace : ((application setup leaks).protocol (initialLaw setup) horizon
-          scheduler).Trace (some control) :=
-        (bounds.onePacketMenu (runtime setup) leaks).toRawTrace (initialLaw setup) horizon
-          scheduler finalTrace
-      have terminal := contract.completes control rawTrace stopped
-      have completed : event ∈ control.execution.application.config.cut.completed := by
-        rw [terminal]
-        exact Finset.mem_univ _
-      exact ⟨control, rfl, completed, (firstActivation_canonical_settles bounds contract timely
-        trace event turn never action material submits finalTrace recorded).2 completed⟩
 
 end OnePacket
 

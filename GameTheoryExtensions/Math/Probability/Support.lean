@@ -44,17 +44,6 @@ theorem pmf_bind_pure_eq_map (μ : PMF α) (f : α → β) :
 theorem pmf_toReal_eq_zero_iff {μ : PMF α} {a : α} : (μ a).toReal = 0 ↔ a ∉ μ.support := by
   rw [ENNReal.toReal_eq_zero_iff, or_iff_left (μ.apply_ne_top a), PMF.apply_eq_zero_iff]
 
-/-- Conditioning on an event rescales the mass of its intersection with any
-other event by the event's own mass. -/
-theorem pmf_toOuterMeasure_filter_apply (p : PMF α) (s t : Set α)
-    (h : ∃ a ∈ s, a ∈ p.support) :
-    (p.filter s h).toOuterMeasure t = p.toOuterMeasure (t ∩ s) / p.toOuterMeasure s := by
-  simp only [PMF.toOuterMeasure_apply, div_eq_mul_inv]
-  rw [← ENNReal.tsum_mul_right]
-  refine tsum_congr fun a => ?_
-  by_cases inT : a ∈ t <;> by_cases inS : a ∈ s <;>
-    simp [Set.indicator, inT, inS, PMF.filter_apply]
-
 /-- When only one supported branch can produce an outcome, the outcome's mass
 is that branch's mass times its conditional mass. -/
 theorem bind_apply_of_unique_branch (law : PMF α) (branch : α → PMF β)
@@ -83,29 +72,6 @@ theorem bindOnSupport_congr_measure {μ ν : PMF α} (same : μ = ν)
     μ.bindOnSupport f = ν.bindOnSupport g := by
   subst ν
   exact bindOnSupport_congr μ fun a ha => agree a ha ha
-
-/-- A support-dependent bind after an ordinary bind reassociates, with the
-intermediate support witness threaded through the inner continuation. -/
-theorem bind_bindOnSupport_assoc {γ : Type*} (law : PMF α) (first : α → PMF β)
-    (next : ∀ value ∈ (law.bind first).support, PMF γ) :
-    (law.bind first).bindOnSupport next =
-      law.bindOnSupport fun value valueMem =>
-        (first value).bindOnSupport fun result resultMem =>
-          next result (by
-            rw [PMF.support_bind]
-            exact Set.mem_iUnion_of_mem value
-              (Set.mem_iUnion_of_mem valueMem resultMem)) := by
-  let dependentFirst : ∀ value ∈ law.support, PMF β := fun value _ => first value
-  have sourceEq : law.bindOnSupport dependentFirst = law.bind first :=
-    PMF.bindOnSupport_eq_bind law first
-  calc
-    (law.bind first).bindOnSupport next =
-        (law.bindOnSupport dependentFirst).bindOnSupport
-          (fun value valueMem => next value (by rwa [sourceEq] at valueMem)) := by
-      apply bindOnSupport_congr_measure sourceEq.symm
-      intro value _ _
-      congr
-    _ = _ := PMF.bindOnSupport_bindOnSupport law dependentFirst _
 
 /-- A support-dependent continuation after a pushforward can instead be
 evaluated at each original draw. The pushforward need not be injective. -/
@@ -192,11 +158,5 @@ theorem eq_map_cast_of_cast_eq {A B : Type _} (same : A = B) (law : PMF A)
   cases same
   cases equal
   exact (PMF.map_id law).symm
-
-/-- The fiber posterior on a supported fiber, with the fiber written as a preimage. -/
-theorem fiberPosterior_eq_filter_preimage (μ : PMF α) (f : α → β) {b : β}
-    (meets : ∃ a ∈ f ⁻¹' {b}, a ∈ μ.support) :
-    fiberPosterior μ f b = μ.filter (f ⁻¹' {b}) meets :=
-  fiberPosterior_eq_filter μ f meets
 
 end GameTheory.Math.Probability

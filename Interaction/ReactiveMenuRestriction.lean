@@ -108,23 +108,5 @@ theorem extra_choice_response (who : Principal)
   exact (larger.information initial horizon scheduler).menuRestriction_extra_choice _ _ _ who _
     action extra ⟨response, permitted, same⟩
 
-/-- Extending a behavioral profile means answering with the same physical
-response law at each retained decision input. -/
-theorem decoded_at_site
-    (source : ∀ who, (smaller.information initial horizon scheduler).BehavioralPolicy who)
-    (target : ∀ who, (larger.information initial horizon scheduler).BehavioralPolicy who)
-    (agrees : (included.actionRestriction initial horizon scheduler).ExtendsProfile source target)
-    (who : Principal) (site : (smaller.information initial horizon scheduler).InformationSite who)
-    (past : List app.PlayerEntry) (view : app.PlayerView) (observed : site.1 = some (past, view)) :
-    larger.decodeProfile initial horizon scheduler target who past view =
-      smaller.decodeProfile initial horizon scheduler source who past view := by
-  have same := agrees who site
-  change target who site.1 =
-    (source who site.1).map (included.choice initial horizon scheduler who site.1) at same
-  rw [observed] at same
-  simp only [decodeProfile, ReactiveApplication.decodePolicy, embedPolicy, PMF.map_comp]
-  rw [same, PMF.map_comp]
-  rfl
-
 end IncludedIn
 end Interaction.ReactiveApplication.ResponseMenu

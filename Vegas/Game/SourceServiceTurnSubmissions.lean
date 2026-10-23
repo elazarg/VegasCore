@@ -305,39 +305,6 @@ theorem decidedTurnPolicy_submitsAtTurn (bound : (serviceGraph setup mode).Event
           submitted
   · exact silentPolicy_submitsAtTurn setup leaks owner past view response chosen other submitted
 
-/-- A round of players that submit only at their own turns keeps every
-recorded submission at its author's turn. -/
-theorem round_submissionsAtTurn
-    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
-    {players : Player → (serviceApplication setup mode deadline leaks).Policy}
-    (atTurn : ∀ who, SubmitsAtTurn setup leaks (players who) who)
-    {execution next : (serviceApplication setup mode deadline leaks).Execution}
-    (valid : SubmissionsAtTurn setup leaks execution)
-    (reached : next ∈
-        ((serviceApplication setup mode deadline leaks).round scheduler players
-        execution).support) :
-    SubmissionsAtTurn setup leaks next := by
-  let app := serviceApplication setup mode deadline leaks
-  obtain ⟨command, _, middle, moved, cases⟩ := round_cases setup leaks reached
-  have recallEq := app.environmentStep_recall execution middle command moved
-  rcases cases with ⟨_, rfl⟩ | ⟨who, _, response, chosen, rfl⟩
-  · intro player entry member
-    rw [recallEq] at member
-    exact valid player entry member
-  · intro player entry member event submitted
-    by_cases same : player = who
-    · subst player
-      obtain ⟨emitted, recalled, _⟩ := respond_recall_self setup leaks middle who response
-      rw [recalled] at member
-      rcases List.mem_append.mp member with prior | fresh
-      · rw [recallEq] at prior
-        exact valid who entry prior event submitted
-      · rw [List.mem_singleton] at fresh
-        subst fresh
-        exact atTurn who _ _ response chosen event submitted
-    · rw [app.respond_recall_other middle who player same response, recallEq] at member
-      exact valid player entry member event submitted
-
 variable {setup leaks} in
 /-- Submissions at every author's turn are in particular one author's
 submissions at its turns. -/
@@ -454,52 +421,6 @@ theorem roundsFrom_activationsAnswered
       rw [app.roundsFrom_succ (serviceInitialLaw setup mode) scheduler players count] at supported
       obtain ⟨prior, priorMem, moved⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
       exact round_activationsAnswered setup leaks (ih prior priorMem) moved
-
-/-- Both facts hold along rounds of players that submit only at their own
-turns, from initialization under every scheduler. -/
-theorem roundsFrom_turnFacts {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
-    {players : Player → (serviceApplication setup mode deadline leaks).Policy}
-    (atTurn : ∀ who, SubmitsAtTurn setup leaks (players who) who) (count : Nat)
-    (execution : (serviceApplication setup mode deadline leaks).Execution)
-    (supported : execution ∈
-        ((serviceApplication setup mode deadline leaks).roundsFrom (serviceInitialLaw setup mode)
-        scheduler players count).support) :
-    SubmissionsAtTurn setup leaks execution ∧ ActivationsAnswered setup leaks execution := by
-  induction count generalizing execution with
-  | zero =>
-      obtain ⟨state, _, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
-      cases (PMF.mem_support_pure_iff _ _).mp reached
-      constructor
-      · intro who entry member
-        simp [ReactiveApplication.Execution.initial] at member
-      · intro entry member
-        simp [ReactiveApplication.Execution.initial] at member
-  | succ count ih =>
-      rw [ReactiveApplication.roundsFrom_succ] at supported
-      obtain ⟨prior, priorMem, moved⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
-      obtain ⟨submissions, answered⟩ := ih prior priorMem
-      exact ⟨round_submissionsAtTurn setup leaks atTurn submissions moved,
-        round_activationsAnswered setup leaks answered moved⟩
-
-/-- Rounds of players that submit only at their own turns keep both facts. -/
-theorem runRounds_turnFacts {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
-    {players : Player → (serviceApplication setup mode deadline leaks).Policy}
-    (atTurn : ∀ who, SubmitsAtTurn setup leaks (players who) who) (count : Nat)
-    (execution next : (serviceApplication setup mode deadline leaks).Execution)
-    (submissions : SubmissionsAtTurn setup leaks execution)
-    (answered : ActivationsAnswered setup leaks execution)
-    (reached : next ∈
-        ((serviceApplication setup mode deadline leaks).runRounds scheduler players count
-        execution).support) :
-    SubmissionsAtTurn setup leaks next ∧ ActivationsAnswered setup leaks next := by
-  induction count generalizing execution with
-  | zero =>
-      cases (PMF.mem_support_pure_iff _ _).mp reached
-      exact ⟨submissions, answered⟩
-  | succ count ih =>
-      obtain ⟨middle, moved, rest⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
-      exact ih middle (round_submissionsAtTurn setup leaks atTurn submissions moved)
-        (round_activationsAnswered setup leaks answered moved) rest
 
 /-- A response never changes a candidate whose meaning is fixed. -/
 theorem respond_candidate_fixed

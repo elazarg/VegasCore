@@ -99,35 +99,4 @@ theorem commitRecovery_supported_step_of_erased_history_eq
   rw [setup.commitRecoveryErasedHistory_extend, setup.commitRecoveryErasedHistory_extend,
     same, targetSame]
 
-/-- A whole genuine source suffix can be spliced after a failed-attempt
-counterpart. The constructed trace retains the EXACT original joint suffix,
-including every other owner's old choices and all later retries/exhaustion.
-The common instruction list expresses suffix equality without a new trace
-carrier or a replacement initialization. -/
-theorem commitRecovery_supported_suffix_of_erased_history_eq
-    (first second : setup.commitRecoveryProtocol.History)
-    (same : setup.commitRecoveryErasedHistory first = setup.commitRecoveryErasedHistory second)
-    {targetState : setup.commitRecoveryProtocol.State}
-    (targetTrace : setup.commitRecoveryProtocol.Trace targetState)
-    (retained : TracePrefix first.trace targetTrace) :
-    ∃ right : setup.commitRecoveryProtocol.History,
-      TracePrefix second.trace right.trace ∧
-      setup.commitRecoveryErasedHistory ⟨targetState, targetTrace⟩ =
-        setup.commitRecoveryErasedHistory right ∧
-      ∃ word : List (Player → Option (CommitRecoveryMove Player L)),
-        setup.recoveryJointRecall targetTrace = word ++ setup.recoveryJointRecall first.trace ∧
-        setup.recoveryJointRecall right.trace = word ++ setup.recoveryJointRecall second.trace := by
-  induction retained with
-  | refl =>
-      exact ⟨second, .refl, same, [], rfl, rfl⟩
-  | @extend before after earlier kept joint legal supported ih =>
-      obtain ⟨right, rightRetained, erased, word, leftWord, rightWord⟩ := ih
-      obtain ⟨rightLegal, rightTarget, rightSupported, nextErased⟩ :=
-        setup.commitRecovery_supported_step_of_erased_history_eq
-          ⟨before, earlier⟩ right erased joint legal supported
-      refine ⟨right.extend rightLegal rightSupported,
-        .extend rightRetained joint rightLegal rightSupported, nextErased, joint :: word, ?_, ?_⟩
-      · exact congrArg (List.cons joint) leftWord
-      · exact congrArg (List.cons joint) rightWord
-
 end Vegas.SourceProgram.Setup

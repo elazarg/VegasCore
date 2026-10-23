@@ -89,27 +89,6 @@ theorem foreign_firstActivation_prefix_of_recorded
   exact ⟨before, prior, response, joint, legal, realized, future, isPrefix, acting, chosen, pending,
     never⟩
 
-/-- A packet on the actual ledger names an event already recorded in its
-sender's private recall. This reads traffic and does not assume acceptance. -/
-theorem eventRecorded_of_ledger
-    {control : (application setup leaks).Control}
-    (trace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some control))
-    (owner : Player) (event : (graph setup).EventId)
-    (message : Message Player (WitnessedPacket (graph setup)))
-    (member : message ∈ control.execution.network.ledger)
-    (sender : message.sender = owner)
-    (named : message.payload.call.event? (graph setup) = some event) :
-    (runtime setup).eventRecorded leaks (control.execution.recall owner) event = true := by
-  have rawTrace := (bounds.onePacketMenu (runtime setup) leaks).toRawTrace (initialLaw setup)
-    horizon scheduler trace
-  have input := (application setup leaks).ledger_subset_inputs_history (initialLaw setup) horizon
-    scheduler control rawTrace member
-  apply (history_eventRecorded_iff rawTrace owner event).mpr
-  refine ⟨message, ?_, named⟩
-  rw [← (application setup leaks).history_inputRecall (initialLaw setup) horizon scheduler
-    rawTrace owner]
-  exact List.mem_filter.mpr ⟨input, by simp [sender]⟩
-
 /-- A pending authentic envelope names a submission already retained in its
 sender's recall. It can therefore be attributed before an inclusion attempt. -/
 theorem eventRecorded_of_pending

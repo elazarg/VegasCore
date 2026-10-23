@@ -406,30 +406,6 @@ theorem forcedAgent_of_history {menu : (application setup leaks).ResponseMenu}
       ((menu.information initial horizon scheduler).infoOf who history.trace) :=
   ⟨history, rfl, forced⟩
 
-open Classical in
-/-- The information agents of a response menu's model whose information state is
-forced for their player. -/
-def forcedAgents (menu : (application setup leaks).ResponseMenu)
-    (initial : PMF (application setup leaks).State) (horizon : Nat)
-    (scheduler : (application setup leaks).Scheduler) [Fintype Player]
-    [Fintype (menu.protocol initial horizon scheduler).History]
-    [∀ who, DecidableEq ((menu.information initial horizon scheduler).InfoState who)] :
-    Finset ((menu.information initial horizon scheduler).InformationAgent
-      (menu.information initial horizon scheduler).playedInformation) :=
-  Finset.univ.filter fun agent => forcedAgent menu initial horizon scheduler agent.1 agent.2.1
-
-theorem mem_forcedAgents {menu : (application setup leaks).ResponseMenu}
-    {initial : PMF (application setup leaks).State} {horizon : Nat}
-    {scheduler : (application setup leaks).Scheduler} [Fintype Player]
-    [Fintype (menu.protocol initial horizon scheduler).History]
-    [∀ who, DecidableEq ((menu.information initial horizon scheduler).InfoState who)]
-    {agent : (menu.information initial horizon scheduler).InformationAgent
-      (menu.information initial horizon scheduler).playedInformation} :
-    agent ∈ forcedAgents menu initial horizon scheduler ↔
-      forcedAgent menu initial horizon scheduler agent.1 agent.2.1 := by
-  classical
-  simp only [forcedAgents, Finset.mem_filter, Finset.mem_univ, true_and]
-
 end Default
 
 end Vegas

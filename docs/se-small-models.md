@@ -260,7 +260,7 @@ through his first activation, with empty own recall and public Alice failure at 
 This supplies silent witnesses without characterizing the entire information fiber.
 Protected inclusion supplies a Bool receipt. [`prescribed_packets_clean`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommittedResolutionService.lean#L1211) derives TRUE receipts
 and final permissions for every transmitted envelope on initialized ALL-prescribed play,
-using `sourceServiceTurnPolicy`/`firstTurnTiming` for an arbitrary source behavioral profile.
+using [`sourceServiceTurnPolicy`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceTurnPolicy.lean#L123)/`firstTurnTiming` for an arbitrary source behavioral profile.
 [`prescribed_settlement`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommittedResolutionService.lean#L1275) gives the full joint payoff vector as pure arbitrary base utility,
 for every authentic sampler and arbitrary deposit. [`first_true_bob_output_law`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommittedResolutionService.lean#L1418) checks the
 actual canonical first H opening: prompt stage-2 inclusion produces public `success true`,

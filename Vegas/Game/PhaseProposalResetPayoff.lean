@@ -27,67 +27,6 @@ local notation "initial" => PMF.map (PhaseRuntimeState.initial plan)
   (PMF.map encodeInputs setup.initialLaw)
 local notation "horizon" => ReservedEpoch.executionHorizon runtime
 
-omit [Fintype Player] in
-theorem RecoverySourceCheckpoint.history_eq_of_same_attempt_path [Finite Player]
-    {before after : PhaseRuntimeState (serviceGraph setup mode)}
-    (first : RecoverySourceCheckpoint setup mode before)
-    (last : RecoverySourceCheckpoint setup mode after)
-    (entry : before.entry = after.entry) (attempt : before.attempt = after.attempt)
-    {fuel : Nat} (path : setup.commitRecoveryProtocol.ReachesWithin fuel
-      ⟨_, first.trace⟩ ⟨_, last.trace⟩) :
-    (⟨_, first.trace⟩ : setup.commitRecoveryProtocol.History) = ⟨_, last.trace⟩ := by
-  classical
-  let := Fintype.ofFinite Player
-  have decreasing : ∀ {count : Nat} {start ending : setup.commitRecoveryProtocol.History},
-      setup.commitRecoveryProtocol.ReachesWithin count start ending →
-      ∀ current, start.state = some current →
-        ∃ next, ending.state = some next ∧ next.potential ≤ current.potential ∧
-          (next.potential = current.potential → ending = start) := by
-    intro count start ending reached
-    induction reached with
-    | refl count history =>
-        intro current stateEq
-        exact ⟨current, stateEq, le_rfl, fun _ => rfl⟩
-    | @step count start ending joint legal reached realized later ih =>
-        intro current stateEq
-        have raw : reached ∈ ((current.step joint).map some).support := by
-          rcases start with ⟨source, trace⟩
-          dsimp only at stateEq
-          subst source
-          exact realized
-        obtain ⟨middle, supported, middleEq⟩ := (PMF.mem_support_map_iff _ _ _).mp raw
-        obtain ⟨next, nextState, lower, _same⟩ := ih middle middleEq.symm
-        have running : ¬ ProtocolState.terminal setup.program current.point := by
-          simpa only [Setup.commitRecoveryProtocol, stateEq, Option.elim_some] using legal.1
-        have strict := current.step_potential_lt joint middle running supported
-        refine ⟨next, nextState, lower.trans strict.le, ?_⟩
-        intro equal
-        exact ((lower.trans_lt strict).ne equal).elim
-  obtain ⟨current, currentEq, _lower, equal⟩ := decreasing path _ rfl
-  have currentIsLast : current = CommitRecoveryState.atPoint
-      (last.residual.lift (ProtocolState.entry last.residual.tail last.source))
-        after.entry.excluded after.generation := Option.some.inj currentEq.symm
-  subst current
-  have firstPosition := first.saved_position
-  have lastPosition := last.saved_position
-  have phase := congrArg CommitAttemptId.phase attempt
-  have firstBound := ProtocolState.remaining_le_instructionCount setup.program
-    (first.residual.lift (ProtocolState.entry first.residual.tail first.source))
-  have lastBound := ProtocolState.remaining_le_instructionCount setup.program
-    (last.residual.lift (ProtocolState.entry last.residual.tail last.source))
-  have remaining : ProtocolState.remaining setup.program
-      (first.residual.lift (ProtocolState.entry first.residual.tail first.source)) =
-      ProtocolState.remaining setup.program
-        (last.residual.lift (ProtocolState.entry last.residual.tail last.source)) := by omega
-  have potentials : (CommitRecoveryState.atPoint
-      (last.residual.lift (ProtocolState.entry last.residual.tail last.source))
-        after.entry.excluded after.generation).potential =
-      (CommitRecoveryState.atPoint
-        (first.residual.lift (ProtocolState.entry first.residual.tail first.source))
-          before.entry.excluded before.generation).potential := by
-    simp only [CommitRecoveryState.potential, CommitRecoveryState.atPoint, remaining, entry]
-  exact (equal potentials).symm
-
 /-- Each physical suffix uses the fresh terminal coupling at its OWN literal
 endpoint and full witness. Equality of the source reset image transports the
 common prescribed source continuation; no native continuation law is assumed. -/

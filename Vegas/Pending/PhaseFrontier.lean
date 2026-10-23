@@ -278,34 +278,6 @@ theorem Frontier.terminal {state : PhaseRuntimeState graph} (valid : state.Front
   intro event
   exact (positioned.2 event).mpr event.isLt
 
-omit [DecidableEq Player] in
-/-- Every output inside an installed phase is voided by restoring its exact entry. -/
-theorem Frontier.restore_output {state : PhaseRuntimeState graph} (valid : state.Frontier)
-    (phase : RuntimePhase graph) (head : state.phases.head? = some phase)
-    (event : graph.EventId) (inside : event ∈ phase.events) :
-    (restore state.entry state.current).native.config.outputs event = none := by
-  have saved : state.entry.native.config.cut.IsPrefix phase.low := by
-    cases phases : state.phases with
-    | nil => simp only [phases, List.head?_nil, reduceCtorEq] at head
-    | cons first remaining =>
-        have same : first = phase := by simpa only [phases, List.head?_cons, Option.some.injEq]
-          using head
-        subst first
-        have positioned := valid.positioned
-        rw [phases] at positioned
-        exact positioned.1
-  have absent : event ∉ state.entry.native.config.cut.completed := by
-    intro completed
-    have below := (saved.2 event).mp completed
-    have lower := ((phase.mem_events event).mp inside).1
-    omega
-  change state.entry.native.config.outputs event = none
-  cases stored : state.entry.native.config.outputs event with
-  | none => rfl
-  | some value =>
-      exact (absent ((state.entry.native.config.output_available event).mp
-        (by simp only [stored, Option.isSome_some]))).elim
-
 end Vegas.EventGraphRuntime.PhaseRuntimeState
 
 namespace Vegas.EventGraphRuntime

@@ -18,8 +18,7 @@ Hence, if the owner's decoded response keeps silence with mass near a keyed
 weight and leaves little mass outside silence and openings of the bound value
 (`Vegas.OwnerOpeningLaw`), the owner's step is close to a two-point kernel of
 the key, the option and the operational state
-(`Vegas.ownerStepClose_of_openingLaw`), and the one-step lumping holds with
-the sum of the two drifts (`Vegas.onePacketOpeningLumping`).
+(`Vegas.ownerStepClose_of_openingLaw`).
 -/
 
 noncomputable section
@@ -453,24 +452,5 @@ theorem ownerStepClose_of_openingLaw {LateOption : Type}
     exact opensBinding_image_congr bounds history chosenHistory current chosenCurrent
       chosenSame.symm ready view action chosenAction member chosenMember ourOpens
       chosenOpens
-
-/-- **The one-step lumping under the owner's opening law.** -/
-def onePacketOpeningLumping
-    (assessment : (onePacketInformation setup leaks bounds horizon
-      scheduler).BehavioralAssessment) (who : Player) {LateOption : Type}
-    (profileOf : (onePacketInformation setup leaks bounds horizon scheduler).InformationSite who →
-      LateOption → ∀ player,
-        (onePacketInformation setup leaks bounds horizon scheduler).BehavioralPolicy player)
-    {δ₁ δ₂ : ℝ} (nonneg : 0 ≤ δ₁ + δ₂)
-    (silence : LateKey setup leaks → LateOption → Option (OperationalState setup leaks) →
-      PMF Bool)
-    (law : ∀ site key, lateKey setup leaks who site.1 = some key → ∀ option,
-      OwnerOpeningLaw bounds horizon scheduler silence key option (profileOf site option) δ₁ δ₂) :
-    PendingLumping assessment who profileOf LateEventFailed (δ₁ + δ₂)
-      (PendingImage (setup := setup) (leaks := leaks)) :=
-  onePacketPendingLumping assessment who profileOf nonneg
-    (openingKernel bounds horizon scheduler silence) fun site key siteKey option =>
-      ownerStepClose_of_openingLaw bounds silence key option (profileOf site option)
-        (law site key siteKey option)
 
 end Vegas

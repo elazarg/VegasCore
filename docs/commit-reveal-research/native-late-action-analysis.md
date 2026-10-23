@@ -550,7 +550,7 @@ even when its handle has a noncanonical serial:
 - `Submission.register` and `Submission.candidateAfter_eq` fix the supplied
   typed value before its commitment is transmitted.
 - `handle_commitment_eq`, or equivalently
-  `freshServiceAcceptable_accepted`, accepts the owned, unused handle at a
+  [`freshServiceAcceptable_accepted`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/ReactiveFreshCallAcceptance.lean#L82), accepts the owned, unused handle at a
   ready binding within its deadline. The handler imposes no canonical
   serial requirement.
 - The stored value is Safe, the selected handle belongs to Bob, the resolve

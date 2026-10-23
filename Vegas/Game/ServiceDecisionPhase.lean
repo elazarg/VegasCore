@@ -72,28 +72,6 @@ theorem decidedTurnPolicy_decidesAt (bound : (serviceGraph setup mode).EventId �
   only past view response chosen submitted :=
     decidedTurnPolicy_submission chosen submitted
 
-/-- For a binding event, realization does not depend on the configuration. -/
-theorem RealizesAt.bind_config {first second : (serviceGraph setup mode).Config}
-    {state : EventGraphRuntime.State (serviceGraph setup mode)}
-    {event : (serviceGraph setup mode).EventId} {action : (serviceGraph setup mode).Action event}
-    {entry : (serviceApplication setup mode deadline leaks).PlayerEntry}
-    {message : Message Player (WitnessedPacket (serviceGraph setup mode))}
-    {owner : Player} {payload : L.Ty}
-    (outputEq : (serviceGraph setup mode).outputLayout event = .binding owner payload)
-    (realized : RealizesAt leaks first state event action entry message) :
-    RealizesAt leaks second state event action entry message := by
-  revert realized
-  unfold RealizesAt
-  cases nodeView (serviceGraph setup mode) event with
-  | bind => exact id
-  | resolve _ _ _ _ resolveEq _ =>
-      rw [outputEq] at resolveEq
-      cases resolveEq
-  | sample _ _ sampleEq _ =>
-      rw [outputEq] at sampleEq
-      cases sampleEq
-
-
 /-- A configuration step keeps the fields an event reads once its predecessors
 have completed. -/
 theorem readFields_kept {config next : (serviceGraph setup mode).Config}
@@ -307,22 +285,6 @@ theorem DecidedEventPhase.initial (bound : (serviceGraph setup mode).EventId →
     fun before entry after split submitted => (never before entry after split submitted).elim,
     fun before entry after split long => (tooLong before entry after split long).elim,
     fun completed => (unfinished completed).elim⟩
-
-/-- The history only grows across a scheduler command. -/
-theorem environmentStep_history_mono
-    {execution next : (serviceApplication setup mode deadline leaks).Execution}
-    {command : (serviceApplication setup mode deadline leaks).Command}
-    (reached : next ∈
-      (execution.environmentStep (serviceApplication setup mode deadline leaks) command).support)
-    {completion : (serviceGraph setup mode).Completion}
-    (member : completion ∈ execution.application.config.history) :
-    completion ∈ next.application.config.history := by
-  rcases completionStep_reactive_environmentStep (serviceRuntime setup mode deadline) leaks
-      execution next command reached with ⟨configEq, _, _⟩ | ⟨other, ready, action, stepped, _, _⟩
-  · rw [configEq]
-    exact member
-  · rw [execution.application.config.step_history other ready action _ stepped]
-    exact List.mem_append_left _ member
 
 /-- **A scheduler command completing the decided event completes it with the
 decided action, unless the action is ineffective.** Only the owner's packet can

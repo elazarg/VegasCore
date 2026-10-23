@@ -112,40 +112,6 @@ def exclusionRestriction (wellFormed : setup.WellFormed) :
     (site : setup.intendedModel.InformationSite who) :
     ((setup.exclusionRestriction wellFormed).site who site).1 = (site.1, false) := rfl
 
-/-- An exclusion history leaves a player its source view, flagged with whether
-it is excluded. -/
-theorem exclusion_info (who : Player) {state : setup.ProtocolState}
-    (trace : setup.exclusionProtocol.Trace state) :
-    setup.exclusionModel.infoOf who trace =
-      (setup.protocolObserve who state,
-        setup.excludedFlag who (setup.protocolObserve who state)) := by
-  refine (InformationModel.flagMenu_infoOf
-    (setup.informationModel (CommitmentInterface.forfeiture setup.program)) setup.excludedFlag
-    setup.exclusionMenu setup.exclusionMenu_adequate who trace).trans ?_
-  rw [show (setup.informationModel (CommitmentInterface.forfeiture setup.program)).infoOf who
-      (restrictAvailable.trace trace) = setup.protocolObserve who state from
-        setup.protocol_info _ who _]
-
-/-- At an information value of the exclusion game with an unset flag, its
-owner is not excluded. -/
-theorem not_excludedState_of_unset (who : Player) {state : setup.ProtocolState}
-    (trace : setup.exclusionProtocol.Trace state)
-    (unset : (setup.exclusionModel.infoOf who trace).2 = false) :
-    ¬ setup.ExcludedState who state := by
-  intro excluded
-  rw [setup.exclusion_info, (setup.excludedFlag_observe_eq_true who state).mpr excluded] at unset
-  cases unset
-
-/-- **Retained sites are honest.** At every exclusion history of an embedded
-intended decision site, the owner is not excluded: no own binding failed and no
-own publication failed. -/
-theorem not_excludedState_of_retained (wellFormed : setup.WellFormed) (who : Player)
-    (site : setup.intendedModel.InformationSite who)
-    (history : setup.exclusionModel.InformationHistory who
-      ((setup.exclusionRestriction wellFormed).site who site).1) :
-    ¬ setup.ExcludedState who history.1.state :=
-  setup.not_excludedState_of_unset who history.1.trace (by rw [history.2]; rfl)
-
 /-- **Deviations are excluded.** After a source action that the intended game
 does not offer at one of its decision sites, every terminal continuation of the
 exclusion game records a failed reveal of the deviating player, whatever anyone

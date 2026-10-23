@@ -47,33 +47,4 @@ theorem commitRecoveryFlagLaw_choice (who : Player)
   exact setup.commitRecoveryValueFlags_law who info omission omissionNonnegative omissionBounded
     bad badNonnegative badBounded values
 
-omit [Fintype Player] in
-/-- Genuine chronological own actions have distinct public source times,
-including actions in retired attempts and passive source transitions. -/
-theorem commitRecoveryErasedModel_record_clock_nodup (who : Player) :
-    ∀ {state : setup.commitRecoveryProtocol.State}
-      (trace : setup.commitRecoveryProtocol.Trace state),
-      ((setup.commitRecoveryErasedModel.ownPlay who trace).map
-        (fun record => record.1.1.2.length)).Nodup
-  | _, .start => by
-      change ([] : List Nat).Nodup
-      exact List.nodup_nil
-  | _, .extend prior joint legal supported => by
-      rw [InfoSignals.ownPlay_extend]
-      cases chosen : joint who with
-      | none =>
-          exact commitRecoveryErasedModel_record_clock_nodup who prior
-      | some action =>
-          simp only [List.map_cons, List.nodup_cons]
-          refine ⟨?_, commitRecoveryErasedModel_record_clock_nodup who prior⟩
-          intro member
-          obtain ⟨record, recorded, same⟩ := List.mem_map.mp member
-          have acted : record.1 ∈ setup.commitRecoveryErasedModel.actedAt who prior := by
-            rw [setup.commitRecoveryErasedModel.actedAt_eq_map_ownPlay]
-            exact List.mem_map.mpr ⟨record, recorded, rfl⟩
-          have earlier := setup.commitRecoveryErasedModel_record_word_length_lt who
-            prior record.1 acted
-          rw [same, setup.commitRecoveryErasedModel_word_length who prior] at earlier
-          exact Nat.lt_irrefl _ earlier
-
 end Vegas.SourceProgram.Setup

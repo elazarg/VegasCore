@@ -56,17 +56,6 @@ theorem commitRecoveryNoMissErasedProfile_raw
   rw [commitRecoveryNoMissErasedProfile, setup.commitRecoveryErasedProfile_raw,
     setup.commitRecoveryNoMissProfile_raw, ← setup.commitRecoveryNoMissInformation_erased]
 
-/-- Applying the current-attempt normalization does not change the selected
-source action law. This is a property of the constructed profile. -/
-theorem commitRecoveryNoMissErasedProfile_normalized
-    (profile : ∀ who, setup.commitRecoveryModel.BehavioralPolicy who)
-    (who : Player) (info : setup.commitRecoveryModel.InfoState who) :
-    (setup.commitRecoveryNoMissErasedProfile profile who
-        (setup.commitRecoveryNoMissInformation who info)).map Subtype.val =
-      (setup.commitRecoveryNoMissErasedProfile profile who info).map Subtype.val := by
-  rw [setup.commitRecoveryNoMissErasedProfile_raw, setup.commitRecoveryNoMissErasedProfile_raw,
-    setup.commitRecoveryNoMissInformation_idempotent]
-
 variable [Fintype Player]
 
 end Vegas.SourceProgram.Setup

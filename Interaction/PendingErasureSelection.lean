@@ -55,12 +55,6 @@ variable {Payload : Type}
 def pendingIds (pending : List (Message Principal Payload)) : Finset (MessageId Principal) :=
   (pending.map Message.id).toFinset
 
-/-- Payload changes preserving identifiers cannot affect the inclusion law. -/
-theorem pendingIds_eq_of_map_id_eq
-    (first second : List (Message Principal Payload))
-    (same : first.map Message.id = second.map Message.id) :
-    pendingIds first = pendingIds second := congrArg List.toFinset same
-
 /-- Erasing a pending envelope removes its identifier and renames later ones. -/
 theorem pendingIds_eraseList (removed : MessageId Principal)
     (pending : List (Message Principal Payload)) :
@@ -150,14 +144,6 @@ theorem chooseWithOutside_erased_restore (weight : ℝ) (nonnegative : 0 ≤ wei
   rw [chooseWithOutside_image weight nonnegative _ _ (MessageId.restore_injective removed),
     pendingIds_restore_erased]
 
-/-- Two distinct public identifiers receive equal competing inclusion chances. -/
-theorem chooseWithOutside_pair_toReal (weight : ℝ) (nonnegative : 0 ≤ weight)
-    (first second : MessageId Principal) (different : first ≠ second) :
-    ((chooseWithOutside weight nonnegative {first, second}) (some first)).toReal =
-      weight / (1 + 2 * weight) := by
-  classical
-  simp [chooseWithOutside_some_toReal, different]
-
 /-- At any pending identifier, the public lottery is include-or-erased-law. -/
 theorem chooseWithOutside_include_or_erased (weight : ℝ) (nonnegative : 0 ≤ weight)
     (pending : List (Message Principal Payload)) (removed : MessageId Principal)
@@ -200,17 +186,6 @@ def pendingLotteryScheduler (weight : ℝ) (nonnegative : 0 ≤ weight) : app.Sc
     (fun _ view => MessageNetwork.pendingIds view.network.pending)
     (fun identifiers => (MessageNetwork.chooseWithOutside weight nonnegative identifiers).map
       app.pendingLotteryCommand)
-
-/-- Only pending identifiers influence selection; payloads, application
-observations, receipts, and earlier scheduler commands have no further effect. -/
-theorem pendingLotteryScheduler_eq_of_identifiers (weight : ℝ) (nonnegative : 0 ≤ weight)
-    (firstRecall secondRecall : List app.EnvironmentEntry)
-    (firstView secondView : app.EnvironmentView)
-    (same : MessageNetwork.pendingIds firstView.network.pending =
-      MessageNetwork.pendingIds secondView.network.pending) :
-    app.pendingLotteryScheduler weight nonnegative firstRecall firstView =
-      app.pendingLotteryScheduler weight nonnegative secondRecall secondView := by
-  exact Scheduler.ofObservation_eq_of_observation_eq app _ _ same
 
 /-- The scheduler's law with one envelope removed differs only by that
 envelope's inclusion branch and restoration of the remaining identifiers. -/

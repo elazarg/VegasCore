@@ -181,36 +181,4 @@ theorem candidateValues_raw_history (runtime : EventGraphRuntime graph)
   intro state trace
   exact invariant.history initial horizon covered trace
 
-theorem candidateValues_initial (inputs : PMF graph.Inputs) (finite : inputs.support.Finite)
-    (input : graph.Inputs) (supported : input ∈ inputs.support) :
-    (bounds.withInitialValues (inputs.map State.initial)).CandidateValues
-      (State.initial input) := by
-  intro candidate raw opened
-  rcases candidate with ⟨who, slot⟩
-  cases slot with
-  | initial index =>
-      exact bounds.initial_value_covered (inputs.map State.initial)
-        (by rw [PMF.support_map]; exact finite.image _) (State.initial input)
-        (PMF.support_map .. ▸ ⟨input, supported, rfl⟩) who index raw opened
-  | prepared serial =>
-      rw [State.initial_candidate] at opened
-      contradiction
-
-/-- Every candidate obtainable in the full raw finite game is encodable;
-the compiler's finite alphabet is chosen before any strategy. -/
-theorem candidateValues_initialized_raw_history (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (inputs : PMF graph.Inputs) (finite : inputs.support.Finite) (horizon : Nat)
-    (scheduler : (runtime.reactiveApplication leaks).Scheduler) {state}
-    (trace : (((bounds.withInitialValues (inputs.map State.initial)).rawMenu runtime leaks).protocol
-      (inputs.map State.initial) horizon scheduler).Trace state) :
-    ReactiveApplication.serviceInvariant
-      (fun execution => (bounds.withInitialValues (inputs.map State.initial)).CandidateValues
-        execution.application) state := by
-  apply (bounds.withInitialValues (inputs.map State.initial)).candidateValues_raw_history
-    runtime leaks (inputs.map State.initial) horizon scheduler _ trace
-  intro initial supported
-  obtain ⟨input, present, rfl⟩ := PMF.support_map .. ▸ supported
-  exact bounds.candidateValues_initial inputs finite input present
-
 end Vegas.EventGraphRuntime.MessageBounds

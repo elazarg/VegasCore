@@ -88,35 +88,6 @@ theorem phaseProposalReference_word_lower_of_atoms
     Finset.prod_le_prod₀ (s := Finset.univ) (f := fun _ => lower)
       (fun _ _ => nonnegative) (fun index _ => atoms index)
 
-/-- One literal bad response atom bounds the entire designated word. Every
-other atom is at most one, regardless of how rare its information input was. -/
-theorem phaseProposalReference_word_upper_of_atom
-    (values : ∀ who (key : setup.ProposalRecoveryComponent who),
-      PMF (setup.CommitRecoveryValueChoice who key.1))
-    (rates : PhaseProposalRates) (owner : Player) (control : (app).Control)
-    (trace : (protocol).Trace (some control)) (bad : ℝ)
-    (selected : Fin (control.execution.recall owner).length)
-    (atom : (phaseProposalReferencePolicy setup mode runtime leaks bounds plan values rates owner
-      ((control.execution.recall owner).take selected.val)
-      (control.execution.recall owner)[selected.val].beforeView
-      (control.execution.recall owner)[selected.val].action).toReal ≤ bad) :
-    (model).ownPlayReachProbability
-        (phaseProposalReferenceStrategy setup mode runtime leaks bounds plan initial horizon
-          scheduler values rates owner) ((model).ownPlay owner trace) ≤ bad := by
-  rw [phaseProposalReference_word_probability setup mode runtime leaks bounds plan horizon
-    scheduler values rates owner control trace]
-  let probability := fun index : Fin (control.execution.recall owner).length =>
-    (phaseProposalReferencePolicy setup mode runtime leaks bounds plan values rates owner
-      ((control.execution.recall owner).take index.val)
-      (control.execution.recall owner)[index.val].beforeView
-      (control.execution.recall owner)[index.val].action).toReal
-  have rest : ∏ index ∈ Finset.univ.erase selected, probability index ≤ 1 :=
-    Finset.prod_le_one₀ (fun _ _ => ENNReal.toReal_nonneg)
-      (fun _ _ => pmf_toReal_apply_le_one _ _)
-  rw [← Finset.mul_prod_erase Finset.univ probability (Finset.mem_univ selected)]
-  exact (mul_le_mul_of_nonneg_left rest ENNReal.toReal_nonneg).trans
-    (by simpa only [mul_one] using atom)
-
 /-- A fixed intrinsic game bounds chronological native response-word lengths
 before choosing any reference probabilities. -/
 theorem exists_phaseProposal_recall_length_bound

@@ -30,31 +30,4 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   (initial : PMF (application setup leaks).State) (horizon : Nat)
   (scheduler : (application setup leaks).Scheduler)
 
-/-- Any response event disjoint from main support has total probability at most
-square plus scale under the actual slot-trembled choice law. -/
-theorem slotTrembledChoice_event_le_of_disjoint_main
-    {scale : ℝ} (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1)
-    (who : Player) (info : (application setup leaks).Info)
-    (main alternative slot :
-      PMF ((onePacketModel setup leaks bounds initial horizon scheduler).Choice who info))
-    (event : Set ((onePacketModel setup leaks bounds initial horizon scheduler).Choice who info))
-    (disjoint : Disjoint main.support event) :
-    ((slotTrembledChoice setup leaks bounds initial horizon scheduler scale nonnegative le_one
-      who info main alternative slot).toOuterMeasure event).toReal ≤ scale ^ 2 + scale := by
-  let retained := (1 - scale ^ 3) * (1 - scale ^ 2) * (1 - scale)
-  have close := PMF.WithinTV.of_domination main
-    (slotTrembledChoice setup leaks bounds initial horizon scheduler scale nonnegative le_one
-      who info main alternative slot) retained (slotFactor_le_one nonnegative le_one)
-    (fun choice => slotTrembledChoice_ge_main setup leaks bounds initial horizon scheduler
-      nonnegative le_one who info main alternative slot choice)
-  have zero : main.toOuterMeasure event = 0 :=
-    (PMF.toOuterMeasure_apply_eq_zero_iff main event).mpr disjoint
-  have comparison := close event
-  rw [zero, ENNReal.toReal_zero, zero_sub, abs_neg,
-    abs_of_nonneg ENNReal.toReal_nonneg] at comparison
-  exact comparison.trans (by
-    have lower := slotMainRetention_ge nonnegative le_one
-    dsimp only [retained]
-    linarith)
-
 end Vegas

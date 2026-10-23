@@ -216,18 +216,6 @@ theorem canonicalActions_effective (who : Player)
   classical
   exact Finset.inter_subset_right
 
-theorem canonicalActions_firstSubmission (who : Player)
-    (past : List (runtime.reactiveApplication leaks).PlayerEntry)
-    (view : (runtime.reactiveApplication leaks).PlayerView)
-    (response : (runtime.reactiveApplication leaks).Action)
-    (member : response ∈ bounds.canonicalActions runtime leaks who past view) :
-    runtime.firstSubmission leaks past response = true := by
-  classical
-  rcases Finset.mem_union.mp (Finset.mem_inter.mp member).1 with decision | silent
-  · exact (Finset.mem_filter.mp decision).2
-  · cases Finset.mem_singleton.mp silent
-    rfl
-
 /-- Retained silence is the only alternative to a first timely canonical
 decision at the player's own ready event. -/
 theorem canonicalActions_cases (who : Player)
@@ -311,20 +299,6 @@ theorem canonicalActions_submission (who : Player)
         simpa only [firstSubmission, named, Bool.not_eq_true_eq_eq_false] using first
       exact ⟨event, choice, turn, owned, ready, timely, unsent, represented, same⟩
 
-/-- Recording an event excludes every later fresh response naming it. -/
-theorem canonical_no_second_submission (who : Player)
-    (past : List (runtime.reactiveApplication leaks).PlayerEntry)
-    (view : (runtime.reactiveApplication leaks).PlayerView)
-    (event : graph.EventId) (recorded : runtime.eventRecorded leaks past event = true)
-    (response : (runtime.reactiveApplication leaks).Action)
-    (member : response ∈ bounds.canonicalActions runtime leaks who past view) :
-    runtime.submittedEvent? leaks response ≠ some event := by
-  intro submitted
-  have first := bounds.canonicalActions_firstSubmission runtime leaks who past view response member
-  rw [runtime.firstSubmission_false_of_recorded leaks past event recorded response submitted]
-    at first
-  cases first
-
 /-- Local source-choice coverage needs boundedness and acceptance timeliness,
 but no roster or protected-delivery premise. -/
 theorem canonical_decision_retained (who : Player)
@@ -347,25 +321,6 @@ theorem canonical_decision_retained (who : Player)
   · simp only [canonicalDecisionActions, turn, owned, ready, timely, and_self, ↓reduceIte]
     exact Finset.mem_image.mpr ⟨choice, represented, rfl⟩
   · exact runtime.canonicalServiceDecision_firstSubmission leaks who past view event choice unsent
-
-/-- The stronger protected-delivery gate implies retained-menu timeliness.
-Source admission and bounded packet evidence remain separate premises. -/
-theorem protected_canonical_decision_retained (bound : graph.EventId → Nat) (who : Player)
-    (past : List (runtime.reactiveApplication leaks).PlayerEntry)
-    (view : (runtime.reactiveApplication leaks).PlayerView)
-    (event : graph.EventId) (choice : graph.Action event)
-    (turn : view.application.publicView.ownTurn? who = some event)
-    (owned : graph.actor? event = some who)
-    (ready : view.application.publicView.EventReady event)
-    (fits : view.application.publicView.InclusionFitsDeadline runtime bound event)
-    (unsent : runtime.eventRecorded leaks past event = false)
-    (represented : choice ∈ bounds.canonicalChoices event)
-    (available : runtime.canonicalServiceDecision leaks who past view event choice ∈
-      (bounds.menu runtime leaks).actions who past view) :
-    runtime.canonicalServiceDecision leaks who past view event choice ∈
-      bounds.canonicalActions runtime leaks who past view :=
-  bounds.canonical_decision_retained runtime leaks who past view event choice turn owned ready
-    fits.withinDeadline unsent represented available
 
 /-- Every covered typed binding value is retained at the selected canonical
 slot, including after earlier bindings completed by expiry. -/

@@ -36,18 +36,6 @@ def windowEnvelope (runtime : EventGraphRuntime graph)
     ⟨.opening event candidate raw, some ⟨candidate, raw⟩,
       initial.application.publicView.tokenFor (.opening event candidate raw)⟩⟩
 
-/-- The prescribed opening envelope of a ready event carries a valid token. -/
-theorem windowEnvelope_tokenValid (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (owner : Player) (event : graph.EventId) (candidate : Handle graph) (raw : Raw L)
-    (initial : (runtime.reactiveApplication leaks).Execution)
-    (ready : initial.application.config.cut.Ready event) :
-    (runtime.windowEnvelope leaks owner event candidate raw initial).payload.tokenValid = true := by
-  change (WitnessedPacket.mk (.opening event candidate raw) (some ⟨candidate, raw⟩)
-    (initial.application.publicView.tokenFor (.opening event candidate raw))).tokenValid = true
-  rw [initial.application.publicView_tokenFor_of_ready _ event rfl ready]
-  exact WitnessedPacket.tokenValid_opening event candidate raw _
-
 structure OpeningWindowFrame (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (owner : Player) (event : graph.EventId) (candidate : Handle graph) (raw : Raw L)
@@ -325,48 +313,5 @@ theorem OpeningWindowFrame.selection (runtime : EventGraphRuntime graph)
           rw [frame.ledger]
           exact old
         · rfl
-
-theorem OpeningWindowFrame.lookup_opened (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (owner : Player) (event : graph.EventId) (candidate : Handle graph) (raw : Raw L)
-    (offset : Nat) {slots : Nat} (selected : Option (Fin slots)) (visits : Nat)
-    (initial current : (runtime.reactiveApplication leaks).Execution)
-    (frame : runtime.OpeningWindowFrame leaks owner event candidate raw offset selected visits
-      initial current) (serials : initial.network.SerialsBeforeNext)
-    (opened : openingPassed selected visits = true) :
-    current.network.lookup (owner, initial.network.nextSerial owner) =
-      some (runtime.windowEnvelope leaks owner event candidate raw initial) := by
-  have pending := frame.opened opened
-  cases found : current.network.lookup (owner, initial.network.nextSerial owner) with
-  | none =>
-    have excluded := List.find?_eq_none.mp found
-      (runtime.windowEnvelope leaks owner event candidate raw initial) pending
-    exact False.elim (excluded (decide_eq_true_iff.mpr rfl))
-  | some message =>
-    have member := List.mem_of_find?_eq_some found
-    have same : message.id = (owner, initial.network.nextSerial owner) := by
-      simpa only [decide_eq_true_eq] using List.find?_some found
-    rcases frame.packets.pending message member with old | rfl
-    · exact False.elim (serials.next_unpublished owner (same ▸ old))
-    · rfl
-
-theorem OpeningWindowFrame.include_published (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (owner : Player) (event : graph.EventId) (candidate : Handle graph) (raw : Raw L)
-    (offset : Nat) {slots : Nat} (selected : Option (Fin slots)) (visits : Nat)
-    (initial current : (runtime.reactiveApplication leaks).Execution)
-    (frame : runtime.OpeningWindowFrame leaks owner event candidate raw offset selected visits
-      initial current) (serials : initial.network.SerialsBeforeNext)
-    (opened : openingPassed selected visits = true) :
-    let included := current.network.includePending (owner, initial.network.nextSerial owner)
-    included.2.Satisfies fun message => message.id ∈ included.2.ledger.map Message.id := by
-  have found := frame.lookup_opened runtime leaks owner event candidate raw offset selected
-    visits initial current serials opened
-  apply (frame.packets.includePending (owner, initial.network.nextSerial owner)).mono
-  intro message safe
-  simp only [MessageNetwork.includePending, found, List.map_append, List.mem_append]
-  rcases safe with old | rfl
-  · exact Or.inl (by simpa only [frame.ledger] using old)
-  · exact Or.inr (by simp)
 
 end Vegas.EventGraphRuntime

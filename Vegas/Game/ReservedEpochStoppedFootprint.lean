@@ -84,45 +84,4 @@ theorem original_binding_publicFailure_iff (ordered : graph.RevealRelaxedOrdered
       omega
 
 
-open scoped Classical in
-/-- Every rank of the original attempt record is fixed by the saved old
-failure prefix and the actual accepting-handle map inside this interval.
-This includes ranks outside the interval and the total failed-owner set. -/
-theorem original_binding_sourceFailureFootprint [Fintype Player]
-    (ordered : graph.RevealRelaxedOrdered) (plan : RuntimePhasePlan graph)
-    (inputs : PMF graph.Inputs) (horizon : Nat) (scheduler : (app).Scheduler)
-    (before : (app).Control)
-    (trace : ((app).protocol (inputs.map (PhaseRuntimeState.initial plan)) horizon
-      scheduler).Trace (some before))
-    (after : (app).Execution) (raw : RecoveryState graph)
-    (changed : after.application.attempt ≠ before.execution.application.attempt)
-    (effect : PhaseClosingEffect runtime leaks before.execution after raw)
-    (phase : RuntimePhase graph) (installed : phase ∈ before.execution.application.phases.head?)
-    (commitment : phase.kind = .commitment) (finished : phase.Finished (phase.drain raw)) :
-    let failed := fun event : graph.EventId =>
-      if event.val < phase.low then before.execution.application.entry.native.PublicFailure event
-      else if event.val < phase.high then raw.native.accepted (.inr event) = none else False
-    (phase.drain raw).native.sourceFailureFootprint =
-      (fun rank => Finset.univ.filter fun owner => ∃ event : graph.EventId,
-        event.val < rank ∧ graph.actor? event = some owner ∧ failed event,
-       Finset.univ.filter fun owner => ∃ event : graph.EventId,
-        graph.actor? event = some owner ∧ failed event) := by
-  classical
-  intro failed
-  have verdict (event : graph.EventId) :
-      (phase.drain raw).native.PublicFailure event ↔ failed event :=
-    original_binding_publicFailure_iff runtime leaks ordered plan inputs horizon scheduler before
-      trace after raw changed effect phase installed commitment finished event
-  apply Prod.ext
-  · funext rank
-    ext owner
-    simp only [State.sourceFailureFootprint, State.failureOwnersBefore, Finset.mem_filter,
-      Finset.mem_univ, true_and]
-    exact exists_congr fun event => and_congr_right fun _ =>
-      and_congr_right fun _ => verdict event
-  · ext owner
-    simp only [State.sourceFailureFootprint, State.failureOwners, Finset.mem_filter,
-      Finset.mem_univ, true_and]
-    exact exists_congr fun event => and_congr_right fun _ => verdict event
-
 end Vegas.EventGraphRuntime.ReservedEpoch

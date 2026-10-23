@@ -29,41 +29,6 @@ def State.PreparedPrefix (state : State graph) (who : Player) : Prop :=
   ∀ serial, state.candidates.lookup (who, .prepared serial) = .fresh ↔
     state.publicView.bindingCount who ≤ serial
 
-theorem State.preparedPrefix_initial (inputs : graph.Inputs) (who : Player) :
-    (State.initial inputs).PreparedPrefix who := by
-  intro serial
-  rw [State.initial_candidate]
-  simp [PublicView.bindingCount, State.publicView, State.initial,
-    EventGraph.publicObserve, EventGraph.Config.initial]
-
-theorem State.PreparedPrefix.freshSlot {state : State graph} {who : Player}
-    (prefixFresh : state.PreparedPrefix who)
-    (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)) :
-    reactiveFreshSlot ((runtime.reactiveApplication leaks).observePlayer state who) =
-      some (state.publicView.bindingCount who) := by
-  classical
-  have existsFresh : ∃ serial, state.candidates.lookup (who, .prepared serial) = .fresh :=
-    ⟨state.publicView.bindingCount who, (prefixFresh _).mpr (Nat.le_refl _)⟩
-  unfold reactiveFreshSlot
-  change (if fresh : ∃ serial,
-      state.candidates.lookup (who, .prepared serial) = .fresh then
-    some (Nat.find fresh) else none) = _
-  rw [dite_eq_left existsFresh]
-  apply congrArg some
-  apply Nat.le_antisymm
-  · exact Nat.find_min' existsFresh ((prefixFresh _).mpr (Nat.le_refl _))
-  · exact (prefixFresh _).mp (Nat.find_spec existsFresh)
-
-theorem State.bindingCount_complete (state : State graph) (event : graph.EventId)
-    (ready : state.config.cut.Ready event) (action : graph.Action event)
-    (value : (graph.outputLayout event).Value) (owner who : Player) (payload : L.Ty)
-    (binding : graph.outputLayout event = .binding owner payload) :
-    (state.complete event ready action value).publicView.bindingCount who =
-      state.publicView.bindingCount who + if owner = who then 1 else 0 := by
-  simp [PublicView.bindingCount, State.publicView, State.complete, EventGraph.publicObserve,
-    binding]
-
 variable (runtime : EventGraphRuntime graph)
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
 

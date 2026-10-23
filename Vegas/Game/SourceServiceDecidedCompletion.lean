@@ -5,11 +5,12 @@ import Vegas.Pending.ReactiveBindingResources
 
 /-! # A fixed first-turn decision completes its event with that action
 
-From a completion boundary of the turn-counted policy, suppose the owner of
-the current event decides a fixed action at its first turn there and every
-other response is silent. Under the asynchronous contract with
-`delay + bound < deadline`, every stopped point has completed the event with
-exactly that action (`Vegas.decided_completion`).
+From a completion boundary of any players at which the owner of the current
+event has submitted only at its own turns, suppose the owner decides a fixed
+effective action at its first turn there. Under the asynchronous contract with
+`delay + bound < deadline`, whatever the other players do, every stopped point
+has completed the event with exactly that action
+(`Vegas.decided_completion_of_follows`).
 
 * The first turn comes before any expiry: an expiry needs the deadline to have
   passed, and by then the scheduler has activated the owner.
@@ -18,12 +19,12 @@ exactly that action (`Vegas.decided_completion`).
   source makes effective submits an acceptable certified opening. By the
   timeliness lemma that packet is accepted, and the event completes only
   through it, with the decided action.
-* A disclosure of `false` is silence; no packet addresses the event, so only
-  expiry completes it, with `false`.
+* A disclosure of `false` is silence; the owner sends no packet for the event,
+  so only expiry completes it, with `false`.
 
-The invariants are properties of play on the support of the turn-counted
-policy, trembles included, up to the boundary, and of the decided policy
-after it. They are not claims about arbitrary deviations.
+The invariants are properties of play on the support of the players reaching
+the boundary, and of the owner's decided policy after it. They are not claims
+about arbitrary deviations of the owner.
 -/
 
 noncomputable section
@@ -546,13 +547,6 @@ theorem split_snoc {α : Type} {old before after : List α} {entry last : α}
     have := List.append_inj' joined rfl
     exact ⟨rest, by rw [List.singleton_inj.mp this.2, List.concat_eq_append], this.1⟩
 
-/-- Public readiness, and hence the own turn, is read from the completion
-identities alone. -/
-theorem ownTurn?_congr {left right : PublicView (serviceGraph setup mode)}
-    (same : left.observation = right.observation) (who : Player) :
-    left.ownTurn? who = right.ownTurn? who := by
-  simp only [PublicView.ownTurn?, PublicView.EventReady, same]
-
 /-- At the first turn no earlier recorded response saw the event as the
 player's turn. -/
 theorem sourceServiceTurn_first {owner : Player} {event : (serviceGraph setup mode).EventId}
@@ -685,27 +679,6 @@ theorem respond_recall_prefix (execution : (serviceApplication setup mode deadli
     exact List.prefix_append _ _
   · rw [(serviceApplication setup mode deadline leaks).respond_recall_other execution who observer
             same response]
-
-/-- The owner decides `action` at the first turn at `event`; everyone else
-is silent. -/
-def decidedProfile (bound : (serviceGraph setup mode).EventId → Nat) (owner : Player)
-    (event : (serviceGraph setup mode).EventId) (action : (serviceGraph setup mode).Action event) :
-    Player → (serviceApplication setup mode deadline leaks).Policy :=
-  Function.update (fun _ => (serviceApplication setup mode deadline leaks).silentPolicy) owner
-    (decidedTurnPolicy setup leaks bound owner event action)
-
-variable (leaks) in
-theorem decidedProfile_submitsAtTurn (bound : (serviceGraph setup mode).EventId → Nat)
-    (owner : Player) (event : (serviceGraph setup mode).EventId)
-    (action : (serviceGraph setup mode).Action event) (who : Player) :
-    SubmitsAtTurn setup leaks (decidedProfile (deadline := deadline) (leaks := leaks) bound owner
-      event action who) who := by
-  by_cases same : who = owner
-  · subst who
-    simp only [decidedProfile, Function.update_self]
-    exact decidedTurnPolicy_submitsAtTurn setup leaks bound _ event action
-  · simp only [decidedProfile, Function.update_of_ne same]
-    exact silentPolicy_submitsAtTurn setup leaks who
 
 /-- **The decided phase.** Facts of play on the support of the decided profile
 since the completion boundary `start`: the owner's new responses are in the
@@ -1479,42 +1452,6 @@ theorem decided_completion_of_follows {horizon : Nat}
       exact ready.1
     exact notDone (runUntilHorizon_completes contract.completes bounded startTrace stopped reached)
   · exact completed
-
-/-- **Decided completion.** From a completion boundary of the turn-counted
-policy, under the asynchronous contract with `delay + bound < deadline`, if the
-owner decides an effective action at its first turn and every other response
-is silent, every stopped point has completed the event with that action. -/
-theorem decided_completion {horizon : Nat}
-    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
-    {delay bound : (serviceGraph setup mode).EventId → Nat}
-    (contract : AsyncContract (serviceRuntime setup mode deadline) leaks
-        (serviceInitialLaw setup mode) horizon scheduler delay bound)
-    (timely : AsyncTimely (serviceRuntime setup mode deadline) delay bound) {turns : Nat}
-    {timing : TurnTiming setup turns mode} {profile : BehavioralProfile setup.program}
-    (event : (serviceGraph setup mode).EventId)
-    (start : (serviceApplication setup mode deadline leaks).Execution)
-    (boundary : CompletionBoundary setup leaks scheduler
-        (serviceTurnPolicy setup mode deadline leaks bound turns timing profile) event.val start)
-    (bounded : start.environmentRecall.length ≤ horizon)
-    (ready : start.application.config.cut.Ready event) {owner : Player}
-    (owned : (serviceGraph setup mode).actor? event = some owner)
-    (alone : ∀ (cut : (serviceGraph setup mode).order.Cut)
-      (other : (serviceGraph setup mode).EventId), cut.Ready event → cut.Ready other →
-        other = event)
-    (action : (serviceGraph setup mode).Action event)
-    (effective : EffectiveAction start.application.config event action)
-    (stopped : (serviceApplication setup mode deadline leaks).Execution)
-    (reached : stopped ∈
-        ((serviceApplication setup mode deadline leaks).runUntilHorizon scheduler
-        (decidedProfile (leaks := leaks) bound owner event action)
-        (fun final => event ∈ final.application.config.cut.completed) horizon start).support) :
-    stopped.application.config ∈ (start.application.config.step event ready action).support := by
-  obtain ⟨submissions, _⟩ := roundsFrom_turnFacts setup leaks
-    (fun who => sourceServiceTurnPolicy_submitsAtTurn setup leaks bound turns timing profile who) _
-    start boundary.supported
-  exact decided_completion_of_follows contract timely event start boundary bounded ready owned
-    alone (submissions.own owner) action effective
-    (by simp only [decidedProfile, Function.update_self]) stopped reached
 
 end Run
 

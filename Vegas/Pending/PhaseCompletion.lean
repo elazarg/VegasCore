@@ -163,36 +163,6 @@ theorem drain_invariant (state : RecoveryState graph) {inputs : graph.Inputs}
     (valid : state.native.Invariant inputs) : (phase.drain state).native.Invariant inputs :=
   phase.drainFuel_invariant _ _ valid
 
-omit [DecidableEq Player] in
-/-- Every drained edge is an actual automatic native failure edge. -/
-theorem automaticStep_native {before after : RecoveryState graph}
-    (step : phase.AutomaticStep before after) : RecoveryState.AutomaticStep before after := by
-  obtain ⟨event, eligible, rfl⟩ := step
-  exact ⟨event, eligible.2, rfl⟩
-
-/-- A phase drain never changes an output at a different source phase. -/
-theorem drainFuel_output_outside (fuel : Nat) (state : RecoveryState graph)
-    (query : graph.EventId) (outside : query ∉ phase.events) :
-    (phase.drainFuel fuel state).native.config.outputs query =
-      state.native.config.outputs query := by
-  induction fuel generalizing state with
-  | zero => rfl
-  | succ fuel ih =>
-      unfold drainFuel
-      split
-      · rename_i pending
-        rw [ih]
-        obtain ⟨action, supported⟩ := state.completeAutomatic_step
-          (Classical.choose pending) (Classical.choose_spec pending).2
-        have different : query ≠ Classical.choose pending := by
-          intro same
-          exact outside (same ▸ (Classical.choose_spec pending).1)
-        rw [Config.step, PMF.support_map] at supported
-        obtain ⟨value, _, completed⟩ := supported
-        rw [← completed]
-        exact Config.complete_output_of_ne _ _ _ _ _ _ different
-      · rfl
-
 /-- Phase-local completion cannot advance the semantic frontier beyond its end. -/
 theorem drainFuel_within (fuel : Nat) (state : RecoveryState graph)
     (within : state.native.config.cut.Within phase.low phase.high) :

@@ -583,37 +583,6 @@ theorem prescribed_packet_settles {horizon : Nat}
       finished late
     exact settled.2.1 accepted receipt
 
-/-- A recorded response that saw `event` ready, where no other event is ever
-ready together with `event`, saw the current public observation, accepted
-handles and activation times while `event` is unfinished. -/
-theorem entry_view_current_of_alone
-    (execution : (serviceApplication setup mode deadline leaks).Execution)
-    (stable : EntryStable (serviceRuntime setup mode deadline) leaks execution)
-    (eventStable : EntryEventStable (serviceRuntime setup mode deadline) leaks execution)
-    (who : Player) (entry : (serviceApplication setup mode deadline leaks).PlayerEntry)
-    (member : entry ∈ execution.recall who) (event : (serviceGraph setup mode).EventId)
-    (alone : ∀ other, (serviceGraph setup mode).ReadyTogether other event → other = event)
-    (ready : entry.beforeView.application.publicView.EventReady event)
-    (unfinished : event ∉ execution.application.config.cut.completed) :
-    entry.beforeView.application.publicView.observation =
-        execution.application.publicView.observation ∧
-      entry.beforeView.application.publicView.accepted = execution.application.accepted ∧
-      entry.beforeView.application.publicView.activatedAt = execution.application.activatedAt := by
-  obtain ⟨extra, order, together, _, _⟩ := eventStable who entry member event ready unfinished
-  have empty : extra = [] := by
-    rcases extra with _ | ⟨other, rest⟩
-    · rfl
-    · exfalso
-      have same := alone other (together other List.mem_cons_self)
-      subst same
-      apply unfinished
-      apply (execution.application.config.history_exact other).mp
-      change other ∈ execution.application.publicView.observation.completionOrder
-      rw [order]
-      exact List.mem_append_right _ List.mem_cons_self
-  subst empty
-  exact (stable who entry member).2 (by rw [order, List.append_nil])
-
 /-- A recorded response that saw an owner's event ready, which is still
 ready, saw it as the owner's turn: every other event of the owner that the
 response saw ready is either still ready or has completed while ready together

@@ -95,29 +95,6 @@ theorem run_commit_response
     (execution.respond app who (choice.1.getD ⟨none⟩)))) = _
   rw [selected, Option.getD_some]
 
-/-- A lawful response in the local behavioral law has an actual next history. -/
-theorem response_history_exists
-    (profile : ∀ who, (menu.information initial horizon scheduler).BehavioralPolicy who)
-    (history : (menu.protocol initial horizon scheduler).History)
-    (who : Principal) (remaining : Nat) (execution : app.Execution)
-    (current : history.state = some ⟨remaining, some who, execution⟩)
-    (response : app.Action)
-    (supported : response ∈ (menu.decodeProfile initial horizon scheduler profile who
-      (execution.recall who) (execution.observe app who)).support) :
-    ∃ next ∈ ((menu.information initial horizon scheduler).runBehavioralFrom profile 1
-      history).support, next.state =
-        some ⟨remaining, none, execution.respond app who response⟩ := by
-  have stateMember : some (Control.mk remaining none (execution.respond app who response)) ∈
-      ((menu.decodeProfile initial horizon scheduler profile who
-        (execution.recall who) (execution.observe app who)).map fun action =>
-          some (Control.mk remaining none (execution.respond app who action))).support := by
-    rw [PMF.support_map]
-    exact ⟨response, supported, rfl⟩
-  rw [← menu.run_one_response initial horizon scheduler profile history who remaining
-    execution current] at stateMember
-  obtain ⟨next, reached, stateEq⟩ := PMF.support_map .. ▸ stateMember
-  exact ⟨next, reached, stateEq⟩
-
 open Classical in
 theorem run_local_law_finish
     (profile : ∀ who, (menu.information initial horizon scheduler).BehavioralPolicy who)
@@ -213,39 +190,5 @@ theorem run_local_law_finish_of_information
   subst information
   exact menu.run_local_law_finish initial horizon scheduler profile history who remaining execution
     current law fuel enough
-
-open Classical in
-/-- The standard remaining-depth continuation fuel is sufficient at every
-actual menu decision history; callers need no separate scheduling estimate. -/
-theorem run_local_law_remaining
-    (profile : ∀ who, (menu.information initial horizon scheduler).BehavioralPolicy who)
-    (history : (menu.protocol initial horizon scheduler).History)
-    (who : Principal) (remaining : Nat) (execution : app.Execution)
-    (current : history.state = some ⟨remaining, some who, execution⟩)
-    (law : PMF ((menu.information initial horizon scheduler).Choice who
-      ((menu.information initial horizon scheduler).infoOf who history.trace))) :
-    ((menu.information initial horizon scheduler).runBehavioralFrom
-      (Profile.update (sig := (menu.information initial horizon scheduler).behavioralSignature)
-        profile who ((profile who).withLaw
-          ((menu.information initial horizon scheduler).infoOf who history.trace) law))
-      (2 * horizon + 1 - history.trace.length) history).map History.state =
-      (law.map (fun choice => choice.1.getD ⟨none⟩)).bind fun response =>
-        app.finish initial horizon scheduler (menu.decodeProfile initial horizon scheduler profile)
-          (some ⟨remaining, none, execution.respond app who response⟩) := by
-  have bounded := app.trace_bound initial horizon scheduler
-    (menu.toRawTrace initial horizon scheduler history.trace)
-  rw [menu.toRawTrace_length] at bounded
-  have positive : 0 < app.rank horizon history.state := by
-    rw [current]
-    change 0 < 2 * remaining + 1
-    omega
-  have enough : app.rank horizon history.state ≤
-      (2 * horizon + 1 - history.trace.length - 1) + 1 := by omega
-  have result := menu.run_local_law_finish initial horizon scheduler profile history who
-    remaining execution current law (2 * horizon + 1 - history.trace.length - 1) enough
-  have fuelEq : (2 * horizon + 1 - history.trace.length - 1) + 1 =
-      2 * horizon + 1 - history.trace.length := by omega
-  rw [fuelEq] at result
-  exact result
 
 end Interaction.ReactiveApplication.ResponseMenu

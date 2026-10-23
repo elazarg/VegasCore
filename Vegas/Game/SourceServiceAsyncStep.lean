@@ -11,8 +11,9 @@ The source continuation of a configuration's typed prefix
 boundaries (`Vegas.BoundaryContinuationWithin`), and the facts about
 completion runs and terminal rounds they use: an activation leaves the
 application unchanged (`Vegas.activation_application`), rounds from a terminal
-configuration keep it (`Vegas.runRounds_config_terminal`), and a completion run
-stops with its event completed (`Vegas.completionRun_completes`).
+configuration keep it (`Vegas.runRounds_config_terminal`), and a stopped point
+of a completion run from a completion boundary at which the event has completed
+is the next boundary (`Vegas.CompletionBoundary.stopped`).
 -/
 
 noncomputable section
@@ -55,20 +56,6 @@ theorem activation_application
   rfl
 
 variable {setup} {leaks}
-/-- The deferral weight bounds the mass off the first turn. -/
-theorem deferral_eq {turns : Nat} (timing : TurnTiming setup turns mode)
-    (event : (serviceGraph setup mode).EventId) (owner : Player)
-    (owned : (serviceGraph setup mode).actor? event = some owner) :
-    timing.deferral event = 1 - (timing event owner owned 0).toReal := by
-  unfold TurnTiming.deferral
-  split
-  · rename_i actorless
-    rw [owned] at actorless
-    cases actorless
-  · rename_i who ownedWho
-    have same : who = owner := Option.some.inj (ownedWho.symm.trans owned)
-    subst same
-    rfl
 
 theorem deferral_nonneg {turns : Nat} (timing : TurnTiming setup turns mode)
     (event : (serviceGraph setup mode).EventId) : 0 ≤ timing.deferral event := by
@@ -183,33 +170,5 @@ theorem CompletionBoundary.stopped {scheduler : (application setup leaks).Schedu
   · intro next rankNext observer entry member readyView
     have := stoppedSeen observer entry member next readyView
     omega
-/-- Under complete play, every stopped point of a completion run from a
-completion boundary within the horizon has completed the event, for any
-players. -/
-theorem completionRun_completes {scheduler : (application setup leaks).Scheduler}
-    {horizon : Nat} {players : Player → (application setup leaks).Policy}
-    (complete : CompletesPlay (runtime setup) leaks (initialLaw setup) horizon scheduler)
-    (event : (graph setup).EventId) (execution : (application setup leaks).Execution)
-    (boundary : CompletionBoundary setup leaks scheduler players event.val execution)
-    (bounded : execution.environmentRecall.length ≤ horizon)
-    (stopped : (application setup leaks).Execution)
-    (reached : stopped ∈ ((application setup leaks).runUntilHorizon scheduler players
-      (fun final => event ∈ final.application.config.cut.completed) horizon execution).support) :
-    event ∈ stopped.application.config.cut.completed := by
-  let app := application setup leaks
-  rcases app.runUntilHorizon_stopped scheduler players _ horizon
-      (horizon - execution.environmentRecall.length) execution stopped (by omega) reached with
-    done | spent
-  · exact done
-  · have supported := app.roundsFrom_runUntil scheduler players (initialLaw setup) _ _ execution
-      stopped boundary.supported reached
-    obtain ⟨trace⟩ := app.raw_trace_roundsFrom (initialLaw setup) horizon scheduler players _
-      (by omega) stopped supported
-    have terminal := complete _ trace (by
-      change horizon - stopped.environmentRecall.length = 0 ∧ _
-      exact ⟨by omega, rfl⟩)
-    change stopped.application.config.cut.completed = Finset.univ at terminal
-    rw [terminal]
-    exact Finset.mem_univ _
 
 end Vegas

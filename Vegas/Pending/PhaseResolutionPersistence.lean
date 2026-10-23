@@ -121,43 +121,4 @@ theorem phaseApplication_resolution (runtime : EventGraphRuntime graph)
     intro same
     exact (state.environment_progress_of_same_namespace runtime next command valid ordered reached
       same).completed
-
-namespace CommitAttemptEvent
-
-/-- After actual physical resolution, no later full reactive run can issue a
-request for that original coordinate, under any scheduler or player policies. -/
-theorem Resolved.no_request_runRounds (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket graph))
-    (coordinate : CommitAttemptEvent graph) {inputs : graph.Inputs}
-    (scheduler : (phaseApplication runtime leaks).Scheduler)
-    (players : Player → (phaseApplication runtime leaks).Policy) (count : Nat)
-    (execution next : (phaseApplication runtime leaks).Execution)
-    (valid : execution.application.Invariant inputs) (ordered : execution.application.Ordered)
-    (resolved : coordinate.Resolved execution.application)
-    (reached : next ∈ ((phaseApplication runtime leaks).runRounds scheduler players count
-      execution).support) (owner : Player) : ¬ next.application.SeedRequest owner coordinate := by
-  let app := phaseApplication runtime leaks
-  let predicate := fun current : app.Execution =>
-    current.application.Invariant inputs ∧ current.application.Ordered ∧
-      coordinate.Resolved current.application
-  have invariant : app.ServiceInvariant scheduler predicate := by
-    constructor
-    · intro current who action before
-      exact ⟨(phaseApplication_invariant runtime leaks inputs).respond current who action before.1,
-        (phaseApplication_seedOrder runtime leaks).respond current who action before.2.1,
-        (phaseApplication_resolution runtime leaks coordinate).respond current who action inputs
-          before.1 before.2.1 before.2.2⟩
-    · intro current future command before _ moved
-      exact ⟨(phaseApplication_invariant runtime leaks inputs).environmentStep current future
-        command
-        before.1 moved,
-        (phaseApplication_seedOrder runtime leaks).environmentStep current future command before.2.1
-          moved,
-        (phaseApplication_resolution runtime leaks coordinate).environmentStep current future
-          command
-          moved inputs before.1 before.2.1 before.2.2⟩
-  have after := invariant.runRounds players count execution next ⟨valid, ordered, resolved⟩ reached
-  exact Resolved.not_request coordinate next.application after.2.2 owner
-
-end CommitAttemptEvent
 end Vegas.EventGraphRuntime

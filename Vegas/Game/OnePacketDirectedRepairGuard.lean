@@ -24,40 +24,6 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   {scheduler : (application setup leaks).Scheduler}
   {p q : ProtocolState setup.program}
 
-open Classical in
-/-- A failed binding cannot be read by a ready or completed reveal at a native
-decision whose source view has an intended witness. -/
-theorem failedBinding_not_ready_or_completed (wellFormed : setup.WellFormed)
-    {second : setup.intendedProtocol.History} (secondState : second.state = some q)
-    (who : Player)
-    (sameView : ProtocolState.observe who setup.program p =
-      ProtocolState.observe who setup.program q)
-    {control : (application setup leaks).Control}
-    (trace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some control))
-    (decodedP : decodedPoint setup control.execution.application.config = some p)
-    (staticQ : ProtocolState.StaticAt setup.program [] (Revelations.initial setup.context) q)
-    (readyOwn : ∀ event, control.execution.application.config.cut.Ready event →
-      ∀ owner payload binding checks outputEq codeEq,
-        nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq →
-          owner = who)
-    {event : (graph setup).EventId} {owner : Player} {payload : L.Ty}
-    {binding : EventGraph.FieldRef (graph setup).layout (.binding owner payload)}
-    {checks : List (EventGraph.GuardCheck (graph setup).layout payload)}
-    {outputEq : (graph setup).outputLayout event = .publication payload}
-    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .resolve owner payload binding checks}
-    (view : nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq)
-    (failed : ProtocolState.cell? setup.program p (fieldCell setup binding.field).1
-      (.commitment owner payload) = some .failure) :
-    ¬ (control.execution.application.config.cut.Ready event ∨
-      event ∈ control.execution.application.config.cut.completed) := by
-  intro active
-  have agree := bindingCellsAgree_of_decoded wellFormed secondState who sameView trace decodedP
-    staticQ readyOwn active view
-  obtain ⟨value, impossible⟩ := ProtocolState.cell?_commitment_success
-    (intended_of_history wellFormed second.trace q secondState) (agree.symm.trans failed)
-  cases impossible
-
 /-- The public record of a forced information set holds at every history in
 that set, including histories whose hidden bindings are irregular. -/
 theorem publicRecord_of_forced_information {who : Player}

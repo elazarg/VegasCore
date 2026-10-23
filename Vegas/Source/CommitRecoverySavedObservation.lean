@@ -183,26 +183,5 @@ theorem commitRecovery_saved_rank (setup : Setup (Player := Player) (L := L))
             survives (previous.step_excluded_monotone joint next member excluded)
           exact previous.step_saved_rank who (ih before) joint next member survives
 
-/-- Equal actual current observations and public saved ranks determine equal
-saved source observations for surviving owners, across arbitrary recovery traces. -/
-theorem commitRecovery_saved_view_eq (setup : Setup (Player := Player) (L := L))
-    (who : Player) {first second : CommitRecoveryState setup.program}
-    (firstTrace : setup.commitRecoveryProtocol.Trace (some first))
-    (secondTrace : setup.commitRecoveryProtocol.Trace (some second))
-    (firstSurvives : who ∉ first.excluded) (secondSurvives : who ∉ second.excluded)
-    (sameView : ProtocolState.observe who setup.program first.point =
-      ProtocolState.observe who setup.program second.point)
-    (samePublic : setup.commitRecoveryPublic (some first) =
-      setup.commitRecoveryPublic (some second)) :
-    ProtocolState.observe who setup.program first.saved =
-      ProtocolState.observe who setup.program second.saved := by
-  have firstRead := setup.commitRecovery_saved_rank who firstTrace firstSurvives
-  have secondRead := setup.commitRecovery_saved_rank who secondTrace secondSurvives
-  have rank := congrArg (fun signal => signal.2.2) samePublic
-  change instructionCount setup.program - ProtocolState.remaining setup.program first.saved =
-    instructionCount setup.program - ProtocolState.remaining setup.program second.saved at rank
-  rw [rank, sameView] at firstRead
-  exact Option.some.inj (firstRead.symm.trans secondRead)
-
 end Setup
 end Vegas.SourceProgram

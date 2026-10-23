@@ -2,7 +2,7 @@
 
 import Vegas.Game.OnePacketSureFailure
 
-/-! # A failed event output is an event-level failure
+/-! # A failed binding output is an owed failure
 
 **The failed-binding record.** At every legal history of the default runtime,
 under arbitrary responses and every scheduler, the configuration decodes at a
@@ -11,13 +11,6 @@ owner owe a failure at the decoded point (`Vegas.FailedBindingRecord`,
 `Vegas.failedBindingRecord_history`): a binding output is the action that
 completed the event, so a failed output is a failing decoded completion, and
 owing a failure is closed under later steps.
-
-**The bridge.** Hence, under a scheduler that completes play, at a terminal
-history of the one-packet game whose store records a failure of an event owned
-by `who`, the history is an event-level failed history of `who` for the event
-(`Vegas.eventFailedHistory_of_storeEventFailed`): a failed disclosure is a
-failed reveal of its owner, and a failed binding makes its owner owe a failure,
-which every completed readout records as a failed reveal.
 -/
 
 noncomputable section
@@ -177,87 +170,5 @@ theorem failedBindingRecord_history (horizon : Nat)
       exact absurd below (Nat.not_lt_zero _)) trace
 
 end Record
-
-section OnePacket
-
-variable [Fintype Player] (bounds : MessageBounds (graph setup)) (horizon : Nat)
-  (scheduler : (application setup leaks).Scheduler)
-
-/-- **A failed event output is an event-level failure.** Under a scheduler that
-completes play, a terminal history of the one-packet game whose store records a
-failure of an event owned by `who` is an event-level failed history of `who`
-for the event. -/
-theorem eventFailedHistory_of_storeEventFailed (profile : BehavioralProfile setup.program)
-    (completes : CompletesPlay (runtime setup) leaks (initialLaw setup) horizon scheduler)
-    (certificate : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup)
-      horizon scheduler).WellFoundedHistories)
-    (players : ∀ player, ((bounds.onePacketMenu (runtime setup) leaks).information
-      (initialLaw setup) horizon scheduler).BehavioralPolicy player)
-    (final : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup)
-      horizon scheduler).History)
-    (stopped : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup)
-      horizon scheduler).terminal final.state)
-    {control : (application setup leaks).Control} (state : final.state = some control)
-    {who : Player} {event : (graph setup).EventId} (owned : (graph setup).actor? event = some who)
-    (failed : StoreEventFailed control.execution.application.config.store event) :
-    final ∈ EventFailedHistory setup leaks bounds horizon scheduler who event := by
-  let menu := bounds.onePacketMenu (runtime setup) leaks
-  have rawTrace : ((application setup leaks).protocol (initialLaw setup) horizon
-      scheduler).Trace (some control) :=
-    state ▸ menu.toRawTrace (initialLaw setup) horizon scheduler final.trace
-  have stoppedControl := stopped
-  rw [state] at stoppedControl
-  have terminal := completes control rawTrace stoppedControl
-  change sourceReadout setup leaks final.state ∈ EventFailedReadout setup who event
-  rw [state]
-  cases view : nodeView (graph setup) event with
-  | sample _ _ sampleEq codeEq =>
-      rw [nodeView_sample_actor sampleEq codeEq] at owned
-      cases owned
-  | resolve owner payload binding checks outputEq codeEq =>
-      have ownerEq : owner = who :=
-        Option.some.inj ((nodeView_resolve_actor outputEq codeEq).symm.trans owned)
-      subst ownerEq
-      obtain ⟨value, read, isFailure⟩ := storeEventFailed_get? failed
-        (⟨.inr event, outputEq⟩ : EventGraph.FieldRef (graph setup).layout
-          (.publication payload)) rfl
-      change value = .failure at isFailure
-      subst isFailure
-      exact eventFailedReadout_of_publicationFailure setup leaks control terminal owned outputEq
-        read
-  | bind owner payload outputEq codeEq =>
-      have ownerEq : owner = who :=
-        Option.some.inj ((nodeView_bind_actor outputEq codeEq).symm.trans owned)
-      subst ownerEq
-      obtain ⟨value, read, isFailure⟩ := storeEventFailed_get? failed
-        (⟨.inr event, outputEq⟩ : EventGraph.FieldRef (graph setup).layout
-          (.binding owner payload)) rfl
-      change value = .failure at isFailure
-      subst isFailure
-      obtain ⟨rank, residual, record⟩ := failedBindingRecord_history profile horizon scheduler
-        rawTrace
-      have done : event ∈ control.execution.application.config.cut.completed := by
-        rw [terminal]
-        exact Finset.mem_univ _
-      have owed : DecodedState setup leaks profile (ProtocolState.OwesFailure owner setup.program)
-          final.state := by
-        rw [state]
-        exact ⟨rank, residual, record event done owner payload outputEq read⟩
-      have self : final ∈ ((menu.information (initialLaw setup) horizon
-          scheduler).runBehavioralTerminalFrom certificate players final).support := by
-        rw [InformationModel.runBehavioralTerminalFrom,
-          (menu.protocol (initialLaw setup) horizon scheduler).randomizedBackwardLaw_of_terminal
-            stopped]
-        exact (PMF.mem_support_pure_iff _ _).mpr rfl
-      obtain ⟨readout, readEq, revealed⟩ := decoded_owesFailure_failedReveals menu horizon
-        scheduler completes certificate players owner final owed final self
-      rw [state] at readEq
-      exact eventFailedReadout_of_bindingFailure setup leaks control terminal outputEq read
-        fun source sourceRead => by
-          rw [readEq] at sourceRead
-          cases Option.some.inj sourceRead
-          exact revealed
-
-end OnePacket
 
 end Vegas

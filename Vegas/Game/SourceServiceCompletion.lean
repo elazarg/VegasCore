@@ -3,15 +3,17 @@
 import Vegas.Game.SourceServiceLocalComparison
 import Vegas.Game.ServiceRosterAsync
 
-/-! # The completion-stopped phase law
+/-! # Completed prefixes and completion boundaries
 
-On the sequentialized graph one event is ready at a time. After a response at
-a decision, the run is stopped when the decision's event completes
-(`TimedApproximant.completionLaw`). A completion boundary is an execution the
-players reach by complete rounds where the events of lower rank have completed
-and no recorded response has seen the next event ready
-(`CompletionBoundary`); `BoundaryContinuationLaw` states that the run to the
-horizon from every such boundary has the source continuation law.
+On the sequentialized graph one event is ready at a time. Every execution
+reached by complete rounds from initialization has a completed prefix, and its
+recorded responses saw nothing beyond it (`Vegas.roundsFrom_ranked`). Rounds
+stopped at the completion of the current event keep the recorded views below
+the next event (`Vegas.runUntil_completion_prefix`). A completion boundary is an
+execution the players reach by complete rounds where the events of lower rank
+have completed and no recorded response has seen the next event ready
+(`Vegas.CompletionBoundary`); `Vegas.BoundaryContinuationLaw` states that the
+run to the horizon from every such boundary has the source continuation law.
 -/
 
 noncomputable section
@@ -288,30 +290,5 @@ theorem runUntil_completion_prefix (scheduler : (application setup leaks).Schedu
 end Sequential
 
 variable [Fintype Player]
-
-namespace TimedApproximant
-
-variable {service : SourceServiceSpec Player L} (approx : TimedApproximant service)
-
-/-- The execution after one current response, stopped when the decision's
-event completes or at the horizon. -/
-def completionLaw {who : Player}
-    {execution : (application service.setup service.leaks).Execution}
-    (phase : DecisionPhase service.setup service.leaks service.rosters who execution)
-    (response : (application service.setup service.leaks).Action) :
-    PMF (application service.setup service.leaks).Execution :=
-  (application service.setup service.leaks).runUntilHorizon service.scheduler approx.players
-    (fun final => phase.event ∈ final.application.config.cut.completed) service.planLength
-    (execution.respond (application service.setup service.leaks) who response)
-
-/-- The configuration law when the decision's event completes. -/
-def completionConfigLaw {who : Player}
-    {execution : (application service.setup service.leaks).Execution}
-    (phase : DecisionPhase service.setup service.leaks service.rosters who execution)
-    (response : (application service.setup service.leaks).Action) :
-    PMF (graph service.setup).Config :=
-  (approx.completionLaw phase response).map (fun final => final.application.config)
-
-end TimedApproximant
 
 end Vegas

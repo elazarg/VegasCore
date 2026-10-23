@@ -83,31 +83,4 @@ theorem phaseBindingSlots_eq_fresh_of_history
       control trace who event payload outputEq request unsent values serial
         (Finset.mem_range.mp bounded) fresh
 
-/-- The actual horizon bound supplies at least one eligible slot, while the
-slot tier retains every other bounded fresh slot with positive uniform mass. -/
-theorem phaseBindingSlots_nonempty_of_history
-    (menu : (phaseApplication runtime leaks).ResponseMenu)
-    (plan : RuntimePhasePlan graph) (inputs : PMF graph.Inputs) (horizon : Nat)
-    (scheduler : (phaseApplication runtime leaks).Scheduler)
-    (capacity : horizon ≤ bounds.candidateCount)
-    (control : (phaseApplication runtime leaks).Control)
-    (trace : (menu.protocol (inputs.map (PhaseRuntimeState.initial plan))
-      horizon scheduler).Trace (some control)) (who : Player) (active : control.actor = some who)
-    (event : graph.EventId) (payload : L.Ty)
-    (outputEq : graph.outputLayout event = .binding who payload)
-    (request : control.execution.application.SeedRequest who
-      ⟨control.execution.application.attempt, event⟩)
-    (unsent : ∀ message ∈ (phaseApplication runtime leaks).outputs (control.execution.recall who),
-      event? message.payload ≠ some ⟨control.execution.application.attempt, event⟩)
-    (values : ∀ value : L.Val payload, (⟨payload, value⟩ : Raw L) ∈ bounds.values) :
-    (phaseBindingSlots runtime leaks bounds who event payload
-      (control.execution.recall who)
-      (control.execution.observe (phaseApplication runtime leaks) who)).Nonempty := by
-  have raw := menu.toRawTrace (inputs.map (PhaseRuntimeState.initial plan)) horizon scheduler trace
-  obtain ⟨serial, bounded, selected⟩ := PhaseCandidates.reactiveFreshSlot_lt_horizon runtime leaks
-    plan inputs horizon scheduler control raw who active
-  exact ⟨serial, mem_phaseBindingSlots_of_history runtime leaks bounds menu plan inputs horizon
-    scheduler control trace who event payload outputEq request unsent values serial
-      (bounded.trans_le capacity) (reactiveFreshSlot_spec _ serial selected)⟩
-
 end Vegas.EventGraphRuntime.PhaseCount

@@ -77,16 +77,6 @@ namespace ProtocolView
 
 end ProtocolView
 
-/-- Both actual chunk projections preserve the observed instruction position. -/
-theorem SourceViewProjection.position_apply (projection : SourceViewProjection)
-    (who : Player) {Γ : SourceCtx Player L} {O : Finset VarId}
-    (program : SourceProgram Player L Γ O) (view : ProtocolView who program) :
-    ProtocolView.position who program (projection.apply who program view) =
-      ProtocolView.position who program view := by
-  cases projection with
-  | memory remember => exact ProtocolView.position_historyProjection who remember program view
-  | publicOnly => exact ProtocolView.position_publicOnly who program view
-
 namespace ProtocolState
 
 /-- The public typed cursor determines all static recovery control fields. -/

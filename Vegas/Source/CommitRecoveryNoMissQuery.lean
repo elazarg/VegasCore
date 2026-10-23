@@ -180,67 +180,6 @@ theorem commitRecoveryWithAttemptExclusions_erased (who : Player) (cut : Nat)
         (Option.map (ProtocolView.publicOnly who setup.program)) information.1.2
   · rfl
 
-private theorem attemptWord_eq_of_window (who : Player) (cut : Nat)
-    (excluded : Finset Player)
-    (left right : List (setup.ProtocolView who × (Finset Player × Nat × Nat)))
-    (controls : List.Forall₂ (fun first second =>
-      first.1 = second.1 ∧ first.2.2 = second.2.2) left right)
-    (past : left.reverse.take cut = right.reverse.take cut) :
-    setup.attemptWord who cut excluded left =
-      setup.attemptWord who cut excluded right := by
-  induction controls with
-  | nil => rfl
-  | @cons first second left right current controls ih =>
-      have length : left.length = right.length := controls.length_eq
-      by_cases inside : cut ≤ left.length
-      · have prior : left.reverse.take cut = right.reverse.take cut := by
-          have leftTake : (left.reverse ++ [first]).take cut = left.reverse.take cut :=
-            List.take_append_of_le_length (by simpa only [List.length_reverse] using inside)
-          have rightTake : (right.reverse ++ [second]).take cut = right.reverse.take cut :=
-            List.take_append_of_le_length
-              (by simpa only [List.length_reverse, ← length] using inside)
-          have previous : (left.reverse ++ [first]).take cut =
-              (right.reverse ++ [second]).take cut := by
-            simpa only [List.reverse_cons] using past
-          exact leftTake.symm.trans (previous.trans rightTake)
-        have head : setup.attemptSignal who cut excluded left.length first =
-            setup.attemptSignal who cut excluded right.length second := by
-          simp only [attemptSignal, inside, ← length, ↓reduceIte]
-          exact Prod.ext current.1 (congrArg (Prod.mk excluded) current.2)
-        change _ :: _ = _ :: _
-        rw [head, ih prior]
-      · have leftBound : (first :: left).reverse.length ≤ cut := by
-          simp only [List.length_reverse, List.length_cons]
-          omega
-        have rightBound : (second :: right).reverse.length ≤ cut := by
-          simp only [List.length_reverse, List.length_cons, ← length]
-          omega
-        rw [List.take_of_length_le leftBound, List.take_of_length_le rightBound] at past
-        have same : first :: left = second :: right := List.reverse_injective past
-        exact congrArg (setup.attemptWord who cut excluded) same
-
-/-- The complete public window before the attempt is retained literally.
-Within the attempt, normalization removes precisely the exclusion components;
-all typed reads, generations and saved positions must already agree. -/
-theorem commitRecoveryWithAttemptExclusions_eq_of_window (who : Player) (cut : Nat)
-    (excluded : Finset Player)
-    (left right : setup.commitRecoveryModel.InfoState who)
-    (leftOwn : left.2 = []) (rightOwn : right.2 = [])
-    (controls : List.Forall₂ (fun first second =>
-      first.1 = second.1 ∧ first.2.2 = second.2.2)
-        (left.1.1 :: left.1.2) (right.1.1 :: right.1.2))
-    (past : (left.1.1 :: left.1.2).reverse.take cut =
-      (right.1.1 :: right.1.2).reverse.take cut) :
-    setup.commitRecoveryWithAttemptExclusions who cut excluded left =
-      setup.commitRecoveryWithAttemptExclusions who cut excluded right := by
-  have words := setup.attemptWord_eq_of_window who cut excluded
-    (left.1.1 :: left.1.2) (right.1.1 :: right.1.2) controls past
-  change _ :: _ = _ :: _ at words
-  obtain ⟨current, previous⟩ := List.cons.inj words
-  change ((_, _), List.map _ left.2) = ((_, _), List.map _ right.2)
-  rw [leftOwn, rightOwn]
-  exact Prod.ext (Prod.ext current previous) rfl
-
 private theorem attemptWord_before (who : Player) (cut : Nat) (excluded : Finset Player)
     (word : List (setup.ProtocolView who × (Finset Player × Nat × Nat)))
     (before : word.length ≤ cut) : setup.attemptWord who cut excluded word = word := by

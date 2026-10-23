@@ -152,25 +152,5 @@ theorem environment_retry_timers (runtime : EventGraphRuntime graph) {inputs : g
   · cases (PMF.mem_support_pure_iff _ _).mp reached
     exact (changed rfl).elim
 
-/-- Across an actual clock advance that retires a generation, the new timer
-strictly follows the previous physical clock, regardless of semantic rollback. -/
-theorem advanceClock_retry_timers (runtime : EventGraphRuntime graph) {inputs : graph.Inputs}
-    (state next : PhaseRuntimeState graph) (valid : state.Invariant inputs)
-    (reached : next ∈ (state.environment runtime .advanceClock).support)
-    (changed : next.generation ≠ state.generation) :
-    ∀ event entered, next.current.native.activatedAt event = some entered →
-      state.current.native.clock < entered := by
-  unfold environment at reached
-  simp only [commandAllowed, ↓reduceIte, environmentStep] at reached
-  rw [PMF.support_map] at reached
-  obtain ⟨native, moved, rfl⟩ := reached
-  cases (PMF.mem_support_pure_iff _ _).mp moved
-  have middle := environmentStep_invariant runtime state.current.native
-    ({ state.current.native with clock := state.current.native.clock + 1 })
-    .advanceClock valid.active ((PMF.mem_support_pure_iff _ _).mpr rfl)
-  have lower := settle_retry_timers _ _ _ _ _ valid.saved middle changed
-  intro event entered activated
-  exact Nat.lt_of_lt_of_le (Nat.lt_succ_self _) (lower event entered activated)
-
 end PhaseRuntimeState
 end Vegas.EventGraphRuntime

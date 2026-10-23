@@ -288,44 +288,4 @@ theorem RecoverySourceCheckpoint.bindingsHoldValues_of_no_generated_unusable
             stored
           simpa only [field, accepted, Option.elim_some, successful] using meaning
 
-/-- Foreign history cleanliness and the focal player's actual saved live
-typed reads discharge the ordinary gate at the same checkpoint. Canceled old
-focal preparations are unrestricted; no source usability premise is supplied. -/
-theorem RecoverySourceCheckpoint.bindingsHoldValues_of_foreign_good_and_own_live
-    (setup : Setup (Player := Player) (L := L)) (mode : ExecutionMode)
-    (wellFormed : setup.WellFormed)
-    (runtime : EventGraphRuntime (serviceGraph setup mode))
-    (leaks : MessageNetwork.ObservationRule Player
-      (CommitAttemptPacket (serviceGraph setup mode)))
-    (bounds : MessageBounds (serviceGraph setup mode))
-    (plan : RuntimePhasePlan (serviceGraph setup mode))
-    (horizon : Nat) (scheduler : (phaseApplication runtime leaks).Scheduler)
-    (control : (phaseApplication runtime leaks).Control)
-    (trace : ((PhaseCount.onePacketMenu runtime leaks bounds).protocol
-      ((setup.initialLaw.map encodeInputs).map (PhaseRuntimeState.initial plan))
-      horizon scheduler).Trace (some control))
-    (checkpoint : RecoverySourceCheckpoint setup mode control.execution.application)
-    (focal : Player)
-    (ownLive : ∀ {payload : L.Ty}
-      (ref : FieldRef (serviceGraph setup mode).layout (.binding focal payload)),
-      ref.get? control.execution.application.entry.native.config.store ≠ some .failure)
-    (foreign : ∀ owner, owner ≠ focal →
-      owner ∉ control.execution.application.current.excluded →
-      ¬ PhaseProposal.GeneratedUnusableBindingHistory runtime leaks bounds
-        ((setup.initialLaw.map encodeInputs).map (PhaseRuntimeState.initial plan))
-        horizon scheduler owner ⟨some control, trace⟩) :
-    ∀ owner, owner ∉ control.execution.application.current.excluded →
-      checkpoint.source.BindingsHoldValues owner := by
-  intro owner surviving name payload selected
-  by_cases same : owner = focal
-  · subst owner
-    cases result : checkpoint.source.state.get selected with
-    | success value => exact ⟨value, rfl⟩
-    | failure =>
-        exact (ownLive (checkpoint.refs.get selected)
-          (by simpa only [result, cellValue] using checkpoint.agrees selected)).elim
-  · exact checkpoint.bindingsHoldValues_of_no_generated_unusable setup mode wellFormed
-      runtime leaks bounds plan horizon scheduler control trace owner surviving
-        (foreign owner same surviving) selected
-
 end Vegas

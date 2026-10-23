@@ -106,16 +106,6 @@ theorem atRank_publicOnly (who : Player) :
 
 end ProtocolView
 
-/-- Reading an earlier source cursor commutes with either concrete projection. -/
-theorem SourceViewProjection.atRank_apply (projection : SourceViewProjection)
-    (who : Player) {Γ : SourceCtx Player L} {O : Finset VarId}
-    (program : SourceProgram Player L Γ O) (rank : Nat) (view : ProtocolView who program) :
-    ProtocolView.atRank who program rank (projection.apply who program view) =
-      (ProtocolView.atRank who program rank view).map (projection.apply who program) := by
-  cases projection with
-  | memory remember => exact ProtocolView.atRank_historyProjection who remember program rank view
-  | publicOnly => exact ProtocolView.atRank_publicOnly who program rank view
-
 namespace ProtocolState
 
 /-- Reading the entry's public cells is unchanged by padding the current

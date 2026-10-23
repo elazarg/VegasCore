@@ -239,38 +239,4 @@ theorem BehavioralAssessmentConvergesPointwise.context_value
     simpa only [Profile.update_same] using alternativesConverge decision
   · simpa only [Profile.update_of_ne _ _ same] using converges.strategy player decision
 
-/-- Optimal response policies may be chosen separately from the fully mixed
-assessment strategies. If both converge to the same prescribed behavior,
-their continuation comparisons pass to the limit. This permits the unavoidable
-trembles in the approximants without asserting that those trembles are optimal. -/
-theorem BehavioralAssessmentConvergesPointwise.rationalAt_of_optimal_responses
-    [∀ who (site : M.InformationSite who), Finite (M.Choice who site.1)]
-    (transitions : E.FiniteTransitions)
-    {sequence : ℕ → M.BehavioralAssessment} {assessment : M.BehavioralAssessment}
-    (converges : BehavioralAssessmentConvergesPointwise sequence assessment)
-    {who : ι} (site : M.InformationSite who)
-    [Finite (M.InformationHistory who site.1)]
-    (payoff : E.History → ℝ) (fuel : ℕ)
-    (responses : ℕ → M.BehavioralPolicy who)
-    (responsesConverge : ∀ decision : M.InformationSite who,
-      PMFConvergesPointwise (fun n => responses n decision.1)
-        (assessment.strategy who decision.1))
-    (optimal : ∀ n alternative,
-      ((sequence n).truncatedContinuationContext site payoff fuel).value alternative ≤
-        ((sequence n).truncatedContinuationContext site payoff fuel).value (responses n)) :
-    assessment.IsSequentiallyRationalAt site (assessment.truncatedContinuationContext site payoff
-        fuel) := by
-  refine (Context.isLocallyOptimal_iff_of_integrable
-    (truncatedContinuationContext_integrableAt_of_finite transitions assessment site payoff fuel _)
-    fun alternative _ =>
-      truncatedContinuationContext_integrableAt_of_finite transitions assessment site payoff
-        fuel _).mpr
-    fun alternative _ => ?_
-  exact le_of_tendsto_of_tendsto
-    (converges.context_value transitions site payoff fuel (fun _ => alternative) alternative
-      (fun _ => pmfConvergesPointwise_const _))
-    (converges.context_value transitions site payoff fuel responses (assessment.strategy who)
-      responsesConverge)
-    (Filter.Eventually.of_forall (fun n => optimal n alternative))
-
 end GameTheory.Protocol.InformationModel

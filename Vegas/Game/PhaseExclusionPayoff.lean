@@ -28,23 +28,6 @@ def phaseSourceReadout (state : (app).ProtocolState) :
     let config := control.execution.application.current.native.config
     if config.cut.Terminal then decodeState? (terminalRefs setup.program) config.store else none
 
-theorem phaseSourceReadout_eq_some (control : (app).Control)
-    (complete : control.execution.application.current.native.config.cut.Terminal)
-    (terminal : State L setup.program.terminalCtx)
-    (agreement : (terminalRefs setup.program).Agrees terminal
-      control.execution.application.current.native.config.store) :
-    phaseSourceReadout setup mode runtime leaks (some control) = some terminal := by
-  simp only [phaseSourceReadout, Option.bind_some, ite_eq_left complete]
-  exact decodeState?_eq_some _ terminal _ agreement
-
-/-- A real complete native store has a typed readout without default values. -/
-theorem phaseSourceReadout_succeeds (control : (app).Control)
-    (complete : control.execution.application.current.native.config.cut.Terminal) :
-    (phaseSourceReadout setup mode runtime leaks (some control)).isSome = true := by
-  simp only [phaseSourceReadout, Option.bind_some, ite_eq_left complete]
-  exact decodeState?_isSome_of_available _ _ fun field =>
-    control.execution.application.current.native.config.store_available_of_terminal complete field
-
 /-- The actual excluded set, rather than latent failed commitments, determines
 the floor. Unexcluded owners receive their terminal source-store utility. -/
 def phaseExclusionBase (utility : State L setup.program.terminalCtx → Player → ℝ)
@@ -63,15 +46,6 @@ theorem phaseExclusionBase_of_excluded
     phaseExclusionBase setup mode runtime leaks utility excludedPayoff (some control) who =
       excludedPayoff who := by
   simp only [phaseExclusionBase, ite_eq_left excluded]
-
-theorem phaseExclusionBase_eq_readout
-    (utility : State L setup.program.terminalCtx → Player → ℝ) (excludedPayoff : Player → ℝ)
-    (control : (app).Control) (who : Player)
-    (unexcluded : who ∉ control.execution.application.current.excluded) :
-    phaseExclusionBase setup mode runtime leaks utility excludedPayoff (some control) who =
-      (phaseSourceReadout setup mode runtime leaks (some control)).elim 0
-        (fun terminal => utility terminal who) := by
-  simp only [phaseExclusionBase, ite_eq_right unexcluded]
 
 theorem phaseExclusionBase_mem_Icc
     (utility : State L setup.program.terminalCtx → Player → ℝ)

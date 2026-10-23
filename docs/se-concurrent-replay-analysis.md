@@ -36,7 +36,7 @@ counted histories.
 Consequently aliases in one retained foreign class have identical successor
 application and network states. Only the acting foreign player's literal raw
 recall can differ. Its emitted-output list and submission count agree. The
-exact existing theorem `phaseProposalReferencePolicy_congr_input` in
+exact existing theorem [`phaseProposalReferencePolicy_congr_input`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/PhaseProposalReference.lean#L294) in
 `PhaseProposalReference.lean` then identifies its entire future policy whenever
 these summaries and its current view agree. For every other owner the ordinary
 input already agrees. This proves the needed closure under later callbacks;

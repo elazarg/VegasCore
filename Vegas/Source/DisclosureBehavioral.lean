@@ -411,24 +411,4 @@ theorem normalizeDisclosureProfile_runFrom [Finite Player] {Γ : SourceCtx Playe
           previous, ih]
   simpa only [selected, Finset.mem_univ, ite_true, translated] using equality Finset.univ
 
-/-- The initial private draw is preserved jointly with the full terminal
-state; no independence between different players' initial types is required. -/
-theorem normalizeDisclosureProfile_joint_law [Finite Player] {Γ : SourceCtx Player L}
-    {O : Finset VarId} {Parameter : Type}
-    (program : SourceProgram Player L Γ O) (profile : BehavioralProfile program)
-    (registry : Registry Γ) (revelations : Revelations Γ) (belief : PMF (Config Player L Γ))
-    (registryEq : ∀ config ∈ belief.support, config.registry = registry)
-    (revelationsEq : ∀ config ∈ belief.support, @config.revelations = @revelations)
-    (parameter : Config Player L Γ → Parameter) :
-    (belief.bind fun config =>
-      (runFrom program (normalizeDisclosureProfile program registry revelations profile) config).map
-        (fun result => (parameter config, result))) =
-      belief.bind fun config => (runFrom program profile config).map
-        (fun result => (parameter config, result)) := by
-  apply bind_congr_on_support _
-  intro config supported
-  have same := normalizeDisclosureProfile_runFrom program profile config
-  rw [registryEq config supported, revelationsEq config supported] at same
-  exact congrArg (PMF.map fun result => (parameter config, result)) same
-
 end Vegas.SourceProgram

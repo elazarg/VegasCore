@@ -31,13 +31,6 @@ theorem PhaseProposalRates.keep_le_one (rates : PhaseProposalRates) : rates.keep
   (mul_le_of_le_one_right rates.baseKeep_nonnegative
     (by linarith [rates.aliases.property.1])).trans rates.baseKeep_le_one
 
-theorem PhaseProposalRates.keep_lt_one (rates : PhaseProposalRates)
-    (waiting : 0 < rates.waiting.val) : rates.keep < 1 := by
-  have below : rates.keep ≤ rates.baseKeep :=
-    mul_le_of_le_one_right rates.baseKeep_nonnegative
-      (by linarith [rates.aliases.property.1])
-  exact (below.trans rates.baseKeep_le_waiting).trans_lt (by linarith)
-
 private theorem product_missing_le (first second : ℝ) (firstBound : first ≤ 1)
     (secondBound : second ≤ 1) : 1 - first * second ≤ (1 - first) + (1 - second) := by
   nlinarith [mul_nonneg (sub_nonneg.mpr firstBound) (sub_nonneg.mpr secondBound)]
@@ -141,25 +134,6 @@ theorem phaseProposalReferenceResponses_retained
   rw [mix_apply_toReal]
   exact le_add_of_nonneg_left (mul_nonneg rates.aliases.property.1 ENNReal.toReal_nonneg)
 
-/-- Full native response laws, including their actual raw aliases, differ by
-at most the prospective flag sum at this unchanged input. No future receipt,
-qualification event or no-fault event is conditioned on. -/
-theorem phaseProposalReferencePolicy_unflagged_close
-    (values : ∀ who (key : setup.ProposalRecoveryComponent who),
-      PMF (setup.CommitRecoveryValueChoice who key.1))
-    (rates : PhaseProposalRates) (who : Player) (past : List (app).PlayerEntry)
-    (view : (app).PlayerView)
-    (full : FullSupport
-      (phaseProposalBaseClasses setup mode runtime leaks bounds plan values rates who past view)) :
-    PMF.WithinTV rates.flagBound
-      (phaseProposalUnflaggedPolicy setup mode runtime leaks bounds plan values who past view)
-      (phaseProposalReferencePolicy setup mode runtime leaks bounds plan values rates who
-        past view) := by
-  apply PMF.WithinTV.mono rates.missing_keep_le
-  exact (PMF.WithinTV.of_domination _ _ rates.keep rates.keep_le_one
-    (phaseProposalReferenceResponses_retained setup mode runtime leaks bounds plan values rates
-      who past view full)).map Subtype.val
-
 /-- Forgetting subtype witnesses also preserves the retained mass pointwise.
 This supplies the actual raw response kernel used in scheduler rounds. -/
 theorem phaseProposalReferencePolicy_retained
@@ -180,38 +154,5 @@ theorem phaseProposalReferencePolicy_retained
     prob_bind_ge_mul _ _ rates.keep
       (phaseProposalReferenceResponses_retained setup mode runtime leaks bounds plan values rates
         who past view full) (fun response => PMF.pure response.val) response
-
-/-- An exact actual-policy realization of the clean prospective branch. A
-fresh current Bernoulli flag has probability `1-keep`; before that flag the
-ordinary draw and actual unflagged response law are unchanged. The residual
-is covered by the same menu, so this does not introduce a fictitious action.
-The genuine support adapter is discharged before this local lemma is used. -/
-theorem phaseProposalReferencePolicy_decompose
-    (values : ∀ who (key : setup.ProposalRecoveryComponent who),
-      PMF (setup.CommitRecoveryValueChoice who key.1))
-    (rates : PhaseProposalRates) (waiting : 0 < rates.waiting.val)
-    (who : Player) (past : List (app).PlayerEntry) (view : (app).PlayerView)
-    (full : FullSupport
-      (phaseProposalBaseClasses setup mode runtime leaks bounds plan values rates who past view)) :
-    ∃ residual : PMF (app).Action,
-      mix rates.keep rates.keep_nonnegative (rates.keep_lt_one waiting).le
-          (phaseProposalUnflaggedPolicy setup mode runtime leaks bounds plan values who past view)
-          residual =
-        phaseProposalReferencePolicy setup mode runtime leaks bounds plan values rates who
-          past view ∧
-      ∀ response ∈ residual.support,
-        response ∈ PhaseCount.onePacketActions runtime leaks bounds who past view := by
-  obtain ⟨residual, same⟩ := exists_mix_eq_of_le
-    (phaseProposalReferencePolicy setup mode runtime leaks bounds plan values rates who past view)
-    (phaseProposalUnflaggedPolicy setup mode runtime leaks bounds plan values who past view)
-    rates.keep rates.keep_nonnegative (rates.keep_lt_one waiting)
-    (phaseProposalReferencePolicy_retained setup mode runtime leaks bounds plan values rates who
-      past view full)
-  refine ⟨residual, same, ?_⟩
-  intro response supported
-  apply phaseProposalReferencePolicy_covered setup mode runtime leaks bounds plan values rates who
-    past view response
-  rw [← same]
-  exact mem_support_mix_right _ _ _ (rates.keep_lt_one waiting) supported
 
 end Vegas

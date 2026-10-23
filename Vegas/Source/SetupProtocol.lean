@@ -131,15 +131,6 @@ theorem protocol_remaining_step (setup : Setup (Player := Player) (L := L))
       exact SourceProgram.ProtocolState.remaining_step setup.program state next joint
         running supported
 
-theorem protocol_terminates (setup : Setup (Player := Player) (L := L))
-    (admission : CommitmentInterface setup.program) :
-    (setup.executionProtocol admission).WellFoundedPlay := by
-  apply wellFoundedPlay_of_rank setup.protocolRemaining
-  intro before after step
-  obtain ⟨joint, legal, reached⟩ := step
-  have consumed := setup.protocol_remaining_step before after joint legal.1 reached
-  omega
-
 theorem protocol_history_length (setup : Setup (Player := Player) (L := L))
     (admission : CommitmentInterface setup.program) :
     ∀ {state} (trace : (setup.executionProtocol admission).Trace state),

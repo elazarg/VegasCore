@@ -192,44 +192,6 @@ private theorem aligned_step : {Γ : SourceCtx Player L} → {O : Finset VarId} 
               exact aligned_step next (firstJoint := _) (secondJoint := _) aligned firstInner
                 secondInner
 
-/-- A step from a running state never reaches an entry state. -/
-private theorem step_ne_entry {Γ : SourceCtx Player L} {O : Finset VarId}
-    (program : SourceProgram Player L Γ O) {before : ProtocolState program}
-    {joint : Player → Option (OwnAction Player L)} (running : ¬ terminal program before)
-    (config : Config Player L Γ) :
-    entry program config ∉ (step program before joint).support := by
-  intro reached
-  cases program with
-  | ret _ => exact running trivial
-  | sample =>
-      cases before with
-      | inl _ =>
-          simp only [step, Sum.elim_inl, PMF.support_map, Set.mem_image] at reached
-          obtain ⟨_, _, impossible⟩ := reached
-          cases impossible
-      | inr _ =>
-          simp only [step, Sum.elim_inr, PMF.support_map, Set.mem_image] at reached
-          obtain ⟨_, _, impossible⟩ := reached
-          cases impossible
-  | commit =>
-      cases before with
-      | inl _ =>
-          simp only [step, Sum.elim_inl, PMF.mem_support_pure_iff] at reached
-          cases reached
-      | inr _ =>
-          simp only [step, Sum.elim_inr, PMF.support_map, Set.mem_image] at reached
-          obtain ⟨_, _, impossible⟩ := reached
-          cases impossible
-  | reveal =>
-      cases before with
-      | inl _ =>
-          simp only [step, Sum.elim_inl, PMF.mem_support_pure_iff] at reached
-          cases reached
-      | inr _ =>
-          simp only [step, Sum.elim_inr, PMF.support_map, Set.mem_image] at reached
-          obtain ⟨_, _, impossible⟩ := reached
-          cases impossible
-
 /-- At aligned states, the predecessor and the joint action of a realized legal
 step are determined by its target. -/
 private theorem predecessor_unique : {Γ : SourceCtx Player L} → {O : Finset VarId} →

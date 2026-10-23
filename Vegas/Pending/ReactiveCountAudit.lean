@@ -13,10 +13,13 @@ packet together with the list of all signed envelopes, and the count verdict
 judges the packet against the sender's lower-serial packets in that list. A
 missed binding is not charged: it is an exclusion, handled by the payoffs.
 
-The audit reads only the signed envelopes, in emission order. Two states with
-the same emitted envelopes have the same collected charge, whatever their
-receipts, ledgers, inclusions and application states
-(`countCharge_eq_of_inputs`), so non-inclusion alone is never chargeable.
+The audit reads only the signed envelopes, in emission order
+(`Vegas.EventGraphRuntime.countEvidence`). A forbidden packet in the actual
+traffic bounds its sender's collected charge below by the product of
+observation and conditional delivery coverage
+(`Vegas.EventGraphRuntime.countAudit_collection`), and traffic whose packets
+the count verdict all permits is charged to nobody
+(`Vegas.EventGraphRuntime.countAudit_charge_zero`).
 
 Every principal's inputs carry the serials `0, 1, …` in emission order, at
 every legal prefix and under arbitrary responses. Hence a forbidden packet
@@ -133,69 +136,6 @@ def countAudit (sample : List (CountEvidence graph) → PMF (List (CountEvidence
   (runtime.reactiveApplication leaks).sampledTrafficAudit (runtime.countEvidence leaks traffic)
     (fun evidence => evidence.2.sender) (fun evidence => countPermits evidence.1 evidence.2)
     sample traffic
-
-/-- The count audit reads the traffic only through its signed envelopes. -/
-theorem countAudit_congr_envelopes
-    (sample : List (CountEvidence graph) → PMF (List (CountEvidence graph)))
-    (left right : List (runtime.reactiveApplication leaks).TrafficRecord)
-    (same : left.map ReactiveApplication.TrafficRecord.envelope =
-      right.map ReactiveApplication.TrafficRecord.envelope) :
-    runtime.countAudit leaks sample left = runtime.countAudit leaks sample right := by
-  have project (traffic : List (runtime.reactiveApplication leaks).TrafficRecord) :
-      traffic.map (runtime.countEvidence leaks traffic) =
-        (traffic.map ReactiveApplication.TrafficRecord.envelope).map fun envelope =>
-          (traffic.map ReactiveApplication.TrafficRecord.envelope, envelope) := by
-    simp only [List.map_map, Function.comp_def]
-    rfl
-  unfold countAudit ReactiveApplication.sampledTrafficAudit
-  rw [project left, project right, same]
-
-/-- **Only signed envelopes are charged.** At two legal states with the same
-emitted envelopes the collected charge is the same, whatever their receipts,
-ledgers, inclusions, application states, schedulers and initial laws. -/
-theorem countCharge_eq_of_inputs
-    (sample : List (CountEvidence graph) → PMF (List (CountEvidence graph)))
-    {initial initial' : PMF (runtime.reactiveApplication leaks).State} {horizon horizon' : Nat}
-    {scheduler scheduler' : (runtime.reactiveApplication leaks).Scheduler}
-    {left right : (runtime.reactiveApplication leaks).Control}
-    (leftTrace : ((runtime.reactiveApplication leaks).protocol initial horizon scheduler).Trace
-      (some left))
-    (rightTrace : ((runtime.reactiveApplication leaks).protocol initial' horizon'
-      scheduler').Trace (some right))
-    (same : left.execution.network.inputs = right.execution.network.inputs) (who : Player) :
-    TerminalAudit.charge (runtime.reactiveApplication leaks).stateTraffic
-        (runtime.countAudit leaks sample) (some left) who =
-      TerminalAudit.charge (runtime.reactiveApplication leaks).stateTraffic
-        (runtime.countAudit leaks sample) (some right) who := by
-  unfold TerminalAudit.charge
-  rw [runtime.countAudit_congr_envelopes leaks sample _ _ ?_]
-  rw [(runtime.reactiveApplication leaks).stateTraffic_inputs initial horizon scheduler leftTrace,
-    (runtime.reactiveApplication leaks).stateTraffic_inputs initial' horizon' scheduler'
-      rightTrace]
-  exact same
-
-/-- Environment operations, including the inclusion or non-inclusion of any
-pending packet, leave the collected charge unchanged. -/
-theorem countCharge_environmentStep
-    (sample : List (CountEvidence graph) → PMF (List (CountEvidence graph)))
-    {initial : PMF (runtime.reactiveApplication leaks).State} {horizon : Nat}
-    {scheduler : (runtime.reactiveApplication leaks).Scheduler}
-    {before after : (runtime.reactiveApplication leaks).Control}
-    (beforeTrace : ((runtime.reactiveApplication leaks).protocol initial horizon scheduler).Trace
-      (some before))
-    (afterTrace : ((runtime.reactiveApplication leaks).protocol initial horizon scheduler).Trace
-      (some after))
-    (command : (runtime.reactiveApplication leaks).Command)
-    (moved : after.execution ∈
-      (before.execution.environmentStep (runtime.reactiveApplication leaks) command).support)
-    (who : Player) :
-    TerminalAudit.charge (runtime.reactiveApplication leaks).stateTraffic
-        (runtime.countAudit leaks sample) (some after) who =
-      TerminalAudit.charge (runtime.reactiveApplication leaks).stateTraffic
-        (runtime.countAudit leaks sample) (some before) who :=
-  runtime.countCharge_eq_of_inputs leaks sample afterTrace beforeTrace
-    ((runtime.reactiveApplication leaks).environmentStep_inputs before.execution after.execution
-      command moved) who
 
 /-- Authentic backend coverage for count evidence the count verdict forbids.
 Delivery is conditional on the entire observed list, allowing arbitrary

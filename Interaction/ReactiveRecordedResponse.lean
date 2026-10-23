@@ -143,40 +143,6 @@ theorem recorded_response_at
                       pastEq, viewed, allowed⟩
   exact origin trace who earlier entry later recalled
 
-/-- Two specified chronological occurrences reconstruct two genuinely ordered
-callbacks. Repeated equal entries, including silent responses, remain distinct
-occurrences because the second callback retains the exact earlier own word. -/
-theorem recorded_responses_at
-    (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
-    (control : app.Control)
-    (trace : (menu.protocol initial horizon scheduler).Trace (some control))
-    (who : Principal) (earlier : List app.PlayerEntry) (first : app.PlayerEntry)
-    (middle : List app.PlayerEntry) (second : app.PlayerEntry) (later : List app.PlayerEntry)
-    (recalled : control.execution.recall who = earlier ++ first :: (middle ++ second :: later)) :
-    ∃ (left right : app.Control)
-      (leftTrace : (menu.protocol initial horizon scheduler).Trace (some left))
-      (rightTrace : (menu.protocol initial horizon scheduler).Trace (some right)),
-      TracePrefix leftTrace rightTrace ∧ TracePrefix rightTrace trace ∧
-      left.actor = some who ∧ right.actor = some who ∧
-      left.execution.recall who = earlier ∧
-      right.execution.recall who = earlier ++ first :: middle ∧
-      first.beforeView = left.execution.observe app who ∧
-      second.beforeView = right.execution.observe app who ∧
-      first.action ∈ menu.actions who earlier (left.execution.observe app who) ∧
-      second.action ∈ menu.actions who (earlier ++ first :: middle)
-        (right.execution.observe app who) := by
-  have secondSplit : control.execution.recall who =
-      (earlier ++ first :: middle) ++ second :: later := by
-    simpa only [List.append_assoc, List.cons_append] using recalled
-  obtain ⟨right, rightTrace, rightPrefix, rightActive, rightPast, secondView, secondLegal⟩ :=
-    menu.recorded_response_at initial horizon scheduler control trace who
-      (earlier ++ first :: middle) second later secondSplit
-  obtain ⟨left, leftTrace, leftPrefix, leftActive, leftPast, firstView, firstLegal⟩ :=
-    menu.recorded_response_at initial horizon scheduler right rightTrace who earlier first middle
-      rightPast
-  exact ⟨left, right, leftTrace, rightTrace, leftPrefix, rightPrefix, leftActive, rightActive,
-    leftPast, rightPast, firstView, secondView, firstLegal, secondLegal⟩
-
 /-- Every remembered response retains its actual earlier active menu history,
 pre-response observation, complete prior own recall and menu legality. -/
 theorem recorded_response_prefix
@@ -198,30 +164,6 @@ theorem recorded_response_prefix
   refine ⟨before, prior, isPrefix, active, viewed, ?_, later, ?_⟩
   · rwa [pastEq]
   · rwa [pastEq]
-
-/-- Consistent recall identifies a remembered response's supported policy law
-at its genuine earlier callback, including the exact earlier own input word. -/
-theorem recorded_response_supported
-    (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
-    (control : app.Control)
-    (trace : (menu.protocol initial horizon scheduler).Trace (some control))
-    (who : Principal) (policy : app.Policy)
-    (consistent : policy.Consistent (control.execution.recall who))
-    (entry : app.PlayerEntry) (recorded : entry ∈ control.execution.recall who) :
-    ∃ (before : app.Control)
-      (prior : (menu.protocol initial horizon scheduler).Trace (some before)),
-      TracePrefix prior trace ∧
-      before.actor = some who ∧ entry.beforeView = before.execution.observe app who ∧
-      entry.action ∈ (policy (before.execution.recall who)
-        (before.execution.observe app who)).support ∧
-      ∃ after, control.execution.recall who = before.execution.recall who ++ entry :: after := by
-  obtain ⟨before, prior, isPrefix, acting, viewed, _legal, after, same⟩ :=
-    menu.recorded_response_prefix initial horizon scheduler control trace who entry recorded
-  have faithful := same ▸ consistent
-  rw [← List.singleton_append, ← List.append_assoc] at faithful
-  have sampled := (policy.consistent_snoc_iff (before.execution.recall who) entry).mp
-    (Policy.Consistent.of_append faithful)
-  exact ⟨before, prior, isPrefix, acting, viewed, viewed ▸ sampled.2, after, same⟩
 
 end Interaction.ReactiveApplication.ResponseMenu
 

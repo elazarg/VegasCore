@@ -254,20 +254,6 @@ theorem exists_pureMixture_run {who : Player} (setup : Setup (Player := Player) 
   simp only [Setup.run]
   rw [bind_congr_on_support _ hrun, PMF.bind_comm]
 
-/-- The public result law is a pushforward of that one, so the same mixture
-serves it. -/
-theorem exists_pureMixture_publicRun {who : Player} (setup : Setup (Player := Player) (L := L))
-    (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialLaw]
-    (profile : BehavioralProfile setup.program) (policy : BehavioralPolicy who setup.program) :
-    ∃ mixture : PMF (PurePolicy who setup.program), mixture.support.Finite ∧
-      setup.publicRun (Function.update profile who policy) =
-        mixture.bind fun choice =>
-          setup.publicRun (Function.update profile who
-            (PurePolicy.toBehavioral setup.program choice)) := by
-  obtain ⟨mixture, mixtureFinite, hmixture⟩ :=
-    exists_pureMixture_run setup finite profile policy
-  exact ⟨mixture, mixtureFinite, by simp only [Setup.publicRun, hmixture, PMF.map_bind]⟩
-
 /-! ## The pure-strategy game
 
 The game a source program presents when a policy may not randomize. Only the
@@ -292,18 +278,6 @@ namespace Setup
 @[simp] theorem pureGame_play (setup : Setup (Player := Player) (L := L))
     (profile : Profile setup.pureGame.sig) :
     setup.pureGame.play profile = setup.publicRun (pureProfile profile) := rfl
-
-/-- Replacing one strategy of a pure profile replaces one policy. -/
-@[simp] theorem pureProfile_update (setup : Setup (Player := Player) (L := L))
-    (profile : Profile setup.pureGame.sig) (who : Player)
-    (replacement : setup.pureGame.sig.Strategy who) :
-    pureProfile (Profile.update profile who replacement) =
-      Function.update (pureProfile profile) who
-        (PurePolicy.toBehavioral setup.program replacement) := by
-  funext actor
-  by_cases h : actor = who
-  · subst h; simp [pureProfile]
-  · simp [pureProfile, Profile.update_of_ne _ _ h, Function.update_of_ne h]
 
 end Setup
 

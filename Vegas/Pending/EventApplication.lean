@@ -138,14 +138,6 @@ theorem PublicView.readinessToken?_eq_some_iff {graph : Vegas.EventGraph Player 
     · rintro ⟨_, complete⟩
       exact absurd complete issued
 
-omit [DecidableEq Player] in
-/-- An issued token names exactly its own event. -/
-theorem PublicView.readinessToken?_event {graph : Vegas.EventGraph Player L}
-    (view : PublicView graph)
-    (event : graph.EventId) (token : ReadinessToken graph)
-    (issued : view.readinessToken? event = some token) : token.event = event := by
-  rw [((view.readinessToken?_eq_some_iff event token).mp issued).1]
-
 /-- Authenticated player projection. This player's candidate catalogue is the
 private addition to `playerObserve`. -/
 structure PlayerView (graph : Vegas.EventGraph Player L) where
@@ -441,15 +433,6 @@ def submitStep (state : State graph) (who : Player) (packet : Payload graph) : S
     (submitStep state who packet).accepted = state.accepted := by
   cases packet <;> simp [submitStep]
 
-@[simp] theorem submitStep_clock (state : State graph) (who : Player) (packet : Payload graph) :
-    (submitStep state who packet).clock = state.clock := by
-  cases packet <;> simp [submitStep]
-
-@[simp] theorem submitStep_activatedAt (state : State graph) (who : Player)
-    (packet : Payload graph) :
-    (submitStep state who packet).activatedAt = state.activatedAt := by
-  cases packet <;> simp [submitStep]
-
 @[simp] theorem submitStep_publicView (state : State graph) (who : Player)
     (packet : Payload graph) :
     (submitStep state who packet).publicView = state.publicView := by
@@ -518,13 +501,6 @@ theorem submitStep_commitment_fixed (state : State graph) (who : Player)
       (who, slot) ≠ .fresh := by
   simpa [submitStep] using state.candidates.lookup_freeze_ne_fresh (who, slot)
 
-/-- Private preparation does not alter accepted handles. -/
-theorem privateStep_accepted (state : State graph) (who : Player)
-    (command : PrivateCommand graph) :
-    (privateStep state who command).accepted = state.accepted := by
-  cases command with
-  | prepare => rfl
-
 /-- Install a binding handle and complete the bind with the immutable meaning
 already associated with that handle. Wrong-typed and unprepared candidates
 produce genuine binding failure without changing packet shape. -/
@@ -557,46 +533,6 @@ private def acceptResolution (state : State graph) (event : graph.EventId)
   let value : (graph.outputLayout event).Value :=
     cast (congrArg EventField.Value outputEq.symm) result
   pure (state.complete event ready action value)
-
-omit [DecidableEq Player] in
-private theorem State.publicView_complete_action_irrel (state : State graph)
-    (event : graph.EventId) (ready : state.config.cut.Ready event)
-    (left right : graph.Action event)
-    (value : (graph.outputLayout event).Value) :
-    (state.complete event ready left value).publicView =
-      (state.complete event ready right value).publicView := by
-  unfold State.publicView
-  congr 1
-  apply PublicObservation.ext graph
-  · simp [State.complete, Vegas.EventGraph.publicObserve]
-  · rfl
-
-omit [DecidableEq Player] in
-private theorem acceptResolution_publicView_congr (state : State graph)
-    (event : graph.EventId) (ready : state.config.cut.Ready event)
-    (owner : Player) (payload : L.Ty)
-    (binding : FieldRef graph.layout (.binding owner payload))
-    (checks : List (GuardCheck graph.layout payload))
-    (outputEq : graph.outputLayout event = .publication payload)
-    (left right : Bool)
-    (resultEq : EventCode.resolveOutput? binding checks left state.config.store =
-      EventCode.resolveOutput? binding checks right state.config.store) :
-    Option.map State.publicView
-        (acceptResolution state event ready owner payload binding checks outputEq left) =
-      Option.map State.publicView
-        (acceptResolution state event ready owner payload binding checks outputEq right) := by
-  cases rightResult : EventCode.resolveOutput? binding checks right state.config.store with
-  | none =>
-      have leftResult := resultEq.trans rightResult
-      simp [acceptResolution, leftResult, rightResult]
-  | some value =>
-      have leftResult := resultEq.trans rightResult
-      simp only [acceptResolution, leftResult, rightResult, bind, pure,
-        Option.bind_some, Option.map_some]
-      exact congrArg some (state.publicView_complete_action_irrel event ready
-        (cast (congrArg EventField.Action outputEq.symm) left)
-        (cast (congrArg EventField.Action outputEq.symm) right)
-        (cast (congrArg EventField.Value outputEq.symm) value))
 
 /-- A node viewed through its output field. This performs the dependent
 transport from `Vegas.EventGraph.nodes` once, so every handler sees the same typed
@@ -807,28 +743,6 @@ def handle (runtime : EventGraphRuntime graph) (state : State graph)
           | .bind .. | .sample .. => none
         else none
       else none
-
-/-- Freezing a packet's handle at transmission agrees with immediate
-inclusion; a missing opening already denotes failure in the handler. -/
-@[simp] theorem handle_submitStep (runtime : EventGraphRuntime graph)
-    (state : State graph) (who : Player) (serial : Nat) (packet : Payload graph) :
-    handle runtime (submitStep state who packet) ⟨(who, serial), packet⟩ =
-      handle runtime state ⟨(who, serial), packet⟩ := by
-  classical
-  cases packet with
-  | malformed raw => rfl
-  | commitment event candidate =>
-      by_cases owned : candidate.1 = who
-      · cases meaning : state.candidates.lookup candidate with
-        | openable raw | unopenable =>
-            simp [submitStep, owned, CommitmentCandidates.freeze, meaning]
-        | fresh =>
-            cases node : nodeView graph event <;>
-              simp [submitStep, owned, handle, node, State.WithinDeadline,
-                acceptBinding, State.bindingResult, State.complete, State.HandleUnused,
-                CommitmentCandidates.lookup_freeze_self, meaning]
-      · simp [submitStep, owned]
-  | opening event candidate raw => rfl
 
 /-- A timely authenticated commitment installs its handle and exactly its
 typed immutable meaning. The statement includes failed commitments. -/

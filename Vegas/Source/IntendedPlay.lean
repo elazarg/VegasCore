@@ -873,25 +873,6 @@ theorem intended_step_of_actors : {Γ : SourceCtx Player L} → {O : Finset VarI
           exact ⟨(base_step next rest joint after supported).symm ▸ intended.1,
             intended_step_of_actors next rest joint after intended.2 legal supported⟩
 
-/-- **Leaving the intended game, one step.** A step from a point of the intended
-game reaches a point of the intended game, unless an acting player chose an
-action the intended game does not offer there or chose nothing. -/
-theorem intended_or_departure {Γ : SourceCtx Player L} {O : Finset VarId}
-    (program : SourceProgram Player L Γ O) (state : ProtocolState program)
-    (joint : Player → Option (OwnAction Player L)) (target : ProtocolState program)
-    (intended : Intended program state) (reached : target ∈ (step program state joint).support) :
-    Intended program target ∨
-      ∃ who, ProtocolView.actor who program (observe who program state) = some who ∧
-        ∀ action, joint who = some action →
-          action ∉ ProtocolView.intendedAvailable who program (observe who program state) := by
-  by_cases all : ∀ who, ProtocolView.actor who program (observe who program state) = some who →
-      ∃ action, joint who = some action ∧
-        action ∈ ProtocolView.intendedAvailable who program (observe who program state)
-  · exact Or.inl (intended_step_of_actors program state joint target intended all reached)
-  · push Not at all
-    obtain ⟨who, acts, departs⟩ := all
-    exact Or.inr ⟨who, acts, fun action chosen offered => departs action chosen offered⟩
-
 /-- **No forfeit in the intended game.** No reveal fails on a terminal store read
 from a point of the intended game. -/
 theorem failedReveals_eq_zero_of_intended (who : Player) :

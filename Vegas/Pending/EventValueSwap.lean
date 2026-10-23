@@ -587,14 +587,6 @@ theorem State.swap_involutive : Function.Involutive (State.swap swap) := by
   rw [State.swap_config, publicObserve_swap]
   rfl
 
-theorem State.swap_withinDeadline (runtime : EventGraphRuntime graph) (state : State graph)
-    (event : graph.EventId) :
-    (state.swap swap).WithinDeadline runtime event ↔ state.WithinDeadline runtime event :=
-  Iff.rfl
-
-theorem State.swap_handleUnused (state : State graph) (handle : Handle graph) :
-    (state.swap swap).HandleUnused handle ↔ state.HandleUnused handle := Iff.rfl
-
 theorem State.swap_bindingResult (state : State graph) (handle : Handle graph)
     (payload : L.Ty) :
     (state.swap swap).bindingResult handle payload =

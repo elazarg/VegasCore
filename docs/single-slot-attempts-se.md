@@ -414,7 +414,7 @@ The composition is:
 - the checked intended-game step `Vegas.Paper.intended_sequential_equilibrium`;
 - the paper [public-scheduling theorem](public-scheduling-se-preservation.md)
   for the retained runtime;
-- the checked `exists_deposits_preserving_sequential_equilibria`, with
+- the checked [`exists_deposits_preserving_sequential_equilibria`](https://github.com/elazarg/VegasCore/blob/research-tree/GameTheoryExtensions/Analysis/Protocol/TerminalAudit.lean#L269), with
   detection $\alpha\delta$.
 
 The single-phase sharper bound $q(D-R)\le(1-q)c$ from the

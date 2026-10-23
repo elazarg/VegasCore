@@ -51,21 +51,6 @@ def BehavioralPolicy.effectiveOpening {who : Player} :
         effectiveOpening next registry.weaken
           (revelations.reveal (published := published) selected) policy.2)
 
-/-- The effective opening opens effectively. -/
-theorem BehavioralPolicy.opensEffectively_effectiveOpening {who : Player} :
-    {Γ : SourceCtx Player L} → {O : Finset VarId} →
-    (program : SourceProgram Player L Γ O) → (registry : Registry Γ) →
-    (revelations : Revelations Γ) → (policy : BehavioralPolicy who program) →
-    (policy.effectiveOpening program registry revelations).OpensEffectively program registry
-      revelations
-  | _, _, .ret _, _, _, _ => trivial
-  | _, _, .sample _ _ _ next, _, _, policy =>
-      opensEffectively_effectiveOpening next _ _ policy
-  | _, _, .commit _ _ _ _ next, _, _, policy =>
-      opensEffectively_effectiveOpening next _ _ policy.2
-  | _, _, .reveal _ _ _ _ _ _ next, _, _, policy =>
-      ⟨fun _ _ => rfl, opensEffectively_effectiveOpening next _ _ policy.2⟩
-
 /-- The effective opening keeps the policy's admission. -/
 theorem BehavioralPolicy.admitted_effectiveOpening {who : Player} :
     {Γ : SourceCtx Player L} → {O : Finset VarId} →

@@ -155,15 +155,4 @@ theorem ActivationOrigin.trans {before middle after : State graph}
 
 end State
 
-omit [DecidableEq Player] in
-/-- The deadline configuration leaves an event activated at most one tick ago
-within its deadline. -/
-theorem withinDeadline_of_age_le_one (runtime : EventGraphRuntime graph)
-    (feasible : runtime.ServiceFeasible) (state : State graph) (event : graph.EventId)
-    (entered : Nat) (activated : state.activatedAt event = some entered)
-    (age : state.clock - entered ≤ 1) : state.WithinDeadline runtime event := by
-  have bound := feasible event
-  simp only [State.WithinDeadline, activated]
-  omega
-
 end Vegas.EventGraphRuntime

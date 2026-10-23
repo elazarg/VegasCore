@@ -14,7 +14,7 @@ other response is silent. The index is read from actual own recall, so the
 policy needs no roster or scheduler cursor.
 
 The source decision is the canonical one
-(`Vegas.sourceServiceCanonicalOpportunity`): a binding is submitted at the slot
+(`Vegas.serviceCanonicalOpportunity`): a binding is submitted at the slot
 the audit expects, and no fresh call is made once a packet included within the
 inclusion bound `bound event` would miss the event's deadline.
 
@@ -46,12 +46,6 @@ abbrev TurnTiming (setup : Setup (Player := Player) (L := L)) (turns : Nat)
 def firstTurnTiming (setup : Setup (Player := Player) (L := L)) (turns : Nat)
     (mode : EventGraph.ExecutionMode := .sequential) : TurnTiming setup turns mode :=
   fun _ _ _ => PMF.pure 0
-
-/-- Defer the decision with total weight `weight`, uniformly over the turns. -/
-def deferralTiming (setup : Setup (Player := Player) (L := L)) {mode : EventGraph.ExecutionMode}
-    (turns : Nat) (weight : ℝ) (nonnegative : 0 ≤ weight) (bounded : weight ≤ 1) :
-    TurnTiming setup turns mode := fun _ _ _ =>
-  mix weight nonnegative bounded (PMF.uniformOfFintype _) (PMF.pure 0)
 
 /-- The probability that an owned event's owner does not decide at its first
 turn; zero for an event without an owner. -/
@@ -107,24 +101,6 @@ end Configured
 variable (setup : Setup (Player := Player) (L := L))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
 
-/-- The turn index on the default runtime. -/
-abbrev sourceServiceTurn : Player → (graph setup).EventId →
-    List (application setup leaks).PlayerEntry → (application setup leaks).PlayerView →
-      Option Nat :=
-  serviceTurn setup .sequential (rankDeadline setup .sequential) leaks
-
-/-- The decision at a selected turn on the default runtime. -/
-abbrev sourceServiceTurnFamily : ((graph setup).EventId → Nat) →
-    BehavioralProfile setup.program → Player → (graph setup).EventId →
-      (turns : Nat) → Fin (turns + 1) → (application setup leaks).Policy :=
-  serviceTurnFamily setup .sequential (rankDeadline setup .sequential) leaks
-
-/-- The turn-counted prescribed policy on the default runtime. -/
-abbrev sourceServiceTurnPolicy : ((graph setup).EventId → Nat) → (turns : Nat) →
-    TurnTiming setup turns → BehavioralProfile setup.program → Player →
-      (application setup leaks).Policy :=
-  serviceTurnPolicy setup .sequential (rankDeadline setup .sequential) leaks
-
 section Generic
 
 variable (setup : Setup (Player := Player) (L := L)) {mode : EventGraph.ExecutionMode}
@@ -154,44 +130,6 @@ theorem sourceServiceTurnPolicy_turn (bound : (serviceGraph setup mode).EventId 
         view := by
   simp only [serviceTurnPolicy, serving, owned, ↓reduceDIte]
 
-/-- A player owning no ready event is silent. -/
-theorem sourceServiceTurnPolicy_idle (bound : (serviceGraph setup mode).EventId → Nat) (turns : Nat)
-    (timing : TurnTiming setup turns mode)
-    (profile : BehavioralProfile setup.program) (who : Player)
-    (past : List (serviceApplication setup mode deadline leaks).PlayerEntry)
-    (view : (serviceApplication setup mode deadline leaks).PlayerView)
-    (idle : view.application.publicView.Idle who) :
-    serviceTurnPolicy setup mode deadline leaks bound turns timing profile who past view =
-      (serviceApplication setup mode deadline leaks).silentPolicy past view := by
-  simp only [serviceTurnPolicy, PublicView.ownTurn?_eq_none _ who idle]
-
-theorem sourceServiceTurnFamily_finiteSupport (bound : (serviceGraph setup mode).EventId → Nat)
-    (finite : setup.program.FiniteBindingTypes)
-    (profile : BehavioralProfile setup.program) (who : Player)
-    (event : (serviceGraph setup mode).EventId)
-    (turns : Nat) (slot : Fin (turns + 1)) :
-    ReactiveApplication.Policy.FiniteSupport _
-      (serviceTurnFamily setup mode deadline leaks bound profile who event turns slot) :=
-  (serviceApplication setup mode deadline leaks).turnScheduledPolicy_finiteSupport _ _
-    (sourceServiceCanonicalOpportunity_finiteSupport setup leaks bound finite profile who event)
-    (serviceApplication setup mode deadline leaks).silentPolicy_finiteSupport
-
-theorem sourceServiceTurnPolicy_finiteSupport (bound : (serviceGraph setup mode).EventId → Nat)
-    (turns : Nat) (timing : TurnTiming setup turns mode)
-    (finite : setup.program.FiniteBindingTypes) (profile : BehavioralProfile setup.program)
-    (who : Player) :
-    ReactiveApplication.Policy.FiniteSupport _
-      (serviceTurnPolicy setup mode deadline leaks bound turns timing profile who) := by
-  intro past view
-  unfold serviceTurnPolicy
-  split
-  · exact (serviceApplication setup mode deadline leaks).silentPolicy_finiteSupport past view
-  · split
-    · exact (serviceApplication setup mode deadline leaks).policyMixture_finiteSupport _
-        (sourceServiceTurnFamily_finiteSupport setup leaks bound finite profile who _ turns)
-        past view
-    · exact (serviceApplication setup mode deadline leaks).silentPolicy_finiteSupport past view
-
 theorem firstTurnTiming_deferral {mode : EventGraph.ExecutionMode} (turns : Nat)
     (event : (serviceGraph setup mode).EventId) :
     (firstTurnTiming setup turns mode).deferral event = 0 := by
@@ -199,26 +137,6 @@ theorem firstTurnTiming_deferral {mode : EventGraph.ExecutionMode} (turns : Nat)
   split
   · rfl
   · simp [firstTurnTiming]
-
-theorem deferralTiming_deferral_le (turns : Nat) (weight : ℝ) (nonnegative : 0 ≤ weight)
-    (bounded : weight ≤ 1) (event : (serviceGraph setup mode).EventId) :
-    (deferralTiming setup turns weight nonnegative bounded).deferral event ≤ weight := by
-  unfold TurnTiming.deferral
-  split
-  · exact nonnegative
-  · rw [deferralTiming, mix_apply_toReal]
-    have uniform : 0 ≤ ((PMF.uniformOfFintype (Fin (turns + 1))) 0).toReal :=
-      ENNReal.toReal_nonneg
-    simp only [PMF.pure_apply, ↓reduceIte, ENNReal.toReal_one]
-    nlinarith
-
-theorem deferralTiming_fullSupport (turns : Nat) (weight : ℝ) (nonnegative : 0 ≤ weight)
-    (bounded : weight ≤ 1) (positive : 0 < weight) (event : (serviceGraph setup mode).EventId)
-    (who : Player) (owned : (serviceGraph setup mode).actor? event = some who) :
-    FullSupport (deferralTiming setup turns weight nonnegative bounded event who owned) := by
-  intro slot
-  exact mem_support_mix_left weight nonnegative bounded positive
-    (PMF.mem_support_uniformOfFintype slot)
 
 end Generic
 

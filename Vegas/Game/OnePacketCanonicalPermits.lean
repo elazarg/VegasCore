@@ -24,8 +24,7 @@ against the owner's earlier packets
 
 So, at a one-packet history of the default runtime, every canonical decision
 the canonical menu retains at a pending event lies in the one-packet menu
-(`Vegas.canonical_mem_onePacket_of_pending`), and so does every response of
-as-if-honest play there (`Vegas.honestResponse_mem_onePacket_of_pending`).
+(`Vegas.canonical_mem_onePacket_of_pending`).
 -/
 
 noncomputable section
@@ -344,40 +343,6 @@ theorem canonical_mem_onePacket_of_pending {horizon : Nat}
       trace
   exact canonical_mem_onePacket setup leaks bounds who _ _ _ retained fun material submits =>
     canonicalServiceDecision_countPermits rawTrace who event turn unsent action material submits
-
-/-- **As-if-honest play is one-packet play.** At a history of the one-packet
-game of the default runtime, under any scheduler, if `who` has its turn at
-`event` and its recall has not submitted for it, and the canonical menu retains
-the canonical decision of every encoded source action as-if-honest play
-supports, then every response of as-if-honest play lies in the one-packet menu. -/
-theorem honestResponse_mem_onePacket_of_pending {horizon : Nat}
-    {scheduler : (application setup leaks).Scheduler} {control : (application setup leaks).Control}
-    (trace : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
-      scheduler).Trace (some control))
-    (assessment : setup.intendedModel.BehavioralAssessment)
-    (who : Player) (event : (graph setup).EventId)
-    (turn : control.execution.application.publicView.ownTurn? who = some event)
-    (unsent : (runtime setup).eventRecorded leaks (control.execution.recall who) event = false)
-    (retained : ∀ action graphAction,
-      some action ∈ (asIfHonestProfile setup leaks assessment who
-        (some (control.execution.recall who,
-          control.execution.observe (application setup leaks) who))).support →
-      encodeEventAction? setup.program event action = some graphAction →
-      (runtime setup).canonicalServiceDecision leaks who (control.execution.recall who)
-          (control.execution.observe (application setup leaks) who) event graphAction ∈
-        bounds.canonicalActions (runtime setup) leaks who (control.execution.recall who)
-          (control.execution.observe (application setup leaks) who))
-    (response : (application setup leaks).Action)
-    (supported : response ∈ (honestResponse setup leaks assessment who
-      (control.execution.recall who)
-      (control.execution.observe (application setup leaks) who)).support) :
-    response ∈ bounds.onePacketActions (runtime setup) leaks who (control.execution.recall who)
-      (control.execution.observe (application setup leaks) who) :=
-  honestResponse_mem_onePacket setup leaks bounds assessment who _ _ event turn
-    (fun action graphAction chosen encoded =>
-      canonical_mem_onePacket_of_pending bounds trace who event turn unsent graphAction
-        (retained action graphAction chosen encoded))
-    response supported
 
 end OnePacket
 

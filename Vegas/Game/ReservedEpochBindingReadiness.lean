@@ -43,15 +43,6 @@ theorem binding_predecessors (event prior : (graph).EventId)
   rw [binding]
   simp only [EventField.IsPublic, false_or]
 
-theorem other_owner_not_binding_predecessor (event other : (graph).EventId)
-    (owner foreign : Player) (payload foreignPayload : L.Ty)
-    (binding : (graph).outputLayout event = .binding owner payload)
-    (otherBinding : (graph).outputLayout other = .binding foreign foreignPayload)
-    (different : foreign ≠ owner) : other ∉ (graph).order.predecessors event := by
-  rw [binding_predecessors program event other owner payload binding, otherBinding]
-  simp only [EventField.IsPublic, EventField.SameBindingOwner, false_or]
-  exact fun member => different member.2
-
 theorem binding_ready_congr (left right : (graph).order.Cut)
     (event : (graph).EventId) (owner : Player) (payload : L.Ty)
     (binding : (graph).outputLayout event = .binding owner payload)
@@ -77,64 +68,5 @@ theorem binding_ready_congr (left right : (graph).order.Cut)
     have cone := ((binding_predecessors program event prior owner payload binding).mp
       predecessor).2
     exact (completed prior cone).mpr (ready.2 predecessor)
-
-theorem binding_ready_after_foreign_completion (cut : (graph).order.Cut)
-    (event other : (graph).EventId) (owner foreign : Player) (payload foreignPayload : L.Ty)
-    (binding : (graph).outputLayout event = .binding owner payload)
-    (otherBinding : (graph).outputLayout other = .binding foreign foreignPayload)
-    (different : foreign ≠ owner) (ready : cut.Ready other) :
-    (cut.complete other ready).Ready event ↔ cut.Ready event := by
-  have absent := other_owner_not_binding_predecessor program event other owner foreign
-    payload foreignPayload binding otherBinding different
-  have events : event ≠ other := by
-    intro same
-    subst other
-    have owners : owner = foreign := (EventField.binding.inj
-      (binding.symm.trans otherBinding)).1
-    exact different owners.symm
-  constructor
-  · intro after
-    refine ⟨fun member => after.1 (Finset.mem_insert_of_mem member), ?_⟩
-    intro prior predecessor
-    have completed := after.2 predecessor
-    rw [EventOrder.Cut.mem_complete] at completed
-    rcases completed with same | previous
-    · subst prior
-      exact (absent predecessor).elim
-    · exact previous
-  · intro before
-    exact before.after_complete ready events
-
-theorem complete_other_binding_stamp (state : State graph)
-    (event other : (graph).EventId) (owner foreign : Player) (payload foreignPayload : L.Ty)
-    (binding : (graph).outputLayout event = .binding owner payload)
-    (otherBinding : (graph).outputLayout other = .binding foreign foreignPayload)
-    (different : foreign ≠ owner) (ready : state.config.cut.Ready other)
-    (action : (graph).Action other) (value : ((graph).outputLayout other).Value)
-    (actor : (graph).actor? event = some owner) (entered : Nat)
-    (requested : state.config.cut.Ready event) (stamp : state.activatedAt event = some entered) :
-    (state.complete other ready action value).activatedAt event = some entered := by
-  have retained := (binding_ready_after_foreign_completion program state.config.cut
-    event other owner foreign payload foreignPayload binding otherBinding different ready).mpr
-      requested
-  change (state.config.complete other ready action value).cut.Ready event at retained
-  change State.refreshActivated _ state.clock state.activatedAt event = some entered
-  simp only [State.refreshActivated, retained, ↓reduceDIte, actor, stamp, Option.orElse_some]
-
-theorem accepted_binding_foreign_readiness (runtime : EventGraphRuntime graph)
-    (state next : State graph) (id : Interaction.MessageId Player)
-    (event other : (graph).EventId) (owner foreign : Player) (payload foreignPayload : L.Ty)
-    (binding : (graph).outputLayout event = .binding owner payload)
-    (otherBinding : (graph).outputLayout other = .binding foreign foreignPayload)
-    (different : foreign ≠ owner) (candidate : Handle graph)
-    (accepted : handle runtime state ⟨id, .commitment other candidate⟩ = some next) :
-    next.config.cut.Ready event ↔ state.config.cut.Ready event := by
-  obtain ⟨address, addressed, ready, action, member⟩ :=
-    handle_config_mem_step runtime state next ⟨id, .commitment other candidate⟩ accepted
-  have same : other = address := Option.some.inj addressed
-  subst address
-  rw [Config.step_cut state.config other ready action next.config member]
-  exact binding_ready_after_foreign_completion program state.config.cut event other owner foreign
-    payload foreignPayload binding otherBinding different ready
 
 end Vegas.EventGraphRuntime.ReservedEpoch

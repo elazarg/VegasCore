@@ -29,12 +29,6 @@ def maskPacket (excluded : Finset Player) (packet : WitnessedPacket graph) :
     { packet with token := none }
   else packet
 
-theorem emit_eq_mask (state : RecoveryState graph) (who : Player)
-    (known : List (Message Player (WitnessedPacket graph)))
-    (material : WitnessedSubmission graph) :
-    state.emit who known material =
-      maskPacket state.excluded (material.emit state.native who known) := rfl
-
 def normalization : (runtime.recoveryApplication leaks).SubmissionNormalization where
   normalize who view := WitnessedSubmission.normalizeReactive who view.1
   idempotent who view := WitnessedSubmission.normalizeReactive_idempotent who view.1

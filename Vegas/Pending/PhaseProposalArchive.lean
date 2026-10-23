@@ -92,22 +92,9 @@ theorem archive_congr (first second : List (Message Player (CommitAttemptPacket 
   simp only [mem_archive]
   exact exists_congr fun message => and_congr (same message) Iff.rfl
 
-theorem archive_mono {first second : List (Message Player (CommitAttemptPacket graph))}
-    (included : first ⊆ second) : archive first ⊆ archive second := by
-  intro proposal member
-  obtain ⟨message, present, proposed⟩ := (mem_archive first proposal).mp member
-  exact (mem_archive second proposal).mpr ⟨message, included present, proposed⟩
-
 variable (runtime : EventGraphRuntime graph)
   (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket graph))
 
 local notation "app" => phaseApplication runtime leaks
-
-/-- Scheduler commands do not remove submitted proposals, including on rejection,
-expiry, phase retirement or rollback. -/
-theorem archive_environmentStep (execution next : (app).Execution) (command : (app).Command)
-    (reached : next ∈ (execution.environmentStep (app) command).support) :
-    archive next.network.inputs = archive execution.network.inputs := by
-  rw [(app).environmentStep_inputs execution next command reached]
 
 end Vegas.EventGraphRuntime.PhaseProposal

@@ -100,29 +100,6 @@ def assembledOperationalSteps (wellFormed : setup.WellFormed)
         exact tendsto_slotError _ floorPos floorLe depth _))
     assembled
 
-/-- The masses of the operational steps of assembled profiles are the
-certificate's masses. -/
-theorem assembledOperationalSteps_mass (wellFormed : setup.WellFormed)
-    (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
-    (scale : ℕ → ℝ) (scale_pos : ∀ n, 0 < scale n) (scale_le_one : ∀ n, scale n ≤ 1)
-    (depth : ℕ)
-    (scaleEq : ∀ n, scale n = trembleScale
-      (combinedFloor setup leaks bounds horizon scheduler (sequence n)) depth n)
-    (covers : bounds.CoversOutputValues)
-    (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount)
-    {slots : Nat}
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup leaks bounds horizon scheduler slots p))
-    {targetSequence : ℕ → (onePacketN).BehavioralAssessment}
-    (assembled : OnePacketAssembled setup leaks bounds horizon scheduler sequence scale scale_pos
-      scale_le_one weights targetSequence)
-    (who : Player) (n : ℕ) :
-    (assembledOperationalSteps wellFormed sequence scale scale_pos scale_le_one depth scaleEq
-        covers capacity weights assembled who).mass n =
-      roundOrResponseMass (scheduler := scheduler)
-        (stepResponse bounds (keyWeights setup leaks bounds horizon scheduler (weights n))
-          (scale n)) :=
-  rfl
-
 open Classical in
 /-- **The forced-belief inputs from the certificate.** For a well-formed setup,
 along profiles assembled from the certificate's components at the tremble scale

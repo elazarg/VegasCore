@@ -77,19 +77,5 @@ theorem virtualBindings_observe_eq (who : Player) (preserved : Finset VarId) :
       | inr point =>
           exact congrArg Sum.inr (virtualBindings_observe_eq who preserved next point values)
 
-/-- A genuine repaired history and its original ordinary endpoint have the
-same current erased typed observation. This is endpoint identity, not a Bayes
-or continuation-law conclusion. -/
-theorem VirtualRepair.observe_eq_of_bindingsHoldValues
-    (preserved : Finset VarId) (who : Player)
-    {Γ : SourceCtx Player L} {O : Finset VarId} (program : SourceProgram Player L Γ O)
-    (original repaired : ProtocolState program)
-    (paired : VirtualRepair preserved who program original repaired)
-    (values : BindingsHoldValues who program original) :
-    ProtocolView.eraseHistory who program (ProtocolState.observe who program repaired) =
-      ProtocolView.eraseHistory who program (ProtocolState.observe who program original) := by
-  rw [VirtualRepair.observe preserved who program original repaired paired,
-    virtualBindings_observe_eq who preserved program original values]
-
 end ProtocolState
 end Vegas.SourceProgram

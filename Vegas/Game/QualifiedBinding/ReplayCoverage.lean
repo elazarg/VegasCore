@@ -1885,74 +1885,6 @@ private theorem positive_original_annotated_initial_inputs
     originalBase⟩
 
 open Classical in
-/-- Initial binding meanings use the entire original correlated input tuple,
-as fixed by the erased entry and preserved through the actual source continuation. -/
-theorem positive_original_annotated_initial_value
-    (operational : implementation.Operational)
-    (fullValues : ∀ owner key, FullSupport (values owner key))
-    (sourceProfile : ∀ owner, setup.proposalRecoveryModel.BehavioralPolicy owner)
-    (nativeProfile : ∀ owner,
-      ((nativeMenu).information nativeInitial implementation.horizon
-        implementation.scheduler).BehavioralPolicy owner)
-    (who : Player) (control : (nativeApplication).Control)
-    (trace : (nativeProtocol).Trace (some control))
-    (active : control.actor = some who)
-    (tape : ReservedEpoch.Tape Player implementation.tapeLength)
-    (target cut finished : setup.proposalRecoveryProtocol.History)
-    (word : SourceProgram.History Player L)
-    (canonicalSupported : setup.proposalRecoveryModel.historyReachWeight sourceProfile
-      (canonicalSource setup implementation operational ⟨some control, trace⟩) ≠ 0)
-    (event : (serviceGraph setup .concurrent).EventId) (payload : L.Ty)
-    (clean : CleanUnsentBinding setup implementation who (control.execution.recall who)
-      (control.execution.observe nativeApplication who) event payload)
-    (value : L.Val payload)
-    (positive : annotatedPrefixWeight setup values implementation operational sourceProfile
-      nativeProfile who ⟨some control, trace⟩ tape target word *
-        (if bindingAdmissionBit setup implementation who event ⟨some control, trace⟩ tape
-          then 1 else 0) *
-        sourceForcedBlockJoint setup values implementation who ⟨some control, trace⟩
-          event payload target word value (cut, finished) ≠ 0)
-    (input : (serviceGraph setup .concurrent).InputId) (owner : Player) (ty : L.Ty)
-    (binding : (serviceGraph setup .concurrent).inputLayout input = .binding owner ty)
-    (raw : Raw L)
-    (meaning : sourceHandleMeaning setup implementation finished control
-      (owner, .initial input) = some raw) :
-    control.execution.application.current.native.candidates.lookup (owner, .initial input) =
-      .openable raw := by
-  classical
-  obtain ⟨theta, drawn, inputs, final, finalState, originalBase⟩ :=
-    positive_original_annotated_initial_inputs setup values implementation operational fullValues
-      sourceProfile nativeProfile who control trace active tape target cut finished word
-        canonicalSupported event payload clean value positive
-  unfold sourceHandleMeaning at meaning
-  change (finished.state.bind fun current =>
-    match (State.initial
-      (encodeInputs (ProtocolState.base setup.program current.point))).candidates.lookup
-        (owner, .initial input) with
-    | .openable value => some value
-    | .fresh | .unopenable => none) = some raw at meaning
-  rw [finalState] at meaning
-  change (match (State.initial
-      (encodeInputs (ProtocolState.base setup.program final.point))).candidates.lookup
-        (owner, .initial input) with
-    | .openable value => some value
-    | .fresh | .unopenable => none) = some raw at meaning
-  rw [originalBase] at meaning
-  have initialOpen : (State.initial (encodeInputs theta)).candidates.lookup
-      (owner, .initial input) = .openable raw := by
-    generalize found : (State.initial (encodeInputs theta)).candidates.lookup
-      (owner, .initial input) = candidate at meaning
-    cases candidate with
-    | fresh => cases meaning
-    | unopenable => cases meaning
-    | openable actual =>
-      have same : actual = raw := Option.some.inj meaning
-      exact congrArg CommitmentCandidate.openable same
-  exact (sourceReplayReferenceInitialCatalogue setup implementation operational control trace
-    theta drawn inputs input owner ty binding).trans
-      initialOpen
-
-open Classical in
 /-- An actual historical preparation without an accepting receipt has no source
 meaning in a positive original annotation. -/
 theorem positive_original_annotated_unaccepted_meaning
@@ -2816,63 +2748,6 @@ private theorem ordinary_encoded_forced_support
   exact (PMF.mem_support_bind_iff ..).mpr ⟨_, forcedStep, tail⟩
 
 open Classical in
-/-- The full common source site of a positive original annotated summand is
-the site of the actual qualified binding package. -/
-theorem positive_original_annotated_site
-    (operational : implementation.Operational)
-    (fullValues : ∀ owner key, FullSupport (values owner key))
-    (sourceProfile : ∀ owner, setup.proposalRecoveryModel.BehavioralPolicy owner)
-    (nativeProfile : ∀ owner,
-      ((nativeMenu).information nativeInitial implementation.horizon
-        implementation.scheduler).BehavioralPolicy owner)
-    (who : Player)
-    (site : ((nativeMenu).information nativeInitial implementation.horizon
-      implementation.scheduler).InformationSite who)
-    (control : (nativeApplication).Control) (trace : (nativeProtocol).Trace (some control))
-    (active : control.actor = some who)
-    (information : ((nativeMenu).information nativeInitial implementation.horizon
-      implementation.scheduler).infoOf who trace = site.1)
-    (tape : ReservedEpoch.Tape Player implementation.tapeLength)
-    (target cut finished : setup.proposalRecoveryProtocol.History)
-    (word : SourceProgram.History Player L)
-    (canonicalSupported : setup.proposalRecoveryModel.historyReachWeight sourceProfile
-      (canonicalSource setup implementation operational ⟨some control, trace⟩) ≠ 0)
-    (event : (serviceGraph setup .concurrent).EventId) (payload : L.Ty)
-    (clean : CleanUnsentBinding setup implementation who (control.execution.recall who)
-      (control.execution.observe nativeApplication who) event payload)
-    (source : QualifiedBindingSource setup values implementation sourceProfile who site
-      (control.execution.recall who) (control.execution.observe nativeApplication who)
-        event payload clean.binding)
-    (value : L.Val payload)
-    (positive : annotatedPrefixWeight setup values implementation operational sourceProfile
-      nativeProfile who ⟨some control, trace⟩ tape target word *
-        (if bindingAdmissionBit setup implementation who event ⟨some control, trace⟩ tape
-          then 1 else 0) *
-        sourceForcedBlockJoint setup values implementation who ⟨some control, trace⟩
-          event payload target word value (cut, finished) ≠ 0) :
-    setup.proposalRecoveryModel.infoOf who cut.trace = source.site.1 := by
-  obtain ⟨foreign, entry, common⟩ := positive_original_annotated_information setup values
-    implementation operational fullValues sourceProfile nativeProfile who control trace active
-      tape target cut finished word canonicalSupported event payload clean value positive
-  have nativeInformation : ((nativeMenu).information
-      ((setup.initialLaw.map encodeInputs).map (PhaseRuntimeState.initial implementation.plan))
-      implementation.horizon implementation.scheduler).infoOf who
-        (sourceCutTrace setup implementation trace) = site.1 := by
-    change ((nativeMenu).signals
-      ((setup.initialLaw.map encodeInputs).map (PhaseRuntimeState.initial implementation.plan))
-      implementation.horizon implementation.scheduler).infoOf who
-        (sourceCutTrace setup implementation trace) = site.1
-    rw [(nativeMenu).info]
-    have direct := information
-    change ((nativeMenu).signals nativeInitial implementation.horizon
-      implementation.scheduler).infoOf who trace = site.1 at direct
-    rw [(nativeMenu).info] at direct
-    exact direct
-  exact common.1.trans (source.actualCut control (sourceCutTrace setup implementation trace)
-    (entry.canonicalCut setup values implementation operational fullValues control trace
-      who active event payload clean foreign) nativeInformation)
-
-open Classical in
 /-- The actual original annotated atom supports the qualified package's
 encoded proper choice at its full common source information. -/
 private theorem positive_original_annotated_encoded_support
@@ -3124,38 +2999,6 @@ theorem bindingAccepted_iff_of_mechanicalProjection
   change first.execution.network.inputs = second.execution.network.inputs at inputs
   simp only [PhaseService.BindingAccepted, inputs, receipts]
 
-omit [Fintype Player] in
-/-- The closed source key preserves every historical signed binding value,
-including values from canceled commitment visits. -/
-theorem sourceHandleMeaning_eq_of_closed_key
-    (wellFormed : setup.WellFormed) (who : Player)
-    (first second : CommitRecoveryState setup.program)
-    (firstTrace : setup.proposalRecoveryProtocol.Trace (some first))
-    (secondTrace : setup.proposalRecoveryProtocol.Trace (some second))
-    (same : setup.proposalRecoveryClosedKey who ⟨some first, firstTrace⟩ =
-      setup.proposalRecoveryClosedKey who ⟨some second, secondTrace⟩)
-    (firstGood : setup.proposalRecoveryForeignGood who ⟨some first, firstTrace⟩)
-    (secondGood : setup.proposalRecoveryForeignGood who ⟨some second, secondTrace⟩)
-    (reference : (nativeApplication).Control)
-    (handle : Handle (serviceGraph setup .concurrent)) :
-    sourceHandleMeaning setup implementation ⟨some first, firstTrace⟩ reference handle =
-      sourceHandleMeaning setup implementation ⟨some second, secondTrace⟩ reference handle := by
-  classical
-  have base : ProtocolState.base setup.program first.point =
-      ProtocolState.base setup.program second.point := by
-    have baseKey := congrArg Prod.fst same
-    exact Option.some.inj baseKey
-  have reads (attempt : CommitAttemptId) (event : (serviceGraph setup .concurrent).EventId)
-      (owner : Player) (payload : L.Ty)
-      (binding : (serviceGraph setup .concurrent).outputLayout event = .binding owner payload) :=
-    sourceBindingAt_closed_key setup wellFormed who owner attempt event payload binding
-      first second firstTrace secondTrace same firstGood secondGood
-  cases slot : handle.2 with
-  | «initial» _serial =>
-    simp only [sourceHandleMeaning, slot, Option.bind_some, base]
-  | prepared _serial =>
-    simp only [sourceHandleMeaning, slot, reads]
-
 open Classical in
 /-- Equal retained public inputs identify the source meaning of every signed
 handle, independently of the raw aliases in the two owner recalls. -/
@@ -3245,96 +3088,6 @@ theorem sourceReplayLostSlot_eq_of_signed_call
       have calls := Option.some.inj (by
         simpa only [sentFirst, sentSecond, Option.map_some] using packet)
       simp only [sourceReplayLostSlot, sentFirst, sentSecond, Option.bind_some, calls, meaning]
-
-/-- Every actual history with the retained mechanical word has a literal
-callback readback, with one coordinate at every original raw transition. -/
-theorem sourceRawReplayReadback_of_mechanicalWord
-    (who : Player) (target : setup.proposalRecoveryProtocol.History)
-    (reference : (nativeApplication).Control)
-    (original actual : (nativeProtocol).History)
-    (same : mechanicalWord setup implementation who original.trace =
-      mechanicalWord setup implementation who actual.trace) :
-    ∃ script : List (RawReplayChoice setup implementation),
-      sourceRawReplayReadback setup implementation who target reference original actual =
-        some script ∧ script.length = original.trace.length := by
-  classical
-  rcases original with ⟨state, trace⟩
-  induction trace generalizing actual with
-  | start =>
-    refine ⟨[], ?_, rfl⟩
-    simp only [sourceRawReplayReadback]
-  | @extend before after prior joint legal moved ih =>
-    rcases actual with ⟨actualState, actualTrace⟩
-    cases actualTrace with
-    | start =>
-      have length := congrArg List.length same
-      simp only [mechanicalWord_length, Trace.length] at length
-      omega
-    | @extend otherBefore otherAfter other otherJoint otherLegal otherMoved =>
-      have length := congrArg List.length same
-      simp only [mechanicalWord_length, Trace.length] at length
-      have prefixLength : (mechanicalWord setup implementation who prior).length =
-          (mechanicalWord setup implementation who other).length := by
-        simp only [mechanicalWord_length]
-        omega
-      simp only [mechanicalWord] at same
-      obtain ⟨samePrior, _sameAfter⟩ := List.append_inj same prefixLength
-      obtain ⟨script, read, count⟩ := ih ⟨otherBefore, other⟩ samePrior
-      have last := congrArg List.getLast? samePrior
-      rw [mechanicalWord_last, mechanicalWord_last] at last
-      have projection := congrArg Subtype.val (Option.some.inj last)
-      cases before with
-      | none =>
-        refine ⟨(none, none) :: script, ?_, congrArg Nat.succ count⟩
-        simp only [sourceRawReplayReadback, History.prior, read, Option.bind_some,
-          ReactiveApplication.actor, Option.bind_none]
-      | some before =>
-        cases acting : before.actor with
-        | none =>
-          refine ⟨(none, none) :: script, ?_, congrArg Nat.succ count⟩
-          simp only [sourceRawReplayReadback, History.prior, read, Option.bind_some,
-            ReactiveApplication.actor, acting]
-        | some owner =>
-          by_cases focal : owner = who
-          · refine ⟨(none, none) :: script, ?_, congrArg Nat.succ count⟩
-            simp only [sourceRawReplayReadback, History.prior, read, Option.bind_some,
-              ReactiveApplication.actor, acting, focal, ↓reduceIte]
-          · cases otherBefore with
-            | none =>
-              simp only [mechanicalProjection, Option.map_some, Option.map_none,
-                reduceCtorEq] at projection
-            | some current =>
-              simp only [mechanicalProjection, Option.map_some, Option.some.injEq,
-                Prod.mk.injEq] at projection
-              have actualActing : current.actor = some owner := projection.2.1.symm.trans acting
-              obtain ⟨action, selected⟩ : ∃ action : (nativeApplication).Action,
-                  otherJoint owner = some action := by
-                have offered := otherLegal.2 owner
-                cases chosen : otherJoint owner with
-                | none =>
-                  rw [chosen] at offered
-                  exact (offered (by exact actualActing)).elim
-                | some action => exact ⟨action, rfl⟩
-              have ending : actualState = some (⟨current.remaining, none,
-                  current.execution.respond nativeApplication owner action⟩ :
-                    (nativeApplication).Control) := by
-                have reached := otherMoved
-                change actualState ∈ ((nativeApplication).transition nativeInitial
-                  implementation.horizon implementation.scheduler (some current)
-                    otherJoint).support at reached
-                simpa only [ReactiveApplication.transition, actualActing, selected,
-                  Option.getD_some, PMF.mem_support_pure_iff] using reached
-              have latest := sourceReplayLastAction_respond setup implementation owner current
-                action ⟨actualState, other.extend otherJoint otherLegal otherMoved⟩ ending
-              let tag := (sourceReplayLostSlot setup implementation target reference
-                ((joint owner).getD ⟨none⟩)).bind fun handle =>
-                  (action.transmission.bind PhaseProposal.bindingPreparation).map
-                    (fun raw => (handle, raw))
-              refine ⟨(tag, some action) :: script, ?_, congrArg Nat.succ count⟩
-              simp only [sourceRawReplayReadback, History.prior, read, Option.bind_some,
-                ReactiveApplication.actor, acting, focal, ↓reduceIte, latest,
-                Option.map_some]
-              rfl
 
 /-- Every actual prescribed callback of a positive native history lies in its
 literal response law and in the alias kernel at that same complete input. -/

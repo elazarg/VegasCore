@@ -277,49 +277,4 @@ theorem RecoverySourceCheckpoint.surviving_prefix_trace
       rw [ranks, ProtocolState.remaining_entry, earlier.instructionCount_prepend]
     omega
 
-/-- The actual commitment descriptor supplies the typed prefix needed for a
-surviving source decision. The decoded own word is the whole source word;
-physical in-phase exclusions remain separate from saved source exclusions. -/
-theorem RecoverySourceCheckpoint.surviving_ready_binding_trace
-    {setup : Setup (Player := Player) (L := L)} {mode : ExecutionMode}
-    {state : PhaseRuntimeState (serviceGraph setup mode)}
-    (checkpoint : RecoverySourceCheckpoint setup mode state)
-    (frontier : state.Frontier) (stored : state.StoredCheckpoint)
-    (phase : RuntimePhase (serviceGraph setup mode))
-    (remaining : List (RuntimePhase (serviceGraph setup mode)))
-    (installed : state.phases = phase :: remaining) (kind : phase.kind = .commitment)
-    (event : (serviceGraph setup mode).EventId) (inside : event ∈ phase.events)
-    (ready : state.current.native.config.cut.Ready event)
-    (who : Player) (payload : L.Ty)
-    (binding : (serviceGraph setup mode).outputLayout event = .binding who payload)
-    (survives : who ∉ state.entry.excluded) :
-    ∃ (source : CommitRecoveryState setup.program)
-      (trace : setup.commitRecoveryProtocol.Trace (some source)),
-      source.excluded = state.entry.excluded ∧ source.generation = state.generation ∧
-      setup.commitRecoveryPublic (some source) =
-        (state.entry.excluded, state.generation, state.attempt.phase) ∧
-      ProtocolState.actor setup.program source.point = some who ∧
-      setup.commitRecoveryModel.IsDecisionInfo who (setup.commitRecoveryModel.infoOf who trace) ∧
-      decodeEventView? setup.program
-        (ContextRefs.initial setup.context (outputLayout setup.program))
-        (outputEmbedding setup.program).ref who event
-        ((serviceGraph setup mode).playerStore who state.current.native.config.store)
-        (ProtocolState.history setup.program source.point who) =
-          some (ProtocolState.observe who setup.program source.point) := by
-  obtain ⟨selected, selectedEq, Δ, P, name, fresh, guard, next, earlier, atEnd, reconstruct⟩ :=
-    checkpoint.ready_binding_prefix frontier phase remaining installed kind event inside ready
-      who payload binding
-  have acting : (serviceGraph setup mode).actor? event = some who :=
-    EventGraph.actor?_of_outputLayout_binding _ binding
-  have notPublication : ¬ ((serviceGraph setup mode).outputLayout event).IsPublication := by
-    rw [binding]
-    exact id
-  obtain ⟨source, trace, excluded, generation, publicSignal, sourceActor, played, word, decoded,
-    _numeric, _archive⟩ :=
-    checkpoint.surviving_prefix_trace fresh guard next earlier reconstruct stored survives selected
-      atEnd (selectedEq.symm ▸ ready) (selectedEq.symm ▸ acting)
-      (selectedEq.symm ▸ notPublication)
-  rw [word, selectedEq] at decoded
-  exact ⟨source, trace, excluded, generation, publicSignal, sourceActor, played, decoded⟩
-
 end Vegas

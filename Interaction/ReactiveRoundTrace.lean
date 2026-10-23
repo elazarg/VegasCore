@@ -96,18 +96,6 @@ theorem admissible_of_covered (players : Principal → app.Policy)
     menu.Admissible initial horizon scheduler who (players who) :=
   fun _ _ _ action chosen => covered who _ _ action chosen
 
-theorem trace_round (players : Principal → app.Policy)
-    (covered : ∀ who past view action, action ∈ (players who past view).support →
-      action ∈ menu.actions who past view)
-    (remaining : Nat) (execution next : app.Execution)
-    (trace : (menu.protocol initial horizon scheduler).Trace
-      (some ⟨remaining + 1, none, execution⟩))
-    (supported : next ∈ (app.round scheduler players execution).support) :
-    Nonempty ((menu.protocol initial horizon scheduler).Trace (some ⟨remaining, none, next⟩)) :=
-  menu.trace_round_of_admissible initial horizon scheduler players
-    (menu.admissible_of_covered initial horizon scheduler players covered) remaining execution
-    next trace supported
-
 theorem trace_runRounds_of_admissible (players : Principal → app.Policy)
     (admissible : ∀ who, menu.Admissible initial horizon scheduler who (players who))
     (remaining count : Nat) (execution next : app.Execution)
