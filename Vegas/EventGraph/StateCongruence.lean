@@ -65,20 +65,6 @@ def normalizedPolicyStep (graph : Vegas.EventGraph Player L)
   | none => config.step event ready
       (EventCode.actionOfActorNone (graph.nodes event) actor)
 
-/-- An ownerless normalized step uses the original chance evaluator and its
-unique unit action, independently of the behavioral profile. -/
-theorem normalizedPolicyStep_ownerless (profile : graph.BehavioralProfile)
-    (config : graph.Config) (event : graph.EventId) (ready : config.cut.Ready event)
-    (ownerless : graph.actor? event = none) :
-    graph.normalizedPolicyStep profile config event ready =
-      config.step event ready ((graph.nodes event).actionOfActorNone ownerless) := by
-  unfold normalizedPolicyStep
-  split
-  · rename_i who owned
-    rw [ownerless] at owned
-    cases owned
-  · rfl
-
 /-- Completing the same event with the same action and value preserves key
 equality. Readiness witnesses are proof irrelevant. -/
 theorem semanticKey_complete_congr {left right : graph.Config}
@@ -165,21 +151,6 @@ theorem normalizedPolicyStep_map_semanticKey_congr
     intro action _
     exact step_map_semanticKey_congr same event leftReady rightReady action
   · exact step_map_semanticKey_congr same event leftReady rightReady _
-
-/-- A supported normalized policy step completes exactly the selected event. -/
-theorem normalizedPolicyStep_cut
-    (profile : graph.BehavioralProfile) (config : graph.Config)
-    (event : graph.EventId) (ready : config.cut.Ready event)
-    (next : graph.Config)
-    (member : next ∈ (graph.normalizedPolicyStep profile config event ready).support) :
-    next.cut = config.cut.complete event ready := by
-  unfold normalizedPolicyStep at member
-  split at member
-  · rw [PMF.support_bind] at member
-    simp only [Set.mem_iUnion] at member
-    obtain ⟨action, _, stepMember⟩ := member
-    exact config.step_cut event ready action next stepMember
-  · exact config.step_cut event ready _ next member
 
 /-- Every supported normalized policy step completes exactly one previously
 unfinished event. -/

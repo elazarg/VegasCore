@@ -49,11 +49,6 @@ theorem Within.complete {cut : order.Cut} {low high : Nat} (within : cut.Within 
     exact below
   · exact within.2 other old
 
-/-- A cut within a block is within every later end. -/
-theorem Within.mono_high {cut : order.Cut} {low high high' : Nat}
-    (within : cut.Within low high) (larger : high ≤ high') : cut.Within low high' :=
-  ⟨within.1, fun event member => Nat.lt_of_lt_of_le (within.2 event member) larger⟩
-
 end Vegas.EventOrder.Cut
 
 namespace Vegas.EventGraph

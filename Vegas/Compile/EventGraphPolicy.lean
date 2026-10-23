@@ -248,35 +248,6 @@ theorem compilePolicyTable_commit_of_decode {Field : Type}
     else PMF.pure PublicationResult.failure) = _
   simp [same, decoded]
 
-/-- A malformed commit view chooses the genuine failure binding. -/
-theorem compilePolicyTable_commit_of_decode_none {Field : Type}
-    {layout : Field → Vegas.EventGraph.EventField Player L}
-    {Γ : SourceCtx Player L} {openNames : Finset VarId}
-    {name : VarId} {owner who : Player} {payload : L.Ty}
-    {fresh : name ∉ Γ.map Prod.fst}
-    {guard : SourceGuard L Γ owner name payload}
-    {next : SourceProgram Player L ((name, .commitment owner payload) :: Γ)
-      (insert name openNames)}
-    (refs : ContextRefs layout Γ)
-    (outputs : ∀ event, Vegas.EventGraph.FieldRef layout
-      (outputLayout (.commit (payload := payload) name owner fresh guard next) event))
-    (policy : BehavioralPolicy who
-      (.commit (payload := payload) name owner fresh guard next))
-    (same : owner = who) (store : Vegas.EventGraph.Store layout)
-    (history : List (OwnAction Player L))
-    (decoded : decodeObservation? who refs store = none) :
-    compilePolicyTable (.commit (payload := payload) name owner fresh guard next)
-        refs outputs who policy
-        ⟨0, Nat.zero_lt_succ (eventCount next)⟩ store history =
-      PMF.pure PublicationResult.failure := by
-  change (if same' : owner = who then
-      match decodeObservation? who refs store with
-      | some observation =>
-          policy.1 same' (observation, history)
-      | none => PMF.pure PublicationResult.failure
-    else PMF.pure PublicationResult.failure) = _
-  simp [same, decoded]
-
 /-- At a well-formed reveal observation, the compiled head kernel is exactly
 the source disclosure kernel. -/
 theorem compilePolicyTable_reveal_of_decode {Field : Type}

@@ -9,9 +9,8 @@ of different owners, each hidden from the other's actor, or independent
 reveals, each of whose outputs is public. A reveal kernel may therefore see a
 foreign reveal of its block complete before it acts. For a profile whose reveal
 kernels ignore the observation, for example one that always opens, that is
-invisible, and every adaptive public scheduler gives the canonical terminal
-store law. At every event that is not a reveal the normalized observation is
-exactly the source-prefix logical observation, as under public barriers.
+invisible: such a profile is ready-independent
+(`Vegas.EventGraph.RevealRelaxedOrdered.readyIndependent`).
 -/
 
 noncomputable section
@@ -31,27 +30,6 @@ def ObliviousAtPublications (profile : graph.BehavioralProfile) : Prop :=
     (graph.outputLayout event).IsPublication →
       ∀ left right : graph.PlayerObservation who,
         profile who event actor left = profile who event actor right
-
-/-- At a ready strategic event that is not a reveal, normalization changes only
-completion-order metadata: the retained store and own actions are the
-source-prefix logical observation. -/
-theorem RevealRelaxedOrdered.normalizeObservation_eq_logical
-    (relaxed : graph.RevealRelaxedOrdered)
-    (config : graph.Config) (event : graph.EventId) (who : Player)
-    (ready : config.cut.Ready event) (actor : graph.actor? event = some who)
-    (notPublication : ¬ (graph.outputLayout event).IsPublication) :
-    graph.normalizeObservation event who (graph.playerObserve who config) =
-      { completionOrder := graph.rankPrefix event
-        store := (graph.logicalObserve graph.prefixSchema event who
-          (graph.playerObserve who config)).store
-        ownActions := (graph.logicalObserve graph.prefixSchema event who
-          (graph.playerObserve who config)).ownActions } := by
-  apply PlayerObservation.ext graph
-  · rfl
-  · exact (logicalObserve_store_of_fields_exact config event who
-      (relaxed.ready_fields_exact config.cut ready actor notPublication)).symm
-  · exact (logicalObserve_ownActions_of_history_exact config event who
-      (relaxed.ready_own_history_exact config.cut ready actor)).symm
 
 /-- On a reveal-relaxed graph every profile that ignores observations at reveals
 is ready independent: a simultaneously ready foreign binding is hidden, and a
@@ -92,17 +70,5 @@ theorem RevealRelaxedOrdered.readyIndependent (relaxed : graph.RevealRelaxedOrde
       · rfl
       · exact storeEq
       · exact actionsEq
-
-/-- Every adaptive public scheduler gives a reveal-relaxed graph the canonical
-terminal store law, for every profile that ignores observations at reveals. -/
-theorem RevealRelaxedOrdered.runPolicies_store_eq_canonical
-    (relaxed : graph.RevealRelaxedOrdered) (profile : graph.BehavioralProfile)
-    (oblivious : ObliviousAtPublications profile)
-    (scheduler : graph.PublicScheduler) (inputs : graph.Inputs) :
-    (graph.runPolicies scheduler (graph.normalizeProfile profile) inputs).map
-        Config.store =
-      (graph.runPolicies graph.canonicalScheduler (graph.normalizeProfile profile) inputs).map
-        Config.store :=
-  (relaxed.readyIndependent oblivious).runPolicies_store_eq_canonical scheduler inputs
 
 end Vegas.EventGraph

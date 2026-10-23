@@ -345,18 +345,6 @@ theorem eval?_isSome {Field : Type} [DecidableEq Field]
   exact collectPublicReads_isSome (L.exprDeps expr.code) expr.schema expr.reads store
     (fun ref member => available _ (expr.reads_mem ref member))
 
-theorem eval?_congr {Field : Type} [DecidableEq Field]
-    {layout : Field → EventField Player L} {payload : L.Ty}
-    (expr : PublicExpr (R := R) layout payload) (left right : Store layout)
-    (agree : Store.AgreeOn left right expr.readFields) :
-    expr.eval? left = expr.eval? right := by
-  unfold eval?
-  have collected := collectPublicReads_congr (R := R) (L.exprDeps expr.code)
-    expr.schema expr.reads left right
-    (fun ref member => PublicRead.get?_congr (expr.reads ref) left right
-      (agree _ (expr.reads_mem ref member)))
-  rw [collected]
-
 end PublicExpr
 
 /-- Distribution code whose inputs are public event fields. -/

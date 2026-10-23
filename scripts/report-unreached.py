@@ -110,13 +110,14 @@ def distinctive(identifier: str) -> bool:
 
 def mentions_in(text: str) -> set[str]:
     """Distinctive identifiers outside comments and strings, with their dotted
-    suffixes and components."""
+    suffixes and components. A suffix after a dot counts however short, since
+    `terminal.outcome` uses `Config.outcome` through its field notation."""
     names = set()
     for identifier in IDENTIFIER.findall(OPTIONS.strip_lean_comments_and_strings(text)):
         parts = identifier.split(".")
         for start in range(len(parts)):
             suffix = ".".join(parts[start:])
-            if distinctive(suffix):
+            if start > 0 or distinctive(suffix):
                 names.add(suffix)
         names.update(part for part in parts if distinctive(part))
     return names

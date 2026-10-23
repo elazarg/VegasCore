@@ -28,14 +28,4 @@ theorem OutputEmbedding.event_cast {Γ : SourceCtx Player L} {O : Finset VarId}
   subst right
   rfl
 
-omit [DecidableEq Player] [IExpr.ResultTypes L] in
-private theorem fieldRef_eq_of_field_eq {Field : Type}
-    {layout : Field → EventField Player L} {kind : EventField Player L}
-    (first second : FieldRef layout kind) (same : first.field = second.field) : first = second := by
-  rcases first with ⟨left, leftLayout⟩
-  rcases second with ⟨right, rightLayout⟩
-  dsimp only at same
-  subst right
-  rfl
-
 end Vegas

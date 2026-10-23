@@ -41,69 +41,6 @@ theorem store_eq_of_playerObserve_eq (who : Player) (left right : graph.Config)
   have atField := congrFun stores field
   simpa only [playerObserve, playerStore_of_visible, visible] using atField
 
-/-- Equal endpoint observations determine the already available visible
-store at any two earlier configurations with the same completed cut. This
-uses immutable extensions, not access to endpoint data by a player policy. -/
-theorem playerStore_eq_of_extensions (who : Player)
-    (left right leftEnd rightEnd : graph.Config)
-    (cuts : left.cut = right.cut)
-    (endpoints : graph.playerStore who leftEnd.store = graph.playerStore who rightEnd.store)
-    (leftExtends : ∀ field value, left.store field = some value →
-      leftEnd.store field = some value)
-    (rightExtends : ∀ field value, right.store field = some value →
-      rightEnd.store field = some value) :
-    graph.playerStore who left.store = graph.playerStore who right.store := by
-  apply graph.playerStore_congr
-  intro field visible
-  have available : (left.store field).isSome = (right.store field).isSome := by
-    cases field with
-    | inl input => rfl
-    | inr event =>
-        apply Bool.eq_iff_iff.mpr
-        simp only [Config.store_output, left.output_available, right.output_available, cuts]
-  have endpoint := congrFun endpoints field
-  simp only [playerStore_of_visible, visible] at endpoint
-  cases leftFound : left.store field with
-  | none =>
-      cases rightFound : right.store field with
-      | none => rfl
-      | some value => simp [leftFound, rightFound] at available
-  | some leftValue =>
-      cases rightFound : right.store field with
-      | none => simp [leftFound, rightFound] at available
-      | some rightValue =>
-          rw [leftExtends field leftValue leftFound,
-            rightExtends field rightValue rightFound] at endpoint
-          exact endpoint
-
-/-- Two equal-length prefixes of the same own-action recall agree. Equal
-chronological event orders supply the required length equality without
-identifying any foreign action. -/
-theorem ownCompletions_eq_of_extensions (who : Player)
-    (left right leftEnd rightEnd : graph.Config)
-    (order : left.history.map Completion.event = right.history.map Completion.event)
-    (endpoints : graph.ownCompletions who leftEnd.history =
-      graph.ownCompletions who rightEnd.history)
-    (leftExtends : left.history.IsPrefix leftEnd.history)
-    (rightExtends : right.history.IsPrefix rightEnd.history) :
-    graph.ownCompletions who left.history = graph.ownCompletions who right.history := by
-  have counts := congrArg (fun events : List graph.EventId =>
-    (events.filter fun event => graph.actor? event = some who).length) order
-  have lengths : (graph.ownCompletions who left.history).length =
-      (graph.ownCompletions who right.history).length := by
-    simpa only [ownCompletions, List.filter_map, List.length_map, Function.comp_def] using counts
-  have leftPrefix := leftExtends.filter
-    (fun completion => decide (graph.actor? completion.event = some who))
-  have rightPrefix := rightExtends.filter
-    (fun completion => decide (graph.actor? completion.event = some who))
-  change (graph.ownCompletions who left.history).IsPrefix
-    (graph.ownCompletions who leftEnd.history) at leftPrefix
-  change (graph.ownCompletions who right.history).IsPrefix
-    (graph.ownCompletions who rightEnd.history) at rightPrefix
-  rw [List.prefix_iff_eq_take, endpoints, lengths] at leftPrefix
-  rw [List.prefix_iff_eq_take] at rightPrefix
-  exact leftPrefix.trans rightPrefix.symm
-
 /-- The public observation is a projection of every player's observation. -/
 theorem publicObserve_eq_of_playerObserve_eq (who : Player) (left right : graph.Config)
     (observations : graph.playerObserve who left = graph.playerObserve who right) :

@@ -478,7 +478,7 @@ joint law. It is not pursued.
   (`RevealRelaxedOrdered.ready_public_pair`); at every ready event that is not
   a reveal the visible fields are exactly the source-prefix fields
   (`RevealRelaxedOrdered.ready_fields_exact`,
-  `RevealRelaxedOrdered.normalizeObservation_eq_logical`), and own history is
+  [`RevealRelaxedOrdered.normalizeObservation_eq_logical`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/EventGraph/RevealRelaxedScheduling.lean#L39)), and own history is
   exact at every ready event (`RevealRelaxedOrdered.ready_own_history_exact`).
   Every adaptive public scheduler gives a profile whose reveal kernels ignore
   the observation (`EventGraph.ObliviousAtPublications`, for example one that

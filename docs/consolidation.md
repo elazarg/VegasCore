@@ -80,6 +80,7 @@ run 10–20% larger. `#print axioms` pins do not count as uses.
 | In modules no Paper theorem, test or example reaches, after Step 0 (438 modules) | 80k | |
 | Whole tree after Step 3 pass two | 494k | |
 | Whole tree after unreached declarations | 445k | |
+| Whole tree after Step 3 | 442k | |
 
 The concurrent SE cone by layer: Vegas/Game 136k, Vegas/Pending 32k,
 Vegas/Source 24k (17k of it the `CommitRecovery*` and `ProposalRecovery*`
@@ -224,10 +225,22 @@ Pass two:
       lemmas used by `simp`, `show` types, `variable` binders), when it is an
       instance or an rfl `@[simp]` lemma, or when it lies in
       `ExclusionMoveGame` (decision D3) or in the language and compiler layers.
-- [ ] Unreached declarations in `Vegas/Foundation`, `Vegas/Expr`,
-      `Vegas/EventGraph` and `Vegas/Compile` (about 2.5k lines), reviewed by
-      hand: some state what the interface promises (`Vegas.IExpr.expr_deps_sound`)
-      or the compiler's payout laws (`Vegas.canonical_payout_law`).
+- [x] Unreached declarations in `Vegas/Foundation`, `Vegas/Expr`,
+      `Vegas/EventGraph` and `Vegas/Compile`, reviewed by hand. Removed 91
+      (1.6k lines): helpers of removed proofs (commit-prefix filling, encoding
+      inverses, configuration restriction, output coupling), and the
+      nullable-commitment, substitution and default-value helpers of the simple
+      expression language with its unused `CommitPayloadTy` and `DefaultVal`
+      classes. Kept as specification, though nothing uses them yet: dependency
+      soundness of the expression interface (`Vegas.IExpr.expr_deps_sound`),
+      the guard characterizations, compiler correctness for expressions, payoffs
+      and payouts (`Vegas.canonical_payout_law`) and under public scheduling
+      (`Vegas.scheduled_setup_law`), the event graph's information-flow lemmas,
+      the guarantees on resolution fields and published guards, and the
+      relation between the sequential and concurrent execution modes
+      (`Vegas.EventGraph.canonical_fromSequential_store_law`), which a
+      derivation of the sequential results from the concurrent ones would start
+      from.
 - [x] Unused imports: 1,524 project imports removed and 423 added where a
       module had reached a dependency only through a removed one (net 1,101 of
       7,059), and the last unreached module. A library module imports the

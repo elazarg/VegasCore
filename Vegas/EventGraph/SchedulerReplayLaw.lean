@@ -27,49 +27,6 @@ inductive SchedulerReachable (scheduler : graph.DeterministicPublicScheduler)
       (next : graph.Config) (_ : next ∈ (config.step event ready action).support) :
       SchedulerReachable scheduler inputs next
 
-/-- Every supported run of the existing policy plan under a pure scheduler is
-scheduler-reachable.  This is an invariant of `runPlan`, not another runner. -/
-theorem runPlan_schedulerReachable
-    (scheduler : graph.DeterministicPublicScheduler)
-    (profile : graph.BehavioralProfile) (inputs : graph.Inputs) :
-    ∀ fuel config next,
-      graph.SchedulerReachable scheduler inputs config →
-      next ∈ (graph.runPlan
-        (graph.policyPlan profile scheduler.toPublic) fuel config).support →
-      graph.SchedulerReachable scheduler inputs next := by
-  intro fuel
-  induction fuel with
-  | zero =>
-      intro config next reachable member
-      have same : next = config := by simpa [runPlan] using member
-      exact same ▸ reachable
-  | succ fuel ih =>
-      intro config next reachable member
-      by_cases terminal : config.cut.Terminal
-      · have same : next = config := by simpa [runPlan, terminal] using member
-        exact same ▸ reachable
-      · rw [runPlan, dite_eq_right terminal, PMF.support_bind] at member
-        simp only [Set.mem_iUnion] at member
-        obtain ⟨choice, choiceMem, restMem⟩ := member
-        rw [PMF.support_bind] at restMem
-        simp only [Set.mem_iUnion] at restMem
-        obtain ⟨intermediate, intermediateMem, nextMem⟩ := restMem
-        have selected :
-            (scheduler (graph.publicObserve config) config.cut.enabled
-              (enabled_nonempty_of_not_terminal config terminal)).1 = choice.1.1 := by
-          unfold policyPlan DeterministicPublicScheduler.toPublic at choiceMem
-          simp only [PMF.pure_bind] at choiceMem
-          split at choiceMem <;> rename_i ownerEq
-          · rw [PMF.support_map] at choiceMem
-            obtain ⟨action, _, rfl⟩ := choiceMem
-            rfl
-          · simpa using congrArg (fun selected => selected.1.1)
-              ((PMF.mem_support_pure_iff _ _).mp choiceMem).symm
-        have intermediateReachable : graph.SchedulerReachable scheduler inputs intermediate :=
-          .step reachable terminal choice.1.1 selected choice.1.2 choice.2
-            intermediate intermediateMem
-        exact ih intermediate next intermediateReachable nextMem
-
 omit [DecidableEq Player] in
 /-- A supported graph step preserves every field that was already available. -/
 theorem store_eq_of_step_of_available (config : graph.Config)

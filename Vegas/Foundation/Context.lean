@@ -113,15 +113,6 @@ theorem HasVar.sameCell?_eq_none_of_ne {Ty : Type} {Γ : Ctx Ty} {x y : VarId} {
   | none => rfl
   | some same => exact absurd same.down.1 different
 
-/-- In a context with unique names, `Env` lookups are proof-irrelevant:
-the value depends only on `x` and `τ`, not on the `HasVar` proof. -/
-theorem Env.get_eq_of_nodup {Ty : Type} {Val : Ty → Type} {Γ : Ctx Ty}
-    {x : VarId} {τ : Ty}
-    (hnodup : (Γ.map Prod.fst).Nodup)
-    (env : Env Val Γ) (h₁ h₂ : HasVar Γ x τ) :
-    env x τ h₁ = env x τ h₂ := by
-  rw [HasVar.eq_of_nodup hnodup h₁ h₂]
-
 namespace Env
 
 def empty {Ty : Type} (Val : Ty → Type) : Env Val ([] : Ctx Ty) :=
@@ -146,13 +137,6 @@ def get {Ty : Type} {Val : Ty → Type} {Γ : Ctx Ty} {x : VarId} {τ : Ty}
     {x y : VarId} {τ σ : Ty} {v : Val τ} {env : Env Val Γ}
     {h : HasVar Γ y σ} :
     (Env.cons (x := x) v env).get (HasVar.there h) = env.get h := rfl
-
-theorem cons_ext {Ty : Type} {Val : Ty → Type} {Γ : Ctx Ty}
-    {x : VarId} {τ : Ty}
-    {v₁ v₂ : Val τ} {env₁ env₂ : Env Val Γ}
-    (hv : v₁ = v₂) (henv : env₁ = env₂) :
-    cons (x := x) v₁ env₁ = cons (x := x) v₂ env₂ := by
-  subst hv; subst henv; rfl
 
 end Env
 

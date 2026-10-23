@@ -212,46 +212,6 @@ def encodeCompletions? {Γ : SourceCtx Player L} {openNames : Finset VarId}
       pure (⟨event, encoded⟩ :: tail)
   | _, _ => none
 
-/-- The constructive history encoder is a genuine right inverse of completion
-decoding whenever it succeeds. -/
-theorem decodeCompletions_encodeCompletions?_eq :
-    {Γ : SourceCtx Player L} → {openNames : Finset VarId} →
-    (program : SourceProgram Player L Γ openNames) →
-    (events : List (Fin (eventCount program))) →
-    (actions : List (OwnAction Player L)) →
-    (completions : List (toEventGraph program).Completion) →
-    encodeCompletions? program events actions = some completions →
-      decodeCompletions program completions = actions
-  | _, _, program, [], [], completions, encoded => by
-      simp [encodeCompletions?] at encoded
-      subst completions
-      rfl
-  | _, _, program, event :: events, action :: actions, completions,
-      encoded => by
-      cases actionEncoded : encodeEventAction? program event action with
-      | none =>
-        rw [encodeCompletions?, actionEncoded] at encoded
-        contradiction
-      | some graphAction =>
-        cases tailEncoded : encodeCompletions? program events actions with
-        | none =>
-          rw [encodeCompletions?, actionEncoded, tailEncoded] at encoded
-          contradiction
-        | some tail =>
-          rw [encodeCompletions?, actionEncoded, tailEncoded] at encoded
-          cases encoded
-          simp only [decodeCompletions, List.filterMap_cons]
-          rw [decodeEventAction_encodeEventAction?_eq_some program event action
-            graphAction actionEncoded]
-          change action :: decodeCompletions program tail = action :: actions
-          congr 1
-          exact decodeCompletions_encodeCompletions?_eq program events actions
-            tail tailEncoded
-  | _, _, _, [], _ :: _, _, encoded => by
-      simp [encodeCompletions?] at encoded
-  | _, _, _, _ :: _, [], _, encoded => by
-      simp [encodeCompletions?] at encoded
-
 /-- A completion list containing only strategic events is reconstructed exactly
 from its source-ranked event identities and decoded original actions. -/
 theorem encodeCompletions?_decodeCompletions_eq_some

@@ -819,67 +819,6 @@ theorem ContextRefs.CoversPrefix.available_visible
           | some value => simp [outputEq] at unavailable
   · exact graph.playerStore_of_hidden who config.store field visible
 
-/-- At a canonical source prefix, encoding the current source observation is
-exactly the actual player-visible graph store. -/
-theorem encodeObservationStore_eq_playerStore_of_prefix
-    {wholeΓ : SourceCtx Player L} {wholeOpen : Finset VarId}
-    (whole : SourceProgram Player L wholeΓ wholeOpen)
-    {Γ : SourceCtx Player L} (refs : ContextRefs (graphLayout whole) Γ)
-    (offset : Nat) (covered : refs.CoversPrefix whole offset)
-    (config : (toEventGraph whole).Config)
-    (ordered : config.cut.IsPrefix offset) (state : State L Γ)
-    (agree : refs.Agrees state config.store) (who : Player) :
-    encodeObservationStore who refs (sourceObserve who state) =
-      (toEventGraph whole).playerStore who config.store := by
-  apply encodeObservationStore_eq_playerStore (graph := toEventGraph whole)
-    who refs state config.store agree
-  exact ContextRefs.CoversPrefix.available_visible whole refs offset covered
-    config ordered who
-
-/-- The constructive observation encoder is a decoder inverse at every
-canonical reachable prefix represented by the compiler references. -/
-theorem decodeObservation?_encodeObservationStore_of_prefix
-    {wholeΓ : SourceCtx Player L} {wholeOpen : Finset VarId}
-    (whole : SourceProgram Player L wholeΓ wholeOpen)
-    {Γ : SourceCtx Player L} (refs : ContextRefs (graphLayout whole) Γ)
-    (offset : Nat) (covered : refs.CoversPrefix whole offset)
-    (config : (toEventGraph whole).Config)
-    (ordered : config.cut.IsPrefix offset) (state : State L Γ)
-    (refsAgree : refs.Agrees state config.store) (who : Player) :
-    decodeObservation? who refs
-        (encodeObservationStore who refs (sourceObserve who state)) =
-      some (sourceObserve who state) := by
-  rw [encodeObservationStore_eq_playerStore_of_prefix whole refs offset covered
-    config ordered state refsAgree who]
-  exact decodeObservation?_playerStore_eq_some (graph := toEventGraph whole)
-    refs who state config.store refsAgree
-
-/-- Conversely, every observation decoded from the actual canonical player
-store re-encodes to that exact masked store. This is the store component of
-the canonical graph-policy decision-view inverse. -/
-theorem encodeObservationStore_decodeObservation?_eq_playerStore_of_prefix
-    {wholeΓ : SourceCtx Player L} {wholeOpen : Finset VarId}
-    (whole : SourceProgram Player L wholeΓ wholeOpen)
-    {Γ : SourceCtx Player L} (refs : ContextRefs (graphLayout whole) Γ)
-    (offset : Nat) (covered : refs.CoversPrefix whole offset)
-    (config : (toEventGraph whole).Config)
-    (ordered : config.cut.IsPrefix offset) (state : State L Γ)
-    (refsAgree : refs.Agrees state config.store) (who : Player)
-    (observation : SourceObservation L who Γ)
-    (decoded : decodeObservation? who refs
-      ((toEventGraph whole).playerStore who config.store) = some observation) :
-    encodeObservationStore who refs observation =
-      (toEventGraph whole).playerStore who config.store := by
-  have exactObservation := decodeObservation?_playerStore_eq_some
-    (graph := toEventGraph whole) refs who state config.store refsAgree
-  rw [decoded] at exactObservation
-  have observationEq : observation = sourceObserve who state :=
-    Option.some.inj exactObservation
-  subst observation
-  exact encodeObservationStore_eq_playerStore_of_prefix whole refs offset covered
-    config ordered state refsAgree who
-
-
 omit R in
 /-- A missing publication leaves the observation undecodable. -/
 theorem decodeObservation?_eq_none_of_publication {Field : Type}

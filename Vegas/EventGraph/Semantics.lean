@@ -176,15 +176,6 @@ def gameSignature (graph : Vegas.EventGraph Player L) : GameSignature Player whe
   Strategy := graph.BehavioralPolicy
   Outcome := {config : graph.Config // config.cut.Terminal}
 
-/-- Pull a utility on the graph's complete typed output store back to terminal
-game outcomes. This canonical lift deliberately ignores trace metadata; a
-trace-sensitive utility should instead consume the terminal configuration
-subtype directly. -/
-def liftOutcomeUtility (graph : Vegas.EventGraph Player L)
-    (utility : graph.Outcome → Player → ℝ) :
-    (graph.gameSignature).Outcome → Player → ℝ :=
-  fun result who => utility (result.1.outcome result.2) who
-
 /-- The graph game samples private/public initial inputs before execution, but
 each player supplies one strategy across the entire input law. -/
 def gameForm (graph : Vegas.EventGraph Player L) (inputs : PMF graph.Inputs)

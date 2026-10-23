@@ -36,6 +36,11 @@ class MentionTests(unittest.TestCase):
             with self.subTest(word=word):
                 self.assertNotIn(word, names)
 
+    def test_short_field_uses_after_a_dot_are_mentions(self):
+        names = REPORT.mentions_in("example : terminal.outcome done 0 = 1 := rfl\n")
+        self.assertIn("outcome", names)
+        self.assertNotIn("terminal", names)
+
     def test_qualified_names_after_a_dot_are_not_split_out(self):
         self.assertNotIn("alice", REPORT.mentions_in("(.alice) x.lookup\n"))
 

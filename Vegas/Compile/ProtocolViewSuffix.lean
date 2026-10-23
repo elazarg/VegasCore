@@ -156,42 +156,5 @@ def revealTail {Γ : SourceCtx Player L} {O : Finset VarId} {published name : Va
     rw [Option.map_map]
     rfl
 
-/-- Typed agreement and the saved effective own history identify the actual
-whole-source observation at the residual entry, through the owner's masked store. -/
-theorem decode_entry {Γ : SourceCtx Player L} {O : Finset VarId}
-    (program : SourceProgram Player L Γ O) (refs : ContextRefs (graphLayout whole) Γ)
-    (embedding : OutputEmbedding (inputLayout wholeΓ) (outputLayout whole) program)
-    (lift : ProtocolState program → ProtocolState whole)
-    (aligned : ProtocolViewSuffix whole program refs embedding lift)
-    (nonempty : 0 < eventCount program) (who : Player)
-    (source : SourceProgram.Config Player L Γ) (store : Store (graphLayout whole))
-    (agrees : refs.Agrees source.state store) :
-    decodeEventView? whole (ContextRefs.initial wholeΓ (outputLayout whole))
-        (outputEmbedding whole).ref who (embedding.event ⟨0, nonempty⟩)
-        ((toEventGraph whole).playerStore who store) (source.history who) =
-      some (ProtocolState.observe who whole (lift (ProtocolState.entry program source))) := by
-  have observed : decodeObservation? who refs ((toEventGraph whole).playerStore who store) =
-      some (sourceObserve who source.state) :=
-    (decodeObservation?_playerStore (graph := toEventGraph whole) who refs store).trans
-      (decodeObservation?_eq_some refs who source.state store agrees)
-  rw [aligned.decode, aligned.observe]
-  cases program with
-  | ret => simp only [eventCount] at nonempty; omega
-  | sample name fresh law next =>
-      change ((decodeObservation? who refs ((toEventGraph whole).playerStore who store)).map
-        (fun observation => Sum.inl (observation, source.history who))).map (aligned.view who) = _
-      rw [observed]
-      rfl
-  | commit name owner fresh guard next =>
-      change ((decodeObservation? who refs ((toEventGraph whole).playerStore who store)).map
-        (fun observation => Sum.inl (observation, source.history who))).map (aligned.view who) = _
-      rw [observed]
-      rfl
-  | reveal published owner name fresh selected unresolved next =>
-      change ((decodeObservation? who refs ((toEventGraph whole).playerStore who store)).map
-        (fun observation => Sum.inl (observation, source.history who))).map (aligned.view who) = _
-      rw [observed]
-      rfl
-
 end ProtocolViewSuffix
 end Vegas

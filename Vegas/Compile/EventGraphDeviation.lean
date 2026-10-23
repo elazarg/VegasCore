@@ -66,31 +66,6 @@ theorem canonical_deviation_terminalState_law
   apply pmf_map_injective (f := some) (Option.some_injective _)
   rw [terminalOutcomes_map_decode, terminalOutcomes_map_decode, normalized]
 
-/-- Decode a canonical graph replacement through its source backtranslation.
-The same replacement is used throughout the private initial-state law. -/
-theorem canonical_setup_deviation_decode
-    (setup : Setup (Player := Player) (L := L))
-    (profile : BehavioralProfile setup.program) (who : Player)
-    (replacement : setup.eventGraph.BehavioralPolicy who) :
-    (setup.initialLaw.bind fun initial =>
-      ((setup.eventGraph.runPolicies setup.eventGraph.canonicalScheduler
-        (setup.eventGraph.normalizeProfile
-          (Profile.update (sig := setup.eventGraph.gameSignature)
-            (compileEventProfile setup.program profile) who replacement))
-        (setup.eventInputs initial)).map (fun config => config.store)).map
-          (decodeState? (terminalRefs setup.program))) =
-      (setup.run (Profile.update (sig := SourceProgram.gameSignature setup.program) profile who
-        (backtranslateEventPolicy setup.program who replacement))).map some := by
-  rw [Setup.run, PMF.map_bind]
-  apply bind_congr_on_support _
-  intro initial _
-  rw [← setup.eventGraph.runPolicies_canonical_normalize_eq]
-  have law := congrArg (fun measure => measure.map some)
-    (canonical_deviation_terminalState_law setup.program profile who replacement
-      initial)
-  rw [terminalOutcomes_map_decode] at law
-  exact law
-
 /-- A canonical graph replacement has exactly the distributed source law of
 one backtranslated policy. The policy is fixed before the private initial
 state is sampled, and every opponent policy remains unchanged. -/

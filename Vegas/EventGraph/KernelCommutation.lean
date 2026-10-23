@@ -91,37 +91,6 @@ theorem kernelStepThen_eq_independent
           firstAction secondAction := by
       rfl
 
-/-- Independent event action kernels commute on the typed store. Neither
-actor ownership nor the absence of chance events is required. -/
-theorem kernelStepThen_map_store_comm
-    (config : graph.Config) (left right : graph.EventId)
-    (leftReady : config.cut.Ready left) (rightReady : config.cut.Ready right)
-    (different : left ≠ right)
-    (leftKernel : graph.Config → PMF (graph.Action left))
-    (rightKernel : graph.Config → PMF (graph.Action right))
-    (rightStable : ∀ action ∈ (leftKernel config).support,
-      ∀ after, after ∈ (config.step left leftReady action).support →
-      rightKernel after = rightKernel config)
-    (leftStable : ∀ action ∈ (rightKernel config).support,
-      ∀ after, after ∈ (config.step right rightReady action).support →
-      leftKernel after = leftKernel config) :
-    (kernelStepThen config left right leftReady rightReady different
-      leftKernel rightKernel).map Config.store =
-    (kernelStepThen config right left rightReady leftReady different.symm
-      rightKernel leftKernel).map Config.store := by
-  rw [kernelStepThen_eq_independent config left right leftReady rightReady different
-      leftKernel rightKernel rightStable,
-    kernelStepThen_eq_independent config right left rightReady leftReady different.symm
-      rightKernel leftKernel leftStable]
-  simp only [PMF.map_bind]
-  rw [PMF.bind_comm]
-  apply bind_congr_on_support _
-  intro rightAction _
-  apply bind_congr_on_support _
-  intro leftAction _
-  exact stepThen_map_store_comm config left right leftReady rightReady
-    different leftAction rightAction
-
 variable [DecidableEq Player]
 
 /-- Independent action kernels also preserve original-action recall when no
@@ -155,29 +124,5 @@ theorem kernelStepThen_map_storeRecall_comm
   intro leftAction _
   exact stepThen_map_storeRecall_comm config left right leftReady rightReady
     different actorsDiffer leftAction rightAction
-
-/-- Two ownerless sampling events commute on both the store and every
-player's recall. Their retained distribution code supplies all randomness. -/
-theorem chanceStepThen_map_storeRecall_comm
-    (config : graph.Config) (left right : graph.EventId)
-    (leftReady : config.cut.Ready left) (rightReady : config.cut.Ready right)
-    (different : left ≠ right)
-    (leftChance : graph.actor? left = none) (rightChance : graph.actor? right = none) :
-    (kernelStepThen config left right leftReady rightReady different
-      (fun _ => PMF.pure ((graph.nodes left).actionOfActorNone leftChance))
-      (fun _ => PMF.pure ((graph.nodes right).actionOfActorNone rightChance))).map
-        (storeRecall graph) =
-    (kernelStepThen config right left rightReady leftReady different.symm
-      (fun _ => PMF.pure ((graph.nodes right).actionOfActorNone rightChance))
-      (fun _ => PMF.pure ((graph.nodes left).actionOfActorNone leftChance))).map
-        (storeRecall graph) := by
-  apply kernelStepThen_map_storeRecall_comm
-  · intro _ _ _ _
-    rfl
-  · intro _ _ _ _
-    rfl
-  · intro who owned
-    rw [leftChance] at owned
-    cases owned
 
 end Vegas.EventGraph

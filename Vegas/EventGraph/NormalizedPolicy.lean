@@ -26,11 +26,6 @@ variable (graph : Vegas.EventGraph Player L)
 def rankPrefix (event : graph.EventId) : List graph.EventId :=
   (List.finRange graph.order.eventCount).filter fun prior => prior.val < event.val
 
-omit [DecidableEq Player] in
-@[simp] theorem mem_rankPrefix (event prior : graph.EventId) :
-    prior ∈ graph.rankPrefix event ↔ prior.val < event.val := by
-  simp [rankPrefix]
-
 /-- Replace chronological scheduling metadata by the fixed source-rank prefix,
 while retaining the actor's entire projected store and original own actions. -/
 def normalizeObservation (event : graph.EventId) (who : Player)

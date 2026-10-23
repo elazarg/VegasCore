@@ -100,16 +100,6 @@ def terminalPayoffs (config : graph.Config) (terminal : config.cut.Terminal) :
       (PublicExpr.eval?_isSome payoff.2 config.store
         (fun field _ => config.store_available_of_terminal terminal field))⟩
 
-/-- Partial terminal decoder. `none` means execution is unfinished, never that
-a completed event stored failure: failure is an ordinary `PublicationResult`. -/
-def outcome? (config : graph.Config) : Option graph.Outcome :=
-  if terminal : config.cut.Terminal then some (config.outcome terminal) else none
-
-@[simp] theorem outcome?_isSome (config : graph.Config) :
-    config.outcome?.isSome = true ↔ config.cut.Terminal := by
-  unfold outcome?
-  split <;> simp_all
-
 /-- Store one event output, extend the cut, and append the original action to
 the chronological history. -/
 def complete (config : graph.Config) (event : graph.EventId)
@@ -222,19 +212,6 @@ theorem step_eq_map_of_code (config : graph.Config) (event : graph.EventId)
   rw [step, PMF.support_map] at member
   obtain ⟨value, _, rfl⟩ := member
   rfl
-
-/-- A strategic event has exactly one successor once its action is fixed. -/
-theorem step_eq_pure_of_actor (config : graph.Config) (event : graph.EventId)
-    (ready : config.cut.Ready event) (action : graph.Action event)
-    (owner : Player) (owned : (graph.nodes event).actor = some owner)
-    (next : graph.Config) (member : next ∈ (config.step event ready action).support) :
-    config.step event ready action = PMF.pure next := by
-  obtain ⟨value, evaluates⟩ := (graph.nodes event).eval?_eq_pure_of_actor owner owned
-    action config.store (fun _ read => config.read_available ready read)
-  have law := config.step_eq_map_of_eval event ready action (PMF.pure value) evaluates
-  rw [PMF.pure_map] at law
-  rw [law, PMF.mem_support_pure_iff] at member
-  exact law.trans (congrArg PMF.pure member.symm)
 
 @[simp] theorem step_history (config : graph.Config) (event : graph.EventId)
     (ready : config.cut.Ready event) (action : graph.Action event)

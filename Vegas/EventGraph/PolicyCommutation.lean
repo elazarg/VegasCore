@@ -83,38 +83,6 @@ theorem BarrierOrdered.readyIndependent (ordered : graph.BarrierOrdered)
       (ordered.normalizeObservation_complete_foreign config event other eventReady
         otherReady actor foreign otherActor differentOwner action value).2
 
-/-- When the two owners differ, the second normalized kernel can be pulled
-back across the first actual step.  The resulting law draws both actions from
-the common pre-step information and then uses the fixed-action `stepThen`.
--/
-theorem ReadyIndependent.policyStepThen_eq_independent {profile : graph.BehavioralProfile}
-    (independent : graph.ReadyIndependent profile)
-    (config : graph.Config) (first second : graph.EventId)
-    (firstReady : config.cut.Ready first) (secondReady : config.cut.Ready second)
-    (different : first ≠ second) (firstOwner secondOwner : Player)
-    (firstActor : graph.actor? first = some firstOwner)
-    (secondActor : graph.actor? second = some secondOwner)
-    (differentOwner : firstOwner ≠ secondOwner) :
-    policyStepThen profile config first second firstReady secondReady different
-        firstOwner secondOwner firstActor secondActor =
-      (graph.normalizePolicy firstOwner (profile firstOwner) first firstActor
-          (graph.playerObserve firstOwner config)).bind fun firstAction =>
-        (graph.normalizePolicy secondOwner (profile secondOwner) second secondActor
-            (graph.playerObserve secondOwner config)).bind fun secondAction =>
-          stepThen config first second firstReady secondReady different
-            firstAction secondAction := by
-  apply kernelStepThen_eq_independent config first second firstReady secondReady different
-    (fun current => graph.normalizePolicy firstOwner (profile firstOwner) first firstActor
-      (graph.playerObserve firstOwner current))
-    (fun current => graph.normalizePolicy secondOwner (profile secondOwner) second secondActor
-      (graph.playerObserve secondOwner current))
-  intro firstAction _ afterFirst member
-  rw [Config.step, PMF.support_map] at member
-  obtain ⟨value, _, rfl⟩ := member
-  exact independent.normalizePolicy_complete_foreign config second first
-    secondReady firstReady secondActor firstOwner firstActor differentOwner
-    firstAction value
-
 /-- The two sequential normalized behavioral kernels commute after projecting
 to the typed store and every player's original-action recall. -/
 theorem ReadyIndependent.policyStepThen_map_storeRecall_comm

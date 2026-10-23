@@ -76,20 +76,6 @@ theorem Agrees.cons {Field : Type}
 
 end ContextRefs
 
-/-- The canonical reference to a completed compiled event reads exactly the
-value written by `Vegas.EventGraph.Config.complete`. -/
-theorem outputRef_get?_complete {Γ : SourceCtx Player L}
-    {openNames : Finset VarId} (program : SourceProgram Player L Γ openNames)
-    (config : (toEventGraph program).Config)
-    (event : Fin (eventCount program))
-    (ready : config.cut.Ready event)
-    (action : (toEventGraph program).Action event)
-    (value : (outputLayout program event).Value) :
-    (outputRef program event).get?
-        (config.complete event ready action value).store = some value := by
-  change (config.complete event ready action value).outputs event = some value
-  exact config.complete_output_same event ready action value
-
 /-- An embedded suffix output reference reads back the uncast source value
 written at its whole-graph event. -/
 theorem OutputEmbedding.ref_get?_complete
