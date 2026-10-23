@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.PhaseProposalShadowDrain
-import Vegas.EventGraph.BindingRefinement
 
 /-! # Successful binding preservation along actual automatic recovery
 

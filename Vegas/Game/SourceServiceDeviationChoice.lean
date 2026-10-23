@@ -1,8 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.SourceServicePrefixFactorization
-import Vegas.Pending.ReactiveOwnerWindow
-import GameTheoryExtensions.Math.Probability.ObservedChoice
 
 /-! # The deviator's choice in its own phase
 

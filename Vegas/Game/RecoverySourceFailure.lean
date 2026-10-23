@@ -2,7 +2,6 @@
 
 import Vegas.Game.SourceFailureRecord
 import Vegas.Pending.ExclusionInvariant
-import Vegas.Game.OnePacketIntendedProjection
 
 /-! # Permanent exclusions have actual source failure provenance -/
 

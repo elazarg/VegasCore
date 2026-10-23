@@ -2,7 +2,6 @@
 
 import Vegas.Game.PhaseProposalReadback
 import Vegas.Pending.PhaseProposalRetention
-import Vegas.Source.ProposalRecoveryDisclosure
 import Vegas.Game.PhaseProposalAddress
 import Vegas.Game.PhaseProposalSourceArchive
 import Vegas.Source.ProposalRecoveryRank

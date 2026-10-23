@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.RecoveryPendingCompletion
-import GameTheoryExtensions.Protocol.ContinuationHorizon
 
 /-! # Primitive failure at the current recovery completion boundary -/
 

@@ -1,9 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.ReservedEpochGeometry
-import Vegas.Pending.ReservedEpochClockAccounting
 import Vegas.Pending.PhaseRequestOrigin
-import Vegas.Pending.PhaseServiceContract
 
 /-! # Actual owner offers during surviving readiness episodes -/
 

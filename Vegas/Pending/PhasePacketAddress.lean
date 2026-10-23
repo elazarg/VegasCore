@@ -1,12 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.PhaseSeedBudget
-import Vegas.Pending.PhaseNativeInvariant
 import Vegas.Pending.PhasePlanSuffix
 import Vegas.Pending.PhaseCountMenu
-import Vegas.Pending.PhaseInputNamespace
 import Vegas.Pending.PhaseOwnCommitments
-import Interaction.ReactiveTrafficIdentity
 
 /-! # Static packet addresses on clear counted phase histories -/
 

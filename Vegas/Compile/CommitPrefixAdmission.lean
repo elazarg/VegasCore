@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Compile.CommitPrefixIntendedCompletion
-import Vegas.Source.CommitPrefixIntendedLift
 
 /-! # Guard-admitted source choices in a partially completed commitment phase -/
 

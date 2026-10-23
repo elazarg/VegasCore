@@ -4,12 +4,9 @@ import GameTheoryExtensions.Analysis.Protocol.Perturbation
 import GameTheory.Math.Probability.Convergence
 import GameTheory.Math.Probability.ConditionalObservation
 import GameTheory.Math.Probability.ExpectationConditioning
-import GameTheoryExtensions.Math.Probability.Expectation
-import GameTheoryExtensions.Math.Probability.Uniform
 import GameTheory.Protocol.DecisionPlan
 import GameTheory.Protocol.FiniteInformation
 import Mathlib.Analysis.SpecificLimits.Basic
-import GameTheoryExtensions.Math.Probability.Support
 import GameTheory.Math.Probability.Compactness
 
 /-! # Consistent belief completions in finite protocols

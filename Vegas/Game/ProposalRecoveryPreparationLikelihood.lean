@@ -2,7 +2,6 @@
 
 import Vegas.Game.ProposalRecoveryPreparationChance
 import GameTheoryExtensions.Analysis.Protocol.OwnPlayReach
-import GameTheoryExtensions.Analysis.Protocol.ProjectedBeliefTransport
 
 /-! # Source reach accounting for an actual designated-owner repair -/
 

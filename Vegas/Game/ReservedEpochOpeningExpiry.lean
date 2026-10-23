@@ -3,7 +3,6 @@
 import Vegas.Pending.ReservedEpochExpiredRequest
 import Vegas.Pending.ReservedEpochFreshResponse
 import Vegas.Game.PhaseProposalUnflaggedOpening
-import Vegas.Pending.PhaseOpeningMenuShape
 import Interaction.ReactiveAnchoredMixture
 
 /-! # Origins of actual publication expiry under the unflagged continuation -/

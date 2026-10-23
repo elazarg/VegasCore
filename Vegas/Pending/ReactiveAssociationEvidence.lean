@@ -2,7 +2,6 @@
 
 import Vegas.Pending.ReactivePacketEvidence
 import Vegas.Pending.EventBindingInvariant
-import Vegas.EventGraph.CommitmentEvidence
 
 /-! # Previously observed openings authenticate later accepted bindings
 

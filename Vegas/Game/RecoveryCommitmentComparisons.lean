@@ -1,10 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.RecoveryIntendedCommitmentValue
-import Vegas.Game.RecoveryFirstActivationValue
-import Vegas.Game.RecoveryCompletionPotential
-import Vegas.Game.IntendedChoiceReach
-import Vegas.Game.OnePacketLateCommitBlind
+import Vegas.Game.OnePacketCommitmentSourcePolicy
+import Vegas.Game.OnePacketValueTransport
 
 /-! # A single source deviation for all histories of a nonlate commitment -/
 

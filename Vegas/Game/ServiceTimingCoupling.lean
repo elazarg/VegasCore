@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.SourceServiceAsyncStep
+import Interaction.ReactiveMixtureRounds
 
 /-! # Turn timings cost at most their deferral weight, in every dependency mode
 

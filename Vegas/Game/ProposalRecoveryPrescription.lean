@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Source.ProposalRecoveryFlags
-import Vegas.Source.ProposalRecoveryQueryAntichain
 
 /-! # Legal prescriptions on archive-refined source coordinates -/
 

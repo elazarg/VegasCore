@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Compile.EventGraphEvaluation
+import Vegas.EventGraph.Information
 
 /-! # Source observations decoded from event-graph stores
 

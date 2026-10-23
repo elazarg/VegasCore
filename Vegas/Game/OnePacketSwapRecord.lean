@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.OnePacketSwapSymmetry
+import Interaction.ReactiveRecallEntries
 
 /-! # Hidden swaps keep operational records and the observer's information
 

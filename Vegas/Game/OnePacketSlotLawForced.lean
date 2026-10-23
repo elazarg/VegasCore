@@ -2,7 +2,6 @@
 
 import Vegas.Game.OnePacketSlotLawDischarge
 import Vegas.Game.OnePacketDisclosureResolves
-import Vegas.Game.OnePacketComponentSteps
 
 /-! # Operational steps of the certificate's profile
 

@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.OnePacketDisclosureResolves
-import Vegas.Compile.EventGraphParameterReadout
 
 /-! # Successful decoded publications have no failed source reveals -/
 

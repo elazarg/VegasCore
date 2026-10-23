@@ -2,7 +2,6 @@
 
 import Vegas.Game.RecoveryBindingPrefix
 import Vegas.Compile.CommitPrefixBindingSplit
-import Vegas.Pending.PhaseAttemptCheckpoint
 
 /-! # Actual ready bindings select the same saved source-word block -/
 

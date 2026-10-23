@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.ReservedEpochPublicationEmission
-import Vegas.Game.ReservedEpochPublicationSourceStep
 
 /-! # The actual old publication emission and receipt word -/
 

@@ -1,6 +1,5 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import GameTheoryExtensions.Analysis.Protocol.Bayes
 import GameTheory.Analysis.Protocol.Sequential
 
 /-! # Consistent beliefs from factored execution likelihoods

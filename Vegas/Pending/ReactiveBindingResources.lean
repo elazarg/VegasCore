@@ -2,10 +2,7 @@
 
 import Vegas.Pending.ReactiveCandidateBudget
 import Vegas.Pending.ReactiveAssociationEvidence
-import Vegas.Pending.ReactiveBindingAllocation
 import Interaction.ReactiveAllocation
-import Interaction.ReactiveRecallInvariant
-import Vegas.Pending.ReactivePolicyFacts
 
 /-! # Binding resources at actual native decisions
 

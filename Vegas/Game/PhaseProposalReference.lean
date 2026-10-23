@@ -3,8 +3,6 @@
 import Vegas.Game.PhaseProposalQuery
 import Vegas.Game.PhaseSourcePolicy
 import Vegas.Game.PhaseRecoveryDomainValue
-import Vegas.Game.ProposalRecoveryPrescription
-import Vegas.Pending.PhaseCountServiceReference
 import Vegas.Pending.PhaseProposalResponseAliases
 import Vegas.Pending.PhaseProposalInputSummary
 

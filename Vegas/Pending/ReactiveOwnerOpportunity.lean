@@ -1,9 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.ReactiveAsyncContract
-import Interaction.ReactiveHistory
 import Vegas.Pending.ReactiveCanonicalDecision
-import Vegas.Pending.ReactiveEventStability
 
 /-! # A ready owner must receive an opportunity before actual expiry -/
 

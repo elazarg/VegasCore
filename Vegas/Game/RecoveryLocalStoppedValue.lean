@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.RecoveryFiniteStoppedValue
-import Vegas.Game.RecoveryComparisonStopped
 import GameTheory.Protocol.PolicyRandomization
 
 /-! # Exact same-witness stopped values after local recovery deviations -/

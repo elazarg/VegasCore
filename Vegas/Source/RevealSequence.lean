@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Source.Honest
-import Vegas.Source.ProtocolTermination
 
 /-! # Sequences of revelations of initialized commitments
 

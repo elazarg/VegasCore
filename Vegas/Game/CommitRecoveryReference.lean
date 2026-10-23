@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Source.CommitRecoveryFiniteness
-import GameTheoryExtensions.Analysis.Protocol.Bayes
+import Mathlib.Probability.Distributions.Uniform
 
 /-! # Full mixing and finite legal histories of the recovery source game -/
 

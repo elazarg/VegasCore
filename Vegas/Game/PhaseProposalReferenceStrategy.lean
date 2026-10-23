@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.PhaseProposalReference
-import Interaction.ReactiveMenuPolicy
 
 /-! # The actual reference profile is fully mixed in the counted protocol -/
 

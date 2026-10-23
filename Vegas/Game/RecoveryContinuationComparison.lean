@@ -4,8 +4,8 @@ import Vegas.Game.RecoveryComparisonStopped
 import Vegas.Game.RecoveryForeignFailureBound
 import Vegas.Game.RecoveryDebtStoppedComparison
 import Vegas.Game.RecoveryNativePrior
-import Vegas.Pending.ExclusionBoundedHistory
 import GameTheory.Protocol.PolicyRandomization
+import Vegas.Game.AsyncDeviationForeign
 
 /-! # Actual recovery continuation error from rare foreign first exclusions -/
 

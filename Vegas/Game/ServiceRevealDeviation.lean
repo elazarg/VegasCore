@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.ServiceRevealCongruence
-import Vegas.Game.ServiceOpeningHonestLaw
 
 /-! # A block of disclosures against one deviator
 

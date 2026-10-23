@@ -6,6 +6,7 @@ import Vegas.Pending.ReactiveFiniteResponses
 import Vegas.Pending.ReactiveAsyncContract
 import Interaction.PendingErasureSelection
 import Interaction.ReactiveObservation
+import Interaction.ReactiveFiniteAssessment
 
 /-! # A public two-late service for the initialized three-instruction source
 

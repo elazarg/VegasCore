@@ -1,10 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.RecoverySavedSourceRank
-import Vegas.Game.RecoveryResidualUniqueness
-import Vegas.Game.RecoveryArchivedBindingRecall
 import Vegas.Game.PhaseSurvivingSourceView
-import Vegas.Game.PhaseSurvivingBindingSource
 
 /-! # Saved source checkpoint views read from actual surviving binding data -/
 

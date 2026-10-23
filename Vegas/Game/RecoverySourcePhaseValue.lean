@@ -2,7 +2,6 @@
 
 import Vegas.Game.RecoveryComparisonContinuationValue
 import Vegas.Game.OnePacketSiteLinearity
-import Vegas.Game.OnePacketCommitmentSourcePolicy
 
 /-! # Source values across a completed intended event -/
 

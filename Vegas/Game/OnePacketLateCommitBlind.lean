@@ -1,10 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.OnePacketLateCommitFailure
-import Vegas.Game.OnePacketLateReveal
-import Vegas.Game.OnePacketCommitmentCompletion
-import Vegas.Game.OnePacketLateCommitments
-import Vegas.Game.OnePacketNextEvent
 import GameTheoryExtensions.Math.Probability.ProductDecorrelation
 
 /-! # Uniform errors over late-commitment sites

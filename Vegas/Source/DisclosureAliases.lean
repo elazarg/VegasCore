@@ -3,7 +3,6 @@
 import Vegas.Source.ObservationRecall
 import GameTheory.Math.Probability.ConditionalObservation
 import GameTheory.Math.Probability.ExpectationConditioning
-import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Ineffective disclosure choices are private action aliases
 

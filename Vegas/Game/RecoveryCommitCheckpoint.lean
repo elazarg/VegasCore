@@ -1,12 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.RecoverySourceCheckpoint
 import Vegas.Game.RecoverySettledCommitCheckpoint
-import Vegas.Game.CommitAttemptSurvivingRecall
-import Vegas.Game.CompiledCommitClosing
-import Vegas.Game.CompiledCommitTail
-import Vegas.Game.CompiledCommitMaximality
-import Vegas.Source.CommitRecoveryBlockCloseLift
 import GameTheory.Protocol.Backward
 
 /-! # Actual source checkpoints at commitment-phase retries -/

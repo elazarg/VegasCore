@@ -2,7 +2,6 @@
 
 import Vegas.Game.PhaseRecoveryBindingComponent
 import Vegas.Pending.PhaseOpeningPolicy
-import Interaction.ReactiveMenuPolicy
 
 /-! # Globally legal source-policy dispatch at phased physical inputs -/
 

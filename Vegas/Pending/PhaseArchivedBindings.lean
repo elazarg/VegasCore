@@ -2,7 +2,6 @@
 
 import Vegas.Pending.PhaseRawCheckpoint
 import Vegas.Pending.PhaseBindingSubmittedPreservation
-import Vegas.Pending.PhaseNativeInvariant
 
 /-! # Archived accepted meanings remain readable in the permanent private catalogue -/
 

@@ -2,7 +2,6 @@
 
 import Vegas.Game.PhaseProposalFreshPayoff
 import Vegas.Game.ProposalRecoveryContinuation
-import Vegas.Game.ProposalRecoveryPayoff
 
 /-! # Actual terminal payoff laws after a shared enriched source reset -/
 

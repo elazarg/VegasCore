@@ -2,6 +2,9 @@
 
 import Vegas.Examples.LateOpeningRuntimeServiceCompletion
 import Vegas.Pending.ReactiveServiceOpportunity
+import Interaction.ReactiveNormalRecall
+import Vegas.EventGraph.CanonicalStep
+import Vegas.Game.ServiceRosterAsync
 
 /-! # Owner opportunities in the public two-late service
 

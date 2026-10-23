@@ -3,6 +3,9 @@
 import Vegas.Pending.PhaseProposalShadowBindingResponse
 import Vegas.Pending.PhaseProposalShadowOpeningResponse
 import Vegas.Pending.PhaseBindingResponseDispatcher
+import Vegas.Pending.PhaseBindingIdleMenu
+import Vegas.Pending.PhaseOpeningMenuShape
+import Vegas.Pending.PhaseProposalPreparedResponse
 
 /-! # Every actual counted response has a general recovery repair -/
 

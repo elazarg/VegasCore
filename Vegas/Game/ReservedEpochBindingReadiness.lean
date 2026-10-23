@@ -2,7 +2,6 @@
 
 import Vegas.Compile.EventGraphAssembly
 import Vegas.EventGraph.Sequential
-import Vegas.Pending.EventApplication
 
 /-! # Foreign binding completions do not advance an owner's readiness cone -/
 

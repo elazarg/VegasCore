@@ -1,10 +1,9 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.PhaseSavedExclusionReadback
 import Vegas.Pending.PhaseArchiveGeneration
 import Vegas.Pending.PhaseArchivedBindingInterval
 import Vegas.Game.CompiledRevealPhase
-import Vegas.Source.CommitRecoveryInstructions
+import Vegas.Pending.PhaseNamespace
 
 /-! # Public numeric source chronology from the literal native attempt records -/
 

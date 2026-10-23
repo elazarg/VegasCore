@@ -3,7 +3,6 @@
 import Interaction.ReactivePolicyMixture
 import GameTheory.Math.Probability.ConditionalObservation
 import GameTheory.Math.Probability.ExpectationConditioning
-import GameTheoryExtensions.Math.Probability.Support
 
 /-! # A scheduled mixture stops after its first opening
 

@@ -2,7 +2,6 @@
 
 import Vegas.Game.ServiceRevealVirtual
 import Vegas.Game.ServiceRevealLaw
-import Vegas.Game.AsyncDeviationForeign
 
 /-! # A block of opened disclosures against one deviating player
 

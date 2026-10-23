@@ -2,12 +2,8 @@
 
 import Vegas.Game.PhaseProposalCurrentBindingGain
 import Vegas.Game.ReservedEpochPublicationComparison
-import Vegas.Game.PhaseProposalUnflaggedOpening
 import Vegas.Game.PhaseProposalPublicationAliases
 import Vegas.Game.PhaseProposalPublicationPayoff
-import Vegas.Pending.PhaseSentMenu
-import Interaction.ReactiveAnchoredStopped
-import GameTheoryExtensions.Analysis.Protocol.SuccessRanking
 
 /-! # Publication timing at the original full information -/
 

@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.PhaseResolution
-import Vegas.Pending.ExclusionInvariant
 
 /-! # Native service progress inside one physical phase namespace
 

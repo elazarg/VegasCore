@@ -2,9 +2,6 @@
 
 import Vegas.Game.SourceServiceCanonicalSlots
 import Vegas.Pending.ReactiveRiskMenu
-import Vegas.Pending.EvidenceNormalization
-import Interaction.ReactiveLocalContinuation
-import Interaction.ReactiveSubmissionSerial
 
 /-! # Conformant first submissions at actual service histories
 

@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.PhaseObservableSourceQuery
-import Vegas.Game.PhaseRecoveryDomainValue
 
 /-! # Foreign domain queries from the retained native prefix
 

@@ -2,7 +2,6 @@
 
 import Vegas.Pending.PhaseApplication
 import Vegas.Pending.ReactiveSignedCommitments
-import Interaction.ReactiveTrafficIdentity
 
 /-! # Signed binding origins survive physical phase rollback
 

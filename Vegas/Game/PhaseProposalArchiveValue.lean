@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.PhaseProposalReplay
-import Vegas.Pending.PhaseProposalTyping
 
 /-! # Current-namespace archive entries retain the replayed binding value -/
 

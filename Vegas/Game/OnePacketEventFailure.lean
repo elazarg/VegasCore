@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.OnePacketExclusionPayoff
-import Vegas.Game.RevealServiceRosterContinuation
 import Vegas.Pending.ReactiveAcceptedOutput
 
 /-! # Event-level failure read through the typed readout

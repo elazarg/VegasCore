@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.PhaseProposalOrigin
-import Vegas.Pending.PhaseBindingOpeningRead
 
 /-! # Submitted counted proposals came from actual successful binding values
 

@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.OnePacketOwnerPriorSite
-import Vegas.Game.OnePacketSwapBaseWeight
 import Vegas.Game.OnePacketOwnerBounds
 
 /-! # The owner swap scales the source weight by the prior ratio

@@ -8,6 +8,8 @@ import Interaction.ReactiveReceipts
 import Interaction.ReactiveProvenance
 import Interaction.ReactiveReceiptIdentity
 import Interaction.ReactiveRecallInvariant
+import Interaction.ReactiveNormalHistory
+import Interaction.ReactiveNormalRecall
 
 /-! # Physical receipt guarantees for the late-opening service
 

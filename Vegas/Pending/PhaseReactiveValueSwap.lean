@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.PhaseSwapApplication
-import Vegas.Pending.ReactiveValueSwap
 
 /-! # Full physical executions under a phased hidden-value swap -/
 

@@ -1,10 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.ReservedEpochOpeningExpiry
-import Vegas.Pending.PhaseProposalRetention
-import Vegas.Pending.PhaseExclusionOrigin
 import Vegas.Game.ReservedEpochStoppedFootprint
-import Vegas.Pending.PhaseProposalFailure
 import Vegas.Game.ReservedEpochPublicationReceipt
 
 /-! # Actual publication successor chains cannot acquire a fresh service failure -/

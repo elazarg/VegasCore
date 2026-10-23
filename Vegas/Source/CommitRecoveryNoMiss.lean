@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Source.CommitRecoveryObservedClosure
-import Vegas.Source.CommitRecoveryInstructions
 
 /-! # Replaying a source commitment prefix without new omissions
 

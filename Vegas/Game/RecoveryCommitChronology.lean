@@ -1,22 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.RecoveryResidualUniqueness
 import Vegas.Game.RecoverySettledCommitCheckpoint
-import Vegas.Source.CommitRecoveryObservedMemory
-import Vegas.Game.CompiledCommitHead
-import Vegas.Source.CommitRecoveryCommitWindow
-import Vegas.Pending.ArchiveBindingRecord
-import Vegas.EventGraph.PrivateInputs
-import Vegas.Pending.PhaseArchivedOwnPrefix
-import Vegas.Pending.PhaseArchivedObservation
-import Vegas.Game.CompiledCommitMaximality
 import Vegas.Game.CompiledCommitControl
 import Vegas.Game.CompiledCommitExclusionWord
-import Vegas.Pending.PhasePlanSuffix
-import Vegas.Pending.PhaseRetiredCompletion
-import Vegas.Source.CommitRecoveryOwnHistory
-import Vegas.Source.CommitRecoveryClearRecall
-import Vegas.Source.CommitRecoveryControl
 import GameTheory.Protocol.Backward
 
 /-! # Complete information on chosen decoded commitment continuations -/

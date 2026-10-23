@@ -3,7 +3,6 @@
 import Vegas.Pending.ReservedEpochCommandShape
 import Interaction.ReactiveRoundBoundary
 import Interaction.ReactiveStopping
-import Interaction.ReactiveRecall
 import Interaction.ReactiveOwnerSelection
 
 /-! # Submitted envelopes remain pending before the next processing boundary -/

@@ -1,17 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.EventGraph.ResolutionProvenance
 import Vegas.Game.RevealService
-import Vegas.Game.ServiceSettledEvidence
-import Vegas.Pending.ReactiveSelectionObservation
-import GameTheoryExtensions.Analysis.Protocol.RestrictionExtension
-import GameTheoryExtensions.Protocol.ContinuationHorizon
-import Vegas.Pending.ReactiveAliasEquilibrium
-import Vegas.Pending.CompletionService
-import Interaction.ReactiveRoundReachability
 import Vegas.Compile.EventGraphReadout
-import Vegas.Pending.RevealTranscript
-import GameTheoryExtensions.Analysis.Enforcement
 
 /-! # Net utilities for the monitored reveal service
 

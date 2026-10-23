@@ -2,6 +2,7 @@
 
 import GameTheoryExtensions.Analysis.Enforcement
 import GameTheoryExtensions.Math.Probability.Support
+import GameTheoryExtensions.Math.Probability.Expectation
 
 /-! # Undetectable signaling through an allowed public field
 

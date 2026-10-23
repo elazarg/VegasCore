@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.PhaseProposalFreshTerminalCoupling
-import Vegas.Game.PhaseProposalInitial
 import Interaction.ReactiveSchedulerTerminalMixture
 import Interaction.ReactiveTerminalEvaluation
 

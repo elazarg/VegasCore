@@ -3,10 +3,6 @@
 import Vegas.Game.ReservedEpochUnsentOpening
 import Vegas.Pending.ReservedEpochUnsentRequest
 import Vegas.Game.ReservedEpochStoppedTapeWord
-import Interaction.ReactivePolicyInvariant
-import Vegas.Pending.PhaseOwnCount
-import Vegas.Pending.PhaseSemanticProgress
-import Vegas.Pending.PhaseProposalRetention
 
 /-! # Truthful opening emissions and receipts at the original phase exit -/
 

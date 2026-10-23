@@ -2,8 +2,6 @@
 
 import Vegas.Game.PhaseProposalSavedDebt
 import Vegas.Pending.ReservedEpochCompletion
-import Interaction.ReactiveHistory
-import GameTheoryExtensions.Protocol.ContinuationHorizon
 
 /-! # Actual reserved-service continuation payoff of checkpointed own debt -/
 

@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.PhaseProposalShadowHistory
-import Vegas.Game.PhaseProposalRepairChance
 
 /-! # Designated-owner repair inside the exact native information fiber -/
 

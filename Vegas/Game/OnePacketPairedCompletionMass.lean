@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.OnePacketEnvironmentSteps
+import Vegas.Pending.EventSampleObservation
 
 /-! # Chance mass depends only on paired public endpoints -/
 

@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.OnePacketForcedBeliefs
+import Vegas.Game.IntendedPreservation
 
 /-! # Projecting native one-packet histories to intended histories
 

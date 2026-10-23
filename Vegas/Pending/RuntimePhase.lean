@@ -1,6 +1,5 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.AttemptNamespace
 import Vegas.Pending.ExclusionCompletion
 import Vegas.EventGraph.BarrierBlocks
 

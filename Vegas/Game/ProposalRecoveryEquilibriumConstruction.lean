@@ -1,8 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.ProposalRecoverySelectedEquilibrium
-import Vegas.Game.ProposalRecoveryPooledCompletion
-import Vegas.Source.ProposalRecoveryFiniteness
 import GameTheory.Protocol.RestrictionExecution
 
 /-! # A source equilibrium with its original pooled construction witness

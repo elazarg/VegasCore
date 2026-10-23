@@ -3,7 +3,6 @@
 import Vegas.Game.PhaseProposalReference
 import Vegas.Pending.PhaseProposalCanonicalBinding
 import Vegas.Pending.PhaseProposalBindingSlots
-import Vegas.Pending.PhaseNativeInvariant
 
 /-! # Genuine binding menus exhaust the reference packet classes -/
 

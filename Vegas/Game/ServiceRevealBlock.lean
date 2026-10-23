@@ -1,6 +1,5 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.ServiceBlockPredraw
 import Vegas.Game.ServiceOpeningClient
 import Vegas.Game.ServiceRevealTail
 

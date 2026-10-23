@@ -1,9 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.ReactiveDisclosure
-import Vegas.Pending.ReactiveAssociationEvidence
-import Vegas.Pending.ReactiveStateInvariant
-import Vegas.Pending.EventHandleObservation
 
 /-! # Stable inputs of a submitted disclosure
 

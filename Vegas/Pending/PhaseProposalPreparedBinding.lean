@@ -1,6 +1,5 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.PhaseProposalPreparedResponse
 import Vegas.Pending.PhaseProposalPreparationResult
 
 /-! # Actual binding responses extend persistent typed packet provenance -/

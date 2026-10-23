@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.OnePacketSureFailure
-import Vegas.Game.OnePacketPrescribedSupport
 
 /-! # Protocol transitions as configuration steps
 

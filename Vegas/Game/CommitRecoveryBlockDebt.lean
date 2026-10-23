@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.CommitRecoveryHiddenInformation
-import Vegas.Source.CommitRecoveryDebt
 import Vegas.Source.CommitRecoveryFrontier
 import GameTheory.Protocol.BehavioralTerminal
 

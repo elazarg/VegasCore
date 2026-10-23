@@ -1,9 +1,5 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Interaction.ReactiveOwnerSelection
-import Vegas.Pending.ReactivePolicyFacts
-import Vegas.Pending.ReactiveServiceProgress
-import Interaction.ReactiveAllocation
 import Vegas.Pending.ReactiveContinuationObservation
 
 /-! # Reconstructing reserved selection from an owner's information

@@ -1,10 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.OnePacketLateDecomposition
-import Vegas.Game.OnePacketLateCommitments
-import Vegas.Game.OnePacketValueTransport
-import Vegas.Game.OnePacketUnpendingSites
-import Vegas.Game.OnePacketLateRecords
 
 /-! # Value-blindness inputs of the one-packet certificate
 

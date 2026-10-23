@@ -1,8 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.ReservedEpochUnsentRequest
-import Vegas.Pending.PhaseOwnCount
-import Vegas.Pending.PhaseBindingMenuShape
 import Vegas.Game.PhaseProposalUnflaggedBinding
 
 /-! # The actual unflagged SEND at an old unsent binding episode -/

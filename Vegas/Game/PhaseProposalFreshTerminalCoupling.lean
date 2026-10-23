@@ -1,25 +1,20 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.PhaseProposalFreshTerminal
 import Vegas.Game.RecoveryPublicClosingWitness
 import Vegas.Game.PhaseProposalBindingWitness
 import Vegas.Game.PhaseProposalSampleHistoryJoin
 import Vegas.Game.PhaseProposalSampleHistoryCoupling
-import Vegas.Game.RecoverySourceEnvironment
-import Vegas.Game.PhaseProposalRespond
-import Vegas.Game.PhaseProposalEnvironment
-import Vegas.Game.PhaseProposalHistory
 import Vegas.Game.RecoverySameAttemptWitness
 import Vegas.Game.PhaseProposalAttemptArchive
-import Vegas.Source.CommitRecoveryAutomaticValues
-import Vegas.Source.CommitRecoveryNonCommitValues
 import Vegas.Compile.EventGraphParameterReadout
-import GameTheoryExtensions.Analysis.Protocol.StoppedTerminalBound
-import GameTheoryExtensions.Protocol.StateSymmetry
 import Interaction.ReactiveAnchoredStopped
-import Interaction.ReactiveInvariantPrefix
-import Vegas.Pending.PhaseBindingIdleMenu
 import GameTheory.Analysis.Protocol.InformationLocalization
+import Vegas.EventGraph.PrivateInputs
+import Vegas.Game.CommitRecoveryPayoff
+import Vegas.Game.PhaseExclusionPayoff
+import Vegas.Game.RecoverySourceReadout
+import Vegas.Game.RecoverySourceTerminal
+import Vegas.Pending.PhaseTerminalExclusion
 
 /-! # Full ordinary terminal histories at a fresh native boundary -/
 

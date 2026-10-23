@@ -1,14 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Interaction.ReactivePolicyMixture
 import Vegas.Pending.ReactiveService
-import Interaction.ReactiveProvenance
-import Vegas.Pending.ReactivePolicyFacts
-import Vegas.Pending.ReactiveServiceProgress
-import Interaction.ReactiveAllocation
-import Vegas.Pending.ReactiveContinuationObservation
-import Interaction.ReactiveMessageReadout
-import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Actual communication likelihood during an opaque binding window
 

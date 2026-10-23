@@ -2,8 +2,6 @@
 
 import Vegas.Game.RecoveryStoppedSourceLaw
 import Vegas.Game.OnePacketDebtFreeResponse
-import Vegas.Game.OnePacketPrescribedCompletion
-import Vegas.Game.OnePacketCompletionLaw
 
 /-! # Source-value kernels of prescribed play under actual recovery service -/
 

@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.PhaseApplication
-import Vegas.Pending.EventBindingReadback
 import Vegas.Pending.ReactiveAcceptedOutput
 
 /-! # Immutable binding meanings through actual phase rollback -/

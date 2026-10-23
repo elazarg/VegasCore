@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Interaction.ReactivePolicyMixture
-import GameTheoryExtensions.Math.Probability.NestedPosterior
 
 /-! # Exact response likelihoods under immutable private-policy mixtures -/
 

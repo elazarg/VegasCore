@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import GameTheory.Math.Probability.ConditionalObservation
-import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Choices drawn from an auxiliary observation
 

@@ -1,8 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.PhaseProposalEmissionFrontier
-import Vegas.Pending.PhaseOwnCommitments
-import Interaction.ReactiveHistory
 
 /-! # Original SEND provenance of the current emission frontier -/
 

@@ -1,9 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Source.CommitRecoveryNoMissRepresentative
-import Vegas.Source.CommitRecoveryAttemptReset
 import Vegas.Source.CommitRecoveryErasedModel
-import Vegas.Game.CommitRecoveryPayoff
 
 /-! # Original source continuation under the selected reduced-query prescription
 

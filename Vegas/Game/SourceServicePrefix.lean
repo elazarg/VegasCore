@@ -2,7 +2,6 @@
 
 import Vegas.Game.SourceServiceCheckpoint
 import Vegas.Compile.EventGraphReadout
-import Vegas.Game.ServiceObservation
 
 /-! # Reading full source protocol positions from native checkpoints
 

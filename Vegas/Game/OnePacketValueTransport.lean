@@ -1,8 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.OnePacketCommitmentCompletion
-import Vegas.Game.IntendedCommitGain
-import Vegas.Game.OnePacketForcedRegular
 
 /-! # Regular histories owe nothing
 

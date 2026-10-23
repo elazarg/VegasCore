@@ -2,7 +2,6 @@
 
 import Vegas.Game.OnePacketForeignFreshness
 import Vegas.Game.OnePacketClearRegularity
-import Vegas.Game.OnePacketOperationalReads
 
 /-! # Foreign first activations behind submitted packets -/
 

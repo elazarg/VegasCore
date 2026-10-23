@@ -2,7 +2,6 @@
 
 import Vegas.Source.ProposalRecoveryRank
 import Vegas.Source.ProposalRecoveryInformation
-import Vegas.Source.CommitRecoveryCursor
 import GameTheoryExtensions.Protocol.TracePrefix
 
 /-! # Actual proposal addresses identify unique source prefixes -/

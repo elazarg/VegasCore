@@ -1,10 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.PhaseBindingAdmittedInclude
-import Vegas.Pending.ReactiveBindingFrameForeign
-import Vegas.Pending.ReactiveCountedSurvivor
 import Vegas.Pending.PhasePacketAddress
 import Vegas.Pending.ReactiveBindingSubmittedResponse
+import Vegas.Pending.ReactiveAcceptedOutput
 
 /-! # Submitted private records survive actual physical phase operations -/
 

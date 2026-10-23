@@ -1,9 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.ServiceRevealTail
-import Vegas.Source.CommitRecoveryPoint
-import Vegas.Source.CommitRecoveryStep
-import Vegas.Source.ProtocolEvaluation
 import Vegas.Source.ProtocolSuffix
 
 /-! # Recovery control and readout through the existing disclosure residual -/

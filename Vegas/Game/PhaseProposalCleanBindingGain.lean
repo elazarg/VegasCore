@@ -22,6 +22,8 @@ import Interaction.ReactiveAnchoredStopped
 import Interaction.ReactiveStoppedState
 import GameTheoryExtensions.Analysis.Protocol.StoppedHistoryInvariant
 import GameTheoryExtensions.Math.Probability.PresentConditional
+import Vegas.Game.AsyncDeviationForeign
+import Vegas.Game.ProposalRecoveryFutureFlags
 
 /-! # Clean binding comparisons at the original native information
 

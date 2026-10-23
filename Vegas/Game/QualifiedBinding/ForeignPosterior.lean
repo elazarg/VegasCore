@@ -1,6 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.QualifiedBinding.OrdinaryContinuation
+import Vegas.Game.AsyncDeviationForeign
+import Vegas.Game.PhaseBindingRecallMeaning
 
 /-! # Issued-word source posterior disintegration -/
 

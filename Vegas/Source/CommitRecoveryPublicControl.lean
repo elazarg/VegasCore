@@ -1,6 +1,5 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Source.CommitRecoveryPublicSuccessor
 import Vegas.Source.CommitRecoveryPublicHistory
 
 /-! # Exclusion updates read from actual public source successors -/

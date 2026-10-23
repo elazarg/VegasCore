@@ -3,8 +3,6 @@
 import Vegas.Game.RecoveryNonLateSourceValue
 import Vegas.Game.RecoveryPhaseValueBlind
 import Vegas.Game.RecoveryCompletionPotential
-import Vegas.Game.IntendedCommitGain
-import Vegas.Game.RecoveryLateSourcePhase
 
 /-! # Actual stopped values of intended prepared-slot commitments -/
 

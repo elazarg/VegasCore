@@ -1,12 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.RecoveryArchivedNormalization
-import Vegas.Game.RecoveryArchivedInitialization
-import Vegas.Game.RecoveryInitialCheckpoint
-import Vegas.Pending.PhasePlanSuffix
 import Vegas.Pending.PhaseRawCheckpoint
-import Vegas.Pending.PhaseHistoryCheckpoint
-import Vegas.Pending.PhaseCountProjection
 
 /-! # Shared chosen source witnesses for actual application transitions -/
 

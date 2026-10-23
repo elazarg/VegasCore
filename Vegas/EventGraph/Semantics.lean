@@ -2,7 +2,6 @@
 
 import Vegas.EventGraph.Information
 import GameTheory.Core.Form
-import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Behavioral and public-scheduler semantics for event graphs
 

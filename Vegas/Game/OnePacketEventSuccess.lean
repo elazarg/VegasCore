@@ -2,8 +2,6 @@
 
 import Vegas.Game.OnePacketFirstActivation
 import Vegas.Game.OnePacketEventFailure
-import Vegas.Pending.ReactiveAcceptedOutput
-import GameTheoryExtensions.Analysis.Protocol.SuccessRanking
 
 /-! # An accepted canonical packet completes its event successfully
 

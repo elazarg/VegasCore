@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.SourceServiceCanonicalConformance
-import Interaction.ScheduledOpening
 
 /-! # Actual binding calls at the first prescribed turn
 

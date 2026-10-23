@@ -2,7 +2,6 @@
 
 import Vegas.Source.CommitRecoveryErasure
 import Vegas.Source.SetupProtocolRecall
-import Vegas.Source.IntendedGame
 
 /-! # Honest source recall reconstructed from live typed observations
 

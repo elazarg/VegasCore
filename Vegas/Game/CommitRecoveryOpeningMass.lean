@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.CommitRecoveryExtraChoice
+import Vegas.Source.CommitRecoveryContinuingMenu
 import Vegas.Game.CommitRecoveryDebtPayoff
 import Vegas.Game.CommitRecoveryVoluntaryFailurePayoff
 import Vegas.Game.ExclusionMoveExtension
@@ -8,6 +9,7 @@ import Vegas.Game.RecoveryCommitPrefixWitness
 import Vegas.Game.CommitPrefixReadyRecall
 import Vegas.Game.RecoveryBindingPrefix
 import GameTheoryExtensions.Analysis.Protocol.SingleMoverReach
+import GameTheoryExtensions.Analysis.Protocol.RestrictedComponentCompletion
 
 /-! # Opening-choice factors along genuine source recovery histories -/
 

@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Interaction.ReactiveInvariant
-import Interaction.ReactivePolicyInvariant
 import Vegas.Pending.ReactiveRuntime
 import Vegas.Pending.EventStore
 

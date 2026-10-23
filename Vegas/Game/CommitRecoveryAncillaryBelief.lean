@@ -3,6 +3,7 @@
 import Vegas.Game.CommitRecoveryHybridHistory
 import Vegas.Source.CommitRecoveryInitialInputs
 import Vegas.Source.CommitRecoveryPublicObservation
+import Vegas.Source.CommitRecoveryErasedModel
 
 /-! # Original source information fibers under retired-word substitution
 

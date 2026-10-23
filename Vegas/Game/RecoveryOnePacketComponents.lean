@@ -4,7 +4,6 @@ import Vegas.Pending.ExclusionBoundedLift
 import Vegas.Game.OnePacketDelivery
 import Vegas.Game.OnePacketIntendedProjection
 import GameTheoryExtensions.Analysis.Protocol.FreeKeyedPools
-import Interaction.ReactiveOwnPlay
 
 /-! # Free and keyed components of the recovery one-packet game
 

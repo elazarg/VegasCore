@@ -1,9 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.CommitAttemptHistory
-import Vegas.Pending.RecordedBindingReadback
 import Vegas.EventGraph.RelaxedRecall
-import Vegas.EventGraph.SequentialLaw
 
 /-! # Typed binding records identify the complete original own action word -/
 

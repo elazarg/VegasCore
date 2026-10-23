@@ -3,6 +3,7 @@
 import Vegas.Source.ProposalRecoveryInformation
 import Vegas.Source.CommitRecoveryFiniteness
 import GameTheoryExtensions.Analysis.Protocol.Bayes
+import Mathlib.Probability.Distributions.Uniform
 
 /-! # Finite histories of proposal-labeled recovery without global value finiteness -/
 

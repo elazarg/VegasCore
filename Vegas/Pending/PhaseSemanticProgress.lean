@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.PhaseHistoryCheckpoint
-import Vegas.Pending.PhaseStoredCheckpoint
 import Vegas.Pending.PhaseResolution
 import Interaction.ReactivePolicyInvariant
 import Interaction.ReactiveInvariantPrefix

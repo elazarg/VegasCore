@@ -2,8 +2,6 @@
 
 import Vegas.Pending.PhaseApplication
 import Interaction.ReactiveConsistentHistory
-import Interaction.ReactiveEvaluation
-import Interaction.ReactiveRounds
 import GameTheoryExtensions.Analysis.Protocol.ContinuationOwnPlay
 import GameTheoryExtensions.Analysis.Protocol.OwnPlayReach
 

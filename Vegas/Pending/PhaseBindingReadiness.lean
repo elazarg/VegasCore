@@ -2,7 +2,6 @@
 
 import Vegas.Pending.PhaseExclusionRecord
 import Vegas.Pending.PhaseLive
-import Vegas.Pending.PhaseReadiness
 import Vegas.Pending.PhasePlanSuffix
 
 /-! # The actual current descriptor of a ready binding event -/

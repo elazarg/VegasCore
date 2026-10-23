@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.RecoveryLocalValueComparison
-import Vegas.Game.OnePacketPrescribedCompletion
 
 /-! # Pure wait and disclosure choices among recovery keyed components -/
 

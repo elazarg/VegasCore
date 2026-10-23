@@ -1,18 +1,13 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.ProposalRecoveryPublicClassFactorization
-import Vegas.Source.ValueBinding
 import Vegas.Source.CommitRecoveryFailureCoverage
-import Vegas.Source.CommitRecoveryCommitEntry
-import Vegas.Source.CommitRecoveryNoMissInformation
 import Vegas.Source.CommitRecoveryBindingAlternatives
 import Vegas.Source.CommitRecoveryPlayerValidity
 import Vegas.Game.PhaseProposalSourceFiber
 import Vegas.Source.ProposalRecoveryEvolution
-import Vegas.Source.CommitRecoveryInitialInputs
-import Vegas.Source.CommitRecoveryPublicObservation
-import Vegas.Source.CommitRecoveryPublicDeterminacy
-import GameTheoryExtensions.Analysis.Protocol.ReachBounds
+import Vegas.Source.ProposalRecoveryDisclosure
+import Vegas.Source.ProposalRecoveryPreparationRepairMoves
 
 /-! # Full-information constancy of the foreign source class coefficient -/
 

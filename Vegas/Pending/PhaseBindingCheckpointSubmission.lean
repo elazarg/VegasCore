@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.PhaseBindingCountTransport
 import Vegas.Pending.PhaseStoredCheckpoint
+import Vegas.Pending.PhaseBindingCountTransport
 
 /-! # Physical preparations at an older saved semantic frontier -/
 

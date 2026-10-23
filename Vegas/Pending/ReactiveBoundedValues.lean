@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.ReactiveBoundedHandles
-import Vegas.Pending.ReactiveInitialValues
 import Vegas.Pending.EventBindingInvariant
 
 /-! # Reachable commitment values stay in the message alphabet

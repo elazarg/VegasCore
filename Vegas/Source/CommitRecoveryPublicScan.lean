@@ -2,6 +2,8 @@
 
 import Vegas.Source.CommitRecoveryPublicReadback
 import Vegas.Source.CommitRecoveryPublicPadding
+import Vegas.Source.CommitRecoveryAttemptReset
+import Vegas.Source.CommitRecoveryInstructions
 
 /-! # Public source chronology read from numeric controls and retained cells -/
 

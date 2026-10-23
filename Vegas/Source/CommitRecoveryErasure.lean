@@ -1,8 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Source.CommitRecoveryInformation
-import Vegas.Source.CommitRecoveryPoint
-import Vegas.Source.ObservationRecall
 
 /-! # Source information after erasing remembered private words
 

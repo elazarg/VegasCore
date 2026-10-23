@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.ReactiveOnePacketMenu
-import Vegas.Pending.ReactiveCandidateBudget
 import Vegas.Pending.ReactiveSignedCommitments
 
 /-! # Fresh prepared slots in the one-packet game

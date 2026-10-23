@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.PhaseNamespace
-import Interaction.ReactiveInvariant
 
 /-! # The permanent exclusion saved at an actual namespace installation -/
 

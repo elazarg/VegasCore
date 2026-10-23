@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.PhaseResolution
-import Vegas.Pending.PhaseFrontier
 import Vegas.Pending.PhaseLive
 
 /-! # Actual singleton sampling strictly advances the phase namespace -/

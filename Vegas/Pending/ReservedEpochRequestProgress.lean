@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.ReservedEpochWorkMonotone
-import Vegas.Pending.PhaseReadyResolution
 import Vegas.Pending.PhaseTimelyResolution
 
 /-! # Live requests persist while semantic work is unchanged -/

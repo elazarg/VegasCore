@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Source.CommitRecoveryAttemptReset
-import Vegas.Source.CommitRecoveryDebt
 import Vegas.Source.CommitRecoveryNoMissRepresentative
 import Vegas.Source.PrivateInputsIndependent
 

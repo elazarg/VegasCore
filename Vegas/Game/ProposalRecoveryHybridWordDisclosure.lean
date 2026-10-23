@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.ProposalRecoveryHybridDisclosure
+import Vegas.Source.ProposalRecoverySupportSplice
 
 /-! # Whole proposal words on genuine owner-coordinate hybrid histories -/
 

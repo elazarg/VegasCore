@@ -1,6 +1,5 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.OnePacketContentFloor
 import Vegas.Game.OnePacketComponentSteps
 
 /-! # The error of slot-trembled components

@@ -1,10 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.OnePacketOpenableCommitment
-import Vegas.Game.OnePacketLateSending
 import Vegas.Game.OnePacketPrescribedCompletion
-import Interaction.ReactiveStoppedState
-import GameTheoryExtensions.Analysis.Protocol.StoppedExitBound
+import Vegas.Game.AsyncDeviationForeign
 
 /-! # The completion point after a commitment to an openable value
 

@@ -2,6 +2,7 @@
 
 import Vegas.Compile.CommitPrefixCompletion
 import Vegas.Compile.EventSourceView
+import Vegas.Source.CommitRecoveryBlockEmbedding
 
 /-! # Source protocol views at the end of a filled commitment initial segment -/
 

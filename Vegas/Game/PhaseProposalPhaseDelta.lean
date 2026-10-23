@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.PhaseProposalNormalization
-import Vegas.Game.RecoverySurvivingBindingSource
 import Vegas.Game.PhaseProposalCommitArchive
 import Vegas.Game.PhaseProposalPhaseArchive
 import Vegas.Game.PhaseProposalFutureArchive

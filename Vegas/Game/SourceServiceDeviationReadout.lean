@@ -1,6 +1,5 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.SourceServiceDeviationChoice
 import Vegas.Game.SourceServiceLaw
 
 /-! # Typed outcome of a permitted deviation

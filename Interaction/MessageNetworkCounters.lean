@@ -1,8 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Interaction.MessageNetworkInvariant
-import Interaction.PendingSelection
-import Interaction.MessageLedgerCount
 
 /-! # Fresh envelope allocation in the reactive network -/
 

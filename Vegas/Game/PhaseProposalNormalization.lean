@@ -3,7 +3,6 @@
 import Vegas.Game.RecoverySourceCheckpoint
 import Vegas.Game.PhaseProposalLabels
 import Vegas.Pending.PhaseProposalNormalizationFrame
-import Vegas.Source.ProposalRecoveryLift
 
 /-! # Proposal increments of the same actual source normalization -/
 

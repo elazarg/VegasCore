@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.OnePacketOwnerSwap
-import Vegas.Game.OnePacketSwapInputs
 import Vegas.Source.PrivateInputsIndependent
 
 /-! # The owner swap on initial draws

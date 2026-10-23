@@ -3,6 +3,9 @@
 import Vegas.Game.QualifiedBinding.AnnotationMass
 import Vegas.Game.SourceSwapPairs
 import Vegas.Compile.CommitPrefixAdmittedAction
+import Vegas.Game.AsyncDeviationForeign
+import Vegas.Pending.PhaseClearSemanticProgress
+import Vegas.Source.CommitRecoveryAttemptOrigin
 
 /-! # Literal native likelihood and selected source Nature mass -/
 

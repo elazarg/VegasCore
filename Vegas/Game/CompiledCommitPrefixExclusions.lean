@@ -1,6 +1,9 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.CompiledAttemptExclusion
+import Vegas.Pending.ExclusionApplication
+import Vegas.Pending.ExclusionPublicRecord
+import Vegas.Pending.ReactiveBindingOmission
 
 /-! # Source-ordered exclusion signals from actual commitment receipts -/
 

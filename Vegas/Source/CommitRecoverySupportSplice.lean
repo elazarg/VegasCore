@@ -1,8 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Source.CommitRecoveryErasedContinuation
-import Vegas.Source.CommitRecoveryInstructions
-import GameTheoryExtensions.Protocol.TracePrefix
 
 /-! # Retaining an original source instruction suffix after a failed attempt
 

@@ -3,7 +3,6 @@
 import Vegas.Game.RecoveryOnePacketComponents
 import Vegas.Game.RecoveryIndifference
 import Vegas.Game.OnePacketProjectedDecision
-import GameTheoryExtensions.Analysis.Protocol.SuccessRanking
 
 /-! # Own source debt is uniform over actual recovery information
 

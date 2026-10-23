@@ -3,6 +3,7 @@
 import Vegas.Game.OnePacketCompletionContent
 import Vegas.Game.OnePacketSilence
 import Vegas.Game.OnePacketReplayInputs
+import Vegas.Game.OnePacketForcedPrefix
 
 /-! # Unsettled content along forced histories
 

@@ -1,8 +1,9 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Compile.EventGraphScheduling
 import Vegas.Compile.EventGraphPolicyAlignment
 import Vegas.EventGraph.SchedulerMixture
+import Vegas.Compile.EventGraphIndependence
+import Vegas.EventGraph.PolicyCongruence
 
 /-! # Setup-wide deviation laws for compiled event graphs -/
 

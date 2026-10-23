@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.QualifiedBinding.SourceImage
+import Vegas.Pending.PhaseClearSemanticProgress
 
 /-! # Actual raw execution and sequential callback kernels -/
 

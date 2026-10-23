@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.ReservedEpochCompletion
-import Vegas.Pending.PhaseCandidateSupply
 
 /-! # Traffic and candidate reserves chosen after semantic exhaustion -/
 

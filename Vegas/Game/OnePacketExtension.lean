@@ -3,9 +3,6 @@
 import Vegas.Pending.ReactiveOnePacketMenu
 import Vegas.Pending.ReactiveAliasEquilibrium
 import Interaction.ReactiveLocalContinuation
-import Interaction.ReactiveFiniteAssessment
-import Interaction.ReactiveOwnPlay
-import GameTheoryExtensions.Analysis.Protocol.TerminalAudit
 import GameTheoryExtensions.Protocol.ContinuationHorizon
 
 /-! # Sequential equilibria of the one-packet game under the count audit

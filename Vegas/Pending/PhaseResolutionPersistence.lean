@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.PhaseServiceProgress
-import Interaction.ReactiveServiceRounds
 
 /-! # A physically resolved event never regains its original request -/
 

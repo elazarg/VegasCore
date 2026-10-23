@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Interaction.MessageNetworkInvariant
-import Interaction.PendingSelection
 
 /-! # Retaining envelopes until their purpose is settled
 

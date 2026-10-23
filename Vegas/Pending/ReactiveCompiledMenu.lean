@@ -2,7 +2,7 @@
 
 import Vegas.Pending.ReactiveFiniteCompiler
 import Vegas.Pending.ReactiveSubmissionRecall
-import Interaction.ReactiveMessageReadout
+import Vegas.Pending.EventPublicState
 
 /-! # Finite retained responses for every event-code constructor
 

@@ -1,18 +1,9 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.PhaseAttemptControls
 import Vegas.Game.PhaseProposalEmissionResponse
 import Vegas.Game.PhaseProposalBindingResponse
 import Vegas.Game.PhaseProposalBindingWord
-import Vegas.Pending.PhaseBindingResponseWitness
-import Vegas.Pending.PhaseAttemptCheckpoint
-import Vegas.Pending.PhaseSemanticProgress
-import Vegas.Game.PhaseCommitmentProposalArchive
-import Vegas.Game.ReservedEpochStoppedImage
 import Vegas.Game.ReservedEpochOriginalWord
-import Interaction.ReactiveLocalContinuation
-import Interaction.ReactiveAnchoredMixture
-import GameTheoryExtensions.Analysis.Protocol.StoppedHistoryInvariant
 
 /-! # The original emission frontier throughout an actual binding phase
 

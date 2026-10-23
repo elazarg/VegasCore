@@ -1,8 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.OnePacketFirstIrregular
-import Vegas.Game.OnePacketCounterpartBound
-import Vegas.Game.OnePacketSlotLawForced
 
 /-! # The certificate's response mass
 

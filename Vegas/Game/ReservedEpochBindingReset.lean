@@ -2,9 +2,6 @@
 
 import Vegas.Game.ReservedEpochFocalWord
 import Vegas.Game.PhaseProposalOrdinaryBindingCheckpoint
-import Vegas.Game.RecoveryArchivedRetry
-import Vegas.Game.RecoveryFixedCommitSelector
-import Vegas.Game.ProposalRecoveryResetContinuation
 import Vegas.Game.PhaseProposalAttemptArchive
 import Vegas.Pending.PhaseEntryExclusion
 

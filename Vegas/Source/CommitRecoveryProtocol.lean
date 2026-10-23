@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Source.CommitRecoveryState
-import Vegas.Source.SetupProtocol
 
 /-! # Source execution with automatic commitment-phase recovery -/
 

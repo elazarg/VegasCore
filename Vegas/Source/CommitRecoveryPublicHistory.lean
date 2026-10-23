@@ -1,8 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Source.CommitRecoveryPublicRanks
-import Vegas.Source.CommitRecoveryControl
-import GameTheoryExtensions.Protocol.TracePrefix
 
 /-! # Retrospective public source signals without retired private words -/
 

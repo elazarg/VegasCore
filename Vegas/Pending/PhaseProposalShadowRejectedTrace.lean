@@ -1,8 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.PhaseProposalShadowRejection
-import Vegas.Pending.PhaseProposalSubmittedBindings
-import Vegas.Pending.PhaseBindingOpaqueStep
 import Interaction.ReactiveRoundTrace
 
 /-! # Actual repaired trace extensions at rejected counted inclusions -/

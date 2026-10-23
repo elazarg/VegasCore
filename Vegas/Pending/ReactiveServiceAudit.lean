@@ -2,9 +2,8 @@
 
 import Vegas.Pending.ReactiveBindingOmission
 import Vegas.Pending.ReactiveSettledVerdict
-import Interaction.ReactiveAuditCollection
 import Interaction.ReactiveTrafficState
-import GameTheoryExtensions.Math.Probability.Expectation
+import GameTheoryExtensions.Analysis.Protocol.TerminalAudit
 
 /-! # Collected charges from traffic evidence and public binding omissions
 

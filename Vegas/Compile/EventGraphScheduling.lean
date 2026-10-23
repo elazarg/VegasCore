@@ -1,8 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Compile.EventGraphCanonical
-import Vegas.Compile.EventGraphIndependence
 import Vegas.EventGraph.SchedulerErasure
+import Vegas.Compile.EventGraphIndependence
 
 /-! # Source outcome laws under public event scheduling
 

@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Source.CommitRecoveryNoMissStep
-import Vegas.Source.CommitRecoveryAttemptOrigin
 import Vegas.Source.CommitRecoveryErasure
 import Vegas.Source.CommitRecoveryBlockPath
 

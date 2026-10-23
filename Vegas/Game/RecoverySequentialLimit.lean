@@ -1,8 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.RecoveryOnePacketCompletion
 import Vegas.Game.RecoveryInitializedProjection
-import GameTheoryExtensions.Analysis.Protocol.LocalSimulationLimit
 
 /-! # Recovery equilibrium limits from the original common completion witness -/
 

@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Source.CommitRecoveryClear
-import Vegas.Source.IntendedPlay
 
 /-! # Intended source actions have no recovery exclusions or retries -/
 

@@ -1,6 +1,5 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.PhaseBindingShadowStep
 import Vegas.Pending.PhaseBindingForeignMemory
 
 /-! # Logical shadow masks at actual restored frontiers

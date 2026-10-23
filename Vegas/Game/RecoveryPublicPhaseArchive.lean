@@ -1,14 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.RecoveryPublicSourceChronology
-import Vegas.Game.RecoveryArchivedRetry
 import Vegas.Game.RecoveryArchivedSourceOrigin
-import Vegas.Pending.PhaseSurvivingHistory
-import Vegas.Game.RecoveryCommitCheckpoint
-import Vegas.Game.RecoverySettledCommitCheckpoint
-import Vegas.Game.RecoveryRevealCheckpoint
-import Vegas.Game.RecoverySampleHistory
-import Vegas.Game.CompiledCommitControl
 import Vegas.Pending.PhaseFailureOrderHistory
 import Vegas.Game.PhaseProposalPhaseDelta
 

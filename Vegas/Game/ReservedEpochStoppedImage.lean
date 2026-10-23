@@ -1,10 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.ReservedEpochStoppedBinding
-import Vegas.Game.PhasePublicSourceChronology
 import Vegas.Game.PhaseCommitmentProposalArchive
 import Vegas.Pending.PhaseAttemptReceiptSnapshot
-import Vegas.Pending.ReservedEpochOpportunity
 import Vegas.Pending.ReservedEpochReceiptContract
 
 /-! # Original binding records at an actual stopped reserved attempt -/

@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.ProposalRecoveryHonestDomination
+import Vegas.Source.ProposalRecoveryQueryAntichain
 
 /-! # Honest Bayes limits for the actual normalized pooled source assessments
 

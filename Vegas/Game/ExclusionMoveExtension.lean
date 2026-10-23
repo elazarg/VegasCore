@@ -1,8 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Source.ExclusionMoveGame
-import Vegas.Game.ExclusionExtension
-import GameTheoryExtensions.Analysis.Protocol.RestrictedComponentCompletion
 
 /-! # Intended equilibrium extension through mandatory moves
 

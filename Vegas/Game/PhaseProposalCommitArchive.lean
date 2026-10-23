@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.RecoveryChosenCommitControl
-import Vegas.Source.ProposalRecoveryCommitWindow
 
 /-! # Decoded physical commitment attempts disclose no opening proposals -/
 

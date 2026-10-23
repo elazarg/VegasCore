@@ -1,6 +1,5 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Source.BindingRepairInformation
 import Vegas.Source.CommitRecoveryLift
 
 /-! # Foreign information during a hidden commitment block -/

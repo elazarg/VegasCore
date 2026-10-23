@@ -1,9 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Compile.CommitBlockReferences
-import Vegas.Compile.EventGraphObservation
 import Vegas.Compile.EventGraphPolicy
-import Vegas.Source.CommitRecoveryPrefixPath
 
 /-! # Source commitment completions of partially available typed stores -/
 

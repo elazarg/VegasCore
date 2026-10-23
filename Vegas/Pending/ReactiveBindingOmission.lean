@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.EventPublicState
-import Vegas.Pending.ReactiveDisclosureStability
 
 /-! # Public evidence of an omitted required binding
 

@@ -3,7 +3,7 @@
 import Vegas.Pending.PhaseProposalShadowMenu
 import Vegas.Pending.PhaseProposalPreparedBinding
 import Vegas.Pending.PhaseBindingFreshness
-import Vegas.Pending.PhaseBindingMemoryFreshness
+import Vegas.Pending.PhaseBindingInvariant
 
 /-! # Genuine counted fresh binding responses extend the repair -/
 

@@ -2,6 +2,7 @@
 
 import Vegas.Source.CommitRecoveryObservedMemory
 import Vegas.Source.CommitRecoveryFrontier
+import Vegas.Source.ObservationRecall
 
 /-! # Public source observations retained across actual commitment closures -/
 

@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Source.ProposalRecoveryPreparationRepair
-import Vegas.Source.ProposalRecoveryWordLift
 
 /-! # Literal source labels and proposal contents under selective repair -/
 

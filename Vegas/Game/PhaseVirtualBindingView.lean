@@ -4,7 +4,6 @@ import Vegas.Game.PhaseSurvivingBindingSource
 import Vegas.Compile.EventSourceViewErasure
 import Vegas.Compile.EventSourcePosition
 import Vegas.Source.CommitRecoveryVirtualHistory
-import Vegas.Source.CommitRecoveryNoMissRepresentative
 import Vegas.Source.CommitRecoveryPublicScan
 
 /-! # Observable virtual typed queries at actual binding requests -/

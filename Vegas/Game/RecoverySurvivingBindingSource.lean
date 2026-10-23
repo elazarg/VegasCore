@@ -2,12 +2,11 @@
 
 import Vegas.Compile.ExcludedCommitPrefixObservation
 import Vegas.Game.RecoveryCommitPrefixWitness
-import Vegas.Game.CommitPrefixReadyRecall
-import Vegas.Game.RecoveryBindingPrefix
-import Vegas.Source.CommitRecoveryClearRecall
-import Vegas.Game.CommitRecoveryInformationEmbedding
-import Vegas.Game.RevealService
 import Vegas.Source.ProposalRecoveryCommitWindow
+import Vegas.Source.CommitPrefixSplitting
+import Vegas.Source.CommitRecoveryBlockLift
+import Vegas.Source.CommitRecoveryNoMissInformation
+import Vegas.Source.CommitRecoveryPrefixPath
 
 /-! # Surviving source decisions with saved permanent exclusions -/
 

@@ -2,7 +2,6 @@
 
 import Vegas.Pending.PhaseProposalArchive
 import Interaction.ReactiveCompleteInput
-import Interaction.ReactiveResponseNormalization
 
 /-! # Reconstructing submitted proposals from actual decision inputs
 

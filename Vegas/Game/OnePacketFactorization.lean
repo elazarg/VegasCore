@@ -1,6 +1,5 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.OnePacketPendingPool
 import Vegas.Game.OnePacketTrembles
 import GameTheory.Analysis.Protocol.CounterfactualReach
 import GameTheoryExtensions.Analysis.Protocol.ReachBounds

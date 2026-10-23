@@ -3,6 +3,7 @@
 import Vegas.Game.IntendedPreservation
 import Vegas.Game.RevealServicePayoffs
 import GameTheoryExtensions.Protocol.ContinuationHorizon
+import GameTheoryExtensions.Analysis.Protocol.TerminalAudit
 
 /-! # The audited outcome shared by the intended game and the runtime
 

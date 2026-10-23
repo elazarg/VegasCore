@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Source.ProtocolTermination
-import Vegas.Source.FiniteSupport
 
 /-! # Agreement with source execution
 

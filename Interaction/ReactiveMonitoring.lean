@@ -3,9 +3,10 @@
 import Interaction.ReactivePublication
 import Interaction.ReactivePolicyInvariant
 import Interaction.MessageMonitoring
-import Interaction.MessageNetworkCounters
 import Interaction.ReactiveReceipts
 import Interaction.ReactiveMessageReadout
+import GameTheory.Math.Probability.Bounds
+import GameTheoryExtensions.Math.Probability.Expectation
 
 /-! # Passive observation by a watcher
 

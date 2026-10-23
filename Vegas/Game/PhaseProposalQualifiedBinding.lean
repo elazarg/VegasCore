@@ -2,6 +2,9 @@
 
 import Vegas.Game.QualifiedBinding.Likelihood
 import Vegas.Game.QualifiedBinding.StoppedPayoff
+import Vegas.Game.AsyncDeviationForeign
+import Vegas.Game.ServiceWithheldForfeit
+import GameTheoryExtensions.Math.Probability.PresentConditional
 
 /-! # Qualified binding transport at the original native information -/
 

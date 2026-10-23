@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.PhaseSeedScheduler
-import Vegas.Pending.PhaseCountMenu
 import Interaction.ReactiveServiceRounds
 
 /-! # A phased source choice is sampled only at its first callback

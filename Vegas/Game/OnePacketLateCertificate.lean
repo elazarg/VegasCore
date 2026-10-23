@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.OnePacketLateBadMass
+import Vegas.Game.AsyncDeviationForeign
 
 /-! # The certificate's late bindings
 

@@ -1,8 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.PhaseProposalFreshTerminal
-import Vegas.Pending.PhaseBindingSampleReplay
-import Vegas.Pending.PhaseAttemptControls
+import Interaction.ReactiveLocalContinuation
 
 /-! # Original source draws through actual physical sample normalization -/
 

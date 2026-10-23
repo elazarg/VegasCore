@@ -1,21 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Compile.CommitPrefixWordAction
-import Vegas.Compile.CommitPhaseLayout
-import Vegas.Compile.CommitPrefixWordReadout
-import Vegas.Game.PhaseBindingRecallWord
-import Vegas.Pending.PhaseAttemptCheckpoint
-import Vegas.Pending.PhaseBindingFreshness
-import Vegas.Pending.PhaseBindingIdleMenu
-import Vegas.Pending.PhaseBindingResponseWitness
-import Vegas.Pending.PhaseClearNativeProgress
-import Interaction.ReactiveRecordedResponse
-import Vegas.Game.PhaseBindingRecallMeaning
 import Vegas.Game.PhaseSourcePolicy
-import Vegas.Pending.PhaseBindingReadiness
-import Vegas.EventGraph.RelaxedRecall
-import Vegas.Game.CommitPrefixReadyRecall
-import Vegas.Source.CommitPrefixWordProjection
 
 /-! # Actual accepted bindings identify the earlier complete source view -/
 

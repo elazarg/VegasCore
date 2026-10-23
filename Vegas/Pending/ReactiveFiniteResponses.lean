@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.ReactiveNormalization
-import Interaction.ReactiveFiniteAssessment
 import Interaction.ReactiveMenuRestriction
 
 /-! # Complete finite response syntax under explicit message bounds

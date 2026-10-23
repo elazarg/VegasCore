@@ -1,7 +1,5 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.ReactiveServiceProgress
-import Vegas.Pending.CompletionService
 import Vegas.Pending.ReactiveStateInvariant
 import Vegas.Pending.EventActivationOrigin
 

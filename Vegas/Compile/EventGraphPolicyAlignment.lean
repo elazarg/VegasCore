@@ -1,15 +1,9 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Compile.EventGraphCanonical
-import Vegas.Compile.EventGraphIndependence
 import Vegas.Compile.EventGraphPolicyBacktranslation
-import Vegas.EventGraph.CanonicalNormalization
-import Vegas.EventGraph.PolicyCongruence
 import GameTheory.Math.Probability.ConditionalObservation
 import GameTheory.Math.Probability.ExpectationConditioning
-import GameTheoryExtensions.Math.Probability.Expectation
-import GameTheoryExtensions.Math.Probability.Uniform
-import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Canonical policy backtranslation law
 

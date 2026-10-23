@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Source.CommitRecoveryNoMissRepresentative
+import Vegas.Source.CommitRecoveryAttemptOrigin
 
 /-! # Actual ordinary source queries and the normalized pool fiber
 

@@ -1,9 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.PhaseProposalCanonicalReadback
-import Vegas.Compile.CommitPrefixCompletion
-import Vegas.Compile.EventSourceViewErasure
-import Vegas.Compile.ProtocolViewSuffix
 
 /-! # The canonical binding query from the same compiled source prefix -/
 

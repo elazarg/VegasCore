@@ -3,9 +3,7 @@
 import Vegas.Game.PhaseProposalCurrentBindingRetention
 import Vegas.Game.PhaseProposalBindingWitness
 import Vegas.Game.PhaseProposalFreshTerminal
-import Vegas.Game.PhaseProposalReservedDebt
 import Vegas.Game.PhaseProposalAttemptArchive
-import Vegas.Pending.PhaseProposalRetention
 import Vegas.Game.RecoverySameAttemptWitness
 
 /-! # Standing accepted binding failures at the original clean boundary -/

@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.PhaseSeedBudget
-import Vegas.Pending.PhaseNamespace
 import Interaction.ReactiveAddressedScheduler
 
 /-! # Actual ready-only local seed requests across phase attempts

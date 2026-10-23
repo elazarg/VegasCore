@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.ReactiveAssociationPersistence
-import Interaction.ReactiveServiceInvariant
 
 /-! # Accepted binding receipts retain their selected handles
 

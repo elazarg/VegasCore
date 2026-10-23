@@ -1,6 +1,5 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.AsyncDeviationReadout
 import Vegas.Game.IntendedAsyncNash
 import Vegas.Source.Purification
 import Vegas.Source.ValueBindingAdmission

@@ -2,7 +2,6 @@
 
 import Vegas.Source.CommitRecoveryPublicHistory
 import Vegas.Source.CommitRecoveryNonCommitObservation
-import Vegas.Source.CommitRecoveryAttemptReset
 import Vegas.Source.CommitRecoveryRanks
 import Vegas.Source.CommitRecoveryOwnHistory
 

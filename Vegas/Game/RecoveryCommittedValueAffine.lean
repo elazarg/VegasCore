@@ -4,8 +4,6 @@ import Vegas.Game.RecoveryCommittedContinuationValue
 import Vegas.Game.OnePacketCommitDecisionFailure
 import Vegas.Game.OnePacketLateCommitments
 import Vegas.Game.RecoveryKeyedFailure
-import Vegas.Game.RecoveryPendingValueAffine
-import Vegas.Game.RecoveryLocalValueComparison
 import GameTheoryExtensions.Math.Probability.AffineDecorrelation
 
 /-! # Keyed payoff factors under the actual common posterior -/

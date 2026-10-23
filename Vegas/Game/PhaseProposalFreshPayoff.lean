@@ -2,12 +2,6 @@
 
 import Vegas.Game.PhaseProposalFreshTerminalCoupling
 import Vegas.Game.ProposalRecoveryPayoff
-import Interaction.ReactiveSchedulerTerminalMixture
-import Interaction.ReactiveSchedulerSeedTrace
-import Interaction.ReactiveRecordedMenuTrace
-import Interaction.ReactiveRecordedResponse
-import Interaction.ReactiveAnchoredMixture
-import Interaction.ReactiveTerminalEvaluation
 
 /-! # Fresh payoff readouts under the original residual scheduler posterior -/
 

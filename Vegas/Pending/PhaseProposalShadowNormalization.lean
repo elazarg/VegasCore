@@ -1,8 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.PhaseProposalShadowDrain
 import Vegas.Pending.PhaseProposalShadowRefinement
-import Vegas.Pending.PhaseBindingRepairObservation
 
 /-! # Actual normalization under a current-generation binding shadow
 

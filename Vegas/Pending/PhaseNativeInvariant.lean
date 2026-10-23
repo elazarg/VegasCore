@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.PhaseFrontier
-import Interaction.ReactiveInvariant
 
 /-! # Actual native reachability throughout phased recovery histories -/
 

@@ -4,7 +4,6 @@ import Vegas.Pending.ReservedEpochReceiptBatch
 import Vegas.Pending.ReservedEpochEmissionTime
 import Vegas.Pending.ReservedEpochClockAccounting
 import Interaction.ReactiveAnchoredTrace
-import Interaction.ReactiveRawRoundTrace
 import Interaction.ReactiveMonitoring
 import Interaction.ReactiveServiceRounds
 

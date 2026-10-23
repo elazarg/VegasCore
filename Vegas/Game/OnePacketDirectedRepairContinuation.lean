@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.OnePacketDirectedRepairSteps
-import Vegas.Pending.ReactiveBindingFrameStep
 
 /-! # Directed binding repair through delayed execution
 

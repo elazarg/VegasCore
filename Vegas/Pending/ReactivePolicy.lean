@@ -1,10 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.ReactiveNormalization
-import Vegas.EventGraph.NormalizedPolicy
-import Vegas.Pending.EventPublicState
-import Interaction.ReactiveRecovery
-import Interaction.ReactiveImplementation
 
 /-! # Prescribed graph decisions in one activation
 

@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.ReservedEpochSlots
-import Vegas.Pending.ReservedEpochArrival
 
 /-! # Packet inclusion occurs only in marked reserved processing slots -/
 

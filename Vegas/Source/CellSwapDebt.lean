@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Source.DebtObservation
-import Vegas.Source.IntendedBetween
 
 /-! # Owing a failure after a cell swap
 

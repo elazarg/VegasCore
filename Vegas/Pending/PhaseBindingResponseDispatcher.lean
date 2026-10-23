@@ -1,11 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.PhaseBindingSubmittedPreservation
-import Vegas.Pending.ReactiveBindingSubmittedRepair
-import Vegas.Pending.PhaseBindingIdleMenu
-import Vegas.Pending.PhaseOpeningMenuShape
-import Vegas.Pending.PhaseBindingFreshness
-import Vegas.Pending.ReactiveFiniteCompiler
+import Vegas.Pending.PhaseBindingRepairProjection
 
 /-! # Every actual response extends the directed phased repair invariants -/
 

@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import GameTheory.Analysis.Protocol.CounterfactualRegret
-import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Legality and support of recorded own actions -/
 

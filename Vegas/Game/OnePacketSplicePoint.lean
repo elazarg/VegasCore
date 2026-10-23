@@ -1,9 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.OnePacketCounterpartGuard
-import Vegas.Game.OnePacketCellObservation
 import Vegas.Source.PrivateInputsIndependent
-import Vegas.Source.IntendedPrefixSwap
 
 /-! # Splicing two source points for a player
 

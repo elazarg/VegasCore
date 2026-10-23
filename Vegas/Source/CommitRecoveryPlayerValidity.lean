@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Source.CommitRecoveryDebt
-import Vegas.Source.IntendedForPlayer
 
 /-! # Guard-safe play through actual source recovery
 

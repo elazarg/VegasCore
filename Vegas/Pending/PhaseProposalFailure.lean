@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.PhaseProposalRetention
-import Vegas.Pending.PhaseAttemptCheckpoint
 import Vegas.Pending.PhaseSavedExclusionReadback
 
 /-! # Submitted openings cannot be suppressed by source-earlier failures -/

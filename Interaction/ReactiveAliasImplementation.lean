@@ -4,7 +4,6 @@ import Interaction.ReactiveNormalRecall
 import Interaction.ReactiveImplementationContinuation
 import GameTheory.Math.Probability.ConditionalObservation
 import GameTheory.Math.Probability.ExpectationConditioning
-import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Simulating private response names inside a strategy
 

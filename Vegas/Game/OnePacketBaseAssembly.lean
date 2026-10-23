@@ -2,7 +2,6 @@
 
 import Vegas.Game.OnePacketBeliefPartsWiring
 import Vegas.Game.OnePacketOwnIntended
-import Vegas.Game.OnePacketCertificateDischarge
 
 /-! # Assembling the own and replay inputs of the one-packet certificate
 

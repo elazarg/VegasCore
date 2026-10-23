@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Source.CommitRecoveryAttemptReadout
-import Vegas.Source.CommitRecoveryNonCommitPath
 
 /-! # Existing binding values survive public source instructions -/
 

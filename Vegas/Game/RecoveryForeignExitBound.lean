@@ -1,8 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.RecoveryExclusionPayoff
-import GameTheoryExtensions.Analysis.Protocol.StoppedTerminalBound
-import GameTheoryExtensions.Math.Probability.Expectation
 import GameTheory.Math.Probability.Bounds
 
 /-! # Only foreign first exclusions contribute continuation error

@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.OnePacketValueTransport
-import Vegas.Game.OnePacketSilenceMasses
 
 /-! # Sites without a pending event
 

@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.OnePacketOwnerStep
+import Vegas.Pending.EventActivationOrigin
 
 /-! # Scheduler rounds of the one-packet game at a pending binding
 

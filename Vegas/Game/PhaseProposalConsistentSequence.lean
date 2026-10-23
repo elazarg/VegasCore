@@ -2,8 +2,7 @@
 
 import Vegas.Game.PhaseProposalCommonPerturbations
 import Vegas.Game.ProposalRecoveryEquilibriumConstruction
-import GameTheoryExtensions.Analysis.Protocol.Bayes
-import Interaction.ReactiveTerminalEvaluation
+import Interaction.ReactiveRestrictedContinuation
 
 /-! # One source construction and its actual native Bayes sequence -/
 

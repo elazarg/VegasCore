@@ -2,6 +2,8 @@
 
 import Vegas.Game.AsyncDeviationLaw
 import Vegas.Game.SourceServiceDeviationReadout
+import Vegas.Game.RevealServiceRosterContinuation
+import Vegas.Game.SourcePrefixKernel
 
 /-! # Typed outcome of one deviation under an arbitrary scheduler
 

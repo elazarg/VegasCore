@@ -1,9 +1,10 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.RecoverySurvivingBindingSource
 import Vegas.Game.RecoveryArchivedBindingRecall
 import Vegas.Game.RecoveryCheckpointHistory
 import Vegas.Pending.PhaseBindingReadiness
+import Vegas.Game.RecoveryBindingPrefix
+import Vegas.Pending.PhaseNativeInvariant
 
 /-! # Initialized surviving binding source witnesses after exclusions -/
 

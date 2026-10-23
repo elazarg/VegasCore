@@ -1,6 +1,5 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Interaction.ReactiveResponseEmbedding
 import Interaction.ReactiveMenuPolicy
 import Interaction.ReactiveRounds
 

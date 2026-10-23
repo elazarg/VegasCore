@@ -4,6 +4,7 @@ import Vegas.Game.ProposalRecoveryHonestBeliefs
 import Vegas.Game.ProposalRecoveryDeviationPayoff
 import Vegas.Game.ProposalRecoveryInitializedLaw
 import GameTheory.Analysis.Protocol.RestrictionIncentives
+import Vegas.Source.ProposalRecoveryFiniteness
 
 /-! # Honest rationality of the same normalized source limit
 

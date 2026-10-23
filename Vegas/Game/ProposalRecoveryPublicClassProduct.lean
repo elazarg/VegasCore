@@ -1,10 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.ProposalRecoveryClassRows
-import Vegas.Source.ProposalRecoveryPreparationRepairMoves
-import Vegas.Source.CommitRecoveryWordMass
-import GameTheoryExtensions.Analysis.Protocol.ContinuationOwnPlay
-import GameTheoryExtensions.Analysis.Protocol.OwnPlayReach
 
 /-! # Actual foreign source row products and their literal disclosure causes -/
 

@@ -1,11 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.OnePacketNextEvent
 import Vegas.Game.OnePacketLateCompletion
-import Vegas.Game.OnePacketDisclosureCompletion
-import Vegas.Game.OnePacketOwnDisclosure
-import Vegas.Game.OnePacketHonestForced
-import Vegas.Game.OnePacketValueTransport
 
 /-! # Forced debt-free first activations
 

@@ -1,12 +1,9 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Interaction.ReactiveMessageReadout
 import Interaction.ScheduledOpening
-import Vegas.Pending.ReactiveService
 import Vegas.Pending.ReactivePolicy
 import GameTheory.Math.Probability.ConditionalObservation
 import GameTheory.Math.Probability.ExpectationConditioning
-import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Coupling scheduled openings through a finite observation window
 

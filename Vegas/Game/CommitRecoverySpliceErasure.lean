@@ -1,9 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Source.CommitRecoveryClosedSplice
 import Vegas.Source.CommitRecoverySavedObservation
-import Vegas.Source.CommitRecoveryInitialInputs
-import Vegas.Source.CommitRecoveryErasedStep
 import Vegas.Game.CommitRecoveryAncillaryBelief
 
 /-! # Semantic saved states of actual source-history exchanges

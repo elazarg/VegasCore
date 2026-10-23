@@ -1,6 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.PhaseProposalShadowAcceptance
+import Vegas.Pending.PhaseBindingCheckpointSubmission
+import Vegas.Pending.PhaseStoredCheckpoint
 
 /-! # Constructing repaired binding acceptance from the original history
 

@@ -1,9 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.RecoveryCommitmentComparisons
-import Vegas.Game.RecoveryFirstActivationValue
-import Vegas.Game.RecoveryCompletionPotential
-import Vegas.Game.IntendedChoiceReach
 
 /-! # A single source deviation for all histories of a nonlate commitment -/
 

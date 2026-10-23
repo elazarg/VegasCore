@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.RevealService
-import Vegas.Compile.EventGraphState
 import Vegas.Compile.EventGraphHistory
 import Vegas.EventGraph.SequentialLaw
 

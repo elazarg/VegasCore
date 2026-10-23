@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.RecoveryInitializedLaw
-import Vegas.Game.RecoveryComparisonStopped
 import Vegas.Game.RecoveryContinuationComparison
 import Vegas.Pending.ExclusionTerminalClearance
 

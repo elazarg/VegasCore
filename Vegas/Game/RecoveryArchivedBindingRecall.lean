@@ -2,7 +2,6 @@
 
 import Vegas.Game.RecoveryArchivedRetry
 import Vegas.Game.RecoveryCommitPrefixWitness
-import Vegas.Game.RecoveryBindingPrefix
 import Vegas.Game.CommitPrefixSurvivingRecall
 
 /-! # Actual archived own words at surviving ready source bindings -/

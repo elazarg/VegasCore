@@ -3,7 +3,6 @@
 import Interaction.CompletePendingObservation
 import Interaction.ReactiveMessageIdentity
 import Interaction.ReactiveMessageReadout
-import Interaction.ReactivePublication
 import Interaction.ReactiveTrafficState
 
 /-! # Complete packet observation at every raw activation

@@ -4,9 +4,11 @@ import Vegas.Pending.PhaseAttemptControls
 import Vegas.Pending.PhaseServiceContract
 import Vegas.Pending.PhaseAttemptCheckpoint
 import Vegas.Pending.PhaseArchivedBindings
-import Vegas.Pending.PhaseLive
 import Vegas.Pending.PhaseReadyRequests
 import GameTheoryExtensions.Analysis.Protocol.StoppedHistoryAtom
+import Vegas.Pending.PhaseFailureCoverage
+import Vegas.Pending.PhaseRetiredCompletion
+import Vegas.Pending.ReactiveBindingFrameStep
 
 /-! # Actual phase results at the first namespace exit -/
 

@@ -2,7 +2,6 @@
 
 import Interaction.ReactiveResponseMenu
 import GameTheoryExtensions.Analysis.Protocol.Perturbation
-import GameTheoryExtensions.Math.Probability.Support
 import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Finite assessments for explicitly bounded response menus

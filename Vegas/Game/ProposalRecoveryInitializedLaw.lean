@@ -2,7 +2,6 @@
 
 import Vegas.Game.ProposalRecoveryRestriction
 import Vegas.Game.ProposalRecoveryPayoff
-import Vegas.Game.CommitRecoveryPayoff
 import GameTheory.Protocol.RestrictionExecution
 
 /-! # The selected initialized history and joint payoff law of ordinary lifts -/

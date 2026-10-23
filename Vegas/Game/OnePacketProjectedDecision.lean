@@ -1,10 +1,9 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.OnePacketReplayExists
-import Vegas.Game.OnePacketForcedPrefix
 import Vegas.Game.OnePacketHonestForced
-import Vegas.Game.OnePacketActorRecord
 import Vegas.Source.DebtObservation
+import Vegas.Pending.ReactiveServiceConditions
 
 /-! # Projected views of debt-free sites are intended decisions
 

@@ -2,8 +2,6 @@
 
 import Vegas.Compile.CommitPrefixCompletion
 import Vegas.Game.ServiceInformation
-import Vegas.Compile.EventGraphObservationEncoding
-import Vegas.Pending.PhaseApplication
 import Vegas.Pending.ReactiveEventStability
 
 /-! # Visible source state at a ready commitment with hidden unfinished bindings -/

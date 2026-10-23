@@ -1,6 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.PhaseProposalReplayPath
+import Vegas.Source.ProposalRecoveryInformation
+import Vegas.Source.ProposalRecoveryLift
 
 /-! # Canonical archive increments of the actual annotated source history -/
 

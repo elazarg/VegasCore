@@ -2,7 +2,6 @@
 
 import Vegas.Game.RecoverySourceCheckpoint
 import Vegas.Pending.PhaseStoredCheckpoint
-import Vegas.Source.ProtocolEvaluation
 
 /-! # Current terminal readout from reachable saved source checkpoints -/
 

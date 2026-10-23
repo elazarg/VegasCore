@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.PhaseBindingResponseWitness
-import Vegas.Pending.PhaseBindingMemoryFreshness
+import Vegas.Pending.PhaseBindingIdleMenu
 
 /-! # Actual callback alternatives inside an opaque commitment phase -/
 

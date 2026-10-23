@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.OnePacketUnifiedMasses
+import Vegas.Game.OnePacketSlotError
 
 /-! # Bounds on step factors
 

@@ -1,8 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.OnePacketSwapExchange
-import Vegas.Game.OnePacketSwapRegular
-import Vegas.Game.OnePacketReplayExists
+import Vegas.Game.OnePacketAcceptedOwner
 
 /-! # Common fibers at an own turn from the swap between two points
 

@@ -1,8 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Source.CommitRecoveryAttemptSuccess
 import Vegas.Source.CommitRecoveryClear
-import Vegas.Source.CommitRecoveryErasedStep
 import Vegas.Source.ProtocolSuffix
 
 /-! # Original attempt success is an erased boundary readout

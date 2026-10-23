@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.PhaseProposalTransition
+import Vegas.Pending.PhaseBindingSampleReplay
 
 /-! # Selected normalized source witnesses for actual environment commands -/
 

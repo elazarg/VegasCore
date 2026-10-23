@@ -1,11 +1,10 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Source.ValueBinding
-import Vegas.Source.RevealSequence
 import GameTheory.Math.Probability.ConditionalObservation
-import GameTheoryExtensions.Math.Probability.Expectation
-import GameTheoryExtensions.Math.Probability.Support
-import GameTheoryExtensions.Math.Probability.Uniform
+import Vegas.Source.Protocol
+import Vegas.Source.ProtocolState
+import Vegas.Source.ProtocolTermination
 
 /-! # Recovering earlier source observations
 

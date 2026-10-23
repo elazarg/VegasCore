@@ -3,7 +3,6 @@
 import Vegas.Pending.ReservedEpochCompletion
 import Vegas.Pending.ReservedEpochMixtureOpportunity
 import Vegas.Pending.ReservedEpochMixtureReceipts
-import Vegas.Pending.ReactiveAsyncContract
 
 /-! # An actual all-raw asynchronous contract for reserved joint tapes -/
 

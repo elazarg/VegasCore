@@ -1,6 +1,5 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.OnePacketHonestForced
 import Vegas.Game.OnePacketSlotTrembles
 
 /-! # Slot retention

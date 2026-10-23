@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.OnePacketSwapGuardSite
-import Vegas.Game.OnePacketAcceptedOwner
+import Vegas.Game.OnePacketSwapFibers
 
 /-! # The swap between two points of an information site
 

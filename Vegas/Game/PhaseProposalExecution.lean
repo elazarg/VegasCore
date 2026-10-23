@@ -3,7 +3,6 @@
 import Vegas.Game.PhaseProposalNormalization
 import Vegas.Game.PhaseProposalBucket
 import Vegas.Game.PhaseProposalArchiveBounds
-import Vegas.Pending.PhaseNamespace
 
 /-! # Consumed proposal archives carried by actual source checkpoints -/
 

@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.ReactivePolicy
-import GameTheoryExtensions.Core.PendingChoice
 
 /-! # Prescribed submissions, recovery choices, and initialized law equality -/
 

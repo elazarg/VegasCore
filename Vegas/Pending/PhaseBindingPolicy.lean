@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.PhasePreparedOnePacket
-import Interaction.ReactiveMenuPolicy
 
 /-! # Globally legal phased policies for one selected binding
 

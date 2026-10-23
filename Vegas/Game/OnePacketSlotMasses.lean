@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.OnePacketSlotVisibility
-import Vegas.Game.OnePacketFreshSlots
 
 /-! # Masses of slot-trembled laws at a realized commitment
 

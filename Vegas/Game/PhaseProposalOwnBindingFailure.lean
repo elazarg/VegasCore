@@ -2,7 +2,6 @@
 
 import Vegas.Game.RecoverySavedSourceView
 import Vegas.Source.DebtObservation
-import Vegas.Source.CommitRecoveryDebt
 
 /-! # Own failed bindings read from actual live and saved decision views
 

@@ -1,11 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.PhaseProposalOrdinaryStoppedSourceHistory
-import Vegas.Game.RecoveryChosenCommitControl
-import Vegas.Pending.PhaseRawCheckpoint
-import Vegas.Pending.PhaseHistoryCheckpoint
-import Vegas.Pending.PhaseFailureOrderHistory
-import Vegas.Pending.PhaseSavedExclusionReadback
 
 /-! # The same chosen checkpoint at an actual clean binding close -/
 

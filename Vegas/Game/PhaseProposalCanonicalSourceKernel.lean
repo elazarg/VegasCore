@@ -2,9 +2,6 @@
 
 import Vegas.Game.ProposalRecoveryOrdinaryKernel
 import Vegas.Game.PhaseProposalCanonicalSourceQuery
-import Vegas.Source.ProposalRecoveryEvolution
-import Vegas.Source.ProposalRecoveryCommitment
-import Vegas.Source.CommitRecoveryCommitUnique
 
 /-! # Ordinary commitment evolution with the complete enriched source image -/
 

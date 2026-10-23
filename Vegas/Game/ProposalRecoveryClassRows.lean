@@ -2,7 +2,6 @@
 
 import Vegas.Game.ProposalRecoveryPerturbation
 import Vegas.Source.ProposalRecoveryWordLift
-import Vegas.Source.ProposalRecoveryDisclosure
 import GameTheory.Math.Probability.Conditioning
 
 /-! # Actual source disclosure classes and their conditional causes -/

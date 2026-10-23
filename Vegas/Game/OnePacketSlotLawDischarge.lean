@@ -2,7 +2,7 @@
 
 import Vegas.Game.OnePacketFactorBounds
 import Vegas.Game.OnePacketSequentialPreservation
-import Vegas.Game.OnePacketStepGlue
+import Vegas.Game.OnePacketContentFloor
 
 /-! # The slot law of the certificate's profile
 

@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Source.CommitRecoveryBlockPath
-import Vegas.Source.CommitPrefixSplitting
 
 /-! # Legal source recovery paths inside an unfinished commitment block -/
 

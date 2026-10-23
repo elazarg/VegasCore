@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.CompiledRevealBindingOrigins
-import Vegas.Game.CompiledRevealTail
 import Vegas.Game.CompiledRevealLayout
 
 /-! # Original binding references at every compiled disclosure row -/

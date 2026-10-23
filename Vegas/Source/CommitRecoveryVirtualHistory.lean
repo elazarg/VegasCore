@@ -2,6 +2,7 @@
 
 import Vegas.Source.CommitRecoveryBindingReplay
 import Vegas.Source.CommitRecoveryCommitStep
+import Vegas.Source.CommitRecoveryAttemptReset
 
 /-! # Genuine recovery histories with virtual domain replacements -/
 

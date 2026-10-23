@@ -3,6 +3,7 @@
 import Vegas.Game.SourceServiceTurnSettlement
 import Vegas.Game.SourceServiceRetainedPolicy
 import Interaction.ReactiveRecovery
+import Interaction.ReactiveRestrictedContinuation
 
 /-! # Turn-counted clients completed after their own off-policy responses
 

@@ -1,8 +1,10 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.OnePacketOwnerRecall
-import Vegas.Game.OnePacketCertificateField
-import Vegas.Game.OnePacketCanonicalAcceptance
+import Vegas.Game.OnePacketFailureBridge
+import Vegas.Game.OnePacketOwnerGuard
+import Vegas.Game.ServiceBlockView
+import Vegas.Game.ServiceRevealDecode
 
 /-! # A debt-free late owner is settled
 

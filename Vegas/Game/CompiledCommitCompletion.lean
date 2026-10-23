@@ -2,6 +2,7 @@
 
 import Vegas.Game.CompiledCommitState
 import Vegas.Compile.CommitPrefixCompletion
+import Interaction.ReactiveMenuRestriction
 
 /-! # Exact source completion of a clear decoded physical commitment attempt -/
 

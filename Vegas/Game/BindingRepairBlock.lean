@@ -1,12 +1,12 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
+import Vegas.Compile.EventGraphState
 import Vegas.Pending.ReactiveBinding
 import Interaction.ReactiveProvenance
 import Vegas.Pending.ReactivePolicyFacts
 import Vegas.Pending.ReactiveServiceProgress
 import Interaction.ReactiveAllocation
 import Vegas.Pending.EventSequentialTiming
-import Vegas.Compile.EventGraphState
 import Vegas.Compile.EventGraphHistory
 import Vegas.Source.ValueBindingContinuation
 

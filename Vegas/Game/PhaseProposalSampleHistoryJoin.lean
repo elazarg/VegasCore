@@ -1,9 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.PhaseProposalSampleHistory
-import Vegas.Source.CommitRecoveryCursor
-import Vegas.Source.ProposalRecoveryCommitWindow
-import Vegas.Source.ProposalRecoveryChronology
 import Vegas.Game.ProposalRecoveryPerturbation
 
 /-! # The selected Nature checkpoint and its full enriched source history -/

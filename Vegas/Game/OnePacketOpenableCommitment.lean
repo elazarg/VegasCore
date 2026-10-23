@@ -1,9 +1,9 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.OnePacketSureFailure
-import Vegas.Game.OnePacketIntendedProjection
 import Vegas.Game.OnePacketLateSuccess
 import Vegas.Game.OnePacketBindingSite
+import Vegas.Game.ServiceBlockView
 
 /-! # A commitment to an openable value completes with that value or fails
 

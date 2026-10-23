@@ -3,7 +3,6 @@
 import Vegas.Pending.PhaseProposalAcceptedHistory
 import Vegas.Game.PhaseProposalReplay
 import Vegas.Pending.PhaseProposalNamespace
-import Vegas.Pending.PhasePacketAddress
 import Vegas.Pending.PhaseArchiveGeneration
 
 /-! # Exact physical proposal coordinates in completed publication images -/

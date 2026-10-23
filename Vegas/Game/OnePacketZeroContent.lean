@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.OnePacketSlotContent
-import Vegas.Game.OnePacketRevealMasses
 import Vegas.Game.OnePacketOwnSubmissions
 import Vegas.Game.OnePacketIntendedProjection
 

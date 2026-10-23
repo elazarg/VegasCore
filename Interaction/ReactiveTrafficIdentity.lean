@@ -2,7 +2,6 @@
 
 import Interaction.ReactiveMessageIdentity
 import Interaction.ReactiveProvenance
-import Interaction.ReactiveTrafficState
 
 /-! # Ledger identifiers certify the actual authored envelope
 

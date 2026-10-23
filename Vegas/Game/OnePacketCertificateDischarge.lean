@@ -1,24 +1,9 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.OnePacketSequentialPreservation
 import Vegas.Game.OnePacketSlotLaw
-import Interaction.ReactiveSupportedRounds
-import Vegas.Game.OnePacketEventSuccess
-import Vegas.Game.OnePacketSourceTurn
-import Vegas.Game.OnePacketBindingSite
-import Vegas.Game.OnePacketSureFailure
 import GameTheoryExtensions.Analysis.Protocol.SourceGainTransport
-import Vegas.Game.OnePacketOwnSubmissions
-import Vegas.Game.OnePacketForcedRegular
-import Vegas.Game.OnePacketForcedBeliefs
-import Vegas.Game.OnePacketPathwise
-import Vegas.Game.OnePacketLateLumping
-import Vegas.Game.OnePacketOperationalReads
-import Vegas.Game.OnePacketFailureBridge
 import Vegas.Game.OnePacketUnintendedCommitment
 import Vegas.Game.OnePacketSlotLawDischarge
-import Vegas.Game.OnePacketOwnDisclosure
-import Vegas.Game.OnePacketOpeningLaw
 import Vegas.Game.OnePacketRelevantLumping
 import Vegas.Game.OnePacketSwapFiberSum
 

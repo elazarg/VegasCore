@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.PhaseLatestBindings
+import Interaction.ReactiveTrafficIdentity
 
 /-! # Latest surviving signed handles at actual counted histories -/
 

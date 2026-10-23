@@ -1,9 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.ExclusionPairedTransition
 import Vegas.Pending.ExclusionNativeProfile
 import Vegas.Pending.ExclusionExitReflection
-import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Coupling actual behavioral steps before exclusion -/
 

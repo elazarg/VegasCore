@@ -1,8 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.PhaseSeedServiceMarks
-import Vegas.Pending.PhaseSampleProgress
-import Interaction.ReactiveServiceRounds
 
 /-! # Finite actual calendar rounds through every phase retry -/
 

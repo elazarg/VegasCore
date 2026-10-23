@@ -4,12 +4,9 @@ import Vegas.Game.PhaseProposalFlagMass
 import Vegas.Game.PhaseProposalGenuineSupport
 import Vegas.Game.PhaseProposalReferenceStrategy
 import Vegas.Game.PhaseExclusionPayoff
-import GameTheoryExtensions.Analysis.Protocol.SuccessRanking
-import Vegas.Pending.PhaseServiceContract
 import Interaction.ReactiveMenuLikelihood
 import Interaction.ReactiveResponseKernel
 import GameTheoryExtensions.Analysis.Protocol.SupportedChoiceContinuation
-import GameTheoryExtensions.Protocol.ContinuationHorizon
 
 /-! # Uniform future flag error after an arbitrary literal current response -/
 

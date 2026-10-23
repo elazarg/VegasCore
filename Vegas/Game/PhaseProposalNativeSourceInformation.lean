@@ -1,54 +1,31 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.ProposalRecoveryPublicClassConstancy
-import Vegas.Game.PhaseProposalSourceFiber
-import Vegas.Game.ProposalRecoveryArchivePublicHistory
-import Vegas.Game.PhaseProposalInstalledSourceBlock
-import Vegas.Compile.CommitPrefixReadStability
-import Vegas.Source.CommitAttemptRanks
-import Vegas.Source.ProposalRecoveryDisclosure
 import Vegas.Source.CommitPrefixPointAppend
 import Vegas.Compile.CommitPrefixCompletionSnoc
-import Vegas.Game.PhaseSurvivingSourceView
 import Vegas.Game.RecoveryFixedCommitSelector
-import Vegas.Game.PhaseCountServiceForeignWord
-import Vegas.Source.CommitRecoveryNoMissQuery
-import Vegas.Source.ProposalRecoveryCommitWindow
-import Vegas.Source.CommitRecoveryPublicObservation
-import Vegas.Game.PhaseCommitmentProposalArchive
-import Vegas.Source.CommitRecoveryInitialInputs
-import Vegas.Pending.PhaseValueSwap
 import Vegas.Pending.ValueSwapPairs
-import Vegas.Pending.PhaseArchiveOrder
 import Vegas.Game.ConcurrentRawSequentialPreservation
-import Vegas.Game.PhaseProposalHistory
-import Vegas.Game.ReservedEpochBindingAliases
 import Vegas.Game.PhaseBindingRecallWord
 import Vegas.Source.CommitPrefixWordHistory
-import Vegas.Source.CommitPrefixProduct
 import Vegas.Game.PhaseCommitWordSourceView
 import Interaction.ReactiveEmissionOrder
 import Vegas.Pending.PhaseProposalPacketLaw
-import Vegas.Game.PhaseProposalGeneratedPreparation
-import Vegas.Game.PhaseProposalGenuineReference
 import Vegas.Pending.PhaseProposalLostRecallReplay
-import Vegas.Source.CommitRecoveryAttemptExit
-import Interaction.ReactiveReceiptBoundary
 import Vegas.Source.IntendedPrefixSwap
 import Vegas.Pending.PhaseProposalLostBindingClosure
-import Vegas.Game.ServiceWithheldForfeit
 import Vegas.Source.ProposalRecoveryPrefixLift
-import Vegas.Game.PhaseProposalSourceUsability
 import GameTheoryExtensions.Protocol.OwnPlayPrefix
 import Vegas.Game.PhaseProposalCommitWord
 import Vegas.Source.ProposalRecoveryPreparationMenuInverse
 import Vegas.Game.RecoverySameAttemptWitness
-import Vegas.Game.PhaseProposalOrdinaryBindingCheckpoint
-import Vegas.Game.PhaseProposalOwnBindingFailure
-import Vegas.Game.PhaseProposalBindingPhaseLaw
-import Vegas.Game.PhaseProposalBindingKernel
-import Vegas.Game.PhaseProposalQueryDomain
 import Vegas.Game.PhaseProposalSavedBindingValues
+import Vegas.Game.PhaseProposalReferenceStrategy
+import Vegas.Pending.PhaseArchivedOwnPrefix
+import Vegas.Pending.PhaseReadyBindingDeclaration
+import Vegas.Source.CommitPrefixWordProjection
+import Vegas.Game.AsyncDeviationForeign
+import Vegas.Game.ServiceWithheldForfeit
 
 /-! # Complete source information under foreign disclosure refinements
 

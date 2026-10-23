@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.PhaseProposalShadowOpeningAcceptance
-import Vegas.Pending.PhaseBindingOpaqueStep
 import Interaction.ReactiveRoundTrace
 
 /-! # Lifting actual paired accepting handlers to counted executions -/

@@ -2,6 +2,11 @@
 
 import Vegas.Pending.PhaseClearNativeProgress
 import Interaction.ReactiveInvariantPrefix
+import Interaction.ReactivePolicyInvariant
+import Interaction.ReactiveRounds
+import Vegas.Pending.PhaseNamespace
+import Vegas.Pending.PhaseResolution
+import Vegas.Pending.ReactiveSignedCommitments
 
 /-! # Accepted handles persist throughout a surviving physical attempt -/
 

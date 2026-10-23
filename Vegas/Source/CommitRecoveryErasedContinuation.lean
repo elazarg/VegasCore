@@ -1,8 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Source.CommitRecoveryErasedStep
-import Vegas.Source.CommitRecoveryProjection
-import Vegas.Source.SetupProtocolEvaluation
 import GameTheoryExtensions.Analysis.Protocol.StoppedTerminalBound
 
 /-! # Source continuations under erased private-word prescriptions

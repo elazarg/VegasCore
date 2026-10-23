@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.ServiceBlockCongruence
-import Vegas.Compile.EventGraphStep
 import Mathlib.Logic.Relation
 
 /-! # What a block run leaves behind

@@ -4,7 +4,6 @@ import Vegas.Source.CommitRecoveryNonCommitValues
 import Vegas.Source.CommitRecoveryCommitEntry
 import Vegas.Source.CommitRecoveryAttemptDebt
 import Vegas.Source.CommitRecoveryNoMissInformation
-import Vegas.Source.IntendedGame
 
 /-! # Successful live bindings or a literal own failed binding -/
 

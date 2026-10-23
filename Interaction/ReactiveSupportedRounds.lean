@@ -1,6 +1,5 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Interaction.ReactiveRoundReachability
 import Interaction.ReactiveResponseEvaluation
 
 /-! # Behavioral play of a response menu as the canonical kernel

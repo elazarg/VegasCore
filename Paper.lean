@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import GameTheoryExtensions
+import Vegas.Compile
 import Vegas.Game
 import Vegas.Examples.LateLeak
 

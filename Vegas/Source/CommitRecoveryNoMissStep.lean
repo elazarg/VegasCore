@@ -2,7 +2,6 @@
 
 import Vegas.Source.CommitRecoveryNoMiss
 import Vegas.Source.CommitRecoveryCommitUnique
-import Vegas.Source.CommitBlockRecovery
 
 /-! # Actual commitment steps replayed with the saved exclusion set
 

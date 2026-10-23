@@ -1,11 +1,12 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.OnePacketCertificateCounterpart
-import Vegas.Game.OnePacketBindingRepairWitness
 import Vegas.Game.OnePacketRepairedResponderForced
 import Vegas.Game.OnePacketPairedLikelihoodWeight
-import Vegas.Game.OnePacketRepairResponseBound
-import Vegas.Game.OnePacketDirectedRepairResponseTurn
+import Vegas.Game.OnePacketCounterpartBound
+import Vegas.Game.OnePacketDisclosureAlong
+import Vegas.Game.OnePacketOwnIntended
+import Vegas.Game.OnePacketStepPositive
 
 /-! # Certificate reach comparisons from actual binding repairs -/
 

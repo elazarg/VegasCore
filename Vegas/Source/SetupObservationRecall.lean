@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Source.CommitRecoveryObservation
-import Vegas.Source.IntendedGame
 
 /-! # Reconstructing setup observations at previous source ranks -/
 

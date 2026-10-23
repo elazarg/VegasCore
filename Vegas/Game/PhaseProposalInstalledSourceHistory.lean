@@ -2,8 +2,6 @@
 
 import Vegas.Game.PhaseProposalInstalledSourceBlock
 import Vegas.Game.PhaseProposalOrdinaryBindingCheckpoint
-import Vegas.Source.CommitPrefixSplitting
-import Vegas.Source.ProposalRecoveryCommitWindow
 
 /-! # The selected original source history at the actual clean native checkpoint -/
 

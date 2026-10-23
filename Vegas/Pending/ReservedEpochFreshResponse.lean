@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.ReservedEpochFirstAcceptance
-import Vegas.Pending.ReservedEpochCompletion
 import Vegas.Pending.PhaseBindingReceiptResolution
 import Vegas.Pending.PhaseConsistentContinuation
 

@@ -1,8 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.ReactiveRevealBlock
 import Vegas.Pending.ReactiveBindingCoupling
-import Vegas.Pending.ReactiveRawBindingFrame
 import Vegas.EventGraph.BindingRefinement
 import Vegas.Pending.ReactiveSubmissionRecall
 

@@ -1,16 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import GameTheoryExtensions.Math.Probability.ActionSplitting
-import Vegas.Game.RevealServiceState
-import Vegas.Pending.ReactiveContinuationObservation
 import Vegas.Game.RevealServiceCalendarState
-import Vegas.EventGraph.PrivateInputs
-import Vegas.Pending.ReactiveAssociationEvidence
-import Vegas.Pending.ReactiveServiceProgress
-import Vegas.Pending.ReactiveStateInvariant
-import Vegas.Pending.EventSequentialTiming
 import Vegas.Source.RevealSequence
-import Vegas.Source.SetupProtocol
+import Interaction.MessageNetworkCounters
 
 /-! # Checkpoint invariants for the actual revelation service
 

@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.OnePacketHonestDecision
 import Vegas.Game.OnePacketLawApproximation
+import Vegas.Source.IntendedDeparture
 
 /-! # The intended-or-owed region
 

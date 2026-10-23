@@ -2,7 +2,6 @@
 
 import Vegas.Pending.PhaseArchivedBindings
 import Vegas.Pending.RecordedBindingReadback
-import Vegas.Pending.EventValueSwap
 
 /-! # Reading retired binding actions from public handles and private candidates -/
 

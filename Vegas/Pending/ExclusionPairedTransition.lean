@@ -1,6 +1,5 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.ExclusionPairedEnvironment
 import Vegas.Pending.ExclusionClearHistory
 
 /-! # Coupled actual protocol transitions up to permanent exclusion

@@ -2,9 +2,8 @@
 
 import Vegas.Pending.ReactiveEntryStability
 import Vegas.Pending.ReactiveFreshCallAcceptance
-import Vegas.EventGraph.RevealRelaxation
-import Vegas.EventGraph.BarrierInformation
-import Vegas.EventGraph.Commutation
+import Vegas.Pending.EventAssociationInvariant
+import Vegas.Pending.EventBindingInvariant
 
 /-! # What a recorded view of a ready event keeps while the event is unfinished
 

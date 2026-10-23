@@ -2,7 +2,6 @@
 
 import Vegas.Game.OnePacketCertificateDischarge
 import Vegas.Game.OnePacketSlotLawForced
-import Vegas.Game.OnePacketSlotError
 
 /-! # The operational side of the forced-belief inputs
 

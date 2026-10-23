@@ -1,11 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.ReactiveDisclosure
-import Vegas.Pending.ReactiveService
-import Interaction.ReactiveProvenance
-import Vegas.Pending.ReactivePolicyFacts
-import Vegas.Pending.ReactiveServiceProgress
-import Interaction.ReactiveAllocation
 
 /-! # Canonical revelation blocks in the existing reactive service
 

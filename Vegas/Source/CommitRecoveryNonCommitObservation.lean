@@ -1,11 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Source.CommitRecoveryObservation
 import Vegas.Source.CommitRecoveryFrontier
-import Vegas.Source.CommitRecoveryNonCommitPath
-import Vegas.Source.CommitRecoveryObservedMemory
-import Vegas.Source.CommitRecoveryPublicControl
-import Vegas.Source.CommitRecoveryPublicRanks
 
 /-! # Observable public successors of noncommitment recovery instructions -/
 

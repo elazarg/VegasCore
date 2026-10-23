@@ -3,6 +3,7 @@
 import Vegas.Pending.PhaseSignedBindings
 import Vegas.Pending.PhaseCountMenu
 import Vegas.Pending.PhaseBindingInvariant
+import Interaction.MessageNetworkIdentity
 
 /-! # Physical acceptance of count-admitted phased bindings
 

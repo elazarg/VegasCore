@@ -2,8 +2,6 @@
 
 import Vegas.Pending.PhaseAttemptControls
 import Vegas.Pending.PhaseExclusionRecord
-import Vegas.Pending.EventValueSwap
-import Interaction.ReactiveRecall
 import GameTheoryExtensions.Analysis.Protocol.StoppedHistoryAtom
 
 /-! # Actual first owner exclusion inside an installed runtime phase -/

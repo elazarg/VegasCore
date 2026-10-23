@@ -1,10 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.PhaseProposalTransition
 import Vegas.Game.RecoverySourceEnvironment
 import Vegas.Game.PhaseProposalExecution
 import Vegas.Pending.PhaseProposalFrameStep
-import Interaction.ReactiveTrafficIdentity
 
 /-! # Actual environment processing accumulates the same source proposal archive -/
 

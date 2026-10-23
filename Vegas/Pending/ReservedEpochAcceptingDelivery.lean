@@ -7,6 +7,7 @@ import Vegas.Pending.ReservedEpochCompletion
 import Vegas.Pending.ReservedEpochPendingBound
 import Vegas.Pending.ReservedEpochOpportunity
 import Vegas.Pending.PhaseOwnCount
+import Vegas.Pending.ReservedEpochArrival
 
 /-! # Protected current packets receive accepting receipts against raw opponents -/
 

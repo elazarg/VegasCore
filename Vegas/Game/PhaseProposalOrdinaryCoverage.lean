@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.PhaseProposalOrdinarySupport
+import Vegas.Game.PhaseProposalOpeningSupport
 
 /-! # Every usable actual counted response occurs in the ordinary comparison -/
 

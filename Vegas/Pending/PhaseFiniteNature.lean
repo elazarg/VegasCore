@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.PhaseApplication
-import Vegas.Pending.ReactiveRuntime
 
 /-! # Finite nature in the actual physical phase application -/
 

@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Source.ProposalRecoveryProjection
-import GameTheoryExtensions.Protocol.TracePrefix
 
 /-! # Archive-refined normalized queries preserve the original logical depth -/
 

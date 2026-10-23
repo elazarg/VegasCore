@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.ReactiveCompiledMenu
-import Vegas.Pending.ReactiveService
 
 /-! # All retained responses within a resolution phase
 

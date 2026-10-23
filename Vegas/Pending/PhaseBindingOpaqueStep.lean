@@ -1,10 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.PhaseSeedBudget
-import Vegas.Pending.PhaseNativeInvariant
-import Vegas.Pending.EventBindingPublicObservation
-import Vegas.Pending.PhaseBindingRepairInclusion
-import Interaction.ReactiveRoundTrace
 
 /-! # Literal same-command inclusion and histories for all-value phase shadows -/
 

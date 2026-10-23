@@ -1,9 +1,9 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.AsyncServiceSpec
-import Vegas.Game.SourceServiceTurnSettlement
 import Vegas.Game.SourceServiceClientPolicy
 import GameTheory.Core.Approximate
+import Vegas.Game.SourceInformation
 
 /-! # Reflection of approximate Nash under an arbitrary contract builder
 

@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.PhaseProposalUnflagged
-import Vegas.Pending.PhaseOpeningPolicy
 
 /-! # Actual unflagged publication responses disclose the locked value -/
 

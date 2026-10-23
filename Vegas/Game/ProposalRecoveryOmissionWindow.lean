@@ -2,9 +2,9 @@
 
 import Vegas.Source.ProposalRecoveryCommitWindow
 import Vegas.Game.ProposalRecoveryContinuation
-import Vegas.Game.CommitRecoveryOmissionWindow
 import GameTheoryExtensions.Analysis.Protocol.StoppedHistoryAtom
 import GameTheoryExtensions.Analysis.Protocol.StoppedHistoryInvariant
+import Vegas.Source.CommitRecoveryAttemptReset
 
 /-! # Actual enriched commitment-window laws from neutral omission kernels -/
 

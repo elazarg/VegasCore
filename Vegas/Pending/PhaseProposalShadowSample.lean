@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.PhaseProposalShadowNormalization
-import Vegas.Pending.PhaseBindingSampleReplay
 import Vegas.Pending.EventCommandFrame
 
 /-! # Original public chance laws under private binding shadows

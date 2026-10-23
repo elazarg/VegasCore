@@ -1,9 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Interaction.ReactiveRounds
-import Interaction.ReactiveProtocol
-import Interaction.ReactiveMessageReadout
-import Interaction.ReactivePolicyMixture
 
 /-! # Finitely branching reactive rounds
 

@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.ExclusionContinuationLaw
-import Vegas.Pending.ExclusionNativeFailure
 import Interaction.ReactiveResponseEmbedding
 import GameTheoryExtensions.Protocol.ContinuationHorizon
 

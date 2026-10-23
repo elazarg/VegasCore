@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.EventGraph.SchedulerErasure
-import Vegas.EventGraph.SequentialLaw
 
 /-! # Scheduling reveal-relaxed graphs
 

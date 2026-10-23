@@ -1,13 +1,11 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.ServiceRosterAsync
 import Vegas.Game.ServiceSettledEvidence
-import Vegas.Pending.ReactiveEntryStability
-import Vegas.Pending.ReactiveEventStability
-import Vegas.Pending.ReactiveFreshCallAcceptance
 import Vegas.Pending.ReactiveCanonicalDecision
 import Vegas.Pending.ReactiveServiceConditions
-import Interaction.ReactiveMessageIdentity
+import Interaction.ReactivePacketEvidence
+import Vegas.Pending.ReactiveAssociationEvidence
+import Vegas.Pending.ReactivePacketEvidence
 
 /-! # An acceptable fresh call settles in time under the asynchronous contract
 

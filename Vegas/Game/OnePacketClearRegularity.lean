@@ -3,7 +3,6 @@
 import Vegas.Game.OnePacketClearRecord
 import Vegas.Game.OnePacketMainContent
 import Vegas.Game.OnePacketOwnIntended
-import Vegas.Game.OnePacketStepGlue
 
 /-! # Regularity before public exclusion and focal source debt -/
 

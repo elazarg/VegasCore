@@ -2,7 +2,6 @@
 
 import Vegas.Game.AsyncWithholdLaw
 import Vegas.Game.ServiceWithheldForfeit
-import Vegas.Game.AsyncDeviationReadout
 
 /-! # Typed outcome of one deviation up to withholding
 

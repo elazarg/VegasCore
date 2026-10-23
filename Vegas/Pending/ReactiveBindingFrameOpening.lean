@@ -2,8 +2,7 @@
 
 import Vegas.Pending.ReactiveBindingFrameStep
 import Vegas.Pending.ReactiveDisclosure
-import Vegas.Pending.ReactiveHiddenInclusion
-import Vegas.Pending.EventBindingInvariant
+import Interaction.ReactivePublication
 
 /-! # Disclosure transitions of the repaired native continuation
 

@@ -3,9 +3,6 @@
 import Vegas.Game.RecoveryNativeComparison
 import Vegas.Game.OnePacketBaseAssembly
 import Vegas.Game.OnePacketBindingRepairAssembly
-import Vegas.Game.OnePacketCertificateAssembly
-import Vegas.Game.OnePacketPrescribedSites
-import Vegas.Game.OnePacketSilentShape
 
 /-! # Prefix estimates for the native comparison sequence
 

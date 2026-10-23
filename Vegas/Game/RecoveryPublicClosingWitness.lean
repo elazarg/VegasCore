@@ -1,8 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.PhaseProposalFreshTerminal
-import Vegas.Game.RecoverySameAttemptWitness
-import Vegas.Pending.PhaseProposalAcceptedHistory
 
 /-! # Archive continuation from the supplied completed phase witness -/
 

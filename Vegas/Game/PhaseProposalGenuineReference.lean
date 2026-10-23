@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.PhaseProposalGenuineSupport
-import Vegas.Game.PhaseProposalReferenceStrategy
 
 /-! # Actual genuine reference class law and full support -/
 

@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.ReactiveBindingRestoration
-import Vegas.Pending.ReactiveBindingShadowInvariant
 
 /-! # Recorded private results of submitted bindings
 

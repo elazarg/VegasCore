@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.ProposalRecoveryPublicClassConstancy
+import Interaction.ReactiveProtocol
 
 /-! # Exact full-information source class and reach contracts -/
 

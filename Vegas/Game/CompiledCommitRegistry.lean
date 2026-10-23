@@ -2,6 +2,7 @@
 
 import Vegas.Game.CompiledCommitAttempt
 import Vegas.Source.CommitPhaseRegistry
+import Vegas.Source.RegistryFailureExtension
 
 /-! # Exact guard registry readback for recovered commitment blocks -/
 

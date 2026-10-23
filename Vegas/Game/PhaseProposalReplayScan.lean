@@ -1,6 +1,5 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.PhaseProposalReplayPath
 import Vegas.Game.PhasePublicSourceChronology
 
 /-! # Source replay prestates retain the full native failure scan -/

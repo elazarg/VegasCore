@@ -2,9 +2,6 @@
 
 import Vegas.Game.CompiledCommitHead
 import Vegas.Game.CompiledCommitAttemptSplit
-import Vegas.Pending.PhaseRecordedBindingMaterial
-import Vegas.Pending.PhaseBindingFreshness
-import Vegas.Source.IntendedBetween
 
 /-! # Emitted typed values at their exact rank in the whole decoded attempt -/
 

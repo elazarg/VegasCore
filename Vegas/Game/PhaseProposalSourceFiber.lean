@@ -2,10 +2,7 @@
 
 import Vegas.Game.ProposalRecoveryInformationReadback
 import Vegas.Game.ProposalRecoveryArchivePublicHistory
-import Vegas.Game.CommitRecoveryGlobalWordDensity
-import Vegas.Source.ProposalRecoveryChronology
 import Vegas.Source.ProposalRecoveryMenuKind
-import Vegas.Source.CommitRecoveryVoluntaryFailure
 
 /-! # Full source fibers across distinct original input draws
 

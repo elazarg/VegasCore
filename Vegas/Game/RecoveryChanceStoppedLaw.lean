@@ -1,8 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.RecoverySuccessorBoundary
-import Interaction.ReactiveResponseStopped
-import Interaction.ReactiveLocalContinuation
+import Vegas.Game.ServiceChancePhase
 
 /-! # Finite stopped chance phases of the recovery comparison model -/
 

@@ -2,6 +2,7 @@
 
 import Vegas.Pending.ReservedEpochActivationRecord
 import Interaction.ReactiveRawRoundTrace
+import Vegas.Pending.PhaseServiceContract
 
 /-! # All-raw opportunity from bounded exogenous owner-mask gaps -/
 

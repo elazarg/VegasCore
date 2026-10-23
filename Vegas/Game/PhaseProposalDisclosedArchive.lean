@@ -2,7 +2,6 @@
 
 import Vegas.Game.PhaseProposalPublicationImage
 import Vegas.Game.PhaseProposalDisclosure
-import Vegas.Game.PhaseProposalAddress
 
 /-! # Actual replay disclosures produce canonical archived proposals -/
 

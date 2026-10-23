@@ -2,13 +2,6 @@
 
 import Vegas.Game.RecoveryNonLateComparisons
 import Vegas.Game.RecoveryKeyedComparisons
-import Vegas.Game.RecoveryOwingOptimality
-import Vegas.Game.RecoveryUnpendingChoices
-import Vegas.Game.RecoveryLocalValueComparison
-import Vegas.Game.RecoveryLocalStoppedValue
-import Vegas.Game.RecoveryComparisonSite
-import GameTheoryExtensions.Analysis.Protocol.SuccessRanking
-import Vegas.Game.OnePacketLateCommitFailure
 
 /-! # All local comparisons under the original recovery completion -/
 

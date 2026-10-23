@@ -1,10 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.CompiledRevealReadback
 import Vegas.Game.CompiledPublicExclusions
 import Vegas.Game.RecordedSourceHistory
 import Vegas.Game.ServiceRevealTail
-import Vegas.Compile.EventGraphSuffix
 import Vegas.Pending.PhaseFailureOrder
 import Vegas.Game.PhaseProposalDisclosure
 

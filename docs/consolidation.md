@@ -228,11 +228,16 @@ Pass two:
       `Vegas/EventGraph` and `Vegas/Compile` (about 2.5k lines), reviewed by
       hand: some state what the interface promises (`Vegas.IExpr.expr_deps_sound`)
       or the compiler's payout laws (`Vegas.canonical_payout_law`).
-- [ ] Unused imports. The calendar's remaining `ServiceRoster` and
-      `SourceService*` modules, `MessagePool`, `SourceProgram.Initial` and most
-      of `OnePacket*` stay because the turn-based SE and asynchronous Nash
-      theorems use them on the plain and forced-exit contracts; they wait for
-      Step 4.
+- [x] Unused imports: 1,524 project imports removed and 423 added where a
+      module had reached a dependency only through a removed one (net 1,101 of
+      7,059), and the last unreached module. A library module imports the
+      modules owning the constants its declarations use, the rfl `@[simp]`
+      lemmas whose left sides they use, and the names its `open`, `variable`
+      and notation lines and `simp` lemma lists mention.
+- [ ] The calendar's remaining `ServiceRoster` and `SourceService*` modules,
+      `MessagePool`, `SourceProgram.Initial` and most of `OnePacket*` stay
+      because the turn-based SE and asynchronous Nash theorems use them on the
+      plain and forced-exit contracts; they wait for Step 4.
 
 Exit: the walk reports only modules on its allowlist; measurements updated.
 
@@ -400,10 +405,7 @@ perfect recall proved for every model, horizons equal to proved bounds.
 
 - [x] **F-S1 (H, Step 3).** 2,165 of 3,777 modules (about 428k lines) contain no
   declaration used by Paper or by a test declaration; 35% of declarations are
-  reached from Paper. After the removal of unreached declarations one module is
-  left (`Vegas.Pending.PhaseBindingClockReplay`, 29 lines), whose only
-  definition shares its name with a local hypothesis elsewhere; it goes with
-  the unused imports.
+  reached from Paper. After Step 3 the report lists no module.
 - [ ] **F-S2 (H, Step 4).** Parallel runtime stacks: 269k lines mention
   `WitnessedPacket`, 244k `CommitAttemptPacket`, 46 files both. Three copies of
   the one-packet raw extension theorem (`OnePacketExtension.lean`,

@@ -2,6 +2,7 @@
 
 import Vegas.Game.OnePacketFirstActivation
 import Vegas.Pending.ExclusionService
+import Vegas.Pending.ReactiveOwnerOpportunity
 
 /-! # Timely first activations before actual recovery exclusion -/
 

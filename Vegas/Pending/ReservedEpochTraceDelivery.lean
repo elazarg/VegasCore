@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.ReservedEpochDelivery
-import Vegas.Pending.ReservedEpochPendingBound
 
 /-! # Receipt coverage derived at every genuine processing prefix
 

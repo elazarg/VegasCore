@@ -1,16 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.PhaseBindingRecallWord
-import Vegas.Pending.PhaseNativeInvariant
-import Vegas.Pending.RecordedBindingReadback
-import Vegas.Pending.PhaseBindingInvariant
-import Vegas.Pending.PhaseSignedBindings
-import Vegas.Pending.PhaseNativeProjection
-import Vegas.Pending.ReactiveServiceConditions
-import Vegas.Pending.PhaseFailureCoverage
-import Vegas.Pending.PhaseBindingSubmittedPreservation
-import Vegas.Pending.PhaseBindingFreshness
-import Interaction.ReactiveRecordedResponse
 
 /-! # Actual private preparations recover their completed source actions
 

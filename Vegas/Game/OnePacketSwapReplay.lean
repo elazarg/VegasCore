@@ -3,8 +3,6 @@
 import Vegas.Game.OnePacketSwapRecord
 import Vegas.Game.SourceSwapPairs
 import Vegas.Game.OnePacketActingJoint
-import Vegas.Game.OnePacketDecodedActor
-import GameTheoryExtensions.Protocol.TracePrefix
 
 /-! # Swapped histories replay the swapped intended history
 

@@ -2,10 +2,7 @@
 
 import Vegas.Pending.PhaseTimelyResolution
 import Vegas.Pending.PhaseCountUniqueness
-import Vegas.Pending.PhaseCountMenu
 import Vegas.Pending.PhaseNativeInvariant
-import Interaction.ReactiveTrafficIdentity
-import Interaction.ReactiveReceipts
 
 /-! # A timely counted request can resolve only through its unique envelope -/
 

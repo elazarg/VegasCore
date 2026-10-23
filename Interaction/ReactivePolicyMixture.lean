@@ -3,7 +3,6 @@
 import Interaction.ReactiveImplementation
 import GameTheory.Math.Probability.ConditionalObservation
 import GameTheory.Math.Probability.ExpectationConditioning
-import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Behavioral realization of a finite family of response policies
 

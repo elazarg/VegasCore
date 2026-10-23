@@ -1,8 +1,9 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.ProposalRecoveryPublicClassProduct
-import Vegas.Source.CommitRecoveryMetadata
 import Vegas.Source.CommitRecoveryOwnedStep
+import GameTheoryExtensions.Analysis.Protocol.ContinuationOwnPlay
+import GameTheoryExtensions.Analysis.Protocol.OwnPlayReach
 
 /-! # Whole source reach and the public foreign class coefficient -/
 

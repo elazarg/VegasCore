@@ -3,7 +3,7 @@
 import Vegas.Examples.CommitTimingInformationService
 import Vegas.Pending.PhaseNativeInvariant
 import Vegas.Pending.PhaseReadyRequests
-import Vegas.Pending.PhaseBindingClockReplay
+import Vegas.Pending.PhaseBindingInertResponse
 import Vegas.Pending.EventInitialObservation
 
 /-! # Concrete initial phase geometry of the hidden-input timing game -/

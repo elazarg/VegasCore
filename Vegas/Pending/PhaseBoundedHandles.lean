@@ -3,7 +3,6 @@
 import Vegas.Pending.PhaseSignedBindings
 import Vegas.Pending.PhaseOwnCommitments
 import Vegas.Pending.PhaseCountMenu
-import Vegas.Pending.ReactiveBoundedHandles
 
 /-! # Surviving phased handles remain in the finite raw message domain -/
 

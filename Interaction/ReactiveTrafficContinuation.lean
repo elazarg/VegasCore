@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Interaction.ReactiveTrafficState
-import Interaction.ReactiveRounds
 
 /-! # Traffic evidence through actual runtime continuations
 

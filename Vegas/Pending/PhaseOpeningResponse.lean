@@ -1,9 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.PhaseLatestBindingHistory
-import Vegas.Pending.PhaseInputBindings
-import Vegas.Pending.PhasePreparedBinding
-import Vegas.Pending.ReactiveDisclosure
 
 /-! # Authentic opening responses in actual phased count menus -/
 

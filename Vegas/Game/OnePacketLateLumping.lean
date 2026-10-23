@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.OnePacketBindingOwner
+import Vegas.Pending.EventActivationOrigin
 
 /-! # One step of the one-packet game at a late decision
 

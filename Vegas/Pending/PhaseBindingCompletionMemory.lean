@@ -1,6 +1,10 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.PhaseBindingOpaqueStep
+import Vegas.Pending.PhaseBindingRepairInclusion
+import Vegas.Pending.PhaseBindingShadow
+import Vegas.Pending.ReactiveBindingShadow
+import Vegas.Pending.ReactiveBindingShadowInvariant
 
 /-! # Remembering actual all-value binding completions across phase installation -/
 

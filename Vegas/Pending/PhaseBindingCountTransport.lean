@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.PhaseBindingRepairFrame
-import Vegas.Pending.ReactiveBindingSubmissionFrame
+import Vegas.Pending.PhaseCountProjection
 
 /-! # Count admission discharges native response replay guards -/
 

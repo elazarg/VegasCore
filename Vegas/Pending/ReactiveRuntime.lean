@@ -2,8 +2,6 @@
 
 import Interaction.ReactiveRecall
 import Vegas.Pending.OpeningEvidence
-import Vegas.Pending.EventPublicState
-import Interaction.MessageNetworkCounters
 
 /-! # The event application under explicit network scheduling
 

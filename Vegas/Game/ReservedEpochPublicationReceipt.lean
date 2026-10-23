@@ -1,10 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.PhaseOpeningReceiptOrigins
-import Vegas.Game.PhaseProposalPublicationImage
-import Vegas.Game.CompiledRevealPhase
 import Vegas.Game.ReservedEpochStoppedCoupling
-import Vegas.Pending.PhaseSemanticProgress
 
 /-! # Physical TRUE receipts in the original completed publication image -/
 

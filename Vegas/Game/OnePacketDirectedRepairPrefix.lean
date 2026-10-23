@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.OnePacketCounterpartGuard
-import Vegas.Game.OnePacketSpliceForced
 
 /-! # Exposure guards through every actual history prefix
 

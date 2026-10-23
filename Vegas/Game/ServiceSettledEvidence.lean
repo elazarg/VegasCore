@@ -3,11 +3,7 @@
 import Vegas.Game.ServiceRosterAsync
 import Vegas.Pending.ReactiveSettledStability
 import Vegas.Pending.ReactiveServiceAudit
-import Vegas.Pending.ReactiveFreshCallAcceptance
-import Vegas.Pending.ReactivePacketEvidence
-import Vegas.Pending.ReactiveAssociationEvidence
 import Interaction.ReactiveMessageIdentity
-import Interaction.ReactiveTrafficContinuation
 import Vegas.Pending.ReactiveEventStability
 
 /-! # Packets the settled record forbids

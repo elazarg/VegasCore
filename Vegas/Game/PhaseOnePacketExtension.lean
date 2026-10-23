@@ -1,11 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.PhaseCountCollection
-import Interaction.ReactiveMenuRestriction
 import Interaction.ReactiveLocalContinuation
 import Interaction.ReactiveFiniteAssessment
-import Interaction.ReactiveOwnPlay
-import GameTheoryExtensions.Analysis.Protocol.TerminalAudit
 import GameTheoryExtensions.Protocol.ContinuationHorizon
 
 /-! # Sequential equilibrium extension to the actual phased raw runtime

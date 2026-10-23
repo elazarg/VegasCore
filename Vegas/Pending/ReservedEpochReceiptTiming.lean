@@ -2,11 +2,8 @@
 
 import Vegas.Pending.ReservedEpochAcceptingDelivery
 import Vegas.Pending.PhaseBindingAcceptedReceipt
-import Vegas.Pending.PhaseBindingReceiptResolution
 import Vegas.Pending.ReservedEpochActiveSlot
-import Interaction.ReactiveOwnerSelection
 import Interaction.ReactiveReceiptBoundary
-import Interaction.ReactiveTrafficIdentity
 
 /-! # An accepting event receipt precedes its original deadline -/
 

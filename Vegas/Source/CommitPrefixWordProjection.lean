@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Source.CommitPrefixWordHistory
-import Vegas.Source.CommitPrefixWordRecall
 
 /-! # Earlier source information retained by a complete chronological word -/
 

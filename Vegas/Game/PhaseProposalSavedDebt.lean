@@ -1,11 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.RecoverySourceEnvironment
 import Vegas.Game.RecoverySourceTerminal
-import Vegas.Source.CommitRecoveryAttemptDebt
 import Vegas.Source.CommitRecoveryFailureCoverage
-import Interaction.ReactivePolicyInvariant
-import Interaction.ReactiveRawRoundTrace
 
 /-! # Saved unusable declarations force the actual native exclusion payoff
 

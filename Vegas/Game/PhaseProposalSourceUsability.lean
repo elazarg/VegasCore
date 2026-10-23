@@ -3,16 +3,13 @@
 import Vegas.Game.RecoverySourceCheckpoint
 import Vegas.Game.RevealService
 import Vegas.Game.PhaseProposalGeneratedPreparation
-import Vegas.Pending.PhaseLatestBindingHistory
 import Vegas.Pending.PhaseRecordedBindingMaterial
-import Vegas.Pending.PhaseBindingFreshness
-import Vegas.Pending.PhaseFailureCoverage
-import Vegas.Pending.PhaseBindingInvariant
 import Vegas.Compile.EventGraphObservationEncoding
 import Vegas.EventGraph.PrivateInputs
-import Vegas.Source.IntendedGame
 import Vegas.Source.CommitRecoveryAttemptReadout
 import Interaction.ReactiveRecallEntries
+import Vegas.Pending.EventBindingReadback
+import Vegas.Pending.ReactiveServiceConditions
 
 /-! # Usable source cells on actual histories without unusable preparations -/
 

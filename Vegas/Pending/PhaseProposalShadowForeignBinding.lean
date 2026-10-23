@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.PhaseProposalShadowNormalization
-import Vegas.Pending.PhaseBindingForeignMemory
 import Vegas.Pending.PhaseProposalShadowProgress
 
 /-! # Actual other-owner binding handlers through general phase recovery -/

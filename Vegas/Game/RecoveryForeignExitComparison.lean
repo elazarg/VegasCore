@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.RecoveryForeignExitBound
-import Vegas.Pending.ExclusionMenuStopped
 
 /-! # Native stopped payoff comparison with only foreign first-exclusion error
 

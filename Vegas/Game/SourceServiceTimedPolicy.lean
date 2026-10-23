@@ -2,8 +2,6 @@
 
 import Vegas.Game.SourceServiceMenu
 import Vegas.Game.SourceServicePolicy
-import Vegas.Game.ServiceRoster
-import Vegas.Pending.ReactiveStateInvariant
 import Interaction.ScheduledOpening
 
 /-! # Shared timing of full-source decisions

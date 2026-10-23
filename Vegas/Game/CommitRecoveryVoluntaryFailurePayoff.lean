@@ -1,6 +1,5 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Source.CommitRecoveryVoluntaryFailure
 import Vegas.Game.CommitRecoveryDebtPayoff
 
 /-! # Fixed exclusion value for voluntary source recovery failure -/

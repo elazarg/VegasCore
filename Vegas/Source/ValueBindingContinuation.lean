@@ -1,8 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Source.ValueBinding
-import Vegas.Source.Purification
-import Vegas.Source.FiniteSupport
 import Vegas.Source.ProtocolBehavioralPolicy
 
 /-! # Value-only binding from an arbitrary source continuation

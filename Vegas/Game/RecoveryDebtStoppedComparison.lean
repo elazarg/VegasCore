@@ -3,6 +3,7 @@
 import Vegas.Game.RecoveryDebtStoppedBound
 import Vegas.Game.RecoveryForeignExitComparison
 import Vegas.Pending.ExclusionMenuStopped
+import Vegas.Game.AsyncDeviationForeign
 
 /-! # Native payoff comparison stopped before latent own debt
 

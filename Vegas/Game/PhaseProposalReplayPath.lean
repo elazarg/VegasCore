@@ -2,8 +2,6 @@
 
 import Vegas.Game.CompiledRevealPhase
 import Vegas.Source.CommitRecoveryNonCommitPath
-import Vegas.Source.CommitRecoveryNoMissInformation
-import Vegas.Source.ProposalRecoveryLift
 
 /-! # Actual source history extensions retain native replay annotations -/
 

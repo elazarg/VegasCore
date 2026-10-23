@@ -1,8 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.PhaseProposalPooledFloor
 import Vegas.Game.PhaseProposalReferenceWord
 import Vegas.Game.PhaseProposalRepairLikelihood
+import GameTheoryExtensions.Analysis.Protocol.ProjectedBeliefTransport
 
 /-! # Uniform posterior bounds for generated foreign preparation failures
 

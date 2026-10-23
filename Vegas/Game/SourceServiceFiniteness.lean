@@ -2,7 +2,6 @@
 
 import Vegas.Game.SourceServiceCompletion
 import Vegas.Game.SourceServiceChoiceSupport
-import Vegas.Compile.EventGraphDeviation
 import GameTheory.Analysis.Protocol.CounterfactualDecomposition
 
 /-! # Finite support of the timed source service

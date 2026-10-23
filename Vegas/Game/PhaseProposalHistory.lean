@@ -3,7 +3,6 @@
 import Vegas.Game.PhaseProposalInitial
 import Vegas.Game.PhaseProposalRespond
 import Vegas.Game.PhaseProposalEnvironment
-import Interaction.ReactiveMenuInvariant
 
 /-! # Actual counted executions have their full consumed enriched source archive -/
 

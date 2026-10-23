@@ -3,7 +3,6 @@
 import Vegas.Game.RecoveryForeignExitBound
 import Vegas.Game.RecoveryDecodedDebt
 import GameTheoryExtensions.Analysis.Protocol.StoppedTerminalBound
-import GameTheoryExtensions.Math.Probability.Expectation
 import GameTheory.Math.Probability.Bounds
 
 /-! # Stopping before a focal source debt

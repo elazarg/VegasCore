@@ -1,7 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.ReactiveBindingSubmittedRecords
-import Vegas.Pending.ReactiveSignedCommitments
+import Vegas.Pending.ReactiveBindingFrame
+import Vegas.Pending.ReactiveBindingSubmissionFrame
 
 /-! # Actual pending inclusion from recorded submission provenance -/
 

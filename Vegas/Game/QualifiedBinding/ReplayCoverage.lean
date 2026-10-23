@@ -4,6 +4,9 @@ import Vegas.Game.QualifiedBinding.RawReplay
 import Vegas.Game.QualifiedBinding.SourceAlignment
 import Vegas.Game.QualifiedBinding.SourceCorrespondence
 import Vegas.Game.QualifiedBinding.ForeignPosterior
+import Vegas.Game.AsyncDeviationForeign
+import Vegas.Game.ProposalRecoveryWordReadback
+import Vegas.Game.RecoveryResidualUniqueness
 
 /-! # Original annotation readback and normalized replay coverage -/
 

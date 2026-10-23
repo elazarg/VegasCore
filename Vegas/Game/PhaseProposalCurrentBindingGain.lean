@@ -4,10 +4,11 @@ import Vegas.Game.PhaseProposalOriginalResetPayoff
 import Vegas.Game.PhaseProposalStandingBindingDebt
 import Vegas.Game.PhaseProposalNativeFutureFlags
 import Vegas.Game.PhaseProposalObservableDebtPayoff
-import Vegas.Game.PhaseProposalUnflaggedBinding
-import Vegas.Pending.PhaseSentMenu
-import Interaction.ReactiveAnchoredStopped
 import GameTheoryExtensions.Analysis.Protocol.SuccessRanking
+import Interaction.ReactiveRecordedMenuTrace
+import Interaction.ReactiveSchedulerSeedTrace
+import Interaction.ReactiveSchedulerTerminalMixture
+import Interaction.ReactiveTerminalEvaluation
 
 /-! # Current binding debt and foreign reset at the original full information -/
 

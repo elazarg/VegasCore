@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Source.CommitPhase
-import Vegas.Source.RegistryFailureExtension
 
 /-! # Static guard registration along typed commitment blocks -/
 

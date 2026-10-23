@@ -2,6 +2,7 @@
 
 import Vegas.Pending.ReservedEpochProcessing
 import Vegas.Pending.ReservedEpochSlots
+import Interaction.ReactiveReceipts
 
 /-! # Delivery of every envelope at a reserved processing epoch -/
 

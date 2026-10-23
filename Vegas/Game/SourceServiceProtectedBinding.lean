@@ -2,7 +2,6 @@
 
 import Vegas.Game.SourceServiceAsyncTimeliness
 import Vegas.Pending.ReactiveBindingReceipts
-import Vegas.Pending.ReactiveBindingOmission
 
 /-! # Protected binding calls cannot become public omissions
 

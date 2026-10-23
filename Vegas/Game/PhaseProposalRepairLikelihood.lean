@@ -1,7 +1,9 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.PhaseProposalGeneratedPreparation
-import GameTheoryExtensions.Analysis.Protocol.ProjectedBeliefTransport
+import GameTheoryExtensions.Analysis.Protocol.ContinuationOwnPlay
+import GameTheoryExtensions.Analysis.Protocol.OwnPlayReach
+import Vegas.Game.PhaseProposalRepairChance
 
 /-! # Reach accounting for an actual designated-owner native repair -/
 

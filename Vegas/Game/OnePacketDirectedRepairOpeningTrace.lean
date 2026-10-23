@@ -2,6 +2,7 @@
 
 import Vegas.Game.OnePacketDirectedRepairResponderTrace
 import Vegas.Pending.ReactiveBindingGuardedStep
+import Vegas.Game.OnePacketDirectedRepairMenu
 
 /-! # Actual unchanged opening traces through directed binding repair
 

@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.PhaseExclusionRecord
-import Vegas.EventGraph.BarrierBlocks
 
 /-! # Owned receipt order inside actual commitment phases -/
 

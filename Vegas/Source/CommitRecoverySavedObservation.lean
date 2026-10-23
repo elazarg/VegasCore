@@ -1,7 +1,5 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Source.CommitRecoveryInformation
-import Vegas.Source.CommitRecoveryFrontier
 import Vegas.Source.CommitRecoveryRanks
 
 /-! # Recovering genuine saved source views from surviving observations -/

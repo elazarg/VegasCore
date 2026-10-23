@@ -1,10 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Source.ProtocolChoiceFiniteness
-import Vegas.Source.DisclosureSupport
-import Vegas.Game.SourceContinuation
 import Vegas.Game.SourceServiceStep
-import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Source choice support for the concrete full-source service
 

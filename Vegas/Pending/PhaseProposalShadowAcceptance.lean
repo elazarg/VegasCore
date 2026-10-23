@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.PhaseProposalShadowNormalization
-import Vegas.Pending.PhaseBindingCompletionMemory
 import Vegas.Pending.PhaseProposalSubmittedBindings
 
 /-! # Actual accepted bindings followed by general recovery normalization

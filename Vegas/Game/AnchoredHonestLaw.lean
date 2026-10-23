@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.AnchoredOpeningClients
-import Vegas.Game.OnePacketHonestForced
 import Vegas.Game.OnePacketOwnSubmissions
 
 /-! # Histories as-if-honest play reaches from a boundary

@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.SourceServiceDecodedDebt
-import Vegas.Game.ServiceInformation
 import Vegas.Compile.EventGraphParameterReadout
 import Vegas.Source.FailedBindingDeviation
 import Vegas.Source.Exclusion

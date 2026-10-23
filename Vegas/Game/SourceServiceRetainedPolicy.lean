@@ -1,9 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.SourceServiceRetainedSlots
-import Vegas.Compile.EventGraphObservationEncoding
-import Vegas.Source.ProtocolBehavioralPolicy
-import Vegas.Pending.ReactiveBoundedValues
 
 /-! # Prescribed policy support on retained service histories
 

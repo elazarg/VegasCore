@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.ReactiveBindingFrameOpening
-import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Response windows in the actual repaired implementation
 

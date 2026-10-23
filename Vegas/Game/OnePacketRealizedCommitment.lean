@@ -3,7 +3,6 @@
 import Vegas.Game.OnePacketSlotChoiceMasses
 import Vegas.Game.OnePacketContentSupport
 import Vegas.Game.OnePacketActorRecord
-import Vegas.Pending.ReactiveUnusableBinding
 
 /-! # Realized commitments with positive content
 

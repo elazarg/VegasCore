@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Compile.EventGraphCompiler
-import Vegas.Source.Semantics
 
 /-! # Local evaluation correctness for event-graph lowering
 

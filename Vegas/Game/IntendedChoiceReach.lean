@@ -1,6 +1,5 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.OnePacketLateDecomposition
 import Vegas.Game.IntendedCommitGain
 
 /-! # Source points reached by one legal intended commitment -/

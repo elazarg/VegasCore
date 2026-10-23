@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Source.CommitPrefixWord
-import Vegas.Source.CommitRecoveryBlockEmbedding
 
 /-! # Exact source points under commitment prefix concatenation -/
 

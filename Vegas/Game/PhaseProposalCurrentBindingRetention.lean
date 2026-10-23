@@ -1,14 +1,11 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.PhaseProposalObservableDebt
-import Vegas.Game.RecoveryCommitPrefixWitness
-import Vegas.Compile.EventSourceViewErasure
-import Vegas.Source.CommitRecoveryFailureCoverage
-import Vegas.Source.DebtObservation
 import Vegas.Game.PhaseProposalSourceWordReadout
 import Vegas.Compile.CommitPrefixCompletionSnoc
 import Vegas.Game.RecoveryFixedCommitSelector
-import Vegas.Game.RecoveryCommitChronology
+import Vegas.Source.CommitRecoveryAttemptDebt
+import Vegas.Source.CommitRecoveryAttemptSuccess
 
 /-! # Actual unresolved failed cells at surviving binding callbacks -/
 

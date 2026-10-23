@@ -1,12 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.PhaseSeedClosedBound
 import Vegas.Pending.PhaseSeedOperationalInput
-import Vegas.Pending.PhaseSeedFreshness
-import Vegas.Pending.PhaseSeedClockCharge
-import Vegas.Pending.PhaseLive
-import Vegas.Pending.PhaseSeedClockEffects
-import Interaction.ReactiveTrafficState
 
 /-! # Finite service receipts for actual all-event calendar rounds -/
 

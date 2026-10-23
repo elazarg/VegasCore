@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.OnePacketSwapFiberSum
-import Vegas.Game.OnePacketForcedBeliefs
 import GameTheoryExtensions.Math.Probability.NearDecorrelation
 
 /-! # Records and hidden points are decorrelated at an own turn

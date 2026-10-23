@@ -1,8 +1,10 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.OnePacketForced
-import Vegas.Source.DisclosureAliases
 import Vegas.Pending.ReactiveOnePacketMenu
+import Interaction.MessageNetworkIdentity
+import Interaction.ReactiveMessageIdentity
+import Vegas.Game.ServiceSettledEvidence
 
 /-! # The pending pool on forced one-packet histories
 

@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.OnePacketLateSuccessFree
+import Vegas.Game.AsyncDeviationForeign
 
 /-! # Unfailed completions without a completion point at a late binding
 

@@ -1,7 +1,5 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.OnePacketSwapFibers
-import Vegas.Game.SourceSwapAgreement
 import Vegas.Game.DecodedRevelations
 
 /-! # The swap between two source points at accepted handles

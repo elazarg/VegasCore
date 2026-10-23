@@ -1,17 +1,11 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.ServiceRoster
-import Vegas.Game.SourceServiceDisclosure
 import Vegas.Pending.ReactiveOpeningLikelihood
 import GameTheory.Math.Probability.ConditionalObservation
-import Vegas.Source.ObservationRecall
 import Vegas.Game.SourceServiceCheckpoint
 import Vegas.Game.ServiceObservation
-import Vegas.Pending.ReactiveBindingTranscript
 import GameTheory.Math.Probability.ExpectationConditioning
-import GameTheoryExtensions.Math.Probability.Support
-import GameTheoryExtensions.Math.Probability.Expectation
-import GameTheoryExtensions.Math.Probability.Uniform
+import Vegas.Pending.EventInitialObservation
 
 /-! # Source memory and actual service-channel factorization
 

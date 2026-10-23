@@ -2,8 +2,6 @@
 
 import Vegas.Source.ProposalRecoveryProjection
 import Vegas.Source.ProposalRecoveryLift
-import Vegas.Source.ProposalRecoveryFiniteness
-import Vegas.Source.CommitRecoveryValueTremble
 import GameTheory.Math.Probability.UniformTremble
 
 /-! # Externally chosen recovery flags and domain floors -/

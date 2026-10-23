@@ -2,7 +2,6 @@
 
 import Vegas.Game.ProposalRecoveryHonestPins
 import Vegas.Game.ProposalRecoveryRestriction
-import Vegas.Source.ProposalRecoveryOrdinaryCommit
 import GameTheory.Analysis.Protocol.RestrictionDomination
 import GameTheory.Analysis.Protocol.RestrictionBeliefs
 

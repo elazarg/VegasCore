@@ -1,8 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Source.IntendedPlay
 import Vegas.Source.CommitRecoveryBlockEmbedding
-import Vegas.Source.CellSwap
 
 /-! # Exact syntactic source suffixes and preserved entry cells -/
 

@@ -1,10 +1,5 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.RevealServicePrefix
-import Vegas.Pending.ReactiveOpeningSettlement
-import Vegas.Game.SourceStateKernel
-import Vegas.Game.SourceInformation
-import Vegas.Game.SourcePrefixKernel
 import Vegas.Game.RevealServicePayoffs
 import Vegas.Compile.EventGraphReadoutComplete
 

@@ -2,6 +2,8 @@
 
 import Vegas.Pending.ReservedEpochRequestBound
 import Vegas.Pending.ReservedEpochSampleProgress
+import Interaction.ReactivePolicyInvariant
+import Vegas.Pending.ReservedEpochFlatWork
 
 /-! # Every nonterminal interval consumes semantic work -/
 

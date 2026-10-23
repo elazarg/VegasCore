@@ -1,8 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.CompiledPhaseReadback
-import Vegas.Pending.PhaseRawCheckpoint
 import Vegas.Source.CommitPhaseAutomatic
+import Interaction.ReactiveRounds
 
 /-! # Typed source closure of actual physical commitment phases -/
 

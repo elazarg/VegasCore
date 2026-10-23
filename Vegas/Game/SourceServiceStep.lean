@@ -2,7 +2,6 @@
 
 import Vegas.Game.SourceServicePolicy
 import Vegas.Game.BindingRepairBlock
-import Vegas.Compile.EventGraphStep
 import Vegas.Source.DisclosureAliases
 
 /-! # Full-source steps in the actual native service

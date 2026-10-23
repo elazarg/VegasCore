@@ -1,6 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.ProposalRecoveryRawLimit
+import Vegas.Game.ProposalRecoveryVoluntaryFailurePayoff
+import Vegas.Source.ProposalRecoveryOrdinaryCommit
 
 /-! # Every legal commitment lottery at the common enriched source limit -/
 

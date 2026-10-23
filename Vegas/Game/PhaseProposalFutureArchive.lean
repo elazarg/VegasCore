@@ -1,8 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.PhaseProposalLabels
-import Vegas.Game.PhaseProposalDisclosure
-import Vegas.Game.PhaseProposalAddress
 import Vegas.Game.PhaseProposalArchiveBounds
 import Vegas.Game.PhaseProposalReplayArchive
 import Vegas.Source.CommitRecoveryCursor

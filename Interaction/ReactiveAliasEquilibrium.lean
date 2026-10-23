@@ -3,8 +3,6 @@
 import Interaction.ReactiveAliasBayes
 import Interaction.ReactiveAliasIncentives
 import GameTheory.Analysis.Protocol.Incentives
-import GameTheoryExtensions.Math.Probability.Expectation
-import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Sequential equilibrium under private response aliases
 

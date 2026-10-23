@@ -1,8 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.ReservedEpochOriginalWord
-import Vegas.Pending.PhaseReadyResolution
-import Interaction.ReactiveOwnerSelection
 
 /-! # Foreign original acceptance words survive another owner's current response -/
 

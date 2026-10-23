@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.PhaseProposalLostBinding
 import Vegas.Pending.PhaseAttemptReceiptSnapshot
+import Vegas.Pending.PhaseClearNativeProgress
 
 /-! # Unaccepted fields in the original primitive closing result
 

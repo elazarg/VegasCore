@@ -1,7 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.PhaseProposalBindingSettlement
-import Vegas.Pending.PhaseOwnCommitments
+import Vegas.Pending.ReactiveBindingFrameStep
+import Vegas.Pending.ReactiveServiceConditions
 
 /-! # Retained emission meanings across actual service operations -/
 

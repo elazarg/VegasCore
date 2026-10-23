@@ -4,8 +4,9 @@ import Vegas.Game.PhaseProposalPooledFloor
 import Vegas.Game.PhaseProposalOrdinaryRecorded
 import Vegas.Game.PhaseProposalBadMass
 import Vegas.Game.PhaseProposalGeneratedPreparation
-import Interaction.ReactiveMenuLikelihood
 import GameTheoryExtensions.Protocol.OwnPlayPrefix
+import GameTheoryExtensions.Analysis.Protocol.OwnPlayReach
+import Vegas.Game.PhaseProposalReferenceStrategy
 
 /-! # The actual designated owner's reference response-word factors -/
 

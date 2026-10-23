@@ -2,6 +2,7 @@
 
 import Vegas.Game.ProposalRecoveryPrescription
 import Vegas.Game.ProposalRecoveryBayesContinuation
+import Vegas.Source.ProposalRecoveryQueryAntichain
 
 /-! # Common component interventions are actual local source deviations -/
 

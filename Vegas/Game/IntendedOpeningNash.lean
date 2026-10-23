@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.AsyncOpeningDeviationBound
-import Vegas.Game.IntendedAsyncNash
 import Vegas.Game.IntendedOpeningExtension
 
 /-! # Approximate Nash equilibria of the intended game for opening clients

@@ -3,7 +3,6 @@
 import Vegas.Source.IntendedErasedRecall
 import Vegas.Game.CommitRecoverySpliceErasure
 import Vegas.Game.CommitRecoveryInformationEmbedding
-import Vegas.Source.CommitRecoveryNoMissRepresentative
 
 /-! # Honest information is retained by the normalized source pool key
 

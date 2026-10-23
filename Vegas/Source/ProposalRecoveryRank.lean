@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Source.ProposalRecoveryObservation
-import Vegas.Source.CommitRecoveryControl
 
 /-! # Source ranks of actual truthful proposals -/
 

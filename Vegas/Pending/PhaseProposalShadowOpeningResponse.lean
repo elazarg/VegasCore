@@ -2,7 +2,6 @@
 
 import Vegas.Pending.PhaseProposalShadowInertResponse
 import Vegas.Pending.PhaseProposalShadowOpening
-import Vegas.Pending.PhaseBindingOpeningRead
 
 /-! # Actual truthful opening responses under general binding repair -/
 

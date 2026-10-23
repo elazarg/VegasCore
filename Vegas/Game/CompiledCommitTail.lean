@@ -6,7 +6,6 @@ import Vegas.Compile.CompiledReadoutSuffix
 import Vegas.Compile.ProtocolViewSuffix
 import Vegas.Source.CommitRecoveryBlockEmbedding
 import Vegas.Source.CommitPhaseRegistry
-import Vegas.Source.CommitPhaseFailures
 
 /-! # Exact compiled suffixes following actual typed commitment attempts -/
 

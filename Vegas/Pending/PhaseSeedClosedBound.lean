@@ -2,7 +2,6 @@
 
 import Vegas.Pending.PhaseServiceProgress
 import Vegas.Pending.PhaseFrontier
-import Vegas.Pending.PhaseSeedScheduler
 
 /-! # Ready-time bounds retained by actual closed physical coordinates
 

@@ -1,9 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.ReactiveBindingSchedule
-import Vegas.Pending.ReactiveOpeningSettlement
-import Vegas.Pending.ReactiveRevealBlock
-import GameTheoryExtensions.Math.Probability.Support
+import Vegas.Pending.ReactiveContinuationObservation
 
 /-! # Opening windows after private binding histories
 

@@ -3,9 +3,6 @@
 import Vegas.Game.RecoveryCommitmentBeliefValue
 import Vegas.Game.RecoverySourceBeliefBounds
 import Vegas.Game.RecoveryIrregularBeliefBounds
-import Vegas.Game.RecoveryFirstActivationValue
-import Vegas.Game.RecoveryCompletionPotential
-import Vegas.Game.IntendedChoiceReach
 
 /-! # Uniform source incentive bounds for nonlate commitments -/
 

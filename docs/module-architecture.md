@@ -249,7 +249,6 @@ directory's aggregator imports every module in it.
 - [Accepted binding receipts](../Vegas/Pending/PhaseBindingAcceptedReceipt.lean)
 - [Phase Binding Admitted Include](../Vegas/Pending/PhaseBindingAdmittedInclude.lean)
 - [Phase Binding Checkpoint Submission](../Vegas/Pending/PhaseBindingCheckpointSubmission.lean)
-- [Phase Binding Clock Replay](../Vegas/Pending/PhaseBindingClockReplay.lean)
 - [Phase Binding Completion Memory](../Vegas/Pending/PhaseBindingCompletionMemory.lean)
 - [Phase Binding Count Transport](../Vegas/Pending/PhaseBindingCountTransport.lean)
 - [Phase Binding Foreign Memory](../Vegas/Pending/PhaseBindingForeignMemory.lean)

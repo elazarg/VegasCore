@@ -3,6 +3,7 @@
 import Vegas.Game.ConcurrentRawSequentialPreservation
 import Vegas.Examples.ReservedEpochCertifiedConcurrency
 import Vegas.Examples.CommitTimingInformationAudit
+import Interaction.ReactiveEvidence
 
 /-! # Nonvacuity of the concurrent reserved-service hypotheses
 

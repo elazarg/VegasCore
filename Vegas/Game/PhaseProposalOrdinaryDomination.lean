@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.PhaseProposalBaseDomination
-import Vegas.Game.PhaseProposalGenuineReference
 import Vegas.Game.ProposalRecoveryPools
 
 /-! # Ordinary response mass fixed before private preparation noise

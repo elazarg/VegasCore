@@ -3,8 +3,6 @@
 import GameTheory.Analysis.Protocol.SequentialPerturbation
 import GameTheoryExtensions.Analysis.Protocol.LocalizedEnforcement
 import GameTheoryExtensions.Analysis.ObservableEnforcement
-import GameTheoryExtensions.Math.Probability.Expectation
-import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Sequential equilibrium under a terminal audit
 

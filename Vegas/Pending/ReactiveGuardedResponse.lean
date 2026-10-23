@@ -1,6 +1,5 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.ReactiveGuardConformance
 import Vegas.Pending.ReactiveCompiledMenu
 import Vegas.Pending.ReactiveDisclosure
 

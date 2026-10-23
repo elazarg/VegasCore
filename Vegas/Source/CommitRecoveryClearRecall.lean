@@ -1,10 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Source.CommitRecoveryClearSuccessor
-import Vegas.Source.CommitRecoveryInformation
 import Vegas.Source.SetupObservationRecall
-import Vegas.Source.SetupProtocolRecall
-import Vegas.Source.CommitBlockRecovery
 
 /-! # Complete information along arbitrary clear source recovery histories -/
 

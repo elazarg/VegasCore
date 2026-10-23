@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Interaction.ReactiveMenuInvariant
-import Interaction.MessageNetworkInvariant
 import Interaction.ReactivePublication
 import Vegas.Pending.ReactiveFiniteResponses
 

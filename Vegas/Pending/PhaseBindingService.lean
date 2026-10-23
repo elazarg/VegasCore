@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.PhaseBindingAcceptance
+import Interaction.ReactiveMessageIdentity
 
 /-! # Actual counted binding service across phase retirement
 

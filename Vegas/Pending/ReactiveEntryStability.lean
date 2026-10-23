@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.ReactiveStateInvariant
-import Interaction.ReactiveServiceInvariant
 import Interaction.ReactiveRecallInvariant
 
 /-! # Recorded public views stay current until an event completes

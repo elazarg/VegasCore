@@ -1,6 +1,5 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.OnePacketDirectedRepairGuard
 import Vegas.Game.OnePacketOwnerSettled
 
 /-! # Accepted handles for completed bindings at debt-free forced inputs

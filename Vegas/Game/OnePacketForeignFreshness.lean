@@ -2,8 +2,6 @@
 
 import Vegas.Game.OnePacketRecallPrefix
 import Vegas.Game.OnePacketDirectedRepairPrefix
-import Vegas.Game.OnePacketNextEvent
-import Vegas.Game.OnePacketOwnSubmissions
 
 /-! # Unfinished foreign events have no earlier activation at an own source turn -/
 

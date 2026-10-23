@@ -3,6 +3,7 @@
 import Vegas.Pending.ReactiveBindingSubmittedInclusion
 import Vegas.Pending.ReactiveBindingRejectedInclusion
 import Vegas.Pending.ReactiveBindingFrameForeign
+import Vegas.Pending.ReactiveSignedCommitments
 
 /-! # Complete count-admitted opaque inclusion cases -/
 

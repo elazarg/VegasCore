@@ -2,8 +2,6 @@
 
 import Vegas.Game.PhaseCountServiceForeignWord
 import Vegas.Game.PhaseProposalLabelFrame
-import Vegas.Pending.PhaseAttemptControls
-import Interaction.ReactiveInvariantPrefix
 
 /-! # Earlier proposal buckets at one actual attempt namespace -/
 

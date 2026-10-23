@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.PhaseProposalShadowMask
-import Vegas.Pending.PhaseCompletion
 import Vegas.Pending.PhaseResolution
 
 /-! # Logical shadows through actual automatic recovery

@@ -1,9 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Compile.CommitPrefixReadStability
-import Vegas.Source.CommitRecoveryInstructions
-import Vegas.EventGraph.SchedulerErasure
 import Vegas.EventGraph.SequentialLaw
+import Vegas.Source.CommitPrefixWord
 
 /-! # The current binding word as a readout of the emission frontier
 

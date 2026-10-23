@@ -2,10 +2,10 @@
 
 import Vegas.Compile.EventSourceView
 import Vegas.Game.ServiceInformation
+import Vegas.Compile.EventGraphBacktranslation
 import Vegas.Compile.EventGraphObservationEncoding
 import Vegas.Game.CommitRecoveryRestriction
 import Vegas.Pending.PhasePreparedOnePacket
-import Vegas.Compile.EventGraphBacktranslation
 
 /-! # Actual phased binding components of source recovery assessments
 

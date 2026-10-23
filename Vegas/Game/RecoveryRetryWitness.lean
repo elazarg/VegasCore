@@ -2,7 +2,6 @@
 
 import Vegas.Game.PhaseProposalTransition
 import Vegas.Game.PhaseProposalExecution
-import Vegas.Game.RecoveryRetryPhaseArchive
 
 /-! # Full source witnesses at the selected actual retry checkpoint -/
 

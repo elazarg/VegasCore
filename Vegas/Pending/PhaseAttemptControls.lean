@@ -1,6 +1,5 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.PhaseRetiredCompletion
 import Vegas.Pending.PhaseResolution
 
 /-! # Literal control records inside one physical phase namespace -/

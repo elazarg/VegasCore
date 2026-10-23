@@ -1,9 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.EventGraph.SchedulerMixture
-import Vegas.EventGraph.SequentialLaw
 import GameTheory.Core.MixtureSimulation
-import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Strategic equivalence of canonical and publicly scheduled EventGraphs -/
 

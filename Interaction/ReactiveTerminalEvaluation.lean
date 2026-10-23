@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Interaction.ReactiveResponseEvaluation
-import Interaction.ReactiveRoundReachability
 import GameTheoryExtensions.Protocol.ContinuationHorizon
 
 /-! # Terminal behavioral histories and the original scheduler-round evaluator -/

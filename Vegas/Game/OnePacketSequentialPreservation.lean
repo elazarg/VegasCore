@@ -2,8 +2,6 @@
 
 import Vegas.Game.OnePacketExtension
 import Vegas.Game.OnePacketLawApproximation
-import Vegas.Game.OnePacketExclusionPayoff
-import GameTheoryExtensions.Analysis.Protocol.CopiedSiteLimit
 import GameTheoryExtensions.Analysis.Protocol.FreeKeyedPools
 import Vegas.Game.OnePacketDelivery
 import Vegas.Game.OnePacketIntendedProjection

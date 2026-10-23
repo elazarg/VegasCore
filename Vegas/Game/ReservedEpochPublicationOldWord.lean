@@ -2,7 +2,7 @@
 
 import Vegas.Game.ReservedEpochPublicationEpisode
 import Vegas.Pending.PhaseReadyPacketStatus
-import Vegas.Pending.PhaseBindingOpeningRead
+import Vegas.Game.ReservedEpochStoppedOpening
 
 /-! # Actual old ready opening episodes and their finite stopped word -/
 

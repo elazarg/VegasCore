@@ -2,7 +2,6 @@
 
 import Vegas.Game.PhaseProposalReplay
 import Vegas.Source.ProposalRecoveryLift
-import Vegas.Source.ProposalRecoveryChronology
 
 /-! # Replay labels determined by the actual canonical proposal archive -/
 

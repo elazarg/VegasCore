@@ -7,9 +7,7 @@ import Interaction.ReactiveRecordedResponseAfter
 import Vegas.Pending.PhaseRecordedCountedRequest
 import Vegas.Pending.PhaseBindingFreshness
 import Vegas.Pending.PhaseAttemptCheckpoint
-import Interaction.ReactiveProvenance
 import Vegas.Pending.PhaseReadyRequests
-import Vegas.Pending.PhaseReadiness
 
 /-! # The first actual remembered response at a physical request -/
 

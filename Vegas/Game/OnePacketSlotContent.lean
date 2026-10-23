@@ -1,9 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.OnePacketRealizedCommitment
-import Vegas.Game.OnePacketSlotMasses
 import Vegas.Game.OnePacketLateMasses
-import Vegas.Game.OnePacketBindingSite
 
 /-! # The content of a slot-tier response
 

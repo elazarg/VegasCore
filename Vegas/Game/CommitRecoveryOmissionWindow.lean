@@ -1,6 +1,5 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Source.CommitRecoveryAttemptExit
 import Vegas.Game.CommitRecoveryNoMissContinuation
 
 /-! # Original commitment-window laws determined by actual omission kernels

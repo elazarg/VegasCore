@@ -2,6 +2,7 @@
 
 import Vegas.Pending.PhaseSeedClosedBound
 import Mathlib.Data.Fintype.Card
+import Vegas.Pending.PhaseSeedScheduler
 
 /-! # Finite physical-coordinate tickets for clock advancement
 

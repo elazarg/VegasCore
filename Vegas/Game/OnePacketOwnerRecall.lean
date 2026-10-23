@@ -1,9 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.OnePacketOwnerInfo
-import Vegas.Game.OnePacketOwnerGuard
-import Vegas.Game.OnePacketCanonicalPermits
-import Vegas.Game.OnePacketFreshSlots
 
 /-! # What a player's recall records along one-packet histories
 

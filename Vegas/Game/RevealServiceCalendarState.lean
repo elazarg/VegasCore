@@ -2,7 +2,6 @@
 
 import Vegas.Game.ServiceObservation
 import Vegas.Pending.RevealTranscript
-import Vegas.Pending.EventSequentialTiming
 
 /-! # Public calendar metadata at revelation checkpoints
 

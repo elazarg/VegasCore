@@ -1,9 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.OnePacketExclusionPayoff
-import Vegas.Game.IntendedEffectiveOpening
-import Vegas.Source.IntendedDeparture
-import Vegas.Game.ServiceOpeningHonestLaw
 
 /-! # Decoded properties along rounds
 

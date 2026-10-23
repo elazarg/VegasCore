@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.ProposalRecoveryRawLimit
-import Vegas.Game.ProposalRecoveryGains
 
 /-! # Actual enriched action vectors at ordinary copies of the common limit -/
 

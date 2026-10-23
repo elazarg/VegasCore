@@ -3,7 +3,6 @@
 import Vegas.Game.PhaseProposalCoupledQuery
 import Vegas.Game.PhaseProposalUnflagged
 import Vegas.EventGraph.RevealRelaxedScheduling
-import Vegas.EventGraph.ConfigRestriction
 
 /-! # A frozen-entry graph continuation for one ordinary binding interval
 

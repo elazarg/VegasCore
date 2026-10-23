@@ -2,6 +2,7 @@
 
 import Vegas.Game.ProposalRecoveryOmissionKernel
 import Vegas.Game.ProposalRecoveryFailedWindow
+import Vegas.Source.ProposalRecoveryQueryAntichain
 
 /-! # Actual local interventions inside a failed enriched commitment attempt -/
 

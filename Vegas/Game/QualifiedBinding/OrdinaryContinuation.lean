@@ -2,29 +2,15 @@
 
 import Vegas.Game.PhaseProposalCurrentBindingGain
 import GameTheoryExtensions.Math.Probability.NestedPosterior
-import Vegas.Pending.PhaseAttemptReceiptSnapshot
-import Vegas.Pending.PhaseClearSemanticProgress
-import Vegas.Game.PhaseProposalOrdinaryBindingCheckpoint
-import Vegas.Game.ReservedEpochStoppedFootprint
-import Vegas.Game.ProposalRecoveryFutureFlags
-import Vegas.Source.ProposalRecoveryPreparationRepairMoves
-import Interaction.ReactiveLocalContinuation
-import GameTheoryExtensions.Analysis.Protocol.StoppedTerminalBound
 import GameTheory.Math.Probability.FiniteSampling
-import Vegas.Game.ProposalRecoveryPublicClassConstancy
-import Vegas.Game.ProposalRecoveryWordReadback
 import Vegas.Game.PhaseProposalNativeSourceInformation
 import Vegas.Game.ProposalRecoveryPools
-import Vegas.Game.PhaseProposalAttemptArchive
 import GameTheory.Protocol.Predraw
-import Interaction.ReactiveAnchoredStopped
 import Interaction.ReactiveSchedulerStoppedSeed
-import Interaction.ReactiveSchedulerFinishSeed
-import Interaction.ReactiveRawRoundTrace
-import Interaction.ReactiveTerminalEvaluation
-import Vegas.Game.ConcurrentRawSequentialPreservation
 import Vegas.Pending.ReservedEpochService
-import GameTheoryExtensions.Math.Probability.PresentConditional
+import Vegas.Pending.PhaseBindingMemoryCallback
+import Vegas.Source.CommitPrefixProduct
+import Vegas.Game.AsyncDeviationForeign
 
 /-! # Qualified binding payoffs at the original native information
 

@@ -3,9 +3,6 @@
 import Vegas.Source.DisclosureNormalization
 import GameTheory.Math.Probability.ConditionalObservation
 import GameTheory.Math.Probability.ExpectationConditioning
-import GameTheoryExtensions.Math.Probability.Expectation
-import GameTheoryExtensions.Math.Probability.Uniform
-import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Behavioral realization of normalized disclosure intentions
 

@@ -1,6 +1,5 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.EventPrivateObservation
 import Vegas.Pending.EventHandleObservation
 
 /-! # Deadline expiry introduces no private-data-dependent observation -/

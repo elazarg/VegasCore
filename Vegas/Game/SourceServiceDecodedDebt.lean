@@ -1,8 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.SourceServiceReachedDecoding
-import Vegas.Game.IntendedPreservation
-import GameTheoryExtensions.Protocol.ContinuationHorizon
 
 /-! # Step-closed properties read through the native decoding
 

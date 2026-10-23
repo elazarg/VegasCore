@@ -1,13 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Source.CommitRecoveryOwnHistory
-import Vegas.Source.CommitRecoveryRanks
-import Vegas.Source.CommitRecoveryClear
 import Vegas.Source.CommitRecoveryPublicReadback
-import Vegas.Source.CommitRecoveryWordObservation
 import Vegas.Source.CommitRecoveryPublicDeterminacy
 import Vegas.Source.CommitRecoveryWordMass
-import Vegas.Game.CommitRecoveryNormalizedFlagPlan
 
 /-! # Global original source records under private-word substitution
 

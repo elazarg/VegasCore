@@ -1,11 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.AnchoredFirstTurnLaw
-import Interaction.ReactiveAnchoredTrace
-import Vegas.Game.OnePacketHonestLaw
-import Vegas.Game.IntendedOpeningContinuation
-import Vegas.Game.OnePacketHonestDecision
-import Vegas.Game.OnePacketLawApproximation
 
 /-! # Reached boundaries
 

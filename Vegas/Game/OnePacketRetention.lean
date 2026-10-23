@@ -2,7 +2,6 @@
 
 import Vegas.Game.OnePacketCanonicalAcceptance
 import Vegas.Game.OnePacketFreshSlots
-import Vegas.Pending.ReactiveFiniteCompiler
 import Mathlib.Combinatorics.Enumerative.DoubleCounting
 
 /-! # Retention of first canonical packets from bounds adequacy

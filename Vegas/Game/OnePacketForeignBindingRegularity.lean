@@ -3,6 +3,7 @@
 import Vegas.Game.OnePacketCounterpartImage
 import Vegas.Game.OnePacketOwnerPriorSite
 import Vegas.Game.OnePacketSplicePoint
+import Vegas.Game.AsyncDeviationForeign
 
 /-! # Regular counterparts from successful foreign binding fields
 

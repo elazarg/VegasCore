@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Source.ValueBindingContinuation
-import Vegas.Source.Protocol
 
 /-! # Full foreign information across repaired source commitments
 

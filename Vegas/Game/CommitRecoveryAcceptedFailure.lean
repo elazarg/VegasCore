@@ -1,11 +1,9 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.CommitRecoveryOmissionKernel
-import Vegas.Game.CommitRecoveryCommitFailure
-import Vegas.Game.CommitRecoveryVoluntaryFailurePayoff
-import Vegas.Game.CommitRecoveryReference
 import GameTheory.Math.Probability.ExpectationBind
 import GameTheory.Math.Probability.Joint
+import Interaction.ReactiveProtocol
 
 /-! # Accepted failure compared with actual domain choices
 

@@ -1,8 +1,9 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.CommitAttemptRecall
-import Vegas.Pending.PhaseHistoryCheckpoint
 import Vegas.Pending.PhaseFailureCoverage
+import Vegas.EventGraph.SequentialLaw
+import Vegas.Pending.RecordedBindingReadback
 
 /-! # Completed binding phases retain their exact source-ranked own actions -/
 

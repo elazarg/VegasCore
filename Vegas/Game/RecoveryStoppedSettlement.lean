@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.RecoveryProtectedCalls
-import Vegas.Game.OnePacketCanonicalAcceptance
 import Vegas.Game.OnePacketFirstActivation
 import Vegas.Pending.ExclusionStoppedBoundary
 

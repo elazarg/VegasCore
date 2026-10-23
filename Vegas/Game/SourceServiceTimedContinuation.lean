@@ -1,6 +1,5 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.SourceServicePrefixFactorization
 import Vegas.Game.SourceServiceLaw
 
 /-! # Exact timed continuations at supported source boundaries

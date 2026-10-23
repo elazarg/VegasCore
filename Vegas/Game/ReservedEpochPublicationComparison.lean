@@ -2,21 +2,19 @@
 
 import Vegas.Game.ReservedEpochPublicationBoundary
 import Vegas.Game.ReservedEpochPublicationReadCone
-import Vegas.Game.RecoveryRevealCheckpoint
 import Vegas.Game.CompiledRevealBindingRow
-import Vegas.Source.CommitRecoveryAttemptReadout
 import Vegas.Game.PhaseProposalOrdinaryBindingCheckpoint
-import Vegas.Pending.PhaseFailureOrderHistory
-import Vegas.Game.PhaseProposalLabels
 import Vegas.Source.CommitRecoveryNonCommitJoint
 import Vegas.Source.CommitRecoveryNonCommitValues
-import Vegas.Game.PhaseProposalActor
-import Vegas.Game.PhaseProposalLabelFrame
 import Vegas.Game.PhaseProposalAttemptArchive
-import Vegas.Game.PhaseProposalArchiveBounds
 import Vegas.Pending.PhaseCountedOpeningSubmission
-import Interaction.ReactiveInvariantPrefix
-import Vegas.Pending.PhaseAttemptControls
+import Vegas.EventGraph.PrivateInputs
+import Vegas.Game.ReservedEpochPublicationEmission
+import Vegas.Game.ReservedEpochPublicationEpisode
+import Vegas.Game.ReservedEpochPublicationOldWord
+import Vegas.Game.ReservedEpochPublicationSourceStep
+import Vegas.Game.ReservedEpochPublicationWord
+import Vegas.Pending.PhaseReadyPacketStatus
 
 /-! # Actual paired publication records at one saved source checkpoint -/
 

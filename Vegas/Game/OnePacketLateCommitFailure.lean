@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.OnePacketLateCertificate
+import Vegas.Game.AsyncDeviationForeign
 
 /-! # Failure after a late commitment
 

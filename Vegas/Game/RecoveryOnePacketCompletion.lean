@@ -1,9 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.RecoveryOnePacketComponents
-import Vegas.Game.RecoveryExclusionPayoff
 import Vegas.Game.RecoveryPublicCompletion
-import GameTheoryExtensions.Analysis.Protocol.ComponentCompletion
 
 /-! # A common consistent completion of recovery operational components
 

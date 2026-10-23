@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.OnePacketCompletedBindings
-import Vegas.Game.OnePacketDirectedRepairPrefix
 
 /-! # Accepted handles are fixed after completion
 

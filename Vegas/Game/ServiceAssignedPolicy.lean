@@ -2,6 +2,7 @@
 
 import Vegas.Game.ServiceDecisionPhase
 import Vegas.Game.SourceServiceFirstTurnBinding
+import Interaction.ReactiveMixtureRounds
 
 /-! # First-turn clients with decisions drawn in advance
 

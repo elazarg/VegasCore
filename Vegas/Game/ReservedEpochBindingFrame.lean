@@ -2,7 +2,6 @@
 
 import Vegas.Game.ReservedEpochBindingReadiness
 import Vegas.Pending.EventValueSwap
-import Vegas.Pending.ReactiveEventStability
 
 /-! # Native owner frames for matching opaque commitment batches -/
 

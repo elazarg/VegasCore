@@ -2,7 +2,6 @@
 
 import Vegas.Pending.ExclusionPublicRecord
 import Vegas.Pending.ReactiveAcceptedOutput
-import Vegas.Pending.EventBindingInvariant
 
 /-! # Successful graph outputs exclude public failure evidence -/
 

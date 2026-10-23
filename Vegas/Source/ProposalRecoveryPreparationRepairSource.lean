@@ -2,6 +2,7 @@
 
 import Vegas.Source.ProposalRecoveryPreparationRepairTransition
 import Vegas.Source.ProposalRecoveryPreparationRepairLabels
+import Vegas.Source.ProposalRecoveryWordLift
 
 /-! # Selective partners in the initialized proposal-labeled source protocol -/
 

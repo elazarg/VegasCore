@@ -3,6 +3,9 @@
 import Vegas.Game.ProposalRecoveryHiddenDebt
 import Vegas.Game.ExclusionMoveExtension
 import Vegas.Source.ProposalRecoveryFlags
+import Vegas.Game.CommitRecoveryPayoff
+import Vegas.Game.ProposalRecoveryPayoff
+import Vegas.Source.CommitRecoveryFailureCoverage
 
 /-! # First extra intended-site choices secure the actual enriched recovery floor -/
 

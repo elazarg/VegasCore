@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.RecoveryComparisonSite
 import Vegas.Game.RecoveryNativePrefixBounds
+import Vegas.Game.OnePacketLateCommitBlind
 
 /-! # Source replay posterior bounds for the common recovery assessment -/
 

@@ -2,7 +2,6 @@
 
 import Vegas.Game.PhaseProposalEmissionRecords
 import Vegas.Game.PhaseProposalBindingFrontierReady
-import Vegas.Pending.PhaseBindingMenuShape
 
 /-! # Actual counted binding responses extend the same emitted assignments -/
 

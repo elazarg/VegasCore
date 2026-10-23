@@ -1,6 +1,5 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.ExclusionBoundedBelief
 import Vegas.Pending.ExclusionBoundedHistory
 
 /-! # Complete finite information histories before public exclusion -/

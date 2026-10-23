@@ -1,8 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.ReactiveFiniteResponses
-import Vegas.Pending.ReactivePolicy
-import Interaction.ReactiveMenuRestriction
 
 /-! # Covering initialized commitment values in finite response bounds
 

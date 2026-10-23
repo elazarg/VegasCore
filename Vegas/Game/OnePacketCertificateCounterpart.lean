@@ -1,10 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.OnePacketResponseBound
-import Vegas.Game.OnePacketStepPositive
 import Vegas.Game.OnePacketInitialFloor
-import Vegas.Game.OnePacketCounterpartDomination
-import Vegas.Game.OnePacketCounterpartRatio
 
 /-! # The comparison factor of honest counterparts
 

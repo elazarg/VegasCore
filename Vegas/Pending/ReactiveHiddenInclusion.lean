@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.ReactiveHiddenResponse
-import Vegas.Pending.EventHandleObservation
 import Vegas.Pending.EventPublicState
 
 /-! # Inclusion steps that preserve a private binding repair

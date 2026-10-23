@@ -1,6 +1,5 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.OnePacketForcedPrefix
 import Vegas.Game.OnePacketActorRecord
 
 /-! # Silence of other players in forced states of an observer

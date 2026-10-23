@@ -1,9 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.SourceServiceRetainedPolicy
 import Vegas.Game.SourceServiceBindingMiss
 import Vegas.Game.SourceServiceFirstTurnRisk
-import Vegas.Game.SourceServiceCanonicalSerial
 
 /-! # Local risk preservation for immediate continuation
 

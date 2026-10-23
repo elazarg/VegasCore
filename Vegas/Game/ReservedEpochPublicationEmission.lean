@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.ReservedEpochPublicationOldWord
-import Vegas.Pending.PhaseRecordedCountedRequest
 import Interaction.ReactiveRoundTracePrefix
 
 /-! # Actual proposal suppression after the first old expiry -/

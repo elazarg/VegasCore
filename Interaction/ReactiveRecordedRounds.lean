@@ -1,6 +1,5 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Interaction.ReactiveStopping
 import Interaction.ReactiveSchedulerTranscript
 import Interaction.ReactiveServiceRounds
 import Interaction.ReactiveResponseAccounting

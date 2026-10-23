@@ -2,6 +2,7 @@
 
 import Vegas.Game.ProposalRecoveryOmissionWindow
 import Vegas.Game.ProposalRecoveryResetContinuation
+import Vegas.Game.CommitRecoveryOmissionWindow
 
 /-! # Failed-window values depend only on actual omission words -/
 

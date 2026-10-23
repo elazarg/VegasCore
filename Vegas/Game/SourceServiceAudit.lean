@@ -1,8 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.SourceServiceSettledSound
-import Vegas.Game.SourceServiceLaw
-import Vegas.Pending.ReactiveServiceAudit
 import GameTheory.Analysis.Protocol.CounterfactualDecomposition
 
 /-! # Actual settlement on full-source compiled executions

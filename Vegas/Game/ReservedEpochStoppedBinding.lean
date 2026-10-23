@@ -1,9 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.ReservedEpochUnflaggedExpiry
-import Vegas.Pending.PhaseExclusionOrigin
-import Interaction.ReactiveAnchoredSupport
-import Interaction.ReactiveResponseEvaluation
 import Interaction.ReactiveEnvironmentMass
 import GameTheoryExtensions.Analysis.Protocol.StoppedHistoryInvariant
 

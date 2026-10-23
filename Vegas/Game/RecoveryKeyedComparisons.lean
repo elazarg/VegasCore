@@ -4,7 +4,6 @@ import Vegas.Game.RecoveryPooledMemberGains
 import Vegas.Game.RecoveryKeyedCommitmentComparisons
 import Vegas.Game.RecoveryLatePureChoices
 import Vegas.Game.RecoveryUnintendedValue
-import Vegas.Game.RecoveryIrregularBeliefBounds
 import Vegas.Game.RecoveryNonLateChoices
 
 

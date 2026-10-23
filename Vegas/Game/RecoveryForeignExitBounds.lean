@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.RecoveryIrregularBeliefBounds
-import Vegas.Game.RecoveryContinuationComparison
 import Vegas.Game.RecoveryBeliefContinuation
 
 /-! # Uniform foreign-exit bounds under the actual recovery posterior -/

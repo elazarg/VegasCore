@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Interaction.ReactiveHistory
-import Interaction.MessageNetworkInvariant
 import GameTheory.Protocol.StateKernel
 
 /-! # Settlement evidence from the public traffic history

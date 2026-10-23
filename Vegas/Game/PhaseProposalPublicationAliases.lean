@@ -3,8 +3,9 @@
 import Vegas.Game.PhaseProposalUnflagged
 import Vegas.Game.PhaseExclusionPayoff
 import Vegas.Game.PhaseCountServiceAliases
-import Vegas.Pending.PhaseOpeningMenuShape
 import Interaction.ReactiveResponseEvaluation
+import Interaction.ReactiveAliasLaw
+import Vegas.Pending.PhaseResponseNormalization
 
 /-! # Literal opening aliases and their actual physical continuations -/
 

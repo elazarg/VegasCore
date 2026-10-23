@@ -1,9 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.OnePacketLateDecomposition
-import Vegas.Game.OnePacketNextEvent
-import Vegas.Game.OnePacketCompletionLaw
-import Vegas.Game.OnePacketLateCompletion
 
 /-! # Play until a stopping set stays in the start's cone
 

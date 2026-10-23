@@ -1,7 +1,11 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.RecoveryCommitChronology
-import Vegas.Source.CommitRecoveryBlockPath
+import Vegas.Game.RecoverySurvivingBindingSource
+import Vegas.Game.RevealService
+import Vegas.Source.CommitRecoveryCommitUnique
+import Vegas.Source.CommitRecoveryCommitWindow
+import Interaction.ReactiveRounds
 
 /-! # Exact control of the genuinely chosen decoded commitment close -/
 

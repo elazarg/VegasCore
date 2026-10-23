@@ -1,6 +1,5 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.OnePacketProjectedDecision
 import Vegas.Game.SourceServiceFailureReadout
 import Vegas.Game.IntendedOpeningContinuation
 import Vegas.Game.OnePacketFirstActivationCompletion

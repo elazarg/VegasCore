@@ -3,6 +3,7 @@
 import Vegas.Source.CommitRecoverySavedObservation
 import Vegas.Source.CommitRecoveryOwnHistory
 import GameTheoryExtensions.Protocol.TracePrefix
+import Vegas.Source.CommitRecoveryFrontier
 
 /-! # Saved source frontiers never move backwards along surviving play -/
 

@@ -1,13 +1,12 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.RevealServiceCalendarState
-import Vegas.Game.SourceServiceMenu
-import Vegas.Game.ServiceRoster
 import Interaction.ReactiveSubmissionSerial
-import Vegas.Pending.ReactiveAssociationEvidence
-import Vegas.Pending.ReactiveServiceOpportunity
 import Vegas.Game.SourceServiceCheckpoint
 import Vegas.Pending.ReactiveBindingTranscript
+import Interaction.MessageLedgerCount
+import Interaction.MessageNetworkCounters
+import Interaction.ReactiveMessageReadout
 
 /-! # Operational boundaries for the complete source syntax
 

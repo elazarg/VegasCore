@@ -1,8 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.PhaseProposalShadowNormalization
-import Vegas.Pending.PhaseBindingPreparationMemory
-import Vegas.Pending.PhaseBindingOpaqueStep
 import Vegas.Pending.PhaseResponseNormalization
 
 /-! # Raw preparation changes preserving the entire external input prefix

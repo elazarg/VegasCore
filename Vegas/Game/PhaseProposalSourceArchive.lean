@@ -1,9 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.PhaseProposalObservation
-import Vegas.Pending.PhaseCountUniqueness
-import Vegas.Pending.PhaseCountMenu
-import Vegas.Pending.ReactiveCountedSurvivor
 import Vegas.Source.ProposalRecoveryObservation
 
 /-! # Typed source proposals computed from physical submitted openings

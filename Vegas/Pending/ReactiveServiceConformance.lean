@@ -2,10 +2,6 @@
 
 import Vegas.Pending.ReactiveGuardConformance
 import Vegas.Pending.ReactiveBindingAllocation
-import Vegas.Pending.ReactiveBindingOmission
-import Vegas.Pending.ReactiveRevealBlock
-import Vegas.Pending.ReactiveCompiledMenu
-import Interaction.ReactiveSubmissionSerial
 
 /-! # Public conformance for binding and guarded disclosure phases
 

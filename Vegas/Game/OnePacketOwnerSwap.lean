@@ -1,6 +1,5 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.OnePacketSwapInfo
 import Vegas.Game.OnePacketSwapExchange
 
 /-! # The swap between two views of one owner

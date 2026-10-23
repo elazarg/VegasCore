@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.RecoverySourceCheckpoint
-import Vegas.Game.IntendedPreservation
 
 /-! # The actual initialized dispatcher has its single-draw source checkpoint -/
 

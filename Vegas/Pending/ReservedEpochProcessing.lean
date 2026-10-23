@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.ReservedEpochScheduler
-import Interaction.ReactiveReceipts
 
 /-! # Physical packet processing at a reserved epoch
 

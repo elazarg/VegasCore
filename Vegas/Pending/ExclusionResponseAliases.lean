@@ -1,6 +1,5 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Interaction.ReactiveNormalRecall
 import Vegas.Pending.ExclusionCountMenu
 
 /-! # Recovery menus ignore ineffective private response distinctions

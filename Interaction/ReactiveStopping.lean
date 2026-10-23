@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Interaction.ReactiveRoundTrace
-import Interaction.ReactiveRoundsFiniteness
 
 /-! # Scheduler rounds stopped at a predicate
 

@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Interaction.ReactiveProtocol
-import GameTheoryExtensions.Math.Probability.Support
 
 /-! # All information-local response policies
 

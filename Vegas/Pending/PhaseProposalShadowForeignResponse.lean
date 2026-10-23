@@ -3,6 +3,8 @@
 import Vegas.Pending.PhaseProposalShadowNormalization
 import Vegas.Pending.PhaseBindingForeignSubmission
 import Interaction.ReactiveMessageReadout
+import Vegas.Pending.PhaseCountProjection
+import Vegas.Pending.PhaseCountVerdict
 
 /-! # Unchanged other-owner responses under general recovery shadows
 

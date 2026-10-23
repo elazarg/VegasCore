@@ -2,9 +2,11 @@
 
 import Vegas.Pending.PhaseCompletedBindingMeaning
 import Vegas.Pending.PhaseRecordedBindingMaterial
-import Vegas.Pending.PhaseBindingFreshness
 import Vegas.Pending.PhaseAcceptedOrder
 import Vegas.Pending.PhaseStoredCheckpoint
+import Vegas.EventGraph.CompletedOutputAgreement
+import Vegas.Pending.CompletedBindingReadback
+import Vegas.Pending.ReactiveBindingFrameStep
 
 /-! # Physical current binding fields retain the original emitted material -/
 

@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.QualifiedBinding.OrdinaryContinuation
+import Vegas.Pending.PhaseArchiveOrder
 
 /-! # Literal binding origins and assigned native reads -/
 

@@ -2,10 +2,7 @@
 
 import Vegas.Game.PhaseProposalCanonicalSourceKernel
 import Vegas.Source.CommitRecoveryAttemptExtraction
-import Vegas.Source.CommitRecoveryClear
 import Vegas.Source.ProposalRecoveryOrdinaryCommit
-import Vegas.Compile.EventGraphState
-import Vegas.Compile.CommitPrefixReadStability
 
 /-! # The ordinary source commitment telescope and its frozen graph potential -/
 

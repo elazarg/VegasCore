@@ -1,8 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.ProposalRecoveryInformationReadback
-import Vegas.Game.ProposalRecoveryArchivePublicHistory
-import Vegas.Source.ProposalRecoveryWordSplice
 
 /-! # Proposal disclosure under the original owner-coordinate history exchange -/
 

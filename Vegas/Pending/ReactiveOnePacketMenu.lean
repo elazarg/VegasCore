@@ -2,9 +2,6 @@
 
 import Vegas.Pending.ReactiveCountAudit
 import Vegas.Pending.ReactiveRiskMenu
-import Vegas.Pending.EvidenceNormalization
-import Interaction.ReactiveMenuInvariant
-import Interaction.ReactiveMenuRestriction
 
 /-! # The one-packet menu
 

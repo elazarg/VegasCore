@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.EventBindingInvariant
-import Vegas.EventGraph.PrivateInputs
 
 /-! # Private inputs have no commitment representation
 

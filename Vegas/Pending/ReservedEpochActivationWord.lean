@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.ReservedEpochActiveSlot
-import Interaction.ReactiveResponseAccounting
 
 /-! # Exogenous owner response ordinals in actual reserved-service histories -/
 

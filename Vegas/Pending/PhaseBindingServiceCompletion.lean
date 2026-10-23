@@ -1,8 +1,9 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.PhasePrivateService
-import Vegas.Pending.PhaseServiceContract
 import Interaction.ReactiveServiceRounds
+import Vegas.Pending.PhaseNamespace
+import Vegas.Pending.ReactiveBindingFrameStep
 
 /-! # Native service success derived from the runtime completion contract -/
 

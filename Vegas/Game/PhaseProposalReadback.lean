@@ -3,7 +3,6 @@
 import Vegas.Compile.EventGraphEvaluation
 import Vegas.Pending.EventApplication
 import Vegas.Source.ProposalRecoveryObservation
-import Vegas.Source.ProtocolSuffix
 import Vegas.Source.CommitRecoveryNoMissInformation
 
 /-! # Native binding readback at source-ranked proposal steps -/

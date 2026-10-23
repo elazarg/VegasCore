@@ -2,6 +2,7 @@
 
 import Vegas.Game.ProposalRecoveryPreparationDomination
 import Vegas.Game.ProposalRecoveryPreparationSupportProfile
+import Vegas.Source.ProposalRecoveryFiniteness
 
 /-! # A fixed source response floor before bad noise and pooled optimization -/
 

@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.ReactiveOpeningConformance
-import Vegas.EventGraph.Validation
 
 /-! # Public guard checks for transmitted openings
 

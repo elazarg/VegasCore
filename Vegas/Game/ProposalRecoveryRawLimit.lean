@@ -1,8 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.ProposalRecoveryAcceptedFailure
-import Vegas.Game.ProposalRecoveryVoluntaryFailurePayoff
-import Vegas.Source.ProposalRecoveryOrdinaryCommit
 import GameTheory.Analysis.Protocol.SequentialLimits
 
 /-! # Actual accepted-failure comparisons at the same enriched source limit -/

@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.PhaseProposalTransition
-import Vegas.Game.RecoveryPublicPhaseArchive
 
 /-! # Full source witnesses at selected drained phase checkpoints -/
 

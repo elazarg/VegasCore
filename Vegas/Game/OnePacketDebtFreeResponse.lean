@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.OnePacketPrescribedSites
+import Vegas.Game.OnePacketOwnDisclosure
 
 /-! # Genuine debt-free main responses transmit successful canonical calls -/
 

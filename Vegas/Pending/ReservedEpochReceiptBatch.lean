@@ -3,7 +3,7 @@
 import Vegas.Pending.ReservedEpochEmptyProcessing
 import Vegas.Pending.ReservedEpochTraceDelivery
 import Interaction.ReactiveReceiptIdentity
-import Interaction.ReactivePublication
+import Vegas.Pending.ReservedEpochPendingBound
 
 /-! # Every previously submitted raw envelope has a receipt after a full epoch -/
 

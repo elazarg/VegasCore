@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.OnePacketDirectedRepairResponse
-import Vegas.Game.OnePacketDirectedRepairTrace
 import Vegas.Game.OnePacketPendingLumping
 
 /-! # Actual responder traces through directed binding repair

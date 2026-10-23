@@ -2,7 +2,6 @@
 
 import Vegas.Source.CommitRecoveryClosedSplice
 import Vegas.Source.CommitRecoverySpliceSupport
-import Vegas.Source.CommitRecoveryNonCommitObservation
 
 /-! # Supported original recovery histories under owner substitution
 

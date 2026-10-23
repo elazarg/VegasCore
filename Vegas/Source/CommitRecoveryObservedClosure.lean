@@ -2,7 +2,6 @@
 
 import Vegas.Source.CommitRecoveryOwnHistory
 import Vegas.Source.CommitRecoveryObservation
-import Vegas.Source.CommitBlockInformation
 
 /-! # Full owner observations across actual source phase closure -/
 

@@ -1,10 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.ProposalRecoveryRestriction
-import Vegas.Game.ProposalRecoveryDebtPayoff
 import Vegas.Game.CommitRecoveryExtraChoice
 import Vegas.Game.CommitRecoveryReference
-import Vegas.Source.ProposalRecoveryOrdinaryCommit
 import GameTheoryExtensions.Analysis.Protocol.StoppedHistoryInvariant
 
 /-! # The original hidden-debt argument on actual labeled commitment histories -/

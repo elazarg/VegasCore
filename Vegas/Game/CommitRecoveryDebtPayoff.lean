@@ -2,7 +2,6 @@
 
 import Vegas.Game.CommitRecoveryPayoff
 import Vegas.Source.CommitRecoveryFailureCoverage
-import GameTheoryExtensions.Protocol.ContinuationHorizon
 
 /-! # Checkpointed own debt forces the actual exclusion payoff under every continuation -/
 

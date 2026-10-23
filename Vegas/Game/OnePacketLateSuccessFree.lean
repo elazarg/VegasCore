@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.OnePacketLateCompletionLaw
-import Vegas.Game.OnePacketRelevantLumping
+import Vegas.Game.ServiceWithheldForfeit
 
 /-! # Value-free success after a late commitment
 

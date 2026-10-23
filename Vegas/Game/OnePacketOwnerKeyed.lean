@@ -2,6 +2,8 @@
 
 import Vegas.Game.OnePacketOwnerBase
 import Vegas.Game.OnePacketKeyedScaling
+import Vegas.Game.OnePacketSwapBaseWeight
+import Vegas.Game.OnePacketSwapInfo
 
 /-! # Agreeing base laws at two sites with one late key
 

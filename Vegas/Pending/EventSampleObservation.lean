@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.ReactiveContinuationObservation
-import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Public chance under hidden binding repair
 

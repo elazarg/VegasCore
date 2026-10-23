@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Source.CommitRecoveryBlockEmbedding
-import Vegas.Source.ProtocolEvaluation
 
 /-! # Exact recovery control after a typed commitment telescope -/
 

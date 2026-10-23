@@ -1,14 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.ReactiveCompiledResolution
-import Vegas.Pending.ReactiveGuardedResponse
-import Vegas.Pending.ReactiveOpeningWindow
 import Vegas.Pending.ReactiveAssociationPersistence
-import Interaction.ReactiveAllocation
-import Vegas.EventGraph.ResolutionProvenance
 import Vegas.EventGraph.ResolutionFields
-import Interaction.ReactiveMenuInvariant
-import Interaction.ReactiveMenuRestriction
 
 /-! # Opening certificates originate in an owner's resolution response
 

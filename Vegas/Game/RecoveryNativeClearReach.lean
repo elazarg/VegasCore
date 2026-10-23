@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.RecoveryNativeStrategy
-import Vegas.Pending.ExclusionNativeFailure
 
 /-! # Actual recovery decisions over clear native prefixes
 

@@ -2,6 +2,7 @@
 
 import Vegas.Game.ReservedEpochBindingReset
 import Vegas.Game.PhaseProposalResetPayoff
+import Vegas.Pending.ReactiveOpeningSettlement
 
 /-! # Original stopped available-SEND binding reset contract -/
 

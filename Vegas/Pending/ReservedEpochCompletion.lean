@@ -3,6 +3,7 @@
 import Vegas.Pending.ReservedEpochExhaustion
 import Vegas.Pending.ReservedEpochTraceDelivery
 import Interaction.ReactiveAnchoredTrace
+import Vegas.Pending.PhaseServiceContract
 
 /-! # Semantic completion at the derived physical execution horizon -/
 

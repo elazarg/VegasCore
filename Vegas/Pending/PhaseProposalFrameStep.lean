@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.PhaseProposalNormalizationFrame
-import Vegas.Pending.EventStore
 
 /-! # Actual external anchors for raw states entering phase normalization -/
 

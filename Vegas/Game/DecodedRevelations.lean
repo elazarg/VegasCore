@@ -2,7 +2,6 @@
 
 import Vegas.Compile.EventGraphResolutionFields
 import Vegas.Game.SourceSwapAgreement
-import Vegas.Game.OnePacketIntendedProjection
 
 /-! # Decoded points record the completed reveals
 

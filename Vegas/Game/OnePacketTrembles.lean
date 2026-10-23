@@ -1,10 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.OnePacketForced
-import Vegas.Game.IntendedAuditedOutcome
-import Vegas.Game.SourceServiceCanonicalPolicy
 import Vegas.Pending.ReactiveOnePacketMenu
-import Vegas.Compile.EventGraphBacktranslation
 import Interaction.ReactiveFiniteAssessment
 import GameTheory.Math.Probability.Mixture
 

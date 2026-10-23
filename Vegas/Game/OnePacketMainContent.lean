@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.OnePacketZeroContent
-import Vegas.Game.OnePacketSlotContent
 
 /-! # Source-main responses have positive content -/
 

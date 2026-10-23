@@ -1,6 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.OnePacketSureFailure
+import Vegas.Game.OnePacketActorRecord
+import Vegas.Game.ServiceBlockView
 
 /-! # A failed binding output is an owed failure
 

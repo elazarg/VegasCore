@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.PhaseProposalRepairFiber
-import GameTheoryExtensions.Analysis.Protocol.OwnPlayReach
 
 /-! # Generated unusable binding preparations in actual native own play -/
 

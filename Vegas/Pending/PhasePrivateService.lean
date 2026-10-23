@@ -1,8 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.PhaseCountServiceReference
-import Vegas.Pending.PhaseResolutionPersistence
-import Vegas.Pending.PhaseCountUniqueness
+import Vegas.Pending.PhaseSeedScheduler
+import Vegas.Pending.ReactiveBindingFrameStep
 
 /-! # Physical event-private service on original counted histories -/
 

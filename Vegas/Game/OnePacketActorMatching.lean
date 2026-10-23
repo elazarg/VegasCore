@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.OnePacketPeriodInvariant
+import Vegas.Game.OnePacketDecodedActor
 
 /-! # Actor completions match along forced histories
 

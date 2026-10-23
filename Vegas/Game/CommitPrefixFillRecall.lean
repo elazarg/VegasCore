@@ -3,6 +3,7 @@
 import Vegas.Compile.CommitPrefixCompletion
 import Vegas.Game.CommitAttemptHistory
 import Vegas.Pending.EventBindingReadback
+import Interaction.ReactiveMenuRestriction
 
 /-! # Effective own actions of a source completion of hidden bindings -/
 

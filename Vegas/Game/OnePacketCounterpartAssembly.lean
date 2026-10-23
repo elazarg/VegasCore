@@ -1,8 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.OnePacketBeliefPartsWiring
-import Vegas.Game.OnePacketCounterpartDomination
 import Vegas.Game.OnePacketCertificateCounterpart
+import Vegas.Game.OnePacketCounterpartRatio
 
 /-! # Honest counterparts from domination
 

@@ -3,7 +3,6 @@
 import Vegas.Game.CompiledRevealPhase
 import Vegas.Game.CompiledRevealLayout
 import Vegas.Source.CommitRecoveryNonCommitPath
-import Vegas.Pending.PhaseRawCheckpoint
 
 /-! # Typed source recovery at completed physical reveal boundaries -/
 

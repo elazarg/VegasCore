@@ -4,6 +4,7 @@ import Vegas.Game.ProposalRecoveryPreparationFloor
 import Vegas.Game.ProposalRecoveryPreparationWord
 import Vegas.Game.ProposalRecoveryPreparationLikelihood
 import Vegas.Source.ProposalRecoveryPreparationRepairHistory
+import GameTheoryExtensions.Analysis.Protocol.ProjectedBeliefTransport
 
 /-! # Past foreign source preparation failures at full enriched information
 

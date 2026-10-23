@@ -3,6 +3,7 @@
 import Vegas.Pending.PhaseReceiptOrder
 import Vegas.Pending.CompletedBindingReadback
 import Vegas.Pending.PhaseCompletedBindingMeaning
+import Vegas.Pending.ReactiveBindingFrameStep
 
 /-! # Actual earlier declarations at a surviving owner's ready binding -/
 

@@ -2,7 +2,6 @@
 
 import Vegas.Game.OnePacketBindingRepairIteration
 import Vegas.Game.OnePacketDirectedRepairGuard
-import Vegas.Game.OnePacketEventSuccess
 import Vegas.Game.OnePacketOwnerSettled
 
 /-! # Counterparts from finite actual hidden-binding repairs

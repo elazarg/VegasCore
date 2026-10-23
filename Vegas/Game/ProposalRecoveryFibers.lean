@@ -4,6 +4,7 @@ import Vegas.Game.ProposalRecoveryReach
 import Vegas.Game.ProposalRecoveryWordReadback
 import Vegas.Game.CommitRecoveryReference
 import Vegas.Game.CommitRecoverySpliceErasure
+import Vegas.Source.ProposalRecoveryTraceReadback
 
 /-! # Actual full-information fiber exchange for proposal-labeled recovery -/
 

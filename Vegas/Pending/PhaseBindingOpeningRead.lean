@@ -2,6 +2,10 @@
 
 import Vegas.Pending.PhaseBindingCheckpointSubmission
 import Vegas.Pending.PhaseOpeningAcceptance
+import Interaction.ReactivePacketEvidence
+import Interaction.ReactiveRoundTrace
+import Vegas.Pending.PhaseInputBindings
+import Vegas.Pending.PhasePacketEvidence
 
 /-! # Actual counted openings read successful bindings before inclusion -/
 

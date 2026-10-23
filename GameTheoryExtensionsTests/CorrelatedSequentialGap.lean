@@ -5,6 +5,7 @@ import GameTheory.Protocol.StateKernel
 import GameTheory.Core.Equilibrium
 import GameTheory.Core.Utility
 import GameTheoryExtensions.Math.Probability.Uniform
+import GameTheoryExtensions.Math.Probability.Expectation
 
 /-! # Normal-form correlation does not record credible continuations
 

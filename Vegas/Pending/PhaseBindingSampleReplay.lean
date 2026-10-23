@@ -1,7 +1,11 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.PhaseBindingClockReplay
 import Vegas.Pending.ReactiveBindingRejectedInclusion
+import Vegas.Pending.AttemptNamespace
+import Vegas.Pending.ExclusionApplication
+import Vegas.Pending.ExclusionCompletion
+import Vegas.Pending.PhaseApplication
+import Vegas.Pending.PhaseBindingInertResponse
 
 /-! # Actual common-draw chance kernels during directed phased repair -/
 

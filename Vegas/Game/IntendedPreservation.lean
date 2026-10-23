@@ -1,6 +1,5 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Source.IntendedPlay
 import Vegas.Source.FailedBindingDeviation
 import Vegas.Source.SetupProtocolRecall
 import Vegas.Game.SourceInformation

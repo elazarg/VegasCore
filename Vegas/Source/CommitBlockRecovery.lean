@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Source.CommitBlockInformation
-import Vegas.Source.CommitRecoveryClearSuccessor
 
 /-! # Clear recovery successors within a hidden commitment block -/
 

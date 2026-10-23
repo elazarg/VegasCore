@@ -2,10 +2,6 @@
 
 import Vegas.Pending.ReactiveCanonicalDecision
 import Vegas.Pending.ReactiveCompiledResolution
-import Vegas.Pending.ReactiveGuardedResponse
-import Vegas.Pending.ReactiveOpeningWindow
-import Vegas.Pending.ReactiveAssociationEvidence
-import Vegas.EventGraph.ResolutionProvenance
 
 /-! # Canonical resolution responses
 

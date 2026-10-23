@@ -1,11 +1,9 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.RecoverySourcePhaseValue
 import Vegas.Game.RecoveryLateSourcePhase
 import Vegas.Game.RecoveryEventPhaseLaw
 import Vegas.Game.RecoveryFirstActivationValue
-import Vegas.Game.IntendedChoiceReach
-import Vegas.Game.OnePacketLateCommitBlind
+import Vegas.Game.OnePacketValueTransport
 
 /-! # Unintended nonlate commitments have exclusion value -/
 

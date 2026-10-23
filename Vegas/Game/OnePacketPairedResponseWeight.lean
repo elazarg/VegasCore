@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.OnePacketRepairResponseBound
-import Vegas.Game.OnePacketIrregularBound
 
 /-! # Irregular source factors under paired response likelihood bounds
 

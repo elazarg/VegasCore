@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.OnePacketExclusionPayoff
-import Vegas.Pending.ExclusionProjection
 import Vegas.Pending.ExclusionInvariant
 import Vegas.Pending.ExclusionCountMenu
 

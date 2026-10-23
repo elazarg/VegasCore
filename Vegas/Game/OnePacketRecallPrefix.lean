@@ -2,7 +2,6 @@
 
 import GameTheoryExtensions.Protocol.OwnPlayPrefix
 import Vegas.Game.OnePacketSpliceForced
-import Interaction.ReactiveOwnPlay
 
 /-! # Actual prefix witnesses from retained native recall -/
 

@@ -1,8 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.PhaseCandidateSupply
 import Vegas.Pending.PhaseCountMenu
-import Vegas.Pending.ReactiveFiniteCompiler
 
 /-! # Typed binding choices in the actual phased raw response menu
 

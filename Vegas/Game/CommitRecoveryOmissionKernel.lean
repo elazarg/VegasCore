@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.CommitRecoveryNormalizedFlagPlan
-import Vegas.Game.CommitRecoveryOmissionWindow
 
 /-! # Actual omission marginals of the normalized original source prescription
 

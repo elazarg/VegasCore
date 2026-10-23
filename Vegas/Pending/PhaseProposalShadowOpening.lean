@@ -2,7 +2,6 @@
 
 import Vegas.Pending.PhaseProposalShadowNormalization
 import Vegas.Pending.PhaseBindingAdmittedInclude
-import Vegas.Pending.ReactiveBindingFrameOpening
 
 /-! # Truthful opening handlers under general recovery shadows
 

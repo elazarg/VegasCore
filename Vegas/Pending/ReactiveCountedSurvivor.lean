@@ -1,11 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.ReactiveCountVerdict
-import Vegas.Pending.ReactiveOnePacketMenu
-import Vegas.Pending.ReactiveSignedCommitments
-import Interaction.ReactiveTrafficIdentity
 import Vegas.Pending.ReactiveEventStability
-import Interaction.ReactiveOwnerSelection
 
 /-! # Pending authentic packets at unfinished timely events -/
 

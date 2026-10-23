@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.ReactiveSignedCommitments
-import Vegas.Pending.EventStore
 import Vegas.Pending.EventBindingInvariant
 
 /-! # Accepted calls write successful outputs

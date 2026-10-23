@@ -3,6 +3,7 @@
 import Vegas.Game.RecoveryOnePacketComponents
 import Vegas.Game.RecoveryExclusionPayoff
 import GameTheory.Analysis.Protocol.SequentialOneShot
+import Interaction.ReactiveOwnPlay
 
 /-! # Whole-policy optimality after public exclusion
 

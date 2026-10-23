@@ -1,9 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.ReactivePolicy
-import Vegas.Pending.ReactiveSafety
-import Interaction.ReactiveReceipts
-import Vegas.Pending.EventBindingInvariant
 
 /-! # Canonical certified opening packets
 

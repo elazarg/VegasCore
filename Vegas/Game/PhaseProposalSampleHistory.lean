@@ -1,6 +1,5 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.RecoverySampleHistory
 import Vegas.Game.RecoveryCompletedPhaseWitness
 
 /-! # Selected full source witnesses through actual singleton samples -/

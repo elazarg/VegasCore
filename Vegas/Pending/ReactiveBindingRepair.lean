@@ -1,11 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.ReactiveBinding
-import Interaction.ReactiveProvenance
 import Vegas.Pending.ReactivePolicyFacts
-import Vegas.Pending.ReactiveServiceProgress
-import Interaction.ReactiveAllocation
-import Vegas.Pending.EventSequentialTiming
 import Vegas.Pending.ReactiveHiddenInclusion
 import Vegas.EventGraph.Commutation
 

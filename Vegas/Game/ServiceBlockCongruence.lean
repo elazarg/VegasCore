@@ -3,6 +3,7 @@
 import Vegas.Game.ServiceDeviationTraffic
 import Vegas.Game.ServiceAssignedPolicy
 import Vegas.Game.ServiceBlockRun
+import Vegas.Pending.EventActivationOrigin
 
 /-! # A block of decided bindings against one deviating player
 

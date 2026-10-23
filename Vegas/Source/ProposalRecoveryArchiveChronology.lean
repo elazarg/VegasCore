@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Source.ProposalRecoveryArchiveLookup
+import Vegas.Source.ProposalRecoverySupportSplice
 
 /-! # Canonical archives recover proposal chronology on actual source paths -/
 

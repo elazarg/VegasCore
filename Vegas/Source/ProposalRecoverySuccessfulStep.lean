@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Source.ProposalRecoverySuccessfulObservation
-import Vegas.Source.CommitRecoveryClear
 import Vegas.Source.CommitRecoveryRanks
 
 /-! # Public successful-proposal extraction on actual clear source steps -/

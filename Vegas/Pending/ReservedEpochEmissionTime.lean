@@ -1,6 +1,5 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.PhaseSeedClockEffects
 import Vegas.Pending.PhaseFrontier
 import Interaction.ReactiveRecallInvariant
 import Interaction.ReactivePolicyInvariant

@@ -2,12 +2,13 @@
 
 import Vegas.Game.ProposalRecoveryFailedLocalLaw
 import Vegas.Game.ProposalRecoveryGains
-import Vegas.Game.CommitRecoveryGlobalWordDensity
 import Vegas.Game.ProposalRecoveryCommitFailure
 import Vegas.Game.ProposalRecoveryDebtPayoff
 import Vegas.Game.CommitRecoveryAcceptedFailure
 import GameTheory.Math.Probability.ExpectationBind
 import GameTheory.Math.Probability.Joint
+import Vegas.Source.ProposalRecoveryFiniteness
+import Interaction.ReactiveRounds
 
 /-! # An unusable declaration compared with the same attempt's domain choices -/
 

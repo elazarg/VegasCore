@@ -2,8 +2,6 @@
 
 import Vegas.Game.PhaseProposalOpeningSupport
 import Vegas.Game.PhaseProposalQueryDomain
-import Vegas.Pending.PhaseBindingIdleMenu
-import Vegas.Pending.ReactiveFiniteCompiler
 
 /-! # The actual reference fallback is absent on every genuine counted input -/
 

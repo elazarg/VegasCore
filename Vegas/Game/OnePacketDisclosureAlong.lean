@@ -2,7 +2,6 @@
 
 import Vegas.Game.OnePacketDisclosureResolves
 import Vegas.Game.OnePacketSpliceForced
-import Vegas.Game.RevealServiceCalendarState
 
 /-! # Disclosures resolve along a history at a forced site
 

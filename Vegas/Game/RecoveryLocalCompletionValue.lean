@@ -2,7 +2,6 @@
 
 import Vegas.Game.RecoveryNonLateSourceValue
 import Vegas.Game.RecoveryCompletionPotential
-import Vegas.Game.RecoveryPendingFailure
 
 /-! # Continuation transport through a local source-event response -/
 

@@ -2,7 +2,7 @@
 
 import Vegas.Game.OnePacketSourceTurn
 import Vegas.Game.OnePacketFactorization
-import Vegas.Game.OnePacketCanonicalPermits
+import Vegas.Game.IntendedEffectiveOpening
 
 /-! # Transmissions with positive content
 

@@ -2,7 +2,6 @@
 
 import Vegas.Game.RecoveryComparisonRetention
 import Vegas.Game.SourceServiceSiteBridge
-import Vegas.Game.IntendedEffectiveOpening
 
 /-! # Initialized source laws under the actual recovery service -/
 

@@ -2,7 +2,6 @@
 
 import Vegas.Source.EffectiveOpening
 import Vegas.Game.IntendedOpeningExtension
-import Vegas.Game.SourceContinuation
 import Vegas.Game.IntendedPreservation
 
 /-! # The intended law through effective openings

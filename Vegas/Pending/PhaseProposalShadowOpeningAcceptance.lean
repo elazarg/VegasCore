@@ -2,9 +2,9 @@
 
 import Vegas.Pending.PhaseProposalShadowOpening
 import Vegas.Pending.PhaseCountCollection
-import Interaction.ReactiveRecordedMenuTrace
-import Interaction.ReactiveRecordedResponseAfter
 import Vegas.Pending.PhasePacketEvidence
+import Vegas.Pending.PhaseBindingInvariant
+import Vegas.Pending.PhaseLatestBindingHistory
 
 /-! # Original accepted openings construct repaired accepting handlers -/
 

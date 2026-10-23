@@ -1,12 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.OnePacketHonestLaw
-import Vegas.Game.OnePacketPrescribedSupport
 import Vegas.Game.OnePacketCanonicalPermits
-import Vegas.Game.OnePacketPendingPool
-import Vegas.Game.SourceServiceFirstTurnRisk
-import Interaction.ReactiveTrafficIdentity
-import Vegas.Game.OnePacketRetention
 
 /-! # Committed values and emitted transmissions
 

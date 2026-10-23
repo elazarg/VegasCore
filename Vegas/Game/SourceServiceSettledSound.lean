@@ -1,6 +1,5 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.ServiceSettledEvidence
 import Vegas.Game.SourceServiceCanonicalSerial
 import GameTheory.Analysis.Protocol.CounterfactualDecomposition
 

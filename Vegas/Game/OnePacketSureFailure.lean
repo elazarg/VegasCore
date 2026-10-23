@@ -1,9 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.OnePacketEventSuccess
-import Vegas.Game.ServiceWithheldForfeit
-import Vegas.Game.ServiceRevealDecode
-import Vegas.Game.OnePacketActorRecord
 
 /-! # The owner's one packet at a binding
 

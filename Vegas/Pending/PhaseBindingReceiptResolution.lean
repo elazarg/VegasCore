@@ -2,9 +2,11 @@
 
 import Vegas.Pending.PhasePrivateService
 import Vegas.Pending.PhaseExclusionOrigin
-import Vegas.Pending.EventValueSwap
 import Interaction.ReactiveMessageIdentity
 import Interaction.ReactiveServiceRounds
+import Interaction.ReactiveReceipts
+import Vegas.Pending.PhaseNativeInvariant
+import Vegas.Pending.PhaseResolutionPersistence
 
 /-! # Actual binding receipts resolve their immutable physical attempt -/
 

@@ -1,9 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.PhaseFrontier
 import Vegas.Pending.PhaseHistoryCheckpoint
 import Vegas.Pending.PhaseNamespace
-import Interaction.ReactiveInvariant
 
 /-! # Recovering retired attempt completions at their source positions -/
 

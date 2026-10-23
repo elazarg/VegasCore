@@ -3,7 +3,6 @@
 import Vegas.Game.PhaseProposalInitializedLawError
 import Vegas.Game.PhaseProposalPreparationPosterior
 import Vegas.Game.ProposalRecoveryForeignPreparationPosterior
-import Vegas.Game.ProposalRecoveryPools
 import GameTheory.Math.Probability.RelativeTremble
 
 /-! # One concrete sequence for both preparation posteriors and initialized laws -/

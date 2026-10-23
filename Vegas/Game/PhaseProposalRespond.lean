@@ -2,7 +2,6 @@
 
 import Vegas.Game.PhaseProposalTransition
 import Vegas.Game.PhaseProposalExecution
-import Vegas.Game.RecoverySurvivingBindingSource
 import Vegas.Game.PhaseProposalLabelFrame
 import Vegas.Source.ProposalRecoveryLabelCongruence
 import Vegas.Source.ProposalRecoveryPrefixRank

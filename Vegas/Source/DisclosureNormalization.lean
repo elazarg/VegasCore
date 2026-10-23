@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Source.DisclosureAliases
-import Vegas.Source.Purification
 
 /-! # Normalizing private disclosure intentions
 

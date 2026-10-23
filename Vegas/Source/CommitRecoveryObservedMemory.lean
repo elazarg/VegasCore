@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Source.CommitRecoveryErasedStep
-import Vegas.Source.ObservationRecall
 import Vegas.Source.ProtocolSuffix
 
 /-! # Typed current observations with independent remembered-word projection -/

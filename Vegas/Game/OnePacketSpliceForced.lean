@@ -3,11 +3,7 @@
 import Vegas.Game.OnePacketSplicePoint
 import Vegas.Game.OnePacketSwapFiberSum
 import Vegas.Game.OnePacketSwapBaseWeight
-import Vegas.Game.OnePacketForcedPrefix
-import Vegas.Game.OnePacketForcedRegular
-import Vegas.Game.OnePacketSwapRegular
-import Vegas.Game.OnePacketReplayInputs
-import GameTheoryExtensions.Protocol.TracePrefix
+import Vegas.Game.OnePacketCellObservation
 
 /-! # Responders along a history at a forced site are forced
 

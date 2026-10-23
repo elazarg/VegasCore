@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.OnePacketSiteLaws
-import Vegas.Game.OnePacketPathwise
 
 /-! # One-step lumping at relevant sites
 

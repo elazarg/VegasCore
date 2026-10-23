@@ -3,7 +3,6 @@
 import Vegas.Game.SourceServicePolicy
 import Vegas.Pending.ReactiveCanonicalDecision
 import Vegas.Compile.EventGraphDeviation
-import Interaction.ReactiveRoundsFiniteness
 
 /-! # Source decisions at the audit's canonical slot
 

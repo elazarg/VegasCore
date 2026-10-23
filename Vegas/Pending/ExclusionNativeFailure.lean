@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.ExclusionPublicRecord
-import GameTheoryExtensions.Protocol.TracePrefix
 
 /-! # Native public failure persistence -/
 

@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.ProposalRecoveryInformationReadback
-import Vegas.Source.ProposalRecoveryTraceReadback
 
 /-! # Complete labeled own coordinates and exact enriched history identity -/
 

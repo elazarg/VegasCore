@@ -1,7 +1,5 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import GameTheoryExtensions.Analysis.Protocol.Perturbation
-import GameTheoryExtensions.Analysis.Protocol.Sequential
 import GameTheory.Analysis.Protocol.CounterfactualRegret
 import Mathlib.Analysis.SpecificLimits.Basic
 

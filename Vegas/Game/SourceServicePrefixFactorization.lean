@@ -1,20 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.SourceServiceTimedPolicy
-import Vegas.Pending.ReactiveResolutionEvidence
 import Vegas.Game.SourceServiceFactorization
-import Vegas.Pending.ReactiveSampleLikelihood
-import Vegas.Game.SourceServiceChoiceSupport
-import Vegas.Pending.ReactiveBoundedValues
-import Vegas.Game.RevealServiceRosterContinuation
-import Interaction.ReactiveRestrictedContinuation
-import Vegas.Game.SourceServiceBoundary
-import Vegas.Game.SourceServicePrefixSupport
-import Vegas.Compile.EventGraphResolutionFields
-import Vegas.Source.ObservationRecall
 import Vegas.Compile.EventGraphParameterReadout
-import Vegas.Game.SourcePrefixKernel
-import GameTheoryExtensions.Math.Probability.Support
 import GameTheory.Analysis.Protocol.CounterfactualDecomposition
 import GameTheory.Math.Probability.ConditionalObservation
 import GameTheory.Math.Probability.ExpectationConditioning

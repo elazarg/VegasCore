@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.PhaseCompletion
-import Vegas.EventGraph.ConfigRestriction
+import Vegas.Pending.AttemptNamespace
 
 /-! # Automatic phase installation and physical attempt retirement
 

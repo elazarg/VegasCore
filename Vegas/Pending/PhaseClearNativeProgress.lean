@@ -1,9 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.PhaseSeedBudget
-import Vegas.Pending.PhaseNativeInvariant
 import Vegas.Pending.PhaseReactiveValueSwap
-import Vegas.Pending.PhaseSemanticProgress
 
 /-! # Native semantic preservation through all clear phase transitions -/
 

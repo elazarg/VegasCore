@@ -1,6 +1,5 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.SourceSwapPairs
 import Vegas.Game.OnePacketSwapRegular
 
 /-! # What two indistinguishable source points share

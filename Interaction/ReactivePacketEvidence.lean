@@ -3,7 +3,6 @@
 import Interaction.MessageNetworkInvariant
 import Interaction.ReactiveServiceInvariant
 import Interaction.ReactiveInvariant
-import Interaction.ReactiveResponseMenu
 
 /-! # Persistent evidence carried by emitted packets
 

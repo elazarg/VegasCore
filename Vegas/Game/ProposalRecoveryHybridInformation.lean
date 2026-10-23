@@ -1,6 +1,10 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.ProposalRecoveryHybridWordDisclosure
+import Vegas.Game.ProposalRecoveryArchivePublicHistory
+import Vegas.Source.ProposalRecoveryArchiveChronology
+import Vegas.Source.ProposalRecoveryArchiveLookup
+import Vegas.Source.ProposalRecoveryWordSplice
 
 /-! # Full enriched information under the genuine semantic history exchange -/
 

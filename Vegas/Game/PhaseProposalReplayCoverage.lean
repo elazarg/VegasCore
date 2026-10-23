@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.PhaseProposalReplayScan
+import Vegas.Game.PhaseProposalReplayPath
 
 /-! # Every consumed publication rank has its actual annotated source step -/
 

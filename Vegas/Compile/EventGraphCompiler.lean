@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Compile.EventGraphLayout
-import Vegas.EventGraph.Barriers
 
 /-! # Full source-node lowering to dependency-driven event code
 

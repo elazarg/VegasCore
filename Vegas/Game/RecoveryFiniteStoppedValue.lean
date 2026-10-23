@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.RecoveryValueTransport
-import Interaction.ReactiveResponseStopped
 
 /-! # The finite-menu value of the actual native debt-stopped projection -/
 

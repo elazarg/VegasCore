@@ -1,12 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.OnePacketCompletionLaw
-import Vegas.Game.OnePacketEventSuccess
-import Vegas.Game.OnePacketDecodedActor
-import Vegas.Game.OnePacketIntendedProjection
 import Vegas.Pending.ReactiveBindingReceipts
-import Interaction.ReactiveLocalContinuation
-import GameTheoryExtensions.Analysis.Protocol.StoppedTerminalBound
 
 /-! # The stop after a commitment
 

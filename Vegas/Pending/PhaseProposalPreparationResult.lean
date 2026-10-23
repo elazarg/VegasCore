@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.PhaseProposalSubmittedBindings
-import Vegas.Pending.ReactiveUnusableBinding
 import Interaction.ReactiveCompleteObservation
 
 /-! # Actual fresh preparation repairs at the declared event type -/

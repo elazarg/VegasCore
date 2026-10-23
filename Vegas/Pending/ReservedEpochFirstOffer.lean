@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.ReservedEpochOpportunity
-import Vegas.Pending.ReservedEpochMixtureOpportunity
 import Vegas.Pending.PhaseOncePolicy
 import Vegas.Pending.PhaseActivationResponse
 

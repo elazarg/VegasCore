@@ -1,9 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.PhaseSavedExclusionReadback
-import Vegas.Pending.PhaseRetiredCompletion
-import Vegas.Pending.PhaseReadyBindingDeclaration
-import Vegas.Pending.PhaseAcceptedProgress
 
 /-! # Omitted bindings at genuine finished attempts
 

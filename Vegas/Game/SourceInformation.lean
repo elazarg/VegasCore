@@ -1,11 +1,11 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Source.ObservationRecall
-import Vegas.Source.SetupProtocolBehavioral
 import Vegas.Source.ProtocolChoiceFiniteness
 import GameTheoryExtensions.Analysis.Protocol.Bayes
 import GameTheory.Analysis.Protocol.CounterfactualDecomposition
 import GameTheoryExtensions.Math.Probability.Uniform
+import Vegas.Source.RevealSequence
 
 /-! # Source decision depths and finite revelation histories
 

@@ -1,6 +1,5 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Source.CommitBlockRecovery
 import Vegas.Source.CommitRecoveryFrontier
 import Vegas.Source.CommitPrefixSplitting
 import GameTheory.Protocol.ActionRestriction

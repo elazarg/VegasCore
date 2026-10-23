@@ -1,6 +1,10 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.PhaseProposalOrdinaryDomination
+import Vegas.Game.PhaseProposalBindingSupport
+import Vegas.Game.PhaseProposalQueryDomain
+import Vegas.Pending.PhaseProposalBindingSlots
+import Vegas.Pending.PhaseProposalCanonicalBinding
 
 /-! # Usable counted bindings have positive ordinary-only mass -/
 

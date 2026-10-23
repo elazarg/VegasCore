@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.PhaseProposalBindingKernel
-import Vegas.Pending.PhaseCompletion
 
 /-! # Actual excluded binding closure preserves the emission potential -/
 

@@ -1,6 +1,14 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.PhaseBindingStamp
+import Interaction.MessageNetworkInvariant
+import Interaction.ReactiveProvenance
+import Interaction.ReactiveServiceInvariant
+import Vegas.Pending.ExclusionPublicRecord
+import Vegas.Pending.PhaseExclusionRecord
+import Vegas.Pending.PhaseFrontier
+import Vegas.Pending.ReactiveEventStability
+import Vegas.Pending.ReactiveSignedCommitments
 
 /-! # Actual history provenance of live binding attempt stamps -/
 

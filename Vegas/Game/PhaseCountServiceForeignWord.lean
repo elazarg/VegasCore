@@ -1,21 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.PhaseObservableDomainWord
-import Vegas.Game.PhaseSourcePolicy
-import Vegas.Pending.PhaseCountServiceReference
-import Vegas.Pending.PhasePrivateService
-import Vegas.Pending.PhaseBindingMemoryCallback
-import Interaction.ReactiveResponseKernel
-import Interaction.ReactiveAnchoredStopped
-import GameTheoryExtensions.Analysis.Protocol.StoppedHistoryAtom
-import Vegas.Pending.PhaseAttemptReceiptSnapshot
-import Interaction.ReactiveMenuLikelihood
-import GameTheoryExtensions.Analysis.Protocol.ContinuationOwnPlay
-import Vegas.Source.CommitRecoveryValueTremble
-import Vegas.Source.CommitRecoveryErasedModel
-import Vegas.Game.CommitRecoveryReference
-import Vegas.Pending.PhaseReadyBindingDeclaration
-import Vegas.Pending.PhaseProposalEmissionOrder
 import GameTheory.Analysis.Protocol.ExtensiveFormPerfection
 import GameTheory.Math.Probability.Product
 import GameTheory.Protocol.PolicyRandomization

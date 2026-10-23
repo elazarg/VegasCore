@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.RecoverySourceEnvironment
-import Interaction.ReactiveInvariant
 
 /-! # Actual initialized phased histories have reachable typed source checkpoints -/
 

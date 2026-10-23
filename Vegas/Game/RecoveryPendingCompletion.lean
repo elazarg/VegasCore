@@ -1,6 +1,5 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.OnePacketPendingClear
 import Vegas.Game.RecoverySuccessorBoundary
 
 /-! # Completion of the current pending event under actual recovery completion -/

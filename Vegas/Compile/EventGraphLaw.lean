@@ -6,9 +6,6 @@ import Vegas.Compile.EventGraphStep
 import Vegas.EventGraph.CanonicalStep
 import GameTheory.Math.Probability.ConditionalObservation
 import GameTheory.Math.Probability.ExpectationConditioning
-import GameTheoryExtensions.Math.Probability.Expectation
-import GameTheoryExtensions.Math.Probability.Uniform
-import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Exact source-order law for event-graph compilation
 

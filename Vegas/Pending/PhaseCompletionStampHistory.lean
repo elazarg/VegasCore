@@ -1,7 +1,9 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.PhaseCompletionStamp
-import Interaction.ReactiveRecall
+import Interaction.MessageNetworkInvariant
+import Interaction.ReactiveProvenance
+import Vegas.Pending.PhaseExclusionRecord
 
 /-! # Authentic current-attempt messages for completed owned events -/
 

@@ -1,10 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.RecoveryContinuationLimit
 import Vegas.Game.RecoveryLocalStoppedValue
-import Vegas.Game.RecoveryComparisonSite
-import GameTheoryExtensions.Analysis.Protocol.SuccessRanking
-import Vegas.Game.OnePacketLateCommitFailure
 
 /-! # Local recovery values under the same comparison posterior -/
 

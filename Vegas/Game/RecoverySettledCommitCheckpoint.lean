@@ -11,10 +11,11 @@ import Vegas.Game.CompiledCommitClosing
 import Vegas.Game.CompiledCommitTail
 import Vegas.Game.CompiledCommitMaximality
 import Vegas.Source.CommitPhaseAutomaticAttempt
-import Vegas.Game.CommitAttemptOwnRecall
 import Vegas.Pending.PhaseHistoryCheckpoint
 import Vegas.Source.CommitRecoveryBlockCloseLift
 import GameTheory.Protocol.Backward
+import Vegas.Source.CommitPhaseFailures
+import Vegas.Source.CommitRecoveryBlockLift
 
 /-! # Saved source checkpoints after clean and exhausted physical binding phases -/
 

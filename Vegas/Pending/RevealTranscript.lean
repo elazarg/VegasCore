@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.ReactiveRevealBlock
-import Vegas.Pending.ReactiveOpeningConformance
 
 /-! # Public transcript of canonical reveal service
 

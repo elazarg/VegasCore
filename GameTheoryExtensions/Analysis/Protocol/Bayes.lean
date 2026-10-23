@@ -2,7 +2,6 @@
 
 import GameTheory.Analysis.Protocol.BehavioralBayes
 import GameTheory.Protocol.Predraw
-import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Full mixing reaches every legal decision history
 

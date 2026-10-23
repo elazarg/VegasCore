@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.ReactiveNormalization
-import Interaction.ReactiveRecall
 
 /-! # A fresh submission is made at most once per event
 

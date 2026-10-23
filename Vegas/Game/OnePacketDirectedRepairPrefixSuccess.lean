@@ -2,8 +2,7 @@
 
 import Vegas.Game.OnePacketDecodedCells
 import Vegas.Game.OnePacketDirectedRepairPrefix
-import Vegas.Game.OnePacketDirectedRepairDelivery
-import Vegas.Game.OnePacketDirectedRepairOpeningTrace
+import Vegas.EventGraph.BarrierBlocks
 
 /-! # Successful reveal bindings along a forced information history -/
 

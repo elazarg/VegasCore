@@ -2,7 +2,7 @@
 
 import Vegas.EventGraph.BarrierBlocks
 import Vegas.Game.SourceServiceAsyncStep
-import Vegas.Game.SourceServiceReachedDecoding
+import Interaction.ReactiveRawRoundTrace
 
 /-! # Running the service through a block of events
 

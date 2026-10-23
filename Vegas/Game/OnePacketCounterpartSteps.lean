@@ -1,9 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import GameTheoryExtensions.Protocol.TracePrefix
 import Vegas.Game.OnePacketSwapRecord
-import Vegas.Game.OnePacketIrregularBound
-import Vegas.Game.OnePacketContentFloor
 
 /-! # Chance mass under a hidden swap
 

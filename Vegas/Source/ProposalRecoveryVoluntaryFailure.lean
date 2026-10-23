@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Source.ProposalRecoveryFlags
-import Vegas.Source.CommitRecoveryVoluntaryFailure
 
 /-! # Voluntary omission in the actual proposal-labeled source protocol -/
 

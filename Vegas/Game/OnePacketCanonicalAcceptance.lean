@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.OnePacketCanonicalPermits
-import Vegas.Game.SourceServiceAsyncTimeliness
 
 /-! # Canonical packets sent on time are accepted
 

@@ -1,10 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.RecoveryPublicClosingWitness
 import Vegas.Game.PhaseProposalFreshPayoff
-import Vegas.Game.PhaseProposalAttemptArchive
 import Vegas.Game.PhaseProposalSavedDebt
-import Vegas.Game.ReservedEpochPublicationComparison
 
 /-! # Payoff laws from the original selected publication checkpoints -/
 

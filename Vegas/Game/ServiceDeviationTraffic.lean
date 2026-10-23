@@ -3,6 +3,8 @@
 import Vegas.Game.SourceServiceReachedDecoding
 import Vegas.Pending.ReactiveOwnerWindow
 import Vegas.Pending.ReactiveSampleLikelihood
+import Vegas.Game.ServiceSettledEvidence
+import Vegas.Pending.ReactiveOpeningLikelihood
 
 /-! # One deviating player's traffic, round by round, in every dependency mode
 

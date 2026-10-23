@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Interaction.ReactiveResponseMenu
-import Interaction.ReactiveResponseEvaluation
 import GameTheoryExtensions.Protocol.MenuRestriction
 
 /-! # Action restrictions from nested reactive response menus

@@ -2,10 +2,6 @@
 
 import Vegas.Game.ReservedEpochUnsentBinding
 import Vegas.Game.ReservedEpochStoppedTapeWord
-import Interaction.ReactivePolicyInvariant
-import Vegas.Pending.PhaseOwnCount
-import Vegas.Pending.PhaseBindingMenuShape
-import Vegas.Game.PhaseProposalUnflaggedBinding
 
 /-! # An actual old-episode SEND at the original stopped attempt -/
 

@@ -1,6 +1,9 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.QualifiedBinding.ReplayCoverage
+import Vegas.Game.AsyncDeviationForeign
+import Vegas.Game.AsyncDeviationLaw
+import Vegas.Game.ServiceWithheldForfeit
 
 /-! # Original annotation sums and qualified mass normalization -/
 

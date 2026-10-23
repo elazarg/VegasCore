@@ -1,18 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.ValueSwapPairs
-import Vegas.Pending.PhaseClearNativeProgress
-import Vegas.Pending.OnePacketValueSwap
 import Vegas.Pending.PhaseCountMenu
-import Vegas.EventGraph.PrivateInputs
-import Interaction.ReactiveRecordedResponse
-import Vegas.Pending.PhaseSwapInformation
-import Interaction.ReactiveRoundTrace
-import Vegas.Pending.PhaseBindingAcceptance
-import Interaction.ReactiveStopping
 import Interaction.ReactiveOwnPlay
-import Interaction.ReactiveEnvironmentMass
-import GameTheoryExtensions.Analysis.Protocol.ContinuationOwnPlay
 
 /-! # Actual transitions after replacing a lost private preparation
 

@@ -1,7 +1,10 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.OnePacketLateCompletion
-import Vegas.Game.OnePacketOwnerLaws
+import GameTheoryExtensions.Analysis.Protocol.StoppedExitBound
+import Interaction.ReactiveStoppedState
+import Vegas.Game.OnePacketLateSending
+import Vegas.Game.AsyncDeviationForeign
 
 /-! # The completion-point law at a late binding
 

@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.OnePacketSwapReplay
-import Vegas.Game.OnePacketForcedInputs
 import Vegas.Game.OnePacketForcedRegular
 
 /-! # Swapped histories are regular

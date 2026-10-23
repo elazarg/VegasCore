@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.OnePacketDirectedRepairContinuation
-import Vegas.Game.OnePacketDirectedRepairResponse
 
 /-! # Supported passive environment steps of directed binding repair
 

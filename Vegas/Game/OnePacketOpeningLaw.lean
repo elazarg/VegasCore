@@ -1,9 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.OnePacketOwnerLaws
-import Vegas.Game.OnePacketRevealMasses
 import Vegas.Game.OnePacketOpeningUnique
-import Vegas.Game.OnePacketOperationalReads
 
 /-! # The owner's opening law for slot-trembled late components
 

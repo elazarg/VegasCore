@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.CompiledCommitPhase
-import Vegas.Pending.EventBindingReadback
 
 /-! # Source attempts read from actual native commitment tables
 

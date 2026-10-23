@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.ReactiveBindingShadowInvariant
-import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Native responses inside the repaired continuation
 

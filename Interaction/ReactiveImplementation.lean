@@ -5,9 +5,6 @@ import Interaction.ReactiveRecall
 import GameTheory.Protocol.PrivateStrategy
 import GameTheory.Math.Probability.ConditionalObservation
 import GameTheory.Math.Probability.ExpectationConditioning
-import GameTheoryExtensions.Math.Probability.Expectation
-import GameTheoryExtensions.Math.Probability.Support
-import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Private implementations of reactive behavioral policies
 

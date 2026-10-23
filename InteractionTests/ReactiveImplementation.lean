@@ -2,6 +2,7 @@
 
 import Interaction.ReactiveImplementation
 import GameTheoryExtensions.Math.Probability.Uniform
+import GameTheory.Core.Deviation
 
 /-! # Private state stays outside the reactive game
 

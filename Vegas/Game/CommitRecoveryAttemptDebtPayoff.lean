@@ -2,7 +2,6 @@
 
 import Vegas.Source.CommitRecoveryAttemptDebt
 import Vegas.Source.CommitRecoveryAttemptExtraction
-import Vegas.Source.CommitRecoveryAttemptReadout
 import Vegas.Game.CommitRecoveryDebtPayoff
 
 /-! # Actual no-reset attempt failures have the permanent exclusion payoff

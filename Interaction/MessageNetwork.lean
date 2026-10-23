@@ -1,10 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Interaction.MessagePool
-import GameTheoryExtensions.Math.Probability.Support
 import GameTheory.Math.Probability.Mixture
 import GameTheory.Math.Probability.Product
-import GameTheoryExtensions.Math.Probability.Expectation
 
 /-! # A message network with explicit input history
 

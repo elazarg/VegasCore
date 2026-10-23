@@ -4,7 +4,6 @@ import Vegas.Game.RecoveryCommittedValueAffine
 import Vegas.Game.RecoveryKeyedValueBounds
 import Vegas.Game.RecoverySourceBeliefBounds
 import Vegas.Game.OnePacketCommitmentSourcePolicy
-import Vegas.Game.OnePacketLateCommitments
 
 /-! # Uniform source incentive bounds for keyed commitments -/
 

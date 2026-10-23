@@ -1,8 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.OnePacketCanonicalAcceptance
-import Vegas.Game.SourceServiceFirstTurnOpportunity
-import Vegas.Pending.ReactiveOwnerOpportunity
 
 /-! # Recorded response entries
 

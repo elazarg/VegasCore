@@ -1,8 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
+import Vegas.Source.DisclosureBehavioral
 import Vegas.Game.SourceServiceStep
 import Vegas.Game.RevealServiceRosterPolicy
-import Vegas.Source.DisclosureBehavioral
 
 /-! # Effective guarded source disclosures in the native service
 

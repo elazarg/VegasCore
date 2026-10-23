@@ -1,6 +1,9 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.ReactiveDisclosureStability
+import Interaction.ReactiveInvariant
+import Vegas.Pending.ReactiveAssociationEvidence
+import Vegas.Pending.ReactiveStateInvariant
 
 /-! # A recipient retains certified named bindings -/
 

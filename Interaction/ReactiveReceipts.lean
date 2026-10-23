@@ -2,7 +2,6 @@
 
 import Interaction.ReactiveInvariant
 import Interaction.ReactiveServiceInvariant
-import Interaction.ReactiveHistory
 
 /-! # Public receipts certify payload properties
 

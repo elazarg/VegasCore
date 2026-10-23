@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.SourceServiceAsyncStep
+import Vegas.Source.Disclosure
 
 /-! # Source residuals of native configurations
 

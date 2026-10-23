@@ -2,7 +2,7 @@
 
 import Vegas.Compile.EventGraphBacktranslation
 import Vegas.Pending.PhaseBindingSlotPolicy
-import Interaction.ReactivePolicyMixture
+import Vegas.EventGraph.Sequential
 
 /-! # Effective binding actions read from actual private raw recall
 

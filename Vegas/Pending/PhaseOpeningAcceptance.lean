@@ -1,12 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.PhaseOpeningService
 import Vegas.Pending.PhaseLatestBindingHistory
-import Vegas.Pending.PhasePacketEvidence
 import Vegas.Pending.PhaseFailureCoverage
 import Vegas.Pending.PhaseInputAddress
-import Vegas.Pending.PhaseInputBindings
-import Vegas.Pending.PhaseBindingInvariant
 
 /-! # Physical acceptance of surviving counted openings
 

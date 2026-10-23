@@ -2,6 +2,7 @@
 
 import Vegas.Game.CompiledCommitCompletion
 import Vegas.Source.CommitRecoveryNoMiss
+import Interaction.ReactiveMenuRestriction
 
 /-! # Surviving typed prefix observations with unfinished foreign bindings -/
 

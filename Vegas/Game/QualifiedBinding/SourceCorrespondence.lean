@@ -2,6 +2,8 @@
 
 import Vegas.Game.QualifiedBinding.SourceImage
 import Vegas.Game.RecoveryRetryChronology
+import Vegas.Game.CommitRecoveryOmissionWindow
+import Vegas.Game.RecoveryResidualUniqueness
 
 /-! # Correspondence of selected source entries and factual commitment visits -/
 

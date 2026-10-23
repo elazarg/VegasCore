@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.RecoveryBoundaryWaiting
-import Vegas.Game.RecoverySuccessorBoundary
 import Vegas.Game.RecoveryTerminalSourceLaw
 import Vegas.Game.RecoveryChanceStoppedLaw
 

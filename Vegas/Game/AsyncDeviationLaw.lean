@@ -3,7 +3,6 @@
 import Vegas.Game.AsyncDeviationChoice
 import Vegas.Game.ServiceBlockLaw
 import Vegas.Game.ServiceCommitTail
-import Vegas.Game.SourceServicePrefixFactorization
 
 /-! # The law of one deviation, phase by phase, on barrier-ordered graphs
 

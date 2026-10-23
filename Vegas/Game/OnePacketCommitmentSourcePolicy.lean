@@ -1,6 +1,5 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.OnePacketCommitmentCompletion
 import Vegas.Game.IntendedCommitGain
 
 /-! # One source policy for an intended native commitment -/

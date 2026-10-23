@@ -1,26 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.SourceServiceCheckpoint
-import Vegas.Game.SourceServiceDisclosure
-import Vegas.Game.SourceServiceMenu
-import Vegas.Pending.ReactiveUnusableBinding
-import Vegas.Game.ServiceRoster
-import Vegas.Game.SourceServiceBoundary
-import Vegas.Game.SourceServicePrefix
-import Vegas.Game.SourceStateKernel
-import Vegas.Game.SourceServiceTimedPolicy
-import Vegas.Pending.ReactiveBoundedValues
-import Vegas.Pending.ReactiveGuardedResponse
 import Vegas.Game.SourceServicePrefixSupport
-import Interaction.ReactiveRoundReachability
-import Vegas.Game.RevealServicePrefix
-import Vegas.Pending.ReactiveOpeningSettlement
-import Vegas.Game.SourceInformation
-import Vegas.Pending.ReactiveResolutionEvidence
-import Vegas.Game.RevealServiceRosterContinuation
-import Vegas.Compile.EventGraphResolutionFields
-import Interaction.ReactiveRestrictedContinuation
-import GameTheoryExtensions.Math.Probability.Support
 import GameTheory.Analysis.Protocol.CounterfactualDecomposition
 import GameTheory.Math.Probability.ConditionalObservation
 import GameTheory.Math.Probability.ExpectationConditioning

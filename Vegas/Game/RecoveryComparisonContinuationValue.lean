@@ -2,7 +2,6 @@
 
 import Vegas.Game.RecoveryComparisonRetention
 import Vegas.Game.RecoveryStoppedContinuationValue
-import Vegas.Game.OnePacketLateSuccess
 
 /-! # Source continuation values of the common recovery comparison profile -/
 

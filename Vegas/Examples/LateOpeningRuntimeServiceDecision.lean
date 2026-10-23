@@ -1,6 +1,9 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Examples.LateOpeningRuntimeServiceCompletion
+import Interaction.ReactiveNormalHistory
+import Interaction.ReactiveNormalRecall
+import Vegas.Game.ServiceRosterAsync
 
 /-! # The owner decision positions of the public two-late service
 

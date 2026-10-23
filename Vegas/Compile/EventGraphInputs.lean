@@ -2,7 +2,6 @@
 
 import Vegas.Compile.EventGraphAssembly
 import Vegas.Compile.EventGraphEvaluation
-import Vegas.EventGraph.Execution
 
 /-! # Initial source values in event-graph stores
 

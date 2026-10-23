@@ -1,9 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.OnePacketExclusionPayoff
 import Vegas.Game.OnePacketSlotTrembles
 import Vegas.Game.OnePacketPrescribedSupport
-import GameTheoryExtensions.Analysis.Protocol.KeyedPools
 
 /-! # Late-delivery options
 

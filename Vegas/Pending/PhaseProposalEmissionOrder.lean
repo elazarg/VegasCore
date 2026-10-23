@@ -3,9 +3,10 @@
 import Vegas.Pending.PhaseSemanticProgress
 import Vegas.Pending.PhaseAttemptCheckpoint
 import Vegas.Pending.PhaseBindingResponseWitness
-import Vegas.Pending.PhaseClearNativeProgress
 import Interaction.ReactiveRecordedResponse
-import Vegas.Pending.PhaseBindingResponseDispatcher
+import Vegas.Pending.PhaseBindingFreshness
+import Vegas.Pending.PhaseBindingIdleMenu
+import Vegas.Pending.PhaseOpeningMenuShape
 
 /-! # Owned emission prefixes in an actual surviving attempt
 

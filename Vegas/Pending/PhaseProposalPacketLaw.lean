@@ -1,6 +1,5 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.PhaseProposalResponseAliases
 import Vegas.Pending.PhaseCountServiceReference
 
 /-! # Packet marginals of private proposal encodings

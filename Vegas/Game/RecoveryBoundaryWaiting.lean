@@ -4,7 +4,6 @@ import Vegas.Game.OnePacketForeignSubmission
 import Vegas.Game.AnchoredOpeningClients
 import Vegas.Game.OnePacketCompletionOrigin
 import Vegas.Pending.ReactiveOwnerActivationRecall
-import Vegas.Pending.ExclusionNativeFailure
 import GameTheoryExtensions.Analysis.Protocol.StoppedHistoryInvariant
 
 /-! # Waiting for the first owner callback under actual recovery service -/

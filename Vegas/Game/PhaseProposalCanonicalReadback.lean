@@ -2,7 +2,6 @@
 
 import Vegas.Game.PhaseProposalBindingKernel
 import Vegas.Source.ProposalRecoveryOrdinaryView
-import Vegas.Source.ProposalRecoveryProjection
 
 /-! # Source readback at a canonical current binding prefix -/
 

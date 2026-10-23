@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.PhaseProposalInitializedLawError
+import Vegas.Pending.ReactiveInitialValues
 
 /-! # Exact initialized full-history and perturbation contracts -/
 

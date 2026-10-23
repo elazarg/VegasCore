@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.OnePacketSlotTrembles
-import GameTheoryExtensions.Math.Probability.TotalVariation
 
 /-! # Probability of responses outside source-main support -/
 

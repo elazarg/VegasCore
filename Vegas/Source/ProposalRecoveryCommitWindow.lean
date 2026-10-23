@@ -1,9 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Source.ProposalRecoveryCommitment
-import Vegas.Source.ProposalRecoveryLift
 import Vegas.Source.ProposalRecoverySupportSplice
-import Vegas.Source.CommitRecoveryCommitUnique
 
 /-! # Actual commitment windows emit no proposal disclosures -/
 

@@ -2,7 +2,6 @@
 
 import GameTheory.Protocol.BehavioralAssessment
 import GameTheory.Analysis.IncentiveCone
-import GameTheoryExtensions.Math.Probability.Expectation
 import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Deterrence by probabilistic sanctions

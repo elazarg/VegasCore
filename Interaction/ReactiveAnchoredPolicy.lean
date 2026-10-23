@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Interaction.ReactiveRecovery
-import Interaction.ReactiveRoundReachability
 
 /-! # Continuing an execution reached by other players
 

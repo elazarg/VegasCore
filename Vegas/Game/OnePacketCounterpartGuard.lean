@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.OnePacketSwapGuardSite
-import Vegas.Game.OnePacketSwapExchange
 import Vegas.Game.OnePacketPublishedBindings
 import Vegas.Game.OnePacketProjectedDecision
 import Vegas.Source.CellSwapDebt

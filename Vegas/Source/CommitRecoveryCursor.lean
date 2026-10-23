@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Source.CommitRecoveryControl
-import Vegas.Source.CommitRecoveryOwnHistory
 
 /-! # Exact source instruction ranks between actual recovery retries -/
 

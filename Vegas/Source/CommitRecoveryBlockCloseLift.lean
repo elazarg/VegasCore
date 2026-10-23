@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Source.CommitRecoveryBlockPath
-import Vegas.Source.CommitRecoveryBlockLift
 import Vegas.Source.CommitRecoveryErasedStep
 
 /-! # Typed commitment closures lift to legal whole-source recovery paths -/

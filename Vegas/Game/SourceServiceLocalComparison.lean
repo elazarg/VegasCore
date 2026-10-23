@@ -7,6 +7,7 @@ import GameTheory.Analysis.Protocol.CounterfactualDecomposition
 import GameTheory.Math.Probability.ConditionalObservation
 import GameTheory.Math.Probability.ExpectationConditioning
 import GameTheory.Protocol.TremblingPlans
+import Vegas.Game.SourceServiceTimedPolicy
 
 /-! # Decision phases and timed approximants in the full-source service
 

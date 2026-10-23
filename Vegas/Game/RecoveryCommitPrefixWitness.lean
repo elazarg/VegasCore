@@ -1,13 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.RecoverySourceCheckpoint
-import Vegas.Source.CommitRecoveryNoMissInformation
 import Vegas.Game.CompiledCommitPartialView
 import Vegas.Compile.CommitPrefixView
-import Vegas.Source.CommitRecoveryFrontier
-import Vegas.Source.CommitRecoveryInformation
-import Vegas.Source.CommitRecoveryBlockLift
-import Vegas.Source.CommitPrefixSplitting
 import Vegas.Pending.PhaseStoredCheckpoint
 import Vegas.Pending.PhaseFrontier
 

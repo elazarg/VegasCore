@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.PhaseApplication
-import Vegas.Pending.PhaseHistoryCheckpoint
 import Vegas.Pending.ExclusionPublicRecord
 
 /-! # Actual packet origins of true publication completion actions -/

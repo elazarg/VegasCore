@@ -2,7 +2,6 @@
 
 import Vegas.Game.PhaseProposalCanonicalSourceBlock
 import Vegas.Source.ProposalRecoveryTraceReadback
-import Vegas.Source.CommitRecoveryCommitUnique
 import GameTheory.Protocol.HistoryEvents
 
 /-! # Exact original enriched histories identified by their finite commitment word -/

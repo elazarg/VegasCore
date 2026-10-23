@@ -1,6 +1,9 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.QualifiedBinding.BindingReadback
+import Vegas.Game.AsyncDeviationForeign
+import Vegas.Game.RecoveryResidualUniqueness
+import Vegas.Source.CommitRecoveryAttemptOrigin
 
 /-! # Saved source images and factual commitment visits -/
 

@@ -3,6 +3,7 @@
 import Vegas.Game.RecoveryLocalComparisons
 import Vegas.Game.RecoverySequentialLimit
 import Vegas.Game.RecoveryOnePacketRawLaw
+import Vegas.Game.OnePacketCertificateAssembly
 
 /-! # Sequential preservation by the permanent-exclusion recovery runtime
 

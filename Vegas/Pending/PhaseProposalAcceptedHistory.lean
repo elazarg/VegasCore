@@ -2,7 +2,6 @@
 
 import Vegas.Pending.PhaseProposalAccepted
 import Interaction.ReactiveTrafficIdentity
-import Interaction.ReactiveServiceInvariant
 
 /-! # Initialized true publication actions have actual submitted openings -/
 

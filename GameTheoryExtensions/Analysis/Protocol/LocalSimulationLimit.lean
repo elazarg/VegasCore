@@ -4,8 +4,7 @@ import GameTheory.Analysis.Protocol.SequentialOneShot
 import GameTheoryExtensions.Protocol.ContinuationHorizon
 import GameTheoryExtensions.Analysis.Protocol.UniformPolicyLimit
 import GameTheory.Analysis.Protocol.Incentives
-import GameTheoryExtensions.Math.Probability.Support
-import GameTheoryExtensions.Math.Probability.Expectation
+import GameTheoryExtensions.Analysis.Protocol.ConsistencyCompletion
 
 /-! # Sequential equilibrium from local continuation comparisons
 

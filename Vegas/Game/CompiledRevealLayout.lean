@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.ServiceRevealTail
-import Vegas.Compile.EventGraphSuffix
 import Vegas.Pending.RuntimePhase
 
 /-! # Source reveal prefixes determined by actual compiled phase intervals -/

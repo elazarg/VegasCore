@@ -1,10 +1,10 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.ReactiveCountVerdict
-import Interaction.ReactiveAuditCollection
 import Interaction.ReactiveTrafficContinuation
 import Interaction.ReactiveSubmissionSerial
 import Interaction.ChallengeWindow
+import GameTheoryExtensions.Analysis.Protocol.TerminalAudit
 
 /-! # The count audit: sampled signed traffic judged by the count verdict
 

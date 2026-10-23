@@ -2,7 +2,6 @@
 
 import Vegas.Game.OnePacketOwnerPrior
 import Vegas.Game.OnePacketOwnerGuard
-import Vegas.Game.OnePacketForcedInputs
 
 /-! # The owner swap keeps the prior's support at a site
 

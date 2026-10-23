@@ -2,7 +2,6 @@
 
 import Vegas.Pending.PhaseSeedBudget
 import Vegas.Pending.PhaseServiceProgress
-import Vegas.Pending.PhaseResolution
 
 /-! # Finite semantic work across physical phase retries
 

@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.OnePacketLateSuccess
-import GameTheoryExtensions.Protocol.ContinuationHorizon
+import Vegas.Game.RevealServiceRosterContinuation
 
 /-! # Terminal source prefixes under arbitrary native continuations -/
 

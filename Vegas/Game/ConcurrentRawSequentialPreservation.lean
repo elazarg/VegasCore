@@ -4,7 +4,6 @@ import Vegas.Game.IntendedPreservation
 import Vegas.Game.PhaseExclusionPayoff
 import Vegas.Game.PhaseOnePacketExtension
 import Vegas.Pending.ReservedEpochResources
-import Vegas.Source.InitialState
 import Interaction.CompletePendingObservation
 
 /-! # Concurrent raw sequential-equilibrium preservation contract

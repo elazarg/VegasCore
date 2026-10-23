@@ -1,8 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.SourceServiceTurnPolicy
-import Vegas.Game.SourceServiceCompletion
-import Interaction.ReactiveRawRoundTrace
+import GameTheoryExtensions.Math.Probability.TotalVariation
 
 /-! # Boundary continuations of the service
 

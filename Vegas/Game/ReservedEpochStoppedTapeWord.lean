@@ -1,8 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.ReservedEpochRetiredReceipt
-import Interaction.ReactiveResponseEvaluation
-import Interaction.ReactiveRawRoundTrace
 
 /-! # Old pending tape bits at the original physical attempt exit -/
 

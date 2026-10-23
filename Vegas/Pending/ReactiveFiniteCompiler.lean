@@ -2,8 +2,6 @@
 
 import Vegas.Pending.ReactiveBoundedHandles
 import Vegas.Pending.ReactiveCandidateBudget
-import Vegas.Pending.ReactivePolicyFacts
-import Interaction.ReactiveMenuPolicy
 
 /-! # Compiler coverage of finite raw response domains
 

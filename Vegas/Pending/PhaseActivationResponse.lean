@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.PhaseServiceContract
-import Vegas.Pending.ReactiveAsyncContract
 import Interaction.ReactiveRecordedResponse
 
 /-! # Every completed physical activation retains its actual response view -/

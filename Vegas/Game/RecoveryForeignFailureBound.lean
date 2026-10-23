@@ -3,11 +3,9 @@
 import Vegas.Pending.ExclusionStoppedBoundary
 import Vegas.Pending.ExclusionFailureOwners
 import Vegas.Game.RecoveryNativeComparison
-import Vegas.Game.OnePacketCertificateDischarge
 import Vegas.Game.OnePacketRareMainMass
 import Vegas.Game.RecoveryForeignFailure
 import Vegas.Game.OnePacketDebtRouting
-import GameTheoryExtensions.Analysis.Protocol.StoppedHistoryInvariant
 import GameTheoryExtensions.Analysis.Protocol.StoppedExitBound
 
 /-! # Rare first responses of the common native comparison profile -/

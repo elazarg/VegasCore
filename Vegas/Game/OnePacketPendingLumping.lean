@@ -3,6 +3,7 @@
 import Vegas.Game.OnePacketPathwise
 import Vegas.Game.OnePacketActorRecord
 import Vegas.Game.OnePacketEventFailure
+import Vegas.Pending.ReactiveAssociationEvidence
 
 /-! # One step of the native kernel while a forced owner's event is pending
 

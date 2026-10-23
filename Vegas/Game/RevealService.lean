@@ -1,14 +1,12 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Source.RevealSequence
 import Vegas.Compile.EventGraphInputs
-import Vegas.Compile.EventGraphPolicy
 import Vegas.EventGraph.Sequential
 import Vegas.Pending.ReactiveRevealBlock
 import Vegas.Pending.ReactiveMonitoring
 import Vegas.Pending.ReactiveFiniteResponses
-import Interaction.ReactiveResponseMenu
-import Interaction.ReactiveMenuRestriction
+import Vegas.Pending.EventPublicState
+import Vegas.Source.ProtocolTermination
 
 /-! # Restricted native service for source revelation sequences
 

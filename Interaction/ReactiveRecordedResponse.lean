@@ -1,8 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Interaction.ReactiveResponseMenu
-import Interaction.ReactiveRecallInvariant
-import Interaction.ReactiveRecovery
 import GameTheoryExtensions.Protocol.TracePrefix
 
 /-! # Actual legal origins of remembered responses -/

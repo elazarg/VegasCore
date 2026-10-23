@@ -1,6 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.ReactiveBindingFrame
+import Vegas.Pending.ReactiveBindingAllocation
+import Vegas.Pending.ReactiveRawBindingFrame
 
 /-! # Binding repair before delayed inclusion
 

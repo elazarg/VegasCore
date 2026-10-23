@@ -1,9 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Source.CommitRecoveryValueTremble
-import Vegas.Source.CommitRecoveryErasedModel
-import Vegas.Game.CommitRecoveryReference
-import Interaction.ReactivePolicyMixture
 
 /-! # Original occurrence flags independent of reduced domain tables
 

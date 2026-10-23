@@ -1,8 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Interaction.ReactivePolicyMixture
 import Vegas.Pending.PhaseBindingSlotHistory
-import Vegas.Pending.PhaseBindingMenuShape
 import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Normalized local binding service with a separate counted send tier -/

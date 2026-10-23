@@ -1,9 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.RecoveryNonLateSourceValue
 import Vegas.Game.RecoveryFirstActivationValue
-import Vegas.Game.RecoveryCompletionPotential
-import Vegas.Game.IntendedChoiceReach
 import Vegas.Game.RecoveryPhasePotential
 import Vegas.Game.RecoveryLocalCompletionValue
 

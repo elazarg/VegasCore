@@ -1,10 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Source.IntendedGame
 import Vegas.Source.IntendedBetween
 import Vegas.Source.Forfeit
 import Vegas.Source.Accounting
-import Vegas.Source.ProtocolEvaluation
 
 /-! # Play of the intended game and departures from it
 

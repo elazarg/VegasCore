@@ -2,6 +2,8 @@
 
 import Vegas.Game.SourceServiceTurnSubmissions
 import Vegas.Pending.ReactiveBindingResources
+import Interaction.ReactiveRawRoundTrace
+import Vegas.Pending.ReactiveOpeningWindow
 
 /-! # A fixed first-turn decision completes its event with that action
 

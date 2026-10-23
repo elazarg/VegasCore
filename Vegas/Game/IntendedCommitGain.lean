@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.OnePacketPrescribedCompletion
-import Vegas.Game.OnePacketReplayInputs
+import Vegas.Game.AsyncDeviationForeign
 
 /-! # The gain of a commitment in the intended game
 

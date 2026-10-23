@@ -2,8 +2,6 @@
 
 import Interaction.ReactiveRecall
 import Interaction.ReactiveServiceInvariant
-import Interaction.ReactivePublication
-import Interaction.MessageNetworkCounters
 
 /-! # Envelope serials count fresh own submissions
 

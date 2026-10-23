@@ -3,9 +3,9 @@
 import Vegas.Game.PhaseProposalArchiveValue
 import Vegas.Game.PhaseProposalLabels
 import Vegas.Game.PhaseProposalActor
-import Vegas.Game.PhaseProposalAddress
 import Vegas.Pending.PhaseProposalFailure
 import Vegas.Source.CommitRecoveryRevealMenu
+import Vegas.Pending.PhasePlanSuffix
 
 /-! # Submitted counted proposals are exposed by the actual labeled source step -/
 

@@ -1,6 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.QualifiedBinding.SourceQueryTransport
+import Vegas.Pending.PhaseProposalLostBinding
+import Vegas.Pending.PhaseSwapInformation
 
 /-! # Simultaneous source alignment for literal native replay -/
 

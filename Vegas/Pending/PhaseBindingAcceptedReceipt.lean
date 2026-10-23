@@ -2,7 +2,7 @@
 
 import Vegas.Pending.PhaseBindingStampHistory
 import Vegas.Pending.PhaseBindingReceiptResolution
-import Vegas.Pending.PhaseArchivedBindings
+import Vegas.Pending.PhaseSignedBindings
 
 /-! # Live and retired accepted bindings have actual accepting receipts -/
 

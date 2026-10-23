@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.PhaseProposalUnflagged
-import GameTheoryExtensions.Math.Probability.TotalVariation
 
 /-! # Retained mass after removing prospective response flags -/
 

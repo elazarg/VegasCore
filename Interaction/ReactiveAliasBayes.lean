@@ -3,7 +3,6 @@
 import Interaction.ReactiveAliasSelector
 import Interaction.ReactiveAliasConsistency
 import GameTheory.Analysis.Protocol.BeliefTransport
-import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Exact Bayes beliefs under private response aliases
 

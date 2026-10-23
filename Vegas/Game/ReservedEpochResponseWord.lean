@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.ReservedEpochOriginalWord
-import Vegas.Pending.ReservedEpochActiveSlot
 
 /-! # The complete original word after an actual counted current response -/
 

@@ -2,8 +2,6 @@
 
 import Vegas.Game.CompiledCommitReadback
 import Vegas.Pending.PhaseStoredCheckpoint
-import Vegas.Compile.EventGraphAssembly
-import Vegas.EventGraph.Sequential
 
 /-! # Source attempts at actual drained phase boundaries -/
 

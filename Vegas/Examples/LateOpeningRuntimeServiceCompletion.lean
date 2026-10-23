@@ -2,6 +2,10 @@
 
 import Vegas.Examples.LateOpeningRuntimeServiceClock
 import Vegas.Pending.ReactiveStateInvariant
+import Interaction.ReactiveNormalHistory
+import Interaction.ReactiveNormalRecall
+import Vegas.EventGraph.CanonicalStep
+import Vegas.Game.ServiceRosterAsync
 
 /-! # The padded public scheduler completes every raw execution
 

@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Source.ProposalRecoveryPreparationRepairLabels
+import Vegas.Source.ProposalRecoveryInformation
 
 /-! # Generated source failures and the repaired owner's literal moves -/
 

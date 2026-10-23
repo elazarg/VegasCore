@@ -1,8 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.PhaseProposalBindingEmission
-import Vegas.Pending.PhaseCompletion
-import Vegas.Pending.PhaseStoredCheckpoint
 
 /-! # Retain actual binding emissions along the original native history
 

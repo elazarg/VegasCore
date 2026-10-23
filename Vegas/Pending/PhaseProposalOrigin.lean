@@ -5,7 +5,6 @@ import Vegas.Pending.PhaseBindingIdleMenu
 import Vegas.Pending.PhaseOpeningMenuShape
 import Vegas.Pending.PhaseBindingFreshness
 import Vegas.Pending.PhaseAttemptCheckpoint
-import Vegas.Pending.PhaseFailureCoverage
 import Interaction.ReactiveRecordedResponse
 
 /-! # Genuine requesting callbacks for every submitted counted proposal

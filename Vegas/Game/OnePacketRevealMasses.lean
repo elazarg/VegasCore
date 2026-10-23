@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.OnePacketStepGlue
-import Vegas.Game.OnePacketRetention
 
 /-! # The as-if-honest and slot laws at a reveal
 

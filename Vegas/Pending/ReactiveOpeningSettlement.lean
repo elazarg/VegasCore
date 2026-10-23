@@ -2,6 +2,8 @@
 
 import Vegas.Pending.ReactiveOpeningWindow
 import Interaction.ReactiveAllocation
+import Interaction.ReactiveMessageReadout
+import Vegas.Pending.ReactiveService
 
 /-! # Protected inclusion after a finite opening window
 

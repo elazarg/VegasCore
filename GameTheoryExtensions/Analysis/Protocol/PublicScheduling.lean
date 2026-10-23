@@ -3,8 +3,6 @@
 import GameTheoryExtensions.Analysis.Protocol.LocalSimulationLimit
 import GameTheoryExtensions.Analysis.Protocol.ProportionalBeliefTransport
 import GameTheoryExtensions.Analysis.Protocol.ReachBounds
-import GameTheoryExtensions.Analysis.Protocol.Bayes
-import GameTheoryExtensions.Protocol.ContinuationHorizon
 
 /-! # Sequential equilibrium under bounded public scheduling
 

@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Interaction.ReactiveAnchoredMixture
-import GameTheoryExtensions.Analysis.Protocol.StoppedTerminalBound
 
 /-! # Foreign anchoring preserves the original stopped full-history law -/
 

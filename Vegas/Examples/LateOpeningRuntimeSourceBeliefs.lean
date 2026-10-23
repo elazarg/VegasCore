@@ -3,6 +3,7 @@
 import Vegas.Examples.LateOpeningRuntimeSource
 import GameTheoryExtensions.Analysis.Protocol.Bayes
 import GameTheory.Analysis.Protocol.BeliefTransport
+import Interaction.ReactiveEvidence
 
 /-! # Actual source beliefs at the answer commitment
 

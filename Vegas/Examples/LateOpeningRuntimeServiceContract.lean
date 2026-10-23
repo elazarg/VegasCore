@@ -5,6 +5,7 @@ import Vegas.Examples.LateOpeningRuntimeServiceReceipt
 import Vegas.Examples.LateOpeningRuntimeServiceErasure
 import Vegas.Examples.LateOpeningRuntimeCoverage
 import Vegas.Game.AsyncServiceSpec
+import Vegas.Pending.ReactiveInitialValues
 
 /-! # The actual public two-late builder meets the asynchronous service contract
 

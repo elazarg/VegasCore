@@ -2,6 +2,7 @@
 
 import Vegas.Game.RecoveryComparisonSite
 import Vegas.Game.RecoveryNativePrefixBounds
+import Vegas.Game.OnePacketLateCommitBlind
 
 /-! # Irregular-history posterior bounds for the common recovery assessment
 

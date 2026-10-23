@@ -3,6 +3,8 @@
 import Vegas.Examples.LateOpeningRuntimeSourceOptimality
 import Vegas.Examples.LateOpeningRuntimeSourceContinuation
 import Vegas.Examples.LateOpeningRuntimeSourcePreservation
+import Interaction.ReactiveImplementation
+import Interaction.ReactiveNormalHistory
 
 /-! # The selected equilibrium outcome of the actual source program
 

@@ -1,10 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.PhaseProposalSourceArchive
 import Vegas.Game.PhaseObservableSourceQuery
 import Vegas.Game.ProposalRecoveryPrescription
 import Vegas.Pending.PhaseProposalEmissionOrder
-import Vegas.Pending.PhaseBindingResponseWitness
 
 /-! # Observable source queries with the complete typed proposal archive
 

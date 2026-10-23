@@ -1,11 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.PhaseProposalHistory
 import Vegas.Game.PhaseProposalInstalledSourceHistory
-import Vegas.Pending.PhaseAttemptCheckpoint
-import Vegas.Pending.PhaseAttemptReceiptSnapshot
-import Vegas.Pending.ReservedEpochCompletion
-import Vegas.Source.CommitRecoveryCursor
 
 /-! # The same selected source checkpoint along an unfinished physical attempt -/
 

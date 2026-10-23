@@ -5,11 +5,6 @@ import Vegas.Game.RecoverySilenceComparison
 import Vegas.Game.RecoveryDisclosureComparison
 import Vegas.Game.RecoveryUnintendedComparison
 import Vegas.Game.RecoveryNonLateChoices
-import Vegas.Game.RecoverySourceBeliefBounds
-import Vegas.Game.RecoveryIrregularBeliefBounds
-import Vegas.Game.RecoveryFirstActivationValue
-import Vegas.Game.RecoveryCompletionPotential
-import Vegas.Game.IntendedChoiceReach
 
 /-! # Uniform source incentive bounds for nonlate commitments -/
 

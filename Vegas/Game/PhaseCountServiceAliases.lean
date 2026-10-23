@@ -1,15 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.PhaseSourcePolicy
-import Vegas.Pending.PhaseCountServiceReference
-import Vegas.Pending.PhasePrivateService
-import Vegas.Pending.PhaseAttemptCheckpoint
-import Vegas.Pending.PhaseBindingResponseWitness
-import Interaction.ReactiveRecordedResponse
-import Vegas.Game.PhaseObservableSourceQuery
-import Vegas.Game.PhaseRecoveryDomainValue
-import Vegas.Pending.PhaseResponseNormalization
-import Interaction.ReactiveAliasLaw
 
 /-! # Operational aliases in the selected counted source prescription
 

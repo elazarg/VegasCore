@@ -3,12 +3,8 @@
 import Vegas.Game.RecoverySourceCheckpoint
 import Vegas.Game.PhaseProposalReplayPath
 import Vegas.Game.CompiledSampleReadback
-import Vegas.Pending.PhaseExclusionRecord
-import Vegas.Pending.PhaseStoredCheckpoint
 import Vegas.Pending.PhaseHistoryCheckpoint
-import Vegas.Game.RecordedSourceHistory
 import Vegas.Source.CommitRecoveryNonCommitIntended
-import GameTheoryExtensions.Protocol.StateSymmetry
 import GameTheory.Protocol.Backward
 
 /-! # Selected sample checkpoints retain their actual typed public draw -/

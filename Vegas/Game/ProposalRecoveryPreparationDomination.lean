@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.ProposalRecoveryPools
-import GameTheoryExtensions.Math.Probability.Support
+import GameTheory.Math.Probability.Domination
 
 /-! # Source ordinary domination before choosing unusable-preparation noise
 

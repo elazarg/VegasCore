@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Source.CommitRecoveryValueMenu
-import Vegas.Source.CommitRecoveryErasure
 
 /-! # Legal source failure flags independent of ordinary domain draws -/
 

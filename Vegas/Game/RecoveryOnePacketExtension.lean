@@ -4,9 +4,6 @@ import Vegas.Pending.ExclusionCountCollection
 import Vegas.Pending.ExclusionResponseAliases
 import Interaction.ReactiveAliasEquilibrium
 import Interaction.ReactiveLocalContinuation
-import Interaction.ReactiveFiniteAssessment
-import Interaction.ReactiveOwnPlay
-import GameTheoryExtensions.Analysis.Protocol.TerminalAudit
 import GameTheoryExtensions.Protocol.ContinuationHorizon
 
 /-! # Sequential equilibrium extension under the recovery count audit

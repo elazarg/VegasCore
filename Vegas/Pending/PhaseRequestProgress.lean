@@ -1,8 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.PhaseResolutionPersistence
 import Vegas.Pending.PhaseReadyRequests
-import Interaction.ReactivePolicyInvariant
 
 /-! # A genuine ready coordinate persists until physical resolution -/
 

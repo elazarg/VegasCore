@@ -1,6 +1,5 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Source.ProposalRecoveryPrefixLift
 import Vegas.Source.ProposalRecoveryCommitWindow
 import Vegas.Source.CommitRecoveryNoMissFixed
 

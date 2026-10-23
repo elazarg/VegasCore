@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Interaction.ReactiveRoundReachability
+import Interaction.ReactiveHistory
 
 /-! # Rounds of arbitrary players are legal raw histories
 

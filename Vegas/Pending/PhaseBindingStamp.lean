@@ -1,7 +1,5 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.PhaseSignedBindings
-import Vegas.Pending.PhaseExclusionRecord
 import Vegas.Pending.PhaseNamespace
 
 /-! # Accepted live bindings retain their physical attempt stamp

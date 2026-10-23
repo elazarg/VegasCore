@@ -1,9 +1,5 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.ReservedEpochStoppedCoupling
-import Vegas.Pending.PhaseAcceptedOrder
-import Vegas.Game.PhaseCountServiceForeignWord
-import Vegas.Game.ReservedEpochStoppedTapeWord
 import Vegas.Game.ReservedEpochStoppedUnsentBinding
 
 /-! # Owned accepting words in the original completed attempt image -/

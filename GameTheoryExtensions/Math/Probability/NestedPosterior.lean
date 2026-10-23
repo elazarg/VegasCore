@@ -1,6 +1,5 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import GameTheoryExtensions.Math.Probability.Support
 import GameTheory.Math.Probability.ConditionalObservation
 
 /-! # Original hierarchical draws conditioned on a common observation -/

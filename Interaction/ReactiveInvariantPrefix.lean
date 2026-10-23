@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Interaction.ReactiveInvariant
-import Interaction.ReactiveHistory
 import Interaction.ReactiveResponseMenu
 import GameTheoryExtensions.Protocol.TracePrefix
 

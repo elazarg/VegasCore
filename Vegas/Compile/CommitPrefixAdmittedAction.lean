@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Compile.CommitPrefixAdmission
-import Vegas.Compile.ProtocolViewSuffix
 
 /-! # Original intended binding actions at a partial compiled commitment prefix -/
 

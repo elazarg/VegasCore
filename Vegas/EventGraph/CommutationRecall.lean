@@ -2,7 +2,6 @@
 
 import Vegas.EventGraph.Commutation
 import Vegas.EventGraph.Information
-import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Fixed-action commutation with original-action recall
 

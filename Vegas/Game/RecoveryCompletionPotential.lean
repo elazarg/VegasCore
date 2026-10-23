@@ -2,7 +2,6 @@
 
 import Vegas.Game.RecoveryEventPhaseLaw
 import Vegas.Game.OnePacketLateBadMass
-import Vegas.Game.OnePacketCompletionLaw
 
 /-! # Completion potentials for actual current-event phases -/
 

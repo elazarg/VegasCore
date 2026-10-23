@@ -1,11 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.PhaseBindingShadowStep
-import Vegas.Pending.PhaseBindingFreshness
-import Vegas.Pending.PhaseBindingSlotHistory
-import Vegas.Pending.PhaseResponseNormalization
-import Interaction.ReactiveRoundTrace
-import Vegas.Pending.PhaseBindingService
 
 /-! # Raw accepted binding completion and its directed private reconstruction -/
 

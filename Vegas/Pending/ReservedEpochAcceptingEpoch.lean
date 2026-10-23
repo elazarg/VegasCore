@@ -5,6 +5,8 @@ import Vegas.Pending.ReservedEpochAdmission
 import Vegas.Pending.PhaseCountedRequestResolution
 import Interaction.ReactiveRawRoundTrace
 import Interaction.ReactiveMonitoring
+import Vegas.Pending.PhaseSeedClockEffects
+import Vegas.Pending.PhaseServiceProgress
 
 /-! # Accepting delivery of a certified current packet in a reserved epoch -/
 

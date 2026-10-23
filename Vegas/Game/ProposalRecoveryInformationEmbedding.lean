@@ -4,7 +4,6 @@ import Vegas.Source.ProposalRecoverySuccessfulTrace
 import Vegas.Game.ProposalRecoveryInformationReadback
 import Vegas.Game.ProposalRecoveryArchivePublicHistory
 import Vegas.Game.CommitRecoveryInformationEmbedding
-import Vegas.Game.CommitRecoveryAncillaryBelief
 
 /-! # Full intended-source information retained by the labeled refinement -/
 

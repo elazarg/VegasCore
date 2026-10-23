@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.ReactiveBindingAllocation
-import Vegas.Pending.ReactiveStateInvariant
 
 /-! # Joint binding frames for arbitrary private raw material
 

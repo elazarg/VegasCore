@@ -3,7 +3,9 @@
 import Vegas.Game.RecoveryPrescribedSourceKernel
 import Vegas.Game.SourceFailureRecord
 import Vegas.Pending.ExclusionAcceptedOutput
-import GameTheoryExtensions.Analysis.Protocol.StoppedHistoryInvariant
+import Vegas.Game.AnchoredHonestLaw
+import Vegas.Game.AnchoredOpeningClients
+import Vegas.Game.IntendedOpeningContinuation
 
 /-! # Genuine clear successor boundaries after honest source steps -/
 

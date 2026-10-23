@@ -1,8 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.AsyncDeviationPhase
 import Vegas.Game.ServiceBlockCongruence
-import Vegas.Game.SourceServiceCanonicalSlots
+import Vegas.Pending.EventActivationOrigin
 
 /-! # The phase of another owner against one deviating player
 

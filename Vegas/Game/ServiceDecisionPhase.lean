@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.SourceServiceDecidedCompletion
-import Vegas.Game.SourceServiceReachedDecoding
 
 /-! # A decided owner completes its event with its decision, whatever else completes
 

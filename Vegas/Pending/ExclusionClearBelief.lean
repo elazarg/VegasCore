@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.ExclusionClearReach
-import Interaction.ReactiveDecisionInformation
 
 /-! # Exact Bayes beliefs before public exclusion
 

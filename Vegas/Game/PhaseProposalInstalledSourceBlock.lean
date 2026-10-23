@@ -2,7 +2,6 @@
 
 import Vegas.Game.PhaseProposalOrdinaryStoppedSourceWord
 import Vegas.Game.PhaseProposalBindingEntry
-import Vegas.Game.CompiledCommitMaximality
 
 /-! # The chronological ordinary cursor at an actual fresh binding installation -/
 

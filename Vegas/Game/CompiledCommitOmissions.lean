@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.CompiledCommitAttempt
-import Vegas.Pending.PhaseExclusionRecord
 
 /-! # Physical omission sets of decoded commitment attempts -/
 

@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.OnePacketFirstActivationCompletion
-import Vegas.Game.OnePacketRealizedCommitment
 
 /-! # Fresh slots and the acceptance invariant after a one-packet commitment
 

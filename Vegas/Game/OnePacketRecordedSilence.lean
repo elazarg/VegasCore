@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.OnePacketSiteConsistent
-import Vegas.Game.OnePacketSilenceMasses
 
 /-! # Components keep silence once the owner has sent for its event
 

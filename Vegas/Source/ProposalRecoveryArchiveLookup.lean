@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Source.ProposalRecoveryChronology
-import Vegas.Source.ProposalRecoverySupportSplice
+import Vegas.Source.CommitRecoveryCursor
 
 /-! # Recovering the last proposal from its canonical archive and source cursor -/
 

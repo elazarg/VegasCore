@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Source.CommitRecoveryFiniteness
-import Vegas.Source.ExclusionMoveGame
 
 /-! # Nonomitting bindings and mandatory openings in source recovery -/
 

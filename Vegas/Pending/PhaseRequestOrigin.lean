@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.PhaseReadyRequests
-import Vegas.Pending.PhaseActivationOrigin
 import Vegas.Pending.PhaseRetryClock
 
 /-! # Readiness origins retain the physical attempt coordinate -/

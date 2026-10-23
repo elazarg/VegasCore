@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import GameTheoryExtensions.Analysis.Protocol.BehavioralContinuity
+import GameTheory.Math.Probability.Compactness
 
 /-! # Uniform whole-policy regret at finite assessment limits
 

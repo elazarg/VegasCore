@@ -2,8 +2,6 @@
 
 import Vegas.Game.SourceServiceFiniteness
 import Vegas.Game.SourceServiceCanonicalPolicy
-import Interaction.ReactiveMixtureRounds
-import GameTheoryExtensions.Math.Probability.TotalVariation
 
 /-! # Turn-counted prescribed policy for every scheduler
 

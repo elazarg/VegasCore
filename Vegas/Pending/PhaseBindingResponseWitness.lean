@@ -1,10 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.PhaseBindingResponseDispatcher
-import Interaction.ReactiveOwnPlay
-import GameTheoryExtensions.Analysis.Protocol.OwnPlayReach
-import GameTheoryExtensions.Analysis.Protocol.SingleMoverReach
-import Interaction.ReactiveEnvironmentMass
+import Vegas.Pending.PhaseSeedScheduler
+import Vegas.Pending.PhaseSentMenu
 
 /-! # Observable unsent and canonical sending witnesses for repaired callbacks -/
 

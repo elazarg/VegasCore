@@ -1,11 +1,9 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.OnePacketOwnerSwap
-import Vegas.Game.OnePacketSwapGuardSite
 import Vegas.Game.OnePacketFailureBridge
 import Vegas.Game.OnePacketDisclosureResolves
-import Vegas.Game.OnePacketIntendedProjection
-import Vegas.Game.OnePacketPrescribedSupport
+import Vegas.Game.AsyncDeviationForeign
 
 /-! # The swap guard of the owner swap
 

@@ -1,9 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.ReactiveBindingPreparationRecord
-import Interaction.ReactiveTrafficState
 import Vegas.Pending.ReactiveOnePacketMenu
-import Vegas.Pending.ReactiveBindingSubmissionFrame
+import Vegas.Pending.ReactiveBinding
 
 /-! # Original records of submitted owned bindings -/
 

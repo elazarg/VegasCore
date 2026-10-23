@@ -9,6 +9,9 @@ import Vegas.Pending.ReactiveGuardConformance
 import Vegas.EventGraph.ResolutionProvenance
 import Vegas.EventGraph.PrivateInputs
 import Vegas.Compile.EventGraphParameterReadout
+import Interaction.ReactiveNormalRecall
+import Interaction.ReactivePolicyInvariant
+import Vegas.EventGraph.CanonicalStep
 
 /-! # Typed outcomes and immutable publications in the initialized native game
 

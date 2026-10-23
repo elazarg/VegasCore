@@ -1,6 +1,5 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.EventGraph.Commutation
 import Vegas.EventGraph.StateCongruence
 import Vegas.EventGraph.CompletedOutputAgreement
 

@@ -1,9 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.RevealService
-import GameTheoryExtensions.Math.Probability.ActionSplitting
-import Vegas.Game.ServiceInformation
-import Vegas.Pending.ReactiveOpeningWindow
 
 /-! # One source policy over all visits of a revelation roster
 

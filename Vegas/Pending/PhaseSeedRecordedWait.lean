@@ -1,16 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.PhaseCurrentTokens
-import Vegas.Pending.PhaseReadyRequests
-import Vegas.Pending.PhaseBindingService
-import Vegas.Pending.PhaseOpeningAcceptance
-import Interaction.ReactiveOwnerSelection
-import Vegas.Pending.PhaseSeedScheduler
-import Vegas.Pending.PhaseSeedOperationalInput
-import Vegas.Pending.PhaseSeedServiceMarks
-import Vegas.Pending.PhaseResolutionPersistence
-import Vegas.Pending.PhaseRequestOrigin
 import Interaction.ReactiveRecordedRounds
+import Vegas.Pending.PhaseSeedClosedBound
 
 /-! # Earlier tick closures of a surviving coordinate were actual wait queries -/
 

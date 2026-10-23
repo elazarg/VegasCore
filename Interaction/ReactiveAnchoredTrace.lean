@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Interaction.ReactiveAnchoredPolicy
-import Interaction.ReactiveProtocol
+import Interaction.ReactiveRoundReachability
 
 /-! # Legal histories are reached by their own anchored replay
 

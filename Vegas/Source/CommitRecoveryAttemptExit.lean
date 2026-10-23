@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Source.CommitRecoveryAttemptReset
-import Vegas.Source.CommitRecoveryFrontier
 import GameTheoryExtensions.Analysis.Protocol.StoppedHistoryAtom
 
 /-! # The actual first exit of an original source commitment attempt -/

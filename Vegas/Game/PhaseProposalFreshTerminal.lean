@@ -1,21 +1,9 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.PhaseProposalInstalledSourceHistory
-import Vegas.Game.PhaseProposalSourceUsability
-import Vegas.Game.ProposalRecoveryContinuation
-import Vegas.Game.ProposalRecoveryResetContinuation
-import Vegas.Game.RecoverySourceTerminal
-import Vegas.Pending.ReservedEpochCompletion
-import Vegas.Compile.EventGraphStep
 import Vegas.Source.CommitRecoveryNonCommitJoint
-import Vegas.Pending.PhaseEntryExclusion
-import Vegas.Game.PhaseProposalActor
-import Vegas.Source.CommitRecoveryCursor
 import Vegas.Source.CommitRecoveryWordMass
 import Vegas.Source.CommitRecoveryOwnedStep
-import Vegas.Game.RecoverySurvivingBindingSource
-import Vegas.Game.PhaseProposalReplayScan
-import Vegas.Game.RecoveryRevealCheckpoint
 import Vegas.Game.CompiledRevealBindingRow
 import Vegas.Game.ReservedEpochPublicationBoundary
 import Vegas.Game.RecoveryCompletedPhaseWitness

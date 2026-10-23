@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.OnePacketLateLumping
-import Vegas.Game.OnePacketBindingSite
 import Vegas.Game.OnePacketLateMasses
 
 /-! # The owner's law of moves for slot-trembled late components

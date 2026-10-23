@@ -1,8 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.ReservedEpochPublicationWord
 import Vegas.Game.ReservedEpochPublicationOwnerChain
-import Vegas.Game.PhaseProposalReplayCoverage
 
 /-! # Canonical source comparison at an actual publication boundary -/
 

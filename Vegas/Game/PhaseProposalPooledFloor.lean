@@ -3,6 +3,7 @@
 import Vegas.Game.PhaseProposalOrdinaryFloor
 import Vegas.Game.PhaseProposalOrdinaryCoverage
 import Interaction.ReactiveMenuLikelihood
+import Vegas.Game.PhaseProposalGenuineSupport
 
 /-! # An actual response floor chosen before bad noise and pool optimization -/
 

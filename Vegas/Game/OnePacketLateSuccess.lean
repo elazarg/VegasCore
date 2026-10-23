@@ -1,12 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.AnchoredHonestLaw
-import Interaction.ReactiveAnchoredSupport
-import Interaction.ReactiveResponseAccounting
 import GameTheoryExtensions.Analysis.Protocol.StoppedTerminalBound
-import Vegas.Game.OnePacketEventFailure
 import Vegas.Game.OnePacketEventSuccess
-import GameTheoryExtensions.Protocol.ContinuationHorizon
 
 /-! # The successful part of a late delivery
 

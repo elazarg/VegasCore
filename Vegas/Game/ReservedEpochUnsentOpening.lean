@@ -2,8 +2,6 @@
 
 import Vegas.Game.PhaseProposalUnflaggedOpening
 import Vegas.Pending.ReservedEpochReceiptTiming
-import Vegas.Pending.PhaseOwnCount
-import Vegas.Pending.PhaseProposalArchive
 
 /-! # Truthful emission and finite admission at an old unsent publication -/
 

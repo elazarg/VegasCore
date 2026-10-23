@@ -2,7 +2,7 @@
 
 import Vegas.Game.OnePacketLateBadMass
 import Vegas.Game.ServiceRevealDecode
-import Vegas.Game.OnePacketDisclosureResolves
+import Vegas.Game.ServiceWithheldForfeit
 
 /-! # Completions of a late reveal
 

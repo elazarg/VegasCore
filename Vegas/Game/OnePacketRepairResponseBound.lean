@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.OnePacketResponseBound
+import Vegas.Game.OnePacketSlotLawForced
 
 /-! # Response likelihoods under directed binding repair
 

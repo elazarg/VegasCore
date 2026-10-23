@@ -1,11 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.ReactivePolicy
 import Vegas.Pending.ReactiveSafety
 import Vegas.Pending.ReactiveStateInvariant
-import Interaction.ReactivePolicyInvariant
-import Interaction.ReactiveServiceInvariant
-import Interaction.ReactiveRecallInvariant
 
 /-! # Compiled bindings across arbitrary intervening interaction
 

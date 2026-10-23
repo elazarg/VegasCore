@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.ReservedEpochResolution
-import Vegas.Pending.ReservedEpochFlatWork
 import Vegas.Pending.PhaseSampleProgress
 
 /-! # A ready source sample consumes work at the reserved sample slot -/

@@ -1,6 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.OnePacketFactorization
+import Vegas.Game.OnePacketPendingPool
+import Vegas.Game.ServiceSettledEvidence
 
 /-! # Scheduler rounds factor through the operational record
 

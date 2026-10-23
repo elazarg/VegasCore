@@ -5,13 +5,11 @@ import Vegas.Compile.EventGraphSuffix
 import Vegas.Compile.CompiledReadoutSuffix
 import Vegas.Compile.ProtocolViewSuffix
 import Vegas.Compile.EventGraphInputs
-import Vegas.Source.CommitRecoveryProtocol
 import Vegas.Source.ProtocolSuffix
 import Vegas.Source.RegistryFailureExtension
 import Vegas.Pending.PhaseApplication
 import Vegas.Compile.EventGraphHistory
 import Vegas.EventGraph.SequentialLaw
-import Vegas.EventGraph.Sequential
 
 /-! # Reachable source recovery checkpoints at saved physical phase entries
 

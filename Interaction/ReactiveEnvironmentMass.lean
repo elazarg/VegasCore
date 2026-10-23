@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Interaction.ReactiveResponseAccounting
-import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Actual environment and scheduler atoms from recorded commands -/
 

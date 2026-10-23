@@ -1,6 +1,5 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Source.ProposalRecoveryLift
 import Vegas.Source.ProposalRecoveryChronology
 
 /-! # Actual labeled prefixes and lifts of retained semantic suffixes -/

@@ -1,8 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.ExclusionPrefix
-import Vegas.Pending.ExclusionPublicRecord
-import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Native transition probabilities before public exclusion
 

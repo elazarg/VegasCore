@@ -1,9 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.ProposalRecoveryPayoff
-import Vegas.Source.CommitRecoveryFailureCoverage
 import Vegas.Game.CommitRecoveryVoluntaryFailurePayoff
-import GameTheoryExtensions.Protocol.ContinuationHorizon
 
 /-! # Checkpointed own debt forces the actual exclusion payoff under every continuation -/
 

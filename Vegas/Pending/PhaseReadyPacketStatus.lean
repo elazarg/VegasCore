@@ -1,12 +1,11 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.PhaseBindingReceiptResolution
-import Vegas.Pending.PhaseCountMenu
 import Interaction.ReactiveTrafficIdentity
-import Interaction.ReactiveRawRoundTrace
 import Interaction.ReactiveInvariantPrefix
 import Interaction.ReactiveReceiptIdentity
 import Interaction.ReactiveRecordedResponse
+import Vegas.Pending.PhaseCountUniqueness
 
 /-! # Literal sent status of a still-ready physical request -/
 

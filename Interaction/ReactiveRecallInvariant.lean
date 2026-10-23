@@ -2,7 +2,6 @@
 
 import Interaction.ReactiveRecall
 import Interaction.ReactiveInvariant
-import Interaction.ReactivePolicyInvariant
 import Interaction.ReactiveServiceInvariant
 
 /-! # Monotone application facts in remembered observations

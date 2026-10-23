@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.PhaseProposalLabels
-import Interaction.ReactiveTrafficState
 
 /-! # Current emissions preserve consumed proposal labels -/
 

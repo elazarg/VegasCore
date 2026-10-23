@@ -1,9 +1,9 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import GameTheoryExtensions.Analysis.Protocol.ConsistencyCompletion
 import GameTheory.Analysis.Protocol.CounterfactualReach
 import GameTheory.Math.Probability.Convergence
 import GameTheory.Analysis.Protocol.BeliefTransport
+import GameTheoryExtensions.Math.Probability.Expectation
 
 /-! # Continuity of finite behavioral continuation values
 

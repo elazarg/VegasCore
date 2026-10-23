@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.RecoveryContinuationComparison
-import GameTheoryExtensions.Math.Probability.Expectation
 
 /-! # Recovery continuation error averaged over actual histories -/
 

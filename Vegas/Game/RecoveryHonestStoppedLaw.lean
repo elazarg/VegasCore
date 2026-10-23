@@ -2,7 +2,6 @@
 
 import Vegas.Game.RecoveryHonestContinuation
 import Vegas.Game.HonestContinuationIntended
-import GameTheoryExtensions.Analysis.Protocol.StoppedHistoryInvariant
 
 /-! # Honest continuations do not stop at exclusion or latent debt -/
 

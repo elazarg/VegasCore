@@ -2,9 +2,6 @@
 
 import Vegas.Pending.ReservedEpochActivationWord
 import Vegas.Pending.ReservedEpochReceiptTiming
-import Vegas.Pending.PhaseTimelyResolution
-import Vegas.Pending.ReservedEpochResolution
-import Interaction.ReactiveRoundBoundary
 
 /-! # Literal unsent requests before the next actual owner offer -/
 

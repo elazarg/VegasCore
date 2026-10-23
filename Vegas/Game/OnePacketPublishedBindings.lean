@@ -1,6 +1,5 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.OnePacketDisclosureResolves
 import Vegas.Game.SourceSwapAgreement
 
 /-! # Publications carry their bindings or fail

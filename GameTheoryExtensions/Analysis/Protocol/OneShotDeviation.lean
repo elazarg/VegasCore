@@ -1,6 +1,5 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import GameTheoryExtensions.Math.Probability.Support
 import GameTheory.Analysis.Protocol.CounterfactualDecomposition
 import GameTheory.Protocol.DecisionRecall
 

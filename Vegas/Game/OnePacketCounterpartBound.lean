@@ -1,9 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.OnePacketCounterpartImage
-import Vegas.Game.OnePacketCounterpartSteps
-import Vegas.Game.OnePacketOwnIntended
-import Vegas.Game.OnePacketDisclosureAlong
 
 /-! # Response bounds along swaps toward a forced witness
 

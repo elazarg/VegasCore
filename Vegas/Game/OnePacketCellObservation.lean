@@ -2,7 +2,6 @@
 
 import Vegas.Source.CellSwapDebt
 import Vegas.Game.OnePacketForced
-import Vegas.Compile.EventGraphLayout
 
 /-! # Debts read only the observed cells
 

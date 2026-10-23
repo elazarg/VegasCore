@@ -2,7 +2,7 @@
 
 import Vegas.Source.CommitRecoveryContinuingMenu
 import Vegas.Source.ProtocolSuffix
-import GameTheoryExtensions.Math.Probability.Uniform
+import Vegas.Source.ExclusionMoveGame
 
 /-! # Domain-valued source recovery moves with separate failure trembles
 

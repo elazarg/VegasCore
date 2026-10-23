@@ -3,7 +3,6 @@
 import Vegas.Source.CommitRecoveryNonCommitValues
 import Vegas.Source.CommitRecoveryCommitEntry
 import Vegas.Source.CommitRecoveryNoMissInformation
-import Vegas.Source.CommitRecoveryValueMenu
 
 /-! # Surviving live values through inherited-exclusion commitment rows -/
 

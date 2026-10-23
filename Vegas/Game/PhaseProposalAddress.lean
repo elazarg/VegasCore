@@ -1,10 +1,9 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.PhaseProposalTyping
-import Vegas.Pending.PhasePacketAddress
 import Vegas.Source.ProposalRecoveryAddress
-import Vegas.Compile.EventGraphLayout
 import Vegas.Compile.EventGraphAssembly
+import Vegas.EventGraph.Sequential
 
 /-! # Publication proposal addresses agree with physical phase origins -/
 

@@ -2,7 +2,6 @@
 
 import Vegas.Game.PhaseProposalEmissionFrontier
 import Vegas.Game.PhaseProposalBindingAutomatic
-import Vegas.Pending.PhaseBindingMenuShape
 
 /-! # Actual native SEND updates preserve the same binding potential -/
 

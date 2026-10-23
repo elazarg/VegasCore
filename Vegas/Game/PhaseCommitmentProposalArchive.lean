@@ -1,11 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.PhaseProposalSourceArchive
 import Vegas.Game.PhaseCountServiceForeignWord
-import Vegas.Pending.PhaseBindingIdleMenu
 import Vegas.Pending.PhaseBindingMenuShape
 import Vegas.Pending.PhaseExclusionOrigin
-import GameTheoryExtensions.Analysis.Protocol.StoppedHistoryAtom
 
 /-! # An opaque commitment attempt preserves every old opening proposal -/
 

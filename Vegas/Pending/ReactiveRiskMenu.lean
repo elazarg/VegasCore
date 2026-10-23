@@ -2,9 +2,6 @@
 
 import Vegas.Pending.ReactiveCanonicalMenu
 import Vegas.Pending.ReactiveServiceAudit
-import Vegas.Pending.ReactiveServiceConformance
-import Vegas.Pending.EvidenceNormalization
-import Interaction.ReactiveMenuRestriction
 import Interaction.ReactiveSubmissionSerial
 
 /-! # A candidate continuation menu after locally visible service risk

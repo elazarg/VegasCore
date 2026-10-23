@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Interaction.ReactiveResponseMenu
 import Interaction.ReactiveRounds
+import Interaction.ReactiveResponseMenu
 import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Legal histories occur in the round evaluator

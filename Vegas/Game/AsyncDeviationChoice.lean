@@ -2,8 +2,10 @@
 
 import Vegas.Game.AsyncDeviationForeign
 import Vegas.Game.SourceServiceDeviationChoice
-import Vegas.Game.ServiceBlockRun
 import Vegas.Game.ServiceChancePhase
+import GameTheoryExtensions.Math.Probability.ObservedChoice
+import Vegas.Game.AsyncDeviationPhase
+import Vegas.Game.ServiceTimingCoupling
 
 /-! # Phases of one deviating player as source steps
 

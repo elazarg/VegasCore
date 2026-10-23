@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Interaction.ReactiveResponseEmbedding
-import Interaction.ReactiveDecisionInformation
 import GameTheory.Analysis.Protocol.BeliefTransport
 
 /-! # Reach and Bayes laws under finite response-menu embedding
