@@ -29,8 +29,10 @@ payoff. Deposits, forfeits and exit payoffs are payoffs; the valuation bounds
 they need are declared parameters, not properties the compiler reads from the
 program.
 
-**Truthfulness.** The designer can specify a truthful profile and state that it
-is an equilibrium. Preservation of truthfulness is not a target (decision D4).
+**Truthfulness.** The designer can specify truthfulness, for example that
+truthful bidding is dominant in a second-price auction. Preserving it through
+compilation is desired but not expected to hold in general; where it fails, the
+ledger records why rather than claiming it (decision D4).
 
 **Compiled output.** One compiled contract with one verdict and audit model on
 the `Interaction` chain model. The environment (builder, observation, audit
@@ -130,11 +132,16 @@ turn-based SE) and the reserved-epoch tape (for concurrent SE).
 
 ## Steps
 
+Order: work that needs no new mathematics and causes no long breakage comes
+first (Steps 0, 1 and 3, and the documentation parts of Steps 2 and 7). Steps 4
+and 5 wait until those are done. Removing code is not a risk: the tag
+`research-tree` holds the full tree.
+
 ### Step 0. Record
 
-- [ ] Commit this ledger.
-- [ ] Annotated tag on `main` naming the full research tree, so every later
-      removal is recoverable by tag.
+- [x] Commit this ledger.
+- [x] Annotated tag `research-tree` on `main` holding the full research tree,
+      so every later removal is recoverable by tag.
 - [ ] Pin `recovery_intended_raw_sequentialEquilibrium_preserved` in Paper; the
       paper cites it as `thm:recovery`.
 
@@ -142,11 +149,11 @@ turn-based SE) and the reserved-epoch tape (for concurrent SE).
 
 - [ ] Remove `warn.sorry = false`, the open-obligation registry,
       `scripts/report-open-obligations.py` and its CI step. With
-      `warningAsError` a `sorry` then fails the build.
-- [ ] Replace the hand-written pins in `VegasTests/AxiomAudit` with one
-      environment check that every declaration of the project libraries
-      depends only on `propext`, `Classical.choice` and `Quot.sound`. Keep the
-      Paper pins.
+      `warningAsError` a `sorry` then fails the build. A `sorry` is allowed only
+      temporarily during a large planned proof effort, and none is planned.
+- [ ] Remove the hand-written pins in `VegasTests/AxiomAudit`. The axiom audit
+      is the pins in Paper.lean; the build rejects `sorry`, and the source
+      policy rejects `axiom` declarations.
 - [ ] Reduce `scripts/check-lean-options.py` to what the environment check does
       not cover: central options, and a ban on metaprogramming escape hatches
       (`addDecl`, `debug.skipKernelTC`, `ofReduceBool`, `+native`, library-level
@@ -172,8 +179,15 @@ Exit: README, Paper and the docs agree; the documentation checks pass.
 
 ### Step 3. Prune to the kept cone
 
-Per family: tag if it carries a citable result, remove, build, record. Largest
-and most clearly orphaned first.
+Two passes. The first removes every module outside the import closure of the
+kept roots: the modules holding declarations used by the kept Paper theorems
+and by `recovery_intended_raw_sequentialEquilibrium_preserved`, plus the kept
+tests and instance examples. No kept module imports a removed one, so this pass
+cannot break the build. At `0a2dbc66` it removes 1,508 modules (295k lines) and
+keeps 2,306 (594k). The second pass shrinks the closure: unused imports, then
+unreached declarations inside kept modules, rebuilding as it goes.
+
+Removed results are indexed under [retired results](#retired-results).
 
 - [ ] `archive/` (git history already holds it).
 - [ ] `OnePacket*` on the plain contract.
@@ -186,11 +200,16 @@ and most clearly orphaned first.
       `EventGraphEvidence`), `PayoffTransport`, `MessagePool`,
       `SourceProgram.Initial`, `Vegas/Game/ValueBindingEdge.lean`.
 - [ ] The calendar family (`SourceService*`, `RevealService*`, the
-      settled-record verdict, rosters), if D1 retires the calendar results.
+      settled-record verdict, rosters) and its Paper theorems.
 
 Exit: the walk reports only modules on its allowlist; measurements updated.
 
 ### Step 4. One contract
+
+Before a theorem moves to the phase contract, a written comparison of the old
+and new statements shows that the move does not weaken it: environment,
+deviations, payoffs and the preserved law. Paper states one clear Nash
+preservation theorem.
 
 - [ ] Nash preservation on the phase contract under timely builders
       (first-turn clients and the deferral bound).
@@ -238,24 +257,22 @@ Exit: size within the target, or the excess explained in
 
 ## Owner decisions
 
-- **D1. Kept theorem set.** Proposed: the ladder in [target](#target). Are the
-  calendar results (`thm:sequential`, calendar Nash) retired as documented
-  alternatives, as semantics-and-enforcement.md III.2 item 7 proposes? And
-  which environment does non-concurrent SE need? Under any timely builder it
-  is a separate proof (90k lines today, on its own contract). Under the
-  reserved-epoch tape it may follow from the concurrent theorem on the
-  sequential graph at little cost, if that theorem generalizes over the graph
-  mode.
+- **D1. Kept theorem set.** Decided: the ladder in [target](#target), without
+  the calendar results. A calendar is a fixed instruction plan
+  (`rosterScheduler` reads `rosterPlan` by round), so every player knows the
+  schedule in advance; its sequential-equilibrium and Nash theorems are
+  retired. Non-concurrent SE stays the turn-based theorem under any timely
+  builder. Deriving it from the concurrent theorem waits: the environments
+  differ, so the derivation is not expected to be routine.
 - **D2. The single contract.** Proposed: the phase contract.
 - **D3. Source failure semantics.** Commit–reveal with exit
   (semantics-and-enforcement.md III.1), or the intended game with forfeit and
   exclusion payoff rewrites as analysis views only. This also decides the fate
   of `exclusionModel`.
-- **D4. Truthfulness.** Proposed meaning: the designer names a profile that
-  reports private inputs truthfully, and states that it is a Nash or sequential
-  equilibrium of the source; preservation of the equilibrium property then
-  follows from the ladder. Dominant-strategy truthfulness is specifiable but
-  not preserved.
+- **D4. Truthfulness.** Decided meaning: truthfulness preservation, for example
+  that truthful bidding stays dominant when a second-price auction is compiled.
+  Not expected to hold in general; the language must be able to state it, and
+  the conditions under which it holds or fails are open.
 - **D5. Impossibility results kept on `main`.** Proposed: the late-leak family
   (abstract, about 8k lines, motivates the exit payoff), moved out of the
   `Vegas` namespace. The runtime obstructions (`LateOpeningRuntime*`,
