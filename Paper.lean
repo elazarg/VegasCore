@@ -730,6 +730,10 @@ theorem settle_late_not_preserved_for_every_margin (R D c : ℝ) (reward_pos : 0
             (settleLatePayoff ⟨⟨R, D, c, q⟩, leak, packetCost⟩ false) →
           settleLateOutcomeLaw ⟨⟨R, D, c, q⟩, leak, packetCost⟩ false A.strategy =
             settleLateIntendedOutcome) ∧
+      (∃ A : (settleLateModel ⟨⟨R, D, c, q⟩, leak, packetCost⟩ true).BehavioralAssessment,
+        A.IsSequentialEquilibrium (settleLate_antichain ⟨⟨R, D, c, q⟩, leak, packetCost⟩ true)
+          (settleLate_terminates ⟨⟨R, D, c, q⟩, leak, packetCost⟩ true)
+          (settleLatePayoff ⟨⟨R, D, c, q⟩, leak, packetCost⟩ true)) ∧
       ∀ A : (settleLateModel ⟨⟨R, D, c, q⟩, leak, packetCost⟩ true).BehavioralAssessment,
         A.IsSequentialEquilibrium (settleLate_antichain ⟨⟨R, D, c, q⟩, leak, packetCost⟩ true)
             (settleLate_terminates ⟨⟨R, D, c, q⟩, leak, packetCost⟩ true)

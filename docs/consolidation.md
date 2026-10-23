@@ -361,13 +361,15 @@ Severity: H high, M medium, L low. "Step" is the step that resolves the finding.
   (`VegasTests/ConcurrentRawHypotheses.lean`) has no strategic content: Bob's
   payoff is identically zero and every profile gives Alice one half
   (`honest_alice_value`). The capstone is never applied to it.
-- [ ] **F-C5 (M, Step 5).** `settle_late_not_preserved_for_every_margin`
+- [x] **F-C5 (M, Step 5).** `settle_late_not_preserved_for_every_margin`
   quantifies over the SEs of a game with no proof that it has one; the
   `late_leak_*` and `CommitSeedSignalling` obstructions omit existence from
-  their statements although it is proved nearby. The `late_leak_*` Paper
-  theorems now state that the late game has a sequential equilibrium
-  (`Vegas.lateLeak_exists_sequentialEquilibrium`); the settle-late game still
-  lacks a decision-recall proof.
+  their statements although it is proved nearby. Every late-leak and
+  settle-late Paper theorem now states that the late game has a sequential
+  equilibrium (`Vegas.lateLeak_exists_sequentialEquilibrium`, and
+  `Vegas.settleLate_exists_sequentialEquilibrium` through
+  `Vegas.settleLate_decisionRecall`); the `CommitSeedSignalling` obstructions
+  are at the tag.
 - [ ] **F-C6 (L, Step 5).** The concurrent joint law reads the initial inputs
   from the terminal store rather than from the native initial draw.
 - [x] **F-C7 (L, Step 2).** `one_packet_raw_sequential_equilibrium` uses

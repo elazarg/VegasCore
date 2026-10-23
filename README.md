@@ -138,8 +138,6 @@ resolve.
 - The assumptions of the concurrent theorem are sufficient, not minimal.
   [These counterexamples](docs/consolidation.md#why-the-concurrent-theorem-assumes-what-it-does)
   show why several of them are needed.
-- `settle_late_not_preserved_for_every_margin` does not state that its late game
-  has a sequential equilibrium; the other non-preservation theorems do.
 - Seven theorems have no concrete program as an instance: `intended_nash`,
   `public_scheduling_sequential_equilibrium`, the three intended asynchronous
   Nash forms, and the one-packet and turn-based SE theorems. The concurrent

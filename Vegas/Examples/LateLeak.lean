@@ -21,5 +21,6 @@ import Vegas.Examples.LateLeak.SettleLateListener
 import Vegas.Examples.LateLeak.SettleLateOutcome
 import Vegas.Examples.LateLeak.SettleLatePlay
 import Vegas.Examples.LateLeak.SettleLatePreservation
+import Vegas.Examples.LateLeak.SettleLateRecall
 import Vegas.Examples.LateLeak.SettleLateTurns
 import Vegas.Examples.LateLeak.SettleLateValues

@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Examples.LateLeak.SettleLateConsistency
-import Vegas.Examples.LateLeak.SettleLateIntended
+import Vegas.Examples.LateLeak.SettleLateRecall
 
 /-! # The settle-late runtime breaks sequential-equilibrium preservation
 
@@ -181,8 +181,8 @@ theorem settleLate_no_intended_equilibrium (pays : G.DeferralPays)
 
 /-- **No sequential equilibrium of the settle-late game preserves the intended
 outcome when deferring pays.** The intended game has a sequential equilibrium;
-each of its sequential equilibria has the intended outcome law; and no
-sequential equilibrium of the settle-late game has that law. -/
+each of its sequential equilibria has the intended outcome law; the settle-late
+game has a sequential equilibrium; and none of them has that law. -/
 theorem settleLate_intended_outcome_not_preserved (G : SettleLateParameters)
     (pays : G.DeferralPays) :
     (∃ A : (settleLateModel G false).BehavioralAssessment,
@@ -192,12 +192,15 @@ theorem settleLate_intended_outcome_not_preserved (G : SettleLateParameters)
       A.IsSequentialEquilibrium (settleLate_antichain G false) (settleLate_terminates G false)
           (settleLatePayoff G false) →
         settleLateOutcomeLaw G false A.strategy = settleLateIntendedOutcome) ∧
+    (∃ A : (settleLateModel G true).BehavioralAssessment,
+      A.IsSequentialEquilibrium (settleLate_antichain G true) (settleLate_terminates G true)
+        (settleLatePayoff G true)) ∧
     ∀ A : (settleLateModel G true).BehavioralAssessment,
       A.IsSequentialEquilibrium (settleLate_antichain G true) (settleLate_terminates G true)
           (settleLatePayoff G true) →
         settleLateOutcomeLaw G true A.strategy ≠ settleLateIntendedOutcome :=
   ⟨(settleLate_intended_equilibria G).1, (settleLate_intended_equilibria G).2,
-    settleLate_no_intended_equilibrium pays⟩
+    settleLate_exists_sequentialEquilibrium G true, settleLate_no_intended_equilibrium pays⟩
 
 /-! ## Every margin -/
 
@@ -254,6 +257,10 @@ theorem settleLate_not_preserved_for_every_margin (R D c : ℝ) (reward_pos : 0 
             (settleLatePayoff ⟨⟨R, D, c, q⟩, leak, packetCost⟩ false) →
           settleLateOutcomeLaw ⟨⟨R, D, c, q⟩, leak, packetCost⟩ false A.strategy =
             settleLateIntendedOutcome) ∧
+      (∃ A : (settleLateModel ⟨⟨R, D, c, q⟩, leak, packetCost⟩ true).BehavioralAssessment,
+        A.IsSequentialEquilibrium (settleLate_antichain ⟨⟨R, D, c, q⟩, leak, packetCost⟩ true)
+          (settleLate_terminates ⟨⟨R, D, c, q⟩, leak, packetCost⟩ true)
+          (settleLatePayoff ⟨⟨R, D, c, q⟩, leak, packetCost⟩ true)) ∧
       ∀ A : (settleLateModel ⟨⟨R, D, c, q⟩, leak, packetCost⟩ true).BehavioralAssessment,
         A.IsSequentialEquilibrium (settleLate_antichain ⟨⟨R, D, c, q⟩, leak, packetCost⟩ true)
             (settleLate_terminates ⟨⟨R, D, c, q⟩, leak, packetCost⟩ true)
