@@ -36,7 +36,7 @@ A retained response menu is a proof restriction; it cannot be imposed on raw
 players without a valid equilibrium-extension argument.
 
 The checked compiler entry point is the failure-aware `SourceProgram`.
-The [surface prototype](../Vegas/Language/ToCore.lean) lowers to `SurfaceCore`
+The [surface prototype](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Language/ToCore.lean) lowers to `SurfaceCore`
 and has no verified translation into that entry point. Guard feasibility and
 nullable values in the prototype do not specify source publication failures.
 Such a bridge needs an explicit interpretation of failure and guard timing.
@@ -48,12 +48,12 @@ alignment of supported intention memory with positive own recall and retention
 through later responses. A recorded silent decision at a ready owned event
 therefore suppresses behavioral redraw, including after a consistent recall
 suffix. Source-observation and reachable-frontier adapters compose these local
-facts into `Vegas.source_prescribed_terminal_joint_law` in
-[SourceServiceReactiveLaw](../Vegas/Game/SourceServiceReactiveLaw.lean).
+facts into [`Vegas.source_prescribed_terminal_joint_law`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceReactiveLaw.lean#L123) in
+[SourceServiceReactiveLaw](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceReactiveLaw.lean).
 For finite players under `AsyncContract` and `AsyncTimely`, it preserves the
 joint original-initial-state and complete final-source-state law in sequential
 and concurrent-binding modes. The
-[authentic settled-audit theorem](../Vegas/Game/SourceServiceReactiveAudit.lean)
+[authentic settled-audit theorem](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceReactiveAudit.lean)
 also proves zero standard audit charge throughout initialized prescribed runs
 and preserves the joint initial-state, final-state and realized net-payoff law,
 for every authentic audit sampler and deposit. Unilateral-deviation correspondence,

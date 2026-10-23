@@ -144,7 +144,7 @@ source setup, full bounded raw menu, public scheduler, actual settlement and
 common native belief limits. With $R>0$, $D>R$, $K_A>R/2$ and $K_B>1$, full
 authentic audit and fair partial samples, no native SE realizes the selected
 joint terminal-store and realized-payoff law. The
-[checked source extension](../../Vegas/Examples/LateOpeningRuntimeSourceForfeiture.lean)
+[checked source extension](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeSourceForfeiture.lean)
 preserves every intended source SE of this concrete program in the interface
 allowing both failed bindings and failed publications when $R\ge0$ and
 $D\ge\max(R,1)$. It is not a generic full-language SE adapter. The

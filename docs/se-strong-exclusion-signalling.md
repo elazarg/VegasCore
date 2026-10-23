@@ -43,8 +43,8 @@ then every Nash equilibrium, and hence every sequential equilibrium, has
 \(\Pr(E_i)=0\) for every player.
 
 The finite-law conclusion is checked in
-`GameTheory.FailureReward.supported_exclusion_free` and
-`GameTheory.FailureReward.exclusion_probabilities`, from actual supported
+[`GameTheory.FailureReward.supported_exclusion_free`](https://github.com/elazarg/VegasCore/blob/research-tree/GameTheoryExtensions/Analysis/FailureRewardDeterrence.lean#L84) and
+[`GameTheory.FailureReward.exclusion_probabilities`](https://github.com/elazarg/VegasCore/blob/research-tree/GameTheoryExtensions/Analysis/FailureRewardDeterrence.lean#L127), from actual supported
 terminal payoff bounds and nonnegative expected payoffs. A native game
 application must supply those premises from its own strategy and security
 theorems. The result does not assume an inequality about failure probabilities
@@ -393,46 +393,46 @@ candidate equilibrium.
 
 ## Checked boundary
 
-The [native fixture](../Vegas/Examples/CommitSeedBroadcast.lean) includes checked
+The [native fixture](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommitSeedBroadcast.lean) includes checked
 source well-formedness, zero honest payoff and honest SE existence
-(`Vegas.Examples.CommitSeedBroadcast.exists_honest_sequentialEquilibrium`).
+([`Vegas.Examples.CommitSeedBroadcast.exists_honest_sequentialEquilibrium`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommitSeedBroadcastSource.lean#L226)).
 The initialized service law has independent original coordinates
-(`Vegas.Examples.CommitSeedBroadcast.nativeSeedLaw_independent`) and the exact
+([`Vegas.Examples.CommitSeedBroadcast.nativeSeedLaw_independent`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommitSeedBroadcastSeedIndependence.lean#L45)) and the exact
 order/cut factorization
-(`Vegas.Examples.CommitSeedBroadcast.nativeSeedLaw_partition_expect`).
+([`Vegas.Examples.CommitSeedBroadcast.nativeSeedLaw_partition_expect`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommitSeedBroadcastOrder.lean#L229)).
 
 The actual first-late physical kernel retains every private preparation,
 pending packet and own response record
-(`Vegas.Examples.CommitSeedBroadcast.nohelper_first_late_physical_kernel`).
+([`Vegas.Examples.CommitSeedBroadcast.nohelper_first_late_physical_kernel`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommitSeedBroadcastCallbackReplay.lean#L373)).
 Its initialized full-input likelihoods satisfy the bad and all-good bounds
-(`Vegas.Examples.CommitSeedBroadcast.quiet_firstLate_bad_mass_le`,
-`Vegas.Examples.CommitSeedBroadcast.quiet_firstLate_all_good_mass`). These
+([`Vegas.Examples.CommitSeedBroadcast.quiet_firstLate_bad_mass_le`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommitSeedBroadcastFirstLateLaw.lean#L48),
+[`Vegas.Examples.CommitSeedBroadcast.quiet_firstLate_all_good_mass`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommitSeedBroadcastFirstLateLaw.lean#L62)). These
 quiet-prefix kernel statements do not assume that fully mixed consistency
 approximants themselves always WAIT initially.
 
 Actual raw audit incentives restrict the unchanged assessed continuation to
 the count menu
-(`Vegas.Examples.CommitSeedBroadcast.counted_assessment_finish_eq`). All raw
+([`Vegas.Examples.CommitSeedBroadcast.counted_assessment_finish_eq`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommitSeedBroadcastAudit.lean#L647)). All raw
 plays complete within horizon 128, and every ready owner has its opportunity
-(`Vegas.Examples.CommitSeedBroadcast.family_completesPlay`,
-`Vegas.Examples.CommitSeedBroadcast.family_opportunity`).
+([`Vegas.Examples.CommitSeedBroadcast.family_completesPlay`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommitSeedBroadcastBudget.lean#L292),
+[`Vegas.Examples.CommitSeedBroadcast.family_opportunity`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommitSeedBroadcastOpportunity.lean#L471)).
 
 The checked service contracts include
-`Vegas.Examples.CommitSeedBroadcast.family_asyncContract`,
-`Vegas.Examples.CommitSeedBroadcast.family_privateActivationCalendar` and
-`Vegas.Examples.CommitSeedBroadcast.family_privateBindingSuccess`.
+[`Vegas.Examples.CommitSeedBroadcast.family_asyncContract`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommitSeedBroadcastAsyncService.lean#L17),
+[`Vegas.Examples.CommitSeedBroadcast.family_privateActivationCalendar`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommitSeedBroadcastPrivateCalendar.lean#L55) and
+[`Vegas.Examples.CommitSeedBroadcast.family_privateBindingSuccess`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommitSeedBroadcastPrivateBindingSuccess.lean#L51).
 The full assessed first-late bounds are
-`Vegas.Examples.CommitSeedBroadcast.assessed_firstLate_bad_le` and
-`Vegas.Examples.CommitSeedBroadcast.assessed_firstLate_regular_lower`.
+[`Vegas.Examples.CommitSeedBroadcast.assessed_firstLate_bad_le`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommitSeedBroadcastFirstLateBelief.lean#L95) and
+[`Vegas.Examples.CommitSeedBroadcast.assessed_firstLate_regular_lower`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommitSeedBroadcastRegularBelief.lean#L168).
 They imply the actual unchanged equilibrium response cannot WAIT at the
 empty-ledger first-late input
-(`Vegas.Examples.CommitSeedBroadcast.raw_first_late_response_ne_wait`).
+([`Vegas.Examples.CommitSeedBroadcast.raw_first_late_response_ne_wait`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommitSeedBroadcastFirstLateTiming.lean#L69)).
 This includes off-path inputs; it assumes neither a clean belief nor the
 desired future survival. Proper continuations survive after original admission
-(`Vegas.Examples.CommitSeedBroadcast.scheduled_proper_original_binding_survives`).
+([`Vegas.Examples.CommitSeedBroadcast.scheduled_proper_original_binding_survives`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommitSeedBroadcastProperSurvival.lean#L127)).
 Complete observations transport a counted representative to every raw history
 in the same full information fiber
-(`Vegas.Examples.CommitSeedBroadcast.counted_input_raw_fiber_trace`).
+([`Vegas.Examples.CommitSeedBroadcast.counted_input_raw_fiber_trace`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommitSeedBroadcastCountedFiber.lean#L19)).
 
 All 230 owners passed warning-strict checks and the full 7,131-job public
 build. Selected capstones have guarded axiom reports
@@ -442,26 +442,26 @@ continuation payoff comparisons and the all-equilibrium contradiction. No preser
 box closes on these partial results.
 
 The actual equilibrium waits at the helper's bad clock-two slot
-(`Vegas.Examples.CommitSeedBroadcast.raw_helper_clock_two_response_wait`)
+([`Vegas.Examples.CommitSeedBroadcast.raw_helper_clock_two_response_wait`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommitSeedBroadcastHelperClockTwoTiming.lean#L82))
 and transmits at its last opportunity after the remembered receipt signal
-(`Vegas.Examples.CommitSeedBroadcast.raw_clock_three_response_ne_wait`).
+([`Vegas.Examples.CommitSeedBroadcast.raw_clock_three_response_ne_wait`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommitSeedBroadcastClockThreeTiming.lean#L64)).
 Protected opening incentives imply actual equilibrium survival
-(`Vegas.Examples.CommitSeedBroadcast.counted_assessed_publication_finish_survives`).
+([`Vegas.Examples.CommitSeedBroadcast.counted_assessed_publication_finish_survives`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommitSeedBroadcastPublicationContinuation.lean#L127)).
 Regular all-good prefixes admit every original binding
-(`Vegas.Examples.CommitSeedBroadcast.regular_assessed_original_admission`).
+([`Vegas.Examples.CommitSeedBroadcast.regular_assessed_original_admission`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommitSeedBroadcastRegularContinuation.lean#L59)).
 An admitted unusable original preparation then has the fixed loss, derived
 from its actual recorded declaration and all three original receipts
-(`Vegas.Examples.CommitSeedBroadcast.all_original_admissions_unusable_record_payoff`).
+([`Vegas.Examples.CommitSeedBroadcast.all_original_admissions_unusable_record_payoff`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommitSeedBroadcastOriginalUnusableAdmission.lean#L133)).
 Supported original preparations at the empty-receipt clock-two input and at
 the initial opportunity are usable Boolean material
-(`Vegas.Examples.CommitSeedBroadcast.raw_first_late_response_usable`,
-`Vegas.Examples.CommitSeedBroadcast.raw_early_response_usable`).
+([`Vegas.Examples.CommitSeedBroadcast.raw_first_late_response_usable`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommitSeedBroadcastPreparationChoice.lean#L64),
+[`Vegas.Examples.CommitSeedBroadcast.raw_early_response_usable`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommitSeedBroadcastEarlyPreparationChoice.lean#L72)).
 The clock-two comparison gives a strict expected gain of at least \(1/32\)
-(`Vegas.Examples.CommitSeedBroadcast.raw_unusable_clock_two_context_gap`).
+([`Vegas.Examples.CommitSeedBroadcast.raw_unusable_clock_two_context_gap`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommitSeedBroadcastPreparationContext.lean#L204)).
 The exact quiet initial controls and their original seed posterior are also
 checked, as is the initialized quiet proper deviation's payoff lower bound
 of \(21/1000\)
-(`Vegas.Examples.CommitSeedBroadcast.quiet_initialized_proper_clock_two_value_lower`).
+([`Vegas.Examples.CommitSeedBroadcast.quiet_initialized_proper_clock_two_value_lower`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommitSeedBroadcastQuietProperValue.lean#L16)).
 This last bound assumes quiet initial policy responses; the backward argument
 that forces those responses remains open.
 
@@ -704,9 +704,9 @@ included in the middle block. A current first packet consequently has
 positive conditional probability of all original bindings being admitted.
 
 The rearrangement and native Bayes bound are checked in
-`Vegas.Examples.CommitSeedBroadcast.assessed_firstLate_regular_lower`.
+[`Vegas.Examples.CommitSeedBroadcast.assessed_firstLate_regular_lower`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommitSeedBroadcastRegularBelief.lean#L168).
 The resulting all-admission continuation is checked in
-`Vegas.Examples.CommitSeedBroadcast.regular_assessed_original_admission`;
+[`Vegas.Examples.CommitSeedBroadcast.regular_assessed_original_admission`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommitSeedBroadcastRegularContinuation.lean#L59);
 it passes the full public build. This uses the actual assessed
 continuation from each regular prefix, so a separate future-tremble limit
 is unnecessary here. The observable-envelope classification is necessary: a

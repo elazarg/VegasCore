@@ -63,6 +63,10 @@ PROJECT_PATH = re.compile(
     r"(?:/[A-Za-z0-9_.-]+)*\.lean)(?::\d+)?`"
 )
 MARKDOWN_LINK = re.compile(r"\[[^\]]*\]\(([^)]+)\)")
+# Retired results stay at this tag. A citation inside the text of a link to it
+# names the tagged declaration or file, not one in the current tree.
+RETIRED_TREE = "https://github.com/elazarg/VegasCore/blob/research-tree/"
+RETIRED_LINK = re.compile(r"\[[^\]]*\]\(" + re.escape(RETIRED_TREE) + r"[^)]*\)")
 
 
 def strip_lean_comments_and_strings(text: str) -> str:
@@ -323,6 +327,7 @@ def markdown_findings(root: Path, index: NameIndex):
             continue
         relative_source = source.relative_to(root).as_posix()
         for number, line in enumerate(source.read_text(encoding="utf-8").splitlines(), 1):
+            line = RETIRED_LINK.sub(lambda link: " " * len(link.group()), line)
             for cited in PROJECT_PATH.findall(line):
                 if not (root / cited).is_file():
                     findings.append((relative_source, number, cited, "file"))

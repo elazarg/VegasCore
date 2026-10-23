@@ -13,9 +13,7 @@ weak.linter.style.header = false
 maxSynthPendingDepth = 3
 # Concrete compiled games have nested dependent states and bounded raw menus.
 maxRecDepth = 4096
-# Only the sorry diagnostic is suppressed; the source-policy checker reports each tracked hole.
 warningAsError = true
-warn.sorry = false
 # Guarded #print axioms commands are intentional regression tests in this project.
 weak.linter.hashCommand = false
 # Game carriers use ordinary definitions; implicit type matching must unfold them.

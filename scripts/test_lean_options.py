@@ -9,42 +9,53 @@ SPEC = importlib.util.spec_from_file_location(
 CHECKER = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(CHECKER)
 
+STRICT = {"autoImplicit": False, "relaxedAutoImplicit": False, "warningAsError": True}
+
+
+def pin(name, axioms="propext, Classical.choice, Quot.sound", guard="(whitespace := lax) "):
+    return (f"/-- info: 'Vegas.Paper.{name}' depends on axioms:\n[{axioms}] -/\n"
+            f"#guard_msgs {guard}in\n#print axioms Vegas.Paper.{name}\n")
+
 
 class LeanOptionTests(unittest.TestCase):
     def test_strict_central_options_pass(self):
-        self.assertEqual(CHECKER.check_central_options({
-            "autoImplicit": False,
-            "relaxedAutoImplicit": False,
-            "warningAsError": True,
-            "warn": {"sorry": False},
-        }), [])
+        self.assertEqual(CHECKER.check_central_options(STRICT), [])
+        self.assertEqual(CHECKER.check_central_options({**STRICT, "warn": {"sorry": True}}), [])
 
     def test_missing_options_fail(self):
-        self.assertEqual(len(CHECKER.check_central_options({})), 4)
+        self.assertEqual(len(CHECKER.check_central_options({})), 3)
 
     def test_relaxed_flag_alone_does_not_disable_implicit_binders(self):
-        errors = CHECKER.check_central_options({
-            "relaxedAutoImplicit": False,
-            "warningAsError": True,
-            "warn": {"sorry": False},
-        })
+        errors = CHECKER.check_central_options({"relaxedAutoImplicit": False,
+                                                "warningAsError": True})
         self.assertEqual(len(errors), 1)
         self.assertIn("autoImplicit", errors[0])
 
     def test_each_required_option_is_enforced(self):
-        valid = {
-            "autoImplicit": False,
-            "relaxedAutoImplicit": False,
-            "warningAsError": True,
-            "warn": {"sorry": False},
-        }
-        for name, value in valid.items():
+        for name, value in STRICT.items():
             with self.subTest(option=name):
-                invalid = ({**valid, "warn": {"sorry": True}} if name == "warn"
-                           else {**valid, name: not value})
-                errors = CHECKER.check_central_options(invalid)
+                errors = CHECKER.check_central_options({**STRICT, name: not value})
                 self.assertEqual(len(errors), 1)
                 self.assertIn(name, errors[0])
+
+    def test_sorry_warnings_cannot_be_disabled(self):
+        errors = CHECKER.check_central_options({**STRICT, "warn": {"sorry": False}})
+        self.assertEqual(len(errors), 1)
+        self.assertIn("warn.sorry", errors[0])
+
+    def test_options_outside_the_central_table_are_rejected(self):
+        config = {
+            "leanOptions": STRICT,
+            "moreLeanArgs": ["-DwarningAsError=false"],
+            "weakLeanArgs": ["-j4"],
+            "lean_lib": [{"name": "Vegas", "leanOptions": {"warningAsError": False}},
+                         {"name": "Paper", "weakLeanArgs": ["-DmaxHeartbeats=0"]}],
+        }
+        errors = CHECKER.check_lakefile(config)
+        self.assertEqual(len(errors), 3)
+        self.assertTrue(any("package sets option -DwarningAsError" in e for e in errors))
+        self.assertTrue(any("lean_lib Vegas sets leanOptions" in e for e in errors))
+        self.assertTrue(any("lean_lib Paper sets option -DmaxHeartbeats" in e for e in errors))
 
     def test_admission_tokens_are_detected(self):
         text = "theorem a : True := by\n  sorry\ntheorem b : True := by admit\n#check sorryAx\n"
@@ -64,6 +75,14 @@ class LeanOptionTests(unittest.TestCase):
     def test_escaped_string_does_not_end_early(self):
         text = 'def note := "quoted \\\" sorryAx"\ntheorem open : True := by sorry\n'
         self.assertEqual(CHECKER.admission_tokens(text), [(2, "sorry")])
+
+    def test_every_admission_is_rejected_in_every_file(self):
+        text = "#guard_msgs in\ntheorem target : True := by\n  sorry\n"
+        for path in ("Paper.lean", "Vegas/Proof.lean", "VegasTests/Example.lean"):
+            with self.subTest(path=path):
+                errors = CHECKER.check_admissions(Path(path), text)
+                self.assertEqual(len(errors), 1)
+                self.assertIn(":3:", errors[0])
 
     def test_set_option_is_found_anywhere_outside_comments_and_strings(self):
         text = (
@@ -85,20 +104,29 @@ class LeanOptionTests(unittest.TestCase):
             "@[extern \"unchecked\"] axiom attributed : Nat\n"
             "unsafe def unchecked := 1\n"
             "example : True := by native_decide\n"
+            "example : True := by decide +native\n"
             "@[implemented_by unchecked] def checked := 1\n"
+            "theorem reduced : True := Lean.ofReduceBool _ _ rfl\n"
+            "run_cmd Lean.addDecl declaration\n"
+            "elab \"hole\" : tactic => Lean.Elab.admitGoal\n"
+            "#eval Lean.Meta.mkSorry\n"
+            "set_option debug.skipKernelTC true in theorem x : True := trivial\n"
             '#print axioms checked\n'
         )
         errors = CHECKER.check_forbidden_constructs(Path("Vegas/Test.lean"), text)
         self.assertEqual(sum("axiom declaration" in error for error in errors), 4)
-        self.assertEqual(sum("`unsafe`" in error for error in errors), 1)
-        self.assertEqual(sum("`native_decide`" in error for error in errors), 1)
-        self.assertEqual(sum("`implemented_by`" in error for error in errors), 1)
+        for description in ("`unsafe`", "`native_decide`", "`+native`", "`implemented_by`",
+                            "compiler-trusting reduction", "skipped kernel check"):
+            with self.subTest(description=description):
+                self.assertEqual(sum(description in error for error in errors), 1)
+        self.assertEqual(sum("declaration-adding metaprogram" in error for error in errors), 2)
+        self.assertEqual(sum("elaboration-time program" in error for error in errors), 3)
 
     def test_forbidden_constructs_in_comments_and_strings_are_ignored(self):
         text = (
-            '/- axiom hidden : True; unsafe def hidden := 0 -/\n'
-            '-- native_decide @[implemented_by hidden]\n'
-            'def note := "set_option axiom unsafe native_decide implemented_by"\n'
+            '/- axiom hidden : True; unsafe def hidden := 0; run_cmd addDecl -/\n'
+            '-- native_decide @[implemented_by hidden] #eval skipKernelTC\n'
+            'def note := "set_option axiom unsafe native_decide implemented_by +native"\n'
         )
         self.assertEqual(
             CHECKER.check_forbidden_constructs(Path("Vegas/Test.lean"), text), []
@@ -111,60 +139,62 @@ class LeanOptionTests(unittest.TestCase):
         )
         self.assertEqual(CHECKER.check_forbidden_constructs(Path("Paper.lean"), text), [])
 
-    def test_guarded_audit_pin_passes(self):
-        text = ("theorem witness : True := True.intro\n"
-                "#guard_msgs (whitespace := lax) in\n"
-                "#print axioms Vegas.Paper.witness\n")
+    def test_exact_audit_pin_passes(self):
+        text = "theorem witness : True := True.intro\n\n" + pin("witness")
         self.assertEqual(CHECKER.check_audit_pins(text), [])
 
-    def test_explicit_open_capstone_with_adjacent_pin_passes(self):
-        text = (
-            "/-- error: declaration uses `sorry` -/\n"
-            "#guard_msgs (whitespace := lax) in\n"
-            "-- OPEN OBLIGATION: target - prospective capstone\n"
-            "theorem target : True := by\n  sorry\n"
-            "/-- info: 'Vegas.Paper.target' depends on axioms: [sorryAx] -/\n"
-            "#guard_msgs (whitespace := lax) in\n"
-            "#print axioms Vegas.Paper.target\n"
-        )
-        self.assertEqual(CHECKER.check_audit_pins(text), [])
-        self.assertEqual(CHECKER.check_admissions(Path("Paper.lean"), text,
-            {("Paper.lean", "target"): "review.md"}), [])
-        self.assertEqual(CHECKER.admission_tokens(text), [(5, "sorry")])
+    def test_pin_must_expect_exactly_the_standard_axioms(self):
+        for axioms in ("sorryAx", "propext, Classical.choice, Quot.sound, sorryAx",
+                       "propext, Quot.sound"):
+            with self.subTest(axioms=axioms):
+                failures = CHECKER.check_audit_pins(
+                    "theorem witness : True := True.intro\n" + pin("witness", axioms))
+                self.assertTrue(any("must expect exactly" in error for error in failures))
 
-    def test_paper_admission_requires_marker_even_with_guard(self):
-        for prefix in ("", "#guard_msgs in\n"):
-            errors = CHECKER.check_admissions(
-                Path("Paper.lean"), prefix + "theorem target : True := by\n  sorry\n")
-            self.assertEqual(len(errors), 1)
-            self.assertIn("OPEN OBLIGATION", errors[0])
+    def test_pin_must_use_the_lax_whitespace_guard(self):
+        for guard in ("", "(drop all) ", "(whitespace := exact) "):
+            with self.subTest(guard=guard):
+                failures = CHECKER.check_audit_pins(
+                    "theorem witness : True := True.intro\n" + pin("witness", guard=guard))
+                self.assertTrue(any("must expect exactly" in error for error in failures))
+
+    def test_pin_without_expected_output_fails(self):
+        failures = CHECKER.check_audit_pins(
+            "theorem witness : True := True.intro\n"
+            "#guard_msgs (whitespace := lax) in\n#print axioms Vegas.Paper.witness\n")
+        self.assertTrue(any("must expect exactly" in error for error in failures))
 
     def test_audit_theorem_requires_guarded_pin(self):
-        for pin in ("", "#print axioms Vegas.Paper.witness\n",
-                    "/- #guard_msgs in\n#print axioms Vegas.Paper.witness -/\n"):
-            with self.subTest(pin=pin):
-                failures = CHECKER.check_audit_pins("theorem witness : True := True.intro\n" + pin)
+        for unpinned in ("", "#print axioms Vegas.Paper.witness\n",
+                         "/- #guard_msgs in\n#print axioms Vegas.Paper.witness -/\n"):
+            with self.subTest(unpinned=unpinned):
+                failures = CHECKER.check_audit_pins(
+                    "theorem witness : True := True.intro\n" + unpinned)
                 self.assertTrue(any("missing guarded axiom pin" in error for error in failures))
 
+    def test_theorems_with_attributes_or_modifiers_require_pins(self):
+        for header in ("@[simp] theorem", "protected theorem", "lemma", "@[simp] private lemma"):
+            with self.subTest(header=header):
+                failures = CHECKER.check_audit_pins(f"{header} witness : True := True.intro\n")
+                self.assertTrue(any("missing guarded axiom pin for witness" in error
+                                    for error in failures))
+
     def test_stale_audit_pin_fails(self):
-        failures = CHECKER.check_audit_pins("#guard_msgs in\n#print axioms Vegas.Paper.absent\n")
+        failures = CHECKER.check_audit_pins(pin("absent"))
         self.assertTrue(any("names no audit theorem" in error for error in failures))
 
     def test_duplicate_audit_pin_fails(self):
         failures = CHECKER.check_audit_pins(
-            "theorem witness : True := True.intro\n" +
-            "#guard_msgs in\n#print axioms Vegas.Paper.witness\n" * 2)
+            "theorem witness : True := True.intro\n" + pin("witness") * 2)
         self.assertTrue(any("duplicate axiom pin" in error for error in failures))
 
     def test_adjacent_pins_allow_documentation_and_indented_proof_bodies(self):
         text = (
             "namespace Vegas.Paper\n"
-            "theorem first : True :=\n  True.intro\n"
-            "/-- Expected dependencies. -/\n"
-            "#guard_msgs in\n#print axioms Vegas.Paper.first\n"
+            "open Vegas in\n"
+            "theorem first : True :=\n  True.intro\n" + pin("first") +
             "/-- Another delegated theorem. -/\n"
-            "theorem second : True := first\n"
-            "#guard_msgs in\n#print axioms Vegas.Paper.second\n"
+            "theorem second : True := first\n" + pin("second") +
             "end Vegas.Paper\n"
         )
         self.assertEqual(CHECKER.check_audit_pins(text), [])
@@ -172,22 +202,19 @@ class LeanOptionTests(unittest.TestCase):
     def test_footer_pins_are_not_adjacent(self):
         text = (
             "theorem first : True := True.intro\n"
-            "theorem second : True := True.intro\n"
-            "#guard_msgs in\n#print axioms Vegas.Paper.first\n"
-            "#guard_msgs in\n#print axioms Vegas.Paper.second\n"
+            "theorem second : True := True.intro\n" + pin("first") + pin("second")
         )
         failures = CHECKER.check_audit_pins(text)
         self.assertEqual(sum("must immediately follow" in error for error in failures), 2)
 
     def test_pin_cannot_precede_theorem_or_follow_another_command(self):
         theorem = "theorem witness : True := True.intro\n"
-        pin = "#guard_msgs in\n#print axioms Vegas.Paper.witness\n"
-        for text in (pin + theorem, theorem + "def unrelated := 0\n" + pin):
+        for text in (pin("witness") + theorem, theorem + "def unrelated := 0\n" + pin("witness")):
             with self.subTest(text=text):
                 self.assertTrue(any("must immediately follow" in error
                                     for error in CHECKER.check_audit_pins(text)))
 
-    def test_axiom_prints_are_allowed_only_in_dedicated_audits(self):
+    def test_axiom_prints_are_allowed_only_in_paper(self):
         commands = ("#print axioms witness\n",
                     "#guard_msgs in #print axioms witness\n",
                     "#guard_msgs in\n#print\n  axioms\n  witness\n")
@@ -195,17 +222,8 @@ class LeanOptionTests(unittest.TestCase):
             with self.subTest(text=text):
                 self.assertEqual(CHECKER.check_axiom_prints(Path("Paper.lean"), text), [])
                 for path in ("Vegas/Proof.lean", "Interaction/Example.lean",
-                             "VegasTests/Example.lean", "Paper/Source.lean"):
+                             "VegasTests/AxiomAudit/Source.lean", "Paper/Source.lean"):
                     self.assertEqual(len(CHECKER.check_axiom_prints(Path(path), text)), 1)
-
-    def test_regression_axiom_prints_require_guards(self):
-        path = Path("VegasTests/AxiomAudit/Source.lean")
-        for text in ("#guard_msgs in #print axioms witness\n",
-                     "#guard_msgs (whitespace := lax) in\n#print\n  axioms\n  witness\n"):
-            with self.subTest(text=text):
-                self.assertEqual(CHECKER.check_axiom_prints(path, text), [])
-        self.assertEqual(len(CHECKER.check_axiom_prints(path, "#print axioms witness\n")), 1)
-        self.assertTrue(CHECKER.check_admissions(path, "#guard_msgs in\ntheorem bad : True := by sorry\n"))
 
     def test_documented_axiom_prints_are_not_commands(self):
         text = ('/- /- #print axioms hidden -/ -/\n'
@@ -213,92 +231,17 @@ class LeanOptionTests(unittest.TestCase):
                 'def help := "#print axioms hidden"\n')
         self.assertEqual(CHECKER.check_axiom_prints(Path("Vegas/Help.lean"), text), [])
 
-    def test_named_obligations_are_allowed_in_each_source_layer(self):
-        marked = ("-- OPEN OBLIGATION: target - reviewed finite argument\n"
-                  "private theorem target : True := by\n  sorry\n")
-        for path in ("Vegas/Proof.lean", "Paper/Source.lean", "Other.lean", "Paper.lean"):
-            with self.subTest(path=path):
-                self.assertEqual(CHECKER.check_admissions(Path(path), marked,
-                    {(Path(path).as_posix(), "target"): "review.md"}), [])
-                self.assertEqual(CHECKER.obligation_ranges(marked)[0][0][3], "target")
-
-    def test_markers_do_not_authorize_admit_or_sorry_ax(self):
-        for token in ("admit", "sorryAx"):
-            marked = ("-- OPEN OBLIGATION: target - reviewed argument\n"
-                      f"theorem target : True := by {token}\n")
-            errors = CHECKER.check_admissions(Path("Paper.lean"), marked)
-            self.assertTrue(any(f"`{token}`" in error for error in errors))
-
-    def test_marker_must_name_the_following_theorem(self):
-        for declaration in ("theorem other : True := by sorry",
-                            "def target : True := by sorry",
-                            "#check Nat\ntheorem target : True := by sorry"):
-            marked = "-- OPEN OBLIGATION: target - reviewed argument\n" + declaration
-            self.assertTrue(CHECKER.check_admissions(Path("Vegas/Test.lean"), marked))
-
-    def test_marker_requires_explanation_and_adjacency(self):
-        for prefix in ("-- OPEN OBLIGATION: target\n",
-                       "-- OPEN OBLIGATION: target - \n",
-                       "-- OPEN OBLIGATION: target - reviewed\n-- unrelated\n"):
-            self.assertTrue(CHECKER.check_admissions(
-                Path("Vegas/Test.lean"), prefix + "theorem target : True := by sorry\n"))
-
-    def test_marker_cannot_be_spoofed_inside_string_or_nested_comment(self):
-        for hidden in ('def note := "-- OPEN OBLIGATION: target - reviewed"\n',
-                       '/-\n-- OPEN OBLIGATION: target - reviewed\n-/\n'):
-            self.assertTrue(CHECKER.check_admissions(
-                Path("Vegas/Test.lean"), hidden + "theorem target : True := by sorry\n"))
-
-    def test_marker_does_not_cover_later_declarations(self):
-        text = ("-- OPEN OBLIGATION: first - reviewed\n"
-                "theorem first : True := by sorry\n"
-                "theorem second : True := by sorry\n")
-        errors = CHECKER.check_admissions(Path("Vegas/Test.lean"), text,
-            {("Vegas/Test.lean", "first"): "review.md"})
-        self.assertEqual(len(errors), 1)
-        self.assertIn(":3:", errors[0])
-
-    def test_marker_tracks_exactly_one_hole(self):
-        for body in ("True.intro", "by\n  have h : True := by sorry\n  sorry"):
-            text = "-- OPEN OBLIGATION: target - reviewed\ntheorem target : True := " + body
-            self.assertTrue(any("exactly one sorry" in error for error in
-                                CHECKER.check_admissions(Path("Vegas/Test.lean"), text)))
-
-    def test_generic_obligation_note_is_informational_only(self):
-        note = "-- OPEN OBLIGATION: compiler correctness remains open\n"
-        self.assertEqual(CHECKER.check_admissions(Path("Vegas/Test.lean"), note), [])
-        self.assertEqual(CHECKER.obligation_ranges(note)[0], [])
-        self.assertTrue(CHECKER.check_admissions(
-            Path("Vegas/Test.lean"), note + "theorem target : True := by sorry\n"))
-
-    def test_named_marker_must_be_standalone_comment(self):
-        text = ("def n := 0 -- OPEN OBLIGATION: target - reviewed\n"
-                "theorem target : True := by sorry\n")
-        self.assertTrue(CHECKER.check_admissions(Path("Vegas/Test.lean"), text))
-
-    def test_actual_toml_configuration_uses_selective_sorry_option(self):
+    def test_actual_lakefile_passes(self):
         root = Path(__file__).resolve().parent.parent
         with (root / "lakefile.toml").open("rb") as source:
-            options = CHECKER.tomllib.load(source)["leanOptions"]
-        self.assertEqual(CHECKER.check_central_options(options), [])
-        self.assertIs(options["warningAsError"], True)
-        self.assertIs(options["warn"]["sorry"], False)
+            config = CHECKER.tomllib.load(source)
+        self.assertEqual(CHECKER.check_lakefile(config), [])
+        self.assertNotEqual(config["leanOptions"].get("warn", {}).get("sorry"), False)
 
-    def test_marker_alone_does_not_register_a_new_obligation(self):
-        text = "-- OPEN OBLIGATION: target - reviewed\ntheorem target : True := by sorry\n"
-        self.assertTrue(any("unregistered" in error for error in
-                            CHECKER.check_admissions(Path("Vegas/Test.lean"), text)))
-        for registry in ({("Wrong.lean", "target"): "review.md"},
-                         {("Vegas/Test.lean", "target"): ""}):
-            self.assertTrue(any("unregistered" in error for error in
-                CHECKER.check_admissions(Path("Vegas/Test.lean"), text, registry)))
-
-    def test_repository_has_no_approved_open_obligations(self):
-        self.assertEqual(CHECKER.APPROVED_OPEN_OBLIGATIONS, {})
-
-    def test_orphan_marker_is_rejected(self):
-        self.assertTrue(CHECKER.check_admissions(
-            Path("Vegas/Test.lean"), "-- OPEN OBLIGATION: target - reviewed\n"))
+    def test_actual_paper_pins_are_exact(self):
+        root = Path(__file__).resolve().parent.parent
+        self.assertEqual(CHECKER.check_audit_pins(
+            (root / "Paper.lean").read_text(encoding="utf-8")), [])
 
 
 if __name__ == "__main__":

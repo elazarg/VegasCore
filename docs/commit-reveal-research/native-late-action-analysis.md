@@ -43,7 +43,7 @@ The declaration surfaces of the following owning modules were inspected with
 | [ReactiveRiskMenu.lean](../../Vegas/Pending/ReactiveRiskMenu.lean) | After a late opening has been emitted, the sender can have the entire effective menu. The analysis below allows the larger raw menu from the beginning. |
 | [Forfeit.lean](../../Vegas/Source/Forfeit.lean) | The source forfeit counts failed reveals. Silent withholding has its original failure payoff minus that forfeit. |
 
-The checked native [late recovery example](../../Vegas/Examples/CommittedResolutionRecovery.lean)
+The checked native [late recovery example](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommittedResolutionRecovery.lean)
 already establishes that a sole late canonical opening can be accepted,
 publish its immutable value, and remain clean under the settled audit. The
 additional issue here is the equilibrium effect of having two such sending
@@ -454,17 +454,17 @@ complete-audit threshold cannot be reused unchanged when `alpha<1`.
 
 The actual all-or-none sampler's authenticity, coverage and charge identities
 are checked in
-[AllOrNoneTrafficAudit](../../Vegas/Examples/LateOpeningRuntimeAllOrNoneTrafficAudit.lean).
+[AllOrNoneTrafficAudit](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeAllOrNoneTrafficAudit.lean).
 Public binding omissions remain fully charged: its expected utility equals
 full-audit utility at scaled deposits minus `(1-alpha)K_i` when player `i`
 has a public omission. Alice has no binding-omission branch. After an actual
 successful Bob binding, binding and store invariants exclude future omissions,
 so the scaled expected-utility identity holds throughout every supported
 continuation with arbitrary player policies. The checked
-[AllOrNonePreservingSettlement](../../Vegas/Examples/LateOpeningRuntimeAllOrNonePreservingSettlement.lean)
+[AllOrNonePreservingSettlement](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeAllOrNonePreservingSettlement.lean)
 separately transports exact source realized-law preservation on the unchanged
 profile. Actual Alice, exhaustive receiver and early-silence comparisons feed
-[AllOrNoneSeObstruction](../../Vegas/Examples/LateOpeningRuntimeAllOrNoneSeObstruction.lean),
+[AllOrNoneSeObstruction](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeAllOrNoneSeObstruction.lean),
 which retains the original consistency witness and proves the uniform native
 and fixed-source obstruction without assuming full-audit global equilibrium.
 
@@ -651,8 +651,8 @@ repair excludes nongenuine packets using her unchanged future policy and
 actual legal final-callback descendants. Preserving even the public Alice
 publication marginal forces protected acceptance almost surely.
 A checked native SE counterexample is composed from these facts in
-[SeObstruction](../../Vegas/Examples/LateOpeningRuntimeSeObstruction.lean) and
-[UniformSeObstruction](../../Vegas/Examples/LateOpeningRuntimeUniformSeObstruction.lean).
+[SeObstruction](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeSeObstruction.lean) and
+[UniformSeObstruction](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeUniformSeObstruction.lean).
 Successful-publication
 receiver optimization is checked, including clean settlement and Alice's
 success floor on all compatible legal receiver histories. The full native history

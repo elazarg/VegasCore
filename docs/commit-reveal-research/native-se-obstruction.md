@@ -54,8 +54,8 @@ A game with an unknown producer distribution needs its own beliefs and
 equilibrium definition.
 
 The headline declaration is
-`Vegas.Examples.LateOpeningRuntimeUniformSeObstruction.exists_service_with_no_preserving_equilibrium`
-in [UniformSeObstruction](../../Vegas/Examples/LateOpeningRuntimeUniformSeObstruction.lean).
+[`Vegas.Examples.LateOpeningRuntimeUniformSeObstruction.exists_service_with_no_preserving_equilibrium`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeUniformSeObstruction.lean#L28)
+in [UniformSeObstruction](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeUniformSeObstruction.lean).
 Its guarded axiom pin in [Paper.lean](../../Paper.lean) depends only on
 `propext`, `Classical.choice` and `Quot.sound`.
 
@@ -66,8 +66,8 @@ This uses the concrete source extension below; $D\ge1$ is a sufficient
 extension bound, not a proved minimal collateral requirement.
 
 The full-audit source-to-target composition is
-`Vegas.Examples.LateOpeningRuntimeSourceSeObstruction.exists_source_equilibrium_with_uniform_service_obstruction`
-in [SourceSeObstruction](../../Vegas/Examples/LateOpeningRuntimeSourceSeObstruction.lean).
+[`Vegas.Examples.LateOpeningRuntimeSourceSeObstruction.exists_source_equilibrium_with_uniform_service_obstruction`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeSourceSeObstruction.lean#L31)
+in [SourceSeObstruction](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeSourceSeObstruction.lean).
 Its order is
 
 \[
@@ -95,11 +95,11 @@ native SE existence and exclusion of the joint store/realized-payoff law hold.
 The realized-settlement comparison uses zero collection forced by that joint
 law, rather than inferring it from expected utility equality alone. The checked
 declarations are
-`Vegas.Examples.LateOpeningRuntimePartialAudit.exists_service_with_no_preserving_equilibrium`
+[`Vegas.Examples.LateOpeningRuntimePartialAudit.exists_service_with_no_preserving_equilibrium`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimePartialAudit.lean#L190)
 and
-`Vegas.Examples.LateOpeningRuntimePartialAuditSourceObstruction.exists_source_equilibrium_with_partial_audit_obstruction`
-in [PartialAudit](../../Vegas/Examples/LateOpeningRuntimePartialAudit.lean) and
-[PartialAuditSourceObstruction](../../Vegas/Examples/LateOpeningRuntimePartialAuditSourceObstruction.lean).
+[`Vegas.Examples.LateOpeningRuntimePartialAuditSourceObstruction.exists_source_equilibrium_with_partial_audit_obstruction`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimePartialAuditSourceObstruction.lean#L25)
+in [PartialAudit](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimePartialAudit.lean) and
+[PartialAuditSourceObstruction](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimePartialAuditSourceObstruction.lean).
 This sampler has full receiver coverage; the result does not quantify over
 every authentic partial-audit sampler.
 
@@ -131,9 +131,9 @@ and `.exists_withholding_equilibrium_with_safe_law` in
 The latter permits failed publications and preserves the same law when
 $D\ge\max(R,1)$, retaining value-only binding admission.
 The checked
-`Vegas.Examples.LateOpeningRuntimeSource.intended_equilibrium_preserved_under_forfeiture`
+[`Vegas.Examples.LateOpeningRuntimeSource.intended_equilibrium_preserved_under_forfeiture`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeSourceForfeiture.lean#L72)
 and `.exists_forfeiting_equilibrium_with_safe_law` in
-[SourceForfeiture](../../Vegas/Examples/LateOpeningRuntimeSourceForfeiture.lean)
+[SourceForfeiture](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeSourceForfeiture.lean)
 extend the comparison to the complete interface permitting immediate failed
 bindings as well. Every value-only withholding source SE extends to this
 complete interface for every real $D$, preserving the exact joint law.
@@ -141,8 +141,8 @@ Composing the intended extension uses $R\ge0$ and $D\ge\max(R,1)$ to construct
 the original withholding source SE.
 
 The extension instantiates the generic checked theorem
-`Vegas.SourceProgram.Setup.values_sequentialEquilibrium_preserved` in
-[ValueAdmissionPreservation](../../Vegas/Game/ValueAdmissionPreservation.lean).
+[`Vegas.SourceProgram.Setup.values_sequentialEquilibrium_preserved`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/ValueAdmissionPreservation.lean#L156) in
+[ValueAdmissionPreservation](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/ValueAdmissionPreservation.lean).
 For finite players, finite binding types and a finite initial law, every
 value-only source SE extends to arbitrary sitewise commitment admission,
 preserving copied strategies, retained-site beliefs and the full terminal
@@ -236,16 +236,16 @@ retry incentive margins used in the raw-menu normalization. Every chosen
 weight is finite. No zero-failure limit is substituted for the actual game.
 
 The final fixed-service theorem is
-`Vegas.Examples.LateOpeningRuntimeSeObstruction.equilibrium_terminal_law_ne_safe`;
+[`Vegas.Examples.LateOpeningRuntimeSeObstruction.equilibrium_terminal_law_ne_safe`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeSeObstruction.lean#L142);
 `.equilibrium_terminal_law_ne_intended` compares directly with every intended
-source SE. See [SeObstruction](../../Vegas/Examples/LateOpeningRuntimeSeObstruction.lean).
+source SE. See [SeObstruction](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeSeObstruction.lean).
 The key intermediate checked results are in
-[AliceTimingValues](../../Vegas/Examples/LateOpeningRuntimeAliceTimingValues.lean),
-[AliceTimingSorting](../../Vegas/Examples/LateOpeningRuntimeAliceTimingSorting.lean),
-[LabelCross](../../Vegas/Examples/LateOpeningRuntimeLabelCross.lean),
-[BobSafeProbability](../../Vegas/Examples/LateOpeningRuntimeBobSafeProbability.lean),
-[AliceTimingFloor](../../Vegas/Examples/LateOpeningRuntimeAliceTimingFloor.lean), and
-[AliceProtectedOptimality](../../Vegas/Examples/LateOpeningRuntimeAliceProtectedOptimality.lean).
+[AliceTimingValues](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeAliceTimingValues.lean),
+[AliceTimingSorting](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeAliceTimingSorting.lean),
+[LabelCross](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeLabelCross.lean),
+[BobSafeProbability](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeBobSafeProbability.lean),
+[AliceTimingFloor](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeAliceTimingFloor.lean), and
+[AliceProtectedOptimality](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeAliceProtectedOptimality.lean).
 
 ## Consequences and open scope
 
@@ -264,7 +264,7 @@ receiver audit. With the authentic all-or-none traffic sampler, the checked
 bounds are $\alpha K_A>R/2$ and $\alpha K_B>1$, with sampling fixed before
 the builder. Public binding omissions remain fully charged.
 The native and fixed-source capstones are in
-[AllOrNoneSeObstruction](../../Vegas/Examples/LateOpeningRuntimeAllOrNoneSeObstruction.lean);
+[AllOrNoneSeObstruction](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeAllOrNoneSeObstruction.lean);
 they retain positive late failure, actual native SE existence and the literal
 joint store and realized-net-payoff law. No theorem here establishes a general PBE preservation result
 or a necessary-and-sufficient interface for SE preservation.

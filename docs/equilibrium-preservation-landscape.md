@@ -82,7 +82,7 @@ First-turn timing has delta zero. These hypotheses should accompany any
 headline about Nash preservation on an arbitrary builder.
 
 The general checked positive SE result is
-[`SourceServiceSpec.audited_raw_sequentialEquilibrium_preserved`](../Vegas/Game/SourceServiceCompilation.lean).
+[`SourceServiceSpec.audited_raw_sequentialEquilibrium_preserved`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceCompilation.lean).
 Physical implementation of its service assumptions is an additional task.
 The calendar does not require finite support of its unused network policy;
 its reserved scheduler never invokes that policy. The checked refinements and

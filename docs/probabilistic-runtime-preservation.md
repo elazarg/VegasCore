@@ -85,18 +85,18 @@ is unrecovered before the compared horizon. These are operational
 assumptions, not consequences of the game-theory theorem.
 
 The probability statements are formalized in
-[PublicationFailureObstruction.lean](../GameTheoryExtensions/Analysis/Protocol/PublicationFailureObstruction.lean):
+[PublicationFailureObstruction.lean](https://github.com/elazarg/VegasCore/blob/research-tree/GameTheoryExtensions/Analysis/Protocol/PublicationFailureObstruction.lean):
 
-- `outageKernel_failure_floor` derives the conditional floor from the
+- [`outageKernel_failure_floor`](https://github.com/elazarg/VegasCore/blob/research-tree/GameTheoryExtensions/Analysis/Protocol/PublicationFailureObstruction.lean#L45) derives the conditional floor from the
   explicit primitive lottery.
-- `outageRun_failure_probability` and
-  `outageRun_totalVariation_lower_bound` derive the finite-horizon bound
+- [`outageRun_failure_probability`](https://github.com/elazarg/VegasCore/blob/research-tree/GameTheoryExtensions/Analysis/Protocol/PublicationFailureObstruction.lean#L61) and
+  [`outageRun_totalVariation_lower_bound`](https://github.com/elazarg/VegasCore/blob/research-tree/GameTheoryExtensions/Analysis/Protocol/PublicationFailureObstruction.lean#L75) derive the finite-horizon bound
   for an arbitrary nonoutage kernel and an observable readout.
-- `outageRun_not_realized` rules out exact law equality.
-- `binary_publication_error` starts with an unpublished Boolean and compares
+- [`outageRun_not_realized`](https://github.com/elazarg/VegasCore/blob/research-tree/GameTheoryExtensions/Analysis/Protocol/PublicationFailureObstruction.lean#L96) rules out exact law equality.
+- [`binary_publication_error`](https://github.com/elazarg/VegasCore/blob/research-tree/GameTheoryExtensions/Analysis/Protocol/PublicationFailureObstruction.lean#L121) starts with an unpublished Boolean and compares
   against a surely published source; every such service has error at least
   $\rho^N$.
-- `global_outage_totalVariation_lower_bound` covers the initial unrecovered
+- [`global_outage_totalVariation_lower_bound`](https://github.com/elazarg/VegasCore/blob/research-tree/GameTheoryExtensions/Analysis/Protocol/PublicationFailureObstruction.lean#L135) covers the initial unrecovered
   outage lottery with an arbitrary normal branch.
 
 The targeted `lake build` passes for this module.
@@ -104,7 +104,7 @@ The targeted `lake build` passes for this module.
 ## The obstruction in the actual compiled runtime
 
 The probability argument now has a checked native compiler instantiation in
-[ProbabilisticServiceObstruction.lean](../Vegas/Game/ProbabilisticServiceObstruction.lean).
+[ProbabilisticServiceObstruction.lean](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/ProbabilisticServiceObstruction.lean).
 It keeps the compiled graph, private initialization, pending observations,
 RAW response menus, packet handling and typed readout. The only backend
 change is an explicit probabilistic controller: at each physical opportunity,
@@ -114,8 +114,8 @@ without changing the application. It does not erase or hide any packet.
 This modified backend does not satisfy the original sure-delivery contract.
 
 The checked native round decomposition is
-`ReactiveApplication.waitOutageScheduler_round` in
-[ReactiveOutage.lean](../Interaction/ReactiveOutage.lean).
+[`ReactiveApplication.waitOutageScheduler_round`](https://github.com/elazarg/VegasCore/blob/research-tree/Interaction/ReactiveOutage.lean#L43) in
+[ReactiveOutage.lean](https://github.com/elazarg/VegasCore/blob/research-tree/Interaction/ReactiveOutage.lean).
 Its initialization-law bound is used directly by the compiler result.
 For every nonempty source program, dependency mode, configured deadlines,
 pending observation rule, public normal controller, finite physical horizon
@@ -128,10 +128,10 @@ d_{\mathrm{TV}}\!\left(
 \right)\ge\rho^N.
 $$
 
-`service_behavioral_outage_totalVariation_lower_bound` proves that statement
+[`service_behavioral_outage_totalVariation_lower_bound`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/ProbabilisticServiceObstruction.lean#L102) proves that statement
 from the actual initialization law and native continuation evaluator. The
 source terminal law is arbitrary, so it includes the law of every source SE.
-`service_behavioral_outage_not_realized` rules out exact equality whenever
+[`service_behavioral_outage_not_realized`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/ProbabilisticServiceObstruction.lean#L149) rules out exact equality whenever
 $\rho>0$. It quantifies over every native behavioral profile, including every
 SE, PBE and Nash profile; it does not assume a client strategy, particular
 beliefs, an audit charge, or a convenient initialized history.

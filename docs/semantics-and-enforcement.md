@@ -228,7 +228,7 @@ this (II.3).
 | Compiled output | `EventGraphRuntime` handlers and deadlines; the forced-exit contract `recoveryApplication`; the phase contract `phaseApplication` (forced exit with commitment-phase rollback); the settled-record verdict (`SettledRecord.Permits` with binding omissions, `sourceServiceAudit`) and the count verdicts (`CountPermits`, `Recovery.countAudit`; `PhaseCount.audit`); client profiles |
 | Gadgets | Readiness tokens (`PublicView.tokenFor`) and opening certificates (`WitnessedSubmission.emit`), formed by the application's `packet` function |
 | Chain model | The [`Interaction`](../Interaction) layer: `MessageNetwork`, `ReactiveApplication`, schedulers, observation rules |
-| Environment assumptions | `AsyncContract` and `Recovery.AsyncContract` (timely builders), calendar rosters, the reserved-epoch service with an exogenous tape (`ReservedEpoch.Tape`), complete or finitely branching pending observation, audit-service coverage |
+| Environment assumptions | `AsyncContract` and `Recovery.AsyncContract` (timely builders), the reserved-epoch service with an exogenous tape (`ReservedEpoch.Tape`), complete or finitely branching pending observation, audit-service coverage |
 
 There are three compiled contracts on one chain model:
 
@@ -263,7 +263,7 @@ There are three compiled contracts on one chain model:
 | Premature, misaddressed or malformed packet | Rejected; forbidden | Rejected; forbidden |
 | Competing or duplicate packets | The first valid inclusion is accepted; the others forbidden | All but the first well-formed packet per event forbidden |
 | Commitment carrying its opening certificate | Forbidden | Forbidden |
-| Late send after the protected turn | On a calendar every owner packet is included; elsewhere a dropped packet is forbidden as unaccepted | Not charged; a dropped opening expires and the owner exits |
+| Late send after the protected turn | A dropped packet is forbidden as unaccepted | Not charged; a dropped opening expires and the owner exits |
 | Packets after exit | Not applicable | Rejected; every such packet is forbidden, and the charge applies after exit |
 | Timing, private channels, fee fields | Limitation | Limitation |
 | Builder misbehavior, biased randomness | Assumption | Assumption |
@@ -281,10 +281,7 @@ from the owner. No lemma states the resulting dominance of silence.
 | Result (paper label) | Analysis target | Compiled output | Environment | Lean |
 | --- | --- | --- | --- | --- |
 | Nash (1) (`thm:nash`) | Source game | Plain contract, any authentic verdict, nonnegative deposits including zero | Any builder meeting `AsyncContract` | `Vegas.Paper.async_first_turn_nash_iff` |
-| Nash (2) | Source game | Plain contract, settled-record verdict | Calendar | `Vegas.Paper.source_audited_raw_nash_iff` |
-| Nash (3) | Intended game via forfeit | As (1) or (2) | As (1) or (2) | `Vegas.Paper.intended_async_first_turn_nash`, `Vegas.Paper.intended_audited_raw_nash` |
-| SE (`thm:sequential`) | Source game | Plain contract, settled-record verdict | Calendar | `Vegas.Paper.source_audited_raw_sequential_equilibrium` |
-| SE (`cor:intended-ledger`) | Intended game via forfeit | As above | Calendar | `Vegas.SourceServiceSpec.intended_audited_raw_sequentialEquilibrium` |
+| Nash (2) | Intended game via forfeit | As (1) | As (1) | `Vegas.Paper.intended_async_first_turn_nash` |
 | SE (`thm:recovery`) | Intended game | Forced exit, count verdict | Any builder meeting `Recovery.AsyncContract`; independent private inputs | `Vegas.recovery_intended_raw_sequentialEquilibrium_preserved` |
 | SE, concurrent (`Vegas.Paper.concurrent_source_raw_sequential_equilibrium`; not yet in the paper) | Intended game, terminal-state utilities, correlated initial inputs of finite support, finite binding types | Phase contract on the concurrent graph, phase count verdict | Reserved-epoch service driven by one exogenous tape sampled from a fixed prior, independent of the inputs; bounded activation and processing gaps; complete pending observation; exit payoff at most zero and at most every terminal utility | `Vegas.concurrentRawSequentialPreservation` |
 | SE, conditional | Intended game with exit payoff | Plain contract with exit payoff, count verdict | Timely builder | `Vegas.onePacket_intended_raw_sequentialEquilibrium` (assumes certificates; superseded by the row above) |

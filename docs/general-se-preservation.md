@@ -89,10 +89,10 @@ then
 
 for every distribution lambda over complete plans, including correlated joint
 plans. This is checked in
-[PositiveCollection](../GameTheoryExtensions/Analysis/PositiveCollection.lean).
+[PositiveCollection](https://github.com/elazarg/VegasCore/blob/research-tree/GameTheoryExtensions/Analysis/PositiveCollection.lean).
 Its game-form corollary supplies a uniform bound over all mixed profiles.
 The finite-minimum order lemma lives in
-[FinitePayoffBounds](../GameTheoryExtensions/Analysis/FinitePayoffBounds.lean).
+[FinitePayoffBounds](https://github.com/elazarg/VegasCore/blob/research-tree/GameTheoryExtensions/Analysis/FinitePayoffBounds.lean).
 
 To use it for a runtime, prove that every behavioral continuation has such a
 pure-plan mixture realization and that collection is positive for every pure
@@ -112,8 +112,8 @@ unbounded fee choices can leave infimum risk zero even though every particular
 plan has positive risk.
 
 For bounded adaptive opportunities, the checked
-[survival bounds](../GameTheoryExtensions/Math/Probability/Survival.lean) and
-[reactive evaluator adapter](../Interaction/ReactiveSurvival.lean) give another
+[survival bounds](https://github.com/elazarg/VegasCore/blob/research-tree/GameTheoryExtensions/Math/Probability/Survival.lean) and
+[reactive evaluator adapter](https://github.com/elazarg/VegasCore/blob/research-tree/Interaction/ReactiveSurvival.lean) give another
 route. If the relevant charge-avoiding recovery attempts each leave a bad
 state with conditional survival probability at least epsilon, and surviving
 terminal states collect with probability at least alpha, a physical bound N
@@ -149,7 +149,7 @@ family imposes no bound. The proof is the elementary inequality g(d)<=r(d)D:
 necessity divides by positive r, and sufficiency chooses D at least that common
 bound and zero. For a finite comparison family this characterization is
 covered by the checked
-[enforcement limits](../GameTheoryExtensions/Analysis/EnforcementLimits.lean).
+[enforcement limits](https://github.com/elazarg/VegasCore/blob/research-tree/GameTheoryExtensions/Analysis/EnforcementLimits.lean).
 The arbitrary-family ratio statement is a paper calculation, not a new Lean
 capstone. Applying it to SE still requires the comparisons at retained sites
 and an observation-local lawful comparator.

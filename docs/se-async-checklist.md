@@ -1,7 +1,7 @@
 # Arbitrary-builder SE preservation checklist
 
 This is the progress ledger for sequential-equilibrium preservation beyond the
-fixed calendar. The [calendar checklist](se-proof-checklist.md) covers the
+fixed calendar. The [calendar checklist](https://github.com/elazarg/VegasCore/blob/research-tree/docs/se-proof-checklist.md) covers the
 checked fixed-calendar theorem; the [design and plan](se-schedule-generalization.md)
 states the semantics, concerns and proof route. This file fixes the obligations
 and records which are closed.
@@ -148,7 +148,7 @@ joint law. It is not pursued.
   persists (`reactiveMissedBindingInvariant`).
 - [x] **A2. A non-calendar builder satisfies the contract.** Evidence: the
   fixed linear scheduler of
-  [CommittedResolutionService](../Vegas/Examples/CommittedResolutionService.lean)
+  [CommittedResolutionService](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommittedResolutionService.lean)
   satisfies `AsyncContract` and timeliness over unrestricted raw histories; the
   calendar instance is `rosterScheduler_asyncContract`.
 
@@ -225,17 +225,17 @@ joint law. It is not pursued.
   over source trembles, timing and raw responses, with exceptional mass
   negligible relative to clean reach on every information set that clean play
   eventually reaches, converging to a consistent native assessment.
-  Partial evidence: `exists_consistent_prescribed_completion` (consistent
+  Partial evidence: [`exists_consistent_prescribed_completion`](https://github.com/elazarg/VegasCore/blob/research-tree/GameTheoryExtensions/Analysis/Protocol/PrescribedCompletion.lean#L32) (consistent
   rational completion at free sites, keeping prescribed limits and the terminal
-  law); `exists_deferralWeights_faster` and `exists_source_timing_rates`
+  law); `exists_deferralWeights_faster` and [`exists_source_timing_rates`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceTimingRates.lean#L48)
   (deferral rates negligible against given source scales);
   `runBehavioral_withinTV_of_supported_choices`. The correspondence used for
   the copied/free split is defined: `CorrespondsIntended` (every state along a
   native history decodes at its completed prefix to a point of the intended
   game and every recorded response was canonical; prefix-closed by
-  construction) and `correspondingAgents` (agents at which a corresponding
+  construction) and [`correspondingAgents`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/AsyncIntendedCorrespondence.lean#L102) (agents at which a corresponding
   history decides, a function of the information state)
-  ([AsyncIntendedCorrespondence](../Vegas/Game/AsyncIntendedCorrespondence.lean)).
+  ([AsyncIntendedCorrespondence](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/AsyncIntendedCorrespondence.lean)).
   Generic reach bounds for the negligibility argument
   ([ReachBounds](../GameTheoryExtensions/Analysis/Protocol/ReachBounds.lean)):
   a history's weight is its predecessor's times its last step
@@ -251,7 +251,7 @@ joint law. It is not pursued.
   Actual reach weights couple legal source actions, chance, public results,
   original own recall and traffic, including foreign WAIT likelihoods and
   hidden builder history, so that native beliefs are derived, not chosen.
-  Partial evidence: `mixed_bob_reach_bound` for the example;
+  Partial evidence: [`mixed_bob_reach_bound`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommittedResolutionService.lean#L1519) for the example;
   `bayesBelief_bind_eq_conditional_passage` (beliefs at a site as conditional
   passage laws, abstract); `bayesBelief_light_le` (a site's Bayes belief of
   histories whose mass is at most `η` times the rest's is at most `η`, abstract).
@@ -279,37 +279,37 @@ joint law. It is not pursued.
   Partial evidence: under the final-record coverage hypothesis
   `FinalForbiddenEvidenceCoverage`, collection bounds under arbitrary later
   policies for signed constructor breaches
-  (`signedContentBreach_collection_continuation_of_finalCoverage`),
+  ([`signedContentBreach_collection_continuation_of_finalCoverage`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/ReactiveSettledCollection.lean#L203)),
   noncanonical commitment handles
-  (`noncanonicalCommitment_collection_continuation`) and openings whose public
-  guards fail (`guardFailingOpening_collection_continuation`), combined in
-  `auditableServiceChoice_collection_committed`. `signedContentBreach_risk_excluded`
-  and `auditableBreachAtSite_of_signed_witness` classify these packets per
+  ([`noncanonicalCommitment_collection_continuation`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceNoncanonicalBinding.lean#L260)) and openings whose public
+  guards fail ([`guardFailingOpening_collection_continuation`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceGuardFailure.lean#L201)), combined in
+  [`auditableServiceChoice_collection_committed`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceAuditableCollection.lean#L118). [`signedContentBreach_risk_excluded`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceSignedExclusion.lean#L29)
+  and [`auditableBreachAtSite_of_signed_witness`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceSignedInformation.lean#L83) classify these packets per
   information site in the risk-menu restriction;
   `sequential_equilibrium_extends_of_local_collection` and
-  `risk_sequentialEquilibrium_extends` extend an audited risk-menu equilibrium
+  [`risk_sequentialEquilibrium_extends`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceRiskExtension.lean#L193) extend an audited risk-menu equilibrium
   to the complete effective runtime;
-  `asyncAuditDeposit_covers_gain` fixes the deposit per scheduler.
+  [`asyncAuditDeposit_covers_gain`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/AsyncServiceDeposit.lean#L69) fixes the deposit per scheduler.
   Every excluded response is now charged, so the extension
-  `risk_sequentialEquilibrium_extends` has backend coverage as its only
+  [`risk_sequentialEquilibrium_extends`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceRiskExtension.lean#L193) has backend coverage as its only
   hypothesis (box W2). At a clear site the risk menu keeps the canonical
   responses and every conformant first submission
   (`MessageBounds.clearActions`, `EventGraphRuntime.ConformantResponse`: the
   envelope that own recall and view reconstruct, `EventGraphRuntime.localEnvelope`
   and `localEnvelope_actual`, passes the public send-time check, whatever its
   private material); every excluded response transmits and is not such a
-  submission (`AsyncServiceSpec.riskRestriction_extra_charged`). Committing it
-  dooms its author (`respond_doomed`): a failed send-time check is a breach
+  submission ([`AsyncServiceSpec.riskRestriction_extra_charged`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceRiskExtension.lean#L146)). Committing it
+  dooms its author ([`respond_doomed`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceDoomedCollection.lean#L88)): a failed send-time check is a breach
   (`doomed_of_breach`), and a second call for a recorded event leaves two
-  identifiers for one event (`recalled_call_emitted`). Doom persists to every
+  identifiers for one event ([`recalled_call_emitted`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceDoomedCollection.lean#L38)). Doom persists to every
   complete settlement, which then forbids some actual packet of the author
-  (`doomedAt_forbidden_reaches`), and final-record coverage bounds the
+  ([`doomedAt_forbidden_reaches`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceDoomedCollection.lean#L218)), and final-record coverage bounds the
   collection under arbitrary later policies
-  (`doomingServiceChoice_collection_committed`, through
-  `forbiddenTraffic_collection_committed` and
-  `EventGraphRuntime.forbiddenTraffic_collection_continuation`), in every
+  ([`doomingServiceChoice_collection_committed`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceDoomedCollection.lean#L270), through
+  [`forbiddenTraffic_collection_committed`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceSignedCollection.lean#L42) and
+  [`EventGraphRuntime.forbiddenTraffic_collection_continuation`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/ReactiveSettledCollection.lean#L110)), in every
   dependency mode
-  ([SourceServiceDoomedCollection](../Vegas/Game/SourceServiceDoomedCollection.lean),
+  ([SourceServiceDoomedCollection](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceDoomedCollection.lean),
   [SourceServiceConformantResponse](../Vegas/Game/SourceServiceConformantResponse.lean)).
   Not checked: conformant first submissions with noncanonical private material
   (a canonical-handle commitment carrying material outside the canonical
@@ -320,7 +320,7 @@ joint law. It is not pursued.
 - [ ] **S6. Rational continuation after a sunk charge.** Once a charge is
   certain, continuations are rational under the remaining utility, and no
   further fine is counted.
-  Partial evidence: `isSequentiallyRationalAt_iff_of_constant_collection`
+  Partial evidence: [`isSequentiallyRationalAt_iff_of_constant_collection`](https://github.com/elazarg/VegasCore/blob/research-tree/GameTheoryExtensions/Analysis/Protocol/TerminalAuditContinuation.lean#L107)
   (when expected collection is constant across continuations, rationality is
   rationality under the base payoff).
 - [ ] **S7. Remaining sites.** Sample, foreign, recorded and private
@@ -390,9 +390,9 @@ joint law. It is not pursued.
   `exists_sequentialEquilibrium_limit_of_pooled_comparisons_of_lawError` for one
   source sequence. Given such a certificate on the risk-menu model for every
   fully mixed Bayes sequence converging to an intended sequential equilibrium,
-  `AsyncServiceSpec.intended_effective_sequentialEquilibrium_of_certificate`
-  and `AsyncServiceSpec.intended_raw_sequentialEquilibrium_of_certificate`
-  ([AsyncIntendedComposition](../Vegas/Game/AsyncIntendedComposition.lean))
+  [`AsyncServiceSpec.intended_effective_sequentialEquilibrium_of_certificate`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/AsyncIntendedComposition.lean#L72)
+  and [`AsyncServiceSpec.intended_raw_sequentialEquilibrium_of_certificate`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/AsyncIntendedComposition.lean#L226)
+  ([AsyncIntendedComposition](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/AsyncIntendedComposition.lean))
   give sequential equilibria of the complete effective and the bounded raw
   runtimes, under the audited forfeited payoff, with the intended joint law of
   readout and settlement and no charge on their paths, in every dependency mode;
@@ -401,8 +401,8 @@ joint law. It is not pursued.
 - [ ] **S9. Validation.** The stage-S theorem is pinned in `Paper.lean` with
   standard axioms, the calendar theorem is derived as its instance, and every
   cited evidence declaration is in its dependency closure.
-  Partial evidence: `intended_audited_raw_sequentialEquilibrium`
-  ([IntendedServiceCompilation](../Vegas/Game/IntendedServiceCompilation.lean))
+  Partial evidence: [`intended_audited_raw_sequentialEquilibrium`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/IntendedServiceCompilation.lean#L42)
+  ([IntendedServiceCompilation](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/IntendedServiceCompilation.lean))
   composes H with the calendar theorem at the forfeited utility: for a
   well-formed setup, every intended-game equilibrium has an audited bounded raw
   runtime equilibrium with the intended joint law of terminal store and payoff
@@ -455,13 +455,13 @@ joint law. It is not pursued.
   (`async_client_nash_correspondence` and the four related pins) take
   `(serviceGraph service.setup service.mode).BarrierOrdered` instead of the
   default configuration. The extension of an audited risk-menu equilibrium to
-  the complete effective runtime (`risk_sequentialEquilibrium_extends`) holds in
+  the complete effective runtime ([`risk_sequentialEquilibrium_extends`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceRiskExtension.lean#L193)) holds in
   every dependency mode with any configured deadlines, the concurrent-binding
   and concurrent-reveal graphs included: its collection bounds for noncanonical
   commitment handles use that an owner has at most one ready event
-  (`noncanonicalCommitment_forbidden_reaches`), and its clean comparator uses
+  ([`noncanonicalCommitment_forbidden_reaches`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceNoncanonicalBinding.lean#L208)), and its clean comparator uses
   the readiness of a recorded own turn at the current state
-  (`sourceServiceImmediatePolicy_bindingTurnsRecorded_respond`).
+  ([`sourceServiceImmediatePolicy_bindingTurnsRecorded_respond`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceImmediateRecall.lean#L79)).
 - [ ] **C3. Concurrent reveals.** Under the forfeit pass, reveals that the game
   does not order (no guard or later decision reads one before the other) run
   concurrently, and the target theorem holds for that graph; or a
@@ -654,13 +654,13 @@ joint law. It is not pursued.
   law reads public data are covered, with beliefs projecting through the fiber
   mass (`GameTheory.Protocol.PublicScheduler.fiberMass_congr`). Nonterminal
   source decision fibers are checked
-  (`Vegas.SourceProgram.Setup.decision_allNonterminal`). The late-failure floor
+  ([`Vegas.SourceProgram.Setup.decision_allNonterminal`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceSiteNonterminal.lean#L36)). The late-failure floor
   is `Vegas.EventGraphRuntime.LateSendsFailAtLeast` (a packet sent for an
   event after an earlier activation at which it was ready ends without an
   accepting receipt with conditional probability at least δ, under every
   continuation), and such a send is collected with expected probability at
   least α·δ under every continuation
-  (`Vegas.EventGraphRuntime.lateSend_collection_continuation`, standard
+  ([`Vegas.EventGraphRuntime.lateSend_collection_continuation`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/ReactiveLateCollection.lean#L173), standard
   axioms). Still not done: the first-opportunity retained menu with the
   deposit theorem's matching, soundness, forbidden-envelope and
   missed-binding collection bounds, and the realization of that retained

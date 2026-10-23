@@ -46,7 +46,7 @@ still be specified beside any broader claim.
   the two compared laws need global integrability. The value correspondence
   remains an explicit hypothesis, so this does not establish arbitrary
   off-path preservation. See
-  [ReactiveRecoveryContinuation.lean](../Vegas/Pending/ReactiveRecoveryContinuation.lean).
+  [ReactiveRecoveryContinuation.lean](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/ReactiveRecoveryContinuation.lean).
 - **SE existence in the bounded runtime:** finite response menus, finite
   branching of nature, a fixed horizon and the runtime's remembered
   observations and responses give an SE for arbitrary realized payoffs.
@@ -67,10 +67,10 @@ still be specified beside any broader claim.
   service, audit, coverage and deposit hypotheses. Pending traffic can be
   observed; the calendar supplies reliable settlement and the scheduling
   structure used by the information and consistency proof. See
-  `Vegas.Paper.source_audited_raw_sequential_equilibrium` in
+  [`Vegas.Paper.source_audited_raw_sequential_equilibrium`](https://github.com/elazarg/VegasCore/blob/research-tree/Paper.lean#L43) in
   [Paper.lean](../Paper.lean). The intended-game composition is
-  `Vegas.SourceServiceSpec.intended_audited_raw_sequentialEquilibrium` in
-  [IntendedServiceCompilation.lean](../Vegas/Game/IntendedServiceCompilation.lean),
+  [`Vegas.SourceServiceSpec.intended_audited_raw_sequentialEquilibrium`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/IntendedServiceCompilation.lean#L42) in
+  [IntendedServiceCompilation.lean](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/IntendedServiceCompilation.lean),
   whose standard axioms are guarded in Paper.
 - **Exact asynchronous Nash correspondence:** for arbitrary timely contract
   builders with a barrier-ordered graph, including sequential and
@@ -230,8 +230,8 @@ still be specified beside any broader claim.
   accepted binding receipts throughout the whole information set, including
   histories with zero assessed belief. Final publication from a clean last
   callback also transfers to all compatible histories. The common-service result is
-  `Vegas.Examples.LateOpeningRuntimeEquilibriumConstraints.exists_service_with_constraints`
-  in [LateOpeningRuntimeEquilibriumConstraints.lean](../Vegas/Examples/LateOpeningRuntimeEquilibriumConstraints.lean).
+  [`Vegas.Examples.LateOpeningRuntimeEquilibriumConstraints.exists_service_with_constraints`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeEquilibriumConstraints.lean#L329)
+  in [LateOpeningRuntimeEquilibriumConstraints.lean](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeEquilibriumConstraints.lean).
   The failure bound is for specified canonical whole-horizon policies, not
   all raw continuations. The theorem neither assumes the intended law nor
   establishes its preservation or exclusion. Its checked core uses sequential
@@ -282,7 +282,7 @@ still be specified beside any broader claim.
   readout and fixed source payoffs at every supported native terminal history.
   A nonzero deposit then forces zero charge at each such history. This is an
   equilibrium-independent necessary condition; see
-  [PreservingSettlement](../Vegas/Examples/LateOpeningRuntimePreservingSettlement.lean).
+  [PreservingSettlement](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimePreservingSettlement.lean).
 - **Fully observed late-opening comparison:** for every inclusion probability
   between zero and one, a checked comparison family with intrinsic forfeit
   twice its reward preserves every intended source SE by a target SE. This
@@ -296,8 +296,8 @@ Both properties coexist with preservation in that comparison family.
 ## Checked negative results and their limits
 
 The strongest native negative is
-`Vegas.Examples.LateOpeningRuntimeUniformSeObstruction.exists_service_with_no_preserving_equilibrium`
-in [UniformSeObstruction](../Vegas/Examples/LateOpeningRuntimeUniformSeObstruction.lean).
+[`Vegas.Examples.LateOpeningRuntimeUniformSeObstruction.exists_service_with_no_preserving_equilibrium`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeUniformSeObstruction.lean#L28)
+in [UniformSeObstruction](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeUniformSeObstruction.lean).
 Collateral is fixed before one finite builder is chosen, and that same
 builder excludes the selected Safe joint law at every target SE. Native SEs
 exist. The result concerns exact joint terminal-store and audited payoff law,
@@ -306,7 +306,7 @@ an impossibility theorem for preservation of the public outcome alone. See
 [the theorem and proof](commit-reveal-research/native-se-obstruction.md).
 
 With the additional sufficient source-extension bound `D>=1`,
-`Vegas.Examples.LateOpeningRuntimeSourceSeObstruction.exists_source_equilibrium_with_uniform_service_obstruction`
+[`Vegas.Examples.LateOpeningRuntimeSourceSeObstruction.exists_source_equilibrium_with_uniform_service_obstruction`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeSourceSeObstruction.lean#L31)
 fixes one full-forfeiture source SE before any requested failure bound or
 builder. Every requested bound then has one admissible service whose native
 SEs all fail to implement that same selected source law. This uses both
@@ -322,8 +322,8 @@ behavioral game, without an equilibrium, audit or payoff assumption. Thus a
 profile cannot reproduce the intended source's certain-success law using
 only late submissions. It does not exclude a preserving SE which uses the
 protected opportunity. The checked endpoint is
-`Vegas.Examples.LateOpeningRuntimeProtectedReceipt.native_almost_sure_success_protected_receipt_law`
-in [LateOpeningRuntimeProtectedReceipt.lean](../Vegas/Examples/LateOpeningRuntimeProtectedReceipt.lean).
+[`Vegas.Examples.LateOpeningRuntimeProtectedReceipt.native_almost_sure_success_protected_receipt_law`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeProtectedReceipt.lean#L184)
+in [LateOpeningRuntimeProtectedReceipt.lean](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeProtectedReceipt.lean).
 
 The selective late-leak game has no preserving target SE in its stated
 parameter regime. Its distinguishing information pattern is essential:
@@ -354,7 +354,7 @@ remains separate. The [async checklist](se-async-checklist.md) retains its exist
 owner-controlled target and boxes.
 
 The actual all-or-none sampler and its exact expected-charge/payoff identities
-are [checked](../Vegas/Examples/LateOpeningRuntimeAllOrNoneTrafficAudit.lean).
+are [checked](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeAllOrNoneTrafficAudit.lean).
 Public binding omissions retain their full charge rather than a scaled charge.
 An actual successful Bob binding excludes that branch throughout arbitrary
 supported continuations, where scaled full-audit expected utilities agree.
@@ -364,10 +364,10 @@ and Bob's binding sites with quiet failed or clean/dirty successful Alice
 publication. Dirty failed-publication binding and the complete obstruction
 composition remain separate obligations. Random realized settlement laws are
 not equated with deterministic scaled deposits. Instead,
-[preservation of the source's actual joint law](../Vegas/Examples/LateOpeningRuntimeAllOrNonePreservingSettlement.lean)
+[preservation of the source's actual joint law](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeAllOrNonePreservingSettlement.lean)
 implies its preservation by the unchanged profile under full audit at scaled
 deposits, for arbitrary deposits. The
-[settlement criterion](../GameTheoryExtensions/Analysis/Protocol/TerminalAuditSettlement.lean)
+[settlement criterion](https://github.com/elazarg/VegasCore/blob/research-tree/GameTheoryExtensions/Analysis/Protocol/TerminalAuditSettlement.lean)
 identifies zero expected deductions with the exact unchanged joint payoff
 vector, including zero deposits and correlated audit verdicts.
 

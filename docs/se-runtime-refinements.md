@@ -136,9 +136,9 @@ Different floors give the product of the individual floors. No independence
 assumption is needed; state can contain the complete history and policies can
 adapt to it. The pointwise premise covers every state in E, including states
 outside the equilibrium path.
-See [Survival](../GameTheoryExtensions/Math/Probability/Survival.lean).
+See [Survival](https://github.com/elazarg/VegasCore/blob/research-tree/GameTheoryExtensions/Math/Probability/Survival.lean).
 
-[ReactiveSurvival](../Interaction/ReactiveSurvival.lean) instantiates this result
+[ReactiveSurvival](https://github.com/elazarg/VegasCore/blob/research-tree/Interaction/ReactiveSurvival.lean) instantiates this result
 in the existing reactive scheduler-round evaluator, retaining its full
 execution and recall. From any initial execution in E, the bound is a^N;
 it is strictly positive for a>0 and finite N. The same result holds when
@@ -169,14 +169,14 @@ This is a genuine assumption removal in the existing capstone, rather than a
 second theorem with the same premises.
 See [ServiceRoster](../Vegas/Game/ServiceRoster.lean),
 [SourceServiceSpec](../Vegas/Game/SourceServiceSpec.lean) and
-[SourceServiceCompilation](../Vegas/Game/SourceServiceCompilation.lean).
+[SourceServiceCompilation](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceCompilation.lean).
 The finite-support proof for any reserved plan is in
 [ReactiveServiceFiniteness](../Vegas/Pending/ReactiveServiceFiniteness.lean).
 
 There is also a checked all-history fact: every activation of a ready event's
 owner lies inside its protected inclusion window. It applies to raw legal
 histories, including deviations, and does not assume activation coverage.
-See [ServiceRosterProtection](../Vegas/Game/ServiceRosterProtection.lean).
+See [ServiceRosterProtection](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/ServiceRosterProtection.lean).
 This identifies why the calendar avoids the late-turn lottery; it does not
 generalize the calendar to arbitrary adaptive or probabilistic scheduling.
 

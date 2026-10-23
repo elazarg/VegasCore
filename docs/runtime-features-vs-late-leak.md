@@ -390,7 +390,7 @@ Two points are outside this comparison's script checks:
 - **Native branches not modeled here.** These are wrong-event and malformed
   packets, aliases, several listener activations, and a native embedding into
   the compiled source program with its typed readout, such as
-  [CommittedResolutionService](../Vegas/Examples/CommittedResolutionService.lean).
+  [CommittedResolutionService](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommittedResolutionService.lean).
   The separate checked native construction controls all these extra choices
   in its own three-instruction fixture; it does not mechanize this script game.
 

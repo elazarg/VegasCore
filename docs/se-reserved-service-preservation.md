@@ -364,8 +364,8 @@ existing checked declarations under new names. No current target, source
 semantics or runtime rule has been modified or claimed mechanized.
 
 Existing components underlying this argument include the
-[global source recovery construction](../Vegas/Game/CommitRecoveryEquilibriumConstruction.lean),
-[source ancillary Bayes exchange](../Vegas/Game/CommitRecoveryAncillaryBayes.lean),
+[global source recovery construction](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/CommitRecoveryEquilibriumConstruction.lean),
+[source ancillary Bayes exchange](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/CommitRecoveryAncillaryBayes.lean),
 [original genuine phase query](../Vegas/Game/PhaseObservableSourceQuery.lean),
 [complete packet observation](../Interaction/ReactiveCompleteObservation.lean),
 and [terminal audit extension](../GameTheoryExtensions/Analysis/Protocol/TerminalAudit.lean).

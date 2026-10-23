@@ -223,7 +223,7 @@ credential. That action is outside the faithful source interface. It belongs
 to the separate enforcement obligation: establish a forbidden final verdict,
 actual conditional collection, and a sufficient incremental cost. Classifying
 a packet as forbidden is not itself a proof that its sender is deterred. The
-[signed collection adapter](../Vegas/Game/SourceServiceSignedCollection.lean)
+[signed collection adapter](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceSignedCollection.lean)
 uses explicit evidence observation and report-delivery coverage premises.
 
 The [late-opening counterexample](open-problem-late-turn-equilibria.md) is a
@@ -238,16 +238,16 @@ under its own parameters and runtime embedding obligations.
 
 The library already contains a checked result that knowing a fact fixes its
 posterior reward at any decision information set, including off-path ones:
-`ContinuationDecision.expectedReward_of_known` in
-[ObservationRequirement.lean](../GameTheoryExtensions/Analysis/Protocol/ObservationRequirement.lean).
+[`ContinuationDecision.expectedReward_of_known`](https://github.com/elazarg/VegasCore/blob/research-tree/GameTheoryExtensions/Analysis/Protocol/ObservationRequirement.lean#L34) in
+[ObservationRequirement.lean](https://github.com/elazarg/VegasCore/blob/research-tree/GameTheoryExtensions/Analysis/Protocol/ObservationRequirement.lean).
 Its response-factorization theorems prohibit merging decisions with disjoint
 posterior maximizers. They formalize the kind of receiver obstruction used
 here, but have not been instantiated with this two-player game.
 
 For finite terminal decision experiments, the repository proves the exact
 fixed-payoff boundary:
-`preserves_fixed_payoff_sequentialEquilibria_iff_commonMaximizer` in
-[DecisionPayoff.lean](../GameTheoryExtensions/Analysis/Protocol/DecisionPayoff.lean).
+[`preserves_fixed_payoff_sequentialEquilibria_iff_commonMaximizer`](https://github.com/elazarg/VegasCore/blob/research-tree/GameTheoryExtensions/Analysis/Protocol/DecisionPayoff.lean#L23) in
+[DecisionPayoff.lean](https://github.com/elazarg/VegasCore/blob/research-tree/GameTheoryExtensions/Analysis/Protocol/DecisionPayoff.lean).
 With the reporting payoff `[g = v]`, the supported states `0` and `1` have
 disjoint unique maximizing guesses. A pooled observation has no common
 maximizer. The exact criterion also allows added information when all states

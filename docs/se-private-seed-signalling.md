@@ -37,74 +37,74 @@ counted-service predicates. It does not close a checklist box, settle the
 all-raw content reading, or change any target, semantics or hypothesis.
 
 The native fixture has a checked honest source SE and the full raw contract
-`Vegas.Examples.CommitSeedSignalling.scheduler_asyncContract`: opportunity
+[`Vegas.Examples.CommitSeedSignalling.scheduler_asyncContract`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommitSeedSignallingAsyncService.lean#L26): opportunity
 delay zero, protected receipt bound five, and completion within 64 commands.
 The unfinished-play bound is 55, including malformed submissions, retries and
 exhausted recovery. The conditional native late-acceptance bound is checked
-by `Vegas.Examples.CommitSeedSignalling.original_nohelper_acceptance_half`;
+by [`Vegas.Examples.CommitSeedSignalling.original_nohelper_acceptance_half`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommitSeedSignallingHalfSuccess.lean#L347);
 the exact earlier-state/hidden-coin/final-state joint is retained separately
-by `Vegas.Examples.CommitSeedSignalling.bobPrefixFinalJoint_physical`.
+by [`Vegas.Examples.CommitSeedSignalling.bobPrefixFinalJoint_physical`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommitSeedSignallingBobJoint.lean#L53).
 The initialized bound
-`Vegas.Examples.CommitSeedSignalling.bob_initialized_weighted_half` retains
+[`Vegas.Examples.CommitSeedSignalling.bob_initialized_weighted_half`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommitSeedSignallingInitializedHalf.lean#L239) retains
 any earlier physical event jointly, so Alice's earlier delivery need not be
 independent of the updated hidden remainder. Alice's corresponding initialized
-bound is `Vegas.Examples.CommitSeedSignalling.alice_initialized_half`.
+bound is [`Vegas.Examples.CommitSeedSignalling.alice_initialized_half`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommitSeedSignallingAliceInitializedHalf.lean#L154).
 The actual Bob quiet deviation has exactly the initialized counted experiment's
-value (`Vegas.Examples.CommitSeedSignalling.bobQuiet_fixedLate_context_initialized_value`),
+value ([`Vegas.Examples.CommitSeedSignalling.bobQuiet_fixedLate_context_initialized_value`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommitSeedSignallingBobQuietInitialization.lean#L99)),
 retaining Alice's later assessed strategy even at off-path decisions.
-`Vegas.Examples.CommitSeedSignalling.raw_equilibrium_own_clean_terminal_charge_zero`
+[`Vegas.Examples.CommitSeedSignalling.raw_equilibrium_own_clean_terminal_charge_zero`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommitSeedSignallingOwnContinuation.lean#L160)
 also proves that the assessed continuation never charges an owner with a clean
 own past, without restricting the other owner's raw traffic.
 The exact private clock-calendar predicate holds for the installed family
-(`Vegas.Examples.CommitSeedSignalling.family_privateActivationCalendar`),
+([`Vegas.Examples.CommitSeedSignalling.family_privateActivationCalendar`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommitSeedSignallingPrivateCalendar.lean#L59)),
 including exhausted attempts. Actual original correct-seed acceptance is at
 least 1/2 for either owner's fixed late deviation
-(`Vegas.Examples.CommitSeedSignalling.fixed_late_acceptance_probability`).
+([`Vegas.Examples.CommitSeedSignalling.fixed_late_acceptance_probability`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommitSeedSignallingCorrectSeedProbability.lean#L76)).
 The final joint acceptance bound
-`Vegas.Examples.CommitSeedSignalling.initialized_joint_acceptance_half`
+[`Vegas.Examples.CommitSeedSignalling.initialized_joint_acceptance_half`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommitSeedSignallingJointAcceptance.lean#L85)
 retains Alice's original receipt across the complete continuation.
 The opening incentive comparison
-`Vegas.Examples.CommitSeedSignalling.counted_successful_publication_wait_not_supported`
+[`Vegas.Examples.CommitSeedSignalling.counted_successful_publication_wait_not_supported`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommitSeedSignallingPublicationChoice.lean#L108)
 excludes WAIT at an actual callback with a successful stored binding: the
 whole assessed continuation gives -1 after withholding and at least 0 after
 opening, uniformly across the full raw information fiber. Other owners' past
 and future traffic is unrestricted there.
 The full existing counted binding-success predicate is checked by
-`Vegas.Examples.CommitSeedSignalling.family_privateBindingSuccess`, including
+[`Vegas.Examples.CommitSeedSignalling.family_privateBindingSuccess`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommitSeedSignallingPrivateBindingSuccess.lean#L43), including
 arbitrary preparations and evidence in original and retry attempts.
-`Vegas.Examples.CommitSeedSignalling.raw_helper_clock_two_information_fiber`
-and `Vegas.Examples.CommitSeedSignalling.raw_recalled_helper_information_fiber`
+[`Vegas.Examples.CommitSeedSignalling.raw_helper_clock_two_information_fiber`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommitSeedSignallingHelperFiber.lean#L120)
+and [`Vegas.Examples.CommitSeedSignalling.raw_recalled_helper_information_fiber`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommitSeedSignallingHelperFiber.lean#L156)
 establish Alice's helper readout across every history in the full raw information
 fiber and every supported original seed there.
 Both fixed late deviations have probability at least 1/4 of own original
 acceptance with the opponent's original binding missing
-(`Vegas.Examples.CommitSeedSignalling.alice_fixed_late_exclusive_acceptance_quarter`
-and `Vegas.Examples.CommitSeedSignalling.bob_fixed_late_exclusive_acceptance_quarter`).
+([`Vegas.Examples.CommitSeedSignalling.alice_fixed_late_exclusive_acceptance_quarter`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommitSeedSignallingUnilateralDelivery.lean#L25)
+and [`Vegas.Examples.CommitSeedSignalling.bob_fixed_late_exclusive_acceptance_quarter`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommitSeedSignallingUnilateralDelivery.lean#L68)).
 Missing original receipts imply the actual terminal failed-publication bit
-(`Vegas.Examples.CommitSeedSignalling.initialized_missing_original_binding_publication_failed`).
+([`Vegas.Examples.CommitSeedSignalling.initialized_missing_original_binding_publication_failed`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommitSeedSignallingPublicationReceipts.lean#L348)).
 Accepted original bindings of a fixed proper late owner protect it through
 the entire actual recovery and publication continuation
-(`Vegas.Examples.CommitSeedSignalling.initialized_fixed_late_original_binding_survives`).
+([`Vegas.Examples.CommitSeedSignalling.initialized_fixed_late_original_binding_survives`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommitSeedSignallingProperSurvival.lean#L190)).
 The resulting native expected payoff is at least 1/4 against any counted opponent
 who initially waits
-(`Vegas.Examples.CommitSeedSignalling.initialized_fixed_late_netPayoff_quarter`).
+([`Vegas.Examples.CommitSeedSignalling.initialized_fixed_late_netPayoff_quarter`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommitSeedSignallingProperPayoff.lean#L20)).
 The same bound holds for Bob's whole deviation at his actual quiet information
 set, retaining Alice's assessed continuation even off path
-(`Vegas.Examples.CommitSeedSignalling.bobQuiet_fixedLate_context_quarter`).
+([`Vegas.Examples.CommitSeedSignalling.bobQuiet_fixedLate_context_quarter`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommitSeedSignallingQuietPayoff.lean#L20)).
 Consequently a preserving equilibrium cannot have Bob always wait there
-(`Vegas.Examples.CommitSeedSignalling.preserving_equilibrium_bobQuiet_not_wait`).
+([`Vegas.Examples.CommitSeedSignalling.preserving_equilibrium_bobQuiet_not_wait`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommitSeedSignallingInitialDeviation.lean#L69)).
 Full raw information-set comparisons force Alice to wait at the wrong time
 and submit openable material at the useful time. Her actual assessed opening
 continuation then survives. Thus every permitted early Bob packet makes Alice
 survive, giving Bob at most zero, whereas his whole waiting deviation gives
 at least 1/4. His waiting behavior is forced
-(`Vegas.Examples.CommitSeedSignalling.bobQuiet_counted_decoded_wait`).
+([`Vegas.Examples.CommitSeedSignalling.bobQuiet_counted_decoded_wait`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommitSeedSignallingBobQuietChoice.lean#L125)).
 Consequently every native sequential equilibrium gives Alice expected payoff
 at least 1/4
-(`Vegas.Examples.CommitSeedSignalling.native_equilibrium_alice_payoff_quarter`).
+([`Vegas.Examples.CommitSeedSignalling.native_equilibrium_alice_payoff_quarter`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommitSeedSignallingNonpreservation.lean#L19)).
 One fixed honest source sequential equilibrium has no preserving native
 sequential equilibrium
-(`Vegas.Examples.CommitSeedSignalling.exists_honest_sequentialEquilibrium_without_native_preservation`).
+([`Vegas.Examples.CommitSeedSignalling.exists_honest_sequentialEquilibrium_without_native_preservation`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommitSeedSignallingNonpreservation.lean#L59)).
 These are actual native theorems, with the original assessment strategies,
 beliefs and scheduler posterior retained, including off-path decisions.
 
@@ -288,7 +288,7 @@ for it is claimed.
 ## Concrete native realization and finite bounds
 
 Use the existing empty-context `setup` and `program` in
-[the two-commitment fixture](../Vegas/Examples/OnePacketCommitRevealHypotheses.lean),
+[the two-commitment fixture](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/OnePacketCommitRevealHypotheses.lean),
 with the utility just specified in place of its matching-pennies utility.
 Only the program and setup are reused: its default sequential scheduler,
 empty leak rule and two-slot bounds are not the construction here.
@@ -797,7 +797,7 @@ The chosen honest SE gives A payoff 0. Thus no native SE preserves its joint
 public-result/realized-net-payoff law. This mathematical conclusion concerns
 the precise counted interpretation above. Its installed W=3, epsilon=1 native
 fixture is checked by
-`Vegas.Examples.CommitSeedSignalling.native_equilibrium_alice_payoff_quarter`;
+[`Vegas.Examples.CommitSeedSignalling.native_equilibrium_alice_payoff_quarter`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommitSeedSignallingNonpreservation.lean#L19);
 the unresolved all-raw reading of prose S1 remains separate.
 
 Here is a proof that does not classify the late equilibria. Fix any assessed

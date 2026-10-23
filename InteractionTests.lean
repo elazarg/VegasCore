@@ -3,7 +3,6 @@
 import InteractionTests.Commitment
 import InteractionTests.CommitmentCandidates
 import InteractionTests.Pending
-import InteractionTests.PendingPriority
 import InteractionTests.ReactiveImplementation
 import InteractionTests.ReactiveMenuRestriction
 import InteractionTests.ReactiveMonitoring

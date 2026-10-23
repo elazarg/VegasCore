@@ -38,66 +38,6 @@ theorem concurrent_source_raw_sequential_equilibrium
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.concurrent_source_raw_sequential_equilibrium
 
-open Vegas.SourceProgram Vegas.EventGraphRuntime
-  GameTheory.Protocol GameTheory.Enforcement in
-theorem source_audited_raw_sequential_equilibrium [Fintype Player] [IExpr.ResultTypes L]
-    {Parameter : Type} (service : SourceServiceSpec Player L)
-    (parameter : State L service.setup.context → Parameter)
-    (utility : Parameter × PublicOutcome service.setup.program → Player → ℝ)
-    (sample : List (SettledEvidence service.setup) →
-      PMF (List (SettledEvidence service.setup)))
-    (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
-    (probability : Player → ℝ) (positive : ∀ who, 0 < probability who)
-    (coverage : ∀ who actual record, record ∈ actual → record.2.sender = who →
-      record.1.permits record.2 = false →
-      probability who ≤ ((sample actual).toOuterMeasure {observed | record ∈ observed}).toReal)
-    (source : service.sourceModel.BehavioralAssessment)
-    (equilibrium : source.IsSequentialEquilibrium
-      (service.setup.decision_antichain (CommitmentInterface.values service.setup.program))
-      service.sourceTerminates
-      (fun who final => (service.setup.protocolReadout final.state).elim 0
-        (fun state => utility (service.setup.parameterOutcome parameter state) who))) :
-    let raw := service.bounds.rawMenu (runtime service.setup) service.leaks
-    let base := baseUtility service.setup service.leaks
-      (fun state => utility (service.setup.parameterOutcome parameter state))
-    let deposit := rosterAuditDeposit service.setup service.leaks service.bounds service.rosters
-      service.network base (fun owner => min (probability owner) 1)
-    let payoff := TerminalAudit.utility base
-      ((runtime service.setup).serviceAuditObservation service.leaks)
-      (sourceServiceAudit service.setup service.leaks sample) deposit
-    let settle := TerminalAudit.settlement base
-      ((runtime service.setup).serviceAuditObservation service.leaks)
-      (sourceServiceAudit service.setup service.leaks sample) deposit
-    ∃ target : (raw.information (initialLaw service.setup) service.planLength
-        service.scheduler).BehavioralAssessment,
-      target.IsSequentialEquilibrium
-        (raw.decisionInformationAntichain (initialLaw service.setup) service.planLength
-          service.scheduler) service.rawTerminates
-        (fun who history => payoff history.state who) ∧
-      (∀ final ∈ ((raw.information (initialLaw service.setup) service.planLength
-          service.scheduler).runBehavioralTerminalFrom service.rawTerminates target.strategy
-            service.rawInitial).support, ∀ who,
-        TerminalAudit.charge ((runtime service.setup).serviceAuditObservation service.leaks)
-          (sourceServiceAudit service.setup service.leaks sample) final.state who = 0) ∧
-      ((raw.information (initialLaw service.setup) service.planLength
-          service.scheduler).runBehavioralTerminalFrom service.rawTerminates target.strategy
-            service.rawInitial).bind
-          (fun final => (settle final.state).map (fun payoffs =>
-            (sourceReadout service.setup service.leaks final.state, payoffs))) =
-        (service.sourceModel.runBehavioralTerminalFrom service.sourceTerminates source.strategy
-            service.sourceInitial).map
-              (fun final => (service.setup.protocolReadout final.state,
-                fun who => (service.setup.protocolReadout final.state).elim 0
-                  (fun state => utility (service.setup.parameterOutcome parameter state)
-                    who))) :=
-  service.audited_raw_sequentialEquilibrium_preserved parameter utility sample authentic
-    probability positive coverage source equilibrium
-
-/-- info: 'Vegas.Paper.source_audited_raw_sequential_equilibrium' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Vegas.Paper.source_audited_raw_sequential_equilibrium
-
 open Vegas.SourceProgram in
 theorem source_protocol_horizon [IExpr.ResultTypes L]
     (setup : Setup (Player := Player) (L := L))
@@ -109,19 +49,6 @@ theorem source_protocol_horizon [IExpr.ResultTypes L]
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.source_protocol_horizon
-
-open Vegas.EventGraphRuntime in
-theorem raw_service_horizon [Fintype Player] [IExpr.ResultTypes L]
-    (service : SourceServiceSpec Player L) :
-    ((service.bounds.rawMenu (runtime service.setup) service.leaks).protocol
-      (initialLaw service.setup) service.planLength service.scheduler).BoundedHorizon
-        service.fuel :=
-  (service.bounds.rawMenu (runtime service.setup) service.leaks).bounded _ _ _
-
-/-- info: 'Vegas.Paper.raw_service_horizon' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Vegas.Paper.raw_service_horizon
 
 open Vegas.SourceProgram GameTheory.Protocol in
 theorem intended_sequential_equilibrium [Fintype Player] [IExpr.ResultTypes L]
@@ -255,78 +182,6 @@ theorem public_scheduling_sequential_equilibrium {ι : Type} [Fintype ι] [Decid
 
 open Vegas.SourceProgram Vegas.EventGraphRuntime
   GameTheory.Protocol GameTheory.Enforcement in
-theorem source_audited_raw_nash_reflection [Fintype Player] [IExpr.ResultTypes L]
-    {Parameter : Type} (service : SourceServiceSpec Player L)
-    (parameter : State L service.setup.context → Parameter)
-    (utility : Parameter × PublicOutcome service.setup.program → Player → ℝ)
-    (sample : List (SettledEvidence service.setup) →
-      PMF (List (SettledEvidence service.setup)))
-    (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
-    (probability : Player → ℝ) (ε : ℝ)
-    (source : Profile service.sourceModel.behavioralSignature) :
-    let raw := service.bounds.rawMenu (runtime service.setup) service.leaks
-    let base := baseUtility service.setup service.leaks
-      (fun state => utility (service.setup.parameterOutcome parameter state))
-    let deposit := rosterAuditDeposit service.setup service.leaks service.bounds service.rosters
-      service.network base (fun owner => min (probability owner) 1)
-    let payoff := TerminalAudit.utility base
-      ((runtime service.setup).serviceAuditObservation service.leaks)
-      (sourceServiceAudit service.setup service.leaks sample) deposit
-    IsεNash ((raw.information (initialLaw service.setup) service.planLength
-        service.scheduler).toBehavioralGameForm service.fuel)
-        (fun history who => payoff history.state who) ε (service.compileProfile source) →
-      IsεNash (service.sourceModel.toBehavioralGameForm
-        (instructionCount service.setup.program + 1))
-        (fun final who => (service.setup.protocolReadout final.state).elim 0
-          (fun state => utility (service.setup.parameterOutcome parameter state) who))
-        ε source :=
-  service.isεNash_of_compileProfile parameter utility sample authentic probability ε source
-
-/-- info: 'Vegas.Paper.source_audited_raw_nash_reflection' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Vegas.Paper.source_audited_raw_nash_reflection
-
-open Vegas.SourceProgram Vegas.EventGraphRuntime
-  GameTheory.Protocol GameTheory.Enforcement in
-theorem source_audited_raw_nash_iff [Fintype Player] [IExpr.ResultTypes L]
-    {Parameter : Type} (service : SourceServiceSpec Player L)
-    (parameter : State L service.setup.context → Parameter)
-    (utility : Parameter × PublicOutcome service.setup.program → Player → ℝ)
-    (sample : List (SettledEvidence service.setup) →
-      PMF (List (SettledEvidence service.setup)))
-    (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
-    (probability : Player → ℝ) (positive : ∀ who, 0 < probability who)
-    (coverage : ∀ who actual record, record ∈ actual → record.2.sender = who →
-      record.1.permits record.2 = false →
-      probability who ≤ ((sample actual).toOuterMeasure {observed | record ∈ observed}).toReal)
-    (ε : ℝ) (source : Profile service.sourceModel.behavioralSignature) :
-    let raw := service.bounds.rawMenu (runtime service.setup) service.leaks
-    let base := baseUtility service.setup service.leaks
-      (fun state => utility (service.setup.parameterOutcome parameter state))
-    let deposit := rosterAuditDeposit service.setup service.leaks service.bounds service.rosters
-      service.network base (fun owner => min (probability owner) 1)
-    let payoff := TerminalAudit.utility base
-      ((runtime service.setup).serviceAuditObservation service.leaks)
-      (sourceServiceAudit service.setup service.leaks sample) deposit
-    IsεNash ((raw.information (initialLaw service.setup) service.planLength
-        service.scheduler).toBehavioralGameForm service.fuel)
-        (fun history who => payoff history.state who) ε (service.compileProfile source) ↔
-      IsεNash (service.sourceModel.toBehavioralGameForm
-        (instructionCount service.setup.program + 1))
-        (fun final who => (service.setup.protocolReadout final.state).elim 0
-          (fun state => utility (service.setup.parameterOutcome parameter state) who))
-        ε source :=
-  service.isεNash_compileProfile_iff parameter utility sample authentic probability positive
-    coverage ε source
-
-/-- info: 'Vegas.Paper.source_audited_raw_nash_iff' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Vegas.Paper.source_audited_raw_nash_iff
-
-open Vegas.SourceProgram Vegas.EventGraphRuntime
-  GameTheory.Protocol GameTheory.Enforcement in
 theorem async_client_nash_reflection [Fintype Player] [IExpr.ResultTypes L]
     {Parameter : Type} (service : AsyncServiceSpec Player L)
     (admission : CommitmentInterface service.setup.program)
@@ -422,58 +277,6 @@ theorem intended_nash [Fintype Player] [IExpr.ResultTypes L]
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.intended_nash
-
-open Vegas.SourceProgram Vegas.EventGraphRuntime
-  GameTheory.Protocol GameTheory.Enforcement in
-theorem intended_audited_raw_nash [Fintype Player] [IExpr.ResultTypes L]
-    {Parameter : Type} (service : SourceServiceSpec Player L)
-    (wellFormed : service.setup.WellFormed)
-    (parameter : State L service.setup.context → Parameter)
-    (utility : Parameter × PublicOutcome service.setup.program → Player → ℝ)
-    (forfeit : ℝ) (range : ∀ high low who, utility high who - utility low who ≤ forfeit)
-    (sample : List (SettledEvidence service.setup) →
-      PMF (List (SettledEvidence service.setup)))
-    (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
-    (probability : Player → ℝ) (positive : ∀ who, 0 < probability who)
-    (coverage : ∀ who actual record, record ∈ actual → record.2.sender = who →
-      record.1.permits record.2 = false →
-      probability who ≤ ((sample actual).toOuterMeasure {observed | record ∈ observed}).toReal)
-    (intended : Profile service.setup.intendedModel.behavioralSignature)
-    (source : Profile service.sourceModel.behavioralSignature)
-    (agrees : (service.setup.intendedRestriction (CommitmentInterface.values
-      service.setup.program)).ExtendsProfile intended source) (ε : ℝ)
-    (equilibrium : IsεNash (service.setup.intendedModel.toBehavioralGameForm
-        (instructionCount service.setup.program + 1))
-      (fun final who => (service.setup.protocolReadout final.state).elim 0
-        (fun state => utility (service.setup.parameterOutcome parameter state) who)) ε intended) :
-    let forfeited := forfeitUtility service.setup.program forfeit utility
-    let raw := service.bounds.rawMenu (runtime service.setup) service.leaks
-    let base := baseUtility service.setup service.leaks
-      (fun state => forfeited (service.setup.parameterOutcome parameter state))
-    let deposit := rosterAuditDeposit service.setup service.leaks service.bounds service.rosters
-      service.network base (fun owner => min (probability owner) 1)
-    let payoff := TerminalAudit.utility base
-      ((runtime service.setup).serviceAuditObservation service.leaks)
-      (sourceServiceAudit service.setup service.leaks sample) deposit
-    IsεNash ((raw.information (initialLaw service.setup) service.planLength
-        service.scheduler).toBehavioralGameForm service.fuel)
-        (fun history who => payoff history.state who) ε (service.compileProfile source) ∧
-      ((raw.information (initialLaw service.setup) service.planLength
-          service.scheduler).runBehavioral (service.compileProfile source) service.fuel).map
-          (fun final => (sourceReadout service.setup service.leaks final.state,
-            payoff final.state)) =
-        (service.setup.intendedModel.runBehavioral intended
-            (instructionCount service.setup.program + 1)).map
-          (fun final => (service.setup.protocolReadout final.state,
-            fun who => (service.setup.protocolReadout final.state).elim 0
-              (fun state => utility (service.setup.parameterOutcome parameter state) who))) :=
-  service.intended_audited_raw_isεNash wellFormed parameter utility forfeit range sample
-    authentic probability positive coverage intended source agrees ε equilibrium
-
-/-- info: 'Vegas.Paper.intended_audited_raw_nash' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Vegas.Paper.intended_audited_raw_nash
 
 open Vegas.SourceProgram Vegas.EventGraphRuntime
   GameTheory.Protocol GameTheory.Enforcement in

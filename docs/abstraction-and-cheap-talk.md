@@ -22,7 +22,7 @@ Status tags used below:
 
 Yes. "No leaks" is an abstraction theorem, not a secure-compilation theorem.
 
-- The pinned `source_audited_raw_nash_iff` is a robust-preservation statement. A *compiled* profile is an equilibrium against every target deviator exactly when the source profile is one. It holds for **every** leak rule, because the compiled opponents babble: their calendar timing is drawn independently of everything (`calendarTiming`), so whatever a deviator learns through leaks is payoff-irrelevant noise.
+- The pinned [`source_audited_raw_nash_iff`](https://github.com/elazarg/VegasCore/blob/research-tree/Paper.lean#L292) is a robust-preservation statement. A *compiled* profile is an equilibrium against every target deviator exactly when the source profile is one. It holds for **every** leak rule, because the compiled opponents babble: their calendar timing is drawn independently of everything ([`calendarTiming`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceNash.lean#L55)), so whatever a deviator learns through leaks is payoff-irrelevant noise.
 - The abstraction statement is a different claim. **Every** ledger equilibrium, including ones that no compiler produced, is a source equilibrium up to its joint law. So a player who uses the chain naively, as if it were the source game, misses no equilibrium and is open to no coordination the source does not already allow.
 
 On the calendar with a silent leak rule, this holds by the argument in §1. The one new hypothesis is a strict deposit margin, and one adapter lemma is still open. With leaks on, it fails. The extra capacity is a private, noisy, authenticated, unverifiable *timing* channel inside each event's roster block (§2).
@@ -130,8 +130,8 @@ Statement: for any permitted-menu profile `π` and player `i`, the readout law o
 
 **3. Raw to menu at an equilibrium (0.5–1.5k lines; the main risk).**
 - **(a) Aliases.** Normalize all players simultaneously. `canonicalRaw_historyLaw` and `SubmissionNormalization.aliasDeviation_historyLaw` are stated against canonical raw opponents, so check that the all-player version is available or is a short corollary.
-- **(b) Forbidden mass is zero.** Replace `i`'s policy by its fixed repair. It loses at most R base payoff on the histories where `i` sends a forbidden packet (`rosterAuditDeposit_covers_gain` is history-pointwise), and avoids an expected charge of at least ρD > R there.
-  - Reuse `sourceService_continuation_settlement_comparison`, `remaining_events_stopped_coupling` at rank 0, and `sourceService_repair_range_settlement_le`, as `exists_menu_deviation_ge` already does.
+- **(b) Forbidden mass is zero.** Replace `i`'s policy by its fixed repair. It loses at most R base payoff on the histories where `i` sends a forbidden packet ([`rosterAuditDeposit_covers_gain`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/ServicePayoffBounds.lean#L54) is history-pointwise), and avoids an expected charge of at least ρD > R there.
+  - Reuse [`sourceService_continuation_settlement_comparison`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceContinuationComparison.lean#L29), [`remaining_events_stopped_coupling`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceRemainingRepair.lean#L63) at rank 0, and [`sourceService_repair_range_settlement_le`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceRepairSettlement.lean#L167), as [`exists_menu_deviation_ge`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceNash.lean#L374) already does.
   - Gap: these assume the opponents *extend a source profile in the permitted menu* (`agrees : … ExtendsProfile source target`). The NE argument needs the repair against arbitrary raw opponents. Charges depend only on own packets (`includeLatest` filters by sender, the audit reads own envelopes), so this should go through, but the Frame/coupling hypotheses must be re-derived. **This is the riskiest step.**
 - **(c) Uncharged off-menu effective responses** must be law-equivalent to menu responses, or be shown never to occur on a forbidden-free path. This needs a classification of `effective \ permitted` responses, which the existing inequality-only route never needed.
 
@@ -139,7 +139,7 @@ Statement: for any permitted-menu profile `π` and player `i`, the readout law o
 - Let `σ = dec π`, where `π` is the menu form of `π̂`.
 - For a source deviation `τ_i`, the native deviation `timedPolicy τ_i` against `π_{-i}` has, by step 2, the source law of `update σ i τ_i`.
 - Native NE then gives source payoff of `τ_i` ≤ native payoff of `π̂` = source payoff of `σ`.
-- Package with `UtilityTransfer.isεNash_of_deviation_bounds` or `GameForm.MixtureSimulationOn`. `menuSimulation` and `compileProfile_payoff_law` are templates.
+- Package with `UtilityTransfer.isεNash_of_deviation_bounds` or `GameForm.MixtureSimulationOn`. [`menuSimulation`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceNash.lean#L577) and [`compileProfile_payoff_law`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceNash.lean#L196) are templates.
 
 **Total:** about 2–4.5k lines. Step 2 is the new mathematics (it is N3 with every player deviating). Step 3b is the main risk.
 
@@ -253,7 +253,7 @@ The two are mutually incomparable:
 
 1. **Decide the deposit margin first** (about 50 lines). Add a strict-margin deposit `(R+η)/ρ`, or a hypothesis. Nash abstraction is false-as-stated at η = 0 only in knife-edge ties, but a theorem cannot exclude them.
 2. **Prove outcome-law abstraction under `Silent`** (1–2.5k lines; the core). Generalize the single-deviator factorization to "timing irrelevance against arbitrary opponents", then induct over players. It is independently useful: it is exactly the decompilation map, and it gives the best-response form best-response abstraction.
-3. **Prove Nash abstraction (exact NE)** (0.5–1.5k lines). Steps 3a–3c of §1.4. First check in a small model that the repair dominates against off-menu opponents (3b) and classify uncharged off-menu responses (3c). Pin it next to `source_audited_raw_nash_iff` as "Nash outcome sets coincide".
+3. **Prove Nash abstraction (exact NE)** (0.5–1.5k lines). Steps 3a–3c of §1.4. First check in a small model that the repair dominates against off-menu opponents (3b) and classify uncharged off-menu responses (3c). Pin it next to [`source_audited_raw_nash_iff`](https://github.com/elazarg/VegasCore/blob/research-tree/Paper.lean#L292) as "Nash outcome sets coincide".
 4. **Owner-suffix rosters: a configuration, not a source change** (about 300 lines on top of Nash abstraction).
    - Hypothesis: in every `rosters e`, no non-owner follows the owner's first occurrence.
    - On a forbidden-free path, no permitted packet is then ever pending at a non-owner activation. Forbidden packets do not occur on an NE path. So every leak rule is effectively silent on path, and Nash abstraction holds with **any** leak rule.

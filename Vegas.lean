@@ -5,14 +5,13 @@ Authors: VegasCore contributors
 -/
 
 import GameTheory
-import Vegas.Expr
-import Vegas.Source
-import Vegas.EventGraph
-import Vegas.Pending
-import Vegas.Language
 import Vegas.Compile
-import Vegas.Game
+import Vegas.EventGraph
 import Vegas.Examples
+import Vegas.Expr
+import Vegas.Game
+import Vegas.Pending
+import Vegas.Source
 
 /-! # Vegas
 

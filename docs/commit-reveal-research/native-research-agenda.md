@@ -77,7 +77,7 @@ would help only if its native relationship is proved.
 
 ## Checked native constraints and parallel proof obligations
 
-The [common-service capstone](../../Vegas/Examples/LateOpeningRuntimeEquilibriumConstraints.lean)
+The [common-service capstone](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeEquilibriumConstraints.lean)
 uses the actual program: Alice reveals an initialized Boolean, Bob commits
 one of six answers, then Bob reveals it. Alice also has a private preference
 label which the source never publishes. Pending observations, private raw
@@ -101,18 +101,18 @@ sequential rationality alone. See
 and omitted runtime aspects.
 
 The full native negative is
-`Vegas.Examples.LateOpeningRuntimeUniformSeObstruction.exists_service_with_no_preserving_equilibrium`.
+[`Vegas.Examples.LateOpeningRuntimeUniformSeObstruction.exists_service_with_no_preserving_equilibrium`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeUniformSeObstruction.lean#L28).
 For positive reward it strengthens these local constraints to exclusion of
 the Safe joint law at every target SE. See [the checked native theorem](native-se-obstruction.md).
 The following completed ingredients give the owning APIs for later work.
 
 | Ingredient | Checked boundary |
 | --- | --- |
-| Legitimate sender timing | [AliceTimingValues](../../Vegas/Examples/LateOpeningRuntimeAliceTimingValues.lean) computes actual first-versus-second values; [AliceTimingSorting](../../Vegas/Examples/LateOpeningRuntimeAliceTimingSorting.lean) derives opposite emission probabilities from global rationality. |
-| Receiver continuation on deviation histories | [FirstOpeningPayoff](../../Vegas/Examples/LateOpeningRuntimeFirstOpeningPayoff.lean) and [SecondOpeningPayoff](../../Vegas/Examples/LateOpeningRuntimeSecondOpeningPayoff.lean) preserve complete original payoff laws after every available genuine alias or silence. |
-| Receiver label beliefs | [InitializedSuccessReadout](../../Vegas/Examples/LateOpeningRuntimeInitializedSuccessReadout.lean) identifies actual label histories; [BobSafeProbability](../../Vegas/Examples/LateOpeningRuntimeBobSafeProbability.lean) derives quantitative bounds from positive Safe probability. |
-| Rare-information likelihoods | [LabelCross](../../Vegas/Examples/LateOpeningRuntimeLabelCross.lean) combines the complete initialized seen and unseen groups with one common consistency witness. Original protected-silence type weights can vanish arbitrarily quickly. |
-| Protected-decision contradiction | [AliceProtectedOptimality](../../Vegas/Examples/LateOpeningRuntimeAliceProtectedOptimality.lean) bounds the original late continuation by `R/2` for every initialized type under law preservation; [AliceTimingFloor](../../Vegas/Examples/LateOpeningRuntimeAliceTimingFloor.lean) supplies a strictly better available response. |
+| Legitimate sender timing | [AliceTimingValues](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeAliceTimingValues.lean) computes actual first-versus-second values; [AliceTimingSorting](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeAliceTimingSorting.lean) derives opposite emission probabilities from global rationality. |
+| Receiver continuation on deviation histories | [FirstOpeningPayoff](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeFirstOpeningPayoff.lean) and [SecondOpeningPayoff](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeSecondOpeningPayoff.lean) preserve complete original payoff laws after every available genuine alias or silence. |
+| Receiver label beliefs | [InitializedSuccessReadout](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeInitializedSuccessReadout.lean) identifies actual label histories; [BobSafeProbability](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeBobSafeProbability.lean) derives quantitative bounds from positive Safe probability. |
+| Rare-information likelihoods | [LabelCross](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeLabelCross.lean) combines the complete initialized seen and unseen groups with one common consistency witness. Original protected-silence type weights can vanish arbitrarily quickly. |
+| Protected-decision contradiction | [AliceProtectedOptimality](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeAliceProtectedOptimality.lean) bounds the original late continuation by `R/2` for every initialized type under law preservation; [AliceTimingFloor](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeAliceTimingFloor.lean) supplies a strictly better available response. |
 
 The final negative combines these results, rather than treating local
 normalization or a receiver-value bound as sufficient by itself.

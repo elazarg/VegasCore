@@ -253,19 +253,19 @@ Empty gameplay leaks, horizon 16 and N=4 are explicit. Alice has delay 0/bound 1
 Bob has delay 2/bound 0, so his first age is at most 2, below deadline duration 3.
 The extra inclusion publishes censored T with a FALSE receipt: it is a revealed
 failure fiber, while all THREE Alice NONE responses give the paired clean J.
-`contract`, `timely` and finite Nature support in [CommittedResolutionService](../Vegas/Examples/CommittedResolutionService.lean)
+`contract`, `timely` and finite Nature support in [CommittedResolutionService](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommittedResolutionService.lean)
 are kernel-checked for this compiled source setup and scheduler over initialized unrestricted RAW histories.
-`silent_bob_input_law` also checks one common full Bob input under literal silence
+[`silent_bob_input_law`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommittedResolutionService.lean#L1134) also checks one common full Bob input under literal silence
 through his first activation, with empty own recall and public Alice failure at both types.
 This supplies silent witnesses without characterizing the entire information fiber.
-Protected inclusion supplies a Bool receipt. `prescribed_packets_clean` derives TRUE receipts
+Protected inclusion supplies a Bool receipt. [`prescribed_packets_clean`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommittedResolutionService.lean#L1211) derives TRUE receipts
 and final permissions for every transmitted envelope on initialized ALL-prescribed play,
 using `sourceServiceTurnPolicy`/`firstTurnTiming` for an arbitrary source behavioral profile.
-`prescribed_settlement` gives the full joint payoff vector as pure arbitrary base utility,
-for every authentic sampler and arbitrary deposit. `first_true_bob_output_law` checks the
+[`prescribed_settlement`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommittedResolutionService.lean#L1275) gives the full joint payoff vector as pure arbitrary base utility,
+for every authentic sampler and arbitrary deposit. [`first_true_bob_output_law`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommittedResolutionService.lean#L1418) checks the
 actual canonical first H opening: prompt stage-2 inclusion produces public `success true`,
 which persists through first Bob activation under arbitrary later native policies.
-`mixed_bob_reach_bound` gives actual mixed-play bounds at this full input J. Let a,b,c
+[`mixed_bob_reach_bound`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommittedResolutionService.lean#L1519) gives actual mixed-play bounds at this full input J. Let a,b,c
 be the native policy's conditional NONE probabilities at L's first, second and postcompletion
 inputs, and u its entire first-H response mass outside ONE canonical TRUE atom, including aliases.
 For type-conditioned reach masses mL,mH, it proves abc≤mL and mH≤u. If abc>0,
@@ -344,7 +344,7 @@ They compose supported conditional bounds; they do not supply the service promis
 Current AsyncContract has no postterminal activation/publication guarantee.
 [SourceServiceAudit](../Vegas/Game/SourceServiceAudit.lean) samples authentic
 (final record, original envelope) pairs; any receipt can identify published material.
-But [SourceServiceCompilation](../Vegas/Game/SourceServiceCompilation.lean)'s
+But [SourceServiceCompilation](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceCompilation.lean)'s
 coverage premise is pointwise for each actual evidence list and each forbidden
 record. A physical challenge can fail on a supported final history, where a
 published-only sampler has zero coverage. Its history-integrated r·P(E) bound

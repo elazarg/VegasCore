@@ -1,4 +1,9 @@
-"""Enforce centralized options and reject unchecked Lean escape hatches."""
+"""Enforce centralized options and reject unchecked Lean escape hatches.
+
+The build rejects `sorry` (warnings are errors). This check adds what the build
+cannot see: options overridden outside the central table, bespoke axioms, trust
+and code-generation escape hatches, and the exact axiom pins of Paper.lean.
+"""
 
 from collections import Counter
 from pathlib import Path
@@ -7,18 +12,15 @@ import sys
 import tomllib
 
 
-# Only the reviewed primitive obligations may contain holes. Assembly results
-# must have proof bodies; adding a primitive requires an explicit registry diff.
-APPROVED_OPEN_OBLIGATIONS: dict[tuple[str, str], str] = {}
+STANDARD_AXIOMS = {"propext", "Classical.choice", "Quot.sound"}
 
 
 def check_central_options(options: dict) -> list[str]:
-    """Require explicit binders and centrally permit tracked proof warnings."""
+    """Require explicit binders and warnings as errors, with sorry warnings on."""
     required = {
         "autoImplicit": False,
         "relaxedAutoImplicit": False,
         "warningAsError": True,
-        "warn.sorry": False,
     }
 
     def lookup(name: str):
@@ -29,11 +31,32 @@ def check_central_options(options: dict) -> list[str]:
             current = current.get(part)
         return current
 
-    return [
+    failures = [
         f"lakefile.toml: leanOptions.{name} must be {str(value).lower()}"
         for name, value in required.items()
         if lookup(name) is not value
     ]
+    if lookup("warn.sorry") is False:
+        failures.append("lakefile.toml: leanOptions.warn.sorry must not be false; "
+                        "a sorry must fail the build")
+    return failures
+
+
+def check_lakefile(config: dict) -> list[str]:
+    """Options live only in the top-level table, never per library or as -D arguments."""
+    failures = check_central_options(config.get("leanOptions", {}))
+    tables = [("package", config)] + [
+        (f"lean_lib {library.get('name', '?')}", library)
+        for library in config.get("lean_lib", [])
+    ]
+    for label, table in tables:
+        if table is not config and "leanOptions" in table:
+            failures.append(f"lakefile.toml: {label} sets leanOptions outside the central table")
+        for key in ("moreLeanArgs", "weakLeanArgs"):
+            for argument in table.get(key, []):
+                if str(argument).startswith("-D"):
+                    failures.append(f"lakefile.toml: {label} sets option {argument} in {key}")
+    return failures
 
 
 def strip_lean_comments_and_strings(
@@ -103,104 +126,34 @@ def admission_tokens(text: str) -> list[tuple[int, str]]:
     ]
 
 
-def obligation_ranges(text: str) -> tuple[list[tuple[int, int, int, str]], list[str]]:
-    """Recognize named markers immediately before flat theorem declarations.
-
-    The supported layout is deliberately small, like the audit-pin layout:
-    `-- OPEN OBLIGATION: declaration_name - explanation`, followed by a
-    theorem/lemma (optionally private/protected), with an indented body.
-    Blank lines are allowed; intervening commands or comments are not.
-    """
-    comments: list[tuple[int, str]] = []
-    clean = strip_lean_comments_and_strings(text, comments)
-    commands = list(re.finditer(r"(?m)^\S[^\n]*", clean))
-    markers = {}
-    failures = []
-    for offset, comment in comments:
-        if not comment.startswith("-- OPEN OBLIGATION:"):
-            continue
-        line = text.count("\n", 0, offset) + 1
-        match = re.fullmatch(r"-- OPEN OBLIGATION: ([\w'.]+) - (\S.*)", comment)
-        if not match:
-            # Existing prose-only obligation notes grant no admission permission.
-            continue
-        if text[text.rfind("\n", 0, offset) + 1:offset].strip():
-            failures.append(f"{line}: named OPEN OBLIGATION must be on its own line")
-            continue
-        following = next((command for command in commands if command.start() > offset), None)
-        if following is None or text[offset + len(comment):following.start()].strip():
-            failures.append(f"{line}: OPEN OBLIGATION must immediately precede its theorem")
-            continue
-        declaration = re.match(
-            r"(?:(?:private|protected)\s+)?(?:theorem|lemma)\s+([\w'.]+)\b",
-            following.group(),
-        )
-        if declaration is None or declaration.group(1) != match.group(1):
-            failures.append(f"{line}: OPEN OBLIGATION must name the following theorem")
-            continue
-        markers[following.start()] = (line, match.group(1))
-    ranges = []
-    for index, command in enumerate(commands):
-        if command.start() in markers:
-            line, name = markers[command.start()]
-            end = commands[index + 1].start() if index + 1 < len(commands) else len(clean)
-            ranges.append((command.start(), end, line, name))
-    return ranges, failures
+def check_admissions(relative: Path, text: str) -> list[str]:
+    """Reject every proof admission. No file is exempt."""
+    return [f"{relative}:{number}: forbidden proof admission `{token}`"
+            for number, token in admission_tokens(text)]
 
 
-def check_admissions(
-    relative: Path, text: str,
-    approved: dict[tuple[str, str], str] | None = None,
-) -> list[str]:
-    """Allow one literal sorry per explicitly named outstanding theorem.
-
-    No file is exempt. `admit` and direct `sorryAx` remain forbidden, including
-    inside a marked declaration or a guarded Paper command.
-    """
-    registry = APPROVED_OPEN_OBLIGATIONS if approved is None else approved
-    ranges, marker_errors = obligation_ranges(text)
-    failures = [f"{relative}:{error}" for error in marker_errors]
-    clean = strip_lean_comments_and_strings(text)
-    tokens = list(re.finditer(r"\b(?:sorryAx|sorry|admit)\b", clean))
-    for token in tokens:
-        number = clean.count("\n", 0, token.start()) + 1
-        if token.group() != "sorry" or not any(
-            start <= token.start() < end for start, end, _, _ in ranges
-        ):
-            failures.append(
-                f"{relative}:{number}: forbidden proof admission `{token.group()}`; "
-                "only literal sorry in a named OPEN OBLIGATION is permitted"
-            )
-    for start, end, line, name in ranges:
-        if not registry.get((relative.as_posix(), name), "").strip():
-            failures.append(
-                f"{relative}:{line}: unregistered OPEN OBLIGATION {name}; "
-                "an explicit approved registry entry with a mathematical review reference is required"
-            )
-        count = sum(start <= token.start() < end and token.group() == "sorry" for token in tokens)
-        if count != 1:
-            failures.append(
-                f"{relative}:{line}: OPEN OBLIGATION {name} must contain exactly one sorry "
-                f"(found {count})"
-            )
-    return failures
+ESCAPE_HATCHES = (
+    (r"\bset_option\b", "source-local `set_option`"),
+    (r"\bnative_decide\b", "`native_decide`"),
+    (r"\+native\b", "native evaluation (`+native`)"),
+    (r"\bunsafe\b", "`unsafe`"),
+    (r"\bimplemented_by\b", "`implemented_by`"),
+    (r"\b(?:ofReduceBool|ofReduceNat|trustCompiler)\b", "compiler-trusting reduction"),
+    (r"\b(?:addDecl|addAndCompile|mkSorry)\b", "declaration-adding metaprogram"),
+    (r"\bskipKernelTC\b", "skipped kernel check"),
+    (r"\b(?:run_cmd|run_elab|run_meta|elab_rules|elab)\b|#eval\b", "elaboration-time program"),
+)
 
 
 def check_forbidden_constructs(relative: Path, text: str) -> list[str]:
-    """Reject local trust and code-generation escape hatches.
+    """Reject local options, trust and code-generation escape hatches, and axioms.
 
     `#print axioms` is deliberately not an axiom declaration and remains the
-    dependency audit mechanism in `Paper.lean` and the dedicated test audits.
+    dependency audit mechanism in `Paper.lean`.
     """
     clean = strip_lean_comments_and_strings(text)
     failures: list[str] = []
-    patterns = (
-        (r"\bset_option\b", "source-local `set_option`"),
-        (r"\bnative_decide\b", "`native_decide`"),
-        (r"\bunsafe\b", "`unsafe`"),
-        (r"\bimplemented_by\b", "`implemented_by`"),
-    )
-    for pattern, description in patterns:
+    for pattern, description in ESCAPE_HATCHES:
         for match in re.finditer(pattern, clean):
             number = clean.count("\n", 0, match.start()) + 1
             failures.append(f"{relative}:{number}: forbidden {description}")
@@ -218,17 +171,28 @@ def check_forbidden_constructs(relative: Path, text: str) -> list[str]:
     return failures
 
 
-def check_audit_pins(text: str) -> list[str]:
-    """Require a guarded dependency print immediately after each audit theorem.
+THEOREM = re.compile(
+    r"(?:@\[[^\]\n]*\]\s*)?(?:(?:private|protected|noncomputable)\s+)*(?:theorem|lemma)\s+([\w'.]+)"
+)
+EXACT_PIN = re.compile(
+    r"/-- info: 'Vegas\.Paper\.([\w'.]+)' depends on axioms:\s*\[([^\]]*)\]\s*-/\s*"
+    r"#guard_msgs \(whitespace := lax\) in\s*#print axioms Vegas\.Paper\.([\w'.]+)\b"
+)
 
-    The audit uses flat commands and indented direct-delegation bodies. This
-    checks that layout, not arbitrary Lean syntax; Lean checks each expected
-    axiom report against the actual proof dependencies during the build.
+
+def check_audit_pins(text: str) -> list[str]:
+    """Require an exact guarded axiom pin immediately after each Paper theorem.
+
+    A pin is the expected-output docstring listing exactly the standard axioms,
+    then `#guard_msgs (whitespace := lax) in`, then `#print axioms` of the
+    theorem. Lean checks the expected output against the proof during the build.
     """
     clean = strip_lean_comments_and_strings(text)
-    declarations = set(re.findall(r"(?m)^theorem\s+(\w+)\b", clean))
+    commands = list(re.finditer(r"(?m)^\S[^\n]*", clean))
+    declarations = {match.group(1) for command in commands
+                    if (match := THEOREM.match(command.group()))}
     pin_matches = list(re.finditer(
-        r"#guard_msgs[^\n]*?\s+in\s+#print\s+axioms\s+Vegas\.Paper\.(\w+)\b", clean
+        r"#guard_msgs[^\n]*?\s+in\s+#print\s+axioms\s+Vegas\.Paper\.([\w'.]+)\b", clean
     ))
     pins = Counter(match.group(1) for match in pin_matches)
     failures = [f"Paper.lean: missing guarded axiom pin for {name}"
@@ -237,10 +201,18 @@ def check_audit_pins(text: str) -> list[str]:
                     for name in sorted(pins.keys() - declarations))
     failures.extend(f"Paper.lean: duplicate axiom pin for {name}"
                     for name, count in sorted(pins.items()) if count != 1)
+    exact = Counter()
+    for match in EXACT_PIN.finditer(text):
+        expected = {axiom.strip() for axiom in match.group(2).split(",") if axiom.strip()}
+        if match.group(1) == match.group(3) and expected == STANDARD_AXIOMS:
+            exact[match.group(3)] += 1
+    failures.extend(
+        f"Paper.lean: axiom pin for {name} must expect exactly "
+        "[propext, Classical.choice, Quot.sound] under `#guard_msgs (whitespace := lax)`"
+        for name in sorted(pins) if exact[name] != pins[name])
     pins_at = {match.start(): match.group(1) for match in pin_matches}
-    commands = list(re.finditer(r"(?m)^\S[^\n]*", clean))
     for index, command in enumerate(commands):
-        if declaration := re.match(r"theorem\s+(\w+)\b", command.group()):
+        if declaration := THEOREM.match(command.group()):
             name = declaration.group(1)
             following = commands[index + 1].start() if index + 1 < len(commands) else None
             if pins[name] == 1 and pins_at.get(following) != name:
@@ -249,52 +221,38 @@ def check_audit_pins(text: str) -> list[str]:
 
 
 def check_axiom_prints(relative: Path, text: str) -> list[str]:
-    """Keep dependency prints in the paper or guarded regression audit modules."""
+    """Keep dependency prints in Paper.lean, the axiom audit."""
     if relative == Path("Paper.lean"):
         return []
     clean = strip_lean_comments_and_strings(text)
-    failures = []
-    regression = relative.parts[:2] == ("VegasTests", "AxiomAudit")
-    for match in re.finditer(r"#print\s+axioms\b", clean):
-        number = clean.count("\n", 0, match.start()) + 1
-        if not regression:
-            failures.append(
-                f"{relative}:{number}: axiom prints belong in Paper.lean or VegasTests/AxiomAudit")
-        elif not re.search(r"#guard_msgs[^\n]*\bin\s*$", clean[:match.start()]):
-            failures.append(f"{relative}:{number}: dependency regression must use #guard_msgs")
-    return failures
+    return [f"{relative}:{clean.count(chr(10), 0, match.start()) + 1}: "
+            "axiom prints belong in Paper.lean"
+            for match in re.finditer(r"#print\s+axioms\b", clean)]
 
 
 def main() -> int:
     root = Path(__file__).resolve().parent.parent
     with (root / "lakefile.toml").open("rb") as config:
-        failures = check_central_options(tomllib.load(config).get("leanOptions", {}))
+        failures = check_lakefile(tomllib.load(config))
     paths = list(root.glob("*.lean"))
-    for directory in ("GameTheoryExtensions", "GameTheoryExtensionsTests", "Interaction", "InteractionTests", "Vegas",
-                      "VegasTests", "Paper"):
+    for directory in ("GameTheoryExtensions", "GameTheoryExtensionsTests", "Interaction",
+                      "InteractionTests", "Vegas", "VegasTests", "Paper"):
         paths.extend((root / directory).rglob("*.lean"))
-    obligations = []
     for path in sorted(paths):
         text = path.read_text(encoding="utf-8")
         relative = path.relative_to(root)
         failures.extend(check_forbidden_constructs(relative, text))
         failures.extend(check_admissions(relative, text))
-        for _, _, line, name in obligation_ranges(text)[0]:
-            obligations.append(f"{relative}:{line}: {name}")
         failures.extend(check_axiom_prints(relative, text))
         if relative == Path("Paper.lean"):
             failures.extend(check_audit_pins(text))
-    print(f"Tracked OPEN OBLIGATION declarations: {len(obligations)}")
-    for obligation in obligations:
-        print(f"  {obligation}")
     if failures:
         print("Lean source policy violations:")
         print("\n".join(failures))
         return 1
-    print("Explicit binders and warning-strict compilation configured centrally; "
-          "sorry diagnostics replaced by the explicit obligation report; "
-          "only registered named single-sorry obligations permitted; other trust/code-generation "
-          "escape hatches rejected; existing dependency audit guards enforced.")
+    print("Central options are strict and sorry warnings fail the build; proof admissions, "
+          "axiom declarations and trust escape hatches are absent; every Paper theorem has "
+          "an exact standard-axiom pin.")
     return 0
 
 

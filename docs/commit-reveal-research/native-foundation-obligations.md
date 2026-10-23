@@ -44,8 +44,8 @@ equilibrium's initialized paths.
 General source games that permit TRUE and FALSE are a separate scope. A rejected
 TRUE and FALSE can both become native silence while the original owner recalls
 different intentions. An exact original-menu bijection is then false. Existing
-[DisclosureAssessment](../../Vegas/Game/DisclosureAssessment.lean) and
-[DisclosureBeliefs](../../Vegas/Game/DisclosureBeliefs.lean) reconstruct those
+[DisclosureAssessment](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/DisclosureAssessment.lean) and
+[DisclosureBeliefs](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/DisclosureBeliefs.lean) reconstruct those
 intentions conditionally and compare mixtures of original source deviations.
 That machinery is available; its assembly into adaptive native execution is
 not supplied by the primary mandatory-effective argument.
@@ -60,12 +60,12 @@ commutation alone does not establish it.
 | --- | --- | --- |
 | [First-turn protection](../../Vegas/Game/SourceServiceFirstTurnOpportunity.lean), `firstTurn_inclusionFits` | A first ready owner response fits the deadline under the actual opportunity and timing contract. | Acceptance of an arbitrary packet: the packet must also be canonical, valid and sole. |
 | [Canonical decisions](../../Vegas/Pending/ReactiveCanonicalDecision.lean) and [resolution](../../Vegas/Pending/ReactiveCanonicalResolution.lean) | Actual preparation, registration, normalized signed response and authentic opening construction. | Freshness from an arbitrary privately prepared catalogue. Clean-prefix freshness must be proved. |
-| [Prefix factorization](../../Vegas/Game/SourceServicePrefixFactorization.lean) and [prefix posterior](../../Vegas/Game/SourceServicePrefixPosterior.lean) | Joint source/full-traffic laws and the complete owner-input posterior, including retained private state and guarded disclosure. | The declarations use specified rosters, timing laws and roster schedulers. They are not an arbitrary adaptive public-scheduler theorem. |
+| [Prefix factorization](../../Vegas/Game/SourceServicePrefixFactorization.lean) and [prefix posterior](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServicePrefixPosterior.lean) | Joint source/full-traffic laws and the complete owner-input posterior, including retained private state and guarded disclosure. | The declarations use specified rosters, timing laws and roster schedulers. They are not an arbitrary adaptive public-scheduler theorem. |
 | [Proportional belief transport](../../GameTheoryExtensions/Analysis/Protocol/ProportionalBeliefTransport.lean), `bayesBelief_projection_of_proportional_reach` | Exact projection of actual Bayesian beliefs once summed native prefix weights are a common multiple of source weights. | The native proportional-weight identity itself. |
 | [Local simulation limit](../../GameTheoryExtensions/Analysis/Protocol/LocalSimulationLimit.lean), `exists_sequentialEquilibrium_limit_of_local_simulations` | One globally consistent target SE from actual fully mixed Bayes assessments, local terminal-law simulations and initialized law equality. | Packet realization, the observation channel or the continuation simulations. No source-to-native history-length embedding is required. |
 | [Component completion](../../GameTheoryExtensions/Analysis/Protocol/ComponentCompletion.lean) and [copied-site limit](../../GameTheoryExtensions/Analysis/Protocol/CopiedSiteLimit.lean) | Coupled full-support component profiles, common Bayesian subsequences and completion at additional decision sites. | Rationality of arbitrary retained late components. Pool optimality must be converted to each member's comparisons. |
 | [Terminal audit extension](../../GameTheoryExtensions/Analysis/Protocol/TerminalAudit.lean), `sequential_equilibrium_extends_of_terminal_audit` | Forward SE extension from a sound restricted game, with arbitrary later policies after an excluded move. | Soundness and positive collection on every retained hidden history; it cannot exclude an audit-clean accepted late action by naming it forbidden. |
-| [Native composition](../../Vegas/Game/AsyncIntendedComposition.lean), `intended_raw_sequentialEquilibrium_of_certificate` | Composition from an intended-source sequence certificate through retained/effective/native raw layers, with the specified audit settlement. | A native `PooledLimitCertificate`: this is a substantive hypothesis, not a completed arbitrary-builder result. |
+| [Native composition](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/AsyncIntendedComposition.lean), [`intended_raw_sequentialEquilibrium_of_certificate`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/AsyncIntendedComposition.lean#L226) | Composition from an intended-source sequence certificate through retained/effective/native raw layers, with the specified audit settlement. | A native `PooledLimitCertificate`: this is a substantive hypothesis, not a completed arbitrary-builder result. |
 
 The generic
 [ActionRestriction](../../GameTheory/GameTheory/Protocol/ActionRestriction.lean)
@@ -193,7 +193,7 @@ Initialized prescribed reactive execution has checked canonical prepared-slot
 allocation, zero authentic standard audit charge at every supported prefix, and
 the joint initial-state, final-state and realized net-payoff law under
 `AsyncContract` and `AsyncTimely`, for sequential and concurrent-binding modes;
-see [SourceServiceReactiveAudit](../../Vegas/Game/SourceServiceReactiveAudit.lean).
+see [SourceServiceReactiveAudit](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceReactiveAudit.lean).
 This does not supply continuation comparisons from arbitrary stopped or off-path
 prefixes, including all intended alternatives in a consistency sequence.
 
@@ -262,11 +262,11 @@ raw menu, $R>0$, $D>R$, $K_A>R/2$, $K_B>1$, full authentic audit and fair partia
 samples. The declared contract alone therefore supplies no general exact
 joint terminal-store/payoff SE extension. Its public-result marginal is not
 ruled out by this theorem. The
-[checked concrete source extension](../../Vegas/Examples/LateOpeningRuntimeSourceForfeiture.lean)
+[checked concrete source extension](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeSourceForfeiture.lean)
 preserves every intended SE of this three-instruction program while allowing
 both failed bindings and failed publications, for $R\ge0$ and
 $D\ge\max(R,1)$. It instantiates the generic
-[value-admission source SE extension](../../Vegas/Game/ValueAdmissionPreservation.lean),
+[value-admission source SE extension](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/ValueAdmissionPreservation.lean),
 which preserves every value-only source SE under arbitrary commitment admission
 without a forfeit bound. The specified partial sender audit with full receiver
 coverage has a checked negative under effective sender collateral above $R/2$.

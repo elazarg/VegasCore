@@ -115,10 +115,10 @@ stays outside the model.
 
 ## Checked boundary
 
-[SourceServiceCompilation](../Vegas/Game/SourceServiceCompilation.lean) proves
+[SourceServiceCompilation](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceCompilation.lean) proves
 full-source SE preservation for the fixed calendar. Its native game is the
 sequentialized graph with the baseline raw responses. The
-[checklist](se-proof-checklist.md) describes this checked theorem and its proof
+[checklist](https://github.com/elazarg/VegasCore/blob/research-tree/docs/se-proof-checklist.md) describes this checked theorem and its proof
 dependencies. It is not a checklist of completed arbitrary-builder work.
 
 [AsyncServiceSpec](../Vegas/Game/AsyncServiceSpec.lean) and
@@ -139,7 +139,7 @@ parameter. This does not by itself instantiate a watcher that observes and
 reports through a real pending network. That implementation adapter is an
 explicit remaining part of faithful end-to-end preservation.
 
-The [archive](../archive/se-generalization/README.md) contains the speculative
+The [archive](https://github.com/elazarg/VegasCore/blob/research-tree/archive/se-generalization/README.md) contains the speculative
 routes, detailed investigations and retired modules as reference text. They are
 not compiled or counted as evidence for the active theorem.
 
@@ -180,13 +180,13 @@ pooling at a retained input are not thereby new free sites.
 argument using conditional owner OR collection from every retained hidden history
 under arbitrary target futures, with upper−ρD≤lower (ρ is the conditional owner OR rate).
 Its scalar API requires `InformationSite.CommonDepth`.
-The unclocked whole-policy consumer above and `settlement_le_of_departure_coupling`
-in [TerminalAuditCoupling](../GameTheoryExtensions/Analysis/Protocol/TerminalAuditCoupling.lean)
+The unclocked whole-policy consumer above and [`settlement_le_of_departure_coupling`](https://github.com/elazarg/VegasCore/blob/research-tree/GameTheoryExtensions/Analysis/Protocol/TerminalAuditCoupling.lean#L29)
+in [TerminalAuditCoupling](https://github.com/elazarg/VegasCore/blob/research-tree/GameTheoryExtensions/Analysis/Protocol/TerminalAuditCoupling.lean)
 are existing comparison routes; the coupling theorem uses incremental charge.
-The calendar's `active_evaluator_stopped_coupling` in
-[SourceServiceEvaluatorRepair](../Vegas/Game/SourceServiceEvaluatorRepair.lean)
-supplies actual endpoint marginals. `bindingFrame_baseUtility` in
-[BindingRepairReadout](../Vegas/Game/BindingRepairReadout.lean) preserves parameter
+The calendar's [`active_evaluator_stopped_coupling`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceEvaluatorRepair.lean#L26) in
+[SourceServiceEvaluatorRepair](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceEvaluatorRepair.lean)
+supplies actual endpoint marginals. [`bindingFrame_baseUtility`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/BindingRepairReadout.lean#L70) in
+[BindingRepairReadout](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/BindingRepairReadout.lean) preserves parameter
 and public payoff from full Frame plus RIGHT OwnBindings; private-material
 changes on these branches require no blanket positive collection rate.
 
@@ -344,21 +344,21 @@ The committed-type fragment has conditional finite full-RAW-tree constructions f
 two source assessments. Separate first-NONE rates and free floors select HIGH at
 off-path expiry for T at both types, or LOW at on-path FALSE for H→T, L→F.
 Each uses ONE Bayes family and selected continuations to bound whole WAIT policies.
-The [CommittedResolutionService](../Vegas/Examples/CommittedResolutionService.lean) example proves
+The [CommittedResolutionService](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommittedResolutionService.lean) example proves
 `contract`, `timely` and finite Nature support for the compiled source setup and fixed linear
 horizon-16 scheduler over initialized unrestricted RAW histories. Alice acts at
 clocks 0/1, then postcompletion Alice and first Bob at clock 2, Bob expiry at 5;
 empty gameplay leaks, Alice delay 0/bound 1, Bob delay 2/bound 0 and N=4.
-Censored T's FALSE receipt separates it from clean expiry. `silent_bob_input_law` checks
+Censored T's FALSE receipt separates it from clean expiry. [`silent_bob_input_law`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommittedResolutionService.lean#L1134) checks
 one common full first-Bob input under literal silent initialized play at both types,
 including empty own recall and public Alice failure, without characterizing the entire fiber.
-`prescribed_packets_clean` derives TRUE receipts and final permissions for all transmitted
+[`prescribed_packets_clean`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommittedResolutionService.lean#L1211) derives TRUE receipts and final permissions for all transmitted
 envelopes on initialized ALL-prescribed `sourceServiceTurnPolicy`/`firstTurnTiming` play,
-for any source behavioral profile. `prescribed_settlement` gives the full joint payoff vector
+for any source behavioral profile. [`prescribed_settlement`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommittedResolutionService.lean#L1275) gives the full joint payoff vector
 as pure arbitrary base utility under any authentic sampler and arbitrary deposit.
-`first_true_bob_output_law` checks the actual canonical first H opening's prompt stage-2
+[`first_true_bob_output_law`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommittedResolutionService.lean#L1418) checks the actual canonical first H opening's prompt stage-2
 acceptance and public `success true` through first Bob activation under arbitrary later
-native policies. `mixed_bob_reach_bound` proves abc≤mL and mH≤u at the full common input:
+native policies. [`mixed_bob_reach_bound`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommittedResolutionService.lean#L1519) proves abc≤mL and mH≤u at the full common input:
 a,b,c are actual conditional NONE probabilities at L's three silent-path inputs, and u includes
 ALL first-H mass outside one canonical TRUE atom, including aliases. If abc>0, the initialized
 1:3 weights give mH/(mH+3mL)≤u/(u+3abc). This is physical reach, not yet the SAME native
@@ -367,8 +367,8 @@ source outcome transport and concrete first-packet verdict consumers remain open
 The two native SE constructions are conditional paper mathematics;
 no checked native/general SE or live watcher follows.
 
-The archived [exact finite checker](../archive/se-generalization/documents/scripts/experiments/adaptive_schedules.py)
-and [C6 probe](../archive/se-generalization/documents/scripts/experiments/deferral_miss_probe.py)
+The archived [exact finite checker](https://github.com/elazarg/VegasCore/blob/research-tree/archive/se-generalization/documents/scripts/experiments/adaptive_schedules.py)
+and [C6 probe](https://github.com/elazarg/VegasCore/blob/research-tree/archive/se-generalization/documents/scripts/experiments/deferral_miss_probe.py)
 are reference tools. C6's certain-penalty binding probe also finds preserving equilibria
 in its negative control; it establishes neither generic composition nor resolution impossibility.
 

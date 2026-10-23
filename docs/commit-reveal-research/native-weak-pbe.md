@@ -346,26 +346,26 @@ builders, capital timing, physical chain capacity and finality are excluded,
 as in the companion native result.
 
 The checked construction currently includes
-[consistent Alice completion against any fixed full Bob policy](../../Vegas/Examples/LateOpeningRuntimeEquilibrium.lean)
+[consistent Alice completion against any fixed full Bob policy](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeEquilibrium.lean)
 and [label symmetry through actual graph transitions, Bob's physical view and
 every raw packet handler](../../Vegas/Examples/LateOpeningRuntimeLabelSymmetry.lean).
-The lift through [authenticated native operations](../../Vegas/Examples/LateOpeningRuntimeLabelTransitions.lean)
-and [complete execution transitions, the raw menu and the original prior](../../Vegas/Examples/LateOpeningRuntimeLabelHistories.lean)
-is checked too. [Actual legal native trace transport](../../Vegas/Examples/LateOpeningRuntimeLabelTrace.lean)
+The lift through [authenticated native operations](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeLabelTransitions.lean)
+and [complete execution transitions, the raw menu and the original prior](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeLabelHistories.lean)
+is checked too. [Actual legal native trace transport](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeLabelTrace.lean)
 preserves every raw action and Bob's complete information under every
 scheduler. Recorded-label alignment derives the inverse on legal execution
-snapshots. [Full legal-history label bijections](../../Vegas/Examples/LateOpeningRuntimeLabelOrbits.lean)
+snapshots. [Full legal-history label bijections](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeLabelOrbits.lean)
 also restrict to every complete Bob information-history fiber, including
-unreached fibers. The actual [uniform raw response laws](../../Vegas/Examples/LateOpeningRuntimeLabelKernels.lean)
-and [history reach symmetry](../../Vegas/Examples/LateOpeningRuntimeLabelReach.lean)
-give [uniform conditional label beliefs](../../Vegas/Examples/LateOpeningRuntimeLabelBeliefs.lean)
+unreached fibers. The actual [uniform raw response laws](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeLabelKernels.lean)
+and [history reach symmetry](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeLabelReach.lean)
+give [uniform conditional label beliefs](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeLabelBeliefs.lean)
 at every Bob site in a pointwise limit of fully mixed Bayes assessments
 keeping Alice's uniform decision laws, including sites unreached at the
 limit. The completion machinery can retain these full-support prescribed
 laws at every approximant. The assembled weak-PBE capstone remains open.
 Alice's completion is rational on every legal fiber and has actual-positive
 Bayes beliefs. These results do not yet assemble the paper equilibrium.
-`exists_uniform_alice_bob_completion` in the existing native equilibrium
+[`exists_uniform_alice_bob_completion`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeEquilibrium.lean#L98) in the existing native equilibrium
 owner constructs the actual Bob reference assessment. Alice's uniform raw
 laws are fixed throughout the fully mixed Bayes sequence and its consistent
 limit; Bob is rational against every whole continuation policy at every
@@ -373,13 +373,13 @@ legal information fiber, and all his label posteriors are uniform.
 Actual-positive Bayes also holds. This endpoint needs no reward, forfeit
 or deposit sign assumption, and does not assert Alice optimality or the
 selected source law. Under full audit, nonnegative source forfeit and
-`K_B>1`, `exists_uniform_bob_reference` additionally proves pure silence at
+`K_B>1`, [`exists_uniform_bob_reference`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeEquilibrium.lean#L169) additionally proves pure silence at
 every unresolved first Bob callback using Bob's local whole-policy optimality.
-[Bob tail transfer](../../Vegas/Examples/LateOpeningRuntimeBobTail.lean) derives
+[Bob tail transfer](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeBobTail.lean) derives
 that every legal Bob fiber at public clock at least three is after Alice's last
 activation. Its complete terminal-history continuation law and whole-policy
 rationality retain their original beliefs under arbitrary Alice policy changes.
-[Protected early binding and opening](../../Vegas/Examples/LateOpeningRuntimeProtectedBobPrefix.lean)
+[Protected early binding and opening](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeProtectedBobPrefix.lean)
 preserve the entire graph configuration and clean Bob binding traffic across
 arbitrary intervening Alice responses, then accept the same typed answer's
 opening at clock three. This operational prefix does not yet prove the full
@@ -388,7 +388,7 @@ Protected-ready early optimality, actual-positive Bayes override and the
 assembled weak-PBE/selected-source-law capstones remain unproved in Lean.
 No owner-controlled checklist completion is claimed.
 
-[ProtectedBobPolicy](../../Vegas/Examples/LateOpeningRuntimeProtectedBobPolicy.lean)
+[ProtectedBobPolicy](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeProtectedBobPolicy.lean)
 checks the actual existing source-canonical Bob comparator. At a genuine fresh
 ready binding it selects the typed answer; at a ready opening it selects the
 canonical TRUE disclosure; after both Bob events settle it is silent, including

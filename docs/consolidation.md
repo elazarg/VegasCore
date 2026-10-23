@@ -76,6 +76,7 @@ run 10–20% larger. `#print axioms` pins do not count as uses.
 | Public scheduling | 2.5k | 2k |
 | All 26 Paper theorems | 317k | |
 | Whole tree (files, without GameTheory) | 871k | |
+| Whole tree after Step 3 pass one | 597k | |
 
 The concurrent SE cone by layer: Vegas/Game 136k, Vegas/Pending 32k,
 Vegas/Source 24k (17k of it the `CommitRecovery*` and `ProposalRecovery*`
@@ -111,7 +112,7 @@ device in the proof layer), tag and remove, or remove.
 | `Setup.intendedModel` | Analysis view: commitments hold predicted values, reveals open; premise of every SE theorem | keep |
 | `Setup.exclusionModel`, `Setup.exclusionMoveModel` | Analysis view with a fixed exit payoff | decision D3 |
 | `commitRecoveryModel`, `commitRecoveryErasedModel`, `proposalRecoveryModel` | Proof carriers of the concurrent SE theorem (26k of the 47k lines in Vegas/Source) | carrier: move to the proof layer and label |
-| `Setup.valueBindingGame` | Pure value-binding game form, used only by the commit–reveal auction example; its behavioral edge (`Vegas/Game/ValueBindingEdge.lean`) is unused | remove the edge; keep the game form only with the example |
+| `Setup.valueBindingGame` | Pure value-binding game form, used only by the commit–reveal auction example; its behavioral edge ([`Vegas/Game/ValueBindingEdge.lean`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/ValueBindingEdge.lean)) is unused | remove the edge; keep the game form only with the example |
 | `SourceProgram.Initial` | Duplicate of `Setup` with a point-mass initial state | remove |
 | `Vegas/Language` | Surface-syntax prototype with no semantics or elaboration | tag and remove |
 
@@ -147,14 +148,14 @@ and 5 wait until those are done. Removing code is not a risk: the tag
 
 ### Step 1. Guardrails that make removal cheap
 
-- [ ] Remove `warn.sorry = false`, the open-obligation registry,
+- [x] Remove `warn.sorry = false`, the open-obligation registry,
       `scripts/report-open-obligations.py` and its CI step. With
       `warningAsError` a `sorry` then fails the build. A `sorry` is allowed only
       temporarily during a large planned proof effort, and none is planned.
-- [ ] Remove the hand-written pins in `VegasTests/AxiomAudit`. The axiom audit
+- [x] Remove the hand-written pins in `VegasTests/AxiomAudit`. The axiom audit
       is the pins in Paper.lean; the build rejects `sorry`, and the source
       policy rejects `axiom` declarations.
-- [ ] Reduce `scripts/check-lean-options.py` to the central options, the ban on
+- [x] Reduce `scripts/check-lean-options.py` to the central options, the ban on
       `sorry` and `axiom`, the Paper pin format with its expected axiom list,
       and a ban on escape hatches: declaration-adding metaprograms, skipped
       kernel checks, native evaluation, and options set per library or through
@@ -162,9 +163,8 @@ and 5 wait until those are done. Removing code is not a risk: the tag
 - [ ] Add the dependency walk as a script: list modules with no declaration
       used by Paper or by a test declaration. Report only until Step 6.
 
-Exit: green build; CI runs the environment check; the walk script is committed.
-This step comes first because every removal would otherwise edit audit pins,
-and because the hand-written pins cover only about 16% of the theorems.
+Exit: green build with sorry warnings as errors; the walk script is committed.
+This step comes first because every removal would otherwise edit audit pins.
 
 ### Step 2. Fix the contract
 
@@ -190,18 +190,29 @@ unreached declarations inside kept modules, rebuilding as it goes.
 
 Removed results are indexed under [retired results](#retired-results).
 
-- [ ] `archive/` (git history already holds it).
-- [ ] `OnePacket*` on the plain contract.
-- [ ] `CommitSeedBroadcast*` (open obstruction), `CommitSeedSignalling*` and
-      `LateOpeningRuntime*` examples, after tagging their checked obstructions.
-- [ ] `PhaseTiming*`, `PhaseRecovery*`, and the `Recovery*`/`CommitRecovery*`
-      modules outside every kept cone.
-- [ ] `Vegas/Language`, the Communication chain (`Interaction/Communication*`,
-      `Vegas/Source/Communication.lean`, `CommitmentEvidence`,
-      `EventGraphEvidence`), `PayoffTransport`, `MessagePool`,
-      `SourceProgram.Initial`, `Vegas/Game/ValueBindingEdge.lean`.
-- [ ] The calendar family (`SourceService*`, `RevealService*`, the
-      settled-record verdict, rosters) and its Paper theorems.
+Pass one, done:
+
+- [x] `archive/`.
+- [x] The calendar theorems in Paper and the calendar checklist with its
+      evidence script.
+- [x] `CommitSeedBroadcast*`, `CommitSeedSignalling*`, `CommittedResolution*`
+      and `LateOpeningRuntime*` examples, except the two instance files
+      `LateOpeningRuntimeNash` and `LateOpeningRuntimeSourcePreservation` and
+      the modules they need.
+- [x] `PhaseTiming*` and most of `PhaseRecovery*`.
+- [x] `Vegas/Language`, the Communication chain, `CommitmentEvidence`,
+      `EventGraphEvidence`, `PayoffTransport`, `ValueBindingEdge`.
+- [x] `VegasTests/AxiomAudit`, `VegasTests/Language`, and the
+      GameTheoryExtensions modules that only their own tests used.
+
+Pass two:
+
+- [ ] Unused imports, then unreached declarations inside kept modules. The
+      survivors of the calendar (`ServiceRoster`, parts of `SourceService*`),
+      `MessagePool`, `SourceProgram.Initial` and most of `OnePacket*` are kept
+      only because a kept module imports them or because the turn-based SE and
+      asynchronous Nash theorems use them on the plain and forced-exit
+      contracts; the latter wait for Step 4.
 
 Exit: the walk reports only modules on its allowlist; measurements updated.
 
@@ -301,9 +312,10 @@ Severity: H high, M medium, L low. "Step" is the step that resolves the finding.
   theorem: a non-strategic first-in-first-out service that clears every pending
   packet at each processing cycle, complete pending observation, a constant exit
   payoff, and payoff zero for a run unfinished at the horizon.
-- [ ] **F-C3 (H, Step 5).** No `SourceServiceSpec` is constructed anywhere: the
-  calendar SE theorem and four Nash companions have no instance. Nine of the 26
-  Paper theorems have no instance at all.
+- [ ] **F-C3 (H, Step 5).** Nine of the 21 Paper theorems are never applied to
+  a concrete program: exclusion SE, public-scheduling SE, the one-packet SE, and
+  six of the asynchronous Nash forms (only `Vegas.Paper.async_first_turn_nash_iff`
+  has an instance). The retired calendar theorems had none either.
 - [ ] **F-C4 (H, Step 5).** The only instance of the concurrent hypotheses
   (`VegasTests/ConcurrentRawHypotheses.lean`) has no strategic content: Bob's
   payoff is identically zero and every profile gives Alice one half
@@ -334,14 +346,14 @@ perfect recall proved for every model, horizons equal to proved bounds.
 
 ### Proof policy
 
-- [ ] **F-P1 (H, Step 1).** `warn.sorry = false` with an empty obligation
+- [x] **F-P1 (H, Step 1).** `warn.sorry = false` with an empty obligation
   registry: a `sorry` produced by a macro passes the build and the text check
   (core `stop` expands to `repeat sorry`). Only declarations under an axiom pin
   are protected.
-- [ ] **F-P2 (M, Step 1).** The pin check accepts `#guard_msgs (drop all)`,
+- [x] **F-P2 (M, Step 1).** The pin check accepts `#guard_msgs (drop all)`,
   ignores the expected axiom text, and misses theorems with attributes or
   modifiers.
-- [ ] **F-P3 (M, Step 1).** The option check reads only the top-level option
+- [x] **F-P3 (M, Step 1).** The option check reads only the top-level option
   table; options set per library or through command-line definitions pass.
 - [ ] **F-P4 (M, Step 6).** `backward.isDefEq.respectTransparency = false` is
   global; nothing records which proofs need it. Prefer `@[implicit_reducible]`
@@ -374,7 +386,7 @@ perfect recall proved for every model, horizons equal to proved bounds.
   the one-packet raw extension theorem (`OnePacketExtension.lean`,
   `RecoveryOnePacketExtension.lean`, `PhaseOnePacketExtension.lean`; 81% and
   67% line overlap).
-- [ ] **F-S3 (M, Step 3).** 67 `CommitSeedBroadcast*` files are near copies of
+- [x] **F-S3 (M, Step 3).** 67 `CommitSeedBroadcast*` files are near copies of
   `CommitSeedSignalling*` files.
 - [ ] **F-S4 (H, Step 6).** Eight declarations exceed 1,000 lines
   (`source_admitted_binding_row` about 1,957); statements with up to 83 explicit
@@ -389,7 +401,7 @@ perfect recall proved for every model, horizons equal to proved bounds.
 
 ### Tests
 
-- [ ] **F-X1 (M, Step 1).** 17.3k of the 21.2k VegasTests lines are 2,961
+- [x] **F-X1 (M, Step 1).** 17.3k of the 21.2k VegasTests lines are 2,961
   hand-written axiom pins covering about 16% of theorems.
 - [ ] **F-X2 (M, Step 5).** No small concrete tests for the pending runtime, the
   reserved-epoch scheduler, the count audit or belief transport; no `#eval` or
@@ -410,9 +422,9 @@ perfect recall proved for every model, horizons equal to proved bounds.
 - [ ] **F-D4 (M, Step 7).** module-architecture.md is 2,937 lines under one
   heading; 53 of 81 Markdown files are unreachable from README; six overview
   documents overlap.
-- [ ] **F-D5 (M, Step 3).** `archive/` keeps 1,105 tracked files; live docs link
+- [x] **F-D5 (M, Step 3).** `archive/` keeps 1,105 tracked files; live docs link
   into it.
-- [ ] **F-D6 (L, Step 7).** scripts/README.md says investigation scripts are in
+- [x] **F-D6 (L, Step 7).** scripts/README.md says investigation scripts are in
   the archive; 14 are tracked in scripts/experiments.
 - [ ] **F-D7 (L, Step 7).** About 22 documentation sites encode history.
 - [ ] **F-D8 (L, Step 2).** AGENTS.md says to commit and push every checkpoint;
@@ -429,10 +441,39 @@ perfect recall proved for every model, horizons equal to proved bounds.
   character literals, raw strings and guillemet names; the documentation check
   passes vacuously outside the repository root.
 
+## Why the concurrent theorem assumes what it does
+
+These counterexamples explain assumptions of
+`Vegas.Paper.concurrent_source_raw_sequential_equilibrium`. The late-leak family
+stays on `main`; the others are checked at the `research-tree` tag. The
+arguments are in [semantics-and-enforcement.md](semantics-and-enforcement.md),
+Sections I.5 and I.7.
+
+| Assumption | Counterexample | Shows |
+| --- | --- | --- |
+| A failing player's payoff is a constant exit payoff, at most every terminal utility | `Vegas.Paper.late_leak_intended_outcome_not_preserved`, `Vegas.Paper.late_leak_outcome_preserved_by_failure_costs` | With continued play after failure, a forfeit charge, and late openings included with probability close to one, no sequential equilibrium of the late game keeps the intended outcome law; failure costs that make the failure branch worth the same to every type restore it. |
+| The service is the reserved-epoch tape, which processes every pending packet at each cycle, not an arbitrary timely builder; collateral is fixed before the service | [`exists_service_with_no_preserving_equilibrium`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeUniformSeObstruction.lean#L28), with variants under [all-or-none traffic sampling](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeAllOrNoneSeObstruction.lean#L77) and [partial sender auditing](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimePartialAudit.lean#L190) | For a positive reward and any sufficiently large forfeit and deposits fixed first, one exogenous, commonly known finite builder meeting the timely-service requirements, with an arbitrarily small positive late-opening failure, has native sequential equilibria, and none realizes the source joint law. |
+| The exit loss lies below every payoff a participant could receive | [`exists_honest_sequentialEquilibrium_without_native_preservation`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommitSeedSignallingNonpreservation.lean#L59); [the note](se-private-seed-signalling.md) | When packet timing reveals a hidden coin, a player controls which useful observations another receives. With the exit loss below the reward range, every native sequential equilibrium gives Alice at least one quarter, while every honest source profile gives her zero. |
+
+The three-owner fixture behind
+[se-strong-exclusion-signalling.md](se-strong-exclusion-signalling.md), which
+tests an exit loss above the reward range, is at the tag with its native
+obstruction unfinished.
+
 ## Retired results
 
-Each row names the tag that holds the result, its theorem, what it shows, and
-the models it needs. Checked at the tagged commit only.
+Each row names the declaration or files at the `research-tree` tag, what they
+show, and the models they need. They are checked at the tagged commit only.
 
-| Tag | Theorem | Shows | Needs |
-| --- | --- | --- | --- |
+| Result at the tag | Shows | Needs |
+| --- | --- | --- |
+| [`Vegas.Paper.source_audited_raw_sequential_equilibrium`](https://github.com/elazarg/VegasCore/blob/research-tree/Paper.lean#L43), [`Vegas.SourceServiceSpec.intended_audited_raw_sequentialEquilibrium`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/IntendedServiceCompilation.lean#L42) | SE preservation, from the source and from the intended game, on a fixed calendar that every player knows in advance | Plain contract, settled-record audit, calendar roster |
+| [`Vegas.Paper.source_audited_raw_nash_iff`](https://github.com/elazarg/VegasCore/blob/research-tree/Paper.lean#L292), [`Vegas.Paper.source_audited_raw_nash_reflection`](https://github.com/elazarg/VegasCore/blob/research-tree/Paper.lean#L258), [`Vegas.Paper.intended_audited_raw_nash`](https://github.com/elazarg/VegasCore/blob/research-tree/Paper.lean#L428), [`Vegas.Paper.raw_service_horizon`](https://github.com/elazarg/VegasCore/blob/research-tree/Paper.lean#L114) | Nash correspondence and horizon on the same calendar | As above |
+| The late-opening and seed-signalling counterexamples | See the previous section | Plain contract, specific services |
+| [`CommitSeedBroadcast*`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommitSeedBroadcast.lean) | Three-owner timing fixture; obstruction unfinished | Plain contract |
+| [`certain_late_inclusion_with_joint_contract`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommittedResolutionErasure.lean#L69) and the other `CommittedResolution*` examples | The service and erasure contracts do not force a positive late-failure floor | Plain contract |
+| `PhaseTiming*`, most of `PhaseRecovery*` | An unfinished timing route for SE on the phase contract | Phase contract |
+| [`Vegas/Language`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Language.lean) | Surface-syntax prototype, without semantics or elaboration | None |
+| [`VegasTests/AxiomAudit`](https://github.com/elazarg/VegasCore/blob/research-tree/VegasTests/AxiomAudit.lean) | 2,961 hand-written axiom pins | None |
+| [`archive/se-generalization`](https://github.com/elazarg/VegasCore/blob/research-tree/archive/se-generalization/README.md) | Uncompiled earlier designs, experiments and probes | None |
+| [`docs/se-proof-checklist.md`](https://github.com/elazarg/VegasCore/blob/research-tree/docs/se-proof-checklist.md), [`scripts/check-se-evidence.py`](https://github.com/elazarg/VegasCore/blob/research-tree/scripts/check-se-evidence.py) | The calendar checklist and its evidence check | The calendar theorem |

@@ -438,7 +438,7 @@ decisions and the information released before them matter.
 ## What the actual runtime already shows, and what remains open
 
 The checked
-[accepted late recovery fixture](../../Vegas/Examples/CommittedResolutionRecovery.lean)
+[accepted late recovery fixture](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommittedResolutionRecovery.lean)
 has an actual initial-law-supported late canonical opening, accepted outside
 its protected inclusion window, permitted by the risk menu when available,
 and uncharged by every authentic settlement sampler. Its deterministic

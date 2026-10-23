@@ -1096,7 +1096,7 @@ The operational complete-observation result in
 establishes that every previously submitted foreign packet is visible at an
 actual raw decision under complete pending observation. The checked recovery
 example in
-[CommittedResolutionRecovery](../Vegas/Examples/CommittedResolutionRecovery.lean)
+[CommittedResolutionRecovery](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommittedResolutionRecovery.lean)
 establishes that the asynchronous contract permits accepted, audit-clean late
 openings. Neither operational result identifies this finite game's histories,
 menus, utilities or assessments with the complete actual Vegas runtime.

@@ -216,7 +216,7 @@ source model with a horizon and decision recall and assumes:
 
 - every decision fiber of the source is nonterminal (`AllNonterminal`; the
   source model satisfies this,
-  `Vegas.SourceProgram.Setup.decision_allNonterminal`, because the view fixes
+  [`Vegas.SourceProgram.Setup.decision_allNonterminal`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceSiteNonterminal.lean#L36), because the view fixes
   the instruction position);
 - public prefix recoverability: two source histories in one decision fiber
   have the same sequence of public projections of all their prefixes
@@ -256,7 +256,7 @@ The owning layers already provide the following reusable results.
   [ObservationRecall](../Vegas/Source/ObservationRecall.lean) recover earlier
   views on legal source transitions.
 - [ServiceInformation](../Vegas/Game/ServiceInformation.lean) and
-  [SourceServicePrefixInformation](../Vegas/Game/SourceServicePrefixInformation.lean)
+  [SourceServicePrefixInformation](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServicePrefixInformation.lean)
   decode source views from native checkpoints. They establish that native
   information refines source information. They explicitly do not show that
   the additional native fields have constant likelihood within source fibers.
@@ -394,7 +394,7 @@ This requirement is separate from the scheduling information adapter.
 The retained protocol is the *decorated* source game. Restricting the original
 source game directly into the raw runtime generally cannot account for one
 source information set having many random-clock copies. Nor can
-[PrescribedCompletion](../GameTheoryExtensions/Analysis/Protocol/PrescribedCompletion.lean)
+[PrescribedCompletion](https://github.com/elazarg/VegasCore/blob/research-tree/GameTheoryExtensions/Analysis/Protocol/PrescribedCompletion.lean)
 alone repair this gap: it preserves prescribed strategies and makes free sites
 rational, but provides no copied-site belief or incentive transport.
 [ComponentCompletion](../GameTheoryExtensions/Analysis/Protocol/ComponentCompletion.lean)

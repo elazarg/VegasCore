@@ -186,6 +186,29 @@ class DocReferenceTests(unittest.TestCase):
                       result.stdout)
         self.assertNotIn("unknown Lean name `actualResult`", result.stdout)
 
+    def test_citations_linked_to_the_retired_tree_are_not_current_names(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "Vegas").mkdir()
+            (root / "Vegas/Sample.lean").write_text(
+                "namespace Vegas.Sample\ndef actualResult := 1\nend Vegas.Sample\n",
+                encoding="utf-8")
+            tag = "https://github.com/elazarg/VegasCore/blob/research-tree/"
+            (root / "README.md").write_text(
+                f"Retired: [`Vegas.Sample.retiredResult`]({tag}Vegas/Sample.lean#L2), "
+                f"[`Vegas/Retired.lean`]({tag}Vegas/Retired.lean). "
+                "Stale: `Vegas.Sample.missingResult`, `Vegas/Missing.lean`.\n",
+                encoding="utf-8")
+            subprocess.run(["git", "init", "-q", str(root)], check=True)
+            subprocess.run(["git", "-C", str(root), "add", "README.md"], check=True)
+            result = subprocess.run([sys.executable, str(SCRIPT)], cwd=root,
+                                    capture_output=True, text=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("unknown Lean name `Vegas.Sample.missingResult`", result.stdout)
+        self.assertIn("missing local file `Vegas/Missing.lean`", result.stdout)
+        self.assertNotIn("retiredResult", result.stdout)
+        self.assertNotIn("Vegas/Retired.lean", result.stdout)
+
     def test_relative_markdown_links_resolve_from_source_directory(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

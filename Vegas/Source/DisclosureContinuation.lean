@@ -108,10 +108,8 @@ theorem disclosure_alternative_continuation_law
 
 /-- Source continuation bounds average without changing their error. This
 uses whole-policy deviations, including future private randomization, rather
-than only the next response. Posterior correctness is proved separately from
-actual prefix execution in `Vegas.SourceProgram.normalized_disclosure_prefix_posterior`.
-The utility must be integrable under both compared laws, which is automatic
-when they are finitely supported. -/
+than only the next response. The utility must be integrable under both compared
+laws, which is automatic when they are finitely supported. -/
 theorem disclosure_continuation_gain_le
     (program : SourceProgram Player L Γ O) (profile : BehavioralProfile program)
     (policy alternative : BehavioralPolicy who program)

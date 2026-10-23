@@ -25,26 +25,27 @@ across owners and time. Public-prefix-adaptive block priors and unbounded
 binding bid/value choices are outside the contract. The operational and funded
 audit hypotheses are sufficient conditions, not minimality or a chain
 implementation guarantee. An unrestricted prefix density theorem is not claimed.
+The [counterexamples behind these assumptions](docs/consolidation.md#why-the-concurrent-theorem-assumes-what-it-does)
+explain why each one is there.
 The weaker general asynchronous contract has
 [checked preservation obstructions](docs/standard-runtime-se-status.md).
 Honest outcome simulation alone does not establish equilibrium preservation.
 The [module map](docs/module-architecture.md) locates the implementation.
-Retired designs and experiments are in the
-[uncompiled archive](archive/se-generalization/README.md).
+Retired models, routes and examples are kept at the `research-tree` tag and
+indexed in the [consolidation ledger](docs/consolidation.md).
 
 Build and validate:
 
-Local builds and CI use `lake build`; `lakefile.toml` makes Lean warnings errors.
-The source policy rejects unregistered proof holes. The concurrent preservation
-theorem has a standard-axiom regression guard. Run the checks with the build
-before committing.
+Local builds and CI use `lake build`; `lakefile.toml` makes Lean warnings
+errors, so a `sorry` fails the build. Paper.lean pins every paper theorem to the
+three standard axioms, and the source policy rejects axiom declarations and
+trust escape hatches. Run the checks with the build before committing.
 
 ```powershell
 lake build
 python scripts/check-module-boundaries.py
 python scripts/check-lean-options.py
 python scripts/check-doc-references.py
-python scripts/check-se-evidence.py
 python -m unittest discover -s scripts -p 'test_*.py'
 ```
 

@@ -70,7 +70,7 @@ prefer shifting failure to another player's stage.
 
 The [source semantics](../source-semantics.md) gives each publication an explicit
 success or failure result and continues through the fixed program. The
-[source design rationale](../../archive/se-generalization/documents/docs/source-design-rationale.md.txt)
+[source design rationale](https://github.com/elazarg/VegasCore/blob/research-tree/archive/se-generalization/documents/docs/source-design-rationale.md.txt)
 explains the relevant design commitments:
 
 - Failure is outside the ordinary payload domain. A program must supply its

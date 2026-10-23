@@ -65,7 +65,7 @@ putting packets, retries or block construction into every game program.
 
 For an ordered backend, a server or replicated application service could
 implement the interaction protocol while a blockchain handles settlement. The
-[calendar theorem](../Vegas/Game/SourceServiceCompilation.lean) already permits
+[calendar theorem](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceCompilation.lean) already permits
 partial pending observations; its strong restriction is the service schedule.
 Calling a deployment round-based does not establish its hypotheses, and
 concurrent execution needs an additional proof.

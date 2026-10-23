@@ -324,7 +324,7 @@ The paper construction requires a history-level identification of each first
 ready native response with one source decision, plus a normalized prefix replay
 kernel for all lawful source choices. This is more than the existing one-way
 checkpoint lemma that equal native observations imply equal source views.
-`Vegas.SourcePrefixCheckpoint.source_view_eq_of_observe_eq` proves useful
+[`Vegas.SourcePrefixCheckpoint.source_view_eq_of_observe_eq`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServicePrefixInformation.lean#L28) proves useful
 recoverability; it does not establish (1). The native opaque-binding and
 activation congruences give the local induction cases. The source public
 history, canonical-slot and first-turn protection APIs supply other cases.

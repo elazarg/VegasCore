@@ -27,7 +27,7 @@ concurrent reveals, a uniform 43-command bound and a whole-continuation
 charge argument. The installed 64-round native fixture proves that every
 native sequential equilibrium gives Alice expected payoff at least 1/4,
 whereas every honest source profile gives her zero
-(`Vegas.Examples.CommitSeedSignalling.native_equilibrium_alice_payoff_quarter`).
+([`Vegas.Examples.CommitSeedSignalling.native_equilibrium_alice_payoff_quarter`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommitSeedSignallingNonpreservation.lean#L19)).
 Hence one fixed honest source sequential equilibrium has no preserving native
 sequential equilibrium. This tests the stated $a<m$ condition; exclusion loss
 one and reward three do not meet the checklist's stronger forfeit bound.
@@ -105,7 +105,7 @@ erased copies in that limit. A nonempty honest pin now supplies a genuine
 honest decision site with the same ordinary erased key. Accepted-failure,
 omission, pinned, free, already-failed and noncommit cases give every raw
 local incentive in the same limit. Source perfect recall gives its SE.
-[The existential extension](../Vegas/Game/CommitRecoveryEquilibriumExtension.lean)
+[The existential extension](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/CommitRecoveryEquilibriumExtension.lean)
 selects the construction internally from the
 given intended SE and preserves its entire initialized history law, including
 original parameter correlations, typed results and all-player payoffs.
@@ -4091,12 +4091,12 @@ needs its own review. What is known:
 | Lemma T, finite core: transport of a marginal through an approximate product factorization, with remainder | `GameTheory.Math.Probability.NearProductWeights.tendsto_sum_abs_nativeLaw_sub_sourceLaw` |
 | Intended own completions and common operational replay fibers | `Vegas.OnePacketOwnInputs.ofAssembled` |
 | Value-blind continuation estimates from the base certificate inputs and service contract | `Vegas.OnePacketBaseInputs.toBlindInputs` |
-| Sequential raw-runtime preservation, conditional on honest-counterpart construction | `Vegas.onePacket_intended_raw_sequentialEquilibrium_of_counterparts` |
+| Sequential raw-runtime preservation, conditional on honest-counterpart construction | [`Vegas.onePacket_intended_raw_sequentialEquilibrium_of_counterparts`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/OnePacketSequentialCompilation.lean#L48) |
 | Actual binding-submission trace repair with the same operational record | `Vegas.DirectedBindingFrame.binding_trace` |
 | Public-record constraints throughout a forced information set | `Vegas.publicRecord_of_forced_information` |
 | Failure has the exclusion payoff at every full source information set | `Vegas.SourceProgram.Setup.exclusion_failure_context_value` |
 | Source equilibrium extension without voluntary failure at any nonexcluded site, under the nonexcluded payoff floor | `Vegas.SourceProgram.Setup.intended_sequentialEquilibrium_extends_without_voluntary_failure` |
-| Each voluntary-failure atom in its common source tremble sequence has exactly the reference mass times the tremble scale | `Vegas.SourceProgram.Setup.exclusionMoveApproximation_failure_mass` |
+| Each voluntary-failure atom in its common source tremble sequence has exactly the reference mass times the tremble scale | [`Vegas.SourceProgram.Setup.exclusionMoveApproximation_failure_mass`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/ExclusionMoveLikelihood.lean#L24) |
 | Successful completed foreign bindings give a regular counterpart with the same operational record | `Vegas.counterpart_of_successful_foreign_bindings` |
 | A reveal ready at an earlier actual prefix reads a successful binding under the final intended witness | `Vegas.binding_success_of_tracePrefix` |
 | Equal operational endpoints fix the public chance-completion factor | `Vegas.completionMass_eq_of_operational_transitions` |
@@ -4106,7 +4106,7 @@ needs its own review. What is known:
 | Likelihood bound from paired actual histories and response comparisons | `Vegas.upperSourceWeight_le_of_paired_responses` |
 | Concrete regular counterpart with quantitative reach domination | `Vegas.reach_le_counterpart_certificate_of_repairs` |
 | Counterpart inputs assembled from actual private-binding repairs | `Vegas.OnePacketCounterpartInputs.ofBindingRepairs` |
-| SE preservation by the default bounded raw runtime with exclusion payoff, with zero count charges and the intended joint readout/payoff law | `Vegas.onePacket_intended_raw_sequentialEquilibrium_preserved` |
+| SE preservation by the default bounded raw runtime with exclusion payoff, with zero count charges and the intended joint readout/payoff law | [`Vegas.onePacket_intended_raw_sequentialEquilibrium_preserved`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/OnePacketBindingRepairCompilation.lean#L52) |
 | Typed source commit-phase rollback preserves all attempted private histories | `Vegas.SourceProgram.CommitPrefix.Close.retry_checkpoint` |
 | Any chain of these actual phase closes resets at most once per player | `Vegas.SourceProgram.CommitCloseChain.reset_bound` |
 | Actual source recovery has a finite horizon and at most one retry per player | `Vegas.SourceProgram.Setup.commitRecoveryProtocol_bounded`, `Vegas.SourceProgram.Setup.commitRecovery_generation_le_players` |
@@ -4156,7 +4156,7 @@ needs its own review. What is known:
 | Bounded one-packet Bayes beliefs transport exactly at clear sites, with the recovery decision site derived from ordinary positive event mass | `Vegas.EventGraphRuntime.RecoveryProjection.bounded_bayesBelief_liftedSite` |
 | Actual continuations stopped at first exclusion retain the same law of full surviving histories and the exit atom | `Vegas.EventGraphRuntime.RecoveryProjection.runBehavioralUntil_exclusion_map_eq` |
 | Actual stopped continuations retain the exact first excluded-owner set as well as every surviving native history | `Vegas.EventGraphRuntime.RecoveryProjection.runBehavioralUntil_exclusion_classified_eq` |
-| Actual recovery base-payoff laws differ from the concrete native continuation by at most the actual first-exclusion probability in total variation | `Vegas.recovery_exclusionPayoffs_withinTV` |
+| Actual recovery base-payoff laws differ from the concrete native continuation by at most the actual first-exclusion probability in total variation | [`Vegas.recovery_exclusionPayoffs_withinTV`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/RecoveryContinuationPayoff.lean#L27) |
 | Fixed-payoff own exclusions contribute no continuation error; only foreign first-exclusion probability enters the scalar bound | `Vegas.recovery_expect_sub_stopped_le_foreign_exit` |
 | The actual finite recovery payoff compares with the induced native stopped law, with error from its foreign first-failure labels only | `Vegas.recovery_expect_sub_native_stopped_le_foreign_exit` |
 | Corresponding clear stopping conditions retain the exact classified native/recovery law | `Vegas.EventGraphRuntime.RecoveryProjection.runBehavioralUntil_exclusion_or_classified_eq` |
@@ -4170,9 +4170,9 @@ needs its own review. What is known:
 | Actual recall supplies the earliest callback's full supported transition prefix and pending-event witness | `Vegas.firstActivation_response_prefix_of_recall` |
 | Actual recovery opportunity supplies a remembered ready callback at a clear due native endpoint | `Vegas.EventGraphRuntime.Recovery.due_owner_recalled_turn_clear_native` |
 | An arbitrary count-permitted commitment at a clear first activation is a fresh call under actual recovery opportunity and timeliness | `Vegas.recovery_commitment_freshCall` |
-| Lifting every fixed seeded scheduler retains its exact transcript posterior and behavioral mixture scheduler | `Vegas.EventGraphRuntime.RecoveryProjection.schedulerMixture_liftScheduler_posterior`, `Vegas.EventGraphRuntime.RecoveryProjection.schedulerMixture_liftScheduler_scheduler` |
-| Clear finite recovery Bayes beliefs project to the exact full native-control belief | `Vegas.EventGraphRuntime.RecoveryProjection.bounded_bayesBelief_projectedState` |
-| The original seeded occupation law equals the actual behavioral control law tagged with its full-transcript seed posterior | `Interaction.ReactiveApplication.schedulerMixture_occupation_joint` |
+| Lifting every fixed seeded scheduler retains its exact transcript posterior and behavioral mixture scheduler | [`Vegas.EventGraphRuntime.RecoveryProjection.schedulerMixture_liftScheduler_posterior`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/ExclusionSchedulerSeed.lean#L54), [`Vegas.EventGraphRuntime.RecoveryProjection.schedulerMixture_liftScheduler_scheduler`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/ExclusionSchedulerSeed.lean#L81) |
+| Clear finite recovery Bayes beliefs project to the exact full native-control belief | [`Vegas.EventGraphRuntime.RecoveryProjection.bounded_bayesBelief_projectedState`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/ExclusionBoundedStateBelief.lean#L61) |
+| The original seeded occupation law equals the actual behavioral control law tagged with its full-transcript seed posterior | [`Interaction.ReactiveApplication.schedulerMixture_occupation_joint`](https://github.com/elazarg/VegasCore/blob/research-tree/Interaction/ReactiveSchedulerSeedOccupation.lean#L18) |
 | The assembled recovery strategy and same-weight native comparison have exactly the same optional action law at represented clear sites | `Vegas.RecoveryOnePacket.nativeComparisonStrategy_at_clear` |
 | Every actual clear complete native history has the same reach weight under the comparison strategy and the projected common recovery strategy | `Vegas.RecoveryOnePacket.historyReachWeight_nativeComparison_of_clear` |
 | At a complete clear native information fiber, the comparison Bayes belief normalizes exactly the projected recovery trace weights | `Vegas.RecoveryOnePacket.nativeComparison_bayes_formula_of_clear` |
@@ -4180,7 +4180,7 @@ needs its own review. What is known:
 | Actual first public failures identify a pending owner packet or a genuinely activated due expiry | `Vegas.firstPublicFailure_pending_or_due` |
 | Pending submissions and due expiries supply actual future foreign first-activation response prefixes | `Vegas.foreign_firstActivation_prefix_of_recorded`, `Vegas.recovery_foreign_firstActivation_prefix_of_due` |
 | Clear regularity and focal debt-freedom transport to every actual earlier prefix | `Vegas.clear_regular_notOwes_of_tracePrefix` |
-| Actual recovery component mixtures put at most scale plus scale squared on events disjoint from main support | `Vegas.RecoveryOnePacket.component_mixture_event_le_of_disjoint_main` |
+| Actual recovery component mixtures put at most scale plus scale squared on events disjoint from main support | [`Vegas.RecoveryOnePacket.component_mixture_event_le_of_disjoint_main`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/RecoveryRareMainMass.lean#L31) |
 | First-exclusion stopped endpoints retain their actual clear environment predecessor and realized command | `Vegas.EventGraphRuntime.responseMenu_stopped_exclusion_boundary` |
 | A recorded protected fixed-value binding completes successfully at the stopped boundary under actual recovery service | `Vegas.recovery_committed_stop_config` |
 | Actual clear first callbacks derive freshness and acceptance and have the exact stopped source-step law, for fixed-value bindings and canonical disclosures | `Vegas.recovery_firstActivation_commitment_sourceLaw`, `Vegas.recovery_firstActivation_disclosure_sourceLaw` |
@@ -4195,18 +4195,18 @@ needs its own review. What is known:
 | Honest-choice retention bounds every bounded stopped native continuation payoff | `Vegas.onePacket_stopped_expect_sub_le` |
 | Actual recovery service supplies source values for honest debt-stopped boundary comparisons | `Vegas.recovery_stopped_boundary_value_sub_le` |
 | The original common recovery weights retain honest choices at every future boundary continuation input | `Vegas.RecoveryOnePacket.nativeComparison_dominatesHonestFrom_boundary` |
-| The actual raw debt-stopped continuation under the original recovery weights approaches the source value uniformly at intended successor boundaries | `Vegas.RecoveryOnePacket.recovery_common_boundary_value_bounds` |
+| The actual raw debt-stopped continuation under the original recovery weights approaches the source value uniformly at intended successor boundaries | [`Vegas.RecoveryOnePacket.recovery_common_boundary_value_bounds`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/RecoveryComparisonRawValue.lean#L36) |
 | Original recovery Bayes beliefs project to source beliefs with uniformly vanishing error, including keyed late sites | `Vegas.RecoveryOnePacket.recovery_source_belief_bounds` |
 | The common first-activation baseline has the source value as a lower bound up to retention and tremble errors | `Vegas.RecoveryOnePacket.nativeComparison_firstActivation_value_lower` |
 | Arbitrary local nonlate laws admit an event-phase source potential comparison | `Vegas.RecoveryOnePacket.nativeComparison_local_phase_value_sub_le` |
 | At nonowing unpending sites every legal local law leaves the whole policy unchanged | `Vegas.withLaw_eq_self_of_unpending_notOwing` |
 | Every actual recovery local law has zero gain at clear nonlate unpending sites without source debt, for arbitrary assessment beliefs and payoffs | `Vegas.RecoveryOnePacket.localGain_eq_zero_of_unpending_notOwing` |
-| A globally legal guarded binding policy agrees with its clock and slot rule along actual supported histories with fresh bounded prepared slots | `Vegas.EventGraphRuntime.guardedBindingServiceResponse_eq_at_history` |
-| In one positive owner Bayes fiber the same original local seed gives the same resolving command and the corresponding typed binding output, retained at the requested final execution | `Vegas.EventGraphRuntime.LocalSeedController.bayesBelief_first_binding_output_common` |
+| A globally legal guarded binding policy agrees with its clock and slot rule along actual supported histories with fresh bounded prepared slots | [`Vegas.EventGraphRuntime.guardedBindingServiceResponse_eq_at_history`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/ReactiveBindingServicePolicy.lean#L267) |
+| In one positive owner Bayes fiber the same original local seed gives the same resolving command and the corresponding typed binding output, retained at the requested final execution | [`Vegas.EventGraphRuntime.LocalSeedController.bayesBelief_first_binding_output_common`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/ReactiveSeedBindingSiteOutcome.lean#L277) |
 | Actual recovery completion settles the current event at every supported next-event or public-failure stop | `Vegas.recovery_pending_stop_completed` |
 | The actual terminal probability of current-event primitive decision failure equals its stopped probability | `Vegas.recovery_pending_failure_terminal_eq_stopped` |
 | Original common recovery posteriors with the same operational key have vanishing past-record discrepancy | `Vegas.RecoveryOnePacket.recovery_keyed_record_bounds` |
-| Under the stated clock/slot and menu-coverage premises, actual clean unsent Bayes sites and the same original local seed retain the same first resolving binding log under different hidden binding material and residual seeds | `Vegas.EventGraphRuntime.LocalSeedController.bayesBelief_first_binding_log_eq` |
+| Under the stated clock/slot and menu-coverage premises, actual clean unsent Bayes sites and the same original local seed retain the same first resolving binding log under different hidden binding material and residual seeds | [`Vegas.EventGraphRuntime.LocalSeedController.bayesBelief_first_binding_log_eq`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/ReactiveSeedBindingService.lean#L1685) |
 | Initialized honest native play has the full intended source readout law, including its private setup draw, under actual recovery service | `Vegas.recovery_honest_initialized_readout_law` |
 | Native first-exit mass equals terminal public-failure mass without a native completion contract | `Vegas.EventGraphRuntime.RecoveryProjection.native_exit_mass_eq_terminal_failure_mass` |
 | The actual common recovery strategy has a uniformly vanishing initialized joint typed-readout and base-payoff law error against the original source sequence | `Vegas.RecoveryOnePacket.recovery_initialized_lawApproximation` |
@@ -4227,7 +4227,7 @@ needs its own review. What is known:
 | An intended native commitment determines one source policy and its exact source history-gain identity throughout the debt-free information fiber | `Vegas.intendedCommitment_sourcePolicy_gain` |
 | Every first foreign public failure has a future foreign first-callback response outside main support | `Vegas.recovery_firstForeignFailure_not_mainActivationTraceAfter` |
 | Against any focal continuation policy, the common comparison's foreign first-exit probability before focal debt is at most scale plus scale squared times the remaining rank, from a clear regular own-turn history | `Vegas.RecoveryOnePacket.nativeComparison_foreign_exit_mass_le_rank` |
-| Averaging over clear own-turn histories adds only the belief's irregular-history mass to the depth bound | `Vegas.RecoveryOnePacket.nativeComparison_foreign_exit_mass_le_irregular_add_depth` |
+| Averaging over clear own-turn histories adds only the belief's irregular-history mass to the depth bound | [`Vegas.RecoveryOnePacket.nativeComparison_foreign_exit_mass_le_irregular_add_depth`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/RecoveryForeignExitBeliefBound.lean#L33) |
 | The actual recovery payoff under any focal policy differs from its debt-stopped native surrogate by at most twice the payoff bound times the rank rate, from regular clear starts | `Vegas.RecoveryOnePacket.recovery_expect_sub_native_debt_stopped_le_rank` |
 | Under the original common recovery assessment, concrete counterparts make projected irregular-history posterior mass vanish uniformly | `Vegas.RecoveryOnePacket.recovery_irregular_belief_bounds` |
 | Averaging actual recovery continuation errors charges only the foreign-exit mass of the concrete belief-integrated native law | `Vegas.RecoveryOnePacket.recovery_belief_expect_abs_sub_native_debt_stopped_le_foreign_exit` |
@@ -4235,10 +4235,10 @@ needs its own review. What is known:
 | The common recovery posterior's expected absolute terminal-payoff error against its concrete debt-stopped native law vanishes uniformly at clear forced debt-free own-turn sites | `Vegas.RecoveryOnePacket.recovery_common_continuation_error_vanishes` |
 | The common comparison and projected recovery opponents have identical stopped laws against any focal continuation policy | `Vegas.RecoveryOnePacket.nativeComparison_stopped_update_eq` |
 | Complete finite information histories and Bayes beliefs project exactly at actual clear recovery decisions | `Vegas.EventGraphRuntime.RecoveryProjection.boundedInformationHistory`, `Vegas.RecoveryOnePacket.recovery_belief_eq_comparisonInformationHistory` |
-| Actual recovery nonlate decisions inherit vanishing unforced mass and operational-record/decode decorrelation under the same completion weights | `Vegas.RecoveryOnePacket.recovery_prefix_bounds` |
+| Actual recovery nonlate decisions inherit vanishing unforced mass and operational-record/decode decorrelation under the same completion weights | [`Vegas.RecoveryOnePacket.recovery_prefix_bounds`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/RecoveryPrefixBeliefBounds.lean#L42) |
 | Its decoded stopped continuation law is exactly the source step law | `Vegas.recovery_committed_stop_sourceLaw` |
-| Original persistent seeds conditioned on actual finite-menu information equal standard Bayes controls tagged by the actual transcript posterior | `Interaction.ReactiveApplication.ResponseMenu.bayesBelief_seededOccupation` |
-| The original seed joint law transports to complete clear recovery controls, including their recalled exclusion records | `Vegas.EventGraphRuntime.RecoveryProjection.bounded_bayesBelief_seededState` |
+| Original persistent seeds conditioned on actual finite-menu information equal standard Bayes controls tagged by the actual transcript posterior | [`Interaction.ReactiveApplication.ResponseMenu.bayesBelief_seededOccupation`](https://github.com/elazarg/VegasCore/blob/research-tree/Interaction/ReactiveSchedulerSeedBayes.lean#L33) |
+| The original seed joint law transports to complete clear recovery controls, including their recalled exclusion records | [`Vegas.EventGraphRuntime.RecoveryProjection.bounded_bayesBelief_seededState`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/ExclusionSeedBelief.lean#L142) |
 | One common recovery assessment completion retains consistent Bayes approximants and rationality at all post-exclusion sites | `Vegas.RecoveryOnePacket.exists_consistent_completion` |
 | Own latent source debt is uniform throughout the actual full recovery information fiber and gives whole-policy rationality for every assessment | `Vegas.RecoveryOnePacket.owingAgent_allHistories`, `Vegas.RecoveryOnePacket.owingAgent_isSequentiallyRationalAt` |
 | Actual recovery service timing gives native opportunity and inclusion at clear native histories | `Vegas.EventGraphRuntime.Recovery.Opportunity.clear_native`, `Vegas.EventGraphRuntime.Recovery.ProtectedInclusion.clear_native` |
@@ -4248,24 +4248,24 @@ needs its own review. What is known:
 | Authentic count-permitted openings are accepted while ready and timely if the owner's binding was not publicly missed | `Vegas.EventGraphRuntime.counted_opening_accepted` |
 | Coupled actual one-step kernels imply equal stopped readout laws | `GameTheory.Protocol.InformationModel.runBehavioralUntil_map_eq_of_paired_steps` |
 | An unread scheduler seed retains its law and independence in the actual joint execution law | `Interaction.ReactiveApplication.schedulerMixture_unread_execution` |
-| A scoped local seed controller retains the complete execution and query log under immutable-seed replay | `Vegas.EventGraphRuntime.LocalSeedController.runJoint_replay` |
-| The actual scheduler posterior conditioned on its transcript and query log factors with the local prior filtered by the recorded answers | `Vegas.EventGraphRuntime.LocalSeedController.posterior_transcript_log` |
-| Actual owner recall reconstructs every positive local query and its index along complete runs, under the operational-domain invariant | `Vegas.EventGraphRuntime.LocalSeedController.runJoint_initial_ownerLog` |
-| Counted unsent query logs are determined by their positive-query history and exhaustion count | `Vegas.EventGraphRuntime.LocalSeedController.CountedQueryLog.eq_of_unsent_signature` |
-| Complete unsent phased query transcripts agree across the same local clock word | `Vegas.EventGraphRuntime.PhaseServiceScheduler.unsent_clock_transcript` |
-| One original local-seed filter factors from full history for every belief at the native site | `Vegas.EventGraphRuntime.PhaseServiceScheduler.belief_unsent_seed_product` |
-| Original source-policy and timing-plan tags realize the initialized stopped physical law | `Vegas.phaseTimingPlanPolicy_value_initial_memory_joint` |
-| The concrete local service derives packet inclusion and expiry resolution on genuine clean one-packet histories | `Vegas.EventGraphRuntime.countedLocalSeedController` |
-| Genuine clean service domains persist while the selected ordered owned event survives | `Vegas.EventGraphRuntime.countedSeedDomain_dispatch_of_activated_survives` |
-| Actual clean ready owner activations with equal full owner information have the same raw query log | `Vegas.EventGraphRuntime.LocalSeedController.runRounds_log_eq_of_owner_info` |
-| At actual clean ready owner activations, the scheduler seed posterior factors with the local prior filtered by its recovered replies | `Vegas.EventGraphRuntime.LocalSeedController.posterior_ready_activation` |
-| Across independently sampled round counts, conditioning on the actual full ready owner observation retains the filtered local seed independently of the hidden count, initial inputs, selected execution and every other seed | `Vegas.EventGraphRuntime.LocalSeedController.ownerObservation_seed_product` |
-| The standard finite-menu Bayes belief on complete controls is the actual command-boundary occupation posterior across round counts | `Interaction.ReactiveApplication.ResponseMenu.bayesBelief_state_eq_occupationPosterior` |
-| At genuine clean ready finite native sites, the original immutable local seed has its recovered reply-filtered law independently of the complete runtime control and other seed coordinates | `Vegas.EventGraphRuntime.LocalSeedController.bayesBelief_seed_product` |
-| At matching actual clear recovery sites, the local seed filtered by recovered replies is independent of the complete recovery control and all other seed coordinates, retaining the same replay log on every supported seed/control pair | `Vegas.EventGraphRuntime.RecoveryProjection.clear_bayesBelief_seed_product` |
-| The same original filtered seed and residual control law give the exact physical finish law under any fixed common raw continuation policies | `Vegas.EventGraphRuntime.RecoveryProjection.clear_bayesBelief_finish_seeded` |
-| At an actual positive Bayes decision, a legal pending response derives the original-seed replay invariants, and any supported completion within the remaining budget has a genuine first resolving reply from that seed | `Vegas.EventGraphRuntime.LocalSeedController.bayesBelief_response_first_resolution` |
-| The original immutable seed law maps exactly to that command-boundary control law | `Vegas.EventGraphRuntime.LocalSeedController.seededSampledRoundDecisionLaw_control` |
+| A scoped local seed controller retains the complete execution and query log under immutable-seed replay | [`Vegas.EventGraphRuntime.LocalSeedController.runJoint_replay`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/ReactiveLocalSeedReplay.lean#L233) |
+| The actual scheduler posterior conditioned on its transcript and query log factors with the local prior filtered by the recorded answers | [`Vegas.EventGraphRuntime.LocalSeedController.posterior_transcript_log`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/ReactiveLocalSeedPosteriorLog.lean#L32) |
+| Actual owner recall reconstructs every positive local query and its index along complete runs, under the operational-domain invariant | [`Vegas.EventGraphRuntime.LocalSeedController.runJoint_initial_ownerLog`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/ReactiveLocalSeedOwnerRun.lean#L82) |
+| Counted unsent query logs are determined by their positive-query history and exhaustion count | [`Vegas.EventGraphRuntime.LocalSeedController.CountedQueryLog.eq_of_unsent_signature`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/ReactiveLocalSeedLogRecovery.lean#L92) |
+| Complete unsent phased query transcripts agree across the same local clock word | [`Vegas.EventGraphRuntime.PhaseServiceScheduler.unsent_clock_transcript`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/PhaseServiceUnsentTranscript.lean#L135) |
+| One original local-seed filter factors from full history for every belief at the native site | [`Vegas.EventGraphRuntime.PhaseServiceScheduler.belief_unsent_seed_product`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/PhaseServiceUnsentBayes.lean#L48) |
+| Original source-policy and timing-plan tags realize the initialized stopped physical law | [`Vegas.phaseTimingPlanPolicy_value_initial_memory_joint`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/PhaseRecoveryValueStoppedMemory.lean#L116) |
+| The concrete local service derives packet inclusion and expiry resolution on genuine clean one-packet histories | [`Vegas.EventGraphRuntime.countedLocalSeedController`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/ReactiveCountedSeedService.lean#L166) |
+| Genuine clean service domains persist while the selected ordered owned event survives | [`Vegas.EventGraphRuntime.countedSeedDomain_dispatch_of_activated_survives`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/ReactiveProtectedEpisode.lean#L47) |
+| Actual clean ready owner activations with equal full owner information have the same raw query log | [`Vegas.EventGraphRuntime.LocalSeedController.runRounds_log_eq_of_owner_info`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/ReactiveCountedSeedOwnerFiber.lean#L29) |
+| At actual clean ready owner activations, the scheduler seed posterior factors with the local prior filtered by its recovered replies | [`Vegas.EventGraphRuntime.LocalSeedController.posterior_ready_activation`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/ReactiveCountedSeedPosterior.lean#L75) |
+| Across independently sampled round counts, conditioning on the actual full ready owner observation retains the filtered local seed independently of the hidden count, initial inputs, selected execution and every other seed | [`Vegas.EventGraphRuntime.LocalSeedController.ownerObservation_seed_product`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/ReactiveCountedSeedObservation.lean#L169) |
+| The standard finite-menu Bayes belief on complete controls is the actual command-boundary occupation posterior across round counts | [`Interaction.ReactiveApplication.ResponseMenu.bayesBelief_state_eq_occupationPosterior`](https://github.com/elazarg/VegasCore/blob/research-tree/Interaction/ReactiveOccupationPosterior.lean#L46) |
+| At genuine clean ready finite native sites, the original immutable local seed has its recovered reply-filtered law independently of the complete runtime control and other seed coordinates | [`Vegas.EventGraphRuntime.LocalSeedController.bayesBelief_seed_product`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/ReactiveSeedBayesProduct.lean#L54) |
+| At matching actual clear recovery sites, the local seed filtered by recovered replies is independent of the complete recovery control and all other seed coordinates, retaining the same replay log on every supported seed/control pair | [`Vegas.EventGraphRuntime.RecoveryProjection.clear_bayesBelief_seed_product`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/ExclusionLocalSeedProduct.lean#L167) |
+| The same original filtered seed and residual control law give the exact physical finish law under any fixed common raw continuation policies | [`Vegas.EventGraphRuntime.RecoveryProjection.clear_bayesBelief_finish_seeded`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/ExclusionSeedContinuation.lean#L66) |
+| At an actual positive Bayes decision, a legal pending response derives the original-seed replay invariants, and any supported completion within the remaining budget has a genuine first resolving reply from that seed | [`Vegas.EventGraphRuntime.LocalSeedController.bayesBelief_response_first_resolution`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/ReactiveSeedCompletion.lean#L900) |
+| The original immutable seed law maps exactly to that command-boundary control law | [`Vegas.EventGraphRuntime.LocalSeedController.seededSampledRoundDecisionLaw_control`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/ReactiveSeedOccupation.lean#L56) |
 
 The default-runtime theorem derives zero on-path count charges and the joint
 typed-readout and realized-payoff law, including the counterpart inputs.

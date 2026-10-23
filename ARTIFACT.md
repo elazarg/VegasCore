@@ -2,15 +2,15 @@
 
 The active artifact contains the source language, typed graph compiler, pending
 runtime, regression tests and the fixed-calendar sequential-equilibrium proof.
-The [calendar capstone](Vegas/Game/SourceServiceCompilation.lean) and
+The [calendar capstone](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceCompilation.lean) and
 [Paper](Paper.lean) state the exact theorem and audit its standard axioms.
-The [checklist](docs/se-proof-checklist.md) identifies load-bearing evidence.
+The [checklist](https://github.com/elazarg/VegasCore/blob/research-tree/docs/se-proof-checklist.md) identifies load-bearing evidence.
 [Paper](Paper.lean) also states
 [intended-game preservation](Vegas/Game/IntendedPreservation.lean), tracked in
 the [arbitrary-builder checklist](docs/se-async-checklist.md).
 It states the same-slack correspondence of approximate Nash equilibrium on the
 audited calendar runtime, in both directions
-([calendar Nash](Vegas/Game/SourceServiceNash.lean)); its forward direction
+([calendar Nash](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceNash.lean)); its forward direction
 rests on every permitted-menu deviation having the typed outcome law of a source
 deviation ([deviation law](Vegas/Game/SourceServiceDeviationReadout.lean)). It
 also states the approximate correspondence of approximate Nash between a source
@@ -30,7 +30,7 @@ profile extending an approximate Nash equilibrium of the intended game is one of
 the source game under the forfeit pass
 ([intended Nash](Vegas/Game/IntendedNash.lean)), and its compiled raw profile is
 one of the audited calendar runtime
-([intended calendar Nash](Vegas/Game/IntendedServiceNash.lean)); its turn-counted
+([intended calendar Nash](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/IntendedServiceNash.lean)); its turn-counted
 clients are an approximate Nash equilibrium under every contract builder
 ([first-turn bound](Vegas/Game/AsyncServiceDeviationBound.lean)), and its
 first-turn clients an exact one on the bounded raw ledger, with the intended
@@ -44,5 +44,5 @@ honest outcome laws; they are not additional checked lifting theorems.
 
 Use the build and validation commands in [README](README.md). Reference designs,
 experimental examples and unfinished proof routes are available in the
-[archive](archive/se-generalization/README.md); they are not built or treated as
+[archive](https://github.com/elazarg/VegasCore/blob/research-tree/archive/se-generalization/README.md); they are not built or treated as
 proof evidence.

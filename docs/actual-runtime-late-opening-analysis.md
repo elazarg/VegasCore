@@ -15,7 +15,7 @@ does not. If the listener reads both failed packets before answering, that
 feature disappears. In fact, the resulting fully public version has a
 preserving sequential equilibrium in the same parameter regime as the negative
 theorem. The native comparison-model SE construction is checked in
-[CompleteObservationPreservation](../Vegas/Examples/LateLeak/CompleteObservationPreservation.lean).
+[CompleteObservationPreservation](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateLeak/CompleteObservationPreservation.lean).
 It covers all behavioral continuation deviations and uses one common sequence
 of fully mixed Bayes assessments.
 
@@ -25,7 +25,7 @@ dropped-packet charge is zero, every SE of the intended comparison game has
 its complete initialized terminal-state law preserved by a public-traffic
 target SE. The forfeit is part of both games' utility; it is distinct from
 an audit escrow added by the compiler. The proof is in
-[CompleteObservationCostPreservation](../Vegas/Examples/LateLeak/CompleteObservationCostPreservation.lean).
+[CompleteObservationCostPreservation](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateLeak/CompleteObservationCostPreservation.lean).
 Its intended source forces opening. The source language's lawful FALSE choice
 is covered by the broader paper theorem below, not silently removed from a
 checked source-language adapter.
@@ -58,7 +58,7 @@ a nearby exact equilibrium for each source equilibrium.
 
 ## The closest existing runtime example
 
-[CommittedResolutionService](../Vegas/Examples/CommittedResolutionService.lean)
+[CommittedResolutionService](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommittedResolutionService.lean)
 already supplies an actual source program, setup, scheduler, and checked
 asynchronous service contract. Alice and Bob each own an initial committed
 Boolean. After a sample, the program reveals Alice's value and then Bob's.
@@ -71,23 +71,23 @@ The module proves the service's opportunity, protected inclusion, and
 completion obligations over all raw legal histories. It also proves that
 prescribed packets are clean under the actual signed terminal audit, and that
 a canonical first opening of `true` fixes Alice's successful public output
-under every later raw player policy. Its `mixed_bob_reach_bound` quantifies
+under every later raw player policy. Its [`mixed_bob_reach_bound`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommittedResolutionService.lean#L1519) quantifies
 over all raw policies, including noncanonical action aliases. These are actual
 execution facts; they are not a complete compiler SE theorem or a complete
 actual-runtime SE counterexample.
 
 The final Bob decision also has checked adapters over every legal RAW prefix:
-[BobAudit](../Vegas/Examples/CommittedResolutionBobAudit.lean) proves that the
+[BobAudit](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommittedResolutionBobAudit.lean) proves that the
 canonical response succeeds and has zero owner audit charge even after dirty
-Alice traffic; [BobFailure](../Vegas/Examples/CommittedResolutionBobFailure.lean)
+Alice traffic; [BobFailure](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommittedResolutionBobFailure.lean)
 proves that an incorrect or silent response fails by the actual horizon.
-[BobDecision](../Vegas/Examples/CommittedResolutionBobDecision.lean) reduces
+[BobDecision](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommittedResolutionBobDecision.lean) reduces
 the entire native behavioral continuation to its current response lottery
 and the actual passive physical suffix.
-[BobReadout](../Vegas/Examples/CommittedResolutionBobReadout.lean) proves
+[BobReadout](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommittedResolutionBobReadout.lean) proves
 complete typed readout existence at that horizon and identifies the entire
 source state for continuations with the same Bob result.
-[Forfeit](../Vegas/Examples/CommittedResolutionForfeit.lean) computes the
+[Forfeit](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommittedResolutionForfeit.lean) computes the
 ordinary compiled own-failure utility on those states. These supply execution
 and payoff ingredients for a native sequential incentive proof; they do not
 yet supply its belief-local capstone or a general compiler theorem. The
@@ -129,7 +129,7 @@ window. The clear risk menu therefore cannot automatically be described as
 the menu of protected transmissions. Later risk latching also does not change
 the final audit verdict of a packet that was accepted.
 
-[CommittedResolutionRecovery](../Vegas/Examples/CommittedResolutionRecovery.lean)
+[CommittedResolutionRecovery](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommittedResolutionRecovery.lean)
 checks this distinction in an initialized source program. Its support-refined
 scheduler satisfies the original asynchronous contract, accepts a conformant
 opening outside the protected inclusion window, and reaches terminal plays
@@ -288,16 +288,16 @@ q(D+R/2) > R+(1-q)c.
 ```
 
 The checked comparison-model core in
-[CompleteObservation](../Vegas/Examples/LateLeak/CompleteObservation.lean)
+[CompleteObservation](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateLeak/CompleteObservation.lean)
 retains public turn and resolution metadata and own-action recall, constructs
 native fully mixed Bayes approximations and their consistent strategy limit,
 and proves the sender's exact primitive incentive inequalities under these
-direct margins. [CompleteObservationValue](../Vegas/Examples/LateLeak/CompleteObservationValue.lean)
+direct margins. [CompleteObservationValue](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateLeak/CompleteObservationValue.lean)
 checks every whole behavioral sender replacement at every retained history.
-[CompleteObservationPosterior](../Vegas/Examples/LateLeak/CompleteObservationPosterior.lean)
+[CompleteObservationPosterior](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateLeak/CompleteObservationPosterior.lean)
 checks the three-label posterior and the withholding prior from one explicit
 common Bayes tremble sequence.
-[CompleteObservationPreservation](../Vegas/Examples/LateLeak/CompleteObservationPreservation.lean)
+[CompleteObservationPreservation](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateLeak/CompleteObservationPreservation.lean)
 combines these with the listener's native final-decision reduction into an
 existential SE theorem. These results use the refined information model,
 including public resolution metadata and own-action recall. They do not assume

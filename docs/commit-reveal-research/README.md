@@ -120,7 +120,7 @@ condition. Its checked collateral bounds are $R>0$, $D>R$, $K_A>R/2$ and $K_B>1$
 with full authentic audit and fair partial samples. Native SE exist; every one
 fails to reproduce the joint terminal-store and realized-payoff law. This does
 not prove impossibility for the public-result marginal alone or for every
-blockchain game. The [checked source extension](../../Vegas/Examples/LateOpeningRuntimeSourceForfeiture.lean)
+blockchain game. The [checked source extension](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeSourceForfeiture.lean)
 preserves every intended source SE of this program in its complete interface
 allowing both immediate failed bindings and failed publications when
 $R\ge0$ and $D\ge\max(R,1)$. This concrete result is not a general full-language

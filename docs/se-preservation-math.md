@@ -991,8 +991,8 @@ the candidate's potential calendar prefix. With Z fixed, induction on the
 global commands now preserves their placement as well: the selector is
 unchanged, and every selected local reply agrees. This supplies the converse
 for this controller, without observing internal polling replies.
-The checked `Vegas.EventGraphRuntime.PhaseServiceScheduler.unsent_clock_transcript`
-and `Vegas.EventGraphRuntime.PhaseServiceScheduler.belief_unsent_seed_product`
+The checked [`Vegas.EventGraphRuntime.PhaseServiceScheduler.unsent_clock_transcript`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/PhaseServiceUnsentTranscript.lean#L135)
+and [`Vegas.EventGraphRuntime.PhaseServiceScheduler.belief_unsent_seed_product`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/PhaseServiceUnsentBayes.lean#L48)
 establish its transcript and filtered-seed ingredients. Their existence is
 not a representation theorem for every abstract S1--S3 builder.
 
@@ -3146,7 +3146,7 @@ implementation as a witness of full preservation.
 
 The reduced-coordinate original plan and its full source history law are
 checked by `Vegas.SourceProgram.Setup.commitRecoveryErasedPolicyPlan_run`.
-`Vegas.SourceProgram.Setup.commitRecoveryErasedPolicyPosterior_split` checks
+[`Vegas.SourceProgram.Setup.commitRecoveryErasedPolicyPosterior_split`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/CommitRecoveryErasedPolicyConditioning.lean#L194) checks
 the current-coordinate/entire-original-remainder split after genuine records;
 those records correspond to the original full-information own play. Genuine
 no-miss replay and erasure of instruction/retry/exhausted closure are also
@@ -3188,14 +3188,14 @@ derives that original hidden tuple agreement from actual combined query
 equality at literal initialized prefixes; no independent prior is introduced.
 `Vegas.SourceProgram.Setup.attemptPublicRecall_eq_for_observer` transfers
 the entire public record between observers.
-`Vegas.SourceProgram.Setup.commitRecovery_information_fiber_equiv` gives an
+[`Vegas.SourceProgram.Setup.commitRecovery_information_fiber_equiv`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/CommitRecoveryAncillaryFibers.lean#L148) gives an
 actual bijection of original information histories at equal erased keys.
-`Vegas.SourceProgram.Setup.commitRecovery_bayes_eq_of_erasedInformation_eq`
+[`Vegas.SourceProgram.Setup.commitRecovery_bayes_eq_of_erasedInformation_eq`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/CommitRecoveryAncillaryBayes.lean#L26)
 then transports the actual normalized Bayes belief exactly, using positive
 constant own reach and unchanged counterfactual reach. The original joint
 setup law may be correlated. Combined-key known-failed attachments do not
 use this bijection. Actual ordinary-copy continuation values and gains are
-checked in `Vegas/Game/CommitRecoveryAncillaryGains.lean`, retaining the joint
+checked in [`Vegas/Game/CommitRecoveryAncillaryGains.lean`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/CommitRecoveryAncillaryGains.lean), retaining the joint
 stopped mark and terminal readout/payoffs. Their conditional-success and
 individual optimality consumers are described below.
 
@@ -3208,47 +3208,47 @@ as a successful typed boundary.
 `Vegas/Game/CommitRecoveryHonestPins.lean` derives honest pin coherence from
 actual query equality. The actual prescription and initialized-run domination
 in `Vegas/Game/CommitRecoveryHonestDomination.lean` give honest Bayes convergence
-in `Vegas/Game/CommitRecoveryHonestBeliefs.lean`, at scales tied to the original
-honest sequence before free completion. `Vegas/Game/CommitRecoveryHonestLimit.lean`
+in [`Vegas/Game/CommitRecoveryHonestBeliefs.lean`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/CommitRecoveryHonestBeliefs.lean), at scales tied to the original
+honest sequence before free completion. [`Vegas/Game/CommitRecoveryHonestLimit.lean`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/CommitRecoveryHonestLimit.lean)
 now proves the same limit's honest-site raw local best responses and preserved
-initialized joint law. `Vegas/Game/CommitRecoveryPooledOrdinaryGains.lean`
+initialized joint law. [`Vegas/Game/CommitRecoveryPooledOrdinaryGains.lean`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/CommitRecoveryPooledOrdinaryGains.lean)
 specializes actual pooled component gains and their exact ordinary-class sum.
 `Vegas/Source/CommitRecoveryNoMissFixed.lean` derives a genuine ordinary query
 representative and the ordinary-versus-new-failure partition from original
 histories. Their raw-case and source-SE consumers are described below.
 
-`Vegas/Game/CommitRecoveryPooledAgentGains.lean` now derives the actual entire
+[`Vegas/Game/CommitRecoveryPooledAgentGains.lean`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/CommitRecoveryPooledAgentGains.lean) now derives the actual entire
 pool's failed-member zero remainder and ordinary component inequality.
-`Vegas/Game/CommitRecoveryPooledOrdinaryLimit.lean` gives every free ordinary
+[`Vegas/Game/CommitRecoveryPooledOrdinaryLimit.lean`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/CommitRecoveryPooledOrdinaryLimit.lean) gives every free ordinary
 site's limit best response against all domain laws. The SAME limit's raw gains
-transfer between ordinary copies in `Vegas/Game/CommitRecoveryOrdinaryLimitCopies.lean`.
-`Vegas/Game/CommitRecoveryHonestPoolWitness.lean` extracts a genuine honest
+transfer between ordinary copies in [`Vegas/Game/CommitRecoveryOrdinaryLimitCopies.lean`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/CommitRecoveryOrdinaryLimitCopies.lean).
+[`Vegas/Game/CommitRecoveryHonestPoolWitness.lean`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/CommitRecoveryHonestPoolWitness.lean) extracts a genuine honest
 decision site from a nonempty pin and identifies the ordinary erased key.
-The actual original-word marker in `Vegas/Game/CommitRecoveryCommitSuccess.lean`
+The actual original-word marker in [`Vegas/Game/CommitRecoveryCommitSuccess.lean`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/CommitRecoveryCommitSuccess.lean)
 and arbitrary-continuation failure payoff in `Vegas/Game/CommitRecoveryCommitFailure.lean`
 derive their typed geometry from the genuine committing point.
 `Vegas/Game/CommitRecoveryAcceptedFailure.lean` checks accepted-failure dominance
-under the actual source belief, and `Vegas/Game/CommitRecoveryFailedLimit.lean`
+under the actual source belief, and [`Vegas/Game/CommitRecoveryFailedLimit.lean`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/CommitRecoveryFailedLimit.lean)
 checks every raw local lottery at known-failed sites.
-`Vegas/Game/CommitRecoveryRawLimit.lean`, `Vegas/Game/CommitRecoveryPooledRawLimit.lean`,
-`Vegas/Game/CommitRecoveryPinnedLimit.lean`, `Vegas/Game/CommitRecoveryCommitLimit.lean`
-and `Vegas/Game/CommitRecoveryNoncommitLimit.lean` assemble every original raw
-local incentive. `Vegas/Game/CommitRecoverySelectedEquilibrium.lean` uses source
+[`Vegas/Game/CommitRecoveryRawLimit.lean`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/CommitRecoveryRawLimit.lean), [`Vegas/Game/CommitRecoveryPooledRawLimit.lean`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/CommitRecoveryPooledRawLimit.lean),
+[`Vegas/Game/CommitRecoveryPinnedLimit.lean`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/CommitRecoveryPinnedLimit.lean), [`Vegas/Game/CommitRecoveryCommitLimit.lean`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/CommitRecoveryCommitLimit.lean)
+and [`Vegas/Game/CommitRecoveryNoncommitLimit.lean`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/CommitRecoveryNoncommitLimit.lean) assemble every original raw
+local incentive. [`Vegas/Game/CommitRecoverySelectedEquilibrium.lean`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/CommitRecoverySelectedEquilibrium.lean) uses source
 perfect recall to obtain SE of that same limit. The parametric constructor in
-`Vegas/Game/CommitRecoveryEquilibriumConstruction.lean` retains the assessment
+[`Vegas/Game/CommitRecoveryEquilibriumConstruction.lean`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/CommitRecoveryEquilibriumConstruction.lean) retains the assessment
 sequence, original sampler and chosen subsequence. The unconditional extension
-in `Vegas/Game/CommitRecoveryEquilibriumExtension.lean` supplies all of them
+in [`Vegas/Game/CommitRecoveryEquilibriumExtension.lean`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/CommitRecoveryEquilibriumExtension.lean) supplies all of them
 internally from the intended SE, preserving the full original initialized
 history law and typed-readout/payoff joint.
 
-`Vegas/Game/CommitRecoverySuccessProbability.lean` derives source success loss
+[`Vegas/Game/CommitRecoverySuccessProbability.lean`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/CommitRecoverySuccessProbability.lean) derives source success loss
 at most |Players| T (alpha+beta), using the same zero-failure domain law and
 existing supported-choice domination. The actual belief consumer in
-`Vegas/Game/CommitRecoverySuccessBelief.lean` retains the original information
+[`Vegas/Game/CommitRecoverySuccessBelief.lean`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/CommitRecoverySuccessBelief.lean) retains the original information
 history, stopped boundary and full terminal history jointly. Its payoff error
 is at most twice the terminal bound times that loss. The original domain
-law's convergence is derived in `Vegas/Game/CommitRecoverySuccessLimit.lean`.
-`Vegas/Game/CommitRecoveryPooledSuccessLimit.lean` obtains vanishing conditional-D
+law's convergence is derived in [`Vegas/Game/CommitRecoverySuccessLimit.lean`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/CommitRecoverySuccessLimit.lean).
+[`Vegas/Game/CommitRecoveryPooledSuccessLimit.lean`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/CommitRecoveryPooledSuccessLimit.lean) obtains vanishing conditional-D
 regret for the same selected domain law, uniformly over its finite pure menu.
 No equality of the pre- and post-conditioning information-history laws is used.
 
@@ -3257,7 +3257,7 @@ surviving player's existing validity predicate in current and saved states
 through actual recovery and close, with arbitrary foreign actions. Its
 current guard-satisfiability hypothesis is explicit; it does not derive
 all-reachable viability from intended-only setup well-formedness.
-`Vegas.phaseCountServiceTapePolicy_foreign_survivors_law` compares the actual
+[`Vegas.phaseCountServiceTapePolicy_foreign_survivors_law`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/PhaseCountServiceSurvival.lean#L73) compares the actual
 first-exit survivor-vector laws under arbitrary focal policies with the same
 supported original zero-RAW timing table and foreign seeds. This supplies
 proper-reference scalar survival. `Vegas/Game/PhaseCountServiceGood.lean` gives
@@ -3271,9 +3271,9 @@ original stopped runner, including pre-entry declarations and archived restore.
 Its initialized timing-posterior consumer retains every original timing table.
 The domain draw remains fixed, so this is not the full native/source
 conditional transport. The timing-only full native information-fiber posterior
-is checked in `Vegas/Game/PhaseCountServiceTableNative.lean`,
+is checked in [`Vegas/Game/PhaseCountServiceTableNative.lean`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/PhaseCountServiceTableNative.lean),
 retaining the original updated remainder, with its literal normalized physical
-marginal in `Vegas/Game/PhaseCountServiceTableActual.lean`. It does not imply
+marginal in [`Vegas/Game/PhaseCountServiceTableActual.lean`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/PhaseCountServiceTableActual.lean). It does not imply
 source-query locality or a product after future-success conditioning.
 `Vegas.compiled_reveal_public_exclusions` reads the source public exclusion
 update from the actual immutable native publication at its original compiled

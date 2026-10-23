@@ -14,8 +14,8 @@ This analysis does not change the asynchronous target, checklist, or semantics.
 ## What already applies to the runtime
 
 The checked theorem
-`SourceServiceSpec.audited_raw_sequentialEquilibrium_preserved` in
-[SourceServiceCompilation](../Vegas/Game/SourceServiceCompilation.lean) starts
+[`SourceServiceSpec.audited_raw_sequentialEquilibrium_preserved`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceCompilation.lean#L67) in
+[SourceServiceCompilation](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceCompilation.lean) starts
 with an arbitrary SE of the original full source game. It concludes existence
 of an SE of the bounded raw native runtime with the same joint terminal law of
 the typed source outcome and realized payoff. It chooses the service, backend,
@@ -33,8 +33,8 @@ The phase-ending inclusion instruction is a guaranteed service operation, not
 a probabilistic promise of eventual L1 inclusion.
 
 The genuine extension beyond that service is also partly checked.
-`AsyncServiceSpec.risk_sequentialEquilibrium_extends` in
-[SourceServiceRiskExtension](../Vegas/Game/SourceServiceRiskExtension.lean)
+[`AsyncServiceSpec.risk_sequentialEquilibrium_extends`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceRiskExtension.lean#L193) in
+[SourceServiceRiskExtension](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceRiskExtension.lean)
 extends an SE of the actual asynchronous risk menu into the effective raw
 runtime. Its audit estimates use actual runtime evidence and the stipulated
 delivery service. Its comparators can settle a fresh lawful call under the
@@ -140,8 +140,8 @@ and their effect on source consistency sequences must be proved separately.
 
 For source information set I, a native site generally contains extra traffic,
 clock, and activation history. The existing theorem
-`SourcePrefixCheckpoint.source_view_eq_of_observe_eq` in
-[SourceServicePrefixInformation](../Vegas/Game/SourceServicePrefixInformation.lean)
+[`SourcePrefixCheckpoint.source_view_eq_of_observe_eq`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServicePrefixInformation.lean#L28) in
+[SourceServicePrefixInformation](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServicePrefixInformation.lean)
 proves that native information determines the source view. It does not prove
 that the extra observation has the same likelihood across hidden histories in I.
 That latter fact is needed for transporting off-path Bayes limits.
@@ -186,7 +186,7 @@ Several primitive pieces already exist and should be reused:
 - [SourceServiceAsyncTimeliness](../Vegas/Game/SourceServiceAsyncTimeliness.lean)
   proves settlement of a fresh acceptable protected call under the actual
   asynchronous contract against arbitrary other responses.
-- [SourceServiceRiskExtension](../Vegas/Game/SourceServiceRiskExtension.lean)
+- [SourceServiceRiskExtension](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceRiskExtension.lean)
   already performs the risk-menu-to-raw equilibrium extension. Its evidence
   collection and completion should be instantiated, not replaced by an assumed
   equilibrium or by assumed posterior equality.
@@ -197,7 +197,7 @@ prefix factorization or a source-to-risk-menu assessment construction under
 explicit controller premises.
 
 The concrete
-[CommittedResolutionReadout](../Vegas/Examples/CommittedResolutionReadout.lean)
+[CommittedResolutionReadout](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommittedResolutionReadout.lean)
 leaf supplies a further checked operational comparator ingredient. At every
 legal RAW history, for any observation-local scheduler and horizon, Bob's
 initialized binding retains its accepted handle and TRUE meaning. Every
@@ -208,14 +208,14 @@ They permit arbitrary alias submissions and preparations; they do not assert
 that publication succeeds or that an equilibrium preserves the source law.
 
 The subsequent
-[CommittedResolutionBobService](../Vegas/Examples/CommittedResolutionBobService.lean)
+[CommittedResolutionBobService](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommittedResolutionBobService.lean)
 leaf checks a successful continuation comparator on the actual recovery
 controller. After every legal RAW prefix at Bob's activation, his canonical
 TRUE response is accepted by the actual next scheduler round with probability
 one. It yields the TRUE publication, an accepting receipt, and a permitted
 packet verdict. Earlier Alice choices are unrestricted. An accepted packet
 remains permitted at every later settled record retaining that receipt.
-The owning fixture's `bob_activation_phase` supplies the ready, timely phase
+The owning fixture's [`bob_activation_phase`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommittedResolutionService.lean#L1585) supplies the ready, timely phase
 fact from its existing all-history scheduling proof. This is a concrete
 ingredient for proving that every target SE selects Bob's successful logical
 publication when his failure forfeit dominates the base payoff range. The
@@ -294,7 +294,7 @@ when that value is subsequently part of the successful source observation.
 
 These bounds, the common-continuation strict ranking, and existence of a
 uniform finite reliability-gap forfeit are checked in
-[DisclosureReliability](../GameTheoryExtensions/Analysis/DisclosureReliability.lean).
+[DisclosureReliability](https://github.com/elazarg/VegasCore/blob/research-tree/GameTheoryExtensions/Analysis/DisclosureReliability.lean).
 They identify a promising route to a general proof, but their continuation
 hypotheses are substantive. Several
 attempts, recovery, and previously incurred forfeits can create different

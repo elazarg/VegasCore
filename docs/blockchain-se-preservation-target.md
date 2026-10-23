@@ -149,8 +149,8 @@ failure of all usable routes, not independent failure of one route that the
 player can bypass. This is a mathematical lemma conditional on the operational
 hypothesis, not a property inferred from blockchain consensus.
 The product bound and its instantiation in the existing reactive-round runtime
-are checked in [Survival](../GameTheoryExtensions/Math/Probability/Survival.lean)
-and [ReactiveSurvival](../Interaction/ReactiveSurvival.lean). Their pointwise
+are checked in [Survival](https://github.com/elazarg/VegasCore/blob/research-tree/GameTheoryExtensions/Math/Probability/Survival.lean)
+and [ReactiveSurvival](https://github.com/elazarg/VegasCore/blob/research-tree/Interaction/ReactiveSurvival.lean). Their pointwise
 premises range over complete execution states, so they suffice for adaptive
 recall-based policies without an independence assumption.
 Such a bound can be exponentially small in N. It proves existence of a finite

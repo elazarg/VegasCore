@@ -263,7 +263,7 @@ outcome to that guessing continuation. Hence the same preservation
 contradiction has a paper extension to this finite polling comparison
 game. The primitive payoff difference, opposite preferences, polling
 advantage and strong last-send bound are checked in
-[ObservationAdvantage.lean](../Vegas/Examples/LateLeak/ObservationAdvantage.lean),
+[ObservationAdvantage.lean](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateLeak/ObservationAdvantage.lean),
 whose targeted warning-strict build passes. The algebra and success-path
 consistency mechanism are explicit, but the extended polling game and its
 complete SE impossibility theorem have not been formalized in Lean. The

@@ -1049,7 +1049,7 @@ ordinary block pair law B_q. Inside COMMIT there is no sample or PUB. An owner's
 updated query depends only on fixed entry/public data and that owner's prior
 word. `CommitPrefix.prefixLaw_histories_product`/`prefixLaw_views_product` give
 the product of sequential owner marginals L_o; use the SAME structural ordinary
-Attempt coupling and `prefixLaw_history_prefix_product` for the issued prefixes.
+Attempt coupling and [`prefixLaw_history_prefix_product`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Source/CommitPrefixConditioning.lean#L23) for the issued prefixes.
 Inherited excluded owners have deterministic mass one.
 
 For owner o's issued prefix x_1,...,x_r, summing its unissued tail backwards in

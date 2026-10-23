@@ -81,8 +81,8 @@ an explicitly applied forfeit, remain part of the utility being preserved.
 
 The prescribed reactive policies also preserve the exact joint law of the
 original initial source state and the decoded complete terminal source state.
-`Vegas.source_prescribed_terminal_joint_law` in
-[SourceServiceReactiveLaw.lean](../../Vegas/Game/SourceServiceReactiveLaw.lean)
+[`Vegas.source_prescribed_terminal_joint_law`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceReactiveLaw.lean#L123) in
+[SourceServiceReactiveLaw.lean](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceReactiveLaw.lean)
 proves this for finite players under `AsyncContract` and `AsyncTimely`, in
 sequential and concurrent-binding modes for arbitrary source profiles, and
 concurrent-reveal mode for `Disclosing` source profiles. It derives the actual
@@ -90,9 +90,9 @@ execution, recall, sampling and expiry invariants internally. Relaxed reveal
 ordering suffices for the operational frontier laws; actual kernel independence
 is derived from mandatory disclosure for the source-law composition. The original private draw is sampled
 once and remains correlated with the final state. For the same prescribed
-policies, mode-specific disclosure condition and service assumptions, `Vegas.source_prescribed_initialized_audit_clear`
-and `Vegas.source_prescribed_terminal_settlement_law` in
-[SourceServiceReactiveAudit.lean](../../Vegas/Game/SourceServiceReactiveAudit.lean)
+policies, mode-specific disclosure condition and service assumptions, [`Vegas.source_prescribed_initialized_audit_clear`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceReactiveAudit.lean#L638)
+and [`Vegas.source_prescribed_terminal_settlement_law`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceReactiveAudit.lean#L710) in
+[SourceServiceReactiveAudit.lean](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceReactiveAudit.lean)
 prove zero standard audit charge at every initialized supported prefix and
 the exact joint initial-state, final-state and realized net-payoff law.
 These results allow every authentic settled-evidence sampler and arbitrary
@@ -114,8 +114,8 @@ above permits pending-packet observations. The checked native SE counterexample
 uses the partially public observations specified in its own model.
 
 For the ideal compiled graph, mandatory disclosure supplies a stronger scheduling
-result. `Vegas.runPolicies_mode_disclosing_joint_source_law` in
-[EventGraphDisclosurePolicy](../../Vegas/Compile/EventGraphDisclosurePolicy.lean)
+result. [`Vegas.runPolicies_mode_disclosing_joint_source_law`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Compile/EventGraphDisclosurePolicy.lean#L119) in
+[EventGraphDisclosurePolicy](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Compile/EventGraphDisclosurePolicy.lean)
 proves equality of the joint initial source state and decoded final source state
 with the genuine source law under every execution mode and every adaptive public
 graph scheduler. Its hypothesis is the existing source `Disclosing` predicate;
@@ -134,18 +134,18 @@ the unrestricted value-only profile; it does not refute the mandatory-disclosure
 fragment or establish an equilibrium obstruction.
 
 Actual first source responses under arbitrary raw opponents are checked in
-[ReactiveSourceFirstOpportunity](../../Vegas/Game/ReactiveSourceFirstOpportunity.lean).
+[ReactiveSourceFirstOpportunity](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/ReactiveSourceFirstOpportunity.lean).
 At an initialized supported checkpoint agreeing with the source state, the
 owner's first callback uses the posterior average of the original source commit
 or reveal kernel, retaining original own recall and its posterior correlations.
-[ReactiveFirstOpportunity](../../Vegas/Pending/ReactiveFirstOpportunity.lean)
+[ReactiveFirstOpportunity](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/ReactiveFirstOpportunity.lean)
 derives freshness before that callback and silence after a recorded turn from
 actual retained intention memory. The source checkpoint and first-opportunity
 conditions remain explicit.
-[ReactiveRecordedOpportunity](../../Vegas/Pending/ReactiveRecordedOpportunity.lean)
+[ReactiveRecordedOpportunity](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/ReactiveRecordedOpportunity.lean)
 also derives repeated-turn silence directly from actual legal raw trace recall,
 without a separately supplied callback-identity premise.
-[SourceServiceRawCompletionBoundary](../../Vegas/Game/SourceServiceRawCompletionBoundary.lean)
+[SourceServiceRawCompletionBoundary](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceRawCompletionBoundary.lean)
 proves actual bounded advance to the next source-event completion boundary under
 arbitrary raw player policies and the existing `CompletesPlay` contract. A complete
 unilateral-deviation law still needs source-checkpoint and recall coupling and
@@ -163,12 +163,12 @@ SE theorem with the native runtime's checked decision recall and finite-history
 laws; it does not replace native histories with a comparison game.
 
 The general pin is
-`Interaction.ReactiveApplication.ResponseMenu.exists_sequentialEquilibrium` in
-[ReactiveEquilibriumExistence.lean](../../Interaction/ReactiveEquilibriumExistence.lean).
+[`Interaction.ReactiveApplication.ResponseMenu.exists_sequentialEquilibrium`](https://github.com/elazarg/VegasCore/blob/research-tree/Interaction/ReactiveEquilibriumExistence.lean#L27) in
+[ReactiveEquilibriumExistence.lean](https://github.com/elazarg/VegasCore/blob/research-tree/Interaction/ReactiveEquilibriumExistence.lean).
 For the actual partially public three-instruction service described below,
-`Vegas.Examples.LateOpeningRuntimeEquilibrium.exists_sequential_equilibrium`
+[`Vegas.Examples.LateOpeningRuntimeEquilibrium.exists_sequential_equilibrium`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeEquilibrium.lean#L35)
 in
-[LateOpeningRuntimeEquilibrium.lean](../../Vegas/Examples/LateOpeningRuntimeEquilibrium.lean)
+[LateOpeningRuntimeEquilibrium.lean](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeEquilibrium.lean)
 gives an SE for every finite nonnegative lottery weight and every choice of
 real-valued reward, forfeit, deposits and audit sampler. These parameters need
 no signs or margins for existence in a finite game.
@@ -241,7 +241,7 @@ in
 
 This instantiates the existing general intended-to-source theorem with
 value-only binding admission. The checked generic
-[value-admission extension](../../Vegas/Game/ValueAdmissionPreservation.lean)
+[value-admission extension](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/ValueAdmissionPreservation.lean)
 extends every value-only source SE to arbitrary sitewise commitment admission,
 with finite players, finite binding types and finite initial law. It preserves
 copied strategies, retained-site beliefs and the full terminal-history law for
@@ -251,10 +251,10 @@ or zero-failure premise. Its concrete instantiation extends
 every real `D`, preserving the joint terminal-store and payoff law.
 
 The complete-interface pins are
-`Vegas.Examples.LateOpeningRuntimeSource.withholding_equilibrium_preserved_under_forfeiture`,
+[`Vegas.Examples.LateOpeningRuntimeSource.withholding_equilibrium_preserved_under_forfeiture`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeSourceForfeiture.lean#L46),
 `.intended_equilibrium_preserved_under_forfeiture` and
 `.exists_forfeiting_equilibrium_with_safe_law` in
-[SourceForfeiture](../../Vegas/Examples/LateOpeningRuntimeSourceForfeiture.lean).
+[SourceForfeiture](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeSourceForfeiture.lean).
 The intended composition and Safe-law existence use `R>=0,D>=R,D>=1`.
 These extensions do not classify every full-source SE or imply preservation
 through asynchronous delivery.
@@ -262,8 +262,8 @@ The native obstruction is therefore not explained merely by comparing a
 failure-free source with a failure-aware runtime.
 
 The generic recovery kernel now also retains arbitrary later callbacks.
-`Vegas.EventGraphRuntime.recoverReactivePolicy_ready_callback_comparison` in
-[ReactiveRecoveryContinuation](../../Vegas/Pending/ReactiveRecoveryContinuation.lean)
+[`Vegas.EventGraphRuntime.recoverReactivePolicy_ready_callback_comparison`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/ReactiveRecoveryContinuation.lean#L111) in
+[ReactiveRecoveryContinuation](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/ReactiveRecoveryContinuation.lean)
 compares the actual recovered response with any posterior-dependent source-action
 lottery at one ready callback. Every opponent policy and the incumbent recovery
 policy remain in the full future native execution. The comparison assumes that
@@ -272,7 +272,7 @@ source actions maximize them; global integrability of the two compared laws
 suffices. The existing final-callback comparison is derived by actual future
 policy independence. Unrestricted exact off-path source-value correspondence
 is refuted by
-[LateOpeningRuntimeRecoveryValue](../../Vegas/Examples/LateOpeningRuntimeRecoveryValue.lean).
+[LateOpeningRuntimeRecoveryValue](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeRecoveryValue.lean).
 At a genuine legal, ready, timely late callback under the unchanged service,
 Alice's literal compiled proper opening against fixed SafeBob has the
 net-payoff law under full audit paying `R/2` with probability `q` and `-D-K_A` with
@@ -305,9 +305,9 @@ checked quantitative statement is
 > gained by choosing the canonical opening.
 
 The pin is
-`Vegas.Examples.CommittedResolutionBobIncentive.canonical_bob_response_regret`
+[`Vegas.Examples.CommittedResolutionBobIncentive.canonical_bob_response_regret`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommittedResolutionBobIncentive.lean#L301)
 in
-[CommittedResolutionBobIncentive.lean](../../Vegas/Examples/CommittedResolutionBobIncentive.lean).
+[CommittedResolutionBobIncentive.lean](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommittedResolutionBobIncentive.lean).
 It even allows the alternative to depend on the hidden history, which
 includes all information-feasible responses. With a strictly positive gap,
 an epsilon-optimal response consequently fails with probability at most
@@ -327,7 +327,7 @@ canonical opening after its guaranteed inclusion window has closed but before
 its acceptance deadline. The existing runtime accepts that opening if the
 builder includes it.
 
-[CommittedResolutionReliability.lean](../../Vegas/Examples/CommittedResolutionReliability.lean)
+[CommittedResolutionReliability.lean](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommittedResolutionReliability.lean)
 constructs a public builder for every chosen inclusion probability between
 zero and one. Changing that lottery preserves the original contract over
 **every legal raw history**. From a supported initialized state, Alice's
@@ -339,7 +339,7 @@ responses and commands.
 Consequently, for every proposed positive uniform failure floor, a checked
 contract builder gives this late opening a smaller probability of final
 nonacceptance. The pin is
-`Vegas.Examples.CommittedResolutionReliability.exists_contract_below_failure_floor`.
+[`Vegas.Examples.CommittedResolutionReliability.exists_contract_below_failure_floor`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommittedResolutionReliability.lean#L205).
 This concerns late inclusion, not whole-game reliability or SE preservation.
 For stochastic `q < 1`, this family has no checked late-packet
 erasure-independence property.
@@ -351,9 +351,9 @@ opening is sent outside the protected window and has acceptance probability
 one, both after six rounds and at the full terminal horizon. Thus **even
 those two conditions together imply no positive uniform late-failure
 floor**. The pin is
-`Vegas.Examples.CommittedResolutionErasure.certain_late_inclusion_with_joint_contract`
+[`Vegas.Examples.CommittedResolutionErasure.certain_late_inclusion_with_joint_contract`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommittedResolutionErasure.lean#L69)
 in
-[CommittedResolutionErasure.lean](../../Vegas/Examples/CommittedResolutionErasure.lean).
+[CommittedResolutionErasure.lean](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/CommittedResolutionErasure.lean).
 This is an operational theorem; it is not an SE counterexample and does not
 supply a nondegenerate stochastic builder.
 
@@ -366,9 +366,9 @@ policies and schedulers**. The actual terminal acceptance is therefore at
 least `q`. For every positive proposed failure floor, some finite weight
 gives smaller final nonacceptance, for every supported Boolean and private
 label and both late timings. The pin is
-`Vegas.Examples.LateOpeningRuntimeReliability.exists_joint_service_below_failure_floor`
+[`Vegas.Examples.LateOpeningRuntimeReliability.exists_joint_service_below_failure_floor`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeReliability.lean#L171)
 in
-[LateOpeningRuntimeReliability.lean](../../Vegas/Examples/LateOpeningRuntimeReliability.lean).
+[LateOpeningRuntimeReliability.lean](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeReliability.lean).
 The same file checks that each actual sending decision is outside its
 protected window. Its exact probability is the nine-command lottery law;
 arbitrary later schedulers give a one-sided continuation bound. With this
@@ -376,9 +376,9 @@ actual builder unchanged, later raw policies preserve **exactly** the
 Bernoulli receipt law, since it never includes another Alice identifier after
 the lottery. Thus its full-horizon acceptance is exactly `q` and its final
 nonacceptance is strictly positive `1-q` for every finite weight. This stronger
-law is `Vegas.Examples.LateOpeningRuntimeTerminalReceipt.terminal_receipt_law`
+law is [`Vegas.Examples.LateOpeningRuntimeTerminalReceipt.terminal_receipt_law`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeTerminalReceipt.lean#L179)
 in
-[LateOpeningRuntimeTerminalReceipt.lean](../../Vegas/Examples/LateOpeningRuntimeTerminalReceipt.lean).
+[LateOpeningRuntimeTerminalReceipt.lean](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeTerminalReceipt.lean).
 None of these claims assumes sequential rationality or supplies the native SE negative.
 
 ## Public lotteries can satisfy erasure independence
@@ -402,8 +402,8 @@ weight `w = q/(1-q)`. Two distinct identifiers then each receive `q/(1+q)`.
 See [PendingOutsideSelection.lean](../../Interaction/PendingOutsideSelection.lean),
 [PendingErasureSelection.lean](../../Interaction/PendingErasureSelection.lean),
 and the actual runtime pin
-`Vegas.EventGraphRuntime.blindToLatePackets_pendingLottery` in
-[ReactiveLateLottery.lean](../../Vegas/Pending/ReactiveLateLottery.lean).
+[`Vegas.EventGraphRuntime.blindToLatePackets_pendingLottery`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/ReactiveLateLottery.lean#L25) in
+[ReactiveLateLottery.lean](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/ReactiveLateLottery.lean).
 
 This lottery alone gives no protected activation, receipt or completion
 guarantee. The stochastic service-contract family above and this generic
@@ -415,7 +415,7 @@ supplies another checked conjunction.
 The generic priority-selection adapter in
 [ReactivePriorityErasure.lean](../../Interaction/ReactivePriorityErasure.lean)
 and its runtime instantiation in
-[ReactiveLatestErasure.lean](../../Vegas/Pending/ReactiveLatestErasure.lean)
+[ReactiveLatestErasure.lean](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/ReactiveLatestErasure.lean)
 prove that deterministic last-eligible selection is erasure-independent:
 either it selects the removed identifier or restoration gives the same
 retained choice. This holds for arbitrary public inputs, including duplicate
@@ -452,7 +452,7 @@ foreign pending identifiers. Each subset of its foreign pool has probability
 missed with probability one half. The sampling law reads identifiers and
 authors, not packet contents; passive learning retains received certificates.
 These exact probability laws are checked in
-[LateOpeningRuntimeObservation.lean](../../Vegas/Examples/LateOpeningRuntimeObservation.lean).
+[LateOpeningRuntimeObservation.lean](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeObservation.lean).
 
 The same scheduler satisfies the all-input erasure condition for every
 finite nonnegative lottery weight:
@@ -495,7 +495,7 @@ source profile. Both are in
 The late-send policies are actual members of the full bounded raw menu.
 Their initialized prefixes and Bob's complete remembered response records
 are evaluated in
-[LateOpeningRuntimeLatePrefix.lean](../../Vegas/Examples/LateOpeningRuntimeLatePrefix.lean).
+[LateOpeningRuntimeLatePrefix.lean](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeLatePrefix.lean).
 Sending at the first late turn gives exactly a half-seen, half-missed record
 law. Waiting until the second gives the same missed record with probability
 one. Neither record reveals Alice's private preference. Each branch has an
@@ -504,17 +504,17 @@ After accepted inclusion, Bob's **entire recall and current view** still
 agree between the first-send-missed and second-send cases, for any private
 labels. They also agree across labels when the first-send packet was observed.
 See
-[LateOpeningRuntimeLateAcceptance.lean](../../Vegas/Examples/LateOpeningRuntimeLateAcceptance.lean).
+[LateOpeningRuntimeLateAcceptance.lean](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeLateAcceptance.lean).
 For positive lottery weight, every possible branch reaches an actual active
 Bob decision in the complete bounded raw game:
-`Vegas.Examples.LateOpeningRuntimeLateHistories.answerDecision_trace` in
-[LateOpeningRuntimeLateHistories.lean](../../Vegas/Examples/LateOpeningRuntimeLateHistories.lean).
+[`Vegas.Examples.LateOpeningRuntimeLateHistories.answerDecision_trace`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeLateHistories.lean#L81) in
+[LateOpeningRuntimeLateHistories.lean](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeLateHistories.lean).
 At any raw history matching Bob's complete remembered silent response, no
 Bob-authored packet exists in pending, settled, leaked or recorded input
 traffic. Any ready Bob answer-binding decision at clock three occurs at the
 same callback with fourteen commands left. These full-history restrictions
 are checked in
-[LateOpeningRuntimeFiberEvidence.lean](../../Vegas/Examples/LateOpeningRuntimeFiberEvidence.lean).
+[LateOpeningRuntimeFiberEvidence.lean](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeFiberEvidence.lean).
 They do not exclude unseen later Alice packets or give a complete posterior.
 Identifier zero does exclude every **earlier** emission, including malformed
 packets: actual remembered output identifiers are precisely their allocated
@@ -541,8 +541,8 @@ At most one accepting identifier per source event is possible in **any** raw
 execution, for arbitrary initialization and scheduling. Accepting receipts
 also certify the event's authenticated owner and permanent completion. These
 are checked in
-[ReactiveAcceptanceUniqueness.lean](../../Vegas/Pending/ReactiveAcceptanceUniqueness.lean),
-with the pin `Vegas.EventGraphRuntime.accepting_identifiers_unique`.
+[ReactiveAcceptanceUniqueness.lean](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/ReactiveAcceptanceUniqueness.lean),
+with the pin [`Vegas.EventGraphRuntime.accepting_identifiers_unique`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/ReactiveAcceptanceUniqueness.lean#L259).
 
 A retry has a concrete audit consequence. Alice owns one publication event,
 so two distinct Alice submissions cannot both be accepted. At settlement,
@@ -552,9 +552,9 @@ coverage rate; full traffic auditing collects with certainty. If Alice's gross
 reward is at most `R`, her realized payoff after two distinct submissions is
 at most `R - K_A`, where `K_A` is her audit deposit. This holds under every raw
 continuation, rather than assuming that she retries a canonical packet. See
-`Vegas.Examples.LateOpeningRuntimeRetryAudit.alice_two_envelopes_utility_bound`
+[`Vegas.Examples.LateOpeningRuntimeRetryAudit.alice_two_envelopes_utility_bound`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeRetryAudit.lean#L224)
 in
-[LateOpeningRuntimeRetryAudit.lean](../../Vegas/Examples/LateOpeningRuntimeRetryAudit.lean).
+[LateOpeningRuntimeRetryAudit.lean](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeRetryAudit.lean).
 Silence can still leave the first packet unaccepted and incur both forfeit
 and audit collection. The actual remaining eighteen-command continuation
 after a genuine first late opening nevertheless gives a conservative bound:
@@ -567,9 +567,9 @@ silence strictly beats every second submission when
 `(1-q)(D+K_A) < K_A-R`.
 
 The checked pin is
-`Vegas.Examples.LateOpeningRuntimeAliceContinuation.quiet_strictly_beats_second_packet`
+[`Vegas.Examples.LateOpeningRuntimeAliceContinuation.quiet_strictly_beats_second_packet`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeAliceContinuation.lean#L436)
 in
-[LateOpeningRuntimeAliceContinuation.lean](../../Vegas/Examples/LateOpeningRuntimeAliceContinuation.lean).
+[LateOpeningRuntimeAliceContinuation.lean](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeAliceContinuation.lean).
 This canonical-prefix comparison has also been extended to Alice's complete
 actual information classes, as described below. Its deposit threshold is
 more conservative than the reviewed paper counterexample's threshold.
@@ -583,7 +583,7 @@ policies, and makes silence strictly superior for
 every bit, preference label, possible early sample and second raw submission.
 Both policy continuations remain arbitrary. This collateral-before-builder
 existential is
-`Vegas.Examples.LateOpeningRuntimeAliceContinuation.exists_service_with_quiet_normalization`.
+[`Vegas.Examples.LateOpeningRuntimeAliceContinuation.exists_service_with_quiet_normalization`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeAliceContinuation.lean#L506).
 
 Alice's remaining decision now has a checked native SE consequence. Suppose
 one actual history has her genuine first opening pending, no earlier public
@@ -607,13 +607,13 @@ of a second packet at these information sets when `Gamma>0`**. Sequential
 rationality alone suffices; there is no posterior-support assumption or
 consistency premise in this local implication. A genuine deviation gain at
 most epsilon gives send probability at most `epsilon/Gamma`. The pins are
-`Vegas.Examples.LateOpeningRuntimeAliceRationality.equilibrium_second_packet_zero`
+[`Vegas.Examples.LateOpeningRuntimeAliceRationality.equilibrium_second_packet_zero`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeAliceRationality.lean#L370)
 and
-`Vegas.Examples.LateOpeningRuntimeAliceRationality.second_packet_le_of_deviation_regret`
-in [LateOpeningRuntimeAliceRationality.lean](../../Vegas/Examples/LateOpeningRuntimeAliceRationality.lean).
+[`Vegas.Examples.LateOpeningRuntimeAliceRationality.second_packet_le_of_deviation_regret`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeAliceRationality.lean#L393)
+in [LateOpeningRuntimeAliceRationality.lean](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeAliceRationality.lean).
 The class is inhabited for every bit, private preference label and possible
 early sample, by the actual bounded trace in
-[LateOpeningRuntimeAliceWitness.lean](../../Vegas/Examples/LateOpeningRuntimeAliceWitness.lean).
+[LateOpeningRuntimeAliceWitness.lean](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeAliceWitness.lean).
 
 Finite native information classes also give a uniform vanishing retry bound
 along every strategy sequence converging to silence at these sites. Summing
@@ -622,10 +622,10 @@ over arbitrary private aliases preserves a bound of the form
 The first-opening mass may itself tend to zero at any rate. This is the
 relative control needed for beliefs at unreached decisions; an absolute
 error bound would not suffice. The checked quantitative adapter is
-`Vegas.Examples.LateOpeningRuntimeAliceTremble.weighted_retry_ratio_tendsto`
-in [LateOpeningRuntimeAliceTremble.lean](../../Vegas/Examples/LateOpeningRuntimeAliceTremble.lean).
+[`Vegas.Examples.LateOpeningRuntimeAliceTremble.weighted_retry_ratio_tendsto`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeAliceTremble.lean#L126)
+in [LateOpeningRuntimeAliceTremble.lean](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeAliceTremble.lean).
 Its direct SE instance,
-`Vegas.Examples.LateOpeningRuntimeAliceTremble.equilibrium_consistency_retry_bound`,
+[`Vegas.Examples.LateOpeningRuntimeAliceTremble.equilibrium_consistency_retry_bound`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeAliceTremble.lean#L179),
 extracts the actual fully mixed Bayes consistency sequence from the native SE
 and supplies this uniform bound using its convergence at reachable Alice
 information sites. No tremble rate is chosen by the proof. It does not yet
@@ -638,8 +638,8 @@ failure. The lottery's outside option has positive probability for every
 finite public weight, even with arbitrary extra pending packets. Consequently
 certain terminal Alice success forces protected acceptance, including for
 every profile in the actual bounded behavioral game. The pin is
-`Vegas.Examples.LateOpeningRuntimeProtectedReceipt.native_almost_sure_success_protected_receipt_law`
-in [LateOpeningRuntimeProtectedReceipt.lean](../../Vegas/Examples/LateOpeningRuntimeProtectedReceipt.lean).
+[`Vegas.Examples.LateOpeningRuntimeProtectedReceipt.native_almost_sure_success_protected_receipt_law`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeProtectedReceipt.lean#L184)
+in [LateOpeningRuntimeProtectedReceipt.lean](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeProtectedReceipt.lean).
 This is a necessary condition on a preserving profile, not SE exclusion.
 
 If Bob sends any raw packet while Alice's publication is unresolved, the
@@ -648,8 +648,8 @@ packet addressed to Alice's ready event fails the authenticated-owner check.
 The early service records the false receipt permanently, and full terminal
 auditing collects Bob's deposit. Every later raw policy therefore gives him
 payoff at most `1-K_B`, for nonnegative forfeit and deposit. The pin is
-`Vegas.Examples.LateOpeningRuntimeEarlyBobAudit.early_submission_continuation_utility_bound`
-in [LateOpeningRuntimeEarlyBobAudit.lean](../../Vegas/Examples/LateOpeningRuntimeEarlyBobAudit.lean).
+[`Vegas.Examples.LateOpeningRuntimeEarlyBobAudit.early_submission_continuation_utility_bound`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeEarlyBobAudit.lean#L198)
+in [LateOpeningRuntimeEarlyBobAudit.lean](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeEarlyBobAudit.lean).
 The payoff bound by itself does not establish early silence: a legal quiet
 continuation must publish Bob's answer against arbitrary future Alice behavior.
 The quiet prefix through Bob's binding opportunity is checked independently
@@ -658,10 +658,10 @@ and timely binding opportunity at clock three with no previous Bob emission,
 whether Alice's opening succeeded or expired. Canonical answer binding there
 is a legal bounded response, accepts immediately, and fixes a ready disclosure
 with clean earlier Bob traffic. The checked endpoints are
-`Vegas.Examples.LateOpeningRuntimeBobQuietPrefix.binding_activation` and
-`Vegas.Examples.LateOpeningRuntimeBobBindingService.binding_round` in
-[LateOpeningRuntimeBobQuietPrefix.lean](../../Vegas/Examples/LateOpeningRuntimeBobQuietPrefix.lean)
-and [LateOpeningRuntimeBobBindingService.lean](../../Vegas/Examples/LateOpeningRuntimeBobBindingService.lean).
+[`Vegas.Examples.LateOpeningRuntimeBobQuietPrefix.binding_activation`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeBobQuietPrefix.lean#L309) and
+[`Vegas.Examples.LateOpeningRuntimeBobBindingService.binding_round`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeBobBindingService.lean#L267) in
+[LateOpeningRuntimeBobQuietPrefix.lean](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeBobQuietPrefix.lean)
+and [LateOpeningRuntimeBobBindingService.lean](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeBobBindingService.lean).
 These two operational facts end at the accepting binding; the complete
 continuation requires its own publication and audit argument.
 
@@ -672,10 +672,10 @@ the optional callback ensures successful Safe publication and zero audit
 charge against arbitrary future Alice responses. This holds for any authentic
 sampler and arbitrary real reward, forfeit and deposits. Bob's payoff is
 nonnegative. The pins are
-`Vegas.Examples.LateOpeningRuntimeBobSafeContinuation.safe_continuation_clean`
+[`Vegas.Examples.LateOpeningRuntimeBobSafeContinuation.safe_continuation_clean`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeBobSafeContinuation.lean#L481)
 and
-`Vegas.Examples.LateOpeningRuntimeBobSafeContinuation.safe_continuation_nonnegative`
-in [LateOpeningRuntimeBobSafeContinuation.lean](../../Vegas/Examples/LateOpeningRuntimeBobSafeContinuation.lean).
+[`Vegas.Examples.LateOpeningRuntimeBobSafeContinuation.safe_continuation_nonnegative`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeBobSafeContinuation.lean#L565)
+in [LateOpeningRuntimeBobSafeContinuation.lean](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeBobSafeContinuation.lean).
 
 These are actual whole-policy deviations in Bob's full information set.
 With nonnegative forfeit and `K_B>1`, sequential rationality forces his
@@ -686,10 +686,10 @@ Safe continuation: the latter is worth at least zero, while any premature
 packet is worth at most `1-K_B`. If both attainable deviations have regret
 at most `epsilon`, premature-packet probability is at most
 `epsilon/(K_B-1)`. The pins are
-`Vegas.Examples.LateOpeningRuntimeEarlyBobRationality.equilibrium_early_response_law`
+[`Vegas.Examples.LateOpeningRuntimeEarlyBobRationality.equilibrium_early_response_law`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeEarlyBobRationality.lean#L198)
 and
-`Vegas.Examples.LateOpeningRuntimeEarlyBobRationality.early_packet_le_of_deviation_regrets`
-in [LateOpeningRuntimeEarlyBobRationality.lean](../../Vegas/Examples/LateOpeningRuntimeEarlyBobRationality.lean).
+[`Vegas.Examples.LateOpeningRuntimeEarlyBobRationality.early_packet_le_of_deviation_regrets`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeEarlyBobRationality.lean#L214)
+in [LateOpeningRuntimeEarlyBobRationality.lean](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeEarlyBobRationality.lean).
 No posterior, late-inclusion bound or restriction on Alice's later policy
 is assumed. This does not prohibit legitimate Bob commitments after Alice
 has already settled.
@@ -706,17 +706,17 @@ exactly one for the bit guess matching her initialized Boolean and zero for
 every other answer. This statement reads the bit only to evaluate hidden
 histories; it does not expose it to Bob's policy. The checked operational and
 payoff endpoints are
-`Vegas.Examples.LateOpeningRuntimeBobBindingInformation.decision_of_information`,
-`Vegas.Examples.LateOpeningRuntimeBobSafeContinuation.answer_continuation_clean`
+[`Vegas.Examples.LateOpeningRuntimeBobBindingInformation.decision_of_information`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeBobBindingInformation.lean#L115),
+[`Vegas.Examples.LateOpeningRuntimeBobSafeContinuation.answer_continuation_clean`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeBobSafeContinuation.lean#L395)
 and
-`Vegas.Examples.LateOpeningRuntimeBobAnswerPayoff.failed_answer_continuation_payoff`
-in [LateOpeningRuntimeBobBindingInformation.lean](../../Vegas/Examples/LateOpeningRuntimeBobBindingInformation.lean),
-[LateOpeningRuntimeBobSafeContinuation.lean](../../Vegas/Examples/LateOpeningRuntimeBobSafeContinuation.lean)
-and [LateOpeningRuntimeBobAnswerPayoff.lean](../../Vegas/Examples/LateOpeningRuntimeBobAnswerPayoff.lean).
+[`Vegas.Examples.LateOpeningRuntimeBobAnswerPayoff.failed_answer_continuation_payoff`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeBobAnswerPayoff.lean#L47)
+in [LateOpeningRuntimeBobBindingInformation.lean](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeBobBindingInformation.lean),
+[LateOpeningRuntimeBobSafeContinuation.lean](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeBobSafeContinuation.lean)
+and [LateOpeningRuntimeBobAnswerPayoff.lean](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeBobAnswerPayoff.lean).
 The class has actual bounded representatives retaining the specified
 initialized Boolean and private label:
-`Vegas.Examples.LateOpeningRuntimeBobBindingWitness.failed_binding_representative`
-in [LateOpeningRuntimeBobBindingWitness.lean](../../Vegas/Examples/LateOpeningRuntimeBobBindingWitness.lean).
+[`Vegas.Examples.LateOpeningRuntimeBobBindingWitness.failed_binding_representative`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeBobBindingWitness.lean#L33)
+in [LateOpeningRuntimeBobBindingWitness.lean](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeBobBindingWitness.lean).
 
 The corresponding native assessment-context values are also checked.
 The two fixed bit-guess policies have complementary values summing to one,
@@ -726,13 +726,13 @@ gives Bob incumbent continuation value at least `1/2` after Alice fails.
 These are legal whole-policy deviations with actual continuation laws, rather
 than an assumed payoff menu or posterior. No collateral or payoff-sign
 hypothesis is needed for this lower bound. The checked endpoints are
-`Vegas.Examples.LateOpeningRuntimeBobBindingDecision.answer_context_value`,
-`Vegas.Examples.LateOpeningRuntimeBobBindingDecision.exists_bit_guess_value_ge_half`
+[`Vegas.Examples.LateOpeningRuntimeBobBindingDecision.answer_context_value`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeBobBindingDecision.lean#L147),
+[`Vegas.Examples.LateOpeningRuntimeBobBindingDecision.exists_bit_guess_value_ge_half`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeBobBindingDecision.lean#L216)
 and
-`Vegas.Examples.LateOpeningRuntimeBobBindingDecision.equilibrium_binding_value_ge_half`
-in [LateOpeningRuntimeBobBindingDecision.lean](../../Vegas/Examples/LateOpeningRuntimeBobBindingDecision.lean).
+[`Vegas.Examples.LateOpeningRuntimeBobBindingDecision.equilibrium_binding_value_ge_half`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeBobBindingDecision.lean#L260)
+in [LateOpeningRuntimeBobBindingDecision.lean](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeBobBindingDecision.lean).
 The strengthened witness
-`Vegas.Examples.LateOpeningRuntimeBobBindingWitness.failed_binding_information_representative`
+[`Vegas.Examples.LateOpeningRuntimeBobBindingWitness.failed_binding_information_representative`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeBobBindingWitness.lean#L144)
 supplies an actual bounded information-site representative, so this condition
 is not vacuous. The witness preserves the exact initialization invariant;
 it does not supply the complete sampled-history grouping or its likelihoods.
@@ -745,8 +745,8 @@ or prepared private candidates. Those Bob packets already have public
 protected receipts and cannot remain pending. The same own-recall and view
 argument transports Alice's initialized binding, readiness and timeliness
 through her entire final information class. These are operational facts in
-[LateOpeningRuntimeAliceEmptyDecision.lean](../../Vegas/Examples/LateOpeningRuntimeAliceEmptyDecision.lean),
-including `Vegas.Examples.LateOpeningRuntimeAliceEmptyDecision.quiet_pending_empty`.
+[LateOpeningRuntimeAliceEmptyDecision.lean](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeAliceEmptyDecision.lean),
+including [`Vegas.Examples.LateOpeningRuntimeAliceEmptyDecision.quiet_pending_empty`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeAliceEmptyDecision.lean#L44).
 The corresponding actual equilibrium implication is also checked. At every
 such final information set, sequential rationality forces a genuine opening
 with probability one whenever
@@ -764,10 +764,10 @@ bounds that probability by `epsilon/Gamma_open`. This proves a local native
 SE consequence without a posterior or consistency assumption. It does not
 give certain inclusion: the genuine opening still fails with probability
 `1-q`. The pins are
-`Vegas.Examples.LateOpeningRuntimeAliceOpeningRationality.equilibrium_nongenuine_response_zero`
+[`Vegas.Examples.LateOpeningRuntimeAliceOpeningRationality.equilibrium_nongenuine_response_zero`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeAliceOpeningRationality.lean#L473)
 and
-`Vegas.Examples.LateOpeningRuntimeAliceOpeningRationality.nongenuine_le_of_deviation_regret`
-in [LateOpeningRuntimeAliceOpeningRationality.lean](../../Vegas/Examples/LateOpeningRuntimeAliceOpeningRationality.lean).
+[`Vegas.Examples.LateOpeningRuntimeAliceOpeningRationality.nongenuine_le_of_deviation_regret`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeAliceOpeningRationality.lean#L497)
+in [LateOpeningRuntimeAliceOpeningRationality.lean](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeAliceOpeningRationality.lean).
 
 Both last-Alice response laws can be forced by the **same admissible builder
 after collateral has been fixed**. For every `R>=0`, `D>R`, `K_A>R`, and any
@@ -778,14 +778,14 @@ below that bound, and makes both margins positive. Every sequentially rational
 assessment for that builder therefore opens after silence and stays silent
 after a genuine pending first opening, throughout the corresponding actual
 information sets. The pins are
-`Vegas.Examples.LateOpeningRuntimeAliceNormalization.equilibrium_last_responses`
+[`Vegas.Examples.LateOpeningRuntimeAliceNormalization.equilibrium_last_responses`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeAliceNormalization.lean#L36)
 and
-`Vegas.Examples.LateOpeningRuntimeAliceNormalization.exists_service_with_last_responses_normalized`
-in [LateOpeningRuntimeAliceNormalization.lean](../../Vegas/Examples/LateOpeningRuntimeAliceNormalization.lean).
+[`Vegas.Examples.LateOpeningRuntimeAliceNormalization.exists_service_with_last_responses_normalized`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeAliceNormalization.lean#L59)
+in [LateOpeningRuntimeAliceNormalization.lean](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeAliceNormalization.lean).
 The empty final-callback condition has actual bounded trace witnesses for
 every initialized bit and private label:
-`Vegas.Examples.LateOpeningRuntimeAliceEmptyWitness.secondLateDecision_trace`
-in [LateOpeningRuntimeAliceEmptyWitness.lean](../../Vegas/Examples/LateOpeningRuntimeAliceEmptyWitness.lean).
+[`Vegas.Examples.LateOpeningRuntimeAliceEmptyWitness.secondLateDecision_trace`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeAliceEmptyWitness.lean#L22)
+in [LateOpeningRuntimeAliceEmptyWitness.lean](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeAliceEmptyWitness.lean).
 This quantified result does not swap the collateral/builder order or assert
 that a source outcome is preserved or excluded.
 
@@ -799,10 +799,10 @@ opening whose raw handler accepted its identifier but whose certificate
 failed the audit's content condition. A receipt identifier alone would not
 authenticate a fabricated replacement envelope; the proof first identifies
 the exact emitted envelope with the ledger entry. The pins are
-`Vegas.Examples.LateOpeningRuntimeAliceOpeningAudit.permitted_alice_payload`
+[`Vegas.Examples.LateOpeningRuntimeAliceOpeningAudit.permitted_alice_payload`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeAliceOpeningAudit.lean#L153)
 and
-`Vegas.Examples.LateOpeningRuntimeAliceOpeningAudit.nongenuine_envelope_utility_bound`
-in [LateOpeningRuntimeAliceOpeningAudit.lean](../../Vegas/Examples/LateOpeningRuntimeAliceOpeningAudit.lean).
+[`Vegas.Examples.LateOpeningRuntimeAliceOpeningAudit.nongenuine_envelope_utility_bound`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeAliceOpeningAudit.lean#L261)
+in [LateOpeningRuntimeAliceOpeningAudit.lean](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeAliceOpeningAudit.lean).
 The underlying identity theorem is application- and scheduler-general:
 `Interaction.ReactiveApplication.traffic_envelope_eq_ledger_of_id_eq`
 in [ReactiveTrafficIdentity.lean](../../Interaction/ReactiveTrafficIdentity.lean).
@@ -819,9 +819,9 @@ raw response and every later policy, the expected gain from opening is at least
 `D` times the alternative's failure probability. The comparison does not require
 `D` to exceed the gross payoff range. Its chosen response uses only Bob's own
 remembered actions and current observation. The pins are
-`Vegas.Examples.LateOpeningRuntimeBobIncentive.canonical_dominates` and
-`Vegas.Examples.LateOpeningRuntimeBobIncentive.canonical_regret` in
-[LateOpeningRuntimeBobIncentive.lean](../../Vegas/Examples/LateOpeningRuntimeBobIncentive.lean).
+[`Vegas.Examples.LateOpeningRuntimeBobIncentive.canonical_dominates`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeBobIncentive.lean#L205) and
+[`Vegas.Examples.LateOpeningRuntimeBobIncentive.canonical_regret`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeBobIncentive.lean#L289) in
+[LateOpeningRuntimeBobIncentive.lean](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeBobIncentive.lean).
 Clean earlier traffic and a deadline that has not passed are substantive
 conditions, not conclusions about every off-path final callback. This is a
 native continuation comparison.
@@ -841,11 +841,11 @@ If the same genuine deviation improves payoff by at most epsilon, failure
 probability is at most `epsilon/D`.
 
 The pins are
-`Vegas.Examples.LateOpeningRuntimeBobRationality.equilibrium_final_failure_zero`
+[`Vegas.Examples.LateOpeningRuntimeBobRationality.equilibrium_final_failure_zero`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeBobRationality.lean#L241)
 and
-`Vegas.Examples.LateOpeningRuntimeBobRationality.final_failure_le_of_deviation_regret`
+[`Vegas.Examples.LateOpeningRuntimeBobRationality.final_failure_le_of_deviation_regret`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeBobRationality.lean#L263)
 in
-[LateOpeningRuntimeBobRationality.lean](../../Vegas/Examples/LateOpeningRuntimeBobRationality.lean).
+[LateOpeningRuntimeBobRationality.lean](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeBobRationality.lean).
 This is an actual-runtime SE consequence at a specified final information set.
 It does not establish sequential rationality at earlier decisions or global
 source SE preservation.
@@ -855,9 +855,9 @@ late sending time and possible early sample can reach a genuine bounded raw
 final Bob decision. Its answer was accepted at clock three, the optional
 opening callback was passed silently, and the final callback at clock six
 remains within the publication deadline. The checked witness and nonemptiness
-pins are `Vegas.Examples.LateOpeningRuntimeBobSuffix.finalDecision_trace` and
-`Vegas.Examples.LateOpeningRuntimeBobSuffix.final_disclosure_class_nonempty` in
-[LateOpeningRuntimeBobSuffix.lean](../../Vegas/Examples/LateOpeningRuntimeBobSuffix.lean).
+pins are [`Vegas.Examples.LateOpeningRuntimeBobSuffix.finalDecision_trace`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeBobSuffix.lean#L692) and
+[`Vegas.Examples.LateOpeningRuntimeBobSuffix.final_disclosure_class_nonempty`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeBobSuffix.lean#L720) in
+[LateOpeningRuntimeBobSuffix.lean](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeBobSuffix.lean).
 
 **This service is the target of the checked full-menu native SE counterexample.**
 Its information fibers, relative likelihood limits and exact sender timing
@@ -872,8 +872,8 @@ openings remain audit clean; deterring malformed traffic alone does not remove
 this timing choice.
 
 The common-service capstone is
-`Vegas.Examples.LateOpeningRuntimeEquilibriumConstraints.exists_service_with_constraints`
-in [LateOpeningRuntimeEquilibriumConstraints.lean](../../Vegas/Examples/LateOpeningRuntimeEquilibriumConstraints.lean).
+[`Vegas.Examples.LateOpeningRuntimeEquilibriumConstraints.exists_service_with_constraints`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeEquilibriumConstraints.lean#L329)
+in [LateOpeningRuntimeEquilibriumConstraints.lean](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeEquilibriumConstraints.lean).
 For every fixed `R>=0`, `D>R`, `K_A>R`, `K_B>1`, and any positive requested
 failure bound, it supplies one finite positive-weight builder satisfying the
 same actual raw-history contract and packet-erasure requirement. Both canonical
@@ -906,7 +906,7 @@ claim. This theorem keeps collateral before the builder and establishes
 nonvacuity, while leaving the choice between the two legitimate late sending
 times and consistent posterior calculations open.
 The stronger core
-`Vegas.Examples.LateOpeningRuntimeEquilibriumConstraints.sequentially_rational_constraints`
+[`Vegas.Examples.LateOpeningRuntimeEquilibriumConstraints.sequentially_rational_constraints`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeEquilibriumConstraints.lean#L206)
 needs only the existing native sequential-rationality condition. Bayes
 consistency and an SE consistency sequence are unnecessary for these five
 constraints. This is useful for assessing weaker equilibrium conventions too;
@@ -931,9 +931,9 @@ stores binding failure, and the later callback occurs after that settlement.
 The same raw current response fixes the same typed result throughout Bob's
 actual information class, because his recall and view determine its immediate
 physical service. These are checked in
-[BobRawBinding](../../Vegas/Examples/LateOpeningRuntimeBobRawBinding.lean),
-[BobBindingOmission](../../Vegas/Examples/LateOpeningRuntimeBobBindingOmission.lean)
-and [BobRawPayoff](../../Vegas/Examples/LateOpeningRuntimeBobRawPayoff.lean).
+[BobRawBinding](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeBobRawBinding.lean),
+[BobBindingOmission](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeBobBindingOmission.lean)
+and [BobRawPayoff](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeBobRawPayoff.lean).
 The payoff bound permits arbitrary audit sampling and only requires
 `D>=0` and `K_B>=0`.
 
@@ -944,10 +944,10 @@ raw response successfully binds a maximizing bit guess**. A tie permits both
 guesses. Private submission syntax is retained; the conclusion classifies
 the logical answer rather than presuming a canonical runtime menu. It applies
 under any belief on the complete native information class. The pins are
-`Vegas.Examples.LateOpeningRuntimeBobBindingOptimization.rational_value_eq_bestGuessValue`
+[`Vegas.Examples.LateOpeningRuntimeBobBindingOptimization.rational_value_eq_bestGuessValue`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeBobBindingOptimization.lean#L268)
 and
-`Vegas.Examples.LateOpeningRuntimeBobBindingOptimization.rational_supported_binding`
-in [BobBindingOptimization](../../Vegas/Examples/LateOpeningRuntimeBobBindingOptimization.lean).
+[`Vegas.Examples.LateOpeningRuntimeBobBindingOptimization.rational_supported_binding`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeBobBindingOptimization.lean#L311)
+in [BobBindingOptimization](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeBobBindingOptimization.lean).
 
 For `D>0` and `K_B>0`, every such supported current response also publishes
 that same maximizing guess successfully with zero audit charge, at every
@@ -956,8 +956,8 @@ This includes histories where the chosen guess is wrong: positive forfeit
 makes withholding strictly worse there too. The proof saturates the
 nonnegative difference between logical score and realized payoff, first over
 the assessed belief and then over runtime outcomes. The pin is
-`Vegas.Examples.LateOpeningRuntimeBobBindingSettlement.rational_supported_clean_settlement`
-in [BobBindingSettlement](../../Vegas/Examples/LateOpeningRuntimeBobBindingSettlement.lean).
+[`Vegas.Examples.LateOpeningRuntimeBobBindingSettlement.rational_supported_clean_settlement`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeBobBindingSettlement.lean#L234)
+in [BobBindingSettlement](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeBobBindingSettlement.lean).
 
 The successful late-publication case is checked for the same unrestricted
 raw menu. At a ready, timely fresh binding with silent Bob recall, Safe has
@@ -966,20 +966,20 @@ probability, and both Boolean guesses have value zero. Sequential rationality
 therefore forces value
 `max(2/5, Pr(label=0), Pr(label=1), Pr(label=2))`; every supported current
 response binds Safe or a maximizing label guess. The pins are
-`Vegas.Examples.LateOpeningRuntimeBobSuccessOptimization.bestAnswerValue_formula`
-and `Vegas.Examples.LateOpeningRuntimeBobSuccessOptimization.rational_supported_binding`
-in [BobSuccessOptimization](../../Vegas/Examples/LateOpeningRuntimeBobSuccessOptimization.lean).
+[`Vegas.Examples.LateOpeningRuntimeBobSuccessOptimization.bestAnswerValue_formula`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeBobSuccessOptimization.lean#L45)
+and [`Vegas.Examples.LateOpeningRuntimeBobSuccessOptimization.rational_supported_binding`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeBobSuccessOptimization.lean#L317)
+in [BobSuccessOptimization](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeBobSuccessOptimization.lean).
 Ready and timely are essential: success during Alice's protected clock-zero
 opportunity can leave this later Bob binding callback overdue.
 
 For `D>0` and `K_B>0`, that answer also publishes with zero Bob audit charge
 at every positive-belief hidden history and supported physical continuation.
-This is `Vegas.Examples.LateOpeningRuntimeBobSuccessSettlement.rational_supported_clean_settlement`
-in [BobSuccessSettlement](../../Vegas/Examples/LateOpeningRuntimeBobSuccessSettlement.lean).
+This is [`Vegas.Examples.LateOpeningRuntimeBobSuccessSettlement.rational_supported_clean_settlement`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeBobSuccessSettlement.lean#L226)
+in [BobSuccessSettlement](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeBobSuccessSettlement.lean).
 For Alice's first two preference labels, the corresponding payoff is at least
 `R/2` minus her own audit deduction; see
-`Vegas.Examples.LateOpeningRuntimeAliceSuccessFloor.rational_supported_payoff_floor`
-in [AliceSuccessFloor](../../Vegas/Examples/LateOpeningRuntimeAliceSuccessFloor.lean).
+[`Vegas.Examples.LateOpeningRuntimeAliceSuccessFloor.rational_supported_payoff_floor`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeAliceSuccessFloor.lean#L134)
+in [AliceSuccessFloor](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeAliceSuccessFloor.lean).
 These support statements do not cover merely possible histories assigned zero
 Bob belief. Extending them to histories reached by Alice's deviations requires
 a separate physical continuation argument.
@@ -992,11 +992,11 @@ and `K_B>0`, sequential rationality forces correct final publication and zero
 full-audit charge on every supported physical continuation averaged over his
 assessed belief. Merely possible histories assigned zero belief are not
 included in that support assertion. These are
-`Vegas.Examples.LateOpeningRuntimeBobKnownBit.equilibrium_correct_publication`
-in [BobKnownBit](../../Vegas/Examples/LateOpeningRuntimeBobKnownBit.lean), and
+[`Vegas.Examples.LateOpeningRuntimeBobKnownBit.equilibrium_correct_publication`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeBobKnownBit.lean#L401)
+in [BobKnownBit](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeBobKnownBit.lean), and
 the actual bounded information-class witness
-`Vegas.Examples.LateOpeningRuntimeBobKnownBitWitness.failed_publication_known_bit_class`
-in [BobKnownBitWitness](../../Vegas/Examples/LateOpeningRuntimeBobKnownBitWitness.lean).
+[`Vegas.Examples.LateOpeningRuntimeBobKnownBitWitness.failed_publication_known_bit_class`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeBobKnownBitWitness.lean#L25)
+in [BobKnownBitWitness](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeBobKnownBitWitness.lean).
 The witness retains the exact initialized Boolean and private label.
 
 At Alice's first late callback after no earlier transmission, a nongenuine
@@ -1010,10 +1010,10 @@ Therefore the positive final-opening margin
 `min(D,K_A)-R-(1-q)(D+K_A)>0` also forces zero nongenuine first-late packet
 probability. Both silence and genuine first-late opening remain legitimate.
 This is
-`Vegas.Examples.LateOpeningRuntimeAliceFirstRationality.equilibrium_nongenuine_packet_zero`
-in [AliceFirstRationality](../../Vegas/Examples/LateOpeningRuntimeAliceFirstRationality.lean).
-The [physical prefix adapter](../../Vegas/Examples/LateOpeningRuntimeAliceQuietPrefix.lean)
-and [initialized witness](../../Vegas/Examples/LateOpeningRuntimeAliceFirstWitness.lean)
+[`Vegas.Examples.LateOpeningRuntimeAliceFirstRationality.equilibrium_nongenuine_packet_zero`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeAliceFirstRationality.lean#L224)
+in [AliceFirstRationality](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeAliceFirstRationality.lean).
+The [physical prefix adapter](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeAliceQuietPrefix.lean)
+and [initialized witness](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeAliceFirstWitness.lean)
 keep real bounded traces and unrestricted intervening Bob policies.
 
 Private aliases of a genuine final opening have exactly the same terminal
@@ -1022,7 +1022,7 @@ only the inactive sender's private recall as a total comparison projection;
 application state, packets, knowledge, receipts and every other player's
 recall remain exact. This projection does not change the runtime's memory or
 its information sets. See
-[AliceOpeningAliases](../../Vegas/Examples/LateOpeningRuntimeAliceOpeningAliases.lean)
+[AliceOpeningAliases](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeAliceOpeningAliases.lean)
 and [InactiveRecall](../../Interaction/ReactiveInactiveRecall.lean).
 
 Finally, any raw native profile whose decoded **Alice publication marginal**
@@ -1031,10 +1031,10 @@ almost surely. Neither target equilibrium, hidden-binding equality, audit
 authenticity nor collateral assumptions are required. In particular, matching
 any intended source equilibrium's joint terminal and payoff law forces that
 protected receipt. The pins are
-`Vegas.Examples.LateOpeningRuntimePreservingLaw.successful_readout_protected_receipt`
+[`Vegas.Examples.LateOpeningRuntimePreservingLaw.successful_readout_protected_receipt`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimePreservingLaw.lean#L77)
 and
-`Vegas.Examples.LateOpeningRuntimePreservingLaw.intended_law_protected_receipt`
-in [PreservingLaw](../../Vegas/Examples/LateOpeningRuntimePreservingLaw.lean).
+[`Vegas.Examples.LateOpeningRuntimePreservingLaw.intended_law_protected_receipt`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimePreservingLaw.lean#L162)
+in [PreservingLaw](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimePreservingLaw.lean).
 This supplies a necessary condition on every candidate preserving equilibrium;
 the native consistent-likelihood argument is still needed to exclude them.
 
@@ -1044,9 +1044,9 @@ Every supported native terminal history has the successful Safe readout, and
 its settlement law is the deterministic source payoff vector: `R/2` to Alice
 and `2/5` to Bob. Every player with a nonzero deposit consequently has zero
 audit-charge probability at each such history. The pins are
-`Vegas.Examples.LateOpeningRuntimePreservingSettlement.history_settlement_pure`
-and `Vegas.Examples.LateOpeningRuntimePreservingSettlement.history_charge_zero`
-in [PreservingSettlement](../../Vegas/Examples/LateOpeningRuntimePreservingSettlement.lean).
+[`Vegas.Examples.LateOpeningRuntimePreservingSettlement.history_settlement_pure`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimePreservingSettlement.lean#L56)
+and [`Vegas.Examples.LateOpeningRuntimePreservingSettlement.history_charge_zero`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimePreservingSettlement.lean#L90)
+in [PreservingSettlement](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimePreservingSettlement.lean).
 No collateral sign or preservation theorem is assumed beyond the stated
 joint-law equality.
 
@@ -1062,7 +1062,7 @@ answer is optimal, even when the observations are unreached in equilibrium.
 
 [ConsistentLikelihood.lean](../../GameTheoryExtensions/Analysis/Protocol/ConsistentLikelihood.lean)
 checks this argument for finite groups of actual histories.
-[AsymptoticLikelihood.lean](../../GameTheoryExtensions/Analysis/Protocol/AsymptoticLikelihood.lean)
+[AsymptoticLikelihood.lean](https://github.com/elazarg/VegasCore/blob/research-tree/GameTheoryExtensions/Analysis/Protocol/AsymptoticLikelihood.lean)
 allows additional-history errors which vanish **relative to the shared type
 prefix and observation factors**. Absolute errors tending to zero are
 insufficient: the observation's probability may tend to zero faster.
@@ -1071,9 +1071,9 @@ The actual native consistency sequence now has uniform vanishing conditional
 nongenuine-first-packet bounds across all legal first-late sender information
 classes. Weighted sums retain a relative bound even when the protected-silence
 prefix weights vanish arbitrarily quickly. This is
-`Vegas.Examples.LateOpeningRuntimeAliceFirstTremble.equilibrium_consistency_nongenuine_bound`
+[`Vegas.Examples.LateOpeningRuntimeAliceFirstTremble.equilibrium_consistency_nongenuine_bound`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeAliceFirstTremble.lean#L231)
 and its ratio lemma in
-[AliceFirstTremble](../../Vegas/Examples/LateOpeningRuntimeAliceFirstTremble.lean).
+[AliceFirstTremble](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeAliceFirstTremble.lean).
 Together with the checked pending-opening retry bound, this controls two
 sources of hidden raw traffic without prescribing a posterior.
 
@@ -1082,9 +1082,9 @@ nongenuine response. All three finite-site bounds can be taken along **one
 actual consistency sequence with normalized sender responses**, with a single uniform error tending to zero.
 The same sequence gives every initialized-input conditional-probability limit
 at every fresh Bob binding class. This is
-`Vegas.Examples.LateOpeningRuntimeConsistency.consistency_witness`
-in [Consistency](../../Vegas/Examples/LateOpeningRuntimeConsistency.lean),
-using [AliceOpeningTremble](../../Vegas/Examples/LateOpeningRuntimeAliceOpeningTremble.lean).
+[`Vegas.Examples.LateOpeningRuntimeConsistency.consistency_witness`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeConsistency.lean#L32)
+in [Consistency](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeConsistency.lean),
+using [AliceOpeningTremble](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeAliceOpeningTremble.lean).
 The approximating assessments need not themselves be sequentially rational.
 
 An exact physical observation factor is also checked. For any actual first
@@ -1094,8 +1094,8 @@ is one half the probability that Alice emitted that genuine envelope.
 Malformed responses and private aliases remain in the law; Bob's subsequent
 policy is arbitrary. A nongenuine first envelope cannot manufacture this
 exact observed packet. The pin is
-`Vegas.Examples.LateOpeningRuntimeFirstObservation.first_observation_probability`
-in [FirstObservation](../../Vegas/Examples/LateOpeningRuntimeFirstObservation.lean).
+[`Vegas.Examples.LateOpeningRuntimeFirstObservation.first_observation_probability`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeFirstObservation.lean#L260)
+in [FirstObservation](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeFirstObservation.lean).
 This proves the first fair-sampling factor, not the complete receiver
 information-fiber reach sums or their consistent limiting beliefs.
 
@@ -1106,30 +1106,30 @@ has exactly seventeen protocol transitions: initialization, twelve service
 commands, and four completed player responses. The actual behavioral law at
 this depth is eleven complete runtime rounds followed by Bob's next activation
 and pending sample. The scheduler's later conditional callbacks remain intact.
-`Vegas.Examples.LateOpeningRuntimeBindingPrefix.binding_common_depth` and
-`Vegas.Examples.LateOpeningRuntimeBindingPrefix.binding_prefix_law` check this
-identification in [BindingPrefix](../../Vegas/Examples/LateOpeningRuntimeBindingPrefix.lean).
+[`Vegas.Examples.LateOpeningRuntimeBindingPrefix.binding_common_depth`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeBindingPrefix.lean#L247) and
+[`Vegas.Examples.LateOpeningRuntimeBindingPrefix.binding_prefix_law`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeBindingPrefix.lean#L186) check this
+identification in [BindingPrefix](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeBindingPrefix.lean).
 
 Grouping **all** compatible histories by immutable initialized inputs gives
 exactly the physical joint probability of those inputs and Bob's information.
 The group includes every private submission representation and pending trace;
 the input readout is a mathematical grouping, unavailable to Bob's policy.
-`Vegas.Examples.LateOpeningRuntimeBindingPrefix.initialized_type_reach_eq_prefix`
+[`Vegas.Examples.LateOpeningRuntimeBindingPrefix.initialized_type_reach_eq_prefix`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeBindingPrefix.lean#L421)
 pins the equality. Bayes' rule then divides the joint physical probability by
 the actual information probability. One SE consistency witness makes these
 ratios converge to the assessed beliefs for every readout, even if that
 information probability tends to zero. See
-`Vegas.Examples.LateOpeningRuntimeBindingPosterior.consistent_conditional_probabilities`
-in [BindingPosterior](../../Vegas/Examples/LateOpeningRuntimeBindingPosterior.lean).
+[`Vegas.Examples.LateOpeningRuntimeBindingPosterior.consistent_conditional_probabilities`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeBindingPosterior.lean#L106)
+in [BindingPosterior](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeBindingPosterior.lean).
 
 For Alice's failed publication, Bob's checked all-raw optimum is consequently
 the maximum of the actual posterior probabilities of false and true. His
 value is also the limit of these two optimal conditional prefix probabilities
 along the same consistency sequence; it is not fixed at the original bit
 prior. These statements are
-`Vegas.Examples.LateOpeningRuntimeBobPosteriorOptimization.rational_value_eq_posterior_max`
-and `Vegas.Examples.LateOpeningRuntimeBobPosteriorOptimization.consistent_value_limit`
-in [BobPosteriorOptimization](../../Vegas/Examples/LateOpeningRuntimeBobPosteriorOptimization.lean).
+[`Vegas.Examples.LateOpeningRuntimeBobPosteriorOptimization.rational_value_eq_posterior_max`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeBobPosteriorOptimization.lean#L92)
+and [`Vegas.Examples.LateOpeningRuntimeBobPosteriorOptimization.consistent_value_limit`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeBobPosteriorOptimization.lean#L108)
+in [BobPosteriorOptimization](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeBobPosteriorOptimization.lean).
 
 An additional checked physical kernel retains the original probability that
 Bob responds silently at his early observation. A transmitted first packet
@@ -1138,16 +1138,16 @@ silent Bob recall excludes every nonsilent raw early response by permanent
 recall. The remaining lottery, clock advance, expiry and second observation
 are computed from the complete actual pending pool, including duplicates and
 malformed packets. See
-`Vegas.Examples.LateOpeningRuntimeLatePrefixKernel.transmitted_binding_silent_event_probability`
-and `Vegas.Examples.LateOpeningRuntimeLatePrefixKernel.settlement_activation`
-in [LatePrefixKernel](../../Vegas/Examples/LateOpeningRuntimeLatePrefixKernel.lean).
+[`Vegas.Examples.LateOpeningRuntimeLatePrefixKernel.transmitted_binding_silent_event_probability`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeLatePrefixKernel.lean#L152)
+and [`Vegas.Examples.LateOpeningRuntimeLatePrefixKernel.settlement_activation`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeLatePrefixKernel.lean#L265)
+in [LatePrefixKernel](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeLatePrefixKernel.lean).
 The actual remaining Alice response is also retained, rather than replaced
-by a canonical policy: `after_early_quiet_law` in
-[LateResponseKernel](../../Vegas/Examples/LateOpeningRuntimeLateResponseKernel.lean)
+by a canonical policy: [`after_early_quiet_law`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeLateResponseKernel.lean#L127) in
+[LateResponseKernel](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeLateResponseKernel.lean)
 composes its original raw response law with the full settlement kernel.
 For any genuine first-opening representation and a silent retry, the typed
 publication law is exactly `q` success and `1-q` failure. The pin is
-`Vegas.Examples.LateOpeningRuntimeLateResponseKernel.genuine_retry_publication_law`.
+[`Vegas.Examples.LateOpeningRuntimeLateResponseKernel.genuine_retry_publication_law`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeLateResponseKernel.lean#L367).
 These adapters still do not establish the final timing factors or posterior
 exclusions: complete observation-event calculations and their relative errors
 must be composed with the native probability bridge.
@@ -1157,20 +1157,20 @@ an actual later Bob observation with an empty receipt list proves that Alice
 sent no raw packet at the protected opportunity. This applies to every
 compatible native history, including packets which would have been rejected;
 it uses permanent receipts, rather than a belief restriction. See
-`Vegas.Examples.LateOpeningRuntimeProtectedRecall.information_histories_protected_silent`
-in [ProtectedRecall](../../Vegas/Examples/LateOpeningRuntimeProtectedRecall.lean).
+[`Vegas.Examples.LateOpeningRuntimeProtectedRecall.information_histories_protected_silent`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeProtectedRecall.lean#L202)
+in [ProtectedRecall](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeProtectedRecall.lean).
 Consequently the actual physical prefix gives zero mass to such an observation
 together with any protected raw submission, under every behavioral profile.
 This is
-`Vegas.Examples.LateOpeningRuntimeProtectedPrefix.protected_submission_event_zero`
-in [ProtectedPrefix](../../Vegas/Examples/LateOpeningRuntimeProtectedPrefix.lean).
+[`Vegas.Examples.LateOpeningRuntimeProtectedPrefix.protected_submission_event_zero`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeProtectedPrefix.lean#L42)
+in [ProtectedPrefix](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeProtectedPrefix.lean).
 
 The general pin is
-`GameTheory.Protocol.InformationModel.AsymptoticHistoryLikelihood.belief_face`.
+[`GameTheory.Protocol.InformationModel.AsymptoticHistoryLikelihood.belief_face`](https://github.com/elazarg/VegasCore/blob/research-tree/GameTheoryExtensions/Analysis/Protocol/AsymptoticLikelihood.lean#L134).
 Its premises concern actual execution likelihoods; they do not assume the
 desired posterior beliefs. The checked comparison-game instantiation is
-`Vegas.settleLate_opposite_timing_excludes_label` in
-[SettleLateLikelihood.lean](../../Vegas/Examples/LateLeak/SettleLateLikelihood.lean).
+[`Vegas.settleLate_opposite_timing_excludes_label`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateLeak/SettleLateLikelihood.lean#L167) in
+[SettleLateLikelihood.lean](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateLeak/SettleLateLikelihood.lean).
 That comparison is not identified with the compiled runtime. The native
 counterexample still needs the observation-specific likelihood calculations
 for its complete native history groups, including relative contributions of
@@ -1200,12 +1200,12 @@ the supported response's public commitment packet. Bob's remembered actions
 and current observation then fix that same packet and accepting receipt at
 every compatible legal history. Private response aliases remain possible.
 The pin is
-`Vegas.Examples.LateOpeningRuntimeBobSuccessBindingClean.rational_supported_clean_binding`
-in [BobSuccessBindingClean](../../Vegas/Examples/LateOpeningRuntimeBobSuccessBindingClean.lean).
+[`Vegas.Examples.LateOpeningRuntimeBobSuccessBindingClean.rational_supported_clean_binding`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeBobSuccessBindingClean.lean#L39)
+in [BobSuccessBindingClean](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeBobSuccessBindingClean.lean).
 The actual accepting handler also proves the publication became ready at
 clock three, with its timer set to three, and that the canonical opening is
 available for the immutable selected answer. These are derived operational
-facts in [BobBindingChronology](../../Vegas/Examples/LateOpeningRuntimeBobBindingChronology.lean).
+facts in [BobBindingChronology](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeBobBindingChronology.lean).
 
 At a clean, ready and timely **final** receiver callback, each supported
 response publishes the bound answer at every compatible history and every
@@ -1214,8 +1214,8 @@ future player policies. The proof compares the full receiver-view law across
 the information set, then transports the zero failure probability established
 by sequential rationality. It does not infer audit equivalence from that view.
 The pin is
-`Vegas.Examples.LateOpeningRuntimeBobFinalFiberRationality.equilibrium_supported_publication`
-in [BobFinalFiberRationality](../../Vegas/Examples/LateOpeningRuntimeBobFinalFiberRationality.lean).
+[`Vegas.Examples.LateOpeningRuntimeBobFinalFiberRationality.equilibrium_supported_publication`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeBobFinalFiberRationality.lean#L228)
+in [BobFinalFiberRationality](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeBobFinalFiberRationality.lean).
 Its conditions are `D>0`, nonnegative receiver collateral and authentic audit
 sampling.
 
@@ -1224,10 +1224,10 @@ receiver charge. This uses an additional audit argument: public terminal
 state, exact receipts and receiver-authored emitted envelopes determine his
 full charge. Those quantities have the same law across the final information
 set for a fixed response. The pin is
-`Vegas.Examples.LateOpeningRuntimeBobFinalAuditRationality.equilibrium_supported_clean_publication`
-in [BobFinalAuditRationality](../../Vegas/Examples/LateOpeningRuntimeBobFinalAuditRationality.lean).
+[`Vegas.Examples.LateOpeningRuntimeBobFinalAuditRationality.equilibrium_supported_clean_publication`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeBobFinalAuditRationality.lean#L257)
+in [BobFinalAuditRationality](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeBobFinalAuditRationality.lean).
 The audit transfer is proved in
-[BobFinalAuditObservation](../../Vegas/Examples/LateOpeningRuntimeBobFinalAuditObservation.lean).
+[BobFinalAuditObservation](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeBobFinalAuditObservation.lean).
 It is not asserted for an arbitrary sampler depending on other players'
 traffic.
 
@@ -1236,14 +1236,14 @@ publish the current bound answer immediately, then use the existing answer
 policy, which stays silent at the final callback. Its actual whole suffix
 publishes that answer and has zero receiver charge on every physical branch.
 The immediate response belongs to the unchanged bounded menu. This is
-`Vegas.Examples.LateOpeningRuntimeOptionalOpening.canonical_continuation_clean`
-in [OptionalOpening](../../Vegas/Examples/LateOpeningRuntimeOptionalOpening.lean).
-The [optional information adapter](../../Vegas/Examples/LateOpeningRuntimeOptionalInformation.lean)
+[`Vegas.Examples.LateOpeningRuntimeOptionalOpening.canonical_continuation_clean`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeOptionalOpening.lean#L56)
+in [OptionalOpening](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeOptionalOpening.lean).
+The [optional information adapter](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeOptionalInformation.lean)
 distinguishes this callback from the earlier binding callback at the same
 clock using the exact number of remembered own responses. One actual clean
 representative supplies readiness, timeliness and cleanliness throughout the
 whole information set. The actual finite whole-policy comparison is checked
-in [OptionalDecision](../../Vegas/Examples/LateOpeningRuntimeOptionalDecision.lean).
+in [OptionalDecision](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeOptionalDecision.lean).
 
 The comparator also attains the immutable answer's exact gross score at each
 hidden history. Every raw current response and future raw policy satisfies
@@ -1251,18 +1251,18 @@ hidden history. Every raw current response and future raw policy satisfies
 This pointwise bound retains the actual initialized inputs and every physical
 suffix; it has no sign restriction on the reward, forfeit or deposit. With
 nonnegative forfeit and deposit it gives weak dominance. The pin is
-`Vegas.Examples.LateOpeningRuntimeOptionalIncentive.canonical_audit_regret`
-in [OptionalIncentive](../../Vegas/Examples/LateOpeningRuntimeOptionalIncentive.lean).
+[`Vegas.Examples.LateOpeningRuntimeOptionalIncentive.canonical_audit_regret`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeOptionalIncentive.lean#L96)
+in [OptionalIncentive](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeOptionalIncentive.lean).
 For `D>0` and `K_B>0`, payoff saturation implies successful publication and
 zero charge on assessed continuation support, in
-[OptionalRationality](../../Vegas/Examples/LateOpeningRuntimeOptionalRationality.lean).
+[OptionalRationality](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeOptionalRationality.lean).
 More strongly, every supported current response is **silence or immediate
 successful publication of the bound answer**, throughout the entire legal
 information set. A clean assessed branch certifies the current packet, and
 the actual information fixes its public effect even at zero-belief histories.
 The pin is
-`Vegas.Examples.LateOpeningRuntimeOptionalPacket.equilibrium_supported_response`
-in [OptionalPacket](../../Vegas/Examples/LateOpeningRuntimeOptionalPacket.lean).
+[`Vegas.Examples.LateOpeningRuntimeOptionalPacket.equilibrium_supported_response`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeOptionalPacket.lean#L301)
+in [OptionalPacket](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeOptionalPacket.lean).
 This statement does not normalize a later callback after publication has
 already completed.
 
@@ -1273,17 +1273,17 @@ timely final callback at clock six, for every possible pending-message sample.
 Consequently every physical fourteen-command suffix publishes the selected
 answer, whether Alice previously succeeded or failed, without any positive
 belief premise. The pin is
-`Vegas.Examples.LateOpeningRuntimeBobDisclosurePublication.binding_publication`
-in [BobDisclosurePublication](../../Vegas/Examples/LateOpeningRuntimeBobDisclosurePublication.lean),
-using [BobDisclosureChronology](../../Vegas/Examples/LateOpeningRuntimeBobDisclosureChronology.lean).
+[`Vegas.Examples.LateOpeningRuntimeBobDisclosurePublication.binding_publication`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeBobDisclosurePublication.lean#L263)
+in [BobDisclosurePublication](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeBobDisclosurePublication.lean),
+using [BobDisclosureChronology](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeBobDisclosureChronology.lean).
 For Alice's first two private labels, her successful branch therefore pays at
 least `R/2` before her own audit deduction, at every compatible hidden history.
 Receiver rationality does not by itself clear sender traffic. This is
-`Vegas.Examples.LateOpeningRuntimeAliceFullFiberFloor.sequentially_rational_supported_payoff_floor`
-in [AliceFullFiberFloor](../../Vegas/Examples/LateOpeningRuntimeAliceFullFiberFloor.lean).
+[`Vegas.Examples.LateOpeningRuntimeAliceFullFiberFloor.sequentially_rational_supported_payoff_floor`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeAliceFullFiberFloor.lean#L101)
+in [AliceFullFiberFloor](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeAliceFullFiberFloor.lean).
 After Alice's failure, the supported maximizing Boolean commitment is also
 clean throughout the whole information set, in
-[BobFailedBindingClean](../../Vegas/Examples/LateOpeningRuntimeBobFailedBindingClean.lean).
+[BobFailedBindingClean](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeBobFailedBindingClean.lean).
 
 The actual initialized prefix now decomposes over the original hidden-input
 prior and Alice's **original** protected response law. Any event requiring
@@ -1291,8 +1291,8 @@ Bob's remembered empty protected receipts has zero probability after a
 protected raw packet. Its exact remaining probability therefore keeps the
 original protected-silence atom multiplied by the original first-late raw
 response law and the full later kernel. See
-`Vegas.Examples.LateOpeningRuntimeInitializedPrefix.clean_information_probability`
-in [InitializedPrefix](../../Vegas/Examples/LateOpeningRuntimeInitializedPrefix.lean).
+[`Vegas.Examples.LateOpeningRuntimeInitializedPrefix.clean_information_probability`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeInitializedPrefix.lean#L220)
+in [InitializedPrefix](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeInitializedPrefix.lean).
 The silence atom may tend to zero arbitrarily fast; no lower bound is assumed.
 
 For any genuine first-opening alias and a silent retry, Bob's full remembered
@@ -1302,10 +1302,10 @@ knowledge persists. After he missed the packet earlier, the second sample
 splits omitted branches into newly learned and still empty information with
 probability `(1-q)/2` each. Actual receipts distinguish success from failure;
 the packet's public identity is retained. These laws are in
-[BindingFactors](../../Vegas/Examples/LateOpeningRuntimeBindingFactors.lean),
-using [BindingObservation](../../Vegas/Examples/LateOpeningRuntimeBindingObservation.lean).
+[BindingFactors](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeBindingFactors.lean),
+using [BindingObservation](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeBindingObservation.lean).
 Actual bounded history representatives also witness the failure information
-classes in [BindingObservationWitness](../../Vegas/Examples/LateOpeningRuntimeBindingObservationWitness.lean).
+classes in [BindingObservationWitness](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeBindingObservationWitness.lean).
 
 Replacing only the final retry by silence changes its whole native execution
 law by total variation at most the actual probability of an emitted retry.
@@ -1315,10 +1315,10 @@ applies without a canonical-syntax restriction. A mixture with total prefix
 mass `m` consequently has event error at most `epsilon*m`. Dividing by positive
 `m` gives an error tending to zero even when `m` itself vanishes arbitrarily
 quickly. The pins are
-`Vegas.Examples.LateOpeningRuntimeRetryWitness.genuine_alias_response_close_quiet`
-and `Vegas.Examples.LateOpeningRuntimeRetryKernel.relative_event_error_tendsto` in
-[RetryWitness](../../Vegas/Examples/LateOpeningRuntimeRetryWitness.lean) and
-[RetryKernel](../../Vegas/Examples/LateOpeningRuntimeRetryKernel.lean).
+[`Vegas.Examples.LateOpeningRuntimeRetryWitness.genuine_alias_response_close_quiet`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeRetryWitness.lean#L143)
+and [`Vegas.Examples.LateOpeningRuntimeRetryKernel.relative_event_error_tendsto`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeRetryKernel.lean#L155) in
+[RetryWitness](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeRetryWitness.lean) and
+[RetryKernel](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeRetryKernel.lean).
 The original early Bob policy is retained in the pending kernels; these
 claims do not replace it by an independent or fixed silence probability.
 
@@ -1328,10 +1328,10 @@ is the original genuine first-emission probability. Every other response
 keeps its original continuation in the comparison. Under the positive native
 retry-deterrence margin, sequential rationality makes the two laws exactly
 equal. The pins are
-`Vegas.Examples.LateOpeningRuntimeFirstRetryComparison.original_close_comparison`
-and `Vegas.Examples.LateOpeningRuntimeFirstRetryRationality.rational_comparison_law` in
-[FirstRetryComparison](../../Vegas/Examples/LateOpeningRuntimeFirstRetryComparison.lean)
-and [FirstRetryRationality](../../Vegas/Examples/LateOpeningRuntimeFirstRetryRationality.lean).
+[`Vegas.Examples.LateOpeningRuntimeFirstRetryComparison.original_close_comparison`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeFirstRetryComparison.lean#L254)
+and [`Vegas.Examples.LateOpeningRuntimeFirstRetryRationality.rational_comparison_law`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeFirstRetryRationality.lean#L29) in
+[FirstRetryComparison](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeFirstRetryComparison.lean)
+and [FirstRetryRationality](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeFirstRetryRationality.lean).
 
 For an information record remembering the canonical opening at the earlier
 sample, both acceptance and omission have actual first-prefix likelihood
@@ -1341,13 +1341,13 @@ A nongenuine first packet consumes Alice's identifier zero; no later raw
 policy can recreate the canonical identifier-zero opening. Earlier silence
 or an empty earlier sample also cannot create the remembered earlier packet.
 These exact exclusions support
-`Vegas.Examples.LateOpeningRuntimeSeenLikelihood.original_seen_error` in
-[SeenLikelihood](../../Vegas/Examples/LateOpeningRuntimeSeenLikelihood.lean), using
-[OpeningIdentity](../../Vegas/Examples/LateOpeningRuntimeOpeningIdentity.lean) and
-[EarlyRecall](../../Vegas/Examples/LateOpeningRuntimeEarlyRecall.lean).
+[`Vegas.Examples.LateOpeningRuntimeSeenLikelihood.original_seen_error`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeSeenLikelihood.lean#L286) in
+[SeenLikelihood](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeSeenLikelihood.lean), using
+[OpeningIdentity](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeOpeningIdentity.lean) and
+[EarlyRecall](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeEarlyRecall.lean).
 The relevant canonical early observations are actual bounded histories; their
 original receiver law is pure silence when `D>=0` and `K_B>1`, by
-[EarlyResponseLaw](../../Vegas/Examples/LateOpeningRuntimeEarlyResponseLaw.lean).
+[EarlyResponseLaw](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeEarlyResponseLaw.lean).
 
 This likelihood is connected to the complete initialized native history
 groups. Let `omega` be the actual prior atom times the original protected
@@ -1359,23 +1359,23 @@ silence and genuine first emission vanish arbitrarily fast. The actual
 receiver-silence atom converges to one along the **same** assessment sequence
 whose target has the checked early-silence response law. The approximating
 assessments need no rationality assumption. These are
-`Vegas.Examples.LateOpeningRuntimeInitializedSeenLikelihood.initialized_history_seen_error`
+[`Vegas.Examples.LateOpeningRuntimeInitializedSeenLikelihood.initialized_history_seen_error`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeInitializedSeenLikelihood.lean#L124)
 and `.early_silence_tendsto` in
-[InitializedSeenLikelihood](../../Vegas/Examples/LateOpeningRuntimeInitializedSeenLikelihood.lean).
+[InitializedSeenLikelihood](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeInitializedSeenLikelihood.lean).
 Actual legal representatives witness both the accepted and omitted seen
 information sets. The unseen-success group and paired posterior cross-identity
 are checked in
-[InitializedUnseenLikelihood](../../Vegas/Examples/LateOpeningRuntimeInitializedUnseenLikelihood.lean)
-and [LabelCross](../../Vegas/Examples/LateOpeningRuntimeLabelCross.lean).
+[InitializedUnseenLikelihood](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeInitializedUnseenLikelihood.lean)
+and [LabelCross](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeLabelCross.lean).
 
 The complete eighteen-command suffix after Alice's last callback decomposes
 into the actual inclusion lottery, receiver observation and original receiver
 continuation. Genuine private first-opening aliases with silent retry, and
 genuine final-opening aliases after earlier silence, preserve the exact whole
 payoff distribution against arbitrary future policies. The pins are
-`Vegas.Examples.LateOpeningRuntimeSettlementContinuation.genuine_first_payoff_law`
+[`Vegas.Examples.LateOpeningRuntimeSettlementContinuation.genuine_first_payoff_law`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeSettlementContinuation.lean#L115)
 and `.genuine_final_payoff_law` in
-[SettlementContinuation](../../Vegas/Examples/LateOpeningRuntimeSettlementContinuation.lean).
+[SettlementContinuation](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeSettlementContinuation.lean).
 The private submission recall remains present in the actual execution.
 
 The sender's complete continuation values after settlement are also exact.
@@ -1396,21 +1396,21 @@ rewards. They retain all raw private commitment aliases. Their expectations
 are taken over Bob's **original current response law**, using the actual
 immediately serviced typed binding result. No desired posterior or
 positive-belief-history restriction is supplied. The expected-value pins are
-`Vegas.Examples.LateOpeningRuntimeAliceSuccessfulContinuation.receiver_expected_value`
-and `Vegas.Examples.LateOpeningRuntimeAliceFailureContinuation.receiver_expected_value`
-in [AliceSuccessfulContinuation](../../Vegas/Examples/LateOpeningRuntimeAliceSuccessfulContinuation.lean)
-and [AliceFailureContinuation](../../Vegas/Examples/LateOpeningRuntimeAliceFailureContinuation.lean).
+[`Vegas.Examples.LateOpeningRuntimeAliceSuccessfulContinuation.receiver_expected_value`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeAliceSuccessfulContinuation.lean#L290)
+and [`Vegas.Examples.LateOpeningRuntimeAliceFailureContinuation.receiver_expected_value`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeAliceFailureContinuation.lean#L168)
+in [AliceSuccessfulContinuation](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeAliceSuccessfulContinuation.lean)
+and [AliceFailureContinuation](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeAliceFailureContinuation.lean).
 Expected-value integrability uses `R>=0,K_A>=0`; the pointwise payoff and audit
 identities in
-[AliceFailurePayoff](../../Vegas/Examples/LateOpeningRuntimeAliceFailurePayoff.lean)
+[AliceFailurePayoff](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeAliceFailurePayoff.lean)
 need no such sign assumptions.
 
 For successful Alice publication, Bob's native rational value is the maximum
 of `2/5` and his three actual posterior label probabilities. The same quantity
 computed from complete conditional physical prefix probabilities converges
 to that value along the given common SE consistency witness. This is
-`Vegas.Examples.LateOpeningRuntimeSuccessPosterior.conditional_value_tendsto`
-in [SuccessPosterior](../../Vegas/Examples/LateOpeningRuntimeSuccessPosterior.lean).
+[`Vegas.Examples.LateOpeningRuntimeSuccessPosterior.conditional_value_tendsto`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeSuccessPosterior.lean#L90)
+in [SuccessPosterior](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeSuccessPosterior.lean).
 It neither assumes that the posterior remains uniform nor supplies the
 observation-specific exclusion needed by the negative proof.
 
@@ -1424,17 +1424,17 @@ builder satisfies the unchanged full raw-history service contract and
 all-view late-packet erasure property; it is chosen before all equilibria.
 
 The headline pin is
-`Vegas.Examples.LateOpeningRuntimeUniformSeObstruction.exists_service_with_no_preserving_equilibrium`
-in [UniformSeObstruction](../../Vegas/Examples/LateOpeningRuntimeUniformSeObstruction.lean).
+[`Vegas.Examples.LateOpeningRuntimeUniformSeObstruction.exists_service_with_no_preserving_equilibrium`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeUniformSeObstruction.lean#L28)
+in [UniformSeObstruction](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeUniformSeObstruction.lean).
 The fixed-service exclusion and direct mandatory-source comparison are
-`Vegas.Examples.LateOpeningRuntimeSeObstruction.equilibrium_terminal_law_ne_safe`
+[`Vegas.Examples.LateOpeningRuntimeSeObstruction.equilibrium_terminal_law_ne_safe`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeSeObstruction.lean#L142)
 and `.equilibrium_terminal_law_ne_intended` in
-[SeObstruction](../../Vegas/Examples/LateOpeningRuntimeSeObstruction.lean).
+[SeObstruction](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeSeObstruction.lean).
 
 With the additional sufficient source bound `D>=1`, the explicit complete
 source-interface composition is
-`Vegas.Examples.LateOpeningRuntimeSourceSeObstruction.exists_source_equilibrium_with_uniform_service_obstruction`
-in [SourceSeObstruction](../../Vegas/Examples/LateOpeningRuntimeSourceSeObstruction.lean).
+[`Vegas.Examples.LateOpeningRuntimeSourceSeObstruction.exists_source_equilibrium_with_uniform_service_obstruction`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeSourceSeObstruction.lean#L31)
+in [SourceSeObstruction](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeSourceSeObstruction.lean).
 It fixes one source SE admitting both failed bindings and failed publications
 before every requested failure bound and builder. Each bound gets one
 admissible service with native SEs, all of whose joint laws differ from that
@@ -1445,14 +1445,14 @@ policies. Its main checked dependencies are:
 
 | Mathematical step | Owning module |
 | --- | --- |
-| Complete first and protected sender information fibers | [AliceFirstFiber](../../Vegas/Examples/LateOpeningRuntimeAliceFirstFiber.lean), [AliceProtectedFiber](../../Vegas/Examples/LateOpeningRuntimeAliceProtectedFiber.lean) |
-| Original full continuation laws after any available first response | [FirstSettlementContinuation](../../Vegas/Examples/LateOpeningRuntimeFirstSettlementContinuation.lean), [FirstResponseRetryNormalization](../../Vegas/Examples/LateOpeningRuntimeFirstResponseRetryNormalization.lean) |
-| Successful and failed typed receiver values, including all aliases | [AliceSuccessfulReduction](../../Vegas/Examples/LateOpeningRuntimeAliceSuccessfulReduction.lean), [AliceFailureReduction](../../Vegas/Examples/LateOpeningRuntimeAliceFailureReduction.lean) |
-| Exact first-versus-second timing values and strictly opposite preferences | [AliceTimingValues](../../Vegas/Examples/LateOpeningRuntimeAliceTimingValues.lean), [AliceTimingSorting](../../Vegas/Examples/LateOpeningRuntimeAliceTimingSorting.lean) |
-| Initialized unseen-success groups and label readout | [InitializedUnseenLikelihood](../../Vegas/Examples/LateOpeningRuntimeInitializedUnseenLikelihood.lean), [InitializedSuccessReadout](../../Vegas/Examples/LateOpeningRuntimeInitializedSuccessReadout.lean) |
-| Common-witness posterior cross-identity, retaining vanishing type weights | [LabelCross](../../Vegas/Examples/LateOpeningRuntimeLabelCross.lean) |
-| Positive Safe probability bounds every posterior label to `[1/5,2/5]` | [BobSafePosterior](../../Vegas/Examples/LateOpeningRuntimeBobSafePosterior.lean), [BobSafeProbability](../../Vegas/Examples/LateOpeningRuntimeBobSafeProbability.lean) |
-| An available first-opening value above the preserved `R/2` | [AliceTimingFloor](../../Vegas/Examples/LateOpeningRuntimeAliceTimingFloor.lean), [AliceProtectedOptimality](../../Vegas/Examples/LateOpeningRuntimeAliceProtectedOptimality.lean) |
+| Complete first and protected sender information fibers | [AliceFirstFiber](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeAliceFirstFiber.lean), [AliceProtectedFiber](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeAliceProtectedFiber.lean) |
+| Original full continuation laws after any available first response | [FirstSettlementContinuation](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeFirstSettlementContinuation.lean), [FirstResponseRetryNormalization](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeFirstResponseRetryNormalization.lean) |
+| Successful and failed typed receiver values, including all aliases | [AliceSuccessfulReduction](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeAliceSuccessfulReduction.lean), [AliceFailureReduction](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeAliceFailureReduction.lean) |
+| Exact first-versus-second timing values and strictly opposite preferences | [AliceTimingValues](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeAliceTimingValues.lean), [AliceTimingSorting](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeAliceTimingSorting.lean) |
+| Initialized unseen-success groups and label readout | [InitializedUnseenLikelihood](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeInitializedUnseenLikelihood.lean), [InitializedSuccessReadout](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeInitializedSuccessReadout.lean) |
+| Common-witness posterior cross-identity, retaining vanishing type weights | [LabelCross](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeLabelCross.lean) |
+| Positive Safe probability bounds every posterior label to `[1/5,2/5]` | [BobSafePosterior](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeBobSafePosterior.lean), [BobSafeProbability](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeBobSafeProbability.lean) |
+| An available first-opening value above the preserved `R/2` | [AliceTimingFloor](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeAliceTimingFloor.lean), [AliceProtectedOptimality](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeAliceProtectedOptimality.lean) |
 
 See [the model reminder and proof](native-se-obstruction.md) for the exact
 quantifiers, utility table and source-interface distinction. This is an exact
@@ -1464,8 +1464,8 @@ using effective sender collateral above `R/2`.
 The authentic all-or-none traffic sampler also has checked native and
 fixed-source capstones for `0<alpha<=1`, `alpha*K_A>R/2`, `alpha*K_B>1`,
 `R>0` and `D>R` (with `D>=1` for the full-forfeiture source SE).
-`Vegas.Examples.LateOpeningRuntimeAllOrNoneSeObstruction.exists_source_equilibrium_with_uniform_service_obstruction`
-in [AllOrNoneSeObstruction](../../Vegas/Examples/LateOpeningRuntimeAllOrNoneSeObstruction.lean)
+[`Vegas.Examples.LateOpeningRuntimeAllOrNoneSeObstruction.exists_source_equilibrium_with_uniform_service_obstruction`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeAllOrNoneSeObstruction.lean#L155)
+in [AllOrNoneSeObstruction](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeAllOrNoneSeObstruction.lean)
 fixes the sampler and deposits before the source SE and every requested failure
 bound; each bound gets one admissible fallible builder with native SEs, all
 of which fail to realize that source's joint store and realized-net-payoff law.
@@ -1479,51 +1479,51 @@ All runtime scope exclusions stated above continue to apply.
 
 ## Checked completion and label symmetry for weak PBE
 
-[PrescribedCompletion](../../GameTheoryExtensions/Analysis/Protocol/PrescribedCompletion.lean)
+[PrescribedCompletion](https://github.com/elazarg/VegasCore/blob/research-tree/GameTheoryExtensions/Analysis/Protocol/PrescribedCompletion.lean)
 constructs one consistent assessment in a finite terminating perfect-recall
 protocol, preserving prescribed decision laws for every fixed player and making
 each free player's whole continuation policy rational at every legal information
 site. Fully mixed references and the common consistency sequence are constructed
 inside the proof; no rationality premise is imposed on their approximants.
-`exists_consistent_full_support_player_completion` additionally retains
+[`exists_consistent_full_support_player_completion`](https://github.com/elazarg/VegasCore/blob/research-tree/GameTheoryExtensions/Analysis/Protocol/PrescribedCompletion.lean#L225) additionally retains
 full-support prescribed decision laws exactly at every approximant, and
 returns that fully mixed Bayes sequence and its pointwise limit.
 
-`exists_consistent_alice_completion` in
-[LateOpeningRuntimeEquilibrium](../../Vegas/Examples/LateOpeningRuntimeEquilibrium.lean)
+[`exists_consistent_alice_completion`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeEquilibrium.lean#L55) in
+[LateOpeningRuntimeEquilibrium](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeEquilibrium.lean)
 instantiates this for every fixed full native Bob policy. Alice is rational on
 every information fiber, Bob's laws remain fixed, and Bayes holds at initialized
 positive-reach sites. This endpoint alone supplies neither Bob rationality nor
 the selected source terminal law.
 
-[LateOpeningRuntimeLabelSymmetry](../../Vegas/Examples/LateOpeningRuntimeLabelSymmetry.lean)
+[LateOpeningRuntimeLabelSymmetry](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeLabelSymmetry.lean)
 checks invariance under changing Alice's ordinary private label while preserving
 her immutable bit. Actual graph transitions, reachable configurations, Bob's
 full physical view and initial authentic candidate meanings respect this change.
 Every raw commitment, opening and malformed-packet handler commutes with it,
 including rejection and failure cases. Actual legal trace transport and
 Bob's complete remembered-information invariance are checked in
-[LabelTrace](../../Vegas/Examples/LateOpeningRuntimeLabelTrace.lean).
-[LabelOrbits](../../Vegas/Examples/LateOpeningRuntimeLabelOrbits.lean)
+[LabelTrace](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeLabelTrace.lean).
+[LabelOrbits](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeLabelOrbits.lean)
 proves the full legal-history bijection and its restriction to every Bob
 information-history fiber. The uniform reference label posterior is checked
 under the actual uniform Alice decision laws as described below.
-`exists_uniform_alice_bob_completion` in the existing
-[LateOpeningRuntimeEquilibrium](../../Vegas/Examples/LateOpeningRuntimeEquilibrium.lean)
+[`exists_uniform_alice_bob_completion`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeEquilibrium.lean#L98) in the existing
+[LateOpeningRuntimeEquilibrium](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeEquilibrium.lean)
 constructs the actual Bob reference assessment: Alice's uniform laws stay
 fixed at every fully mixed Bayes approximant and the limit, Bob is rational
 against all whole continuation policies at every legal fiber, all his label
 beliefs are uniform, and actual-positive Bayes holds. Reward, source
 forfeit, audit sample and deposits retain their arbitrary finite-game scope.
 No Alice rationality or selected source law follows from this endpoint.
-`exists_uniform_bob_reference` specializes this to full audit, nonnegative
+[`exists_uniform_bob_reference`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeEquilibrium.lean#L169) specializes this to full audit, nonnegative
 source forfeit and Bob deposit greater than one, deriving pure silence at every
 unresolved first Bob callback from local whole-policy optimality.
-[BobTail](../../Vegas/Examples/LateOpeningRuntimeBobTail.lean) derives the genuine
+[BobTail](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeBobTail.lean) derives the genuine
 post-Alice chronology at every legal Bob fiber with public clock at least three,
 and transfers the complete terminal-history law and whole-policy rationality
 under changes to Alice's policy, retaining Bob's beliefs and decision laws.
-[ProtectedBobPrefix](../../Vegas/Examples/LateOpeningRuntimeProtectedBobPrefix.lean)
+[ProtectedBobPrefix](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeProtectedBobPrefix.lean)
 checks the actual ready, timely early typed binding, preservation of the whole
 graph configuration and clean Bob bindings across arbitrary intervening Alice
 traffic, and accepted opening of that same typed answer at clock three.
@@ -1531,13 +1531,13 @@ Protected-ready early optimality, the full terminal comparator law, actual Bayes
 override and the assembled weak-PBE/selected-source-law capstones remain open.
 
 The original source recall is also retained through actual prescribed responses.
-[ReactiveSourceResponseRecall](../../Vegas/Game/ReactiveSourceResponseRecall.lean)
+[ReactiveSourceResponseRecall](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/ReactiveSourceResponseRecall.lean)
 proves that a newly sampled response preserves the complete reconstructed source
 past until physical event completion. At a genuine off-turn callback,
-[ReactiveOffTurnPosterior](../../Vegas/Pending/ReactiveOffTurnPosterior.lean)
+[ReactiveOffTurnPosterior](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/ReactiveOffTurnPosterior.lean)
 proves exact posterior pushforward by appending an empty memory slot, including
 total fallback; the law of original intentions and decoded source past is
-unchanged. [ReactiveSourceResponseLaw](../../Vegas/Game/ReactiveSourceResponseLaw.lean)
+unchanged. [ReactiveSourceResponseLaw](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/ReactiveSourceResponseLaw.lean)
 couples the whole next external execution and original source past to the actual
 private posterior and authentic response. It keeps native traffic and source
 recall together. This does not yet establish the full unilateral-deviation
@@ -1546,23 +1546,23 @@ source-information factorization.
 The native label symmetry lift now covers authenticated emissions, inclusion,
 all actual environment commands and the complete `Execution.respond` and
 `Execution.environmentStep` laws in
-[LabelTransitions](../../Vegas/Examples/LateOpeningRuntimeLabelTransitions.lean)
-and [LabelHistories](../../Vegas/Examples/LateOpeningRuntimeLabelHistories.lean).
+[LabelTransitions](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeLabelTransitions.lean)
+and [LabelHistories](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeLabelHistories.lean).
 The full bounded raw menu is unchanged, and the original initialized prior is
 invariant under every label permutation.
-[LabelTrace](../../Vegas/Examples/LateOpeningRuntimeLabelTrace.lean) lifts
+[LabelTrace](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeLabelTrace.lean) lifts
 this to actual legal traces for every scheduler, retaining every raw action
 and Bob's full information. Inversion on legal execution snapshots is
 derived from recorded-label alignment in actual initialized histories.
-[LabelOrbits](../../Vegas/Examples/LateOpeningRuntimeLabelOrbits.lean)
+[LabelOrbits](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeLabelOrbits.lean)
 derives the full legal-history bijection and every Bob information-history
 fiber bijection without positive-reach or belief assumptions.
-[LabelKernels](../../Vegas/Examples/LateOpeningRuntimeLabelKernels.lean) and
-[LabelReach](../../Vegas/Examples/LateOpeningRuntimeLabelReach.lean) derive
+[LabelKernels](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeLabelKernels.lean) and
+[LabelReach](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeLabelReach.lean) derive
 the actual uniform raw response laws, every finite-fuel history law and
 complete history reach weights under these permutations, with Bob's full
 policy arbitrary.
-[LabelBeliefs](../../Vegas/Examples/LateOpeningRuntimeLabelBeliefs.lean)
+[LabelBeliefs](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeLabelBeliefs.lean)
 derives Bayes belief symmetry and uniform conditional label marginals
 through pointwise limits of fully mixed Bayes assessments that keep Alice's
 actual uniform decision laws. This includes Bob sites unreached by the
@@ -1571,14 +1571,14 @@ The assembled weak-PBE capstone remains a separate proof obligation.
 
 Unilateral callback adapters now retain the focal player's actual completions
 instead of imposing prescribed intention consistency on that player.
-[ReactiveDeviationRecall](../../Vegas/Pending/ReactiveDeviationRecall.lean)
+[ReactiveDeviationRecall](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/ReactiveDeviationRecall.lean)
 checks raw focal response stability, actual focal-step coupling and foreign
 completion replay under structural frontier invariants and genuine foreign
 posterior support.
-[ReactiveSourceForeignRecall](../../Vegas/Game/ReactiveSourceForeignRecall.lean)
+[ReactiveSourceForeignRecall](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/ReactiveSourceForeignRecall.lean)
 retains the complete original source past and posterior readout across every
 foreign raw callback.
-[ReactiveBindingNoise](../../Vegas/Pending/ReactiveBindingNoise.lean) proves the
+[ReactiveBindingNoise](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/ReactiveBindingNoise.lean) proves the
 actual joint private binding-result and next foreign activation-input law:
 the observer's full recall and observation are independent of the private
 binding choice. This holds for arbitrary leak rules because these binding
@@ -1589,12 +1589,12 @@ factorization remains a separate obligation.
 
 The actual native focal response has the same graph observation as its
 reconstructed original-action configuration when focal memory is empty;
-[ReactiveDeviationObservation](../../Vegas/Pending/ReactiveDeviationObservation.lean)
+[ReactiveDeviationObservation](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/ReactiveDeviationObservation.lean)
 retains every foreign sampled memory. At genuine initialized accepted focal
-packets, [ReactiveDeviationInclusion](../../Vegas/Pending/ReactiveDeviationInclusion.lean)
+packets, [ReactiveDeviationInclusion](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/ReactiveDeviationInclusion.lean)
 derives the actual handler action and full reconstructed completion, including
 the complete prior source history. Native focal expiry in
-[ReactiveDeviationCompletion](../../Vegas/Pending/ReactiveDeviationCompletion.lean)
+[ReactiveDeviationCompletion](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/ReactiveDeviationCompletion.lean)
 either stutters that configuration or produces a supported genuine graph step.
 These adapters impose no prescribed focal policy and assume no target law.
 The complete unilateral source/noise law remains open.
@@ -1603,7 +1603,7 @@ The complete unilateral source/noise law remains open.
 owns the common reachable configuration, input/domain, output agreement
 and ordered source recall relation. The existing all-prescribed frontier retains
 its full intention equality as an extension.
-[ReactiveUnilateralFrontier](../../Vegas/Pending/ReactiveUnilateralFrontier.lean)
+[ReactiveUnilateralFrontier](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/ReactiveUnilateralFrontier.lean)
 adds the arbitrary focal player's actual physical completions, empty auxiliary
 focal memory and genuine foreign sampled intentions. No prescribed focal policy
 is assumed. The shared pending-owner suffix proof requires genuine consistency
@@ -1612,12 +1612,12 @@ replaces duplicated mixed replay machinery. All original source joint-law,
 no-miss, authentic audit and realized settlement capstones retain their scope.
 
 Actual mixed native branches are checked in
-[UnilateralEnvironment](../../Vegas/Pending/ReactiveUnilateralEnvironment.lean),
-[UnilateralExpiry](../../Vegas/Pending/ReactiveUnilateralExpiry.lean),
-[UnilateralInclusion](../../Vegas/Pending/ReactiveUnilateralInclusion.lean),
-[UnilateralSampling](../../Vegas/Pending/ReactiveUnilateralSampling.lean),
-[UnilateralSettlement](../../Vegas/Pending/ReactiveUnilateralSettlement.lean) and
-[UnilateralSilentExpiry](../../Vegas/Pending/ReactiveUnilateralSilentExpiry.lean).
+[UnilateralEnvironment](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/ReactiveUnilateralEnvironment.lean),
+[UnilateralExpiry](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/ReactiveUnilateralExpiry.lean),
+[UnilateralInclusion](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/ReactiveUnilateralInclusion.lean),
+[UnilateralSampling](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/ReactiveUnilateralSampling.lean),
+[UnilateralSettlement](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/ReactiveUnilateralSettlement.lean) and
+[UnilateralSilentExpiry](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/ReactiveUnilateralSilentExpiry.lean).
 They retain arbitrary focal responses, couple real chance and focal graph draws,
 sample genuine foreign intentions, settle authenticated pending packets or
 stutter on rejection/missing packets, and retain actual silent foreign expiry
@@ -1625,7 +1625,7 @@ under the stated provenance, posterior and opportunity hypotheses.
 [AcceptedEventOwnership](../../Vegas/Pending/AcceptedEventOwnership.lean)
 derives an accepted event's owner from the actual packet sender.
 
-[UnilateralObservation](../../Vegas/Pending/ReactiveUnilateralObservation.lean)
+[UnilateralObservation](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/ReactiveUnilateralObservation.lean)
 derives exact equality between the sampled frontier's complete normalized source
 observation and the focal physical source observation. It uses genuine foreign
 completion replay and the strengthened owning observation commutation theorem,
@@ -1645,24 +1645,24 @@ The separate ready, timely late-callback mismatch above refutes unrestricted
 exact source-value correspondence. Protected first-opportunity correspondence
 and whole-policy recovery remain open.
 
-[ProtectedBobPolicy](../../Vegas/Examples/LateOpeningRuntimeProtectedBobPolicy.lean)
+[ProtectedBobPolicy](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeProtectedBobPolicy.lean)
 checks the actual existing source-canonical Bob comparator. At a genuine fresh
 ready binding it selects the typed answer; at a ready opening it selects the
 canonical TRUE disclosure; after both Bob events settle it is silent, including
 the optional repeated clock-three callback. Readiness derives the publication
 needed by the source observation decoder. These are operational identities,
 without a new native policy or source/runtime model.
-[ProtectedBobContinuation](../../Vegas/Examples/LateOpeningRuntimeProtectedBobContinuation.lean)
+[ProtectedBobContinuation](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeProtectedBobContinuation.lean)
 derives the entire chosen-answer terminal publication and Bob audit charge zero
 under arbitrary authentic sampling, retaining arbitrary Alice future policies.
 Once Alice has published successfully, Safe attains exactly `2/5` without
 restrictions on reward, forfeit or deposits.
-[ProtectedBobTiming](../../Vegas/Examples/LateOpeningRuntimeProtectedBobTiming.lean)
+[ProtectedBobTiming](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeProtectedBobTiming.lean)
 derives the binding activation timestamp zero at the actual initialized ready
 Bob callback. Protected-ready whole-policy optimality, first-binding selection
 and the weak-PBE/source-selected-law capstones remain open.
 
-[ReactiveBindingResponseNoise](../../Vegas/Pending/ReactiveBindingResponseNoise.lean)
+[ReactiveBindingResponseNoise](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/ReactiveBindingResponseNoise.lean)
 extends opaque binding independence to the complete next activation input and
 an arbitrary raw observer response. Conditioning on both retains the foreign
 private binding draw's original distribution, even at an impossible observation
@@ -1670,7 +1670,7 @@ under the existing total posterior fallback. The prefix is fixed, leak rules
 are arbitrary, and no desired factorization is assumed. Whole-phase and
 initialized unilateral source-information/noise correspondence remain open.
 
-[RecoveryDomination](../../Vegas/Examples/LateOpeningRuntimeRecoveryDomination.lean)
+[RecoveryDomination](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeRecoveryDomination.lean)
 compares two actual responses at the same genuine legal, ready, timely late
 Alice callback against the original Safe Bob continuation. Actual silence
 authors no Alice traffic, reaches Safe Bob publication and has exact net payoff
@@ -1686,7 +1686,7 @@ correspondence. It proves a local action-value obstruction, without an
 equilibrium conclusion. Protected first-opportunity correspondence and optimality
 against arbitrary whole continuation policies remain separate obligations.
 
-[UnilateralExecution](../../Vegas/Game/SourceServiceUnilateralExecution.lean)
+[UnilateralExecution](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceUnilateralExecution.lean)
 checks every supported initialized bounded run with one arbitrary focal raw
 policy and prescribed foreign policies. For every compatible foreign posterior
 memory and empty focal auxiliary memory it derives a reachable mixed frontier,
@@ -1699,7 +1699,7 @@ foreign resolution expiry compose through real rounds. Existing all-prescribed
 source joint-store, authentic audit and net-payoff capstones retain their scope.
 This is a support and structural correspondence result, not a full PMF law.
 
-[PublicCheckpoint](../../Vegas/Game/ReactiveSourcePublicCheckpoint.lean)
+[PublicCheckpoint](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/ReactiveSourcePublicCheckpoint.lean)
 derives chronological prefix and source observation decoding at an actual
 public-ready focal event in `toEventGraph`, with the compiler's explicit context
 reference/coverage hypotheses. The resulting source decision view and actual
@@ -1707,11 +1707,11 @@ focal source history encode to the exact physical normalized observation.
 No source-state or desired-law premise is assumed. Private-binding chronology
 and the full conditional source/noise correspondence remain open.
 
-[ProtectedBobMenu](../../Vegas/Examples/LateOpeningRuntimeProtectedBobMenu.lean)
+[ProtectedBobMenu](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeProtectedBobMenu.lean)
 proves the existing canonical Bob policy is globally admissible in the original
 bounded raw menu for every source profile, including failed binding declarations
 and arbitrary earlier traffic.
-[LabelContinuation](../../Vegas/Examples/LateOpeningRuntimeLabelContinuation.lean)
+[LabelContinuation](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeLabelContinuation.lean)
 derives full actual terminal-history permutation symmetry for every whole Bob
 alternative from the genuine fully mixed Bayes sequence retaining uniform Alice.
 A successful-publication summary retains missing and failed outputs explicitly;

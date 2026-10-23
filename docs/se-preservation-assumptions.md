@@ -326,7 +326,7 @@ proof.
 Asynchrony, concurrency, and observable timing are separate properties. There
 are two relevant positive constructions in the repository.
 
-The [calendar construction](../Vegas/Game/SourceServiceCompilation.lean) uses
+The [calendar construction](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceCompilation.lean) uses
 an explicit serial plan for activation, inclusion, expiry, and moving to the
 next event. Its [roster scheduler](../Vegas/Game/ServiceRoster.lean) never
 consults the network-policy argument it receives. Its success is therefore

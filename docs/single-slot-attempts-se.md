@@ -430,14 +430,14 @@ fibers, recoverability of the public projection and of the actors from every
 player's information at its decisions, and finitely supported draws. Each
 player sees its own view of every draw, so a leak shown to one observer is
 covered when its law reads only public data. Nonterminal decision fibers hold
-for the source model (`Vegas.SourceProgram.Setup.decision_allNonterminal`).
+for the source model ([`Vegas.SourceProgram.Setup.decision_allNonterminal`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceSiteNonterminal.lean#L36)).
 The late-failure floor is `Vegas.EventGraphRuntime.LateSendsFailAtLeast`:
 every packet an owner sends for its event after an earlier activation at which
 the event was already ready ends without an accepting receipt with conditional
 probability at least $\delta$, under every behavioral continuation. With it,
 a late send is collected with probability at least $\alpha\delta$ under every
-continuation (`Vegas.EventGraphRuntime.lateSend_collection_continuation`, from
-the general `Vegas.EventGraphRuntime.deadPacket_collection_continuation`:
+continuation ([`Vegas.EventGraphRuntime.lateSend_collection_continuation`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/ReactiveLateCollection.lean#L173), from
+the general [`Vegas.EventGraphRuntime.deadPacket_collection_continuation`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/ReactiveLateCollection.lean#L69):
 coverage at rate $\alpha$ of every packet forbidden by the final record, times
 the probability that the packet stays dead).
 

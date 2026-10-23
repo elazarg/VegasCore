@@ -206,7 +206,7 @@ The general terminal-audit extension and finite-deposit conclusion are already
 checked in [TerminalAudit](../../GameTheoryExtensions/Analysis/Protocol/TerminalAudit.lean),
 as described in [general-se-preservation.md](../general-se-preservation.md).
 The finite-plan mixture lower bound is checked in
-[PositiveCollection](../../GameTheoryExtensions/Analysis/PositiveCollection.lean).
+[PositiveCollection](https://github.com/elazarg/VegasCore/blob/research-tree/GameTheoryExtensions/Analysis/PositiveCollection.lean).
 Supplying the source-to-service restriction, the actual pure-plan collection
 tests, and behavioral execution realization for a particular backend remains
 an operational obligation. Those checked results are not a general theorem
