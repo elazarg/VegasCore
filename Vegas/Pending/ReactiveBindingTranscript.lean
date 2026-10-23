@@ -150,37 +150,4 @@ theorem AcceptedRecorded.binding {before after : State graph}
 
 end State
 
-/-- Canonical binding packets establish the public accepted-handle decoder
-through their actual protected inclusion, for usable and unusable values alike. -/
-theorem reactiveBinding_reserved_recorded (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (execution : (runtime.reactiveApplication leaks).Execution) (owner : Player)
-    (event : graph.EventId) (payload : L.Ty)
-    (outputEq : graph.outputLayout event = .binding owner payload)
-    (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
-      (graph.nodes event) = .bind owner payload)
-    (node : nodeView graph event = .bind owner payload outputEq codeEq)
-    (result : PublicationResult (L.Val payload))
-    (recorded : execution.application.AcceptedRecorded)
-    (ready : execution.application.config.cut.Ready event)
-    (timely : execution.application.WithinDeadline runtime event)
-    (fresh : execution.application.candidates.lookup
-      (owner, .prepared (execution.application.publicView.bindingCount owner)) = .fresh)
-    (vacant : execution.application.accepted (.inr event) = none)
-    (unused : execution.application.HandleUnused
-      (owner, .prepared (execution.application.publicView.bindingCount owner)))
-    (serials : execution.network.SerialsBeforeNext)
-    (players : Player → (runtime.reactiveApplication leaks).Policy)
-    (network : runtime.NetworkPolicy leaks)
-    (next : (runtime.reactiveApplication leaks).Execution)
-    (supported : next ∈ (runtime.interactionStep leaks players network (.includeLatest event owner)
-      (execution.respond (runtime.reactiveApplication leaks) owner
-        (runtime.reactiveBinding leaks owner event payload result
-          (execution.application.publicView.bindingCount owner)))).support) :
-    next.application.AcceptedRecorded := by
-  obtain ⟨config, accepted, _candidates⟩ := runtime.reactiveBinding_reserved_state leaks execution
-    owner event payload outputEq codeEq node result _ ready timely fresh vacant unused serials
-      players network next supported
-  exact recorded.binding event owner payload outputEq ready result config accepted
-
 end Vegas.EventGraphRuntime

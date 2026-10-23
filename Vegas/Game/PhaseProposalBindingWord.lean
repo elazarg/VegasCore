@@ -3,7 +3,7 @@
 import Vegas.Compile.CommitPrefixReadStability
 import Vegas.Source.CommitRecoveryInstructions
 import Vegas.EventGraph.SchedulerErasure
-import Vegas.EventGraph.ExecutionMode
+import Vegas.EventGraph.SequentialLaw
 
 /-! # The current binding word as a readout of the emission frontier
 

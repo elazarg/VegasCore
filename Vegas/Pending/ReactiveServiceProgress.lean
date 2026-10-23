@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.ReactiveServiceEvaluation
+import Interaction.ReactiveRounds
+import Vegas.Pending.ReactiveService
 import Vegas.Pending.EventProgress
 
 /-! # Progress under arbitrary reactive player and network policies
@@ -232,42 +233,6 @@ theorem interactionInstruction_ticks (runtime : EventGraphRuntime graph)
       cases (PMF.mem_support_pure_iff _ _).mp supported
       rfl
 
-theorem interactionStep_facts (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (inputs : graph.Inputs)
-    (players : Player → (runtime.reactiveApplication leaks).Policy)
-    (network : runtime.NetworkPolicy leaks)
-    (instruction : ServiceInstruction graph)
-    (execution next : (runtime.reactiveApplication leaks).Execution)
-    (invariant : execution.application.Invariant inputs)
-    (supported : next ∈ (runtime.interactionStep leaks players network instruction
-      execution).support) :
-    State.ServiceProgress inputs instruction.ticks execution.application next.application := by
-  obtain ⟨command, selected, moved⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
-  have progress := runtime.reactive_dispatch_progress leaks inputs players execution next command
-    invariant moved
-  rwa [runtime.interactionInstruction_ticks leaks network _ _ instruction command
-    selected] at progress
-
-theorem runInteractionPlan_facts (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (inputs : graph.Inputs)
-    (players : Player → (runtime.reactiveApplication leaks).Policy)
-    (network : runtime.NetworkPolicy leaks)
-    (plan : List (ServiceInstruction graph))
-    (execution next : (runtime.reactiveApplication leaks).Execution)
-    (invariant : execution.application.Invariant inputs)
-    (supported : next ∈ (runtime.runInteractionPlan leaks players network plan
-      execution).support) :
-    State.ServiceProgress inputs (serviceTicks plan) execution.application next.application := by
-  induction plan generalizing execution with
-  | nil => cases (PMF.mem_support_pure_iff _ _).mp supported; exact .refl invariant
-  | cons instruction rest ih =>
-      obtain ⟨middle, moved, finished⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
-      have first := runtime.interactionStep_facts leaks inputs players network instruction
-        execution middle invariant moved
-      exact first.trans (ih middle first.invariant finished)
-
 omit [DecidableEq Player] in
 theorem interactionVisit_ticks (networkTurns : Nat) (event : graph.EventId) :
     serviceTicks (interactionVisit networkTurns event) = 0 := by
@@ -287,25 +252,5 @@ theorem interactionEpoch_ticks (chosen : ServiceOrder graph) (networkTurns : Nat
         rw [List.flatMap_cons, serviceTicks_append, interactionVisit_ticks, ih]
   simp only [interactionEpoch, serviceTicks_append, sweep]
   simp [serviceTicks, ServiceInstruction.ticks, Function.comp_def]
-
-theorem runInteractionEpochs_facts (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (inputs : graph.Inputs)
-    (chosen : ServiceOrder graph) (networkTurns : Nat)
-    (players : Player → (runtime.reactiveApplication leaks).Policy)
-    (network : runtime.NetworkPolicy leaks)
-    (count : Nat) (execution next : (runtime.reactiveApplication leaks).Execution)
-    (invariant : execution.application.Invariant inputs)
-    (supported : next ∈ (runtime.runInteractionEpochs leaks chosen networkTurns players network
-      count execution).support) :
-    State.ServiceProgress inputs count execution.application next.application := by
-  induction count generalizing execution with
-  | zero => cases (PMF.mem_support_pure_iff _ _).mp supported; exact .refl invariant
-  | succ count ih =>
-      obtain ⟨middle, moved, finished⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
-      have first := runtime.runInteractionPlan_facts leaks inputs players network _
-        execution middle invariant moved
-      rw [interactionEpoch_ticks] at first
-      simpa only [Nat.add_comm 1 count] using first.trans (ih middle first.invariant finished)
 
 end Vegas.EventGraphRuntime

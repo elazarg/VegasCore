@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.PhaseBindingNativeResponse
+import Vegas.Pending.PhaseBindingRepairFrame
+import Vegas.Pending.ReactiveBindingSubmissionFrame
 
 /-! # Count admission discharges native response replay guards -/
 
@@ -47,43 +48,5 @@ theorem localEnvelope_admitted (physical : (phaseApplication runtime leaks).Exec
   exact ⟨(PhaseCount.allows_publicView _ _).symm.trans allowed, unexcluded⟩
 
 variable [Fintype Player] (bounds : MessageBounds graph)
-
-/-- Every actual counted response projects to its native response. Raw evidence
-requests and preparation syntax remain unrestricted by the statement. -/
-theorem execution_respond_of_onePacket
-    (physical : (phaseApplication runtime leaks).Execution) (who : Player)
-    (response : (phaseApplication runtime leaks).Action)
-    (member : response ∈ PhaseCount.onePacketActions runtime leaks bounds who
-      (physical.recall who) (physical.observe (phaseApplication runtime leaks) who)) :
-    execution runtime leaks (physical.respond (phaseApplication runtime leaks) who response) =
-      (execution runtime leaks physical).respond
-        (runtime.reactiveApplication (nativeLeaks (graph := graph))) who
-          (action runtime leaks response) := by
-  apply execution_respond runtime leaks physical who response
-  intro material transmitted
-  have permitted := ((PhaseCount.mem_onePacketActions runtime leaks bounds who _ _ _).mp
-    member).2
-  rcases permitted with silent | ⟨other, emitted, allowed⟩
-  · rw [transmitted] at silent
-    cases silent
-  · have same : other = material := Option.some.inj (emitted.symm.trans transmitted)
-    subst other
-    exact localEnvelope_admitted runtime leaks physical who material
-      ((PhaseCount.permits_eq_true_iff _ _).mp allowed).1
-
-/-- The repair starts at the real clear initialized prefix. Empty retirement is
-derived from the actual history, rather than imposed as an extra runtime condition. -/
-theorem frame_at_clear_history (plan : RuntimePhasePlan graph) (inputs : PMF graph.Inputs)
-    (horizon : Nat) (scheduler : (phaseApplication runtime leaks).Scheduler)
-    {control : (phaseApplication runtime leaks).Control}
-    (trace : ((PhaseCount.onePacketMenu runtime leaks bounds).protocol
-      (inputs.map (PhaseRuntimeState.initial plan)) horizon scheduler).Trace (some control))
-    (clear : control.execution.application.current.excluded = ∅) (owner : Player) :
-    Frame runtime leaks (BindingMemory.atRecall runtime (nativeLeaks (graph := graph))
-      ((execution runtime leaks control.execution).recall owner)) owner
-        control.execution control.execution := by
-  have raw := (PhaseCount.onePacketMenu runtime leaks bounds).toRawTrace _ _ _ trace
-  exact frame_atRecall owner control.execution clear
-    (phase_clear_history runtime leaks plan inputs horizon scheduler control raw clear).2
 
 end Vegas.EventGraphRuntime.PhaseBindingRepair

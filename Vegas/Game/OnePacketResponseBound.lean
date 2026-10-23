@@ -1,6 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.OnePacketFirstBound
+import Vegas.Game.OnePacketFirstIrregular
+import Vegas.Game.OnePacketCounterpartBound
+import Vegas.Game.OnePacketSlotLawForced
 
 /-! # The response bound for the certificate
 

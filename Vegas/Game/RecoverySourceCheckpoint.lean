@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.CompiledRecoveryResidual
+import Vegas.Game.SourceCommitBlock
+import Vegas.Compile.EventGraphSuffix
 import Vegas.Compile.CompiledReadoutSuffix
 import Vegas.Compile.ProtocolViewSuffix
 import Vegas.Compile.EventGraphInputs

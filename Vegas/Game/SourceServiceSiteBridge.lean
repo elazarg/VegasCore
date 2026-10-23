@@ -13,9 +13,6 @@ completes (`Vegas.ReadySite.completionLaw`). For every scheduler that completes
 play, every player profile, and every response whose execution the players
 reach from initialization, each stopping point is a completion boundary of the
 next rank within the horizon (`Vegas.ReadySite.completion_boundary_of_supported`).
-At a legal decision of a response menu under a fully mixed restricted
-assessment every legal response is such a response
-(`Vegas.ReadySite.completion_boundary`).
 
 The readout after the response is then the configuration law at completion,
 bound with the continuation from the next boundary: exactly, given exact
@@ -163,41 +160,6 @@ theorem completion_boundary_of_supported {scheduler : (application setup leaks).
   have := stoppedSeen observer entry member next readyView
   omega
 
-/-- **The completion boundary at a legal decision.** For any response menu,
-scheduler, horizon and players admissible for the menu whose restriction is
-a fully mixed assessment, every legal response at a legal decision stops at a
-completion boundary of the next rank, within the horizon. -/
-theorem completion_boundary {scheduler : (application setup leaks).Scheduler} {horizon : Nat}
-    {players : Player → (application setup leaks).Policy}
-    (menu : (application setup leaks).ResponseMenu)
-    (covered : ∀ who, menu.Admissible (initialLaw setup) horizon scheduler who (players who))
-    (assessment : (menu.information (initialLaw setup) horizon scheduler).BehavioralAssessment)
-    (strategy : assessment.strategy = fun who =>
-      menu.restrictPolicy (initialLaw setup) horizon scheduler who (players who))
-    (mixed : assessment.IsFullyMixed)
-    (completes : CompletesPlay (runtime setup) leaks (initialLaw setup) horizon scheduler)
-    {who : Player} {remaining : Nat}
-    (trace : (menu.protocol (initialLaw setup) horizon scheduler).Trace
-      (some ⟨remaining, some who, execution⟩))
-    (response : (application setup leaks).Action)
-    (allowed : response ∈ menu.actions who (execution.recall who)
-      (execution.observe (application setup leaks) who))
-    (stopped : (application setup leaks).Execution)
-    (reached : stopped ∈ (site.completionLaw scheduler horizon players who response).support) :
-    stopped.environmentRecall.length ≤ horizon ∧
-      CompletionBoundary setup leaks scheduler players (site.event.val + 1) stopped := by
-  let app := application setup leaks
-  have accounted := (menu.roundSupported_uniform (initialLaw setup) horizon scheduler trace).1
-  change execution.environmentRecall.length + remaining = horizon at accounted
-  have supported := menu.fullyMixed_response_rounds_support (initialLaw setup) horizon scheduler
-    players covered assessment strategy mixed who remaining execution trace response allowed 0
-    (execution.respond app who response) ((PMF.mem_support_pure_iff _ _).mpr rfl)
-  rw [show (execution.respond app who response).environmentRecall.length =
-      execution.environmentRecall.length from
-    congrArg List.length (app.respond_environmentRecall execution who response)] at supported
-  exact site.completion_boundary_of_supported completes who response supported (by omega)
-    stopped reached
-
 /-- **Completion-stopped continuation bridge, for every scheduler.** After a
 response whose execution the players reach within the horizon, the complete
 typed source terminal law is the source continuation from the next event
@@ -255,69 +217,6 @@ theorem response_completion_within {scheduler : (application setup leaks).Schedu
   obtain ⟨stoppedBounded, boundary⟩ :=
     site.completion_boundary_of_supported completes who response supported bounded stopped
       reached
-  exact continuation _ stopped boundary stoppedBounded
-
-/-- The exact bridge at a legal decision of a response menu. -/
-theorem response_completion_law_of_menu {scheduler : (application setup leaks).Scheduler}
-    {horizon : Nat} {players : Player → (application setup leaks).Policy}
-    {profile : BehavioralProfile setup.program}
-    (menu : (application setup leaks).ResponseMenu)
-    (covered : ∀ who, menu.Admissible (initialLaw setup) horizon scheduler who (players who))
-    (assessment : (menu.information (initialLaw setup) horizon scheduler).BehavioralAssessment)
-    (strategy : assessment.strategy = fun who =>
-      menu.restrictPolicy (initialLaw setup) horizon scheduler who (players who))
-    (mixed : assessment.IsFullyMixed)
-    (completes : CompletesPlay (runtime setup) leaks (initialLaw setup) horizon scheduler)
-    (continuation : BoundaryContinuationLaw setup leaks scheduler horizon players profile)
-    {who : Player} {remaining : Nat}
-    (trace : (menu.protocol (initialLaw setup) horizon scheduler).Trace
-      (some ⟨remaining, some who, execution⟩))
-    (response : (application setup leaks).Action)
-    (allowed : response ∈ menu.actions who (execution.recall who)
-      (execution.observe (application setup leaks) who)) :
-    sourceResponseReadout scheduler horizon players execution who response =
-      (site.completionConfigLaw scheduler horizon players who response).bind
-        (sourceContinuation setup profile (site.event.val + 1)) := by
-  unfold sourceResponseReadout completionConfigLaw
-  rw [(application setup leaks).runToHorizon_eq_runUntilHorizon_bind scheduler players
-    (fun final => site.event ∈ final.application.config.cut.completed) horizon _,
-    PMF.map_bind, PMF.bind_map]
-  apply bind_congr_on_support _
-  intro stopped reached
-  obtain ⟨stoppedBounded, boundary⟩ := site.completion_boundary menu covered assessment strategy
-    mixed completes trace response allowed stopped reached
-  exact continuation _ stopped boundary stoppedBounded
-
-/-- The approximate bridge at a legal decision of a response menu. -/
-theorem response_completion_within_of_menu {scheduler : (application setup leaks).Scheduler}
-    {horizon : Nat} {players : Player → (application setup leaks).Policy}
-    {profile : BehavioralProfile setup.program} {error : Nat → ℝ}
-    (menu : (application setup leaks).ResponseMenu)
-    (covered : ∀ who, menu.Admissible (initialLaw setup) horizon scheduler who (players who))
-    (assessment : (menu.information (initialLaw setup) horizon scheduler).BehavioralAssessment)
-    (strategy : assessment.strategy = fun who =>
-      menu.restrictPolicy (initialLaw setup) horizon scheduler who (players who))
-    (mixed : assessment.IsFullyMixed)
-    (completes : CompletesPlay (runtime setup) leaks (initialLaw setup) horizon scheduler)
-    (continuation : BoundaryContinuationWithin setup leaks scheduler horizon players profile error)
-    {who : Player} {remaining : Nat}
-    (trace : (menu.protocol (initialLaw setup) horizon scheduler).Trace
-      (some ⟨remaining, some who, execution⟩))
-    (response : (application setup leaks).Action)
-    (allowed : response ∈ menu.actions who (execution.recall who)
-      (execution.observe (application setup leaks) who)) :
-    PMF.WithinTV (error (site.event.val + 1))
-      (sourceResponseReadout scheduler horizon players execution who response)
-      ((site.completionConfigLaw scheduler horizon players who response).bind
-        (sourceContinuation setup profile (site.event.val + 1))) := by
-  unfold sourceResponseReadout completionConfigLaw
-  rw [(application setup leaks).runToHorizon_eq_runUntilHorizon_bind scheduler players
-    (fun final => site.event ∈ final.application.config.cut.completed) horizon _,
-    PMF.map_bind, PMF.bind_map]
-  apply PMF.WithinTV.bind_right
-  intro stopped reached
-  obtain ⟨stoppedBounded, boundary⟩ := site.completion_boundary menu covered assessment strategy
-    mixed completes trace response allowed stopped reached
   exact continuation _ stopped boundary stoppedBounded
 
 end ReadySite

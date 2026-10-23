@@ -4,7 +4,6 @@ import Interaction.MessageNetworkInvariant
 import Interaction.ReactiveServiceInvariant
 import Interaction.ReactiveInvariant
 import Interaction.ReactiveResponseMenu
-import GameTheoryExtensions.Protocol.Knowledge
 
 /-! # Persistent evidence carried by emitted packets
 
@@ -124,56 +123,6 @@ theorem history_sound (initial : PMF app.State) (horizon : Nat) (scheduler : app
     ReactiveApplication.serviceInvariant evidence.Sound state :=
   (evidence.serviceInvariant scheduler).history initial horizon
     (fun state _ => evidence.sound_initial state) trace
-
-/-- A received certificate is true at every history compatible with the
-recipient's information, including zero-probability histories of a profile. -/
-theorem knows_observed (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
-    (who : Principal) (past : List app.PlayerEntry) (view : app.PlayerView)
-    (fact : evidence.Fact) (observed : fact ∈ evidence.observe view) :
-    (app.information initial horizon scheduler).Knows who (some (past, view))
-      (fun history => stateInvariant (fun state => evidence.valid state fact) history.state) := by
-  rintro ⟨⟨state, trace⟩, equal⟩
-  change (app.signals initial horizon scheduler).infoOf who trace = some (past, view) at equal
-  rw [app.info] at equal
-  cases state with
-  | none => cases equal
-  | some control =>
-      change (if control.actor = some who then
-        some (control.execution.recall who, control.execution.observe app who)
-        else none) = some (past, view) at equal
-      split at equal
-      · have sameView := congrArg Prod.snd (Option.some.inj equal)
-        change control.execution.observe app who = view at sameView
-        apply evidence.observed_valid control.execution who
-          (evidence.history_sound initial horizon scheduler trace) fact
-        exact sameView.symm ▸ observed
-      · cases equal
-
-/-- Finite menus inherit the same knowledge guarantee without any profile or
-positive-probability premise. -/
-theorem knows_observed_menu (menu : app.ResponseMenu) (initial : PMF app.State)
-    (horizon : Nat) (scheduler : app.Scheduler)
-    (who : Principal) (past : List app.PlayerEntry) (view : app.PlayerView)
-    (fact : evidence.Fact) (observed : fact ∈ evidence.observe view) :
-    (menu.information initial horizon scheduler).Knows who (some (past, view))
-      (fun history => stateInvariant (fun state => evidence.valid state fact) history.state) := by
-  rintro ⟨⟨state, trace⟩, equal⟩
-  change (menu.signals initial horizon scheduler).infoOf who trace = some (past, view) at equal
-  rw [ResponseMenu.info] at equal
-  cases state with
-  | none => cases equal
-  | some control =>
-      change (if control.actor = some who then
-        some (control.execution.recall who, control.execution.observe app who)
-        else none) = some (past, view) at equal
-      split at equal
-      · have sameView := congrArg Prod.snd (Option.some.inj equal)
-        change control.execution.observe app who = view at sameView
-        apply evidence.observed_valid control.execution who
-          (evidence.history_sound initial horizon scheduler
-            (menu.toRawTrace initial horizon scheduler trace)) fact
-        exact sameView.symm ▸ observed
-      · cases equal
 
 end PacketEvidence
 end Interaction.ReactiveApplication

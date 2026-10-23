@@ -4,7 +4,6 @@ import Vegas.Game.PhaseProposalOriginalResetPayoff
 import Vegas.Game.PhaseProposalStandingBindingDebt
 import Vegas.Game.PhaseProposalNativeFutureFlags
 import Vegas.Game.PhaseProposalObservableDebtPayoff
-import Vegas.Game.PhaseCallbackContinuation
 import Vegas.Game.PhaseProposalUnflaggedBinding
 import Vegas.Pending.PhaseSentMenu
 import Interaction.ReactiveAnchoredStopped

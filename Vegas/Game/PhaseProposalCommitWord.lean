@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.PhaseProposalCommitReadback
+import Vegas.Game.CompiledCommitHead
 import Vegas.Game.CompiledCommitAttemptSplit
 import Vegas.Pending.PhaseRecordedBindingMaterial
 import Vegas.Pending.PhaseBindingFreshness

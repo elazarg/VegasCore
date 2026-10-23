@@ -474,7 +474,7 @@ excluded. They would remove the absorbing-utility condition.
 ## What the actual native operations do and do not erase
 
 The checked
-[binding observation layer](../../Vegas/Pending/ReactiveBindingObservation.lean)
+[binding observation layer](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/ReactiveBindingObservation.lean)
 proves that changing a canonical binding's meaning leaves its public network
 unchanged and preserves foreign activation inputs. This supports the
 value-independent opaque experiment case. It does not say that the owner's

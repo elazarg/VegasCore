@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Source.ProposalRecoveryNoMissRepresentative
+import Vegas.Source.ProposalRecoveryPrefixLift
+import Vegas.Source.ProposalRecoveryCommitWindow
 import Vegas.Source.CommitRecoveryNoMissFixed
 
 /-! # The actual ordinary class and failed remainder of enriched query fibers -/

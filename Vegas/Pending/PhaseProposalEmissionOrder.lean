@@ -1,7 +1,10 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.PhaseSemanticProgress
-import Vegas.Pending.PhaseBindingRecallOrder
+import Vegas.Pending.PhaseAttemptCheckpoint
+import Vegas.Pending.PhaseBindingResponseWitness
+import Vegas.Pending.PhaseClearNativeProgress
+import Interaction.ReactiveRecordedResponse
 import Vegas.Pending.PhaseBindingResponseDispatcher
 
 /-! # Owned emission prefixes in an actual surviving attempt

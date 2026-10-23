@@ -1,7 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.RecoveryArchivedRetry
-import Vegas.Game.RecoveryReadyCommitWitness
+import Vegas.Game.RecoveryCommitPrefixWitness
+import Vegas.Game.RecoveryBindingPrefix
 import Vegas.Game.CommitPrefixSurvivingRecall
 
 /-! # Actual archived own words at surviving ready source bindings -/

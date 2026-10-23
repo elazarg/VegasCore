@@ -1023,7 +1023,7 @@ application state, packets, knowledge, receipts and every other player's
 recall remain exact. This projection does not change the runtime's memory or
 its information sets. See
 [AliceOpeningAliases](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Examples/LateOpeningRuntimeAliceOpeningAliases.lean)
-and [InactiveRecall](../../Interaction/ReactiveInactiveRecall.lean).
+and [InactiveRecall](https://github.com/elazarg/VegasCore/blob/research-tree/Interaction/ReactiveInactiveRecall.lean).
 
 Finally, any raw native profile whose decoded **Alice publication marginal**
 is almost surely successful must obtain her protected accepting receipt
@@ -1599,7 +1599,7 @@ either stutters that configuration or produces a supported genuine graph step.
 These adapters impose no prescribed focal policy and assume no target law.
 The complete unilateral source/noise law remains open.
 
-[ReactiveRetainedFrontier](../../Vegas/Pending/ReactiveRetainedFrontier.lean)
+[ReactiveRetainedFrontier](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/ReactiveRetainedFrontier.lean)
 owns the common reachable configuration, input/domain, output agreement
 and ordered source recall relation. The existing all-prescribed frontier retains
 its full intention equality as an extension.

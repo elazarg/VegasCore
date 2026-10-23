@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.PhaseSuccessorRecall
+import Vegas.Pending.PhaseSemanticProgress
+import Vegas.Pending.PhaseOncePolicy
 import Interaction.ReactiveAnchoredPolicy
 import Interaction.ReactiveRecordedResponseAfter
 import Vegas.Pending.PhaseRecordedCountedRequest

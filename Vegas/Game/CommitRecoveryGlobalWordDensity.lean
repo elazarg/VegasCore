@@ -7,7 +7,7 @@ import Vegas.Source.CommitRecoveryPublicReadback
 import Vegas.Source.CommitRecoveryWordObservation
 import Vegas.Source.CommitRecoveryPublicDeterminacy
 import Vegas.Source.CommitRecoveryWordMass
-import Vegas.Game.CommitRecoveryFlagDensity
+import Vegas.Game.CommitRecoveryNormalizedFlagPlan
 
 /-! # Global original source records under private-word substitution
 

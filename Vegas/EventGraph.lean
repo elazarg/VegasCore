@@ -15,8 +15,6 @@ import Vegas.EventGraph.CommutationRecall
 import Vegas.EventGraph.CompletedOutputAgreement
 import Vegas.EventGraph.ConfigRestriction
 import Vegas.EventGraph.Execution
-import Vegas.EventGraph.ExecutionMode
-import Vegas.EventGraph.ForeignCompletionSequence
 import Vegas.EventGraph.Information
 import Vegas.EventGraph.KernelCommutation
 import Vegas.EventGraph.NormalizedPolicy
@@ -25,7 +23,6 @@ import Vegas.EventGraph.Order
 import Vegas.EventGraph.PolicyCommutation
 import Vegas.EventGraph.PolicyCongruence
 import Vegas.EventGraph.PrivateInputs
-import Vegas.EventGraph.ReadySemanticStability
 import Vegas.EventGraph.Recall
 import Vegas.EventGraph.RelaxedRecall
 import Vegas.EventGraph.ResolutionFields

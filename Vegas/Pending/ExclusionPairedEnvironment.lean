@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.ExclusionProjection
-import Vegas.Pending.ExclusionBoundary
 import Vegas.Pending.ExclusionPublicRecord
 
 /-! # Paired actual environment kernels before exclusion

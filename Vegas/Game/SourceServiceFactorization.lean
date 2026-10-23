@@ -1,15 +1,13 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.SourceServiceDisclosureMemory
+import Vegas.Game.ServiceRoster
 import Vegas.Game.SourceServiceDisclosure
-import Vegas.Game.RevealServiceRosterLaw
 import Vegas.Pending.ReactiveOpeningLikelihood
 import GameTheory.Math.Probability.ConditionalObservation
 import Vegas.Source.ObservationRecall
 import Vegas.Game.SourceServiceCheckpoint
 import Vegas.Game.ServiceObservation
 import Vegas.Pending.ReactiveBindingTranscript
-import Vegas.Pending.ReactiveResponseRecall
 import GameTheory.Math.Probability.ExpectationConditioning
 import GameTheoryExtensions.Math.Probability.Support
 import GameTheoryExtensions.Math.Probability.Expectation
@@ -155,47 +153,6 @@ theorem source_maintenance_factorization
   exact ⟨nextNoise, by simpa only [PMF.pure_bind, PMF.pure_map,
     PMF.bind_pure, PMF.map_id, PMF.map_comp, Function.comp_def] using law⟩
 
-/-- An actual silent roster preserves the same source-conditioned traffic
-law while retaining all passive samples and all players' previous responses. -/
-theorem source_silent_factorization
-    {Seed : Type*} {Γ : SourceCtx Player L}
-    (setup : Setup (Player := Player) (L := L)) {mode : EventGraph.ExecutionMode}
-    {deadline : (serviceGraph setup mode).EventId → Nat}
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
-    (focal : Player) (prior : PMF Seed) (source : Seed → Config Player L Γ)
-    (execution : Seed → (serviceApplication setup mode deadline leaks).Execution)
-    (recalled : ∀ seed ∈ prior.support, (execution seed).InputRecall
-        (serviceApplication setup mode deadline leaks))
-    (noise : DecisionView focal Γ → PMF _)
-    (factor : prior.map (fun seed => (source seed,
-        (serviceRuntime setup mode deadline).bindingTraffic leaks focal (execution seed))) =
-      (prior.map source).bind fun config =>
-        (noise (config.view focal)).map fun extra => (config, extra))
-    (network : (serviceRuntime setup mode deadline).NetworkPolicy leaks) (roster : List Player) :
-    ∃ nextNoise : DecisionView focal Γ → PMF _,
-      (prior.bind fun seed =>
-        ((serviceRuntime setup mode deadline).runInteractionPlan leaks
-          (fun _ => (serviceApplication setup mode deadline leaks).silentPolicy) network
-          (roster.map ServiceInstruction.player) (execution seed)).map fun final =>
-            (source seed, (serviceRuntime setup mode deadline).bindingTraffic leaks focal final)) =
-      (prior.map source).bind fun config =>
-        (nextNoise (config.view focal)).map fun extra => (config, extra) := by
-  obtain ⟨nextNoise, law⟩ := exists_updated_observation_kernel_of_readout prior source
-    (fun seed => (serviceRuntime setup mode deadline).bindingTraffic leaks focal (execution seed))
-    (fun config => config.view focal) noise factor (fun _ => PMF.pure Unit.unit)
-    (fun config _ => config) (fun config => config.view focal)
-    (fun seed _ => ((serviceRuntime setup mode deadline).runInteractionPlan leaks
-      (fun _ => (serviceApplication setup mode deadline leaks).silentPolicy) network
-      (roster.map ServiceInstruction.player) (execution seed)).map
-        ((serviceRuntime setup mode deadline).bindingTraffic leaks focal))
-    (fun _ _ _ _ _ _ _ _ same => same)
-    (fun left leftSupport _ _ right rightSupport _ _ _ same =>
-      (serviceRuntime setup mode deadline).silent_window_focal_law leaks network roster focal
-        (execution left) (execution right) (recalled left leftSupport)
-        (recalled right rightSupport) same)
-  exact ⟨nextNoise, by simpa only [PMF.pure_bind, PMF.pure_map,
-    PMF.bind_pure, PMF.map_id, PMF.map_comp, Function.comp_def] using law⟩
-
 /-- Passive activation turns the complete traffic factorization into a law
 for the player's actual input: its response history and current observation.
 The same network sample is used on each coupled branch; no observer receives
@@ -287,197 +244,6 @@ private theorem commit_choice_of_owner_view {Γ : SourceCtx Player L} {owner : P
     view.1.cells.get .here) same
   simp only [Config.view, commitSuccessor, sourceObserve, Env.get, Env.cons, ite_true] at cell
   exact Option.some.inj cell
-
-/-- The actual randomized binding window, including protected final inclusion.
-The allocator is read from the current public application state. Timing is a
-proof mixture with its existing behavioral realization, not player scratch state. -/
-def bindingPhaseTranscript
-    (setup : Setup (Player := Player) (L := L))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-    (network : (runtime setup).NetworkPolicy leaks) (roster : List Player)
-    (owner focal : Player) (event : (graph setup).EventId) (payload : L.Ty)
-    (offset ticks : Nat) {slots : Nat} (timing : PMF (Option (Fin slots)))
-    (execution : (application setup leaks).Execution)
-    (result : PublicationResult (L.Val payload)) :=
-  let app := application setup leaks
-  let serial := execution.application.publicView.bindingCount owner
-  let family := fun selected => app.scheduledPolicy offset selected
-    (fun _ _ => PMF.pure
-      ((runtime setup).reactiveBinding leaks owner event payload result serial)) app.silentPolicy
-  let players := Function.update (fun _ => app.silentPolicy) owner
-    (app.policyMixture timing family).policy
-  ((runtime setup).runInteractionPlan leaks players network
-    ((roster.map ServiceInstruction.player ++ [.includeLatest event owner]) ++
-      (List.replicate ticks .tick ++ [.expire event])) execution).map
-      ((runtime setup).bindingTraffic leaks focal)
-
-/-- The binding constructor preserves the joint source/auxiliary factorization
-even when original private histories differ from the decoded effective history.
-The factor premise is the induction hypothesis for the previous prefix. Every
-new channel equality is proved from the real scheduled response and inclusion. -/
-theorem binding_successor_memory_factorization
-    {Seed : Type*} (setup : Setup (Player := Player) (L := L))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-    (network : (runtime setup).NetworkPolicy leaks) (roster : List Player)
-    {Γ : SourceCtx Player L} {owner : Player} {payload : L.Ty}
-    (name : VarId) (guard : SourceGuard L Γ owner name payload)
-    (focal : Player) (event : (graph setup).EventId)
-    (prior : PMF Seed) (source original : Seed → Config Player L Γ)
-    (execution : Seed → (application setup leaks).Execution)
-    (recalled : ∀ seed ∈ prior.support,
-      (execution seed).InputRecall (application setup leaks))
-    (published : ∀ seed ∈ prior.support, (execution seed).network.Satisfies fun message =>
-      message.id ∈ (execution seed).network.ledger.map Message.id)
-    (offset ticks : Nat) (counts : ∀ seed ∈ prior.support,
-      ((execution seed).recall owner).length = offset)
-    {slots : Nat} (timing : PMF (Option (Fin slots)))
-    (noise : DecisionView focal Γ → PMF _)
-    (factor : prior.map (fun seed => ((source seed, original seed),
-        (runtime setup).bindingTraffic leaks focal (execution seed))) =
-      (prior.map (fun seed => (source seed, original seed))).bind fun pair =>
-        (noise (pair.1.view focal)).map fun extra => (pair, extra))
-    (choice : Config Player L Γ → PMF (PublicationResult (L.Val payload))) :
-    ∃ nextNoise : DecisionView focal ((name, .commitment owner payload) :: Γ) → PMF _,
-      (prior.bind fun seed => (choice (original seed)).bind fun result =>
-        (bindingPhaseTranscript setup leaks network roster owner focal event payload offset ticks
-          timing (execution seed) result).map fun extra =>
-            ((commitSuccessor name guard (source seed) result,
-              commitSuccessor name guard (original seed) result), extra)) =
-      ((prior.map (fun seed => (source seed, original seed))).bind fun pair =>
-        (choice pair.2).map fun result =>
-          (commitSuccessor name guard pair.1 result,
-            commitSuccessor name guard pair.2 result)).bind fun pair =>
-        (nextNoise (pair.1.view focal)).map fun extra => (pair, extra) := by
-  apply exists_updated_observation_kernel_of_readout prior
-    (fun seed => (source seed, original seed))
-    (fun seed => (runtime setup).bindingTraffic leaks focal (execution seed))
-    (fun pair => pair.1.view focal) noise factor (fun pair => choice pair.2)
-    (fun pair result => (commitSuccessor name guard pair.1 result,
-      commitSuccessor name guard pair.2 result)) (fun pair => pair.1.view focal)
-  · intro left _ first _ right _ second _ same
-    exact commit_view_reflects focal name guard left.1 right.1 first second same
-  · intro left leftSupport first _ right rightSupport second _ same traffic
-    have visible : focal = owner → first = second := by
-      intro equal
-      subst focal
-      exact commit_choice_of_owner_view name guard (source left) (source right) first second same
-    have publicEq : (execution left).application.publicView =
-        (execution right).application.publicView :=
-      congrArg (fun value => value.2.2.2.2.2) traffic
-    have serialEq := congrArg (fun view => view.bindingCount owner) publicEq
-    have coupled := (runtime setup).scheduled_binding_mixture_inclusion_coupling leaks network
-      roster (execution left) (execution right) (recalled left leftSupport)
-        (recalled right rightSupport) owner focal event payload first second visible
-          ((execution left).application.publicView.bindingCount owner) offset timing traffic
-            ((counts left leftSupport).trans (counts right rightSupport).symm)
-            (le_of_eq (counts left leftSupport)) (published left leftSupport)
-    dsimp only [bindingPhaseTranscript]
-    conv_lhs => rw [runInteractionPlan_append, PMF.map_bind]
-    conv_rhs => rw [runInteractionPlan_append, PMF.map_bind]
-    apply bind_eq_of_map_eq _ _ _ _ (by simpa only [serialEq] using coupled)
-    intro before _ after _ equal
-    let silentPlayers := fun _ : Player => (application setup leaks).silentPolicy
-    calc
-      _ = ((runtime setup).runInteractionPlan leaks silentPlayers network
-          (List.replicate ticks .tick ++ [.expire event]) before).map
-            ((runtime setup).bindingTraffic leaks focal) := by
-        apply congrArg (PMF.map ((runtime setup).bindingTraffic leaks focal))
-        exact servicePlan_players_eq setup leaks _ silentPlayers network _ (by simp)
-          (by intro who; simp) before
-      _ = ((runtime setup).runInteractionPlan leaks silentPlayers network
-          (List.replicate ticks .tick ++ [.expire event]) after).map
-            ((runtime setup).bindingTraffic leaks focal) :=
-        (runtime setup).settlement_focal_law leaks silentPlayers network event ticks before after
-          focal equal
-      _ = _ := by
-        apply congrArg (PMF.map ((runtime setup).bindingTraffic leaks focal))
-        exact servicePlan_players_eq setup leaks silentPlayers _ network _ (by simp)
-          (by intro who; simp) after
-
-/-- Restoring the owner's original intentions commutes with the real binding
-window. The same conditional memory law supplies both the chosen binding and
-the entire original source successor; foreign source state is retained. -/
-theorem binding_phase_memory
-    (setup : Setup (Player := Player) (L := L))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-    (network : (runtime setup).NetworkPolicy leaks) (roster : List Player)
-    {Γ : SourceCtx Player L} {owner : Player} {payload : L.Ty}
-    (name : VarId) (guard : SourceGuard L Γ owner name payload)
-    (focal : Player) (event : (graph setup).EventId)
-    (source : Config Player L Γ) (execution : (application setup leaks).Execution)
-    (offset ticks : Nat) {slots : Nat} (timing : PMF (Option (Fin slots)))
-    (remember : DecisionView owner Γ → PMF (List (OwnAction Player L)))
-    (choose : DecisionView owner Γ → PMF (PublicationResult (L.Val payload))) :
-    let memory := bindingMemoryLaw name payload remember choose (source.view owner)
-    ((source.restoreMemory owner remember).bind fun original =>
-      (choose (original.view owner)).bind fun result =>
-        (bindingPhaseTranscript setup leaks network roster owner focal event payload offset ticks
-          timing execution result).map fun traffic =>
-            (traffic, commitSuccessor name guard original result)) =
-      (memory.map Prod.fst).bind fun result =>
-        ((fiberPosterior memory Prod.fst result).map Prod.snd).bind fun past =>
-          (bindingPhaseTranscript setup leaks network roster owner focal event payload offset ticks
-            timing execution result).map fun traffic =>
-              (traffic, (commitSuccessor name guard source result).withOwnHistory owner past) := by
-  intro memory
-  have law := bindingMemoryLaw_disintegrate name payload remember choose (source.view owner)
-    (fun result past =>
-      (bindingPhaseTranscript setup leaks network roster owner focal event payload offset ticks
-        timing execution result).map fun traffic =>
-          (traffic, (commitSuccessor name guard source result).withOwnHistory owner past))
-  simpa only [Config.restoreMemory, PMF.bind_map, Function.comp_def, Config.view,
-    Config.withOwnHistory, commitSuccessor, Function.update_self, Function.update_idem, memory]
-    using law
-
-/-- Failed disclosure intentions stay distinct in the proof joint law even
-after an arbitrary actual service suffix. The runtime receives the effective
-response; the original assessment's private history is restored conditionally.
-No posterior about original intentions is inferred from the decoded native state. -/
-theorem guarded_disclosure_service_memory
-    (setup : Setup (Player := Player) (L := L))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-    {Γ : SourceCtx Player L} {name : VarId} {owner : Player} {payload : L.Ty}
-    (published : VarId) (binding : HasVar Γ name (.commitment owner payload))
-    (source : Config Player L Γ) (refs : ContextRefs (graph setup).layout Γ)
-    (execution : (application setup leaks).Execution)
-    (agree : refs.Agrees source.state execution.application.config.store)
-    (event : (graph setup).EventId)
-    (outputEq : (graph setup).outputLayout event = .publication payload)
-    (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .resolve owner payload (refs.get binding)
-        (compileChecks (published := published) refs source.registry source.revelations binding))
-    (node : nodeView (graph setup) event = .resolve owner payload (refs.get binding)
-      (compileChecks (published := published) refs source.registry source.revelations binding)
-      outputEq codeEq)
-    (remember : DecisionView owner Γ → PMF (List (OwnAction Player L)))
-    (choose : DecisionView owner Γ → PMF Bool)
-    (players : Player → (application setup leaks).Policy)
-    (network : (runtime setup).NetworkPolicy leaks)
-    (remaining : List (ServiceInstruction (graph setup))) :
-    let response := fun disclose => (runtime setup).serviceDecision leaks owner
-      (execution.recall owner) (execution.observe (application setup leaks) owner) event
-      (cast (congrArg EventGraph.EventField.Action outputEq.symm) disclose)
-    let memory := disclosureMemoryLaw published binding source.registry source.revelations
-      remember choose (source.view owner)
-    ((source.restoreMemory owner remember).bind fun original =>
-      (choose (original.view owner)).bind fun intended =>
-        ((runtime setup).runInteractionPlan leaks players network remaining
-          (execution.respond (application setup leaks) owner (response intended))).map fun final =>
-            (final, revealSuccessor published binding original intended)) =
-      (memory.map Prod.fst).bind fun effective =>
-        ((fiberPosterior memory Prod.fst effective).map Prod.snd).bind fun past =>
-          ((runtime setup).runInteractionPlan leaks players network remaining
-            (execution.respond (application setup leaks) owner (response effective))).map
-              fun final =>
-                (final, (revealSuccessor published binding source effective).withOwnHistory
-                  owner past) := by
-  intro response memory
-  have law := guarded_disclosure_response_memory setup leaks published binding source refs
-    execution agree event outputEq codeEq node remember choose
-  have continued := congrArg (fun law => law.bind fun pair =>
-    ((runtime setup).runInteractionPlan leaks players network remaining pair.1).map fun final =>
-      (final, pair.2)) law
-  simpa only [PMF.bind_bind, PMF.bind_map, Function.comp_def, response, memory] using continued
 
 /-- Equal successful guarded publications supply the handler agreement needed
 by the actual focal window coupling. Both candidates are recovered from their

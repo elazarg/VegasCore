@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.RecoverySourceBoundary
+import Vegas.Game.RecoverySourceCheckpoint
+import Vegas.Source.CommitRecoveryNoMissInformation
 import Vegas.Game.CompiledCommitPartialView
 import Vegas.Compile.CommitPrefixView
 import Vegas.Source.CommitRecoveryFrontier

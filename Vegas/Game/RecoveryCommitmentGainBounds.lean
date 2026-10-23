@@ -6,7 +6,6 @@ import Vegas.Game.RecoveryIrregularBeliefBounds
 import Vegas.Game.RecoveryFirstActivationValue
 import Vegas.Game.RecoveryCompletionPotential
 import Vegas.Game.IntendedChoiceReach
-import Vegas.Game.OnePacketNonLateValueBlind
 
 /-! # Uniform source incentive bounds for nonlate commitments -/
 

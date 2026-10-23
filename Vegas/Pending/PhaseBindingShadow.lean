@@ -1,7 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.ReactiveBindingFrameStep
-import Vegas.Pending.PhaseClearHistory
+import Vegas.Pending.PhaseSeedBudget
+import Vegas.Pending.PhaseNativeInvariant
 import Vegas.Pending.EventValueSwap
 
 /-! # Reconstructing saved and live states during a private binding repair -/

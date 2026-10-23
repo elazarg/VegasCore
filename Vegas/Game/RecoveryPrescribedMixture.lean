@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.RecoveryComponentProjection
+import Vegas.Game.RecoveryOnePacketComponents
+import GameTheory.Math.Probability.Support
 
 /-! # Prescribed mixtures at forced nonlate recovery decisions
 
@@ -75,28 +76,5 @@ theorem component_mixture_eq_prescribed_of_forced_nonlate [Fintype (RP).History]
     exact component_eq_prescribed_of_forced_nonlate setup leaks bounds initial horizon scheduler
       assessment scale nonnegative le_one agent forced nonlate part
   rw [same, PMF.bind_const]
-
-/-- The common prescribed mixture at a forced nonlate clear decision projects
-to the original slot-prescribed native law. -/
-theorem component_mixture_projected_of_forced_nonlate [Fintype (RP).History]
-    [∀ who, DecidableEq ((R).InfoState who)]
-    (assessment : setup.intendedModel.BehavioralAssessment) {slots : Nat}
-    (scale : ℝ) (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1)
-    (agent : (R).InformationAgent (R).playedInformation)
-    (forced : ForcedAgent setup leaks bounds initial horizon scheduler agent)
-    (nonlate : ¬ KeyedAgent setup leaks bounds initial horizon scheduler agent)
-    (weights : PMF (Part setup leaks bounds initial horizon scheduler slots
-      (pool setup leaks bounds initial horizon scheduler agent))) :
-    (weights.bind (component setup leaks bounds initial horizon scheduler assessment scale
-      nonnegative le_one agent)).map
-        (boundedRecoveryChoiceEquiv (runtime setup) leaks bounds initial horizon scheduler agent.1
-          agent.2.1 forced.1).symm =
-      slotPrescribedComponent setup leaks bounds (initial.map RecoveryState.native) horizon
-        (nativeScheduler (runtime setup) leaks scheduler) assessment scale nonnegative le_one
-        agent.1 (RecoveryProjection.information (runtime setup) leaks agent.2.1) := by
-  rw [component_mixture_eq_prescribed_of_forced_nonlate setup leaks bounds initial horizon scheduler
-    assessment scale nonnegative le_one agent forced nonlate weights]
-  exact prescribedComponent_projected setup leaks bounds initial horizon scheduler assessment scale
-    nonnegative le_one agent forced.1
 
 end Vegas.RecoveryOnePacket

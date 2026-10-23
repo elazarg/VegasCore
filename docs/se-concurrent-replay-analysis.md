@@ -81,7 +81,7 @@ addressed saved/restore construction at every retained proper SEND.
 ## Attach the auxiliary source history after projection
 
 Use the existing full-history projection `pi` from
-[`phaseProposalReference_alias_history`](../Vegas/Game/PhaseProposalAliasHistory.lean).
+[`phaseProposalReference_alias_history`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/PhaseProposalAliasHistory.lean).
 It preserves the complete application and network history and the focal
 player's literal information. Choose the auxiliary source witness and its
 source-cause annotation kernel `K` on `pi(h)`, retaining the literal initial

@@ -203,51 +203,6 @@ theorem phaseProposalBindingPotentialProfile_harmonic
     (phaseProposalBindingPotentialProfile_oblivious setup mode runtime leaks plan anchor phase
       values)).normalizedThenCanonical_eq config event ready
 
-/-- Retaining the literal pending draws does not change the next author's
-current interval law. Only foreign pending bindings may lie beyond the
-physical cut; the author's preceding completions remain literal. The proof
-uses the existing reachable-cut exchange rather than a linear source-prefix
-assumption on the partially emitted ideal. -/
-theorem phaseProposalBindingPotentialProfile_frontier
-    (anchor : (app).Execution) (phase : RuntimePhase (graph))
-    (values : ∀ who (key : setup.ProposalRecoveryComponent who),
-      PMF (setup.CommitRecoveryValueChoice who key.1))
-    (physical frontier : (graph).Config)
-    (reachable : frontier.Reachable physical.inputs)
-    (agreement : physical.CompletedOutputAgreement frontier)
-    (inputs : physical.inputs = frontier.inputs)
-    (recalls : ∀ owner, ((graph).ownCompletions owner physical.history).IsPrefix
-      ((graph).ownCompletions owner frontier.history))
-    (who : Player) (event : (graph).EventId) (ready : physical.cut.Ready event)
-    (actor : (graph).actor? event = some who)
-    (foreign : ∀ pending ∈ frontier.cut.completed, pending ∉ physical.cut.completed →
-      ∃ owner, (graph).actor? pending = some owner ∧ owner ≠ who) :
-    frontier.cut.Ready event ∧
-      (graph).normalizePolicy who
-          (phaseProposalBindingPotentialProfile setup mode runtime leaks plan anchor phase values
-            who) event actor ((graph).playerObserve who physical) =
-        (graph).normalizePolicy who
-          (phaseProposalBindingPotentialProfile setup mode runtime leaks plan anchor phase values
-            who) event actor ((graph).playerObserve who frontier) := by
-  let profile := phaseProposalBindingPotentialProfile setup mode runtime leaks plan
-    anchor phase values
-  have independent : (graph).ReadyIndependent profile :=
-    (serviceGraph_revealRelaxedOrdered setup mode).readyIndependent
-      (phaseProposalBindingPotentialProfile_oblivious setup mode runtime leaks plan anchor phase
-        values)
-  obtain ⟨last, sequence, same⟩ := reachable.foreign_factor physical.cut
-    (serviceGraph_revealRelaxedOrdered setup mode) who foreign
-  have restricted := agreement.restrict_semanticKey_of_prefix physical frontier inputs recalls
-  obtain ⟨next, replayed, nextSame⟩ := sequence.congr_start physical restricted
-  have endpoint := same.trans nextSame
-  have advanced := replayed.normalizePolicy_eq profile independent event ready actor
-  refine ⟨?_, ?_⟩
-  · rw [semanticKey_cut_eq endpoint]
-    exact advanced.1
-  · rw [← advanced.2]
-    apply congrArg (profile who event actor)
-    exact (normalizeObservation_congr_of_semanticKey_eq endpoint event who).symm
-
 /-- For the actual current drawer, the only ahead-of-settlement fields are
 hidden foreign binding emissions. Physical predecessor values are retained
 literally. Since the potential getter ignores synthetic recall, these facts

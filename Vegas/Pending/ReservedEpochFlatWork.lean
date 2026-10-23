@@ -2,7 +2,6 @@
 
 import Vegas.Pending.PhaseAttemptControls
 import Vegas.Pending.ReservedEpochRequestProgress
-import Vegas.Pending.PhaseRetryCompletion
 
 /-! # Unchanged semantic work fixes the installed phase and completed cut -/
 

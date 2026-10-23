@@ -5,7 +5,7 @@ import Vegas.Game.RecoveryForeignFailureBound
 import Vegas.Game.RecoveryDebtStoppedComparison
 import Vegas.Game.RecoveryNativePrior
 import Vegas.Pending.ExclusionBoundedHistory
-import Vegas.Pending.ExclusionPolicyDeviation
+import GameTheory.Protocol.PolicyRandomization
 
 /-! # Actual recovery continuation error from rare foreign first exclusions -/
 

@@ -2,7 +2,7 @@
 
 import Vegas.Game.PhaseProposalUnflagged
 import Vegas.Game.PhaseExclusionPayoff
-import Vegas.Game.PhaseProposalAliasHistory
+import Vegas.Game.PhaseCountServiceAliases
 import Vegas.Pending.PhaseOpeningMenuShape
 import Interaction.ReactiveResponseEvaluation
 

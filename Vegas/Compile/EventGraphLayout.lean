@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Source.Safety
+import Vegas.Source.Accounting
 import Vegas.EventGraph.Basic
 
 /-! # Source layouts for dependency-driven event graphs

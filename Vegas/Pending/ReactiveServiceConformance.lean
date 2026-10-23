@@ -1,8 +1,11 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.ReactiveGuardConformance
-import Vegas.Pending.ReactiveBindingClassification
-import Vegas.Pending.ReactiveSubmissionSerial
+import Vegas.Pending.ReactiveBindingAllocation
+import Vegas.Pending.ReactiveBindingOmission
+import Vegas.Pending.ReactiveRevealBlock
+import Vegas.Pending.ReactiveCompiledMenu
+import Interaction.ReactiveSubmissionSerial
 
 /-! # Public conformance for binding and guarded disclosure phases
 
@@ -315,31 +318,5 @@ theorem freshServiceEnvelope_resolution_shape
       rw [evidenceEq, tokened]
   | malformed =>
       simp only [freshServiceEnvelope] at permitted
-
-/-- Submission normalization cannot hide another public evidence choice under
-a conforming first commitment packet. -/
-theorem normalize_binding_at_servicePhase
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (state : State graph) (who : Player)
-    (known : List (Message Player (WitnessedPacket graph)))
-    (submission : WitnessedSubmission graph) (event : graph.EventId) (payload : L.Ty)
-    (outputEq : graph.outputLayout event = .binding who payload)
-    (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
-      (graph.nodes event) = .bind who payload)
-    (node : nodeView graph event = .bind who payload outputEq codeEq) (serial : Nat)
-    (fresh : state.candidates.lookup (who, .prepared (state.publicView.bindingCount who)) = .fresh)
-    (named : (submission.emit ((runtime.reactiveApplication leaks).submit state who submission)
-      who known).call.event? graph = some event)
-    (permitted : runtime.freshServiceEnvelope state.publicView
-      ⟨(who, serial), submission.emit
-        ((runtime.reactiveApplication leaks).submit state who submission) who known⟩) :
-    submission.normalizeReactive who
-        ((runtime.reactiveApplication leaks).observePlayer state who) known =
-      ⟨⟨.commitment event (who, .prepared (state.publicView.bindingCount who)),
-        submission.call.opening⟩, .none⟩ := by
-  apply runtime.normalize_binding_of_canonical_packet leaks state who known submission event
-    (state.publicView.bindingCount who) fresh
-  exact (runtime.freshServiceEnvelope_binding_shape state.publicView who event payload outputEq
-    codeEq node _ named permitted).2
 
 end Vegas.EventGraphRuntime

@@ -1,7 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.IntendedPreservation
-import Vegas.Game.PhaseRawReadoutLaw
+import Vegas.Game.PhaseExclusionPayoff
+import Vegas.Game.PhaseOnePacketExtension
 import Vegas.Pending.ReservedEpochResources
 import Vegas.Source.InitialState
 import Interaction.CompletePendingObservation

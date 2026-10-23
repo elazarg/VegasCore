@@ -5,7 +5,6 @@ import GameTheory.Math.Probability.ConditionalObservation
 import GameTheory.Math.Probability.ExpectationConditioning
 import GameTheoryExtensions.Math.Probability.Expectation
 import GameTheoryExtensions.Math.Probability.Uniform
-import GameTheoryExtensions.Math.Probability.Regularity
 import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Inclusion proposals sampled over distinct pending identifiers
@@ -138,30 +137,5 @@ theorem uniformPending_append_fresh (eligible : Message Principal Payload → Bo
   rw [chooseUniform, dite_eq_left (Finset.insert_nonempty _ _),
     uniformOfFinset_insert _ nonempty _ fresh, mix_map, PMF.pure_map]
   rw [chooseUniform, dite_eq_left nonempty]
-
-/-- Uniform insertion is regular even when the retained menu is empty. -/
-theorem chooseUniform_regular_insert (candidates : Finset (MessageId Principal))
-    (fresh : MessageId Principal) (absent : fresh ∉ candidates) :
-    (chooseUniform candidates).RegularAt (chooseUniform (insert fresh candidates))
-      (some fresh) := by
-  by_cases nonempty : candidates.Nonempty
-  · rw [chooseUniform_insert candidates nonempty fresh absent]
-    apply PMF.regularAt_mix
-  · have empty : candidates = ∅ := Finset.not_nonempty_iff_eq_empty.mp nonempty
-    rw [empty, Finset.insert_empty, chooseUniform_singleton]
-    intro value different
-    rw [PMF.pure_apply_of_ne _ _ different, ENNReal.toReal_zero]
-    exact ENNReal.toReal_nonneg
-
-/-- Uniform selection also satisfies the regularity contract. -/
-theorem uniformPending_append_regular
-    (eligible : Message Principal Payload → Bool) (pending : List (Message Principal Payload))
-    (packet : Message Principal Payload) (accepted : eligible packet = true)
-    (nonempty : (eligibleIds eligible pending).Nonempty)
-    (fresh : packet.id ∉ eligibleIds eligible pending) :
-    (uniformPending eligible pending).RegularAt
-      (uniformPending eligible (pending ++ [packet])) (some packet.id) := by
-  rw [uniformPending_append_fresh eligible pending packet accepted nonempty fresh]
-  apply PMF.regularAt_mix
 
 end Interaction.MessageNetwork

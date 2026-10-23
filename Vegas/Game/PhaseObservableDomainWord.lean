@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.PhaseObservableDomainValue
+import Vegas.Game.PhaseObservableSourceQuery
+import Vegas.Game.PhaseRecoveryDomainValue
 
 /-! # Foreign domain queries from the retained native prefix
 
@@ -150,31 +151,6 @@ theorem phaseVirtualSourceQuery?_eq_of_masked_prefix
   rw [addresses]
   congr 2
   simp only [← attempt, ← archives, ← boundary]
-
-/-- The actual domain kernel is equal at the two physical callbacks once
-their retained masked prefix agrees. No independence of typed words is
-assumed, and their full native observations can differ. -/
-theorem phaseObservableDomainValues_eq_of_masked_prefix
-    (values : ∀ owner info, PMF (setup.CommitRecoveryValueChoice owner info))
-    (who : Player) (event : (serviceGraph setup mode).EventId) (payload : L.Ty)
-    (binding : (serviceGraph setup mode).outputLayout event = .binding who payload)
-    (firstPast secondPast : List (phaseApplication runtime leaks).PlayerEntry)
-    (first second : (phaseApplication runtime leaks).PlayerView)
-    (firstOwner : first.application.1.who = who)
-    (secondOwner : second.application.1.who = who)
-    (stores : first.application.1.observation.store = second.application.1.observation.store)
-    (attempt : first.application.2.attempt = second.application.2.attempt)
-    (archives : first.application.2.retired = second.application.2.retired)
-    (same : ∀ rank ≤ first.application.2.attempt.phase,
-      first.application.2.native.sourceFailureFootprint.1 rank =
-        second.application.2.native.sourceFailureFootprint.1 rank) :
-    phaseObservableDomainValues setup mode runtime leaks plan values who event payload binding
-        firstPast first =
-      phaseObservableDomainValues setup mode runtime leaks plan values who event payload binding
-        secondPast second := by
-  unfold phaseObservableDomainValues
-  rw [phaseVirtualSourceQuery?_eq_of_masked_prefix setup mode runtime leaks plan who event
-    first second firstOwner secondOwner stores attempt archives same]
 
 omit [DecidableEq Player] [Fintype Player] in
 private theorem saved_prefix {graph : Vegas.EventGraph Player L}

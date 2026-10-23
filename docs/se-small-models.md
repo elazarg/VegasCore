@@ -289,8 +289,8 @@ value is 1, attempted T ≤1/2, and any other first forbidden body ≤0 (TOTAL C
 The exact initialized joint law is (H,success true,HIGH,2,1):1/4;
 (L,failure,LOW,1,1):3/4, with zero charge. This is conditional paper mathematics
 for fixed16, with NO Alice response after Bob; no checked native SE follows.
-Reuse [policyMixture realization](../Interaction/ReactiveMixtureRounds.lean) and `guarded_disclosure_response_memory`
-in [DisclosureMemory](../Vegas/Game/SourceServiceDisclosureMemory.lean) for silent-action transport; their runtime premises remain to be derived.
+Reuse [policyMixture realization](../Interaction/ReactiveMixtureRounds.lean) and [`guarded_disclosure_response_memory`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceDisclosureMemory.lean#L31)
+in [DisclosureMemory](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceDisclosureMemory.lean) for silent-action transport; their runtime premises remain to be derived.
 
 ### Inclusion and audit parameters
 
@@ -338,7 +338,7 @@ published forbidden evidence, let E be the event that m is pending or public at 
 challenge and Cₐ owner a's OR charge; the tower rule gives P(Cₐ)≥r·P(E). This is
 total owner OR collection, not another fine.
 
-Reuse `sampling_delivery_lower` in [MessageMonitoringProbability](../Interaction/MessageMonitoringProbability.lean)
+Reuse [`sampling_delivery_lower`](https://github.com/elazarg/VegasCore/blob/research-tree/Interaction/MessageMonitoringProbability.lean#L94) in [MessageMonitoringProbability](https://github.com/elazarg/VegasCore/blob/research-tree/Interaction/MessageMonitoringProbability.lean)
 and `GameTheory.Math.Probability.expect_bind_of_finite` in [Expectation](../GameTheoryExtensions/Math/Probability/Expectation.lean).
 They compose supported conditional bounds; they do not supply the service promises.
 Current AsyncContract has no postterminal activation/publication guarantee.

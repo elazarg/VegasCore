@@ -387,7 +387,7 @@ no-effective-RAW event. A later near-one likelihood estimate for physical
 WAIT factors alone would not establish this deletion. Sent and inert
 singleton-WAIT callbacks need no restriction: integrate their unread labels.
 
-For the actual `phaseCountServicePolicy`, the RAW encoder is
+For the actual [`phaseCountServicePolicy`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/PhaseCountServicePolicy.lean#L29), the RAW encoder is
 `countedSendLaw`. At a genuine unsent binding its atoms are all SENDs for
 that requested event at a fresh bounded slot; there is no RAW-WAIT case
 there. Put r=zeta_n^3, take slot weight zeta_n, let C bound the number of
@@ -3145,21 +3145,21 @@ implementation as a witness of full preservation.
 ## Boundary between this construction and the implementation
 
 The reduced-coordinate original plan and its full source history law are
-checked by `Vegas.SourceProgram.Setup.commitRecoveryErasedPolicyPlan_run`.
+checked by [`Vegas.SourceProgram.Setup.commitRecoveryErasedPolicyPlan_run`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/CommitRecoveryErasedPolicyPlan.lean#L108).
 [`Vegas.SourceProgram.Setup.commitRecoveryErasedPolicyPosterior_split`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/CommitRecoveryErasedPolicyConditioning.lean#L194) checks
 the current-coordinate/entire-original-remainder split after genuine records;
 those records correspond to the original full-information own play. Genuine
 no-miss replay and erasure of instruction/retry/exhausted closure are also
 checked. These results do not yet construct the pooled source equilibrium or
 identify native observations with the reduced source query.
-`Vegas.SourceProgram.Setup.commitRecoveryErasedProfile_terminal_joint_eq`
+[`Vegas.SourceProgram.Setup.commitRecoveryErasedProfile_terminal_joint_eq`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/CommitRecoveryErasedContinuation.lean#L41)
 also proves the actual joint terminal typed-readout and payoff-vector law for
 the concrete erased prescription from two genuine histories with equal erased
 semantic/information summaries.
 `Vegas.SourceProgram.Setup.commitRecovery_failed_attempt_erased_eq` derives
 the required summary equality for two genuine failed source attempts from the
 same literal prior and omission word, through retry or exhausted close.
-`Vegas.SourceProgram.Setup.commitRecoveryErasedProfile_failed_attempt_terminal_joint_eq`
+[`Vegas.SourceProgram.Setup.commitRecoveryErasedProfile_failed_attempt_terminal_joint_eq`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/CommitRecoveryAttemptReset.lean#L24)
 then gives their actual joint terminal law. The corresponding physical native
 relation remains open.
 
@@ -3199,7 +3199,7 @@ checked in [`Vegas/Game/CommitRecoveryAncillaryGains.lean`](https://github.com/e
 stopped mark and terminal readout/payoffs. Their conditional-success and
 individual optimality consumers are described below.
 
-`Vegas.SourceProgram.Setup.commitRecovery_stopped_attempt_success` now extracts
+[`Vegas.SourceProgram.Setup.commitRecovery_stopped_attempt_success`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Source/CommitRecoveryStoppedAttempt.lean#L21) now extracts
 the literal typed attempt from the actual first-full-identifier stopped source
 word and proves its original-entry exclusion/own-value success marker. It uses
 fresh context names and valued current own-prefix cells. The marker is stated
@@ -3260,9 +3260,9 @@ all-reachable viability from intended-only setup well-formedness.
 [`Vegas.phaseCountServiceTapePolicy_foreign_survivors_law`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/PhaseCountServiceSurvival.lean#L73) compares the actual
 first-exit survivor-vector laws under arbitrary focal policies with the same
 supported original zero-RAW timing table and foreign seeds. This supplies
-proper-reference scalar survival. `Vegas/Game/PhaseCountServiceGood.lean` gives
+proper-reference scalar survival. [`Vegas/Game/PhaseCountServiceGood.lean`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/PhaseCountServiceGood.lean) gives
 the positive-RAW joint good event for the same original supported tables;
-`Vegas/Game/PhaseCountServiceTableGood.lean` averages the literal original table
+[`Vegas/Game/PhaseCountServiceTableGood.lean`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/PhaseCountServiceTableGood.lean) averages the literal original table
 posterior and retains the entire table vector.
 `Vegas/Game/PhaseObservableDomainWord.lean` derives actual query equality by
 static own-prefix induction. `Vegas/Game/PhaseCountServiceForeignWord.lean`
@@ -3280,11 +3280,11 @@ update from the actual immutable native publication at its original compiled
 suffix. `Vegas/Game/PhaseObservableSourceQuery.lean` composes the initialized
 public/archive scan with the virtual typed view. The observable getter is
 exactly E(F(info)) for a genuine original source decision, retaining its actor
-and static rank. `Vegas/Game/PhaseObservableDomainValue.lean` instantiates the
+and static rank. [`Vegas/Game/PhaseObservableDomainValue.lean`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/PhaseObservableDomainValue.lean) instantiates the
 actual native callback with that query's domain law; every domain choice
 encodes a successful typed binding. The original native domain-table posterior
 and conditional typed-word transport remain separate.
-`Vegas/Pending/PhaseBindingSuccessFunction.lean` extracts native resolved
+[`Vegas/Pending/PhaseBindingSuccessFunction.lean`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/PhaseBindingSuccessFunction.lean) extracts native resolved
 acceptance as a function of its original local seed and emission-clock word.
 `Vegas/Pending/PhaseBindingServiceCompletion.lean` derives that resolution from
 the actual runtime completion contract, including after a legal one-shot
@@ -3296,24 +3296,24 @@ gives a genuine source witness for the no-new-miss transformation of every
 original query, preserving nonterminality. Its idempotence, erasure commutation,
 menu transport and combined-query clock preservation are checked in
 `Vegas/Source/CommitRecoveryNoMissRepresentative.lean`.
-`Vegas.SourceProgram.Setup.commitRecoveryNoMissErasedProfile_failed_attempt_terminal_joint_eq`
+[`Vegas.SourceProgram.Setup.commitRecoveryNoMissErasedProfile_failed_attempt_terminal_joint_eq`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/CommitRecoveryNoMissContinuation.lean#L73)
 establishes the same actual reset continuation law for the legal profile reading
 that combined query. These are source constructions, not a native decoder.
 
 `Vegas.SourceProgram.Setup.commitRecoveryValueTremble_fullSupport` checks the
 all-query legal three-case perturbation, including reveal withholding;
-`Vegas.SourceProgram.Setup.commitRecoveryTrembledProfile_plan_run` checks its
+[`Vegas.SourceProgram.Setup.commitRecoveryTrembledProfile_plan_run`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/CommitRecoveryDomainPlan.lean#L348) checks its
 entire full-information source run law. The separate domain table is realized
-by `Vegas.SourceProgram.Setup.commitRecoveryDomainPlan_run`. Its native
-posterior adapter, `Vegas.SourceProgram.Setup.commitRecoveryDomainPlan_posterior_split`,
+by [`Vegas.SourceProgram.Setup.commitRecoveryDomainPlan_run`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/CommitRecoveryDomainPlan.lean#L130). Its native
+posterior adapter, [`Vegas.SourceProgram.Setup.commitRecoveryDomainPlan_posterior_split`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/CommitRecoveryDomainPlan.lean#L275),
 retains the actual entire remainder but requires an actual-response non-reading
 proof. These are erased-coordinate results: the final no-new-miss sharing
 and the native response premise are not supplied by those run-law identities.
-`Vegas.SourceProgram.Setup.commitRecoveryFlagPlan_run` separately realizes the
+[`Vegas.SourceProgram.Setup.commitRecoveryFlagPlan_run`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/CommitRecoveryFlagConditioning.lean#L293) separately realizes the
 entire original source law from ONE initialized public-occurrence flag array
 and independent erased-query domain table. Its genuine-record posterior leaves
 the current three-class choice unchanged.
-`Vegas.SourceProgram.Setup.commitRecoveryNormalizedFlagPlan_run` reads that
+[`Vegas.SourceProgram.Setup.commitRecoveryNormalizedFlagPlan_run`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/CommitRecoveryNormalizedFlagPlan.lean#L492) reads that
 SAME initialized prior at the combined key E(F(info)) and proves its entire
 ORIGINAL source run law. Genuine combined-query membership and logical-clock
 preservation give the exact current/whole-record product and original-record
@@ -3321,7 +3321,7 @@ posterior. The original game's perfect recall is used; no recursively defined
 normalized signal model or entry refresh is introduced. No equality with the
 independent full-choice private-table joint is asserted.
 
-`Vegas.SourceProgram.Setup.exists_consistent_commitRecovery_normalized_pool`
+[`Vegas.SourceProgram.Setup.exists_consistent_commitRecovery_normalized_pool`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/CommitRecoveryPooledCompletion.lean#L224)
 selects shared query weights using the existing component completion. Its
 actual source assessments are fully mixed and Bayes consistent, converge to
 a consistent limit, and satisfy the summed actual conditional gain bounds.
@@ -3336,7 +3336,7 @@ pi_K*sum_I r_I*lambda_I above. Both are nonnegative and vanish only when all
 positive-reach ordinary members have zero success coefficient. Exact
 cancellation therefore gives the same individual conditional bound; no new
 fixed-point machinery is needed for the different normalization.
-`Vegas.SourceProgram.Setup.commitRecoveryNormalizedFlagPolicy_failed_attempt_terminal_joint_eq`
+[`Vegas.SourceProgram.Setup.commitRecoveryNormalizedFlagPolicy_failed_attempt_terminal_joint_eq`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/CommitRecoveryFlagCoupling.lean#L195)
 derives the whole omission word from actual complete pure-member records and
 the SAME sampled flags before consuming the genuine failed-attempt close.
 It proves the joint terminal readout/all-player-payoff equality through retry
@@ -3348,7 +3348,7 @@ original local stopped window and its raw typed success readout are now checked.
 omission marginals, their whole-window law and failed-window terminal-law equality,
 without assuming an omission-word coupling or a reset endpoint equality.
 Its one-site original belief consumer is checked in
-`Vegas/Game/CommitRecoveryFailedLocalLaw.lean`. The conditional-D ranking and
+[`Vegas/Game/CommitRecoveryFailedLocalLaw.lean`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/CommitRecoveryFailedLocalLaw.lean). The conditional-D ranking and
 full individual source optimality use the checked consumers listed above.
 
 The existing broad post-exclusion native completion is not the pinned

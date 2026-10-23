@@ -1,12 +1,11 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.RevealServiceCalendarState
-import Vegas.Pending.ReactiveBindingPrefix
+import Vegas.Game.SourceServiceMenu
+import Vegas.Game.ServiceRoster
 import Interaction.ReactiveSubmissionSerial
-import Vegas.Pending.ReactiveServiceRecall
 import Vegas.Pending.ReactiveAssociationEvidence
 import Vegas.Pending.ReactiveServiceOpportunity
-import Vegas.Game.SourceServiceBindingPhase
 import Vegas.Game.SourceServiceCheckpoint
 import Vegas.Pending.ReactiveBindingTranscript
 
@@ -218,70 +217,6 @@ theorem ServiceBoundary.sampledActivation {setup : Setup (Player := Player) (L :
     published := boundary.published.learn who sample
     serials := boundary.serials.learn who sample }
 
-/-- Core runtime invariants hold after every supported actual continuation,
-including raw responses. They need not be established separately in each
-source constructor. -/
-theorem ServiceBoundary.run_core {setup : Setup (Player := Player) (L := L)}
-    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-    {rosters : (graph setup).EventId → List Player} {initial : State L setup.context}
-    {Γ : SourceCtx Player L} {source : Config Player L Γ}
-    {refs : ContextRefs (graph setup).layout Γ} {rank : Nat}
-    {execution : (application setup leaks).Execution}
-    (boundary : ServiceBoundary setup leaks rosters initial source refs rank execution)
-    (players : Player → (application setup leaks).Policy)
-    (network : (runtime setup).NetworkPolicy leaks)
-    (plan : List (ServiceInstruction (graph setup)))
-    (final : (application setup leaks).Execution)
-    (reached : final ∈ ((runtime setup).runInteractionPlan leaks players network plan
-      execution).support) :
-    EventGraphRuntime.State.Invariant (graph := graph setup)
-        (setup.eventInputs initial) final.application ∧
-      final.application.BindingInvariant ∧ final.InputRecall (application setup leaks) ∧
-      final.SerialRecall (application setup leaks) ∧ final.network.SerialsBeforeNext := by
-  let app := application setup leaks
-  refine ⟨?_, ?_, (runtime setup).runInteractionPlan_inputRecall leaks players network plan
-    execution final boundary.recall reached, ?_,
-      (runtime setup).runInteractionPlan_serials leaks players network plan execution final
-        boundary.serials reached⟩
-  · exact (runtime setup).runInteractionPlan_preserves leaks players network _
-      (ReactiveApplication.Invariant.policyInvariant app
-        ((runtime setup).reactiveStateInvariant leaks (setup.eventInputs initial)) players)
-      plan execution final boundary.invariant reached
-  · exact (runtime setup).runInteractionPlan_preserves leaks players network _
-      (ReactiveApplication.Invariant.policyInvariant app
-        ((runtime setup).reactiveBindingInvariant leaks) players)
-      plan execution final boundary.binding reached
-  · have preserved : app.PolicyInvariant players (fun state => state.SerialRecall app) := {
-      respond := fun state who response valid _ => app.respond_serialRecall state who response valid
-      environment := app.environment_serialRecall }
-    exact (runtime setup).runInteractionPlan_preserves leaks players network _ preserved plan
-      execution final boundary.serialRecall reached
-
-/-- Finishing the real roster advances every player's response offset by
-exactly the number of their scheduled opportunities, independently of actions. -/
-theorem ServiceBoundary.roster_counts {setup : Setup (Player := Player) (L := L)}
-    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-    {rosters : (graph setup).EventId → List Player} {initial : State L setup.context}
-    {Γ : SourceCtx Player L} {source : Config Player L Γ}
-    {refs : ContextRefs (graph setup).layout Γ} {rank : Nat}
-    {execution : (application setup leaks).Execution}
-    (boundary : ServiceBoundary setup leaks rosters initial source refs rank execution)
-    (players : Player → (application setup leaks).Policy)
-    (network : (runtime setup).NetworkPolicy leaks)
-    (event : (graph setup).EventId) (atRank : event.val = rank)
-    (final : (application setup leaks).Execution)
-    (reached : final ∈ ((runtime setup).runInteractionPlan leaks players network
-      (rosterBlock setup rosters event) execution).support) (who : Player) :
-    (final.recall who).length = List.count who
-      (((List.finRange (graph setup).order.eventCount).take (rank + 1)).flatMap rosters) := by
-  rw [fixed_plan_response_counts setup leaks network players _
-    (rosterBlock_no_wire setup rosters event) execution final reached who,
-      rosterBlock_actors, boundary.counts]
-  have counts := congrArg (fun plan => (plan.filterMap instructionActor).count who)
-    (rosterPlanPrefix_succ setup rosters event)
-  simpa only [List.filterMap_append, rosterPlanPrefix_actors, rosterBlock_actors,
-    List.count_append, atRank] using counts.symm
-
 /-- One actual roster block has exactly its declared number of clock ticks. -/
 theorem rosterBlock_ticks (setup : Setup (Player := Player) (L := L))
     (rosters : (graph setup).EventId → List Player) (event : (graph setup).EventId) :
@@ -289,50 +224,5 @@ theorem rosterBlock_ticks (setup : Setup (Player := Player) (L := L))
   unfold rosterBlock
   cases (graph setup).actor? event <;>
     simp [serviceTicks, ServiceInstruction.ticks, Function.comp_def]
-
-/-- Every actual completed roster block leaves its successor timely. Only
-the completed cut is constructor-specific: clock advancement and activation
-age follow from the existing runtime transition laws for arbitrary policies. -/
-theorem ServiceBoundary.roster_successor_timing
-    {setup : Setup (Player := Player) (L := L)}
-    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-    {rosters : (graph setup).EventId → List Player} {initial : State L setup.context}
-    {Γ : SourceCtx Player L} {source : Config Player L Γ}
-    {refs : ContextRefs (graph setup).layout Γ} {rank : Nat}
-    {execution : (application setup leaks).Execution}
-    (boundary : ServiceBoundary setup leaks rosters initial source refs rank execution)
-    (players : Player → (application setup leaks).Policy)
-    (network : (runtime setup).NetworkPolicy leaks)
-    (event : (graph setup).EventId) (atRank : event.val = rank)
-    (final : (application setup leaks).Execution)
-    (reached : final ∈ ((runtime setup).runInteractionPlan leaks players network
-      (rosterBlock setup rosters event) execution).support)
-    (ordered : final.application.config.cut.IsPrefix (rank + 1)) :
-    final.application.clock = clockAt (rank + 1) ∧
-      ∀ next, next.val = rank + 1 → ((graph setup).actor? next).isSome = true →
-        final.application.WithinDeadline (runtime setup) next := by
-  have progress := (runtime setup).runInteractionPlan_facts leaks (setup.eventInputs initial)
-    players network (rosterBlock setup rosters event) execution final boundary.invariant reached
-  have advanced : final.application.clock = execution.application.clock + (rank + 1) := by
-    simpa only [rosterBlock_ticks, atRank] using progress.clock
-  refine ⟨by rw [advanced, boundary.clock, clockAt_succ], ?_⟩
-  intro next nextRank strategic
-  have ready := (ready_iff_rank setup _ (rank + 1) ordered next).mpr nextRank
-  obtain ⟨entered, activated⟩ := Option.isSome_iff_exists.mp
-    ((progress.invariant.activated_iff next).mpr ⟨ready, strategic⟩)
-  have origin := (runtime setup).runInteractionPlan_activationOrigin leaks
-    (setup.eventInputs initial) players network (rosterBlock setup rosters event)
-      execution final boundary.invariant reached
-  have lower : execution.application.clock ≤ entered := by
-    rcases origin next entered activated ready.1 with retained | recent
-    · have beforeReady := ((boundary.invariant.activated_iff next).mp
-        (Option.isSome_iff_exists.mpr ⟨entered, retained⟩)).1
-      have same := (ready_iff_rank setup _ rank boundary.ordered next).mp beforeReady
-      omega
-    · exact recent
-  unfold EventGraphRuntime.State.WithinDeadline
-  rw [activated, advanced]
-  change execution.application.clock + (rank + 1) - entered < next.val + 1
-  omega
 
 end Vegas

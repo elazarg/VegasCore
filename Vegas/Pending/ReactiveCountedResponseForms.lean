@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.ReactiveBindingSubmittedResponse
-import Vegas.Pending.ReactiveBindingClassification
 
 /-! # Normal forms of counted binding and opening responses -/
 

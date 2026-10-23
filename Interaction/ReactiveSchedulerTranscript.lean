@@ -2,7 +2,6 @@
 
 import Interaction.ReactiveSchedulerImplementation
 import GameTheory.Math.Probability.Conditioning
-import GameTheoryExtensions.Math.Probability.TaggedPosterior
 
 /-! # Deterministic scheduler posterior from actual command recall
 
@@ -78,92 +77,5 @@ private theorem filter_eq_of_support_eq (prior : PMF Seed) (first second : Set S
       simp only [Set.indicator, zero, ite_self]
   ext seed
   simp only [PMF.filter_apply, indicatorEq]
-
-/-- The posterior of the real immutable-seed scheduler is exactly its original
-law filtered by the actual complete command transcript. -/
-theorem schedulerMixture_posterior_eq_filter (prior : PMF Seed)
-    (choose : Seed → List app.EnvironmentEntry → app.EnvironmentView → app.Command)
-    (past : List app.EnvironmentEntry)
-    (positive : ∃ seed ∈ {seed | app.commandConsistentFrom choose seed [] past},
-      seed ∈ prior.support) :
-    (app.schedulerMixture prior (fun seed before view => PMF.pure
-      (choose seed before view))).posterior past =
-        prior.filter {seed | app.commandConsistentFrom choose seed [] past} positive := by
-  classical
-  induction past using List.reverseRecOn with
-  | nil =>
-      change prior = _
-      exact (filter_of_support_subset prior _ positive (by intro seed _; trivial)).symm
-  | append_singleton past entry ih =>
-      let earlier : Set Seed := {seed | app.commandConsistentFrom choose seed [] past}
-      let full : Set Seed := {seed |
-        app.commandConsistentFrom choose seed [] (past ++ [entry])}
-      have included : full ⊆ earlier := fun seed compatible =>
-        ((app.commandConsistent_snoc choose seed past entry).mp compatible).1
-      have earlierPositive : ∃ seed ∈ earlier, seed ∈ prior.support := by
-        obtain ⟨seed, compatible, supported⟩ := positive
-        exact ⟨seed, included compatible, supported⟩
-      let current := prior.filter earlier earlierPositive
-      let decision := fun seed => choose seed past entry.beforeView
-      have fullPositive : ∃ seed ∈ full, seed ∈ current.support := by
-        obtain ⟨seed, compatible, supported⟩ := positive
-        exact ⟨seed, compatible, (PMF.mem_support_filter_iff earlierPositive).mpr
-          ⟨included compatible, supported⟩⟩
-      have nextPositive : ∃ seed ∈ {seed | decision seed = entry.command},
-          seed ∈ current.support := by
-        obtain ⟨seed, compatible, supported⟩ := fullPositive
-        exact ⟨seed, ((app.commandConsistent_snoc choose seed past entry).mp compatible).2,
-          supported⟩
-      rw [SchedulerImplementation.posterior_snoc, ih earlierPositive]
-      simp only [schedulerMixture, PMF.pure_map]
-      change (fiberPosterior (current.map fun seed => (decision seed, seed))
-        Prod.fst entry.command).map Prod.snd = prior.filter full positive
-      rw [fiberPosterior_tag, fiberPosterior_eq_filter _ _ nextPositive]
-      have conditioned := filter_eq_of_support_eq current
-        {seed | decision seed = entry.command} full nextPositive fullPositive
-        (fun seed supported => by
-          have old := ((PMF.mem_support_filter_iff earlierPositive).mp supported).1
-          exact ⟨fun next => (app.commandConsistent_snoc choose seed past entry).mpr
-            ⟨old, next⟩, fun whole =>
-              ((app.commandConsistent_snoc choose seed past entry).mp whole).2⟩)
-      rw [conditioned]
-      exact filter_filter_of_subset prior earlier full earlierPositive fullPositive included
-
-/-- Conditioning the actual scheduler posterior on a retained original seed
-readout is filtering the same original law on both concrete observations. -/
-theorem schedulerMixture_posterior_fiber_eq_filter {Readout : Type}
-    (prior : PMF Seed)
-    (choose : Seed → List app.EnvironmentEntry → app.EnvironmentView → app.Command)
-    (past : List app.EnvironmentEntry) (read : Seed → Readout) (observed : Readout)
-    (positive : ∃ seed ∈ {seed |
-      app.commandConsistentFrom choose seed [] past ∧ read seed = observed},
-        seed ∈ prior.support) :
-    fiberPosterior ((app.schedulerMixture prior (fun seed before view => PMF.pure
-      (choose seed before view))).posterior past) read observed =
-      prior.filter {seed | app.commandConsistentFrom choose seed [] past ∧
-        read seed = observed} positive := by
-  let earlier : Set Seed := {seed | app.commandConsistentFrom choose seed [] past}
-  let full : Set Seed := {seed | app.commandConsistentFrom choose seed [] past ∧
-    read seed = observed}
-  have earlierPositive : ∃ seed ∈ earlier, seed ∈ prior.support := by
-    obtain ⟨seed, compatible, supported⟩ := positive
-    exact ⟨seed, compatible.1, supported⟩
-  let current := prior.filter earlier earlierPositive
-  have fullPositive : ∃ seed ∈ full, seed ∈ current.support := by
-    obtain ⟨seed, compatible, supported⟩ := positive
-    exact ⟨seed, compatible, (PMF.mem_support_filter_iff earlierPositive).mpr
-      ⟨compatible.1, supported⟩⟩
-  have readPositive : ∃ seed ∈ {seed | read seed = observed}, seed ∈ current.support := by
-    obtain ⟨seed, compatible, supported⟩ := fullPositive
-    exact ⟨seed, compatible.2, supported⟩
-  rw [app.schedulerMixture_posterior_eq_filter prior choose past earlierPositive,
-    fiberPosterior_eq_filter current read readPositive]
-  have same := filter_eq_of_support_eq current {seed | read seed = observed} full
-    readPositive fullPositive (fun seed supported => by
-      have old := ((PMF.mem_support_filter_iff earlierPositive).mp supported).1
-      exact ⟨fun observed => ⟨old, observed⟩, fun compatible => compatible.2⟩)
-  rw [same]
-  exact filter_filter_of_subset prior earlier full earlierPositive fullPositive
-    (fun _ compatible => compatible.1)
 
 end Interaction.ReactiveApplication

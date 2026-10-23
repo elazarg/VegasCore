@@ -1,6 +1,9 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.RevealServiceExecution
+import Vegas.Game.RevealServiceCheckpoint
+import Vegas.Compile.EventGraphPolicyLaw
+import Vegas.Pending.ReactiveInitialValues
+import Vegas.Compile.EventGraphLaw
 
 /-! # Reading actual source positions at service checkpoints
 

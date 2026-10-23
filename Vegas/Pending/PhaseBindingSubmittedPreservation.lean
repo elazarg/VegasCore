@@ -1,6 +1,9 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.PhaseBindingClearCounts
+import Vegas.Pending.PhaseBindingAdmittedInclude
+import Vegas.Pending.ReactiveBindingFrameForeign
+import Vegas.Pending.ReactiveCountedSurvivor
+import Vegas.Pending.PhasePacketAddress
 import Vegas.Pending.ReactiveBindingSubmittedResponse
 
 /-! # Submitted private records survive actual physical phase operations -/
@@ -113,28 +116,6 @@ theorem submittedRecords_environmentStep
   · rfl
 
 variable [Fintype Player]
-
-/-- Foreign responses and nonbinding own responses preserve recorded bindings.
-Actual one-packet membership supplies the native response projection; no
-native passive-observation support under the proof carrier is presumed. -/
-theorem submittedRecords_respond
-    (recorded : memory.RecordsSubmittedBindings runtime (nativeLeaks (graph := graph)) owner
-      (execution runtime leaks original) (execution runtime leaks repaired))
-    (bounds : MessageBounds graph) (actor : Player)
-    (left right : (phaseApplication runtime leaks).Action)
-    (leftLegal : left ∈ PhaseCount.onePacketActions runtime leaks bounds actor
-      (original.recall actor) (original.observe (phaseApplication runtime leaks) actor))
-    (rightLegal : right ∈ PhaseCount.onePacketActions runtime leaks bounds actor
-      (repaired.recall actor) (repaired.observe (phaseApplication runtime leaks) actor))
-    (nonbinding : actor ≠ owner ∨ ∀ material, left.transmission = some material →
-      ∀ event candidate, material.call.packet ≠ .commitment event candidate) :
-    memory.RecordsSubmittedBindings runtime (nativeLeaks (graph := graph)) owner
-      (execution runtime leaks (original.respond (phaseApplication runtime leaks) actor left))
-      (execution runtime leaks
-        (repaired.respond (phaseApplication runtime leaks) actor right)) := by
-  rw [execution_respond_of_onePacket runtime leaks bounds original actor left leftLegal,
-    execution_respond_of_onePacket runtime leaks bounds repaired actor right rightLegal]
-  exact recorded.respond actor (action runtime leaks left) (action runtime leaks right) nonbinding
 
 end PhaseBindingRepair
 end Vegas.EventGraphRuntime

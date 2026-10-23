@@ -1,10 +1,11 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Interaction.ReactiveLedgerConformance
+import Interaction.ReactivePublication
+import Interaction.ReactivePolicyInvariant
+import Interaction.MessageMonitoring
+import Interaction.MessageNetworkCounters
 import Interaction.ReactiveReceipts
 import Interaction.ReactiveMessageReadout
-import Interaction.MessageMonitoringProbability
-import Interaction.ReactiveQuiescent
 
 /-! # Passive observation by a watcher
 
@@ -95,39 +96,6 @@ theorem receipt_policyInvariant (players : Principal → app.Policy)
     exact present
   environment execution next command present reached :=
     (app.environmentStep_receipts_prefix execution next command reached).subset present
-
-/-- With every pending packet published, a silent watcher's observation round
-changes nothing but the recall: it records the watcher's silent response and
-both service commands. -/
-theorem observationRound_quiescent (players : Principal → app.Policy) (watcher : Principal)
-    (policy : players watcher = app.silentPolicy) (execution : app.Execution)
-    (pending : ∀ message ∈ execution.network.pending,
-      message.id ∈ execution.network.ledger.map Message.id) :
-    ∃ next, app.observationRound players watcher execution = PMF.pure next ∧
-      next.application = execution.application ∧ next.network = execution.network ∧
-      next.receipts = execution.receipts ∧
-      next.recall = (execution.respond app watcher ⟨none⟩).recall ∧
-      next.environmentRecall.length = execution.environmentRecall.length + 2 := by
-  let activated : app.Execution := { execution with
-    environmentRecall := execution.environmentRecall ++
-      [⟨execution.observeEnvironment app, .activate watcher⟩] }
-  let silent := activated.respond app watcher ⟨none⟩
-  let next : app.Execution := { silent with environmentRecall := silent.environmentRecall ++
-    [⟨silent.observeEnvironment app, .wait⟩] }
-  have activation : app.dispatch players (.activate watcher) execution =
-      PMF.pure silent := by
-    rw [dispatch, execution.activate_of_pending_published app watcher pending,
-      PMF.pure_bind]
-    change app.invoke players watcher activated = _
-    rw [invoke, policy]
-    simp only [silentPolicy, PMF.pure_map]
-    rfl
-  refine ⟨next, ?_, rfl, rfl, rfl, rfl, ?_⟩
-  · rw [observationRound, activation, PMF.pure_bind]
-    simp only [dispatch, Command.actor?, resume, Execution.environmentStep,
-      PMF.pure_map, PMF.pure_bind, next]
-  · simp only [next, silent, activated, Execution.respond, List.length_append,
-      List.length_cons, List.length_nil]
 
 /-- A passive sample puts a pending foreign packet into the watcher's report
 with at least the sampling probability, after the watcher's own response and

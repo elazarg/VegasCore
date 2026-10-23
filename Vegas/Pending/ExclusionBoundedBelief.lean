@@ -3,7 +3,6 @@
 import Vegas.Pending.ExclusionBoundedProfile
 import Vegas.Pending.ExclusionClearBelief
 import Interaction.ReactiveResponseBelief
-import Interaction.ReactiveResponseDecision
 
 /-! # One-packet beliefs before public exclusion
 
@@ -101,42 +100,6 @@ theorem bounded_informationMass_liftedInformationSite
       (boundedNativeProfile runtime leaks bounds initial horizon scheduler profile) who
       NativeSite).symm
 
-include initialized active valid in
-/-- A positive native one-packet information event supplies an actual recovery
-one-packet decision at its complete clear lifted input. -/
-def boundedLiftedInformationSite
-    (profile : ∀ player, (RecoveryModel).BehavioralPolicy player)
-    (positive : 0 < (NativeModel).informationMass
-      (boundedNativeProfile runtime leaks bounds initial horizon scheduler profile) who
-      NativeSite) : (RecoveryModel).InformationSite who := by
-  let embedded := fun player =>
-    (RecoveryMenu).embedPolicy initial horizon scheduler player (profile player)
-  let projected := boundedNativeProfile runtime leaks bounds initial horizon scheduler profile
-  let rawNative := (NativeMenu).rawSite (initial.map RecoveryState.native) horizon
-    (nativeScheduler runtime leaks scheduler) who NativeSite
-  let rawRecovery := liftedInformationSite runtime leaks initial initialized horizon scheduler
-    who reference active valid rawNative.2
-  have profiles : (fun player => (NativeMenu).embedPolicy
-      (initial.map RecoveryState.native) horizon (nativeScheduler runtime leaks scheduler) player
-      (projected player)) = nativeProfile runtime leaks initial horizon scheduler embedded := by
-    funext player
-    exact boundedNativeProfile_embed runtime leaks bounds initial horizon scheduler profile player
-  have nativeMass := (NativeMenu).informationMass_rawSite
-    (initial.map RecoveryState.native) horizon (nativeScheduler runtime leaks scheduler)
-    projected who NativeSite
-  have rawPositive : 0 < (NativeRaw).informationMass
-      (nativeProfile runtime leaks initial horizon scheduler embedded) who rawNative := by
-    rw [← profiles, ← nativeMass]
-    exact positive
-  have recoveryPositive : 0 < (RecoveryRaw).informationMass embedded who rawRecovery := by
-    rw [informationMass_liftedInformationSite runtime leaks initial initialized horizon scheduler
-      who reference active valid rawNative.2 embedded]
-    exact rawPositive
-  exact ⟨liftInformation runtime leaks
-      ((runtime.reactiveApplication leaks).observe who (some reference)),
-    (RecoveryMenu).isDecisionInfo_of_raw_mass_pos initial horizon scheduler profile who
-      rawRecovery recoveryPositive⟩
-
 /-- The finite recovery belief, mapped through its raw embedding and the exact
 clear-history equivalence, is the raw image of the finite native belief. -/
 theorem bounded_bayesBelief_liftedInformationSite
@@ -199,37 +162,5 @@ theorem bounded_bayesBelief_liftedInformationSite
       refine Eq.trans ?_ nativeEmbed.symm
       congr 1
       exact profiles.symm
-
-/-- Exact finite-menu Bayes transport at the recovery site derived from the
-positive native information event; no recovery decision-validity premise is needed. -/
-theorem bounded_bayesBelief_liftedSite
-    (profile : ∀ player, (RecoveryModel).BehavioralPolicy player)
-    (positive : 0 < (NativeModel).informationMass
-      (boundedNativeProfile runtime leaks bounds initial horizon scheduler profile) who
-      NativeSite) :
-    let site := boundedLiftedInformationSite runtime leaks bounds initial initialized horizon
-      scheduler who reference active valid nativeDecision profile positive
-    ((RecoveryModel).bayesBelief profile who site
-      ((RecoveryMenu).decisionInformationAntichain initial horizon scheduler who site)
-      (by
-        change 0 < (RecoveryModel).informationMass profile who
-          ⟨liftInformation runtime leaks
-            ((runtime.reactiveApplication leaks).observe who (some reference)), site.2⟩
-        rw [bounded_informationMass_liftedInformationSite runtime leaks bounds initial initialized
-          horizon scheduler who reference active valid nativeDecision site.2 profile]
-        exact positive)).map
-      (fun history => informationHistoryEquiv runtime leaks initial initialized horizon scheduler
-        who reference active valid
-        ((RecoveryMenu).rawInformationHistory initial horizon scheduler who site history)) =
-      ((NativeModel).bayesBelief
-        (boundedNativeProfile runtime leaks bounds initial horizon scheduler profile) who NativeSite
-        ((NativeMenu).decisionInformationAntichain (initial.map RecoveryState.native) horizon
-          (nativeScheduler runtime leaks scheduler) who NativeSite) positive).map
-        ((NativeMenu).rawInformationHistory (initial.map RecoveryState.native) horizon
-          (nativeScheduler runtime leaks scheduler) who NativeSite) := by
-  exact bounded_bayesBelief_liftedInformationSite runtime leaks bounds initial initialized horizon
-    scheduler who reference active valid nativeDecision
-    (boundedLiftedInformationSite runtime leaks bounds initial initialized horizon scheduler who
-      reference active valid nativeDecision profile positive).2 profile positive
 
 end Vegas.EventGraphRuntime.RecoveryProjection

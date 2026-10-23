@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.PhaseBindingServicePolicy
+import Vegas.Pending.PhaseBindingEncodingLaw
+import Interaction.ReactivePolicyMixture
 import Vegas.Pending.PhaseBindingSlotHistory
 import Vegas.Pending.PhaseBindingMenuShape
 import GameTheoryExtensions.Math.Probability.Uniform
@@ -111,74 +112,6 @@ theorem bindingResultEncoder_covered (owner : Player) (event : graph.EventId) (p
   · exact phaseBindingSlotPolicy_covered runtime leaks bounds owner event payload _ _ _ _ first
   · exact phaseBindingPolicy_covered runtime leaks bounds owner event payload _ _ _ _ second
 
-/-- The failure parameter is used only at the first local activation.
-Later records choose SEND or WAIT with a local timing tremble. -/
-def bindingServiceBase (owner : Player) (coordinate : CommitAttemptEvent graph) (payload : L.Ty)
-    (values : List (app).PlayerEntry → (app).PlayerView → PMF (PublicationResult (L.Val payload)))
-    (choose : List Nat → Bool)
-    (failure timing : ℝ) (firstNonnegative : 0 ≤ failure + timing)
-    (firstBounded : failure + timing ≤ 1) (timingNonnegative : 0 ≤ timing)
-    (timingBounded : timing ≤ 1)
-    (slotWeight : ℝ) (slotNonnegative : 0 ≤ slotWeight) (slotBounded : slotWeight ≤ 1) :
-    (app).Policy := fun past view =>
-  let clocks := PhaseSeedScheduler.serviceClocks runtime leaks coordinate owner past view
-  let send := bindingResultEncoder runtime leaks bounds owner coordinate.event payload values
-    slotWeight slotNonnegative slotBounded past view
-  if clocks.length = 1 then
-    mix (failure + timing) firstNonnegative firstBounded (PMF.pure ⟨none⟩) send
-  else if choose clocks then
-    mix timing timingNonnegative timingBounded (PMF.pure ⟨none⟩) send
-  else mix timing timingNonnegative timingBounded send (PMF.pure ⟨none⟩)
-
-/-- A separate native send tier has fixed total mass. Its menu normalization
-cannot alter the total SEND probability at a genuine unsent binding. -/
-def bindingServiceReference (owner : Player) (coordinate : CommitAttemptEvent graph)
-    (payload : L.Ty)
-    (values : List (app).PlayerEntry → (app).PlayerView → PMF (PublicationResult (L.Val payload)))
-    (choose : List Nat → Bool)
-    (failure timing : ℝ) (firstNonnegative : 0 ≤ failure + timing)
-    (firstBounded : failure + timing ≤ 1) (timingNonnegative : 0 ≤ timing)
-    (timingBounded : timing ≤ 1)
-    (slotWeight : ℝ) (slotNonnegative : 0 ≤ slotWeight) (slotBounded : slotWeight ≤ 1)
-    (rawWeight : ℝ) (rawNonnegative : 0 ≤ rawWeight) (rawBounded : rawWeight ≤ 1) :
-    (app).Policy := fun past view =>
-  mix rawWeight rawNonnegative rawBounded (countedSendLaw runtime leaks bounds owner past view)
-    (bindingServiceBase runtime leaks bounds owner coordinate payload values choose failure timing
-      firstNonnegative firstBounded timingNonnegative timingBounded slotWeight slotNonnegative
-        slotBounded past view)
-
-theorem bindingServiceReference_covered (owner : Player)
-    (coordinate : CommitAttemptEvent graph) (payload : L.Ty)
-    (values : List (app).PlayerEntry → (app).PlayerView → PMF (PublicationResult (L.Val payload)))
-    (choose : List Nat → Bool)
-    (failure timing : ℝ) (firstNonnegative : 0 ≤ failure + timing)
-    (firstBounded : failure + timing ≤ 1) (timingNonnegative : 0 ≤ timing)
-    (timingBounded : timing ≤ 1)
-    (slotWeight : ℝ) (slotNonnegative : 0 ≤ slotWeight) (slotBounded : slotWeight ≤ 1)
-    (rawWeight : ℝ) (rawNonnegative : 0 ≤ rawWeight) (rawBounded : rawWeight ≤ 1)
-    (past : List (app).PlayerEntry) (view : (app).PlayerView) (response : (app).Action)
-    (supported : response ∈ (bindingServiceReference runtime leaks bounds owner coordinate payload
-      values choose failure timing firstNonnegative firstBounded timingNonnegative timingBounded
-        slotWeight slotNonnegative slotBounded rawWeight rawNonnegative rawBounded
-          past view).support) :
-    response ∈ onePacketActions runtime leaks bounds owner past view := by
-  rcases support_mix_subset _ _ _ _ _ supported with raw | ordinary
-  · exact countedSendLaw_covered runtime leaks bounds owner past view response raw
-  · unfold bindingServiceBase at ordinary
-    dsimp only at ordinary
-    have sendCovered := bindingResultEncoder_covered runtime leaks bounds owner coordinate.event
-      payload values slotWeight slotNonnegative slotBounded past view response
-    have silent : response ∈ (PMF.pure (⟨none⟩ : (app).Action)).support →
-        response ∈ onePacketActions runtime leaks bounds owner past view := by
-      intro member
-      cases (PMF.mem_support_pure_iff ..).mp member
-      exact silence_onePacket runtime leaks bounds owner past view
-    split at ordinary
-    · exact (support_mix_subset _ _ _ _ _ ordinary).elim silent sendCovered
-    · split at ordinary
-      · exact (support_mix_subset _ _ _ _ _ ordinary).elim silent sendCovered
-      · exact (support_mix_subset _ _ _ _ _ ordinary).elim sendCovered silent
-
 /-- The source failure parameter occurs only in the first-clock branch.
 All other probabilities depend solely on the current local timing decision. -/
 def bindingServiceEmissionLaw (clocks : List Nat) (choose : List Nat → Bool)
@@ -192,44 +125,6 @@ def bindingServiceEmissionLaw (clocks : List Nat) (choose : List Nat → Bool)
     else if choose clocks then
       mix timing timingNonnegative timingBounded (PMF.pure false) (PMF.pure true)
     else mix timing timingNonnegative timingBounded (PMF.pure true) (PMF.pure false))
-
-/-- Every counted action has positive mass. The native send tier covers all
-typed aliases, while a separate timing atom covers silence. -/
-theorem bindingServiceReference_fullSupport (owner : Player)
-    (coordinate : CommitAttemptEvent graph) (payload : L.Ty)
-    (values : List (app).PlayerEntry → (app).PlayerView → PMF (PublicationResult (L.Val payload)))
-    (choose : List Nat → Bool)
-    (failure timing : ℝ) (firstPositive : 0 < failure + timing)
-    (firstBounded : failure + timing ≤ 1) (timingPositive : 0 < timing)
-    (timingBelow : timing < 1)
-    (slotWeight : ℝ) (slotNonnegative : 0 ≤ slotWeight) (slotBounded : slotWeight ≤ 1)
-    (rawWeight : ℝ) (rawPositive : 0 < rawWeight) (rawBelow : rawWeight < 1)
-    (past : List (app).PlayerEntry) (view : (app).PlayerView) (response : (app).Action)
-    (available : response ∈ onePacketActions runtime leaks bounds owner past view) :
-    response ∈ (bindingServiceReference runtime leaks bounds owner coordinate payload values
-      choose failure timing firstPositive.le firstBounded timingPositive.le timingBelow.le
-        slotWeight slotNonnegative slotBounded rawWeight rawPositive.le rawBelow.le
-          past view).support := by
-  classical
-  cases response with
-  | mk transmission =>
-    cases transmission with
-    | none =>
-        apply mem_support_mix_right _ _ _ rawBelow
-        unfold bindingServiceBase
-        dsimp only
-        split
-        · exact mem_support_mix_left _ _ _ firstPositive ((PMF.mem_support_pure_iff ..).mpr rfl)
-        · split
-          · exact mem_support_mix_left _ _ _ timingPositive ((PMF.mem_support_pure_iff ..).mpr rfl)
-          · exact mem_support_mix_right _ _ _ timingBelow ((PMF.mem_support_pure_iff ..).mpr rfl)
-    | some material =>
-        apply mem_support_mix_left _ _ _ rawPositive
-        have member : (⟨some material⟩ : (app).Action) ∈
-            countedSends runtime leaks bounds owner past view :=
-          Finset.mem_filter.mpr ⟨available, by rfl⟩
-        rw [countedSendLaw, dite_eq_left ⟨_, member⟩]
-        exact (PMF.mem_support_uniformOfFinset_iff ..).mpr member
 
 /-- The actual total SEND atom has no raw-menu cardinality or source-value
 factor. The original source failure parameter is absent at every later record. -/
@@ -305,46 +200,5 @@ theorem bindingEncoders_transmission_of_history
     rw [bindingResultEncoder, mix_map]
     rw [slotLaw, canonicalLaw, mix_self]
   exact ⟨rawLaw, encoder⟩
-
-/-- Actual history proves both encoder guards inactive. The projected law
-does not depend on the chosen typed-result law or on any slot/menu cardinality. -/
-theorem bindingServiceReference_transmission_of_history
-    (owner : Player) (event : graph.EventId) (payload : L.Ty)
-    (values : List (app).PlayerEntry → (app).PlayerView → PMF (PublicationResult (L.Val payload)))
-    (choose : List Nat → Bool)
-    (failure timing : ℝ) (firstNonnegative : 0 ≤ failure + timing)
-    (firstBounded : failure + timing ≤ 1) (timingNonnegative : 0 ≤ timing)
-    (timingBounded : timing ≤ 1)
-    (slotWeight : ℝ) (slotNonnegative : 0 ≤ slotWeight) (slotBounded : slotWeight ≤ 1)
-    (rawWeight : ℝ) (rawNonnegative : 0 ≤ rawWeight) (rawBounded : rawWeight ≤ 1)
-    (menu : (app).ResponseMenu) (plan : RuntimePhasePlan graph) (inputs : PMF graph.Inputs)
-    (horizon : Nat) (scheduler : (app).Scheduler) (capacity : horizon ≤ bounds.candidateCount)
-    (control : (app).Control)
-    (trace : (menu.protocol (inputs.map (PhaseRuntimeState.initial plan))
-      horizon scheduler).Trace (some control)) (active : control.actor = some owner)
-    (output : graph.outputLayout event = .binding owner payload)
-    (request : control.execution.application.SeedRequest owner
-      ⟨control.execution.application.attempt, event⟩)
-    (unsent : ∀ message ∈ (app).outputs (control.execution.recall owner),
-      event? message.payload ≠ some ⟨control.execution.application.attempt, event⟩)
-    (catalogue : ∀ value : L.Val payload, (⟨payload, value⟩ : Raw L) ∈ bounds.values) :
-    (bindingServiceReference runtime leaks bounds owner
-        ⟨control.execution.application.attempt, event⟩ payload values choose failure timing
-          firstNonnegative firstBounded timingNonnegative timingBounded slotWeight
-            slotNonnegative slotBounded rawWeight rawNonnegative rawBounded
-              (control.execution.recall owner) (control.execution.observe (app) owner)).map
-        (fun response => response.transmission.isSome) =
-      bindingServiceEmissionLaw
-        (PhaseSeedScheduler.serviceClocks runtime leaks
-          ⟨control.execution.application.attempt, event⟩ owner (control.execution.recall owner)
-            (control.execution.observe (app) owner))
-        choose failure timing firstNonnegative firstBounded timingNonnegative timingBounded
-          rawWeight rawNonnegative rawBounded := by
-  obtain ⟨rawLaw, encoder⟩ := bindingEncoders_transmission_of_history runtime leaks bounds
-    owner event payload values slotWeight slotNonnegative slotBounded menu plan inputs horizon
-      scheduler capacity control trace active output request unsent catalogue
-  unfold bindingServiceReference bindingServiceBase bindingServiceEmissionLaw
-  dsimp only
-  split_ifs <;> rw [mix_map, rawLaw, mix_map, encoder, PMF.pure_map] <;> rfl
 
 end Vegas.EventGraphRuntime.PhaseCount

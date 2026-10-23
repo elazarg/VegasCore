@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.PhaseProposalShadowNormalization
-import Vegas.Pending.PhaseBindingForeignResponseMemory
+import Vegas.Pending.PhaseBindingForeignSubmission
 import Interaction.ReactiveMessageReadout
 
 /-! # Unchanged other-owner responses under general recovery shadows

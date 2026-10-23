@@ -1,7 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Compile.EventGraphBacktranslation
-import Vegas.Pending.PhaseBindingWordKernel
+import Vegas.Pending.PhaseBindingEncodingLaw
+import Interaction.ReactivePolicyMixture
 
 /-! # Effective binding actions read from actual private raw recall
 
@@ -118,28 +119,5 @@ theorem phaseCommitRecallWord_wait (low high generation : Nat)
     simp [phaseCommitRecallWord, silent, attempt]
 
 variable [Fintype Player]
-
-/-- Every actual sending atom of the latent-word channel decodes to its
-selected typed action. Physical slot randomization and omission draws cannot
-change the effective own action read from private recall. -/
-theorem phaseBindingAction?_word_response
-    (bounds : MessageBounds ((toEventGraph whole).withMode mode)) (who : Player)
-    (event : ((toEventGraph whole).withMode mode).EventId) (payload : L.Ty)
-    (binding : ((toEventGraph whole).withMode mode).outputLayout event = .binding who payload)
-    (missing : PMF Bool) (serial : Nat)
-    (slotWeight : ℝ) (slotNonnegative : 0 ≤ slotWeight) (slotBounded : slotWeight ≤ 1)
-    (result : PublicationResult (L.Val payload))
-    (past : List (phaseApplication runtime leaks).PlayerEntry)
-    (view : (phaseApplication runtime leaks).PlayerView)
-    (response : (phaseApplication runtime leaks).Action)
-    (supported : response ∈ (PhaseCount.phaseBindingWordResponse runtime leaks bounds who event
-      payload missing serial slotWeight slotNonnegative slotBounded result past view).support)
-    (sending : response ≠ ⟨none⟩) :
-    phaseBindingAction? whole mode runtime leaks response =
-      decodeEventAction whole event (cast (congrArg EventField.Action binding.symm) result) := by
-  obtain ⟨slot, rfl⟩ := PhaseCount.phaseBindingWordResponse_nonsilent runtime leaks bounds who event
-    payload missing serial slotWeight slotNonnegative slotBounded result past view response
-      supported sending
-  exact phaseBindingAction?_response whole mode runtime leaks who event payload binding result slot
 
 end Vegas

@@ -2,7 +2,7 @@
 
 import Vegas.Game.RecoveryFiniteStoppedValue
 import Vegas.Game.RecoveryComparisonStopped
-import Vegas.Pending.ExclusionPolicyDeviation
+import GameTheory.Protocol.PolicyRandomization
 
 /-! # Exact same-witness stopped values after local recovery deviations -/
 

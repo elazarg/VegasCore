@@ -1,15 +1,14 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.RecoverySourceCheckpoint
-import Vegas.Game.RecoverySourceBoundary
 import Vegas.Game.CompiledRevealTail
 import Vegas.Game.CompiledViewTail
 import Vegas.Game.CompiledRevealBoundary
 import Vegas.Pending.PhaseHistoryCheckpoint
 import Vegas.Game.RevealRecoveryResidual
-import Vegas.Source.CommitRecoveryPathLift
 import Vegas.Source.CommitRecoveryNonCommitIntended
 import Vegas.Game.PhaseProposalReplayPath
+import GameTheory.Protocol.Backward
 
 /-! # Saved source checkpoints after actual completed disclosure phases -/
 

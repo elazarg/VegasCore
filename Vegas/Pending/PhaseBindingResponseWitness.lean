@@ -1,6 +1,10 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.PhaseBindingHistoryRepair
+import Vegas.Pending.PhaseBindingResponseDispatcher
+import Interaction.ReactiveOwnPlay
+import GameTheoryExtensions.Analysis.Protocol.OwnPlayReach
+import GameTheoryExtensions.Analysis.Protocol.SingleMoverReach
+import Interaction.ReactiveEnvironmentMass
 
 /-! # Observable unsent and canonical sending witnesses for repaired callbacks -/
 
@@ -95,57 +99,5 @@ theorem responseImage_binding (event : graph.EventId) (payload : L.Ty)
       · refine ⟨L.someValue payload, ?_⟩
         simp only [responseImage, ↓reduceIte, node, Option.bind_some, Raw.as?, same, ↓reduceDIte,
           phaseBindingResponse]
-
-/-- The original arbitrary evidence alias supplies an actual canonical raw
-binding at the image input, with the same preparation and prepared serial.
-This does not assume that the original evidence alias remains image-legal. -/
-theorem canonical_binding_member (frame : Frame runtime leaks memory owner original repaired)
-    (bounds : MessageBounds graph) (left : PhaseCount.CountRecall runtime leaks original)
-    (right : PhaseCount.CountRecall runtime leaks repaired) (event : graph.EventId) (serial : Nat)
-    (opening : Option (Raw L)) (evidence : EvidenceRequest graph)
-    (fresh : original.application.current.native.candidates.lookup (owner, .prepared serial) =
-      .fresh)
-    (member : (⟨some ⟨⟨.commitment event (owner, .prepared serial), opening⟩, evidence⟩⟩ :
-      (phaseApplication runtime leaks).Action) ∈ PhaseCount.onePacketActions runtime leaks bounds
-        owner (original.recall owner) (original.observe (phaseApplication runtime leaks) owner)) :
-    (⟨some ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩⟩ :
-      (phaseApplication runtime leaks).Action) ∈ PhaseCount.onePacketActions runtime leaks bounds
-        owner (repaired.recall owner)
-          (repaired.observe (phaseApplication runtime leaks) owner) := by
-  let app := phaseApplication runtime leaks
-  let call : Submission graph := ⟨.commitment event (owner, .prepared serial), opening⟩
-  let material : WitnessedSubmission graph := ⟨call, evidence⟩
-  let source : app.Action := ⟨some material⟩
-  let canonical : app.Action := ⟨some ⟨call, .none⟩⟩
-  have permitted : PhaseCount.permits (app.outputs (original.recall owner))
-      (PhaseCount.localEnvelope runtime leaks owner (original.recall owner)
-        (original.observe app owner) material) = true := by
-    rcases ((PhaseCount.mem_onePacketActions runtime leaks bounds owner _ _ _).mp member).2
-      with impossible | ⟨supplied, same, allowed⟩
-    · cases impossible
-    · cases Option.some.inj same
-      exact allowed
-  have normalized : (PhaseCount.normalization runtime leaks).action owner (original.recall owner)
-      (original.observe app owner) source = canonical := by
-    have absent := PhaseCount.normalize_binding_evidence_none runtime leaks owner
-      (original.recall owner) (original.observe app owner) material event
-        (owner, .prepared serial) rfl permitted
-    have effective : openingEffective owner (original.observe app owner).application.1
-        (.commitment event (owner, .prepared serial)) := ⟨rfl, fresh⟩
-    have calls : ((PhaseCount.normalization runtime leaks).normalize owner
-        (original.observe app owner).application
-        (ReactiveApplication.ResponseMenu.knownPackets (original.recall owner)
-          (original.observe app owner)) material).call = call :=
-      Submission.normalizeReactive_effective _ _ _ effective
-    exact congrArg (fun material => (⟨some material⟩ : app.Action))
-      (congrArg₂ WitnessedSubmission.mk calls absent)
-  have canonicalMember := PhaseCount.normalize_mem_onePacketActions runtime leaks bounds owner
-    (original.recall owner) (original.observe app owner) source member
-  rw [normalized] at canonicalMember
-  have raw := ((PhaseCount.mem_onePacketActions runtime leaks bounds owner _ _ _).mp
-    canonicalMember).1
-  rw [PhaseCount.rawMenu, ReactiveApplication.ResponseMenu.fromSubmissions_mem] at raw
-  have bounded := ((bounds.submissions_mem _ _).mp raw).1.2
-  exact frame.binding_menu bounds left right event serial opening opening bounded canonicalMember
 
 end Vegas.EventGraphRuntime.PhaseBindingRepair.Frame

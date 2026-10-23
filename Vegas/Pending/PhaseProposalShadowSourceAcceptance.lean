@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.PhaseProposalCountedShadowAcceptance
+import Vegas.Pending.PhaseProposalShadowAcceptance
 
 /-! # Constructing repaired binding acceptance from the original history
 

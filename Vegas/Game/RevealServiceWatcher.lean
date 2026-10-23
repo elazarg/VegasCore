@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.RevealServiceClock
+import Vegas.Game.RevealService
 import Interaction.ReactiveFiniteAssessment
 import Interaction.ReactiveMenuPolicy
 import GameTheoryExtensions.Analysis.Protocol.RestrictionExtension
@@ -115,95 +115,5 @@ theorem watched_decode_silent (watcher : Player)
     (initialLaw setup) (horizon setup watcher) (scheduler setup leaks watcher)
     watcher (profile watcher) past view response supported
   simpa only [watchedMenu, ↓reduceIte, Finset.mem_singleton, Set.mem_singleton_iff] using allowed
-
-/-- Every equilibrium with a silent watcher extends to the full bounded
-raw game of this service. Observations and net utilities ignore only the proved
-private submission normalization; public traffic and silence effects are kept.
-The construction supplies consistent off-path play rather than assuming it. -/
-theorem watched_raw_equilibrium_extends [setup.FiniteInitialLaw] [leaks.FiniteSupport]
-    (watcher : Player) (reveals : setup.program.RevealOnly)
-    (separate : ∀ event, (graph setup).actor? event ≠ some watcher)
-    {Observation : Type} (observe : (application setup leaks).ProtocolState → Observation)
-    (observationInvariant : ∀ state,
-      observe (((runtime setup).reactiveNormalization leaks).state state) = observe state)
-    (utility : (application setup leaks).ProtocolState → Player → ℝ)
-    (utilityInvariant : ∀ state,
-      utility (((runtime setup).reactiveNormalization leaks).state state) = utility state)
-    (indifferent : ∀ state, utility state watcher = 0)
-    (source : (watchedInformation setup leaks bounds watcher).BehavioralAssessment)
-    (equilibrium : source.IsSequentialEquilibriumFor
-      ((watchedMenu setup leaks bounds watcher).decisionInformationAntichain (initialLaw setup)
-        (horizon setup watcher) (scheduler setup leaks watcher))
-      (fun who site => source.truncatedContinuationContext site
-        (fun history => utility history.state who) (2 * horizon setup watcher + 1))) :
-    ∃ target : (rawInformation setup leaks bounds watcher).BehavioralAssessment,
-      target.IsSequentialEquilibriumFor
-        ((bounds.rawMenu (runtime setup) leaks).decisionInformationAntichain (initialLaw setup)
-          (horizon setup watcher) (scheduler setup leaks watcher))
-        (fun who site => target.truncatedContinuationContext site
-          (fun history => utility history.state who) (2 * horizon setup watcher + 1)) ∧
-      ((rawInformation setup leaks bounds watcher).runBehavioral target.strategy
-        (2 * horizon setup watcher + 1)).map
-          (fun history => (observe history.state, utility history.state)) =
-        ((watchedInformation setup leaks bounds watcher).runBehavioral source.strategy
-          (2 * horizon setup watcher + 1)).map
-            (fun history => (observe history.state, utility history.state)) := by
-  classical
-  let initial := initialLaw setup
-  let count := horizon setup watcher
-  let service := scheduler setup leaks watcher
-  let watched := watchedMenu setup leaks bounds watcher
-  let effective := bounds.menu (runtime setup) leaks
-  let restriction := watcherRestriction setup leaks bounds watcher
-  let depth (who : Player)
-      (site : (effectiveInformation setup leaks bounds watcher).InformationSite who) :=
-    decisionDepth setup leaks watcher who site.1
-  have clock := menu_common_decision_depth setup leaks effective watcher reveals separate
-  have sourceBounded := watched.bounded initial count service
-  have targetBounded := effective.bounded initial count service
-  have sourceCertificate := sourceBounded.wellFoundedHistories
-  have targetCertificate := targetBounded.wellFoundedHistories
-  have sourceTerminal := (source.isSequentialEquilibrium_iff_truncated_of_bounded
-    (watchedInformation setup leaks bounds watcher)
-    (watched.decisionInformationAntichain initial count service) sourceCertificate sourceBounded
-    (fun who history => utility history.state who)).mpr equilibrium
-  have unchangedOrIndifferent (who : Player) :
-      (∀ info, Function.Surjective (restriction.choice who info)) ∨
-        ∃ constant, ∀ history : (effective.protocol initial count service).History,
-          utility history.state who = constant := by
-    by_cases same : who = watcher
-    · subst who
-      exact Or.inr ⟨0, fun history => indifferent history.state⟩
-    · exact Or.inl (ordinary_choice_surjective setup leaks bounds watcher who same)
-  let _ := Fintype.ofFinite (effective.protocol initial count service).History
-  obtain ⟨normalized, normalizedSE, _agrees, _beliefs, historyLaw, _joint⟩ :=
-    restriction.sequentialEquilibrium_extends_of_indifference
-      (watched.decisionInformationAntichain initial count service)
-      sourceCertificate targetCertificate
-      (effective.uniformAssessment initial count service)
-      (effective.uniform_fullyMixed initial count service)
-      (effective.decisionRecall initial count service)
-      (fun who site => depth who (restriction.site who site))
-      (fun who site => clock who (restriction.site who site))
-      (fun who history => utility history.state who)
-      (fun who history => utility history.state who) (fun _ _ => rfl)
-      unchangedOrIndifferent source sourceTerminal
-  rw [InformationModel.runBehavioralTerminalFrom_initHistory _
-      sourceCertificate _ sourceBounded,
-    InformationModel.runBehavioralTerminalFrom_initHistory _
-      targetCertificate _ targetBounded] at historyLaw
-  have full := (normalized.isSequentialEquilibrium_iff_truncated_of_bounded
-    (effectiveInformation setup leaks bounds watcher)
-    (effective.decisionRecall initial count service).decisionInformationAntichain
-    targetCertificate targetBounded (fun who history => utility history.state who)).mp normalizedSE
-  obtain ⟨raw, _strategy, rawSE, _beliefs, projected⟩ :=
-    bounds.exists_canonicalRaw_sequentialEquilibrium (runtime setup) leaks initial count service
-      normalized (fun who state => utility state who) full
-  refine ⟨raw, ?_, ?_⟩
-  · simpa only [utilityInvariant] using rawSE
-  · have law := congrArg (PMF.map (fun state => (observe state, utility state))) projected
-    simp only [PMF.map_comp, Function.comp_def, observationInvariant, utilityInvariant] at law
-    rw [law, ← historyLaw, PMF.map_comp]
-    rfl
 
 end Vegas

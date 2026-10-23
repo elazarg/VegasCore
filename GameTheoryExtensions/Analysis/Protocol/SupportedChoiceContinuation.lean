@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import GameTheoryExtensions.Analysis.Protocol.SupportedChoiceDomination
+import GameTheoryExtensions.Math.Probability.TotalVariation
+import GameTheory.Analysis.Protocol.RestrictionDomination
 
 /-! # Continuations under choices dominated along the reference play
 

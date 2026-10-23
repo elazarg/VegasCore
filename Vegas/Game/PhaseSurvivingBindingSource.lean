@@ -2,7 +2,8 @@
 
 import Vegas.Game.RecoverySurvivingBindingSource
 import Vegas.Game.RecoveryArchivedBindingRecall
-import Vegas.Game.PhaseBindingCounterpart
+import Vegas.Game.RecoveryCheckpointHistory
+import Vegas.Pending.PhaseBindingReadiness
 
 /-! # Initialized surviving binding source witnesses after exclusions -/
 

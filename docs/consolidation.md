@@ -78,6 +78,7 @@ run 10–20% larger. `#print axioms` pins do not count as uses.
 | Whole tree (files, without GameTheory) | 871k | |
 | Whole tree after Step 3 pass one | 597k | |
 | In modules no Paper theorem, test or example reaches, after Step 0 (438 modules) | 80k | |
+| Whole tree after Step 3 pass two | 494k | |
 
 The concurrent SE cone by layer: Vegas/Game 136k, Vegas/Pending 32k,
 Vegas/Source 24k (17k of it the `CommitRecovery*` and `ProposalRecovery*`
@@ -211,12 +212,17 @@ Pass one, done:
 
 Pass two:
 
-- [ ] Unused imports, then unreached declarations inside kept modules. The
-      survivors of the calendar (`ServiceRoster`, parts of `SourceService*`),
-      `MessagePool`, `SourceProgram.Initial` and most of `OnePacket*` are kept
-      only because a kept module imports them or because the turn-based SE and
-      asynchronous Nash theorems use them on the plain and forced-exit
-      contracts; the latter wait for Step 4.
+- [x] The 438 modules (80k lines) none of whose declarations Paper, a test or
+      an example reaches, as `scripts/report-unreached.py` lists them, and the
+      407 declarations in 143 kept modules (23k lines) that use them. Each import
+      of a removed module became the surviving modules it imported, and module
+      docstrings that described removed results were rewritten.
+- [ ] Unreached declarations inside kept modules that use nothing removed, then
+      unused imports. The calendar's remaining `ServiceRoster` and
+      `SourceService*` modules, `MessagePool`, `SourceProgram.Initial` and most
+      of `OnePacket*` stay because the turn-based SE and asynchronous Nash
+      theorems use them on the plain and forced-exit contracts; they wait for
+      Step 4.
 
 Exit: the walk reports only modules on its allowlist; measurements updated.
 
@@ -382,9 +388,11 @@ perfect recall proved for every model, horizons equal to proved bounds.
 
 ### Size, duplication and proof engineering
 
-- [ ] **F-S1 (H, Step 3).** 2,165 of 3,777 modules (about 428k lines) contain no
+- [x] **F-S1 (H, Step 3).** 2,165 of 3,777 modules (about 428k lines) contain no
   declaration used by Paper or by a test declaration; 35% of declarations are
-  reached from Paper.
+  reached from Paper. After Step 3 pass two the report lists 2 of 1,759 modules
+  (`RevealServiceWatcher`, `ServiceRosterEvaluation`; 160 lines), left for the
+  next removal.
 - [ ] **F-S2 (H, Step 4).** Parallel runtime stacks: 269k lines mention
   `WitnessedPacket`, 244k `CommitAttemptPacket`, 46 files both. Three copies of
   the one-packet raw extension theorem (`OnePacketExtension.lean`,
@@ -481,3 +489,8 @@ show, and the models they need. They are checked at the tagged commit only.
 | [`VegasTests/AxiomAudit`](https://github.com/elazarg/VegasCore/blob/research-tree/VegasTests/AxiomAudit.lean) | 2,961 hand-written axiom pins | None |
 | [`archive/se-generalization`](https://github.com/elazarg/VegasCore/blob/research-tree/archive/se-generalization/README.md) | Uncompiled earlier designs, experiments and probes | None |
 | [`docs/se-proof-checklist.md`](https://github.com/elazarg/VegasCore/blob/research-tree/docs/se-proof-checklist.md), [`scripts/check-se-evidence.py`](https://github.com/elazarg/VegasCore/blob/research-tree/scripts/check-se-evidence.py) | The calendar checklist and its evidence check | The calendar theorem |
+| [`Vegas.onePacket_intended_sequentialEquilibrium_of_openInputs`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/OnePacketCertificateDischarge.lean#L4461), [`Vegas.onePacket_intended_raw_sequentialEquilibrium_of_blindInputs`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/OnePacketCertificateAssembly.lean#L443) and the rest of the one-packet certificate | Turn-based SE preservation of the one-packet game and its bounded raw runtime, assuming the certificate's open inputs (value blindness, late commitments); a route left conditional | Plain contract on the sequential graph, count audit |
+| [`Vegas.SourceProgram.Setup.intended_sequentialEquilibrium_commitRecovery`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/CommitRecoveryPreservation.lean#L22), [`Vegas.SourceProgram.Setup.intended_sequentialEquilibrium_commitRecovery_continuing`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/CommitRecoveryContinuingExtension.lean#L24) | Intended SE extends to the source game with end-of-block rollback and permanent exclusion, keeping strategies, beliefs and the joint readout and payoff law | Source commit-recovery game |
+| [`Vegas.phase_counted_raw_sequentialEquilibrium`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/PhaseRawReadoutLaw.lean#L27) | The raw count-audit extension of a phase-contract equilibrium keeps the typed readout jointly with the realized payoffs, for every scheduler | Phase contract, count audit |
+| [`Vegas.SourceProgram.Setup.intended_sequentialEquilibrium_extends_without_voluntary_failure`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/ExclusionMoveExtension.lean#L64) | Intended SE extends to the full exclusion game without voluntary failure at nonexcluded decisions, under a continuation payoff floor | Source exclusion-move game (decision D3) |
+| [`Vegas.watched_raw_equilibrium_extends`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/RevealServiceWatcher.lean#L123) | An equilibrium with a silent watcher extends to the full bounded raw game of the reveal service | Plain contract, reveal service |

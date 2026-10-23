@@ -1,6 +1,9 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.PhaseProposalUniqueness
+import Vegas.Pending.PhaseProposalObservation
+import Vegas.Pending.PhaseCountUniqueness
+import Vegas.Pending.PhaseCountMenu
+import Vegas.Pending.ReactiveCountedSurvivor
 import Vegas.Source.ProposalRecoveryObservation
 
 /-! # Typed source proposals computed from physical submitted openings
@@ -126,29 +129,5 @@ theorem sourceArchive_environmentStep (execution next : (app).Execution) (comman
     (reached : next ∈ (execution.environmentStep (app) command).support) :
     sourceArchive next.network.inputs = sourceArchive execution.network.inputs := by
   rw [(app).environmentStep_inputs execution next command reached]
-
-/-- A typed source address has at most one submitted proposal on an actual
-counted history, despite arbitrary physical order or receipt status. -/
-theorem sourceArchive_address_unique [Fintype Player] (bounds : MessageBounds graph)
-    (initial : PMF (app).State) (horizon : Nat) (scheduler : (app).Scheduler)
-    (control : (app).Control)
-    (trace : ((PhaseCount.onePacketMenu runtime leaks bounds).protocol
-      initial horizon scheduler).Trace (some control))
-    (first second : ProposalRecoveryProposal L)
-    (firstMember : first ∈ sourceArchive control.execution.network.inputs)
-    (secondMember : second ∈ sourceArchive control.execution.network.inputs)
-    (address : first.address = second.address) : first = second := by
-  obtain ⟨firstRaw, firstInput, firstDecoded⟩ := (mem_sourceArchive _ _).mp firstMember
-  obtain ⟨secondRaw, secondInput, secondDecoded⟩ := (mem_sourceArchive _ _).mp secondMember
-  have coordinate : firstRaw.1 = secondRaw.1 := sourceAddress_injective
-    ((sourceProposal?_address firstRaw first firstDecoded).symm.trans
-      (address.trans (sourceProposal?_address secondRaw second secondDecoded)))
-  have secondInput' : (firstRaw.1, secondRaw.2) ∈ archive control.execution.network.inputs := by
-    simpa only [coordinate] using secondInput
-  have values := archive_coordinate_unique runtime leaks bounds initial horizon scheduler control
-    trace firstRaw.1 firstRaw.2 secondRaw.2 firstInput secondInput'
-  have same : firstRaw = secondRaw := Prod.ext coordinate values
-  rw [same, secondDecoded] at firstDecoded
-  exact Option.some.inj firstDecoded.symm
 
 end Vegas.EventGraphRuntime.PhaseProposal

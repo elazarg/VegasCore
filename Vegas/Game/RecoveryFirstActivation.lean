@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.OnePacketFirstActivation
-import Vegas.Pending.ExclusionOpportunityTiming
+import Vegas.Pending.ExclusionService
 
 /-! # Timely first activations before actual recovery exclusion -/
 

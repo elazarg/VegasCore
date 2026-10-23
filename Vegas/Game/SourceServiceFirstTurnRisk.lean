@@ -2,7 +2,7 @@
 
 import Vegas.Game.SourceServiceFirstTurnBinding
 import Vegas.Game.SourceServiceFirstTurnOpportunity
-import Vegas.Game.SourceServiceRiskSlots
+import Vegas.Game.SourceServiceRetainedSlots
 
 /-! # Clear opportunity recall under exact first-turn play
 

@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.PhaseBindingResponseMemory
+import Vegas.Pending.PhaseBindingPreparationMemory
 
 /-! # Actual nonfresh candidate meanings in an evolving binding memory -/
 

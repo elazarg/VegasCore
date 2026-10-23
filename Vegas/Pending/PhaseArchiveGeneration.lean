@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.PhaseArchivedExclusionEntries
+import Vegas.Pending.PhaseSavedExclusionReadback
 import Vegas.Pending.PhaseRetiredCompletion
 import Vegas.Pending.PhasePacketAddress
 

@@ -172,7 +172,7 @@ after an earlier violation makes a charge inevitable.
 
 Several primitive pieces already exist and should be reused:
 
-- [ReactiveBindingObservation](../Vegas/Pending/ReactiveBindingObservation.lean)
+- [ReactiveBindingObservation](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/ReactiveBindingObservation.lean)
   proves equality of the pending networks and foreign observations for different
   privately prepared canonical binding values.
 - [ReactiveBindingFrameRounds](../Vegas/Pending/ReactiveBindingFrameRounds.lean)

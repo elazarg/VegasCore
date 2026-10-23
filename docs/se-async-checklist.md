@@ -133,8 +133,8 @@ joint law. It is not pursued.
   ledger identifiers stay distinct (`idsDistinct_history`).
   Causal evidence: every emitted packet carries exactly the token issued by the
   public view recorded with its response, so a present token means the
-  prerequisites had completed in that view (`history_emissionTokens`,
-  `history_emission_token_issued`, `history_network_tokens`); inclusion rejects
+  prerequisites had completed in that view ([`history_emissionTokens`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/ReactiveEmissionTokens.lean#L80),
+  [`history_emission_token_issued`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/ReactiveEmissionTokens.lean#L92), [`history_network_tokens`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/ReactiveEmissionTokens.lean#L118)); inclusion rejects
   a missing or foreign token (`reactiveApplication_handle_of_not_tokenValid`).
   Packet verdict: the audit's verdict depends on the traffic only through the
   signed envelopes and otherwise only on the settled record of final public view
@@ -211,9 +211,9 @@ joint law. It is not pursued.
   partial audit and every deposit; and every packet of a player following its
   client is permitted by the settled record at every execution within the
   horizon, whatever the other players do. The error is the deferral weight
-  itself; `geometricTiming_settlement_lawError` bounds it by
+  itself; [`geometricTiming_settlement_lawError`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceTurnSettlement.lean#L402) bounds it by
   `eventCount * weight` in the menu's information model, and
-  `geometricTiming_deferral_tendsto` makes it vanish. The route couples the
+  [`geometricTiming_deferral_tendsto`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceGeometricTiming.lean#L225) makes it vanish. The route couples the
   turn-counted run with its first-turn limit as laws of whole executions
   (`serviceTurnPolicy_roundsFrom_bind_within`), so charged binding
   omissions and resolutions expired by deferral lie inside the error, and the
@@ -227,9 +227,9 @@ joint law. It is not pursued.
   eventually reaches, converging to a consistent native assessment.
   Partial evidence: [`exists_consistent_prescribed_completion`](https://github.com/elazarg/VegasCore/blob/research-tree/GameTheoryExtensions/Analysis/Protocol/PrescribedCompletion.lean#L32) (consistent
   rational completion at free sites, keeping prescribed limits and the terminal
-  law); `exists_deferralWeights_faster` and [`exists_source_timing_rates`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceTimingRates.lean#L48)
+  law); [`exists_deferralWeights_faster`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceGeometricTiming.lean#L244) and [`exists_source_timing_rates`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceTimingRates.lean#L48)
   (deferral rates negligible against given source scales);
-  `runBehavioral_withinTV_of_supported_choices`. The correspondence used for
+  [`runBehavioral_withinTV_of_supported_choices`](https://github.com/elazarg/VegasCore/blob/research-tree/GameTheoryExtensions/Analysis/Protocol/SupportedChoiceDomination.lean#L78). The correspondence used for
   the copied/free split is defined: `CorrespondsIntended` (every state along a
   native history decodes at its completed prefix to a point of the intended
   game and every recorded response was canonical; prefix-closed by
@@ -367,15 +367,15 @@ joint law. It is not pursued.
   Timing over canonical content, for the law premise: clients that follow the
   compiled decisions of a disclosing source profile with effective
   disclosures and submit whenever an arbitrary timing of their information
-  says so (`timedCanonicalPolicy`) have, under every complete scheduler, the
+  says so ([`timedCanonicalPolicy`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceTimedMixture.lean#L60)) have, under every complete scheduler, the
   source readout law up to the probability that some event is completed by
-  expiry (`timedCanonical_readout_within`, from every completion boundary
-  `timedCanonical_boundaryContinuationWithin`,
-  [SourceServiceTimingInvariance](../Vegas/Game/SourceServiceTimingInvariance.lean)).
+  expiry ([`timedCanonical_readout_within`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceTimingInvariance.lean#L382), from every completion boundary
+  [`timedCanonical_boundaryContinuationWithin`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceTimingInvariance.lean#L125),
+  [SourceServiceTimingInvariance](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceTimingInvariance.lean)).
   Route: an owned phase is the head-law mixture of runs deciding one action
-  with the same timing (`timedCanonical_runUntil_mixture`), each of which
+  with the same timing ([`timedCanonical_runUntil_mixture`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceTimedMixture.lean#L106)), each of which
   completes the event with that action or by expiry
-  (`timed_completion_of_follows`); successful phase outcomes are dominated by
+  ([`timed_completion_of_follows`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceTimedCompletion.lean#L416)); successful phase outcomes are dominated by
   the source step and `PMF.WithinTV.bind_of_dominated` adds the phase's expiry
   probability. Not yet: the collection part of the joint law, a version whose
   disclosure hypotheses hold only on paths without an expiry (the intended
@@ -483,8 +483,8 @@ joint law. It is not pursued.
   Every adaptive public scheduler gives a profile whose reveal kernels ignore
   the observation (`EventGraph.ObliviousAtPublications`, for example one that
   always opens) the canonical terminal store law of the original graph
-  (`EventGraph.runPolicies_concurrentReveals_store`); canonical execution of
-  every mode has the original graph's law (`runPolicies_withMode_store`).
+  ([`EventGraph.runPolicies_concurrentReveals_store`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/EventGraph/RevealRelaxedScheduling.lean#L112)); canonical execution of
+  every mode has the original graph's law ([`runPolicies_withMode_store`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/EventGraph/ExecutionMode.lean#L123)).
   Partial evidence (runtime, Nash level): on every reveal-relaxed service graph
   (every mode, `serviceGraph_revealRelaxedOrdered`) a run of disclosures is one
   phase, sealed by the next non-publication event (`RevealBlockEnd.sealed`,

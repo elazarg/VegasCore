@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.PhaseProposalGenuineReference
-import Vegas.Pending.PhaseProposalAliasMass
 
 /-! # The actual unusable-preparation mass at a genuine binding
 

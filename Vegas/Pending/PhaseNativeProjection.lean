@@ -102,41 +102,4 @@ theorem emit_of_authorized (state : PhaseRuntimeState graph) (who : Player)
   rw [WitnessedSubmission.emit_eq_resolve, candidates, reactiveApplication_submit_publicView]
   rfl
 
-/-- A clear counted history retains exactly recoverable network payloads. -/
-theorem network_retag_of_clear [Fintype Player] (bounds : MessageBounds graph)
-    (inputs : PMF graph.Inputs) (horizon : Nat) (scheduler : (P).Scheduler) {current}
-    (trace : ((PhaseCount.onePacketMenu runtime leaks bounds).protocol
-      (inputs.map (PhaseRuntimeState.initial plan)) horizon scheduler).Trace (some current))
-    (clear : current.execution.application.current.excluded = ∅) :
-    ((current.execution.network.mapPayload CommitAttemptPacket.packet).mapPayload
-      plan.stampPacket) = current.execution.network := by
-  have raw := (PhaseCount.onePacketMenu runtime leaks bounds).toRawTrace _ horizon scheduler trace
-  have origins := (P).retained_envelopes_mem_inputs current.execution
-    ((P).history_provenance _ horizon scheduler raw)
-    ((P).history_inputRecall _ horizon scheduler raw)
-  have recovered (message : Message Player (CommitAttemptPacket graph))
-      (authentic : message ∈ current.execution.network.inputs) :
-      (Message.mapPayload plan.stampPacket)
-          (Message.mapPayload CommitAttemptPacket.packet message) =
-        message := by
-    have restored := PhaseCount.stamp_nativeMessage_of_clear runtime leaks plan bounds inputs
-      horizon scheduler trace clear message authentic
-    cases message
-    exact congrArg (Message.mk _) restored
-  rw [MessageNetwork.mapPayload_comp]
-  cases network : current.execution.network with
-  | mk pending ledger leaked all serial =>
-      rw [network] at origins recovered
-      simp only [MessageNetwork.mapPayload, Function.comp_def]
-      congr 1
-      · exact (List.map_congr_left (g := id) fun message member =>
-          recovered message (origins.pending message member)).trans (List.map_id _)
-      · exact (List.map_congr_left (g := id) fun message member =>
-          recovered message (origins.ledger message member)).trans (List.map_id _)
-      · funext who
-        exact (List.map_congr_left (g := id) fun message member =>
-          recovered message (origins.leaked who message member)).trans (List.map_id _)
-      · exact (List.map_congr_left (g := id) fun message member =>
-          recovered message member).trans (List.map_id _)
-
 end Vegas.EventGraphRuntime.PhaseNativeProjection

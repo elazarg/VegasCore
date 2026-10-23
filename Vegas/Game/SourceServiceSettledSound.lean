@@ -1,22 +1,18 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.ServiceSettledEvidence
-import Vegas.Game.SourceServiceTrafficSound
 import Vegas.Game.SourceServiceCanonicalSerial
+import GameTheory.Analysis.Protocol.CounterfactualDecomposition
 
-/-! # The settled record permits every retained packet
+/-! # Retained packets are good
 
-At every history of the retained source service, every transmitted packet is
-permitted by the settled record: its event is unsettled, or the contract
-accepted it with the content the record checks
-(`Vegas.sourceService_history_settled`).
-
-Each retained packet conforms on the view its author saw, so it is on track:
-its event is ready, it is not yet accepted, and the record will accept its
-content, which stays fixed while the event is ready. The roster calendar
-includes an owner's sole packet before the event can complete in any other way
-(`Vegas.prescribed_packet_settles` under `Vegas.rosterScheduler_protectedInclusion`),
-so the event completes only by accepting it.
+A retained packet is good when it is on track, or accepted with the content the
+record accepts (`Vegas.SettledGood`); a good packet is permitted by the settled
+record (`Vegas.SettledGood.permits`). Under a scheduler with protected
+inclusion, a response menu whose fresh submissions conform on the current
+public view and submit once per event keeps, at every history, conforming
+fresh calls, one submission per event and good emitted packets
+(`Vegas.retainedFacts_history`).
 -/
 
 noncomputable section
@@ -769,121 +765,7 @@ variable (setup : Setup (Player := Player) (L := L))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
 
 variable {setup} {leaks}
-/-- In the retained source service a fresh submission conforms on the public
-view its author sees. -/
-theorem sourceService_fresh_response [Fintype Player] (bounds : MessageBounds (graph setup))
-    (values : bounds.CoversBindingValues)
-    (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
-    {rosters : (graph setup).EventId → List Player}
-    (opportunities : BindingOpportunities setup rosters)
-    (network : (runtime setup).NetworkPolicy leaks) {remaining : Nat} {who : Player}
-    {execution : (application setup leaks).Execution}
-    (prior : ((sourceServiceMenu setup leaks bounds rosters).protocol (initialLaw setup)
-      (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).Trace
-        (some ⟨remaining, some who, execution⟩))
-    (response : (application setup leaks).Action)
-    (member : response ∈ (sourceServiceMenu setup leaks bounds rosters).actions who
-      (execution.recall who) (execution.observe (application setup leaks) who))
-    (material : (application setup leaks).Submission)
-    (submitted : response.transmission = some material) :
-    (runtime setup).freshServiceEnvelope execution.application.publicView
-      ⟨(who, execution.network.nextSerial who),
-        (application setup leaks).packet ((application setup leaks).submit
-          execution.application who material) who (execution.network.known who) material⟩ := by
-  classical
-  let app := application setup leaks
-  let menu := sourceServiceMenu setup leaks bounds rosters
-  let joint : ∀ i, Option ((menu.protocol (initialLaw setup) (rosterPlan setup rosters).length
-      (rosterScheduler setup leaks rosters network)).Action i) :=
-    fun i => if i = who then some response else none
-  have legal : (menu.protocol (initialLaw setup) (rosterPlan setup rosters).length
-      (rosterScheduler setup leaks rosters network)).Legal
-        (some ⟨remaining, some who, execution⟩) joint := by
-    refine ⟨fun stopped => ?_, fun player => ?_⟩
-    · change remaining = 0 ∧ some who = none at stopped
-      cases stopped.2
-    · by_cases same : player = who
-      · subst player
-        simp only [joint, ↓reduceIte]
-        exact ⟨rfl, member⟩
-      · simp only [joint, same, ↓reduceIte]
-        intro active
-        exact same (Option.some.inj active.symm)
-  have reached : some ⟨remaining, none, execution.respond app who response⟩ ∈
-      ((menu.protocol (initialLaw setup) (rosterPlan setup rosters).length
-        (rosterScheduler setup leaks rosters network)).step
-          (some ⟨remaining, some who, execution⟩) ⟨joint, legal⟩).support := by
-    change _ ∈ (app.transition (initialLaw setup) (rosterPlan setup rosters).length
-      (rosterScheduler setup leaks rosters network) (some ⟨remaining, some who, execution⟩)
-        joint).support
-    simp only [ReactiveApplication.transition, joint, ↓reduceIte, Option.getD_some]
-    exact (PMF.mem_support_pure_iff _ _).mpr rfl
-  have trafficOk := sourceService_history_traffic bounds values capacity opportunities network
-    ⟨_, .extend prior joint legal reached⟩
-  have traffic := app.stateTraffic_transition (initialLaw setup) _ _
-    ⟨_, menu.toRawTrace (initialLaw setup) _ _ prior⟩ joint _ reached
-  have facts := settledFacts_history (initialLaw setup) _ _
-    (menu.toRawTrace (initialLaw setup) _ _ prior)
-  rcases response with ⟨transmission⟩
-  cases submitted
-  have recorded : (⟨execution.application.publicView, execution.network.ledger,
-      ⟨(who, execution.network.nextSerial who),
-        app.packet (app.submit execution.application who material) who
-          (execution.network.known who) material⟩⟩ : app.TrafficRecord) ∈
-      app.stateTraffic (some ⟨remaining, none,
-        execution.respond app who ⟨some material⟩⟩) := by
-    rw [traffic]
-    refine List.mem_append_right _ ?_
-    simp only [ReactiveApplication.trafficStep, ReactiveApplication.Execution.respond,
-      MessageNetwork.submit, List.drop_left', List.map_cons, List.map_nil,
-      List.mem_singleton]
-    rfl
-  have permitted := trafficOk _ recorded
-  have unpublished : (who, execution.network.nextSerial who) ∉
-      execution.network.ledger.map Message.id := by
-    intro published
-    obtain ⟨other, otherMember, same⟩ := List.mem_map.mp published
-    have bound := facts.serials.ledger other otherMember
-    rw [same] at bound
-    exact Nat.lt_irrefl _ bound
-  exact (((runtime setup).permittedServiceEnvelope_unpublished_iff _ _ _ unpublished).mp
-    permitted).2
 
-
-/-- **The settled record permits every retained packet.** At every history of
-the retained source service, including off-path and intermediate histories,
-every transmitted packet is permitted by the contract's current record. -/
-theorem sourceService_history_settled [Fintype Player] (bounds : MessageBounds (graph setup))
-    (values : bounds.CoversBindingValues)
-    (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
-    {rosters : (graph setup).EventId → List Player}
-    (opportunities : BindingOpportunities setup rosters)
-    (network : (runtime setup).NetworkPolicy leaks) {control : (application setup leaks).Control}
-    (trace : ((sourceServiceMenu setup leaks bounds rosters).protocol (initialLaw setup)
-      (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).Trace
-        (some control)) :
-    ∀ record ∈ (application setup leaks).executionTraffic control.execution,
-      ((runtime setup).settledRecord leaks control.execution).permits record.envelope =
-        true := by
-  have retained : RetainedFacts setup leaks control.execution :=
-    retainedFacts_history (rosterScheduler_protectedInclusion setup leaks rosters network)
-      (sourceServiceMenu setup leaks bounds rosters)
-      (fun prior response member material submitted =>
-        sourceService_fresh_response bounds values capacity opportunities network prior response
-          member material submitted)
-      (fun who _ _ response member => bounds.compiledActions_firstSubmission (runtime setup) leaks
-        who _ _ response (sourceServiceMenu_in_compiled setup leaks bounds rosters who _ _ member))
-      trace
-  have inputs := (application setup leaks).stateTraffic_inputs (initialLaw setup) _ _
-    ((sourceServiceMenu setup leaks bounds rosters).toRawTrace (initialLaw setup) _ _ trace)
-  change ((application setup leaks).executionTraffic control.execution).map
-    ReactiveApplication.TrafficRecord.envelope = control.execution.network.inputs at inputs
-  intro record member
-  have emitted : Emitted setup leaks control.execution record.envelope := by
-    unfold Emitted
-    rw [← inputs]
-    exact List.mem_map.mpr ⟨record, member, rfl⟩
-  exact (retained.good _ emitted).permits
 
 end Sequential
 end Retained

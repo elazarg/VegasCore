@@ -4090,12 +4090,12 @@ needs its own review. What is known:
 | Lemma C: one-packet equilibria extend with no charges | `Vegas.EventGraphRuntime.MessageBounds.onePacket_raw_sequentialEquilibrium` |
 | Lemma T, finite core: transport of a marginal through an approximate product factorization, with remainder | `GameTheory.Math.Probability.NearProductWeights.tendsto_sum_abs_nativeLaw_sub_sourceLaw` |
 | Intended own completions and common operational replay fibers | `Vegas.OnePacketOwnInputs.ofAssembled` |
-| Value-blind continuation estimates from the base certificate inputs and service contract | `Vegas.OnePacketBaseInputs.toBlindInputs` |
+| Value-blind continuation estimates from the base certificate inputs and service contract | [`Vegas.OnePacketBaseInputs.toBlindInputs`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/OnePacketBlindConstruction.lean#L145) |
 | Sequential raw-runtime preservation, conditional on honest-counterpart construction | [`Vegas.onePacket_intended_raw_sequentialEquilibrium_of_counterparts`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/OnePacketSequentialCompilation.lean#L48) |
 | Actual binding-submission trace repair with the same operational record | `Vegas.DirectedBindingFrame.binding_trace` |
 | Public-record constraints throughout a forced information set | `Vegas.publicRecord_of_forced_information` |
-| Failure has the exclusion payoff at every full source information set | `Vegas.SourceProgram.Setup.exclusion_failure_context_value` |
-| Source equilibrium extension without voluntary failure at any nonexcluded site, under the nonexcluded payoff floor | `Vegas.SourceProgram.Setup.intended_sequentialEquilibrium_extends_without_voluntary_failure` |
+| Failure has the exclusion payoff at every full source information set | [`Vegas.SourceProgram.Setup.exclusion_failure_context_value`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Source/ExclusionFailure.lean#L224) |
+| Source equilibrium extension without voluntary failure at any nonexcluded site, under the nonexcluded payoff floor | [`Vegas.SourceProgram.Setup.intended_sequentialEquilibrium_extends_without_voluntary_failure`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/ExclusionMoveExtension.lean#L64) |
 | Each voluntary-failure atom in its common source tremble sequence has exactly the reference mass times the tremble scale | [`Vegas.SourceProgram.Setup.exclusionMoveApproximation_failure_mass`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/ExclusionMoveLikelihood.lean#L24) |
 | Successful completed foreign bindings give a regular counterpart with the same operational record | `Vegas.counterpart_of_successful_foreign_bindings` |
 | A reveal ready at an earlier actual prefix reads a successful binding under the final intended witness | `Vegas.binding_success_of_tracePrefix` |
@@ -4121,20 +4121,20 @@ needs its own review. What is known:
 | Intended source steps without omissions retain intendedness, no exclusions and the same generation | `Vegas.SourceProgram.CommitRecoveryState.step_intended_support` |
 | Clear auxiliary-source histories project to source histories with the same length and source observation | `Vegas.SourceProgram.Setup.commitRecoveryClearTrace_length`, `Vegas.SourceProgram.Setup.commitRecoveryClearTrace_observe` |
 | Every legal intended history, full observation transcript, own-play record and pure local step embeds into the source recovery game | `Vegas.SourceProgram.Setup.commitRecoveryRestriction` |
-| One consistent source recovery completion retains intended strategies, beliefs and every initialized history law, with local optimality at new agents | `Vegas.SourceProgram.Setup.exists_consistent_commitRecovery_completion` |
+| One consistent source recovery completion retains intended strategies, beliefs and every initialized history law, with local optimality at new agents | [`Vegas.SourceProgram.Setup.exists_consistent_commitRecovery_completion`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/CommitRecoveryCompletion.lean#L25) |
 | Completed physical commitment blocks supply an actual typed attempt with exact exclusion and store | `Vegas.sourceAttempt_of_completed_bindings` |
 | Actual drained binding operations reconstruct exact source attempts and inert guard-registry extensions from saved-boundary relations | `Vegas.sourceAttempt_of_actual_bindingInclusion`, `Vegas.sourceAttempt_of_actual_bindingEnvironment` |
-| Compiler guards on automatic failed subjects change no source reveal kernel | `Vegas.reveal_step_of_failureExtension` |
+| Compiler guards on automatic failed subjects change no source reveal kernel | [`Vegas.reveal_step_of_failureExtension`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Compile/EventGraphRecoveryReveal.lean#L19) |
 | Actual phase one-packet histories have zero count charges under every scheduler | `Vegas.EventGraphRuntime.PhaseCount.onePacketMenu_countCharge_zero` |
 | Actual ready timely counted bindings are accepted, with exact normalization even if immediately retired | `Vegas.EventGraphRuntime.PhaseCount.binding_accepted_of_history` |
 | Actual ready timely counted openings have their surviving signed handle and are accepted without an openability or acceptance premise | `Vegas.EventGraphRuntime.PhaseCount.opening_accepted_of_history` |
 | Live binding records retain actual authored current-namespace provenance | `Vegas.EventGraphRuntime.phaseLiveBindingStamp_history` |
 | Immutable addressed seeds realize the joint original seed and full execution law | `Interaction.ReactiveApplication.AddressedScheduler.realize_joint` |
-| At a fixed remainder and actual command transcript, the original seed posterior factors by addressed coordinate | `Interaction.ReactiveApplication.AddressedScheduler.posterior_given_remainder` |
-| The concrete erased-query calendar realizes its private-initializer and original-seed joint law | `Vegas.EventGraphRuntime.PhaseSeedCalendar.realize_private_joint` |
-| Concrete calendar replies are unchanged by replacing opening raw values and evidence | `Vegas.EventGraphRuntime.PhaseSeedCalendar.reply_opening_raw` |
-| Actual phase inputs retain full clocked owner callback recall | `Vegas.EventGraphRuntime.PhaseSeedScheduler.runRounds_wordRecall` |
-| Newly installed actual namespaces retain the original unread coordinate law | `Vegas.EventGraphRuntime.PhaseSeedCalendar.posterior_after_namespace_change` |
+| At a fixed remainder and actual command transcript, the original seed posterior factors by addressed coordinate | [`Interaction.ReactiveApplication.AddressedScheduler.posterior_given_remainder`](https://github.com/elazarg/VegasCore/blob/research-tree/Interaction/ReactiveAddressedPosterior.lean#L118) |
+| The concrete erased-query calendar realizes its private-initializer and original-seed joint law | [`Vegas.EventGraphRuntime.PhaseSeedCalendar.realize_private_joint`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/PhaseSeedCalendar.lean#L226) |
+| Concrete calendar replies are unchanged by replacing opening raw values and evidence | [`Vegas.EventGraphRuntime.PhaseSeedCalendar.reply_opening_raw`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/PhaseSeedCalendarProperties.lean#L58) |
+| Actual phase inputs retain full clocked owner callback recall | [`Vegas.EventGraphRuntime.PhaseSeedScheduler.runRounds_wordRecall`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/PhaseSeedRecall.lean#L191) |
+| Newly installed actual namespaces retain the original unread coordinate law | [`Vegas.EventGraphRuntime.PhaseSeedCalendar.posterior_after_namespace_change`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/PhaseSeedCalendarProperties.lean#L111) |
 | Behavioral realization of a fixed private scheduler seed retains the joint seed/execution law | `Interaction.ReactiveApplication.schedulerMixture_joint` |
 | Automatic failure completion terminates with no excluded-owner event ready | `Vegas.EventGraphRuntime.RecoveryState.drain_quiescent` |
 | Actual recovery histories preserve permanent exclusion and native state validity | `Vegas.EventGraphRuntime.recoveryApplication_history_invariant`, `Vegas.EventGraphRuntime.recoveryApplication_exclusion_monotone` |
@@ -4153,7 +4153,7 @@ needs its own review. What is known:
 | Latent source debt fixes expected terminal utility under actual recovery completion | `Vegas.recovery_owesFailure_expect_exclusionBase` |
 | Excluded or indebted histories give zero whole-policy gain, also after integration over the actual belief | `Vegas.recovery_gain_eq_zero_of_owes` |
 | Complete clear-history and raw information-fiber bijections preserve exact behavioral reach weights | `Vegas.EventGraphRuntime.RecoveryProjection.informationHistoryEquiv_reachWeight` |
-| Bounded one-packet Bayes beliefs transport exactly at clear sites, with the recovery decision site derived from ordinary positive event mass | `Vegas.EventGraphRuntime.RecoveryProjection.bounded_bayesBelief_liftedSite` |
+| Bounded one-packet Bayes beliefs transport exactly at clear sites, with the recovery decision site derived from ordinary positive event mass | [`Vegas.EventGraphRuntime.RecoveryProjection.bounded_bayesBelief_liftedSite`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/ExclusionBoundedBelief.lean#L205) |
 | Actual continuations stopped at first exclusion retain the same law of full surviving histories and the exit atom | `Vegas.EventGraphRuntime.RecoveryProjection.runBehavioralUntil_exclusion_map_eq` |
 | Actual stopped continuations retain the exact first excluded-owner set as well as every surviving native history | `Vegas.EventGraphRuntime.RecoveryProjection.runBehavioralUntil_exclusion_classified_eq` |
 | Actual recovery base-payoff laws differ from the concrete native continuation by at most the actual first-exclusion probability in total variation | [`Vegas.recovery_exclusionPayoffs_withinTV`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/RecoveryContinuationPayoff.lean#L27) |
@@ -4165,7 +4165,7 @@ needs its own review. What is known:
 | A future first public event failure rules out a main response at its actual debt-free first activation | `Vegas.recovery_firstActivation_not_main_of_publicFailure` |
 | Total slot-trembled mass outside main support is at most the square plus the first power of the tremble scale | `Vegas.slotTrembledChoice_event_le_of_disjoint_main` |
 | Recovery completion weights determine one globally assembled, fully mixed native Bayes comparison sequence | `Vegas.RecoveryOnePacket.nativeComparisonSequence_assembled`, `Vegas.RecoveryOnePacket.nativeComparisonSequence_bayes` |
-| Forced nonlate recovery decisions retain the prescribed law under arbitrary common completion weights, with exact native choice projection | `Vegas.RecoveryOnePacket.component_mixture_projected_of_forced_nonlate` |
+| Forced nonlate recovery decisions retain the prescribed law under arbitrary common completion weights, with exact native choice projection | [`Vegas.RecoveryOnePacket.component_mixture_projected_of_forced_nonlate`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/RecoveryPrescribedMixture.lean#L81) |
 | An unfinished foreign event has no earlier callback or recorded submission at an intended focal source turn, and every later ready callback lies after that turn | `Vegas.not_activatedAt_foreign_of_ownTurn`, `Vegas.not_recorded_foreign_of_intended_ownTurn`, `Vegas.foreign_ready_prefix_after_ownTurn` |
 | Actual recall supplies the earliest callback's full supported transition prefix and pending-event witness | `Vegas.firstActivation_response_prefix_of_recall` |
 | Actual recovery opportunity supplies a remembered ready callback at a clear due native endpoint | `Vegas.EventGraphRuntime.Recovery.due_owner_recalled_turn_clear_native` |
@@ -4185,9 +4185,9 @@ needs its own review. What is known:
 | A recorded protected fixed-value binding completes successfully at the stopped boundary under actual recovery service | `Vegas.recovery_committed_stop_config` |
 | Actual clear first callbacks derive freshness and acceptance and have the exact stopped source-step law, for fixed-value bindings and canonical disclosures | `Vegas.recovery_firstActivation_commitment_sourceLaw`, `Vegas.recovery_firstActivation_disclosure_sourceLaw` |
 | At actual clear intended first callbacks, honest binding and disclosure choices give the exact source behavioral step, and the prescribed component preserves source continuation value within six times scale times the payoff bound | `Vegas.recovery_firstActivation_honest_sourceLaw`, `Vegas.recovery_firstActivation_prescribed_sourceValue` |
-| The comparison strategy with the same recovery completion weights inherits the actual first-callback source-value bound | `Vegas.RecoveryOnePacket.nativeComparison_firstActivation_sourceValue` |
+| The comparison strategy with the same recovery completion weights inherits the actual first-callback source-value bound | [`Vegas.RecoveryOnePacket.nativeComparison_firstActivation_sourceValue`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/RecoveryComparisonSourceKernel.lean#L40) |
 | Actual recovery service reaches the owner's first callback without changing the source configuration and then gives an honest successor boundary | `Vegas.recovery_boundary_firstActivation`, `Vegas.recovery_firstActivation_honest_successorBoundary` |
-| Both raw and finite-menu stopped chance phases preserve the exact source continuation law | `Vegas.recovery_chance_sourceContinuation`, `Vegas.recovery_chance_stopped_sourceContinuation` |
+| Both raw and finite-menu stopped chance phases preserve the exact source continuation law | [`Vegas.recovery_chance_sourceContinuation`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/RecoveryChanceSourceLaw.lean#L196), `Vegas.recovery_chance_stopped_sourceContinuation` |
 | Every terminal source prefix has its exact readout law under arbitrary native continuation policies, without service hypotheses | `Vegas.terminalPrefix_readout_law` |
 | Honest finite-menu play from an actual intended recovery boundary has the full source continuation law, by source-rank induction | `Vegas.recovery_honest_boundary_readout_law` |
 | Honest native continuations have no repeated pending delivery at any supported owner input | `Vegas.recovery_honest_reached_not_late` |
@@ -4244,10 +4244,10 @@ needs its own review. What is known:
 | Actual recovery service timing gives native opportunity and inclusion at clear native histories | `Vegas.EventGraphRuntime.Recovery.Opportunity.clear_native`, `Vegas.EventGraphRuntime.Recovery.ProtectedInclusion.clear_native` |
 | Protected actual recovery inclusion settles fresh canonical calls through the first-exclusion environment step | `Vegas.recovery_settlesFreshCalls_environment` |
 | A protected canonical transmission cannot publicly fail through the first-exclusion environment step, under actual recovery opportunity and inclusion | `Vegas.recovery_firstActivation_canonical_succeeds_environment` |
-| Count-permitted commitments are accepted while ready and timely, including unusable private bindings | `Vegas.EventGraphRuntime.counted_binding_resolves_of_history` |
-| Authentic count-permitted openings are accepted while ready and timely if the owner's binding was not publicly missed | `Vegas.EventGraphRuntime.counted_opening_accepted` |
+| Count-permitted commitments are accepted while ready and timely, including unusable private bindings | [`Vegas.EventGraphRuntime.counted_binding_resolves_of_history`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/ReactiveCountedBindingService.lean#L116) |
+| Authentic count-permitted openings are accepted while ready and timely if the owner's binding was not publicly missed | [`Vegas.EventGraphRuntime.counted_opening_accepted`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/ReactiveCountedOpeningAcceptance.lean#L132) |
 | Coupled actual one-step kernels imply equal stopped readout laws | `GameTheory.Protocol.InformationModel.runBehavioralUntil_map_eq_of_paired_steps` |
-| An unread scheduler seed retains its law and independence in the actual joint execution law | `Interaction.ReactiveApplication.schedulerMixture_unread_execution` |
+| An unread scheduler seed retains its law and independence in the actual joint execution law | [`Interaction.ReactiveApplication.schedulerMixture_unread_execution`](https://github.com/elazarg/VegasCore/blob/research-tree/Interaction/ReactiveSchedulerFreshSeed.lean#L131) |
 | A scoped local seed controller retains the complete execution and query log under immutable-seed replay | [`Vegas.EventGraphRuntime.LocalSeedController.runJoint_replay`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/ReactiveLocalSeedReplay.lean#L233) |
 | The actual scheduler posterior conditioned on its transcript and query log factors with the local prior filtered by the recorded answers | [`Vegas.EventGraphRuntime.LocalSeedController.posterior_transcript_log`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/ReactiveLocalSeedPosteriorLog.lean#L32) |
 | Actual owner recall reconstructs every positive local query and its index along complete runs, under the operational-domain invariant | [`Vegas.EventGraphRuntime.LocalSeedController.runJoint_initial_ownerLog`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/ReactiveLocalSeedOwnerRun.lean#L82) |
@@ -4270,7 +4270,7 @@ needs its own review. What is known:
 The default-runtime theorem derives zero on-path count charges and the joint
 typed-readout and realized-payoff law, including the counterpart inputs.
 Guarded swaps of raw values preserve the failure status of
-completed bindings (`Vegas.SwapGuard.value_eq_failure_iff`), so they cannot
+completed bindings ([`Vegas.SwapGuard.value_eq_failure_iff`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/OnePacketCounterpartCompatibility.lean#L57)), so they cannot
 replace an accepted unopenable binding by a valid value. Such a replacement
 requires a directed repair preserving the actual operational record and the
 observing player's full information. The whole-history repair and its finite

@@ -70,7 +70,7 @@ none supplies the missing initialized conditional-belief comparison by itself.
 | [`PhaseOnePacketExtension`](../Vegas/Game/PhaseOnePacketExtension.lean) | `PhaseCount.onePacket_raw_sequentialEquilibrium` extends a counted equilibrium to raw play, preserving both terminal history and realized-payoff joint laws, with zero charges. |
 
 The convenience theorem in
-[`PhaseRawReadoutLaw`](../Vegas/Game/PhaseRawReadoutLaw.lean) projects away the
+[`PhaseRawReadoutLaw`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/PhaseRawReadoutLaw.lean) projects away the
 history marginal. Final assembly should retain the inner extension theorem's
 history and settlement laws until the fixed initialized joint readout is taken.
 

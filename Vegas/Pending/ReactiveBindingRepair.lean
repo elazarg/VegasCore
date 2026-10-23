@@ -1,7 +1,11 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.ReactiveBindingBlock
-import Vegas.Pending.ReactiveBindingObservation
+import Vegas.Pending.ReactiveBinding
+import Interaction.ReactiveProvenance
+import Vegas.Pending.ReactivePolicyFacts
+import Vegas.Pending.ReactiveServiceProgress
+import Interaction.ReactiveAllocation
+import Vegas.Pending.EventSequentialTiming
 import Vegas.Pending.ReactiveHiddenInclusion
 import Vegas.EventGraph.Commutation
 
@@ -280,137 +284,5 @@ theorem reactive_include_binding_public_congr (runtime : EventGraphRuntime graph
   congr 1
   exact congrArg (fun accepted : graph.Field → Option (Handle graph) =>
     Function.update accepted (.inr event) (some candidate)) acceptedEq
-
-/-- One actual reserved binding block preserves the whole public and opponent
-frame, and the repaired owner's remaining candidate capacity. Both sides can
-already contain earlier repairs. No additional observer or independent sampling
-is used to obtain this joint law. -/
-theorem reactiveBinding_reserved_hidden_congr (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (left right : (runtime.reactiveApplication leaks).Execution) (owner : Player)
-    (network : left.network = right.network) (receipts : left.receipts = right.receipts)
-    (publicEq : left.application.publicView = right.application.publicView)
-    (serviceRecall : left.environmentRecall = right.environmentRecall)
-    (views : ∀ who, who ≠ owner →
-      left.application.playerView who = right.application.playerView who)
-    (recall : ∀ who, who ≠ owner → left.recall who = right.recall who)
-    (slots : ∀ query, left.application.candidates.lookup (owner, query) = .fresh ↔
-      right.application.candidates.lookup (owner, query) = .fresh)
-    (event : graph.EventId) (payload : L.Ty)
-    (outputEq : graph.outputLayout event = .binding owner payload)
-    (codeEq : cast (congrArg (EventGraph.EventCode graph.layout) outputEq)
-      (graph.nodes event) = .bind owner payload)
-    (node : nodeView graph event = .bind owner payload outputEq codeEq)
-    (first second : PublicationResult (L.Val payload)) (serial : Nat)
-    (ready : left.application.config.cut.Ready event)
-    (timely : left.application.WithinDeadline runtime event)
-    (vacant : left.application.accepted (.inr event) = none)
-    (unused : left.application.HandleUnused (owner, .prepared serial))
-    (serials : left.network.SerialsBeforeNext)
-    (players : Player → (runtime.reactiveApplication leaks).Policy)
-    (scheduler : runtime.NetworkPolicy leaks) :
-    let app := runtime.reactiveApplication leaks
-    let readout (next : app.Execution) :=
-      (next.network, next.receipts, next.application.publicView, next.environmentRecall,
-        (fun who => if who = owner then none
-          else some (next.recall who, next.application.playerView who)),
-        fun query => next.application.candidates.lookup (owner, query) = .fresh)
-    (runtime.interactionStep leaks players scheduler (.includeLatest event owner)
-      (left.respond app owner
-        (runtime.reactiveBinding leaks owner event payload first serial))).map readout =
-      (runtime.interactionStep leaks players scheduler (.includeLatest event owner)
-        (right.respond app owner
-          (runtime.reactiveBinding leaks owner event payload second serial))).map readout := by
-  let app := runtime.reactiveApplication leaks
-  let before := left.respond app owner
-    (runtime.reactiveBinding leaks owner event payload first serial)
-  let after := right.respond app owner
-    (runtime.reactiveBinding leaks owner event payload second serial)
-  let id : MessageId Player := (owner, left.network.nextSerial owner)
-  have submitted := runtime.reactiveBinding_submit_hidden_congr leaks left right owner network
-    receipts publicEq views recall event payload first second serial
-  change before.network = after.network ∧ before.receipts = after.receipts ∧
-    before.application.publicView = after.application.publicView ∧
-    (∀ who, who ≠ owner → before.application.playerView who = after.application.playerView who) ∧
-    (∀ who, who ≠ owner → before.recall who = after.recall who) at submitted
-  have found : before.network.lookup id =
-      some ⟨id, ⟨.commitment event (owner, .prepared serial), none, some ⟨event⟩⟩⟩ :=
-    runtime.reactiveBinding_lookup leaks left owner event payload first serial serials ready
-  have configEq : before.application.config = left.application.config := by
-    change (submitStep (Submission.register _ left.application owner) owner _).config = _
-    rw [submitStep_config]
-    exact (Submission.register_facts _ owner left.application).1
-  have beforePublic : before.application.publicView = left.application.publicView :=
-    binding_public_view runtime leaks left owner event payload first serial
-  have beforeReady : before.application.config.cut.Ready event := by rwa [configEq]
-  have beforeTimely : before.application.WithinDeadline runtime event := by
-    unfold State.WithinDeadline
-    rw [show before.application.clock = left.application.clock from
-      congrArg PublicView.clock beforePublic,
-      show before.application.activatedAt = left.application.activatedAt from
-        congrArg PublicView.activatedAt beforePublic]
-    exact timely
-  have beforeAccepted : before.application.accepted = left.application.accepted :=
-    congrArg PublicView.accepted beforePublic
-  have beforeVacant := (congrFun beforeAccepted (.inr event)).trans vacant
-  have beforeUnused : before.application.HandleUnused (owner, .prepared serial) := by
-    intro field associated
-    exact unused field ((congrFun beforeAccepted field).symm.trans associated)
-  have included := runtime.reactive_include_binding_hidden_congr leaks before after owner
-    submitted.1 submitted.2.1 submitted.2.2.1 submitted.2.2.2.1 submitted.2.2.2.2
-    id event (owner, .prepared serial) none found
-  have includedPublic := runtime.reactive_include_binding_public_congr leaks before after
-    submitted.1 submitted.2.2.1 owner event payload outputEq codeEq node id
-    (owner, .prepared serial) none rfl rfl found beforeReady beforeTimely beforeVacant beforeUnused
-  have fixedBefore : before.application.candidates.lookup (owner, .prepared serial) ≠ .fresh := by
-    change (submitStep _ owner
-      (.commitment event (owner, .prepared serial))).candidates.lookup
-        (owner, .prepared serial) ≠ .fresh
-    exact submitStep_commitment_fixed _ owner event (.prepared serial)
-  have fixedAfter : after.application.candidates.lookup (owner, .prepared serial) ≠ .fresh := by
-    change (submitStep _ owner
-      (.commitment event (owner, .prepared serial))).candidates.lookup
-        (owner, .prepared serial) ≠ .fresh
-    exact submitStep_commitment_fixed _ owner event (.prepared serial)
-  have beforeCandidates := runtime.reactive_include_fixed_binding_candidates leaks before id
-    event (owner, .prepared serial) none found fixedBefore
-  have afterCandidates := runtime.reactive_include_fixed_binding_candidates leaks after id
-    event (owner, .prepared serial) none (submitted.1 ▸ found) fixedAfter
-  have freshSlots := runtime.reactiveBinding_fresh_slots_congr leaks left right owner slots
-    event payload first second serial
-  have beforeService : before.environmentRecall = after.environmentRecall := serviceRecall
-  have environment : before.observeEnvironment app = after.observeEnvironment app := by
-    change ReactiveApplication.EnvironmentView.mk _ _ _ =
-      ReactiveApplication.EnvironmentView.mk _ _ _
-    rw [submitted.1, submitted.2.1]
-    exact congrArg (fun observed =>
-      (⟨after.network.publicView, observed, after.receipts⟩ : app.EnvironmentView)) submitted.2.2.1
-  dsimp only
-  rw [runtime.reactiveBinding_reserved_selection leaks left owner event payload first serial
-    serials players scheduler,
-    runtime.reactiveBinding_reserved_selection leaks right owner event payload second serial
-      (network ▸ serials) players scheduler]
-  have nonce : right.network.nextSerial owner = left.network.nextSerial owner :=
-    congrArg (fun net => net.nextSerial owner) network.symm
-  rw [nonce]
-  simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map]
-  apply congrArg PMF.pure
-  change ( (before.includePending app id).network, (before.includePending app id).receipts,
-      (before.includePending app id).application.publicView,
-      before.environmentRecall ++ [⟨before.observeEnvironment app, .include id⟩], _, _) =
-    ( (after.includePending app id).network, (after.includePending app id).receipts,
-      (after.includePending app id).application.publicView,
-      after.environmentRecall ++ [⟨after.observeEnvironment app, .include id⟩], _, _)
-  refine Prod.ext included.1 (Prod.ext included.2.1 (Prod.ext includedPublic
-    (Prod.ext (by rw [beforeService, environment]) (Prod.ext ?_ ?_))))
-  · funext who
-    by_cases own : who = owner
-    · simp only [own, ↓reduceIte]
-    · simp only [own, ↓reduceIte]
-      exact congrArg some (Prod.ext (included.2.2.2 who own) (included.2.2.1 who own))
-  · funext query
-    apply propext
-    rw [beforeCandidates, afterCandidates]
-    exact freshSlots query
 
 end Vegas.EventGraphRuntime

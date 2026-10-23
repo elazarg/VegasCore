@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.ReservedEpochOpeningExpiry
-import Vegas.Game.ReservedEpochSuccessorOpening
 import Vegas.Pending.PhaseProposalRetention
 import Vegas.Pending.PhaseExclusionOrigin
 import Vegas.Game.ReservedEpochStoppedFootprint

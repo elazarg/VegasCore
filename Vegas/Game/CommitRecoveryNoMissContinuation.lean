@@ -1,7 +1,9 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Source.CommitRecoveryNoMissRepresentative
-import Vegas.Game.CommitRecoveryAttemptReset
+import Vegas.Source.CommitRecoveryAttemptReset
+import Vegas.Source.CommitRecoveryErasedModel
+import Vegas.Game.CommitRecoveryPayoff
 
 /-! # Original source continuation under the selected reduced-query prescription
 
@@ -66,43 +68,5 @@ theorem commitRecoveryNoMissErasedProfile_normalized
     setup.commitRecoveryNoMissInformation_idempotent]
 
 variable [Fintype Player]
-
-/-- Two actual failed attempts from the same saved history and omission word
-have one full terminal readout/payoff law under this actual prescription.
-Future accepted-failure rescue and exhausted restore are retained. -/
-theorem commitRecoveryNoMissErasedProfile_failed_attempt_terminal_joint_eq
-    (profile : ∀ who, setup.commitRecoveryModel.BehavioralPolicy who)
-    (utility : State L setup.program.terminalCtx → Player → ℝ) (excludedPayoff : Player → ℝ)
-    (certificate : setup.commitRecoveryProtocol.WellFoundedHistories)
-    (observer : Player) (first : CommitRecoveryState setup.program)
-    (prior : setup.commitRecoveryProtocol.Trace (some first))
-    (committing : ProtocolState.atCommit setup.program first.point = true)
-    {leftState rightState : setup.commitRecoveryProtocol.State}
-    (leftTrace : setup.commitRecoveryProtocol.Trace leftState)
-    (rightTrace : setup.commitRecoveryProtocol.Trace rightState)
-    (leftRetained : TracePrefix prior leftTrace) (rightRetained : TracePrefix prior rightTrace)
-    (sameOmissions :
-      (setup.recoveryJointRecall leftTrace).map
-          (fun joint owner => CommitRecoveryMove.missed (joint owner)) =
-        (setup.recoveryJointRecall rightTrace).map
-          (fun joint owner => CommitRecoveryMove.missed (joint owner)))
-    (boundary : leftTrace.length + ProtocolState.commitEnd setup.program first.point =
-      prior.length + ProtocolState.remaining setup.program first.point)
-    (failed : leftState.elim False
-      (fun left => (left.excluded \ first.entryExcluded).Nonempty)) :
-    (setup.commitRecoveryModel.runBehavioralTerminalFrom certificate
-        (setup.commitRecoveryNoMissErasedProfile profile) ⟨leftState, leftTrace⟩).map
-        (fun history =>
-          (setup.protocolReadout (setup.commitRecoverySourceState history.state),
-            fun who => setup.commitRecoveryPayoff utility excludedPayoff who history)) =
-      (setup.commitRecoveryModel.runBehavioralTerminalFrom certificate
-        (setup.commitRecoveryNoMissErasedProfile profile) ⟨rightState, rightTrace⟩).map
-        (fun history =>
-          (setup.protocolReadout (setup.commitRecoverySourceState history.state),
-            fun who => setup.commitRecoveryPayoff utility excludedPayoff who history)) :=
-  setup.commitRecoveryErasedProfile_failed_attempt_terminal_joint_eq
-    (setup.commitRecoveryNoMissProfile profile) utility excludedPayoff certificate
-    observer first prior committing leftTrace rightTrace leftRetained rightRetained
-    sameOmissions boundary failed
 
 end Vegas.SourceProgram.Setup

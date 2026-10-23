@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.RevealServiceRosterPolicy
-import Vegas.Game.RevealServiceClock
 
 /-! # Finite activation rosters in the existing native service
 
@@ -152,12 +151,6 @@ theorem rosterBlock_length (setup : Setup (Player := Player) (L := L))
     simp only [List.length_append, List.length_map, List.length_cons, List.length_nil,
       List.length_replicate] <;> omega
 
-theorem rosterBlock_actors (setup : Setup (Player := Player) (L := L))
-    (rosters : (graph setup).EventId → List Player) (event : (graph setup).EventId) :
-    (rosterBlock setup rosters event).filterMap instructionActor = rosters event := by
-  unfold rosterBlock
-  cases (graph setup).actor? event <;> simp [instructionActor]
-
 theorem rosterPlanPrefix_succ (setup : Setup (Player := Player) (L := L))
     (rosters : (graph setup).EventId → List Player) (event : (graph setup).EventId) :
     rosterPlanPrefix setup rosters (event.val + 1) =
@@ -204,12 +197,6 @@ theorem rosterPlanPrefix_append_suffix (setup : Setup (Player := Player) (L := L
   simp only [rosterPlanPrefix, rosterPlanSuffix, rosterPlan, ← List.flatMap_append,
     List.take_append_drop]
 
-theorem rosterPlanPrefix_actors (setup : Setup (Player := Player) (L := L))
-    (rosters : (graph setup).EventId → List Player) (rank : Nat) :
-    (rosterPlanPrefix setup rosters rank).filterMap instructionActor =
-      ((List.finRange (graph setup).order.eventCount).take rank).flatMap rosters := by
-  simp only [rosterPlanPrefix, List.filterMap_flatMap, rosterBlock_actors]
-
 theorem rosterPlanPrefix_no_wire (setup : Setup (Player := Player) (L := L))
     (rosters : (graph setup).EventId → List Player) (rank : Nat) :
     ServiceInstruction.wire ∉ rosterPlanPrefix setup rosters rank := by
@@ -244,39 +231,5 @@ theorem rosterPlan_split (setup : Setup (Player := Player) (L := L))
   change rosterPlanPrefix setup rosters (event.val + 1) ++ _ = rosterPlan setup rosters at split
   rw [rosterPlanPrefix_succ] at split
   exact split.symm
-
-/-- Every plan segment is exactly the existing native game scheduler, from
-its service position and for arbitrary response policies. -/
-theorem roster_segment_rounds (setup : Setup (Player := Player) (L := L))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-    (rosters : (graph setup).EventId → List Player)
-    (network : (runtime setup).NetworkPolicy leaks)
-    (players : Player → (application setup leaks).Policy)
-    (before rest after : List (ServiceInstruction (graph setup)))
-    (split : rosterPlan setup rosters = before ++ rest ++ after)
-    (execution : (application setup leaks).Execution)
-    (position : execution.environmentRecall.length = before.length) :
-    (application setup leaks).runRounds (rosterScheduler setup leaks rosters network)
-      players rest.length execution =
-        (runtime setup).runInteractionPlan leaks players network rest execution := by
-  induction rest generalizing before execution with
-  | nil => rfl
-  | cons instruction rest ih =>
-      have selected : (rosterPlan setup rosters)[before.length]? = some instruction := by
-        rw [split, List.append_assoc, List.getElem?_append_right (Nat.le_refl _), Nat.sub_self]
-        rfl
-      have step : (application setup leaks).round (rosterScheduler setup leaks rosters network)
-          players execution = (runtime setup).interactionStep leaks players network
-            instruction execution := by
-        simp only [ReactiveApplication.round, rosterScheduler, position, selected, interactionStep]
-      rw [List.length_cons, ReactiveApplication.runRounds, step, runInteractionPlan]
-      apply bind_congr_on_support _
-      intro next supported
-      apply ih (before ++ [instruction])
-      · simpa only [List.append_assoc, List.singleton_append] using split
-      · have advanced := (runtime setup).interactionStep_recall leaks players network instruction
-          execution next supported
-        simp only [List.length_append, List.length_singleton]
-        omega
 
 end Vegas

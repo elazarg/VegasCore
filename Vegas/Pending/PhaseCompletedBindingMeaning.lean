@@ -2,7 +2,15 @@
 
 import Vegas.Pending.PhaseBindingStampHistory
 import Vegas.Pending.PhaseAttemptCheckpoint
-import Vegas.Pending.PhaseRecordedBindingMeaning
+import Vegas.Pending.PhaseNativeInvariant
+import Vegas.Pending.PhasePreparedBinding
+import Vegas.Pending.RecordedBindingReadback
+import Vegas.Pending.PhaseBindingInvariant
+import Vegas.Pending.PhaseNativeProjection
+import Vegas.Pending.ReactiveServiceConditions
+import Vegas.Pending.PhaseFailureCoverage
+import Vegas.Pending.PhaseBindingFreshness
+import Vegas.Pending.PhaseBindingSubmittedPreservation
 import Vegas.Pending.PhaseCountUniqueness
 import Interaction.ReactiveRecordedResponse
 
@@ -94,56 +102,5 @@ theorem completed_recorded_binding_accepted
       rw [originalCall, messageCall, named] at call
       exact (Payload.commitment.inj call).2
     simpa only [candidates] using associated
-
-/-- The completed live graph action is the exact typed result declared at the
-original legal callback, without a clear-state, receipt or freshness premise. -/
-theorem completed_recorded_binding_action
-    {control : (app).Control}
-    (trace : ((menu).protocol initial horizon scheduler).Trace (some control))
-    (owner : Player) (event : graph.EventId) (payload : L.Ty)
-    (binding : graph.outputLayout event = .binding owner payload)
-    (lower : control.execution.application.attempt.phase ≤ event.val)
-    (completed : event ∈ control.execution.application.current.native.config.cut.completed)
-    (surviving : owner ∉ control.execution.application.current.excluded)
-    (result : PublicationResult (L.Val payload)) (serial : Nat) (entry : (app).PlayerEntry)
-    (recorded : entry ∈ control.execution.recall owner)
-    (declared : entry.action = phaseBindingResponse runtime leaks owner event payload result serial)
-    (sameAttempt : entry.beforeView.application.2.attempt =
-      control.execution.application.attempt) :
-    ∃ original : graph.Action event,
-      ⟨event, original⟩ ∈ control.execution.application.current.native.config.history ∧
-      cast (congrArg EventField.Action binding) original = result := by
-  obtain ⟨before, prior, _prefix, _acting, viewed, offered, _recalled⟩ :=
-    (menu).recorded_response_prefix initial horizon scheduler control trace owner entry recorded
-  rw [declared] at offered
-  have fresh : entry.beforeView.application.1.candidates (.prepared serial) = .fresh := by
-    cases result with
-    | failure =>
-        exact viewed ▸ onePacket_binding_fresh runtime leaks bounds plan inputs horizon scheduler
-          prior owner event serial none .none offered
-    | success value =>
-        exact viewed ▸ onePacket_binding_fresh runtime leaks bounds plan inputs horizon scheduler
-          prior owner event serial (some ⟨payload, value⟩) .none offered
-  obtain ⟨material, sent⟩ : ∃ material, entry.action.transmission = some material := by
-    rw [declared]
-    exact ⟨_, rfl⟩
-  have exactMaterial : (phaseBindingResponse runtime leaks owner event payload result
-      serial).transmission = some material := declared ▸ sent
-  have named : material.call.packet = .commitment event (owner, .prepared serial) :=
-    (congrArg (fun material : WitnessedSubmission graph => material.call.packet)
-      (Option.some.inj exactMaterial)).symm
-  have accepted := completed_recorded_binding_accepted runtime leaks bounds plan inputs horizon
-    scheduler trace owner event payload binding lower completed surviving entry recorded material
-      sent (owner, .prepared serial) named sameAttempt
-  have raw := (menu).toRawTrace initial horizon scheduler trace
-  obtain ⟨_draw, valid⟩ :=
-    phaseNativeInvariant_history runtime leaks plan inputs horizon scheduler raw
-  have bindings :=
-    (phaseBindingRecord_history runtime leaks plan inputs horizon scheduler raw).active
-  obtain ⟨original, retained, meaning⟩ := bindings.completed_binding_action valid.active.reachable
-    event owner payload binding completed
-  rw [accepted, Option.elim_some] at meaning
-  exact ⟨original, retained, meaning.trans (phase_recorded_binding_result runtime leaks initial
-    horizon scheduler raw owner event payload result serial entry recorded declared fresh)⟩
 
 end Vegas.EventGraphRuntime.PhaseCount

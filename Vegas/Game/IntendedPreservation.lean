@@ -2,7 +2,6 @@
 
 import Vegas.Source.IntendedPlay
 import Vegas.Source.FailedBindingDeviation
-import Vegas.Source.AdmissionRestriction
 import Vegas.Source.SetupProtocolRecall
 import Vegas.Game.SourceInformation
 import GameTheoryExtensions.Analysis.Protocol.PassageRestrictionExtension

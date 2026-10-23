@@ -1,9 +1,9 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.SourceServiceContinuationBridge
+import Vegas.Game.SourceServiceCompletion
 import Vegas.Game.SourceServiceChoiceSupport
-import Vegas.Pending.ReactiveServiceFiniteness
 import Vegas.Compile.EventGraphDeviation
+import GameTheory.Analysis.Protocol.CounterfactualDecomposition
 
 /-! # Finite support of the timed source service
 
@@ -100,22 +100,6 @@ theorem players_finiteSupport (who : Player) :
     ReactiveApplication.Policy.FiniteSupport _ (approx.players who) :=
   sourceServiceTimedPolicy_finiteSupport service.setup service.leaks service.rosters
     approx.timing (finiteBindingTypes (service := service)) approx.profile who
-
-theorem phaseLaw_support_finite {who : Player}
-    {execution : (application service.setup service.leaks).Execution}
-    (phase : DecisionPhase service.setup service.leaks service.rosters who execution)
-    (response : (application service.setup service.leaks).Action) :
-    (approx.phaseLaw phase response).support.Finite :=
-  (runtime service.setup).runInteractionPlan_support_finite_of_no_wire service.leaks
-    approx.players_finiteSupport service.network phase.tail phase.tail_no_wire _
-
-theorem phaseConfigLaw_support_finite {who : Player}
-    {execution : (application service.setup service.leaks).Execution}
-    (phase : DecisionPhase service.setup service.leaks service.rosters who execution)
-    (response : (application service.setup service.leaks).Action) :
-    (approx.phaseConfigLaw phase response).support.Finite := by
-  rw [phaseConfigLaw, PMF.support_map]
-  exact (approx.phaseLaw_support_finite phase response).image _
 
 theorem responseReadout_support_finite {who : Player}
     {execution : (application service.setup service.leaks).Execution}

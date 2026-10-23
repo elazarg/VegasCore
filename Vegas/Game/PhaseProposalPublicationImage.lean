@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.PhaseProposalCompletion
+import Vegas.Pending.PhaseProposalAcceptedHistory
 import Vegas.Game.PhaseProposalReplay
 import Vegas.Pending.PhaseProposalNamespace
 import Vegas.Pending.PhasePacketAddress

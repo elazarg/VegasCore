@@ -2,7 +2,6 @@
 
 import Vegas.Pending.PhaseAttemptControls
 import Vegas.Pending.PhaseServiceContract
-import Vegas.Pending.PhaseRetryCompletion
 import Vegas.Pending.PhaseAttemptCheckpoint
 import Vegas.Pending.PhaseArchivedBindings
 import Vegas.Pending.PhaseLive

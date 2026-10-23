@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.ProposalRecoveryHiddenDebt
-import Vegas.Game.CommitRecoveryDeviationPayoff
 import Vegas.Game.ExclusionMoveExtension
 import Vegas.Source.ProposalRecoveryFlags
 

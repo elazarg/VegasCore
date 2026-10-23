@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.SourceServiceBinding
+import Vegas.Game.SourceServiceStep
 import Vegas.Game.RevealServiceState
 import Vegas.Source.SetupProtocol
 
@@ -179,84 +179,5 @@ theorem SourceCheckpoint.sample_environment
   obtain ⟨value, member, rfl⟩ := supported
   exact ⟨value, member,
     checkpoint.sample name event eventRank ready outputEq before decoded value⟩
-
-/-- Actual compiler invocation and protected inclusion advance the original
-source binding kernel. Private candidate allocation remains in the returned
-execution and is not replaced by a source-state encoding. -/
-theorem sourceServicePolicy_commit_checkpoint
-    (setup : Setup (Player := Player) (L := L))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-    {Γ : SourceCtx Player L} {openNames : Finset VarId}
-    {name : VarId} {owner : Player} {payload : L.Ty}
-    (fresh : name ∉ Γ.map Prod.fst) (guard : SourceGuard L Γ owner name payload)
-    (next : SourceProgram Player L ((name, .commitment owner payload) :: Γ)
-      (insert name openNames))
-    (wholeProfile : BehavioralProfile setup.program)
-    (profile : BehavioralProfile (.commit name owner fresh guard next))
-    (refs : ContextRefs (graphLayout setup.program) Γ) (source : Config Player L Γ)
-    (embedding : OutputEmbedding (inputLayout setup.context) (outputLayout setup.program)
-      (.commit name owner fresh guard next))
-    (refsBefore : ContextRefsBefore refs embedding) (offset : Nat)
-    (aligned : CompiledPolicySuffix setup.program wholeProfile
-      (.commit name owner fresh guard next) profile
-      refs source.revelations source.registry embedding refsBefore offset)
-    (execution : (application setup leaks).Execution)
-    (checkpoint : SourceCheckpoint setup source refs offset execution.application.config)
-    (serial : Nat)
-    (selected : reactiveFreshSlot (execution.observe
-      (application setup leaks) owner).application = some serial)
-    (candidate : execution.application.candidates.lookup (owner, .prepared serial) = .fresh)
-    (unused : execution.application.HandleUnused (owner, .prepared serial))
-    (serials : execution.network.SerialsBeforeNext)
-    (players : Player → (application setup leaks).Policy)
-    (network : (runtime setup).NetworkPolicy leaks) :
-    let index : Fin (eventCount (.commit name owner fresh guard next)) :=
-      ⟨0, by simp [eventCount]⟩
-    let event := embedding.event index
-    let outputEq : (graph setup).outputLayout event = .binding owner payload := by
-      change outputLayout setup.program (embedding.event index) = _
-      simpa [index, outputLayout, eventCount] using embedding.layout_eq index
-    ∀ (ready : execution.application.config.cut.Ready event)
-      (timely : execution.application.WithinDeadline (runtime setup) event)
-      (vacant : execution.application.accepted (.inr event) = none)
-      (after : (application setup leaks).Execution),
-      after ∈ ((sourceServicePolicy setup leaks wholeProfile owner (execution.recall owner)
-        (execution.observe (application setup leaks) owner)).bind fun response =>
-          (runtime setup).interactionStep leaks players network (.includeLatest event owner)
-            (execution.respond (application setup leaks) owner response)).support →
-      ∃ choice ∈ (commitKernel profile (source.view owner)).support,
-        SourceCheckpoint setup (commitSuccessor name guard source choice)
-          (refs.cons (name := name) ⟨.inr event, outputEq⟩) (offset + 1)
-          after.application.config ∧
-        after.receipts = execution.receipts ++
-          [((owner, execution.network.nextSerial owner), true)] := by
-  intro index event outputEq ready timely vacant after supported
-  have law := sourceServicePolicy_commit_service setup leaks fresh guard next wholeProfile profile
-    refs source embedding refsBefore offset aligned execution checkpoint.agrees checkpoint.history
-    serial selected candidate unused serials players network ready timely vacant
-  have mapped : (after.application.config, after.receipts) ∈
-      (((sourceServicePolicy setup leaks wholeProfile owner (execution.recall owner)
-        (execution.observe (application setup leaks) owner)).bind fun response =>
-          (runtime setup).interactionStep leaks players network (.includeLatest event owner)
-            (execution.respond (application setup leaks) owner response)).map
-              (fun final => (final.application.config, final.receipts))).support := by
-    rw [PMF.support_map]
-    exact ⟨after, supported, rfl⟩
-  rw [law, PMF.support_map] at mapped
-  obtain ⟨choice, chosen, same⟩ := mapped
-  have stateEq := congrArg Prod.fst same
-  have receiptEq := congrArg Prod.snd same
-  dsimp only at stateEq receiptEq
-  have eventRank : event.val = offset := by
-    simpa only [event, index, Fin.val_zero, Nat.add_zero] using aligned.graphSuffix.rankEq index
-  have decoded : decodeEventAction setup.program event
-      (cast (congrArg EventGraph.EventField.Action outputEq.symm) choice) =
-        some (.commit owner name payload choice) := by
-    have action := aligned.actionEq index
-      (cast (congrArg EventGraph.EventField.Action outputEq.symm) choice)
-    simpa [event, index, outputEq, decodeEventAction] using action
-  refine ⟨choice, chosen, ?_, receiptEq.symm⟩
-  exact stateEq ▸ checkpoint.commit name guard event eventRank ready outputEq
-    (fun ref => refsBefore ref index) choice decoded
 
 end Vegas

@@ -2,7 +2,6 @@
 
 import Vegas.Pending.PhaseAttemptControls
 import Vegas.Pending.PhaseProposalOrigin
-import Vegas.Pending.PhaseRetryCompletion
 
 /-! # A publication phase cannot acquire a retry generation -/
 

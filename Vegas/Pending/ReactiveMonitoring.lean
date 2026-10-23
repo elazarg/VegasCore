@@ -3,7 +3,7 @@
 import Interaction.ReactiveMonitoring
 import Vegas.Pending.EventOpponentFrame
 import Vegas.Pending.ReactiveRuntime
-import Vegas.Pending.ReactiveServiceEvaluation
+import Vegas.Pending.ReactiveService
 
 /-! # Watcher observation rounds and packets outside the current public event
 
@@ -37,22 +37,6 @@ theorem idleNetwork_instruction (runtime : EventGraphRuntime graph)
       PMF.pure .wait := by
   simp [interactionInstruction, idleNetwork, NetworkChoice.command,
     ReactiveApplication.atMostOnceCommand, PMF.pure_map]
-
-/-- The watcher's round is its activation followed by an idle slot. -/
-theorem run_observation_plan (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (players : Player → (runtime.reactiveApplication leaks).Policy) (watcher : Player)
-    (execution : (runtime.reactiveApplication leaks).Execution) :
-    runtime.runInteractionPlan leaks players (runtime.idleNetwork leaks)
-      [.player watcher, .wire] execution =
-        (runtime.reactiveApplication leaks).observationRound players watcher execution := by
-  have active : runtime.interactionStep leaks players (runtime.idleNetwork leaks)
-      (.player watcher) execution =
-        (runtime.reactiveApplication leaks).dispatch players (.activate watcher) execution := by
-    simp only [interactionStep, interactionInstruction, PMF.pure_bind]
-  rw [runInteractionPlan, active]
-  simp only [runInteractionPlan, interactionStep, idleNetwork_instruction,
-    PMF.pure_bind, PMF.bind_pure, ReactiveApplication.observationRound]
 
 /-- Rejection depends on the current ready event, not merely the author.
 This also covers premature packets for a later event owned by the same player. -/

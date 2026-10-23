@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.EventGraph.SchedulerErasure
-import Vegas.EventGraph.ExecutionMode
+import Vegas.EventGraph.SequentialLaw
 
 /-! # Scheduling reveal-relaxed graphs
 
@@ -105,24 +105,5 @@ theorem RevealRelaxedOrdered.runPolicies_store_eq_canonical
       (graph.runPolicies graph.canonicalScheduler (graph.normalizeProfile profile) inputs).map
         Config.store :=
   (relaxed.readyIndependent oblivious).runPolicies_store_eq_canonical scheduler inputs
-
-/-- Running a public-barrier graph with independent reveals concurrent, under any
-adaptive public scheduler, gives a profile that ignores observations at reveals
-the canonical terminal store law of the original graph. -/
-theorem runPolicies_concurrentReveals_store (graph : Vegas.EventGraph Player L)
-    (ordered : graph.BarrierOrdered)
-    (profile : (graph.withMode .concurrentReveals).BehavioralProfile)
-    (oblivious : ObliviousAtPublications profile)
-    (scheduler : (graph.withMode .concurrentReveals).PublicScheduler)
-    (inputs : graph.Inputs) :
-    ((graph.withMode .concurrentReveals).runPolicies scheduler
-        ((graph.withMode .concurrentReveals).normalizeProfile profile) inputs).map
-        Config.store =
-      (graph.runPolicies graph.canonicalScheduler
-        (graph.fromModeProfile .concurrentReveals profile) inputs).map Config.store := by
-  rw [(graph.withMode_revealRelaxedOrdered ordered .concurrentReveals
-      ).runPolicies_store_eq_canonical profile oblivious scheduler inputs,
-    ← runPolicies_canonical_normalize_eq]
-  exact graph.runPolicies_withMode_store .concurrentReveals profile inputs
 
 end Vegas.EventGraph

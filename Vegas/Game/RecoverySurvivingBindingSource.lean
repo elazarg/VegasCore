@@ -1,8 +1,11 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Compile.ExcludedCommitPrefixObservation
-import Vegas.Game.RecoveryReadyCommitWitness
-import Vegas.Game.RecoveryReadyCommitInformation
+import Vegas.Game.RecoveryCommitPrefixWitness
+import Vegas.Game.CommitPrefixReadyRecall
+import Vegas.Game.RecoveryBindingPrefix
+import Vegas.Source.CommitRecoveryClearRecall
+import Vegas.Game.CommitRecoveryInformationEmbedding
 import Vegas.Game.RevealService
 import Vegas.Source.ProposalRecoveryCommitWindow
 

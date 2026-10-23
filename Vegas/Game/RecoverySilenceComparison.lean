@@ -5,7 +5,6 @@ import Vegas.Game.RecoveryPhaseValueBlind
 import Vegas.Game.RecoveryFirstActivationValue
 import Vegas.Game.RecoveryCompletionPotential
 import Vegas.Game.IntendedChoiceReach
-import Vegas.Game.OnePacketNonLateValueBlind
 
 /-! # A single source deviation for all histories of a nonlate commitment -/
 

@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Compile.EventGraphRecoveryReveal
+import Vegas.Compile.EventGraphStep
+import Vegas.Source.RegistryFailureExtension
 import Vegas.Compile.EventGraphState
 import Vegas.EventGraph.ConfigRestriction
 import Vegas.Source.CommitRecoveryStep

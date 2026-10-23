@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.PhaseBindingMemoryActivation
+import Vegas.Pending.PhaseBindingForeignMemory
 
 /-! # Actual foreign submissions through all-value private memory -/
 

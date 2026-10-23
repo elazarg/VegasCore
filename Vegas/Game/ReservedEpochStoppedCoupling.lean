@@ -1,7 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.ReservedEpochStoppedImage
-import Vegas.Game.ReservedEpochCountedSuccessor
+import Vegas.Game.ReservedEpochBindingFrame
+import Vegas.Pending.PhaseBindingForeignMemory
 import Vegas.Pending.PhaseAcceptedProgress
 import Interaction.ReactiveReceiptIdentity
 import Vegas.Pending.ReservedEpochReceiptTiming

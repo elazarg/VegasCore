@@ -2,7 +2,7 @@
 
 import Vegas.Examples.CommitRevealAuction
 import Vegas.Compile.EventGraphPolicy
-import Vegas.EventGraph.ExecutionMode
+import Vegas.EventGraph.SequentialLaw
 import Vegas.EventGraph.NormalizedPolicy
 
 /-! # Withholding decisions depend on the order of concurrent reveals

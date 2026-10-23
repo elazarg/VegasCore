@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.EventGraph.SchedulerMixture
-import Vegas.EventGraph.ExecutionMode
+import Vegas.EventGraph.SequentialLaw
 import GameTheory.Core.MixtureSimulation
 import GameTheoryExtensions.Math.Probability.Support
 
@@ -94,39 +94,6 @@ def eventSchedulingSimulation (ordered : graph.BarrierOrdered) (finite : graph.F
         intro alternative _
         exact (gameForm_play_map_terminalStore inputs graph.canonicalScheduler
           (Profile.update (sig := graph.gameSignature) profile who alternative)).symm
-
-/-- Concurrent and sequential dependency choices are one game on typed terminal
-stores, and the correspondence needs no mixture: a deviation in the mode graph
-is one policy of the graph it was built from. -/
-def eventModeSimulation (mode : ExecutionMode) (inputs : PMF graph.Inputs) :
-    GameForm.MixtureSimulationOn (graph.canonicalGame inputs)
-      ((graph.withMode mode).canonicalGame inputs)
-      graph.terminalStore (graph.withMode mode).terminalStore (fun _ _ => True) where
-  compileStrategy := graph.toModePolicy mode
-  honest_law profile := by
-    change graph.BehavioralProfile at profile
-    have toProfile : Profile.map (sig := graph.gameSignature)
-        (target := (graph.withMode mode).gameSignature) (graph.toModePolicy mode) profile =
-          graph.toModeProfile mode profile := rfl
-    unfold canonicalGame
-    rw [toProfile, (graph.withMode mode).gameForm_play_map_terminalStore,
-      graph.gameForm_play_map_terminalStore]
-    refine bind_congr_on_support _ fun initial _ => ?_
-    rw [graph.runPolicies_withMode_store mode (graph.toModeProfile mode profile) initial,
-      graph.fromModeProfile_toModeProfile]
-  compiled_considered _ _ := trivial
-  deviation_mixture profile who replacement _ := by
-    change graph.BehavioralProfile at profile
-    refine ⟨PMF.pure (graph.fromModePolicy mode who replacement), ?_⟩
-    have toProfile : Profile.map (sig := graph.gameSignature)
-        (target := (graph.withMode mode).gameSignature) (graph.toModePolicy mode) profile =
-          graph.toModeProfile mode profile := rfl
-    unfold canonicalGame
-    rw [PMF.pure_bind, toProfile, (graph.withMode mode).gameForm_play_map_terminalStore,
-      graph.gameForm_play_map_terminalStore]
-    refine bind_congr_on_support _ fun initial _ => ?_
-    rw [graph.runPolicies_withMode_store mode _ initial, graph.fromModeProfile_update,
-      graph.fromModeProfile_toModeProfile]
 
 omit [DecidableEq Player] in
 /-- An observation the terminal store determines, presented as a total decoder

@@ -25,7 +25,7 @@ The application separates the submission's private opening material from its
 public packet. A binding submission can prepare a candidate's private meaning,
 but the transmitted packet is a commitment naming an event and a handle.
 `Submission.register_facts` proves that registration preserves the public
-application view. The checked `reactiveBinding_network` result proves that
+application view. The checked [`reactiveBinding_network`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/ReactiveBindingObservation.lean#L49) result proves that
 changing the submitted binding meaning leaves the entire network unchanged.
 Its foreign-observation companions preserve actual foreign recall and passive
 packet observations, rather than removing the packet.
@@ -66,7 +66,7 @@ below.
 
 Relevant checked surfaces are
 [EventSubmission](../../Vegas/Pending/EventSubmission.lean),
-[ReactiveBindingObservation](../../Vegas/Pending/ReactiveBindingObservation.lean),
+[ReactiveBindingObservation](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/ReactiveBindingObservation.lean),
 [ReactiveObservation](../../Interaction/ReactiveObservation.lean),
 [ReactiveCanonicalResolution](../../Vegas/Pending/ReactiveCanonicalResolution.lean),
 [Sequential](../../Vegas/EventGraph/Sequential.lean), and

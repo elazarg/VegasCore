@@ -3,7 +3,9 @@
 import Vegas.Game.PhaseProposalFlagMass
 import Vegas.Game.PhaseProposalGenuineSupport
 import Vegas.Game.PhaseProposalReferenceStrategy
-import Vegas.Game.PhaseAttemptContinuation
+import Vegas.Game.PhaseExclusionPayoff
+import GameTheoryExtensions.Analysis.Protocol.SuccessRanking
+import Vegas.Pending.PhaseServiceContract
 import Interaction.ReactiveMenuLikelihood
 import Interaction.ReactiveResponseKernel
 import GameTheoryExtensions.Analysis.Protocol.SupportedChoiceContinuation

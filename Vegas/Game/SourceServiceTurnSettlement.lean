@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.SourceServiceSiteBridge
-import Vegas.Game.SourceServiceGeometricTiming
 import Vegas.Game.SourceServiceImmediateRisk
 import Vegas.Game.SourceServiceOwnerSettled
 import Vegas.Game.SourceServiceAudit
@@ -30,9 +29,8 @@ to an admissible response menu
 of an arbitrary source profile follow its disclosure normalization, which has
 the same source law; together with packet permission against arbitrary
 foreign play this is `Vegas.sourceServiceClients_honestExecution`, and in the
-menu's information model `Vegas.sourceServiceClients_settlement_lawError`. The
-error vanishes with the geometric timing's weight
-(`Vegas.geometricTiming_settlement_lawError`). Deferral can still produce
+menu's information model `Vegas.sourceServiceClients_settlement_lawError`.
+Deferral can still produce
 charged binding omissions and, at a resolution, uncharged withholding by
 expiry; their mass is part of this error.
 -/
@@ -393,49 +391,6 @@ end Ordered
 section Menu
 
 variable [Fintype Player]
-
-/-- **The settlement error vanishes with the deferral weight.** For every
-source profile and the geometric timing with weight `weight`, the turn-counted
-clients' joint law of typed outcome and realized payoffs is within
-`eventCount * weight` of the source joint law; along weights tending to zero
-the error tends to zero (`Vegas.geometricTiming_deferral_tendsto`). -/
-theorem geometricTiming_settlement_lawError
-    {scheduler : (application setup leaks).Scheduler} {horizon turns : Nat}
-    {delay bound : (graph setup).EventId → Nat}
-    (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler
-      delay bound)
-    (timely : AsyncTimely (runtime setup) delay bound)
-    (weight : ℝ) (nonnegative : 0 ≤ weight) (bounded : weight ≤ 1)
-    (original : BehavioralProfile setup.program)
-    (menu : (application setup leaks).ResponseMenu)
-    (covered : ∀ who, menu.Admissible (initialLaw setup) horizon scheduler who
-      (sourceServiceTurnPolicy setup leaks bound turns
-        (geometricTiming setup turns weight nonnegative bounded)
-        (sourceServiceClientProfile setup original) who))
-    (sample : List (SettledEvidence setup) → PMF (List (SettledEvidence setup)))
-    (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
-    (utility : State L setup.program.terminalCtx → Player → ℝ) (deposit : Player → ℝ) :
-    let settle := TerminalAudit.settlement (baseUtility setup leaks utility)
-      ((runtime setup).serviceAuditObservation leaks)
-      (sourceServiceAudit setup leaks sample) deposit
-    PMF.WithinTV ((graph setup).order.eventCount * weight)
-      (((menu.information (initialLaw setup) horizon scheduler).runBehavioral
-        (fun who => menu.restrictPolicy (initialLaw setup) horizon scheduler who
-          (sourceServiceTurnPolicy setup leaks bound turns
-            (geometricTiming setup turns weight nonnegative bounded)
-            (sourceServiceClientProfile setup original) who))
-        (2 * horizon + 1)).bind (fun final =>
-          (settle final.state).map fun payoffs => (sourceReadout setup leaks final.state, payoffs)))
-      ((setup.run original).map (fun state => (some state, utility state))) := by
-  have all : Finset.univ.filter (fun event : (graph setup).EventId => 0 ≤ event.val) =
-      Finset.univ :=
-    Finset.filter_true_of_mem fun event _ => Nat.zero_le event.val
-  have remaining := geometricTiming_remainingDeferral_le setup turns weight nonnegative bounded 0
-  rw [all] at remaining
-  exact (sourceServiceClients_settlement_lawError (serviceGraph_barrierOrdered setup (by decide))
-    contract timely
-    (geometricTiming setup turns weight nonnegative bounded) original menu covered sample
-    authentic utility deposit).mono remaining
 
 end Menu
 

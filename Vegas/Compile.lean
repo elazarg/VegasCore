@@ -35,7 +35,6 @@ import Vegas.Compile.EventGraphPolicyBacktranslation
 import Vegas.Compile.EventGraphPolicyLaw
 import Vegas.Compile.EventGraphReadout
 import Vegas.Compile.EventGraphReadoutComplete
-import Vegas.Compile.EventGraphRecoveryReveal
 import Vegas.Compile.EventGraphResolutionFields
 import Vegas.Compile.EventGraphScheduling
 import Vegas.Compile.EventGraphState

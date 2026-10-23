@@ -1,6 +1,5 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Interaction.ReactiveEvidencePersistence
 import Vegas.Pending.ReactiveDisclosureStability
 
 /-! # A recipient retains certified named bindings -/
@@ -36,26 +35,5 @@ theorem reactiveAssociationInvariant (runtime : EventGraphRuntime graph)
       state command next valid.1 reached, ?_⟩
     rw [(environmentStep_tables runtime state next command reached).1]
     exact valid.2
-
-theorem observedBinding_policyInvariant (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (players : Player → (runtime.reactiveApplication leaks).Policy) (who : Player)
-    (fact : Vegas.EventGraph.CommitmentEvidence graph) :
-    (runtime.reactiveApplication leaks).PolicyInvariant players (fun execution =>
-      execution.application.BindingInvariant ∧ runtime.bindingEvidenceObserved leaks
-        (execution.observe (runtime.reactiveApplication leaks) who) fact) where
-  respond execution actor action valid _ := by
-    obtain ⟨bindingValid, candidate, accepted, seen⟩ := valid
-    have kept := (runtime.reactiveAssociationInvariant leaks fact.binding.field candidate).respond
-      execution actor action ⟨bindingValid, accepted⟩
-    exact ⟨kept.1, candidate, kept.2,
-      (runtime.packetEvidence leaks).observed_respond execution who actor action _ seen⟩
-  environment execution next command valid reached := by
-    obtain ⟨bindingValid, candidate, accepted, seen⟩ := valid
-    have kept := (runtime.reactiveAssociationInvariant leaks
-      fact.binding.field candidate).environmentStep execution next command
-        ⟨bindingValid, accepted⟩ reached
-    exact ⟨kept.1, candidate, kept.2,
-      (runtime.packetEvidence leaks).observed_environment execution next who command _ seen reached⟩
 
 end Vegas.EventGraphRuntime

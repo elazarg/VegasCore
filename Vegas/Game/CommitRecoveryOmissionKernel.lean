@@ -295,47 +295,4 @@ theorem commitRecoveryNormalizedTrembledProfile_window_omission_law_eq
     omissionBounded bad badNonnegative badBounded leftValues rightValues currentLeft currentRight
     leftTrace rightTrace leftRunning rightRunning leftCommit rightCommit excluded observed
 
-/-- Changing arbitrary private domain rules during an already failed original
-attempt does not change the joint terminal law after its real close, when the
-selected continuation is resumed. The original omission-word law is derived
-from the normalized raw prescription, not supplied as a hypothesis. -/
-theorem commitRecoveryNormalizedTrembledProfile_failed_window_terminal_joint_eq
-    (omission : ℝ) (omissionNonnegative : 0 ≤ omission) (omissionBounded : omission ≤ 1)
-    (bad : ℝ) (badNonnegative : 0 ≤ bad) (badBounded : bad ≤ 1)
-    (leftValues rightValues : (who : Player) →
-      (info : setup.commitRecoveryErasedModel.InfoState who) →
-        PMF (setup.CommitRecoveryValueChoice who info))
-    (profile : ∀ who, setup.commitRecoveryModel.BehavioralPolicy who)
-    (utility : State L setup.program.terminalCtx → Player → ℝ) (excludedPayoff : Player → ℝ)
-    (observer : Player) (first : CommitRecoveryState setup.program)
-    (prior : setup.commitRecoveryProtocol.Trace (some first))
-    (committing : ProtocolState.atCommit setup.program first.point = true)
-    (failed : first.NewFailure) (fuel : Nat)
-    (distance : fuel + ProtocolState.commitEnd setup.program first.saved =
-      ProtocolState.remaining setup.program first.point) :
-    let certificate := setup.commitRecoveryProtocol_bounded.wellFoundedHistories
-    let continuation := fun boundary : setup.commitRecoveryProtocol.History =>
-      (setup.commitRecoveryModel.runBehavioralTerminalFrom certificate
-        (setup.commitRecoveryNoMissErasedProfile profile) boundary).map (fun final =>
-          (setup.protocolReadout (setup.commitRecoverySourceState final.state),
-            fun who => setup.commitRecoveryPayoff utility excludedPayoff who final))
-    (setup.commitRecoveryModel.runBehavioralFrom
-      (setup.commitRecoveryNormalizedTrembledProfile omission omissionNonnegative omissionBounded
-        bad badNonnegative badBounded leftValues) fuel ⟨some first, prior⟩).bind continuation =
-      (setup.commitRecoveryModel.runBehavioralFrom
-        (setup.commitRecoveryNormalizedTrembledProfile omission omissionNonnegative omissionBounded
-          bad badNonnegative badBounded rightValues) fuel ⟨some first, prior⟩).bind
-            continuation := by
-  have frontier := setup.commitRecovery_blockFrontier prior
-  have ending : ProtocolState.commitEnd setup.program first.point =
-      ProtocolState.commitEnd setup.program first.saved := by
-    rcases frontier with ⟨_saved, _live, ending⟩ | same
-    · exact ending
-    · rw [same]
-  apply setup.commitRecovery_failed_window_terminal_joint_eq _ _ profile utility excludedPayoff
-    observer first prior committing failed fuel distance
-  exact setup.commitRecoveryNormalizedTrembledProfile_window_omission_law_eq omission
-    omissionNonnegative omissionBounded bad badNonnegative badBounded leftValues rightValues
-    observer first prior committing fuel (by omega)
-
 end Vegas.SourceProgram.Setup

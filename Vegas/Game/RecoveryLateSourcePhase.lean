@@ -1,7 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.RecoveryPendingFailure
-import Vegas.Game.OnePacketLateCommitValue
+import Vegas.Game.OnePacketLateReveal
+import Vegas.Game.OnePacketLateCommitments
 import Vegas.Game.OnePacketUnintendedCommitment
 import Vegas.Game.OnePacketLateCertificate
 import Vegas.Game.OnePacketSilentShape

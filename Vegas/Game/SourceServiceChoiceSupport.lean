@@ -1,7 +1,9 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.SourceChoiceCompletion
-import Vegas.Game.SourceServiceAdmission
+import Vegas.Source.ProtocolChoiceFiniteness
+import Vegas.Source.DisclosureSupport
+import Vegas.Game.SourceContinuation
+import Vegas.Game.SourceServiceStep
 import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Source choice support for the concrete full-source service
@@ -65,34 +67,5 @@ theorem sourceService_normalized_support
   intro player
   exact BehavioralPolicy.fromProtocol_supports setup.program
     (CommitmentInterface.values setup.program) _ (fun view => full player (some view))
-
-/-- Every original consistent source assessment has a single completed Bayes
-sequence whose normalized policies support every effective service choice.
-The original assessment remains the limit. All finiteness follows from the
-already declared coverage of new binding values by the actual native bounds. -/
-theorem sourceService_consistent_supported_sequence [Fintype Player]
-    (setup : Setup (Player := Player) (L := L))
-    (bounds : MessageBounds (graph setup)) (covered : bounds.CoversBindingValues)
-    (assessment : (setup.informationModel
-      (CommitmentInterface.values setup.program)).BehavioralAssessment)
-    (antichain : (setup.informationModel
-      (CommitmentInterface.values setup.program)).DecisionInformationAntichain)
-    (consistent : assessment.IsSequentiallyConsistent antichain) :
-    ∃ sequence : Nat → (setup.informationModel
-        (CommitmentInterface.values setup.program)).BehavioralAssessment,
-      (∀ n who info, FullSupport ((sequence n).strategy who info)) ∧
-      (∀ n, InformationModel.BehavioralAssessment.IsBayesConsistent
-        (setup.informationModel (CommitmentInterface.values setup.program))
-        (sequence n) antichain) ∧
-      InformationModel.BehavioralAssessmentConvergesPointwise sequence assessment ∧
-      (∀ n who, (normalizeDisclosureProfile setup.program [] (Revelations.initial setup.context)
-        (setup.decodeBehavioralProfile (CommitmentInterface.values setup.program)
-          (sequence n).strategy) who).SupportsEffectiveChoices setup.program
-            (CommitmentInterface.values setup.program) [] (Revelations.initial setup.context)) := by
-  obtain ⟨sequence, full, bayes, converges⟩ := setup.exists_complete_consistent_sequence
-    (sourceService_finiteBindingTypes setup bounds covered)
-    (CommitmentInterface.values setup.program) assessment antichain consistent
-  exact ⟨sequence, full, bayes, converges,
-    fun n who => sourceService_normalized_support setup (sequence n).strategy (full n) who⟩
 
 end Vegas

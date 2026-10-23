@@ -2,7 +2,6 @@
 
 import Vegas.Pending.ReactiveBindingFrameOpening
 import Vegas.Pending.ReactiveGuardedResponse
-import Vegas.Pending.ReactiveBindingContinuation
 
 /-! # Guarded disclosures in the legal repaired continuation
 

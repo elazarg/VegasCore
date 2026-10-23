@@ -2,12 +2,12 @@
 
 import Vegas.Game.RecoverySourceCheckpoint
 import Vegas.Game.RecoverySettledCommitCheckpoint
-import Vegas.Game.RecoverySourceBoundary
 import Vegas.Game.CommitAttemptSurvivingRecall
 import Vegas.Game.CompiledCommitClosing
 import Vegas.Game.CompiledCommitTail
 import Vegas.Game.CompiledCommitMaximality
 import Vegas.Source.CommitRecoveryBlockCloseLift
+import GameTheory.Protocol.Backward
 
 /-! # Actual source checkpoints at commitment-phase retries -/
 

@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.ReactiveContinuationObservation
-import Vegas.Pending.ReactiveResponseObservation
 import Vegas.Pending.EvidenceNormalization
 import Interaction.ReactiveRounds
 import GameTheoryExtensions.Math.Probability.Support

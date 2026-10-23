@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.CommitRecoveryCompletion
+import Vegas.Game.CommitRecoveryRestriction
+import Vegas.Game.CommitRecoveryReference
 
 /-! # Exact intended readout and permanent-exclusion payoff laws in source recovery -/
 

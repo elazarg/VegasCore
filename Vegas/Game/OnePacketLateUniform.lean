@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.OnePacketLateValueBlind
+import Vegas.Game.OnePacketLateCommitBlind
 import Vegas.Game.OnePacketSwapDecorrelationLimit
 
 /-! # Uniform decorrelation at late deliveries

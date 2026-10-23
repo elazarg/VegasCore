@@ -198,8 +198,8 @@ assessment and its actual reach/continuation law before invoking the extension.
 Silent FALSE, failed TRUE and deferral need no physical intention tag:
 [policyMixture](../Interaction/ReactivePolicyMixture.lean) conditions the chosen slot on actual recall,
 and [realization](../Interaction/ReactiveMixtureRounds.lean) preserves the whole execution law.
-[DisclosurePosterior](../Vegas/Game/SourceServiceDisclosurePosterior.lean) and
-[DisclosureMemory](../Vegas/Game/SourceServiceDisclosureMemory.lean) restore original intentions in the proof law.
+[DisclosurePosterior](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceDisclosurePosterior.lean) and
+[DisclosureMemory](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceDisclosureMemory.lean) restore original intentions in the proof law.
 
 These are existing interfaces to instantiate, not unproved arrows in a new
 transformation tower. Reuse, remove or replace existing machinery first. Before

@@ -5,7 +5,6 @@ Authors: VegasCore contributors
 -/
 
 import Vegas.Source.Accounting
-import Vegas.Source.AdmissionRestriction
 import Vegas.Source.Basic
 import Vegas.Source.BindingRepairInformation
 import Vegas.Source.BindingRepairTrace
@@ -29,7 +28,6 @@ import Vegas.Source.CommitPrefixLaw
 import Vegas.Source.CommitPrefixPointAppend
 import Vegas.Source.CommitPrefixProduct
 import Vegas.Source.CommitPrefixReadout
-import Vegas.Source.CommitPrefixSnoc
 import Vegas.Source.CommitPrefixSplitting
 import Vegas.Source.CommitPrefixWord
 import Vegas.Source.CommitPrefixWordHistory
@@ -46,7 +44,6 @@ import Vegas.Source.CommitRecoveryAutomaticValues
 import Vegas.Source.CommitRecoveryBindingAlternatives
 import Vegas.Source.CommitRecoveryBindingReplay
 import Vegas.Source.CommitRecoveryBindingSubstitution
-import Vegas.Source.CommitRecoveryBlockClose
 import Vegas.Source.CommitRecoveryBlockCloseLift
 import Vegas.Source.CommitRecoveryBlockEmbedding
 import Vegas.Source.CommitRecoveryBlockLift
@@ -95,7 +92,6 @@ import Vegas.Source.CommitRecoveryObservedClosure
 import Vegas.Source.CommitRecoveryObservedMemory
 import Vegas.Source.CommitRecoveryOwnHistory
 import Vegas.Source.CommitRecoveryOwnedStep
-import Vegas.Source.CommitRecoveryPathLift
 import Vegas.Source.CommitRecoveryPlayerValidity
 import Vegas.Source.CommitRecoveryPoint
 import Vegas.Source.CommitRecoveryPrefixPath
@@ -120,10 +116,7 @@ import Vegas.Source.CommitRecoverySpliceSupport
 import Vegas.Source.CommitRecoveryState
 import Vegas.Source.CommitRecoveryStateSplice
 import Vegas.Source.CommitRecoveryStep
-import Vegas.Source.CommitRecoveryStoppedAttempt
 import Vegas.Source.CommitRecoverySupportSplice
-import Vegas.Source.CommitRecoverySurvivingInformation
-import Vegas.Source.CommitRecoveryValueBinding
 import Vegas.Source.CommitRecoveryValueMenu
 import Vegas.Source.CommitRecoveryValueTremble
 import Vegas.Source.CommitRecoveryVirtualHistory
@@ -136,14 +129,11 @@ import Vegas.Source.DebtObservation
 import Vegas.Source.Disclosure
 import Vegas.Source.DisclosureAliases
 import Vegas.Source.DisclosureBehavioral
-import Vegas.Source.DisclosureContinuation
 import Vegas.Source.DisclosureNormalization
 import Vegas.Source.DisclosureOpening
-import Vegas.Source.DisclosurePosterior
 import Vegas.Source.DisclosureSupport
 import Vegas.Source.EffectiveOpening
 import Vegas.Source.Exclusion
-import Vegas.Source.ExclusionFailure
 import Vegas.Source.ExclusionGame
 import Vegas.Source.ExclusionMoveGame
 import Vegas.Source.FailedBinding
@@ -153,7 +143,6 @@ import Vegas.Source.FailureRevelations
 import Vegas.Source.FiniteSupport
 import Vegas.Source.Forfeit
 import Vegas.Source.GuardPrediction
-import Vegas.Source.HistoryRebase
 import Vegas.Source.Honest
 import Vegas.Source.InitialState
 import Vegas.Source.IntendedBetween
@@ -187,7 +176,6 @@ import Vegas.Source.ProposalRecoveryLift
 import Vegas.Source.ProposalRecoveryMenuKind
 import Vegas.Source.ProposalRecoveryMove
 import Vegas.Source.ProposalRecoveryNoMissFixed
-import Vegas.Source.ProposalRecoveryNoMissRepresentative
 import Vegas.Source.ProposalRecoveryObservation
 import Vegas.Source.ProposalRecoveryOrdinaryCommit
 import Vegas.Source.ProposalRecoveryOrdinaryView
@@ -212,19 +200,15 @@ import Vegas.Source.ProposalRecoverySuccessfulStep
 import Vegas.Source.ProposalRecoverySuccessfulTrace
 import Vegas.Source.ProposalRecoverySupportSplice
 import Vegas.Source.ProposalRecoveryTraceReadback
-import Vegas.Source.ProposalRecoveryVirtualLift
-import Vegas.Source.ProposalRecoveryVirtualStep
 import Vegas.Source.ProposalRecoveryVoluntaryFailure
 import Vegas.Source.ProposalRecoveryWordLift
 import Vegas.Source.ProposalRecoveryWordSplice
 import Vegas.Source.ProtocolChoiceFiniteness
 import Vegas.Source.ProtocolEvaluation
 import Vegas.Source.ProtocolSuffix
-import Vegas.Source.ProtocolSuffixMenu
 import Vegas.Source.Purification
 import Vegas.Source.RegistryFailureExtension
 import Vegas.Source.RevealSequence
-import Vegas.Source.Safety
 import Vegas.Source.Semantics
 import Vegas.Source.Setup
 import Vegas.Source.SetupObservationRecall

@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.SourceServiceImmediatePolicy
+import Vegas.Game.SourceServiceRetainedPolicy
 import Vegas.Game.SourceServiceBindingMiss
 import Vegas.Game.SourceServiceFirstTurnRisk
 import Vegas.Game.SourceServiceCanonicalSerial
@@ -221,73 +221,6 @@ theorem recordedBindings_currentOpportunity_clear {horizon : Nat}
     ((execution.application.publicView_eventReady event).mp ownTurn.1) first
   exact unprotected fits
 
-
-/-- An immediate response at clear risk keeps prior binding turns recorded,
-records a fresh current binding turn, and adds no private opportunity risk. -/
-theorem immediatePolicy_recallFacts_respond {horizon remaining : Nat}
-    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
-    {bound : (serviceGraph setup mode).EventId → Nat} {profile : BehavioralProfile setup.program}
-    {middle : (serviceApplication setup mode deadline leaks).Execution} {who : Player}
-    (trace : ((serviceApplication setup mode deadline leaks).protocol
-        (serviceInitialLaw setup mode) horizon scheduler).Trace
-      (some ⟨remaining, some who, middle⟩))
-    (atTurn : OwnSubmissionsAtTurn setup leaks middle who)
-    (slots : CanonicalSlotsUsed setup leaks middle who)
-    (turned : BindingTurnsRecorded setup leaks middle who)
-    (clear : (serviceRuntime setup mode deadline).serviceRisk leaks bound who (middle.recall who)
-      (middle.observe (serviceApplication setup mode deadline leaks) who) = false)
-    (response : (serviceApplication setup mode deadline leaks).Action)
-    (chosen : response ∈ (serviceImmediatePolicy setup mode deadline leaks bound profile who
-      (middle.recall who) (middle.observe
-          (serviceApplication setup mode deadline leaks) who)).support) :
-    BindingTurnsRecorded setup leaks (middle.respond
-        (serviceApplication setup mode deadline leaks) who response) who ∧
-      (serviceRuntime setup mode deadline).recalledBindingOpportunityRisk leaks bound who
-        ((middle.respond
-            (serviceApplication setup mode deadline leaks) who response).recall who) = false := by
-  let app := serviceApplication setup mode deadline leaks
-  have components :=
-      ((serviceRuntime setup mode deadline).serviceRisk_clear_iff leaks bound who _ _).mp clear
-  have recallClear :=
-      ((serviceRuntime setup mode deadline).persistentServiceRisk_clear_iff leaks bound who _ _).mp
-    components.1 |>.2
-  have nextClear :=
-      ((serviceRuntime setup mode deadline).recalledBindingOpportunityRisk_respond_clear leaks bound
-    middle who response components.2).trans recallClear
-  refine ⟨?_, nextClear⟩
-  obtain ⟨_, recalled, _⟩ := respond_recall_self setup leaks middle who response
-  intro entry member event owner payload turn binding
-  rw [recalled] at member
-  rcases List.mem_append.mp member with old | new
-  · exact (serviceRuntime setup mode deadline).eventRecorded_respond_of_recorded leaks middle who
-      who response event
-      (turned entry old event owner payload turn binding)
-  · cases List.mem_singleton.mp new
-    change middle.application.publicView.ownTurn? who = some event at turn
-    by_cases recorded : (serviceRuntime setup mode deadline).eventRecorded leaks
-        (middle.recall who) event = true
-    · exact (serviceRuntime setup mode deadline).eventRecorded_respond_of_recorded leaks middle
-        who who response event
-        recorded
-    · have unrecorded : (serviceRuntime setup mode deadline).eventRecorded leaks
-        (middle.recall who) event = false :=
-        Bool.eq_false_of_not_eq_true recorded
-      cases node : nodeView (serviceGraph setup mode) event with
-      | sample sampled law outputEq codeEq =>
-          rw [outputEq] at binding
-          cases binding
-      | resolve actor resolutionPayload bindingRef checks outputEq codeEq =>
-          rw [outputEq] at binding
-          cases binding
-      | bind actor bindingPayload outputEq codeEq =>
-          have actorEq : actor = who := Option.some.inj
-            ((nodeView_bind_actor outputEq codeEq).symm.trans
-              (PublicView.ownTurn?_spec _ who event turn).2)
-          subst actorEq
-          obtain ⟨_, _, _, _, recordedAfter⟩ := sourceServiceImmediatePolicy_binding_call trace
-            atTurn slots clear event bindingPayload outputEq codeEq node turn unrecorded response
-            chosen
-          exact recordedAfter
 
 end Generic
 end Vegas

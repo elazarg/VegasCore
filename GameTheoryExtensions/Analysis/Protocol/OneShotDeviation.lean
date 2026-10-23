@@ -1,6 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import GameTheoryExtensions.Analysis.Protocol.LocalDeviation
+import GameTheoryExtensions.Math.Probability.Support
+import GameTheory.Analysis.Protocol.CounterfactualDecomposition
+import GameTheory.Protocol.DecisionRecall
 
 /-! # One deviating step followed by the original continuation
 

@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.EventGraph.ExecutionMode
+import Vegas.EventGraph.SequentialLaw
 import Vegas.Compile.EventGraphPolicy
 import Vegas.Source.CommitRecoveryPoint
 

@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.RecoverySourcePhaseValue
-import Vegas.Game.RecoveryComparisonSourceKernel
 
 /-! # The common continuation value at a fresh source decision -/
 

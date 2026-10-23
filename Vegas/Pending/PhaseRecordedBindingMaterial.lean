@@ -1,6 +1,15 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.PhaseRecordedBindingMeaning
+import Vegas.Pending.PhaseNativeInvariant
+import Vegas.Pending.PhasePreparedBinding
+import Vegas.Pending.RecordedBindingReadback
+import Vegas.Pending.PhaseBindingInvariant
+import Vegas.Pending.PhaseSignedBindings
+import Vegas.Pending.PhaseNativeProjection
+import Vegas.Pending.ReactiveServiceConditions
+import Vegas.Pending.PhaseFailureCoverage
+import Vegas.Pending.PhaseBindingFreshness
+import Vegas.Pending.PhaseBindingSubmittedPreservation
 import Interaction.ReactiveInvariantPrefix
 import Interaction.ReactiveRecordedResponseAfter
 

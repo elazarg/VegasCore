@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.ReactiveCompiledMenu
-import Vegas.Pending.ReactiveServiceEvaluation
+import Vegas.Pending.ReactiveService
 
 /-! # All retained responses within a resolution phase
 
@@ -173,44 +173,5 @@ theorem MessageBounds.compiled_resolution_application (bounds : MessageBounds gr
       ⟨candidate, value, evidence, _, _, _, _, _, _, rfl⟩
   · rfl
   · rfl
-
-/-- An arbitrary finite response roster preserves the application while a
-resolution is the only ready event. Passive reads remain in the actual run; only inclusion and
-expiry are outside this segment. -/
-theorem MessageBounds.compiled_resolution_run_application (bounds : MessageBounds graph)
-    (players : Player → (runtime.reactiveApplication leaks).Policy)
-    (covered : ∀ who past view response, response ∈ (players who past view).support →
-      response ∈ bounds.compiledActions runtime leaks who past view)
-    (network : runtime.NetworkPolicy leaks) (visits : List Player)
-    (event : graph.EventId) (actor : Player) (payload : L.Ty)
-    (binding : FieldRef graph.layout (.binding actor payload))
-    (checks : List (GuardCheck graph.layout payload))
-    (outputEq : graph.outputLayout event = .publication payload)
-    (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
-      (graph.nodes event) = .resolve actor payload binding checks)
-    (node : nodeView graph event = .resolve actor payload binding checks outputEq codeEq)
-    (initial final : (runtime.reactiveApplication leaks).Execution)
-    (sole : initial.application.publicView.SoleReady event)
-    (reached : final ∈ (runtime.runInteractionPlan leaks players network
-      (visits.map ServiceInstruction.player) initial).support) :
-    final.application = initial.application := by
-  let app := runtime.reactiveApplication leaks
-  induction visits generalizing initial with
-  | nil =>
-      cases (PMF.mem_support_pure_iff _ _).mp reached
-      rfl
-  | cons who rest ih =>
-      simp only [List.map_cons, runInteractionPlan, interactionStep, interactionInstruction,
-        PMF.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
-        ReactiveApplication.resume, ReactiveApplication.invoke,
-        ReactiveApplication.Execution.activation_samples, PMF.bind_map,
-        PMF.bind_bind, Function.comp_def] at reached
-      obtain ⟨sample, _, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
-      obtain ⟨action, supported, reached⟩ :=
-        Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
-      have same := bounds.compiled_resolution_application runtime leaks who
-        (initial.sampledActivation app who sample) event actor payload binding checks
-          outputEq codeEq node sole action (covered who _ _ action supported)
-      exact (ih _ (by rw [same]; exact sole) reached).trans same
 
 end Vegas.EventGraphRuntime

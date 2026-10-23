@@ -2,7 +2,6 @@
 
 import Vegas.Compile.CommitPrefixIntendedCompletion
 import Vegas.Source.CommitPrefixIntendedLift
-import Vegas.Source.ProtocolSuffixMenu
 
 /-! # Guard-admitted source choices in a partially completed commitment phase -/
 
@@ -99,53 +98,6 @@ theorem fillCommitPrefix_intendedFor_of_extension
   | none => simp only [found, Option.isSome_none, Bool.false_eq_true] at present
   | some value =>
       exact ((embedding.ref index).get?_preserved first second preserved value found).symm
-
-/-- The intended menu at a partially completed owned binding has no fallback
-ambiguity: an intended entry and admitted earlier own choices supply a truly
-satisfiable guard. Every offered choice extends the actual own admission facts. -/
-theorem fillCommitPrefix_intended_commit_choice
-    {Γ Δ : SourceCtx Player L} {O P : Finset VarId} {name : VarId} {who : Player}
-    {payload : L.Ty} (fresh : name ∉ Δ.map Prod.fst)
-    (guard : SourceGuard L Δ who name payload)
-    (next : SourceProgram Player L ((name, .commitment who payload) :: Δ) (insert name P))
-    (block : CommitPrefix Γ O Δ P)
-    (embedding : OutputEmbedding (inputLayout wholeΓ) (outputLayout whole)
-      (block.prepend (.commit name who fresh guard next)))
-    (store : Store (graphLayout whole)) (entry : SourceProgram.Config Player L Γ)
-    (intended : ProtocolState.Intended (block.prepend (.commit name who fresh guard next))
-      (ProtocolState.entry (block.prepend (.commit name who fresh guard next)) entry))
-    (ownAdmitted : (fillCommitPrefix whole block (.commit name who fresh guard next)
-      embedding store entry).IntendedFor who P)
-    (action : OwnAction Player L)
-    (offered : action ∈ ProtocolView.intendedAvailable who
-      (block.prepend (.commit name who fresh guard next))
-      (ProtocolState.observe who (block.prepend (.commit name who fresh guard next))
-        (block.liftPoint (.commit name who fresh guard next)
-          (ProtocolState.entry (.commit name who fresh guard next)
-            (fillCommitPrefix whole block (.commit name who fresh guard next)
-              embedding store entry))))) :
-    let filled := fillCommitPrefix whole block (.commit name who fresh guard next)
-      embedding store entry
-    ∃ value, action = .commit who name payload (.success value) ∧
-      guard.predicts (sourceObserve who filled.state) value = true ∧
-      (commitSuccessor name guard filled (.success value)).IntendedFor who (insert name P) := by
-  let suffix : SourceProgram Player L Δ P := .commit name who fresh guard next
-  let filled := fillCommitPrefix whole block suffix embedding store entry
-  obtain ⟨reference, _attempt, referenceIntended, sameView⟩ :=
-    fillCommitPrefix_intended_completion whole block suffix embedding store entry entry who
-      intended rfl ownAdmitted
-  have referenceSatisfiable : ∃ value,
-      guard.predicts (sourceObserve who reference.state) value = true := referenceIntended.2.1
-  have satisfiable : ∃ value, guard.predicts (sourceObserve who filled.state) value = true := by
-    obtain ⟨value, accepted⟩ := referenceSatisfiable
-    exact ⟨value, (congrArg (fun view => guard.predicts view value)
-      (congrArg Prod.fst sameView)).symm.trans accepted⟩
-  rw [(block.protocolSuffix suffix).intendedAvailable who] at offered
-  change ∃ value ∈ intendedValues who guard (sourceObserve who filled.state),
-    action = .commit who name payload (.success value) at offered
-  obtain ⟨value, legal, equal⟩ := offered
-  have accepted := (mem_intendedValues_self guard _ satisfiable value).mp legal
-  exact ⟨value, equal, accepted, ownAdmitted.commit_own fresh guard value accepted⟩
 
 /-- When every owner's actual prefix is admitted, the actual filled phase is
 intended as a whole. The saved continuation guard condition is propagated at

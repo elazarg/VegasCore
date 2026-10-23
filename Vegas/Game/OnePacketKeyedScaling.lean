@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.OnePacketKeyedFibers
+import Vegas.Game.OnePacketKeyedRecords
+import Vegas.Game.OnePacketSwapRecord
 
 /-! # Record fibers from a correspondence scaling the base weight
 

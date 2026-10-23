@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.SourceServiceReachedDecoding
-import Vegas.Pending.ReactiveOwnerPhase
+import Vegas.Pending.ReactiveOwnerWindow
 import Vegas.Pending.ReactiveSampleLikelihood
 
 /-! # One deviating player's traffic, round by round, in every dependency mode

@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.PhaseBindingRepairedResponse
+import Vegas.Pending.PhaseBindingCheckpointSubmission
 import Vegas.Pending.PhaseOpeningAcceptance
 
 /-! # Actual counted openings read successful bindings before inclusion -/

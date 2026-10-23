@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.PhaseSeedRecall
+import Vegas.Pending.PhaseSeedScheduler
 import Vegas.Pending.PhaseCountMenu
 import Interaction.ReactiveServiceRounds
 

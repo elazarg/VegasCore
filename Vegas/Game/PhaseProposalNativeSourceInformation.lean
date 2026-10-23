@@ -7,7 +7,6 @@ import Vegas.Game.PhaseProposalInstalledSourceBlock
 import Vegas.Compile.CommitPrefixReadStability
 import Vegas.Source.CommitAttemptRanks
 import Vegas.Source.ProposalRecoveryDisclosure
-import Vegas.Source.ProposalRecoveryVirtualLift
 import Vegas.Source.CommitPrefixPointAppend
 import Vegas.Compile.CommitPrefixCompletionSnoc
 import Vegas.Game.PhaseSurvivingSourceView
@@ -1345,80 +1344,6 @@ variable {setup : Setup (Player := Player) (L := L)} {mode : ExecutionMode}
     horizon scheduler).Trace (some control)}
   {who : Player} {event : (serviceGraph setup mode).EventId}
   {history : setup.proposalRecoveryProtocol.History}
-
-/-- Every permitted latent preimage is an actual surviving binding decision
-at the same static event. Foreign publication refinements retain this fact
-through the full observer comparison; no canonical Boolean identity is used. -/
-theorem decision
-    (matched : PhaseProposalNativeSourceMatch setup mode runtime leaks bounds plan values
-      horizon scheduler control nativeTrace who event history) :
-    ∃ current : CommitRecoveryState setup.program,
-      history.state = some current ∧
-      SourceProgram.ProtocolState.actor setup.program current.point = some who ∧
-      who ∉ current.excluded ∧
-      SourceProgram.ProtocolState.atCommit setup.program current.point = true ∧
-      instructionCount setup.program -
-          SourceProgram.ProtocolState.remaining setup.program current.point =
-        event.val ∧
-      setup.proposalRecoveryModel.IsDecisionInfo who
-        (setup.proposalRecoveryModel.infoOf who history.trace) := by
-  let cut := matched.canonical
-  obtain ⟨current, endpoint⟩ := setup.state_some_of_prefix cut.initializer
-    (setup.proposalRecoveryEraseTrace cut.initializerTrace)
-    (setup.proposalRecoveryEraseTrace history.trace)
-    (setup.proposalRecoveryEraseTrace_prefix matched.refined.retained.2)
-  have same := matched.refined.info_eq
-  have privateRead := congrArg (fun information => information.1.1.1) same
-  have semantic := congrArg (setup.proposalRecoveryEraseInfo who) same
-  rw [setup.proposalRecoveryEraseInfo_observed, setup.proposalRecoveryEraseInfo_observed]
-    at semantic
-  have controls := congrArg (fun information => information.1.1.2) semantic
-  have currentPrivate : (setup.proposalRecoveryModel.infoOf who history.trace).1.1.1 =
-      setup.commitRecoveryPrivate who history.state := by
-    change (setup.proposalRecoverySignals.withOwnPlayRecall.infoOf who history.trace).1.1.1 = _
-    rw [InfoSignals.withOwnPlayRecall_infoOf]
-    exact congrArg Prod.fst (setup.proposalRecoverySignals_control who history.trace)
-  have cutPrivate : (setup.proposalRecoveryModel.infoOf who cut.trace).1.1.1 =
-      some (SourceProgram.ProtocolState.observe who setup.program cut.current.point) := by
-    change (setup.proposalRecoverySignals.withOwnPlayRecall.infoOf who cut.trace).1.1.1 = _
-    rw [InfoSignals.withOwnPlayRecall_infoOf]
-    exact congrArg Prod.fst (setup.proposalRecoverySignals_control who cut.trace)
-  have currentPublic : (setup.commitRecoveryModel.infoOf who
-      (setup.proposalRecoveryEraseTrace history.trace)).1.1.2 =
-      setup.commitRecoveryPublic history.state := by
-    change (setup.commitRecoverySignals.withOwnPlayRecall.infoOf who
-      (setup.proposalRecoveryEraseTrace history.trace)).1.1.2 = _
-    rw [InfoSignals.withOwnPlayRecall_infoOf]
-    exact congrArg Prod.snd (setup.commitRecoverySignals_current who _)
-  have cutPublic : (setup.commitRecoveryModel.infoOf who
-      (setup.proposalRecoveryEraseTrace cut.trace)).1.1.2 =
-      setup.commitRecoveryPublic (some cut.current) := by
-    change (setup.commitRecoverySignals.withOwnPlayRecall.infoOf who
-      (setup.proposalRecoveryEraseTrace cut.trace)).1.1.2 = _
-    rw [InfoSignals.withOwnPlayRecall_infoOf]
-    exact congrArg Prod.snd (setup.commitRecoverySignals_current who _)
-  rw [cutPrivate, currentPrivate, endpoint] at privateRead
-  have observed := Option.some.inj privateRead
-  dsimp only at observed
-  rw [cutPublic, currentPublic, endpoint] at controls
-  have excludes : cut.current.excluded = current.excluded := congrArg Prod.fst controls
-  have actor := congrArg (ProtocolView.actor who setup.program) observed
-  simp only [SourceProgram.ProtocolState.actor_observe_eq] at actor
-  have committing := congrArg (ProtocolView.atCommit who setup.program) observed
-  simp only [SourceProgram.ProtocolState.atCommit_observe] at committing
-  have positions := congrArg (ProtocolView.position who setup.program) observed
-  have leftPosition := ProtocolView.position_add_remaining who setup.program cut.current.point
-  have rightPosition := ProtocolView.position_add_remaining who setup.program current.point
-  have currentRank : instructionCount setup.program -
-      SourceProgram.ProtocolState.remaining setup.program current.point = event.val := by
-    have cutRank := cut.rank
-    omega
-  have currentDecision := setup.proposalRecovery_isDecisionInfo_of_surviving_actor cut.current
-    cut.trace who cut.survives cut.actor
-  rw [same] at currentDecision
-  exact ⟨current, endpoint, actor.symm.trans cut.actor,
-    fun member => cut.survives (excludes.symm ▸ member),
-    committing.symm.trans cut.atCommit, currentRank, currentDecision⟩
 
 end PhaseProposalNativeSourceMatch
 

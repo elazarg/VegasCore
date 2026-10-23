@@ -1,6 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.PhaseBindingRepairCompletion
+import Vegas.Pending.PhaseBindingRepairInclusion
+import Vegas.Pending.PhaseFailureCoverage
+import Vegas.EventGraph.ResolutionProvenance
 import Vegas.Pending.ReactiveBindingFrameOpening
 
 /-! # Native projections used by the existing binding-repair frame

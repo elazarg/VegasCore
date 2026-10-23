@@ -3,7 +3,6 @@
 import Vegas.EventGraph.Commutation
 import Vegas.EventGraph.StateCongruence
 import Vegas.EventGraph.CompletedOutputAgreement
-import Vegas.EventGraph.ForeignCompletionSequence
 
 /-! # Reachable configurations restricted to predecessor-closed cuts -/
 
@@ -295,100 +294,6 @@ namespace Vegas.EventGraph
 open GameTheory.Math.Probability
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
-
-/-- A reachable semantic configuration factors into its retained causal cut
-and a supported foreign completion trace, preserving every owner's full recall. -/
-theorem Config.Reachable.foreign_factor {inputs : graph.Inputs} {config : graph.Config}
-    (reachable : config.Reachable inputs) (retained : graph.order.Cut)
-    (ordered : graph.RevealRelaxedOrdered) (who : Player)
-    (foreignOwners : ∀ event ∈ config.cut.completed, event ∉ retained.completed →
-      ∃ owner, graph.actor? event = some owner ∧ owner ≠ who) :
-    ∃ final, graph.ForeignCompletionSequence who (config.restrict retained) final ∧
-      graph.semanticKey config = graph.semanticKey final := by
-  induction reachable with
-  | initial =>
-      have empty : (Config.initial inputs).restrict retained = Config.initial inputs := by
-        apply Config.eq_of_fields
-        · rfl
-        · apply EventOrder.Cut.ext
-          change (∅ : Finset graph.EventId) ∩ retained.completed = ∅
-          exact Finset.empty_inter _
-        · funext event
-          change (if event ∈ retained.completed then none else none) = none
-          exact ite_self none
-        · rfl
-      refine ⟨Config.initial inputs, ?_, rfl⟩
-      rw [empty]
-      exact .refl _
-  | @step before previous event ready action next supported ih =>
-      obtain ⟨law, evaluates⟩ := Option.isSome_iff_exists.mp
-        (EventCode.eval?_isSome_of_reads (graph.nodes event) action before.store
-          (fun _ read => before.read_available ready read))
-      rw [before.step_eq_map_of_eval event ready action law evaluates, PMF.support_map] at supported
-      obtain ⟨value, selected, rfl⟩ := supported
-      have supportBefore : before.complete event ready action value ∈
-          (before.step event ready action).support := by
-        rw [before.step_eq_map_of_eval event ready action law evaluates, PMF.support_map]
-        exact ⟨value, selected, rfl⟩
-      have oldOwners : ∀ other ∈ before.cut.completed, other ∉ retained.completed →
-          ∃ owner, graph.actor? other = some owner ∧ owner ≠ who := by
-        intro other completed absent
-        exact foreignOwners other (Finset.mem_insert.mpr (Or.inr completed)) absent
-      obtain ⟨rebuilt, trace, same⟩ := ih oldOwners
-      have rebuiltReady : rebuilt.cut.Ready event := by
-        rw [← semanticKey_cut_eq same]
-        exact ready
-      have supportRebuilt := Config.complete_supported_of_semanticKey_eq before rebuilt same
-        event ready rebuiltReady action value supportBefore
-      by_cases member : event ∈ retained.completed
-      · have startReady := before.restrict_ready retained event ready member
-        have unfinished : event ∉ rebuilt.cut.completed := by
-          rw [← semanticKey_cut_eq same]
-          exact ready.1
-        cases actor : graph.actor? event with
-        | none =>
-            have identical := trace.eq_of_ready_actor_none ordered event startReady unfinished actor
-            have startSame : graph.semanticKey before =
-                graph.semanticKey (before.restrict retained) := by
-              rw [identical]
-              exact same
-            rw [Config.restrict_complete_of_mem before retained event ready member action value]
-            exact ⟨_, .refl _, semanticKey_complete_congr startSame event ready startReady
-              action value⟩
-        | some owner =>
-            have tagged := trace.retag ordered event startReady unfinished owner actor
-            obtain ⟨_, after, exchanged, nextSame⟩ := tagged.exchange_step event startReady actor
-              action value supportRebuilt
-            have wholeSame : graph.semanticKey (before.complete event ready action value) =
-                graph.semanticKey after :=
-              (semanticKey_complete_congr same event ready rebuiltReady action value).trans nextSame
-            let restrictedNext := (before.restrict retained).complete event startReady action value
-            have foreignAfter : ∀ other ∈ after.cut.completed,
-                other ∉ restrictedNext.cut.completed → graph.actor? other ≠ some who := by
-              intro other completed absent equals
-              have wholeCompleted : other ∈
-                  (before.complete event ready action value).cut.completed := by
-                rw [semanticKey_cut_eq wholeSame]
-                exact completed
-              have notRetained : other ∉ retained.completed := by
-                intro retainedOther
-                apply absent
-                change other ∈ insert event (before.cut.completed ∩ retained.completed)
-                rcases Finset.mem_insert.mp wholeCompleted with equal | earlier
-                · exact Finset.mem_insert.mpr (Or.inl equal)
-                · exact Finset.mem_insert.mpr (Or.inr (Finset.mem_inter.mpr
-                    ⟨earlier, retainedOther⟩))
-              obtain ⟨otherOwner, otherActor, different⟩ := foreignOwners other wholeCompleted
-                notRetained
-              exact different (Option.some.inj (otherActor.symm.trans equals))
-            rw [Config.restrict_complete_of_mem before retained event ready member action value]
-            exact ⟨after, exchanged.retag_of_completed_diff who foreignAfter, wholeSame⟩
-      · obtain ⟨owner, actor, foreign⟩ := foreignOwners event
-          (Finset.mem_insert.mpr (Or.inl rfl)) member
-        rw [Config.restrict_complete_of_not_mem before retained event ready member action value]
-        exact ⟨rebuilt.complete event rebuiltReady action value,
-          .snoc trace event rebuiltReady owner actor foreign action value supportRebuilt,
-          semanticKey_complete_congr same event ready rebuiltReady action value⟩
 
 end Vegas.EventGraph
 

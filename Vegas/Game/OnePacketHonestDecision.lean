@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.OnePacketHonestLaw
-import Vegas.Game.CompiledPolicyView
 import Vegas.Game.OnePacketPrescribedSupport
 import Vegas.Game.OnePacketCanonicalPermits
 import Vegas.Game.OnePacketPendingPool
@@ -9,18 +8,20 @@ import Vegas.Game.SourceServiceFirstTurnRisk
 import Interaction.ReactiveTrafficIdentity
 import Vegas.Game.OnePacketRetention
 
-/-! # As-if-honest decisions are compiled decisions of the effective opening
+/-! # First-turn clients answer their turns once
 
-At an owner's turn, at an execution whose configuration decodes at its
-completed prefix to a point of the intended game carrying the program's
-registry and publication status, the as-if-honest native response is the
-canonical source decision of the intended effective opening
-(`Vegas.honestResponse_eq_openingCanonical`): the compiled decision reads the
-source view the projection reads (`Vegas.compilePolicyTable_eq_protocolAction`),
-and there the effective opening plays the intended law
-(`Vegas.openingCompiled_eq_intended`). Since intended actions bind successful
-values, every such compiled decision is effective
-(`Vegas.openingCompiled_effectiveDecision`).
+A source action binds a successful value whenever it is a commitment
+(`Vegas.SourceProgram.OwnAction.CommitsValue`), as intended actions do
+(`Vegas.SourceProgram.ProtocolView.intendedAvailable_commitsValue`). After an
+earlier turn at an event the first-turn clients are silent at it
+(`Vegas.openingClients_later_silent`) and never submit for it if they did not
+then (`Vegas.openingClients_keeps_unrecorded`); for a well-formed setup under
+the asynchronous contract with timely delays, an owner that had a turn at its
+event has submitted for it (`Vegas.openingClients_recorded_of_seen`). Every
+transmitting recall entry emitted the packet of its submission, at every
+history (`Vegas.transmissionsEmitted_serviceInvariant`), so a canonical
+decision that transmits after its recall has submitted for the event is not in
+the one-packet menu (`Vegas.canonical_not_onePacket_of_recorded`).
 -/
 
 noncomputable section
@@ -35,142 +36,6 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-
-/-- **The effective opening's compiled law is the intended law.** At an
-owner's turn at an execution decoding to an intended point that carries the
-program's registry and publication status, the compiled policy table of the
-intended effective opening, as a law of encoded actions, is the intended law at
-the decoded view, each action encoded at the event. -/
-theorem openingCompiled_eq_intended
-    (assessment : setup.intendedModel.BehavioralAssessment)
-    (execution : (application setup leaks).Execution) (rank : Nat)
-    (ordered : execution.application.config.cut.IsPrefix rank)
-    (point : ProtocolState setup.program)
-    (decoded : sourceServicePrefix? setup rank execution.application.config = some point)
-    (staticPoint : ProtocolState.StaticAt setup.program [] (Revelations.initial setup.context)
-      point)
-    (intendedPoint : ProtocolState.Intended setup.program point)
-    (who : Player) (event : (graph setup).EventId)
-    (turn : execution.application.publicView.ownTurn? who = some event) :
-    (compilePolicyTable setup.program
-        (ContextRefs.initial setup.context (outputLayout setup.program))
-        (outputRef setup.program) who (setup.intendedOpeningProfile assessment.strategy who)
-        event ((graph setup).playerStore who execution.application.config.store)
-        (decodeCompletions setup.program
-          (((graph setup).ownCompletions who execution.application.config.history).map
-            (setup.eventGraph.fromModeCompletion .sequential)))).map some =
-      ((assessment.strategy who (setup.protocolObserve who (some point))).map
-        Subtype.val).map (fun choice => choice.bind (encodeEventAction? setup.program event)) := by
-  have owned := (PublicView.ownTurn?_spec _ who event turn).2
-  have ready : execution.application.config.cut.Ready event :=
-    (execution.application.publicView_eventReady event).mp
-      (PublicView.ownTurn?_spec _ who event turn).1
-  have atRank := (ready_iff_rank setup _ rank ordered event).mp ready
-  let opening := setup.intendedOpeningProfile assessment.strategy
-  have ownerEq : eventOwner? setup.program event = some who :=
-    (eventOwner?_eq_actor setup.program event).trans owned
-  have viewDecoded : decodeViewPrefix? who setup.program
-      (ContextRefs.initial setup.context (outputLayout setup.program)) (outputRef setup.program)
-      event.val ((graph setup).playerStore who execution.application.config.store)
-      (decodeCompletions setup.program
-        (((graph setup).ownCompletions who execution.application.config.history).map
-          (setup.eventGraph.fromModeCompletion .sequential))) =
-      some (ProtocolState.observe who setup.program point) := by
-    rw [atRank]
-    refine (decodeViewPrefix?_playerStore (graph := graph setup) who rank setup.program _ _ _
-      _).trans ?_
-    refine (congrArg (fun own => decodeViewPrefix? who setup.program
-      (ContextRefs.initial setup.context (outputLayout setup.program)) (outputRef setup.program)
-      rank execution.application.config.store (decodeCompletions setup.program own))
-      (ownCompletions_fromModeCompletion setup (mode := .sequential) who
-        execution.application.config.history)).trans ?_
-    exact decodeViewPrefix?_eq_observe who rank setup.program _ [] _ _ _ _ point decoded
-  have compiled := compilePolicyTable_eq_protocolAction who setup.program
-    (ContextRefs.initial setup.context (outputLayout setup.program)) (outputRef setup.program)
-    (opening who) event _ _ _ ownerEq viewDecoded
-  have disclosing : Disclosing setup.program (setup.decodeBehavioralProfile
-      (CommitmentInterface.values setup.program) (setup.intendedSourceProfile assessment.strategy)
-      who) :=
-    BehavioralPolicy.disclosing_fromProtocol setup.program _ _
-      (fun view => setup.intendedSourceProfile_notRefusal assessment.strategy who (some view))
-  have actionLaw : (opening who).protocolAction setup.program
-      (ProtocolState.observe who setup.program point) =
-      (assessment.strategy who (setup.protocolObserve who (some point))).map Subtype.val := by
-    change ((setup.decodeBehavioralProfile (CommitmentInterface.values setup.program)
-      (setup.intendedSourceProfile assessment.strategy) who).effectiveOpening setup.program []
-        (Revelations.initial setup.context)).protocolAction setup.program _ = _
-    rw [BehavioralPolicy.protocolAction_effectiveOpening setup.program _ _ _ disclosing point
-      staticPoint intendedPoint]
-    refine (BehavioralPolicy.protocolAction_fromProtocol setup.program _ _ _).trans ?_
-    change ((assessment.strategy who (some (ProtocolState.observe who setup.program point))).map
-      _).map Subtype.val = _
-    rw [PMF.map_comp]
-    rfl
-  rw [actionLaw] at compiled
-  exact compiled
-
-/-- **As-if-honest play is the effective opening's compiled decision.** At an
-owner's turn at an execution decoding to an intended point that carries the
-program's registry and publication status, the as-if-honest native response of
-an intended assessment, for any recall, is the canonical source decision of the
-intended effective opening of its strategy. -/
-theorem honestResponse_eq_openingCanonical
-    (assessment : setup.intendedModel.BehavioralAssessment)
-    (execution : (application setup leaks).Execution) (rank : Nat)
-    (ordered : execution.application.config.cut.IsPrefix rank)
-    (point : ProtocolState setup.program)
-    (decoded : sourceServicePrefix? setup rank execution.application.config = some point)
-    (staticPoint : ProtocolState.StaticAt setup.program [] (Revelations.initial setup.context)
-      point)
-    (intendedPoint : ProtocolState.Intended setup.program point)
-    (who : Player) (event : (graph setup).EventId)
-    (turn : execution.application.publicView.ownTurn? who = some event) :
-    honestResponse setup leaks assessment who (execution.recall who)
-        (execution.observe (application setup leaks) who) =
-      sourceServiceCanonicalPolicy setup leaks
-        (setup.intendedOpeningProfile assessment.strategy) who (execution.recall who)
-        (execution.observe (application setup leaks) who) := by
-  have owned := (PublicView.ownTurn?_spec _ who event turn).2
-  let opening := setup.intendedOpeningProfile assessment.strategy
-  have canonical := sourceServiceCanonicalPolicy_at_event setup leaks opening who execution
-    event turn owned
-  rw [show sourceServiceCanonicalPolicy setup leaks opening = serviceCanonicalPolicy setup
-    .sequential (rankDeadline setup .sequential) leaks opening from rfl, canonical]
-  have turnView : (execution.observe (application setup leaks) who).application.publicView.ownTurn?
-      who = some event := turn
-  unfold honestResponse
-  rw [turnView]
-  dsimp only
-  rw [asIfHonestProfile_observe setup leaks assessment who execution rank ordered point decoded]
-  have compiled := openingCompiled_eq_intended assessment execution rank ordered point decoded
-    staticPoint intendedPoint who event turn
-  have expand : (compileEventProfile setup.program opening who event owned
-      (setup.eventGraph.fromModeObservation .sequential who
-        ((graph setup).playerObserve who execution.application.config))).map
-        ((runtime setup).canonicalServiceDecision leaks who (execution.recall who)
-          (execution.observe (application setup leaks) who) event) =
-      ((compilePolicyTable setup.program
-        (ContextRefs.initial setup.context (outputLayout setup.program))
-        (outputRef setup.program) who (opening who) event
-        ((graph setup).playerStore who execution.application.config.store)
-        (decodeCompletions setup.program
-          (((graph setup).ownCompletions who execution.application.config.history).map
-            (setup.eventGraph.fromModeCompletion .sequential)))).map some).map
-        (fun chosen => chosen.elim ⟨none⟩ ((runtime setup).canonicalServiceDecision leaks who
-          (execution.recall who) (execution.observe (application setup leaks) who) event)) := by
-    rw [PMF.map_comp]
-    rfl
-  change _ = (compileEventProfile setup.program opening who event owned
-      (setup.eventGraph.fromModeObservation .sequential who
-        ((graph setup).playerObserve who execution.application.config))).map
-        ((runtime setup).canonicalServiceDecision leaks who (execution.recall who)
-          (execution.observe (application setup leaks) who) event)
-  rw [expand, compiled]
-  simp only [PMF.map_comp]
-  congr 1
-  funext chosen
-  simp only [Function.comp_apply]
-  cases (chosen.1).bind (encodeEventAction? setup.program event) <;> rfl
 
 section Effective
 
@@ -243,59 +108,6 @@ theorem encodeEventAction?_commitsValue :
           cases binding
       | succ tail =>
           exact encodeEventAction?_commitsValue next tail action commits encoded encodes
-
-/-- **The effective opening's compiled decisions are effective.** At an
-owner's turn at an execution decoding to an intended point that carries the
-program's registry and publication status, every compiled decision of the
-intended effective opening binds a successful value at a binding. -/
-theorem openingCompiled_effectiveDecision
-    (assessment : setup.intendedModel.BehavioralAssessment)
-    (execution : (application setup leaks).Execution) (rank : Nat)
-    (ordered : execution.application.config.cut.IsPrefix rank)
-    (point : ProtocolState setup.program)
-    (decoded : sourceServicePrefix? setup rank execution.application.config = some point)
-    (staticPoint : ProtocolState.StaticAt setup.program [] (Revelations.initial setup.context)
-      point)
-    (intendedPoint : ProtocolState.Intended setup.program point)
-    (who : Player) (event : (graph setup).EventId)
-    (turn : execution.application.publicView.ownTurn? who = some event)
-    (owned : (graph setup).actor? event = some who) (action : (graph setup).Action event)
-    (chosen : action ∈ (compileEventProfile setup.program
-      (setup.intendedOpeningProfile assessment.strategy) who event owned
-      (setup.eventGraph.fromModeObservation .sequential who
-        ((graph setup).playerObserve who execution.application.config))).support) :
-    EffectiveDecision event action := by
-  have compiled := openingCompiled_eq_intended assessment execution rank ordered point decoded
-    staticPoint intendedPoint who event turn
-  have member : some action ∈ ((compilePolicyTable setup.program
-      (ContextRefs.initial setup.context (outputLayout setup.program))
-      (outputRef setup.program) who (setup.intendedOpeningProfile assessment.strategy who)
-      event ((graph setup).playerStore who execution.application.config.store)
-      (decodeCompletions setup.program
-        (((graph setup).ownCompletions who execution.application.config.history).map
-          (setup.eventGraph.fromModeCompletion .sequential)))).map some).support :=
-    (PMF.mem_support_map_iff _ _ _).mpr ⟨action, chosen, rfl⟩
-  rw [compiled] at member
-  obtain ⟨choice, choiceMem, encodes⟩ := (PMF.mem_support_map_iff _ _ _).mp member
-  obtain ⟨intendedChoice, _, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp choiceMem
-  have legal := intendedChoice.2
-  change ProtocolView.intendedMenu who setup.program (ProtocolState.observe who setup.program point)
-    intendedChoice.1 at legal
-  cases picked : intendedChoice.1 with
-  | none =>
-      rw [picked] at encodes
-      cases encodes
-  | some ownAction =>
-      rw [picked] at legal encodes
-      have commits := ProtocolView.intendedAvailable_commitsValue who setup.program _ ownAction
-        legal.2
-      unfold EffectiveDecision
-      cases node : nodeView (graph setup) event with
-      | bind owner payload outputEq codeEq =>
-          exact encodeEventAction?_commitsValue setup.program event ownAction commits action
-            encodes owner payload outputEq
-      | resolve => trivial
-      | sample => trivial
 
 end Effective
 

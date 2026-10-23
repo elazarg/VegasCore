@@ -2,7 +2,6 @@
 
 import Vegas.Pending.PhaseReadyRequests
 import Vegas.Pending.PhaseActivationOrigin
-import Vegas.Pending.PhaseClockOrigin
 import Vegas.Pending.PhaseRetryClock
 
 /-! # Readiness origins retain the physical attempt coordinate -/
@@ -126,37 +125,6 @@ theorem environmentStep_request_origin {inputs : graph.Inputs}
       reached inputs valid coordinate.event entered activated request.2.2.1.1)
     (fun changed => (phaseApplication_retryTimers runtime leaks).environmentStep execution next
       command reached inputs valid changed coordinate.event entered activated)
-
-/-- On a clock advance, any genuinely new coordinate timer is strictly later
-than the old tick. Thus a request already due at that tick existed before it. -/
-theorem advanceClock_request_origin {inputs : graph.Inputs}
-    (execution next : (app).Execution) (ordered : graph.RevealRelaxedOrdered)
-    (valid : execution.application.Invariant inputs) (frontier : execution.application.Frontier)
-    (live : execution.application.Live)
-    (maximal : execution.application.phases.IsChain fun first second =>
-      first.kind ≠ second.kind ∨ first.kind = .sample)
-    (quiescent : ∀ event, ¬ execution.application.current.AutomaticReady event)
-    (reached : next ∈ (execution.environmentStep app (.application .advanceClock)).support)
-    (owner : Player) (coordinate : CommitAttemptEvent graph) (entered : Nat)
-    (request : next.application.SeedRequest owner coordinate)
-    (activated : next.application.current.native.activatedAt coordinate.event = some entered) :
-    (execution.application.SeedRequest owner coordinate ∧
-      execution.application.current.native.activatedAt coordinate.event = some entered) ∨
-        execution.application.current.native.clock < entered := by
-  obtain ⟨updated, moved, rfl⟩ := PMF.support_map .. ▸ reached
-  obtain ⟨state, nativeMoved, rfl⟩ := PMF.support_map .. ▸ moved
-  have nativeOrigin := PhaseRuntimeState.advanceClock_activationOrigin runtime
-    execution.application state valid nativeMoved coordinate.event entered activated request.2.2.1.1
-  have retry := PhaseRuntimeState.advanceClock_retry_timers runtime execution.application state
-    valid nativeMoved
-  have suffix := (phaseApplication_phaseSuffix runtime leaks).environment
-    execution.application .advanceClock state nativeMoved
-  have result := PhaseRuntimeState.request_origin_of_bounds execution.application state ordered
-    valid frontier live maximal quiescent suffix owner coordinate entered
-    (execution.application.current.native.clock + 1) request
-    (nativeOrigin.imp_right Nat.succ_le_of_lt)
-    (fun changed => Nat.succ_le_of_lt (retry changed coordinate.event entered activated))
-  exact result.imp_right Nat.lt_of_succ_le
 
 end PhaseSeedScheduler
 end Vegas.EventGraphRuntime

@@ -7,18 +7,11 @@ import Vegas.Game.ServiceRosterAsync
 
 On the sequentialized graph one event is ready at a time. After a response at
 a decision, the run is stopped when the decision's event completes
-(`TimedApproximant.completionLaw`). At every stopping point the completed
-events are exactly those up to and including the decision's event, and no
-recorded response has seen the next event ready: its owner has had no turn yet
-(`TimedApproximant.completion_boundary`). This holds for every scheduler that
-completes play, since only scheduler commands complete events and every
-command completes at most one.
-
-The continuation bridge (`TimedApproximant.response_completion_law`) is then
-the Markov property of the round evaluator at this stopping time: the readout
-after a response is the configuration law at completion, bound with the
-continuation from the next boundary. It assumes only that continuations from
-such boundaries follow the source (`BoundaryContinuationLaw`).
+(`TimedApproximant.completionLaw`). A completion boundary is an execution the
+players reach by complete rounds where the events of lower rank have completed
+and no recorded response has seen the next event ready
+(`CompletionBoundary`); `BoundaryContinuationLaw` states that the run to the
+horizon from every such boundary has the source continuation law.
 -/
 
 noncomputable section
@@ -318,112 +311,6 @@ def completionConfigLaw {who : Player}
     (response : (application service.setup service.leaks).Action) :
     PMF (graph service.setup).Config :=
   (approx.completionLaw phase response).map (fun final => final.application.config)
-
-/-- **The completion boundary.** Every point where a legal response's run stops
-lies within the horizon, has completed exactly the events up to the decision's
-event, and no recorded response has seen the next event ready. -/
-theorem completion_boundary
-    (completes : CompletesPlay (runtime service.setup) service.leaks (initialLaw service.setup)
-      service.planLength service.scheduler)
-    {who : Player} {remaining : Nat}
-    {execution : (application service.setup service.leaks).Execution}
-    (trace : (service.menu.protocol (initialLaw service.setup) service.planLength
-      service.scheduler).Trace (some ⟨remaining, some who, execution⟩))
-    (phase : DecisionPhase service.setup service.leaks service.rosters who execution)
-    (response : (application service.setup service.leaks).Action)
-    (allowed : response ∈ service.menu.actions who (execution.recall who)
-      (execution.observe (application service.setup service.leaks) who))
-    (stopped : (application service.setup service.leaks).Execution)
-    (reached : stopped ∈ (approx.completionLaw phase response).support) :
-    stopped.environmentRecall.length ≤ service.planLength ∧
-      CompletionBoundary service.setup service.leaks service.scheduler approx.players
-        (phase.event.val + 1) stopped := by
-  let app := application service.setup service.leaks
-  let stop := fun final : app.Execution => phase.event ∈ final.application.config.cut.completed
-  let responded := execution.respond app who response
-  have accounted := (service.menu.roundSupported_uniform (initialLaw service.setup)
-    service.planLength service.scheduler trace).1
-  change execution.environmentRecall.length + remaining = service.planLength at accounted
-  have respondedLength : responded.environmentRecall.length = execution.environmentRecall.length :=
-    congrArg List.length (app.respond_environmentRecall execution who response)
-  obtain ⟨respondedTrace⟩ := service.menu.trace_respond (initialLaw service.setup)
-    service.planLength service.scheduler remaining execution who response trace allowed
-  obtain ⟨bounded, ⟨stoppedTrace⟩⟩ := service.menu.trace_runUntilHorizon (initialLaw service.setup)
-    service.planLength service.scheduler approx.players approx.covered stop remaining responded
-    stopped (by rw [respondedLength]; exact accounted) respondedTrace reached
-  have supported := service.menu.fullyMixed_response_stopped_support (initialLaw service.setup)
-    service.planLength service.scheduler approx.players approx.covered approx.assessment
-    approx.strategy approx.mixed who remaining execution trace response allowed stop _ stopped
-    reached
-  have respondedSupported := service.menu.fullyMixed_response_rounds_support
-    (initialLaw service.setup) service.planLength service.scheduler approx.players approx.covered
-    approx.assessment approx.strategy approx.mixed who remaining execution trace response allowed
-    0 responded ((PMF.mem_support_pure_iff _ _).mpr rfl)
-  obtain ⟨rank, rankOrdered, seen⟩ := roundsFrom_ranked service.setup service.leaks
-    service.scheduler approx.players _ responded respondedSupported
-  have ordered : responded.application.config.cut.IsPrefix phase.event.val := by
-    rw [((runtime service.setup).reactive_respond_application service.leaks execution who
-      response).1]
-    exact ⟨Nat.le_of_lt phase.event.isLt, fun prior =>
-      service.setup.eventGraph.sequentialize_mem_completed_iff_lt_of_ready
-        execution.application.config.cut phase.ready⟩
-  have rankEq := isPrefix_unique rankOrdered ordered
-  subst rankEq
-  obtain ⟨stoppedSeen, stoppedConfig⟩ := runUntil_completion_prefix service.setup service.leaks
-    service.scheduler approx.players phase.event _ responded stopped ordered seen reached
-  have finished : stopped.application.config.cut.IsPrefix (phase.event.val + 1) := by
-    rcases stoppedConfig with current | advanced
-    · exfalso
-      have unfinished : phase.event ∉ stopped.application.config.cut.completed := fun member =>
-        Nat.lt_irrefl _ ((current.2 phase.event).mp member)
-      rcases app.runUntilHorizon_stopped service.scheduler approx.players stop
-          service.planLength remaining responded stopped
-          (by rw [respondedLength]; exact accounted) reached with halted | spent
-      · exact unfinished halted
-      · have terminalTrace := service.menu.toRawTrace (initialLaw service.setup)
-          service.planLength service.scheduler stoppedTrace
-        have terminal := completes _ terminalTrace (by
-          change service.planLength - stopped.environmentRecall.length = 0 ∧ _
-          exact ⟨by omega, rfl⟩)
-        change stopped.application.config.cut.completed = Finset.univ at terminal
-        exact unfinished (terminal ▸ Finset.mem_univ _)
-    · exact advanced
-  refine ⟨bounded, supported, finished, ?_⟩
-  intro next rankNext observer entry member readyView
-  have := stoppedSeen observer entry member next readyView
-  omega
-
-/-- **Completion-stopped continuation bridge.** After any legal response at an
-actual decision, the complete typed source terminal law is the source
-continuation from the next event boundary, averaged over the configuration law
-when the decision's event completes. It holds for every scheduler that
-completes play, given source continuations from completion boundaries. -/
-theorem response_completion_law
-    (completes : CompletesPlay (runtime service.setup) service.leaks (initialLaw service.setup)
-      service.planLength service.scheduler)
-    (continuation : BoundaryContinuationLaw service.setup service.leaks service.scheduler
-      service.planLength approx.players approx.profile)
-    {who : Player} {remaining : Nat}
-    {execution : (application service.setup service.leaks).Execution}
-    (trace : (service.menu.protocol (initialLaw service.setup) service.planLength
-      service.scheduler).Trace (some ⟨remaining, some who, execution⟩))
-    (phase : DecisionPhase service.setup service.leaks service.rosters who execution)
-    (response : (application service.setup service.leaks).Action)
-    (allowed : response ∈ service.menu.actions who (execution.recall who)
-      (execution.observe (application service.setup service.leaks) who)) :
-    approx.responseReadout phase response =
-      (approx.completionConfigLaw phase response).bind
-        (approx.boundaryContinuation (phase.event.val + 1)) := by
-  unfold responseReadout completionConfigLaw
-  rw [(application service.setup service.leaks).runToHorizon_eq_runUntilHorizon_bind
-    service.scheduler approx.players
-    (fun final => phase.event ∈ final.application.config.cut.completed) service.planLength _,
-    PMF.map_bind, PMF.bind_map]
-  apply bind_congr_on_support _
-  intro stopped reached
-  obtain ⟨bounded, boundary⟩ :=
-    approx.completion_boundary completes trace phase response allowed stopped reached
-  exact continuation _ stopped boundary bounded
 
 end TimedApproximant
 

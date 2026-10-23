@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.ReservedEpochFocalWord
-import Vegas.Game.PhasePublicationEffect
+import Vegas.Pending.PhaseCountedOpeningSubmission
 import Vegas.Game.ReservedEpochStoppedOpening
 
 /-! # Exact old opening episode bits in the actual reserved experiment -/

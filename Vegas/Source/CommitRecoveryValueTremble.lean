@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Source.CommitRecoveryValueBinding
+import Vegas.Source.CommitRecoveryValueMenu
+import Vegas.Source.CommitRecoveryErasure
 
 /-! # Legal source failure flags independent of ordinary domain draws -/
 
@@ -324,65 +325,5 @@ theorem commitRecoveryFailureChoice_binding
         simpa only [CommitRecoveryMove.bindingAtom, committing, Bool.true_and] using properties.2
       subst flag
       exact same.symm
-
-/-- The all-query flag construction specializes to the actual three-class
-binding law, with its ordinary payload distribution decoded from the domain
-coordinate rather than conditioned out of a failure mixture. -/
-theorem commitRecoveryValueTremble_binding
-    (origin : ProtocolSuffix setup.program (.commit name owner fresh guard next) lift)
-    (current : CommitRecoveryState setup.program)
-    (trace : setup.commitRecoveryProtocol.Trace (some current)) (config : Config Player L Γ)
-    (atPoint : current.point = lift (.inl config)) (survives : owner ∉ current.excluded)
-    (omission : ℝ) (omissionNonnegative : 0 ≤ omission) (omissionBounded : omission ≤ 1)
-    (bad : ℝ) (badNonnegative : 0 ≤ bad) (badBounded : bad ≤ 1)
-    (values : PMF (setup.CommitRecoveryValueChoice owner
-      (setup.commitRecoveryModel.infoOf owner trace))) :
-    setup.commitRecoveryValueTremble owner (setup.commitRecoveryModel.infoOf owner trace)
-        omission omissionNonnegative omissionBounded bad badNonnegative badBounded values =
-      setup.commitRecoveryBindingValueLaw origin current trace config atPoint survives
-        omission omissionNonnegative omissionBounded bad badNonnegative badBounded
-        (values.map
-          (setup.commitRecoveryBindingValueEquiv
-            origin current trace config atPoint survives).symm) := by
-  have ordinary : values.map Subtype.val =
-      (values.map (setup.commitRecoveryBindingValueEquiv
-        origin current trace config atPoint survives).symm).map
-          (fun value => setup.commitRecoveryBindingAtom origin current trace config
-            atPoint survives (.inl value)) := by
-    rw [PMF.map_comp]
-    apply congrArg (PMF.map · values)
-    funext choice
-    exact (congrArg Subtype.val
-      ((setup.commitRecoveryBindingValueEquiv origin current trace config
-        atPoint survives).apply_symm_apply choice)).symm
-  rw [commitRecoveryValueTremble,
-    setup.bindingQuery_atCommit origin current trace config atPoint]
-  simp only [↓reduceIte]
-  rw [setup.commitRecoveryFailureChoice_binding origin current trace config atPoint survives true,
-    setup.commitRecoveryFailureChoice_binding origin current trace config atPoint survives false,
-    ordinary]
-  rfl
-
-/-- Positive independent flags and a fully supported ordinary domain law
-support the entire genuine binding menu, including accepted source failure. -/
-theorem commitRecoveryValueTremble_binding_fullSupport
-    (origin : ProtocolSuffix setup.program (.commit name owner fresh guard next) lift)
-    (current : CommitRecoveryState setup.program)
-    (trace : setup.commitRecoveryProtocol.Trace (some current)) (config : Config Player L Γ)
-    (atPoint : current.point = lift (.inl config)) (survives : owner ∉ current.excluded)
-    (omission : ℝ) (omissionPositive : 0 < omission) (omissionSmall : omission < 1)
-    (bad : ℝ) (badPositive : 0 < bad) (badSmall : bad < 1)
-    (values : PMF (setup.CommitRecoveryValueChoice owner
-      (setup.commitRecoveryModel.infoOf owner trace))) (full : FullSupport values) :
-    FullSupport (setup.commitRecoveryValueTremble owner
-      (setup.commitRecoveryModel.infoOf owner trace)
-      omission omissionPositive.le omissionSmall.le bad badPositive.le badSmall.le values) := by
-  rw [setup.commitRecoveryValueTremble_binding origin current trace config atPoint survives]
-  apply setup.commitRecoveryBindingValueLaw_fullSupport origin current trace config atPoint
-    survives omission omissionPositive omissionSmall bad badPositive badSmall
-  intro value
-  apply (PMF.mem_support_map_iff _ _ _).mpr
-  let encode := setup.commitRecoveryBindingValueEquiv origin current trace config atPoint survives
-  exact ⟨encode value, full (encode value), encode.symm_apply_apply value⟩
 
 end Vegas.SourceProgram.Setup

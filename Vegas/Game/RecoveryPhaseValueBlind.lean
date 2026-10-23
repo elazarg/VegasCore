@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.RecoveryPhasePotential
-import Vegas.Game.OnePacketLateValueBlind
+import Vegas.Game.OnePacketLateCommitBlind
 import Vegas.Game.RecoveryEventPhaseLaw
 
 /-! # Source potentials at completed recovery phases -/

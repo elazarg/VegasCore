@@ -1,7 +1,14 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.PhaseBindingRecallWord
-import Vegas.Pending.PhaseRecordedBindingMeaning
+import Vegas.Pending.PhaseNativeInvariant
+import Vegas.Pending.RecordedBindingReadback
+import Vegas.Pending.PhaseBindingInvariant
+import Vegas.Pending.PhaseSignedBindings
+import Vegas.Pending.PhaseNativeProjection
+import Vegas.Pending.ReactiveServiceConditions
+import Vegas.Pending.PhaseFailureCoverage
+import Vegas.Pending.PhaseBindingSubmittedPreservation
 import Vegas.Pending.PhaseBindingFreshness
 import Interaction.ReactiveRecordedResponse
 
@@ -52,40 +59,6 @@ theorem phaseBindingRecall_fresh (bounds : MessageBounds ((toEventGraph whole).w
   | success value =>
       exact viewed ▸ PhaseCount.onePacket_binding_fresh runtime leaks bounds plan inputs horizon
         scheduler prior who event serial (some ⟨payload, value⟩) .none member
-
-/-- The raw private parser agrees with the action in the actual completed
-history. The proof uses the original callback rather than replacing its draw. -/
-theorem phaseBindingRecall_completed_action
-    (bounds : MessageBounds ((toEventGraph whole).withMode mode))
-    (plan : RuntimePhasePlan ((toEventGraph whole).withMode mode))
-    (inputs : PMF ((toEventGraph whole).withMode mode).Inputs) (horizon : Nat)
-    (scheduler : (app).Scheduler)
-    {control : (app).Control}
-    (trace : ((PhaseCount.onePacketMenu runtime leaks bounds).protocol
-      (inputs.map (PhaseRuntimeState.initial plan)) horizon scheduler).Trace (some control))
-    (clear : control.execution.application.current.excluded = ∅)
-    (who : Player) (event : ((toEventGraph whole).withMode mode).EventId) (payload : L.Ty)
-    (binding : ((toEventGraph whole).withMode mode).outputLayout event = .binding who payload)
-    (result : PublicationResult (L.Val payload)) (serial : Nat) (entry : (app).PlayerEntry)
-    (retained : entry ∈ control.execution.recall who)
-    (declared : entry.action = phaseBindingResponse runtime leaks who event payload result serial)
-    (completed : event ∈ control.execution.application.current.native.config.cut.completed) :
-    ∃ original : ((toEventGraph whole).withMode mode).Action event,
-      ⟨event, original⟩ ∈ control.execution.application.current.native.config.history ∧
-      phaseBindingAction? whole mode runtime leaks entry.action =
-        decodeEventAction whole event original := by
-  have fresh := phaseBindingRecall_fresh whole mode runtime leaks bounds plan inputs horizon
-    scheduler trace who event payload result serial entry retained declared
-  obtain ⟨original, recorded, meaning⟩ :=
-    PhaseNativeProjection.completed_binding_action_of_recorded runtime leaks plan bounds
-      inputs horizon scheduler trace clear who
-          event payload binding result serial entry retained declared fresh completed
-  refine ⟨original, recorded, ?_⟩
-  rw [declared, phaseBindingAction?_response whole mode runtime leaks who event payload binding]
-  have actionEq : cast (congrArg EventField.Action binding.symm) result = original := by
-    rw [← meaning]
-    exact cast_cast _ _ _
-  rw [actionEq]
 
 omit [Fintype Player] in
 /-- A retained raw entry with this physical address contributes exactly its

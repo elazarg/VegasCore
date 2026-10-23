@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.PhaseClearHistory
+import Vegas.Pending.PhaseSeedBudget
+import Vegas.Pending.PhaseNativeInvariant
 import Vegas.Pending.PhasePlanSuffix
 import Vegas.Pending.PhaseCountMenu
 import Vegas.Pending.PhaseInputNamespace
@@ -214,42 +215,6 @@ theorem packetPhaseOrigins_history [Fintype Player] (bounds : MessageBounds grap
     exact ⟨PhaseRuntimeState.settle_suffix _ _ _ _ _, countClean_initial runtime leaks _,
       fun _ impossible => (List.not_mem_nil impossible).elim⟩) trace
   exact actual.2.2
-
-/-- On a clear actual counted history, the erased packet reconstructs its exact
-original tag; there are no hidden retired generations left to guess. -/
-theorem stamp_nativeMessage_of_clear [Fintype Player] (bounds : MessageBounds graph)
-    (inputs : PMF graph.Inputs) (horizon : Nat) (scheduler : (app).Scheduler) {control}
-    (trace : ((onePacketMenu runtime leaks bounds).protocol
-      (inputs.map (PhaseRuntimeState.initial plan)) horizon scheduler).Trace (some control))
-    (clear : control.execution.application.current.excluded = ∅)
-    (message : Message Player (CommitAttemptPacket graph))
-    (authentic : message ∈ control.execution.network.inputs) :
-    plan.stampPacket message.payload.packet = message.payload := by
-  have raw := (onePacketMenu runtime leaks bounds).toRawTrace _ horizon scheduler trace
-  have generation := (phase_clear_history runtime leaks plan inputs horizon scheduler control
-    raw clear).1
-  have namespaces := inputNamespaces_history runtime leaks _
-    (fun state supported => by
-      obtain ⟨input, _support, rfl⟩ := PMF.support_map .. ▸ supported
-      exact PhaseRuntimeState.initial_ordered plan input) horizon scheduler raw
-  have bounded := (namespaces.bounded message authentic).1
-  change message.payload.attempt.generation ≤ control.execution.application.generation at bounded
-  rw [generation] at bounded
-  have zero := Nat.eq_zero_of_le_zero bounded
-  obtain ⟨phase, member, event, named, inside, same⟩ :=
-    packetPhaseOrigins_history runtime leaks plan bounds inputs horizon scheduler trace message
-      authentic
-  have static := plan.eventPhase_of_mem phase member event inside
-  cases message with
-  | mk id packet =>
-      cases packet with
-      | mk attempt packet =>
-          cases attempt with
-          | mk address retry =>
-              change retry = 0 at zero
-              change address = phase.low at same
-              simp only [RuntimePhasePlan.stampPacket, named, Option.map_some,
-                Option.getD_some, static, same, zero]
 
 end PhaseCount
 end Vegas.EventGraphRuntime

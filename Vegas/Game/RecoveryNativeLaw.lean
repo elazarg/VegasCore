@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.RecoveryNativeComparison
-import Vegas.Game.RecoveryComponentProjection
+import GameTheory.Math.Probability.Support
 
 /-! # Native action laws of clear recovery components
 

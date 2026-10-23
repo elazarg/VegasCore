@@ -4,8 +4,8 @@ import Vegas.Game.PhaseOnePacketExtension
 import Vegas.Game.PhaseExclusionPayoff
 import Interaction.ReactivePolicyInvariant
 import Interaction.ReactiveLocalContinuation
-import Interaction.ReactiveMenuContinuation
 import GameTheory.Analysis.Protocol.SupportedChoices
+import GameTheory.Protocol.RestrictionExecution
 /-! # Certain count collection and full-input clean-owner incentives -/
 noncomputable section
 namespace Vegas.Examples.CommitTimingInformation

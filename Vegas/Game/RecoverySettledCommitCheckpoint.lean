@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.RecoverySourceBoundary
+import Vegas.Game.RecoverySourceCheckpoint
+import Vegas.Source.CommitRecoveryNoMissInformation
 import Vegas.Source.CommitPhaseRecall
 import Vegas.Game.CommitAttemptSurvivingRecall
 import Vegas.Game.CompiledCommitCompletion
@@ -13,6 +14,7 @@ import Vegas.Source.CommitPhaseAutomaticAttempt
 import Vegas.Game.CommitAttemptOwnRecall
 import Vegas.Pending.PhaseHistoryCheckpoint
 import Vegas.Source.CommitRecoveryBlockCloseLift
+import GameTheory.Protocol.Backward
 
 /-! # Saved source checkpoints after clean and exhausted physical binding phases -/
 

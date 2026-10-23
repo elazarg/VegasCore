@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.ReactiveServiceCompletion
+import Vegas.Pending.ReactiveServiceProgress
+import Vegas.Pending.CompletionService
 import Vegas.Pending.ReactiveStateInvariant
 import Vegas.Pending.EventActivationOrigin
 
@@ -119,56 +120,6 @@ theorem reactive_dispatch_activationOrigin (runtime : EventGraphRuntime graph)
     (runtime.reactive_resume_progress leaks inputs players _ middle next
       progress.invariant response).completed
 
-theorem runInteractionPlan_activationOrigin (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (inputs : graph.Inputs)
-    (players : Player → (runtime.reactiveApplication leaks).Policy)
-    (network : runtime.NetworkPolicy leaks)
-    (plan : List (ServiceInstruction graph))
-    (execution next : (runtime.reactiveApplication leaks).Execution)
-    (invariant : execution.application.Invariant inputs)
-    (supported : next ∈ (runtime.runInteractionPlan leaks players network plan
-      execution).support) : State.ActivationOrigin execution.application next.application := by
-  induction plan generalizing execution with
-  | nil =>
-      cases (PMF.mem_support_pure_iff _ _).mp supported
-      exact State.activationOrigin_of_activatedEq rfl
-  | cons instruction rest ih =>
-      obtain ⟨middle, moved, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
-      have first := runtime.interactionStep_facts leaks inputs players network instruction
-        execution middle invariant moved
-      have restProgress := runtime.runInteractionPlan_facts leaks inputs players network rest
-        middle next first.invariant reached
-      obtain ⟨command, _, dispatched⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ moved)
-      exact (runtime.reactive_dispatch_activationOrigin leaks inputs players execution middle
-        command invariant dispatched).trans (ih middle first.invariant reached)
-          (by rw [first.clock]; omega) restProgress.completed
-
-/-- Newly activated events remain at most one actual tick old, regardless of
-which predecessor omission, expiry, or accepted packet made them ready. -/
-theorem interactionEpoch_new_activation_age (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (inputs : graph.Inputs) (chosen : ServiceOrder graph) (networkTurns : Nat)
-    (players : Player → (runtime.reactiveApplication leaks).Policy)
-    (network : runtime.NetworkPolicy leaks)
-    (execution next : (runtime.reactiveApplication leaks).Execution)
-    (invariant : execution.application.Invariant inputs)
-    (supported : next ∈ (runtime.runInteractionPlan leaks players network
-      (interactionEpoch chosen networkTurns) execution).support)
-    (event : graph.EventId) (absent : execution.application.activatedAt event = none)
-    (entered : Nat) (activated : next.application.activatedAt event = some entered)
-    (unfinished : event ∉ next.application.config.cut.completed) :
-    next.application.clock - entered ≤ 1 := by
-  have origin := runtime.runInteractionPlan_activationOrigin leaks inputs players network
-    (interactionEpoch chosen networkTurns) execution next invariant supported
-  rcases origin event entered activated unfinished with retained | created
-  · rw [absent] at retained
-    cases retained
-  · have progress := runtime.runInteractionPlan_facts leaks inputs players network
-      (interactionEpoch chosen networkTurns) execution next invariant supported
-    rw [progress.clock, interactionEpoch_ticks]
-    omega
-
 omit [DecidableEq Player] in
 theorem interactionEpoch_split_owner (chosen : ServiceOrder graph) (networkTurns : Nat)
     (event : graph.EventId) (owner : Player) (actor : graph.actor? event = some owner) :
@@ -191,82 +142,5 @@ theorem interactionEpoch_split_owner (chosen : ServiceOrder graph) (networkTurns
       | cons current rest ih =>
           rw [List.flatMap_cons, serviceTicks_append, interactionVisit_ticks, ih]
     exact allZero earlier
-
-/-- The real next epoch reaches a reserved owner activation while the event
-is ready and timely, or has already completed it through another allowed call.
-The prefix includes arbitrary player responses and partial-leak reactions. -/
-theorem interactionEpoch_owner_opportunity (runtime : EventGraphRuntime graph)
-    (feasible : runtime.ServiceFeasible)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (inputs : graph.Inputs) (chosen : ServiceOrder graph) (networkTurns : Nat)
-    (players : Player → (runtime.reactiveApplication leaks).Policy)
-    (network : runtime.NetworkPolicy leaks)
-    (execution next : (runtime.reactiveApplication leaks).Execution)
-    (invariant : execution.application.Invariant inputs)
-    (event : graph.EventId) (owner : Player) (actor : graph.actor? event = some owner)
-    (ready : execution.application.config.cut.Ready event)
-    (entered : Nat) (activated : execution.application.activatedAt event = some entered)
-    (age : execution.application.clock - entered ≤ 1)
-    (supported : next ∈ (runtime.runInteractionPlan leaks players network
-      (interactionEpoch chosen networkTurns) execution).support) :
-    ∃ before after prior responded,
-      interactionEpoch chosen networkTurns = before ++ .player owner :: after ∧
-      prior ∈ (runtime.runInteractionPlan leaks players network before execution).support ∧
-      responded ∈ (runtime.interactionStep leaks players network (.player owner) prior).support ∧
-      next ∈ (runtime.runInteractionPlan leaks players network after responded).support ∧
-      (event ∈ prior.application.config.cut.completed ∨
-        (prior.application.config.cut.Ready event ∧
-          prior.application.WithinDeadline runtime event)) := by
-  obtain ⟨before, after, split, zero⟩ :=
-    interactionEpoch_split_owner chosen networkTurns event owner actor
-  rw [split] at supported
-  obtain ⟨prior, prefixMem, responded, response, suffix⟩ :=
-    runtime.runInteractionPlan_support_instruction leaks players network before after
-      (.player owner) execution next supported
-  refine ⟨before, after, prior, responded, split, prefixMem, response, suffix, ?_⟩
-  have progress := runtime.runInteractionPlan_facts leaks inputs players network before
-    execution prior invariant prefixMem
-  rcases progress.ready_or_completed event ready with done | stillReady
-  · exact Or.inl done
-  · refine Or.inr ⟨stillReady, ?_⟩
-    apply withinDeadline_of_age_le_one runtime feasible prior.application event entered
-      (progress.activated event entered activated stillReady.1)
-    rw [progress.clock, zero, Nat.add_zero]
-    exact age
-
-/-- A first completed dependency epoch is followed by a usable owner visit in
-the existing recurring service. The predecessor's behavior is unrestricted. -/
-theorem interactionEpoch_new_activation_opportunity (runtime : EventGraphRuntime graph)
-    (feasible : runtime.ServiceFeasible)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (inputs : graph.Inputs) (chosen : ServiceOrder graph) (networkTurns : Nat)
-    (players : Player → (runtime.reactiveApplication leaks).Policy)
-    (network : runtime.NetworkPolicy leaks)
-    (execution middle next : (runtime.reactiveApplication leaks).Execution)
-    (invariant : execution.application.Invariant inputs)
-    (event : graph.EventId) (owner : Player) (actor : graph.actor? event = some owner)
-    (absent : execution.application.activatedAt event = none)
-    (ready : middle.application.config.cut.Ready event)
-    (first : middle ∈ (runtime.runInteractionPlan leaks players network
-      (interactionEpoch chosen networkTurns) execution).support)
-    (second : next ∈ (runtime.runInteractionPlan leaks players network
-      (interactionEpoch chosen networkTurns) middle).support) :
-    ∃ before after prior responded,
-      interactionEpoch chosen networkTurns = before ++ .player owner :: after ∧
-      prior ∈ (runtime.runInteractionPlan leaks players network before middle).support ∧
-      responded ∈ (runtime.interactionStep leaks players network (.player owner) prior).support ∧
-      next ∈ (runtime.runInteractionPlan leaks players network after responded).support ∧
-      (event ∈ prior.application.config.cut.completed ∨
-        (prior.application.config.cut.Ready event ∧
-          prior.application.WithinDeadline runtime event)) := by
-  have progress := runtime.runInteractionPlan_facts leaks inputs players network
-    (interactionEpoch chosen networkTurns) execution middle invariant first
-  obtain ⟨entered, activated⟩ := Option.isSome_iff_exists.mp
-    ((progress.invariant.activated_iff event).2 ⟨ready, by simp only [actor, Option.isSome_some]⟩)
-  exact runtime.interactionEpoch_owner_opportunity feasible leaks inputs chosen networkTurns
-    players network middle next progress.invariant event owner actor ready entered activated
-    (runtime.interactionEpoch_new_activation_age leaks inputs chosen networkTurns
-      players network execution middle invariant first event absent entered activated ready.1)
-    second
 
 end Vegas.EventGraphRuntime

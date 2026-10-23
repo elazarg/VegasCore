@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.RecoveryArchivedSavedWord
+import Vegas.Pending.PhaseSurvivingHistory
 import Vegas.Game.RecoveryArchivedInitialization
 import Vegas.Game.RecoverySettledCommitCheckpoint
 import Vegas.Game.RecoveryChosenCommitControl

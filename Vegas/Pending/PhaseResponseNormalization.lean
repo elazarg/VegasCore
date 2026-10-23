@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.PhaseSwapMenu
+import Vegas.Pending.PhaseReactiveValueSwap
+import Vegas.Pending.OnePacketValueSwap
 import Vegas.Pending.ExclusionCountMenu
 import Vegas.Pending.PhaseLatestBindings
 

@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.PhaseBindingSuccessFunction
+import Vegas.Pending.PhasePrivateService
 import Vegas.Pending.PhaseServiceContract
 import Interaction.ReactiveServiceRounds
 
@@ -80,94 +80,5 @@ theorem CompletesPlay.resolved_runRounds
   right
   rw [completed]
   exact Finset.mem_univ _
-
-open Classical in
-/-- Completion identifies the actual terminal native success jointly with all
-original tags. No resolved-history premise or independent entry law is supplied. -/
-theorem runRounds_complete_bindingSuccess_joint {Tag Result : Type}
-    (seedLaw : PMF Seeds) (family : Seeds → (app).Scheduler)
-    (privateSuccess : PrivateBindingSuccess runtime leaks bounds plan inputs horizon seedLaw family)
-    (complete : ∀ seeds ∈ seedLaw.support,
-      CompletesPlay runtime leaks initial horizon (family seeds))
-    (law : PMF Tag) (seeds : Tag → Seeds) (execution : Tag → (app).Execution)
-    (players : Tag → Player → (app).Policy)
-    (covered : ∀ tag ∈ law.support, ∀ who past view action,
-      action ∈ (players tag who past view).support → action ∈ (menu).actions who past view)
-    (count : Nat) (supported : ∀ tag ∈ law.support, seeds tag ∈ seedLaw.support)
-    (genuine : ∀ tag ∈ law.support,
-      Nonempty (((menu).protocol initial horizon (family (seeds tag))).Trace
-        (some ⟨count, none, execution tag⟩)))
-    (owner : Player) (coordinate : PhaseSeedAddress graph) (payload : L.Ty)
-    (output : graph.outputLayout coordinate.1.event = .binding owner payload)
-    (current : ∀ tag ∈ law.support, coordinate.1.attempt = (execution tag).application.attempt)
-    (retain : Tag → (app).Execution → Result) :
-    (law.bind fun tag => ((app).runRounds (family (seeds tag)) (players tag) count
-      (execution tag)).map (fun final =>
-        (decide (BindingAccepted runtime leaks coordinate.1 owner final), retain tag final))) =
-      law.bind (fun tag => ((app).runRounds (family (seeds tag)) (players tag) count
-        (execution tag)).map (fun final =>
-          (bindingSuccess runtime leaks bounds plan inputs horizon seedLaw family owner coordinate
-            ((seeds tag).2 coordinate)
-              (bindingEmissionClocks runtime leaks coordinate.1 owner final),
-            retain tag final))) := by
-  apply runRounds_bindingSuccess_joint runtime leaks bounds plan inputs horizon seedLaw family
-    privateSuccess law seeds execution players covered 0 count supported
-      (by simpa only [Nat.zero_add] using genuine) owner coordinate payload output
-  intro tag member final reached
-  obtain ⟨trace⟩ := genuine tag member
-  exact CompletesPlay.resolved_runRounds runtime leaks bounds plan inputs horizon
-    (family (seeds tag)) (complete (seeds tag) (supported tag member)) (players tag)
-      (covered tag member) count (execution tag) final trace coordinate.1 (current tag member)
-        reached
-
-open Classical in
-/-- At an original active information history, a legal one-shot response and
-the existing continuation runner have the same local-seed success readout.
-The response and every retained tag may depend on the original posterior. -/
-theorem response_runRounds_complete_bindingSuccess_joint {Tag Result : Type}
-    (seedLaw : PMF Seeds) (family : Seeds → (app).Scheduler)
-    (privateSuccess : PrivateBindingSuccess runtime leaks bounds plan inputs horizon seedLaw family)
-    (complete : ∀ seeds ∈ seedLaw.support,
-      CompletesPlay runtime leaks initial horizon (family seeds))
-    (law : PMF Tag) (seeds : Tag → Seeds) (execution : Tag → (app).Execution)
-    (players : Tag → Player → (app).Policy)
-    (covered : ∀ tag ∈ law.support, ∀ who past view action,
-      action ∈ (players tag who past view).support → action ∈ (menu).actions who past view)
-    (count : Nat) (supported : ∀ tag ∈ law.support, seeds tag ∈ seedLaw.support)
-    (owner : Player) (coordinate : PhaseSeedAddress graph) (payload : L.Ty)
-    (output : graph.outputLayout coordinate.1.event = .binding owner payload)
-    (genuine : ∀ tag ∈ law.support,
-      Nonempty (((menu).protocol initial horizon (family (seeds tag))).Trace
-        (some ⟨count, some owner, execution tag⟩)))
-    (current : ∀ tag ∈ law.support, coordinate.1.attempt = (execution tag).application.attempt)
-    (response : Tag → (app).Action)
-    (available : ∀ tag ∈ law.support, response tag ∈ (menu).actions owner
-      ((execution tag).recall owner) ((execution tag).observe (app) owner))
-    (retain : Tag → (app).Execution → Result) :
-    (law.bind fun tag => ((app).runRounds (family (seeds tag)) (players tag) count
-      ((execution tag).respond (app) owner (response tag))).map (fun final =>
-        (decide (BindingAccepted runtime leaks coordinate.1 owner final), retain tag final))) =
-      law.bind (fun tag => ((app).runRounds (family (seeds tag)) (players tag) count
-        ((execution tag).respond (app) owner (response tag))).map (fun final =>
-          (bindingSuccess runtime leaks bounds plan inputs horizon seedLaw family owner coordinate
-            ((seeds tag).2 coordinate)
-              (bindingEmissionClocks runtime leaks coordinate.1 owner final),
-            retain tag final))) := by
-  have responded : ∀ tag ∈ law.support,
-      Nonempty (((menu).protocol initial horizon (family (seeds tag))).Trace
-        (some ⟨count, none, (execution tag).respond (app) owner (response tag)⟩)) := by
-    intro tag member
-    obtain ⟨trace⟩ := genuine tag member
-    exact (menu).trace_respond initial horizon (family (seeds tag)) count (execution tag)
-      owner (response tag) trace (available tag member)
-  have sameAttempt : ∀ tag ∈ law.support, coordinate.1.attempt =
-      ((execution tag).respond (app) owner (response tag)).application.attempt := by
-    intro tag member
-    rw [current tag member]
-    rcases response tag with ⟨_ | material⟩ <;> rfl
-  exact runRounds_complete_bindingSuccess_joint runtime leaks bounds plan inputs horizon
-    seedLaw family privateSuccess complete law seeds
-      (fun tag => (execution tag).respond (app) owner (response tag)) players covered count
-        supported responded owner coordinate payload output sameAttempt retain
 
 end Vegas.EventGraphRuntime.PhaseService

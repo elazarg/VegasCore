@@ -3,7 +3,6 @@
 import Vegas.Pending.PhaseAttemptControls
 import Vegas.Pending.PhaseExclusionRecord
 import Vegas.Pending.EventValueSwap
-import Vegas.Pending.PhaseRetryCompletion
 import Interaction.ReactiveRecall
 import GameTheoryExtensions.Analysis.Protocol.StoppedHistoryAtom
 

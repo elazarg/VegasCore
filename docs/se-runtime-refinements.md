@@ -171,7 +171,7 @@ See [ServiceRoster](../Vegas/Game/ServiceRoster.lean),
 [SourceServiceSpec](../Vegas/Game/SourceServiceSpec.lean) and
 [SourceServiceCompilation](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceCompilation.lean).
 The finite-support proof for any reserved plan is in
-[ReactiveServiceFiniteness](../Vegas/Pending/ReactiveServiceFiniteness.lean).
+[ReactiveServiceFiniteness](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Pending/ReactiveServiceFiniteness.lean).
 
 There is also a checked all-history fact: every activation of a ready event's
 owner lies inside its protected inclusion window. It applies to raw legal

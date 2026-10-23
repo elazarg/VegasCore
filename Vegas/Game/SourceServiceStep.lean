@@ -189,42 +189,6 @@ theorem serviceDecision_effectiveDisclosure (runtime : EventGraphRuntime graph)
             reactiveResolutionPacket, cast_cast, cast_eq, ↓reduceIte,
             Bool.false_eq_true, resolved, Option.map_none]
 
-/-- A real mixed binding response followed by reserved inclusion preserves the
-whole binding distribution. Receipt success is independent of its hidden value.
-The statement permits failure for raw deviations; source admission separately
-restricts source bindings to the allowed domain. -/
-theorem source_binding_service (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (execution : (runtime.reactiveApplication leaks).Execution) (owner : Player)
-    (event : graph.EventId) (payload : L.Ty)
-    (outputEq : graph.outputLayout event = .binding owner payload)
-    (codeEq : cast (congrArg (EventGraph.EventCode graph.layout) outputEq)
-      (graph.nodes event) = .bind owner payload)
-    (node : nodeView graph event = .bind owner payload outputEq codeEq)
-    (choices : PMF (PublicationResult (L.Val payload))) (serial : Nat)
-    (ready : execution.application.config.cut.Ready event)
-    (timely : execution.application.WithinDeadline runtime event)
-    (fresh : execution.application.candidates.lookup (owner, .prepared serial) = .fresh)
-    (vacant : execution.application.accepted (.inr event) = none)
-    (unused : execution.application.HandleUnused (owner, .prepared serial))
-    (serials : execution.network.SerialsBeforeNext)
-    (players : Player → (runtime.reactiveApplication leaks).Policy)
-    (network : runtime.NetworkPolicy leaks) :
-    ((choices.map (runtime.reactiveBinding leaks owner event payload · serial)).bind
-      (fun response => runtime.interactionStep leaks players network (.includeLatest event owner)
-        (execution.respond (runtime.reactiveApplication leaks) owner response))).map
-          (fun next => (next.application.config, next.receipts)) =
-      choices.map fun choice =>
-        (execution.application.config.complete event ready
-          (cast (congrArg EventGraph.EventField.Action outputEq.symm) choice)
-          (cast (congrArg EventGraph.EventField.Value outputEq.symm) choice),
-          execution.receipts ++ [((owner, execution.network.nextSerial owner), true)]) := by
-  rw [PMF.bind_map, PMF.map_bind, ← PMF.bind_pure_comp, Function.comp_def]
-  apply bind_congr_on_support _
-  intro choice _
-  exact runtime.reactiveBinding_reserved_config leaks execution owner event payload outputEq
-    codeEq node choice serial ready timely fresh vacant unused serials players network
-
 /-- At a fresh binding checkpoint, the physical compiler response is already
 normal. The successful-evidence normalizer does not alter the selected value. -/
 theorem serviceDecision_binding_fresh (runtime : EventGraphRuntime graph)

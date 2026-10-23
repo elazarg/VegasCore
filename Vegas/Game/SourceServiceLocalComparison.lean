@@ -1,31 +1,21 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.SourceServiceSpec
-import Vegas.Game.SourceServiceTimedReachability
-import Vegas.Game.SourceServiceTimedMixing
-import Vegas.Game.SourceServiceDecisionSupport
-import Vegas.Game.ServiceRosterLocalEvaluation
-import Interaction.ReactiveHorizonContinuation
+import Vegas.Game.SourceServiceTimedContinuation
+import Interaction.ReactiveStopping
+import GameTheory.Analysis.Protocol.CounterfactualDecomposition
+import GameTheory.Math.Probability.ConditionalObservation
+import GameTheory.Math.Probability.ExpectationConditioning
+import GameTheory.Protocol.TremblingPlans
 
-/-! # Local continuation comparisons in the full-source service
+/-! # Decision phases and timed approximants in the full-source service
 
-A native information site of a fully mixed timed approximant reaches the
-original source game through four generic steps. The first two are proved
-here; the last two follow the completion-stopped phase law:
-
-* every actual decision has a `DecisionPhase`: its event, roster slot and the
-  instructions left in that event's phase;
-* a local lottery at the site runs as the lottery over current responses;
-* a current response determines the complete typed source terminal law through
-  the configuration law at the next event boundary
-  (`Vegas.TimedApproximant.response_continuation_law`);
-* equal next-boundary configuration laws for all legal responses at every
-  history of a site
-  give equal prescribed and alternative assessment laws
-  (`Vegas.TimedApproximant.comparison_eq_of_phase_invariant`).
-
-The remaining fact is specific to each kind of site: the configuration law at
-the next event boundary after each legal response.
+Every actual decision has a `DecisionPhase`: its event, roster slot and the
+instructions left in that event's phase. A fully mixed timed approximant is a
+source profile compiled with a common timing law, its admissibility, and a
+fully mixed native assessment whose strategy is that compilation
+(`Vegas.TimedApproximant`); its readout after one current response is the
+complete typed source terminal law (`Vegas.TimedApproximant.responseReadout`).
 -/
 
 noncomputable section
@@ -119,20 +109,6 @@ namespace SourceServiceSpec
 
 variable (service : SourceServiceSpec Player L)
 
-/-- Every actual decision in the retained service has a decision phase. -/
-theorem exists_decisionPhase (who : Player) (remaining : Nat)
-    (execution : (application service.setup service.leaks).Execution)
-    (trace : (service.menu.protocol (initialLaw service.setup) service.planLength
-      service.scheduler).Trace (some ⟨remaining, some who, execution⟩)) :
-    Nonempty (DecisionPhase service.setup service.leaks service.rosters who execution) := by
-  obtain ⟨event, slot, _, selected, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
-      sole, _, _, _, _, _, _, position, _⟩ :=
-    sourceService_decision_boundary service.setup service.leaks service.bounds service.values
-      service.capacity service.rosters service.opportunities.binding service.network
-      (failureProfile service.setup.program) who ⟨remaining, some who, execution⟩ trace rfl
-  exact ⟨⟨event, slot, selected, position,
-    (execution.application.publicView_eventReady event).mp sole.1⟩⟩
-
 /-- The native information of the acting player at an actual decision is its
 recall and current view. -/
 theorem infoOf_decision {who : Player} {remaining : Nat}
@@ -194,72 +170,6 @@ namespace TimedApproximant
 
 variable {service : SourceServiceSpec Player L}
 
-/-- The actual native Bayes assessment of a fully supported source strategy
-compiled with a full-support timing law. The sequential-equilibrium theorem
-takes these assessments along one fully supported Bayes sequence of the source
-equilibrium
-(`Vegas.sourceService_consistent_supported_sequence`). -/
-def ofSource (service : SourceServiceSpec Player L)
-    (timing : TimingLaw service.setup service.rosters)
-    (timingFull : ∀ event who owned, FullSupport (timing event who owned))
-    (source : Profile service.sourceModel.behavioralSignature)
-    (full : ∀ who info, FullSupport (source who info)) : TimedApproximant service :=
-  let admission := CommitmentInterface.values service.setup.program
-  let original := service.setup.decodeBehavioralProfile admission source
-  let normalized := normalizeDisclosureProfile service.setup.program []
-    (Revelations.initial service.setup.context) original
-  have permitted (who : Player) : (original who).Admitted service.setup.program admission :=
-    ((service.setup.behavioralPolicyEquiv admission who).symm (source who)).2
-  let native := InformationModel.BehavioralAssessment.ofStrategy
-    (sourceServiceTimedProfile service.setup service.leaks service.bounds service.rosters
-      service.network timing original)
-  have nativeMixed : native.IsFullyMixed :=
-    sourceServiceTimedProfile_fullyMixed service.setup service.leaks service.bounds
-      service.values service.initialValues service.capacity service.rosters
-      service.opportunities.binding service.network timing timingFull source full
-  { timing := timing
-    timingFull := timingFull
-    profile := normalized
-    admitted := normalized_sourceService_admitted service.setup original permitted
-    covered := sourceServiceTimedPolicy_admissible service.setup service.leaks service.bounds
-      service.values service.initialValues service.capacity service.rosters
-      service.opportunities.binding service.network timing timingFull normalized
-      (normalized_sourceService_admitted service.setup original permitted)
-    effective := fun who => (original who).normalizeDisclosureFrom_effective
-      service.setup.program [] (Revelations.initial service.setup.context)
-        (fun view => PMF.pure view.2)
-    supports := sourceService_normalized_support service.setup source full
-    assessment := InformationModel.bayesAssessment _ native.strategy nativeMixed
-        (service.menu.decisionInformationAntichain (initialLaw service.setup) service.planLength
-        service.scheduler)
-    strategy := rfl
-    mixed := nativeMixed }
-
-theorem ofSource_strategy (service : SourceServiceSpec Player L)
-    (timing : TimingLaw service.setup service.rosters)
-    (timingFull : ∀ event who owned, FullSupport (timing event who owned))
-    (source : Profile service.sourceModel.behavioralSignature)
-    (full : ∀ who info, FullSupport (source who info)) :
-    (ofSource service timing timingFull source full).assessment.strategy =
-      sourceServiceTimedProfile service.setup service.leaks service.bounds service.rosters
-        service.network timing (service.setup.decodeBehavioralProfile
-          (CommitmentInterface.values service.setup.program) source) :=
-  rfl
-
-theorem ofSource_bayes (service : SourceServiceSpec Player L)
-    (timing : TimingLaw service.setup service.rosters)
-    (timingFull : ∀ event who owned, FullSupport (timing event who owned))
-    (source : Profile service.sourceModel.behavioralSignature)
-    (full : ∀ who info, FullSupport (source who info)) :
-    InformationModel.BehavioralAssessment.IsBayesConsistent service.model
-      (ofSource service timing timingFull source full).assessment
-      (service.menu.decisionInformationAntichain (initialLaw service.setup) service.planLength
-        service.scheduler) :=
-  InformationModel.bayesAssessment_isBayesConsistent _ _
-      (sourceServiceTimedProfile_fullyMixed service.setup service.leaks service.bounds
-      service.values service.initialValues service.capacity service.rosters
-      service.opportunities.binding service.network timing timingFull source full) _
-
 end TimedApproximant
 
 namespace TimedApproximant
@@ -270,23 +180,6 @@ variable {service : SourceServiceSpec Player L} (approx : TimedApproximant servi
 abbrev players : Player → (application service.setup service.leaks).Policy :=
   sourceServiceTimedPolicy service.setup service.leaks service.rosters approx.timing
     approx.profile
-
-/-- The actual execution of the current phase after one current response. -/
-def phaseLaw {who : Player} {execution : (application service.setup service.leaks).Execution}
-    (phase : DecisionPhase service.setup service.leaks service.rosters who execution)
-    (response : (application service.setup service.leaks).Action) :
-    PMF (application service.setup service.leaks).Execution :=
-  (runtime service.setup).runInteractionPlan service.leaks approx.players service.network
-    phase.tail (execution.respond (application service.setup service.leaks) who response)
-
-/-- The configuration law at the next event boundary after one current
-response. Only this configuration determines the later source continuation. -/
-def phaseConfigLaw {who : Player}
-    {execution : (application service.setup service.leaks).Execution}
-    (phase : DecisionPhase service.setup service.leaks service.rosters who execution)
-    (response : (application service.setup service.leaks).Action) :
-    PMF (graph service.setup).Config :=
-  (approx.phaseLaw phase response).map (fun final => final.application.config)
 
 /-- The complete typed source terminal law after one current response: the
 prescribed players and the service's scheduler run to the horizon. -/
@@ -301,66 +194,11 @@ def responseReadout {who : Player}
       (fun final => sourceReadout service.setup service.leaks
         ((application service.setup service.leaks).finished final))
 
-/-- On the calendar, the readout after a response runs the rest of the current
-event's block and then the later blocks. -/
-theorem responseReadout_eq_plan {who : Player}
-    {execution : (application service.setup service.leaks).Execution}
-    (phase : DecisionPhase service.setup service.leaks service.rosters who execution)
-    (response : (application service.setup service.leaks).Action) :
-    approx.responseReadout phase response =
-      ((runtime service.setup).runInteractionPlan service.leaks approx.players service.network
-        (phase.tail ++ phase.later)
-        (execution.respond (application service.setup service.leaks) who response)).map
-          (fun final => sourceReadout service.setup service.leaks
-            ((application service.setup service.leaks).finished final)) := by
-  let app := application service.setup service.leaks
-  have position : (execution.respond app who response).environmentRecall.length =
-      (phase.before ++ [ServiceInstruction.player who]).length := by
-    rw [ReactiveApplication.respond_environmentRecall, List.length_append,
-      List.length_singleton]
-    exact phase.position_before
-  have count :
-      service.planLength - (execution.respond app who response).environmentRecall.length =
-        (phase.tail ++ phase.later).length := by
-    have total := congrArg List.length phase.plan_split
-    simp only [List.length_append, List.length_singleton] at total position ⊢
-    change (rosterPlan service.setup service.rosters).length - _ = _
-    omega
-  unfold responseReadout ReactiveApplication.runToHorizon
-  rw [count, roster_segment_rounds service.setup service.leaks service.rosters service.network
-    approx.players (phase.before ++ [.player who]) (phase.tail ++ phase.later) []
-    (by rw [List.append_nil]; exact phase.plan_split) _ position]
-
 /-- The source continuation from the event boundary after a phase. -/
 def boundaryContinuation (count : Nat) (config : (graph service.setup).Config) :
     PMF (Option (State L service.setup.program.terminalCtx)) :=
   (service.setup.continuationLaw approx.profile
     (sourceServicePrefix? service.setup count config)).map some
-
-open Classical in
-/-- A local lottery at an actual history runs as the same lottery over current
-responses, each followed by its complete continuation. -/
-theorem local_law_readout {who : Player} {remaining : Nat}
-    {execution : (application service.setup service.leaks).Execution}
-    (history : (service.menu.protocol (initialLaw service.setup) service.planLength
-      service.scheduler).History)
-    (current : history.state = some ⟨remaining, some who, execution⟩)
-    (phase : DecisionPhase service.setup service.leaks service.rosters who execution)
-    {info : service.model.InfoState who}
-    (observed : service.model.infoOf who history.trace = info)
-    (law : PMF (service.model.Choice who info)) :
-    (service.model.runBehavioralFrom (Profile.update (sig := service.model.behavioralSignature)
-      approx.assessment.strategy who ((approx.assessment.strategy who).withLaw info law))
-        service.fuel history).map
-        service.readout =
-      (law.map (fun choice => choice.1.getD ⟨none⟩)).bind (approx.responseReadout phase) := by
-  have physical := service.menu.run_local_law_complete (initialLaw service.setup)
-    service.planLength service.scheduler approx.players approx.covered history who remaining
-    execution current observed law
-  have mapped := congrArg (PMF.map (sourceReadout service.setup service.leaks)) physical
-  simp only [PMF.map_comp, Function.comp_def, PMF.map_bind] at mapped
-  rw [approx.strategy]
-  exact mapped
 
 end TimedApproximant
 

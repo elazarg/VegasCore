@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.OnePacketSureCompletion
+import Vegas.Game.OnePacketNextEvent
+import Vegas.Game.OnePacketLateCompletion
 import Vegas.Game.OnePacketDisclosureCompletion
 import Vegas.Game.OnePacketOwnDisclosure
 import Vegas.Game.OnePacketHonestForced
@@ -25,10 +26,7 @@ point, installing the slot-trembled prescribed component of an intended
 assessment has the completion-point law of the step of the intended effective
 opening at the decoded point, with success one up to six times the scale, and
 that step keeps the history's continuation value
-(`Vegas.firstActivation_prescribed_sureCompletion`). So the site's completion
-value of the prescribed component is one less its failure probability times
-the site's continuation value up to thirty times the scale times the payoff
-bound (`Vegas.abs_siteStopValue_prescribed_sub_le`).
+(`Vegas.firstActivation_prescribed_sureCompletion`).
 
 **Compared transmissions name the pending reveal.** At a site with a pending
 event, every compared choice that transmits sends a packet naming that event,
@@ -46,22 +44,11 @@ one-packet menu offers naming the reveal is the canonical disclosure, which has
 the completion-point law of the source step of the disclosure with success one
 and no error; that step keeps the continuation value, since the as-if-honest
 law there plays the disclosure alone
-(`Vegas.firstActivation_disclosure_sureCompletion`). So the site's completion
-value of such a choice is exactly one less its failure probability times the
-site's continuation value (`Vegas.siteStopValue_disclosure_eq`).
+(`Vegas.firstActivation_disclosure_sureCompletion`).
 
-**Off the irregular histories.** At a forced site whose player's own
-completions along regular histories decode to intended actions, the regular
-histories of the belief are forced states at which no player owes a failure.
-So both bounds hold at a site with the belief mass of the irregular histories
-added, times four times the payoff bound
-(`Vegas.abs_siteStopValue_prescribed_sub_le_off`,
-`Vegas.abs_siteStopValue_disclosure_sub_le_off`). At a site whose player owes
-nothing, every forced history of the belief already has no player owing a
-failure (`Vegas.regular_of_forced`), so the same holds with the belief mass
-outside the forced region in place of the irregular mass
-(`Vegas.abs_siteStopValue_prescribed_sub_le_unforced`,
-`Vegas.abs_siteStopValue_disclosure_sub_le_unforced`).
+**Forced histories owe nothing.** At a site whose player owes nothing, every
+forced history of the belief has no player owing a failure
+(`Vegas.regular_of_forced`).
 -/
 
 noncomputable section
@@ -348,51 +335,6 @@ theorem firstActivation_prescribed_sureCompletion (wellFormed : setup.WellFormed
     rw [startState]
     simp only [decoded, reached, ↓reduceIte]
 
-open Classical in
-/-- **The prescribed component at a first-activation site.** Under the
-hypotheses of `Vegas.firstActivation_prescribed_sureCompletion` at every
-history of the site's belief, the site's completion value of the slot-trembled
-prescribed component of an intended assessment source is one less its failure
-probability times the site's continuation value up to thirty times the scale
-times the payoff bound. -/
-theorem abs_siteStopValue_prescribed_sub_le
-    [Finite ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
-      scheduler).History]
-    (wellFormed : setup.WellFormed) {delay bound : (graph setup).EventId → Nat}
-    (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler delay
-      bound)
-    (timely : (runtime setup).AsyncTimely delay bound)
-    (retains : RetainsCoveredCanonical setup leaks bounds horizon scheduler bound)
-    (source : setup.intendedModel.BehavioralAssessment) {scale : ℝ} (nonnegative : 0 ≤ scale)
-    (le_one : scale ≤ 1) (assessment : (onePacketN).BehavioralAssessment) {who : Player}
-    (site : (onePacketN).InformationSite who) {event : (graph setup).EventId}
-    (pending : pendingEvent setup leaks who site.1 = some event)
-    (first : ¬ LateDelivery setup leaks who site.1)
-    (forced : ∀ history ∈ (assessment.belief who site).support,
-      ForcedState setup leaks who history.1.state)
-    (regular : ∀ history ∈ (assessment.belief who site).support,
-      ∀ point, nativeDecodedState setup leaks history.1.state = some point →
-        ∀ player, ¬ ProtocolState.OwesFailure player setup.program point)
-    {payoffBound : ℝ} (readoutBounded : ∀ readout,
-      |exclusionReadoutUtility setup parameter utility excludedPayoff readout who| ≤
-        payoffBound) :
-    |siteStopValue setup leaks bounds horizon scheduler parameter utility excludedPayoff
-        assessment (setup.intendedOpeningProfile source.strategy) site
-        (slotPrescribedComponent setup leaks bounds (initialLaw setup) horizon scheduler source
-          scale nonnegative le_one who site.1) -
-      (1 - onePacketSiteFailure setup leaks bounds horizon scheduler assessment site
-          (slotPrescribedComponent setup leaks bounds (initialLaw setup) horizon scheduler source
-            scale nonnegative le_one who site.1)) *
-        siteValue setup leaks bounds horizon scheduler parameter utility excludedPayoff
-          assessment (setup.intendedOpeningProfile source.strategy) site| ≤
-      5 * (6 * scale) * payoffBound :=
-  abs_siteStopValue_sub_le_of_sureCompletion setup leaks bounds horizon scheduler parameter
-    utility excludedPayoff assessment _ site _ pending readoutBounded fun history member =>
-      firstActivation_prescribed_sureCompletion setup leaks bounds horizon scheduler parameter
-        utility excludedPayoff wellFormed contract timely retains source nonnegative le_one
-        assessment site pending first history (forced history member) (regular history member)
-        readoutBounded
-
 /-- **Sure completion of a disclosure.** Under the asynchronous contract and
 the timeliness margin, at a history of a first activation of `who` for its
 pending reveal, forced for `who` with no player owing a failure at the decoded
@@ -525,176 +467,6 @@ theorem firstActivation_disclosure_sureCompletion (wellFormed : setup.WellFormed
     rw [startState]
     simp only [decoded, reached, ↓reduceIte]
 
-open Classical in
-/-- **A disclosure at a first-activation site.** Under the hypotheses of
-`Vegas.firstActivation_disclosure_sureCompletion` at every history of the
-site's belief, the site's completion value of a choice transmitting a packet
-naming the pending reveal is one less its failure probability times the site's
-continuation value. -/
-theorem siteStopValue_disclosure_eq
-    [Finite ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
-      scheduler).History]
-    (wellFormed : setup.WellFormed) {delay bound : (graph setup).EventId → Nat}
-    (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler delay
-      bound)
-    (timely : (runtime setup).AsyncTimely delay bound)
-    (source : setup.intendedModel.BehavioralAssessment)
-    (assessment : (onePacketN).BehavioralAssessment) {who : Player}
-    (site : (onePacketN).InformationSite who) {event : (graph setup).EventId}
-    (pending : pendingEvent setup leaks who site.1 = some event)
-    (first : ¬ LateDelivery setup leaks who site.1)
-    {payload : L.Ty} {binding : EventGraph.FieldRef (graph setup).layout (.binding who payload)}
-    {checks : List (EventGraph.GuardCheck (graph setup).layout payload)}
-    {outputEq : (graph setup).outputLayout event = .publication payload}
-    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .resolve who payload binding checks}
-    (node : nodeView (graph setup) event = .resolve who payload binding checks outputEq codeEq)
-    (forced : ∀ history ∈ (assessment.belief who site).support,
-      ForcedState setup leaks who history.1.state)
-    (regular : ∀ history ∈ (assessment.belief who site).support,
-      ∀ point, nativeDecodedState setup leaks history.1.state = some point →
-        ∀ player, ¬ ProtocolState.OwesFailure player setup.program point)
-    {payoffBound : ℝ} (readoutBounded : ∀ readout,
-      |exclusionReadoutUtility setup parameter utility excludedPayoff readout who| ≤
-        payoffBound)
-    (choice : (onePacketN).Choice who site.1) {response : (application setup leaks).Action}
-    (selected : choice.1 = some response) {material : (application setup leaks).Submission}
-    (sends : response.transmission = some material)
-    (named : material.call.packet.event? (graph setup) = some event) :
-    siteStopValue setup leaks bounds horizon scheduler parameter utility excludedPayoff
-        assessment (setup.intendedOpeningProfile source.strategy) site (PMF.pure choice) =
-      (1 - onePacketSiteFailure setup leaks bounds horizon scheduler assessment site
-          (PMF.pure choice)) *
-        siteValue setup leaks bounds horizon scheduler parameter utility excludedPayoff
-          assessment (setup.intendedOpeningProfile source.strategy) site := by
-  have near := abs_siteStopValue_sub_le_of_sureCompletion setup leaks bounds horizon scheduler
-    parameter utility excludedPayoff assessment _ site _ pending readoutBounded
-    fun history member => firstActivation_disclosure_sureCompletion setup leaks bounds horizon
-      scheduler parameter utility excludedPayoff wellFormed contract timely source assessment
-      site pending first node history (forced history member) (regular history member)
-      readoutBounded choice selected sends named
-  rw [mul_zero, zero_mul] at near
-  exact sub_eq_zero.mp (abs_nonpos_iff.mp near)
-
-open Classical in
-/-- **The prescribed component at a forced first-activation site, off the
-irregular histories.** At a forced, non-late site of `who` with a pending
-event, where `who`'s own completions along regular histories decode to intended
-actions, the site's completion value of the slot-trembled prescribed component
-of an intended assessment source is one less its failure probability times the
-site's continuation value up to thirty times the scale times the payoff bound,
-plus four times the bound times the belief mass of the histories irregular for
-source. -/
-theorem abs_siteStopValue_prescribed_sub_le_off
-    [Finite ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
-      scheduler).History]
-    (wellFormed : setup.WellFormed) {delay bound : (graph setup).EventId → Nat}
-    (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler delay
-      bound)
-    (timely : (runtime setup).AsyncTimely delay bound)
-    (retains : RetainsCoveredCanonical setup leaks bounds horizon scheduler bound)
-    (source : setup.intendedModel.BehavioralAssessment) {scale : ℝ} (nonnegative : 0 ≤ scale)
-    (le_one : scale ≤ 1) (assessment : (onePacketN).BehavioralAssessment) {who : Player}
-    (site : (onePacketN).InformationSite who) {past : List (application setup leaks).PlayerEntry}
-    {view : (application setup leaks).PlayerView} (atSite : site.1 = some (past, view))
-    (forcedSite : forcedAgent (bounds.onePacketMenu (runtime setup) leaks) (initialLaw setup)
-      horizon scheduler who site.1)
-    {event : (graph setup).EventId} (pending : pendingEvent setup leaks who site.1 = some event)
-    (first : ¬ LateDelivery setup leaks who site.1)
-    (ownIntended : ∀ history : (onePacketN).InformationHistory who site.1,
-      RegularTrace setup leaks bounds horizon scheduler source who history.1.trace →
-      OwnCompletionsIntended (bounds := bounds) (horizon := horizon) (scheduler := scheduler) who
-        history.1.trace)
-    {payoffBound : ℝ} (readoutBounded : ∀ readout,
-      |exclusionReadoutUtility setup parameter utility excludedPayoff readout who| ≤
-        payoffBound) (excludedBounded : |excludedPayoff who| ≤ payoffBound) :
-    |siteStopValue setup leaks bounds horizon scheduler parameter utility excludedPayoff
-        assessment (setup.intendedOpeningProfile source.strategy) site
-        (slotPrescribedComponent setup leaks bounds (initialLaw setup) horizon scheduler source
-          scale nonnegative le_one who site.1) -
-      (1 - onePacketSiteFailure setup leaks bounds horizon scheduler assessment site
-          (slotPrescribedComponent setup leaks bounds (initialLaw setup) horizon scheduler source
-            scale nonnegative le_one who site.1)) *
-        siteValue setup leaks bounds horizon scheduler parameter utility excludedPayoff
-          assessment (setup.intendedOpeningProfile source.strategy) site| ≤
-      5 * (6 * scale) * payoffBound +
-        4 * payoffBound * expect (assessment.belief who site) (fun history =>
-          if RegularTrace setup leaks bounds horizon scheduler source who history.1.trace
-          then (0 : ℝ) else 1) :=
-  abs_siteStopValue_sub_le_of_sureCompletion_off setup leaks bounds horizon scheduler parameter
-    utility excludedPayoff assessment _ site _ pending _ (by positivity) readoutBounded
-    excludedBounded fun history _ regular =>
-      firstActivation_prescribed_sureCompletion setup leaks bounds horizon scheduler parameter
-        utility excludedPayoff wellFormed contract timely retains source nonnegative le_one
-        assessment site pending first history
-        (forcedState_of_regular wellFormed source atSite forcedSite history regular
-          (ownIntended history regular))
-        (not_owesFailure_of_regular wellFormed source atSite
-          forcedSite history regular (ownIntended history regular))
-        readoutBounded
-
-open Classical in
-/-- **A disclosure at a forced first-activation site, off the irregular
-histories.** At a forced, non-late site of `who` with a pending reveal, where
-`who`'s own completions along regular histories decode to intended actions, the
-site's completion value of a choice transmitting a packet naming the reveal is
-one less its failure probability times the site's continuation value up to four
-times the payoff bound times the belief mass of the histories irregular for
-source. -/
-theorem abs_siteStopValue_disclosure_sub_le_off
-    [Finite ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
-      scheduler).History]
-    (wellFormed : setup.WellFormed) {delay bound : (graph setup).EventId → Nat}
-    (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler delay
-      bound)
-    (timely : (runtime setup).AsyncTimely delay bound)
-    (source : setup.intendedModel.BehavioralAssessment)
-    (assessment : (onePacketN).BehavioralAssessment) {who : Player}
-    (site : (onePacketN).InformationSite who) {past : List (application setup leaks).PlayerEntry}
-    {view : (application setup leaks).PlayerView} (atSite : site.1 = some (past, view))
-    (forcedSite : forcedAgent (bounds.onePacketMenu (runtime setup) leaks) (initialLaw setup)
-      horizon scheduler who site.1)
-    {event : (graph setup).EventId} (pending : pendingEvent setup leaks who site.1 = some event)
-    (first : ¬ LateDelivery setup leaks who site.1)
-    {payload : L.Ty} {binding : EventGraph.FieldRef (graph setup).layout (.binding who payload)}
-    {checks : List (EventGraph.GuardCheck (graph setup).layout payload)}
-    {outputEq : (graph setup).outputLayout event = .publication payload}
-    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .resolve who payload binding checks}
-    (node : nodeView (graph setup) event = .resolve who payload binding checks outputEq codeEq)
-    (ownIntended : ∀ history : (onePacketN).InformationHistory who site.1,
-      RegularTrace setup leaks bounds horizon scheduler source who history.1.trace →
-      OwnCompletionsIntended (bounds := bounds) (horizon := horizon) (scheduler := scheduler) who
-        history.1.trace)
-    {payoffBound : ℝ} (readoutBounded : ∀ readout,
-      |exclusionReadoutUtility setup parameter utility excludedPayoff readout who| ≤
-        payoffBound) (excludedBounded : |excludedPayoff who| ≤ payoffBound)
-    (choice : (onePacketN).Choice who site.1) {response : (application setup leaks).Action}
-    (selected : choice.1 = some response) {material : (application setup leaks).Submission}
-    (sends : response.transmission = some material)
-    (named : material.call.packet.event? (graph setup) = some event) :
-    |siteStopValue setup leaks bounds horizon scheduler parameter utility excludedPayoff
-        assessment (setup.intendedOpeningProfile source.strategy) site (PMF.pure choice) -
-      (1 - onePacketSiteFailure setup leaks bounds horizon scheduler assessment site
-          (PMF.pure choice)) *
-        siteValue setup leaks bounds horizon scheduler parameter utility excludedPayoff
-          assessment (setup.intendedOpeningProfile source.strategy) site| ≤
-      4 * payoffBound * expect (assessment.belief who site) (fun history =>
-        if RegularTrace setup leaks bounds horizon scheduler source who history.1.trace
-        then (0 : ℝ) else 1) := by
-  have near := abs_siteStopValue_sub_le_of_sureCompletion_off setup leaks bounds horizon
-    scheduler parameter utility excludedPayoff assessment _ site _ pending _ le_rfl
-    readoutBounded excludedBounded fun history _ regular =>
-      firstActivation_disclosure_sureCompletion setup leaks bounds horizon scheduler parameter
-        utility excludedPayoff wellFormed contract timely source assessment site pending first
-        node history
-        (forcedState_of_regular wellFormed source atSite forcedSite history regular
-          (ownIntended history regular))
-        (not_owesFailure_of_regular wellFormed source atSite
-          forcedSite history regular (ownIntended history regular))
-        readoutBounded choice selected sends named
-  simpa using near
-
 omit [(application setup leaks).FiniteNature (initialLaw setup) scheduler]
   [∀ who, DecidableEq ((onePacketModel setup leaks bounds (initialLaw setup) horizon
     scheduler).InfoState who)] in
@@ -722,101 +494,6 @@ theorem regular_of_forced {who : Player} {site : (onePacketN).InformationSite wh
         rw [foundDecoded, Option.some.injEq] at decoded
         subst decoded
         exact (forcedPoint.2 player same).2
-
-open Classical in
-/-- **The prescribed component at a debt-free first activation, off the unforced
-histories.** At a debt-free, non-late site of `who` with a pending event, the
-site's completion value of the slot-trembled prescribed component of an
-intended assessment source is one less its failure probability times the site's
-continuation value up to thirty times the scale times the payoff bound, plus
-four times the bound times the belief mass outside the forced region. -/
-theorem abs_siteStopValue_prescribed_sub_le_unforced
-    [Finite ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
-      scheduler).History]
-    (wellFormed : setup.WellFormed) {delay bound : (graph setup).EventId → Nat}
-    (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler delay
-      bound)
-    (timely : (runtime setup).AsyncTimely delay bound)
-    (retains : RetainsCoveredCanonical setup leaks bounds horizon scheduler bound)
-    (source : setup.intendedModel.BehavioralAssessment) {scale : ℝ} (nonnegative : 0 ≤ scale)
-    (le_one : scale ≤ 1) (assessment : (onePacketN).BehavioralAssessment) {who : Player}
-    (site : (onePacketN).InformationSite who) {event : (graph setup).EventId}
-    (pending : pendingEvent setup leaks who site.1 = some event)
-    (first : ¬ LateDelivery setup leaks who site.1)
-    (debtFree : SiteDebtFree setup leaks bounds horizon scheduler site)
-    {payoffBound : ℝ} (readoutBounded : ∀ readout,
-      |exclusionReadoutUtility setup parameter utility excludedPayoff readout who| ≤
-        payoffBound) (excludedBounded : |excludedPayoff who| ≤ payoffBound) :
-    |siteStopValue setup leaks bounds horizon scheduler parameter utility excludedPayoff
-        assessment (setup.intendedOpeningProfile source.strategy) site
-        (slotPrescribedComponent setup leaks bounds (initialLaw setup) horizon scheduler source
-          scale nonnegative le_one who site.1) -
-      (1 - onePacketSiteFailure setup leaks bounds horizon scheduler assessment site
-          (slotPrescribedComponent setup leaks bounds (initialLaw setup) horizon scheduler source
-            scale nonnegative le_one who site.1)) *
-        siteValue setup leaks bounds horizon scheduler parameter utility excludedPayoff
-          assessment (setup.intendedOpeningProfile source.strategy) site| ≤
-      5 * (6 * scale) * payoffBound +
-        4 * payoffBound * expect (assessment.belief who site) (fun history =>
-          if ForcedState setup leaks who history.1.state then (0 : ℝ) else 1) :=
-  abs_siteStopValue_sub_le_of_sureCompletion_off setup leaks bounds horizon scheduler parameter
-    utility excludedPayoff assessment _ site _ pending _ (by positivity) readoutBounded
-    excludedBounded fun history _ forced =>
-      firstActivation_prescribed_sureCompletion setup leaks bounds horizon scheduler parameter
-        utility excludedPayoff wellFormed contract timely retains source nonnegative le_one
-        assessment site pending first history forced
-        (regular_of_forced setup leaks bounds horizon scheduler debtFree history forced)
-        readoutBounded
-
-open Classical in
-/-- **A disclosure at a debt-free first activation, off the unforced
-histories.** At a debt-free, non-late site of `who` with a pending reveal, the
-site's completion value of a choice transmitting a packet naming the reveal is
-one less its failure probability times the site's continuation value up to four
-times the payoff bound times the belief mass outside the forced region. -/
-theorem abs_siteStopValue_disclosure_sub_le_unforced
-    [Finite ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
-      scheduler).History]
-    (wellFormed : setup.WellFormed) {delay bound : (graph setup).EventId → Nat}
-    (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler delay
-      bound)
-    (timely : (runtime setup).AsyncTimely delay bound)
-    (source : setup.intendedModel.BehavioralAssessment)
-    (assessment : (onePacketN).BehavioralAssessment) {who : Player}
-    (site : (onePacketN).InformationSite who) {event : (graph setup).EventId}
-    (pending : pendingEvent setup leaks who site.1 = some event)
-    (first : ¬ LateDelivery setup leaks who site.1)
-    (debtFree : SiteDebtFree setup leaks bounds horizon scheduler site)
-    {payload : L.Ty} {binding : EventGraph.FieldRef (graph setup).layout (.binding who payload)}
-    {checks : List (EventGraph.GuardCheck (graph setup).layout payload)}
-    {outputEq : (graph setup).outputLayout event = .publication payload}
-    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .resolve who payload binding checks}
-    (node : nodeView (graph setup) event = .resolve who payload binding checks outputEq codeEq)
-    {payoffBound : ℝ} (readoutBounded : ∀ readout,
-      |exclusionReadoutUtility setup parameter utility excludedPayoff readout who| ≤
-        payoffBound) (excludedBounded : |excludedPayoff who| ≤ payoffBound)
-    (choice : (onePacketN).Choice who site.1) {response : (application setup leaks).Action}
-    (selected : choice.1 = some response) {material : (application setup leaks).Submission}
-    (sends : response.transmission = some material)
-    (named : material.call.packet.event? (graph setup) = some event) :
-    |siteStopValue setup leaks bounds horizon scheduler parameter utility excludedPayoff
-        assessment (setup.intendedOpeningProfile source.strategy) site (PMF.pure choice) -
-      (1 - onePacketSiteFailure setup leaks bounds horizon scheduler assessment site
-          (PMF.pure choice)) *
-        siteValue setup leaks bounds horizon scheduler parameter utility excludedPayoff
-          assessment (setup.intendedOpeningProfile source.strategy) site| ≤
-      4 * payoffBound * expect (assessment.belief who site) (fun history =>
-        if ForcedState setup leaks who history.1.state then (0 : ℝ) else 1) := by
-  have near := abs_siteStopValue_sub_le_of_sureCompletion_off setup leaks bounds horizon
-    scheduler parameter utility excludedPayoff assessment _ site _ pending _ le_rfl
-    readoutBounded excludedBounded fun history _ forced =>
-      firstActivation_disclosure_sureCompletion setup leaks bounds horizon scheduler parameter
-        utility excludedPayoff wellFormed contract timely source assessment site pending first
-        node history forced
-        (regular_of_forced setup leaks bounds horizon scheduler debtFree history forced)
-        readoutBounded choice selected sends named
-  simpa using near
 
 end Values
 

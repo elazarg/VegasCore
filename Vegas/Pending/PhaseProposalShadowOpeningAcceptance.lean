@@ -1,7 +1,9 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.PhaseProposalShadowOpening
-import Vegas.Pending.PhaseCountedTrace
+import Vegas.Pending.PhaseCountCollection
+import Interaction.ReactiveRecordedMenuTrace
+import Interaction.ReactiveRecordedResponseAfter
 import Vegas.Pending.PhasePacketEvidence
 
 /-! # Original accepted openings construct repaired accepting handlers -/

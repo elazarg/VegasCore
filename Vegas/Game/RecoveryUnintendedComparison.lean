@@ -5,7 +5,7 @@ import Vegas.Game.RecoveryLateSourcePhase
 import Vegas.Game.RecoveryEventPhaseLaw
 import Vegas.Game.RecoveryFirstActivationValue
 import Vegas.Game.IntendedChoiceReach
-import Vegas.Game.OnePacketNonLateValueBlind
+import Vegas.Game.OnePacketLateCommitBlind
 
 /-! # Unintended nonlate commitments have exclusion value -/
 

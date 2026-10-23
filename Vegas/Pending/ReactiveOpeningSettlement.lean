@@ -1,9 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.ReactiveOpeningWindow
-import Vegas.Pending.ReactiveServiceRecall
 import Interaction.ReactiveAllocation
-import Interaction.DeferredObservation
 
 /-! # Protected inclusion after a finite opening window
 
@@ -244,45 +242,6 @@ theorem OpeningWindowFrame.response (runtime : EventGraphRuntime graph)
       visits initial current who action (app.silentPolicy_cases _ _ action supported)
         (by simp only [active, ↓reduceIte, Nat.add_zero])
 
-theorem OpeningWindowFrame.run (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (owner : Player) (event : graph.EventId) (candidate : Handle graph) (raw : Raw L)
-    (offset : Nat) {slots : Nat} (selected : Option (Fin slots)) (visits : Nat)
-    (initial current : (runtime.reactiveApplication leaks).Execution)
-    (frame : runtime.OpeningWindowFrame leaks owner event candidate raw offset selected visits
-      initial current) (network : runtime.NetworkPolicy leaks) (roster : List Player)
-    (final : (runtime.reactiveApplication leaks).Execution)
-    (reached : final ∈ (runtime.runInteractionPlan leaks
-      (runtime.openingWindowPlayers leaks owner event candidate raw offset selected) network
-        (roster.map ServiceInstruction.player) current).support)
-    (owned : candidate.1 = owner)
-    (valid : selected.isSome → initial.application.candidates.lookup candidate = .openable raw) :
-    runtime.OpeningWindowFrame leaks owner event candidate raw offset selected
-      (visits + roster.count owner) initial final := by
-  let app := runtime.reactiveApplication leaks
-  induction roster generalizing current visits with
-  | nil =>
-      cases (PMF.mem_support_pure_iff _ _).mp reached
-      simpa only [List.count_nil, Nat.add_zero] using frame
-  | cons who rest ih =>
-      simp only [List.map_cons, runInteractionPlan, interactionStep, interactionInstruction,
-        PMF.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
-        ReactiveApplication.resume, ReactiveApplication.invoke,
-        ReactiveApplication.Execution.activation_samples, PMF.bind_map,
-        PMF.bind_bind, Function.comp_def] at reached
-      obtain ⟨sample, _, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
-      obtain ⟨action, supported, reached⟩ :=
-        Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
-      have activated := frame.activate runtime leaks owner event candidate raw offset selected
-        visits initial current who sample
-      have responded := activated.response runtime leaks owner event candidate raw offset selected
-        visits initial (current.sampledActivation app who sample) who action supported owned valid
-      have continued := ih (visits + if who = owner then 1 else 0)
-        ((current.sampledActivation app who sample).respond app who action) responded reached
-      convert continued using 1
-      simp only [List.count_cons]
-      split <;> simp_all [beq_iff_eq, Nat.add_comm, Nat.add_left_comm]
-
 theorem OpeningWindowFrame.before_published (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (owner : Player) (event : graph.EventId) (candidate : Handle graph) (raw : Raw L)
@@ -409,118 +368,5 @@ theorem OpeningWindowFrame.include_published (runtime : EventGraphRuntime graph)
   rcases safe with old | rfl
   · exact Or.inl (by simpa only [frame.ledger] using old)
   · exact Or.inr (by simp)
-
-theorem OpeningWindowFrame.settle (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (owner : Player) (event : graph.EventId) (candidate : Handle graph) (raw : Raw L)
-    (offset : Nat) {slots : Nat} (selected : Option (Fin slots))
-    (initial current : (runtime.reactiveApplication leaks).Execution)
-    (frame : runtime.OpeningWindowFrame leaks owner event candidate raw offset selected slots
-      initial current) (serials : initial.network.SerialsBeforeNext)
-    (players : Player → (runtime.reactiveApplication leaks).Policy)
-    (network : runtime.NetworkPolicy leaks)
-    (final : (runtime.reactiveApplication leaks).Execution)
-    (reached : final ∈ (runtime.interactionStep leaks players network
-      (.includeLatest event owner) current).support) :
-    final.application = (if selected.isSome then
-      ((runtime.reactiveApplication leaks).handle initial.application
-        (runtime.windowEnvelope leaks owner event candidate raw initial)).getD initial.application
-      else initial.application) ∧
-    final.network.Satisfies (fun message => message.id ∈ final.network.ledger.map Message.id) := by
-  let app := runtime.reactiveApplication leaks
-  have selection := frame.selection runtime leaks owner event candidate raw offset selected
-    initial current serials
-  simp only [interactionStep, interactionInstruction, PMF.pure_bind, selection] at reached
-  cases selected with
-  | none =>
-      simp only [Option.isSome_none, Bool.false_eq_true, ↓reduceIte,
-        ReactiveApplication.dispatch, ReactiveApplication.Execution.environmentStep,
-        PMF.pure_map, PMF.pure_bind, ReactiveApplication.Command.actor?,
-        ReactiveApplication.resume] at reached
-      cases (PMF.mem_support_pure_iff _ _).mp reached
-      exact ⟨frame.application, frame.before_published runtime leaks owner event candidate raw
-        offset none slots initial current rfl⟩
-  | some slot =>
-      have opened : openingPassed (some slot) slots = true := by
-        simpa only [openingPassed, Option.any_some, decide_eq_true_eq] using slot.isLt
-      have found := frame.lookup_opened runtime leaks owner event candidate raw offset (some slot)
-        slots initial current serials opened
-      have published := frame.include_published runtime leaks owner event candidate raw offset
-        (some slot) slots initial current serials opened
-      simp only [Option.isSome_some, ↓reduceIte,
-        ReactiveApplication.dispatch, ReactiveApplication.Execution.environmentStep,
-        PMF.pure_map, PMF.pure_bind, ReactiveApplication.Command.actor?,
-        ReactiveApplication.resume] at reached
-      cases (PMF.mem_support_pure_iff _ _).mp reached
-      simp only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
-        found, frame.application, Option.isSome_some, ↓reduceIte]
-      refine ⟨True.intro, ?_⟩
-      simpa only [MessageNetwork.includePending, found] using published
-
-theorem openingWindow_settlement (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (owner : Player) (event : graph.EventId) (candidate : Handle graph) (raw : Raw L)
-    (roster : List Player) (selected : Option (Fin (roster.count owner)))
-    (initial : (runtime.reactiveApplication leaks).Execution)
-    (serials : initial.network.SerialsBeforeNext)
-    (published : initial.network.Satisfies fun message =>
-      message.id ∈ initial.network.ledger.map Message.id)
-    (owned : candidate.1 = owner)
-    (valid : selected.isSome → initial.application.candidates.lookup candidate = .openable raw)
-    (network : runtime.NetworkPolicy leaks)
-    (final : (runtime.reactiveApplication leaks).Execution)
-    (reached : final ∈ (runtime.runInteractionPlan leaks
-      (runtime.openingWindowPlayers leaks owner event candidate raw
-        (initial.recall owner).length selected) network
-      (roster.map ServiceInstruction.player ++ [.includeLatest event owner]) initial).support) :
-    final.application = (if selected.isSome then
-      ((runtime.reactiveApplication leaks).handle initial.application
-        (runtime.windowEnvelope leaks owner event candidate raw initial)).getD initial.application
-      else initial.application) ∧
-    final.network.Satisfies (fun message => message.id ∈ final.network.ledger.map Message.id) := by
-  rw [runtime.runInteractionPlan_append] at reached
-  obtain ⟨current, prior, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
-  have frame := OpeningWindowFrame.initial runtime leaks owner event candidate raw selected
-    initial serials published
-  have finished := frame.run runtime leaks owner event candidate raw (initial.recall owner).length
-    selected 0 initial initial network roster current prior owned valid
-  simp only [Nat.zero_add] at finished
-  have inclusion : final ∈ (runtime.interactionStep leaks
-      (runtime.openingWindowPlayers leaks owner event candidate raw (initial.recall owner).length
-        selected) network (.includeLatest event owner) current).support := by
-    simpa only [runInteractionPlan, PMF.bind_pure] using reached
-  exact finished.settle runtime leaks owner event candidate raw (initial.recall owner).length
-    selected initial current serials _ network final inclusion
-
-theorem openingWindowMixture_settlement (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (owner : Player) (event : graph.EventId) (candidate : Handle graph) (raw : Raw L)
-    (roster : List Player) (choices : PMF (Option (Fin (roster.count owner))))
-    (initial : (runtime.reactiveApplication leaks).Execution)
-    (serials : initial.network.SerialsBeforeNext)
-    (published : initial.network.Satisfies fun message =>
-      message.id ∈ initial.network.ledger.map Message.id)
-    (owned : candidate.1 = owner)
-    (valid : initial.application.candidates.lookup candidate = .openable raw)
-    (network : runtime.NetworkPolicy leaks) :
-    (runtime.runInteractionPlan leaks
-      (runtime.openingWindowMixturePlayers leaks owner event candidate raw
-        (initial.recall owner).length choices) network
-      (roster.map ServiceInstruction.player ++ [.includeLatest event owner]) initial).map
-        (fun final => final.application) =
-      choices.map (fun selected => if selected.isSome then
-        ((runtime.reactiveApplication leaks).handle initial.application
-          (runtime.windowEnvelope leaks owner event candidate raw initial)).getD initial.application
-        else initial.application) := by
-  rw [runtime.openingWindowMixture_law leaks owner event candidate raw
-    (initial.recall owner).length choices network _ initial (Nat.le_refl _), PMF.map_bind]
-  conv_rhs => rw [← PMF.bind_pure_comp, Function.comp_def]
-  apply bind_congr_on_support _
-  intro selected _
-  apply pmf_eq_pure_of_support_subset_singleton
-  intro result supported
-  obtain ⟨final, reached, rfl⟩ := PMF.support_map .. ▸ supported
-  exact (runtime.openingWindow_settlement leaks owner event candidate raw roster selected
-    initial serials published owned (fun _ => valid) network final reached).1
 
 end Vegas.EventGraphRuntime

@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.PhaseClockOrigin
+import Vegas.Pending.PhaseActivationOrigin
 
 /-! # Fresh retry timers at the actual physical rollback clock -/
 
