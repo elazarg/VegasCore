@@ -2,6 +2,7 @@
 
 import Vegas.Examples.LateOpeningRuntimeSource
 import Vegas.Game.IntendedPreservation
+import Vegas.Game.ExclusionExtension
 
 /-! # Preservation when the source allows withholding
 
@@ -83,6 +84,49 @@ theorem intended_equilibrium_preserved_under_withholding {reward forfeit : ℝ}
     (grossUtility reward) forfeit (grossUtility_range nonnegative coversAlice coversBob)
     setup.intended_bounded.wellFoundedHistories withholding_bounded.wellFoundedHistories
     intended equilibrium
+
+def exclusionPayoff (reward excluded : ℝ) (who : Player)
+    (history : setup.exclusionProtocol.History) : ℝ :=
+  (setup.protocolReadout history.state).elim 0 (fun terminal =>
+    exclusionUtility setup.program (fun _ => excluded) (grossUtility reward)
+      (setup.parameterOutcome parameter terminal) who)
+
+def exclusionTerminalLaw (reward excluded : ℝ)
+    (profile : ∀ who, setup.exclusionModel.BehavioralPolicy who) :=
+  (setup.exclusionModel.runBehavioralTerminalFrom
+      setup.exclusion_bounded.wellFoundedHistories profile setup.exclusionProtocol.initHistory).map
+    (fun final => (setup.protocolReadout final.state,
+      fun who => exclusionPayoff reward excluded who final))
+
+/-- Every intended assessment also extends to the source game in which a player
+whose publication fails is excluded with a fixed payoff at most zero. The
+extension keeps the intended strategies and the joint terminal law. -/
+theorem intended_equilibrium_extends_to_exclusion {reward excluded : ℝ}
+    (nonnegative : 0 ≤ reward) (low : excluded ≤ 0)
+    (intended : setup.intendedModel.BehavioralAssessment)
+    (equilibrium : intended.IsSequentialEquilibrium
+      intended_decisionRecall.decisionInformationAntichain
+      setup.intended_bounded.wellFoundedHistories (intendedPayoff reward)) :
+    ∃ target : setup.exclusionModel.BehavioralAssessment,
+      target.IsSequentialEquilibrium setup.exclusion_decisionRecall.decisionInformationAntichain
+        setup.exclusion_bounded.wellFoundedHistories (exclusionPayoff reward excluded) ∧
+      (setup.exclusionRestriction wellFormed).ExtendsProfile intended.strategy
+        target.strategy ∧
+      exclusionTerminalLaw reward excluded target.strategy =
+        intendedTerminalLaw reward intended.strategy := by
+  have below : ∀ (final : setup.intendedProtocol.History) terminal,
+      setup.protocolReadout final.state = some terminal →
+        ∀ who, excluded ≤ grossUtility reward (setup.parameterOutcome parameter terminal) who := by
+    intro _ terminal _ who
+    fin_cases who
+    · exact low.trans (alice_gross_bounds nonnegative _).1
+    · exact low.trans (bob_gross_bounds reward _).1
+  obtain ⟨target, preserved, extends_, _, law⟩ :=
+    setup.intended_sequentialEquilibrium_extends_to_exclusion finiteBindingTypes wellFormed
+      parameter (grossUtility reward) (fun _ => excluded) below
+      setup.intended_bounded.wellFoundedHistories setup.exclusion_bounded.wellFoundedHistories
+      intended equilibrium
+  exact ⟨target, preserved, extends_, law⟩
 
 /-- For the concrete source game, the stated forfeit bounds give an actual
 sequential equilibrium with no failed publications and an intended terminal law. -/

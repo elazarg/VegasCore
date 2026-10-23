@@ -353,7 +353,10 @@ Severity: H high, M medium, L low. "Step" is the step that resolves the finding.
 - [ ] **F-C3 (H, Step 5).** Ten of the 23 Paper theorems are never applied to
   a concrete program: exclusion SE, public-scheduling SE, the one-packet SE,
   turn-based SE, and six of the asynchronous Nash forms (only `Vegas.Paper.async_first_turn_nash_iff`
-  has an instance). The retired calendar theorems had none either.
+  has an instance). The retired calendar theorems had none either. The
+  late-opening examples now also apply exclusion SE
+  (`Vegas.Examples.LateOpeningRuntimeSource.intended_equilibrium_extends_to_exclusion`)
+  and the two deferring-client Nash forms; seven remain.
 - [ ] **F-C4 (H, Step 5).** The only instance of the concurrent hypotheses
   (`VegasTests/ConcurrentRawHypotheses.lean`) has no strategic content: Bob's
   payoff is identically zero and every profile gives Alice one half

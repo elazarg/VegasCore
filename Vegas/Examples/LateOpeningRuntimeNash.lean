@@ -93,6 +93,71 @@ theorem first_opportunity_nash_iff (weight : ℝ) (nonnegative : 0 ≤ weight)
     (realized_payoff_bounds rewardNonnegative forfeitNonnegative deposit depositNonnegative)
     error source
 
+/-- With clients that may defer by any turn timing, Nash equilibria correspond
+in both directions, with extra slack twice the total deferral weight times the
+payoff range, against the entire bounded native raw menu. -/
+theorem deferring_client_nash_correspondence (weight : ℝ) (nonnegative : 0 ≤ weight)
+    {reward forfeit : ℝ} (rewardNonnegative : 0 ≤ reward)
+    (forfeitNonnegative : 0 ≤ forfeit)
+    (sample : List (SettledEvidence setup .sequential) →
+      PMF (List (SettledEvidence setup .sequential)))
+    (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
+    (deposit : Player → ℝ) (depositNonnegative : ∀ who, 0 ≤ deposit who)
+    {turns : Nat} (timing : TurnTiming setup turns .sequential)
+    (admission : CommitmentInterface program)
+    (error : ℝ) (source : Profile (setup.informationModel admission).behavioralSignature) :
+    let slack := 2 * (∑ event, timing.deferral event) *
+      (forfeit + reward + 1 + deposit alice + deposit bob)
+    let clients := (service weight nonnegative).clientProfile admission rawMenu timing source
+    (IsεNash ((setup.informationModel admission).toBehavioralGameForm 4)
+        (fun history who => (setup.protocolReadout history.state).elim 0
+          (fun terminal => sourceUtility reward forfeit terminal who)) error source →
+      IsεNash ((model weight nonnegative).toBehavioralGameForm 53)
+        (fun history who => payoff reward forfeit sample deposit history.state who)
+        (error + slack) clients) ∧
+    (IsεNash ((model weight nonnegative).toBehavioralGameForm 53)
+        (fun history who => payoff reward forfeit sample deposit history.state who) error
+        clients →
+      IsεNash ((setup.informationModel admission).toBehavioralGameForm 4)
+        (fun history who => (setup.protocolReadout history.state).elim 0
+          (fun terminal => sourceUtility reward forfeit terminal who)) (error + slack)
+        source) :=
+  (service weight nonnegative).isεNash_rawClientProfile_approximate admission
+    setup.eventGraph.sequentialize_barrierOrdered parameter
+    (forfeitUtility program forfeit (grossUtility reward)) sample authentic deposit
+    depositNonnegative timing (fun who => -forfeit - deposit who)
+    (forfeit + reward + 1 + deposit alice + deposit bob)
+    (realized_payoff_bounds rewardNonnegative forfeitNonnegative deposit depositNonnegative)
+    error source
+
+/-- The source direction holds on every response menu that admits the clients;
+the bounded native raw menu is one. -/
+theorem deferring_client_nash_reflection (weight : ℝ) (nonnegative : 0 ≤ weight)
+    {reward forfeit : ℝ} (rewardNonnegative : 0 ≤ reward)
+    (forfeitNonnegative : 0 ≤ forfeit)
+    (sample : List (SettledEvidence setup .sequential) →
+      PMF (List (SettledEvidence setup .sequential)))
+    (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
+    (deposit : Player → ℝ) (depositNonnegative : ∀ who, 0 ≤ deposit who)
+    {turns : Nat} (timing : TurnTiming setup turns .sequential)
+    (admission : CommitmentInterface program)
+    (error : ℝ) (source : Profile (setup.informationModel admission).behavioralSignature) :
+    IsεNash ((model weight nonnegative).toBehavioralGameForm 53)
+        (fun history who => payoff reward forfeit sample deposit history.state who) error
+        ((service weight nonnegative).clientProfile admission rawMenu timing source) →
+      IsεNash ((setup.informationModel admission).toBehavioralGameForm 4)
+        (fun history who => (setup.protocolReadout history.state).elim 0
+          (fun terminal => sourceUtility reward forfeit terminal who))
+        (error + 2 * (∑ event, timing.deferral event) *
+          (forfeit + reward + 1 + deposit alice + deposit bob)) source :=
+  (service weight nonnegative).isεNash_of_clientProfile admission
+    setup.eventGraph.sequentialize_barrierOrdered parameter
+    (forfeitUtility program forfeit (grossUtility reward)) sample authentic deposit rawMenu timing
+    (fun profile => (service weight nonnegative).rawMenu_admits admission timing profile)
+    (fun who => -forfeit - deposit who) (forfeit + reward + 1 + deposit alice + deposit bob)
+    (realized_payoff_bounds rewardNonnegative forfeitNonnegative deposit depositNonnegative)
+    error source
+
 /-- The concrete clients preserve the complete typed store and the vector
 of realized net payoffs for every source profile and authentic sampler. -/
 theorem first_opportunity_settlement_law (weight : ℝ) (nonnegative : 0 ≤ weight)

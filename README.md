@@ -140,10 +140,15 @@ resolve.
   show why several of them are needed.
 - `settle_late_not_preserved_for_every_margin` does not state that its late game
   has a sequential equilibrium; the other non-preservation theorems do.
-- Some theorems have no concrete program as an instance. Among the Nash forms
-  only `async_first_turn_nash_iff` has one. The concurrent theorem's hypotheses
-  are discharged for a program without strategic content
-  ([test](VegasTests/ConcurrentRawHypotheses.lean)).
+- Seven theorems have no concrete program as an instance: `intended_nash`,
+  `public_scheduling_sequential_equilibrium`, the three intended asynchronous
+  Nash forms, and the one-packet and turn-based SE theorems. The concurrent
+  theorem's hypotheses are discharged only for a program without strategic
+  content ([test](VegasTests/ConcurrentRawHypotheses.lean)). A two-player
+  late-opening program instantiates the intended-to-source and exclusion
+  extensions ([source](Vegas/Examples/LateOpeningRuntimeSourcePreservation.lean))
+  and three Nash forms on a concrete builder
+  ([runtime](Vegas/Examples/LateOpeningRuntimeNash.lean)).
 - Cryptographic commitments, signatures and the EVM are ideal interfaces here;
   realizing them needs separate refinement proofs.
 
