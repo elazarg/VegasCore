@@ -361,12 +361,16 @@ Severity: H high, M medium, L low. "Step" is the step that resolves the finding.
 - [ ] **F-C5 (M, Step 5).** `settle_late_not_preserved_for_every_margin`
   quantifies over the SEs of a game with no proof that it has one; the
   `late_leak_*` and `CommitSeedSignalling` obstructions omit existence from
-  their statements although it is proved nearby.
+  their statements although it is proved nearby. The `late_leak_*` Paper
+  theorems now state that the late game has a sequential equilibrium
+  (`Vegas.lateLeak_exists_sequentialEquilibrium`); the settle-late game still
+  lacks a decision-recall proof.
 - [ ] **F-C6 (L, Step 5).** The concurrent joint law reads the initial inputs
   from the terminal store rather than from the native initial draw.
-- [ ] **F-C7 (L, Step 2).** `one_packet_raw_sequential_equilibrium` uses
+- [x] **F-C7 (L, Step 2).** `one_packet_raw_sequential_equilibrium` uses
   `IsSequentialEquilibriumFor` with a truncated context instead of
-  `IsSequentialEquilibrium`.
+  `IsSequentialEquilibrium`. It and `recovery_intended_raw_sequential_equilibrium`
+  now state `IsSequentialEquilibrium`, through the raw protocol's horizon bound.
 
 ### Trust base
 

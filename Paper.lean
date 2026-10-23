@@ -654,6 +654,9 @@ theorem late_leak_intended_outcome_not_preserved :
       A.IsSequentialEquilibrium (lateLeak_antichain .sample false)
           (lateLeak_terminates .sample false) (lateLeakPayoff .sample false) →
         lateLeakOutcomeLaw .sample false A.strategy = lateLeakIntendedOutcome) ∧
+    (∃ A : (lateLeakModel .sample true).BehavioralAssessment,
+      A.IsSequentialEquilibrium (lateLeak_antichain .sample true)
+        (lateLeak_terminates .sample true) (lateLeakPayoff .sample true)) ∧
     ∀ A : (lateLeakModel .sample true).BehavioralAssessment,
       A.IsSequentialEquilibrium (lateLeak_antichain .sample true)
           (lateLeak_terminates .sample true) (lateLeakPayoff .sample true) →
@@ -674,6 +677,9 @@ theorem late_leak_not_preserved_when_deferral_pays (G : LateLeakParameters)
       A.IsSequentialEquilibrium (lateLeak_antichain G false) (lateLeak_terminates G false)
           (lateLeakPayoff G false) →
         lateLeakOutcomeLaw G false A.strategy = lateLeakIntendedOutcome) ∧
+    (∃ A : (lateLeakModel G true).BehavioralAssessment,
+      A.IsSequentialEquilibrium (lateLeak_antichain G true) (lateLeak_terminates G true)
+        (lateLeakPayoff G true)) ∧
     ∀ A : (lateLeakModel G true).BehavioralAssessment,
       A.IsSequentialEquilibrium (lateLeak_antichain G true) (lateLeak_terminates G true)
           (lateLeakPayoff G true) →
@@ -696,6 +702,9 @@ theorem late_leak_not_preserved_for_every_margin (R D c : ℝ) (reward_pos : 0 <
         A.IsSequentialEquilibrium (lateLeak_antichain ⟨R, D, c, q⟩ false)
             (lateLeak_terminates ⟨R, D, c, q⟩ false) (lateLeakPayoff ⟨R, D, c, q⟩ false) →
           lateLeakOutcomeLaw ⟨R, D, c, q⟩ false A.strategy = lateLeakIntendedOutcome) ∧
+      (∃ A : (lateLeakModel ⟨R, D, c, q⟩ true).BehavioralAssessment,
+        A.IsSequentialEquilibrium (lateLeak_antichain ⟨R, D, c, q⟩ true)
+          (lateLeak_terminates ⟨R, D, c, q⟩ true) (lateLeakPayoff ⟨R, D, c, q⟩ true)) ∧
       ∀ A : (lateLeakModel ⟨R, D, c, q⟩ true).BehavioralAssessment,
         A.IsSequentialEquilibrium (lateLeak_antichain ⟨R, D, c, q⟩ true)
             (lateLeak_terminates ⟨R, D, c, q⟩ true) (lateLeakPayoff ⟨R, D, c, q⟩ true) →
@@ -823,10 +832,10 @@ theorem one_packet_raw_sequential_equilibrium [Fintype Player] [IExpr.ResultType
       deposit
     ∃ target : ((bounds.rawMenu runtime leaks).information initial horizon
         scheduler).BehavioralAssessment,
-      target.IsSequentialEquilibriumFor
+      target.IsSequentialEquilibrium
         ((bounds.rawMenu runtime leaks).decisionInformationAntichain initial horizon scheduler)
-        (fun who site => target.truncatedContinuationContext site
-          (fun history => payoff history.state who) (2 * horizon + 1)) ∧
+        ((bounds.rawMenu runtime leaks).bounded initial horizon scheduler).wellFoundedHistories
+        (fun who final => payoff final.state who) ∧
       (∀ final ∈ (((bounds.rawMenu runtime leaks).information initial horizon
           scheduler).runBehavioral target.strategy (2 * horizon + 1)).support,
         ∀ who, TerminalAudit.charge (runtime.reactiveApplication leaks).stateTraffic
@@ -843,10 +852,14 @@ theorem one_packet_raw_sequential_equilibrium [Fintype Player] [IExpr.ResultType
             ((runtime.reactiveNormalization leaks).state final.state, payoffs)) =
         (((bounds.onePacketMenu runtime leaks).information initial horizon
           scheduler).runBehavioral source.strategy (2 * horizon + 1)).map
-          (fun final => (final.state, utility final.state)) :=
-  bounds.onePacket_raw_sequentialEquilibrium runtime leaks initial horizon scheduler service
-    observationRate deliveryRate delivery_nonnegative coverage utility normalized lower upper
-    deposit lower_le le_upper deposit_nonnegative sufficient source equilibrium
+          (fun final => (final.state, utility final.state)) := by
+  intro payoff settle
+  obtain ⟨target, truncated, clean⟩ := bounds.onePacket_raw_sequentialEquilibrium runtime leaks
+    initial horizon scheduler service observationRate deliveryRate delivery_nonnegative coverage
+    utility normalized lower upper deposit lower_le le_upper deposit_nonnegative sufficient source
+    equilibrium
+  exact ⟨target, (target.isSequentialEquilibrium_iff_truncated_of_bounded _ _ _
+    ((bounds.rawMenu runtime leaks).bounded initial horizon scheduler) _).mpr truncated, clean⟩
 
 /-- info: 'Vegas.Paper.one_packet_raw_sequential_equilibrium' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
@@ -910,10 +923,10 @@ theorem recovery_intended_raw_sequential_equilibrium [Fintype Player] [IExpr.Res
     let payoff := TerminalAudit.utility base observe audit deposit
     let settle := TerminalAudit.settlement base observe audit deposit
     ∃ target : (raw.information initial horizon scheduler).BehavioralAssessment,
-      target.IsSequentialEquilibriumFor
+      target.IsSequentialEquilibrium
         (raw.decisionInformationAntichain initial horizon scheduler)
-        (fun who site => target.truncatedContinuationContext site
-          (fun history => payoff history.state who) (2 * horizon + 1)) ∧
+        (raw.bounded initial horizon scheduler).wellFoundedHistories
+        (fun who final => payoff final.state who) ∧
       (∀ final ∈ ((raw.information initial horizon scheduler).runBehavioral
           target.strategy (2 * horizon + 1)).support,
         ∀ who, TerminalAudit.charge observe audit final.state who = 0) ∧
@@ -924,12 +937,16 @@ theorem recovery_intended_raw_sequential_equilibrium [Fintype Player] [IExpr.Res
               final.state), payoffs)) =
         (setup.intendedModel.runBehavioral intended.strategy
           (instructionCount setup.program + 1)).map
-          (intendedReadoutExclusion setup parameter utility excludedPayoff) :=
-  Vegas.recovery_intended_raw_sequentialEquilibrium_preserved parameter utility excludedPayoff
-    wellFormed independent opportunity inclusion completes timely lowerUtility upperUtility
-    lower_le le_upper below intended equilibrium covers coversInputs capacity service
-    observationRate deliveryRate delivery_nonnegative coverage deposit deposit_nonnegative
-    sufficient
+          (intendedReadoutExclusion setup parameter utility excludedPayoff) := by
+  intro initial raw observe audit base payoff settle
+  obtain ⟨target, truncated, clean⟩ :=
+    Vegas.recovery_intended_raw_sequentialEquilibrium_preserved parameter utility excludedPayoff
+      wellFormed independent opportunity inclusion completes timely lowerUtility upperUtility
+      lower_le le_upper below intended equilibrium covers coversInputs capacity service
+      observationRate deliveryRate delivery_nonnegative coverage deposit deposit_nonnegative
+      sufficient
+  exact ⟨target, (target.isSequentialEquilibrium_iff_truncated_of_bounded _ _ _
+    (raw.bounded initial horizon scheduler) _).mpr truncated, clean⟩
 
 /-- info: 'Vegas.Paper.recovery_intended_raw_sequential_equilibrium' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/

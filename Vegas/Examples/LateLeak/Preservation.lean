@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Examples.LateLeak.Intended
+import Vegas.Examples.LateLeak.PenaltyPreservation
 
 /-! # Late sends with leaked openings break sequential-equilibrium preservation
 
@@ -8,7 +8,7 @@ The intended game, in which the sender can only open at the protected turn,
 has sequential equilibria, and all of them have the intended outcome law. The
 late-turn game adds two late turns with a content-blind inclusion coin of
 probability `q` and a listener who sees openings pending between them. It has
-no sequential equilibrium with that outcome law as soon as deferring pays:
+sequential equilibria, but none with that outcome law as soon as deferring pays:
 `R > 0`, `q (D - R) > (1 - q) c` and `q R - (1 - q) (D + c) > R/2`.
 
 For every reward scale `R > 0`, forfeit `D > R` and charge `c ≥ 0` both margins
@@ -26,9 +26,9 @@ open GameTheory GameTheory.Protocol
 /-- **No sequential equilibrium of the late-turn game preserves the intended
 outcome when deferring pays.** The intended game has a sequential equilibrium;
 each of its sequential equilibria has the intended outcome law, in which every
-type opens at the protected turn and the listener answers safely; and, when
-`R > 0`, `q (D - R) > (1 - q) c` and `q R - (1 - q) (D + c) > R/2`, no
-sequential equilibrium of the late-turn game has that outcome law. -/
+type opens at the protected turn and the listener answers safely; the late-turn
+game has a sequential equilibrium; and, when `R > 0`, `q (D - R) > (1 - q) c`
+and `q R - (1 - q) (D + c) > R/2`, none of them has that outcome law. -/
 theorem lateLeak_intended_outcome_not_preserved (G : LateLeakParameters)
     (pays : G.DeferralPays) :
     (∃ A : (lateLeakModel G false).BehavioralAssessment,
@@ -38,12 +38,15 @@ theorem lateLeak_intended_outcome_not_preserved (G : LateLeakParameters)
       A.IsSequentialEquilibrium (lateLeak_antichain G false) (lateLeak_terminates G false)
           (lateLeakPayoff G false) →
         lateLeakOutcomeLaw G false A.strategy = lateLeakIntendedOutcome) ∧
+    (∃ A : (lateLeakModel G true).BehavioralAssessment,
+      A.IsSequentialEquilibrium (lateLeak_antichain G true) (lateLeak_terminates G true)
+        (lateLeakPayoff G true)) ∧
     ∀ A : (lateLeakModel G true).BehavioralAssessment,
       A.IsSequentialEquilibrium (lateLeak_antichain G true) (lateLeak_terminates G true)
           (lateLeakPayoff G true) →
         lateLeakOutcomeLaw G true A.strategy ≠ lateLeakIntendedOutcome :=
   ⟨(lateLeak_intended_equilibria G).1, (lateLeak_intended_equilibria G).2,
-    lateLeak_no_intended_equilibrium pays⟩
+    lateLeak_exists_sequentialEquilibrium G true, lateLeak_no_intended_equilibrium pays⟩
 
 /-! ## Every margin -/
 
@@ -72,8 +75,8 @@ theorem lateLeak_deferralPays_of_threshold {R D c : ℝ} (reward_pos : 0 < R) (m
 every reward scale `R > 0`, forfeit `D > R` and charge `c ≥ 0`, the inclusion
 threshold is below one, and for every inclusion probability `q` above it the
 intended game has a sequential equilibrium, all its sequential equilibria have
-the intended outcome law, and no sequential equilibrium of the late-turn game
-with parameters `R`, `D`, `c` and `q` has that law. -/
+the intended outcome law, and the late-turn game with parameters `R`, `D`, `c`
+and `q` has sequential equilibria, none of which has that law. -/
 theorem lateLeak_not_preserved_for_every_margin (R D c : ℝ) (reward_pos : 0 < R)
     (margin : R < D) (charge : 0 ≤ c) :
     lateLeakInclusionThreshold R D c < 1 ∧
@@ -85,6 +88,9 @@ theorem lateLeak_not_preserved_for_every_margin (R D c : ℝ) (reward_pos : 0 < 
         A.IsSequentialEquilibrium (lateLeak_antichain ⟨R, D, c, q⟩ false)
             (lateLeak_terminates ⟨R, D, c, q⟩ false) (lateLeakPayoff ⟨R, D, c, q⟩ false) →
           lateLeakOutcomeLaw ⟨R, D, c, q⟩ false A.strategy = lateLeakIntendedOutcome) ∧
+      (∃ A : (lateLeakModel ⟨R, D, c, q⟩ true).BehavioralAssessment,
+        A.IsSequentialEquilibrium (lateLeak_antichain ⟨R, D, c, q⟩ true)
+          (lateLeak_terminates ⟨R, D, c, q⟩ true) (lateLeakPayoff ⟨R, D, c, q⟩ true)) ∧
       ∀ A : (lateLeakModel ⟨R, D, c, q⟩ true).BehavioralAssessment,
         A.IsSequentialEquilibrium (lateLeak_antichain ⟨R, D, c, q⟩ true)
             (lateLeak_terminates ⟨R, D, c, q⟩ true) (lateLeakPayoff ⟨R, D, c, q⟩ true) →

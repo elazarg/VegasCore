@@ -175,12 +175,7 @@ theorem lateLeak_preserving_equilibrium_of_half_reward_costs (reward : 0 ≤ G.r
       A.IsSequentialEquilibrium (lateLeak_antichain G true)
         (lateLeak_terminates G true) (lateLeakPayoff G true) ∧
       lateLeakOutcomeLaw G true A.strategy = lateLeakIntendedOutcome := by
-  let fallback : ∀ who, (lateLeakModel G true).Policy who :=
-    fun _ _ => Classical.choice inferInstance
-  obtain ⟨A, rational, consistent⟩ := (lateLeakModel G true).exists_sequentialEquilibrium
-    (lateLeak_decisionRecall G true) fallback (lateLeakPayoff G true) (lateLeak_terminates G true)
-  have equilibrium : A.IsSequentialEquilibrium (lateLeak_antichain G true)
-      (lateLeak_terminates G true) (lateLeakPayoff G true) := ⟨rational, consistent⟩
+  obtain ⟨A, equilibrium⟩ := lateLeak_exists_sequentialEquilibrium G true
   exact ⟨A, equilibrium,
     lateLeak_outcome_preserved_of_half_reward_costs reward never attempt A equilibrium⟩
 

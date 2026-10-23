@@ -121,7 +121,7 @@ resolve.
 
 | Theorem | Statement |
 | --- | --- |
-| `late_leak_intended_outcome_not_preserved`, `late_leak_not_preserved_when_deferral_pays`, `late_leak_not_preserved_for_every_margin`, `settle_late_not_preserved_for_every_margin` | The intended game has a sequential equilibrium, and every one realizes the intended outcome law. No sequential equilibrium of the late game realizes it. The four theorems cover the sample parameters, any parameters where deferring pays, and every inclusion probability above an explicit threshold below one. |
+| `late_leak_intended_outcome_not_preserved`, `late_leak_not_preserved_when_deferral_pays`, `late_leak_not_preserved_for_every_margin`, `settle_late_not_preserved_for_every_margin` | The intended game has a sequential equilibrium, and every one realizes the intended outcome law. The late game has sequential equilibria, but none realizes it. The four theorems cover the sample parameters, any parameters where deferring pays, and every inclusion probability above an explicit threshold below one. |
 | `late_leak_equilibrium_total_variation_gap`, `late_leak_equilibrium_result_total_variation_gap` | For the sample parameters, every equilibrium outcome law of the late game is at least 267/2000 from the intended one in total variation, and every result law at least 3/2000. |
 | `late_leak_outcome_preserved_by_failure_costs` | Suppose the forfeit exceeds half the reward, and so does the expected loss of a late opening, counting the forfeit and the drop charge. Then the late game has a sequential equilibrium, and every one realizes the intended outcome law. |
 
@@ -135,13 +135,11 @@ resolve.
   at most zero and at most every terminal utility. A run unfinished at the
   horizon pays zero. Binding types are finite, and the initial law may correlate
   players but has finite support.
-- The turn-based and one-packet theorems state sequential rationality with
-  continuation payoffs truncated at the raw protocol's horizon.
 - The assumptions of the concurrent theorem are sufficient, not minimal.
   [These counterexamples](docs/consolidation.md#why-the-concurrent-theorem-assumes-what-it-does)
   show why several of them are needed.
-- The non-preservation theorems do not state that the late game has a
-  sequential equilibrium.
+- `settle_late_not_preserved_for_every_margin` does not state that its late game
+  has a sequential equilibrium; the other non-preservation theorems do.
 - Some theorems have no concrete program as an instance. Among the Nash forms
   only `async_first_turn_nash_iff` has one. The concurrent theorem's hypotheses
   are discharged for a program without strategic content
