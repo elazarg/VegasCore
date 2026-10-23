@@ -6,8 +6,9 @@ import Vegas.Examples.LateLeak
 
 /-! # Paper theorems
 
-Paper-facing statements and their checked axiom dependencies.
-Detailed dependency regressions live in `VegasTests.AxiomAudit`.
+Paper-facing statements, each pinned to the three standard axioms. The build
+rejects `sorry` and the source policy rejects axiom declarations, so these pins
+are the axiom audit.
 -/
 
 noncomputable section
@@ -833,5 +834,88 @@ theorem one_packet_raw_sequential_equilibrium [Fintype Player] [IExpr.ResultType
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.one_packet_raw_sequential_equilibrium
+
+open Classical in
+open Vegas.SourceProgram Vegas.EventGraphRuntime GameTheory.Protocol GameTheory.Enforcement in
+theorem recovery_intended_raw_sequential_equilibrium [Fintype Player] [IExpr.ResultTypes L]
+    (setup : Setup (Player := Player) (L := L))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (bounds : MessageBounds (graph setup)) (horizon : Nat)
+    (scheduler : (recoveryApplication (runtime setup) leaks).Scheduler)
+    [(recoveryApplication (runtime setup) leaks).FiniteNature
+      (PMF.map (fun native => (RecoveryState.mk native ∅ : RecoveryState (graph setup)))
+        (initialLaw setup)) scheduler]
+    [Finite setup.intendedProtocol.History]
+    {Parameter : Type} (parameter : State L setup.context → Parameter)
+    (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
+    (excludedPayoff : Player → ℝ)
+    (wellFormed : setup.WellFormed)
+    (independent : setup.PrivateInputsIndependent) {delay bound : (graph setup).EventId → Nat}
+    (opportunity : Recovery.Opportunity (runtime setup) leaks
+      (PMF.map (fun native => (RecoveryState.mk native ∅ : RecoveryState (graph setup)))
+        (initialLaw setup)) horizon scheduler delay)
+    (inclusion : Recovery.ProtectedInclusion (runtime setup) leaks
+      (PMF.map (fun native => (RecoveryState.mk native ∅ : RecoveryState (graph setup)))
+        (initialLaw setup)) horizon scheduler bound)
+    (completes : Recovery.CompletesPlay (runtime setup) leaks
+      (PMF.map (fun native => (RecoveryState.mk native ∅ : RecoveryState (graph setup)))
+        (initialLaw setup)) horizon scheduler)
+    (timely : AsyncTimely (runtime setup) delay bound)
+    (lowerUtility upperUtility : Player → ℝ)
+    (lower_le : ∀ outcome who, lowerUtility who ≤ utility outcome who)
+    (le_upper : ∀ outcome who, utility outcome who ≤ upperUtility who)
+    (below : ∀ (final : setup.intendedProtocol.History) terminal,
+      setup.protocolReadout final.state = some terminal →
+        ∀ who, excludedPayoff who ≤ utility (setup.parameterOutcome parameter terminal) who)
+    (intended : setup.intendedModel.BehavioralAssessment)
+    (equilibrium : intended.IsSequentialEquilibrium setup.intended_decision_antichain
+      setup.intended_bounded.wellFoundedHistories
+      (fun who final => (setup.protocolReadout final.state).elim 0
+        (fun state => utility (setup.parameterOutcome parameter state) who)))
+    (covers : bounds.CoversOutputValues) (coversInputs : bounds.CoversInputValues)
+    (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount)
+    (service : EvidenceReportService (CountEvidence (graph setup)))
+    (observationRate deliveryRate : Player → ℝ)
+    (delivery_nonnegative : ∀ who, 0 ≤ deliveryRate who)
+    (coverage : CountEvidenceCoverage service observationRate deliveryRate)
+    (deposit : Player → ℝ) (deposit_nonnegative : ∀ who, 0 ≤ deposit who)
+    (sufficient : ∀ who,
+      max 0 (max (excludedPayoff who) (upperUtility who)) -
+          min 0 (min (excludedPayoff who) (lowerUtility who)) ≤
+        observationRate who * deliveryRate who * deposit who) :
+    let initial := PMF.map
+      (fun native => (RecoveryState.mk native ∅ : RecoveryState (graph setup))) (initialLaw setup)
+    let raw := Recovery.rawMenu (runtime setup) leaks bounds
+    let observe := (recoveryApplication (runtime setup) leaks).stateTraffic
+    let audit := Recovery.countAudit (runtime setup) leaks service.sample
+    let base := recoveryExclusionBase parameter utility excludedPayoff
+    let payoff := TerminalAudit.utility base observe audit deposit
+    let settle := TerminalAudit.settlement base observe audit deposit
+    ∃ target : (raw.information initial horizon scheduler).BehavioralAssessment,
+      target.IsSequentialEquilibriumFor
+        (raw.decisionInformationAntichain initial horizon scheduler)
+        (fun who site => target.truncatedContinuationContext site
+          (fun history => payoff history.state who) (2 * horizon + 1)) ∧
+      (∀ final ∈ ((raw.information initial horizon scheduler).runBehavioral
+          target.strategy (2 * horizon + 1)).support,
+        ∀ who, TerminalAudit.charge observe audit final.state who = 0) ∧
+      ((raw.information initial horizon scheduler).runBehavioral target.strategy
+          (2 * horizon + 1)).bind
+          (fun final => (settle final.state).map fun payoffs =>
+            (sourceReadout setup leaks (RecoveryProjection.protocolState (runtime setup) leaks
+              final.state), payoffs)) =
+        (setup.intendedModel.runBehavioral intended.strategy
+          (instructionCount setup.program + 1)).map
+          (intendedReadoutExclusion setup parameter utility excludedPayoff) :=
+  Vegas.recovery_intended_raw_sequentialEquilibrium_preserved parameter utility excludedPayoff
+    wellFormed independent opportunity inclusion completes timely lowerUtility upperUtility
+    lower_le le_upper below intended equilibrium covers coversInputs capacity service
+    observationRate deliveryRate delivery_nonnegative coverage deposit deposit_nonnegative
+    sufficient
+
+/-- info: 'Vegas.Paper.recovery_intended_raw_sequential_equilibrium' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.recovery_intended_raw_sequential_equilibrium
 
 end Vegas.Paper

@@ -45,7 +45,7 @@ it.
 | --- | --- | --- | --- |
 | Compiler correctness: terminal law, unilateral deviation law, Nash equivalence on the ideal graph | none | any mode | checked: `canonical_setup_law`, `canonical_setup_deviation_law`, `Vegas.Paper.concurrent_event_nash_iff` |
 | Nash preservation | any timely builder | sequential and concurrent | checked on the plain contract (`Vegas.Paper.async_first_turn_nash_iff` and siblings); to port |
-| Non-concurrent sequential-equilibrium preservation | any timely builder, independent private inputs | sequential | checked on the forced-exit contract (`Vegas.recovery_intended_raw_sequentialEquilibrium_preserved`), not pinned in Paper; to port |
+| Non-concurrent sequential-equilibrium preservation | any timely builder, independent private inputs | sequential | checked on the forced-exit contract (`Vegas.Paper.recovery_intended_raw_sequential_equilibrium`); to port |
 | Concurrent sequential-equilibrium preservation | reserved-epoch tape, complete pending observation | concurrent | checked on the phase contract (`Vegas.Paper.concurrent_source_raw_sequential_equilibrium`) |
 | Intended game to source game | none | none | checked: `Vegas.Paper.intended_sequential_equilibrium`, `Vegas.Paper.intended_nash` |
 | Late-leak impossibility | abstract game | none | checked: `Vegas.Paper.late_leak_intended_outcome_not_preserved` and siblings |
@@ -77,6 +77,7 @@ run 10–20% larger. `#print axioms` pins do not count as uses.
 | All 26 Paper theorems | 317k | |
 | Whole tree (files, without GameTheory) | 871k | |
 | Whole tree after Step 3 pass one | 597k | |
+| In modules no Paper theorem or test reaches, after Step 0 (488 modules) | 90k | |
 
 The concurrent SE cone by layer: Vegas/Game 136k, Vegas/Pending 32k,
 Vegas/Source 24k (17k of it the `CommitRecovery*` and `ProposalRecovery*`
@@ -143,8 +144,9 @@ and 5 wait until those are done. Removing code is not a risk: the tag
 - [x] Commit this ledger.
 - [x] Annotated tag `research-tree` on `main` holding the full research tree,
       so every later removal is recoverable by tag.
-- [ ] Pin `recovery_intended_raw_sequentialEquilibrium_preserved` in Paper; the
-      paper cites it as `thm:recovery`.
+- [x] Pin `recovery_intended_raw_sequentialEquilibrium_preserved` in Paper, as
+      `Vegas.Paper.recovery_intended_raw_sequential_equilibrium`; the paper cites
+      it as `thm:recovery`.
 
 ### Step 1. Guardrails that make removal cheap
 
@@ -160,8 +162,9 @@ and 5 wait until those are done. Removing code is not a risk: the tag
       and a ban on escape hatches: declaration-adding metaprograms, skipped
       kernel checks, native evaluation, and options set per library or through
       command-line definitions.
-- [ ] Add the dependency walk as a script: list modules with no declaration
-      used by Paper or by a test declaration. Report only until Step 6.
+- [x] Add the dependency walk as a script: list modules with no declaration
+      used by Paper or by a test declaration. Report only until Step 6
+      (`scripts/report-unreached.py`).
 
 Exit: green build with sorry warnings as errors; the walk script is committed.
 This step comes first because every removal would otherwise edit audit pins.
@@ -312,9 +315,9 @@ Severity: H high, M medium, L low. "Step" is the step that resolves the finding.
   theorem: a non-strategic first-in-first-out service that clears every pending
   packet at each processing cycle, complete pending observation, a constant exit
   payoff, and payoff zero for a run unfinished at the horizon.
-- [ ] **F-C3 (H, Step 5).** Nine of the 21 Paper theorems are never applied to
-  a concrete program: exclusion SE, public-scheduling SE, the one-packet SE, and
-  six of the asynchronous Nash forms (only `Vegas.Paper.async_first_turn_nash_iff`
+- [ ] **F-C3 (H, Step 5).** Ten of the 22 Paper theorems are never applied to
+  a concrete program: exclusion SE, public-scheduling SE, the one-packet SE,
+  turn-based SE, and six of the asynchronous Nash forms (only `Vegas.Paper.async_first_turn_nash_iff`
   has an instance). The retired calendar theorems had none either.
 - [ ] **F-C4 (H, Step 5).** The only instance of the concurrent hypotheses
   (`VegasTests/ConcurrentRawHypotheses.lean`) has no strategic content: Bob's
