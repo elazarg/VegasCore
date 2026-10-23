@@ -611,6 +611,23 @@ theorem intended_opening_client_nash [Fintype Player] [IExpr.ResultTypes L]
 #print axioms Vegas.Paper.intended_opening_client_nash
 
 open Vegas.SourceProgram in
+theorem scheduled_terminal_state_law [IExpr.ResultTypes L]
+    {Γ : SourceCtx Player L} {openNames : Finset VarId}
+    (program : SourceProgram Player L Γ openNames)
+    (scheduler : (toEventGraph program).PublicScheduler)
+    (profile : BehavioralProfile program) (state : State L Γ) :
+    ((toEventGraph program).terminalOutcomes scheduler
+        (compileEventProfile program profile) (encodeInputs state)).map
+      (terminalState program) =
+    SourceProgram.run program profile state :=
+  Vegas.scheduled_terminalState_law program scheduler profile state
+
+/-- info: 'Vegas.Paper.scheduled_terminal_state_law' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.scheduled_terminal_state_law
+
+open Vegas.SourceProgram in
 theorem concurrent_event_nash_iff [IExpr.ResultTypes L]
     (setup : Setup (Player := Player) (L := L))
     (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialLaw]

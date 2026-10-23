@@ -280,6 +280,7 @@ from the owner. No lemma states the resulting dominance of silence.
 
 | Result (paper label) | Analysis target | Compiled output | Environment | Lean |
 | --- | --- | --- | --- | --- |
+| Compiler correctness (not yet in the paper) | Source execution law | Event graph | Any public scheduler, adaptive to the public store and completion order | `Vegas.Paper.scheduled_terminal_state_law` |
 | Nash (1) (`thm:nash`) | Source game | Plain contract, any authentic verdict, nonnegative deposits including zero | Any builder meeting `AsyncContract` | `Vegas.Paper.async_first_turn_nash_iff` |
 | Nash (2) | Intended game via forfeit | As (1) | As (1) | `Vegas.Paper.intended_async_first_turn_nash` |
 | SE (`thm:recovery`) | Intended game | Forced exit, count verdict | Any builder meeting `Recovery.AsyncContract`; independent private inputs | `Vegas.Paper.recovery_intended_raw_sequential_equilibrium` |

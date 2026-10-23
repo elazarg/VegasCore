@@ -322,7 +322,7 @@ Severity: H high, M medium, L low. "Step" is the step that resolves the finding.
   theorem: a non-strategic first-in-first-out service that clears every pending
   packet at each processing cycle, complete pending observation, a constant exit
   payoff, and payoff zero for a run unfinished at the horizon.
-- [ ] **F-C3 (H, Step 5).** Ten of the 22 Paper theorems are never applied to
+- [ ] **F-C3 (H, Step 5).** Ten of the 23 Paper theorems are never applied to
   a concrete program: exclusion SE, public-scheduling SE, the one-packet SE,
   turn-based SE, and six of the asynchronous Nash forms (only `Vegas.Paper.async_first_turn_nash_iff`
   has an instance). The retired calendar theorems had none either.
