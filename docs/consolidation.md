@@ -57,7 +57,7 @@ excess.
 ## Measurements
 
 Measured at `8c67dad2` with a declaration-level dependency walk: from the root
-theorems, follow `ConstantInfo.getUsedConstantsAsSet` through the project
+theorems, follow the constants each declaration uses through the project
 libraries, then merge the source ranges of the reached declarations per module.
 File headers, `variable` lines and notations are not counted, so whole files
 run 10–20% larger. `#print axioms` pins do not count as uses.
@@ -106,7 +106,7 @@ device in the proof layer), tag and remove, or remove.
 
 | Construction | Role | Proposed disposition |
 | --- | --- | --- |
-| `SourceProgram.gameForm`, `Setup.gameForm` | Source semantics as a game form | keep one; `protocol_runBehavioral_eq` relates it to the protocol |
+| `SourceProgram.gameForm`, `Setup.gameForm` | Source semantics as a game form | keep one; `Vegas.SourceProgram.Setup.protocol_runBehavioral_eq` relates it to the protocol |
 | `Setup.executionProtocol`, `Setup.informationModel` | Source semantics as an information model, parameterized by a commitment interface | keep |
 | `Setup.intendedModel` | Analysis view: commitments hold predicted values, reveals open; premise of every SE theorem | keep |
 | `Setup.exclusionModel`, `Setup.exclusionMoveModel` | Analysis view with a fixed exit payoff | decision D3 |
@@ -154,10 +154,11 @@ and 5 wait until those are done. Removing code is not a risk: the tag
 - [ ] Remove the hand-written pins in `VegasTests/AxiomAudit`. The axiom audit
       is the pins in Paper.lean; the build rejects `sorry`, and the source
       policy rejects `axiom` declarations.
-- [ ] Reduce `scripts/check-lean-options.py` to what the environment check does
-      not cover: central options, and a ban on metaprogramming escape hatches
-      (`addDecl`, `debug.skipKernelTC`, `ofReduceBool`, `+native`, library-level
-      `leanOptions` and `-D` arguments).
+- [ ] Reduce `scripts/check-lean-options.py` to the central options, the ban on
+      `sorry` and `axiom`, the Paper pin format with its expected axiom list,
+      and a ban on escape hatches: declaration-adding metaprograms, skipped
+      kernel checks, native evaluation, and options set per library or through
+      command-line definitions.
 - [ ] Add the dependency walk as a script: list modules with no declaration
       used by Paper or by a test declaration. Report only until Step 6.
 
@@ -283,8 +284,8 @@ Exit: size within the target, or the excess explained in
   beyond the concurrent cone) or tag.
 - **D8. Naming scheme.** Settle before Step 2 renames anything, so every name
   changes once. Proposed: "contract" for compiled output, never "runtime";
-  theorem names of the form premise game, target, notion
-  (`concurrent_intended_raw_sequential_equilibrium`).
+  theorem names of the form premise game, target, notion (for the concurrent
+  theorem: concurrent, intended, raw, sequential equilibrium).
 
 ## Findings
 
@@ -315,7 +316,7 @@ Severity: H high, M medium, L low. "Step" is the step that resolves the finding.
   from the terminal store rather than from the native initial draw.
 - [ ] **F-C7 (L, Step 2).** `one_packet_raw_sequential_equilibrium` uses
   `IsSequentialEquilibriumFor` with a truncated context instead of
-  `IsSequentialEquilibrium`; `raw_service_horizon` holds by construction.
+  `IsSequentialEquilibrium`.
 
 ### Trust base
 
@@ -340,8 +341,8 @@ perfect recall proved for every model, horizons equal to proved bounds.
 - [ ] **F-P2 (M, Step 1).** The pin check accepts `#guard_msgs (drop all)`,
   ignores the expected axiom text, and misses theorems with attributes or
   modifiers.
-- [ ] **F-P3 (M, Step 1).** The option check reads only top-level
-  `[leanOptions]`; library-level `leanOptions` and `-D` arguments pass.
+- [ ] **F-P3 (M, Step 1).** The option check reads only the top-level option
+  table; options set per library or through command-line definitions pass.
 - [ ] **F-P4 (M, Step 6).** `backward.isDefEq.respectTransparency = false` is
   global; nothing records which proofs need it. Prefer `@[implicit_reducible]`
   on the carriers.
@@ -370,7 +371,9 @@ perfect recall proved for every model, horizons equal to proved bounds.
   reached from Paper.
 - [ ] **F-S2 (H, Step 4).** Parallel runtime stacks: 269k lines mention
   `WitnessedPacket`, 244k `CommitAttemptPacket`, 46 files both. Three copies of
-  `onePacket_raw_sequentialEquilibrium` (81% and 67% line overlap).
+  the one-packet raw extension theorem (`OnePacketExtension.lean`,
+  `RecoveryOnePacketExtension.lean`, `PhaseOnePacketExtension.lean`; 81% and
+  67% line overlap).
 - [ ] **F-S3 (M, Step 3).** 67 `CommitSeedBroadcast*` files are near copies of
   `CommitSeedSignalling*` files.
 - [ ] **F-S4 (H, Step 6).** Eight declarations exceed 1,000 lines
