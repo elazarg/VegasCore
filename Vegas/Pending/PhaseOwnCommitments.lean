@@ -1,4 +1,4 @@
-/- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
+/- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Pending.PhaseCandidateSupply
 import Vegas.Pending.ReactiveSignedCommitments

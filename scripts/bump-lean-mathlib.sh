@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# Copyright (c) 2026 VegasCore contributors. All rights reserved.
-# Released under MIT license as described in the file LICENSE.
+# Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE).
 
 # Bump the Lean toolchain + pinned Mathlib rev, and update the GameTheory
 # submodule (recursively, including its own fixed-point-theorems-lean4

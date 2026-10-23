@@ -1,4 +1,4 @@
-/- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
+/- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import GameTheoryExtensions.Math.Probability.ProductDecorrelation
 import GameTheoryExtensions.Math.Probability.ProductTransport

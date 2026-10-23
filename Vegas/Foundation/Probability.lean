@@ -1,8 +1,4 @@
-/-
-Copyright (c) 2026 VegasCore contributors. All rights reserved.
-Released under MIT license as described in the file LICENSE.
-Authors: VegasCore contributors
--/
+/- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import GameTheoryExtensions.Math.Probability.Support
 import Mathlib.Algebra.Order.Ring.Rat

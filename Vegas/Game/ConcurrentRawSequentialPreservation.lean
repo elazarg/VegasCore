@@ -1,4 +1,4 @@
-/- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
+/- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.IntendedPreservation
 import Vegas.Game.PhaseExclusionPayoff
@@ -16,7 +16,8 @@ use the existing runtime and audit primitives.
 The conclusion preserves one joint observation: original source inputs, the
 complete typed terminal state, its public result and the realized net payoff
 vector. The input reader is fixed by the source program, not supplied by a caller.
-This module states the preservation proposition; it does not prove it.
+This module states the preservation proposition; `Vegas.concurrentRawSequentialPreservation`
+proves it.
 -/
 
 noncomputable section
@@ -233,7 +234,7 @@ end ReservedConcurrentImplementation
 
 /-- A valid fixed implementation preserves every intended source sequential
 equilibrium, including its complete initialized joint law and clean settlement.
-This is the target proposition, not a preservation theorem. -/
+`Vegas.concurrentRawSequentialPreservation` proves it for every implementation. -/
 def ConcurrentRawSequentialPreservation (setup : Setup (Player := Player) (L := L))
     (implementation : ReservedConcurrentImplementation setup)
     (payoffs : ConcurrentPayoffs setup) (audit : ConcurrentCountAudit setup) : Prop :=
