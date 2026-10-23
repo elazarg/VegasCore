@@ -59,10 +59,34 @@ def check_lakefile(config: dict) -> list[str]:
     return failures
 
 
+IDENTIFIER_CHAR = re.compile(r"[\w'!?.]")
+CHAR_LITERAL = re.compile(r"'(?:\\(?:x[0-9A-Fa-f]{2}|u\{[0-9A-Fa-f]+\}|.)|[^\\'\n])'")
+RAW_STRING = re.compile(r'r(#*)"')
+# Runs that cannot start a comment, string, character literal or guillemet name.
+PLAIN_CODE = re.compile(r"[^/\-\"'«r]+")
+PLAIN_COMMENT = re.compile(r"[^/\-\n]+")
+PLAIN_STRING = re.compile(r"[^\"\\\n]+")
+
+
+def _blank(segment: str) -> str:
+    return "".join("\n" if char == "\n" else " " for char in segment)
+
+
+def _follows_name(text: str, pos: int) -> bool:
+    return pos > 0 and IDENTIFIER_CHAR.match(text[pos - 1]) is not None
+
+
 def strip_lean_comments_and_strings(
     text: str, line_comments: list[tuple[int, str]] | None = None,
 ) -> str:
-    """Blank nested comments and string contents while preserving line numbers."""
+    """Blank nested comments and the contents of string and character literals,
+    preserving offsets and line numbers.
+
+    Raw strings (`r"..."`, `r#"..."#`) end only at their own delimiter, and a
+    guillemet name (`«...»`) is copied whole, so neither can open a comment or a
+    string. A prime after an identifier character is part of the name, not a
+    character literal.
+    """
     result = []
     depth = 0
     quoted = False
@@ -73,38 +97,57 @@ def strip_lean_comments_and_strings(
         if depth:
             if pair == "/-":
                 depth += 1
-                result.extend("  ")
+                result.append("  ")
                 pos += 2
             elif pair == "-/":
                 depth -= 1
-                result.extend("  ")
+                result.append("  ")
                 pos += 2
+            elif run := PLAIN_COMMENT.match(text, pos):
+                result.append(" " * len(run.group(0)))
+                pos = run.end()
             else:
                 result.append("\n" if char == "\n" else " ")
                 pos += 1
         elif quoted:
             if char == "\\" and pos + 1 < len(text):
-                result.extend("  ")
+                result.append(" " + ("\n" if text[pos + 1] == "\n" else " "))
                 pos += 2
+            elif run := PLAIN_STRING.match(text, pos):
+                result.append(" " * len(run.group(0)))
+                pos = run.end()
             else:
                 result.append("\n" if char == "\n" else " ")
                 pos += 1
                 if char == '"':
                     quoted = False
+        elif run := PLAIN_CODE.match(text, pos):
+            result.append(run.group(0))
+            pos = run.end()
         elif pair == "/-":
             depth = 1
-            result.extend("  ")
+            result.append("  ")
             pos += 2
         elif pair == "--":
             end = text.find("\n", pos)
+            end = len(text) if end < 0 else end
             if line_comments is not None:
-                line_comments.append((pos, text[pos:end if end >= 0 else len(text)]))
-            if end < 0:
-                result.extend(" " * (len(text) - pos))
-                pos = len(text)
-            else:
-                result.extend(" " * (end - pos))
-                pos = end
+                line_comments.append((pos, text[pos:end]))
+            result.append(" " * (end - pos))
+            pos = end
+        elif char == "r" and not _follows_name(text, pos) and (raw := RAW_STRING.match(text, pos)):
+            closing = '"' + raw.group(1)
+            end = text.find(closing, raw.end())
+            end = len(text) if end < 0 else end + len(closing)
+            result.append(_blank(text[pos:end]))
+            pos = end
+        elif char == "'" and not _follows_name(text, pos) and (
+                literal := CHAR_LITERAL.match(text, pos)):
+            result.append(" " * len(literal.group(0)))
+            pos = literal.end()
+        elif char == "«" and (end := text.find("»", pos)) >= 0 and "\n" not in text[pos:end]:
+            result.append(text[pos:end + 1])
+            pos = end + 1
         elif char == '"':
             quoted = True
             result.append(" ")

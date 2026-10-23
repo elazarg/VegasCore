@@ -11,6 +11,7 @@ unique in the project index.
 from __future__ import annotations
 
 from dataclasses import dataclass
+import importlib.util
 import os
 from pathlib import Path
 import re
@@ -68,57 +69,12 @@ MARKDOWN_LINK = re.compile(r"\[[^\]]*\]\(([^)]+)\)")
 RETIRED_TREE = "https://github.com/elazarg/VegasCore/blob/research-tree/"
 RETIRED_LINK = re.compile(r"\[[^\]]*\]\(" + re.escape(RETIRED_TREE) + r"[^)]*\)")
 
-
-def strip_lean_comments_and_strings(text: str) -> str:
-    """Blank nested comments and strings while preserving offsets/newlines."""
-    result: list[str] = []
-    depth = 0
-    quoted = False
-    pos = 0
-    while pos < len(text):
-        pair = text[pos:pos + 2]
-        char = text[pos]
-        if depth:
-            if pair == "/-":
-                depth += 1
-                result.extend("  ")
-                pos += 2
-            elif pair == "-/":
-                depth -= 1
-                result.extend("  ")
-                pos += 2
-            else:
-                result.append("\n" if char == "\n" else " ")
-                pos += 1
-        elif quoted:
-            if char == "\\" and pos + 1 < len(text):
-                result.extend("  ")
-                pos += 2
-            else:
-                result.append("\n" if char == "\n" else " ")
-                pos += 1
-                if char == '"':
-                    quoted = False
-        elif pair == "/-":
-            depth = 1
-            result.extend("  ")
-            pos += 2
-        elif pair == "--":
-            end = text.find("\n", pos)
-            if end < 0:
-                result.extend(" " * (len(text) - pos))
-                pos = len(text)
-            else:
-                result.extend(" " * (end - pos))
-                pos = end
-        elif char == '"':
-            quoted = True
-            result.append(" ")
-            pos += 1
-        else:
-            result.append(char)
-            pos += 1
-    return "".join(result)
+# The source policy check owns the Lean lexer that blanks comments and strings.
+_SPEC = importlib.util.spec_from_file_location(
+    "lean_options", Path(__file__).with_name("check-lean-options.py"))
+_OPTIONS = importlib.util.module_from_spec(_SPEC)
+_SPEC.loader.exec_module(_OPTIONS)
+strip_lean_comments_and_strings = _OPTIONS.strip_lean_comments_and_strings
 
 
 def lean_files(roots):
@@ -351,6 +307,9 @@ def markdown_findings(root: Path, index: NameIndex):
 
 def main() -> int:
     root = Path.cwd()
+    if not (root / "lakefile.toml").is_file():
+        print(f"No lakefile.toml in {root}: run the check from the repository root.")
+        return 2
     index = index_declarations()
     findings = dangling(index)
     for path, number, cited in findings:

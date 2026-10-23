@@ -14,6 +14,7 @@ class DocReferenceTests(unittest.TestCase):
     def run_checker(self, text):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
+            (root / "lakefile.toml").write_text("", encoding="utf-8")
             (root / "Vegas").mkdir()
             (root / "Vegas/Test.lean").write_text(text, encoding="utf-8")
             return subprocess.run([sys.executable, str(SCRIPT)], cwd=root,
@@ -89,6 +90,7 @@ class DocReferenceTests(unittest.TestCase):
     def test_top_level_paper_file_is_indexed(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
+            (root / "lakefile.toml").write_text("", encoding="utf-8")
             (root / "Vegas").mkdir()
             (root / "Vegas/Test.lean").write_text(
                 "/-! `Vegas.Paper.mainResult` is current. -/\n", encoding="utf-8"
@@ -135,6 +137,7 @@ class DocReferenceTests(unittest.TestCase):
     def test_stale_lowercase_dotted_reference_fails(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
+            (root / "lakefile.toml").write_text("", encoding="utf-8")
             (root / "Vegas").mkdir()
             (root / "GameTheory/GameTheory").mkdir(parents=True)
             (root / "Vegas/Test.lean").write_text(
@@ -150,6 +153,7 @@ class DocReferenceTests(unittest.TestCase):
     def test_tracked_markdown_rejects_nonexistent_exact_project_path(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
+            (root / "lakefile.toml").write_text("", encoding="utf-8")
             (root / "Vegas/Pending").mkdir(parents=True)
             (root / "Vegas/Pending/EventApplication.lean").write_text(
                 "namespace Vegas.EventGraphRuntime\nend Vegas.EventGraphRuntime\n", encoding="utf-8"
@@ -167,6 +171,7 @@ class DocReferenceTests(unittest.TestCase):
     def test_markdown_checks_lean_names_and_unqualified_camel_case(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
+            (root / "lakefile.toml").write_text("", encoding="utf-8")
             (root / "Vegas").mkdir()
             (root / "Vegas/Sample.lean").write_text(
                 "namespace Vegas.Sample\n"
@@ -189,6 +194,7 @@ class DocReferenceTests(unittest.TestCase):
     def test_citations_linked_to_the_retired_tree_are_not_current_names(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
+            (root / "lakefile.toml").write_text("", encoding="utf-8")
             (root / "Vegas").mkdir()
             (root / "Vegas/Sample.lean").write_text(
                 "namespace Vegas.Sample\ndef actualResult := 1\nend Vegas.Sample\n",
@@ -212,6 +218,7 @@ class DocReferenceTests(unittest.TestCase):
     def test_relative_markdown_links_resolve_from_source_directory(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
+            (root / "lakefile.toml").write_text("", encoding="utf-8")
             (root / "docs").mkdir()
             (root / "docs/guide.md").write_text(
                 "[root](../README.md) [missing](missing.md)", encoding="utf-8"
@@ -229,6 +236,7 @@ class DocReferenceTests(unittest.TestCase):
     def test_untracked_markdown_is_excluded(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
+            (root / "lakefile.toml").write_text("", encoding="utf-8")
             (root / "README.md").write_text("No local paths.", encoding="utf-8")
             (root / "notes.md").write_text(
                 "See `Vegas/Pending/DoesNotExist.lean`.", encoding="utf-8"
@@ -247,6 +255,7 @@ class DocReferenceTests(unittest.TestCase):
     def test_tracked_documentation_has_no_directory_exemption(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
+            (root / "lakefile.toml").write_text("", encoding="utf-8")
             reference = root / "archive" / "notes.md"
             reference.parent.mkdir()
             reference.write_text("See [missing](absent.md).", encoding="utf-8")
@@ -265,11 +274,23 @@ class DocReferenceTests(unittest.TestCase):
     def test_broken_git_inventory_is_a_failure(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
+            (root / "lakefile.toml").write_text("", encoding="utf-8")
             (root / ".git").mkdir()
             result = subprocess.run([sys.executable, str(SCRIPT)], cwd=root,
                                     capture_output=True, text=True)
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("Cannot enumerate tracked Markdown", result.stdout)
+
+
+    def test_run_outside_a_repository_root_fails(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "Vegas").mkdir()
+            (root / "Vegas/Test.lean").write_text("/-! `Vegas.missing` -/\n", encoding="utf-8")
+            result = subprocess.run([sys.executable, str(SCRIPT)], cwd=root,
+                                    capture_output=True, text=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("repository root", result.stdout)
 
 
 if __name__ == "__main__":

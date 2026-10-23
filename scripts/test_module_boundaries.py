@@ -138,14 +138,13 @@ class ModuleBoundaryTests(unittest.TestCase):
 
     def test_semantic_layers_reject_upward_and_prototype_dependencies(self):
         forbidden = {
-            "Vegas.Foundation": ("Vegas.Expr", "Vegas.Language"),
-            "Vegas.Expr": ("Vegas.Language", "Vegas.Source"),
-            "Vegas.Source": ("Vegas.EventGraph", "Vegas.Pending", "Vegas.Language"),
+            "Vegas.Foundation": ("Vegas.Expr", "Vegas.Source"),
+            "Vegas.Expr": ("Vegas.Source",),
+            "Vegas.Source": ("Vegas.EventGraph", "Vegas.Pending"),
             "Vegas.EventGraph": ("Vegas.Source", "Vegas.Pending", "Vegas.Compile"),
             "Vegas.Pending": ("Vegas.Source", "Vegas.Compile", "Vegas.Game"),
-            "Vegas.Compile": ("Vegas.Pending", "Vegas.Language"),
-            "Vegas.Game": ("Vegas.Language",),
-            "Vegas.Language": ("Vegas.Pending",),
+            "Vegas.Compile": ("Vegas.Pending", "Vegas.Game"),
+            "Vegas.Game": ("Vegas.Examples",),
         }
         for layer, dependencies in forbidden.items():
             for dependency in dependencies:
@@ -158,6 +157,40 @@ class ModuleBoundaryTests(unittest.TestCase):
                     })
                     expected = f"{layer} imports outside its layer contract: {dependency}.Example"
                     self.assertTrue(any(expected in error for error in CHECKER.check(root)))
+
+    def test_lower_layers_reject_the_chain_model_and_analysis(self):
+        for layer in CHECKER.VEGAS_EXCLUDED_LIBRARIES:
+            for dependency in ("Interaction.Network", "GameTheory.Analysis.Limit",
+                               "GameTheoryExtensions.Analysis.Audit"):
+                with self.subTest(layer=layer, dependency=dependency), \
+                        tempfile.TemporaryDirectory() as directory:
+                    root = self.fixture(directory, {
+                        "Vegas": f"import {layer}.Example",
+                        f"{layer}.Example": f"import {dependency}",
+                    })
+                    expected = f"{layer} imports outside its layer contract: {dependency}"
+                    self.assertTrue(any(expected in error for error in CHECKER.check(root)))
+
+    def test_upper_layers_and_source_carriers_may_use_analysis(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = self.fixture(directory, {
+                "Vegas": "import Vegas.Source.CommitRecoveryExit Vegas.Pending.Example "
+                         "Vegas.Game.Example",
+                "Vegas.Source.CommitRecoveryExit": "import GameTheoryExtensions.Analysis.Audit",
+                "Vegas.Pending.Example": "import Interaction.Network",
+                "Vegas.Game.Example": "import Interaction.Network GameTheory.Analysis.Limit",
+            })
+            self.assertEqual(CHECKER.check(root), [])
+
+    def test_source_carriers_cannot_use_the_chain_model(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = self.fixture(directory, {
+                "Vegas": "import Vegas.Source.ProposalRecoveryExit",
+                "Vegas.Source.ProposalRecoveryExit": "import Interaction.Network",
+            })
+            self.assertTrue(any(
+                "Vegas.Source imports outside its layer contract: Interaction.Network" in error
+                for error in CHECKER.check(root)))
 
     def test_semantic_layers_accept_the_intended_compilation_tower(self):
         with tempfile.TemporaryDirectory() as directory:

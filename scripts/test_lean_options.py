@@ -76,6 +76,33 @@ class LeanOptionTests(unittest.TestCase):
         text = 'def note := "quoted \\\" sorryAx"\ntheorem open : True := by sorry\n'
         self.assertEqual(CHECKER.admission_tokens(text), [(2, "sorry")])
 
+    def test_character_literal_quote_does_not_open_a_string(self):
+        text = "def quote := '\"'\ntheorem open : True := by sorry\n"
+        self.assertEqual(CHECKER.admission_tokens(text), [(2, "sorry")])
+
+    def test_escaped_character_literals_are_blanked(self):
+        text = "def marks := ['\\'', '\\\\', '\\x41', '\\u{2200}'] ++ [sorry]\n"
+        self.assertEqual(CHECKER.admission_tokens(text), [(1, "sorry")])
+
+    def test_prime_after_a_name_is_not_a_character_literal(self):
+        text = "theorem a'b' : h' 'c' := x₁'\n"
+        self.assertEqual(CHECKER.strip_lean_comments_and_strings(text),
+                         "theorem a'b' : h'     := x₁'\n")
+
+    def test_raw_strings_end_only_at_their_delimiter(self):
+        text = ('def raw := r#"a " sorry -- /- "#\n'
+                'def plain := r"admit"\n'
+                "theorem open : True := by sorry\n")
+        self.assertEqual(CHECKER.admission_tokens(text), [(3, "sorry")])
+
+    def test_guillemet_names_cannot_open_comments_or_strings(self):
+        text = 'def «a -- b» := 1\ndef «c " d» := 2\ntheorem open : True := by sorry\n'
+        self.assertEqual(CHECKER.admission_tokens(text), [(3, "sorry")])
+
+    def test_string_gaps_keep_line_numbers(self):
+        text = 'def gap := "a\\\n  b"\ntheorem open : True := by sorry\n'
+        self.assertEqual(CHECKER.admission_tokens(text), [(3, "sorry")])
+
     def test_every_admission_is_rejected_in_every_file(self):
         text = "#guard_msgs in\ntheorem target : True := by\n  sorry\n"
         for path in ("Paper.lean", "Vegas/Proof.lean", "VegasTests/Example.lean"):
