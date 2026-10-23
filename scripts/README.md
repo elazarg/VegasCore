@@ -17,9 +17,11 @@ Documentation checks resolve active Lean names and Markdown links; a citation
 inside a link to the `research-tree` tag names that tag's tree.
 
 `python scripts/report-unreached.py` lists the modules none of whose
-declarations a Paper theorem or a test uses, largest first. It reports only;
-`--strict` makes a nonempty list fail. Uses through notation or tactics are
-invisible to it, so the build confirms each removal.
+declarations a Paper theorem, a test or an example uses, largest first. Names
+mentioned in test and example source count as uses, since `example` commands
+leave no declaration to follow. It reports only; `--strict` makes a nonempty
+list fail. Uses through notation or tactics elsewhere are invisible to it, so
+the build confirms each removal.
 
 The [experiments](experiments) directory holds the investigation scripts that
 research notes cite. They are reference material and are not part of the

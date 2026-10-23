@@ -77,7 +77,7 @@ run 10–20% larger. `#print axioms` pins do not count as uses.
 | All 26 Paper theorems | 317k | |
 | Whole tree (files, without GameTheory) | 871k | |
 | Whole tree after Step 3 pass one | 597k | |
-| In modules no Paper theorem or test reaches, after Step 0 (488 modules) | 90k | |
+| In modules no Paper theorem, test or example reaches, after Step 0 (438 modules) | 80k | |
 
 The concurrent SE cone by layer: Vegas/Game 136k, Vegas/Pending 32k,
 Vegas/Source 24k (17k of it the `CommitRecovery*` and `ProposalRecovery*`
@@ -163,7 +163,8 @@ and 5 wait until those are done. Removing code is not a risk: the tag
       kernel checks, native evaluation, and options set per library or through
       command-line definitions.
 - [x] Add the dependency walk as a script: list modules with no declaration
-      used by Paper or by a test declaration. Report only until Step 6
+      used by Paper, a test or an example, counting names that test and
+      example source mentions. Report only until Step 6
       (`scripts/report-unreached.py`).
 
 Exit: green build with sorry warnings as errors; the walk script is committed.
