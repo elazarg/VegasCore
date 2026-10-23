@@ -2,7 +2,7 @@
 
 The semantic target is
 [`Vegas.ConcurrentRawSequentialPreservation`](../Vegas/Game/ConcurrentRawSequentialPreservation.lean).
-It is a proposition, not a preservation theorem. It fixes the concurrent graph,
+`Vegas.concurrentRawSequentialPreservation` proves it. It fixes the concurrent graph,
 actual phase runtime, one unconditional exogenous tape prior for the whole
 execution (correlated across owners/time), observation rule, resource
 bounds, utility, exclusion settlement and authentic audit before quantifying over
@@ -36,11 +36,11 @@ no independent-private-cell hypothesis. The
 the replay and source weights; the [independent review](se-concurrent-likelihood-review.md)
 records independent agent review of the complete qualified ready-information
 derivation against the four exact primitive obligations, including historical
-correspondence, weights and payoff attachment. An unrestricted prefix density theorem is not claimed. Conditional-belief transport and
-unconditional preservation remain unproved in Lean; a selected source fiber
-alone does not supply the required all-target weighted coverage. The clean gain
-comparison and `concurrentRawSequentialPreservation_of_qualified_binding_law`
-are checked with `QualifiedBindingLaw` as an explicit premise.
+correspondence, weights and payoff attachment. An unrestricted prefix density
+theorem is not claimed; a selected source fiber alone does not supply the
+required all-target weighted coverage. The clean gain comparison and
+`concurrentRawSequentialPreservation_of_qualified_binding_law` take
+`QualifiedBindingLaw` as a premise, and `qualified_binding_law` proves it.
 
 The initial-coordinate reader is fixed by the implementation, not supplied by a
 caller. `phaseProposalUnflagged_initialized_terminal_coupling` in

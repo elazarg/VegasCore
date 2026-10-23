@@ -1,8 +1,8 @@
 # Arbitrary-builder SE preservation checklist
 
 This is the progress ledger for sequential-equilibrium preservation beyond the
-fixed calendar. The [calendar checklist](https://github.com/elazarg/VegasCore/blob/research-tree/docs/se-proof-checklist.md) covers the
-checked fixed-calendar theorem; the [design and plan](se-schedule-generalization.md)
+fixed calendar. The retired [calendar checklist](https://github.com/elazarg/VegasCore/blob/research-tree/docs/se-proof-checklist.md) covers the
+fixed-calendar theorem, checked at the `research-tree` tag; the [design and plan](se-schedule-generalization.md)
 states the semantics, concerns and proof route. This file fixes the obligations
 and records which are closed.
 
@@ -65,9 +65,13 @@ for every margin). Its realization by the bounded raw runtime is box I2. The
 builder-first order, in which the deposit may depend on a lower bound on the
 builder's late-failure probability, is a separate positive target, box I3.
 The Nash forms (box C4) are unaffected.
-The sequential-equilibrium headline is the fixed-calendar theorem and its
-intended-game composition; the boxes of section S below remain as the record
-of the arbitrary-builder route and are not pursued further. Box I1 tracks the
+The checked sequential-equilibrium results are the turn-based theorem on the
+forced-exit contract (`Vegas.Paper.recovery_intended_raw_sequential_equilibrium`)
+and the concurrent theorem on the phase contract
+(`Vegas.Paper.concurrent_source_raw_sequential_equilibrium`); the fixed-calendar
+theorem is retired to the `research-tree` tag. The boxes of section S below
+remain as the record of the arbitrary-builder route and are not pursued
+further. Box I1 tracks the
 mechanized impossibility.
 An author-only observation rule (leaks depend on the observer and the authors
 of pending messages, not on their content) is an approved optional hypothesis,
@@ -407,7 +411,7 @@ joint law. It is not pursued.
   well-formed setup, every intended-game equilibrium has an audited bounded raw
   runtime equilibrium with the intended joint law of terminal store and payoff
   realized as settlement, no charge and no failed reveal on its paths; pinned
-  in `Paper.lean` with standard axioms. It is the
+  in `Paper.lean` at the `research-tree` tag. It is the
   calendar runtime only, under the calendar theorem's audit assumptions, and its
   deposit is fixed for the forfeited utility, whose range grows with D times
   the number of reveals. The censored-opening verdict deferred under A1 is not

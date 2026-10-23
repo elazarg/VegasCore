@@ -1,45 +1,162 @@
 # VegasCore
 
-VegasCore describes finite games with partial information, compiles them to
-typed event graphs, and studies their execution through signed pending messages.
-Blockchain runtimes are a target; the semantic interfaces remain runtime-general.
+VegasCore is a Lean 4 development of a small language for games with partial
+information, a compiler from it to typed event graphs and to contracts on a
+pending-message chain model, and theorems on which equilibria of a program
+survive compilation. Blockchain ledgers are the motivating target; the chain
+model does not depend on one.
 
-The source language supports private inputs, fresh bindings, public chance,
-guarded resolution and withholding. The pending runtime has explicit clock and
-expiry commands, authentic evidence and partial observation.
+## Source language
 
-Checked results include asynchronous Nash preservation, nonconcurrent recovery
-sequential-equilibrium preservation, and
-[concurrent sequential-equilibrium preservation under reserved service](Vegas/Game/ConcurrentRawEquilibrium.lean).
-The original weighted transport, reconstruction and preservation theorems are
-Lean-checked using only `propext`, `Classical.choice` and `Quot.sound`.
-The [concrete contract](Vegas/Game/ConcurrentRawSequentialPreservation.lean) and
-[proof status](docs/se-concurrent-mechanization.md) state the hypotheses and
-checked construction.
+A [source program](Vegas/Source/Basic.lean) samples public chance, lets an owner
+commit to a private typed value under a guard, lets the owner reveal that
+commitment, and returns. The initial context holds public data and owner-private
+inputs, drawn from a joint initial law. A commitment or reveal can fail; failure
+is a value and play continues ([source semantics](docs/source-semantics.md)).
 
-The concurrent result covers private commitments in literal `.concurrent` mode,
-with source-ordered public barriers, arbitrary correlated initial inputs of
-finite support, and finite binding types. Its service samples one unconditional
-exogenous tape prior for the whole execution; tape coordinates may correlate
-across owners and time. Public-prefix-adaptive block priors and unbounded
-binding bid/value choices are outside the contract. The operational and funded
-audit hypotheses are sufficient conditions, not minimality or a chain
-implementation guarantee. An unrestricted prefix density theorem is not claimed.
-The [counterexamples behind these assumptions](docs/consolidation.md#why-the-concurrent-theorem-assumes-what-it-does)
-explain why each one is there.
-The weaker general asynchronous contract has
-[checked preservation obstructions](docs/standard-runtime-se-status.md).
-Honest outcome simulation alone does not establish equilibrium preservation.
-The [module map](docs/module-architecture.md) locates the implementation.
-Retired models, routes and examples are kept at the `research-tree` tag and
-indexed in the [consolidation ledger](docs/consolidation.md).
+The language is deliberately small:
 
-Build and validate:
+- programs are straight-line, without branches or loops;
+- the owner of every move is fixed by the program text;
+- every owned move is a commitment and a later reveal of it;
+- a guard reads public data, publications and its author's own commitment, never
+  private inputs.
 
-Local builds and CI use `lake build`; `lakefile.toml` makes Lean warnings
-errors, so a `sorry` fails the build. Paper.lean pins every paper theorem to the
-three standard axioms, and the source policy rejects axiom declarations and
-trust escape hatches. Run the checks with the build before committing.
+Utilities are parameters of the theorems, over the public outcome together with
+a parameter of the initial inputs, or over the terminal state. No game reads the
+payoffs a program returns.
+
+## Compilation
+
+The [compiler](Vegas/Compile/EventGraphCompiler.lean) lowers a program to a typed
+event graph of bindings, resolutions and public samples
+([design](docs/event-graph-design.md)). In the concurrent mode, commitments of
+different owners between two public events are unordered. The sequential mode
+orders every event by its source position.
+
+The graph runs on the [`Interaction`](Interaction) chain model. Players send
+signed packets to a pending pool. A builder chooses activations, inclusions,
+clock advances and expiries, and each player sees the pool through an
+observation rule. A compiled contract accepts or rejects packets. An audit
+collects evidence of forbidden packets and charges deposits.
+
+There are three compiled contracts:
+
+- **plain:** a failure is recorded and play continues;
+- **forced exit:** a failing owner leaves the game with a fixed exit payoff;
+- **phase:** forced exit on the concurrent graph, where a binding missed in a
+  commitment phase reruns the phase for the remaining owners.
+
+The [design note](docs/semantics-and-enforcement.md) compares them. The
+[consolidation ledger](docs/consolidation.md) plans to keep only the phase
+contract.
+
+## Checked results
+
+[Paper.lean](Paper.lean) states every theorem below, in the namespace
+`Vegas.Paper`. Each statement is pinned to the axioms `propext`,
+`Classical.choice` and `Quot.sound`.
+
+The *intended game* of a program is the analysis view in which nothing fails.
+The *forfeit utility* charges a fixed amount for each failed reveal, and the
+*exclusion utility* gives a player with a failed reveal a fixed payoff.
+
+### Compiler correctness
+
+| Theorem | Statement |
+| --- | --- |
+| `scheduled_terminal_state_law` | Under every public scheduler of the compiled graph, the compiled profile's decoded terminal states have the source program's execution law. |
+| `concurrent_event_nash_iff` | Take finite binding types and a finitely supported initial law. Under any public scheduler of the concurrent graph, a compiled profile is an ε-Nash equilibrium iff the source profile is one of the source game. This holds for every utility of the public outcome. |
+| `source_protocol_horizon` | Every source execution ends within one step more than the program has instructions. |
+
+### From the intended game to the source game
+
+| Theorem | Statement |
+| --- | --- |
+| `intended_sequential_equilibrium` | A sequential equilibrium of the intended game extends to one of the source game whose forfeit is at least the utility range. No reveal fails on its path, and the joint law of outcome and payoffs is unchanged. |
+| `intended_nash` | The same for ε-Nash equilibria. |
+| `exclusion_sequential_equilibrium` | As the first row, with an exclusion payoff at most every intended payoff in place of the forfeit. The strategies and beliefs extend those of the intended equilibrium. |
+| `public_scheduling_sequential_equilibrium` | A sequential equilibrium of a finite game lifts to the game in which a finitely branching public scheduler interleaves the moves. The scheduler reads only public data that each player's information determines. The outcome law is unchanged. |
+
+### Nash preservation on the plain contract
+
+These theorems hold for any builder meeting the asynchronous contract
+(`Vegas.AsyncServiceSpec`):
+
+- an owner is activated within a reaction bound once its event is ready;
+- its sole packet for the event is included within an inclusion bound;
+- both bounds fit before the event's deadline;
+- every run completes the graph.
+
+The audit is any authentic sampler, and deposits are nonnegative. Binding values
+have finite message forms, and the initial law has finite support.
+
+| Theorem | Statement |
+| --- | --- |
+| `async_first_turn_nash_iff` | A source profile is an ε-Nash equilibrium iff its first-turn clients are one on the bounded raw ledger. |
+| `async_client_nash_correspondence` | For clients that may defer, both directions hold with extra slack: twice the total deferral weight times the payoff range. |
+| `async_client_nash_reflection` | The source direction, on every response menu that admits the clients. |
+| `intended_async_first_turn_nash` | Take a source profile extending an intended ε-Nash equilibrium. Its first-turn clients are an ε-Nash equilibrium under the forfeit utility, with the intended joint law of outcome and payoffs. |
+| `intended_async_client_nash` | The same for deferring clients, with the slack above. The joint law is within the total deferral weight in total variation. |
+| `intended_opening_client_nash` | Some source profile that extends an intended ε-Nash equilibrium and opens every commitment has clients as in the previous row. |
+
+### Sequential-equilibrium preservation
+
+| Theorem | Contract and environment | Statement |
+| --- | --- | --- |
+| `concurrent_source_raw_sequential_equilibrium` | Phase contract on the concurrent graph with a count audit. A reserved-epoch service runs it, processing every pending packet each cycle on one tape drawn from a fixed prior, independent of the inputs. Activation and processing gaps are bounded, and every player sees every pending packet. | Every sequential equilibrium of the intended game is matched by one of the raw contract. The two have the same joint law of initial inputs, terminal state, public result and realized payoff vector, and nobody is excluded or charged on its path. |
+| `recovery_intended_raw_sequential_equilibrium` | Forced-exit contract on the sequential graph with a count audit, under any finitely branching builder meeting the asynchronous contract. Private inputs are independent across players. | Every sequential equilibrium of the intended game is matched by one of the raw contract. The joint law of outcome and payoffs is the same, and nobody is charged on its path. |
+| `one_packet_raw_sequential_equilibrium` | Plain contract with a count audit, under any finitely branching builder. | In a sequential equilibrium of the game where each player sends at most one permitted packet per event, the extension to all raw responses is one too. The law is the same and nobody is charged. |
+
+Both raw contracts charge deposits through the count audit. Each deposit,
+multiplied by the rates at which evidence against its owner is observed and
+delivered, must cover that owner's payoff spread.
+
+### Limits of preservation
+
+These results concern an abstract late-turn game, not the ledger
+([`Vegas.Examples.LateLeak`](Vegas/Examples/LateLeak.lean)). A sender may open at a
+protected turn or later, and a listener sees pending openings before they
+resolve.
+
+| Theorem | Statement |
+| --- | --- |
+| `late_leak_intended_outcome_not_preserved`, `late_leak_not_preserved_when_deferral_pays`, `late_leak_not_preserved_for_every_margin`, `settle_late_not_preserved_for_every_margin` | The intended game has a sequential equilibrium, and every one realizes the intended outcome law. No sequential equilibrium of the late game realizes it. The four theorems cover the sample parameters, any parameters where deferring pays, and every inclusion probability above an explicit threshold below one. |
+| `late_leak_equilibrium_total_variation_gap`, `late_leak_equilibrium_result_total_variation_gap` | For the sample parameters, every equilibrium outcome law of the late game is at least 267/2000 from the intended one in total variation, and every result law at least 3/2000. |
+| `late_leak_outcome_preserved_by_failure_costs` | Suppose the forfeit exceeds half the reward, and so does the expected loss of a late opening, counting the forfeit and the drop charge. Then the late game has a sequential equilibrium, and every one realizes the intended outcome law. |
+
+## Scope of the claims
+
+- The preservation theorems start from an equilibrium of the intended game, in
+  which nothing fails, not of the source game. The concurrent theorem is named
+  `source` but assumes `ConcurrentPayoffs.SourceEquilibrium`, an equilibrium of
+  the intended game.
+- In the concurrent theorem, the excluded payoff is constant per player. It is
+  at most zero and at most every terminal utility. A run unfinished at the
+  horizon pays zero. Binding types are finite, and the initial law may correlate
+  players but has finite support.
+- The turn-based and one-packet theorems state sequential rationality with
+  continuation payoffs truncated at the raw protocol's horizon.
+- The assumptions of the concurrent theorem are sufficient, not minimal.
+  [These counterexamples](docs/consolidation.md#why-the-concurrent-theorem-assumes-what-it-does)
+  show why several of them are needed.
+- The non-preservation theorems do not state that the late game has a
+  sequential equilibrium.
+- Some theorems have no concrete program as an instance. Among the Nash forms
+  only `async_first_turn_nash_iff` has one. The concurrent theorem's hypotheses
+  are discharged for a program without strategic content
+  ([test](VegasTests/ConcurrentRawHypotheses.lean)).
+- Cryptographic commitments, signatures and the EVM are ideal interfaces here;
+  realizing them needs separate refinement proofs.
+
+Retired models, routes and examples remain at the `research-tree` tag. The
+[consolidation ledger](docs/consolidation.md#retired-results) indexes them.
+
+## Build and validate
+
+`lakefile.toml` makes Lean warnings errors, so a `sorry` fails the build. The
+source policy rejects axiom declarations and trust escape hatches. Run the
+checks after the build and before committing:
 
 ```powershell
 lake build
@@ -49,4 +166,9 @@ python scripts/check-doc-references.py
 python -m unittest discover -s scripts -p 'test_*.py'
 ```
 
-The GameTheory dependency is managed separately as a Git submodule.
+The GameTheory dependency is a Git submodule. The [script notes](scripts/README.md)
+describe the checks. The [documentation index](docs/README.md) lists the design
+and research notes, and the [module map](docs/module-architecture.md) locates
+the code.
+
+The code is released under the [MIT license](LICENSE).

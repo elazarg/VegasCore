@@ -1,5 +1,10 @@
 # Sequential equilibrium of commit–reveal programs on an asynchronous ledger
 
+The concurrent theorem is checked under the reserved-epoch service as
+`Vegas.Paper.concurrent_source_raw_sequential_equilibrium`; the
+[proof note](se-concurrent-mechanization.md) describes its proof. This note develops the route for an arbitrary asynchronous
+ledger, and its status markers refer to that route.
+
 **SE: non-concurrent ✓ · recovery source ✓ · native word/G coupling ✓ · posterior/RAW repair/service incentives open.**
 
 **Deterrence: aggregate bound ✓ · private-input source/audit ✓ · native timing/SE open.**

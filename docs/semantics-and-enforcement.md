@@ -278,6 +278,10 @@ from the owner. No lemma states the resulting dominance of silence.
 
 ### II.3 Checked results
 
+The [README](../README.md#checked-results) states every Paper theorem. This
+table maps the main ones to their contracts, environments and labels in the
+paper.
+
 | Result (paper label) | Analysis target | Compiled output | Environment | Lean |
 | --- | --- | --- | --- | --- |
 | Compiler correctness (not yet in the paper) | Source execution law | Event graph | Any public scheduler, adaptive to the public store and completion order | `Vegas.Paper.scheduled_terminal_state_law` |
@@ -285,7 +289,6 @@ from the owner. No lemma states the resulting dominance of silence.
 | Nash (2) | Intended game via forfeit | As (1) | As (1) | `Vegas.Paper.intended_async_first_turn_nash` |
 | SE (`thm:recovery`) | Intended game | Forced exit, count verdict | Any builder meeting `Recovery.AsyncContract`; independent private inputs | `Vegas.Paper.recovery_intended_raw_sequential_equilibrium` |
 | SE, concurrent (`Vegas.Paper.concurrent_source_raw_sequential_equilibrium`; not yet in the paper) | Intended game, terminal-state utilities, correlated initial inputs of finite support, finite binding types | Phase contract on the concurrent graph, phase count verdict | Reserved-epoch service driven by one exogenous tape sampled from a fixed prior, independent of the inputs; bounded activation and processing gaps; complete pending observation; exit payoff at most zero and at most every terminal utility | `Vegas.concurrentRawSequentialPreservation` |
-| SE, conditional | Intended game with exit payoff | Plain contract with exit payoff, count verdict | Timely builder | [`Vegas.onePacket_intended_raw_sequentialEquilibrium`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/OnePacketSequentialPreservation.lean#L131) (assumes certificates; superseded by the row above) |
 | Negative (`thm:late-leak`) | Intended game with forfeit | Continued play after failure; dropped late openings charged | An abstract game, not the ledger | `Vegas.Paper.late_leak_intended_outcome_not_preserved` |
 | Intended to source (`thm:intended`) | Intended game to source game | None | None | `Vegas.Paper.intended_sequential_equilibrium` |
 
@@ -359,8 +362,8 @@ language defines the consequence of silence.
 One source semantics (III.1), one compiled contract and verdict, one audit
 model, and Nash and SE results for that combination. The phase contract is the
 natural single contract: it already carries forced exit and the concurrent SE
-result, and the [concurrent mechanization note](se-concurrent-mechanization.md)
-lists porting the Nash and turn-based SE results to it as next work. Steps:
+result, and the [consolidation ledger](consolidation.md) plans porting the Nash
+and turn-based SE results to it. Steps:
 
 1. Operational exit in the source semantics; re-establish publication
    accounting, guard safety and the source–graph correspondence.

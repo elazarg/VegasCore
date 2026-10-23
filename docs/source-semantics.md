@@ -6,6 +6,13 @@ The initial context can contain public data and persistent owner-private inputs.
 Fresh commitment and publication cells carry an explicit success or failure
 result. Failure is a value in the semantics, not an exception or missing state.
 
+The language has four limits. Programs are straight-line: no constructor
+branches on a value or repeats. The owner of each commitment and reveal is
+fixed by the program text. Every owned move is a commitment followed by a
+reveal of it. A guard reads public data, publications and its author's own
+commitment, never private inputs or other players' unpublished commitments
+(`Vegas.SourceGuardRead`).
+
 A public sample uses its declared kernel on the public source environment.
 A commitment chooses a private typed value or failure. A reveal chooses TRUE
 or FALSE. TRUE attempts publication of the committed value and checks the
@@ -25,5 +32,5 @@ silently added to that domain.
 [Semantics](../Vegas/Source/Semantics.lean) owns observations, evaluation and
 source policies. [Protocol](../Vegas/Source/Protocol.lean) connects them to the
 finite game model. The [compiler design](compilation-design.md) describes the
-runtime boundary; the [SE plan](se-schedule-generalization.md) states the
-required equilibrium result and its remaining obligations.
+runtime boundary; the [README](../README.md#checked-results) lists the checked
+equilibrium results.

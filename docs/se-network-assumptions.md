@@ -1,8 +1,10 @@
 # Network assumptions for sequential-equilibrium preservation
 
-Status: correlated-service delivery lemmas and counterexamples mathematically
-reviewed; full concurrent equilibrium construction and recovery composition
-open. No Lean theorem, fixed target, checklist box, or runtime semantics changes.
+The correlated-service delivery lemmas and counterexamples here are paper
+arguments. The concurrent theorem is checked under the reserved-epoch service as
+`Vegas.Paper.concurrent_source_raw_sequential_equilibrium`; the
+[proof note](se-concurrent-mechanization.md) describes its proof. The other network models
+below have no checked equilibrium construction.
 
 The question is which assumptions let concurrent commit/reveal implement each
 selected source sequential equilibrium with its original joint outcome and net

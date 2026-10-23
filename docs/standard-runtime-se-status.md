@@ -62,16 +62,16 @@ still be specified beside any broader claim.
   graph permits independent commitments to complete in either order between
   public barriers. It does not include pending-message traffic or the native
   audit; see [Paper.lean](../Paper.lean).
-- **Audited calendar compiler:** every source SE has a native raw-runtime SE
+- **Audited calendar compiler, retired to the `research-tree` tag:** every source SE has a native raw-runtime SE
   preserving the required outcome and settlement law, under the theorem's
   service, audit, coverage and deposit hypotheses. Pending traffic can be
   observed; the calendar supplies reliable settlement and the scheduling
   structure used by the information and consistency proof. See
   [`Vegas.Paper.source_audited_raw_sequential_equilibrium`](https://github.com/elazarg/VegasCore/blob/research-tree/Paper.lean#L43) in
-  [Paper.lean](../Paper.lean). The intended-game composition is
+  [Paper.lean at the tag](https://github.com/elazarg/VegasCore/blob/research-tree/Paper.lean). The intended-game composition is
   [`Vegas.SourceServiceSpec.intended_audited_raw_sequentialEquilibrium`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/IntendedServiceCompilation.lean#L42) in
   [IntendedServiceCompilation.lean](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/IntendedServiceCompilation.lean),
-  whose standard axioms are guarded in Paper.
+  whose standard axioms are guarded in Paper at the tag.
 - **Exact asynchronous Nash correspondence:** for arbitrary timely contract
   builders with a barrier-ordered graph, including sequential and
   concurrent-binding modes, the compiled first-opportunity clients are an

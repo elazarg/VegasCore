@@ -47,8 +47,8 @@ The [private-memory facts](../Vegas/Pending/ReactivePolicyFacts.lean) establish
 alignment of supported intention memory with positive own recall and retention
 through later responses. A recorded silent decision at a ready owned event
 therefore suppresses behavioral redraw, including after a consistent recall
-suffix. Source-observation and reachable-frontier adapters compose these local
-facts into [`Vegas.source_prescribed_terminal_joint_law`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceReactiveLaw.lean#L123) in
+suffix. At the `research-tree` tag, source-observation and reachable-frontier
+adapters compose these local facts into [`Vegas.source_prescribed_terminal_joint_law`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceReactiveLaw.lean#L123) in
 [SourceServiceReactiveLaw](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceReactiveLaw.lean).
 For finite players under `AsyncContract` and `AsyncTimely`, it preserves the
 joint original-initial-state and complete final-source-state law in sequential
@@ -60,6 +60,5 @@ for every authentic audit sampler and deposit. Unilateral-deviation corresponden
 off-path belief and rationality transport, and concurrent-reveals preservation
 require separate evidence.
 
-The [checked calendar stack](se-compilation-stack.md) supplies these edges for
-one service. The [asynchronous plan](se-schedule-generalization.md) states how to
-extend that result while retaining the baseline semantics.
+The [README](../README.md#checked-results) lists the equilibrium results that
+supply these edges, with their contracts and environments.

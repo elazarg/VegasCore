@@ -1,10 +1,10 @@
 # Realistic assumptions for concurrent sequential-equilibrium preservation
 
-Research status: general information/audit bounds and concurrent preservation
-under the explicit reserved-service, complete-observation assumptions are
-mathematically reviewed. Ordinary-chain sufficiency and a general always-online
-impossibility remain open. No new Lean theorem, checklist closure, or runtime
-change is claimed here.
+Concurrent preservation under the explicit reserved-service and
+complete-observation assumptions is checked as
+`Vegas.Paper.concurrent_source_raw_sequential_equilibrium`. The general
+information and audit bounds here are paper arguments. Ordinary-chain
+sufficiency and a general always-online impossibility remain open.
 
 The [network-assumption survey](se-network-assumptions.md) classifies common
 literature models and gives a delivery comparison allowing correlated delays

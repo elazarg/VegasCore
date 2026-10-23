@@ -1,18 +1,13 @@
 # Sequential preservation with reserved shared service
 
-This is a proposed argument for preservation under protected shared service,
+This note gives the argument for preservation under protected shared service,
 retaining concurrent commitments, permanent expulsion and commitment-phase
-restart. The end-to-end Lean preservation theorem remains unproved. The
-qualified ready-information derivation has independent agent review against
-the four exact primitive obligations, including source-site construction,
-historical correspondence, weights and payoff attachment. Its Lean proof bodies
-remain admitted. An unrestricted prefix density theorem is not claimed.
-Conditional-belief transport and unconditional preservation remain unproved in
-Lean. The linked reviews are not human review or checked theorem evidence.
-The network tape may be correlated and its epoch times unknown.
-The [exact target](../Vegas/Game/ConcurrentRawSequentialPreservation.lean)
-and [likelihood analysis](se-concurrent-likelihood.md) specify the active proof
-obligation. No new backend assumptions are adopted by this proposal.
+restart. The theorem is checked: `Vegas.Paper.concurrent_source_raw_sequential_equilibrium`
+states it, for the [exact target](../Vegas/Game/ConcurrentRawSequentialPreservation.lean),
+and the [likelihood analysis](se-concurrent-likelihood.md) gives the qualified
+ready-information derivation its proof follows. An unrestricted prefix density
+theorem is not claimed. The network tape may be correlated and its epoch times
+unknown.
 
 The service is an ideal reserved ledger. Reservation against arbitrary modeled
 raw traffic, complete pending observation, a global exclusion floor and the
@@ -349,8 +344,8 @@ In the limit the selected intended values and prompt timing occur surely.
 Protected service and well-formed intended guards cause no failures. Source
 commutation/read stability identifies the original joint input/outcome law;
 zero net intended fees and sound audit preserve its payoff law in the mathematical
-argument. The complete qualified finite derivation has independent agent review;
-its Lean transport proof and unconditional preservation remain open.
+argument. `Vegas.concurrentRawSequentialPreservation` checks the whole
+argument in Lean.
 
 ## Scope
 

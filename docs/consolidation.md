@@ -178,7 +178,7 @@ This step comes first because every removal would otherwise edit audit pins.
 - [ ] Owner decisions D1–D8.
 - [ ] Paper.lean states exactly the kept theorems, under the naming scheme of
       D8.
-- [ ] One results table in README keyed to the Paper pins, with scope and
+- [x] One results table in README keyed to the Paper pins, with scope and
       hypotheses; ARTIFACT.md folded into it.
 - [ ] Stale or contradictory status statements fixed or deleted (findings
       F-D1 to F-D4).
@@ -346,7 +346,7 @@ Severity: H high, M medium, L low. "Step" is the step that resolves the finding.
   assumes an SE of the intended game (`SourceEquilibrium`,
   `Vegas/Game/ConcurrentRawSequentialPreservation.lean:102`), not of the
   source game; its name and README say "source".
-- [ ] **F-C2 (M, Step 2).** README omits scope conditions of the concurrent
+- [x] **F-C2 (M, Step 2).** README omits scope conditions of the concurrent
   theorem: a non-strategic first-in-first-out service that clears every pending
   packet at each processing cycle, complete pending observation, a constant exit
   payoff, and payoff zero for a run unfinished at the horizon.
@@ -404,15 +404,18 @@ perfect recall proved for every model, horizons equal to proved bounds.
   express their utilities.
 - [ ] **F-L2 (H, Steps 3–4).** About eight source-level games and three
   compiled contracts; see [model inventory](#model-inventory).
-- [ ] **F-L3 (M, Step 2).** The language's limits (straight-line, fixed actors,
+- [x] **F-L3 (M, Step 2).** The language's limits (straight-line, fixed actors,
   every move a commit and a reveal, guards cannot read their author's private
   inputs) are not stated in README or source-semantics.md.
 - [ ] **F-L4 (L, Step 5).** A guard failure lands on whichever reveal completes
   the guard (`Vegas/Source/Semantics.lean:355-363`): a value may violate its own
   guard and publish as a success while a later reveal fails.
-- [ ] **F-L5 (M, Step 3).** `check-module-boundaries.py` checks only imports into
+- [x] **F-L5 (M, Step 3).** `check-module-boundaries.py` checks only imports into
   `Vegas.*`; it cannot see Source importing the Interaction runtime or analysis
-  layers.
+  layers. Foundation, Expr, Source, EventGraph and Compile may now import neither
+  `Interaction` nor the analysis libraries, except that the commit- and
+  proposal-recovery carriers in Source may use analysis until they move to the
+  proof layer.
 
 ### Size, duplication and proof engineering
 
@@ -447,19 +450,20 @@ perfect recall proved for every model, horizons equal to proved bounds.
 
 ### Documentation and repository
 
-- [ ] **F-D1 (H, Step 2).** Docs describe the concurrent theorem as unproved or
+- [x] **F-D1 (H, Step 2).** Docs describe the concurrent theorem as unproved or
   admitted: se-reserved-service-preservation.md:4-11,
   se-concurrent-code-inventory.md:39-43, se-concurrent-replay-analysis.md:5-6,
   module-architecture.md:17-19 and 2929-2937.
-- [ ] **F-D2 (H, Step 2).** ARTIFACT.md omits the concurrent theorem and 12
+- [x] **F-D2 (H, Step 2).** ARTIFACT.md omits the concurrent theorem and 12
   other Paper pins; se-async-checklist.md:68 names the fixed-calendar theorem as
   the headline; two docs claim Paper pins that Paper no longer has
   (se-async-checklist.md:409, standard-runtime-se-status.md:71).
-- [ ] **F-D3 (M, Step 2).** LICENSE is MIT; every Lean header says "All rights
-  reserved", two say Apache 2.0.
+- [x] **F-D3 (M, Step 2).** LICENSE is MIT; every Lean header says "All rights
+  reserved", two say Apache 2.0. Every header now names the MIT license.
 - [ ] **F-D4 (M, Step 7).** module-architecture.md is 2,937 lines under one
   heading; 53 of 81 Markdown files are unreachable from README; six overview
-  documents overlap.
+  documents overlap. The module map is now grouped by layer, and
+  [docs/README.md](README.md) reaches every Markdown file; the overlap remains.
 - [x] **F-D5 (M, Step 3).** `archive/` keeps 1,105 tracked files; live docs link
   into it.
 - [x] **F-D6 (L, Step 7).** scripts/README.md says investigation scripts are in
@@ -476,9 +480,11 @@ perfect recall proved for every model, horizons equal to proved bounds.
   permissions for the whole job; there is no concurrency group.
 - [ ] **F-I2 (L, Step 7).** `GameTheory/.lake` is not cached, so each run
   rebuilds the submodule; each run saves a 4.8 GB cache.
-- [ ] **F-I3 (L, Step 1).** The checkers' comment and string strippers miss
+- [x] **F-I3 (L, Step 1).** The checkers' comment and string strippers miss
   character literals, raw strings and guillemet names; the documentation check
-  passes vacuously outside the repository root.
+  passes vacuously outside the repository root. Both checks now share one
+  lexer that handles them, and the documentation check fails without a
+  `lakefile.toml` in the working directory.
 
 ## Why the concurrent theorem assumes what it does
 
@@ -515,7 +521,7 @@ show, and the models they need. They are checked at the tagged commit only.
 | [`Vegas/Language`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Language.lean) | Surface-syntax prototype, without semantics or elaboration | None |
 | [`VegasTests/AxiomAudit`](https://github.com/elazarg/VegasCore/blob/research-tree/VegasTests/AxiomAudit.lean) | 2,961 hand-written axiom pins | None |
 | [`archive/se-generalization`](https://github.com/elazarg/VegasCore/blob/research-tree/archive/se-generalization/README.md) | Uncompiled earlier designs, experiments and probes | None |
-| [`docs/se-proof-checklist.md`](https://github.com/elazarg/VegasCore/blob/research-tree/docs/se-proof-checklist.md), [`scripts/check-se-evidence.py`](https://github.com/elazarg/VegasCore/blob/research-tree/scripts/check-se-evidence.py) | The calendar checklist and its evidence check | The calendar theorem |
+| [`docs/se-proof-checklist.md`](https://github.com/elazarg/VegasCore/blob/research-tree/docs/se-proof-checklist.md), [`scripts/check-se-evidence.py`](https://github.com/elazarg/VegasCore/blob/research-tree/scripts/check-se-evidence.py), [`docs/se-compilation-stack.md`](https://github.com/elazarg/VegasCore/blob/research-tree/docs/se-compilation-stack.md), [`ARTIFACT.md`](https://github.com/elazarg/VegasCore/blob/research-tree/ARTIFACT.md) | The calendar checklist, its evidence check, and overviews of the calendar proof | The calendar theorem |
 | [`Vegas.onePacket_intended_sequentialEquilibrium_of_openInputs`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/OnePacketCertificateDischarge.lean#L4461), [`Vegas.onePacket_intended_raw_sequentialEquilibrium_of_blindInputs`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/OnePacketCertificateAssembly.lean#L443) and the rest of the one-packet certificate | Turn-based SE preservation of the one-packet game and its bounded raw runtime, assuming the certificate's open inputs (value blindness, late commitments); a route left conditional | Plain contract on the sequential graph, count audit |
 | [`Vegas.SourceProgram.Setup.intended_sequentialEquilibrium_commitRecovery`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/CommitRecoveryPreservation.lean#L22), [`Vegas.SourceProgram.Setup.intended_sequentialEquilibrium_commitRecovery_continuing`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/CommitRecoveryContinuingExtension.lean#L24) | Intended SE extends to the source game with end-of-block rollback and permanent exclusion, keeping strategies, beliefs and the joint readout and payoff law | Source commit-recovery game |
 | [`Vegas.phase_counted_raw_sequentialEquilibrium`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/PhaseRawReadoutLaw.lean#L27) | The raw count-audit extension of a phase-contract equilibrium keeps the typed readout jointly with the realized payoffs, for every scheduler | Phase contract, count audit |

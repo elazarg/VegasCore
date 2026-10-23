@@ -4,6 +4,11 @@ This note works with the theorem and runtime semantics of
 `docs/se-preservation-commit-reveal.md`. It records mathematical arguments,
 not claims of Lean verification. No runtime or target assumption is changed.
 
+The concurrent theorem is checked under the reserved-epoch service as
+`Vegas.Paper.concurrent_source_raw_sequential_equilibrium`; the
+[proof note](se-concurrent-mechanization.md) describes its proof. This note audits the route for an arbitrary asynchronous
+ledger, and its status markers refer to that route.
+
 **Math audit: source SE checked · native query checked · native transport/incentives open in Lean.**
 
 **Math frontier: same-event repairs derived · deferred-receipt obstruction · S3 open.**
