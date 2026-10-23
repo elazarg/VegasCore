@@ -47,16 +47,9 @@ example (scheduler : SourceSetup.fairSetup.eventGraph.PublicScheduler)
     simpa only [SourceProgram.Setup.eventGame, EventGraph.gameForm,
       PMF.map_bind, PMF.bind_map, Function.comp_def] using law⟩
 
-private def mixedSetup : SourceProgram.Setup
-    (Player := SourceSemantics.Player) (L := simpleExpr) where
-  context := SourceSemantics.mixedInitial.context
-  namesNodup := SourceSemantics.mixedInitial.namesNodup
-  initialLaw := PMF.pure SourceSemantics.mixedInitial.state
-  obligations := SourceSemantics.mixedInitial.obligations
-  program := SourceSemantics.mixedInitial.program
-  accounts := SourceSemantics.mixedInitial.accounts
+private abbrev mixedSetup := SourceSemantics.mixedSetup
 
-instance : mixedSetup.FiniteInitialLaw := ⟨by simp [mixedSetup]⟩
+instance : mixedSetup.FiniteInitialLaw := ⟨by simp [mixedSetup, SourceSemantics.mixedSetup]⟩
 
 /-- The strategic theorem does not require sample-free code, homogeneous
 payloads, universally accepting guards, or commitments created during play. -/

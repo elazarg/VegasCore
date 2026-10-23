@@ -505,10 +505,6 @@ theorem afterReveal_update {published : VarId} {owner : Player}
 
 end Steps
 
-def Initial.run (initial : Initial (Player := Player) (L := L))
-    (profile : BehavioralProfile initial.program) :=
-  SourceProgram.run initial.program profile initial.state
-
 /-- What a completed program produces: its publications and public samples,
 and nothing a player kept to itself. This is exactly the context settlement
 reads, so no payoff can depend on more than an outcome records. -/

@@ -1,12 +1,12 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Source.Semantics
+import Vegas.Source.Setup
 
 /-! # Revelation accounting
 
 The syntax's open-resource index tracks unresolved commitments. `Accounted`
 ties it to the static revelations. Every checked program therefore resolves
-every commitment before `ret` (`SourceProgram.Initial.revealed`), independently
+every commitment before `ret` (`Vegas.SourceProgram.Setup.revealed`), independently
 of policies, chance outcomes, and publication failure. Private inputs persist.
 -/
 
@@ -118,14 +118,14 @@ theorem finalRevelations_revealed {Γ : SourceCtx Player L} {O : Finset VarId}
       intro revelations unique accounted
       exact ih _ (by simp [fresh, unique]) (Accounted.reveal source unique accounted)
 
-/-- Every commitment of a checked initial source game is resolved by the end of
-its syntax. -/
-theorem Initial.revealed (initial : Initial (Player := Player) (L := L))
+/-- Every commitment of a checked source game is resolved by the end of its
+syntax. -/
+theorem Setup.revealed (setup : Setup (Player := Player) (L := L))
     {owner : Player} {payload : L.Ty} {name : VarId}
-    (h : HasVar initial.program.terminalCtx name (.commitment owner payload)) :
-    (finalRevelations initial.program (Revelations.initial initial.context) h).isRevealed =
+    (h : HasVar setup.program.terminalCtx name (.commitment owner payload)) :
+    (finalRevelations setup.program (Revelations.initial setup.context) h).isRevealed =
       true :=
-  finalRevelations_revealed initial.program _ initial.namesNodup
-    (initial.accounts ▸ Accounted.initial initial.context) h
+  finalRevelations_revealed setup.program _ setup.namesNodup
+    (setup.accounts ▸ Accounted.initial setup.context) h
 
 end Vegas.SourceProgram

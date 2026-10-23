@@ -17,13 +17,15 @@ open GameTheory.Math.Probability Interaction Vegas
 noncomputable section
 
 private abbrev TestPlayer := VegasTests.SourceSemantics.Player
-private abbrev graph := VegasTests.SourceSemantics.mixedInitial.eventGraph
+private abbrev graph := VegasTests.SourceSemantics.mixedSetup.eventGraph
+private abbrev inputs : graph.Inputs :=
+  VegasTests.SourceSemantics.mixedSetup.eventInputs VegasTests.SourceSemantics.mixedState
 
 private def runtime : EventGraphRuntime graph where
   deadline _ := 10
 
 private def initial : EventGraphRuntime.State graph :=
-  EventGraphRuntime.State.initial VegasTests.SourceSemantics.mixedInitial.eventInputs
+  EventGraphRuntime.State.initial inputs
 
 private abbrev choiceEvent : graph.EventId := ⟨0, by decide⟩
 private abbrev choiceReveal : graph.EventId := ⟨1, by decide⟩
@@ -58,12 +60,11 @@ private theorem choiceTimely : prepared.WithinDeadline runtime choiceEvent := by
 
 private theorem choiceUnused : prepared.HandleUnused choiceHandle := by
   intro field accepted
-  change (EventGraphRuntime.State.initial
-    VegasTests.SourceSemantics.mixedInitial.eventInputs).accepted field =
+  change (EventGraphRuntime.State.initial inputs).accepted field =
       some choiceHandle at accepted
   obtain ⟨input, owner, payload, _field, _layout, handle⟩ :=
     EventGraphRuntime.State.initial_accepted_eq_some
-      VegasTests.SourceSemantics.mixedInitial.eventInputs field choiceHandle accepted
+      inputs field choiceHandle accepted
   cases handle
 
 private theorem preparedResult :

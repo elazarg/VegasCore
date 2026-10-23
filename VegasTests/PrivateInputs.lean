@@ -20,11 +20,11 @@ open Vegas.Examples.PrivateValueAuction
 open Vegas.Examples.CommitRevealAuction (Player)
 
 /-- Returning immediately with private inputs is a checked source program. -/
-private def inputOnly (types : Player → Int) : SourceProgram.Initial
+private def inputOnly (types : Player → Int) : SourceProgram.Setup
     (Player := Player) (L := simpleExpr) where
   context := context
   namesNodup := by decide
-  state := initial types
+  initialLaw := PMF.pure (initial types)
   obligations := ∅
   program := .ret []
   accounts := rfl

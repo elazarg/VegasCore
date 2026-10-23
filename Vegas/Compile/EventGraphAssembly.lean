@@ -180,16 +180,6 @@ theorem toEventGraph_informationDiscipline {Γ : SourceCtx Player L}
       (toEventGraph program).prefixSchema :=
   (toEventGraph_barrierOrdered program).informationDiscipline
 
-/-- Entry point for a source program with one concrete initial state. -/
-def _root_.Vegas.SourceProgram.Initial.eventGraph
-    (source : Initial (Player := Player) (L := L)) : Vegas.EventGraph Player L :=
-  toEventGraph source.program
-
-/-- Encode the concrete initial state separately from its compiled graph. -/
-def _root_.Vegas.SourceProgram.Initial.eventInputs
-    (source : Initial (Player := Player) (L := L)) : source.eventGraph.Inputs :=
-  encodeInputs source.state
-
 /-- Entry point shared by every state in a distributed initial setup law. -/
 def _root_.Vegas.SourceProgram.Setup.eventGraph
     (source : Setup (Player := Player) (L := L)) : Vegas.EventGraph Player L :=

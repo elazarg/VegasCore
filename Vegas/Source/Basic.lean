@@ -250,16 +250,6 @@ def commitmentNames : SourceCtx Player L → Finset VarId
   | (_, .privateInput _ _) :: Γ => commitmentNames Γ
   | (_, .publicData _) :: Γ | (_, .publication _) :: Γ => commitmentNames Γ
 
-/-- A runnable source program together with its typed initial state and exact
-accounting for the resolutions owed by initial commitments. -/
-structure Initial where
-  context : SourceCtx Player L
-  namesNodup : (context.map Prod.fst).Nodup
-  state : State L context
-  obligations : Finset VarId
-  program : SourceProgram Player L context obligations
-  accounts : obligations = commitmentNames context
-
 end SourceProgram
 
 end Vegas

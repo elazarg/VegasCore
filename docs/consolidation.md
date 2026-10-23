@@ -117,7 +117,7 @@ device in the proof layer), tag and remove, or remove.
 | `Setup.exclusionModel`, `Setup.exclusionMoveModel` | Analysis view with a fixed exit payoff | decision D3 |
 | `commitRecoveryModel`, `commitRecoveryErasedModel`, `proposalRecoveryModel` | Proof carriers of the concurrent SE theorem (26k of the 47k lines in Vegas/Source) | carrier: move to the proof layer and label |
 | `Setup.valueBindingGame` | Pure value-binding game form, used only by the commit–reveal auction example; its behavioral edge ([`Vegas/Game/ValueBindingEdge.lean`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/ValueBindingEdge.lean)) is unused | remove the edge; keep the game form only with the example |
-| `SourceProgram.Initial` | Duplicate of `Setup` with a point-mass initial state | remove |
+| `SourceProgram.Initial` | Duplicate of `Setup` with a point-mass initial state | removed; tests use a `Setup` with a point-mass law, and `Vegas.SourceProgram.Setup.revealed` states the accounting theorem |
 | `Vegas/Language` | Surface-syntax prototype with no semantics or elaboration | tag and remove |
 
 **Compiled contracts.** All three run on the same `Interaction` chain model.
@@ -248,9 +248,9 @@ Pass two:
       lemmas whose left sides they use, and the names its `open`, `variable`
       and notation lines and `simp` lemma lists mention.
 - [ ] The calendar's remaining `ServiceRoster` and `SourceService*` modules,
-      `MessagePool`, `SourceProgram.Initial` and most of `OnePacket*` stay
-      because the turn-based SE and asynchronous Nash theorems use them on the
-      plain and forced-exit contracts; they wait for Step 4.
+      `MessagePool` and most of `OnePacket*` stay because the turn-based SE and
+      asynchronous Nash theorems use them on the plain and forced-exit
+      contracts; they wait for Step 4.
 
 Exit: the walk reports only modules on its allowlist; measurements updated.
 

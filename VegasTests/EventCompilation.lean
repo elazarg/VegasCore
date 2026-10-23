@@ -233,31 +233,31 @@ example : outputLayout SourceSemantics.mixedProgram ⟨3, by decide⟩ = .public
 
 /-- The complete mixed source compiles with its initial private input and
 deferred guard; no sample-free or homogeneous-payload restriction is needed. -/
-example : SourceSemantics.mixedInitial.eventGraph.InformationDiscipline
-    SourceSemantics.mixedInitial.eventGraph.prefixSchema :=
-  toEventGraph_informationDiscipline SourceSemantics.mixedInitial.program
+example : SourceSemantics.mixedSetup.eventGraph.InformationDiscipline
+    SourceSemantics.mixedSetup.eventGraph.prefixSchema :=
+  toEventGraph_informationDiscipline SourceSemantics.mixedSetup.program
 
 
-example : SourceSemantics.mixedInitial.eventGraph.order.eventCount = 4 := rfl
+example : SourceSemantics.mixedSetup.eventGraph.order.eventCount = 4 := rfl
 
 /-- Private initial values are graph inputs rather than another player move. -/
-example : inputLayout SourceSemantics.mixedInitial.context ⟨0, by decide⟩ =
+example : inputLayout SourceSemantics.mixedSetup.context ⟨0, by decide⟩ =
     .binding SourceSemantics.Player.alice .bool := rfl
 
-example : encodeInputs SourceSemantics.mixedInitial.state ⟨0, by decide⟩ =
+example : encodeInputs SourceSemantics.mixedState ⟨0, by decide⟩ =
     PublicationResult.success true := rfl
 
 /-- The complete mixed program has its source law under every adaptive public
 scheduler, not just under the canonical schedule. -/
-example (scheduler : SourceSemantics.mixedInitial.eventGraph.PublicScheduler)
-    (profile : SourceProgram.BehavioralProfile SourceSemantics.mixedInitial.program) :
-    (SourceSemantics.mixedInitial.eventGraph.terminalOutcomes scheduler
-      (compileEventProfile SourceSemantics.mixedInitial.program profile)
-      (encodeInputs SourceSemantics.mixedInitial.state)).map
-        (terminalState SourceSemantics.mixedInitial.program) =
-      SourceSemantics.mixedInitial.run profile :=
-  scheduled_terminalState_law SourceSemantics.mixedInitial.program scheduler profile
-    SourceSemantics.mixedInitial.state
+example (scheduler : SourceSemantics.mixedSetup.eventGraph.PublicScheduler)
+    (profile : SourceProgram.BehavioralProfile SourceSemantics.mixedSetup.program) :
+    (SourceSemantics.mixedSetup.eventGraph.terminalOutcomes scheduler
+      (compileEventProfile SourceSemantics.mixedSetup.program profile)
+      (encodeInputs SourceSemantics.mixedState)).map
+        (terminalState SourceSemantics.mixedSetup.program) =
+      SourceProgram.run SourceSemantics.mixedSetup.program profile SourceSemantics.mixedState :=
+  scheduled_terminalState_law SourceSemantics.mixedSetup.program scheduler profile
+    SourceSemantics.mixedState
 
 private def rejectingGraph := toEventGraph SourceSemantics.falseGuardProgram
 

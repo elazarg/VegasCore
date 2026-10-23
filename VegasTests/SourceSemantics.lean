@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Source.Semantics
+import Vegas.Source.Setup
 import Vegas.Expr.Simple
 import GameTheoryExtensions.Math.Probability.Support
 
@@ -92,7 +92,7 @@ def mixedProgram : SourceProgram Player simpleExpr InitialCtx {seed} :=
   .sample coin (by decide) dependentCoin <|
   .ret [(.alice, payoff)]
 
-private def initialState : State simpleExpr InitialCtx :=
+def mixedState : State simpleExpr InitialCtx :=
   Env.cons (x := seed) (.success true) <|
     Env.cons (x := flag) true (Env.empty (CellVal simpleExpr))
 
@@ -130,7 +130,7 @@ private def acceptsAtSeed (published : PublicationResult (Option Bool))
         (Env.cons (x := seedOut) (τ := .publication .bool) proposal <|
           Env.cons (x := choiceOut) (τ := .publication (.option .bool)) published <|
           Env.cons (x := choice) (τ := .commitment .alice (.option .bool))
-            (PublicationResult.success Option.none) initialState)
+            (PublicationResult.success Option.none) mixedState)
 
 example : acceptsAtSeed (.success Option.none) (.success true) = true := by decide
 example : acceptsAtSeed (.success (some false)) (.success true) = false := by decide
@@ -138,10 +138,10 @@ example : acceptsAtSeed (.success (some false)) (.success true) = false := by de
 example : acceptsAtSeed .failure (.success true) = true := by decide
 example : acceptsAtSeed (.success (some false)) .failure = true := by decide
 
-def mixedInitial : SourceProgram.Initial (Player := Player) (L := simpleExpr) where
+def mixedSetup : SourceProgram.Setup (Player := Player) (L := simpleExpr) where
   context := InitialCtx
   namesNodup := by decide
-  state := initialState
+  initialLaw := PMF.pure mixedState
   obligations := {seed}
   program := mixedProgram
   accounts := rfl
@@ -231,13 +231,13 @@ macro "solve_mixed_run" : tactic =>
       PMF.pure_bind, ← PMF.bind_pure_comp, Function.comp_def])
 
 private theorem successful_run :
-    mixedProgram.run (mixedProfile (.success Option.none) true) initialState =
+    mixedProgram.run (mixedProfile (.success Option.none) true) mixedState =
       fairBool.denote.map successfulState := by
   solve_mixed_run
   rfl
 
 private theorem invalid_run :
-    mixedProgram.run (mixedProfile (.success (some false)) true) initialState =
+    mixedProgram.run (mixedProfile (.success (some false)) true) mixedState =
       PMF.pure invalidState := by
   solve_mixed_run
   change (RationalLaw.pure false).denote.bind _ = _
@@ -245,7 +245,7 @@ private theorem invalid_run :
   rfl
 
 private theorem unopenable_run :
-    mixedProgram.run (mixedProfile .failure true) initialState =
+    mixedProgram.run (mixedProfile .failure true) mixedState =
       PMF.pure unopenableState := by
   solve_mixed_run
   change (RationalLaw.pure false).denote.bind _ = _
@@ -253,7 +253,7 @@ private theorem unopenable_run :
   rfl
 
 private theorem withholding_run :
-    mixedProgram.run (mixedProfile (.success Option.none) false) initialState =
+    mixedProgram.run (mixedProfile (.success Option.none) false) mixedState =
       PMF.pure withheldState := by
   solve_mixed_run
   change (RationalLaw.pure false).denote.bind _ = _
@@ -261,7 +261,7 @@ private theorem withholding_run :
   rfl
 
 example (value : Bool) :
-    (((mixedProgram.run (mixedProfile (.success Option.none) true) initialState).map
+    (((mixedProgram.run (mixedProfile (.success Option.none) true) mixedState).map
       (fun state => state.get .here)) value).toReal = 1 / 2 := by
   rw [successful_run, PMF.map_comp]
   change ((fairBool.denote.map id) value).toReal = _
@@ -273,26 +273,26 @@ example (value : Bool) :
   cases value <;> norm_num [fairBool, RationalLaw.entryMass]
 
 example :
-    (mixedProgram.run (mixedProfile (.success Option.none) true) initialState).map
+    (mixedProgram.run (mixedProfile (.success Option.none) true) mixedState).map
       mixedProgram.evaluatePayoffs = PMF.pure [(.alice, 10)] := by
   rw [successful_run, PMF.map_comp]
   change fairBool.denote.map (fun _ => ([(Player.alice, 10)] : List (Player × Int))) = _
   exact PMF.map_const _ _
 
 example :
-    (mixedProgram.run (mixedProfile (.success (some false)) true) initialState).map
+    (mixedProgram.run (mixedProfile (.success (some false)) true) mixedState).map
       mixedProgram.evaluatePayoffs = PMF.pure [(.alice, -5)] := by
   rw [invalid_run, PMF.pure_map]
   rfl
 
 example :
-    (mixedProgram.run (mixedProfile .failure true) initialState).map
+    (mixedProgram.run (mixedProfile .failure true) mixedState).map
       mixedProgram.evaluatePayoffs = PMF.pure [(.alice, -10)] := by
   rw [unopenable_run, PMF.pure_map]
   rfl
 
 example :
-    (mixedProgram.run (mixedProfile (.success Option.none) false) initialState).map
+    (mixedProgram.run (mixedProfile (.success Option.none) false) mixedState).map
       mixedProgram.evaluatePayoffs = PMF.pure [(.alice, -10)] := by
   rw [withholding_run, PMF.pure_map]
   rfl
