@@ -169,6 +169,36 @@ theorem jointSettlement_sub_valuation (law : PMF Outcome)
   rw [← jointSettlement_add_valuation law valuation transfer observe audit deposit]
   exact map_utilityReadout_receiptReadout valuation _
 
+/-- A retained observation recovers actual cash when the
+declared valuation factors through it on the realized outcome support. Audit
+verdicts may remain correlated, and no clean-settlement assumption is required. -/
+theorem jointSettlement_readout_sub_valuation {Retained : Type}
+    (law : PMF Outcome) (valuation transfer : Outcome → Player → ℝ)
+    (retain : Outcome → Retained) (retainedValuation : Retained → Player → ℝ)
+    (factors : ∀ outcome ∈ law.support, valuation outcome = retainedValuation (retain outcome))
+    (observe : Outcome → Observation) (audit : Observation → PMF (Player → Bool))
+    (deposit : Player → ℝ) :
+    (jointSettlement law (fun outcome who => valuation outcome who + transfer outcome who)
+        observe audit deposit).map
+        (receiptReadout retainedValuation ∘ fun realized => (retain realized.1, realized.2)) =
+      (jointSettlement law transfer observe audit deposit).map
+        (fun realized => (retain realized.1, realized.2)) := by
+  unfold jointSettlement
+  rw [PMF.map_bind, PMF.map_bind]
+  apply bind_congr_on_support _
+  intro outcome supported
+  rw [← settlement_add_valuation valuation transfer observe audit deposit outcome]
+  simp only [PMF.map_comp, Function.comp_def]
+  congr 1
+  funext receipts
+  apply Prod.ext
+  · rfl
+  · funext who
+    change (valuation outcome who + receipts who) -
+      retainedValuation (retain outcome) who = receipts who
+    rw [factors outcome supported]
+    ring
+
 /-- A clean audit preserves the joint outcome and monetary transfer law. -/
 theorem jointSettlement_clean (law : PMF Outcome) (transfer : Outcome → Player → ℝ)
     (observe : Outcome → Observation) (audit : Observation → PMF (Player → Bool))

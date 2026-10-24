@@ -85,6 +85,7 @@ import Vegas.Game.CompiledSampleReadback
 import Vegas.Game.CompiledViewTail
 import Vegas.Game.ConcurrentRawEquilibrium
 import Vegas.Game.ConcurrentRawSequentialPreservation
+import Vegas.Game.ConcurrentPaymentPreservation
 import Vegas.Game.DecodedRevelations
 import Vegas.Game.EventCompilation
 import Vegas.Game.EventScheduling
@@ -645,6 +646,8 @@ import Vegas.Game.RecoverySavedSourceRank
 import Vegas.Game.RecoverySavedSourceView
 import Vegas.Game.RecoverySequentialCompilation
 import Vegas.Game.RecoverySequentialLimit
+import Vegas.Game.RecoveryPaymentReadout
+import Vegas.Game.SequentialPaymentValuation
 import Vegas.Game.RecoverySettledCommitCheckpoint
 import Vegas.Game.RecoverySilenceComparison
 import Vegas.Game.RecoverySourceBeliefBounds
@@ -737,6 +740,7 @@ import Vegas.Game.ServiceTimingCoupling
 import Vegas.Game.ServiceWithheldForfeit
 import Vegas.Game.SourceCommitBlock
 import Vegas.Game.SourceContinuation
+import Vegas.Game.SourceProtocolNash
 import Vegas.Game.SourceFailureRecord
 import Vegas.Game.SourceInformation
 import Vegas.Game.SourcePrefixKernel

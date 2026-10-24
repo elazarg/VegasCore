@@ -5,6 +5,7 @@ import Vegas.Compile
 import Vegas.Game
 import Vegas.Examples.LateLeak
 import Vegas.Examples.ProgramPayments
+import Vegas.Examples.ProgramPaymentsRuntime
 
 /-! # Paper theorems
 
@@ -1031,3 +1032,115 @@ end Vegas.Paper
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.AsyncServiceSpec.payment_firstTurnClientProfile_settlement_law
+
+/-! Deferring clients, concrete runtime equilibria and monetary SE readouts. -/
+
+/-- info: 'GameTheory.optional_monetary_payoff_bounds' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms GameTheory.optional_monetary_payoff_bounds
+
+/-- info: 'GameTheory.Enforcement.TerminalAudit.jointSettlement_readout_sub_valuation' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms GameTheory.Enforcement.TerminalAudit.jointSettlement_readout_sub_valuation
+
+/-- info: 'Vegas.AsyncServiceSpec.payment_within_of_bounds' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.AsyncServiceSpec.payment_within_of_bounds
+
+/-- info: 'Vegas.AsyncServiceSpec.payment_rawClientProfile_isεNash_approximate' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.AsyncServiceSpec.payment_rawClientProfile_isεNash_approximate
+
+/-- info: 'Vegas.SourceProgram.Setup.protocol_payoff_law' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.protocol_payoff_law
+
+/-- info: 'Vegas.SourceProgram.Setup.protocol_isεNash_of_decoded' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.protocol_isεNash_of_decoded
+
+/-- info: 'Vegas.SourceProgram.Setup.protocol_isεNash_iff' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.protocol_isεNash_iff
+
+/-- info: 'Vegas.Examples.ProgramPaymentsRuntime.runtime_isNash_iff' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.ProgramPaymentsRuntime.runtime_isNash_iff
+
+/-- info: 'Vegas.Examples.ProgramPaymentsRuntime.bonus_true_isNash' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.ProgramPaymentsRuntime.bonus_true_isNash
+
+/-- info: 'Vegas.Examples.ProgramPaymentsRuntime.zero_false_isNash' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.ProgramPaymentsRuntime.zero_false_isNash
+
+/-- info: 'Vegas.Examples.ProgramPaymentsRuntime.bonus_false_not_isNash' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.ProgramPaymentsRuntime.bonus_false_not_isNash
+
+/-- info: 'Vegas.Examples.ProgramPaymentsRuntime.zero_true_not_isNash' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.ProgramPaymentsRuntime.zero_true_not_isNash
+
+/-- info: 'Vegas.Examples.ProgramPaymentsRuntime.settlement_law' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.ProgramPaymentsRuntime.settlement_law
+
+/-- info: 'Vegas.SourceProgram.exclusionUtility_parameterPaymentUtility' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.exclusionUtility_parameterPaymentUtility
+
+/-- info: 'Vegas.SourceProgram.parameterPaymentUtility_exit_iff' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.parameterPaymentUtility_exit_iff
+
+/-- info: 'Vegas.phaseExclusionBase_expect_monetaryUtility' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.phaseExclusionBase_expect_monetaryUtility
+
+/-- info: 'Vegas.recoveryExclusionBase_expect_monetaryUtility' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.recoveryExclusionBase_expect_monetaryUtility
+
+/-- info: 'Vegas.ConcurrentPayoffs.programPayments_bounded' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.ConcurrentPayoffs.programPayments_bounded
+
+/-- info: 'Vegas.ReservedConcurrentImplementation.auditedUtility_programPayments_eq_expect' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.ReservedConcurrentImplementation.auditedUtility_programPayments_eq_expect
+
+/-- info: 'Vegas.concurrent_programPayments_sequential_preservation' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.concurrent_programPayments_sequential_preservation
+
+/-- info: 'Vegas.recoveryExclusionBase_valuation_factors' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.recoveryExclusionBase_valuation_factors
+
+/-- info: 'Vegas.recovery_jointCashLaw_of_utility_law' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.recovery_jointCashLaw_of_utility_law

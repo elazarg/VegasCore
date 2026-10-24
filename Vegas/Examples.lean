@@ -26,6 +26,8 @@ import Vegas.Examples.LateOpeningRuntimeSourcePreservation
 import Vegas.Examples.LateOpeningRuntimeUtility
 import Vegas.Examples.PrivateValueAuction
 import Vegas.Examples.ProgramPayments
+import Vegas.Examples.ProgramPaymentsRuntime
+import Vegas.Examples.ProgramPaymentsRuntimeService
 import Vegas.Examples.ReservedEpochBoundedGaps
 import Vegas.Examples.ReservedEpochBudgetConcurrency
 import Vegas.Examples.ReservedEpochCertifiedConcurrency
