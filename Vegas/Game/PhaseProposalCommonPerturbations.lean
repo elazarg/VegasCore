@@ -4,6 +4,7 @@ import Vegas.Game.PhaseProposalInitializedLawError
 import Vegas.Game.PhaseProposalPreparationPosterior
 import Vegas.Game.ProposalRecoveryForeignPreparationPosterior
 import GameTheory.Math.Probability.RelativeTremble
+import GameTheoryExtensions.Math.Probability.PerturbationScale
 
 /-! # One concrete sequence for both preparation posteriors and initialized laws -/
 
@@ -154,9 +155,9 @@ theorem exists_phaseProposal_common_perturbations
   have scaleLimit : Tendsto (fun n => (scale n).val) atTop (nhds 0) := by
     simpa only [scale, delta, zero_div] using
       (relativeTremble_tendsto reach reachPositive).div_const (2 : ℝ)
-  obtain ⟨sourceChance, sourceLength, sourceChancePositive, sourceChanceBounded,
+  obtain ⟨sourceChance, sourceLength, sourceChancePositive, _sourceChanceBounded,
     sourceFloor⟩ := setup.exists_proposalRecovery_foreignPreparation_posterior_bound finite
-  obtain ⟨nativeChance, nativeLength, nativeChancePositive, nativeChanceBounded,
+  obtain ⟨nativeChance, nativeLength, nativeChancePositive, _nativeChanceBounded,
     nativeFloor⟩ := exists_phaseProposal_foreignPreparation_posterior_bound setup mode runtime
       leaks bounds plan horizon scheduler complete covered maximal finite
   let baseRates : ℕ → PhaseProposalRates := fun n =>
@@ -167,55 +168,28 @@ theorem exists_phaseProposal_common_perturbations
   have nativeLower (n : Nat) := nativeFloor (scale n).val (scalePositive n)
     (scale n).property.2 (baseRates n) (scalePositive n) (scaleSmall n)
       (scalePositive n) (scalePositive n)
-  choose sourceFloorValue sourceFloorPositive sourceFloorBounded sourcePosterior
+  choose sourceFloorValue sourceFloorPositive _sourceFloorBounded sourcePosterior
     using sourceLower
-  choose nativeFloorValue nativeFloorPositive nativeFloorBounded nativePosterior
+  choose nativeFloorValue nativeFloorPositive _nativeFloorBounded nativePosterior
     using nativeLower
   have selectRate (chance lower : ℝ) (length count : Nat)
-      (chancePositive : 0 < chance) (chanceBounded : chance ≤ 1)
-      (lowerPositive : 0 < lower) (lowerBounded : lower ≤ 1) (n : Nat) :
+      (chancePositive : 0 < chance) (lowerPositive : 0 < lower) (n : Nat) :
       ∃ bad : Set.Icc (0 : ℝ) 1,
         0 < bad.val ∧ bad.val ≤ (scale n).val ∧
           (Fintype.card Player : ℝ) *
             ((count : ℝ) * bad.val / (chance * lower ^ length)) ≤ (scale n).val := by
-    let size : ℝ := (Fintype.card Player : ℝ) * count
-    have sizeNonnegative : 0 ≤ size := by positivity
-    have denominatorPositive : 0 < 1 + size := by positivity
-    have powerPositive : 0 < lower ^ length := pow_pos lowerPositive _
-    have productBounded : chance * lower ^ length ≤ 1 := by
-      calc
-        _ ≤ 1 * lower ^ length :=
-          mul_le_mul_of_nonneg_right chanceBounded (pow_nonneg lowerPositive.le _)
-        _ = lower ^ length := one_mul _
-        _ ≤ 1 := pow_le_one₀ lowerPositive.le lowerBounded
-    let bad : ℝ := (scale n).val * chance * lower ^ length / (1 + size)
-    have badPositive : 0 < bad :=
-      div_pos (mul_pos (mul_pos (scalePositive n) chancePositive) powerPositive)
-        denominatorPositive
-    have badBounded : bad ≤ (scale n).val := by
-      apply (div_le_iff₀ denominatorPositive).mpr
-      calc
-        _ = (scale n).val * (chance * lower ^ length) := by ring
-        _ ≤ (scale n).val := mul_le_of_le_one_right (scalePositive n).le productBounded
-        _ ≤ (scale n).val * (1 + size) := by
-          nlinarith [mul_nonneg (scalePositive n).le sizeNonnegative]
+    obtain ⟨bad, badPositive, badBounded, ratio⟩ :=
+      exists_positive_rate_with_ratio_bound (scale n).val (chance * lower ^ length)
+        ((Fintype.card Player : ℝ) * count) (scalePositive n)
+        (mul_pos chancePositive (pow_pos lowerPositive _)) (by positivity)
     refine ⟨⟨bad, badPositive.le, badBounded.trans (scale n).property.2⟩,
       badPositive, badBounded, ?_⟩
-    have exactRatio : (Fintype.card Player : ℝ) *
-        ((count : ℝ) * bad / (chance * lower ^ length)) =
-          (scale n).val * size / (1 + size) := by
-      dsimp only [bad, size]
-      field_simp [ne_of_gt chancePositive, ne_of_gt powerPositive,
-        ne_of_gt denominatorPositive]
-    rw [exactRatio]
-    apply (div_le_iff₀ denominatorPositive).mpr
-    nlinarith [scalePositive n]
+    simpa only [mul_div_assoc, mul_assoc] using ratio
   have selectedSource (n : Nat) := selectRate sourceChance (sourceFloorValue n) sourceLength
-    (Fintype.card setup.proposalRecoveryProtocol.History) sourceChancePositive sourceChanceBounded
-      (sourceFloorPositive n) (sourceFloorBounded n) n
+    (Fintype.card setup.proposalRecoveryProtocol.History) sourceChancePositive
+      (sourceFloorPositive n) n
   have selectedNative (n : Nat) := selectRate nativeChance (nativeFloorValue n) nativeLength
-    (Fintype.card (E).History) nativeChancePositive nativeChanceBounded
-      (nativeFloorPositive n) (nativeFloorBounded n) n
+    (Fintype.card (E).History) nativeChancePositive (nativeFloorPositive n) n
   choose sourceBad sourceBadPositive sourceBadBounded sourceRatio using selectedSource
   choose nativeBad nativeBadPositive nativeBadBounded nativeRatio using selectedNative
   have sourceBadHalf (n : Nat) : (sourceBad n).val ≤ 1 / 2 :=

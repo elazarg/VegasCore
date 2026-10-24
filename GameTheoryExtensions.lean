@@ -52,6 +52,7 @@ import GameTheoryExtensions.Math.Probability.GatedExpectation
 import GameTheoryExtensions.Math.Probability.NearDecorrelation
 import GameTheoryExtensions.Math.Probability.NestedPosterior
 import GameTheoryExtensions.Math.Probability.ObservedChoice
+import GameTheoryExtensions.Math.Probability.PerturbationScale
 import GameTheoryExtensions.Math.Probability.PresentConditional
 import GameTheoryExtensions.Math.Probability.ProductDecorrelation
 import GameTheoryExtensions.Math.Probability.ProductTransport
