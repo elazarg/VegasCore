@@ -65,7 +65,7 @@ is not a claim that the mathematical result has been proved.
 | S2 | One typed compiler metadata theorem can own two structural inductions | Queued | Awaiting its dependency-ordered implementation batch |
 | S3 | Share observation-codec traversal, retaining visibility and absence | Queued | Awaiting its dependency-ordered implementation batch |
 | S4 | Bundle the residual embedding already used by the compiler | Queued | Awaiting its dependency-ordered implementation batch |
-| S5 | The private-parameter source-protocol payoff law is within immediate reach | In progress | General source observation payoff/Nash transport in progress |
+| S5 | The private-parameter source-protocol payoff law is within immediate reach | Checked | General terminal-observation reader owns payoff-law, expectation guards and same-error Nash equivalence; private-parameter specialization has no independence/finite-parameter premise. Both owners and executable runtime example pass; two exact Nash roots retain standard axioms. Feature growth, not compression |
 | S6 | Purification needs finite explored action support, not finite payload types | Queued | Awaiting its dependency-ordered implementation batch |
 | S7 | Classify departure from the intended game before duplicating induction | Queued | Awaiting its dependency-ordered implementation batch |
 | S8 | Erased-history continuation needs one step law and legality transport | Checked | Removed two unused private proofs and their unused import; continuation and support-splice owners pass, both public erasure results retain standard axioms; net47 fewer lines |

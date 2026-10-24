@@ -2,6 +2,7 @@
 
 import Vegas.Game.EventCompilation
 import Vegas.Game.ProgramPayoffs
+import Vegas.Game.SourceProtocolNash
 
 /-! # Nash correspondence for executable program payments
 
@@ -52,6 +53,40 @@ def parameterGameForm {Parameter : Type} (setup : Setup (Player := Player) (L :=
   sig := (SourceProgram.gameSignature setup.program).mapOutcome
     (Parameter × PublicOutcome setup.program)
   play := setup.parameterRun parameter
+
+/-- Retaining an immutable initial parameter is an observation of the original
+execution, with exactly the same source strategy space. -/
+theorem parameterGameForm_eq_observedGameForm {Parameter : Type}
+    (setup : Setup (Player := Player) (L := L))
+    (parameter : State L setup.context → Parameter) :
+    setup.parameterGameForm parameter =
+      setup.observedGameForm (setup.parameterOutcome parameter) := by
+  unfold parameterGameForm observedGameForm
+  congr 1
+  funext profile
+  exact (setup.run_map_parameterOutcome parameter profile).symm
+
+/-- The same-error protocol Nash equivalence retains correlated initial
+parameters without changing the observations available to any strategy. -/
+theorem parameterProtocol_isεNash_iff {Parameter : Type} [Fintype Player]
+    (setup : Setup (Player := Player) (L := L))
+    (admission : CommitmentInterface setup.program)
+    (allAdmitted : ∀ who (policy : BehavioralPolicy who setup.program),
+      policy.Admitted setup.program admission)
+    (parameter : State L setup.context → Parameter)
+    (utility : Parameter × PublicOutcome setup.program → Player → ℝ) (ε : ℝ)
+    (profile : Profile (setup.informationModel admission).behavioralSignature) :
+    IsεNash ((setup.informationModel admission).toBehavioralGameForm
+        (instructionCount setup.program + 1))
+      (fun final who => (setup.protocolReadout final.state).elim 0
+        (fun terminal => utility (setup.parameterOutcome parameter terminal) who)) ε profile ↔
+    IsεNash (setup.parameterGameForm parameter) utility ε
+      (setup.decodeBehavioralProfile admission profile) := by
+  have correspondence := setup.protocol_isεNash_iff admission
+    (setup.parameterOutcome parameter) allAdmitted utility ε profile
+  simp only [IsεNash, isNash_iff, parameterGameForm, observedGameForm] at correspondence ⊢
+  simpa only [setup.run_map_parameterOutcome]
+    using correspondence
 
 /-- Recover an immutable initial parameter and the public result from a completed
 compiled execution, without publishing either to any policy. -/

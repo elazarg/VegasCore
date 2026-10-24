@@ -54,16 +54,28 @@ theorem decodeBehavioralProfile_protocol_update
     simp only [decodeBehavioralProfile, Profile.update, Function.update_self]
   · simp only [decodeBehavioralProfile, Profile.update, Function.update_of_ne same]
 
+omit [Fintype Player] in
+/-- An analysis projection of the existing typed execution; source strategies
+and observations are unchanged. -/
+def observedGameForm {Observation : Type}
+    (readout : State L setup.program.terminalCtx → Observation) : GameForm Player where
+  sig := (SourceProgram.gameSignature setup.program).mapOutcome Observation
+  play profile := (setup.run profile).map readout
+
+variable {Observation : Type}
+  (readout : State L setup.program.terminalCtx → Observation)
+
 /-- The whole utility-vector law agrees for every protocol profile, not only
 encoded equilibria. Undefined and infinite expectations are therefore preserved. -/
 theorem protocol_payoff_law
-    (utility : PublicOutcome setup.program → Player → ℝ)
+    (utility : Observation → Player → ℝ)
     (profile : Profile (setup.informationModel admission).behavioralSignature) :
     ((setup.informationModel admission).runBehavioral profile
       (instructionCount setup.program + 1)).map
       (fun final who => (setup.protocolReadout final.state).elim 0
-        (fun terminal => utility (setup.program.publicOutcome terminal) who)) =
-    (setup.gameForm.play (setup.decodeBehavioralProfile admission profile)).map utility := by
+        (fun terminal => utility (readout terminal) who)) =
+    ((setup.observedGameForm readout).play
+      (setup.decodeBehavioralProfile admission profile)).map utility := by
   have law :
       ((setup.informationModel admission).runBehavioral profile
         (instructionCount setup.program + 1)).map
@@ -71,54 +83,54 @@ theorem protocol_payoff_law
       (setup.run (setup.decodeBehavioralProfile admission profile)).map some :=
     setup.runBehavioralFrom_readout admission profile _ _ (Nat.le_refl _)
   have valued := congrArg (PMF.map (fun output : Option (State L setup.program.terminalCtx) =>
-    fun who => output.elim 0 (fun terminal => utility (setup.program.publicOutcome terminal) who)))
+    fun who => output.elim 0 (fun terminal => utility (readout terminal) who)))
     law
-  simpa only [PMF.map_comp, Function.comp_def, Option.elim_some, gameForm, publicRun] using valued
+  simpa only [PMF.map_comp, Function.comp_def, Option.elim_some, observedGameForm] using valued
 
 /-- The existing policy equivalence transports the exact expected-utility
 preference, including its expectation-existence guards and additive Nash error. -/
 theorem protocol_euPreferenceWithin_iff
-    (utility : PublicOutcome setup.program → Player → ℝ) (ε : ℝ) (who : Player)
+    (utility : Observation → Player → ℝ) (ε : ℝ) (who : Player)
     (first second : Profile (setup.informationModel admission).behavioralSignature) :
     euPreferenceWithin ε
       (fun final owner => (setup.protocolReadout final.state).elim 0
-        (fun terminal => utility (setup.program.publicOutcome terminal) owner)) who
+        (fun terminal => utility (readout terminal) owner)) who
       ((setup.informationModel admission).runBehavioral first
         (instructionCount setup.program + 1))
       ((setup.informationModel admission).runBehavioral second
         (instructionCount setup.program + 1)) ↔
     euPreferenceWithin ε utility who
-      (setup.gameForm.play (setup.decodeBehavioralProfile admission first))
-      (setup.gameForm.play (setup.decodeBehavioralProfile admission second)) := by
+      ((setup.observedGameForm readout).play (setup.decodeBehavioralProfile admission first))
+      ((setup.observedGameForm readout).play (setup.decodeBehavioralProfile admission second)) := by
   have has (profile : Profile (setup.informationModel admission).behavioralSignature) :=
     hasExpectation_observed_law_iff _ _ _ _ (fun values : Player → ℝ => values who)
-      (setup.protocol_payoff_law admission utility profile)
+      (setup.protocol_payoff_law admission readout utility profile)
   have value (profile : Profile (setup.informationModel admission).behavioralSignature) :
       extendedExpectedUtility
         (fun final owner => (setup.protocolReadout final.state).elim 0
-          (fun terminal => utility (setup.program.publicOutcome terminal) owner)) who
+          (fun terminal => utility (readout terminal) owner)) who
         ((setup.informationModel admission).runBehavioral profile
           (instructionCount setup.program + 1)) =
       extendedExpectedUtility utility who
-        (setup.gameForm.play (setup.decodeBehavioralProfile admission profile)) :=
+        ((setup.observedGameForm readout).play (setup.decodeBehavioralProfile admission profile)) :=
     extendedExpect_observed_law_eq _ _ _ _ (fun values : Player → ℝ => values who)
-      (setup.protocol_payoff_law admission utility profile)
+      (setup.protocol_payoff_law admission readout utility profile)
   exact and_congr (has first) (and_congr (has second) (by rw [value first, value second]))
 
 /-- Admission may remove source deviations, so a full-source equilibrium remains
 an equilibrium of the protocol whenever its own policies are admitted. -/
 theorem protocol_isεNash_of_decoded
-    (utility : PublicOutcome setup.program → Player → ℝ) (ε : ℝ)
+    (utility : Observation → Player → ℝ) (ε : ℝ)
     (profile : Profile (setup.informationModel admission).behavioralSignature)
-    (equilibrium : IsεNash setup.gameForm utility ε
+    (equilibrium : IsεNash (setup.observedGameForm readout) utility ε
       (setup.decodeBehavioralProfile admission profile)) :
     IsεNash ((setup.informationModel admission).toBehavioralGameForm
         (instructionCount setup.program + 1))
       (fun final who => (setup.protocolReadout final.state).elim 0
-        (fun terminal => utility (setup.program.publicOutcome terminal) who)) ε profile := by
+        (fun terminal => utility (readout terminal) who)) ε profile := by
   rw [IsεNash, isNash_iff] at equilibrium ⊢
   intro who replacement
-  apply (setup.protocol_euPreferenceWithin_iff admission utility ε who profile
+  apply (setup.protocol_euPreferenceWithin_iff admission readout utility ε who profile
     (Profile.update profile who replacement)).2
   rw [setup.decodeBehavioralProfile_protocol_update]
   exact equilibrium who _
@@ -128,18 +140,19 @@ is an equivalence against all policies on both sides. -/
 theorem protocol_isεNash_iff
     (allAdmitted : ∀ who (policy : BehavioralPolicy who setup.program),
       policy.Admitted setup.program admission)
-    (utility : PublicOutcome setup.program → Player → ℝ) (ε : ℝ)
+    (utility : Observation → Player → ℝ) (ε : ℝ)
     (profile : Profile (setup.informationModel admission).behavioralSignature) :
     IsεNash ((setup.informationModel admission).toBehavioralGameForm
         (instructionCount setup.program + 1))
       (fun final who => (setup.protocolReadout final.state).elim 0
-        (fun terminal => utility (setup.program.publicOutcome terminal) who)) ε profile ↔
-    IsεNash setup.gameForm utility ε (setup.decodeBehavioralProfile admission profile) := by
+        (fun terminal => utility (readout terminal) who)) ε profile ↔
+    IsεNash (setup.observedGameForm readout) utility ε
+      (setup.decodeBehavioralProfile admission profile) := by
   constructor
   · intro equilibrium
     rw [IsεNash, isNash_iff] at equilibrium ⊢
     intro who replacement
-    have compared := (setup.protocol_euPreferenceWithin_iff admission utility ε who profile
+    have compared := (setup.protocol_euPreferenceWithin_iff admission readout utility ε who profile
       (Profile.update profile who (setup.toProtocolBehavioralPolicy admission who replacement
         (allAdmitted who replacement)))).1 (equilibrium who _)
     have decoded := setup.decodeBehavioralProfile_update admission profile who replacement
@@ -149,6 +162,6 @@ theorem protocol_isεNash_iff
           (allAdmitted who replacement))) = _ at decoded
     rw [decoded] at compared
     exact compared
-  · exact setup.protocol_isεNash_of_decoded admission utility ε profile
+  · exact setup.protocol_isεNash_of_decoded admission readout utility ε profile
 
 end Vegas.SourceProgram.Setup

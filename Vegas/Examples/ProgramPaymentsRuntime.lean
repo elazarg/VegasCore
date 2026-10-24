@@ -137,12 +137,13 @@ theorem source_isNash_iff (bonus : Int) (choice : Bool) :
         (sourceProfile bonus choice) ↔
       IsNash (game bonus).form (euPreference (game bonus).utility) (profile bonus choice) := by
   have correspondence := (setup bonus).protocol_isεNash_iff (admission bonus)
-    (all_permitted bonus) (game bonus).utility 0 (sourceProfile bonus choice)
+    (program bonus).publicOutcome (all_permitted bonus)
+    (game bonus).utility 0 (sourceProfile bonus choice)
   rw [decode_sourceProfile] at correspondence
   rw [← isNash_iff_isεNash_zero, ← isNash_iff_isεNash_zero] at correspondence
   rw [isNash_iff, isNash_iff] at correspondence ⊢
-  simpa only [sourceGame, game, Setup.gameForm, Setup.publicRun, Setup.run, setup,
-    SourceProgram.gameForm, PMF.pure_bind] using correspondence
+  simpa only [sourceGame, game, Setup.gameForm, Setup.observedGameForm, Setup.publicRun,
+    Setup.run, setup, SourceProgram.gameForm, PMF.pure_bind] using correspondence
 
 /-- Changing the executable bonus changes the actual raw-runtime equilibrium.
 Both source and runtime quantifiers retain all their legal deviations. -/
