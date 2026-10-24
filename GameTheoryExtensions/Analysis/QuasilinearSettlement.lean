@@ -89,14 +89,8 @@ theorem jointSettlement_clean (law : PMF Outcome) (transfer : Outcome → Player
     (clean : ∀ outcome ∈ law.support, ∀ who, charge observe audit outcome who = 0) :
     jointSettlement law transfer observe audit deposit =
       law.map (fun outcome => (outcome, transfer outcome)) := by
-  unfold jointSettlement
-  calc
-    _ = law.bind (fun outcome => PMF.pure (outcome, transfer outcome)) := by
-      apply bind_congr_on_support
-      intro outcome supported
-      rw [settlement_clean transfer observe audit deposit outcome (clean outcome supported),
-        PMF.pure_map]
-    _ = _ := PMF.bind_pure_comp _ _
+  exact (settlement_transport_of_normalized_law law law id (PMF.map_id law)
+    transfer observe audit deposit (fun _ => rfl) (fun _ => rfl) clean).2
 
 end Enforcement.TerminalAudit
 end GameTheory

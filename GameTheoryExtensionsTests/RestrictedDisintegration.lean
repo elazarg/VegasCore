@@ -30,7 +30,7 @@ theorem independent_bits_restrictions (first second : PMF Bool)
   obtain ⟨_, _, _, _, posterior, mass, _⟩ :=
     fiberPosteriors_of_factored_restriction joint second Prod.snd Prod.fst id
       (fun bit => PMF.pure (true, bit)) (first true)
-      ((PMF.mem_support_iff _ _).mp firstPossible) (PMF.apply_ne_top _ _) positive (by
+      ((PMF.mem_support_iff _ _).mp firstPossible) positive (by
         intro label point
         rcases point with ⟨bit, read⟩
         cases bit <;> cases label <;> cases read <;>
@@ -46,5 +46,13 @@ theorem absent_first_bit (second : PMF Bool) :
       bindPairLaw (PMF.pure false) (fun _ => second) := by
   apply fiberPosterior_of_not_mem_support
   simp [bindPairLaw_map_fst]
+
+/-- A zero restricted mass identifies the event probability even though it
+does not identify a posterior: every candidate conditional has the same atoms. -/
+theorem absent_restriction_mass (conditional : PMF Bool) :
+    ((PMF.pure false).map id) true = 0 := by
+  apply observation_mass_of_scaled_restriction (PMF.pure false) conditional id 0
+  intro bit
+  cases bit <;> simp [PMF.pure_apply]
 
 end GameTheoryExtensionsTests.RestrictedDisintegration

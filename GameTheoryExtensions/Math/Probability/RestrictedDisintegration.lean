@@ -18,26 +18,39 @@ namespace GameTheory.Math.Probability
 
 open scoped ENNReal
 
-/-- A positive finite restricted mass identifies the actual posterior without
-ever choosing a value on a zero conditioning fiber. -/
+/-- The scale of a restricted probability law is exactly the observation's
+mass. The identity also holds when that mass is zero. -/
+theorem observation_mass_of_scaled_restriction
+    {Point : Type*} (law conditional : PMF Point) (observed : Point → Bool)
+    (mass : ℝ≥0∞)
+    (restriction : ∀ point, (if observed point then law point else 0) =
+      mass * conditional point) :
+    (law.map observed) true = mass := by
+  classical
+  rw [PMF.map_apply]
+  calc
+    _ = ∑' point, mass * conditional point := by
+      apply tsum_congr
+      intro point
+      convert restriction point using 1
+      cases observed point <;> simp
+    _ = mass := by rw [ENNReal.tsum_mul_left, conditional.tsum_coe, mul_one]
+
+/-- A positive restricted mass identifies the actual posterior. Finiteness
+follows from the mass identity, rather than being a separate hypothesis. -/
 theorem fiberPosterior_eq_of_scaled_restriction
     {Point : Type*} (law conditional : PMF Point) (observed : Point → Bool)
-    (mass : ℝ≥0∞) (positive : mass ≠ 0) (finite : mass ≠ ⊤)
+    (mass : ℝ≥0∞) (positive : mass ≠ 0)
     (restriction : ∀ point, (if observed point then law point else 0) =
       mass * conditional point) :
     true ∈ (law.map observed).support ∧
       fiberPosterior law observed true = conditional := by
   classical
-  have normalizer : (law.map observed) true = mass := by
-    rw [PMF.map_apply]
-    calc
-      _ =
-          ∑' point, mass * conditional point := by
-        apply tsum_congr
-        intro point
-        convert restriction point using 1
-        cases observed point <;> simp
-      _ = mass := by rw [ENNReal.tsum_mul_left, conditional.tsum_coe, mul_one]
+  have normalizer :=
+    observation_mass_of_scaled_restriction law conditional observed mass restriction
+  have finite : mass ≠ ⊤ := by
+    rw [← normalizer]
+    exact PMF.apply_ne_top _ _
   have present : true ∈ (law.map observed).support := by
     apply (PMF.mem_support_iff _ _).mpr
     rwa [normalizer]
@@ -58,7 +71,7 @@ theorem fiberPosteriors_of_factored_restriction
     {Point Word : Type*} (law : PMF Point) (words : PMF Word)
     (read : Point → Word) (own : Point → Bool) (admitted : Word → Bool)
     (forced : Word → PMF Point) (ownMass : ℝ≥0∞)
-    (ownPositive : ownMass ≠ 0) (ownFinite : ownMass ≠ ⊤)
+    (ownPositive : ownMass ≠ 0)
     (foreignPositive : true ∈ (words.map admitted).support)
     (atoms : ∀ word point,
       ownMass * words word * forced word point =
@@ -81,7 +94,6 @@ theorem fiberPosteriors_of_factored_restriction
   let foreignMass := (words.map admitted) true
   have foreignNonzero : foreignMass ≠ 0 :=
     (PMF.mem_support_iff _ _).mp foreignPositive
-  have foreignFinite : foreignMass ≠ ⊤ := PMF.apply_ne_top _ _
   have ownRestriction (point : Point) :
       (if own point then law point else 0) = ownMass * (words.bind forced) point := by
     rw [PMF.bind_apply, ← ENNReal.tsum_mul_left]
@@ -99,7 +111,7 @@ theorem fiberPosteriors_of_factored_restriction
           have distinct : read point ≠ word := Ne.symm different
           simp [distinct]
   have ownPosterior := fiberPosterior_eq_of_scaled_restriction law (words.bind forced) own ownMass
-    ownPositive ownFinite ownRestriction
+    ownPositive ownRestriction
   have conditionalForeign : (fiberPosterior foreign Prod.snd true).bind
       (fun word => forced word.1) = (fiberPosterior words admitted true).bind forced := by
     have mapped := map_fiberPosterior_readout words (fun word => (word, admitted word))
@@ -144,21 +156,11 @@ theorem fiberPosteriors_of_factored_restriction
   have ledgerPosterior := fiberPosterior_eq_of_scaled_restriction law
     ((fiberPosterior words admitted true).bind forced)
     (fun point => own point && admitted (read point)) (ownMass * foreignMass)
-    (mul_ne_zero ownPositive foreignNonzero) (ENNReal.mul_ne_top ownFinite foreignFinite)
-    ledgerRestriction
+    (mul_ne_zero ownPositive foreignNonzero) ledgerRestriction
   have ledgerMass : (law.map (fun point => own point && admitted (read point))) true =
-      ownMass * foreignMass := by
-    rw [PMF.map_apply]
-    calc
-      _ = ∑' point, (ownMass * foreignMass) *
-          ((fiberPosterior words admitted true).bind forced) point := by
-        apply tsum_congr
-        intro point
-        convert ledgerRestriction point using 1
-        cases own point <;> cases admitted (read point) <;> simp
-      _ = _ := by
-        rw [ENNReal.tsum_mul_left,
-          ((fiberPosterior words admitted true).bind forced).tsum_coe, mul_one]
+      ownMass * foreignMass :=
+    observation_mass_of_scaled_restriction law ((fiberPosterior words admitted true).bind forced)
+      (fun point => own point && admitted (read point)) (ownMass * foreignMass) ledgerRestriction
   have issuedAtom (word : Word) (point : Point) (issued : admitted word = true) :
       (ownMass * foreignMass) *
         (fiberPosterior words admitted true word * forced word point) =
@@ -179,8 +181,8 @@ theorem fiberPosteriors_of_factored_restriction
 and replacing it by a fixed value in the complementary readout. -/
 theorem independent_observation_complement
     {Player : Type*} [DecidableEq Player] [Fintype Player]
-    {Point Owned : Type*} (law : PMF Point) (read : Point → Player → Owned)
-    (who : Player) (empty : Owned) (own : Owned → Bool)
+    {Point Owned Observation : Type*} (law : PMF Point) (read : Point → Player → Owned)
+    (who : Player) (empty : Owned) (own : Owned → Observation)
     (product : law.map read = independentProduct
       (fun owner => law.map (fun point => read point owner))) :
     let foreign := fun point : Point => fun owner =>
@@ -243,7 +245,7 @@ theorem fiberPosteriors_of_independent_restriction
             if own point = true ∧ read point = word then law point else 0 := by
   classical
   apply fiberPosteriors_of_factored_restriction law words read own admitted forced (ownLaw true)
-    ((PMF.mem_support_iff _ _).mp ownPositive) (PMF.apply_ne_top _ _) foreignPositive
+    ((PMF.mem_support_iff _ _).mp ownPositive) foreignPositive
   intro word point
   by_cases supported : word ∈ words.support
   · have present : (true, word) ∈
