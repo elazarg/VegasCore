@@ -513,10 +513,11 @@ declaration-cone measurements in [measurements](#measurements).
 | These mathematical extractions together | 5,328 | 5,362 | +34 |
 
 The independent posterior and continuation applications contain 58 and 62 test
-lines. Monetary settlement, program utility, joint payment laws, ideal and
-runtime Nash bridges, and the incentive example occupy 1,036 production lines
-across six modules. The independent correlated-audit example contains 107 lines;
-Paper also guards the axioms of fourteen payment results. These APIs isolate
+lines. Monetary settlement, program utility, joint payment laws, source-protocol
+correspondence, ideal and runtime equilibrium bridges, and concrete incentive
+examples provide the payment interface. Independent examples exercise correlated
+audits, unfinished outcomes and valuation-sensitive exit utility. Paper guards
+the axioms of the payment results. These APIs isolate
 reusable mathematics and connect payments to equilibrium results; they do not
 establish a substantial overall size reduction or a compression factor for the
 remaining preservation cone.
@@ -571,19 +572,74 @@ common language and retained capstones.
   randomized monetary settlement after deposit charges. For every builder
   satisfying the existing asynchronous contract and timeliness assumptions,
   first-opportunity clients preserve and reflect the same ε-Nash property in
-  the source protocol and bounded raw response game. The assumptions retain
-  barrier ordering, authentic audit samples, nonnegative deposits and a bounded
+  the source protocol and bounded raw response game. Clients that defer have
+  the original additional error `2 * δ * R` in both directions, where δ is the
+  sum of event deferral weights and R is the audited utility range. The assumptions
+  retain barrier ordering, authentic audit samples, nonnegative deposits and a bounded
   interval covering every terminal utility, unfinished readout and possible
   charge. For every admitted source profile, a separate theorem preserves the
   exact joint typed terminal state and cash-settlement vector without assuming
   equilibrium. Both pre-audit transfer and valuation are zero on an unfinished
   readout, following the existing convention. This is an analysis settlement,
   rather than an implementation of escrow.
+- [Declared monetary bounds](../GameTheoryExtensions/Analysis/QuasilinearBounds.lean)
+  derive the runtime payoff interval from separate valuation, transfer and
+  deposit bounds. If completed values lie in `[Vlo,Vhi]`, receipts in
+  `[Tlo,Thi]`, and collectible deposits in `[0,D]`, every audited payoff lies in
+  `[min 0 (Vlo + Tlo) - D, max 0 (Vhi + Thi)]`. The zero terms are essential:
+  an unfinished readout contributes zero before a possible charge, even if
+  every completed utility is positive. This interval may be conservative when
+  valuation and receipts are correlated; callers may supply tighter bounds.
+- [Source-protocol Nash correspondence](../Vegas/Game/SourceProtocolNash.lean)
+  uses the existing observation-local policy equivalence and preserves the
+  entire utility-vector law, including expectation-existence conditions and
+  infinite expected utilities. Restricting commitment admission preserves a
+  full-source equilibrium whose policies are admitted. When admission permits
+  every source policy, Nash preservation and reflection have the same ε.
+- [The concrete payment runtime](../Vegas/Examples/ProgramPaymentsRuntime.lean)
+  instantiates the proved roster scheduler, a bounded raw response menu,
+  authentic full-evidence audit and deposit of one. Every service assumption is
+  checked for that fixture. Bonus two makes publishing true Nash, bonus zero
+  makes publishing false Nash, and each opposite selected profile is not Nash.
+  The proofs retain failed bindings, withholding and all allowed raw deviations.
+  The exact complete typed terminal-state and cash law holds for either choice
+  and every integer bonus.
+- [SE valuation adapters](../Vegas/Game/SequentialPaymentValuation.lean)
+  separate ordinary and excluded valuation from cash in both existing runtime
+  bases. A fixed exit receipt yields fixed exit utility exactly when valuation
+  is also fixed there. Agreement with program payments on failed source
+  publications additionally requires the program's own transfer to equal the
+  declared exit receipt. These are explicit hypotheses, not properties of an
+  arbitrary valuation or a compiler-selected compensation.
+- [Concurrent monetary SE preservation](../Vegas/Game/ConcurrentPaymentPreservation.lean)
+  instantiates the original concurrent theorem with program-computed ordinary
+  transfers, separate valuation bounds and declared constant exit valuation and
+  cash. It retains the reserved tape, complete pending observation, operational
+  and funding assumptions, quantifier order, source equilibrium, and original
+  preservation conclusion. Its additional cash law retains all original input,
+  typed-state and public-result coordinates. The original no-exclusion and
+  no-charge conclusions justify recovery of actual audit cash on its support.
+  The utility used for equilibrium is proved to be the expectation of valuation
+  plus that monetary settlement on every runtime state.
 
-These results neither equate the different contracts nor instantiate the
-concurrent SE theorem with payments. In particular, they do not prove that exit
-valuation is constant, choose future rollback rules, or establish the deferring
-client payment theorem as a separate public result.
+The nonconcurrent recovery theorem preserves an optional typed readout and
+utility-valued settlement and proves zero charges, but its public conclusion
+does not separately rule out runtime exclusions. On an excluded state, valuation
+may be a configured exit value even when the retained readout is absent or has
+a different valuation. Subtracting ordinary terminal valuation is then
+unjustified. [The recovery cash adapter](../Vegas/Game/RecoveryPaymentReadout.lean)
+therefore requires the runtime valuation to be determined by the retained
+readout on the actual execution support. The source valuation here includes the
+existing failed-publication exclusion rule and is zero on an absent readout;
+ordinary valuation agrees with it only under the separate failure hypothesis.
+It transports the established joint utility law to the actual joint monetary
+law under that hypothesis. It does not
+infer the hypothesis from zero audit charges. Exit receipts remain declared
+analysis settlement data until a compiler/runtime implementation proves them.
+
+These results keep the existing contracts distinct and leave the source failure,
+exit and rollback choices open. They provide conditional monetary adapters for
+the retained SE scopes without claiming a common operational contract.
 
 - [ ] Implement the source failure semantics chosen under D3, specifying missed
       commitments, participation after failure, remaining players' continuation

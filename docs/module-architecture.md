@@ -39,6 +39,7 @@ directory's aggregator imports every module in it.
 - [Depth-free extension](../GameTheoryExtensions/Analysis/Protocol/PassageRestrictionExtension.lean)
 - [Proportional belief transport](../GameTheoryExtensions/Analysis/Protocol/ProportionalBeliefTransport.lean)
 - [Monetary settlement and quasi-linear utility](../GameTheoryExtensions/Analysis/QuasilinearSettlement.lean)
+- [Declared bounds for completed and unfinished monetary payoffs](../GameTheoryExtensions/Analysis/QuasilinearBounds.lean)
 - [Disintegration under restricted observations](../GameTheoryExtensions/Math/Probability/RestrictedDisintegration.lean)
 - [Positive perturbations below a conditional-error bound](../GameTheoryExtensions/Math/Probability/PerturbationScale.lean)
 - [History gains and continuation indifference](../GameTheoryExtensions/Analysis/Protocol/SourceGainTransport.lean)
@@ -372,6 +373,10 @@ directory's aggregator imports every module in it.
 - [Nash correspondence for executable program payments](../Vegas/Game/ProgramPaymentNash.lean)
 - [Joint execution and monetary receipt laws](../Vegas/Game/ProgramPaymentLaws.lean)
 - [Program payments on the audited asynchronous service](../Vegas/Game/ProgramPaymentAsyncNash.lean)
+- [Nash correspondence between source policies and protocol strategies](../Vegas/Game/SourceProtocolNash.lean)
+- [Valuation assumptions behind permanent-exclusion utility](../Vegas/Game/SequentialPaymentValuation.lean)
+- [Concurrent SE preservation with program payments](../Vegas/Game/ConcurrentPaymentPreservation.lean)
+- [Conditional monetary readout of forced-exit recovery](../Vegas/Game/RecoveryPaymentReadout.lean)
 
 - [Archived Source Recall](../Vegas/Game/ArchivedSourceRecall.lean)
 - [One deviator against an arbitrary builder, phase by phase](../Vegas/Game/AsyncDeviationLaw.lean)
@@ -632,6 +637,8 @@ directory's aggregator imports every module in it.
 ## Vegas/Examples
 
 - [Executable payments reverse a strict incentive](../Vegas/Examples/ProgramPayments.lean)
+- [Checked roster service for the conditional payment program](../Vegas/Examples/ProgramPaymentsRuntimeService.lean)
+- [Executable payments change raw-runtime equilibria](../Vegas/Examples/ProgramPaymentsRuntime.lean)
 - [Actual concurrent reveal-order dependence with withholding](../Vegas/Examples/ConcurrentRevealOrderLaw.lean)
 - [Concrete late-opening game data](../Vegas/Examples/LateOpeningRuntimeGame.lean)
 - [Supported correlated service with simultaneously valid pending packets](../Vegas/Examples/ReservedEpochUsableConcurrency.lean)
