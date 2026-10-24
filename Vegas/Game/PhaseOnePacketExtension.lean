@@ -89,34 +89,23 @@ theorem countForbidden_collection_committed
   obtain ⟨inputs, fresh, _⟩ := permits_respond runtime leaks execution recalled who material
   rw [model.runBehavioralTerminalFrom_eq_remaining certificate updated
     (menu.bounded initial horizon scheduler) history, ← fuelEq,
-    model.runBehavioralFrom_add,
-    expect_bind_tower _ _ _ (TerminalAudit.payoffIntegrable_charge _ _ _ _)]
-  calc
-    observationRate who * deliveryRate who =
-        expect (model.runBehavioralFrom updated 1 history)
-          (fun _ => observationRate who * deliveryRate who) := (expect_constant _ _).symm
-    _ ≤ _ := by
-      refine expect_mono ?_ (payoffIntegrable_constant _ _) ?_
-      rotate_left
-      · exact payoffIntegrable_of_bounded _ _ (C := 1) fun next => by
-          rw [abs_of_nonneg (expect_nonneg _ _ fun _ _ =>
-            (TerminalAudit.charge_mem_Icc _ _ _ _).1)]
-          exact expect_le_const _ _ (TerminalAudit.payoffIntegrable_charge _ _ _ _) _
-            fun _ _ => (TerminalAudit.charge_mem_Icc _ _ _ _).2
-      intro next supported
-      have nextState : next.state =
-          some ⟨remaining, none, execution.respond app who ⟨some material⟩⟩ := by
-        have member : next.state ∈
-            ((model.runBehavioralFrom updated 1 history).map History.state).support := by
-          rw [PMF.support_map]
-          exact ⟨next, supported, rfl⟩
-        rw [committed] at member
-        exact (PMF.mem_support_pure_iff _ _).mp member
-      exact countForbidden_collection_continuation menu initial horizon scheduler service
-        observationRate deliveryRate delivery_nonnegative coverage updated fuel next
-        ⟨remaining, none, execution.respond app who ⟨some material⟩⟩ nextState _
-        (by rw [inputs]; exact List.mem_append_right _ (List.mem_singleton_self _))
-        (by rw [fresh]; exact forbidden)
+    model.runBehavioralFrom_add]
+  refine expect_bind_ge_constant_on_support _ _ _ _
+    (TerminalAudit.payoffIntegrable_charge _ _ _ _) ?_
+  intro next supported
+  have nextState : next.state =
+      some ⟨remaining, none, execution.respond app who ⟨some material⟩⟩ := by
+    have member : next.state ∈
+        ((model.runBehavioralFrom updated 1 history).map History.state).support := by
+      rw [PMF.support_map]
+      exact ⟨next, supported, rfl⟩
+    rw [committed] at member
+    exact (PMF.mem_support_pure_iff _ _).mp member
+  exact countForbidden_collection_continuation menu initial horizon scheduler service
+    observationRate deliveryRate delivery_nonnegative coverage updated fuel next
+    ⟨remaining, none, execution.respond app who ⟨some material⟩⟩ nextState _
+    (by rw [inputs]; exact List.mem_append_right _ (List.mem_singleton_self _))
+    (by rw [fresh]; exact forbidden)
 
 
 variable (runtime : EventGraphRuntime graph)
