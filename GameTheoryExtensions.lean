@@ -55,6 +55,7 @@ import GameTheoryExtensions.Math.Probability.ObservedChoice
 import GameTheoryExtensions.Math.Probability.PresentConditional
 import GameTheoryExtensions.Math.Probability.ProductDecorrelation
 import GameTheoryExtensions.Math.Probability.ProductTransport
+import GameTheoryExtensions.Math.Probability.RestrictedDisintegration
 import GameTheoryExtensions.Math.Probability.SiteDraw
 import GameTheoryExtensions.Math.Probability.Support
 import GameTheoryExtensions.Math.Probability.SwapTransport
