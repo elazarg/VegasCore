@@ -1,14 +1,12 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Source.CommitRecoveryErasedStep
-import GameTheoryExtensions.Analysis.Protocol.StoppedTerminalBound
 
-/-! # Source continuations under erased private-word prescriptions
+/-! # Source information histories under private-word erasure
 
-The original source runner and information histories are retained. The
-prescription condition identifies only action laws at the same erased
-information. Actual chance, exclusion, restore and close transitions supply
-the continuation comparison.
+The source information histories retain the actual public trace while erasing
+the designated private word. History extension and terminal status respect that
+erasure without changing source transitions or observations.
 -/
 
 noncomputable section
@@ -112,30 +110,6 @@ theorem commitRecoveryErasedHistory_extend
     InfoSignals.withOwnPlayRecall, commitRecoverySignals, List.map_cons, Option.map_map,
     Function.comp_def, ProtocolView.publicOnly_eraseHistory]
 
-private theorem step_erased_state
-    {first second : setup.commitRecoveryProtocol.State}
-    (same : first.map CommitRecoveryState.eraseHistory =
-      second.map CommitRecoveryState.eraseHistory)
-    (joint : Player → Option (CommitRecoveryMove Player L))
-    (firstLegal : setup.commitRecoveryProtocol.Legal first joint)
-    (secondLegal : setup.commitRecoveryProtocol.Legal second joint) :
-    (setup.commitRecoveryProtocol.step first ⟨joint, firstLegal⟩).map
-        (Option.map CommitRecoveryState.eraseHistory) =
-      (setup.commitRecoveryProtocol.step second ⟨joint, secondLegal⟩).map
-        (Option.map CommitRecoveryState.eraseHistory) := by
-  cases first with
-  | none => cases second <;> cases same; rfl
-  | some first =>
-      cases second with
-      | none => cases same
-      | some second =>
-          have states := Option.some.inj same
-          simp only [commitRecoveryProtocol, PMF.map_comp]
-          change (first.step joint).map (some ∘ CommitRecoveryState.eraseHistory) =
-            (second.step joint).map (some ∘ CommitRecoveryState.eraseHistory)
-          rw [← PMF.map_comp, ← PMF.map_comp, ← first.step_eraseHistory,
-            ← second.step_eraseHistory, states]
-
 /-- Terminal status cannot depend on a discarded source word. -/
 theorem commitRecovery_terminal_eq_of_erased
     {first second : setup.commitRecoveryProtocol.State}
@@ -155,27 +129,6 @@ theorem commitRecovery_terminal_eq_of_erased
             ProtocolState.terminal setup.program second.point
           rw [← ProtocolState.remaining_zero_iff_terminal,
             ← ProtocolState.remaining_zero_iff_terminal, ranks]
-
-variable [Fintype Player]
-
-private theorem terminal_eq_until (certificate : setup.commitRecoveryProtocol.WellFoundedHistories)
-    (profile : ∀ who, setup.commitRecoveryModel.BehavioralPolicy who)
-    (history : setup.commitRecoveryProtocol.History) :
-    setup.commitRecoveryModel.runBehavioralTerminalFrom certificate profile history =
-      setup.commitRecoveryModel.runBehavioralUntil certificate profile (fun _ => False)
-        history := by
-  rw [setup.commitRecoveryModel.runBehavioralTerminalFrom_eq_bind_runBehavioralUntil certificate
-    profile (fun _ => False)]
-  calc
-    _ = (setup.commitRecoveryModel.runBehavioralUntil certificate profile (fun _ => False)
-        history).bind PMF.pure := by
-      apply bind_congr_on_support
-      intro final supported
-      have ended := setup.commitRecoveryModel.mem_support_runBehavioralUntil certificate profile
-        (fun _ => False) history final supported
-      exact setup.commitRecoveryProtocol.randomizedBackwardLaw_of_terminal
-        (ended.resolve_left (fun impossible => impossible))
-    _ = _ := PMF.bind_pure _
 
 end Setup
 end Vegas.SourceProgram

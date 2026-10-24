@@ -68,7 +68,7 @@ is not a claim that the mathematical result has been proved.
 | S5 | The private-parameter source-protocol payoff law is within immediate reach | In progress | General source observation payoff/Nash transport in progress |
 | S6 | Purification needs finite explored action support, not finite payload types | Queued | Awaiting its dependency-ordered implementation batch |
 | S7 | Classify departure from the intended game before duplicating induction | Queued | Awaiting its dependency-ordered implementation batch |
-| S8 | Erased-history continuation needs one step law and legality transport | Queued | Awaiting its dependency-ordered implementation batch |
+| S8 | Erased-history continuation needs one step law and legality transport | Checked | Removed two unused private proofs and their unused import; continuation and support-splice owners pass, both public erasure results retain standard axioms; net47 fewer lines |
 | S9 | Make the auction's executable transfers a separate concrete application | Queued | Awaiting its dependency-ordered implementation batch |
 | S10 | Reuse positive service fixtures without erasing adversarial timing | Queued | Awaiting its dependency-ordered implementation batch |
 
@@ -77,3 +77,8 @@ is not a claim that the mathematical result has been proved.
 The nine mathematical cleanup items, declaration ownership, constructor
 obligations, documentation accuracy and quantitative proposals are assessed
 alongside their owning ranked findings. None is silently counted as integrated.
+
+The proposed shared erased-step API was unnecessary: the duplicate in the
+continuation owner had no consumer. That API change was reverted, and the unused
+step and terminal-until proofs were deleted. The support-splice implementation
+and its observation-local legality argument remain in their existing owner.
