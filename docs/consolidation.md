@@ -395,15 +395,16 @@ integration is an explicit semantic change with its own checkpoint, rather than
 an unnoticed change inside a refactor. No extraction closes an SE checklist box
 or proves a new environment guarantee.
 
-Proceed through the following checkpoints, committing and pushing each verified
-one before taking on the next:
+Independent checkpoints may be developed in parallel in the shared checkout,
+with disjoint file ownership and coordinated builds. Commit and push each
+stable, verified checkpoint; dependent adapters follow their owning API.
 
-- [ ] Map the mathematical dependencies of the retained capstones using `rg`,
+- [x] Map the mathematical dependencies of the retained capstones using `rg`,
       `lean-defs.py` and the module map. For each extraction, identify the
       existing owning API, the concrete facts its callers must prove and the
       repeated proof argument it will replace. Record affected callers, proof
       size and verification scope before editing.
-- [ ] Pilot the extraction on conditional-law normalization and disintegration
+- [x] Pilot the extraction on conditional-law normalization and disintegration
       in [the qualified-binding posterior proof](../Vegas/Game/QualifiedBinding/ForeignPosterior.lean).
       Some local helpers already quantify over arbitrary probability spaces
       and observation maps. Reuse existing conditioning APIs where sufficient;
@@ -411,7 +412,7 @@ one before taking on the next:
       proof. Keep positivity and zero-probability conditioning explicit. Measure
       the general proof plus all remaining adapters, not just lines moved out
       of Vegas.
-- [ ] Establish the generic separation of monetary settlement from valuation,
+- [x] Establish the generic separation of monetary settlement from valuation,
       including audit charges and the joint realized transfer law. Then wire a
       concrete source program's nonzero `ret` payments into its strategic
       utility and compiled readout, using the existing
@@ -420,7 +421,7 @@ one before taking on the next:
       change the actual game payoff; an unused evaluator or a caller-supplied
       replacement utility does not satisfy this checkpoint. Step 4 still owns
       the full capstone migration and exit-valuation hypotheses.
-- [ ] Factor the common conditional-collection and audited extension arguments
+- [x] Factor the common conditional-collection and audited extension arguments
       from [the plain](../Vegas/Game/OnePacketExtension.lean),
       [forced-exit](../Vegas/Game/RecoveryOnePacketExtension.lean) and
       [phase](../Vegas/Game/PhaseOnePacketExtension.lean) proofs through
@@ -428,7 +429,7 @@ one before taking on the next:
       Keep packet validity, authentic evidence, response-menu membership and
       report delivery as separately proved backend facts. Reuse the result in
       the existing contracts before any contract is removed.
-- [ ] Extract continuation indifference and payoff-floor comparisons, with
+- [x] Extract continuation indifference and payoff-floor comparisons, with
       [observable failure](../Vegas/Game/PhaseProposalObservableDebtPayoff.lean)
       and [current-binding gain](../Vegas/Game/PhaseProposalCurrentBindingGain.lean)
       as candidate callers. The mathematical theorem should use continuation
@@ -436,7 +437,7 @@ one before taking on the next:
       under every continuation gives zero deviation gain; the concrete model
       must still prove that condition. Reuse the existing gated-expectation,
       affine-decorrelation and pooled-ranking APIs for nonconstant cases.
-- [ ] Extract any remaining common argument from factored history likelihoods
+- [x] Extract any remaining common argument from factored history likelihoods
       to conditional comparisons and a consistent SE limit. Keep reconstruction
       of actual histories, readiness, rollback, callback occurrences and
       scheduler likelihoods in the model adapters. Preserve a common tremble
@@ -461,6 +462,68 @@ hypotheses. Review both the abstract theorem and its concrete adapters so that
 the difficulty is not merely shifted into a large assumption. Record total
 proof size and the remaining model-specific obligations. Reduced line count is
 useful evidence, not a reason to weaken a statement.
+
+**Extraction inventory and evidence.**
+
+| Mathematical API | Checked consumers | Conditions still proved by the model |
+| --- | --- | --- |
+| [Restricted disintegration](../GameTheoryExtensions/Math/Probability/RestrictedDisintegration.lean): `GameTheory.Math.Probability.observation_mass_of_scaled_restriction`, `GameTheory.Math.Probability.fiberPosteriors_of_factored_restriction` and `GameTheory.Math.Probability.fiberPosteriors_of_independent_restriction` | `Vegas.PhaseProposalQualifiedBinding.foreign_posterior_cut_pair_atoms`, `Vegas.PhaseProposalQualifiedBinding.foreign_posterior_cut_pair`; independent-bit and absent-observation applications in [the tests](../GameTheoryExtensionsTests/RestrictedDisintegration.lean) | The actual joint word law, conditional kernels, independence and positive observations |
+| [Clean settlement transport](../GameTheoryExtensions/Analysis/Protocol/TerminalAudit.lean): `GameTheory.Enforcement.TerminalAudit.settlement_transport_of_normalized_law` | The plain and forced-exit raw one-packet SE extensions; quasi-linear clean settlement | Projected state law, invariant base payoff and audit observation, and zero collection on the reference support |
+| [Continuation indifference](../GameTheoryExtensions/Analysis/Protocol/SourceGainTransport.lean): `GameTheory.Protocol.InformationModel.historyGain_eq_zero_of_constant_payoff`, `GameTheory.Protocol.InformationModel.gain_eq_zero_of_constant_continuations` | The phase contract's saved-failure history and information-site comparisons; an independent [responder with a sunk fee](../GameTheoryExtensionsTests/ContinuationIndifference.lean) | The focal payoff is fixed under every continuation from each history in the information fiber |
+| [Perturbation calibration](../GameTheoryExtensions/Math/Probability/PerturbationScale.lean): `GameTheory.Math.Probability.exists_positive_rate_with_ratio_bound` | `Vegas.exists_phaseProposal_common_perturbations`, for both source and native posterior denominators | Actual positive response floors, multiplicities and the choice of rates before pooled policies |
+| [Quasi-linear settlement](../GameTheoryExtensions/Analysis/QuasilinearSettlement.lean) and [program payment utility](../Vegas/Game/ProgramPayoffs.lean) | `Vegas.Examples.ProgramPayments.payment_reverses_incentive`, `Vegas.Examples.ProgramPayments.audited_expectedUtility`, `Vegas.Examples.ProgramPayments.compiled_transfer_law` | Program evaluation determines transfers; valuation is separate analysis data |
+
+The count-audit collection proofs in all three contracts use the existing
+supported-bind expectation bound. The payoff-floor comparisons and outer SE
+limit argument retain the existing gated-expectation, affine-decorrelation,
+pooled-ranking and local-comparison APIs. No additional certificate hierarchy
+is needed for those arguments. Reconstruction of actual histories, callback
+occurrences, readiness, rollback, traffic observations and scheduler
+likelihoods remains in the concrete adapters.
+
+The extracted theorems make three conditions explicit. A scaled restriction
+identifies its observation mass even when that mass is zero; identifying the
+posterior requires positive mass, while finiteness follows from normalization.
+For continuation indifference, the fixed payoff may differ between hidden
+histories. This does not relax the existing exit-payoff hypotheses for choices
+made before failure. The perturbation calibration needs a positive denominator,
+without an upper bound on it; the model still supplies that denominator before
+the rate is chosen.
+
+The payment instance evaluates a nonzero conditional bonus in `ret`. Publishing
+true has valuation minus one. A bonus of two makes true strictly better than
+false; a bonus of zero reverses that strict comparison. Its game utility reads
+the evaluated program transfer, and compilation preserves that transfer law.
+This is an instance of payment-dependent source and ideal-graph semantics, not
+the migration of every existing raw capstone to program payments (Step 4).
+
+Whole-file measurements against extraction baseline `019d848a` include the new
+general modules and all changed concrete adapters, including imports and
+docstrings. Independent test modules are excluded. These are not the
+declaration-cone measurements in [measurements](#measurements).
+
+| Surface | Baseline lines | General API plus adapters | Difference |
+| --- | ---: | ---: | ---: |
+| Qualified-binding posterior | 3,408 | 3,436 | +28 |
+| Three audit extensions plus terminal-audit API | 1,381 | 1,355 | −26 |
+| Source gain API plus saved-failure comparisons | 262 | 288 | +26 |
+| Common perturbations plus rate calibration | 277 | 283 | +6 |
+| These mathematical extractions together | 5,328 | 5,362 | +34 |
+
+The independent posterior and continuation applications add 58 and 62 test
+lines. The payment API, program adapter and incentive example add 315 lines of
+new functionality. This pass isolates reusable mathematics and removes repeated
+arguments; it does not establish a substantial overall size reduction or a
+compression factor for the remaining preservation cone.
+
+Acceptance: the full default `lake build` passes with 5,721 jobs, including all
+Paper axiom pins. The 89 repository Python tests, source-policy, module-boundary
+and documentation-reference checks pass. The dependency walk reports zero
+unreached modules out of 1,757 modules with declarations. Existing public statements in the
+changed Vegas proof modules are unchanged; Paper, the concurrent preservation
+specification and the central Lean options are unchanged. Focused audits of the
+extracted results and their concrete consumers use only `propext`,
+`Classical.choice` and `Quot.sound`.
 
 Exit: the selected extractions have checked consumers and the concrete payment
 checkpoint is checked; the retained capstones keep their exact statements and
@@ -658,9 +721,13 @@ perfect recall proved for every model, horizons equal to proved bounds.
 
 ### Language and models
 
-- [ ] **F-L1 (H, Step 4).** `ret` payoffs are never read by a game, a capstone
-  or Paper; both auction examples write `.ret []`, and `simpleExpr` cannot
-  express their utilities.
+- [ ] **F-L1 (H, Step 4).** The existing capstones and Paper accept utility
+  parameters without deriving transfers from `ret`; both auction examples write
+  `.ret []`, and `simpleExpr` cannot express their utilities. The
+  [program payment interface](../Vegas/Game/ProgramPayoffs.lean) and
+  [strict-incentive instance](../Vegas/Examples/ProgramPayments.lean) connect
+  evaluated payments to a source game and compiled transfer law; the capstone
+  and auction migrations remain open.
 - [ ] **F-L2 (H, Steps 3–5).** About eight source-level games and three
   compiled contracts; see [model inventory](#model-inventory).
 - [x] **F-L3 (M, Step 2).** The language's limits (straight-line, fixed actors,

@@ -22,9 +22,14 @@ The language is deliberately small:
 - a guard reads public data, publications and its author's own commitment, never
   private inputs.
 
-Utilities are parameters of the theorems, over the public outcome together with
-a parameter of the initial inputs, or over the terminal state. No game reads the
-payoffs a program returns.
+Utilities in the existing equilibrium capstones are parameters, over the public
+outcome together with initial-input parameters, or over the terminal state.
+[Program payment utility](Vegas/Game/ProgramPayoffs.lean) adds a separate
+valuation to the program's evaluated `ret` payments. The
+[payment example](Vegas/Examples/ProgramPayments.lean) proves that changing a
+program bonus reverses a strict incentive, and that compilation preserves the
+payment law. Migrating the capstones to this interface remains in the
+[consolidation plan](docs/consolidation.md).
 
 ## Compilation
 

@@ -29,6 +29,14 @@ also parameterize utilities by initial inputs and public results; their exact
 payoff domain is stated in the theorem. Private implementation state is not
 silently added to that domain.
 
+[Program payment utility](../Vegas/Game/ProgramPayoffs.lean) evaluates the return
+expressions on the public outcome and sums the integer entries for each player.
+Strategic utility adds a separately supplied valuation to these monetary
+receipts. `Vegas.SourceProgram.canonical_transfer_law` preserves the evaluated
+transfer vector through canonical compilation. The
+[payment-dependent program](../Vegas/Examples/ProgramPayments.lean) exercises this
+interface; the existing equilibrium capstones still accept utility parameters.
+
 [Semantics](../Vegas/Source/Semantics.lean) owns observations, evaluation and
 source policies. [Protocol](../Vegas/Source/Protocol.lean) connects them to the
 finite game model. The [compiler design](compilation-design.md) describes the

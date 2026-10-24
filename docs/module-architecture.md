@@ -38,6 +38,10 @@ directory's aggregator imports every module in it.
 - [Local comparison limit](../GameTheoryExtensions/Analysis/Protocol/LocalSimulationLimit.lean)
 - [Depth-free extension](../GameTheoryExtensions/Analysis/Protocol/PassageRestrictionExtension.lean)
 - [Proportional belief transport](../GameTheoryExtensions/Analysis/Protocol/ProportionalBeliefTransport.lean)
+- [Monetary settlement and quasi-linear utility](../GameTheoryExtensions/Analysis/QuasilinearSettlement.lean)
+- [Disintegration under restricted observations](../GameTheoryExtensions/Math/Probability/RestrictedDisintegration.lean)
+- [Positive perturbations below a conditional-error bound](../GameTheoryExtensions/Math/Probability/PerturbationScale.lean)
+- [History gains and continuation indifference](../GameTheoryExtensions/Analysis/Protocol/SourceGainTransport.lean)
 - [Consistent completion with restricted local laws and a common tremble witness](../GameTheoryExtensions/Analysis/Protocol/RestrictedComponentCompletion.lean)
 - [Whole-policy deviations under a restriction](../GameTheoryExtensions/Analysis/Protocol/RetainedDeviation.lean)
 - [Stopped History Atom](../GameTheoryExtensions/Analysis/Protocol/StoppedHistoryAtom.lean)
@@ -364,6 +368,8 @@ directory's aggregator imports every module in it.
 
 ## Vegas/Game
 
+- [Strategic utility from executable program payments](../Vegas/Game/ProgramPayoffs.lean)
+
 - [Archived Source Recall](../Vegas/Game/ArchivedSourceRecall.lean)
 - [One deviator against an arbitrary builder, phase by phase](../Vegas/Game/AsyncDeviationLaw.lean)
 - [One deviator up to withholding on a reveal-relaxed graph](../Vegas/Game/AsyncWithholdLaw.lean)
@@ -622,6 +628,7 @@ directory's aggregator imports every module in it.
 
 ## Vegas/Examples
 
+- [Executable payments reverse a strict incentive](../Vegas/Examples/ProgramPayments.lean)
 - [Actual concurrent reveal-order dependence with withholding](../Vegas/Examples/ConcurrentRevealOrderLaw.lean)
 - [Concrete late-opening game data](../Vegas/Examples/LateOpeningRuntimeGame.lean)
 - [Supported correlated service with simultaneously valid pending packets](../Vegas/Examples/ReservedEpochUsableConcurrency.lean)
