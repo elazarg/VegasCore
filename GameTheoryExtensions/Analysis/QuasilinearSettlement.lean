@@ -41,6 +41,63 @@ def monetaryUtility {Player Outcome : Type*} (valuation : Outcome → Player →
     (realized : Outcome × (Player → ℝ)) (who : Player) : ℝ :=
   valuation realized.1 who + realized.2 who
 
+/-- Retain the entire outcome while converting actual receipts to utility. -/
+def utilityReadout {Player Outcome : Type*} (valuation : Outcome → Player → ℝ)
+    (realized : Outcome × (Player → ℝ)) : Outcome × (Player → ℝ) :=
+  (realized.1, monetaryUtility valuation realized)
+
+/-- Recover actual receipts from utility without discarding any outcome data. -/
+def receiptReadout {Player Outcome : Type*} (valuation : Outcome → Player → ℝ)
+    (realized : Outcome × (Player → ℝ)) : Outcome × (Player → ℝ) :=
+  (realized.1, fun who => realized.2 who - valuation realized.1 who)
+
+@[simp] theorem receiptReadout_utilityReadout {Player Outcome : Type*}
+    (valuation : Outcome → Player → ℝ) (realized : Outcome × (Player → ℝ)) :
+    receiptReadout valuation (utilityReadout valuation realized) = realized := by
+  dsimp only [receiptReadout, utilityReadout, monetaryUtility]
+  apply Prod.ext
+  · rfl
+  · funext who
+    ring
+
+@[simp] theorem utilityReadout_receiptReadout {Player Outcome : Type*}
+    (valuation : Outcome → Player → ℝ) (realized : Outcome × (Player → ℝ)) :
+    utilityReadout valuation (receiptReadout valuation realized) = realized := by
+  dsimp only [receiptReadout, utilityReadout, monetaryUtility]
+  apply Prod.ext
+  · rfl
+  · funext who
+    change valuation realized.1 who + (realized.2 who - valuation realized.1 who) =
+      realized.2 who
+    ring
+
+/-- The joint utility law retains enough information to recover the receipt law. -/
+@[simp] theorem map_utilityReadout_receiptReadout {Player Outcome : Type*}
+    (valuation : Outcome → Player → ℝ) (law : PMF (Outcome × (Player → ℝ))) :
+    (law.map (utilityReadout valuation)).map (receiptReadout valuation) = law := by
+  have inverse : receiptReadout valuation ∘ utilityReadout valuation = id := by
+    funext realized
+    exact receiptReadout_utilityReadout valuation realized
+  rw [PMF.map_comp, inverse, PMF.map_id]
+
+/-- Converting receipts to utility also recovers every joint utility law. -/
+@[simp] theorem map_receiptReadout_utilityReadout {Player Outcome : Type*}
+    (valuation : Outcome → Player → ℝ) (law : PMF (Outcome × (Player → ℝ))) :
+    (law.map (receiptReadout valuation)).map (utilityReadout valuation) = law := by
+  have inverse : utilityReadout valuation ∘ receiptReadout valuation = id := by
+    funext realized
+    exact utilityReadout_receiptReadout valuation realized
+  rw [PMF.map_comp, inverse, PMF.map_id]
+
+/-- Equality of joint utility laws is equivalent to equality of receipt laws.
+No independence or integrability assumptions are needed. -/
+theorem map_utilityReadout_injective {Player Outcome : Type*}
+    (valuation : Outcome → Player → ℝ) :
+    Function.Injective (PMF.map (utilityReadout valuation)) := by
+  intro first second equal
+  have recovered := congrArg (PMF.map (receiptReadout valuation)) equal
+  simpa only [map_utilityReadout_receiptReadout] using recovered
+
 namespace Enforcement.TerminalAudit
 
 variable {Player Outcome Observation : Type}
@@ -81,6 +138,36 @@ def jointSettlement (law : PMF Outcome) (transfer : Outcome → Player → ℝ)
     (deposit : Player → ℝ) : PMF (Outcome × (Player → ℝ)) :=
   law.bind fun outcome =>
     (settlement transfer observe audit deposit outcome).map fun receipts => (outcome, receipts)
+
+/-- Actual randomized monetary settlement determines the full joint utility
+law. Correlations among outcomes, transfers and all audit verdicts are retained. -/
+theorem jointSettlement_add_valuation (law : PMF Outcome)
+    (valuation transfer : Outcome → Player → ℝ)
+    (observe : Outcome → Observation) (audit : Observation → PMF (Player → Bool))
+    (deposit : Player → ℝ) :
+    (jointSettlement law transfer observe audit deposit).map (utilityReadout valuation) =
+      jointSettlement law (fun outcome who => valuation outcome who + transfer outcome who)
+        observe audit deposit := by
+  unfold jointSettlement
+  rw [PMF.map_bind]
+  congr 1
+  funext outcome
+  rw [← settlement_add_valuation valuation transfer observe audit deposit outcome]
+  rw [PMF.map_comp, PMF.map_comp]
+  rfl
+
+/-- Subtracting valuation from realized utility recovers the actual monetary
+settlement law, including its correlation with every retained outcome coordinate. -/
+theorem jointSettlement_sub_valuation (law : PMF Outcome)
+    (valuation transfer : Outcome → Player → ℝ)
+    (observe : Outcome → Observation) (audit : Observation → PMF (Player → Bool))
+    (deposit : Player → ℝ) :
+    (jointSettlement law
+        (fun outcome who => valuation outcome who + transfer outcome who)
+        observe audit deposit).map (receiptReadout valuation) =
+      jointSettlement law transfer observe audit deposit := by
+  rw [← jointSettlement_add_valuation law valuation transfer observe audit deposit]
+  exact map_utilityReadout_receiptReadout valuation _
 
 /-- A clean audit preserves the joint outcome and monetary transfer law. -/
 theorem jointSettlement_clean (law : PMF Outcome) (transfer : Outcome → Player → ℝ)
