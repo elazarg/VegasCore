@@ -484,11 +484,17 @@ perfect recall proved for every model, horizons equal to proved bounds.
 
 ### CI
 
-- [ ] **F-I1 (M, Step 7).** The documentation job takes 89–138 minutes against
+- [x] **F-I1 (M, Step 7).** The documentation job takes 89–138 minutes against
   a build of about 10, deploys Pages from any branch, and holds Pages
-  permissions for the whole job; there is no concurrency group.
+  permissions for the whole job; there is no concurrency group. The API
+  documentation is now its own job, run after the build and only on pushes to
+  `main`, and only it holds Pages permissions. Each ref has a concurrency group:
+  off `main` a newer push cancels the running check, while on `main` it waits.
+  The job still takes about 95 minutes, but no build result waits on it.
 - [ ] **F-I2 (L, Step 7).** `GameTheory/.lake` is not cached, so each run
-  rebuilds the submodule; each run saves a 4.8 GB cache.
+  rebuilds the submodule; each run saves a 4.8 GB cache. `GameTheory/.lake` is
+  now cached by the submodule revision (32 MB). The root `.lake` cache that
+  `lean-action` saves under each commit is still 3.8 GB per run on `main`.
 - [x] **F-I3 (L, Step 1).** The checkers' comment and string strippers miss
   character literals, raw strings and guillemet names; the documentation check
   passes vacuously outside the repository root. Both checks now share one

@@ -130,8 +130,11 @@ theorem deferring_client_nash_correspondence (weight : ℝ) (nonnegative : 0 ≤
     (realized_payoff_bounds rewardNonnegative forfeitNonnegative deposit depositNonnegative)
     error source
 
-/-- The source direction holds on every response menu that admits the clients;
-the bounded native raw menu is one. -/
+/-- With clients that may defer by any turn timing, a Nash equilibrium of the
+clients against the bounded native raw menu is one of the source, with the same
+slack as the correspondence. The menu is fixed here; the library form
+`Vegas.AsyncServiceSpec.isεNash_of_clientProfile` holds on every menu that
+admits the clients. -/
 theorem deferring_client_nash_reflection (weight : ℝ) (nonnegative : 0 ≤ weight)
     {reward forfeit : ℝ} (rewardNonnegative : 0 ≤ reward)
     (forfeitNonnegative : 0 ≤ forfeit)
