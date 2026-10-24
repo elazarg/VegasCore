@@ -68,8 +68,9 @@ theorem onePacket_stopped_expect_sub_le
     rintro history ⟨fuel, reached⟩ _ _
     apply PMF.WithinTV.mono (one_sub_pow_le_mul nonnegative (Fintype.card Player))
     apply PMF.WithinTV.of_domination _ _ _ (pow_le_one₀ nonnegative le_one)
-    exact (N).runBehavioralFrom_one_domination_of_choices honest profile retention nonnegative
-      history (dominates fuel history reached)
+    have lower := (N).runBehavioralFrom_one_domination_of_choices honest profile
+      (fun _ => retention) (fun _ => nonnegative) history (dominates fuel history reached)
+    simpa only [Finset.prod_const, Finset.card_univ] using lower
   rw [abs_sub_comm]
   exact (N).abs_expect_runBehavioralUntil_sub_le_of_stepTV certificate honest profile stopped
     inside payoff boundNonneg (mul_nonneg (Nat.cast_nonneg _) (sub_nonneg.mpr le_one))

@@ -14,6 +14,12 @@ and the two continuations are within the missing mass in total variation
 (`runBehavioralFrom_withinTV_of_supported_choices`). The missing mass is at
 most the number of players times the length times the per-choice loss
 (`GameTheory.Math.Probability.one_sub_pow_le_mul`).
+
+The active-choice form replaces the player count by an actual bound on the
+number of active players at reference-supported histories. In particular, at
+most one mover gives exponent `fuel`, independently of the ambient player
+count. A chance step has no active player and its exact one-step factor is one;
+its transition law is still the protocol's stochastic kernel.
 -/
 
 noncomputable section
@@ -29,22 +35,62 @@ variable {Player : Type*} [Fintype Player] {E : ExecutionProtocol Player}
 fraction. -/
 theorem runBehavioralFrom_one_domination_of_choices
     (source target : ∀ who, M.BehavioralPolicy who)
-    (factor : ℝ) (nonnegative : 0 ≤ factor) (history : E.History)
+    (factor : Player → ℝ) (nonnegative : ∀ who, 0 ≤ factor who) (history : E.History)
     (lower : ∀ who choice,
-      factor * ((source who (M.infoOf who history.trace)) choice).toReal ≤
+      factor who * ((source who (M.infoOf who history.trace)) choice).toReal ≤
           ((target who (M.infoOf who history.trace)) choice).toReal)
     (next : E.History) :
-    factor ^ Fintype.card Player *
+    (∏ who, factor who) *
         ((M.runBehavioralFrom source 1 history) next).toReal ≤
       ((M.runBehavioralFrom target 1 history) next).toReal := by
   rw [runBehavioralFrom_one_localStep, runBehavioralFrom_one_localStep]
   apply prob_bind_ge_mul _ _ _ _ (M.localStep history) next
   intro choices
-  have lower := prob_pi_ge_prod_mul
+  exact prob_pi_ge_prod_mul
     (fun who => source who (M.infoOf who history.trace))
-    (fun who => target who (M.infoOf who history.trace))
-    (fun _ => factor) (fun _ => nonnegative) lower choices
-  simpa only [Finset.prod_const, Finset.card_univ] using lower
+    (fun who => target who (M.infoOf who history.trace)) factor nonnegative lower choices
+
+open Classical in
+/-- Only active players pay a per-choice factor. Inactive legal menus are
+singletons, so their two choice laws agree and contribute factor one. -/
+theorem runBehavioralFrom_one_domination_of_active_choices
+    (source target : ∀ who, M.BehavioralPolicy who)
+    (factor : ℝ) (nonnegative : 0 ≤ factor) (history : E.History)
+    (lower : ∀ who, E.active history.state who → ∀ choice,
+      factor * ((source who (M.infoOf who history.trace)) choice).toReal ≤
+        ((target who (M.infoOf who history.trace)) choice).toReal)
+    (next : E.History) :
+    factor ^ (Finset.univ.filter (E.active history.state)).card *
+        ((M.runBehavioralFrom source 1 history) next).toReal ≤
+      ((M.runBehavioralFrom target 1 history) next).toReal := by
+  classical
+  have bound := M.runBehavioralFrom_one_domination_of_choices source target
+    (fun who => if E.active history.state who then factor else 1)
+    (fun who => by split <;> positivity) history (by
+      intro who choice
+      by_cases active : E.active history.state who
+      · simpa [active] using lower who active choice
+      · rw [ite_eq_right active, one_mul,
+          M.behavioral_eq_of_not_active (source who) (target who) history.trace active]) next
+  simpa only [Finset.prod_ite, Finset.prod_const, one_pow, mul_one] using bound
+
+private theorem runBehavioralFrom_domination_of_supported_steps
+    (source target : ∀ who, M.BehavioralPolicy who)
+    (factor : ℝ) (nonnegative : 0 ≤ factor) (start : E.History)
+    (lower : ∀ fuel history,
+      history ∈ (M.runBehavioralFrom source fuel start).support → ∀ next,
+      factor * ((M.runBehavioralFrom source 1 history) next).toReal ≤
+        ((M.runBehavioralFrom target 1 history) next).toReal)
+    (fuel : Nat) (next : E.History) :
+    factor ^ fuel * ((M.runBehavioralFrom source fuel start) next).toReal ≤
+      ((M.runBehavioralFrom target fuel start) next).toReal := by
+  induction fuel generalizing next with
+  | zero => simp only [pow_zero, one_mul]; exact le_rfl
+  | succ fuel ih =>
+      rw [M.runBehavioralFrom_add source fuel 1, M.runBehavioralFrom_add target fuel 1, pow_succ]
+      apply bind_supported_domination _ _ _ _ (factor ^ fuel) factor
+        (pow_nonneg nonnegative _) (fun last => ih last)
+      exact lower fuel
 
 /-- **Continuation domination from supported choices.** Choice domination is
 required only at histories the reference continuation reaches from the start. -/
@@ -59,22 +105,44 @@ theorem runBehavioralFrom_domination_of_supported_choices
     factor ^ (Fintype.card Player * fuel) *
         ((M.runBehavioralFrom source fuel start) next).toReal ≤
       ((M.runBehavioralFrom target fuel start) next).toReal := by
-  let stepFactor := factor ^ Fintype.card Player
-  have stepNonnegative : 0 ≤ stepFactor := pow_nonneg nonnegative _
-  have retained (count : Nat) (last : E.History) :
-      stepFactor ^ count * ((M.runBehavioralFrom source count start) last).toReal ≤
-        ((M.runBehavioralFrom target count start) last).toReal := by
-    induction count generalizing last with
-    | zero => simp only [pow_zero, one_mul]; exact le_rfl
-    | succ count ih =>
-        rw [M.runBehavioralFrom_add source count 1, M.runBehavioralFrom_add target count 1,
-          pow_succ]
-        apply bind_supported_domination _ _ _ _ (stepFactor ^ count) stepFactor
-          (pow_nonneg stepNonnegative _) (fun last => ih last)
-        intro history reached next
-        exact M.runBehavioralFrom_one_domination_of_choices source target factor nonnegative
-          history (lower count history reached) next
-  simpa only [stepFactor, ← pow_mul] using retained fuel next
+  have bound := M.runBehavioralFrom_domination_of_supported_steps source target
+    (factor ^ Fintype.card Player) (pow_nonneg nonnegative _) start (by
+      intro count history reached next
+      have bound := M.runBehavioralFrom_one_domination_of_choices source target
+        (fun _ => factor) (fun _ => nonnegative) history (lower count history reached) next
+      simpa only [Finset.prod_const, Finset.card_univ] using bound) fuel next
+  simpa only [← pow_mul] using bound
+
+open Classical in
+/-- A reference-support bound on the number of active players controls the
+continuation exponent. Choice domination is needed only for those players and
+only at histories reached by the reference continuation. -/
+theorem runBehavioralFrom_domination_of_supported_active_choices
+    (source target : ∀ who, M.BehavioralPolicy who)
+    (factor : ℝ) (nonnegative : 0 ≤ factor) (small : factor ≤ 1) (start : E.History)
+    (activeBound : ℕ)
+    (activeCount : ∀ fuel history,
+      history ∈ (M.runBehavioralFrom source fuel start).support →
+        (Finset.univ.filter (E.active history.state)).card ≤ activeBound)
+    (lower : ∀ fuel history,
+      history ∈ (M.runBehavioralFrom source fuel start).support →
+      ∀ who, E.active history.state who → ∀ choice,
+      factor * ((source who (M.infoOf who history.trace)) choice).toReal ≤
+        ((target who (M.infoOf who history.trace)) choice).toReal)
+    (fuel : Nat) (next : E.History) :
+    factor ^ (activeBound * fuel) *
+        ((M.runBehavioralFrom source fuel start) next).toReal ≤
+      ((M.runBehavioralFrom target fuel start) next).toReal := by
+  classical
+  have bound := M.runBehavioralFrom_domination_of_supported_steps source target
+    (factor ^ activeBound) (pow_nonneg nonnegative _) start (by
+      intro count history reached next
+      exact (mul_le_mul_of_nonneg_right
+        (pow_le_pow_of_le_one nonnegative small (activeCount count history reached))
+        ENNReal.toReal_nonneg).trans
+          (M.runBehavioralFrom_one_domination_of_active_choices source target factor nonnegative
+            history (lower count history reached) next)) fuel next
+  simpa only [← pow_mul] using bound
 
 /-- **Continuations within the missing mass.** Under the hypotheses of
 `runBehavioralFrom_domination_of_supported_choices`, with a fraction at most
@@ -93,6 +161,28 @@ theorem runBehavioralFrom_withinTV_of_supported_choices
   apply PMF.WithinTV.of_domination _ _ _ (pow_le_one₀ nonnegative small)
   exact M.runBehavioralFrom_domination_of_supported_choices source target factor
     nonnegative start lower fuel
+
+open Classical in
+/-- With a fixed active-player bound on reference-supported histories,
+the continuation loses at most `1 - factor ^ (activeBound * fuel)` in TV. -/
+theorem runBehavioralFrom_withinTV_of_supported_active_choices
+    (source target : ∀ who, M.BehavioralPolicy who)
+    (factor : ℝ) (nonnegative : 0 ≤ factor) (small : factor ≤ 1) (start : E.History)
+    (activeBound : ℕ)
+    (activeCount : ∀ fuel history,
+      history ∈ (M.runBehavioralFrom source fuel start).support →
+        (Finset.univ.filter (E.active history.state)).card ≤ activeBound)
+    (lower : ∀ fuel history,
+      history ∈ (M.runBehavioralFrom source fuel start).support →
+      ∀ who, E.active history.state who → ∀ choice,
+      factor * ((source who (M.infoOf who history.trace)) choice).toReal ≤
+        ((target who (M.infoOf who history.trace)) choice).toReal)
+    (fuel : Nat) :
+    PMF.WithinTV (1 - factor ^ (activeBound * fuel))
+      (M.runBehavioralFrom source fuel start) (M.runBehavioralFrom target fuel start) := by
+  apply PMF.WithinTV.of_domination _ _ _ (pow_le_one₀ nonnegative small)
+  exact M.runBehavioralFrom_domination_of_supported_active_choices source target factor
+    nonnegative small start activeBound activeCount lower fuel
 
 end GameTheory.Protocol.InformationModel
 
