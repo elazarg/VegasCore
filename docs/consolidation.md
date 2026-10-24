@@ -7,8 +7,8 @@ owner decisions the steps depend on, and the index of retired results.
 
 Rules:
 
-1. Steps run in order. A step closes when its exit criteria hold on a green
-   `lake build` with the repository checks passing.
+1. Steps follow the dependencies below. A step closes when its exit criteria
+   hold on a green `lake build` with the repository checks passing.
 2. A finding closes with the commit that resolves it; tick its box in that
    commit.
 3. Anything removed that carries a checked result worth citing gets an annotated
@@ -21,25 +21,53 @@ Rules:
 **Source language.** Straight-line commit–reveal programs: private inputs,
 public chance, guarded commitments and reveals, and payoffs computed by the
 program. Branches and loops are out of scope; the design should not preclude
-them.
+them. One operational semantics must specify failure, exit, continuation and
+commitment-phase retries, including what players observe and remember. The
+intended game is a derived analysis view in which commitments succeed and
+reveals open, not another independently maintained source semantics. The exact
+failure semantics remains decision D3.
 
 **Payoffs and utility.** The program's payoffs are what the compiler sees.
-Players' utilities are quasi-linear: a private valuation of the outcome plus the
-payoff. Deposits, forfeits and exit payoffs are payoffs; the valuation bounds
-they need are declared parameters, not properties the compiler reads from the
-program.
+Players' utilities are quasi-linear: `u_i(theta, z) = v_i(theta_i, z) + t_i(z)`,
+where the program computes the monetary transfer $t_i$ and the analysis supplies
+the private valuation $v_i$. Deposits, forfeits and exit payments are monetary
+transfers; the valuation bounds they need are declared parameters, not
+properties the compiler reads from the program. A constant exit payment gives
+a constant exit utility only under an explicit valuation hypothesis, for
+example that an excluded bidder receives
+nothing and values that outcome at zero. Unknown private valuations and
+externalities cannot in general be cancelled by a compiler-chosen payment.
 
 **Truthfulness.** The designer can specify truthfulness, for example that
 truthful bidding is dominant in a second-price auction. Preserving it through
-compilation is desired but not expected to hold in general; where it fails, the
-ledger records why rather than claiming it (decision D4).
+compilation requires additional conditions. Conditional withholding already
+refutes dominance in the current commit–reveal auction, for every forfeiture
+amount; see [truthfulness](#truthfulness-and-failure) and decision D4.
 
 **Compiled output.** One compiled contract with one verdict and audit model on
 the `Interaction` chain model. The environment (builder, observation, audit
 coverage) is a parameter, and the strength of the preserved notion depends on
 it.
 
-**Theorem ladder.**
+**One result family.** The same source semantics, contract, audit and observation
+types underlie compiler correctness, Nash correspondence and SE preservation.
+Their hypotheses and conclusion directions remain explicit. In particular,
+forward SE preservation does not imply reflection of every target equilibrium,
+and it does not replace the existing ε-Nash correspondence or deferral bounds.
+Preserve the joint law of original inputs, outcomes and realized monetary
+transfers, with no charges or exits on the lifted intended-equilibrium paths.
+The existing capstones' utility-valued settlements need adapters to this
+monetary observation; the target is not yet their checked statement.
+
+The two SE environments remain distinct sufficient conditions within this
+family. A reserved tape with correlated inputs and complete observation is not
+interchangeable with an adaptive timely builder and independent inputs. Neither
+current SE theorem implies the other. Extending concurrent SE to arbitrary
+timely builders is a separate research question, not an exit criterion for
+consolidation.
+
+**Theorem ladder and current evidence.** The checked statements below retain
+their present source games and utilities until the semantic adapters are proved.
 
 | Result | Environment | Graph | Present state |
 | --- | --- | --- | --- |
@@ -53,6 +81,95 @@ it.
 **Size.** The owner's estimate is 50–80k lines of Lean outside the GameTheory
 submodule. [Measurements](#measurements) give the current floor and explain any
 excess.
+
+## Mathematical feasibility
+
+**Assessment, not a checked theorem.** Consolidation appears feasible using
+established finite extensive-game methods. It requires substantial semantic
+design and adapter proofs; no new equilibrium concept is needed. This does not
+establish that the missing adapters hold or that a stronger environment theorem
+is true.
+
+| Work | Mathematical status | Required evidence |
+| --- | --- | --- |
+| Program payments plus private valuations | Standard quasi-linear utility model | Payment evaluation is used by the games and compiler; valuation and exit hypotheses are explicit |
+| One source semantics with exit and retries | Semantic design, with nontrivial correspondence proofs | Account for missed commitments, permanent exit, surviving players' retries and retained observations |
+| Nash on the phase contract | Existing deviation-simulation methods; port unproved | Compare old and new source deviations, payoffs, environment quantifiers, ε and deferral bounds |
+| Sequential SE on the phase contract | Promising adapter route; unproved | Checked correspondence to the forced-exit contract, preserving information and continuations |
+| Existing concurrent SE in the common family | Checked theorem under its current hypotheses; integration unproved | Instantiate the common payoff and readout interfaces without weakening the result |
+| Concurrent SE for arbitrary adaptive timely builders | Research question | A new sufficient-condition theorem or a counterexample for the specified contract and quantifiers |
+| Unrestricted dominant truthfulness for the current auction | Refuted at source level | Existing conditional-withholding witness; positive claims need different conditions or mechanics |
+| 50–80k lines | Unmeasured compression goal | Compress one proof module and measure before extrapolating |
+
+### Reusable mathematics and proof APIs
+
+Nash preservation uses a simulation of unilateral target deviations against
+compiled honest opponents. Sequential equilibrium additionally needs rational
+continuation at every information set, including implementation-only histories,
+and beliefs obtained from a common sequence of fully mixed profiles. Equal
+terminal laws alone do not establish this. The relevant existing APIs include
+[local comparison limits](../GameTheoryExtensions/Analysis/Protocol/LocalSimulationLimit.lean),
+[proportional belief transport](../GameTheoryExtensions/Analysis/Protocol/ProportionalBeliefTransport.lean)
+and [terminal-audit extension](../GameTheoryExtensions/Analysis/Protocol/TerminalAudit.lean).
+Instantiate these and identify the missing operational hypotheses before adding
+another general preservation framework.
+
+The [phase application](../Vegas/Pending/PhaseApplication.lean) already accepts a
+general event graph; the concurrent capstone fixes `.concurrent`. Singleton
+commitment phases are a candidate sequential adapter: a failure would not
+invalidate another surviving player's earlier commitment. This remains to be
+proved, including phase observations, attempt identifiers, readiness, deadlines
+and off-path behavior. The concurrent theorem's maximal-phase hypothesis does
+not directly supply this adapter. Restoring program state must not erase network
+traffic or recall that players have already observed.
+
+Preservation from the intended restriction and preservation from every
+equilibrium of the full failure semantics are separate claims. The existing SE
+capstones start from the intended game. Defining operational exit does not by
+itself strengthen their premise to every source equilibrium.
+
+### Truthfulness and failure
+
+In [the commit–reveal auction](../Vegas/Examples/CommitRevealAuction.lean),
+`Vegas.Examples.CommitRevealAuction.truthful_not_dominant` proves that truthful
+binding and disclosure is not dominant, for every withholding forfeiture. Alice
+values the item at 5; Bob commits to 4 and reveals precisely when Alice reports
+5. Reporting 5 gives Alice utility 1, while reporting 6 gives her utility 5
+against the same opponent policy. Dominance quantifies over that policy even
+when withholding is costly for Bob.
+
+`Vegas.Examples.CommitRevealAuction.translated_truthful_not_dominant` carries
+the obstruction to translations preserving the relevant profile utilities.
+This does not refute truthful auctions with other disclosure or settlement
+rules. A positive preservation result must state the permitted opponent
+strategies and information channels, and prove the required comparison over
+them. Nash or SE preservation against equilibrium opponents is insufficient to
+deduce dominance against arbitrary opponents.
+
+### Primary research
+
+- [Halpern, Pass and Seeman, *Computational Extensive-Form Games*](https://arxiv.org/abs/1506.03030)
+  relates abstract games to cryptographic implementations and proves Nash and
+  computational SE preservation under representation assumptions. It supports
+  separating strategic analysis from cryptographic realization; its hypotheses
+  are not automatically satisfied by the Vegas scheduler and failure semantics.
+- [Geffner and Halpern, *Communication games, sequential equilibrium, and mediators*](https://arxiv.org/abs/2309.14618)
+  constructs equilibrium-preserving communication protocols, with consistent
+  off-path beliefs as a central obligation. Its mediator model and resilience
+  assumptions differ from this contract's enforcement assumptions.
+- [Geffner and Halpern, *Security in Asynchronous Interactive Systems*](https://arxiv.org/abs/1906.02069)
+  studies bidirectional simulation with scheduler influence. It motivates
+  checking scheduling quantifiers rather than treating scheduling as an
+  unobservable execution detail.
+- [Ferreira and Weinberg, *Credible, Truthful, and Two-Round (Optimal) Auctions via Cryptographic Commitments*](https://arxiv.org/abs/2004.01598)
+  gives positive auction constructions under stated distributional and
+  cryptographic assumptions. Such mechanism-specific guarantees do not imply
+  unrestricted truthfulness preservation by this compiler.
+- [Reny, *A simple proof of the sufficiency of Dilmé’s power-sequence test for Kreps-Wilson consistency*](https://doi.org/10.1007/s00182-026-00997-z)
+  derives a simple certifying-sequence characterization through Farkas' lemma.
+  It is a candidate for simplifying finite-game consistency proofs. Applying it
+  still requires actual runtime likelihood and information-set correspondence;
+  no proof-size reduction is established here.
 
 ## Measurements
 
@@ -137,10 +254,12 @@ turn-based SE) and the reserved-epoch tape (for concurrent SE).
 
 ## Steps
 
-Order: work that needs no new mathematics and causes no long breakage comes
-first (Steps 0, 1 and 3, and the documentation parts of Steps 2 and 7). Steps 4
-and 5 wait until those are done. Removing code is not a risk: the tag
-`research-tree` holds the full tree.
+Order: guardrails, documentation and independent pruning come first (Steps 0–3
+and the documentation parts of Step 7). Step 2 settles the semantic design;
+Step 4 implements it and proves the correspondence adapters before Step 5 ports
+the preservation family and removes the duplicate contracts. Step 6 compresses
+the surviving proof layer. The tag `research-tree` makes removals recoverable;
+build and theorem comparisons still establish that kept results survive.
 
 ### Step 0. Record
 
@@ -175,7 +294,9 @@ This step comes first because every removal would otherwise edit audit pins.
 
 ### Step 2. Fix the contract
 
-- [ ] Owner decisions D1–D8.
+- [ ] Owner decisions D1–D8, including a written failure, retry, information and
+      payment specification before the theorem ports. Recommendations below do
+      not settle the remaining choices.
 - [ ] Paper.lean states exactly the kept theorems, under the naming scheme of
       D8.
 - [x] One results table in README keyed to the Paper pins, with scope and
@@ -250,43 +371,72 @@ Pass two:
 - [ ] The calendar's remaining `ServiceRoster` and `SourceService*` modules,
       `MessagePool` and most of `OnePacket*` stay because the turn-based SE and
       asynchronous Nash theorems use them on the plain and forced-exit
-      contracts; they wait for Step 4.
+      contracts; they wait for Step 5.
 
 Exit: the walk reports only modules on its allowlist; measurements updated.
 
-### Step 4. One contract
+### Step 4. Language and semantic correspondence
+
+- [ ] Implement the source failure semantics chosen under D3, specifying missed
+      commitments, participation after failure, remaining players' continuation
+      and any phase retries with retained observations. Derive the intended
+      analysis view from it; distinguish intended-equilibrium extension from
+      preservation of every full-source equilibrium.
+- [ ] Program payments are load-bearing: utility is valuation plus monetary
+      transfer. State valuation bounds, the hypothesis making exit utility
+      constant, and the treatment of unfinished executions. Re-establish
+      publication accounting, guard safety and source–graph correspondence.
+- [ ] Prove the sequential phase-contract adapter against the forced-exit
+      contract. Investigate singleton commitment phases first; compare
+      observations, deviations, retries, deadlines, payments and continuations.
+      An adapter that changes the old game is not an equivalence.
+- [ ] Define the common joint observation of original inputs, outcomes and
+      realized monetary transfers, and prove its relation to the existing
+      capstones' utility-valued settlements.
+- [ ] A truthfulness specification (D4), with the conditional-withholding
+      obstruction and explicit hypotheses for any positive preservation claim.
+
+Exit: the chosen operational semantics and payment interfaces are checked, and
+the adapters needed for the ports have checked proofs. No stronger SE premise
+or environment is inferred from the existence of these interfaces.
+
+### Step 5. One contract and one result family
 
 Before a theorem moves to the phase contract, a written comparison of the old
-and new statements shows that the move does not weaken it: environment,
-deviations, payoffs and the preserved law. Paper states one clear Nash
-preservation theorem.
+and new statements shows that the move does not weaken it: source game,
+environment and quantifier order, observations, deviations, payoffs, ε,
+deferral bound and the preserved joint law. Changes in source failure semantics
+need an explicit correspondence theorem. Paper states one clear Nash
+correspondence and the two SE guarantees over the common interfaces.
+
+If a required correspondence fails, retain the affected result and report the
+obstruction before changing its scope or retiring its contract.
 
 - [ ] Nash preservation on the phase contract under timely builders
       (first-turn clients and the deferral bound).
-- [ ] Non-concurrent SE on the phase contract over the sequential graph, or the
-      concurrent theorem generalized over the graph mode if the environments
-      can be reconciled. Start with a short investigation of which properties
-      of `.concurrent` the concurrent proof uses.
-- [ ] Remove the plain and forced-exit contracts, `WitnessedPacket` and the
-      settled-record audit.
-
-Exit: every preservation theorem is stated for `phaseApplication`.
-
-### Step 5. Language: payoffs, exit, truthfulness, instances
-
-- [ ] Program payoffs are load-bearing: utility is valuation plus payoff, and
-      the capstones are stated that way.
-- [ ] The source failure semantics of D3.
-- [ ] A truthfulness specification (D4).
+- [ ] Non-concurrent SE on the phase contract over the sequential graph, using
+      the checked adapter and retaining the timely-builder, observation and
+      independent-input scope of the existing result.
+- [ ] Concurrent SE instantiated through the common semantics, payments and
+      readout interfaces, retaining correlated inputs, the reserved tape and
+      complete pending observation. Generalizing its environment is separate
+      research, not a prerequisite for this step.
 - [ ] Every Paper theorem applied to a concrete program in which some player has
       a strict incentive; impossibility statements include existence of the
       equilibria they quantify over.
+- [ ] Remove the plain and forced-exit contracts, `WitnessedPacket` and the
+      settled-record audit only after the theorem comparisons and instances
+      pass.
 
-Exit: no capstone takes a utility over terminal states except through the
-valuation; every Paper theorem has an instance.
+Exit: every preservation theorem uses `phaseApplication` and the common monetary
+and valuation interfaces; both existing SE scopes and Nash correspondence are
+retained; every Paper theorem has an instance.
 
 ### Step 6. Proof compression and naming
 
+- [ ] Compress one self-contained proof module and measure the reduction
+      before choosing a size target or replacing proof machinery. Evaluate
+      power-sequence consistency only where it simplifies an actual obligation.
 - [ ] Recurring hypothesis groups bundled into structures; repeated terms
       named with API lemmas; declarations over 500 lines split.
 - [ ] Duplicate private helpers and near-copy files merged.
@@ -317,12 +467,18 @@ Exit: size within the target, or the excess explained in
 - **D2. The single contract.** Proposed: the phase contract.
 - **D3. Source failure semantics.** Commit–reveal with exit
   (semantics-and-enforcement.md III.1), or the intended game with forfeit and
-  exclusion payoff rewrites as analysis views only. This also decides the fate
-  of `exclusionModel`.
+  exclusion payoff rewrites as analysis views only. Recommended: operational
+  exit and explicit phase-retry semantics, with an intended restriction derived
+  from the same semantics. Specify retained information, survivors' payments
+  and the valuation hypothesis behind constant exit utility before porting
+  results. This also decides the fate of `exclusionModel`; the choice remains
+  open.
 - **D4. Truthfulness.** Decided meaning: truthfulness preservation, for example
   that truthful bidding stays dominant when a second-price auction is compiled.
-  Not expected to hold in general; the language must be able to state it, and
-  the conditions under which it holds or fails are open.
+  The language must be able to state it. Conditional withholding already
+  refutes unrestricted dominance for the current auction settlement, including
+  translations preserving its profile utilities. Positive preservation under
+  additional conditions or different mechanics remains open.
 - **D5. Impossibility results kept on `main`.** Proposed: the late-leak family
   (abstract, about 8k lines, motivates the exit payoff), moved out of the
   `Vegas` namespace. The runtime obstructions (`LateOpeningRuntime*`,
@@ -384,7 +540,7 @@ sequential rationality at every information set against whole-policy
 deviations, Nash and ε-Nash, beliefs as distributions over information sets,
 perfect recall proved for every model, horizons equal to proved bounds.
 
-- [ ] **F-T1 (L, Step 5).** Unfinished runtime executions pay a literal zero
+- [ ] **F-T1 (L, Step 4).** Unfinished runtime executions pay a literal zero
   (`serviceBaseUtility`, `phaseExclusionBase`); make it a named parameter or
   prove every terminal history reads out.
 - [ ] **F-T2 (L, upstream).** Library information fibers may contain terminal
@@ -408,15 +564,15 @@ perfect recall proved for every model, horizons equal to proved bounds.
 
 ### Language and models
 
-- [ ] **F-L1 (H, Step 5).** `ret` payoffs are never read by a game, a capstone
+- [ ] **F-L1 (H, Step 4).** `ret` payoffs are never read by a game, a capstone
   or Paper; both auction examples write `.ret []`, and `simpleExpr` cannot
   express their utilities.
-- [ ] **F-L2 (H, Steps 3–4).** About eight source-level games and three
+- [ ] **F-L2 (H, Steps 3–5).** About eight source-level games and three
   compiled contracts; see [model inventory](#model-inventory).
 - [x] **F-L3 (M, Step 2).** The language's limits (straight-line, fixed actors,
   every move a commit and a reveal, guards cannot read their author's private
   inputs) are not stated in README or source-semantics.md.
-- [ ] **F-L4 (L, Step 5).** A guard failure lands on whichever reveal completes
+- [ ] **F-L4 (L, Step 4).** A guard failure lands on whichever reveal completes
   the guard (`Vegas/Source/Semantics.lean:355-363`): a value may violate its own
   guard and publish as a success while a later reveal fails.
 - [x] **F-L5 (M, Step 3).** `check-module-boundaries.py` checks only imports into
@@ -431,7 +587,7 @@ perfect recall proved for every model, horizons equal to proved bounds.
 - [x] **F-S1 (H, Step 3).** 2,165 of 3,777 modules (about 428k lines) contain no
   declaration used by Paper or by a test declaration; 35% of declarations are
   reached from Paper. After Step 3 the report lists no module.
-- [ ] **F-S2 (H, Step 4).** Parallel runtime stacks: 269k lines mention
+- [ ] **F-S2 (H, Step 5).** Parallel runtime stacks: 269k lines mention
   `WitnessedPacket`, 244k `CommitAttemptPacket`, 46 files both. Three copies of
   the one-packet raw extension theorem (`OnePacketExtension.lean`,
   `RecoveryOnePacketExtension.lean`, `PhaseOnePacketExtension.lean`; 81% and
@@ -508,6 +664,12 @@ These counterexamples explain assumptions of
 stays on `main`; the others are checked at the `research-tree` tag. The
 arguments are in [semantics-and-enforcement.md](semantics-and-enforcement.md),
 Sections I.5 and I.7.
+
+These obstructions concern the games and contracts named in each row. In
+particular, an obstruction for continued play after failure on the plain
+contract does not refute concurrent preservation on the phase contract under
+arbitrary timely builders. The reserved-tape environment is a checked sufficient
+condition; its necessity for the phase contract is not established here.
 
 | Assumption | Counterexample | Shows |
 | --- | --- | --- |
