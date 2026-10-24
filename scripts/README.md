@@ -26,3 +26,17 @@ the build confirms each removal.
 The [experiments](experiments) directory holds the investigation scripts that
 research notes cite. They are reference material and are not part of the
 default test or build roots.
+
+`python scripts/proof-inventory.py --output ephemeral/proof-review` inventories
+tracked Lean source, including the separately managed GameTheory tree. It writes
+module/declaration CSV files, a layer summary, and cross-file matches of exact
+eight-line proof windows. Body recognition is lexical and includes tactic-valued
+definitions; windows overlap. Use matches to select proofs for review, not as
+counts of removable lines. The [proof review](../docs/proof-review.md) explains
+the measurement and its limits. The inventory never edits Lean source.
+
+`python scripts/check-proof-review-probes.py` replays the isolated Lean sources
+in the [checked-probe appendix](../docs/proof-review/checked-probes.md) after the
+ordinary build. It uses the built central Lake setup and writes only temporary
+files. `--list` lists the experiments; `--probe NAME` checks a single one. This
+validates review statements without treating them as merged production APIs.

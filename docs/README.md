@@ -23,6 +23,8 @@ code, which is checked at that tag only.
   description.
 - [Consolidation ledger](consolidation.md): the reduction plan, findings,
   measurements and the index of retired results.
+- [Proof review and mathematical mining](proof-review.md): codebase coverage,
+  checked experiments, compression candidates and stronger nearby results.
 
 ## The concurrent theorem
 
