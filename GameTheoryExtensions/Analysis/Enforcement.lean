@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheory.Protocol.BehavioralAssessment
-import GameTheory.Analysis.IncentiveCone
+import GameTheory.Math.Probability.Bounds
 import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Deterrence by probabilistic sanctions
@@ -15,7 +14,7 @@ an information set, they are conditional on that assessment's beliefs. No
 monitor, evidence, collection mechanism, or sequentially consistent belief
 system is constructed here. Sanctions are measured in utility, not currency.
 
-For a randomized alarm observing a finite-support law, the largest detection
+For a randomized alarm observing a PMF on any carrier, the largest detection
 probability compatible with zero false positives is exactly the deviating
 law's mass outside the lawful support. This concerns the specified observable
 law. A compiler preserving all source-compatible strategies needs soundness
@@ -53,6 +52,46 @@ theorem alarm_zero_of_support_subset (lawful deviating : PMF Outcome)
   apply (alarm_zero_iff deviating alarm).mpr
   intro outcome supported
   exact (alarm_zero_iff lawful alarm).mp no_false_positives outcome (included supported)
+
+/-- The deterministic alarm fires exactly outside the admitted observations. -/
+def outsideAlarm (admitted : Set Outcome) (outcome : Outcome) : PMF Bool := by
+  classical
+  exact PMF.pure (if outcome ∈ admitted then false else true)
+
+open Classical in
+@[simp] theorem outsideAlarm_true (admitted : Set Outcome) (outcome : Outcome) :
+    ((outsideAlarm admitted outcome) true).toReal =
+      if outcome ∈ admitted then 0 else 1 := by
+  classical
+  by_cases member : outcome ∈ admitted <;> simp [outsideAlarm, member, PMF.pure_apply]
+
+/-- Every alarm silent on admitted observations detects at most the law's
+mass outside that set, even if the alarm randomizes. -/
+theorem alarm_detection_le_outside_mass (law : PMF Outcome) (admitted : Set Outcome)
+    (alarm : Outcome → PMF Bool)
+    (sound : ∀ outcome ∈ admitted, ((alarm outcome) true).toReal = 0) :
+    ((law.bind alarm) true).toReal ≤ (law.toOuterMeasure admittedᶜ).toReal := by
+  classical
+  rw [toReal_bind_apply, ← expect_indicator]
+  refine expect_mono (fun outcome _ => ?_)
+    (payoffIntegrable_of_bounded _ _ (C := 1) fun outcome => by
+      rw [abs_of_nonneg ENNReal.toReal_nonneg]
+      exact pmf_toReal_apply_le_one _ _)
+    (payoffIntegrable_of_bounded _ _ (C := 1) fun outcome => by split <;> norm_num)
+  by_cases member : outcome ∈ admitted
+  · simp [member, sound outcome member]
+  · simpa [member] using pmf_toReal_apply_le_one (alarm outcome) true
+
+/-- The deterministic outside-set alarm attains the upper bound on sound
+detection. Its silence holds on the entire admitted set, not just one law. -/
+theorem outsideAlarm_detection (law : PMF Outcome) (admitted : Set Outcome) :
+    ((law.bind (outsideAlarm admitted)) true).toReal =
+      (law.toOuterMeasure admittedᶜ).toReal := by
+  classical
+  rw [toReal_bind_apply, ← expect_indicator]
+  apply congrArg (expect law)
+  funext outcome
+  by_cases member : outcome ∈ admitted <;> simp [member]
 
 end Enforcement
 end GameTheory

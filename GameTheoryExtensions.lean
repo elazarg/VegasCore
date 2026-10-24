@@ -49,6 +49,7 @@ import GameTheoryExtensions.Math.Probability.AffineDecorrelation
 import GameTheoryExtensions.Math.Probability.ApproximateLumping
 import GameTheoryExtensions.Math.Probability.EqualMassFibers
 import GameTheoryExtensions.Math.Probability.Expectation
+import GameTheoryExtensions.Math.Probability.DiscretePushforward
 import GameTheoryExtensions.Math.Probability.GatedExpectation
 import GameTheoryExtensions.Math.Probability.NearDecorrelation
 import GameTheoryExtensions.Math.Probability.NestedPosterior
