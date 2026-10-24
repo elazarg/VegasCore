@@ -48,6 +48,46 @@ theorem gain_eq_expect_historyGain [Finite E.History] (run : M.ContinuationRunne
   refine expect_congr_on_support fun history _ => ?_
   simp only [historyGain, expect_map]
 
-variable {E' : ExecutionProtocol ι} {N : InformationModel E'} {Observation' : Type*}
+/-- A payoff fixed on every continuation support leaves no profitable or costly
+whole-policy deviation at the starting history. The constant may depend on that
+history; no information or independence assumption is needed. -/
+theorem historyGain_eq_zero_of_constant_payoff (run : M.ContinuationRunner)
+    (observe : E.History → Observation) (utility : Observation → ι → ℝ)
+    (assessment : M.BehavioralAssessment) {who : ι}
+    (deviation : M.AssessmentDeviation who)
+    (history : M.InformationHistory who deviation.1.1) (value : ℝ)
+    (constant : ∀ players final, final ∈ (run players history.1).support →
+      utility (observe final) who = value) :
+    M.historyGain run observe utility assessment deviation history = 0 := by
+  have fixed (players : ∀ owner, M.BehavioralPolicy owner) :
+      expect ((run players history.1).map observe) (utility · who) = value := by
+    rw [expect_map]
+    calc
+      _ = expect (run players history.1) (fun _ => value) :=
+        expect_congr_on_support (fun final supported => constant players final supported)
+      _ = value := expect_constant _ _
+  exact sub_eq_zero.mpr ((fixed _).trans (fixed _).symm)
+
+/-- Continuation indifference at every hidden history gives indifference at the
+information site for any assessment beliefs. Different hidden histories may
+have different fixed payoffs; only control over the continuation is irrelevant. -/
+theorem gain_eq_zero_of_constant_continuations [Finite E.History]
+    (run : M.ContinuationRunner) (observe : E.History → Observation)
+    (utility : Observation → ι → ℝ) (assessment : M.BehavioralAssessment) {who : ι}
+    (deviation : M.AssessmentDeviation who)
+    (value : M.InformationHistory who deviation.1.1 → ℝ)
+    (constant : ∀ history players final, final ∈ (run players history.1).support →
+      utility (observe final) who = value history) :
+    expect (M.assessmentComparisonWith run observe assessment who deviation).alternative
+        (utility · who) -
+      expect (M.assessmentComparisonWith run observe assessment who deviation).prescribed
+        (utility · who) = 0 := by
+  rw [M.gain_eq_expect_historyGain]
+  calc
+    _ = expect (assessment.belief who deviation.1) (fun _ => 0) :=
+      expect_congr_on_support (fun history _ =>
+        M.historyGain_eq_zero_of_constant_payoff run observe utility assessment deviation
+          history (value history) (constant history))
+    _ = 0 := expect_constant _ _
 
 end GameTheory.Protocol.InformationModel

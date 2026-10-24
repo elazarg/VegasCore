@@ -151,26 +151,12 @@ theorem phaseProposalSavedBindingFailure_historyGain_eq_zero
       (fun final => final.state)
       (phaseExclusionBase setup mode runtime leaks utility excludedPayoff)
       assessment deviation history = 0 := by
-  have fixed : ∀ players : ∀ owner, (model).BehavioralPolicy owner,
-      expect (((model).runBehavioralTerminalFrom certificate players history.val).map
-        (fun final => final.state))
-        (fun state => phaseExclusionBase setup mode runtime leaks utility excludedPayoff
-          state who) =
-          excludedPayoff who := by
-    intro players
-    rw [expect_map]
-    change expect ((model).runBehavioralTerminalFrom certificate players history.val)
-      (fun final => phaseExclusionBase setup mode runtime leaks utility excludedPayoff
-        final.state who) = excludedPayoff who
-    trans expect ((model).runBehavioralTerminalFrom certificate players history.val)
-      (fun _ => excludedPayoff who)
-    · exact expect_congr_on_support (fun final supported =>
-      phaseProposalSavedBindingFailure_information_terminal_payoff setup mode runtime leaks bounds
-        plan maximal prior certificate players who past view event payload binding requested failed
-        ⟨history.val, history.property.trans information⟩ final supported utility excludedPayoff)
-    · exact expect_constant _ _
-  unfold InformationModel.historyGain
-  exact sub_eq_zero.mpr ((fixed _).trans (fixed _).symm)
+  apply (model).historyGain_eq_zero_of_constant_payoff _ _ _ assessment deviation history
+    (excludedPayoff who)
+  intro players final supported
+  exact phaseProposalSavedBindingFailure_information_terminal_payoff setup mode runtime leaks bounds
+    plan maximal prior certificate players who past view event payload binding requested failed
+    ⟨history.val, history.property.trans information⟩ final supported utility excludedPayoff
 
 /-- The observable case is uniform on the full information fiber, so any
 assessment belief gives zero conditional gain. Its hidden-history distribution
@@ -199,11 +185,11 @@ theorem phaseProposalSavedBindingFailure_gain_eq_zero
         (fun final => final.state) assessment who deviation).prescribed
         (fun state => phaseExclusionBase setup mode runtime leaks utility excludedPayoff state who)
       = 0 := by
-  rw [(model).gain_eq_expect_historyGain]
-  rw [expect_congr_on_support (g := fun _ => 0) (fun history _ =>
-    phaseProposalSavedBindingFailure_historyGain_eq_zero setup mode runtime leaks bounds plan
-      maximal prior certificate assessment deviation past view information event payload binding
-        requested failed history utility excludedPayoff)]
-  exact expect_constant _ _
+  apply (model).gain_eq_zero_of_constant_continuations _ _ _ assessment deviation
+    (fun _ => excludedPayoff who)
+  intro history players final supported
+  exact phaseProposalSavedBindingFailure_information_terminal_payoff setup mode runtime leaks bounds
+    plan maximal prior certificate players who past view event payload binding requested failed
+    ⟨history.val, history.property.trans information⟩ final supported utility excludedPayoff
 
 end Vegas
