@@ -369,6 +369,9 @@ directory's aggregator imports every module in it.
 ## Vegas/Game
 
 - [Strategic utility from executable program payments](../Vegas/Game/ProgramPayoffs.lean)
+- [Nash correspondence for executable program payments](../Vegas/Game/ProgramPaymentNash.lean)
+- [Joint execution and monetary receipt laws](../Vegas/Game/ProgramPaymentLaws.lean)
+- [Program payments on the audited asynchronous service](../Vegas/Game/ProgramPaymentAsyncNash.lean)
 
 - [Archived Source Recall](../Vegas/Game/ArchivedSourceRecall.lean)
 - [One deviator against an arbitrary builder, phase by phase](../Vegas/Game/AsyncDeviationLaw.lean)

@@ -491,11 +491,13 @@ without an upper bound on it; the model still supplies that denominator before
 the rate is chosen.
 
 The payment instance evaluates a nonzero conditional bonus in `ret`. Publishing
-true has valuation minus one. A bonus of two makes true strictly better than
-false; a bonus of zero reverses that strict comparison. Its game utility reads
-the evaluated program transfer, and compilation preserves that transfer law.
-This is an instance of payment-dependent source and ideal-graph semantics, not
-the migration of every existing raw capstone to program payments (Step 4).
+true has valuation minus one. A bonus of two makes publishing true a Nash
+equilibrium; a bonus of zero makes publishing false a Nash equilibrium. The
+opposite selected profile is not an equilibrium in each case. These results
+quantify over every legal randomized whole-policy deviation, including failed
+bindings and withheld publication. The corresponding compiled profiles have
+the same equilibrium and non-equilibrium properties under every public scheduler,
+with utility reading the actual compiled payment instructions.
 
 Whole-file measurements against extraction baseline `019d848a` include the new
 general modules and all changed concrete adapters, including imports and
@@ -510,18 +512,22 @@ declaration-cone measurements in [measurements](#measurements).
 | Common perturbations plus rate calibration | 277 | 283 | +6 |
 | These mathematical extractions together | 5,328 | 5,362 | +34 |
 
-The independent posterior and continuation applications add 58 and 62 test
-lines. The payment API, program adapter and incentive example add 315 lines of
-new functionality. This pass isolates reusable mathematics and removes repeated
-arguments; it does not establish a substantial overall size reduction or a
-compression factor for the remaining preservation cone.
+The independent posterior and continuation applications contain 58 and 62 test
+lines. Monetary settlement, program utility, joint payment laws, ideal and
+runtime Nash bridges, and the incentive example occupy 1,036 production lines
+across six modules. The independent correlated-audit example contains 107 lines;
+Paper also guards the axioms of fourteen payment results. These APIs isolate
+reusable mathematics and connect payments to equilibrium results; they do not
+establish a substantial overall size reduction or a compression factor for the
+remaining preservation cone.
 
-Acceptance: the full default `lake build` passes with 5,721 jobs, including all
+Acceptance: the full default `lake build` passes, including all
 Paper axiom pins. The 89 repository Python tests, source-policy, module-boundary
 and documentation-reference checks pass. The dependency walk reports zero
-unreached modules out of 1,757 modules with declarations. Existing public statements in the
-changed Vegas proof modules are unchanged; Paper, the concurrent preservation
-specification and the central Lean options are unchanged. Focused audits of the
+unreached modules. Existing public statements in the changed Vegas proof modules,
+the retained Paper statements, the concurrent preservation specification and the
+central Lean options are unchanged. Paper includes additional payment axiom
+guards. Focused audits of the
 extracted results and their concrete consumers use only `propext`,
 `Classical.choice` and `Quot.sound`.
 
@@ -532,6 +538,52 @@ later consolidation changes affect mathematical hypotheses. Extracting most of
 the proof is an objective to measure, not an assumed result.
 
 ### Step 4. Language and semantic correspondence
+
+The following payment results use the existing semantics and are available
+without choosing a new failure, exit or retry policy. They supply parts of the
+interfaces below; the checklist remains open until those interfaces cover the
+common language and retained capstones.
+
+- [Joint cash and utility laws](../GameTheoryExtensions/Analysis/QuasilinearSettlement.lean)
+  convert `(outcome, receipt vector)` to `(outcome, utility vector)` by adding
+  valuation, and recover receipts by subtraction. Both maps are inverse on
+  entire probability laws. The audit identities preserve correlated verdicts
+  and require neither independence nor integrability. Retaining the outcome
+  is necessary because it determines the valuation being subtracted.
+- [Program payment observations](../Vegas/Game/ProgramPaymentLaws.lean) retain
+  the actual initial draw, full typed terminal state, public result and actual
+  compiled receipt vector jointly. Every public scheduler preserves this law
+  for a compiled source profile. This statement permits arbitrary initial
+  distributions, including correlated private data; it concerns completed
+  source and ideal-graph runs.
+- [Payment-based Nash correspondence](../Vegas/Game/ProgramPaymentNash.lean)
+  preserves and reflects the same ε under every public scheduler, against all
+  legal unilateral graph deviations. Its monetary term is the sum of the
+  actual compiled payment instructions. Valuation may depend on an immutable
+  initial parameter jointly with the public result. This parameter is an
+  analysis readout of the existing source execution; strategies and their
+  observations are unchanged. The theorem requires finite commitment alphabets
+  and finite support of the initial distribution, without requiring a finite
+  parameter type or independent private inputs.
+- [Audited runtime payments](../Vegas/Game/ProgramPaymentAsyncNash.lean)
+  separate the program's transfer from valuation on the existing typed runtime
+  readout. Their expected quasi-linear utility is computed from the actual
+  randomized monetary settlement after deposit charges. For every builder
+  satisfying the existing asynchronous contract and timeliness assumptions,
+  first-opportunity clients preserve and reflect the same ε-Nash property in
+  the source protocol and bounded raw response game. The assumptions retain
+  barrier ordering, authentic audit samples, nonnegative deposits and a bounded
+  interval covering every terminal utility, unfinished readout and possible
+  charge. For every admitted source profile, a separate theorem preserves the
+  exact joint typed terminal state and cash-settlement vector without assuming
+  equilibrium. Both pre-audit transfer and valuation are zero on an unfinished
+  readout, following the existing convention. This is an analysis settlement,
+  rather than an implementation of escrow.
+
+These results neither equate the different contracts nor instantiate the
+concurrent SE theorem with payments. In particular, they do not prove that exit
+valuation is constant, choose future rollback rules, or establish the deferring
+client payment theorem as a separate public result.
 
 - [ ] Implement the source failure semantics chosen under D3, specifying missed
       commitments, participation after failure, remaining players' continuation
