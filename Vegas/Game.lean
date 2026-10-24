@@ -453,6 +453,7 @@ import Vegas.Game.PhaseSourcePolicy
 import Vegas.Game.PhaseSurvivingBindingSource
 import Vegas.Game.PhaseSurvivingSourceView
 import Vegas.Game.PhaseVirtualBindingView
+import Vegas.Game.ProgramPayoffs
 import Vegas.Game.ProposalRecoveryAcceptedFailure
 import Vegas.Game.ProposalRecoveryAgentGains
 import Vegas.Game.ProposalRecoveryArchivePublicHistory

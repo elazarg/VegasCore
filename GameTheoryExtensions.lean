@@ -41,6 +41,7 @@ import GameTheoryExtensions.Analysis.Protocol.SuccessRanking
 import GameTheoryExtensions.Analysis.Protocol.SupportedChoiceContinuation
 import GameTheoryExtensions.Analysis.Protocol.TerminalAudit
 import GameTheoryExtensions.Analysis.Protocol.UniformPolicyLimit
+import GameTheoryExtensions.Analysis.QuasilinearSettlement
 import GameTheoryExtensions.Core.PendingChoice
 import GameTheoryExtensions.Math.Probability.ActionSplitting
 import GameTheoryExtensions.Math.Probability.AffineDecorrelation
