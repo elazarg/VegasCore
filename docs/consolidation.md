@@ -34,8 +34,8 @@ the private valuation $v_i$. Deposits, forfeits and exit payments are monetary
 transfers; the valuation bounds they need are declared parameters, not
 properties the compiler reads from the program. A constant exit payment gives
 a constant exit utility only under an explicit valuation hypothesis, for
-example that an excluded bidder receives
-nothing and values that outcome at zero. Unknown private valuations and
+example that an excluded bidder receives nothing and values that outcome at
+zero. Unknown private valuations and
 externalities cannot in general be cancelled by a compiler-chosen payment.
 
 **Truthfulness.** The designer can specify truthfulness, for example that
@@ -214,8 +214,9 @@ forms, or about 340k with turn-based SE kept on its own contract. Reaching
 50–80k would need the concurrent proof to shrink by a factor of four or more,
 which nothing measured so far supports. The slack indicators are real (F-S4,
 F-S2; 12.5% of six-line windows recur in another file), but their yield is
-unmeasured. Step 6 starts by compressing one self-contained module and measuring
-the ratio before any size target is fixed. Extrapolating a factor of 1.5–2.5 on
+unmeasured. Step 3a measures a model-independent extraction pilot; Step 6 uses
+that evidence and a proof-compression pilot before any size target is fixed.
+Extrapolating a factor of 1.5–2.5 on
 the proof layer gives an end state of roughly 100–170k lines; this is an
 estimate, not a measurement.
 
@@ -255,11 +256,14 @@ turn-based SE) and the reserved-epoch tape (for concurrent SE).
 ## Steps
 
 Order: guardrails, documentation and independent pruning come first (Steps 0–3
-and the documentation parts of Step 7). Step 2 settles the semantic design;
-Step 4 implements it and proves the correspondence adapters before Step 5 ports
-the preservation family and removes the duplicate contracts. Step 6 compresses
-the surviving proof layer. The tag `research-tree` makes removals recoverable;
-build and theorem comparisons still establish that kept results survive.
+and the documentation parts of Step 7). Step 3a extracts model-independent
+mathematics from the checked models before their contracts change, and starts
+the payment integration with a concrete program. It can proceed while the
+remaining semantic choices in Step 2 are being settled. Step 4 implements those
+choices and proves the correspondence adapters before Step 5 ports the
+preservation family and removes the duplicate contracts. Step 6 compresses the
+surviving proof layer. The tag `research-tree` makes removals recoverable; build
+and theorem comparisons still establish that kept results survive.
 
 ### Step 0. Record
 
@@ -375,6 +379,95 @@ Pass two:
 
 Exit: the walk reports only modules on its allowlist; measurements updated.
 
+### Step 3a. Extract model-independent mathematics and connect payments
+
+The purpose is to separate mathematical obligations from facts about a
+particular source language, contract or scheduler before consolidating those
+models. Merely moving a file or replacing concrete types with a record of the
+same obligations does not achieve that separation. Existing abstract results
+already cover local comparison limits, proportional belief transport, pooled
+affine-score ranking and terminal-audit extension; extend or instantiate their
+owning APIs before introducing replacements.
+
+Keep source and contract semantics, scheduler quantifiers, payoff functions and
+public capstone statements fixed during each mathematical extraction. Payment
+integration is an explicit semantic change with its own checkpoint, rather than
+an unnoticed change inside a refactor. No extraction closes an SE checklist box
+or proves a new environment guarantee.
+
+Proceed through the following checkpoints, committing and pushing each verified
+one before taking on the next:
+
+- [ ] Map the mathematical dependencies of the retained capstones using `rg`,
+      `lean-defs.py` and the module map. For each extraction, identify the
+      existing owning API, the concrete facts its callers must prove and the
+      repeated proof argument it will replace. Record affected callers, proof
+      size and verification scope before editing.
+- [ ] Pilot the extraction on conditional-law normalization and disintegration
+      in [the qualified-binding posterior proof](../Vegas/Game/QualifiedBinding/ForeignPosterior.lean).
+      Some local helpers already quantify over arbitrary probability spaces
+      and observation maps. Reuse existing conditioning APIs where sufficient;
+      otherwise extract the missing probability theorem and replace the local
+      proof. Keep positivity and zero-probability conditioning explicit. Measure
+      the general proof plus all remaining adapters, not just lines moved out
+      of Vegas.
+- [ ] Establish the generic separation of monetary settlement from valuation,
+      including audit charges and the joint realized transfer law. Then wire a
+      concrete source program's nonzero `ret` payments into its strategic
+      utility and compiled readout, using the existing
+      `Vegas.canonical_payout_law`. Prove a strict incentive comparison that
+      depends on those evaluated payments. Changing the program payment must
+      change the actual game payoff; an unused evaluator or a caller-supplied
+      replacement utility does not satisfy this checkpoint. Step 4 still owns
+      the full capstone migration and exit-valuation hypotheses.
+- [ ] Factor the common conditional-collection and audited extension arguments
+      from [the plain](../Vegas/Game/OnePacketExtension.lean),
+      [forced-exit](../Vegas/Game/RecoveryOnePacketExtension.lean) and
+      [phase](../Vegas/Game/PhaseOnePacketExtension.lean) proofs through
+      [terminal-audit extension](../GameTheoryExtensions/Analysis/Protocol/TerminalAudit.lean).
+      Keep packet validity, authentic evidence, response-menu membership and
+      report delivery as separately proved backend facts. Reuse the result in
+      the existing contracts before any contract is removed.
+- [ ] Extract continuation indifference and payoff-floor comparisons, with
+      [observable failure](../Vegas/Game/PhaseProposalObservableDebtPayoff.lean)
+      and [current-binding gain](../Vegas/Game/PhaseProposalCurrentBindingGain.lean)
+      as candidate callers. The mathematical theorem should use continuation
+      payoff conditions, not bindings or phase identifiers. Constant utility
+      under every continuation gives zero deviation gain; the concrete model
+      must still prove that condition. Reuse the existing gated-expectation,
+      affine-decorrelation and pooled-ranking APIs for nonconstant cases.
+- [ ] Extract any remaining common argument from factored history likelihoods
+      to conditional comparisons and a consistent SE limit. Keep reconstruction
+      of actual histories, readiness, rollback, callback occurrences and
+      scheduler likelihoods in the model adapters. Preserve a common tremble
+      witness and the order in which rates, pooled policies and equilibria are
+      chosen. Compose through the existing local-comparison limit theorem;
+      do not assume its desired gain bound as the entire new abstraction.
+
+Use `GameTheoryExtensions.Math.Probability` for probability results and
+`GameTheoryExtensions.Analysis.Protocol` for results about arbitrary execution
+protocols and information models. Generic message-network facts belong in
+`Interaction`; language and contract adapters stay in their owning Vegas
+layers. Moving results into the separately managed GameTheory submodule is not
+required for this phase. A model-independent theorem has no Vegas dependency;
+it must prove a mathematical consequence from conditions that make sense in
+other models.
+
+Each checkpoint replaces its old proof callers, removes superseded local
+helpers and passes the relevant builds, capstone standard-axiom checks and
+repository checks. Demonstrate reuse across existing models where available;
+otherwise include a small independent application that exercises the extracted
+hypotheses. Review both the abstract theorem and its concrete adapters so that
+the difficulty is not merely shifted into a large assumption. Record total
+proof size and the remaining model-specific obligations. Reduced line count is
+useful evidence, not a reason to weaken a statement.
+
+Exit: the selected extractions have checked consumers and the concrete payment
+checkpoint is checked; the retained capstones keep their exact statements and
+standard axioms. The resulting API and adapter inventory identifies which
+later consolidation changes affect mathematical hypotheses. Extracting most of
+the proof is an objective to measure, not an assumed result.
+
 ### Step 4. Language and semantic correspondence
 
 - [ ] Implement the source failure semantics chosen under D3, specifying missed
@@ -386,6 +479,7 @@ Exit: the walk reports only modules on its allowlist; measurements updated.
       transfer. State valuation bounds, the hypothesis making exit utility
       constant, and the treatment of unfinished executions. Re-establish
       publication accounting, guard safety and source–graph correspondence.
+      Extend Step 3a's payment-dependent program instance to the capstone family.
 - [ ] Prove the sequential phase-contract adapter against the forced-exit
       contract. Investigate singleton commitment phases first; compare
       observations, deviations, retries, deadlines, payments and continuations.
