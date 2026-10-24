@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Expr.Simple
-import Vegas.Game.ProgramPayoffs
+import Vegas.Game.ProgramPaymentNash
 
 /-! # An executable payment reverses a player's strict incentive
 
@@ -19,7 +19,7 @@ open SourceProgram GameTheory GameTheory.Math.Probability
 
 inductive Player where
   | alice
-  deriving DecidableEq
+  deriving DecidableEq, Fintype
 
 private def acceptGuard : SourceGuard simpleExpr [] Player.alice 0 .bool where
   schema := []
@@ -36,6 +36,25 @@ def program (bonus : Int) : SourceProgram Player simpleExpr [] ∅ :=
     (.constInt bonus) (.constInt 0))]
 
 def initial : State (Player := Player) simpleExpr [] := Env.empty (CellVal simpleExpr)
+
+/-- The empty initial state is sampled with probability one. -/
+def setup (bonus : Int) : Setup (Player := Player) (L := simpleExpr) where
+  context := []
+  namesNodup := by simp
+  initialLaw := PMF.pure initial
+  obligations := ∅
+  program := program bonus
+  accounts := rfl
+
+instance (bonus : Int) : (setup bonus).FiniteInitialLaw where
+  support_finite := by
+    change (PMF.pure initial).support.Finite
+    rw [PMF.support_pure]
+    exact Set.finite_singleton initial
+
+theorem finiteBindingTypes (bonus : Int) : (program bonus).FiniteBindingTypes := by
+  change Finite Bool ∧ True
+  exact ⟨inferInstance, trivial⟩
 
 def policy (bonus : Int) (choice : Bool) : BehavioralPolicy Player.alice (program bonus) :=
   (fun _ _ => PMF.pure (.success choice), (fun _ _ => PMF.pure true, PUnit.unit))
@@ -59,6 +78,57 @@ def valuation (bonus : Int) (outcome : PublicOutcome (program bonus)) (_who : Pl
 def game (bonus : Int) : UtilityGame Player where
   form := (program bonus).gameForm initial
   utility := (program bonus).paymentUtility (valuation bonus)
+
+theorem setup_gameForm (bonus : Int) : (setup bonus).gameForm = (game bonus).form := by
+  unfold Setup.gameForm Setup.publicRun Setup.run setup game
+  simp only [PMF.pure_bind]
+  rfl
+
+/-- Every public outcome, including failed publication, has its utility fixed
+by the same conditional payment instruction. -/
+theorem utility_eq (bonus : Int) (outcome : PublicOutcome (program bonus)) :
+    (game bonus).utility outcome .alice =
+      match (outcome.get .here : PublicationResult Bool) with
+      | .success true => (bonus : ℝ) - 1
+      | _ => 0 := by
+  have payments : (program bonus).publicPayoffs outcome =
+      [(.alice, if (outcome.get .here : PublicationResult Bool).getD false then bonus else 0)] :=
+    rfl
+  change valuation bonus outcome .alice +
+    (transferAmount ((program bonus).publicPayoffs outcome) .alice : ℝ) = _
+  rw [payments]
+  cases published : (outcome.get .here : PublicationResult Bool) with
+  | failure => simp [valuation, published, PublicationResult.getD, transferAmount]
+  | success choice =>
+      cases choice <;> simp [valuation, published, PublicationResult.getD, transferAmount]
+      ring
+
+theorem utility_abs_le (bonus : Int) (outcome : PublicOutcome (program bonus)) :
+    |(game bonus).utility outcome .alice| ≤ |(bonus : ℝ) - 1| := by
+  rw [utility_eq]
+  cases (outcome.get .here : PublicationResult Bool) with
+  | failure => simp
+  | success choice => cases choice <;> simp
+
+/-- The bound quantifies over arbitrary outcome laws, so it also covers all
+randomized policies, failed binding attempts, and withheld reveals. -/
+theorem expectedUtility_le (bonus : Int) (law : PMF (PublicOutcome (program bonus))) :
+    expectedUtility (game bonus).utility .alice law ≤ max ((bonus : ℝ) - 1) 0 := by
+  apply expect_le_const law _ (payoffIntegrable_of_bounded law _ (utility_abs_le bonus))
+  intro outcome _
+  rw [utility_eq]
+  cases (outcome.get .here : PublicationResult Bool) with
+  | failure => exact le_max_right _ _
+  | success choice =>
+      cases choice
+      · exact le_max_right _ _
+      · exact le_max_left _ _
+
+theorem hasIntegrableDeviations (bonus : Int) (choice : Bool) :
+    (game bonus).form.HasIntegrableDeviations (game bonus).utility (profile bonus choice) := by
+  intro who replacement
+  cases who
+  exact payoffIntegrable_of_bounded _ _ (utility_abs_le bonus)
 
 theorem run_profile (bonus : Int) (choice : Bool) :
     (program bonus).run (profile bonus choice) initial = PMF.pure (final bonus choice) := by
@@ -115,6 +185,91 @@ theorem payment_reverses_incentive :
         expectedUtility (game 0).utility .alice ((game 0).form.play (profile 0 false)) := by
   simp only [expectedUtility_profile]
   norm_num
+
+/-- Paying two makes publishing true optimal against every legal whole-policy
+deviation, including randomized binding failures and publication withholding. -/
+theorem bonus_true_isNash :
+    IsNash (game 2).form (euPreference (game 2).utility) (profile 2 true) := by
+  rw [(hasIntegrableDeviations 2 true).isNash_iff]
+  intro who replacement
+  cases who
+  rw [expectedUtility_profile]
+  simpa using expectedUtility_le 2
+    ((game 2).form.play (Profile.update (profile 2 true) .alice replacement))
+
+/-- Without a bonus, publishing false is optimal against the same full policy
+space. Failure or withholding may tie it but cannot improve its utility. -/
+theorem zero_false_isNash :
+    IsNash (game 0).form (euPreference (game 0).utility) (profile 0 false) := by
+  rw [(hasIntegrableDeviations 0 false).isNash_iff]
+  intro who replacement
+  cases who
+  rw [expectedUtility_profile]
+  simpa using expectedUtility_le 0
+    ((game 0).form.play (Profile.update (profile 0 false) .alice replacement))
+
+theorem bonus_false_not_isNash :
+    ¬ IsNash (game 2).form (euPreference (game 2).utility) (profile 2 false) := by
+  intro equilibrium
+  have bound := (hasIntegrableDeviations 2 false).isNash_iff.mp equilibrium
+    .alice (policy 2 true)
+  exact (not_lt_of_ge bound) bonus_profitable_deviation
+
+theorem zero_true_not_isNash :
+    ¬ IsNash (game 0).form (euPreference (game 0).utility) (profile 0 true) := by
+  intro equilibrium
+  have bound := (hasIntegrableDeviations 0 true).isNash_iff.mp equilibrium
+    .alice (policy 0 false)
+  rw [update_profile, expectedUtility_profile, expectedUtility_profile] at bound
+  norm_num at bound
+
+/-- The ideal compiled game values the decoded publication and the actual
+compiled payment instructions under an arbitrary public scheduler. -/
+def compiledGame (bonus : Int) (scheduler : (setup bonus).eventGraph.PublicScheduler) :
+    UtilityGame Player where
+  form := (setup bonus).eventGame scheduler
+  utility outcome who := valuation bonus ((setup bonus).eventPublicOutcome outcome) who +
+    (transferAmount (terminalPayouts (program bonus) outcome) who : ℝ)
+
+/-- Compilation preserves and reflects full-policy Nash for this concrete
+payment game; compiled deviations are not restricted to compiled source policies. -/
+theorem compiled_isNash_iff (bonus : Int)
+    (scheduler : (setup bonus).eventGraph.PublicScheduler)
+    (sourceProfile : BehavioralProfile (program bonus)) :
+    IsNash (compiledGame bonus scheduler).form
+        (euPreference (compiledGame bonus scheduler).utility)
+        (compileEventProfile (program bonus) sourceProfile) ↔
+      IsNash (game bonus).form (euPreference (game bonus).utility) sourceProfile := by
+  have correspondence := (setup bonus).eventGame_payment_approximate_nash_iff
+    (finiteBindingTypes bonus) scheduler (valuation bonus) 0 sourceProfile
+  rw [← isNash_iff_isεNash_zero, ← isNash_iff_isεNash_zero] at correspondence
+  rw [isNash_iff, isNash_iff] at correspondence ⊢
+  simpa only [compiledGame, game, Setup.gameForm, Setup.publicRun, Setup.run, setup,
+    SourceProgram.gameForm, PMF.pure_bind] using correspondence
+
+theorem compiled_bonus_true_isNash (scheduler : (setup 2).eventGraph.PublicScheduler) :
+    IsNash (compiledGame 2 scheduler).form
+      (euPreference (compiledGame 2 scheduler).utility)
+      (compileEventProfile (program 2) (profile 2 true)) :=
+  (compiled_isNash_iff 2 scheduler _).mpr bonus_true_isNash
+
+theorem compiled_zero_false_isNash (scheduler : (setup 0).eventGraph.PublicScheduler) :
+    IsNash (compiledGame 0 scheduler).form
+      (euPreference (compiledGame 0 scheduler).utility)
+      (compileEventProfile (program 0) (profile 0 false)) :=
+  (compiled_isNash_iff 0 scheduler _).mpr zero_false_isNash
+
+theorem compiled_bonus_false_not_isNash (scheduler : (setup 2).eventGraph.PublicScheduler) :
+    ¬ IsNash (compiledGame 2 scheduler).form
+      (euPreference (compiledGame 2 scheduler).utility)
+      (compileEventProfile (program 2) (profile 2 false)) :=
+  fun equilibrium => bonus_false_not_isNash ((compiled_isNash_iff 2 scheduler _).mp equilibrium)
+
+theorem compiled_zero_true_not_isNash (scheduler : (setup 0).eventGraph.PublicScheduler) :
+    ¬ IsNash (compiledGame 0 scheduler).form
+      (euPreference (compiledGame 0 scheduler).utility)
+      (compileEventProfile (program 0) (profile 0 true)) :=
+  fun equilibrium => zero_true_not_isNash ((compiled_isNash_iff 0 scheduler _).mp equilibrium)
 
 /-- The same program-derived transfer is settled by an arbitrary terminal
 audit; expected utility subtracts its actual marginal collection charge. -/

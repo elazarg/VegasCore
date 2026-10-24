@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Compile.EventGraphCanonical
+import Vegas.Source.InitialState
 import GameTheoryExtensions.Analysis.QuasilinearSettlement
 
 /-! # Strategic utility from executable source payments
@@ -38,6 +39,38 @@ def paymentUtility (program : SourceProgram Player L Γ O)
     (valuation : PublicOutcome program → Player → ℝ) (outcome : PublicOutcome program)
     (who : Player) : ℝ :=
   monetaryUtility valuation (outcome, program.publicTransfers outcome) who
+
+@[simp] theorem paymentUtility_eq (program : SourceProgram Player L Γ O)
+    (valuation : PublicOutcome program → Player → ℝ) (outcome : PublicOutcome program)
+    (who : Player) :
+    program.paymentUtility valuation outcome who =
+      valuation outcome who + program.publicTransfers outcome who := rfl
+
+/-- Initial parameters may affect valuation, while the executable program alone
+determines the monetary receipt from the public result. -/
+def parameterPaymentUtility {Parameter : Type} (program : SourceProgram Player L Γ O)
+    (valuation : Parameter × PublicOutcome program → Player → ℝ)
+    (outcome : Parameter × PublicOutcome program) (who : Player) : ℝ :=
+  valuation outcome who + program.publicTransfers outcome.2 who
+
+@[simp] theorem parameterPaymentUtility_eq {Parameter : Type}
+    (program : SourceProgram Player L Γ O)
+    (valuation : Parameter × PublicOutcome program → Player → ℝ)
+    (outcome : Parameter × PublicOutcome program) (who : Player) :
+    program.parameterPaymentUtility valuation outcome who =
+      valuation outcome who + program.publicTransfers outcome.2 who := rfl
+
+/-- Reading a private initial parameter from the terminal state leaves the
+monetary component equal to evaluation of the program's payment instructions. -/
+@[simp] theorem Setup.parameterPaymentUtility_parameterOutcome {Parameter : Type}
+    (setup : Setup (Player := Player) (L := L))
+    (parameter : State L setup.context → Parameter)
+    (valuation : Parameter × PublicOutcome setup.program → Player → ℝ)
+    (terminal : State L setup.program.terminalCtx) (who : Player) :
+    setup.program.parameterPaymentUtility valuation
+        (setup.parameterOutcome parameter terminal) who =
+      valuation (setup.parameterOutcome parameter terminal) who +
+        (transferAmount (setup.program.evaluatePayoffs terminal) who : ℝ) := rfl
 
 /-- Canonical compilation preserves each player's aggregated monetary receipt,
 not merely the syntax of the payment instruction list. -/

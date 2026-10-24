@@ -453,6 +453,9 @@ import Vegas.Game.PhaseSourcePolicy
 import Vegas.Game.PhaseSurvivingBindingSource
 import Vegas.Game.PhaseSurvivingSourceView
 import Vegas.Game.PhaseVirtualBindingView
+import Vegas.Game.ProgramPaymentAsyncNash
+import Vegas.Game.ProgramPaymentLaws
+import Vegas.Game.ProgramPaymentNash
 import Vegas.Game.ProgramPayoffs
 import Vegas.Game.ProposalRecoveryAcceptedFailure
 import Vegas.Game.ProposalRecoveryAgentGains

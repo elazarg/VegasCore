@@ -18,6 +18,7 @@ import VegasTests.PhaseProposalInformationContract
 import VegasTests.PhaseProposalInitializedContract
 import VegasTests.PhaseProposalTerminalContract
 import VegasTests.PrivateInputs
+import VegasTests.ProgramPayments
 import VegasTests.ProposalRecoveryClassConstancyContract
 import VegasTests.ProposalRecoveryClassProductContract
 import VegasTests.PublicationGainContract
