@@ -86,15 +86,10 @@ theorem bayesBelief_lift_map_without_finite
     rw [S.fiberMass_congr M who site nonterminal recoverable history
       (S.eraseHistory M who site witness), mul_comm]
     rfl
-  have finite := proportional_scale_ne_top (S.model M) M
-    (S.liftProfile M profile) profile S.erase who site (S.sourceSite M who site)
-    (fun x member => S.erase_mem M who site ⟨x, member⟩)
-    (S.fiberMass M who site (S.erase witness.1)) fiber (antichainN who site)
-    (M.informationMass_pos_of_fullSupport profile full who _)
   exact InformationModel.bayesBelief_projection_of_proportional_reach (S.model M) M
     (S.liftProfile M profile) profile S.erase who site (S.sourceSite M who site)
     (fun x member => S.erase_mem M who site ⟨x, member⟩)
-    (S.fiberMass M who site (S.erase witness.1)) fiber scalePositive.ne' finite
+    (S.fiberMass M who site (S.erase witness.1)) fiber scalePositive.ne'
     (antichainN who site) (antichainM who _) _
 
 end ProofReview

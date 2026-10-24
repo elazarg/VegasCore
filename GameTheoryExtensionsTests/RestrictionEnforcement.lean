@@ -14,9 +14,9 @@ Both players prefer Bob's `true` response. Alice pays a persistent sanction
 after leaving; Bob does not. Bob's new decision is therefore a genuine
 continuation requiring rational completion, even though equilibrium play stays.
 
-The forced source action deliberately aligns the decision clock and active
-player with the target. This test does not silently identify an absent source
-opportunity with a target decision.
+The forced source action is an actual source decision with the same active
+player as the target's retained site. No absent source opportunity is identified
+with a target decision.
 -/
 
 noncomputable section
@@ -320,18 +320,6 @@ theorem bounded (unrestricted : Bool) : (arena unrestricted).BoundedHorizon 2 :=
   rw [length] at enough
   cases state <;> simp_all [historyDepth, terminal]
 
-def siteDepth (unrestricted who : Bool) (_ : (model unrestricted).InformationSite who) : Nat :=
-  if who then 1 else 0
-
-theorem clock (unrestricted who : Bool) (site : (model unrestricted).InformationSite who) :
-    InformationModel.InformationSite.CommonDepth (model unrestricted) site
-      (siteDepth unrestricted who site) := by
-  intro history
-  have acts := InformationModel.InformationSite.active (model unrestricted) site history
-  rw [history_length]
-  cases state : history.1.state <;> cases who <;>
-    simp_all [arena, active, historyDepth, siteDepth]
-
 theorem source_site (who : Bool) (site : (model false).InformationSite who) :
     who = false ∧ site.1 = .start := by
   obtain ⟨history, running, _⟩ := site.2
@@ -556,8 +544,7 @@ theorem every_source_equilibrium_preserved (deposit : ℝ) (large : 1 ≤ deposi
       ((model false).decisionInformationAntichain_of_perfectRecall (perfectRecall false))
       (certificate false) (certificate true) (reference true) (reference_mixed true)
       ((model true).decisionRecall_of_perfectRecall (perfectRecall true))
-      (fun who site => siteDepth true who (restriction.site who site))
-      (fun who site => clock true who (restriction.site who site)) (fun _ _ => 0)
+      (fun _ _ => 0)
       (fun who history => base history who) (fun who history => charge history who)
       (fun who history => matching history who) (fun who history => clean history who)
       (fun _ => 0) (fun _ => 1) (fun _ => 1) (fun _ => deposit)

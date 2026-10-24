@@ -361,6 +361,7 @@ theorem exists_sequentialEquilibrium_limit_of_local_comparisons_of_lawError
     BehavioralAssessment.exists_sequentiallyConsistent_subsequence
       targetRecall.decisionInformationAntichain
       targetSequence targetMixed targetBayes
+      (fun _ _ => uniformlyTight_of_finite _) (fun _ _ => uniformlyTight_of_finite _)
   have result := sequentialEquilibrium_of_local_comparisons_limit_of_lawError sourceObserve
     targetObserve sourceFuel targetFuel targetBounded targetRecall utility source sourceSequence
     sourceConverges sourceRational targetSequence

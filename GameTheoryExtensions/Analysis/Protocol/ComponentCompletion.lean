@@ -100,12 +100,15 @@ members, of each member's own expected utility gain weighted by its
 else. The importance of a member may depend continuously on the weights of all
 players, for instance as the inverse of the probability of reaching it, which
 turns the sum into a sum of conditional gains. With one player per pool and
-unit importance this is Nash existence among component mixtures. -/
-theorem exists_pooled_bestResponses [Finite F.sig.Outcome]
+unit importance this is Nash existence among component mixtures. Outcomes may
+be infinite; every pure component-profile law must actually integrate utility. -/
+theorem exists_pooled_bestResponses
     {Pool : Type*} [Finite Pool] [DecidableEq Pool] (pool : ι → Pool)
     {Part : Pool → Type*} [∀ p, Finite (Part p)] [∀ p, Nonempty (Part p)]
     (utility : F.sig.Outcome → ι → ℝ)
     (component : ∀ who, Part (pool who) → PMF (F.sig.Strategy who))
+    (componentIntegrable : ∀ who (choice : ∀ player, Part (pool player)),
+      UtilityIntegrable utility who (F.mixed.play fun player => component player (choice player)))
     (importance : (∀ who, Part (pool who) → ℝ) → ι → ℝ)
     (importanceContinuous : ∀ who, ContinuousOn (fun weights => importance weights who)
       {weights | ∀ player, weights player ∈ simplexWeights (Part (pool player))}) :
@@ -124,9 +127,7 @@ theorem exists_pooled_bestResponses [Finite F.sig.Outcome]
   let G := componentGame (F := F) (Component := fun who => Part (pool who)) component
   let _ (p : Pool) : Fintype (Part p) := Fintype.ofFinite _
   let _ (who : ι) : Fintype (G.sig.Strategy who) := Fintype.ofFinite (Part (pool who))
-  have : Finite G.sig.Outcome := inferInstanceAs (Finite F.sig.Outcome)
-  have integrable : G.HasIntegrableUtility utility :=
-    G.hasIntegrableUtility_of_finiteOutcome utility
+  have integrable : G.HasIntegrableUtility utility := componentIntegrable
   let spread (x : ∀ p, Part p → ℝ) : Profile G.sig.weights := fun who => x (pool who)
   have spreadContinuous : Continuous spread :=
     continuous_pi fun who => continuous_apply (pool who)
@@ -405,7 +406,7 @@ theorem exists_consistent_pooled_completion (hrecall : M.DecisionRecall)
       exact continuousOn_const
   choose weights optimal using fun n =>
     exists_pooled_bestResponses (F := F) pool (M.agentUtility payoff) (component n)
-      (importance n) (importanceContinuous n)
+      (fun _ _ => payoffIntegrable_of_finite _ _) (importance n) (importanceContinuous n)
   let played (n : ℕ) : Profile F.sig.mixed := fun agent =>
     (weights n (pool agent)).bind (component n agent)
   let behavior (n : ℕ) := M.agentBehavior M.playedInformation fallback (played n)

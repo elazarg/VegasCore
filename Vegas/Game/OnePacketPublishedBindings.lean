@@ -227,30 +227,10 @@ theorem decodedState_publishesOrFails (profile : BehavioralProfile setup.program
       (control : (application setup leaks).Control), state = some control →
       DecodedState setup leaks profile (ProtocolState.PublishesOrFails setup.program)
         (some control) := by
-  intro state trace
-  induction trace with
-  | start => intro _ initialized; cases initialized
-  | @extend before after prior joint _ realized ih =>
-      intro control current
-      subst current
-      cases before with
-      | none =>
-          change some control ∈ ((initialLaw setup).map fun state =>
-            some ⟨horizon, none, ReactiveApplication.Execution.initial
-              (application setup leaks) state⟩).support at realized
-          obtain ⟨state, supported, same⟩ := PMF.support_map .. ▸ realized
-          cases Option.some.inj same
-          obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ supported
-          let residual := SourceResidual.initial setup profile initial
-          refine ⟨0, ⟨residual⟩, fun point decoded => ?_⟩
-          change sourceServicePrefix? setup 0 (EventGraphRuntime.State.initial
-            (graph := graph setup) (setup.eventInputs initial)).config = some point at decoded
-          rw [residual.decode, Option.some.injEq] at decoded
-          subst decoded
-          exact ProtocolState.publishesOrFails_entry setup.program _
-            (PublishesOrFails.initial _)
-      | some previous =>
-          exact decodedHolds_transition publishesOrFails_stepClosed (initialLaw setup)
-            horizon scheduler (some previous) (some control) joint (ih previous rfl) realized
+  intro state trace control current
+  refine decodedState_history_of_stepClosed publishesOrFails_stepClosed ?_ menu horizon scheduler
+    trace control current
+  intro initial _
+  exact ProtocolState.publishesOrFails_entry setup.program _ (PublishesOrFails.initial _)
 
 end Vegas

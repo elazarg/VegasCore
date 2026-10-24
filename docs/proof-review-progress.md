@@ -16,15 +16,15 @@ is not a claim that the mathematical result has been proved.
 
 | Finding | Subject | Status | Evidence or next action |
 | --- | --- | --- | --- |
-| M1 | Proportional scale finiteness is derivable | In progress | Bayes finiteness premise removal; frozen owning build pending |
+| M1 | Proportional scale finiteness is derivable | Checked | Scale finiteness is derived from antichain mass and positive source mass; public-scheduler Bayes transport drops finite expanded histories. Both owners and regression pass, replayed Bayes probe passes, exact Bayes root retains standard axioms; zero net production lines |
 | M2 | Finite-coordinate measure arguments repeat the same discrete pushforward step | Queued | Awaiting its dependency-ordered implementation batch |
 | M3 | Add the missing guarded L1 contraction once | In progress | Expectation contraction and three real caller families; frozen |
-| M4 | Passage-based completion already subsumes the common-depth implementation | Queued | Awaiting its dependency-ordered implementation batch |
+| M4 | Passage-based completion already subsumes the common-depth implementation | Checked locally | Enforced SE extension uses the existing passage theorem and drops depth/clock; owning module/test and exact standard-axiom audit pass. Local production−3 and test−13 lines; base duplicate implementations stay frozen in GameTheory |
 | M5 | `UnitClose` and `WithinTV` describe the same distance | Queued | Awaiting its dependency-ordered implementation batch |
 | M6 | Continuation domination charges inactive players unnecessarily | Queued | Awaiting its dependency-ordered implementation batch |
 | M7 | Bounded stochastic Kuhn adapters reprove later general prefix-law adapters | Frozen dependency | Both bounded and general prefix-law owners and all specialization calls are inside GameTheory; no external caller found. Reordering them locally would require copying the frozen implementations, so no duplicate was added |
-| M8 | Consistent completion can use countability and tightness already available | Queued | Awaiting its dependency-ordered implementation batch |
-| M9 | Pooled component best responses do not need finite outcome carriers | Queued | Awaiting its dependency-ordered implementation batch |
+| M8 | Consistent completion can use countability and tightness already available | Checked | Subsequence and projection completion use countable sites and actual belief tightness; varying-strategy completion also requires strategy tightness. Existing compactness engine reused, finite existence corollary preserved; all three owners and exact roots pass |
+| M9 | Pooled component best responses do not need finite outcome carriers | Checked | Pooled best responses require integrable actual component-profile laws instead of finite outcome carriers; finite-history caller supplies the guard. All three owning modules and exact pooled root pass; M8/M9 combined net zero production lines |
 | M10 | Negligible counterpart bounds can use fiber multiplicity | Queued | Awaiting its dependency-ordered implementation batch |
 | M11 | Retained-policy expectation comparison belongs at the law level | Queued | Awaiting its dependency-ordered implementation batch |
 | M12 | Strategic bridges should consume coordinate equivalences and payoff laws | Frozen dependency | FOSG/MAID policy equivalences and their strategic consumers are inside GameTheory. Local source-protocol transport is generalized under S5; no parallel bridge implementation was added |
@@ -47,7 +47,7 @@ is not a claim that the mathematical result has been proved.
 | R14 | Strengthen completion bounds by dependency height; reuse the existing progress service | Queued | Awaiting its dependency-ordered implementation batch |
 | R15 | Generalize hidden-value symmetries only after exposing handler frames | Queued | Awaiting its dependency-ordered implementation batch |
 | G1 | Prove owned-completion provenance once, with all the facts consumers need | Queued | Awaiting its dependency-ordered implementation batch |
-| G2 | Add the missing initialized decoded-invariant induction | In progress | Initialized decoded invariant plus three callers frozen |
+| G2 | Add the missing initialized decoded-invariant induction | Checked | Initialized decoded invariant owns the induction; all three original caller conclusions retained. Owner and three consumers pass, exact generic root retains standard axioms; net21 fewer lines |
 | G3 | Expose one residual-head operational correspondence, then derive masses | Queued | Awaiting its dependency-ordered implementation batch |
 | G4 | Factor phase-boundary advancement out of honest/deviation/withhold induction | Queued | Awaiting its dependency-ordered implementation batch |
 | G5 | Make mapped reactive-round congruence an Interaction API | Queued | Awaiting its dependency-ordered implementation batch |

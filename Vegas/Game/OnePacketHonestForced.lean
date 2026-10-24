@@ -53,32 +53,13 @@ theorem decodedState_intended_or_owes (wellFormed : setup.WellFormed)
     ∀ {state} (_ : (menu.protocol (initialLaw setup) horizon scheduler).Trace state)
       (control : (application setup leaks).Control), state = some control →
       DecodedState setup leaks profile (IntendedOrOwed setup) (some control) := by
-  intro state trace
-  induction trace with
-  | start => intro _ initialized; cases initialized
-  | @extend before after prior joint _ realized ih =>
-      intro control current
-      subst current
-      cases before with
-      | none =>
-          change some control ∈ ((initialLaw setup).map fun state =>
-            some ⟨horizon, none, ReactiveApplication.Execution.initial
-              (application setup leaks) state⟩).support at realized
-          obtain ⟨state, supported, same⟩ := PMF.support_map .. ▸ realized
-          cases Option.some.inj same
-          obtain ⟨initial, initialMem, rfl⟩ := PMF.support_map .. ▸ supported
-          let residual := SourceResidual.initial setup profile initial
-          refine ⟨0, ⟨residual⟩, fun point decoded => ?_⟩
-          change sourceServicePrefix? setup 0 (EventGraphRuntime.State.initial
-            (graph := graph setup) (setup.eventInputs initial)).config = some point at decoded
-          rw [residual.decode, Option.some.injEq] at decoded
-          subst decoded
-          exact Or.inl (ProtocolState.intended_entry setup.program _
-            (setup.initialConfig_intended wellFormed initialMem)
-            (wellFormed.guardsSatisfiable initial initialMem))
-      | some previous =>
-          exact decodedHolds_transition intendedOrOwed_stepClosed (initialLaw setup) horizon
-            scheduler (some previous) (some control) joint (ih previous rfl) realized
+  intro state trace control current
+  refine decodedState_history_of_stepClosed intendedOrOwed_stepClosed ?_ menu horizon scheduler
+    trace control current
+  intro initial member
+  exact Or.inl (ProtocolState.intended_entry setup.program _
+    (setup.initialConfig_intended wellFormed member)
+    (wellFormed.guardsSatisfiable initial member))
 
 section Domination
 

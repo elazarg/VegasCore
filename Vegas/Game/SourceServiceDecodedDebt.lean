@@ -147,6 +147,43 @@ theorem decodedHolds_transition
       · exact ⟨rank + 1, residual.configStep step (rank + 1) advanced,
           residual.decodedHolds_configStep closed decoded step advanced⟩
 
+/-- A step-closed source property initialized on every supported setup draw
+holds at the decoding of every initialized menu history, for any scheduler. -/
+theorem decodedState_history_of_stepClosed
+    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+    {property : ProtocolState setup.program → Prop} (closed : StepClosed setup property)
+    (initialized : ∀ initial ∈ setup.initialLaw.support,
+      property (ProtocolState.entry setup.program (setup.initialConfig initial)))
+    (menu : (application setup leaks).ResponseMenu) (horizon : Nat)
+    (scheduler : (application setup leaks).Scheduler) :
+    ∀ {state} (_trace : (menu.protocol (initialLaw setup) horizon scheduler).Trace state)
+      (control : (application setup leaks).Control), state = some control →
+      DecodedState setup leaks profile property (some control) := by
+  intro state trace
+  induction trace with
+  | start => intro _ current; cases current
+  | @extend before after prior joint _ realized ih =>
+      intro control current
+      subst current
+      cases before with
+      | none =>
+          change some control ∈ ((initialLaw setup).map fun state =>
+            some ⟨horizon, none, ReactiveApplication.Execution.initial
+              (application setup leaks) state⟩).support at realized
+          obtain ⟨state, supported, same⟩ := PMF.support_map .. ▸ realized
+          cases Option.some.inj same
+          obtain ⟨initial, member, rfl⟩ := PMF.support_map .. ▸ supported
+          let residual := SourceResidual.initial setup profile initial
+          refine ⟨0, ⟨residual⟩, fun point decoded => ?_⟩
+          change sourceServicePrefix? setup 0 (EventGraphRuntime.State.initial
+            (graph := graph setup) (setup.eventInputs initial)).config = some point at decoded
+          rw [residual.decode, Option.some.injEq] at decoded
+          subst decoded
+          exact initialized initial member
+      | some previous =>
+          exact decodedHolds_transition closed (initialLaw setup) horizon scheduler
+            (some previous) (some control) joint (ih previous rfl) realized
+
 /-- A terminal cut is a prefix only of the full event count. -/
 theorem isPrefix_eventCount_of_terminal {cut : (graph setup).order.Cut} {rank : Nat}
     (ordered : cut.IsPrefix rank) (terminal : cut.Terminal) :

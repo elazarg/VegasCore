@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheory.Analysis.Protocol.RestrictionExtension
+import GameTheoryExtensions.Analysis.Protocol.PassageRestrictionExtension
 import GameTheoryExtensions.Math.Probability.Expectation
 
 /-! # Sequential equilibrium extends across an enforced action restriction
@@ -30,16 +30,13 @@ variable {Player : Type} [Fintype Player] [DecidableEq Player]
 game under finite, sound, sufficiently costly first-departure collection.
 The collection condition covers arbitrary target continuation profiles and
 actual hidden histories; it contains no rational-completion premise.
-Weak deterrence inequalities suffice for this forward existence conclusion.
-Common decision depths are required only at the retained sites. -/
+Weak deterrence inequalities suffice for this forward existence conclusion;
+retained sites need no common decision depth. -/
 theorem sequential_equilibrium_extends
     (sourceAntichain : M.DecisionInformationAntichain)
     (sourceCertificate : E.WellFoundedHistories) (targetCertificate : T.WellFoundedHistories)
     (reference : N.BehavioralAssessment) (referenceMixed : reference.IsFullyMixed)
     (decisionRecall : N.DecisionRecall)
-    (depth : ∀ who, M.InformationSite who → Nat)
-    (clock : ∀ who site, InformationSite.CommonDepth N (restriction.site who site)
-      (depth who site))
     (sourcePayoff : Player → E.History → ℝ) (base charge : Player → T.History → ℝ)
     (matching : ∀ who history, base who (restriction.history history) = sourcePayoff who history)
     (clean : ∀ who history, charge who (restriction.history history) = 0)
@@ -80,8 +77,8 @@ theorem sequential_equilibrium_extends
   let comparator (who : Player) (site : M.InformationSite who)
       (_ : N.Choice who (restriction.site who site).1) : PMF (M.Choice who site.1) :=
     PMF.pure ⟨some site.2.choose_spec.2.choose, site.2.choose_spec.2.choose_spec⟩
-  apply restriction.sequentialEquilibrium_extends_of_comparator sourceAntichain
-    sourceCertificate targetCertificate reference referenceMixed decisionRecall depth clock
+  apply restriction.sequentialEquilibrium_extends_of_comparator_unclocked sourceAntichain
+    sourceCertificate targetCertificate reference referenceMixed decisionRecall
     sourcePayoff utility (fun who history => by simp only [utility, matching, clean, zero_mul,
       sub_zero]) comparator _ source sourceEquilibrium
   intro sourceProfile targetProfile _ who site action forbidden history

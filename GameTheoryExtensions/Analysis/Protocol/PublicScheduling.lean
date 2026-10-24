@@ -1278,7 +1278,7 @@ over every history of the source fiber the fiber histories carry the same
 total scheduler mass, which cancels. The source fibers must be nonterminal and
 the public transcript recoverable from every player's information at its
 decisions. -/
-theorem bayesBelief_lift_map [Finite S.protocol.History] (profile : ∀ i, M.BehavioralPolicy i)
+theorem bayesBelief_lift_map (profile : ∀ i, M.BehavioralPolicy i)
     (full : ∀ i (site : M.InformationSite i) (choice : M.Choice i site.1),
       choice ∈ (profile i site.1).support)
     (antichainM : M.DecisionInformationAntichain)
@@ -1300,15 +1300,10 @@ theorem bayesBelief_lift_map [Finite S.protocol.History] (profile : ∀ i, M.Beh
     exact (S.likelihood_pos witness.1.trace).trans_le
       (ENNReal.le_tsum (f := fun x : S.fiberOver M who site (S.erase witness.1) =>
         S.likelihood x.1.1.trace) ⟨witness, rfl⟩)
-  have scaleFinite : S.fiberMass M who site (S.erase witness.1) ≠ ⊤ := by
-    have : Fintype (S.fiberOver M who site (S.erase witness.1)) := Fintype.ofFinite _
-    rw [fiberMass, tsum_fintype]
-    exact ENNReal.sum_ne_top.mpr fun x _ =>
-      ne_top_of_le_ne_top ENNReal.one_ne_top (S.likelihood_le_one _)
   refine InformationModel.bayesBelief_projection_of_proportional_reach (S.model M) M
     (S.liftProfile M profile) profile S.erase who site (S.sourceSite M who site)
     (fun x member => S.erase_mem M who site ⟨x, member⟩)
-    (S.fiberMass M who site (S.erase witness.1)) ?_ scalePositive.ne' scaleFinite
+    (S.fiberMass M who site (S.erase witness.1)) ?_ scalePositive.ne'
     (antichainN who site) (antichainM who _) _
   intro history
   have summand (x : (S.model M).InformationHistory who site.1) :

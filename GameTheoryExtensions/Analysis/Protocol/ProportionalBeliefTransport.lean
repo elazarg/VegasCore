@@ -57,7 +57,7 @@ include fiber in
 weights are a fixed positive finite multiple of the target reach weights
 transports the Bayes belief. -/
 theorem bayesBelief_projection_of_proportional_reach
-    (scaleNonzero : scale ≠ 0) (scaleFinite : scale ≠ ∞)
+    (scaleNonzero : scale ≠ 0)
     (rawAntichain : rawSite.IsHistoryAntichain)
     (sourceAntichain : sourceSite.IsHistoryAntichain)
     (sourcePositive : 0 < N.informationMass source who sourceSite) :
@@ -72,6 +72,11 @@ theorem bayesBelief_projection_of_proportional_reach
   classical
   have mass := M.informationMass_projection_of_proportional_reach N raw source project who
     rawSite sourceSite maps scale fiber
+  have scaleFinite : scale ≠ ∞ :=
+    (ENNReal.lt_top_of_mul_ne_top_left (by
+      rw [← mass]
+      exact ne_top_of_le_ne_top ENNReal.one_ne_top
+        (M.informationMass_le_one raw who rawSite rawAntichain)) sourcePositive.ne').ne
   ext history
   rw [PMF.map_apply, N.bayesBelief_apply]
   simp_rw [M.bayesBelief_apply]

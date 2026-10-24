@@ -33,7 +33,7 @@ theorem exact_projection_of_proportional
           N.InformationHistory who sourceSite.1)) =
       N.bayesBelief source who sourceSite sourceAntichain sourcePositive :=
   M.bayesBelief_projection_of_proportional_reach N raw source project who rawSite sourceSite
-    maps 1 (fun history => by rw [one_mul]; exact fiber history) one_ne_zero ENNReal.one_ne_top
+    maps 1 (fun history => by rw [one_mul]; exact fiber history) one_ne_zero
     rawAntichain sourceAntichain sourcePositive
 
 end GameTheoryExtensionsTests.ProportionalBeliefTransport
