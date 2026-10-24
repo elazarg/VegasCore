@@ -1,5 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
+import GameTheory.Math.Probability.ExpectationBind
+import GameTheoryExtensions.Analysis.Protocol.TerminalAudit
 import Vegas.Pending.PhaseCountCollection
 import Interaction.ReactiveLocalContinuation
 import Interaction.ReactiveFiniteAssessment

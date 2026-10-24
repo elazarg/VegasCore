@@ -1,5 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
+import GameTheory.Math.Probability.ExpectationBind
+import GameTheoryExtensions.Analysis.Protocol.TerminalAudit
 import Vegas.Pending.ReactiveOnePacketMenu
 import Vegas.Pending.ReactiveAliasEquilibrium
 import Interaction.ReactiveLocalContinuation
@@ -343,7 +345,7 @@ theorem onePacket_raw_sequentialEquilibrium
   classical
   intro onePacket raw sourceCertificate normalize observe audit payoff settle source equilibrium
   let effective := bounds.menu runtime leaks
-  obtain ⟨effectiveTarget, effectiveSE, _, _, laws, settled, clean⟩ :=
+  obtain ⟨effectiveTarget, effectiveSE, _, _, laws, _, clean⟩ :=
     bounds.onePacket_sequentialEquilibrium_extends runtime leaks initial horizon scheduler service
       observationRate deliveryRate delivery_nonnegative coverage utility lower upper deposit
       lower_le le_upper deposit_nonnegative sufficient source equilibrium
@@ -361,9 +363,6 @@ theorem onePacket_raw_sequentialEquilibrium
       payoff ((runtime.reactiveNormalization leaks).state state) = payoff state := by
     funext who
     simp only [payoff, TerminalAudit.utility, TerminalAudit.charge, normalized, observation]
-  have settlementInvariant (state : (runtime.reactiveApplication leaks).ProtocolState) :
-      settle ((runtime.reactiveNormalization leaks).state state) = settle state := by
-    simp only [settle, TerminalAudit.settlement, normalized, observation]
   have effectiveLaw := InformationModel.runBehavioralTerminalFrom_initHistory
     (effective.information initial horizon scheduler)
     (effective.bounded initial horizon scheduler).wellFoundedHistories effectiveTarget.strategy
@@ -378,44 +377,30 @@ theorem onePacket_raw_sequentialEquilibrium
         (2 * horizon + 1)).map History.state := by
     rw [← effectiveLaw, ← laws, sourceLaw, PMF.map_comp]
     rfl
-  have projected := congrArg (PMF.map fun pair :
-      ((effective.protocol initial horizon scheduler).History × (Player → ℝ)) =>
-        (pair.1.state, pair.2)) settled
-  rw [PMF.map_comp, PMF.map_bind, effectiveLaw, sourceLaw] at projected
-  simp only [PMF.map_comp, Function.comp_def] at projected
+  obtain ⟨rawClean, rawSettlement⟩ :=
+    TerminalAudit.settlement_transport_of_normalized_law
+      (((effective.information initial horizon scheduler).runBehavioral
+        effectiveTarget.strategy (2 * horizon + 1)).map
+          (fun final : (effective.protocol initial horizon scheduler).History => final.state))
+      (((raw.information initial horizon scheduler).runBehavioral target.strategy
+        (2 * horizon + 1)).map
+          (fun final : (raw.protocol initial horizon scheduler).History => final.state))
+      normalize (by simpa only [PMF.map_comp, Function.comp_def] using stateLaw)
+      utility observe audit deposit normalized observation
+      (fun state supported who => by
+        rw [PMF.support_map, ← effectiveLaw] at supported
+        obtain ⟨original, reached, rfl⟩ := supported
+        exact clean original reached who)
   refine ⟨target, ?_, ?_, stateLaw.trans effectiveStates, ?_⟩
   · simpa only [payoffInvariant] using targetSE
   · intro final reached who
-    have member : (runtime.reactiveNormalization leaks).state final.state ∈
-        (((effective.information initial horizon scheduler).runBehavioral
-          effectiveTarget.strategy (2 * horizon + 1)).map History.state).support := by
-      rw [← stateLaw, PMF.support_map]
-      exact ⟨final, reached, rfl⟩
-    rw [PMF.support_map, ← effectiveLaw] at member
-    obtain ⟨original, supported, sameState⟩ := member
-    have invariant : TerminalAudit.charge observe audit
-        ((runtime.reactiveNormalization leaks).state final.state) who =
-        TerminalAudit.charge observe audit final.state who := by
-      simp only [TerminalAudit.charge, observation]
-    rw [← invariant, ← sameState]
-    exact clean original supported who
-  · calc
-      _ = (((raw.information initial horizon scheduler).runBehavioral target.strategy
-            (2 * horizon + 1)).map
-              fun final => (runtime.reactiveNormalization leaks).state final.state).bind
-            (fun state => (settle state).map fun payoffs => (state, payoffs)) := by
-        rw [PMF.bind_map]
-        congr 1
-        funext final
-        simp only [Function.comp_apply, settlementInvariant, normalize]
-      _ = (((effective.information initial horizon scheduler).runBehavioral
-            effectiveTarget.strategy (2 * horizon + 1)).map History.state).bind
-            (fun state => (settle state).map fun payoffs => (state, payoffs)) := by
-        rw [stateLaw]
-        rfl
-      _ = _ := by
-        rw [PMF.bind_map]
-        exact projected.symm
+    exact rawClean final.state (by
+      rw [PMF.support_map]
+      exact ⟨final, reached, rfl⟩) who
+  · have transported := rawSettlement.trans
+      (congrArg (PMF.map fun state => (state, utility state)) effectiveStates)
+    simpa only [PMF.bind_map, PMF.map_comp, Function.comp_def] using transported
+
 
 end MessageBounds
 

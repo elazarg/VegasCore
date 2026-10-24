@@ -105,6 +105,42 @@ theorem settlement_clean (base : Outcome → Player → ℝ) (observe : Outcome 
       simp only [quiet verdict supported who, Bool.false_eq_true, ite_false, sub_zero]
     _ = _ := by simp only [← PMF.bind_pure_comp, Function.comp_def, PMF.bind_const]
 
+/-- A state-law projection preserving base utility and the audit's observation
+transports zero collection and the full realized settlement law. The projection
+may forget private representations; no independence of audit verdicts, players
+or represented states is required. -/
+theorem settlement_transport_of_normalized_law
+    (source target : PMF Outcome) (normalize : Outcome → Outcome)
+    (law : target.map normalize = source)
+    (base : Outcome → Player → ℝ) (observe : Outcome → Observation)
+    (audit : Observation → PMF (Player → Bool)) (deposit : Player → ℝ)
+    (baseInvariant : ∀ outcome, base (normalize outcome) = base outcome)
+    (observationInvariant : ∀ outcome, observe (normalize outcome) = observe outcome)
+    (clean : ∀ outcome ∈ source.support, ∀ who, charge observe audit outcome who = 0) :
+    (∀ outcome ∈ target.support, ∀ who, charge observe audit outcome who = 0) ∧
+      target.bind (fun outcome => (settlement base observe audit deposit outcome).map
+          fun payoffs => (normalize outcome, payoffs)) =
+        source.map (fun outcome => (outcome, base outcome)) := by
+  have targetClean (outcome : Outcome) (supported : outcome ∈ target.support) (who : Player) :
+      charge observe audit outcome who = 0 := by
+    have projected : normalize outcome ∈ source.support := by
+      rw [← law, PMF.support_map]
+      exact ⟨outcome, supported, rfl⟩
+    have quiet := clean (normalize outcome) projected who
+    simpa only [charge, observationInvariant] using quiet
+  refine ⟨targetClean, ?_⟩
+  calc
+    _ = target.bind (fun outcome => PMF.pure (normalize outcome, base (normalize outcome))) := by
+      apply bind_congr_on_support _
+      intro outcome supported
+      rw [settlement_clean base observe audit deposit outcome (targetClean outcome supported),
+        PMF.pure_map, baseInvariant]
+    _ = target.map (fun outcome => (normalize outcome, base (normalize outcome))) :=
+      PMF.bind_pure_comp _ _
+    _ = source.map (fun outcome => (outcome, base outcome)) := by
+      simpa only [PMF.map_comp, Function.comp_def] using
+        congrArg (PMF.map fun outcome => (outcome, base outcome)) law
+
 end GameTheory.Enforcement.TerminalAudit
 
 namespace GameTheory.Protocol.InformationModel.ActionRestriction
