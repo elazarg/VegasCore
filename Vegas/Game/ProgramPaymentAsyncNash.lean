@@ -2,6 +2,7 @@
 
 import Vegas.Game.AsyncServiceRawNash
 import Vegas.Game.ProgramPayoffs
+import GameTheoryExtensions.Analysis.QuasilinearBounds
 
 /-! # Program payments on the audited asynchronous service
 
@@ -91,7 +92,95 @@ theorem paymentExpectedUtility_eq {Parameter : Type}
     (serviceSourceAudit service.setup service.mode service.deadline service.leaks sample)
     deposit state who).trans (by rw [combined])
 
+/-- Declared bounds on valuation, executable receipts, and deposits provide the
+runtime Nash theorem's interval, including unfinished outcomes. Its width is
+`max 0 (valuationHigh + transferHigh) - min 0 (valuationLow + transferLow) +
+depositBound`, so callers need no separate case analysis of audit verdicts. -/
+theorem payment_within_of_bounds {Parameter : Type}
+    (parameter : State L service.setup.context → Parameter)
+    (valuation : Parameter × PublicOutcome service.setup.program → Player → ℝ)
+    (valuationLow valuationHigh transferLow transferHigh depositBound : ℝ)
+    (valuation_bounds : ∀ terminal who,
+      valuationLow ≤ valuation (service.setup.parameterOutcome parameter terminal) who ∧
+        valuation (service.setup.parameterOutcome parameter terminal) who ≤ valuationHigh)
+    (transfer_bounds : ∀ terminal who,
+      transferLow ≤ (transferAmount (service.setup.program.evaluatePayoffs terminal) who : ℝ) ∧
+        (transferAmount (service.setup.program.evaluatePayoffs terminal) who : ℝ) ≤ transferHigh)
+    (deposit : Player → ℝ)
+    (deposit_bounds : ∀ who, 0 ≤ deposit who ∧ deposit who ≤ depositBound) :
+    ∀ who (output : Option (State L service.setup.program.terminalCtx)) (charged : Bool),
+      min 0 (valuationLow + transferLow) - depositBound ≤
+          output.elim 0 (fun terminal => service.setup.program.parameterPaymentUtility valuation
+            (service.setup.parameterOutcome parameter terminal) who) -
+            (if charged then deposit who else 0) ∧
+        output.elim 0 (fun terminal => service.setup.program.parameterPaymentUtility valuation
+            (service.setup.parameterOutcome parameter terminal) who) -
+            (if charged then deposit who else 0) ≤
+          (min 0 (valuationLow + transferLow) - depositBound) +
+            (max 0 (valuationHigh + transferHigh) - min 0 (valuationLow + transferLow) +
+              depositBound) := by
+  intro who output charged
+  have bounded := optional_monetary_payoff_bounds
+    (fun terminal => valuation (service.setup.parameterOutcome parameter terminal) who)
+    (fun terminal => (transferAmount (service.setup.program.evaluatePayoffs terminal) who : ℝ))
+    valuationLow valuationHigh transferLow transferHigh (deposit who) depositBound
+    (fun terminal => valuation_bounds terminal who)
+    (fun terminal => transfer_bounds terminal who)
+    (deposit_bounds who).1 (deposit_bounds who).2 output charged
+  simp only [Setup.parameterPaymentUtility_parameterOutcome]
+  constructor <;> linarith [bounded.1, bounded.2]
+
 variable [Fintype Player]
+
+/-- Deferring clients preserve and reflect approximate Nash for valuation plus
+the actual audited monetary settlement. Each direction has the existing loss
+`2 * (sum of event deferrals) * range`, against all bounded raw-menu deviations. -/
+theorem payment_rawClientProfile_isεNash_approximate {Parameter : Type}
+    (admission : CommitmentInterface service.setup.program)
+    (ordered : (serviceGraph service.setup service.mode).BarrierOrdered)
+    (parameter : State L service.setup.context → Parameter)
+    (valuation : Parameter × PublicOutcome service.setup.program → Player → ℝ)
+    (sample : List (SettledEvidence service.setup service.mode) →
+      PMF (List (SettledEvidence service.setup service.mode)))
+    (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
+    (deposit : Player → ℝ) (nonnegative : ∀ who, 0 ≤ deposit who)
+    {turns : Nat} (timing : TurnTiming service.setup turns service.mode)
+    (low : Player → ℝ) (range : ℝ)
+    (within : ∀ who (output : Option (State L service.setup.program.terminalCtx))
+      (charged : Bool),
+      low who ≤ output.elim 0 (fun terminal =>
+        service.setup.program.parameterPaymentUtility valuation
+          (service.setup.parameterOutcome parameter terminal) who) -
+          (if charged then deposit who else 0) ∧
+        output.elim 0 (fun terminal => service.setup.program.parameterPaymentUtility valuation
+          (service.setup.parameterOutcome parameter terminal) who) -
+          (if charged then deposit who else 0) ≤ low who + range)
+    (ε : ℝ) (source : Profile (service.sourceModel admission).behavioralSignature) :
+    (IsεNash ((service.sourceModel admission).toBehavioralGameForm
+        (instructionCount service.setup.program + 1))
+        (fun final who => (service.setup.protocolReadout final.state).elim 0
+          (fun terminal => service.setup.program.parameterPaymentUtility valuation
+            (service.setup.parameterOutcome parameter terminal) who)) ε source →
+      IsεNash ((service.rawMenu.information (serviceInitialLaw service.setup service.mode)
+          service.horizon service.scheduler).toBehavioralGameForm (2 * service.horizon + 1))
+        (fun history who => service.paymentExpectedUtility parameter valuation sample deposit
+          history.state who) (ε + 2 * (∑ event, timing.deferral event) * range)
+        (service.clientProfile admission service.rawMenu timing source)) ∧
+    (IsεNash ((service.rawMenu.information (serviceInitialLaw service.setup service.mode)
+          service.horizon service.scheduler).toBehavioralGameForm (2 * service.horizon + 1))
+        (fun history who => service.paymentExpectedUtility parameter valuation sample deposit
+          history.state who) ε
+        (service.clientProfile admission service.rawMenu timing source) →
+      IsεNash ((service.sourceModel admission).toBehavioralGameForm
+          (instructionCount service.setup.program + 1))
+        (fun final who => (service.setup.protocolReadout final.state).elim 0
+          (fun terminal => service.setup.program.parameterPaymentUtility valuation
+            (service.setup.parameterOutcome parameter terminal) who))
+        (ε + 2 * (∑ event, timing.deferral event) * range) source) := by
+  rw [service.paymentExpectedUtility_eq]
+  exact service.isεNash_rawClientProfile_approximate admission ordered parameter
+    (service.setup.program.parameterPaymentUtility valuation) sample authentic deposit
+    nonnegative timing low range within ε source
 
 /-- For every timely contract builder, first-opportunity clients preserve and
 reflect the same Nash error for valuation plus the actual monetary settlement.
