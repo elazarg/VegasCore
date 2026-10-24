@@ -54,9 +54,8 @@ close to the average of that function, up to the mass outside the set
 The factorization is approximate: tremble tiers put scale-dependent mass on the
 as-if-honest action, and that mass depends on the private menu. It is consumed
 in the form of `GameTheory.Math.Probability.NearProductWeights`, whose
-`regular_close` field is this inequality;
-`GameTheory.Protocol.InformationModel.FactoredHistoryLikelihood` needs an exact
-identity.
+`regular_close` field is this inequality. It does not supply an exact factored
+likelihood identity.
 -/
 
 noncomputable section

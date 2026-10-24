@@ -1060,8 +1060,9 @@ identity. Opposite limiting timing choices can then force one entire
 observation family to exclude a private type. Those exclusions change which
 answer is optimal, even when the observations are unreached in equilibrium.
 
-[ConsistentLikelihood.lean](../../GameTheoryExtensions/Analysis/Protocol/ConsistentLikelihood.lean)
-checks this argument for finite groups of actual histories.
+An exact type-exclusion theorem from these factored likelihoods is not proved
+in the current codebase. Such a theorem needs an actual factorization and its
+limit argument; a record asking for those facts does not establish them.
 [AsymptoticLikelihood.lean](https://github.com/elazarg/VegasCore/blob/research-tree/GameTheoryExtensions/Analysis/Protocol/AsymptoticLikelihood.lean)
 allows additional-history errors which vanish **relative to the shared type
 prefix and observation factors**. Absolute errors tending to zero are

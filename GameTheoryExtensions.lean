@@ -7,7 +7,6 @@ import GameTheoryExtensions.Analysis.Protocol.Bayes
 import GameTheoryExtensions.Analysis.Protocol.BehavioralContinuity
 import GameTheoryExtensions.Analysis.Protocol.ComponentCompletion
 import GameTheoryExtensions.Analysis.Protocol.ConsistencyCompletion
-import GameTheoryExtensions.Analysis.Protocol.ConsistentLikelihood
 import GameTheoryExtensions.Analysis.Protocol.ContinuationDecision
 import GameTheoryExtensions.Analysis.Protocol.ContinuationOwnPlay
 import GameTheoryExtensions.Analysis.Protocol.CopiedSiteLimit
@@ -25,7 +24,6 @@ import GameTheoryExtensions.Analysis.Protocol.ProjectedBeliefTransport
 import GameTheoryExtensions.Analysis.Protocol.ProportionalBeliefTransport
 import GameTheoryExtensions.Analysis.Protocol.PublicScheduling
 import GameTheoryExtensions.Analysis.Protocol.ReachBounds
-import GameTheoryExtensions.Analysis.Protocol.RestrictedComponentCompletion
 import GameTheoryExtensions.Analysis.Protocol.RestrictionExtension
 import GameTheoryExtensions.Analysis.Protocol.RetainedDeviation
 import GameTheoryExtensions.Analysis.Protocol.Sequential

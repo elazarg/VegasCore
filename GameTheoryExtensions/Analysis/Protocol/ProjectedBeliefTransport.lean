@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheoryExtensions.Analysis.Protocol.ConsistentLikelihood
+import GameTheory.Analysis.Protocol.Sequential
 import GameTheoryExtensions.Math.Probability.ProductTransport
 
 /-! # Projected Bayes beliefs through approximate reach factorizations

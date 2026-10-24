@@ -83,7 +83,7 @@ is not a claim that the mathematical result has been proved.
 | A5 | Stopped support invariance | In progress | One general unstopped-history invariant proof remains; seven callers migrated. Owning general proof passes, callers await integrated build; drafted net31 fewer lines |
 | A6 | Arrow relation-reversal factoring | Frozen dependency | Social-choice proofs and duality adapters are inside GameTheory; no local consumers |
 | A7 | Law-preserving conditional-comparison terminology | Frozen dependency | Rename would change GameTheory; no external caller found |
-| A8 | Likelihood and restricted-completion certificate obligations | In progress | Removed unused likelihood and restricted-approximation scaffolding; the only apparent approximation consumer was a trailing variable with no theorem using it. Corrected false existence prose; affected consumers await build |
+| A8 | Likelihood and restricted-completion certificate obligations | Checked | Removed two unused certificate modules and a trailing variable with no theorem consumer; corrected false existence prose. Projected-belief, actual approximate factorization, opening owner and umbrella pass; exact factorization/type-exclusion and restricted-completion existence are not claimed proved |
 | A9 | Optional/residual law overlap | Queued | Pilot an actual local consumer before adding a common owner |
 
 A frozen-dependency disposition records an ownership constraint, not a proved

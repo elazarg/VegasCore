@@ -149,7 +149,7 @@ measurability details make integration medium effort despite elementary math.
 **Owners.** `GameTheoryExtensions/Math/Probability/ProductDecorrelation.lean:32`,
 `abs_expect_mul_sub_le_of_uncorrelated`; `AffineDecorrelation.lean:12`,
 `abs_expect_affine_sub_le_of_decorrelated`; `ApproximateLumping.lean:38`,
-`abs_expect_sub_le_of_unit`; repeated upper/lower expectation comparisons in
+the unit-bounded expectation comparison; repeated upper/lower comparisons in
 `TotalVariation.lean`. A further instance is
 `GameTheory/GameTheory/Analysis/Stochastic/Discounted.lean`,
 `abs_expect_sub_le_dist`.
@@ -639,10 +639,11 @@ These are lower-impact engineering items, not extra ranked findings.
    `FactoredHistoryLikelihood` but has no declaration consumer found by `rg`.
    Its prose describes a type-exclusion consequence not proved in that module.
    `RestrictedComponentCompletion.lean` only defines
-   `RestrictedExtensionApproximation`; it is consumed as a premise in
-   `Vegas/Game/CommitRecoveryOpeningMass.lean:116`, with no constructor in its
-   owner. Neither structure is evidence that its mathematical obligations have
-   been discharged. By contrast `NearProductWeights` has actual derived bounds
+   `RestrictedExtensionApproximation`; its apparent occurrence in
+   `Vegas/Game/CommitRecoveryOpeningMass.lean:116` is only a trailing variable
+   declaration, with no theorem using it and no constructor in its owner.
+   Neither structure is evidence that its mathematical obligations have been
+   discharged. By contrast `NearProductWeights` has actual derived bounds
    and a concrete constructor in ProjectedBeliefTransport. Do not replace a
    difficult actual producer by a record whose fields demand its conclusion.
 9. `Math/Probability/GatedExpectation`, `PresentConditional`, and

@@ -9,7 +9,6 @@ import Vegas.Game.RecoveryCommitPrefixWitness
 import Vegas.Game.CommitPrefixReadyRecall
 import Vegas.Game.RecoveryBindingPrefix
 import GameTheoryExtensions.Analysis.Protocol.SingleMoverReach
-import GameTheoryExtensions.Analysis.Protocol.RestrictedComponentCompletion
 
 /-! # Opening-choice factors along genuine source recovery histories -/
 
@@ -110,12 +109,6 @@ theorem continuing_noncommit_unique (who : Player)
             cases second
             simp_all only
           exact congrArg some same
-
-variable [Fintype Player] (wellFormed : setup.WellFormed)
-  (reference target : setup.commitRecoveryModel.BehavioralAssessment)
-  (approximation : (setup.commitRecoveryRestriction wellFormed).RestrictedExtensionApproximation
-    reference target setup.commitRecoveryModel_decisionAntichain
-    setup.commitRecoveryContinuingChoice)
 
 end Setup
 end Vegas.SourceProgram
