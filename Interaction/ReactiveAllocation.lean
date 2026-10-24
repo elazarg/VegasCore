@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Interaction.MessageNetworkCounters
+import Interaction.ReactiveEnvironmentStep
 import Interaction.ReactivePublication
 
 /-! # Every legal reactive prefix retains a fresh envelope identifier -/
@@ -24,25 +25,15 @@ theorem serialsBeforeNextInvariant (scheduler : app.Scheduler) :
           (app.packet (app.submit execution.application who submission) who
             (execution.network.known who) submission)
   environment execution next command valid _ reached := by
-    cases command with
-    | wait =>
-        simp only [Execution.environmentStep, PMF.pure_map] at reached
-        cases (PMF.mem_support_pure_iff _ _).mp reached
-        exact valid
-    | activate who =>
-        obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
-        obtain ⟨selected, _, rfl⟩ := PMF.support_map .. ▸ supported
-        exact valid.learn who selected
-    | «include» id =>
-        simp only [Execution.environmentStep, PMF.pure_map] at reached
-        cases (PMF.mem_support_pure_iff _ _).mp reached
-        change (execution.includePending app id).network.SerialsBeforeNext
-        rw [app.includePending_network]
-        exact valid.includePending id
-    | application command =>
-        obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
-        obtain ⟨state, _, rfl⟩ := PMF.support_map .. ▸ supported
-        exact valid
+    apply app.environmentStep_cases execution next command reached
+      (predicate := fun _ next => next.network.SerialsBeforeNext)
+    · exact valid
+    · exact fun who selected _ => valid.learn who selected
+    · intro id
+      change (execution.includePending app id).network.SerialsBeforeNext
+      rw [app.includePending_network]
+      exact valid.includePending id
+    · exact fun _ _ _ => valid
 
 theorem serialsBeforeNext_history (scheduler : app.Scheduler)
     (initial : PMF app.State) (horizon : Nat) {state : app.ProtocolState}

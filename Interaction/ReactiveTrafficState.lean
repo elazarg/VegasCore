@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Interaction.ReactiveAuditCollection
+import Interaction.ReactiveEnvironmentStep
 import Interaction.ReactiveNormalHistory
 
 /-! # Reconstructing the traffic audit from existing service recall
@@ -64,24 +65,14 @@ invent player transmissions. -/
 theorem environmentStep_inputs (execution next : app.Execution) (command : app.Command)
     (moved : next ∈ (execution.environmentStep app command).support) :
     next.network.inputs = execution.network.inputs := by
-  cases command with
-  | wait =>
-      simp only [Execution.environmentStep, PMF.pure_map] at moved
-      cases (PMF.mem_support_pure_iff _ _).mp moved
-      rfl
-  | activate who =>
-      simp only [Execution.environmentStep, PMF.map_comp] at moved
-      obtain ⟨selected, _, rfl⟩ := PMF.support_map .. ▸ moved
-      rfl
-  | application operation =>
-      simp only [Execution.environmentStep, PMF.map_comp] at moved
-      obtain ⟨state, _, rfl⟩ := PMF.support_map .. ▸ moved
-      rfl
-  | «include» id =>
-      simp only [Execution.environmentStep, PMF.pure_map] at moved
-      cases (PMF.mem_support_pure_iff _ _).mp moved
-      simp only [Execution.includePending, MessageNetwork.includePending]
-      cases execution.network.lookup id <;> rfl
+  apply app.environmentStep_cases execution next command moved
+    (predicate := fun _ next => next.network.inputs = execution.network.inputs)
+  · rfl
+  · intros; rfl
+  · intro id
+    simp only [Execution.includePending, MessageNetwork.includePending]
+    cases execution.network.lookup id <;> rfl
+  · intros; rfl
 
 private theorem transition_traffic_inputs
     (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)

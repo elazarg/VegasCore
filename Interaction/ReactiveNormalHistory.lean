@@ -54,7 +54,8 @@ omit [DecidableEq Principal] in
 
 theorem state_transition (initial : PMF app.State) (horizon : Nat)
     (scheduler : app.Scheduler) (before : app.ProtocolState)
-    (choices : Principal → Option app.Action) (valid : app.inputRecall before) :
+    (choices : Principal → Option app.Action)
+    (valid : serviceInvariant (fun execution => execution.InputRecall app) before) :
     (app.transition initial horizon scheduler before choices).map normal.state =
       app.transition initial horizon scheduler (normal.state before)
         (normal.joint before choices) := by

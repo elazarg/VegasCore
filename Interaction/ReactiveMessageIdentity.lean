@@ -2,6 +2,7 @@
 
 import Interaction.MessageNetworkIdentity
 import Interaction.ReactiveAllocation
+import Interaction.ReactiveEnvironmentStep
 
 /-! # Envelope identity at every raw runtime history -/
 
@@ -28,25 +29,15 @@ theorem messageIdentityInvariant (scheduler : app.Scheduler) :
   environment execution next command valid selected reached := by
     refine ⟨(app.serialsBeforeNextInvariant scheduler).environment execution next command
       valid.1 selected reached, ?_⟩
-    cases command with
-    | wait =>
-        simp only [Execution.environmentStep, PMF.pure_map] at reached
-        cases (PMF.mem_support_pure_iff _ _).mp reached
-        exact valid.2
-    | activate who =>
-        obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
-        obtain ⟨sample, _, rfl⟩ := PMF.support_map .. ▸ supported
-        exact valid.2.learn who sample
-    | «include» id =>
-        simp only [Execution.environmentStep, PMF.pure_map] at reached
-        cases (PMF.mem_support_pure_iff _ _).mp reached
-        change (execution.includePending app id).network.UniqueIds
-        rw [app.includePending_network]
-        exact valid.2.includePending id
-    | application command =>
-        obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
-        obtain ⟨state, _, rfl⟩ := PMF.support_map .. ▸ supported
-        exact valid.2
+    apply app.environmentStep_cases execution next command reached
+      (predicate := fun _ next => next.network.UniqueIds)
+    · exact valid.2
+    · exact fun who sample _ => valid.2.learn who sample
+    · intro id
+      change (execution.includePending app id).network.UniqueIds
+      rw [app.includePending_network]
+      exact valid.2.includePending id
+    · exact fun _ _ _ => valid.2
 
 /-- Arbitrary submissions, passive samples and scheduler choices all preserve
 the full message under its identifier. -/
@@ -72,25 +63,15 @@ theorem idsDistinctInvariant (scheduler : app.Scheduler) :
   environment execution next command valid selected reached := by
     refine ⟨(app.serialsBeforeNextInvariant scheduler).environment execution next command
       valid.1 selected reached, ?_⟩
-    cases command with
-    | wait =>
-        simp only [Execution.environmentStep, PMF.pure_map] at reached
-        cases (PMF.mem_support_pure_iff _ _).mp reached
-        exact valid.2
-    | activate who =>
-        obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
-        obtain ⟨sample, _, rfl⟩ := PMF.support_map .. ▸ supported
-        exact valid.2.learn who sample
-    | «include» id =>
-        simp only [Execution.environmentStep, PMF.pure_map] at reached
-        cases (PMF.mem_support_pure_iff _ _).mp reached
-        change (execution.includePending app id).network.IdsDistinct
-        rw [app.includePending_network]
-        exact valid.2.includePending id
-    | application command =>
-        obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
-        obtain ⟨state, _, rfl⟩ := PMF.support_map .. ▸ supported
-        exact valid.2
+    apply app.environmentStep_cases execution next command reached
+      (predicate := fun _ next => next.network.IdsDistinct)
+    · exact valid.2
+    · exact fun who sample _ => valid.2.learn who sample
+    · intro id
+      change (execution.includePending app id).network.IdsDistinct
+      rw [app.includePending_network]
+      exact valid.2.includePending id
+    · exact fun _ _ _ => valid.2
 
 /-- At every reachable history, under every scheduler and arbitrary player
 responses, no identifier is pending twice, published twice, or both. -/

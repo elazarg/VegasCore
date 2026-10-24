@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Interaction.ReactiveRecall
+import Interaction.ReactiveEnvironmentStep
 import Interaction.ReactiveServiceInvariant
 
 /-! # Envelope serials count fresh own submissions
@@ -62,25 +63,15 @@ theorem environment_serialRecall (execution next : app.Execution) (command : app
     (valid : execution.SerialRecall app)
     (reached : next ∈ (execution.environmentStep app command).support) :
     next.SerialRecall app := by
-  cases command with
-  | wait =>
-      simp only [Execution.environmentStep, PMF.pure_map] at reached
-      cases (PMF.mem_support_pure_iff _ _).mp reached
-      exact valid
-  | activate who =>
-      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
-      obtain ⟨selected, _, rfl⟩ := PMF.support_map .. ▸ supported
-      exact valid
-  | «include» id =>
-      simp only [Execution.environmentStep, PMF.pure_map] at reached
-      cases (PMF.mem_support_pure_iff _ _).mp reached
-      cases found : execution.network.lookup id <;>
-        simpa [Execution.SerialRecall, Execution.includePending,
-          MessageNetwork.includePending, found] using valid
-  | application command =>
-      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
-      obtain ⟨state, _, rfl⟩ := PMF.support_map .. ▸ supported
-      exact valid
+  apply app.environmentStep_cases execution next command reached
+    (predicate := fun _ next => next.SerialRecall app)
+  · exact valid
+  · exact fun _ _ _ => valid
+  · intro id
+    cases found : execution.network.lookup id <;>
+      simpa [Execution.SerialRecall, Execution.includePending,
+        MessageNetwork.includePending, found] using valid
+  · exact fun _ _ _ => valid
 
 theorem serialRecallInvariant (scheduler : app.Scheduler) :
     app.ServiceInvariant scheduler (fun execution => execution.SerialRecall app) where
@@ -119,24 +110,14 @@ theorem respond_nextSerial (execution : app.Execution) (who observer : Principal
 theorem environmentStep_nextSerial (execution next : app.Execution) (command : app.Command)
     (reached : next ∈ (execution.environmentStep app command).support) :
     next.network.nextSerial = execution.network.nextSerial := by
-  cases command with
-  | wait =>
-      simp only [Execution.environmentStep, PMF.pure_map] at reached
-      cases (PMF.mem_support_pure_iff _ _).mp reached
-      rfl
-  | activate who =>
-      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
-      obtain ⟨selected, _, rfl⟩ := PMF.support_map .. ▸ supported
-      rfl
-  | «include» id =>
-      simp only [Execution.environmentStep, PMF.pure_map] at reached
-      cases (PMF.mem_support_pure_iff _ _).mp reached
-      cases found : execution.network.lookup id <;>
-        simp [Execution.includePending, MessageNetwork.includePending, found]
-  | application command =>
-      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
-      obtain ⟨state, _, rfl⟩ := PMF.support_map .. ▸ supported
-      rfl
+  apply app.environmentStep_cases execution next command reached
+    (predicate := fun _ next => next.network.nextSerial = execution.network.nextSerial)
+  · rfl
+  · intros; rfl
+  · intro id
+    cases found : execution.network.lookup id <;>
+      simp [Execution.includePending, MessageNetwork.includePending, found]
+  · intros; rfl
 
 theorem respond_serialsIssued (execution : app.Execution) (who : Principal)
     (action : app.Action) (valid : execution.SerialsIssued app) :

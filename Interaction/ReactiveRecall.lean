@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactiveProtocol
+import Interaction.ReactiveServiceInvariant
+import Interaction.ReactiveEnvironmentStep
 
 /-! # Player output recall and network input history agree
 
@@ -45,24 +46,14 @@ theorem respond_recall_mono (execution : app.Execution) (who observer : Principa
 theorem environmentStep_recall (execution next : app.Execution) (command : app.Command)
     (reached : next ∈ (execution.environmentStep app command).support) :
     next.recall = execution.recall := by
-  cases command with
-  | wait =>
-      simp only [Execution.environmentStep, PMF.pure_map] at reached
-      cases (PMF.mem_support_pure_iff _ _).mp reached
-      rfl
-  | activate who =>
-      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
-      obtain ⟨selected, _, rfl⟩ := PMF.support_map .. ▸ supported
-      rfl
-  | «include» id =>
-      simp only [Execution.environmentStep, PMF.pure_map] at reached
-      cases (PMF.mem_support_pure_iff _ _).mp reached
-      cases found : execution.network.lookup id <;>
-        simp only [Execution.includePending, MessageNetwork.includePending, found]
-  | application command =>
-      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
-      obtain ⟨state, _, rfl⟩ := PMF.support_map .. ▸ supported
-      rfl
+  apply app.environmentStep_cases execution next command reached
+    (predicate := fun _ next => next.recall = execution.recall)
+  · rfl
+  · intros; rfl
+  · intro id
+    cases found : execution.network.lookup id <;>
+      simp only [Execution.includePending, MessageNetwork.includePending, found]
+  · intros; rfl
 
 theorem respond_recall_other (execution : app.Execution) (who observer : Principal)
     (different : observer ≠ who) (action : app.Action) :
@@ -101,25 +92,15 @@ theorem respond_inputRecall (execution : app.Execution) (who : Principal) (actio
 theorem environment_inputRecall (execution next : app.Execution) (command : app.Command)
     (valid : execution.InputRecall app)
     (reached : next ∈ (execution.environmentStep app command).support) : next.InputRecall app := by
-  cases command with
-  | wait =>
-      simp only [Execution.environmentStep, PMF.pure_map] at reached
-      cases (PMF.mem_support_pure_iff _ _).mp reached
-      exact valid
-  | application command =>
-      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
-      obtain ⟨state, _, rfl⟩ := PMF.support_map .. ▸ supported
-      exact valid
-  | activate who =>
-      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
-      obtain ⟨selected, _, rfl⟩ := PMF.support_map .. ▸ supported
-      exact valid
-  | «include» id =>
-      simp only [Execution.environmentStep, PMF.pure_map] at reached
-      cases (PMF.mem_support_pure_iff _ _).mp reached
-      cases found : execution.network.lookup id <;>
-        simpa [Execution.InputRecall, Execution.includePending,
-          MessageNetwork.includePending, found] using valid
+  apply app.environmentStep_cases execution next command reached
+    (predicate := fun _ next => next.InputRecall app)
+  · exact valid
+  · exact fun _ _ _ => valid
+  · intro id
+    cases found : execution.network.lookup id <;>
+      simpa [Execution.InputRecall, Execution.includePending,
+        MessageNetwork.includePending, found] using valid
+  · exact fun _ _ _ => valid
 
 /-- An initialized player can reconstruct every envelope it possesses from its
 own input/output recall and the two message lists it observes. -/
@@ -129,41 +110,17 @@ theorem known_from_recall (execution : app.Execution) (who : Principal)
       execution.network.leaked who ++ execution.network.ledger := by
   simp only [MessageNetwork.known, valid who]
 
-def inputRecall : app.ProtocolState → Prop
-  | none => True
-  | some control => control.execution.InputRecall app
-
-theorem transition_inputRecall (initial : PMF app.State) (horizon : Nat)
-    (scheduler : app.Scheduler) (before after : app.ProtocolState)
-    (joint : Principal → Option app.Action) (valid : app.inputRecall before)
-    (reached : after ∈ (app.transition initial horizon scheduler before joint).support) :
-    app.inputRecall after := by
-  cases before with
-  | none =>
-      obtain ⟨state, _, rfl⟩ := PMF.support_map .. ▸ reached
-      exact app.initial_inputRecall state
-  | some control =>
-      rcases control with ⟨remaining, current, execution⟩
-      cases current with
-      | some who =>
-          cases (PMF.mem_support_pure_iff _ _).mp reached
-          exact app.respond_inputRecall execution who _ valid
-      | none =>
-          cases remaining with
-          | zero => cases (PMF.mem_support_pure_iff _ _).mp reached; exact valid
-          | succ remaining =>
-              obtain ⟨command, _, supported⟩ :=
-                Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
-              obtain ⟨next, moved, rfl⟩ := PMF.support_map .. ▸ supported
-              exact app.environment_inputRecall execution next command valid moved
+theorem inputRecallInvariant (scheduler : app.Scheduler) :
+    app.ServiceInvariant scheduler (fun execution => execution.InputRecall app) where
+  respond := app.respond_inputRecall
+  environment execution next command valid _ reached :=
+    app.environment_inputRecall execution next command valid reached
 
 theorem history_inputRecall (initial : PMF app.State) (horizon : Nat)
-    (scheduler : app.Scheduler) :
-    ∀ {state} (_trace : (app.protocol initial horizon scheduler).Trace state),
-      app.inputRecall state
-  | _, .start => trivial
-  | _, .extend prior joint _ reached =>
-      app.transition_inputRecall initial horizon scheduler _ _ joint
-        (history_inputRecall initial horizon scheduler prior) reached
+    (scheduler : app.Scheduler) {state : app.ProtocolState}
+    (trace : (app.protocol initial horizon scheduler).Trace state) :
+    serviceInvariant (fun execution => execution.InputRecall app) state :=
+  (app.inputRecallInvariant scheduler).history initial horizon
+    (fun state _ => app.initial_inputRecall state) trace
 
 end Interaction.ReactiveApplication

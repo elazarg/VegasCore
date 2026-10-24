@@ -95,6 +95,7 @@ theorem consistent_of_splitBayes_projection [app.FiniteNature initial scheduler]
       (sequence n) (mixed n) (weight n) (positive n) (atMostOne n))
     (fun n => normal.splitBayes_bayes raw stable closed initial horizon scheduler
       (sequence n) (mixed n) (weight n) (positive n) (atMostOne n))
+    (fun _ _ => uniformlyTight_of_finite _)
     (fun who original => normal.split_strategy_converges raw stable closed
       initial horizon scheduler sequence source converges weight
         (fun n => (positive n).le) atMostOne vanishes who original)

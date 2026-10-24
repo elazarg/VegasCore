@@ -2,6 +2,7 @@
 
 import Interaction.MessageNetworkInvariant
 import Interaction.ReactiveRecall
+import Interaction.ReactiveServiceInvariant
 
 /-! # Every retained envelope has an actual author submission
 
@@ -82,42 +83,21 @@ theorem environment_provenance (execution next : app.Execution) (command : app.C
       obtain ⟨state, _, rfl⟩ := PMF.support_map .. ▸ supported
       exact valid
 
-def provenance : app.ProtocolState → Prop
-  | none => True
-  | some control => control.execution.Provenance app
-
-theorem transition_provenance (initial : PMF app.State) (horizon : Nat)
-    (scheduler : app.Scheduler) (before after : app.ProtocolState)
-    (joint : Principal → Option app.Action) (valid : app.provenance before)
-    (reached : after ∈ (app.transition initial horizon scheduler before joint).support) :
-    app.provenance after := by
-  cases before with
-  | none =>
-      obtain ⟨state, _, rfl⟩ := PMF.support_map .. ▸ reached
-      exact MessageNetwork.Satisfies.empty
-  | some control =>
-      rcases control with ⟨remaining, current, execution⟩
-      cases current with
-      | some who =>
-          cases (PMF.mem_support_pure_iff _ _).mp reached
-          exact app.respond_provenance execution who _ valid
-      | none =>
-          cases remaining with
-          | zero => cases (PMF.mem_support_pure_iff _ _).mp reached; exact valid
-          | succ remaining =>
-              obtain ⟨command, _, supported⟩ :=
-                Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
-              obtain ⟨next, moved, rfl⟩ := PMF.support_map .. ▸ supported
-              exact app.environment_provenance execution next command valid moved
+/-- Actual submission provenance is preserved by unrestricted responses and
+every supported command of an arbitrary observation-local scheduler. -/
+theorem provenanceInvariant (scheduler : app.Scheduler) :
+    app.ServiceInvariant scheduler (fun execution => execution.Provenance app) where
+  respond := app.respond_provenance
+  environment execution next command valid _ reached :=
+    app.environment_provenance execution next command valid reached
 
 /-- Every legal initialized history authenticates every retained envelope
 against an actual submission in its author's recall. -/
 theorem history_provenance (initial : PMF app.State) (horizon : Nat)
-    (scheduler : app.Scheduler) :
-    ∀ {state} (_trace : (app.protocol initial horizon scheduler).Trace state), app.provenance state
-  | _, .start => trivial
-  | _, .extend prior joint _ reached =>
-      app.transition_provenance initial horizon scheduler _ _ joint
-        (history_provenance initial horizon scheduler prior) reached
+    (scheduler : app.Scheduler) {state : app.ProtocolState}
+    (trace : (app.protocol initial horizon scheduler).Trace state) :
+    serviceInvariant (fun execution => execution.Provenance app) state :=
+  (app.provenanceInvariant scheduler).history initial horizon
+    (fun _ _ => MessageNetwork.Satisfies.empty) trace
 
 end Interaction.ReactiveApplication

@@ -42,6 +42,7 @@ import Interaction.ReactiveConsistentHistory
 import Interaction.ReactiveDecisionInformation
 import Interaction.ReactiveEmissionOrder
 import Interaction.ReactiveEnvironmentMass
+import Interaction.ReactiveEnvironmentStep
 import Interaction.ReactiveErasure
 import Interaction.ReactiveEvaluation
 import Interaction.ReactiveEvidence

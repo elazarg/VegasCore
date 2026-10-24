@@ -140,7 +140,7 @@ theorem aliasDeviation_historyLaw
           app.finish initial horizon scheduler _ (normal.state current.state)
         rw [stateEq, ← remembered]
         exact normal.aliasDeviation_finish raw stable closed initial horizon scheduler source who
-          alternative control.execution (by simpa only [stateEq, inputRecall] using valid)
+          alternative control.execution (by simpa only [stateEq, serviceInvariant] using valid)
             control.remaining control.actor
       · cases observed
 

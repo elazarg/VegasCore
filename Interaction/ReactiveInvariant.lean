@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Interaction.ReactiveProtocol
+import Interaction.ReactiveEnvironmentStep
 
 /-! # Application invariants at every canonical reactive history
 
@@ -66,23 +67,13 @@ theorem Invariant.environmentStep (invariant : app.Invariant predicate)
     (valid : predicate execution.application)
     (reached : next ∈ (execution.environmentStep app command).support) :
     predicate next.application := by
-  cases command with
-  | wait =>
-      simp only [Execution.environmentStep, PMF.pure_map] at reached
-      cases (PMF.mem_support_pure_iff _ _).mp reached
-      exact valid
-  | activate who =>
-      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
-      obtain ⟨selected, _, rfl⟩ := PMF.support_map .. ▸ supported
-      exact valid
-  | «include» id =>
-      simp only [Execution.environmentStep, PMF.pure_map] at reached
-      cases (PMF.mem_support_pure_iff _ _).mp reached
-      exact invariant.includePending execution id valid
-  | application command =>
-      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
-      obtain ⟨state, changed, rfl⟩ := PMF.support_map .. ▸ supported
-      exact invariant.environment execution.application command state valid changed
+  apply app.environmentStep_cases execution next command reached
+    (predicate := fun _ next => predicate next.application)
+  · exact valid
+  · exact fun _ _ _ => valid
+  · exact fun id => invariant.includePending execution id valid
+  · exact fun command state changed =>
+      invariant.environment execution.application command state valid changed
 
 def stateInvariant (predicate : app.State → Prop) : app.ProtocolState → Prop
   | none => True
@@ -152,23 +143,13 @@ theorem StepRelation.environmentStep (step : app.StepRelation relation)
     (execution next : app.Execution) (command : app.Command)
     (reached : next ∈ (execution.environmentStep app command).support) :
     relation execution.application next.application := by
-  cases command with
-  | wait =>
-      simp only [Execution.environmentStep, PMF.pure_map] at reached
-      cases (PMF.mem_support_pure_iff _ _).mp reached
-      exact step.refl _
-  | activate who =>
-      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
-      obtain ⟨selected, _, rfl⟩ := PMF.support_map .. ▸ supported
-      exact step.refl _
-  | «include» id =>
-      simp only [Execution.environmentStep, PMF.pure_map] at reached
-      cases (PMF.mem_support_pure_iff _ _).mp reached
-      exact step.includePending execution id
-  | application command =>
-      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
-      obtain ⟨state, changed, rfl⟩ := PMF.support_map .. ▸ supported
-      exact step.environment execution.application command state changed
+  apply app.environmentStep_cases execution next command reached
+    (predicate := fun _ next => relation execution.application next.application)
+  · exact step.refl _
+  · exact fun _ _ _ => step.refl _
+  · exact fun id => step.includePending execution id
+  · exact fun command state changed =>
+      step.environment execution.application command state changed
 
 /-- Every protocol transition between initialized states relates the
 application states, under arbitrary responses and scheduler choices. -/

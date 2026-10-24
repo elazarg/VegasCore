@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Interaction.ReactiveInvariant
+import Interaction.ReactiveEnvironmentStep
 import Interaction.ReactiveServiceInvariant
 
 /-! # Public receipts certify payload properties
@@ -40,23 +41,12 @@ theorem environmentStep_receipts_prefix (execution next : app.Execution)
     (command : app.Command)
     (reached : next ∈ (execution.environmentStep app command).support) :
     execution.receipts <+: next.receipts := by
-  cases command with
-  | wait =>
-      simp only [Execution.environmentStep, PMF.pure_map] at reached
-      cases (PMF.mem_support_pure_iff _ _).mp reached
-      rfl
-  | activate who =>
-      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
-      obtain ⟨selected, _, rfl⟩ := PMF.support_map .. ▸ supported
-      rfl
-  | «include» id =>
-      simp only [Execution.environmentStep, PMF.pure_map] at reached
-      cases (PMF.mem_support_pure_iff _ _).mp reached
-      exact app.includePending_receipts_prefix execution id
-  | application command =>
-      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
-      obtain ⟨state, _, rfl⟩ := PMF.support_map .. ▸ supported
-      rfl
+  apply app.environmentStep_cases execution next command reached
+    (predicate := fun _ next => execution.receipts <+: next.receipts)
+  · rfl
+  · intros; rfl
+  · exact fun id => app.includePending_receipts_prefix execution id
+  · intros; rfl
 
 theorem transition_receipts_prefix (initial : PMF app.State) (horizon : Nat)
     (scheduler : app.Scheduler) (before : app.Control) (after : app.ProtocolState)
@@ -145,23 +135,12 @@ theorem receiptsSound_environmentStep (predicate : app.Payload → Prop)
       predicate message.payload)
     (reached : next ∈ (execution.environmentStep app command).support) :
     next.ReceiptsSound app predicate := by
-  cases command with
-  | wait =>
-      simp only [Execution.environmentStep, PMF.pure_map] at reached
-      cases (PMF.mem_support_pure_iff _ _).mp reached
-      exact sound
-  | activate who =>
-      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
-      obtain ⟨selected, _, rfl⟩ := PMF.support_map .. ▸ supported
-      exact sound
-  | «include» id =>
-      simp only [Execution.environmentStep, PMF.pure_map] at reached
-      cases (PMF.mem_support_pure_iff _ _).mp reached
-      exact app.receiptsSound_includePending predicate execution id sound checked
-  | application command =>
-      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
-      obtain ⟨state, _, rfl⟩ := PMF.support_map .. ▸ supported
-      exact sound
+  apply app.environmentStep_cases execution next command reached
+    (predicate := fun _ next => next.ReceiptsSound app predicate)
+  · exact sound
+  · exact fun _ _ _ => sound
+  · exact fun id => app.receiptsSound_includePending predicate execution id sound checked
+  · exact fun _ _ _ => sound
 
 theorem receiptServiceInvariant (statePredicate : app.State → Prop)
     (payloadPredicate : app.Payload → Prop) (invariant : app.Invariant statePredicate)

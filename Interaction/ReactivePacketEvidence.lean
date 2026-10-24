@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Interaction.MessageNetworkInvariant
+import Interaction.ReactiveEnvironmentStep
 import Interaction.ReactiveServiceInvariant
 import Interaction.ReactiveInvariant
 
@@ -81,24 +82,14 @@ theorem sound_includePending (execution : app.Execution) (id : MessageId Princip
 theorem sound_environment (execution next : app.Execution) (command : app.Command)
     (sound : evidence.Sound execution)
     (reached : next ∈ (execution.environmentStep app command).support) : evidence.Sound next := by
-  cases command with
-  | wait =>
-      simp only [Execution.environmentStep, PMF.pure_map] at reached
-      cases (PMF.mem_support_pure_iff _ _).mp reached
-      exact sound
-  | activate who =>
-      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
-      obtain ⟨selected, _, rfl⟩ := PMF.support_map .. ▸ supported
-      exact sound.learn who selected
-  | «include» id =>
-      simp only [Execution.environmentStep, PMF.pure_map] at reached
-      cases (PMF.mem_support_pure_iff _ _).mp reached
-      exact evidence.sound_includePending execution id sound
-  | application command =>
-      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
-      obtain ⟨state, changed, rfl⟩ := PMF.support_map .. ▸ supported
-      exact evidence.sound_mono execution state sound
-        (fun fact valid => (evidence.persists fact).environment _ command state valid changed)
+  apply app.environmentStep_cases execution next command reached
+    (predicate := fun _ next => evidence.Sound next)
+  · exact sound
+  · exact fun who selected _ => sound.learn who selected
+  · exact fun id => evidence.sound_includePending execution id sound
+  · intro command state changed
+    exact evidence.sound_mono execution state sound
+      (fun fact valid => (evidence.persists fact).environment _ command state valid changed)
 
 theorem serviceInvariant (scheduler : app.Scheduler) :
     app.ServiceInvariant scheduler evidence.Sound where
