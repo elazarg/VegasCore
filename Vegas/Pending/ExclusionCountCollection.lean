@@ -64,29 +64,9 @@ theorem countForbidden_reaches {initial : PMF (runtime.recoveryApplication leaks
     (forbidden : countPermits before.execution.network.inputs message = false) :
     message ∈ after.execution.network.inputs ∧
       countPermits after.execution.network.inputs message = false := by
-  let app := runtime.recoveryApplication leaks
-  have traffic := app.stateTraffic_reaches initial horizon scheduler path
-  have firstInputs := app.stateTraffic_inputs initial horizon scheduler first.trace
-  have lastInputs := app.stateTraffic_inputs initial horizon scheduler last.trace
-  have firstOrder := app.inputSerialsInOrder_history scheduler initial horizon first.trace
-  have lastOrder := app.inputSerialsInOrder_history scheduler initial horizon last.trace
-  rw [firstEq] at firstInputs firstOrder traffic
-  rw [lastEq] at lastInputs lastOrder traffic
-  have prefixOf : before.execution.network.inputs <+: after.execution.network.inputs := by
-    have mapped := traffic.map ReactiveApplication.TrafficRecord.envelope
-    rw [firstInputs, lastInputs] at mapped
-    exact mapped
-  refine ⟨prefixOf.subset present, ?_⟩
-  rw [countPermits_congr after.execution.network.inputs before.execution.network.inputs message]
-  · exact forbidden
-  intro other
-  constructor
-  · rintro ⟨member, owner, lower⟩
-    refine ⟨firstOrder.mem_of_prefix lastOrder prefixOf member ?_, owner, lower⟩
-    rw [owner]
-    exact lower.trans (firstOrder.serial_lt present)
-  · rintro ⟨member, owner, lower⟩
-    exact ⟨prefixOf.subset member, owner, lower⟩
+  have retained := (runtime.recoveryApplication leaks).earlier_inputs_reaches
+    path before after firstEq lastEq message present
+  exact ⟨retained.1, (countPermits_congr _ _ message retained.2).trans forbidden⟩
 
 variable [Fintype Player]
 

@@ -73,15 +73,8 @@ theorem completeAutomatic (valid : CompletionStamp outputs attempt state) (event
 
 theorem drain (valid : CompletionStamp outputs attempt state) (phase : RuntimePhase graph) :
     CompletionStamp outputs attempt (phase.drain state) := by
-  have preserve : ∀ next, Relation.ReflTransGen phase.AutomaticStep state next →
-      CompletionStamp outputs attempt next := by
-    intro next path
-    induction path with
-    | refl => exact valid
-    | tail _ step ih =>
-        obtain ⟨event, eligible, rfl⟩ := step
-        exact ih.completeAutomatic event eligible.2
-  exact preserve _ (phase.drain_trace state)
+  exact phase.drainFuel_induction (CompletionStamp outputs attempt)
+    (fun _ event eligible previous => previous.completeAutomatic event eligible.2) _ state valid
 
 /-- Native acceptance authenticates the sender of the uniquely completed
 event. The actual issued envelope supplies its unmodified attempt stamp. -/

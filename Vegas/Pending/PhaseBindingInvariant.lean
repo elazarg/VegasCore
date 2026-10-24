@@ -77,16 +77,10 @@ namespace RuntimePhase
 theorem drainFuel_bindingInvariant (phase : RuntimePhase graph) (fuel : Nat)
     (state : RecoveryState graph) (valid : state.native.BindingInvariant) :
     (phase.drainFuel fuel state).native.BindingInvariant := by
-  induction fuel generalizing state with
-  | zero => exact valid
-  | succ fuel ih =>
-      unfold drainFuel
-      split
-      · rename_i pending
-        obtain ⟨owner, acting, _excluded⟩ := (Classical.choose_spec pending).2.owned
-        exact ih _ (State.completeFailure_bindingInvariant valid _
-          (Classical.choose_spec pending).2.1 acting)
-      · exact valid
+  apply phase.drainFuel_induction (fun next => next.native.BindingInvariant)
+    (fun before event eligible previous => ?_) fuel state valid
+  obtain ⟨owner, acting, _⟩ := eligible.2.owned
+  exact State.completeFailure_bindingInvariant previous event eligible.2.1 acting
 
 theorem drain_bindingInvariant (phase : RuntimePhase graph) (state : RecoveryState graph)
     (valid : state.native.BindingInvariant) : (phase.drain state).native.BindingInvariant :=

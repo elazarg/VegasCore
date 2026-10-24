@@ -52,18 +52,14 @@ namespace RuntimePhase
 theorem drainFuel_progress (phase : RuntimePhase graph) (fuel : Nat)
     (state : RecoveryState graph) {inputs : graph.Inputs} (valid : state.native.Invariant inputs) :
     State.ServiceProgress inputs 0 state.native (phase.drainFuel fuel state).native := by
-  induction fuel generalizing state with
-  | zero => exact .refl valid
-  | succ fuel ih =>
-      unfold drainFuel
-      split
-      · rename_i pending
-        have eligible := (Classical.choose_spec pending).2
-        obtain ⟨owner, acting, _⟩ := eligible.owned
-        have first := state.native.completeFailure_progress valid _ eligible.1 acting
-        simpa only [Nat.zero_add] using first.trans
-          (ih (state.completeAutomatic (Classical.choose pending) eligible) first.invariant)
-      · exact .refl valid
+  apply phase.drainFuel_induction
+    (fun next => State.ServiceProgress inputs 0 state.native next.native)
+    (fun before event eligible previous => ?_) fuel state (.refl valid)
+  obtain ⟨owner, acting, _⟩ := eligible.2.owned
+  have last := before.native.completeFailure_progress previous.invariant event eligible.2.1 acting
+  change State.ServiceProgress inputs 0 state.native
+    (before.native.completeFailure event eligible.2.1)
+  simpa only [Nat.zero_add] using previous.trans last
 
 theorem drain_progress (phase : RuntimePhase graph) (state : RecoveryState graph)
     {inputs : graph.Inputs} (valid : state.native.Invariant inputs) :

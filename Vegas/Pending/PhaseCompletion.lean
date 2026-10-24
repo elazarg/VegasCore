@@ -46,6 +46,24 @@ theorem drainFuel_trace (fuel : Nat) (state : RecoveryState graph) :
         exact (Relation.ReflTransGen.single ⟨_, Classical.choose_spec pending, rfl⟩).trans (ih _)
       · exact .refl
 
+/-- A predicate preserved by each eligible completion in this phase is
+preserved by the bounded drain's existing native step trace. -/
+theorem drainFuel_induction (predicate : RecoveryState graph → Prop)
+    (preserves : ∀ (before : RecoveryState graph) (event : graph.EventId)
+      (eligible : event ∈ phase.events ∧ before.AutomaticReady event), predicate before →
+        predicate (before.completeAutomatic event eligible.2))
+    (fuel : Nat) (state : RecoveryState graph) (initial : predicate state) :
+    predicate (drainFuel phase fuel state) := by
+  have closed : ∀ {before after}, Relation.ReflTransGen (AutomaticStep phase) before after →
+      predicate before → predicate after := by
+    intro before after path
+    induction path using Relation.ReflTransGen.head_induction_on with
+    | refl => exact id
+    | @head before middle moved _ ih =>
+        obtain ⟨event, eligible, rfl⟩ := moved
+        exact fun valid => ih (preserves before event eligible valid)
+  exact closed (phase.drainFuel_trace fuel state) initial
+
 theorem drainFuel_quiescent (fuel : Nat) (state : RecoveryState graph)
     (enough : state.native.config.remaining ≤ fuel) :
     ∀ event, ¬ (event ∈ phase.events ∧ (drainFuel phase fuel state).AutomaticReady event) := by
@@ -87,45 +105,26 @@ theorem drain_eq_of_clear (state : RecoveryState graph)
 
 theorem drainFuel_excluded (fuel : Nat) (state : RecoveryState graph) :
     (drainFuel phase fuel state).excluded = state.excluded := by
-  induction fuel generalizing state with
-  | zero => rfl
-  | succ fuel ih =>
-      unfold drainFuel
-      split
-      · exact ih _
-      · rfl
+  exact phase.drainFuel_induction (fun next => next.excluded = state.excluded)
+    (fun _ _ _ previous => previous) fuel state rfl
 
 theorem drainFuel_tables (fuel : Nat) (state : RecoveryState graph) :
     (drainFuel phase fuel state).native.accepted = state.native.accepted ∧
       (drainFuel phase fuel state).native.candidates = state.native.candidates ∧
       (drainFuel phase fuel state).native.clock = state.native.clock := by
-  induction fuel generalizing state with
-  | zero => exact ⟨rfl, rfl, rfl⟩
-  | succ fuel ih =>
-      unfold drainFuel
-      split
-      · rename_i pending
-        obtain ⟨accepted, candidates, clock⟩ := state.native.completeFailure_tables
-          (Classical.choose pending) (Classical.choose_spec pending).2.1
-        obtain ⟨laterAccepted, laterCandidates, laterClock⟩ := ih
-          (state.completeAutomatic (Classical.choose pending) (Classical.choose_spec pending).2)
-        exact ⟨laterAccepted.trans accepted, laterCandidates.trans candidates,
-          laterClock.trans clock⟩
-      · exact ⟨rfl, rfl, rfl⟩
+  apply phase.drainFuel_induction (fun next => next.native.accepted = state.native.accepted ∧
+    next.native.candidates = state.native.candidates ∧ next.native.clock = state.native.clock)
+    (fun before event eligible previous => ?_) fuel state ⟨rfl, rfl, rfl⟩
+  obtain ⟨accepted, candidates, clock⟩ := before.native.completeFailure_tables event eligible.2.1
+  exact ⟨accepted.trans previous.1, candidates.trans previous.2.1, clock.trans previous.2.2⟩
 
 theorem drainFuel_reachable (fuel : Nat) (state : RecoveryState graph) {inputs : graph.Inputs}
     (reachable : state.native.config.Reachable inputs) :
     (drainFuel phase fuel state).native.config.Reachable inputs := by
-  induction fuel generalizing state with
-  | zero => exact reachable
-  | succ fuel ih =>
-      unfold drainFuel
-      split
-      · rename_i pending
-        obtain ⟨action, realized⟩ := state.completeAutomatic_step (Classical.choose pending)
-          (Classical.choose_spec pending).2
-        exact ih _ (.step reachable _ (Classical.choose_spec pending).2.1 action _ realized)
-      · exact reachable
+  apply phase.drainFuel_induction (fun next => next.native.config.Reachable inputs)
+    (fun before event eligible previous => ?_) fuel state reachable
+  obtain ⟨action, realized⟩ := before.completeAutomatic_step event eligible.2
+  exact .step previous event eligible.2.1 action _ realized
 
 theorem drain_trace (state : RecoveryState graph) :
     Relation.ReflTransGen (AutomaticStep phase) state (drain phase state) :=
@@ -148,16 +147,10 @@ theorem drain_reachable (state : RecoveryState graph) {inputs : graph.Inputs}
 theorem drainFuel_invariant (fuel : Nat) (state : RecoveryState graph) {inputs : graph.Inputs}
     (valid : state.native.Invariant inputs) :
     (drainFuel phase fuel state).native.Invariant inputs := by
-  induction fuel generalizing state with
-  | zero => exact valid
-  | succ fuel ih =>
-      unfold drainFuel
-      split
-      · rename_i pending
-        obtain ⟨owner, acting, _⟩ := (Classical.choose_spec pending).2.owned
-        exact ih _ (State.completeFailure_invariant valid _
-          (Classical.choose_spec pending).2.1 acting)
-      · exact valid
+  apply phase.drainFuel_induction (fun next => next.native.Invariant inputs)
+    (fun before event eligible previous => ?_) fuel state valid
+  obtain ⟨owner, acting, _⟩ := eligible.2.owned
+  exact State.completeFailure_invariant previous event eligible.2.1 acting
 
 theorem drain_invariant (state : RecoveryState graph) {inputs : graph.Inputs}
     (valid : state.native.Invariant inputs) : (phase.drain state).native.Invariant inputs :=
@@ -167,19 +160,11 @@ theorem drain_invariant (state : RecoveryState graph) {inputs : graph.Inputs}
 theorem drainFuel_within (fuel : Nat) (state : RecoveryState graph)
     (within : state.native.config.cut.Within phase.low phase.high) :
     (phase.drainFuel fuel state).native.config.cut.Within phase.low phase.high := by
-  induction fuel generalizing state with
-  | zero => exact within
-  | succ fuel ih =>
-      unfold drainFuel
-      split
-      · rename_i pending
-        apply ih
-        obtain ⟨action, supported⟩ := state.completeAutomatic_step
-          (Classical.choose pending) (Classical.choose_spec pending).2
-        rw [Config.step_cut _ _ _ _ _ supported]
-        exact within.complete _ (Classical.choose_spec pending).2.1
-          ((phase.mem_events _).mp (Classical.choose_spec pending).1).2
-      · exact within
+  apply phase.drainFuel_induction (fun next => next.native.config.cut.Within phase.low phase.high)
+    (fun before event eligible previous => ?_) fuel state within
+  obtain ⟨action, supported⟩ := before.completeAutomatic_step event eligible.2
+  rw [Config.step_cut _ _ _ _ _ supported]
+  exact previous.complete event eligible.2.1 ((phase.mem_events event).mp eligible.1).2
 
 theorem drain_within (state : RecoveryState graph)
     (within : state.native.config.cut.Within phase.low phase.high) :

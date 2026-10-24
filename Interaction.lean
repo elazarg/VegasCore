@@ -50,6 +50,7 @@ import Interaction.ReactiveHistory
 import Interaction.ReactiveImplementation
 import Interaction.ReactiveImplementationContinuation
 import Interaction.ReactiveInvariant
+import Interaction.ReactiveInputOrder
 import Interaction.ReactiveInvariantPrefix
 import Interaction.ReactiveLocalContinuation
 import Interaction.ReactiveLumping

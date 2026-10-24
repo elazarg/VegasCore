@@ -25,16 +25,11 @@ theorem drainFuel_completed (phase : RuntimePhase graph) (fuel : Nat)
     (state : RecoveryState graph) :
     state.native.config.cut.completed ⊆
       (phase.drainFuel fuel state).native.config.cut.completed := by
-  induction fuel generalizing state with
-  | zero => exact Finset.Subset.refl _
-  | succ fuel ih =>
-      unfold drainFuel
-      split
-      · rename_i pending
-        have eligible := (Classical.choose_spec pending).2
-        obtain ⟨action, moved⟩ := state.completeAutomatic_step _ eligible
-        exact (State.completed_subset_of_mem_step _ _ eligible.1 action _ moved).trans (ih _)
-      · exact Finset.Subset.refl _
+  apply phase.drainFuel_induction
+    (fun next => state.native.config.cut.completed ⊆ next.native.config.cut.completed)
+    (fun before event eligible previous => ?_) fuel state (Finset.Subset.refl _)
+  obtain ⟨action, moved⟩ := before.completeAutomatic_step event eligible.2
+  exact previous.trans (State.completed_subset_of_mem_step _ _ eligible.2.1 action _ moved)
 
 theorem drain_completed (phase : RuntimePhase graph) (state : RecoveryState graph) :
     state.native.config.cut.completed ⊆ (phase.drain state).native.config.cut.completed :=

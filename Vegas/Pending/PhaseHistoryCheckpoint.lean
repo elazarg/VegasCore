@@ -19,21 +19,13 @@ namespace RuntimePhase
 theorem drainFuel_history_prefix (phase : RuntimePhase graph) (fuel : Nat)
     (state : RecoveryState graph) :
     state.native.config.history.IsPrefix (phase.drainFuel fuel state).native.config.history := by
-  induction fuel generalizing state with
-  | zero => exact ⟨[], by simp only [drainFuel, List.append_nil]⟩
-  | succ fuel ih =>
-      unfold drainFuel
-      split
-      · rename_i pending
-        obtain ⟨owner, acting, _excluded⟩ := (Classical.choose_spec pending).2.owned
-        obtain ⟨action, supported⟩ := state.native.completeFailure_step _
-          (Classical.choose_spec pending).2.1 acting
-        apply List.IsPrefix.trans ?_ (ih _)
-        change state.native.config.history.IsPrefix
-          (state.native.completeFailure _ _).config.history
-        rw [state.native.config.step_history _ _ _ _ supported]
-        exact ⟨_, rfl⟩
-      · exact ⟨[], by simp⟩
+  apply phase.drainFuel_induction
+    (fun next => state.native.config.history.IsPrefix next.native.config.history)
+    (fun before event eligible previous => ?_) fuel state ⟨[], by simp⟩
+  obtain ⟨action, supported⟩ := before.completeAutomatic_step event eligible.2
+  apply previous.trans
+  rw [before.native.config.step_history event eligible.2.1 action _ supported]
+  exact ⟨_, rfl⟩
 
 theorem drain_history_prefix (phase : RuntimePhase graph) (state : RecoveryState graph) :
     state.native.config.history.IsPrefix (phase.drain state).native.config.history :=

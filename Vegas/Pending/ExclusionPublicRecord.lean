@@ -282,15 +282,8 @@ theorem completeAutomatic (valid : PublicExclusionRecord state) (event : graph.E
 /-- The full automatic drain preserves exact public exclusion evidence. -/
 theorem drainFuel (fuel : Nat) (valid : PublicExclusionRecord state) :
     PublicExclusionRecord (RecoveryState.drainFuel fuel state) := by
-  induction fuel generalizing state with
-  | zero => exact valid
-  | succ fuel ih =>
-      unfold RecoveryState.drainFuel
-      split
-      · rename_i pending
-        exact ih (valid.completeAutomatic (Classical.choose pending)
-          (Classical.choose_spec pending))
-      · exact valid
+  exact RecoveryState.drainFuel_induction PublicExclusionRecord
+    (fun _ event eligible previous => previous.completeAutomatic event eligible) fuel state valid
 
 theorem drain (valid : PublicExclusionRecord state) : PublicExclusionRecord state.drain :=
   valid.drainFuel _

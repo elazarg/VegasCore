@@ -78,19 +78,11 @@ variable [DecidableEq Player]
 theorem drainFuel_publicFailureExtension (phase : RuntimePhase graph) (fuel : Nat)
     (state : RecoveryState graph) :
     state.native.PublicFailureExtension (phase.drainFuel fuel state).native := by
-  induction fuel generalizing state with
-  | zero => exact State.PublicFailureExtension.refl _
-  | succ fuel ih =>
-    unfold drainFuel
-    split
-    · rename_i pending
-      let event := Classical.choose pending
-      have eligible := (Classical.choose_spec pending).2
-      obtain ⟨owner, acting, _excluded⟩ := eligible.owned
-      have step : CompletionStep state.native (state.completeAutomatic event eligible).native :=
-        SuffixExclusionRecord.failureCompletionStep state.native event eligible.1 acting
-      exact step.publicFailureExtension.trans (ih _)
-    · exact State.PublicFailureExtension.refl _
+  apply phase.drainFuel_induction (fun next => state.native.PublicFailureExtension next.native)
+    (fun before event eligible previous => ?_) fuel state (.refl _)
+  obtain ⟨owner, acting, _⟩ := eligible.2.owned
+  exact previous.trans (SuffixExclusionRecord.failureCompletionStep
+    before.native event eligible.2.1 acting).publicFailureExtension
 
 theorem drain_publicFailureExtension (phase : RuntimePhase graph) (state : RecoveryState graph) :
     state.native.PublicFailureExtension (phase.drain state).native :=

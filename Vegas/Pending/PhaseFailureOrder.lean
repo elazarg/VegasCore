@@ -205,17 +205,13 @@ theorem orderedPublicFailures_drainFuel (phase : RuntimePhase graph) (fuel : Nat
     (valid : state.OrderedPublicFailures low inherited) (coverage : state.FailureCoverage)
     (inherited_le : inherited ⊆ state.excluded) (ordered : graph.RevealRelaxedOrdered) :
     (phase.drainFuel fuel state).OrderedPublicFailures low inherited := by
-  induction fuel generalizing state with
-  | zero => exact valid
-  | succ fuel ih =>
-      unfold drainFuel
-      split
-      · rename_i pending
-        exact ih _
-          (valid.completeAutomatic coverage inherited_le ordered _
-            (Classical.choose_spec pending).2)
-          (coverage.completeAutomatic _ (Classical.choose_spec pending).2) inherited_le
-      · exact valid
+  have preserved := phase.drainFuel_induction (fun next =>
+    next.OrderedPublicFailures low inherited ∧ next.FailureCoverage ∧ inherited ⊆ next.excluded)
+    (fun before event eligible previous =>
+      ⟨previous.1.completeAutomatic previous.2.1 previous.2.2 ordered event eligible.2,
+        previous.2.1.completeAutomatic event eligible.2, previous.2.2⟩)
+    fuel state ⟨valid, coverage, inherited_le⟩
+  exact preserved.1
 
 theorem orderedPublicFailures_drain (phase : RuntimePhase graph) (low : Nat)
     (inherited : Finset Player) (state : RecoveryState graph)

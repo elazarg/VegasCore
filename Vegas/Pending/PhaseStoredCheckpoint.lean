@@ -19,19 +19,11 @@ namespace RuntimePhase
 theorem drainFuel_keepsStore (phase : RuntimePhase graph) (fuel : Nat)
     (state : RecoveryState graph) :
     KeepsStore state.native (phase.drainFuel fuel state).native := by
-  induction fuel generalizing state with
-  | zero => exact fun _ _ stored => stored
-  | succ fuel ih =>
-      unfold drainFuel
-      split
-      · rename_i pending
-        obtain ⟨owner, acting, _excluded⟩ := (Classical.choose_spec pending).2.owned
-        obtain ⟨action, supported⟩ := state.native.completeFailure_step _
-          (Classical.choose_spec pending).2.1 acting
-        intro field value stored
-        apply ih _ field value
-        exact state.native.config.step_store_of_some _ _ _ action supported field value stored
-      · exact fun _ _ stored => stored
+  apply phase.drainFuel_induction (fun next => KeepsStore state.native next.native)
+    (fun before event eligible previous => ?_) fuel state (fun _ _ stored => stored)
+  obtain ⟨action, supported⟩ := before.completeAutomatic_step event eligible.2
+  exact fun field value stored => before.native.config.step_store_of_some
+    _ _ _ action supported field value (previous field value stored)
 
 theorem drain_keepsStore (phase : RuntimePhase graph) (state : RecoveryState graph) :
     KeepsStore state.native (phase.drain state).native :=

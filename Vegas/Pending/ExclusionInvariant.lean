@@ -53,16 +53,10 @@ namespace RecoveryState
 theorem drainFuel_invariant (fuel : Nat) (state : RecoveryState graph) {inputs : graph.Inputs}
     (valid : state.native.Invariant inputs) :
     (drainFuel fuel state).native.Invariant inputs := by
-  induction fuel generalizing state with
-  | zero => exact valid
-  | succ fuel ih =>
-      unfold drainFuel
-      split
-      · rename_i pending
-        obtain ⟨owner, acting, _⟩ := (Classical.choose_spec pending).owned
-        exact ih _ (State.completeFailure_invariant valid _
-          (Classical.choose_spec pending).1 acting)
-      · exact valid
+  apply drainFuel_induction (fun next => next.native.Invariant inputs)
+    (fun before event eligible previous => ?_) fuel state valid
+  obtain ⟨owner, acting, _⟩ := eligible.owned
+  exact State.completeFailure_invariant previous event eligible.1 acting
 
 theorem drain_invariant (state : RecoveryState graph) {inputs : graph.Inputs}
     (valid : state.native.Invariant inputs) : state.drain.native.Invariant inputs :=

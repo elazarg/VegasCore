@@ -131,18 +131,7 @@ theorem countPermits_respond (execution : (runtime.recoveryApplication leaks).Ex
   refine ⟨inputs, ?_, ?_⟩
   · rw [inputs, countPermits_append_self]
     apply countPermits_congr
-    intro other
-    have outputs := input who
-    constructor
-    · rintro ⟨member, owner, lower⟩
-      rw [← outputs]
-      exact ⟨List.mem_filter.mpr ⟨member, by simpa [senderEq] using owner⟩, owner, lower⟩
-    · rintro ⟨member, owner, _⟩
-      rw [← outputs] at member
-      have retained := (List.mem_filter.mp member).1
-      refine ⟨retained, owner, ?_⟩
-      rw [serialEq, ← senderEq, ← owner]
-      exact order.serial_lt retained
+    exact input.earlier_inputs_iff_outputs message
   · intro other present
     rw [inputs]
     apply countPermits_append_later

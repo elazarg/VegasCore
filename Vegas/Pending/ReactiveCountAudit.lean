@@ -2,7 +2,7 @@
 
 import Vegas.Pending.ReactiveCountVerdict
 import Interaction.ReactiveTrafficContinuation
-import Interaction.ReactiveSubmissionSerial
+import Interaction.ReactiveInputOrder
 import Interaction.ChallengeWindow
 import GameTheoryExtensions.Analysis.Protocol.TerminalAudit
 
@@ -28,85 +28,6 @@ bounds the expected collection below under every later policy.
 -/
 
 noncomputable section
-
-namespace Interaction.ReactiveApplication
-
-open GameTheory.Math.Probability
-
-variable {Principal : Type} [DecidableEq Principal] (app : ReactiveApplication Principal)
-
-/-- Each principal's network inputs carry the serials `0, 1, …` in emission
-order. -/
-def Execution.InputSerialsInOrder (execution : app.Execution) : Prop :=
-  ∀ who, (execution.network.inputs.filter fun input => input.sender = who).map
-    (fun input => input.id.2) = List.range (execution.network.nextSerial who)
-
-theorem inputSerialsInOrderInvariant (scheduler : app.Scheduler) :
-    app.ServiceInvariant scheduler (fun execution => execution.InputSerialsInOrder app) where
-  respond execution who action valid := by
-    intro observer
-    have earlier := valid observer
-    rcases action with ⟨transmission⟩
-    cases transmission with
-    | none => simpa only [Execution.respond] using earlier
-    | some submission =>
-        by_cases same : observer = who
-        · subst observer
-          simp only [Message.sender] at earlier
-          simp [Execution.respond, MessageNetwork.submit, List.filter_append, Message.sender,
-            earlier, List.range_succ]
-        · simp only [Message.sender] at earlier
-          simp [Execution.respond, MessageNetwork.submit, List.filter_append, Message.sender,
-            same, Ne.symm same, earlier]
-  environment execution next command valid _ reached := by
-    intro observer
-    rw [app.environmentStep_inputs execution next command reached,
-      app.environmentStep_nextSerial execution next command reached]
-    exact valid observer
-
-theorem inputSerialsInOrder_history (scheduler : app.Scheduler) (initial : PMF app.State)
-    (horizon : Nat) {state : app.ProtocolState}
-    (trace : (app.protocol initial horizon scheduler).Trace state) :
-    serviceInvariant (fun execution => execution.InputSerialsInOrder app) state :=
-  (app.inputSerialsInOrderInvariant scheduler).history initial horizon
-    (fun _ _ _ => rfl) trace
-
-variable {app}
-
-/-- Every input's serial is below its sender's next serial. -/
-theorem Execution.InputSerialsInOrder.serial_lt {execution : app.Execution}
-    (valid : execution.InputSerialsInOrder app) {input : Message Principal app.Payload}
-    (member : input ∈ execution.network.inputs) :
-    input.id.2 < execution.network.nextSerial input.sender := by
-  have mapped : input.id.2 ∈ (execution.network.inputs.filter fun other =>
-      other.sender = input.sender).map (fun other => other.id.2) :=
-    List.mem_map.mpr ⟨input, List.mem_filter.mpr ⟨member, by simp⟩, rfl⟩
-  rw [valid input.sender] at mapped
-  exact List.mem_range.mp mapped
-
-/-- Inputs appended after `before` carry serials at least the sender's next
-serial at `before`. So an input of a later execution with a lower serial was
-already an input of `before`. -/
-theorem Execution.InputSerialsInOrder.mem_of_prefix {before after : app.Execution}
-    (beforeValid : before.InputSerialsInOrder app) (afterValid : after.InputSerialsInOrder app)
-    (prefixOf : before.network.inputs <+: after.network.inputs)
-    {input : Message Principal app.Payload} (member : input ∈ after.network.inputs)
-    (lower : input.id.2 < before.network.nextSerial input.sender) :
-    input ∈ before.network.inputs := by
-  obtain ⟨rest, split⟩ := prefixOf
-  rw [← split] at member
-  rcases List.mem_append.mp member with old | new
-  · exact old
-  · exfalso
-    have whole := afterValid input.sender
-    rw [← split, List.filter_append, List.map_append, beforeValid input.sender] at whole
-    have nodup := whole ▸ List.nodup_range
-    have inRest : input.id.2 ∈ (rest.filter fun other => other.sender = input.sender).map
-        (fun other => other.id.2) :=
-      List.mem_map.mpr ⟨input, List.mem_filter.mpr ⟨new, by simp⟩, rfl⟩
-    exact List.disjoint_of_nodup_append nodup (List.mem_range.mpr lower) inRest
-
-end Interaction.ReactiveApplication
 
 namespace Vegas.EventGraphRuntime
 
@@ -207,29 +128,9 @@ theorem countForbidden_reaches {initial : PMF (runtime.reactiveApplication leaks
     (forbidden : countPermits before.execution.network.inputs message = false) :
     message ∈ after.execution.network.inputs ∧
       countPermits after.execution.network.inputs message = false := by
-  let app := runtime.reactiveApplication leaks
-  have traffic := app.stateTraffic_reaches initial horizon scheduler path
-  have firstInputs := app.stateTraffic_inputs initial horizon scheduler first.trace
-  have lastInputs := app.stateTraffic_inputs initial horizon scheduler last.trace
-  have firstOrder := app.inputSerialsInOrder_history scheduler initial horizon first.trace
-  have lastOrder := app.inputSerialsInOrder_history scheduler initial horizon last.trace
-  rw [firstEq] at firstInputs firstOrder traffic
-  rw [lastEq] at lastInputs lastOrder traffic
-  have prefixOf : before.execution.network.inputs <+: after.execution.network.inputs := by
-    have mapped := traffic.map ReactiveApplication.TrafficRecord.envelope
-    rw [firstInputs, lastInputs] at mapped
-    exact mapped
-  refine ⟨prefixOf.subset present, ?_⟩
-  rw [countPermits_congr after.execution.network.inputs before.execution.network.inputs message]
-  · exact forbidden
-  intro other
-  constructor
-  · rintro ⟨member, owner, lower⟩
-    refine ⟨firstOrder.mem_of_prefix lastOrder prefixOf member ?_, owner, lower⟩
-    rw [owner]
-    exact lower.trans (firstOrder.serial_lt present)
-  · rintro ⟨member, owner, lower⟩
-    exact ⟨prefixOf.subset member, owner, lower⟩
+  have retained := (runtime.reactiveApplication leaks).earlier_inputs_reaches
+    path before after firstEq lastEq message present
+  exact ⟨retained.1, (countPermits_congr _ _ message retained.2).trans forbidden⟩
 
 variable [Fintype Player]
 
