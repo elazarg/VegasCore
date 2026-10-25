@@ -1,261 +1,210 @@
 # Proof review and mathematical mining
 
-The strongest opportunities are concentrated in repeated operational proof
-families and in probability lemmas with unnecessarily global finite-carrier
-assumptions. Several small generalizations are checked in isolated experiments;
-the larger compression estimates still need production pilots. This review
-does not establish a large compression factor or justify weakening any retained
-compiler, Nash or sequential-equilibrium result.
+The strongest findings are new quantitative and hypothesis improvements, plus
+several small proof migrations that need no new machinery. In strict isolated
+checks, the actual timed execution and audited-settlement proof admits the
+error **1 − product(1 − deferral)**; the public-source-splice bridge needed for
+conditional priors also checks against its complete actual forced-agent
+consumer. These are checked candidates, not production changes or new
+sequential-equilibrium capstones.
 
-## Scope and evidence
+The production Lean baseline is `ec4de15c`. GameTheory source and its gitlink
+remain unchanged. Source semantics, runtime contracts, options, SE targets and
+checklist statements are unchanged. The [implementation ledger](proof-review-progress.md)
+records APIs already implemented; the opportunities below remain separate.
 
-The measured source is the tree at `7272a57e`. The inventory covers **2,516
-tracked Lean files and 618,853 physical lines**, including the separately
-managed GameTheory dependency, its tests and its opt-in/experimental trees.
-No production Lean declarations, options, submodule files, language semantics
-or SE checklist statements were changed by this review.
+## Scope and reliability
 
-Three independent reviewers covered mathematics, operational runtimes and
-strategic proofs; the integration review covered source/compiler proofs,
-examples, tests, dependency boundaries and consolidation implications.
+The tracked-source inventory covers **2,549 Lean files and 619,625 physical
+lines**, including the frozen GameTheory dependency and its opt-in trees.
+Three independent domain reviews and a source/compiler integration review
+screened declaration surfaces and selected complete proofs and consumers.
 
-| Area | Files | Physical lines | Lexical proof-body lines | Review detail |
-| --- | ---: | ---: | ---: | --- |
-| GameTheory, including package/aggregate files | 619 | 174,210 | 76,943 | [Mathematics](proof-review/mathematics.md) |
-| GameTheoryExtensions and its tests | 90 | 17,226 | 7,717 | [Mathematics](proof-review/mathematics.md) |
-| Interaction, its tests, EventGraph and Pending | 618 | 86,439 | 41,337 | [Runtime](proof-review/runtime.md) |
-| Vegas.Game | 819 | 271,630 | 159,792 | [Strategic proofs](proof-review/games.md) |
-| Foundation, Expr, Source and Compile | 272 | 45,220 | 19,045 | [Source/compiler](proof-review/source-and-compiler.md) |
-| Examples, VegasTests, Paper and Vegas aggregates | 98 | 24,128 | 8,725 | [Source/compiler](proof-review/source-and-compiler.md) |
-| **Total** | **2,516** | **618,853** | **313,559** | |
+| Area | Files | Physical lines | Detail |
+| --- | ---: | ---: | --- |
+| GameTheory | 619 | 174,210 | Read-only inventory and selected owning APIs; no fresh whole-foundation body audit |
+| GameTheoryExtensions and tests | 102 | 18,134 | [Mathematics](proof-review/mathematics.md) |
+| Interaction, tests, EventGraph and Pending | 627 | 86,050 | [Runtime](proof-review/runtime.md) |
+| Vegas.Game | 824 | 270,845 | [Strategic proofs](proof-review/games.md) |
+| Foundation, Expr, Source and Compile | 274 | 45,304 | [Source/compiler](proof-review/source-and-compiler.md) |
+| Examples, VegasTests, Paper and Vegas aggregators | 103 | 25,082 | Source/compiler integration screen |
+| Total | 2,549 | 619,625 | |
 
-Coverage has two levels. Every tracked module and declaration surface was
-inventoried and screened by family; selected difficult proofs and consumers
-were read in depth. The detailed reports name the families and deep-read scope.
-This is **not** a claim that every tactic in 313,559 body lines was manually
-reviewed. The runtime ledger alone identifies 59 selected deep-read modules.
-Counts in the detailed reports that exclude root aggregators have slightly
-different denominators; the table above uses the common tracked-source tool.
+The table uses the common inventory's root-aggregator convention. Domain
+reports explicitly identify any directory-only counts. Inventory is broad;
+manual body review is selective. **This is not a line-by-line audit of all
+619,625 lines.** No counterexample to a current theorem was established in the
+selected reviewed families. The own-cleanliness probe does refute removing its
+recall hypothesis.
 
-The inventory detects 16,824 proof-bearing bodies and 4,694 distinct cross-file
-matches of eight consecutive nonblank proof lines. Comments and whitespace are
-normalized; identifier renaming is not. Matches overlap and include routine
-tactic scaffolding. They are search leads, not removable-line counts. The
-lexical parser includes tactic-valued definitions and is not Lean's AST.
+The scan exposed a tooling defect: result-type `let ... := ...` bindings were
+counted as the start of the proof. A prominent eight-file Recovery match was
+mostly repeated theorem statements. The scanner is corrected and regression
+tested. Its 3,705 cross-file eight-line candidate windows remain search leads:
+equation-style proofs do not have complete body coverage, windows overlap, and
+renamed variants can be missed. Old and corrected body counts are not a valid
+compression comparison. All savings below use physical lines of complete
+proofs/modules and their actual adapters.
 
-Within this measurement, Vegas.Game and Vegas.Pending account for about 81%
-of the lexical proof-body footprint outside GameTheory. That makes their
-operational classification and state-transition interfaces more promising
-compression targets than shortening isolated arithmetic proofs everywhere.
+## Highest-value mathematical results
 
-## Highest-priority compression work
+### Timing bounds retain more information than a union bound
 
-The figures below are **estimated net physical source lines**, subtracting the
-new common proof, all adapter hypotheses and caller changes. They overlap and
-must not be summed. A checked scratch statement does not validate a savings
-estimate for a production migration.
+[ServiceTimingCoupling](../Vegas/Game/ServiceTimingCoupling.lean#L184) currently
+converts an exact timing-slot mixture into a TV error and then adds those
+errors. Its actual slot-zero branch proves the stronger atom inequality
 
-| Priority | Concrete change | Estimated net saving | Evidence and required next check |
-| --- | --- | ---: | --- |
-| 1 | Give accepted-event ownership one owner | About 48 | Two modules declare the same fully qualified theorem; deleting one proof and importing the other checks with its downstream proof unchanged |
-| 2 | Classify owned-event completion once, retaining packet, receipt, decoded content and expiry facts | 250–450 | Five classifiers contain 743 measured body lines; first prove that the accepted branch supplies all current consumers' facts |
-| 3 | Reuse automatic-drain traces for frame/invariant results | 150–280 | Existing drain trace lifts arbitrary predicates; extraction must retain the phase eligibility condition |
-| 4 | Make ordinary exclusion evidence the zero-frontier suffix instance | 120–300 | Exact record equivalence checks; lower the common owner to avoid an import cycle |
-| 5 | Share serial-prefix count verdict persistence and collection | 150–300 | Serial-prefix input stability checks; instantiate ordinary/recovery/phase observers without changing coverage quantifiers |
-| 6 | Share discrete pushforward measurability/integration | 50–100 | Two primitives check on arbitrary target carriers; project-specific value equalities remain concrete obligations |
-| 7 | Publish guarded absolute-expectation contraction | 70–120 | Both absolute and difference inequalities check with explicit integrability; do not use a total real expectation to hide undefined expectations |
-| 8 | Make passage-based restriction completion the general owner | 130–230 | Existing subsumption application supports reuse; preserve rationality, beliefs and a common tremble sequence |
-| 9 | Factor action translation in source repair/replay | 60–130 | Two large inductions share 94 overlapping windows; pilot the reveal legality/readback facts before the configuration relation |
-| 10 | Reuse an initialized decoded-invariant induction | 35–55 | Three initial-invariant proofs contain 79 body lines; validate one generic induction and all three adapters |
-
-Other worthwhile seams include the observation codec, reactive environment-step
-eliminators, typed handler success/inversion facts, source residual embeddings,
-mapped round congruence, continuation-gain algebra, strategic bridge coordinate
-transport and discounted Bellman algebra. The detailed reports contain **55
-ranked findings** and a further cleanup queue, with exact owners, premises,
-proof routes, confidence and costs. No claim is made that these estimates imply
-the consolidation size target.
-
-The largest individual inventoried bodies are in qualified binding readback,
-source alignment, replay coverage, fresh-terminal coupling and conditional gain
-proofs. For example, the binding-row readback has 1,906 lexical body lines and
-source replay alignment 1,747. Their size is a signal to improve dependent
-provenance interfaces, not permission to replace factual callback/replay/receipt
-identities by an assumed alignment record. Extract one constructor branch and
-measure the whole result before planning a wholesale rewrite.
-
-## Checked mathematical experiments
-
-Seven isolated probe files, containing thirteen declarations, compiled with
-the exact options copied from the central Lake setup. They use existing built
-imports and no admissions or local option changes. They remain local review
-experiments, not merged production APIs or new capstone guarantees.
-
-| Experiment | Checked content | Consequence |
-| --- | --- | --- |
-| Proportional Bayes transport | Derive finite scale from proportional mass, a raw information antichain and positive source mass; prove the complete local scheduler Bayes projection without finite expanded histories | The local finite-history premise is unnecessary; global SE still has separate finiteness obligations |
-| Expectation contraction | Absolute expectation is bounded by expected absolute value; the difference form follows with explicit integrability | Common probability API can replace bespoke decorrelation bounds |
-| Discrete pushforward | A PMF-valued measurable pushforward gives AE measurability and the nonnegative integral identity | The target carrier need not be globally countable or finite; its PMF support is countable |
-| Support order | Cross-support payoff order with additive slack survives two independent averages; recover the old zero-slack statement | A small genuine generic extraction, with only modest net compression |
-| Event ownership reuse | Remove the duplicate owner theorem and use the existing owner in the unchanged opponent-completion proof | A concrete proof-deletion patch is validated in isolation |
-| Runtime kernels | Ordinary exclusion record is suffix record at zero frontier; arbitrary invariants lift over the existing drain trace; earlier same-author inputs survive serial extension | Three small shared runtime kernels are valid without changing contracts |
-| Parameterized source-protocol payoff | Preserve the full utility-vector law for an immutable initial parameter jointly with the public result | The missing parameterized source-protocol Nash adapter is close; its Nash statement was not proved in this review |
-
-These experiments validate statements and local reuse. They do not prove that
-all proposed consumers can be migrated at the estimated size, nor that every
-new API should be retained after its first real application.
-
-## Stronger and nearby unproved results
-
-1. **Sharper continuation domination.** Charge probability loss only at active
-   decisions. In single-mover protocols, replace a player-count-times-horizon
-   exponent by the number of actual choices; unilateral changes can potentially
-   count only the focal player's decisions. The product lower-bound API already
-   accepts per-coordinate factors. The active/inactive marginal identities and
-   adaptive continuation induction still need proof. This can improve bounds,
-   not merely shorten scripts.
-2. **Countable, uniformly tight consistency completion.** Replace global finite
-   sites and fibers by countability plus uniform tightness, using the existing
-   assessment compactness API. Strategy and belief sequences need their own
-   tightness conditions. This is a local consistency theorem, not an
-   infinite-game SE existence theorem.
-3. **Integrable pooled outcomes.** Keep finitely many ranking components but
-   replace finite outcome carriers by explicit integrability at the actual
-   mixtures and conditionals. Supported conditional guards can often be derived
-   from whole-law integrability. Do not drop the guard altogether.
-4. **Finite-support purification over infinite alphabets.** Replace finite
-   payload types by finite supported action laws along the explored frontier.
-   Keep the single pure-policy mixture chosen before the initial draw. Arbitrary
-   infinite behavioral products need not be representable by a discrete PMF.
-5. **Player-memory joint realization.** Match the scheduler's joint execution /
-   posterior-memory theorem for player implementations, conditioning on actual
-   player recall. Preserve the private-memory/application-state distinction.
-6. **Dependency-height completion bounds.** Instantiate the existing completion
-   progress service using dependency height instead of the number of events.
-   Keep physical service, expiry and retry accounting; a smaller graph rank
-   alone does not bound an arbitrary builder's elapsed time.
-7. **Conditioning and multiplicity-sensitive bounds.** Expose conditioning error
-   in terms of excluded mass and counterpart bounds in terms of actual fiber
-   multiplicity. Positive conditioning mass remains essential.
-8. **Event-sensitive Nash error.** Derive a weighted sum of event deferral
-   probabilities and event/player payoff oscillations instead of one global
-   range. The local payoff replacement bound and expectation guards must be
-   proved before composing the two deviation directions.
-9. **Exact sound-detection boundary.** Prove the maximal detector and precise
-   finite-deterrence criterion described by the enforcement documentation, or
-   correct that prose to the current declarations. Uniform finite deposits over
-   infinitely many deviations need a uniform gain/detection bound.
-10. **Executable-payment auction.** Add a bounded-bid program with return
-    expressions computing actual transfers, retaining the existing withholding
-    counterexample. The old theorem quantifies over real forfeitures; an
-    integer-transfer implementation must be an additional application, not a
-    weaker replacement.
-
-## Engineering and claim-quality findings
-
-- **One theorem has two owners.** The event-handler ownership result is defined
-  independently in two modules under the same full name. The checked build is
-  not evidence that this is a good ownership boundary. The deletion probe
-  supplies a direct repair without an alias or compatibility layer.
-- **Descriptions exceed declared results in a few modules.** Enforcement prose
-  describes exact detector/finite-deterrence conclusions absent from its current
-  declarations; factored-likelihood prose describes a type-exclusion result not
-  established in that module. These are theorem-inventory issues, not claims of
-  an unsound kernel proof.
-- **Certificates are not their constructors.** The restricted-extension
-  approximation structure is used as a premise, with no constructor found in
-  its owner; the factored-history certificate has no declaration consumer found
-  by source search. A definition listing the hard obligations is not evidence
-  that they have been discharged. Conversely, the near-product weights API has
-  real derived bounds and a concrete model constructor and is useful reuse.
-- **Module reachability is coarse.** A zero-unreached-module report can coexist
-  with unused declarations, redundant private helpers and uninstantiated records.
-  Do not automatically delete a mathematically useful public lemma because no
-  current caller was found; give its purpose and proof a separate review.
-- **Prefer general results before specializations.** Several finite/bounded
-  wrappers reprove an argument already present in a more general theorem later
-  in the same module. Reorder and instantiate, updating callers rather than
-  retaining redundant names.
-- **Keep separate operational quantifiers.** All-command invariants, fixed-
-  scheduler supported-command invariants, legal-menu invariants and fixed-policy
-  support invariants are different contracts. Reuse their constructors and
-  lifting proofs without silently replacing one by another.
-
-No new logical bug was found in the inspected bodies. This is a scoped review
-finding, not a complete mathematical correctness certification of the codebase.
-
-## Consolidation constraints preserved
-
-The [consolidation ledger](consolidation.md) still governs semantics and result
-ports. In particular:
-
-- Requests in a retrying phase have attempt/event identity and a fresh physical
-  readiness episode. A bare event identifier does not capture the same service
-  obligation. A shared contract needs a proved adapter, not matching field names.
-- Bounded activation/inclusion gaps do not imply all-view late-packet blindness.
-  Reserved correlated tapes are not arbitrary adaptive timely builders.
-- Rollback must retain observed traffic, serials, player/environment recall,
-  receipts and canceled attempts. Clear/empty-archive repair frames cannot
-  replace the fuller counted-history frames merely because they are shorter.
-- A source image, true callback query, retained binding, historical window and
-  replay origin are factual obligations. Do not hide them in the assumed
-  conclusion of a proposed generic certificate.
-- Fixed exit cash does not make exit utility constant without a valuation
-  condition. Recovery cash inversion needs valuation recoverable from the
-  retained readout; a clean audit alone does not establish that condition.
-- None of the review results closes an SE checklist box, proves a common
-  contract, establishes concurrent SE for arbitrary timely builders, or turns
-  conditional withholding into dominant truthfulness.
-
-## Recommended implementation sequence
-
-1. Integrate the checked ownership deletion and expectation primitives, with
-   one real caller each. Remove duplicates rather than add aliases. Measure net
-   source size and owning builds after all adapters.
-2. Remove the proved unnecessary local Bayes finiteness premise and specialize
-   existing compactness/consistency machinery before inventing new machinery.
-3. Pilot the rich completion classifier, decoded-invariant lifting, drain-trace
-   reuse and count-audit serial kernel. These are the best larger reductions
-   under fixed semantics. Keep their semantic regression tests.
-4. Generalize the source-protocol observation reader once to cover correlated
-   private parameters, then pursue finite-support purification and active-choice
-   quantitative bounds as explicitly stronger theorems.
-5. Tackle one dependent provenance constructor only after the earlier APIs have
-   checked consumers. Revisit contract unification with those facts available;
-   do not begin with a mass namespace move or an opaque new certificate hierarchy.
-
-## Reproduction and validation
-
-Run the inventory from the repository root:
-
-```powershell
-python scripts/proof-inventory.py --output ephemeral/proof-review
-python lean-defs.py Vegas/Game Paper.lean -o ephemeral/proof-review/games-surface.txt
-python lean-defs.py Vegas/Source Vegas/Compile -o ephemeral/proof-review/source-surfaces.txt
-python scripts/check-proof-review-probes.py
-python -m unittest discover -s scripts -p 'test_*.py'
+```
+(1 - deferral(event)) * P(fix event at zero, x) <= P(timing, x).
 ```
 
-The [checked-probe appendix](proof-review/checked-probes.md) contains the full
-Lean source of all experiments. Its runner checks temporary modules using the
-central Lake setup; `--list` and `--probe NAME` support focused replay.
+Composing these lower bounds between full run laws retains the product of
+the factors. The checked error is therefore
 
-The inventory writes module/declaration CSV files, exact-window locations and
-JSON summary data locally. Physical sizes are reproducible; estimated savings
-are not measurements. The test suite checks inventory behavior around blank
-lines, comments, proof/definition separation and cross-file matching.
+```
+delta = 1 - product(event, 1 - deferral(event))
+```
 
-Validation includes the ordinary full VegasCore build and an explicit complete
-GameTheory library build, plus the seven isolated probes and repository checks.
-The GameTheory library build includes its opt-in/experimental submodules; the
-ordinary VegasCore default build alone should not be described as validating
-every optional dependency module. Detailed outcomes are recorded with the
-review artifacts; no production API migration is implied by a scratch proof.
+instead of the sum of deferrals. Two deferrals of 0.2 give 0.36 instead of 0.4.
+**No additional statistical-independence assumption is introduced.** The
+product comes from composing actual law minorization, not multiplying
+independent-event probabilities.
 
-| Check | Outcome |
-| --- | --- |
-| Ordinary full VegasCore build | Pass, 5,733 jobs, including Paper axiom guards |
-| Complete GameTheory library build | Pass, 4,284 jobs, including opt-in/experimental modules |
-| Replayable central-option proof experiments | All seven files / thirteen declarations pass |
-| Python regression suite, including inventory tests | All 94 tests pass |
-| Module boundaries, source/option policy, documentation references and whitespace | Pass |
+The checked probe contains the complete actual one-event proof, all-event
+induction, TV result and the actual
+[typed-state/audited-payoff settlement consumer](../Vegas/Game/SourceServiceTurnSettlement.lean#L154),
+with its existing first-turn law, timely contract, authentic audit and deposit
+parameters. It is not inferred from a final unlabelled TV inequality.
+
+The named honest/deviation wrappers and the
+[per-player Nash bridges](../Vegas/Game/AsyncServiceNash.lean#L313) still need
+production ports. Their expected error becomes `epsilon + 2*delta*range who`;
+those complete Nash/capstone ports are **not checked here**. Event-specific
+payoff sensitivity remains a different problem requiring continuation-value
+guards. This is a quantitative strengthening, not a compression claim.
+
+### Conditional priors have an actual source-splice adapter
+
+The [existing conditional base laws](../Vegas/Game/OnePacketOwnerKeyed.lean#L53)
+need the compared source draws to share an observed public signal. The missing
+source bridge is now checked: InitialCellsAt and actual PublicCellsAgree imply
+equality of every source public initial cell and every compiled public input.
+The existing signal-observability premise therefore supplies the required
+signal equality. The full actual
+[forced-agent consumer](../Vegas/Game/OnePacketSpliceForced.lean#L189) checks
+with conditional independence, retaining its well-formedness, covered fields,
+same view, source/decode, changed-success and arbitrary-prefix guards.
+
+A separate checked adapter proves that observability on public inputs itself
+implies preservation of the signal by hidden-cell splicing. It need not be a
+second independent hypothesis at the base-law boundary.
+
+This closes a factual proof gap. It does **not** prove conditional-prior
+recovery SE. Signal/hypothesis and constructor propagation remains across the
+audited recovery pipeline, including the late-record comparison. The current
+32 mentions in 25 Game files include documentation and an unused stronger
+unconditional closure, so they are not 25 identical substitutions. No SE box
+closes from the probe alone.
+
+### Normalize the finite-weight comparison sharply
+
+Two checked kernels improve the finite-weight calculus:
+
+```
+|sum p*f - sum q*f| <= (sum |p-q|)/2   when totals agree and 0 <= f <= 1
+contamination L1 <= 2*rho/(1+rho)      when added mass <= rho*base mass
+```
+
+The first uses a payoff centered at one half; the second uses the actual final
+total rather than discarding its added mass. Both retain the existing positive
+normalizers and finite-sum scope. They support replacing the current two-site
+SwapTransport bound `4*rho + 4*eps/(1-eps)` by
+`2*rho/(1+rho) + 2*eps/(1-eps)` under the same hypotheses. **The assembled
+two-site consumer migration is proposed; only its kernels are checked.**
+
+## Sixteen concrete findings and their acceptance boundaries
+
+An exact checked candidate is stronger evidence than a size estimate, but it
+is still not a merged production refactor. Estimates include the proposed
+common API and actual adapters. They overlap in places and must not be summed.
+
+| Finding | Checked evidence | Remaining work / size |
+| --- | --- | --- |
+| Product-retention timing error | Complete actual producer, product induction, TV law and audited-settlement consumer | Port wrappers/Nash/public statements together; feature growth |
+| Conditional public-source splicing | Factual public-input bridge, signal preservation and complete actual forced-agent consumer | Propagate through recovery and verify the full SE extension; growth unmeasured |
+| Sharper normalized comparisons | Equal-total half-L1 and saturating contamination kernels | Assemble SwapTransport/ProductTransport clients; feature growth |
+| Information-local own cleanliness | InputRecall locality, all actual site histories, and a counterexample without recall | Replace whole-fiber cleanliness in concrete count-support and phase example |
+| Terminal-only audit payoff bounds | Actual audit absolute bound and full continuation-integrability adapter | Port bad/safe/context proof; retain exhausted and unfinished terminals |
+| Six compiler tail-order consumers | Both complete actual modules with all six substitutions | 42 fewer physical lines; no new API |
+| Lower source raw-result ownership | Existing helper checked at lower imports, four complete actual consumers | 28 fewer proof lines in the four ports; move helper and check further callers |
+| Exact recorded-entry prefix reuse | Complete actual producer with unchanged header and callers | 20 fewer physical lines |
+| Existing convergence APIs | Three convergence routes and the generic profile-update adapter | Estimated 25–35 fewer lines for convergence; no new machinery |
+| Remaining handler projections | Three exact structural statements from current iff certificates | Estimated 45–53 fewer lines using in-owner support helpers; production pilot needed |
+| Zero-mass posterior naturality | Generic result and complete actual accumulated-mass producer | Four real callers; small feature growth, not a large compression |
+| Exact empty-processing law as owner | Complete existing law/segment/caller route inspected | Estimated 35–50 fewer lines after owner movement and module deletion; unpiloted |
+| Three audit-continuation transports | Real primitive transport and three actual higher callers identified | Estimated 100–150 fewer lines including generic API/adapters; medium confidence, unpiloted |
+| Four commitment interval descriptors | Four actual static blocks and existing indexed descriptor owner inspected | Estimated 20–30 fewer lines after helper and all four ports; unpiloted |
+| Profile/expectation cleanup bundle | Existing owning APIs and generic update reuse checked | Estimated 15–30 fewer lines including adapters; complete migration unpiloted |
+| Chance-aware graph confluence | Existing kernel commutation and stricter certificate gap inspected | Unproved feature; retain strategic policy stability and actual progress; semantic outcome only |
+
+The three exact compression candidates concern disjoint owners and remove 90
+lines in their checked proof substitutions. This is not a forecast for the
+whole repository. Mathematical strengthening adds code; no large compression
+factor or consolidation size target is established.
+
+## Mathematical and semantic limits
+
+Own cleanliness is local only after proving InputRecall at every actual
+history. One arbitrary clean anchor is insufficient without that adapter.
+Terminal payoff bounds must include native horizon exhaustion and unfinished
+source/graph outcomes, including audit charges. Bounds on completed source
+outcomes alone do not suffice.
+
+Posterior naturality at zero mass holds because the current fallback is the
+original law and mapping that fallback commutes with the readout. It does not
+give a Bayes interpretation to a zero-mass fiber or apply to arbitrary unrelated
+fallback choices.
+
+The chance-confluence proposal concerns the existing store/semantic-outcome
+observation. It does not preserve the full order-sensitive execution history,
+physical receipts or clock. A public coin can change an unrelated strategic
+policy; dependency independence alone does not supply policy stability.
+
+The current large repair-induction match, broad contract merger, new symmetry
+hierarchy and generic rank framework do not have a fresh complete saving pilot.
+They are not included in the estimates. Source semantics and the result-family
+consolidation still have their own owner decisions and adapter obligations.
+
+## Reproduction and suggested order
+
+Run the normal project build before the isolated experiments:
+
+```powershell
+lake build
+python -m unittest discover -s scripts -p 'test_*.py'
+python scripts/proof-inventory.py --output ephemeral/proof-review-current
+python scripts/check-proof-review-probes.py
+python scripts/experiments/compiler_tail_order_probe.py
+```
+
+The [probe appendix](proof-review/checked-probes.md) contains nineteen temporary
+modules: seven retained regression experiments and twelve candidate modules.
+All 32 public theorems in the candidate modules have exact standard-axiom
+guards. The compiler-tail runner checks two additional complete modules without
+editing source. Declaration surfaces and complete generated inventories remain
+under the ignored review artifact directory.
+
+Verification passes: the ordinary build (5,767 jobs), all nineteen appendix
+modules with their candidate axiom guards, both complete compiler-tail modules,
+98 Python tests, module boundaries, source policy and documentation references.
+The ordinary build still emits the already recorded optional premise-suggestion
+metadata recursion diagnostic; kernel checking and the build succeed.
+
+Implementation can start with exact API reuse and lower helper ownership,
+then the normalized-weight and zero-safe posterior interfaces. The checked
+source-splice and timing producers justify larger strengthening pilots; their
+full downstream statements must be checked before claiming capstone results.
+Combine the two count-support guard improvements only after completing the
+actual all-history, bad-policy and safe-policy proof. Keep the larger audit and
+confluence proposals only if complete consumer pilots confirm their cost and
+scope.

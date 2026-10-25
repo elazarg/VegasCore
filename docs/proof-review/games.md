@@ -1,554 +1,154 @@
-# Vegas.Game proof review and mining
+# Current Vegas.Game proof review and mining
 
-Baseline: `7272a57e`. Read-only audit; no production file, theorem statement,
-option, runtime semantics, SE target or checklist was changed. This report
-deliberately looks beyond the recently completed payment adapters.
+The production Lean baseline is `ec4de15c`. This report identifies remaining
+opportunities and separates checked probes from production migrations. No
+production Lean, GameTheory source, gitlink, SE target, checklist or semantics
+is changed. Experiments are reproducible from the [probe appendix](checked-probes.md).
 
-## Coverage and method
-
-All **819 Vegas.Game modules, 271,630 physical lines**, were included in the
-module/import, declaration-surface and duplicate-window inventories. Root's
-lexical inventory counts **3,999 proof-bearing bodies / 159,792 body lines**;
-these are useful engineering measurements, not Lean AST measurements. My
-independent declaration scanner found 5,045 top-level declaration-like heads,
-including definitions, structures and instances. The different counts have
-different denominators.
-
-Artifacts:
-
-- `ephemeral/proof-review/modules.csv`, `ephemeral/proof-review/declarations.csv`, `ephemeral/proof-review/duplicates.json`, `ephemeral/proof-review/inventory.json`: root's
-  tracked-source inventory and exact eight-line proof-window matches.
-- `games-surface.txt`: `lean-defs.py Vegas/Game Paper.lean`, the entire owning
-  declaration surface; `source-correspondence-surface.txt`,
-  `native-information-surface.txt`, `likelihood-surface.txt`: focused surfaces.
-- `games-file-lines.csv`, `games-declarations.json`,
-  `games-duplicate-windows.txt`: independent line/head inventory and exact
-  twelve-line windows. Windows can include section scaffolding and are leads,
-  not proof that an abstraction saves lines.
-
-The following classification partitions the 819 modules by filename family;
-it is mechanical, not a claim that all bodies were deeply read. QualifiedBinding
-is its directory; the remaining labels are the first capitalized filename word.
-
-| Family | Modules | Physical lines | Semantic review performed |
-| --- | ---: | ---: | --- |
-| OnePacket | 226 | 60,049 | Deep review of completion provenance, residual decoding/masses, initial invariants, owner prior/swap, certificate and late decomposition seams; surface inventory of all others |
-| QualifiedBinding | 12 | 54,500 | All twelve declaration surfaces; selected long proofs in Likelihood, ReplayCoverage, SourceCorrespondence, SourceAlignment, BindingReadback, ForeignPosterior, OrdinaryContinuation and StoppedPayoff |
-| Phase | 135 | 50,247 | Deep review of current/publication/clean binding gains, native source information, domination, future flags, common perturbations and consistent sequence; all surfaces inventoried |
-| Recovery | 140 | 27,893 | Capstone/limit/local-comparison chain, keyed comparisons, prior transport, checkpoints, initialized laws and foreign failure bound reviewed; other surfaces inventoried |
-| Proposal | 69 | 15,434 | Public class constancy/factorization, closed fibers, equilibrium construction and pooled completion seams reviewed |
-| Service | 28 | 15,312 | Honest execution, block/reveal congruence, roster evidence and asynchronous service interfaces reviewed |
-| Source | 59 | 13,404 | Residual decoding/head law, decoded invariants, canonical decision and decided completion, source protocol Nash, timed-local comparison reviewed |
-| Reserved | 32 | 12,283 | Publication comparison, focal/original/stopped words, checkpoint reset and reserved implementation assumptions reviewed |
-| Async | 12 | 7,145 | Declaration surfaces plus deviation/withhold laws, foreign congruence, Nash and deviation error composition reviewed |
-| Commit | 35 | 4,670 | Recovery payoffs/restriction/reference and omission/word density interfaces inventoried; selected constant-payoff consumers checked |
-| Compiled | 31 | 3,737 | Commitment/reveal phase and prefix readback declaration surfaces inventoried; inspected via their long semantic consumers |
-| Intended | 10 | 2,011 | Intended preservation, exclusion, Nash/opening and initialization scopes reviewed |
-| Concurrent | 3 | 1,282 | Original preservation contract and capstone fully reviewed at public boundary, selected local proof sections reviewed |
-| Reveal | 9 | 1,155 | Base utility/readout/audit interfaces reviewed |
-| Program | 4 | 630 | Recent payment work excluded from the main recommendations |
-| Other small families | 14 | 1,878 | All surfaces inventoried; EventCompilation/EventScheduling and exclusion extension examined |
-
-`Paper.lean`'s 23 theorem bodies and public headers were inventoried. I inspected
-the public SE, public scheduling, source/ideal Nash, arbitrary-timely runtime
-Nash and late-leak obstruction scopes. I found **no new proof-scope mismatch**.
-This is not a line-by-line correctness audit of 271,630 lines. The coverage
-ledger makes that limit explicit rather than presenting inventory as deep review.
-
-Reusable owning APIs checked include `ReactiveMenuInvariant`,
-`ReactiveServiceInvariant`, `ReactiveLumping`, `ReactiveSchedulerImplementation`,
-`ReactiveSchedulerSeedTrace`, `ReactiveSchedulerTerminalMixture`,
-`LocalSimulationLimit`, `SourceGainTransport`, `SuccessRanking`,
-`AffineKeyedPools`, `RestrictedDisintegration`, `StoppedKernelComparison`,
-`ExpectationBind`, `WithinTV` and `SupportedChoices`.
-
-## How to read the estimates
-
-“Net saving” means an estimated decrease in **all production lines**, including
-the new reusable proof, all concrete adapter obligations and caller changes.
-It is not the size of the old proof alone. Positive numbers below mean fewer
-lines. These estimates are engineering hypotheses until a checked patch exists;
-they must not be summed because several opportunities overlap. “Feature growth”
-is explicitly not a compression claim. A large old body does not make its
-semantics or provenance obligations redundant.
 
 ## Ranked findings
 
-### 1. Prove owned-completion provenance once, with all the facts consumers need
-
-**High priority; high duplication confidence; medium extraction risk.**
-
-The same environment-command analysis is independently performed by:
-
-- `Vegas.actor_completion_cause` (`:213`, 152 body lines);
-- `Vegas.completion_content` (`:162`, 177);
-- `Vegas.completion_cases` (`:30`, 191);
-- `Vegas.completion_pending_or_due` (`:20`, 91);
-- `Vegas.environment_completion_cause` (`:188`, 132).
-
-That is **743 measured proof-body lines**, with exact repeated handling of
-activate/wait, absent or rejected inclusion, automatic sample completion,
-expiry timing, and uniqueness of the completed event/action. The differences
-are useful projections: pending origin, accepted ledger receipt, actor,
-decoded call content, candidate ownership, accepted-table update and expiry
-failure. They should be retained in one rich outcome, not discarded to obtain
-a common weak statement.
-
-Proposed API: a factual completion classification for an actual environment
-step reaching a specified graph step. Its accepted-packet branch records the
-original pending message, receipt, event and sender, decoded content and table
-facts; its expiry branch records due time, unchanged table and exact failing
-action. The ownerless sample branch must remain available for the currently
-unconditional `environment_completion_cause` use. Derive the existing consumer
-facts as projections and update callers, rather than retaining compatibility
-wrappers.
-
-The present import order matters: `CompletionContent` imports `ActorRecord`
-but introduces `callContent`, so the shared payload reader/classifier needs a
-lower file or a split. This is a real adapter cost.
-
-**Estimated net saving: 250–450 production lines**, after a roughly 200–300
-line enriched classifier, lower-reader movement and small concrete projections.
-This is the strongest sizable candidate; a probe should first check that
-receipt and table facts coexist in the accepted branch.
-
-### 2. Add the missing initialized decoded-invariant induction
-
-**High priority; high confidence; low risk.**
-
-`decodedHolds_transition` in `SourceServiceDecodedDebt.lean:111` already proves
-the difficult preservation step for every `StepClosed` source predicate. Yet
-the following proofs repeat the same native trace induction and setup-draw
-decoding:
-
-- `OnePacketHonestForced.decodedState_intended_or_owes:49` (27 body lines);
-- `OnePacketDisclosureResolves.decodedState_intendedFor_or_owes:216` (26);
-- `OnePacketPublishedBindings.decodedState_publishesOrFails:223` (26).
-
-Proposed theorem: if a predicate is `StepClosed` and holds at the entry of every
-supported initial source configuration, every initialized menu history with
-an actual control satisfies `DecodedState` for it. Use `SourceResidual.initial`
-once for initialization and `decodedHolds_transition` once for induction.
-The predicate's initialization proof remains a caller obligation: well-formed
-guards, intended-for-owner and publishes-or-fails are not interchangeable.
-
-This is a more precise first step than a new generic invariant hierarchy.
-*ReactiveMenuInvariant.ServiceInvariant.history* already handles the analogous
-execution-level lifting; do not duplicate that framework.
-
-**Estimated net saving: 35–55 lines for these three callers**, potentially more
-only after finding additional complete consumers. Proposed probe below.
-
-### 3. Expose one residual-head operational correspondence, then derive masses
-
-**Medium-high priority; medium confidence; medium dependent-type risk.**
-
-`SourceResidual.step` (`SourceServiceReachedDecoding.lean:128`, 241 body lines),
-`SourceResidual.chanceMass` (`OnePacketChanceMass.lean:33`, 162),
-`SourceResidual.actorStepMass` (`OnePacketActorCompletion.lean:35`, 59), and
-`SourceResidual.head_law` (`SourceServiceFirstTurnMixture.lean:99`) repeatedly
-recover the head event from rank, identify its layout/code, build tail refs and
-prove the same decode square. The behavioral head law does **not** itself
-replace fixed-action/chance atom correspondence; those are different claims.
-
-Proposed interface: a dependent view of the residual's current head, carrying
-rank/layout/code/action decoder, supported successor decoding and injectivity
-of that decoder on the fixed graph-step support. Derive fixed-action law/atom
-correspondence, then behavioral bind correspondence, with the source policy
-obligations separate. Also expose the source fact that an active owned
-instruction's fixed-joint step is pure; `actorStepMass` currently opens the
-entire source syntax to prove this.
-
-**Estimated net saving: 70–150 lines** across these actual consumers, including
-the dependent view and probability adapters. This estimate is deliberately
-smaller than the 462 measured lines in the first three bodies.
-
-### 4. Factor phase-boundary advancement out of honest/deviation/withhold induction
-
-**High payoff, medium confidence, medium-high refactoring risk.**
-
-`ServiceHonestLaw.HonestLaw.sample_step:401` and `.commits_step:532` contain
-boundary advancement and PhasePoint support arguments copied into
-`AsyncDeviationLaw.asyncDeviation_deviationLaw:600` and
-`AsyncWithholdLaw.asyncDeviation_withholdLaw:572`. Exact repeated windows
-include `completionRun_boundary_step`, `blockRun_boundary`, prefix embedding
-and tail refs, and the decoded source-tail bind.
-
-First extract small factual successors: a sample PhasePoint preserves horizon
-and yields the next `CompletionBoundary`; a commit block gives the corresponding
-end-boundary and typed tail readout. Then use those facts from the three
-induction theorems. Do **not** start with a large abstract simulation whose
-premise is the desired continuation law: the focal deviation law, withholding
-branch and honest source law must still be proved.
-
-**Estimated net saving: 90–180 lines**, including new lemmas/adapters. A wholesale
-single simulation proof may save more, but is currently unestimated; it risks
-moving almost all of the old proof into relation fields.
-
-### 5. Make mapped reactive-round congruence an Interaction API
-
-**Medium-high priority; medium confidence.**
-
-`foreignRound_readout_congr` (`AsyncDeviationForeign.lean:75`, 207 body lines),
-`blockRound_readout_congr` (`ServiceBlockCongruence.lean:614`, 150), and
-`revealRound_readout_congr` (`ServiceRevealCongruence.lean:450`, 179) each unroll
-round, dispatch, sampled activation, invocation, inclusion and application
-commands. Exact common code begins with equality of environment recall/view,
-then *PMF.map_bind*, then the command case split.
-
-`Interaction.ReactiveApplication.ResponseMenu.run_map_withinTV` lifts one-step mapped comparisons
-to whole runs. The missing reusable layer is the **round constructor theorem**:
-equal scheduler inputs plus mapped activation/invocation and environment-step
-laws imply equal mapped round laws. Model adapters would still prove traffic,
-mark, submitted-event and receipt behavior. This is an observational congruence
-theorem, not a new runtime or the assertion that every hidden difference is
-unobservable.
-
-**Estimated net saving: 90–180 lines**, after a 50–80 line round theorem and
-retaining all model-specific response/inclusion obligations. Overlaps with
-finding 4 if a larger simulation extraction is chosen.
-
-### 6. Lift the hidden-seed path-likelihood identity out of reserved-tape replay
-
-**High mathematical reuse; medium confidence; modest immediate shrinkage.**
-
-`QualifiedBinding/Likelihood.lean` privately proves
-`sourceReplay_scheduler_density:66`, `sourceReplay_tape_step_density:111`,
-`sourceReplay_transition_tape_factor:184`, and then
-`sourceReplay_native_tape_factor:209`. The first three have 94 measured proof
-lines. Their mathematical content is generic: multiplying a behavioral path
-atom by the posterior mass of one original hidden seed equals its prior mass
-times the fixed-seed path atom. The current proof specializes it to
-`ReservedEpoch.Tape`, even though `SchedulerImplementation.command_disintegrate`,
-*posterior_snoc* and `scheduler_eq` already expose the Bayesian mechanism.
-
-Proposed API in Interaction: an atomwise trace likelihood identity for arbitrary
-`app`, seed prior and immutable scheduler family. Keep the actual recorded path
-and its support; include zero command atoms using the existing zero-safe
-fiber-posterior density identity. Behavioral own-play products should be a
-separate corollary using `exists_continuation_ownPlay_factor`.
-
-**Estimated net saving: 0–35 lines immediately** (generic proof replaces one
-specialized proof); the main benefit is removing the reserved-tape assumption
-from reusable probability reasoning. Further savings require actual second
-consumers, not promised future ones. Do not claim this makes arbitrary-builder
-concurrent SE immediate: the reserved service's timing and factual replay
-obligations are untouched.
-
-### 7. Extract conditioning-cost bounds with explicit excluded mass
-
-**High confidence; medium priority.**
-
-`PhaseProposalCleanBindingGain.conditioned_gain_le:2050` has 62 body lines of
-pure probability calculation. It bounds a payoff after filtering to foreign
-good histories by the original expectation plus payoff oscillation times bad
-posterior mass. Much of the proof converts filter mass to a finite sum of
-generated-preparation histories.
-
-Proposed generic theorem: for a nonzero event and payoff in `[lo,hi]` on the
-original support, conditioned expectation differs by at most
-`(hi-lo) * P(eventᶜ)`. Use `filter_mass_mul`,
-`WithinTV.of_domination` and `WithinTV.expect_sub_le`. State it for arbitrary
-PMFs with supportwise bounds; no finite history type is needed. The source
-adapter then proves only that the bad event is the named existential generated
-preparation event, and presents its finite sum when required by the capstone.
-
-**Estimated net saving: 20–40 lines for this consumer**, after the generic
-proof and exact event-mass adapter. The same bound may serve other conditional
-comparison modules, but those savings are not counted.
-
-### 8. Publish retained/residual gain algebra, without global finite carriers
-
-**High confidence as an extraction/generalization; not yet a shrink win.**
-
-`PhaseProposalCleanBindingGain.retained_history_gain_le:2966` (23 body lines)
-and `averaged_retained_gain_le:3002` (21) contain no Vegas object in their
-statements. They separate a retained payoff from a residual continuation,
-allow a bad-event penalty, and commute baseline and belief expectations.
-
-Move the mathematics to a model-independent comparison module. Strengthen
-the history-level lemma from `[Finite α]` to integrability of the mean and the
-relevant residual functions under the baseline; the existing bound already
-provides mean integrability. Strengthen the averaging lemma using explicit
-Fubini/integrability, or first use the existing
-`expect_comm_of_support_finite_left` to require finite baseline support only
-and allow an infinite belief carrier. Keep conditional comparisons on their
-actual supports.
-
-**Estimated net saving: -15 to +5 lines initially**; clearer owning APIs and
-strictly better probability generality are the return. No whole infinite-game
-SE generalization follows: compactness and off-path action spaces elsewhere
-still require their own finiteness hypotheses.
-
-### 9. Remove the exact duplicated support-order expectation theorem
-
-**Very high confidence; low impact.**
-
-`PhaseProposalCurrentBindingGain.lean:22` and
-`PhaseProposalPublicationGain.lean:17` contain the same private
-`expect_le_expect_of_support_order` declaration and proof verbatim. It is a
-generic cross-support order bound between two integrable expectations.
-
-The scratch probe `SupportOrderProbe.lean` proves the slightly stronger
-additive-slack version using existing expectation APIs, without finite carriers
-or supports, and checks recovery of the exact old statement at zero slack.
-The two private copies can be removed and actual calls updated to the general
-lemma. Integrability must remain: these real expectations have a defined
-nonintegrable fallback, so arbitrary order does not justify dropping it.
-
-**Estimated net saving: 8–15 lines**, including the shared theorem and both
-call adapters. This is a useful checked small probe, not evidence of a major
-compression. Root checked both probe declarations successfully under the exact
-central lakefile options (compiler session `83123`, actual exit 0).
-
-### 10. Share domination operations rather than model-specific map/mix lemmas
-
-**High confidence; small engineering win.**
-
-`PhaseProposalBaseDomination.map_retains_mass:45` and
-`PhaseProposalOrdinaryDomination.ordinary_map_lower:27` are the same mapped
-atom-domination proof. The same files contain one-sided mix retention and
-two-sided mix domination. The general layer already has
-`prob_bind_ge_mul`, `bind_supported_domination` and mixture atom algebra.
-
-Prefer a small general domination interface with map and common-mixture
-operations, or direct instances of those existing theorems if that is shorter.
-Keep the source constructor's normalization and absent-query branches in the
-Vegas adapters: all-flags-removed and ordinary-only references are different
-laws and must not be merged.
-
-**Estimated net saving: 0–15 lines initially**. Avoid introducing a large new
-record merely to replace two six-line lemmas. The useful strengthening is
-composable supported kernel domination, which is already mostly present.
-
-### 11. Give approximate local comparisons monotonicity and finite-case algebra
-
-**Medium priority; medium-high confidence; modest gain.**
-
-`RecoveryLocalComparisons.recovery_local_comparisons:43` constructs
-`abs(nonlateError)+abs(keyedError)`, proves convergence, classifies owing/keyed/
-nonlate sites, and repeats the same “direct bound or mixture-source bound”
-error enlargement. The same pattern appears in `RecoveryKeyedComparisons:47`
-and the final current/publication/clean classification in
-`ConcurrentRawEquilibrium.concurrentRaw_local_gain_le:114`.
-
-Use a small generic relation saying a target local gain is bounded directly
-or by a mixture of source local gains plus an error. Supply *mono_error*,
-case combination and pure-mixture conversion lemmas, then feed the existing
-`LocalSimulationLimit`/`CopiedSiteLimit` result. An error combination theorem
-must retain **one common assessment sequence/subsequence**; independent
-subsequences from independently optimized cases are not valid substitutes.
-
-**Estimated net saving: 20–50 lines** across the actual three assembly points,
-including the relation and all instances. Bundling the gigantic hypothesis
-lists alone is assumption repackaging, not a mathematical extraction or a
-proved shortening.
-
-### 12. Repair the dependent provenance interface before attacking giant bodies
-
-**High maintainability priority; low quantified shrink confidence.**
-
-The largest bodies are `BindingReadback.source_admitted_binding_row:65`
-(1,906 body lines), `SourceAlignment.sourceReplayAlignment:420` (1,747),
-`ReplayCoverage.sourceRawReplay_closed_key:6272` (1,299), and
-`SourceCorrespondence.sourceReplay_step_selected_agreement:7109` (roughly 500).
-These retain real distinctions between current, entry and retired snapshots,
-physical drain origin, source row, attempt/generation and accepted handle.
-
-They repeatedly construct and destruct long dependent existential packages.
-For example, `sourceReplaySelectedImage` in `SourceCorrespondence.lean:102`
-combines mapped history, current/saved configurations, prefixes, state/view,
-depth, exclusion/generation and snapshot agreement. The later branch theorems
-manually repackage the same fourteen coordinates. Introduce a precise structure
-for this invariant with checked constructor/update lemmas for same attempt,
-retry and actual close. Similarly expose the already-proved factual admitted
-binding origin as a reusable record whose projections carry the **same**
-handle and raw pre-restore image.
-
-This is primarily proof engineering. It must not replace the closing-origin,
-historical-query or likelihood theorems by fields asserting their conclusions.
-Nor may current clean source images be identified with final snapshots merely
-because both are clean. The accepted handler/readback facts are the substance.
-
-**Estimated net saving: 0–100 lines, low confidence** until a single branch is
-converted and all adapters measured. I do not support a “thousands of redundant
-lines” claim from the size of these proofs alone. A first branch conversion is
-a better experiment than a new all-encompassing correspondence abstraction.
-
-### 13. Generalize owner-prior transport to public-fiber independence, cautiously
-
-**Potential substantive game-theoretic extension; medium-high risk.**
-
-`OnePacketOwnerPriorSite.ownerSwap_priorClosed:111`,
-`Vegas.ownerSwap_priorScaled`, and
-`OnePacketSplicePoint.drawn_splicePoint:308` consume
-`PrivateInputsIndependent`. `Vegas/Source/PrivateInputsIndependent.lean:102`
-defines unconditional independence of each player's hidden cells from every
-other initial cell. The concrete proof ultimately needs supported splice
-closure and a common prior ratio within the compared owner fibers.
-
-A useful stronger theorem would allow a publicly observed initial signal and
-require the cross-product/splice identity **only within that public signal's
-fiber**. This permits private types correlated through a public signal. Start
-by proving the owner-swap lemmas under those local conditions. To port the
-full recovery result, prove that every compared late key and splice fixes the
-same public initial signal, and audit every remaining use of unconditional
-splice support. That factual key condition is not currently supplied merely
-by naming a conditional prior.
-
-This is standard conditional probability and symmetry, but a real new model
-adapter, not deletion of an unused assumption. Arbitrarily correlated private
-types are not covered by this proposal. The existing concurrent theorem's
-different treatment of correlated initial data does not prove the recovery
-adapter.
-
-**Estimated size: feature growth of 80–200 lines plus caller changes**; no
-compression claim. This is a plausible insight-producing extension after the
-small refactors, and should be tested on an explicit common-signal prior.
-
-The local implementation provides a source conditional cross-product predicate,
-actual public-input readers for every history at a late-key site, restricted
-owner-prior scaling, and same-key supported splice closure. Its shared set
-intersects the supported hidden-input fiber with the observed public-signal
-fiber. Hidden-input agreement alone does not fix that signal. The scaling law
-requires splice preservation; the site laws require that public initial inputs
-determine the signal. A full-support public-bit regression with conditionally independent private
-noise satisfies these guards and disproves unconditional independence. The canonical two-site base-law proof
-can consume these producers without copying the swap/disintegration argument;
-its unconditional record-comparison caller uses a constant public signal.
-
-The recovery equilibrium capstone continues to require its original
-unconditional hypothesis. Its independent source-recovery obligation is actual
-splice support between two decoded points. Relaxing that obligation requires
-proving that every represented source draw at both points has the same public
-signal, using their public-cell agreement. The late-key site theorem alone does
-not establish this different source-recovery fact. No conditional-prior recovery
-SE theorem is claimed.
-
-### 14. Obtain event-sensitive Nash errors before changing runtime contracts
-
-**Potential useful quantitative theorem; medium risk.**
-
-`AsyncServiceNash` and `AsyncServiceDeviationBound` use
-`2 * (∑ event, timing.deferral event) * range`. The proof first obtains a
-global TV error and then multiplies by one global audited payoff range. This
-forgets which event deferred and whether its continuation affects a given
-player's utility.
-
-Proposed stronger statement: with checked per-event continuation oscillation
-bounds, obtain separate honest/deviation expectation errors weighted by those
-event sensitivities, then add those two errors for Nash transport. A simple
-first result allows player-specific ranges, with the same scheduler and
-deviation quantifiers. A genuinely event-specific bound needs the existing
-phase coupling to retain the first deferral/event tag before applying the
-oscillation inequality; it does not follow from the final unlabelled TV bound.
-
-This can show that timing uncertainty at payoff-irrelevant events is free, a
-useful game-theoretic conclusion. It remains a Nash statement under the existing
-asynchronous contract, not an arbitrary-builder concurrent SE proof.
-
-**Estimated size: feature growth of 60–180 lines**, depending on how much of the
-tagged phase coupling can be reused; any proof shortening is unestimated.
-
-The implemented first result uses each player's complete audited payoff range
-and retains every native/source deviation and both expectation guards. Existing
-scalar Nash conclusions follow by choosing a constant range function. It does
-not establish event-specific sensitivity. The event-slot coupling already
-compares each adjacent hybrid timing with error bounded by that event's deferral;
-the whole-run TV proof then sums those errors. A weighted payoff result must
-retain those hybrids and prove uniform continuation oscillation bounds for each
-one, including unfinished outcomes and audit charges. Honest and deviating
-continuations need their own guards. No such bounds follow from a final
-unlabelled TV estimate, so no unused tagged-coupling framework was added.
-
-### 15. Turn strict enforcement margins into a local support-exclusion theorem
-
-**Near-reachable conditional result; high confidence in the final argument.**
-
-The count-audit extension uses a weak sufficient bound: coverage times deposit
-covers the utility spread. The underlying collection statements quantify over
-actual committed continuations, while
-`BehavioralAssessment.not_supported_choice_of_uniform_gap` in
-`GameTheory/GameTheory/Analysis/Protocol/SupportedChoices.lean:117` already rules out a
-choice uniformly worse than a feasible continuation under sequential rationality.
-
-Under a **strict** charge margin and a checked safe continuation with the
-required lower payoff and zero future charge, combine those two APIs to show
-that a forbidden current choice has zero probability at a clean information
-site of any sequentially rational assessment. State the bounds over every
-history in the information fiber, with integrability and runner factorization;
-do not infer them from the fact that one selected equilibrium has clean paths.
-An already-triggered deposit or an information fiber mixing previously
-sanctioned histories can invalidate the naive strict argument.
-
-This is a useful partial reflection/robustness theorem, not full reflection of
-all native SE and not proof that all off-path histories are clean. Most of the
-final game-theoretic argument already exists; actual safe-continuation and
-collection adapters are what must be checked for each runtime.
-
-**Estimated size: feature growth of 40–100 lines plus concrete safe-policy
-adapters**, with no claimed net reduction. No new equilibrium mathematics is
-required after the stated uniform hypotheses are established.
-
-## Checks on tempting but invalid shortcuts
-
-- The three count-audit extension modules still share a committed-response
-  plumbing block (fuel subtraction, committed one-step state, then collection).
-  The recent audit refactor already extracted the supported-bind expectation
-  step. A further generic “commit a response then terminal continuation” lemma
-  is plausible, but I did not count it as a new major finding: its remaining
-  adapter hypotheses may consume most of the roughly 30 repeated lines.
-- `GameTheory.Protocol.PublicScheduler.expanded_sequentialEquilibrium` already transports SE
-  through a recoverable public scheduler expansion. Composing it with a current
-  capstone gives a useful protocol-level corollary but does not discharge the
-  physical recovery/phase adapter or admit an arbitrary timely builder.
-- A positive shared coefficient in posterior transport is not disposable.
-  At zero fiber mass, posterior support and Bayes interpretation differ even
-  though unnormalized density identities remain valid. Existing
-  `RestrictedDisintegration` should be instantiated before adding another
-  posterior package. Extraction of a chosen anchor alone does not prove the
-  factual historical callback/query equality.
-- There are several elementary interval/absolute-value bounds
-  (`OnePacketLateDecomposition.expect_mem_Icc:153`,
-  `OnePacketCertificateAssembly.exclusionPayoffs_bounded:97`,
-  `ConcurrentRawEquilibrium.concurrent_payoff_bound:55`). General expectation
-  bounds can help, but the zero/exit/source branches and global sum over
-  players are different. No large saving is justified by treating all of them
-  as identical.
-- Finite global histories are not generally a cosmetic assumption: common
-  Bayesian completion, compactness and all off-path information sites use
-  them. Local probability lemmas can often use finite support or explicit
-  integrability instead; that is not a general infinite-game SE theorem.
-- I found no justification for altering fixed SE checklist statements or
-  replacing the reserved concurrent implementation by an arbitrary timely
-  scheduler. Large repeated proofs do not remove that research gap.
-
-## Targeted probes and order of work
-
-1. **Authored, frozen:** `SupportOrderProbe.lean`. It checks an arbitrary-space
-   additive-slack generalization and exact zero-slack recovery of the duplicated
-   support-order lemma. Root checked it under the exact central lakefile options;
-   actual exit 0, session `83123`. No production extraction is made by this audit.
-2. **Proposed:** one *decodedState_history_of_stepClosed* scratch theorem and
-   the three exact old initialized-predicate applications. This has a small,
-   complete adapter boundary and a measurable 79-body-line baseline.
-3. **Proposed:** enrich one completion classification with both accepted receipt
-   and decoded content, then derive `actor_completion_cause` and
-   `completion_content` from it without reopening the command split. This tests
-   the largest credible saving before moving the whole family.
-
-Recommended sequence: probes 1–2; the completion classifier; mapped round
-congruence and phase-boundary facts; conditioning-cost and comparison algebra;
-then a single dependent provenance branch. Pursue public-fiber priors,
-event-sensitive Nash errors and strict enforcement as explicitly new results,
-with examples and their exact extra hypotheses. Do not count mathematical API
-growth as proof compression until all concrete consumers are measured.
-
-## Probe result
-
-**PASS:** root compiler session `83123`, actual exit 0, using a setup-JSON clone
-of the exact central lakefile options. Both the arbitrary-space additive-slack
-theorem and exact old zero-slack statement compile. This validates the small
-mathematical extraction candidate; the numerical net saving remains an estimate
-until actual production callers are changed and measured. No production
-implementation or broader scope claim is made here.
+### 1. The missing public-source-splice adapter is provable from existing factual guards
+
+**Value:** a real new producer closes the previously missing bridge from public source observations to conditional-prior splicing. This is stronger than a proposed adapter assumption. **Status:** `SourcePublicSplice.lean` (146 physical lines) strictly checked with the central Lake options, actual exit 0. It includes the full current forced-agent consumer proof, not only an abstract helper.
+
+Current owners and gap:
+
+- `Vegas/Game/OnePacketSwapInputs.lean:189`, `InitialCellsAt`, relates every source initial variable to its actual native cell.
+- `Vegas/Game/SourceSwapPairs.lean:154`, `PublicCellsAgree`, compares every public cell present at the two native points.
+- `Vegas/Game/OnePacketSplicePoint.lean:296`, `initialCellsAt_splicePoint`, already reconstructs a spliced native point's source initial state.
+- `Vegas/Game/OnePacketSplicePoint.lean:308`, `drawn_splicePoint`, still instantiates the conditional splice support theorem with the constant Unit signal, requiring unconditional private-input independence.
+- `Vegas/Game/OnePacketSpliceForced.lean:235` derives public agreement from the actual information-view equality; its call to `drawn_splicePoint` at line 246 was the missing conditional-prior adapter.
+
+The checked probe proves:
+
+1. initial_public_cells_eq (line 15): `InitialCellsAt mine p`, `InitialCellsAt others w`, and `PublicCellsAgree setup p w` give equality of each public source initial variable.
+2. initial_public_inputs_eq (line 22): those premises give equality of **all graph public input coordinates**. This uses the current initial context coverage and `encodeInputs_get` APIs, including the actual dependent casts.
+3. drawn_splicePoint_given_public (line 44): for an arbitrary signal `signal`, `PrivateInputsIndependentGiven signal`, and the same graph-public-input observability premise already used by the new conditional base law, the actual spliced native point remains in the supported prior draws. Signal equality is **derived** from the two actual `InitialCellsAt` witnesses and `PublicCellsAgree`; it is not supplied as a desired conclusion.
+4. forcedAgent_of_splice_given_public (line 67): the entire current forced-agent proof works under that conditional independence. Its same-view fact supplies public agreement, which feeds the new producer.
+
+The observability premise is exactly: agreement on every public graph input implies equality of the signal. No full private-input equality or extra public leakage is assumed. All existing well-formedness, covered binding fields, decoded/intended history, same information view, static/ready-own, changed-success, arbitrary prefix and non-focal responder guards remain. This is source-input conditioning connected to actual native cells, not merely a finite probability lemma.
+
+**Actual route remaining:** `Vegas.forcedAgent_of_responder_preserving_repair` (line 31, actual forced-agent call line 155), then `OnePacketRepairCertificateCounterpart`, `OnePacketBindingRepairAssembly`, and `Vegas.RecoveryOnePacket.nativeBaseInputs` (line 36), followed by the existing recovery comparison/capstone chain. The concrete forced-agent producer is checked; a complete conditional recovery sequential-equilibrium theorem is **not** checked or claimed.
+
+Propagation audit: current `PrivateInputsIndependent` occurs 32 times in 25 Vegas.Game files, including documentation and an unused standalone unconditional closure result. Direct Unit specializations are the splice-point producer, `Vegas.keyedRecord_near` (line 281), and `Vegas.ownerSwap_priorClosed` (line 111). The latter deliberately proves a stronger closure without a same-public-key guard; the existing conditional base-law path uses `ownerSwap_priorClosed_given_public`, so its old statement need not be weakened. The LateRecords call can already target the generalized owner-swap base law but needs its signal/hypotheses threaded through its consumers. Most remaining changes are constructor/signature propagation plus verification, but there are enough of them that the complete extension must not be inferred from one successful probe.
+
+A second current API guard is now accounted for: `Vegas.ownerSwap_baseLawAgrees` (lines 54-64) and `Vegas.ownerSwap_baseLawAgrees_late` require private splicing to preserve the signal in addition to public observability. `PublicSignalPreserved.lean` strictly checked with the central Lake options, actual exit 0 with no warnings, proves that actual source hidden-cell splicing preserves every public graph input. The existing public-input observability premise therefore implies signal preservation. This factual adapter needs no support, finiteness or probability premise. When ported, the public-aware base-law API can derive preservation internally instead of asking for another independent guard. The lower prior-scaling theorem can retain its more general explicit preservation premise. The complete conditional recovery sequential-equilibrium route is still unported and unchecked.
+
+**Proposed API ownership:** keep graph input/cell adapters and conditional splice support in the existing one-packet source-splice owners; the conditional forced-agent theorem belongs beside its actual unconditional consumer. No new abstract certificate record is needed. A Unit specialization recovers the old mathematical result; zero compatibility requirements allow choosing the clean final API during implementation.
+
+**Cost:** not a compression proposal. Three factual helpers add roughly 50 lines, while the ~80-line forced-agent proof should be generalized in place rather than duplicated. Downstream signature propagation is unmeasured. High confidence in the checked missing bridge; medium confidence in total propagation effort.
+
+### 2. Timing error can be a product-retention error under the same hypotheses
+
+**Value:** genuine quantitative strengthening, separate from the still-open event-specific payoff-oscillation refinement. Current timing coupling sums deferral probabilities; the actual existing mixture construction retains a multiplicative amount of the first-turn law.
+
+**Status:** `TimingSettlement.lean` strictly checked with the central Lake options, actual exit 0 under central options. This self-contained probe proves the full actual one-event minorization, all-event product induction, total-variation corollary, and complete actual audited typed-outcome/payoff settlement consumer. `TimingRetention.lean` and `TimingRetentionProduct.lean` retain smaller diagnostic subsets. No conclusion is inferred from total variation alone.
+
+Current actual proof:
+
+- `Vegas/Game/ServiceTimingCoupling.lean:184`, `overriddenTurnProfile_fix_roundsFrom_bind_within`, handles arbitrary initial native-state law, scheduler, horizon, bound, source profile, arbitrary policy overrides and arbitrary common execution readout.
+- Its non-overridden-owner case rewrites the **full run from initialization** as the timing-slot PMF mixture using `ReactiveApplication.runRounds_policyMixture`. The initial empty recall makes the posterior equal to the original timing distribution. It then invokes `PMF.WithinTV.of_bind_point` at line 271.
+- `GameTheoryExtensions/Math/Probability/TotalVariation.lean:193`, `WithinTV.of_bind_point`, already proves a retained-branch atom bound internally before converting to TV. The missing interface is this stronger intermediate atom bound.
+
+The checked actual one-event producer proves, for every readout outcome `x`,
+
+`(1 - timing.deferral event) * P(fix event at 0, x) <= P(timing, x)`.
+
+Unowned events and overridden owners give exactly equal laws. Otherwise the factor is the actual slot-0 mixture mass, not a postulated event probability. The common-start lift instantiates the existing `GameTheory.Math.Probability.bind_supported_domination` (line 46) with initial factor 1. The tiny mixture atom helper is extracted from the current `WithinTV.of_bind_point` proof. No new expectation, coupling or probability framework is needed and GameTheory need not change.
+
+The checked all-event induction follows `Vegas.overriddenTurnProfile_roundsFrom_bind_within` (line 286): use `TurnTiming.fix_deferral_of_ne` (line 90) on the remaining distinct events; multiply the one-event lower bound by the nonnegative remaining retained mass; use `TurnTiming.fixFirst_all` (line 65). The resulting all-event lower bound is
+
+`product(event, 1 - deferral event) * P(first-turn law, x) <= P(timed law, x)`.
+
+Existing `PMF.WithinTV.of_domination` (TotalVariation line 30) then yields
+
+`delta = 1 - product(event, 1 - deferral event)`
+
+instead of `sum(event, deferral event)`. Both formulas refer to actual current timing objects. For two events with deferral 0.2 each, this gives 0.36 instead of 0.4; it also automatically stays at most 1. **There is no statistical-independence assumption:** the product comes from composing lower bounds between full run laws. Events and their behavioral decisions can remain dependent.
+
+**Complete current consumers inspected:**
+
+- `Vegas/Game/SourceServiceTurnSettlement.lean:154`, `sourceServiceTurnPolicy_execution_settlement_lawError`, ends with the honest timing coupling at line 183. The common readout is the actual audited typed-outcome/payoff settlement law; all authentic-audit/deposit, timely-contract and first-turn source-law guards remain. The complete consumer clone in `TimingSettlement.lean` is strictly checked with the product error; it directly specializes the checked overridden-profile theorem to no overrides.
+- `Vegas/Game/AsyncServiceNash.lean:463`, `isεBestResponse_clientProfile_of_firstTurn_bounds`, uses `deviatedTurnProfile_roundsFrom_bind_within` at line 605, then converts it to a player payoff gap at line 612. The deviation is the arbitrary native admissible policy already decoded/restricted by the proof. The same product delta replaces the sum there, and the honest value bound must be updated consistently. The existing `epsilon + 2 * delta * range who` structure then uses the improved delta. Reflection at line 313 likewise compares two honest client-profile values.
+
+**Adapter work not checked:** named honest and one-player override wrappers (current ServiceTimingCoupling lines 332 and 352), AsyncServiceNash's value/BR results and public capstones. The complete SourceServiceTurnSettlement joint-law consumer is already checked in the scratch clone. Recover the current sum-bound theorem using the elementary product/union inequality if that statement remains useful; do not preserve aliases for compatibility. Event-specific payoff oscillation still requires an event-sensitive value proof and is not solved by this finding.
+
+A further unproved refinement is available from the same factual case split: events whose owners are overridden have exactly unchanged laws. In the forward native best-response transfer, the deviator is already overridden everywhere, so its own event factors can be replaced by 1. The forward error would use honest delta_all plus deviation delta_excluding_focal_owned_events, rather than twice delta_all. Reflection compares two honest client profiles and does not get that reduction. This extra port is not staged or claimed checked.
+
+**Cost:** a strengthening, not a shrink claim. Refactor the one-event proof to expose domination and derive its old TV corollary, then replace the current sum induction by the product induction. Tiny common-prior and atom helpers can live in existing local probability owners if useful elsewhere. Initial scratch duplicates the current producer solely for verification. Production net cost expected +30-70 lines before consumer signature changes, medium confidence; no family line-saving claim.
+
+### 3. Count-support exclusion can require payoff bounds only on actual terminal histories
+
+**Value:** a useful semantic strengthening of existing support exclusion. Current `Vegas.EventGraphRuntime.Recovery.forbidden_choice_not_supported` (line 254) takes global interval bounds at lines 263-264 for every native state, while the actual continuation and committed/safe laws put mass only on protocol-terminal histories.
+
+**Status:** `TerminalAuditBounds.lean` strictly checked with the central Lake options, actual exit 0. It proves a terminal base-payoff bound for the actual `TerminalAudit.utility`, then instantiates the existing actual continuation-integrability API. The full RecoveryCount consumer port is not staged or checked.
+
+Reusable current APIs:
+
+- `GameTheory/GameTheory/Protocol/BehavioralTerminal.lean:57`, `InformationModel.runBehavioralTerminalFrom_support_terminal`;
+- line 160, `payoffIntegrable_runBehavioralTerminalFrom_of_bounded_terminal`;
+- line 218, `BehavioralAssessment.continuationContext_support_terminal`;
+- line 238, `continuationContext_integrable_of_bounded_terminal`.
+- `GameTheoryExtensions/Analysis/Protocol/TerminalAudit.lean`, `charge_mem_Icc`, gives each actual charge in [0,1].
+
+The checked first adapter proves `|base final who| <= C` on protocol terminals implies `|TerminalAudit.utility ... final who| <= C + |deposit who|` on those same terminals. The second adapter uses the actual assessment, site, well-founded-history certificate and entire arbitrary alternative behavioral policy with the core continuation-integrability theorem. It adds no finite-history or independence assumption. It retains the Fintype Player assumption actually required by the core context integration API.
+
+**Concrete consumer change:** replace the current global baseBound and arbitrary-law integrability helpers around RecoveryCountIncentives lines 312-341 by terminal support bounds for the actual bad committed, safe, and aggregate continuation laws. Derive interval/absolute bounds on those supports and continue the existing strict-margin argument. Keep every information history, all admitted opponent policies, coverage, safe comparator and strict gain/penalty margin. The runtime review's separate information-local cleanliness result is complementary and is not duplicated here.
+
+**Critical scope:** actual protocol terminality includes horizon exhaustion and unfinished graph/source outcomes. A bound solely on completed source outcomes is insufficient. The bound must cover the runtime's default output and audit charge on every exhausted terminal state as well. This proposal changes a mathematical hypothesis from all native states to actual terminals; it must not silently substitute source completion for runtime terminality.
+
+**Ownership/cost:** local terminal-audit owner for the small utility adapter; existing RecoveryCountIncentives for actual consumer reasoning. Expected +0-25 net lines in that consumer plus ~25 reusable adapter lines, low-medium estimation confidence. Not a compression claim. The desired full consumer strengthening is still work, not a completed theorem.
+
+### 4. Recorded-entry preservation is an existing exact recall-prefix instance
+
+**Value:** small reliable proof shrink with no statement change. Current complete consumer `Vegas/Game/OnePacketFirstActivation.lean:66`, `recordsEntry_transition`, manually splits transition cases to keep an exact recorded entry. `Interaction/ReactiveHistory.lean:58`, `transition_recall_prefix`, already supplies the after control and each player's exact appended recall.
+
+**Status:** `RecordedEntryPrefix.lean` strictly checked with the central Lake options, actual exit 0. It contains the unchanged actual consumer header and the short proof, with the required header wrapping.
+
+The new proof splits `before = none`/`some`, obtains the actual after control and prefix extension from `transition_recall_prefix`, and turns `earlier ++ entry :: later` into `earlier ++ entry :: (later ++ tail)` using list associativity. It preserves the exact ordered split, not merely entry membership. Arbitrary scheduler, initial law, joint response, horizon and transition-support premises remain.
+
+Actual downstream callers include `OnePacketEventSuccess.lean:145`, `OnePacketOpenableCommitment.lean:113`, `OnePacketUnintendedCommitment.lean:219`, and `RecoveryForeignFailureBound.lean:149`; they need no adapters or edits.
+
+**Whole-family cost:** one complete producer declaration 40 physical lines becomes 20 after style wrapping; existing prefix API costs zero new production lines, all callers unchanged: **net 20 lines**, high confidence. No new wrapper/alias or general machinery is needed.
+
+### 5. Four static commitment-interval inversions can share the existing descriptor owner
+
+**Value:** modest engineering compression. This is the remaining interval-to-suffix-index fact, distinct from the previously implemented phase-boundary extraction.
+
+Four full actual consumers repeat a 16-line `have bindings` block:
+
+- `Vegas.HonestLaw.commits_step` (line 510), block 575-590;
+- `Vegas.asyncDeviation_deviationLaw` (line 567), block 833-848;
+- `Vegas.asyncDeviation_withholdLaw` (line 573), block 736-751;
+- `Vegas.ConcurrentPhaseEnds.boundary` (line 166), block 229-244.
+
+Each block proves: every event in `[offset, offset + count)` has an actual typed binding `nodeView`. It computes index `event.val - offset`, proves bounds with `omega`, identifies `embedding.event index = event` via the existing `rankEq`, and then invokes the same `CompiledSuffix.commitPrefix_bind`.
+
+**Existing owner:** `Vegas/Game/ServiceCommitTail.lean:290-345`, `CompiledSuffix.commitPrefix_bind`, already owns the structural induction and actual typed bind code. `Vegas/Compile/EventGraphSuffix.lean:25`, `CompiledSuffix`, supplies countEq, rankEq, and actual nodeEq. Add an interval-form public theorem beside that owner, using the current indexed induction internally. No second prefix hierarchy or execution/source-law hypothesis is justified.
+
+All four full surrounding consumers were read; this helper only replaces their static interval descriptor setup. Sealed/block boundary, relaxed execution order, deadlines, scheduler, source profile and all behavioral law premises remain untouched. There is no desired-law certificate in the proposed helper.
+
+**Whole-family physical-line estimate:** 4 x 16 = 64 current block lines; ~28-35 new helper lines including its real dependent header and ~8-12 replacement call lines. Conservative expected **20-30 net lines**, medium confidence. Not checked or implemented; first port all four consumers to establish actual cost before keeping it.
+
+## Coverage and rejected leads
+
+The fresh surface scan covers 824 Vegas.Game Lean files, about 270845 physical lines, plus Paper.lean. `games-surface.txt` was generated through lean-defs.py. Lexical scans found 4880 theorem/lemma/def heads and 4431 cross-file exact 10-nonblank-line windows; these are search aids, not checked declaration counts or proof-size measurements. Deep reads focused on current conditional-prior/source-splice and counterpart pipelines, recovery comparisons and gain bounds, count incentives/terminal/audit guards, exact first-entry provenance, async service law families, typed compiled suffixes, timing coupling, audited settlement and actual native best-response consumers. This is broad inventory plus selected complete deep reads, not a claim to have manually read every line of the entire Game family.
+
+Important rejected/limited leads:
+
+- The highest 8-file Recovery windows (CommitBeliefValue, CommitmentComparisons, GainBounds, DisclosureComparison, KeyedCommitmentComparisons, NonLateNativeComparisons, SilenceComparison, UnintendedComparison) largely repeat **return-type let scaffolding**. The prior parser mistook the first return-type `let ... :=` for the proof assignment. Their actual proof tails are small/generic already. They do not support a whole-family proof-saving claim; the shared Python scanner is now corrected.
+- Three first-activation consumers repeat a small setup and tuple unpack. After the genuine helper header and needed factual hypotheses, savings appear only ~5-20 lines. No proposal is ranked without a complete whole-family pilot.
+- Four scale-limit consumers have similar vanishing arguments, but some already instantiate the existing scale_vanishing methods. A new wrapper would need the long actual native-input context and can cost as much as their ~10-line proofs. No larger compression claim is justified.
+- `Vegas.exists_outcome_of_read` is a 14-line private choose/factorization helper with two uses. Mathlib `Function.FactorsThrough`/the extension evaluation lemma fit mathematically, but supported-subtype and fallback plumbing likely erase the savings. Do not introduce an unused factorization API.
+- Native one-packet finite history already follows from the finite native menu via `Interaction.ReactiveApplication.ResponseMenu.historyFintype`; `RecoverySequentialCompilation` already installs it. This does not remove unrestricted source-action or global consistency obligations. No global finiteness removal is proposed from bounded horizon alone.
+- An EventCode at binding-kind output has only the bind constructor, suggesting a potential typed nodeView_bind_of_binding simplification. The current codeEq argument may be redundant, but a broad NodeView/datatype change has hundreds of consumers and no measured whole-family gain. Not ranked.
+- No new counterexample or theorem-scope bug was established. The checked adapters and remaining strengthening proposals preserve actual payoff/integrability, positive-normalizer, full-information-fiber, deviation/opponent and runtime/source guards; unproved downstream propagation is explicitly separated from checked producers.
+
+## Suggested implementation order
+
+1. Apply exact recorded-entry prefix reuse as a small verified checkpoint.
+2. Implement the static commitment interval owner only if all four actual ports confirm the modest net saving.
+3. Land the conditional public-source-splice producer and generalize its actual forced-agent consumer in place; then thread signal/hypotheses through the explicitly audited remaining recovery route. Do not close any sequential-equilibrium checklist box merely from this producer.
+4. Expose the checked timing minorization/product result and port the already checked audited-settlement consumer into production, then propagate both honest/deviated Nash errors and public capstones together. Retain actual admissibility and payoff-range guards; those Nash ports remain unproved.
+5. Strengthen count support exclusion to terminal-supported payoff bounds with a full actual bad/safe/context proof; keep it only if the source/runtime terminal boundary stays explicit and the resulting API is clearer.

@@ -1,7 +1,9 @@
-# Proof-review implementation queue
+# Proof implementation ledger
 
-Every ranked finding is tracked below. A checked checkpoint includes the common
-API, all migrated callers, owning builds and axiom guards, and measured net size.
+This ledger records verified proof-library changes and explicit retention
+decisions. Open proposals are in the [current review](proof-review.md). A checked
+checkpoint includes the common API, all migrated callers, owning builds and
+axiom guards, and measured net size.
 A rejected approach is reverted before its reason is recorded. Mathematical
 strengthening may justify modest API growth; it is not called compression.
 
@@ -149,9 +151,10 @@ whole batch the library grows 182 lines, examples/regressions 159, and Paper
 147 (144 guard lines, two imports and the one adapter line). Mathematical
 feature growth is not reported as proof compression.
 
-Every ranked and cleanup item has a disposition. A frozen dependency or retained
-contract is not an implemented strengthening. Event-sensitive timing errors need
-actual hybrid-continuation payoff guards; conditional-prior recovery SE still
-needs a separate source-splice/public-input adapter. Neither result is claimed.
+Every item in this implementation ledger has a disposition. A frozen dependency
+or retained contract is not an implemented strengthening. Event-sensitive timing
+errors need actual hybrid-continuation payoff guards; the conditional-prior
+source-splice adapter is checked only as an isolated review probe. Full recovery
+SE propagation remains unproved; neither capstone extension is claimed.
 The existing optional premise-suggestion diagnostic persists independently of
 successful kernel builds and axiom checks.
