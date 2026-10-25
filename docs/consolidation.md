@@ -74,7 +74,7 @@ their present source games and utilities until the semantic adapters are proved.
 | --- | --- | --- | --- |
 | Compiler correctness: terminal law, unilateral deviation law, Nash equivalence on the ideal graph | none | any mode | checked: `canonical_setup_law`, `canonical_setup_deviation_law`, `Vegas.Paper.concurrent_event_nash_iff` |
 | Nash preservation | any timely builder | sequential and concurrent | checked on the plain contract (`Vegas.Paper.async_first_turn_nash_iff` and siblings); to port |
-| Non-concurrent sequential-equilibrium preservation | any timely builder, private inputs independent given a public initial signal | sequential | checked on the forced-exit contract (`Vegas.Paper.recovery_intended_raw_sequential_equilibrium`); to port |
+| Non-concurrent sequential-equilibrium preservation | any timely builder, private inputs independent given a public initial signal | sequential | checked on the phase contract (`Vegas.Paper.sequential_phase_intended_raw_sequential_equilibrium`), preserving the original joint typed readout and settled utility law |
 | Concurrent sequential-equilibrium preservation | reserved-epoch tape, complete pending observation | concurrent | checked on the phase contract (`Vegas.Paper.concurrent_source_raw_sequential_equilibrium`) |
 | Intended game to source game | none | none | checked: `Vegas.Paper.intended_sequential_equilibrium`, `Vegas.Paper.intended_nash` |
 | Late-leak impossibility | abstract game | none | checked: `Vegas.Paper.late_leak_intended_outcome_not_preserved` and siblings |
@@ -96,7 +96,7 @@ is true.
 | Program payments plus private valuations | Standard quasi-linear utility model | Payment evaluation is used by the games and compiler; valuation and exit hypotheses are explicit |
 | One source semantics with exit and retries | Semantic design, with nontrivial correspondence proofs | Account for missed commitments, permanent exit, surviving players' retries and retained observations |
 | Nash on the phase contract | Existing deviation-simulation methods; port unproved | Compare old and new source deviations, payoffs, environment quantifiers, ε and deferral bounds |
-| Sequential SE on the phase contract | Promising adapter route; unproved | Checked correspondence to the forced-exit contract, preserving information and continuations |
+| Sequential SE on the phase contract | Checked with singleton phases under the original conditional-independence and physical service assumptions | Actual phase completion, pure-deviation comparisons and audited joint-law preservation; common monetary-language integration remains separate |
 | Existing concurrent SE in the common family | Checked theorem under its current hypotheses; integration unproved | Instantiate the common payoff and readout interfaces without weakening the result |
 | Concurrent SE for arbitrary adaptive timely builders | Research question | A new sufficient-condition theorem or a counterexample for the specified contract and quantifiers |
 | Unrestricted dominant truthfulness for the current auction | Refuted at source level | Existing conditional-withholding witness; positive claims need different conditions or mechanics |
@@ -130,15 +130,14 @@ adapters and common-contract language decisions open. The
 [proof review](proof-review.md) records all sixteen checked findings.
 
 The [phase application](../Vegas/Pending/PhaseApplication.lean) already accepts a
-general event graph; the concurrent capstone fixes `.concurrent`. Singleton
-commitment phases are a candidate sequential adapter: a failure would not
-invalidate another surviving player's earlier commitment. This remains to be
-proved, including phase observations, attempt identifiers, readiness, deadlines
-and off-path behavior. The concurrent theorem's maximal-phase hypothesis does
-not directly supply this adapter. The [sequential phase proof](sequential-phase-preservation.md)
-records the checked interfaces and the remaining information and continuation
-obligations. Restoring program state must not erase network
-traffic or recall that players have already observed.
+general event graph; the concurrent capstone fixes `.concurrent`. The
+[sequential phase proof](sequential-phase-preservation.md) instantiates singleton
+phases with the sequential compiled graph. Clear histories have checked physical,
+information and belief transport; actual phase completion optimizes the richer
+continuations after public exclusion. This proves intended SE preservation on
+the existing phase contract while retaining attempt metadata, readiness,
+deadlines, network traffic and recall. The source-language, failure and monetary
+interfaces still require their separate consolidation decisions and adapters.
 
 Preservation from the intended restriction and preservation from every
 equilibrium of the full failure semantics are separate claims. The existing SE

@@ -721,6 +721,15 @@ supply separate local deviation cases. The
 original completion witness and joint readout/payoff law once all pure-choice
 comparisons are supplied.
 
+[Ordinary pure-choice comparisons](../Vegas/Game/SequentialPhaseNonLateComparisons.lean)
+and [keyed pure-choice comparisons](../Vegas/Game/SequentialPhaseKeyedComparisons.lean)
+feed the [common local gain bound](../Vegas/Game/SequentialPhaseLocalComparisons.lean).
+[Canonical preservation](../Vegas/Game/SequentialPhasePreservation.lean) uses that
+bound with the actual phase completion, and
+[raw preservation](../Vegas/Game/SequentialPhaseRawPreservation.lean) adds private
+response aliases and count auditing. Both retain the original physical phase
+service contract, source equilibrium premise and joint readout/payoff law.
+
 ## Vegas/Examples
 
 - [Executable second-price receipts and bounded-auction incentives](../Vegas/Examples/BoundedPaymentAuction.lean)

@@ -932,3 +932,8 @@ import Vegas.Game.SequentialPhaseKeyedGains
 import Vegas.Game.SequentialPhaseKeyedPureChoices
 import Vegas.Game.SequentialPhaseUnpendingChoices
 import Vegas.Game.SequentialPhaseLimit
+import Vegas.Game.SequentialPhaseKeyedComparisons
+import Vegas.Game.SequentialPhaseNonLateComparisons
+import Vegas.Game.SequentialPhaseLocalComparisons
+import Vegas.Game.SequentialPhasePreservation
+import Vegas.Game.SequentialPhaseRawPreservation

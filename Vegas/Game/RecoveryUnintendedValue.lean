@@ -37,11 +37,15 @@ local notation "Clear" => ReactiveApplication.stateInvariant
 
 
 open Classical in
-theorem recovery_unintendedCommitment_stopped_value
+theorem unintendedCommitment_stopped_value
     [(application setup leaks).FiniteNature (initialLaw setup) NativeScheduler]
     [∀ who, DecidableEq ((N).InfoState who)]
     (wellFormed : setup.WellFormed)
-    (completes : Recovery.CompletesPlay (runtime setup) leaks Initial horizon scheduler)
+    (terminalCompletes : ∀ control : (application setup leaks).Control,
+      (onePacketProtocol setup leaks bounds horizon (NativeScheduler)).Trace (some control) →
+      ExclusionEvidence 0 ∅ (RecoveryState.mk control.execution.application ∅) →
+      (application setup leaks).terminal (some control) →
+      control.execution.application.config.cut.Terminal)
     (common : ∀ player, (N).BehavioralPolicy player)
     {who : Player} (site : (N).InformationSite who) (choice : (N).Choice who site.1)
     (notOwing : ¬ Vegas.OwingAgent setup leaks bounds horizon NativeScheduler ((N).agentAt site))
@@ -195,12 +199,12 @@ theorem recovery_unintendedCommitment_stopped_value
           History.state).support := (PMF.mem_support_map_iff _ _ _).mpr ⟨middle, stepped, rfl⟩
       rw [oneStep, PMF.mem_support_pure_iff] at mem
       exact mem
-    exact recovery_unintendedCommitment_phase_owes (initialLaw_initialized setup)
-      (initialLaw_native setup) completes (failureProfile setup.program) turn outputEq codeEq
+    exact Vegas.unintendedCommitment_phase_owes terminalCompletes (failureProfile setup.program)
+      turn outputEq codeEq
       pointDecoded intended ordered response material sends packet fixed unintended certificate
       installed middle middleState final rest
-  have phaseEq := recovery_pending_until_eq_clearUntil (initialLaw_initialized setup)
-    (initialLaw_native setup) completes certificate installed history.1 current ordered clear event
+  have phaseEq := pending_until_eq_clearUntil terminalCompletes certificate installed history.1
+    current ordered clear event
     ready
   have payoffBounded : ∀ final, |payoff final| ≤ payoffBound := by
     intro final
@@ -226,12 +230,61 @@ theorem recovery_unintendedCommitment_stopped_value
     exact (expect_congr_on_support constant).trans (expect_constant _ _)
   exact valueEq
 
+
 open Classical in
-theorem recovery_unintendedCommitment_value_sub_le
+theorem recovery_unintendedCommitment_stopped_value
     [(application setup leaks).FiniteNature (initialLaw setup) NativeScheduler]
     [∀ who, DecidableEq ((N).InfoState who)]
     (wellFormed : setup.WellFormed)
     (completes : Recovery.CompletesPlay (runtime setup) leaks Initial horizon scheduler)
+    (common : ∀ player, (N).BehavioralPolicy player)
+    {who : Player} (site : (N).InformationSite who) (choice : (N).Choice who site.1)
+    (notOwing : ¬ Vegas.OwingAgent setup leaks bounds horizon NativeScheduler ((N).agentAt site))
+    (atTurn : CommitsAtTurn setup leaks bounds horizon NativeScheduler who site choice)
+    (unintendedChoice : ¬ IntendedCommitment setup leaks bounds horizon NativeScheduler site choice)
+    {past : List (application setup leaks).PlayerEntry}
+    {view : (application setup leaks).PlayerView} (atSite : site.1 = some (past, view))
+    (response : (application setup leaks).Action) (selected : choice.1 = some response)
+    (material : (application setup leaks).Submission)
+    (sends : response.transmission = some material)
+    (event : (graph setup).EventId) (candidate : Handle (graph setup))
+    (packet : material.call.packet = .commitment event candidate)
+    {Parameter : Type} (parameter : State L setup.context → Parameter)
+    (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
+    (excludedPayoff : Player → ℝ) {payoffBound : ℝ}
+    (readoutBounded : ∀ readout,
+      |exclusionReadoutUtility setup parameter utility excludedPayoff readout who| ≤ payoffBound)
+    (excludedBounded : |excludedPayoff who| ≤ payoffBound)
+    (history : (N).InformationHistory who site.1)
+    (forced : ForcedState setup leaks who history.1.state) :
+    let certificate := ((Menu).bounded (initialLaw setup) horizon
+      NativeScheduler).wellFoundedHistories
+    let stopped := fun final : (NP).History => ¬ Clear final.state ∨
+      DecodedState setup leaks (failureProfile setup.program)
+        (ProtocolState.OwesFailure who setup.program) final.state
+    let payoff := fun final : (NP).History => if stopped final then excludedPayoff who else
+      exclusionBase setup parameter utility excludedPayoff leaks final.state who
+    expect ((N).runBehavioralUntil certificate
+        (Profile.update (sig := (N).behavioralSignature) common who
+          ((common who).withLaw site.1 (PMF.pure choice))) stopped history.1) payoff =
+      excludedPayoff who := by
+  exact unintendedCommitment_stopped_value setup leaks bounds horizon scheduler wellFormed
+    (Recovery.CompletesPlay.clear_counted_native bounds (initialLaw_initialized setup)
+      (initialLaw_native setup) completes)
+    common site choice notOwing atTurn unintendedChoice atSite response selected material sends
+    event candidate packet parameter utility excludedPayoff readoutBounded excludedBounded
+    history forced
+
+open Classical in
+theorem unintendedCommitment_value_sub_le
+    [(application setup leaks).FiniteNature (initialLaw setup) NativeScheduler]
+    [∀ who, DecidableEq ((N).InfoState who)]
+    (wellFormed : setup.WellFormed)
+    (terminalCompletes : ∀ control : (application setup leaks).Control,
+      (onePacketProtocol setup leaks bounds horizon (NativeScheduler)).Trace (some control) →
+      ExclusionEvidence 0 ∅ (RecoveryState.mk control.execution.application ∅) →
+      (application setup leaks).terminal (some control) →
+      control.execution.application.config.cut.Terminal)
     (assessment : (N).BehavioralAssessment)
     {who : Player} (site : (N).InformationSite who) (choice : (N).Choice who site.1)
     (notOwing : ¬ Vegas.OwingAgent setup leaks bounds horizon NativeScheduler ((N).agentAt site))
@@ -283,9 +336,10 @@ theorem recovery_unintendedCommitment_value_sub_le
         if ForcedState setup leaks who history.1.state then (0 : ℝ) else 1 := by
     intro history _supported
     by_cases forced : ForcedState setup leaks who history.1.state
-    · have same := recovery_unintendedCommitment_stopped_value setup leaks bounds horizon scheduler
-        wellFormed completes assessment.strategy site choice notOwing atTurn unintendedChoice atSite
-        response selected material sends event candidate packet parameter utility excludedPayoff
+    · have same := unintendedCommitment_stopped_value setup leaks bounds horizon scheduler
+        wellFormed terminalCompletes assessment.strategy site choice notOwing atTurn
+        unintendedChoice atSite response selected material sends event candidate packet parameter
+        utility excludedPayoff
         readoutBounded excludedBounded history forced
       simp only [forced, ↓reduceIte, mul_zero]
       change |result history - excludedPayoff who| ≤ 0
@@ -302,5 +356,52 @@ theorem recovery_unintendedCommitment_value_sub_le
       if ForcedState setup leaks who history.1.state then (0 : ℝ) else 1) ≤
         2 * payoffBound * unforced := mul_le_mul_of_nonneg_left unforcedMass (by positivity)
   exact near.trans scaled
+
+
+open Classical in
+theorem recovery_unintendedCommitment_value_sub_le
+    [(application setup leaks).FiniteNature (initialLaw setup) NativeScheduler]
+    [∀ who, DecidableEq ((N).InfoState who)]
+    (wellFormed : setup.WellFormed)
+    (completes : Recovery.CompletesPlay (runtime setup) leaks Initial horizon scheduler)
+    (assessment : (N).BehavioralAssessment)
+    {who : Player} (site : (N).InformationSite who) (choice : (N).Choice who site.1)
+    (notOwing : ¬ Vegas.OwingAgent setup leaks bounds horizon NativeScheduler ((N).agentAt site))
+    (atTurn : CommitsAtTurn setup leaks bounds horizon NativeScheduler who site choice)
+    (unintendedChoice : ¬ IntendedCommitment setup leaks bounds horizon NativeScheduler site choice)
+    {past : List (application setup leaks).PlayerEntry}
+    {view : (application setup leaks).PlayerView} (atSite : site.1 = some (past, view))
+    (response : (application setup leaks).Action) (selected : choice.1 = some response)
+    (material : (application setup leaks).Submission)
+    (sends : response.transmission = some material)
+    (event : (graph setup).EventId) (candidate : Handle (graph setup))
+    (packet : material.call.packet = .commitment event candidate)
+    {Parameter : Type} (parameter : State L setup.context → Parameter)
+    (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
+    (excludedPayoff : Player → ℝ) {payoffBound : ℝ}
+    (readoutBounded : ∀ readout,
+      |exclusionReadoutUtility setup parameter utility excludedPayoff readout who| ≤ payoffBound)
+    (excludedBounded : |excludedPayoff who| ≤ payoffBound)
+    {unforced : ℝ}
+    (unforcedMass : expect (assessment.belief who site) (fun history =>
+      if ForcedState setup leaks who history.1.state then (0 : ℝ) else 1) ≤ unforced) :
+    let certificate := ((Menu).bounded (initialLaw setup) horizon
+      NativeScheduler).wellFoundedHistories
+    let stopped := fun final : (NP).History => ¬ Clear final.state ∨
+      DecodedState setup leaks (failureProfile setup.program)
+        (ProtocolState.OwesFailure who setup.program) final.state
+    let payoff := fun final : (NP).History => if stopped final then excludedPayoff who else
+      exclusionBase setup parameter utility excludedPayoff leaks final.state who
+    |expect (assessment.belief who site) (fun history =>
+        expect ((N).runBehavioralUntil certificate
+          (Profile.update (sig := (N).behavioralSignature) assessment.strategy who
+            ((assessment.strategy who).withLaw site.1 (PMF.pure choice))) stopped history.1)
+          payoff) - excludedPayoff who| ≤ 2 * payoffBound * unforced := by
+  exact unintendedCommitment_value_sub_le setup leaks bounds horizon scheduler wellFormed
+    (Recovery.CompletesPlay.clear_counted_native bounds (initialLaw_initialized setup)
+      (initialLaw_native setup) completes)
+    assessment site choice notOwing atTurn unintendedChoice atSite response selected material sends
+    event candidate packet parameter utility excludedPayoff readoutBounded excludedBounded
+    unforcedMass
 
 end Vegas.RecoveryOnePacket

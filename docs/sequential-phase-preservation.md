@@ -1,15 +1,18 @@
 # Sequential equilibrium on the phase runtime
 
-The target is the existing intended-game preservation guarantee on
+The intended-game preservation guarantee holds on
 `phaseApplication`, instantiated with the sequential compiled graph and singleton
 phases. The phase executor, packet observations, retirement archive and permanent
 exclusion semantics stay as implemented. The concurrent reserved-tape theorem
 keeps its existing maximal-phase plan.
 
-The desired conclusion is a sequential equilibrium against whole-policy
+The conclusion is a sequential equilibrium against whole-policy
 deviations, preserving the joint typed readout and realized settled payoff law
-and charging nobody on its paths. A physical state comparison alone does not
-establish this conclusion.
+with zero audit charges and no excluded owners on its paths.
+[Canonical preservation](../Vegas/Game/SequentialPhasePreservation.lean) and
+[audited raw preservation](../Vegas/Game/SequentialPhaseRawPreservation.lean)
+are stated under the assumptions below. The paper-facing theorem is
+`Vegas.Paper.sequential_phase_intended_raw_sequential_equilibrium`.
 
 ## Assumptions to retain
 
@@ -19,14 +22,18 @@ intended game. The exit payoff is at most every intended terminal payoff, and
 utility has the existing lower and upper bounds, including the treatment of
 unfinished executions as zero.
 
+Players and intended-protocol histories are finite. The fixed bounded physical
+phase runtime has finite nature; native and recovery finiteness are derived by
+the adapters. The theorem allows adaptive scheduling and arbitrary leak rules
+satisfying the stated physical service assumptions.
+
 The builder must satisfy opportunity, protected inclusion and completion on the
 actual phase runtime. Their primitive definitions already live in
-[PhaseServiceContract](../Vegas/Pending/PhaseServiceContract.lean). Their relation
-to the recovery service premises needs proofs; it cannot be inferred from a
-singleton plan. The old opportunity and inclusion assumptions quantify over
-all legal recovery traces, including traces after exclusion. Completion covers
-all legal horizon-terminal states. The reaction and inclusion bounds must sum to
-strictly less than each owned event's deadline.
+[PhaseServiceContract](../Vegas/Pending/PhaseServiceContract.lean). The
+[native service adapter](../Vegas/Game/SequentialPhaseNativeService.lean)
+derives the clear counted-prefix guards used by the one-packet comparisons.
+Completion covers all legal horizon-terminal states. The reaction and inclusion
+bounds must sum to strictly less than each owned event's deadline.
 
 The response catalogue covers output and input values, with candidate capacity
 strictly greater than each player's binding-event count over the whole program.
@@ -64,7 +71,9 @@ out or silently assumed positive.
 - [PhaseRecoveryMenuProjection](../Vegas/Game/PhaseRecoveryMenuProjection.lean)
   proves raw bounded-menu agreement and commutation of existing operational
   normalization with this projection. The normalized phase raw menu agrees with
-  the recovery canonical menu; the one-packet count filters remain to compare.
+  the recovery canonical menu. The
+  [canonical choice equivalence](../Vegas/Game/SequentialPhaseChoiceEquivalence.lean)
+  supplies the one-packet correspondence at clear played inputs.
 - [PhaseCheckpointAlignment](../Vegas/Pending/PhaseCheckpointAlignment.lean)
   derives exact saved/live config and accepted-handle equality at every actual
   unfinished singleton raw history. Its
@@ -270,7 +279,9 @@ original intended-terminal punishment floor.
 the actual phase pooled optimality and owing-site indifference, with one uniform
 vanishing error. [Pure option bounds](../Vegas/Game/SequentialPhaseKeyedPureChoices.lean)
 control the physical tremble loss and identify each keyed option as a part of
-the same pool. Arbitrary pure-choice gain comparisons remain an obligation.
+the same pool. [Keyed pure-choice comparisons](../Vegas/Game/SequentialPhaseKeyedComparisons.lean)
+cover every legal phase choice using these actual pooled gains and the original
+source-deviation alternatives.
 
 The [honest source laws](../Vegas/Game/SequentialPhaseHonestLaw.lean) and
 [same-weight retention](../Vegas/Game/SequentialPhaseComparisonRetention.lean)
@@ -288,24 +299,29 @@ local lotteries and whole-policy SE at the common consistent limit. The recovery
 consumer and pooled-component consumer reuse this argument.
 [SequentialPhaseLimit](../Vegas/Game/SequentialPhaseLimit.lean) applies it to the
 same actual phase completion sequence and its consistent limit, deriving the
-initialized law approximation from physical phase service. Its pure-choice
-comparison premise remains to be supplied.
+initialized law approximation from physical phase service.
 [SequentialPhaseRawLaw](../Vegas/Game/SequentialPhaseRawLaw.lean) checks the final
 sequential audit consumer: a canonical phase SE with the desired law extends to
 raw audited SE with zero charges, no exclusions and the realized settled joint
-law. Its canonical-SE premise must still be proved.
+law.
 
-The remaining obligations are:
+The preservation proof composes these interfaces:
 
-1. Prove the ordinary source and keyed arbitrary-pure-choice gain comparisons
-   for the actual phase common completion. The owing branch already has exact
-   zero gain. The keyed proof must use actual phase pooled optimality.
-2. Instantiate the shared limit with those comparisons and the checked
-   initialized law, then apply the checked raw audit consumer to obtain intended
-   SE preservation under the original assumptions.
+1. [Ordinary comparisons](../Vegas/Game/SequentialPhaseNonLateComparisons.lean)
+   and keyed comparisons bound every pure deviation of the actual phase common
+   completion by an original source gain or a vanishing error. Owing sites have
+   exactly zero gain. Keyed sites use actual phase pooled optimality.
+2. [Combined comparisons](../Vegas/Game/SequentialPhaseLocalComparisons.lean)
+   use one uniform vanishing error before quantifying over sites and choices.
+   The shared limit then supplies whole-policy SE and the initialized joint law
+   for the same consistent completion witness.
+3. Canonical preservation combines that limit with the physical no-exclusion
+   support theorem. Raw preservation applies the alias and count-audit
+   extensions, retaining the realized settled joint law and zero charges.
 
-These supporting theorems do not yet prove the target preservation theorem or
-close an arbitrary-builder checklist obligation.
+This proves the singleton sequential-phase scope above. The broader
+[arbitrary-builder checklist](se-async-checklist.md) retains its own fixed target
+and obligations.
 
 ## Service and emission boundaries
 
