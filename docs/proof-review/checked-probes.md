@@ -1515,7 +1515,8 @@ end ProofReview.TimingRetention
 ## IndependentRecoveryScope
 
 The constant Unit signal gives the full unconditional-prior recovery guarantee,
-including standard sequential equilibrium and its joint settlement/readout law.
+including standard sequential equilibrium, no runtime exclusions and its joint
+settlement/readout law.
 
 <!-- probe: IndependentRecoveryScope -->
 ```lean
@@ -1590,6 +1591,9 @@ theorem unconditional_recovery_sequential_equilibrium [Fintype Player] [IExpr.Re
         (raw.decisionInformationAntichain initial horizon scheduler)
         (raw.bounded initial horizon scheduler).wellFoundedHistories
         (fun who final => payoff final.state who) ∧
+      (∀ final ∈ ((raw.information initial horizon scheduler).runBehavioral
+          target.strategy (2 * horizon + 1)).support,
+        ∀ control, final.state = some control → control.execution.application.excluded = ∅) ∧
       (∀ final ∈ ((raw.information initial horizon scheduler).runBehavioral
           target.strategy (2 * horizon + 1)).support,
         ∀ who, TerminalAudit.charge observe audit final.state who = 0) ∧

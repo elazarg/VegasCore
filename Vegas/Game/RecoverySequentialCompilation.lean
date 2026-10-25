@@ -40,7 +40,7 @@ variable {Parameter : Type} (parameter : State L setup.context → Parameter)
 open Classical in
 /-- Every intended sequential equilibrium is implemented by an equilibrium of
 actual permanent-exclusion recovery, preserving its joint readout and settled
-payoff law and charging nobody on its equilibrium paths. -/
+payoff law, with no exclusion or audit charge on its equilibrium paths. -/
 theorem recovery_intended_raw_sequentialEquilibrium_preserved
     (wellFormed : setup.WellFormed)
     (independent : setup.PrivateInputsIndependentGiven signal)
@@ -84,6 +84,9 @@ theorem recovery_intended_raw_sequentialEquilibrium_preserved
           (fun history => payoff history.state who) (2 * horizon + 1)) ∧
       (∀ final ∈ ((raw.information Initial horizon scheduler).runBehavioral
           target.strategy (2 * horizon + 1)).support,
+        ∀ control, final.state = some control → control.execution.application.excluded = ∅) ∧
+      (∀ final ∈ ((raw.information Initial horizon scheduler).runBehavioral
+          target.strategy (2 * horizon + 1)).support,
         ∀ who, TerminalAudit.charge observe audit final.state who = 0) ∧
       ((raw.information Initial horizon scheduler).runBehavioral target.strategy
           (2 * horizon + 1)).bind
@@ -93,12 +96,27 @@ theorem recovery_intended_raw_sequentialEquilibrium_preserved
         (setup.intendedModel.runBehavioral intended.strategy
           (instructionCount setup.program + 1)).map
           (intendedReadoutExclusion setup parameter utility excludedPayoff) := by
-  obtain ⟨native, nativeSE, nativeLaw⟩ :=
+  obtain ⟨native, nativeSE, nativeClear, nativeLaw⟩ :=
     RecoveryOnePacket.intended_sequentialEquilibrium_preserved parameter utility excludedPayoff
       wellFormed independent observable opportunity inclusion completes timely lowerUtility
       upperUtility lower_le le_upper below intended equilibrium covers coversInputs capacity
-  exact recovery_intended_raw_sequentialEquilibrium_of_onePacket parameter utility excludedPayoff
-    intended native nativeSE nativeLaw service observationRate deliveryRate delivery_nonnegative
-    coverage lowerUtility upperUtility lower_le le_upper deposit deposit_nonnegative sufficient
+  obtain ⟨target, targetSE, clean, states, joint⟩ :=
+    recovery_intended_raw_sequentialEquilibrium_of_onePacket parameter utility excludedPayoff
+      intended native nativeSE nativeLaw service observationRate deliveryRate delivery_nonnegative
+      coverage lowerUtility upperUtility lower_le le_upper deposit deposit_nonnegative sufficient
+  refine ⟨target, targetSE, ?_, clean, joint⟩
+  intro final supported control current
+  let raw := Recovery.rawMenu (runtime setup) leaks bounds
+  let normalize := (Recovery.normalization (runtime setup) leaks).state
+  have represented : normalize final.state ∈
+      (((raw.information Initial horizon scheduler).runBehavioral target.strategy
+        (2 * horizon + 1)).map (fun history => normalize history.state)).support :=
+    (PMF.mem_support_map_iff _ _ _).mpr ⟨final, supported, rfl⟩
+  rw [states] at represented
+  obtain ⟨original, reached, same⟩ := (PMF.mem_support_map_iff _ _ _).mp represented
+  rw [current] at same
+  exact nativeClear original reached
+    { control with execution :=
+      ((Recovery.normalization (runtime setup) leaks).execution control.execution) } same
 
 end Vegas

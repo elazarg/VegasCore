@@ -445,3 +445,11 @@ import Vegas.Pending.PhaseSingletonRebuild
 import Vegas.Pending.PhaseSingletonTransition
 import Vegas.Pending.PhaseClearMetadata
 import Vegas.Pending.PhaseDrainCorrespondence
+import Vegas.Pending.PhaseAcceptedFrame
+import Vegas.Pending.PhaseCheckpointAlignment
+import Vegas.Pending.PhaseCheckpointExclusion
+import Vegas.Pending.PhaseStaticCountVerdict
+import Vegas.Pending.PhaseServiceProjection
+import Vegas.Pending.PhaseClearService
+import Vegas.Pending.PhaseResponseAliases
+import Vegas.Pending.ReactiveFirstOpportunity

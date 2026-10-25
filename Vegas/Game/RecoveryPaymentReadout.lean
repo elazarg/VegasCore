@@ -5,12 +5,12 @@ import Vegas.Pending.ExclusionPrefix
 
 /-! # Conditional monetary readout of forced-exit recovery
 
-The old recovery theorem retains an optional source readout and utility. It does
-not state that no player was excluded. Monetary inversion therefore needs a
-valuation recoverable from that retained readout. The condition below concerns
-only valuation on supported excluded states, not a desired joint cash law. In
-particular an excluded state with no terminal readout requires zero exit
-valuation under the existing zero-readout convention.
+Monetary inversion of an arbitrary runtime utility law needs a valuation
+recoverable from the retained source readout. The condition below concerns only
+valuation on supported excluded states. It is vacuous for the no-exclusion
+support supplied by intended recovery preservation. For other laws, an excluded
+state with no terminal readout requires zero exit valuation under the existing
+zero-readout convention.
 -/
 
 noncomputable section

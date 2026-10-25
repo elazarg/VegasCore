@@ -808,3 +808,17 @@ import Vegas.Game.RecoveryOnePacketPreservation
 import Vegas.Game.PhaseRecoveryInformation
 import Vegas.Game.PhaseRecoveryMenuProjection
 import Vegas.Game.SequentialPhaseDrain
+import Vegas.Game.RecoveryInitializedClearance
+import Vegas.Game.SequentialPhaseObservation
+import Vegas.Game.PhaseClearPacketInformation
+import Vegas.Game.SequentialPhasePlayerInformation
+import Vegas.Game.SequentialPhaseExpiry
+import Vegas.Game.SequentialPhaseEnvironment
+import Vegas.Game.PhaseRecoveryLocalEnvelope
+import Vegas.Game.SequentialPhaseCountedMenu
+import Vegas.Game.SequentialPhaseSettlement
+import Vegas.Game.SequentialPhaseHandle
+import Vegas.Game.OnePacketClearCountedResponse
+import Vegas.Game.PhaseResponseAliasEquilibrium
+import Vegas.Game.SequentialPhaseCountedMenuReverse
+import Vegas.Game.SequentialPhaseSchedulerInformation

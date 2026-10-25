@@ -2,6 +2,7 @@
 
 import Vegas.Game.RecoveryLocalComparisons
 import Vegas.Game.RecoverySequentialLimit
+import Vegas.Game.RecoveryInitializedClearance
 import Vegas.Game.RecoveryExclusionPayoff
 import Vegas.Game.OnePacketCertificateAssembly
 
@@ -51,7 +52,8 @@ variable {Parameter : Type} (parameter : State L setup.context → Parameter)
 
 open Classical in
 /-- An intended sequential equilibrium has a recovery one-packet implementation
-with the same joint readout and base payoff law, before adding raw responses. -/
+with the same joint readout and base payoff law and no exclusions on its paths,
+before adding raw responses. -/
 theorem RecoveryOnePacket.intended_sequentialEquilibrium_preserved
     (wellFormed : setup.WellFormed)
     (independent : setup.PrivateInputsIndependentGiven signal)
@@ -79,6 +81,8 @@ theorem RecoveryOnePacket.intended_sequentialEquilibrium_preserved
         (fun who site => native.truncatedContinuationContext site
           (fun final => recoveryExclusionBase parameter utility excludedPayoff final.state who)
           (2 * horizon + 1)) ∧
+      (∀ final ∈ ((R).runBehavioral native.strategy (2 * horizon + 1)).support,
+        ∀ control, final.state = some control → control.execution.application.excluded = ∅) ∧
       ((R).runBehavioral native.strategy (2 * horizon + 1)).map (fun final =>
         (sourceReadout setup leaks (RecoveryProjection.protocolState (runtime setup) leaks
           final.state), recoveryExclusionBase parameter utility excludedPayoff final.state)) =
@@ -160,6 +164,10 @@ theorem RecoveryOnePacket.intended_sequentialEquilibrium_preserved
       timely completes intended sourceSequence sourceConverges sourceRational scale positive
       le_one vanishes weights fallback sequence assembled limit index increasing converges
       consistent freeOptimal error errorVanishes comparisons
-  exact ⟨limit, recoverySE, recoveryLaw⟩
+  have noExclusion := RecoveryOnePacket.initialized_limit_no_exclusion setup leaks bounds
+    horizon scheduler wellFormed covers capacity sourceSequence scale positive le_one vanishes
+    weights fallback sequence assembled opportunity inclusion timely completes limit index
+    increasing (fun who site => converges.strategy who site)
+  exact ⟨limit, recoverySE, noExclusion, recoveryLaw⟩
 
 end Vegas

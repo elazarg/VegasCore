@@ -642,19 +642,20 @@ common language and retained capstones.
   plus that monetary settlement on every runtime state.
 
 The nonconcurrent recovery theorem preserves an optional typed readout and
-utility-valued settlement and proves zero charges, but its public conclusion
-does not separately rule out runtime exclusions. On an excluded state, valuation
-may be a configured exit value even when the retained readout is absent or has
-a different valuation. Subtracting ordinary terminal valuation is then
-unjustified. [The recovery cash adapter](../Vegas/Game/RecoveryPaymentReadout.lean)
-therefore requires the runtime valuation to be determined by the retained
-readout on the actual execution support. The source valuation here includes the
+utility-valued settlement, with zero audit charges and no runtime exclusions on
+its equilibrium paths. The no-exclusion conclusion follows from an explicit
+runtime exclusion-flag probability bound and convergence of the actual common
+completion, independently of payoff equality or audit cleanliness.
+[The recovery cash adapter](../Vegas/Game/RecoveryPaymentReadout.lean) recovers the
+joint monetary law when runtime valuation is determined by the retained source
+readout. For the constructed preserving equilibrium, the additional condition on
+supported excluded states is vacuous. The general adapter retains that condition
+for arbitrary runtime laws, which may include exclusions and whose exit
+valuation may differ from the retained readout. The source valuation includes the
 existing failed-publication exclusion rule and is zero on an absent readout;
 ordinary valuation agrees with it only under the separate failure hypothesis.
-It transports the established joint utility law to the actual joint monetary
-law under that hypothesis. It does not
-infer the hypothesis from zero audit charges. Exit receipts remain declared
-analysis settlement data until a compiler/runtime implementation proves them.
+Exit receipts remain declared analysis settlement data until a compiler/runtime
+implementation proves them.
 
 These results keep the existing contracts distinct and leave the source failure,
 exit and rollback choices open. They provide conditional monetary adapters for

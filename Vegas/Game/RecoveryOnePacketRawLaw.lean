@@ -34,7 +34,8 @@ local notation "R" => ReactiveApplication.ResponseMenu.information
   (Recovery.rawMenu (runtime setup) leaks bounds) initial horizon scheduler
 
 /-- The checked audited raw extension preserves an intended joint law of a
-recovery one-packet equilibrium, with zero charges and actual settled payoffs. -/
+recovery one-packet equilibrium, with zero charges, its complete normalized
+state law, and actual settled payoffs. -/
 theorem recovery_intended_raw_sequentialEquilibrium_of_onePacket {Parameter : Type}
     (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
@@ -76,6 +77,9 @@ theorem recovery_intended_raw_sequentialEquilibrium_of_onePacket {Parameter : Ty
           (fun history => payoff history.state who) (2 * horizon + 1)) ∧
       (∀ final ∈ ((R).runBehavioral target.strategy (2 * horizon + 1)).support,
         ∀ who, TerminalAudit.charge observe audit final.state who = 0) ∧
+      ((R).runBehavioral target.strategy (2 * horizon + 1)).map (fun final =>
+        (Recovery.normalization (runtime setup) leaks).state final.state) =
+          ((N).runBehavioral native.strategy (2 * horizon + 1)).map History.state ∧
       ((R).runBehavioral target.strategy (2 * horizon + 1)).bind
         (fun final => (settle final.state).map fun payoffs =>
           (sourceReadout setup leaks (RecoveryProjection.protocolState (runtime setup) leaks
@@ -89,7 +93,7 @@ theorem recovery_intended_raw_sequentialEquilibrium_of_onePacket {Parameter : Ty
     ((menu).bounded initial horizon scheduler).wellFoundedHistories
     ((menu).bounded initial horizon scheduler)
     (fun who final => base final.state who)).mpr equilibrium
-  obtain ⟨target, targetSE, clean, _, joint⟩ :=
+  obtain ⟨target, targetSE, clean, states, joint⟩ :=
     Recovery.onePacket_raw_sequentialEquilibrium (runtime setup) leaks bounds initial horizon
       scheduler service observationRate deliveryRate delivery_nonnegative coverage base
       (recoveryExclusionBase_normalization parameter utility excludedPayoff)
@@ -100,7 +104,7 @@ theorem recovery_intended_raw_sequentialEquilibrium_of_onePacket {Parameter : Ty
       (fun state who => (recoveryExclusionBase_mem_Icc parameter utility excludedPayoff
         lowerUtility upperUtility lower_le le_upper state who).2)
       deposit_nonnegative sufficient native nativeSE
-  refine ⟨target, targetSE, clean, ?_⟩
+  refine ⟨target, targetSE, clean, states, ?_⟩
   let read := fun state : (recoveryApplication (runtime setup) leaks).ProtocolState =>
     sourceReadout setup leaks (RecoveryProjection.protocolState (runtime setup) leaks state)
   have normalized (state : (recoveryApplication (runtime setup) leaks).ProtocolState) :

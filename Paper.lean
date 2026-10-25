@@ -8,6 +8,10 @@ import Interaction.ReactiveSchedulerDensity
 import Vegas.Pending.CompletionService
 import Vegas.Pending.PhaseSingletonTransition
 import Vegas.Pending.PhaseClearMetadata
+import Vegas.Pending.PhaseCheckpointExclusion
+import Vegas.Pending.PhaseStaticCountVerdict
+import Vegas.Pending.ReactiveFirstOpportunity
+import Interaction.MessageNetworkMapOperations
 import Vegas.Compile
 import Vegas.Game
 import Vegas.Examples.LateLeak
@@ -944,6 +948,9 @@ theorem recovery_intended_raw_sequential_equilibrium [Fintype Player] [IExpr.Res
         (raw.decisionInformationAntichain initial horizon scheduler)
         (raw.bounded initial horizon scheduler).wellFoundedHistories
         (fun who final => payoff final.state who) ∧
+      (∀ final ∈ ((raw.information initial horizon scheduler).runBehavioral
+          target.strategy (2 * horizon + 1)).support,
+        ∀ control, final.state = some control → control.execution.application.excluded = ∅) ∧
       (∀ final ∈ ((raw.information initial horizon scheduler).runBehavioral
           target.strategy (2 * horizon + 1)).support,
         ∀ who, TerminalAudit.charge observe audit final.state who = 0) ∧
@@ -1905,3 +1912,135 @@ end Vegas.Paper
 #guard_msgs (whitespace := lax) in
 #print axioms
   Vegas.EventGraphRuntime.PhaseRecoveryProjection.normalizedMenu_projected
+
+/-- info: 'Vegas.RecoveryOnePacket.initialized_limit_no_exclusion' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.RecoveryOnePacket.initialized_limit_no_exclusion
+
+/-- info: 'Vegas.EventGraphRuntime.phaseAcceptedCheckpointFrame_history' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.phaseAcceptedCheckpointFrame_history
+
+/-- info: 'Vegas.EventGraphRuntime.phaseCheckpointAlignment_history' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.phaseCheckpointAlignment_history
+
+/-- info: 'Vegas.EventGraphRuntime.phaseCheckpointExcluded_history' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.phaseCheckpointExcluded_history
+
+/-- info: 'Vegas.EventGraphRuntime.SequentialPhaseObservation.publicView_history' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.SequentialPhaseObservation.publicView_history
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseCount.clear_network_packets_history' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseCount.clear_network_packets_history
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseCount.permits_eq_countPermits_of_static' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseCount.permits_eq_countPermits_of_static
+
+/-- info: 'Vegas.recovery_intended_raw_sequentialEquilibrium_of_onePacket' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.recovery_intended_raw_sequentialEquilibrium_of_onePacket
+
+/-- info: 'Interaction.ReactiveApplication.SubmissionNormalization.recall_submissionCount' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Interaction.ReactiveApplication.SubmissionNormalization in
+#print axioms recall_submissionCount
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseService.ProtectedInclusion.clear_native_onePacket' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.EventGraphRuntime.PhaseService.ProtectedInclusion in
+#print axioms clear_native_onePacket
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseCount.onePacketMenu_closed' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.EventGraphRuntime.PhaseCount in
+#print axioms onePacketMenu_closed
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseCount.onePacket_alias_sequentialEquilibrium' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.EventGraphRuntime.PhaseCount in
+#print axioms onePacket_alias_sequentialEquilibrium
+
+/-- info: 'Vegas.EventGraphRuntime.SequentialPhasePlayerInformation.information_history' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.EventGraphRuntime.SequentialPhasePlayerInformation in
+#print axioms information_history
+
+/-- info: 'Vegas.EventGraphRuntime.phase_environment_current_sequential_history' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.EventGraphRuntime in
+#print axioms phase_environment_current_sequential_history
+
+/-- info: 'Vegas.EventGraphRuntime.phase_handle_current_sequential_clear_onePacket_history' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.EventGraphRuntime in
+#print axioms phase_handle_current_sequential_clear_onePacket_history
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseRecoveryProjection.recovery_onePacket_mem_of_normal_phase_history' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.EventGraphRuntime.PhaseRecoveryProjection in
+#print axioms recovery_onePacket_mem_of_normal_phase_history
+
+/-- info: 'Vegas.countPermits_localEnvelope_ready_of_clear_trace' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas in
+#print axioms countPermits_localEnvelope_ready_of_clear_trace
+
+/-- info: 'Vegas.EventGraphRuntime.inclusionFitsDeadline_of_unrecalled_turn' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.EventGraphRuntime in
+#print axioms inclusionFitsDeadline_of_unrecalled_turn
+
+/-- info: 'Interaction.MessageNetwork.mapPayload_includePending' depends on axioms:
+[propext] -/
+#guard_msgs (whitespace := lax) in
+open Interaction.MessageNetwork in
+#print axioms mapPayload_includePending
+
+/-- info: 'Interaction.ReactiveApplication.ResponseMenu.recorded_environment_prefix' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Interaction.ReactiveApplication.ResponseMenu in
+#print axioms recorded_environment_prefix
+
+/-- info: 'Vegas.EventGraphRuntime.SequentialPhaseSchedulerInformation.scheduler_history' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.EventGraphRuntime.SequentialPhaseSchedulerInformation in
+#print axioms scheduler_history
+
+/-- info: 'Vegas.phase_onePacket_mem_of_recovery_paired_history' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas in
+#print axioms phase_onePacket_mem_of_recovery_paired_history
