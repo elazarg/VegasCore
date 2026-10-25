@@ -1,6 +1,6 @@
 # Sequential equilibrium on the phase runtime
 
-The intended-game preservation guarantee holds on
+The intended-game preservation theorem applies on
 `phaseApplication`, instantiated with the sequential compiled graph and singleton
 phases. The phase executor, packet observations, retirement archive and permanent
 exclusion semantics stay as implemented. The concurrent reserved-tape theorem
@@ -34,6 +34,12 @@ actual phase runtime. Their primitive definitions already live in
 derives the clear counted-prefix guards used by the one-packet comparisons.
 Completion covers all legal horizon-terminal states. The reaction and inclusion
 bounds must sum to strictly less than each owned event's deadline.
+
+Applying the theorem requires proofs of the entire physical service contract,
+in addition to the timing inequality and finite-nature instance. Opportunity,
+protected inclusion and completion quantify over every legal raw phase history,
+including horizon-terminal histories. A scheduler that satisfies only the
+timing inequality does not supply these hypotheses.
 
 The response catalogue covers output and input values, with candidate capacity
 strictly greater than each player's binding-event count over the whole program.
@@ -148,12 +154,9 @@ out or silently assumed positive.
   [Recorded environment origins](../Interaction/ReactiveRecordedEnvironment.lean)
   supply genuine earlier prefixes for every remembered command.
 
-These are supporting theorems. They do not prove the target preservation theorem
-or close an arbitrary-builder checklist obligation.
-
 ## Execution, beliefs and continuation values
 
-The actual transition comparison now includes both player responses and environment
+The actual transition comparison covers both player responses and environment
 steps, with length-preserving legal traces in both directions before exclusion.
 [SequentialPhaseTransition](../Vegas/Game/SequentialPhaseTransition.lean) retains
 the first exclusion endpoint; it does not identify the richer continuations after
@@ -197,8 +200,7 @@ matched history pair.
 [SequentialPhaseComparisonBayes](../Vegas/Game/SequentialPhaseComparisonBayes.lean)
 proves the resulting physical-state posterior equality for the actual phase and
 bounded recovery comparison policies at the positive factory scales. It
-constructs the old decision site and derives its positivity, rather than adding
-a separate old-site assumption.
+constructs the recovery decision site and derives its positivity.
 
 The original terminal utility is preserved.
 [PhaseTerminalFailure](../Vegas/Game/PhaseTerminalFailure.lean) proves that a failed
@@ -253,7 +255,7 @@ clear played inputs. The
 separates exact stopped-law transport from completion and payoff bounds.
 
 The [uniform native value error](../Vegas/Game/SequentialPhaseNativeValueError.lean)
-now fixes one actual native comparison site for every phase baseline/deviation
+fixes one actual native comparison site for every phase baseline/deviation
 law. It combines exact Bayes and choice transport with the regular-prefix
 foreign-exit bound and posterior irregular-history drift. The original
 conditional private-input independence, observable signal, calibrated tremble
@@ -285,7 +287,7 @@ source-deviation alternatives.
 
 The [honest source laws](../Vegas/Game/SequentialPhaseHonestLaw.lean) and
 [same-weight retention](../Vegas/Game/SequentialPhaseComparisonRetention.lean)
-now supply the initialized comparison estimates from actual counted service.
+supply the initialized comparison estimates from actual counted service.
 [SequentialPhaseInitializedLaw](../Vegas/Game/SequentialPhaseInitializedLaw.lean)
 proves the original physical phase joint readout/base-payoff approximation.
 [SequentialPhaseInitializedClearance](../Vegas/Game/SequentialPhaseInitializedClearance.lean)

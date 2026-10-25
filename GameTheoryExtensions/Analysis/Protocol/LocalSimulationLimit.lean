@@ -262,7 +262,6 @@ theorem sequentialEquilibrium_of_copied_comparisons_limit_of_lawError
       _ = (((M.runBehavioral source.strategy sourceFuel).map sourceObserve) outcome).toReal :=
         (toReal_map_apply _ _ _).symm
 
-
 /-- Local target gains bounded by original-source gain mixtures, up to one
 uniformly vanishing error, preserve sequential rationality at a common consistent
 assessment limit: the case of

@@ -18,9 +18,11 @@ inside a link to the `research-tree` tag names that tag's tree.
 
 `python scripts/report-unreached.py` lists the modules none of whose
 declarations a Paper theorem, a test or an example uses, largest first. Names
-mentioned in test and example source count as uses, since `example` commands
-leave no declaration to follow. It reports only; `--strict` makes a nonempty
-list fail. Uses through notation or tactics elsewhere are invisible to it, so
+mentioned unambiguously in test and example source count as uses, since `example`
+commands leave no declaration to follow. A qualified reference is kept intact;
+an ambiguous short name counts none of its owners. Name anonymous uses explicitly
+or qualify their references to make the inventory precise. It reports only;
+`--strict` makes a nonempty list fail. Uses through notation or tactics elsewhere are invisible to it, so
 the build confirms each removal.
 
 The [experiments](experiments) directory holds the investigation scripts that

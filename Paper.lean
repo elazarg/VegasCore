@@ -1066,7 +1066,6 @@ theorem sequential_phase_intended_raw_sequential_equilibrium [Fintype Player] [I
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.sequential_phase_intended_raw_sequential_equilibrium
 
-
 end Vegas.Paper
 
 /-! Program-payment laws and full-deviation equilibria use the same standard axioms. -/

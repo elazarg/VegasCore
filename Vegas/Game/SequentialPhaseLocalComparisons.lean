@@ -51,8 +51,8 @@ private local instance localComparisonNativeInformation (who : Player) : Decidab
   nativeInfoDecidableEq setup leaks bounds horizon scheduler who
 
 open Classical in
-/-- The original phase completion compares every pure nonfree deviation with
-exclusion or a lottery of gains in the fixed intended game. -/
+/-- Every pure nonfree phase deviation has gain bounded by a uniformly
+vanishing error, or by an intended-game gain lottery plus that error. -/
 theorem local_comparisons
     (wellFormed : setup.WellFormed) (independent : setup.PrivateInputsIndependentGiven signal)
     (observable : setup.PublicInitialSignal signal)

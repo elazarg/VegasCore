@@ -74,7 +74,7 @@ their present source games and utilities until the semantic adapters are proved.
 | --- | --- | --- | --- |
 | Compiler correctness: terminal law, unilateral deviation law, Nash equivalence on the ideal graph | none | any mode | checked: `canonical_setup_law`, `canonical_setup_deviation_law`, `Vegas.Paper.concurrent_event_nash_iff` |
 | Nash preservation | any timely builder | sequential and concurrent | checked on the plain contract (`Vegas.Paper.async_first_turn_nash_iff` and siblings); to port |
-| Non-concurrent sequential-equilibrium preservation | any timely builder, private inputs independent given a public initial signal | sequential | checked on the phase contract (`Vegas.Paper.sequential_phase_intended_raw_sequential_equilibrium`), preserving the original joint typed readout and settled utility law |
+| Non-concurrent sequential-equilibrium preservation | phase opportunity, protected inclusion, completion, strict timing and finite nature; private inputs independent given a public initial signal | sequential | checked conditional theorem on the phase contract (`Vegas.Paper.sequential_phase_intended_raw_sequential_equilibrium`), preserving the original joint typed readout and settled utility law |
 | Concurrent sequential-equilibrium preservation | reserved-epoch tape, complete pending observation | concurrent | checked on the phase contract (`Vegas.Paper.concurrent_source_raw_sequential_equilibrium`) |
 | Intended game to source game | none | none | checked: `Vegas.Paper.intended_sequential_equilibrium`, `Vegas.Paper.intended_nash` |
 | Late-leak impossibility | abstract game | none | checked: `Vegas.Paper.late_leak_intended_outcome_not_preserved` and siblings |

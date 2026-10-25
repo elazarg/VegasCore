@@ -685,7 +685,7 @@ beliefs without assuming a post-exclusion information isomorphism.
 actual phase game. [Terminal failure provenance](../Vegas/Game/PhaseTerminalFailure.lean)
 and [decoded-debt absorption](../Vegas/Game/SequentialPhaseDecodedDebt.lean) preserve
 its original payoff. The [preservation work](sequential-phase-preservation.md)
-records the remaining continuation comparisons.
+records the preservation proof and its precise physical service assumptions.
 
 Native source timing and failure estimates use
 [pointwise counted service](../Vegas/Game/OnePacketCountedService.lean),

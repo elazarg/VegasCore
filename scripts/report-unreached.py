@@ -8,9 +8,10 @@ none reached is reported with its line count. Generated names, aggregators and
 the roots themselves are skipped.
 
 `example` commands leave no declaration behind, so the walk also starts from
-every project constant that a distinctive identifier in those sources may name
-(outside comments and strings, matched by name suffix). This errs toward
-keeping. Uses through notation or tactics in other modules stay invisible.
+every project constant uniquely named by a distinctive identifier in those
+sources (outside comments and strings). Ambiguous suffixes are ignored: an
+anonymous example must qualify a name when its short spelling has several
+owners. Uses through notation or tactics in other modules stay invisible.
 
 The script elaborates a small Lean program against the built project with
 `lake env lean`, so run it after `lake build`. It reports only; `--strict`
@@ -60,6 +61,25 @@ def nameSuffixes (name : Name) : List Name :=
   (name.components.tails.filter (!·.isEmpty)).map
     fun parts => parts.foldl (fun acc part => acc ++ part) Name.anonymous
 
+/-- Unique declaration owners for public-name suffixes, including private names. -/
+def uniqueMentionOwners (names : List (Name × Name)) : Std.HashMap Name (Option Name) := Id.run do
+  let mut owners : Std.HashMap Name (Option Name) := {}
+  for (actual, user) in names do
+    for suffix in nameSuffixes user do
+      if !owners.contains suffix then owners := owners.insert suffix (some actual)
+      else if owners.getD suffix none != some actual then owners := owners.insert suffix none
+  return owners
+
+run_cmd do
+  let names := [`Left.same_name, `Right.same_name, `Left.unique_name]
+  let owners := uniqueMentionOwners (names.map fun name => (name, name))
+  unless owners.getD `same_name none == none do
+    throwError "an ambiguous suffix must not count either declaration as used"
+  unless owners.getD `Left.same_name none == some `Left.same_name do
+    throwError "a qualified mention must resolve its exact declaration"
+  unless owners.getD `unique_name none == some `Left.unique_name do
+    throwError "a unique suffix must resolve its declaration"
+
 run_cmd liftTermElabM do
   let env ← getEnv
   let moduleNames := env.header.moduleNames
@@ -71,12 +91,15 @@ run_cmd liftTermElabM do
     | none => false
   let mentions : NameSet :=
     (← IO.FS.lines mentionsFile).foldl (fun set text => set.insert text.toName) {}
+  let projectNames := env.constants.toList.filterMap fun (name, _) =>
+    let user := (privateToUserName? name).getD name
+    if within projectPrefixes name && !user.isInternal then some (name, user) else none
+  let owners := uniqueMentionOwners projectNames
   let mut stack : List Name := []
   for (name, _) in env.constants.toList do
     if within rootPrefixes name then stack := name :: stack
-    else if within projectPrefixes name then
-      let user := (privateToUserName? name).getD name
-      if (nameSuffixes user).any mentions.contains then stack := name :: stack
+  for mention in mentions.toList do
+    if let some name := owners.getD mention none then stack := name :: stack
   let mut reached : NameSet := {}
   while !stack.isEmpty do
     match stack with
@@ -105,21 +128,23 @@ run_cmd liftTermElabM do
 
 def distinctive(identifier: str) -> bool:
     """Long enough or shaped enough that it is unlikely to be a local name or tactic."""
-    return "_" in identifier or any(c.isupper() for c in identifier[1:]) or len(identifier) >= 10
+    return identifier != "_" and (
+        "_" in identifier or any(c.isupper() for c in identifier[1:]) or len(identifier) >= 10)
 
 
 def mentions_in(text: str) -> set[str]:
-    """Distinctive identifiers outside comments and strings, with their dotted
-    suffixes and components. A suffix after a dot counts however short, since
-    `terminal.outcome` uses `Config.outcome` through its field notation."""
+    """Preserve qualified references; local receivers contribute their member.
+
+    Resolution against declarations later requires a unique suffix. Keeping a
+    qualified reference intact prevents its short name from rooting other owners.
+    """
     names = set()
     for identifier in IDENTIFIER.findall(OPTIONS.strip_lean_comments_and_strings(text)):
         parts = identifier.split(".")
-        for start in range(len(parts)):
-            suffix = ".".join(parts[start:])
-            if start > 0 or distinctive(suffix):
-                names.add(suffix)
-        names.update(part for part in parts if distinctive(part))
+        if len(parts) > 1:
+            names.add(identifier if parts[0][:1].isupper() else ".".join(parts[1:]))
+        elif distinctive(identifier):
+            names.add(identifier)
     return names
 
 

@@ -16,13 +16,14 @@ class MentionTests(unittest.TestCase):
                 "  scheduled_terminalState_law program scheduler profile\n")
         self.assertIn("scheduled_terminalState_law", REPORT.mentions_in(text))
 
-    def test_dotted_names_contribute_suffixes_and_components(self):
+    def test_qualified_name_does_not_root_other_suffix_owners(self):
         names = REPORT.mentions_in("EventGraphRuntime.State.initial_privateInput_candidate _\n")
-        for name in ("EventGraphRuntime.State.initial_privateInput_candidate",
-                     "State.initial_privateInput_candidate", "initial_privateInput_candidate",
-                     "EventGraphRuntime"):
-            with self.subTest(name=name):
-                self.assertIn(name, names)
+        self.assertEqual(names, {"EventGraphRuntime.State.initial_privateInput_candidate"})
+
+    def test_fully_qualified_theorem_does_not_count_its_twins(self):
+        names = REPORT.mentions_in(
+            "Vegas.SequentialPhase.intended_sequentialEquilibrium_preserved _\n")
+        self.assertEqual(names, {"Vegas.SequentialPhase.intended_sequentialEquilibrium_preserved"})
 
     def test_comments_and_strings_are_not_mentions(self):
         text = ('/-- See `forceDisclose_expect_le`. -/\n'

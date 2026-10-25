@@ -346,6 +346,31 @@ class DocReferenceTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("Cannot enumerate tracked Markdown", result.stdout)
 
+    def test_markdown_rejects_ambiguous_preservation_suffix(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "lakefile.toml").write_text("", encoding="utf-8")
+            (root / "Vegas").mkdir()
+            declarations = "".join(
+                f"namespace Vegas.{namespace}\n"
+                "theorem intended_sequentialEquilibrium_preserved : True := by trivial\n"
+                f"end Vegas.{namespace}\n"
+                for namespace in ("Setup", "RecoveryOnePacket", "SequentialPhase"))
+            (root / "Vegas/Test.lean").write_text(declarations, encoding="utf-8")
+            reference = root / "README.md"
+            reference.write_text("`intended_sequentialEquilibrium_preserved`", encoding="utf-8")
+            subprocess.run(["git", "init", "-q", str(root)], check=True)
+            subprocess.run(["git", "-C", str(root), "add", "README.md"], check=True)
+            ambiguous = subprocess.run([sys.executable, str(SCRIPT)], cwd=root,
+                                       capture_output=True, text=True)
+            self.assertNotEqual(ambiguous.returncode, 0)
+            self.assertIn("unknown Lean name", ambiguous.stdout)
+            reference.write_text("`Vegas.SequentialPhase.intended_sequentialEquilibrium_preserved`",
+                                 encoding="utf-8")
+            qualified = subprocess.run([sys.executable, str(SCRIPT)], cwd=root,
+                                       capture_output=True, text=True)
+            self.assertEqual(qualified.returncode, 0, qualified.stdout)
+
 
     def test_run_outside_a_repository_root_fails(self):
         with tempfile.TemporaryDirectory() as directory:
