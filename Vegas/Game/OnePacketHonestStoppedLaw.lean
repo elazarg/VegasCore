@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RecoveryHonestContinuation
+import Vegas.Game.OnePacketHonestContinuation
 import Vegas.Game.HonestContinuationIntended
 
 /-! # Honest continuations do not stop at exclusion or latent debt -/

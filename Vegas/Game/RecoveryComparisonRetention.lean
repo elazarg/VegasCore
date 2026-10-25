@@ -1,5 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
+import Vegas.Game.OnePacketComparisonRetention
+import Vegas.Game.RecoveryCountedService
 import Vegas.Game.RecoveryHonestRecall
 import Vegas.Game.RecoveryNativeComparison
 
@@ -29,12 +31,6 @@ local notation "RP" => ReactiveApplication.ResponseMenu.protocol
 local notation "NP" => ReactiveApplication.ResponseMenu.protocol
   (bounds.onePacketMenu (runtime setup) leaks) (initialLaw setup) horizon (NativeScheduler)
 
-omit [DecidableEq Player] [Fintype Player] [IExpr.ResultTypes L] in
-private theorem apply_eq_one_of_subsingleton {α : Type} [Subsingleton α]
-    (law : PMF α) (choice : α) : law choice = 1 := by
-  rw [← law.tsum_coe, tsum_eq_single choice (fun other different =>
-    (different (Subsingleton.elim other choice)).elim)]
-
 /-- Actual recovery service makes every reached honest input nonlate and forced,
 so the original common weights retain its honest choice at every future step. -/
 theorem nativeComparison_dominatesHonestFrom_boundary [Fintype (RP).History]
@@ -62,51 +58,21 @@ theorem nativeComparison_dominatesHonestFrom_boundary [Fintype (RP).History]
       (sequence n) (slotRetention (scale n))
       (nativeComparisonStrategy setup leaks bounds horizon scheduler sequence scale positive le_one
         weights n) start := by
-  classical
-  have sourceLaw := recovery_honest_boundary_readout_law (initialLaw_initialized setup)
-    (initialLaw_native setup) opportunity inclusion timely completes wellFormed covers capacity
-    (sequence n) certificate rank start anchor state boundary point decoded intended
-  have sourceEq : sourceContinuation setup (setup.intendedOpeningProfile (sequence n).strategy) rank
-      anchor.application.config =
-        (setup.continuationLaw (setup.intendedOpeningProfile (sequence n).strategy)
-          (some point)).map some :=
-    congrArg (fun decoded =>
-      (setup.continuationLaw (setup.intendedOpeningProfile (sequence n).strategy) decoded).map some)
-      decoded
-  have static := decodedPoint_staticAt
-    ((decodedPoint_eq_of_isPrefix boundary.ordered).trans decoded)
-  intro fuel history reached who choice
-  by_cases current : history.state = none
-  · have observed : (N).infoOf who history.trace = none := by
-      change ((bounds.onePacketMenu (runtime setup) leaks).signals (initialLaw setup) horizon
-        (NativeScheduler)).infoOf who history.trace = none
-      rw [ReactiveApplication.ResponseMenu.info, current]
-      rfl
-    revert choice
-    rw [observed]
-    intro choice
-    have : Subsingleton ((N).Choice who none) :=
-      InformationModel.subsingleton_choice_of_menu_subsingleton _ _ Set.subsingleton_singleton
-    rw [apply_eq_one_of_subsingleton _ choice, apply_eq_one_of_subsingleton _ choice,
-      ENNReal.toReal_one, mul_one]
-    exact slotRetention_le_one (positive n).le (le_one n)
-  · obtain ⟨control, controlState⟩ := Option.ne_none_iff_exists'.mp current
-    obtain ⟨decodedPoint, decodedEq, intendedPoint⟩ :=
-      honest_reached_intended_of_readout_law bounds wellFormed (sequence n) certificate start
-        point static intended (sourceLaw.trans sourceEq) fuel history reached control controlState
-    have forced : Vegas.forcedAgent (bounds.onePacketMenu (runtime setup) leaks)
-        (initialLaw setup) horizon (NativeScheduler) who ((N).infoOf who history.trace) := by
-      apply forcedAgent_of_history history
-      rw [controlState]
-      exact (forcedState_iff_decodedPoint control).mpr
-        ⟨decodedPoint, decodedEq, forcedPoint_of_intended who intendedPoint⟩
-    have notLate := recovery_honest_reached_not_late (initialLaw_initialized setup)
-      (initialLaw_native setup) opportunity timely inclusion completes wellFormed covers capacity
-      (sequence n) certificate rank start anchor state boundary point decoded intended fuel
-      history reached who
-    exact onePacketMixture_ge_honest_of_not_late setup leaks bounds horizon (NativeScheduler)
-      sequence scale positive le_one n
-      (nativeComparisonWeights setup leaks bounds horizon scheduler (weights n))
-      notLate ⟨history, rfl⟩ forced choice
+  exact OnePacketComparison.assembled_dominatesHonestFrom_boundary setup leaks bounds horizon
+    (NativeScheduler)
+    wellFormed covers capacity sequence scale positive le_one
+    (fun n => nativeComparisonWeights setup leaks bounds horizon scheduler (weights n))
+    (nativeComparisonSequence setup leaks bounds horizon scheduler sequence scale positive le_one
+      weights)
+    (nativeComparisonSequence_assembled setup leaks bounds horizon scheduler sequence scale positive
+      le_one weights) n
+    (Recovery.Opportunity.clear_counted_native bounds (initialLaw_initialized setup)
+      (initialLaw_native setup) opportunity)
+    (Recovery.ProtectedInclusion.clear_counted_native bounds (initialLaw_initialized setup)
+      (initialLaw_native setup) inclusion)
+    timely
+    (Recovery.CompletesPlay.clear_counted_native bounds (initialLaw_initialized setup)
+      (initialLaw_native setup) completes)
+    certificate rank start anchor state boundary point decoded intended
 
 end Vegas.RecoveryOnePacket

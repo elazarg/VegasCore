@@ -80,6 +80,43 @@ theorem completed_decisionFailure_terminal_expect
         rw [agrees]
     _ = _ := expect_constant _ _
 
+local notation "ClearState" => ReactiveApplication.stateInvariant
+  (app := application setup leaks) (fun native => ExclusionEvidence 0 ∅ (RecoveryState.mk native ∅))
+
+open Classical in
+/-- Under counted clear terminal completeness, the pending event's terminal
+failure probability is its probability at the first completion or public failure. -/
+theorem pending_failure_terminal_eq_stopped [Finite (E).History]
+    (terminalCompletes : ∀ (final : (application setup leaks).Control),
+      ((menu).protocol (initialLaw setup) horizon scheduler).Trace (some final) →
+      ExclusionEvidence 0 ∅ (⟨final.execution.application, ∅⟩ : RecoveryState (graph setup)) →
+      (application setup leaks).terminal (some final) →
+      final.execution.application.config.cut.Terminal)
+    (certificate : (E).WellFoundedHistories)
+    (players : ∀ player, (N).BehavioralPolicy player)
+    (start : (E).History) {control : (application setup leaks).Control}
+    (current : start.state = some control) {rank : Nat}
+    (ordered : control.execution.application.config.cut.IsPrefix rank)
+    (clear : ExclusionEvidence 0 ∅ (RecoveryState.mk control.execution.application ∅))
+    (key : LateKey setup leaks) (event : (graph setup).EventId)
+    (ready : control.execution.application.config.cut.Ready event)
+    (decided : decidedEvent key = some event) :
+    expect ((N).runBehavioralTerminalFrom certificate players start)
+      (fun final => if DecisionFailed key final.state then (1 : ℝ) else 0) =
+      expect ((N).runBehavioralUntil certificate players
+        (fun stop => LateStopped setup leaks bounds horizon scheduler rank stop ∨
+          ¬ ClearState stop.state) start)
+        (fun final => if DecisionFailed key final.state then (1 : ℝ) else 0) := by
+  rw [(N).runBehavioralTerminalFrom_eq_bind_runBehavioralUntil certificate players
+    (fun stop => LateStopped setup leaks bounds horizon scheduler rank stop ∨
+      ¬ ClearState stop.state) start, expect_bind_of_finite]
+  apply expect_congr_on_support
+  intro final supported
+  obtain ⟨anchor, state, completed, _ordered, _seen⟩ := pending_stop_completed terminalCompletes
+    true certificate players start current ordered clear event ready final supported
+  exact completed_decisionFailure_terminal_expect certificate players final state key event decided
+    completed
+
 section Recovery
 
 variable {initial : PMF (RecoveryState (graph setup))}
@@ -119,16 +156,10 @@ theorem recovery_pending_failure_terminal_eq_stopped [Finite (Protocol).History]
         (fun stop => LateStopped setup leaks bounds horizon nativeScheduler rank stop ∨
           ¬ Clear stop.state) start)
         (fun final => if DecisionFailed key final.state then (1 : ℝ) else 0) := by
-  rw [(Native).runBehavioralTerminalFrom_eq_bind_runBehavioralUntil certificate players
-    (fun stop => LateStopped setup leaks bounds horizon nativeScheduler rank stop ∨
-      ¬ Clear stop.state) start, expect_bind_of_finite]
-  apply expect_congr_on_support
-  intro final supported
-  obtain ⟨anchor, state, completed, _ordered, _seen⟩ := recovery_pending_stop_completed initialized
-    nativeLaw completes true certificate players start current ordered clear event ready final
-      supported
-  exact completed_decisionFailure_terminal_expect certificate players final state key event decided
-    completed
+  apply pending_failure_terminal_eq_stopped ?_ certificate players start current ordered clear key
+    event ready decided
+  exact Recovery.CompletesPlay.clear_counted_native bounds initialized nativeLaw completes
+
 
 end Recovery
 

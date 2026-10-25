@@ -34,10 +34,10 @@ local notation "NativeScheduler" => RecoveryProjection.nativeScheduler (runtime 
 local notation "N" => onePacketModel setup (oldLeaks) bounds (Vegas.initialLaw setup) horizon
   (NativeScheduler)
 
-local instance : (application setup (oldLeaks)).FiniteNature
+private local instance : (application setup (oldLeaks)).FiniteNature
     (Vegas.initialLaw setup) (NativeScheduler) := nativeNature setup leaks scheduler
 
-local instance (who : Player) : DecidableEq ((N).InfoState who) := Classical.decEq _
+private local instance (who : Player) : DecidableEq ((N).InfoState who) := Classical.decEq _
 
 /-- Physical singleton phase service bounds the probability of a native first
 foreign exclusion before focal source debt, for every focal deviation. -/

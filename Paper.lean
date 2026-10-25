@@ -2200,3 +2200,87 @@ open Vegas.EventGraphRuntime in
 #guard_msgs (whitespace := lax) in
 open Vegas in
 #print axioms recovery_debt_stopped_expect_eq_native
+
+/-- info: 'GameTheory.Protocol.InformationModel.sequentialEquilibrium_of_copied_comparisons_limit_of_lawError' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open GameTheory.Protocol.InformationModel in
+#print axioms sequentialEquilibrium_of_copied_comparisons_limit_of_lawError
+
+/-- info: 'GameTheory.Protocol.InformationModel.exists_sequentialEquilibrium_limit_of_pooled_comparisons_of_lawError' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open GameTheory.Protocol.InformationModel in
+#print axioms exists_sequentialEquilibrium_limit_of_pooled_comparisons_of_lawError
+
+/-- info: 'GameTheory.Protocol.InformationModel.runBehavioralTerminalFrom_map_eq_until_of_stable_readout' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open GameTheory.Protocol.InformationModel in
+#print axioms runBehavioralTerminalFrom_map_eq_until_of_stable_readout
+
+/-- info: 'Vegas.SequentialPhase.component_initialized_readout_withinTV' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.SequentialPhase in
+#print axioms component_initialized_readout_withinTV
+
+/-- info: 'Vegas.SequentialPhase.initialized_limit_no_exclusion' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.SequentialPhase in
+#print axioms initialized_limit_no_exclusion
+
+/-- info: 'Vegas.SequentialPhase.component_initialized_masked_state_law' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.SequentialPhase in
+#print axioms component_initialized_masked_state_law
+
+/-- info: 'Vegas.SequentialPhase.localValue_native_comparison_error_vanishes' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.SequentialPhase in
+#print axioms localValue_native_comparison_error_vanishes
+
+/-- info: 'Vegas.SequentialPhase.keyed_component_value_bounds' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.SequentialPhase in
+#print axioms keyed_component_value_bounds
+
+/-- info: 'Vegas.SequentialPhase.component_owing_localGain_eq_zero' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.SequentialPhase in
+#print axioms component_owing_localGain_eq_zero
+
+/-- info: 'Vegas.SequentialPhase.canonical_raw_sequentialEquilibrium' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.SequentialPhase in
+#print axioms canonical_raw_sequentialEquilibrium
+
+/-- info: 'Vegas.SequentialPhase.nativeComparison_pending_value_affine' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.SequentialPhase in
+#print axioms nativeComparison_pending_value_affine
+
+/-- info: 'Vegas.SequentialPhase.nativeComparison_local_completion_value_sub_le' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.SequentialPhase in
+#print axioms nativeComparison_local_completion_value_sub_le
+
+/-- info: 'Vegas.SequentialPhase.recovery_bayes_debt_stopped_eq_native' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.SequentialPhase in
+#print axioms recovery_bayes_debt_stopped_eq_native
+
+/-- info: 'GameTheory.Protocol.PublicScheduler.expanded_sequentialEquilibrium' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open GameTheory.Protocol.PublicScheduler in
+#print axioms expanded_sequentialEquilibrium

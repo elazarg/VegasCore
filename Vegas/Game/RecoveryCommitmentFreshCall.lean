@@ -1,5 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
+import Vegas.Game.OnePacketCommitmentFreshCall
+import Vegas.Game.RecoveryCountedService
 import Vegas.Game.OnePacketCommitmentCompletion
 import Vegas.Game.RecoveryFirstActivation
 
@@ -49,12 +51,9 @@ theorem recovery_commitment_freshCall
     (packet : material.call.packet = .commitment event (who, .prepared serial)) :
     FreshCall setup leaks who event bound (respondEntry setup leaks execution who response)
       (sentEnvelope setup leaks execution who material) := by
-  let nativeScheduler := RecoveryProjection.nativeScheduler (runtime setup) leaks scheduler
-  have rawTrace := (bounds.onePacketMenu (runtime setup) leaks).toRawTrace (initialLaw setup)
-    horizon nativeScheduler trace
-  have fits := recovery_firstActivation_inclusionFits initialized nativeLaw opportunity timely
-    rawTrace rfl clear event turn never
-  exact onePacket_commitment_freshCall trace event turn fits node response member material sends
-    packet
+  exact counted_commitment_freshCall (setup := setup) (leaks := leaks) (bounds := bounds)
+    (outputEq := outputEq) (opportunity := Recovery.Opportunity.clear_counted_native bounds
+    initialized nativeLaw opportunity) (timely := timely) trace clear event turn never node
+    response member material sends packet
 
 end Vegas

@@ -1,5 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
+import Vegas.Game.OnePacketStoppedSettlement
+import Vegas.Game.RecoveryCountedService
 import Vegas.Game.RecoveryProtectedCalls
 import Vegas.Game.OnePacketFirstActivation
 import Vegas.Pending.ExclusionStoppedBoundary
@@ -58,38 +60,9 @@ theorem recovery_stopped_freshCall_receipt
       ∀ final, stopped.state = some final → RecordsEntry setup leaks who entry (some final) →
         event ∈ final.execution.application.config.cut.completed →
           (message.id, true) ∈ final.execution.receipts := by
-  intro stopped supported final finalState records done
-  have endpoint := responseMenu_stopped_exclusion_boundary (runtime setup) leaks
-    (initialLaw setup) horizon nativeScheduler menu certificate profile extraStop start current
-    state clear stopped supported
-  have trace := finalState ▸ stopped.trace
-  obtain ⟨earlier, later, split⟩ := records
-  have member : message ∈ (application setup leaks).outputs (final.execution.recall who) := by
-    rw [split]
-    exact List.mem_filterMap.mpr ⟨entry, by simp, call.emitted⟩
-  have sole : ∀ other ∈ earlier ++ later,
-      ¬ EmitsOtherFor (runtime setup) leaks other event message.id := by
-    intro other present
-    apply onePacket_not_emitsOtherFor bounds trace who event message member call.addressed other
-    rw [split]
-    rcases List.mem_append.mp present with first | last
-    · exact List.mem_append_left _ first
-    · exact List.mem_append_right _ (List.mem_cons_of_mem _ last)
-  rcases endpoint with clearStop | boundary
-  · have finalClear : ExclusionEvidence 0 ∅
-        (⟨final.execution.application, ∅⟩ : RecoveryState (graph setup)) := by
-      simpa only [finalState, ReactiveApplication.stateInvariant] using clearStop
-    have rawTrace := (menu).toRawTrace (initialLaw setup) horizon nativeScheduler trace
-    exact (recovery_prescribed_packet_settles setup leaks initialized nativeLaw inclusion final
-      rawTrace finalClear event who owned earlier later entry message split call sole).2 done
-  · obtain ⟨remaining, execution, prior, command, next, priorClear, _continuing, _chosen,
-        moved, target,
-        _fromStart, _prefix⟩ := boundary
-    have same := Option.some.inj (finalState.symm.trans target)
-    cases same
-    have rawPrior := (menu).toRawTrace (initialLaw setup) horizon nativeScheduler prior
-    have settled := recovery_settlesFreshCalls_environment setup leaks initialized nativeLaw
-      inclusion who event owned remaining execution rawPrior priorClear command next moved
-    exact (settled earlier entry later message split call sole).1 done
+  exact counted_stopped_freshCall_receipt (setup := setup) (leaks := leaks) (bounds := bounds)
+    (inclusion := Recovery.ProtectedInclusion.clear_counted_native bounds initialized nativeLaw
+    inclusion) certificate profile extraStop start current state clear who event owned entry
+    message call
 
 end Vegas

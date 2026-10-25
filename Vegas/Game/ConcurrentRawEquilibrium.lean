@@ -599,8 +599,9 @@ theorem concurrentRawSequentialPreservation_of_local_comparisons
       (fun n => native (index n)) (fun n => nativeMixed (index n))
       (fun n => nativeBayes (index n)) error errorLimit
       (by
-        intro n who site law
-        rcases localComparisons n who site law with small | ⟨sourceSite, sourceLaw, bound⟩
+        intro n who site choice
+        rcases localComparisons n who site (PMF.pure choice) with
+          small | ⟨sourceSite, sourceLaw, bound⟩
         · left
           simpa only [InformationModel.localGain, InformationModel.assessmentComparisonWith,
             expect_map, Function.comp_def, targetObserve, utility] using small

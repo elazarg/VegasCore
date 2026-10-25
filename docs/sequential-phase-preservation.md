@@ -243,18 +243,48 @@ clear played inputs. The
 [native debt readout identity](../Vegas/Game/RecoveryDebtStoppedReadout.lean)
 separates exact stopped-law transport from completion and payoff bounds.
 
+The [uniform native value error](../Vegas/Game/SequentialPhaseNativeValueError.lean)
+now fixes one actual native comparison site for every phase baseline/deviation
+law. It combines exact Bayes and choice transport with the regular-prefix
+foreign-exit bound and posterior irregular-history drift. The original
+conditional private-input independence, observable signal, calibrated tremble
+scale and catalogue coverage assumptions remain explicit.
+[Pending affine values](../Vegas/Game/SequentialPhasePendingValueAffine.lean)
+and [arbitrary local completion values](../Vegas/Game/SequentialPhaseLocalCompletionValue.lean)
+instantiate the shared source-potential proofs from actual phase completion and
+honest continuation estimates. Both binding and resolution events are covered.
+[Keyed component values](../Vegas/Game/SequentialPhaseKeyedComponentValues.lean)
+use common native option scores for the original phase utility, with only the
+original intended-terminal punishment floor. Their component-pool and arbitrary
+pure-choice gain consequences are separate obligations.
+
+The [honest source laws](../Vegas/Game/SequentialPhaseHonestLaw.lean) and
+[same-weight retention](../Vegas/Game/SequentialPhaseComparisonRetention.lean)
+now supply the initialized comparison estimates from actual counted service.
+[SequentialPhaseInitializedLaw](../Vegas/Game/SequentialPhaseInitializedLaw.lean)
+proves the original physical phase joint readout/base-payoff approximation.
+[SequentialPhaseInitializedClearance](../Vegas/Game/SequentialPhaseInitializedClearance.lean)
+proves no exclusions on initialized limit support by bounding the physical
+exclusion flag. Arbitrary suffixes after exclusion remain in the actual game;
+their rare probability is bounded rather than their states being identified.
+
+[The shared protocol limit](../GameTheoryExtensions/Analysis/Protocol/LocalSimulationLimit.lean)
+requires only pure local-choice comparisons. Decision recall extends those to
+local lotteries and whole-policy SE at the common consistent limit. The recovery
+consumer and pooled-component consumer reuse this argument.
+[SequentialPhaseRawLaw](../Vegas/Game/SequentialPhaseRawLaw.lean) checks the final
+sequential audit consumer: a canonical phase SE with the desired law extends to
+raw audited SE with zero charges, no exclusions and the realized settled joint
+law. Its canonical-SE premise must still be proved.
+
 The remaining obligations are:
 
-1. Combine the checked local-deviation stopped laws, Bayes posteriors and payoff
-   error with the native source-value estimates. Prove the forced and keyed
-   continuation-gain comparisons for the actual phase common completion, retaining
-   the original intended-terminal exit floor and source-information assumptions.
-2. Derive the initialized comparison's joint-law approximation and vanishing
-   exclusion probability using the honest source law and same-weight retention.
-   The shared counted service interfaces must supply its actual history guards.
-3. Apply the existing common-limit comparison machinery to prove phase SE, then
-   recover the intended joint readout/payoff law and apply the phase counted-to-raw
-   extension with audited settlement and the multiplicative funding condition.
+1. Prove the ordinary source and keyed arbitrary-pure-choice gain comparisons
+   for the actual phase common completion. The owing branch already has exact
+   zero gain. The keyed proof must use actual phase pooled optimality.
+2. Instantiate the shared limit with those comparisons and the checked
+   initialized law, then apply the checked raw audit consumer to obtain intended
+   SE preservation under the original assumptions.
 
 These supporting theorems do not yet prove the target preservation theorem or
 close an arbitrary-builder checklist obligation.

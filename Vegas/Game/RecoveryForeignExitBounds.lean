@@ -1,5 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
+import Vegas.Game.RecoveryNativeHistory
 import Vegas.Game.RecoveryIrregularBeliefBounds
 import Vegas.Game.RecoveryBeliefContinuation
 
@@ -63,30 +64,6 @@ theorem belief_controlled_clear_of_notFree [Fintype (RP).History]
   exact not_clearInput_of_publicExclusion setup leaks
     ⟨current.execution.recall who, current.execution.observe (RApp) who, observed.symm, nonempty⟩
       forced.1
-
-private theorem control_turn_of_information {who : Player}
-    {past : List (recoveryApplication (runtime setup) leaks).PlayerEntry}
-    {view : (recoveryApplication (runtime setup) leaks).PlayerView}
-    (history : (R).InformationHistory who (some (past, view)))
-    {event : (graph setup).EventId}
-    (turn : view.application.1.publicView.ownTurn? who = some event) :
-    ∃ current : (recoveryApplication (runtime setup) leaks).Control,
-      history.1.state = some current ∧
-        current.execution.application.native.publicView.ownTurn? who = some event := by
-  have observed := ((RMenu).info Initial horizon scheduler who history.1.trace).symm.trans history.2
-  cases state : history.1.state with
-  | none => rw [state] at observed; cases observed
-  | some current =>
-    rw [state] at observed
-    by_cases active : current.actor = some who
-    · simp only [ReactiveApplication.observe, active, ↓reduceIte] at observed
-      have viewEq : current.execution.observe (RApp) who = view :=
-        congrArg Prod.snd (Option.some.inj observed)
-      refine ⟨current, rfl, ?_⟩
-      exact (congrArg (fun observed : (RApp).PlayerView =>
-        observed.application.1.publicView.ownTurn? who) viewEq).trans turn
-    · simp only [ReactiveApplication.observe, active, ↓reduceIte] at observed
-      cases observed
 
 private theorem debtStoppedLaw_foreign_mass_le_rank [Fintype (RP).History]
     [(recoveryApplication (runtime setup) leaks).FiniteNature Initial scheduler]
@@ -305,7 +282,8 @@ theorem recovery_common_foreign_exit_bounds [Fintype (RP).History]
           same.symm) regular
       let normalized : (R).InformationHistory who (some (past, view)) :=
         ⟨history.1, history.2.trans atSite⟩
-      obtain ⟨control, state, currentTurn⟩ := control_turn_of_information setup leaks bounds horizon
+      obtain ⟨control, state, currentTurn⟩ :=
+        informationHistory_control_turn setup leaks bounds horizon
         scheduler normalized turn
       have row := debtStoppedLaw_foreign_mass_le_rank setup leaks bounds horizon scheduler
         wellFormed covers capacity sequence scale positive le_one weights n (fallback n)

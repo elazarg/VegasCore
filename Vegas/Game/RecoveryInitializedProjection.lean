@@ -1,7 +1,11 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
+import Vegas.Game.RecoveryInitializedCoupling
+import Vegas.Game.RecoveryCountedService
+import Vegas.Game.RecoveryInitializedCounted
 import Vegas.Game.RecoveryInitializedLaw
-import Vegas.Game.RecoveryContinuationComparison
+import Vegas.Game.RecoveryNativePrior
+import Vegas.Game.RecoveryExclusionPayoff
 import Vegas.Pending.ExclusionTerminalClearance
 
 /-! # Initialized laws of the actual common recovery strategy -/
@@ -13,22 +17,6 @@ namespace Vegas.RecoveryOnePacket
 open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
   GameTheory.Protocol.InformationModel GameTheory.Math.Probability Interaction EventGraphRuntime
   RecoveryProjection
-
-private theorem initialized_state_law_prior_eq
-    {Player : Type} [DecidableEq Player] [Fintype Player]
-    {app : ReactiveApplication Player} (menu : app.ResponseMenu)
-    {first second : PMF app.State} (same : first = second) (horizon : Nat)
-    (scheduler : app.Scheduler)
-    (profile : ∀ who, (menu.information first horizon scheduler).BehavioralPolicy who)
-    (fuel : Nat) {Outcome : Type} (readout : app.ProtocolState → Outcome) :
-    ((menu.information first horizon scheduler).runBehavioral profile fuel).map
-        (fun final => readout final.state) =
-      ((menu.information second horizon scheduler).runBehavioral
-        (fun who input => (profile who input).map (Equiv.cast (congrArg
-          (fun initial => (menu.information initial horizon scheduler).Choice who input) same)))
-        fuel).map (fun final => readout final.state) := by
-  subst second
-  simp only [Equiv.cast_refl, Equiv.coe_refl, PMF.map_id]
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L] (setup : Setup (Player := Player) (L := L))
@@ -57,106 +45,6 @@ local notation "RawRP" => ReactiveApplication.protocol
   (recoveryApplication (runtime setup) leaks) Initial horizon scheduler
 local notation "Clear" => ReactiveApplication.stateInvariant
   (app := application setup leaks) (fun native => ExclusionEvidence 0 ∅ (RecoveryState.mk native ∅))
-
-/-- Embedding the actual recovery policy, projecting it, and changing the prior
-retain every initialized finite-menu native state law exactly. -/
-theorem sourceNativeProfile_initialized_state_law
-    (profile : ∀ who, (R).BehavioralPolicy who) (fuel : Nat)
-    {Outcome : Type} (readout : (application setup leaks).ProtocolState → Outcome) :
-    ((RawN).runBehavioral
-      (nativeProfile (runtime setup) leaks Initial horizon scheduler
-        (fun who => (RMenu).embedPolicy Initial horizon scheduler who (profile who))) fuel).map
-        (fun final => readout final.state) =
-      ((N).runBehavioral (sourceNativeProfile setup leaks bounds horizon scheduler profile)
-        fuel).map (fun final => readout final.state) := by
-  let genericInitial := PMF.map RecoveryState.native Initial
-  let genericProfile := boundedNativeProfile (runtime setup) leaks bounds Initial horizon scheduler
-    profile
-  have rawLaw := (NMenu).run_embed genericInitial horizon (NativeScheduler) genericProfile fuel
-    ((NMenu).protocol genericInitial horizon (NativeScheduler)).initHistory
-  have profiles : (fun who => (NMenu).embedPolicy genericInitial horizon (NativeScheduler) who
-      (genericProfile who)) =
-      nativeProfile (runtime setup) leaks Initial horizon scheduler
-        (fun who => (RMenu).embedPolicy Initial horizon scheduler who (profile who)) := by
-    funext who
-    exact boundedNativeProfile_embed (runtime setup) leaks bounds Initial horizon scheduler
-      profile who
-  rw [profiles] at rawLaw
-  have rawRead := congrArg (fun law : PMF (RawNP).History =>
-    law.map (fun final => readout final.state)) rawLaw
-  rw [PMF.map_comp] at rawRead
-  have prior := initialized_state_law_prior_eq (NMenu) (initialLaw_native setup) horizon
-    (NativeScheduler) genericProfile fuel readout
-  have profileCast : (fun who input => (genericProfile who input).map (Equiv.cast (congrArg
-      (fun initial : PMF (EventGraphRuntime.State (graph setup)) =>
-        ((NMenu).information initial horizon (NativeScheduler)).Choice who input)
-          (initialLaw_native setup)))) =
-      sourceNativeProfile setup leaks bounds horizon scheduler profile := by
-    funext who input
-    exact (sourceNativeProfile_eq_cast setup leaks bounds horizon scheduler profile who input).symm
-  have replaced := congrArg (fun players : ∀ who, (N).BehavioralPolicy who =>
-    ((N).runBehavioral players fuel).map (fun final => readout final.state)) profileCast
-  exact rawRead.symm.trans (prior.trans replaced)
-
-/-- Raw projection and canonical finite native play retain the same terminal
-public-failure mass at every finite horizon. -/
-theorem sourceNativeProfile_initialized_failure_mass_eq
-    (profile : ∀ who, (R).BehavioralPolicy who) (fuel : Nat) :
-    (((RawN).runBehavioral
-      (nativeProfile (runtime setup) leaks Initial horizon scheduler
-        (fun who => (RMenu).embedPolicy Initial horizon scheduler who (profile who)))
-        fuel).toOuterMeasure
-         {next | ¬ NativeClear (runtime setup) leaks Initial horizon scheduler next}).toReal =
-      (((N).runBehavioral (sourceNativeProfile setup leaks bounds horizon scheduler profile)
-        fuel).toOuterMeasure {next | ¬ Clear next.state}).toReal := by
-  classical
-  let projected := nativeProfile (runtime setup) leaks Initial horizon scheduler
-    (fun who => (RMenu).embedPolicy Initial horizon scheduler who (profile who))
-  have states := sourceNativeProfile_initialized_state_law setup leaks bounds horizon scheduler
-    profile fuel id
-  have failureEq :
-      (((RawN).runBehavioral projected fuel).toOuterMeasure
-        {next | ¬ NativeClear (runtime setup) leaks Initial horizon scheduler next}).toReal =
-      (((N).runBehavioral (sourceNativeProfile setup leaks bounds horizon scheduler profile)
-        fuel).toOuterMeasure {next | ¬ Clear next.state}).toReal := by
-    have same : {next : (RawNP).History |
-        ¬ NativeClear (runtime setup) leaks Initial horizon scheduler next} =
-        History.state ⁻¹' {state | ¬ Clear state} := by
-      ext next
-      exact not_congr (nativeClear_iff_stateInvariant (runtime setup) leaks Initial horizon
-        scheduler next)
-    rw [same, ← PMF.toOuterMeasure_map_apply]
-    change (PMF.toOuterMeasure
-      (((RawN).runBehavioral projected fuel).map (fun final => id final.state))
-        {state | ¬ Clear state}).toReal = _
-    rw [states, PMF.toOuterMeasure_map_apply]
-    rfl
-  exact failureEq
-
-/-- The actual initialized finite recovery and native-projection joint laws
-are close by exactly the native projection's terminal public-failure mass. -/
-theorem recovery_initialized_projection_withinTV
-    (profile : ∀ who, (R).BehavioralPolicy who)
-    {Outcome : Type} (nativeRead : (application setup leaks).ProtocolState → Outcome)
-    (recoveryRead : (recoveryApplication (runtime setup) leaks).ProtocolState → Outcome)
-    (agree : ∀ state, (∀ current, state = some current →
-      current.execution.application.excluded = ∅) →
-      recoveryRead state = nativeRead (protocolState (runtime setup) leaks state)) :
-    PMF.WithinTV
-      ((((N).runBehavioral (sourceNativeProfile setup leaks bounds horizon scheduler profile)
-        (2 * horizon + 1)).toOuterMeasure {next | ¬ Clear next.state}).toReal)
-      (((R).runBehavioral profile (2 * horizon + 1)).map (fun final => recoveryRead final.state))
-      (((N).runBehavioral (sourceNativeProfile setup leaks bounds horizon scheduler profile)
-        (2 * horizon + 1)).map (fun final => nativeRead final.state)) := by
-  have close := responseMenu_initialized_readout_withinTV_of_native_failure (runtime setup) leaks
-    Initial horizon scheduler (initialLaw_initialized setup) (RMenu) profile nativeRead recoveryRead
-      agree
-  rw [sourceNativeProfile_initialized_failure_mass_eq setup leaks bounds horizon scheduler profile
-    (2 * horizon + 1),
-    sourceNativeProfile_initialized_state_law setup leaks bounds horizon scheduler
-      profile (2 * horizon + 1) nativeRead] at close
-  exact close
-
 
 variable [Fintype ((ReactiveApplication.ResponseMenu.protocol (Recovery.onePacketMenu (runtime
     setup) leaks bounds) (PMF.map (fun native => (RecoveryState.mk native ∅ : RecoveryState
@@ -207,48 +95,16 @@ theorem sourceNativeProfile_dominatesHonestFrom_initialized
     DominatesHonestFrom setup leaks bounds (initialLaw setup) horizon (NativeScheduler)
       (sequence n) (slotRetention (scale n))
       (sourceNativeProfile setup leaks bounds horizon scheduler strategy) (NP).initHistory := by
-  classical
-  have retained := nativeComparison_dominatesHonestFrom_initialized setup leaks bounds horizon
-    scheduler wellFormed covers capacity sequence scale positive le_one weights n opportunity
-      inclusion timely completes certificate
-  intro fuel history reached who choice
-  have lower := retained fuel history reached who choice
-  by_cases running : ¬ (NP).terminal history.state
-  · have clear : Clear history.state := by
-      cases current : history.state with
-      | none => trivial
-      | some control =>
-        obtain ⟨point, decoded, intended⟩ := recovery_honest_initialized_intended
-          (initialLaw_initialized setup) (initialLaw_native setup) opportunity inclusion timely
-          completes wellFormed covers capacity (sequence n) certificate fuel history reached control
-            current
-        exact exclusionEvidence_of_decodedIntended
-          ((NMenu).toRawTrace (initialLaw setup) horizon (NativeScheduler)
-            (current ▸ history.trace)) decoded intended
-    have valid : ∀ control, history.state = some control →
-        ExclusionEvidence 0 ∅ (RecoveryState.mk control.execution.application ∅) := by
-      intro control current
-      rw [current] at clear
-      exact clear
-    rw [nativeComparisonStrategy_eq_projection_at_clear setup leaks bounds horizon scheduler
-      sequence scale positive le_one weights n fallback strategy assembled history.trace valid
-        running who] at lower
-    exact lower
-  · have ended := not_not.mp running
-    have inactive : ¬ (NP).active history.state who := by
-      cases current : history.state with
-      | none => rw [current] at ended; exact ended.elim
-      | some control =>
-        change control.actor ≠ some who
-        rw [current] at ended
-        change control.remaining = 0 ∧ control.actor = none at ended
-        simp [ended.2]
-    rw [← (N).behavioral_eq_of_not_active
-      (nativeComparisonStrategy setup leaks bounds horizon scheduler sequence scale positive le_one
-        weights n who) (sourceNativeProfile setup leaks bounds horizon scheduler strategy who)
-        history.trace
-          inactive]
-    exact lower
+  exact sourceNativeProfile_dominatesHonestFrom_initialized_of_counted_service setup leaks
+    bounds horizon scheduler
+    wellFormed covers capacity sequence scale positive le_one weights n fallback strategy assembled
+    (Recovery.Opportunity.clear_counted_native bounds (initialLaw_initialized setup)
+      (initialLaw_native setup) opportunity)
+    (Recovery.ProtectedInclusion.clear_counted_native bounds (initialLaw_initialized setup)
+      (initialLaw_native setup) inclusion) timely
+    (Recovery.CompletesPlay.clear_counted_native bounds (initialLaw_initialized setup)
+      (initialLaw_native setup) completes)
+    certificate
 
 include wellFormed covers capacity opportunity inclusion timely completes assembled in
 /-- Actual native projection of common recovery play has only the retained
@@ -257,39 +113,15 @@ theorem sourceNativeProfile_initialized_failure_mass_le :
     (((N).runBehavioral (sourceNativeProfile setup leaks bounds horizon scheduler strategy)
       (2 * horizon + 1)).toOuterMeasure {history | ¬ Clear history.state}).toReal ≤
       (Fintype.card Player * (2 * horizon + 1) : ℕ) * (1 - slotRetention (scale n)) := by
-  classical
-  let certificate := ((NMenu).bounded (initialLaw setup) horizon
-    (NativeScheduler)).wellFoundedHistories
-  let honest := honestProfile setup leaks bounds (initialLaw setup) horizon (NativeScheduler)
-    (sequence n)
-  have dominates := sourceNativeProfile_dominatesHonestFrom_initialized setup leaks bounds horizon
-    scheduler wellFormed covers capacity sequence scale positive le_one weights n fallback strategy
-      assembled opportunity inclusion timely completes certificate
-  have close := onePacket_withinTV_honest setup leaks bounds (initialLaw setup) horizon
-    (NativeScheduler) (sequence n) (slotRetention_nonneg (positive n).le (le_one n))
-    (slotRetention_le_one (positive n).le (le_one n)) _ dominates (2 * horizon + 1)
-  have honestClear : (((N).runBehavioral honest (2 * horizon + 1)).toOuterMeasure
-      {history | ¬ Clear history.state}).toReal = 0 := by
-    rw [← expect_indicator]
-    trans expect ((N).runBehavioral honest (2 * horizon + 1)) (fun _ => (0 : ℝ))
-    · apply expect_congr_on_support
-      intro history member
-      have clear : Clear history.state := by
-        cases current : history.state with
-        | none => trivial
-        | some control =>
-          obtain ⟨point, decoded, intended⟩ := recovery_honest_initialized_intended
-            (initialLaw_initialized setup) (initialLaw_native setup) opportunity inclusion timely
-            completes wellFormed covers capacity (sequence n) certificate (2 * horizon + 1)
-              history member control current
-          exact exclusionEvidence_of_decodedIntended
-            ((NMenu).toRawTrace (initialLaw setup) horizon (NativeScheduler)
-              (current ▸ history.trace)) decoded intended
-      simp [clear]
-    · exact expect_zero _
-  have bound := close.symm {history | ¬ Clear history.state}
-  rw [honestClear, sub_zero, abs_of_nonneg ENNReal.toReal_nonneg] at bound
-  exact bound
+  exact sourceNativeProfile_initialized_failure_mass_le_of_counted_service setup leaks bounds
+    horizon scheduler
+    wellFormed covers capacity sequence scale positive le_one weights n fallback strategy assembled
+    (Recovery.Opportunity.clear_counted_native bounds (initialLaw_initialized setup)
+      (initialLaw_native setup) opportunity)
+    (Recovery.ProtectedInclusion.clear_counted_native bounds (initialLaw_initialized setup)
+      (initialLaw_native setup) inclusion) timely
+    (Recovery.CompletesPlay.clear_counted_native bounds (initialLaw_initialized setup)
+      (initialLaw_native setup) completes)
 
 variable {Parameter : Type} (parameter : State L setup.context → Parameter)
   (utility : Parameter × PublicOutcome setup.program → Player → ℝ)

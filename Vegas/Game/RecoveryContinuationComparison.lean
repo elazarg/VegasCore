@@ -3,7 +3,7 @@
 import Vegas.Game.RecoveryComparisonStopped
 import Vegas.Game.RecoveryForeignFailureBound
 import Vegas.Game.RecoveryDebtStoppedComparison
-import Vegas.Game.RecoveryNativePrior
+import Vegas.Game.RecoveryNativeHistory
 import GameTheory.Protocol.PolicyRandomization
 import Vegas.Game.AsyncDeviationForeign
 
@@ -23,18 +23,6 @@ private theorem history_restate {Player : Type} {T : ExecutionProtocol Player}
     (⟨state, same ▸ history.trace⟩ : T.History) = history := by
   cases history
   cases same
-  rfl
-
-private theorem history_cast_raw {Player : Type} [DecidableEq Player]
-    {app : ReactiveApplication Player} (menu : app.ResponseMenu)
-    {first second : PMF app.State} (same : first = second) (horizon : Nat)
-    (scheduler : app.Scheduler) (history : (menu.protocol first horizon scheduler).History) :
-    menu.toRawHistory second horizon scheduler
-        (Equiv.cast (congrArg (fun initial => (menu.protocol initial horizon scheduler).History)
-          same) history) =
-      Equiv.cast (congrArg (fun initial => (app.protocol initial horizon scheduler).History) same)
-        (menu.toRawHistory first horizon scheduler history) := by
-  subst second
   rfl
 
 private theorem stateEventUntil_prior_eq {Player : Type} [DecidableEq Player] [Fintype Player]
@@ -76,83 +64,6 @@ local notation "RP" => ReactiveApplication.ResponseMenu.protocol
 local notation "NP" => ReactiveApplication.ResponseMenu.protocol
   (MessageBounds.onePacketMenu (runtime setup) leaks bounds) (initialLaw setup) horizon
   (NativeScheduler)
-
-/-- The genuine finite native projection of any entire actual clear recovery
-history at the canonical source prior. -/
-def nativeClearHistory (history : (RP).History)
-    (clear : ∀ current, history.state = some current →
-      current.execution.application.excluded = ∅) : (NP).History :=
-  Equiv.cast (congrArg (fun initial : PMF (EventGraphRuntime.State (graph setup)) =>
-      ((NMenu).protocol initial horizon (NativeScheduler)).History) (initialLaw_native setup))
-    (exists_nativeBoundedHistory (runtime setup) leaks bounds Initial
-      (initialLaw_initialized setup) horizon scheduler history clear).choose
-
-/-- The finite projection retains the exact realized projected raw history. -/
-theorem nativeClearHistory_raw (history : (RP).History)
-    (clear : ∀ current, history.state = some current →
-      current.execution.application.excluded = ∅) :
-    (NMenu).toRawHistory (initialLaw setup) horizon (NativeScheduler)
-        (nativeClearHistory setup leaks bounds horizon scheduler history clear) =
-      Equiv.cast (congrArg (fun initial : PMF (EventGraphRuntime.State (graph setup)) =>
-        ((application setup leaks).protocol initial horizon (NativeScheduler)).History)
-          (initialLaw_native setup))
-        (nativeHistory (runtime setup) leaks Initial horizon scheduler
-          ((RMenu).toRawHistory Initial horizon scheduler history) clear) := by
-  unfold nativeClearHistory
-  rw [history_cast_raw (NMenu) (initialLaw_native setup) horizon (NativeScheduler)]
-  exact congrArg _ (exists_nativeBoundedHistory (runtime setup) leaks bounds Initial
-    (initialLaw_initialized setup) horizon scheduler history clear).choose_spec
-
-
-/-- Exact raw projection uniquely identifies the finite native start used by
-the continuation estimate, regardless of the projection's chosen witnesses. -/
-theorem nativeClearHistory_eq_of_raw (history : (RP).History)
-    (clear : ∀ current, history.state = some current →
-      current.execution.application.excluded = ∅)
-    (native : (NP).History)
-    (same : (NMenu).toRawHistory (initialLaw setup) horizon (NativeScheduler) native =
-      Equiv.cast (congrArg (fun initial : PMF (EventGraphRuntime.State (graph setup)) =>
-        ((application setup leaks).protocol initial horizon (NativeScheduler)).History)
-          (initialLaw_native setup))
-        (nativeHistory (runtime setup) leaks Initial horizon scheduler
-          ((RMenu).toRawHistory Initial horizon scheduler history) clear)) :
-    nativeClearHistory setup leaks bounds horizon scheduler history clear = native :=
-  (NMenu).toRawHistory_injective (initialLaw setup) horizon (NativeScheduler)
-    ((nativeClearHistory_raw setup leaks bounds horizon scheduler history clear).trans same.symm)
-
-/-- Replacing a whole actual recovery policy commutes with canonical projection. -/
-theorem sourceNativeProfile_update
-    (profile : ∀ who, (R).BehavioralPolicy who)
-    (focal : Player) (alternative : (R).BehavioralPolicy focal) :
-    sourceNativeProfile setup leaks bounds horizon scheduler
-      (Profile.update (sig := (R).behavioralSignature) profile focal alternative) =
-      Profile.update (sig := (N).behavioralSignature)
-        (sourceNativeProfile setup leaks bounds horizon scheduler profile) focal
-        (fun input => (alternative (liftInformation (runtime setup) leaks input)).map
-          (sourceNativeChoiceEquiv setup leaks bounds horizon scheduler focal input)) := by
-  funext who input
-  by_cases same : who = focal
-  · subst who
-    simp only [sourceNativeProfile, Profile.update_same]
-  · simp only [sourceNativeProfile, Profile.update_of_ne _ _ same]
-
-/-- Canonical finite projection preserves the complete projected control state. -/
-theorem nativeClearHistory_state (history : (RP).History)
-    (clear : ∀ current, history.state = some current →
-      current.execution.application.excluded = ∅) :
-    (nativeClearHistory setup leaks bounds horizon scheduler history clear).state =
-      protocolState (runtime setup) leaks history.state := by
-  have raw := nativeClearHistory_raw setup leaks bounds horizon scheduler history clear
-  have states := congrArg History.state raw
-  have castState {first second : PMF (EventGraphRuntime.State (graph setup))}
-      (same : first = second)
-      (found : ((application setup leaks).protocol first horizon (NativeScheduler)).History) :
-      (Equiv.cast (congrArg (fun initial =>
-        ((application setup leaks).protocol initial horizon (NativeScheduler)).History)
-          same) found).state = found.state := by
-    subst second
-    rfl
-  exact states.trans (castState (initialLaw_native setup) _)
 
 local notation "ClearState" => ReactiveApplication.stateInvariant
   (app := application setup leaks) (fun native => ExclusionEvidence 0 ∅ (RecoveryState.mk native ∅))

@@ -43,40 +43,6 @@ variable {Player : Type} [Fintype Player] [DecidableEq Player]
   [Finite E.History] [Fintype T.History]
   [∀ who, DecidableEq (N.InfoState who)]
 
-omit [Finite E.History] [Fintype T.History] in
-/-- Continuation gains are affine in the local law: a bound on the gain of
-every single choice bounds the gain of every local lottery. -/
-private theorem withLaw_gain_le_of_choice_gain_le [Finite T.History]
-    (actsOnce : N.ActsOnceWhereItMatters)
-    (assessment : N.BehavioralAssessment) (certificate : T.WellFoundedHistories)
-    {who : Player} (site : N.InformationSite who) (payoff : T.History → ℝ) (bound : ℝ)
-    (choiceGain : ∀ choice : N.Choice who site.1,
-      (assessment.continuationContext certificate site payoff).value
-          ((assessment.strategy who).withLaw site.1 (PMF.pure choice)) -
-        (assessment.continuationContext certificate site payoff).value
-          (assessment.strategy who) ≤ bound)
-    (law : PMF (N.Choice who site.1)) :
-    (assessment.continuationContext certificate site payoff).value
-        ((assessment.strategy who).withLaw site.1 law) -
-      (assessment.continuationContext certificate site payoff).value
-        (assessment.strategy who) ≤ bound := by
-  let _ := Fintype.ofFinite T.History
-  have : Finite (N.Choice who site.1) :=
-    N.finite_choice_of_played (N.site_mem_playedInformation site)
-  have expand (law : PMF (N.Choice who site.1)) :=
-    BehavioralAssessment.continuationContext_withLaw_eq_expect actsOnce assessment certificate site
-      (assessment.strategy who) law payoff
-  rw [expand]
-  have committed := expect_le_const law
-    (fun choice => (assessment.continuationContext certificate site payoff).value
-      ((assessment.strategy who).commit site.1 choice)) (payoffIntegrable_of_finite _ _)
-    ((assessment.continuationContext certificate site payoff).value
-      (assessment.strategy who) + bound) fun choice _ => by
-        have single := choiceGain choice
-        rw [expand, expect_pure] at single
-        linarith
-  linarith
-
 open Classical in
 /-- **Sequential equilibrium with pooled component agents.** Every agent plays a
 mixture of its fully supported components with the common weights of its pool,
@@ -233,49 +199,6 @@ theorem exists_sequentialEquilibrium_limit_of_pooled_comparisons_of_lawError
       consistent, pooledValue, limitFacts⟩ :=
     N.exists_consistent_pooled_completion targetRecall fallback certificate payoff pool component
       componentFull
-  choose sourceError sourceNonnegative sourceVanishes sourceBound using fun who =>
-    sourceConverges.exists_uniform_policy_gain_bound who
-      (fun history => utility (sourceObserve history) who) sourceFuel (sourceRational who)
-  let totalSourceError (n : ℕ) : ℝ := ∑ who, sourceError who n
-  have totalNonnegative (n : ℕ) : 0 ≤ totalSourceError n :=
-    Finset.sum_nonneg fun who _ => sourceNonnegative who n
-  have totalVanishes : Tendsto totalSourceError atTop (nhds 0) := by
-    simpa only [Finset.sum_const_zero] using
-      tendsto_finsetSum Finset.univ (fun who _ => sourceVanishes who)
-  have sourceLe (n : ℕ) (who : Player) : sourceError who n ≤ totalSourceError n :=
-    Finset.single_le_sum (fun other _ => sourceNonnegative other n) (Finset.mem_univ who)
-  have mixtureBound (n : ℕ) (who : Player) (mixture : PMF (M.AssessmentDeviation who)) :
-      expect mixture (fun deviation =>
-        expect (M.assessmentComparisonWith (M.truncatedRunner sourceFuel) sourceObserve
-            (sourceSequence n) who deviation).alternative (utility · who) -
-          expect (M.assessmentComparisonWith (M.truncatedRunner sourceFuel) sourceObserve
-            (sourceSequence n) who deviation).prescribed (utility · who)) ≤
-        sourceError who n := by
-    obtain ⟨largest, largestBound⟩ :=
-      (Set.finite_range fun history : E.History => |utility (sourceObserve history) who|).bddAbove
-    have bounded (history : E.History) : |utility (sourceObserve history) who| ≤ largest :=
-      largestBound ⟨history, rfl⟩
-    have largestNonnegative : 0 ≤ largest := (abs_nonneg _).trans (bounded E.initHistory)
-    have gainBounded (deviation : M.AssessmentDeviation who) :
-        |expect (M.assessmentComparisonWith (M.truncatedRunner sourceFuel) sourceObserve
-            (sourceSequence n) who deviation).alternative (utility · who) -
-          expect (M.assessmentComparisonWith (M.truncatedRunner sourceFuel) sourceObserve
-            (sourceSequence n) who deviation).prescribed (utility · who)| ≤ 2 * largest := by
-      simp only [assessmentComparisonWith, expect_map, Function.comp_def]
-      have first := expect_abs_le_of_bounded
-        (μ := M.assessmentLawWith (M.truncatedRunner sourceFuel) (sourceSequence n) deviation.1
-            deviation.2)
-        largestNonnegative bounded
-      have second := expect_abs_le_of_bounded
-        (μ := M.assessmentLawWith (M.truncatedRunner sourceFuel) (sourceSequence n) deviation.1
-          ((sourceSequence n).strategy who))
-        largestNonnegative bounded
-      exact (abs_sub _ _).trans (by linarith)
-    refine expect_le_const mixture _
-      (payoffIntegrable_of_bounded mixture _ (C := 2 * largest) gainBounded) _
-      fun deviation _ => ?_
-    simp only [assessmentComparisonWith, expect_map]
-    exact sourceBound who n deviation.1 deviation.2
   have gainEq (n : ℕ) (who : Player) (site : N.InformationSite who)
       (law : PMF (N.Choice who site.1)) :
       expect (N.assessmentComparisonWith (N.truncatedRunner targetFuel) targetObserve
@@ -315,11 +238,19 @@ theorem exists_sequentialEquilibrium_limit_of_pooled_comparisons_of_lawError
     lawApproximation weights sequence played mixed bayes pooled
   have choiceBound (n : ℕ) (who : Player) (site : N.InformationSite who)
       (compared : N.agentAt site ∉ free) (choice : N.Choice who site.1) :
-      ((sequence n).continuationContext certificate site (payoff who)).value
-          (((sequence n).strategy who).withLaw site.1 (PMF.pure choice)) -
-        ((sequence n).continuationContext certificate site (payoff who)).value
-          ((sequence n).strategy who) ≤
-        comparisonError n + memberError n + totalSourceError n := by
+      let comparison := N.assessmentComparisonWith (N.truncatedRunner targetFuel) targetObserve
+        (sequence n) who (site, ((sequence n).strategy who).withLaw site.1 (PMF.pure choice))
+      expect comparison.alternative (utility · who) -
+          expect comparison.prescribed (utility · who) ≤ comparisonError n + memberError n ∨
+        ∃ mixture : PMF (M.AssessmentDeviation who),
+          expect comparison.alternative (utility · who) -
+              expect comparison.prescribed (utility · who) ≤
+            expect mixture (fun deviation =>
+              let sourceComparison := M.assessmentComparisonWith (M.truncatedRunner sourceFuel)
+                sourceObserve (sourceSequence n) who deviation
+              expect sourceComparison.alternative (utility · who) -
+                expect sourceComparison.prescribed (utility · who)) +
+              (comparisonError n + memberError n) := by
     have memberNonnegative : 0 ≤ memberError n := by
       have bound := memberBound n who site (weights n (pool (N.agentAt site)))
       dsimp only at bound
@@ -333,29 +264,24 @@ theorem exists_sequentialEquilibrium_limit_of_pooled_comparisons_of_lawError
       exact bound
     rcases comparisons n who site compared choice with
       harmless | ⟨alternative, dominated⟩ | ⟨mixture, sourced⟩
-    · dsimp only at harmless
-      rw [gainEq] at harmless
-      linarith [totalNonnegative n]
-    · dsimp only at dominated
-      rw [gainEq, gainEq] at dominated
+    · left
+      dsimp only at harmless ⊢
+      linarith
+    · left
+      dsimp only at dominated ⊢
       have member := memberBound n who site alternative
       dsimp only at member
-      rw [gainEq] at member
-      linarith [totalNonnegative n]
-    · dsimp only at sourced
-      rw [gainEq] at sourced
-      linarith [mixtureBound n who mixture, sourceLe n who, memberNonnegative]
+      linarith
+    · right
+      refine ⟨mixture, ?_⟩
+      dsimp only at sourced ⊢
+      linarith
   have result := sequentialEquilibrium_of_copied_comparisons_limit_of_lawError sourceObserve
     targetObserve sourceFuel targetFuel targetBounded targetRecall utility source sourceSequence
     sourceConverges sourceRational sequence (fun _ site => N.agentAt site ∉ free)
-    (fun n => comparisonError n + memberError n + totalSourceError n)
-    (by simpa only [add_zero] using (errorVanishes.add memberVanishes).add totalVanishes)
-    (fun n who site compared law => by
-      dsimp only
-      left
-      rw [gainEq]
-      exact withLaw_gain_le_of_choice_gain_le targetRecall.actsOnceWhereItMatters (sequence n)
-        certificate site (payoff who) _ (choiceBound n who site compared) law)
+    (fun n => comparisonError n + memberError n)
+    (by simpa only [zero_add] using errorVanishes.add memberVanishes)
+    (fun n who site compared choice => choiceBound n who site compared choice)
     lawError lawErrorVanishes
     approximation target index increasing
     converges consistent (fun who site kept law => by

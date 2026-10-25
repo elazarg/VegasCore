@@ -1,5 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
+import GameTheory.Analysis.Protocol.RestrictionIncentives
 import GameTheory.Analysis.Protocol.SequentialOneShot
 import GameTheoryExtensions.Protocol.ContinuationHorizon
 import GameTheoryExtensions.Analysis.Protocol.UniformPolicyLimit
@@ -8,7 +9,7 @@ import GameTheoryExtensions.Analysis.Protocol.ConsistencyCompletion
 
 /-! # Sequential equilibrium from local continuation comparisons
 
-Only local target deviations need a simulation, up to a uniformly vanishing
+Only pure local target deviations need a simulation, up to a uniformly vanishing
 gain error. A local choice can instead have gain bounded by that same error.
 This includes private response aliases at implementation-only decision sites.
 
@@ -38,7 +39,7 @@ variable {Player : Type} [Fintype Player] [DecidableEq Player]
 comparisons at copied information sites and optimality of the limit at the
 remaining free sites. At a copied site, every local target gain is bounded by an
 original-source gain mixture, up to one uniformly vanishing error. Mixtures may
-depend on the perturbation, site, and local lottery; the source and target games
+depend on the perturbation, site, and pure local choice; the source and target games
 and utilities remain fixed. An error-bound-only branch covers harmless
 implementation choices with no source decision site. At a free site the limit
 itself must already be optimal against single-site law changes, as rational
@@ -66,10 +67,10 @@ theorem sequentialEquilibrium_of_copied_comparisons_limit_of_lawError
     (comparisonError : ℕ → ℝ)
     (errorVanishes : Tendsto comparisonError atTop (nhds 0))
     (localComparisons : ∀ n who (site : N.InformationSite who), copied who site →
-      ∀ law : PMF (N.Choice who site.1),
+      ∀ choice : N.Choice who site.1,
       let comparison := N.assessmentComparisonWith (N.truncatedRunner
           targetFuel) targetObserve (targetSequence n)
-        who (site, ((targetSequence n).strategy who).withLaw site.1 law)
+        who (site, ((targetSequence n).strategy who).withLaw site.1 (PMF.pure choice))
       expect comparison.alternative (utility · who) -
           expect comparison.prescribed (utility · who) ≤ comparisonError n ∨
         ∃ mixture : PMF (M.AssessmentDeviation who),
@@ -107,14 +108,15 @@ theorem sequentialEquilibrium_of_copied_comparisons_limit_of_lawError
   classical
   have sourceTransitions : E.FiniteTransitions := .of_finite_history
   have targetTransitions : T.FiniteTransitions := .of_finite_history
-  have localOptimal (who : Player) (site : N.InformationSite who)
-      (law : PMF (N.Choice who site.1)) :
+  have pureOptimal (who : Player) (site : N.InformationSite who)
+      (choice : N.Choice who site.1) :
       (target.truncatedContinuationContext site
           (fun history => utility (targetObserve history) who) targetFuel).value
-            ((target.strategy who).withLaw site.1 law) ≤
+            ((target.strategy who).withLaw site.1 (PMF.pure choice)) ≤
         (target.truncatedContinuationContext site
           (fun history => utility (targetObserve history) who) targetFuel).value
             (target.strategy who) := by
+    let law : PMF (N.Choice who site.1) := PMF.pure choice
     by_cases kept : copied who site
     swap
     · exact freeOptimal who site kept law
@@ -168,7 +170,7 @@ theorem sequentialEquilibrium_of_copied_comparisons_limit_of_lawError
                 (targetSequence n) who
               (site, ((targetSequence n).strategy who).withLaw site.1 law)).prescribed)
                 (utility · who) ≤ error n + comparisonError n := by
-        rcases localComparisons n who site kept law with harmless | ⟨mixture, comparison⟩
+        rcases localComparisons n who site kept choice with harmless | ⟨mixture, comparison⟩
         · exact harmless.trans (le_add_of_nonneg_left (nonnegative n))
         · dsimp only at comparison ⊢
           apply comparison.trans
@@ -198,6 +200,23 @@ theorem sequentialEquilibrium_of_copied_comparisons_limit_of_lawError
       (by simpa only [zero_add, Function.comp_def] using
         (vanishes.add errorVanishes).comp increasing.tendsto_atTop)
       (Eventually.of_forall fun n => targetBound (index n)))
+  have localOptimal (who : Player) (site : N.InformationSite who)
+      (law : PMF (N.Choice who site.1)) :
+      (target.truncatedContinuationContext site
+          (fun history => utility (targetObserve history) who) targetFuel).value
+            ((target.strategy who).withLaw site.1 law) ≤
+        (target.truncatedContinuationContext site
+          (fun history => utility (targetObserve history) who) targetFuel).value
+            (target.strategy who) := by
+    let certificate := targetBounded.wellFoundedHistories
+    rw [← target.continuationContext_eq_truncated_of_bounded certificate targetBounded]
+    rw [BehavioralAssessment.continuationContext_withLaw_eq_expect
+      targetRecall.actsOnceWhereItMatters]
+    apply expect_le_const law _ (payoffIntegrable_of_finite _ _)
+    intro choice _
+    have optimal := pureOptimal who site choice
+    rw [← target.continuationContext_eq_truncated_of_bounded certificate targetBounded] at optimal
+    simpa only [BehavioralPolicy.commit, BehavioralPolicy.withLaw] using optimal
   have certificate := targetBounded.wellFoundedHistories
   have terminal : target.IsSequentialEquilibrium targetRecall.decisionInformationAntichain
       certificate (fun who history => utility (targetObserve history) who) := by
@@ -243,6 +262,7 @@ theorem sequentialEquilibrium_of_copied_comparisons_limit_of_lawError
       _ = (((M.runBehavioral source.strategy sourceFuel).map sourceObserve) outcome).toReal :=
         (toReal_map_apply _ _ _).symm
 
+
 /-- Local target gains bounded by original-source gain mixtures, up to one
 uniformly vanishing error, preserve sequential rationality at a common consistent
 assessment limit: the case of
@@ -262,10 +282,10 @@ theorem sequentialEquilibrium_of_local_comparisons_limit_of_lawError
     (comparisonError : ℕ → ℝ)
     (errorVanishes : Tendsto comparisonError atTop (nhds 0))
     (localComparisons : ∀ n who (site : N.InformationSite who)
-      (law : PMF (N.Choice who site.1)),
+      (choice : N.Choice who site.1),
       let comparison := N.assessmentComparisonWith (N.truncatedRunner
           targetFuel) targetObserve (targetSequence n)
-        who (site, ((targetSequence n).strategy who).withLaw site.1 law)
+        who (site, ((targetSequence n).strategy who).withLaw site.1 (PMF.pure choice))
       expect comparison.alternative (utility · who) -
           expect comparison.prescribed (utility · who) ≤ comparisonError n ∨
         ∃ mixture : PMF (M.AssessmentDeviation who),
@@ -301,7 +321,7 @@ theorem sequentialEquilibrium_of_local_comparisons_limit_of_lawError
 
 /-- Local target gains bounded by original-source gain mixtures, up to one
 uniformly vanishing error, construct a single consistent target sequential
-equilibrium. Mixtures may depend on the perturbation, site, and local lottery;
+equilibrium. Mixtures may depend on the perturbation, site, and pure local choice;
 the source and target games and utilities remain fixed. An error-bound-only
 branch covers harmless implementation choices with no source decision site.
 The perturbed target laws need only approach the perturbed source laws, by a
@@ -327,10 +347,10 @@ theorem exists_sequentialEquilibrium_limit_of_local_comparisons_of_lawError
     (comparisonError : ℕ → ℝ)
     (errorVanishes : Tendsto comparisonError atTop (nhds 0))
     (localComparisons : ∀ n who (site : N.InformationSite who)
-      (law : PMF (N.Choice who site.1)),
+      (choice : N.Choice who site.1),
       let comparison := N.assessmentComparisonWith (N.truncatedRunner
           targetFuel) targetObserve (targetSequence n)
-        who (site, ((targetSequence n).strategy who).withLaw site.1 law)
+        who (site, ((targetSequence n).strategy who).withLaw site.1 (PMF.pure choice))
       expect comparison.alternative (utility · who) -
           expect comparison.prescribed (utility · who) ≤ comparisonError n ∨
         ∃ mixture : PMF (M.AssessmentDeviation who),
@@ -388,10 +408,10 @@ theorem exists_sequentialEquilibrium_limit_of_local_comparisons
     (comparisonError : ℕ → ℝ)
     (errorVanishes : Tendsto comparisonError atTop (nhds 0))
     (localComparisons : ∀ n who (site : N.InformationSite who)
-      (law : PMF (N.Choice who site.1)),
+      (choice : N.Choice who site.1),
       let comparison := N.assessmentComparisonWith (N.truncatedRunner
           targetFuel) targetObserve (targetSequence n)
-        who (site, ((targetSequence n).strategy who).withLaw site.1 law)
+        who (site, ((targetSequence n).strategy who).withLaw site.1 (PMF.pure choice))
       expect comparison.alternative (utility · who) -
           expect comparison.prescribed (utility · who) ≤ comparisonError n ∨
         ∃ mixture : PMF (M.AssessmentDeviation who),

@@ -1771,8 +1771,8 @@ theorem expanded_sequentialEquilibrium [Finite E.History] {bound : ℕ}
       (fun n => InformationModel.bayesAssessment_isFullyMixed (S.model M) _ _ _)
       (fun n => InformationModel.bayesAssessment_isBayesConsistent (S.model M) _ _ _)
       (fun _ => 0) tendsto_const_nhds
-      (fun n who site law => S.localComparison M bounded recall nonterminal recoverable actors
-        (sequence n) (mixed n) (bayes n) observe utility who site law)
+      (fun n who site choice => S.localComparison M bounded recall nonterminal recoverable actors
+        (sequence n) (mixed n) (bayes n) observe utility who site (PMF.pure choice))
       initialized
   refine ⟨target, ?_, ?_, ?_⟩
   · exact (target.isSequentialEquilibrium_iff_truncated_of_bounded (S.model M) _

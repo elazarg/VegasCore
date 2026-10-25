@@ -1,5 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
+import Vegas.Game.OnePacketStoppedAcceptance
+import Vegas.Game.RecoveryCountedService
 import Vegas.Game.OnePacketDisclosureCompletion
 import Vegas.Game.RecoveryStoppedSettlement
 import Vegas.Game.OnePacketPendingClear
@@ -69,25 +71,10 @@ theorem recovery_accepted_until_config
         (event ∈ final.execution.application.config.cut.completed →
           ∃ action, final.execution.application.config ∈ (sent.step event ready action).support ∧
             OutputSucceeded final.execution.application.config.store event) := by
-  let completed := LateStopped setup leaks bounds horizon scheduler rank
-  let model := (bounds.onePacketMenu (runtime setup) leaks).information
-    (initialLaw setup) horizon scheduler
-  have stopEq : (fun history => completed history ∨ ¬ Clear history.state ∨ extraStop history) =
-      (fun history => ¬ Clear history.state ∨ completed history ∨ extraStop history) := by
-    funext history
-    exact propext or_left_comm
-  have receipts := recovery_stopped_freshCall_receipt bounds initialized nativeLaw inclusion
-    certificate players (fun history => completed history ∨ extraStop history)
-    start control current clear who event owned entry message fresh
-  exact accepted_until_config certificate players
-    (fun history => ¬ Clear history.state ∨ extraStop history) ready ordered
-    start current invariant atSent
-    (fun stopped member final state records done => by
-      change stopped ∈ (model.runBehavioralUntil certificate players
-        (fun history => completed history ∨ ¬ Clear history.state ∨ extraStop history)
-        start).support at member
-      rw [stopEq] at member
-      exact receipts stopped member final state records done)
+  exact counted_accepted_until_config (setup := setup) (leaks := leaks) (bounds := bounds)
+    (inclusion := Recovery.ProtectedInclusion.clear_counted_native bounds initialized nativeLaw
+    inclusion) certificate players extraStop ready ordered start current clear invariant atSent
+    owned fresh
 
 include initialized nativeLaw inclusion in
 /-- Actual recovery completion discharges every premature terminal stop, while
@@ -120,37 +107,10 @@ theorem recovery_accepted_stop_config
       ∃ final action, stop.state = some final ∧
         final.execution.application.config ∈ (sent.step event ready action).support ∧
           OutputSucceeded final.execution.application.config.store event := by
-  intro stopped supported
-  let menu := bounds.onePacketMenu (runtime setup) leaks
-  let model := (menu).information (initialLaw setup) horizon scheduler
-  let stop := fun history : (menu.protocol (initialLaw setup) horizon scheduler).History =>
-    LateStopped setup leaks bounds horizon scheduler rank history ∨ ¬ Clear history.state
-  have partialLaw := recovery_accepted_until_config initialized nativeLaw inclusion
-    certificate players (fun _ => False) ready ordered start current clear invariant atSent owned
-    fresh
-  obtain ⟨final, state, stable, completed⟩ := partialLaw stopped
-    (by simpa only [or_false] using supported)
-  have clearPending := pending_publicClear_of_acceptanceInvariant certificate players stop who
-    entry message event sent start control current clear invariant stopped supported final state
-  have ends := model.mem_support_runBehavioralUntil certificate players stop start stopped supported
-  have done : event ∈ final.execution.application.config.cut.completed := by
-    by_contra pending
-    rcases ends with (prefixed | failed) | ended
-    · obtain ⟨other, otherState, prefixed⟩ := prefixed
-      rw [state] at otherState
-      cases Option.some.inj otherState
-      rw [stable pending] at prefixed
-      exact Nat.succ_ne_self rank (isPrefix_unique prefixed ordered)
-    · rw [state] at failed
-      exact failed (clearPending pending)
-    · rw [state] at ended
-      have rawTrace := (menu).toRawTrace (initialLaw setup) horizon scheduler
-        (state ▸ stopped.trace)
-      rw [← nativeLaw] at rawTrace
-      have terminal := Recovery.CompletesPlay.clear_native (runtime setup) leaks initialized
-        completes final rawTrace (clearPending pending) ended
-      exact pending (by rw [terminal]; exact Finset.mem_univ _)
-  obtain ⟨action, stepMember, succeeded⟩ := completed done
-  exact ⟨final, action, state, stepMember, succeeded⟩
+  exact counted_accepted_stop_config (setup := setup) (leaks := leaks) (bounds := bounds)
+    (inclusion := Recovery.ProtectedInclusion.clear_counted_native bounds initialized nativeLaw
+    inclusion) (completes := Recovery.CompletesPlay.clear_counted_native bounds initialized
+    nativeLaw completes) certificate players ready ordered start current clear invariant atSent
+    owned fresh
 
 end Vegas

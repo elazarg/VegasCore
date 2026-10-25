@@ -1,5 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
+import Vegas.Game.OnePacketStoppedSourceLaw
+import Vegas.Game.RecoveryCountedService
 import Vegas.Game.RecoveryStoppedCommitment
 import Vegas.Game.RecoveryStoppedAcceptance
 import Vegas.Game.RecoveryCommitmentFreshCall
@@ -75,33 +77,11 @@ theorem recovery_committed_stop_sourceLaw
         (fun history => nativeDecodedState setup leaks history.state)) =
       (ProtocolState.step setup.program point
         (fun _ => decodeEventAction setup.program event action)).map some := by
-  classical
-  let menu := bounds.onePacketMenu (runtime setup) leaks
-  obtain ⟨found, ⟨residual⟩⟩ := protocol_sourceResidual (failureProfile setup.program) menu
-    horizon scheduler (current ▸ start.trace) control rfl
-  rw [atSent] at residual
-  have sameRank := isPrefix_unique residual.checkpoint.ordered ordered
-  subst sameRank
-  have beforeDecoded : decodedPoint setup sent = some point :=
-    (decodedPoint_eq_of_isPrefix ordered).trans decoded
-  have acts := (decodedPoint_actor who ready beforeDecoded).trans owned
-  obtain ⟨target, stepEq⟩ := ProtocolState.step_eq_pure_of_actor who who setup.program point
-    (fun _ => decodeEventAction setup.program event action) acts
-  rw [stepEq, PMF.pure_map]
-  refine (map_congr_on_support _ (g := fun _ => some target) ?_).trans (PMF.map_const _ _)
-  intro stopped supported
-  obtain ⟨final, state, compiled, _succeeded⟩ := recovery_committed_stop_config
-    initialized nativeLaw inclusion completes certificate players ready ordered
-    (outputEq := outputEq) codeEq call action successful start current clear invariant atSent
-    fixed owned fresh stopped supported
-  obtain ⟨before, after, decodedBefore, decodedAfter, reached⟩ :=
-    decodedPoint_step residual event ready action _ compiled
-  rw [beforeDecoded] at decodedBefore
-  cases Option.some.inj decodedBefore
-  rw [stepEq, PMF.mem_support_pure_iff] at reached
-  subst reached
-  rw [state]
-  exact decodedAfter
+  exact counted_committed_stop_sourceLaw (setup := setup) (leaks := leaks) (bounds := bounds)
+    (outputEq := outputEq) (inclusion := Recovery.ProtectedInclusion.clear_counted_native bounds
+    initialized nativeLaw inclusion) (completes := Recovery.CompletesPlay.clear_counted_native
+    bounds initialized nativeLaw completes) certificate players ready ordered codeEq call action
+    successful start current clear invariant atSent fixed owned fresh decoded
 
 
 include initialized nativeLaw inclusion in
@@ -154,40 +134,13 @@ theorem recovery_firstActivation_commitment_sourceLaw
         (fun history => nativeDecodedState setup leaks history.state)) =
       (ProtocolState.step setup.program point
         (fun _ => sourceOfValue setup event outputEq value)).map some := by
-  have owned := (PublicView.ownTurn?_spec _ who event turn).2
-  have ready := (execution.application.publicView_eventReady event).mp
-    (PublicView.ownTurn?_spec _ who event turn).1
-  have fresh := recovery_commitment_freshCall initialized nativeLaw opportunity timely trace
-    clear event turn never node response member material sends packet
-  obtain ⟨invariant, fixed⟩ := acceptanceInvariant_respond_commitment trace event turn outputEq
-    response member material sends packet after (current ▸ start.trace)
-  have callEq : (sentEnvelope setup leaks execution who material).payload.call =
-      .commitment event (who, .prepared serial) := by
-    have evidenceNone := (onePacket_commitment_fresh trace who response member material sends
-      packet).2
-    rcases material with ⟨call, evidence⟩
-    change evidence = .none at evidenceNone
-    subst evidenceNone
-    unfold sentEnvelope
-    rw [reactiveApplication_packet_none]
-    exact packet
-  have clearAfter : ExclusionEvidence 0 ∅
-      (⟨(execution.respond (application setup leaks) who response).application, ∅⟩ :
-        RecoveryState (graph setup)) := by
-    rcases response with ⟨transmission⟩
-    cases transmission with
-    | none => exact clear
-    | some submission => exact clear.submit who submission
-  let action : (graph setup).Action event :=
-    cast (congrArg EventGraph.EventField.Action outputEq.symm)
-      (PublicationResult.success value : PublicationResult (L.Val payload))
-  have successful : (cast (congrArg EventGraph.EventField.Action outputEq) action :
-      PublicationResult (L.Val payload)) = .success value := by
-    simp only [action, cast_cast, cast_eq]
-  exact recovery_committed_stop_sourceLaw initialized nativeLaw inclusion completes certificate
-    players ready ordered (outputEq := outputEq) codeEq callEq action successful start current
-    clearAfter invariant ((runtime setup).reactive_respond_application leaks execution who _).1
-    fixed owned fresh decoded
+  exact counted_firstActivation_commitment_sourceLaw (setup := setup) (leaks := leaks) (bounds :=
+    bounds) (outputEq := outputEq) (opportunity := Recovery.Opportunity.clear_counted_native
+    bounds initialized nativeLaw opportunity) (inclusion :=
+    Recovery.ProtectedInclusion.clear_counted_native bounds initialized nativeLaw inclusion)
+    (timely := timely) (completes := Recovery.CompletesPlay.clear_counted_native bounds
+    initialized nativeLaw completes) certificate players trace clear event turn never node
+    response member material sends packet after ordered decoded start current
 
 include initialized nativeLaw inclusion in
 /-- A protected recorded opening has exactly its successful disclosure source
@@ -229,37 +182,11 @@ theorem recovery_disclosed_stop_sourceLaw
         (fun history => nativeDecodedState setup leaks history.state)) =
       (ProtocolState.step setup.program point
         (fun _ => decodeEventAction setup.program event action)).map some := by
-  classical
-  let menu := bounds.onePacketMenu (runtime setup) leaks
-  obtain ⟨found, ⟨residual⟩⟩ := protocol_sourceResidual (failureProfile setup.program) menu
-    horizon scheduler (current ▸ start.trace) control rfl
-  rw [atSent] at residual
-  have sameRank := isPrefix_unique residual.checkpoint.ordered ordered
-  subst sameRank
-  have beforeDecoded : decodedPoint setup sent = some point :=
-    (decodedPoint_eq_of_isPrefix ordered).trans decoded
-  have acts := (decodedPoint_actor who ready beforeDecoded).trans owned
-  obtain ⟨target, stepEq⟩ := ProtocolState.step_eq_pure_of_actor who who setup.program point
-    (fun _ => decodeEventAction setup.program event action) acts
-  rw [stepEq, PMF.pure_map]
-  refine (map_congr_on_support _ (g := fun _ => some target) ?_).trans (PMF.map_const _ _)
-  intro stopped supported
-  obtain ⟨final, completedAction, state, compiled, succeeded⟩ := recovery_accepted_stop_config
-    initialized nativeLaw inclusion completes certificate players ready ordered start current
-    clear invariant atSent owned fresh stopped supported
-  have completedDiscloses := disclose_of_outputSucceeded (outputEq := outputEq) codeEq
-    compiled succeeded
-  have sameAction : completedAction = action :=
-    (cast_inj _).mp (completedDiscloses.trans disclosing.symm)
-  rw [sameAction] at compiled
-  obtain ⟨before, after, decodedBefore, decodedAfter, reached⟩ :=
-    decodedPoint_step residual event ready action _ compiled
-  rw [beforeDecoded] at decodedBefore
-  cases Option.some.inj decodedBefore
-  rw [stepEq, PMF.mem_support_pure_iff] at reached
-  subst reached
-  rw [state]
-  exact decodedAfter
+  exact counted_disclosed_stop_sourceLaw (setup := setup) (leaks := leaks) (bounds := bounds)
+    (outputEq := outputEq) (inclusion := Recovery.ProtectedInclusion.clear_counted_native bounds
+    initialized nativeLaw inclusion) (completes := Recovery.CompletesPlay.clear_counted_native
+    bounds initialized nativeLaw completes) certificate players ready ordered codeEq action
+    disclosing start current clear invariant atSent owned fresh decoded
 
 
 include initialized nativeLaw inclusion in
@@ -311,40 +238,12 @@ theorem recovery_firstActivation_disclosure_sourceLaw
         (fun history => nativeDecodedState setup leaks history.state)) =
       (ProtocolState.step setup.program point
         (fun _ => decodeEventAction setup.program event action)).map some := by
-  have owned := (PublicView.ownTurn?_spec _ who event turn).2
-  have ready := (execution.application.publicView_eventReady event).mp
-    (PublicView.ownTurn?_spec _ who event turn).1
-  have rawTrace := (bounds.onePacketMenu (runtime setup) leaks).toRawTrace (initialLaw setup)
-    horizon scheduler trace
-  have fits := recovery_firstActivation_inclusionFits initialized nativeLaw opportunity timely
-    rawTrace rfl clear event turn never
-  have fresh : FreshCall setup leaks who event bound
-      (respondEntry setup leaks execution who ((runtime setup).canonicalServiceDecision leaks who
-        (execution.recall who) (execution.observe (application setup leaks) who) event action))
-      (sentEnvelope setup leaks execution who material) := by
-    rw [respondEntry_of_transmission execution who _ material submits]
-    exact canonical_freshCall rawTrace bound who event turn fits action material submits
-  have bindSuccess : ∀ owner payload' outputEq' codeEq',
-      nodeView (graph setup) event = .bind owner payload' outputEq' codeEq' →
-        ∃ value', (cast (congrArg EventGraph.EventField.Action outputEq') action :
-          PublicationResult (L.Val payload')) = .success value' := by
-    intro owner payload' outputEq' codeEq' other
-    rw [node] at other
-    cases other
-  have invariant := acceptanceInvariant_respond bounds horizon scheduler trace event turn action
-    material submits bindSuccess (current ▸ start.trace)
-  have responseClear : ∀ response : (application setup leaks).Action,
-      ExclusionEvidence 0 ∅
-        (⟨(execution.respond (application setup leaks) who response).application,
-        ∅⟩ : RecoveryState (graph setup)) := by
-    intro response
-    rcases response with ⟨transmission⟩
-    cases transmission with
-    | none => exact clear
-    | some submission => exact clear.submit who submission
-  exact recovery_disclosed_stop_sourceLaw initialized nativeLaw inclusion completes certificate
-    players ready ordered (outputEq := outputEq) codeEq action disclosing start current
-    (responseClear _) invariant
-    ((runtime setup).reactive_respond_application leaks execution who _).1 owned fresh decoded
+  exact counted_firstActivation_disclosure_sourceLaw (setup := setup) (leaks := leaks) (bounds :=
+    bounds) (outputEq := outputEq) (opportunity := Recovery.Opportunity.clear_counted_native
+    bounds initialized nativeLaw opportunity) (inclusion :=
+    Recovery.ProtectedInclusion.clear_counted_native bounds initialized nativeLaw inclusion)
+    (timely := timely) (completes := Recovery.CompletesPlay.clear_counted_native bounds
+    initialized nativeLaw completes) certificate players trace clear event turn never node action
+    disclosing material submits ordered decoded start current
 
 end Vegas

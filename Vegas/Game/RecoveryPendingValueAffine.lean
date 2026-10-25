@@ -35,6 +35,152 @@ local notation "Clear" => ReactiveApplication.stateInvariant
 open Classical in
 /-- The actual common continuation factors through the current event, with
 uniform source-potential and physical completion errors. -/
+theorem nativeComparison_pending_value_affine_of_boundary_values [Fintype (RP).History]
+    [(application setup leaks).FiniteNature (initialLaw setup) (NativeScheduler)]
+    [∀ who, DecidableEq ((R).InfoState who)] [∀ who, DecidableEq ((N).InfoState who)]
+    (wellFormed : setup.WellFormed) (covers : bounds.CoversOutputValues)
+    (capacity : ∀ player, bindingEventCount (graph setup) player < bounds.candidateCount)
+    (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
+    (scale : ℕ → ℝ) (positive : ∀ n, 0 < scale n) (le_one : ∀ n, scale n ≤ 1)
+    (weights : ℕ → ∀ p,
+      PMF (Part setup leaks bounds Initial horizon scheduler bounds.candidateCount p)) (n : ℕ)
+    (terminalCompletes : ∀ (final : (application setup leaks).Control),
+      ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
+        (NativeScheduler)).Trace (some final) →
+      ExclusionEvidence 0 ∅ (⟨final.execution.application, ∅⟩ : RecoveryState (graph setup)) →
+      (application setup leaks).terminal (some final) →
+      final.execution.application.config.cut.Terminal)
+    {who : Player} (site : (N).InformationSite who)
+    (pendingSite : LateDelivery setup leaks who site.1 ∨ FirstActivation setup leaks who site.1)
+    (debtFree : SiteDebtFree setup leaks bounds horizon (NativeScheduler) site)
+    {key : LateKey setup leaks} (siteKey : lateKey setup leaks who site.1 = some key)
+    {event : (graph setup).EventId} (pending : pendingEvent setup leaks who site.1 = some event)
+    {past : List (application setup leaks).PlayerEntry}
+    {view : (application setup leaks).PlayerView} (atSite : site.1 = some (past, view))
+    (law : PMF ((N).Choice who site.1))
+    (history : (N).InformationHistory who site.1)
+    (forced : ForcedState setup leaks who history.1.state)
+    (lawShape : (∃ option : LateOption bounds.candidateCount,
+      law = onePacketLate setup leaks bounds horizon (NativeScheduler) sequence scale positive
+        le_one n ((N).agentAt site) option) ∨
+      law = PMF.pure (silenceChoice setup leaks bounds (initialLaw setup) horizon (NativeScheduler)
+        who site.1))
+    {Parameter : Type} (parameter : State L setup.context → Parameter)
+    (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
+    (excludedPayoff : Player → ℝ) {payoffBound : ℝ} (boundNonneg : 0 ≤ payoffBound)
+    (readoutBounded : ∀ readout,
+      |exclusionReadoutUtility setup parameter utility excludedPayoff readout who| ≤ payoffBound)
+    (excludedBounded : |excludedPayoff who| ≤ payoffBound) :
+    let common := nativeComparisonStrategy setup leaks bounds horizon scheduler sequence scale
+      positive le_one weights n
+    let certificate := ((Menu).bounded (initialLaw setup) horizon
+      (NativeScheduler)).wellFoundedHistories
+    let installed := Profile.update (sig := (N).behavioralSignature) common who
+      ((common who).withLaw site.1 law)
+    let stopped := fun final : (NP).History => ¬ Clear final.state ∨
+      DecodedState setup leaks (failureProfile setup.program)
+        (ProtocolState.OwesFailure who setup.program) final.state
+    let payoff := fun final : (NP).History => if stopped final then excludedPayoff who else
+      exclusionBase setup parameter utility excludedPayoff leaks final.state who
+    let failure := expect ((N).runBehavioralFrom installed (2 * horizon + 1) history.1)
+      (fun final => if DecisionFailed key final.state then (1 : ℝ) else 0)
+    (∀ (nextRank : Nat) (start : (NP).History)
+      (anchor : (application setup leaks).Execution),
+      start.state = some ⟨horizon - anchor.environmentRecall.length, none, anchor⟩ →
+      ReachedBoundary setup leaks horizon (NativeScheduler) nextRank anchor →
+      ∀ point : ProtocolState setup.program,
+      sourceServicePrefix? setup nextRank anchor.application.config = some point →
+      ProtocolState.Intended setup.program point →
+      let stopped := fun final : (NP).History => ¬ Clear final.state ∨
+        DecodedState setup leaks (failureProfile setup.program)
+          (ProtocolState.OwesFailure who setup.program) final.state
+      |expect ((N).runBehavioralUntil certificate
+          common stopped start)
+          (fun final => if stopped final then excludedPayoff who else
+            exclusionBase setup parameter utility excludedPayoff leaks final.state who) -
+        sourcePointValue setup parameter utility excludedPayoff
+          (setup.intendedOpeningProfile (sequence n).strategy) who point| ≤
+        (2 * payoffBound * (Fintype.card Player * (1 - slotRetention (scale n)))) *
+          (application setup leaks).rank horizon start.state) →
+    |expect ((N).runBehavioralUntil certificate installed stopped history.1) payoff -
+      ((1 - failure) *
+        decodedPointValue setup leaks bounds horizon (NativeScheduler) parameter utility
+          excludedPayoff (setup.intendedOpeningProfile (sequence n).strategy) who
+          (siteRank site.1) history.1 +
+        failure * excludedPayoff who)| ≤
+      (2 * payoffBound * (Fintype.card Player * (1 - slotRetention (scale n)))) *
+        (2 * horizon + 1) +
+      (2 * (scale n ^ 3 + (2 * horizon + 1 : ℕ) * (scale n ^ 3 + scale n ^ 3)) *
+        (2 * horizon + 1) + scale n ^ 3 * (2 * horizon + 1)) * (2 * payoffBound) +
+      2 * payoffBound * (scale n ^ 3 * (2 * horizon + 1)) := by
+  intro common certificate installed stopped payoff failure boundaryValues
+  let phase := (N).runBehavioralUntil certificate installed
+    (LateStopped setup leaks bounds horizon (NativeScheduler) (siteRank site.1)) history.1
+  obtain ⟨remaining, execution, current, recallEq, observeEq, ordered⟩ :=
+    ordered_of_site setup leaks bounds horizon (NativeScheduler) atSite history
+  subst recallEq
+  subst observeEq
+  let menu := bounds.onePacketMenu (runtime setup) leaks
+  have trace : (menu.protocol (initialLaw setup) horizon (NativeScheduler)).Trace
+      (some ⟨remaining, some who, execution⟩) := current ▸ history.1.trace
+  have rawTrace := menu.toRawTrace (initialLaw setup) horizon (NativeScheduler) trace
+  have pendingAt := pending
+  rw [atSite] at pendingAt
+  obtain ⟨turn, readyView, owned, _⟩ := pendingEvent_spec pendingAt
+  have ready := (execution.application.publicView_eventReady event).mp readyView
+  have siteKeyHere := siteKey
+  rw [atSite] at siteKeyHere
+  have decided := decidedEvent_eq_of_pending setup leaks horizon (NativeScheduler) pendingAt
+    rawTrace rfl siteKeyHere
+  obtain ⟨point, decoded, intendedPoint, _reachedPoint⟩ :=
+    intendedReached_of_forced_debtFree wellFormed site debtFree history current ordered forced
+  have pointDecoded := (decodedPoint_eq_of_isPrefix ordered).trans decoded
+  have clear := exclusionEvidence_of_decodedIntended rawTrace pointDecoded intendedPoint
+  have phaseEq := pending_until_eq_clearUntil terminalCompletes certificate installed history.1
+    current ordered clear event
+    ready
+  have tail := nativeComparison_local_completion_value_sub_le_of_boundary_values setup leaks
+    bounds horizon scheduler sequence scale positive le_one weights n terminalCompletes certificate
+    who site.1 law history.1 current history.2 event ready owned key decided ordered point decoded
+    intendedPoint parameter utility excludedPayoff boundNonneg readoutBounded excludedBounded
+    boundaryValues
+  dsimp only at tail
+  have freshEq : siteFresh who site.1 = fun control : (application setup leaks).Control =>
+      ¬ StoreEventFailed control.execution.application.config.store event := by
+    funext control
+    simp only [siteFresh, pending]
+  rw [← freshEq, ← phaseEq] at tail
+  have physical := pending_phase_value_bounds parameter utility excludedPayoff terminalCompletes
+    wellFormed sequence scale
+    positive le_one (fun n => nativeComparisonWeights setup leaks bounds horizon scheduler
+      (weights n)) (nativeComparisonSequence setup leaks bounds horizon scheduler sequence scale
+      positive le_one weights)
+    (nativeComparisonSequence_assembled setup leaks bounds horizon scheduler sequence scale
+      positive le_one weights) n covers (by have := capacity who; omega) le_rfl site pendingSite
+    debtFree siteKey pending atSite law history forced lawShape readoutBounded excludedBounded
+  dsimp only at physical
+  change |expect phase _ -
+      ((1 - expect phase (fun final => if DecisionFailed key final.state then (1 : ℝ) else 0)) *
+        decodedPointValue setup leaks bounds horizon (NativeScheduler) parameter utility
+          excludedPayoff (setup.intendedOpeningProfile (sequence n).strategy) who
+          (siteRank site.1) history.1 +
+        expect phase (fun final => if DecisionFailed key final.state then (1 : ℝ) else 0) *
+          excludedPayoff who)| ≤ _ ∧ expect phase _ ≤ _ at physical
+  change |expect ((N).runBehavioralUntil certificate installed stopped history.1) payoff -
+      expect phase _| ≤ _ + 2 * payoffBound * expect phase _ at tail
+  have smallBad := mul_le_mul_of_nonneg_left physical.2
+    (by positivity : 0 ≤ 2 * payoffBound)
+  have failureEq := pending_failure_run_eq_phase terminalCompletes certificate installed history.1
+    current ordered clear key
+    event ready decided
+  dsimp only [failure]
+  rw [failureEq]
+  exact (abs_sub_le _ _ _).trans ((add_le_add tail physical.1).trans (by linarith))
+
+
+open Classical in
+/-- The actual common continuation factors through the current event, with
+uniform source-potential and physical completion errors. -/
 theorem nativeComparison_pending_value_affine [Fintype (RP).History]
     [(application setup leaks).FiniteNature (initialLaw setup) (NativeScheduler)]
     [∀ who, DecidableEq ((R).InfoState who)] [∀ who, DecidableEq ((N).InfoState who)]
@@ -95,67 +241,17 @@ theorem nativeComparison_pending_value_affine [Fintype (RP).History]
         (2 * horizon + 1) + scale n ^ 3 * (2 * horizon + 1)) * (2 * payoffBound) +
       2 * payoffBound * (scale n ^ 3 * (2 * horizon + 1)) := by
   intro common certificate installed stopped payoff failure
-  let phase := (N).runBehavioralUntil certificate installed
-    (LateStopped setup leaks bounds horizon (NativeScheduler) (siteRank site.1)) history.1
-  obtain ⟨remaining, execution, current, recallEq, observeEq, ordered⟩ :=
-    ordered_of_site setup leaks bounds horizon (NativeScheduler) atSite history
-  subst recallEq
-  subst observeEq
-  let menu := bounds.onePacketMenu (runtime setup) leaks
-  have trace : (menu.protocol (initialLaw setup) horizon (NativeScheduler)).Trace
-      (some ⟨remaining, some who, execution⟩) := current ▸ history.1.trace
-  have rawTrace := menu.toRawTrace (initialLaw setup) horizon (NativeScheduler) trace
-  have pendingAt := pending
-  rw [atSite] at pendingAt
-  obtain ⟨turn, readyView, owned, _⟩ := pendingEvent_spec pendingAt
-  have ready := (execution.application.publicView_eventReady event).mp readyView
-  have siteKeyHere := siteKey
-  rw [atSite] at siteKeyHere
-  have decided := decidedEvent_eq_of_pending setup leaks horizon (NativeScheduler) pendingAt
-    rawTrace rfl siteKeyHere
-  obtain ⟨point, decoded, intendedPoint, _reachedPoint⟩ :=
-    intendedReached_of_forced_debtFree wellFormed site debtFree history current ordered forced
-  have pointDecoded := (decodedPoint_eq_of_isPrefix ordered).trans decoded
-  have clear := exclusionEvidence_of_decodedIntended rawTrace pointDecoded intendedPoint
-  have phaseEq := recovery_pending_until_eq_clearUntil (initialLaw_initialized setup)
-    (initialLaw_native setup) completes certificate installed history.1 current ordered clear event
-    ready
-  have tail := nativeComparison_local_completion_value_sub_le setup leaks bounds horizon scheduler
+  apply nativeComparison_pending_value_affine_of_boundary_values setup leaks bounds horizon
+    scheduler
+    wellFormed covers capacity sequence scale positive le_one weights n
+    (Recovery.CompletesPlay.clear_counted_native bounds (initialLaw_initialized setup)
+      (initialLaw_native setup) completes)
+    site pendingSite debtFree siteKey pending atSite law history forced lawShape parameter utility
+    excludedPayoff boundNonneg readoutBounded excludedBounded
+  intro nextRank start anchor state boundary target atRank targetIntended
+  exact nativeComparison_stopped_boundary_value_sub_le setup leaks bounds horizon scheduler
     wellFormed covers capacity sequence scale positive le_one weights n opportunity inclusion timely
-    completes certificate who site.1 law history.1 current history.2 event ready owned key decided
-    ordered point decoded intendedPoint parameter utility excludedPayoff boundNonneg readoutBounded
-    excludedBounded
-  dsimp only at tail
-  have freshEq : siteFresh who site.1 = fun control : (application setup leaks).Control =>
-      ¬ StoreEventFailed control.execution.application.config.store event := by
-    funext control
-    simp only [siteFresh, pending]
-  rw [← freshEq, ← phaseEq] at tail
-  have physical := recovery_pending_phase_value_bounds (initialLaw_initialized setup)
-    (initialLaw_native setup) completes parameter utility excludedPayoff wellFormed sequence scale
-    positive le_one (fun n => nativeComparisonWeights setup leaks bounds horizon scheduler
-      (weights n)) (nativeComparisonSequence setup leaks bounds horizon scheduler sequence scale
-      positive le_one weights)
-    (nativeComparisonSequence_assembled setup leaks bounds horizon scheduler sequence scale
-      positive le_one weights) n covers (by have := capacity who; omega) le_rfl site pendingSite
-    debtFree siteKey pending atSite law history forced lawShape readoutBounded excludedBounded
-  dsimp only at physical
-  change |expect phase _ -
-      ((1 - expect phase (fun final => if DecisionFailed key final.state then (1 : ℝ) else 0)) *
-        decodedPointValue setup leaks bounds horizon (NativeScheduler) parameter utility
-          excludedPayoff (setup.intendedOpeningProfile (sequence n).strategy) who
-          (siteRank site.1) history.1 +
-        expect phase (fun final => if DecisionFailed key final.state then (1 : ℝ) else 0) *
-          excludedPayoff who)| ≤ _ ∧ expect phase _ ≤ _ at physical
-  change |expect ((N).runBehavioralUntil certificate installed stopped history.1) payoff -
-      expect phase _| ≤ _ + 2 * payoffBound * expect phase _ at tail
-  have smallBad := mul_le_mul_of_nonneg_left physical.2
-    (by positivity : 0 ≤ 2 * payoffBound)
-  have failureEq := recovery_pending_failure_run_eq_phase (initialLaw_initialized setup)
-    (initialLaw_native setup) completes certificate installed history.1 current ordered clear key
-    event ready decided
-  dsimp only [failure]
-  rw [failureEq]
-  exact (abs_sub_le _ _ _).trans ((add_le_add tail physical.1).trans (by linarith))
+    completes certificate nextRank start anchor state boundary target atRank targetIntended
+    parameter utility excludedPayoff who boundNonneg readoutBounded excludedBounded
 
 end Vegas.RecoveryOnePacket

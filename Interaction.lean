@@ -138,3 +138,4 @@ import Interaction.ReactiveRecordedEnvironment
 import Interaction.MessageNetworkMapOperations
 import Interaction.MessageNetworkMapLearn
 import Interaction.ReactiveDecisionPredecessor
+import Interaction.ReactivePriorStopped

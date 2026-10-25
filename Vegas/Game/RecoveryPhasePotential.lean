@@ -84,6 +84,110 @@ theorem completionValue_expect_affine_of_completed [Finite (E).History]
     expect_mul_const, expect_mul_const,
     expect_sub (payoffIntegrable_constant _ 1) (payoffIntegrable_of_finite _ _), expect_constant]
 
+
+local notation "N" => onePacketModel setup leaks bounds (initialLaw setup) horizon scheduler
+
+open Classical in
+/-- Successful disclosure completions preserve their current source continuation
+value under counted clear terminal completeness. -/
+theorem disclosure_sourceValue
+    [(application setup leaks).FiniteNature (initialLaw setup) scheduler]
+    [∀ who, DecidableEq ((onePacketModel setup leaks bounds (initialLaw setup) horizon
+      scheduler).InfoState who)]
+    [Finite ((bounds.onePacketMenu (runtime setup) leaks).protocol
+      (initialLaw setup) horizon scheduler).History]
+    (terminalCompletes : ∀ (final : (application setup leaks).Control),
+      ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
+        scheduler).Trace (some final) →
+      ExclusionEvidence 0 ∅ (⟨final.execution.application, ∅⟩ : RecoveryState (graph setup)) →
+      (application setup leaks).terminal (some final) →
+      final.execution.application.config.cut.Terminal)
+    (source : setup.intendedModel.BehavioralAssessment)
+    (assessment : (onePacketModel setup leaks bounds (initialLaw setup) horizon
+      scheduler).BehavioralAssessment) {who : Player}
+    (site : (onePacketModel setup leaks bounds (initialLaw setup) horizon
+      scheduler).InformationSite who)
+    {event : (graph setup).EventId}
+    (pending : pendingEvent setup leaks who site.1 = some event)
+    (law : PMF ((onePacketModel setup leaks bounds (initialLaw setup) horizon
+      scheduler).Choice who site.1))
+    (history : (onePacketModel setup leaks bounds (initialLaw setup) horizon
+      scheduler).InformationHistory who site.1)
+    {remaining : Nat} {execution : (application setup leaks).Execution}
+    (current : history.1.state = some ⟨remaining, some who, execution⟩)
+    (turn : execution.application.publicView.ownTurn? who = some event)
+    (ordered : execution.application.config.cut.IsPrefix (siteRank site.1))
+    {payload : L.Ty}
+    {binding : EventGraph.FieldRef (graph setup).layout (.binding who payload)}
+    {checks : List (EventGraph.GuardCheck (graph setup).layout payload)}
+    (outputEq : (graph setup).outputLayout event = .publication payload)
+    (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
+      ((graph setup).nodes event) = .resolve who payload binding checks)
+    {point : ProtocolState setup.program}
+    (decoded : sourceServicePrefix? setup (siteRank site.1) execution.application.config =
+      some point)
+    (intendedPoint : ProtocolState.Intended setup.program point)
+    {key : LateKey setup leaks} (decided : decidedEvent key = some event)
+    {Parameter : Type} (parameter : State L setup.context → Parameter)
+    (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
+    (excludedPayoff : Player → ℝ)
+    {bound : ℝ} (readoutBounded : ∀ readout,
+      |exclusionReadoutUtility setup parameter utility excludedPayoff readout who| ≤ bound) :
+    let profile := setup.intendedOpeningProfile source.strategy
+    let installed := Profile.update (sig := (N).behavioralSignature) assessment.strategy who
+      ((assessment.strategy who).withLaw site.1 law)
+    let phase := (N).runBehavioralUntil ((bounds.onePacketMenu (runtime setup) leaks).bounded
+      (initialLaw setup) horizon scheduler).wellFoundedHistories installed
+      (LateStopped setup leaks bounds horizon scheduler (siteRank site.1)) history.1
+    expect phase (completionValue setup leaks bounds horizon scheduler parameter utility
+      excludedPayoff profile (siteRank site.1) (siteFresh who site.1) who
+      (fun _ => excludedPayoff who)) =
+      (1 - expect phase (fun final => if DecisionFailed key final.state then (1 : ℝ) else 0)) *
+        sourcePointValue setup parameter utility excludedPayoff profile who point +
+      expect phase (fun final => if DecisionFailed key final.state then (1 : ℝ) else 0) *
+        excludedPayoff who := by
+  intro profile installed phase
+  let menu := bounds.onePacketMenu (runtime setup) leaks
+  let certificate := (menu.bounded (initialLaw setup) horizon scheduler).wellFoundedHistories
+  obtain ⟨target, stepPure, _intended, stops⟩ := disclosure_sourceKernel source
+    assessment site pending law history current turn ordered outputEq codeEq decoded intendedPoint
+    (fun final trace ended same => by
+      have finalDecoded : decodedPoint setup final.execution.application.config = some point := by
+        rw [decodedPoint_eq_of_isPrefix (show
+          final.execution.application.config.cut.IsPrefix (siteRank site.1) by
+            rw [same]; exact ordered), same]
+        exact decoded
+      have clear := exclusionEvidence_of_decodedIntended
+        (menu.toRawTrace (initialLaw setup) horizon scheduler trace) finalDecoded intendedPoint
+      rw [terminalCompletes final trace clear ended]
+      exact Finset.mem_univ _)
+  have ready : execution.application.config.cut.Ready event :=
+    (execution.application.publicView_eventReady event).mp
+      (PublicView.ownTurn?_spec _ who event turn).1
+  have trace := menu.toRawTrace (initialLaw setup) horizon scheduler (current ▸ history.1.trace)
+  have clear := exclusionEvidence_of_decodedIntended trace
+    ((decodedPoint_eq_of_isPrefix ordered).trans decoded) intendedPoint
+  have freshIff : ∀ control, siteFresh who site.1 control ↔
+      ¬ StoreEventFailed control.execution.application.config.store event := by
+    intro control
+    simp only [siteFresh, pending]
+  have affine := completionValue_expect_affine_of_completed setup leaks bounds horizon scheduler
+    phase (siteRank site.1) key event decided (siteFresh who site.1) freshIff target
+    (fun final supported => by
+      obtain ⟨anchor, state, eventCompleted, prefixed, _seen⟩ :=
+        pending_stop_completed terminalCompletes false certificate installed history.1 current
+          ordered clear event ready final supported
+      exact ⟨_, state, prefixed, eventCompleted⟩)
+    stops parameter utility excludedPayoff profile who
+  have targetValue : sourcePointValue setup parameter utility excludedPayoff profile who target =
+      sourcePointValue setup parameter utility excludedPayoff profile who point := by
+    rw [← expect_pure target (sourcePointValue setup parameter utility excludedPayoff profile who),
+      ← stepPure, expect_sourcePointValue_behavioralStateStep setup parameter utility
+        excludedPayoff profile who readoutBounded point]
+  rw [targetValue] at affine
+  exact affine
+
+
 end Vegas
 
 namespace Vegas
@@ -204,35 +308,9 @@ theorem recovery_disclosure_sourceValue
         sourcePointValue setup parameter utility excludedPayoff profile who point +
       expect phase (fun final => if DecisionFailed key final.state then (1 : ℝ) else 0) *
         excludedPayoff who := by
-  intro profile installed phase
-  let menu := bounds.onePacketMenu (runtime setup) leaks
-  let certificate := (menu.bounded (initialLaw setup) horizon scheduler).wellFoundedHistories
-  obtain ⟨target, stepPure, _intended, stops⟩ := disclosure_sourceKernel source
-    assessment site pending law history current turn ordered outputEq codeEq decoded intendedPoint
-    (fun final trace ended same =>
-      recovery_terminal_completed_of_decodedIntended initialized nativeLaw completes ordered
-      decoded intendedPoint event final
-        ((bounds.onePacketMenu (runtime setup) leaks).toRawTrace
-          (Vegas.initialLaw setup) horizon scheduler trace) ended same)
-  have ready : execution.application.config.cut.Ready event :=
-    (execution.application.publicView_eventReady event).mp
-      (PublicView.ownTurn?_spec _ who event turn).1
-  have trace := menu.toRawTrace (initialLaw setup) horizon scheduler (current ▸ history.1.trace)
-  have clear := exclusionEvidence_of_decodedIntended trace
-    ((decodedPoint_eq_of_isPrefix ordered).trans decoded) intendedPoint
-  have freshIff : ∀ control, siteFresh who site.1 control ↔
-      ¬ StoreEventFailed control.execution.application.config.store event := by
-    intro control
-    simp only [siteFresh, pending]
-  have affine := recovery_pending_completionValue_of_stops initialized nativeLaw completes
-    certificate installed history.1 current ordered clear key event ready decided
-    (siteFresh who site.1) freshIff target stops parameter utility excludedPayoff profile who
-  have targetValue : sourcePointValue setup parameter utility excludedPayoff profile who target =
-      sourcePointValue setup parameter utility excludedPayoff profile who point := by
-    rw [← expect_pure target (sourcePointValue setup parameter utility excludedPayoff profile who),
-      ← stepPure, expect_sourcePointValue_behavioralStateStep setup parameter utility
-        excludedPayoff profile who readoutBounded point]
-  rw [targetValue] at affine
-  exact affine
+  exact disclosure_sourceValue _ _ _ _ _
+    (Recovery.CompletesPlay.clear_counted_native bounds initialized nativeLaw completes)
+    source assessment site pending law history current turn ordered outputEq codeEq decoded
+    intendedPoint decided parameter utility excludedPayoff readoutBounded
 
 end Vegas

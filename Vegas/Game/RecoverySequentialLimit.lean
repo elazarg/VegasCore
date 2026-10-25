@@ -114,95 +114,6 @@ theorem sequentialEquilibrium_of_local_comparisons {Parameter : Type}
       recoveryExclusionBase parameter utility excludedPayoff final.state)
   let payoff := fun outcome : Option (State L setup.program.terminalCtx) × (Player → ℝ) =>
     fun who => outcome.2 who
-  choose sourceError sourceNonnegative sourceVanishes sourceBound using fun who =>
-    sourceConverges.exists_uniform_policy_gain_bound who
-      (fun final => payoff (sourceObserve final) who) (instructionCount setup.program + 1)
-        (sourceRational who)
-  let totalSourceError := fun n => ∑ who, sourceError who n
-  have totalNonnegative : ∀ n, 0 ≤ totalSourceError n :=
-    fun n => Finset.sum_nonneg fun who _ => sourceNonnegative who n
-  have totalVanishes : Tendsto totalSourceError atTop (nhds 0) := by
-    simpa only [Finset.sum_const_zero] using
-      tendsto_finsetSum Finset.univ (fun who _ => sourceVanishes who)
-  have sourceLe : ∀ n who, sourceError who n ≤ totalSourceError n :=
-    fun n who => Finset.single_le_sum (fun other _ => sourceNonnegative other n)
-      (Finset.mem_univ who)
-  have mixtureBound (n : ℕ) (who : Player)
-      (mixture : PMF (setup.intendedModel.AssessmentDeviation who)) :
-      expect mixture (fun deviation =>
-        let compared := setup.intendedModel.assessmentComparisonWith
-          (setup.intendedModel.truncatedRunner (instructionCount setup.program + 1)) sourceObserve
-            (sourceSequence n) who deviation
-        expect compared.alternative (payoff · who) -
-          expect compared.prescribed (payoff · who)) ≤ totalSourceError n := by
-    obtain ⟨largest, largestBound⟩ :=
-      (Set.finite_range fun final : setup.intendedProtocol.History =>
-        |payoff (sourceObserve final) who|).bddAbove
-    have bounded : ∀ final : setup.intendedProtocol.History,
-        |payoff (sourceObserve final) who| ≤ largest :=
-      fun final => largestBound ⟨final, rfl⟩
-    have largestNonnegative : 0 ≤ largest :=
-      (abs_nonneg _).trans (bounded setup.intendedProtocol.initHistory)
-    have gainBounded (deviation : setup.intendedModel.AssessmentDeviation who) :
-        |expect (setup.intendedModel.assessmentComparisonWith
-              (setup.intendedModel.truncatedRunner (instructionCount setup.program + 1))
-              sourceObserve (sourceSequence n) who deviation).alternative (payoff · who) -
-          expect (setup.intendedModel.assessmentComparisonWith
-              (setup.intendedModel.truncatedRunner (instructionCount setup.program + 1))
-              sourceObserve (sourceSequence n) who deviation).prescribed (payoff · who)| ≤
-            2 * largest := by
-      simp only [assessmentComparisonWith, expect_map, Function.comp_def]
-      have first := expect_abs_le_of_bounded
-        (μ := setup.intendedModel.assessmentLawWith
-          (setup.intendedModel.truncatedRunner (instructionCount setup.program + 1))
-          (sourceSequence n) deviation.1 deviation.2) largestNonnegative bounded
-      have second := expect_abs_le_of_bounded
-        (μ := setup.intendedModel.assessmentLawWith
-          (setup.intendedModel.truncatedRunner (instructionCount setup.program + 1))
-          (sourceSequence n) deviation.1 ((sourceSequence n).strategy who))
-        largestNonnegative bounded
-      exact (abs_sub _ _).trans (by linarith)
-    apply (expect_le_const mixture _
-      (payoffIntegrable_of_bounded mixture _ (C := 2 * largest) gainBounded)
-      (sourceError who n) ?_).trans
-        (sourceLe n who)
-    intro deviation _supported
-    simp only [assessmentComparisonWith, expect_map]
-    exact sourceBound who n deviation.1 deviation.2
-  have gainEq (n : ℕ) (who : Player) (site : (R).InformationSite who)
-      (law : PMF ((R).Choice who site.1)) :
-      localGain (2 * horizon + 1) targetObserve payoff (sequence n) site law =
-        localGain (2 * horizon + 1) (fun final => final.state)
-          (recoveryExclusionBase parameter utility excludedPayoff) (sequence n) site law := by
-    simp only [localGain, assessmentComparisonWith, expect_map, targetObserve, payoff,
-      Function.comp_def]
-  have choicesBound (n : ℕ) (who : Player) (site : (R).InformationSite who)
-      (notFree : ¬ FreeAgent setup leaks bounds Initial horizon scheduler ((R).agentAt site))
-      (choice : (R).Choice who site.1) :
-      localGain (2 * horizon + 1) targetObserve payoff (sequence n) site (PMF.pure choice) ≤
-        comparisonError n + totalSourceError n := by
-    rw [gainEq]
-    rcases comparisons n who site notFree choice with harmless | ⟨mixture, sourced⟩
-    · exact harmless.trans (le_add_of_nonneg_right (totalNonnegative n))
-    · have bounded := mixtureBound n who mixture
-      dsimp only [sourceObserve, payoff] at bounded
-      exact sourced.trans (by
-        simpa only [add_comm] using add_le_add_right bounded (comparisonError n))
-  have allLawsBound (n : ℕ) (who : Player) (site : (R).InformationSite who)
-      (notFree : ¬ FreeAgent setup leaks bounds Initial horizon scheduler ((R).agentAt site))
-      (law : PMF ((R).Choice who site.1)) :
-      localGain (2 * horizon + 1) targetObserve payoff (sequence n) site law ≤
-        comparisonError n + totalSourceError n := by
-    let : Finite ((R).Choice who site.1) :=
-      (R).finite_choice_of_played ((R).site_mem_playedInformation site)
-    have affine := localGain_bind (2 * horizon + 1) targetObserve payoff (sequence n) site
-      ((menu).bounded Initial horizon scheduler)
-      ((menu).decisionRecall Initial horizon scheduler).actsOnceWhereItMatters law PMF.pure
-    rw [PMF.bind_pure] at affine
-    rw [affine]
-    exact expect_le_const law _ (payoffIntegrable_of_finite _ _)
-      (comparisonError n + totalSourceError n)
-      (fun choice _ => choicesBound n who site notFree choice)
   obtain ⟨lawError, lawVanishes, initialized⟩ :=
     recovery_initialized_lawApproximation (setup := setup) (leaks := leaks) (bounds := bounds)
       (horizon := horizon) (scheduler := scheduler) (wellFormed := wellFormed) (covers := covers)
@@ -212,20 +123,20 @@ theorem sequentialEquilibrium_of_local_comparisons {Parameter : Type}
       (utility := utility) (excludedPayoff := excludedPayoff)
       (strategies := fun n => (sequence n).strategy) (allAssembled := assembled)
       (vanishing := vanishes)
-  apply sequentialEquilibrium_of_copied_comparisons_limit_of_lawError sourceObserve targetObserve
+  refine sequentialEquilibrium_of_copied_comparisons_limit_of_lawError sourceObserve targetObserve
     (instructionCount setup.program + 1) (2 * horizon + 1)
     ((menu).bounded Initial horizon scheduler) ((menu).decisionRecall Initial horizon scheduler)
     payoff source sourceSequence sourceConverges sourceRational sequence
     (fun _ site => ¬ FreeAgent setup leaks bounds Initial horizon scheduler ((R).agentAt site))
-    (fun n => comparisonError n + totalSourceError n)
-    (by simpa only [zero_add] using errorVanishes.add totalVanishes)
-    (fun n who site notFree law => Or.inl (allLawsBound n who site notFree law))
-    lawError lawVanishes initialized limit index increasing converges consistent
-  intro who site free law
-  rw [← limit.continuationContext_eq_truncated_of_bounded
-    ((menu).bounded Initial horizon scheduler).wellFoundedHistories
-      ((menu).bounded Initial horizon scheduler)]
-  exact freeOptimal who site (not_not.mp free) law
+    comparisonError errorVanishes (fun n who site notFree choice => ?_)
+    lawError lawVanishes initialized limit index increasing converges consistent ?_
+  · simpa only [localGain, assessmentComparisonWith, expect_map, targetObserve, sourceObserve,
+      payoff, Function.comp_def] using comparisons n who site notFree choice
+  · intro who site free law
+    rw [← limit.continuationContext_eq_truncated_of_bounded
+      ((menu).bounded Initial horizon scheduler).wellFoundedHistories
+        ((menu).bounded Initial horizon scheduler)]
+    exact freeOptimal who site (not_not.mp free) law
 
 end Vegas.RecoveryOnePacket
 

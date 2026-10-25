@@ -34,6 +34,45 @@ local notation "E" => ReactiveApplication.ResponseMenu.protocol menu (initialLaw
 local notation "Clear" => ReactiveApplication.stateInvariant
   (app := application setup leaks) (fun native => ExclusionEvidence 0 ∅ (RecoveryState.mk native ∅))
 
+omit initialized nativeLaw completes in
+/-- The physical completion value is exactly the optional source-point
+potential on the protected current-event phase, including every failure fallback. -/
+theorem pending_completionValue_eq_potential
+    (terminalCompletes : ∀ (final : (application setup leaks).Control),
+      ((menu).protocol (initialLaw setup) horizon scheduler).Trace (some final) →
+      ExclusionEvidence 0 ∅ (⟨final.execution.application, ∅⟩ : RecoveryState (graph setup)) →
+      (application setup leaks).terminal (some final) →
+      final.execution.application.config.cut.Terminal)
+    (certificate : (E).WellFoundedHistories) (players : ∀ player, (N).BehavioralPolicy player)
+    (start : (E).History) {control : (application setup leaks).Control}
+    (current : start.state = some control) {rank : Nat}
+    (ordered : control.execution.application.config.cut.IsPrefix rank)
+    (clear : ExclusionEvidence 0 ∅ (RecoveryState.mk control.execution.application ∅))
+    (event : (graph setup).EventId)
+    (ready : control.execution.application.config.cut.Ready event)
+    (profile : BehavioralProfile setup.program)
+    {Parameter : Type} (parameter : State L setup.context → Parameter)
+    (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
+    (excludedPayoff : Player → ℝ) (who : Player)
+    (fresh : (application setup leaks).Control → Prop) (fallback : (E).History → ℝ) :
+    let phase := (N).runBehavioralUntil certificate players (fun final =>
+      LateStopped setup leaks bounds horizon scheduler rank final ∨ ¬ Clear final.state) start
+    expect phase (completionValue setup leaks bounds horizon scheduler parameter utility
+        excludedPayoff profile rank fresh who fallback) =
+      expect phase (fun final =>
+        (completionPoint setup leaks bounds horizon scheduler rank fresh final).elim
+          (fallback final) (sourcePointValue setup parameter utility excludedPayoff profile who)) :=
+    by
+  intro phase
+  apply expect_congr_on_support
+  intro final member
+  obtain ⟨anchor, state, _completed, nextPrefix, _seen⟩ :=
+    pending_stop_completed terminalCompletes true certificate players start current ordered clear
+      event ready
+    final member
+  exact completionValue_eq_elim setup leaks bounds horizon scheduler parameter utility
+    excludedPayoff profile rank fresh who fallback ⟨_, state, nextPrefix⟩
+
 include initialized nativeLaw completes in
 /-- The physical completion value is exactly the optional source-point
 potential on the protected current-event phase, including every failure fallback. -/
@@ -58,20 +97,21 @@ theorem recovery_pending_completionValue_eq_potential
         (completionPoint setup leaks bounds horizon scheduler rank fresh final).elim
           (fallback final) (sourcePointValue setup parameter utility excludedPayoff profile who)) :=
     by
-  intro phase
-  apply expect_congr_on_support
-  intro final member
-  obtain ⟨anchor, state, _completed, nextPrefix, _seen⟩ := recovery_pending_stop_completed
-    initialized nativeLaw completes true certificate players start current ordered clear event ready
-    final member
-  exact completionValue_eq_elim setup leaks bounds horizon scheduler parameter utility
-    excludedPayoff profile rank fresh who fallback ⟨_, state, nextPrefix⟩
+  exact pending_completionValue_eq_potential
+    (Recovery.CompletesPlay.clear_counted_native bounds initialized nativeLaw completes)
+    certificate players start current ordered clear event ready
+    profile parameter utility excludedPayoff who fresh fallback
 
-include initialized nativeLaw completes in
+omit initialized nativeLaw completes in
 open Classical in
 /-- The exceptional mass in the continuation estimate is exactly the physical
 successful-completion mass without an intended completion point. -/
-theorem recovery_pending_badMass_eq_lateBadStop
+theorem pending_badMass_eq_lateBadStop
+    (terminalCompletes : ∀ (final : (application setup leaks).Control),
+      ((menu).protocol (initialLaw setup) horizon scheduler).Trace (some final) →
+      ExclusionEvidence 0 ∅ (⟨final.execution.application, ∅⟩ : RecoveryState (graph setup)) →
+      (application setup leaks).terminal (some final) →
+      final.execution.application.config.cut.Terminal)
     (certificate : (E).WellFoundedHistories) (players : ∀ player, (N).BehavioralPolicy player)
     (start : (E).History) {control : (application setup leaks).Control}
     (current : start.state = some control) {rank : Nat}
@@ -91,8 +131,9 @@ theorem recovery_pending_badMass_eq_lateBadStop
   rw [← expect_indicator]
   apply expect_congr_on_support
   intro final member
-  obtain ⟨anchor, state, completed, _nextPrefix, _seen⟩ := recovery_pending_stop_completed
-    initialized nativeLaw completes true certificate players start current ordered clear event ready
+  obtain ⟨anchor, state, completed, _nextPrefix, _seen⟩ :=
+    pending_stop_completed terminalCompletes true certificate players start current ordered clear
+      event ready
     final member
   have failed : DecisionFailed key final.state ↔
       StoreEventFailed anchor.application.config.store event := by
@@ -124,5 +165,29 @@ theorem recovery_pending_badMass_eq_lateBadStop
       ¬ DecisionFailed key final.state
   · rw [ite_eq_left first, ite_eq_left (equivalence.mp first)]
   · rw [ite_eq_right first, ite_eq_right (fun second => first (equivalence.mpr second))]
+
+include initialized nativeLaw completes in
+open Classical in
+/-- The exceptional mass in the continuation estimate is exactly the physical
+successful-completion mass without an intended completion point. -/
+theorem recovery_pending_badMass_eq_lateBadStop
+    (certificate : (E).WellFoundedHistories) (players : ∀ player, (N).BehavioralPolicy player)
+    (start : (E).History) {control : (application setup leaks).Control}
+    (current : start.state = some control) {rank : Nat}
+    (ordered : control.execution.application.config.cut.IsPrefix rank)
+    (clear : ExclusionEvidence 0 ∅ (RecoveryState.mk control.execution.application ∅))
+    (event : (graph setup).EventId)
+    (ready : control.execution.application.config.cut.Ready event)
+    (key : LateKey setup leaks) (decided : decidedEvent key = some event)
+    (fresh : (application setup leaks).Control → Prop) :
+    let phase := (N).runBehavioralUntil certificate players (fun final =>
+      LateStopped setup leaks bounds horizon scheduler rank final ∨ ¬ Clear final.state) start
+    (phase.toOuterMeasure {final |
+      completionPoint setup leaks bounds horizon scheduler rank fresh final = none ∧
+        ¬ DecisionFailed key final.state}).toReal =
+      expect phase (lateBadStop setup leaks bounds horizon scheduler rank fresh event) := by
+  exact pending_badMass_eq_lateBadStop
+    (Recovery.CompletesPlay.clear_counted_native bounds initialized nativeLaw completes)
+    certificate players start current ordered clear event ready key decided fresh
 
 end Vegas

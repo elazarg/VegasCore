@@ -589,7 +589,7 @@ directory's aggregator imports every module in it.
 - [Foreign first-exit rank bounds before focal debt](../Vegas/Game/RecoveryForeignFailureBound.lean)
 - [Full honest recovery source continuations](../Vegas/Game/RecoveryHonestContinuation.lean)
 - [Honest recovery recall at every supported future input](../Vegas/Game/RecoveryHonestRecall.lean)
-- [Honest debt-stopped terminal laws](../Vegas/Game/RecoveryHonestStoppedLaw.lean)
+- [Honest debt-stopped terminal laws](../Vegas/Game/OnePacketHonestStoppedLaw.lean)
 - [Whole-policy indifference after recovery debt](../Vegas/Game/RecoveryIndifference.lean)
 - [Actual initialized source checkpoints](../Vegas/Game/RecoveryInitialCheckpoint.lean)
 - [Initialized recovery honest source laws](../Vegas/Game/RecoveryInitializedLaw.lean)
@@ -695,6 +695,17 @@ They accept factual guards at actual counted histories; recovery and phase
 contracts instantiate those guards separately. The
 [phase continuation payoff estimate](../Vegas/Game/SequentialPhaseStoppedPayoff.lean)
 keeps original utility explicit while isolating foreign-exit error.
+
+[Native history transport](../Vegas/Game/RecoveryNativeHistory.lean) and
+[stopped-state transport](../Vegas/Game/RecoveryNativeStoppedState.lean) sit below
+numerical continuation bounds. [Initialized coupling](../Vegas/Game/RecoveryInitializedCoupling.lean)
+is independent of service; actual counted service supplies honest retention and
+completion separately. The generic
+[stable stopped-readout tower](../GameTheoryExtensions/Analysis/Protocol/StoppedReadout.lean)
+keeps first-exit law transport out of the application-specific proofs.
+[Pure copied-site comparisons](../GameTheoryExtensions/Analysis/Protocol/LocalSimulationLimit.lean)
+share source gain limits and local-law convexity across the recovery and phase
+models.
 
 ## Vegas/Examples
 
