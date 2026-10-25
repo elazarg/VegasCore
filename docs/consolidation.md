@@ -734,8 +734,9 @@ Exit: size within the target, or the excess explained in
 
 - [ ] README (purpose, results, build), design notes, research notes behind one
       index; the module map generated or replaced by per-directory headers.
-- [ ] CI: separate documentation job on `main` only, concurrency group,
-      GameTheory build cache, actions pinned by commit.
+- [x] CI: separate documentation job on `main` only, concurrency group,
+      GameTheory build cache, actions pinned by commit (F-I1; F-I2's root
+      cache remains).
 
 ## Owner decisions
 
