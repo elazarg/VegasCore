@@ -170,7 +170,7 @@ joint law. It is not pursued.
   its commitment cells (both proved outside VegasCore);
   the forfeit pass forfeits the owner of every failed reveal (see
   [two sources](se-two-sources.md), point 1).
-  Evidence: `intended_sequentialEquilibrium_preserved`
+  Evidence: `Vegas.SourceProgram.Setup.intended_sequentialEquilibrium_preserved`
   ([IntendedPreservation](../Vegas/Game/IntendedPreservation.lean)), pinned in
   [Paper](../Paper.lean) as `Vegas.Paper.intended_sequential_equilibrium` with
   standard axioms. For every setup with `FiniteBindingTypes`, a finite initial

@@ -135,7 +135,9 @@ commitment phases are a candidate sequential adapter: a failure would not
 invalidate another surviving player's earlier commitment. This remains to be
 proved, including phase observations, attempt identifiers, readiness, deadlines
 and off-path behavior. The concurrent theorem's maximal-phase hypothesis does
-not directly supply this adapter. Restoring program state must not erase network
+not directly supply this adapter. The [sequential phase proof](sequential-phase-preservation.md)
+records the checked interfaces and the remaining information and continuation
+obligations. Restoring program state must not erase network
 traffic or recall that players have already observed.
 
 Preservation from the intended restriction and preservation from every

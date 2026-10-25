@@ -1,9 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RecoveryLocalComparisons
-import Vegas.Game.RecoverySequentialLimit
+import Vegas.Game.RecoveryOnePacketPreservation
 import Vegas.Game.RecoveryOnePacketRawLaw
-import Vegas.Game.OnePacketCertificateAssembly
 
 /-! # Sequential preservation by the permanent-exclusion recovery runtime
 
@@ -35,16 +33,6 @@ variable {Public : Type*} {signal : State L setup.context → Public}
 
 local notation "Initial" => PMF.map
   (fun native => (RecoveryState.mk native ∅ : RecoveryState (graph setup))) (initialLaw setup)
-local notation "NativeScheduler" => RecoveryProjection.nativeScheduler
-  (runtime setup) leaks scheduler
-local notation "menu" => Recovery.onePacketMenu (runtime setup) leaks bounds
-local notation "R" => RecoveryOnePacket.model setup leaks bounds Initial horizon scheduler
-local notation "RP" => ReactiveApplication.ResponseMenu.protocol
-  (Recovery.onePacketMenu (runtime setup) leaks bounds) Initial horizon scheduler
-
-local instance recoveryCompilationHistoryFintype : Fintype (RP).History :=
-  (menu).historyFintype Initial horizon scheduler
-
 variable {Parameter : Type} (parameter : State L setup.context → Parameter)
   (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
   (excludedPayoff : Player → ℝ)
@@ -105,83 +93,12 @@ theorem recovery_intended_raw_sequentialEquilibrium_preserved
         (setup.intendedModel.runBehavioral intended.strategy
           (instructionCount setup.program + 1)).map
           (intendedReadoutExclusion setup parameter utility excludedPayoff) := by
-  classical
-  obtain ⟨sourceSequence, sourceMixed, sourceBayes, sourceConverges, sourceRational⟩ :=
-    setup.intended_exclusionSource wellFormed parameter utility excludedPayoff intended
-      equilibrium
-  let floors := fun n => combinedFloor setup leaks bounds horizon (NativeScheduler)
-    (sourceSequence n)
-  let scale := fun n => trembleScale (floors n) (2 * horizon + 2) n
-  have positive : ∀ n, 0 < scale n := fun n => trembleScale_pos
-    (combinedFloor_pos setup leaks bounds horizon (NativeScheduler) (sourceSequence n))
-  have le_one : ∀ n, scale n ≤ 1 := fun n => trembleScale_le_one
-    (combinedFloor_pos setup leaks bounds horizon (NativeScheduler) (sourceSequence n)).le
-    (combinedFloor_le_one setup leaks bounds horizon (NativeScheduler) (sourceSequence n))
-  have vanishes : Tendsto scale atTop (nhds 0) := tendsto_trembleScale _
-    (fun n => combinedFloor_pos setup leaks bounds horizon (NativeScheduler) (sourceSequence n))
-    (fun n => combinedFloor_le_one setup leaks bounds horizon (NativeScheduler) (sourceSequence n))
-  obtain ⟨weights, sequence, limit, index, assembled, _mixed, bayes, increasing, converges,
-      consistent, pooled, _limits, freeOptimal, _publicOptimal⟩ :=
-    RecoveryOnePacket.exists_consistent_completion setup leaks bounds Initial horizon scheduler
-      parameter utility excludedPayoff sourceSequence bounds.candidateCount scale positive le_one
-      vanishes
-  let fallback : ∀ who, (R).Policy who := fun _ _ => Classical.arbitrary _
-  let range := fun who : Player => max 0 (max (excludedPayoff who) (upperUtility who)) -
-    min 0 (min (excludedPayoff who) (lowerUtility who))
-  let payoffBound : ℝ := ∑ who, range who
-  have rangeNonnegative : ∀ who, 0 ≤ range who := by
-    intro who
-    exact sub_nonneg.mpr ((min_le_left 0 _).trans (le_max_left 0 _))
-  have nonnegative : 0 ≤ payoffBound := Finset.sum_nonneg fun who _ => rangeNonnegative who
-  have rangeLe : ∀ who, range who ≤ payoffBound := fun who =>
-    Finset.single_le_sum (fun other _ => rangeNonnegative other) (Finset.mem_univ who)
-  obtain ⟨readoutBounded, excludedBounded⟩ := exclusionPayoffs_bounded setup parameter utility
-    excludedPayoff lowerUtility upperUtility lower_le le_upper
-  have payoffBounded : ∀ who (final : (RP).History),
-      |recoveryExclusionBase parameter utility excludedPayoff final.state who| ≤ payoffBound := by
-    intro who final
-    have within := recoveryExclusionBase_mem_Icc parameter utility excludedPayoff
-      lowerUtility upperUtility lower_le le_upper final.state who
-    have low := min_le_left 0 (min (excludedPayoff who) (lowerUtility who))
-    have high := le_max_left 0 (max (excludedPayoff who) (upperUtility who))
-    apply le_trans (b := range who) _ (rangeLe who)
-    exact abs_le.mpr ⟨by dsimp only [range]; linarith [within.1],
-      by dsimp only [range]; linarith [within.2]⟩
-  obtain ⟨error, errorVanishes, comparisons⟩ :
-      ∃ error : ℕ → ℝ, Tendsto error atTop (nhds 0) ∧
-        ∀ n who (site : (R).InformationSite who),
-          ¬ RecoveryOnePacket.FreeAgent setup leaks bounds Initial horizon scheduler
-            ((R).agentAt site) →
-          ∀ choice : (R).Choice who site.1,
-            localGain (2 * horizon + 1) (fun final => final.state)
-                (recoveryExclusionBase parameter utility excludedPayoff) (sequence n) site
-                (PMF.pure choice) ≤ error n ∨
-              ∃ mixture : PMF (setup.intendedModel.AssessmentDeviation who),
-                localGain (2 * horizon + 1) (fun final => final.state)
-                    (recoveryExclusionBase parameter utility excludedPayoff) (sequence n) site
-                    (PMF.pure choice) ≤
-                  expect mixture (intendedSiteGain setup parameter utility excludedPayoff
-                    (sourceSequence n)) + error n := by
-    by_cases slots_pos : 0 < bounds.candidateCount
-    · exact RecoveryOnePacket.recovery_local_comparisons setup leaks bounds horizon scheduler
-        wellFormed independent observable sourceSequence sourceMixed sourceBayes scale positive
-        le_one
-        (fun _ => rfl) covers coversInputs capacity slots_pos weights sequence (fun _ => fallback)
-        assembled bayes opportunity inclusion timely parameter utility excludedPayoff payoffBound
-        nonnegative completes payoffBounded excludedBounded below upperUtility le_upper
-        readoutBounded pooled
-    · refine ⟨fun _ => 0, tendsto_const_nhds, ?_⟩
-      intro _ who _ _ _
-      have impossible := capacity who
-      omega
-  obtain ⟨recoverySE, recoveryLaw⟩ :=
-    RecoveryOnePacket.sequentialEquilibrium_of_local_comparisons setup leaks bounds horizon
-      scheduler parameter utility excludedPayoff wellFormed covers capacity opportunity inclusion
-      timely completes intended sourceSequence sourceConverges sourceRational scale positive
-      le_one vanishes weights fallback sequence assembled limit index increasing converges
-      consistent freeOptimal error errorVanishes comparisons
+  obtain ⟨native, nativeSE, nativeLaw⟩ :=
+    RecoveryOnePacket.intended_sequentialEquilibrium_preserved parameter utility excludedPayoff
+      wellFormed independent observable opportunity inclusion completes timely lowerUtility
+      upperUtility lower_le le_upper below intended equilibrium covers coversInputs capacity
   exact recovery_intended_raw_sequentialEquilibrium_of_onePacket parameter utility excludedPayoff
-    intended limit recoverySE recoveryLaw service observationRate deliveryRate delivery_nonnegative
+    intended native nativeSE nativeLaw service observationRate deliveryRate delivery_nonnegative
     coverage lowerUtility upperUtility lower_le le_upper deposit deposit_nonnegative sufficient
 
 end Vegas

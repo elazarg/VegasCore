@@ -676,3 +676,9 @@ directory's aggregator imports every module in it.
 - [Actual concurrent reveal-order dependence with withholding](../Vegas/Examples/ConcurrentRevealOrderLaw.lean)
 - [Concrete late-opening game data](../Vegas/Examples/LateOpeningRuntimeGame.lean)
 - [Supported correlated service with simultaneously valid pending packets](../Vegas/Examples/ReservedEpochUsableConcurrency.lean)
+
+The [sequential phase plan](../Vegas/Game/SequentialRuntimePhases.lean) is an
+adapter into the existing phase executor. Singleton drain and rebuild facts live
+in [Pending](../Vegas/Pending/PhaseSingletonRebuild.lean); the
+[one-packet preservation entry point](../Vegas/Game/RecoveryOnePacketPreservation.lean)
+keeps the source SE construction separate from count-audit raw-menu extension.

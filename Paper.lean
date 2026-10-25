@@ -6,6 +6,8 @@ import Interaction.ReactivePolicyMenuInvariant
 import Interaction.ReactiveProvenance
 import Interaction.ReactiveSchedulerDensity
 import Vegas.Pending.CompletionService
+import Vegas.Pending.PhaseSingletonTransition
+import Vegas.Pending.PhaseClearMetadata
 import Vegas.Compile
 import Vegas.Game
 import Vegas.Examples.LateLeak
@@ -1789,3 +1791,117 @@ end Vegas.Paper
 #guard_msgs (whitespace := lax) in
 #print axioms
   Vegas.EventGraph.RevealRelaxedOrdered.readyIndependent
+
+/-- info: 'Vegas.sequentialRuntimePhasePlan_singleton' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.sequentialRuntimePhasePlan_singleton
+
+/-- info: 'Vegas.sequentialRuntimePhaseAt_events' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.sequentialRuntimePhaseAt_events
+
+/-- info: 'Vegas.EventGraphRuntime.RuntimePhase.ready_mem_sequential' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.RuntimePhase.ready_mem_sequential
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseRuntimeState.settle_global_quiescent_sequential' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseRuntimeState.settle_global_quiescent_sequential
+
+/-- info: 'Vegas.EventGraphRuntime.phaseApplication_initial_quiescent_sequential' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.phaseApplication_initial_quiescent_sequential
+
+/-- info: 'Vegas.EventGraphRuntime.RuntimePhase.no_survivors_of_miss' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.RuntimePhase.no_survivors_of_miss
+
+/-- info: 'Vegas.EventGraphRuntime.RuntimePhase.drain_eq_completeAutomatic_of_singleton' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.RuntimePhase.drain_eq_completeAutomatic_of_singleton
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseRuntimeState.settle_generation_eq' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseRuntimeState.settle_generation_eq
+
+/-- info: 'Vegas.EventGraphRuntime.RuntimePhase.restore_completeAutomatic' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.RuntimePhase.restore_completeAutomatic
+
+/-- info: 'Vegas.RecoveryOnePacket.intended_sequentialEquilibrium_preserved' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.RecoveryOnePacket.intended_sequentialEquilibrium_preserved
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseRuntimeState.environment_expire_singleton' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseRuntimeState.environment_expire_singleton
+
+/-- info: 'Vegas.EventGraphRuntime.phaseClearMetadata_history' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.phaseClearMetadata_history
+
+/-- info: 'Vegas.EventGraphRuntime.phaseRetired_excluded_history' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.phaseRetired_excluded_history
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseRuntimeState.settle_current_eq_drain' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseRuntimeState.settle_current_eq_drain
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseRecoveryProjection.observe_state' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseRecoveryProjection.observe_state
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseRecoveryProjection.knownPackets' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseRecoveryProjection.knownPackets
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseRecoveryProjection.normalization_projected' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseRecoveryProjection.normalization_projected
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseRecoveryProjection.rawMenu_projected' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseRecoveryProjection.rawMenu_projected
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseRecoveryProjection.normalizedMenu_projected' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.PhaseRecoveryProjection.normalizedMenu_projected

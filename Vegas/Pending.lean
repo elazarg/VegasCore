@@ -440,3 +440,8 @@ import Vegas.Pending.PhaseExclusionEvidence
 import Vegas.Pending.ValueSwapPairs
 import Vegas.Pending.PublicFailureEvidence
 import Vegas.Pending.PhaseStoppedAttemptMetadata
+import Vegas.Pending.PhaseSingleton
+import Vegas.Pending.PhaseSingletonRebuild
+import Vegas.Pending.PhaseSingletonTransition
+import Vegas.Pending.PhaseClearMetadata
+import Vegas.Pending.PhaseDrainCorrespondence
