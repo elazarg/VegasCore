@@ -2,6 +2,7 @@
 
 import Vegas.Pending.ServicePlan
 import Vegas.Pending.EventProgress
+import Vegas.EventGraph.DependencyHeight
 
 /-! # A bounded completion contract for event service
 
@@ -94,19 +95,41 @@ theorem window_completes_ready (service : CompletionService runtime Execution)
         exact service.due inputs event entered middle after progress.invariant middleReady
           strategic middleActivated due last
 
-private theorem remaining_lt (before after : graph.Config)
-    (subset : before.cut.completed ⊆ after.cut.completed)
-    (event : graph.EventId) (fresh : event ∉ before.cut.completed)
-    (done : event ∈ after.cut.completed) : after.remaining < before.remaining := by
-  have proper : before.cut.completed ⊂ after.cut.completed :=
-    Finset.ssubset_iff_subset_ne.mpr ⟨subset, fun same => fresh (same ▸ done)⟩
-  have cardLt := Finset.card_lt_card proper
-  have beforeLe : before.cut.completed.card ≤ graph.order.eventCount := by
-    simpa using Finset.card_le_card (Finset.subset_univ before.cut.completed)
-  have afterLe : after.cut.completed.card ≤ graph.order.eventCount := by
-    simpa using Finset.card_le_card (Finset.subset_univ after.cut.completed)
-  simp only [EventGraph.Config.remaining]
-  omega
+/-- Each deadline window clears one complete layer of the dependency graph. -/
+theorem completed_of_dependencyDepth_le (service : CompletionService runtime Execution)
+    (inputs : graph.Inputs) (windows : Nat) (before after : Execution)
+    (invariant : (service.state before).Invariant inputs)
+    (supported : after ∈ (service.run (windows * (runtime.maxDeadline + 1)) before).support)
+    (event : graph.EventId) (depth : graph.order.dependencyDepth event ≤ windows) :
+    event ∈ (service.state after).config.cut.completed := by
+  induction windows generalizing after event with
+  | zero => have positive := graph.order.dependencyDepth_pos event; omega
+  | succ windows ih =>
+      rw [Nat.succ_mul, service.run_add] at supported
+      obtain ⟨middle, moved, finished⟩ :=
+        Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
+      have progress := service.run_progress inputs (windows * (runtime.maxDeadline + 1))
+        before middle invariant moved
+      by_cases completed : event ∈ (service.state middle).config.cut.completed
+      · exact (service.run_progress inputs (runtime.maxDeadline + 1) middle after
+          progress.invariant finished).completed completed
+      · apply service.window_completes_ready inputs event middle after progress.invariant
+          ⟨completed, ?_⟩ finished
+        intro predecessor member
+        have smaller := graph.order.predecessor_depth_lt member
+        exact ih middle moved predecessor (by omega)
+
+/-- Dependency height suffices independently of the number of parallel events. -/
+theorem terminal_of_dependencyHeight (service : CompletionService runtime Execution)
+    (inputs : graph.Inputs) (before after : Execution)
+    (invariant : (service.state before).Invariant inputs)
+    (supported : after ∈ (service.run
+      (graph.order.dependencyHeight * (runtime.maxDeadline + 1)) before).support) :
+    (service.state after).config.cut.Terminal := by
+  apply Finset.eq_univ_of_forall
+  intro event
+  exact service.completed_of_dependencyDepth_le inputs graph.order.dependencyHeight before after
+    invariant supported event (graph.order.dependencyDepth_le_height event)
 
 /-- Each deadline window completes a ready event unless the graph is already
 terminal. At most one such window per event is sufficient. -/
@@ -114,47 +137,11 @@ theorem terminal (service : CompletionService runtime Execution) (inputs : graph
     (before after : Execution) (invariant : (service.state before).Invariant inputs)
     (supported : after ∈ (service.run runtime.serviceEpochs before).support) :
     (service.state after).config.cut.Terminal := by
-  have bounded : ∀ fuel (start finish : Execution),
-      (service.state start).Invariant inputs →
-      (service.state start).config.remaining ≤ fuel →
-      finish ∈ (service.run (fuel * (runtime.maxDeadline + 1)) start).support →
-      (service.state finish).config.cut.Terminal := by
-    intro fuel
-    induction fuel with
-    | zero =>
-        intro start finish _ remaining finishMem
-        have done := (service.state start).config.terminal_iff_remaining_zero.mpr (by omega)
-        simp only [Nat.zero_mul, run, PMF.mem_support_pure_iff _ _] at finishMem
-        subst finish
-        exact done
-    | succ fuel ih =>
-        intro start finish startInvariant remaining finishMem
-        rw [Nat.succ_mul, Nat.add_comm, service.run_add] at finishMem
-        obtain ⟨middle, moved, finished⟩ :=
-          Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ finishMem)
-        have progress := service.run_progress inputs (runtime.maxDeadline + 1)
-          start middle startInvariant moved
-        by_cases stopped : (service.state start).config.cut.Terminal
-        · have middleTerminal : (service.state middle).config.cut.Terminal := by
-            rw [EventOrder.Cut.Terminal] at stopped ⊢
-            apply Finset.Subset.antisymm (Finset.subset_univ _)
-            intro event _
-            apply progress.completed
-            rw [stopped]
-            exact Finset.mem_univ event
-          apply ih middle finish progress.invariant _ finished
-          rw [(service.state middle).config.terminal_iff_remaining_zero.mp middleTerminal]
-          omega
-        · obtain ⟨event, ready⟩ :=
-            (service.state start).config.cut.exists_ready_of_not_terminal stopped
-          have done := service.window_completes_ready inputs event start middle
-            startInvariant ready moved
-          have decreased := remaining_lt (service.state start).config
-            (service.state middle).config progress.completed event ready.1 done
-          exact ih middle finish progress.invariant (by omega) finished
-  apply bounded graph.order.eventCount before after invariant
-  · simp [EventGraph.Config.remaining]
-  · exact supported
+  apply Finset.eq_univ_of_forall
+  intro event
+  exact service.completed_of_dependencyDepth_le inputs graph.order.eventCount before after
+    invariant supported event ((graph.order.dependencyDepth_le_height event).trans
+      graph.order.dependencyHeight_le_eventCount)
 
 end CompletionService
 end Vegas.EventGraphRuntime

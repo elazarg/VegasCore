@@ -189,6 +189,8 @@ directory's aggregator imports every module in it.
 
 ## Vegas/EventGraph
 
+- [Dependency depth and height](../Vegas/EventGraph/DependencyHeight.lean)
+
 - [Completed-output agreement and terminal stores](../Vegas/EventGraph/CompletedOutputAgreement.lean)
 - [Reachable restriction to causal cuts and exact foreign replay](../Vegas/EventGraph/ConfigRestriction.lean)
 - [Independent event action kernels](../Vegas/EventGraph/KernelCommutation.lean)
@@ -217,6 +219,8 @@ directory's aggregator imports every module in it.
 - [Canonical source-view and named-action suffix certificates](../Vegas/Compile/ProtocolViewSuffix.lean)
 
 ## Vegas/Pending
+
+- [Completion in dependency-height deadline windows](../Vegas/Pending/CompletionService.lean)
 
 - [Accepted events' authenticated ownership](../Vegas/Pending/AcceptedEventOwnership.lean)
 - [Archive Binding Record](../Vegas/Pending/ArchiveBindingRecord.lean)
