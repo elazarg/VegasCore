@@ -43,6 +43,7 @@ import Vegas.EventGraph.Sequential
 import Vegas.EventGraph.SequentialLaw
 import Vegas.EventGraph.StateCongruence
 import Vegas.EventGraph.Validation
+import Vegas.EventGraph.DependencyHeight
 
 /-! # Dependency-driven typed events
 
@@ -51,4 +52,3 @@ execution. Source and pending-message strategic certificates are separate
 obligations.
 -/
 
-import Vegas.EventGraph.DependencyHeight
