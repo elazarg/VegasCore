@@ -35,6 +35,23 @@ theorem Issued.mono {before after : app.Execution}
   obtain ⟨entry, member, material, transmission, emitted, packet⟩ := issued
   exact ⟨entry, recall message.sender member, material, transmission, emitted, packet⟩
 
+omit [DecidableEq Principal] in
+/-- Every key carried by an actually issued packet occurs in its author's
+actual response recall whenever packet encoding preserves that key. -/
+theorem Issued.mem_response_keys {Key : Type*}
+    (responseKey : app.Action → Option Key) (packetKey : app.Payload → Option Key)
+    (encoding : ∀ (response : app.Action) (material : app.Submission),
+      response.transmission = some material →
+      ∀ state who known, responseKey response = packetKey (app.packet state who known material))
+    {execution : app.Execution} {message : Message Principal app.Payload} {key : Key}
+    (issued : execution.Issued app message) (selected : packetKey message.payload = some key) :
+    key ∈ ((execution.recall message.sender).map PlayerEntry.action).filterMap responseKey := by
+  obtain ⟨entry, member, material, transmitted, _emitted, state, known, packet⟩ := issued
+  apply List.mem_filterMap.mpr
+  refine ⟨entry.action, List.mem_map.mpr ⟨entry, member, rfl⟩, ?_⟩
+  rw [encoding entry.action material transmitted state message.sender known, packet]
+  exact selected
+
 theorem respond_provenance (execution : app.Execution) (who : Principal) (action : app.Action)
     (valid : execution.Provenance app) : (execution.respond app who action).Provenance app := by
   have prior : execution.network.Satisfies ((execution.respond app who action).Issued app) :=

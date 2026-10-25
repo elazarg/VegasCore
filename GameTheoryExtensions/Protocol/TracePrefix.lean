@@ -111,6 +111,40 @@ theorem ReachesWithin.tracePrefix {fuel : Nat} {first last : E.History}
   | step joint legal realized rest ih =>
       exact (TracePrefix.extend .refl joint legal realized).trans ih
 
+/-- Every entry into a state predicate along an actual trace extension has an
+actual transition witness between the original start and endpoint histories. -/
+theorem TracePrefix.exists_entering_transition {first last : E.State}
+    {initialTrace : E.Trace first} {finish : E.Trace last} (path : TracePrefix initialTrace finish)
+    (predicate : E.State → Prop) (outside : ¬ predicate first) (inside : predicate last) :
+    ∃ (before after : E.State) (prior : E.Trace before) (joint : ∀ who, Option (E.Action who))
+      (legal : E.Legal before joint) (moved : after ∈ (E.step before ⟨joint, legal⟩).support),
+      TracePrefix initialTrace prior ∧ TracePrefix (prior.extend joint legal moved) finish ∧
+        ¬ predicate before ∧ predicate after := by
+  classical
+  revert inside
+  induction path with
+  | refl => exact fun inside => False.elim (outside inside)
+  | @extend source target prior earlier joint legal moved ih =>
+      intro inside
+      by_cases previous : predicate source
+      · obtain ⟨before, after, history, actions, allowed, realized, retained, suffix,
+          wasOutside, isInside⟩ := ih previous
+        exact ⟨before, after, history, actions, allowed, realized, retained,
+          .extend suffix joint legal moved, wasOutside, isInside⟩
+      · exact ⟨source, target, prior, joint, legal, moved, earlier, .refl, previous, inside⟩
+
+/-- A strict history extension exposes its actual final legal transition. -/
+theorem TracePrefix.exists_last_transition {first last : E.State}
+    {initialTrace : E.Trace first} {finish : E.Trace last} (path : TracePrefix initialTrace finish)
+    (longer : initialTrace.length < finish.length) :
+    ∃ (before : E.State) (prior : E.Trace before) (joint : ∀ who, Option (E.Action who))
+      (legal : E.Legal before joint) (moved : last ∈ (E.step before ⟨joint, legal⟩).support),
+      TracePrefix initialTrace prior ∧
+        finish = prior.extend joint legal moved := by
+  cases path with
+  | refl => exact False.elim ((Nat.lt_irrefl _) longer)
+  | extend earlier joint legal moved => exact ⟨_, _, joint, legal, moved, earlier, rfl⟩
+
 end ExecutionProtocol
 
 end GameTheory.Protocol

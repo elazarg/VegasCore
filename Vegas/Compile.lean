@@ -45,5 +45,6 @@ import Vegas.Compile.EventSourceView
 import Vegas.Compile.EventSourceViewErasure
 import Vegas.Compile.ExcludedCommitPrefixObservation
 import Vegas.Compile.ProtocolViewSuffix
+import Vegas.Compile.ContextRefsTransport
 
 /-! Source-program lowering to the typed immutable graph. -/

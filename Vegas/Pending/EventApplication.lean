@@ -806,6 +806,142 @@ theorem handle_opening_eq
     subst decoded
     simp [stored, acceptResolution, resolved]
 
+/-- Commitment acceptance records the frozen handle and its installed binding result,
+including failure. -/
+theorem handle_commitment_iff (runtime : EventGraphRuntime graph) (state next : State graph)
+    (id : MessageId Player) (event : graph.EventId) (candidate : Handle graph) :
+    handle runtime state ⟨id, .commitment event candidate⟩ = some next ↔
+      ∃ (ready : state.config.cut.Ready event) (_ : state.WithinDeadline runtime event)
+        (owner : Player) (payload : L.Ty)
+        (outputEq : graph.outputLayout event = .binding owner payload)
+        (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
+          (graph.nodes event) = .bind owner payload),
+        nodeView graph event = .bind owner payload outputEq codeEq ∧ id.1 = owner ∧
+          candidate.1 = owner ∧ state.accepted (.inr event) = none ∧
+          state.HandleUnused candidate ∧
+          next = { (state.complete event ready
+            (cast (congrArg EventField.Action outputEq.symm)
+              (state.bindingResult candidate payload))
+            (cast (congrArg EventField.Value outputEq.symm)
+              (state.bindingResult candidate payload))) with
+            accepted := Function.update state.accepted (.inr event) (some candidate)
+            candidates := state.candidates.freeze candidate } := by
+  constructor
+  · intro accepted
+    have accepted' := accepted
+    by_cases ready : state.config.cut.Ready event
+    · by_cases timely : state.WithinDeadline runtime event
+      · cases view : nodeView graph event with
+        | resolve owner payload binding checks outputEq codeEq =>
+            simp [handle, ready, timely, view] at accepted
+        | sample payload law outputEq codeEq =>
+            simp [handle, ready, timely, view] at accepted
+        | bind owner payload outputEq codeEq =>
+            simp only [handle, dite_eq_left ready, dite_eq_left timely, view] at accepted
+            split at accepted
+            · rename_i sender
+              simp only [dite_eq_ite, Option.ite_none_right_eq_some] at accepted
+              rcases accepted with ⟨handleOwner, vacant, unused, _⟩
+              refine ⟨ready, timely, owner, payload, outputEq, codeEq, rfl, sender, handleOwner,
+                vacant, unused, ?_⟩
+              exact Option.some.inj (accepted'.symm.trans
+                (handle_commitment_eq runtime state id event candidate owner payload
+                  outputEq codeEq view ready timely sender handleOwner vacant unused))
+            · simp_all only [reduceCtorEq]
+      · simp [handle, ready, timely] at accepted
+    · simp [handle, ready] at accepted
+  · rintro ⟨ready, timely, owner, payload, outputEq, codeEq, view, sender, handleOwner,
+      vacant, unused, nextEq⟩
+    rw [nextEq]
+    exact handle_commitment_eq runtime state id event candidate owner payload outputEq codeEq
+      view ready timely sender handleOwner vacant unused
+
+/-- Opening acceptance records the authenticated typed value and actual
+resolution result, including rejected guards. -/
+theorem handle_opening_iff (runtime : EventGraphRuntime graph) (state next : State graph)
+    (id : MessageId Player) (event : graph.EventId) (candidate : Handle graph) (raw : Raw L) :
+    handle runtime state ⟨id, .opening event candidate raw⟩ = some next ↔
+      ∃ (ready : state.config.cut.Ready event) (_ : state.WithinDeadline runtime event)
+        (owner : Player) (payload : L.Ty)
+        (binding : FieldRef graph.layout (.binding owner payload))
+        (checks : List (GuardCheck graph.layout payload))
+        (outputEq : graph.outputLayout event = .publication payload)
+        (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
+          (graph.nodes event) = .resolve owner payload binding checks) (value : L.Val payload)
+        (result : PublicationResult (L.Val payload)),
+        nodeView graph event = .resolve owner payload binding checks outputEq codeEq ∧
+          id.1 = owner ∧ candidate.1 = owner ∧ state.accepted binding.field = some candidate ∧
+          raw = ⟨payload, value⟩ ∧ state.candidates.lookup candidate = .openable ⟨payload, value⟩ ∧
+          binding.get? state.config.store = some (.success value) ∧
+          EventCode.resolveOutput? binding checks true state.config.store = some result ∧
+          next = state.complete event ready (cast (congrArg EventField.Action outputEq.symm) true)
+            (cast (congrArg EventField.Value outputEq.symm) result) := by
+  constructor
+  · intro accepted
+    by_cases ready : state.config.cut.Ready event
+    · by_cases timely : state.WithinDeadline runtime event
+      · cases view : nodeView graph event with
+        | bind owner payload outputEq codeEq =>
+            simp [handle, ready, timely, view] at accepted
+        | sample payload law outputEq codeEq =>
+            simp [handle, ready, timely, view] at accepted
+        | resolve owner payload binding checks outputEq codeEq =>
+            have accepted' := accepted
+            simp only [handle, dite_eq_left ready, dite_eq_left timely, view] at accepted
+            split at accepted
+            · rename_i sender
+              simp only [dite_eq_ite, Option.ite_none_right_eq_some] at accepted
+              rcases accepted with ⟨handleOwner, associated, verified, accepted⟩
+              split at accepted
+              · simp at accepted
+              · rename_i value typed
+                have rawEq : raw = ⟨payload, value⟩ := by
+                  rcases raw with ⟨rawType, rawValue⟩
+                  unfold Raw.as? at typed
+                  split at typed
+                  · rename_i same
+                    subst same
+                    simp only [Option.some.injEq] at typed
+                    subst typed
+                    rfl
+                  · cases typed
+                subst rawEq
+                have lookupEq := (CommitmentCandidates.verify_eq_true_iff _ _ _).mp verified
+                by_cases stored : binding.get? state.config.store = some (.success value)
+                · simp only [stored, ite_eq_left] at accepted
+                  cases resolved : EventCode.resolveOutput? binding checks true
+                      state.config.store with
+                  | none =>
+                      have available : ∀ field ∈ insert binding.field
+                          (GuardCheck.listReadFields checks),
+                          (state.config.store field).isSome = true := by
+                        intro field member
+                        apply state.config.read_available ready
+                        rw [← EventCode.readFields_cast outputEq (graph.nodes event), codeEq]
+                        exact member
+                      have defined := EventCode.resolveOutput?_isSome binding checks true
+                        state.config.store available
+                      rw [resolved] at defined
+                      cases defined
+                  | some result =>
+                      refine ⟨ready, timely, owner, payload, binding, checks, outputEq,
+                        codeEq, value, result, rfl, sender, handleOwner, associated, rfl,
+                        lookupEq, stored, resolved, ?_⟩
+                      have direct := handle_opening_eq runtime state id event candidate
+                        owner payload binding checks outputEq codeEq view ready timely sender
+                        handleOwner associated value lookupEq stored result resolved
+                      exact Option.some.inj (accepted'.symm.trans direct)
+                · simp [stored] at accepted
+            · simp_all only [reduceCtorEq]
+      · simp [handle, ready, timely] at accepted
+    · simp [handle, ready] at accepted
+  · rintro ⟨ready, timely, owner, payload, binding, checks, outputEq, codeEq, value, result,
+      view, sender, handleOwner, associated, rawEq, verified, stored, resolved, nextEq⟩
+    rw [rawEq, nextEq]
+    exact handle_opening_eq runtime state id event candidate owner payload binding checks
+      outputEq codeEq view ready timely sender handleOwner associated value verified stored
+      result resolved
+
 private theorem handle_commitment_config_step
     (runtime : EventGraphRuntime graph) (state next : State graph)
     (id : MessageId Player) (event : graph.EventId) (candidate : Handle graph)
@@ -904,21 +1040,11 @@ theorem handle_commitment_tables (runtime : EventGraphRuntime graph)
     next.candidates = state.candidates.freeze candidate ∧
       next.accepted = Function.update state.accepted (.inr event) (some candidate) ∧
       candidate.1 = id.1 := by
-  by_cases ready : state.config.cut.Ready event
-  · by_cases timely : state.WithinDeadline runtime event
-    · cases view : nodeView graph event with
-      | resolve | sample => simp [handle, ready, timely, view] at accepted
-      | bind owner payload outputEq codeEq =>
-          simp only [handle, dite_eq_left ready, dite_eq_left timely, view] at accepted
-          split at accepted
-          · rename_i sender
-            simp_all only [dite_eq_ite, Option.ite_none_right_eq_some,
-              Option.some.injEq]
-            rcases accepted with ⟨handleOwner, _, _, rfl⟩
-            exact ⟨rfl, rfl, sender.symm⟩
-          · simp_all only [reduceCtorEq]
-    · simp [handle, ready, timely] at accepted
-  · simp [handle, ready] at accepted
+  obtain ⟨_ready, _timely, _owner, _payload, _outputEq, _codeEq, _view, sender,
+    handleOwner, _vacant, _unused, nextEq⟩ :=
+    (handle_commitment_iff runtime state next id event candidate).mp accepted
+  rw [nextEq]
+  exact ⟨rfl, rfl, handleOwner.trans sender.symm⟩
 
 /-- Resolution traffic never changes accepted binding handles or candidate meanings. -/
 theorem handle_resolution_tables (runtime : EventGraphRuntime graph)
@@ -928,37 +1054,15 @@ theorem handle_resolution_tables (runtime : EventGraphRuntime graph)
     next.accepted = state.accepted ∧ next.candidates = state.candidates := by
   rcases message with ⟨id, packet⟩
   cases packet with
-  | malformed raw => simp [handle] at accepted
+  | malformed raw => cases accepted
   | commitment event candidate => exact (noncommitment event candidate rfl).elim
   | opening event candidate raw =>
-      by_cases ready : state.config.cut.Ready event
-      · by_cases timely : state.WithinDeadline runtime event
-        · cases view : nodeView graph event with
-          | bind owner payload outputEq codeEq =>
-              simp [handle, ready, timely, view] at accepted
-          | sample payload law outputEq codeEq =>
-              simp [handle, ready, timely, view] at accepted
-          | resolve owner payload binding checks outputEq codeEq =>
-              simp only [handle, dite_eq_left ready, dite_eq_left timely, view] at accepted
-              split at accepted
-              · simp_all only [dite_eq_ite, Option.ite_none_right_eq_some]
-                split at accepted
-                · simp at accepted
-                · split at accepted
-                  · unfold acceptResolution at accepted
-                    rcases accepted with ⟨_, _, _, accepted⟩
-                    cases resolved : EventCode.resolveOutput? binding checks true
-                        state.config.store with
-                    | none => simp [resolved] at accepted
-                    | some result =>
-                        simp only [resolved, Option.pure_def, Option.bind_eq_bind,
-                          Option.bind_some, Option.some.injEq] at accepted
-                        subst next
-                        exact ⟨rfl, rfl⟩
-                  · simp at accepted
-              · simp_all only [reduceCtorEq]
-        · simp [handle, ready, timely] at accepted
-      · simp [handle, ready] at accepted
+      obtain ⟨_ready, _timely, _owner, _payload, _binding, _checks, _outputEq, _codeEq,
+        _value, _result, _view, _sender, _handleOwner, _associated, _rawEq, _verified,
+        _stored, _resolved, nextEq⟩ :=
+        (handle_opening_iff runtime state next id event candidate raw).mp accepted
+      rw [nextEq]
+      exact ⟨rfl, rfl⟩
 
 /-- Every accepted player packet performs exactly one semantic graph step at
 its stable event address. The witness action is the original action retained
