@@ -60,9 +60,11 @@ theorem OnePacketCounterpartInputs.irregular_reach_le
     (fun history : (onePacketN).InformationHistory who site.1 =>
       ¬ RegularTrace setup leaks bounds horizon scheduler (sequence n) who history.1.trace)
     (inputs.counterpart n)
+    (Fintype.card ((onePacketN).InformationHistory who site.1))
     (div_nonneg (mul_nonneg inputs.slack_nonneg (inputs.scale_nonneg n))
       (pow_nonneg (inputs.floors_pos n).le _))
     (fun history irregular => not_not.mpr (inputs.counterpart_regular n history irregular))
+    (fun _ _ => Finset.card_le_univ _)
     fun history irregular => le_mul_of_tremble_counterpart (inputs.scale_nonneg n)
       (inputs.floors_pos n) (inputs.irregular_le n history irregular)
       (inputs.counterpart_ge n history irregular)

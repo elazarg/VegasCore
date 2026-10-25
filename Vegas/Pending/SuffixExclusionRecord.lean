@@ -68,12 +68,7 @@ private theorem advance (valid : SuffixExclusionRecord low inherited state)
       · exact Or.inl inheritedOwner
       right
       refine ⟨query, lower, acting, ?_⟩
-      rcases step with ⟨same, acceptedEq, _⟩ | ⟨event, ready, action, supported, _, acceptedOnly⟩
-      · exact (State.PublicFailure.congr query (by rw [same])
-          (by rw [same]) (congrFun acceptedEq _)).mpr failed
-      · have different : query ≠ event := fun same => ready.1 (same ▸ failed.completed)
-        exact (State.PublicFailure.of_step_of_ne supported (fun field changed =>
-          (acceptedOnly field changed).2) different).mpr failed
+      exact (step.publicFailure_iff_of_completed failed.completed).mpr failed
     · exact Or.inr witness
   · rintro (inheritedOwner | ⟨query, lower, acting, failed⟩)
     · exact old ((valid.excluded owner).mpr (Or.inl inheritedOwner))
@@ -82,56 +77,8 @@ private theorem advance (valid : SuffixExclusionRecord low inherited state)
       apply (valid.excluded owner).mpr
       right
       refine ⟨query, lower, acting, ?_⟩
-      rcases step with ⟨same, acceptedEq, _⟩ | ⟨event, ready, action, supported, _, acceptedOnly⟩
-      · exact (State.PublicFailure.congr query (by rw [same])
-          (by rw [same]) (congrFun acceptedEq _)).mp failed
-      · have different : query ≠ event := fun same => ready.1 (same ▸ completed)
-        exact (State.PublicFailure.of_step_of_ne supported (fun field changed =>
-          (acceptedOnly field changed).2) different).mp failed
+      exact (step.publicFailure_iff_of_completed completed).mp failed
     · exact newEvidence query completed failed owner acting
-
-omit [DecidableEq Player] in
-theorem new_event_eq {before after : State graph} {event : graph.EventId}
-    {ready : before.config.cut.Ready event} {action : graph.Action event}
-    (member : after.config ∈ (before.config.step event ready action).support)
-    {query : graph.EventId} (unfinished : query ∉ before.config.cut.completed)
-    (completed : query ∈ after.config.cut.completed) : query = event := by
-  rw [before.config.step_cut event ready action after.config member,
-    EventOrder.Cut.mem_complete] at completed
-  exact completed.resolve_right unfinished
-
-omit [DecidableEq Player] in
-theorem failureCompletionStep (native : State graph) (event : graph.EventId)
-    (ready : native.config.cut.Ready event) {owner : Player}
-    (acting : graph.actor? event = some owner) :
-    CompletionStep native (native.completeFailure event ready) := by
-  obtain ⟨action, member⟩ := native.completeFailure_step event ready acting
-  refine Or.inr ⟨event, ready, action, member,
-    native.completeFailure_activated event ready acting, ?_⟩
-  intro field changed
-  exact (changed (congrFun (native.completeFailure_tables event ready).1 field)).elim
-
-omit [DecidableEq Player] in
-theorem completeFailure_publicFailure (native : State graph)
-    (valid : native.ReceiptsComplete) (event : graph.EventId)
-    (ready : native.config.cut.Ready event) {owner : Player}
-    (acting : graph.actor? event = some owner) :
-    (native.completeFailure event ready).PublicFailure event := by
-  cases view : nodeView graph event with
-  | sample payload law outputEq codeEq =>
-      have notOwned : graph.actor? event = none :=
-        (EventCode.actor_cast outputEq (graph.nodes event)).symm.trans
-          (congrArg EventCode.actor codeEq)
-      rw [notOwned] at acting
-      cases acting
-  | bind actor payload outputEq codeEq =>
-      left
-      simpa only [State.completeFailure, view] using
-        native.missedBinding_complete event ready _ _ actor payload outputEq
-          (valid.vacant ready.1)
-  | resolve actor payload binding checks outputEq codeEq =>
-      right
-      simp [RecoveryState.publicationFailed, State.completeFailure, view, State.complete]
 
 omit [DecidableEq Player] in
 /-- Automatic completion records failures only for owners already excluded. -/
@@ -140,10 +87,11 @@ theorem completeAutomatic (valid : SuffixExclusionRecord low inherited state)
     (eligible : state.AutomaticReady event) :
     SuffixExclusionRecord low inherited (state.completeAutomatic event eligible) := by
   obtain ⟨owner, acting, excluded⟩ := eligible.owned
-  apply valid.advance _ state.excluded (failureCompletionStep state.native event eligible.1 acting)
+  apply valid.advance _ state.excluded
+    (State.completeFailure_completionStep state.native event eligible.1 acting)
     (fun _ member => member) ?_ (fun _ member => Or.inl member)
   intro query unfinished failed who owned
-  have same := new_event_eq
+  have same := State.completed_event_eq_of_step
     (Classical.choose_spec (state.native.completeFailure_step event eligible.1 acting))
     unfinished failed.completed
   subst query
@@ -163,7 +111,8 @@ theorem inclusionResult (valid : SuffixExclusionRecord low inherited state)
   apply valid.advance native _ footprint
     (state.inclusionResult_excluded_subset message.payload native) ?_ ?_
   · intro query unfinished failed owner acting
-    have queryEq : query = event := new_event_eq member unfinished failed.completed
+    have queryEq : query = event :=
+      State.completed_event_eq_of_step member unfinished failed.completed
     subst query
     rcases message with ⟨id, packet⟩
     cases packet with
@@ -259,7 +208,7 @@ theorem expire_publicFailure (runtime : EventGraphRuntime graph)
           actor payload binding checks outputEq codeEq view, PMF.mem_support_pure_iff] at reached
         simpa only [State.completeFailure, view] using reached
   rw [nextEq]
-  exact completeFailure_publicFailure native valid event ready acting
+  exact State.completeFailure_publicFailure native valid event ready acting
 
 
 /-- Native scheduler evolution records exactly its newly failed owner. -/
@@ -280,7 +229,7 @@ theorem environmentResult (valid : SuffixExclusionRecord low inherited state)
         rcases (environmentStep_executeSample_config_activated runtime state.native native event
           reached).2 with ⟨same, _⟩ | ⟨ready, action, member, _⟩
         · exact (unfinished (same ▸ failed.completed)).elim
-        · have queryEq := new_event_eq member unfinished failed.completed
+        · have queryEq := State.completed_event_eq_of_step member unfinished failed.completed
           subst query
           cases view : nodeView graph event with
           | sample payload law outputEq codeEq =>
@@ -301,7 +250,7 @@ theorem environmentResult (valid : SuffixExclusionRecord low inherited state)
         rcases environmentStep_expire_config_eq_or_mem_step runtime state.native native event
           reached with same | ⟨ready, action, member⟩
         · exact (unfinished (same ▸ failed.completed)).elim
-        · have queryEq := new_event_eq member unfinished failed.completed
+        · have queryEq := State.completed_event_eq_of_step member unfinished failed.completed
           subst query
           change owner ∈ (if event ∉ state.native.config.cut.completed ∧
             event ∈ native.config.cut.completed then
@@ -354,15 +303,8 @@ theorem submit (valid : SuffixExclusionRecord low inherited state) (who : Player
 theorem phase_drainFuel (phase : RuntimePhase graph) (fuel : Nat)
     (valid : SuffixExclusionRecord low inherited state) :
     SuffixExclusionRecord low inherited (phase.drainFuel fuel state) := by
-  induction fuel generalizing state with
-  | zero => exact valid
-  | succ fuel ih =>
-      unfold RuntimePhase.drainFuel
-      split
-      · rename_i pending
-        exact ih (valid.completeAutomatic (Classical.choose pending)
-          (Classical.choose_spec pending).2)
-      · exact valid
+  exact phase.drainFuel_induction (SuffixExclusionRecord low inherited)
+    (fun _ event eligible previous => previous.completeAutomatic event eligible.2) fuel state valid
 
 theorem phase_drain (phase : RuntimePhase graph)
     (valid : SuffixExclusionRecord low inherited state) :

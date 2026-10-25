@@ -64,8 +64,9 @@ theorem exists_valueBinding_parameter_expect_ge {Parameter : Type}
   have integrable (law : PMF (State L setup.program.terminalCtx)) :
       PayoffIntegrable law (fun state => value (setup.parameterOutcome parameter state)) :=
     payoffIntegrable_of_bounded _ _ (C := bound) fun state => valueBound state
-  obtain ⟨mixture, mixtureFinite, mixtureLaw⟩ := exists_pureMixture_run setup finite profile
-    policy
+  obtain ⟨mixture, mixtureFinite, mixtureLaw⟩ := exists_pureMixture_run setup profile policy
+    (fun player => BehavioralPolicy.hasFiniteSupport_of_finiteBindingTypes _ finite _)
+    (BehavioralPolicy.hasFiniteSupport_of_finiteBindingTypes _ finite _)
   let score := fun choice : PurePolicy who setup.program =>
     expect (setup.run (Function.update profile who
       (PurePolicy.toBehavioral setup.program choice)))

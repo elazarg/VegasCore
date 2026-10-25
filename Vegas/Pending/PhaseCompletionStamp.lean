@@ -65,7 +65,7 @@ theorem completeAutomatic (valid : CompletionStamp outputs attempt state) (event
   by_cases previous : query ∈ state.native.config.cut.completed
   · exact valid query owner acting previous active
   · obtain ⟨action, supported⟩ := state.completeAutomatic_step event eligible
-    have same := SuffixExclusionRecord.new_event_eq supported previous completed
+    have same := State.completed_event_eq_of_step supported previous completed
     subst query
     obtain ⟨principal, owned, excluded⟩ := eligible.owned
     have ownerEq : principal = owner := Option.some.inj (owned.symm.trans acting)
@@ -91,7 +91,7 @@ theorem inclusionResult (valid : CompletionStamp outputs attempt state)
   · obtain ⟨event, named, ready, action, supported⟩ :=
       handle_config_mem_step runtime state.native native
         ⟨message.id, message.payload.packet.call⟩ accepted
-    have same := SuffixExclusionRecord.new_event_eq supported previous completed
+    have same := State.completed_event_eq_of_step supported previous completed
     subst query
     obtain ⟨actual, addressed, author⟩ := handle_event_actor runtime state.native native
       ⟨message.id, message.payload.packet.call⟩ accepted
@@ -119,7 +119,7 @@ theorem environmentResult (valid : CompletionStamp outputs attempt state)
         rcases (environmentStep_executeSample_config_activated runtime state.native native event
           reached).2 with ⟨same, _⟩ | ⟨ready, action, supported, _⟩
         · exact (previous (same ▸ completed)).elim
-        · have same := SuffixExclusionRecord.new_event_eq supported previous completed
+        · have same := State.completed_event_eq_of_step supported previous completed
           subst query
           cases view : nodeView graph event with
           | sample payload law outputEq codeEq =>
@@ -142,7 +142,7 @@ theorem environmentResult (valid : CompletionStamp outputs attempt state)
         rcases environmentStep_expire_config_eq_or_mem_step runtime state.native native event
           reached with same | ⟨ready, action, supported⟩
         · exact (previous (same ▸ completed)).elim
-        · have same := SuffixExclusionRecord.new_event_eq supported previous completed
+        · have same := State.completed_event_eq_of_step supported previous completed
           subst query
           apply False.elim
           apply active

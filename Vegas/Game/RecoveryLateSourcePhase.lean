@@ -838,10 +838,10 @@ theorem recovery_unintendedCommitment_phase_owes (profile : BehavioralProfile se
   intro final supported
   have reachedInvariant := model.runBehavioralUntil_support_closed certificate players
     (LateStopped setup leaks bounds horizon scheduler rank) _
-    (fun state joint legal target holds reached =>
+    (fun history _ _ joint legal target holds reached =>
       unintendedCommitmentInvariant_transition bounds horizon scheduler profile codeEq decoded
         (ProtocolState.intendedFor_of_intended who setup.program point pointIntended) ready
-        state target joint legal holds reached) history start final supported
+        history.state target joint legal holds reached) history start final supported
   obtain ⟨anchor, state, completed, _prefix, _seen⟩ :=
     recovery_pending_stop_completed initialized nativeLaw completes false
       certificate

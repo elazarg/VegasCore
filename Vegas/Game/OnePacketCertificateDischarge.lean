@@ -713,15 +713,21 @@ theorem onePacket_irregularVanishes {sequence : ℕ → setup.intendedModel.Beha
   have bound := sum_belief_le_of_counterpart
     (fun history : (onePacketN).InformationHistory who site.1 =>
       ¬ RegularTrace setup leaks bounds horizon scheduler (sequence n) who history.1.trace)
-    (inputs.counterpart n) (bayes n)
+    (inputs.counterpart n) (Fintype.card ((onePacketN).InformationHistory who site.1)) (bayes n)
     (InformationModel.informationMass_pos_of_fullSupport _ _ (mixed n) who site)
     (div_nonneg (mul_nonneg inputs.slack_nonneg (inputs.scale_nonneg n))
       (pow_nonneg (inputs.floors_pos n).le _))
     (fun history irregular => not_not.mpr (inputs.counterpart_regular n history irregular))
+    (fun _ _ => Finset.card_le_univ _)
     (fun history irregular => le_mul_of_tremble_counterpart (inputs.scale_nonneg n)
       (inputs.floors_pos n) (inputs.irregular_le n history irregular)
       (inputs.counterpart_ge n history irregular))
-  refine le_trans (le_of_eq ?_) bound
+  have scaleNonnegative : 0 ≤ (Fintype.card ((onePacketN).InformationHistory who site.1) : ℝ) *
+      (inputs.slack * inputs.scale n / inputs.floors n ^ inputs.depth) :=
+    mul_nonneg (Nat.cast_nonneg _) (div_nonneg
+      (mul_nonneg inputs.slack_nonneg (inputs.scale_nonneg n))
+      (pow_nonneg (inputs.floors_pos n).le _))
+  refine le_trans (le_of_eq ?_) (bound.trans (div_le_self scaleNonnegative (by linarith)))
   rw [Finset.sum_filter]
   refine Finset.sum_congr rfl fun history _ => ?_
   split_ifs <;> simp

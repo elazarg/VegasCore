@@ -8,9 +8,10 @@ noncomputable section
 namespace GameTheory.Math.Probability
 
 /-- Centering at an exclusion payoff turns a concrete failure/value factor into
-an affine scalar score after averaging the actual posterior. -/
+an affine scalar score after averaging the actual posterior. The payoff needs
+an integration guard; the outcome carrier may be infinite. -/
 theorem abs_expect_affine_sub_le_of_decorrelated
-    {H R T : Type*} [Finite H] (law : PMF H) (record : H → R) (hidden : H → T)
+    {H R T : Type*} (law : PMF H) (record : H → R) (hidden : H → T)
     {gamma : ℝ} (decorrelated : BeliefDecorrelated law record hidden gamma)
     (failure payoff value : H → ℝ) (lumped : R → ℝ) (valueOf : T → ℝ)
     (excluded : ℝ) {bound error epsilon : ℝ}
@@ -19,6 +20,7 @@ theorem abs_expect_affine_sub_le_of_decorrelated
     (valueBounded : ∀ point, |valueOf point| ≤ bound)
     (valueEq : ∀ h, value h = valueOf (hidden h))
     (excludedBounded : |excluded| ≤ bound)
+    (payoffIntegrable : PayoffIntegrable law payoff)
     (failureNear : expect law (fun h => |failure h - lumped (record h)|) ≤ epsilon)
     (payoffNear : expect law (fun h =>
       |payoff h - (excluded + (1 - failure h) * (value h - excluded))|) ≤ error) :
@@ -31,25 +33,22 @@ theorem abs_expect_affine_sub_le_of_decorrelated
   have covariance := abs_expect_mul_sub_le_of_decorrelated law record hidden decorrelated
     failure (fun h => value h - excluded) lumped (fun point => valueOf point - excluded)
     failureBounded lumpedBounded centeredBounded (fun h => by rw [valueEq]) failureNear
-  rw [expect_sub (payoffIntegrable_of_finite _ _) (payoffIntegrable_constant _ _),
-    expect_constant] at covariance
-  have near : |expect law payoff -
-      expect law (fun h => excluded + (1 - failure h) * (value h - excluded))| ≤ error := by
-    have upper := expect_mono (μ := law)
-      (f := fun h => payoff h - (excluded + (1 - failure h) * (value h - excluded)))
-      (g := fun h => |payoff h - (excluded + (1 - failure h) * (value h - excluded))|)
-      (fun _ _ => le_abs_self _) (payoffIntegrable_of_finite _ _)
-      (payoffIntegrable_of_finite _ _)
-    have lower := expect_mono (μ := law)
-      (f := fun h => (excluded + (1 - failure h) * (value h - excluded)) - payoff h)
-      (g := fun h => |payoff h - (excluded + (1 - failure h) * (value h - excluded))|)
-      (fun h _ => by rw [← neg_sub]; exact neg_le_abs _)
-      (payoffIntegrable_of_finite _ _) (payoffIntegrable_of_finite _ _)
-    rw [expect_sub (payoffIntegrable_of_finite _ _) (payoffIntegrable_of_finite _ _)] at upper lower
-    rw [abs_le]
-    constructor <;> linarith
-  rw [expect_add (payoffIntegrable_constant _ _) (payoffIntegrable_of_finite _ _),
-    expect_constant] at near
+  have valueIntegrable : PayoffIntegrable law value :=
+    payoffIntegrable_of_bounded law _ (fun h => by rw [valueEq]; exact valueBounded _)
+  rw [expect_sub valueIntegrable (payoffIntegrable_constant _ _), expect_constant] at covariance
+  have productIntegrable : PayoffIntegrable law
+      (fun h => (1 - failure h) * (value h - excluded)) :=
+    payoffIntegrable_of_bounded law _ fun h => by
+      rw [abs_mul]
+      exact mul_le_mul
+        (show |1 - failure h| ≤ 2 by
+          rcases abs_le.mp (failureBounded h) with ⟨lower, upper⟩
+          rw [abs_le]; constructor <;> linarith)
+        (by rw [valueEq]; exact centeredBounded _) (abs_nonneg _) (by norm_num)
+  have near := (abs_expect_sub_le_expect_abs_sub law payoff
+    (fun h => excluded + (1 - failure h) * (value h - excluded)) payoffIntegrable
+    (payoffIntegrable_add (payoffIntegrable_constant _ _) productIntegrable)).trans payoffNear
+  rw [expect_add (payoffIntegrable_constant _ _) productIntegrable, expect_constant] at near
   have centerEq :
       |excluded + expect law (fun h => (1 - failure h) * (value h - excluded)) -
         (excluded + (1 - expect law failure) * (expect law value - excluded))| =

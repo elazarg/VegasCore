@@ -103,7 +103,7 @@ theorem OrderedPublicFailures.completeAutomatic {low : Nat} {inherited : Finset 
     (state.completeAutomatic event eligible).OrderedPublicFailures low inherited := by
   obtain ⟨owner, acting, _⟩ := eligible.owned
   apply valid.advance coverage inherited_le ordered _ _
-    (SuffixExclusionRecord.failureCompletionStep state.native event eligible.1 acting)
+    (State.completeFailure_completionStep state.native event eligible.1 acting)
   intro query ready action supported actor actingQuery _
   have completed : query ∈
       (state.native.completeFailure event eligible.1).config.cut.completed := by
@@ -116,7 +116,7 @@ theorem OrderedPublicFailures.completeAutomatic {low : Nat} {inherited : Finset 
     EventOrder.Cut.mem_complete] at completed
   have same := completed.resolve_right ready.1
   subst query
-  exact SuffixExclusionRecord.completeFailure_publicFailure state.native coverage.receipts
+  exact State.completeFailure_publicFailure state.native coverage.receipts
     event eligible.1 actingQuery
 
 theorem OrderedPublicFailures.inclusionResult {low : Nat} {inherited : Finset Player}
@@ -136,7 +136,7 @@ theorem OrderedPublicFailures.inclusionResult {low : Nat} {inherited : Finset Pl
     rw [state.native.config.step_cut query queryReady queryAction native.config querySupported,
       EventOrder.Cut.mem_complete]
     exact Or.inl rfl
-  have same := SuffixExclusionRecord.new_event_eq supported queryReady.1 completed
+  have same := State.completed_event_eq_of_step supported queryReady.1 completed
   subst query
   have forbidden : state.excludedCall message.payload = true := by
     simp only [excludedCall, named, excludedEvent, acting, Option.any_some,
@@ -169,7 +169,7 @@ theorem OrderedPublicFailures.environmentResult {low : Nat} {inherited : Finset 
       rcases environmentStep_expire_config_eq_or_mem_step runtime state.native native event
         reached with same | ⟨ready, action, supported⟩
       · exact (changed same).elim
-      · have same := SuffixExclusionRecord.new_event_eq supported queryReady.1 completed
+      · have same := State.completed_event_eq_of_step supported queryReady.1 completed
         subst query
         exact SuffixExclusionRecord.expire_publicFailure runtime state.native native
           coverage.receipts event reached changed acting
@@ -177,7 +177,7 @@ theorem OrderedPublicFailures.environmentResult {low : Nat} {inherited : Finset 
       rcases (environmentStep_executeSample_config_activated runtime state.native native event
         reached).2 with ⟨same, _⟩ | ⟨ready, action, supported, _⟩
       · exact (changed same).elim
-      · have same := SuffixExclusionRecord.new_event_eq supported queryReady.1 completed
+      · have same := State.completed_event_eq_of_step supported queryReady.1 completed
         subst query
         cases view : nodeView graph event with
         | sample payload law outputEq codeEq =>

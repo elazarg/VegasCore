@@ -29,6 +29,12 @@ directory's aggregator imports every module in it.
 
 ## GameTheoryExtensions
 
+- [Guarded absolute-expectation contraction](../GameTheoryExtensions/Math/Probability/ExpectationContraction.lean)
+- [Discrete pushforward measurability and integration](../GameTheoryExtensions/Math/Probability/DiscretePushforward.lean)
+- [Bounded-fiber counterpart estimates](../GameTheoryExtensions/Math/Probability/CounterpartBounds.lean)
+- [Mapped and mixed atom domination](../GameTheoryExtensions/Math/Probability/Domination.lean)
+- [Integrable retained-gain comparison](../GameTheoryExtensions/Math/Probability/RetainedGain.lean)
+- [Common-sequence local gain error budgets](../GameTheoryExtensions/Analysis/Protocol/GainComparison.lean)
 - [Whole-continuation enforcement](../GameTheoryExtensions/Analysis/Enforcement.lean)
 - [Common affine-score pooled ranking](../GameTheoryExtensions/Analysis/Protocol/AffineKeyedPools.lean)
 - [Consistent completion over component laws](../GameTheoryExtensions/Analysis/Protocol/ComponentCompletion.lean)
@@ -56,6 +62,9 @@ directory's aggregator imports every module in it.
 
 ## Interaction
 
+- [Exact environment-step support cases](../Interaction/ReactiveEnvironmentStep.lean)
+- [Input recall and continuation order](../Interaction/ReactiveInputOrder.lean)
+- [Round-law congruence from component kernels](../Interaction/ReactiveRoundCongruence.lean)
 - [Distinct authored ledger identifiers](../Interaction/MessageLedgerCount.lean)
 - [Message Network Map](../Interaction/MessageNetworkMap.lean)
 - [Public pending selection under packet erasure](../Interaction/PendingErasureSelection.lean)

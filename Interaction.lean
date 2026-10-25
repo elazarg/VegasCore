@@ -42,7 +42,6 @@ import Interaction.ReactiveConsistentHistory
 import Interaction.ReactiveDecisionInformation
 import Interaction.ReactiveEmissionOrder
 import Interaction.ReactiveEnvironmentMass
-import Interaction.ReactiveEnvironmentStep
 import Interaction.ReactiveErasure
 import Interaction.ReactiveEvaluation
 import Interaction.ReactiveEvidence
@@ -121,6 +120,8 @@ import Interaction.ReactiveServiceRounds
 import Interaction.ReactiveStoppedState
 import Interaction.ReactiveStopping
 import Interaction.ReactiveSubmissionSerial
+import Interaction.ReactiveRoundCongruence
+import Interaction.ReactiveEnvironmentStep
 import Interaction.ReactiveSupportedRounds
 import Interaction.ReactiveTerminalEvaluation
 import Interaction.ReactiveTrafficAudit

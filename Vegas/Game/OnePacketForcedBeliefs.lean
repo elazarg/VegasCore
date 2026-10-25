@@ -246,9 +246,12 @@ theorem ForcedBeliefInputs.irregular_reach_le
       scheduler).InformationHistory who site.1 =>
       ¬ RegularTrace setup leaks bounds horizon scheduler (sequence n) who history.1.trace)
     inputs.counterpart
+    (Fintype.card ((onePacketInformation setup leaks bounds horizon
+      scheduler).InformationHistory who site.1))
     (div_nonneg (mul_nonneg slackNonneg (scaleNonneg))
       (pow_nonneg floorPos.le _))
     (fun history irregular => not_not.mpr (inputs.counterpart_regular history irregular))
+    (fun _ _ => Finset.card_le_univ _)
     fun history irregular => inputs.reach_le_counterpart floorPos scaleNonneg history irregular
   simpa only [not_not] using bound
 

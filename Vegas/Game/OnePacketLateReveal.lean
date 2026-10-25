@@ -88,7 +88,7 @@ theorem lateStop_mem_step
       (reachedControl.execution.application.config = sent ∨
         ∃ action, reachedControl.execution.application.config ∈
           (sent.step event ready action).support)
-  have closed := model.runBehavioralUntil_support_closed_of_going certificate players
+  have closed := model.runBehavioralUntil_support_closed certificate players
     (LateStopped setup leaks bounds horizon scheduler rank) held
     (fun history going _ joint legal target holds reached => by
       obtain ⟨before, beforeState, atBefore⟩ := holds

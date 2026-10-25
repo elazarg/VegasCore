@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.ServiceBlockCongruence
+import Interaction.ReactiveRoundCongruence
 import Vegas.Pending.EventActivationOrigin
 
 /-! # The phase of another owner against one deviating player
@@ -169,168 +170,147 @@ theorem foreignRound_readout_congr (scheduler :
               rw [alone _ other rightReady otherReady]
               exact Or.inr owned)
             ⟨message.id, message.payload.call⟩ fromOwner]
-  unfold ReactiveApplication.round
-  rw [environments, observed, PMF.map_bind, PMF.map_bind]
-  apply bind_congr_on_support _
-  intro command selected
-  unfold ReactiveApplication.dispatch
-  cases command with
-  | activate actor =>
-      simp only [ReactiveApplication.Command.actor?, ReactiveApplication.resume,
-        ReactiveApplication.invoke, ReactiveApplication.Execution.activation_samples,
-        PMF.bind_map, PMF.map_bind, Function.comp_def]
-      rw [networks]
-      apply bind_congr_on_support _
-      intro sample sampled
-      let leftActive := left.sampledActivation app actor sample
-      let rightActive := right.sampledActivation app actor sample
-      have activated : (serviceRuntime setup mode deadline).bindingTraffic leaks who leftActive =
-          (serviceRuntime setup mode deadline).bindingTraffic leaks who rightActive :=
-        bindingTraffic_activation
-            (serviceRuntime setup mode deadline) leaks left right who actor sameTraffic sample
-      have leftRecall : leftActive.recall = left.recall := rfl
-      have rightRecall : rightActive.recall = right.recall := rfl
-      change ((players first actor (leftActive.recall actor)
-          (leftActive.observe app actor)).map (leftActive.respond app actor)).map _ =
-        ((players second actor (rightActive.recall actor)
-          (rightActive.observe app actor)).map (rightActive.respond app actor)).map _
-      by_cases isOwner : actor = owner
-      · subst actor
-        obtain ⟨leftResponse, rightResponse, leftPure, rightPure, submitted, traffic⟩ :=
-          matched (by rw [environments, observed]; exact selected) sample
-            (by rw [networks]; exact sampled)
-        simp only [players, Function.update_self]
-        rw [leftPure, rightPure, PMF.pure_map, PMF.pure_map, PMF.pure_map, PMF.pure_map]
-        apply congrArg PMF.pure
-        obtain ⟨leftEmitted, leftRecalled, _⟩ := respond_recall_self setup leaks leftActive owner
-          leftResponse
-        obtain ⟨rightEmitted, rightRecalled, _⟩ := respond_recall_self setup leaks rightActive
-          owner rightResponse
-        refine Prod.ext traffic (Prod.ext ?_ ?_)
-        · change ownerTurns owner event (leftActive.respond app owner leftResponse) =
-            ownerTurns owner event (rightActive.respond app owner rightResponse)
-          unfold ownerTurns
-          rw [leftRecalled, rightRecalled, leftRecall, rightRecall, List.countP_append,
-            List.countP_append]
-          unfold ownerTurns at sameTurns
-          rw [sameTurns]
-          congr 1
-          have activeViews :
-              (leftActive.observe
-                  (serviceApplication setup mode deadline leaks) owner).application.publicView =
-                (rightActive.observe
-                    (serviceApplication setup mode deadline leaks) owner).application.publicView :=
-            publics
-          simp only [List.countP_singleton]
-          rw [activeViews]
-        · change (serviceRuntime setup mode deadline).eventRecorded leaks
-              ((leftActive.respond app owner leftResponse).recall owner) event =
-            (serviceRuntime setup mode deadline).eventRecorded leaks
-              ((rightActive.respond app owner rightResponse).recall owner) event
-          unfold EventGraphRuntime.eventRecorded
-          rw [leftRecalled, rightRecalled, leftRecall, rightRecall, List.any_append,
-            List.any_append]
-          unfold EventGraphRuntime.eventRecorded at sameRecorded
-          rw [sameRecorded]
-          simp only [List.any_cons, List.any_nil, Bool.or_false, submitted]
-      · by_cases isWho : actor = who
-        · subst actor
-          have recalled : leftActive.recall who = rightActive.recall who :=
-            congrArg (fun value => value.2.2.2.1) activated
-          simp only [players, Function.update_of_ne isOwner, focalPlayers, Function.update_self]
-          rw [recalled, observe_eq_of_bindingTraffic who activated, PMF.map_comp, PMF.map_comp]
-          apply map_congr_on_support _
-          intro response _
-          refine Prod.ext (bindingTraffic_owner_response
-              (serviceRuntime setup mode deadline) leaks leftActive
-            rightActive who activated response) ?_
-          change (ownerTurns owner event (leftActive.respond app who response),
-              (serviceRuntime setup mode deadline).eventRecorded leaks
-                ((leftActive.respond app who response).recall owner) event) =
-            (ownerTurns owner event (rightActive.respond app who response),
-              (serviceRuntime setup mode deadline).eventRecorded leaks
-                ((rightActive.respond app who response).recall owner) event)
-          unfold ownerTurns
-          rw [app.respond_recall_other leftActive who owner (Ne.symm isOwner) response,
-            app.respond_recall_other rightActive who owner (Ne.symm isOwner) response,
-            leftRecall, rightRecall]
-          unfold ownerTurns at sameTurns
-          rw [sameTurns, sameRecorded]
-        · simp only [players, Function.update_of_ne isOwner, focalPlayers,
-            Function.update_of_ne isWho, ReactiveApplication.silentPolicy_apply, PMF.pure_map]
-          apply congrArg PMF.pure
-          refine Prod.ext (bindingTraffic_silent
-              (serviceRuntime setup mode deadline) leaks leftActive rightActive who
-            actor activated ⟨none⟩ rfl) ?_
-          change (ownerTurns owner event (leftActive.respond app actor ⟨none⟩),
-              (serviceRuntime setup mode deadline).eventRecorded leaks
-                ((leftActive.respond app actor ⟨none⟩).recall owner) event) =
-            (ownerTurns owner event (rightActive.respond app actor ⟨none⟩),
-              (serviceRuntime setup mode deadline).eventRecorded leaks
-                ((rightActive.respond app actor ⟨none⟩).recall owner) event)
-          unfold ownerTurns
-          rw [app.respond_recall_other leftActive actor owner (Ne.symm isOwner) _,
-            app.respond_recall_other rightActive actor owner (Ne.symm isOwner) _,
-            leftRecall, rightRecall]
-          unfold ownerTurns at sameTurns
-          rw [sameTurns, sameRecorded]
-  | «include» id =>
-      simp only [ReactiveApplication.Command.actor?, ReactiveApplication.resume,
-        ReactiveApplication.Execution.environmentStep, PMF.pure_map, PMF.pure_bind]
+  refine app.round_map_congr scheduler _ _ left right _ environments observed networks ?_ ?_
+  · intro actor selected sample sampled
+    let leftActive := left.sampledActivation app actor sample
+    let rightActive := right.sampledActivation app actor sample
+    have activated : (serviceRuntime setup mode deadline).bindingTraffic leaks who leftActive =
+        (serviceRuntime setup mode deadline).bindingTraffic leaks who rightActive :=
+      bindingTraffic_activation
+          (serviceRuntime setup mode deadline) leaks left right who actor sameTraffic sample
+    have leftRecall : leftActive.recall = left.recall := rfl
+    have rightRecall : rightActive.recall = right.recall := rfl
+    change ((players first actor (leftActive.recall actor)
+        (leftActive.observe app actor)).map (leftActive.respond app actor)).map _ =
+      ((players second actor (rightActive.recall actor)
+        (rightActive.observe app actor)).map (rightActive.respond app actor)).map _
+    by_cases isOwner : actor = owner
+    · subst actor
+      obtain ⟨leftResponse, rightResponse, leftPure, rightPure, submitted, traffic⟩ :=
+        matched (by rw [environments, observed]; exact selected) sample
+          (by rw [networks]; exact sampled)
+      simp only [players, Function.update_self]
+      rw [leftPure, rightPure, PMF.pure_map, PMF.pure_map, PMF.pure_map, PMF.pure_map]
       apply congrArg PMF.pure
-      have includedTraffic := includeTraffic id
-      have leftKeeps : (left.includePending app id).recall = left.recall := by
-        unfold ReactiveApplication.Execution.includePending
-        generalize left.network.includePending id = pair
-        rcases pair with ⟨_ | _, _⟩ <;> rfl
-      have rightKeeps : (right.includePending app id).recall = right.recall := by
-        unfold ReactiveApplication.Execution.includePending
-        generalize right.network.includePending id = pair
-        rcases pair with ⟨_ | _, _⟩ <;> rfl
-      refine Prod.ext ?_ (Prod.ext ?_ ?_)
-      · change (serviceRuntime setup mode deadline).bindingTraffic leaks who
-            { left.includePending app id with environmentRecall := _ } =
-          (serviceRuntime setup mode deadline).bindingTraffic leaks who
-            { right.includePending app id with environmentRecall := _ }
-        rw [environments, observed]
-        exact bindingTraffic_with_environmentRecall who includedTraffic _
-      · change ownerTurns owner event { left.includePending app id with environmentRecall := _ } =
-          ownerTurns owner event { right.includePending app id with environmentRecall := _ }
+      obtain ⟨leftEmitted, leftRecalled, _⟩ := respond_recall_self setup leaks leftActive owner
+        leftResponse
+      obtain ⟨rightEmitted, rightRecalled, _⟩ := respond_recall_self setup leaks rightActive
+        owner rightResponse
+      refine Prod.ext traffic (Prod.ext ?_ ?_)
+      · change ownerTurns owner event (leftActive.respond app owner leftResponse) =
+          ownerTurns owner event (rightActive.respond app owner rightResponse)
         unfold ownerTurns
-        change ((left.includePending app id).recall owner).countP _ =
-          ((right.includePending app id).recall owner).countP _
-        rw [leftKeeps, rightKeeps]
-        exact sameTurns
+        rw [leftRecalled, rightRecalled, leftRecall, rightRecall, List.countP_append,
+          List.countP_append]
+        unfold ownerTurns at sameTurns
+        rw [sameTurns]
+        congr 1
+        have activeViews :
+            (leftActive.observe
+                (serviceApplication setup mode deadline leaks) owner).application.publicView =
+              (rightActive.observe
+                  (serviceApplication setup mode deadline leaks) owner).application.publicView :=
+          publics
+        simp only [List.countP_singleton]
+        rw [activeViews]
       · change (serviceRuntime setup mode deadline).eventRecorded leaks
-          ((left.includePending app id).recall owner)
-            event = (serviceRuntime setup mode deadline).eventRecorded leaks
-            ((right.includePending app id).recall owner) event
-        rw [leftKeeps, rightKeeps]
-        exact sameRecorded
-  | application command =>
-      change ((left.environmentStep app (.application command)).bind
-          (app.resume (players first) none)).map _ =
-        ((right.environmentStep app (.application command)).bind
-          (app.resume (players second) none)).map _
-      rw [show app.resume (players first) none = PMF.pure from rfl,
-        show app.resume (players second) none = PMF.pure from rfl, PMF.bind_pure, PMF.bind_pure,
-        kept left _ (fun next reached => by
-          rw [app.environmentStep_recall left next _ reached]),
-        kept right _ (fun next reached => by
-          rw [app.environmentStep_recall right next _ reached]),
-        application_environmentStep_traffic_congr sameTraffic command]
-      unfold ownerTurns at sameTurns ⊢
-      rw [sameTurns, sameRecorded]
-  | wait =>
-      simp only [ReactiveApplication.Command.actor?, ReactiveApplication.resume,
-        ReactiveApplication.Execution.environmentStep, PMF.pure_map, PMF.pure_bind]
-      apply congrArg PMF.pure
-      refine Prod.ext (bindingTraffic_record (leaks := leaks) who sameTraffic .wait) ?_
-      change (ownerTurns owner event left, (serviceRuntime setup mode deadline).eventRecorded leaks
-          (left.recall owner) event) =
-        (ownerTurns owner event right, (serviceRuntime setup mode deadline).eventRecorded leaks
-          (right.recall owner) event)
-      rw [sameTurns, sameRecorded]
+            ((leftActive.respond app owner leftResponse).recall owner) event =
+          (serviceRuntime setup mode deadline).eventRecorded leaks
+            ((rightActive.respond app owner rightResponse).recall owner) event
+        unfold EventGraphRuntime.eventRecorded
+        rw [leftRecalled, rightRecalled, leftRecall, rightRecall, List.any_append,
+          List.any_append]
+        unfold EventGraphRuntime.eventRecorded at sameRecorded
+        rw [sameRecorded]
+        simp only [List.any_cons, List.any_nil, Bool.or_false, submitted]
+    · by_cases isWho : actor = who
+      · subst actor
+        have recalled : leftActive.recall who = rightActive.recall who :=
+          congrArg (fun value => value.2.2.2.1) activated
+        simp only [players, Function.update_of_ne isOwner, focalPlayers, Function.update_self]
+        rw [recalled, observe_eq_of_bindingTraffic who activated, PMF.map_comp, PMF.map_comp]
+        apply map_congr_on_support _
+        intro response _
+        refine Prod.ext (bindingTraffic_owner_response
+            (serviceRuntime setup mode deadline) leaks leftActive
+          rightActive who activated response) ?_
+        change (ownerTurns owner event (leftActive.respond app who response),
+            (serviceRuntime setup mode deadline).eventRecorded leaks
+              ((leftActive.respond app who response).recall owner) event) =
+          (ownerTurns owner event (rightActive.respond app who response),
+            (serviceRuntime setup mode deadline).eventRecorded leaks
+              ((rightActive.respond app who response).recall owner) event)
+        unfold ownerTurns
+        rw [app.respond_recall_other leftActive who owner (Ne.symm isOwner) response,
+          app.respond_recall_other rightActive who owner (Ne.symm isOwner) response,
+          leftRecall, rightRecall]
+        unfold ownerTurns at sameTurns
+        rw [sameTurns, sameRecorded]
+      · simp only [players, Function.update_of_ne isOwner, focalPlayers,
+          Function.update_of_ne isWho, ReactiveApplication.silentPolicy_apply, PMF.pure_map]
+        apply congrArg PMF.pure
+        refine Prod.ext (bindingTraffic_silent
+            (serviceRuntime setup mode deadline) leaks leftActive rightActive who
+          actor activated ⟨none⟩ rfl) ?_
+        change (ownerTurns owner event (leftActive.respond app actor ⟨none⟩),
+            (serviceRuntime setup mode deadline).eventRecorded leaks
+              ((leftActive.respond app actor ⟨none⟩).recall owner) event) =
+          (ownerTurns owner event (rightActive.respond app actor ⟨none⟩),
+            (serviceRuntime setup mode deadline).eventRecorded leaks
+              ((rightActive.respond app actor ⟨none⟩).recall owner) event)
+        unfold ownerTurns
+        rw [app.respond_recall_other leftActive actor owner (Ne.symm isOwner) _,
+          app.respond_recall_other rightActive actor owner (Ne.symm isOwner) _,
+          leftRecall, rightRecall]
+        unfold ownerTurns at sameTurns
+        rw [sameTurns, sameRecorded]
+  · intro command selected inactive
+    cases command with
+    | activate actor => cases inactive
+    | «include» id =>
+        simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map]
+        apply congrArg PMF.pure
+        have includedTraffic := includeTraffic id
+        have leftKeeps := ReactiveApplication.Execution.includePending_recall app left id
+        have rightKeeps := ReactiveApplication.Execution.includePending_recall app right id
+        refine Prod.ext ?_ (Prod.ext ?_ ?_)
+        · change (serviceRuntime setup mode deadline).bindingTraffic leaks who
+              { left.includePending app id with environmentRecall := _ } =
+            (serviceRuntime setup mode deadline).bindingTraffic leaks who
+              { right.includePending app id with environmentRecall := _ }
+          rw [environments, observed]
+          exact bindingTraffic_with_environmentRecall who includedTraffic _
+        · change ownerTurns owner event { left.includePending app id with environmentRecall := _ } =
+            ownerTurns owner event { right.includePending app id with environmentRecall := _ }
+          unfold ownerTurns
+          change ((left.includePending app id).recall owner).countP _ =
+            ((right.includePending app id).recall owner).countP _
+          rw [leftKeeps, rightKeeps]
+          exact sameTurns
+        · change (serviceRuntime setup mode deadline).eventRecorded leaks
+            ((left.includePending app id).recall owner)
+              event = (serviceRuntime setup mode deadline).eventRecorded leaks
+              ((right.includePending app id).recall owner) event
+          rw [leftKeeps, rightKeeps]
+          exact sameRecorded
+    | application command =>
+        rw [kept left _ (fun next reached => by
+            rw [app.environmentStep_recall left next _ reached]),
+          kept right _ (fun next reached => by
+            rw [app.environmentStep_recall right next _ reached]),
+          application_environmentStep_traffic_congr sameTraffic command]
+        unfold ownerTurns at sameTurns ⊢
+        rw [sameTurns, sameRecorded]
+    | wait =>
+        simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map]
+        apply congrArg PMF.pure
+        refine Prod.ext (bindingTraffic_record (leaks := leaks) who sameTraffic .wait) ?_
+        change (ownerTurns owner event left,
+          (serviceRuntime setup mode deadline).eventRecorded leaks
+            (left.recall owner) event) =
+          (ownerTurns owner event right, (serviceRuntime setup mode deadline).eventRecorded leaks
+            (right.recall owner) event)
+        rw [sameTurns, sameRecorded]
 
 end Round
 

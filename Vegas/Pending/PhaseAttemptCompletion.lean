@@ -248,7 +248,7 @@ theorem phase_attempt_stopped_results
       exact ⟨record, member, address.trans same, completed, receipts, covered⟩
   intro final supported
   obtain ⟨ending, stateEq, suffix, samePhases, _sameEntry, archived⟩ :=
-    (N).runBehavioralUntil_support_closed_of_going
+    (N).runBehavioralUntil_support_closed
       ((menu).bounded initial horizon scheduler).wellFoundedHistories profile stopped property
         preserved ⟨some start, trace⟩ holds final supported
   have finalRaw := (menu).toRawTrace initial horizon scheduler (stateEq ▸ final.trace)

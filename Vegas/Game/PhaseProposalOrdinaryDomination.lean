@@ -25,28 +25,6 @@ unusable preparation. This is not the all-flags-removed continuation law. -/
 def PhaseProposalRates.ordinary (rates : PhaseProposalRates) : PhaseProposalRates :=
   { rates with badPreparation := ⟨0, le_rfl, zero_le_one⟩ }
 
-private theorem ordinary_map_lower {α β : Type*} (source target : PMF α)
-    (factor : ℝ) (lower : ∀ value, factor * (source value).toReal ≤ (target value).toReal)
-    (encode : α → β) (value : β) :
-    factor * ((source.map encode) value).toReal ≤ ((target.map encode) value).toReal := by
-  simpa only [pmf_bind_pure_eq_map] using
-    prob_bind_ge_mul source target factor lower (fun item => PMF.pure (encode item)) value
-
-private theorem ordinary_mix_lower {α : Type*} (weight : Set.Icc (0 : ℝ) 1)
-    (firstSource firstTarget secondSource secondTarget : PMF α) (factor : ℝ)
-    (first : ∀ value, factor * (firstSource value).toReal ≤ (firstTarget value).toReal)
-    (second : ∀ value, factor * (secondSource value).toReal ≤ (secondTarget value).toReal)
-    (value : α) :
-    factor * (mix weight.val weight.property.1 weight.property.2 firstSource secondSource
-      value).toReal ≤
-      (mix weight.val weight.property.1 weight.property.2 firstTarget secondTarget
-        value).toReal := by
-  rw [mix_apply_toReal, mix_apply_toReal]
-  have left := mul_le_mul_of_nonneg_left (first value) weight.property.1
-  have right := mul_le_mul_of_nonneg_left (second value)
-    (sub_nonneg.mpr weight.property.2)
-  nlinarith
-
 variable (setup : Setup (Player := Player) (L := L)) (mode : ExecutionMode)
   (runtime : EventGraphRuntime (serviceGraph setup mode))
   (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket (serviceGraph setup mode)))
@@ -101,7 +79,7 @@ theorem phaseProposalBindingResults_ordinary_domination
   · exact mul_le_of_le_one_left ENNReal.toReal_nonneg factorBound
   · rename_i key present
     simp only [PhaseProposalRates.ordinary, mix_zero]
-    have lower := ordinary_map_lower (source who key) (target who key) floor (domain who key)
+    have lower := map_prob_domination (source who key) (target who key) floor (domain who key)
       (fun value => PublicationResult.success
         (phaseRecoveryDomainValue setup mode event who payload binding value.val.val)) result
     rw [mix_apply_toReal]
@@ -135,7 +113,7 @@ private theorem ordinary_encoder_lower
     split
     · exact mul_le_of_le_one_left ENNReal.toReal_nonneg bounded
     · split
-      · exact ordinary_map_lower _ _ factor lower _ value
+      · exact map_prob_domination _ _ factor lower _ value
       · exact mul_le_of_le_one_left ENNReal.toReal_nonneg bounded
   have slots : ∀ value, factor * (PhaseCount.phaseBindingSlotPolicy runtime leaks bounds who event
       payload source past view value).toReal ≤
@@ -146,9 +124,9 @@ private theorem ordinary_encoder_lower
     split
     · simpa only [one_mul] using bind_supported_domination _ _ _ _ 1 factor zero_le_one
         (fun _ => by simp only [one_mul]; exact le_rfl)
-        (fun serial _ chosen => ordinary_map_lower _ _ factor lower _ chosen) value
+        (fun serial _ chosen => map_prob_domination _ _ factor lower _ chosen) value
     · exact mul_le_of_le_one_left ENNReal.toReal_nonneg bounded
-  exact ordinary_mix_lower rates.slots _ _ _ _ factor slots allocator response
+  exact mix_prob_domination rates.slots _ _ _ _ factor slots allocator response
 
 /-- The actual BASE response law dominates an ordinary-only comparison on
 every literal native input. Timing and slot parameters remain unchanged, so
@@ -176,7 +154,7 @@ theorem phaseProposalBasePolicy_ordinary_domination
   · intro owner event payload binding action
     exact mul_le_of_le_one_left ENNReal.toReal_nonneg factorBound
   · intro owner event payload binding action
-    apply ordinary_mix_lower rates.waiting _ _ _ _ factor
+    apply mix_prob_domination rates.waiting _ _ _ _ factor
     · exact fun _ => mul_le_of_le_one_left ENNReal.toReal_nonneg factorBound
     · intro chosen
       exact ordinary_encoder_lower setup mode runtime leaks bounds owner event payload _ _ rates

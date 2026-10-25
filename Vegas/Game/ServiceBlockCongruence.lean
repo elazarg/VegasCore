@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.ServiceDeviationTraffic
+import Interaction.ReactiveRoundCongruence
 import Vegas.Game.ServiceAssignedPolicy
 import Vegas.Game.ServiceBlockRun
 import Vegas.Pending.EventActivationOrigin
@@ -690,111 +691,84 @@ theorem blockRound_readout_congr {horizon leftRemaining rightRemaining : Nat}
         rw [handle_opening_none_of_bindings left.application leftBindings,
           handle_opening_none_of_bindings right.application rightBindings]
     | malformed raw => simp [handle]
-  unfold ReactiveApplication.round
-  rw [environments, observed, PMF.map_bind, PMF.map_bind]
-  apply bind_congr_on_support _
-  intro command selected
-  unfold ReactiveApplication.dispatch
-  cases command with
-  | activate actor =>
-      simp only [ReactiveApplication.Command.actor?, ReactiveApplication.resume,
-        ReactiveApplication.invoke, ReactiveApplication.Execution.activation_samples,
-        PMF.bind_map, PMF.map_bind, Function.comp_def]
-      rw [networks]
-      apply bind_congr_on_support _
-      intro sample sampled
-      let leftActive := left.sampledActivation app actor sample
-      let rightActive := right.sampledActivation app actor sample
-      have activated : (serviceRuntime setup mode deadline).bindingTraffic leaks who leftActive =
-          (serviceRuntime setup mode deadline).bindingTraffic leaks who rightActive :=
-        bindingTraffic_activation (serviceRuntime setup mode deadline) leaks left right who actor
-          sameTraffic sample
-      have activeMarks : blockMarks who low high leftActive = blockMarks who low high rightActive :=
-        sameMarks
-      have activePublics : leftActive.application.publicView =
-          rightActive.application.publicView := publics
-      change ((blockPlayers bound turns profile who deviation leftAssignment actor
-          (leftActive.recall actor) (leftActive.observe app actor)).map
-            (leftActive.respond app actor)).map _ =
-        ((blockPlayers bound turns profile who deviation rightAssignment actor
-          (rightActive.recall actor) (rightActive.observe app actor)).map
-            (rightActive.respond app actor)).map _
-      by_cases isWho : actor = who
-      · subst actor
-        have recalled : leftActive.recall who = rightActive.recall who :=
-          congrArg (fun value => value.2.2.2.1) activated
-        simp only [blockPlayers, Function.update_self]
-        rw [recalled, observe_eq_of_bindingTraffic who activated, PMF.map_comp, PMF.map_comp]
-        apply map_congr_on_support _
-        intro response _
-        exact Prod.ext (bindingTraffic_owner_response (serviceRuntime setup mode deadline) leaks
-          leftActive rightActive who activated response)
-          (blockMarks_respond who low high who activeMarks activePublics response response rfl)
-      · simp only [blockPlayers, Function.update_of_ne isWho]
-        obtain ⟨leftResponse, rightResponse, leftPure, rightPure, submitted, traffic⟩ :=
-          blockResponse_matched isWho leftAssignment rightAssignment same leftTrace rightTrace
-            inBlock bindings leftAssigned rightAssigned (leftOwn actor isWho)
-            (leftSlots actor isWho) (rightOwn actor isWho) (rightSlots actor isWho)
-            (by rw [environments, observed]; exact selected) sample
-            (by rw [networks]; exact sampled)
-        rw [leftPure, rightPure, PMF.pure_map, PMF.pure_map, PMF.pure_map, PMF.pure_map]
-        exact congrArg PMF.pure (Prod.ext traffic (blockMarks_respond who low high actor
-          activeMarks activePublics leftResponse rightResponse submitted))
-  | «include» id =>
-      simp only [ReactiveApplication.Command.actor?, ReactiveApplication.resume,
-        ReactiveApplication.Execution.environmentStep, PMF.pure_map, PMF.pure_bind]
-      apply congrArg PMF.pure
-      have leftKeeps : (left.includePending app id).recall = left.recall := by
-        unfold ReactiveApplication.Execution.includePending
-        generalize left.network.includePending id = pair
-        rcases pair with ⟨_ | _, _⟩ <;> rfl
-      have rightKeeps : (right.includePending app id).recall = right.recall := by
-        unfold ReactiveApplication.Execution.includePending
-        generalize right.network.includePending id = pair
-        rcases pair with ⟨_ | _, _⟩ <;> rfl
-      refine Prod.ext ?_ ?_
-      · change (serviceRuntime setup mode deadline).bindingTraffic leaks who
+  refine app.round_map_congr scheduler _ _ left right _ environments observed networks ?_ ?_
+  · intro actor selected sample sampled
+    let leftActive := left.sampledActivation app actor sample
+    let rightActive := right.sampledActivation app actor sample
+    have activated : (serviceRuntime setup mode deadline).bindingTraffic leaks who leftActive =
+        (serviceRuntime setup mode deadline).bindingTraffic leaks who rightActive :=
+      bindingTraffic_activation (serviceRuntime setup mode deadline) leaks left right who actor
+        sameTraffic sample
+    have activeMarks : blockMarks who low high leftActive = blockMarks who low high rightActive :=
+      sameMarks
+    have activePublics : leftActive.application.publicView =
+        rightActive.application.publicView := publics
+    change ((blockPlayers bound turns profile who deviation leftAssignment actor
+        (leftActive.recall actor) (leftActive.observe app actor)).map
+          (leftActive.respond app actor)).map _ =
+      ((blockPlayers bound turns profile who deviation rightAssignment actor
+        (rightActive.recall actor) (rightActive.observe app actor)).map
+          (rightActive.respond app actor)).map _
+    by_cases isWho : actor = who
+    · subst actor
+      have recalled : leftActive.recall who = rightActive.recall who :=
+        congrArg (fun value => value.2.2.2.1) activated
+      simp only [blockPlayers, Function.update_self]
+      rw [recalled, observe_eq_of_bindingTraffic who activated, PMF.map_comp, PMF.map_comp]
+      apply map_congr_on_support _
+      intro response _
+      exact Prod.ext (bindingTraffic_owner_response (serviceRuntime setup mode deadline) leaks
+        leftActive rightActive who activated response)
+        (blockMarks_respond who low high who activeMarks activePublics response response rfl)
+    · simp only [blockPlayers, Function.update_of_ne isWho]
+      obtain ⟨leftResponse, rightResponse, leftPure, rightPure, submitted, traffic⟩ :=
+        blockResponse_matched isWho leftAssignment rightAssignment same leftTrace rightTrace
+          inBlock bindings leftAssigned rightAssigned (leftOwn actor isWho)
+          (leftSlots actor isWho) (rightOwn actor isWho) (rightSlots actor isWho)
+          (by rw [environments, observed]; exact selected) sample
+          (by rw [networks]; exact sampled)
+      rw [leftPure, rightPure, PMF.pure_map, PMF.pure_map, PMF.pure_map, PMF.pure_map]
+      exact congrArg PMF.pure (Prod.ext traffic (blockMarks_respond who low high actor
+        activeMarks activePublics leftResponse rightResponse submitted))
+  · intro command selected inactive
+    cases command with
+    | activate actor => cases inactive
+    | «include» id =>
+        simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map]
+        apply congrArg PMF.pure
+        have leftKeeps := ReactiveApplication.Execution.includePending_recall app left id
+        have rightKeeps := ReactiveApplication.Execution.includePending_recall app right id
+        refine Prod.ext ?_ ?_
+        · change (serviceRuntime setup mode deadline).bindingTraffic leaks who
+              { left.includePending app id with environmentRecall := _ } =
+            (serviceRuntime setup mode deadline).bindingTraffic leaks who
+              { right.includePending app id with environmentRecall := _ }
+          rw [environments, observed]
+          exact bindingTraffic_with_environmentRecall who (includeTraffic id) _
+        · change blockMarks who low high
             { left.includePending app id with environmentRecall := _ } =
-          (serviceRuntime setup mode deadline).bindingTraffic leaks who
-            { right.includePending app id with environmentRecall := _ }
-        rw [environments, observed]
-        exact bindingTraffic_with_environmentRecall who (includeTraffic id) _
-      · change blockMarks who low high { left.includePending app id with environmentRecall := _ } =
-          blockMarks who low high { right.includePending app id with environmentRecall := _ }
-        exact (blockMarks_of_recall who low high leftKeeps).trans
-          (sameMarks.trans (blockMarks_of_recall who low high rightKeeps).symm)
-  | application command =>
-      change ((left.environmentStep app (.application command)).bind
-          (app.resume (blockPlayers bound turns profile who deviation leftAssignment) none)).map
-          _ =
-        ((right.environmentStep app (.application command)).bind
-          (app.resume (blockPlayers bound turns profile who deviation rightAssignment) none)).map
-          _
-      rw [show app.resume (blockPlayers bound turns profile who deviation leftAssignment) none =
-          PMF.pure from rfl,
-        show app.resume (blockPlayers bound turns profile who deviation rightAssignment) none =
-          PMF.pure from rfl, PMF.bind_pure, PMF.bind_pure]
-      have split (execution : app.Execution) :
-          (execution.environmentStep app (.application command)).map
-              (blockReadout who low high) =
-            ((execution.environmentStep app (.application command)).map
-              ((serviceRuntime setup mode deadline).bindingTraffic leaks who)).map
-                fun traffic => (traffic, blockMarks who low high execution) := by
-        rw [PMF.map_comp]
-        apply map_congr_on_support _
-        intro next reached
-        exact Prod.ext rfl (blockMarks_of_recall who low high
-          (app.environmentStep_recall execution next _ reached))
-      rw [split left, split right, application_environmentStep_traffic_congr sameTraffic command,
-        sameMarks]
-  | wait =>
-      simp only [ReactiveApplication.Command.actor?, ReactiveApplication.resume,
-        ReactiveApplication.Execution.environmentStep, PMF.pure_map, PMF.pure_bind]
-      apply congrArg PMF.pure
-      refine Prod.ext (bindingTraffic_record (leaks := leaks) who sameTraffic .wait) ?_
-      change blockMarks who low high { left with environmentRecall := _ } =
-        blockMarks who low high { right with environmentRecall := _ }
-      exact sameMarks
+            blockMarks who low high { right.includePending app id with environmentRecall := _ }
+          exact (blockMarks_of_recall who low high leftKeeps).trans
+            (sameMarks.trans (blockMarks_of_recall who low high rightKeeps).symm)
+    | application command =>
+        have split (execution : app.Execution) :
+            (execution.environmentStep app (.application command)).map
+                (blockReadout who low high) =
+              ((execution.environmentStep app (.application command)).map
+                ((serviceRuntime setup mode deadline).bindingTraffic leaks who)).map
+                  fun traffic => (traffic, blockMarks who low high execution) := by
+          exact ReactiveApplication.Execution.environmentStep_map_pair_of_recall app execution
+            (.application command) ((serviceRuntime setup mode deadline).bindingTraffic leaks who)
+            (blockMarks who low high) (fun _ same => blockMarks_of_recall who low high same)
+        rw [split left, split right, application_environmentStep_traffic_congr sameTraffic command,
+          sameMarks]
+    | wait =>
+        simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map]
+        apply congrArg PMF.pure
+        refine Prod.ext (bindingTraffic_record (leaks := leaks) who sameTraffic .wait) ?_
+        change blockMarks who low high { left with environmentRecall := _ } =
+          blockMarks who low high { right with environmentRecall := _ }
+        exact sameMarks
 
 /-- Inside an unfinished block, every ready event is a block event. -/
 theorem WithinBlock.ready_mem {low high : Nat} (sealed : BlockSealed setup mode low high)

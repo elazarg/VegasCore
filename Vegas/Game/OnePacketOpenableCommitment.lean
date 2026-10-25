@@ -258,7 +258,7 @@ theorem openableCommitment_stop (bounds : MessageBounds (graph setup)) (horizon 
     rcases completion done with stepped | ⟨failing, _, stepped⟩
     · exact isPrefix_succ_of_mem_step ordered ready stepped
     · exact isPrefix_succ_of_mem_step ordered ready stepped
-  have reachedInvariant := model.runBehavioralUntil_support_closed_of_going certificate players
+  have reachedInvariant := model.runBehavioralUntil_support_closed certificate players
     (LateStopped setup leaks bounds horizon scheduler rank)
     (OpenableCommitmentInvariant setup leaks bounds horizon scheduler who entry message event
       candidate outputEq value sent ready action)

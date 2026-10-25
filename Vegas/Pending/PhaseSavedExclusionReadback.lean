@@ -56,20 +56,8 @@ theorem PublicFailureExtension.of_copy {before after : State graph}
 end State
 
 theorem CompletionStep.publicFailureExtension {before after : State graph}
-    (step : CompletionStep before after) : before.PublicFailureExtension after := by
-  rcases step with ⟨config, accepted, _⟩ |
-    ⟨event, ready, action, supported, _activated, acceptedOnly⟩
-  · exact State.PublicFailureExtension.of_copy config accepted
-  · refine ⟨?_, ?_⟩
-    · intro query completed
-      rw [before.config.step_cut event ready action after.config supported,
-        EventOrder.Cut.mem_complete]
-      exact Or.inr completed
-    · intro query completed
-      apply State.PublicFailure.of_step_of_ne supported (fun field changed =>
-        (acceptedOnly field changed).2)
-      intro same
-      exact ready.1 (same ▸ completed)
+    (step : CompletionStep before after) : before.PublicFailureExtension after :=
+  ⟨step.completed_mono, fun _ completed => step.publicFailure_iff_of_completed completed⟩
 
 namespace RuntimePhase
 
@@ -81,7 +69,7 @@ theorem drainFuel_publicFailureExtension (phase : RuntimePhase graph) (fuel : Na
   apply phase.drainFuel_induction (fun next => state.native.PublicFailureExtension next.native)
     (fun before event eligible previous => ?_) fuel state (.refl _)
   obtain ⟨owner, acting, _⟩ := eligible.2.owned
-  exact previous.trans (SuffixExclusionRecord.failureCompletionStep
+  exact previous.trans (State.completeFailure_completionStep
     before.native event eligible.2.1 acting).publicFailureExtension
 
 theorem drain_publicFailureExtension (phase : RuntimePhase graph) (state : RecoveryState graph) :

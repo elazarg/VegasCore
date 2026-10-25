@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import GameTheory.Analysis.Protocol.Sequential
+import GameTheoryExtensions.Math.Probability.CounterpartBounds
 import GameTheoryExtensions.Math.Probability.ProductTransport
 
 /-! # Projected Bayes beliefs through approximate reach factorizations
@@ -11,12 +12,11 @@ to the source site's. Bayes beliefs are reach weights divided by the site's
 mass, so they inherit estimates on reach weights.
 
 **Negligible histories.** Suppose every history of a set `bad` has a
-counterpart outside `bad`, at the same site, whose reach is at least `1 / ratio`
-times its own. A counterpart may serve several histories, at most as many as
-the site has. The bad histories then carry at most the number of the site's
-histories times `ratio` times the reach of the others
-(`GameTheory.Protocol.InformationModel.sum_reach_le_of_counterpart`), and Bayes
-belief at most that number times `ratio`
+counterpart outside `bad`, at the same site, whose reach dominates its own up
+to `ratio`, and each good history serves at most `multiplicity` bad histories.
+The bad reach is at most `multiplicity * ratio` times the good reach
+(`GameTheory.Protocol.InformationModel.sum_reach_le_of_counterpart`). Writing
+`c = multiplicity * ratio`, its normalized Bayes mass is at most `c / (1 + c)`
 (`GameTheory.Protocol.InformationModel.sum_belief_le_of_counterpart`).
 
 **Projected beliefs.** Split the site into regular and irregular histories.
@@ -88,84 +88,50 @@ end Weights
 section Counterpart
 
 variable {who : ι} {site : M.InformationSite who} [Fintype (M.InformationHistory who site.1)]
+  [DecidableEq (M.InformationHistory who site.1)]
   (strategy : ∀ player, M.BehavioralPolicy player)
   (bad : M.InformationHistory who site.1 → Prop) [DecidablePred bad]
   (counterpart : M.InformationHistory who site.1 → M.InformationHistory who site.1)
   {ratio : ℝ}
 
-/-- **Negligible reach through counterparts.** If every history of `bad` has a
-counterpart outside `bad` whose reach is at least `1 / ratio` times its own, the
-bad histories carry at most the number of histories times `ratio` times the
-reach of the others. -/
-theorem sum_reach_le_of_counterpart (ratio_nonneg : 0 ≤ ratio)
+/-- A counterpart map with bad-fiber multiplicity at most `multiplicity`
+bounds bad reach by `multiplicity * ratio` times good reach. -/
+theorem sum_reach_le_of_counterpart (multiplicity : ℕ) (ratio_nonneg : 0 ≤ ratio)
     (counterpart_good : ∀ history, bad history → ¬ bad (counterpart history))
+    (fibers : ∀ history, ¬ bad history →
+      ((univ.filter bad).filter fun original => counterpart original = history).card ≤ multiplicity)
     (dominated : ∀ history, bad history →
       (M.historyReachWeight strategy history.1).toReal ≤
         ratio * (M.historyReachWeight strategy (counterpart history).1).toReal) :
     ∑ history with bad history, (M.historyReachWeight strategy history.1).toReal ≤
-      (Fintype.card (M.InformationHistory who site.1) * ratio) *
-        ∑ history with ¬ bad history, (M.historyReachWeight strategy history.1).toReal := by
-  set reach := fun history : M.InformationHistory who site.1 =>
-    (M.historyReachWeight strategy history.1).toReal
-  classical
-  have reachNonneg : ∀ history, 0 ≤ reach history := fun _ => ENNReal.toReal_nonneg
-  have fibers : ∑ history with bad history, reach (counterpart history) =
-      ∑ good with ¬ bad good,
-        ((univ.filter bad).filter fun history => counterpart history = good).card * reach good := by
-    rw [← sum_fiberwise_of_maps_to (g := counterpart) (t := univ.filter fun good => ¬ bad good)
-      fun history member => mem_filter.mpr ⟨mem_univ _,
-        counterpart_good history (mem_filter.mp member).2⟩]
-    refine sum_congr rfl fun good _ => ?_
-    rw [sum_congr rfl fun history member => by rw [(mem_filter.mp member).2], sum_const,
-      nsmul_eq_mul]
-  calc ∑ history with bad history, reach history
-      ≤ ∑ history with bad history, ratio * reach (counterpart history) :=
-        sum_le_sum fun history member => dominated history (mem_filter.mp member).2
-    _ = ratio * ∑ good with ¬ bad good,
-          ((univ.filter bad).filter fun history => counterpart history = good).card *
-            reach good := by rw [← mul_sum, fibers]
-    _ ≤ ratio * ∑ good with ¬ bad good,
-          (Fintype.card (M.InformationHistory who site.1) : ℝ) * reach good := by
-        refine mul_le_mul_of_nonneg_left (sum_le_sum fun good _ => ?_) ratio_nonneg
-        refine mul_le_mul_of_nonneg_right ?_ (reachNonneg good)
-        exact_mod_cast card_le_univ _
-    _ = (Fintype.card (M.InformationHistory who site.1) * ratio) *
-          ∑ good with ¬ bad good, reach good := by
-        rw [← mul_sum]
-        ring
+      (multiplicity * ratio) *
+        ∑ history with ¬ bad history, (M.historyReachWeight strategy history.1).toReal :=
+  sum_weights_le_of_bounded_counterpart _ bad counterpart multiplicity
+    (fun _ => ENNReal.toReal_nonneg) ratio_nonneg counterpart_good fibers dominated
 
-/-- **Negligible belief through counterparts.** Under Bayes consistency at a
-site of positive mass, histories whose counterparts dominate them as in
-`sum_reach_le_of_counterpart` carry belief at most the number of histories
-times `ratio`. -/
-theorem sum_belief_le_of_counterpart {A : M.BehavioralAssessment}
+/-- Under Bayes consistency at a positive-mass site, counterpart domination
+with bad-fiber multiplicity `multiplicity` bounds bad belief by `c / (1 + c)`,
+where `c = multiplicity * ratio`. -/
+theorem sum_belief_le_of_counterpart (multiplicity : ℕ) {A : M.BehavioralAssessment}
     {antichain : M.DecisionInformationAntichain}
     (bayes : BehavioralAssessment.IsBayesConsistent M A antichain)
     (positive : 0 < M.informationMass A.strategy who site) (ratio_nonneg : 0 ≤ ratio)
     (counterpart_good : ∀ history, bad history → ¬ bad (counterpart history))
+    (fibers : ∀ history, ¬ bad history →
+      ((univ.filter bad).filter fun original => counterpart original = history).card ≤ multiplicity)
     (dominated : ∀ history, bad history →
       (M.historyReachWeight A.strategy history.1).toReal ≤
         ratio * (M.historyReachWeight A.strategy (counterpart history).1).toReal) :
     ∑ history with bad history, (A.belief who site history).toReal ≤
-      Fintype.card (M.InformationHistory who site.1) * ratio := by
-  set reach := fun history : M.InformationHistory who site.1 =>
-    (M.historyReachWeight A.strategy history.1).toReal
-  set mass := (M.informationMass A.strategy who site).toReal
-  have massEq : mass = ∑ history, reach history := informationMass_toReal_eq_sum _
-  have massPos : 0 < mass := ENNReal.toReal_pos positive.ne'
-    (ne_top_of_le_ne_top ENNReal.one_ne_top
+      (multiplicity * ratio) / (1 + multiplicity * ratio) := by
+  have massPos : 0 < (M.informationMass A.strategy who site).toReal :=
+    ENNReal.toReal_pos positive.ne' (ne_top_of_le_ne_top ENNReal.one_ne_top
       (M.informationMass_le_one A.strategy who site (antichain who site)))
-  have bound := sum_reach_le_of_counterpart A.strategy bad counterpart ratio_nonneg
-    counterpart_good dominated
-  have goodLe : ∑ history with ¬ bad history, reach history ≤ mass := by
-    rw [massEq]
-    exact sum_le_sum_of_subset_of_nonneg (filter_subset _ _)
-      fun _ _ _ => ENNReal.toReal_nonneg
-  have scaleNonneg : 0 ≤ (Fintype.card (M.InformationHistory who site.1) : ℝ) * ratio :=
-    mul_nonneg (Nat.cast_nonneg _) ratio_nonneg
+  rw [informationMass_toReal_eq_sum] at massPos
   rw [sum_congr rfl fun history _ => belief_toReal_eq_div bayes positive history, ← sum_div,
-    div_le_iff₀ massPos]
-  exact bound.trans (mul_le_mul_of_nonneg_left goodLe scaleNonneg)
+    informationMass_toReal_eq_sum]
+  exact sum_weights_div_sum_le_of_bounded_counterpart _ bad counterpart multiplicity
+    (fun _ => ENNReal.toReal_nonneg) massPos ratio_nonneg counterpart_good fibers dominated
 
 end Counterpart
 

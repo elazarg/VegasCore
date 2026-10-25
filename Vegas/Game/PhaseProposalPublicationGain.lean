@@ -4,6 +4,7 @@ import Vegas.Game.PhaseProposalCurrentBindingGain
 import Vegas.Game.ReservedEpochPublicationComparison
 import Vegas.Game.PhaseProposalPublicationAliases
 import Vegas.Game.PhaseProposalPublicationPayoff
+import GameTheoryExtensions.Math.Probability.Expectation
 
 /-! # Publication timing at the original full information -/
 
@@ -13,18 +14,6 @@ namespace Vegas
 
 open SourceProgram EventGraph EventGraphRuntime Interaction GameTheory GameTheory.Protocol
   GameTheory.Protocol.ExecutionProtocol GameTheory.Math.Probability
-
-private theorem expect_le_expect_of_support_order {α β : Type*}
-    (left : PMF α) (right : PMF β) (first : α → ℝ) (second : β → ℝ)
-    (leftIntegrable : PayoffIntegrable left first)
-    (rightIntegrable : PayoffIntegrable right second)
-    (ordered : ∀ a ∈ left.support, ∀ b ∈ right.support, second b ≤ first a) :
-    expect right second ≤ expect left first := by
-  have averaged := expect_mono (μ := left)
-    (f := fun _ => expect right second) (g := first)
-    (fun a supported => expect_le_const right second rightIntegrable (first a)
-      (ordered a supported)) (payoffIntegrable_constant left _) leftIntegrable
-  simpa only [expect_constant] using averaged
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]

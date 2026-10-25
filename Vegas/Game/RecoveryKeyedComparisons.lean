@@ -5,6 +5,7 @@ import Vegas.Game.RecoveryKeyedCommitmentComparisons
 import Vegas.Game.RecoveryLatePureChoices
 import Vegas.Game.RecoveryUnintendedValue
 import Vegas.Game.RecoveryNonLateChoices
+import GameTheoryExtensions.Analysis.Protocol.GainComparison
 
 
 /-! # All pure keyed comparisons under the original recovery assessment -/
@@ -315,18 +316,12 @@ theorem recovery_keyed_local_comparisons [Fintype (RP).History]
         nativeError n at bounded
     let baseline : setup.intendedModel.AssessmentDeviation who :=
       ⟨deviation.1, (sequence n).strategy who⟩
-    let mixture := mix success successNonneg successLe (PMF.pure deviation) (PMF.pure baseline)
     have zero : intendedSiteGain setup parameter utility excludedPayoff (sequence n) baseline = 0 :=
       by simp [intendedSiteGain, baseline, InformationModel.assessmentComparisonWith,
         InformationModel.assessmentLawWith, Profile.update_eq_self]
-    have mixtureEq : expect mixture
-        (intendedSiteGain setup parameter utility excludedPayoff (sequence n)) =
-      success * intendedSiteGain setup parameter utility excludedPayoff (sequence n) deviation := by
-      rw [expect_mix _ _ _ _ _ _ (payoffIntegrable_pure _ _) (payoffIntegrable_pure _ _),
-        expect_pure, expect_pure, zero, mul_zero, add_zero]
-    right
-    refine ⟨mixture, ?_⟩
-    rw [mixtureEq]
+    refine GainComparison.of_weighted
+      (intendedSiteGain setup parameter utility excludedPayoff (sequence n))
+      ⟨success, successNonneg, successLe⟩ deviation baseline zero ?_
     have gain := viaNative option
     have covered : nativeError n + 2 * valueError n + memberError n ≤ error n := by
       dsimp only [error]

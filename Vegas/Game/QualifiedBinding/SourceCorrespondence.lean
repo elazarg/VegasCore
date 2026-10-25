@@ -59,7 +59,7 @@ theorem source_automatic_completed_owner
         · exact ih.2 event old absent
         · obtain ⟨action, supported⟩ :=
             middle.completeAutomatic_step changed eligible.2
-          have same := SuffixExclusionRecord.new_event_eq supported old present
+          have same := State.completed_event_eq_of_step supported old present
           subst event
           obtain ⟨owner, actor, excluded⟩ := eligible.2.owned
           exact ⟨owner, actor, ih.1 ▸ excluded, eligible.1⟩

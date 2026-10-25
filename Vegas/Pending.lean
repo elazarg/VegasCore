@@ -329,8 +329,8 @@ import Vegas.Pending.ReactiveCanonicalResolution
 import Vegas.Pending.ReactiveCompiledMenu
 import Vegas.Pending.ReactiveCompiledResolution
 import Vegas.Pending.ReactiveContinuationObservation
-import Vegas.Pending.ReactiveCompletion
 import Vegas.Pending.ReactiveCountAudit
+import Vegas.Pending.ReactiveCompletion
 import Vegas.Pending.ReactiveCountVerdict
 import Vegas.Pending.ReactiveCountedResponseForms
 import Vegas.Pending.ReactiveCountedSurvivor
@@ -440,3 +440,4 @@ import Vegas.Pending.RuntimePhase
 import Vegas.Pending.ServicePlan
 import Vegas.Pending.SuffixExclusionRecord
 import Vegas.Pending.ValueSwapPairs
+import Vegas.Pending.PublicFailureEvidence

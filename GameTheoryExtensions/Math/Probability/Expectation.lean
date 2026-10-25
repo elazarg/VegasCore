@@ -14,6 +14,34 @@ noncomputable section
 
 namespace GameTheory.Math.Probability
 
+/-- Cross-support payoff order is preserved by taking both expectations.
+The laws and their carriers need not be finite or related by a coupling. -/
+theorem expect_le_expect_of_support_order {α β : Type*}
+    (left : PMF α) (right : PMF β) (first : α → ℝ) (second : β → ℝ)
+    (leftIntegrable : PayoffIntegrable left first)
+    (rightIntegrable : PayoffIntegrable right second)
+    (ordered : ∀ a ∈ left.support, ∀ b ∈ right.support, second b ≤ first a) :
+    expect right second ≤ expect left first := by
+  have averaged := expect_mono (μ := left)
+    (f := fun _ => expect right second) (g := first)
+    (fun a supported => expect_le_const right second rightIntegrable (first a)
+      (ordered a supported)) (payoffIntegrable_constant left _) leftIntegrable
+  simpa only [expect_constant] using averaged
+
+/-- A uniform cross-support payoff error contributes the same error after
+averaging, with no assumption on the sizes of the supports. -/
+theorem expect_le_expect_add_of_support_order {α β : Type*}
+    (left : PMF α) (right : PMF β) (first : α → ℝ) (second : β → ℝ)
+    (leftIntegrable : PayoffIntegrable left first)
+    (rightIntegrable : PayoffIntegrable right second) (slack : ℝ)
+    (ordered : ∀ a ∈ left.support, ∀ b ∈ right.support, second b ≤ first a + slack) :
+    expect right second ≤ expect left first + slack := by
+  have comparison := expect_le_expect_of_support_order left right (fun a => first a + slack)
+    second (payoffIntegrable_add leftIntegrable (payoffIntegrable_constant left slack))
+    rightIntegrable ordered
+  simpa only [expect_add leftIntegrable (payoffIntegrable_constant left slack),
+    expect_constant] using comparison
+
 /-- Supported kernel domination composes with domination of the initial law. -/
 theorem bind_supported_domination {α β : Type*}
     (source target : PMF α) (sourceStep targetStep : α → PMF β)

@@ -6,6 +6,7 @@ import Vegas.Game
 import Vegas.Examples.LateLeak
 import Vegas.Examples.ProgramPayments
 import Vegas.Examples.ProgramPaymentsRuntime
+import Vegas.Examples.BoundedPaymentAuction
 
 /-! # Paper theorems
 
@@ -1144,3 +1145,125 @@ end Vegas.Paper
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.recovery_jointCashLaw_of_utility_law
+
+/-! Model-independent probability and enforcement extensions retain guarded utility. -/
+
+/-- info: 'Vegas.SourceProgram.Setup.parameterProtocol_isεNash_iff' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.parameterProtocol_isεNash_iff
+
+/-- info: 'GameTheory.Protocol.InformationModel.bayesBelief_projection_of_proportional_reach' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  GameTheory.Protocol.InformationModel.bayesBelief_projection_of_proportional_reach
+
+/-- info: 'GameTheory.Protocol.InformationModel.ActionRestriction.sequential_equilibrium_extends' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  GameTheory.Protocol.InformationModel.ActionRestriction.sequential_equilibrium_extends
+
+/-- info: 'GameTheory.Protocol.InformationModel.BehavioralAssessment.exists_consistent_completion_subsequence' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  GameTheory.Protocol.InformationModel.BehavioralAssessment.exists_consistent_completion_subsequence
+
+/-- info: 'GameTheory.exists_pooled_bestResponses' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  GameTheory.exists_pooled_bestResponses
+
+/-- info: 'GameTheory.Math.Probability.abs_expect_sub_le_expect_abs_sub' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  GameTheory.Math.Probability.abs_expect_sub_le_expect_abs_sub
+
+/-- info: 'GameTheory.Math.Probability.aemeasurable_of_pmf_pushforward' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  GameTheory.Math.Probability.aemeasurable_of_pmf_pushforward
+
+/-- info: 'GameTheory.Math.Probability.lintegral_of_pmf_pushforward' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  GameTheory.Math.Probability.lintegral_of_pmf_pushforward
+
+/-- info: 'GameTheory.Enforcement.alarm_detection_le_outside_mass' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  GameTheory.Enforcement.alarm_detection_le_outside_mass
+
+/-- info: 'GameTheory.Enforcement.outsideAlarm_detection' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  GameTheory.Enforcement.outsideAlarm_detection
+
+/-- info: 'GameTheory.Enforcement.exists_sound_sanction_iff' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  GameTheory.Enforcement.exists_sound_sanction_iff
+
+/-- info: 'GameTheory.Math.Probability.sum_weights_div_sum_le_of_bounded_counterpart' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  GameTheory.Math.Probability.sum_weights_div_sum_le_of_bounded_counterpart
+
+/-- info: 'GameTheory.Math.Probability.expect_retained_gain_le' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  GameTheory.Math.Probability.expect_retained_gain_le
+
+/-- info: 'GameTheory.Math.Probability.GainComparison.sum_abs_errors' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  GameTheory.Math.Probability.GainComparison.sum_abs_errors
+
+/-- info: 'Interaction.ReactiveApplication.round_map_congr' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Interaction.ReactiveApplication.round_map_congr
+
+/-- info: 'Vegas.SourceProgram.exists_pureMixture_run' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.exists_pureMixture_run
+
+/-- info: 'Vegas.Examples.BoundedPaymentAuction.publicPayoffs_eq' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.BoundedPaymentAuction.publicPayoffs_eq
+
+/-- info: 'Vegas.Examples.BoundedPaymentAuction.paymentUtility_eq_economic' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.BoundedPaymentAuction.paymentUtility_eq_economic
+
+/-- info: 'Vegas.Examples.BoundedPaymentAuction.compiled_nash_iff' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.BoundedPaymentAuction.compiled_nash_iff
+
+/-- info: 'Vegas.Examples.BoundedPaymentAuction.truthful_not_dominant' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.Examples.BoundedPaymentAuction.truthful_not_dominant

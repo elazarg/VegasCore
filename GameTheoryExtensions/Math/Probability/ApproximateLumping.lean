@@ -3,6 +3,7 @@
 import GameTheory.Math.Probability.ExpectationComposition
 import GameTheory.Math.Probability.ExpectationMap
 import GameTheory.Math.Probability.ExpectationAlgebra
+import GameTheoryExtensions.Math.Probability.ExpectationContraction
 
 /-! # Approximately lumpable kernels
 
@@ -32,29 +33,6 @@ theorem expect_mem_unit {α : Type*} (μ : PMF α) (f : α → ℝ) (unit : ∀ 
     abs_le.mpr ⟨by linarith [(unit a).1], (unit a).2⟩
   exact ⟨expect_nonneg μ f fun a _ => (unit a).1,
     expect_le_const μ f (payoffIntegrable_of_bounded μ f bounded) 1 fun a _ => (unit a).2⟩
-
-/-- Unit payoffs within `δ` of each other on a law's support have expectations
-within `δ`. -/
-theorem abs_expect_sub_le_of_unit {α : Type*} (μ : PMF α) (f g : α → ℝ)
-    (unitF : ∀ a, 0 ≤ f a ∧ f a ≤ 1) (unitG : ∀ a, 0 ≤ g a ∧ g a ≤ 1) (δ : ℝ)
-    (near : ∀ a ∈ μ.support, |f a - g a| ≤ δ) :
-    |expect μ f - expect μ g| ≤ δ := by
-  have boundF : ∀ a, |f a| ≤ 1 := fun a => abs_le.mpr ⟨by linarith [(unitF a).1], (unitF a).2⟩
-  have boundG : ∀ a, |g a| ≤ 1 := fun a => abs_le.mpr ⟨by linarith [(unitG a).1], (unitG a).2⟩
-  have integrableF := payoffIntegrable_of_bounded μ f boundF
-  have integrableG := payoffIntegrable_of_bounded μ g boundG
-  have difference : PayoffIntegrable μ (fun a => f a - g a) :=
-    payoffIntegrable_of_bounded μ _ (C := 2) fun a => by
-      have := abs_sub (f a) (g a)
-      linarith [boundF a, boundG a]
-  rw [← expect_sub integrableF integrableG]
-  have upper := expect_le_const μ _ difference δ fun a supported =>
-    (abs_le.mp (near a supported)).2
-  have lower := expect_mono (μ := μ) (f := fun _ => -δ)
-    (fun a supported => (abs_le.mp (near a supported)).1)
-    (payoffIntegrable_constant μ _) difference
-  rw [expect_constant] at lower
-  exact abs_le.mpr ⟨lower, upper⟩
 
 /-- **Approximate lumping.** If a kernel keeps a set, and from each of its
 states the kernel read through `φ` is `δ`-close on unit payoffs to the image
@@ -98,9 +76,14 @@ theorem iterate_bind_map_unitClose {S Y : Type*} (kernel : S → PMF S) (φ : S 
           exact expect_congr_on_support fun s _ => (expect_map φ (kernel s) f).symm
         have first : |expect law (fun s => expect ((kernel s).map φ) f) -
             expect law (fun s => continued (φ s))| ≤ δ :=
-          abs_expect_sub_le_of_unit law _ _ (fun s => expect_mem_unit _ f unit)
-            (fun s => unitContinued (φ s)) δ fun s supported =>
-              close s (inside s supported) f unit
+          abs_expect_sub_le_of_bound law _ _
+            (payoffIntegrable_of_bounded law _ (C := 1) fun s => by
+              have bounds := expect_mem_unit ((kernel s).map φ) f unit
+              exact abs_le.mpr ⟨by linarith [bounds.1], bounds.2⟩)
+            (payoffIntegrable_of_bounded law _ (C := 1) fun s => by
+              have bounds := unitContinued (φ s)
+              exact abs_le.mpr ⟨by linarith [bounds.1], bounds.2⟩)
+            δ fun s supported => close s (inside s supported) f unit
         have second : |expect (law.map φ) continued - expect imageLaw continued| ≤ n * δ :=
           near continued unitContinued
         rw [stepped, expect_bind_tower_bounded imageLaw image f boundF]

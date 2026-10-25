@@ -22,6 +22,7 @@ import Interaction.ReactiveAnchoredStopped
 import Interaction.ReactiveStoppedState
 import GameTheoryExtensions.Analysis.Protocol.StoppedHistoryInvariant
 import GameTheoryExtensions.Math.Probability.PresentConditional
+import GameTheoryExtensions.Math.Probability.RetainedGain
 import Vegas.Game.AsyncDeviationForeign
 import Vegas.Game.ProposalRecoveryFutureFlags
 
@@ -2963,74 +2964,6 @@ private theorem clean_send_complement
       equality.symm.le
 
 
-private theorem retained_history_gain_le {α : Type*} [Finite α]
-    (baseline : PMF α) (mean retained : α → ℝ) (residual : α → Bool → ℝ)
-    (bad : Prop) [Decidable bad] (bound flag gain : ℝ) (choice : α) (keep : Bool)
-    (nonnegative : 0 ≤ bound) (meanBound : ∀ selected, |mean selected| ≤ bound)
-    (retainedEq : ∀ selected, retained selected =
-      if bad then 0 else mean selected - residual selected true)
-    (residualFalse : ∀ selected, residual selected false = mean selected)
-    (flags : gain ≤ mean choice - expect baseline mean + flag)
-    (comparison : ¬ bad → residual choice keep ≤
-      expect baseline (fun selected => residual selected keep)) :
-    gain ≤ (if keep = true then retained choice - expect baseline retained else 0) +
-      (if bad then 2 * bound else 0) + flag := by
-  by_cases failed : bad
-  · have zero : retained = fun _ => 0 := funext (fun selected => by
-      rw [retainedEq selected, ite_eq_left failed])
-    have lower := expect_abs_le_of_bounded (μ := baseline) nonnegative meanBound
-    rw [zero, expect_constant]
-    simp only [sub_self, ite_self, failed, ite_true]
-    linarith only [flags, (abs_le.mp (meanBound choice)).2, (abs_le.mp lower).1]
-  · have ordered := comparison failed
-    cases keep with
-    | false =>
-        have clean : (fun selected => residual selected false) = mean :=
-          funext residualFalse
-        rw [residualFalse, clean] at ordered
-        simp only [Bool.false_eq_true, ite_false, failed, zero_add]
-        linarith only [flags, ordered]
-    | true =>
-        have kept : retained = fun selected => mean selected - residual selected true :=
-          funext (fun selected => by rw [retainedEq selected, ite_eq_right failed])
-        simp only [ite_true, failed, ite_false, add_zero]
-        rw [kept, expect_sub (payoffIntegrable_of_finite _ _)
-          (payoffIntegrable_of_finite _ _)]
-        linarith only [flags, ordered]
-
-
-private theorem averaged_retained_gain_le {α β : Type*} [Finite α] [Finite β]
-    (belief : PMF α) (baseline : PMF β) (gain : α → ℝ) (retained : α → β → ℝ)
-    (qualified : β → ℝ) (penalty : α → ℝ) (flag : ℝ) (choice : β) (keep : Bool)
-    (mean : ∀ selected, qualified selected =
-      expect belief (fun history => retained history selected))
-    (pointwise : ∀ history, gain history ≤
-      (if keep = true then retained history choice - expect baseline (retained history) else 0) +
-        penalty history + flag) :
-    expect belief gain ≤
-      (if keep = true then qualified choice - expect baseline qualified else 0) +
-        expect belief penalty + flag := by
-  apply le_trans (expect_mono (fun history _ => pointwise history)
-    (payoffIntegrable_of_finite _ _) (payoffIntegrable_of_finite _ _))
-  have commute := expect_comm_of_support_finite_left baseline belief (Set.toFinite _)
-    (fun selected history => retained history selected)
-    (fun selected _ => payoffIntegrable_of_finite _ _)
-  have average : expect belief (fun history => expect baseline (retained history)) =
-      expect baseline qualified :=
-    commute.symm.trans (expect_congr_on_support (μ := baseline)
-      (fun selected _ => (mean selected).symm))
-  cases keep with
-  | false =>
-      simp only [Bool.false_eq_true, ite_false, zero_add]
-      rw [expect_add (payoffIntegrable_of_finite _ _) (payoffIntegrable_constant _ _),
-        expect_constant]
-  | true =>
-      simp only [ite_true]
-      rw [expect_add (payoffIntegrable_of_finite _ _) (payoffIntegrable_constant _ _),
-        expect_add (payoffIntegrable_of_finite _ _) (payoffIntegrable_of_finite _ _),
-        expect_sub (payoffIntegrable_of_finite _ _) (payoffIntegrable_of_finite _ _),
-        expect_constant, average, ← mean choice]
-
 section CleanBindingComparison
 
 attribute [local implicit_reducible] ReservedConcurrentImplementation.initial
@@ -4142,9 +4075,9 @@ theorem phaseProposal_clean_binding_gain_le
             history ≤
         (if typed = true then retained history choice - expect baseline (retained history) else 0) +
           (if bad history then 2 * bound else 0) + flagError := by
-      exact retained_history_gain_le baseline (mean history) (retained history)
+      exact retained_gain_le baseline (mean history) (retained history)
         (residual history) (bad history) bound flagError _ choice typed nonnegative
-        (meanBound history) (fun _ => rfl)
+        (meanBound history) (payoffIntegrable_of_finite _ _) (fun _ => rfl)
         (fun selected => by
           simp only [residual, mean, Bool.false_eq_true, false_and, ite_false])
         (historyFlag history choice)
@@ -4181,11 +4114,13 @@ theorem phaseProposal_clean_binding_gain_le
     have errorEq : 2 * bound * nativePast + flagError = nativeError := by
       dsimp only [nativeError, flagError]
       ring
-    have estimate := averaged_retained_gain_le (native.belief who site) baseline
+    have estimate := expect_retained_gain_le (native.belief who site) baseline
       ((cN).historyGain ((cN).runBehavioralTerminalFrom certificate)
         (fun final => final.state) (implementation.base payoffs) native (deviation choice))
       retained qualifiedValue (fun history => if bad history then 2 * bound else 0)
-      flagError choice typed qualifiedMean pointwise
+      flagError choice typed (payoffIntegrable_of_finite _ _)
+      (payoffIntegrable_of_finite _ _) (payoffIntegrable_of_finite _ _)
+      (payoffIntegrable_of_finite _ _) qualifiedMean pointwise
     rw [badMean] at estimate
     calc
       _ ≤ (if typed = true then qualifiedValue choice - expect baseline qualifiedValue else 0) +

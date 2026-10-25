@@ -228,7 +228,7 @@ theorem committed_until_config
     refine ⟨invariant, fixed, fun done => ?_⟩
     rw [atSent] at done
     exact (ready.1 done).elim
-  have reachedInvariant := model.runBehavioralUntil_support_closed_of_going certificate players
+  have reachedInvariant := model.runBehavioralUntil_support_closed certificate players
     (fun history => LateStopped setup leaks bounds horizon scheduler rank history ∨
       extraStop history)
     (CommitInvariant setup leaks bounds horizon scheduler who entry message event sent ready

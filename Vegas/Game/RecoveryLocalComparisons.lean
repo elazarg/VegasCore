@@ -2,6 +2,7 @@
 
 import Vegas.Game.RecoveryNonLateComparisons
 import Vegas.Game.RecoveryKeyedComparisons
+import GameTheoryExtensions.Analysis.Protocol.GainComparison
 
 /-! # All local comparisons under the original recovery completion -/
 
@@ -135,30 +136,27 @@ theorem recovery_local_comparisons [Fintype (RP).History]
     scaleEq covers coversInputs capacity slots_pos weights assessments fallback assembled bayes
     opportunity inclusion timely parameter utility excludedPayoff payoffBound nonnegative completes
     payoffBounded excludedBounded below upper le_upper readoutBounded pooled
-  let error := fun n => |nonlateError n| + |keyedError n|
+  let errors : Bool → ℕ → ℝ := fun keyed => if keyed then keyedError else nonlateError
+  let error := fun n => ∑ index, |errors index n|
   refine ⟨error, ?_, ?_⟩
-  · simpa only [error, abs_zero, add_zero] using nonlateLimit.abs.add keyedLimit.abs
+  · have limits : ∀ index, Tendsto (fun n => |errors index n|) atTop (nhds 0) := by
+      intro index
+      cases index with
+      | false => simpa [errors] using nonlateLimit.abs
+      | true => simpa [errors] using keyedLimit.abs
+    simpa only [error, Finset.sum_const_zero] using
+      tendsto_finsetSum Finset.univ (fun index _ => limits index)
   intro n who site notFree choice
   by_cases owing : OwingAgent setup leaks bounds Initial horizon scheduler ((R).agentAt site)
   · left
     rw [owingAgent_localGain_eq_zero setup leaks bounds horizon scheduler parameter utility
       excludedPayoff completes (assessments n) site owing]
-    exact add_nonneg (abs_nonneg _) (abs_nonneg _)
+    exact Finset.sum_nonneg (fun _ _ => abs_nonneg _)
   by_cases keyed : ownedKeyed (FreeAgent setup leaks bounds Initial horizon scheduler)
       (KeyedAgent setup leaks bounds Initial horizon scheduler) ((R).agentAt site)
-  · have bound := keyedBound n who site notFree owing keyed choice
-    have covered : keyedError n ≤ error n := by
-      dsimp only [error]
-      linarith [le_abs_self (keyedError n), abs_nonneg (nonlateError n)]
-    rcases bound with direct | ⟨mixture, compared⟩
-    · exact Or.inl (direct.trans covered)
-    · exact Or.inr ⟨mixture, compared.trans (by linarith only [covered])⟩
-  · have bound := nonlateBound n who site notFree owing keyed choice
-    have covered : nonlateError n ≤ error n := by
-      dsimp only [error]
-      linarith [le_abs_self (nonlateError n), abs_nonneg (keyedError n)]
-    rcases bound with direct | ⟨mixture, compared⟩
-    · exact Or.inl (direct.trans covered)
-    · exact Or.inr ⟨mixture, compared.trans (by linarith only [covered])⟩
+  · exact GainComparison.sum_abs_errors (fun index => errors index n) true
+      (keyedBound n who site notFree owing keyed choice)
+  · exact GainComparison.sum_abs_errors (fun index => errors index n) false
+      (nonlateBound n who site notFree owing keyed choice)
 
 end Vegas.RecoveryOnePacket

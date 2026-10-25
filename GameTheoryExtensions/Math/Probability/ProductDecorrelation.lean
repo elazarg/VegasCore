@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheory.Math.Probability.ExpectationComposition
 import GameTheoryExtensions.Math.Probability.Expectation
+import GameTheoryExtensions.Math.Probability.ExpectationContraction
 
 /-! # Decorrelation of a lumped failure from a bounded value
 
@@ -41,92 +41,50 @@ theorem abs_expect_mul_sub_le_of_uncorrelated {H R : Type*} (law : PMF H) (recor
   have boundNonneg : 0 ≤ bound := by
     obtain ⟨witness, _⟩ := law.support_nonempty
     exact (abs_nonneg _).trans (valueBounded' witness)
-  have twoBound : ∀ x : ℝ, |x| ≤ 1 → |1 - x| ≤ 2 := fun x bounded => by
-    rw [abs_le] at bounded ⊢
-    constructor <;> linarith
-  have deviationIntegrable : PayoffIntegrable law fun h => |failure h - lumped (record h)| :=
-    payoffIntegrable_of_bounded _ _ (C := 2) fun h => by
-      rw [abs_abs]
-      calc |failure h - lumped (record h)| ≤ |failure h| + |lumped (record h)| := abs_sub _ _
-        _ ≤ 2 := by linarith [failureBounded h, lumpedBounded (record h)]
-  have integrable : ∀ f : H → ℝ, ∀ C, (∀ h, |f h| ≤ C) → PayoffIntegrable law f :=
-    fun f C bounded => payoffIntegrable_of_bounded _ _ bounded
-  have failureIntegrable := integrable failure 1 failureBounded
-  have lumpedIntegrable := integrable (fun h => lumped (record h)) 1 fun h => lumpedBounded _
-  have valueIntegrable := integrable value bound valueBounded'
-  -- The first error: replacing the failure by its lumped value under the value.
+  have failureIntegrable := payoffIntegrable_of_bounded law failure failureBounded
+  have lumpedIntegrable := payoffIntegrable_of_bounded law
+    (fun h => lumped (record h)) (fun h => lumpedBounded (record h))
+  have deviationBounded (h : H) : |failure h - lumped (record h)| ≤ 2 :=
+    (abs_sub _ _).trans (by linarith [failureBounded h, lumpedBounded (record h)])
+  have deviationIntegrable : PayoffIntegrable law
+      (fun h => |failure h - lumped (record h)|) :=
+    payoffIntegrable_of_bounded law _ (fun h => by
+      simpa only [abs_abs] using deviationBounded h)
+  have productIntegrable (test : H → ℝ) (bounded : ∀ h, |test h| ≤ 1) :
+      PayoffIntegrable law (fun h => (1 - test h) * value h) :=
+    payoffIntegrable_of_bounded law _ (C := 2 * bound) fun h => by
+      rw [abs_mul]
+      have factor : |1 - test h| ≤ 2 := by
+        have := abs_sub 1 (test h)
+        norm_num at this
+        linarith [bounded h]
+      exact mul_le_mul factor (valueBounded' h) (abs_nonneg _) (by norm_num)
+  have firstProduct := productIntegrable failure failureBounded
+  have secondProduct := productIntegrable (fun h => lumped (record h))
+    (fun h => lumpedBounded (record h))
   have firstError : |expect law (fun h => (1 - failure h) * value h) -
       expect law (fun h => (1 - lumped (record h)) * value h)| ≤ bound * ε := by
-    rw [← expect_sub (integrable _ (2 * bound) fun h => by
-        rw [abs_mul]
-        exact mul_le_mul (twoBound _ (failureBounded h)) (valueBounded' h) (abs_nonneg _)
-          (by norm_num))
-      (integrable _ (2 * bound) fun h => by
-        rw [abs_mul]
-        exact mul_le_mul (twoBound _ (lumpedBounded _)) (valueBounded' h) (abs_nonneg _)
-          (by norm_num))]
-    have pointwise : ∀ h, |(1 - failure h) * value h - (1 - lumped (record h)) * value h| ≤
-        bound * |failure h - lumped (record h)| := fun h => by
+    have pointwise (h : H) :
+        |(1 - failure h) * value h - (1 - lumped (record h)) * value h| ≤
+          bound * |failure h - lumped (record h)| := by
       rw [show (1 - failure h) * value h - (1 - lumped (record h)) * value h =
         -(value h * (failure h - lumped (record h))) by ring, abs_neg, abs_mul]
       exact mul_le_mul_of_nonneg_right (valueBounded' h) (abs_nonneg _)
-    calc _ ≤ expect law (fun h => bound * |failure h - lumped (record h)|) := by
-          refine abs_le.mpr ⟨?_, ?_⟩
-          · have lower := expect_mono (μ := law)
-              (f := fun h => -(bound * |failure h - lumped (record h)|))
-              (g := fun h => (1 - failure h) * value h - (1 - lumped (record h)) * value h)
-              (fun h _ => neg_le_of_abs_le (pointwise h))
-              (integrable _ (bound * 2) fun h => by
-                rw [abs_neg, abs_mul, abs_of_nonneg boundNonneg, abs_abs]
-                exact mul_le_mul_of_nonneg_left (by
-                  calc |failure h - lumped (record h)| ≤ |failure h| + |lumped (record h)| :=
-                        abs_sub _ _
-                    _ ≤ 2 := by linarith [failureBounded h, lumpedBounded (record h)])
-                  boundNonneg)
-              (integrable _ (4 * bound) fun h => (pointwise h).trans (by
-                calc bound * |failure h - lumped (record h)| ≤ bound * 2 :=
-                      mul_le_mul_of_nonneg_left (by
-                        calc |failure h - lumped (record h)| ≤
-                              |failure h| + |lumped (record h)| := abs_sub _ _
-                          _ ≤ 2 := by linarith [failureBounded h, lumpedBounded (record h)])
-                        boundNonneg
-                  _ ≤ 4 * bound := by linarith))
-            rw [expect_neg] at lower
-            linarith
-          · exact expect_mono (fun h _ => le_of_abs_le (pointwise h))
-              (integrable _ (4 * bound) fun h => (pointwise h).trans (by
-                calc bound * |failure h - lumped (record h)| ≤ bound * 2 :=
-                      mul_le_mul_of_nonneg_left (by
-                        calc |failure h - lumped (record h)| ≤
-                              |failure h| + |lumped (record h)| := abs_sub _ _
-                          _ ≤ 2 := by linarith [failureBounded h, lumpedBounded (record h)])
-                        boundNonneg
-                  _ ≤ 4 * bound := by linarith))
-              (integrable _ (bound * 2) fun h => by
-                rw [abs_mul, abs_of_nonneg boundNonneg, abs_abs]
-                exact mul_le_mul_of_nonneg_left (by
-                  calc |failure h - lumped (record h)| ≤ |failure h| + |lumped (record h)| :=
-                        abs_sub _ _
-                    _ ≤ 2 := by linarith [failureBounded h, lumpedBounded (record h)])
-                  boundNonneg)
+    have absoluteIntegrable : PayoffIntegrable law
+        (fun h => |(1 - failure h) * value h - (1 - lumped (record h)) * value h|) := by
+      simpa only [PayoffIntegrable, abs_abs] using
+        payoffIntegrable_sub firstProduct secondProduct
+    calc
+      _ ≤ expect law (fun h =>
+          |(1 - failure h) * value h - (1 - lumped (record h)) * value h|) :=
+        abs_expect_sub_le_expect_abs_sub law _ _ firstProduct secondProduct
+      _ ≤ expect law (fun h => bound * |failure h - lumped (record h)|) :=
+        expect_mono (fun h _ => pointwise h) absoluteIntegrable
+          (payoffIntegrable_const_mul deviationIntegrable)
       _ = bound * expect law (fun h => |failure h - lumped (record h)|) := expect_const_mul
       _ ≤ bound * ε := mul_le_mul_of_nonneg_left near boundNonneg
-  -- The second error: the expected failure against its lumped mean.
-  have meanError : |expect law failure - expect law (fun h => lumped (record h))| ≤ ε := by
-    rw [← expect_sub failureIntegrable lumpedIntegrable]
-    refine le_trans ?_ near
-    refine abs_le.mpr ⟨?_, ?_⟩
-    · have lower := expect_mono (μ := law) (f := fun h => -|failure h - lumped (record h)|)
-        (g := fun h => failure h - lumped (record h)) (fun h _ => neg_abs_le _)
-        (integrable _ 2 fun h => by
-          rw [abs_neg, abs_abs]
-          calc |failure h - lumped (record h)| ≤ |failure h| + |lumped (record h)| := abs_sub _ _
-            _ ≤ 2 := by linarith [failureBounded h, lumpedBounded (record h)])
-        (payoffIntegrable_sub failureIntegrable lumpedIntegrable)
-      rw [expect_neg] at lower
-      linarith
-    · exact expect_mono (fun h _ => le_abs_self _)
-        (payoffIntegrable_sub failureIntegrable lumpedIntegrable) deviationIntegrable
+  have meanError : |expect law failure - expect law (fun h => lumped (record h))| ≤ ε :=
+    (abs_expect_sub_le_expect_abs_sub law _ _ failureIntegrable lumpedIntegrable).trans near
   have valueMean : |expect law value| ≤ bound := expect_abs_le_of_bounded boundNonneg valueBounded'
   calc _ = |(expect law (fun h => (1 - failure h) * value h) -
           expect law (fun h => (1 - lumped (record h)) * value h)) +

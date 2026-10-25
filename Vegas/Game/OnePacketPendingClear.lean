@@ -76,7 +76,7 @@ theorem pending_publicClear_of_acceptanceInvariant
     rw [state]
     exact ⟨invariant, fun _ => clear⟩
   have remains := (model).runBehavioralUntil_support_closed certificate profile stopped property
-    preserved start initialProperty
+    (fun history _ _ => preserved history.state) start initialProperty
   intro final supported control finalState pending
   have clearIfPending := (remains final supported).2
   rw [finalState] at clearIfPending

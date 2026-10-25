@@ -300,7 +300,7 @@ theorem nativeComparison_committed_value_sub_le [Fintype (RP).History]
     lumped valueOf (excludedPayoff who)
     (fun history => by have := failureUnit history; rw [abs_le]; constructor <;> linarith)
     (fun record => by have := lumpedUnit record; rw [abs_le]; constructor <;> linarith)
-    valueBounded valueEq excludedBounded failureNear payoffNear
+    valueBounded valueEq excludedBounded (payoffIntegrable_of_finite _ _) failureNear payoffNear
   have failureEq : localFailure (2 * horizon + 1) target site
       {final | DecisionFailed key final.state} law = expect belief failure := by
     unfold localFailure

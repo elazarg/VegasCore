@@ -145,7 +145,7 @@ theorem accepted_until_config
     refine ⟨invariant, fun done => ?_⟩
     rw [atSent] at done
     exact (ready.1 done).elim
-  have reachedInvariant := model.runBehavioralUntil_support_closed_of_going certificate players
+  have reachedInvariant := model.runBehavioralUntil_support_closed certificate players
     (fun history => LateStopped setup leaks bounds horizon scheduler rank history ∨
       extraStop history)
     (AcceptedInvariant setup leaks bounds horizon scheduler who entry message event sent ready)

@@ -14,6 +14,7 @@ import GameTheoryExtensions.Analysis.Protocol.FreeKeyedPools
 import GameTheoryExtensions.Analysis.Protocol.KeyedPools
 import GameTheoryExtensions.Analysis.Protocol.LastDecision
 import GameTheoryExtensions.Analysis.Protocol.LocalSimulationLimit
+import GameTheoryExtensions.Analysis.Protocol.GainComparison
 import GameTheoryExtensions.Analysis.Protocol.LocalizedEnforcement
 import GameTheoryExtensions.Analysis.Protocol.OneShotDeviation
 import GameTheoryExtensions.Analysis.Protocol.OwnPlayReach
@@ -45,8 +46,11 @@ import GameTheoryExtensions.Core.PendingChoice
 import GameTheoryExtensions.Math.Probability.ActionSplitting
 import GameTheoryExtensions.Math.Probability.AffineDecorrelation
 import GameTheoryExtensions.Math.Probability.ApproximateLumping
+import GameTheoryExtensions.Math.Probability.CounterpartBounds
+import GameTheoryExtensions.Math.Probability.Domination
 import GameTheoryExtensions.Math.Probability.EqualMassFibers
 import GameTheoryExtensions.Math.Probability.Expectation
+import GameTheoryExtensions.Math.Probability.ExpectationContraction
 import GameTheoryExtensions.Math.Probability.DiscretePushforward
 import GameTheoryExtensions.Math.Probability.GatedExpectation
 import GameTheoryExtensions.Math.Probability.NearDecorrelation
@@ -57,6 +61,7 @@ import GameTheoryExtensions.Math.Probability.PresentConditional
 import GameTheoryExtensions.Math.Probability.ProductDecorrelation
 import GameTheoryExtensions.Math.Probability.ProductTransport
 import GameTheoryExtensions.Math.Probability.RestrictedDisintegration
+import GameTheoryExtensions.Math.Probability.RetainedGain
 import GameTheoryExtensions.Math.Probability.SiteDraw
 import GameTheoryExtensions.Math.Probability.Support
 import GameTheoryExtensions.Math.Probability.SwapTransport
