@@ -5,8 +5,7 @@ project build, then python scripts/check-proof-review-probes.py to replay
 all nineteen with the central Lake options. The runner writes only temporary files.
 The [main review](../proof-review.md) states the scope and interpretation.
 The twelve candidate modules below have exact axiom guards for all 32 public
-probe theorems. The two complete compiler-tail migrations have a separate
-read-only runner: python scripts/experiments/compiler_tail_order_probe.py.
+probe theorems. The complete compiler-tail migrations are checked in their actual owning modules.
 
 ## ProportionalBayesProbe
 

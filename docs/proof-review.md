@@ -1,5 +1,8 @@
 # Proof review and mathematical mining
 
+Current production implementation and acceptance status is in the
+[implementation ledger](proof-review-progress.md#current-findings).
+
 The strongest findings are new quantitative and hypothesis improvements, plus
 several small proof migrations that need no new machinery. In strict isolated
 checks, the actual timed execution and audited-settlement proof admits the
@@ -184,14 +187,13 @@ lake build
 python -m unittest discover -s scripts -p 'test_*.py'
 python scripts/proof-inventory.py --output ephemeral/proof-review-current
 python scripts/check-proof-review-probes.py
-python scripts/experiments/compiler_tail_order_probe.py
 ```
 
 The [probe appendix](proof-review/checked-probes.md) contains nineteen temporary
 modules: seven retained regression experiments and twelve candidate modules.
 All 32 public theorems in the candidate modules have exact standard-axiom
-guards. The compiler-tail runner checks two additional complete modules without
-editing source. Declaration surfaces and complete generated inventories remain
+guards. The actual compiler-tail owning modules have also been checked. Declaration
+surfaces and complete generated inventories remain
 under the ignored review artifact directory.
 
 Verification passes: the ordinary build (5,767 jobs), all nineteen appendix

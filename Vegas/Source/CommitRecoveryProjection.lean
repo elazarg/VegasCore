@@ -48,14 +48,7 @@ theorem clear_step_source (state : CommitRecoveryState program) (clear : state.e
     (supported : next ∈ (state.step joint).support) (nextClear : next.excluded = ∅) :
     next.point ∈ (ProtocolState.step program state.point
       (fun who => (joint who).map (·.action))).support := by
-  obtain ⟨result, member, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp supported
-  have rawMember : result.1 ∈
-      (ProtocolState.recoveryStep program state.point state.excluded joint).support := by
-    rw [← map_val_pmfToSubtype
-      (ProtocolState.recoveryStep program state.point state.excluded joint)
-      (fun result supported => ProtocolState.recoveryStep_excluded_monotone program state.point
-        state.excluded joint result supported)]
-    exact (PMF.mem_support_map_iff _ _ _).mpr ⟨result, member, rfl⟩
+  obtain ⟨result, rawMember, rfl⟩ := state.step_raw_result joint next supported
   have resultClear : result.1.2 = ∅ := by
     simpa only [close_excluded, install] using nextClear
   have noFailure : ¬ (state.install result.1 result.2).NewFailure := by

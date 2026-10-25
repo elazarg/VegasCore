@@ -27,14 +27,7 @@ theorem step_control_lt (state : CommitRecoveryState program)
     (joint : Player → Option (CommitRecoveryMove Player L)) (next : CommitRecoveryState program)
     (running : ¬ ProtocolState.terminal program state.point)
     (supported : next ∈ (state.step joint).support) : state.control < next.control := by
-  obtain ⟨result, member, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp supported
-  have rawMember : result.1 ∈
-      (ProtocolState.recoveryStep program state.point state.excluded joint).support := by
-    rw [← map_val_pmfToSubtype
-      (ProtocolState.recoveryStep program state.point state.excluded joint)
-      (fun result supported => ProtocolState.recoveryStep_excluded_monotone program state.point
-        state.excluded joint result supported)]
-    exact (PMF.mem_support_map_iff _ _ _).mpr ⟨result, member, rfl⟩
+  obtain ⟨result, rawMember, rfl⟩ := state.step_raw_result joint next supported
   have consumed := ProtocolState.recoveryStep_remaining program state.point state.excluded joint
     result.1 running rawMember
   let after := state.install result.1 result.2

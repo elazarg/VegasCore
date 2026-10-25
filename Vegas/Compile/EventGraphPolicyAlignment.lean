@@ -106,13 +106,7 @@ private theorem compilePolicyTable_backtranslate_eq_normalized
         let tailRefs := refs.cons (name := name) (cell := .publicData _)
           (embedding.ref headIndex)
         have tailRefsBefore : ContextRefsBefore tailRefs tailEmbedding := by
-          intro readName cell source remaining
-          cases source with
-          | here =>
-              change (embedding.event headIndex).val <
-                (embedding.event (Fin.succ remaining)).val
-              exact embedding.strictMono (Fin.mk_lt_mk.mpr (Nat.zero_lt_succ _))
-          | there source => exact refsBefore source (Fin.succ remaining)
+          exact refsBefore.tail_cons next (by simp [eventCount]) (fun _ => rfl) _ rfl
         have tailActorEq : ∀ current,
             (toEventGraph whole).actor? (tailEmbedding.event current) =
               eventOwner? next current := by
@@ -207,13 +201,7 @@ private theorem compilePolicyTable_backtranslate_eq_normalized
         let tailRefs := refs.cons (name := name) (cell := .commitment owner _)
           (embedding.ref headIndex)
         have tailRefsBefore : ContextRefsBefore tailRefs tailEmbedding := by
-          intro readName cell source remaining
-          cases source with
-          | here =>
-              change (embedding.event headIndex).val <
-                (embedding.event (Fin.succ remaining)).val
-              exact embedding.strictMono (Fin.mk_lt_mk.mpr (Nat.zero_lt_succ _))
-          | there source => exact refsBefore source (Fin.succ remaining)
+          exact refsBefore.tail_cons next (by simp [eventCount]) (fun _ => rfl) _ rfl
         have tailActorEq : ∀ current,
             (toEventGraph whole).actor? (tailEmbedding.event current) =
               eventOwner? next current := by
@@ -315,13 +303,7 @@ private theorem compilePolicyTable_backtranslate_eq_normalized
         let tailEmbedding := embedding.tail next (by simp [eventCount]) (fun _ => rfl)
         let tailRefs := refs.cons (name := published) (cell := .publication _) resultRef
         have tailRefsBefore : ContextRefsBefore tailRefs tailEmbedding := by
-          intro readName cell source remaining
-          cases source with
-          | here =>
-              change (embedding.event headIndex).val <
-                (embedding.event (Fin.succ remaining)).val
-              exact embedding.strictMono (Fin.mk_lt_mk.mpr (Nat.zero_lt_succ _))
-          | there source => exact refsBefore source (Fin.succ remaining)
+          exact refsBefore.tail_cons next (by simp [eventCount]) (fun _ => rfl) _ rfl
         have tailActorEq : ∀ current,
             (toEventGraph whole).actor? (tailEmbedding.event current) =
               eventOwner? next current := by

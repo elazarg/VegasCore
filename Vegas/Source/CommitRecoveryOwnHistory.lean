@@ -173,14 +173,7 @@ theorem step_own_history {Γ : SourceCtx Player L} {O : Finset VarId}
       ProtocolState.history program state.point who ++ ((joint who).map (·.action)).toList := by
   have before : who ∉ state.excluded := fun excluded =>
     survives (state.step_excluded_monotone joint next supported excluded)
-  obtain ⟨result, reached, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp supported
-  have rawMember : result.1 ∈
-      (ProtocolState.recoveryStep program state.point state.excluded joint).support := by
-    rw [← map_val_pmfToSubtype
-      (ProtocolState.recoveryStep program state.point state.excluded joint)
-      (fun result supported => ProtocolState.recoveryStep_excluded_monotone
-        program state.point state.excluded joint result supported)]
-    exact (PMF.mem_support_map_iff _ _ _).mpr ⟨result, reached, rfl⟩
+  obtain ⟨result, rawMember, rfl⟩ := state.step_raw_result joint next supported
   rw [close_history]
   exact ProtocolState.recoveryStep_own_history who program state.point state.excluded joint
     legal before result.1 rawMember

@@ -145,6 +145,20 @@ def step (state : CommitRecoveryState program)
       state.excluded joint result supported)).map fun result =>
         (state.install result.1 result.2).close
 
+theorem step_raw_result (state : CommitRecoveryState program)
+    (joint : Player → Option (CommitRecoveryMove Player L)) (target : CommitRecoveryState program)
+    (supported : target ∈ (state.step joint).support) :
+    ∃ result : {result : ProtocolState program × Finset Player // state.excluded ⊆ result.2},
+      result.1 ∈ (ProtocolState.recoveryStep program state.point state.excluded joint).support ∧
+        target = (state.install result.1 result.2).close := by
+  obtain ⟨result, member, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp supported
+  refine ⟨result, ?_, rfl⟩
+  rw [← map_val_pmfToSubtype
+    (ProtocolState.recoveryStep program state.point state.excluded joint)
+    (fun result supported => ProtocolState.recoveryStep_excluded_monotone program state.point
+      state.excluded joint result supported)]
+  exact (PMF.mem_support_map_iff _ _ _).mpr ⟨result, member, rfl⟩
+
 theorem step_excluded_monotone (state : CommitRecoveryState program)
     (joint : Player → Option (CommitRecoveryMove Player L)) (next : CommitRecoveryState program)
     (supported : next ∈ (state.step joint).support) : state.excluded ⊆ next.excluded := by
@@ -187,14 +201,7 @@ theorem step_potential_lt [Fintype Player] (state : CommitRecoveryState program)
     (joint : Player → Option (CommitRecoveryMove Player L)) (next : CommitRecoveryState program)
     (running : ¬ ProtocolState.terminal program state.point)
     (supported : next ∈ (state.step joint).support) : next.potential < state.potential := by
-  obtain ⟨result, member, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp supported
-  have rawMember : result.1 ∈
-      (ProtocolState.recoveryStep program state.point state.excluded joint).support := by
-    rw [← map_val_pmfToSubtype
-      (ProtocolState.recoveryStep program state.point state.excluded joint)
-      (fun result supported => ProtocolState.recoveryStep_excluded_monotone program state.point
-        state.excluded joint result supported)]
-    exact (PMF.mem_support_map_iff _ _ _).mpr ⟨result, member, rfl⟩
+  obtain ⟨result, rawMember, rfl⟩ := state.step_raw_result joint next supported
   have consumed := ProtocolState.recoveryStep_remaining program state.point state.excluded joint
     result.1 running rawMember
   let after := state.install result.1 result.2

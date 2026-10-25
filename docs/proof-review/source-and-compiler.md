@@ -41,19 +41,12 @@ compile with the six replacements and the central strict options. They retain
 all original declaration statements. EventGraphLaw goes from 386 to 362 lines;
 EventGraphPolicyAlignment goes from 391 to 373. This is **42 fewer physical
 lines across the full two-module family**, with no added common API or imports.
-The candidates are not applied to production.
-
-Reproduce the complete checks after the ordinary build:
+The substitutions are integrated in the actual owners. Their declaration
+statements are unchanged, and both complete modules pass strict checking.
 
 ```powershell
-python scripts/experiments/compiler_tail_order_probe.py
+lake build Vegas.Compile.EventGraphLaw Vegas.Compile.EventGraphPolicyAlignment
 ```
-
-The experiment reads the real two source files, checks all three sites in each,
-and compiles the transformed full modules in a temporary directory. It does not
-edit project source or create a different game model. Confidence is high; the
-remaining implementation work is six substitutions and the normal owning/full
-builds.
 
 ## 2. Move the actual recovery-step eliminator to its lower owning layer
 

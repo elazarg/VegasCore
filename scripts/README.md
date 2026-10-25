@@ -42,8 +42,3 @@ in the [checked-probe appendix](../docs/proof-review/checked-probes.md) after th
 ordinary build. It uses the built central Lake setup and writes only temporary
 files. `--list` lists the experiments; `--probe NAME` checks a single one. This
 validates review statements without treating them as merged production APIs.
-
-`python scripts/experiments/compiler_tail_order_probe.py` checks six proposed
-uses of the existing compiler tail-order lemma in complete copies of the two
-actual consumer modules. It verifies that declaration surfaces agree and
-compiles with the central Lake setup, writing only temporary files.

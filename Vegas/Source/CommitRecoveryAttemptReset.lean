@@ -193,20 +193,6 @@ theorem close_eraseHistory_eq_of_failure (first second : CommitRecoveryState pro
       ProtocolState.withHistory_automaticCommitBlock, ProtocolState.withHistory_withHistory,
       saved, excluded, generation]
 
-theorem step_raw_result (state : CommitRecoveryState program)
-    (joint : Player → Option (CommitRecoveryMove Player L)) (target : CommitRecoveryState program)
-    (supported : target ∈ (state.step joint).support) :
-    ∃ result : {result : ProtocolState program × Finset Player // state.excluded ⊆ result.2},
-      result.1 ∈ (ProtocolState.recoveryStep program state.point state.excluded joint).support ∧
-        target = (state.install result.1 result.2).close := by
-  obtain ⟨result, member, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp supported
-  refine ⟨result, ?_, rfl⟩
-  rw [← map_val_pmfToSubtype
-    (ProtocolState.recoveryStep program state.point state.excluded joint)
-    (fun result supported => ProtocolState.recoveryStep_excluded_monotone program state.point
-      state.excluded joint result supported)]
-  exact (PMF.mem_support_map_iff _ _ _).mpr ⟨result, member, rfl⟩
-
 end CommitRecoveryState
 
 namespace Setup

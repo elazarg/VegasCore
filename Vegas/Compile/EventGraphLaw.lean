@@ -145,15 +145,7 @@ theorem runWith_option_law
       exact ih (afterSample profile)
         (refs.cons (embedding.ref headIndex)) revelations.weaken registry.weaken
         (embedding.tail next (by simp [eventCount]) (fun _ => rfl))
-        (by
-          intro readName cell source remaining
-          cases source with
-          | here =>
-              change (embedding.event headIndex).val <
-                (embedding.event (Fin.succ remaining)).val
-              apply embedding.strictMono
-              exact Fin.mk_lt_mk.mpr (Nat.zero_lt_succ _)
-          | there source => exact refsBefore source (Fin.succ remaining))
+        (refsBefore.tail_cons next (by simp [eventCount]) (fun _ => rfl) _ rfl)
         (offset + 1) tailAligned nextConfig nextPrefix
         (Env.cons value state)
         (ContextRefs.Agrees.cons refs state nextConfig.store oldRefs
@@ -248,15 +240,7 @@ theorem runWith_option_law
         (refs.cons (embedding.ref headIndex)) revelations.weaken
         (obligation :: registry.weaken)
         (embedding.tail next (by simp [eventCount]) (fun _ => rfl))
-        (by
-          intro readName cell source remaining
-          cases source with
-          | here =>
-              change (embedding.event headIndex).val <
-                (embedding.event (Fin.succ remaining)).val
-              apply embedding.strictMono
-              exact Fin.mk_lt_mk.mpr (Nat.zero_lt_succ _)
-          | there source => exact refsBefore source (Fin.succ remaining))
+        (refsBefore.tail_cons next (by simp [eventCount]) (fun _ => rfl) _ rfl)
         (offset + 1) tailAligned nextConfig nextPrefix
         (Env.cons binding state)
         (ContextRefs.Agrees.cons refs state nextConfig.store oldRefs
@@ -366,15 +350,7 @@ theorem runWith_option_law
         (refs.cons (embedding.ref headIndex))
         (revelations.reveal (published := published) selected) registry.weaken
         (embedding.tail next (by simp [eventCount]) (fun _ => rfl))
-        (by
-          intro readName cell source remaining
-          cases source with
-          | here =>
-              change (embedding.event headIndex).val <
-                (embedding.event (Fin.succ remaining)).val
-              apply embedding.strictMono
-              exact Fin.mk_lt_mk.mpr (Nat.zero_lt_succ _)
-          | there source => exact refsBefore source (Fin.succ remaining))
+        (refsBefore.tail_cons next (by simp [eventCount]) (fun _ => rfl) _ rfl)
         (offset + 1) tailAligned nextConfig nextPrefix
         (Env.cons accepted state)
         (ContextRefs.Agrees.cons refs state nextConfig.store oldRefs
