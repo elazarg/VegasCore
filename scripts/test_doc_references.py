@@ -11,6 +11,16 @@ SCRIPT = Path(__file__).with_name("check-doc-references.py").resolve()
 
 
 class DocReferenceTests(unittest.TestCase):
+    def run_markdown_checker(self, text):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "lakefile.toml").write_text("", encoding="utf-8")
+            (root / "README.md").write_text(text, encoding="utf-8")
+            subprocess.run(["git", "init", "-q", str(root)], check=True)
+            subprocess.run(["git", "-C", str(root), "add", "README.md"], check=True)
+            return subprocess.run([sys.executable, str(SCRIPT)], cwd=root,
+                                  capture_output=True, text=True)
+
     def run_checker(self, text, extra_files=None):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -232,6 +242,43 @@ class DocReferenceTests(unittest.TestCase):
         self.assertIn("missing local file `Vegas/Missing.lean`", result.stdout)
         self.assertNotIn("retiredResult", result.stdout)
         self.assertNotIn("Vegas/Retired.lean", result.stdout)
+
+    def test_pinned_external_lean_citations_are_nonlocal(self):
+        source = "https://github.com/elazarg/multitubes/blob/" + "a" * 40
+        result = self.run_markdown_checker(
+            f"[`Maths.Transport.external_result`]({source}/Maths/Transport.lean), "
+            f"[`Vegas/External.lean`]({source}/Examples/External.lean#L12).\n")
+        self.assertEqual(result.returncode, 0, result.stdout)
+
+    def test_external_link_does_not_exempt_adjacent_citations(self):
+        source = "https://github.com/elazarg/multitubes/blob/" + "a" * 40
+        result = self.run_markdown_checker(
+            f"[`Maths.Transport.linked_result`]({source}/Maths/Transport.lean). "
+            "`Maths.Transport.linked_result`, `Vegas.missingResult`, "
+            "`Vegas/Missing.lean`.\n")
+        self.assertNotEqual(result.returncode, 0)
+        for cited in ("Maths.Transport.linked_result", "Vegas.missingResult"):
+            self.assertIn(f"unknown Lean name `{cited}`", result.stdout)
+        self.assertEqual(result.stdout.count("unknown Lean name `Maths.Transport.linked_result`"), 1)
+        self.assertIn("missing local file `Vegas/Missing.lean`", result.stdout)
+
+    def test_only_full_commit_external_lean_links_are_exempt(self):
+        commit = "a" * 40
+        destinations = (
+            "https://github.com/elazarg/multitubes/blob/main/Maths/Transport.lean",
+            "https://github.com/elazarg/multitubes/blob/v4.35.0/Maths/Transport.lean",
+            "https://github.com/elazarg/multitubes/blob/a58f906/Maths/Transport.lean",
+            f"https://github.com/elazarg/VegasCore/blob/{commit}/Vegas/Transport.lean",
+            f"https://github.com/ELAZARG/vegascore/blob/{commit}/Vegas/Transport.lean",
+            f"https://github.com/elazarg/multitubes/blob/{commit}/README.md",
+            f"https://github.com.example/elazarg/multitubes/blob/{commit}/Maths/Transport.lean",
+        )
+        for destination in destinations:
+            with self.subTest(destination=destination):
+                result = self.run_markdown_checker(
+                    f"[`External.missing_result`]({destination}).\n")
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("unknown Lean name `External.missing_result`", result.stdout)
 
     def test_relative_markdown_links_resolve_from_source_directory(self):
         with tempfile.TemporaryDirectory() as directory:

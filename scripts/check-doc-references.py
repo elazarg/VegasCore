@@ -6,6 +6,10 @@ citations are resolved through the namespace at the citation site and explicit
 `open` commands; project-qualified citations fail closed. Unqualified
 snake_case and camelCase citations are accepted only when their short name is
 unique in the project index.
+
+Markdown links to external Lean sources pinned by full GitHub commit IDs are
+nonlocal citations: their labels are exempt from local resolution, not verified
+against the remote source.
 """
 
 from __future__ import annotations
@@ -68,6 +72,22 @@ MARKDOWN_LINK = re.compile(r"\[[^\]]*\]\(([^)]+)\)")
 # names the tagged declaration or file, not one in the current tree.
 RETIRED_TREE = "https://github.com/elazarg/VegasCore/blob/research-tree/"
 RETIRED_LINK = re.compile(r"\[[^\]]*\]\(" + re.escape(RETIRED_TREE) + r"[^)]*\)")
+PINNED_EXTERNAL_LEAN_LINK = re.compile(
+    r"\[[^\]]*\]\(https://github\.com/"
+    r"(?P<repository>[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)/blob/"
+    r"[0-9a-fA-F]{40}/[^\s)#?]+\.lean(?:#[^\s)]*)?\)"
+)
+
+
+def mask_nonlocal_citations(line: str) -> str:
+    """Exclude explicit external-source links without exempting bare names."""
+    line = RETIRED_LINK.sub(lambda link: " " * len(link.group()), line)
+    return PINNED_EXTERNAL_LEAN_LINK.sub(
+        lambda link: link.group()
+        if link.group("repository").lower() == "elazarg/vegascore"
+        else " " * len(link.group()),
+        line,
+    )
 
 # The source policy check owns the Lean lexer that blanks comments and strings.
 _SPEC = importlib.util.spec_from_file_location(
@@ -283,7 +303,7 @@ def markdown_findings(root: Path, index: NameIndex):
             continue
         relative_source = source.relative_to(root).as_posix()
         for number, line in enumerate(source.read_text(encoding="utf-8").splitlines(), 1):
-            line = RETIRED_LINK.sub(lambda link: " " * len(link.group()), line)
+            line = mask_nonlocal_citations(line)
             for cited in PROJECT_PATH.findall(line):
                 if not (root / cited).is_file():
                     findings.append((relative_source, number, cited, "file"))

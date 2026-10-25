@@ -44,7 +44,11 @@ belief-consistency construction separate from initialized outcome matching.
 The [SE-preservation research survey](../se-preservation-research-survey.md)
 connects information compression, continuation-gain equivalence, observation
 likelihoods, consistency certificates, and scheduler noninterference to the
-existing proof interfaces, with explicit limits on each proposed application.
+existing proof interfaces. It also examines Multitubes transport morphisms,
+UniformEquilibrium's quitting-game debt and finite Markov potentials, and
+rational certificate checkers. The proposals distinguish Multitubes theory
+and examples, GameTheory foundations, local protocol bridges, and Vegas
+implementations, with explicit package boundaries and missing hypotheses.
 
 Use papers, official protocol specifications or implementation documentation.
 Record the precise property supported: cryptographic confidentiality, finality,

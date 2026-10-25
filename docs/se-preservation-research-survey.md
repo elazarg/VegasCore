@@ -22,7 +22,7 @@ certificates for positive constructions and obstructions.
 | Quantitative game abstraction | Sharper error aggregation | Bounds at every required conditional information site |
 | Adapted probability | Compare information over time across runtimes | Player-specific information and unilateral-deviation compatibility |
 | Transport morphisms and sections | Compose local continuation comparisons across backends | Actual kernel comparisons on an adequate family of observables |
-| Affine debt transport and potentials | Replace uniform error counts with accumulated-charge bounds | Conditional bounds along the common perturbation sequence |
+| Affine debt transport and potentials | Replace uniform error counts with accumulated-charge bounds | Finite homogeneous encoding where needed; uniform conditional bounds along the common fully mixed assessment sequence |
 
 The mathematical connections below are separated from the
 [proposals by owner and kind](#proposals-by-owner-and-kind). In particular,
@@ -199,27 +199,19 @@ required limit. Nature's supported probabilities remain fixed.
 [Dilmé](https://doi.org/10.1007/s00182-023-00874-z),
 [Reny](https://doi.org/10.1007/s00182-026-00997-z).
 
-**Proposed application.** Build a finite certificate interface. A history's
-leading exponent is the sum of the exponents of its trembled actions.
-Histories with minimal exponent in an information set retain positive limiting
-belief; the leading coefficients determine their relative probabilities.
-Desired support therefore produces shared linear constraints on action
-exponents, with additional coefficient equations for the desired beliefs.
-
-For example, a proposed support pattern requiring
-
-\[
- k_a>k_b,\qquad k_b>k_c,\qquad k_c>k_a
-\]
-
-cannot be consistent. This illustrates a certificate shape, not a constructed
-counterexample in the runtime. More general infeasibility can be certified by
-linear separation. The pinned Mathlib has geometric Farkas machinery in
+**Proposed application.** Build a finite certificate interface for off-path
+belief supports and leading coefficients. The
+[finite-support construction below](#finite-certificates-for-power-sequence-supports)
+gives the shared exponent constraints and the remaining semantic obligations.
+The pinned Mathlib has geometric Farkas machinery in
 `Mathlib.Analysis.Convex.Cone.Dual` and
-`Mathlib.Analysis.Convex.Cone.InnerDual`. Multitubes supplies a direct
-finite-matrix theorem of the alternative and rational certificate checkers;
-the [connection below](#finite-certificates-for-power-sequence-supports)
-describes the remaining game-specific adapter.
+`Mathlib.Analysis.Convex.Cone.InnerDual`; a suitable finite-matrix adapter to
+that interface still needs investigation. An external alternative is
+[Multitubes' finite linear-programming library](https://github.com/elazarg/multitubes/blob/a58f90601d4133bed849a114c1c17bf7385f3196/Maths/LinearProgramming/FourierMotzkin.lean),
+with a direct theorem of the alternative and associated rational certificate
+checkers. Multitubes is not a VegasCore dependency: its
+[package requirements](#reuse-boundary) and a game-specific interpretation
+must be supplied before these results can be used here.
 
 This is useful for explicit off-path belief constructions and finite
 counterexample search. It does not preserve arbitrary extra constraints on a
@@ -264,8 +256,10 @@ equilibria, not a general SE-transfer theorem.
 **Proposed application.** Compare their aggregation with the runtime's stopped
 law, posterior, and payoff estimates. An event-sensitive or conditional
 reach-weighted bound may improve a uniform site-count multiplier. For SE,
-the required conditional estimate must remain valid at every site along the
-common fully mixed sequence; root-weighted regret alone is insufficient.
+the required conditional estimate must remain valid at every information site
+and for every deviation covered by the target theorem, along one common fully
+mixed assessment sequence. Root-weighted regret alone is insufficient:
+conditioning at rare sites can amplify a small unconditional error.
 
 Adapted probability treats a stochastic process together with its filtration.
 Equal process laws can yield different decision values when information is
@@ -288,9 +282,9 @@ the more immediate implementation surface.
 provides much of the algebra beneath continuation comparisons.
 [UniformEquilibrium](https://github.com/elazarg/UniformEquilibrium/tree/6a442b8fbc88a9b1232b8666084b0990d54fe6fb)
 contains concrete applications connecting that algebra to incentives. The
-claims about these libraries below are based on source inspection at these
-revisions, without an independent build or axiom audit. Their proposed
-applications to Vegas are not checked adapters or new preservation results.
+external results below have the hypotheses specified in the linked sources.
+Their proposed applications to Vegas require adapters; neither those adapters
+nor new preservation results are established by this survey.
 
 ### Continuation comparisons as transport morphisms
 
@@ -309,17 +303,24 @@ A probability kernel acts backward on observables:
 The
 [KernelTransport application](https://github.com/elazarg/multitubes/blob/a58f90601d4133bed849a114c1c17bf7385f3196/Applications/StochasticProcesses/StochasticProcesses/KernelTransport.lean)
 implements this as a transport on the reversed graph. Its
-isSection_iff_harmonic and isLaxSection_iff_superharmonic theorems identify
+[`StochasticProcesses.isSection_iff_harmonic`](https://github.com/elazarg/multitubes/blob/a58f90601d4133bed849a114c1c17bf7385f3196/Applications/StochasticProcesses/StochasticProcesses/KernelTransport.lean)
+and
+[`StochasticProcesses.isLaxSection_iff_superharmonic`](https://github.com/elazarg/multitubes/blob/a58f90601d4133bed849a114c1c17bf7385f3196/Applications/StochasticProcesses/StochasticProcesses/KernelTransport.lean)
+theorems identify
 harmonic families with exact sections and superharmonic families with lax
 sections. Walk transport agrees with expectation under the composed forward
 kernel.
 
 The generic
 [Morphism module](https://github.com/elazarg/multitubes/blob/a58f90601d4133bed849a114c1c17bf7385f3196/Maths/Multitubes/Morphism.lean)
-provides Maths.Transport.Hom.walkMap_naturality for exact comparisons and
-Maths.Transport.LaxHom.walkMap_le for one-sided comparisons under monotone
-edge maps. Maths.Transport.LaxHom.map_isLaxSection transports a lax section
-through a monotone lax morphism. These are reusable local-to-global rules.
+provides
+[`Maths.Transport.Hom.walkMap_naturality`](https://github.com/elazarg/multitubes/blob/a58f90601d4133bed849a114c1c17bf7385f3196/Maths/Multitubes/Morphism.lean)
+for exact comparisons and
+[`Maths.Transport.LaxHom.walkMap_le`](https://github.com/elazarg/multitubes/blob/a58f90601d4133bed849a114c1c17bf7385f3196/Maths/Multitubes/Morphism.lean)
+for one-sided comparisons under monotone edge maps.
+[`Maths.Transport.LaxHom.map_isLaxSection`](https://github.com/elazarg/multitubes/blob/a58f90601d4133bed849a114c1c17bf7385f3196/Maths/Multitubes/Morphism.lean)
+transports a lax section through a monotone lax morphism. These are reusable
+local-to-global rules.
 
 **Proposed application.** Use continuation observables as fibers and source
 versus runtime comparison maps as morphisms. The observable families could
@@ -347,14 +348,16 @@ of scalar type.
 
 UniformEquilibrium makes the incentive connection explicit in
 [TerminalSemanticDirectedTransport](https://github.com/elazarg/UniformEquilibrium/blob/6a442b8fbc88a9b1232b8666084b0990d54fe6fb/UniformEquilibrium/Diagnostics/Quitting/TerminalSemanticDirectedTransport.lean).
-For an exact prefix chain, a player's best-response debt satisfies
+For the module's finite-player quitting game and an exact semantic prefix
+chain, a player's best-response debt satisfies
 
 \[
  D_t=\delta_t+s_tD_{t+1},
 \]
 
 where \(\delta_t\) is the local defect and \(s_t\) is survival probability.
-QuittingTerminalSemanticPrefixChain.debt_isSection expresses this as an exact
+[`GameTheory.QuittingTerminalSemanticPrefixChain.debt_isSection`](https://github.com/elazarg/UniformEquilibrium/blob/6a442b8fbc88a9b1232b8666084b0990d54fe6fb/UniformEquilibrium/Diagnostics/Quitting/TerminalSemanticDirectedTransport.lean)
+expresses this as an exact
 section of a backward-time affine transport. Its finite telescope is
 
 \[
@@ -363,41 +366,64 @@ section of a backward-time affine transport. Its finite telescope is
 \]
 
 Thus local defects are weighted by the probability of reaching them. The
-module constructs such chains from literal behavioral profiles, not only
-abstract scalar sequences. A positive-debt return with survival loss must be
-paid by positive reached defect. The related
+module constructs such chains from literal behavioral profiles of that
+quitting game. These are not debt recursions for arbitrary stochastic games;
+a new client must establish its own incentive recurrence before applying the
+generic affine telescope. Within this quitting-game setting, a positive-debt
+return with survival loss must be paid by positive reached defect. The related
 [DebtTransportLaw](https://github.com/elazarg/UniformEquilibrium/blob/6a442b8fbc88a9b1232b8666084b0990d54fe6fb/UniformEquilibrium/Quitting/Debt/Dynamic/DebtTransportLaw.lean)
-uses reflected max-affine transport for finite dynamic debt under its
-residual-zero hypothesis, including a closed form and a classification of
-unchanged positive debt.
+uses reflected max-affine transport for quitting-game finite dynamic debt
+under its residual-zero hypothesis, including a closed form and a
+classification of unchanged positive debt.
 
 Another concrete consumer is
 [HarmonicFiniteCoupledPotentialLP](https://github.com/elazarg/UniformEquilibrium/blob/6a442b8fbc88a9b1232b8666084b0990d54fe6fb/MathUE/Probability/HarmonicFiniteCoupledPotentialLP.lean).
-A bounded nonnegative potential pays a nonnegative local charge when
+Its
+[`Math.Probability.BoundedCoupledPotential`](https://github.com/elazarg/UniformEquilibrium/blob/6a442b8fbc88a9b1232b8666084b0990d54fe6fb/MathUE/Probability/HarmonicFiniteCoupledPotentialLP.lean)
+uses a finite node type, one fixed time-homogeneous Markov kernel \(P\), and
+a fixed state charge \(c\). A bounded nonnegative potential pays that charge
+when
 
 \[
- c(h)+\mathbb E[H(h')\mid h]\le H(h),\qquad 0\le H\le B.
+ c(h)+\mathbb E_P[\Phi(h')\mid h]\le \Phi(h),\qquad 0\le\Phi\le B.
 \]
 
 Telescoping bounds every finite expected accumulated charge by \(B\).
-The module encodes the Bellman, lower-bound, and upper-bound inequalities as
-a finite linear system and derives a Farkas obstruction to existence of such
-a potential. The obstruction concerns the chosen potential bounds, not
+The theorem
+[`Math.Probability.finiteExpectedSpaceTimeMarkovVariation_le_of_boundedCoupledPotential`](https://github.com/elazarg/UniformEquilibrium/blob/6a442b8fbc88a9b1232b8666084b0990d54fe6fb/MathUE/Probability/HarmonicFiniteCoupledPotentialLP.lean)
+applies this to conditional absolute variations dominated by \(c\); the value
+observable may depend on time, but the kernel and charge do not. The module
+encodes the Bellman, lower-bound, and upper-bound inequalities as a finite
+linear system and derives a Farkas obstruction to existence of such a
+potential. The obstruction concerns the chosen potential bounds, not
 nonexistence of an equilibrium.
 
 **Proposed application.** A potential on stopped comparison states could
 replace a uniform number-of-opportunities times worst-error estimate with a
 bound reflecting where continuation errors actually occur. This could improve
 constants or broaden the runtime interface even when the proof is not shorter.
-For SE, the bound must apply at the required conditional information sites
-along the common perturbation sequence. An estimate averaged only from the
-initial state is insufficient; rare-site conditioning can amplify it.
+The runtime's history-dependent kernels also depend on the fully mixed
+approximation parameter \(\varepsilon\). Applying this finite theorem
+requires, for each \(\varepsilon\), a faithful finite state encoding with a
+homogeneous kernel and static charge. A sufficient finite summary or a finite
+time/history augmentation must be justified; arbitrary histories do not
+automatically give a finite carrier. The resulting bounds must satisfy the
+[conditional quantifiers above](#quantitative-abstraction-and-adapted-probability)
+with one error bound \(\eta(\varepsilon)\) tending to zero, uniformly over the
+sites and deviations required by the SE-limit consumer. Existence of a
+finite LP at each \(\varepsilon\) supplies neither this uniform control nor
+vanishing error. An extension to infinite carriers instead needs a new
+probabilistic theorem with its integration and stopping hypotheses.
 
 Multitubes also has a more general local affine comparison of the form
-\(E'\le b_e+a_eE\), with compatible radii
+\(E'\le b_e+a_eE\), with \(a_e\ge0\) and compatible radii
 \(b_e+a_er_s\le r_t\), in
 [SwitchedHybridControl.ErrorBounds](https://github.com/elazarg/multitubes/blob/a58f90601d4133bed849a114c1c17bf7385f3196/Applications/SwitchedHybridControl/SwitchedHybridControl/ErrorBounds.lean).
-ErrorComparison.walk_error_le propagates the bound along shared executions;
+The nonnegative-gain hypothesis is the
+[`SwitchedHybridControl.ErrorComparison.gain_nonneg`](https://github.com/elazarg/multitubes/blob/a58f90601d4133bed849a114c1c17bf7385f3196/Applications/SwitchedHybridControl/SwitchedHybridControl/ErrorBounds.lean)
+field: it is needed to propagate an upper radius bound.
+[`SwitchedHybridControl.ErrorComparison.walk_error_le`](https://github.com/elazarg/multitubes/blob/a58f90601d4133bed849a114c1c17bf7385f3196/Applications/SwitchedHybridControl/SwitchedHybridControl/ErrorBounds.lean)
+propagates the bound along shared executions;
 finite infeasible radius constraints admit sparse certificates. Instantiating
 the comparison with actual runtime continuation errors remains necessary.
 
@@ -405,17 +431,22 @@ the comparison with actual runtime continuation errors remains necessary.
 
 The
 [FourierMotzkin module](https://github.com/elazarg/multitubes/blob/a58f90601d4133bed849a114c1c17bf7385f3196/Maths/LinearProgramming/FourierMotzkin.lean)
-already provides Maths.LinearProgramming.theorem_of_alternative for finite
-weak linear inequalities over a linearly ordered field. It also provides
-exists_rowEval_pos_iff_not_hasBalancedCertificate, a strict homogeneous
-alternative. The
+provides
+[`Maths.LinearProgramming.theorem_of_alternative`](https://github.com/elazarg/multitubes/blob/a58f90601d4133bed849a114c1c17bf7385f3196/Maths/LinearProgramming/FourierMotzkin.lean)
+for finite weak linear inequalities over a linearly ordered field. It also
+provides
+[`Maths.LinearProgramming.exists_rowEval_pos_iff_not_hasBalancedCertificate`](https://github.com/elazarg/multitubes/blob/a58f90601d4133bed849a114c1c17bf7385f3196/Maths/LinearProgramming/FourierMotzkin.lean),
+a strict homogeneous alternative. The
 [CertificateCheck module](https://github.com/elazarg/multitubes/blob/a58f90601d4133bed849a114c1c17bf7385f3196/Maths/Multitubes/FiniteInequality/CertificateCheck.lean)
 connects executable rational checks to real feasibility and infeasibility,
-including not_realPotential_of_checkRationalCertificate. These supply a
-direct finite interface for the power-sequence proposal.
+including
+[`Maths.FiniteInequality.not_realPotential_of_checkRationalCertificate`](https://github.com/elazarg/multitubes/blob/a58f90601d4133bed849a114c1c17bf7385f3196/Maths/Multitubes/FiniteInequality/CertificateCheck.lean).
+These supply an external finite interface for the power-sequence proposal,
+subject to the [reuse boundary](#reuse-boundary).
 
-Let \(m_h\) count occurrences of zero-limit trembled actions along history
-\(h\). Its leading exponent is \(m_h\cdot k\). For each information set,
+Let \(m_h\) be the vector of occurrence counts of each zero-limit action along
+history \(h\), indexed by the same behavioral choices as the exponent vector
+\(k\). The history's leading exponent is \(m_h\cdot k\). For each information set,
 choose a history \(h_I\) assigned positive limiting belief. A proposed belief
 support requires
 
@@ -436,6 +467,10 @@ behavioral choice. The finite homogeneous strict inequalities can be
 normalized to margin one while retaining the equalities. Equalities can be
 encoded by two weak inequalities. A rational Farkas certificate can then
 rule out every real exponent vector satisfying this support pattern.
+
+For example, constraints \(k_a>k_b\), \(k_b>k_c\), and \(k_c>k_a\) sum to
+the contradiction \(0>0\). This illustrates a certificate shape, not a
+constructed counterexample in the runtime.
 
 **Proposed application.** Compile a candidate off-path support into this
 system and use the existing checker to certify a small obstruction. A
@@ -458,7 +493,8 @@ would require both \(x_t=x_r\) and \(x_t=x_r+1\), which is impossible.
 
 The library's
 [Exact module](https://github.com/elazarg/multitubes/blob/a58f90601d4133bed849a114c1c17bf7385f3196/Maths/Multitubes/Exact.lean)
-retains the needed hypotheses: walkMap_eq_of_trivialHolonomy_of_return
+retains the needed hypotheses:
+[`Maths.Transport.walkMap_eq_of_trivialHolonomy_of_return`](https://github.com/elazarg/multitubes/blob/a58f90601d4133bed849a114c1c17bf7385f3196/Maths/Multitubes/Exact.lean)
 requires a return walk, while the strongly connected corollary obtains those
 returns from connectivity. Its section theorem from a common holonomy fixed
 point requires suitable injective return maps.
@@ -470,14 +506,49 @@ that structural shortcut, not a counterexample to runtime SE preservation.
 
 ### Reuse boundary
 
-The cited standalone Multitubes revision uses Lean 4.35.0. The cited
-UniformEquilibrium revision uses Lean 4.34.0 and pins Multitubes revision
-`26622cefd5329d5b5545ad09e3678151bd61ba52` from its 4.34.0 version. VegasCore's
-toolchain is specified by [lean-toolchain](../lean-toolchain) and
-[lakefile.toml](../lakefile.toml); the inspected configuration uses 4.34.1.
-Direct reuse therefore requires dependency alignment and checking the selected
-APIs at the chosen pin. The standalone application's presence does not imply
-that it is available through UniformEquilibrium's older dependency.
+There are separate package, dependency, and semantic boundaries:
+
+- **Application packages.** The
+  [Multitubes root package](https://github.com/elazarg/multitubes/blob/a58f90601d4133bed849a114c1c17bf7385f3196/lakefile.toml)
+  provides the Maths libraries. The
+  [StochasticProcesses package](https://github.com/elazarg/multitubes/blob/a58f90601d4133bed849a114c1c17bf7385f3196/Applications/StochasticProcesses/lakefile.toml)
+  and
+  [SwitchedHybridControl package](https://github.com/elazarg/multitubes/blob/a58f90601d4133bed849a114c1c17bf7385f3196/Applications/SwitchedHybridControl/lakefile.toml)
+  have their own lakefiles and depend on the root package. Requiring `maths`
+  does not pull in either application; matching its revision cannot make
+  their modules importable. Reusing those modules needs an explicit dependency
+  on the application package and a compatible package layout. For production
+  clients, prefer a justified extraction into the theory plus a local semantic
+  adapter over a dependency on an example's models.
+- **Shared package identities.**
+  [UniformEquilibrium's configuration](https://github.com/elazarg/UniformEquilibrium/blob/6a442b8fbc88a9b1232b8666084b0990d54fe6fb/lakefile.lean)
+  and [VegasCore's configuration](../lakefile.toml) both require a package
+  named `GameTheory`. UniformEquilibrium's
+  [submodule revision](https://github.com/elazarg/GameTheory/tree/e1aff265355a3383b9cba963259470e596a85c9c)
+  is distinct from the [GameTheory dependency here](../GameTheory/lakefile.lean).
+  Lake requires package names to be unique in the dependency graph; adding
+  UniformEquilibrium would use a single resolved GameTheory package, not
+  provide its own isolated copy. With VegasCore's direct dependency retained,
+  UniformEquilibrium's APIs would need to work against that copy.
+  [Lake dependency specification](https://lean-lang.org/doc/api/Lake/Config/Dependency.html).
+- **Toolchain and transitive pins.** The cited Multitubes and UniformEquilibrium
+  sources select different Lean and Mathlib releases; UniformEquilibrium's
+  [manifest](https://github.com/elazarg/UniformEquilibrium/blob/6a442b8fbc88a9b1232b8666084b0990d54fe6fb/lake-manifest.json)
+  pins `maths` to `26622cefd5329d5b5545ad09e3678151bd61ba52`, rather than the
+  standalone revision cited above. VegasCore's selected versions are recorded
+  in [lean-toolchain](../lean-toolchain), [lakefile.toml](../lakefile.toml), and
+  [lake-manifest.json](../lake-manifest.json). Multitubes also requires
+  `fixed-point-theorems`; VegasCore already inherits that package through
+  GameTheory, with a different pin. All shared pins must be reconciled and the
+  relevant modules checked against the resulting single dependency graph.
+- **Semantic adapters.** Compatible builds would still leave the signed
+  expectation, quitting-game incentive, finite-state, and uniform-limit
+  obligations described above. Importing UniformEquilibrium wholesale is not
+  an automatic bridge from its examples to Vegas preservation.
+
+External declaration citations link to full GitHub commit IDs. The local
+documentation checker exempts the labels of those external Lean-source links
+from local name resolution; it does not verify the external declarations.
 
 ## Proposals by owner and kind
 
@@ -529,7 +600,9 @@ mixed-section machinery. Moving a proof or supplying a convenient
 specialization is a refactor; a weaker-hypothesis or stronger conclusion is
 a separate mathematical addition.
 
-For example, the abstract part of ErrorComparison concerns arbitrary pairs
+For example, the abstract part of
+[`SwitchedHybridControl.ErrorComparison`](https://github.com/elazarg/multitubes/blob/a58f90601d4133bed849a114c1c17bf7385f3196/Applications/SwitchedHybridControl/SwitchedHybridControl/ErrorBounds.lean)
+concerns arbitrary pairs
 of transports and an affine scalar error law. It is a candidate for a shared
 theory interface if multiple clients need it. Its concrete switched-system
 models remain examples. This is an ownership proposal, not evidence that
@@ -542,7 +615,7 @@ extracting another interface will shorten the clients.
   agreeing on selected continuation observables but differing as distributions
   would illustrate the value-equivalence boundary.
 - An accumulated-charge example using a stopped kernel and a potential
-  satisfying \(c+PH\le H\). Include a rare-event case where an unconditional
+  satisfying \(c+P\Phi\le\Phi\). Include a rare-event case where an unconditional
   small error becomes large after conditioning. The example should show both
   the useful estimate and why it is insufficient for every information site.
 - A rational certificate for a contradictory finite exponent system, and the
@@ -610,7 +683,7 @@ state its strategy quantifiers, permitted information loss, and whether it
 preserves expected payoff profiles or the stronger selected joint law. The
 published USI result does not already supply the latter guarantee. Neither
 this theorem nor the full power-sequence characterization is claimed to be
-present in the inspected protocol interfaces.
+present in the protocol interfaces listed here.
 
 ### GameTheoryExtensions: the bridge and quantitative refinement
 
@@ -630,12 +703,14 @@ Its existing theorem bounds the difference of two stopped continuation
 expectations by \(2B\delta\,d(h)\), using payoff bound \(B\), uniform step-TV
 error \(\delta\), and decreasing depth \(d\). A generalized theorem would
 accept a state-dependent local error \(c(h)\) and a nonnegative potential
-\(H\) satisfying \(c+PH\le H\). It must retain the stopping and invariant
+\(\Phi\) satisfying \(c+P\Phi\le\Phi\). It must retain the stopping and invariant
 region conditions, require integrability of the terms being averaged, and
 bound the terminal comparison error by the potential. The current depth
 estimate should then be a specialization
-with \(H(h)=2B\delta\,d(h)\). This separates the new stronger estimate from
-the possible refactor of the old proof.
+with \(\Phi(h)=2B\delta\,d(h)\). This separates the new stronger estimate from
+the possible refactor of the old proof. The finite homogeneous potential LP
+above does not already supply this generalization on arbitrary history
+carriers or its uniform control across the fully mixed assessment sequence.
 
 The corresponding **bridge additions** identify kernel pullback with the
 existing continuation runner and connect observable comparisons to gains at
@@ -670,8 +745,8 @@ must establish whichever of these premises its route uses:
   comparisons. Observable clocks, receipts, and traffic cannot disappear by
   choosing a smaller graph.
 - The local charge, potential, or comparison error with the quantifiers
-  required by the common perturbation sequence, including rare information
-  sites.
+  required by the common fully mixed assessment sequence, including rare
+  information sites.
 - Compatibility with the initialized joint readout/payoff law and the
   existing consistency construction.
 
@@ -704,9 +779,8 @@ Measure complete dependency cost, hypothesis strength, off-path and deviation
 coverage, and preservation of the initialized joint law. Record existing API
 reuse separately from new theorems and concrete adapters. Retain a current
 proof when an alternative merely renames its premises or moves comparable
-complexity into an unused framework. Source inspection supports these
-proposals; proof-size reductions and stronger runtime guarantees require
-checked implementations and actual consumers.
+complexity into an unused framework. Proof-size reductions and stronger
+runtime guarantees require checked implementations and actual consumers.
 
 ## Bibliography keys
 
@@ -725,3 +799,5 @@ application has been formalized.
 | `PopescuHoelzl2014AFP` | Probabilistic Noninterference |
 | `KroerSandholm2016` | Imperfect-Recall Abstractions with Bounds in Games |
 | `BeiglboeckPflueglSchrott2024` | A Probabilistic View on the Adapted Wasserstein Distance |
+| `MultitubesRepo2026` | Multitubes: transport and constraints on directed graphs |
+| `UniformEquilibriumRepo2026` | UniformEquilibrium: formal research on uniform equilibria in stochastic games |
