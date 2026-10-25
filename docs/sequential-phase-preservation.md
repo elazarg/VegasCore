@@ -142,45 +142,84 @@ out or silently assumed positive.
 These are supporting theorems. They do not prove the target preservation theorem
 or close an arbitrary-builder checklist obligation.
 
-## Information and continuation obligations
+## Execution, beliefs and continuation values
 
-The phase observation contains retired public snapshots, including their past
-clocks. The forced-exit observation exposes the current recovery state and own
-recall. Forgetting phase metadata gives a candidate local projection; reconstructing
-all phase information from the old input requires a separate proof. Final-state
-equality does not supply it.
+The actual transition comparison now includes both player responses and environment
+steps, with length-preserving legal traces in both directions before exclusion.
+[SequentialPhaseTransition](../Vegas/Game/SequentialPhaseTransition.lean) retains
+the first exclusion endpoint; it does not identify the richer continuations after
+that endpoint. The
+[reverse clear lift](../Vegas/Game/SequentialPhaseClearLift.lean) constructs a
+genuine canonical phase prefix from a counted recovery prefix. The
+[choice equivalence](../Vegas/Game/SequentialPhaseChoiceEquivalence.lean) identifies
+actual typed callbacks there. Source/native finite nature is
+[derived from phase finite nature](../Vegas/Game/SequentialPhaseFiniteNature.lean).
 
-The existing recovery construction offers a more flexible seam: after any public
-exclusion every remaining player's decision agent belongs to a free completion
-pool. A phase proof can therefore try to reproduce the source comparisons on
-clear inputs and complete the richer post-exclusion game rationally. It must use
-one common fully mixed approximation and its Bayes-consistent limit, rather than
-selecting unrelated best responses at separate information sets.
+The phase archive contains retired public snapshots and clocks. Clear inputs
+have a checked inverse using the player's own information. After exclusion,
+remaining decision agents belong to free completion pools. Their continuations
+must be optimized in the actual phase game, retaining its richer information.
+
+[SequentialPhaseCompletion](../Vegas/Game/SequentialPhaseCompletion.lean) constructs
+one common fully mixed sequence of actual phase assessments, its Bayes beliefs,
+and a consistent subsequential limit. It proves pooled optimality at every
+approximation and arbitrary local-law optimality at free sites in the limit.
+[The recovery comparison](../Vegas/Game/SequentialPhaseRecoveryComparison.lean)
+constructs a global fully mixed recovery sequence that agrees with the phase
+component mixtures at clear played inputs. Its choices after exclusion are
+arbitrary; recovery optimality of those choices is neither assumed nor proved.
+
+[SequentialPhaseStoppedLaw](../Vegas/Game/SequentialPhaseStoppedLaw.lean) proves
+exact stopped-state law transport before exclusion or a supplied physical-state
+guard, for actual phase menus included in the counted menu. The generic
+[StoppedBayes](../GameTheoryExtensions/Analysis/Protocol/StoppedBayes.lean) theorem
+recovers a site's Bayes state posterior from its first-passage law, including the
+corresponding information-mass identity. The
+[phase application](../Vegas/Game/SequentialPhaseBayesState.lean) constructs a
+real recovery information site, derives its positivity from phase-site positivity,
+and proves equality of the full physical-state Bayes laws. This comparison uses
+the decoded raw recovery policy.
+[SequentialPhaseComparisonPolicy](../Vegas/Game/SequentialPhaseComparisonPolicy.lean)
+proves its exact agreement with the embedded canonical comparison at every
+actual clear recovery history, including inactive players. [SequentialPhaseComparisonStopped](../Vegas/Game/SequentialPhaseComparisonStopped.lean)
+carries the stopped physical-state laws through that agreement, directly between
+the actual phase component assembly and bounded recovery comparison, from any
+matched history pair.
+[SequentialPhaseComparisonBayes](../Vegas/Game/SequentialPhaseComparisonBayes.lean)
+proves the resulting physical-state posterior equality for the actual phase and
+bounded recovery comparison policies at the positive factory scales. It
+constructs the old decision site and derives its positivity, rather than adding
+a separate old-site assumption.
+
+The original terminal utility is preserved.
+[PhaseTerminalFailure](../Vegas/Game/PhaseTerminalFailure.lean) proves that a failed
+program reveal in a decoded terminal readout implies actual exclusion of its
+owner, and equates the existing phase and recovery base payoffs under the actual
+failure-coverage invariant. The compiler supplies the reveal's owned-output
+provenance. Inherited publication cells are not confused with program reveals.
+[SequentialPhaseDecodedDebt](../Vegas/Game/SequentialPhaseDecodedDebt.lean) proves
+that latent own source debt remains absorbing and yields the exclusion payoff
+under every whole-policy continuation satisfying the actual completion contract.
+This handles debt before it becomes public exclusion, without changing utility.
 
 The remaining obligations are:
 
-1. Combine the checked callback-menu comparisons and private-alias extension
-   inside the actual history construction. Reverse admission uses a paired genuine
-   native prefix; that prefix must be constructed by the induction. The canonical
-   recovery menu and phase raw count-filtered menu are related through the
-   operational normalizer rather than treated as identical.
-2. Construct the matched builder and actual reactive history or stopped-law
-   comparison, including packet observations, own recall and source initialization.
-   The checked physical kernels do not by themselves supply a scheduler or a
-   legal cross-contract trace. Derive the needed service guards with their
-   actual history quantifiers.
-3. Instantiate one common fully mixed completion on the phase game and prove its
-   clear-input Bayes and continuation-gain comparisons. Complete post-exclusion
-   decisions rationally using their actual richer information. The absence of
-   exclusion in the limiting recovery equilibrium does not justify deleting
-   off-path archive information or choosing unrelated belief limits. In particular,
-   latent own source debt must retain its exclusion payoff through every
-   continuation. An already-excluded player's constant-payoff theorem does not
-   establish this: the recovery proof also uses failed-source-readout valuation.
-   Prove the phase payoff compatibility or actual exclusion consequence explicitly;
-   changing phase terminal utility would change the target.
-4. Apply the existing phase one-packet-to-raw SE extension to recover audited
-   settlement and the joint law. No isomorphism of all raw actions is required.
+1. Instantiate the native comparison factory and transport the source/native
+   continuation estimates through the checked stopped laws and Bayes state
+   comparison. Actual history and menu legality must remain explicit.
+2. Derive the existing native continuation estimates from pointwise phase service
+   facts at genuine counted predecessors. The phase and recovery contracts do
+   not imply an unrestricted raw-history contract equivalence.
+3. Prove the forced and keyed local continuation-gain comparisons for the actual
+   phase completion, using the original payoff bounds and a vanishing error for
+   foreign failure. Own latent debt has its checked constant-payoff treatment.
+   Apply the existing common-limit comparison machinery to prove SE.
+4. Recover the intended joint readout/payoff law and apply the existing phase
+   one-packet-to-raw SE extension, retaining the multiplicative funding condition
+   and audited settlement conclusion.
+
+These supporting theorems do not yet prove the target preservation theorem or
+close an arbitrary-builder checklist obligation.
 
 ## Service and emission boundaries
 

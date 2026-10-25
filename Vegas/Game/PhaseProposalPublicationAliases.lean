@@ -2,10 +2,9 @@
 
 import Vegas.Game.PhaseProposalUnflagged
 import Vegas.Game.PhaseExclusionPayoff
-import Vegas.Game.PhaseCountServiceAliases
 import Interaction.ReactiveResponseEvaluation
 import Interaction.ReactiveAliasLaw
-import Vegas.Pending.PhaseResponseNormalization
+import Vegas.Pending.PhaseResponseAliases
 
 /-! # Literal opening aliases and their actual physical continuations -/
 
@@ -86,8 +85,8 @@ theorem phaseProposalUnflagged_normalized_continuation
     (initial : PMF (app).State) (horizon : Nat) (scheduler : (app).Scheduler)
     (fuel : Nat) (current : ((menu).protocol initial horizon scheduler).History) :
     let normal := PhaseCount.normalization runtime leaks
-    let stable := fun who past view => phaseCountService_actions_normal_recall setup mode runtime
-      leaks bounds normal who who past view
+    let stable := fun who past view => PhaseCount.onePacketActions_recall runtime leaks bounds
+      normal who who past view
     let players := phaseProposalUnflaggedPolicy setup mode runtime leaks bounds plan values
     let native := fun who => (menu).restrictPolicy initial horizon scheduler who (players who)
     let projected := fun who => (normal.menu menu).restrictPolicy initial horizon scheduler who
@@ -130,8 +129,7 @@ theorem phaseProposalUnflagged_normalized_continuation
         have unchanged : players who (normal.recall who past) view = players who past view :=
           phaseProposalUnflaggedPolicy_congr_input setup mode runtime leaks bounds plan values
             who _ _ view (normal.recall_outputs who past)
-              (phaseCountService_submissionCount_normal_recall setup mode runtime leaks normal
-                who past)
+              (normal.recall_submissionCount who past)
         rw [unchanged]
         simp only [PMF.map_comp, Function.comp_def,
           ReactiveApplication.SubmissionNormalization.optionChoice,
@@ -252,8 +250,8 @@ theorem phaseProposalUnflagged_normalized_finish
         (fun who past view => (players who past view).map (normal.action who past view))
           (normal.state current.state) := by
   intro normal players
-  let stable := fun who past view => phaseCountService_actions_normal_recall setup mode runtime
-    leaks bounds normal who who past view
+  let stable := fun who past view => PhaseCount.onePacketActions_recall runtime leaks bounds
+    normal who who past view
   let native := fun who => (menu).restrictPolicy initial horizon scheduler who (players who)
   let projected := fun who => (normal.menu menu).restrictPolicy initial horizon scheduler who
     (fun past view => (players who past view).map (normal.action who past view))

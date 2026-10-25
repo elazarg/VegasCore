@@ -2044,3 +2044,93 @@ open Vegas.EventGraphRuntime.SequentialPhaseSchedulerInformation in
 #guard_msgs (whitespace := lax) in
 open Vegas in
 #print axioms phase_onePacket_mem_of_recovery_paired_history
+
+/-- info: 'GameTheory.Protocol.InformationModel.bayesBelief_eq_stopped_fiber_map' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open GameTheory.Protocol.InformationModel in
+#print axioms bayesBelief_eq_stopped_fiber_map
+
+/-- info: 'GameTheory.Protocol.InformationModel.runBehavioralUntil_map_eq_of_step_maps' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open GameTheory.Protocol.InformationModel in
+#print axioms runBehavioralUntil_map_eq_of_step_maps
+
+/-- info: 'Interaction.ReactiveApplication.ResponseMenu.decision_predecessor' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Interaction.ReactiveApplication.ResponseMenu in
+#print axioms decision_predecessor
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseRecoveryProjection.transition_projected_clear_history' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.EventGraphRuntime.PhaseRecoveryProjection in
+#print axioms transition_projected_clear_history
+
+/-- info: 'Vegas.exists_canonical_phase_of_clear_recovery_trace' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas in
+#print axioms exists_canonical_phase_of_clear_recovery_trace
+
+/-- info: 'Vegas.phaseExclusionBase_eq_recoveryExclusionBase' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas in
+#print axioms phaseExclusionBase_eq_recoveryExclusionBase
+
+/-- info: 'Vegas.phase_owesFailure_expected_payoff' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas in
+#print axioms phase_owesFailure_expected_payoff
+
+/-- info: 'Vegas.SequentialPhase.exists_consistent_completion' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.SequentialPhase in
+#print axioms exists_consistent_completion
+
+/-- info: 'Vegas.SequentialPhase.recoveryComparisonStrategy_at_clear' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.SequentialPhase in
+#print axioms recoveryComparisonStrategy_at_clear
+
+/-- info: 'Vegas.EventGraphRuntime.SequentialPhaseRecoveryPolicy.exists_recovery_site_bayes_state_eq' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.EventGraphRuntime.SequentialPhaseRecoveryPolicy in
+#print axioms exists_recovery_site_bayes_state_eq
+
+/-- info: 'Vegas.phase_firstActivation_inclusionFits' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas in
+#print axioms phase_firstActivation_inclusionFits
+
+/-- info: 'Vegas.phase_prescribed_packet_settles' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas in
+#print axioms phase_prescribed_packet_settles
+
+/-- info: 'Vegas.SequentialPhase.comparisonPolicy_history' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.SequentialPhase in
+#print axioms comparisonPolicy_history
+
+/-- info: 'Vegas.SequentialPhase.component_comparison_run_until_exclusion_or_guard_map_state' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.SequentialPhase in
+#print axioms component_comparison_run_until_exclusion_or_guard_map_state
+
+/-- info: 'Vegas.SequentialPhase.component_comparison_bayes_state_eq' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.SequentialPhase in
+#print axioms component_comparison_bayes_state_eq

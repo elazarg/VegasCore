@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.SequentialPhaseDrain
+import Vegas.Game.SequentialPhaseSettlement
 import Vegas.Game.SequentialPhaseExpiry
 import Vegas.Pending.PhaseSingletonTransition
 import Vegas.Pending.PhaseCheckpointExclusion
@@ -68,32 +68,6 @@ private theorem expire_completed_native (runtime : EventGraphRuntime graph)
     exact (unfinished completed).elim
 
 namespace PhaseRuntimeState
-
-private theorem settle_current_noncommit_singleton
-    (phase : RuntimePhase graph.sequentialize) (remaining : List (RuntimePhase graph.sequentialize))
-    (generation : Nat) (entry current : RecoveryState graph.sequentialize)
-    (retired : List (RetiredCommitAttempt graph.sequentialize))
-    (frontier : Frontier (⟨phase :: remaining, generation, entry, current, retired⟩ :
-      PhaseRuntimeState graph.sequentialize))
-    (event : graph.EventId) (only : phase.events = {event})
-    (completed : event ∈ current.native.config.cut.completed)
-    (kind : phase.kind ≠ .commitment) :
-    (settle (phase :: remaining) generation entry current retired).current = current.drain := by
-  have drained := phase.drain_eq_of_singleton_completed current event only completed
-  have finished : phase.Finished current := by
-    intro other inside
-    have same := Finset.mem_singleton.mp ((Finset.ext_iff.mp only _).mp inside)
-    subst other
-    exact completed
-  have high := phase.finished_prefix current frontier.positioned.2 finished
-  have tail := positioned_next phase remaining current frontier.adjacent frontier.last high
-  have clean : ¬ (phase.kind = .commitment ∧
-      (((phase.drain current).excluded \ entry.excluded) ∩ phase.owners).Nonempty) :=
-    fun failed => kind failed.1
-  rw [settle_clean phase remaining generation entry current retired
-    (by rwa [drained]) clean, drained]
-  exact settle_current_eq_drain_sequential remaining generation current current retired rfl
-    ⟨tail.adjacent, tail.last, tail.positioned⟩
 
 private theorem normalize_environment_current_sequential
     (runtime : EventGraphRuntime graph.sequentialize)
@@ -200,7 +174,8 @@ private theorem normalize_environment_current_sequential
                 aligned.1 aligned.2
             · change (settle (phase :: remaining) state.generation state.entry after
                 state.retired).current = after.drain
-              exact settle_current_noncommit_singleton phase remaining state.generation state.entry
+              exact settle_current_noncommit_singleton_eq_drain_sequential phase remaining
+                state.generation state.entry
                 after state.retired (by simpa only [phases] using nextFrontier) event only
                 newly.2 kind
 

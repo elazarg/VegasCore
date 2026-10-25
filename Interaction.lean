@@ -136,3 +136,5 @@ import Interaction.ReactiveAuditContinuation
 import Interaction.ReactiveNormalSubmissionCount
 import Interaction.ReactiveRecordedEnvironment
 import Interaction.MessageNetworkMapOperations
+import Interaction.MessageNetworkMapLearn
+import Interaction.ReactiveDecisionPredecessor

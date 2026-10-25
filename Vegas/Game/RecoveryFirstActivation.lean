@@ -2,7 +2,7 @@
 
 import Vegas.Game.OnePacketFirstActivation
 import Vegas.Pending.ExclusionService
-import Vegas.Pending.ReactiveOwnerOpportunity
+import Vegas.Pending.ReactiveFirstOpportunity
 
 /-! # Timely first activations before actual recovery exclusion -/
 
@@ -39,7 +39,9 @@ theorem recovery_firstActivation_inclusionFits
     (never : ∀ entry ∈ execution.recall who, ¬ ActivatedAt setup leaks who event entry) :
     execution.application.publicView.InclusionFitsDeadline (runtime setup) bound event := by
   let nativeScheduler := RecoveryProjection.nativeScheduler (runtime setup) leaks scheduler
-  obtain ⟨previous, ⟨previousTrace⟩, applicationEq, recallEq⟩ := decision_predecessor trace current
+  obtain ⟨previous, ⟨previousTrace⟩, applicationEq, recallEq⟩ :=
+    (application setup leaks).decision_predecessor (initialLaw setup) horizon nativeScheduler
+      trace current
   have spec := PublicView.ownTurn?_spec _ who event turn
   have ready := (execution.application.publicView_eventReady event).mp spec.1
   have strategic : ((graph setup).actor? event).isSome = true := by rw [spec.2]; rfl
@@ -47,10 +49,6 @@ theorem recovery_firstActivation_inclusionFits
     previousTrace).1
   rw [applicationEq] at invariant
   obtain ⟨entered, activated⟩ := invariant.activatedAt_eq_some_of_ready_actor event ready strategic
-  apply PublicView.inclusionFitsDeadline_of_response_delay (runtime setup) delay bound timely _
-    event entered strategic activated
-  by_contra late
-  push Not at late
   have previousClear : ExclusionEvidence 0 ∅
       (⟨previous.application, ∅⟩ : RecoveryState (graph setup)) := by
     rw [applicationEq]
@@ -59,26 +57,12 @@ theorem recovery_firstActivation_inclusionFits
   rw [← nativeLaw] at actualTrace
   have actual := Recovery.Opportunity.clear_native (runtime setup) leaks initialized opportunity
     ⟨remaining + 1, none, previous⟩ actualTrace previousClear
-  have since := actual event who entered spec.2 (by rw [applicationEq]; exact spec.1)
-    (by rw [applicationEq]; exact activated) (by rw [applicationEq]; exact late)
-  obtain ⟨activation, recorded, commandEq, _entered, readyBefore⟩ := since
-  obtain ⟨before, _, _, response, member, viewed, publicEqual⟩ :=
-    (runtime setup).activated_owner_response_prefix leaks (initialLaw setup) horizon nativeScheduler
-      ⟨remaining + 1, none, previous⟩ previousTrace rfl activation recorded who commandEq
-  have publicState :
-      before.execution.application.publicView = activation.beforeView.application := by
-    simpa only [viewed, ReactiveApplication.Execution.observe, reactiveApplication,
-      State.playerView]
-      using publicEqual
-  have beforeTurn : before.execution.application.publicView.ownTurn? who = some event := by
-    apply PublicView.ownTurn?_of_ownTurn
-    apply State.ownTurn_of_ready _ (serviceGraph_revealRelaxedOrdered setup .sequential) who event
-    · rw [publicState]
-      exact readyBefore
-    · exact spec.2
-  apply never response (recallEq ▸ member)
-  change response.beforeView.application.publicView.ownTurn? who = some event
-  rw [viewed]
-  exact beforeTurn
+  have fits := inclusionFitsDeadline_of_unrecalled_turn (runtime setup) leaks (initialLaw setup)
+    horizon nativeScheduler (serviceGraph_revealRelaxedOrdered setup .sequential)
+    ⟨remaining + 1, none, previous⟩ previousTrace rfl delay bound timely actual event who spec.2
+    (by rw [applicationEq]; exact spec.1) entered (by rw [applicationEq]; exact activated)
+    (fun entry remembered => never entry (recallEq ▸ remembered))
+  change previous.application.publicView.InclusionFitsDeadline (runtime setup) bound event at fits
+  rwa [applicationEq] at fits
 
 end Vegas

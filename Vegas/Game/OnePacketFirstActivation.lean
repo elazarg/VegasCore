@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.OnePacketCanonicalAcceptance
+import Interaction.ReactiveDecisionPredecessor
 
 /-! # Recorded response entries
 
@@ -9,7 +10,7 @@ A response appends one entry to its author's recall
 (`Vegas.recordsEntry_transition`): at every later history the author's recall
 splits around it (`Vegas.RecordsEntry`). A decision state is reached from an
 idle state by activating its actor, which changes neither the application state
-nor any recall (`Vegas.decision_predecessor`).
+nor any recall (`Interaction.ReactiveApplication.decision_predecessor`).
 -/
 
 noncomputable section
@@ -83,47 +84,6 @@ theorem recordsEntry_transition (who : Player) (entry : (application setup leaks
       rw [← retained, split]
       simp only [List.append_assoc, List.cons_append]
 
-
-/-- A decision state is reached from an idle state by activating its actor,
-which changes neither the application state nor any recall. -/
-theorem decision_predecessor {horizon : Nat} {scheduler : (application setup leaks).Scheduler}
-    {state : (application setup leaks).ProtocolState}
-    (trace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
-      state)
-    {remaining : Nat} {who : Player} {execution : (application setup leaks).Execution}
-    (current : state = some ⟨remaining, some who, execution⟩) :
-    ∃ previous : (application setup leaks).Execution,
-      Nonempty (((application setup leaks).protocol (initialLaw setup) horizon
-        scheduler).Trace (some ⟨remaining + 1, none, previous⟩)) ∧
-      previous.application = execution.application ∧ previous.recall = execution.recall := by
-  match state, trace, current with
-  | _, .start, current => cases current
-  | _, .extend (source := before) prior joint _ realized, current =>
-      subst current
-      cases before with
-      | none =>
-          obtain ⟨_, _, same⟩ := PMF.support_map .. ▸ realized
-          cases same
-      | some control =>
-          rcases control with ⟨priorRemaining, actor, priorExecution⟩
-          cases actor with
-          | some responder => cases (PMF.mem_support_pure_iff _ _).mp realized
-          | none =>
-              cases priorRemaining with
-              | zero => cases (PMF.mem_support_pure_iff _ _).mp realized
-              | succ priorRemaining =>
-                  obtain ⟨command, _, moved⟩ :=
-                    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ realized)
-                  obtain ⟨next, supported, same⟩ := PMF.support_map .. ▸ moved
-                  cases command with
-                  | activate activated =>
-                      cases same
-                      obtain ⟨updated, chosen, rfl⟩ := PMF.support_map .. ▸ supported
-                      obtain ⟨selected, _, rfl⟩ := PMF.support_map .. ▸ chosen
-                      exact ⟨priorExecution, ⟨prior⟩, rfl, rfl⟩
-                  | «include» id => cases same
-                  | wait => cases same
-                  | application command => cases same
 
 section OnePacket
 

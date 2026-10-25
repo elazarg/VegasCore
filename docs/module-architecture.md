@@ -360,6 +360,7 @@ directory's aggregator imports every module in it.
 - [Phase Resolution](../Vegas/Pending/PhaseResolution.lean)
 - [Permanent resolution of physical attempt coordinates](../Vegas/Pending/PhaseResolutionPersistence.lean)
 - [Exact counted-response normalization and canonical binding evidence](../Vegas/Pending/PhaseResponseNormalization.lean)
+- [Counted-response alias closure and recall stability](../Vegas/Pending/PhaseResponseAliases.lean)
 - [Phase Retired Completion](../Vegas/Pending/PhaseRetiredCompletion.lean)
 - [Current-clock activation origins across retries](../Vegas/Pending/PhaseRetryClock.lean)
 - [Strict phase progress of actual singleton samples](../Vegas/Pending/PhaseSampleProgress.lean)
@@ -480,7 +481,6 @@ directory's aggregator imports every module in it.
 - [Phase Binding Recall Meaning](../Vegas/Game/PhaseBindingRecallMeaning.lean)
 - [Phase Binding Recall Word](../Vegas/Game/PhaseBindingRecallWord.lean)
 - [Phase Commit Word Source View](../Vegas/Game/PhaseCommitWordSourceView.lean)
-- [Weighted request aliases](../Vegas/Game/PhaseCountServiceAliases.lean)
 - [The original foreign declaration word](../Vegas/Game/PhaseCountServiceForeignWord.lean)
 - [Static query comparison](../Vegas/Game/PhaseObservableDomainWord.lean)
 - [The full query decoder](../Vegas/Game/PhaseObservableSourceQuery.lean)
@@ -667,6 +667,26 @@ directory's aggregator imports every module in it.
 - [Fixed service specification](../Vegas/Game/SourceServiceSpec.lean)
 - [Bounded stopped expectations under honest choice retention](../Vegas/Game/StoppedHonestComparison.lean)
 
+The [sequential phase plan](../Vegas/Game/SequentialRuntimePhases.lean) is an
+adapter into the existing phase executor. Singleton drain and rebuild facts live
+in [Pending](../Vegas/Pending/PhaseSingletonRebuild.lean); the
+[one-packet preservation entry point](../Vegas/Game/RecoveryOnePacketPreservation.lean)
+keeps the source SE construction separate from count-audit raw-menu extension.
+
+The sequential phase comparison keeps clear execution transport and equilibrium
+completion separate. [Actual transitions](../Vegas/Game/SequentialPhaseTransition.lean),
+[clear trace lifts](../Vegas/Game/SequentialPhaseClearLift.lean), and
+[callback equivalences](../Vegas/Game/SequentialPhaseChoiceEquivalence.lean) supply
+legal runtime adapters. [Stopped Bayes laws](../GameTheoryExtensions/Analysis/Protocol/StoppedBayes.lean)
+belong to the model-independent protocol layer; their
+[phase instance](../Vegas/Game/SequentialPhaseBayesState.lean) compares physical-state
+beliefs without assuming a post-exclusion information isomorphism.
+[Component completion](../Vegas/Game/SequentialPhaseCompletion.lean) optimizes the
+actual phase game. [Terminal failure provenance](../Vegas/Game/PhaseTerminalFailure.lean)
+and [decoded-debt absorption](../Vegas/Game/SequentialPhaseDecodedDebt.lean) preserve
+its original payoff. The [preservation work](sequential-phase-preservation.md)
+records the remaining continuation comparisons.
+
 ## Vegas/Examples
 
 - [Executable second-price receipts and bounded-auction incentives](../Vegas/Examples/BoundedPaymentAuction.lean)
@@ -676,9 +696,3 @@ directory's aggregator imports every module in it.
 - [Actual concurrent reveal-order dependence with withholding](../Vegas/Examples/ConcurrentRevealOrderLaw.lean)
 - [Concrete late-opening game data](../Vegas/Examples/LateOpeningRuntimeGame.lean)
 - [Supported correlated service with simultaneously valid pending packets](../Vegas/Examples/ReservedEpochUsableConcurrency.lean)
-
-The [sequential phase plan](../Vegas/Game/SequentialRuntimePhases.lean) is an
-adapter into the existing phase executor. Singleton drain and rebuild facts live
-in [Pending](../Vegas/Pending/PhaseSingletonRebuild.lean); the
-[one-packet preservation entry point](../Vegas/Game/RecoveryOnePacketPreservation.lean)
-keeps the source SE construction separate from count-audit raw-menu extension.

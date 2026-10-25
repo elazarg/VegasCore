@@ -77,3 +77,4 @@ import GameTheoryExtensions.Protocol.TracePrefix
 import GameTheoryExtensions.Math.Probability.OptionalDomination
 
 import GameTheoryExtensions.Math.Probability.ConditioningCost
+import GameTheoryExtensions.Analysis.Protocol.StoppedBayes
