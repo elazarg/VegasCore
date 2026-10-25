@@ -31,7 +31,7 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
 local notation "scheduler" => RecoveryProjection.nativeScheduler (runtime setup) leaks
   recoveryScheduler
 local notation "Clear" => ReactiveApplication.stateInvariant
-  (app := application setup leaks) (fun state => PublicExclusionRecord (RecoveryState.mk state ∅))
+  (app := application setup leaks) (fun state => ExclusionEvidence 0 ∅ (RecoveryState.mk state ∅))
 
 include initialized nativeLaw inclusion in
 /-- A protected fixed-value binding has exactly the source step law at its
@@ -57,7 +57,7 @@ theorem recovery_committed_stop_sourceLaw
     (start : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
       scheduler).History) {control : (application setup leaks).Control}
     (current : start.state = some control)
-    (clear : PublicExclusionRecord
+    (clear : ExclusionEvidence 0 ∅
       (⟨control.execution.application, ∅⟩ : RecoveryState (graph setup)))
     (invariant : AcceptanceInvariant setup leaks bounds horizon scheduler who entry message event
       sent (some control))
@@ -122,7 +122,7 @@ theorem recovery_firstActivation_commitment_sourceLaw
     {remaining : Nat} {who : Player} {execution : (application setup leaks).Execution}
     (trace : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some ⟨remaining, some who, execution⟩))
-    (clear : PublicExclusionRecord (⟨execution.application, ∅⟩ : RecoveryState (graph setup)))
+    (clear : ExclusionEvidence 0 ∅ (⟨execution.application, ∅⟩ : RecoveryState (graph setup)))
     (event : (graph setup).EventId)
     (turn : execution.application.publicView.ownTurn? who = some event)
     (never : ∀ entry ∈ execution.recall who, ¬ ActivatedAt setup leaks who event entry)
@@ -171,7 +171,7 @@ theorem recovery_firstActivation_commitment_sourceLaw
     unfold sentEnvelope
     rw [reactiveApplication_packet_none]
     exact packet
-  have clearAfter : PublicExclusionRecord
+  have clearAfter : ExclusionEvidence 0 ∅
       (⟨(execution.respond (application setup leaks) who response).application, ∅⟩ :
         RecoveryState (graph setup)) := by
     rcases response with ⟨transmission⟩
@@ -213,7 +213,7 @@ theorem recovery_disclosed_stop_sourceLaw
     (start : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
       scheduler).History) {control : (application setup leaks).Control}
     (current : start.state = some control)
-    (clear : PublicExclusionRecord
+    (clear : ExclusionEvidence 0 ∅
       (⟨control.execution.application, ∅⟩ : RecoveryState (graph setup)))
     (invariant : AcceptanceInvariant setup leaks bounds horizon scheduler who entry message event
       sent (some control))
@@ -279,7 +279,7 @@ theorem recovery_firstActivation_disclosure_sourceLaw
     {remaining : Nat} {who : Player} {execution : (application setup leaks).Execution}
     (trace : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some ⟨remaining, some who, execution⟩))
-    (clear : PublicExclusionRecord (⟨execution.application, ∅⟩ : RecoveryState (graph setup)))
+    (clear : ExclusionEvidence 0 ∅ (⟨execution.application, ∅⟩ : RecoveryState (graph setup)))
     (event : (graph setup).EventId)
     (turn : execution.application.publicView.ownTurn? who = some event)
     (never : ∀ entry ∈ execution.recall who, ¬ ActivatedAt setup leaks who event entry)
@@ -334,7 +334,7 @@ theorem recovery_firstActivation_disclosure_sourceLaw
   have invariant := acceptanceInvariant_respond bounds horizon scheduler trace event turn action
     material submits bindSuccess (current ▸ start.trace)
   have responseClear : ∀ response : (application setup leaks).Action,
-      PublicExclusionRecord
+      ExclusionEvidence 0 ∅
         (⟨(execution.respond (application setup leaks) who response).application,
         ∅⟩ : RecoveryState (graph setup)) := by
     intro response

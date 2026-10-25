@@ -56,7 +56,7 @@ local notation "RawNP" => ReactiveApplication.protocol (application setup leaks)
 local notation "RawRP" => ReactiveApplication.protocol
   (recoveryApplication (runtime setup) leaks) Initial horizon scheduler
 local notation "Clear" => ReactiveApplication.stateInvariant
-  (app := application setup leaks) (fun native => PublicExclusionRecord (RecoveryState.mk native ∅))
+  (app := application setup leaks) (fun native => ExclusionEvidence 0 ∅ (RecoveryState.mk native ∅))
 
 /-- Embedding the actual recovery policy, projecting it, and changing the prior
 retain every initialized finite-menu native state law exactly. -/
@@ -222,11 +222,11 @@ theorem sourceNativeProfile_dominatesHonestFrom_initialized
           (initialLaw_initialized setup) (initialLaw_native setup) opportunity inclusion timely
           completes wellFormed covers capacity (sequence n) certificate fuel history reached control
             current
-        exact publicExclusionRecord_of_decodedIntended
+        exact exclusionEvidence_of_decodedIntended
           ((NMenu).toRawTrace (initialLaw setup) horizon (NativeScheduler)
             (current ▸ history.trace)) decoded intended
     have valid : ∀ control, history.state = some control →
-        PublicExclusionRecord (RecoveryState.mk control.execution.application ∅) := by
+        ExclusionEvidence 0 ∅ (RecoveryState.mk control.execution.application ∅) := by
       intro control current
       rw [current] at clear
       exact clear
@@ -282,7 +282,7 @@ theorem sourceNativeProfile_initialized_failure_mass_le :
             (initialLaw_initialized setup) (initialLaw_native setup) opportunity inclusion timely
             completes wellFormed covers capacity (sequence n) certificate (2 * horizon + 1)
               history member control current
-          exact publicExclusionRecord_of_decodedIntended
+          exact exclusionEvidence_of_decodedIntended
             ((NMenu).toRawTrace (initialLaw setup) horizon (NativeScheduler)
               (current ▸ history.trace)) decoded intended
       simp [clear]

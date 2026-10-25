@@ -17,9 +17,9 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 /-- A publicly clear native inclusion cannot activate automatic exclusion. -/
 theorem includePending_empty_of_record
     (current : (runtime.recoveryApplication leaks).Execution)
-    (valid : PublicExclusionRecord current.application)
+    (valid : ExclusionEvidence 0 ∅ current.application)
     (empty : current.application.excluded = ∅) (id : MessageId Player)
-    (clear : PublicExclusionRecord
+    (clear : ExclusionEvidence 0 ∅
       (⟨((execution runtime leaks current).includePending
         (runtime.reactiveApplication leaks) id).application, ∅⟩ : RecoveryState graph)) :
     (current.includePending (runtime.recoveryApplication leaks) id).application.excluded = ∅ := by
@@ -39,7 +39,7 @@ theorem includePending_empty_of_record
           Bool.false_eq_true, ↓reduceIte, token, accepted, Option.map_none,
           Option.getD_none] using empty
       | some native =>
-        have clearNative : PublicExclusionRecord (⟨native, ∅⟩ : RecoveryState graph) := by
+        have clearNative : ExclusionEvidence 0 ∅ (⟨native, ∅⟩ : RecoveryState graph) := by
           simpa only [reactiveApplication, token, ↓reduceIte, accepted, Option.getD_some]
             using clear
         have reduced := inclusionResult_eq_of_record runtime current.application valid _
@@ -94,9 +94,9 @@ theorem respond_lift (current : (runtime.reactiveApplication leaks).Execution)
 The shared leak draw or application draw is also an actual recovery draw. -/
 theorem environmentStep_lift_support
     (current next : (runtime.reactiveApplication leaks).Execution)
-    (valid : PublicExclusionRecord (⟨current.application, ∅⟩ : RecoveryState graph))
+    (valid : ExclusionEvidence 0 ∅ (⟨current.application, ∅⟩ : RecoveryState graph))
     (chosen : (runtime.reactiveApplication leaks).Command)
-    (clear : PublicExclusionRecord (⟨next.application, ∅⟩ : RecoveryState graph))
+    (clear : ExclusionEvidence 0 ∅ (⟨next.application, ∅⟩ : RecoveryState graph))
     (realized : next ∈ (current.environmentStep (runtime.reactiveApplication leaks)
       chosen).support) :
     liftExecution runtime leaks next ∈ ((liftExecution runtime leaks current).environmentStep
@@ -127,7 +127,7 @@ theorem environmentStep_lift_support
     simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map,
       PMF.mem_support_pure_iff] at realized
     subst next
-    have targetClear : PublicExclusionRecord
+    have targetClear : ExclusionEvidence 0 ∅
         (⟨(current.includePending (runtime.reactiveApplication leaks) id).application, ∅⟩ :
           RecoveryState graph) := clear
     have empty := includePending_empty_of_record runtime leaks (liftExecution runtime leaks
@@ -184,7 +184,7 @@ theorem environmentStep_lift_support
       at realized
     rw [PMF.mem_support_map_iff] at realized
     obtain ⟨native, supported, rfl⟩ := realized
-    have clearNative : PublicExclusionRecord (⟨native, ∅⟩ : RecoveryState graph) := clear
+    have clearNative : ExclusionEvidence 0 ∅ (⟨native, ∅⟩ : RecoveryState graph) := clear
     have reduced := environmentResult_eq_of_record runtime
       (⟨current.application, ∅⟩ : RecoveryState graph) valid chosen native supported clearNative
     simp only [liftCommand, ReactiveApplication.Execution.environmentStep, recoveryApplication,

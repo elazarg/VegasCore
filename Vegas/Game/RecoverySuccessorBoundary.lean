@@ -41,7 +41,7 @@ private theorem native_sourceFailureRecord
 /-- At a genuine native prefix, an intended source decoding rules out public
 failure evidence. Hidden binding debt is handled through its actual stored
 failure record, rather than through receipt flags alone. -/
-theorem publicExclusionRecord_of_decodedIntended {horizon : Nat}
+theorem exclusionEvidence_of_decodedIntended {horizon : Nat}
     {scheduler : (application setup leaks).Scheduler}
     {control : (application setup leaks).Control}
     (trace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
@@ -49,7 +49,7 @@ theorem publicExclusionRecord_of_decodedIntended {horizon : Nat}
     {point : ProtocolState setup.program}
     (decoded : decodedPoint setup control.execution.application.config = some point)
     (intended : ProtocolState.Intended setup.program point) :
-    PublicExclusionRecord (⟨control.execution.application, ∅⟩ : RecoveryState (graph setup)) := by
+    ExclusionEvidence 0 ∅ (⟨control.execution.application, ∅⟩ : RecoveryState (graph setup)) := by
   have binding := ((runtime setup).reactiveBindingInvariant leaks).history (initialLaw setup)
     horizon scheduler (fun state supported => by
       obtain ⟨inputs, _supported, rfl⟩ := PMF.support_map .. ▸ supported
@@ -59,20 +59,22 @@ theorem publicExclusionRecord_of_decodedIntended {horizon : Nat}
   have decodedAt : sourceServicePrefix? setup rank control.execution.application.config =
       some point := (decodedPoint_eq_of_isPrefix residual.checkpoint.ordered).symm.trans decoded
   refine ⟨native_receiptsComplete_history (runtime setup) leaks (initialLaw setup)
-    (serviceInitialLaw_initialized setup) horizon scheduler trace, fun owner => ⟨?_, ?_⟩⟩
+    (serviceInitialLaw_initialized setup) horizon scheduler trace,
+    fun event lower => by omega, fun owner => ⟨?_, ?_⟩⟩
   · intro member
     exact (Finset.notMem_empty owner member).elim
-  · rintro ⟨event, acting, failed⟩
-    have present := (control.execution.application.config.output_available event).mpr
-      failed.completed
-    obtain ⟨value, read⟩ := Option.isSome_iff_exists.mp present
-    have stored : control.execution.application.config.store (.inr event) = some value := read
-    have failing : StoreEventFailed control.execution.application.config.store event := by
-      refine ⟨value, stored, ?_⟩
-      by_contra good
-      exact (OutputSucceeded.not_publicFailure ⟨value, stored, good⟩ binding) failed
-    exact (ProtocolState.Intended.not_owesFailure owner setup.program point intended
-      (record event failed.completed owner acting failing point decodedAt)).elim
+  · rintro (inherited | ⟨event, _lower, acting, failed⟩)
+    · exact inherited
+    · have present := (control.execution.application.config.output_available event).mpr
+        failed.completed
+      obtain ⟨value, read⟩ := Option.isSome_iff_exists.mp present
+      have stored : control.execution.application.config.store (.inr event) = some value := read
+      have failing : StoreEventFailed control.execution.application.config.store event := by
+        refine ⟨value, stored, ?_⟩
+        by_contra good
+        exact (OutputSucceeded.not_publicFailure ⟨value, stored, good⟩ binding) failed
+      exact (ProtocolState.Intended.not_owesFailure owner setup.program point intended
+        (record event failed.completed owner acting failing point decodedAt)).elim
 
 section Successor
 
@@ -92,7 +94,7 @@ local notation "N" => onePacketModel setup leaks bounds (initialLaw setup) horiz
 local notation "E" => ReactiveApplication.ResponseMenu.protocol menu (initialLaw setup) horizon
   scheduler
 local notation "Clear" => ReactiveApplication.stateInvariant
-  (app := application setup leaks) (fun native => PublicExclusionRecord (RecoveryState.mk native ∅))
+  (app := application setup leaks) (fun native => ExclusionEvidence 0 ∅ (RecoveryState.mk native ∅))
 
 include initialized nativeLaw completes in
 /-- A supported stopped endpoint with an intended source decoding is the next
@@ -115,7 +117,7 @@ theorem recovery_stopped_boundary_of_intended
     (intended : ProtocolState.Intended setup.program point) :
     ∃ anchor : (application setup leaks).Execution,
       final.state = some ⟨horizon - anchor.environmentRecall.length, none, anchor⟩ ∧
-      PublicExclusionRecord (RecoveryState.mk anchor.application ∅) ∧
+      ExclusionEvidence 0 ∅ (RecoveryState.mk anchor.application ∅) ∧
       event ∈ anchor.application.config.cut.completed ∧
       sourceServicePrefix? setup (rank + 1) anchor.application.config = some point ∧
       ReachedBoundary setup leaks horizon scheduler (rank + 1) anchor := by
@@ -150,7 +152,7 @@ theorem recovery_stopped_boundary_of_intended
     (lastState ▸ final.trace)
   have lastDecoded : decodedPoint setup last.execution.application.config = some point := by
     simpa only [lastState, nativeDecodedState] using decoded
-  have clear := publicExclusionRecord_of_decodedIntended rawTrace lastDecoded intended
+  have clear := exclusionEvidence_of_decodedIntended rawTrace lastDecoded intended
   have finished : last.actor = none ∧
       last.execution.application.config.cut.IsPrefix (rank + 1) ∧
       ReadySeen setup leaks rank last.execution := by
@@ -218,7 +220,7 @@ theorem recovery_firstActivation_honest_successorBoundary
     (history : (E).History)
     {remaining : Nat} {who : Player} {execution : (application setup leaks).Execution}
     (current : history.state = some ⟨remaining, some who, execution⟩)
-    (clear : PublicExclusionRecord (RecoveryState.mk execution.application ∅))
+    (clear : ExclusionEvidence 0 ∅ (RecoveryState.mk execution.application ∅))
     (event : (graph setup).EventId)
     (pending : pendingEvent setup leaks who (some (execution.recall who,
       execution.observe (application setup leaks) who)) = some event)
@@ -240,7 +242,7 @@ theorem recovery_firstActivation_honest_successorBoundary
         (setup.intendedOpeningProfile source.strategy) point).support ∧
       ProtocolState.Intended setup.program target ∧
       final.state = some ⟨horizon - anchor.environmentRecall.length, none, anchor⟩ ∧
-      PublicExclusionRecord (RecoveryState.mk anchor.application ∅) ∧
+      ExclusionEvidence 0 ∅ (RecoveryState.mk anchor.application ∅) ∧
       event ∈ anchor.application.config.cut.completed ∧
       sourceServicePrefix? setup (rank + 1) anchor.application.config = some target ∧
       ReachedBoundary setup leaks horizon scheduler (rank + 1) anchor := by

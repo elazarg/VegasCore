@@ -107,7 +107,7 @@ theorem RecoverySourceCheckpoint.after_reveal
   have sourceOrder : image.OrderedPublicFailures state.attempt.phase state.entry.excluded := by
     rw [← low]
     exact ordered
-  have record : SuffixExclusionRecord state.attempt.phase state.entry.excluded image := by
+  have record : ExclusionEvidence state.attempt.phase state.entry.excluded image := by
     rw [← low]
     exact (exclusion.installed phase member).phase_drain phase
   have within := exclusion.frontier.positioned

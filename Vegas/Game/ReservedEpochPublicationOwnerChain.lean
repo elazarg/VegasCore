@@ -521,7 +521,7 @@ theorem publication_exclusion_original_result (menu : (app).ResponseMenu)
     · exact afterApplication.trans normalized
     · simpa only [addressed] using receipt
   · have nativeFailed : native.PublicFailure event :=
-      SuffixExclusionRecord.expire_publicFailure runtime before.execution.application.current.native
+      ExclusionEvidence.expire_publicFailure runtime before.execution.application.current.native
         native (phaseExclusionRecord_history runtime leaks plan inputs horizon scheduler
           rawTrace).active event nativeMoved (by
             intro sameConfig

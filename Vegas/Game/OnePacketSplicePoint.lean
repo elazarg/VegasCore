@@ -312,7 +312,8 @@ theorem drawn_splicePoint (independent : setup.PrivateInputsIndependent)
       InitialCellsAt initial (ProtocolState.splicePoint setup.program r p w) := by
   obtain ⟨mine, mineMember, mineCells⟩ := drawnP
   obtain ⟨others, othersMember, othersCells⟩ := drawnW
-  exact ⟨_, Setup.splice_mem_support setup independent r mineMember othersMember,
+  exact ⟨_, setup.splice_mem_support (fun _ => ())
+    (fun owner first second _ => independent owner first second) r mineMember othersMember rfl,
     initialCellsAt_splicePoint mineCells othersCells⟩
 
 section Fixes

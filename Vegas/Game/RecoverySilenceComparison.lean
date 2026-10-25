@@ -32,7 +32,7 @@ local notation "NP" => ReactiveApplication.ResponseMenu.protocol
   (bounds.onePacketMenu (runtime setup) leaks) (initialLaw setup) horizon (NativeScheduler)
 local notation "Menu" => bounds.onePacketMenu (runtime setup) leaks
 local notation "Clear" => ReactiveApplication.stateInvariant
-  (app := application setup leaks) (fun native => PublicExclusionRecord (RecoveryState.mk native ∅))
+  (app := application setup leaks) (fun native => ExclusionEvidence 0 ∅ (RecoveryState.mk native ∅))
 
 open Classical in
 /-- Waiting at a fresh debt-free source decision has vanishing gain. -/
@@ -113,7 +113,7 @@ theorem nativeComparison_silence_history_comparison [Fintype (RP).History]
   obtain ⟨turn, readyPublic, owned, _unrecorded⟩ := pendingEvent_spec pendingHere
   have ready := (execution.application.publicView_eventReady event).mp readyPublic
   have decodedPoint := (decodedPoint_eq_of_isPrefix ordered).trans decoded
-  have clear := publicExclusionRecord_of_decodedIntended
+  have clear := exclusionEvidence_of_decodedIntended
     ((Menu).toRawTrace (initialLaw setup) horizon (NativeScheduler) (current ▸ history.1.trace))
     decodedPoint intended
   have decided := decidedEvent_eq_of_pending setup leaks horizon (NativeScheduler) pendingHere

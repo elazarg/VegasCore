@@ -36,7 +36,7 @@ theorem recovery_firstActivation_canonical_succeeds_environment
     (trace : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
       (RecoveryProjection.nativeScheduler (runtime setup) leaks scheduler)).Trace
       (some ⟨remaining, some who, execution⟩))
-    (clear : PublicExclusionRecord (⟨execution.application, ∅⟩ : RecoveryState (graph setup)))
+    (clear : ExclusionEvidence 0 ∅ (⟨execution.application, ∅⟩ : RecoveryState (graph setup)))
     (event : (graph setup).EventId)
     (turn : execution.application.publicView.ownTurn? who = some event)
     (never : ∀ entry ∈ execution.recall who, ¬ ActivatedAt setup leaks who event entry)
@@ -56,7 +56,7 @@ theorem recovery_firstActivation_canonical_succeeds_environment
     (prior : ((application setup leaks).protocol (initialLaw setup) horizon
       (RecoveryProjection.nativeScheduler (runtime setup) leaks scheduler)).Trace
       (some ⟨priorRemaining + 1, none, priorExecution⟩))
-    (priorClear : PublicExclusionRecord
+    (priorClear : ExclusionEvidence 0 ∅
       (⟨priorExecution.application, ∅⟩ : RecoveryState (graph setup)))
     (command : (application setup leaks).Command) (next : (application setup leaks).Execution)
     (reached : next ∈ (priorExecution.environmentStep (application setup leaks) command).support)

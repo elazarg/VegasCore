@@ -143,17 +143,18 @@ Confidence: high for the trace lift, medium/high for operator consolidation.
 
 ### 5. Ordinary exclusion evidence is the zero-frontier instance of suffix evidence
 
-`ExclusionPublicRecord.PublicExclusionRecord` stores receipts plus “excluded iff
-some owned event publicly failed”. `SuffixExclusionRecord low inherited` adds
-the saved-prefix boundary and inherited exclusions. At `low = 0` and
-`inherited = ∅`, their propositions are equivalent. Their `advance`,
-*new_event_eq*, *failureCompletionStep*, *completeFailure_publicFailure*,
-*inclusionResult*, and expiry/environment proofs are visibly duplicated.
+[ExclusionEvidence](../../Vegas/Pending/ExclusionEvidence.lean) expresses exact
+public failure evidence relative to a saved source rank and inherited excluded
+set. The ordinary permanent-exclusion law is its `0, ∅` instance; the phase
+adapter lives in [PhaseExclusionEvidence](../../Vegas/Pending/PhaseExclusionEvidence.lean).
+The lower owner handles native completion, packet inclusion, expiry, submission
+and automatic draining. Only phase-local draining and prefix conversion need
+the higher phase dependency. Both evidence directions remain an iff.
 
-The scratch *public_record_iff_suffix_zero* tests the equivalence. Consolidation
-requires extracting common definitions/step lemmas to a lower module: today the
-suffix file imports `ExclusionSameConfiguration` and `PhaseCompletion`, so simply
-making the ordinary file import the suffix owner risks a cycle.
+The replayed *exclusion_evidence_zero_iff* probe checks the ordinary
+specialization against receipts and the original owned-public-failure formula.
+Completion-step monotonicity belongs to the public-failure owner, so the common
+evidence family requires no dependency on phase completion or value swaps.
 
 Stronger nearby theorem: a frontier-indexed record transports along a
 `CompletionStep` whenever only newly completed events can introduce new evidence;
@@ -272,22 +273,21 @@ arbitrary legal response policies, not just prescribed clients.
 
 ### 10. Move typed handler success/inversion certificates below value swaps
 
-`EventApplication` exposes successful commitment/opening equations and graph-step
-facts, while the useful inversions `handle_commitment_conditions` and
-`handle_opening_conditions` currently live late in the 1,147-line `EventValueSwap`.
-Consequently `Vegas.EventGraphRuntime.handle_playerView_congr_of_sender` does a
-roughly 292-line synchronized decision tree, and ownership/invariant/frame proofs
-repeat readiness, deadline, sender, candidate owner, node kind, association, raw
-typing and resolution checks.
+`EventApplication` owns successful commitment/opening equations and graph-step
+facts together with the exact `handle_commitment_iff` and `handle_opening_iff`
+certificates. Their reverse directions reconstruct the actual resulting state.
+The focal observation proof transports positive acceptance and obtains rejection
+symmetrically; ownership, phase and swap callers consume the same certificates.
+Commitment acceptance still permits unusable bindings, and opening resolution
+still retains its actual guard result, including failure.
 
-Extract a lower typed acceptance certificate with both directions:
-`handle ... = some next ↔ commitment certificate ∨ opening certificate`, including
-the exact resulting state. Prove rejection by failure of the certificate.
-Use existing `State.complete_playerView_congr`,
-`State.acceptHandle_playerView_congr`, and resolution-store congruence for the
-positive branch; transport certificates between equal focal views and use the
-inverse direction to handle the negative branch. This removes decision-tree
-duplication while retaining arbitrary raw/malformed packets.
+The certificates include the actual successor state. The observation argument
+transports successful certificates through equal focal views, using the existing
+completion and accepted-handle frame laws; its symmetric direction also proves
+rejection. Raw and malformed packets remain in scope. Ownership, invariants,
+phase repair and value swaps use these same lower certificates. The full-family
+measurement, including the lower API and every adapter, is 218 fewer lines.
+The checked implementation status is in the [implementation ledger](../proof-review-progress.md).
 
 Estimate across observation, ownership and swap callers: gross 350–600,
 certificates 100–160, adapters 100–180, net 100–260.
@@ -746,9 +746,7 @@ surface artifact, including modules with no proof bodies.
 | `Vegas.Pending.ExclusionPairedTransition` | 157 | 1 | S |
 | `Vegas.Pending.ExclusionPrefix` | 319 | 10 | S |
 | `Vegas.Pending.ExclusionProjection` | 146 | 9 | S |
-| `Vegas.Pending.ExclusionPublicRecord` | 509 | 22 | D |
 | `Vegas.Pending.ExclusionResponseAliases` | 53 | 2 | S |
-| `Vegas.Pending.ExclusionSameConfiguration` | 60 | 3 | S |
 | `Vegas.Pending.ExclusionService` | 117 | 3 | D |
 | `Vegas.Pending.ExclusionStoppedBoundary` | 158 | 3 | S |
 | `Vegas.Pending.ExclusionStoppedLaw` | 232 | 8 | S |
@@ -1121,5 +1119,4 @@ surface artifact, including modules with no proof bodies.
 | `Vegas.Pending.RevealTranscript` | 79 | 3 | S |
 | `Vegas.Pending.RuntimePhase` | 86 | 2 | S |
 | `Vegas.Pending.ServicePlan` | 63 | 3 | S |
-| `Vegas.Pending.SuffixExclusionRecord` | 413 | 13 | D |
 | `Vegas.Pending.ValueSwapPairs` | 254 | 10 | S |

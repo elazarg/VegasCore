@@ -138,7 +138,7 @@ theorem recovery_foreign_nonmain_prefix_of_firstFailure
     (startPrefix : TracePrefix startTrace trace)
     (current event : (graph setup).EventId)
     (turn : start.execution.application.publicView.ownTurn? focal = some current)
-    (clear : PublicExclusionRecord
+    (clear : ExclusionEvidence 0 ∅
       (⟨execution.application, ∅⟩ : RecoveryState (graph setup)))
     (regular : RegularTrace setup leaks bounds horizon
       (RecoveryProjection.nativeScheduler (runtime setup) leaks scheduler) source focal trace)
@@ -265,7 +265,7 @@ theorem recovery_firstForeignFailure_not_mainActivationTraceAfter
     (startPrefix : TracePrefix startTrace trace)
     (current event : (graph setup).EventId)
     (turn : start.execution.application.publicView.ownTurn? focal = some current)
-    (clear : PublicExclusionRecord
+    (clear : ExclusionEvidence 0 ∅
       (⟨execution.application, ∅⟩ : RecoveryState (graph setup)))
     (regular : RegularTrace setup leaks bounds horizon
       (RecoveryProjection.nativeScheduler (runtime setup) leaks scheduler) source focal trace)

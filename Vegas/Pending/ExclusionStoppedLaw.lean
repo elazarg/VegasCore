@@ -37,14 +37,14 @@ local notation "RecoveryProtocol" => ReactiveApplication.protocol
 /-- Every realized native endpoint has a publicly clear failure record. -/
 def NativeClear (history : (NativeProtocol).History) : Prop :=
   ∀ current, history.state = some current →
-    PublicExclusionRecord (⟨current.execution.application, ∅⟩ : RecoveryState graph)
+    ExclusionEvidence 0 ∅ (⟨current.execution.application, ∅⟩ : RecoveryState graph)
 
 omit [Fintype Player] in
 /-- Native public clearance depends only on the complete endpoint state. -/
 theorem nativeClear_iff_stateInvariant (history : (NativeProtocol).History) :
     NativeClear runtime leaks initial horizon scheduler history ↔
       ReactiveApplication.stateInvariant (app := runtime.reactiveApplication leaks)
-        (fun native => PublicExclusionRecord (RecoveryState.mk native ∅)) history.state := by
+        (fun native => ExclusionEvidence 0 ∅ (RecoveryState.mk native ∅)) history.state := by
   cases state : history.state with
   | none => simp [NativeClear, state, ReactiveApplication.stateInvariant]
   | some current =>

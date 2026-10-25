@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ExclusionPublicRecord
+import Vegas.Pending.ExclusionEvidence
 import GameTheoryExtensions.Analysis.Protocol.StoppedHistoryInvariant
 import GameTheoryExtensions.Protocol.TracePrefix
 
@@ -25,7 +25,7 @@ local notation "nativeApp" => runtime.reactiveApplication leaks
 local notation "protocol" => menu.protocol initial horizon scheduler
 local notation "model" => menu.information initial horizon scheduler
 local notation "Clear" => ReactiveApplication.stateInvariant
-  (app := nativeApp) (fun state => PublicExclusionRecord (RecoveryState.mk state ∅))
+  (app := nativeApp) (fun state => ExclusionEvidence 0 ∅ (RecoveryState.mk state ∅))
 
 /-- An actual idle clear prefix and its realized environment transition into
 this complete history, after the actual continuation start. The chosen command
@@ -35,7 +35,7 @@ def ClearEnvironmentBoundary (extraStop : (protocol).History → Prop)
   ∃ (remaining : Nat) (execution : (nativeApp).Execution)
     (prior : (protocol).Trace (some ⟨remaining + 1, none, execution⟩))
     (command : (nativeApp).Command) (next : (nativeApp).Execution),
-    PublicExclusionRecord (⟨execution.application, ∅⟩ : RecoveryState graph) ∧
+    ExclusionEvidence 0 ∅ (⟨execution.application, ∅⟩ : RecoveryState graph) ∧
       ¬ extraStop ⟨some ⟨remaining + 1, none, execution⟩, prior⟩ ∧
       command ∈ (scheduler execution.environmentRecall
         (execution.observeEnvironment nativeApp)).support ∧
@@ -46,8 +46,8 @@ def ClearEnvironmentBoundary (extraStop : (protocol).History → Prop)
 omit [Fintype Player] in
 private theorem record_respond (execution : (nativeApp).Execution) (who : Player)
     (response : (nativeApp).Action)
-    (valid : PublicExclusionRecord (⟨execution.application, ∅⟩ : RecoveryState graph)) :
-    PublicExclusionRecord
+    (valid : ExclusionEvidence 0 ∅ (⟨execution.application, ∅⟩ : RecoveryState graph)) :
+    ExclusionEvidence 0 ∅
       (⟨(execution.respond nativeApp who response).application, ∅⟩ : RecoveryState graph) := by
   rcases response with ⟨transmission⟩
   cases transmission with
@@ -57,11 +57,11 @@ private theorem record_respond (execution : (nativeApp).Execution) (who : Player
 omit [Fintype Player] in
 private theorem transition_clear_or_environment (current : (nativeApp).Control)
     (target : (nativeApp).ProtocolState) (joint : Player → Option (nativeApp).Action)
-    (valid : PublicExclusionRecord (⟨current.execution.application, ∅⟩ : RecoveryState graph))
+    (valid : ExclusionEvidence 0 ∅ (⟨current.execution.application, ∅⟩ : RecoveryState graph))
     (realized : target ∈ ((nativeApp).transition initial horizon scheduler
       (some current) joint).support) :
     (∃ next, target = some next ∧
-      PublicExclusionRecord (⟨next.execution.application, ∅⟩ : RecoveryState graph)) ∨
+      ExclusionEvidence 0 ∅ (⟨next.execution.application, ∅⟩ : RecoveryState graph)) ∨
     ∃ (remaining : Nat) (execution : (nativeApp).Execution),
       current = ⟨remaining + 1, none, execution⟩ ∧
       ∃ (command : (nativeApp).Command) (next : (nativeApp).Execution),
@@ -96,7 +96,7 @@ theorem responseMenu_stopped_exclusion_boundary
     (extraStop : (protocol).History → Prop)
     (start : (protocol).History) (current : (nativeApp).Control)
     (state : start.state = some current)
-    (clear : PublicExclusionRecord (⟨current.execution.application, ∅⟩ : RecoveryState graph)) :
+    (clear : ExclusionEvidence 0 ∅ (⟨current.execution.application, ∅⟩ : RecoveryState graph)) :
     ∀ final ∈ ((model).runBehavioralUntil certificate profile
       (fun history => ¬ Clear history.state ∨ extraStop history)
       start).support,
@@ -137,7 +137,7 @@ theorem responseMenu_stopped_exclusion_boundary
     cases currentState
     change target ∈ ((nativeApp).transition initial horizon scheduler
       (some current) draw.1).support at realized
-    have record : PublicExclusionRecord
+    have record : ExclusionEvidence 0 ∅
         (⟨current.execution.application, ∅⟩ : RecoveryState graph) := currentClear
     rcases transition_clear_or_environment runtime leaks initial horizon scheduler current target
       draw.1 record realized with ⟨next, same, nextRecord⟩ |

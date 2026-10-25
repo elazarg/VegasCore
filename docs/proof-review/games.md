@@ -380,7 +380,7 @@ a better experiment than a new all-encompassing correspondence abstraction.
 **Potential substantive game-theoretic extension; medium-high risk.**
 
 `OnePacketOwnerPriorSite.ownerSwap_priorClosed:111`,
-`OnePacketOwnerBase.ownerSwap_priorScaled:185`, and
+`Vegas.ownerSwap_priorScaled`, and
 `OnePacketSplicePoint.drawn_splicePoint:308` consume
 `PrivateInputsIndependent`. `Vegas/Source/PrivateInputsIndependent.lean:102`
 defines unconditional independence of each player's hidden cells from every
@@ -406,6 +406,25 @@ adapter.
 compression claim. This is a plausible insight-producing extension after the
 small refactors, and should be tested on an explicit common-signal prior.
 
+The local implementation provides a source conditional cross-product predicate,
+actual public-input readers for every history at a late-key site, restricted
+owner-prior scaling, and same-key supported splice closure. Its shared set
+intersects the supported hidden-input fiber with the observed public-signal
+fiber. Hidden-input agreement alone does not fix that signal. The scaling law
+requires splice preservation; the site laws require that public initial inputs
+determine the signal. A full-support public-bit regression with conditionally independent private
+noise satisfies these guards and disproves unconditional independence. The canonical two-site base-law proof
+can consume these producers without copying the swap/disintegration argument;
+its unconditional record-comparison caller uses a constant public signal.
+
+The recovery equilibrium capstone continues to require its original
+unconditional hypothesis. Its independent source-recovery obligation is actual
+splice support between two decoded points. Relaxing that obligation requires
+proving that every represented source draw at both points has the same public
+signal, using their public-cell agreement. The late-key site theorem alone does
+not establish this different source-recovery fact. No conditional-prior recovery
+SE theorem is claimed.
+
 ### 14. Obtain event-sensitive Nash errors before changing runtime contracts
 
 **Potential useful quantitative theorem; medium risk.**
@@ -430,6 +449,17 @@ asynchronous contract, not an arbitrary-builder concurrent SE proof.
 
 **Estimated size: feature growth of 60–180 lines**, depending on how much of the
 tagged phase coupling can be reused; any proof shortening is unestimated.
+
+The implemented first result uses each player's complete audited payoff range
+and retains every native/source deviation and both expectation guards. Existing
+scalar Nash conclusions follow by choosing a constant range function. It does
+not establish event-specific sensitivity. The event-slot coupling already
+compares each adjacent hybrid timing with error bounded by that event's deferral;
+the whole-run TV proof then sums those errors. A weighted payoff result must
+retain those hybrids and prove uniform continuation oscillation bounds for each
+one, including unfinished outcomes and audit charges. Honest and deviating
+continuations need their own guards. No such bounds follow from a final
+unlabelled TV estimate, so no unused tagged-coupling framework was added.
 
 ### 15. Turn strict enforcement margins into a local support-exclusion theorem
 

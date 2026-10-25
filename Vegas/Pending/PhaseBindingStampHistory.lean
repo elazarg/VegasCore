@@ -4,7 +4,7 @@ import Vegas.Pending.PhaseBindingStamp
 import Interaction.MessageNetworkInvariant
 import Interaction.ReactiveProvenance
 import Interaction.ReactiveServiceInvariant
-import Vegas.Pending.ExclusionPublicRecord
+import Vegas.Pending.ExclusionEvidence
 import Vegas.Pending.PhaseExclusionRecord
 import Vegas.Pending.PhaseFrontier
 import Vegas.Pending.ReactiveEventStability

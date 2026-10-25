@@ -31,7 +31,7 @@ local notation "NP" => ReactiveApplication.ResponseMenu.protocol
   (bounds.onePacketMenu (runtime setup) leaks) (initialLaw setup) horizon (NativeScheduler)
 local notation "Menu" => bounds.onePacketMenu (runtime setup) leaks
 local notation "Clear" => ReactiveApplication.stateInvariant
-  (app := application setup leaks) (fun native => PublicExclusionRecord (RecoveryState.mk native ∅))
+  (app := application setup leaks) (fun native => ExclusionEvidence 0 ∅ (RecoveryState.mk native ∅))
 
 open Classical in
 /-- An arbitrary current disclosure response gains only the vanishing common
@@ -109,7 +109,7 @@ theorem nativeComparison_firstActivation_disclosure_gain_le [Fintype (RP).Histor
   have ready := (execution.application.publicView_eventReady event).mp readyPublic
   have owned := nodeView_resolve_actor outputEq codeEq
   have pointDecoded := (decodedPoint_eq_of_isPrefix ordered).trans decoded
-  have clear := publicExclusionRecord_of_decodedIntended
+  have clear := exclusionEvidence_of_decodedIntended
     ((Menu).toRawTrace (initialLaw setup) horizon (NativeScheduler) (current ▸ history.1.trace))
     pointDecoded intended
   have phaseEq := recovery_pending_until_eq_clearUntil (initialLaw_initialized setup)

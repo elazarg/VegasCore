@@ -5,28 +5,19 @@ import Vegas.Game.SourceServiceClientPolicy
 import GameTheory.Core.Approximate
 import Vegas.Game.SourceInformation
 
-/-! # Reflection of approximate Nash under an arbitrary contract builder
+/-! # Player-specific best-response errors under asynchronous timing
 
-For a full-source service whose public scheduler satisfies the asynchronous
-contract, the turn-counted clients of a source profile
-(`Vegas.AsyncServiceSpec.clientProfile`) are played in an arbitrary response
-menu that admits them; the bounded raw menu does
-(`Vegas.AsyncServiceSpec.rawMenu_admits`). Their joint law of typed outcome and realized
-settlement is within the total deferral weight `δ` of the source law in total
-variation (`Vegas.sourceServiceClients_clientPolicy_settlement_lawError`). When every
-realized payoff value lies in an interval of length `R`, expected payoffs are
-within `δ * R`. Each player's client depends only on its own source policy, so
-a compiled source deviation is a native deviation, and a native `ε`-Nash
-equilibrium of the clients reflects to a source `(ε + 2 * δ * R)`-Nash
-equilibrium (`Vegas.AsyncServiceSpec.isεNash_of_clientProfile`).
+The turn-counted clients of a source profile use the canonical source model
+and an admitting response menu. Under the asynchronous contract, their joint
+law of typed outcome and realized settlement is within total deferral weight
+`δ` of the first-turn law in total variation. A realized audited payoff range
+`R` for a given player therefore gives that player an expectation error `δ * R`.
 
-In the forward direction, the turn-counted clients against any native policy of
-one player are within `δ` of the first-turn clients against it
-(`Vegas.deviatedTurnProfile_roundsFrom_bind_within`). Hence, if
-every native policy against the first-turn clients is bounded in audited
-expected payoff by a source deviation, every source `ε`-Nash equilibrium has
-clients that are an `(ε + 2 * δ * R)`-Nash equilibrium of every admitting menu
-(`Vegas.AsyncServiceSpec.isεNash_clientProfile_of_firstTurn_bounds`).
+A native approximate Nash equilibrium reflects to source approximate best
+responses with each player's own audited payoff range. Conversely, a source
+approximate Nash equilibrium yields client approximate best responses when
+every first-turn native deviation is bounded by a source deviation. Both
+bounds retain the same actual clients, full deviations, and expectation guards.
 -/
 
 noncomputable section
@@ -42,6 +33,20 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
 
 namespace AsyncServiceSpec
+
+omit [Fintype Player] in
+private theorem bestResponse_self_iff (form : GameForm Player)
+    (utility : form.sig.Outcome → Player → ℝ) (error : ℝ)
+    (profile : Profile form.sig) (who : Player) :
+    IsεBestResponse form utility error who profile (profile who) ↔
+      ∀ replacement,
+        UtilityHasExpectation utility who (form.play profile) ∧
+        UtilityHasExpectation utility who (form.play (Profile.update profile who replacement)) ∧
+        extendedExpectedUtility utility who (form.play (Profile.update profile who replacement)) ≤
+          extendedExpectedUtility utility who (form.play profile) + error := by
+  unfold IsεBestResponse IsBestResponse
+  simp only [Profile.update, Function.update_eq_self]
+  rfl
 
 variable (service : AsyncServiceSpec Player L)
   (admission : CommitmentInterface service.setup.program)
@@ -140,13 +145,13 @@ private theorem clientProfile_value_close {Parameter : Type}
           service.bound turns timing
           (sourceServiceClientProfile service.setup (service.setup.decodeBehavioralProfile
             admission source)) who))
-    (low : Player → ℝ) (range : ℝ)
+    (low : Player → ℝ) (range : Player → ℝ)
     (within : ∀ who (output : Option (State L service.setup.program.terminalCtx))
       (charged : Bool),
       low who ≤ output.elim 0 (fun state => utility (service.setup.parameterOutcome parameter
           state) who) - (if charged then deposit who else 0) ∧
         output.elim 0 (fun state => utility (service.setup.parameterOutcome parameter
-          state) who) - (if charged then deposit who else 0) ≤ low who + range)
+          state) who) - (if charged then deposit who else 0) ≤ low who + range who)
     (source : Profile (service.sourceModel admission).behavioralSignature)
     (terminal : FirstTurnSourceLaw service.setup service.mode service.deadline service.leaks
       service.horizon service.scheduler service.bound turns
@@ -170,9 +175,9 @@ private theorem clientProfile_value_close {Parameter : Type}
     PayoffIntegrable native (fun final => payoff final.state who) ∧
       PayoffIntegrable original sourcePayoff ∧
       expect native (fun final => payoff final.state who) - expect original sourcePayoff ≤
-        (∑ event, timing.deferral event) * range ∧
+        (∑ event, timing.deferral event) * range who ∧
       expect original sourcePayoff - expect native (fun final => payoff final.state who) ≤
-        (∑ event, timing.deferral event) * range := by
+        (∑ event, timing.deferral event) * range who := by
   intro base payoff native original sourcePayoff
   classical
   let settle := TerminalAudit.settlement base
@@ -215,7 +220,7 @@ private theorem clientProfile_value_close {Parameter : Type}
     obtain ⟨verdict, _, rfl⟩ := drawn
     exact ⟨verdict who, rfl⟩
   have bounded : ∀ pair, pair ∈ nativeJoint.support ∨ pair ∈ sourceJoint.support →
-      low who ≤ pair.2 who ∧ pair.2 who ≤ low who + range := by
+      low who ≤ pair.2 who ∧ pair.2 who ≤ low who + range who := by
     rintro pair (member | member)
     · obtain ⟨final, _, inner⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ member)
       obtain ⟨charged, value⟩ := settled final.state pair inner
@@ -225,7 +230,7 @@ private theorem clientProfile_value_close {Parameter : Type}
       simpa only [Option.elim_some, Bool.false_eq_true, ↓reduceIte, sub_zero] using
         within who (some state) false
   have nativeIntegrable : PayoffIntegrable native (fun final => payoff final.state who) := by
-    apply payoffIntegrable_of_bounded native _ (C := |low who| + |range|)
+    apply payoffIntegrable_of_bounded native _ (C := |low who| + |range who|)
     intro final
     have unclear := within who (serviceSourceReadout service.setup service.mode service.deadline
       service.leaks final.state) false
@@ -238,9 +243,9 @@ private theorem clientProfile_value_close {Parameter : Type}
       (serviceSourceAudit service.setup service.mode service.deadline service.leaks sample)
         final.state who
     change |base final.state who - TerminalAudit.charge _ _ final.state who * deposit who| ≤ _
-    change low who ≤ base final.state who ∧ base final.state who ≤ low who + range at unclear
+    change low who ≤ base final.state who ∧ base final.state who ≤ low who + range who at unclear
     change low who ≤ base final.state who - deposit who ∧
-      base final.state who - deposit who ≤ low who + range at charged
+      base final.state who - deposit who ≤ low who + range who at charged
     obtain ⟨zero, one⟩ := rate
     have lower : low who ≤ base final.state who -
         TerminalAudit.charge ((serviceRuntime service.setup service.mode
@@ -256,20 +261,20 @@ private theorem clientProfile_value_close {Parameter : Type}
           service.deadline).serviceAuditObservation service.leaks)
           (serviceSourceAudit service.setup service.mode service.deadline service.leaks sample)
             final.state who * deposit who ≤
-          low who + range := by
+          low who + range who := by
       have first := mul_nonneg (sub_nonneg.mpr one) (sub_nonneg.mpr unclear.2)
       have second := mul_nonneg zero (sub_nonneg.mpr charged.2)
       linarith
     rw [abs_le]
-    constructor <;> linarith [neg_abs_le (low who), le_abs_self range, abs_nonneg range,
+    constructor <;> linarith [neg_abs_le (low who), le_abs_self (range who), abs_nonneg (range who),
       le_abs_self (low who)]
   have jointIntegrable : PayoffIntegrable nativeJoint (fun pair => pair.2 who) :=
-    payoffIntegrable_of_bounded_on_support nativeJoint _ (C := |low who| + |range|)
+    payoffIntegrable_of_bounded_on_support nativeJoint _ (C := |low who| + |range who|)
       fun pair member => by
         obtain ⟨lower, upper⟩ := bounded pair (Or.inl member)
         rw [abs_le]
-        constructor <;> linarith [neg_abs_le (low who), le_abs_self range, abs_nonneg range,
-          le_abs_self (low who)]
+        constructor <;> linarith [neg_abs_le (low who), le_abs_self (range who),
+          abs_nonneg (range who), le_abs_self (low who)]
   have nativeValue : expect native (fun final => payoff final.state who) =
       expect nativeJoint (fun pair => pair.2 who) := by
     rw [expect_bind_tower _ _ _ jointIntegrable]
@@ -297,19 +302,15 @@ private theorem clientProfile_value_close {Parameter : Type}
     admission
   refine ⟨nativeIntegrable, payoffIntegrable_of_finite _ _, ?_, ?_⟩
   · rw [nativeValue, sourceValue]
-    exact close.expect_sub_le _ (low who) range bounded
+    exact close.expect_sub_le _ (low who) (range who) bounded
   · rw [nativeValue, sourceValue]
-    exact close.symm.expect_sub_le _ (low who) range fun pair member =>
+    exact close.symm.expect_sub_le _ (low who) (range who) fun pair member =>
       bounded pair member.symm
 
-/-- **Reflection of approximate Nash under an arbitrary contract builder.**
-Under the asynchronous contract, if the turn-counted clients of a source profile
-are an `ε`-Nash equilibrium of an admitting response menu, for the audited
-payoff with any deposit, then the source profile is an `(ε + 2 * δ * R)`-Nash
-equilibrium of the source protocol model, where `δ` is the total deferral
-weight of the turn timing and every realized payoff value, charged or not,
-lies in an interval of length `R`. -/
-theorem isεNash_of_clientProfile {Parameter : Type}
+/-- A native approximate Nash equilibrium gives each source player an
+approximate best response. Its error adds twice the total deferral weight
+multiplied by that player's realized audited payoff range. -/
+theorem isεBestResponse_of_clientProfile {Parameter : Type}
     (ordered : (serviceGraph service.setup service.mode).BarrierOrdered)
     (parameter : State L service.setup.context → Parameter)
     (utility : Parameter × PublicOutcome service.setup.program → Player → ℝ)
@@ -326,13 +327,13 @@ theorem isεNash_of_clientProfile {Parameter : Type}
           service.bound turns timing
           (sourceServiceClientProfile service.setup (service.setup.decodeBehavioralProfile
             admission source)) who))
-    (low : Player → ℝ) (range : ℝ)
+    (low : Player → ℝ) (range : Player → ℝ)
     (within : ∀ who (output : Option (State L service.setup.program.terminalCtx))
       (charged : Bool),
       low who ≤ output.elim 0 (fun state => utility (service.setup.parameterOutcome parameter
           state) who) - (if charged then deposit who else 0) ∧
         output.elim 0 (fun state => utility (service.setup.parameterOutcome parameter
-          state) who) - (if charged then deposit who else 0) ≤ low who + range)
+          state) who) - (if charged then deposit who else 0) ≤ low who + range who)
     (ε : ℝ) (source : Profile (service.sourceModel admission).behavioralSignature) :
     let base := serviceBaseUtility service.setup service.mode service.deadline service.leaks
       (fun state => utility (service.setup.parameterOutcome parameter state))
@@ -344,14 +345,16 @@ theorem isεNash_of_clientProfile {Parameter : Type}
         service.scheduler).toBehavioralGameForm (2 * service.horizon + 1))
         (fun history who => payoff history.state who) ε
         (service.clientProfile admission menu timing source) →
-      IsεNash ((service.sourceModel admission).toBehavioralGameForm
+      ∀ who, IsεBestResponse ((service.sourceModel admission).toBehavioralGameForm
         (instructionCount service.setup.program + 1))
-        (fun final who => (service.setup.protocolReadout final.state).elim 0
-          (fun state => utility (service.setup.parameterOutcome parameter state) who))
-        (ε + 2 * (∑ event, timing.deferral event) * range) source := by
+        (fun final player => (service.setup.protocolReadout final.state).elim 0
+          (fun state => utility (service.setup.parameterOutcome parameter state) player))
+        (ε + 2 * (∑ event, timing.deferral event) * range who) who source (source who) := by
   intro base payoff native
-  rw [isεNash_iff] at native ⊢
-  intro who alternative
+  rw [isεNash_iff] at native
+  intro who
+  rw [bestResponse_self_iff]
+  intro alternative
   obtain ⟨_, _, compared⟩ :=
     native who (service.clientProfile admission menu timing (Profile.update source who
       alternative) who)
@@ -413,13 +416,13 @@ private theorem auditedPayoff_within {Parameter : Type}
     (utility : Parameter × PublicOutcome service.setup.program → Player → ℝ)
     (sample : List (SettledEvidence service.setup service.mode) →
       PMF (List (SettledEvidence service.setup service.mode)))
-    (deposit : Player → ℝ) (low : Player → ℝ) (range : ℝ)
+    (deposit : Player → ℝ) (low : Player → ℝ) (range : Player → ℝ)
     (within : ∀ who (output : Option (State L service.setup.program.terminalCtx))
       (charged : Bool),
       low who ≤ output.elim 0 (fun state => utility (service.setup.parameterOutcome parameter
           state) who) - (if charged then deposit who else 0) ∧
         output.elim 0 (fun state => utility (service.setup.parameterOutcome parameter
-          state) who) - (if charged then deposit who else 0) ≤ low who + range)
+          state) who) - (if charged then deposit who else 0) ≤ low who + range who)
     (state : (serviceApplication service.setup service.mode service.deadline
       service.leaks).ProtocolState) (who : Player) :
     let base := serviceBaseUtility service.setup service.mode service.deadline service.leaks
@@ -428,7 +431,7 @@ private theorem auditedPayoff_within {Parameter : Type}
       ((serviceRuntime service.setup service.mode service.deadline).serviceAuditObservation
         service.leaks)
       (serviceSourceAudit service.setup service.mode service.deadline service.leaks sample) deposit
-    low who ≤ payoff state who ∧ payoff state who ≤ low who + range := by
+    low who ≤ payoff state who ∧ payoff state who ≤ low who + range who := by
   intro base payoff
   have unclear := within who (serviceSourceReadout service.setup service.mode service.deadline
     service.leaks state) false
@@ -439,11 +442,11 @@ private theorem auditedPayoff_within {Parameter : Type}
     ((serviceRuntime service.setup service.mode service.deadline).serviceAuditObservation
       service.leaks)
     (serviceSourceAudit service.setup service.mode service.deadline service.leaks sample) state who
-  change low who ≤ base state who ∧ base state who ≤ low who + range at unclear
+  change low who ≤ base state who ∧ base state who ≤ low who + range who at unclear
   change low who ≤ base state who - deposit who ∧
-    base state who - deposit who ≤ low who + range at charged
+    base state who - deposit who ≤ low who + range who at charged
   change low who ≤ base state who - TerminalAudit.charge _ _ state who * deposit who ∧
-    base state who - TerminalAudit.charge _ _ state who * deposit who ≤ low who + range
+    base state who - TerminalAudit.charge _ _ state who * deposit who ≤ low who + range who
   obtain ⟨zero, one⟩ := rate
   constructor
   · have first := mul_nonneg (sub_nonneg.mpr one) (sub_nonneg.mpr unclear.1)
@@ -453,18 +456,11 @@ private theorem auditedPayoff_within {Parameter : Type}
     have second := mul_nonneg zero (sub_nonneg.mpr charged.2)
     linarith
 
-/-- **Approximate Nash transfer from the first-turn bound.** Under the
-asynchronous contract, for a source profile whose clients' first-turn limit has
-its source outcome law, suppose every native policy of one player against the
-first-turn clients of a source profile has audited expected payoff at most that
-of some source deviation of the same player. Then, if the source profile is an
-`ε`-Nash equilibrium of the source protocol model, its turn-counted clients are
-an `(ε + 2 * δ * R)`-Nash equilibrium of every admitting response menu, where `δ`
-is the total deferral weight of the turn timing and every realized payoff
-value, charged or not, lies in an interval of length `R`. The turn-counted
-clients against a deviation are within `δ` of the first-turn clients against it
-in total variation (`Vegas.deviatedTurnProfile_roundsFrom_bind_within`). -/
-theorem isεNash_clientProfile_of_firstTurn_bounds {Parameter : Type}
+/-- A source approximate Nash equilibrium gives each client an approximate
+best response, provided every first-turn native deviation is bounded by a
+source deviation. Its error uses that player's realized audited payoff range;
+the asynchronous contract and the full native deviation space are unchanged. -/
+theorem isεBestResponse_clientProfile_of_firstTurn_bounds {Parameter : Type}
     (parameter : State L service.setup.context → Parameter)
     (utility : Parameter × PublicOutcome service.setup.program → Player → ℝ)
     (sample : List (SettledEvidence service.setup service.mode) →
@@ -480,13 +476,13 @@ theorem isεNash_clientProfile_of_firstTurn_bounds {Parameter : Type}
           service.bound turns timing
           (sourceServiceClientProfile service.setup (service.setup.decodeBehavioralProfile
             admission source)) who))
-    (low : Player → ℝ) (range : ℝ)
+    (low : Player → ℝ) (range : Player → ℝ)
     (within : ∀ who (output : Option (State L service.setup.program.terminalCtx))
       (charged : Bool),
       low who ≤ output.elim 0 (fun state => utility (service.setup.parameterOutcome parameter
           state) who) - (if charged then deposit who else 0) ∧
         output.elim 0 (fun state => utility (service.setup.parameterOutcome parameter
-          state) who) - (if charged then deposit who else 0) ≤ low who + range)
+          state) who) - (if charged then deposit who else 0) ≤ low who + range who)
     (ε : ℝ) (source : Profile (service.sourceModel admission).behavioralSignature)
     (terminal : FirstTurnSourceLaw service.setup service.mode service.deadline service.leaks
       service.horizon service.scheduler service.bound turns
@@ -520,11 +516,13 @@ theorem isεNash_clientProfile_of_firstTurn_bounds {Parameter : Type}
         (fun final who => (service.setup.protocolReadout final.state).elim 0
           (fun state => utility (service.setup.parameterOutcome parameter state) who))
         ε source →
-      IsεNash ((menu.information (serviceInitialLaw service.setup service.mode) service.horizon
-        service.scheduler).toBehavioralGameForm (2 * service.horizon + 1))
-        (fun history who => payoff history.state who)
-        (ε + 2 * (∑ event, timing.deferral event) * range)
-        (service.clientProfile admission menu timing source) := by
+      ∀ who, IsεBestResponse
+        ((menu.information (serviceInitialLaw service.setup service.mode) service.horizon
+          service.scheduler).toBehavioralGameForm (2 * service.horizon + 1))
+        (fun history player => payoff history.state player)
+        (ε + 2 * (∑ event, timing.deferral event) * range who) who
+        (service.clientProfile admission menu timing source)
+        (service.clientProfile admission menu timing source who) := by
   intro base payoff clients firstTurn equilibrium
   classical
   let app := serviceApplication service.setup service.mode service.deadline service.leaks
@@ -537,14 +535,16 @@ theorem isεNash_clientProfile_of_firstTurn_bounds {Parameter : Type}
   let nativeUtility := fun (history : (menu.protocol (serviceInitialLaw service.setup service.mode)
     service.horizon
       service.scheduler).History) (who : Player) => payoff history.state who
-  have bounded : ∀ state who, |payoff state who| ≤ |low who| + |range| := by
+  have bounded : ∀ state who, |payoff state who| ≤ |low who| + |range who| := by
     intro state who
     obtain ⟨lower, upper⟩ := service.auditedPayoff_within parameter utility sample deposit low
       range within state who
-    exact abs_le.mpr ⟨by linarith [neg_abs_le (low who), abs_nonneg range],
-      by linarith [le_abs_self (low who), le_abs_self range]⟩
-  rw [isεNash_iff] at equilibrium ⊢
-  intro who replacement
+    exact abs_le.mpr ⟨by linarith [neg_abs_le (low who), abs_nonneg (range who)],
+      by linarith [le_abs_self (low who), le_abs_self (range who)]⟩
+  rw [isεNash_iff] at equilibrium
+  intro who
+  rw [bestResponse_self_iff]
+  intro replacement
   let alternative := app.decodePolicy (menu.embedPolicy (serviceInitialLaw service.setup
     service.mode)
     service.horizon service.scheduler who replacement)
@@ -615,10 +615,10 @@ theorem isεNash_clientProfile_of_firstTurn_bounds {Parameter : Type}
       expect (app.roundsFrom (serviceInitialLaw service.setup service.mode) service.scheduler limit
         service.horizon)
         (fun execution => payoff (app.finished execution) who) ≤
-      (∑ event, timing.deferral event) * range :=
+      (∑ event, timing.deferral event) * range who :=
     coupled.expect_sub_le (fun execution => payoff (app.finished execution) who)
-      (low who) range (fun execution _ => service.auditedPayoff_within parameter utility sample
-        deposit low range within _ who)
+      (low who) (range who) (fun execution _ =>
+        service.auditedPayoff_within parameter utility sample deposit low range within _ who)
   obtain ⟨deviation, firstBound⟩ := firstTurn who alternative
   rw [expect_map] at firstBound
   have firstBound' : expect (app.roundsFrom (serviceInitialLaw service.setup service.mode)
@@ -650,7 +650,7 @@ theorem isεNash_clientProfile_of_firstTurn_bounds {Parameter : Type}
   have nativeDeviationIntegrable : UtilityIntegrable nativeUtility who
       (model.runBehavioral (Profile.update (service.clientProfile admission menu timing source) who
         replacement) (2 * service.horizon + 1)) :=
-    payoffIntegrable_of_bounded _ _ (C := |low who| + |range|) fun history =>
+    payoffIntegrable_of_bounded _ _ (C := |low who| + |range who|) fun history =>
       bounded history.state who
   have nativeHonestIntegrable : UtilityIntegrable nativeUtility who
       (model.runBehavioral (service.clientProfile admission menu timing source)

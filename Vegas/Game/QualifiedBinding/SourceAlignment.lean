@@ -1290,9 +1290,10 @@ theorem sourceReplayAlignment
                   · cases handled
                 obtain ⟨native, accepted⟩ := nativeAccepted
                 obtain ⟨_ready, _timely, owner, domain, binding, _code, _node, _sender,
-                  handleOwner, _vacant, _unused⟩ := handle_commitment_conditions
-                    implementation.runtime before.execution.application.current.native native
-                      message.id named handle accepted
+                  handleOwner, _vacant, _unused, _⟩ :=
+                    (handle_commitment_iff implementation.runtime
+                    before.execution.application.current.native native message.id named handle).mp
+                    accepted
                 obtain ⟨serial, opening, evidence, record, handleEq, sender, recorded, emitted,
                   declared, _fresh, _namespace, originalResult⟩ := issued_binding_record setup
                     implementation before prior owner named domain binding handle message
@@ -1877,10 +1878,10 @@ theorem sourceReplayAlignment
               rw [noMeaning] at currentMeaning
               cases currentMeaning
             · obtain ⟨ready, _timely, _actualOwner, _actualPayload,
-                _actualBinding, _code, _node, _sender, _owner, _vacant, _unused⟩ :=
-                handle_commitment_conditions implementation.runtime
-                  acceptBefore.execution.application.current.native acceptedNative
-                    message.id named handle handledCommit
+                _actualBinding, _code, _node, _sender, _owner, _vacant, _unused, _⟩ :=
+                (handle_commitment_iff implementation.runtime
+                  acceptBefore.execution.application.current.native acceptedNative message.id
+                  named handle).mp handledCommit
               obtain ⟨phase, remaining, installed, commitment, inside⟩ :=
                 phase_ready_binding_phase implementation.runtime implementation.leaks
                   implementation.plan

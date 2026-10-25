@@ -1,5 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
+import Vegas.Compile.ContextRefsTransport
 import Vegas.Game.QualifiedBinding.SourceImage
 import Vegas.Game.RecoveryRetryChronology
 import Vegas.Game.CommitRecoveryOmissionWindow
@@ -731,32 +732,9 @@ private theorem sourceReplay_finish_selected_cursor
       (sourceReplaySuffixInjective setup origin point)
   have sameConfig := transportConfig sameResidual
     cursor.origin targetSource nextSaved sameSavedPoint
-  have transportAgreement {left right :
-      ResidualProgram setup.program}
-      (equal : left = right)
-      (leftRefs : ContextRefs (graphLayout setup.program)
-        left.context)
-      (rightRefs : ContextRefs (graphLayout setup.program)
-        right.context)
-      (sameRefs : cast (congrArg (fun residual :
-        ResidualProgram setup.program =>
-          ContextRefs (graphLayout setup.program)
-            residual.context) equal) leftRefs = rightRefs)
-      (leftSource : SourceProgram.Config Player L left.context)
-      (rightSource : SourceProgram.Config Player L right.context)
-      (sameSource : cast (congrArg (fun residual :
-        ResidualProgram setup.program =>
-          SourceProgram.Config Player L residual.context)
-            equal) leftSource = rightSource)
-      (store : Store (graphLayout setup.program)) :
-      leftRefs.Agrees leftSource.state store →
-        rightRefs.Agrees rightSource.state store := by
-    cases equal
-    cases sameRefs
-    cases sameSource
-    exact id
   intro name cell source
-  exact transportAgreement sameResidual cursor.refs
+  exact ContextRefs.Agrees.of_cast_config_eq
+    (fun residual : ResidualProgram setup.program => residual.context) sameResidual cursor.refs
     chosen.refs sameRefs targetSource nextSaved sameConfig _
       targetAgrees source
 
@@ -1207,32 +1185,9 @@ private theorem sourceReplay_automatic_commitment_entry
         (sourceSnapshotState setup implementation G
           reference lost (following.drain
             (live)).native).config.store := by
-    have transportAgreement
-        {left right : ResidualProgram setup.program}
-        (equal : left = right)
-        (leftRefs : ContextRefs
-          (graphLayout setup.program) left.context)
-        (rightRefs : ContextRefs
-          (graphLayout setup.program) right.context)
-        (sameRefs : cast (congrArg (fun residual :
-          ResidualProgram setup.program =>
-            ContextRefs (graphLayout setup.program)
-              residual.context) equal) leftRefs = rightRefs)
-        (rightSource : SourceProgram.Config Player L
-          right.context)
-        (store : Store (graphLayout setup.program)) :
-        rightRefs.Agrees rightSource.state store →
-          leftRefs.Agrees
-            (cast (congrArg (fun residual :
-              ResidualProgram setup.program =>
-                SourceProgram.Config Player L
-                  residual.context) equal.symm)
-                    rightSource).state store := by
-      cases equal
-      cases sameRefs
-      exact id
     intro name cell source
-    exact transportAgreement advancedResidual
+    exact ContextRefs.Agrees.cast_config
+      (fun residual : ResidualProgram setup.program => residual.context) advancedResidual
       advancedCheckpoint.refs
         (commitBlockRefs setup.program nextBlock nextSuffix
           nextEmbedding cursor.refs)
@@ -2193,32 +2148,9 @@ private theorem sourceReplay_automatic_publication_entry
   have nextTargetRawAgrees :
       selectedRevealed.refs.Agrees nextTarget.state
         assignedStore := by
-    have transportAgreement
-        {left right : ResidualProgram setup.program}
-        (equal : left = right)
-        (leftRefs : ContextRefs
-          (graphLayout setup.program) left.context)
-        (rightRefs : ContextRefs
-          (graphLayout setup.program) right.context)
-        (sameRefs : cast (congrArg (fun residual :
-          ResidualProgram setup.program =>
-            ContextRefs (graphLayout setup.program)
-              residual.context) equal) leftRefs = rightRefs)
-        (rightSource : SourceProgram.Config Player L
-          right.context)
-        (store : Store (graphLayout setup.program)) :
-        rightRefs.Agrees rightSource.state store →
-          leftRefs.Agrees
-            (cast (congrArg (fun residual :
-              ResidualProgram setup.program =>
-                SourceProgram.Config Player L
-                  residual.context) equal.symm)
-                    rightSource).state store := by
-      cases equal
-      cases sameRefs
-      exact id
     intro name cell source
-    exact transportAgreement revealResidualEq
+    exact ContextRefs.Agrees.cast_config
+      (fun residual : ResidualProgram setup.program => residual.context) revealResidualEq
       selectedRevealed.refs
         (revealTailRefs setup count cursor.residual.tail
           prefixed cursor.refs cursor.embedding)
@@ -4199,7 +4131,7 @@ private theorem sourceReplay_exhausted_selected_agreement
   have exhaustedPosition :=
     exhaustedRawWitness.receipts.exclusion.frontier.positioned
   rw [exhaustedRawInstalled] at exhaustedPosition
-  have restoredRecord := SuffixExclusionRecord.of_prefix
+  have restoredRecord := ExclusionEvidence.of_prefix
     restoredReceipts exhaustedPosition.1 rfl
   have rebuiltRecord := restoredRecord.phase_drain phase
   have rebuiltPrefix : rebuilt.native.config.cut.IsPrefix
@@ -4241,13 +4173,13 @@ private theorem sourceReplay_exhausted_selected_agreement
     rw [PhaseRuntimeState.archivedFailureOwners_append]
     simpa only [PhaseRuntimeState.archivedFailureOwners,
       List.foldr_cons, List.foldr_nil, Finset.union_empty] using aggregate
-  have restoredArchived : SuffixExclusionRecord 0
+  have restoredArchived : ExclusionEvidence 0
       (PhaseRuntimeState.archivedFailureOwners
         (exhaustedRawState.retired ++
           [⟨⟨phase.low, exhaustedRawState.generation⟩,
             (phase.drain physical).native⟩])) restored := by
     rw [exhaustedArchiveOwners]
-    exact restoredCoverage.suffixRecord
+    exact restoredCoverage.exclusionEvidence
   have rebuiltArchived := restoredArchived.phase_drain phase
   have exhaustedArchiveBefore :
       ∀ record ∈ exhaustedRawState.retired ++
@@ -4480,30 +4412,9 @@ private theorem sourceReplay_exhausted_selected_agreement
       exhaustedCheckpoint.refs.Agrees exhaustedSeedTarget.state
         (sourceSnapshotState setup implementation G reference lost
           rebuilt.native).config.store := by
-    have transportAgreement
-        {left right : ResidualProgram setup.program}
-        (equal : left = right)
-        (leftRefs : ContextRefs (graphLayout setup.program)
-          left.context)
-        (rightRefs : ContextRefs (graphLayout setup.program)
-          right.context)
-        (sameRefs : cast (congrArg (fun residual :
-          ResidualProgram setup.program =>
-            ContextRefs (graphLayout setup.program)
-              residual.context) equal) leftRefs = rightRefs)
-        (rightSource : SourceProgram.Config Player L right.context)
-        (store : Store (graphLayout setup.program)) :
-        rightRefs.Agrees rightSource.state store →
-          leftRefs.Agrees
-            (cast (congrArg (fun residual :
-              ResidualProgram setup.program =>
-                SourceProgram.Config Player L residual.context)
-                  equal.symm) rightSource).state store := by
-      cases equal
-      cases sameRefs
-      exact id
     intro name cell source
-    exact transportAgreement exhaustedSeedResidual
+    exact ContextRefs.Agrees.cast_config
+      (fun residual : ResidualProgram setup.program => residual.context) exhaustedSeedResidual
       exhaustedCheckpoint.refs
         (commitBlockRefs setup.program block suffix
           targetEmbedding first.checkpoint.refs)
@@ -5078,30 +4989,10 @@ private theorem sourceReplay_clean_selected_agreement
       seedTarget.state
         (sourceSnapshotState setup implementation G reference lost
           (phase.drain physical).native).config.store := by
-    have transportAgreement
-        {left right : ResidualProgram setup.program}
-        (equal : left = right)
-        (leftRefs : ContextRefs (graphLayout setup.program)
-          left.context)
-        (rightRefs : ContextRefs (graphLayout setup.program)
-          right.context)
-        (sameRefs : cast (congrArg (fun residual :
-          ResidualProgram setup.program =>
-            ContextRefs (graphLayout setup.program)
-              residual.context) equal) leftRefs = rightRefs)
-        (rightSource : SourceProgram.Config Player L right.context)
-        (store : Store (graphLayout setup.program)) :
-        rightRefs.Agrees rightSource.state store →
-          leftRefs.Agrees
-            (cast (congrArg (fun residual :
-              ResidualProgram setup.program =>
-                SourceProgram.Config Player L residual.context)
-                  equal.symm) rightSource).state store := by
-      cases equal
-      cases sameRefs
-      exact id
     intro name cell member
-    exact transportAgreement seedResidual seedCheckpoint.refs
+    exact ContextRefs.Agrees.cast_config
+      (fun residual : ResidualProgram setup.program => residual.context)
+      seedResidual seedCheckpoint.refs
       (commitBlockRefs setup.program block suffix targetEmbedding
         first.checkpoint.refs) seedRefs targetFinished _
           (fun {name cell} source => cleanPhaseAgreement source) member

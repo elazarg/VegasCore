@@ -2,9 +2,9 @@
 
 import Vegas.Pending.PhaseBindingStamp
 import Vegas.Pending.PhaseFrontier
-import Vegas.Pending.SuffixExclusionRecord
+import Vegas.Pending.PhaseExclusionEvidence
 import Vegas.Pending.AcceptedEventOwnership
-import Vegas.Pending.ExclusionSameConfiguration
+import Vegas.Pending.ExclusionNativeFailure
 import Interaction.ReactiveNormalHistory
 
 /-! # Authentic attempt stamps of completed events of nonexcluded owners -/

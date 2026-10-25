@@ -618,9 +618,9 @@ theorem sourceArchivePrefix_history (runtime : EventGraphRuntime graph)
     apply settleBound plan.phases 0 ⟨State.initial input, ∅⟩ ⟨State.initial input, ∅⟩ []
       (List.suffix_refl _) _
       ⟨Nat.zero_le _, fun j => Fin.elim0 j⟩
-    have record : SuffixExclusionRecord 0 ∅
+    have record : ExclusionEvidence 0 ∅
         (⟨State.initial input, ∅⟩ : RecoveryState graph) :=
-      (RecoveryState.FailureCoverage.initial input).suffixRecord
+      (RecoveryState.FailureCoverage.initial input).exclusionEvidence
     exact ⟨⟨RecoveryState.FailureCoverage.initial input,
       RecoveryState.FailureCoverage.initial input, Finset.Subset.refl _⟩, record, record⟩
 

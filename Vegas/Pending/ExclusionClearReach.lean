@@ -39,9 +39,9 @@ theorem stepProb_recoveryTrace
     (legal : ((runtime.reactiveApplication leaks).protocol (initial.map RecoveryState.native)
       horizon (nativeScheduler runtime leaks scheduler)).Legal before joint)
     (valid : ∀ current, before = some current →
-      PublicExclusionRecord (⟨current.execution.application, ∅⟩ : RecoveryState graph))
+      ExclusionEvidence 0 ∅ (⟨current.execution.application, ∅⟩ : RecoveryState graph))
     (clear : ∀ current, after = some current →
-      PublicExclusionRecord (⟨current.execution.application, ∅⟩ : RecoveryState graph)) :
+      ExclusionEvidence 0 ∅ (⟨current.execution.application, ∅⟩ : RecoveryState graph)) :
     (RecoveryModel).stepProb profile
         (recoveryTrace runtime leaks initial initialized horizon scheduler prior valid)
         ⟨liftJointActions runtime leaks joint,
@@ -103,7 +103,7 @@ theorem historyReachWeight_recoveryHistory_toReal
         (initial.map RecoveryState.native) horizon
         (nativeScheduler runtime leaks scheduler)).Trace state)
       (clear : ∀ current, state = some current →
-        PublicExclusionRecord (⟨current.execution.application, ∅⟩ : RecoveryState graph)),
+        ExclusionEvidence 0 ∅ (⟨current.execution.application, ∅⟩ : RecoveryState graph)),
       ((RecoveryModel).historyReachWeight profile
         (recoveryHistory runtime leaks initial initialized horizon scheduler ⟨state, trace⟩
           clear)).toReal =
@@ -146,7 +146,7 @@ theorem historyReachWeight_recoveryHistory
       (initial.map RecoveryState.native) horizon (nativeScheduler runtime leaks scheduler)).Trace
         state)
     (clear : ∀ current, state = some current →
-      PublicExclusionRecord (⟨current.execution.application, ∅⟩ : RecoveryState graph)) :
+      ExclusionEvidence 0 ∅ (⟨current.execution.application, ∅⟩ : RecoveryState graph)) :
     (RecoveryModel).historyReachWeight profile
         (recoveryHistory runtime leaks initial initialized horizon scheduler ⟨state, trace⟩ clear) =
       (NativeModel).historyReachWeight
@@ -184,7 +184,7 @@ theorem informationHistoryEquiv_reachWeight
     (profile : ∀ who, (RecoveryModel).BehavioralPolicy who)
     (who : Player) (reference : (runtime.reactiveApplication leaks).Control)
     (active : reference.actor = some who)
-    (valid : PublicExclusionRecord (⟨reference.execution.application, ∅⟩ : RecoveryState graph))
+    (valid : ExclusionEvidence 0 ∅ (⟨reference.execution.application, ∅⟩ : RecoveryState graph))
     (history : (RecoveryModel).InformationHistory who (liftInformation runtime leaks
       ((runtime.reactiveApplication leaks).observe who (some reference)))) :
     (RecoveryModel).historyReachWeight profile history.1 =

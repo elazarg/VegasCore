@@ -349,6 +349,18 @@ theorem automatic_no_new_miss (phase : RuntimePhase graph) (entry : RecoveryStat
 
 end PhaseRuntimeState
 
+theorem phase_emit_call (state : PhaseRuntimeState graph) (who : Player)
+    (known : List (Message Player (CommitAttemptPacket graph)))
+    (material : WitnessedSubmission graph) :
+    (state.emit who known material).packet.call = material.call.packet := by
+  have nativeCall : (state.current.emit who
+      (known.map fun message => ⟨message.id, message.payload.packet⟩) material).call =
+      material.call.packet := by
+    dsimp only [RecoveryState.emit]
+    split <;> rfl
+  dsimp only [PhaseRuntimeState.emit]
+  split <;> exact nativeCall
+
 /-- The physical network, receipts and player/environment recall are the
 ordinary reactive execution carrier, with automatic phase normalization internal. -/
 @[implicit_reducible]

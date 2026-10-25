@@ -41,7 +41,7 @@ theorem fresh_receiptRecord (phases : List (RuntimePhase graph)) (generation : N
         subst phase
         exact frontier.positioned.1
   exact ⟨⟨frontier, receipts, receipts, fun phase member =>
-    SuffixExclusionRecord.of_prefix receipts (prefixes phase member) rfl⟩,
+    ExclusionEvidence.of_prefix receipts (prefixes phase member) rfl⟩,
     fun phase member _commitment => BindingReceiptOrder.of_prefix receipts
       (prefixes phase member)⟩
 
@@ -63,7 +63,7 @@ theorem settle_receiptRecord (phases : List (RuntimePhase graph)) (generation : 
       have restoredReceipts : (restore entry (phase.drain current)).native.ReceiptsComplete := by
         intro event candidate installed
         exact valid.exclusion.saved event candidate installed
-      have restoredRecord := SuffixExclusionRecord.of_prefix restoredReceipts saved rfl
+      have restoredRecord := ExclusionEvidence.of_prefix restoredReceipts saved rfl
       have rebuilt := restoredRecord.phase_drain phase
       have restoredWithin : (restore entry (phase.drain current)).native.config.cut.Within
           phase.low phase.high := saved.within phase.nonempty.le

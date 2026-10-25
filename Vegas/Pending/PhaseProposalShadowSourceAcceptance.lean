@@ -80,8 +80,8 @@ theorem PhaseStateFrame.repair_owned_binding_of_history
     exact ⟨native, handled⟩
   obtain ⟨native, handled⟩ := nativeAccepted
   obtain ⟨ready, timely, actor, ty, outputEq, codeEq, node, sender, candidateOwner,
-      vacant, unused⟩ := handle_commitment_conditions runtime _ native message.id event candidate
-        handled
+      vacant, unused, _⟩ :=
+        (handle_commitment_iff runtime _ native message.id event candidate).mp handled
   obtain ⟨actorEq, typeEq⟩ := EventField.binding.inj (outputEq.symm.trans binding)
   subst actorEq
   subst typeEq

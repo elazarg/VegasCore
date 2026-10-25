@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Pending.PhaseBindingAcceptedReceipt
+import Vegas.Pending.PhaseStoppedAttemptMetadata
 import Vegas.Pending.PhaseAttemptCompletion
 
 /-! # The original completed physical snapshot at a full-attempt exit -/
@@ -265,90 +266,47 @@ theorem phase_attempt_stopped_receipt_snapshot
   let initial := inputs.map (PhaseRuntimeState.initial plan)
   let E := menu.protocol initial horizon scheduler
   let N := menu.information initial horizon scheduler
-  let Snapshot (ending : (app).Control) : Prop := ending.actor = none ∧
-    ∃ snapshot : RecoveryState graph,
-    phase.Finished snapshot ∧ snapshot.native.BindingInvariant ∧ snapshot.FailureCoverage ∧
-      snapshot.excluded = ending.execution.application.current.excluded ∧
-      (∀ event candidate, start.execution.application.attempt.phase ≤ event.val →
-        snapshot.native.accepted (.inr event) = some candidate →
-        PhaseService.BindingAccepted runtime leaks
-          ⟨start.execution.application.attempt, event⟩ candidate.1 ending.execution) ∧
-      ∃ (before : (app).Control) (prior : E.Trace (some before))
-        (joint : Player → Option (app).Action) (legal : E.Legal (some before) joint)
-        (realized : some ending ∈ ((app).transition initial horizon scheduler
-          (some before) joint).support) (raw : RecoveryState graph),
-        TracePrefix trace prior ∧ TracePrefix (prior.extend joint legal realized) final.trace ∧
-          before.execution.application.attempt = start.execution.application.attempt ∧
-          phase ∈ before.execution.application.phases.head? ∧ snapshot = phase.drain raw ∧
-          ending.execution.application =
-            ({ before.execution.application with current := raw } :
-              PhaseRuntimeState graph).normalize ∧
-          PhaseClosingEffect runtime leaks before.execution ending.execution raw
-  have initialized : ∀ state ∈ initial.support, state.Ordered := by
-    intro state member
-    obtain ⟨draw, _, rfl⟩ := PMF.support_map .. ▸ member
-    exact PhaseRuntimeState.initial_ordered plan draw
-  have ordered := (phaseApplication_seedOrder runtime leaks).history initial horizon scheduler
-    initialized (menu.toRawTrace initial horizon scheduler trace)
-  have first := N.runBehavioralUntil_support_first
-    (menu.bounded initial horizon scheduler).wellFoundedHistories profile stopped
-      ⟨some start, trace⟩ final supported
-  have along : ∀ {target} {targetTrace : E.Trace target}, TracePrefix trace targetTrace →
-      TracePrefix targetTrace final.trace →
-      ∃ current : (app).Control, target = some current ∧ current.execution.application.Ordered ∧
-        (current.execution.application.attempt = start.execution.application.attempt →
-          current.execution.application.phases = start.execution.application.phases) ∧
-        (current.execution.application.attempt ≠ start.execution.application.attempt →
-          Snapshot current) := by
-    intro target targetTrace kept
-    induction kept with
-    | refl =>
-      intro _before
-      exact ⟨start, rfl, ordered, fun _ => rfl, fun closed => (closed rfl).elim⟩
-    | @extend source target earlier kept joint legal realized ih =>
-      intro beforeFinal
-      have earlierFinal := (TracePrefix.extend .refl joint legal realized).trans beforeFinal
-      obtain ⟨middle, rfl, middleOrdered, phasesKept, _previous⟩ := ih earlierFinal
-      have moved : target ∈ ((app).transition initial horizon scheduler
-          (some middle) joint).support := realized
-      obtain ⟨next, rfl, _recall⟩ := (app).transition_recall_prefix initial horizon scheduler
-        middle target joint moved
-      have shorter : earlier.length < final.trace.length := by
-        have upper := beforeFinal.length_le
-        simp only [Trace.length] at upper
-        omega
-      have same : middle.execution.application.attempt = start.execution.application.attempt := by
-        by_contra different
-        exact first ⟨some middle, earlier⟩ kept earlierFinal shorter different
-      have nextOrdered := (phaseApplication_seedOrder runtime leaks).transition initial horizon
-        scheduler initialized (some middle) (some next) joint middleOrdered moved
-      refine ⟨next, rfl, nextOrdered, ?_, ?_⟩
-      · intro sameNext
-        exact ((phaseApplication_sameAttempt_controls runtime leaks).transition initial horizon
-          scheduler middle next joint moved middleOrdered (same.trans sameNext.symm)).1.trans
-            (phasesKept same)
-      · intro closed
-        have installedNow : phase ∈ middle.execution.application.phases.head? := by
-          simpa only [phasesKept same] using installed
-        obtain ⟨raw, idle, normalized, finished, binding, covered, excluded, receipts, effect,
-          _rawStamp⟩ :=
-          phase_closed_transition_receipt_snapshot runtime leaks plan inputs horizon scheduler
-            middle next (menu.toRawTrace initial horizon scheduler earlier) joint moved phase
-              installedNow (fun equal => closed (equal.trans same))
-        refine ⟨idle, phase.drain raw, finished, binding, covered, excluded, ?_,
-          middle, earlier, joint, legal, realized, raw, kept, beforeFinal, same, installedNow,
-          rfl, normalized, effect⟩
-        simpa only [same] using receipts
-  obtain ⟨ending, stateEq, _prefix, changed, _completed, _retried, _failed⟩ :=
+  obtain ⟨ending, stateEq, retained, changed, _completed, _retried, _failed⟩ :=
     phase_attempt_stopped_results runtime leaks menu plan inputs horizon scheduler delay bound
       contract profile start trace phase installed final supported
-  have retained := N.runBehavioralUntil_support_prefix
-    (menu.bounded initial horizon scheduler).wellFoundedHistories profile stopped
-      ⟨some start, trace⟩ final supported
-  obtain ⟨current, currentEq, _currentOrdered, _phases, snapshot⟩ := along retained .refl
-  have same := Option.some.inj (currentEq.symm.trans stateEq)
-  subst current
-  exact ⟨ending, stateEq, changed, snapshot changed⟩
+  rcases final with ⟨target, finish⟩
+  change target = some ending at stateEq
+  cases stateEq
+  have longer : trace.length < finish.length := by
+    have lower : trace.length ≤ finish.length := retained.length_le
+    by_contra notLonger
+    have lengths : trace.length = finish.length := by omega
+    have same := retained.eq_of_length lengths
+    have states := congrArg (fun history : E.History => history.state) same
+    have controls : start = ending := Option.some.inj states
+    exact changed (congrArg (fun control : (app).Control =>
+      control.execution.application.attempt) controls.symm)
+  obtain ⟨beforeState, prior, joint, legal, moved, fromStart, endEq⟩ :=
+    TracePrefix.exists_last_transition (E := E) (initialTrace := trace)
+      (last := some ending) (finish := finish) (show TracePrefix trace finish from retained) longer
+  change finish = prior.extend joint legal moved at endEq
+  subst finish
+  have beforeFinal : TracePrefix prior (prior.extend joint legal moved) :=
+    .extend .refl joint legal moved
+  have lastPrefix : TracePrefix (prior.extend joint legal moved)
+      (prior.extend joint legal moved) := .refl
+  have shorter : prior.length < (prior.extend joint legal moved).length :=
+    Nat.lt_succ_self _
+  obtain ⟨before, rfl, _ordered, same, phases, _entry⟩ :=
+    phase_attempt_stopped_prefix_metadata runtime leaks menu plan inputs horizon scheduler
+      profile start trace ⟨some ending, prior.extend joint legal moved⟩ supported
+        fromStart beforeFinal shorter
+  have installedNow : phase ∈ before.execution.application.phases.head? := by
+    simpa only [phases] using installed
+  obtain ⟨raw, idle, normalized, finished, binding, covered, excluded, receipts, effect,
+      _rawStamp⟩ :=
+    phase_closed_transition_receipt_snapshot runtime leaks plan inputs horizon scheduler
+      before ending (menu.toRawTrace initial horizon scheduler prior) joint moved phase
+        installedNow (fun equal => changed (equal.trans same))
+  refine ⟨ending, rfl, changed, idle, phase.drain raw, finished, binding, covered, excluded, ?_,
+    before, prior, joint, legal, moved, raw, fromStart, lastPrefix, same, installedNow, rfl,
+    normalized, effect⟩
+  simpa only [same] using receipts
 
 
 end Stopped

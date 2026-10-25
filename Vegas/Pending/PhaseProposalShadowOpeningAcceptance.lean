@@ -70,7 +70,7 @@ theorem PhaseStateFrame.repair_opening_of_history
   obtain ⟨ready, timely, actor, payload, binding, checks, outputEq, codeEq, value, result,
       node, sender, candidateOwner, associated, typed, leftFixed, leftStored, resolved,
       _nativeEq⟩ :=
-    handle_opening_conditions runtime _ native message.id event candidate raw handled
+    (handle_opening_iff runtime _ native message.id event candidate raw).mp handled
   have rawLeft := (PhaseCount.onePacketMenu runtime leaks bounds).toRawTrace
     (inputs.map (PhaseRuntimeState.initial plan)) horizon scheduler leftTrace
   have rawRight := (PhaseCount.onePacketMenu runtime leaks bounds).toRawTrace
@@ -131,7 +131,7 @@ theorem PhaseStateFrame.opening_acceptance_reflects
   obtain ⟨ready, timely, actor, payload, binding, checks, outputEq, codeEq, value, result,
       node, sender, candidateOwner, associated, typed, _rightFixed, rightStored, resolved,
       _nativeEq⟩ :=
-    handle_opening_conditions runtime _ native message.id event candidate raw handled
+    (handle_opening_iff runtime _ native message.id event candidate raw).mp handled
   let initial := inputs.map (PhaseRuntimeState.initial plan)
   have rawTrace := (PhaseCount.onePacketMenu runtime leaks bounds).toRawTrace
     initial horizon scheduler trace

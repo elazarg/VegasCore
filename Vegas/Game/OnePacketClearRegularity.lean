@@ -26,7 +26,7 @@ theorem intended_of_clear_regular_notOwes (wellFormed : setup.WellFormed)
     (source : setup.intendedModel.BehavioralAssessment) (focal : Player)
     {control : (application setup leaks).Control}
     (trace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some control))
-    (clear : PublicExclusionRecord
+    (clear : ExclusionEvidence 0 ∅
       (⟨control.execution.application, ∅⟩ : RecoveryState (graph setup)))
     (regular : RegularTrace setup leaks bounds horizon scheduler source focal trace)
     (notOwed : ∀ point, decodedPoint setup control.execution.application.config = some point →
@@ -34,7 +34,7 @@ theorem intended_of_clear_regular_notOwes (wellFormed : setup.WellFormed)
     ∃ point, decodedPoint setup control.execution.application.config = some point ∧
       ProtocolState.Intended setup.program point :=
   intended_of_regular wellFormed source focal trace control rfl
-    (publicRecord_of_publicExclusionRecord trace clear focal) regular
+    (publicRecord_of_exclusionEvidence trace clear focal) regular
     (ownCompletionsIntended_of_notOwes wellFormed focal trace control rfl notOwed)
 
 /-- Every responder is actually forced inside the clear regular debt-free
@@ -43,7 +43,7 @@ theorem forcedState_of_clear_regular_notOwes (wellFormed : setup.WellFormed)
     (source : setup.intendedModel.BehavioralAssessment) (focal : Player)
     {control : (application setup leaks).Control}
     (trace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some control))
-    (clear : PublicExclusionRecord
+    (clear : ExclusionEvidence 0 ∅
       (⟨control.execution.application, ∅⟩ : RecoveryState (graph setup)))
     (regular : RegularTrace setup leaks bounds horizon scheduler source focal trace)
     (notOwed : ∀ point, decodedPoint setup control.execution.application.config = some point →
@@ -62,7 +62,7 @@ theorem regularStep_of_clear_regular_main (wellFormed : setup.WellFormed)
     {remaining : Nat} {execution : (application setup leaks).Execution}
     (prior : (onePacketProtocol setup leaks bounds horizon scheduler).Trace
       (some ⟨remaining, some actor, execution⟩))
-    (clear : PublicExclusionRecord (⟨execution.application, ∅⟩ : RecoveryState (graph setup)))
+    (clear : ExclusionEvidence 0 ∅ (⟨execution.application, ∅⟩ : RecoveryState (graph setup)))
     (regular : RegularTrace setup leaks bounds horizon scheduler source focal prior)
     (notOwed : ∀ point, decodedPoint setup execution.application.config = some point →
       ¬ ProtocolState.OwesFailure focal setup.program point)

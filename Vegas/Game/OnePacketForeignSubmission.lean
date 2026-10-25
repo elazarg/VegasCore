@@ -32,7 +32,7 @@ theorem foreign_firstActivation_prefix_of_recorded
     (startPrefix : TracePrefix startTrace trace)
     (current event : (graph setup).EventId)
     (turn : start.execution.application.publicView.ownTurn? focal = some current)
-    (clear : PublicExclusionRecord
+    (clear : ExclusionEvidence 0 ∅
       (⟨control.execution.application, ∅⟩ : RecoveryState (graph setup)))
     (regular : RegularTrace setup leaks bounds horizon scheduler source focal trace)
     (notOwed : ∀ point, decodedPoint setup control.execution.application.config = some point →

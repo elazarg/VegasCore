@@ -96,7 +96,7 @@ local notation "Native" => onePacketModel setup leaks bounds (initialLaw setup) 
 local notation "Protocol" => ReactiveApplication.ResponseMenu.protocol menu (initialLaw setup)
   horizon nativeScheduler
 local notation "Clear" => ReactiveApplication.stateInvariant
-  (app := application setup leaks) (fun native => PublicExclusionRecord (RecoveryState.mk native ∅))
+  (app := application setup leaks) (fun native => ExclusionEvidence 0 ∅ (RecoveryState.mk native ∅))
 
 include initialized nativeLaw completes in
 open Classical in
@@ -109,7 +109,7 @@ theorem recovery_pending_failure_terminal_eq_stopped [Finite (Protocol).History]
     (start : (Protocol).History) {control : (application setup leaks).Control}
     (current : start.state = some control) {rank : Nat}
     (ordered : control.execution.application.config.cut.IsPrefix rank)
-    (clear : PublicExclusionRecord (RecoveryState.mk control.execution.application ∅))
+    (clear : ExclusionEvidence 0 ∅ (RecoveryState.mk control.execution.application ∅))
     (key : LateKey setup leaks) (event : (graph setup).EventId)
     (ready : control.execution.application.config.cut.Ready event)
     (decided : decidedEvent key = some event) :

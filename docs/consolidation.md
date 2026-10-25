@@ -114,6 +114,15 @@ and [terminal-audit extension](../GameTheoryExtensions/Analysis/Protocol/Termina
 Instantiate these and identify the missing operational hypotheses before adding
 another general preservation framework.
 
+The [proof-review implementation ledger](proof-review-progress.md) records the
+preparatory extractions separately from the semantic consolidation steps.
+Probability comparison, typed collection, continuation and evidence proofs have
+reusable owners. Conditional-public-prior base laws and player-specific audited
+Nash errors strengthen the analysis without choosing failure or retry semantics.
+Strict count-audit support exclusion uses actual payoff bounds and a feasible
+safe continuation. These results do not close the semantic adapters or extend
+the existing recovery SE capstone to conditional priors.
+
 The [phase application](../Vegas/Pending/PhaseApplication.lean) already accepts a
 general event graph; the concurrent capstone fixes `.concurrent`. Singleton
 commitment phases are a candidate sequential adapter: a failure would not

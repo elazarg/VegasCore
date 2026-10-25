@@ -8,7 +8,8 @@ import Vegas.Game.OnePacketOwnerInfoSite
 At two late-delivery sites of `who` with the same late-delivery key, at neither
 of which `who` owes a failure, the owner swap between their views sends the
 first site's information state to the second's (`Vegas.ownerSwap_info`), so in
-a well-formed setup with independent hidden initial cells their base laws agree
+a well-formed setup with hidden initial cells independent given an observed
+public initial signal their base laws agree
 on every payoff of the operational record (`Vegas.ownerSwap_baseLawAgrees_late`).
 -/
 
@@ -29,8 +30,15 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
 /-- **Agreeing base laws at two late sites with one key.** -/
 theorem ownerSwap_baseLawAgrees_late
+    {Public : Type*} (signal : State L setup.context → Public)
     [Finite (onePacketProtocol setup leaks bounds horizon scheduler).History]
-    (wellFormed : setup.WellFormed) (independent : setup.PrivateInputsIndependent)
+    (wellFormed : setup.WellFormed) (independent : setup.PrivateInputsIndependentGiven signal)
+    (preserves : ∀ (owner : Player) (mine others : State L setup.context),
+      signal (splice owner mine others) = signal others)
+    (observable : ∀ (first second : State L setup.context),
+      (∀ input, (graph setup).fieldPublic (.inl input) →
+        setup.eventInputs first input = setup.eventInputs second input) →
+      signal first = signal second)
     (covers : bounds.CoversInputValues)
     (assessment : setup.intendedModel.BehavioralAssessment)
     (weight : List (Option (OperationalState setup leaks)) → ℝ) {who : Player}
@@ -56,8 +64,8 @@ theorem ownerSwap_baseLawAgrees_late
           history.trace))
       (fun history => RegularTrace setup leaks bounds horizon scheduler assessment who
         history.trace) site₁ site₂ payoff :=
-  ownerSwap_baseLawAgrees wellFormed independent covers assessment weight
-    firstSite secondSite sameKey firstDebtFree secondDebtFree
+  ownerSwap_baseLawAgrees signal wellFormed independent preserves observable covers assessment
+    weight firstSite secondSite sameKey firstDebtFree secondDebtFree
     (ownerSwap_info firstSite secondSite sameKey firstDebtFree secondDebtFree firstLate
       secondLate) payoff
 

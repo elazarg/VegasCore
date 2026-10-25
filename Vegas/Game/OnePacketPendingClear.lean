@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.OnePacketEventSuccess
-import Vegas.Pending.ExclusionSameConfiguration
+import Vegas.Pending.ExclusionNativeFailure
 import GameTheoryExtensions.Analysis.Protocol.StoppedTerminalBound
 
 /-! # Pending committed events retain public clarity -/
@@ -36,20 +36,20 @@ theorem pending_publicClear_of_acceptanceInvariant
     (event : (graph setup).EventId) (sent : (graph setup).Config)
     (start : (protocol).History) (current : (application setup leaks).Control)
     (state : start.state = some current)
-    (clear : PublicExclusionRecord
+    (clear : ExclusionEvidence 0 ∅
       (RecoveryState.mk current.execution.application ∅))
     (invariant : AcceptanceInvariant setup leaks bounds horizon scheduler who entry message event
       sent (some current)) :
     ∀ final ∈ ((model).runBehavioralUntil certificate profile stopped start).support,
       ∀ control, final.state = some control →
         event ∉ control.execution.application.config.cut.completed →
-          PublicExclusionRecord (RecoveryState.mk control.execution.application ∅) := by
+          ExclusionEvidence 0 ∅ (RecoveryState.mk control.execution.application ∅) := by
   let property := fun state : (application setup leaks).ProtocolState =>
     AcceptanceInvariant setup leaks bounds horizon scheduler who entry message event sent state ∧
       match state with
       | none => False
       | some control => event ∉ control.execution.application.config.cut.completed →
-          PublicExclusionRecord (RecoveryState.mk control.execution.application ∅)
+          ExclusionEvidence 0 ∅ (RecoveryState.mk control.execution.application ∅)
   have preserved : ∀ before joint (legal : (protocol).Legal before joint) after,
       property before → after ∈ ((protocol).step before ⟨joint, legal⟩).support → property after :=
       by

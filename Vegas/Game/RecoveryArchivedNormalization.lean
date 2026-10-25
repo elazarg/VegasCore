@@ -137,7 +137,7 @@ theorem RecoverySourceCheckpoint.normalized_archived
           (nextBinding : next.native.BindingInvariant)
           (nextReceipts : next.native.ReceiptsComplete)
           (nextCoverage : next.FailureCoverage)
-          (nextRecord : SuffixExclusionRecord 0
+          (nextRecord : ExclusionEvidence 0
             (PhaseRuntimeState.archivedFailureOwners archive) next)
           (nextArchives : (⟨remaining, generation, next, next, archive⟩ :
             PhaseRuntimeState ((toEventGraph setup.program).withMode mode)).ArchivesBefore)
@@ -247,7 +247,7 @@ theorem RecoverySourceCheckpoint.normalized_archived
                 have restoredReceipts : restored.native.ReceiptsComplete := by
                   intro event candidate accepted
                   exact receipts.exclusion.saved event candidate accepted
-                have restoredRecord := SuffixExclusionRecord.of_prefix restoredReceipts position.1
+                have restoredRecord := ExclusionEvidence.of_prefix restoredReceipts position.1
                   rfl
                 have rebuiltRecord := restoredRecord.phase_drain phase
                 have restoredCoverage := PhaseRuntimeState.restore_failureCoverage entry image
@@ -258,11 +258,11 @@ theorem RecoverySourceCheckpoint.normalized_archived
                   rw [PhaseRuntimeState.archivedFailureOwners_append]
                   simpa only [PhaseRuntimeState.archivedFailureOwners, List.foldr_cons,
                     List.foldr_nil, Finset.union_empty] using imageArchived.failureOwners_union.symm
-                have restoredArchived : SuffixExclusionRecord 0
+                have restoredArchived : ExclusionEvidence 0
                     (PhaseRuntimeState.archivedFailureOwners
                       (retired ++ [⟨⟨phase.low, generation⟩, image.native⟩])) restored := by
                   rw [archiveOwners]
-                  exact restoredCoverage.suffixRecord
+                  exact restoredCoverage.exclusionEvidence
                 have rebuiltArchived := restoredArchived.phase_drain phase
                 have allExcluded : phase.owners ⊆ restored.excluded := by
                   intro owner owned

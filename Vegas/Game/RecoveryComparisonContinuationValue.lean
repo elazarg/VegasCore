@@ -29,7 +29,7 @@ local notation "RP" => ReactiveApplication.ResponseMenu.protocol
 local notation "NP" => ReactiveApplication.ResponseMenu.protocol
   (bounds.onePacketMenu (runtime setup) leaks) (initialLaw setup) horizon (NativeScheduler)
 local notation "Clear" => ReactiveApplication.stateInvariant
-  (app := application setup leaks) (fun native => PublicExclusionRecord (RecoveryState.mk native ∅))
+  (app := application setup leaks) (fun native => ExclusionEvidence 0 ∅ (RecoveryState.mk native ∅))
 
 omit [Fintype Player] in
 private theorem sourceContinuation_value_of_prefix

@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.OnePacketCompletionCases
-import Vegas.Pending.ExclusionPublicRecord
+import Vegas.Pending.ExclusionEvidence
 
 /-! # Operational origins of owned event completions -/
 
@@ -43,7 +43,7 @@ theorem firstPublicFailure_pending_or_due
     (execution next : (application setup leaks).Execution)
     (command : (application setup leaks).Command)
     (reached : next ∈ (execution.environmentStep (application setup leaks) command).support)
-    (clear : PublicExclusionRecord
+    (clear : ExclusionEvidence 0 ∅
       (⟨execution.application, ∅⟩ : RecoveryState (graph setup)))
     (event : (graph setup).EventId) (owner : Player)
     (owned : (graph setup).actor? event = some owner)
@@ -56,7 +56,7 @@ theorem firstPublicFailure_pending_or_due
           (runtime setup).deadline event ≤ execution.application.clock - entered)) := by
   have notFailed : ¬ execution.application.PublicFailure event := by
     intro before
-    have excluded := (clear.excluded owner).mpr ⟨event, owned, before⟩
+    have excluded := (clear.excluded_zero owner).mpr ⟨event, owned, before⟩
     exact Finset.notMem_empty owner excluded
   have footprint := completionStep_reactive_environmentStep (runtime setup) leaks execution next
     command reached

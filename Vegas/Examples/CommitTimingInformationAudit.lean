@@ -2,14 +2,13 @@
 import Vegas.Examples.CommitTimingInformationChance
 import Vegas.Game.PhaseOnePacketExtension
 import Vegas.Game.PhaseExclusionPayoff
-import Interaction.ReactivePolicyInvariant
-import Interaction.ReactiveLocalContinuation
+import Interaction.ReactivePolicyMenuInvariant
 import GameTheory.Analysis.Protocol.SupportedChoices
 import GameTheory.Protocol.RestrictionExecution
 import Interaction.ReactiveEvidence
 import Vegas.Game.ServiceSettledEvidence
 import Vegas.Pending.ExclusionProjection
-import Vegas.Pending.ExclusionPublicRecord
+import Vegas.Pending.ExclusionEvidence
 /-! # Certain count collection and full-input clean-owner incentives -/
 noncomputable section
 namespace Vegas.Examples.CommitTimingInformation
@@ -250,28 +249,10 @@ theorem ownPermitted_silent_run (profile : ∀ who, (rawModel failure).Behaviora
     simpa [players, updated, ReactiveApplication.ResponseMenu.decodeProfile,
       Profile.update_same] using decode_silentContinuation who
   have invariant := ownPermitted_silent_invariant who players silent
-  have projection := rawMenu.run_map_controlSteps initial horizon (scheduler failure) updated
-    fuel history
-  have stateSupported : final.state ∈
-      (((rawModel failure).runBehavioralFrom updated fuel history).map History.state).support := by
-    rw [PMF.support_map]
-    exact ⟨final, supported, rfl⟩
-  rw [projection] at stateSupported
-  have propagate (count : Nat) (state : app.ProtocolState)
-      (member : state ∈ ((fun law => law.bind
-        (app.controlStep initial horizon (scheduler failure) players))^[count]
-          (PMF.pure history.state)).support) :
-      ReactiveApplication.executionInvariant (OwnPermitted who) state := by
-    induction count generalizing state with
-    | zero =>
-        cases (PMF.mem_support_pure_iff _ _).mp member
-        exact valid
-    | succ count ih =>
-        rw [Function.iterate_succ_apply'] at member
-        obtain ⟨before, prior, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ member)
-        exact invariant.controlStep initial horizon (scheduler failure)
-          (fun state _ => ownPermitted_initial who state) before state (ih before prior) reached
-  exact propagate fuel final.state stateSupported
+  exact ReactiveApplication.PolicyInvariant.run_menu rawMenu initial horizon (scheduler failure)
+    updated invariant (fun state _ => ownPermitted_initial who state)
+    fuel history valid final supported
+
 theorem ownPermitted_charge_zero (who : Player) (history : (rawProtocol failure).History)
     (valid : ReactiveApplication.executionInvariant (OwnPermitted who) history.state) :
     TerminalAudit.charge app.stateTraffic audit history.state who = 0 := by

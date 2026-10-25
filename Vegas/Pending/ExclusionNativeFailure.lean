@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ExclusionPublicRecord
+import Vegas.Pending.ExclusionEvidence
 
 /-! # Native public failure persistence -/
 
@@ -87,9 +87,9 @@ theorem native_clear_before_transition (initial : PMF (State graph))
     (realized : after ∈ ((runtime.reactiveApplication leaks).transition initial horizon scheduler
       before joint).support)
     (clear : ∀ current, after = some current →
-      PublicExclusionRecord (⟨current.execution.application, ∅⟩ : RecoveryState graph)) :
+      ExclusionEvidence 0 ∅ (⟨current.execution.application, ∅⟩ : RecoveryState graph)) :
     ∀ current, before = some current →
-      PublicExclusionRecord (⟨current.execution.application, ∅⟩ : RecoveryState graph) := by
+      ExclusionEvidence 0 ∅ (⟨current.execution.application, ∅⟩ : RecoveryState graph) := by
   cases before with
   | none => intro current impossible; cases impossible
   | some current =>
@@ -101,10 +101,12 @@ theorem native_clear_before_transition (initial : PMF (State graph))
     have persists := (reactiveApplication_publicFailure_monotone runtime leaks).transition initial
       horizon scheduler current next joint (nextEq ▸ realized)
     refine ⟨native_receiptsComplete_history runtime leaks initial initialized horizon scheduler
-      prior, fun owner => ⟨?_, ?_⟩⟩
+      prior, fun event lower => by omega, fun owner => ⟨?_, ?_⟩⟩
     · intro member
       exact (Finset.notMem_empty owner member).elim
-    · rintro ⟨event, acting, failed⟩
-      exact (clear next nextEq).excluded owner |>.mpr ⟨event, acting, persists event failed⟩
+    · rintro (inherited | ⟨event, _lower, acting, failed⟩)
+      · exact inherited
+      · exact (clear next nextEq).excluded_zero owner |>.mpr
+          ⟨event, acting, persists event failed⟩
 
 end Vegas.EventGraphRuntime

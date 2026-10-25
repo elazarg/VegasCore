@@ -38,7 +38,7 @@ genuine recovery decision with exactly the lifted full information input. -/
 def liftedInformationSite (who : Player)
     (reference : (runtime.reactiveApplication leaks).Control)
     (active : reference.actor = some who)
-    (valid : PublicExclusionRecord (⟨reference.execution.application, ∅⟩ : RecoveryState graph))
+    (valid : ExclusionEvidence 0 ∅ (⟨reference.execution.application, ∅⟩ : RecoveryState graph))
     (decision : (NativeModel).IsDecisionInfo who
       ((runtime.reactiveApplication leaks).observe who (some reference))) :
     (RecoveryModel).InformationSite who :=
@@ -63,7 +63,7 @@ def liftedInformationSite (who : Player)
 
 variable (who : Player) (reference : (runtime.reactiveApplication leaks).Control)
   (active : reference.actor = some who)
-  (valid : PublicExclusionRecord (⟨reference.execution.application, ∅⟩ : RecoveryState graph))
+  (valid : ExclusionEvidence 0 ∅ (⟨reference.execution.application, ∅⟩ : RecoveryState graph))
   (decision : ((runtime.reactiveApplication leaks).information
     (initial.map RecoveryState.native) horizon
     (nativeScheduler runtime leaks scheduler)).IsDecisionInfo who

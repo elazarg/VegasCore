@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Pending.ExclusionProjection
-import Vegas.Pending.ExclusionPublicRecord
+import Vegas.Pending.ExclusionEvidence
 
 /-! # Paired actual environment kernels before exclusion
 
@@ -65,8 +65,8 @@ theorem includePending_of_empty_after
 
 omit [DecidableEq Player] in
 private theorem record_repackage {state : RecoveryState graph}
-    (valid : PublicExclusionRecord state) (native : State graph) (same : state.native = native) :
-    PublicExclusionRecord (⟨native, state.excluded⟩ : RecoveryState graph) := by
+    (valid : ExclusionEvidence 0 ∅ state) (native : State graph) (same : state.native = native) :
+    ExclusionEvidence 0 ∅ (⟨native, state.excluded⟩ : RecoveryState graph) := by
   rcases state with ⟨original, excluded⟩
   cases same
   exact valid
@@ -76,8 +76,8 @@ owners produced by the paired recovery inclusion, even at the first failure. -/
 theorem includePending_exclusionRecord
     (current : (runtime.recoveryApplication leaks).Execution) (id : MessageId Player)
     (empty : current.application.excluded = ∅)
-    (valid : PublicExclusionRecord current.application) :
-    PublicExclusionRecord
+    (valid : ExclusionEvidence 0 ∅ current.application) :
+    ExclusionEvidence 0 ∅
       (⟨((execution runtime leaks current).includePending
           (runtime.reactiveApplication leaks) id).application,
         (current.includePending (runtime.recoveryApplication leaks) id).application.excluded⟩ :
@@ -135,8 +135,8 @@ private theorem exists_recorded_environmentStep
       (∀ pair ∈ joint.support, current.application.excluded = ∅ →
         pair.2.application.excluded = ∅ → pair.1 = execution runtime leaks pair.2) ∧
       ∀ pair ∈ joint.support, current.application.excluded = ∅ →
-        PublicExclusionRecord current.application →
-        PublicExclusionRecord (⟨pair.1.application, pair.2.application.excluded⟩ :
+        ExclusionEvidence 0 ∅ current.application →
+        ExclusionEvidence 0 ∅ (⟨pair.1.application, pair.2.application.excluded⟩ :
           RecoveryState graph) := by
   classical
   let firstRemember : (runtime.reactiveApplication leaks).Execution →
@@ -257,8 +257,8 @@ theorem pairedEnvironmentStep_spec
         current.application.excluded = ∅ → pair.2.application.excluded = ∅ →
         pair.1 = execution runtime leaks pair.2) ∧
       ∀ pair ∈ (pairedEnvironmentStep runtime leaks current chosen).support,
-        current.application.excluded = ∅ → PublicExclusionRecord current.application →
-        PublicExclusionRecord (⟨pair.1.application, pair.2.application.excluded⟩ :
+        current.application.excluded = ∅ → ExclusionEvidence 0 ∅ current.application →
+        ExclusionEvidence 0 ∅ (⟨pair.1.application, pair.2.application.excluded⟩ :
           RecoveryState graph) :=
   Classical.choose_spec (exists_recorded_environmentStep runtime leaks current chosen)
 

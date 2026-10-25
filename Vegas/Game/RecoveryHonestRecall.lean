@@ -83,7 +83,7 @@ private theorem readyTurnsRecorded_transition
   refine ⟨next, afterEq, ?_⟩
   have trace : (E).Trace (some control) := state ▸ history.trace
   have raw := (menu).toRawTrace (initialLaw setup) horizon scheduler trace
-  have clear := publicExclusionRecord_of_decodedIntended raw decoded intended
+  have clear := exclusionEvidence_of_decodedIntended raw decoded intended
   have forced : ∀ player, ForcedState setup leaks player (some control) := fun player =>
     (forcedState_iff_decodedPoint control).mpr
       ⟨point, decoded, forcedPoint_of_intended player intended⟩

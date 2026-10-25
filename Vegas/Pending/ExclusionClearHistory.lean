@@ -75,8 +75,8 @@ private theorem publicRecord_of_history
     (horizon : Nat) (scheduler : (runtime.recoveryApplication leaks).Scheduler)
     {state : (runtime.recoveryApplication leaks).ProtocolState}
     (trace : ((runtime.recoveryApplication leaks).protocol initial horizon scheduler).Trace state) :
-    ReactiveApplication.stateInvariant PublicExclusionRecord state := by
-  have invariant : (runtime.recoveryApplication leaks).Invariant PublicExclusionRecord :=
+    ReactiveApplication.stateInvariant (ExclusionEvidence 0 ∅) state := by
+  have invariant : (runtime.recoveryApplication leaks).Invariant (ExclusionEvidence 0 ∅) :=
     { submit := fun state who material valid => valid.submit who material
       handle := fun state message next valid accepted => valid.handle runtime message next accepted
       environment := fun state command next valid reached =>
@@ -84,7 +84,7 @@ private theorem publicRecord_of_history
   apply invariant.history initial horizon scheduler ?_ trace
   intro state supported
   obtain ⟨inputs, rfl⟩ := initialized state supported
-  exact PublicExclusionRecord.initial inputs
+  exact ExclusionEvidence.initial inputs
 
 /-- Clear actual recovery histories project to native states carrying exact
 public absence of exclusion evidence. -/
@@ -97,7 +97,7 @@ theorem nativeHistory_record
     (trace : ((runtime.recoveryApplication leaks).protocol initial horizon scheduler).Trace state)
     (clear : ∀ current, state = some current → current.execution.application.excluded = ∅) :
     ∀ current, protocolState runtime leaks state = some current →
-      PublicExclusionRecord (⟨current.execution.application, ∅⟩ : RecoveryState graph) := by
+      ExclusionEvidence 0 ∅ (⟨current.execution.application, ∅⟩ : RecoveryState graph) := by
   cases state with
   | none => intro current impossible; cases impossible
   | some current =>
@@ -105,7 +105,7 @@ theorem nativeHistory_record
     cases Option.some.inj same
     have valid := publicRecord_of_history runtime leaks initial initialized horizon scheduler trace
     have empty := clear current rfl
-    change PublicExclusionRecord (⟨current.execution.application.native, ∅⟩ : RecoveryState graph)
+    change ExclusionEvidence 0 ∅ (⟨current.execution.application.native, ∅⟩ : RecoveryState graph)
     cases stateEq : current.execution.application with
     | mk native excluded =>
       have flags : excluded = ∅ := by simpa only [stateEq] using empty
@@ -119,7 +119,7 @@ def recoveryHistory (initial : PMF (RecoveryState graph))
     (history : ((runtime.reactiveApplication leaks).protocol (initial.map RecoveryState.native)
       horizon (nativeScheduler runtime leaks scheduler)).History)
     (clear : ∀ current, history.state = some current →
-      PublicExclusionRecord (⟨current.execution.application, ∅⟩ : RecoveryState graph)) :
+      ExclusionEvidence 0 ∅ (⟨current.execution.application, ∅⟩ : RecoveryState graph)) :
     ((runtime.recoveryApplication leaks).protocol initial horizon scheduler).History :=
   ⟨liftProtocolState runtime leaks history.state,
     recoveryTrace runtime leaks initial initialized horizon scheduler history.trace clear⟩
@@ -135,7 +135,7 @@ theorem nativeHistory_recoveryHistory
         (initial.map RecoveryState.native) horizon
         (nativeScheduler runtime leaks scheduler)).Trace state)
       (clear : ∀ current, state = some current →
-        PublicExclusionRecord (⟨current.execution.application, ∅⟩ : RecoveryState graph)),
+        ExclusionEvidence 0 ∅ (⟨current.execution.application, ∅⟩ : RecoveryState graph)),
       nativeHistory runtime leaks initial horizon scheduler
         (recoveryHistory runtime leaks initial initialized horizon scheduler ⟨state, trace⟩ clear)
         (liftProtocolState_clear runtime leaks state) = ⟨state, trace⟩ := by

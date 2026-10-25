@@ -1,13 +1,12 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ExclusionSameConfiguration
-import Vegas.Pending.PhaseCompletion
+import Vegas.Pending.PublicFailureEvidence
 
-/-! # Public exclusion evidence relative to a saved semantic frontier
+/-! # Exact exclusion evidence relative to a saved semantic frontier
 
-The saved excluded set already accounts for retired attempts. Subsequent
-exclusion has an actual new public failure at or after the saved source rank;
-accepted unusable bindings remain outside this detector.
+Inherited exclusions account for retired attempts. Every later exclusion is
+witnessed by an owned public failure at or above the saved source rank. The
+zero frontier with empty inheritance gives the ordinary permanent exclusion law.
 -/
 
 noncomputable section
@@ -21,7 +20,7 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
 /-- A saved prefix accounts for inherited exclusions, while every new excluded
 owner has public evidence in the remaining source suffix. -/
-structure SuffixExclusionRecord (low : Nat) (inherited : Finset Player)
+structure ExclusionEvidence (low : Nat) (inherited : Finset Player)
     (state : RecoveryState graph) : Prop where
   receipts : state.native.ReceiptsComplete
   below : ∀ event : graph.EventId, event.val < low →
@@ -30,33 +29,35 @@ structure SuffixExclusionRecord (low : Nat) (inherited : Finset Player)
     ∃ event : graph.EventId, low ≤ event.val ∧ graph.actor? event = some owner ∧
       state.native.PublicFailure event
 
-namespace SuffixExclusionRecord
+namespace ExclusionEvidence
 
 variable {low : Nat} {inherited : Finset Player} {state : RecoveryState graph}
 
 omit [DecidableEq Player] in
 /-- At an exact saved prefix, no later native event can already witness a failure. -/
-theorem of_prefix (receipts : state.native.ReceiptsComplete)
-    (atPrefix : state.native.config.cut.IsPrefix low) (excluded : state.excluded = inherited) :
-    SuffixExclusionRecord low inherited state := by
-  refine ⟨receipts, fun event lower => (atPrefix.2 event).mpr lower, fun owner => ?_⟩
+theorem of_rank_cut (receipts : state.native.ReceiptsComplete)
+    (atPrefix : ∀ event : graph.EventId,
+      event ∈ state.native.config.cut.completed ↔ event.val < low)
+    (excluded : state.excluded = inherited) :
+    ExclusionEvidence low inherited state := by
+  refine ⟨receipts, fun event lower => (atPrefix event).mpr lower, fun owner => ?_⟩
   rw [excluded]
   constructor
   · exact Or.inl
   · rintro (member | ⟨event, lower, _acting, failed⟩)
     · exact member
-    · have earlier := (atPrefix.2 event).mp failed.completed
+    · have earlier := (atPrefix event).mp failed.completed
       omega
 
 omit [DecidableEq Player] in
-private theorem advance (valid : SuffixExclusionRecord low inherited state)
+private theorem advance (valid : ExclusionEvidence low inherited state)
     (native : State graph) (excluded : Finset Player) (step : CompletionStep state.native native)
     (old : state.excluded ⊆ excluded)
     (newEvidence : ∀ event, event ∉ state.native.config.cut.completed →
       native.PublicFailure event → ∀ owner, graph.actor? event = some owner → owner ∈ excluded)
     (newMembers : ∀ owner ∈ excluded, owner ∈ state.excluded ∨
       ∃ event, low ≤ event.val ∧ graph.actor? event = some owner ∧ native.PublicFailure event) :
-    SuffixExclusionRecord low inherited ⟨native, excluded⟩ := by
+    ExclusionEvidence low inherited ⟨native, excluded⟩ := by
   classical
   refine ⟨valid.receipts.step step, ?_, fun owner => ⟨?_, ?_⟩⟩
   · intro event lower
@@ -81,11 +82,23 @@ private theorem advance (valid : SuffixExclusionRecord low inherited state)
     · exact newEvidence query completed failed owner acting
 
 omit [DecidableEq Player] in
+/-- A native completion footprint with unchanged configuration preserves the
+entire evidence family at the same saved frontier. -/
+theorem completionStep_sameConfig {before after : State graph} {excluded : Finset Player}
+    (valid : ExclusionEvidence low inherited (RecoveryState.mk before excluded))
+    (step : CompletionStep before after) (same : after.config = before.config) :
+    ExclusionEvidence low inherited (RecoveryState.mk after excluded) := by
+  apply valid.advance after excluded step (fun _ member => member) ?_
+    (fun _ member => Or.inl member)
+  intro event unfinished failed _owner _acting
+  exact (unfinished (same ▸ failed.completed)).elim
+
+omit [DecidableEq Player] in
 /-- Automatic completion records failures only for owners already excluded. -/
-theorem completeAutomatic (valid : SuffixExclusionRecord low inherited state)
+theorem completeAutomatic (valid : ExclusionEvidence low inherited state)
     (event : graph.EventId)
     (eligible : state.AutomaticReady event) :
-    SuffixExclusionRecord low inherited (state.completeAutomatic event eligible) := by
+    ExclusionEvidence low inherited (state.completeAutomatic event eligible) := by
   obtain ⟨owner, acting, excluded⟩ := eligible.owned
   apply valid.advance _ state.excluded
     (State.completeFailure_completionStep state.native event eligible.1 acting)
@@ -100,11 +113,11 @@ theorem completeAutomatic (valid : SuffixExclusionRecord low inherited state)
 
 /-- Accepted bindings cannot create omission evidence; accepted openings add
 exactly the owner whose public resolution failed. -/
-theorem inclusionResult (valid : SuffixExclusionRecord low inherited state)
+theorem inclusionResult (valid : ExclusionEvidence low inherited state)
     (runtime : EventGraphRuntime graph)
     (message : Message Player (Payload graph)) (native : State graph)
     (accepted : handle runtime state.native message = some native) :
-    SuffixExclusionRecord low inherited (state.inclusionResult message.payload native) := by
+    ExclusionEvidence low inherited (state.inclusionResult message.payload native) := by
   have footprint := completionStep_handle runtime state.native native message accepted
   obtain ⟨event, named, ready, action, member⟩ :=
     handle_config_mem_step runtime state.native native message accepted
@@ -121,7 +134,7 @@ theorem inclusionResult (valid : SuffixExclusionRecord low inherited state)
         have actualEq : actual = event := Option.some.inj named
         subst actual
         obtain ⟨_, _, actor, payload, outputEq, codeEq, view, _⟩ :=
-          handle_commitment_conditions runtime state.native native id event candidate accepted
+          (handle_commitment_iff runtime state.native native id event candidate).mp accepted
         have bound := (handle_commitment_tables runtime state.native native id event candidate
           accepted).2.1
         have present : native.accepted (.inr event) = some candidate := by
@@ -134,7 +147,7 @@ theorem inclusionResult (valid : SuffixExclusionRecord low inherited state)
         have actualEq : actual = event := Option.some.inj named
         subst actual
         obtain ⟨_, _, actor, payload, binding, checks, outputEq, codeEq, view, _⟩ :=
-          handle_opening_conditions runtime state.native native id event candidate raw accepted
+          (handle_opening_iff runtime state.native native id event candidate raw).mp accepted
         have publication : RecoveryState.publicationFailed native event = true := by
           rcases failed with missed | publication
           · simp only [PublicView.missedBinding, outputEq, Bool.false_eq_true] at missed
@@ -210,13 +223,12 @@ theorem expire_publicFailure (runtime : EventGraphRuntime graph)
   rw [nextEq]
   exact State.completeFailure_publicFailure native valid event ready acting
 
-
 /-- Native scheduler evolution records exactly its newly failed owner. -/
-theorem environmentResult (valid : SuffixExclusionRecord low inherited state)
+theorem environmentResult (valid : ExclusionEvidence low inherited state)
     (runtime : EventGraphRuntime graph)
     (command : EnvironmentCommand graph) (native : State graph)
     (reached : native ∈ (environmentStep runtime state.native command).support) :
-    SuffixExclusionRecord low inherited (state.environmentResult command native) := by
+    ExclusionEvidence low inherited (state.environmentResult command native) := by
   apply valid.advance native _ (completionStep_environmentStep runtime state.native native command
     reached) (state.environmentResult_excluded_subset command native) ?_ ?_
   · intro query unfinished failed owner acting
@@ -284,9 +296,9 @@ theorem environmentResult (valid : SuffixExclusionRecord low inherited state)
               · exact Or.inl previous
         · exact Or.inl excluded
 
-theorem submit (valid : SuffixExclusionRecord low inherited state) (who : Player)
+theorem submit (valid : ExclusionEvidence low inherited state) (who : Player)
     (submission : WitnessedSubmission graph) :
-    SuffixExclusionRecord low inherited (state.submit who submission) := by
+    ExclusionEvidence low inherited (state.submit who submission) := by
   have configEq : (state.submit who submission).native.config = state.native.config := by
     change (submitStep _ who _).config = _
     rw [submitStep_config, (submission.call.register_facts who state.native).1]
@@ -298,58 +310,76 @@ theorem submit (valid : SuffixExclusionRecord low inherited state) (who : Player
   intro event unfinished failed owner acting
   exact (unfinished (configEq ▸ failed.completed)).elim
 
+omit [DecidableEq Player] in
+/-- With no inherited frontier, exact evidence is just an owned public failure. -/
+theorem excluded_zero {state : RecoveryState graph}
+    (valid : ExclusionEvidence 0 ∅ state) (owner : Player) :
+    owner ∈ state.excluded ↔
+      ∃ event, graph.actor? event = some owner ∧ state.native.PublicFailure event := by
+  simpa using valid.excluded owner
 
-/-- Local automatic service preserves evidence relative to the same saved rank. -/
-theorem phase_drainFuel (phase : RuntimePhase graph) (fuel : Nat)
-    (valid : SuffixExclusionRecord low inherited state) :
-    SuffixExclusionRecord low inherited (phase.drainFuel fuel state) := by
-  exact phase.drainFuel_induction (SuffixExclusionRecord low inherited)
-    (fun _ event eligible previous => previous.completeAutomatic event eligible.2) fuel state valid
-
-theorem phase_drain (phase : RuntimePhase graph)
-    (valid : SuffixExclusionRecord low inherited state) :
-    SuffixExclusionRecord low inherited (phase.drain state) :=
-  valid.phase_drainFuel phase _
+/-- The initial state has no completed failures or inherited exclusions. -/
+theorem initial (inputs : graph.Inputs) :
+    ExclusionEvidence 0 ∅ (⟨State.initial inputs, ∅⟩ : RecoveryState graph) := by
+  refine ⟨State.ReceiptsComplete.initial inputs, fun event lower => by omega,
+    fun owner => ⟨?_, ?_⟩⟩
+  · intro member
+    exact (Finset.notMem_empty owner member).elim
+  · rintro (inheritedOwner | ⟨event, _, _, failed⟩)
+    · exact inheritedOwner
+    · have completed := failed.completed
+      simp [State.initial, EventGraph.Config.initial, EventOrder.Cut.empty] at completed
 
 omit [DecidableEq Player] in
-/-- At a completed binding interval, the only new exclusion evidence is an
-actual absent receipt, independent of hidden typed binding failures. -/
-theorem commitment_owners (phase : RuntimePhase graph) (kind : phase.kind = .commitment)
-    (valid : SuffixExclusionRecord phase.low inherited state)
-    (within : state.native.config.cut.Within phase.low phase.high) (who : Player) :
-    who ∈ state.excluded ↔ who ∈ inherited ∨
-      ∃ event ∈ phase.events, event ∈ state.native.config.cut.completed ∧
-        state.native.accepted (.inr event) = none ∧ graph.actor? event = some who := by
+/-- Equal public native views determine equal exclusions at a shared frontier. -/
+theorem excluded_eq_of_publicView_eq {other : RecoveryState graph}
+    (valid : ExclusionEvidence low inherited state)
+    (otherValid : ExclusionEvidence low inherited other)
+    (same : state.native.publicView = other.native.publicView) :
+    state.excluded = other.excluded := by
   classical
-  rw [valid.excluded who]
+  ext owner
+  rw [valid.excluded owner, otherValid.excluded owner]
   constructor
-  · rintro (previous | ⟨event, lower, acting, failed⟩)
-    · exact Or.inl previous
-    have completed := failed.completed
-    have upper := within.2 event completed
-    have binding := phase.fields event lower upper
-    rw [kind] at binding
-    obtain ⟨owner, payload, outputEq⟩ := binding
-    have omitted : state.native.publicView.missedBinding event = true := by
-      rcases failed with omitted | publication
-      · exact omitted
-      · cases view : nodeView graph event with
-        | bind => simp only [RecoveryState.publicationFailed, view, Bool.false_eq_true]
-            at publication
-        | resolve author ty ref checks layout code => cases outputEq.symm.trans layout
-        | sample ty law layout code => cases outputEq.symm.trans layout
-    exact Or.inr ⟨event, (phase.mem_events event).mpr ⟨lower, upper⟩, completed,
-      ((State.publicView_missedBinding state.native event owner payload outputEq).mp omitted).2,
-      acting⟩
-  · rintro (previous | ⟨event, inside, completed, absent, acting⟩)
-    · exact Or.inl previous
-    obtain ⟨lower, upper⟩ := (phase.mem_events event).mp inside
-    have binding := phase.fields event lower upper
-    rw [kind] at binding
-    obtain ⟨owner, payload, outputEq⟩ := binding
-    exact Or.inr ⟨event, lower, acting, Or.inl
-      ((State.publicView_missedBinding state.native event owner payload outputEq).mpr
-        ⟨completed, absent⟩)⟩
+  · rintro (member | ⟨event, lower, acting, failed⟩)
+    · exact Or.inl member
+    · exact Or.inr ⟨event, lower, acting,
+        (State.PublicFailure.of_publicView_eq same event).mp failed⟩
+  · rintro (member | ⟨event, lower, acting, failed⟩)
+    · exact Or.inl member
+    · exact Or.inr ⟨event, lower, acting,
+        (State.PublicFailure.of_publicView_eq same event).mpr failed⟩
 
-end SuffixExclusionRecord
+/-- The full automatic drain preserves exact public exclusion evidence. -/
+theorem drainFuel (fuel : Nat) (valid : ExclusionEvidence low inherited state) :
+    ExclusionEvidence low inherited (RecoveryState.drainFuel fuel state) := by
+  exact RecoveryState.drainFuel_induction (ExclusionEvidence low inherited)
+    (fun _ event eligible previous => previous.completeAutomatic event eligible) fuel state valid
+
+theorem drain (valid : ExclusionEvidence low inherited state) :
+    ExclusionEvidence low inherited state.drain :=
+  valid.drainFuel _
+
+theorem handle (valid : ExclusionEvidence low inherited state) (runtime : EventGraphRuntime graph)
+    (message : Message Player (WitnessedPacket graph)) (next : RecoveryState graph)
+    (accepted : state.handle runtime message = some next) :
+    ExclusionEvidence low inherited next := by
+  unfold RecoveryState.handle at accepted
+  split at accepted
+  · cases accepted
+  · split at accepted
+    · obtain ⟨native, rawAccepted, rfl⟩ := Option.map_eq_some_iff.mp accepted
+      exact (valid.inclusionResult runtime _ native rawAccepted).drain
+    · cases accepted
+
+theorem environment (valid : ExclusionEvidence low inherited state)
+    (runtime : EventGraphRuntime graph)
+    (command : EnvironmentCommand graph) (next : RecoveryState graph)
+    (reached : next ∈ (state.environment runtime command).support) :
+    ExclusionEvidence low inherited next := by
+  rw [RecoveryState.environment, PMF.support_map] at reached
+  obtain ⟨native, realized, rfl⟩ := reached
+  exact (valid.environmentResult runtime command native realized).drain
+
+end ExclusionEvidence
 end Vegas.EventGraphRuntime

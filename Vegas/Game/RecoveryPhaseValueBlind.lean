@@ -42,7 +42,7 @@ theorem recovery_pending_failure_run_eq_phase [Finite (E).History]
     (start : (E).History) {control : (application setup leaks).Control}
     (current : start.state = some control) {rank : Nat}
     (ordered : control.execution.application.config.cut.IsPrefix rank)
-    (clear : PublicExclusionRecord (RecoveryState.mk control.execution.application ∅))
+    (clear : ExclusionEvidence 0 ∅ (RecoveryState.mk control.execution.application ∅))
     (key : LateKey setup leaks) (event : (graph setup).EventId)
     (ready : control.execution.application.config.cut.Ready event)
     (decided : decidedEvent key = some event) :

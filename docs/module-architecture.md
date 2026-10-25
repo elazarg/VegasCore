@@ -65,6 +65,8 @@ directory's aggregator imports every module in it.
 
 ## Interaction
 
+- [Fixed-policy continuation under a response menu](../Interaction/ReactivePolicyMenuInvariant.lean)
+
 - [Immutable-seed likelihood of actual scheduler traces](../Interaction/ReactiveSchedulerDensity.lean)
 
 - [Exact environment-step support cases](../Interaction/ReactiveEnvironmentStep.lean)
@@ -208,6 +210,8 @@ directory's aggregator imports every module in it.
 
 ## Vegas/Compile
 
+- [Typed context agreement under dependent reindexing](../Vegas/Compile/ContextRefsTransport.lean)
+
 - [Typed commitment-block layouts](../Vegas/Compile/CommitPhaseLayout.lean)
 - [Commit Prefix Admission](../Vegas/Compile/CommitPrefixAdmission.lean)
 - [Commit Prefix Admitted Action](../Vegas/Compile/CommitPrefixAdmittedAction.lean)
@@ -252,7 +256,9 @@ directory's aggregator imports every module in it.
 - [Actual response-menu first-exclusion laws](../Vegas/Pending/ExclusionMenuStopped.lean)
 - [Paired actual environment kernels before exclusion](../Vegas/Pending/ExclusionPairedEnvironment.lean)
 - [Native projection before exclusion](../Vegas/Pending/ExclusionProjection.lean)
-- [Public reconstruction of permanent exclusion](../Vegas/Pending/ExclusionPublicRecord.lean)
+- [Frontier-indexed exact public exclusion evidence](../Vegas/Pending/ExclusionEvidence.lean)
+- [Saved-phase exclusion evidence](../Vegas/Pending/PhaseExclusionEvidence.lean)
+- [Actual prefixes before an attempt exit](../Vegas/Pending/PhaseStoppedAttemptMetadata.lean)
 - [Completion of actual recovery executions](../Vegas/Pending/ExclusionService.lean)
 - [Actual native first-exclusion environment boundaries](../Vegas/Pending/ExclusionStoppedBoundary.lean)
 - [Actual continuation laws stopped at exclusion](../Vegas/Pending/ExclusionStoppedLaw.lean)
@@ -388,6 +394,10 @@ directory's aggregator imports every module in it.
 - [Raw submission bounds from reserved owner slots](../Vegas/Pending/ReservedEpochTraffic.lean)
 
 ## Vegas/Game
+
+- [Actual public initial inputs at late-key sites](../Vegas/Game/OnePacketPublicInitialSignal.lean)
+- [Owner-prior transport within observed public fibers](../Vegas/Game/OnePacketConditionalPrior.lean)
+- [Clean-owner silence and strict count-audit support exclusion](../Vegas/Game/RecoveryCountIncentives.lean)
 
 - [Actual seeded service-phase completion boundaries](../Vegas/Game/ServicePhaseBoundary.lean)
 

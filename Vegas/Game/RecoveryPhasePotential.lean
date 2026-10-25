@@ -36,7 +36,7 @@ theorem recovery_pending_completionValue_of_stops [Finite (E).History]
     (start : (E).History) {control : (application setup leaks).Control}
     (current : start.state = some control) {rank : Nat}
     (ordered : control.execution.application.config.cut.IsPrefix rank)
-    (clear : PublicExclusionRecord (RecoveryState.mk control.execution.application ∅))
+    (clear : ExclusionEvidence 0 ∅ (RecoveryState.mk control.execution.application ∅))
     (key : LateKey setup leaks) (event : (graph setup).EventId)
     (ready : control.execution.application.config.cut.Ready event)
     (decided : decidedEvent key = some event)
@@ -166,7 +166,7 @@ theorem recovery_disclosure_sourceValue
     (execution.application.publicView_eventReady event).mp
       (PublicView.ownTurn?_spec _ who event turn).1
   have trace := menu.toRawTrace (initialLaw setup) horizon scheduler (current ▸ history.1.trace)
-  have clear := publicExclusionRecord_of_decodedIntended trace
+  have clear := exclusionEvidence_of_decodedIntended trace
     ((decodedPoint_eq_of_isPrefix ordered).trans decoded) intendedPoint
   have freshIff : ∀ control, siteFresh who site.1 control ↔
       ¬ StoreEventFailed control.execution.application.config.store event := by

@@ -2,7 +2,7 @@
 
 import Vegas.Game.CompiledAttemptExclusion
 import Vegas.Pending.ExclusionApplication
-import Vegas.Pending.ExclusionPublicRecord
+import Vegas.Pending.ExclusionEvidence
 import Vegas.Pending.ReactiveBindingOmission
 
 /-! # Source-ordered exclusion signals from actual commitment receipts -/

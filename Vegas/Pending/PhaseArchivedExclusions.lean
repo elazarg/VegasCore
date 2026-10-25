@@ -16,8 +16,8 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
 
 /-- The inherited set and the surviving native failure witnesses jointly
 determine every permanent exclusion in an exact suffix record. -/
-theorem SuffixExclusionRecord.failureOwners_union {inherited : Finset Player}
-    {state : RecoveryState graph} (record : SuffixExclusionRecord 0 inherited state) :
+theorem ExclusionEvidence.failureOwners_union {inherited : Finset Player}
+    {state : RecoveryState graph} (record : ExclusionEvidence 0 inherited state) :
     state.excluded = inherited ∪ state.native.failureOwners := by
   classical
   ext owner
@@ -44,8 +44,8 @@ theorem archivedFailureOwners_append (first second : List (RetiredCommitAttempt 
 attempt or in the corresponding surviving native state. -/
 structure ArchivedExclusions (state : PhaseRuntimeState graph) : Prop where
   coverage : state.FailureCoverage
-  saved : SuffixExclusionRecord 0 (archivedFailureOwners state.retired) state.entry
-  active : SuffixExclusionRecord 0 (archivedFailureOwners state.retired) state.current
+  saved : ExclusionEvidence 0 (archivedFailureOwners state.retired) state.entry
+  active : ExclusionEvidence 0 (archivedFailureOwners state.retired) state.current
 
 /-- Normalization records a failed attempt before rollback, so no permanent
 exclusion loses its public failure witness when the live state is restored. -/
@@ -71,12 +71,12 @@ theorem settle_archivedExclusions (phases : List (RuntimePhase graph)) (generati
       rw [archivedFailureOwners_append]
       simpa only [archivedFailureOwners, List.foldr_cons, List.foldr_nil,
         Finset.union_empty] using drained.failureOwners_union.symm
-    have restored : SuffixExclusionRecord 0
+    have restored : ExclusionEvidence 0
         (archivedFailureOwners
           (retired ++ [⟨⟨phase.low, generation⟩, (phase.drain current).native⟩]))
         (restore entry (phase.drain current)) := by
       rw [archiveEq]
-      exact restoredCoverage.suffixRecord
+      exact restoredCoverage.exclusionEvidence
     have rebuilt := restored.phase_drain phase
     have rebuiltInherited : (restore entry (phase.drain current)).excluded ⊆
         (phase.drain (restore entry (phase.drain current))).excluded := by
@@ -95,9 +95,9 @@ theorem settle_archivedExclusions (phases : List (RuntimePhase graph)) (generati
 theorem initial_archivedExclusions (plan : RuntimePhasePlan graph) (inputs : graph.Inputs) :
     (initial plan inputs).ArchivedExclusions := by
   apply settle_archivedExclusions
-  have record : SuffixExclusionRecord 0 ∅
+  have record : ExclusionEvidence 0 ∅
       (⟨State.initial inputs, ∅⟩ : RecoveryState graph) :=
-    (RecoveryState.FailureCoverage.initial inputs).suffixRecord
+    (RecoveryState.FailureCoverage.initial inputs).exclusionEvidence
   exact ⟨⟨RecoveryState.FailureCoverage.initial inputs,
       RecoveryState.FailureCoverage.initial inputs, Finset.Subset.refl _⟩, record, record⟩
 

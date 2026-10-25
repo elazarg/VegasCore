@@ -74,9 +74,9 @@ theorem transition_lift_support (initial : PMF (RecoveryState graph))
     {before after : (runtime.reactiveApplication leaks).ProtocolState}
     (joint : Player → Option (runtime.reactiveApplication leaks).Action)
     (valid : ∀ current, before = some current →
-      PublicExclusionRecord (⟨current.execution.application, ∅⟩ : RecoveryState graph))
+      ExclusionEvidence 0 ∅ (⟨current.execution.application, ∅⟩ : RecoveryState graph))
     (clear : ∀ current, after = some current →
-      PublicExclusionRecord (⟨current.execution.application, ∅⟩ : RecoveryState graph))
+      ExclusionEvidence 0 ∅ (⟨current.execution.application, ∅⟩ : RecoveryState graph))
     (realized : after ∈ ((runtime.reactiveApplication leaks).transition
       (initial.map RecoveryState.native) horizon
       (nativeScheduler runtime leaks scheduler) before joint).support) :
@@ -180,7 +180,7 @@ def recoveryTrace (initial : PMF (RecoveryState graph))
         (initial.map RecoveryState.native) horizon
         (nativeScheduler runtime leaks scheduler)).Trace state),
       (∀ current, state = some current →
-        PublicExclusionRecord (⟨current.execution.application, ∅⟩ : RecoveryState graph)) →
+        ExclusionEvidence 0 ∅ (⟨current.execution.application, ∅⟩ : RecoveryState graph)) →
       ((runtime.recoveryApplication leaks).protocol
         initial horizon scheduler).Trace
         (liftProtocolState runtime leaks state)

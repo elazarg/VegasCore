@@ -38,7 +38,7 @@ local notation "N" => onePacketModel setup leaks bounds (initialLaw setup) horiz
 local notation "E" => ReactiveApplication.ResponseMenu.protocol menu (initialLaw setup) horizon
   scheduler
 local notation "Clear" => ReactiveApplication.stateInvariant
-  (app := application setup leaks) (fun native => PublicExclusionRecord (RecoveryState.mk native ∅))
+  (app := application setup leaks) (fun native => ExclusionEvidence 0 ∅ (RecoveryState.mk native ∅))
 
 include initialized nativeLaw opportunity inclusion timely completes in
 /-- Honest finite-menu play from an intended source boundary has the source
@@ -95,7 +95,7 @@ theorem recovery_honest_boundary_readout_law
       have trace : (E).Trace
           (some ⟨horizon - execution.environmentRecall.length, none, execution⟩) :=
         state ▸ start.trace
-      have clear := publicExclusionRecord_of_decodedIntended
+      have clear := exclusionEvidence_of_decodedIntended
         ((menu).toRawTrace (initialLaw setup) horizon scheduler trace)
         ((decodedPoint_eq_of_isPrefix boundary.ordered).trans decoded) intended
       cases owned : (graph setup).actor? event with

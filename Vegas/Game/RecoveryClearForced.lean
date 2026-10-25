@@ -46,7 +46,7 @@ theorem forcedAgent_iff_of_clearInput
     [∀ player, DecidableEq ((RModel).InfoState player)]
     (who : Player) (reference : (application setup leaks).Control)
     (active : reference.actor = some who)
-    (valid : PublicExclusionRecord
+    (valid : ExclusionEvidence 0 ∅
       (RecoveryState.mk reference.execution.application ∅ : RecoveryState (graph setup)))
     (site : (RModel).InformationSite who)
     (atSite : site.1 = liftInformation (runtime setup) leaks

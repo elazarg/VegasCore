@@ -266,7 +266,7 @@ end Vegas.EventGraphRuntime
 
 <!-- probe: RuntimeKernelProbes -->
 ```lean
-import Vegas.Pending.SuffixExclusionRecord
+import Vegas.Pending.ExclusionEvidence
 import Vegas.Pending.ReactiveCountAudit
 
 noncomputable section
@@ -280,22 +280,22 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {graph : Vegas.EventGraph Player L}
 
 omit [DecidableEq Player] in
-theorem public_record_iff_suffix_zero (state : RecoveryState graph) :
-    PublicExclusionRecord state ↔ SuffixExclusionRecord 0 ∅ state := by
+theorem exclusion_evidence_zero_iff (state : RecoveryState graph) :
+    ExclusionEvidence 0 ∅ state ↔ state.native.ReceiptsComplete ∧
+      ∀ owner, owner ∈ state.excluded ↔ ∃ event : graph.EventId,
+        graph.actor? event = some owner ∧ state.native.PublicFailure event := by
   classical
   constructor
   · intro valid
-    refine ⟨valid.receipts, ?_, ?_⟩
+    exact ⟨valid.receipts, valid.excluded_zero⟩
+  · rintro ⟨receipts, excluded⟩
+    refine ⟨receipts, ?_, ?_⟩
     · intro event impossible
       omega
     · intro owner
       simpa only [Finset.notMem_empty, false_or, Nat.zero_le, true_and] using
-        valid.excluded owner
-  · intro valid
-    refine ⟨valid.receipts, ?_⟩
-    intro owner
-    simpa only [Finset.notMem_empty, false_or, Nat.zero_le, true_and] using
-      valid.excluded owner
+        excluded owner
+
 
 theorem drainFuel_preserves (predicate : RecoveryState graph → Prop)
     (preserves : ∀ before after, RecoveryState.AutomaticStep before after →

@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Pending.PhaseApplication
-import Vegas.Pending.ExclusionPublicRecord
+import Vegas.Pending.ExclusionEvidence
 
 /-! # Actual packet origins of true publication completion actions -/
 
@@ -146,7 +146,7 @@ theorem handle (valid : OpeningOrigins messages native) (runtime : EventGraphRun
         subst actual
         rw [packet] at handled
         obtain ⟨_, _, owner, payload, outputEq, _code, _node, _rest⟩ :=
-          handle_commitment_conditions runtime native next message.id event candidate handled
+          (handle_commitment_iff runtime native next message.id event candidate).mp handled
         change publicationDiscloses (graph.outputLayout event) action = true at disclosed
         rw [publicationDiscloses_binding outputEq action] at disclosed
         cases disclosed

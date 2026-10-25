@@ -28,7 +28,7 @@ local notation "RP" => ReactiveApplication.ResponseMenu.protocol
 local notation "NP" => ReactiveApplication.ResponseMenu.protocol
   (bounds.onePacketMenu (runtime setup) leaks) (initialLaw setup) horizon (NativeScheduler)
 local notation "Clear" => ReactiveApplication.stateInvariant
-  (app := application setup leaks) (fun native => PublicExclusionRecord (RecoveryState.mk native ∅))
+  (app := application setup leaks) (fun native => ExclusionEvidence 0 ∅ (RecoveryState.mk native ∅))
 
 open Classical in
 /-- At a genuine first callback, the original common continuation is at least
@@ -50,7 +50,7 @@ theorem nativeComparison_firstActivation_value_lower [Fintype (RP).History]
     (certificate : (NP).WellFoundedHistories) (history : (NP).History)
     {remaining : Nat} {who : Player} {execution : (application setup leaks).Execution}
     (current : history.state = some ⟨remaining, some who, execution⟩)
-    (clear : PublicExclusionRecord (RecoveryState.mk execution.application ∅))
+    (clear : ExclusionEvidence 0 ∅ (RecoveryState.mk execution.application ∅))
     (event : (graph setup).EventId)
     (pending : pendingEvent setup leaks who (some (execution.recall who,
       execution.observe (application setup leaks) who)) = some event)

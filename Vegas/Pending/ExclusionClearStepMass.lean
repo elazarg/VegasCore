@@ -19,9 +19,9 @@ theorem liftExecution_injective : Function.Injective (liftExecution runtime leak
 
 theorem environmentStep_lift_support_iff
     (current next : (runtime.reactiveApplication leaks).Execution)
-    (valid : PublicExclusionRecord (⟨current.application, ∅⟩ : RecoveryState graph))
+    (valid : ExclusionEvidence 0 ∅ (⟨current.application, ∅⟩ : RecoveryState graph))
     (chosen : (runtime.reactiveApplication leaks).Command)
-    (clear : PublicExclusionRecord (⟨next.application, ∅⟩ : RecoveryState graph)) :
+    (clear : ExclusionEvidence 0 ∅ (⟨next.application, ∅⟩ : RecoveryState graph)) :
     liftExecution runtime leaks next ∈ ((liftExecution runtime leaks current).environmentStep
       (runtime.recoveryApplication leaks) (liftCommand runtime leaks chosen)).support ↔
       next ∈ (current.environmentStep (runtime.reactiveApplication leaks) chosen).support := by
@@ -37,9 +37,9 @@ theorem environmentStep_lift_support_iff
 one-step environment probability as its genuine recovery lift. -/
 theorem environmentStep_lift_apply
     (current next : (runtime.reactiveApplication leaks).Execution)
-    (valid : PublicExclusionRecord (⟨current.application, ∅⟩ : RecoveryState graph))
+    (valid : ExclusionEvidence 0 ∅ (⟨current.application, ∅⟩ : RecoveryState graph))
     (chosen : (runtime.reactiveApplication leaks).Command)
-    (clear : PublicExclusionRecord (⟨next.application, ∅⟩ : RecoveryState graph)) :
+    (clear : ExclusionEvidence 0 ∅ (⟨next.application, ∅⟩ : RecoveryState graph)) :
     ((liftExecution runtime leaks current).environmentStep (runtime.recoveryApplication leaks)
         (liftCommand runtime leaks chosen)) (liftExecution runtime leaks next) =
       (current.environmentStep (runtime.reactiveApplication leaks) chosen) next := by

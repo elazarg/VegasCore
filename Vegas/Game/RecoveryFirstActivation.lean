@@ -33,7 +33,7 @@ theorem recovery_firstActivation_inclusionFits
       (RecoveryProjection.nativeScheduler (runtime setup) leaks scheduler)).Trace state)
     {remaining : Nat} {who : Player} {execution : (application setup leaks).Execution}
     (current : state = some ⟨remaining, some who, execution⟩)
-    (clear : PublicExclusionRecord (⟨execution.application, ∅⟩ : RecoveryState (graph setup)))
+    (clear : ExclusionEvidence 0 ∅ (⟨execution.application, ∅⟩ : RecoveryState (graph setup)))
     (event : (graph setup).EventId)
     (turn : execution.application.publicView.ownTurn? who = some event)
     (never : ∀ entry ∈ execution.recall who, ¬ ActivatedAt setup leaks who event entry) :
@@ -51,7 +51,7 @@ theorem recovery_firstActivation_inclusionFits
     event entered strategic activated
   by_contra late
   push Not at late
-  have previousClear : PublicExclusionRecord
+  have previousClear : ExclusionEvidence 0 ∅
       (⟨previous.application, ∅⟩ : RecoveryState (graph setup)) := by
     rw [applicationEq]
     exact clear

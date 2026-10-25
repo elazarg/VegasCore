@@ -30,7 +30,7 @@ local notation "NP" => ReactiveApplication.ResponseMenu.protocol
   (bounds.onePacketMenu (runtime setup) leaks) (initialLaw setup) horizon (NativeScheduler)
 local notation "Menu" => bounds.onePacketMenu (runtime setup) leaks
 local notation "Clear" => ReactiveApplication.stateInvariant
-  (app := application setup leaks) (fun native => PublicExclusionRecord (RecoveryState.mk native ∅))
+  (app := application setup leaks) (fun native => ExclusionEvidence 0 ∅ (RecoveryState.mk native ∅))
 
 open Classical in
 /-- The actual common continuation factors through the current event, with
@@ -116,7 +116,7 @@ theorem nativeComparison_pending_value_affine [Fintype (RP).History]
   obtain ⟨point, decoded, intendedPoint, _reachedPoint⟩ :=
     intendedReached_of_forced_debtFree wellFormed site debtFree history current ordered forced
   have pointDecoded := (decodedPoint_eq_of_isPrefix ordered).trans decoded
-  have clear := publicExclusionRecord_of_decodedIntended rawTrace pointDecoded intendedPoint
+  have clear := exclusionEvidence_of_decodedIntended rawTrace pointDecoded intendedPoint
   have phaseEq := recovery_pending_until_eq_clearUntil (initialLaw_initialized setup)
     (initialLaw_native setup) completes certificate installed history.1 current ordered clear event
     ready

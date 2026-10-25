@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.SuffixExclusionRecord
+import Vegas.Pending.PhaseExclusionEvidence
 import Vegas.Pending.PhaseFrontier
 
 /-! # Actual public misses at every installed phase and retry
@@ -28,7 +28,7 @@ structure ExclusionRecord (state : PhaseRuntimeState graph) : Prop where
   saved : state.entry.native.ReceiptsComplete
   active : state.current.native.ReceiptsComplete
   installed : ∀ phase ∈ state.phases.head?,
-    SuffixExclusionRecord phase.low state.entry.excluded state.current
+    ExclusionEvidence phase.low state.entry.excluded state.current
 
 omit [DecidableEq Player] in
 theorem fresh_exclusionRecord (phases : List (RuntimePhase graph)) (generation : Nat)
@@ -47,7 +47,7 @@ theorem fresh_exclusionRecord (phases : List (RuntimePhase graph)) (generation :
         symm
         simpa only [List.head?_cons, Option.mem_some_iff] using member
       subst phase
-      exact SuffixExclusionRecord.of_prefix receipts frontier.positioned.1 rfl
+      exact ExclusionEvidence.of_prefix receipts frontier.positioned.1 rfl
 
 /-- Automatic retirement, restoration and arbitrary chains of fully excluded
 phases preserve exact rank-scoped evidence for the next visible phase. -/
@@ -66,7 +66,7 @@ theorem settle_exclusionRecord (phases : List (RuntimePhase graph)) (generation 
       have restoredReceipts : (restore entry (phase.drain current)).native.ReceiptsComplete := by
         intro event candidate installed
         exact valid.saved event candidate installed
-      have restoredRecord := SuffixExclusionRecord.of_prefix restoredReceipts saved rfl
+      have restoredRecord := ExclusionEvidence.of_prefix restoredReceipts saved rfl
       have rebuilt := restoredRecord.phase_drain phase
       have restoredWithin : (restore entry (phase.drain current)).native.config.cut.Within
           phase.low phase.high := saved.within phase.nonempty.le

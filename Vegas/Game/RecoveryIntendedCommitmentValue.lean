@@ -33,7 +33,7 @@ local notation "NP" => ReactiveApplication.ResponseMenu.protocol
   (bounds.onePacketMenu (runtime setup) leaks) (initialLaw setup) horizon (NativeScheduler)
 local notation "Menu" => bounds.onePacketMenu (runtime setup) leaks
 local notation "Clear" => ReactiveApplication.stateInvariant
-  (app := application setup leaks) (fun native => PublicExclusionRecord (RecoveryState.mk native ∅))
+  (app := application setup leaks) (fun native => ExclusionEvidence 0 ∅ (RecoveryState.mk native ∅))
 
 open Classical in
 /-- A pure intended commitment at a genuine fresh callback gains no more than
@@ -169,7 +169,7 @@ theorem nativeComparison_firstActivation_commitment_gain_le [Fintype (RP).Histor
       subst player
       exact ⟨action, chosen, offered⟩
     · rwa [sourceAction]
-  have clear := publicExclusionRecord_of_decodedIntended
+  have clear := exclusionEvidence_of_decodedIntended
     ((Menu).toRawTrace (initialLaw setup) horizon (NativeScheduler) (current ▸ history.1.trace))
     pointDecoded intended
   have phaseEq : oldPhase = phase := recovery_pending_until_eq_clearUntil

@@ -18,12 +18,12 @@ def State.failureOwners (state : State graph) : Finset Player := by
     ∃ event, graph.actor? event = some owner ∧ state.PublicFailure event
 
 /-- The public failure record determines the permanent excluded-owner set. -/
-theorem PublicExclusionRecord.failureOwners_eq {state : RecoveryState graph}
-    (valid : PublicExclusionRecord state) : state.native.failureOwners = state.excluded := by
+theorem ExclusionEvidence.failureOwners_eq {state : RecoveryState graph}
+    (valid : ExclusionEvidence 0 ∅ state) : state.native.failureOwners = state.excluded := by
   classical
   ext owner
   simp only [State.failureOwners, Finset.mem_filter, Finset.mem_univ, true_and]
-  exact (valid.excluded owner).symm
+  exact (valid.excluded_zero owner).symm
 
 namespace RecoveryProjection
 
@@ -51,7 +51,7 @@ theorem PairedExclusionRecord.failureOwners_eq
   · rfl
   · exact record.elim
   · exact record.elim
-  · exact PublicExclusionRecord.failureOwners_eq record
+  · exact ExclusionEvidence.failureOwners_eq record
 
 end RecoveryProjection
 end Vegas.EventGraphRuntime

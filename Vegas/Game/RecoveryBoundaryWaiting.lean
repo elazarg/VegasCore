@@ -18,28 +18,6 @@ variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
 
-private theorem clear_of_same_config_completion
-    {before after : EventGraphRuntime.State (graph setup)}
-    (clear : PublicExclusionRecord (RecoveryState.mk before ∅))
-    (moved : CompletionStep before after) (same : after.config = before.config) :
-    PublicExclusionRecord (RecoveryState.mk after ∅) := by
-  have accepted : after.accepted = before.accepted := by
-    rcases moved with ⟨_, accepted, _⟩ | ⟨event, ready, action, member, _⟩
-    · exact accepted
-    · have completed : event ∈ after.config.cut.completed := by
-        rw [before.config.step_cut event ready action after.config member,
-          EventOrder.Cut.mem_complete]
-        exact Or.inl rfl
-      rw [same] at completed
-      exact (ready.1 completed).elim
-  refine ⟨clear.receipts.step moved, fun owner => ⟨?_, ?_⟩⟩
-  · intro member
-    simp at member
-  · rintro ⟨event, owned, failed⟩
-    exact (clear.excluded owner).mpr ⟨event, owned,
-      (State.PublicFailure.congr event (by rw [same]) (by rw [same])
-        (congrFun accepted _)).mp failed⟩
-
 variable [Fintype Player]
   {bounds : MessageBounds (graph setup)}
   {initial : PMF (RecoveryState (graph setup))}
@@ -64,7 +42,7 @@ theorem recovery_waiting_environment
     {remaining : Nat} {execution : (application setup leaks).Execution}
     (trace : ((Menu).protocol (initialLaw setup) horizon (NativeScheduler)).Trace
       (some ⟨remaining + 1, none, execution⟩))
-    (clear : PublicExclusionRecord (RecoveryState.mk execution.application ∅))
+    (clear : ExclusionEvidence 0 ∅ (RecoveryState.mk execution.application ∅))
     {rank : Nat} (ordered : execution.application.config.cut.IsPrefix rank)
     {point : ProtocolState setup.program}
     (decoded : sourceServicePrefix? setup rank execution.application.config = some point)
@@ -76,7 +54,7 @@ theorem recovery_waiting_environment
     (command : (application setup leaks).Command) (next : (application setup leaks).Execution)
     (reached : next ∈ (execution.environmentStep (application setup leaks) command).support) :
     next.application.config = execution.application.config ∧
-      PublicExclusionRecord (RecoveryState.mk next.application ∅) := by
+      ExclusionEvidence 0 ∅ (RecoveryState.mk next.application ∅) := by
   have same : next.application.config = execution.application.config := by
     rcases environmentStep_configStep setup leaks execution next command reached with
       same | ⟨other, otherReady, action, member⟩
@@ -100,7 +78,7 @@ theorem recovery_waiting_environment
           (serviceGraph_revealRelaxedOrdered setup .sequential) _ rawTrace rfl clear event owner
           owned ready entered activated due
         exact (never entry remembered activatedAt).elim
-  exact ⟨same, clear_of_same_config_completion clear
+  exact ⟨same, clear.completionStep_sameConfig
     ((reactiveApplication_completionStep (runtime setup) leaks).environmentStep
       execution next command reached) same⟩
 
@@ -108,7 +86,7 @@ include initialized nativeLaw opportunity timely in
 private theorem recovery_waiting_transition
     {control : (application setup leaks).Control}
     (trace : ((Menu).protocol (initialLaw setup) horizon (NativeScheduler)).Trace (some control))
-    (clear : PublicExclusionRecord (RecoveryState.mk control.execution.application ∅))
+    (clear : ExclusionEvidence 0 ∅ (RecoveryState.mk control.execution.application ∅))
     {rank : Nat} (ordered : control.execution.application.config.cut.IsPrefix rank)
     {point : ProtocolState setup.program}
     (decoded : sourceServicePrefix? setup rank control.execution.application.config = some point)
@@ -125,7 +103,7 @@ private theorem recovery_waiting_transition
       (NativeScheduler) (some control) joint).support) :
     ∃ next, target = some next ∧
       next.execution.application.config = control.execution.application.config ∧
-      PublicExclusionRecord (RecoveryState.mk next.execution.application ∅) ∧
+      ExclusionEvidence 0 ∅ (RecoveryState.mk next.execution.application ∅) ∧
       next.execution.recall owner = control.execution.recall owner := by
   let app := application setup leaks
   rcases control with ⟨remaining, active, execution⟩
@@ -173,7 +151,7 @@ theorem recovery_waiting_until_firstActivation
     (start : ((Menu).protocol (initialLaw setup) horizon (NativeScheduler)).History)
     {remaining : Nat} {execution : (application setup leaks).Execution}
     (current : start.state = some ⟨remaining, none, execution⟩)
-    (clear : PublicExclusionRecord (RecoveryState.mk execution.application ∅))
+    (clear : ExclusionEvidence 0 ∅ (RecoveryState.mk execution.application ∅))
     {rank : Nat} (ordered : execution.application.config.cut.IsPrefix rank)
     {point : ProtocolState setup.program}
     (decoded : sourceServicePrefix? setup rank execution.application.config = some point)
@@ -187,7 +165,7 @@ theorem recovery_waiting_until_firstActivation
         (fun history => (application setup leaks).actor history.state = some owner) start).support,
       ∃ control, stopped.state = some control ∧ control.actor = some owner ∧
         control.execution.application.config = execution.application.config ∧
-        PublicExclusionRecord (RecoveryState.mk control.execution.application ∅) ∧
+        ExclusionEvidence 0 ∅ (RecoveryState.mk control.execution.application ∅) ∧
         control.execution.recall owner = execution.recall owner := by
   classical
   let model := (Menu).information (initialLaw setup) horizon (NativeScheduler)
@@ -197,7 +175,7 @@ theorem recovery_waiting_until_firstActivation
   let property := fun history : protocol.History =>
     ∃ control, history.state = some control ∧
       control.execution.application.config = execution.application.config ∧
-      PublicExclusionRecord (RecoveryState.mk control.execution.application ∅) ∧
+      ExclusionEvidence 0 ∅ (RecoveryState.mk control.execution.application ∅) ∧
       control.execution.recall owner = execution.recall owner
   have initialProperty : property start := ⟨_, current, rfl, clear, rfl⟩
   have preserved : ∀ history, ¬ stopped history → ¬ protocol.terminal history.state →
@@ -262,7 +240,7 @@ theorem recovery_boundary_firstActivation
     (current : start.state =
       some ⟨horizon - execution.environmentRecall.length, none, execution⟩)
     (boundary : ReachedBoundary setup leaks horizon (NativeScheduler) rank execution)
-    (clear : PublicExclusionRecord (RecoveryState.mk execution.application ∅))
+    (clear : ExclusionEvidence 0 ∅ (RecoveryState.mk execution.application ∅))
     {point : ProtocolState setup.program}
     (decoded : sourceServicePrefix? setup rank execution.application.config = some point)
     (intendedPoint : ProtocolState.Intended setup.program point)
@@ -274,7 +252,7 @@ theorem recovery_boundary_firstActivation
       ∃ (remaining : Nat) (anchor : (application setup leaks).Execution),
         stopped.state = some ⟨remaining, some owner, anchor⟩ ∧
         anchor.application.config = execution.application.config ∧
-        PublicExclusionRecord (RecoveryState.mk anchor.application ∅) ∧
+        ExclusionEvidence 0 ∅ (RecoveryState.mk anchor.application ∅) ∧
         anchor.recall owner = execution.recall owner ∧
         pendingEvent setup leaks owner
           (some (anchor.recall owner,

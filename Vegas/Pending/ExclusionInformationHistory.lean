@@ -79,7 +79,7 @@ theorem infoOf_recoveryHistory (initial : PMF (RecoveryState graph))
     (history : ((runtime.reactiveApplication leaks).protocol (initial.map RecoveryState.native)
       horizon (nativeScheduler runtime leaks scheduler)).History)
     (clear : ∀ current, history.state = some current →
-      PublicExclusionRecord (⟨current.execution.application, ∅⟩ : RecoveryState graph))
+      ExclusionEvidence 0 ∅ (⟨current.execution.application, ∅⟩ : RecoveryState graph))
     (who : Player) :
     ((runtime.recoveryApplication leaks).information initial horizon scheduler).infoOf who
         (recoveryHistory runtime leaks initial initialized horizon scheduler history clear).trace =
@@ -112,13 +112,13 @@ theorem informationFiber_record (initial : PMF (RecoveryState graph))
     (horizon : Nat) (scheduler : (runtime.recoveryApplication leaks).Scheduler)
     (who : Player) (reference : (runtime.reactiveApplication leaks).Control)
     (active : reference.actor = some who)
-    (valid : PublicExclusionRecord (⟨reference.execution.application, ∅⟩ : RecoveryState graph))
+    (valid : ExclusionEvidence 0 ∅ (⟨reference.execution.application, ∅⟩ : RecoveryState graph))
     (history : ((runtime.reactiveApplication leaks).protocol (initial.map RecoveryState.native)
       horizon (nativeScheduler runtime leaks scheduler)).History)
     (same : (runtime.reactiveApplication leaks).observe who history.state =
       (runtime.reactiveApplication leaks).observe who (some reference)) :
     ∀ current, history.state = some current →
-      PublicExclusionRecord (⟨current.execution.application, ∅⟩ : RecoveryState graph) := by
+      ExclusionEvidence 0 ∅ (⟨current.execution.application, ∅⟩ : RecoveryState graph) := by
   intro current currentEq
   have receipts := native_receiptsComplete_history runtime leaks
     (initial.map RecoveryState.native) (by
@@ -134,12 +134,13 @@ theorem informationFiber_record (initial : PMF (RecoveryState graph))
       (Option.some.inj same)
     change current.execution.application.publicView = reference.execution.application.publicView
       at samePublic
-    refine ⟨receipts, fun owner => ⟨?_, ?_⟩⟩
+    refine ⟨receipts, fun event lower => by omega, fun owner => ⟨?_, ?_⟩⟩
     · intro member
       exact (Finset.notMem_empty owner member).elim
-    · rintro ⟨event, acting, failed⟩
-      exact (valid.excluded owner).mpr ⟨event, acting,
-        (State.PublicFailure.of_publicView_eq samePublic event).mp failed⟩
+    · rintro (inherited | ⟨event, _lower, acting, failed⟩)
+      · exact inherited
+      · exact (valid.excluded_zero owner).mpr ⟨event, acting,
+          (State.PublicFailure.of_publicView_eq samePublic event).mp failed⟩
   · cases same
 
 /-- Every history in either complete information fiber lies before public
@@ -151,7 +152,7 @@ def informationHistoryEquiv (initial : PMF (RecoveryState graph))
     (horizon : Nat) (scheduler : (runtime.recoveryApplication leaks).Scheduler)
     (who : Player) (reference : (runtime.reactiveApplication leaks).Control)
     (active : reference.actor = some who)
-    (valid : PublicExclusionRecord (⟨reference.execution.application, ∅⟩ : RecoveryState graph)) :
+    (valid : ExclusionEvidence 0 ∅ (⟨reference.execution.application, ∅⟩ : RecoveryState graph)) :
     (((runtime.recoveryApplication leaks).information initial horizon scheduler).InformationHistory
       who (liftInformation runtime leaks
         ((runtime.reactiveApplication leaks).observe who (some reference)))) ≃

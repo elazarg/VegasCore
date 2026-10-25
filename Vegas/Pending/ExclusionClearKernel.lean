@@ -20,19 +20,19 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
 
 theorem inclusionResult_eq_of_record (state : RecoveryState graph)
-    (valid : PublicExclusionRecord state) (message : Message Player (Payload graph))
+    (valid : ExclusionEvidence 0 ∅ state) (message : Message Player (Payload graph))
     (native : State graph) (accepted : handle runtime state.native message = some native)
-    (clear : PublicExclusionRecord (⟨native, ∅⟩ : RecoveryState graph)) :
+    (clear : ExclusionEvidence 0 ∅ (⟨native, ∅⟩ : RecoveryState graph)) :
     (state.inclusionResult message.payload native).drain = ⟨native, ∅⟩ := by
   have rawRecord := valid.inclusionResult runtime message native accepted
   have empty := rawRecord.excluded_eq_of_publicView_eq clear rfl
   rw [RecoveryState.inclusionResult_drain_of_empty state message.payload native empty]
 
 theorem environmentResult_eq_of_record (state : RecoveryState graph)
-    (valid : PublicExclusionRecord state) (chosen : EnvironmentCommand graph)
+    (valid : ExclusionEvidence 0 ∅ state) (chosen : EnvironmentCommand graph)
     (native : State graph)
     (realized : native ∈ (environmentStep runtime state.native chosen).support)
-    (clear : PublicExclusionRecord (⟨native, ∅⟩ : RecoveryState graph)) :
+    (clear : ExclusionEvidence 0 ∅ (⟨native, ∅⟩ : RecoveryState graph)) :
     (state.environmentResult chosen native).drain = ⟨native, ∅⟩ := by
   have rawRecord := valid.environmentResult runtime chosen native realized
   have empty := rawRecord.excluded_eq_of_publicView_eq clear rfl
@@ -42,9 +42,9 @@ theorem environmentResult_eq_of_record (state : RecoveryState graph)
 publicly clear native outcome. Distinct native draws cannot merge into that
 clear outcome during automatic closure. -/
 theorem environment_apply_clear (state : RecoveryState graph)
-    (valid : PublicExclusionRecord state) (chosen : EnvironmentCommand graph)
+    (valid : ExclusionEvidence 0 ∅ state) (chosen : EnvironmentCommand graph)
     (native : State graph)
-    (clear : PublicExclusionRecord (⟨native, ∅⟩ : RecoveryState graph)) :
+    (clear : ExclusionEvidence 0 ∅ (⟨native, ∅⟩ : RecoveryState graph)) :
     (state.environment runtime chosen) ⟨native, ∅⟩ =
       (environmentStep runtime state.native chosen) native := by
   classical

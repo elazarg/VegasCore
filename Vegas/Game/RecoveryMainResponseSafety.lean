@@ -38,7 +38,7 @@ theorem recovery_firstActivation_not_main_of_publicFailure
     (trace : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
       (RecoveryProjection.nativeScheduler (runtime setup) leaks scheduler)).Trace
       (some ⟨remaining, some who, execution⟩))
-    (clear : PublicExclusionRecord (⟨execution.application, ∅⟩ : RecoveryState (graph setup)))
+    (clear : ExclusionEvidence 0 ∅ (⟨execution.application, ∅⟩ : RecoveryState (graph setup)))
     (regular : RegularTrace setup leaks bounds horizon
       (RecoveryProjection.nativeScheduler (runtime setup) leaks scheduler) source focal trace)
     (notOwed : ∀ point, decodedPoint setup execution.application.config = some point →
@@ -58,7 +58,7 @@ theorem recovery_firstActivation_not_main_of_publicFailure
     (prior : ((application setup leaks).protocol (initialLaw setup) horizon
       (RecoveryProjection.nativeScheduler (runtime setup) leaks scheduler)).Trace
       (some ⟨priorRemaining + 1, none, priorExecution⟩))
-    (priorClear : PublicExclusionRecord
+    (priorClear : ExclusionEvidence 0 ∅
       (⟨priorExecution.application, ∅⟩ : RecoveryState (graph setup)))
     (command : (application setup leaks).Command) (next : (application setup leaks).Execution)
     (reached : next ∈ (priorExecution.environmentStep (application setup leaks) command).support)

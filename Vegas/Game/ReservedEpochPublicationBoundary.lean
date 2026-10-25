@@ -142,7 +142,7 @@ theorem publication_unfinished_source_active_anchor_active
     {graph : Vegas.EventGraph Player L} [Fintype Player]
     (ordered : graph.RevealRelaxedOrdered) (state : PhaseRuntimeState graph)
     (phase : RuntimePhase graph) (kind : phase.kind = .reveal)
-    (record : SuffixExclusionRecord phase.low state.entry.excluded state.current)
+    (record : ExclusionEvidence phase.low state.entry.excluded state.current)
     (within : state.current.native.config.cut.Within phase.low phase.high)
     (native : EventGraphRuntime.State graph) (kept : KeepsStore state.current.native native)
     (event : graph.EventId) (owner : Player) (acting : graph.actor? event = some owner)

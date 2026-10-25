@@ -28,7 +28,7 @@ local notation "RMenu" => Recovery.onePacketMenu (runtime setup) leaks bounds
 local notation "NMenu" => bounds.onePacketMenu (runtime setup) leaks
 
 local notation "Clear" => ReactiveApplication.stateInvariant
-  (app := application setup leaks) (fun state => PublicExclusionRecord (RecoveryState.mk state ∅))
+  (app := application setup leaks) (fun state => ExclusionEvidence 0 ∅ (RecoveryState.mk state ∅))
 
 /-- The common comparison and actual projected recovery strategy agree at every
 clear native history before termination. -/
@@ -49,7 +49,7 @@ theorem nativeComparisonStrategy_eq_projection_at_clear [Fintype ((RMenu).protoc
     {before : (application setup leaks).ProtocolState}
     (prior : ((NMenu).protocol (initialLaw setup) horizon (NativeScheduler)).Trace before)
     (valid : ∀ current, before = some current →
-      PublicExclusionRecord (RecoveryState.mk current.execution.application ∅))
+      ExclusionEvidence 0 ∅ (RecoveryState.mk current.execution.application ∅))
     (running : ¬ ((NMenu).protocol (initialLaw setup) horizon (NativeScheduler)).terminal before)
     (who : Player) :
     nativeComparisonStrategy setup leaks bounds horizon scheduler sequence scale positive le_one
@@ -123,7 +123,7 @@ theorem nativeComparison_stopped_update_eq [Fintype ((RMenu).protocol Initial ho
       subst second
       have clear : Clear first.state := not_not.mp (fun failure => going (Or.inl failure))
       have valid : ∀ current, first.state = some current →
-          PublicExclusionRecord (RecoveryState.mk current.execution.application ∅) := by
+          ExclusionEvidence 0 ∅ (RecoveryState.mk current.execution.application ∅) := by
         intro current state
         rw [state] at clear
         exact clear

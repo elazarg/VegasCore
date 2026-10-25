@@ -133,8 +133,8 @@ theorem deferring_client_nash_correspondence (weight : ℝ) (nonnegative : 0 ≤
 /-- With clients that may defer by any turn timing, a Nash equilibrium of the
 clients against the bounded native raw menu is one of the source, with the same
 slack as the correspondence. The menu is fixed here; the library form
-`Vegas.AsyncServiceSpec.isεNash_of_clientProfile` holds on every menu that
-admits the clients. -/
+`Vegas.AsyncServiceSpec.isεBestResponse_of_clientProfile` gives the corresponding
+player-specific best responses on every menu that admits the clients. -/
 theorem deferring_client_nash_reflection (weight : ℝ) (nonnegative : 0 ≤ weight)
     {reward forfeit : ℝ} (rewardNonnegative : 0 ≤ reward)
     (forfeitNonnegative : 0 ≤ forfeit)
@@ -152,14 +152,17 @@ theorem deferring_client_nash_reflection (weight : ℝ) (nonnegative : 0 ≤ wei
         (fun history who => (setup.protocolReadout history.state).elim 0
           (fun terminal => sourceUtility reward forfeit terminal who))
         (error + 2 * (∑ event, timing.deferral event) *
-          (forfeit + reward + 1 + deposit alice + deposit bob)) source :=
-  (service weight nonnegative).isεNash_of_clientProfile admission
+          (forfeit + reward + 1 + deposit alice + deposit bob)) source := by
+  intro native
+  apply (isεNash_iff_εBestResponse _ _).mpr
+  exact (service weight nonnegative).isεBestResponse_of_clientProfile admission
     setup.eventGraph.sequentialize_barrierOrdered parameter
     (forfeitUtility program forfeit (grossUtility reward)) sample authentic deposit rawMenu timing
     (fun profile => (service weight nonnegative).rawMenu_admits admission timing profile)
-    (fun who => -forfeit - deposit who) (forfeit + reward + 1 + deposit alice + deposit bob)
+    (fun who => -forfeit - deposit who) (fun _ =>
+      forfeit + reward + 1 + deposit alice + deposit bob)
     (realized_payoff_bounds rewardNonnegative forfeitNonnegative deposit depositNonnegative)
-    error source
+    error source native
 
 /-- The concrete clients preserve the complete typed store and the vector
 of realized net payoffs for every source profile and authentic sampler. -/

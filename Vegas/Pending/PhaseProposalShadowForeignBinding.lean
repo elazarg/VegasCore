@@ -157,8 +157,8 @@ theorem PhaseStateFrame.repair_foreign_binding {memory : BindingShadow graph} {h
     exact ⟨native, handled⟩
   obtain ⟨native, handled⟩ := nativeAccepted
   obtain ⟨ready, timely, actualActor, actualPayload, actualOutput, codeEq, node, sender,
-      candidateOwner, vacant, unused⟩ :=
-    handle_commitment_conditions runtime original.current.native native message.id event candidate
+      candidateOwner, vacant, unused, _⟩ :=
+    (handle_commitment_iff runtime original.current.native native message.id event candidate).mp
       handled
   obtain ⟨sameActor, samePayload⟩ := EventField.binding.inj (actualOutput.symm.trans outputEq)
   subst sameActor

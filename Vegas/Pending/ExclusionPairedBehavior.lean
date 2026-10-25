@@ -113,7 +113,7 @@ theorem exists_paired_behavioralStep
             control.execution.application.excluded = ∅,
           next.1 = nativeHistory runtime leaks initial horizon scheduler next.2 nextClear) ∧
         (((∀ control, next.1.state = some control →
-            PublicExclusionRecord (⟨control.execution.application, ∅⟩ : RecoveryState graph)) →
+            ExclusionEvidence 0 ∅ (⟨control.execution.application, ∅⟩ : RecoveryState graph)) →
           ∀ control, next.2.state = some control → control.execution.application.excluded = ∅) ∧
         PairedExclusionRecord runtime leaks next.1.state next.2.state) := by
   classical

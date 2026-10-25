@@ -42,7 +42,7 @@ theorem recovery_foreign_firstActivation_prefix_of_due
     (startPrefix : TracePrefix startTrace trace)
     (current event : (graph setup).EventId)
     (turn : start.execution.application.publicView.ownTurn? focal = some current)
-    (clear : PublicExclusionRecord
+    (clear : ExclusionEvidence 0 ∅
       (⟨control.execution.application, ∅⟩ : RecoveryState (graph setup)))
     (regular : RegularTrace setup leaks bounds horizon
       (RecoveryProjection.nativeScheduler (runtime setup) leaks scheduler) source focal trace)

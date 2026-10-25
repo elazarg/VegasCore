@@ -155,7 +155,7 @@ theorem nativeClearHistory_state (history : (RP).History)
   exact states.trans (castState (initialLaw_native setup) _)
 
 local notation "ClearState" => ReactiveApplication.stateInvariant
-  (app := application setup leaks) (fun native => PublicExclusionRecord (RecoveryState.mk native ∅))
+  (app := application setup leaks) (fun native => ExclusionEvidence 0 ∅ (RecoveryState.mk native ∅))
 
 open Classical in
 /-- The raw native continuation induced by the actual recovery

@@ -32,7 +32,7 @@ local notation "RApp" => recoveryApplication (runtime setup) leaks
 local notation "RawNative" => ReactiveApplication.protocol (application setup leaks)
   (PMF.map RecoveryState.native (Initial)) horizon (NativeScheduler)
 local notation "ClearState" => ReactiveApplication.stateInvariant
-  (app := application setup leaks) (fun native => PublicExclusionRecord (RecoveryState.mk native
+  (app := application setup leaks) (fun native => ExclusionEvidence 0 ∅ (RecoveryState.mk native
     ∅))
 local notation "RMenu" => Recovery.onePacketMenu (runtime setup) leaks bounds
 local notation "NMenu" => bounds.onePacketMenu (runtime setup) leaks

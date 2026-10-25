@@ -10,7 +10,8 @@ the site's view stores at `who`'s private inputs (`Vegas.siteDraw`), and in a
 well-formed setup no such input is a failure (`Vegas.eventInputs_not_failure`).
 So the owner swap between two sites sends the draw of a history of the first
 site to its splice with a draw of the second, which an initial law with
-independent hidden cells supports (`Vegas.ownerSwap_priorClosed`).
+independent hidden cells supports (`Vegas.ownerSwap_priorClosed`). This support
+closure applies to arbitrary decision sites; it does not require equal late keys.
 -/
 
 noncomputable section
@@ -137,7 +138,8 @@ theorem ownerSwap_priorClosed (wellFormed : setup.WellFormed)
     intro draw drawMember input privateTo
     obtain ⟨name, kind, source, rfl, hidden⟩ := hidden_of_privateTo privateTo
     exact eventInputs_not_failure wellFormed drawMember source hidden
-  refine ⟨splice who draw₂ initial, setup.splice_mem_support independent who drawMember₂ member,
+  refine ⟨splice who draw₂ initial, setup.splice_mem_support (fun _ => ())
+    (fun owner first second _ => independent owner first second) who drawMember₂ member rfl,
     ?_⟩
   exact (ownerSwap_inputs_splice who initial draw₂ firstStore' secondStore
     (ok initial member) (ok draw₂ drawMember₂)).symm

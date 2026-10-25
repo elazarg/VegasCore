@@ -13,12 +13,12 @@ open EventGraph Interaction GameTheory.Math.Probability
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {graph : Vegas.EventGraph Player L}
 
-namespace SuffixExclusionRecord
+namespace ExclusionEvidence
 
 /-- An active owner's ready binding has received every earlier owned binding in
 the phase. A missing predecessor would already have excluded that owner. -/
 theorem ready_binding_receipts {low : Nat} {inherited : Finset Player}
-    {state : RecoveryState graph} (valid : SuffixExclusionRecord low inherited state)
+    {state : RecoveryState graph} (valid : ExclusionEvidence low inherited state)
     (ordered : graph.RevealRelaxedOrdered) (event : graph.EventId)
     (ready : state.native.config.cut.Ready event) (owner : Player) (payload : L.Ty)
     (binding : graph.outputLayout event = .binding owner payload)
@@ -39,6 +39,6 @@ theorem ready_binding_receipts {low : Nat} {inherited : Finset Player}
   exact active ((valid.excluded owner).mpr (Or.inr ⟨prior, lower,
     EventGraph.actor?_of_outputLayout_binding graph priorBinding, Or.inl missed⟩))
 
-end SuffixExclusionRecord
+end ExclusionEvidence
 
 end Vegas.EventGraphRuntime

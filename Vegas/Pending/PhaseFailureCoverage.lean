@@ -32,8 +32,8 @@ variable {state : RecoveryState graph}
 
 omit [DecidableEq Player] in
 /-- Covered native failures are absorbed by the full permanent excluded set. -/
-theorem suffixRecord (valid : state.FailureCoverage) :
-    SuffixExclusionRecord 0 state.excluded state := by
+theorem exclusionEvidence (valid : state.FailureCoverage) :
+    ExclusionEvidence 0 state.excluded state := by
   refine ⟨valid.receipts, fun _ impossible => (Nat.not_lt_zero _ impossible).elim,
     fun owner => ⟨Or.inl, ?_⟩⟩
   rintro (member | ⟨event, lower, acting, failed⟩)
@@ -42,40 +42,40 @@ theorem suffixRecord (valid : state.FailureCoverage) :
 
 omit [DecidableEq Player] in
 private theorem of_suffix {inherited : Finset Player} {after : RecoveryState graph}
-    (valid : SuffixExclusionRecord 0 inherited after) : after.FailureCoverage :=
+    (valid : ExclusionEvidence 0 inherited after) : after.FailureCoverage :=
   ⟨valid.receipts, fun event owner acting failed =>
     (valid.excluded owner).mpr (Or.inr ⟨event, Nat.zero_le _, acting, failed⟩)⟩
 
 theorem initial (inputs : graph.Inputs) :
     (⟨State.initial inputs, ∅⟩ : RecoveryState graph).FailureCoverage := by
-  have valid := PublicExclusionRecord.initial inputs
+  have valid := ExclusionEvidence.initial inputs
   exact ⟨valid.receipts, fun event owner acting failed =>
-    (valid.excluded owner).mpr ⟨event, acting, failed⟩⟩
+    (valid.excluded_zero owner).mpr ⟨event, acting, failed⟩⟩
 
 omit [DecidableEq Player] in
 theorem completeAutomatic (valid : state.FailureCoverage) (event : graph.EventId)
     (eligible : state.AutomaticReady event) :
     (state.completeAutomatic event eligible).FailureCoverage :=
-  of_suffix (valid.suffixRecord.completeAutomatic event eligible)
+  of_suffix (valid.exclusionEvidence.completeAutomatic event eligible)
 
 theorem drain (valid : state.FailureCoverage) (phase : RuntimePhase graph) :
-    (phase.drain state).FailureCoverage := of_suffix (valid.suffixRecord.phase_drain phase)
+    (phase.drain state).FailureCoverage := of_suffix (valid.exclusionEvidence.phase_drain phase)
 
 theorem inclusionResult (valid : state.FailureCoverage) (runtime : EventGraphRuntime graph)
     (message : Message Player (Payload graph)) (native : State graph)
     (accepted : EventGraphRuntime.handle runtime state.native message = some native) :
     (state.inclusionResult message.payload native).FailureCoverage :=
-  of_suffix (valid.suffixRecord.inclusionResult runtime message native accepted)
+  of_suffix (valid.exclusionEvidence.inclusionResult runtime message native accepted)
 
 theorem environmentResult (valid : state.FailureCoverage) (runtime : EventGraphRuntime graph)
     (command : EnvironmentCommand graph) (native : State graph)
     (reached : native ∈ (environmentStep runtime state.native command).support) :
     (state.environmentResult command native).FailureCoverage :=
-  of_suffix (valid.suffixRecord.environmentResult runtime command native reached)
+  of_suffix (valid.exclusionEvidence.environmentResult runtime command native reached)
 
 theorem submit (valid : state.FailureCoverage) (who : Player)
     (material : WitnessedSubmission graph) : (state.submit who material).FailureCoverage :=
-  of_suffix (valid.suffixRecord.submit who material)
+  of_suffix (valid.exclusionEvidence.submit who material)
 
 end FailureCoverage
 

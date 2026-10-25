@@ -8,7 +8,7 @@ import Vegas.Game.AsyncServiceNash
 Composing Nash preservation for the intended game
 (`Vegas.SourceProgram.Setup.intended_isεNash_preserved`) with the forward
 transfer to turn-counted clients
-(`Vegas.AsyncServiceSpec.isεNash_clientProfile_of_firstTurn_bounds`) and their
+(`Vegas.AsyncServiceSpec.isεBestResponse_clientProfile_of_firstTurn_bounds`) and their
 honest execution (`Vegas.sourceServiceClients_clientPolicy_settlement_lawError`), at the
 forfeited utility: if every native policy against the first-turn clients is
 bounded by a source deviation, the turn-counted clients of every source profile
@@ -138,10 +138,10 @@ theorem intended_clientProfile_isεNash_of_firstTurn_bounds {Parameter : Type}
   obtain ⟨sourceNash, _, sourceLaw⟩ := service.setup.intended_isεNash_preserved
     (sourceService_finiteBindingTypes service.setup service.bounds service.values)
     wellFormed parameter utility forfeit range intended source agrees ε equilibrium
-  refine ⟨service.isεNash_clientProfile_of_firstTurn_bounds (CommitmentInterface.values
-    service.setup.program) parameter forfeited
-    sample authentic
-    deposit menu timing covered low spread within ε source terminal firstTurn sourceNash, ?_⟩
+  refine ⟨(isεNash_iff_εBestResponse _ _).mpr
+    (service.isεBestResponse_clientProfile_of_firstTurn_bounds (CommitmentInterface.values
+      service.setup.program) parameter forfeited sample authentic deposit menu timing covered low
+      (fun _ => spread) within ε source terminal firstTurn sourceNash), ?_⟩
   let decoded := service.setup.decodeBehavioralProfile
     (CommitmentInterface.values service.setup.program) source
   let stateUtility := fun state : State L service.setup.program.terminalCtx =>

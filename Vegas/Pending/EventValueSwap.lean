@@ -650,114 +650,6 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
 /-! ### Inclusion -/
 
-/-- **The conditions of an accepted commitment.** -/
-theorem handle_commitment_conditions (runtime : EventGraphRuntime graph) (state next : State graph)
-    (id : MessageId Player) (event : graph.EventId) (candidate : Handle graph)
-    (accepted : handle runtime state ⟨id, .commitment event candidate⟩ = some next) :
-    ∃ (_ : state.config.cut.Ready event) (_ : state.WithinDeadline runtime event)
-      (owner : Player) (payload : L.Ty)
-      (outputEq : graph.outputLayout event = .binding owner payload)
-      (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
-        (graph.nodes event) = .bind owner payload),
-      nodeView graph event = .bind owner payload outputEq codeEq ∧ id.1 = owner ∧
-        candidate.1 = owner ∧ state.accepted (.inr event) = none ∧
-          state.HandleUnused candidate := by
-  by_cases ready : state.config.cut.Ready event
-  · by_cases timely : state.WithinDeadline runtime event
-    · cases view : nodeView graph event with
-      | resolve owner payload binding checks outputEq codeEq =>
-          simp [handle, ready, timely, view] at accepted
-      | sample payload law outputEq codeEq =>
-          simp [handle, ready, timely, view] at accepted
-      | bind owner payload outputEq codeEq =>
-          simp only [handle, dite_eq_left ready, dite_eq_left timely, view] at accepted
-          split at accepted
-          · rename_i sender
-            simp only [dite_eq_ite, Option.ite_none_right_eq_some] at accepted
-            rcases accepted with ⟨handleOwner, vacant, unused, _⟩
-            exact ⟨ready, timely, owner, payload, outputEq, codeEq, rfl, sender, handleOwner,
-              vacant, unused⟩
-          · simp_all only [reduceCtorEq]
-    · simp [handle, ready, timely] at accepted
-  · simp [handle, ready] at accepted
-
-/-- **The conditions of an accepted opening.** -/
-theorem handle_opening_conditions (runtime : EventGraphRuntime graph) (state next : State graph)
-    (id : MessageId Player) (event : graph.EventId) (candidate : Handle graph) (raw : Raw L)
-    (accepted : handle runtime state ⟨id, .opening event candidate raw⟩ = some next) :
-    ∃ (ready : state.config.cut.Ready event) (_ : state.WithinDeadline runtime event)
-      (owner : Player) (payload : L.Ty)
-      (binding : FieldRef graph.layout (.binding owner payload))
-      (checks : List (GuardCheck graph.layout payload))
-      (outputEq : graph.outputLayout event = .publication payload)
-      (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
-        (graph.nodes event) = .resolve owner payload binding checks) (value : L.Val payload)
-      (result : PublicationResult (L.Val payload)),
-      nodeView graph event = .resolve owner payload binding checks outputEq codeEq ∧
-        id.1 = owner ∧ candidate.1 = owner ∧ state.accepted binding.field = some candidate ∧
-        raw = ⟨payload, value⟩ ∧ state.candidates.lookup candidate = .openable ⟨payload, value⟩ ∧
-        binding.get? state.config.store = some (.success value) ∧
-        EventCode.resolveOutput? binding checks true state.config.store = some result ∧
-        next = state.complete event ready (cast (congrArg EventField.Action outputEq.symm) true)
-          (cast (congrArg EventField.Value outputEq.symm) result) := by
-  by_cases ready : state.config.cut.Ready event
-  · by_cases timely : state.WithinDeadline runtime event
-    · cases view : nodeView graph event with
-      | bind owner payload outputEq codeEq =>
-          simp [handle, ready, timely, view] at accepted
-      | sample payload law outputEq codeEq =>
-          simp [handle, ready, timely, view] at accepted
-      | resolve owner payload binding checks outputEq codeEq =>
-          have accepted' := accepted
-          simp only [handle, dite_eq_left ready, dite_eq_left timely, view] at accepted
-          split at accepted
-          · rename_i sender
-            simp only [dite_eq_ite, Option.ite_none_right_eq_some] at accepted
-            rcases accepted with ⟨handleOwner, associated, verified, accepted⟩
-            split at accepted
-            · simp at accepted
-            · rename_i value typed
-              have rawEq : raw = ⟨payload, value⟩ := by
-                rcases raw with ⟨rawType, rawValue⟩
-                unfold Raw.as? at typed
-                split at typed
-                · rename_i same
-                  subst same
-                  simp only [Option.some.injEq] at typed
-                  subst typed
-                  rfl
-                · cases typed
-              subst rawEq
-              have lookupEq := (CommitmentCandidates.verify_eq_true_iff _ _ _).mp verified
-              by_cases stored : binding.get? state.config.store = some (.success value)
-              · simp only [stored, ite_eq_left] at accepted
-                cases resolved : EventCode.resolveOutput? binding checks true
-                    state.config.store with
-                | none =>
-                    have available : ∀ field ∈ insert binding.field
-                        (GuardCheck.listReadFields checks),
-                        (state.config.store field).isSome = true := by
-                      intro field member
-                      apply state.config.read_available ready
-                      rw [← EventCode.readFields_cast outputEq (graph.nodes event), codeEq]
-                      exact member
-                    have defined := EventCode.resolveOutput?_isSome binding checks true
-                      state.config.store available
-                    rw [resolved] at defined
-                    cases defined
-                | some result =>
-                    refine ⟨ready, timely, owner, payload, binding, checks, outputEq, codeEq, value,
-                      result, rfl, sender, handleOwner, associated, rfl, lookupEq, stored,
-                      resolved, ?_⟩
-                    have direct := handle_opening_eq runtime state id event candidate owner payload
-                      binding checks outputEq codeEq view ready timely sender handleOwner associated
-                      value lookupEq stored result resolved
-                    exact Option.some.inj (accepted'.symm.trans direct)
-              · simp [stored] at accepted
-          · simp_all only [reduceCtorEq]
-    · simp [handle, ready, timely] at accepted
-  · simp [handle, ready] at accepted
-
 end Vegas.EventGraphRuntime
 
 namespace Vegas.EventGraphRuntime
@@ -806,8 +698,8 @@ theorem handle_swap (runtime : EventGraphRuntime graph) (swap : HiddenSwap graph
       | some next =>
           have compatibleHere := compatible next event candidate original rfl
           obtain ⟨ready, timely, owner, payload, outputEq, codeEq, view, sender, handleOwner,
-            vacant, unused⟩ :=
-            handle_commitment_conditions runtime state next id event candidate original
+            vacant, unused, _⟩ :=
+            (handle_commitment_iff runtime state next id event candidate).mp original
           rw [handle_commitment_eq runtime state id event candidate owner payload outputEq codeEq
             view ready timely sender handleOwner vacant unused, Option.some.injEq] at original
           subst original
@@ -830,9 +722,8 @@ theorem handle_swap (runtime : EventGraphRuntime graph) (swap : HiddenSwap graph
           | none => rfl
           | some next =>
               obtain ⟨ready, timely, owner, payload, outputEq, codeEq, view, sender, handleOwner,
-                vacant, unused⟩ :=
-                handle_commitment_conditions runtime (state.swap swap) next id event candidate
-                  swapped
+                vacant, unused, _⟩ :=
+                (handle_commitment_iff runtime (state.swap swap) next id event candidate).mp swapped
               rw [handle_commitment_eq runtime state id event candidate owner payload outputEq
                 codeEq view ready timely sender handleOwner vacant unused] at original
               cases original
@@ -841,7 +732,7 @@ theorem handle_swap (runtime : EventGraphRuntime graph) (swap : HiddenSwap graph
       | some next =>
           obtain ⟨ready, timely, owner, payload, binding, checks, outputEq, codeEq, value, result,
             view, sender, handleOwner, associated, rawEq, lookupEq, stored, resolved, nextEq⟩ :=
-            handle_opening_conditions runtime state next id event candidate raw original
+            (handle_opening_iff runtime state next id event candidate raw).mp original
           subst rawEq nextEq
           have revealFixed := fixed event ⟨candidate, _, rfl⟩ ready
           unfold RevealFixed at revealFixed
@@ -879,7 +770,7 @@ theorem handle_swap (runtime : EventGraphRuntime graph) (swap : HiddenSwap graph
               obtain ⟨ready, timely, owner, payload, binding, checks, outputEq, codeEq, value,
                 result, view, sender, handleOwner, associated, rawEq, lookupEq, stored, resolved,
                 _⟩ :=
-                handle_opening_conditions runtime (state.swap swap) next id event candidate raw
+                (handle_opening_iff runtime (state.swap swap) next id event candidate raw).mp
                   swapped
               subst rawEq
               have revealFixed := fixed event ⟨candidate, _, rfl⟩ ready

@@ -3,17 +3,16 @@
 import Vegas.Game.OnePacketOwnerPriorSite
 import Vegas.Game.OnePacketOwnerBounds
 
-/-! # The owner swap scales the source weight by the prior ratio
+/-! # Owner-swap input encodings and restricted guards
 
-The image of a history under a hidden swap symmetry does not depend on the set
-of allowed inputs the symmetry is built with (`Vegas.mapTrace_allowed_congr`),
-and a guard holds for any smaller allowed set containing the current inputs
-(`Vegas.swapGuardState_inter`). So at the first of two sites of `who` the owner
-swap may be read with the inputs of the first site's draws allowed. With
-independent hidden initial cells, the prior gives the swap of every such draw
-the same multiple `c` of its mass (`Vegas.ownerSwap_priorScaled`), so the owner
-swap multiplies the source weight of every history of the first site by `c`
-(`Vegas.othersSourceWeight_mapTrace_scaled`).
+Setup draws are determined by their encoded inputs, and hidden-cell agreement
+is equivalent to equality at inputs private to the player. Actual histories
+at two sites provide the values needed to keep the owner swap within bounds.
+
+The image of a history under a hidden swap does not depend on its allowed
+input set (`Vegas.mapTrace_allowed_congr`). A guard restricts to any smaller
+set containing the actual inputs (`Vegas.swapGuardState_inter`). These facts
+let prior scaling on a site's input fiber apply to the same mapped trace.
 -/
 
 noncomputable section
@@ -173,65 +172,5 @@ theorem ownerSwap_bounded_sites (covers : bounds.CoversInputValues) {who : Playe
     stateEq₂ ▸ history₂.1.trace
   rw [← viewEq₁, ← viewEq₂]
   exact ownerSwap_bounded covers who trace₁ trace₂
-
-
-omit [Fintype Player] in
-/-- **The prior scales the owner swap of the first site's draws.** Fix a draw
-`base` of the first site and a draw `other` of the second, each stored by its
-site's view at `who`'s private inputs. With independent hidden initial cells,
-the swap of every supported initial state whose draw shares `base`'s hidden
-cells has the mass of the splice of `other`'s hidden cells into `base` relative
-to `base`'s mass, times its own. -/
-theorem ownerSwap_priorScaled (wellFormed : setup.WellFormed)
-    (independent : setup.PrivateInputsIndependent) {who : Player}
-    {view₁ view₂ : (application setup leaks).PlayerView}
-    {base other : State L setup.context} (baseMember : base ∈ setup.initialLaw.support)
-    (otherMember : other ∈ setup.initialLaw.support)
-    (baseStore : ∀ input, PrivateTo who (setup := setup) (.inl input) →
-      view₁.application.observation.store (.inl input) = some (setup.eventInputs base input))
-    (otherStore : ∀ input, PrivateTo who (setup := setup) (.inl input) →
-      view₂.application.observation.store (.inl input) = some (setup.eventInputs other input)) :
-    ∀ state ∈ (initialLaw setup).support,
-      state.config.inputs ∈ swapAllowed (ownerSwap who view₁.application view₂.application) ∩
-        {inputs | ∃ draw ∈ setup.initialLaw.support, inputs = setup.eventInputs draw ∧
-          HiddenAgree who draw base} →
-      (initialLaw setup (state.swap (ownerSwap who view₁.application view₂.application))).toReal =
-        (setup.initialLaw (splice who other base)).toReal / (setup.initialLaw base).toReal *
-          (initialLaw setup state).toReal := by
-  rintro state member ⟨⟨allowedState, allowedMember, allowedInputs, swappedMember⟩, draw,
-    drawMember, drawInputs, agree⟩
-  obtain ⟨stateDraw, -, rfl⟩ := eq_initial_of_mem_support member
-  have stateDrawEq : stateDraw = draw := eventInputs_injective drawInputs
-  subst stateDrawEq
-  obtain ⟨allowedDraw, -, rfl⟩ := eq_initial_of_mem_support allowedMember
-  have allowedDrawEq : allowedDraw = stateDraw := eventInputs_injective allowedInputs
-  subst allowedDrawEq
-  obtain ⟨swappedDraw, -, swappedEq⟩ := eq_initial_of_mem_support swappedMember
-  have ok : ∀ draw ∈ setup.initialLaw.support, ∀ input,
-      PrivateTo who (setup := setup) (.inl input) →
-        ¬ ((graph setup).layout (.inl input)).IsFailure (setup.eventInputs draw input) := by
-    intro draw drawMember input privateTo
-    obtain ⟨name, kind, source, rfl, hidden⟩ := hidden_of_privateTo' privateTo
-    exact eventInputs_not_failure wellFormed drawMember source hidden
-  have firstStore : ∀ input, PrivateTo who (setup := setup) (.inl input) →
-      view₁.application.observation.store (.inl input) =
-        some (setup.eventInputs allowedDraw input) := fun input privateTo => by
-    rw [baseStore input privateTo, (hiddenAgree_iff_inputs.mp agree input privateTo)]
-  have spliced := ownerSwap_inputs_splice who allowedDraw other firstStore otherStore
-    (ok allowedDraw drawMember) (ok other otherMember)
-  have swappedInputs := congrArg (fun state : EventGraphRuntime.State (graph setup) =>
-    state.config.inputs) swappedEq
-  change (ownerSwap who view₁.application view₂.application).inputs
-    (setup.eventInputs allowedDraw) = setup.eventInputs swappedDraw at swappedInputs
-  have swappedDrawEq : swappedDraw = splice who other allowedDraw :=
-    eventInputs_injective (swappedInputs.symm.trans spliced)
-  rw [swappedEq, swappedDrawEq, initialLaw_initial, initialLaw_initial]
-  have product := setup.initialLaw_splice_mul independent who other agree
-  have baseReal : 0 < (setup.initialLaw base).toReal :=
-    ENNReal.toReal_pos ((PMF.mem_support_iff _ _).mp baseMember) (PMF.apply_ne_top _ _)
-  have realProduct := congrArg ENNReal.toReal product
-  rw [ENNReal.toReal_mul, ENNReal.toReal_mul] at realProduct
-  field_simp
-  linarith
 
 end Vegas

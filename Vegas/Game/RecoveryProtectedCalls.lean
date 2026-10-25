@@ -37,7 +37,7 @@ theorem recovery_settlesFreshCalls_history
         (serviceInitialLaw setup mode) horizon
         (RecoveryProjection.nativeScheduler (serviceRuntime setup mode deadline) leaks
           scheduler)).Trace state),
-      (∀ current, state = some current → PublicExclusionRecord
+      (∀ current, state = some current → ExclusionEvidence 0 ∅
         (⟨current.execution.application, ∅⟩ : RecoveryState (serviceGraph setup mode))) →
       ReactiveApplication.serviceInvariant (SettlesFreshCalls setup leaks owner event bound) state
   | _, .start, _ => trivial
@@ -88,7 +88,7 @@ theorem recovery_settlesFreshCalls_environment
       (serviceInitialLaw setup mode) horizon
       (RecoveryProjection.nativeScheduler (serviceRuntime setup mode deadline) leaks
         scheduler)).Trace (some ⟨remaining + 1, none, execution⟩))
-    (clear : PublicExclusionRecord
+    (clear : ExclusionEvidence 0 ∅
       (⟨execution.application, ∅⟩ : RecoveryState (serviceGraph setup mode)))
     (command : (serviceApplication setup mode deadline leaks).Command)
     (next : (serviceApplication setup mode deadline leaks).Execution)
@@ -113,7 +113,7 @@ theorem recovery_prescribed_packet_settles
       (serviceInitialLaw setup mode) horizon
       (RecoveryProjection.nativeScheduler (serviceRuntime setup mode deadline) leaks
         scheduler)).Trace (some control))
-    (clear : PublicExclusionRecord
+    (clear : ExclusionEvidence 0 ∅
       (⟨control.execution.application, ∅⟩ : RecoveryState (serviceGraph setup mode)))
     (event : (serviceGraph setup mode).EventId) (owner : Player)
     (owned : (serviceGraph setup mode).actor? event = some owner)

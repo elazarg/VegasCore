@@ -53,7 +53,7 @@ local notation "NP" => ReactiveApplication.ResponseMenu.protocol
 local notation "RawNative" => ReactiveApplication.protocol (application setup leaks)
   (PMF.map RecoveryState.native Initial) horizon (NativeScheduler)
 local notation "Clear" => ReactiveApplication.stateInvariant
-  (app := application setup leaks) (fun native => PublicExclusionRecord (RecoveryState.mk native ∅))
+  (app := application setup leaks) (fun native => ExclusionEvidence 0 ∅ (RecoveryState.mk native ∅))
 
 open Classical in
 /-- The concrete raw classified projection has exactly its finite-menu stopped

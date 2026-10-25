@@ -34,7 +34,7 @@ local notation "protocol" => ReactiveApplication.ResponseMenu.protocol menu (ini
 local notation "model" => ReactiveApplication.ResponseMenu.information menu (initialLaw setup)
   horizon nativeScheduler
 local notation "Clear" => ReactiveApplication.stateInvariant
-  (app := application setup leaks) (fun state => PublicExclusionRecord (RecoveryState.mk state ∅))
+  (app := application setup leaks) (fun state => ExclusionEvidence 0 ∅ (RecoveryState.mk state ∅))
 
 include initialized nativeLaw inclusion in
 /-- Actual recovery inclusion settles recorded fresh one-packet calls at every
@@ -46,7 +46,7 @@ theorem recovery_stopped_freshCall_receipt
     (extraStop : (protocol).History → Prop)
     (start : (protocol).History) (current : (application setup leaks).Control)
     (state : start.state = some current)
-    (clear : PublicExclusionRecord
+    (clear : ExclusionEvidence 0 ∅
       (⟨current.execution.application, ∅⟩ : RecoveryState (graph setup)))
     (who : Player) (event : (graph setup).EventId)
     (owned : (graph setup).actor? event = some who)
@@ -76,7 +76,7 @@ theorem recovery_stopped_freshCall_receipt
     · exact List.mem_append_left _ first
     · exact List.mem_append_right _ (List.mem_cons_of_mem _ last)
   rcases endpoint with clearStop | boundary
-  · have finalClear : PublicExclusionRecord
+  · have finalClear : ExclusionEvidence 0 ∅
         (⟨final.execution.application, ∅⟩ : RecoveryState (graph setup)) := by
       simpa only [finalState, ReactiveApplication.stateInvariant] using clearStop
     have rawTrace := (menu).toRawTrace (initialLaw setup) horizon nativeScheduler trace

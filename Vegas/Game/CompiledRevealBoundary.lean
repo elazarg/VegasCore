@@ -34,7 +34,7 @@ theorem sourceRecovery_of_completed_revealPhase
     {inputs : ((toEventGraph setup.program).withMode mode).Inputs}
     (reachable : native.native.config.Reachable inputs)
     (inherited : Finset Player)
-    (record : SuffixExclusionRecord offset inherited native)
+    (record : ExclusionEvidence offset inherited native)
     (prefixEnd : native.native.config.cut.IsPrefix (offset + count))
     (ordered : native.OrderedPublicFailures offset inherited)
     (entry : SourceProgram.Config Player L Γ)

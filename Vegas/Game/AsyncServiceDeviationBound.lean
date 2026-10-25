@@ -19,7 +19,7 @@ most that of a source deviation of the same player
 (`Vegas.AsyncServiceSpec.firstTurn_deviation_bound`).
 
 This discharges the hypothesis of
-`Vegas.AsyncServiceSpec.isεNash_clientProfile_of_firstTurn_bounds`: for every
+`Vegas.AsyncServiceSpec.isεBestResponse_clientProfile_of_firstTurn_bounds`: for every
 contract builder, a source `ε`-Nash equilibrium has turn-counted clients that
 are an `(ε + 2 * δ * R)`-Nash equilibrium of every admitting response menu on
 the audited raw ledger (`Vegas.AsyncServiceSpec.isεNash_clientProfile`), and
@@ -316,16 +316,17 @@ theorem isεNash_clientProfile {Parameter : Type}
         service.scheduler).toBehavioralGameForm (2 * service.horizon + 1))
         (fun history who => payoff history.state who)
         (ε + 2 * (∑ event, timing.deferral event) * range)
-        (service.clientProfile admission menu timing source) :=
-  service.isεNash_clientProfile_of_firstTurn_bounds admission parameter utility sample
-    authentic deposit
-    menu timing covered low range within ε source
+        (service.clientProfile admission menu timing source) := by
+  intro base payoff equilibrium
+  apply (isεNash_iff_εBestResponse _ _).mpr
+  exact service.isεBestResponse_clientProfile_of_firstTurn_bounds admission parameter utility sample
+    authentic deposit menu timing covered low (fun _ => range) within ε source
     (firstTurn_readout_law service.setup service.leaks ordered service.contract service.timely
       turns _ (sourceServiceClientProfile_effective _))
     (fun who alternative => service.firstTurn_deviation_bound admission ordered
       parameter utility sample deposit
       nonnegative (service.bounded_of_within parameter utility deposit low range within) source
-      who alternative)
+      who alternative) equilibrium
 
 /-- **Approximate Nash correspondence under an arbitrary contract builder.**
 Under the asynchronous contract, for every authentic audit and every
@@ -387,10 +388,9 @@ theorem isεNash_clientProfile_approximate {Parameter : Type}
   ⟨service.isεNash_clientProfile admission ordered parameter utility sample authentic deposit
     nonnegative menu
       timing covered low range within ε source,
-    service.isεNash_of_clientProfile admission ordered parameter utility sample authentic deposit
-      menu
-      timing
-      covered low range within ε source⟩
+    fun native => (isεNash_iff_εBestResponse _ _).mpr
+      (service.isεBestResponse_of_clientProfile admission ordered parameter utility sample authentic
+        deposit menu timing covered low (fun _ => range) within ε source native)⟩
 
 /-- **Intended approximate Nash equilibria under an arbitrary contract
 builder.** For a well-formed setup, a forfeit no smaller than the payoff range,

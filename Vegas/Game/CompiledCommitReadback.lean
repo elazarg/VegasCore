@@ -53,7 +53,7 @@ completed physical phase, with accepted unusable values left unexcluded. -/
 theorem decodeCommitAttempt_excluded_eq_physical
     (physical : RecoveryState ((toEventGraph whole).withMode mode))
     (entry : SourceProgram.Config Player L Γ) (entryExcluded : Finset Player)
-    (record : SuffixExclusionRecord offset entryExcluded physical)
+    (record : ExclusionEvidence offset entryExcluded physical)
     (within : physical.native.config.cut.Within offset (offset + block.length))
     (finished : (compiledCommitPhase whole mode block suffix embedding compiled positive).Finished
       physical) :
@@ -82,7 +82,7 @@ theorem sourceAttempt_of_completed_bindings
     (entry : SourceProgram.Config Player L Γ) (entryExcluded : Finset Player)
     (valid : physical.native.BindingInvariant)
     (receipts : BindingReceiptOrder offset entryExcluded physical.native.accepted)
-    (record : SuffixExclusionRecord offset entryExcluded physical)
+    (record : ExclusionEvidence offset entryExcluded physical)
     (within : physical.native.config.cut.Within offset (offset + block.length))
     (finished : (compiledCommitPhase whole mode block suffix embedding compiled positive).Finished
       physical) (agree : refs.Agrees entry.state physical.native.config.store)

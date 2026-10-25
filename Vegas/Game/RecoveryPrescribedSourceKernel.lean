@@ -37,7 +37,7 @@ local notation "N" => onePacketModel setup leaks bounds (initialLaw setup) horiz
 local notation "E" => ReactiveApplication.ResponseMenu.protocol menu (initialLaw setup) horizon
   scheduler
 local notation "Clear" => ReactiveApplication.stateInvariant
-  (app := application setup leaks) (fun native => PublicExclusionRecord (RecoveryState.mk native ∅))
+  (app := application setup leaks) (fun native => ExclusionEvidence 0 ∅ (RecoveryState.mk native ∅))
 
 include initialized nativeLaw opportunity inclusion timely completes in
 private theorem recovery_canonical_binding_sourceLaw
@@ -45,7 +45,7 @@ private theorem recovery_canonical_binding_sourceLaw
     (players : ∀ player, (N).BehavioralPolicy player)
     {remaining : Nat} {who : Player} {execution : (application setup leaks).Execution}
     (trace : (E).Trace (some ⟨remaining, some who, execution⟩))
-    (clear : PublicExclusionRecord (RecoveryState.mk execution.application ∅))
+    (clear : ExclusionEvidence 0 ∅ (RecoveryState.mk execution.application ∅))
     (event : (graph setup).EventId)
     (turn : execution.application.publicView.ownTurn? who = some event)
     (never : ∀ entry ∈ execution.recall who, ¬ ActivatedAt setup leaks who event entry)
@@ -113,7 +113,7 @@ private theorem recovery_canonical_sourceLaw
     (players : ∀ player, (N).BehavioralPolicy player)
     {remaining : Nat} {who : Player} {execution : (application setup leaks).Execution}
     (trace : (E).Trace (some ⟨remaining, some who, execution⟩))
-    (clear : PublicExclusionRecord (RecoveryState.mk execution.application ∅))
+    (clear : ExclusionEvidence 0 ∅ (RecoveryState.mk execution.application ∅))
     (event : (graph setup).EventId)
     (turn : execution.application.publicView.ownTurn? who = some event)
     (never : ∀ entry ∈ execution.recall who, ¬ ActivatedAt setup leaks who event entry)
@@ -177,7 +177,7 @@ private theorem recovery_committed_canonical_sourceLaw
     (history : (E).History)
     {remaining : Nat} {who : Player} {execution : (application setup leaks).Execution}
     (current : history.state = some ⟨remaining, some who, execution⟩)
-    (clear : PublicExclusionRecord (RecoveryState.mk execution.application ∅))
+    (clear : ExclusionEvidence 0 ∅ (RecoveryState.mk execution.application ∅))
     (event : (graph setup).EventId)
     (turn : execution.application.publicView.ownTurn? who = some event)
     (never : ∀ entry ∈ execution.recall who, ¬ ActivatedAt setup leaks who event entry)
@@ -270,7 +270,7 @@ theorem recovery_firstActivation_honest_sourceLaw
     (history : (E).History)
     {remaining : Nat} {who : Player} {execution : (application setup leaks).Execution}
     (current : history.state = some ⟨remaining, some who, execution⟩)
-    (clear : PublicExclusionRecord (RecoveryState.mk execution.application ∅))
+    (clear : ExclusionEvidence 0 ∅ (RecoveryState.mk execution.application ∅))
     (event : (graph setup).EventId)
     (pending : pendingEvent setup leaks who (some (execution.recall who,
       execution.observe (application setup leaks) who)) = some event)

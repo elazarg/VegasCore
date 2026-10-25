@@ -50,7 +50,7 @@ one-packet lift with exactly the complete raw lifted history. -/
 theorem exists_recoveryBoundedHistory
     (history : (NativeProtocol).History)
     (clear : ∀ current, history.state = some current →
-      PublicExclusionRecord (⟨current.execution.application, ∅⟩ : RecoveryState graph)) :
+      ExclusionEvidence 0 ∅ (⟨current.execution.application, ∅⟩ : RecoveryState graph)) :
     ∃ lifted : (RecoveryProtocol).History,
       (RecoveryMenu).toRawHistory initial horizon scheduler lifted =
         recoveryHistory runtime leaks initial initialized horizon scheduler

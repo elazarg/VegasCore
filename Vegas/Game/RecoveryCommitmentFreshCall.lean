@@ -33,7 +33,7 @@ theorem recovery_commitment_freshCall
     (trace : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
       (RecoveryProjection.nativeScheduler (runtime setup) leaks scheduler)).Trace
       (some ⟨remaining, some who, execution⟩))
-    (clear : PublicExclusionRecord (⟨execution.application, ∅⟩ : RecoveryState (graph setup)))
+    (clear : ExclusionEvidence 0 ∅ (⟨execution.application, ∅⟩ : RecoveryState (graph setup)))
     (event : (graph setup).EventId)
     (turn : execution.application.publicView.ownTurn? who = some event)
     (never : ∀ entry ∈ execution.recall who, ¬ ActivatedAt setup leaks who event entry)

@@ -150,7 +150,7 @@ local notation "N" => onePacketModel setup leaks bounds (initialLaw setup) horiz
 local notation "E" => ReactiveApplication.ResponseMenu.protocol menu (initialLaw setup) horizon
   scheduler
 local notation "Clear" => ReactiveApplication.stateInvariant
-  (app := application setup leaks) (fun native => PublicExclusionRecord (RecoveryState.mk native ∅))
+  (app := application setup leaks) (fun native => ExclusionEvidence 0 ∅ (RecoveryState.mk native ∅))
 
 include initialized nativeLaw completes in
 /-- The finite one-packet stopped chance phase has the graph sampling law on
@@ -209,7 +209,7 @@ theorem recovery_chance_stopped_configLaw
     have nextDecoded : decodedPoint setup next.execution.application.config = some point := by
       rw [equal]
       exact initialDecoded
-    have clear := publicExclusionRecord_of_decodedIntended nextTrace nextDecoded intended
+    have clear := exclusionEvidence_of_decodedIntended nextTrace nextDecoded intended
     rcases halted with (prefixed | failure) | ended
     · obtain ⟨other, otherState, nextPrefix⟩ := prefixed
       rw [state, Option.some.injEq] at otherState

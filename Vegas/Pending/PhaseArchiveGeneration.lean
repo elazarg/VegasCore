@@ -126,7 +126,7 @@ private theorem archivedRetryAttempts_append_actual (plan : RuntimePhasePlan gra
     (phase : RuntimePhase graph) (member : phase ∈ plan.phases)
     (kind : phase.kind = .commitment) (generation : Nat)
     (current : RecoveryState graph) (retired : List (RetiredCommitAttempt graph))
-    (failures : SuffixExclusionRecord 0 (archivedFailureOwners retired) current) :
+    (failures : ExclusionEvidence 0 (archivedFailureOwners retired) current) :
     archivedRetryAttempts plan
         (retired ++ [⟨⟨phase.low, generation⟩, (phase.drain current).native⟩]) =
       archivedRetryAttempts plan retired ++
@@ -145,7 +145,7 @@ theorem settle_archiveGeneration (plan : RuntimePhasePlan graph)
     (phases : List (RuntimePhase graph)) (generation : Nat)
     (entry current : RecoveryState graph) (retired : List (RetiredCommitAttempt graph))
     (suffix : phases <:+ plan.phases)
-    (failures : SuffixExclusionRecord 0 (archivedFailureOwners retired) current)
+    (failures : ExclusionEvidence 0 (archivedFailureOwners retired) current)
     (prior : ArchiveGeneration plan ⟨phases, generation, entry, current, retired⟩) :
     ArchiveGeneration plan (settle phases generation entry current retired) := by
   classical

@@ -278,7 +278,9 @@ theorem keyedRecord_near
     intro site ratio le bound
     refine bound.trans (mul_le_mul_of_nonneg_right le ?_)
     exact tsum_nonneg fun history => by split_ifs <;> simp [reach]
-  have agree := ownerSwap_baseLawAgrees_late wellFormed independent coversInputs (sequence n)
+  have agree := ownerSwap_baseLawAgrees_late (fun _ : State L setup.context => ()) wellFormed
+    (fun owner first second _ => independent owner first second) (fun _ _ _ => rfl)
+    (fun _ _ _ => rfl) coversInputs (sequence n)
     (operationalWeight setup leaks who (steps.mass n)) firstSite secondSite
     sameKey firstDebtFree secondDebtFree firstLate secondLate payoff
   exact recordLaw_near_of_baseLaw (targetSequence n) site₁ site₂ reach base regular

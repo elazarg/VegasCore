@@ -2,7 +2,7 @@
 
 import Vegas.Game.SourcePrefixPublications
 import Vegas.Game.OnePacketForcedRegular
-import Vegas.Pending.ExclusionPublicRecord
+import Vegas.Pending.ExclusionEvidence
 
 /-! # Clear public runtime evidence gives the source public record -/
 
@@ -64,9 +64,9 @@ private theorem publicationFailure_has_owner
 
 /-- A clear public exclusion record excludes every failed source reveal at the
 actual decoded prefix. No debt-freeness is inferred for hidden commitments. -/
-theorem not_revealFailed_of_publicExclusionRecord
+theorem not_revealFailed_of_exclusionEvidence
     (native : EventGraphRuntime.State (graph setup))
-    (clear : PublicExclusionRecord (⟨native, ∅⟩ : RecoveryState (graph setup)))
+    (clear : ExclusionEvidence 0 ∅ (⟨native, ∅⟩ : RecoveryState (graph setup)))
     (rank : Nat) (point : ProtocolState setup.program)
     (decoded : sourceServicePrefix? setup rank native.config = some point) (who : Player) :
     ¬ ProtocolState.RevealFailed who setup.program point := by
@@ -78,7 +78,7 @@ theorem not_revealFailed_of_publicExclusionRecord
       (native.config.outputs event) = some .failure := failed
   obtain ⟨owner, acting, evidence⟩ :=
     publicationFailure_has_owner native event payload outputEq read
-  have excluded := (clear.excluded owner).mpr ⟨event, acting, evidence⟩
+  have excluded := (clear.excluded_zero owner).mpr ⟨event, acting, evidence⟩
   exact Finset.notMem_empty owner excluded
 
 variable [Fintype Player] {bounds : MessageBounds (graph setup)} {horizon : Nat}
@@ -86,10 +86,10 @@ variable [Fintype Player] {bounds : MessageBounds (graph setup)} {horizon : Nat}
 
 /-- At an actual native one-packet prefix, clear permanent public evidence gives
 accepted completed bindings and absence of source failed reveals. -/
-theorem publicRecord_of_publicExclusionRecord
+theorem publicRecord_of_exclusionEvidence
     {control : (application setup leaks).Control}
     (trace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some control))
-    (clear : PublicExclusionRecord
+    (clear : ExclusionEvidence 0 ∅
       (⟨control.execution.application, ∅⟩ : RecoveryState (graph setup)))
     (who : Player) : PublicRecord setup who control := by
   refine ⟨?_, ?_⟩
@@ -97,7 +97,7 @@ theorem publicRecord_of_publicExclusionRecord
     have missed := (control.execution.application.publicView_missedBinding event owner payload
       outputEq).mpr ⟨completed, absent⟩
     have evidence : control.execution.application.PublicFailure event := Or.inl missed
-    have excluded := (clear.excluded owner).mpr
+    have excluded := (clear.excluded_zero owner).mpr
       ⟨event, actor_of_binding outputEq, evidence⟩
     exact Finset.notMem_empty owner excluded
   · intro other _different point decoded
@@ -105,7 +105,7 @@ theorem publicRecord_of_publicExclusionRecord
       (bounds.onePacketMenu (runtime setup) leaks) horizon scheduler trace control rfl
     have same := Option.some.inj ((decodedPoint_eq residual).symm.trans decoded)
     subst point
-    exact not_revealFailed_of_publicExclusionRecord control.execution.application clear rank _
+    exact not_revealFailed_of_exclusionEvidence control.execution.application clear rank _
       residual.decode other
 
 end Vegas

@@ -149,10 +149,10 @@ theorem source_admitted_binding_row
   let inclusionWitness :=
     (checkpointSelection setup implementation operational inclusionTrace).val
   obtain ⟨inclusionReady, _timely, _actualOwner, _actualPayload, _actualBinding,
-      _actualCode, _node, _sender, _owner, _vacant, _unused⟩ :=
-    handle_commitment_conditions implementation.runtime
-      inclusionBefore.execution.application.current.native includedNative message.id named handle
-        (by simpa only [call] using rawHandled)
+      _actualCode, _node, _sender, _owner, _vacant, _unused, _⟩ :=
+    (handle_commitment_iff implementation.runtime
+      inclusionBefore.execution.application.current.native includedNative message.id named
+      handle).mp (by simpa only [call] using rawHandled)
   obtain ⟨actualPhase, actualRemaining, actualInstalled, actualCommitment, namedInside⟩ :=
     phase_ready_binding_phase implementation.runtime implementation.leaks implementation.plan
       (serviceGraph_revealRelaxedOrdered setup .concurrent) operational.maximalPhases

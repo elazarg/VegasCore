@@ -31,7 +31,7 @@ local notation "N" => onePacketModel setup leaks bounds (initialLaw setup) horiz
 local notation "E" => ReactiveApplication.ResponseMenu.protocol menu (initialLaw setup) horizon
   scheduler
 local notation "Clear" => ReactiveApplication.stateInvariant
-  (app := application setup leaks) (fun native => PublicExclusionRecord (RecoveryState.mk native ∅))
+  (app := application setup leaks) (fun native => ExclusionEvidence 0 ∅ (RecoveryState.mk native ∅))
 
 include initialized nativeLaw completes in
 /-- The first public failure cannot precede completion of the pending source
@@ -41,7 +41,7 @@ theorem recovery_pending_until_eq_clearUntil
     (start : (E).History) {control : (application setup leaks).Control}
     (current : start.state = some control) {rank : Nat}
     (ordered : control.execution.application.config.cut.IsPrefix rank)
-    (clear : PublicExclusionRecord (RecoveryState.mk control.execution.application ∅))
+    (clear : ExclusionEvidence 0 ∅ (RecoveryState.mk control.execution.application ∅))
     (event : (graph setup).EventId)
     (ready : control.execution.application.config.cut.Ready event) :
     (N).runBehavioralUntil certificate players

@@ -24,7 +24,7 @@ def PairedExclusionRecord (first : (runtime.reactiveApplication leaks).ProtocolS
     (second : (runtime.recoveryApplication leaks).ProtocolState) : Prop :=
   match first, second with
   | none, none => True
-  | some native, some recovery => PublicExclusionRecord (⟨native.execution.application,
+  | some native, some recovery => ExclusionEvidence 0 ∅ (⟨native.execution.application,
       recovery.execution.application.excluded⟩ : RecoveryState graph)
   | _, _ => False
 
@@ -35,7 +35,7 @@ theorem exists_paired_transition (initial : PMF (RecoveryState graph)) (horizon 
     (current : (runtime.recoveryApplication leaks).Control)
     (trace : ((runtime.recoveryApplication leaks).protocol initial horizon scheduler).Trace
       (some current)) (empty : current.execution.application.excluded = ∅)
-    (valid : PublicExclusionRecord current.execution.application)
+    (valid : ExclusionEvidence 0 ∅ current.execution.application)
     (joint : Player → Option (runtime.recoveryApplication leaks).Action) :
     ∃ paired : PMF ((runtime.reactiveApplication leaks).ProtocolState ×
         (runtime.recoveryApplication leaks).ProtocolState),
@@ -69,7 +69,7 @@ theorem exists_paired_transition (initial : PMF (RecoveryState graph)) (horizon 
       · intro pair member
         cases (PMF.mem_support_pure_iff _ _).mp member
         refine ⟨fun _clear => rfl, ?_⟩
-        have invariant : (runtime.recoveryApplication leaks).Invariant PublicExclusionRecord :=
+        have invariant : (runtime.recoveryApplication leaks).Invariant (ExclusionEvidence 0 ∅) :=
           ⟨fun _ who submission valid => valid.submit who submission,
             fun _ message next valid accepted => valid.handle runtime message next accepted,
             fun _ command next valid reached => valid.environment runtime command next reached⟩

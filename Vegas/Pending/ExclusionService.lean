@@ -66,7 +66,7 @@ theorem Opportunity.clear_native
     (control : (runtime.reactiveApplication leaks).Control)
     (trace : ((runtime.reactiveApplication leaks).protocol (initial.map RecoveryState.native)
       horizon (RecoveryProjection.nativeScheduler runtime leaks scheduler)).Trace (some control))
-    (clear : PublicExclusionRecord (⟨control.execution.application, ∅⟩ : RecoveryState graph)) :
+    (clear : ExclusionEvidence 0 ∅ (⟨control.execution.application, ∅⟩ : RecoveryState graph)) :
     OpportunityAt runtime leaks control.execution delay := by
   have lifted := RecoveryProjection.recoveryTrace runtime leaks initial initialized horizon
     scheduler trace (by intro current same; cases Option.some.inj same; exact clear)
@@ -86,7 +86,7 @@ theorem ProtectedInclusion.clear_native
     (control : (runtime.reactiveApplication leaks).Control)
     (trace : ((runtime.reactiveApplication leaks).protocol (initial.map RecoveryState.native)
       horizon (RecoveryProjection.nativeScheduler runtime leaks scheduler)).Trace (some control))
-    (clear : PublicExclusionRecord (⟨control.execution.application, ∅⟩ : RecoveryState graph)) :
+    (clear : ExclusionEvidence 0 ∅ (⟨control.execution.application, ∅⟩ : RecoveryState graph)) :
     ProtectedInclusionAt runtime leaks control.execution bound := by
   have lifted := RecoveryProjection.recoveryTrace runtime leaks initial initialized horizon
     scheduler trace (by intro current same; cases Option.some.inj same; exact clear)
@@ -106,7 +106,7 @@ theorem CompletesPlay.clear_native
     (control : (runtime.reactiveApplication leaks).Control)
     (trace : ((runtime.reactiveApplication leaks).protocol (initial.map RecoveryState.native)
       horizon (RecoveryProjection.nativeScheduler runtime leaks scheduler)).Trace (some control))
-    (clear : PublicExclusionRecord (⟨control.execution.application, ∅⟩ : RecoveryState graph))
+    (clear : ExclusionEvidence 0 ∅ (⟨control.execution.application, ∅⟩ : RecoveryState graph))
     (stopped : (runtime.reactiveApplication leaks).terminal (some control)) :
     control.execution.application.config.cut.Terminal := by
   have lifted := RecoveryProjection.recoveryTrace runtime leaks initial initialized horizon

@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Pending.PhaseAttemptControls
+import Vegas.Pending.PhaseStoppedAttemptMetadata
 import Vegas.Pending.PhaseExclusionRecord
 import GameTheoryExtensions.Analysis.Protocol.StoppedHistoryAtom
 
@@ -53,8 +54,8 @@ theorem handle_commitment_phase_excluded (runtime : EventGraphRuntime graph)
         obtain ⟨owner, payload, binding⟩ := commitment ▸ phase.fields event
           ((phase.mem_events event).mp inside).1 ((phase.mem_events event).mp inside).2
         obtain ⟨_ready, _timely, _owner, _payload, _binding, _checks, output, _rest⟩ :=
-          handle_opening_conditions runtime state.current.native native message.id event
-            candidate raw (call ▸ handled)
+          (handle_opening_iff runtime state.current.native native message.id event candidate raw).mp
+            (call ▸ handled)
         rw [binding] at output
         cases output
   · cases accepted
@@ -255,82 +256,34 @@ theorem phase_attempt_stopped_exclusion_origin
             ⟨start.execution.application.attempt, event⟩ := by
   classical
   intro stopped final supported ending finalState excluded
-  let Witness : {target : (app).ProtocolState} → (E).Trace target → Prop :=
-    fun {_target} targetTrace =>
-      ∃ (before after : (app).Control) (prior : (E).Trace (some before))
-        (joint : Player → Option (app).Action) (legal : (E).Legal (some before) joint)
-        (realized : some after ∈ ((app).transition initial horizon scheduler
-          (some before) joint).support) (event : graph.EventId),
-        TracePrefix trace prior ∧ TracePrefix (prior.extend joint legal realized) targetTrace ∧
-        before.execution.application.attempt = start.execution.application.attempt ∧
-        phase ∈ before.execution.application.phases.head? ∧
-        owner ∉ before.execution.application.current.excluded ∧
-        owner ∈ after.execution.application.current.excluded ∧ event ∈ phase.events ∧
-        before.execution.application.SeedRequest owner
-          ⟨start.execution.application.attempt, event⟩
-  have initialized : ∀ state ∈ (initial).support, state.Ordered := by
-    intro state member
-    obtain ⟨draw, _, rfl⟩ := PMF.support_map .. ▸ member
-    exact PhaseRuntimeState.initial_ordered plan draw
-  have startOrdered := (phaseApplication_seedOrder runtime leaks).history initial horizon scheduler
-    initialized ((menu).toRawTrace initial horizon scheduler trace)
-  have first := (N).runBehavioralUntil_support_first
-    ((menu).bounded initial horizon scheduler).wellFoundedHistories profile stopped
-      ⟨some start, trace⟩ final supported
-  have along : ∀ {target} {targetTrace : (E).Trace target}, TracePrefix trace targetTrace →
-      TracePrefix targetTrace final.trace →
-        ∃ current : (app).Control, target = some current ∧ current.execution.application.Ordered ∧
-          (current.execution.application.attempt = start.execution.application.attempt →
-            current.execution.application.phases = start.execution.application.phases) ∧
-          (owner ∈ current.execution.application.current.excluded → Witness targetTrace) := by
-    intro target targetTrace kept
-    induction kept with
-    | refl =>
-      intro _before
-      exact ⟨start, rfl, startOrdered, fun _ => rfl, fun failed => (active failed).elim⟩
-    | @extend source target earlier kept joint legal realized ih =>
-      intro beforeFinal
-      have earlierFinal := (TracePrefix.extend .refl joint legal realized).trans beforeFinal
-      obtain ⟨middle, rfl, middleOrdered, phasesKept, previous⟩ := ih earlierFinal
-      have moved : target ∈ ((app).transition initial horizon scheduler
-          (some middle) joint).support := realized
-      obtain ⟨next, rfl, _recall⟩ := (app).transition_recall_prefix initial horizon scheduler
-        middle target joint moved
-      have shorter : earlier.length < final.trace.length := by
-        have upper := beforeFinal.length_le
-        simp only [Trace.length] at upper
-        omega
-      have same : middle.execution.application.attempt = start.execution.application.attempt := by
-        by_contra different
-        exact first ⟨some middle, earlier⟩ kept earlierFinal shorter different
-      have nextOrdered := (phaseApplication_seedOrder runtime leaks).transition initial horizon
-        scheduler initialized (some middle) (some next) joint middleOrdered moved
-      refine ⟨next, rfl, nextOrdered, ?_, ?_⟩
-      · intro sameNext
-        exact ((phaseApplication_sameAttempt_controls runtime leaks).transition initial horizon
-          scheduler middle next joint moved middleOrdered (same.trans sameNext.symm)).1.trans
-            (phasesKept same)
-      · intro newExcluded
-        by_cases old : owner ∈ middle.execution.application.current.excluded
-        · obtain ⟨before, after, prior, actions, allowed, actual, event, fromStart, toMiddle,
-            atAttempt, phaseInstalled, wasActive, nowExcluded, inside, request⟩ := previous old
-          exact ⟨before, after, prior, actions, allowed, actual, event, fromStart,
-            TracePrefix.extend toMiddle joint legal realized, atAttempt, phaseInstalled, wasActive,
-            nowExcluded, inside, request⟩
-        · have installedNow : phase ∈ middle.execution.application.phases.head? := by
-            simpa only [phasesKept same] using installed
-          obtain ⟨event, inside, request⟩ :=
-            (phaseApplication_exclusionRequest runtime leaks).transition initial horizon
-              scheduler middle next joint moved phase installedNow owner old newExcluded
-          exact ⟨middle, next, earlier, joint, legal, moved, event, kept, .refl, same,
-            installedNow, old, newExcluded, inside, by simpa only [same] using request⟩
+  let failed : (app).ProtocolState → Prop := fun state => match state with
+    | none => False
+    | some control => owner ∈ control.execution.application.current.excluded
   have retained := (N).runBehavioralUntil_support_prefix
     ((menu).bounded initial horizon scheduler).wellFoundedHistories profile stopped
       ⟨some start, trace⟩ final supported
-  obtain ⟨current, stateEq, _ordered, _phases, witness⟩ := along retained .refl
-  have same := Option.some.inj (stateEq.symm.trans finalState)
-  cases same
-  exact witness excluded
+  have outside : ¬ failed (some start) := active
+  have inside : failed final.state := by simpa only [failed, finalState] using excluded
+  obtain ⟨beforeState, afterState, prior, joint, legal, moved, fromStart, toFinish,
+      wasActive, nowExcluded⟩ := retained.exists_entering_transition failed outside inside
+  have beforeFinal := (TracePrefix.extend .refl joint legal moved).trans toFinish
+  have shorter : prior.length < final.trace.length := by
+    have upper := toFinish.length_le
+    simp only [Trace.length] at upper
+    omega
+  obtain ⟨before, rfl, _ordered, same, phases, _entry⟩ :=
+    phase_attempt_stopped_prefix_metadata runtime leaks menu plan inputs horizon scheduler
+      profile start trace final supported fromStart beforeFinal shorter
+  obtain ⟨after, rfl, _recall⟩ := (app).transition_recall_prefix initial horizon scheduler
+    before afterState joint moved
+  have installedNow : phase ∈ before.execution.application.phases.head? := by
+    simpa only [phases] using installed
+  obtain ⟨event, eventInside, request⟩ :=
+    (phaseApplication_exclusionRequest runtime leaks).transition initial horizon
+      scheduler before after joint moved phase installedNow owner wasActive nowExcluded
+  exact ⟨before, after, prior, joint, legal, moved, event, fromStart, toFinish, same,
+    installedNow, wasActive, nowExcluded, eventInside, by simpa only [same] using request⟩
+
 
 end Stopped
 

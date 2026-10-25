@@ -2426,7 +2426,7 @@ private theorem publication_focal_word
     phaseClosingEffect_checkpoint_facts setup mode runtime leaks bounds plan horizon scheduler
       (closing false) (ending false) (priors false) (raw false) (effects false)
         (by simpa only [same false] using changed false)
-  have imageRecord : SuffixExclusionRecord phase.low anchor.application.entry.excluded
+  have imageRecord : ExclusionEvidence phase.low anchor.application.entry.excluded
       (image false) := by
     have record := (receipts.exclusion.installed phase (closingInstalled false)).phase_drain phase
     simpa only [entries false] using record

@@ -31,7 +31,7 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
 local notation "scheduler" => RecoveryProjection.nativeScheduler (runtime setup) leaks
   recoveryScheduler
 local notation "Clear" => ReactiveApplication.stateInvariant
-  (app := application setup leaks) (fun state => PublicExclusionRecord (RecoveryState.mk state ∅))
+  (app := application setup leaks) (fun state => ExclusionEvidence 0 ∅ (RecoveryState.mk state ∅))
 
 include initialized nativeLaw inclusion in
 /-- At actual clear native continuation stops, and at the first exclusion step,
@@ -59,7 +59,7 @@ theorem recovery_committed_until_config
     (start : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
       scheduler).History) {control : (application setup leaks).Control}
     (current : start.state = some control)
-    (clear : PublicExclusionRecord
+    (clear : ExclusionEvidence 0 ∅
       (⟨control.execution.application, ∅⟩ : RecoveryState (graph setup)))
     (invariant : AcceptanceInvariant setup leaks bounds horizon scheduler who entry message event
       sent (some control))
@@ -122,7 +122,7 @@ theorem recovery_committed_stop_config
     (start : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
       scheduler).History) {control : (application setup leaks).Control}
     (current : start.state = some control)
-    (clear : PublicExclusionRecord
+    (clear : ExclusionEvidence 0 ∅
       (⟨control.execution.application, ∅⟩ : RecoveryState (graph setup)))
     (invariant : AcceptanceInvariant setup leaks bounds horizon scheduler who entry message event
       sent (some control))

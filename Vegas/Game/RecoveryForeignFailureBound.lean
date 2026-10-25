@@ -47,7 +47,7 @@ theorem recovery_nonlate_of_mainActivationTraceAfter
     (startPrefix : TracePrefix startTrace trace)
     (current : (graph setup).EventId)
     (turn : start.execution.application.publicView.ownTurn? focal = some current)
-    (clear : PublicExclusionRecord
+    (clear : ExclusionEvidence 0 ∅
       (⟨control.execution.application, ∅⟩ : RecoveryState (graph setup)))
     (regular : RegularTrace setup leaks bounds horizon
       (RecoveryProjection.nativeScheduler (runtime setup) leaks scheduler) source focal trace)
@@ -251,7 +251,7 @@ theorem recovery_response_main_of_mainActivationTraceAfter
     (startPrefix : TracePrefix startTrace trace)
     (current : (graph setup).EventId)
     (turn : start.execution.application.publicView.ownTurn? focal = some current)
-    (clear : PublicExclusionRecord
+    (clear : ExclusionEvidence 0 ∅
       (⟨control.execution.application, ∅⟩ : RecoveryState (graph setup)))
     (regular : RegularTrace setup leaks bounds horizon
       (RecoveryProjection.nativeScheduler (runtime setup) leaks scheduler) source focal trace)
@@ -327,7 +327,7 @@ theorem regularStep_of_mainActivationTraceAfter
     (startPrefix : TracePrefix startTrace trace)
     (current : (graph setup).EventId)
     (turn : start.execution.application.publicView.ownTurn? focal = some current)
-    (clear : PublicExclusionRecord
+    (clear : ExclusionEvidence 0 ∅
       (⟨control.execution.application, ∅⟩ : RecoveryState (graph setup)))
     (regular : RegularTrace setup leaks bounds horizon
       (RecoveryProjection.nativeScheduler (runtime setup) leaks scheduler) source focal trace)
@@ -396,7 +396,7 @@ theorem recovery_stopped_regular_of_mainActivationTraceAfter
       (RecoveryProjection.nativeScheduler (runtime setup) leaks scheduler)).runBehavioralUntil
         certificate profile (fun history =>
           ¬ ReactiveApplication.stateInvariant (app := application setup leaks)
-            (fun native => PublicExclusionRecord (⟨native, ∅⟩ : RecoveryState (graph setup)))
+            (fun native => ExclusionEvidence 0 ∅ (⟨native, ∅⟩ : RecoveryState (graph setup)))
               history.state ∨
           DecodedState setup leaks (failureProfile setup.program)
             (ProtocolState.OwesFailure focal setup.program) history.state ∨ extraStop history)
@@ -420,7 +420,7 @@ theorem recovery_stopped_regular_of_mainActivationTraceAfter
   let stopped := fun history :
       (onePacketProtocol setup leaks bounds horizon nativeScheduler).History =>
     ¬ ReactiveApplication.stateInvariant (app := application setup leaks)
-      (fun native => PublicExclusionRecord (⟨native, ∅⟩ : RecoveryState (graph setup)))
+      (fun native => ExclusionEvidence 0 ∅ (⟨native, ∅⟩ : RecoveryState (graph setup)))
         history.state ∨
       DecodedState setup leaks (failureProfile setup.program)
         (ProtocolState.OwesFailure focal setup.program) history.state ∨ extraStop history
@@ -437,7 +437,7 @@ theorem recovery_stopped_regular_of_mainActivationTraceAfter
         property next := by
     intro history going running valid next supported
     have clear : ReactiveApplication.stateInvariant (app := application setup leaks)
-        (fun native => PublicExclusionRecord (⟨native, ∅⟩ : RecoveryState (graph setup)))
+        (fun native => ExclusionEvidence 0 ∅ (⟨native, ∅⟩ : RecoveryState (graph setup)))
           history.state := not_not.mp (fun failed => going (Or.inl failed))
     rw [model.runBehavioralFrom_succ_of_not_terminal profile 0 running,
       PMF.mem_support_bind_iff] at supported
@@ -583,7 +583,7 @@ theorem nativeComparison_joint_mainActivation_failure_le [Fintype (RP).History]
     (focal : Player) (focalPolicy : (N).BehavioralPolicy focal)
     (control : (application setup leaks).Control)
     (trace : (onePacketProtocol setup leaks bounds horizon (NativeScheduler)).Trace (some control))
-    (clear : PublicExclusionRecord
+    (clear : ExclusionEvidence 0 ∅
       (⟨control.execution.application, ∅⟩ : RecoveryState (graph setup)))
     (regular : RegularTrace setup leaks bounds horizon (NativeScheduler) (sequence n) focal trace)
     (notOwed : ∀ point, decodedPoint setup control.execution.application.config = some point →
@@ -765,7 +765,7 @@ theorem nativeComparison_marker_mass_le_rank [Fintype (RP).History]
       (Function.update (nativeComparisonStrategy setup leaks bounds horizon scheduler sequence scale
         positive le_one weights n) focal focalPolicy)
       (fun history => ¬ ReactiveApplication.stateInvariant (app := application setup leaks)
-        (fun native => PublicExclusionRecord (⟨native, ∅⟩ : RecoveryState (graph setup)))
+        (fun native => ExclusionEvidence 0 ∅ (⟨native, ∅⟩ : RecoveryState (graph setup)))
           history.state ∨
         DecodedState setup leaks (failureProfile setup.program)
           (ProtocolState.OwesFailure focal setup.program) history.state ∨ extraStop history)
@@ -779,7 +779,7 @@ theorem nativeComparison_marker_mass_le_rank [Fintype (RP).History]
   let stopped := fun history :
       (onePacketProtocol setup leaks bounds horizon (NativeScheduler)).History =>
     ¬ ReactiveApplication.stateInvariant (app := application setup leaks)
-      (fun native => PublicExclusionRecord (⟨native, ∅⟩ : RecoveryState (graph setup)))
+      (fun native => ExclusionEvidence 0 ∅ (⟨native, ∅⟩ : RecoveryState (graph setup)))
         history.state ∨
       DecodedState setup leaks (failureProfile setup.program)
         (ProtocolState.OwesFailure focal setup.program) history.state ∨ extraStop history
@@ -812,7 +812,7 @@ theorem nativeComparison_marker_mass_le_rank [Fintype (RP).History]
       next ∉ marked → inside next := by
     intro history valid going running next supported unmarked
     have clear : ReactiveApplication.stateInvariant (app := application setup leaks)
-        (fun native => PublicExclusionRecord (⟨native, ∅⟩ : RecoveryState (graph setup)))
+        (fun native => ExclusionEvidence 0 ∅ (⟨native, ∅⟩ : RecoveryState (graph setup)))
           history.state := not_not.mp (fun failed => going (Or.inl failed))
     rw [(N).runBehavioralFrom_succ_of_not_terminal profile 0 running,
       PMF.mem_support_bind_iff] at supported
@@ -909,7 +909,7 @@ theorem nativeComparison_marker_mass_le_rank [Fintype (RP).History]
           · simpa only [payoff, markedNext, ↓reduceIte] using
               (le_abs_self _).trans (futureBound next)
           · exact (outsideNext (preserve history valid going running next member markedNext)).elim
-      have clear : PublicExclusionRecord
+      have clear : ExclusionEvidence 0 ∅
           (⟨control.execution.application, ∅⟩ : RecoveryState (graph setup)) :=
         not_not.mp (fun failed => going (Or.inl failed))
       have notOwed : ∀ point, decodedPoint setup control.execution.application.config = some point →
@@ -961,13 +961,13 @@ theorem recovery_stopped_foreignFailure_marked
       (onePacketProtocol setup leaks bounds horizon (NativeScheduler)).Trace (some start))
     (current : (graph setup).EventId)
     (turn : start.execution.application.publicView.ownTurn? focal = some current)
-    (clear : PublicExclusionRecord
+    (clear : ExclusionEvidence 0 ∅
       (⟨start.execution.application, ∅⟩ : RecoveryState (graph setup)))
     (regular : RegularTrace setup leaks bounds horizon (NativeScheduler) source focal startTrace)
     (final : (onePacketProtocol setup leaks bounds horizon (NativeScheduler)).History)
     (supported : final ∈ ((N).runBehavioralUntil certificate profile (fun history =>
       ¬ ReactiveApplication.stateInvariant (app := application setup leaks)
-        (fun native => PublicExclusionRecord (⟨native, ∅⟩ : RecoveryState (graph setup)))
+        (fun native => ExclusionEvidence 0 ∅ (⟨native, ∅⟩ : RecoveryState (graph setup)))
           history.state ∨
       DecodedState setup leaks (failureProfile setup.program)
         (ProtocolState.OwesFailure focal setup.program) history.state ∨ extraStop history)
@@ -1001,7 +1001,7 @@ theorem recovery_stopped_foreignFailure_marked
   rcases boundary with finalClear | ⟨remaining, execution, prior, command, next, priorClear,
     priorGoing, _chosen, reached, endpoint, startPrefix, targetPrefix⟩
   · have impossible : owner ∈ (∅ : Finset Player) :=
-      (finalClear.excluded owner).mpr ⟨event, owned, failed⟩
+      (finalClear.excluded_zero owner).mpr ⟨event, owned, failed⟩
     exact Finset.notMem_empty owner impossible
   · cases Option.some.inj endpoint
     have beforeRegular := regularTrace_of_tracePrefix source focal targetPrefix regularFinal
@@ -1043,7 +1043,7 @@ theorem nativeComparison_foreign_failure_mass_le_rank [Fintype (RP).History]
       (onePacketProtocol setup leaks bounds horizon (NativeScheduler)).Trace (some start))
     (current : (graph setup).EventId)
     (turn : start.execution.application.publicView.ownTurn? focal = some current)
-    (clear : PublicExclusionRecord
+    (clear : ExclusionEvidence 0 ∅
       (⟨start.execution.application, ∅⟩ : RecoveryState (graph setup)))
     (regular : RegularTrace setup leaks bounds horizon (NativeScheduler) (sequence n) focal
       startTrace) :
@@ -1051,7 +1051,7 @@ theorem nativeComparison_foreign_failure_mass_le_rank [Fintype (RP).History]
       (Function.update (nativeComparisonStrategy setup leaks bounds horizon scheduler sequence scale
         positive le_one weights n) focal focalPolicy)
       (fun history => ¬ ReactiveApplication.stateInvariant (app := application setup leaks)
-        (fun native => PublicExclusionRecord (⟨native, ∅⟩ : RecoveryState (graph setup)))
+        (fun native => ExclusionEvidence 0 ∅ (⟨native, ∅⟩ : RecoveryState (graph setup)))
           history.state ∨
         DecodedState setup leaks (failureProfile setup.program)
           (ProtocolState.OwesFailure focal setup.program) history.state ∨ extraStop history)
@@ -1067,7 +1067,7 @@ theorem nativeComparison_foreign_failure_mass_le_rank [Fintype (RP).History]
   let stopped := fun history :
       (onePacketProtocol setup leaks bounds horizon (NativeScheduler)).History =>
     ¬ ReactiveApplication.stateInvariant (app := application setup leaks)
-      (fun native => PublicExclusionRecord (⟨native, ∅⟩ : RecoveryState (graph setup)))
+      (fun native => ExclusionEvidence 0 ∅ (⟨native, ∅⟩ : RecoveryState (graph setup)))
         history.state ∨
       DecodedState setup leaks (failureProfile setup.program)
         (ProtocolState.OwesFailure focal setup.program) history.state ∨ extraStop history
@@ -1104,7 +1104,7 @@ theorem nativeComparison_foreign_failure_mass_le_rank [Fintype (RP).History]
 private theorem foreign_failure_of_unclear_survival (focal : Player)
     (history : (onePacketProtocol setup leaks bounds horizon (NativeScheduler)).History)
     (unclear : ¬ ReactiveApplication.stateInvariant (app := application setup leaks)
-      (fun native => PublicExclusionRecord (⟨native, ∅⟩ : RecoveryState (graph setup)))
+      (fun native => ExclusionEvidence 0 ∅ (⟨native, ∅⟩ : RecoveryState (graph setup)))
         history.state)
     (survives : focal ∉ nativeFailureOwners (runtime setup) leaks history.state) :
     ∃ (control : (application setup leaks).Control) (owner : Player)
@@ -1125,11 +1125,12 @@ private theorem foreign_failure_of_unclear_survival (focal : Player)
           control.execution.application.PublicFailure event := by
       by_contra missing
       apply unclear
-      refine ⟨receipts, fun owner => ⟨?_, ?_⟩⟩
+      refine ⟨receipts, fun event lower => by omega, fun owner => ⟨?_, ?_⟩⟩
       · intro member
         exact (Finset.notMem_empty owner member).elim
-      · rintro ⟨event, owned, failed⟩
-        exact (missing ⟨owner, event, owned, failed⟩).elim
+      · rintro (inherited | ⟨event, _lower, owned, failed⟩)
+        · exact inherited
+        · exact (missing ⟨owner, event, owned, failed⟩).elim
     obtain ⟨owner, event, owned, failed⟩ := witness
     refine ⟨control, owner, event, rfl, ?_, owned, failed⟩
     intro same
@@ -1163,7 +1164,7 @@ theorem nativeComparison_foreign_exit_mass_le_rank [Fintype (RP).History]
       (onePacketProtocol setup leaks bounds horizon (NativeScheduler)).Trace (some start))
     (current : (graph setup).EventId)
     (turn : start.execution.application.publicView.ownTurn? focal = some current)
-    (clear : PublicExclusionRecord
+    (clear : ExclusionEvidence 0 ∅
       (⟨start.execution.application, ∅⟩ : RecoveryState (graph setup)))
     (regular : RegularTrace setup leaks bounds horizon (NativeScheduler) (sequence n) focal
       startTrace) :
@@ -1171,13 +1172,13 @@ theorem nativeComparison_foreign_exit_mass_le_rank [Fintype (RP).History]
       (Function.update (nativeComparisonStrategy setup leaks bounds horizon scheduler sequence scale
         positive le_one weights n) focal focalPolicy)
       (fun history => ¬ ReactiveApplication.stateInvariant (app := application setup leaks)
-        (fun native => PublicExclusionRecord (⟨native, ∅⟩ : RecoveryState (graph setup)))
+        (fun native => ExclusionEvidence 0 ∅ (⟨native, ∅⟩ : RecoveryState (graph setup)))
           history.state ∨
         DecodedState setup leaks (failureProfile setup.program)
           (ProtocolState.OwesFailure focal setup.program) history.state ∨ extraStop history)
       ⟨some start, startTrace⟩).toOuterMeasure
       {final | ¬ ReactiveApplication.stateInvariant (app := application setup leaks)
-        (fun native => PublicExclusionRecord (⟨native, ∅⟩ : RecoveryState (graph setup)))
+        (fun native => ExclusionEvidence 0 ∅ (⟨native, ∅⟩ : RecoveryState (graph setup)))
           final.state ∧
         focal ∉ nativeFailureOwners (runtime setup) leaks final.state}).toReal ≤
       ((scale n) ^ 2 + scale n) * (application setup leaks).rank horizon (some start) := by
@@ -1187,7 +1188,7 @@ theorem nativeComparison_foreign_exit_mass_le_rank [Fintype (RP).History]
   let stopped := fun history :
       (onePacketProtocol setup leaks bounds horizon (NativeScheduler)).History =>
     ¬ ReactiveApplication.stateInvariant (app := application setup leaks)
-      (fun native => PublicExclusionRecord (⟨native, ∅⟩ : RecoveryState (graph setup)))
+      (fun native => ExclusionEvidence 0 ∅ (⟨native, ∅⟩ : RecoveryState (graph setup)))
         history.state ∨
       DecodedState setup leaks (failureProfile setup.program)
         (ProtocolState.OwesFailure focal setup.program) history.state ∨ extraStop history
@@ -1195,7 +1196,7 @@ theorem nativeComparison_foreign_exit_mass_le_rank [Fintype (RP).History]
   let exits := {final :
       (onePacketProtocol setup leaks bounds horizon (NativeScheduler)).History |
     ¬ ReactiveApplication.stateInvariant (app := application setup leaks)
-      (fun native => PublicExclusionRecord (⟨native, ∅⟩ : RecoveryState (graph setup)))
+      (fun native => ExclusionEvidence 0 ∅ (⟨native, ∅⟩ : RecoveryState (graph setup)))
         final.state ∧
       focal ∉ nativeFailureOwners (runtime setup) leaks final.state}
   let failures := {final :

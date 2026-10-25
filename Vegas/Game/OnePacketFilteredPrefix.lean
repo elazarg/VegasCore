@@ -56,9 +56,9 @@ theorem clearRecord_of_tracePrefix
     {top : (onePacketProtocol setup leaks bounds horizon scheduler).Trace final}
     (isPrefix : TracePrefix prior top)
     (clear : ReactiveApplication.stateInvariant (app := application setup leaks)
-      (fun native => PublicExclusionRecord (⟨native, ∅⟩ : RecoveryState (graph setup))) final) :
+      (fun native => ExclusionEvidence 0 ∅ (⟨native, ∅⟩ : RecoveryState (graph setup))) final) :
     ReactiveApplication.stateInvariant (app := application setup leaks)
-      (fun native => PublicExclusionRecord (⟨native, ∅⟩ : RecoveryState (graph setup))) first := by
+      (fun native => ExclusionEvidence 0 ∅ (⟨native, ∅⟩ : RecoveryState (graph setup))) first := by
   induction isPrefix with
   | refl => exact clear
   | @extend source target before earlier joint legal realized ih =>
@@ -84,12 +84,12 @@ theorem clear_regular_notOwes_of_tracePrefix
     (prior : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some before))
     (top : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some final))
     (isPrefix : TracePrefix prior top)
-    (clear : PublicExclusionRecord
+    (clear : ExclusionEvidence 0 ∅
       (⟨final.execution.application, ∅⟩ : RecoveryState (graph setup)))
     (regular : RegularTrace setup leaks bounds horizon scheduler source focal top)
     (notOwed : ∀ point, decodedPoint setup final.execution.application.config = some point →
       ¬ ProtocolState.OwesFailure focal setup.program point) :
-    PublicExclusionRecord (⟨before.execution.application, ∅⟩ : RecoveryState (graph setup)) ∧
+    ExclusionEvidence 0 ∅ (⟨before.execution.application, ∅⟩ : RecoveryState (graph setup)) ∧
       RegularTrace setup leaks bounds horizon scheduler source focal prior ∧
       ∀ point, decodedPoint setup before.execution.application.config = some point →
         ¬ ProtocolState.OwesFailure focal setup.program point := by

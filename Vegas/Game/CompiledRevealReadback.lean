@@ -4,7 +4,7 @@ import Vegas.Source.RegistryFailureExtension
 import Vegas.Compile.EventGraphState
 import Vegas.EventGraph.ConfigRestriction
 import Vegas.Source.CommitRecoveryStep
-import Vegas.Pending.ExclusionPublicRecord
+import Vegas.Pending.ExclusionEvidence
 
 /-! # Reading completed reveals in source order from actual reachable stores -/
 

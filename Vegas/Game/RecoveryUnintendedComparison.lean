@@ -32,7 +32,7 @@ local notation "NP" => ReactiveApplication.ResponseMenu.protocol
   (bounds.onePacketMenu (runtime setup) leaks) (initialLaw setup) horizon (NativeScheduler)
 local notation "Menu" => bounds.onePacketMenu (runtime setup) leaks
 local notation "Clear" => ReactiveApplication.stateInvariant
-  (app := application setup leaks) (fun native => PublicExclusionRecord (RecoveryState.mk native ∅))
+  (app := application setup leaks) (fun native => ExclusionEvidence 0 ∅ (RecoveryState.mk native ∅))
 
 open Classical in
 /-- A non-intended first-callback commitment is worth exactly exclusion on
@@ -131,7 +131,7 @@ theorem nativeComparison_unintendedCommitment_history_comparison [Fintype (RP).H
   have ready := (execution.application.publicView_eventReady event).mp
     (PublicView.ownTurn?_spec _ who event turn).1
   have pointDecoded := (decodedPoint_eq_of_isPrefix ordered).trans decoded
-  have clear := publicExclusionRecord_of_decodedIntended
+  have clear := exclusionEvidence_of_decodedIntended
     ((Menu).toRawTrace (initialLaw setup) horizon (NativeScheduler) (current ▸ history.1.trace))
     pointDecoded intended
   have afterLookup : ∀ slot, (execution.respond (application setup leaks) who

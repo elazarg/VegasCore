@@ -36,7 +36,7 @@ theorem recoveryDecision_of_nativeClearTrace
     {before : (application setup leaks).ProtocolState}
     (prior : ((NMenu).protocol (initialLaw setup) horizon (NativeScheduler)).Trace before)
     (valid : ∀ current, before = some current →
-      PublicExclusionRecord (RecoveryState.mk current.execution.application ∅))
+      ExclusionEvidence 0 ∅ (RecoveryState.mk current.execution.application ∅))
     (who : Player) (active : (application setup leaks).actor before = some who)
     (running : ¬ (application setup leaks).terminal before) :
     (R).IsDecisionInfo who (liftInformation (runtime setup) leaks ((N).infoOf who prior)) := by
@@ -100,7 +100,7 @@ theorem nativeComparison_stepProb_of_clear [Fintype ((RMenu).protocol Initial ho
     (joint : Player → Option (application setup leaks).Action)
     (legal : ((NMenu).protocol (initialLaw setup) horizon (NativeScheduler)).Legal before joint)
     (valid : ∀ current, before = some current →
-      PublicExclusionRecord (RecoveryState.mk current.execution.application ∅))
+      ExclusionEvidence 0 ∅ (RecoveryState.mk current.execution.application ∅))
     (target : (application setup leaks).ProtocolState) :
     (N).stepProb (nativeComparisonStrategy setup leaks bounds horizon scheduler sequence scale
       positive le_one weights n) prior ⟨joint, legal⟩ target =
@@ -157,7 +157,7 @@ theorem historyReachWeight_nativeComparison_of_clear [Fintype ((RMenu).protocol 
           (positive n).le (le_one n) agent))) :
     ∀ {state} (trace : ((NMenu).protocol (initialLaw setup) horizon (NativeScheduler)).Trace state)
       (_valid : ∀ current, state = some current →
-        PublicExclusionRecord (RecoveryState.mk current.execution.application ∅)),
+        ExclusionEvidence 0 ∅ (RecoveryState.mk current.execution.application ∅)),
       (N).historyReachWeight (nativeComparisonStrategy setup leaks bounds horizon scheduler
         sequence scale positive le_one weights n) ⟨state, trace⟩ =
         (N).historyReachWeight (sourceNativeProfile setup leaks bounds horizon scheduler strategy)
@@ -165,7 +165,7 @@ theorem historyReachWeight_nativeComparison_of_clear [Fintype ((RMenu).protocol 
   intro state trace
   have realEquality :
       ∀ (clear : ∀ current, state = some current →
-          PublicExclusionRecord (RecoveryState.mk current.execution.application ∅)),
+          ExclusionEvidence 0 ∅ (RecoveryState.mk current.execution.application ∅)),
         ((N).historyReachWeight (nativeComparisonStrategy setup leaks bounds horizon scheduler
           sequence scale positive le_one weights n) ⟨state, trace⟩).toReal =
           ((N).historyReachWeight (sourceNativeProfile setup leaks bounds horizon scheduler

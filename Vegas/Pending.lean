@@ -62,9 +62,8 @@ import Vegas.Pending.ExclusionPairedEnvironment
 import Vegas.Pending.ExclusionPairedTransition
 import Vegas.Pending.ExclusionPrefix
 import Vegas.Pending.ExclusionProjection
-import Vegas.Pending.ExclusionPublicRecord
+import Vegas.Pending.ExclusionEvidence
 import Vegas.Pending.ExclusionResponseAliases
-import Vegas.Pending.ExclusionSameConfiguration
 import Vegas.Pending.ExclusionService
 import Vegas.Pending.ExclusionStoppedBoundary
 import Vegas.Pending.ExclusionStoppedLaw
@@ -438,6 +437,7 @@ import Vegas.Pending.ReservedEpochWorkMonotone
 import Vegas.Pending.RevealTranscript
 import Vegas.Pending.RuntimePhase
 import Vegas.Pending.ServicePlan
-import Vegas.Pending.SuffixExclusionRecord
+import Vegas.Pending.PhaseExclusionEvidence
 import Vegas.Pending.ValueSwapPairs
 import Vegas.Pending.PublicFailureEvidence
+import Vegas.Pending.PhaseStoppedAttemptMetadata

@@ -21,6 +21,33 @@ open EventGraph Interaction GameTheory.Math.Probability
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {graph : Vegas.EventGraph Player L}
 
+omit [DecidableEq Player] in
+/-- Every native completion step preserves all previously completed events. -/
+theorem CompletionStep.completed_mono {before after : State graph}
+    (step : CompletionStep before after) :
+    before.config.cut.completed ⊆ after.config.cut.completed := by
+  rcases step with ⟨same, _accepted, _activated⟩ |
+    ⟨event, ready, action, supported, _activated, _accepted⟩
+  · rw [same]
+  · intro query completed
+    rw [before.config.step_cut event ready action _ supported, EventOrder.Cut.mem_complete]
+    exact Or.inr completed
+
+omit [DecidableEq Player] in
+/-- Accepted handles cannot change along a completion step that leaves the
+compiled configuration unchanged. -/
+theorem CompletionStep.accepted_eq_of_config_eq {before after : State graph}
+    (step : CompletionStep before after) (same : after.config = before.config) :
+    after.accepted = before.accepted := by
+  rcases step with ⟨_config, accepted, _activated⟩ |
+    ⟨event, ready, action, supported, _activated, _accepted⟩
+  · exact accepted
+  · have completed : event ∈ after.config.cut.completed := by
+      rw [before.config.step_cut event ready action _ supported, EventOrder.Cut.mem_complete]
+      exact Or.inl rfl
+    rw [same] at completed
+    exact (ready.1 completed).elim
+
 namespace State
 
 /-- Public failure means a completed binding lacking an accepted handle or a

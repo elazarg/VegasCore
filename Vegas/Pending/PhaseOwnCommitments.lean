@@ -65,18 +65,6 @@ def PhaseOwnCommitmentsFixed (execution : (phaseApplication runtime leaks).Execu
     ∀ event slot, message.payload.packet.call = .commitment event (who, slot) →
       execution.application.current.native.candidates.lookup (who, slot) ≠ .fresh
 
-theorem phase_emit_call (state : PhaseRuntimeState graph) (who : Player)
-    (known : List (Message Player (CommitAttemptPacket graph)))
-    (material : WitnessedSubmission graph) :
-    (state.emit who known material).packet.call = material.call.packet := by
-  have nativeCall : (state.current.emit who
-      (known.map fun message => ⟨message.id, message.payload.packet⟩) material).call =
-      material.call.packet := by
-    dsimp only [RecoveryState.emit]
-    split <;> rfl
-  dsimp only [PhaseRuntimeState.emit]
-  split <;> exact nativeCall
-
 theorem PhaseOwnCommitmentsFixed.respond
     {execution : (phaseApplication runtime leaks).Execution}
     (valid : PhaseOwnCommitmentsFixed runtime leaks execution) (who : Player)

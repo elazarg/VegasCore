@@ -61,12 +61,9 @@ theorem candidateRecall_respond (runtime : EventGraphRuntime graph)
     intro present
     apply absent
     unfold submittedCandidateSlots at present ⊢
-    exact List.mem_filterMap.mpr (by
-      obtain ⟨action, member, slot⟩ := List.mem_filterMap.mp present
-      obtain ⟨entry, retained, rfl⟩ := List.mem_map.mp member
-      exact ⟨entry.action, List.mem_map.mpr
-        ⟨entry, (phaseApplication runtime leaks).respond_recall_mono
-          execution who observer response retained, rfl⟩, slot⟩)
+    exact List.filterMap_subset _ (List.map_subset _
+      ((phaseApplication runtime leaks).respond_recall_mono execution who observer response))
+      present
   have fresh := valid observer serial old
   rcases response with ⟨transmission⟩
   cases transmission with
@@ -85,37 +82,6 @@ theorem candidateRecall_respond (runtime : EventGraphRuntime graph)
         change serial ∈ material.call.packet.preparedCommitment?.toList
         simp [selected]
       · exact Or.inl same
-
-private theorem emit_call (state : PhaseRuntimeState graph) (who : Player)
-    (known : List (Message Player (CommitAttemptPacket graph)))
-    (material : WitnessedSubmission graph) :
-    (state.emit who known material).packet.call = material.call.packet := by
-  have nativeCall : (state.current.emit who
-      (known.map fun message => ⟨message.id, message.payload.packet⟩) material).call =
-      material.call.packet := by
-    unfold RecoveryState.emit
-    dsimp only
-    split <;> rfl
-  unfold PhaseRuntimeState.emit
-  dsimp only
-  split <;> exact nativeCall
-
-private theorem issued_candidate_slot (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket graph))
-    (execution : (phaseApplication runtime leaks).Execution)
-    (message : Message Player (CommitAttemptPacket graph)) (event : graph.EventId)
-    (owner : Player) (serial : Nat)
-    (call : message.payload.packet.call = .commitment event (owner, .prepared serial))
-    (issued : execution.Issued (phaseApplication runtime leaks) message) :
-    serial ∈ submittedCandidateSlots runtime leaks (execution.recall message.sender) := by
-  obtain ⟨entry, member, material, sent, _, state, known, packet⟩ := issued
-  apply List.mem_filterMap.mpr
-  refine ⟨entry.action, List.mem_map.mpr ⟨entry, member, rfl⟩, ?_⟩
-  have raw := congrArg (fun packet : CommitAttemptPacket graph => packet.packet.call) packet
-  rw [show ((phaseApplication runtime leaks).packet
-    state message.sender known material).packet.call = material.call.packet from
-      emit_call state message.sender known material] at raw
-  simp only [responseCandidateSlot, sent, raw, call, Payload.preparedCommitment?]
 
 private theorem candidateRecall_handle (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket graph))
@@ -143,8 +109,18 @@ private theorem candidateRecall_handle (runtime : EventGraphRuntime graph)
           subst candidate
           change who = message.sender at owner
           subst who
-          exact absent (issued_candidate_slot runtime leaks execution message event
-            message.sender serial call issued)
+          apply absent
+          refine ReactiveApplication.Issued.mem_response_keys (phaseApplication runtime leaks)
+            (responseCandidateSlot runtime leaks)
+            (fun packet : CommitAttemptPacket graph => packet.packet.call.preparedCommitment?)
+            ?_ issued ?_
+          · intro response material transmitted state sender known
+            change responseCandidateSlot runtime leaks response =
+              (state.emit sender known material).packet.call.preparedCommitment?
+            rw [phase_emit_call]
+            simp only [responseCandidateSlot, transmitted]
+          · rw [call]
+            rfl
         rw [candidates, CommitmentCandidates.lookup_freeze_other _ _ _ different]
         exact valid who serial absent
     | opening event candidate raw =>
@@ -167,46 +143,38 @@ theorem candidateRecall_environment (runtime : EventGraphRuntime graph)
       command).support) : CandidateRecall runtime leaks next := by
   intro who serial absent
   rw [ReactiveApplication.environmentStep_recall _ execution next command reached] at absent
-  cases command with
-  | wait =>
-      simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map] at reached
-      cases (PMF.mem_support_pure_iff _ _).mp reached
+  apply (phaseApplication runtime leaks).environmentStep_cases execution next command reached
+    (predicate := fun _ next =>
+      next.application.current.native.candidates.lookup (who, .prepared serial) = .fresh)
+  · exact valid who serial absent
+  · exact fun _ _ _ => valid who serial absent
+  · intro id
+    unfold ReactiveApplication.Execution.includePending MessageNetwork.includePending
+    cases found : execution.network.lookup id with
+    | none => exact valid who serial absent
+    | some message =>
+        change (((phaseApplication runtime leaks).handle execution.application message).getD
+          execution.application).current.native.candidates.lookup (who, .prepared serial) = _
+        cases accepted : (phaseApplication runtime leaks).handle execution.application
+            message with
+        | none => exact valid who serial absent
+        | some state =>
+            exact candidateRecall_handle runtime leaks execution state message valid
+              (provenance.pending message (List.mem_of_find?_eq_some found))
+              accepted who serial absent
+  · intro command state changed
+    change state ∈ (execution.application.environment runtime command).support at changed
+    unfold PhaseRuntimeState.environment at changed
+    split at changed
+    · obtain ⟨native, moved, rfl⟩ := PMF.support_map .. ▸ changed
+      dsimp only [PhaseRuntimeState.normalize]
+      rw [(PhaseRuntimeState.settle_physical _ _ _ _ _).2.1]
+      change native.candidates.lookup (who, .prepared serial) = .fresh
+      rw [(environmentStep_tables runtime execution.application.current.native native command
+        moved).2]
       exact valid who serial absent
-  | activate actor =>
-      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
-      obtain ⟨selected, _, rfl⟩ := PMF.support_map .. ▸ supported
+    · cases (PMF.mem_support_pure_iff _ _).mp changed
       exact valid who serial absent
-  | «include» id =>
-      simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map] at reached
-      cases (PMF.mem_support_pure_iff _ _).mp reached
-      unfold ReactiveApplication.Execution.includePending MessageNetwork.includePending
-      cases found : execution.network.lookup id with
-      | none => exact valid who serial absent
-      | some message =>
-          change (((phaseApplication runtime leaks).handle execution.application message).getD
-            execution.application).current.native.candidates.lookup (who, .prepared serial) = _
-          cases accepted : (phaseApplication runtime leaks).handle execution.application
-              message with
-          | none => exact valid who serial absent
-          | some state =>
-              exact candidateRecall_handle runtime leaks execution state message valid
-                (provenance.pending message (List.mem_of_find?_eq_some found))
-                accepted who serial absent
-  | application command =>
-      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
-      obtain ⟨state, changed, rfl⟩ := PMF.support_map .. ▸ supported
-      change state ∈ (execution.application.environment runtime command).support at changed
-      unfold PhaseRuntimeState.environment at changed
-      split at changed
-      · obtain ⟨native, moved, rfl⟩ := PMF.support_map .. ▸ changed
-        dsimp only [PhaseRuntimeState.normalize]
-        rw [(PhaseRuntimeState.settle_physical _ _ _ _ _).2.1]
-        change native.candidates.lookup (who, .prepared serial) = .fresh
-        rw [(environmentStep_tables runtime execution.application.current.native native command
-          moved).2]
-        exact valid who serial absent
-      · cases (PMF.mem_support_pure_iff _ _).mp changed
-        exact valid who serial absent
 
 theorem candidateRecall_history (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket graph))

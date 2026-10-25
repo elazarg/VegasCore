@@ -45,7 +45,7 @@ theorem recovery_terminal_completed_of_decodedIntended
     rw [decodedPoint_eq_of_isPrefix (show
       final.execution.application.config.cut.IsPrefix rank by rw [same]; exact ordered), same]
     exact decoded
-  have clear := publicExclusionRecord_of_decodedIntended trace finalDecoded intended
+  have clear := exclusionEvidence_of_decodedIntended trace finalDecoded intended
   rw [← nativeLaw] at trace
   have complete := Recovery.CompletesPlay.clear_native (runtime setup) leaks initialized completes
     final trace clear ended
@@ -69,7 +69,7 @@ theorem recovery_pending_completion_failure_split [Finite (E).History]
     (start : (E).History) {control : (application setup leaks).Control}
     (current : start.state = some control) {rank : Nat}
     (ordered : control.execution.application.config.cut.IsPrefix rank)
-    (clear : PublicExclusionRecord (RecoveryState.mk control.execution.application ∅))
+    (clear : ExclusionEvidence 0 ∅ (RecoveryState.mk control.execution.application ∅))
     (key : LateKey setup leaks) (event : (graph setup).EventId)
     (ready : control.execution.application.config.cut.Ready event)
     (decided : decidedEvent key = some event)
@@ -388,7 +388,7 @@ theorem recovery_pendingBinding_sourceValue
   rw [centeredMean] at near
   have rawTrace := menu.toRawTrace (initialLaw setup) horizon scheduler (current ▸ history.1.trace)
   have initialDecoded := (decodedPoint_eq_of_isPrefix ordered).trans decoded
-  have clear := publicExclusionRecord_of_decodedIntended rawTrace initialDecoded intendedPoint
+  have clear := exclusionEvidence_of_decodedIntended rawTrace initialDecoded intendedPoint
   have pendingHere := pending
   rw [atSite] at pendingHere
   obtain ⟨turn, readyView, _, _⟩ := pendingEvent_spec pendingHere
@@ -722,7 +722,7 @@ theorem recovery_committed_sourceValue
     (execution.application.publicView_eventReady event).mp
       (PublicView.ownTurn?_spec _ who event turn).1
   have trace := menu.toRawTrace (initialLaw setup) horizon scheduler (current ▸ history.1.trace)
-  have clear := publicExclusionRecord_of_decodedIntended trace
+  have clear := exclusionEvidence_of_decodedIntended trace
     ((decodedPoint_eq_of_isPrefix ordered).trans decoded) pointIntended
   have freshIff : ∀ control, siteFresh who site.1 control ↔
       ¬ StoreEventFailed control.execution.application.config.store event := by
@@ -822,7 +822,7 @@ theorem recovery_unintendedCommitment_phase_owes (profile : BehavioralProfile se
       fixed, unintended, fun _ => sameConfig, fun done => ?_⟩
     rw [sameConfig] at done
     exact (ready.1 done).elim
-  have clear := publicExclusionRecord_of_decodedIntended
+  have clear := exclusionEvidence_of_decodedIntended
     (menu.toRawTrace (initialLaw setup) horizon scheduler afterTrace)
     (show decodedPoint setup
       (execution.respond (application setup leaks) who response).application.config = some point by

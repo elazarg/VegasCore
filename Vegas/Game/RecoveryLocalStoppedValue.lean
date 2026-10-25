@@ -31,7 +31,7 @@ local notation "NP" => ReactiveApplication.ResponseMenu.protocol
 local notation "RawNative" => ReactiveApplication.protocol (application setup leaks)
   (PMF.map RecoveryState.native Initial) horizon (NativeScheduler)
 local notation "Clear" => ReactiveApplication.stateInvariant
-  (app := application setup leaks) (fun native => PublicExclusionRecord (RecoveryState.mk native ∅))
+  (app := application setup leaks) (fun native => ExclusionEvidence 0 ∅ (RecoveryState.mk native ∅))
 
 /-- Projecting one replaced recovery decision law replaces exactly the
 corresponding complete native information value. -/
@@ -129,7 +129,7 @@ theorem nativeComparison_stopped_localLaw_eq [Fintype (RP).History]
   apply stopped_eq_of_clear_laws
   intro history clear running who
   have valid : ∀ control, history.state = some control →
-      PublicExclusionRecord (RecoveryState.mk control.execution.application ∅) := by
+      ExclusionEvidence 0 ∅ (RecoveryState.mk control.execution.application ∅) := by
     intro control state
     rw [state] at clear
     exact clear

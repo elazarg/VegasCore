@@ -21,11 +21,11 @@ theorem liftProtocolState_injective : Function.Injective (liftProtocolState runt
 
 private theorem environment_control_lift_apply
     (current : (runtime.reactiveApplication leaks).Execution)
-    (valid : PublicExclusionRecord (⟨current.application, ∅⟩ : RecoveryState graph))
+    (valid : ExclusionEvidence 0 ∅ (⟨current.application, ∅⟩ : RecoveryState graph))
     (remaining : Nat) (chosen : (runtime.reactiveApplication leaks).Command)
     (after : (runtime.reactiveApplication leaks).ProtocolState)
     (clear : ∀ control, after = some control →
-      PublicExclusionRecord (⟨control.execution.application, ∅⟩ : RecoveryState graph)) :
+      ExclusionEvidence 0 ∅ (⟨control.execution.application, ∅⟩ : RecoveryState graph)) :
     (((liftExecution runtime leaks current).environmentStep (runtime.recoveryApplication leaks)
         (liftCommand runtime leaks chosen)).map fun next =>
           some (⟨remaining, (liftCommand runtime leaks chosen).actor?
@@ -95,9 +95,9 @@ theorem transition_lift_apply (initial : PMF (RecoveryState graph))
     (before after : (runtime.reactiveApplication leaks).ProtocolState)
     (joint : Player → Option (runtime.reactiveApplication leaks).Action)
     (valid : ∀ current, before = some current →
-      PublicExclusionRecord (⟨current.execution.application, ∅⟩ : RecoveryState graph))
+      ExclusionEvidence 0 ∅ (⟨current.execution.application, ∅⟩ : RecoveryState graph))
     (clear : ∀ current, after = some current →
-      PublicExclusionRecord (⟨current.execution.application, ∅⟩ : RecoveryState graph)) :
+      ExclusionEvidence 0 ∅ (⟨current.execution.application, ∅⟩ : RecoveryState graph)) :
     ((runtime.recoveryApplication leaks).transition initial horizon scheduler
         (liftProtocolState runtime leaks before) (liftJointActions runtime leaks joint))
         (liftProtocolState runtime leaks after) =

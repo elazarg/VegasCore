@@ -171,7 +171,7 @@ theorem OrderedPublicFailures.environmentResult {low : Nat} {inherited : Finset 
       · exact (changed same).elim
       · have same := State.completed_event_eq_of_step supported queryReady.1 completed
         subst query
-        exact SuffixExclusionRecord.expire_publicFailure runtime state.native native
+        exact ExclusionEvidence.expire_publicFailure runtime state.native native
           coverage.receipts event reached changed acting
   | executeSample event =>
       rcases (environmentStep_executeSample_config_activated runtime state.native native event

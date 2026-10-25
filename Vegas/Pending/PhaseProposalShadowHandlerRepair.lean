@@ -82,8 +82,8 @@ theorem PhaseStateFrame.handler_repair
         · cases accepted
       obtain ⟨native, handled⟩ := nativeAccepted
       obtain ⟨_ready, _timely, actor, payload, outputEq, codeEq, node, sender, candidateOwner,
-          _vacant, _unused⟩ := handle_commitment_conditions runtime _ native message.id event
-            candidate handled
+          _vacant, _unused, _⟩ :=
+            (handle_commitment_iff runtime _ native message.id event candidate).mp handled
       by_cases same : actor = owner
       · subst same
         let owner := actor

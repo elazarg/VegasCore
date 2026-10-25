@@ -5631,8 +5631,8 @@ private theorem sourceSnapshot_handle_binding
         (sourceHandlePairs setup implementation target reference lost))) := by
   classical
   obtain ⟨ready, timely, actualOwner, actualPayload, actualShape, code, node, sender,
-    handleOwner, vacant, unused⟩ :=
-    handle_commitment_conditions runtime before after id event handle accepted
+    handleOwner, vacant, unused, _⟩ :=
+    (handle_commitment_iff runtime before after id event handle).mp accepted
   obtain ⟨rfl, rfl⟩ := EventField.binding.inj (shape.symm.trans actualShape)
   have result : before.bindingResult handle payload = .success old := by
     simp only [State.bindingResult, original, Raw.as?, ↓reduceDIte, cast_eq, Option.elim_some]
@@ -5724,8 +5724,8 @@ private theorem sourceSnapshot_handle_failed_binding
       some (sourceSnapshotState setup implementation target reference lost after) := by
   classical
   obtain ⟨ready, timely, actualOwner, actualPayload, actualShape, code, node, sender,
-    handleOwner, vacant, unused⟩ :=
-    handle_commitment_conditions runtime before after id event handle accepted
+    handleOwner, vacant, unused, _⟩ :=
+    (handle_commitment_iff runtime before after id event handle).mp accepted
   obtain ⟨rfl, rfl⟩ := EventField.binding.inj (shape.symm.trans actualShape)
   have afterEq : after =
       { before.complete event ready
@@ -6184,7 +6184,7 @@ theorem sourceSnapshot_handle_opening
   | some after =>
       obtain ⟨ready, _timely, owner, payload, binding, checks, shape, code, value, result,
         _node, _sender, _owner, _accepted, _raw, _catalogue, _stored, _evaluated, completed⟩ :=
-        handle_opening_conditions runtime before after id event handle raw step
+        (handle_opening_iff runtime before after id event handle raw).mp step
       have visible : (serviceGraph setup .concurrent).fieldPublic (.inr event) := by
         change ((serviceGraph setup .concurrent).outputLayout event).IsPublic
         rw [shape]

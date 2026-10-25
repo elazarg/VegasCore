@@ -42,7 +42,7 @@ local notation "RecoveryRaw" => ReactiveApplication.information
 
 variable (who : Player) (reference : (runtime.reactiveApplication leaks).Control)
   (active : reference.actor = some who)
-  (valid : PublicExclusionRecord (⟨reference.execution.application, ∅⟩ : RecoveryState graph))
+  (valid : ExclusionEvidence 0 ∅ (⟨reference.execution.application, ∅⟩ : RecoveryState graph))
   (nativeDecision : (ReactiveApplication.ResponseMenu.information
     (MessageBounds.onePacketMenu runtime leaks bounds) (initial.map RecoveryState.native) horizon
     (nativeScheduler runtime leaks scheduler)).IsDecisionInfo who

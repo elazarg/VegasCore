@@ -63,7 +63,7 @@ local notation "NMenu" => bounds.onePacketMenu (runtime setup) leaks
 
 variable (who : Player) (reference : (application setup leaks).Control)
   (active : reference.actor = some who)
-  (valid : PublicExclusionRecord (RecoveryState.mk reference.execution.application ∅))
+  (valid : ExclusionEvidence 0 ∅ (RecoveryState.mk reference.execution.application ∅))
   (nativeDecision : (onePacketModel setup leaks bounds (initialLaw setup) horizon
     (nativeScheduler (runtime setup) leaks scheduler)).IsDecisionInfo who
       ((application setup leaks).observe who (some reference)))

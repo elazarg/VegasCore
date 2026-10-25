@@ -23,7 +23,7 @@ local notation "N" => onePacketModel setup leaks bounds (initialLaw setup) horiz
 local notation "NP" => ReactiveApplication.ResponseMenu.protocol
   (bounds.onePacketMenu (runtime setup) leaks) (initialLaw setup) horizon scheduler
 local notation "Clear" => ReactiveApplication.stateInvariant
-  (app := application setup leaks) (fun native => PublicExclusionRecord (RecoveryState.mk native ∅))
+  (app := application setup leaks) (fun native => ExclusionEvidence 0 ∅ (RecoveryState.mk native ∅))
 
 /-- A completed failed event in a genuine native history retains its owner's
 source obligation, independently of any future service guarantee. -/
@@ -112,7 +112,7 @@ theorem debtStopped_eq_bind_eventPhase
       exact (decodedPoint_eq_of_isPrefix ordered).trans decoded
     have clear : Clear history.state := by
       rw [state]
-      exact publicExclusionRecord_of_decodedIntended
+      exact exclusionEvidence_of_decodedIntended
         ((bounds.onePacketMenu (runtime setup) leaks).toRawTrace (initialLaw setup) horizon
           scheduler (state ▸ history.trace)) pointDecoded intended
     rintro (unclear | owed)

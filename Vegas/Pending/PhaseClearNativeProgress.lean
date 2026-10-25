@@ -29,8 +29,8 @@ theorem handle_preserves_accepted (runtime : EventGraphRuntime graph)
       exact present
   | commitment event named =>
       have table := (handle_commitment_tables runtime before after id event named accepted).2.1
-      obtain ⟨_, _, _, _, _, _, _, _, _, vacant, _⟩ :=
-        handle_commitment_conditions runtime before after id event named accepted
+      obtain ⟨_, _, _, _, _, _, _, _, _, vacant, _, _⟩ :=
+        (handle_commitment_iff runtime before after id event named).mp accepted
       rw [table]
       by_cases same : field = .inr event
       · subst field

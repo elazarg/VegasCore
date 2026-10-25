@@ -32,3 +32,4 @@ import VegasTests.FiniteSupportPurification
 import VegasTests.PartialEnvironment
 
 import VegasTests.DependencyHeight
+import VegasTests.ConditionalPublicPrior

@@ -108,7 +108,7 @@ theorem recovery_belief_eq_nativeComparison [Fintype (RP).History]
       ((RMenu).decisionInformationAntichain Initial horizon scheduler))
     (who : Player) (reference : (application setup leaks).Control)
     (active : reference.actor = some who)
-    (valid : PublicExclusionRecord (RecoveryState.mk reference.execution.application ∅))
+    (valid : ExclusionEvidence 0 ∅ (RecoveryState.mk reference.execution.application ∅))
     (nativeDecision : (N).IsDecisionInfo who
       ((application setup leaks).observe who (some reference)))
     (recoveryDecision : (R).IsDecisionInfo who (liftInformation (runtime setup) leaks

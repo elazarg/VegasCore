@@ -35,12 +35,12 @@ is not a claim that the mathematical result has been proved.
 | R2 | Finish using the existing invariant hierarchy before inventing another | Checked | Provenance and input recall instantiate the existing ServiceInvariant; unused specialized predicates/transition proofs removed, both actual alias callers migrated. All owners/callers and five exact standard-axiom roots pass; net43 fewer lines |
 | R3 | Factor the four-way environment lift, without discarding execution data | Checked | Exact existing environment-step support eliminator reused by15 proofs in10 callers; primitive and all callers pass, exact standard-axiom audit passes; net84 fewer lines including umbrella |
 | R4 | Automatic draining already has the trace needed for almost every frame | Checked | Two trace-based induction owners replace18 repeated frame inductions across12 files; all owners/leaves pass and three exact roots use standard axioms; net79 fewer lines |
-| R5 | Ordinary exclusion evidence is the zero-frontier instance of suffix evidence | Checked evidence extraction; partial finding | Public-failure owner and shared completion kernel plus all Pending owners and strategic correspondence caller pass; exact completion root retains standard axioms. Pilot net43 fewer lines; full record-family unification remains unimplemented |
+| R5 | Ordinary exclusion evidence is the zero-frontier instance of suffix evidence | Checked | One frontier-indexed ExclusionEvidence covers ordinary and suffix evidence; three duplicate owners removed and all callers migrated. Exact iff, accepted-unusable distinction and both unconditional native frame laws retained. Full build and exact environment/phase guards pass; net243 fewer lines across126 paths |
 | R6 | Count-verdict persistence and collection are application-independent | Checked | Interaction owns ordered-input and continuation persistence facts; six concrete menu/collection proofs migrated. Recall equivalence needs only InputRecall; owning builds and two standard-axiom guards pass; net29 fewer production lines including umbrella |
-| R7 | Candidate freshness should use one generic recorded-resource invariant | Queued | Awaiting its dependency-ordered implementation batch |
+| R7 | Candidate freshness should use one generic recorded-resource invariant | Checked | Actual-issued response-key membership is generic in the key and reuses existing provenance/invariant machinery; native/phase callers retain full catalogue guards. One phase emission theorem has one lower owner. All callers and exact generic guard pass; net37 fewer lines |
 | R8 | Prove a useful elimination theorem for `PhaseRuntimeState.settle` | Checked | Lean generated functional induction supplies the exact settle eliminator, with no duplicate API. Ten proofs across five owners pass; four exact physical/invariant/archive roots retain standard axioms; net50 fewer lines |
-| R9 | Share first-attempt-exit metadata, not the phase-specific snapshot conclusion | Queued | Awaiting its dependency-ordered implementation batch |
-| R10 | Move typed handler success/inversion certificates below value swaps | Queued | Awaiting its dependency-ordered implementation batch |
+| R9 | Share first-attempt-exit metadata, not the phase-specific snapshot conclusion | Checked | Generic entering/final-transition witnesses and actual stopped-prefix metadata replace receipt/origin inductions, retaining exact requests, traces and arbitrary legal policies. All callers and three exact runtime guards pass. Whole family grows34 lines including both generic kernels; no compression claim |
+| R10 | Move typed handler success/inversion certificates below value swaps | Checked | Typed commitment/opening acceptance iff lives below swaps, with exact next states and actual failed-resolution results. Both public observation statements remain unchanged; all inversion callers and exact certificate guards pass; net218 fewer lines |
 | R11 | Two typed partial-environment readers can share a dependency traversal | Checked | One typed collector replaces three reader families, with selected-lookup iff and no unique-name premise. All owners and type-sensitive missing/repeated-position regressions pass; net48 fewer lines. Exact iff uses propext/Quot.sound, availability uses standard three axioms |
 | R12 | Behavioral realization has a nearby stronger player-memory joint law | Checked | Full execution/final-memory joint law and old marginal-as-projection pass, including continuation/test callers; both exact roots retain standard axioms. Net24-line growth; arbitrary opponents and schedulers retained |
 | R13 | A common service contract needs physical episode identity; timeliness does not imply blindness | Assessed; retain existing contracts | Native, recovery and phased contracts quantify over different histories and physical episodes; recovery native transport requires public clearance, and retry restores readiness stamps at the current clock. A common record would merely repackage those obligations with additional adapters. No contract equivalence or restricted-blindness theorem is claimed; all-view erasure blindness remains a distinct hypothesis |
@@ -57,10 +57,10 @@ is not a claim that the mathematical result has been proved.
 | G9 | Remove the exact duplicated support-order expectation theorem | Checked | Generic support-order theorem, slack corollary and both concrete gain callers pass; exact axioms pass. Exact dedup shrinks8 lines, slack API makes family grow6 |
 | G10 | Share domination operations rather than model-specific map/mix lemmas | Checked | Map/common-mixture/right-retention owner and both actual domination callers pass; exact map/mix roots retain standard axioms. Net9-line API growth |
 | G11 | Give approximate local comparisons monotonicity and finite-case algebra | Checked | Gain comparison monotonicity and common-sequence finite error budget plus both comparison callers pass; exact error-budget/lottery roots retain standard axioms. Net42-line API growth; source assessment sequence preserved |
-| G12 | Repair the dependent provenance interface before attacking giant bodies | Queued | Awaiting its dependency-ordered implementation batch |
-| G13 | Generalize owner-prior transport to public-fiber independence, cautiously | Queued | Awaiting its dependency-ordered implementation batch |
-| G14 | Obtain event-sensitive Nash errors before changing runtime contracts | Queued | Awaiting its dependency-ordered implementation batch |
-| G15 | Turn strict enforcement margins into a local support-exclusion theorem | Queued | Awaiting its dependency-ordered implementation batch |
+| G12 | Repair the dependent provenance interface before attacking giant bodies | Checked | Dependent reference/config transport requires no ResultTypes premise; five actual provenance adapters replace local equality eliminations. Full correspondence/alignment/replay and capstone chain plus both exact transport guards pass; whole family net57 fewer lines |
+| G13 | Generalize owner-prior transport to public-fiber independence, cautiously | Checked conditional base laws | Canonical source splice, prior scaling and two-site/late base-law proofs accept independence within an observed public initial fiber. All-history membership and same-key support closure are proved; unconditional callers use Unit with unchanged capstone hypotheses. Full-support noisy public-bit regression and exact roots pass. Production grows256 lines after removing duplicated engines; conditional-prior recovery SE remains unproved |
+| G14 | Obtain event-sensitive Nash errors before changing runtime contracts | Checked per-player result; event refinement assessed | Two per-player best-response bridges retain complete audited payoff ranges, full deviations and expectation guards. Every scalar caller and all11 scalar theorem headers remain intact; exact roots and full build pass. Four files grow3 lines; Paper adapter grows1. Event-weighted continuation sensitivities need additional actual hybrid-payoff guards and are not claimed |
+| G15 | Turn strict enforcement margins into a local support-exclusion theorem | Checked | Effective-menu silence is a feasible zero-charge continuation against arbitrary admitted opponents. Strict coverage/deposit margin excludes a forbidden choice at every own-clean information fiber under rationality, with actual runner factorization and integrability. Generic/concrete owners, timing example and exact guards pass. Whole family grows423 lines; original example CountRecall conjunct retained |
 | S1 | Factor the legal action translation inside the two repair inductions | Checked | Constructive legal-joint coordinate update and both actual reveal-translation callers pass. The broad menu-level helper was rejected because its signature erased savings. Minimal kernel and all adapters grow one line; exact generic root needs no axioms |
 | S2 | One typed compiler metadata theorem can own two structural inductions | Checked | Typed output/revealed-cell metadata belongs to Compile; one label-parametric structural proof owns typed and name projections. Both compiler owners and both Game readers pass; three exact roots use standard axioms; net54 fewer lines |
 | S3 | Share observation-codec traversal, retaining visibility and absence | Checked | Exact typed collector correspondence shares visible congruence, agreement and missing-publication proofs. Decoder definition and five public headers stay unchanged. All compiler/game consumers pass and exact permanent congruence guard retains standard axioms; net77 fewer lines |
@@ -132,3 +132,26 @@ six, and permanent axiom guards/imports 67. Documentation is counted separately.
 The separate dependency-height feature and its regression are excluded from
 these totals. The optional premise-suggestion diagnostic noted above persists;
 kernel proof acceptance and every exact axiom guard pass.
+
+The evidence, continuation and conditional-prior batch passes the full ordinary
+build (5767 jobs), all original capstones, 24 added permanent axiom guards,
+all seven review probes and all 94 Python tests. Module boundaries, strict
+source policy and documentation references pass. GameTheory source and its
+submodule pointer are unchanged.
+
+The four evidence/handler/resource/context refactor families remove 555 physical
+lines after including their common APIs and all actual adapters. The stopped
+trace family adds 34 lines; the conditional-prior theory adds 256 after removing
+duplicated engines; strict audit support exclusion adds 423; and the per-player
+Nash family adds three plus one Paper adapter line. These are different scopes,
+so their figures are not combined with test and aggregator counts. Across the
+whole batch the library grows 182 lines, examples/regressions 159, and Paper
+147 (144 guard lines, two imports and the one adapter line). Mathematical
+feature growth is not reported as proof compression.
+
+Every ranked and cleanup item has a disposition. A frozen dependency or retained
+contract is not an implemented strengthening. Event-sensitive timing errors need
+actual hybrid-continuation payoff guards; conditional-prior recovery SE still
+needs a separate source-splice/public-input adapter. Neither result is claimed.
+The existing optional premise-suggestion diagnostic persists independently of
+successful kernel builds and axiom checks.

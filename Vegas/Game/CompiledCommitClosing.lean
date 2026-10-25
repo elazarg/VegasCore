@@ -112,7 +112,7 @@ theorem sourceClose_of_exhausted_bindingPhase
       rebuilt restoredSource image.excluded (phase.drain_bindingInvariant restored restoredValid)
       ((BindingReceiptOrder.of_prefix restoredReceipts saved).congr
         (phase.drain_tables restored).1)
-      ((SuffixExclusionRecord.of_prefix restoredReceipts saved rfl).phase_drain phase)
+      ((ExclusionEvidence.of_prefix restoredReceipts saved rfl).phase_drain phase)
       (phase.drain_within restored within) rebuiltFinished restoredAgree guards
   have automaticEq := (automaticAttempt.eq_automatic_of_owners allSource).1
   refine ⟨finalSource, finalSourceEq, .exhausted attempt failed allSource, ?_, ?_, ?_⟩

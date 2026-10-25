@@ -2,6 +2,8 @@
 
 import GameTheoryExtensions
 import Interaction.ReactiveImplementation
+import Interaction.ReactivePolicyMenuInvariant
+import Interaction.ReactiveProvenance
 import Interaction.ReactiveSchedulerDensity
 import Vegas.Pending.CompletionService
 import Vegas.Compile
@@ -231,10 +233,11 @@ theorem async_client_nash_reflection [Fintype Player] [IExpr.ResultTypes L]
         (instructionCount service.setup.program + 1))
         (fun final who => (service.setup.protocolReadout final.state).elim 0
           (fun state => utility (service.setup.parameterOutcome parameter state) who))
-        (ε + 2 * (∑ event, timing.deferral event) * range) source :=
-  service.isεNash_of_clientProfile admission ordered parameter utility sample authentic deposit menu
-    timing covered
-    low range within ε source
+        (ε + 2 * (∑ event, timing.deferral event) * range) source := by
+  intro base payoff equilibrium
+  exact (isεNash_iff_εBestResponse _ _).mpr
+    (service.isεBestResponse_of_clientProfile admission ordered parameter utility sample authentic
+      deposit menu timing covered low (fun _ => range) within ε source equilibrium)
 
 /-- info: 'Vegas.Paper.async_client_nash_reflection' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
@@ -1334,3 +1337,147 @@ end Vegas.Paper
 /-- info: 'GameTheory.Protocol.IsLegalJoint.update' does not depend on any axioms -/
 #guard_msgs (whitespace := lax) in
 #print axioms GameTheory.Protocol.IsLegalJoint.update
+
+/-- info: 'GameTheory.Protocol.ExecutionProtocol.TracePrefix.exists_entering_transition' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  GameTheory.Protocol.ExecutionProtocol.TracePrefix.exists_entering_transition
+
+/-- info: 'GameTheory.Protocol.ExecutionProtocol.TracePrefix.exists_last_transition' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  GameTheory.Protocol.ExecutionProtocol.TracePrefix.exists_last_transition
+
+/-- info: 'Interaction.ReactiveApplication.PolicyInvariant.run_menu' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Interaction.ReactiveApplication.PolicyInvariant.run_menu
+
+/-- info: 'Interaction.ReactiveApplication.Issued.mem_response_keys' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Interaction.ReactiveApplication.Issued.mem_response_keys
+
+/-- info: 'Vegas.EventGraphRuntime.handle_commitment_iff' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.handle_commitment_iff
+
+/-- info: 'Vegas.EventGraphRuntime.handle_opening_iff' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.handle_opening_iff
+
+/-- info: 'Vegas.ContextRefs.Agrees.cast_config' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.ContextRefs.Agrees.cast_config
+
+/-- info: 'Vegas.ContextRefs.Agrees.of_cast_config_eq' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.ContextRefs.Agrees.of_cast_config_eq
+
+/-- info: 'Vegas.EventGraphRuntime.CompletionStep.accepted_eq_of_config_eq' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.CompletionStep.accepted_eq_of_config_eq
+
+/-- info: 'Vegas.EventGraphRuntime.ExclusionEvidence.environment' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.ExclusionEvidence.environment
+
+/-- info: 'Vegas.EventGraphRuntime.ExclusionEvidence.commitment_owners' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.ExclusionEvidence.commitment_owners
+
+/-- info: 'Vegas.EventGraphRuntime.phase_attempt_stopped_prefix_metadata' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.phase_attempt_stopped_prefix_metadata
+
+/-- info: 'Vegas.EventGraphRuntime.phase_attempt_stopped_receipt_snapshot' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.phase_attempt_stopped_receipt_snapshot
+
+/-- info: 'Vegas.EventGraphRuntime.phase_attempt_stopped_exclusion_origin' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.phase_attempt_stopped_exclusion_origin
+
+/-- info: 'Vegas.AsyncServiceSpec.isεBestResponse_of_clientProfile' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.AsyncServiceSpec.isεBestResponse_of_clientProfile
+
+/-- info: 'Vegas.AsyncServiceSpec.isεBestResponse_clientProfile_of_firstTurn_bounds' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.AsyncServiceSpec.isεBestResponse_clientProfile_of_firstTurn_bounds
+
+/-- info: 'Vegas.EventGraphRuntime.Recovery.forbidden_choice_not_supported' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.Recovery.forbidden_choice_not_supported
+
+/-- info: 'Vegas.SourceProgram.Setup.initialLaw_splice_mul' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.initialLaw_splice_mul
+
+/-- info: 'Vegas.SourceProgram.Setup.splice_mem_support' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.Setup.splice_mem_support
+
+/-- info: 'Vegas.ownerSwap_priorScaled' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.ownerSwap_priorScaled
+
+/-- info: 'Vegas.site_hiddenPublicFiberInputs' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.site_hiddenPublicFiberInputs
+
+/-- info: 'Vegas.ownerSwap_priorClosed_given_public' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.ownerSwap_priorClosed_given_public
+
+/-- info: 'Vegas.ownerSwap_baseLawAgrees' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.ownerSwap_baseLawAgrees
+
+/-- info: 'Vegas.ownerSwap_baseLawAgrees_late' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.ownerSwap_baseLawAgrees_late

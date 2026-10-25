@@ -50,8 +50,8 @@ theorem acceptedOwned_invariant :
         exact held field handle accepted
     | commitment named other =>
         rw [packet] at call
-        obtain ⟨_, _, owner, payload, outputEq, _, _, _, candidateOwner, _, _⟩ :=
-          handle_commitment_conditions (runtime setup) state next message.id named other call
+        obtain ⟨_, _, owner, payload, outputEq, _, _, _, candidateOwner, _, _, _⟩ :=
+          (handle_commitment_iff (runtime setup) state next message.id named other).mp call
         rw [(handle_commitment_tables (runtime setup) state next message.id named other
           call).2.1] at accepted
         by_cases same : field = .inr named

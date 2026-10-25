@@ -45,7 +45,7 @@ private theorem exists_clearReference [Fintype (RP).History]
     (forced : ForcedAgent setup leaks bounds Initial horizon scheduler ((R).agentAt site)) :
     ∃ reference : (application setup leaks).Control,
       reference.actor = some who ∧
-      PublicExclusionRecord (RecoveryState.mk reference.execution.application ∅) ∧
+      ExclusionEvidence 0 ∅ (RecoveryState.mk reference.execution.application ∅) ∧
       site.1 = liftInformation (runtime setup) leaks
         ((application setup leaks).observe who (some reference)) := by
   obtain ⟨history, _running, _choice, _legal⟩ := site.2

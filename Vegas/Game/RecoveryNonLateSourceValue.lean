@@ -29,7 +29,7 @@ local notation "RP" => ReactiveApplication.ResponseMenu.protocol
 local notation "NP" => ReactiveApplication.ResponseMenu.protocol
   (bounds.onePacketMenu (runtime setup) leaks) (initialLaw setup) horizon (NativeScheduler)
 local notation "Clear" => ReactiveApplication.stateInvariant
-  (app := application setup leaks) (fun native => PublicExclusionRecord (RecoveryState.mk native ∅))
+  (app := application setup leaks) (fun native => ExclusionEvidence 0 ∅ (RecoveryState.mk native ∅))
 
 open Classical in
 /-- Current-event completion potentials approximate the common stopped future
@@ -127,8 +127,8 @@ theorem nativeComparison_local_phase_value_sub_le [Fintype (RP).History]
     cases completionPoint setup leaks bounds horizon (NativeScheduler) rank fresh final with
     | none => exact excludedBounded
     | some point => exact sourceBounded point
-  have clear : PublicExclusionRecord (RecoveryState.mk execution.application ∅) :=
-    publicExclusionRecord_of_decodedIntended
+  have clear : ExclusionEvidence 0 ∅ (RecoveryState.mk execution.application ∅) :=
+    exclusionEvidence_of_decodedIntended
       ((bounds.onePacketMenu (runtime setup) leaks).toRawTrace (initialLaw setup) horizon
         (NativeScheduler) (current ▸ history.trace))
       ((decodedPoint_eq_of_isPrefix ordered).trans decoded) intended

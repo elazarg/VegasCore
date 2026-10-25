@@ -35,12 +35,12 @@ local notation "NMenu" => bounds.onePacketMenu (runtime setup) leaks
 public completion record, including histories with zero behavioral mass. -/
 theorem nativeInformationFiber_record (who : Player)
     (reference : (application setup leaks).Control) (active : reference.actor = some who)
-    (valid : PublicExclusionRecord (RecoveryState.mk reference.execution.application ∅))
+    (valid : ExclusionEvidence 0 ∅ (RecoveryState.mk reference.execution.application ∅))
     (site : (N).InformationSite who)
     (seen : site.1 = (application setup leaks).observe who (some reference))
     (history : (N).InformationHistory who site.1) :
     ∀ current, history.1.state = some current →
-      PublicExclusionRecord (RecoveryState.mk current.execution.application ∅) := by
+      ExclusionEvidence 0 ∅ (RecoveryState.mk current.execution.application ∅) := by
   let genericPrior : ((NMenu).protocol ((Initial).map RecoveryState.native) horizon
       (NativeScheduler)).Trace history.1.state :=
     Eq.mpr (congrArg (fun law : PMF (EventGraphRuntime.State (graph setup)) =>
@@ -72,7 +72,7 @@ theorem informationMass_nativeComparison_of_clear [Fintype (RP).History]
           (positive n).le (le_one n) agent)))
     (who : Player) (reference : (application setup leaks).Control)
     (active : reference.actor = some who)
-    (valid : PublicExclusionRecord (RecoveryState.mk reference.execution.application ∅))
+    (valid : ExclusionEvidence 0 ∅ (RecoveryState.mk reference.execution.application ∅))
     (site : (N).InformationSite who)
     (seen : site.1 = (application setup leaks).observe who (some reference)) :
     (N).informationMass (nativeComparisonStrategy setup leaks bounds horizon scheduler sequence
@@ -104,7 +104,7 @@ theorem nativeComparison_bayes_formula_of_clear [Fintype (RP).History]
           (positive n).le (le_one n) agent)))
     (who : Player) (reference : (application setup leaks).Control)
     (active : reference.actor = some who)
-    (valid : PublicExclusionRecord (RecoveryState.mk reference.execution.application ∅))
+    (valid : ExclusionEvidence 0 ∅ (RecoveryState.mk reference.execution.application ∅))
     (site : (N).InformationSite who)
     (seen : site.1 = (application setup leaks).observe who (some reference))
     (history : (N).InformationHistory who site.1) :
