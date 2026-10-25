@@ -15,7 +15,7 @@ is read off the image (`Vegas.decisionFailed_eq`), and every step of the native
 kernel is read off the image except the owner's own, which enters as a
 hypothesis per kind of turn: within `δ` at a publication, and a law of moves
 within `δ / 2` at a binding (`Vegas.OwnerBindingLaw`). Under it the control step
-of a decoded profile, read through the image, is within `δ` on unit payoffs of
+of a decoded profile, read through the image, is within `δ` in total variation of
 the key's kernel (`Vegas.decisionKernel_close`).
 -/
 
@@ -249,7 +249,7 @@ variable (bounds horizon scheduler) in
 open Classical in
 /-- **The owner's law of moves at a binding turn.** At every forced state with
 the decided binding ready and the owner acting, the owner's decoded response,
-sorted into moves, is within `δ` on unit payoffs of the key's law of moves at
+sorted into moves, is within `δ` in total variation of the key's law of moves at
 the operational state and statuses. -/
 def OwnerBindingLaw {LateOption : Type}
     (moves : LateKey setup leaks → LateOption →
@@ -267,7 +267,7 @@ def OwnerBindingLaw {LateOption : Type}
       allowed history.state →
       ForcedState setup leaks key.owner history.state →
       execution.application.config.cut.Ready event →
-      UnitClose δ (((bounds.onePacketMenu (runtime setup) leaks).decodeProfile (initialLaw setup)
+      PMF.WithinTV δ (((bounds.onePacketMenu (runtime setup) leaks).decodeProfile (initialLaw setup)
           horizon scheduler profile key.owner (execution.recall key.owner)
           (execution.observe (application setup leaks) key.owner)).map
             (commitMove event key.owner payload execution))
@@ -439,27 +439,9 @@ theorem decisionFailed_eq (key : LateKey setup leaks)
                   completed, false_and, ↓reduceIte, decisionImage, bindingImage, pendingImage,
                   attachStatuses, decisionFailure]
 
-omit [Fintype Player] in
-private theorem unitClose_of_eq' {α : Type} {δ : ℝ} (nonneg : 0 ≤ δ) {μ ν : PMF α}
-    (same : μ = ν) : UnitClose δ μ ν := by
-  intro f _
-  rw [same, sub_self, abs_zero]
-  exact nonneg
-
-omit [Fintype Player] in
-private theorem unitClose_mono {α : Type} {δ δ' : ℝ} {μ ν : PMF α} (close : UnitClose δ μ ν)
-    (le : δ ≤ δ') : UnitClose δ' μ ν := fun f unit => (close f unit).trans le
-
-omit [Fintype Player] in
-private theorem unitClose_map {α β : Type} {δ : ℝ} {μ ν : PMF α} (close : UnitClose δ μ ν)
-    (f : α → β) : UnitClose δ (μ.map f) (ν.map f) := by
-  intro g unit
-  rw [expect_map, expect_map]
-  exact close (g ∘ f) fun a => unit (f a)
-
 /-- **One step at a pending binding.** From a kept state, the control step of
-a decoded profile, read through the binding image, is within `2 δ` on unit
-payoffs of the binding kernel, provided the owner's law of moves is within
+a decoded profile, read through the binding image, is within `δ` in total
+variation of the binding kernel, provided the owner's law of moves is within
 `δ`. -/
 theorem bindingKernel_close {LateOption : Type}
     (moves : LateKey setup leaks → LateOption →
@@ -477,15 +459,14 @@ theorem bindingKernel_close {LateOption : Type}
     (status : event ∈ control.execution.application.config.cut.completed ∨
       (ForcedState setup leaks key.owner (some control) ∧
         control.execution.application.config.cut.Ready event)) :
-    UnitClose (2 * δ) (((application setup leaks).controlStep (initialLaw setup) horizon
+    PMF.WithinTV δ (((application setup leaks).controlStep (initialLaw setup) horizon
         scheduler ((bounds.onePacketMenu (runtime setup) leaks).decodeProfile (initialLaw setup)
           horizon scheduler profile) (some control)).map (bindingImage event key.owner payload))
       (bindingKernel horizon scheduler event key.owner payload (moves key option)
         (bindingImage event key.owner payload (some control))) := by
-  have twice : 0 ≤ 2 * δ := by linarith
   obtain ⟨_, ⟨outputEq, codeEq, view⟩, _⟩ := turn
   rcases status with completed | ⟨forced, ready⟩
-  · apply unitClose_of_eq' twice
+  · convert (PMF.WithinTV.refl _).mono nonneg using 1
     have constant : ((application setup leaks).controlStep (initialLaw setup) horizon
         scheduler ((bounds.onePacketMenu (runtime setup) leaks).decodeProfile
           (initialLaw setup) horizon scheduler profile) (some control)).map
@@ -535,7 +516,7 @@ theorem bindingKernel_close {LateOption : Type}
           exact ownerBindingStep_close bounds profile history current pending _
             (law event payload ⟨‹_›, ⟨outputEq, codeEq, view⟩, ‹_›⟩ history remaining execution
               current (by rw [current]; exact allowedState) (by rw [current]; exact forced) ready)
-        · apply unitClose_of_eq' twice
+        · convert (PMF.WithinTV.refl _).mono nonneg using 1
           rw [controlStep_other_of_pending bounds horizon scheduler profile key.owner history
             (by rw [current]; exact forced) current ready
             (nodeView_bind_actor outputEq codeEq) rfl owned, PMF.pure_map,
@@ -544,7 +525,7 @@ theorem bindingKernel_close {LateOption : Type}
     | none =>
         cases remaining with
         | zero =>
-            apply unitClose_of_eq' twice
+            convert (PMF.WithinTV.refl _).mono nonneg using 1
             have step : (application setup leaks).controlStep (initialLaw setup) horizon
                 scheduler ((bounds.onePacketMenu (runtime setup) leaks).decodeProfile
                   (initialLaw setup) horizon scheduler profile) (some ⟨0, none, execution⟩) =
@@ -553,7 +534,7 @@ theorem bindingKernel_close {LateOption : Type}
             simp only [bindingImage, stateStatuses, pendingImage_of_pending _ pending,
               attachStatuses, operationalState, bindingKernel]
         | succ remaining =>
-            apply unitClose_of_eq' twice
+            convert (PMF.WithinTV.refl _).mono nonneg using 1
             have step : (application setup leaks).controlStep (initialLaw setup) horizon
                 scheduler ((bounds.onePacketMenu (runtime setup) leaks).decodeProfile
                   (initialLaw setup) horizon scheduler profile)
@@ -591,13 +572,13 @@ theorem bindingKernel_close {LateOption : Type}
             unfold bindingRoundKernel
             rw [dite_eq_left represented]
             obtain ⟨repSame, repStatuses, _⟩ := represented.choose_spec
-            exact binding_round_image_congr (initialLaw setup) horizon scheduler remaining
+            exact (binding_round_image_congr (initialLaw setup) horizon scheduler remaining
               execution represented.choose (stateEq.trans repSame.symm) repStatuses.symm ready
-              view
+              view).symm
 
 /-- **One step of the native kernel at a late decision.** From a kept state,
 the control step of a decoded profile, read through the key's image, is within
-`δ` on unit payoffs of the key's kernel, provided the owner's step at a
+`δ` in total variation of the key's kernel, provided the owner's step at a
 publication is within `δ` and its law of moves at a binding within `δ / 2`. -/
 theorem decisionKernel_close {LateOption : Type}
     (ownerKernel : LateKey setup leaks → LateOption → Option (OperationalState setup leaks) →
@@ -615,7 +596,7 @@ theorem decisionKernel_close {LateOption : Type}
     (law : OwnerBindingLaw bounds horizon scheduler moves key option profile δBinding allowed)
     {state : (application setup leaks).ProtocolState}
     (kept : state ∈ decisionKept bounds horizon scheduler key) (allowedState : allowed state) :
-    UnitClose δ (((application setup leaks).controlStep (initialLaw setup) horizon scheduler
+    PMF.WithinTV δ (((application setup leaks).controlStep (initialLaw setup) horizon scheduler
         ((bounds.onePacketMenu (runtime setup) leaks).decodeProfile (initialLaw setup) horizon
           scheduler profile) state).map (decisionImage key))
       (decisionKernel bounds horizon scheduler ownerKernel moves key option
@@ -631,7 +612,7 @@ theorem decisionKernel_close {LateOption : Type}
         rw [turn]
         simp only [decidedEvent, turn] at kept
         exact kept
-      have close := unitClose_map (lateKernel_close ownerKernel key option profile nonneg owner
+      have close := PMF.WithinTV.map (lateKernel_close ownerKernel key option profile nonneg owner
         keptPublication allowedState) (Sum.inl : PendingImage (setup := setup) (leaks := leaks) →
           DecisionImage (setup := setup) (leaks := leaks))
       rw [imageEq, ← PMF.map_comp]
@@ -640,7 +621,7 @@ theorem decisionKernel_close {LateOption : Type}
   | none =>
       cases binding : bindingTurn key with
       | none =>
-          apply unitClose_of_eq' nonneg
+          convert (PMF.WithinTV.refl _).mono nonneg using 1
           have constant : decisionImage key = Function.const _ (.inl (.inr false)) := by
             funext state
             simp only [decisionImage, turn, binding, Function.const_apply]
@@ -653,12 +634,12 @@ theorem decisionKernel_close {LateOption : Type}
             simp only [decisionImage, turn, binding, Function.comp]
           simp only [decidedEvent, turn, binding, Option.map_some] at kept
           obtain ⟨⟨history, current⟩, control, rfl, status⟩ := kept
-          have close := unitClose_map (bindingKernel_close moves key option profile bindingNonneg
+          have close := PMF.WithinTV.map (bindingKernel_close moves key option profile bindingNonneg
             law spec history current allowedState status) (Sum.inr :
               BindingImage (setup := setup) (leaks := leaks) →
                 DecisionImage (setup := setup) (leaks := leaks))
           rw [imageEq, ← PMF.map_comp]
           simp only [decisionKernel, turn, binding, Function.comp]
-          exact unitClose_mono close bindingLe
+          exact PMF.WithinTV.mono (by linarith) close
 
 end Vegas

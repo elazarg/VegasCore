@@ -73,3 +73,7 @@ import GameTheoryExtensions.Protocol.MenuRestriction
 import GameTheoryExtensions.Protocol.OwnPlayPrefix
 import GameTheoryExtensions.Protocol.StateSymmetry
 import GameTheoryExtensions.Protocol.TracePrefix
+
+import GameTheoryExtensions.Math.Probability.OptionalDomination
+
+import GameTheoryExtensions.Math.Probability.ConditioningCost

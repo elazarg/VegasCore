@@ -37,6 +37,23 @@ theorem IsLegalJoint.mono {Action : ι → Type*} {active : ι → Prop}
   | none => exact id
   | some action => exact fun permitted => ⟨permitted.1, included i permitted.2⟩
 
+/-- Replace one legal coordinate by another available active action. -/
+theorem IsLegalJoint.update {Principal : Type*} [DecidableEq Principal]
+    {Action : Principal → Type*} {active : Principal → Prop}
+    {available : (who : Principal) → Set (Action who)}
+    {joint : (who : Principal) → Option (Action who)}
+    (legal : IsLegalJoint active available joint) (who : Principal) (action : Action who)
+    (acting : active who) (permitted : action ∈ available who) :
+    IsLegalJoint active available (Function.update joint who (some action)) := by
+  intro observer
+  by_cases same : observer = who
+  · subst observer
+    rw [Function.update_self]
+    exact ⟨acting, permitted⟩
+  · rw [Function.update_of_ne same]
+    exact legal observer
+
+
 namespace ExecutionProtocol
 
 variable (E : ExecutionProtocol ι)

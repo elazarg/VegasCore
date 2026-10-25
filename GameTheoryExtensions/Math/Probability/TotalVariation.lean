@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheoryExtensions.Math.Probability.Expectation
+import GameTheoryExtensions.Math.Probability.OptionalDomination
+import GameTheoryExtensions.Math.Probability.Domination
 
 /-! # Closeness in total variation
 
@@ -77,29 +78,6 @@ private theorem eventMass_bounded (μ : PMF α) (event : Set α) :
     |(μ.toOuterMeasure event).toReal| ≤ 1 := by
   rw [abs_of_nonneg ENNReal.toReal_nonneg]
   exact ENNReal.toReal_le_of_le_ofReal zero_le_one (by simpa using outerMeasure_le_one μ event)
-
-/-- A common start law with kernels close on its support. -/
-theorem WithinTV.bind_right {error : ℝ} (μ : PMF α) {first second : α → PMF β}
-    (close : ∀ a ∈ μ.support, WithinTV error (first a) (second a)) :
-    WithinTV error (μ.bind first) (μ.bind second) := fun event => by
-  rw [toReal_toOuterMeasure_bind, toReal_toOuterMeasure_bind,
-    ← expect_sub (payoffIntegrable_toReal_toOuterMeasure μ first event)
-      (payoffIntegrable_toReal_toOuterMeasure μ second event)]
-  have integrable : PayoffIntegrable μ fun a =>
-      ((first a).toOuterMeasure event).toReal - ((second a).toOuterMeasure event).toReal :=
-    payoffIntegrable_of_bounded μ _ (C := 2) fun a =>
-      (abs_sub _ _).trans (by
-        linarith [eventMass_bounded (first a) event, eventMass_bounded (second a) event])
-  have upper := expect_le_const μ _ integrable error fun a member =>
-    (abs_le.mp (close a member event)).2
-  have lower := expect_le_const μ _ (payoffIntegrable_neg integrable) error fun a member =>
-    by linarith [(abs_le.mp (close a member event)).1]
-  rw [show (fun a => -(((first a).toOuterMeasure event).toReal -
-      ((second a).toOuterMeasure event).toReal)) =
-    fun a => -1 * (((first a).toOuterMeasure event).toReal -
-      ((second a).toOuterMeasure event).toReal) from funext fun _ => by ring,
-    expect_const_mul] at lower
-  exact abs_le.mpr ⟨by linarith, upper⟩
 
 /-- The probability of an event is the expectation of its indicator. -/
 private theorem toReal_toOuterMeasure_eq_expect (μ : PMF α) (event : Set α) [DecidablePred
@@ -183,52 +161,45 @@ theorem WithinTV.expect_sub_le {error : ℝ} {μ ν : PMF α} (close : WithinTV 
     have inside := bounded a (Or.inl member)
     linarith [inside.1, inside.2]
 
-/-- A lottery that takes the branch at `index` with probability at least
-`1 - error` is within `error` of that branch. -/
+/-- The existing interval estimate in both directions, with actual support
+bounds supplying all expectation guards. -/
+theorem WithinTV.abs_expect_sub_le_interval {Outcome : Type*} {first second : PMF Outcome}
+    {error : ℝ} (close : WithinTV error first second)
+    (value : Outcome → ℝ) (low range : ℝ)
+    (bounded : ∀ outcome, outcome ∈ first.support ∨ outcome ∈ second.support →
+      low ≤ value outcome ∧ value outcome ≤ low + range) :
+    |GameTheory.Math.Probability.expect first value -
+      GameTheory.Math.Probability.expect second value| ≤ error * range := by
+  have forward := close.expect_sub_le value low range bounded
+  have reverse := close.symm.expect_sub_le value low range
+    (fun outcome member => bounded outcome member.symm)
+  exact abs_le.mpr ⟨by linarith, forward⟩
+
+
+/-- A common continuation kernel contracts total variation. -/
+theorem WithinTV.bind_left {error : ℝ} {first second : PMF α}
+    (close : WithinTV error first second) (kernel : α → PMF β) :
+    WithinTV error (first.bind kernel) (second.bind kernel) := by
+  intro event
+  rw [toReal_toOuterMeasure_bind, toReal_toOuterMeasure_bind]
+  have bound := close.abs_expect_sub_le_interval
+    (fun point => ((kernel point).toOuterMeasure event).toReal) 0 1 (fun point _ =>
+      ⟨ENNReal.toReal_nonneg, by
+        simpa only [zero_add, abs_of_nonneg ENNReal.toReal_nonneg] using
+          eventMass_bounded (kernel point) event⟩)
+  simpa only [mul_one] using bound
+
+/-- A lottery retaining one branch loses at most its missing mass. -/
 theorem WithinTV.of_bind_point (timing : PMF ι) (index : ι)
     (branch : ι → PMF α) {error : ℝ} (mass : 1 - (timing index).toReal ≤ error) :
-    WithinTV error (timing.bind branch) (branch index) := fun event => by
-  classical
-  let gap := fun other : ι =>
-    ((branch other).toOuterMeasure event).toReal - ((branch index).toOuterMeasure event).toReal
-  let away := fun other : ι => (1 : ℝ) - if index = other then 1 else 0
-  have bounded (other : ι) : |gap other| ≤ away other := by
-    by_cases same : index = other
-    · subst other
-      simp [gap, away]
-    · have first := eventMass_bounded (branch other) event
-      have second := eventMass_bounded (branch index) event
-      rw [abs_of_nonneg ENNReal.toReal_nonneg] at first second
-      simp only [away, same, ↓reduceIte, sub_zero, gap]
-      exact abs_le.mpr ⟨by linarith [ENNReal.toReal_nonneg (a := (branch other).toOuterMeasure
-        event)], by linarith [ENNReal.toReal_nonneg (a := (branch index).toOuterMeasure event)]⟩
-  have gapIntegrable : PayoffIntegrable timing gap :=
-    payoffIntegrable_of_bounded timing _ (C := 2) fun other =>
-      (abs_sub _ _).trans (by
-        linarith [eventMass_bounded (branch other) event, eventMass_bounded (branch index) event])
-  have awayIntegrable : PayoffIntegrable timing away :=
-    payoffIntegrable_of_bounded timing _ (C := 1) fun other => by
-      by_cases same : index = other <;> simp [away, same]
-  have awayValue : expect timing away = 1 - (timing index).toReal := by
-    rw [show away = fun other => (1 : ℝ) - if index = other then 1 else 0 from rfl,
-      expect_sub (payoffIntegrable_constant timing 1)
-        (payoffIntegrable_of_bounded timing _ (C := 1) fun other => by
-          by_cases same : index = other <;> simp [same]),
-      expect_constant, expect_ite_eq, mul_one]
-  have difference : ((timing.bind branch).toOuterMeasure event).toReal -
-      ((branch index).toOuterMeasure event).toReal = expect timing gap := by
-    rw [toReal_toOuterMeasure_bind, ← expect_constant timing
-      ((branch index).toOuterMeasure event).toReal,
-      ← expect_sub (payoffIntegrable_toReal_toOuterMeasure timing branch event)
-        (payoffIntegrable_constant timing _)]
-  rw [difference]
-  have upper := expect_mono (fun other _ => (abs_le.mp (bounded other)).2) gapIntegrable
-    awayIntegrable
-  have lower := expect_mono (fun other _ => by linarith [(abs_le.mp (bounded other)).1])
-    (payoffIntegrable_neg awayIntegrable) gapIntegrable
-  rw [show (fun other => -away other) = fun other => -1 * away other from
-    funext fun _ => by ring, expect_const_mul] at lower
-  exact abs_le.mpr ⟨by linarith, by linarith⟩
+    WithinTV error (timing.bind branch) (branch index) := by
+  have retained := WithinTV.of_domination (branch index) (timing.bind branch)
+    (timing index).toReal (pmf_toReal_apply_le_one _ _) (fun outcome => by
+      rw [← ENNReal.toReal_mul]
+      apply ENNReal.toReal_mono (PMF.apply_ne_top _ _)
+      rw [PMF.bind_apply]
+      exact ENNReal.le_tsum (f := fun other => timing other * (branch other) outcome) index)
+  exact retained.symm.mono mass
 
 /-- Any two laws are within one of each other. -/
 theorem withinTV_one (μ ν : PMF α) : WithinTV 1 μ ν := fun event => by
@@ -259,56 +230,20 @@ theorem WithinTV.bind_right_expect (μ : PMF α) {first second : α → PMF β} 
   rw [expect_neg] at lower
   exact abs_le.mpr ⟨by linarith, upper⟩
 
-/-- **Residual of a dominated law.** If a law on `Option γ` puts at most `ν c` on
-each `some c`, then `ν` is that law with its `none` branch replaced by some
-residual law on `γ`. -/
-theorem exists_residual_of_le {γ : Type*} (π : PMF (Option γ)) (ν : PMF γ)
-    (dominated : ∀ c, π (some c) ≤ ν c) :
-    ∃ residual : PMF γ, π.bind (fun outcome => outcome.elim residual PMF.pure) = ν := by
-  classical
-  have optionSum (f : Option γ → ENNReal) : ∑' outcome, f outcome = f none + ∑' c, f (some c) := by
-    rw [ENNReal.tsum_eq_add_tsum_ite none]
-    congr 1
-    symm
-    convert Function.Injective.tsum_eq (Option.some_injective γ) (f := fun outcome =>
-      if outcome = none then (0 : ENNReal) else f outcome) ?_ using 1
-    · simp
-    · exact tsum_congr fun outcome => by split_ifs <;> rfl
-    · intro outcome member
-      cases outcome with
-      | none => simp at member
-      | some c => exact ⟨c, rfl⟩
-  have split : π none + ∑' c, π (some c) = 1 := by
-    rw [← optionSum (fun outcome => π outcome)]
-    exact π.tsum_coe
-  have someFinite : ∑' c, π (some c) ≠ ⊤ :=
-    ne_top_of_le_ne_top ENNReal.one_ne_top (split ▸ le_add_self)
-  have gap : ∑' c, (ν c - π (some c)) = π none := by
-    have whole : ∑' c, (ν c - π (some c)) + ∑' c, π (some c) = 1 := by
-      rw [← ENNReal.tsum_add]
-      simp only [tsub_add_cancel_of_le (dominated _)]
-      exact ν.tsum_coe
-    rw [← ENNReal.add_sub_cancel_right someFinite (a := ∑' c, (ν c - π (some c))), whole,
-      ← split, ENNReal.add_sub_cancel_right someFinite]
-  have apply (residual : PMF γ) (c : γ) :
-      (π.bind fun outcome => outcome.elim residual PMF.pure) c =
-        π none * residual c + π (some c) := by
-    rw [PMF.bind_apply, optionSum]
-    congr 1
-    rw [tsum_eq_single c fun other different => by
-      simp [PMF.pure_apply, Ne.symm different]]
-    simp [PMF.pure_apply]
-  by_cases empty : π none = 0
-  · refine ⟨ν, PMF.ext fun c => ?_⟩
-    rw [apply, empty, zero_mul, zero_add]
-    have zero : ν c - π (some c) = 0 :=
-      ENNReal.tsum_eq_zero.mp (gap.trans empty) c
-    exact le_antisymm (dominated c) (tsub_eq_zero_iff_le.mp zero)
-  · have finite : π none ≠ ⊤ := PMF.apply_ne_top π none
-    refine ⟨PMF.normalize (fun c => ν c - π (some c)) (gap ▸ empty) (gap ▸ finite),
-      PMF.ext fun c => ?_⟩
-    rw [apply, PMF.normalize_apply, gap, mul_comm, mul_assoc, ENNReal.inv_mul_cancel empty finite,
-      mul_one, tsub_add_cancel_of_le (dominated c)]
+/-- Constant kernel errors are the constant case of expected kernel error. -/
+theorem WithinTV.bind_right {error : ℝ} (law : PMF α) {first second : α → PMF β}
+    (close : ∀ point ∈ law.support, WithinTV error (first point) (second point)) :
+    WithinTV error (law.bind first) (law.bind second) := by
+  simpa only [expect_constant] using WithinTV.bind_right_expect law (fun _ => error)
+    (payoffIntegrable_constant law error) close
+
+/-- A mixture stays within its extra component's weight of the retained law. -/
+theorem WithinTV.mix_right (weight : ℝ) (nonnegative : 0 ≤ weight) (small : weight ≤ 1)
+    (extra retained : PMF α) :
+    WithinTV weight (mix weight nonnegative small extra retained) retained := by
+  have bound := WithinTV.of_domination retained (mix weight nonnegative small extra retained)
+    (1 - weight) (by linarith) (mix_retains_right ⟨weight, nonnegative, small⟩ extra retained)
+  simpa only [sub_sub_cancel] using bound.symm
 
 /-- **Coupling up to failure.** A start law `μ` reads, through `decode`, either a
 point of `γ` or a failure (`none`), and its successful readouts are dominated
@@ -368,3 +303,55 @@ theorem WithinTV.bind_of_dominated {γ : Type*} (μ : PMF α) (ν : PMF γ)
   cases decode a <;> simp
 
 end PMF
+
+namespace GameTheory.Math.Probability
+
+/-- Classification with arbitrary unclassified outputs contracts TV without
+doubling the error. Classified outputs must have their declared actual image. -/
+theorem withinTV_map_of_partial_classes {Source Class Output : Type*}
+    (law : PMF Source) (read : Source → Output) (classify : Source → Option Class)
+    (image : Class → Output) (reference : PMF Class) {error : ℝ}
+    (classified : ∀ point ∈ law.support, ∀ classValue,
+      classify point = some classValue → read point = image classValue)
+    (close : PMF.WithinTV error (law.map classify) (reference.map some)) :
+    PMF.WithinTV error (law.map read) (reference.map image) := by
+  intro event
+  let lower : Set (Option Class) := {value | value.elim False (fun c => image c ∈ event)}
+  let upper : Set (Option Class) := {value | value.elim True (fun c => image c ∈ event)}
+  have referenceLower : (reference.map some).toOuterMeasure lower =
+      (reference.map image).toOuterMeasure event := by
+    rw [PMF.toOuterMeasure_map_apply, PMF.toOuterMeasure_map_apply]
+    rfl
+  have referenceUpper : (reference.map some).toOuterMeasure upper =
+      (reference.map image).toOuterMeasure event := by
+    rw [PMF.toOuterMeasure_map_apply, PMF.toOuterMeasure_map_apply]
+    rfl
+  have below : (law.map classify).toOuterMeasure lower ≤ (law.map read).toOuterMeasure event := by
+    rw [PMF.toOuterMeasure_map_apply, PMF.toOuterMeasure_map_apply]
+    apply law.toOuterMeasure_mono
+    rintro point ⟨member, supported⟩
+    change read point ∈ event
+    cases reading : classify point with
+    | none => simp [lower, reading] at member
+    | some classValue =>
+        rw [classified point supported classValue reading]
+        simpa [lower, reading] using member
+  have above : (law.map read).toOuterMeasure event ≤ (law.map classify).toOuterMeasure upper := by
+    rw [PMF.toOuterMeasure_map_apply, PMF.toOuterMeasure_map_apply]
+    apply law.toOuterMeasure_mono
+    rintro point ⟨member, supported⟩
+    cases reading : classify point with
+    | none => simp [upper, reading]
+    | some classValue =>
+        change (classify point).elim True (fun c => image c ∈ event)
+        rw [reading, Option.elim_some, ← classified point supported classValue reading]
+        exact member
+  have belowReal := ENNReal.toReal_mono (outerMeasure_ne_top (law.map read) event) below
+  have aboveReal := ENNReal.toReal_mono (outerMeasure_ne_top (law.map classify) upper) above
+  have lowerBound := (abs_le.mp (close lower)).1
+  have upperBound := (abs_le.mp (close upper)).2
+  rw [referenceLower] at lowerBound
+  rw [referenceUpper] at upperBound
+  exact abs_le.mpr ⟨by linarith, by linarith⟩
+
+end GameTheory.Math.Probability

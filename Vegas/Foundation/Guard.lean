@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Foundation.ExprInterface
+import Vegas.Foundation.PartialEnvironment
 
 /-! # Guard code
 
@@ -28,27 +29,10 @@ namespace GuardCode
 variable {L : IExpr} {subject : VarId} {payload : L.Ty}
 
 /-- Values of the flagged inputs, or `none` if one of them failed. -/
-private def values? (deps : Finset VarId) :
-    (schema : Ctx L.Ty) →
-      (∀ {x τ}, HasVar schema x τ → x ∈ deps → PublicationResult (L.Val τ)) →
-      Option (∀ {x τ}, HasVar schema x τ → x ∈ deps → L.Val τ)
-  | [], _ => some fun h _ => nomatch h
-  | (name, _) :: tail, results =>
-      match values? deps tail (fun h hx => results (.there h) hx) with
-      | none => none
-      | some tailGet =>
-          if member : name ∈ deps then
-            match results .here member with
-            | .failure => none
-            | .success value => some fun h hx =>
-                match h with
-                | .here => value
-                | .there h => tailGet h hx
-          else
-            some fun h hx =>
-              match h with
-              | .here => False.elim (member hx)
-              | .there h => tailGet h hx
+private def values? (deps : Finset VarId) (schema : Ctx L.Ty)
+    (results : ∀ {name ty}, HasVar schema name ty → name ∈ deps → PublicationResult (L.Val ty)) :=
+  PartialEnvironment.collect? (fun name _ => name ∈ deps) schema
+    (fun ref read => PublicationResult.equivOption (results ref read))
 
 /-- A schema variable never names the subject, so the guard's dependency set
 flags it exactly when the code reads it. -/
@@ -125,67 +109,34 @@ theorem allReads_iff (guard : GuardCode L subject payload)
   allFlagged_iff _ _ _
 
 private theorem values?_congr (deps : Finset VarId) (schema : Ctx L.Ty)
-    (left right : ∀ {x τ}, HasVar schema x τ → x ∈ deps → PublicationResult (L.Val τ))
-    (agree : ∀ {x τ} (h : HasVar schema x τ) (hx : x ∈ deps), left h hx = right h hx) :
-    values? deps schema left = values? deps schema right := by
-  induction schema with
-  | nil => rfl
-  | cons entry tail ih =>
-      obtain ⟨name, τ⟩ := entry
-      have tailEq := ih (fun h hx => left (.there h) hx) (fun h hx => right (.there h) hx)
-        (fun h hx => agree (.there h) hx)
-      by_cases member : name ∈ deps
-      · have headEq := agree (.here : HasVar ((name, τ) :: tail) name τ) member
-        simp only [values?, dite_eq_left member]
-        rw [headEq, tailEq]
-      · simp only [values?, dite_eq_right member]
-        rw [tailEq]
+    (left right : ∀ {name ty}, HasVar schema name ty → name ∈ deps → PublicationResult (L.Val ty))
+    (agree : ∀ {name ty} (ref : HasVar schema name ty) (read : name ∈ deps),
+      left ref read = right ref read) :
+    values? deps schema left = values? deps schema right :=
+  PartialEnvironment.congr _ schema _ _
+    (fun ref read => congrArg PublicationResult.equivOption (agree ref read))
 
 private theorem values?_of_failure (deps : Finset VarId) (schema : Ctx L.Ty)
-    (results : ∀ {x τ}, HasVar schema x τ → x ∈ deps → PublicationResult (L.Val τ))
-    {x : VarId} {τ : L.Ty} (h : HasVar schema x τ) (flagged : x ∈ deps)
-    (failed : results h flagged = .failure) : values? deps schema results = none := by
-  induction schema with
-  | nil => exact nomatch h
-  | cons entry tail ih =>
-      obtain ⟨name, σ⟩ := entry
-      cases h with
-      | here =>
-          cases tailValues : values? deps tail (fun h hx => results (.there h) hx) <;>
-            simp [values?, tailValues, flagged, failed]
-      | there h =>
-          have tailNone := ih (fun h hx => results (.there h) hx) h failed
-          simp [values?, tailNone]
+    (results : ∀ {name ty}, HasVar schema name ty → name ∈ deps → PublicationResult (L.Val ty))
+    {name ty} (ref : HasVar schema name ty) (read : name ∈ deps)
+    (failed : results ref read = .failure) : values? deps schema results = none := by
+  apply PartialEnvironment.eq_none_of_lookup_none _ schema _ ref read
+  change PublicationResult.equivOption (results ref read) = none
+  rw [failed]
+  rfl
 
 private theorem values?_of_success (deps : Finset VarId) (schema : Ctx L.Ty)
-    (results : ∀ {x τ}, HasVar schema x τ → x ∈ deps → PublicationResult (L.Val τ))
-    (values : ∀ {x τ}, HasVar schema x τ → x ∈ deps → L.Val τ)
-    (resultsEq : ∀ {x τ} (h : HasVar schema x τ) (hx : x ∈ deps),
-      results h hx = .success (values h hx)) :
+    (results : ∀ {name ty}, HasVar schema name ty → name ∈ deps → PublicationResult (L.Val ty))
+    (values : ∀ {name ty}, HasVar schema name ty → name ∈ deps → L.Val ty)
+    (agree : ∀ {name ty} (ref : HasVar schema name ty) (read : name ∈ deps),
+      results ref read = .success (values ref read)) :
     values? deps schema results =
-      (some values : Option (∀ {x τ}, HasVar schema x τ → x ∈ deps → L.Val τ)) := by
-  induction schema with
-  | nil =>
-      simp only [values?]
-      apply congrArg some
-      funext x τ h
-      nomatch h
-  | cons entry tail ih =>
-      obtain ⟨name, τ⟩ := entry
-      have tailSome := ih (fun h hx => results (.there h) hx)
-        (fun h hx => values (.there h) hx) (fun h hx => resultsEq (.there h) hx)
-      by_cases member : name ∈ deps
-      · have headEq := resultsEq (.here : HasVar ((name, τ) :: tail) name τ) member
-        simp only [values?, tailSome, dite_eq_left member, headEq]
-        apply congrArg some
-        funext x σ h hx
-        cases h <;> rfl
-      · simp only [values?, tailSome, dite_eq_right member]
-        apply congrArg some
-        funext x σ h hx
-        cases h with
-        | here => exact absurd hx member
-        | there h => rfl
+      (some values : Option (∀ {name ty}, HasVar schema name ty → name ∈ deps → L.Val ty)) := by
+  apply PartialEnvironment.of_some
+  intro name ty ref read
+  change PublicationResult.equivOption (results ref read) = some (values ref read)
+  rw [agree]
+  rfl
 
 /-- Only the subject and the inputs read by the code matter. -/
 theorem accepts_congr (guard : GuardCode L subject payload)

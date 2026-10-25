@@ -507,6 +507,32 @@ def ContextRefsBefore {inputCount totalCount : Nat}
   ∀ {name cell} (source : HasVar Γ name cell) index,
     FieldBefore (embedding.event index) (refs.get source).field
 
+/-- A newly produced head reference precedes all outputs of the residual embedding. -/
+theorem ContextRefsBefore.tail_cons {inputCount totalCount : Nat}
+    {inputs : Fin inputCount → EventGraph.EventField Player L}
+    {outputs : Fin totalCount → EventGraph.EventField Player L}
+    {Γ : SourceCtx Player L} {openNames : Finset VarId}
+    {program : SourceProgram Player L Γ openNames}
+    {refs : ContextRefs (EventGraph.fieldLayout inputs outputs) Γ}
+    {embedding : OutputEmbedding inputs outputs program}
+    (before : ContextRefsBefore refs embedding)
+    {name : VarId} {cell : CellTy Player L} {nextOpen : Finset VarId}
+    (next : SourceProgram Player L ((name, cell) :: Γ) nextOpen)
+    (countEq : eventCount program = (eventCount next).succ)
+    (layoutTail : ∀ index, outputLayout program
+      (Fin.cast countEq.symm (Fin.succ index)) = outputLayout next index)
+    (head : EventGraph.FieldRef (EventGraph.fieldLayout inputs outputs) (cellField cell))
+    (headField : head.field = .inr (embedding.event (Fin.cast countEq.symm 0))) :
+    ContextRefsBefore (refs.cons head) (embedding.tail next countEq layoutTail) := by
+  intro readName kind source index
+  cases source with
+  | here =>
+      change FieldBefore (embedding.event (Fin.cast countEq.symm (Fin.succ index))) head.field
+      rw [headField]
+      exact embedding.strictMono (by simp)
+  | there source => exact before source (Fin.cast countEq.symm (Fin.succ index))
+
+
 /-- Executable node code paired with its locally constructed causal read
 certificate. The certificate is derived during lowering, not assumed of the
 finished graph. -/

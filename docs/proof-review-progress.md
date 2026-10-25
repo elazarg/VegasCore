@@ -20,13 +20,13 @@ is not a claim that the mathematical result has been proved.
 | M2 | Finite-coordinate measure arguments repeat the same discrete pushforward step | Checked locally | Discrete-pushforward AE measurability/integration and uncountable-carrier regression pass, both exact roots use standard axioms. Four core PolicyMeasure consumers remain frozen; new local API, no compression claim |
 | M3 | Add the missing guarded L1 contraction once | Checked | Guarded L1 calculus, all three probability families and both concrete affine callers pass the full build; exact three contraction roots use standard axioms. Whole family net14 fewer lines, not the estimated70–120 |
 | M4 | Passage-based completion already subsumes the common-depth implementation | Checked locally | Enforced SE extension uses the existing passage theorem and drops depth/clock; owning module/test and exact standard-axiom audit pass. Local production−3 and test−13 lines; base duplicate implementations stay frozen in GameTheory |
-| M5 | `UnitClose` and `WithinTV` describe the same distance | Queued | Unify the two local probability distances after the current affine/lumping checkpoint |
+| M5 | `UnitClose` and `WithinTV` describe the same distance | Checked | One total-variation predicate replaces UnitClose across all local consumers; partial-class transport and actual binding kernels improve 2δ to δ under the same hypotheses. Generic, iterator, all ten consumer files and two-unclassified-output regression pass; exact class root retains standard axioms. Combined M5/M11/A9 net128 fewer lines before umbrellas |
 | M6 | Continuation domination charges inactive players unnecessarily | Checked | Per-player one-step factors and reference-supported uniform active-count bounds share one continuation induction. Chance/idle regression and concrete stopped-honest caller pass, three exact roots retain standard axioms; feature growth. Chance one-step law is exact; uniform multi-step exponent can remain conservative |
 | M7 | Bounded stochastic Kuhn adapters reprove later general prefix-law adapters | Frozen dependency | Both bounded and general prefix-law owners and all specialization calls are inside GameTheory; no external caller found. Reordering them locally would require copying the frozen implementations, so no duplicate was added |
 | M8 | Consistent completion can use countability and tightness already available | Checked | Subsequence and projection completion use countable sites and actual belief tightness; varying-strategy completion also requires strategy tightness. Existing compactness engine reused, finite existence corollary preserved; all three owners and exact roots pass |
 | M9 | Pooled component best responses do not need finite outcome carriers | Checked | Pooled best responses require integrable actual component-profile laws instead of finite outcome carriers; finite-history caller supplies the guard. All three owning modules and exact pooled root pass; M8/M9 combined net zero production lines |
 | M10 | Negligible counterpart bounds can use fiber multiplicity | Checked | Generic bounded-fiber estimate, sharper normalized c/(1+c), two-bad-to-one-good regression and all three concrete belief consumers pass. Both exact generic roots retain standard axioms; strengthening with API growth |
-| M11 | Retained-policy expectation comparison belongs at the law level | Queued | Awaiting its dependency-ordered implementation batch |
+| M11 | Retained-policy expectation comparison belongs at the law level | Checked | Actual residual-law comparison removes finite ambient histories and attained payoff minima, preserving both integrability guards and full deviations. Generic, gated, retained and both actual game callers plus infinite geometric regression pass; comparison/Nash roots retain standard axioms. Shared accounting is recorded under M5 |
 | M12 | Strategic bridges should consume coordinate equivalences and payoff laws | Frozen dependency | FOSG/MAID policy equivalences and their strategic consumers are inside GameTheory. Local source-protocol transport is generalized under S5; no parallel bridge implementation was added |
 | M13 | Shapley proofs contain reusable finite-set mathematics | Frozen dependency | Shapley symmetry, efficiency and unanimity consumers are inside GameTheory. No VegasCore consumer justifies a duplicate Shapley implementation or an unused inversion framework |
 | M14 | Discounted head/tail algebra should be proved below game models | Frozen dependency | Both discounted head/tail consumers and their scalar owner are inside GameTheory. Their analytic guards remain intact; no unused local copy was introduced |
@@ -41,18 +41,18 @@ is not a claim that the mathematical result has been proved.
 | R8 | Prove a useful elimination theorem for `PhaseRuntimeState.settle` | Checked | Lean generated functional induction supplies the exact settle eliminator, with no duplicate API. Ten proofs across five owners pass; four exact physical/invariant/archive roots retain standard axioms; net50 fewer lines |
 | R9 | Share first-attempt-exit metadata, not the phase-specific snapshot conclusion | Queued | Awaiting its dependency-ordered implementation batch |
 | R10 | Move typed handler success/inversion certificates below value swaps | Queued | Awaiting its dependency-ordered implementation batch |
-| R11 | Two typed partial-environment readers can share a dependency traversal | Queued | Awaiting its dependency-ordered implementation batch |
-| R12 | Behavioral realization has a nearby stronger player-memory joint law | Queued | Awaiting its dependency-ordered implementation batch |
-| R13 | A common service contract needs physical episode identity; timeliness does not imply blindness | Queued | Awaiting its dependency-ordered implementation batch |
-| R14 | Strengthen completion bounds by dependency height; reuse the existing progress service | Checked height bound | Actual dependency depth/height and one-layer-per-window theorem give height*(maxDeadline+1); old event-count theorem is a corollary. Both owners and empty/parallel/chain regressions pass; all four exact roots retain standard axioms. Net57 production lines added including graph umbrella; no rollback rank refactor claimed |
-| R15 | Generalize hidden-value symmetries only after exposing handler frames | Queued | Awaiting its dependency-ordered implementation batch |
+| R11 | Two typed partial-environment readers can share a dependency traversal | Checked | One typed collector replaces three reader families, with selected-lookup iff and no unique-name premise. All owners and type-sensitive missing/repeated-position regressions pass; net48 fewer lines. Exact iff uses propext/Quot.sound, availability uses standard three axioms |
+| R12 | Behavioral realization has a nearby stronger player-memory joint law | Checked | Full execution/final-memory joint law and old marginal-as-projection pass, including continuation/test callers; both exact roots retain standard axioms. Net24-line growth; arbitrary opponents and schedulers retained |
+| R13 | A common service contract needs physical episode identity; timeliness does not imply blindness | Assessed; retain existing contracts | Native, recovery and phased contracts quantify over different histories and physical episodes; recovery native transport requires public clearance, and retry restores readiness stamps at the current clock. A common record would merely repackage those obligations with additional adapters. No contract equivalence or restricted-blindness theorem is claimed; all-view erasure blindness remains a distinct hypothesis |
+| R14 | Strengthen completion bounds by dependency height; reuse the existing progress service | Checked height bound | Actual dependency depth/height and one-layer-per-window theorem give height*(maxDeadline+1); old event-count theorem is a corollary. Both owners and empty/parallel/chain regressions pass; all four exact roots retain standard axioms. Net56 production lines added including graph umbrella; no rollback rank refactor claimed |
+| R15 | Generalize hidden-value symmetries only after exposing handler frames | Assessed; retain existing symmetry operators | All examined owner/splice consumers use pair swaps; simultaneous per-field transpositions already fit SwapPairs. Arbitrary composition is not involutive, and sequential guards must be transported. No concrete non-involutive consumer justifies a new permutation hierarchy. Typed handler frames are pursued under R10; no general hidden-permutation result is claimed |
 | G1 | Prove owned-completion provenance once, with all the facts consumers need | Checked | Exact native classifier and single-message source certificate own five completion-proof families; all seven owners/consumers pass, five exact classifier/consumer roots retain standard axioms. Net371 fewer lines before umbrellas |
 | G2 | Add the missing initialized decoded-invariant induction | Checked | Initialized decoded invariant owns the induction; all three original caller conclusions retained. Owner and three consumers pass, exact generic root retains standard axioms; net21 fewer lines |
 | G3 | Expose one residual-head operational correspondence, then derive masses | Checked atom kernel | One residual syntax proof also gives exact fixed-action ENNReal atoms with the same successor witness; chance/owned readers migrated. All four modules and exact native/residual roots pass; net120 fewer lines before umbrella. Full behavioral head-law refactoring is not claimed |
-| G4 | Factor phase-boundary advancement out of honest/deviation/withhold induction | Queued | Awaiting its dependency-ordered implementation batch |
+| G4 | Factor phase-boundary advancement out of honest/deviation/withhold induction | Checked | One lower owner derives actual seeded event/block boundary and horizon facts; five event triples and four block readers migrated in three complete law proofs. All owners/callers pass; net66 fewer lines including the new owner |
 | G5 | Make mapped reactive-round congruence an Interaction API | Checked | Generic round-law kernel congruence and all three concrete consumers pass; exact generic root retains standard axioms. Whole family grows8 lines, retained for three actual consumers |
-| G6 | Lift the hidden-seed path-likelihood identity out of reserved-tape replay | Queued | Awaiting its dependency-ordered implementation batch |
-| G7 | Extract conditioning-cost bounds with explicit excluded mass | Queued | Awaiting its dependency-ordered implementation batch |
+| G6 | Lift the hidden-seed path-likelihood identity out of reserved-tape replay | Checked | Immutable-seed command/step/whole-trace density lives in Interaction, using the actual initial prior and same recorded trace. Generic and concrete Likelihood owners plus original concurrent capstones pass; exact generic root retains standard axioms. Net31-line growth including the explicit posterior adapter |
+| G7 | Extract conditioning-cost bounds with explicit excluded mass | Checked | Filtering costs excluded probability times supportwise payoff oscillation, without finite carriers or independence. Generic and concrete clean-binding history-sum adapter plus capstones pass; permanent exact guard passes. Net30-line growth |
 | G8 | Publish retained/residual gain algebra, without global finite carriers | Checked | Integrable retained-gain algebra and actual clean-binding consumer pass on arbitrary carriers; both exact generic roots retain standard axioms. Net51-line API growth |
 | G9 | Remove the exact duplicated support-order expectation theorem | Checked | Generic support-order theorem, slack corollary and both concrete gain callers pass; exact axioms pass. Exact dedup shrinks8 lines, slack API makes family grow6 |
 | G10 | Share domination operations rather than model-specific map/mix lemmas | Checked | Map/common-mixture/right-retention owner and both actual domination callers pass; exact map/mix roots retain standard axioms. Net9-line API growth |
@@ -61,13 +61,13 @@ is not a claim that the mathematical result has been proved.
 | G13 | Generalize owner-prior transport to public-fiber independence, cautiously | Queued | Awaiting its dependency-ordered implementation batch |
 | G14 | Obtain event-sensitive Nash errors before changing runtime contracts | Queued | Awaiting its dependency-ordered implementation batch |
 | G15 | Turn strict enforcement margins into a local support-exclusion theorem | Queued | Awaiting its dependency-ordered implementation batch |
-| S1 | Factor the legal action translation inside the two repair inductions | Queued | Awaiting its dependency-ordered implementation batch |
+| S1 | Factor the legal action translation inside the two repair inductions | Checked | Constructive legal-joint coordinate update and both actual reveal-translation callers pass. The broad menu-level helper was rejected because its signature erased savings. Minimal kernel and all adapters grow one line; exact generic root needs no axioms |
 | S2 | One typed compiler metadata theorem can own two structural inductions | Checked | Typed output/revealed-cell metadata belongs to Compile; one label-parametric structural proof owns typed and name projections. Both compiler owners and both Game readers pass; three exact roots use standard axioms; net54 fewer lines |
-| S3 | Share observation-codec traversal, retaining visibility and absence | Queued | Awaiting its dependency-ordered implementation batch |
-| S4 | Bundle the residual embedding already used by the compiler | Queued | Awaiting its dependency-ordered implementation batch |
+| S3 | Share observation-codec traversal, retaining visibility and absence | Checked | Exact typed collector correspondence shares visible congruence, agreement and missing-publication proofs. Decoder definition and five public headers stay unchanged. All compiler/game consumers pass and exact permanent congruence guard retains standard axioms; net77 fewer lines |
+| S4 | Bundle the residual embedding already used by the compiler | Checked | Derived ordering for actual residual tail references owns nine repeated proofs across three compiler/game readers. All owners/callers pass; exact generic root retains standard axioms. Net31 fewer lines |
 | S5 | The private-parameter source-protocol payoff law is within immediate reach | Checked | General terminal-observation reader owns payoff-law, expectation guards and same-error Nash equivalence; private-parameter specialization has no independence/finite-parameter premise. Both owners and executable runtime example pass; two exact Nash roots retain standard axioms. Feature growth, not compression |
 | S6 | Purification needs finite explored action support, not finite payload types | Checked | Finite-support kernels replace finite binding alphabets; owner, integer-report regression and original runtime caller all pass. Both exact purification roots retain standard axioms; one pure-policy mixture is drawn before setup/chance. Infinite-support kernels remain outside this finite-mixture construction |
-| S7 | Classify departure from the intended game before duplicating induction | Queued | Awaiting its dependency-ordered implementation batch |
+| S7 | Classify departure from the intended game before duplicating induction | Checked | One departure classifier additionally records an admitted forfeiture site; debt-only and arbitrary-admission results are corollaries. Owners and actual preservation/deviation callers pass; all three exact roots retain standard axioms. Net31 fewer lines |
 | S8 | Erased-history continuation needs one step law and legality transport | Checked | Removed two unused private proofs and their unused import; continuation and support-splice owners pass, both public erasure results retain standard axioms; net47 fewer lines |
 | S9 | Make the auction's executable transfers a separate concrete application | Checked | New bounded-report auction evaluates integer second-price transfers in ret; all-outcome settlement/utility equality, full-deviation compiled Nash iff and conditional-withholding counterexample for every integer charge pass. Four exact roots retain standard axioms; original unbounded real-forfeiture result unchanged. Feature growth |
 | S10 | Reuse positive service fixtures without erasing adversarial timing | Existing implementation retained | Positive payment fixture already uses the proved roster-to-async constructor. The late-opening fixture has distinct adversarial timing evidence, so replacing it would change its purpose; no redundant fixture framework was added |
@@ -84,7 +84,7 @@ is not a claim that the mathematical result has been proved.
 | A6 | Arrow relation-reversal factoring | Frozen dependency | Social-choice proofs and duality adapters are inside GameTheory; no local consumers |
 | A7 | Law-preserving conditional-comparison terminology | Frozen dependency | Rename would change GameTheory; no external caller found |
 | A8 | Likelihood and restricted-completion certificate obligations | Checked | Removed two unused certificate modules and a trailing variable with no theorem consumer; corrected false existence prose. Projected-belief, actual approximate factorization, opening owner and umbrella pass; exact factorization/type-exclusion and restricted-completion existence are not claimed proved |
-| A9 | Optional/residual law overlap | Queued | Pilot an actual local consumer before adding a common owner |
+| A9 | Optional/residual law overlap | Checked | One small optional-domination owner owns the residual producer and two real comparison families; all pass. PresentConditional remains separate because normalization and residual completion are different operations. Shared M5/M11 accounting is not counted twice |
 
 A frozen-dependency disposition records an ownership constraint, not a proved
 strengthening or an implemented cleanup. The relevant core declaration surfaces
@@ -104,3 +104,31 @@ and `Quot.sound`. Lean still reports a recursion-depth diagnostic while exportin
 optional premise-suggestion metadata for the existing timing-audit example; its
 checked theorem build succeeds. This diagnostic is tracked separately from proof
 acceptance. Remaining queued and partial findings remain open.
+
+The service-contract and hidden-permutation proposals are deliberately limited
+after inspecting their actual consumers. Readiness is a physical episode: raw
+native histories, public-clear recovery projections and retry-aware attempt
+coordinates have different domains. Merely giving all three records the same
+field names does not prove their equivalence. Late-packet blindness also covers
+counterfactual erased views; timing guarantees alone do not supply that law.
+The existing contracts therefore remain separate, with their current scopes.
+
+Hidden-swap composition has a separate algebraic obstruction: two overlapping
+transpositions on three values compose to a non-involutive cycle. Disjoint
+per-field swaps are already represented by one pair family. The existing
+guarded StateSymmetry interface can represent non-involutive maps, but a useful
+composition result would need the second guard in the first transformed state
+and an actual caller. No such caller was found in the inspected owner/splice
+proofs, so no unused permutation hierarchy was added. These assessments do not
+claim new equivalence, privacy or asynchronous SE theorems.
+
+The probability/typed-reader/trace-density checkpoint passes the full ordinary
+build (5761 jobs), all original capstones, eleven added permanent axiom guards,
+all seven review probes and 94 Python tests. The ten migrated library families
+remove 295 physical lines after including their common APIs and every concrete
+caller; the three public library aggregators add eight lines, for a net library
+reduction of 287. New independent regression files add 219 lines, test aggregators
+six, and permanent axiom guards/imports 67. Documentation is counted separately.
+The separate dependency-height feature and its regression are excluded from
+these totals. The optional premise-suggestion diagnostic noted above persists;
+kernel proof acceptance and every exact axiom guard pass.

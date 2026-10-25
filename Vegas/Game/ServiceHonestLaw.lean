@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.AsyncDeviationReadout
+import Vegas.Game.ServicePhaseBoundary
 
 /-! # The honest law of the first-turn clients on barrier-ordered graphs
 
@@ -450,31 +451,8 @@ theorem HonestLaw.sample_step [Fintype Player]
     simpa [event, index, outputLayout, eventCount] using embedding.layout_eq index
   have alone : ∀ (cut : (serviceGraph setup mode).order.Cut) other, cut.Ready event →
       cut.Ready other → other = event := sample_alone relaxed outputEq
-  have boundaryAt (seed : Seed) (supported : seed ∈ prior.support) :
-      CompletionBoundary setup leaks scheduler players event.val (execution seed) := by
-    rw [eventRank]
-    exact boundary seed supported
-  have stopEq (seed : Seed) (supported : seed ∈ prior.support) :
-      app.runUntilHorizon scheduler players
-          (fun final => event ∈ final.application.config.cut.completed) horizon
-          (execution seed) =
-        app.runUntilHorizon scheduler players (BlockDone (offset + 1)) horizon
-          (execution seed) := by
-    have stopped := runUntilHorizon_eventDone_eq_blockDone horizon event alone _
-      (boundaryAt seed supported)
-    rwa [eventRank] at stopped
-  have nextFacts (point : PhasePoint setup leaks horizon scheduler players (offset + 1) prior
-      execution) :
-      CompletionBoundary setup leaks scheduler players (offset + 1) point.val.2 ∧
-        point.val.2.environmentRecall.length ≤ horizon := by
-    obtain ⟨supported, reached⟩ := phaseJoint_mem setup leaks horizon scheduler players
-      point.property
-    rw [← stopEq _ supported] at reached
-    obtain ⟨_, _, _, nextBounded, nextBoundary⟩ := completionRun_boundary_step
-      contract.completes event alone (execution point.val.1) (boundaryAt _ supported)
-      (bounded _ supported) point.val.2 reached
-    rw [eventRank] at nextBoundary
-    exact ⟨nextBoundary, nextBounded⟩
+  obtain ⟨stopEq, nextFacts⟩ := event_phase_stop_boundary setup leaks horizon
+    scheduler players contract.completes event eventRank alone prior execution boundary bounded
   obtain ⟨_, marginal⟩ := sample_phase_law contract.completes players wholeProfile fresh
     distribution next profile refs embedding refsBefore offset alone prior source execution
     aligned checkpoint boundary bounded
@@ -610,18 +588,10 @@ theorem HonestLaw.commits_step [Fintype Player]
     subst same
     exact CompiledSuffix.commitPrefix_bind count program prefixed refs _ _ embedding
       refsBefore offset (aligned prior.support_nonempty.choose).graphSuffix index below
-  have nextFacts (point : PhasePoint setup leaks horizon scheduler players (offset + count)
-      prior execution) :
-      CompletionBoundary setup leaks scheduler players (offset + count) point.val.2 ∧
-        point.val.2.environmentRecall.length ≤ horizon := by
-    obtain ⟨supported, reached⟩ := phaseJoint_mem setup leaks horizon scheduler players
-      point.property
-    have done := blockRun_completes contract.completes (offset + count)
-      (execution point.val.1) (boundary _ supported) (bounded _ supported) _ reached
-    obtain ⟨nextBounded, nextBoundary⟩ := blockRun_boundary (Nat.le_add_right _ _)
-      (BlockEnd.sealed_relaxed relaxed wall (plain_of_bindings bindings)) wall.1
-      (execution point.val.1) (boundary _ supported) (bounded _ supported) _ reached done
-    exact ⟨nextBoundary, nextBounded⟩
+  have nextFacts := block_phase_boundary setup leaks horizon scheduler players
+    contract.completes (Nat.le_add_right _ _)
+    (BlockEnd.sealed_relaxed relaxed wall (plain_of_bindings bindings))
+    wall.1 prior execution boundary bounded
   have block := honest_block_law relaxed wall contract timely turns
     wholeProfile bindings
     program profile count prefixed refs embedding refsBefore rfl anyone prior source execution
@@ -718,31 +688,8 @@ theorem honestLaw [Fintype Player]
       have alone : ∀ (cut : (serviceGraph setup mode).order.Cut) other, cut.Ready event →
           cut.Ready other → other = event := fun cut other ready otherReady =>
         ordered.ready_public_unique cut (by rw [outputEq]; trivial) ready otherReady
-      have boundaryAt (seed : Seed) (supported : seed ∈ prior.support) :
-          CompletionBoundary setup leaks scheduler players event.val (execution seed) := by
-        rw [eventRank]
-        exact boundary seed supported
-      have stopEq (seed : Seed) (supported : seed ∈ prior.support) :
-          app.runUntilHorizon scheduler players
-              (fun final => event ∈ final.application.config.cut.completed) horizon
-              (execution seed) =
-            app.runUntilHorizon scheduler players (BlockDone (offset + 1)) horizon
-              (execution seed) := by
-        have stopped := runUntilHorizon_eventDone_eq_blockDone horizon event alone _
-          (boundaryAt seed supported)
-        rwa [eventRank] at stopped
-      have nextFacts (point : PhasePoint setup leaks horizon scheduler players (offset + 1) prior
-          execution) :
-          CompletionBoundary setup leaks scheduler players (offset + 1) point.val.2 ∧
-            point.val.2.environmentRecall.length ≤ horizon := by
-        obtain ⟨supported, reached⟩ := phaseJoint_mem setup leaks horizon scheduler players
-          point.property
-        rw [← stopEq _ supported] at reached
-        obtain ⟨_, _, _, nextBounded, nextBoundary⟩ := completionRun_boundary_step
-          contract.completes event alone (execution point.val.1) (boundaryAt _ supported)
-          (bounded _ supported) point.val.2 reached
-        rw [eventRank] at nextBoundary
-        exact ⟨nextBoundary, nextBounded⟩
+      obtain ⟨stopEq, nextFacts⟩ := event_phase_stop_boundary setup leaks horizon
+        scheduler players contract.completes event eventRank alone prior execution boundary bounded
       -- The owner is honest: the honest players are the owner deviating to its own client.
       have selfDeviation : deviatedTurnProfile bound turns (firstTurnTiming setup turns mode)
           wholeProfile owner (players owner) = players := Function.update_eq_self _ _

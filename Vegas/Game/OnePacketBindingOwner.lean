@@ -227,7 +227,7 @@ def moveImage (event : (graph setup).EventId) (owner : Player)
   | some candidate => committedImage event owner candidate image.1
 
 /-- **The owner's step at a pending binding.** If the owner's decoded response,
-sorted into moves, is within `δ` on unit payoffs of a law of moves, its control
+sorted into moves, is within `δ` in total variation of a law of moves, its control
 step read through the image is within `2 δ` of that law read through the move
 images. -/
 theorem ownerBindingStep_close {horizon : Nat} {scheduler : (application setup leaks).Scheduler}
@@ -239,11 +239,11 @@ theorem ownerBindingStep_close {horizon : Nat} {scheduler : (application setup l
     {event : (graph setup).EventId} {payload : L.Ty}
     (pending : event ∉ execution.application.config.cut.completed)
     (moves : PMF (Option (Handle (graph setup)))) {δ : ℝ}
-    (close : UnitClose δ (((bounds.onePacketMenu (runtime setup) leaks).decodeProfile
+    (close : PMF.WithinTV δ (((bounds.onePacketMenu (runtime setup) leaks).decodeProfile
         (initialLaw setup) horizon scheduler profile owner (execution.recall owner)
         (execution.observe (application setup leaks) owner)).map
           (commitMove event owner payload execution)) (moves.map some)) :
-    UnitClose (2 * δ) (((application setup leaks).controlStep (initialLaw setup) horizon
+    PMF.WithinTV δ (((application setup leaks).controlStep (initialLaw setup) horizon
         scheduler ((bounds.onePacketMenu (runtime setup) leaks).decodeProfile (initialLaw setup)
           horizon scheduler profile) (some ⟨remaining, some owner, execution⟩)).map
           (bindingImage event owner payload))
@@ -252,7 +252,7 @@ theorem ownerBindingStep_close {horizon : Nat} {scheduler : (application setup l
           commitStatuses event owner payload execution.application
             execution.network.pending))) := by
   rw [controlStep_owner, PMF.map_comp]
-  apply unitClose_map_of_classes _ _ _ _ _ δ _ close
+  apply withinTV_map_of_partial_classes _ _ _ _ _ _ close
   intro action supported move classified
   simp only [Function.comp]
   unfold commitMove at classified

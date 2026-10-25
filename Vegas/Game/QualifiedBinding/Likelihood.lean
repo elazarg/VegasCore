@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.QualifiedBinding.AnnotationMass
+import Interaction.ReactiveSchedulerDensity
 import Vegas.Game.SourceSwapPairs
 import Vegas.Compile.CommitPrefixAdmittedAction
 import Vegas.Game.AsyncDeviationForeign
@@ -34,6 +35,12 @@ local notation "nativeInitial" => implementation.initial
 local notation "nativeProtocol" => ReactiveApplication.ResponseMenu.protocol
   nativeMenu nativeInitial implementation.horizon implementation.scheduler
 
+local notation "fixedMass" => ReactiveApplication.fixedSchedulerTransitionMass
+  nativeApplication implementation.prior
+    (ReservedEpoch.family implementation.runtime implementation.leaks
+      (ReservedEpoch.packetCapacity implementation.runtime))
+    nativeMenu nativeInitial implementation.horizon
+
 /-- The actual trace's behavioral atoms and its transition mass form the
 literal finite-history likelihood, before any source-coordinate partition. -/
 private theorem sourceReplay_native_history_factor
@@ -61,148 +68,6 @@ private theorem sourceReplay_native_history_factor
   simp only [Trace.length, Nat.sub_zero, chanceEq, recordsActual] at exactFactor
   exact exactFactor
 
-/-- One actual command disintegrates against the posterior of the original
-whole tape, including at zero command atoms. -/
-private theorem sourceReplay_scheduler_density
-    (past : List (nativeApplication).EnvironmentEntry)
-    (view : (nativeApplication).EnvironmentView) (command : (nativeApplication).Command)
-    (tape : ReservedEpoch.Tape Player implementation.tapeLength) :
-    implementation.scheduler past view command *
-        ((nativeApplication).schedulerMixture implementation.prior
-          (ReservedEpoch.family implementation.runtime implementation.leaks
-            (ReservedEpoch.packetCapacity implementation.runtime))).posterior
-              (past ++ [⟨view, command⟩]) tape =
-      ((nativeApplication).schedulerMixture implementation.prior
-          (ReservedEpoch.family implementation.runtime implementation.leaks
-            (ReservedEpoch.packetCapacity implementation.runtime))).posterior past tape *
-        ReservedEpoch.family implementation.runtime implementation.leaks
-          (ReservedEpoch.packetCapacity implementation.runtime) tape past view command := by
-  let mixture := (nativeApplication).schedulerMixture implementation.prior
-    (ReservedEpoch.family implementation.runtime implementation.leaks
-      (ReservedEpoch.packetCapacity implementation.runtime))
-  let joint := (mixture.posterior past).bind fun selected =>
-    mixture.respond selected (past, view)
-  have marginal : joint.map Prod.fst = implementation.scheduler past view := rfl
-  have density := mul_fiberPosterior_map_snd_apply joint command tape
-  rw [marginal] at density
-  have atom : joint (command, tape) = mixture.posterior past tape *
-      ReservedEpoch.family implementation.runtime implementation.leaks
-        (ReservedEpoch.packetCapacity implementation.runtime) tape past view command := by
-    exact bind_map_tag_apply (mixture.posterior past)
-      (fun selected => ReservedEpoch.family implementation.runtime implementation.leaks
-        (ReservedEpoch.packetCapacity implementation.runtime) selected past view) command tape
-  change implementation.scheduler past view command *
-      mixture.posterior (past ++ [⟨view, command⟩]) tape = _
-  rw [ReactiveApplication.SchedulerImplementation.posterior_snoc]
-  exact density.trans atom
-
-/-- Evaluate the existing transition kernel on the actual recorded path with
-the original whole tape fixed. No new trace or support totalization is used. -/
-private def sourceReplayFixedTransitionMass
-    (tape : ReservedEpoch.Tape Player implementation.tapeLength) :
-    ∀ {state : (nativeProtocol).State}, (nativeProtocol).Trace state → ℝ
-  | _, .start => 1
-  | after, @Trace.extend _ _ before _ prior joint _ _ =>
-      sourceReplayFixedTransitionMass tape prior *
-        ((nativeApplication).transition nativeInitial implementation.horizon
-          (ReservedEpoch.family implementation.runtime implementation.leaks
-            (ReservedEpoch.packetCapacity implementation.runtime) tape) before joint after).toReal
-
-private theorem sourceReplay_tape_step_density
-    (tape : ReservedEpoch.Tape Player implementation.tapeLength)
-    {before after : (nativeProtocol).State} (prior : (nativeProtocol).Trace before)
-    (joint : Player → Option (nativeApplication).Action)
-    (legal : (nativeProtocol).Legal before joint)
-    (moved : after ∈ ((nativeProtocol).step before ⟨joint, legal⟩).support) :
-    ((nativeProtocol).step before ⟨joint, legal⟩) after *
-        prefixTapeLaw setup implementation ⟨after, prior.extend joint legal moved⟩ tape =
-      prefixTapeLaw setup implementation ⟨before, prior⟩ tape *
-        (nativeApplication).transition nativeInitial implementation.horizon
-          (ReservedEpoch.family implementation.runtime implementation.leaks
-            (ReservedEpoch.packetCapacity implementation.runtime) tape) before joint after := by
-  cases before with
-  | none =>
-    change after ∈ ((nativeInitial).map fun state =>
-      some (⟨implementation.horizon, none,
-        ReactiveApplication.Execution.initial nativeApplication state⟩ :
-          (nativeApplication).Control)).support at moved
-    obtain ⟨state, _supported, rfl⟩ := PMF.support_map .. ▸ moved
-    change _ * implementation.prior tape = implementation.prior tape * _
-    exact mul_comm _ _
-  | some control =>
-    rcases control with ⟨remaining, actor, execution⟩
-    cases actor with
-    | some owner =>
-      change after ∈ (PMF.pure (some (⟨remaining, none,
-        execution.respond nativeApplication owner ((joint owner).getD ⟨none⟩)⟩ :
-          (nativeApplication).Control))).support at moved
-      cases (PMF.mem_support_pure_iff ..).mp moved
-      simp only [ReactiveApplication.ResponseMenu.protocol, ReactiveApplication.transition,
-        PMF.pure_apply, ↓reduceIte, prefixTapeLaw,
-        ReactiveApplication.respond_environmentRecall, one_mul, mul_one]
-    | none =>
-      cases remaining with
-      | zero => exact (legal.1 ⟨rfl, rfl⟩).elim
-      | succ remaining =>
-        change after ∈ ((implementation.scheduler execution.environmentRecall
-          (execution.observeEnvironment nativeApplication)).bind fun command =>
-            (execution.environmentStep nativeApplication command).map fun next =>
-              some (⟨remaining, command.actor? nativeApplication, next⟩ :
-                (nativeApplication).Control)).support at moved
-        obtain ⟨command, _chosen, supported⟩ :=
-          Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ moved)
-        obtain ⟨next, advanced, rfl⟩ := PMF.support_map .. ▸ supported
-        change (nativeApplication).transition nativeInitial implementation.horizon
-          implementation.scheduler (some ⟨remaining + 1, none, execution⟩) joint
-            (some ⟨remaining, command.actor? nativeApplication, next⟩) * _ = _
-        rw [(nativeApplication).transition_environment_apply nativeInitial
-            implementation.horizon implementation.scheduler remaining execution next command
-              advanced joint,
-          (nativeApplication).transition_environment_apply nativeInitial
-            implementation.horizon
-              (ReservedEpoch.family implementation.runtime implementation.leaks
-                (ReservedEpoch.packetCapacity implementation.runtime) tape) remaining execution
-                  next command advanced joint]
-        have recorded := (nativeApplication).environmentStep_environmentRecall execution next
-          command advanced
-        simp only [prefixTapeLaw, recorded]
-        have density := sourceReplay_scheduler_density setup implementation
-          execution.environmentRecall (execution.observeEnvironment nativeApplication) command tape
-        let mixture := (nativeApplication).schedulerMixture implementation.prior
-          (ReservedEpoch.family implementation.runtime implementation.leaks
-            (ReservedEpoch.packetCapacity implementation.runtime))
-        calc
-          _ = (implementation.scheduler execution.environmentRecall
-              (execution.observeEnvironment nativeApplication) command *
-                mixture.posterior (execution.environmentRecall ++
-                  [⟨execution.observeEnvironment nativeApplication, command⟩]) tape) *
-                    (execution.environmentStep nativeApplication command) next := by ac_rfl
-          _ = _ := by rw [density]; ac_rfl
-
-/-- The original tape posterior telescopes along the actual trace. All
-initializer and public Nature atoms stay in the fixed-tape transition product. -/
-private theorem sourceReplay_transition_tape_factor
-    (tape : ReservedEpoch.Tape Player implementation.tapeLength)
-    {state : (nativeProtocol).State} (trace : (nativeProtocol).Trace state) :
-    trace.transitionMass * (prefixTapeLaw setup implementation ⟨state, trace⟩ tape).toReal =
-      (implementation.prior tape).toReal *
-        sourceReplayFixedTransitionMass setup implementation tape trace := by
-  induction trace with
-  | start =>
-    change 1 * (implementation.prior tape).toReal = (implementation.prior tape).toReal * 1
-    ring
-  | @extend before after prior joint legal moved ih =>
-    have density := congrArg ENNReal.toReal
-      (sourceReplay_tape_step_density setup implementation tape prior joint legal moved)
-    simp only [ENNReal.toReal_mul] at density
-    rw [Trace.transitionMass_extend, sourceReplayFixedTransitionMass]
-    calc
-      _ = prior.transitionMass * _ := by ring
-      _ = prior.transitionMass *
-          ((prefixTapeLaw setup implementation ⟨before, prior⟩ tape).toReal * _) :=
-            congrArg (prior.transitionMass * ·) density
-      _ = _ := by rw [← mul_assoc, ih]; ring
-
 /-- Literal native reach with its original whole tape is the fixed-tape
 Nature product times every actual own-response product. -/
 private theorem sourceReplay_native_tape_factor
@@ -214,7 +79,7 @@ private theorem sourceReplay_native_tape_factor
         implementation.scheduler).historyReachWeight profile ⟨state, trace⟩).toReal *
           (prefixTapeLaw setup implementation ⟨state, trace⟩ tape).toReal =
       (implementation.prior tape).toReal *
-        sourceReplayFixedTransitionMass setup implementation tape trace *
+        fixedMass tape trace *
           ∏ owner, ((nativeMenu).information nativeInitial implementation.horizon
             implementation.scheduler).ownPlayReachProbability (profile owner)
               (((nativeMenu).information nativeInitial implementation.horizon
@@ -227,11 +92,27 @@ private theorem sourceReplay_native_tape_factor
   change (trace.transitionMass * own) *
     (prefixTapeLaw setup implementation ⟨state, trace⟩ tape).toReal =
       (implementation.prior tape).toReal *
-        sourceReplayFixedTransitionMass setup implementation tape trace * own
+        fixedMass tape trace * own
   calc
     _ = (trace.transitionMass *
         (prefixTapeLaw setup implementation ⟨state, trace⟩ tape).toReal) * own := by ring
-    _ = _ := by rw [sourceReplay_transition_tape_factor setup implementation tape trace]
+    _ = _ := by
+      have density := ReactiveApplication.schedulerMixture_trace_density nativeApplication
+        implementation.prior
+        (ReservedEpoch.family implementation.runtime implementation.leaks
+          (ReservedEpoch.packetCapacity implementation.runtime))
+        nativeMenu nativeInitial implementation.horizon tape trace
+      have posterior : ReactiveApplication.schedulerSeedPosterior nativeApplication
+          implementation.prior
+          (ReservedEpoch.family implementation.runtime implementation.leaks
+            (ReservedEpoch.packetCapacity implementation.runtime)) state =
+          prefixTapeLaw setup implementation ⟨state, trace⟩ := by
+        cases state <;> rfl
+      rw [posterior] at density
+      change trace.transitionMass *
+          (prefixTapeLaw setup implementation ⟨state, trace⟩ tape).toReal =
+        (implementation.prior tape).toReal * fixedMass tape trace at density
+      rw [density]
 
 /-- Menu restriction preserves the literal product of reference-response atoms
 at every original private input on the actual native trace. -/
@@ -280,7 +161,7 @@ private theorem sourceReplay_prescribed_native_atom
           implementation.scheduler values rates) ⟨some control, trace⟩).toReal *
             (prefixTapeLaw setup implementation ⟨some control, trace⟩ tape).toReal =
       (implementation.prior tape).toReal *
-        sourceReplayFixedTransitionMass setup implementation tape trace *
+        fixedMass tape trace *
           ∏ owner, (((nativeApplication).privateTranscriptFrom []
             (control.execution.recall owner)).map (fun record =>
               phaseProposalReferencePolicy setup .concurrent implementation.runtime
@@ -291,7 +172,7 @@ private theorem sourceReplay_prescribed_native_atom
       implementation.bounds implementation.plan nativeInitial implementation.horizon
         implementation.scheduler values rates) tape trace]
   apply congrArg (fun product => (implementation.prior tape).toReal *
-    sourceReplayFixedTransitionMass setup implementation tape trace * product)
+    fixedMass tape trace * product)
   exact Finset.prod_congr rfl fun owner _ =>
     sourceReplay_prescribed_own_atom setup values implementation rates owner control trace
 
@@ -2812,23 +2693,24 @@ private theorem sourceReplay_mechanical_path_factor
     (rates : PhaseProposalRates) (who : Player)
     (tape : ReservedEpoch.Tape Player implementation.tapeLength)
     {state : (nativeProtocol).State} (trace : (nativeProtocol).Trace state) :
-    sourceReplayFixedTransitionMass setup implementation tape trace *
+    fixedMass tape trace *
         (sourceReplayResponseProducts setup values implementation rates who trace).1 =
       sourceReplayNatureMass setup implementation trace *
         (mechanicalPathAtom setup implementation rates who tape trace).toReal := by
   induction trace with
   | start =>
-    simp only [sourceReplayFixedTransitionMass, sourceReplayResponseProducts,
+    simp only [ReactiveApplication.fixedSchedulerTransitionMass, sourceReplayResponseProducts,
       sourceReplayNatureMass, mechanicalPathAtom, ENNReal.toReal_one, mul_one]
   | @extend before after prior joint legal moved ih =>
     have row := congrArg ENNReal.toReal
       (sourceReplay_mechanical_step_factor setup implementation rates who tape joint legal moved)
     simp only [ENNReal.toReal_mul] at row
-    rw [sourceReplayFixedTransitionMass, sourceReplayResponseProducts_mechanical_extend,
+    rw [ReactiveApplication.fixedSchedulerTransitionMass,
+      sourceReplayResponseProducts_mechanical_extend,
       sourceReplayNatureMass,
       mechanicalPathAtom, ENNReal.toReal_mul]
     calc
-      _ = (sourceReplayFixedTransitionMass setup implementation tape prior *
+      _ = (fixedMass tape prior *
           (sourceReplayResponseProducts setup values implementation rates who prior).1) *
             (((nativeApplication).transition nativeInitial implementation.horizon
               (ReservedEpoch.family implementation.runtime implementation.leaks
@@ -2868,7 +2750,7 @@ private theorem sourceReplay_prescribed_mechanical_atom
   rw [native]
   calc
     _ = (implementation.prior tape).toReal *
-        (sourceReplayFixedTransitionMass setup implementation tape trace *
+        (fixedMass tape trace *
           (sourceReplayResponseProducts setup values implementation rates who trace).1) *
             ∏ owner, (((nativeApplication).privateTranscriptFrom []
               (control.execution.recall owner)).map (fun record =>
@@ -2935,12 +2817,12 @@ theorem sourceReplay_prescribed_response_atom
   change _ = responseProduct who at focal
   rw [sourceReplay_prescribed_native_atom setup values implementation rates tape control trace]
   change (implementation.prior tape).toReal *
-    sourceReplayFixedTransitionMass setup implementation tape trace *
+    fixedMass tape trace *
       (∏ owner, responseProduct owner) = _
   rw [splitProduct, foreignProduct, ← focal]
   calc
     _ = (implementation.prior tape).toReal *
-        (sourceReplayFixedTransitionMass setup implementation tape trace *
+        (fixedMass tape trace *
           (sourceReplayResponseProducts setup values implementation rates who trace).1) *
         ((nativeMenu).information nativeInitial implementation.horizon
           implementation.scheduler).ownPlayReachProbability

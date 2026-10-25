@@ -2,6 +2,7 @@
 
 import Vegas.Compile.EventGraphEvaluation
 import Vegas.EventGraph.Information
+import Vegas.Foundation.PartialEnvironment
 
 /-! # Source observations decoded from event-graph stores
 
@@ -69,6 +70,102 @@ def decodeObservation? {Field : Type}
         let tail ← decodeObservation? who refs.tail store
         pure ⟨Env.cons none tail.cells⟩
 
+/-- Source cells whose graph fields are visible to one player. -/
+def cellVisibleTo (who : Player) : CellTy Player L → Prop
+  | .publicData _ | .publication _ => True
+  | .commitment owner _ | .privateInput owner _ => owner = who
+
+instance (who : Player) (cell : CellTy Player L) : Decidable (cellVisibleTo who cell) := by
+  cases cell <;> simp only [cellVisibleTo] <;> infer_instance
+
+def readObservationCell? {Field : Type} {layout : Field → Vegas.EventGraph.EventField Player L}
+    (who : Player) (store : Vegas.EventGraph.Store layout) :
+    {cell : CellTy Player L} → Vegas.EventGraph.FieldRef layout (cellField cell) →
+      Option (SourceObservationVal L cell)
+  | .publicData _, ref => ref.get? store
+  | .publication _, ref => ref.get? store
+  | .commitment owner _, ref =>
+      if owner = who then (ref.get? store).map some else some none
+  | .privateInput owner _, ref =>
+      if owner = who then (ref.get? store).map some else some none
+
+def collectObservation? {Field : Type} {layout : Field → Vegas.EventGraph.EventField Player L}
+    {Γ : SourceCtx Player L} (who : Player) (refs : ContextRefs layout Γ)
+    (store : Vegas.EventGraph.Store layout) : Option (SourceObservation L who Γ) :=
+  (PartialEnvironment.collect? (fun _ _ => True) Γ
+    (fun source _ => readObservationCell? who store (refs.get source))).map
+      (fun get => ⟨fun _ _ source => get source trivial⟩)
+
+omit R in
+theorem decodeObservation?_cons {Field : Type}
+    {layout : Field → Vegas.EventGraph.EventField Player L}
+    {Γ : SourceCtx Player L} {name : VarId} {cell : CellTy Player L}
+    (who : Player) (refs : ContextRefs layout ((name, cell) :: Γ))
+    (store : Vegas.EventGraph.Store layout) :
+    decodeObservation? who refs store =
+      (readObservationCell? who store (refs.get HasVar.here)).bind fun head =>
+        (decodeObservation? who refs.tail store).map fun tail =>
+          ⟨Env.cons head tail.cells⟩ := by
+  cases cell with
+  | publicData payload | publication payload =>
+      cases head : (refs.get HasVar.here).get? store <;>
+        cases tail : decodeObservation? who refs.tail store <;>
+          simp [decodeObservation?, readObservationCell?, head, tail, Option.map, Option.bind]
+  | commitment owner payload | privateInput owner payload =>
+      by_cases same : owner = who
+      all_goals
+        cases head : (refs.get HasVar.here).get? store <;>
+          cases tail : decodeObservation? who refs.tail store <;>
+            simp [decodeObservation?, readObservationCell?, same, head, tail,
+              Option.map, Option.bind]
+
+omit R in
+/-- Decoding equals typed collection at every partial store, including missing
+visible fields and intentionally hidden private cells. -/
+theorem decodeObservation?_eq_collect {Field : Type}
+    {layout : Field → Vegas.EventGraph.EventField Player L} {Γ : SourceCtx Player L}
+    (who : Player) (refs : ContextRefs layout Γ) (store : Vegas.EventGraph.Store layout) :
+    decodeObservation? who refs store = collectObservation? who refs store := by
+  induction Γ with
+  | nil =>
+      apply congrArg some
+      apply congrArg SourceObservation.mk
+      funext name cell source
+      nomatch source
+  | cons entry Γ ih =>
+      obtain ⟨name, cell⟩ := entry
+      rw [decodeObservation?_cons, ih refs.tail]
+      cases head : readObservationCell? who store (refs.get HasVar.here) <;>
+        cases tail : PartialEnvironment.collect? (fun _ _ => True) Γ
+            (fun source _ => readObservationCell? who store (refs.tail.get source)) <;>
+          simp only [ContextRefs.tail] at tail <;>
+          simp only [collectObservation?, PartialEnvironment.collect?, ContextRefs.tail, head, tail,
+            Option.bind_eq_bind, Option.pure_def, Option.map, Option.bind, ↓reduceDIte,
+            Option.some.injEq, SourceObservation.mk.injEq]
+      all_goals
+        funext readName readCell source
+        cases source <;> rfl
+
+omit R in
+theorem decodeObservation?_congr_of_visible {Field : Type}
+    {layout : Field → Vegas.EventGraph.EventField Player L} {Γ : SourceCtx Player L}
+    (who : Player) (refs : ContextRefs layout Γ) (left right : Vegas.EventGraph.Store layout)
+    (agree : ∀ {name cell} (source : HasVar Γ name cell), cellVisibleTo who cell →
+      (refs.get source).get? left = (refs.get source).get? right) :
+    decodeObservation? who refs left = decodeObservation? who refs right := by
+  rw [decodeObservation?_eq_collect, decodeObservation?_eq_collect]
+  unfold collectObservation?
+  congr 1
+  apply PartialEnvironment.congr
+  intro name cell source _
+  cases cell with
+  | publicData payload | publication payload => exact agree source trivial
+  | commitment owner payload | privateInput owner payload =>
+      by_cases same : owner = who
+      · simp only [readObservationCell?, ite_eq_left same]
+        rw [agree source same]
+      · simp [readObservationCell?, same]
+
 /-- Decoding depends only on public fields and `who`'s own inputs and bindings. It can
 therefore consume an actual masked player observation without recovering any
 foreign private value. -/
@@ -77,44 +174,41 @@ theorem decodeObservation?_playerStore {graph : Vegas.EventGraph Player L}
     (refs : ContextRefs graph.layout Γ) →
     (store : Vegas.EventGraph.Store graph.layout) →
     decodeObservation? who refs (graph.playerStore who store) =
-      decodeObservation? who refs store
-  | [], _, _ => rfl
-  | (name, .publicData payload) :: Γ, refs, store => by
-      rw [decodeObservation?, decodeObservation?]
-      rw [(refs.get (HasVar.here :
-        HasVar ((name, .publicData payload) :: Γ) name
-          (.publicData payload))).get?_playerStore who store (by trivial)]
-      rw [decodeObservation?_playerStore who refs.tail store]
-  | (name, .publication payload) :: Γ, refs, store => by
-      rw [decodeObservation?, decodeObservation?]
-      rw [(refs.get (HasVar.here :
-        HasVar ((name, .publication payload) :: Γ) name
-          (.publication payload))).get?_playerStore who store (by trivial)]
-      rw [decodeObservation?_playerStore who refs.tail store]
-  | (name, .commitment owner payload) :: Γ, refs, store => by
-      rw [decodeObservation?, decodeObservation?]
-      by_cases same : owner = who
-      · rw [dite_eq_left same, dite_eq_left same]
-        rw [(refs.get (HasVar.here :
-          HasVar ((name, .commitment owner payload) :: Γ) name
-            (.commitment owner payload))).get?_playerStore who store (by
-              change owner = who
-              exact same)]
-        rw [decodeObservation?_playerStore who refs.tail store]
-      · rw [dite_eq_right same, dite_eq_right same]
-        rw [decodeObservation?_playerStore who refs.tail store]
-  | (name, .privateInput owner payload) :: Γ, refs, store => by
-      rw [decodeObservation?, decodeObservation?]
-      by_cases same : owner = who
-      · rw [dite_eq_left same, dite_eq_left same]
-        rw [(refs.get (HasVar.here :
-          HasVar ((name, .privateInput owner payload) :: Γ) name
-            (.privateInput owner payload))).get?_playerStore who store (by
-              change owner = who
-              exact same)]
-        rw [decodeObservation?_playerStore who refs.tail store]
-      · rw [dite_eq_right same, dite_eq_right same]
-        rw [decodeObservation?_playerStore who refs.tail store]
+      decodeObservation? who refs store := by
+  intro Γ refs store
+  apply decodeObservation?_congr_of_visible
+  intro name cell source visible
+  apply (refs.get source).get?_playerStore
+  cases cell with
+  | publicData payload | publication payload => trivial
+  | commitment owner payload | privateInput owner payload => exact visible
+
+omit R in
+/-- Agreement on the cells a player can see makes that player's decoder exact:
+the decoder never reads a cell hidden from the player. -/
+theorem decodeObservation?_eq_some_of_visible {Field : Type}
+    {layout : Field → Vegas.EventGraph.EventField Player L}
+    {Γ : SourceCtx Player L} (refs : ContextRefs layout Γ) (who : Player)
+    (state : State L Γ) (store : Vegas.EventGraph.Store layout)
+    (refsAgree : ∀ {name cell} (source : HasVar Γ name cell), cellVisibleTo who cell →
+      (refs.get source).get? store = some (cellValue (state.get source))) :
+    decodeObservation? who refs store = some (sourceObserve who state) := by
+  let values : ∀ {name cell}, HasVar Γ name cell → True → SourceObservationVal L cell :=
+    fun source _ => (sourceObserve who state).cells.get source
+  have complete : ∀ {name cell} (source : HasVar Γ name cell) (read : True),
+      readObservationCell? who store (refs.get source) = some (values source read) := by
+    intro name cell source _
+    cases cell with
+    | publicData payload | publication payload => exact refsAgree source trivial
+    | commitment owner payload | privateInput owner payload =>
+        by_cases same : owner = who
+        · simp [readObservationCell?, values, sourceObserve, Env.get, same, refsAgree source same,
+            cellValue, Option.map]
+        · simp [readObservationCell?, values, sourceObserve, Env.get, same]
+  rw [decodeObservation?_eq_collect]
+  unfold collectObservation?
+  rw [PartialEnvironment.of_some _ Γ _ values complete]
+  rfl
 
 omit R in
 /-- Typed context agreement makes the partial decoder exact. -/
@@ -124,76 +218,8 @@ theorem decodeObservation?_eq_some {Field : Type}
     (state : State L Γ) (store : Vegas.EventGraph.Store layout)
     (refsAgree : refs.Agrees state store) :
     decodeObservation? who refs store = some (sourceObserve who state) := by
-  induction Γ with
-  | nil =>
-      apply congrArg some
-      apply congrArg SourceObservation.mk
-      funext name cell source
-      nomatch source
-  | cons entry Γ ih =>
-      obtain ⟨name, cell⟩ := entry
-      have tail := ih refs.tail (fun _ _ source => state.get (.there source))
-        fun source => refsAgree (.there source)
-      have head := refsAgree (HasVar.here : HasVar ((name, cell) :: Γ) name cell)
-      cases cell with
-      | publicData payload =>
-          rw [decodeObservation?, head, tail]
-          apply congrArg some
-          apply congrArg SourceObservation.mk
-          funext readName readCell source
-          cases source with
-          | here => rfl
-          | there source => cases readCell <;> rfl
-      | publication payload =>
-          rw [decodeObservation?, head, tail]
-          apply congrArg some
-          apply congrArg SourceObservation.mk
-          funext readName readCell source
-          cases source with
-          | here => rfl
-          | there source => cases readCell <;> rfl
-      | commitment owner payload =>
-          by_cases same : owner = who
-          · rw [decodeObservation?, dite_eq_left same, head, tail]
-            apply congrArg some
-            apply congrArg SourceObservation.mk
-            funext readName readCell source
-            cases source with
-            | here =>
-                change some (state.get HasVar.here) =
-                  if owner = who then some (state.get HasVar.here) else none
-                simp [same]
-            | there source => cases readCell <;> rfl
-          · rw [decodeObservation?, dite_eq_right same, tail]
-            apply congrArg some
-            apply congrArg SourceObservation.mk
-            funext readName readCell source
-            cases source with
-            | here =>
-                change none = if owner = who then some (state.get HasVar.here) else none
-                simp [same]
-            | there source => cases readCell <;> rfl
-      | privateInput owner payload =>
-          by_cases same : owner = who
-          · rw [decodeObservation?, dite_eq_left same, head, tail]
-            apply congrArg some
-            apply congrArg SourceObservation.mk
-            funext readName readCell source
-            cases source with
-            | here =>
-                change some (state.get HasVar.here) =
-                  if owner = who then some (state.get HasVar.here) else none
-                simp [same]
-            | there source => cases readCell <;> rfl
-          · rw [decodeObservation?, dite_eq_right same, tail]
-            apply congrArg some
-            apply congrArg SourceObservation.mk
-            funext readName readCell source
-            cases source with
-            | here =>
-                change none = if owner = who then some (state.get HasVar.here) else none
-                simp [same]
-            | there source => cases readCell <;> rfl
+  exact decodeObservation?_eq_some_of_visible refs who state store
+    (fun source _ => refsAgree source)
 
 /-- Agreement with the semantic store also makes decoding exact on the actual
 masked player store. -/

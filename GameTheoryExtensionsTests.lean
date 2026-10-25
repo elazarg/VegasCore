@@ -23,3 +23,7 @@ import GameTheoryExtensionsTests.QuasilinearBounds
 import GameTheoryExtensionsTests.RestrictedDisintegration
 import GameTheoryExtensionsTests.RestrictionEnforcement
 import GameTheoryExtensionsTests.ZeroSumOutcomeLaws
+
+import GameTheoryExtensionsTests.OptionalDomination
+
+import GameTheoryExtensionsTests.TotalVariation

@@ -1,31 +1,21 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheory.Math.Probability.ExpectationComposition
-import GameTheory.Math.Probability.ExpectationMap
-import GameTheory.Math.Probability.ExpectationAlgebra
-import GameTheoryExtensions.Math.Probability.ExpectationContraction
+import GameTheoryExtensions.Math.Probability.TotalVariation
 
 /-! # Approximately lumpable kernels
 
-Two laws are `δ`-close on unit payoffs when every payoff with values in
-`[0, 1]` has expectations within `δ` under them
-(`GameTheory.Math.Probability.UnitClose`). Suppose a kernel keeps a set of
-states, and from each state of the set its law, read through a map `φ`, is
-`δ`-close on unit payoffs to a kernel on the images applied at the image. Then
+Suppose a kernel keeps a set of states, and from each state of the set its law,
+read through a map `φ`, is
+within `δ` in total variation to a kernel on the images applied at the image. Then
 `n` steps of the kernel from a state of the set, read through `φ`, are
-`n δ`-close to `n` steps of the image kernel from the image
-(`GameTheory.Math.Probability.iterate_bind_map_unitClose`). With `δ = 0` the map
+within `n δ` in total variation to `n` steps of the image kernel from the image
+(`GameTheory.Math.Probability.iterate_bind_map_withinTV`). With `δ = 0` the map
 lumps the kernel exactly.
 -/
 
 noncomputable section
 
 namespace GameTheory.Math.Probability
-
-/-- Two laws whose expectations of every payoff with values in `[0, 1]` are
-within `δ`. -/
-def UnitClose {α : Type*} (δ : ℝ) (μ ν : PMF α) : Prop :=
-  ∀ f : α → ℝ, (∀ a, 0 ≤ f a ∧ f a ≤ 1) → |expect μ f - expect ν f| ≤ δ
 
 theorem expect_mem_unit {α : Type*} (μ : PMF α) (f : α → ℝ) (unit : ∀ a, 0 ≤ f a ∧ f a ≤ 1) :
     0 ≤ expect μ f ∧ expect μ f ≤ 1 := by
@@ -35,16 +25,16 @@ theorem expect_mem_unit {α : Type*} (μ : PMF α) (f : α → ℝ) (unit : ∀ 
     expect_le_const μ f (payoffIntegrable_of_bounded μ f bounded) 1 fun a _ => (unit a).2⟩
 
 /-- **Approximate lumping.** If a kernel keeps a set, and from each of its
-states the kernel read through `φ` is `δ`-close on unit payoffs to the image
-kernel at the image, then `n` steps read through `φ` are `n δ`-close to `n`
+states the kernel read through `φ` is within `δ` in total variation to the image
+kernel at the image, then `n` steps read through `φ` are within `n δ` in total variation to `n`
 steps of the image kernel. -/
-theorem iterate_bind_map_unitClose {S Y : Type*} (kernel : S → PMF S) (φ : S → Y)
+theorem iterate_bind_map_withinTV {S Y : Type*} (kernel : S → PMF S) (φ : S → Y)
     (image : Y → PMF Y) (keep : Set S) (δ : ℝ)
     (kept : ∀ state ∈ keep, ∀ next ∈ (kernel state).support, next ∈ keep)
-    (close : ∀ state ∈ keep, UnitClose δ ((kernel state).map φ) (image (φ state))) :
+    (close : ∀ state ∈ keep, PMF.WithinTV δ ((kernel state).map φ) (image (φ state))) :
     ∀ (n : ℕ) (state : S), state ∈ keep →
       (∀ next ∈ ((fun law => law.bind kernel)^[n] (PMF.pure state)).support, next ∈ keep) ∧
-      UnitClose (n * δ) (((fun law => law.bind kernel)^[n] (PMF.pure state)).map φ)
+      PMF.WithinTV (n * δ) (((fun law => law.bind kernel)^[n] (PMF.pure state)).map φ)
         ((fun law => law.bind image)^[n] (PMF.pure (φ state))) := by
   intro n state start
   induction n with
@@ -52,49 +42,23 @@ theorem iterate_bind_map_unitClose {S Y : Type*} (kernel : S → PMF S) (φ : S 
       refine ⟨fun next member => by
         simp only [Function.iterate_zero_apply, PMF.mem_support_pure_iff] at member
         rw [member]
-        exact start, fun f _ => ?_⟩
-      simp only [Function.iterate_zero_apply, PMF.pure_map, Nat.cast_zero, zero_mul, sub_self,
-        abs_zero, le_refl]
+        exact start, ?_⟩
+      simpa only [Function.iterate_zero_apply, PMF.pure_map, Nat.cast_zero, zero_mul] using
+        PMF.WithinTV.refl (PMF.pure (φ state))
   | succ n ih =>
       obtain ⟨inside, near⟩ := ih
       set law := (fun law => law.bind kernel)^[n] (PMF.pure state)
       set imageLaw := (fun law => law.bind image)^[n] (PMF.pure (φ state))
       rw [Function.iterate_succ_apply', Function.iterate_succ_apply']
-      refine ⟨fun next member => ?_, fun f unit => ?_⟩
+      refine ⟨fun next member => ?_, ?_⟩
       · rw [PMF.mem_support_bind_iff] at member
         obtain ⟨previous, previousMember, nextMember⟩ := member
         exact kept previous (inside previous previousMember) next nextMember
-      · have boundF : ∀ y, |f y| ≤ 1 := fun y =>
-          abs_le.mpr ⟨by linarith [(unit y).1], (unit y).2⟩
-        let continued : Y → ℝ := fun y => expect (image y) f
-        have unitContinued : ∀ y, 0 ≤ continued y ∧ continued y ≤ 1 := fun y =>
-          expect_mem_unit (image y) f unit
-        have stepped : expect ((law.bind kernel).map φ) f =
-            expect law (fun s => expect ((kernel s).map φ) f) := by
-          rw [expect_map, expect_bind_tower_bounded law kernel (f ∘ φ)
-            (fun s => boundF (φ s))]
-          exact expect_congr_on_support fun s _ => (expect_map φ (kernel s) f).symm
-        have first : |expect law (fun s => expect ((kernel s).map φ) f) -
-            expect law (fun s => continued (φ s))| ≤ δ :=
-          abs_expect_sub_le_of_bound law _ _
-            (payoffIntegrable_of_bounded law _ (C := 1) fun s => by
-              have bounds := expect_mem_unit ((kernel s).map φ) f unit
-              exact abs_le.mpr ⟨by linarith [bounds.1], bounds.2⟩)
-            (payoffIntegrable_of_bounded law _ (C := 1) fun s => by
-              have bounds := unitContinued (φ s)
-              exact abs_le.mpr ⟨by linarith [bounds.1], bounds.2⟩)
-            δ fun s supported => close s (inside s supported) f unit
-        have second : |expect (law.map φ) continued - expect imageLaw continued| ≤ n * δ :=
-          near continued unitContinued
-        rw [stepped, expect_bind_tower_bounded imageLaw image f boundF]
-        rw [expect_map] at second
-        have total := abs_sub_le (expect law (fun s => expect ((kernel s).map φ) f))
-          (expect law (continued ∘ φ)) (expect imageLaw continued)
-        push_cast
-        calc _ ≤ _ := total
-          _ ≤ δ + n * δ := add_le_add first second
-          _ = (n + 1) * δ := by ring
-
+      · have first : PMF.WithinTV δ ((law.bind kernel).map φ) ((law.map φ).bind image) := by
+          rw [PMF.map_bind, PMF.bind_map]
+          exact PMF.WithinTV.bind_right law fun point member => close point (inside point member)
+        have combined := first.trans (near.bind_left image)
+        convert combined using 1; push_cast; ring
 
 /-- Expectation of a three-part decomposition with constant first two parts. -/
 private theorem expect_three_parts {α : Type*} (μ : PMF α) (s r h : α → ℝ) (x y : ℝ)
@@ -128,7 +92,7 @@ points to silentImage and its opening points to openImage, gives the silent
 points mass within `δ₁` of the weight a Boolean law gives `true`, and leaves at
 most `δ₂` outside both, then read through the map it is `(δ₁ + δ₂)`-close on
 unit payoffs to the two-point law with that weight. -/
-theorem unitClose_map_of_two_outcomes {α Y : Type*} (ν : PMF α) (F : α → Y)
+theorem withinTV_map_of_two_outcomes {α Y : Type*} (ν : PMF α) (F : α → Y)
     (silent opens : α → Prop) [DecidablePred silent] [DecidablePred opens]
     (silentImage openImage : Y) (weight : PMF Bool) (δ₁ δ₂ : ℝ)
     (silentEq : ∀ a ∈ ν.support, silent a → F a = silentImage)
@@ -136,10 +100,16 @@ theorem unitClose_map_of_two_outcomes {α Y : Type*} (ν : PMF α) (F : α → Y
     (silentMass : |expect ν (fun a => if silent a then 1 else 0) -
       expect weight (fun b => if b then 1 else 0)| ≤ δ₁)
     (remainder : expect ν (fun a => if silent a ∨ opens a then 0 else 1) ≤ δ₂) :
-    UnitClose (δ₁ + δ₂) (ν.map F)
+    PMF.WithinTV (δ₁ + δ₂) (ν.map F)
       (weight.map fun b => if b then silentImage else openImage) := by
-  intro g unit
-  rw [expect_map, expect_map]
+  classical
+  intro event
+  let g : Y → ℝ := fun point => if point ∈ event then 1 else 0
+  have unit : ∀ point, 0 ≤ g point ∧ g point ≤ 1 := fun point => by
+    simp only [g]; split <;> norm_num
+  rw [← expect_indicator, ← expect_indicator, expect_map, expect_map]
+  change |expect ν (g ∘ F) - expect weight (g ∘ fun b =>
+    if b then silentImage else openImage)| ≤ _
   set s : α → ℝ := fun a => if silent a then 1 else 0 with sEq
   set r : α → ℝ := fun a => if silent a ∨ opens a then 0 else 1 with rEq
   have boundS : ∀ a, |s a| ≤ 1 := fun a => by by_cases h : silent a <;> simp [s, h]
@@ -209,76 +179,5 @@ theorem unitClose_map_of_two_outcomes {α Y : Type*} (ν : PMF α) (F : α → Y
     _ ≤ δ₁ + δ₂ := add_le_add weightTerm restTerm
 
 
-/-- **A law classified up to a remainder.** If a law maps each point of a class
-to that class's image, and its law of classes, with the unclassified points as
-`none`, is `δ`-close on unit payoffs to a law of classes, then read through the
-map it is `2 δ`-close on unit payoffs to that law read through the class
-images. -/
-theorem unitClose_map_of_classes {α C Y : Type*} (ν : PMF α) (F : α → Y)
-    (classOf : α → Option C) (image : C → Y) (weight : PMF C) (δ : ℝ)
-    (classEq : ∀ a ∈ ν.support, ∀ c, classOf a = some c → F a = image c)
-    (close : UnitClose δ (ν.map classOf) (weight.map some)) :
-    UnitClose (2 * δ) (ν.map F) (weight.map image) := by
-  intro g unit
-  let lifted : Option C → ℝ := fun o => match o with
-    | some c => g (image c)
-    | none => 0
-  let unclassified : Option C → ℝ := fun o => match o with
-    | some _ => 0
-    | none => 1
-  have liftedUnit : ∀ o, 0 ≤ lifted o ∧ lifted o ≤ 1 := fun o => by
-    cases o with
-    | none => exact ⟨le_refl 0, zero_le_one⟩
-    | some c => exact unit (image c)
-  have unclassifiedUnit : ∀ o, 0 ≤ unclassified o ∧ unclassified o ≤ 1 := fun o => by
-    cases o with
-    | none => exact ⟨zero_le_one, le_refl 1⟩
-    | some c => exact ⟨le_refl 0, zero_le_one⟩
-  have liftedClose := close lifted liftedUnit
-  have unclassifiedClose := close unclassified unclassifiedUnit
-  rw [expect_map, expect_map] at liftedClose unclassifiedClose
-  rw [expect_map, expect_map]
-  have weightLifted : expect weight (lifted ∘ some) = expect weight (g ∘ image) := rfl
-  have weightUnclassified : expect weight (unclassified ∘ some) = 0 := by
-    change expect weight (fun _ => (0 : ℝ)) = 0
-    exact expect_zero weight
-  rw [weightLifted] at liftedClose
-  rw [weightUnclassified, sub_zero] at unclassifiedClose
-  have boundF : ∀ a, |(g ∘ F) a| ≤ 1 := fun a =>
-    abs_le.mpr ⟨by simp only [Function.comp_apply]; linarith [(unit (F a)).1],
-      (unit (F a)).2⟩
-  have boundLifted : ∀ a, |(lifted ∘ classOf) a| ≤ 1 := fun a =>
-    abs_le.mpr ⟨by simp only [Function.comp_apply]; linarith [(liftedUnit (classOf a)).1],
-      (liftedUnit (classOf a)).2⟩
-  have boundUnclassified : ∀ a, |(unclassified ∘ classOf) a| ≤ 1 := fun a =>
-    abs_le.mpr ⟨by simp only [Function.comp_apply]; linarith [(unclassifiedUnit (classOf a)).1],
-      (unclassifiedUnit (classOf a)).2⟩
-  have integrableF := payoffIntegrable_of_bounded ν _ boundF
-  have integrableLifted := payoffIntegrable_of_bounded ν _ boundLifted
-  have integrableUnclassified := payoffIntegrable_of_bounded ν _ boundUnclassified
-  have pointwise : ∀ a ∈ ν.support, 0 ≤ (g ∘ F) a - (lifted ∘ classOf) a ∧
-      (g ∘ F) a - (lifted ∘ classOf) a ≤ (unclassified ∘ classOf) a := by
-    intro a supported
-    cases classified : classOf a with
-    | none =>
-        simp only [Function.comp, classified, lifted, unclassified, sub_zero]
-        exact unit (F a)
-    | some c =>
-        simp only [Function.comp, classified, lifted, unclassified,
-          classEq a supported c classified, sub_self, le_refl, and_self]
-  have lower : expect ν (lifted ∘ classOf) ≤ expect ν (g ∘ F) :=
-    expect_mono (fun a supported => by linarith [(pointwise a supported).1]) integrableLifted
-      integrableF
-  have upper : expect ν (g ∘ F) ≤ expect ν (lifted ∘ classOf) +
-      expect ν (unclassified ∘ classOf) := by
-    rw [← expect_add integrableLifted integrableUnclassified]
-    exact expect_mono (fun a supported => by
-      have := (pointwise a supported).2
-      simp only [Function.comp] at this ⊢
-      linarith) integrableF (payoffIntegrable_add integrableLifted integrableUnclassified)
-  have unclassifiedLe : expect ν (unclassified ∘ classOf) ≤ δ :=
-    (abs_le.mp unclassifiedClose).2
-  rw [abs_le] at liftedClose ⊢
-  constructor <;> linarith [liftedClose.1, liftedClose.2]
 
 end GameTheory.Math.Probability

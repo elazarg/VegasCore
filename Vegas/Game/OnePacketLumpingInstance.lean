@@ -13,7 +13,7 @@ read off the image: scheduler rounds (`Vegas.round_image_congr_of_forced`),
 silent responses of the other players (`Vegas.controlStep_other_of_pending`),
 and the absorbing completed states. Only the owner's own responses remain, and
 they enter as one hypothesis: read through the image, the owner's step is
-within `δ` on unit payoffs of a kernel of the key, the option and the
+within `δ` in total variation of a kernel of the key, the option and the
 operational state (`Vegas.OwnerStepClose`). Under it, the step of the native
 kernel from every kept state, read through the image, is within `δ` of the
 key's image kernel (`Vegas.lateKernel_close`). At a key whose owner's turn is
@@ -195,13 +195,6 @@ theorem ready_of_publicationTurn {who : Player}
   have spec := PublicView.ownTurn?_spec _ _ _ owned
   exact (control.execution.application.publicView_eventReady event).mp spec.1
 
-omit [Fintype Player] in
-private theorem unitClose_of_eq {α : Type} {δ : ℝ} (nonneg : 0 ≤ δ) {μ ν : PMF α}
-    (same : μ = ν) : UnitClose δ μ ν := by
-  intro f _
-  rw [same, sub_self, abs_zero]
-  exact nonneg
-
 section Fields
 
 variable {who : Player}
@@ -237,7 +230,7 @@ end Fields
 
 /-- **The owner's step at a key.** Read through the pending image, the
 owner's control step from an allowed forced state with the decided event ready
-is within `δ` on unit payoffs of a kernel of the key, the option and the
+is within `δ` in total variation of a kernel of the key, the option and the
 operational state. Every state is allowed unless a restriction is given. -/
 def OwnerStepClose {LateOption : Type}
     (ownerKernel : LateKey setup leaks → LateOption → Option (OperationalState setup leaks) →
@@ -254,14 +247,14 @@ def OwnerStepClose {LateOption : Type}
       ForcedState setup leaks key.owner (some control) →
       control.execution.application.config.cut.Ready event →
       control.actor = some key.owner →
-      UnitClose δ (((application setup leaks).controlStep (initialLaw setup) horizon scheduler
+      PMF.WithinTV δ (((application setup leaks).controlStep (initialLaw setup) horizon scheduler
           ((bounds.onePacketMenu (runtime setup) leaks).decodeProfile (initialLaw setup) horizon
             scheduler profile) (some control)).map (pendingImage event))
         (ownerKernel key option (operationalState setup leaks (some control)))
 
 /-- **One step of the native kernel at a key.** From a kept state, the control
-step of a decoded profile, read through the key's image, is within `δ` on unit
-payoffs of the key's kernel, provided the owner's own step is. -/
+step of a decoded profile, read through the key's image, is within `δ` in total
+variation of the key's kernel, provided the owner's own step is. -/
 theorem lateKernel_close {LateOption : Type}
     (ownerKernel : LateKey setup leaks → LateOption → Option (OperationalState setup leaks) →
       PMF (PendingImage (setup := setup) (leaks := leaks)))
@@ -272,14 +265,14 @@ theorem lateKernel_close {LateOption : Type}
     (owner : OwnerStepClose ownerKernel key option profile δ allowed)
     {state : (application setup leaks).ProtocolState}
     (kept : state ∈ lateKept bounds horizon scheduler key) (allowedState : allowed state) :
-    UnitClose δ (((application setup leaks).controlStep (initialLaw setup) horizon scheduler
+    PMF.WithinTV δ (((application setup leaks).controlStep (initialLaw setup) horizon scheduler
         ((bounds.onePacketMenu (runtime setup) leaks).decodeProfile (initialLaw setup) horizon
           scheduler profile) state).map (lateImage key))
       (lateKernel bounds horizon scheduler ownerKernel key option (lateImage key state)) := by
   unfold lateKept at kept
   cases turn : turnEvent key with
   | none =>
-      apply unitClose_of_eq nonneg
+      convert (PMF.WithinTV.refl _).mono nonneg using 1
       have constant : lateImage key = Function.const _ (.inr false) := by
         funext state
         simp only [lateImage, turn, Function.const_apply]
@@ -297,7 +290,7 @@ theorem lateKernel_close {LateOption : Type}
         simp only [lateKernel, turn]
       rw [imageEq, kernelEq]
       rcases status with completed | ⟨forced, ready⟩
-      · apply unitClose_of_eq nonneg
+      · convert (PMF.WithinTV.refl _).mono nonneg using 1
         have constant : ((application setup leaks).controlStep (initialLaw setup) horizon
             scheduler ((bounds.onePacketMenu (runtime setup) leaks).decodeProfile
               (initialLaw setup) horizon scheduler profile) (some control)).map
@@ -329,7 +322,7 @@ theorem lateKernel_close {LateOption : Type}
               rw [kernelOwner]
               exact owner event (publicationTurn_of_turnEvent turn) history _ current allowedState
                 forced ready rfl
-            · apply unitClose_of_eq nonneg
+            · convert (PMF.WithinTV.refl _).mono nonneg using 1
               rw [controlStep_other_of_pending bounds horizon scheduler profile key.owner history
                 (by rw [current]; exact forced) current ready
                 (nodeView_resolve_actor outputEq codeEq) rfl owned, PMF.pure_map,
@@ -343,7 +336,7 @@ theorem lateKernel_close {LateOption : Type}
         | none =>
             cases remaining with
             | zero =>
-                apply unitClose_of_eq nonneg
+                convert (PMF.WithinTV.refl _).mono nonneg using 1
                 have law : (application setup leaks).controlStep (initialLaw setup) horizon
                     scheduler ((bounds.onePacketMenu (runtime setup) leaks).decodeProfile
                       (initialLaw setup) horizon scheduler profile) (some ⟨0, none, execution⟩) =
@@ -351,7 +344,7 @@ theorem lateKernel_close {LateOption : Type}
                 rw [law, PMF.pure_map, pendingImage_of_pending _ pending]
                 rfl
             | succ remaining =>
-                apply unitClose_of_eq nonneg
+                convert (PMF.WithinTV.refl _).mono nonneg using 1
                 have law : (application setup leaks).controlStep (initialLaw setup) horizon
                     scheduler ((bounds.onePacketMenu (runtime setup) leaks).decodeProfile
                       (initialLaw setup) horizon scheduler profile)
@@ -386,8 +379,8 @@ theorem lateKernel_close {LateOption : Type}
                 rw [dite_eq_left represented]
                 obtain ⟨repCurrent, _, _, repSame⟩ :=
                   represented.choose_spec.choose_spec
-                exact round_image_congr_of_forced bounds horizon scheduler key.owner remaining
+                exact (round_image_congr_of_forced bounds horizon scheduler key.owner remaining
                   history represented.choose current repCurrent (by rw [current]; exact forced)
-                  (stateEq.trans repSame.symm) pending ready view
+                  (stateEq.trans repSame.symm) pending ready view).symm
 
 end Vegas

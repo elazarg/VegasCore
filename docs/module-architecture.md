@@ -29,6 +29,9 @@ directory's aggregator imports every module in it.
 
 ## GameTheoryExtensions
 
+- [Integrable optional-readout domination and residual laws](../GameTheoryExtensions/Math/Probability/OptionalDomination.lean)
+- [Conditioning cost from excluded probability and payoff oscillation](../GameTheoryExtensions/Math/Probability/ConditioningCost.lean)
+
 - [Guarded absolute-expectation contraction](../GameTheoryExtensions/Math/Probability/ExpectationContraction.lean)
 - [Discrete pushforward measurability and integration](../GameTheoryExtensions/Math/Probability/DiscretePushforward.lean)
 - [Bounded-fiber counterpart estimates](../GameTheoryExtensions/Math/Probability/CounterpartBounds.lean)
@@ -62,6 +65,8 @@ directory's aggregator imports every module in it.
 
 ## Interaction
 
+- [Immutable-seed likelihood of actual scheduler traces](../Interaction/ReactiveSchedulerDensity.lean)
+
 - [Exact environment-step support cases](../Interaction/ReactiveEnvironmentStep.lean)
 - [Input recall and continuation order](../Interaction/ReactiveInputOrder.lean)
 - [Round-law congruence from component kernels](../Interaction/ReactiveRoundCongruence.lean)
@@ -90,6 +95,10 @@ directory's aggregator imports every module in it.
 - [Observer-local submission and ledger accounting](../Interaction/ReactiveSubmissionSerial.lean)
 - [Reactive Terminal Evaluation](../Interaction/ReactiveTerminalEvaluation.lean)
 - [Actual traffic and ledger envelope identity](../Interaction/ReactiveTrafficIdentity.lean)
+
+## Vegas/Foundation
+
+- [Typed selected partial environments](../Vegas/Foundation/PartialEnvironment.lean)
 
 ## Vegas/Source
 
@@ -379,6 +388,8 @@ directory's aggregator imports every module in it.
 - [Raw submission bounds from reserved owner slots](../Vegas/Pending/ReservedEpochTraffic.lean)
 
 ## Vegas/Game
+
+- [Actual seeded service-phase completion boundaries](../Vegas/Game/ServicePhaseBoundary.lean)
 
 - [Strategic utility from executable program payments](../Vegas/Game/ProgramPayoffs.lean)
 - [Nash correspondence for executable program payments](../Vegas/Game/ProgramPaymentNash.lean)

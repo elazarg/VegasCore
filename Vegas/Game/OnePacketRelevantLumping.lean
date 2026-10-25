@@ -67,7 +67,7 @@ structure PendingLumpingOn (assessment : (onePacketInformation setup leaks bound
         (initialLaw setup) horizon scheduler (profileOf site option)) state).support,
       next ∈ keep site key
   close : ∀ site, relevant site → ∀ key, lateKey setup leaks who site.1 = some key → ∀ option,
-    ∀ state ∈ keep site key, UnitClose δ
+    ∀ state ∈ keep site key, PMF.WithinTV δ
       (((application setup leaks).controlStep (initialLaw setup) horizon scheduler
         ((bounds.onePacketMenu (runtime setup) leaks).decodeProfile (initialLaw setup) horizon
           scheduler (profileOf site option)) state).map (image key))
@@ -102,11 +102,13 @@ theorem PendingLumpingOn.abs_failure_sub_le_of_keep {assessment : (onePacketInfo
         (fun final => if failedState key final.state then 1 else 0) -
       expect ((fun law => law.bind (lumping.kernel key option))^[fuel]
         (PMF.pure (lumping.image key history.state))) (lumping.failure key)| ≤ fuel * δ := by
-  have lumped := (bounds.onePacketMenu (runtime setup) leaks).run_map_unitClose (initialLaw setup)
+  have lumped := (bounds.onePacketMenu (runtime setup) leaks).run_map_withinTV (initialLaw setup)
     horizon scheduler (profileOf site option) (lumping.image key) (lumping.kernel key option)
     (lumping.keep site key) δ (lumping.kept site isRelevant key siteKey option)
-    (lumping.close site isRelevant key siteKey option) fuel history kept (lumping.failure key)
-    (lumping.failure_unit key)
+    (lumping.close site isRelevant key siteKey option) fuel history kept
+  have tested := lumped.abs_expect_sub_le_interval (lumping.failure key) 0 1
+    (fun point _ => by simpa only [zero_add] using lumping.failure_unit key point)
+  have lumped := by simpa only [mul_one] using tested
   rw [expect_map] at lumped
   have sameFailure : expect ((onePacketInformation setup leaks bounds horizon
       scheduler).runBehavioralFrom (profileOf site option) fuel history)
@@ -118,7 +120,7 @@ theorem PendingLumpingOn.abs_failure_sub_le_of_keep {assessment : (onePacketInfo
     intro final reached
     have stateLaw := (bounds.onePacketMenu (runtime setup) leaks).run_map_controlSteps
       (initialLaw setup) horizon scheduler (profileOf site option) fuel history
-    have inside := (iterate_bind_map_unitClose _ (lumping.image key) (lumping.kernel key option)
+    have inside := (iterate_bind_map_withinTV _ (lumping.image key) (lumping.kernel key option)
       (lumping.keep site key) δ (lumping.kept site isRelevant key siteKey option)
       (lumping.close site isRelevant key siteKey option) fuel history.state kept).1
     have stateReached : final.state ∈ (((onePacketInformation setup leaks bounds horizon

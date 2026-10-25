@@ -51,4 +51,3 @@ Finite dependency cuts and failure-aware event code for asynchronous graph
 execution. Source and pending-message strategic certificates are separate
 obligations.
 -/
-

@@ -6,6 +6,7 @@ import GameTheory.Protocol.RestrictionProfile
 import GameTheory.Protocol.Strategic
 import GameTheory.Core.UtilityTransfer
 import GameTheoryExtensions.Protocol.MenuRestriction
+import GameTheoryExtensions.Math.Probability.OptionalDomination
 
 /-! # Whole-policy deviations under an action restriction
 
@@ -78,17 +79,6 @@ theorem le_embeddedConditional (law : PMF β) (embedding : α ↪ β) (fallback 
     rw [absent]
     exact zero_le
 
-private theorem sum_toReal_eq_one {α : Type*} [Fintype α] (law : PMF α) :
-    ∑ a, (law a).toReal = 1 := by
-  have constant := expect_constant law 1
-  rw [expect_eq_sum] at constant
-  simpa using constant
-
-private theorem expect_eq_shifted {α : Type*} [Fintype α] (law : PMF α) (payoff : α → ℝ)
-    (floor : ℝ) : expect law payoff = (∑ a, (law a).toReal * (payoff a - floor)) + floor := by
-  rw [expect_eq_sum]
-  simp only [mul_sub, Finset.sum_sub_distrib, ← Finset.sum_mul, sum_toReal_eq_one law]
-  ring
 
 end GameTheory.Math.Probability
 
@@ -114,16 +104,6 @@ private theorem transport_apply {Index : Type*} {Value : Index → Type*}
     laws first (Eq.mp (congrArg Value same) value) = laws second value := by
   subst same
   rfl
-
-private theorem map_apply_embedding {α β : Type*} (law : PMF α) (embedding : α → β)
-    (injective : Function.Injective embedding) (a : α) :
-    law.map embedding (embedding a) = law a := by
-  classical
-  rw [PMF.map_apply]
-  rw [tsum_eq_single a]
-  · simp
-  · intro other different
-    rw [ite_eq_right_iff.mpr fun same => (different (injective same).symm).elim]
 
 /-- The transitions from an embedded history reaching an embedded history are
 those of the smaller protocol: every source of such a transition is embedded,
@@ -174,7 +154,7 @@ private theorem one_step_le (reflecting : restriction.Reflecting)
       have stepEq : N.localStep (restriction.history original) (embed draws) =
           (M.localStep original draws).map restriction.history :=
         (restriction.step original draws).symm
-      rw [stepEq, map_apply_embedding _ _ restriction.history.injective]
+      rw [stepEq, pmf_map_apply_of_injective _ restriction.history.injective]
       gcongr
       rw [independentProduct_apply, independentProduct_apply]
       apply Finset.prod_le_prod
@@ -186,7 +166,7 @@ private theorem one_step_le (reflecting : restriction.Reflecting)
         exact le_embeddedConditional _ _ _ _
       · simp only [Function.update_of_ne deviating, embed]
         rw [restriction.extends_at_history source target agrees original stopped i]
-        exact (map_apply_embedding _ _ (restriction.choiceAt i original).injective _).le
+        exact (pmf_map_apply_of_injective _ (restriction.choiceAt i original).injective _).le
     · intro choices nonzero
       have reached : restriction.history next ∈
           (N.localStep (restriction.history original) choices).support := by
@@ -312,7 +292,7 @@ the deviator's debt is absorbing, is incurred by every additional choice from
 an embedded history, and every terminal payoff in debt is no larger than every
 terminal payoff of the smaller protocol, then the deviation's expected payoff
 is at most that of its retained conditional. -/
-theorem expect_deviation_le_retained [Finite T.History] {fuel : ℕ}
+theorem expect_deviation_le_retained {fuel : ℕ}
     (bounded : T.BoundedHorizon fuel) (reflecting : restriction.Reflecting)
     (source : ∀ i, M.BehavioralPolicy i) (target : ∀ i, N.BehavioralPolicy i)
     (agrees : restriction.ExtendsProfile source target) (who : ι)
@@ -330,81 +310,34 @@ theorem expect_deviation_le_retained [Finite T.History] {fuel : ℕ}
     (matching : ∀ history, targetPayoff (restriction.history history) = sourcePayoff history)
     (forfeits : ∀ (indebted : T.History) (history : E.History), debt indebted.state →
       T.terminal indebted.state → E.terminal history.state →
-      targetPayoff indebted ≤ sourcePayoff history) :
+      targetPayoff indebted ≤ sourcePayoff history)
+    (sourceIntegrable : PayoffIntegrable (M.runBehavioral (Function.update source who
+      (restriction.retainedPolicy who deviation fallback)) fuel) sourcePayoff)
+    (targetIntegrable : PayoffIntegrable
+      (N.runBehavioral (Function.update target who deviation) fuel) targetPayoff) :
     expect (N.runBehavioral (Function.update target who deviation) fuel) targetPayoff ≤
       expect (M.runBehavioral (Function.update source who
         (restriction.retainedPolicy who deviation fallback)) fuel) sourcePayoff := by
   classical
-  let _ : Fintype T.History := Fintype.ofFinite _
-  have : Finite E.History := Finite.of_injective _ restriction.history.injective
-  let _ : Fintype E.History := Fintype.ofFinite _
-  let embed := restriction.history
   let deviated := N.runBehavioral (Function.update target who deviation) fuel
   let retained := M.runBehavioral (Function.update source who
     (restriction.retainedPolicy who deviation fallback)) fuel
-  have sourceBounded : E.BoundedHorizon fuel := restriction.boundedHorizon bounded
-  -- The smallest payoff the retained conditional realizes.
-  obtain ⟨least, leastMember, leastMin⟩ :=
-    (retained.support.toFinite.toFinset).exists_min_image sourcePayoff
-      ((Set.Finite.toFinset_nonempty _).mpr retained.support_nonempty)
-  rw [Set.Finite.mem_toFinset] at leastMember
-  let floor := sourcePayoff least
-  have floorLe : ∀ history ∈ retained.support, floor ≤ sourcePayoff history :=
-    fun history member => leastMin history ((Set.Finite.mem_toFinset _).mpr member)
-  have dominated : ∀ history, (deviated (embed history)).toReal ≤ (retained history).toReal :=
-    fun history => ENNReal.toReal_mono (PMF.apply_ne_top _ _)
-      (runBehavioral_embedded_le reflecting source target agrees who deviation fallback fuel
-        history)
-  have outside : ∀ reached, reached ∉ Set.range embed → (deviated reached).toReal ≠ 0 →
-      targetPayoff reached ≤ floor := by
-    intro reached notEmbedded positive
-    have member : reached ∈ deviated.support := by
-      rw [PMF.mem_support_iff]
-      intro zero
-      exact positive (by rw [zero, ENNReal.toReal_zero])
+  apply expect_le_of_dominated_readout deviated retained (Function.partialInv restriction.history)
+    (fun history => by
+      rw [map_partialInv_apply]
+      exact runBehavioral_embedded_le reflecting source target agrees who deviation fallback fuel
+        history) targetPayoff sourcePayoff targetIntegrable sourceIntegrable
+  · intro reached _ original reading
+    have same := (restriction.history.injective.isPartialInv original reached).mp reading
+    rw [← same, matching]
+  · intro reached member reading original originalMember
+    have outside := (partialInv_eq_none_iff restriction.history reached).mp reading
     have indebted := (embedded_or_debt source target agrees who deviation debt absorbing
-      incurred fuel reached member).resolve_left notEmbedded
-    exact forfeits reached least indebted
+      incurred fuel reached member).resolve_left outside
+    exact forfeits reached original indebted
       (N.runBehavioralFrom_terminal_of_bound _ bounded _ reached member)
-      (M.runBehavioralFrom_terminal_of_bound _ sourceBounded _ least leastMember)
-  rw [expect_eq_shifted deviated _ floor, expect_eq_shifted retained _ floor,
-    add_le_add_iff_right]
-  calc ∑ reached, (deviated reached).toReal * (targetPayoff reached - floor)
-      ≤ ∑ reached, (if reached ∈ Set.range embed then
-          (deviated reached).toReal * (targetPayoff reached - floor) else 0) := by
-        apply Finset.sum_le_sum
-        intro reached _
-        split_ifs with embedded
-        · exact le_rfl
-        · by_cases zero : (deviated reached).toReal = 0
-          · rw [zero, zero_mul]
-          · exact mul_nonpos_of_nonneg_of_nonpos ENNReal.toReal_nonneg
-              (sub_nonpos.mpr (outside reached embedded zero))
-    _ = ∑ history, (deviated (embed history)).toReal * (sourcePayoff history - floor) := by
-        rw [← Finset.sum_filter]
-        have rewritten : ∑ history, (deviated (embed history)).toReal *
-              (sourcePayoff history - floor) =
-            ∑ history, (fun reached => (deviated reached).toReal *
-              (targetPayoff reached - floor)) (embed history) :=
-          Finset.sum_congr rfl fun history _ => by simp only [embed, matching]
-        rw [rewritten, ← Finset.sum_map Finset.univ embed
-          (fun reached => (deviated reached).toReal * (targetPayoff reached - floor))]
-        apply Finset.sum_congr _ (fun _ _ => rfl)
-        ext reached
-        simp [Set.mem_range]
-    _ ≤ ∑ history, (retained history).toReal * (sourcePayoff history - floor) := by
-        apply Finset.sum_le_sum
-        intro history _
-        by_cases zero : (retained history).toReal = 0
-        · have below := dominated history
-          rw [zero] at below ⊢
-          rw [le_antisymm below ENNReal.toReal_nonneg, zero_mul]
-        · have member : history ∈ retained.support := by
-            rw [PMF.mem_support_iff]
-            intro equal
-            exact zero (by rw [equal, ENNReal.toReal_zero])
-          exact mul_le_mul_of_nonneg_right (dominated history)
-            (sub_nonneg.mpr (floorLe history member))
+      (M.runBehavioralFrom_terminal_of_bound _ (restriction.boundedHorizon bounded) _
+        original originalMember)
 
 /-- **Approximate Nash extends across a debt-enforced restriction.** Let every
 additional choice of a player from an embedded history leave it in an
@@ -413,7 +346,7 @@ the smaller protocol, and let the payoffs agree on embedded histories. Then
 every profile extending an `ε`-Nash equilibrium of the smaller protocol is an
 `ε`-Nash equilibrium of the larger one, at any horizon bounding the larger
 protocol. -/
-theorem isεNash_extends_of_debt [Finite T.History] {fuel : ℕ}
+theorem isεNash_extends_of_debt {fuel : ℕ}
     (bounded : T.BoundedHorizon fuel) (reflecting : restriction.Reflecting)
     (source : ∀ i, M.BehavioralPolicy i) (target : ∀ i, N.BehavioralPolicy i)
     (agrees : restriction.ExtendsProfile source target)
@@ -428,6 +361,8 @@ theorem isεNash_extends_of_debt [Finite T.History] {fuel : ℕ}
       next ∈ (N.localStep (restriction.history original) choices).support →
         debt who next.state)
     (sourceUtility : E.History → ι → ℝ) (targetUtility : T.History → ι → ℝ)
+    (sourceIntegrability : (M.toBehavioralGameForm fuel).HasIntegrableUtility sourceUtility)
+    (targetIntegrability : (N.toBehavioralGameForm fuel).HasIntegrableUtility targetUtility)
     (matching : ∀ history who,
       targetUtility (restriction.history history) who = sourceUtility history who)
     (forfeits : ∀ who (indebted : T.History) (history : E.History), debt who indebted.state →
@@ -436,16 +371,15 @@ theorem isεNash_extends_of_debt [Finite T.History] {fuel : ℕ}
     (ε : ℝ) (equilibrium : IsεNash (M.toBehavioralGameForm fuel) sourceUtility ε source) :
     IsεNash (N.toBehavioralGameForm fuel) targetUtility ε target := by
   classical
-  have : Finite E.History := Finite.of_injective _ restriction.history.injective
   refine GameForm.isεNash_of_deviation_bounds (source := M.toBehavioralGameForm fuel)
     (target := N.toBehavioralGameForm fuel) (sourceUtility := sourceUtility)
     (targetUtility := targetUtility) source target (fun who _ => ?_) (fun who replacement => ?_)
     ε equilibrium
   · have law := restriction.initialized_law source target agrees fuel
     have integrable : UtilityIntegrable targetUtility who (N.runBehavioral target fuel) :=
-      payoffIntegrable_of_finite _ _
+      targetIntegrability who target
     have sourceIntegrable : UtilityIntegrable sourceUtility who (M.runBehavioral source fuel) :=
-      payoffIntegrable_of_finite _ _
+      sourceIntegrability who source
     refine ⟨integrable.hasExpectation, ?_⟩
     change extendedExpectedUtility targetUtility who (N.runBehavioral target fuel) =
       extendedExpectedUtility sourceUtility who (M.runBehavioral source fuel)
@@ -457,11 +391,12 @@ theorem isεNash_extends_of_debt [Finite T.History] {fuel : ℕ}
   · refine ⟨restriction.retainedPolicy who replacement (source who), fun _ => ?_⟩
     have integrable : UtilityIntegrable targetUtility who
         (N.runBehavioral (Function.update target who replacement) fuel) :=
-      payoffIntegrable_of_finite _ _
+      targetIntegrability who (Function.update target who replacement)
     have sourceIntegrable : UtilityIntegrable sourceUtility who
         (M.runBehavioral (Function.update source who
           (restriction.retainedPolicy who replacement (source who))) fuel) :=
-      payoffIntegrable_of_finite _ _
+      sourceIntegrability who (Function.update source who
+        (restriction.retainedPolicy who replacement (source who)))
     refine ⟨integrable.hasExpectation, ?_⟩
     change extendedExpectedUtility targetUtility who
         (N.runBehavioral (Function.update target who replacement) fuel) ≤
@@ -472,7 +407,7 @@ theorem isεNash_extends_of_debt [Finite T.History] {fuel : ℕ}
     exact EReal.coe_le_coe_iff.mpr (expect_deviation_le_retained bounded reflecting source
       target agrees who replacement (source who) (debt who) (absorbing who) (incurred who)
       (fun history => sourceUtility history who) (fun history => targetUtility history who)
-      (fun history => matching history who) (forfeits who))
+      (fun history => matching history who) (forfeits who) sourceIntegrable integrable)
 
 omit [Fintype ι] [DecidableEq ι] in
 /-- Updating one player of a profile with a policy, and of an extension of the

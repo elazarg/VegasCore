@@ -19,104 +19,6 @@ open SourceProgram
 variable {Player : Type} [DecidableEq Player]
 variable {L : IExpr} [R : IExpr.ResultTypes L]
 
-/-- Source cells whose graph fields are visible to one player. -/
-def cellVisibleTo (who : Player) : CellTy Player L → Prop
-  | .publicData _ | .publication _ => True
-  | .commitment owner _ | .privateInput owner _ => owner = who
-
-instance (who : Player) (cell : CellTy Player L) : Decidable (cellVisibleTo who cell) := by
-  cases cell <;> simp only [cellVisibleTo] <;> infer_instance
-
-omit R in
-/-- Agreement on the cells a player can see makes that player's decoder exact:
-the decoder never reads a cell hidden from the player. -/
-theorem decodeObservation?_eq_some_of_visible {Field : Type}
-    {layout : Field → Vegas.EventGraph.EventField Player L}
-    {Γ : SourceCtx Player L} (refs : ContextRefs layout Γ) (who : Player)
-    (state : State L Γ) (store : Vegas.EventGraph.Store layout)
-    (refsAgree : ∀ {name cell} (source : HasVar Γ name cell), cellVisibleTo who cell →
-      (refs.get source).get? store = some (cellValue (state.get source))) :
-    decodeObservation? who refs store = some (sourceObserve who state) := by
-  induction Γ with
-  | nil =>
-      apply congrArg some
-      apply congrArg SourceObservation.mk
-      funext name cell source
-      nomatch source
-  | cons entry Γ ih =>
-      obtain ⟨name, cell⟩ := entry
-      have tail := ih refs.tail (fun _ _ source => state.get (.there source))
-        fun source visible => refsAgree (.there source) visible
-      cases cell with
-      | publicData payload =>
-          have head := refsAgree (HasVar.here : HasVar ((name, .publicData payload) :: Γ) name
-            (.publicData payload)) trivial
-          rw [decodeObservation?, head, tail]
-          apply congrArg some
-          apply congrArg SourceObservation.mk
-          funext readName readCell source
-          cases source with
-          | here => rfl
-          | there source => cases readCell <;> rfl
-      | publication payload =>
-          have head := refsAgree (HasVar.here : HasVar ((name, .publication payload) :: Γ) name
-            (.publication payload)) trivial
-          rw [decodeObservation?, head, tail]
-          apply congrArg some
-          apply congrArg SourceObservation.mk
-          funext readName readCell source
-          cases source with
-          | here => rfl
-          | there source => cases readCell <;> rfl
-      | commitment owner payload =>
-          by_cases same : owner = who
-          · have head := refsAgree (HasVar.here :
-              HasVar ((name, .commitment owner payload) :: Γ) name (.commitment owner payload))
-              same
-            rw [decodeObservation?, dite_eq_left same, head, tail]
-            apply congrArg some
-            apply congrArg SourceObservation.mk
-            funext readName readCell source
-            cases source with
-            | here =>
-                change some (state.get HasVar.here) =
-                  if owner = who then some (state.get HasVar.here) else none
-                simp [same]
-            | there source => cases readCell <;> rfl
-          · rw [decodeObservation?, dite_eq_right same, tail]
-            apply congrArg some
-            apply congrArg SourceObservation.mk
-            funext readName readCell source
-            cases source with
-            | here =>
-                change none = if owner = who then some (state.get HasVar.here) else none
-                simp [same]
-            | there source => cases readCell <;> rfl
-      | privateInput owner payload =>
-          by_cases same : owner = who
-          · have head := refsAgree (HasVar.here :
-              HasVar ((name, .privateInput owner payload) :: Γ) name (.privateInput owner payload))
-              same
-            rw [decodeObservation?, dite_eq_left same, head, tail]
-            apply congrArg some
-            apply congrArg SourceObservation.mk
-            funext readName readCell source
-            cases source with
-            | here =>
-                change some (state.get HasVar.here) =
-                  if owner = who then some (state.get HasVar.here) else none
-                simp [same]
-            | there source => cases readCell <;> rfl
-          · rw [decodeObservation?, dite_eq_right same, tail]
-            apply congrArg some
-            apply congrArg SourceObservation.mk
-            funext readName readCell source
-            cases source with
-            | here =>
-                change none = if owner = who then some (state.get HasVar.here) else none
-                simp [same]
-            | there source => cases readCell <;> rfl
-
 /-- Write one value through a typed graph-field reference. -/
 private def writeField {Field : Type} [DecidableEq Field]
     {layout : Field → Vegas.EventGraph.EventField Player L}
@@ -827,14 +729,9 @@ theorem decodeObservation?_eq_none_of_publication {Field : Type}
     (store : Vegas.EventGraph.Store layout) {name : VarId} {payload : L.Ty}
     (ref : HasVar Γ name (.publication payload)) (missing : (refs.get ref).get? store = none) :
     decodeObservation? who refs store = none := by
-  induction Γ with
-  | nil => nomatch ref
-  | cons entry Γ ih =>
-      obtain ⟨entryName, cell⟩ := entry
-      cases ref with
-      | here => simp [decodeObservation?, missing]
-      | there ref =>
-          have tail := ih refs.tail ref missing
-          cases cell <;> simp [decodeObservation?, tail]
+  rw [decodeObservation?_eq_collect]
+  unfold collectObservation?
+  rw [PartialEnvironment.eq_none_of_lookup_none _ Γ _ ref trivial missing]
+  rfl
 
 end Vegas

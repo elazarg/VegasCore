@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.AsyncDeviationChoice
+import Vegas.Game.ServicePhaseBoundary
 import Vegas.Game.ServiceBlockLaw
 import Vegas.Game.ServiceCommitTail
 
@@ -203,20 +203,6 @@ def DeviationLaw [Fintype Player] {Γ : SourceCtx Player L} {names : Finset VarI
             fun state => (nextNoise (state.map (ProtocolState.observe who program))).map
               fun extra => (state, extra)
 
-/-- The points a first phase ending at `high` reaches, paired with their seeds. -/
-abbrev phaseJoint {Seed : Type} (high : Nat) (prior : PMF Seed)
-    (execution : Seed → (serviceApplication setup mode deadline leaks).Execution) :
-    PMF (Seed × (serviceApplication setup mode deadline leaks).Execution) :=
-  prior.bind fun seed =>
-    ((serviceApplication setup mode deadline leaks).runUntilHorizon scheduler players
-      (BlockDone high) horizon (execution seed)).map fun final => (seed, final)
-
-/-- A point a first phase ending at `high` reaches. -/
-abbrev PhasePoint {Seed : Type} (high : Nat) (prior : PMF Seed)
-    (execution : Seed → (serviceApplication setup mode deadline leaks).Execution) : Type :=
-  {point // point ∈ (phaseJoint setup leaks horizon scheduler players high prior
-    execution).support}
-
 /-- **Finishing a phase.** If the first phase of a program, ending at `high`,
 reconstructs a residual configuration for every reached point, with the source
 law of the phase given by a source step kernel, and the residual program has the
@@ -415,25 +401,6 @@ theorem DeviationLaw.finish [Fintype Player] {Γ : SourceCtx Player L} {names : 
     exact sourceEq
   rw [nativeEq]
   simpa only [marginalEq] using lifted
-
-/-- A point a first phase reaches comes from a seed of the prior and a run of
-the phase. -/
-theorem phaseJoint_mem {Seed : Type} {high : Nat} {prior : PMF Seed}
-    {execution : Seed → (serviceApplication setup mode deadline leaks).Execution}
-    {point : Seed × (serviceApplication setup mode deadline leaks).Execution}
-    (member : point ∈ (phaseJoint setup leaks horizon scheduler players high prior
-      execution).support) :
-    point.1 ∈ prior.support ∧
-      point.2 ∈ ((serviceApplication setup mode deadline leaks).runUntilHorizon scheduler players
-        (BlockDone high) horizon (execution point.1)).support := by
-  rcases point with ⟨seed, final⟩
-  unfold phaseJoint at member
-  rw [PMF.support_bind] at member
-  obtain ⟨selected, chosen, moved⟩ := Set.mem_iUnion₂.mp member
-  rw [PMF.support_map] at moved
-  obtain ⟨reached, moved, same⟩ := moved
-  obtain ⟨rfl, rfl⟩ := Prod.mk.inj same
-  exact ⟨chosen, moved⟩
 
 /-- **One phase, decoded.** If the run of the first phase, ending at `high`,
 decodes through an injective embedding of residual entry states with the
@@ -650,31 +617,8 @@ theorem asyncDeviation_deviationLaw [Fintype Player]
       have alone : ∀ (cut : (serviceGraph setup mode).order.Cut) other, cut.Ready event →
           cut.Ready other → other = event := fun cut other ready otherReady =>
         ordered.ready_public_unique cut (by rw [outputEq]; trivial) ready otherReady
-      have boundaryAt (seed : Seed) (supported : seed ∈ prior.support) :
-          CompletionBoundary setup leaks scheduler players event.val (execution seed) := by
-        rw [eventRank]
-        exact boundary seed supported
-      have stopEq (seed : Seed) (supported : seed ∈ prior.support) :
-          app.runUntilHorizon scheduler players
-              (fun final => event ∈ final.application.config.cut.completed) horizon
-              (execution seed) =
-            app.runUntilHorizon scheduler players (BlockDone (offset + 1)) horizon
-              (execution seed) := by
-        have stopped := runUntilHorizon_eventDone_eq_blockDone horizon event alone _
-          (boundaryAt seed supported)
-        rwa [eventRank] at stopped
-      have nextFacts (point : PhasePoint setup leaks horizon scheduler players (offset + 1) prior
-          execution) :
-          CompletionBoundary setup leaks scheduler players (offset + 1) point.val.2 ∧
-            point.val.2.environmentRecall.length ≤ horizon := by
-        obtain ⟨supported, reached⟩ := phaseJoint_mem setup leaks horizon scheduler players
-          point.property
-        rw [← stopEq _ supported] at reached
-        obtain ⟨_, _, _, nextBounded, nextBoundary⟩ := completionRun_boundary_step
-          contract.completes event alone (execution point.val.1) (boundaryAt _ supported)
-          (bounded _ supported) point.val.2 reached
-        rw [eventRank] at nextBoundary
-        exact ⟨nextBoundary, nextBounded⟩
+      obtain ⟨stopEq, nextFacts⟩ := event_phase_stop_boundary setup leaks horizon
+        scheduler players contract.completes event eventRank alone prior execution boundary bounded
       obtain ⟨configNoise, law⟩ := asyncDeviation_sample_factorization contract turns
         wholeProfile who deviation fresh distribution next profile refs embedding refsBefore
         offset alone prior source execution aligned checkpoint boundary bounded noise factor
@@ -743,31 +687,8 @@ theorem asyncDeviation_deviationLaw [Fintype Player]
       have alone : ∀ (cut : (serviceGraph setup mode).order.Cut) other, cut.Ready event →
           cut.Ready other → other = event := fun cut other ready otherReady =>
         ordered.ready_public_unique cut (by rw [outputEq]; trivial) ready otherReady
-      have boundaryAt (seed : Seed) (supported : seed ∈ prior.support) :
-          CompletionBoundary setup leaks scheduler players event.val (execution seed) := by
-        rw [eventRank]
-        exact boundary seed supported
-      have stopEq (seed : Seed) (supported : seed ∈ prior.support) :
-          app.runUntilHorizon scheduler players
-              (fun final => event ∈ final.application.config.cut.completed) horizon
-              (execution seed) =
-            app.runUntilHorizon scheduler players (BlockDone (offset + 1)) horizon
-              (execution seed) := by
-        have stopped := runUntilHorizon_eventDone_eq_blockDone horizon event alone _
-          (boundaryAt seed supported)
-        rwa [eventRank] at stopped
-      have nextFacts (point : PhasePoint setup leaks horizon scheduler players (offset + 1) prior
-          execution) :
-          CompletionBoundary setup leaks scheduler players (offset + 1) point.val.2 ∧
-            point.val.2.environmentRecall.length ≤ horizon := by
-        obtain ⟨supported, reached⟩ := phaseJoint_mem setup leaks horizon scheduler players
-          point.property
-        rw [← stopEq _ supported] at reached
-        obtain ⟨_, _, _, nextBounded, nextBoundary⟩ := completionRun_boundary_step
-          contract.completes event alone (execution point.val.1) (boundaryAt _ supported)
-          (bounded _ supported) point.val.2 reached
-        rw [eventRank] at nextBoundary
-        exact ⟨nextBoundary, nextBounded⟩
+      obtain ⟨stopEq, nextFacts⟩ := event_phase_stop_boundary setup leaks horizon
+        scheduler players contract.completes event eventRank alone prior execution boundary bounded
       let tailEmbedding := embedding.tail next (by simp [eventCount]) (fun _ => rfl)
       let tailRefs : ContextRefs (graphLayout setup.program)
           ((published, .publication payload) :: Γ) := refs.cons ⟨.inr event, outputEq⟩
@@ -925,18 +846,9 @@ theorem asyncDeviation_deviationLaw [Fintype Player]
         subst same
         exact CompiledSuffix.commitPrefix_bind count program prefixed refs _ _ embedding
           refsBefore offset (aligned prior.support_nonempty.choose).graphSuffix index below
-      have nextFacts (point : PhasePoint setup leaks horizon scheduler players (offset + count)
-          prior execution) :
-          CompletionBoundary setup leaks scheduler players (offset + count) point.val.2 ∧
-            point.val.2.environmentRecall.length ≤ horizon := by
-        obtain ⟨supported, reached⟩ := phaseJoint_mem setup leaks horizon scheduler players
-          point.property
-        have done := blockRun_completes contract.completes (offset + count)
-          (execution point.val.1) (boundary _ supported) (bounded _ supported) _ reached
-        obtain ⟨nextBounded, nextBoundary⟩ := blockRun_boundary (Nat.le_add_right _ _)
-          (BlockEnd.sealed ordered wall) wall.1 (execution point.val.1) (boundary _ supported)
-          (bounded _ supported) _ reached done
-        exact ⟨nextBoundary, nextBounded⟩
+      have nextFacts := block_phase_boundary setup leaks horizon scheduler players
+        contract.completes (Nat.le_add_right _ _)
+        (BlockEnd.sealed ordered wall) wall.1 prior execution boundary bounded
       obtain ⟨policy, configNoise, law⟩ := asyncDeviation_block_factorization
         ordered.revealRelaxedOrdered wall contract timely turns wholeProfile who deviation bindings
         program profile count prefixed refs embedding refsBefore rfl prior source execution

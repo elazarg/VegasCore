@@ -35,7 +35,9 @@ theorem failedReveals_pos_of_owesFailure (who : Player) {Γ : SourceCtx Player L
   owed.elim (fun indebted => failedReveals_pos_of_indebted who program state indebted read)
     (fun failed => failedReveals_pos_of_failedBinding who program state failed read)
 
-theorem owesFailure_of_deviation (who : Player) : {Γ : SourceCtx Player L} → {O : Finset VarId} →
+/-- A legal departure either leaves a debt or uses an admitted forfeiture site. -/
+theorem deviation_debt_or_admitted_failure (who : Player) :
+    {Γ : SourceCtx Player L} → {O : Finset VarId} →
     (program : SourceProgram Player L Γ O) → (admission : CommitmentInterface program) →
     (state : ProtocolState program) → Intended program state →
     (joint : Player → Option (OwnAction Player L)) → (action : OwnAction Player L) →
@@ -43,7 +45,8 @@ theorem owesFailure_of_deviation (who : Player) : {Γ : SourceCtx Player L} → 
     ProtocolView.actor who program (observe who program state) = some who →
     action ∈ ProtocolView.available who program admission (observe who program state) →
     action ∉ ProtocolView.intendedAvailable who program (observe who program state) →
-    ∀ target ∈ (step program state joint).support, OwesFailure who program target
+    ∀ target ∈ (step program state joint).support, Indebted who program target ∨
+      ((∃ site, admission site = .forfeiture) ∧ FailedBinding who program target)
   | _, _, .ret _, _, _, _, _, _, _, acts, _, _, _, _ => by
       simp [ProtocolView.actor] at acts
   | _, _, .sample _ _ _ next, admission, state, intended, joint, action, chosen, acts,
@@ -53,23 +56,22 @@ theorem owesFailure_of_deviation (who : Player) : {Γ : SourceCtx Player L} → 
       | inr rest =>
           simp only [step, Sum.elim_inr, PMF.support_map, Set.mem_image] at reached
           obtain ⟨after, supported, rfl⟩ := reached
-          exact owesFailure_of_deviation who next admission rest intended joint action chosen
-            acts available new after supported
+          exact deviation_debt_or_admitted_failure who next admission rest intended joint action
+            chosen acts available new after supported
   | _, _, .commit (payload := payload) name owner fresh guard next, admission, state,
       intended, joint, action, chosen, acts, available, new, target, reached => by
       cases state with
       | inl config =>
           have same : owner = who := by simpa [ProtocolView.actor, observe] using acts
           subst same
-          obtain ⟨choice, _, rfl⟩ := available
+          obtain ⟨choice, admits, rfl⟩ := available
           simp only [step, Sum.elim_inl, PMF.mem_support_pure_iff] at reached
           subst reached
           rw [chosen, OwnAction.binding_commit]
           cases choice with
           | failure =>
-              right
-              exact failedBinding_entry next _
-                (Config.failedBinding_commit config intended.1.unique fresh guard _)
+              exact Or.inr ⟨⟨none, admits⟩, failedBinding_entry next _
+                (Config.failedBinding_commit config intended.1.unique fresh guard _)⟩
           | success value =>
               have rejected : guard.predicts (sourceObserve owner config.state) value = false := by
                 have notIntended :
@@ -82,8 +84,11 @@ theorem owesFailure_of_deviation (who : Player) : {Γ : SourceCtx Player L} → 
       | inr rest =>
           simp only [step, Sum.elim_inr, PMF.support_map, Set.mem_image] at reached
           obtain ⟨after, supported, rfl⟩ := reached
-          exact owesFailure_of_deviation who next (fun site => admission (some site)) rest intended
-            joint action chosen acts available new after supported
+          rcases deviation_debt_or_admitted_failure who next (fun site => admission (some site))
+            rest intended joint action chosen acts available new after supported with
+            indebted | ⟨⟨site, admitted⟩, failed⟩
+          · exact Or.inl indebted
+          · exact Or.inr ⟨⟨some site, admitted⟩, failed⟩
   | _, _, .reveal published owner name fresh source _ next, admission, state, intended,
       joint, action, chosen, acts, available, new, target, reached => by
       cases state with
@@ -104,9 +109,46 @@ theorem owesFailure_of_deviation (who : Player) : {Γ : SourceCtx Player L} → 
       | inr rest =>
           simp only [step, Sum.elim_inr, PMF.support_map, Set.mem_image] at reached
           obtain ⟨after, supported, rfl⟩ := reached
-          rcases owesFailure_of_deviation who next admission rest intended.2 joint action chosen
-            acts available new after supported with indebted | failed
+          rcases deviation_debt_or_admitted_failure who next admission rest intended.2 joint action
+            chosen acts available new after supported with indebted | ⟨admitted, failed⟩
           · exact Or.inl (Or.inr indebted)
-          · exact Or.inr (Or.inr failed)
+          · exact Or.inr ⟨admitted, Or.inr failed⟩
+
+
+/-- **Leaving the intended game.** A step at which `who` takes a source action
+the intended game does not offer, from a point of the intended game, leaves
+`who` owing a failed reveal: a withholding fails at once, and a value the guard
+is predicted to reject leaves an indebted obligation. -/
+theorem indebted_of_deviation (who : Player) : {Γ : SourceCtx Player L} → {O : Finset VarId} →
+    (program : SourceProgram Player L Γ O) → (admission : CommitmentInterface program) →
+    (∀ site, admission site = .values) → (state : ProtocolState program) →
+    Intended program state → (joint : Player → Option (OwnAction Player L)) →
+    (action : OwnAction Player L) → joint who = some action →
+    ProtocolView.actor who program (observe who program state) = some who →
+    action ∈ ProtocolView.available who program admission (observe who program state) →
+    action ∉ ProtocolView.intendedAvailable who program (observe who program state) →
+    ∀ target ∈ (step program state joint).support, Indebted who program target := by
+  intro Γ O program admission values state intended joint action chosen acts available new
+    target reached
+  rcases deviation_debt_or_admitted_failure who program admission state intended joint action
+    chosen acts available new target reached with indebted | ⟨⟨site, admitted⟩, _⟩
+  · exact indebted
+  · rw [values site] at admitted
+    cases admitted
+
+theorem owesFailure_of_deviation (who : Player) : {Γ : SourceCtx Player L} → {O : Finset VarId} →
+    (program : SourceProgram Player L Γ O) → (admission : CommitmentInterface program) →
+    (state : ProtocolState program) → Intended program state →
+    (joint : Player → Option (OwnAction Player L)) → (action : OwnAction Player L) →
+    joint who = some action →
+    ProtocolView.actor who program (observe who program state) = some who →
+    action ∈ ProtocolView.available who program admission (observe who program state) →
+    action ∉ ProtocolView.intendedAvailable who program (observe who program state) →
+    ∀ target ∈ (step program state joint).support, OwesFailure who program target := by
+  intro Γ O program admission state intended joint action chosen acts available new target reached
+  rcases deviation_debt_or_admitted_failure who program admission state intended joint action
+    chosen acts available new target reached with indebted | ⟨_, failed⟩
+  · exact Or.inl indebted
+  · exact Or.inr failed
 
 end Vegas.SourceProgram.ProtocolState

@@ -103,14 +103,7 @@ theorem CompiledPolicySuffix.sampleTail
     let tailEmbedding := embedding.tail next (by simp [eventCount]) (fun _ => rfl)
     let tailRefs := refs.cons (embedding.ref headIndex)
     let tailRefsBefore : ContextRefsBefore tailRefs tailEmbedding := by
-      intro readName cell source remaining
-      cases source with
-      | here =>
-          change (embedding.event headIndex).val <
-            (embedding.event (Fin.succ remaining)).val
-          apply embedding.strictMono
-          exact Fin.mk_lt_mk.mpr (Nat.zero_lt_succ _)
-      | there source => exact refsBefore source (Fin.succ remaining)
+      exact refsBefore.tail_cons next (by simp [eventCount]) (fun _ => rfl) _ rfl
     CompiledPolicySuffix whole wholeProfile next
       (afterSample profile) tailRefs revelations.weaken
       registry.weaken tailEmbedding tailRefsBefore (offset + 1) := by
@@ -170,14 +163,7 @@ theorem CompiledPolicySuffix.commitTail
     let tailEmbedding := embedding.tail next (by simp [eventCount]) (fun _ => rfl)
     let tailRefs := refs.cons (embedding.ref headIndex)
     let tailRefsBefore : ContextRefsBefore tailRefs tailEmbedding := by
-      intro readName cell source remaining
-      cases source with
-      | here =>
-          change (embedding.event headIndex).val <
-            (embedding.event (Fin.succ remaining)).val
-          apply embedding.strictMono
-          exact Fin.mk_lt_mk.mpr (Nat.zero_lt_succ _)
-      | there source => exact refsBefore source (Fin.succ remaining)
+      exact refsBefore.tail_cons next (by simp [eventCount]) (fun _ => rfl) _ rfl
     CompiledPolicySuffix whole wholeProfile next
       (afterCommit profile) tailRefs revelations.weaken
       (obligation :: registry.weaken) tailEmbedding tailRefsBefore (offset + 1) := by
@@ -239,14 +225,7 @@ theorem CompiledPolicySuffix.revealTail
     let tailEmbedding := embedding.tail next (by simp [eventCount]) (fun _ => rfl)
     let tailRefs := refs.cons resultRef
     let tailRefsBefore : ContextRefsBefore tailRefs tailEmbedding := by
-      intro readName cell source remaining
-      cases source with
-      | here =>
-          change (embedding.event headIndex).val <
-            (embedding.event (Fin.succ remaining)).val
-          apply embedding.strictMono
-          exact Fin.mk_lt_mk.mpr (Nat.zero_lt_succ _)
-      | there source => exact refsBefore source (Fin.succ remaining)
+      exact refsBefore.tail_cons next (by simp [eventCount]) (fun _ => rfl) _ rfl
     CompiledPolicySuffix whole wholeProfile next
       (afterReveal profile) tailRefs
       (revelations.reveal (published := published) selected) registry.weaken tailEmbedding

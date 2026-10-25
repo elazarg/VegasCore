@@ -129,3 +129,5 @@ import Interaction.ReactiveTrafficContinuation
 import Interaction.ReactiveTrafficIdentity
 import Interaction.ReactiveTrafficState
 import Interaction.ScheduledOpening
+
+import Interaction.ReactiveSchedulerDensity

@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Source.ProposalRecoveryPreparationRepair
+import GameTheoryExtensions.Protocol.MenuRestriction
 
 /-! # Selective preparation partners for actual recovery instructions -/
 
@@ -281,24 +282,15 @@ theorem FocalRepair.preparation_recoveryStep (who : Player) :
                     (program := .reveal published owner name fresh selected unresolved next)
                     (.inl repaired) excluded 0).available
                   translated := by
-                intro observer
                 by_cases inactive : owner ∈ excluded
+                · simpa only [translated, inactive, ↓reduceIte, IsLegalJoint,
+                    CommitRecoveryState.Active, CommitRecoveryState.available,
+                    CommitRecoveryState.atPoint, ProtocolState.actor, ProtocolState.observe,
+                    ProtocolView.recoveryAvailable, ProtocolView.atCommit, ProtocolView.available,
+                    Sum.elim_inl] using legal
                 · simp only [translated, inactive, ↓reduceIte]
-                  cases choice : joint observer with
-                  | none =>
-                      intro acting
-                      exact acting.2 (Option.some.inj acting.1 ▸ inactive)
-                  | some move =>
-                      have offered := legal observer
-                      rw [choice] at offered
-                      exact (offered.1.2 (Option.some.inj offered.1.1 ▸ inactive)).elim
-                · simp only [translated, inactive, ↓reduceIte]
-                  by_cases acts : observer = owner
-                  · subst observer
-                    rw [Function.update_self]
-                    exact ⟨⟨rfl, inactive⟩, ⟨changed, rfl⟩, rfl⟩
-                  · rw [Function.update_of_ne acts]
-                    exact legal observer
+                  exact legal.update owner ⟨.reveal owner name changed, false⟩ ⟨rfl, inactive⟩
+                    ⟨⟨changed, rfl⟩, rfl⟩
               have bitEq : (if owner ∈ excluded then false else
                   OwnAction.disclosure ((translated owner).map (·.action))) = changed := by
                 by_cases inactive : owner ∈ excluded

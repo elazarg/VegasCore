@@ -374,7 +374,7 @@ theorem ownerBindingLaw_of_siteComponents {LateOption' : Type}
         (slotMove_of_recorded chosenTrace key.owner event chosenRecorded)
     beta_reduce
     rw [coreEq, movesEq, PMF.pure_map]
-    exact unitClose_mix _ _ _ _ _
+    exact PMF.WithinTV.mix_right _ _ _ _ _
   · have unsent : (runtime setup).eventRecorded leaks (execution.recall key.owner) event =
         false := by
       cases value : (runtime setup).eventRecorded leaks (execution.recall key.owner) event
@@ -481,7 +481,7 @@ theorem ownerOpeningLaw_of_siteComponents {LateOption' : Type}
         (PMF.pure (silenceChoice setup leaks bounds (initialLaw setup) horizon scheduler
           key.owner (some (execution.recall key.owner,
             execution.observe (application setup leaks) key.owner)))) main) with coreEq
-    have close := unitClose_mix (scale ^ 3) (pow_nonneg nonnegative 3)
+    have close := PMF.WithinTV.mix_right (scale ^ 3) (pow_nonneg nonnegative 3)
       (pow_le_one₀ nonnegative le_one)
       ((bounds.onePacketMenu (runtime setup) leaks).uniformPolicy (initialLaw setup) horizon
         scheduler key.owner (some (execution.recall key.owner,
@@ -510,7 +510,9 @@ theorem ownerOpeningLaw_of_siteComponents {LateOption' : Type}
         rw [expect_congr_on_support (g := fun _ => (1 : ℝ)) fun choice supported => by
           simp only [Function.comp, silent choice supported, ↓reduceIte]]
         exact expect_constant core 1
-      have near := close _ unit
+      have near := close.abs_expect_sub_le_interval _ 0 1
+        (fun point _ => by simpa only [zero_add] using unit point)
+      simp only [mul_one] at near
       rw [coreOne] at near
       simpa only [↓reduceIte] using near
     · set rest : (application setup leaks).Action → ℝ := fun action =>
@@ -536,7 +538,9 @@ theorem ownerOpeningLaw_of_siteComponents {LateOption' : Type}
         rw [expect_congr_on_support (g := fun _ => (0 : ℝ)) fun choice supported => by
           simp only [Function.comp, silent choice supported, restEq, true_or, ↓reduceIte]]
         exact expect_zero core
-      have near := close _ unit
+      have near := close.abs_expect_sub_le_interval _ 0 1
+        (fun point _ => by simpa only [zero_add] using unit point)
+      simp only [mul_one] at near
       rw [coreZero, sub_zero] at near
       exact (abs_le.mp near).2
   · have unsent : (runtime setup).eventRecorded leaks (execution.recall key.owner) event =

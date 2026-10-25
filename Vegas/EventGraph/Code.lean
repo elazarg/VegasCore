@@ -159,140 +159,43 @@ theorem get?_isSome {Field : Type} {layout : Field → EventField Player L}
 end PublicRead
 
 private def collectPublicReads {Field : Type} {layout : Field → EventField Player L}
-    (deps : Finset VarId) :
-    (schema : Ctx L.Ty) →
-      (∀ {name payload}, HasVar schema name payload → PublicRead (R := R) layout payload) →
-      Store layout →
-      Option (∀ {name payload}, HasVar schema name payload → name ∈ deps → L.Val payload)
-  | [], _, _ => some fun h _ => nomatch h
-  | (name, payload) :: tail, reads, store =>
-      let rest := collectPublicReads deps tail (fun h => reads (.there h)) store
-      if member : name ∈ deps then
-        (reads (HasVar.here : HasVar ((name, payload) :: tail) name payload)).get? store >>=
-          fun value =>
-        rest.map fun tailGet {refName refPayload}
-            (h : HasVar ((name, payload) :: tail) refName refPayload) hx =>
-          match h with
-          | HasVar.here => value
-          | HasVar.there h => tailGet h hx
-      else
-        rest.map fun tailGet {refName refPayload}
-            (h : HasVar ((name, payload) :: tail) refName refPayload) hx =>
-          match h with
-          | HasVar.here => False.elim (member hx)
-          | HasVar.there h => tailGet h hx
+    (deps : Finset VarId) (schema : Ctx L.Ty)
+    (reads : ∀ {name payload}, HasVar schema name payload → PublicRead (R := R) layout payload)
+    (store : Store layout) :=
+  PartialEnvironment.collect? (fun name _ => name ∈ deps) schema
+    (fun ref _ => (reads ref).get? store)
 
-private theorem collectPublicReads_congr {Field : Type}
-    {layout : Field → EventField Player L} (deps : Finset VarId)
-    (schema : Ctx L.Ty)
-    (reads : ∀ {name payload}, HasVar schema name payload →
-      PublicRead (R := R) layout payload)
+private theorem collectPublicReads_congr {Field : Type} {layout : Field → EventField Player L}
+    (deps : Finset VarId) (schema : Ctx L.Ty)
+    (reads : ∀ {name payload}, HasVar schema name payload → PublicRead (R := R) layout payload)
     (left right : Store layout)
     (agree : ∀ {name payload} (ref : HasVar schema name payload), name ∈ deps →
       (reads ref).get? left = (reads ref).get? right) :
-    collectPublicReads deps schema reads left = collectPublicReads deps schema reads right := by
-  induction schema with
-  | nil => rfl
-  | cons entry tail ih =>
-      obtain ⟨name, payload⟩ := entry
-      have tailEq := ih (fun ref => reads (.there ref))
-        (fun ref member => agree (.there ref) member)
-      by_cases member : name ∈ deps
-      · have headEq := agree
-          (HasVar.here : HasVar ((name, payload) :: tail) name payload) member
-        simp only [collectPublicReads, dite_eq_left member]
-        rw [headEq, tailEq]
-      · simp only [collectPublicReads, dite_eq_right member]
-        rw [tailEq]
+    collectPublicReads deps schema reads left = collectPublicReads deps schema reads right :=
+  PartialEnvironment.congr _ schema _ _ agree
 
-private theorem collectPublicReads_isSome {Field : Type}
-    {layout : Field → EventField Player L} (deps : Finset VarId)
-    (schema : Ctx L.Ty)
-    (reads : ∀ {name payload}, HasVar schema name payload →
-      PublicRead (R := R) layout payload)
+private theorem collectPublicReads_isSome {Field : Type} {layout : Field → EventField Player L}
+    (deps : Finset VarId) (schema : Ctx L.Ty)
+    (reads : ∀ {name payload}, HasVar schema name payload → PublicRead (R := R) layout payload)
     (store : Store layout)
     (available : ∀ {name payload} (ref : HasVar schema name payload), name ∈ deps →
       (store (reads ref).field).isSome = true) :
-    (collectPublicReads deps schema reads store).isSome = true := by
-  induction schema with
-  | nil => rfl
-  | cons entry tail ih =>
-      obtain ⟨name, payload⟩ := entry
-      have tailAvailable : ∀ {refName refPayload}
-          (ref : HasVar tail refName refPayload), refName ∈ deps →
-          (store (reads (.there ref)).field).isSome = true := by
-        intro refName refPayload ref member
-        exact available (.there ref) member
-      have tailPresent := ih (fun ref => reads (.there ref)) tailAvailable
-      by_cases member : name ∈ deps
-      · have headPresent := PublicRead.get?_isSome (reads
-          (HasVar.here : HasVar ((name, payload) :: tail) name payload)) store
-          (available HasVar.here member)
-        cases hhead : (reads
-          (HasVar.here : HasVar ((name, payload) :: tail) name payload)).get? store <;>
-            simp_all [collectPublicReads]
-      · simp [collectPublicReads, member, tailPresent]
+    (collectPublicReads deps schema reads store).isSome = true :=
+  (PartialEnvironment.isSome_iff _ schema _).mpr
+    (fun ref read => PublicRead.get?_isSome (reads ref) store (available ref read))
 
-private theorem collectPublicReads_eq_of_reads {Field : Type}
-    {layout : Field → EventField Player L} (deps : Finset VarId)
-    (schema : Ctx L.Ty)
-    (reads : ∀ {name payload}, HasVar schema name payload →
-      PublicRead (R := R) layout payload)
+private theorem collectPublicReads_eq_of_reads {Field : Type} {layout : Field → EventField Player L}
+    (deps : Finset VarId) (schema : Ctx L.Ty)
+    (reads : ∀ {name payload}, HasVar schema name payload → PublicRead (R := R) layout payload)
     (store : Store layout) (env : Env L.Val schema)
-    (agree : ∀ {name payload} (ref : HasVar schema name payload),
-      name ∈ deps → (reads ref).get? store = some (env.get ref)) :
-    ∃ get : ∀ {name payload}, HasVar schema name payload →
-        name ∈ deps → L.Val payload,
-      collectPublicReads deps schema reads store =
-          some (fun {_ _} ref member => get ref member) ∧
-      ∀ {name payload} (ref : HasVar schema name payload) (member : name ∈ deps),
-        get ref member = env.get ref := by
-  induction schema with
-  | nil =>
-      refine ⟨(fun {_ _} ref _ => nomatch ref), rfl, ?_⟩
-      intro name payload ref
-      nomatch ref
-  | cons entry tail ih =>
-      obtain ⟨name, payload⟩ := entry
-      let tailEnv : Env L.Val tail := fun _ _ ref => env.get (.there ref)
-      obtain ⟨tailGet, tailCollected, tailAgree⟩ :=
-        ih (fun ref => reads (.there ref)) tailEnv
-          (fun ref member => agree (.there ref) member)
-      by_cases member : name ∈ deps
-      · let get : ∀ {refName refPayload},
-            HasVar ((name, payload) :: tail) refName refPayload →
-              refName ∈ deps → L.Val refPayload :=
-          fun {_ _} ref used => match ref with
-            | .here => env.get .here
-            | .there ref => tailGet ref used
-        refine ⟨get, ?_, ?_⟩
-        · simp only [collectPublicReads, dite_eq_left member]
-          rw [agree HasVar.here member, tailCollected]
-          simp only [Option.map_some]
-          apply congrArg some
-          funext refName refPayload ref used
-          cases ref <;> rfl
-        · intro refName refPayload ref used
-          cases ref with
-          | here => rfl
-          | there ref => exact tailAgree ref used
-      · let get : ∀ {refName refPayload},
-            HasVar ((name, payload) :: tail) refName refPayload →
-              refName ∈ deps → L.Val refPayload :=
-          fun {_ _} ref used => match ref with
-            | .here => False.elim (member used)
-            | .there ref => tailGet ref used
-        refine ⟨get, ?_, ?_⟩
-        · simp only [collectPublicReads, dite_eq_right member]
-          rw [tailCollected]
-          simp only [Option.map_some]
-          apply congrArg some
-          funext refName refPayload ref used
-          cases ref <;> rfl
-        · intro refName refPayload ref used
-          cases ref with
-          | here => exact False.elim (member used)
-          | there ref => exact tailAgree ref used
+    (agree : ∀ {name payload} (ref : HasVar schema name payload), name ∈ deps →
+      (reads ref).get? store = some (env.get ref)) :
+    ∃ get : ∀ {name payload}, HasVar schema name payload → name ∈ deps → L.Val payload,
+      collectPublicReads deps schema reads store = some (fun {_ _} ref read => get ref read) ∧
+        ∀ {name payload} (ref : HasVar schema name payload) (read : name ∈ deps),
+          get ref read = env.get ref :=
+  ⟨fun ref _ => env.get ref, PartialEnvironment.of_some _ schema _ _ agree,
+    fun {_ _} _ _ => rfl⟩
 
 /-- Ordinary expression code whose inputs are public event fields. `PublicExpr.readFields`
 is a finite scheduling footprint covering every semantically supported read. -/
@@ -548,82 +451,45 @@ namespace GuardCheck
 
 private def collectReads {Field : Type} {layout : Field → EventField Player L}
     {currentPayload : L.Ty} (store : Store layout)
-    (proposal : PublicationResult (L.Val currentPayload)) (deps : Finset VarId) :
-    (schema : Ctx L.Ty) →
-      (∀ {name input}, HasVar schema name input → name ∈ deps →
-        GuardOperand layout currentPayload input) →
-      Option (∀ {name input}, HasVar schema name input → name ∈ deps →
-        PublicationResult (L.Val input))
-  | [], _ => some fun h _ => nomatch h
-  | (name, input) :: tail, reads =>
-      do
-      let tailGet ← collectReads store proposal deps tail (fun ref read => reads (.there ref) read)
-      if member : name ∈ deps then
-        let head ← (reads (HasVar.here : HasVar ((name, input) :: tail) name input) member).get?
-          store proposal
-        pure fun {_ _} ref read => match ref with
-          | .here => head
-          | .there ref => tailGet ref read
-      else
-        pure fun {_ _} ref read => match ref with
-          | .here => False.elim (member read)
-          | .there ref => tailGet ref read
+    (proposal : PublicationResult (L.Val currentPayload))
+    (deps : Finset VarId) (schema : Ctx L.Ty)
+    (reads : ∀ {name input}, HasVar schema name input → name ∈ deps →
+      GuardOperand layout currentPayload input) :=
+  PartialEnvironment.collect? (fun name _ => name ∈ deps) schema
+    (fun ref read => (reads ref read).get? store proposal)
 
-omit R in private theorem collectReads_congr {Field : Type}
-    {layout : Field → EventField Player L} {currentPayload : L.Ty}
-    (left right : Store layout) (proposal : PublicationResult (L.Val currentPayload))
+omit R in
+private theorem collectReads_congr {Field : Type} {layout : Field → EventField Player L}
+    {currentPayload : L.Ty} (left right : Store layout)
+    (proposal : PublicationResult (L.Val currentPayload))
     (deps : Finset VarId) (schema : Ctx L.Ty)
     (reads : ∀ {name input}, HasVar schema name input → name ∈ deps →
       GuardOperand layout currentPayload input)
     (agree : ∀ {name input} (ref : HasVar schema name input) (read : name ∈ deps) field,
       (reads ref read).field? = some field → left field = right field) :
-    collectReads left proposal deps schema reads =
-      collectReads right proposal deps schema reads := by
-  induction schema with
-  | nil => rfl
-  | cons entry tail ih =>
-      obtain ⟨name, input⟩ := entry
-      have tailEq := ih (fun ref read => reads (.there ref) read)
-        (fun ref read field found => agree (.there ref) read field found)
-      by_cases member : name ∈ deps
-      · have headEq := GuardOperand.get?_congr
-          (reads (HasVar.here : HasVar ((name, input) :: tail) name input) member)
-          left right proposal (fun field found => agree HasVar.here member field found)
-        simp only [collectReads, tailEq, dite_eq_left member, headEq]
-      · simp only [collectReads, tailEq, dite_eq_right member]
+    collectReads left proposal deps schema reads = collectReads right proposal deps schema reads :=
+  PartialEnvironment.congr _ schema _ _ (fun ref read =>
+    GuardOperand.get?_congr (reads ref read) left right proposal
+      (fun field found => agree ref read field found))
 
-omit R in private theorem collectReads_isSome {Field : Type}
-    {layout : Field → EventField Player L} {currentPayload : L.Ty}
-    (store : Store layout) (proposal : PublicationResult (L.Val currentPayload))
+omit R in
+private theorem collectReads_isSome {Field : Type} {layout : Field → EventField Player L}
+    {currentPayload : L.Ty} (store : Store layout)
+    (proposal : PublicationResult (L.Val currentPayload))
     (deps : Finset VarId) (schema : Ctx L.Ty)
     (reads : ∀ {name input}, HasVar schema name input → name ∈ deps →
       GuardOperand layout currentPayload input)
     (available : ∀ {name input} (ref : HasVar schema name input) (read : name ∈ deps) field,
       (reads ref read).field? = some field → (store field).isSome = true) :
-    (collectReads store proposal deps schema reads).isSome = true := by
-  induction schema with
-  | nil => rfl
-  | cons entry tail ih =>
-      obtain ⟨name, input⟩ := entry
-      have tailPresent := ih (fun ref read => reads (.there ref) read)
-        (fun ref read field found => available (.there ref) read field found)
-      cases htail : collectReads store proposal deps tail (fun ref read => reads (.there ref) read)
-        with
-      | none => simp [htail] at tailPresent
-      | some tailGet =>
-          by_cases member : name ∈ deps
-          · have headPresent := GuardOperand.get?_isSome
-              (reads (HasVar.here : HasVar ((name, input) :: tail) name input) member)
-              store proposal (fun field found => available HasVar.here member field found)
-            cases hhead : (reads (HasVar.here : HasVar ((name, input) :: tail) name input)
-                member).get? store proposal with
-            | none => simp [hhead] at headPresent
-            | some head => simp [collectReads, htail, dite_eq_left member, hhead]
-          · simp [collectReads, htail, dite_eq_right member]
+    (collectReads store proposal deps schema reads).isSome = true :=
+  (PartialEnvironment.isSome_iff _ schema _).mpr (fun ref read =>
+    GuardOperand.get?_isSome (reads ref read) store proposal
+      (fun field found => available ref read field found))
 
-omit R in private theorem collectReads_eq_of_reads {Field : Type}
-    {layout : Field → EventField Player L} {currentPayload : L.Ty}
-    (store : Store layout) (proposal : PublicationResult (L.Val currentPayload))
+omit R in
+private theorem collectReads_eq_of_reads {Field : Type} {layout : Field → EventField Player L}
+    {currentPayload : L.Ty} (store : Store layout)
+    (proposal : PublicationResult (L.Val currentPayload))
     (deps : Finset VarId) (schema : Ctx L.Ty)
     (reads : ∀ {name input}, HasVar schema name input → name ∈ deps →
       GuardOperand layout currentPayload input)
@@ -633,27 +499,8 @@ omit R in private theorem collectReads_eq_of_reads {Field : Type}
       (reads ref read).get? store proposal = some (env ref read)) :
     collectReads store proposal deps schema reads =
       (some env : Option (∀ {name input}, HasVar schema name input → name ∈ deps →
-        PublicationResult (L.Val input))) := by
-  induction schema with
-  | nil =>
-      apply congrArg some
-      funext name input ref
-      nomatch ref
-  | cons entry tail ih =>
-      obtain ⟨name, input⟩ := entry
-      have tailCollected := ih (fun ref read => reads (.there ref) read)
-        (fun ref read => env (.there ref) read) (fun ref read => agree (.there ref) read)
-      by_cases member : name ∈ deps
-      · simp only [collectReads, tailCollected, dite_eq_left member, agree HasVar.here member]
-        apply congrArg some
-        funext refName refInput ref read
-        cases ref <;> rfl
-      · simp only [collectReads, tailCollected, dite_eq_right member]
-        apply congrArg some
-        funext refName refInput ref read
-        cases ref with
-        | here => exact absurd read member
-        | there ref => rfl
+        PublicationResult (L.Val input))) :=
+  PartialEnvironment.of_some _ schema _ _ agree
 
 /-- Decide a check if every referenced field operand is available. -/
 def eval? {Field : Type} [DecidableEq Field]

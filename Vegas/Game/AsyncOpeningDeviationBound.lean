@@ -300,6 +300,9 @@ theorem openingFirstTurn_deviation_bound {Parameter : Type}
   -- A failed reveal of the deviator is a debt; the retained conditional is at least as good.
   have : Finite (service.setup.executionProtocol admission).History :=
     service.setup.finite_history finite _
+  have : Finite service.setup.intendedProtocol.History :=
+    Finite.of_injective _ (service.setup.intendedRestriction
+      (CommitmentInterface.values service.setup.program)).history.injective
   have matching : ∀ history, targetPayoff ((service.setup.intendedRestriction
     (CommitmentInterface.values service.setup.program)).history history) =
       sourcePayoff history := by
@@ -356,6 +359,7 @@ theorem openingFirstTurn_deviation_bound {Parameter : Type}
     (fun original choices next running _ extra reached =>
       service.setup.indebted_of_extra wellFormed who original choices next running extra reached)
     sourcePayoff targetPayoff matching forfeits
+    (payoffIntegrable_of_finite _ _) (payoffIntegrable_of_finite _ _)
   -- The retained conditional extends to a source deviation with the same forfeited payoff.
   let extension := (service.setup.intendedRestriction (CommitmentInterface.values
     service.setup.program)).extendProfile

@@ -1,6 +1,9 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import GameTheoryExtensions
+import Interaction.ReactiveImplementation
+import Interaction.ReactiveSchedulerDensity
+import Vegas.Pending.CompletionService
 import Vegas.Compile
 import Vegas.Game
 import Vegas.Examples.LateLeak
@@ -1267,3 +1270,67 @@ end Vegas.Paper
 #guard_msgs (whitespace := lax) in
 #print axioms
   Vegas.Examples.BoundedPaymentAuction.truthful_not_dominant
+
+/-- info: 'GameTheory.Math.Probability.expect_le_of_dominated_readout' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  GameTheory.Math.Probability.expect_le_of_dominated_readout
+
+/-- info: 'GameTheory.Math.Probability.withinTV_map_of_partial_classes' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  GameTheory.Math.Probability.withinTV_map_of_partial_classes
+
+/-- info: 'Interaction.ReactiveApplication.Implementation.realizeJoint' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Interaction.ReactiveApplication.Implementation.realizeJoint
+
+/-- info: 'Interaction.ReactiveApplication.schedulerMixture_trace_density' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Interaction.ReactiveApplication.schedulerMixture_trace_density
+
+/-- info: 'Vegas.EventGraphRuntime.CompletionService.terminal_of_dependencyHeight' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.CompletionService.terminal_of_dependencyHeight
+
+/-- info: 'Vegas.SourceProgram.ProtocolState.deviation_debt_or_admitted_failure' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.SourceProgram.ProtocolState.deviation_debt_or_admitted_failure
+
+/-- info: 'Vegas.decodeObservation?_congr_of_visible' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.decodeObservation?_congr_of_visible
+
+/-- info: 'Vegas.ContextRefsBefore.tail_cons' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.ContextRefsBefore.tail_cons
+
+/-- info: 'GameTheory.Protocol.InformationModel.ActionRestriction.isεNash_extends_of_debt' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  GameTheory.Protocol.InformationModel.ActionRestriction.isεNash_extends_of_debt
+
+/-- info: 'GameTheory.Math.Probability.abs_expect_filter_sub_le' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  GameTheory.Math.Probability.abs_expect_filter_sub_le
+
+/-- info: 'GameTheory.Protocol.IsLegalJoint.update' does not depend on any axioms -/
+#guard_msgs (whitespace := lax) in
+#print axioms GameTheory.Protocol.IsLegalJoint.update

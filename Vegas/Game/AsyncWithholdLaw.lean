@@ -3,6 +3,7 @@
 import Vegas.Game.ServiceRevealDeviation
 import Vegas.Game.ServiceOpeningHonestLaw
 import GameTheoryExtensions.Math.Probability.PresentConditional
+import Vegas.Game.ServicePhaseBoundary
 
 /-! # The law of one deviation up to withholding
 
@@ -655,31 +656,8 @@ theorem asyncDeviation_withholdLaw [Fintype Player]
         simpa [event, index, outputLayout, eventCount] using embedding.layout_eq index
       have alone : ∀ (cut : (serviceGraph setup mode).order.Cut) other, cut.Ready event →
           cut.Ready other → other = event := sample_alone relaxed outputEq
-      have boundaryAt (seed : Seed) (supported : seed ∈ prior.support) :
-          CompletionBoundary setup leaks scheduler players event.val (execution seed) := by
-        rw [eventRank]
-        exact boundary seed supported
-      have stopEq (seed : Seed) (supported : seed ∈ prior.support) :
-          app.runUntilHorizon scheduler players
-              (fun final => event ∈ final.application.config.cut.completed) horizon
-              (execution seed) =
-            app.runUntilHorizon scheduler players (BlockDone (offset + 1)) horizon
-              (execution seed) := by
-        have stopped := runUntilHorizon_eventDone_eq_blockDone horizon event alone _
-          (boundaryAt seed supported)
-        rwa [eventRank] at stopped
-      have nextFacts (point : PhasePoint setup leaks horizon scheduler players (offset + 1) prior
-          execution) :
-          CompletionBoundary setup leaks scheduler players (offset + 1) point.val.2 ∧
-            point.val.2.environmentRecall.length ≤ horizon := by
-        obtain ⟨supported, reached⟩ := phaseJoint_mem setup leaks horizon scheduler players
-          point.property
-        rw [← stopEq _ supported] at reached
-        obtain ⟨_, _, _, nextBounded, nextBoundary⟩ := completionRun_boundary_step
-          contract.completes event alone (execution point.val.1) (boundaryAt _ supported)
-          (bounded _ supported) point.val.2 reached
-        rw [eventRank] at nextBoundary
-        exact ⟨nextBoundary, nextBounded⟩
+      obtain ⟨stopEq, nextFacts⟩ := event_phase_stop_boundary setup leaks horizon
+        scheduler players contract.completes event eventRank alone prior execution boundary bounded
       obtain ⟨configNoise, law⟩ := asyncDeviation_sample_factorization contract turns
         wholeProfile who deviation fresh distribution next profile refs embedding refsBefore
         offset alone prior source execution aligned checkpoint boundary bounded noise factor
@@ -771,18 +749,10 @@ theorem asyncDeviation_withholdLaw [Fintype Player]
         subst same
         exact CompiledSuffix.commitPrefix_bind count program prefixed refs _ _ embedding
           refsBefore offset (aligned prior.support_nonempty.choose).graphSuffix index below
-      have nextFacts (point : PhasePoint setup leaks horizon scheduler players (offset + count)
-          prior execution) :
-          CompletionBoundary setup leaks scheduler players (offset + count) point.val.2 ∧
-            point.val.2.environmentRecall.length ≤ horizon := by
-        obtain ⟨supported, reached⟩ := phaseJoint_mem setup leaks horizon scheduler players
-          point.property
-        have done := blockRun_completes contract.completes (offset + count)
-          (execution point.val.1) (boundary _ supported) (bounded _ supported) _ reached
-        obtain ⟨nextBounded, nextBoundary⟩ := blockRun_boundary (Nat.le_add_right _ _)
-          (BlockEnd.sealed_relaxed relaxed wall (plain_of_bindings bindings)) wall.1
-          (execution point.val.1) (boundary _ supported) (bounded _ supported) _ reached done
-        exact ⟨nextBoundary, nextBounded⟩
+      have nextFacts := block_phase_boundary setup leaks horizon scheduler players
+        contract.completes (Nat.le_add_right _ _)
+        (BlockEnd.sealed_relaxed relaxed wall (plain_of_bindings bindings))
+        wall.1 prior execution boundary bounded
       obtain ⟨policy, configNoise, law⟩ := asyncDeviation_block_factorization relaxed wall
         contract timely turns wholeProfile who deviation bindings program profile count prefixed
         refs embedding refsBefore rfl prior source execution aligned checkpoint boundary bounded
@@ -848,18 +818,9 @@ theorem asyncDeviation_withholdLaw [Fintype Player]
           (tailAligned prior.support_nonempty.choose).graphSuffix
       have publications := prefixed.publications (mode := mode)
         (aligned prior.support_nonempty.choose).graphSuffix
-      have nextFacts (point : PhasePoint setup leaks horizon scheduler players (offset + count)
-          prior execution) :
-          CompletionBoundary setup leaks scheduler players (offset + count) point.val.2 ∧
-            point.val.2.environmentRecall.length ≤ horizon := by
-        obtain ⟨supported, reached⟩ := phaseJoint_mem setup leaks horizon scheduler players
-          point.property
-        have done := blockRun_completes contract.completes (offset + count)
-          (execution point.val.1) (boundary _ supported) (bounded _ supported) _ reached
-        obtain ⟨nextBounded, nextBoundary⟩ := blockRun_boundary (Nat.le_add_right _ _)
-          (RevealBlockEnd.sealed relaxed wall publications) wall.1 (execution point.val.1)
-          (boundary _ supported) (bounded _ supported) _ reached done
-        exact ⟨nextBoundary, nextBounded⟩
+      have nextFacts := block_phase_boundary setup leaks horizon scheduler players
+        contract.completes (Nat.le_add_right _ _)
+        (RevealBlockEnd.sealed relaxed wall publications) wall.1 prior execution boundary bounded
       have through (seed : Seed) (player : Player) :=
         BehavioralPolicy.OpensEffectively.through count program prefixed (source seed).registry
           (source seed).revelations (profile player) (opens seed player)

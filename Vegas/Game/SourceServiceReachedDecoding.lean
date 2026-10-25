@@ -185,12 +185,7 @@ theorem SourceResidual.step_mass {rank : Nat} {before : (graph setup).Config}
       let tailRefs : ContextRefs (graphLayout setup.program)
           ((name, .publicData payload) :: Γ) := refs.cons ⟨.inr (embedding.event index), outputEq⟩
       have tailBefore : ContextRefsBefore tailRefs tailEmbedding := by
-        intro readName cell ref remaining
-        cases ref with
-        | here =>
-            change (embedding.event index).val < (embedding.event remaining.succ).val
-            exact embedding.strictMono (Fin.mk_lt_mk.mpr (Nat.zero_lt_succ _))
-        | there ref => exact refsBefore ref remaining.succ
+        exact refsBefore.tail_cons next (by simp [eventCount]) (fun _ => rfl) _ rfl
       have tailAligned : CompiledPolicySuffix setup.program profile next
           (afterSample residualProfile) tailRefs (sampleSuccessor name source value).revelations
           (sampleSuccessor name source value).registry tailEmbedding tailBefore (rank + 1) := by
@@ -283,12 +278,7 @@ theorem SourceResidual.step_mass {rank : Nat} {before : (graph setup).Config}
           ((name, .commitment owner payload) :: Γ) :=
         refs.cons ⟨.inr (embedding.event index), outputEq⟩
       have tailBefore : ContextRefsBefore tailRefs tailEmbedding := by
-        intro readName cell ref remaining
-        cases ref with
-        | here =>
-            change (embedding.event index).val < (embedding.event remaining.succ).val
-            exact embedding.strictMono (Fin.mk_lt_mk.mpr (Nat.zero_lt_succ _))
-        | there ref => exact refsBefore ref remaining.succ
+        exact refsBefore.tail_cons next (by simp [eventCount]) (fun _ => rfl) _ rfl
       have tailAligned : CompiledPolicySuffix setup.program profile next
           (afterCommit residualProfile) tailRefs
           (commitSuccessor name guard source choice).revelations
@@ -371,12 +361,7 @@ theorem SourceResidual.step_mass {rank : Nat} {before : (graph setup).Config}
           ((published, .publication payload) :: Γ) :=
         refs.cons ⟨.inr (embedding.event index), outputEq⟩
       have tailBefore : ContextRefsBefore tailRefs tailEmbedding := by
-        intro readName cell ref remaining
-        cases ref with
-        | here =>
-            change (embedding.event index).val < (embedding.event remaining.succ).val
-            exact embedding.strictMono (Fin.mk_lt_mk.mpr (Nat.zero_lt_succ _))
-        | there ref => exact refsBefore ref remaining.succ
+        exact refsBefore.tail_cons next (by simp [eventCount]) (fun _ => rfl) _ rfl
       have tailAligned : CompiledPolicySuffix setup.program profile next
           (afterReveal residualProfile) tailRefs
           (revealSuccessor published selected source disclose).revelations

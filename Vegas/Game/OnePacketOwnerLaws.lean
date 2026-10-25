@@ -230,24 +230,6 @@ theorem commitMove_slotChoiceOf {control : (application setup leaks).Control}
     exact commitMove_silent control.execution
 
 omit [DecidableEq Player] [IExpr.ResultTypes L] [Fintype Player] in
-/-- A mixture with weight `t` on a law is `t`-close on unit payoffs to its
-other part. -/
-theorem unitClose_mix {α : Type} (t : ℝ) (h0 : 0 ≤ t) (h1 : t ≤ 1) (μ ν : PMF α) :
-    UnitClose t (mix t h0 h1 μ ν) ν := by
-  intro f unit
-  have bound : ∀ a, |f a| ≤ 1 := fun a =>
-    abs_le.mpr ⟨by linarith [(unit a).1], (unit a).2⟩
-  rw [expect_mix t h0 h1 μ ν f (payoffIntegrable_of_bounded μ f bound)
-    (payoffIntegrable_of_bounded ν f bound)]
-  have first := expect_mem_unit μ f unit
-  have second := expect_mem_unit ν f unit
-  have difference : t * expect μ f + (1 - t) * expect ν f - expect ν f =
-      t * (expect μ f - expect ν f) := by ring
-  rw [difference, abs_mul, abs_of_nonneg h0]
-  have : |expect μ f - expect ν f| ≤ 1 := abs_le.mpr ⟨by linarith, by linarith⟩
-  nlinarith
-
-omit [DecidableEq Player] [IExpr.ResultTypes L] [Fintype Player] in
 /-- The first coordinate of a product law built as a bind is the first law. -/
 private theorem bind_map_pair_map_fst_eq {α β : Type} (first : PMF α) (second : PMF β) :
     (first.bind fun x => second.map (Prod.mk x)).map Prod.fst = first := by
@@ -299,7 +281,7 @@ theorem lateComponent_moves_close {control : (application setup leaks).Control}
       (control.execution.observe (application setup leaks) who) event payload outputEq codeEq)
     {slots : Nat} (slotsLe : slots ≤ bounds.candidateCount) (options : PMF (LateOption slots))
     (scale : ℝ) (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1) :
-    UnitClose (scale ^ 3)
+    PMF.WithinTV (scale ^ 3)
       ((slotTrembledChoice setup leaks bounds (initialLaw setup) horizon scheduler scale
           nonnegative le_one who (some (control.execution.recall who,
             control.execution.observe (application setup leaks) who))
@@ -390,7 +372,7 @@ theorem lateComponent_moves_close {control : (application setup leaks).Control}
     rw [mix_map, mix_map, PMF.pure_map]
   unfold slotTrembledChoice
   rw [mix_map, rest]
-  exact unitClose_mix _ _ _ _ _
+  exact PMF.WithinTV.mix_right _ _ _ _ _
 
 /-- The decoded native policy of a menu profile reads the chosen action. -/
 theorem decodeProfile_eq_map

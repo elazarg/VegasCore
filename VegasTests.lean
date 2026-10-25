@@ -29,4 +29,6 @@ import VegasTests.SourceSetup
 import VegasTests.ValueBinding
 import VegasTests.FiniteSupportPurification
 
+import VegasTests.PartialEnvironment
+
 import VegasTests.DependencyHeight

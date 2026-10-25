@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.PhaseProposalQualifiedBinding
+import GameTheoryExtensions.Math.Probability.ConditioningCost
 import Vegas.Game.PhaseCommitmentProposalArchive
 import Vegas.Game.PhaseProposalAttemptArchive
 import Vegas.Game.PhaseProposalCoupledQuery
@@ -2066,61 +2067,26 @@ private theorem conditioned_gain_le [Fintype setup.proposalRecoveryProtocol.Hist
   let belief := source.belief who site
   let good : Set (setup.proposalRecoveryModel.InformationHistory who site.1) :=
     {history | setup.proposalRecoveryForeignGood who history.val}
-  let mass : ℝ := (∑' history, good.indicator belief history).toReal
-  have small : mass ≤ 1 := by
-    have restricted : (∑' history, good.indicator belief history) ≤ 1 := by
-      calc
-        (∑' history, good.indicator belief history) ≤ ∑' history, belief history := by
-          apply ENNReal.tsum_le_tsum
-          intro history
-          by_cases member : history ∈ good
-          · simpa only [Set.indicator_of_mem member] using le_refl (belief history)
-          · simpa only [Set.indicator_of_notMem member] using
-              (show (0 : ENNReal) ≤ belief history from zero_le)
-        _ = 1 := belief.tsum_coe
-    exact (ENNReal.toReal_mono ENNReal.one_ne_top restricted).trans_eq ENNReal.toReal_one
-  have dominated (history) : mass * ((belief.filter good present) history).toReal ≤
-      (belief history).toReal := by
-    have restricted := congrArg ENNReal.toReal (filter_mass_mul belief good present history)
-    rw [ENNReal.toReal_mul] at restricted
-    change mass * ((belief.filter good present) history).toReal = _ at restricted
-    rw [restricted]
-    by_cases included : history ∈ good
-    · rw [Set.indicator_of_mem included]
-    · rw [Set.indicator_of_notMem included, ENNReal.toReal_zero]
-      exact ENNReal.toReal_nonneg
-  have close := PMF.WithinTV.of_domination (belief.filter good present) belief mass small dominated
-  have comparison := close.expect_sub_le gain (-2 * bound) (4 * bound) (by
-    intro history _
-    have interval := abs_le.mp (bounded history)
-    constructor <;> linarith)
-  have complement : 1 - mass =
+  have compared := abs_expect_filter_sub_le belief good present gain (-2 * bound) (4 * bound)
+    (fun history _ => by
+      have interval := abs_le.mp (bounded history)
+      constructor <;> linarith)
+  have comparison := (abs_le.mp compared).2
+  have negated (history) : history ∉ good ↔
+      ∃ owner : Player, who ≠ owner ∧ setup.GeneratedPreparationHistory owner history.val := by
+    simp only [good, Set.mem_ofPred_eq, Setup.proposalRecoveryForeignGood]
+    push Not
+    simp only [ne_comm]
+  have complement : (belief.toOuterMeasure goodᶜ).toReal =
       ∑ history : setup.proposalRecoveryModel.InformationHistory who site.1 with
         (∃ owner : Player, who ≠ owner ∧ setup.GeneratedPreparationHistory owner history.val),
         (belief history).toReal := by
-    have finiteMass : mass = ∑ history, if history ∈ good then (belief history).toReal else 0 := by
-      dsimp only [mass]
-      rw [tsum_fintype, ENNReal.toReal_sum]
-      · apply Finset.sum_congr rfl
-        intro history _
-        by_cases member : history ∈ good <;> simp only [Set.indicator, member, ite_true, ite_false,
-          ENNReal.toReal_zero]
-      · intro history _
-        by_cases member : history ∈ good <;> simp only [Set.indicator, member, ite_true, ite_false]
-        · exact belief.apply_ne_top history
-        · exact ENNReal.zero_ne_top
-    have negated (history) : history ∉ good ↔
-        ∃ owner : Player, who ≠ owner ∧ setup.GeneratedPreparationHistory owner history.val := by
-      simp only [good, Set.mem_ofPred_eq, Setup.proposalRecoveryForeignGood]
-      push Not
-      simp only [ne_comm]
-    rw [finiteMass, ← pmf_sum_toReal_eq_one belief, ← Finset.sum_sub_distrib,
-      Finset.sum_filter]
+    rw [← expect_indicator]
+    unfold expect
+    rw [tsum_fintype, Finset.sum_filter]
     apply Finset.sum_congr rfl
     intro history _
-    by_cases member : history ∈ good
-    · simp only [member, ite_true, sub_self, ← negated, not_true_eq_false, ite_false]
-    · simp only [member, ite_false, sub_zero, ← negated, not_false_eq_true, ite_true]
+    simp only [Set.mem_compl_iff, negated, mul_ite, mul_one, mul_zero]
   rw [complement] at comparison
   dsimp only [belief, good] at comparison
   linarith

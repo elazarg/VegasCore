@@ -135,6 +135,9 @@ theorem intended_isεNash_preserved [Fintype Player]
   classical
   have : Finite (setup.executionProtocol (CommitmentInterface.values setup.program)).History :=
     setup.finite_history finite _
+  have : Finite setup.intendedProtocol.History :=
+    Finite.of_injective _ (setup.intendedRestriction
+      (CommitmentInterface.values setup.program)).history.injective
   let sourcePayoff := fun (final : setup.intendedProtocol.History) (who : Player) =>
     (setup.protocolReadout final.state).elim 0
       (fun state => utility (setup.parameterOutcome parameter state) who)
@@ -210,7 +213,8 @@ theorem intended_isεNash_preserved [Fintype Player]
       (fun who => setup.indebted_localStep who)
       (fun who original choices next running _ extra reached =>
         setup.indebted_of_extra wellFormed who original choices next running extra reached)
-      sourcePayoff targetPayoff matching forfeits ε equilibrium
+      sourcePayoff targetPayoff (fun _ _ => payoffIntegrable_of_finite _ _)
+      (fun _ _ => payoffIntegrable_of_finite _ _) matching forfeits ε equilibrium
   · intro final reached terminal read who
     rw [← law, PMF.support_map] at reached
     obtain ⟨intendedFinal, _, rfl⟩ := reached

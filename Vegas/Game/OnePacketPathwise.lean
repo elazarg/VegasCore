@@ -9,8 +9,8 @@ The failure probability of a late-delivery option from a history is the
 probability that play from that history, under the profile that installs the
 option, ends in a state the key marks failed. If, while the event is pending
 and after it completes, the control step of that profile read through an image
-of protocol states chosen for the key is within `δ` on unit payoffs of an image kernel that depends
-only on the late-delivery key and the option, if the image of a forced
+of protocol states chosen for the key is within `δ` in total variation of an
+image kernel that depends only on the late-delivery key and the option, if the image of a forced
 history's state is read off its operational record, and if failure is a unit
 function of the image, then the failure probability from each forced history
 is within `fuel * δ` of a function of the key, the option and the operational
@@ -42,7 +42,7 @@ states and a failure set:
   `key`;
 * the control step of the profile installed at a site keeps the site's kept
   states,
-  and read through the key's image it is within `δ` on unit payoffs of the
+  and read through the key's image it is within `δ` in total variation of the
   image kernel of `key` and the option;
 * failure of a kept state is a unit function of its image. -/
 structure PendingLumping (assessment : (onePacketInformation setup leaks bounds horizon
@@ -78,7 +78,7 @@ structure PendingLumping (assessment : (onePacketInformation setup leaks bounds 
         (initialLaw setup) horizon scheduler (profileOf site option)) state).support,
       next ∈ keep site key
   close : ∀ site key, lateKey setup leaks who site.1 = some key → ∀ option,
-    ∀ state ∈ keep site key, UnitClose δ
+    ∀ state ∈ keep site key, PMF.WithinTV δ
       (((application setup leaks).controlStep (initialLaw setup) horizon scheduler
         ((bounds.onePacketMenu (runtime setup) leaks).decodeProfile (initialLaw setup) horizon
           scheduler (profileOf site option)) state).map (image key))
@@ -113,12 +113,14 @@ theorem PendingLumping.pathwise {assessment : (onePacketInformation setup leaks 
       expect ((fun law => law.bind (lumping.kernel key option))^[fuel]
         (PMF.pure (lumping.start key (operationalRecord setup leaks bounds horizon scheduler
           history.1.trace)))) (lumping.failure key)| ≤ fuel * δ := by
-  have lumped := (bounds.onePacketMenu (runtime setup) leaks).run_map_unitClose (initialLaw setup)
+  have lumped := (bounds.onePacketMenu (runtime setup) leaks).run_map_withinTV (initialLaw setup)
     horizon scheduler (profileOf site option) (lumping.image key) (lumping.kernel key option)
     (lumping.keep site key) δ (lumping.kept site key siteKey option)
     (lumping.close site key siteKey option) fuel history.1
-    (lumping.start_kept site key siteKey history supported forced) (lumping.failure key)
-    (lumping.failure_unit key)
+    (lumping.start_kept site key siteKey history supported forced)
+  have tested := lumped.abs_expect_sub_le_interval (lumping.failure key) 0 1
+    (fun point _ => by simpa only [zero_add] using lumping.failure_unit key point)
+  have lumped := by simpa only [mul_one] using tested
   rw [lumping.start_eq site key siteKey history supported forced, expect_map] at lumped
   have sameFailure : expect ((onePacketInformation setup leaks bounds horizon
       scheduler).runBehavioralFrom (profileOf site option) fuel history.1)
@@ -130,7 +132,7 @@ theorem PendingLumping.pathwise {assessment : (onePacketInformation setup leaks 
     intro final reached
     have stateLaw := (bounds.onePacketMenu (runtime setup) leaks).run_map_controlSteps
       (initialLaw setup) horizon scheduler (profileOf site option) fuel history.1
-    have inside := (iterate_bind_map_unitClose _ (lumping.image key) (lumping.kernel key option)
+    have inside := (iterate_bind_map_withinTV _ (lumping.image key) (lumping.kernel key option)
       (lumping.keep site key) δ (lumping.kept site key siteKey option)
       (lumping.close site key siteKey option) fuel history.1.state
       (lumping.start_kept site key siteKey history supported forced)).1

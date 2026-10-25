@@ -422,15 +422,14 @@ or normalization engine required.
 
 **Owner.** `Analysis/Protocol/RetainedDeviation.lean:315`,
 `expect_deviation_le_retained`, and line 416, `isεNash_extends_of_debt`.
-Existing lower owner:
-`Math/Probability/GatedExpectation.lean:26,65`,
-`expect_option_le_of_dominated`, `expect_le_of_gated`.
+The lower law-level owner is
+[optional domination](../../GameTheoryExtensions/Math/Probability/OptionalDomination.lean),
+`expect_le_of_dominated_readout`; `expect_le_of_gated` specializes it to a gate.
 
-**Old proof.** After establishing the actual embedded law domination and
-absorbing debt classification, the proof assumes a finite entire target-history
-type, chooses the least retained supported payoff, shifts both payoffs by that
-floor, drops nonpositive outside terms, and reindexes a finite sum along the
-history embedding. This is generic dominated-subprobability reasoning.
+**Finite-sum approach.** Embedded-law domination and absorbing-debt classification
+can be compared by choosing a least retained payoff, shifting by that floor and
+reindexing a finite sum. That approach unnecessarily requires a finite history
+carrier and an attained minimum.
 
 **First safe extraction.** Encode membership in the embedding image by an
 optional source-history decoder. The domination of successful readouts is the

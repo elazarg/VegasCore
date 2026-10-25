@@ -410,7 +410,7 @@ theorem ownerStepClose_of_openingLaw {LateOption : Type}
   subst acting
   obtain ⟨_, payload, binding, checks, outputEq, codeEq, view⟩ := turn
   rw [controlStep_owner, PMF.map_comp]
-  apply unitClose_map_of_two_outcomes _ _ (fun action => action.transmission = none)
+  apply withinTV_map_of_two_outcomes _ _ (fun action => action.transmission = none)
     (fun action => OpensTurn event key.owner execution action) _ _ _ δ₁ δ₂ _ _ silentMass
     remainder
   · intro action _ silent

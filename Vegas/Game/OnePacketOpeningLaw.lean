@@ -627,7 +627,7 @@ theorem ownerOpeningLaw_of_lateComponents {LateOption' : Type}
     rw [shape event turnCopy history remaining execution current
       (by rw [current]; exact allowedState) (by rw [current]; exact forced) ready]
     rfl
-  have close := unitClose_mix (scale ^ 3) (pow_nonneg nonnegative 3)
+  have close := PMF.WithinTV.mix_right (scale ^ 3) (pow_nonneg nonnegative 3)
     (pow_le_one₀ nonnegative le_one)
     ((bounds.onePacketMenu (runtime setup) leaks).uniformPolicy (initialLaw setup) horizon
       scheduler key.owner info) core
@@ -686,7 +686,8 @@ theorem ownerOpeningLaw_of_lateComponents {LateOption' : Type}
       funext choice
       simp only [Function.comp, choiceSilent, decide_eq_true_eq]
     rw [flag]
-    exact close _ unit
+    simpa only [mul_one] using close.abs_expect_sub_le_interval _ 0 1
+      (fun point _ => by simpa only [zero_add] using unit point)
   · set rest : (application setup leaks).Action → ℝ := fun action =>
       if action.transmission = none ∨ OpensTurn event key.owner execution action then 0 else 1
       with restEq
@@ -756,7 +757,9 @@ theorem ownerOpeningLaw_of_lateComponents {LateOption' : Type}
                 PMF.mem_support_pure_iff] at drawn
               rw [drawn]
               exact restDisclosure
-    have near := close _ unit
+    have near := close.abs_expect_sub_le_interval _ 0 1
+      (fun point _ => by simpa only [zero_add] using unit point)
+    simp only [mul_one] at near
     rw [zero, sub_zero] at near
     exact (abs_le.mp near).2
 

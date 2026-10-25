@@ -168,39 +168,43 @@ theorem run_add (who : Principal) (players : Principal → app.Policy)
         (fun next => implementation.run who players scheduler second next.1 next.2) := by
   simp only [run, runJoint_add, PMF.map_bind]
 
-/-- Replacing any one player by its behavioral realization preserves the whole
-execution law against arbitrary opponents and observation-local scheduling. -/
-theorem realize (who : Principal) (players : Principal → app.Policy) (scheduler : app.Scheduler)
+/-- The actual player implementation retains its final memory jointly with the
+external execution, using the posterior of its complete actual response recall. -/
+theorem realizeJoint
+    (who : Principal) (players : Principal → app.Policy) (scheduler : app.Scheduler)
     (count : Nat) (execution : app.Execution) :
     (implementation.posterior (execution.recall who)).bind
-        (implementation.run who players scheduler count execution) =
-      app.runRounds scheduler (Function.update players who implementation.policy)
-        count execution := by
+        (implementation.runJoint who players scheduler count execution) =
+      (app.runRounds scheduler (Function.update players who implementation.policy)
+        count execution).bind fun next =>
+          (implementation.posterior (next.recall who)).map (Prod.mk next) := by
   induction count generalizing execution with
   | zero =>
-      change (implementation.posterior (execution.recall who)).bind
-        (fun memory => implementation.run who players scheduler 0 execution memory) = _
-      simp only [run_zero, runRounds, PMF.bind_const]
+      simp only [Implementation.runJoint, runRounds, PMF.pure_bind]
+      rfl
   | succ count ih =>
-      let next := implementation.run who players scheduler count
+      let next := implementation.runJoint who players scheduler count
       have resumed (current : app.Execution) (actor : Option Principal) :
           (implementation.posterior (current.recall who)).bind (fun memory =>
             (implementation.resume who players actor current memory).bind
               fun result => next result.1 result.2) =
           (app.resume (Function.update players who implementation.policy) actor current).bind
-            (app.runRounds scheduler (Function.update players who implementation.policy)
-              count) := by
+            (fun middle =>
+              (app.runRounds scheduler (Function.update players who implementation.policy)
+                count middle).bind fun final =>
+                  (implementation.posterior (final.recall who)).map (Prod.mk final)) := by
         cases actor with
         | none =>
-            simpa only [resume, ReactiveApplication.resume, PMF.pure_bind] using ih current
+            simpa only [next, Implementation.resume, ReactiveApplication.resume,
+              PMF.pure_bind] using ih current
         | some owner =>
             by_cases same : owner = who
             · subst owner
-              simp only [resume, ↓reduceIte, PMF.bind_map, Function.comp_def]
+              simp only [Implementation.resume, ↓reduceIte, PMF.bind_map, Function.comp_def]
               rw [implementation.response_disintegrate]
               simp only [next, ih, ReactiveApplication.resume, invoke, Function.update_self,
                 PMF.bind_map, Function.comp_def]
-            · simp only [resume, same, ↓reduceIte, PMF.bind_map,
+            · simp only [Implementation.resume, same, ↓reduceIte, PMF.bind_map,
                 ReactiveApplication.resume, invoke, Function.update_of_ne same]
               rw [PMF.bind_comm]
               apply bind_congr_on_support _
@@ -208,8 +212,10 @@ theorem realize (who : Principal) (players : Principal → app.Policy) (schedule
               rw [← app.respond_recall_other current owner who (Ne.symm same) action]
               exact ih _
       change (implementation.posterior (execution.recall who)).bind
-        (fun memory => implementation.run who players scheduler (count + 1) execution memory) = _
-      simp only [run_succ, round, runRounds, ReactiveApplication.round, dispatch, PMF.bind_bind]
+        (fun memory => implementation.runJoint who players scheduler
+          (count + 1) execution memory) = _
+      simp only [Implementation.runJoint, Implementation.round, runRounds,
+        ReactiveApplication.round, dispatch, PMF.bind_bind]
       rw [PMF.bind_comm]
       apply bind_congr_on_support _
       intro command _
@@ -218,6 +224,24 @@ theorem realize (who : Principal) (players : Principal → app.Policy) (schedule
       intro current reached
       rw [← app.environmentStep_recall execution current command reached]
       exact resumed current (command.actor? app)
+
+/-- Replacing any one player by its behavioral realization preserves the whole
+execution law against arbitrary opponents and observation-local scheduling. -/
+theorem realize (who : Principal) (players : Principal → app.Policy) (scheduler : app.Scheduler)
+    (count : Nat) (execution : app.Execution) :
+    (implementation.posterior (execution.recall who)).bind
+        (implementation.run who players scheduler count execution) =
+      app.runRounds scheduler (Function.update players who implementation.policy)
+        count execution := by
+  calc
+    _ = ((implementation.posterior (execution.recall who)).bind
+        (implementation.runJoint who players scheduler count execution)).map Prod.fst := by
+      rw [PMF.map_bind]
+      rfl
+    _ = _ := by
+      rw [implementation.realizeJoint]
+      simp only [PMF.map, Function.comp_def, PMF.bind_bind, PMF.pure_bind, PMF.bind_const,
+        PMF.bind_pure]
 
 theorem realize_initial (who : Principal) (players : Principal → app.Policy)
     (scheduler : app.Scheduler) (count : Nat) (state : app.State) :

@@ -196,7 +196,7 @@ round, dispatch, sampled activation, invocation, inclusion and application
 commands. Exact common code begins with equality of environment recall/view,
 then *PMF.map_bind*, then the command case split.
 
-`Interaction.ReactiveApplication.ResponseMenu.run_map_unitClose` already lifts one-step mapped comparisons
+`Interaction.ReactiveApplication.ResponseMenu.run_map_withinTV` lifts one-step mapped comparisons
 to whole runs. The missing reusable layer is the **round constructor theorem**:
 equal scheduler inputs plus mapped activation/invocation and environment-step
 laws imply equal mapped round laws. Model adapters would still prove traffic,
