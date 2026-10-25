@@ -24,6 +24,11 @@ certificates for positive constructions and obstructions.
 | Transport morphisms and sections | Compose local continuation comparisons across backends | Actual kernel comparisons on an adequate family of observables |
 | Affine debt transport and potentials | Replace uniform error counts with accumulated-charge bounds | Conditional bounds along the common perturbation sequence |
 
+The mathematical connections below are separated from the
+[proposals by owner and kind](#proposals-by-owner-and-kind). In particular,
+Multitubes examples illustrate its theory; their current choices are not
+requirements imposed on GameTheory or Vegas.
+
 ## Sufficient information and preservation of SE payoffs
 
 Tang, Subramanian and Teneketzis distinguish mutually sufficient information
@@ -474,26 +479,234 @@ Direct reuse therefore requires dependency alignment and checking the selected
 APIs at the chosen pin. The standalone application's presence does not imply
 that it is available through UniformEquilibrium's older dependency.
 
-## Bounded research experiments
+## Proposals by owner and kind
 
-Choose one local-value obligation from the
-[phase-preservation route](sequential-phase-preservation.md). Identify the
-continuation-gain functions it consumes and a basis for their span. Compare
-the cost of transporting those expectations directly with the cost of full
-posterior transport, using the existing gain and affine-score APIs.
+The ownership boundary follows the mathematical content of a statement.
+Multitubes owns transport and finite-constraint theory. GameTheory owns game
+semantics, information, deviations, and equilibrium concepts, together with
+its existing probability foundation. GameTheoryExtensions is the local home
+for reusable protocol bridges that are not part of the pinned GameTheory
+dependency. Interaction and Vegas own the actual runtime and compiler
+interpretations. UniformEquilibrium supplies concrete consumers and candidate
+reusable mathematics; its quitting-game semantics is not a required layer of
+the Vegas implementation.
 
-Two concrete follow-ups use the external libraries without replacing the SE
-architecture: compile one proposed power-sequence support into a finite Farkas
-system, and construct one conditional continuation-error potential. The first
-tests certificate production and decoding; the second tests whether an
-accumulated-charge bound improves the existing uniform error estimate. In
-either case, count the actual runtime adapter as part of the cost.
+The proposals distinguish four kinds of work:
 
-Measure the complete dependency cost, number and strength of hypotheses,
-coverage of off-path sites and arbitrary local choices, and preservation of
-the initialized joint law. A useful result can be a smaller proof, a strictly
-broader backend interface, or a concrete obstruction showing that a proposed
-compression loses a necessary incentive distinction.
+- **Reuse:** instantiate an existing theorem; no new mathematical result is
+  claimed.
+- **Refactor:** replace an implementation or reorganize ownership while
+  retaining its mathematical guarantee. Any promised reduction includes
+  adapters and all affected callers.
+- **Addition:** supply a missing interpretation, theorem, or stronger result
+  needed for the proposed route.
+- **Example:** demonstrate a theorem and its boundary on a small model,
+  without making that model a downstream semantic requirement.
+
+Here *needed* means necessary to establish a proposed route, not a new
+prerequisite for the currently checked preservation results. A proposal is
+not authorization to change the SE target, runtime observations, or payoff
+semantics.
+
+| Owner | Reuse or refactor candidate | Additions needed for the proposed route |
+| --- | --- | --- |
+| Multitubes theory | Reuse morphisms, section propagation, affine composition, and finite alternatives; extract a generic comparison lemma from an example only if it supplies a missing shared API | Any genuinely missing transport law exposed by concrete clients; no missing core law is established by this survey |
+| Multitubes examples | Extend the stochastic demonstration and retain the existing nonnegative hitting and deterministic control examples | Signed-observable comparison, accumulated expected charges through stopping, and small coherence/certificate examples |
+| GameTheory foundations | Reuse signed expectations, information models, Bayes transport, sequential limits, and one-shot optimality | Game-semantic power-sequence certificates; optionally a precisely scoped information-compression theorem |
+| GameTheoryExtensions | Reuse the current gain and SE-limit consumers; evaluate a potential-based implementation of stopped-error bounds | Bridges from generic transports to actual continuation runners and conditional gain estimates |
+| Interaction and Vegas | Replace selected repeated runtime comparison proofs only after a complete consumer demonstrates a benefit | Actual kernel, observation, gain-family, stopping, and perturbation obligations for the chosen abstraction |
+
+### Multitubes: theory and examples
+
+**Theory.** The generic transport permits arbitrary fibers and functions.
+Signed observables therefore do not require redesigning the core. Morphism
+composition, monotone section transport, affine label composition, and the
+finite Farkas alternative are existing reuse targets. A generic comparison
+statement discovered in an application can belong in the theory when its
+hypotheses mention only transports, relations, orders, or affine errors.
+First check whether it is already an instance of the existing morphism or
+mixed-section machinery. Moving a proof or supplying a convenient
+specialization is a refactor; a weaker-hypothesis or stronger conclusion is
+a separate mathematical addition.
+
+For example, the abstract part of ErrorComparison concerns arbitrary pairs
+of transports and an affine scalar error law. It is a candidate for a shared
+theory interface if multiple clients need it. Its concrete switched-system
+models remain examples. This is an ownership proposal, not evidence that
+extracting another interface will shorten the clients.
+
+**Examples.** Useful extensions are:
+
+- A bounded real-valued counterpart to the nonnegative expectation example,
+  demonstrating exact and one-sided kernel comparison. A small pair of laws
+  agreeing on selected continuation observables but differing as distributions
+  would illustrate the value-equivalence boundary.
+- An accumulated-charge example using a stopped kernel and a potential
+  satisfying \(c+PH\le H\). Include a rare-event case where an unconditional
+  small error becomes large after conditioning. The example should show both
+  the useful estimate and why it is insufficient for every information site.
+- A rational certificate for a contradictory finite exponent system, and the
+  acyclic parallel-edge holonomy counterexample. The former illustrates the
+  checker; interpreting its rows as a game's trembles belongs in the game
+  layer.
+
+These complement the existing examples. Nonnegative extended-real
+expectation retains its useful absence of integrability assumptions;
+deterministic all-walk error bounds retain their control interpretation.
+There is no identified correctness defect requiring those examples to be
+replaced. An example can use Mathlib probability to instantiate the theory;
+it need not introduce a second general expectation library or depend on Vegas.
+
+### GameTheory: reuse, possible refactors, and new game theory
+
+**Existing foundations to reuse.** The owning declaration surfaces already
+provide:
+
+- Signed real expectations with explicit integration guards in
+  [ExpectationBind](../GameTheory/GameTheory/Math/Probability/ExpectationBind.lean),
+  including composition on arbitrary carriers, and a bounded-payoff tower law
+  in [ExpectationComposition](../GameTheory/GameTheory/Math/Probability/ExpectationComposition.lean).
+- Reach-weight, history-projection, and observed-readout Bayes transport in
+  [BeliefTransport](../GameTheory/GameTheory/Analysis/Protocol/BeliefTransport.lean).
+- Assessment convergence and passage of continuation inequalities to limits
+  in [SequentialLimits](../GameTheory/GameTheory/Analysis/Protocol/SequentialLimits.lean).
+- Sequential rationality from local optimality under the stated recall and
+  finiteness hypotheses in
+  [SequentialOneShot](../GameTheory/GameTheory/Analysis/Protocol/SequentialOneShot.lean).
+- Static strategic transfer through utility comparisons in
+  [UtilitySimulation](../GameTheory/GameTheory/Core/UtilitySimulation.lean).
+  This already distinguishes utility comparison from outcome-law comparison;
+  it does not itself discharge the off-path requirements of SE.
+
+The Multitubes proposal supplies no reason to replace these definitions or
+re-prove these families wholesale. A transport interpretation should refer
+to the existing PMFs, policies, information sites, assessments, and expected
+utilities. For GameTheory, the signed-observable task is a bridge to
+transport, not a missing real-expectation theory.
+
+**Candidate refactors.** A generic protocol theorem could delegate its
+propagation induction to transport after a faithful interpretation is proved.
+That is worthwhile only if the result retains the existing carrier scope,
+integration conditions, information restrictions, and conclusion, and the
+complete implementation becomes simpler or more reusable. A bridge can start
+as an optional module in GameTheoryExtensions; no dependency from GameTheory's
+core to Multitubes is assumed. Upstreaming requires a separate ownership and
+dependency decision. Successful replacement should update callers and remove
+superseded implementations, rather than keep parallel semantic definitions.
+
+**Additions with game-semantic content.** The power-sequence route needs a
+certificate interpretation for a finite game: behavioral choices shared
+across histories, history monomials, Nature's support, normalization, limiting
+belief coefficients, and a theorem connecting the certificate to the existing
+consistency predicate. Soundness of supplied certificates and completeness
+of the certificate format are different results. The former supports checked
+constructions; refuting all consistent assessments with a prescribed support
+also needs the appropriate necessity result. The arithmetic checker remains
+in Multitubes, while game-to-constraint translation and semantic correctness
+belong in GameTheory or a game-generic extension.
+
+An information-compression theorem is a further optional addition. It must
+state its strategy quantifiers, permitted information loss, and whether it
+preserves expected payoff profiles or the stronger selected joint law. The
+published USI result does not already supply the latter guarantee. Neither
+this theorem nor the full power-sequence characterization is claimed to be
+present in the inspected protocol interfaces.
+
+### GameTheoryExtensions: the bridge and quantitative refinement
+
+Several relevant game-generic consumers already live here:
+[SourceGainTransport](../GameTheoryExtensions/Analysis/Protocol/SourceGainTransport.lean),
+[GainComparison](../GameTheoryExtensions/Analysis/Protocol/GainComparison.lean),
+[ProportionalBeliefTransport](../GameTheoryExtensions/Analysis/Protocol/ProportionalBeliefTransport.lean),
+and [LocalSimulationLimit](../GameTheoryExtensions/Analysis/Protocol/LocalSimulationLimit.lean).
+The local-comparison limit theorem already accepts uniformly vanishing gain
+error and a separate initialized-law error. A new transport layer should
+produce those premises rather than define a second equilibrium-transfer
+criterion.
+
+A concrete **quantitative addition** is a potential-based generalization of
+[StoppedContinuationComparison](../GameTheoryExtensions/Analysis/Protocol/StoppedContinuationComparison.lean).
+Its existing theorem bounds the difference of two stopped continuation
+expectations by \(2B\delta\,d(h)\), using payoff bound \(B\), uniform step-TV
+error \(\delta\), and decreasing depth \(d\). A generalized theorem would
+accept a state-dependent local error \(c(h)\) and a nonnegative potential
+\(H\) satisfying \(c+PH\le H\). It must retain the stopping and invariant
+region conditions, require integrability of the terms being averaged, and
+bound the terminal comparison error by the potential. The current depth
+estimate should then be a specialization
+with \(H(h)=2B\delta\,d(h)\). This separates the new stronger estimate from
+the possible refactor of the old proof.
+
+The corresponding **bridge additions** identify kernel pullback with the
+existing continuation runner and connect observable comparisons to gains at
+information sites. They must handle the actual starting beliefs, stopping
+boundaries, and any error introduced by observation or normalization. A new
+potential estimate alone does not construct these identifications. Generic
+probabilistic statements can be considered for GameTheory's probability
+layer; protocol-specific forms belong with its protocol analysis, initially
+in the local extension while the interface is evaluated.
+
+### Interaction and Vegas: implementation choices and actual obligations
+
+**Candidate reimplementations.** Select one repeated continuation comparison
+or error aggregation in the
+[phase-preservation route](sequential-phase-preservation.md). Express its
+mathematical recurrence using the existing affine or transport theory and
+connect the result to the current gain consumer. Compare the total proof and
+dependency cost, not just the final theorem body. A successful change may
+remove trace-induction duplication, sharpen a constant, or make the same
+consumer usable by another runtime. No broad rewrite of source semantics,
+the compiler, or the SE construction follows from the analogy alone.
+
+**Additions required to use a proposed abstraction.** Each concrete consumer
+must establish whichever of these premises its route uses:
+
+- The runtime states, stopped summaries, and actual transition kernels
+  represented by the graph, including the alignment with source steps.
+- The observable or gain family and its closure under every required
+  continuation; information-local alternatives must cover all legal target
+  choices used by the preservation theorem.
+- The actual information fibers and conditional likelihood or gain
+  comparisons. Observable clocks, receipts, and traffic cannot disappear by
+  choosing a smaller graph.
+- The local charge, potential, or comparison error with the quantifiers
+  required by the common perturbation sequence, including rare information
+  sites.
+- Compatibility with the initialized joint readout/payoff law and the
+  existing consistency construction.
+
+Some of these facts may already be supplied by current runtime theorems. The
+work is to instantiate them at the proposed interface and identify the
+remaining premises before introducing another abstraction. These concrete
+producers belong in Interaction or Vegas, even if the theorem consuming them
+is generic. Multitubes examples cannot certify them on behalf of the runtime.
+
+### Evaluation order and acceptance
+
+Use two bounded experiments with explicit owners:
+
+1. **Continuation comparison and error.** Multitubes demonstrates the generic
+   signed-observable and stopped-charge interpretations. A GameTheoryExtensions
+   bridge uses the existing real expectations and continuation semantics.
+   One Vegas consumer supplies the actual kernels, information, and potential
+   premises and reaches the existing SE-limit theorem.
+2. **Consistency certificates.** Multitubes checks an elementary finite
+   certificate. A GameTheory-level adapter gives the rows their game meaning.
+   A concrete game instance checks the distinction between rejecting one
+   proposed support and refuting all preserving equilibria.
+
+The mathematical layers do not require a fixed development chronology: an
+actual Vegas obligation may expose the missing generic lemma first, and an
+example can be revised to exercise it. Production clients should depend on
+theory and their semantic bridges, not on example-specific models.
+
+Measure complete dependency cost, hypothesis strength, off-path and deviation
+coverage, and preservation of the initialized joint law. Record existing API
+reuse separately from new theorems and concrete adapters. Retain a current
+proof when an alternative merely renames its premises or moves comparable
+complexity into an unused framework. Source inspection supports these
+proposals; proof-size reductions and stronger runtime guarantees require
+checked implementations and actual consumers.
 
 ## Bibliography keys
 
