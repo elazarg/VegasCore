@@ -6,6 +6,7 @@ import Vegas.Pending.ReactiveOnePacketMenu
 import Vegas.Pending.ReactiveAliasEquilibrium
 import Interaction.ReactiveLocalContinuation
 import GameTheoryExtensions.Protocol.ContinuationHorizon
+import Interaction.ReactiveAuditContinuation
 
 /-! # Sequential equilibria of the one-packet game under the count audit
 
@@ -118,8 +119,11 @@ theorem countForbidden_collection_committed
       exact ⟨next, supported, rfl⟩
     rw [committed] at member
     exact (PMF.mem_support_pure_iff _ _).mp member
-  exact countForbidden_collection_continuation menu initial horizon scheduler service
-    observationRate deliveryRate delivery_nonnegative coverage updated fuel next
+  exact app.audit_collection_continuation menu initial horizon scheduler countPermits
+    (fun left right message same => countPermits_congr left right message same)
+    (runtime.countAudit leaks service.sample) (fun who => observationRate who * deliveryRate who)
+    (runtime.countAudit_collection leaks service observationRate deliveryRate
+      delivery_nonnegative coverage) updated fuel next
     ⟨remaining, none, execution.respond app who ⟨some material⟩⟩ nextState _
     (by rw [inputs]; exact List.mem_append_right _ (List.mem_singleton_self _))
     (by rw [fresh]; exact forbidden)

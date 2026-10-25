@@ -71,6 +71,7 @@ directory's aggregator imports every module in it.
 
 - [Exact environment-step support cases](../Interaction/ReactiveEnvironmentStep.lean)
 - [Input recall and continuation order](../Interaction/ReactiveInputOrder.lean)
+- [Earlier-input audit collection through arbitrary continuations](../Interaction/ReactiveAuditContinuation.lean)
 - [Round-law congruence from component kernels](../Interaction/ReactiveRoundCongruence.lean)
 - [Distinct authored ledger identifiers](../Interaction/MessageLedgerCount.lean)
 - [Message Network Map](../Interaction/MessageNetworkMap.lean)

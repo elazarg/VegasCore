@@ -26,8 +26,8 @@ Isolated checks do not close downstream obligations.
 | Product-retention timing error | Implemented; integration pending | Actual domination, product bound and law/Nash/payment/Paper ports; quantitative adapters and regressions await owning build |
 | Conditional public-source splicing | Implemented; integration pending | Full recovery route and public capstone generalized; actual conditional-prior and exact old Unit-scope checks pending |
 | Sharper normalized comparisons | Isolated check passes | Complete one-/two-side bounds and finite regressions pass; projected and native clients await owning build |
-| Information-local own cleanliness | Owning build passes | Actual support exclusion uses remembered outputs; regression and axiom checks pending |
-| Terminal-only audit payoff bounds | Owning build passes | Bad/safe terminal supports and arbitrary alternative context integrability checked; exhausted-terminal regression pending |
+| Information-local own cleanliness | Checked | Actual support exclusion uses remembered outputs; actual owners, phase example and five-root standard-axiom audit pass |
+| Terminal-only audit payoff bounds | Checked | Actual bad/safe/context proof and unbounded-nonterminal/charged-exhaustion regression pass; standard-axiom audit passes |
 | Six compiler tail-order consumers | Checked | Both actual complete modules pass strict checks; unchanged statements; 42 fewer physical lines |
 | Lower source raw-result ownership | Checked | All five actual owner/consumer modules pass strict checks; unchanged mathematical statements; 28 fewer lines |
 | Exact recorded-entry prefix reuse | Implemented; integration pending | Exact recall-prefix instance; owning build pending |
@@ -35,7 +35,7 @@ Isolated checks do not close downstream obligations.
 | Remaining handler projections | Owning build passes | Exact certificate projections; 52 fewer proof-body lines; final family check pending |
 | Zero-mass posterior naturality | Implemented; integration pending | All four actual callers updated; production replay passes; full owning build pending |
 | Exact empty-processing law as owner | Implemented; integration pending | Single owner and actual imports; moved generic frame scope corrected; recheck pending |
-| Three audit-continuation transports | Owning build passes | Generic transport and actual count-support route checked; all three consumer and axiom checks pending |
+| Three audit-continuation transports | Checked | Generic transport, all three actual higher consumers and exact standard-axiom audit pass; 177 fewer lines including umbrella |
 | Four commitment interval descriptors | Implemented; integration pending | One interval owner and all four actual ports; owning build pending |
 | Profile/expectation cleanup bundle | Implemented; integration pending | Complete actual algebra ports; one dependent coordinate correction awaits recheck |
 | Chance-aware graph confluence | Isolated check passes | Complete exact core and concrete chance regressions check; normal per-module build pending |

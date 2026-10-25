@@ -139,4 +139,36 @@ theorem earlier_inputs_reaches {initial : PMF app.State} {horizon : Nat}
   · rintro ⟨member, owner, lower⟩
     exact ⟨prefixOf.subset member, owner, lower⟩
 
+/-- A verdict using earlier same-author inputs is locally testable from actual recall. -/
+theorem own_verdict_iff_outputs
+    (verdict : List (Message Principal app.Payload) → Message Principal app.Payload → Bool)
+    (congruent : ∀ left right message,
+      (∀ other, (other ∈ left ∧ other.sender = message.sender ∧ other.id.2 < message.id.2) ↔
+        (other ∈ right ∧ other.sender = message.sender ∧ other.id.2 < message.id.2)) →
+      verdict left message = verdict right message)
+    (execution : app.Execution) (recalled : execution.InputRecall app) (who : Principal) :
+    (∀ message ∈ execution.network.inputs, message.sender = who →
+      verdict execution.network.inputs message = true) ↔
+      ∀ message ∈ app.outputs (execution.recall who),
+        verdict (app.outputs (execution.recall who)) message = true := by
+  classical
+  have localVerdict (message : Message Principal app.Payload) (owner : message.sender = who) :
+      verdict execution.network.inputs message =
+        verdict (app.outputs (execution.recall who)) message := by
+    apply congruent
+    intro other
+    simpa only [owner] using recalled.earlier_inputs_iff_outputs message other
+  constructor
+  · intro clean message present
+    rw [← recalled who] at present
+    obtain ⟨member, owner⟩ := List.mem_filter.mp present
+    have owned : message.sender = who := by simpa using owner
+    rw [← localVerdict message owned]
+    exact clean message member owned
+  · intro clean message member owner
+    rw [localVerdict message owner]
+    apply clean
+    rw [← recalled who]
+    exact List.mem_filter.mpr ⟨member, by simpa using owner⟩
+
 end Interaction.ReactiveApplication

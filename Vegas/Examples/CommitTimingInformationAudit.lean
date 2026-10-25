@@ -135,37 +135,12 @@ def ownPastPermitted (past : List app.PlayerEntry) : Prop :=
 theorem ownPermitted_iff_past (who : Player) (execution : app.Execution)
     (recalled : PhaseCount.CountRecall runtime leaks execution) :
     OwnPermitted who execution ↔ ownPastPermitted (execution.recall who) := by
-  classical
-  have verdict (message : Message Player (CommitAttemptPacket graph))
-      (owner : message.sender = who) :
-      PhaseCount.permits execution.network.inputs message =
-        PhaseCount.permits (app.outputs (execution.recall who)) message := by
-    apply PhaseCount.permits_congr
-    intro other
-    have outputs := recalled.1 who
-    constructor
-    · rintro ⟨present, same, lower⟩
-      refine ⟨?_, same, lower⟩
-      rw [← outputs]
-      exact List.mem_filter.mpr ⟨present, by simp [same, owner]⟩
-    · rintro ⟨present, same, lower⟩
-      rw [← outputs] at present
-      exact ⟨(List.mem_filter.mp present).1, same, lower⟩
-  constructor
-  · rintro ⟨_, clean⟩ message present
-    have outputs := recalled.1 who
-    rw [← outputs] at present
-    obtain ⟨member, owner⟩ := List.mem_filter.mp present
-    have owner' : message.sender = who := by simpa using owner
-    rw [← verdict message owner']
-    exact clean message member owner'
-  · intro clean
-    refine ⟨recalled, ?_⟩
-    intro message member owner
-    rw [verdict message owner]
-    apply clean
-    rw [← recalled.1 who]
-    exact List.mem_filter.mpr ⟨member, by simpa using owner⟩
+  have localVerdicts := app.own_verdict_iff_outputs PhaseCount.permits
+    (fun left right message same => PhaseCount.permits_congr left right message same)
+    execution recalled.1 who
+  exact ⟨fun clean => localVerdicts.mp clean.2,
+    fun clean => ⟨recalled, localVerdicts.mpr clean⟩⟩
+
 theorem ownPermitted_initial (who : Player) (state : app.State) :
     OwnPermitted who (ReactiveApplication.Execution.initial app state) := by
   classical

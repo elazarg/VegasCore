@@ -27,6 +27,39 @@ def OwnerCountClean (who : Player) (execution : (countApplication runtime leaks)
   ∀ message ∈ execution.network.inputs, message.sender = who →
     countPermits execution.network.inputs message = true
 
+/-- An observed clean own-output record supplies every history in the actual fiber. -/
+theorem ownerCountClean_of_past
+    (menu : (runtime.recoveryApplication leaks).ResponseMenu)
+    (initial : PMF (runtime.recoveryApplication leaks).State) (horizon : Nat)
+    (scheduler : (runtime.recoveryApplication leaks).Scheduler) (who : Player)
+    (site : (menu.information initial horizon scheduler).InformationSite who)
+    (past : List (runtime.recoveryApplication leaks).PlayerEntry)
+    (view : (runtime.recoveryApplication leaks).PlayerView)
+    (atSite : site.1 = some (past, view))
+    (clean : ∀ message ∈ (runtime.recoveryApplication leaks).outputs past,
+      countPermits ((runtime.recoveryApplication leaks).outputs past) message = true)
+    (history : (menu.information initial horizon scheduler).InformationHistory who site.1) :
+    ReactiveApplication.executionInvariant (OwnerCountClean runtime leaks who)
+      history.1.state := by
+  let app := runtime.recoveryApplication leaks
+  have observed := (menu.info initial horizon scheduler who history.1.trace).symm.trans
+    (history.2.trans atSite)
+  cases stateEq : history.1.state with
+  | none => trivial
+  | some control =>
+      by_cases active : control.actor = some who
+      · simp only [ReactiveApplication.observe, stateEq, active, ↓reduceIte] at observed
+        have pair := Option.some.inj observed
+        have recallEq : control.execution.recall who = past := congrArg Prod.fst pair
+        have recalled := app.history_inputRecall initial horizon scheduler
+          (stateEq ▸ menu.toRawTrace initial horizon scheduler history.1.trace)
+        apply (app.own_verdict_iff_outputs countPermits
+          (fun left right message same => countPermits_congr left right message same)
+          control.execution recalled who).mpr
+        rw [recallEq]
+        exact clean
+      · simp [ReactiveApplication.observe, stateEq, active] at observed
+
 theorem ownerCountClean_initial (who : Player) (state : (countApplication runtime leaks).State) :
     OwnerCountClean runtime leaks who (ReactiveApplication.Execution.initial (countApplication
       runtime leaks) state) := by
@@ -250,7 +283,7 @@ theorem exists_effective_silent_continuation (who : Player) :
 
 
 /-- A strict collected-deposit margin rules out a forbidden response at every
-own-clean information fiber, regardless of opponents' later policies. -/
+information site with clean remembered outputs, regardless of opponents' later policies. -/
 theorem forbidden_choice_not_supported
     (service : EvidenceReportService (CountEvidence graph))
     (observationRate deliveryRate : Player → ℝ)
@@ -258,20 +291,22 @@ theorem forbidden_choice_not_supported
     (coverage : CountEvidenceCoverage service observationRate deliveryRate)
     (utility : (countApplication runtime leaks).ProtocolState → Player → ℝ) (deposit : Player → ℝ)
     (who : Player) (lower upper : ℝ)
-    (lower_le : ∀ state, lower ≤ utility state who)
-    (le_upper : ∀ state, utility state who ≤ upper)
+    (lower_le : ∀ state,
+      ((effectiveMenu runtime leaks bounds).protocol initial horizon scheduler).terminal state →
+        lower ≤ utility state who)
+    (le_upper : ∀ state,
+      ((effectiveMenu runtime leaks bounds).protocol initial horizon scheduler).terminal state →
+        utility state who ≤ upper)
     (nonnegative : 0 ≤ deposit who)
     (strict : upper - lower < observationRate who * deliveryRate who * deposit who)
     (assessment : ((effectiveMenu runtime leaks bounds).information initial horizon
       scheduler).BehavioralAssessment)
     (site : ((effectiveMenu runtime leaks bounds).information initial horizon
       scheduler).InformationSite who)
-    (clean : ∀ history :
-        ((effectiveMenu runtime leaks bounds).information initial horizon
-          scheduler).InformationHistory who site.1,
-      ReactiveApplication.executionInvariant (OwnerCountClean runtime leaks who) history.1.state)
     (past : List (countApplication runtime leaks).PlayerEntry) (view : (countApplication runtime
       leaks).PlayerView) (input : site.1 = some (past, view))
+    (clean : ∀ message ∈ (countApplication runtime leaks).outputs past,
+      countPermits ((countApplication runtime leaks).outputs past) message = true)
     (choice : ((effectiveMenu runtime leaks bounds).information initial horizon
       scheduler).Choice who site.1)
     (material : (countApplication runtime leaks).Submission) (selected : choice.1 = some ⟨some
@@ -303,31 +338,43 @@ theorem forbidden_choice_not_supported
     funext final
     dsimp only [payoff, base, charge, TerminalAudit.utility]
     ring
-  have baseBound : ∀ final, |base final| ≤ |lower| + |upper| := by
-    intro final
+  have baseBound : ∀ final,
+      ((effectiveMenu runtime leaks bounds).protocol initial horizon scheduler).terminal
+        final.state →
+      |base final| ≤ |lower| + |upper| := by
+    intro final terminal
     apply abs_le.mpr
     constructor
-    · have := lower_le final.state
+    · have := lower_le final.state terminal
       linarith [neg_abs_le lower, abs_nonneg upper]
-    · have := le_upper final.state
+    · have := le_upper final.state terminal
       linarith [le_abs_self upper, abs_nonneg lower]
   have baseIntegrable (law : PMF ((effectiveMenu runtime leaks bounds).protocol initial horizon
-    scheduler).History) :
-      PayoffIntegrable law base := payoffIntegrable_of_bounded law base baseBound
+    scheduler).History)
+      (terminal : ∀ final ∈ law.support,
+        ((effectiveMenu runtime leaks bounds).protocol initial horizon scheduler).terminal
+          final.state) :
+      PayoffIntegrable law base :=
+    payoffIntegrable_of_bounded_on_support law base (fun final member =>
+      baseBound final (terminal final member))
   have chargeIntegrable (law : PMF ((effectiveMenu runtime leaks bounds).protocol initial
     horizon scheduler).History) :
       PayoffIntegrable law charge := TerminalAudit.payoffIntegrable_charge law _ _ who
   have averaged (law : PMF ((effectiveMenu runtime leaks bounds).protocol initial horizon
-    scheduler).History) :
+    scheduler).History)
+      (terminal : ∀ final ∈ law.support,
+        ((effectiveMenu runtime leaks bounds).protocol initial horizon scheduler).terminal
+          final.state) :
       expect law payoff = expect law base - deposit who * expect law charge := by
-    rw [read, expect_sub (baseIntegrable law)
+    rw [read, expect_sub (baseIntegrable law terminal)
       (payoffIntegrable_const_mul (chargeIntegrable law)), expect_const_mul]
-  have integrable (law : PMF ((effectiveMenu runtime leaks bounds).protocol initial horizon
-    scheduler).History) :
-      PayoffIntegrable law payoff := by
-    rw [read]
-    exact payoffIntegrable_sub (baseIntegrable law)
-      (payoffIntegrable_const_mul (chargeIntegrable law))
+  have integrable (alternative : model.BehavioralPolicy who) :
+      (assessment.continuationContext certificate site payoff).IntegrableAt alternative := by
+    apply assessment.continuationContext_integrable_of_bounded_terminal certificate site
+      payoff (|lower| + |upper| + |deposit who|)
+    intro final terminal
+    exact TerminalAudit.utility_abs_le utility (countApplication runtime leaks).stateTraffic
+      (countAudit runtime leaks service.sample) deposit final.state who (baseBound final terminal)
   obtain ⟨alternative, safe⟩ := exists_effective_silent_continuation (runtime := runtime)
     (leaks := leaks) (initial := initial) (horizon := horizon) (scheduler := scheduler)
     (bounds := bounds) who
@@ -346,6 +393,10 @@ theorem forbidden_choice_not_supported
         ((assessment.strategy who).commit site.1 choice))
         history.1
     change expect law payoff ≤ upper - observationRate who * deliveryRate who * deposit who
+    have terminal : ∀ final ∈ law.support,
+        ((effectiveMenu runtime leaks bounds).protocol initial horizon scheduler).terminal
+          final.state :=
+      model.runBehavioralTerminalFrom_support_terminal certificate _ history.1
     have collected : observationRate who * deliveryRate who ≤ expect law charge := by
       have observed : (countApplication runtime leaks).observe who history.1.state = some (past,
         view) :=
@@ -367,22 +418,29 @@ theorem forbidden_choice_not_supported
             delivery_nonnegative coverage assessment.strategy history.1 who remaining execution
             current site.1 choice history.2 material selected forbidden
         · simp [ReactiveApplication.observe, current, active] at observed
-    have upperBound := expect_le_const law base (baseIntegrable law) upper
-      (fun final _ => le_upper final.state)
+    have upperBound := expect_le_const law base (baseIntegrable law terminal) upper
+      (fun final member => le_upper final.state (terminal final member))
     have charged := mul_le_mul_of_nonneg_left collected nonnegative
-    rw [averaged law]
+    rw [averaged law terminal]
     nlinarith
   · intro history
     let law := model.runBehavioralTerminalFrom certificate
       (Profile.update (sig := model.behavioralSignature) assessment.strategy who alternative)
         history.1
     change lower ≤ expect law payoff
+    have terminal : ∀ final ∈ law.support,
+        ((effectiveMenu runtime leaks bounds).protocol initial horizon scheduler).terminal
+          final.state :=
+      model.runBehavioralTerminalFrom_support_terminal certificate _ history.1
     have noCharge : expect law charge = 0 :=
-      safe assessment.strategy service history.1 (clean history)
-    have lowerBound := expect_mono (μ := law) (fun final _ => lower_le final.state)
-      (payoffIntegrable_constant law lower) (baseIntegrable law)
+      safe assessment.strategy service history.1
+        (ownerCountClean_of_past runtime leaks (effectiveMenu runtime leaks bounds) initial
+          horizon scheduler who site past view input clean history)
+    have lowerBound := expect_mono (μ := law)
+      (fun final member => lower_le final.state (terminal final member))
+      (payoffIntegrable_constant law lower) (baseIntegrable law terminal)
     rw [expect_constant] at lowerBound
-    rw [averaged law, noCharge, mul_zero, sub_zero]
+    rw [averaged law terminal, noCharge, mul_zero, sub_zero]
     exact lowerBound
 
 end Vegas.EventGraphRuntime.Recovery

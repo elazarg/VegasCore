@@ -1481,3 +1481,27 @@ end Vegas.Paper
 #guard_msgs (whitespace := lax) in
 #print axioms
   Vegas.ownerSwap_baseLawAgrees_late
+
+/-- info: 'Interaction.ReactiveApplication.own_verdict_iff_outputs' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Interaction.ReactiveApplication.own_verdict_iff_outputs
+
+/-- info: 'Interaction.ReactiveApplication.audit_collection_continuation' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Interaction.ReactiveApplication.audit_collection_continuation
+
+/-- info: 'GameTheory.Enforcement.TerminalAudit.utility_abs_le' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  GameTheory.Enforcement.TerminalAudit.utility_abs_le
+
+/-- info: 'Vegas.EventGraphRuntime.Recovery.ownerCountClean_of_past' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.Recovery.ownerCountClean_of_past

@@ -57,6 +57,25 @@ def utility (base : Outcome → Player → ℝ) (observe : Outcome → Observati
     (outcome : Outcome) (who : Player) : ℝ :=
   base outcome who - charge observe audit outcome who * deposit who
 
+/-- The audit adds at most the absolute deposit to an actual base-payoff bound. -/
+theorem utility_abs_le
+    (base : Outcome → Player → ℝ) (observe : Outcome → Observation)
+    (audit : Observation → PMF (Player → Bool)) (deposit : Player → ℝ)
+    (outcome : Outcome) (who : Player) {bound : ℝ}
+    (bounded : |base outcome who| ≤ bound) :
+    |utility base observe audit deposit outcome who| ≤ bound + |deposit who| := by
+  have collected := charge_mem_Icc observe audit outcome who
+  calc
+    |utility base observe audit deposit outcome who| ≤
+        |base outcome who| + |charge observe audit outcome who * deposit who| :=
+      by simpa only [utility, sub_zero, zero_sub, abs_neg] using
+        abs_sub_le (base outcome who) 0 (charge observe audit outcome who * deposit who)
+    _ = |base outcome who| + charge observe audit outcome who * |deposit who| := by
+      rw [abs_mul, abs_of_nonneg collected.1]
+    _ ≤ bound + |deposit who| := by
+      have charged := mul_le_mul_of_nonneg_right collected.2 (abs_nonneg (deposit who))
+      linarith [bounded]
+
 theorem settlement_expect (base : Outcome → Player → ℝ) (observe : Outcome → Observation)
     (audit : Observation → PMF (Player → Bool)) (deposit : Player → ℝ)
     (outcome : Outcome) (who : Player) :
