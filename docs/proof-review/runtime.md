@@ -1,342 +1,303 @@
 # Runtime proof review and mathematical mining
 
-Scope is the current tree at `ec4de15c`. This is a read-only review: no production
-Lean, dependency, language semantics, scheduler contract, SE target, or checklist
-has changed. GameTheory is unchanged. Probe files are isolated review evidence,
-not migrated production APIs.
+The runtime findings have checked production implementations. All owners,
+actual consumers and test aggregators pass the full warning-strict build.
+The exact production-root audit and twenty guarded review experiments pass.
+GameTheory, source/runtime execution rules and the fixed SE checklist are
+unchanged.
 
-## Coverage and method
+## Coverage and measurement
 
-| Scope | Modules | Physical lines |
+| Current directory inventory | Modules | Physical lines |
 | --- | ---: | ---: |
-| Interaction | 131 | 14,760 |
-| InteractionTests | 8 | 818 |
-| Vegas/EventGraph | 44 | 8,206 |
-| Vegas/Pending | 442 | 62,122 |
-| Total, excluding root aggregators | 625 | 85,906 |
+| Interaction | 132 | 14,874 |
+| InteractionTests | 9 | 894 |
+| Vegas/EventGraph | 44 | 8,202 |
+| Vegas/Pending | 441 | 61,765 |
+| Total, excluding root aggregators | 626 | 85,735 |
 
-All module sizes, declarations and twelve-line exact cross-file windows were
-screened. Declaration surfaces are in `runtime-surfaces.txt`; the separate
-lexical window scan produces 32 matches in `runtime-duplicates.json`. These
-windows overlap and exclude many renamed variants. They are leads, not a count
-of removable code. Source-body measurements below are manually delimited at
-specific known declarations; they do not count a return-type `let` as a body.
+The review screened module sizes, declaration surfaces and exact cross-file
+windows, then deep-read selected owners and their real consumers. These include
+input recall and serial order, traffic collection, policy recovery, priority
+erasure, scheduler observations and stopped seeds, message retention, graph
+scheduling and kernel commutation, completion service, typed acceptance,
+physical failure coverage, live stamps and signed bindings, reserved empty
+processing and the three count-audit continuations. This is not a claim that
+every tactic in the inventory received a manual audit.
 
-Selected deep reads included the generic environment-step eliminator, input
-recall and serial order, traffic collection, policy recovery, priority erasure,
-scheduler observation/stopped seeds, message retention, graph scheduling and
-kernel commutation, completion service, typed handler certificates, physical
-failure coverage, live stamps and signed bindings, reserved empty processing,
-and all three count-audit continuations. Further selected consumer reads cover
-RecoveryCountIncentives and CommitTimingInformationAudit. This is not a claim
-that every tactic in 85,906 lines was manually audited.
+The earlier 64 dispositions and [module architecture](../module-architecture.md)
+were checked. Existing acceptance certificates, exclusion evidence and physical
+invariants retain their ownership. Measurements below compare the reviewed
+source with the implementation, count physical lines across complete changed
+families, and include actual consumer adapters and regressions. Shared
+aggregator imports are accounted for separately. Proof bodies are delimited
+manually; return-type `let` bindings are not treated as proof bodies.
 
-The earlier 64-item implementation ledger was checked before proposing work.
-The current typed acceptance, exclusion-evidence, stopped-prefix and invariant
-owners are retained. In particular, the findings below identify remaining
-consumers or genuinely stronger scopes; they do not propose to re-create those
-owners or reopen retained service-contract/permutation hierarchies.
+## Implemented findings
 
-## Ranked findings
+### 1. Own count cleanliness is local to the remembered own outputs
 
-### 1. Own count cleanliness is determined by the observed own past
+`Interaction.ReactiveApplication.own_verdict_iff_outputs` in
+[ReactiveInputOrder.lean](../../Interaction/ReactiveInputOrder.lean#L143) proves
+that an earlier-author checker permits every actual own input exactly when it
+permits every output in that player's recall. Its premises are the checker's
+congruence on lower-serial same-author inputs and the actual execution's
+`Execution.InputRecall`. It needs neither serial ordering nor a Fintype player
+premise. The adapter uses
+`Execution.InputRecall.earlier_inputs_iff_outputs` from the same owner.
 
-**Checked missing adapter; high confidence; mathematical/API strengthening.**
+`Vegas.EventGraphRuntime.Recovery.ownerCountClean_of_past` in
+[RecoveryCountIncentives.lean](../../Vegas/Game/RecoveryCountIncentives.lean#L31)
+instantiates this kernel at every actual information history. It obtains recall
+from `history_inputRecall` along the actual `menu.toRawTrace` and recovers the
+observed past from `site.1 = some (past, view)`.
 
-`Vegas.EventGraphRuntime.Recovery.forbidden_choice_not_supported`
-(`Vegas/Game/RecoveryCountIncentives.lean:254`) currently assumes at lines269–272
-that **every** history of the information fiber is OwnerCountClean. But that
-particular property is local to the player's own remembered signed outputs.
-The inputs of other authors are irrelevant to its verdict.
+Consequently,
+`Vegas.EventGraphRuntime.Recovery.forbidden_choice_not_supported` in
+[RecoveryCountIncentives.lean](../../Vegas/Game/RecoveryCountIncentives.lean#L287)
+now takes the explicit local condition
 
-The owning facts already suffice:
-
-- `Execution.InputRecall`, `Interaction/ReactiveRecall.lean:23`, identifies the
-  sender-filtered input list with `outputs (recall who)`.
-- `Execution.InputRecall.earlier_inputs_iff_outputs`,
-  `Interaction/ReactiveInputOrder.lean:62`, identifies every lower-serial
-  same-author test, requiring InputRecall only, without a next-serial or
-  serial-order premise.
-- `countPermits_congr`, `Vegas/Pending/ReactiveCountVerdict.lean:100`, and the
-  analogous PhaseCount verdict congruence are the actual model adapters.
-- The raw-history theorem `history_inputRecall`, transported by the actual
-  `menu.toRawTrace`, supplies the invariant at **each** site history.
-
-Thus a local premise
-
-```
+```lean
 ∀ message ∈ app.outputs past,
   countPermits (app.outputs past) message = true
 ```
 
-at `site.1 = some (past, view)` supplies the entire current fiber premise.
-Equivalently, one actual clean anchor can supply it **after** the proved
-information-locality argument. Merely naming an anchor is not a valid shortcut.
+instead of a universal cleanliness premise over the hidden information fiber.
+The full support-exclusion theorem has been ported and its owning module has
+passed. The strict collected-deposit margin, coverage, feasible silent
+continuation, runner factorization, integrability and arbitrary later opponent
+policies remain in force. No compliance after a sunk charge or full SE
+reflection follows.
 
-The complete generic own-verdict equivalence and actual recovery information-
-fiber adapter are in `OwnTrafficLocalityProbe.lean`. Root strict checking passes,
-including the explicit obstruction when recall omits actual inputs. The probe
-needs no Fintype Player premise. It uses actual histories and existing runtime
-objects; no fake model or final-payoff equality is assumed.
+`Vegas.Examples.CommitTimingInformation.ownPermitted_iff_past` in
+[CommitTimingInformationAudit.lean](../../Vegas/Examples/CommitTimingInformationAudit.lean#L137)
+now uses the same kernel. Its `OwnPermitted` predicate retains the original
+`PhaseCount.CountRecall` conjunction. The clean-fiber argument derives that
+conjunction at each actual history using `PhaseCount.countRecall_history`;
+local verdict equivalence alone does not supply it on arbitrary executions.
 
-The obstruction uses an empty recalled-output list and signed serial0/serial1
-inputs. A checker permitting a packet only when there is no earlier own input
-accepts the local empty history vacuously but forbids serial1 in the real inputs.
-Hence no arbitrary-execution theorem is valid without InputRecall or an actual
-history supplying it.
+The strictly checked missing-recall probe remains an explicit boundary: empty
+remembered outputs can omit actual serial-0/serial-1 traffic. A checker requiring
+no earlier own input is then vacuously clean on recall but forbids the second
+actual input. This refutes removing InputRecall, not an existing production
+claim.
 
-**Actual consumers.** Replace the whole-fiber clean premise in the generic
-recovery support-exclusion theorem with the local past check. The phase timing
-example already proves its special case in `ownPermitted_iff_past`
-(`Vegas/Examples/CommitTimingInformationAudit.lean:135–168`) and reconstructs it
-inside the uniform-gap proof at399–423. Instantiate the common locality kernel
-there. Its original CountRecall conjunction must remain, or be reconstructed at
-all actual histories by `PhaseCount.countRecall_history`; the new pointwise
-kernel alone does not prove that conjunction on arbitrary executions.
+The same recovery theorem now requires its base-payoff interval only at actual
+native protocol terminal states. `GameTheory.Enforcement.TerminalAudit.utility_abs_le`
+in [TerminalAudit.lean](../../GameTheoryExtensions/Analysis/Protocol/TerminalAudit.lean#L61)
+bounds audited utility by the terminal base bound plus the absolute deposit.
+The proof instantiates the existing
+`GameTheory.Protocol.InformationModel.BehavioralAssessment.continuationContext_integrable_of_bounded_terminal`
+from [BehavioralTerminal.lean](../../GameTheory/GameTheory/Protocol/BehavioralTerminal.lean#L237)
+for every actual unilateral replacement; GameTheory itself is unchanged.
 
-The strict margin, actual evidence coverage, feasible silent comparator,
-integrability, runner factorization and arbitrary-opponent quantifiers remain
-unchanged. No statement after a sunk charge or full SE reflection follows.
+Terminal means the native protocol's terminal predicate, including horizon
+exhaustion with unfinished application state. A source-completion-only bound
+would be insufficient. [InteractionTests/TerminalAudit.lean](../../InteractionTests/TerminalAudit.lean)
+exercises unbounded nonterminal base rewards, bounded actual terminals, a
+positive charge at an exhausted terminal and the full alternative-policy
+continuation-integrability adapter. The new test passes normal acceptance.
 
-**Cost.** A generic earlier-author verdict kernel plus actual site transport is
-roughly40–65 lines, with about8–15 lines of concrete adapters and a reduced
-~32-line phase locality proof. Expect modest feature growth, not a large net
-compression. The useful result is an explicit local condition replacing an
-opaque universal information-fiber hypothesis. The complete support theorem
-has not been rewritten or production-checked by this review.
+The combined locality/terminal family comprises ReactiveInputOrder,
+TerminalAudit, RecoveryCountIncentives and the phase audit example: 1,452 to
+1,536 lines, **+84 source lines**. The 76-line terminal regression and one test
+aggregator import give **+161 lines across the complete family**. This is a
+stronger, usable local hypothesis and terminal-only payoff interface, not a
+proof-compression claim.
 
-### 2. Derive remaining handler graph support from the exact certificates
+### 2. Handler graph support is projected from exact acceptance certificates
 
-**Checked projections; high confidence; estimated45–53 net lines removed.**
+The remaining consumers now decompose the exact
+`Vegas.EventGraphRuntime.handle_commitment_iff` and `handle_opening_iff` in
+[EventApplication.lean](../../Vegas/Pending/EventApplication.lean#L811), substitute
+the certified actual next state and reuse the existing private
+`bind_complete_mem_step` or `resolve_complete_mem_step` support proof.
 
-The exact acceptance iff theorems now precede the following proofs, but these
-three consumers still repeat the old handle decision tree:
-
-| Declaration | File:line | Current physical body lines |
+| Consumer | Current source | Proof body before → current |
 | --- | --- | ---: |
-| private handle_commitment_config_step | EventApplication:945 | 24 |
-| handle_opening_config_step | EventApplication:979 | 38 |
-| handle_commitment_vacant | ReactiveEventStability:88 | 10 |
+| private `handle_commitment_config_step` | [EventApplication](../../Vegas/Pending/EventApplication.lean#L945) | 23 → 7 |
+| `Vegas.EventGraphRuntime.handle_opening_config_step` | [EventApplication](../../Vegas/Pending/EventApplication.lean#L963) | 37 → 9 |
+| `Vegas.EventGraphRuntime.handle_commitment_vacant` | [ReactiveEventStability](../../Vegas/Pending/ReactiveEventStability.lean#L88) | 9 → 4 |
 
-The declaration headers and return witnesses can stay exact. Decompose
-`handle_commitment_iff` or `handle_opening_iff`, substitute its **actual next
-state**, and use the existing private `bind_complete_mem_step` or
-`resolve_complete_mem_step` in the owner. Vacancy is a direct certificate field.
-Clock and refreshActivated equalities are then reflexive.
+All three statements retain their exact witnesses. Openings still execute the
+original `true` resolution action and retain the actual deferred-check result,
+including failure. Commitment failure meanings and authenticated handle
+ownership are unchanged. Clock and refreshed-activation frames follow from the
+same certified state.
 
-`HandlerCertificateProjectionProbe.lean` passes strict checking with the
-three complete old statements, retaining typed node identification, the action
-`true` at resolution, and the actual deferred-check result (including failure).
-The scratch proof derives graph support through public `Config.step_eq_map_of_code`;
-production can use its already checked private owner helpers instead.
+The consumers continue through `handle_config_mem_step`,
+`handle_clock_activated` and `completionStep_handle` to existing stability and
+strategic readers. No new premise, public interface, structure or wrapper was
+added. Both owning modules passed normal checks. The complete two-file family
+is 2,124 to 2,075 lines: **49 lines removed**, matching the body reduction
+69 to 20.
 
-**Complete consumer route.** The shorter private commitment and public opening
-facts continue to feed `handle_config_mem_step` (1070) and
-`handle_clock_activated` (1091); those feed `completionStep_handle`
-(ReactiveEventStability:102), completion classifiers, stability and all strategic
-readers. No extra factual premises or changed callers are required. The
-certificate family is already the owner; this is residual consumer migration,
-not another acceptance interface.
+### 3. Exact empty processing owns the weaker segment result
 
-Current body footprint is72 lines. Reusing in-owner support helpers should need
-about19–27 lines, giving45–53 net before any trivial import movement. No new
-public API, wrapper, certificate structure or compatibility names are needed.
-The three projections are checked; the production family migration and final
-physical measurement are not done by this review.
+`Vegas.EventGraphRuntime.ReservedEpoch.emptyPrefix`, its five frame lemmas,
+`empty_processing_round`, `empty_processing_prefix_law`,
+`empty_processing_segment` and `full_processing_epoch_clears` now live in
+[ReservedEpochEmptyProcessing.lean](../../Vegas/Pending/ReservedEpochEmptyProcessing.lean).
+The pure prefix/frame interface remains generic in players; Fintype is scoped
+only to the actual round laws.
 
-### 3. Make the exact empty-processing law own the weaker segment result
+`empty_processing_prefix_law` proves the exact entire-execution law
 
-**Inspected complete route; high confidence; estimated35–50 net lines removed.**
-
-`ReservedEpoch.empty_processing_segment`
-(`Vegas/Pending/ReservedEpochEmptyProcessing.lean:38–71`) spends23 body lines on a
-count induction. It records network, receipts, application and recall length.
-But `empty_processing_prefix_law`
-(`Vegas/Pending/ReservedEpochEmptyPrefix.lean:61–87`) already proves the exact
-**entire execution** law for the same tape, cursor, capacity, epoch and empty-
-pending hypotheses:
-
-```
+```lean
 app.runRounds (family runtime leaks packetBudget tape) players count before
   = PMF.pure (emptyPrefix runtime leaks count before)
 ```
 
-Move the existing prefix definition/frame lemmas and exact law below the
-one-round empty-processing theorem in EmptyProcessing. The segment proof becomes
-one rewrite, the pure-law support characterization, then its existing frame projections.
-This removes the second induction. Delete the now-empty higher module rather
-than preserving a forwarding module. Update its only imports: Pending umbrella
-and `Vegas/Examples/ReservedEpochBudgetConcurrency.lean:4`.
+under the existing cursor, reserved-capacity, processing-epoch and empty-pending
+hypotheses. `empty_processing_segment` now rewrites by this law and projects
+network, receipts, recall length and application from its unique supported
+execution. Its duplicate count induction is gone.
 
-**Complete consumer route.** `full_processing_epoch_clears` (EmptyProcessing:72)
-uses the weaker segment result for post-clear padding. The budget-concurrency
-example uses the stronger law directly at90 and the exact prefix frame facts
-at42–44,94,100. Both use the same owner after reordering; there is no cyclic
-import and no new proof framework.
+`full_processing_epoch_clears` still uses the segment result for post-clear
+padding. [ReservedEpochBudgetConcurrency.lean](../../Vegas/Examples/ReservedEpochBudgetConcurrency.lean#L4)
+imports this same owner and uses the exact prefix law and frames directly.
+The redundant split module and its umbrella import were removed; no forwarding
+module remains.
 
-The two existing modules have110+88 physical lines. Replacing the23-line body
-by about5–7 lines plus eliminating the duplicate module header/section/import
-scaffolding suggests35–50 net across both owners and both actual import sites.
-The five tiny frame inductions need not be generalized further; they are not
-the profitable part. The exact full environmentRecall wait records must remain,
-not just its length. All policies and fixed correlated tapes remain quantified.
-No symbolic clock, physical traffic or rollback semantics change is proposed.
-No production pilot or new scratch theorem is claimed checked here.
+The law retains every actual environment-recall wait record, arbitrary player
+policies and the fixed potentially correlated scheduler tape. Physical traffic,
+clocks, receipts and rollback meanings are unchanged. The owning module passed
+its normal check. The two-owner footprint is **198 to 162 lines**; the real
+example adapter has the same line count and the Pending umbrella loses one
+import, giving **37 lines removed across the complete route**.
 
-### 4. One earlier-input audit transport can replace three continuation proofs
+### 4. One earlier-input audit transport serves all three count models
 
-**Concrete duplicate consumers; medium confidence; estimated100–150 net lines
-if redundant specialized APIs are removed and actual callers are ported.**
+`Interaction.ReactiveApplication.audit_collection_continuation` in
+[ReactiveAuditContinuation.lean](../../Interaction/ReactiveAuditContinuation.lean#L18)
+is now the owner of continuation collection. It takes an actual checker
+congruence and a per-record audit collection bound, then transports that bound
+through every actual response-menu continuation and arbitrary later profile.
 
-| Owning continuation theorem | Declaration/body/end | Body lines |
-| --- | --- | ---: |
-| ReactiveCountAudit.countForbidden_collection_continuation |140/158/202|44|
-| ExclusionCountCollection.countForbidden_collection_continuation |76/94/139|45|
-| PhaseCountCollection.countForbidden_collection_continuation |89/107/152|45|
+The proof retains the starting input's authenticated traffic record using
+`stateTraffic_inputs` and `stateTraffic_reaches`. That nonempty witness rules
+out a `none` endpoint. `earlier_inputs_reaches` preserves the lower-serial
+same-author context; checker congruence supplies the final verdict. The existing
+charge integrability and expectation monotonicity complete the bound.
 
-The common134 body lines still construct the same protocol reach, retain a
-traffic record for the starting input, eliminate a hypothetical `none` endpoint,
-convert final traffic envelopes back to actual inputs, persist the checker
-verdict, apply a per-record audit bound and integrate by expectation monotonicity.
-The three additional countForbidden_reaches declarations have only one local
-use each, inside those proofs.
+The actual model adapters remain
+`Vegas.EventGraphRuntime.countAudit_collection` in
+[ReactiveCountAudit.lean](../../Vegas/Pending/ReactiveCountAudit.lean#L78),
+`Vegas.EventGraphRuntime.Recovery.countAudit_collection` in
+[ExclusionCountCollection.lean](../../Vegas/Pending/ExclusionCountCollection.lean#L27),
+and `Vegas.EventGraphRuntime.PhaseCount.audit_collection` in
+[PhaseCountCollection.lean](../../Vegas/Pending/PhaseCountCollection.lean#L40).
+Their observation and conditional delivery coverage still concern the complete
+final signed-input context. Neither packet-only authenticity nor independent
+sampling replaces those premises.
 
-The lower owners now available are sufficient for a **transport theorem** in
-Interaction, without another invariant hierarchy:
+The three real consumers call the generic owner directly:
+[OnePacketExtension](../../Vegas/Game/OnePacketExtension.lean#L122),
+[RecoveryOnePacketExtension](../../Vegas/Game/RecoveryOnePacketExtension.lean#L108)
+and [PhaseOnePacketExtension](../../Vegas/Game/PhaseOnePacketExtension.lean#L107).
+The three specialized continuation proofs and their three single-use verdict
+persistence declarations were removed without compatibility wrappers. The higher
+extension statements keep their full continuation and deviation scope.
 
-1. From `stateTraffic_inputs` and `stateTraffic_reaches`, retain the actual
-   starting input's authenticated TrafficRecord. The nonempty witness rules out
-   an endpoint `none` because its stateTraffic is empty.
-2. `earlier_inputs_reaches` provides exact preservation of earlier same-author
-   inputs for the final actual control.
-3. A checker congruence on those earlier-input predicates preserves its verdict.
-4. Consume a **per-traffic-record** audit bound, already the exact statement of
-   the three countAudit_collection / `audit_collection` lemmas. This is an
-   existing service-level fact for arbitrary finite traffic, not an assumption
-   of the desired policy-continuation collection law.
-5. Apply expect_mono with the existing constant and charge integrability guards.
+The generic owner passed its module check. Across that new owner, the three
+model owners and all three Game adapters, the family is 1,595 to 1,417 lines:
+**178 removed**. Its Interaction umbrella import gives **177 lines removed
+across the complete route**. All three downstream consumers pass normal checking.
 
-Keep all observation and conditional delivery coverage inside the three real
-per-record audit adapters. In particular the evidence projection depends on
-the complete final signed-input context; do not replace it by a static starting
-verdict, a packet-only authenticity assertion, or independent sampling.
+### 5. Scheduling confluence admits independent chance events
 
-**Complete callers.** Only three Game consumers call the continuation APIs:
-`OnePacketExtension.lean:121`, `RecoveryOnePacketExtension.lean:107`, and
-`PhaseOnePacketExtension.lean:106`. Port those directly to the generic transport
-and their existing per-record audit theorem. Then delete the three specialized
-continuation and three single-use persistence declarations, rather than retaining
-six compatibility wrappers. The three higher extension theorem headers and
-all their full continuation/deviation scopes stay exact.
+[PolicyCommutation.lean](../../Vegas/EventGraph/PolicyCommutation.lean#L26)
+now owns `Vegas.EventGraph.normalizedAction`, `normalizedPolicyStep` and
+`policyStepThen`. The action kernel uses the actual normalized behavioral law
+for an owned event and the fixed unique action for an ownerless event. Chance
+outputs still come from the original node evaluator and ordinary `Config.step`;
+there is no second executor.
 
-The estimated reduction subtracts a70–100-line generic statement/proof plus
-20–40 total actual callback/adapter lines from the current three continuation
-headers/bodies and single-use persistence owners. Keeping specialized wrappers
-would erase much of the gain. This needs a full three-consumer pilot; no generic
-kernel or numerical saving has been compiler-checked here. It is a remaining
-specific consumer family beyond the earlier minimal serial-prefix extraction.
+`Vegas.EventGraph.ReadyIndependent` now requires:
 
-### 5. Admit independent chance nodes in scheduling confluence
+- `ready_pair_not_actor`: no player owns both distinct simultaneously ready events;
+- `normalizedAction_complete`: the actual normalized action law stays unchanged
+  under completion of every other ready event, for each supplied action/output.
 
-**New scope extension; standard probability/confluence; medium proof-engineering
-confidence; no compression claim or checked new global theorem.**
+The second guard includes completion of a chance event. It is a primitive
+kernel/observation condition, not an assumed two-step diamond or final law.
+`Vegas.EventGraph.readyIndependent_of_ownerless` supplies the all-chance case.
+The existing `BarrierOrdered.readyIndependent` and
+`RevealRelaxedOrdered.readyIndependent` producers discharge their obligations
+from their real ready-pair information properties.
 
-`ReadyIndependent` (`Vegas/EventGraph/PolicyCommutation.lean:46–63`) requires
-both events in *every distinct ready pair* to have different actual players.
-It therefore cannot describe two parallel chance nodes. This is stronger than
-the lower commutation API needs:
+`ReadyIndependent.policyStepThen_map_storeRecall_comm` retains the store and
+each player's original-action recall. Its semantic-key extension in
+[StateCongruence.lean](../../Vegas/EventGraph/StateCongruence.lean#L230) also retains
+the cut. The global
+`Vegas.EventGraph.ReadyIndependent.runPlan_normalized_semantic_eq_canonical` in
+[SchedulerErasure.lean](../../Vegas/EventGraph/SchedulerErasure.lean#L270)
+continues to use the actual runner and the guard `config.remaining ≤ fuel`.
+Its public scheduler selects an enabled event, and actual step progress drives
+the remaining-event induction. The terminal-store corollary is
+`ReadyIndependent.runPolicies_store_eq_canonical` in the same owner.
 
-- `kernelStepThen_map_storeRecall_comm` (KernelCommutation:99–135) explicitly
-  permits ownerless events. Its actor condition is only that no player owns
-  both events.
-- `normalizedPolicyStep` (StateCongruence:58–66) already executes chance via its
-  original evaluator and its unique unit action.
-- The finite runner/confluence owners already reason about actual completion
-  and enough remaining-event fuel.
+The observation deliberately forgets global chronological completion metadata.
+No full-history, public-receipt, scheduler-path, physical-clock, arbitrary-builder
+Nash or SE law invariance is claimed. No common actual actor may be introduced
+while retaining original own-action recall.
 
-Generalize the normalized two-event action kernel to compose the existing
-normalizedPolicyStep for optional actors. Replace the actor-existence field by
-no shared actual actor, and require the normalized action law to be stable under
-completion of any other ready event. For a chance event the action kernel is
-pure unit; for an owned event, the stability premise must also cover another
-ready chance node. The existing public-barrier and reveal-relaxed producers
-can discharge these stronger-domain obligations by their ready-pair facts.
-All-chance DAGs satisfy the owned-policy condition vacuously and become a useful
-new corollary: ancestral sampling order does not affect the terminal typed
-store (or the current semanticKey's store/own-recall observation).
+[ChanceScheduling.lean](../../VegasTests/ChanceScheduling.lean) contains two
+actual nondegenerate fair-Boolean chance nodes. It checks the local semantic-key
+diamond and terminal store equality under every adaptive public scheduler. Its
+mixed graph has an independent public coin and a strategic binding policy that
+reads the sampled value. An actual supported `true` sample changes the
+normalized binding action from `false` to `true`; the profile fails
+ReadyIndependent. This proves the supported-kernel obstruction to dropping
+policy stability. It does not assert a separate complete scheduler-law
+inequality. The existing
+[ConcurrentRevealOrderLaw.lean](../../Vegas/Examples/ConcurrentRevealOrderLaw.lean)
+is ported to the same API.
 
-**Essential limitation.** A newly public random coin can change a later
-strategic policy even when that event has no data-dependency edge. Removing
-actor existence alone is unsound. Actual normalized-action/observation stability
-is a substantive primitive guard, not an assumed pair-kernel or final-law equality.
-No player may own both ready events if original-action recall is preserved.
+The five production/existing-example files measure 1,062 to 1,059 lines:
+**3 source lines removed** (PolicyCommutation +41, StateCongruence −17,
+SchedulerErasure −31, RevealRelaxedScheduling +3, existing example +1).
+The new 166-line regression and its test umbrella import give **+164 lines for
+the complete feature**. Kernel and semantic-state module checks have passed;
+the complete confluence/producers/regression source passed isolated strict
+checking. Full normal downstream acceptance passes.
 
-The current confluence observation forgets the global completion order. Two
-schedulers selecting independent events in opposite orders have different
-public histories even if their terminal store laws agree. No full-history,
-physical receipt, scheduler-path, arbitrary-builder Nash or SE invariance is
-proposed. Adaptive-scheduler confluence must still use actual progress and
-enough-fuel hypotheses, not a terminality assumption supplied by the caller.
+## Unimplemented smaller cleanup leads
 
-A useful first regression is a graph with two independent sampled Boolean
-nodes, checking equal joint terminal stores for both orders; a mixed public-coin
-case should demonstrate failure when policy stability is absent. Rework the
-existing kernel/confluence family rather than add a second executor or chance-
-only proof hierarchy. Expect40–140 net feature lines until a concrete pilot
-settles the ownerless branches and adapter costs.
-
-## Smaller cleanup leads
-
-- The existing `environmentStep_cases` is still not used by five directly
-  inspected environment preservation proofs: liveBindingStamp_environment
-  (PhaseBindingStampHistory:184), liveCompletionStamp_environment
-  (PhaseCompletionStampHistory:73), signedBindings_environment
-  (PhaseSignedBindings:177), bindingReceipts_environment
-  (ReactiveBindingReceipts:84), and candidateValues_environment
-  (ReactiveBoundedValues:121). Their model-specific accepted-packet and actual
-  command branches must remain. Replacing only repeated support-map/pure
-  decomposition suggests25–45 net lines including explicit imports. This is
-  residual use of an existing owner, not a new elimination theorem.
-- `candidateResult` (EventValueSwap:456) duplicates the match in
-  `State.bindingResult` (EventApplication:367). Its pure decoder belongs below
-  value symmetries; ArchiveBindingRecord imports EventValueSwap only to reach
-  that decoder and its definitional bridge. Move the decoder into EventApplication,
-  have the state reader use it once, and port three actual bridge-rewrite sites
-  in EventValueSwap/ArchiveBindingRecord. Retire the now-definitional bridge
-  instead of adding an alias. Numerous explicit State.bindingResult unfold sites
-  also need auditing, so no reliable compression estimate is claimed. Dependency
-  ownership is the main benefit; judge it separately from proof shortening.
-  Preserve fresh/unopenable/wrong-type failure exactly; a generic opening?
-  already exists and must not be replaced.
+- Five environment-preservation proofs still expand support-map/pure cases
+  instead of using the existing `environmentStep_cases`: the live-binding stamp,
+  live-completion stamp, signed-bindings, binding-receipts and bounded-candidate
+  owners. Their accepted-packet and actual command branches are model-specific
+  and must remain. No new eliminator is justified by these short repetitions.
+- The pure `candidateResult` decoder still lives in
+  [EventValueSwap.lean](../../Vegas/Pending/EventValueSwap.lean#L456), with a
+  definitional bridge from `State.bindingResult`. Moving that ownership lower
+  could remove ArchiveBindingRecord's value-symmetry dependency. It requires
+  auditing the real unfold/bridge consumers, preserving fresh/unopenable/wrong-
+  type failure and reusing the existing generic opening decoder. No measured
+  compression or completed migration is claimed.
 
 ## Rejected or deliberately limited directions
 
-- FailureCoverage is logically related to ExclusionEvidence at frontier0 with
-  inheritance equal to the **current** excluded set. It is not the ordinary
-  frontier0/empty exact detector. Dynamic inherited-set rebasing and the short
-  one-way coverage API justify the current abstraction; expanding every caller
-  to a self-indexed exact-evidence type would make the proof interfaces worse.
-- CompletionService residual-height and weighted-path bounds are mathematically
-  plausible, but no active service consumer currently uses even its stronger
-  height theorem beyond Paper/tests. Do not present another rank framework as
-  immediate compression or repeat the already declined rollback-rank proposal.
-- EventGraph scheduler erasure already exposes a full semantic-key theorem
-  before its store projection. Do not advertise that existing strengthening
-  as a missing result. The genuinely missing scope is optional/chance actors.
-- The repeated20–30-line runRounds inductions in mixture, recovery, realization
-  and seed transport have different conditioning/memory obligations. Adapting
-  all of them through a fresh artificial one-player protocol would add a new
-  model just to reuse an iterator; no credible net win was established.
-- No new common service-contract or arbitrary-permutation hierarchy is justified
-  by this review. Physical episodes, guarded inverses, erasures and transformed
-  initial laws retain the distinctions recorded in the implementation ledger.
+- FailureCoverage relates to ExclusionEvidence at frontier zero with inheritance
+  equal to the current excluded set. It is not the frontier-zero/empty detector.
+  Dynamic inherited-set rebasing and the short one-way API justify retaining
+  this abstraction instead of expanding callers to a self-indexed exact type.
+- CompletionService residual-height and weighted-path bounds remain plausible,
+  but no active service consumer uses even its stronger height result beyond
+  Paper/tests. Another rank framework has no established immediate consumer;
+  the declined rollback-rank proposal is not reopened.
+- Scheduler erasure already had a semantic-key theorem before store projection.
+  The implemented extension concerns optional/chance actors, not discovery of
+  that existing observation strengthening.
+- Short runRounds inductions for mixture, recovery, realization and seed
+  transport retain different conditioning and memory obligations. No credible
+  net gain justifies an artificial one-player protocol solely to reuse an
+  iterator.
+- No new common service-contract or arbitrary-permutation hierarchy is justified.
+  Physical episodes, guarded inverses, erasures and transformed initial laws
+  retain their distinct contracts.
 
-## Checked experiment boundary
-
-Root strict checking passed both isolated files using the central Lake options:
-`OwnTrafficLocalityProbe.lean` and `HandlerCertificateProjectionProbe.lean`.
-There are no local options, admissions, or copied shadow semantics. The former
-checks local own-verdict equivalence, actual recovery fiber transport and the
-missing-recall obstruction. The latter checks all three exact existing handler
-projection statements. These results validate adapters, not the estimated
-whole-family line savings or the optional-actor scheduling extension.
+No local Lean options, admissions or copied shadow executor were introduced.
+The full normal build, exact standard-axiom audit and actual regression modules
+pass with the boundaries stated above.

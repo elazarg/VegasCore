@@ -2,9 +2,9 @@
 
 These are isolated review experiments, not production APIs. Run the ordinary
 project build, then python scripts/check-proof-review-probes.py to replay
-all nineteen with the central Lake options. The runner writes only temporary files.
+all twenty with the central Lake options. The runner writes only temporary files.
 The [main review](../proof-review.md) states the scope and interpretation.
-The twelve candidate modules below have exact axiom guards for all 32 public
+The thirteen candidate modules below have exact axiom guards for all 33 public
 probe theorems. The complete compiler-tail migrations are checked in their actual owning modules.
 
 ## ProportionalBayesProbe
@@ -385,7 +385,7 @@ end ProofReview
 
 <!-- probe: NormalizedWeightsProbe -->
 ```lean
-import GameTheoryExtensions.Math.Probability.ProductTransport
+import GameTheoryExtensions.Math.Probability.SwapTransport
 
 noncomputable section
 
@@ -398,56 +398,14 @@ theorem unit_payoff_half_l1 {α : Type*} [Fintype α]
     (unit : ∀ a, 0 ≤ payoff a ∧ payoff a ≤ 1) :
     |∑ a, p a * payoff a - ∑ a, q a * payoff a| ≤
       (∑ a, |p a - q a|) / 2 := by
-  have centered : ∑ a, p a * payoff a - ∑ a, q a * payoff a =
-      ∑ a, (p a - q a) * (payoff a - 1 / 2) := by
-    rw [← sum_sub_distrib]
-    calc
-      _ = ∑ a, ((p a - q a) * (payoff a - 1 / 2) + (p a - q a) / 2) := by
-        apply sum_congr rfl
-        intro a _
-        ring
-      _ = _ := by
-        rw [sum_add_distrib, ← sum_div, sum_sub_distrib, mass, sub_self, zero_div, add_zero]
-  rw [centered]
-  calc
-    _ ≤ ∑ a, |(p a - q a) * (payoff a - 1 / 2)| := abs_sum_le_sum_abs _ _
-    _ ≤ ∑ a, |p a - q a| / 2 := by
-      apply sum_le_sum
-      intro a _
-      have interval : |payoff a - 1 / 2| ≤ 1 / 2 :=
-        abs_le.mpr ⟨by linarith [(unit a).1], by linarith [(unit a).2]⟩
-      rw [abs_mul]
-      calc
-        _ ≤ |p a - q a| * (1 / 2) :=
-          mul_le_mul_of_nonneg_left interval (abs_nonneg _)
-        _ = _ := by ring
-    _ = _ := by rw [sum_div]
+  exact abs_sum_mul_sub_le_half_sum_abs p q payoff mass unit
 
 theorem contamination_ratio {α : Type*} [Fintype α] {m s : α → ℝ} {η : ℝ}
     (m_nonneg : ∀ a, 0 ≤ m a) (s_nonneg : ∀ a, 0 ≤ s a)
     (m_pos : 0 < ∑ a, m a) (small : ∑ a, s a ≤ η * ∑ a, m a) :
     ∑ a, |(m a + s a) / ∑ b, (m b + s b) - m a / ∑ b, m b| ≤
       2 * η / (1 + η) := by
-  let M := ∑ a, m a
-  let S := ∑ a, s a
-  have S_nonneg : 0 ≤ S := sum_nonneg fun a _ => s_nonneg a
-  have ratio_nonneg : 0 ≤ S / M := div_nonneg S_nonneg m_pos.le
-  have ratio_small : S / M ≤ η := (div_le_iff₀ m_pos).mpr small
-  have positive : 0 < 1 + S / M := by linarith
-  have close : ∑ a, |(m a + s a) - m a| ≤ (S / M) * M := by
-    simp only [add_sub_cancel_left, abs_of_nonneg (s_nonneg _)]
-    change S ≤ S / M * M
-    rw [div_mul_cancel₀ _ m_pos.ne']
-  have lower : (1 + S / M) * M ≤ ∑ a, (m a + s a) := by
-    rw [sum_add_distrib]
-    change (1 + S / M) * M ≤ M + S
-    rw [add_mul, one_mul, div_mul_cancel₀ _ m_pos.ne']
-  have bound := sum_abs_div_sum_sub_div_sum_le m_nonneg m_pos close positive lower
-  have eta_nonneg : 0 ≤ η := ratio_nonneg.trans ratio_small
-  have improved : 2 * (S / M) / (1 + S / M) ≤ 2 * η / (1 + η) := by
-    rw [div_le_div_iff₀ positive (by linarith : 0 < 1 + η)]
-    nlinarith
-  exact bound.trans improved
+  exact sum_abs_div_sum_add_sub_div_sum_le m_nonneg s_nonneg m_pos small
 
 end ProofReview.NormalizedWeights
 
@@ -485,8 +443,8 @@ theorem perturb_converges {Player : Type} {E : ExecutionProtocol Player}
     PMFConvergesPointwise
       (fun n => (reference.perturb profile (weight n) (nonnegative n)
         (atMostOne n)).strategy who info) (profile who info) := by
-  exact pmfConvergesPointwise_mix_zero weight nonnegative atMostOne vanishes
-    (reference.strategy who info) (profile who info)
+  exact reference.perturb_strategy_converges profile weight nonnegative atMostOne
+    vanishes who info
 
 theorem split_converges {Raw Normal : Type} [Fintype Raw]
     (project : Raw → Normal) (canonical : Normal → Raw)
@@ -499,11 +457,8 @@ theorem split_converges {Raw Normal : Type} [Fintype Raw]
       (fun n => (sequence n).bind
         (PMF.splitKernel project canonical retract (weight n) (nonnegative n) (atMostOne n)))
       (law.map canonical) := by
-  change PMFConvergesPointwise _ (law.bind fun action => PMF.pure (canonical action))
-  apply converges.bind
-  intro action
-  exact pmfConvergesPointwise_mix_zero weight nonnegative atMostOne vanishes
-    (PMF.fiberUniform project canonical retract action) (PMF.pure (canonical action))
+  exact PMF.split_converges project canonical retract sequence law converges weight
+    nonnegative atMostOne vanishes
 
 theorem update_coordinate_converges {Player : Type} [DecidableEq Player]
     {E : ExecutionProtocol Player} {M : InformationModel E}
@@ -579,13 +534,7 @@ theorem posterior_map_readout {A B Info : Type*} (law : PMF A)
     (read : A → B) (observe : B → Info) (observed : Info) :
     (fiberPosterior law (observe ∘ read) observed).map read =
       fiberPosterior (law.map read) observe observed := by
-  classical
-  by_cases present : observed ∈ (law.map (observe ∘ read)).support
-  · exact map_fiberPosterior_readout law read observe observed present
-  · have absentImage : observed ∉ ((law.map read).map observe).support := by
-      simpa only [PMF.map_comp] using present
-    rw [fiberPosterior_of_not_mem_support law (observe ∘ read) present,
-      fiberPosterior_of_not_mem_support (law.map read) observe absentImage]
+  exact fiberPosterior_map_readout law read observe observed
 
 theorem accumulated_observation_mass {A B : Type} (law : PMF A)
     (old next : A → Bool) (field : A → B) (value : B)
@@ -593,39 +542,7 @@ theorem accumulated_observation_mass {A B : Type} (law : PMF A)
       next point = true ↔ old point = true ∧ field point = value) :
     (law.map next) true = (law.map old) true *
       ((fiberPosterior law old true).map field) value := by
-  classical
-  let read := fun point => (old point, field point)
-  let joint := law.map read
-  have posterior : (fiberPosterior law old true).map read =
-      fiberPosterior joint Prod.fst true := by
-    exact posterior_map_readout law read Prod.fst true
-  have conditional : ((fiberPosterior joint Prod.fst true).map Prod.snd) =
-      (fiberPosterior law old true).map field := by
-    rw [← posterior, PMF.map_comp]
-    rfl
-  have marginal : joint.map Prod.fst = law.map old := by
-    simp only [joint, PMF.map_comp, read, Function.comp_def]
-  have atom : joint (true, value) = (law.map next) true := by
-    rw [PMF.map_apply, PMF.map_apply]
-    apply tsum_congr
-    intro point
-    by_cases supported : point ∈ law.support
-    · have fiber := same point supported
-      simp only [read, Prod.mk.injEq]
-      have predicates : (true = old point ∧ value = field point) =
-          (true = next point) := by
-        apply propext
-        simpa only [eq_comm] using fiber.symm
-      by_cases condition : true = next point
-      · rw [ite_eq_left (Eq.mpr predicates condition), ite_eq_left condition]
-      · rw [ite_eq_right (fun original => condition (Eq.mp predicates original)),
-          ite_eq_right condition]
-    · have zero := (PMF.apply_eq_zero_iff law point).mpr supported
-      simp only [zero, ite_self]
-  have balance := mul_fiberPosterior_map_snd_apply joint true value
-  rw [marginal, conditional, atom] at balance
-  exact balance.symm
-
+  exact observation_fiber_mass law old next field value same
 
 end ProofReview.PosteriorNaturality
 
@@ -665,29 +582,16 @@ theorem initial_public_cells_eq {mine others : State L setup.context}
     (agree : PublicCellsAgree setup p w) {name : VarId} {kind : CellTy Player L}
     (source : HasVar setup.context name kind) (publicKind : (cellField kind).IsPublic) :
     mine.get source = others.get source :=
-  agree name kind publicKind _ _ (mineCells source) (otherCells source)
+  Vegas.initial_public_cells_eq mineCells otherCells agree source publicKind
+
 
 theorem initial_public_inputs_eq {mine others : State L setup.context}
     (mineCells : InitialCellsAt mine p) (otherCells : InitialCellsAt others w)
     (agree : PublicCellsAgree setup p w) (input : (graph setup).InputId)
     (publicField : (graph setup).fieldPublic (.inl input)) :
     setup.eventInputs mine input = setup.eventInputs others input := by
-  obtain ⟨name, kind, source, found⟩ :=
-    (ContextRefs.initial_coversPrefix setup.program).1 input
-  have same : inputId source = input := Sum.inl.inj found
-  subst input
-  have publicKind : (cellField kind).IsPublic := by
-    change (inputLayout setup.context (inputId source)).IsPublic at publicField
-    rwa [inputLayout_inputId source] at publicField
-  have cellEq := initial_public_cells_eq mineCells otherCells agree source publicKind
-  have firstValue := encodeInputs_get mine source
-  have secondValue := encodeInputs_get others source
-  change cast _ (setup.eventInputs mine (inputId source)) = _ at firstValue
-  change cast _ (setup.eventInputs others (inputId source)) = _ at secondValue
-  have valuesEq := firstValue.trans ((congrArg cellValue cellEq).trans secondValue.symm)
-  have back := congrArg (fun value =>
-    cast (congrArg EventGraph.EventField.Value (inputLayout_inputId source)).symm value) valuesEq
-  simpa only [cast_cast, cast_eq] using back
+  exact Vegas.initial_public_inputs_eq mineCells otherCells agree input publicField
+
 
 theorem drawn_splicePoint_given_public {Public : Type*}
     (signal : State L setup.context → Public)
@@ -701,11 +605,8 @@ theorem drawn_splicePoint_given_public {Public : Type*}
     (drawnW : ∃ initial ∈ setup.initialLaw.support, InitialCellsAt initial w) :
     ∃ initial ∈ setup.initialLaw.support,
       InitialCellsAt initial (ProtocolState.splicePoint setup.program r p w) := by
-  obtain ⟨mine, mineMember, mineCells⟩ := drawnP
-  obtain ⟨others, othersMember, otherCells⟩ := drawnW
-  have sameSignal := observable mine others (initial_public_inputs_eq mineCells otherCells agree)
-  exact ⟨_, setup.splice_mem_support signal independent r mineMember othersMember sameSignal,
-    initialCellsAt_splicePoint mineCells otherCells⟩
+  exact Vegas.drawn_splicePoint (r := r) independent observable agree drawnP drawnW
+
 
 variable [Fintype Player]
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
@@ -739,56 +640,8 @@ theorem forcedAgent_of_splice_given_public {Public : Type*}
     (isPrefix : TracePrefix prior trace) (different : r ≠ who) :
     forcedAgent (bounds.onePacketMenu (runtime setup) leaks) (initialLaw setup) horizon scheduler
       r ((application setup leaks).observe r (some control)) := by
-  have publicAgree := publicCellsAgree_of_observe sameView
-  have shape := ProtocolState.sameShape_of_observe_eq who setup.program p w sameView
-  let q := ProtocolState.splicePoint setup.program r p w
-  have publicAgreeQ : PublicCellsAgree setup p q := publicCellsAgree_splicePoint publicAgree
-  have succeedQ : CommitmentCellsSucceed setup p q := succeed
-  let swap := HiddenSwap.ofPairs (betweenPairs publicAgreeQ succeedQ)
-    (betweenHandlePairs setup p q current.execution.application.accepted)
-  -- The swap toward the splice is guarded at the end of the history.
-  have drawnP : ∃ initial ∈ setup.initialLaw.support, InitialCellsAt initial p := by
-    obtain ⟨initial, member, _, point, pointEq, found⟩ := decoded_initialCellsAt trace current rfl
-    rw [decodedP, Option.some.injEq] at pointEq
-    subst pointEq
-    exact ⟨initial, member, found⟩
-  have drawn := drawn_splicePoint_given_public signal independent observable publicAgree
-    (r := r) drawnP
-    (exists_initialCellsAt second.trace secondState)
-  have staticP := decodedPoint_staticAt decodedP
-  have guarded : SwapGuardState setup swap (swapAllowed swap) (some current) :=
-    swapGuardState_of_agree drawn trace decodedP
-      (fun event active owner payload binding checks outputEq codeEq view =>
-        cell?_splicePoint_eq_of_agree (bindingCellsAgree_of_decoded (event := event)
-          (owner := owner) (payload := payload) (binding := binding) (checks := checks)
-          (outputEq := outputEq) (codeEq := codeEq) wellFormed secondState who sameView trace
-          decodedP staticW readyOwn active view)) rfl
-  have bounded := bounded_betweenHandlePairs (p := p) (q := q)
-    (betweenPairs publicAgreeQ succeedQ) current.execution.application.accepted covered
-  have fixes : swap.Fixes r :=
-    fixes_between_of_visible (fun name _ visible => cell?_splicePoint_of_visible publicAgree name
-      visible) (fun _ _ accepted => accepted_owner_of_trace trace accepted)
-  -- The image of the end of the history is forced for `r`.
-  have forcedEnd : ForcedState setup leaks r (some (swap.control current)) := by
-    refine (forcedState_iff_decodedPoint _).mpr ⟨_, ?_,
-      forcedPoint_splice shape staticP staticW
-        (intended_of_history wellFormed second.trace w secondState) (Ne.symm different)⟩
-    change decodedPoint setup (current.execution.application.config.swap
-      (EventGraph.ValueSwap.ofPairs (betweenPairs publicAgreeQ succeedQ))) = _
-    rw [decodedPoint_betweenPairs, decodedP, Option.map_some]
-  -- So is the image of the prefix, which carries `r`'s information there.
-  have guardedPrior := swapGuardState_of_tracePrefix swap (initialClosed_swapAllowed swap) bounded
-    isPrefix guarded
-  have forcedPrior := forcedState_image_of_tracePrefix swap (initialClosed_swapAllowed swap)
-    bounded r prior isPrefix guarded forcedEnd
-  let symmetry := onePacketSwapSymmetry bounds (initialLaw setup) horizon scheduler swap
-    (initialClosed_swapAllowed swap) bounded
-  refine ⟨⟨_, symmetry.mapTrace prior guardedPrior⟩, ?_, forcedPrior⟩
-  change (onePacketInformation setup leaks bounds horizon scheduler).infoOf r
-    (symmetry.mapTrace prior guardedPrior) = _
-  rw [onePacket_infoOf]
-  exact observe_swap_of_fixes swap (initialClosed_swapAllowed swap) bounded fixes prior
-    guardedPrior
+  exact Vegas.forcedAgent_of_splice wellFormed independent observable covered trace decodedP
+    secondState sameView staticW readyOwn succeed prior isPrefix different
 
 
 end ProofReview.SourcePublicSplice
@@ -836,27 +689,8 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 theorem splice_public_initial_inputs (who : Player) (mine others : State L setup.context)
     (input : (graph setup).InputId) (publicField : (graph setup).fieldPublic (.inl input)) :
     setup.eventInputs (splice who mine others) input = setup.eventInputs others input := by
-  obtain ⟨name, kind, source, found⟩ :=
-    (ContextRefs.initial_coversPrefix setup.program).1 input
-  have same : inputId source = input := Sum.inl.inj found
-  subst input
-  have publicKind : (cellField kind).IsPublic := by
-    change (inputLayout setup.context (inputId source)).IsPublic at publicField
-    rwa [inputLayout_inputId source] at publicField
-  have cellEq : (splice who mine others).get source = others.get source := by
-    cases kind with
-    | publicData payload => rfl
-    | privateInput owner payload => exact publicKind.elim
-    | commitment owner payload => exact publicKind.elim
-    | publication payload => rfl
-  have firstValue := encodeInputs_get (splice who mine others) source
-  have secondValue := encodeInputs_get others source
-  change cast _ (setup.eventInputs (splice who mine others) (inputId source)) = _ at firstValue
-  change cast _ (setup.eventInputs others (inputId source)) = _ at secondValue
-  have valuesEq := firstValue.trans ((congrArg cellValue cellEq).trans secondValue.symm)
-  have back := congrArg (fun value =>
-    cast (congrArg EventGraph.EventField.Value (inputLayout_inputId source)).symm value) valuesEq
-  simpa only [cast_cast, cast_eq] using back
+  exact Vegas.splice_public_initial_inputs who mine others input publicField
+
 
 theorem public_signal_preserved {Public : Type*} (signal : State L setup.context → Public)
     (observable : ∀ (first second : State L setup.context),
@@ -865,7 +699,8 @@ theorem public_signal_preserved {Public : Type*} (signal : State L setup.context
       signal first = signal second)
     (who : Player) (mine others : State L setup.context) :
     signal (splice who mine others) = signal others :=
-  observable _ _ (splice_public_initial_inputs who mine others)
+  Vegas.public_signal_preserved signal observable who mine others
+
 
 end ProofReview.PublicSignalPreserved
 
@@ -1200,16 +1035,9 @@ theorem recordsEntry_transition_from_prefix (who : Player)
     (reached : after ∈ ((application setup leaks).transition initial horizon scheduler before
       joint).support) :
     RecordsEntry setup leaks who entry after := by
-  cases before with
-  | none => exact holds.elim
-  | some control =>
-      obtain ⟨next, rfl, recalls⟩ := (application setup leaks).transition_recall_prefix
-        initial horizon scheduler control after joint reached
-      obtain ⟨earlier, later, split⟩ := holds
-      obtain ⟨tail, retained⟩ := recalls who
-      refine ⟨earlier, later ++ tail, ?_⟩
-      rw [← retained, split]
-      simp only [List.append_assoc, List.cons_append]
+  exact Vegas.recordsEntry_transition who entry initial horizon scheduler before after joint
+    holds reached
+
 
 end ProofReview.RecordedEntryPrefix
 
@@ -1681,4 +1509,115 @@ end ProofReview.TimingRetention
 #guard_msgs (whitespace := lax) in
 #print axioms
   ProofReview.TimingRetention.sourceServiceTurnPolicy_execution_settlement_product_lawError
+```
+
+
+## IndependentRecoveryScope
+
+The constant Unit signal gives the full unconditional-prior recovery guarantee,
+including standard sequential equilibrium and its joint settlement/readout law.
+
+<!-- probe: IndependentRecoveryScope -->
+```lean
+import Vegas.Game.RecoverySequentialCompilation
+
+noncomputable section
+
+namespace ProofReview.IndependentRecovery
+
+open Vegas Interaction
+
+variable {Player : Type} [DecidableEq Player] {L : IExpr}
+
+open Classical in
+open Vegas.SourceProgram Vegas.EventGraphRuntime GameTheory.Protocol GameTheory.Enforcement in
+theorem unconditional_recovery_sequential_equilibrium [Fintype Player] [IExpr.ResultTypes L]
+    (setup : Setup (Player := Player) (L := L))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (bounds : MessageBounds (graph setup)) (horizon : Nat)
+    (scheduler : (recoveryApplication (runtime setup) leaks).Scheduler)
+    [(recoveryApplication (runtime setup) leaks).FiniteNature
+      (PMF.map (fun native => (RecoveryState.mk native ∅ : RecoveryState (graph setup)))
+        (initialLaw setup)) scheduler]
+    [Finite setup.intendedProtocol.History]
+    {Parameter : Type} (parameter : State L setup.context → Parameter)
+    (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
+    (excludedPayoff : Player → ℝ)
+    (wellFormed : setup.WellFormed)
+    (independent : setup.PrivateInputsIndependent) {delay bound : (graph setup).EventId → Nat}
+    (opportunity : Recovery.Opportunity (runtime setup) leaks
+      (PMF.map (fun native => (RecoveryState.mk native ∅ : RecoveryState (graph setup)))
+        (initialLaw setup)) horizon scheduler delay)
+    (inclusion : Recovery.ProtectedInclusion (runtime setup) leaks
+      (PMF.map (fun native => (RecoveryState.mk native ∅ : RecoveryState (graph setup)))
+        (initialLaw setup)) horizon scheduler bound)
+    (completes : Recovery.CompletesPlay (runtime setup) leaks
+      (PMF.map (fun native => (RecoveryState.mk native ∅ : RecoveryState (graph setup)))
+        (initialLaw setup)) horizon scheduler)
+    (timely : AsyncTimely (runtime setup) delay bound)
+    (lowerUtility upperUtility : Player → ℝ)
+    (lower_le : ∀ outcome who, lowerUtility who ≤ utility outcome who)
+    (le_upper : ∀ outcome who, utility outcome who ≤ upperUtility who)
+    (below : ∀ (final : setup.intendedProtocol.History) terminal,
+      setup.protocolReadout final.state = some terminal →
+        ∀ who, excludedPayoff who ≤ utility (setup.parameterOutcome parameter terminal) who)
+    (intended : setup.intendedModel.BehavioralAssessment)
+    (equilibrium : intended.IsSequentialEquilibrium setup.intended_decision_antichain
+      setup.intended_bounded.wellFoundedHistories
+      (fun who final => (setup.protocolReadout final.state).elim 0
+        (fun state => utility (setup.parameterOutcome parameter state) who)))
+    (covers : bounds.CoversOutputValues) (coversInputs : bounds.CoversInputValues)
+    (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount)
+    (service : EvidenceReportService (CountEvidence (graph setup)))
+    (observationRate deliveryRate : Player → ℝ)
+    (delivery_nonnegative : ∀ who, 0 ≤ deliveryRate who)
+    (coverage : CountEvidenceCoverage service observationRate deliveryRate)
+    (deposit : Player → ℝ) (deposit_nonnegative : ∀ who, 0 ≤ deposit who)
+    (sufficient : ∀ who,
+      max 0 (max (excludedPayoff who) (upperUtility who)) -
+          min 0 (min (excludedPayoff who) (lowerUtility who)) ≤
+        observationRate who * deliveryRate who * deposit who) :
+    let initial := PMF.map
+      (fun native => (RecoveryState.mk native ∅ : RecoveryState (graph setup))) (initialLaw setup)
+    let raw := Recovery.rawMenu (runtime setup) leaks bounds
+    let observe := (recoveryApplication (runtime setup) leaks).stateTraffic
+    let audit := Recovery.countAudit (runtime setup) leaks service.sample
+    let base := recoveryExclusionBase parameter utility excludedPayoff
+    let payoff := TerminalAudit.utility base observe audit deposit
+    let settle := TerminalAudit.settlement base observe audit deposit
+    ∃ target : (raw.information initial horizon scheduler).BehavioralAssessment,
+      target.IsSequentialEquilibrium
+        (raw.decisionInformationAntichain initial horizon scheduler)
+        (raw.bounded initial horizon scheduler).wellFoundedHistories
+        (fun who final => payoff final.state who) ∧
+      (∀ final ∈ ((raw.information initial horizon scheduler).runBehavioral
+          target.strategy (2 * horizon + 1)).support,
+        ∀ who, TerminalAudit.charge observe audit final.state who = 0) ∧
+      ((raw.information initial horizon scheduler).runBehavioral target.strategy
+          (2 * horizon + 1)).bind
+          (fun final => (settle final.state).map fun payoffs =>
+            (sourceReadout setup leaks (RecoveryProjection.protocolState (runtime setup) leaks
+              final.state), payoffs)) =
+        (setup.intendedModel.runBehavioral intended.strategy
+          (instructionCount setup.program + 1)).map
+          (intendedReadoutExclusion setup parameter utility excludedPayoff) := by
+  intro initial raw observe audit base payoff settle
+  obtain ⟨target, truncated, clean⟩ :=
+    Vegas.recovery_intended_raw_sequentialEquilibrium_preserved parameter utility excludedPayoff
+      (signal := fun _ : State L setup.context => ()) wellFormed
+      (fun owner first second _ => independent owner first second) (fun _ _ _ => rfl)
+      opportunity inclusion completes timely lowerUtility upperUtility
+      lower_le le_upper below intended equilibrium covers coversInputs capacity service
+      observationRate deliveryRate delivery_nonnegative coverage deposit deposit_nonnegative
+      sufficient
+  exact ⟨target, (target.isSequentialEquilibrium_iff_truncated_of_bounded _ _ _
+    (raw.bounded initial horizon scheduler) _).mpr truncated, clean⟩
+
+
+/-- info: 'ProofReview.IndependentRecovery.unconditional_recovery_sequential_equilibrium' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms ProofReview.IndependentRecovery.unconditional_recovery_sequential_equilibrium
+
+end ProofReview.IndependentRecovery
 ```

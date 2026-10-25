@@ -61,7 +61,8 @@ monetary observation; the target is not yet their checked statement.
 
 The two SE environments remain distinct sufficient conditions within this
 family. A reserved tape with correlated inputs and complete observation is not
-interchangeable with an adaptive timely builder and independent inputs. Neither
+interchangeable with an adaptive timely builder whose private inputs are
+independent given an observed public initial signal. Neither
 current SE theorem implies the other. Extending concurrent SE to arbitrary
 timely builders is a separate research question, not an exit criterion for
 consolidation.
@@ -73,7 +74,7 @@ their present source games and utilities until the semantic adapters are proved.
 | --- | --- | --- | --- |
 | Compiler correctness: terminal law, unilateral deviation law, Nash equivalence on the ideal graph | none | any mode | checked: `canonical_setup_law`, `canonical_setup_deviation_law`, `Vegas.Paper.concurrent_event_nash_iff` |
 | Nash preservation | any timely builder | sequential and concurrent | checked on the plain contract (`Vegas.Paper.async_first_turn_nash_iff` and siblings); to port |
-| Non-concurrent sequential-equilibrium preservation | any timely builder, independent private inputs | sequential | checked on the forced-exit contract (`Vegas.Paper.recovery_intended_raw_sequential_equilibrium`); to port |
+| Non-concurrent sequential-equilibrium preservation | any timely builder, private inputs independent given a public initial signal | sequential | checked on the forced-exit contract (`Vegas.Paper.recovery_intended_raw_sequential_equilibrium`); to port |
 | Concurrent sequential-equilibrium preservation | reserved-epoch tape, complete pending observation | concurrent | checked on the phase contract (`Vegas.Paper.concurrent_source_raw_sequential_equilibrium`) |
 | Intended game to source game | none | none | checked: `Vegas.Paper.intended_sequential_equilibrium`, `Vegas.Paper.intended_nash` |
 | Late-leak impossibility | abstract game | none | checked: `Vegas.Paper.late_leak_intended_outcome_not_preserved` and siblings |
@@ -119,9 +120,14 @@ preparatory extractions separately from the semantic consolidation steps.
 Probability comparison, typed collection, continuation and evidence proofs have
 reusable owners. Conditional-public-prior base laws and player-specific audited
 Nash errors strengthen the analysis without choosing failure or retry semantics.
-Strict count-audit support exclusion uses actual payoff bounds and a feasible
-safe continuation. These results do not close the semantic adapters or extend
-the existing recovery SE capstone to conditional priors.
+Strict count-audit support exclusion uses terminal-supported payoff bounds,
+observed own-output cleanliness and a feasible safe continuation. Source-cell
+and native-view adapters carry conditional public priors through the full
+recovery SE capstone, including its joint settled/readout law; a Unit signal
+recovers the unconditional scope. Product retention sharpens the timing error
+through the Nash and actual-payment capstones. These results leave the semantic
+adapters and common-contract language decisions open. The
+[proof review](proof-review.md) records all sixteen checked findings.
 
 The [phase application](../Vegas/Pending/PhaseApplication.lean) already accepts a
 general event graph; the concurrent capstone fixes `.concurrent`. Singleton
@@ -582,8 +588,10 @@ common language and retained capstones.
   satisfying the existing asynchronous contract and timeliness assumptions,
   first-opportunity clients preserve and reflect the same ε-Nash property in
   the source protocol and bounded raw response game. Clients that defer have
-  the original additional error `2 * δ * R` in both directions, where δ is the
-  sum of event deferral weights and R is the audited utility range. The assumptions
+  the additional error `2 * δ * R` in both directions, where δ is
+  `1 - product(event, 1 - deferral(event))` and R is the audited utility range.
+  This error is at most the sum of event deferrals without an extra
+  independence assumption. The assumptions
   retain barrier ordering, authentic audit samples, nonnegative deposits and a bounded
   interval covering every terminal utility, unfinished readout and possible
   charge. For every admitted source profile, a separate theorem preserves the

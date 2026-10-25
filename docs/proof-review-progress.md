@@ -23,22 +23,30 @@ Isolated checks do not close downstream obligations.
 
 | Finding | Status | Evidence or remaining verification |
 | --- | --- | --- |
-| Product-retention timing error | Implemented; integration pending | Actual domination, product bound and law/Nash/payment/Paper ports; quantitative adapters and regressions await owning build |
-| Conditional public-source splicing | Implemented; integration pending | Full recovery route and public capstone generalized; actual conditional-prior and exact old Unit-scope checks pending |
-| Sharper normalized comparisons | Isolated check passes | Complete one-/two-side bounds and finite regressions pass; projected and native clients await owning build |
-| Information-local own cleanliness | Checked | Actual support exclusion uses remembered outputs; actual owners, phase example and five-root standard-axiom audit pass |
-| Terminal-only audit payoff bounds | Checked | Actual bad/safe/context proof and unbounded-nonterminal/charged-exhaustion regression pass; standard-axiom audit passes |
+| Product-retention timing error | Checked | Actual full-run domination, bounded product error and every settlement/Nash/payment/Paper port pass; strict numeric improvement regression and exact axioms pass |
+| Conditional public-source splicing | Checked | Full recovery and public capstone pass; exact full unconditional Unit specialization and strictly broader correlated-prior regression pass |
+| Sharper normalized comparisons | Checked | Both genuine L1 scopes, complete one-/two-side bounds, projected and actual record clients/limits plus finite regressions pass |
+| Information-local own cleanliness | Checked | Actual support exclusion uses remembered outputs; actual owners, phase example and exact standard-axiom audit pass |
+| Terminal-only audit payoff bounds | Checked | Actual bad/safe/context proof and unbounded-nonterminal/charged-exhaustion regression pass; exact axioms pass |
 | Six compiler tail-order consumers | Checked | Both actual complete modules pass strict checks; unchanged statements; 42 fewer physical lines |
 | Lower source raw-result ownership | Checked | All five actual owner/consumer modules pass strict checks; unchanged mathematical statements; 28 fewer lines |
-| Exact recorded-entry prefix reuse | Implemented; integration pending | Exact recall-prefix instance; owning build pending |
-| Existing convergence APIs | Implemented; integration pending | Existing core convergence owners instantiated; family 24 fewer lines; combined adapter recheck pending |
-| Remaining handler projections | Owning build passes | Exact certificate projections; 52 fewer proof-body lines; final family check pending |
-| Zero-mass posterior naturality | Implemented; integration pending | All four actual callers updated; production replay passes; full owning build pending |
-| Exact empty-processing law as owner | Implemented; integration pending | Single owner and actual imports; moved generic frame scope corrected; recheck pending |
+| Exact recorded-entry prefix reuse | Checked | Exact ordered split and callers preserved; 20 fewer lines |
+| Existing convergence APIs | Checked | All three actual consumers instantiate existing core owners; 24 fewer lines |
+| Remaining handler projections | Checked | All three exact certificates and downstream public projections pass; 49 fewer lines |
+| Zero-mass posterior naturality | Checked | Total naturality, all four actual callers and enclosing private cylinder-fold strengthening pass; genuine posterior-support guards retained |
+| Exact empty-processing law as owner | Checked | Full-execution law, segment, generic frames and actual budget-concurrency client pass; duplicate module retired; 37 fewer lines including umbrella |
 | Three audit-continuation transports | Checked | Generic transport, all three actual higher consumers and exact standard-axiom audit pass; 177 fewer lines including umbrella |
-| Four commitment interval descriptors | Implemented; integration pending | One interval owner and all four actual ports; owning build pending |
-| Profile/expectation cleanup bundle | Implemented; integration pending | Complete actual algebra ports; one dependent coordinate correction awaits recheck |
-| Chance-aware graph confluence | Isolated check passes | Complete exact core and concrete chance regressions check; normal per-module build pending |
+| Four commitment interval descriptors | Checked | Common interval owner and all four actual ports pass; 27 fewer lines |
+| Profile/expectation cleanup bundle | Checked | Complete dependent profile, finite-support and scalar-expectation consumers pass; 29 fewer lines |
+| Chance-aware graph confluence | Checked | Normal module checks and actual fair-chance/mixed obstruction regressions pass; all semantic/progress/policy-stability scopes retained |
+
+Acceptance checks pass: the 5,771-job normal build; sixty exact production and
+regression axiom roots; fifty-one permanent production guards; twenty review
+experiments with thirty-three candidate-theorem guards; the full unconditional
+recovery specialization; 100 Python tests; module boundaries, source policy,
+documentation references and strict declaration reachability (zero of 1,788
+modules unreached). The main review separates library, example, regression and
+Paper sizes.
 
 ## Other library results
 
@@ -86,7 +94,7 @@ Isolated checks do not close downstream obligations.
 | G10 | Share domination operations rather than model-specific map/mix lemmas | Checked | Map/common-mixture/right-retention owner and both actual domination callers pass; exact map/mix roots retain standard axioms. Net9-line API growth |
 | G11 | Give approximate local comparisons monotonicity and finite-case algebra | Checked | Gain comparison monotonicity and common-sequence finite error budget plus both comparison callers pass; exact error-budget/lottery roots retain standard axioms. Net42-line API growth; source assessment sequence preserved |
 | G12 | Repair the dependent provenance interface before attacking giant bodies | Checked | Dependent reference/config transport requires no ResultTypes premise; five actual provenance adapters replace local equality eliminations. Full correspondence/alignment/replay and capstone chain plus both exact transport guards pass; whole family net57 fewer lines |
-| G13 | Generalize owner-prior transport to public-fiber independence, cautiously | Checked conditional base laws | Canonical source splice, prior scaling and two-site/late base-law proofs accept independence within an observed public initial fiber. All-history membership and same-key support closure are proved; unconditional callers use Unit with unchanged capstone hypotheses. Full-support noisy public-bit regression and exact roots pass. Production grows256 lines after removing duplicated engines; conditional-prior recovery SE remains unproved |
+| G13 | Generalize owner-prior transport to public-fiber independence, cautiously | Checked conditional base laws | Canonical source splice, prior scaling and two-site/late base-law proofs accept independence within an observed public initial fiber. All-history membership and same-key support closure are proved; unconditional callers use Unit with unchanged capstone hypotheses. Full-support noisy public-bit regression and exact roots pass. Production grows256 lines after removing duplicated engines; full conditional-prior recovery SE is checked in the current findings |
 | G14 | Obtain event-sensitive Nash errors before changing runtime contracts | Checked per-player result; event refinement assessed | Two per-player best-response bridges retain complete audited payoff ranges, full deviations and expectation guards. Every scalar caller and all11 scalar theorem headers remain intact; exact roots and full build pass. Four files grow3 lines; Paper adapter grows1. Event-weighted continuation sensitivities need additional actual hybrid-payoff guards and are not claimed |
 | G15 | Turn strict enforcement margins into a local support-exclusion theorem | Checked | Effective-menu silence is a feasible zero-charge continuation against arbitrary admitted opponents. Strict coverage/deposit margin excludes a forbidden choice at every own-clean information fiber under rationality, with actual runner factorization and integrability. Generic/concrete owners, timing example and exact guards pass. Whole family grows423 lines; original example CountRecall conjunct retained |
 | S1 | Factor the legal action translation inside the two repair inductions | Checked | Constructive legal-joint coordinate update and both actual reveal-translation callers pass. The broad menu-level helper was rejected because its signature erased savings. Minimal kernel and all adapters grow one line; exact generic root needs no axioms |
@@ -180,7 +188,7 @@ feature growth is not reported as proof compression.
 Every item in this implementation ledger has a disposition. A frozen dependency
 or retained contract is not an implemented strengthening. Event-sensitive timing
 errors need actual hybrid-continuation payoff guards; the conditional-prior
-source-splice adapter is checked only as an isolated review probe. Full recovery
-SE propagation remains unproved; neither capstone extension is claimed.
+source-splice adapter and full conditional-prior recovery SE are checked. The
+product timing bound is checked; event-specific payoff sensitivity remains open.
 The existing optional premise-suggestion diagnostic persists independently of
 successful kernel builds and axiom checks.
