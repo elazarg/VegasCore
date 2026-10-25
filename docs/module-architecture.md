@@ -707,6 +707,20 @@ keeps first-exit law transport out of the application-specific proofs.
 share source gain limits and local-law convexity across the recovery and phase
 models.
 
+[Native baseline law transport](../Vegas/Game/SequentialPhaseNativeStrategyLaw.lean)
+and [local gain error](../Vegas/Game/SequentialPhaseNativeGainError.lean) use the
+same actual comparison site for prescribed and alternative choices.
+[Counted keyed values](../Vegas/Game/RecoveryCountedKeyedValues.lean) and
+[ordinary native comparisons](../Vegas/Game/SequentialPhaseNonLateNativeComparisons.lean)
+instantiate physical service without assuming an unrestricted recovery contract.
+[Actual keyed pooled gains](../Vegas/Game/SequentialPhaseKeyedGains.lean),
+[pure option bounds](../Vegas/Game/SequentialPhaseKeyedPureChoices.lean), and
+[unpending choice indifference](../Vegas/Game/SequentialPhaseUnpendingChoices.lean)
+supply separate local deviation cases. The
+[phase limit consumer](../Vegas/Game/SequentialPhaseLimit.lean) preserves the
+original completion witness and joint readout/payoff law once all pure-choice
+comparisons are supplied.
+
 ## Vegas/Examples
 
 - [Executable second-price receipts and bounded-auction incentives](../Vegas/Examples/BoundedPaymentAuction.lean)

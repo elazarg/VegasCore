@@ -924,3 +924,11 @@ import Vegas.Game.SequentialPhaseNativeCutoffValue
 import Vegas.Game.SequentialPhaseNativeValueError
 import Vegas.Game.SequentialPhaseOwingGain
 import Vegas.Game.SequentialPhaseKeyedComponentValues
+import Vegas.Game.RecoveryCountedKeyedValues
+import Vegas.Game.SequentialPhaseNonLateNativeComparisons
+import Vegas.Game.SequentialPhaseNativeStrategyLaw
+import Vegas.Game.SequentialPhaseNativeGainError
+import Vegas.Game.SequentialPhaseKeyedGains
+import Vegas.Game.SequentialPhaseKeyedPureChoices
+import Vegas.Game.SequentialPhaseUnpendingChoices
+import Vegas.Game.SequentialPhaseLimit

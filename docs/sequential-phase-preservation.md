@@ -249,14 +249,28 @@ law. It combines exact Bayes and choice transport with the regular-prefix
 foreign-exit bound and posterior irregular-history drift. The original
 conditional private-input independence, observable signal, calibrated tremble
 scale and catalogue coverage assumptions remain explicit.
+[Baseline law transport](../Vegas/Game/SequentialPhaseNativeStrategyLaw.lean)
+identifies the mapped phase strategy with the actual native comparison strategy
+at that site. The [gain bound](../Vegas/Game/SequentialPhaseNativeGainError.lean)
+therefore compares a deviation and its prescribed baseline using the same
+uniform error; no baseline identity is assumed.
+[Native ordinary-response comparisons](../Vegas/Game/SequentialPhaseNonLateNativeComparisons.lean)
+bound pure pending responses by the original source deviations under physical
+phase service. At an unpending, nonowing ordinary phase site,
+[all local choice laws coincide](../Vegas/Game/SequentialPhaseUnpendingChoices.lean),
+so their gain is exactly zero for arbitrary payoffs.
 [Pending affine values](../Vegas/Game/SequentialPhasePendingValueAffine.lean)
 and [arbitrary local completion values](../Vegas/Game/SequentialPhaseLocalCompletionValue.lean)
 instantiate the shared source-potential proofs from actual phase completion and
 honest continuation estimates. Both binding and resolution events are covered.
 [Keyed component values](../Vegas/Game/SequentialPhaseKeyedComponentValues.lean)
 use common native option scores for the original phase utility, with only the
-original intended-terminal punishment floor. Their component-pool and arbitrary
-pure-choice gain consequences are separate obligations.
+original intended-terminal punishment floor.
+[Pooled component gains](../Vegas/Game/SequentialPhaseKeyedGains.lean) follow from
+the actual phase pooled optimality and owing-site indifference, with one uniform
+vanishing error. [Pure option bounds](../Vegas/Game/SequentialPhaseKeyedPureChoices.lean)
+control the physical tremble loss and identify each keyed option as a part of
+the same pool. Arbitrary pure-choice gain comparisons remain an obligation.
 
 The [honest source laws](../Vegas/Game/SequentialPhaseHonestLaw.lean) and
 [same-weight retention](../Vegas/Game/SequentialPhaseComparisonRetention.lean)
@@ -272,6 +286,10 @@ their rare probability is bounded rather than their states being identified.
 requires only pure local-choice comparisons. Decision recall extends those to
 local lotteries and whole-policy SE at the common consistent limit. The recovery
 consumer and pooled-component consumer reuse this argument.
+[SequentialPhaseLimit](../Vegas/Game/SequentialPhaseLimit.lean) applies it to the
+same actual phase completion sequence and its consistent limit, deriving the
+initialized law approximation from physical phase service. Its pure-choice
+comparison premise remains to be supplied.
 [SequentialPhaseRawLaw](../Vegas/Game/SequentialPhaseRawLaw.lean) checks the final
 sequential audit consumer: a canonical phase SE with the desired law extends to
 raw audited SE with zero charges, no exclusions and the realized settled joint

@@ -2284,3 +2284,51 @@ open Vegas.SequentialPhase in
 #guard_msgs (whitespace := lax) in
 open GameTheory.Protocol.PublicScheduler in
 #print axioms expanded_sequentialEquilibrium
+
+/-- info: 'Vegas.SequentialPhase.nativeComparison_nonlate_pending_comparisons' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.SequentialPhase in
+#print axioms nativeComparison_nonlate_pending_comparisons
+
+/-- info: 'Vegas.SequentialPhase.phase_strategy_native_law' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.SequentialPhase in
+#print axioms phase_strategy_native_law
+
+/-- info: 'Vegas.SequentialPhase.localGain_native_comparison_error_vanishes' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.SequentialPhase in
+#print axioms localGain_native_comparison_error_vanishes
+
+/-- info: 'Vegas.SequentialPhase.keyed_component_mixture_gain_bounds' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.SequentialPhase in
+#print axioms keyed_component_mixture_gain_bounds
+
+/-- info: 'Vegas.SequentialPhase.keyed_main_value_sub_le' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.SequentialPhase in
+#print axioms keyed_main_value_sub_le
+
+/-- info: 'Vegas.SequentialPhase.keyed_component_gain_le_of_mixtures' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.SequentialPhase in
+#print axioms keyed_component_gain_le_of_mixtures
+
+/-- info: 'Vegas.SequentialPhase.localGain_eq_zero_of_unpending_notOwing' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.SequentialPhase in
+#print axioms localGain_eq_zero_of_unpending_notOwing
+
+/-- info: 'Vegas.SequentialPhase.sequentialEquilibrium_of_local_comparisons' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.SequentialPhase in
+#print axioms sequentialEquilibrium_of_local_comparisons

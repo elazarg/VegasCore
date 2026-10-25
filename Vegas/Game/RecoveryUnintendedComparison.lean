@@ -37,7 +37,8 @@ local notation "Clear" => ReactiveApplication.stateInvariant
 open Classical in
 /-- A non-intended first-callback commitment is worth exactly exclusion on
 regular histories, so its gain is bounded by honest retention error. -/
-theorem nativeComparison_unintendedCommitment_history_comparison [Fintype (RP).History]
+theorem nativeComparison_unintendedCommitment_history_comparison_of_counted_service [Fintype
+  (RP).History]
     [(application setup leaks).FiniteNature (initialLaw setup) (NativeScheduler)]
     [∀ who, DecidableEq ((R).InfoState who)] [∀ who, DecidableEq ((N).InfoState who)]
     (wellFormed : setup.WellFormed) (covers : bounds.CoversOutputValues)
@@ -47,10 +48,20 @@ theorem nativeComparison_unintendedCommitment_history_comparison [Fintype (RP).H
     {slots : Nat}
     (weights : ℕ → ∀ p, PMF (Part setup leaks bounds Initial horizon scheduler slots p)) (n : ℕ)
     {delay bound : (graph setup).EventId → Nat}
-    (opportunity : Recovery.Opportunity (runtime setup) leaks Initial horizon scheduler delay)
-    (inclusion : Recovery.ProtectedInclusion (runtime setup) leaks Initial horizon scheduler bound)
+    (opportunity : ∀ control : (application setup leaks).Control,
+      (onePacketProtocol setup leaks bounds horizon (NativeScheduler)).Trace (some control) →
+      ExclusionEvidence 0 ∅ (RecoveryState.mk control.execution.application ∅) →
+      OpportunityAt (runtime setup) leaks control.execution delay)
+    (inclusion : ∀ control : (application setup leaks).Control,
+      (onePacketProtocol setup leaks bounds horizon (NativeScheduler)).Trace (some control) →
+      ExclusionEvidence 0 ∅ (RecoveryState.mk control.execution.application ∅) →
+      ProtectedInclusionAt (runtime setup) leaks control.execution bound)
     (timely : (runtime setup).AsyncTimely delay bound)
-    (completes : Recovery.CompletesPlay (runtime setup) leaks Initial horizon scheduler)
+    (completes : ∀ control : (application setup leaks).Control,
+      (onePacketProtocol setup leaks bounds horizon (NativeScheduler)).Trace (some control) →
+      ExclusionEvidence 0 ∅ (RecoveryState.mk control.execution.application ∅) →
+      (application setup leaks).terminal (some control) →
+      control.execution.application.config.cut.Terminal)
     {who : Player} (site : (N).InformationSite who) (choice : (N).Choice who site.1)
     (notFree : ¬ Vegas.FreeAgent setup leaks bounds horizon (NativeScheduler) ((N).agentAt site))
     (notOwing : ¬ Vegas.OwingAgent setup leaks bounds horizon (NativeScheduler) ((N).agentAt site))
@@ -216,12 +227,12 @@ theorem nativeComparison_unintendedCommitment_history_comparison [Fintype (RP).H
           History.state).support := (PMF.mem_support_map_iff _ _ _).mpr ⟨middle, stepped, rfl⟩
       rw [oneStep, PMF.mem_support_pure_iff] at mem
       exact mem
-    exact recovery_unintendedCommitment_phase_owes (initialLaw_initialized setup)
-      (initialLaw_native setup) completes (failureProfile setup.program) turn outputEq codeEq
+    exact unintendedCommitment_phase_owes completes (failureProfile setup.program) turn outputEq
+      codeEq
       pointDecoded intended ordered response material sends packet fixed unintended certificate
       installed middle middleState final rest
-  have phaseEq := recovery_pending_until_eq_clearUntil (initialLaw_initialized setup)
-    (initialLaw_native setup) completes certificate installed history.1 current ordered clear event
+  have phaseEq := pending_until_eq_clearUntil completes certificate installed history.1 current
+    ordered clear event
     ready
   have payoffBounded : ∀ final, |payoff final| ≤ payoffBound := by
     intro final
@@ -249,7 +260,8 @@ theorem nativeComparison_unintendedCommitment_history_comparison [Fintype (RP).H
     (setup.intendedOpeningProfile (sequence n).strategy) who upper le_upper
     (fun target reachable => excludedPayoff_le_of_reached setup parameter utility excludedPayoff
       wellFormed below (sequence n).strategy target reachable who) point reached).1
-  have baseline := nativeComparison_firstActivation_value_lower setup leaks bounds horizon
+  have baseline := nativeComparison_firstActivation_value_lower_of_counted_service setup
+    leaks bounds horizon
     scheduler wellFormed covers capacity sequence scale positive le_one weights n opportunity
     inclusion timely completes certificate history.1 current clear event (by rwa [← actualAt])
     never ordered decoded intended parameter utility excludedPayoff boundNonneg readoutBounded
@@ -260,5 +272,74 @@ theorem nativeComparison_unintendedCommitment_history_comparison [Fintype (RP).H
       expect ((N).runBehavioralUntil certificate common stopped history.1) payoff ≤ _ at baseline
   rw [valueEq]
   linarith
+
+open Classical in
+theorem nativeComparison_unintendedCommitment_history_comparison [Fintype (RP).History]
+    [(application setup leaks).FiniteNature (initialLaw setup) (NativeScheduler)]
+    [∀ who, DecidableEq ((R).InfoState who)] [∀ who, DecidableEq ((N).InfoState who)]
+    (wellFormed : setup.WellFormed) (covers : bounds.CoversOutputValues)
+    (capacity : ∀ player, bindingEventCount (graph setup) player < bounds.candidateCount)
+    (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
+    (scale : ℕ → ℝ) (positive : ∀ n, 0 < scale n) (le_one : ∀ n, scale n ≤ 1)
+    {slots : Nat}
+    (weights : ℕ → ∀ p, PMF (Part setup leaks bounds Initial horizon scheduler slots p)) (n : ℕ)
+    {delay bound : (graph setup).EventId → Nat}
+    (opportunity : Recovery.Opportunity (runtime setup) leaks Initial horizon scheduler delay)
+    (inclusion : Recovery.ProtectedInclusion (runtime setup) leaks Initial horizon scheduler bound)
+    (timely : (runtime setup).AsyncTimely delay bound)
+    (completes : Recovery.CompletesPlay (runtime setup) leaks Initial horizon scheduler)
+    {who : Player} (site : (N).InformationSite who) (choice : (N).Choice who site.1)
+    (notFree : ¬ Vegas.FreeAgent setup leaks bounds horizon (NativeScheduler) ((N).agentAt site))
+    (notOwing : ¬ Vegas.OwingAgent setup leaks bounds horizon (NativeScheduler) ((N).agentAt site))
+    (nonlate : ¬ LateDelivery setup leaks who site.1)
+    (atTurn : CommitsAtTurn setup leaks bounds horizon (NativeScheduler) who site choice)
+    (unintendedChoice :
+      ¬ IntendedCommitment setup leaks bounds horizon (NativeScheduler) site choice)
+    {past : List (application setup leaks).PlayerEntry}
+    {view : (application setup leaks).PlayerView} (atSite : site.1 = some (past, view))
+    (response : (application setup leaks).Action) (selected : choice.1 = some response)
+    (material : (application setup leaks).Submission)
+    (sends : response.transmission = some material)
+    (event : (graph setup).EventId) (candidate : Handle (graph setup))
+    (packet : material.call.packet = .commitment event candidate)
+    {Parameter : Type} (parameter : State L setup.context → Parameter)
+    (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
+    (excludedPayoff : Player → ℝ)
+    (below : ∀ (final : setup.intendedProtocol.History) terminal,
+      setup.protocolReadout final.state = some terminal →
+        ∀ who, excludedPayoff who ≤ utility (setup.parameterOutcome parameter terminal) who)
+    (upper : ℝ) (le_upper : ∀ outcome, utility outcome who ≤ upper)
+    {payoffBound : ℝ} (boundNonneg : 0 ≤ payoffBound)
+    (readoutBounded : ∀ readout,
+      |exclusionReadoutUtility setup parameter utility excludedPayoff readout who| ≤ payoffBound)
+    (excludedBounded : |excludedPayoff who| ≤ payoffBound)
+    :
+    let common := nativeComparisonStrategy setup leaks bounds horizon scheduler sequence scale
+      positive le_one weights n
+    let certificate := ((Menu).bounded (initialLaw setup) horizon
+      (NativeScheduler)).wellFoundedHistories
+    let stopped := fun final : (NP).History => ¬ Clear final.state ∨
+      DecodedState setup leaks (failureProfile setup.program)
+        (ProtocolState.OwesFailure who setup.program) final.state
+    let payoff := fun final : (NP).History => if stopped final then excludedPayoff who else
+      exclusionBase setup parameter utility excludedPayoff leaks final.state who
+    ∀ history : (N).InformationHistory who site.1,
+      RegularTrace setup leaks bounds horizon (NativeScheduler) (sequence n) who history.1.trace →
+      expect ((N).runBehavioralUntil certificate
+          (Profile.update (sig := (N).behavioralSignature) common who
+            ((common who).withLaw site.1 (PMF.pure choice))) stopped history.1) payoff -
+        expect ((N).runBehavioralUntil certificate common stopped history.1) payoff ≤
+      (2 * payoffBound * (Fintype.card Player * (1 - slotRetention (scale n)))) *
+        (2 * horizon + 1) + 2 * payoffBound * (1 - slotRetention (scale n)) := by
+  exact nativeComparison_unintendedCommitment_history_comparison_of_counted_service setup leaks
+    bounds horizon scheduler wellFormed covers capacity sequence scale positive le_one weights
+    n (Recovery.Opportunity.clear_counted_native bounds (initialLaw_initialized setup)
+      (initialLaw_native setup) opportunity)
+    (Recovery.ProtectedInclusion.clear_counted_native bounds (initialLaw_initialized setup)
+      (initialLaw_native setup) inclusion) timely
+    (Recovery.CompletesPlay.clear_counted_native bounds (initialLaw_initialized setup)
+      (initialLaw_native setup) completes) site choice notFree notOwing nonlate atTurn
+    unintendedChoice atSite response selected material sends event candidate packet parameter
+    utility excludedPayoff below upper le_upper boundNonneg readoutBounded excludedBounded
 
 end Vegas.RecoveryOnePacket
