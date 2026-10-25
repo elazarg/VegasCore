@@ -223,7 +223,7 @@ theorem expect_completionIndicator_of_openableCommitment
 
 open Classical in
 /-- **Value-free success after a late commitment.** Let a one-step lumping of
-the profiles `profileOf` fail where the decided binding `event` of `who` fails
+the profiles profileOf fail where the decided binding `event` of `who` fails
 in the store, with its image at the key read off the binding image, and keep
 every forced state with the event ready, the configuration of a history, and a
 recall of `who` extending the one there by an entry taken at its view. Let

@@ -86,7 +86,7 @@ private theorem abs_expect_sub_le_of_forall {α : Type*} (law : PMF α) (value :
 
 open Classical in
 /-- **Failure after a late commitment.** Let a one-step lumping of the profiles
-`profileOf` fail where the decided binding `event` of `who` fails in the store,
+profileOf fail where the decided binding `event` of `who` fails in the store,
 with its image at the key read off the binding image, and keep every state
 with the configuration of `start` at which the recall of `who` strictly extends
 the one at `start`. From a decision of `who` at `start` with nothing pending for

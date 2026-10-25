@@ -7,7 +7,7 @@ import Vegas.Expr.Simple
 
 Two programs with the same shape and opposite payoffs. In the first, opening is
 what pays, so forcing the owner to open turns nothing into something and the
-premise of `forceDisclose_expect_le` is what makes that an improvement. In the
+premise of `Vegas.SourceProgram.DisclosesProfitably` is what makes that an improvement. In the
 second, refusing is what pays, so forcing the owner to open destroys the payoff
 -- which is the point of carrying the premise rather than claiming the class is
 preserved outright.
@@ -113,7 +113,7 @@ private def refusalPaysValue
       (bid, CellTy.commitment () BaseTy.bool)]) : ℝ :=
   1 - payOnSuccess (state.get HasVar.here)
 
-/-- The premise of `forceDisclose_expect_le` is satisfiable: where opening is
+/-- The premise of `Vegas.SourceProgram.DisclosesProfitably` is satisfiable: where opening is
 what pays, opening is at least as good at every decision the owner could face. -/
 example :
     DisclosesProfitably (who := ()) openPays publishedPays

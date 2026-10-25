@@ -21,11 +21,11 @@ import sys
 
 ROOTS_DEFINING = (
     "GameTheoryExtensions", "GameTheoryExtensionsTests", "Interaction",
-    "InteractionTests", "Vegas", "Paper", "GameTheory/GameTheory",
+    "InteractionTests", "Vegas", "VegasTests", "Paper", "GameTheory/GameTheory",
 )
 ROOTS_CITING = (
     "GameTheoryExtensions", "GameTheoryExtensionsTests", "Interaction",
-    "InteractionTests", "Vegas", "Paper",
+    "InteractionTests", "Vegas", "VegasTests", "Paper",
 )
 PROJECT_PREFIXES = {
     "GameTheory", "GameTheoryExtensions", "GameTheoryExtensionsTests",

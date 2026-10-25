@@ -12,9 +12,8 @@ value instead and must therefore refuse to open it, or the published value would
 change the payoff.
 
 This is the concrete check that the translation refuses at exactly the cells it
-replaced, under the law `Vegas.SourceProgram.bindValues_publicOutcome_eq`
-proves in general and `Vegas.SourceProgram.Setup.valueBindingSimulation` turns
-into an edge.
+replaced. The general outcome-law comparison is
+`Vegas.SourceProgram.bindValues_publicOutcome_eq`.
 -/
 
 namespace VegasTests.ValueBinding

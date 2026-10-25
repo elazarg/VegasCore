@@ -11,14 +11,32 @@ SCRIPT = Path(__file__).with_name("check-doc-references.py").resolve()
 
 
 class DocReferenceTests(unittest.TestCase):
-    def run_checker(self, text):
+    def run_checker(self, text, extra_files=None):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             (root / "lakefile.toml").write_text("", encoding="utf-8")
             (root / "Vegas").mkdir()
             (root / "Vegas/Test.lean").write_text(text, encoding="utf-8")
+            for name, contents in (extra_files or {}).items():
+                path = root / name
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(contents, encoding="utf-8")
             return subprocess.run([sys.executable, str(SCRIPT)], cwd=root,
                                   capture_output=True, text=True)
+
+    def test_regression_library_declarations_can_be_cited(self):
+        result = self.run_checker(
+            "/-! `VegasTests.Scope.conditional_scope` exists. -/\n",
+            {"VegasTests/Scope.lean": "namespace VegasTests.Scope\n"
+             "theorem conditional_scope : True := by trivial\nend VegasTests.Scope\n"})
+        self.assertEqual(result.returncode, 0, result.stdout)
+
+    def test_regression_library_docstrings_reject_missing_names(self):
+        result = self.run_checker(
+            "def existing := 1\n",
+            {"VegasTests/Scope.lean": "/-! `VegasTests.Scope.missing_result` is stale. -/\n"})
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("VegasTests.Scope.missing_result", result.stdout)
 
     def test_mixed_case_namespace_does_not_hide_stale_reference(self):
         result = self.run_checker("/-! `SomeNamespace.missing` -/\n")
