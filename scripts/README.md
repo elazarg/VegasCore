@@ -31,9 +31,11 @@ default test or build roots.
 tracked Lean source, including the separately managed GameTheory tree. It writes
 module/declaration CSV files, a layer summary, and cross-file matches of exact
 eight-line proof windows. Body recognition is lexical and includes tactic-valued
-definitions; windows overlap. Use matches to select proofs for review, not as
-counts of removable lines. The [proof review](../docs/proof-review.md) explains
-the measurement and its limits. The inventory never edits Lean source.
+definitions; equation-style declarations do not have complete body coverage.
+Assignments in result-type let bindings are excluded. Windows overlap, and
+body/window counts are search leads rather than a census of proof syntax or
+counts of removable lines. Use physical file lines for exact size comparisons.
+The [proof review](../docs/proof-review.md) explains the measurement and its limits. The inventory never edits Lean source.
 
 `python scripts/check-proof-review-probes.py` replays the isolated Lean sources
 in the [checked-probe appendix](../docs/proof-review/checked-probes.md) after the

@@ -171,15 +171,19 @@ def find_keyword(block_text):
 
 
 def find_toplevel_assign(text):
-    """Find ':=' at bracket depth 0 in text.
+    """Find the declaration's ':=' outside brackets and local bindings.
 
     Returns the index of ':' in ':=', or -1 if not found.
+    A result type can contain unparenthesized ``let``/``have`` bindings;
+    their value assignments are not the declaration's proof assignment.
+    This remains a lexical scan, not a complete Lean parser.
     """
     depth = 0
     i = 0
     n = len(text)
     # Track whether we're inside a string literal
     in_string = False
+    pending_bindings = 0
     while i < n:
         c = text[i]
         if c == '"' and (i == 0 or text[i-1] != '\\'):
@@ -189,12 +193,19 @@ def find_toplevel_assign(text):
         if in_string:
             i += 1
             continue
+        if c == "«":
+            end = text.find("»", i + 1)
+            i = n if end == -1 else end + 1
+            continue
         if c in "([{":
             depth += 1
         elif c in ")]}":
             depth = max(0, depth - 1)
         elif c == ":" and i + 1 < n and text[i + 1] == "=" and depth == 0:
-            # Make sure it's not inside a comment
+            if pending_bindings:
+                pending_bindings -= 1
+                i += 2
+                continue
             return i
         elif c == "-" and i + 1 < n and text[i + 1] == "-":
             # Line comment — skip to end of line
@@ -202,6 +213,14 @@ def find_toplevel_assign(text):
             if nl == -1:
                 return -1
             i = nl + 1
+            continue
+        elif depth == 0 and (c.isalpha() or c == "_"):
+            end = i + 1
+            while end < n and (text[end].isalnum() or text[end] in "_'.!?"):
+                end += 1
+            if text[i:end] in {"let", "letI", "have", "haveI"}:
+                pending_bindings += 1
+            i = end
             continue
         elif c == "/" and i + 1 < n and text[i + 1] == "-":
             # Block comment — skip (respecting nesting)

@@ -43,6 +43,43 @@ class ProofInventoryTests(unittest.TestCase):
                          "GameTheory.Core.Utility")
         self.assertEqual(INVENTORY.layer("Vegas/Game/Example.lean"), "Vegas.Game")
 
+    def test_result_type_lets_are_not_proof_assignments(self):
+        text = ("theorem result :\n"
+                "    let common := 3\n"
+                "    let payoff := common + 1\n"
+                "    payoff = 4 := by\n"
+                "  rfl\n")
+        rows = list(INVENTORY.proof_bodies(text))
+        self.assertEqual([row["body_lines"] for row in rows], [2])
+        surface = INVENTORY.DEFS.strip_proof(text.splitlines())
+        self.assertEqual(surface[-1], "    payoff = 4")
+        self.assertIn("    let payoff := common + 1", surface)
+
+    def test_nested_result_bindings_and_named_arguments(self):
+        text = ("theorem result :\n"
+                "    let common := let nested := (f (value := 3)); nested\n"
+                "    have witness : True := trivial\n"
+                "    common = common := by\n"
+                "  rfl\n")
+        rows = list(INVENTORY.proof_bodies(text))
+        self.assertEqual([row["body_lines"] for row in rows], [2])
+
+    def test_binding_words_in_comments_strings_and_identifiers(self):
+        text = ('theorem «let» :\n'
+                '    let message := "let fake := have hidden :="\n'
+                '    /- let omitted := 0 /- have nested := 1 -/ -/\n'
+                '    let haveData := 3\n'
+                '    haveData = 3 := by\n'
+                '  rfl\n')
+        rows = list(INVENTORY.proof_bodies(text))
+        self.assertEqual([row["body_lines"] for row in rows], [2])
+
+    def test_result_type_lets_keep_computational_definitions(self):
+        text = "def result : let kind := Nat; kind := 1\n"
+        self.assertEqual(list(INVENTORY.proof_bodies(text)), [])
+        self.assertEqual(INVENTORY.DEFS.strip_tactic_body(text.splitlines()),
+                         text.splitlines())
+
 
 if __name__ == "__main__":
     unittest.main()
