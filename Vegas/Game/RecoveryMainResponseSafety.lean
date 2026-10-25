@@ -2,6 +2,7 @@
 
 import Vegas.Game.OnePacketDebtFreeResponse
 import Vegas.Game.RecoveryCanonicalSafety
+import Vegas.Game.OnePacketMainResponseSafety
 import Vegas.Game.OnePacketClearRegularity
 
 /-! # First public event failures exclude source-main response support -/
@@ -70,33 +71,16 @@ theorem recovery_firstActivation_not_main_of_publicFailure
     choice ∉ (honestChoice setup leaks bounds (initialLaw setup) horizon
       (RecoveryProjection.nativeScheduler (runtime setup) leaks scheduler) source who
       (some (execution.recall who, execution.observe (application setup leaks) who))).support := by
-  intro supported
-  obtain ⟨point, decoded, intended⟩ :=
-    intended_of_clear_regular_notOwes wellFormed source focal trace clear regular notOwed
-  have forced : ForcedState setup leaks who (some ⟨remaining, some who, execution⟩) :=
-    (forcedState_iff_decodedPoint _).mpr
-      ⟨point, decoded, forcedPoint_of_intended who intended⟩
-  have responderNotOwed : ∀ found, decodedPoint setup execution.application.config = some found →
-      ¬ ProtocolState.OwesFailure who setup.program found := by
-    intro found foundDecoded
-    have same := Option.some.inj (decoded.symm.trans foundDecoded)
-    subst found
-    exact ProtocolState.Intended.not_owesFailure who setup.program point intended
   let nativeScheduler := RecoveryProjection.nativeScheduler (runtime setup) leaks scheduler
-  have turn := (pendingEvent_spec pending).1
   have rawTrace := (bounds.onePacketMenu (runtime setup) leaks).toRawTrace (initialLaw setup)
     horizon nativeScheduler trace
   have fits := recovery_firstActivation_inclusionFits initialized nativeLaw opportunity timely
-    rawTrace rfl clear event turn never
-  obtain ⟨action, material, chosen, submits, bindSuccess⟩ :=
-    honestChoice_canonical_of_debtFree wellFormed covers capacity source trace who forced
-      responderNotOwed event pending bound fits choice supported
-  have sameResponse := Option.some.inj (selected.symm.trans chosen)
-  subst response
-  have safe := recovery_firstActivation_canonical_succeeds_environment bounds initialized nativeLaw
-    opportunity inclusion timely trace clear event turn never action material submits bindSuccess
-    after priorRemaining priorExecution prior priorClear command next reached control nextExecution
-    target isPrefix
-  exact safe.2 failed
+    rawTrace rfl clear event (pendingEvent_spec pending).1 never
+  have owned := (pendingEvent_spec pending).2.2.1
+  have settles := recovery_settlesFreshCalls_environment setup leaks initialized nativeLaw inclusion
+    who event owned priorRemaining priorExecution prior priorClear command next reached
+  exact firstResponse_not_main_of_publicFailure_of_settles bounds wellFormed covers capacity source
+    focal horizon nativeScheduler bound trace clear regular notOwed event pending fits choice
+    response selected after next settles control nextExecution target isPrefix failed
 
 end Vegas

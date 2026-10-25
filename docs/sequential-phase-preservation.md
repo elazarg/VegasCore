@@ -202,21 +202,59 @@ that latent own source debt remains absorbing and yields the exclusion payoff
 under every whole-policy continuation satisfying the actual completion contract.
 This handles debt before it becomes public exclusion, without changing utility.
 
+## Native service and value estimates
+
+[OnePacketCountedService](../Vegas/Game/OnePacketCountedService.lean) isolates
+opportunity and protected inclusion at genuine clear counted prefixes. The
+[waiting theorem](../Vegas/Game/OnePacketBoundaryWaiting.lean) uses those factual
+conditions and clear counted terminal completion to reach the first owner
+callback while preserving configuration and own recall. Its
+[phase instance](../Vegas/Game/SequentialPhaseBoundaryWaiting.lean) obtains each
+condition from the original physical phase contract. The existing recovery
+results remain full-contract specializations of the shared proofs.
+
+[SequentialPhaseNativeComparison](../Vegas/Game/SequentialPhaseNativeComparison.lean)
+constructs the actual native fully mixed Bayes sequence from the phase weights.
+The initialized recovery prior uses the same expression as the existing native
+factory; its equality with the phase projection is proved at the trace and nature
+producers. No independent source/native finiteness assumption is added.
+
+The [foreign-exit bound](../Vegas/Game/SequentialPhaseForeignFailureBound.lean)
+retains the original quadratic-plus-linear tremble error times remaining runtime
+rank, for arbitrary focal policies starting at genuine clear regular native
+source turns. It stops at public failure or focal source debt and allows an
+additional stopping predicate. It does not assert a uniform estimate over all
+raw histories.
+[SequentialPhaseNativeValues](../Vegas/Game/SequentialPhaseNativeValues.lean)
+instantiates the binding source kernel with the actual phase comparison weights,
+retaining its cubic completion-law error and bad-stop bound. Its terminal
+completion callback comes from the original phase completion contract.
+
+[SequentialPhaseStoppedPayoff](../Vegas/Game/SequentialPhaseStoppedPayoff.lean)
+compares actual phase terminal utility with the debt-stopped readout. Own
+exclusion and own source debt have their original constant payoff; the remaining
+error is bounded by twice the utility bound times foreign-exit probability.
+The [belief version](../Vegas/Game/SequentialPhaseStoppedPayoffBelief.lean) averages
+this estimate. [Actual-history projection](../Vegas/Game/SequentialPhaseStoppedPayoffHistory.lean)
+derives failure coverage from legal histories rather than assuming it.
+[SequentialPhaseLocalStopped](../Vegas/Game/SequentialPhaseLocalStopped.lean)
+extends the matched physical laws to arbitrary focal choice distributions at
+clear played inputs. The
+[native debt readout identity](../Vegas/Game/RecoveryDebtStoppedReadout.lean)
+separates exact stopped-law transport from completion and payoff bounds.
+
 The remaining obligations are:
 
-1. Instantiate the native comparison factory and transport the source/native
-   continuation estimates through the checked stopped laws and Bayes state
-   comparison. Actual history and menu legality must remain explicit.
-2. Derive the existing native continuation estimates from pointwise phase service
-   facts at genuine counted predecessors. The phase and recovery contracts do
-   not imply an unrestricted raw-history contract equivalence.
-3. Prove the forced and keyed local continuation-gain comparisons for the actual
-   phase completion, using the original payoff bounds and a vanishing error for
-   foreign failure. Own latent debt has its checked constant-payoff treatment.
-   Apply the existing common-limit comparison machinery to prove SE.
-4. Recover the intended joint readout/payoff law and apply the existing phase
-   one-packet-to-raw SE extension, retaining the multiplicative funding condition
-   and audited settlement conclusion.
+1. Combine the checked local-deviation stopped laws, Bayes posteriors and payoff
+   error with the native source-value estimates. Prove the forced and keyed
+   continuation-gain comparisons for the actual phase common completion, retaining
+   the original intended-terminal exit floor and source-information assumptions.
+2. Derive the initialized comparison's joint-law approximation and vanishing
+   exclusion probability using the honest source law and same-weight retention.
+   The shared counted service interfaces must supply its actual history guards.
+3. Apply the existing common-limit comparison machinery to prove phase SE, then
+   recover the intended joint readout/payoff law and apply the phase counted-to-raw
+   extension with audited settlement and the multiplicative funding condition.
 
 These supporting theorems do not yet prove the target preservation theorem or
 close an arbitrary-builder checklist obligation.

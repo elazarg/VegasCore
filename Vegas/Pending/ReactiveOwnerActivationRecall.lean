@@ -49,6 +49,31 @@ theorem recalled_turn_of_ownerActivatedSince (runtime : EventGraphRuntime graph)
   rw [viewed]
   exact turn
 
+/-- A due owned event has a remembered ready callback whenever its actual
+execution satisfies the pointwise opportunity predicate. -/
+theorem due_owner_recalled_turn_of_opportunity (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    {initial : PMF (runtime.reactiveApplication leaks).State} {horizon : Nat}
+    {scheduler : (runtime.reactiveApplication leaks).Scheduler}
+    {delay bound : graph.EventId → Nat}
+    (timely : runtime.AsyncTimely delay bound) (ordered : graph.RevealRelaxedOrdered)
+    (control : (runtime.reactiveApplication leaks).Control)
+    (trace : ((runtime.reactiveApplication leaks).protocol initial horizon scheduler).Trace
+      (some control)) (idle : control.actor = none)
+    (opportunity : OpportunityAt runtime leaks control.execution delay)
+    (event : graph.EventId) (owner : Player) (actor : graph.actor? event = some owner)
+    (ready : control.execution.application.config.cut.Ready event)
+    (entered : Nat) (activated : control.execution.application.activatedAt event = some entered)
+    (due : runtime.deadline event ≤ control.execution.application.clock - entered) :
+    ∃ response ∈ control.execution.recall owner,
+      response.beforeView.application.publicView.ownTurn? owner = some event := by
+  have occurred := opportunity event owner entered actor
+    ((control.execution.application.publicView_eventReady event).mpr ready) activated (by
+      have margin := timely event (by simp only [actor, Option.isSome_some])
+      omega)
+  exact recalled_turn_of_ownerActivatedSince runtime leaks initial horizon scheduler ordered
+    control trace idle event owner entered actor occurred
+
 namespace Recovery
 
 /-- At an actual public-clear native prefix, a due owned event has a remembered
@@ -74,14 +99,8 @@ theorem due_owner_recalled_turn_clear_native (runtime : EventGraphRuntime graph)
     ∃ response ∈ control.execution.recall owner,
       response.beforeView.application.publicView.ownTurn? owner = some event := by
   have actual := opportunity.clear_native runtime leaks initialized control trace clear
-  have occurred := actual event owner entered actor
-    ((control.execution.application.publicView_eventReady event).mpr ready) activated
-    (by
-      have margin := timely event (by simp only [actor, Option.isSome_some])
-      omega)
-  exact recalled_turn_of_ownerActivatedSince runtime leaks (initial.map RecoveryState.native)
-    horizon (RecoveryProjection.nativeScheduler runtime leaks scheduler) ordered control trace idle
-    event owner entered actor occurred
+  exact due_owner_recalled_turn_of_opportunity runtime leaks timely ordered control trace idle
+    actual event owner actor ready entered activated due
 
 end Recovery
 end Vegas.EventGraphRuntime

@@ -97,7 +97,8 @@ theorem expect_completionIndicator_of_openableCommitment
     (residual : SourceResidual setup profile rank sent) {point : ProtocolState setup.program}
     (decoded : sourceServicePrefix? setup rank sent = some point)
     (terminalCompleted : ∀ (final : (application setup leaks).Control),
-      ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace (some final) →
+      ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
+        scheduler).Trace (some final) →
       (application setup leaks).terminal (some final) →
       final.execution.application.config = sent →
       event ∈ final.execution.application.config.cut.completed)
@@ -288,7 +289,8 @@ theorem lateBinding_successFree
     {point : ProtocolState setup.program}
     (decoded : sourceServicePrefix? setup rank execution.application.config = some point)
     (terminalCompleted : ∀ (final : (application setup leaks).Control),
-      ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace (some final) →
+      ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
+        scheduler).Trace (some final) →
       (application setup leaks).terminal (some final) →
       final.execution.application.config = execution.application.config →
       event ∈ final.execution.application.config.cut.completed)

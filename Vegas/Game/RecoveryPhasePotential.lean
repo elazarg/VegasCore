@@ -7,6 +7,86 @@ import Vegas.Game.OnePacketLateReveal
 
 noncomputable section
 namespace Vegas
+
+open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
+  GameTheory.Protocol.InformationModel GameTheory.Math.Probability Interaction EventGraphRuntime
+
+variable {Player : Type} [DecidableEq Player] [Fintype Player]
+  {L : IExpr} [IExpr.ResultTypes L] (setup : Setup (Player := Player) (L := L))
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+  (bounds : MessageBounds (graph setup)) (horizon : Nat)
+  (scheduler : (application setup leaks).Scheduler)
+
+local notation "E" => ReactiveApplication.ResponseMenu.protocol
+  (MessageBounds.onePacketMenu (runtime setup) leaks bounds)
+  (initialLaw setup) horizon scheduler
+
+open Classical in
+/-- Any law supported on completed native configurations has an affine source
+potential when its successful outcomes share one source continuation point. -/
+theorem completionValue_expect_affine_of_completed [Finite (E).History]
+    (law : PMF (E).History) (rank : Nat)
+    (key : LateKey setup leaks) (event : (graph setup).EventId)
+    (decided : decidedEvent key = some event)
+    (fresh : (application setup leaks).Control → Prop)
+    (freshIff : ∀ next, fresh next ↔
+      ¬ StoreEventFailed next.execution.application.config.store event)
+    (target : ProtocolState setup.program)
+    (completed : ∀ stop ∈ law.support,
+      ∃ control : (application setup leaks).Control, stop.state = some control ∧
+        control.execution.application.config.cut.IsPrefix (rank + 1) ∧
+        event ∈ control.execution.application.config.cut.completed)
+    (stops : ∀ stop ∈ law.support,
+      ∃ final, stop.state = some final ∧
+        (completionPoint setup leaks bounds horizon scheduler rank fresh stop = some target ∨
+          (completionPoint setup leaks bounds horizon scheduler rank fresh stop = none ∧
+            StoreEventFailed final.execution.application.config.store event)))
+    {Parameter : Type} (parameter : State L setup.context → Parameter)
+    (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
+    (excludedPayoff : Player → ℝ) (profile : BehavioralProfile setup.program) (who : Player) :
+    expect law (completionValue setup leaks bounds horizon scheduler parameter utility
+      excludedPayoff profile rank fresh who (fun _ => excludedPayoff who)) =
+      (1 - expect law (fun final => if DecisionFailed key final.state then (1 : ℝ) else 0)) *
+        sourcePointValue setup parameter utility excludedPayoff profile who target +
+      expect law (fun final => if DecisionFailed key final.state then (1 : ℝ) else 0) *
+        excludedPayoff who := by
+  let targetValue := sourcePointValue setup parameter utility excludedPayoff profile who target
+  let failure := fun final : (E).History =>
+    if DecisionFailed key final.state then (1 : ℝ) else 0
+  have pointwise : ∀ final ∈ law.support,
+      completionValue setup leaks bounds horizon scheduler parameter utility excludedPayoff profile
+          rank fresh who (fun _ => excludedPayoff who) final =
+        (1 - failure final) * targetValue + failure final * excludedPayoff who := by
+    intro final supported
+    obtain ⟨anchor, state, prefixed, eventCompleted⟩ := completed final supported
+    rw [completionValue_eq_elim setup leaks bounds horizon scheduler parameter utility
+      excludedPayoff profile rank fresh who (fun _ => excludedPayoff who) ⟨_, state, prefixed⟩]
+    obtain ⟨other, otherState, cases⟩ := stops final supported
+    have same : other = anchor := Option.some.inj (otherState.symm.trans state)
+    subst other
+    rcases cases with pointEq | ⟨pointEq, failed⟩
+    · have good : ¬ DecisionFailed key final.state := by
+        intro failed
+        have stored : StoreEventFailed anchor.execution.application.config.store event := by
+          simpa only [DecisionFailed, state, decided, eventCompleted, true_and] using failed
+        have absent := completionPoint_eq_none_of_not_fresh (rank := rank)
+          (fresh := fresh) state (fun fresh => (freshIff _).mp fresh stored)
+        rw [pointEq] at absent
+        cases absent
+      simp only [pointEq, Option.elim_some, failure, good, ↓reduceIte, sub_zero, one_mul,
+        zero_mul, add_zero, targetValue]
+    · have failedHere : DecisionFailed key final.state := by
+        simpa only [DecisionFailed, state, decided, eventCompleted, true_and] using failed
+      simp only [pointEq, Option.elim_none, failure, failedHere, ↓reduceIte, sub_self, zero_mul,
+        one_mul, zero_add]
+  rw [expect_congr_on_support pointwise,
+    expect_add (payoffIntegrable_of_finite _ _) (payoffIntegrable_of_finite _ _),
+    expect_mul_const, expect_mul_const,
+    expect_sub (payoffIntegrable_constant _ 1) (payoffIntegrable_of_finite _ _), expect_constant]
+
+end Vegas
+
+namespace Vegas
 open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
   GameTheory.Protocol.InformationModel GameTheory.Math.Probability Interaction EventGraphRuntime
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
@@ -62,45 +142,14 @@ theorem recovery_pending_completionValue_of_stops [Finite (E).History]
       expect phase (fun final => if DecisionFailed key final.state then (1 : ℝ) else 0) *
         excludedPayoff who := by
   intro phase
-  let targetValue := sourcePointValue setup parameter utility excludedPayoff profile who target
-  let failure := fun final : (E).History =>
-    if DecisionFailed key final.state then (1 : ℝ) else 0
-  have pointwise : ∀ final ∈ phase.support,
-      completionValue setup leaks bounds horizon scheduler parameter utility excludedPayoff profile
-          rank fresh who (fun _ => excludedPayoff who) final =
-        (1 - failure final) * targetValue + failure final * excludedPayoff who := by
-    intro final supported
-    obtain ⟨anchor, state, completed, prefixed, _seen⟩ :=
-      recovery_pending_stop_completed initialized nativeLaw completes false
-        certificate players start current ordered clear event ready final supported
-    rw [completionValue_eq_elim setup leaks bounds horizon scheduler parameter utility
-      excludedPayoff
-      profile rank fresh who (fun _ => excludedPayoff who)
-      ⟨_, state, prefixed⟩]
-    obtain ⟨other, otherState, cases⟩ := stops final supported
-    have same : other = ⟨horizon - anchor.environmentRecall.length, none, anchor⟩ :=
-      Option.some.inj (otherState.symm.trans state)
-    subst other
-    rcases cases with pointEq | ⟨pointEq, failed⟩
-    · have good : ¬ DecisionFailed key final.state := by
-        intro failed
-        have stored : StoreEventFailed anchor.application.config.store event := by
-          simpa only [DecisionFailed, state, decided, completed, true_and] using failed
-        have absent := completionPoint_eq_none_of_not_fresh (rank := rank)
-          (fresh := fresh) state
-          (fun fresh => (freshIff _).mp fresh stored)
-        rw [pointEq] at absent
-        cases absent
-      simp only [pointEq, Option.elim_some, failure, good, ↓reduceIte, sub_zero, one_mul,
-        zero_mul, add_zero, targetValue]
-    · have failedHere : DecisionFailed key final.state := by
-        simpa only [DecisionFailed, state, decided, completed, true_and] using failed
-      simp only [pointEq, Option.elim_none, failure, failedHere, ↓reduceIte, sub_self, zero_mul,
-        one_mul, zero_add]
-  rw [expect_congr_on_support pointwise,
-    expect_add (payoffIntegrable_of_finite _ _) (payoffIntegrable_of_finite _ _),
-    expect_mul_const, expect_mul_const,
-    expect_sub (payoffIntegrable_constant _ 1) (payoffIntegrable_of_finite _ _), expect_constant]
+  apply completionValue_expect_affine_of_completed setup leaks bounds horizon scheduler phase rank
+    key event decided fresh freshIff target ?_ stops parameter utility excludedPayoff profile who
+  intro final supported
+  obtain ⟨anchor, state, eventCompleted, prefixed, _seen⟩ :=
+    recovery_pending_stop_completed initialized nativeLaw completes false
+      certificate players start current ordered clear event ready final supported
+  exact ⟨_, state, prefixed, eventCompleted⟩
+
 
 open Classical in
 /-- A disclosure phase has the current source continuation value whenever its
@@ -160,8 +209,11 @@ theorem recovery_disclosure_sourceValue
   let certificate := (menu.bounded (initialLaw setup) horizon scheduler).wellFoundedHistories
   obtain ⟨target, stepPure, _intended, stops⟩ := disclosure_sourceKernel source
     assessment site pending law history current turn ordered outputEq codeEq decoded intendedPoint
-    (recovery_terminal_completed_of_decodedIntended initialized nativeLaw completes ordered
-      decoded intendedPoint event)
+    (fun final trace ended same =>
+      recovery_terminal_completed_of_decodedIntended initialized nativeLaw completes ordered
+      decoded intendedPoint event final
+        ((bounds.onePacketMenu (runtime setup) leaks).toRawTrace
+          (Vegas.initialLaw setup) horizon scheduler trace) ended same)
   have ready : execution.application.config.cut.Ready event :=
     (execution.application.publicView_eventReady event).mp
       (PublicView.ownTurn?_spec _ who event turn).1

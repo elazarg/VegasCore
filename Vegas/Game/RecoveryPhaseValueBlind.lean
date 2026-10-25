@@ -230,8 +230,11 @@ theorem recovery_pending_phase_value_bounds
       obtain ⟨target, _step, _targetIntended, stops⟩ := disclosure_sourceKernel
         (sequence n) (targetSequence n) site pending law history current turnExecution ordered
         outputEq codeEq decoded intendedPoint
-        (recovery_terminal_completed_of_decodedIntended initialized nativeLaw completes ordered
-          decoded intendedPoint event)
+        (fun final trace ended same =>
+          recovery_terminal_completed_of_decodedIntended initialized nativeLaw completes ordered
+          decoded intendedPoint event final
+            ((bounds.onePacketMenu (runtime setup) leaks).toRawTrace
+              (Vegas.initialLaw setup) horizon scheduler trace) ended same)
       have zero : expect phase (lateBadStop setup leaks bounds horizon scheduler (siteRank site.1)
           (siteFresh who site.1) event) = 0 := by
         calc

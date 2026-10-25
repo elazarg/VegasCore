@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.SourceServiceAsyncTimeliness
+import Vegas.Game.OnePacketCountedService
 import Vegas.Game.SequentialPhaseNativeService
 
 /-! # Protected native counted calls under physical singleton phase service
@@ -47,46 +47,11 @@ theorem phase_settlesFreshCalls_history
       (∀ current, state = some current → ExclusionEvidence 0 ∅
         (⟨current.execution.application, ∅⟩ : RecoveryState (graph setup))) →
       ReactiveApplication.serviceInvariant
-        (SettlesFreshCalls setup recoveryLeaks owner event bound) state
-  | _, .start, _ => trivial
-  | _, .extend (source := before) prior joint _ reached, clear => by
-      have rawPrior := (nativeMenu).toRawTrace (initialLaw setup) horizon
-        (nativeScheduler (recoveryScheduler scheduler)) prior
-      have beforeClear := native_clear_before_transition (runtime setup) recoveryLeaks
-        (initialLaw setup) (by
-          intro native supported
-          change native ∈ (setup.initialLaw.map
-            (fun draw => State.initial (graph := graph setup) (setup.eventInputs draw))).support
-              at supported
-          obtain ⟨draw, _supported, rfl⟩ := PMF.support_map .. ▸ supported
-          exact ⟨setup.eventInputs draw, rfl⟩) horizon
-        (nativeScheduler (recoveryScheduler scheduler)) rawPrior joint reached clear
-      have valid := phase_settlesFreshCalls_history horizon scheduler bound inclusion owner event
-        owned prior beforeClear
-      cases before with
-      | none =>
-          obtain ⟨draw, _, rfl⟩ := PMF.support_map .. ▸ reached
-          intro earlier entry later message split
-          simp [ReactiveApplication.Execution.initial] at split
-      | some control =>
-          rcases control with ⟨remaining, actor, execution⟩
-          cases actor with
-          | some who =>
-              cases (PMF.mem_support_pure_iff _ _).mp reached
-              exact settlesFreshCalls_respond setup recoveryLeaks owner event bound execution
-                (legalFacts setup recoveryLeaks horizon _ _ rawPrior) who _ valid
-          | none =>
-              cases remaining with
-              | zero => cases (PMF.mem_support_pure_iff _ _).mp reached; exact valid
-              | succ remaining =>
-                  obtain ⟨command, _, moved⟩ :=
-                    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
-                  obtain ⟨next, supported, rfl⟩ := PMF.support_map .. ▸ moved
-                  have atPrefix := PhaseService.ProtectedInclusion.clear_native_counted setup leaks
-                    bounds horizon scheduler bound inclusion prior (beforeClear _ rfl)
-                  exact settlesFreshCalls_environment setup recoveryLeaks owner event owned
-                    remaining
-                    execution atPrefix rawPrior valid command next supported
+        (SettlesFreshCalls setup recoveryLeaks owner event bound) state := by
+  exact settlesFreshCalls_counted_clear_history setup recoveryLeaks bounds horizon
+    (nativeScheduler (recoveryScheduler scheduler)) bound
+    (fun control prior clear => PhaseService.ProtectedInclusion.clear_native_counted setup leaks
+      bounds horizon scheduler bound inclusion prior clear) owner event owned
 
 /-- One command from an actual clear counted prefix preserves settlement even
 when this command creates the first public failure; no service is imposed after it. -/
@@ -104,14 +69,11 @@ theorem phase_settlesFreshCalls_environment
     (command : (N).Command) (next : (N).Execution)
     (reached : next ∈ (execution.environmentStep (N) command).support) :
     SettlesFreshCalls setup recoveryLeaks owner event bound next := by
-  have valid := phase_settlesFreshCalls_history setup leaks bounds horizon scheduler bound inclusion
-    owner event owned prior (by intro current same; cases Option.some.inj same; exact clear)
-  have atPrefix := PhaseService.ProtectedInclusion.clear_native_counted setup leaks bounds horizon
-    scheduler bound inclusion prior clear
-  have rawPrior := (nativeMenu).toRawTrace (initialLaw setup) horizon
-    (nativeScheduler (recoveryScheduler scheduler)) prior
-  exact settlesFreshCalls_environment setup recoveryLeaks owner event owned remaining execution
-    atPrefix rawPrior valid command next reached
+  exact settlesFreshCalls_counted_clear_environment setup recoveryLeaks bounds horizon
+    (nativeScheduler (recoveryScheduler scheduler)) bound
+    (fun control earlier clear => PhaseService.ProtectedInclusion.clear_native_counted setup leaks
+      bounds horizon scheduler bound inclusion earlier clear) owner event owned remaining execution
+    prior clear command next reached
 
 /-- Actual clear counted prefixes carry accepting receipts for every completed
 protected fresh call, and once its original strict protected window has elapsed. -/
@@ -136,17 +98,10 @@ theorem phase_prescribed_packet_settles
         control.execution.application.clock → (message.id, true) ∈ control.execution.receipts) ∧
       (event ∈ control.execution.application.config.cut.completed →
         (message.id, true) ∈ control.execution.receipts) := by
-  have settled := phase_settlesFreshCalls_history setup leaks bounds horizon scheduler bound
-    inclusion
-    owner event owned trace (by intro current same; cases Option.some.inj same; exact clear)
-    earlier entry later message split call sole
-  refine ⟨fun late => ?_, settled.1⟩
-  by_cases completed : event ∈ control.execution.application.config.cut.completed
-  · exact settled.1 completed
-  · have atPrefix := PhaseService.ProtectedInclusion.clear_native_counted setup leaks bounds horizon
-      scheduler bound inclusion trace clear
-    obtain ⟨accepted, receipt⟩ := atPrefix event owner owned earlier later entry message split
-      call.emitted call.authored call.addressed call.ready sole completed late
-    exact settled.2.1 accepted receipt
+  exact prescribed_packet_counted_clear_settles setup recoveryLeaks bounds horizon
+    (nativeScheduler (recoveryScheduler scheduler)) bound
+    (fun control prior clear => PhaseService.ProtectedInclusion.clear_native_counted setup leaks
+      bounds horizon scheduler bound inclusion prior clear) control trace clear event owner owned
+    earlier later entry message split call sole
 
 end Vegas

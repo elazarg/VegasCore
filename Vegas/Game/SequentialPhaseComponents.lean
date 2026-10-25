@@ -37,7 +37,7 @@ def recoveryLeaks := PhaseNativeProjection.nativeLeaks leaks
   (sequentialRuntimePhasePlan setup.program)
 
 def recoveryInitialLaw : PMF (RecoveryState (graph setup)) :=
-  (setup.initialLaw.map setup.eventInputs).map fun draw => ⟨EventGraphRuntime.State.initial draw, ∅⟩
+  (Vegas.initialLaw setup).map fun native => ⟨native, ∅⟩
 
 def recoveryScheduler := SequentialPhaseSchedulerInformation.scheduler setup.program
   (runtime setup) leaks (recoveryLeaks setup leaks) scheduler
@@ -61,8 +61,17 @@ instance recoveryNature
   have phase : (phaseApplication (runtime setup) leaks).FiniteNature
       ((setup.initialLaw.map setup.eventInputs).map
         (PhaseRuntimeState.initial (sequentialRuntimePhasePlan setup.program))) scheduler := nature
-  exact SequentialPhaseSchedulerInformation.recovery_finiteNature setup.program (runtime setup)
-    leaks (setup.initialLaw.map setup.eventInputs) scheduler
+  have actual := SequentialPhaseSchedulerInformation.recovery_finiteNature setup.program
+    (runtime setup) leaks (setup.initialLaw.map setup.eventInputs) scheduler
+  have priors :
+      (setup.initialLaw.map setup.eventInputs).map
+        (fun draw => (⟨EventGraphRuntime.State.initial draw, ∅⟩ : RecoveryState (graph setup))) =
+      oldInitial := by
+    simp only [recoveryInitialLaw, Vegas.initialLaw, serviceInitialLaw, PMF.map_comp,
+      Function.comp_def]
+  exact Eq.mp (congrArg (fun prior : PMF (RecoveryState (graph setup)) =>
+    (recoveryApplication (runtime setup) (oldLeaks)).FiniteNature prior (oldScheduler)) priors)
+    actual
 
 local instance phaseInfoDecidableEq (who : Player) : DecidableEq ((M).InfoState who) :=
   Classical.decEq _
@@ -122,6 +131,18 @@ theorem projected_input_played (agent : (M).InformationAgent (M).playedInformati
   obtain ⟨prior, _length⟩ := PhaseRecoveryProjection.trace_projected_canonical_clear setup.program
     (runtime setup) leaks bounds (setup.initialLaw.map setup.eventInputs) horizon scheduler trace
     empty
+  have priors :
+      (setup.initialLaw.map setup.eventInputs).map
+        (fun draw => (⟨EventGraphRuntime.State.initial draw, ∅⟩ : RecoveryState (graph setup))) =
+      oldInitial := by
+    simp only [recoveryInitialLaw, Vegas.initialLaw, serviceInitialLaw, PMF.map_comp,
+      Function.comp_def]
+  have prior : ((oldMenu).protocol (oldInitial) horizon (oldScheduler)).Trace
+      (PhaseRecoveryProjection.protocolState (runtime setup) leaks (oldLeaks) (some control)) :=
+    Eq.mp (congrArg (fun initial : PMF (RecoveryState (graph setup)) =>
+      ((oldMenu).protocol initial horizon (oldScheduler)).Trace
+        (PhaseRecoveryProjection.protocolState (runtime setup) leaks (oldLeaks) (some control)))
+      priors) prior
   have stillRunning : ¬ ((oldMenu).protocol (oldInitial) horizon (oldScheduler)).terminal
       (PhaseRecoveryProjection.protocolState (runtime setup) leaks (oldLeaks) (some control)) :=
     running

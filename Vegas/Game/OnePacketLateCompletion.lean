@@ -54,7 +54,8 @@ theorem completionPoint_of_openableCommitment
     (residual : SourceResidual setup profile rank sent) {point : ProtocolState setup.program}
     (decoded : sourceServicePrefix? setup rank sent = some point)
     (terminalCompleted : ∀ (final : (application setup leaks).Control),
-      ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace (some final) →
+      ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
+        scheduler).Trace (some final) →
       (application setup leaks).terminal (some final) →
       final.execution.application.config = sent →
       event ∈ final.execution.application.config.cut.completed)
@@ -232,7 +233,8 @@ theorem expect_centeredCompletion_of_openableCommitment
     (residual : SourceResidual setup profile rank sent) {point : ProtocolState setup.program}
     (decoded : sourceServicePrefix? setup rank sent = some point)
     (terminalCompleted : ∀ (final : (application setup leaks).Control),
-      ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace (some final) →
+      ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
+        scheduler).Trace (some final) →
       (application setup leaks).terminal (some final) →
       final.execution.application.config = sent →
       event ∈ final.execution.application.config.cut.completed)

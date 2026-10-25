@@ -155,11 +155,18 @@ theorem component_comparison_run_until_exclusion_or_guard_map_state
       ((oldMenu).bounded (oldInitial) horizon (oldScheduler)).wellFoundedHistories (comparison)
       (fun history => ¬ oldClear history.state ∨ guard history.state) second).map
         History.state := by
-  have phaseLaw := SequentialPhaseRecoveryPolicy.run_until_exclusion_or_guard_map_state
+  have priorEq : (setup.initialLaw.map setup.eventInputs).map
+      (fun input => (RecoveryState.mk (EventGraphRuntime.State.initial input) ∅ :
+        RecoveryState (graph setup))) = oldInitial := by
+    simp only [recoveryInitialLaw, Vegas.initialLaw, serviceInitialLaw, PMF.map_comp,
+      Function.comp_def]
+  have phaseProducer := SequentialPhaseRecoveryPolicy.run_until_exclusion_or_guard_map_state
     setup.program (runtime setup) leaks (menu setup leaks bounds) bounds
     (PhaseCount.normalized_onePacket_included (runtime setup) leaks bounds)
     (setup.initialLaw.map setup.eventInputs) horizon scheduler
     ((menu setup leaks bounds).bounded (initialLaw setup) horizon scheduler).wellFoundedHistories
+  erw [priorEq] at phaseProducer
+  have phaseLaw := phaseProducer
     ((A).bounded (oldInitial) horizon (oldScheduler)).wellFoundedHistories guard (phaseProfile)
     first ((oldMenu).toRawHistory (oldInitial) horizon (oldScheduler) second) same
   have oldLaw := comparison_run_until_exclusion_or_guard_map_state setup leaks bounds horizon

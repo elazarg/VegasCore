@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.OnePacketForeignFreshness
+import Vegas.Game.OnePacketForeignActivation
 import Vegas.Game.OnePacketClearRegularity
 import Vegas.Pending.ReactiveOwnerActivationRecall
 
@@ -78,38 +79,10 @@ theorem recovery_foreign_firstActivation_prefix_of_due
       horizon nativeScheduler).Trace (some control) := by
     rw [nativeLaw]
     exact rawTrace
-  obtain ⟨entry, remembered, atTurn⟩ := Recovery.due_owner_recalled_turn_clear_native
-    (runtime setup) leaks initialized opportunity timely
-    (serviceGraph_revealRelaxedOrdered setup .sequential) control mappedTrace idle clear event owner
-    owned ready entered activated due
-  have occurs : ∃ entry ∈ control.execution.recall owner,
-      ActivatedAt setup leaks owner event entry := ⟨entry, remembered, atTurn⟩
-  obtain ⟨point, decoded, intended⟩ :=
-    intended_of_clear_regular_notOwes wellFormed source focal trace clear regular notOwed
-  obtain ⟨rank, ⟨residual⟩⟩ := protocol_sourceResidual (failureProfile setup.program)
-    (bounds.onePacketMenu (runtime setup) leaks) horizon nativeScheduler trace control rfl
-  have samePoint := Option.some.inj ((decodedPoint_eq residual).symm.trans decoded)
-  subst point
-  have submissions := onePacket_ownSubmissionsAtTurn bounds trace residual.checkpoint.ordered _
-    residual.decode intended owner
-  obtain ⟨before, prior, response, joint, legal, realized, isPrefix, acting, chosen, pending,
-    never⟩ := firstActivation_response_prefix_of_recall trace owner event occurs submissions
-  have unfinished : event ∉ start.execution.application.config.cut.completed := by
-    intro completed
-    obtain ⟨value, output⟩ := Option.isSome_iff_exists.mp
-      ((start.execution.application.config.output_available event).mpr completed)
-    have stored : start.execution.application.config.store (.inr event) = some value := output
-    have retained := storedValue_of_tracePrefix startTrace startPrefix (.inr event) value stored
-    change control.execution.application.config.outputs event = some value at retained
-    exact ready.1 ((control.execution.application.config.output_available event).mp
-      (by rw [retained]; rfl))
-  have beforePrefix : TracePrefix prior trace :=
-    (TracePrefix.extend .refl joint legal realized).trans isPrefix
-  have readyBefore := (before.execution.application.publicView_eventReady event).mp
-    (pendingEvent_spec pending).2.1
-  have future := foreign_ready_prefix_after_ownTurn startTrace prior startPrefix beforePrefix focal
-    owner different current event turn owned unfinished readyBefore
-  exact ⟨before, prior, response, joint, legal, realized, future, isPrefix, acting, chosen, pending,
-    never⟩
+  have actual := Recovery.Opportunity.clear_native (runtime setup) leaks initialized opportunity
+    control mappedTrace clear
+  exact foreign_firstActivation_prefix_of_due wellFormed source focal owner different timely start
+    control startTrace trace actual startPrefix current event turn clear regular notOwed idle owned
+    ready entered activated due
 
 end Vegas

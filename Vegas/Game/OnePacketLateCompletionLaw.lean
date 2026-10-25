@@ -704,7 +704,8 @@ theorem lateBinding_completionPointLaw
     {point : ProtocolState setup.program}
     (decoded : sourceServicePrefix? setup rank execution.application.config = some point)
     (terminalCompleted : ∀ (final : (application setup leaks).Control),
-      ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace (some final) →
+      ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
+        scheduler).Trace (some final) →
       (application setup leaks).terminal (some final) →
       final.execution.application.config = execution.application.config →
       event ∈ final.execution.application.config.cut.completed)

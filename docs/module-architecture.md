@@ -687,6 +687,15 @@ and [decoded-debt absorption](../Vegas/Game/SequentialPhaseDecodedDebt.lean) pre
 its original payoff. The [preservation work](sequential-phase-preservation.md)
 records the remaining continuation comparisons.
 
+Native source timing and failure estimates use
+[pointwise counted service](../Vegas/Game/OnePacketCountedService.lean),
+[boundary waiting](../Vegas/Game/OnePacketBoundaryWaiting.lean), and
+[assembled foreign-failure bounds](../Vegas/Game/OnePacketForeignFailureBound.lean).
+They accept factual guards at actual counted histories; recovery and phase
+contracts instantiate those guards separately. The
+[phase continuation payoff estimate](../Vegas/Game/SequentialPhaseStoppedPayoff.lean)
+keeps original utility explicit while isolating foreign-exit error.
+
 ## Vegas/Examples
 
 - [Executable second-price receipts and bounded-auction incentives](../Vegas/Examples/BoundedPaymentAuction.lean)

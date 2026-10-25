@@ -207,8 +207,98 @@ theorem recovery_certificate_lateSuccessFree
     sequence scale scale_pos scale_le_one weights
     targetSequence assembled n covers capacity slotsLe site pendingSite debtFree siteKey pending law
     history current atSite forced node ordered decoded
-    (recovery_terminal_completed_of_decodedIntended initialized nativeLaw completes ordered decoded
-      intendedPoint event) intendedPoint
+    (fun final trace ended same =>
+      recovery_terminal_completed_of_decodedIntended initialized nativeLaw completes ordered
+      decoded intendedPoint event final
+        ((bounds.onePacketMenu (runtime setup) leaks).toRawTrace
+          (Vegas.initialLaw setup) horizon scheduler trace) ended same) intendedPoint
+
+omit initialized nativeLaw completes in
+theorem pendingBinding_sourceKernel
+    [(application setup leaks).FiniteNature (initialLaw setup) scheduler]
+    [∀ who, DecidableEq ((onePacketModel setup leaks bounds (initialLaw setup) horizon
+      scheduler).InfoState who)] (sequence : ℕ →
+  setup.intendedModel.BehavioralAssessment)
+    (scale : ℕ → ℝ) (scale_pos : ∀ n, 0 < scale n) (scale_le_one : ∀ n, scale n ≤ 1)
+    {slots : Nat}
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup leaks bounds horizon scheduler slots p))
+    (targetSequence : ℕ → (onePacketN).BehavioralAssessment)
+    (assembled : OnePacketAssembled setup leaks bounds horizon scheduler sequence scale scale_pos
+      scale_le_one weights targetSequence) (n : ℕ)
+    (covers : bounds.CoversOutputValues) (capacity : 1 ≤ bounds.candidateCount)
+    (slotsLe : slots ≤ bounds.candidateCount) {who : Player}
+    (site : (onePacketN).InformationSite who)
+    (pendingSite : LateDelivery setup leaks who site.1 ∨ FirstActivation setup leaks who site.1)
+    (debtFree : SiteDebtFree setup leaks bounds horizon scheduler site)
+    {key : LateKey setup leaks} (siteKey : lateKey setup leaks who site.1 = some key)
+    {event : (graph setup).EventId} (pending : pendingEvent setup leaks who site.1 = some event)
+    (law : PMF ((onePacketN).Choice who site.1))
+    (history : (onePacketN).InformationHistory who site.1)
+    {remaining : Nat} {execution : (application setup leaks).Execution}
+    (current : history.1.state = some ⟨remaining, some who, execution⟩)
+    (atSite : site.1 = some (execution.recall who,
+      execution.observe (application setup leaks) who))
+    (forced : ForcedState setup leaks who history.1.state)
+    {payload : L.Ty} {outputEq : (graph setup).outputLayout event = .binding who payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
+      ((graph setup).nodes event) = .bind who payload}
+    (node : nodeView (graph setup) event = .bind who payload outputEq codeEq)
+    (ordered : execution.application.config.cut.IsPrefix (siteRank site.1))
+    {point : ProtocolState setup.program}
+    (decoded : sourceServicePrefix? setup (siteRank site.1) execution.application.config =
+      some point)
+    (intendedPoint : ProtocolState.Intended setup.program point)
+    (terminalCompleted : ∀ (final : (application setup leaks).Control),
+      ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
+        scheduler).Trace (some final) →
+      (application setup leaks).terminal (some final) →
+      final.execution.application.config = execution.application.config →
+      event ∈ final.execution.application.config.cut.completed)
+    (lawShape : (∃ option : LateOption slots, law = onePacketLate setup leaks bounds horizon
+        scheduler sequence scale scale_pos scale_le_one n ((onePacketN).agentAt site) option) ∨
+      law = PMF.pure (silenceChoice setup leaks bounds (initialLaw setup) horizon scheduler who
+        site.1)) :
+    let installed := Profile.update (sig := (onePacketN).behavioralSignature)
+      (targetSequence n).strategy who (((targetSequence n).strategy who).withLaw site.1 law)
+    let phase := (onePacketN).runBehavioralUntil
+      ((bounds.onePacketMenu (runtime setup) leaks).bounded (initialLaw setup) horizon
+        scheduler).wellFoundedHistories installed
+      (LateStopped setup leaks bounds horizon scheduler (siteRank site.1)) history.1
+    CompletionPointLaw setup leaks bounds horizon scheduler installed (siteRank site.1)
+      (siteFresh who site.1) history.1
+      (expect phase (completionIndicator setup leaks bounds horizon scheduler (siteRank site.1)
+        (siteFresh who site.1)))
+      (ProtocolState.behavioralStateStep setup.program
+        (setup.intendedOpeningProfile (sequence n).strategy) point)
+      (2 * (scale n ^ 3 + (2 * horizon + 1 : ℕ) * (scale n ^ 3 + scale n ^ 3)) *
+        (2 * horizon + 1)) ∧
+    expect phase (lateBadStop setup leaks bounds horizon scheduler (siteRank site.1)
+      (siteFresh who site.1) event) ≤ scale n ^ 3 * (2 * horizon + 1) := by
+  intro installed phase
+  have shape := certificate_firstActivation_lateOwnerShapeFrom setup leaks bounds horizon scheduler
+    sequence scale scale_pos scale_le_one weights targetSequence assembled n site pending law
+      lawShape
+    history current atSite forced
+  have freshIff : ∀ control, siteFresh who site.1 control ↔
+      ¬ StoreEventFailed control.execution.application.config.store event := by
+    intro control
+    simp only [siteFresh, pending]
+  have pendingHere := pending
+  rw [atSite] at pendingHere
+  obtain ⟨turn, _, _, unrecorded⟩ := pendingEvent_spec pendingHere
+  have factor := certificate_lateSuccessFree setup leaks bounds horizon scheduler sequence scale
+    scale_pos scale_le_one weights targetSequence assembled n covers capacity slotsLe site
+    pendingSite debtFree siteKey pending law history current atSite forced node ordered decoded
+    terminalCompleted intendedPoint
+  constructor
+  · exact lateBinding_completionPointLaw covers capacity (sequence n) (scale_pos n)
+      (scale_le_one n) slotsLe installed history.1 current node turn unrecorded ordered decoded
+      terminalCompleted intendedPoint (fun control failed fresh => (freshIff control).mp fresh
+        failed)
+      shape (by have := (scale_pos n).le; positivity) factor
+  · exact lateBinding_badMass covers capacity (sequence n) (scale_pos n)
+      (scale_le_one n) slotsLe installed history.1 current node turn unrecorded ordered decoded
+      terminalCompleted intendedPoint freshIff shape
 
 theorem recovery_pendingBinding_sourceKernel
     [(application setup leaks).FiniteNature (initialLaw setup) scheduler]
@@ -264,33 +354,15 @@ theorem recovery_pendingBinding_sourceKernel
         (2 * horizon + 1)) ∧
     expect phase (lateBadStop setup leaks bounds horizon scheduler (siteRank site.1)
       (siteFresh who site.1) event) ≤ scale n ^ 3 * (2 * horizon + 1) := by
-  intro installed phase
-  have shape := certificate_firstActivation_lateOwnerShapeFrom setup leaks bounds horizon scheduler
-    sequence scale scale_pos scale_le_one weights targetSequence assembled n site pending law
-      lawShape
-    history current atSite forced
-  have terminalCompleted := recovery_terminal_completed_of_decodedIntended initialized nativeLaw
-    completes ordered decoded intendedPoint event
-  have freshIff : ∀ control, siteFresh who site.1 control ↔
-      ¬ StoreEventFailed control.execution.application.config.store event := by
-    intro control
-    simp only [siteFresh, pending]
-  have pendingHere := pending
-  rw [atSite] at pendingHere
-  obtain ⟨turn, _, _, unrecorded⟩ := pendingEvent_spec pendingHere
-  have factor := recovery_certificate_lateSuccessFree initialized nativeLaw completes sequence scale
+  apply pendingBinding_sourceKernel (recoveryScheduler := recoveryScheduler) sequence scale
     scale_pos scale_le_one weights targetSequence assembled n covers capacity slotsLe site
-      pendingSite
-    debtFree siteKey pending law history current atSite forced node ordered decoded intendedPoint
-  constructor
-  · exact lateBinding_completionPointLaw covers capacity (sequence n) (scale_pos n)
-      (scale_le_one n) slotsLe installed history.1 current node turn unrecorded ordered decoded
-      terminalCompleted intendedPoint (fun control failed fresh => (freshIff control).mp fresh
-        failed)
-      shape (by have := (scale_pos n).le; positivity) factor
-  · exact lateBinding_badMass covers capacity (sequence n) (scale_pos n)
-      (scale_le_one n) slotsLe installed history.1 current node turn unrecorded ordered decoded
-      terminalCompleted intendedPoint freshIff shape
+    pendingSite debtFree siteKey pending law history current atSite forced node ordered decoded
+    intendedPoint ?_ lawShape
+  intro final trace ended same
+  exact recovery_terminal_completed_of_decodedIntended initialized nativeLaw completes ordered
+    decoded intendedPoint event final
+    ((bounds.onePacketMenu (runtime setup) leaks).toRawTrace (Vegas.initialLaw setup) horizon
+      scheduler trace) ended same
 
 
 open Classical in
@@ -622,9 +694,12 @@ theorem recovery_committed_sourceKernel
         exact done))).elim
     obtain ⟨final, finalState, stepped⟩ := openableCommitment_stop bounds
       horizon scheduler certificate installed codeEq successful ordered
-      (recovery_terminal_completed_of_decodedIntended initialized nativeLaw completes ordered
-        decoded
-        pointIntended event) next invariant stop reached
+      (fun final trace ended same =>
+        recovery_terminal_completed_of_decodedIntended initialized nativeLaw completes ordered
+        decoded pointIntended event final
+          ((bounds.onePacketMenu (runtime setup) leaks).toRawTrace
+            (Vegas.initialLaw setup) horizon scheduler trace) ended same)
+      next invariant stop reached
     refine ⟨final, finalState, ?_⟩
     rcases stepped with inStep | ⟨failing, failed, inStep⟩
     · have pointEq := completionPoint_of_mem_step (fresh := siteFresh who site.1) residual

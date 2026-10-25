@@ -224,7 +224,8 @@ theorem openableCommitment_stop (bounds : MessageBounds (graph setup)) (horizon 
       PublicationResult (L.Val payload)) = .success value)
     {rank : Nat} (ordered : sent.cut.IsPrefix rank)
     (terminalCompleted : ∀ (final : (application setup leaks).Control),
-      ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace (some final) →
+      ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
+        scheduler).Trace (some final) →
       (application setup leaks).terminal (some final) →
       final.execution.application.config = sent →
       event ∈ final.execution.application.config.cut.completed)
@@ -283,10 +284,7 @@ theorem openableCommitment_stop (bounds : MessageBounds (graph setup)) (horizon 
         rw [atSent] at prefixed
         exact Nat.succ_ne_self rank (isPrefix_unique prefixed ordered)
       · rw [state] at ended
-        have rawTrace : ((application setup leaks).protocol (initialLaw setup) horizon
-            scheduler).Trace (some final) :=
-          menu.toRawTrace (initialLaw setup) horizon scheduler finalTrace
-        exact pending (terminalCompleted final rawTrace ended atSent)
+        exact pending (terminalCompleted final finalTrace ended atSent)
 
 /-- **A slot commitment sets up the invariant.** Along a history of the
 one-packet game, at a decision of `who` at its pending binding `event`,

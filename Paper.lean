@@ -2134,3 +2134,69 @@ open Vegas.SequentialPhase in
 #guard_msgs (whitespace := lax) in
 open Vegas.SequentialPhase in
 #print axioms component_comparison_bayes_state_eq
+
+/-- info: 'Vegas.OnePacketComparison.assembled_foreign_exit_mass_le_rank' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.OnePacketComparison in
+#print axioms assembled_foreign_exit_mass_le_rank
+
+/-- info: 'Vegas.SequentialPhase.nativeComparison_foreign_exit_mass_le_rank' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.SequentialPhase in
+#print axioms nativeComparison_foreign_exit_mass_le_rank
+
+/-- info: 'Vegas.SequentialPhase.native_pendingBinding_sourceKernel' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.SequentialPhase in
+#print axioms native_pendingBinding_sourceKernel
+
+/-- info: 'Vegas.phase_expect_sub_debt_stopped_le_foreign_exit' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas in
+#print axioms phase_expect_sub_debt_stopped_le_foreign_exit
+
+/-- info: 'Vegas.phase_belief_expect_abs_sub_debt_stopped_le_foreign_exit' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas in
+#print axioms phase_belief_expect_abs_sub_debt_stopped_le_foreign_exit
+
+/-- info: 'Vegas.SequentialPhase.component_local_comparison_run_until_exclusion_or_guard_map_state' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.SequentialPhase in
+#print axioms component_local_comparison_run_until_exclusion_or_guard_map_state
+
+/-- info: 'Vegas.completionValue_expect_affine_of_completed' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas in
+#print axioms completionValue_expect_affine_of_completed
+
+/-- info: 'Vegas.pendingBinding_sourceKernel' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas in
+#print axioms pendingBinding_sourceKernel
+
+/-- info: 'Vegas.phase_boundary_firstActivation' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas in
+#print axioms phase_boundary_firstActivation
+
+/-- info: 'Vegas.EventGraphRuntime.due_owner_recalled_turn_of_opportunity' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.EventGraphRuntime in
+#print axioms due_owner_recalled_turn_of_opportunity
+
+/-- info: 'Vegas.recovery_debt_stopped_expect_eq_native' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas in
+#print axioms recovery_debt_stopped_expect_eq_native

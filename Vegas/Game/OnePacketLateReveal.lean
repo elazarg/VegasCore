@@ -66,8 +66,8 @@ theorem lateStop_mem_step
     {sent : (graph setup).Config} {rank : Nat} (ordered : sent.cut.IsPrefix rank)
     {event : (graph setup).EventId} (ready : sent.cut.Ready event)
     (terminalCompleted : ∀ (final : (application setup leaks).Control),
-      ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
-        (some final) →
+      ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
+        scheduler).Trace (some final) →
       (application setup leaks).terminal (some final) →
       final.execution.application.config = sent →
       event ∈ final.execution.application.config.cut.completed)
@@ -124,10 +124,9 @@ theorem lateStop_mem_step
       rw [same] at prefixed
       exact Nat.succ_ne_self rank (isPrefix_unique prefixed ordered)
     · rw [finalState] at ended
-      have rawTrace : ((application setup leaks).protocol (initialLaw setup) horizon
-          scheduler).Trace (some final) :=
-        menu.toRawTrace (initialLaw setup) horizon scheduler (finalState ▸ stop.trace)
-      exact ready.1 (by rw [← same]; exact terminalCompleted final rawTrace ended same)
+      exact ready.1 (by
+        rw [← same]
+        exact terminalCompleted final (finalState ▸ stop.trace) ended same)
   · exact stepped
 
 omit [DecidableEq Player] [Fintype Player] [IExpr.ResultTypes L] in
@@ -170,8 +169,8 @@ theorem disclosure_sourceKernel
       some point)
     (intendedPoint : ProtocolState.Intended setup.program point)
     (terminalCompleted : ∀ (final : (application setup leaks).Control),
-      ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
-        (some final) →
+      ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
+        scheduler).Trace (some final) →
       (application setup leaks).terminal (some final) →
       final.execution.application.config = execution.application.config →
       event ∈ final.execution.application.config.cut.completed) :

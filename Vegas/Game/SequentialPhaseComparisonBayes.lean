@@ -143,9 +143,16 @@ theorem component_comparison_bayes_state_eq
     (PhaseCount.normalized_onePacket_included (runtime setup) leaks bounds)
     (setup.initialLaw.map setup.eventInputs) horizon scheduler phaseProfile who site past view
     siteInput clear positive
-  have rawPosterior := SequentialPhaseRecoveryPolicy.recovery_bayesBelief_eq_stopped_state
+  have priorEq : (setup.initialLaw.map setup.eventInputs).map
+      (fun input => (RecoveryState.mk (EventGraphRuntime.State.initial input) ∅ :
+        RecoveryState (graph setup))) = oldInitial := by
+    simp only [recoveryInitialLaw, Vegas.initialLaw, serviceInitialLaw, PMF.map_comp,
+      Function.comp_def]
+  have rawProducer := SequentialPhaseRecoveryPolicy.recovery_bayesBelief_eq_stopped_state
     setup.program (runtime setup) leaks (setup.initialLaw.map setup.eventInputs) horizon scheduler
-    embedded who rawSite oldPast oldView oldInput oldClearView rawPositive
+  erw [priorEq] at rawProducer
+  have rawPosterior := rawProducer embedded who rawSite oldPast oldView oldInput oldClearView
+    rawPositive
   dsimp only at phasePosterior rawPosterior
   change fiberPosterior (phaseStopped.map (fun history => projection history.state))
     ((A).observe who) (projectInfo site.1) = _ at phasePosterior

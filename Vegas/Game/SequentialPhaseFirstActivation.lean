@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactiveDecisionPredecessor
+import Vegas.Game.OnePacketCountedService
 import Vegas.Game.SequentialPhaseNativeService
 import Vegas.Game.OnePacketFirstActivation
 import Vegas.Pending.ReactiveFirstOpportunity
@@ -53,29 +53,9 @@ theorem phase_firstActivation_inclusionFits
     (never : ∀ entry ∈ execution.recall who,
       ¬ ActivatedAt setup recoveryLeaks who event entry) :
     execution.application.publicView.InclusionFitsDeadline (runtime setup) bound event := by
-  let service := nativeScheduler (recoveryScheduler scheduler)
-  obtain ⟨previous, ⟨countedTrace⟩, applicationEq, recallEq⟩ :=
-    (nativeMenu).decision_predecessor (initialLaw setup) horizon service trace current
-  have spec := PublicView.ownTurn?_spec _ who event turn
-  have ready := (execution.application.publicView_eventReady event).mp spec.1
-  have strategic : ((graph setup).actor? event).isSome = true := by rw [spec.2]; rfl
-  have previousTrace := (nativeMenu).toRawTrace (initialLaw setup) horizon service countedTrace
-  obtain ⟨draw, invariant⟩ :=
-    (roster_trace_facts setup recoveryLeaks horizon service previousTrace).1
-  rw [applicationEq] at invariant
-  obtain ⟨entered, activated⟩ := invariant.activatedAt_eq_some_of_ready_actor event ready strategic
-  have previousClear : ExclusionEvidence 0 ∅
-      (⟨previous.application, ∅⟩ : RecoveryState (graph setup)) := by
-    rw [applicationEq]
-    exact clear
-  have actual := PhaseService.Opportunity.clear_native_counted setup leaks bounds horizon scheduler
-    delay opportunity countedTrace previousClear
-  have fits := inclusionFitsDeadline_of_unrecalled_turn (runtime setup) recoveryLeaks
-    (initialLaw setup) horizon service (serviceGraph_revealRelaxedOrdered setup .sequential)
-    ⟨remaining + 1, none, previous⟩ previousTrace rfl delay bound timely actual event who spec.2
-    (by rw [applicationEq]; exact spec.1) entered (by rw [applicationEq]; exact activated)
-    (fun entry remembered => never entry (recallEq ▸ remembered))
-  change previous.application.publicView.InclusionFitsDeadline (runtime setup) bound event at fits
-  rwa [applicationEq] at fits
+  exact firstActivation_inclusionFits_of_counted_opportunity setup recoveryLeaks bounds horizon
+    (nativeScheduler (recoveryScheduler scheduler)) delay bound
+    (fun control prior clear => PhaseService.Opportunity.clear_native_counted setup leaks bounds
+      horizon scheduler delay opportunity prior clear) timely trace current clear event turn never
 
 end Vegas

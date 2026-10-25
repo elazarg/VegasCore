@@ -129,8 +129,11 @@ theorem nativeComparison_firstActivation_disclosure_gain_le [Fintype (RP).Histor
   obtain ⟨target, _step, _intended, supports⟩ := disclosure_sourceKernel
     (sequence n) (nativeComparisonSequence setup leaks bounds horizon scheduler sequence scale
       positive le_one weights n) site pending law history current turn ordered outputEq codeEq
-    decoded intended (recovery_terminal_completed_of_decodedIntended (initialLaw_initialized setup)
-      (initialLaw_native setup) completes ordered decoded intended event)
+    decoded intended (fun final trace ended same =>
+      recovery_terminal_completed_of_decodedIntended (initialLaw_initialized setup)
+      (initialLaw_native setup) completes ordered decoded intended event final
+        ((bounds.onePacketMenu (runtime setup) leaks).toRawTrace
+          (Vegas.initialLaw setup) horizon (NativeScheduler) trace) ended same)
   have noBad : expect phase (lateBadStop setup leaks bounds horizon (NativeScheduler)
       (siteRank site.1) (siteFresh who site.1) event) = 0 := by
     calc

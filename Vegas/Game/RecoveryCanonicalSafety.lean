@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.RecoveryFirstActivation
+import Vegas.Game.OnePacketCanonicalSafety
 import Vegas.Game.RecoveryProtectedCalls
 import Vegas.Pending.ExclusionAcceptedOutput
 import Vegas.Game.OnePacketEventSuccess
@@ -68,62 +69,15 @@ theorem recovery_firstActivation_canonical_succeeds_environment
       OutputSucceeded next.application.config.store event) ∧
       ¬ next.application.PublicFailure event := by
   let nativeScheduler := RecoveryProjection.nativeScheduler (runtime setup) leaks scheduler
-  have invariant := acceptanceInvariant_respond bounds horizon nativeScheduler trace event turn
-    action material submits bindSuccess after
-  have transports : ∀ {state}
-      {later : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
-        nativeScheduler).Trace state}, TracePrefix after later →
-      AcceptanceInvariant setup leaks bounds horizon nativeScheduler who
-        (respondEntry setup leaks execution who ((runtime setup).canonicalServiceDecision leaks who
-          (execution.recall who) (execution.observe (application setup leaks) who) event action))
-        (sentEnvelope setup leaks execution who material) event execution.application.config
-        state := by
-    intro state later earlier
-    induction earlier with
-    | refl => exact invariant
-    | extend previous joint legal realized ih =>
-        exact acceptanceInvariant_transition bounds horizon nativeScheduler who _ _ event _
-          _ _ joint legal ih realized
-  have finalInvariant := transports isPrefix
-  obtain ⟨_, records, _emitted, _, _, _, accepted⟩ := finalInvariant
   have rawTrace := (bounds.onePacketMenu (runtime setup) leaks).toRawTrace (initialLaw setup)
     horizon nativeScheduler trace
   have fits := recovery_firstActivation_inclusionFits initialized nativeLaw opportunity
     timely rawTrace rfl clear event turn never
-  have call := canonical_freshCall rawTrace bound who event turn fits action material submits
   have owned := (PublicView.ownTurn?_spec _ who event turn).2
-  obtain ⟨earlier, later, split⟩ := records
-  have member : (sentEnvelope setup leaks execution who material) ∈
-      (application setup leaks).outputs (control.execution.recall who) :=
-    List.mem_filterMap.mpr ⟨respondEntry setup leaks execution who
-      ((runtime setup).canonicalServiceDecision leaks who (execution.recall who)
-        (execution.observe (application setup leaks) who) event action),
-      by rw [split]; simp, _emitted⟩
-  rw [respondEntry_of_transmission execution who _ material submits] at split
-  have sole : ∀ other ∈ earlier ++ later,
-      ¬ EmitsOtherFor (runtime setup) leaks other event
-        (sentEnvelope setup leaks execution who material).id := by
-    intro other present
-    exact onePacket_not_emitsOtherFor bounds target who event _ member call.addressed other
-      (by
-        rw [split]
-        rcases List.mem_append.mp present with first | last
-        · exact List.mem_append_left _ first
-        · exact List.mem_append_right _ (List.mem_cons_of_mem _ last))
   have settles := recovery_settlesFreshCalls_environment setup leaks initialized nativeLaw
-    inclusion who event owned priorRemaining priorExecution prior priorClear command
-    next reached
-  rw [nextExecution] at split
-  have succeeds (completed : event ∈ next.application.config.cut.completed) :
-      OutputSucceeded next.application.config.store event := by
-    have receipt := (settles earlier _ later _ split call sole).1 completed
-    rw [← nextExecution] at receipt
-    rw [← nextExecution]
-    exact accepted receipt
-  have rawTarget := (bounds.onePacketMenu (runtime setup) leaks).toRawTrace (initialLaw setup)
-    horizon nativeScheduler target
-  have binding := (legalFacts setup leaks horizon nativeScheduler control rawTarget).binding
-  rw [nextExecution] at binding
-  exact ⟨succeeds, fun failed => (succeeds failed.completed).not_publicFailure binding failed⟩
+    inclusion who event owned priorRemaining priorExecution prior priorClear command next reached
+  exact canonical_firstResponse_succeeds_of_settles bounds horizon nativeScheduler bound trace
+    event turn fits action material submits bindSuccess after control target isPrefix next
+    nextExecution settles
 
 end Vegas
