@@ -634,6 +634,7 @@ directory's aggregator imports every module in it.
 
 ## Vegas/Examples
 
+- [Executable second-price receipts and bounded-auction incentives](../Vegas/Examples/BoundedPaymentAuction.lean)
 - [Executable payments reverse a strict incentive](../Vegas/Examples/ProgramPayments.lean)
 - [Checked roster service for the conditional payment program](../Vegas/Examples/ProgramPaymentsRuntimeService.lean)
 - [Executable payments change raw-runtime equilibria](../Vegas/Examples/ProgramPaymentsRuntime.lean)

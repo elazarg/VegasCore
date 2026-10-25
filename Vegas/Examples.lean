@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Examples.CommitRevealAuction
+import Vegas.Examples.BoundedPaymentAuction
 import Vegas.Examples.CommitTimingInformationAudit
 import Vegas.Examples.CommitTimingInformationChance
 import Vegas.Examples.ConcurrentRevealOrderLaw

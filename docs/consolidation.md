@@ -830,12 +830,15 @@ perfect recall proved for every model, horizons equal to proved bounds.
 ### Language and models
 
 - [ ] **F-L1 (H, Step 4).** The existing capstones and Paper accept utility
-  parameters without deriving transfers from `ret`; both auction examples write
-  `.ret []`, and `simpleExpr` cannot express their utilities. The
+  parameters without deriving transfers from `ret`; the two unbounded auction
+  examples write `.ret []` and keep real-valued valuations in the analysis. The
   [program payment interface](../Vegas/Game/ProgramPayoffs.lean) and
   [strict-incentive instance](../Vegas/Examples/ProgramPayments.lean) connect
-  evaluated payments to a source game and compiled transfer law; the capstone
-  and auction migrations remain open.
+  evaluated payments to a source game and compiled transfer law. The
+  [bounded auction](../Vegas/Examples/BoundedPaymentAuction.lean) computes its
+  integer second-price receipts in `ret`, proves agreement with economic utility
+  and full-deviation compiled Nash correspondence, and retains the conditional
+  withholding counterexample. Common capstone integration remains open.
 - [ ] **F-L2 (H, Steps 3–5).** About eight source-level games and three
   compiled contracts; see [model inventory](#model-inventory).
 - [x] **F-L3 (M, Step 2).** The language's limits (straight-line, fixed actors,

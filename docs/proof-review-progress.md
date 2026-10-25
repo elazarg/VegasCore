@@ -69,7 +69,7 @@ is not a claim that the mathematical result has been proved.
 | S6 | Purification needs finite explored action support, not finite payload types | In progress | Finite-support kernels replace finite binding alphabets in purification; owner and integer-report auction regression pass. Original finite-alphabet runtime caller supplies both support guards and awaits build |
 | S7 | Classify departure from the intended game before duplicating induction | Queued | Awaiting its dependency-ordered implementation batch |
 | S8 | Erased-history continuation needs one step law and legality transport | Checked | Removed two unused private proofs and their unused import; continuation and support-splice owners pass, both public erasure results retain standard axioms; net47 fewer lines |
-| S9 | Make the auction's executable transfers a separate concrete application | Queued | Awaiting its dependency-ordered implementation batch |
+| S9 | Make the auction's executable transfers a separate concrete application | Checked | New bounded-report auction evaluates integer second-price transfers in ret; all-outcome settlement/utility equality, full-deviation compiled Nash iff and conditional-withholding counterexample for every integer charge pass. Four exact roots retain standard axioms; original unbounded real-forfeiture result unchanged. Feature growth |
 | S10 | Reuse positive service fixtures without erasing adversarial timing | Existing implementation retained | Positive payment fixture already uses the proved roster-to-async constructor. The late-opening fixture has distinct adversarial timing evidence, so replacing it would change its purpose; no redundant fixture framework was added |
 
 ## Additional cleanup queue
