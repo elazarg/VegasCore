@@ -41,6 +41,11 @@ belief-consistency construction separate from initialized outcome matching.
 
 ## How to add further sources
 
+The [SE-preservation research survey](../se-preservation-research-survey.md)
+connects information compression, continuation-gain equivalence, observation
+likelihoods, consistency certificates, and scheduler noninterference to the
+existing proof interfaces, with explicit limits on each proposed application.
+
 Use papers, official protocol specifications or implementation documentation.
 Record the precise property supported: cryptographic confidentiality, finality,
 admission, release, observation or availability. Distinguish transaction
