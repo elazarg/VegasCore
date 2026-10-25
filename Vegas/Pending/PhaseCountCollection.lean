@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Pending.PhaseCountMenu
+import Interaction.CompleteEvidenceService
 
 /-! # Collection of forbidden attempt-addressed packets
 
@@ -33,6 +34,16 @@ def EvidenceCoverage (service : EvidenceReportService (Evidence graph))
         ((service.reports seen).toOuterMeasure {delivered |
           report ∈ EvidenceReport.deliveredEvidence
             (service.window.reportCutoff + service.window.inclusionBound) delivered}).toReal
+
+/-- Complete authentic observation and immediate delivery give unit coverage. -/
+theorem completeEvidence_coverage :
+    EvidenceCoverage (EvidenceReportService.complete (Evidence graph))
+      (fun _ => 1) (fun _ => 1) := by
+  intro actual report member _
+  constructor
+  · exact (EvidenceReportService.complete_observation_mass actual report member).symm.le
+  · intro seen _ present
+    exact (EvidenceReportService.complete_delivery_mass seen report present).symm.le
 
 /-- A forbidden packet in the actual traffic gives the product of observation
 and conditional delivery coverage as a lower bound on its sender's collected

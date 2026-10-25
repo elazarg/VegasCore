@@ -39,7 +39,7 @@ local notation "recoveryScheduler" =>
 local notation "phaseInitial" => PMF.map (PhaseRuntimeState.initial plan)
 local notation "recoveryInitial" =>
   PMF.map (fun input => RecoveryState.mk (State.initial input) ∅)
-local notation "old" => Recovery.onePacketMenu runtime recoveryLeaks bounds
+local notation "RecoveryMenu" => Recovery.onePacketMenu runtime recoveryLeaks bounds
 local notation "nativeMenu" => MessageBounds.onePacketMenu runtime recoveryLeaks bounds
 
 /-- Every canonical clear phase prefix yields an actual native counted prefix
@@ -58,14 +58,16 @@ theorem exists_native_canonical_clear_history
       native.trace.length = trace.length ∧
       ∀ current, native.state = some current →
         ExclusionEvidence 0 ∅ (⟨current.execution.application, ∅⟩ : RecoveryState _) := by
-  obtain ⟨oldTrace, oldLength⟩ := trace_projected_canonical_clear program runtime leaks bounds
+  obtain ⟨recoveryTrace, recoveryLength⟩ := trace_projected_canonical_clear program runtime leaks
+      bounds
     inputs
     horizon scheduler trace clear
-  let oldHistory : ((old).protocol (recoveryInitial inputs) horizon
-      (recoveryScheduler scheduler)).History := ⟨projection state, oldTrace⟩
-  let rawOldTrace := (old).toRawTrace (recoveryInitial inputs) horizon (recoveryScheduler scheduler)
-    oldTrace
-  have oldClear : ∀ current, projection state = some current →
+  let recoveryHistory : ((RecoveryMenu).protocol (recoveryInitial inputs) horizon
+      (recoveryScheduler scheduler)).History := ⟨projection state, recoveryTrace⟩
+  let rawRecoveryTrace := (RecoveryMenu).toRawTrace (recoveryInitial inputs) horizon
+      (recoveryScheduler scheduler)
+    recoveryTrace
+  have recoveryCleared : ∀ current, projection state = some current →
       current.execution.application.excluded = ∅ := by
     intro current same
     cases state with
@@ -80,8 +82,9 @@ theorem exists_native_canonical_clear_history
     obtain ⟨draw, _supported, rfl⟩ := PMF.support_map .. ▸ supported
     exact ⟨draw, rfl⟩
   obtain ⟨native, rawEq⟩ := RecoveryProjection.exists_nativeBoundedHistory runtime recoveryLeaks
-    bounds (recoveryInitial inputs) initialized horizon (recoveryScheduler scheduler) oldHistory
-    oldClear
+    bounds (recoveryInitial inputs) initialized horizon (recoveryScheduler scheduler)
+        recoveryHistory
+    recoveryCleared
   have endpoint := congrArg (fun history : ((N).protocol
       ((recoveryInitial inputs).map RecoveryState.native) horizon
       (RecoveryProjection.nativeScheduler runtime recoveryLeaks
@@ -106,12 +109,12 @@ theorem exists_native_canonical_clear_history
           (recoveryScheduler scheduler))).History => history.trace.length) rawEq
   change ((nativeMenu).toRawTrace _ _ _ native.trace).length =
     (RecoveryProjection.nativeTrace runtime recoveryLeaks (recoveryInitial inputs) horizon
-      (recoveryScheduler scheduler) rawOldTrace oldClear).length at length
-  rw [(nativeMenu).toRawTrace_length, nativeLength, (old).toRawTrace_length] at length
-  refine ⟨native, endpoint, length.trans oldLength, ?_⟩
+      (recoveryScheduler scheduler) rawRecoveryTrace recoveryCleared).length at length
+  rw [(nativeMenu).toRawTrace_length, nativeLength, (RecoveryMenu).toRawTrace_length] at length
+  refine ⟨native, endpoint, length.trans recoveryLength, ?_⟩
   intro current same
   exact RecoveryProjection.nativeHistory_record runtime recoveryLeaks (recoveryInitial inputs)
-    initialized horizon (recoveryScheduler scheduler) rawOldTrace oldClear current
+    initialized horizon (recoveryScheduler scheduler) rawRecoveryTrace recoveryCleared current
       (endpoint.symm.trans same)
 
 end Vegas.EventGraphRuntime.PhaseRecoveryProjection

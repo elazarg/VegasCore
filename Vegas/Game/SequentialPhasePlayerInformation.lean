@@ -6,7 +6,7 @@ import Vegas.Game.PhaseClearPacketInformation
 import Interaction.ReactiveRecordedResponse
 import Interaction.ReactiveRecallInvariant
 
-/-! # Reconstructing clear phase player observations from old recovery inputs
+/-! # Reconstructing clear phase player observations from recovery inputs
 
 Only the supplied player's original current view and own recall are decoded.
 Actual phase geometry and authored-packet facts justify the reconstruction;
@@ -49,7 +49,7 @@ variable (runtime : EventGraphRuntime (EventGraph.withMode (toEventGraph program
 local notation "P" => phaseApplication runtime leaks
 local notation "R" => runtime.recoveryApplication recoveryLeaks
 
-/-- Decode the static phase metadata and packet tags from the old current player input. -/
+/-- Decode the static phase metadata and packet tags from the recovery current player input. -/
 def playerView (view : (R).PlayerView) : (P).PlayerView where
   messages := view.messages.mapPayload (sequentialRuntimePhasePlan program).stampPacket
   application := (view.application.1,
@@ -185,7 +185,7 @@ theorem recall_history (inputs :
     _ = (control.execution.recall who).map id := List.map_congr_left each
     _ = control.execution.recall who := List.map_id (control.execution.recall who)
 
-/-- Actual clear counted information fibers have an inverse using old player
+/-- Actual clear counted information fibers have an inverse using recovery player
 information alone. No restriction to honest histories or equilibrium support is made. -/
 theorem information_history (inputs :
     PMF ((EventGraph.withMode (toEventGraph program) .sequential)).Inputs)

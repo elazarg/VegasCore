@@ -129,7 +129,7 @@ theorem controlStep_history
             PhaseRecoveryProjection.control, acting, Function.comp_apply] using compared
 
 include included in
-/-- Every actual clear phase history and any matching old raw history have the
+/-- Every actual clear phase history and any matching recovery raw history have the
 same entire physical one-step state law, including first-exclusion endpoints. -/
 theorem run_one_map_state_history
     (profile : ∀ who, (M).BehavioralPolicy who)

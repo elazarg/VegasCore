@@ -34,11 +34,11 @@ local notation "initial" => PMF.map (PhaseRuntimeState.initial (plan)) (inputs)
 local notation "raw" => PhaseCount.onePacketMenu (runtime setup) leaks bounds
 local notation "normal" => PhaseCount.normalization (runtime setup) leaks
 local notation "canonical" => ReactiveApplication.SubmissionNormalization.menu (normal) (raw)
-local notation "old" => Recovery.onePacketMenu (runtime setup) (recoveryLeaks) bounds
-local notation "oldInitial" =>
+local notation "RecoveryMenu" => Recovery.onePacketMenu (runtime setup) (recoveryLeaks) bounds
+local notation "RecoveryPrior" =>
   PMF.map (fun draw => (RecoveryState.mk (EventGraphRuntime.State.initial draw) ∅ :
     RecoveryState (graph setup))) (inputs)
-local notation "oldScheduler" => SequentialPhaseSchedulerInformation.scheduler setup.program
+local notation "RecoveryScheduler" => SequentialPhaseSchedulerInformation.scheduler setup.program
   (runtime setup) leaks (recoveryLeaks) scheduler
 
 /-- Canonical callback legality agrees exactly at every actual clear canonical
@@ -50,7 +50,7 @@ theorem phase_canonical_callback_iff_recovery {control : (P).Control}
     response ∈ (canonical).actions who (control.execution.recall who)
         (control.execution.observe (P) who) ↔
       PhaseRecoveryProjection.action (runtime setup) leaks (recoveryLeaks) response ∈
-        (old).actions who
+        (RecoveryMenu).actions who
           ((control.execution.recall who).map
             (PhaseRecoveryProjection.playerEntry (runtime setup) leaks (recoveryLeaks)))
           (PhaseRecoveryProjection.playerView (runtime setup) leaks (recoveryLeaks)
@@ -73,15 +73,15 @@ theorem phase_canonical_callback_iff_recovery {control : (P).Control}
       (PhaseRecoveryProjection.control (runtime setup) leaks (recoveryLeaks) control)
     have current : native.state = some nativeControl := endpoint
     let nativeScheduler := RecoveryProjection.nativeScheduler (runtime setup) (recoveryLeaks)
-      (oldScheduler)
+      (RecoveryScheduler)
     have nativeTrace :
         (onePacketProtocol setup (recoveryLeaks) bounds horizon nativeScheduler).Trace
           (some nativeControl) := by
       have actual := current ▸ native.trace
-      have prior : (oldInitial).map RecoveryState.native = initialLaw setup := by
+      have prior : (RecoveryPrior).map RecoveryState.native = initialLaw setup := by
         simp only [PMF.map_comp, Function.comp_def, initialLaw, serviceInitialLaw]
       change ((bounds.onePacketMenu (runtime setup) (recoveryLeaks)).protocol
-        ((oldInitial).map RecoveryState.native) horizon nativeScheduler).Trace
+        ((RecoveryPrior).map RecoveryState.native) horizon nativeScheduler).Trace
           (some nativeControl) at actual
       exact Eq.mp (congrArg (fun prior : PMF (EventGraphRuntime.State (graph setup)) =>
         ((bounds.onePacketMenu (runtime setup) (recoveryLeaks)).protocol prior horizon
@@ -97,7 +97,7 @@ def phaseCanonicalCallbackEquiv {control : (P).Control}
     (clear : control.execution.application.current.excluded = ∅) (who : Player) :
     { response : (P).Action // response ∈ (canonical).actions who (control.execution.recall who)
       (control.execution.observe (P) who) } ≃
-    { response : (R).Action // response ∈ (old).actions who
+    { response : (R).Action // response ∈ (RecoveryMenu).actions who
       ((control.execution.recall who).map
         (PhaseRecoveryProjection.playerEntry (runtime setup) leaks (recoveryLeaks)))
       (PhaseRecoveryProjection.playerView (runtime setup) leaks (recoveryLeaks)
@@ -122,7 +122,7 @@ def phaseCanonicalChoiceEquiv {control : (P).Control}
     (clear : control.execution.application.current.excluded = ∅) (who : Player) :
     ((canonical).information (initial) horizon scheduler).Choice who
         (some (control.execution.recall who, control.execution.observe (P) who)) ≃
-      ((old).information (oldInitial) horizon (oldScheduler)).Choice who
+      ((RecoveryMenu).information (RecoveryPrior) horizon (RecoveryScheduler)).Choice who
         (some ((control.execution.recall who).map
           (PhaseRecoveryProjection.playerEntry (runtime setup) leaks (recoveryLeaks)),
           PhaseRecoveryProjection.playerView (runtime setup) leaks (recoveryLeaks)

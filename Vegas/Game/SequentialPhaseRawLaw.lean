@@ -26,7 +26,7 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket (graph setup)))
   (bounds : MessageBounds (graph setup)) (horizon : Nat)
   (scheduler : (phaseApplication (runtime setup) leaks).Scheduler)
-  [(phaseApplication (runtime setup) leaks).FiniteNature (initialLaw setup) scheduler]
+  [(phaseApplication (runtime setup) leaks).FiniteNature (phaseInitialLaw setup) scheduler]
 
 local notation "app" => phaseApplication (runtime setup) leaks
 local notation "canonicalMenu" => menu setup leaks bounds
@@ -35,9 +35,9 @@ local notation "raw" => PhaseCount.rawMenu (runtime setup) leaks bounds
 local notation "normal" => PhaseCount.normalization (runtime setup) leaks
 local notation "M" => model setup leaks bounds horizon scheduler
 local notation "C" => ReactiveApplication.ResponseMenu.information
-  (PhaseCount.onePacketMenu (runtime setup) leaks bounds) (initialLaw setup) horizon scheduler
+  (PhaseCount.onePacketMenu (runtime setup) leaks bounds) (phaseInitialLaw setup) horizon scheduler
 local notation "R" => ReactiveApplication.ResponseMenu.information
-  (PhaseCount.rawMenu (runtime setup) leaks bounds) (initialLaw setup) horizon scheduler
+  (PhaseCount.rawMenu (runtime setup) leaks bounds) (phaseInitialLaw setup) horizon scheduler
 
 variable {Parameter : Type} (parameter : State L setup.context → Parameter)
   (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
@@ -56,7 +56,7 @@ theorem canonical_raw_sequentialEquilibrium
     (source : setup.intendedModel.BehavioralAssessment)
     (canonical : (M).BehavioralAssessment)
     (equilibrium : canonical.IsSequentialEquilibriumFor
-      ((canonicalMenu).decisionInformationAntichain (initialLaw setup) horizon scheduler)
+      ((canonicalMenu).decisionInformationAntichain (phaseInitialLaw setup) horizon scheduler)
       (fun who site => canonical.truncatedContinuationContext site
         (fun final => base final.state who) (2 * horizon + 1)))
     (clear : ∀ final ∈ ((M).runBehavioral canonical.strategy (2 * horizon + 1)).support,
@@ -83,7 +83,7 @@ theorem canonical_raw_sequentialEquilibrium
     let settle := TerminalAudit.settlement base observe audit deposit
     ∃ target : (R).BehavioralAssessment,
       target.IsSequentialEquilibriumFor
-        ((raw).decisionInformationAntichain (initialLaw setup) horizon scheduler)
+        ((raw).decisionInformationAntichain (phaseInitialLaw setup) horizon scheduler)
         (fun who site => target.truncatedContinuationContext site
           (fun final => payoff final.state who) (2 * horizon + 1)) ∧
       (∀ final ∈ ((R).runBehavioral target.strategy (2 * horizon + 1)).support,
@@ -106,19 +106,22 @@ theorem canonical_raw_sequentialEquilibrium
   have normalizedRead (state : (app).ProtocolState) : read ((normal).state state) = read state := by
     cases state <;> rfl
   obtain ⟨aliases, _aliasStrategy, aliasSE, _aliasBeliefs, aliasStates⟩ :=
-    PhaseCount.onePacket_alias_sequentialEquilibrium (runtime setup) leaks bounds (initialLaw setup)
+    PhaseCount.onePacket_alias_sequentialEquilibrium (runtime setup) leaks bounds (phaseInitialLaw
+        setup)
       horizon scheduler canonical (fun who state => base state who)
       (fun who state => congrFun (normalized state) who) equilibrium
-  let countedCertificate := ((counted).bounded (initialLaw setup) horizon
+  let countedCertificate := ((counted).bounded (phaseInitialLaw setup) horizon
     scheduler).wellFoundedHistories
-  let rawCertificate := ((raw).bounded (initialLaw setup) horizon scheduler).wellFoundedHistories
+  let rawCertificate := ((raw).bounded (phaseInitialLaw setup) horizon
+      scheduler).wellFoundedHistories
   have countedSE := (aliases.isSequentialEquilibrium_iff_truncated_of_bounded (C)
-    ((counted).decisionInformationAntichain (initialLaw setup) horizon scheduler)
-    countedCertificate ((counted).bounded (initialLaw setup) horizon scheduler)
+    ((counted).decisionInformationAntichain (phaseInitialLaw setup) horizon scheduler)
+    countedCertificate ((counted).bounded (phaseInitialLaw setup) horizon scheduler)
     (fun who final => base final.state who)).mpr aliasSE
   obtain ⟨target, targetSE, _extends, _beliefs, terminalLaw, _settled, clean⟩ :=
     PhaseCount.onePacket_raw_sequentialEquilibrium (runtime := runtime setup) (leaks := leaks)
-      (bounds := bounds) (initial := initialLaw setup) (horizon := horizon) (scheduler := scheduler)
+      (bounds := bounds) (initial := phaseInitialLaw setup) (horizon := horizon) (scheduler :=
+          scheduler)
       service observationRate deliveryRate delivery_nonnegative coverage base
       (fun who => min 0 (min (excludedPayoff who) (lowerUtility who)))
       (fun who => max 0 (max (excludedPayoff who) (upperUtility who))) deposit
@@ -134,9 +137,9 @@ theorem canonical_raw_sequentialEquilibrium
         state who).2)
       deposit_nonnegative sufficient aliases countedSE
   have countedEvaluation := (C).runBehavioralTerminalFrom_initHistory countedCertificate
-    aliases.strategy ((counted).bounded (initialLaw setup) horizon scheduler)
+    aliases.strategy ((counted).bounded (phaseInitialLaw setup) horizon scheduler)
   have rawEvaluation := (R).runBehavioralTerminalFrom_initHistory rawCertificate target.strategy
-    ((raw).bounded (initialLaw setup) horizon scheduler)
+    ((raw).bounded (phaseInitialLaw setup) horizon scheduler)
   rw [countedEvaluation, rawEvaluation] at terminalLaw
   have rawStates : ((R).runBehavioral target.strategy (2 * horizon + 1)).map
       (fun final => (normal).state final.state) =
@@ -155,8 +158,8 @@ theorem canonical_raw_sequentialEquilibrium
     simpa only [rawEvaluation] using clean
   refine ⟨target, ?_, ?_, rawClean, rawStates, ?_⟩
   · exact (target.isSequentialEquilibrium_iff_truncated_of_bounded (R)
-      ((raw).decisionInformationAntichain (initialLaw setup) horizon scheduler) rawCertificate
-      ((raw).bounded (initialLaw setup) horizon scheduler) _).mp targetSE
+      ((raw).decisionInformationAntichain (phaseInitialLaw setup) horizon scheduler) rawCertificate
+      ((raw).bounded (phaseInitialLaw setup) horizon scheduler) _).mp targetSE
   · intro final supported control current
     have represented : (normal).state final.state ∈
         (((M).runBehavioral canonical.strategy (2 * horizon + 1)).map History.state).support := by

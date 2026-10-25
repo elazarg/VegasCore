@@ -2,9 +2,9 @@
 
 The intended-game preservation theorem applies on
 `phaseApplication`, instantiated with the sequential compiled graph and singleton
-phases. The phase executor, packet observations, retirement archive and permanent
-exclusion semantics stay as implemented. The concurrent reserved-tape theorem
-keeps its existing maximal-phase plan.
+phases. The phase executor exposes packet observations, a retirement archive
+and permanent exclusion. The concurrent reserved-tape theorem uses a maximal
+phase plan.
 
 The conclusion is a sequential equilibrium against whole-policy
 deviations, preserving the joint typed readout and realized settled payoff law
@@ -14,7 +14,7 @@ with zero audit charges and no excluded owners on its paths.
 are stated under the assumptions below. The paper-facing theorem is
 `Vegas.Paper.sequential_phase_intended_raw_sequential_equilibrium`.
 
-## Assumptions to retain
+## Assumptions
 
 The source setup is well formed, with private inputs independent conditional on
 an observable public initial signal. The source premise is an equilibrium of the
@@ -47,6 +47,28 @@ Singleton phases do not reduce that requirement to a per-phase bound. Raw-menu
 extension retains the multiplicative funding condition: the payoff spread is at
 most observation rate times delivery rate times deposit. Neither rate is divided
 out or silently assumed positive.
+
+## Concrete instance
+
+[The service fixture](../Vegas/Examples/SequentialPhaseService.lean) publishes
+an initially private Boolean commitment and computes a payment of two for true
+and zero for false. Its four-command scheduler activates the owner, includes
+the optional packet, advances the clock and expires an unfinished publication.
+The deadline is one and both service bounds are zero.
+
+The fixture proves finite nature, opportunity, protected inclusion and
+completion for every legal raw application history, including malformed
+responses, silence and horizon-terminal states. Both private inputs have
+positive initial probability and reach a genuine player decision. Input/output
+coverage, capacity, well-formedness and the observable conditional-independent
+prior are also proved.
+
+[The equilibrium application](../Vegas/Examples/SequentialPhaseServiceEquilibrium.lean)
+proves source equilibrium existence and applies the preservation theorem to
+obtain an actual whole-policy raw phase SE. It assumes neither equilibrium nor
+service witnesses. Utility is proved equal to the program's executable
+transfer; the exclusion payoff is minus one, the deposit is three, and complete
+authentic reporting supplies observation and delivery rates of one.
 
 ## Checked interfaces
 
@@ -299,9 +321,9 @@ their rare probability is bounded rather than their states being identified.
 requires only pure local-choice comparisons. Decision recall extends those to
 local lotteries and whole-policy SE at the common consistent limit. The recovery
 consumer and pooled-component consumer reuse this argument.
-[SequentialPhaseLimit](../Vegas/Game/SequentialPhaseLimit.lean) applies it to the
-same actual phase completion sequence and its consistent limit, deriving the
-initialized law approximation from physical phase service.
+The preservation capstone applies it to the same actual phase completion
+sequence and its consistent limit, deriving the initialized law approximation
+from physical phase service.
 [SequentialPhaseRawLaw](../Vegas/Game/SequentialPhaseRawLaw.lean) checks the final
 sequential audit consumer: a canonical phase SE with the desired law extends to
 raw audited SE with zero charges, no exclusions and the realized settled joint

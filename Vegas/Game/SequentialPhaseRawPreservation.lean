@@ -23,13 +23,13 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket (graph setup)))
   (bounds : MessageBounds (graph setup)) (horizon : Nat)
   (scheduler : (phaseApplication (runtime setup) leaks).Scheduler)
-  [(phaseApplication (runtime setup) leaks).FiniteNature (initialLaw setup) scheduler]
+  [(phaseApplication (runtime setup) leaks).FiniteNature (phaseInitialLaw setup) scheduler]
   [Finite setup.intendedProtocol.History]
 
 local notation "app" => phaseApplication (runtime setup) leaks
 local notation "raw" => PhaseCount.rawMenu (runtime setup) leaks bounds
 local notation "R" => ReactiveApplication.ResponseMenu.information
-  (PhaseCount.rawMenu (runtime setup) leaks bounds) (initialLaw setup) horizon scheduler
+  (PhaseCount.rawMenu (runtime setup) leaks bounds) (phaseInitialLaw setup) horizon scheduler
 
 variable {Public : Type*} {signal : State L setup.context → Public}
 
@@ -50,11 +50,12 @@ theorem intended_raw_sequentialEquilibrium_preserved
     (wellFormed : setup.WellFormed)
     (independent : setup.PrivateInputsIndependentGiven signal)
     (observable : setup.PublicInitialSignal signal) {delay bound : (graph setup).EventId → Nat}
-    (opportunity : PhaseService.Opportunity (runtime setup) leaks (initialLaw setup) horizon
+    (opportunity : PhaseService.Opportunity (runtime setup) leaks (phaseInitialLaw setup) horizon
       scheduler delay)
-    (inclusion : PhaseService.ProtectedInclusion (runtime setup) leaks (initialLaw setup) horizon
+    (inclusion : PhaseService.ProtectedInclusion (runtime setup) leaks (phaseInitialLaw setup)
+        horizon
       scheduler bound)
-    (completes : PhaseService.CompletesPlay (runtime setup) leaks (initialLaw setup) horizon
+    (completes : PhaseService.CompletesPlay (runtime setup) leaks (phaseInitialLaw setup) horizon
       scheduler)
     (timely : AsyncTimely (runtime setup) delay bound)
     (lowerUtility upperUtility : Player → ℝ)
@@ -85,7 +86,7 @@ theorem intended_raw_sequentialEquilibrium_preserved
     let settle := TerminalAudit.settlement base observe audit deposit
     ∃ target : (R).BehavioralAssessment,
       target.IsSequentialEquilibriumFor
-        ((raw).decisionInformationAntichain (initialLaw setup) horizon scheduler)
+        ((raw).decisionInformationAntichain (phaseInitialLaw setup) horizon scheduler)
         (fun who site => target.truncatedContinuationContext site
           (fun final => payoff final.state who) (2 * horizon + 1)) ∧
       (∀ final ∈ ((R).runBehavioral target.strategy (2 * horizon + 1)).support,

@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Interaction.ChallengeWindow
+import Interaction.CompleteEvidenceService
 import Interaction.CommitmentCandidates
 import Interaction.CompletePendingObservation
 import Interaction.IdealCommitments

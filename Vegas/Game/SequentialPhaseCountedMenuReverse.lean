@@ -123,7 +123,7 @@ local notation "P" => phaseApplication (runtime setup) leaks
 local notation "R" => recoveryApplication (runtime setup) recoveryLeaks
 local notation "N" => application setup recoveryLeaks
 
-/-- A permitted old callback at paired actual clear prefixes belongs to the installed phase. -/
+/-- A permitted recovery callback at paired actual clear prefixes belongs to the installed phase. -/
 theorem phase_allows_of_recovery_countPermits_paired_history
     (inputs : PMF (graph setup).Inputs) (horizon : Nat)
     (scheduler : (P).Scheduler) {control : (P).Control}
@@ -190,7 +190,7 @@ theorem phase_allows_of_recovery_countPermits_paired_history
       simp only [PhaseRuntimeState.allows, head, addressed]
       exact decide_eq_true inside
 
-/-- At paired actual clear prefixes every old canonical callback is admitted by the phase menu.
+/-- At paired actual clear prefixes every recovery canonical callback is admitted by the phase menu.
 The conclusion also derives its operational normal form, rather than assuming it. -/
 theorem phase_onePacket_mem_of_recovery_paired_history
     (inputs : PMF (graph setup).Inputs) (horizon : Nat)
@@ -224,11 +224,12 @@ theorem phase_onePacket_mem_of_recovery_paired_history
         (control.execution.recall who) (control.execution.observe (P) who) ∧
       (PhaseCount.normalization (runtime setup) leaks).action who (control.execution.recall who)
         (control.execution.observe (P) who) response = response := by
-  obtain ⟨oldMenu, permitted⟩ := (Recovery.mem_onePacketActions (runtime setup) recoveryLeaks bounds
+  obtain ⟨recoveryMenu, permitted⟩ := (Recovery.mem_onePacketActions (runtime setup) recoveryLeaks
+      bounds
     who _ _ _).mp member
   have canonical := (PhaseRecoveryProjection.normalizedMenu_projected (runtime setup) leaks
     recoveryLeaks bounds who (control.execution.recall who) (control.execution.observe (P) who)
-      response).mpr oldMenu
+      response).mpr recoveryMenu
   have fixed := (PhaseCount.normalization (runtime setup) leaks).menu_normal
     (PhaseCount.rawMenu (runtime setup) leaks bounds) who (control.execution.recall who)
     (control.execution.observe (P) who) response canonical

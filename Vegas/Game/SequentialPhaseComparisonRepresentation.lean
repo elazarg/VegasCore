@@ -18,24 +18,26 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket (graph setup)))
   (bounds : MessageBounds (graph setup)) (horizon : Nat)
   (scheduler : (phaseApplication (runtime setup) leaks).Scheduler)
-  [(phaseApplication (runtime setup) leaks).FiniteNature (initialLaw setup) scheduler]
+  [(phaseApplication (runtime setup) leaks).FiniteNature (phaseInitialLaw setup) scheduler]
 
 local notation "P" => phaseApplication (runtime setup) leaks
 local notation "A" => recoveryApplication (runtime setup) (recoveryLeaks setup leaks)
 local notation "M" => model setup leaks bounds horizon scheduler
 local notation "R" => recoveryModel setup leaks bounds horizon scheduler
-local notation "oldLeaks" => recoveryLeaks setup leaks
-local notation "oldInitial" => recoveryInitialLaw setup
-local notation "oldScheduler" => recoveryScheduler setup leaks scheduler
-local notation "oldMenu" => Recovery.onePacketMenu (runtime setup) (oldLeaks) bounds
-local notation "projection" => PhaseRecoveryProjection.protocolState (runtime setup) leaks oldLeaks
+local notation "RecoveryLeaks" => recoveryLeaks setup leaks
+local notation "RecoveryPrior" => recoveryInitialLaw setup
+local notation "RecoveryScheduler" => recoveryScheduler setup leaks scheduler
+local notation "RecoveryMenu" => Recovery.onePacketMenu (runtime setup) (RecoveryLeaks) bounds
+local notation "projection" => PhaseRecoveryProjection.protocolState (runtime setup) leaks
+    RecoveryLeaks
 
-attribute [local instance] phaseInfoDecidableEq recoveryInfoDecidableEq
+attribute [local instance] phaseInfoDecidableEq recoveryInfoDecidableEq nativeInfoDecidableEq
+  phaseHistoryFintype recoveryHistoryFintype nativeHistoryFintype nativeNature
 
 /-- The actual clear recovery prefix lifts under the original complete prior.
 The inactive ghost input is excluded because it carries no player observation. -/
 theorem represented_of_clear (agent : (R).InformationAgent (R).playedInformation)
-    (clear : RecoveryProjection.ClearInput (runtime setup) (oldLeaks) agent.2.1)
+    (clear : RecoveryProjection.ClearInput (runtime setup) (RecoveryLeaks) agent.2.1)
     (activeInput : agent.2.1 ≠ none) :
     Represented setup leaks bounds horizon scheduler agent := by
   classical
@@ -43,50 +45,54 @@ theorem represented_of_clear (agent : (R).InformationAgent (R).playedInformation
   unfold InformationModel.playedInformation at played
   obtain ⟨history, member, seen⟩ := Finset.mem_image.mp played
   have running := (Finset.mem_filter.mp member).2
-  have observed := ((oldMenu).info (oldInitial) horizon (oldScheduler) agent.1
+  have observed := ((RecoveryMenu).info (RecoveryPrior) horizon (RecoveryScheduler) agent.1
     history.trace).symm.trans seen
-  cases oldAt : history.state with
-  | none => rw [oldAt] at observed; exact (activeInput observed.symm).elim
-  | some oldControl =>
-      by_cases acting : oldControl.actor = some agent.1
-      · have atControl : (A).observe agent.1 (some oldControl) = agent.2.1 := by
-          rwa [oldAt] at observed
-        have empty : oldControl.execution.application.excluded = ∅ := by
+  cases recoveryStateEq : history.state with
+  | none => rw [recoveryStateEq] at observed; exact (activeInput observed.symm).elim
+  | some recoveryControl =>
+      by_cases acting : recoveryControl.actor = some agent.1
+      · have atControl : (A).observe agent.1 (some recoveryControl) = agent.2.1 := by
+          rwa [recoveryStateEq] at observed
+        have empty : recoveryControl.execution.application.excluded = ∅ := by
           have flags := congrArg (fun input : (A).Info =>
             input.map fun pair => pair.2.application.2) clear
           rw [← atControl] at flags
           simp only [ReactiveApplication.observe, acting, ↓reduceIte] at flags
-          change some (∅ : Finset Player) = some oldControl.execution.application.excluded at flags
+          change some (∅ : Finset Player) = some recoveryControl.execution.application.excluded
+              at flags
           exact (Option.some.inj flags).symm
-        have priors : oldInitial = (Vegas.initialLaw setup).map
+        have priors : RecoveryPrior = (Vegas.initialLaw setup).map
             (fun native => (⟨native, ∅⟩ : RecoveryState (graph setup))) := by
           simp only [recoveryInitialLaw, Vegas.initialLaw, serviceInitialLaw, PMF.map_comp,
             Function.comp_def]
-        have oldTrace := Eq.mp (congrArg
+        have recoveryTrace := Eq.mp (congrArg
           (fun prior : PMF (RecoveryState (graph setup)) =>
-            ((oldMenu).protocol prior horizon (oldScheduler)).Trace (some oldControl)) priors)
-          (oldAt ▸ history.trace)
+            ((RecoveryMenu).protocol prior horizon (RecoveryScheduler)).Trace (some
+                recoveryControl)) priors)
+          (recoveryStateEq ▸ history.trace)
         obtain ⟨phase, matched, _length⟩ := exists_canonical_phase_of_clear_recovery_trace setup
-          leaks bounds horizon scheduler oldTrace empty
+          leaks bounds horizon scheduler recoveryTrace empty
         have phaseRunning : ¬ (P).terminal phase.state := by
-          have oldRunning : ¬ (A).terminal (some oldControl) := by
+          have recoveryRunning : ¬ (A).terminal (some recoveryControl) := by
             change ¬ (A).terminal history.state at running
-            rwa [oldAt] at running
-          rw [← matched] at oldRunning
+            rwa [recoveryStateEq] at running
+          rw [← matched] at recoveryRunning
           cases phaseAt : phase.state with
-          | none => rw [phaseAt] at oldRunning; exact oldRunning
-          | some current => rw [phaseAt] at oldRunning; exact oldRunning
+          | none => rw [phaseAt] at recoveryRunning; exact recoveryRunning
+          | some current => rw [phaseAt] at recoveryRunning; exact recoveryRunning
         have phasePlayed := (M).mem_playedInformation (who := agent.1) (history := phase)
           phaseRunning
         let phaseAgent : (M).InformationAgent (M).playedInformation :=
           ⟨agent.1, ⟨(M).infoOf agent.1 phase.trace, phasePlayed⟩⟩
         have phaseObserve : (M).infoOf agent.1 phase.trace = (P).observe agent.1 phase.state :=
-          (menu setup leaks bounds).info (initialLaw setup) horizon scheduler agent.1 phase.trace
-        have sameInput : PhaseRecoveryProjection.information (runtime setup) leaks (oldLeaks)
+          (menu setup leaks bounds).info (phaseInitialLaw setup) horizon scheduler agent.1
+              phase.trace
+        have sameInput : PhaseRecoveryProjection.information (runtime setup) leaks (RecoveryLeaks)
             phaseAgent.2.1 = agent.2.1 := by
-          exact (congrArg (PhaseRecoveryProjection.information (runtime setup) leaks (oldLeaks))
+          exact (congrArg (PhaseRecoveryProjection.information (runtime setup) leaks
+              (RecoveryLeaks))
             phaseObserve).trans ((PhaseRecoveryProjection.observe_state (runtime setup) leaks
-              (oldLeaks) agent.1 phase.state).symm.trans
+              (RecoveryLeaks) agent.1 phase.state).symm.trans
                 ((congrArg ((A).observe agent.1) matched).trans atControl))
         have phaseClear : ClearInput setup leaks phaseAgent.2.1 := by
           change ClearInput setup leaks ((M).infoOf agent.1 phase.trace)
@@ -108,7 +114,7 @@ theorem represented_of_clear (agent : (R).InformationAgent (R).playedInformation
             apply congrArg (Sigma.mk who)
             apply Subtype.ext
             exact sameInput
-      · rw [oldAt] at observed
+      · rw [recoveryStateEq] at observed
         simp only [ReactiveApplication.observe, acting, ↓reduceIte] at observed
         exact (activeInput observed.symm).elim
 

@@ -111,52 +111,6 @@ theorem boundedGaps : ∀ tape ∈ prior.support,
 theorem timely : runtime.AsyncTimely (fun _ => 1 + 1) (fun _ => 2 + 1) :=
   ReservedEpoch.asyncTimely runtime 1 2 (fun _ _ => by change 5 < 7; decide)
 
-/-- Every authentic evidence item is observed and delivered at settlement. -/
-def evidenceService : EvidenceReportService (PhaseCount.Evidence graph) where
-  window := ⟨0, 0, 0, by omega⟩
-  observations := PMF.pure
-  reports := fun observed => PMF.pure (observed.map fun evidence => ⟨evidence, 0, 0⟩)
-  observations_authentic := by
-    intro actual observed supported
-    cases (PMF.mem_support_pure_iff _ _).mp supported
-    exact List.Subset.refl _
-  reports_authentic := by
-    intro observed delivered supported report member
-    cases (PMF.mem_support_pure_iff _ _).mp supported
-    obtain ⟨evidence, present, rfl⟩ := List.mem_map.mp member
-    exact present
-  reports_timelySubmitted := by
-    intro observed delivered supported report member
-    cases (PMF.mem_support_pure_iff _ _).mp supported
-    obtain ⟨evidence, _, rfl⟩ := List.mem_map.mp member
-    exact ⟨le_rfl, le_rfl⟩
-
-theorem everyEvidenceDelivered (actual : List (PhaseCount.Evidence graph)) :
-    evidenceService.sample actual = PMF.pure actual := by
-  classical
-  simp only [EvidenceReportService.sample, evidenceService, PMF.pure_bind, PMF.pure_map]
-  congr 1
-  induction actual with
-  | nil => rfl
-  | cons first rest ih =>
-      simpa [EvidenceReport.deliveredEvidence] using congrArg (first :: ·) ih
-
-theorem coverage :
-    PhaseCount.EvidenceCoverage evidenceService (fun _ => 1) (fun _ => 1) := by
-  classical
-  intro actual report member _
-  constructor
-  · simp [evidenceService, PMF.toOuterMeasure_pure_apply, member]
-  · intro seen supported present
-    cases (PMF.mem_support_pure_iff _ _).mp supported
-    have delivered : report ∈ EvidenceReport.deliveredEvidence 0
-        (actual.map fun evidence => (⟨evidence, 0, 0⟩ : EvidenceReport _)) := by
-      rcases report with ⟨left, right⟩
-      simpa [EvidenceReport.deliveredEvidence, List.map_map, Function.comp_def] using
-        (show ∃ a b, (a, b) ∈ actual ∧ (a, b) = (left, right) from
-          ⟨left, right, present, rfl⟩)
-    simp [evidenceService, PMF.toOuterMeasure_pure_apply, delivered]
-
 abbrev utility := Vegas.Examples.CommitTimingInformation.utility
 
 theorem utilityBounds (terminal : State simpleExpr setup.program.terminalCtx) (who : Player) :
@@ -208,7 +162,7 @@ def payoffData : ConcurrentPayoffs setup where
   upperUtility := fun _ => 1
 
 def countAudit : ConcurrentCountAudit setup where
-  service := evidenceService
+  service := EvidenceReportService.complete (PhaseCount.Evidence graph)
   observationRate := fun _ => 1
   deliveryRate := fun _ => 1
   deposit := fun _ => 2
@@ -232,7 +186,7 @@ theorem valid : implementation.Valid payoffData countAudit where
       excluded_le := fun terminal who => (utilityBounds terminal who).1 }
   audit :=
     { delivery_nonnegative := fun _ => by norm_num [countAudit]
-      coverage := coverage
+      coverage := PhaseCount.completeEvidence_coverage
       deposit_nonnegative := fun _ => by norm_num [countAudit]
       sufficient := fun _ => fundedDeposit }
 

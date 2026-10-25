@@ -29,51 +29,8 @@ theorem countedInRaw : countedMenu.IncludedIn rawMenu :=
 theorem canonicalCertificate (failure : Set.Ioo (0 : ℝ) 1) :
     (rawProtocol failure).WellFoundedHistories :=
   (rawMenu.bounded initial horizon (scheduler failure)).wellFoundedHistories
-/-- All signed evidence is observed and included at settlement. -/
-def evidenceService : EvidenceReportService (PhaseCount.Evidence graph) where
-  window := ⟨0, 0, 0, by omega⟩
-  observations := PMF.pure
-  reports := fun observed => PMF.pure (observed.map fun evidence => ⟨evidence, 0, 0⟩)
-  observations_authentic := by
-    intro actual observed supported
-    cases (PMF.mem_support_pure_iff _ _).mp supported
-    exact List.Subset.refl _
-  reports_authentic := by
-    intro observed delivered supported report member
-    cases (PMF.mem_support_pure_iff _ _).mp supported
-    obtain ⟨evidence, present, rfl⟩ := List.mem_map.mp member
-    exact present
-  reports_timelySubmitted := by
-    intro observed delivered supported report member
-    cases (PMF.mem_support_pure_iff _ _).mp supported
-    obtain ⟨evidence, _, rfl⟩ := List.mem_map.mp member
-    exact ⟨le_rfl, le_rfl⟩
-theorem evidenceService_sample (actual : List (PhaseCount.Evidence graph)) :
-    evidenceService.sample actual = PMF.pure actual := by
-  classical
-  simp only [EvidenceReportService.sample, evidenceService, PMF.pure_bind, PMF.pure_map]
-  congr 1
-  induction actual with
-  | nil => rfl
-  | cons first rest ih =>
-      simpa [EvidenceReport.deliveredEvidence] using congrArg (first :: ·) ih
-theorem evidenceService_coverage :
-    PhaseCount.EvidenceCoverage evidenceService (fun _ => 1) (fun _ => 1) := by
-  classical
-  intro actual report member _
-  constructor
-  · simp [evidenceService, PMF.toOuterMeasure_pure_apply, member]
-  · intro seen supported present
-    cases (PMF.mem_support_pure_iff _ _).mp supported
-    have delivered : report ∈ EvidenceReport.deliveredEvidence 0
-        (actual.map fun evidence => (⟨evidence, 0, 0⟩ : EvidenceReport _)) := by
-      rcases report with ⟨left, right⟩
-      simpa [EvidenceReport.deliveredEvidence, List.map_map, Function.comp_def] using
-        (show ∃ a b, (a, b) ∈ actual ∧ (a, b) = (left, right) from
-          ⟨left, right, present, rfl⟩)
-    simp [evidenceService, PMF.toOuterMeasure_pure_apply, delivered]
 def audit : List app.TrafficRecord → PMF (Player → Bool) :=
-  PhaseCount.audit runtime leaks evidenceService.sample
+  PhaseCount.audit runtime leaks (EvidenceReportService.complete (PhaseCount.Evidence graph)).sample
 /-- Permanent individual loss, independent of the surviving continuation. -/
 def excludedPayoff (loss : Player → ℝ) (who : Player) : ℝ := -loss who
 /-- The audit exceeds the complete gross payoff range by one. -/
@@ -233,7 +190,9 @@ theorem ownPermitted_charge_zero (who : Player) (history : (rawProtocol failure)
     TerminalAudit.charge app.stateTraffic audit history.state who = 0 := by
   classical
   apply app.sampledTrafficAudit_sound _ _ _ _ _ who
-    (fun observed supported => evidenceService.sample_authentic _ observed supported)
+    (fun observed supported =>
+      (EvidenceReportService.complete (PhaseCount.Evidence graph)).sample_authentic _ observed
+        supported)
   intro record present owner
   have inputs := app.stateTraffic_inputs initial horizon (scheduler failure)
     (rawMenu.toRawTrace initial horizon (scheduler failure) history.trace)
@@ -289,8 +248,10 @@ theorem forbidden_committed_payoff_upper (loss : Player → ℝ)
     (Profile.update (sig := (rawModel failure).behavioralSignature) profile who
       ((profile who).commit info choice)) history
   have collected := PhaseCount.countForbidden_collection_committed rawMenu initial horizon
-    (scheduler failure) (canonicalCertificate failure) evidenceService (fun _ => 1) (fun _ => 1)
-    (fun _ => by norm_num) evidenceService_coverage profile history who remaining execution
+    (scheduler failure) (canonicalCertificate failure)
+    (EvidenceReportService.complete (PhaseCount.Evidence graph)) (fun _ => 1) (fun _ => 1)
+    (fun _ => by norm_num) PhaseCount.completeEvidence_coverage profile history who remaining
+    execution
     current info choice observed material selected forbidden
   have baseBound : PayoffIntegrable law (fun final => (basePayoff loss) final.state who) := by
     apply payoffIntegrable_of_bounded _ _ (C := loss who)

@@ -9,7 +9,7 @@ import Vegas.Game.PhaseTerminalFailure
 
 Only the physical current state is used. Accepted packets retain the active
 attempt, rejected packets stutter, and every actual environment kernel projects
-to the original recovery kernel. Source step-closed properties consequently
+to the recovery kernel. Source step-closed properties consequently
 survive arbitrary continuations, including after a foreign public exclusion.
 -/
 

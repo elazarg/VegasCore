@@ -20,6 +20,11 @@ development, its remaining steps, and the index of results retired to the
 
 Search with rg and inspect signatures with lean-defs.py before adding machinery.
 
+Model-specific namespaces may use the same mathematical theorem name. Cite the
+qualified declaration to identify its contract. The documentation checker
+rejects ambiguous short names; the reachability report follows actual constant
+dependencies and accepts lexical references only when they identify one owner.
+
 The lists below link the modules that have a description, by layer. Each
 directory's aggregator imports every module in it.
 
@@ -65,6 +70,7 @@ directory's aggregator imports every module in it.
 
 ## Interaction
 
+- [Complete authentic evidence observation and delivery](../Interaction/CompleteEvidenceService.lean)
 - [Fixed-policy continuation under a response menu](../Interaction/ReactivePolicyMenuInvariant.lean)
 
 - [Immutable-seed likelihood of actual scheduler traces](../Interaction/ReactiveSchedulerDensity.lean)
@@ -632,7 +638,7 @@ directory's aggregator imports every module in it.
 - [Recovery Saved Source Rank](../Vegas/Game/RecoverySavedSourceRank.lean)
 - [Recovery Saved Source View](../Vegas/Game/RecoverySavedSourceView.lean)
 - [Sequential recovery preservation with exact settled joint laws and zero charges](../Vegas/Game/RecoverySequentialCompilation.lean)
-- [Same-witness recovery SE and joint laws from pure local comparisons](../Vegas/Game/RecoverySequentialLimit.lean)
+- [Intended recovery SE and joint-law preservation](../Vegas/Game/RecoveryOnePacketPreservation.lean)
 - [Clean and exhausted commitment checkpoints](../Vegas/Game/RecoverySettledCommitCheckpoint.lean)
 - [Source belief bounds at all clear debt-free recovery sites](../Vegas/Game/RecoverySourceBeliefBounds.lean)
 - [Reachable saved source checkpoints](../Vegas/Game/RecoverySourceCheckpoint.lean)
@@ -717,9 +723,10 @@ instantiate physical service without assuming an unrestricted recovery contract.
 [pure option bounds](../Vegas/Game/SequentialPhaseKeyedPureChoices.lean), and
 [unpending choice indifference](../Vegas/Game/SequentialPhaseUnpendingChoices.lean)
 supply separate local deviation cases. The
-[phase limit consumer](../Vegas/Game/SequentialPhaseLimit.lean) preserves the
-original completion witness and joint readout/payoff law once all pure-choice
-comparisons are supplied.
+[generic copied-site limit](../GameTheoryExtensions/Analysis/Protocol/LocalSimulationLimit.lean)
+preserves the original completion witness and joint readout/payoff law. Each
+preservation capstone supplies its physical initialized-law approximation
+directly to this model-independent theorem.
 
 [Ordinary pure-choice comparisons](../Vegas/Game/SequentialPhaseNonLateComparisons.lean)
 and [keyed pure-choice comparisons](../Vegas/Game/SequentialPhaseKeyedComparisons.lean)
@@ -730,8 +737,30 @@ bound with the actual phase completion, and
 response aliases and count auditing. Both retain the original physical phase
 service contract, source equilibrium premise and joint readout/payoff law.
 
+[Finite interval bounds](../GameTheoryExtensions/Math/FiniteIntervalBounds.lean)
+provide the common absolute payoff budget for the source certificate and both
+runtime capstones. Phase, recovery and native dictionaries are defined once in
+[the component owner](../Vegas/Game/SequentialPhaseComponents.lean); consumers
+opt into these same values with local instance registration.
+The prior names distinguish `Vegas.SequentialPhase.phaseInitialLaw` for phase
+states, `Vegas.initialLaw` for native states and
+`Vegas.SequentialPhase.recoveryInitialLaw` for recovery states. A mixed-model
+proof that needs an explicit local dictionary binds the shared value, without
+constructing another decision procedure or enumeration.
+
+Decision-predecessor adapters retain traces in their own menus. The raw
+existential predecessor provides application and player-recall equality, without
+a prefix witness for the supplied trace. Reconstructing menu membership from
+those fields requires stronger menu assumptions, so each nine-line predecessor
+adapter uses the common physical transition lemma on its actual trace.
+Exclusion indicators are private projections of different runtime states;
+their support arguments use the shared probability-law convergence API and
+the concrete terminal-state interpretation.
+
 ## Vegas/Examples
 
+- [An all-history physical phase service for private publication](../Vegas/Examples/SequentialPhaseService.lean)
+- [A funded raw phase equilibrium from executable payments](../Vegas/Examples/SequentialPhaseServiceEquilibrium.lean)
 - [Executable second-price receipts and bounded-auction incentives](../Vegas/Examples/BoundedPaymentAuction.lean)
 - [Executable payments reverse a strict incentive](../Vegas/Examples/ProgramPayments.lean)
 - [Checked roster service for the conditional payment program](../Vegas/Examples/ProgramPaymentsRuntimeService.lean)

@@ -7,8 +7,8 @@ import Interaction.ReactiveMenuRestriction
 
 /-! # Original recovery policies from counted singleton phase policies
 
-Only the old player's own past and current view are decoded. The policy is
-specified at every old input; its exact callback law is proved on every actual
+Only the recovery player's own past and current view are decoded. The policy is
+specified at every recovery input; its exact callback law is proved on every actual
 clear counted phase history, including arbitrary admitted policy replacements.
 -/
 
@@ -34,7 +34,7 @@ local notation "decode" =>
   SequentialPhasePlayerInformation.information program runtime leaks recoveryLeaks
 local notation "projectAction" => PhaseRecoveryProjection.action runtime leaks recoveryLeaks
 
-/-- Run an original phase response policy on decoded old own information. -/
+/-- Run an original phase response policy on decoded recovery own information. -/
 def policy (original : (P).Policy) : (R).Policy := fun past view =>
   (original (past.map
       (SequentialPhasePlayerInformation.playerEntry program runtime leaks recoveryLeaks))
@@ -71,7 +71,7 @@ local notation "M" =>
 local notation "N" =>
   ReactiveApplication.information (R) recoveryInitial horizon recoveryScheduler
 
-/-- Derive a completely unrestricted old behavioral policy from an arbitrary
+/-- Derive a completely unrestricted recovery behavioral policy from an arbitrary
 counted phase policy by its existing physical-policy encoding. -/
 def behavioralPolicy (who : Player) (original : (M).BehavioralPolicy who) :
     (N).BehavioralPolicy who :=
@@ -79,7 +79,7 @@ def behavioralPolicy (who : Player) (original : (M).BehavioralPolicy who) :
     ((P).decodePolicy ((menu).embedPolicy phaseInitial horizon scheduler who original)))
 
 omit [Fintype Player] in
-/-- Forgetting only menu witnesses, the derived old callback law is the exact
+/-- Forgetting only menu witnesses, the derived recovery callback law is the exact
 mapped phase-menu callback law at the decoded player input. -/
 theorem behavioralPolicy_map_val (who : Player) (original : (M).BehavioralPolicy who)
     (info : (R).Info) :

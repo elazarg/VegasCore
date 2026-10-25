@@ -114,7 +114,7 @@ theorem transition_projected_initial
   rw [PhaseRuntimeState.initial_current_sequential]
   rfl
 
-/-- Every actual clear counted prefix has the exact old recovery one-step law,
+/-- Every actual clear counted prefix has the exact recovery one-step law,
 including first-exclusion endpoints and arbitrary admitted private preparations. -/
 theorem transition_projected_clear_history
     (inputs : PMF ((toEventGraph program).withMode .sequential).Inputs) (horizon : Nat)

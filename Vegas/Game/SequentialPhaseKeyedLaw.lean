@@ -20,65 +20,42 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket (graph setup)))
   (bounds : MessageBounds (graph setup)) (horizon : Nat)
   (scheduler : (phaseApplication (runtime setup) leaks).Scheduler)
-  [(phaseApplication (runtime setup) leaks).FiniteNature (initialLaw setup) scheduler]
+  [(phaseApplication (runtime setup) leaks).FiniteNature (phaseInitialLaw setup) scheduler]
 
-local notation "oldLeaks" => recoveryLeaks setup leaks
-local notation "Initial" => recoveryInitialLaw setup
-local notation "oldScheduler" => recoveryScheduler setup leaks scheduler
-local notation "NativeScheduler" => RecoveryProjection.nativeScheduler (runtime setup) (oldLeaks)
-  (oldScheduler)
+local notation "RecoveryLeaks" => recoveryLeaks setup leaks
+local notation "RecoveryPrior" => recoveryInitialLaw setup
+local notation "RecoveryScheduler" => recoveryScheduler setup leaks scheduler
+local notation "NativeScheduler" => RecoveryProjection.nativeScheduler (runtime setup)
+    (RecoveryLeaks)
+  (RecoveryScheduler)
 local notation "R" => recoveryModel setup leaks bounds horizon scheduler
-local notation "RMenu" => Recovery.onePacketMenu (runtime setup) (oldLeaks) bounds
-local notation "NMenu" => bounds.onePacketMenu (runtime setup) (oldLeaks)
-local notation "N" => onePacketModel setup (oldLeaks) bounds (Vegas.initialLaw setup) horizon
+local notation "RMenu" => Recovery.onePacketMenu (runtime setup) (RecoveryLeaks) bounds
+local notation "NMenu" => bounds.onePacketMenu (runtime setup) (RecoveryLeaks)
+local notation "N" => onePacketModel setup (RecoveryLeaks) bounds (Vegas.initialLaw setup) horizon
   (NativeScheduler)
-local notation "RP" => ReactiveApplication.ResponseMenu.protocol (RMenu) Initial horizon
-  (oldScheduler)
-local notation "NP" => onePacketProtocol setup (oldLeaks) bounds horizon (NativeScheduler)
-local notation "RawNative" => ReactiveApplication.protocol (application setup (oldLeaks))
-  (PMF.map RecoveryState.native (Initial)) horizon (NativeScheduler)
-local notation "Clear" => ReactiveApplication.stateInvariant (app := application setup (oldLeaks))
+local notation "RP" => ReactiveApplication.ResponseMenu.protocol (RMenu) RecoveryPrior horizon
+  (RecoveryScheduler)
+local notation "NP" => onePacketProtocol setup (RecoveryLeaks) bounds horizon (NativeScheduler)
+local notation "RawNative" => ReactiveApplication.protocol (application setup (RecoveryLeaks))
+  (PMF.map RecoveryState.native (RecoveryPrior)) horizon (NativeScheduler)
+local notation "Clear" => ReactiveApplication.stateInvariant (app := application setup
+    (RecoveryLeaks))
   (fun native => ExclusionEvidence 0 ∅ (RecoveryState.mk native ∅))
-
-local instance keyedLawComparisonHistory : Fintype ((RMenu).protocol
-    ((Vegas.initialLaw setup).map (fun native =>
-      (⟨native, ∅⟩ : RecoveryState (graph setup)))) horizon (oldScheduler)).History :=
-  sourceHistoryFintype setup leaks bounds horizon scheduler
-
-local instance keyedLawComparisonInformation (who : Player) : DecidableEq
-    ((RecoveryOnePacket.model setup (oldLeaks) bounds
-      ((Vegas.initialLaw setup).map (fun native =>
-        (⟨native, ∅⟩ : RecoveryState (graph setup)))) horizon (oldScheduler)).InfoState who) :=
-  sourceInfoDecidableEq setup leaks bounds horizon scheduler who
-
-local instance keyedLawComparisonNature : (application setup (oldLeaks)).FiniteNature
-    (Vegas.initialLaw setup) (NativeScheduler) := nativeNature setup leaks scheduler
-
-local instance keyedLawNativeInformation (who : Player) : DecidableEq ((N).InfoState who) :=
-  nativeInfoDecidableEq setup leaks bounds horizon scheduler who
-
-local instance keyedLawRecoveryNature :
-    (recoveryApplication (runtime setup) (oldLeaks)).FiniteNature
-    ((Vegas.initialLaw setup).map (fun native =>
-      (⟨native, ∅⟩ : RecoveryState (graph setup)))) (oldScheduler) :=
-  recoveryNature setup leaks scheduler
-
-local instance keyedLawNativeHistory : Fintype (NP).History :=
-  @ReactiveApplication.ResponseMenu.historyFintype Player _ _ (NMenu) (Vegas.initialLaw setup)
-    horizon (NativeScheduler) inferInstance (nativeNature setup leaks scheduler)
 
 local notation "P" => phaseApplication (runtime setup) leaks
 local notation "M" => model setup leaks bounds horizon scheduler
-local notation "projectInfo" => PhaseRecoveryProjection.information (runtime setup) leaks (oldLeaks)
+local notation "projectInfo" => PhaseRecoveryProjection.information (runtime setup) leaks
+    (RecoveryLeaks)
 
-attribute [local instance] phaseInfoDecidableEq recoveryInfoDecidableEq
+attribute [local instance] phaseInfoDecidableEq recoveryInfoDecidableEq nativeInfoDecidableEq
+  phaseHistoryFintype recoveryHistoryFintype nativeHistoryFintype nativeNature
 
 open Classical in
 /-- A keyed phase decision has an actual current owner turn and an actual shared key. -/
 theorem keyed_information {who : Player} (site : (M).InformationSite who)
     (keyed : KeyedAgent setup leaks bounds horizon scheduler ((M).agentAt site)) :
     ∃ (past : List (P).PlayerEntry) (view : (P).PlayerView)
-      (event : (graph setup).EventId) (key : LateKey setup (oldLeaks)),
+      (event : (graph setup).EventId) (key : LateKey setup (RecoveryLeaks)),
       site.1 = some (past, view) ∧
       view.application.1.publicView.ownTurn? who = some event ∧
       agentKey setup leaks bounds horizon scheduler ((M).agentAt site) = some key := by
@@ -97,13 +74,14 @@ theorem keyed_information {who : Player} (site : (M).InformationSite who)
   simp only [PhaseRecoveryProjection.information, RecoveryProjection.information, Option.map_some]
     at nativePair
   have views := congrArg Prod.snd (Option.some.inj nativePair)
-  change RecoveryProjection.playerView (runtime setup) (oldLeaks)
-    (PhaseRecoveryProjection.playerView (runtime setup) leaks (oldLeaks) view) = nativeView at views
+  change RecoveryProjection.playerView (runtime setup) (RecoveryLeaks)
+    (PhaseRecoveryProjection.playerView (runtime setup) leaks (RecoveryLeaks) view) = nativeView
+        at views
   rw [← views] at turn
-  refine ⟨past, view, event, LateKey.ofView setup (oldLeaks) who nativePast nativeView, atSite,
+  refine ⟨past, view, event, LateKey.ofView setup (RecoveryLeaks) who nativePast nativeView, atSite,
     turn, ?_⟩
-  change lateKey setup (oldLeaks) who
-    (RecoveryProjection.information (runtime setup) (oldLeaks) (projectInfo site.1)) = _
+  change lateKey setup (RecoveryLeaks) who
+    (RecoveryProjection.information (runtime setup) (RecoveryLeaks) (projectInfo site.1)) = _
   rw [atNative]
   rfl
 
@@ -115,21 +93,24 @@ theorem keyedComponent_native_choice
     {slots : Nat} (scale : ℝ) (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1)
     {who : Player} (site : (M).InformationSite who)
     (clear : ClearInput setup leaks site.1) (nativeSite : (N).InformationSite who)
-    (lifted : RecoveryProjection.liftInformation (runtime setup) (oldLeaks) nativeSite.1 =
+    (lifted : RecoveryProjection.liftInformation (runtime setup) (RecoveryLeaks) nativeSite.1 =
       projectInfo site.1) (option : LateOption slots) :
     (((keyedComponent setup leaks bounds horizon scheduler source scale nonnegative le_one
           ((M).agentAt site) option).map
         (choiceEquiv setup leaks bounds horizon scheduler ((M).agentAt site) clear)).map
       (Equiv.cast (congrArg (fun input => (R).Choice who input) lifted.symm))).map
-        (RecoveryOnePacket.sourceNativeChoiceEquiv setup (oldLeaks) bounds horizon (oldScheduler)
+        (RecoveryOnePacket.sourceNativeChoiceEquiv setup (RecoveryLeaks) bounds horizon
+            (RecoveryScheduler)
           who nativeSite.1) =
-      lateComponent setup (oldLeaks) bounds (Vegas.initialLaw setup) horizon (NativeScheduler)
+      lateComponent setup (RecoveryLeaks) bounds (Vegas.initialLaw setup) horizon (NativeScheduler)
         source scale nonnegative le_one who nativeSite.1 option := by
   let agent := (M).agentAt site
   let equivalent := choiceEquiv setup leaks bounds horizon scheduler agent clear
-  have oldMap : (keyedComponent setup leaks bounds horizon scheduler source scale nonnegative
+  have recoveryComponentLaw : (keyedComponent setup leaks bounds horizon scheduler source scale
+      nonnegative
         le_one agent option).map equivalent =
-      RecoveryOnePacket.keyedComponent setup (oldLeaks) bounds Initial horizon (oldScheduler)
+      RecoveryOnePacket.keyedComponent setup (RecoveryLeaks) bounds RecoveryPrior horizon
+          (RecoveryScheduler)
         source scale nonnegative le_one
         (projectedAgent setup leaks bounds horizon scheduler agent clear) option := by
     unfold keyedComponent
@@ -146,32 +127,34 @@ theorem keyedComponent_native_choice
   change ((keyedComponent setup leaks bounds horizon scheduler source scale nonnegative le_one
     agent option).map equivalent).map
       (fun choice => (Equiv.cast (congrArg (fun input => (R).Choice who input) lifted.symm)
-        choice).1.map (RecoveryProjection.action (runtime setup) (oldLeaks))) = _
+        choice).1.map (RecoveryProjection.action (runtime setup) (RecoveryLeaks))) = _
   have forgetCast : (fun choice : (R).Choice who (projectInfo site.1) =>
       (Equiv.cast (congrArg (fun input => (R).Choice who input) lifted.symm) choice).1.map
-        (RecoveryProjection.action (runtime setup) (oldLeaks))) =
-      (fun choice => choice.1.map (RecoveryProjection.action (runtime setup) (oldLeaks))) := by
+        (RecoveryProjection.action (runtime setup) (RecoveryLeaks))) =
+      (fun choice => choice.1.map (RecoveryProjection.action (runtime setup) (RecoveryLeaks))) := by
     funext choice
     exact congrArg (fun response => response.map (RecoveryProjection.action (runtime setup)
-      (oldLeaks))) (castVal lifted.symm choice)
-  rw [forgetCast, oldMap]
-  have oldClear : RecoveryProjection.ClearInput (runtime setup) (oldLeaks)
+      (RecoveryLeaks))) (castVal lifted.symm choice)
+  rw [forgetCast, recoveryComponentLaw]
+  have recoveryCleared : RecoveryProjection.ClearInput (runtime setup) (RecoveryLeaks)
       (projectInfo site.1) := by
     rw [← lifted]
-    exact RecoveryProjection.clearInput_lift (runtime setup) (oldLeaks) nativeSite.1
-  have projected := RecoveryOnePacket.keyedComponent_native setup (oldLeaks) bounds horizon
-    (oldScheduler) source scale nonnegative le_one
-    (projectedAgent setup leaks bounds horizon scheduler agent clear) oldClear option
-  have nativeInput : RecoveryProjection.information (runtime setup) (oldLeaks)
+    exact RecoveryProjection.clearInput_lift (runtime setup) (RecoveryLeaks) nativeSite.1
+  have projected := RecoveryOnePacket.keyedComponent_native setup (RecoveryLeaks) bounds horizon
+    (RecoveryScheduler) source scale nonnegative le_one
+    (projectedAgent setup leaks bounds horizon scheduler agent clear) recoveryCleared option
+  have nativeInput : RecoveryProjection.information (runtime setup) (RecoveryLeaks)
       (projectInfo site.1) = nativeSite.1 := by
     rw [← lifted, RecoveryProjection.information_liftInformation]
-  change (RecoveryOnePacket.keyedComponent setup (oldLeaks) bounds Initial horizon (oldScheduler)
+  change (RecoveryOnePacket.keyedComponent setup (RecoveryLeaks) bounds RecoveryPrior horizon
+      (RecoveryScheduler)
     source scale nonnegative le_one
     (projectedAgent setup leaks bounds horizon scheduler agent clear) option).map
-      (fun choice => choice.1.map (RecoveryProjection.action (runtime setup) (oldLeaks))) =
-    (lateComponent setup (oldLeaks) bounds (Vegas.initialLaw setup) horizon (NativeScheduler)
+      (fun choice => choice.1.map (RecoveryProjection.action (runtime setup) (RecoveryLeaks))) =
+    (lateComponent setup (RecoveryLeaks) bounds (Vegas.initialLaw setup) horizon (NativeScheduler)
       source scale nonnegative le_one who
-      (RecoveryProjection.information (runtime setup) (oldLeaks) (projectInfo site.1)) option).map
+      (RecoveryProjection.information (runtime setup) (RecoveryLeaks) (projectInfo site.1))
+          option).map
         Subtype.val at projected
   rw [nativeInput] at projected
   exact projected

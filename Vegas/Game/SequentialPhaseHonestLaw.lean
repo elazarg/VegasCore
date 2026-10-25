@@ -20,26 +20,27 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   (bounds : MessageBounds (graph setup)) (horizon : Nat)
   (scheduler : (phaseApplication (runtime setup) leaks).Scheduler)
   {delay bound : (graph setup).EventId → Nat}
-  (opportunity : PhaseService.Opportunity (runtime setup) leaks (initialLaw setup) horizon
+  (opportunity : PhaseService.Opportunity (runtime setup) leaks (phaseInitialLaw setup) horizon
     scheduler delay)
-  (inclusion : PhaseService.ProtectedInclusion (runtime setup) leaks (initialLaw setup) horizon
+  (inclusion : PhaseService.ProtectedInclusion (runtime setup) leaks (phaseInitialLaw setup) horizon
     scheduler bound)
   (timely : (runtime setup).AsyncTimely delay bound)
-  (completes : PhaseService.CompletesPlay (runtime setup) leaks (initialLaw setup) horizon
+  (completes : PhaseService.CompletesPlay (runtime setup) leaks (phaseInitialLaw setup) horizon
     scheduler)
 
-local notation "oldLeaks" => recoveryLeaks setup leaks
-local notation "nativeScheduler" => RecoveryProjection.nativeScheduler (runtime setup) (oldLeaks)
+local notation "RecoveryLeaks" => recoveryLeaks setup leaks
+local notation "nativeScheduler" => RecoveryProjection.nativeScheduler (runtime setup)
+    (RecoveryLeaks)
   (recoveryScheduler setup leaks scheduler)
-local notation "N" => onePacketModel setup (oldLeaks) bounds (Vegas.initialLaw setup) horizon
+local notation "N" => onePacketModel setup (RecoveryLeaks) bounds (Vegas.initialLaw setup) horizon
   (nativeScheduler)
 local notation "E" => ReactiveApplication.ResponseMenu.protocol
-  (bounds.onePacketMenu (runtime setup) (oldLeaks)) (Vegas.initialLaw setup) horizon
+  (bounds.onePacketMenu (runtime setup) (RecoveryLeaks)) (Vegas.initialLaw setup) horizon
     (nativeScheduler)
-local notation "NativeModel" => onePacketModel setup (oldLeaks) bounds (Vegas.initialLaw setup)
+local notation "NativeModel" => onePacketModel setup (RecoveryLeaks) bounds (Vegas.initialLaw setup)
   horizon (nativeScheduler)
 local notation "NativeProtocol" => ReactiveApplication.ResponseMenu.protocol
-  (bounds.onePacketMenu (runtime setup) (oldLeaks)) (Vegas.initialLaw setup) horizon
+  (bounds.onePacketMenu (runtime setup) (RecoveryLeaks)) (Vegas.initialLaw setup) horizon
     (nativeScheduler)
 
 include opportunity inclusion timely completes in
@@ -49,18 +50,19 @@ theorem honest_boundary_readout_law
     (capacity : ∀ player, bindingEventCount (graph setup) player < bounds.candidateCount)
     (source : setup.intendedModel.BehavioralAssessment)
     (certificate : (E).WellFoundedHistories) :
-    ∀ rank (start : (E).History) (execution : (application setup (oldLeaks)).Execution),
+    ∀ rank (start : (E).History) (execution : (application setup (RecoveryLeaks)).Execution),
       start.state = some ⟨horizon - execution.environmentRecall.length, none, execution⟩ →
-      ReachedBoundary setup (oldLeaks) horizon (nativeScheduler) rank execution →
+      ReachedBoundary setup (RecoveryLeaks) horizon (nativeScheduler) rank execution →
       ∀ point, sourceServicePrefix? setup rank execution.application.config = some point →
         ProtocolState.Intended setup.program point →
       ((N).runBehavioralTerminalFrom certificate
-        (honestProfile setup (oldLeaks) bounds (Vegas.initialLaw setup) horizon
+        (honestProfile setup (RecoveryLeaks) bounds (Vegas.initialLaw setup) horizon
           (nativeScheduler) source) start).map
-          (fun final => sourceReadout setup (oldLeaks) final.state) =
+          (fun final => sourceReadout setup (RecoveryLeaks) final.state) =
         sourceContinuation setup (setup.intendedOpeningProfile source.strategy) rank
           execution.application.config  := by
-  exact counted_honest_boundary_readout_law (setup := setup) (leaks := oldLeaks) (bounds := bounds)
+  exact counted_honest_boundary_readout_law (setup := setup) (leaks := RecoveryLeaks) (bounds :=
+      bounds)
     (opportunity := fun control trace clear =>
       PhaseService.Opportunity.clear_native_counted setup leaks bounds horizon scheduler delay
         opportunity trace clear)
@@ -79,18 +81,18 @@ theorem honest_reached_not_late
     (capacity : ∀ player, bindingEventCount (graph setup) player < bounds.candidateCount)
     (source : setup.intendedModel.BehavioralAssessment)
     (certificate : (E).WellFoundedHistories)
-    (rank : Nat) (start : (E).History) (anchor : (application setup (oldLeaks)).Execution)
+    (rank : Nat) (start : (E).History) (anchor : (application setup (RecoveryLeaks)).Execution)
     (state : start.state = some ⟨horizon - anchor.environmentRecall.length, none, anchor⟩)
-    (boundary : ReachedBoundary setup (oldLeaks) horizon (nativeScheduler) rank anchor)
+    (boundary : ReachedBoundary setup (RecoveryLeaks) horizon (nativeScheduler) rank anchor)
     (point : ProtocolState setup.program)
     (decoded : sourceServicePrefix? setup rank anchor.application.config = some point)
     (intended : ProtocolState.Intended setup.program point) :
     ∀ fuel (history : (E).History), history ∈ ((N).runBehavioralFrom
-      (honestProfile setup (oldLeaks) bounds (Vegas.initialLaw setup) horizon
+      (honestProfile setup (RecoveryLeaks) bounds (Vegas.initialLaw setup) horizon
         (nativeScheduler) source) fuel
-        start).support → ∀ who, ¬ LateDelivery setup (oldLeaks) who ((N).infoOf who
+        start).support → ∀ who, ¬ LateDelivery setup (RecoveryLeaks) who ((N).infoOf who
           history.trace)  := by
-  exact counted_honest_reached_not_late (setup := setup) (leaks := oldLeaks) (bounds := bounds)
+  exact counted_honest_reached_not_late (setup := setup) (leaks := RecoveryLeaks) (bounds := bounds)
     (opportunity := fun control trace clear =>
       PhaseService.Opportunity.clear_native_counted setup leaks bounds horizon scheduler delay
         opportunity trace clear)
@@ -111,14 +113,14 @@ theorem honest_initialized_readout_law
     (source : setup.intendedModel.BehavioralAssessment)
     (certificate : (NativeProtocol).WellFoundedHistories) :
     (((NativeModel).runBehavioralTerminalFrom certificate
-      (honestProfile setup (oldLeaks) bounds (Vegas.initialLaw setup) horizon
+      (honestProfile setup (RecoveryLeaks) bounds (Vegas.initialLaw setup) horizon
         (nativeScheduler) source)
-        (NativeProtocol).initHistory).map (fun final => sourceReadout setup (oldLeaks)
+        (NativeProtocol).initHistory).map (fun final => sourceReadout setup (RecoveryLeaks)
           final.state)) =
       (setup.intendedModel.runBehavioral source.strategy
         (instructionCount setup.program + 1)).map
           (fun final => setup.protocolReadout final.state)  := by
-  exact counted_honest_initialized_readout_law (setup := setup) (leaks := oldLeaks) (bounds
+  exact counted_honest_initialized_readout_law (setup := setup) (leaks := RecoveryLeaks) (bounds
     := bounds)
     (opportunity := fun control trace clear =>
       PhaseService.Opportunity.clear_native_counted setup leaks bounds horizon scheduler delay
@@ -139,11 +141,13 @@ theorem honest_initialized_not_late
     (source : setup.intendedModel.BehavioralAssessment)
     (certificate : (NativeProtocol).WellFoundedHistories) :
     ∀ fuel history, history ∈ ((NativeModel).runBehavioralFrom
-      (honestProfile setup (oldLeaks) bounds (Vegas.initialLaw setup) horizon
+      (honestProfile setup (RecoveryLeaks) bounds (Vegas.initialLaw setup) horizon
         (nativeScheduler) source) fuel
         (NativeProtocol).initHistory).support →
-      ∀ who, ¬ LateDelivery setup (oldLeaks) who ((NativeModel).infoOf who history.trace)  := by
-  exact counted_honest_initialized_not_late (setup := setup) (leaks := oldLeaks) (bounds := bounds)
+      ∀ who, ¬ LateDelivery setup (RecoveryLeaks) who ((NativeModel).infoOf who history.trace)  :=
+          by
+  exact counted_honest_initialized_not_late (setup := setup) (leaks := RecoveryLeaks) (bounds :=
+      bounds)
     (opportunity := fun control trace clear =>
       PhaseService.Opportunity.clear_native_counted setup leaks bounds horizon scheduler delay
         opportunity trace clear)
@@ -163,13 +167,14 @@ theorem honest_initialized_intended
     (source : setup.intendedModel.BehavioralAssessment)
     (certificate : (NativeProtocol).WellFoundedHistories) :
     ∀ fuel history, history ∈ ((NativeModel).runBehavioralFrom
-      (honestProfile setup (oldLeaks) bounds (Vegas.initialLaw setup) horizon
+      (honestProfile setup (RecoveryLeaks) bounds (Vegas.initialLaw setup) horizon
         (nativeScheduler) source) fuel
         (NativeProtocol).initHistory).support →
-      ∀ control : (application setup (oldLeaks)).Control, history.state = some control →
+      ∀ control : (application setup (RecoveryLeaks)).Control, history.state = some control →
         ∃ point, decodedPoint setup control.execution.application.config = some point ∧
           ProtocolState.Intended setup.program point  := by
-  exact counted_honest_initialized_intended (setup := setup) (leaks := oldLeaks) (bounds := bounds)
+  exact counted_honest_initialized_intended (setup := setup) (leaks := RecoveryLeaks) (bounds :=
+      bounds)
     (opportunity := fun control trace clear =>
       PhaseService.Opportunity.clear_native_counted setup leaks bounds horizon scheduler delay
         opportunity trace clear)

@@ -58,7 +58,7 @@ def command : (R).Command → (P).Command
       (PhaseRecoveryProjection.command runtime leaks recoveryLeaks operation) = operation := by
   cases operation <;> rfl
 
-/-- Reconstruct static packet tags and clear phase metadata from the old public input. -/
+/-- Reconstruct static packet tags and clear phase metadata from the recovery public input. -/
 def environmentView (view : (R).EnvironmentView) : (P).EnvironmentView where
   network := view.network.mapPayload (sequentialRuntimePhasePlan program).stampPacket
   application := SequentialPhaseObservation.publicView program
@@ -70,7 +70,7 @@ def environmentEntry (entry : (R).EnvironmentEntry) : (P).EnvironmentEntry where
   beforeView := environmentView program runtime leaks recoveryLeaks entry.beforeView
   command := command program runtime leaks recoveryLeaks entry.command
 
-/-- An old recovery scheduler can run the phase scheduler on its decoded own input. -/
+/-- An recovery scheduler can run the phase scheduler on its decoded own input. -/
 def scheduler (original : (P).Scheduler) : (R).Scheduler := fun past view =>
   (original (past.map (environmentEntry program runtime leaks recoveryLeaks))
     (environmentView program runtime leaks recoveryLeaks view)).map
@@ -79,7 +79,7 @@ def scheduler (original : (P).Scheduler) : (R).Scheduler := fun past view =>
 variable [Fintype Player]
   (bounds : MessageBounds (EventGraph.withMode (toEventGraph program) .sequential))
 
-/-- The entire actual scheduler view reconstructs, including pending and old inputs. -/
+/-- The entire actual scheduler view reconstructs, including pending and earlier inputs. -/
 theorem environmentView_history
     (inputs : PMF ((EventGraph.withMode (toEventGraph program) .sequential)).Inputs)
     (horizon : Nat) (original : (P).Scheduler) {control : (P).Control}

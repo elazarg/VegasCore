@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.RecoveryLocalComparisons
-import Vegas.Game.RecoverySequentialLimit
+import GameTheoryExtensions.Analysis.Protocol.LocalSimulationLimit
 import Vegas.Game.RecoveryInitializedClearance
 import Vegas.Game.RecoveryExclusionPayoff
 import Vegas.Game.OnePacketCertificateAssembly
@@ -110,27 +110,21 @@ theorem RecoveryOnePacket.intended_sequentialEquilibrium_preserved
       parameter utility excludedPayoff sourceSequence bounds.candidateCount scale positive le_one
       vanishes
   let fallback : ∀ who, (R).Policy who := fun _ _ => Classical.arbitrary _
-  let range := fun who : Player => max 0 (max (excludedPayoff who) (upperUtility who)) -
-    min 0 (min (excludedPayoff who) (lowerUtility who))
-  let payoffBound : ℝ := ∑ who, range who
-  have rangeNonnegative : ∀ who, 0 ≤ range who := by
-    intro who
-    exact sub_nonneg.mpr ((min_le_left 0 _).trans (le_max_left 0 _))
-  have nonnegative : 0 ≤ payoffBound := Finset.sum_nonneg fun who _ => rangeNonnegative who
-  have rangeLe : ∀ who, range who ≤ payoffBound := fun who =>
-    Finset.single_le_sum (fun other _ => rangeNonnegative other) (Finset.mem_univ who)
-  obtain ⟨readoutBounded, excludedBounded⟩ := exclusionPayoffs_bounded setup parameter utility
-    excludedPayoff lowerUtility upperUtility lower_le le_upper
+  let payoffBound : ℝ := ∑ player,
+    (max 0 (max (excludedPayoff player) (upperUtility player)) -
+      min 0 (min (excludedPayoff player) (lowerUtility player)))
+  obtain ⟨nonnegative, readoutBounded, excludedBounded⟩ :=
+    exclusionPayoffs_bounded setup parameter utility excludedPayoff lowerUtility upperUtility
+      lower_le le_upper
   have payoffBounded : ∀ who (final : (RP).History),
       |recoveryExclusionBase parameter utility excludedPayoff final.state who| ≤ payoffBound := by
     intro who final
-    have within := recoveryExclusionBase_mem_Icc parameter utility excludedPayoff
-      lowerUtility upperUtility lower_le le_upper final.state who
-    have low := min_le_left 0 (min (excludedPayoff who) (lowerUtility who))
-    have high := le_max_left 0 (max (excludedPayoff who) (upperUtility who))
-    apply le_trans (b := range who) _ (rangeLe who)
-    exact abs_le.mpr ⟨by dsimp only [range]; linarith [within.1],
-      by dsimp only [range]; linarith [within.2]⟩
+    exact GameTheory.Math.abs_le_sum_interval_width
+      (fun player => min 0 (min (excludedPayoff player) (lowerUtility player)))
+      (fun player => max 0 (max (excludedPayoff player) (upperUtility player)))
+      (fun _ => min_le_left _ _) (fun _ => le_max_left _ _) who
+      (recoveryExclusionBase_mem_Icc parameter utility excludedPayoff lowerUtility upperUtility
+        lower_le le_upper final.state who)
   obtain ⟨error, errorVanishes, comparisons⟩ :
       ∃ error : ℕ → ℝ, Tendsto error atTop (nhds 0) ∧
         ∀ n who (site : (R).InformationSite who),
@@ -158,12 +152,41 @@ theorem RecoveryOnePacket.intended_sequentialEquilibrium_preserved
       intro _ who _ _ _
       have impossible := capacity who
       omega
+  let sourceObserve := intendedReadoutExclusion setup parameter utility excludedPayoff
+  let targetObserve := fun final : (RP).History =>
+    (sourceReadout setup leaks (RecoveryProjection.protocolState (runtime setup) leaks final.state),
+      recoveryExclusionBase parameter utility excludedPayoff final.state)
+  let payoff := fun outcome : Option (State L setup.program.terminalCtx) × (Player → ℝ) =>
+    fun who => outcome.2 who
+  obtain ⟨lawError, lawVanishes, initialized⟩ :=
+    RecoveryOnePacket.recovery_initialized_lawApproximation (setup := setup) (leaks := leaks)
+        (bounds := bounds)
+      (horizon := horizon) (scheduler := scheduler) (wellFormed := wellFormed) (covers := covers)
+      (capacity := capacity) (sequence := sourceSequence) (scale := scale) (positive := positive)
+      (le_one := le_one) (weights := weights) (fallback := fallback) (opportunity := opportunity)
+      (inclusion := inclusion) (timely := timely) (completes := completes) (parameter := parameter)
+      (utility := utility) (excludedPayoff := excludedPayoff)
+      (strategies := fun n => (sequence n).strategy) (allAssembled := assembled)
+      (vanishing := vanishes)
   obtain ⟨recoverySE, recoveryLaw⟩ :=
-    RecoveryOnePacket.sequentialEquilibrium_of_local_comparisons setup leaks bounds horizon
-      scheduler parameter utility excludedPayoff wellFormed covers capacity opportunity inclusion
-      timely completes intended sourceSequence sourceConverges sourceRational scale positive
-      le_one vanishes weights fallback sequence assembled limit index increasing converges
-      consistent freeOptimal error errorVanishes comparisons
+    sequentialEquilibrium_of_copied_comparisons_limit_of_lawError sourceObserve targetObserve
+      (instructionCount setup.program + 1) (2 * horizon + 1)
+      ((menu).bounded Initial horizon scheduler)
+      ((menu).decisionRecall Initial horizon scheduler) payoff intended sourceSequence
+      sourceConverges sourceRational sequence
+      (fun _ site => ¬ RecoveryOnePacket.FreeAgent setup leaks bounds Initial horizon scheduler
+          ((R).agentAt site))
+      error errorVanishes (fun n who site notFree choice => by
+        have compared := comparisons n who site notFree choice
+        unfold intendedSiteGain payoffComponent at compared
+        simpa only [localGain, assessmentComparisonWith, expect_map, targetObserve, sourceObserve,
+          payoff, Function.comp_def] using compared)
+      lawError lawVanishes initialized limit index increasing converges consistent
+      (fun who site free law => by
+        rw [← limit.continuationContext_eq_truncated_of_bounded
+          ((menu).bounded Initial horizon scheduler).wellFoundedHistories
+          ((menu).bounded Initial horizon scheduler)]
+        exact freeOptimal who site (not_not.mp free) law)
   have noExclusion := RecoveryOnePacket.initialized_limit_no_exclusion setup leaks bounds
     horizon scheduler wellFormed covers capacity sourceSequence scale positive le_one vanishes
     weights fallback sequence assembled opportunity inclusion timely completes limit index

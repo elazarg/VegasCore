@@ -9,7 +9,7 @@ import Interaction.ReactiveMenuRestriction
 
 Operational normalization supplies a genuine subgame of the phase counted menu.
 Every actual clear trace of this subgame projects, callback by callback, to the
-old recovery counted game with identical length and complete projected endpoint.
+recovery counted game with identical length and complete projected endpoint.
 -/
 
 noncomputable section
@@ -63,7 +63,7 @@ local notation "recoveryScheduler" =>
 local notation "phaseInitial" => PMF.map (PhaseRuntimeState.initial plan)
 local notation "recoveryInitial" =>
   PMF.map (fun input => RecoveryState.mk (State.initial input) ∅)
-local notation "old" => Recovery.onePacketMenu runtime recoveryLeaks bounds
+local notation "RecoveryMenu" => Recovery.onePacketMenu runtime recoveryLeaks bounds
 
 /-- Every canonical legal joint at an actual clear prefix is a legal recovery counted joint. -/
 theorem legal_projected_canonical_clear
@@ -75,7 +75,7 @@ theorem legal_projected_canonical_clear
         state.current.excluded = ∅) state)
     (joint : Player → Option (P).Action)
     (legal : ((canonical).protocol (phaseInitial inputs) horizon scheduler).Legal state joint) :
-    ((old).protocol (recoveryInitial inputs) horizon (recoveryScheduler scheduler)).Legal
+    ((RecoveryMenu).protocol (recoveryInitial inputs) horizon (recoveryScheduler scheduler)).Legal
       (projection state) (jointActions runtime leaks recoveryLeaks joint) := by
   have rawLegal := legal_projected_raw runtime leaks recoveryLeaks (phaseInitial inputs)
     (recoveryInitial inputs) horizon scheduler (recoveryScheduler scheduler) state joint
@@ -103,8 +103,8 @@ theorem legal_projected_canonical_clear
           exact recovery_onePacket_mem_of_normal_phase_history program runtime leaks recoveryLeaks
             bounds inputs horizon scheduler counted clear who response admitted fixed
 
-/-- Every canonical counted clear phase trace has an actual old counted trace,
-without postulating that old trace or a final distribution as an adapter premise. -/
+/-- Every canonical counted clear phase trace has an actual recovery counted trace,
+without postulating that recovery trace or a final distribution as an adapter premise. -/
 theorem trace_projected_canonical_clear
     (inputs : PMF ((toEventGraph program).withMode .sequential).Inputs) (horizon : Nat)
     (scheduler : (P).Scheduler) {state : (P).ProtocolState}
@@ -112,14 +112,14 @@ theorem trace_projected_canonical_clear
     (clear : ReactiveApplication.stateInvariant
       (fun state : PhaseRuntimeState ((toEventGraph program).withMode .sequential) =>
         state.current.excluded = ∅) state) :
-    ∃ projected : ((old).protocol (recoveryInitial inputs) horizon
+    ∃ projected : ((RecoveryMenu).protocol (recoveryInitial inputs) horizon
       (recoveryScheduler scheduler)).Trace (projection state), projected.length = trace.length := by
   have origin : ∀ {state}
       (history : ((canonical).protocol (phaseInitial inputs) horizon scheduler).Trace state),
       ReactiveApplication.stateInvariant
         (fun state : PhaseRuntimeState ((toEventGraph program).withMode .sequential) =>
           state.current.excluded = ∅) state →
-      ∃ projected : ((old).protocol (recoveryInitial inputs) horizon
+      ∃ projected : ((RecoveryMenu).protocol (recoveryInitial inputs) horizon
         (recoveryScheduler scheduler)).Trace (projection state),
         projected.length = history.length := by
     intro state history

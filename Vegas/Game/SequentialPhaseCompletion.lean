@@ -27,11 +27,12 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket (graph setup)))
   (bounds : MessageBounds (graph setup)) (horizon : Nat)
   (scheduler : (phaseApplication (runtime setup) leaks).Scheduler)
-  [(phaseApplication (runtime setup) leaks).FiniteNature (initialLaw setup) scheduler]
+  [(phaseApplication (runtime setup) leaks).FiniteNature (phaseInitialLaw setup) scheduler]
 
 local notation "M" => model setup leaks bounds horizon scheduler
 
-attribute [local instance] phaseInfoDecidableEq
+attribute [local instance] phaseInfoDecidableEq recoveryInfoDecidableEq nativeInfoDecidableEq
+  phaseHistoryFintype recoveryHistoryFintype nativeHistoryFintype nativeNature
 
 open Classical in
 /-- The actual phase game selects one simultaneous free/keyed pooled
@@ -48,9 +49,10 @@ theorem exists_consistent_completion {Parameter : Type}
     let laws := fun n => component setup leaks bounds horizon scheduler (sourceSequence n)
       (slots := slots) (scale n) (positive n).le (le_one n)
     let fallback : ∀ who, (M).Policy who := fun _ _ => Classical.arbitrary _
-    let certificate := (menu setup leaks bounds).bounded (initialLaw setup) horizon scheduler
+    let certificate := (menu setup leaks bounds).bounded (phaseInitialLaw setup) horizon scheduler
       |>.wellFoundedHistories
-    let payoff := fun who (final : (menu setup leaks bounds).protocol (initialLaw setup) horizon
+    let payoff := fun who (final : (menu setup leaks bounds).protocol (phaseInitialLaw setup)
+        horizon
         scheduler |>.History) => phaseExclusionBase setup .sequential (runtime setup) leaks
       (fun terminal => utility (setup.parameterOutcome parameter terminal)) excludedPayoff
         final.state who
@@ -60,12 +62,12 @@ theorem exists_consistent_completion {Parameter : Type}
         fun agent => (weights n (pools agent)).bind (laws n agent)) ∧
       (∀ n, (sequence n).IsFullyMixed) ∧
       (∀ n, BehavioralAssessment.IsBayesConsistent (M) (sequence n)
-        ((menu setup leaks bounds).decisionRecall (initialLaw setup) horizon
+        ((menu setup leaks bounds).decisionRecall (phaseInitialLaw setup) horizon
           scheduler).decisionInformationAntichain) ∧
       StrictMono index ∧
       BehavioralAssessmentConvergesPointwise (fun n => sequence (index n)) limit ∧
       limit.IsSequentiallyConsistent
-        ((menu setup leaks bounds).decisionRecall (initialLaw setup) horizon
+        ((menu setup leaks bounds).decisionRecall (phaseInitialLaw setup) horizon
           scheduler).decisionInformationAntichain ∧
       (∀ n (alternative : ∀ p, PMF (parts p)) p,
         ∑ agent ∈ Finset.univ.filter (fun agent => pools agent = p),
@@ -107,7 +109,7 @@ theorem exists_consistent_completion {Parameter : Type}
   obtain ⟨weights, sequence, limit, index, assembled, mixed, bayes, increasing, converges,
       consistent, pooled, limits⟩ :=
     (M).exists_consistent_pooled_completion
-      ((menu setup leaks bounds).decisionRecall (initialLaw setup) horizon scheduler)
+      ((menu setup leaks bounds).decisionRecall (phaseInitialLaw setup) horizon scheduler)
       fallback certificate payoff pools laws
       (fun n agent part => component_fullSupport setup leaks bounds horizon scheduler
         (sourceSequence n) (positive n) (le_one n) agent part)

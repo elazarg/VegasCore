@@ -43,6 +43,7 @@ import GameTheoryExtensions.Analysis.Protocol.UniformPolicyLimit
 import GameTheoryExtensions.Analysis.QuasilinearBounds
 import GameTheoryExtensions.Analysis.QuasilinearSettlement
 import GameTheoryExtensions.Core.PendingChoice
+import GameTheoryExtensions.Math.FiniteIntervalBounds
 import GameTheoryExtensions.Math.Probability.ActionSplitting
 import GameTheoryExtensions.Math.Probability.AffineDecorrelation
 import GameTheoryExtensions.Math.Probability.ApproximateLumping

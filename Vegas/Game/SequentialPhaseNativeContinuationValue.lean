@@ -19,44 +19,41 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket (graph setup)))
   (bounds : MessageBounds (graph setup)) (horizon : Nat)
   (scheduler : (phaseApplication (runtime setup) leaks).Scheduler)
-  [(phaseApplication (runtime setup) leaks).FiniteNature (initialLaw setup) scheduler]
+  [(phaseApplication (runtime setup) leaks).FiniteNature (phaseInitialLaw setup) scheduler]
   {delay bound : (graph setup).EventId → Nat}
-  (opportunity : PhaseService.Opportunity (runtime setup) leaks (initialLaw setup) horizon
+  (opportunity : PhaseService.Opportunity (runtime setup) leaks (phaseInitialLaw setup) horizon
     scheduler delay)
-  (inclusion : PhaseService.ProtectedInclusion (runtime setup) leaks (initialLaw setup) horizon
+  (inclusion : PhaseService.ProtectedInclusion (runtime setup) leaks (phaseInitialLaw setup) horizon
     scheduler bound)
   (timely : (runtime setup).AsyncTimely delay bound)
-  (completes : PhaseService.CompletesPlay (runtime setup) leaks (initialLaw setup) horizon
+  (completes : PhaseService.CompletesPlay (runtime setup) leaks (phaseInitialLaw setup) horizon
     scheduler)
 
-local notation "oldLeaks" => recoveryLeaks setup leaks
-local notation "nativeScheduler" => RecoveryProjection.nativeScheduler (runtime setup) (oldLeaks)
+local notation "RecoveryLeaks" => recoveryLeaks setup leaks
+local notation "nativeScheduler" => RecoveryProjection.nativeScheduler (runtime setup)
+    (RecoveryLeaks)
   (recoveryScheduler setup leaks scheduler)
-local notation "N" => onePacketModel setup (oldLeaks) bounds (Vegas.initialLaw setup) horizon
+local notation "N" => onePacketModel setup (RecoveryLeaks) bounds (Vegas.initialLaw setup) horizon
   (nativeScheduler)
 local notation "E" => ReactiveApplication.ResponseMenu.protocol
-  (bounds.onePacketMenu (runtime setup) (oldLeaks)) (Vegas.initialLaw setup) horizon
+  (bounds.onePacketMenu (runtime setup) (RecoveryLeaks)) (Vegas.initialLaw setup) horizon
     (nativeScheduler)
-local notation "NativeModel" => onePacketModel setup (oldLeaks) bounds (Vegas.initialLaw setup)
+local notation "NativeModel" => onePacketModel setup (RecoveryLeaks) bounds (Vegas.initialLaw setup)
   horizon (nativeScheduler)
 local notation "NativeProtocol" => ReactiveApplication.ResponseMenu.protocol
-  (bounds.onePacketMenu (runtime setup) (oldLeaks)) (Vegas.initialLaw setup) horizon
+  (bounds.onePacketMenu (runtime setup) (RecoveryLeaks)) (Vegas.initialLaw setup) horizon
     (nativeScheduler)
 
 local notation "NP" => ReactiveApplication.ResponseMenu.protocol
-  (bounds.onePacketMenu (runtime setup) (oldLeaks)) (Vegas.initialLaw setup) horizon
+  (bounds.onePacketMenu (runtime setup) (RecoveryLeaks)) (Vegas.initialLaw setup) horizon
     (nativeScheduler)
 
-private local instance continuationNativeNature :
-    (application setup (oldLeaks)).FiniteNature (Vegas.initialLaw setup) (nativeScheduler) :=
-  nativeNature setup leaks scheduler
-
-private local instance continuationNativeInformation (who : Player) :
-    DecidableEq ((N).InfoState who) := Classical.decEq _
-
 local notation "Clear" => ReactiveApplication.stateInvariant
-  (app := application setup (oldLeaks))
+  (app := application setup (RecoveryLeaks))
   (fun native => ExclusionEvidence 0 ∅ (RecoveryState.mk native ∅))
+
+attribute [local instance] phaseInfoDecidableEq recoveryInfoDecidableEq nativeInfoDecidableEq
+  phaseHistoryFintype recoveryHistoryFintype nativeHistoryFintype nativeNature
 
 include opportunity inclusion timely completes in
 open Classical in
@@ -71,9 +68,9 @@ theorem nativeComparison_stopped_boundary_value_sub_le
     (weights : ℕ → ∀ p, PMF (Part setup leaks bounds horizon scheduler slots p))
     (n : ℕ)
     (certificate : (NP).WellFoundedHistories)
-    (rank : Nat) (start : (NP).History) (anchor : (application setup (oldLeaks)).Execution)
+    (rank : Nat) (start : (NP).History) (anchor : (application setup (RecoveryLeaks)).Execution)
     (state : start.state = some ⟨horizon - anchor.environmentRecall.length, none, anchor⟩)
-    (boundary : ReachedBoundary setup (oldLeaks) horizon (nativeScheduler) rank anchor)
+    (boundary : ReachedBoundary setup (RecoveryLeaks) horizon (nativeScheduler) rank anchor)
     (point : ProtocolState setup.program)
     (decoded : sourceServicePrefix? setup rank anchor.application.config = some point)
     (intended : ProtocolState.Intended setup.program point)
@@ -85,20 +82,21 @@ theorem nativeComparison_stopped_boundary_value_sub_le
       |exclusionReadoutUtility setup parameter utility excludedPayoff readout who| ≤ payoffBound)
     (excludedBounded : |excludedPayoff who| ≤ payoffBound) :
     let stopped := fun history : (NP).History => ¬ Clear history.state ∨
-      DecodedState setup (oldLeaks) (failureProfile setup.program)
+      DecodedState setup (RecoveryLeaks) (failureProfile setup.program)
         (ProtocolState.OwesFailure who setup.program) history.state
     |expect ((N).runBehavioralUntil certificate
         ((nativeComparisonSequence setup leaks bounds horizon scheduler sequence scale positive
           le_one weights n).strategy) stopped start)
         (fun final => if stopped final then excludedPayoff who else
-          exclusionBase setup parameter utility excludedPayoff (oldLeaks) final.state who) -
+          exclusionBase setup parameter utility excludedPayoff (RecoveryLeaks) final.state who) -
       sourcePointValue setup parameter utility excludedPayoff
         (setup.intendedOpeningProfile (sequence n).strategy) who point| ≤
       (2 * payoffBound * (Fintype.card Player * (1 - slotRetention (scale n)))) *
-        (application setup (oldLeaks)).rank horizon start.state  := by
+        (application setup (RecoveryLeaks)).rank horizon start.state  := by
   have assembled := nativeComparisonSequence_assembled setup leaks bounds horizon scheduler
     sequence scale positive le_one weights
-  exact OnePacketComparison.assembled_stopped_boundary_value_sub_le setup (oldLeaks) bounds horizon
+  exact OnePacketComparison.assembled_stopped_boundary_value_sub_le setup (RecoveryLeaks) bounds
+      horizon
     (nativeScheduler) wellFormed covers capacity sequence scale positive le_one _ _ assembled n
     (fun control trace clear => PhaseService.Opportunity.clear_native_counted setup leaks bounds
       horizon scheduler delay opportunity trace clear)

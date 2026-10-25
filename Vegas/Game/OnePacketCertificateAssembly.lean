@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.OnePacketLateDecomposition
+import GameTheoryExtensions.Math.FiniteIntervalBounds
 
 /-! # Value-blindness inputs of the one-packet certificate
 
@@ -97,40 +98,25 @@ between the exclusion payoff, zero and the utility bounds. -/
 theorem exclusionPayoffs_bounded (lowerUtility upperUtility : Player → ℝ)
     (lower_le : ∀ outcome who, lowerUtility who ≤ utility outcome who)
     (le_upper : ∀ outcome who, utility outcome who ≤ upperUtility who) :
-    (∀ who readout, |exclusionReadoutUtility setup parameter utility excludedPayoff readout who| ≤
-      ∑ player, (max 0 (max (excludedPayoff player) (upperUtility player)) -
-        min 0 (min (excludedPayoff player) (lowerUtility player)))) ∧
-    ∀ who, |excludedPayoff who| ≤
-      ∑ player, (max 0 (max (excludedPayoff player) (upperUtility player)) -
-        min 0 (min (excludedPayoff player) (lowerUtility player))) := by
-  let range := fun who : Player => max 0 (max (excludedPayoff who) (upperUtility who)) -
-    min 0 (min (excludedPayoff who) (lowerUtility who))
-  have rangeNonneg : ∀ who, 0 ≤ range who := fun who => by
-    have := le_max_left 0 (max (excludedPayoff who) (upperUtility who))
-    have := min_le_left 0 (min (excludedPayoff who) (lowerUtility who))
-    simp only [range]
-    linarith
-  have rangeLe : ∀ who, range who ≤ ∑ player, range player := fun who =>
-    Finset.single_le_sum (fun player _ => rangeNonneg player) (Finset.mem_univ who)
-  have zeroLow := fun who => min_le_left 0 (min (excludedPayoff who) (lowerUtility who))
-  have zeroHigh := fun who => le_max_left 0 (max (excludedPayoff who) (upperUtility who))
-  refine ⟨fun who readout => (abs_le.mpr ⟨?_, ?_⟩).trans (rangeLe who), fun who =>
-    (abs_le.mpr ⟨?_, ?_⟩).trans (rangeLe who)⟩
-  · have within := (exclusionReadoutUtility_mem_Icc setup parameter utility excludedPayoff
-      lowerUtility upperUtility lower_le le_upper readout who).1
-    simp only [range]
-    linarith [zeroHigh who]
-  · have within := (exclusionReadoutUtility_mem_Icc setup parameter utility excludedPayoff
-      lowerUtility upperUtility lower_le le_upper readout who).2
-    simp only [range]
-    linarith [zeroLow who]
-  · have low := min_le_left (excludedPayoff who) (lowerUtility who)
-    have lower := min_le_right 0 (min (excludedPayoff who) (lowerUtility who))
-    simp only [range]
-    linarith [zeroHigh who]
-  · have high := le_max_left (excludedPayoff who) (upperUtility who)
-    have higher := le_max_right 0 (max (excludedPayoff who) (upperUtility who))
-    simp only [range]
-    linarith [zeroLow who]
+    let budget := ∑ player, (max 0 (max (excludedPayoff player) (upperUtility player)) -
+      min 0 (min (excludedPayoff player) (lowerUtility player)))
+    0 ≤ budget ∧
+      (∀ who readout, |exclusionReadoutUtility setup parameter utility excludedPayoff readout who| ≤
+        budget) ∧ ∀ who, |excludedPayoff who| ≤ budget := by
+  intro budget
+  let lower := fun who => min 0 (min (excludedPayoff who) (lowerUtility who))
+  let upper := fun who => max 0 (max (excludedPayoff who) (upperUtility who))
+  have lowerNonpos : ∀ who, lower who ≤ 0 := fun _ => min_le_left _ _
+  have upperNonneg : ∀ who, 0 ≤ upper who := fun _ => le_max_left _ _
+  refine ⟨Finset.sum_nonneg (fun who _ => sub_nonneg.mpr
+    ((lowerNonpos who).trans (upperNonneg who))), ?_, ?_⟩
+  · intro who readout
+    exact GameTheory.Math.abs_le_sum_interval_width lower upper lowerNonpos upperNonneg who
+      (exclusionReadoutUtility_mem_Icc setup parameter utility excludedPayoff lowerUtility
+        upperUtility lower_le le_upper readout who)
+  · intro who
+    apply GameTheory.Math.abs_le_sum_interval_width lower upper lowerNonpos upperNonneg who
+    exact ⟨(min_le_right _ _).trans (min_le_left _ _),
+      (le_max_left _ _).trans (le_max_right _ _)⟩
 
 end Vegas

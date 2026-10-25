@@ -35,3 +35,5 @@ import Vegas.Examples.ReservedEpochCertifiedConcurrency
 import Vegas.Examples.ReservedEpochConcurrency
 import Vegas.Examples.ReservedEpochConcurrencyValidity
 import Vegas.Examples.ReservedEpochUsableConcurrency
+import Vegas.Examples.SequentialPhaseService
+import Vegas.Examples.SequentialPhaseServiceEquilibrium

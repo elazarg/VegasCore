@@ -21,19 +21,21 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket (graph setup)))
   (bounds : MessageBounds (graph setup)) (horizon : Nat)
   (scheduler : (phaseApplication (runtime setup) leaks).Scheduler)
-  [(phaseApplication (runtime setup) leaks).FiniteNature (initialLaw setup) scheduler]
+  [(phaseApplication (runtime setup) leaks).FiniteNature (phaseInitialLaw setup) scheduler]
 
 local notation "P" => phaseApplication (runtime setup) leaks
 local notation "A" => recoveryApplication (runtime setup) (recoveryLeaks setup leaks)
 local notation "M" => model setup leaks bounds horizon scheduler
 local notation "R" => recoveryModel setup leaks bounds horizon scheduler
-local notation "oldLeaks" => recoveryLeaks setup leaks
-local notation "oldInitial" => recoveryInitialLaw setup
-local notation "oldScheduler" => recoveryScheduler setup leaks scheduler
-local notation "oldMenu" => Recovery.onePacketMenu (runtime setup) (oldLeaks) bounds
-local notation "projection" => PhaseRecoveryProjection.protocolState (runtime setup) leaks oldLeaks
+local notation "RecoveryLeaks" => recoveryLeaks setup leaks
+local notation "RecoveryPrior" => recoveryInitialLaw setup
+local notation "RecoveryScheduler" => recoveryScheduler setup leaks scheduler
+local notation "RecoveryMenu" => Recovery.onePacketMenu (runtime setup) (RecoveryLeaks) bounds
+local notation "projection" => PhaseRecoveryProjection.protocolState (runtime setup) leaks
+    RecoveryLeaks
 
-attribute [local instance] phaseInfoDecidableEq recoveryInfoDecidableEq
+attribute [local instance] phaseInfoDecidableEq recoveryInfoDecidableEq nativeInfoDecidableEq
+  phaseHistoryFintype recoveryHistoryFintype nativeHistoryFintype nativeNature
 
 /-- Owed source debt at the actual projected input fixes the phase continuation
 value for every whole policy, including policies reading future archived data. -/
@@ -47,33 +49,28 @@ theorem component_owing_continuation_value_eq
     (positive : 0 < (M).informationMass
       (componentStrategy setup leaks bounds horizon scheduler fallback source scale
         positiveScale.le le_one weights) who site)
-    (owing : RecoveryOnePacket.OwingAgent setup (oldLeaks) bounds (oldInitial) horizon
-      (oldScheduler)
+    (owing : RecoveryOnePacket.OwingAgent setup (RecoveryLeaks) bounds (RecoveryPrior) horizon
+      (RecoveryScheduler)
       (projectedAgent setup leaks bounds horizon scheduler ((M).agentAt site) siteClear))
     (assessment : (M).BehavioralAssessment)
     (assembled : assessment.strategy = componentStrategy setup leaks bounds horizon scheduler
       fallback source scale positiveScale.le le_one weights)
     (bayes : BehavioralAssessment.IsBayesConsistent (M) assessment
-      ((menu setup leaks bounds).decisionInformationAntichain (initialLaw setup) horizon scheduler))
+      ((menu setup leaks bounds).decisionInformationAntichain (phaseInitialLaw setup) horizon
+          scheduler))
     {Parameter : Type} (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
     (excludedPayoff : Player → ℝ)
-    (completes : PhaseService.CompletesPlay (runtime setup) leaks (initialLaw setup) horizon
+    (completes : PhaseService.CompletesPlay (runtime setup) leaks (phaseInitialLaw setup) horizon
       scheduler)
     (alternative : (M).BehavioralPolicy who) :
     (assessment.continuationContext
-      ((menu setup leaks bounds).bounded (initialLaw setup) horizon scheduler).wellFoundedHistories
+      ((menu setup leaks bounds).bounded (phaseInitialLaw setup) horizon
+          scheduler).wellFoundedHistories
       site (fun final => phaseExclusionBase setup .sequential (runtime setup) leaks
         (fun terminal => utility (setup.parameterOutcome parameter terminal)) excludedPayoff
           final.state who)).value alternative = excludedPayoff who := by
   classical
-  let sourceInitial := (Vegas.initialLaw setup).map
-    (fun native => (⟨native, ∅⟩ : RecoveryState (graph setup)))
-  let : Fintype ((oldMenu).protocol sourceInitial horizon (oldScheduler)).History := by
-    have nature : (A).FiniteNature sourceInitial (oldScheduler) :=
-      recoveryNature setup leaks scheduler
-    exact @ReactiveApplication.ResponseMenu.historyFintype Player _ _ (oldMenu) sourceInitial
-      horizon (oldScheduler) inferInstance nature
   cases input : site.1 with
   | none => rw [input] at siteClear; exact siteClear.elim
   | some data =>
@@ -81,33 +78,38 @@ theorem component_owing_continuation_value_eq
       have viewClear : view.application.2.excluded = ∅ := by
         rw [input] at siteClear
         exact siteClear
-      obtain ⟨oldSite, oldPositive, oldInput, stateLaw⟩ := component_comparison_bayes_state_eq setup
+      obtain ⟨recoverySite, recoveryPositive, recoveryInput, stateLaw⟩ :=
+          component_comparison_bayes_state_eq setup
         leaks bounds horizon scheduler fallback source scale positiveScale le_one weights who site
         past view input viewClear positive
-      let oldProfile := recoveryComparisonStrategy setup leaks bounds horizon scheduler source scale
+      let recoveryProfile := recoveryComparisonStrategy setup leaks bounds horizon scheduler source
+          scale
         positiveScale.le le_one weights
       let phaseProfile := componentStrategy setup leaks bounds horizon scheduler fallback source
         scale positiveScale.le le_one weights
       let phaseBelief := (M).bayesBelief phaseProfile who site
-        ((menu setup leaks bounds).decisionInformationAntichain (initialLaw setup) horizon scheduler
+        ((menu setup leaks bounds).decisionInformationAntichain (phaseInitialLaw setup) horizon
+            scheduler
           who site) positive
-      let oldBelief := (R).bayesBelief oldProfile who oldSite
-        ((oldMenu).decisionInformationAntichain (oldInitial) horizon (oldScheduler) who oldSite)
-        oldPositive
-      have sameAgent : (R).agentAt oldSite =
+      let recoveryBelief := (R).bayesBelief recoveryProfile who recoverySite
+        ((RecoveryMenu).decisionInformationAntichain (RecoveryPrior) horizon (RecoveryScheduler) who
+            recoverySite)
+        recoveryPositive
+      have sameAgent : (R).agentAt recoverySite =
           projectedAgent setup leaks bounds horizon scheduler ((M).agentAt site) siteClear := by
         apply congrArg (Sigma.mk who)
         apply Subtype.ext
-        exact oldInput
-      have oldOwing : RecoveryOnePacket.OwingAgent setup (oldLeaks) bounds (oldInitial) horizon
-          (oldScheduler) ((R).agentAt oldSite) := sameAgent.symm ▸ owing
-      have oldAll (state : (A).ProtocolState)
-          (supported : state ∈ (oldBelief.map (fun history => history.1.state)).support) :
-          RecoveryDecodedState (leaks := oldLeaks) (failureProfile setup.program)
+        exact recoveryInput
+      have recoveryOwing : RecoveryOnePacket.OwingAgent setup (RecoveryLeaks) bounds (RecoveryPrior)
+          horizon
+          (RecoveryScheduler) ((R).agentAt recoverySite) := sameAgent.symm ▸ owing
+      have recoveryDebtSupported (state : (A).ProtocolState)
+          (supported : state ∈ (recoveryBelief.map (fun history => history.1.state)).support) :
+          RecoveryDecodedState (leaks := RecoveryLeaks) (failureProfile setup.program)
             (ProtocolState.OwesFailure who setup.program) state := by
         obtain ⟨history, _member, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp supported
-        exact RecoveryOnePacket.owingAgent_allHistories setup (oldLeaks) bounds horizon
-          (oldScheduler) (failureProfile setup.program) oldSite oldOwing history
+        exact RecoveryOnePacket.owingAgent_allHistories setup (RecoveryLeaks) bounds horizon
+          (RecoveryScheduler) (failureProfile setup.program) recoverySite recoveryOwing history
       have phaseAll (history : (M).InformationHistory who site.1)
           (supported : history ∈ phaseBelief.support) :
           PhaseOwesFailure setup leaks (failureProfile setup.program) who history.1.state := by
@@ -115,21 +117,22 @@ theorem component_owing_continuation_value_eq
             (phaseBelief.map (fun history => projection history.1.state)).support :=
           (PMF.mem_support_map_iff _ _ _).mpr ⟨history, supported, rfl⟩
         rw [stateLaw] at projected
-        rw [phaseOwesFailure_eq_projected setup leaks (oldLeaks) (failureProfile setup.program) who]
-        exact oldAll _ projected
+        rw [phaseOwesFailure_eq_projected setup leaks (RecoveryLeaks) (failureProfile setup.program)
+            who]
+        exact recoveryDebtSupported _ projected
       have actualPositive : 0 < (M).informationMass assessment.strategy who site := by
         rw [assembled]
         exact positive
       have beliefEq : assessment.belief who site = phaseBelief := by
         have normalized := (BehavioralAssessment.isBayesConsistentAt_iff (M) assessment who site
-          ((menu setup leaks bounds).decisionInformationAntichain (initialLaw setup) horizon
+          ((menu setup leaks bounds).decisionInformationAntichain (phaseInitialLaw setup) horizon
             scheduler who site) actualPositive).mp (bayes who site actualPositive)
         simpa only [assembled] using normalized
       rw [BehavioralAssessment.continuationContext_value, expect_bind_of_finite, beliefEq]
       have fixed (history : (M).InformationHistory who site.1)
           (supported : history ∈ phaseBelief.support) :
           expect ((M).runBehavioralTerminalFrom
-            ((menu setup leaks bounds).bounded (initialLaw setup) horizon
+            ((menu setup leaks bounds).bounded (phaseInitialLaw setup) horizon
               scheduler).wellFoundedHistories
             (Profile.update (sig := (M).behavioralSignature) assessment.strategy who alternative)
             history.1) (fun final => phaseExclusionBase setup .sequential (runtime setup) leaks
@@ -148,7 +151,7 @@ theorem component_owing_continuation_value_eq
           (sequentialRuntimePhasePlan_singleton setup.program)
           (setup.initialLaw.map setup.eventInputs) horizon scheduler parameter utility
           excludedPayoff (menu setup leaks bounds) completes
-          ((menu setup leaks bounds).bounded (initialLaw setup) horizon
+          ((menu setup leaks bounds).bounded (phaseInitialLaw setup) horizon
             scheduler).wellFoundedHistories
           (Profile.update (sig := (M).behavioralSignature) assessment.strategy who alternative) who
           history.1 owed

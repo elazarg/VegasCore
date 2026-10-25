@@ -25,19 +25,18 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket (graph setup)))
   (bounds : MessageBounds (graph setup)) (horizon : Nat)
   (scheduler : (phaseApplication (runtime setup) leaks).Scheduler)
-  [(phaseApplication (runtime setup) leaks).FiniteNature (initialLaw setup) scheduler]
+  [(phaseApplication (runtime setup) leaks).FiniteNature (phaseInitialLaw setup) scheduler]
 
-local notation "oldLeaks" => recoveryLeaks setup leaks
-local notation "oldScheduler" => recoveryScheduler setup leaks scheduler
-local notation "NativeScheduler" => RecoveryProjection.nativeScheduler (runtime setup) (oldLeaks)
-  (oldScheduler)
-local notation "N" => onePacketModel setup (oldLeaks) bounds (Vegas.initialLaw setup) horizon
+local notation "RecoveryLeaks" => recoveryLeaks setup leaks
+local notation "RecoveryScheduler" => recoveryScheduler setup leaks scheduler
+local notation "NativeScheduler" => RecoveryProjection.nativeScheduler (runtime setup)
+    (RecoveryLeaks)
+  (RecoveryScheduler)
+local notation "N" => onePacketModel setup (RecoveryLeaks) bounds (Vegas.initialLaw setup) horizon
   (NativeScheduler)
 
-private local instance : (application setup (oldLeaks)).FiniteNature
-    (Vegas.initialLaw setup) (NativeScheduler) := nativeNature setup leaks scheduler
-
-private local instance (who : Player) : DecidableEq ((N).InfoState who) := Classical.decEq _
+attribute [local instance] phaseInfoDecidableEq recoveryInfoDecidableEq nativeInfoDecidableEq
+  phaseHistoryFintype recoveryHistoryFintype nativeHistoryFintype nativeNature
 
 /-- Physical singleton phase service bounds the probability of a native first
 foreign exclusion before focal source debt, for every focal deviation. -/
@@ -50,42 +49,46 @@ theorem nativeComparison_foreign_exit_mass_le_rank (wellFormed : setup.WellForme
     (weights : ℕ → ∀ p, PMF (Part setup leaks bounds horizon scheduler slots p)) (n : ℕ)
     (focal : Player) (focalPolicy : (N).BehavioralPolicy focal)
     {delay bound : (graph setup).EventId → Nat}
-    (opportunity : PhaseService.Opportunity (runtime setup) leaks (initialLaw setup) horizon
+    (opportunity : PhaseService.Opportunity (runtime setup) leaks (phaseInitialLaw setup) horizon
       scheduler delay)
-    (inclusion : PhaseService.ProtectedInclusion (runtime setup) leaks (initialLaw setup)
+    (inclusion : PhaseService.ProtectedInclusion (runtime setup) leaks (phaseInitialLaw setup)
       horizon scheduler bound)
     (timely : (runtime setup).AsyncTimely delay bound)
     (certificate :
-      (onePacketProtocol setup (oldLeaks) bounds horizon (NativeScheduler)).WellFoundedHistories)
-    (extraStop : (onePacketProtocol setup (oldLeaks) bounds horizon
+      (onePacketProtocol setup (RecoveryLeaks) bounds horizon
+          (NativeScheduler)).WellFoundedHistories)
+    (extraStop : (onePacketProtocol setup (RecoveryLeaks) bounds horizon
       (NativeScheduler)).History → Prop)
-    (start : (application setup (oldLeaks)).Control)
+    (start : (application setup (RecoveryLeaks)).Control)
     (startTrace :
-      (onePacketProtocol setup (oldLeaks) bounds horizon (NativeScheduler)).Trace (some start))
+      (onePacketProtocol setup (RecoveryLeaks) bounds horizon (NativeScheduler)).Trace (some start))
     (current : (graph setup).EventId)
     (turn : start.execution.application.publicView.ownTurn? focal = some current)
     (clear : ExclusionEvidence 0 ∅
       (⟨start.execution.application, ∅⟩ : RecoveryState (graph setup)))
-    (regular : RegularTrace setup (oldLeaks) bounds horizon (NativeScheduler) (sequence n) focal
+    (regular : RegularTrace setup (RecoveryLeaks) bounds horizon (NativeScheduler) (sequence n)
+        focal
       startTrace) :
     (((N).runBehavioralUntil certificate
       (Function.update ((nativeComparisonSequence setup leaks bounds horizon scheduler
         sequence scale
         positive le_one weights n).strategy) focal focalPolicy)
-      (fun history => ¬ ReactiveApplication.stateInvariant (app := application setup (oldLeaks))
+      (fun history => ¬ ReactiveApplication.stateInvariant (app := application setup
+          (RecoveryLeaks))
         (fun native => ExclusionEvidence 0 ∅ (⟨native, ∅⟩ : RecoveryState (graph setup)))
           history.state ∨
-        DecodedState setup (oldLeaks) (failureProfile setup.program)
+        DecodedState setup (RecoveryLeaks) (failureProfile setup.program)
           (ProtocolState.OwesFailure focal setup.program) history.state ∨ extraStop history)
       ⟨some start, startTrace⟩).toOuterMeasure
-      {final | ¬ ReactiveApplication.stateInvariant (app := application setup (oldLeaks))
+      {final | ¬ ReactiveApplication.stateInvariant (app := application setup (RecoveryLeaks))
         (fun native => ExclusionEvidence 0 ∅ (⟨native, ∅⟩ : RecoveryState (graph setup)))
           final.state ∧
-        focal ∉ nativeFailureOwners (runtime setup) (oldLeaks) final.state}).toReal ≤
-      ((scale n) ^ 2 + scale n) * (application setup (oldLeaks)).rank horizon (some start) := by
+        focal ∉ nativeFailureOwners (runtime setup) (RecoveryLeaks) final.state}).toReal ≤
+      ((scale n) ^ 2 + scale n) * (application setup (RecoveryLeaks)).rank horizon (some start) :=
+          by
   have assembled := nativeComparisonSequence_assembled setup leaks bounds horizon scheduler
     sequence scale positive le_one weights
-  exact OnePacketComparison.assembled_foreign_exit_mass_le_rank setup (oldLeaks) bounds horizon
+  exact OnePacketComparison.assembled_foreign_exit_mass_le_rank setup (RecoveryLeaks) bounds horizon
     (NativeScheduler) wellFormed covers capacity sequence scale positive le_one _ _ assembled n
     focal focalPolicy
     (fun control prior clear => PhaseService.Opportunity.clear_native_counted setup leaks bounds

@@ -63,7 +63,7 @@ local notation "projection" => PhaseRecoveryProjection.protocolState (runtime se
 local notation "phaseInitial" => PMF.map (PhaseRuntimeState.initial plan) (inputs)
 local notation "recoveryInitial" => PMF.map
   (fun native => RecoveryState.mk native ∅) (initialLaw setup)
-local notation "old" => Recovery.onePacketMenu (runtime setup) recoveryLeaks bounds
+local notation "RecoveryMenu" => Recovery.onePacketMenu (runtime setup) recoveryLeaks bounds
 local notation "nativeMenu" => MessageBounds.onePacketMenu (runtime setup) recoveryLeaks bounds
 local notation "recoveryScheduler" => SequentialPhaseSchedulerInformation.scheduler setup.program
   (runtime setup) leaks recoveryLeaks
@@ -79,7 +79,7 @@ private theorem compiled_recovery_initial :
 counted prefix and exact absence of public failure evidence. -/
 theorem exists_native_of_clear_recovery_counted_trace
     (horizon : Nat) (scheduler : (R).Scheduler) {state : (R).ProtocolState}
-    (trace : ((old).protocol recoveryInitial horizon scheduler).Trace state)
+    (trace : ((RecoveryMenu).protocol recoveryInitial horizon scheduler).Trace state)
     (clear : ReactiveApplication.stateInvariant
       (fun state : RecoveryState (graph setup) => state.excluded = ∅) state) :
     ∃ native : (onePacketProtocol setup recoveryLeaks bounds horizon
@@ -101,7 +101,7 @@ theorem exists_native_of_clear_recovery_counted_trace
     intro current same
     rw [same] at clear
     exact clear
-  let rawTrace := (old).toRawTrace recoveryInitial horizon scheduler trace
+  let rawTrace := (RecoveryMenu).toRawTrace recoveryInitial horizon scheduler trace
   have nativeLaw : (recoveryInitial).map RecoveryState.native = initialLaw setup := by
     simp only [PMF.map_comp, Function.comp_def]
     exact PMF.map_id _
@@ -130,19 +130,20 @@ theorem exists_native_of_clear_recovery_counted_trace
 canonical phase counted realization with identical submitted materials. -/
 theorem legal_phaseJoint_of_clear_recovery_trace
     (horizon : Nat) (scheduler : (P).Scheduler)
-    {phaseState : (P).ProtocolState} {oldState : (R).ProtocolState}
+    {phaseState : (P).ProtocolState} {recoveryState : (R).ProtocolState}
     (phaseTrace : ((canonical).protocol phaseInitial horizon scheduler).Trace phaseState)
-    (oldTrace : ((old).protocol recoveryInitial horizon
-      (recoveryScheduler scheduler)).Trace oldState)
-    (matched : projection phaseState = oldState)
+    (recoveryTrace : ((RecoveryMenu).protocol recoveryInitial horizon
+      (recoveryScheduler scheduler)).Trace recoveryState)
+    (matched : projection phaseState = recoveryState)
     (clear : ReactiveApplication.stateInvariant
-      (fun state : RecoveryState (graph setup) => state.excluded = ∅) oldState)
+      (fun state : RecoveryState (graph setup) => state.excluded = ∅) recoveryState)
     (joint : Player → Option (R).Action)
-    (legal : ((old).protocol recoveryInitial horizon (recoveryScheduler scheduler)).Legal oldState
+    (legal : ((RecoveryMenu).protocol recoveryInitial horizon (recoveryScheduler scheduler)).Legal
+        recoveryState
       joint) :
     ((canonical).protocol phaseInitial horizon scheduler).Legal phaseState
       (PhaseRecoveryProjection.phaseJointActions (runtime setup) leaks recoveryLeaks joint) := by
-  subst oldState
+  subst recoveryState
   have terminal : (R).terminal (projection phaseState) ↔ (P).terminal phaseState := by
     cases phaseState <;> rfl
   have actor : (R).actor (projection phaseState) = (P).actor phaseState := by
@@ -165,46 +166,47 @@ theorem legal_phaseJoint_of_clear_recovery_trace
           have phaseClear : current.execution.application.current.excluded = ∅ := clear
           obtain ⟨native, nativeState, nativeRecord⟩ :=
             exists_native_of_clear_recovery_counted_trace setup leaks bounds horizon
-              (recoveryScheduler scheduler) oldTrace clear
+              (recoveryScheduler scheduler) recoveryTrace clear
           let nativeControl := RecoveryProjection.control (runtime setup) recoveryLeaks
             (PhaseRecoveryProjection.control (runtime setup) leaks recoveryLeaks current)
           change native.state = some nativeControl at nativeState
           have actualNative : (onePacketProtocol setup recoveryLeaks bounds horizon
               (nativeScheduler (recoveryScheduler scheduler))).Trace (some nativeControl) := by
             exact nativeState ▸ native.trace
-          have oldMember : response ∈ Recovery.onePacketActions (runtime setup) recoveryLeaks
+          have recoveryMember : response ∈ Recovery.onePacketActions (runtime setup) recoveryLeaks
               bounds who
               ((PhaseRecoveryProjection.execution (runtime setup) leaks recoveryLeaks
                 current.execution).recall who)
               ((PhaseRecoveryProjection.execution (runtime setup) leaks recoveryLeaks
                 current.execution).observe (R) who) := player.2
-          rw [PhaseRecoveryProjection.observe] at oldMember
+          rw [PhaseRecoveryProjection.observe] at recoveryMember
           change response ∈ Recovery.onePacketActions (runtime setup) recoveryLeaks bounds who
             ((current.execution.recall who).map
               (PhaseRecoveryProjection.playerEntry (runtime setup) leaks recoveryLeaks))
             (PhaseRecoveryProjection.playerView (runtime setup) leaks recoveryLeaks
-              (current.execution.observe (P) who)) at oldMember
+              (current.execution.observe (P) who)) at recoveryMember
           have counted := (included).trace phaseInitial horizon scheduler phaseTrace
           have member := phase_onePacket_mem_of_recovery_paired_history setup leaks recoveryLeaks
             bounds inputs horizon scheduler counted phaseClear
             (nativeScheduler (recoveryScheduler scheduler)) nativeControl actualNative
             (nativeRecord nativeControl nativeState) rfl who rfl rfl
             (PhaseRecoveryProjection.phaseAction (runtime setup) leaks recoveryLeaks response)
-            (by simpa only [PhaseRecoveryProjection.action_phaseAction] using oldMember)
+            (by simpa only [PhaseRecoveryProjection.action_phaseAction] using recoveryMember)
           exact (ReactiveApplication.SubmissionNormalization.menu_mem _ _ _ _ _ _).mpr
             ⟨_, member.1, member.2⟩
 
-/-- Every actual clear original recovery counted trace lifts to an actual canonical
+/-- Every actual clear recovery counted trace lifts to an actual canonical
 singleton phase trace, with identical length and complete projected endpoint. -/
 theorem exists_canonical_phase_of_clear_recovery_trace
     (horizon : Nat) (scheduler : (P).Scheduler) {state : (R).ProtocolState}
-    (trace : ((old).protocol recoveryInitial horizon (recoveryScheduler scheduler)).Trace state)
+    (trace : ((RecoveryMenu).protocol recoveryInitial horizon (recoveryScheduler scheduler)).Trace
+        state)
     (clear : ReactiveApplication.stateInvariant
       (fun state : RecoveryState (graph setup) => state.excluded = ∅) state) :
     ∃ phase : ((canonical).protocol phaseInitial horizon scheduler).History,
       projection phase.state = state ∧ phase.trace.length = trace.length := by
   have origin : ∀ {state}
-      (history : ((old).protocol recoveryInitial horizon
+      (history : ((RecoveryMenu).protocol recoveryInitial horizon
         (recoveryScheduler scheduler)).Trace state),
       ReactiveApplication.stateInvariant
         (fun state : RecoveryState (graph setup) => state.excluded = ∅) state →

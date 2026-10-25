@@ -30,7 +30,7 @@ local notation "N" => application setup recoveryLeaks
 local notation "phaseInitial" => PMF.map (PhaseRuntimeState.initial plan) (inputs)
 local notation "recoveryInitial" => PMF.map (fun native => RecoveryState.mk native ∅)
   (initialLaw setup)
-local notation "old" => Recovery.onePacketMenu (Vegas.runtime setup) recoveryLeaks bounds
+local notation "RecoveryMenu" => Recovery.onePacketMenu (Vegas.runtime setup) recoveryLeaks bounds
 local notation "nativeMenu" => MessageBounds.onePacketMenu (Vegas.runtime setup)
   recoveryLeaks bounds
 local notation "recoveryScheduler" => SequentialPhaseSchedulerInformation.scheduler setup.program
@@ -44,7 +44,7 @@ private theorem exists_recovery_of_clear_native_onePacket
       (nativeScheduler (recoveryScheduler scheduler))).Trace (some current))
     (clear : ExclusionEvidence 0 ∅
       (⟨current.execution.application, ∅⟩ : RecoveryState (Vegas.graph setup))) :
-    Nonempty (((old).protocol recoveryInitial horizon (recoveryScheduler scheduler)).Trace
+    Nonempty (((RecoveryMenu).protocol recoveryInitial horizon (recoveryScheduler scheduler)).Trace
       (some (RecoveryProjection.liftControl (Vegas.runtime setup) recoveryLeaks current))) := by
   have initialized : ∀ value ∈ (recoveryInitial).support, ∃ draw,
       value = (⟨State.initial draw, ∅⟩ : RecoveryState (Vegas.graph setup)) := by

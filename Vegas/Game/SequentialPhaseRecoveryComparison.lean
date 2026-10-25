@@ -24,16 +24,17 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket (graph setup)))
   (bounds : MessageBounds (graph setup)) (horizon : Nat)
   (scheduler : (phaseApplication (runtime setup) leaks).Scheduler)
-  [(phaseApplication (runtime setup) leaks).FiniteNature (initialLaw setup) scheduler]
+  [(phaseApplication (runtime setup) leaks).FiniteNature (phaseInitialLaw setup) scheduler]
 
 local notation "M" => model setup leaks bounds horizon scheduler
 local notation "R" => recoveryModel setup leaks bounds horizon scheduler
-local notation "oldLeaks" => recoveryLeaks setup leaks
-local notation "oldInitial" => recoveryInitialLaw setup
-local notation "oldScheduler" => recoveryScheduler setup leaks scheduler
-local notation "oldMenu" => Recovery.onePacketMenu (runtime setup) (oldLeaks) bounds
+local notation "RecoveryLeaks" => recoveryLeaks setup leaks
+local notation "RecoveryPrior" => recoveryInitialLaw setup
+local notation "RecoveryScheduler" => recoveryScheduler setup leaks scheduler
+local notation "RecoveryMenu" => Recovery.onePacketMenu (runtime setup) (RecoveryLeaks) bounds
 
-attribute [local instance] phaseInfoDecidableEq recoveryInfoDecidableEq
+attribute [local instance] phaseInfoDecidableEq recoveryInfoDecidableEq nativeInfoDecidableEq
+  phaseHistoryFintype recoveryHistoryFintype nativeHistoryFintype nativeNature
 
 def recoveryComparisonFallback : ∀ who, (R).Policy who := fun _ _ => Classical.arbitrary _
 
@@ -45,9 +46,11 @@ def recoveryComparisonStrategy (assessment : setup.intendedModel.BehavioralAsses
   (R).agentBehavior (R).playedInformation
     (recoveryComparisonFallback setup leaks bounds horizon scheduler) fun agent =>
       (recoveryComparisonWeights setup leaks bounds horizon scheduler weights
-        (RecoveryOnePacket.pool setup (oldLeaks) bounds (oldInitial) horizon (oldScheduler)
+        (RecoveryOnePacket.pool setup (RecoveryLeaks) bounds (RecoveryPrior) horizon
+            (RecoveryScheduler)
           agent)).bind
-        (RecoveryOnePacket.component setup (oldLeaks) bounds (oldInitial) horizon (oldScheduler)
+        (RecoveryOnePacket.component setup (RecoveryLeaks) bounds (RecoveryPrior) horizon
+            (RecoveryScheduler)
           assessment scale nonnegative le_one agent)
 
 theorem recoveryComparisonStrategy_fullSupport
@@ -61,11 +64,11 @@ theorem recoveryComparisonStrategy_fullSupport
   rw [recoveryComparisonStrategy, (R).agentBehavior_at (R).playedInformation
     (recoveryComparisonFallback setup leaks bounds horizon scheduler) _ ((R).agentAt site)]
   obtain ⟨part, member⟩ := (recoveryComparisonWeights setup leaks bounds horizon scheduler weights
-    (RecoveryOnePacket.pool setup (oldLeaks) bounds (oldInitial) horizon (oldScheduler)
+    (RecoveryOnePacket.pool setup (RecoveryLeaks) bounds (RecoveryPrior) horizon (RecoveryScheduler)
       ((R).agentAt site))).support_nonempty
   exact (PMF.mem_support_bind_iff _ _ _).mpr ⟨part, member,
-    RecoveryOnePacket.component_fullSupport setup (oldLeaks) bounds (oldInitial) horizon
-      (oldScheduler) assessment positive le_one ((R).agentAt site) part choice⟩
+    RecoveryOnePacket.component_fullSupport setup (RecoveryLeaks) bounds (RecoveryPrior) horizon
+      (RecoveryScheduler) assessment positive le_one ((R).agentAt site) part choice⟩
 
 /-- Its law at a represented clear site is exactly the original phase mixture. -/
 theorem recoveryComparisonStrategy_at_clear
@@ -96,7 +99,8 @@ def recoveryComparisonSequence (source : ℕ → setup.intendedModel.BehavioralA
       (positive n).le (le_one n) (weights n))
     (recoveryComparisonStrategy_fullSupport setup leaks bounds horizon scheduler (source n)
       (positive n) (le_one n) (weights n))
-    ((oldMenu).decisionRecall (oldInitial) horizon (oldScheduler)).decisionInformationAntichain
+    ((RecoveryMenu).decisionRecall (RecoveryPrior) horizon
+        (RecoveryScheduler)).decisionInformationAntichain
 
 theorem recoveryComparisonSequence_assembled
     (source : ℕ → setup.intendedModel.BehavioralAssessment)
@@ -123,7 +127,8 @@ theorem recoveryComparisonSequence_bayes
     BehavioralAssessment.IsBayesConsistent (R)
       (recoveryComparisonSequence setup leaks bounds horizon scheduler source scale positive le_one
         weights n)
-      ((oldMenu).decisionRecall (oldInitial) horizon (oldScheduler)).decisionInformationAntichain :=
+      ((RecoveryMenu).decisionRecall (RecoveryPrior) horizon
+          (RecoveryScheduler)).decisionInformationAntichain :=
   (R).bayesAssessment_isBayesConsistent _ _ _
 
 end Vegas.SequentialPhase

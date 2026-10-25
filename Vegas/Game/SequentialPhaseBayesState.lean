@@ -96,7 +96,7 @@ private theorem clear_information_history
           (included.trace phaseInitial horizon scheduler trace) clear who
 
 include included in
-/-- A clear phase decision input and its old projection have exactly the same
+/-- A clear phase decision input and its recovery projection have exactly the same
 actual counted-history fiber, including arbitrary histories outside equilibrium support. -/
 theorem clear_site_fiber_projected (who : Player) (site : (M).InformationSite who)
     (past : List (P).PlayerEntry) (view : (P).PlayerView)
@@ -125,13 +125,13 @@ theorem clear_site_fiber_projected (who : Player) (site : (M).InformationSite wh
   · intro equal
     rw [projectedObserve, equal]
   · intro equal
-    have oldInput : (R).observe who (projection history.state) =
+    have recoveryInput : (R).observe who (projection history.state) =
         some ((past.map (PhaseRecoveryProjection.playerEntry runtime leaks recoveryLeaks)),
           PhaseRecoveryProjection.playerView runtime leaks recoveryLeaks view) := by
       simpa only [siteInput, PhaseRecoveryProjection.information, Option.map_some] using equal
     have currentClear : phaseClear history.state := by
       have retained := recovery_clear_of_observe_eq program runtime leaks who
-        (projection history.state) _ _ oldInput clear
+        (projection history.state) _ _ recoveryInput clear
       cases stateEq : history.state with
       | none => trivial
       | some current =>
@@ -222,7 +222,7 @@ private theorem recovery_site_avoids_exclusion
   exact not_not.mpr previous
 
 include included in
-/-- Conditioning the actual phase first-hit law on a clear old input yields
+/-- Conditioning the actual phase first-hit law on a clear recovery input yields
 its true Bayes belief on the complete projected physical recovery state. -/
 theorem phase_bayesBelief_eq_stopped_recovery_state
     (profile : ∀ who, (M).BehavioralPolicy who) (who : Player)
@@ -263,7 +263,7 @@ theorem phase_bayesBelief_eq_stopped_recovery_state
   rw [stopping] at result
   exact result
 
-/-- At an actual clear old decision site, the stopped state posterior is the
+/-- At an actual clear recovery decision site, the stopped state posterior is the
 original raw recovery Bayes belief on the whole physical protocol state. -/
 theorem recovery_bayesBelief_eq_stopped_state
     (profile : ∀ who, (N).BehavioralPolicy who) (who : Player)
@@ -301,7 +301,7 @@ theorem recovery_bayesBelief_eq_stopped_state
   exact result
 
 include included in
-/-- A positive clear phase site has an actual old raw decision site with the
+/-- A positive clear phase site has an actual recovery raw decision site with the
 same information mass and the same Bayes belief on the full physical recovery
 state. Old-site positivity is derived from the given phase-site positivity. -/
 theorem exists_recovery_site_bayes_state_eq
@@ -309,28 +309,30 @@ theorem exists_recovery_site_bayes_state_eq
     (site : (M).InformationSite who) (past : List (P).PlayerEntry) (view : (P).PlayerView)
     (siteInput : site.1 = some (past, view)) (clear : view.application.2.excluded = ∅)
     (positive : 0 < (M).informationMass profile who site) :
-    let oldProfile := fun player => behavioralPolicy program runtime leaks menu inputs horizon
+    let recoveryProfile := fun player => behavioralPolicy program runtime leaks menu inputs horizon
       scheduler player (profile player)
-    ∃ (oldSite : (N).InformationSite who)
-      (oldPositive : 0 < (N).informationMass oldProfile who oldSite),
-      oldSite.1 = projectInfo site.1 ∧
-      (N).informationMass oldProfile who oldSite = (M).informationMass profile who site ∧
+    ∃ (recoverySite : (N).InformationSite who)
+      (recoveryPositive : 0 < (N).informationMass recoveryProfile who recoverySite),
+      recoverySite.1 = projectInfo site.1 ∧
+      (N).informationMass recoveryProfile who recoverySite = (M).informationMass profile who site ∧
       (((M).bayesBelief profile who site
         ((menu).decisionInformationAntichain phaseInitial horizon scheduler who site) positive).map
           (fun history => projection history.1.state)) =
-      (((N).bayesBelief oldProfile who oldSite
-        ((R).decisionInformationAntichain recoveryInitial horizon recoveryScheduler who oldSite)
-        oldPositive).map (fun history => history.1.state)) := by
+      (((N).bayesBelief recoveryProfile who recoverySite
+        ((R).decisionInformationAntichain recoveryInitial horizon recoveryScheduler who
+            recoverySite)
+        recoveryPositive).map (fun history => history.1.state)) := by
   classical
   dsimp only
-  let oldProfile := fun player => behavioralPolicy program runtime leaks menu inputs horizon
+  let recoveryProfile := fun player => behavioralPolicy program runtime leaks menu inputs horizon
     scheduler player (profile player)
-  let oldPast := past.map (PhaseRecoveryProjection.playerEntry runtime leaks recoveryLeaks)
-  let oldView := PhaseRecoveryProjection.playerView runtime leaks recoveryLeaks view
-  have oldInput : projectInfo site.1 = some (oldPast, oldView) := by
-    simp only [siteInput, PhaseRecoveryProjection.information, Option.map_some, oldPast, oldView]
-  have oldClear : oldView.application.2 = ∅ := clear
-  have oldDecision : (N).IsDecisionInfo who (projectInfo site.1) := by
+  let recoveryPast := past.map (PhaseRecoveryProjection.playerEntry runtime leaks recoveryLeaks)
+  let recoveryView := PhaseRecoveryProjection.playerView runtime leaks recoveryLeaks view
+  have recoveryInput : projectInfo site.1 = some (recoveryPast, recoveryView) := by
+    simp only [siteInput, PhaseRecoveryProjection.information, Option.map_some, recoveryPast,
+        recoveryView]
+  have recoveryCleared : recoveryView.application.2 = ∅ := clear
+  have recoveryDecision : (N).IsDecisionInfo who (projectInfo site.1) := by
     obtain ⟨witness, running, _action, _allowed⟩ := site.2
     have witnessInput : (P).observe who witness.1.state = some (past, view) :=
       ((menu).info phaseInitial horizon scheduler who witness.1.trace).symm.trans
@@ -353,21 +355,22 @@ theorem exists_recovery_site_bayes_state_eq
           (P).terminal witness.1.state := by cases witness.1.state <;> rfl
       exact fun ended => running (terminal.mp ended)
     · change (some (⟨none⟩ : (R).Action)).isSome = (projectInfo site.1).isSome
-      rw [oldInput]
+      rw [recoveryInput]
       rfl
-  let oldSite : (N).InformationSite who := ⟨projectInfo site.1, oldDecision⟩
+  let recoverySite : (N).InformationSite who := ⟨projectInfo site.1, recoveryDecision⟩
   let phaseCertificate := ((menu).bounded phaseInitial horizon scheduler).wellFoundedHistories
-  let oldCertificate := ((R).bounded recoveryInitial horizon recoveryScheduler).wellFoundedHistories
+  let recoveryCertificate := ((R).bounded recoveryInitial horizon
+      recoveryScheduler).wellFoundedHistories
   let phaseStopped := (M).runBehavioralUntil phaseCertificate profile
     (fun history => ¬ phaseClear history.state ∨
       (R).observe who (projection history.state) = projectInfo site.1)
     ((menu).protocol phaseInitial horizon scheduler).initHistory
-  let oldStopped := (N).runBehavioralUntil oldCertificate oldProfile
+  let recoveryStopped := (N).runBehavioralUntil recoveryCertificate recoveryProfile
     (fun history => ¬ recoveryClear history.state ∨
       (R).observe who history.state = projectInfo site.1)
     ((R).protocol recoveryInitial horizon recoveryScheduler).initHistory
   have laws : phaseStopped.map (fun history => projection history.state) =
-      oldStopped.map History.state :=
+      recoveryStopped.map History.state :=
     run_until_exclusion_or_guard_initial_map_state program runtime leaks menu bounds included inputs
       horizon scheduler (fun state => (R).observe who state = projectInfo site.1) profile
   have phaseAvoids := phase_site_avoids_exclusion program runtime leaks menu inputs horizon
@@ -388,45 +391,49 @@ theorem exists_recovery_site_bayes_state_eq
     (fun history _supported => clear_site_fiber_projected program runtime leaks menu bounds included
       inputs horizon scheduler who site past view siteInput clear history)
   rw [phaseStopping] at phaseMass
-  have oldAvoids := recovery_site_avoids_exclusion program runtime leaks inputs horizon scheduler
-    who oldSite oldPast oldView oldInput oldClear
-  have oldObserved (history : ((R).protocol recoveryInitial horizon recoveryScheduler).History) :
+  have recoveryAvoids := recovery_site_avoids_exclusion program runtime leaks inputs horizon
+      scheduler
+    who recoverySite recoveryPast recoveryView recoveryInput recoveryCleared
+  have recoveryObserved (history : ((R).protocol recoveryInitial horizon recoveryScheduler).History)
+      :
       (N).infoOf who history.trace = (R).observe who history.state :=
     (R).info recoveryInitial horizon recoveryScheduler who history.trace
-  have oldStopping : (fun history :
+  have recoveryStopping : (fun history :
       ((R).protocol recoveryInitial horizon recoveryScheduler).History =>
-      ¬ recoveryClear history.state ∨ (N).infoOf who history.trace = oldSite.1) =
+      ¬ recoveryClear history.state ∨ (N).infoOf who history.trace = recoverySite.1) =
       fun history => ¬ recoveryClear history.state ∨
         (R).observe who history.state = projectInfo site.1 := by
     funext history
-    rw [oldObserved history]
-  have oldMass := (N).informationMass_eq_stopped_observation oldCertificate
-    ((R).bounded recoveryInitial horizon recoveryScheduler) oldProfile who oldSite
-    ((R).decisionInformationAntichain recoveryInitial horizon recoveryScheduler who oldSite)
-    (fun history => ¬ recoveryClear history.state) oldAvoids
-    (fun history => (R).observe who history.state) oldSite.1
-    (fun history _supported => by rw [oldObserved history])
-  rw [oldStopping] at oldMass
-  have massEq : (N).informationMass oldProfile who oldSite =
+    rw [recoveryObserved history]
+  have recoveryMass := (N).informationMass_eq_stopped_observation recoveryCertificate
+    ((R).bounded recoveryInitial horizon recoveryScheduler) recoveryProfile who recoverySite
+    ((R).decisionInformationAntichain recoveryInitial horizon recoveryScheduler who recoverySite)
+    (fun history => ¬ recoveryClear history.state) recoveryAvoids
+    (fun history => (R).observe who history.state) recoverySite.1
+    (fun history _supported => by rw [recoveryObserved history])
+  rw [recoveryStopping] at recoveryMass
+  have massEq : (N).informationMass recoveryProfile who recoverySite =
       (M).informationMass profile who site := by
     have observedLaws := congrArg (fun law => (law.map ((R).observe who)) (projectInfo site.1)) laws
     rw [PMF.map_comp, PMF.map_comp] at observedLaws
-    exact oldMass.symm.trans (observedLaws.symm.trans phaseMass)
-  have oldPositive : 0 < (N).informationMass oldProfile who oldSite := by
+    exact recoveryMass.symm.trans (observedLaws.symm.trans phaseMass)
+  have recoveryPositive : 0 < (N).informationMass recoveryProfile who recoverySite := by
     rw [massEq]
     exact positive
-  refine ⟨oldSite, oldPositive, rfl, massEq, ?_⟩
+  refine ⟨recoverySite, recoveryPositive, rfl, massEq, ?_⟩
   have phasePosterior := phase_bayesBelief_eq_stopped_recovery_state program runtime leaks menu
     bounds
     included inputs horizon scheduler profile who site past view siteInput clear positive
-  have oldPosterior := recovery_bayesBelief_eq_stopped_state program runtime leaks inputs horizon
-    scheduler oldProfile who oldSite oldPast oldView oldInput oldClear oldPositive
-  dsimp only at phasePosterior oldPosterior
+  have recoveryPosterior := recovery_bayesBelief_eq_stopped_state program runtime leaks inputs
+      horizon
+    scheduler recoveryProfile who recoverySite recoveryPast recoveryView recoveryInput
+        recoveryCleared recoveryPositive
+  dsimp only at phasePosterior recoveryPosterior
   change fiberPosterior (phaseStopped.map (fun history => projection history.state))
     ((R).observe who) (projectInfo site.1) = _ at phasePosterior
-  change fiberPosterior (oldStopped.map History.state) ((R).observe who)
-    (projectInfo site.1) = _ at oldPosterior
+  change fiberPosterior (recoveryStopped.map History.state) ((R).observe who)
+    (projectInfo site.1) = _ at recoveryPosterior
   rw [laws] at phasePosterior
-  exact phasePosterior.symm.trans oldPosterior
+  exact phasePosterior.symm.trans recoveryPosterior
 
 end Vegas.EventGraphRuntime.SequentialPhaseRecoveryPolicy

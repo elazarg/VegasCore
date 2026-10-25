@@ -6,7 +6,7 @@ import Vegas.Pending.PhaseClearService
 /-! # Native service at actual clear recovery counted prefixes
 
 Reverse counted trace lifting instantiates the physical phase contracts at an
-actual phase prefix for every original recovery counterfactual. The conclusions
+actual phase prefix for every recovery counterfactual. The conclusions
 are fixed-execution native predicates, not unrestricted raw service contracts.
 -/
 
@@ -65,13 +65,13 @@ local notation "included" => PhaseCount.normalized_onePacket_included (Vegas.run
 local notation "phaseInitial" => PMF.map (PhaseRuntimeState.initial plan) (inputs)
 local notation "recoveryInitial" => PMF.map (fun native => RecoveryState.mk native ∅)
   (initialLaw setup)
-local notation "old" => Recovery.onePacketMenu (Vegas.runtime setup) recoveryLeaks bounds
+local notation "RecoveryMenu" => Recovery.onePacketMenu (Vegas.runtime setup) recoveryLeaks bounds
 local notation "recoveryScheduler" => SequentialPhaseSchedulerInformation.scheduler setup.program
   (Vegas.runtime setup) leaks recoveryLeaks
 
 private theorem exists_phase_control_of_clear_recovery
     (horizon : Nat) (scheduler : (P).Scheduler) {current : (R).Control}
-    (trace : ((old).protocol recoveryInitial horizon (recoveryScheduler scheduler)).Trace
+    (trace : ((RecoveryMenu).protocol recoveryInitial horizon (recoveryScheduler scheduler)).Trace
       (some current)) (clear : current.execution.application.excluded = ∅) :
     ∃ phase : (P).Control, ∃ _trace :
       ((PhaseCount.onePacketMenu (Vegas.runtime setup) leaks bounds).protocol phaseInitial horizon
@@ -90,12 +90,12 @@ private theorem exists_phase_control_of_clear_recovery
       exact ⟨phaseControl, actual, Option.some.inj endpoint⟩
 
 /-- Phase opportunity supplies the native fixed-execution condition at every
-actual clear original recovery counted prefix, including counterfactual ones. -/
+actual clear recovery counted prefix, including counterfactual ones. -/
 theorem Opportunity.clear_recovery_onePacket
     (horizon : Nat) (scheduler : (P).Scheduler) (delay : (Vegas.graph setup).EventId → Nat)
     (opportunity : Opportunity (Vegas.runtime setup) leaks phaseInitial horizon scheduler delay)
     {current : (R).Control}
-    (trace : ((old).protocol recoveryInitial horizon (recoveryScheduler scheduler)).Trace
+    (trace : ((RecoveryMenu).protocol recoveryInitial horizon (recoveryScheduler scheduler)).Trace
       (some current)) (clear : current.execution.application.excluded = ∅) :
     Vegas.EventGraphRuntime.OpportunityAt (Vegas.runtime setup) recoveryLeaks
       (RecoveryProjection.execution (Vegas.runtime setup) recoveryLeaks current.execution)
@@ -115,13 +115,13 @@ theorem Opportunity.clear_recovery_onePacket
   exact native
 
 /-- Physical sole-packet protection supplies the exact native predicate at every
-actual clear original recovery counted prefix; no author visibility rule is imposed. -/
+actual clear recovery counted prefix; no author visibility rule is imposed. -/
 theorem ProtectedInclusion.clear_recovery_onePacket
     (horizon : Nat) (scheduler : (P).Scheduler) (bound : (Vegas.graph setup).EventId → Nat)
     (inclusion : ProtectedInclusion (Vegas.runtime setup) leaks phaseInitial horizon scheduler
       bound)
     {current : (R).Control}
-    (trace : ((old).protocol recoveryInitial horizon (recoveryScheduler scheduler)).Trace
+    (trace : ((RecoveryMenu).protocol recoveryInitial horizon (recoveryScheduler scheduler)).Trace
       (some current)) (clear : current.execution.application.excluded = ∅) :
     Vegas.EventGraphRuntime.ProtectedInclusionAt (Vegas.runtime setup) recoveryLeaks
       (RecoveryProjection.execution (Vegas.runtime setup) recoveryLeaks current.execution)
@@ -148,7 +148,7 @@ theorem CompletesPlay.clear_recovery_onePacket
     (horizon : Nat) (scheduler : (P).Scheduler)
     (completes : CompletesPlay (Vegas.runtime setup) leaks phaseInitial horizon scheduler)
     {current : (R).Control}
-    (trace : ((old).protocol recoveryInitial horizon (recoveryScheduler scheduler)).Trace
+    (trace : ((RecoveryMenu).protocol recoveryInitial horizon (recoveryScheduler scheduler)).Trace
       (some current)) (clear : current.execution.application.excluded = ∅)
     (terminal : (R).terminal (some current)) :
     current.execution.application.native.config.cut.Terminal := by

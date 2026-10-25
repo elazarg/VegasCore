@@ -20,39 +20,35 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket (graph setup)))
   (bounds : MessageBounds (graph setup)) (horizon : Nat)
   (scheduler : (phaseApplication (runtime setup) leaks).Scheduler)
-  [(phaseApplication (runtime setup) leaks).FiniteNature (initialLaw setup) scheduler]
+  [(phaseApplication (runtime setup) leaks).FiniteNature (phaseInitialLaw setup) scheduler]
 
-local notation "oldLeaks" => recoveryLeaks setup leaks
-local notation "Initial" => recoveryInitialLaw setup
-local notation "oldScheduler" => recoveryScheduler setup leaks scheduler
-local notation "NativeScheduler" => RecoveryProjection.nativeScheduler (runtime setup) (oldLeaks)
-  (oldScheduler)
+local notation "RecoveryLeaks" => recoveryLeaks setup leaks
+local notation "RecoveryPrior" => recoveryInitialLaw setup
+local notation "RecoveryScheduler" => recoveryScheduler setup leaks scheduler
+local notation "NativeScheduler" => RecoveryProjection.nativeScheduler (runtime setup)
+    (RecoveryLeaks)
+  (RecoveryScheduler)
 local notation "R" => recoveryModel setup leaks bounds horizon scheduler
-local notation "RMenu" => Recovery.onePacketMenu (runtime setup) (oldLeaks) bounds
-local notation "NMenu" => bounds.onePacketMenu (runtime setup) (oldLeaks)
-local notation "N" => onePacketModel setup (oldLeaks) bounds (Vegas.initialLaw setup) horizon
+local notation "RMenu" => Recovery.onePacketMenu (runtime setup) (RecoveryLeaks) bounds
+local notation "NMenu" => bounds.onePacketMenu (runtime setup) (RecoveryLeaks)
+local notation "N" => onePacketModel setup (RecoveryLeaks) bounds (Vegas.initialLaw setup) horizon
   (NativeScheduler)
-local notation "RP" => ReactiveApplication.ResponseMenu.protocol (RMenu) Initial horizon
-  (oldScheduler)
-local notation "NP" => onePacketProtocol setup (oldLeaks) bounds horizon (NativeScheduler)
-local notation "RawNative" => ReactiveApplication.protocol (application setup (oldLeaks))
-  (PMF.map RecoveryState.native (Initial)) horizon (NativeScheduler)
-local notation "Clear" => ReactiveApplication.stateInvariant (app := application setup (oldLeaks))
+local notation "RP" => ReactiveApplication.ResponseMenu.protocol (RMenu) RecoveryPrior horizon
+  (RecoveryScheduler)
+local notation "NP" => onePacketProtocol setup (RecoveryLeaks) bounds horizon (NativeScheduler)
+local notation "RawNative" => ReactiveApplication.protocol (application setup (RecoveryLeaks))
+  (PMF.map RecoveryState.native (RecoveryPrior)) horizon (NativeScheduler)
+local notation "Clear" => ReactiveApplication.stateInvariant (app := application setup
+    (RecoveryLeaks))
   (fun native => ExclusionEvidence 0 ∅ (RecoveryState.mk native ∅))
 
 local notation "P" => phaseApplication (runtime setup) leaks
 local notation "M" => model setup leaks bounds horizon scheduler
-local notation "projectInfo" => PhaseRecoveryProjection.information (runtime setup) leaks (oldLeaks)
+local notation "projectInfo" => PhaseRecoveryProjection.information (runtime setup) leaks
+    (RecoveryLeaks)
 
-attribute [local instance] phaseInfoDecidableEq recoveryInfoDecidableEq
-
-private local instance keyedGainPhaseHistory :
-    Fintype ((menu setup leaks bounds).protocol (initialLaw setup) horizon scheduler).History :=
-  @ReactiveApplication.ResponseMenu.historyFintype Player _ _ (menu setup leaks bounds)
-    (initialLaw setup) horizon scheduler inferInstance inferInstance
-
-private local instance keyedGainPhaseInformation (who : Player) :
-    DecidableEq ((M).InfoState who) := phaseInfoDecidableEq setup leaks bounds horizon scheduler who
+attribute [local instance] phaseInfoDecidableEq recoveryInfoDecidableEq nativeInfoDecidableEq
+  phaseHistoryFintype recoveryHistoryFintype nativeHistoryFintype nativeNature
 
 open Classical in
 private theorem component_mixture_gain_le_of_values
@@ -76,16 +72,18 @@ private theorem component_mixture_gain_le_of_values
           else 0) ≤ 0)
     (excluded : Player → ℝ)
     (noGain : ∀ who (site : (M).InformationSite who) (clear : ClearInput setup leaks site.1),
-      RecoveryOnePacket.OwingAgent setup (oldLeaks) bounds Initial horizon (oldScheduler)
+      RecoveryOnePacket.OwingAgent setup (RecoveryLeaks) bounds RecoveryPrior horizon
+          (RecoveryScheduler)
         (projectedAgent setup leaks bounds horizon scheduler ((M).agentAt site) clear) →
       ∀ law, localGain (2 * horizon + 1) (fun final => final.state) payoff assessment site law = 0)
     (continuation : (M).InformationAgent (M).playedInformation → ℝ)
-    (score : Option (LateKey setup (oldLeaks)) → LateOption slots → ℝ) (error : ℝ)
+    (score : Option (LateKey setup (RecoveryLeaks)) → LateOption slots → ℝ) (error : ℝ)
     (values : ∀ agent : (M).InformationAgent (M).playedInformation,
       ownedKeyed (FreeAgent setup leaks bounds horizon scheduler)
         (KeyedAgent setup leaks bounds horizon scheduler) agent →
       (∀ clear : ClearInput setup leaks agent.2.1,
-        ¬ RecoveryOnePacket.OwingAgent setup (oldLeaks) bounds Initial horizon (oldScheduler)
+        ¬ RecoveryOnePacket.OwingAgent setup (RecoveryLeaks) bounds RecoveryPrior horizon
+            (RecoveryScheduler)
           (projectedAgent setup leaks bounds horizon scheduler agent clear)) →
       ∀ decision : (M).IsDecisionInfo agent.1 agent.2.1,
         excluded agent.1 ≤ continuation agent ∧ ∀ option,
@@ -106,14 +104,16 @@ private theorem component_mixture_gain_le_of_values
       Fintype.card ((M).InformationAgent (M).playedInformation) * (2 * max error 0) := by
   let indifferent := fun agent : (M).InformationAgent (M).playedInformation =>
     ∃ clear : ClearInput setup leaks agent.2.1,
-      RecoveryOnePacket.OwingAgent setup (oldLeaks) bounds Initial horizon (oldScheduler)
+      RecoveryOnePacket.OwingAgent setup (RecoveryLeaks) bounds RecoveryPrior horizon
+          (RecoveryScheduler)
         (projectedAgent setup leaks bounds horizon scheduler agent clear)
   have noGainAt : ∀ who (site : (M).InformationSite who),
       indifferent ((M).agentAt site) → ∀ law,
       localGain (2 * horizon + 1) (fun final => final.state) payoff assessment site law = 0 := by
     intro focal atSite owed law
     change (∃ clear : ClearInput setup leaks atSite.1,
-      RecoveryOnePacket.OwingAgent setup (oldLeaks) bounds Initial horizon (oldScheduler)
+      RecoveryOnePacket.OwingAgent setup (RecoveryLeaks) bounds RecoveryPrior horizon
+          (RecoveryScheduler)
         (projectedAgent setup leaks bounds horizon scheduler ((M).agentAt atSite) clear)) at owed
     obtain ⟨clear, owing⟩ := owed
     exact noGain focal atSite clear owing law
@@ -131,13 +131,13 @@ private theorem component_mixture_gain_le_of_values
             (continuation agent - excluded agent.1))| ≤ error := by
     exact values agent owned (fun clear owing => notOwing ⟨clear, owing⟩) decision
   exact @freeKeyed_memberGain_le_of_common_values Player inferInstance inferInstance
-    ((menu setup leaks bounds).protocol (initialLaw setup) horizon scheduler) M
+    ((menu setup leaks bounds).protocol (phaseInitialLaw setup) horizon scheduler) M
     (fun who => phaseInfoDecidableEq setup leaks bounds horizon scheduler who)
-    (keyedGainPhaseHistory setup leaks bounds horizon scheduler)
-    (P).ProtocolState (Option (LateKey setup (oldLeaks))) (LateOption slots) inferInstance
+    (phaseHistoryFintype setup leaks bounds horizon scheduler)
+    (P).ProtocolState (Option (LateKey setup (RecoveryLeaks))) (LateOption slots) inferInstance
     inferInstance (2 * horizon + 1)
-    ((menu setup leaks bounds).bounded (initialLaw setup) horizon scheduler)
-    ((menu setup leaks bounds).decisionRecall (initialLaw setup) horizon scheduler)
+    ((menu setup leaks bounds).bounded (phaseInitialLaw setup) horizon scheduler)
+    ((menu setup leaks bounds).decisionRecall (phaseInitialLaw setup) horizon scheduler)
     (fun final => final.state) payoff fallback (FreeAgent setup leaks bounds horizon scheduler)
     (KeyedAgent setup leaks bounds horizon scheduler)
     (agentKey setup leaks bounds horizon scheduler)
@@ -155,10 +155,6 @@ private theorem component_mixture_gain_le_of_values
     noGainAt continuation score error componentValues
     who site keyed alternative
 
-private local instance keyedGainNativeNature :
-    (application setup (oldLeaks)).FiniteNature (Vegas.initialLaw setup) (NativeScheduler) :=
-  nativeNature setup leaks scheduler
-
 variable {Public : Type*} {signal : State L setup.context → Public}
 
 open Classical in
@@ -171,21 +167,21 @@ theorem keyed_component_mixture_gain_bounds [Finite setup.intendedProtocol.Histo
     (sourceMixed : ∀ n, (sequence n).IsFullyMixed)
     (scale : ℕ → ℝ) (positive : ∀ n, 0 < scale n) (le_one : ∀ n, scale n ≤ 1)
     (scaleEq : ∀ n, scale n = trembleScale
-      (combinedFloor setup (oldLeaks) bounds horizon (NativeScheduler) (sequence n))
+      (combinedFloor setup (RecoveryLeaks) bounds horizon (NativeScheduler) (sequence n))
       (2 * horizon + 2) n)
     (covers : bounds.CoversOutputValues) (coversInputs : bounds.CoversInputValues)
     (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount)
     (weights : ℕ → ∀ p,
       PMF (Part setup leaks bounds horizon scheduler bounds.candidateCount p))
     {delay bound : (graph setup).EventId → Nat}
-    (opportunity : PhaseService.Opportunity (runtime setup) leaks (initialLaw setup) horizon
+    (opportunity : PhaseService.Opportunity (runtime setup) leaks (phaseInitialLaw setup) horizon
       scheduler delay)
-    (inclusion : PhaseService.ProtectedInclusion (runtime setup) leaks (initialLaw setup)
+    (inclusion : PhaseService.ProtectedInclusion (runtime setup) leaks (phaseInitialLaw setup)
       horizon scheduler bound)
     (timely : (runtime setup).AsyncTimely delay bound)
     (rawCertificate : (RawNative).WellFoundedHistories)
     (certificate : (NP).WellFoundedHistories)
-    (completes : PhaseService.CompletesPlay (runtime setup) leaks (initialLaw setup)
+    (completes : PhaseService.CompletesPlay (runtime setup) leaks (phaseInitialLaw setup)
       horizon scheduler)
     (phaseAssessments : ℕ → (M).BehavioralAssessment)
     (fallback : ℕ → ∀ who, (M).Policy who)
@@ -194,12 +190,13 @@ theorem keyed_component_mixture_gain_bounds [Finite setup.intendedProtocol.Histo
         (positive n).le (le_one n) (weights n))
     (mixed : ∀ n, (phaseAssessments n).IsFullyMixed)
     (bayes : ∀ n, BehavioralAssessment.IsBayesConsistent (M) (phaseAssessments n)
-      ((menu setup leaks bounds).decisionInformationAntichain (initialLaw setup) horizon scheduler))
+      ((menu setup leaks bounds).decisionInformationAntichain (phaseInitialLaw setup) horizon
+          scheduler))
     {Parameter : Type} (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
     (excludedPayoff : Player → ℝ) {payoffBound : ℝ} (nonnegative : 0 ≤ payoffBound)
     (payoffBounded : ∀ history :
-      ((menu setup leaks bounds).protocol (initialLaw setup) horizon scheduler).History,
+      ((menu setup leaks bounds).protocol (phaseInitialLaw setup) horizon scheduler).History,
       ∀ who, |phaseExclusionBase setup .sequential (runtime setup) leaks
         (fun terminal => utility (setup.parameterOutcome parameter terminal)) excludedPayoff
           history.state who| ≤ payoffBound)
@@ -244,11 +241,13 @@ theorem keyed_component_mixture_gain_bounds [Finite setup.intendedProtocol.Histo
     le_upper below
   let continuation := fun n (agent : (M).InformationAgent (M).playedInformation) =>
     if decision : (N).IsDecisionInfo agent.1
-        (RecoveryProjection.information (runtime setup) (oldLeaks) (projectInfo agent.2.1)) then
-      siteValue setup (oldLeaks) bounds horizon (NativeScheduler) parameter utility excludedPayoff
+        (RecoveryProjection.information (runtime setup) (RecoveryLeaks) (projectInfo agent.2.1))
+            then
+      siteValue setup (RecoveryLeaks) bounds horizon (NativeScheduler) parameter utility
+          excludedPayoff
         (nativeComparisonSequence setup leaks bounds horizon scheduler sequence scale positive
           le_one weights n) (setup.intendedOpeningProfile (sequence n).strategy)
-        ⟨RecoveryProjection.information (runtime setup) (oldLeaks) (projectInfo agent.2.1),
+        ⟨RecoveryProjection.information (runtime setup) (RecoveryLeaks) (projectInfo agent.2.1),
           decision⟩
     else excludedPayoff agent.1
   let count : ℝ := Fintype.card ((M).InformationAgent (M).playedInformation)
@@ -278,19 +277,21 @@ theorem keyed_component_mixture_gain_bounds [Finite setup.intendedProtocol.Histo
   · intro agent owned notOwing decision
     obtain ⟨clear, _forced⟩ := Classical.not_not.mp owned.2
     let atSite : (M).InformationSite agent.1 := ⟨agent.2.1, decision⟩
-    have debtFree : ¬ RecoveryOnePacket.OwingAgent setup (oldLeaks) bounds Initial horizon
-        (oldScheduler) (projectedAgent setup leaks bounds horizon scheduler agent clear) :=
+    have debtFree : ¬ RecoveryOnePacket.OwingAgent setup (RecoveryLeaks) bounds RecoveryPrior
+        horizon
+        (RecoveryScheduler) (projectedAgent setup leaks bounds horizon scheduler agent clear) :=
       notOwing clear
     obtain ⟨nativeSite, input, lower, near⟩ :=
       values n agent.1 atSite clear owned.2 debtFree owned.1
     have nativeDecision : (N).IsDecisionInfo agent.1
-        (RecoveryProjection.information (runtime setup) (oldLeaks) (projectInfo agent.2.1)) :=
+        (RecoveryProjection.information (runtime setup) (RecoveryLeaks) (projectInfo agent.2.1)) :=
       input ▸ nativeSite.2
-    have nativeSiteEq : (⟨RecoveryProjection.information (runtime setup) (oldLeaks)
+    have nativeSiteEq : (⟨RecoveryProjection.information (runtime setup) (RecoveryLeaks)
         (projectInfo agent.2.1), nativeDecision⟩ : (N).InformationSite agent.1) = nativeSite :=
       Subtype.ext input.symm
     have continuationEq : continuation n agent =
-        siteValue setup (oldLeaks) bounds horizon (NativeScheduler) parameter utility excludedPayoff
+        siteValue setup (RecoveryLeaks) bounds horizon (NativeScheduler) parameter utility
+            excludedPayoff
           (nativeComparisonSequence setup leaks bounds horizon scheduler sequence scale positive
             le_one weights n) (setup.intendedOpeningProfile (sequence n).strategy) nativeSite := by
       dsimp only [continuation]

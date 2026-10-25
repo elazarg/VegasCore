@@ -61,8 +61,9 @@ monetary observation; the target is not yet their checked statement.
 
 The two SE environments remain distinct sufficient conditions within this
 family. A reserved tape with correlated inputs and complete observation is not
-interchangeable with an adaptive timely builder whose private inputs are
-independent given an observed public initial signal. Neither
+interchangeable with an adaptive builder satisfying the full physical phase
+service contract and strict timing, whose private inputs are independent given
+an observed public initial signal. Neither
 current SE theorem implies the other. Extending concurrent SE to arbitrary
 timely builders is a separate research question, not an exit criterion for
 consolidation.
@@ -976,11 +977,12 @@ obstruction unfinished.
 
 ## Retired results
 
-Each row names the declaration or files at the `research-tree` tag, what they
-show, and the models they need. They are checked at the tagged commit only.
+Each row names the declaration or files at its checked tag, what they show, and
+the models they need. Unmarked rows use `research-tree`.
 
 | Result at the tag | Shows | Needs |
 | --- | --- | --- |
+| [Recovery limit adapter](https://github.com/elazarg/VegasCore/blob/phase-se-specializations/Vegas/Game/RecoverySequentialLimit.lean), [phase limit adapter](https://github.com/elazarg/VegasCore/blob/phase-se-specializations/Vegas/Game/SequentialPhaseLimit.lean), at `phase-se-specializations` | Runtime-specific instances of the model-independent copied-site comparison limit and initialized joint-law bounds | Bounded recovery or phase protocols, their actual completion witness and local gain comparisons |
 | [`Vegas.Paper.source_audited_raw_sequential_equilibrium`](https://github.com/elazarg/VegasCore/blob/research-tree/Paper.lean#L43), [`Vegas.SourceServiceSpec.intended_audited_raw_sequentialEquilibrium`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/IntendedServiceCompilation.lean#L42) | SE preservation, from the source and from the intended game, on a fixed calendar that every player knows in advance | Plain contract, settled-record audit, calendar roster |
 | [`Vegas.Paper.source_audited_raw_nash_iff`](https://github.com/elazarg/VegasCore/blob/research-tree/Paper.lean#L292), [`Vegas.Paper.source_audited_raw_nash_reflection`](https://github.com/elazarg/VegasCore/blob/research-tree/Paper.lean#L258), [`Vegas.Paper.intended_audited_raw_nash`](https://github.com/elazarg/VegasCore/blob/research-tree/Paper.lean#L428), [`Vegas.Paper.raw_service_horizon`](https://github.com/elazarg/VegasCore/blob/research-tree/Paper.lean#L114) | Nash correspondence and horizon on the same calendar | As above |
 | The late-opening and seed-signalling counterexamples | See the previous section | Plain contract, specific services |

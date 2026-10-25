@@ -18,6 +18,7 @@ import Vegas.Examples.LateLeak
 import Vegas.Examples.ProgramPayments
 import Vegas.Examples.ProgramPaymentsRuntime
 import Vegas.Examples.BoundedPaymentAuction
+import Vegas.Examples.SequentialPhaseServiceEquilibrium
 
 /-! # Paper theorems
 
@@ -985,7 +986,7 @@ theorem sequential_phase_intended_raw_sequential_equilibrium [Fintype Player] [I
     (bounds : MessageBounds (graph setup)) (horizon : Nat)
     (scheduler : (phaseApplication (runtime setup) leaks).Scheduler)
     [(phaseApplication (runtime setup) leaks).FiniteNature
-      (SequentialPhase.initialLaw setup) scheduler]
+      (SequentialPhase.phaseInitialLaw setup) scheduler]
     [Finite setup.intendedProtocol.History]
     {Parameter : Type} (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
@@ -995,11 +996,11 @@ theorem sequential_phase_intended_raw_sequential_equilibrium [Fintype Player] [I
     (independent : setup.PrivateInputsIndependentGiven signal)
     (observable : setup.PublicInitialSignal signal) {delay bound : (graph setup).EventId → Nat}
     (opportunity : PhaseService.Opportunity (runtime setup) leaks
-      (SequentialPhase.initialLaw setup) horizon scheduler delay)
+      (SequentialPhase.phaseInitialLaw setup) horizon scheduler delay)
     (inclusion : PhaseService.ProtectedInclusion (runtime setup) leaks
-      (SequentialPhase.initialLaw setup) horizon scheduler bound)
+      (SequentialPhase.phaseInitialLaw setup) horizon scheduler bound)
     (completes : PhaseService.CompletesPlay (runtime setup) leaks
-      (SequentialPhase.initialLaw setup) horizon scheduler)
+      (SequentialPhase.phaseInitialLaw setup) horizon scheduler)
     (timely : AsyncTimely (runtime setup) delay bound)
     (lowerUtility upperUtility : Player → ℝ)
     (lower_le : ∀ outcome who, lowerUtility who ≤ utility outcome who)
@@ -1023,7 +1024,7 @@ theorem sequential_phase_intended_raw_sequential_equilibrium [Fintype Player] [I
       max 0 (max (excludedPayoff who) (upperUtility who)) -
           min 0 (min (excludedPayoff who) (lowerUtility who)) ≤
         observationRate who * deliveryRate who * deposit who) :
-    let initial := SequentialPhase.initialLaw setup
+    let initial := SequentialPhase.phaseInitialLaw setup
     let raw := PhaseCount.rawMenu (runtime setup) leaks bounds
     let observe := (phaseApplication (runtime setup) leaks).stateTraffic
     let audit := PhaseCount.audit (runtime setup) leaks service.sample
@@ -2416,12 +2417,6 @@ open Vegas.SequentialPhase in
 open Vegas.SequentialPhase in
 #print axioms localGain_eq_zero_of_unpending_notOwing
 
-/-- info: 'Vegas.SequentialPhase.sequentialEquilibrium_of_local_comparisons' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-open Vegas.SequentialPhase in
-#print axioms sequentialEquilibrium_of_local_comparisons
-
 /-- info: 'Vegas.SequentialPhase.keyed_local_comparisons' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
@@ -2463,3 +2458,171 @@ open Vegas.RecoveryOnePacket in
 #guard_msgs (whitespace := lax) in
 open Vegas.RecoveryOnePacket in
 #print axioms unintendedCommitment_value_sub_le
+
+/-- info: 'GameTheory.Math.abs_le_sum_interval_width' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open GameTheory.Math in
+#print axioms abs_le_sum_interval_width
+
+/-- info: 'Interaction.EvidenceReportService.complete_deliveredEvidence' depends on axioms:
+[propext, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Interaction.EvidenceReportService in
+#print axioms complete_deliveredEvidence
+
+/-- info: 'Interaction.EvidenceReportService.complete_sample' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Interaction.EvidenceReportService in
+#print axioms complete_sample
+
+/-- info: 'Interaction.EvidenceReportService.complete_observation_mass' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Interaction.EvidenceReportService in
+#print axioms complete_observation_mass
+
+/-- info: 'Interaction.EvidenceReportService.complete_delivery_mass' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Interaction.EvidenceReportService in
+#print axioms complete_delivery_mass
+
+/-- info: 'Vegas.EventGraphRuntime.PhaseCount.completeEvidence_coverage' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.EventGraphRuntime.PhaseCount in
+#print axioms completeEvidence_coverage
+
+/-- info: 'Vegas.Examples.SequentialPhaseService.opportunity' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.Examples.SequentialPhaseService in
+#print axioms opportunity
+
+/-- info: 'Vegas.Examples.SequentialPhaseService.protectedInclusion' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.Examples.SequentialPhaseService in
+#print axioms protectedInclusion
+
+/-- info: 'Vegas.Examples.SequentialPhaseService.completesPlay' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.Examples.SequentialPhaseService in
+#print axioms completesPlay
+
+/-- info: 'Vegas.Examples.SequentialPhaseService.timely' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.Examples.SequentialPhaseService in
+#print axioms timely
+
+/-- info: 'Vegas.Examples.SequentialPhaseService.physical_contract' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.Examples.SequentialPhaseService in
+#print axioms physical_contract
+
+/-- info: 'Vegas.Examples.SequentialPhaseService.outputValues' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.Examples.SequentialPhaseService in
+#print axioms outputValues
+
+/-- info: 'Vegas.Examples.SequentialPhaseService.inputValues' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.Examples.SequentialPhaseService in
+#print axioms inputValues
+
+/-- info: 'Vegas.Examples.SequentialPhaseService.candidateCapacity' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.Examples.SequentialPhaseService in
+#print axioms candidateCapacity
+
+/-- info: 'Vegas.Examples.SequentialPhaseService.nonconstant_payment' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.Examples.SequentialPhaseService in
+#print axioms nonconstant_payment
+
+/-- info: 'Vegas.Examples.SequentialPhaseService.terminal_execution_exists' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.Examples.SequentialPhaseService in
+#print axioms terminal_execution_exists
+
+/-- info: 'Vegas.Examples.SequentialPhaseService.independent' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.Examples.SequentialPhaseService in
+#print axioms independent
+
+/-- info: 'Vegas.Examples.SequentialPhaseService.observable' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.Examples.SequentialPhaseService in
+#print axioms observable
+
+/-- info: 'Vegas.Examples.SequentialPhaseService.wellFormed' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.Examples.SequentialPhaseService in
+#print axioms wellFormed
+
+/-- info: 'Vegas.Examples.SequentialPhaseService.initialState_supported' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.Examples.SequentialPhaseService in
+#print axioms initialState_supported
+
+/-- info: 'Vegas.Examples.SequentialPhaseService.owner_decision_exists' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.Examples.SequentialPhaseService in
+#print axioms owner_decision_exists
+
+/-- info: 'Vegas.RecoveryOnePacket.recovery_unintendedCommitment_stopped_value' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.RecoveryOnePacket in
+#print axioms recovery_unintendedCommitment_stopped_value
+
+/-- info: 'Vegas.RecoveryOnePacket.recovery_unintendedCommitment_value_sub_le' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.RecoveryOnePacket in
+#print axioms recovery_unintendedCommitment_value_sub_le
+
+/-- info: 'Vegas.Examples.SequentialPhaseService.sourceUtility_bounds' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.Examples.SequentialPhaseService in
+#print axioms sourceUtility_bounds
+
+/-- info: 'Vegas.Examples.SequentialPhaseService.sourceUtility_eq_programTransfer' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.Examples.SequentialPhaseService in
+#print axioms sourceUtility_eq_programTransfer
+
+/-- info: 'Vegas.Examples.SequentialPhaseService.intendedFallbackAction_mem' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.Examples.SequentialPhaseService in
+#print axioms intendedFallbackAction_mem
+
+/-- info: 'Vegas.Examples.SequentialPhaseService.intended_equilibrium_exists' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.Examples.SequentialPhaseService in
+#print axioms intended_equilibrium_exists
+
+/-- info: 'Vegas.Examples.SequentialPhaseService.funded_raw_equilibrium_exists' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.Examples.SequentialPhaseService in
+#print axioms funded_raw_equilibrium_exists

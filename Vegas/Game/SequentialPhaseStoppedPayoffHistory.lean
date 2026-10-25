@@ -29,7 +29,7 @@ theorem phaseExcluded_eq_projected (who : Player)
 
 open Classical in
 /-- On every actual initialized phase history, the original stopped payoff is
-exactly the original recovery payoff readout, with its existing debt/exit floor.
+exactly the recovery payoff readout, with its existing debt/exit floor.
 Coverage is derived from the actual raw phase trace rather than assumed. -/
 theorem phaseDebtStoppedPayoff_history_eq_projected
     (plan : RuntimePhasePlan (graph setup)) (inputs : PMF (graph setup).Inputs)

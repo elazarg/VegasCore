@@ -6,7 +6,7 @@ import Vegas.Game.RecoveryOnePacketComponents
 
 /-! # Operational components of the actual canonical singleton phase game
 
-Clear played inputs use the original recovery components through their exact
+Clear played inputs use the recovery components through their exact
 local choice equivalence. Every other input has its own freely selected actual
 choice. Pool keys and all mapped response data use only player-local projection.
 -/
@@ -29,20 +29,20 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
 abbrev menu := (PhaseCount.normalization (runtime setup) leaks).menu
   (PhaseCount.onePacketMenu (runtime setup) leaks bounds)
 
-def initialLaw : PMF (PhaseRuntimeState (graph setup)) :=
+abbrev phaseInitialLaw : PMF (PhaseRuntimeState (graph setup)) :=
   (setup.initialLaw.map setup.eventInputs).map
     (PhaseRuntimeState.initial (sequentialRuntimePhasePlan setup.program))
 
-def recoveryLeaks := PhaseNativeProjection.nativeLeaks leaks
+abbrev recoveryLeaks := PhaseNativeProjection.nativeLeaks leaks
   (sequentialRuntimePhasePlan setup.program)
 
-def recoveryInitialLaw : PMF (RecoveryState (graph setup)) :=
+abbrev recoveryInitialLaw : PMF (RecoveryState (graph setup)) :=
   (Vegas.initialLaw setup).map fun native => ⟨native, ∅⟩
 
-def recoveryScheduler := SequentialPhaseSchedulerInformation.scheduler setup.program
+abbrev recoveryScheduler := SequentialPhaseSchedulerInformation.scheduler setup.program
   (runtime setup) leaks (recoveryLeaks setup leaks) scheduler
 
-abbrev model := (menu setup leaks bounds).information (initialLaw setup) horizon scheduler
+abbrev model := (menu setup leaks bounds).information (phaseInitialLaw setup) horizon scheduler
 
 abbrev recoveryModel := RecoveryOnePacket.model setup (recoveryLeaks setup leaks) bounds
   (recoveryInitialLaw setup) horizon (recoveryScheduler setup leaks scheduler)
@@ -50,37 +50,74 @@ abbrev recoveryModel := RecoveryOnePacket.model setup (recoveryLeaks setup leaks
 local notation "P" => phaseApplication (runtime setup) leaks
 local notation "M" => model setup leaks bounds horizon scheduler
 local notation "R" => recoveryModel setup leaks bounds horizon scheduler
-local notation "oldLeaks" => recoveryLeaks setup leaks
-local notation "oldInitial" => recoveryInitialLaw setup
-local notation "oldScheduler" => recoveryScheduler setup leaks scheduler
-local notation "oldMenu" => Recovery.onePacketMenu (runtime setup) (oldLeaks) bounds
+local notation "RecoveryLeaks" => recoveryLeaks setup leaks
+local notation "RecoveryPrior" => recoveryInitialLaw setup
+local notation "RecoveryScheduler" => recoveryScheduler setup leaks scheduler
+local notation "RecoveryMenu" => Recovery.onePacketMenu (runtime setup) (RecoveryLeaks) bounds
 
 instance recoveryNature
-    [nature : (phaseApplication (runtime setup) leaks).FiniteNature (initialLaw setup) scheduler] :
-    (recoveryApplication (runtime setup) (oldLeaks)).FiniteNature (oldInitial) (oldScheduler) := by
-  have phase : (phaseApplication (runtime setup) leaks).FiniteNature
-      ((setup.initialLaw.map setup.eventInputs).map
-        (PhaseRuntimeState.initial (sequentialRuntimePhasePlan setup.program))) scheduler := nature
+    [nature : (phaseApplication (runtime setup) leaks).FiniteNature (phaseInitialLaw setup)
+        scheduler] :
+    (recoveryApplication (runtime setup) (RecoveryLeaks)).FiniteNature (RecoveryPrior)
+        (RecoveryScheduler) := by
   have actual := SequentialPhaseSchedulerInformation.recovery_finiteNature setup.program
     (runtime setup) leaks (setup.initialLaw.map setup.eventInputs) scheduler
-  have priors :
-      (setup.initialLaw.map setup.eventInputs).map
-        (fun draw => (⟨EventGraphRuntime.State.initial draw, ∅⟩ : RecoveryState (graph setup))) =
-      oldInitial := by
-    simp only [recoveryInitialLaw, Vegas.initialLaw, serviceInitialLaw, PMF.map_comp,
-      Function.comp_def]
-  exact Eq.mp (congrArg (fun prior : PMF (RecoveryState (graph setup)) =>
-    (recoveryApplication (runtime setup) (oldLeaks)).FiniteNature prior (oldScheduler)) priors)
-    actual
+  simpa only [recoveryInitialLaw, Vegas.initialLaw, serviceInitialLaw, PMF.map_comp,
+    Function.comp_def] using actual
 
-local instance phaseInfoDecidableEq (who : Player) : DecidableEq ((M).InfoState who) :=
+/-- One fixed information dictionary for every presentation of the phase game. -/
+abbrev phaseInfoDecidableEq (who : Player) : DecidableEq ((M).InfoState who) :=
   Classical.decEq _
 
-local instance recoveryInfoDecidableEq (who : Player) : DecidableEq ((R).InfoState who) :=
+/-- One fixed information dictionary for the projected recovery game. -/
+abbrev recoveryInfoDecidableEq (who : Player) : DecidableEq ((R).InfoState who) :=
+  Classical.decEq _
+
+local notation "nativeScheduler" => RecoveryProjection.nativeScheduler (runtime setup)
+    (RecoveryLeaks)
+  (RecoveryScheduler)
+local notation "N" => onePacketModel setup (RecoveryLeaks) bounds (Vegas.initialLaw setup) horizon
+  (nativeScheduler)
+
+/-- One fixed information dictionary for the native comparison game. -/
+abbrev nativeInfoDecidableEq (who : Player) : DecidableEq ((N).InfoState who) :=
   Classical.decEq _
 
 variable [nature : (phaseApplication (runtime setup) leaks).FiniteNature
-  (initialLaw setup) scheduler]
+  (phaseInitialLaw setup) scheduler]
+
+/-- Native nature is derived from the actual phase scheduler at the unchanged input prior. -/
+abbrev nativeNature : (application setup (RecoveryLeaks)).FiniteNature
+    (Vegas.initialLaw setup) (nativeScheduler) := by
+  have actual := SequentialPhaseSchedulerInformation.native_finiteNature setup.program
+    (runtime setup) leaks (setup.initialLaw.map setup.eventInputs) scheduler
+  simpa only [Vegas.initialLaw, serviceInitialLaw, PMF.map_comp, Function.comp_def] using actual
+
+/-- The canonical finite enumeration of phase histories. -/
+abbrev phaseHistoryFintype :
+    Fintype ((menu setup leaks bounds).protocol (phaseInitialLaw setup) horizon scheduler).History
+        :=
+  @ReactiveApplication.ResponseMenu.historyFintype Player _ _ (menu setup leaks bounds)
+    (phaseInitialLaw setup) horizon scheduler inferInstance nature
+
+/-- The canonical finite enumeration of recovery comparison histories. -/
+abbrev recoveryHistoryFintype :
+    Fintype ((RecoveryMenu).protocol ((Vegas.initialLaw setup).map fun native =>
+      (⟨native, ∅⟩ : RecoveryState (graph setup))) horizon (RecoveryScheduler)).History :=
+  @ReactiveApplication.ResponseMenu.historyFintype Player _ _ (RecoveryMenu) (RecoveryPrior) horizon
+    (RecoveryScheduler) inferInstance (recoveryNature setup leaks scheduler)
+
+/-- The canonical finite enumeration of native comparison histories. -/
+abbrev nativeHistoryFintype :
+    Fintype ((bounds.onePacketMenu (runtime setup) (RecoveryLeaks)).protocol (Vegas.initialLaw
+        setup)
+      horizon (nativeScheduler)).History :=
+  @ReactiveApplication.ResponseMenu.historyFintype Player _ _
+    (bounds.onePacketMenu (runtime setup) (RecoveryLeaks)) (Vegas.initialLaw setup) horizon
+    (nativeScheduler) inferInstance (nativeNature setup leaks scheduler)
+
+attribute [local instance] phaseInfoDecidableEq recoveryInfoDecidableEq nativeInfoDecidableEq
+  phaseHistoryFintype recoveryHistoryFintype nativeHistoryFintype nativeNature
 
 /-- Public local clearance; inactive ghost inputs do not qualify. -/
 def ClearInput (input : (P).Info) : Prop :=
@@ -92,7 +129,8 @@ def PublicExclusion (input : (P).Info) : Prop :=
 private theorem clear_agent_origin (agent : (M).InformationAgent (M).playedInformation)
     (clear : ClearInput setup leaks agent.2.1) :
     ∃ control : (P).Control,
-      ∃ _trace : ((menu setup leaks bounds).protocol (initialLaw setup) horizon scheduler).Trace
+      ∃ _trace : ((menu setup leaks bounds).protocol (phaseInitialLaw setup) horizon
+          scheduler).Trace
           (some control),
         ¬ (P).terminal (some control) ∧ control.actor = some agent.1 ∧
           agent.2.1 = some (control.execution.recall agent.1,
@@ -103,7 +141,7 @@ private theorem clear_agent_origin (agent : (M).InformationAgent (M).playedInfor
   unfold InformationModel.playedInformation at played
   obtain ⟨history, member, observed⟩ := Finset.mem_image.mp played
   have running := (Finset.mem_filter.mp member).2
-  have seen := ((menu setup leaks bounds).info (initialLaw setup) horizon scheduler agent.1
+  have seen := ((menu setup leaks bounds).info (phaseInitialLaw setup) horizon scheduler agent.1
     history.trace).symm.trans observed
   cases current : history.state with
   | none => rw [current] at seen; rw [← seen] at clear; exact clear.elim
@@ -124,7 +162,7 @@ private theorem clear_agent_origin (agent : (M).InformationAgent (M).playedInfor
 /-- Every clear played phase input is a genuinely played projected recovery input. -/
 theorem projected_input_played (agent : (M).InformationAgent (M).playedInformation)
     (clear : ClearInput setup leaks agent.2.1) :
-    PhaseRecoveryProjection.information (runtime setup) leaks (oldLeaks) agent.2.1 ∈
+    PhaseRecoveryProjection.information (runtime setup) leaks (RecoveryLeaks) agent.2.1 ∈
       (R).playedInformation agent.1 := by
   obtain ⟨control, trace, running, acting, seen, empty⟩ :=
     clear_agent_origin setup leaks bounds horizon scheduler agent clear
@@ -134,42 +172,47 @@ theorem projected_input_played (agent : (M).InformationAgent (M).playedInformati
   have priors :
       (setup.initialLaw.map setup.eventInputs).map
         (fun draw => (⟨EventGraphRuntime.State.initial draw, ∅⟩ : RecoveryState (graph setup))) =
-      oldInitial := by
+      RecoveryPrior := by
     simp only [recoveryInitialLaw, Vegas.initialLaw, serviceInitialLaw, PMF.map_comp,
       Function.comp_def]
-  have prior : ((oldMenu).protocol (oldInitial) horizon (oldScheduler)).Trace
-      (PhaseRecoveryProjection.protocolState (runtime setup) leaks (oldLeaks) (some control)) :=
+  have prior : ((RecoveryMenu).protocol (RecoveryPrior) horizon (RecoveryScheduler)).Trace
+      (PhaseRecoveryProjection.protocolState (runtime setup) leaks (RecoveryLeaks) (some control))
+          :=
     Eq.mp (congrArg (fun initial : PMF (RecoveryState (graph setup)) =>
-      ((oldMenu).protocol initial horizon (oldScheduler)).Trace
-        (PhaseRecoveryProjection.protocolState (runtime setup) leaks (oldLeaks) (some control)))
+      ((RecoveryMenu).protocol initial horizon (RecoveryScheduler)).Trace
+        (PhaseRecoveryProjection.protocolState (runtime setup) leaks (RecoveryLeaks) (some
+            control)))
       priors) prior
-  have stillRunning : ¬ ((oldMenu).protocol (oldInitial) horizon (oldScheduler)).terminal
-      (PhaseRecoveryProjection.protocolState (runtime setup) leaks (oldLeaks) (some control)) :=
+  have stillRunning : ¬ ((RecoveryMenu).protocol (RecoveryPrior) horizon
+      (RecoveryScheduler)).terminal
+      (PhaseRecoveryProjection.protocolState (runtime setup) leaks (RecoveryLeaks) (some control))
+          :=
     running
   have played := (R).mem_playedInformation (who := agent.1) (history := ⟨_, prior⟩) stillRunning
   have observed : (R).infoOf agent.1 prior =
-      PhaseRecoveryProjection.information (runtime setup) leaks (oldLeaks) agent.2.1 := by
+      PhaseRecoveryProjection.information (runtime setup) leaks (RecoveryLeaks) agent.2.1 := by
     have currentInput : (P).observe agent.1 (some control) = agent.2.1 := by
       simp only [ReactiveApplication.observe, acting, ↓reduceIte]
       exact seen.symm
-    exact ((oldMenu).info (oldInitial) horizon (oldScheduler) agent.1 prior).trans
-      ((PhaseRecoveryProjection.observe_state (runtime setup) leaks (oldLeaks) agent.1
+    exact ((RecoveryMenu).info (RecoveryPrior) horizon (RecoveryScheduler) agent.1 prior).trans
+      ((PhaseRecoveryProjection.observe_state (runtime setup) leaks (RecoveryLeaks) agent.1
         (some control)).trans (congrArg
-          (PhaseRecoveryProjection.information (runtime setup) leaks (oldLeaks)) currentInput))
+          (PhaseRecoveryProjection.information (runtime setup) leaks (RecoveryLeaks)) currentInput))
   rwa [observed] at played
 
-/-- The represented old agent contains only the projected player-local input. -/
+/-- The represented recovery agent contains only the projected player-local input. -/
 def projectedAgent (agent : (M).InformationAgent (M).playedInformation)
     (clear : ClearInput setup leaks agent.2.1) : (R).InformationAgent (R).playedInformation :=
-  ⟨agent.1, ⟨PhaseRecoveryProjection.information (runtime setup) leaks (oldLeaks) agent.2.1,
+  ⟨agent.1, ⟨PhaseRecoveryProjection.information (runtime setup) leaks (RecoveryLeaks) agent.2.1,
     projected_input_played setup leaks bounds horizon scheduler agent clear⟩⟩
 
 private theorem choice_admission_iff (agent : (M).InformationAgent (M).playedInformation)
     (clear : ClearInput setup leaks agent.2.1) (choice : Option (P).Action) :
     choice ∈ (M).menu agent.1 agent.2.1 ↔
-      choice.map (PhaseRecoveryProjection.action (runtime setup) leaks (oldLeaks)) ∈
+      choice.map (PhaseRecoveryProjection.action (runtime setup) leaks (RecoveryLeaks)) ∈
         (R).menu agent.1
-          (PhaseRecoveryProjection.information (runtime setup) leaks (oldLeaks) agent.2.1) := by
+          (PhaseRecoveryProjection.information (runtime setup) leaks (RecoveryLeaks) agent.2.1) :=
+              by
   obtain ⟨control, trace, _running, _acting, seen, empty⟩ :=
     clear_agent_origin setup leaks bounds horizon scheduler agent clear
   rw [seen]
@@ -177,14 +220,15 @@ private theorem choice_admission_iff (agent : (M).InformationAgent (M).playedInf
   | none =>
       change (∃ response ∈ (menu setup leaks bounds).actions agent.1 _ _,
         (none : Option (P).Action) = some response) ↔
-        (∃ response ∈ (oldMenu).actions agent.1 _ _,
-          (none : Option (recoveryApplication (runtime setup) (oldLeaks)).Action) = some response)
+        (∃ response ∈ (RecoveryMenu).actions agent.1 _ _,
+          (none : Option (recoveryApplication (runtime setup) (RecoveryLeaks)).Action) = some
+              response)
       simp
   | some response =>
       change (∃ candidate ∈ (menu setup leaks bounds).actions agent.1 _ _,
         some response = some candidate) ↔
-        (∃ candidate ∈ (oldMenu).actions agent.1 _ _,
-          some (PhaseRecoveryProjection.action (runtime setup) leaks (oldLeaks) response) =
+        (∃ candidate ∈ (RecoveryMenu).actions agent.1 _ _,
+          some (PhaseRecoveryProjection.action (runtime setup) leaks (RecoveryLeaks) response) =
             some candidate)
       have callbacks := phase_canonical_callback_iff_recovery setup leaks bounds horizon scheduler
         trace empty agent.1 response
@@ -200,15 +244,17 @@ private theorem choice_admission_iff (agent : (M).InformationAgent (M).playedInf
 def choiceEquiv (agent : (M).InformationAgent (M).playedInformation)
     (clear : ClearInput setup leaks agent.2.1) :
     (M).Choice agent.1 agent.2.1 ≃ (R).Choice agent.1
-      (PhaseRecoveryProjection.information (runtime setup) leaks (oldLeaks) agent.2.1) where
-  toFun choice := ⟨choice.1.map (PhaseRecoveryProjection.action (runtime setup) leaks (oldLeaks)),
+      (PhaseRecoveryProjection.information (runtime setup) leaks (RecoveryLeaks) agent.2.1) where
+  toFun choice := ⟨choice.1.map (PhaseRecoveryProjection.action (runtime setup) leaks
+      (RecoveryLeaks)),
     (choice_admission_iff setup leaks bounds horizon scheduler agent clear _).mp choice.2⟩
   invFun choice :=
-    ⟨choice.1.map (PhaseRecoveryProjection.phaseAction (runtime setup) leaks (oldLeaks)),
+    ⟨choice.1.map (PhaseRecoveryProjection.phaseAction (runtime setup) leaks (RecoveryLeaks)),
       (choice_admission_iff setup leaks bounds horizon scheduler agent clear _).mpr (by
         have same : (choice.1.map
-            (PhaseRecoveryProjection.phaseAction (runtime setup) leaks (oldLeaks))).map
-              (PhaseRecoveryProjection.action (runtime setup) leaks (oldLeaks)) = choice.1 := by
+            (PhaseRecoveryProjection.phaseAction (runtime setup) leaks (RecoveryLeaks))).map
+              (PhaseRecoveryProjection.action (runtime setup) leaks (RecoveryLeaks)) = choice.1 :=
+                  by
           simp only [Option.map_map, Function.comp_def,
             PhaseRecoveryProjection.action_phaseAction]
           exact congrFun Option.map_id choice.1
@@ -216,40 +262,47 @@ def choiceEquiv (agent : (M).InformationAgent (M).playedInformation)
         exact choice.2)⟩
   left_inv choice := by
     apply Subtype.ext
-    change (choice.1.map (PhaseRecoveryProjection.action (runtime setup) leaks (oldLeaks))).map
-      (PhaseRecoveryProjection.phaseAction (runtime setup) leaks (oldLeaks)) = choice.1
+    change (choice.1.map (PhaseRecoveryProjection.action (runtime setup) leaks (RecoveryLeaks))).map
+      (PhaseRecoveryProjection.phaseAction (runtime setup) leaks (RecoveryLeaks)) = choice.1
     cases chosen : choice.1 with
     | none => rfl
     | some response =>
         exact congrArg some
-          (PhaseRecoveryProjection.phaseAction_action (runtime setup) leaks (oldLeaks) response)
+          (PhaseRecoveryProjection.phaseAction_action (runtime setup) leaks (RecoveryLeaks)
+              response)
   right_inv choice := by
     apply Subtype.ext
-    change (choice.1.map (PhaseRecoveryProjection.phaseAction (runtime setup) leaks (oldLeaks))).map
-      (PhaseRecoveryProjection.action (runtime setup) leaks (oldLeaks)) = choice.1
+    change (choice.1.map (PhaseRecoveryProjection.phaseAction (runtime setup) leaks
+        (RecoveryLeaks))).map
+      (PhaseRecoveryProjection.action (runtime setup) leaks (RecoveryLeaks)) = choice.1
     cases chosen : choice.1 with
     | none => rfl
     | some response =>
         exact congrArg some
-          (PhaseRecoveryProjection.action_phaseAction (runtime setup) leaks (oldLeaks) response)
+          (PhaseRecoveryProjection.action_phaseAction (runtime setup) leaks (RecoveryLeaks)
+              response)
 
 /-- The original forced-region classification on the actual projected clear agent. -/
 def ForcedAgent (agent : (M).InformationAgent (M).playedInformation) : Prop :=
-  ∃ clear : ClearInput setup leaks agent.2.1, RecoveryOnePacket.ForcedAgent setup (oldLeaks) bounds
-    (oldInitial) horizon (oldScheduler) (projectedAgent setup leaks bounds horizon scheduler agent
+  ∃ clear : ClearInput setup leaks agent.2.1, RecoveryOnePacket.ForcedAgent setup (RecoveryLeaks)
+      bounds
+    (RecoveryPrior) horizon (RecoveryScheduler) (projectedAgent setup leaks bounds horizon scheduler
+        agent
       clear)
 
 def FreeAgent (agent : (M).InformationAgent (M).playedInformation) : Prop :=
   ¬ ForcedAgent setup leaks bounds horizon scheduler agent
 
 def KeyedAgent (agent : (M).InformationAgent (M).playedInformation) : Prop :=
-  LateDelivery setup (oldLeaks) agent.1 (RecoveryProjection.information (runtime setup) (oldLeaks)
-    (PhaseRecoveryProjection.information (runtime setup) leaks (oldLeaks) agent.2.1))
+  LateDelivery setup (RecoveryLeaks) agent.1 (RecoveryProjection.information (runtime setup)
+      (RecoveryLeaks)
+    (PhaseRecoveryProjection.information (runtime setup) leaks (RecoveryLeaks) agent.2.1))
 
 def agentKey (agent : (M).InformationAgent (M).playedInformation) :
-    Option (LateKey setup (oldLeaks)) :=
-  lateKey setup (oldLeaks) agent.1 (RecoveryProjection.information (runtime setup) (oldLeaks)
-    (PhaseRecoveryProjection.information (runtime setup) leaks (oldLeaks) agent.2.1))
+    Option (LateKey setup (RecoveryLeaks)) :=
+  lateKey setup (RecoveryLeaks) agent.1 (RecoveryProjection.information (runtime setup)
+      (RecoveryLeaks)
+    (PhaseRecoveryProjection.information (runtime setup) leaks (RecoveryLeaks) agent.2.1))
 
 abbrev pool := freeKeyedPool (FreeAgent setup leaks bounds horizon scheduler)
   (KeyedAgent setup leaks bounds horizon scheduler) (agentKey setup leaks bounds horizon scheduler)
@@ -268,30 +321,30 @@ theorem freeAgent_of_publicExclusion (agent : (M).InformationAgent (M).playedInf
 
 /-- Uniform reference on the actual phase menu, including inactive singleton choices. -/
 theorem uniform_fullSupport (agent : (M).InformationAgent (M).playedInformation) :
-    FullSupport ((menu setup leaks bounds).uniformPolicy (initialLaw setup) horizon scheduler
+    FullSupport ((menu setup leaks bounds).uniformPolicy (phaseInitialLaw setup) horizon scheduler
       agent.1 agent.2.1) := by
   intro choice
   let := Fintype.ofFinite ((M).Choice agent.1 agent.2.1)
   exact PMF.mem_support_uniformOfFintype choice
 
-/-- The original recovery reference becomes the actual phase reference under
+/-- The recovery reference becomes the actual phase reference under
 the local bijection; no reweighting or enlarged menu is involved. -/
 theorem uniform_recovery_map (agent : (M).InformationAgent (M).playedInformation)
     (clear : ClearInput setup leaks agent.2.1) :
-    (((oldMenu).uniformPolicy (oldInitial) horizon (oldScheduler) agent.1
-        (PhaseRecoveryProjection.information (runtime setup) leaks (oldLeaks) agent.2.1)).map
+    (((RecoveryMenu).uniformPolicy (RecoveryPrior) horizon (RecoveryScheduler) agent.1
+        (PhaseRecoveryProjection.information (runtime setup) leaks (RecoveryLeaks) agent.2.1)).map
       (choiceEquiv setup leaks bounds horizon scheduler agent clear).symm) =
-      (menu setup leaks bounds).uniformPolicy (initialLaw setup) horizon scheduler agent.1
+      (menu setup leaks bounds).uniformPolicy (phaseInitialLaw setup) horizon scheduler agent.1
         agent.2.1 := by
   classical
   let equivalent := choiceEquiv setup leaks bounds horizon scheduler agent clear
   let := Fintype.ofFinite ((M).Choice agent.1 agent.2.1)
   let := Fintype.ofFinite ((R).Choice agent.1
-    (PhaseRecoveryProjection.information (runtime setup) leaks (oldLeaks) agent.2.1))
+    (PhaseRecoveryProjection.information (runtime setup) leaks (RecoveryLeaks) agent.2.1))
   ext choice
   have mapped := pmf_map_apply_of_injective
-    ((oldMenu).uniformPolicy (oldInitial) horizon (oldScheduler) agent.1
-      (PhaseRecoveryProjection.information (runtime setup) leaks (oldLeaks) agent.2.1))
+    ((RecoveryMenu).uniformPolicy (RecoveryPrior) horizon (RecoveryScheduler) agent.1
+      (PhaseRecoveryProjection.information (runtime setup) leaks (RecoveryLeaks) agent.2.1))
     equivalent.symm.injective (equivalent choice)
   rw [equivalent.symm_apply_apply] at mapped
   rw [mapped]
@@ -302,34 +355,34 @@ def freeLaw (scale : ℝ) (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1)
     (agent : (M).InformationAgent (M).playedInformation)
     (choice : (M).Choice agent.1 agent.2.1) : PMF ((M).Choice agent.1 agent.2.1) :=
   mix scale nonnegative le_one
-    ((menu setup leaks bounds).uniformPolicy (initialLaw setup) horizon scheduler agent.1
+    ((menu setup leaks bounds).uniformPolicy (phaseInitialLaw setup) horizon scheduler agent.1
       agent.2.1) (PMF.pure choice)
 
 open Classical in
-/-- The old prescribed operational law, transported through the actual local menu. -/
+/-- The recovery prescribed operational law, transported through the actual local menu. -/
 def prescribedComponent (assessment : setup.intendedModel.BehavioralAssessment)
     (scale : ℝ) (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1)
     (agent : (M).InformationAgent (M).playedInformation) : PMF ((M).Choice agent.1 agent.2.1) :=
   if clear : ClearInput setup leaks agent.2.1 then
-    (RecoveryOnePacket.prescribedComponent setup (oldLeaks) bounds (oldInitial) horizon
-      (oldScheduler) assessment scale nonnegative le_one
+    (RecoveryOnePacket.prescribedComponent setup (RecoveryLeaks) bounds (RecoveryPrior) horizon
+      (RecoveryScheduler) assessment scale nonnegative le_one
       (projectedAgent setup leaks bounds horizon scheduler agent clear)).map
         (choiceEquiv setup leaks bounds horizon scheduler agent clear).symm
-  else (menu setup leaks bounds).uniformPolicy (initialLaw setup) horizon scheduler agent.1
+  else (menu setup leaks bounds).uniformPolicy (phaseInitialLaw setup) horizon scheduler agent.1
     agent.2.1
 
 open Classical in
-/-- Each old keyed option is read at the same projected player-local input. -/
+/-- Each recovery keyed option is read at the same projected player-local input. -/
 def keyedComponent (assessment : setup.intendedModel.BehavioralAssessment) {slots : Nat}
     (scale : ℝ) (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1)
     (agent : (M).InformationAgent (M).playedInformation) (option : LateOption slots) :
     PMF ((M).Choice agent.1 agent.2.1) :=
   if clear : ClearInput setup leaks agent.2.1 then
-    (RecoveryOnePacket.keyedComponent setup (oldLeaks) bounds (oldInitial) horizon
-      (oldScheduler) assessment scale nonnegative le_one
+    (RecoveryOnePacket.keyedComponent setup (RecoveryLeaks) bounds (RecoveryPrior) horizon
+      (RecoveryScheduler) assessment scale nonnegative le_one
       (projectedAgent setup leaks bounds horizon scheduler agent clear) option).map
         (choiceEquiv setup leaks bounds horizon scheduler agent clear).symm
-  else (menu setup leaks bounds).uniformPolicy (initialLaw setup) horizon scheduler agent.1
+  else (menu setup leaks bounds).uniformPolicy (phaseInitialLaw setup) horizon scheduler agent.1
     agent.2.1
 
 def component (assessment : setup.intendedModel.BehavioralAssessment) {slots : Nat}
@@ -359,14 +412,14 @@ theorem prescribedComponent_fullSupport (assessment : setup.intendedModel.Behavi
   unfold prescribedComponent
   split
   · rename_i clear
-    have full : FullSupport (RecoveryOnePacket.prescribedComponent setup (oldLeaks) bounds
-        (oldInitial) horizon (oldScheduler) assessment scale positive.le le_one
+    have full : FullSupport (RecoveryOnePacket.prescribedComponent setup (RecoveryLeaks) bounds
+        (RecoveryPrior) horizon (RecoveryScheduler) assessment scale positive.le le_one
         (projectedAgent setup leaks bounds horizon scheduler agent clear)) := by
       unfold RecoveryOnePacket.prescribedComponent
       apply RecoveryProjection.boundedRecoveryLaw_fullSupport
-      exact slotTrembledChoice_fullSupport setup (oldLeaks) bounds
-        ((oldInitial).map RecoveryState.native) horizon
-        (RecoveryProjection.nativeScheduler (runtime setup) (oldLeaks) (oldScheduler))
+      exact slotTrembledChoice_fullSupport setup (RecoveryLeaks) bounds
+        ((RecoveryPrior).map RecoveryState.native) horizon
+        (RecoveryProjection.nativeScheduler (runtime setup) (RecoveryLeaks) (RecoveryScheduler))
         positive le_one _ _ _ _ _
     intro choice
     exact (PMF.mem_support_map_iff _ _ _).mpr
@@ -383,14 +436,15 @@ theorem keyedComponent_fullSupport (assessment : setup.intendedModel.BehavioralA
   unfold keyedComponent
   split
   · rename_i clear
-    have full : FullSupport (RecoveryOnePacket.keyedComponent setup (oldLeaks) bounds
-        (oldInitial) horizon (oldScheduler) assessment scale positive.le le_one
+    have full : FullSupport (RecoveryOnePacket.keyedComponent setup (RecoveryLeaks) bounds
+        (RecoveryPrior) horizon (RecoveryScheduler) assessment scale positive.le le_one
         (projectedAgent setup leaks bounds horizon scheduler agent clear) option) := by
       unfold RecoveryOnePacket.keyedComponent
       apply RecoveryProjection.boundedRecoveryLaw_fullSupport
-      exact lateComponent_fullSupport setup (oldLeaks) bounds
-        ((oldInitial).map RecoveryState.native)
-        horizon (RecoveryProjection.nativeScheduler (runtime setup) (oldLeaks) (oldScheduler))
+      exact lateComponent_fullSupport setup (RecoveryLeaks) bounds
+        ((RecoveryPrior).map RecoveryState.native)
+        horizon (RecoveryProjection.nativeScheduler (runtime setup) (RecoveryLeaks)
+            (RecoveryScheduler))
         assessment positive le_one _ _ option
     intro choice
     exact (PMF.mem_support_map_iff _ _ _).mpr
@@ -418,7 +472,8 @@ theorem freeLaw_converges (scale : ℕ → ℝ) (positive : ∀ n, 0 < scale n)
     PMFConvergesPointwise (fun n => freeLaw setup leaks bounds horizon scheduler (scale n)
       (positive n).le (le_one n) agent choice) (PMF.pure choice) :=
   pmfConvergesPointwise_mix_zero scale (fun n => (positive n).le) le_one vanishes
-    ((menu setup leaks bounds).uniformPolicy (initialLaw setup) horizon scheduler agent.1 agent.2.1)
+    ((menu setup leaks bounds).uniformPolicy (phaseInitialLaw setup) horizon scheduler agent.1
+        agent.2.1)
     (PMF.pure choice)
 
 end Vegas.SequentialPhase

@@ -18,13 +18,14 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   (bounds : MessageBounds (graph setup)) (horizon : Nat)
   (scheduler : (phaseApplication (runtime setup) leaks).Scheduler)
 
-local notation "oldLeaks" => PhaseNativeProjection.nativeLeaks leaks
+local notation "RecoveryLeaks" => PhaseNativeProjection.nativeLeaks leaks
   (sequentialRuntimePhasePlan setup.program)
-local notation "oldScheduler" => SequentialPhaseSchedulerInformation.scheduler setup.program
-  (runtime setup) leaks (oldLeaks) scheduler
-local notation "nativeScheduler" => RecoveryProjection.nativeScheduler (runtime setup) (oldLeaks)
-  (oldScheduler)
-local notation "native" => application setup (oldLeaks)
+local notation "RecoveryScheduler" => SequentialPhaseSchedulerInformation.scheduler setup.program
+  (runtime setup) leaks (RecoveryLeaks) scheduler
+local notation "nativeScheduler" => RecoveryProjection.nativeScheduler (runtime setup)
+    (RecoveryLeaks)
+  (RecoveryScheduler)
+local notation "native" => application setup (RecoveryLeaks)
 local notation "phaseInitial" => PMF.map
   (PhaseRuntimeState.initial (sequentialRuntimePhasePlan setup.program))
   (PMF.map setup.eventInputs setup.initialLaw)
@@ -38,7 +39,7 @@ theorem phase_terminal_completed_of_decodedIntended
     (decoded : sourceServicePrefix? setup rank sent = some point)
     (intended : ProtocolState.Intended setup.program point)
     (event : (graph setup).EventId) (final : (native).Control)
-    (trace : (onePacketProtocol setup (oldLeaks) bounds horizon (nativeScheduler)).Trace
+    (trace : (onePacketProtocol setup (RecoveryLeaks) bounds horizon (nativeScheduler)).Trace
       (some final))
     (ended : (native).terminal (some final))
     (same : final.execution.application.config = sent) :
@@ -48,7 +49,7 @@ theorem phase_terminal_completed_of_decodedIntended
       final.execution.application.config.cut.IsPrefix rank by rw [same]; exact ordered), same]
     exact decoded
   have clear := exclusionEvidence_of_decodedIntended
-    ((bounds.onePacketMenu (runtime setup) (oldLeaks)).toRawTrace (initialLaw setup) horizon
+    ((bounds.onePacketMenu (runtime setup) (RecoveryLeaks)).toRawTrace (initialLaw setup) horizon
       (nativeScheduler) trace) finalDecoded intended
   have complete := PhaseService.CompletesPlay.clear_native_counted setup leaks bounds horizon
     scheduler completes trace clear ended

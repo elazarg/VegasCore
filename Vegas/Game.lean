@@ -645,7 +645,6 @@ import Vegas.Game.RecoverySampleHistory
 import Vegas.Game.RecoverySavedSourceRank
 import Vegas.Game.RecoverySavedSourceView
 import Vegas.Game.RecoverySequentialCompilation
-import Vegas.Game.RecoverySequentialLimit
 import Vegas.Game.RecoveryPaymentReadout
 import Vegas.Game.SequentialPaymentValuation
 import Vegas.Game.RecoverySettledCommitCheckpoint
@@ -931,7 +930,6 @@ import Vegas.Game.SequentialPhaseNativeGainError
 import Vegas.Game.SequentialPhaseKeyedGains
 import Vegas.Game.SequentialPhaseKeyedPureChoices
 import Vegas.Game.SequentialPhaseUnpendingChoices
-import Vegas.Game.SequentialPhaseLimit
 import Vegas.Game.SequentialPhaseKeyedComparisons
 import Vegas.Game.SequentialPhaseNonLateComparisons
 import Vegas.Game.SequentialPhaseLocalComparisons

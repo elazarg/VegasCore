@@ -5,8 +5,8 @@ import Vegas.Game.PhaseRecoveryLocalEnvelope
 /-! # Canonical counted callbacks projected to the recovery game
 
 The existing operational normalizer identifies canonical responses. At every
-clear singleton phase prefix, any canonical admitted callback is a legal old
-recovery one-packet callback. No actual old trace or equilibrium is assumed.
+clear singleton phase prefix, any canonical admitted callback is a legal recovery one-packet
+callback. No actual recovery trace or equilibrium is assumed.
 -/
 
 noncomputable section

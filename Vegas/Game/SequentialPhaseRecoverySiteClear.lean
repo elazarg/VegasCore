@@ -24,25 +24,31 @@ local notation "P" => phaseApplication (runtime setup) leaks
 local notation "A" => recoveryApplication (runtime setup) (recoveryLeaks setup leaks)
 local notation "M" => model setup leaks bounds horizon scheduler
 local notation "R" => recoveryModel setup leaks bounds horizon scheduler
-local notation "oldLeaks" => recoveryLeaks setup leaks
-local notation "oldInitial" => recoveryInitialLaw setup
-local notation "oldScheduler" => recoveryScheduler setup leaks scheduler
-local notation "oldMenu" => Recovery.onePacketMenu (runtime setup) (oldLeaks) bounds
-local notation "rawModel" => ReactiveApplication.information (A) (oldInitial) horizon (oldScheduler)
-local notation "oldProtocol" => ReactiveApplication.ResponseMenu.protocol (oldMenu) (oldInitial)
-  horizon (oldScheduler)
-local notation "rawProtocol" => ReactiveApplication.protocol (A) (oldInitial) horizon (oldScheduler)
-local notation "projection" => PhaseRecoveryProjection.protocolState (runtime setup) leaks oldLeaks
-local notation "projectInfo" => PhaseRecoveryProjection.information (runtime setup) leaks oldLeaks
+local notation "RecoveryLeaks" => recoveryLeaks setup leaks
+local notation "RecoveryPrior" => recoveryInitialLaw setup
+local notation "RecoveryScheduler" => recoveryScheduler setup leaks scheduler
+local notation "RecoveryMenu" => Recovery.onePacketMenu (runtime setup) (RecoveryLeaks) bounds
+local notation "rawModel" => ReactiveApplication.information (A) (RecoveryPrior) horizon
+    (RecoveryScheduler)
+local notation "RecoveryProtocol" => ReactiveApplication.ResponseMenu.protocol (RecoveryMenu)
+    (RecoveryPrior)
+  horizon (RecoveryScheduler)
+local notation "rawProtocol" => ReactiveApplication.protocol (A) (RecoveryPrior) horizon
+    (RecoveryScheduler)
+local notation "projection" => PhaseRecoveryProjection.protocolState (runtime setup) leaks
+    RecoveryLeaks
+local notation "projectInfo" => PhaseRecoveryProjection.information (runtime setup) leaks
+    RecoveryLeaks
 local notation "phaseClear" => ReactiveApplication.stateInvariant (app := P)
   (fun state => RecoveryState.excluded (PhaseRuntimeState.current state) = ∅)
-local notation "oldClear" => ReactiveApplication.stateInvariant (app := A)
+local notation "RecoveryClear" => ReactiveApplication.stateInvariant (app := A)
   (fun state => RecoveryState.excluded state = ∅)
 
-attribute [local instance] phaseInfoDecidableEq recoveryInfoDecidableEq
+attribute [local instance] phaseInfoDecidableEq recoveryInfoDecidableEq nativeInfoDecidableEq
+  phaseHistoryFintype recoveryHistoryFintype nativeHistoryFintype nativeNature
 
 /-- Every history in a projected genuine clear phase decision fiber is a
-controlled clear original recovery history, including histories of zero belief mass. -/
+controlled clear recovery history, including histories of zero belief mass. -/
 theorem recovery_informationHistory_controlled_of_projected_clear
     (who : Player) (past : List (P).PlayerEntry) (view : (P).PlayerView)
     (clear : view.application.2.excluded = ∅)
@@ -52,10 +58,11 @@ theorem recovery_informationHistory_controlled_of_projected_clear
     ∃ current : (A).Control,
       history.1.state = some current ∧ current.execution.application.excluded = ∅ := by
   have active := InformationSite.active (R) site history
-  obtain ⟨current, state, acting⟩ := (A).control_of_active (oldInitial) horizon (oldScheduler)
-    ((oldMenu).toRawHistory (oldInitial) horizon (oldScheduler) history.1) who active
+  obtain ⟨current, state, acting⟩ := (A).control_of_active (RecoveryPrior) horizon
+      (RecoveryScheduler)
+    ((RecoveryMenu).toRawHistory (RecoveryPrior) horizon (RecoveryScheduler) history.1) who active
   change history.1.state = some current at state
-  have observed := ((oldMenu).info (oldInitial) horizon (oldScheduler) who
+  have observed := ((RecoveryMenu).info (RecoveryPrior) horizon (RecoveryScheduler) who
     history.1.trace).symm.trans (history.2.trans input)
   rw [state] at observed
   simp only [ReactiveApplication.observe, acting, ↓reduceIte, PhaseRecoveryProjection.information,

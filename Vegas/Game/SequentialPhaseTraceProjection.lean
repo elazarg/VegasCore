@@ -5,7 +5,7 @@ import Interaction.ReactiveInvariantPrefix
 
 /-! # Actual recovery traces through the first singleton phase exclusion
 
-Every clear counted phase trace projects to a legal original recovery trace.
+Every clear counted phase trace projects to a legal recovery trace.
 One further actual transition can be retained, including its first-exclusion
 endpoint. No converse lifting of arbitrary recovery histories is asserted.
 -/

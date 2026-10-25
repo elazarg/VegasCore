@@ -6,7 +6,7 @@ import Vegas.Pending.PhaseLive
 import Vegas.Pending.PhasePlanSuffix
 import Mathlib.Order.Interval.Finset.Fin
 
-/-! # Singleton phase identity read from the old native public observation
+/-! # Singleton phase identity read from the native public observation
 
 At a live singleton frontier the completion-order length is the current source
 rank. Before exclusion the archive is empty and the generation is zero, so the
@@ -82,7 +82,7 @@ def descriptor (native : PublicView G) : Option (RuntimePhaseKind × Nat × Nat)
     some (phase.kind, phase.low, phase.high)
   else none
 
-/-- The public phase data reconstructed solely from the original recovery public input. -/
+/-- The public phase data reconstructed solely from the recovery public input. -/
 def publicView (native : PublicView G) (excluded : Finset Player) : PhasePublicView G where
   native
   excluded
@@ -161,7 +161,7 @@ theorem publicView_of_frontier (state : PhaseRuntimeState G)
   rfl
 
 /-- Every actual clear raw history has the exact public view reconstructed from its
-old native observation; no honesty, service or selected-anchor premise is used. -/
+native observation; no honesty, service or selected-anchor premise is used. -/
 theorem publicView_history (runtime : EventGraphRuntime G)
     (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket G))
     (inputs : PMF (G).Inputs) (horizon : Nat)

@@ -3,11 +3,11 @@
 import Vegas.Game.SequentialPhaseRecoveryStep
 import GameTheoryExtensions.Analysis.Protocol.StoppedKernelComparison
 
-/-! # Exact original recovery law stopped at exclusion or a physical guard
+/-! # Exact recovery law stopped at exclusion or a physical guard
 
 The complete projected physical execution is retained at the stopping endpoint,
 including all traffic, receipts and own scheduler/player records. Only clear
-source callbacks are decoded. No arbitrary old-history lifting, service contract
+source callbacks are decoded. No arbitrary recovery-history lifting, service contract
 transfer or equivalence of post-exclusion archive observations is assumed.
 -/
 
@@ -50,7 +50,7 @@ local notation "recoveryClear" => ReactiveApplication.stateInvariant (app := R)
   (fun state => RecoveryState.excluded state = ∅)
 
 include included in
-/-- Arbitrary counted phase policies and their old own-information decodings
+/-- Arbitrary counted phase policies and their recovery own-information decodings
 have identical physical laws stopped at exclusion or any current-state guard,
 from every pair of matched actual histories.
 The first-exclusion successor is retained rather than collapsed to a failure atom. -/

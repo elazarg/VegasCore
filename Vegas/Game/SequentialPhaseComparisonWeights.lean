@@ -26,30 +26,31 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket (graph setup)))
   (bounds : MessageBounds (graph setup)) (horizon : Nat)
   (scheduler : (phaseApplication (runtime setup) leaks).Scheduler)
-  [(phaseApplication (runtime setup) leaks).FiniteNature (initialLaw setup) scheduler]
+  [(phaseApplication (runtime setup) leaks).FiniteNature (phaseInitialLaw setup) scheduler]
 
 local notation "P" => phaseApplication (runtime setup) leaks
 local notation "M" => model setup leaks bounds horizon scheduler
 local notation "R" => recoveryModel setup leaks bounds horizon scheduler
-local notation "oldLeaks" => recoveryLeaks setup leaks
-local notation "oldInitial" => recoveryInitialLaw setup
-local notation "oldScheduler" => recoveryScheduler setup leaks scheduler
-local notation "oldMenu" => Recovery.onePacketMenu (runtime setup) (oldLeaks) bounds
+local notation "RecoveryLeaks" => recoveryLeaks setup leaks
+local notation "RecoveryPrior" => recoveryInitialLaw setup
+local notation "RecoveryScheduler" => recoveryScheduler setup leaks scheduler
+local notation "RecoveryMenu" => Recovery.onePacketMenu (runtime setup) (RecoveryLeaks) bounds
 local notation "decode" => SequentialPhasePlayerInformation.information setup.program
-  (runtime setup) leaks (oldLeaks)
+  (runtime setup) leaks (RecoveryLeaks)
 
-attribute [local instance] phaseInfoDecidableEq recoveryInfoDecidableEq
+attribute [local instance] phaseInfoDecidableEq recoveryInfoDecidableEq nativeInfoDecidableEq
+  phaseHistoryFintype recoveryHistoryFintype nativeHistoryFintype nativeNature
 
-/-- Clear played phase inputs are recovered from their old player input alone. -/
+/-- Clear played phase inputs are recovered from their recovery player input alone. -/
 theorem decoded_projected_input (agent : (M).InformationAgent (M).playedInformation)
     (clear : ClearInput setup leaks agent.2.1) :
-    decode (PhaseRecoveryProjection.information (runtime setup) leaks (oldLeaks) agent.2.1) =
+    decode (PhaseRecoveryProjection.information (runtime setup) leaks (RecoveryLeaks) agent.2.1) =
       agent.2.1 := by
   classical
   have played := agent.2.2
   unfold InformationModel.playedInformation at played
   obtain ⟨history, _member, seen⟩ := Finset.mem_image.mp played
-  have observed := ((menu setup leaks bounds).info (initialLaw setup) horizon scheduler agent.1
+  have observed := ((menu setup leaks bounds).info (phaseInitialLaw setup) horizon scheduler agent.1
     history.trace).symm.trans seen
   cases current : history.state with
   | none => rw [current] at observed; rw [← observed] at clear; exact clear.elim
@@ -63,9 +64,10 @@ theorem decoded_projected_input (agent : (M).InformationAgent (M).playedInformat
           simp only [ReactiveApplication.observe, acting, ↓reduceIte] at valid
           exact valid
         have trace := (PhaseCount.normalized_onePacket_included (runtime setup) leaks bounds).trace
-          (initialLaw setup) horizon scheduler (current ▸ history.trace)
+          (phaseInitialLaw setup) horizon scheduler (current ▸ history.trace)
         have recovered := SequentialPhasePlayerInformation.information_history setup.program
-          (runtime setup) leaks (oldLeaks) bounds (setup.initialLaw.map setup.eventInputs) horizon
+          (runtime setup) leaks (RecoveryLeaks) bounds (setup.initialLaw.map setup.eventInputs)
+              horizon
           scheduler trace empty agent.1
         rwa [observation] at recovered
       · rw [current] at observed
@@ -83,7 +85,8 @@ private theorem decoded_input_played (agent : (R).InformationAgent (R).playedInf
     (represented : Represented setup leaks bounds horizon scheduler agent) :
     decode agent.2.1 ∈ (M).playedInformation agent.1 := by
   obtain ⟨phase, clear, rfl⟩ := represented
-  change decode (PhaseRecoveryProjection.information (runtime setup) leaks (oldLeaks) phase.2.1) ∈ _
+  change decode (PhaseRecoveryProjection.information (runtime setup) leaks (RecoveryLeaks)
+      phase.2.1) ∈ _
   rw [decoded_projected_input setup leaks bounds horizon scheduler phase clear]
   exact phase.2.2
 
@@ -114,7 +117,7 @@ theorem liftedAgent_clear (agent : (R).InformationAgent (R).playedInformation)
       (liftedAgent setup leaks bounds horizon scheduler agent represented).2.1 := by
   obtain ⟨phase, clear, rfl⟩ := represented
   change ClearInput setup leaks (decode
-    (PhaseRecoveryProjection.information (runtime setup) leaks (oldLeaks) phase.2.1))
+    (PhaseRecoveryProjection.information (runtime setup) leaks (RecoveryLeaks) phase.2.1))
   rwa [decoded_projected_input setup leaks bounds horizon scheduler phase clear]
 
 theorem projected_liftedAgent (agent : (R).InformationAgent (R).playedInformation)
@@ -128,11 +131,13 @@ theorem projected_liftedAgent (agent : (R).InformationAgent (R).playedInformatio
   | mk who input =>
       apply congrArg (Sigma.mk who)
       apply Subtype.ext
-      exact congrArg (PhaseRecoveryProjection.information (runtime setup) leaks (oldLeaks)) same
+      exact congrArg (PhaseRecoveryProjection.information (runtime setup) leaks (RecoveryLeaks))
+          same
 
 theorem freeAgent_projected_iff (agent : (M).InformationAgent (M).playedInformation)
     (clear : ClearInput setup leaks agent.2.1) :
-    RecoveryOnePacket.FreeAgent setup (oldLeaks) bounds (oldInitial) horizon (oldScheduler)
+    RecoveryOnePacket.FreeAgent setup (RecoveryLeaks) bounds (RecoveryPrior) horizon
+        (RecoveryScheduler)
         (projectedAgent setup leaks bounds horizon scheduler agent clear) ↔
       FreeAgent setup leaks bounds horizon scheduler agent := by
   constructor
@@ -143,7 +148,8 @@ theorem freeAgent_projected_iff (agent : (M).InformationAgent (M).playedInformat
 
 private theorem liftedAgent_free (agent : (R).InformationAgent (R).playedInformation)
     (represented : Represented setup leaks bounds horizon scheduler agent)
-    (free : RecoveryOnePacket.FreeAgent setup (oldLeaks) bounds (oldInitial) horizon (oldScheduler)
+    (free : RecoveryOnePacket.FreeAgent setup (RecoveryLeaks) bounds (RecoveryPrior) horizon
+        (RecoveryScheduler)
       agent) :
     FreeAgent setup leaks bounds horizon scheduler
       (liftedAgent setup leaks bounds horizon scheduler agent represented) := by
@@ -169,7 +175,8 @@ open Classical in
 post-exclusion equality nor optimality of these comparison weights is asserted. -/
 def recoveryComparisonWeights {slots : Nat}
     (weights : ∀ p, PMF (Part setup leaks bounds horizon scheduler slots p)) :
-    ∀ p, PMF (RecoveryOnePacket.Part setup (oldLeaks) bounds (oldInitial) horizon (oldScheduler)
+    ∀ p, PMF (RecoveryOnePacket.Part setup (RecoveryLeaks) bounds (RecoveryPrior) horizon
+        (RecoveryScheduler)
       slots p)
   | .inl owner =>
       if represented : Represented setup leaks bounds horizon scheduler owner.1 then

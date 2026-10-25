@@ -19,58 +19,43 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket (graph setup)))
   (bounds : MessageBounds (graph setup)) (horizon : Nat)
   (scheduler : (phaseApplication (runtime setup) leaks).Scheduler)
-  [(phaseApplication (runtime setup) leaks).FiniteNature (initialLaw setup) scheduler]
+  [(phaseApplication (runtime setup) leaks).FiniteNature (phaseInitialLaw setup) scheduler]
   {delay bound : (graph setup).EventId → Nat}
-  (opportunity : PhaseService.Opportunity (runtime setup) leaks (initialLaw setup) horizon
+  (opportunity : PhaseService.Opportunity (runtime setup) leaks (phaseInitialLaw setup) horizon
     scheduler delay)
-  (inclusion : PhaseService.ProtectedInclusion (runtime setup) leaks (initialLaw setup) horizon
+  (inclusion : PhaseService.ProtectedInclusion (runtime setup) leaks (phaseInitialLaw setup) horizon
     scheduler bound)
   (timely : (runtime setup).AsyncTimely delay bound)
-  (completes : PhaseService.CompletesPlay (runtime setup) leaks (initialLaw setup) horizon
+  (completes : PhaseService.CompletesPlay (runtime setup) leaks (phaseInitialLaw setup) horizon
     scheduler)
 
-local notation "oldLeaks" => recoveryLeaks setup leaks
-local notation "nativeScheduler" => RecoveryProjection.nativeScheduler (runtime setup) (oldLeaks)
+local notation "RecoveryLeaks" => recoveryLeaks setup leaks
+local notation "nativeScheduler" => RecoveryProjection.nativeScheduler (runtime setup)
+    (RecoveryLeaks)
   (recoveryScheduler setup leaks scheduler)
-local notation "N" => onePacketModel setup (oldLeaks) bounds (Vegas.initialLaw setup) horizon
+local notation "N" => onePacketModel setup (RecoveryLeaks) bounds (Vegas.initialLaw setup) horizon
   (nativeScheduler)
 local notation "E" => ReactiveApplication.ResponseMenu.protocol
-  (bounds.onePacketMenu (runtime setup) (oldLeaks)) (Vegas.initialLaw setup) horizon
+  (bounds.onePacketMenu (runtime setup) (RecoveryLeaks)) (Vegas.initialLaw setup) horizon
     (nativeScheduler)
-local notation "NativeModel" => onePacketModel setup (oldLeaks) bounds (Vegas.initialLaw setup)
+local notation "NativeModel" => onePacketModel setup (RecoveryLeaks) bounds (Vegas.initialLaw setup)
   horizon (nativeScheduler)
 local notation "NativeProtocol" => ReactiveApplication.ResponseMenu.protocol
-  (bounds.onePacketMenu (runtime setup) (oldLeaks)) (Vegas.initialLaw setup) horizon
+  (bounds.onePacketMenu (runtime setup) (RecoveryLeaks)) (Vegas.initialLaw setup) horizon
     (nativeScheduler)
 
-local notation "Menu" => bounds.onePacketMenu (runtime setup) (oldLeaks)
+local notation "Menu" => bounds.onePacketMenu (runtime setup) (RecoveryLeaks)
 
 local notation "NP" => ReactiveApplication.ResponseMenu.protocol
-  (bounds.onePacketMenu (runtime setup) (oldLeaks)) (Vegas.initialLaw setup) horizon
+  (bounds.onePacketMenu (runtime setup) (RecoveryLeaks)) (Vegas.initialLaw setup) horizon
     (nativeScheduler)
 
-local instance pendingAffineNativeNature :
-    (application setup (oldLeaks)).FiniteNature (Vegas.initialLaw setup) (nativeScheduler) :=
-  nativeNature setup leaks scheduler
-
-local instance pendingAffineNativeInformation (who : Player) :
-    DecidableEq ((N).InfoState who) := Classical.decEq _
-
 local notation "Clear" => ReactiveApplication.stateInvariant
-  (app := application setup (oldLeaks))
+  (app := application setup (RecoveryLeaks))
   (fun native => ExclusionEvidence 0 ∅ (RecoveryState.mk native ∅))
 
-local instance pendingAffineSourceHistory :
-    Fintype ((Recovery.onePacketMenu (runtime setup) (oldLeaks) bounds).protocol
-    (PMF.map (fun native => (⟨native, ∅⟩ : RecoveryState (graph setup))) (Vegas.initialLaw setup))
-    horizon (recoveryScheduler setup leaks scheduler)).History :=
-  sourceHistoryFintype setup leaks bounds horizon scheduler
-
-local instance pendingAffineSourceInformation (who : Player) : DecidableEq
-    ((RecoveryOnePacket.model setup (oldLeaks) bounds
-      (PMF.map (fun native => (⟨native, ∅⟩ : RecoveryState (graph setup))) (Vegas.initialLaw setup))
-      horizon
-      (recoveryScheduler setup leaks scheduler)).InfoState who) := Classical.decEq _
+attribute [local instance] phaseInfoDecidableEq recoveryInfoDecidableEq nativeInfoDecidableEq
+  phaseHistoryFintype recoveryHistoryFintype nativeHistoryFintype nativeNature
 
 include opportunity inclusion timely completes in
 open Classical in
@@ -84,21 +69,23 @@ theorem nativeComparison_pending_value_affine
     (weights : ℕ → ∀ p,
       PMF (Part setup leaks bounds horizon scheduler bounds.candidateCount p)) (n : ℕ)
     {who : Player} (site : (N).InformationSite who)
-    (pendingSite : LateDelivery setup (oldLeaks) who site.1 ∨
-      FirstActivation setup (oldLeaks) who site.1)
-    (debtFree : SiteDebtFree setup (oldLeaks) bounds horizon (nativeScheduler) site)
-    {key : LateKey setup (oldLeaks)} (siteKey : lateKey setup (oldLeaks) who site.1 = some key)
+    (pendingSite : LateDelivery setup (RecoveryLeaks) who site.1 ∨
+      FirstActivation setup (RecoveryLeaks) who site.1)
+    (debtFree : SiteDebtFree setup (RecoveryLeaks) bounds horizon (nativeScheduler) site)
+    {key : LateKey setup (RecoveryLeaks)} (siteKey : lateKey setup (RecoveryLeaks) who site.1 = some
+        key)
     {event : (graph setup).EventId}
-    (pending : pendingEvent setup (oldLeaks) who site.1 = some event)
-    {past : List (application setup (oldLeaks)).PlayerEntry}
-    {view : (application setup (oldLeaks)).PlayerView} (atSite : site.1 = some (past, view))
+    (pending : pendingEvent setup (RecoveryLeaks) who site.1 = some event)
+    {past : List (application setup (RecoveryLeaks)).PlayerEntry}
+    {view : (application setup (RecoveryLeaks)).PlayerView} (atSite : site.1 = some (past, view))
     (law : PMF ((N).Choice who site.1))
     (history : (N).InformationHistory who site.1)
-    (forced : ForcedState setup (oldLeaks) who history.1.state)
+    (forced : ForcedState setup (RecoveryLeaks) who history.1.state)
     (lawShape : (∃ option : LateOption bounds.candidateCount,
-      law = onePacketLate setup (oldLeaks) bounds horizon (nativeScheduler) sequence scale positive
+      law = onePacketLate setup (RecoveryLeaks) bounds horizon (nativeScheduler) sequence scale
+          positive
         le_one n ((N).agentAt site) option) ∨
-      law = PMF.pure (silenceChoice setup (oldLeaks) bounds (Vegas.initialLaw setup) horizon
+      law = PMF.pure (silenceChoice setup (RecoveryLeaks) bounds (Vegas.initialLaw setup) horizon
         (nativeScheduler) who site.1))
     {Parameter : Type} (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
@@ -113,15 +100,15 @@ theorem nativeComparison_pending_value_affine
     let installed := Profile.update (sig := (N).behavioralSignature) common who
       ((common who).withLaw site.1 law)
     let stopped := fun final : (NP).History => ¬ Clear final.state ∨
-      DecodedState setup (oldLeaks) (failureProfile setup.program)
+      DecodedState setup (RecoveryLeaks) (failureProfile setup.program)
         (ProtocolState.OwesFailure who setup.program) final.state
     let payoff := fun final : (NP).History => if stopped final then excludedPayoff who else
-      exclusionBase setup parameter utility excludedPayoff (oldLeaks) final.state who
+      exclusionBase setup parameter utility excludedPayoff (RecoveryLeaks) final.state who
     let failure := expect ((N).runBehavioralFrom installed (2 * horizon + 1) history.1)
       (fun final => if DecisionFailed key final.state then (1 : ℝ) else 0)
     |expect ((N).runBehavioralUntil certificate installed stopped history.1) payoff -
       ((1 - failure) *
-        decodedPointValue setup (oldLeaks) bounds horizon (nativeScheduler) parameter utility
+        decodedPointValue setup (RecoveryLeaks) bounds horizon (nativeScheduler) parameter utility
           excludedPayoff (setup.intendedOpeningProfile (sequence n).strategy) who
           (siteRank site.1) history.1 +
         failure * excludedPayoff who)| ≤
@@ -131,7 +118,8 @@ theorem nativeComparison_pending_value_affine
         (2 * horizon + 1) + scale n ^ 3 * (2 * horizon + 1)) * (2 * payoffBound) +
       2 * payoffBound * (scale n ^ 3 * (2 * horizon + 1)) := by
   intro common certificate installed stopped payoff failure
-  apply RecoveryOnePacket.nativeComparison_pending_value_affine_of_boundary_values setup (oldLeaks)
+  apply RecoveryOnePacket.nativeComparison_pending_value_affine_of_boundary_values setup
+      (RecoveryLeaks)
     bounds horizon (recoveryScheduler setup leaks scheduler) wellFormed covers capacity sequence
     scale
     positive le_one
