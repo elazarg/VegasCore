@@ -19,6 +19,8 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   (bounds : MessageBounds (graph setup)) (horizon : Nat)
   (scheduler : (recoveryApplication (runtime setup) leaks).Scheduler)
 
+variable {Public : Type*} {signal : State L setup.context → Public}
+
 local notation "Initial" => PMF.map
   (fun native => (RecoveryState.mk native ∅ : RecoveryState (graph setup))) (initialLaw setup)
 local notation "NativeScheduler" => nativeScheduler (runtime setup) leaks scheduler
@@ -61,7 +63,8 @@ theorem nativeComparison_keyed_record_bounds [Fintype (RP).History]
     [(application setup leaks).FiniteNature (initialLaw setup) (NativeScheduler)]
     [∀ who, DecidableEq ((R).InfoState who)] [∀ who, DecidableEq ((N).InfoState who)]
     [Finite setup.intendedProtocol.History]
-    (wellFormed : setup.WellFormed) (independent : setup.PrivateInputsIndependent)
+    (wellFormed : setup.WellFormed) (independent : setup.PrivateInputsIndependentGiven signal)
+    (observable : setup.PublicInitialSignal signal)
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (sourceMixed : ∀ n, (sequence n).IsFullyMixed)
     (scale : ℕ → ℝ) (positive : ∀ n, 0 < scale n) (le_one : ∀ n, scale n ≤ 1)
@@ -96,6 +99,7 @@ theorem nativeComparison_keyed_record_bounds [Fintype (RP).History]
                   positive le_one weights covers capacity n who) (2 * horizon + 1) key option)| ≤
             drift n := by
   let inputs := nativeBaseInputs setup leaks bounds horizon scheduler wellFormed independent
+    observable
     sequence sourceMixed covers coversInputs capacity slots_pos
   have sameScale : scale = inputs.scale := funext scaleEq
   subst scale
@@ -106,7 +110,7 @@ theorem nativeComparison_keyed_record_bounds [Fintype (RP).History]
   have bayes := nativeComparisonSequence_bayes setup leaks bounds horizon scheduler sequence
     inputs.scale positive le_one weights
   have records := inputs.lateRecords_of_keyed setup leaks bounds horizon (NativeScheduler)
-    wellFormed independent
+    wellFormed independent observable
     (fun n => nativeComparisonWeights setup leaks bounds horizon scheduler (weights n))
     (nativeComparisonSequence setup leaks bounds horizon scheduler sequence inputs.scale positive
       le_one weights) assembled mixed bayes

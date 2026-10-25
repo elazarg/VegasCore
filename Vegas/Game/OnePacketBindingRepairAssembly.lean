@@ -30,6 +30,8 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
     scheduler).InfoState who)]
   [Finite setup.intendedProtocol.History]
 
+variable {Public : Type*} {signal : State L setup.context → Public}
+
 local instance bindingRepairAssemblyHistoryFintype :
     Fintype ((bounds.onePacketMenu (runtime setup) leaks).protocol
     (initialLaw setup) horizon scheduler).History :=
@@ -42,7 +44,8 @@ omit [Finite setup.intendedProtocol.History] in
 /-- At every debt-free forced own-turn site, actual repairs give the
 certificate's quantitative regular counterpart for every irregular history. -/
 theorem exists_counterpart_certificate_of_repairs (wellFormed : setup.WellFormed)
-    (independent : setup.PrivateInputsIndependent) (covered : BindingFieldsCovered bounds)
+    (independent : setup.PrivateInputsIndependentGiven signal)
+    (observable : setup.PublicInitialSignal signal) (covered : BindingFieldsCovered bounds)
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (scale : ℕ → ℝ) (scale_pos : ∀ n, 0 < scale n) (scale_le_one : ∀ n, scale n ≤ 1)
     (small : ∀ n, scale n ≤ 1 / 4) (floor : ℕ → ℝ) (floor_pos : ∀ n, 0 < floor n)
@@ -91,7 +94,8 @@ theorem exists_counterpart_certificate_of_repairs (wellFormed : setup.WellFormed
     fun found => ⟨found.1, found.2.trans atSite⟩
   obtain ⟨current, p, historyState, decodedP⟩ := decoded_of_decision (toDecision history)
   obtain ⟨counterpart, counterpartRegular, dominated⟩ := reach_le_counterpart_certificate_of_repairs
-    wellFormed independent covered sequence scale scale_pos scale_le_one small floor floor_pos
+    wellFormed independent observable covered sequence scale scale_pos scale_le_one small floor
+    floor_pos
     floored covers capacity weights error_tendsto n mixed atSite
     (forcedAgent_of_not_free setup leaks bounds horizon scheduler forced) turn
     (toDecision history)
@@ -103,7 +107,8 @@ theorem exists_counterpart_certificate_of_repairs (wellFormed : setup.WellFormed
 /-- Actual private-binding repairs assemble counterpart inputs with no
 successful-cell or external counterpart-construction premise. -/
 def OnePacketCounterpartInputs.ofBindingRepairs (wellFormed : setup.WellFormed)
-    (independent : setup.PrivateInputsIndependent)
+    (independent : setup.PrivateInputsIndependentGiven signal)
+    (observable : setup.PublicInitialSignal signal)
     {sequence : ℕ → setup.intendedModel.BehavioralAssessment}
     (mixedSource : ∀ n, (sequence n).IsFullyMixed)
     {scale : ℕ → ℝ} (scale_pos : ∀ n, 0 < scale n) (scale_le_one : ∀ n, scale n ≤ 1)
@@ -146,7 +151,7 @@ def OnePacketCounterpartInputs.ofBindingRepairs (wellFormed : setup.WellFormed)
   have covered : BindingFieldsCovered bounds := bindingFieldsCovered_of_covers covers coversInputs
   exact OnePacketCounterpartInputs.ofReachComparisons scale_pos scale_le_one scaleEq
     weights assembled mixed (fun n history => exists_counterpart_certificate_of_repairs
-      wellFormed independent covered
+      wellFormed independent observable covered
       sequence scale scale_pos scale_le_one small floor floor_pos floored covers
       capacity weights error_tendsto n (mixedSource n) forced notOwing atSite turn history)
 

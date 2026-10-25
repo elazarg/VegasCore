@@ -25,6 +25,8 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
   {scheduler : (application setup leaks).Scheduler}
 
+variable {Public : Type*} {signal : State L setup.context → Public}
+
 private theorem repair_operationalState_eq_of_record_eq
     {first second : (onePacketProtocol setup leaks bounds horizon scheduler).State}
     (left : (onePacketProtocol setup leaks bounds horizon scheduler).Trace first)
@@ -44,7 +46,8 @@ variable
 
 /-- Actual repairs yield the certificate reach comparison at a forced decision. -/
 theorem reach_le_counterpart_certificate_of_repairs (wellFormed : setup.WellFormed)
-    (independent : setup.PrivateInputsIndependent) (covered : BindingFieldsCovered bounds)
+    (independent : setup.PrivateInputsIndependentGiven signal)
+    (observable : setup.PublicInitialSignal signal) (covered : BindingFieldsCovered bounds)
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (scale : ℕ → ℝ) (scale_pos : ∀ n, 0 < scale n) (scale_le_one : ∀ n, scale n ≤ 1)
     (small : ∀ n, scale n ≤ 1 / 4) (floor : ℕ → ℝ) (floor_pos : ∀ n, 0 < floor n)
@@ -174,7 +177,8 @@ theorem reach_le_counterpart_certificate_of_repairs (wellFormed : setup.WellForm
           (Option.some.inj beforeEq)).trans acting
       have priorPrefix : TracePrefix prior history.1.trace :=
         (TracePrefix.extend .refl joint legal realized).trans isPrefix
-      have forcedActor := forcedAgent_of_intended_witness_repairs wellFormed independent covers
+      have forcedActor := forcedAgent_of_intended_witness_repairs wellFormed independent
+        observable covers
         covered other decision forced turn history witness historyState witnessState decodedW freeW
         prior joint legal realized isPrefix acting
       have canonical := disclosureCanonical_of_resolves prior actor

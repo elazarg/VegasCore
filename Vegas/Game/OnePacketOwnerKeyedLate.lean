@@ -33,12 +33,7 @@ theorem ownerSwap_baseLawAgrees_late
     {Public : Type*} (signal : State L setup.context → Public)
     [Finite (onePacketProtocol setup leaks bounds horizon scheduler).History]
     (wellFormed : setup.WellFormed) (independent : setup.PrivateInputsIndependentGiven signal)
-    (preserves : ∀ (owner : Player) (mine others : State L setup.context),
-      signal (splice owner mine others) = signal others)
-    (observable : ∀ (first second : State L setup.context),
-      (∀ input, (graph setup).fieldPublic (.inl input) →
-        setup.eventInputs first input = setup.eventInputs second input) →
-      signal first = signal second)
+    (observable : setup.PublicInitialSignal signal)
     (covers : bounds.CoversInputValues)
     (assessment : setup.intendedModel.BehavioralAssessment)
     (weight : List (Option (OperationalState setup leaks)) → ℝ) {who : Player}
@@ -64,7 +59,7 @@ theorem ownerSwap_baseLawAgrees_late
           history.trace))
       (fun history => RegularTrace setup leaks bounds horizon scheduler assessment who
         history.trace) site₁ site₂ payoff :=
-  ownerSwap_baseLawAgrees signal wellFormed independent preserves observable covers assessment
+  ownerSwap_baseLawAgrees signal wellFormed independent observable covers assessment
     weight firstSite secondSite sameKey firstDebtFree secondDebtFree
     (ownerSwap_info firstSite secondSite sameKey firstDebtFree secondDebtFree firstLate
       secondLate) payoff

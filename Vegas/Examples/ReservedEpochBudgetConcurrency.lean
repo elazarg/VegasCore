@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Examples.ReservedEpochUsableConcurrency
-import Vegas.Pending.ReservedEpochEmptyPrefix
+import Vegas.Pending.ReservedEpochEmptyProcessing
 import Vegas.Pending.ReservedEpochResources
 import Interaction.ReactiveRawRoundTrace
 import Interaction.ReactiveSchedulerImplementation

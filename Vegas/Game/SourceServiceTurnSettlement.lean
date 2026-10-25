@@ -8,7 +8,7 @@ import Vegas.Game.ServiceHonestLaw
 /-! # The realized settlement law of the turn-counted policy
 
 The turn-counted prescribed policy and its first-turn limit differ only in the
-owners' timing lotteries, so the two runs are within the total deferral weight
+owners' timing lotteries, so the two runs are within the product deferral error
 of each other in total variation, for every scheduler
 (`Vegas.serviceTurnPolicy_roundsFrom_bind_within`).
 
@@ -19,7 +19,7 @@ law of the typed outcome and the realized settlement
 law, no owner has a public binding omission, and every transmitted packet is
 permitted by the settled record, so an authentic partial audit collects
 nothing. Hence the turn-counted policy's executions have the source joint law
-of typed outcome and realized payoffs within the total deferral weight
+of typed outcome and realized payoffs within the product deferral error
 (`Vegas.sourceServiceTurnPolicy_execution_settlement_lawError`). Deferral can
 still produce charged binding omissions and, at a resolution, uncharged
 withholding by expiry; their mass is part of this error.
@@ -153,7 +153,7 @@ asynchronous contract with `delay + bound < deadline`, for every turn timing and
 every source profile whose first-turn clients have its source outcome law, the
 turn-counted profile's executions after `horizon`
 rounds have the source joint law of typed outcome and realized payoffs within
-the total deferral weight in total variation, for every authentic partial audit
+the product deferral error in total variation, for every authentic partial audit
 and every deposit. -/
 theorem sourceServiceTurnPolicy_execution_settlement_lawError
     {scheduler : (serviceApplication setup mode deadline leaks).Scheduler} {horizon turns : Nat}
@@ -166,7 +166,7 @@ theorem sourceServiceTurnPolicy_execution_settlement_lawError
     (sample : List (SettledEvidence setup mode) → PMF (List (SettledEvidence setup mode)))
     (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
     (utility : State L setup.program.terminalCtx → Player → ℝ) (deposit : Player → ℝ) :
-    PMF.WithinTV (∑ event, timing.deferral event)
+    PMF.WithinTV timing.deferralError
       (((serviceApplication setup mode deadline leaks).roundsFrom (serviceInitialLaw setup mode)
         scheduler (serviceTurnPolicy setup mode deadline leaks bound turns timing profile)
           horizon).bind

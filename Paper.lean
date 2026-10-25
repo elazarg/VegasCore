@@ -233,7 +233,7 @@ theorem async_client_nash_reflection [Fintype Player] [IExpr.ResultTypes L]
         (instructionCount service.setup.program + 1))
         (fun final who => (service.setup.protocolReadout final.state).elim 0
           (fun state => utility (service.setup.parameterOutcome parameter state) who))
-        (ε + 2 * (∑ event, timing.deferral event) * range) source := by
+        (ε + 2 * timing.deferralError * range) source := by
   intro base payoff equilibrium
   exact (isεNash_iff_εBestResponse _ _).mpr
     (service.isεBestResponse_of_clientProfile admission ordered parameter utility sample authentic
@@ -325,7 +325,7 @@ theorem async_client_nash_correspondence [Fintype Player] [IExpr.ResultTypes L]
         service.horizon
         service.scheduler).toBehavioralGameForm (2 * service.horizon + 1))
         (fun history who => payoff history.state who)
-        (ε + 2 * (∑ event, timing.deferral event) * range)
+        (ε + 2 * timing.deferralError * range)
         (service.clientProfile admission service.rawMenu timing source)) ∧
     (IsεNash ((service.rawMenu.information (serviceInitialLaw service.setup service.mode)
       service.horizon
@@ -336,7 +336,7 @@ theorem async_client_nash_correspondence [Fintype Player] [IExpr.ResultTypes L]
         (instructionCount service.setup.program + 1))
         (fun final who => (service.setup.protocolReadout final.state).elim 0
           (fun state => utility (service.setup.parameterOutcome parameter state) who))
-        (ε + 2 * (∑ event, timing.deferral event) * range) source) :=
+        (ε + 2 * timing.deferralError * range) source) :=
   service.isεNash_rawClientProfile_approximate admission ordered parameter utility sample authentic
     deposit
     nonnegative timing low range within ε source
@@ -394,10 +394,10 @@ theorem intended_async_client_nash [Fintype Player] [IExpr.ResultTypes L]
       service.horizon
         service.scheduler).toBehavioralGameForm (2 * service.horizon + 1))
         (fun history who => payoff history.state who)
-        (ε + 2 * (∑ event, timing.deferral event) * spread)
+        (ε + 2 * timing.deferralError * spread)
         (service.clientProfile (CommitmentInterface.values service.setup.program) service.rawMenu
           timing source) ∧
-      PMF.WithinTV (∑ event, timing.deferral event)
+      PMF.WithinTV timing.deferralError
         (((service.rawMenu.information (serviceInitialLaw service.setup service.mode)
           service.horizon
           service.scheduler).runBehavioral (service.clientProfile (CommitmentInterface.values
@@ -593,10 +593,10 @@ theorem intended_opening_client_nash [Fintype Player] [IExpr.ResultTypes L]
         service.horizon
           service.scheduler).toBehavioralGameForm (2 * service.horizon + 1))
           (fun history who => payoff history.state who)
-          (ε + 2 * (∑ event, timing.deferral event) * spread)
+          (ε + 2 * timing.deferralError * spread)
           (service.clientProfile (CommitmentInterface.values service.setup.program)
             service.rawMenu timing source) ∧
-        PMF.WithinTV (∑ event, timing.deferral event)
+        PMF.WithinTV timing.deferralError
           (((service.rawMenu.information (serviceInitialLaw service.setup service.mode)
             service.horizon
             service.scheduler).runBehavioral (service.clientProfile (CommitmentInterface.values
@@ -893,8 +893,10 @@ theorem recovery_intended_raw_sequential_equilibrium [Fintype Player] [IExpr.Res
     {Parameter : Type} (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
     (excludedPayoff : Player → ℝ)
+    {Public : Type*} {signal : State L setup.context → Public}
     (wellFormed : setup.WellFormed)
-    (independent : setup.PrivateInputsIndependent) {delay bound : (graph setup).EventId → Nat}
+    (independent : setup.PrivateInputsIndependentGiven signal)
+    (observable : setup.PublicInitialSignal signal) {delay bound : (graph setup).EventId → Nat}
     (opportunity : Recovery.Opportunity (runtime setup) leaks
       (PMF.map (fun native => (RecoveryState.mk native ∅ : RecoveryState (graph setup)))
         (initialLaw setup)) horizon scheduler delay)
@@ -954,8 +956,8 @@ theorem recovery_intended_raw_sequential_equilibrium [Fintype Player] [IExpr.Res
   intro initial raw observe audit base payoff settle
   obtain ⟨target, truncated, clean⟩ :=
     Vegas.recovery_intended_raw_sequentialEquilibrium_preserved parameter utility excludedPayoff
-      wellFormed independent opportunity inclusion completes timely lowerUtility upperUtility
-      lower_le le_upper below intended equilibrium covers coversInputs capacity service
+      wellFormed independent observable opportunity inclusion completes timely lowerUtility
+      upperUtility lower_le le_upper below intended equilibrium covers coversInputs capacity service
       observationRate deliveryRate delivery_nonnegative coverage deposit deposit_nonnegative
       sufficient
   exact ⟨target, (target.isSequentialEquilibrium_iff_truncated_of_bounded _ _ _
@@ -1505,3 +1507,285 @@ end Vegas.Paper
 #guard_msgs (whitespace := lax) in
 #print axioms
   Vegas.EventGraphRuntime.Recovery.ownerCountClean_of_past
+
+/-- info: 'GameTheory.Math.Probability.abs_sum_mul_sub_le_sum_abs' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  GameTheory.Math.Probability.abs_sum_mul_sub_le_sum_abs
+
+/-- info: 'GameTheory.Math.Probability.abs_sum_mul_sub_le_half_sum_abs' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  GameTheory.Math.Probability.abs_sum_mul_sub_le_half_sum_abs
+
+/-- info: 'GameTheory.Math.Probability.sum_abs_div_sum_add_sub_div_sum_le' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  GameTheory.Math.Probability.sum_abs_div_sum_add_sub_div_sum_le
+
+/-- info: 'GameTheory.Math.Probability.abs_normalized_sub_base_le' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  GameTheory.Math.Probability.abs_normalized_sub_base_le
+
+/-- info: 'GameTheory.Math.Probability.abs_normalized_sub_le_of_base_agree' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  GameTheory.Math.Probability.abs_normalized_sub_le_of_base_agree
+
+/-- info: 'GameTheory.Math.Probability.NearProductWeights.sum_abs_nativeLaw_sub_sourceLaw_le' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  GameTheory.Math.Probability.NearProductWeights.sum_abs_nativeLaw_sub_sourceLaw_le
+
+/-- info: 'GameTheory.Math.Probability.fiberPosterior_map_readout' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  GameTheory.Math.Probability.fiberPosterior_map_readout
+
+/-- info: 'GameTheory.Math.Probability.observation_fiber_mass' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  GameTheory.Math.Probability.observation_fiber_mass
+
+/-- info: 'GameTheory.Protocol.InformationModel.tendsto_projectionErrorBound' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  GameTheory.Protocol.InformationModel.tendsto_projectionErrorBound
+
+/-- info: 'GameTheory.Protocol.InformationModel.sum_abs_projectedBelief_sub_le' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  GameTheory.Protocol.InformationModel.sum_abs_projectedBelief_sub_le
+
+/-- info: 'GameTheory.Protocol.InformationModel.tendsto_sum_abs_projectedBelief_sub' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  GameTheory.Protocol.InformationModel.tendsto_sum_abs_projectedBelief_sub
+
+/-- info: 'PMF.split_converges' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  PMF.split_converges
+
+/-- info: 'GameTheory.Protocol.InformationModel.BehavioralAssessment.perturb_strategy_converges' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  GameTheory.Protocol.InformationModel.BehavioralAssessment.perturb_strategy_converges
+
+/-- info: 'GameTheory.Protocol.InformationModel.consistent_update_of_reach_invariant' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  GameTheory.Protocol.InformationModel.consistent_update_of_reach_invariant
+
+/-- info: 'GameTheory.Math.Probability.bind_branch_lower' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  GameTheory.Math.Probability.bind_branch_lower
+
+/-- info: 'GameTheory.Math.Probability.bind_same_initial_domination' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  GameTheory.Math.Probability.bind_same_initial_domination
+
+/-- info: 'PMF.WithinTV.of_bind_point' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  PMF.WithinTV.of_bind_point
+
+/-- info: 'Vegas.EventGraphRuntime.handle_opening_config_step' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.handle_opening_config_step
+
+/-- info: 'Vegas.EventGraphRuntime.handle_config_mem_step' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.handle_config_mem_step
+
+/-- info: 'Vegas.EventGraphRuntime.handle_commitment_vacant' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.handle_commitment_vacant
+
+/-- info: 'Vegas.EventGraphRuntime.ReservedEpoch.empty_processing_prefix_law' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.ReservedEpoch.empty_processing_prefix_law
+
+/-- info: 'Vegas.EventGraphRuntime.ReservedEpoch.empty_processing_segment' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraphRuntime.ReservedEpoch.empty_processing_segment
+
+/-- info: 'Vegas.CompiledSuffix.commitPrefix_bind_interval' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.CompiledSuffix.commitPrefix_bind_interval
+
+/-- info: 'Vegas.recordsEntry_transition' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.recordsEntry_transition
+
+/-- info: 'Vegas.splice_public_initial_inputs' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.splice_public_initial_inputs
+
+/-- info: 'Vegas.public_signal_preserved' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.public_signal_preserved
+
+/-- info: 'Vegas.initial_public_cells_eq' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.initial_public_cells_eq
+
+/-- info: 'Vegas.initial_public_inputs_eq' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.initial_public_inputs_eq
+
+/-- info: 'Vegas.drawn_splicePoint' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.drawn_splicePoint
+
+/-- info: 'Vegas.forcedAgent_of_splice' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.forcedAgent_of_splice
+
+/-- info: 'Vegas.keyedRecord_near' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.keyedRecord_near
+
+/-- info: 'Vegas.recovery_intended_raw_sequentialEquilibrium_preserved' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.recovery_intended_raw_sequentialEquilibrium_preserved
+
+/-- info: 'Vegas.firstTurnTiming_deferralError' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.firstTurnTiming_deferralError
+
+/-- info: 'Vegas.TurnTiming.deferralError_mem_Icc' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.TurnTiming.deferralError_mem_Icc
+
+/-- info: 'Vegas.TurnTiming.deferralError_le_sum' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.TurnTiming.deferralError_le_sum
+
+/-- info: 'Vegas.overriddenTurnProfile_fix_roundsFrom_bind_lower' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.overriddenTurnProfile_fix_roundsFrom_bind_lower
+
+/-- info: 'Vegas.overriddenTurnProfile_roundsFrom_bind_lower' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.overriddenTurnProfile_roundsFrom_bind_lower
+
+/-- info: 'Vegas.overriddenTurnProfile_roundsFrom_bind_within' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.overriddenTurnProfile_roundsFrom_bind_within
+
+/-- info: 'Vegas.serviceTurnPolicy_roundsFrom_bind_within' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.serviceTurnPolicy_roundsFrom_bind_within
+
+/-- info: 'Vegas.deviatedTurnProfile_roundsFrom_bind_within' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.deviatedTurnProfile_roundsFrom_bind_within
+
+/-- info: 'Vegas.sourceServiceTurnPolicy_execution_settlement_lawError' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.sourceServiceTurnPolicy_execution_settlement_lawError
+
+/-- info: 'Vegas.EventGraph.readyIndependent_of_ownerless' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraph.readyIndependent_of_ownerless
+
+/-- info: 'Vegas.EventGraph.ReadyIndependent.policyStepThen_map_semanticKey_comm' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraph.ReadyIndependent.policyStepThen_map_semanticKey_comm
+
+/-- info: 'Vegas.EventGraph.ReadyIndependent.runPlan_normalized_semantic_eq_canonical' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraph.ReadyIndependent.runPlan_normalized_semantic_eq_canonical
+
+/-- info: 'Vegas.EventGraph.ReadyIndependent.runPolicies_store_eq_canonical' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraph.ReadyIndependent.runPolicies_store_eq_canonical
+
+/-- info: 'Vegas.EventGraph.BarrierOrdered.readyIndependent' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraph.BarrierOrdered.readyIndependent
+
+/-- info: 'Vegas.EventGraph.RevealRelaxedOrdered.readyIndependent' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  Vegas.EventGraph.RevealRelaxedOrdered.readyIndependent

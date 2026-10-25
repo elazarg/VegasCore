@@ -572,22 +572,8 @@ theorem HonestLaw.commits_step [Fintype Player]
     refsBefore offset (aligned seed)
   have wall : BlockEnd setup mode (offset + count) :=
     CompiledSuffix.blockEnd maximal (tailAligned prior.support_nonempty.choose).graphSuffix
-  have bindings : ∀ event : (serviceGraph setup mode).EventId, offset ≤ event.val →
-      event.val < offset + count → ∃ owner payload outputEq codeEq,
-        EventGraphRuntime.nodeView (serviceGraph setup mode) event =
-          .bind owner payload outputEq codeEq := by
-    intro event lower upper
-    have within := prefixed.le_eventCount
-    obtain ⟨index, below, same⟩ : ∃ index : Fin (eventCount program), index.val < count ∧
-        embedding.event index = event := by
-      refine ⟨⟨event.val - offset, by omega⟩, by simp only; omega, ?_⟩
-      apply Fin.ext
-      rw [(aligned prior.support_nonempty.choose).graphSuffix.rankEq]
-      simp only
-      omega
-    subst same
-    exact CompiledSuffix.commitPrefix_bind count program prefixed refs _ _ embedding
-      refsBefore offset (aligned prior.support_nonempty.choose).graphSuffix index below
+  have bindings := CompiledSuffix.commitPrefix_bind_interval (setup := setup)
+    (mode := mode) prefixed (aligned prior.support_nonempty.choose).graphSuffix
   have nextFacts := block_phase_boundary setup leaks horizon scheduler players
     contract.completes (Nat.le_add_right _ _)
     (BlockEnd.sealed_relaxed relaxed wall (plain_of_bindings bindings))

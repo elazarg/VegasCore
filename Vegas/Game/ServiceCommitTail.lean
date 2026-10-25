@@ -287,7 +287,7 @@ theorem commitTailRecover_spec (who : Player) : ∀ (count : Nat) {Γ : SourceCt
 
 /-- **Leading commitments compile to bindings.** In a compiled suffix, every
 event among the first `count` leading commitments has a bind node. -/
-theorem CompiledSuffix.commitPrefix_bind {mode : EventGraph.ExecutionMode} :
+private theorem CompiledSuffix.commitPrefix_bind {mode : EventGraph.ExecutionMode} :
     ∀ (count : Nat) {Γ : SourceCtx Player L} {names : Finset VarId}
       (program : SourceProgram Player L Γ names) (_prefixed : CommitPrefix program count)
       (refs : ContextRefs (graphLayout setup.program) Γ)
@@ -333,5 +333,34 @@ theorem CompiledSuffix.commitPrefix_bind {mode : EventGraph.ExecutionMode} :
                 (suffix.commitTail setup.program fresh guard next refs revelations registry
                   embedding refsBefore offset)
                 ⟨position, by simp only [eventCount] at bounded; omega⟩ (by simp at below; omega)
+
+
+/-- Every event in a compiled suffix's leading commitment interval is a binding. -/
+theorem CompiledSuffix.commitPrefix_bind_interval {mode : EventGraph.ExecutionMode}
+    {count : Nat} {Γ : SourceCtx Player L} {names : Finset VarId}
+    {program : SourceProgram Player L Γ names} (prefixed : CommitPrefix program count)
+    {refs : ContextRefs (graphLayout setup.program) Γ}
+    {revelations : Revelations Γ} {registry : Registry Γ}
+    {embedding : OutputEmbedding (inputLayout setup.context) (outputLayout setup.program) program}
+    {refsBefore : ContextRefsBefore refs embedding} {offset : Nat}
+    (suffix : CompiledSuffix setup.program program refs revelations registry embedding refsBefore
+      offset) (event : (serviceGraph setup mode).EventId)
+    (lower : offset ≤ event.val) (upper : event.val < offset + count) :
+    ∃ owner payload outputEq codeEq,
+      EventGraphRuntime.nodeView (serviceGraph setup mode) event =
+        .bind owner payload outputEq codeEq := by
+  have counted := suffix.countEq
+  have bounded := event.isLt
+  change event.val < eventCount setup.program at bounded
+  obtain ⟨index, below, same⟩ : ∃ index : Fin (eventCount program), index.val < count ∧
+      embedding.event index = event := by
+    refine ⟨⟨event.val - offset, by omega⟩, by simp only; omega, ?_⟩
+    apply Fin.ext
+    rw [suffix.rankEq]
+    simp only
+    omega
+  subst same
+  exact CompiledSuffix.commitPrefix_bind count program prefixed refs revelations registry
+    embedding refsBefore offset suffix index below
 
 end Vegas

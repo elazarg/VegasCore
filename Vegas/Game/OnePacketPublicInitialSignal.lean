@@ -16,6 +16,49 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
     {bounds : MessageBounds (graph setup)} {horizon : Nat}
     {scheduler : (application setup leaks).Scheduler}
 
+/-- The public compiled initial inputs determine the signal. -/
+def SourceProgram.Setup.PublicInitialSignal {Public : Type*}
+    (setup : Setup (Player := Player) (L := L))
+    (signal : State L setup.context → Public) : Prop :=
+  ∀ (first second : State L setup.context),
+    (∀ input, (graph setup).fieldPublic (.inl input) →
+      setup.eventInputs first input = setup.eventInputs second input) →
+    signal first = signal second
+
+/-- Hidden-cell splicing leaves every public compiled initial input unchanged. -/
+theorem splice_public_initial_inputs (who : Player) (mine others : State L setup.context)
+    (input : (graph setup).InputId) (publicField : (graph setup).fieldPublic (.inl input)) :
+    setup.eventInputs (splice who mine others) input = setup.eventInputs others input := by
+  obtain ⟨name, kind, source, found⟩ :=
+    (ContextRefs.initial_coversPrefix setup.program).1 input
+  have same : inputId source = input := Sum.inl.inj found
+  subst input
+  have publicKind : (cellField kind).IsPublic := by
+    change (inputLayout setup.context (inputId source)).IsPublic at publicField
+    rwa [inputLayout_inputId source] at publicField
+  have cellEq : (splice who mine others).get source = others.get source := by
+    cases kind with
+    | publicData payload => rfl
+    | privateInput owner payload => exact publicKind.elim
+    | commitment owner payload => exact publicKind.elim
+    | publication payload => rfl
+  have firstValue := encodeInputs_get (splice who mine others) source
+  have secondValue := encodeInputs_get others source
+  change cast _ (setup.eventInputs (splice who mine others) (inputId source)) = _ at firstValue
+  change cast _ (setup.eventInputs others (inputId source)) = _ at secondValue
+  have valuesEq := firstValue.trans ((congrArg cellValue cellEq).trans secondValue.symm)
+  have back := congrArg (fun value =>
+    cast (congrArg EventGraph.EventField.Value (inputLayout_inputId source)).symm value) valuesEq
+  simpa only [cast_cast, cast_eq] using back
+
+/-- A signal determined by public initial inputs is preserved by hidden-cell splicing. -/
+theorem public_signal_preserved {Public : Type*} (signal : State L setup.context → Public)
+    (observable : setup.PublicInitialSignal signal)
+    (who : Player) (mine others : State L setup.context) :
+    signal (splice who mine others) = signal others :=
+  observable _ _ (splice_public_initial_inputs who mine others)
+
+
 /-- Public initial fields are read directly from the actual input configuration. -/
 theorem execution_public_initial_input
     (execution : (application setup leaks).Execution) (who : Player)

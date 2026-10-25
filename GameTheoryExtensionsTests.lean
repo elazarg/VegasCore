@@ -27,3 +27,4 @@ import GameTheoryExtensionsTests.ZeroSumOutcomeLaws
 import GameTheoryExtensionsTests.OptionalDomination
 
 import GameTheoryExtensionsTests.TotalVariation
+import GameTheoryExtensionsTests.NormalizedWeights

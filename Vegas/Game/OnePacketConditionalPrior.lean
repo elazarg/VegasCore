@@ -101,10 +101,7 @@ variable [Fintype Player]
 /-- Every actual history at the site belongs to the restricted shared set.
 The public-signal equality comes from actual public input observations. -/
 theorem site_hiddenPublicFiberInputs
-    (observable : ∀ (first second : State L setup.context),
-      (∀ input, (graph setup).fieldPublic (.inl input) →
-        setup.eventInputs first input = setup.eventInputs second input) →
-      signal first = signal second)
+    (observable : setup.PublicInitialSignal signal)
     {who : Player}
     {site : (onePacketInformation setup leaks bounds horizon scheduler).InformationSite who}
     {past : List (application setup leaks).PlayerEntry}
@@ -134,10 +131,7 @@ theorem site_hiddenPublicFiberInputs
 closure, not just a selected pair of anchors. -/
 theorem ownerSwap_priorClosed_given_public (wellFormed : setup.WellFormed)
     (independent : setup.PrivateInputsIndependentGiven signal)
-    (observable : ∀ (first second : State L setup.context),
-      (∀ input, (graph setup).fieldPublic (.inl input) →
-        setup.eventInputs first input = setup.eventInputs second input) →
-      signal first = signal second)
+    (observable : setup.PublicInitialSignal signal)
     {who : Player}
     {site₁ site₂ : (onePacketInformation setup leaks bounds horizon scheduler).InformationSite who}
     {past₁ past₂ : List (application setup leaks).PlayerEntry}

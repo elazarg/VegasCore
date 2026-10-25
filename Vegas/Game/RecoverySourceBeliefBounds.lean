@@ -19,6 +19,8 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   (bounds : MessageBounds (graph setup)) (horizon : Nat)
   (scheduler : (recoveryApplication (runtime setup) leaks).Scheduler)
 
+variable {Public : Type*} {signal : State L setup.context → Public}
+
 local notation "Initial" => PMF.map
   (fun native => (RecoveryState.mk native ∅ : RecoveryState (graph setup))) (initialLaw setup)
 local notation "NativeScheduler" => nativeScheduler (runtime setup) leaks scheduler
@@ -36,7 +38,8 @@ theorem nativeComparison_source_belief_bounds [Fintype (RP).History]
     [Finite setup.intendedProtocol.History]
     [∀ player, DecidableEq ((N).InfoState player)]
     [∀ player, DecidableEq ((R).InfoState player)]
-    (wellFormed : setup.WellFormed) (independent : setup.PrivateInputsIndependent)
+    (wellFormed : setup.WellFormed) (independent : setup.PrivateInputsIndependentGiven signal)
+    (observable : setup.PublicInitialSignal signal)
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (sourceMixed : ∀ n, (sequence n).IsFullyMixed)
     (sourceBayes : ∀ n, BehavioralAssessment.IsBayesConsistent setup.intendedModel (sequence n)
@@ -110,7 +113,7 @@ theorem nativeComparison_source_belief_bounds [Fintype (RP).History]
       let inputs : OnePacketBeliefInputs setup leaks bounds horizon (NativeScheduler) sequence
           target site (projectedSite setup leaks decision) atSite rfl :=
         { toOnePacketCounterpartInputs := OnePacketCounterpartInputs.ofBindingRepairs wellFormed
-            independent sourceMixed positive le_one scaleEq covers coversInputs capacity
+            independent observable sourceMixed positive le_one scaleEq covers coversInputs capacity
             nativeWeights assembled mixed notFree notOwing atSite turn
           toOnePacketOwnInputs := OnePacketOwnInputs.ofAssembled wellFormed sourceMixed
             (2 * horizon + 2) scaleEq covers coversInputs capacity assembled notFree notOwing

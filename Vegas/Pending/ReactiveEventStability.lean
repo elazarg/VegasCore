@@ -89,15 +89,10 @@ theorem handle_commitment_vacant (state next : State graph) (id : MessageId Play
     (event : graph.EventId) (candidate : Handle graph)
     (accepted : handle runtime state ⟨id, .commitment event candidate⟩ = some next) :
     state.accepted (.inr event) = none := by
-  by_contra occupied
-  by_cases ready : state.config.cut.Ready event
-  · by_cases timely : state.WithinDeadline runtime event
-    · cases view : nodeView graph event with
-      | resolve | sample => simp [handle, ready, timely, view] at accepted
-      | bind owner payload outputEq codeEq =>
-          simp [handle, ready, timely, view, occupied] at accepted
-    · simp [handle, ready, timely] at accepted
-  · simp [handle, ready] at accepted
+  obtain ⟨_ready, _timely, _owner, _payload, _outputEq, _codeEq, _view, _sender,
+    _handleOwner, vacant, _unused, _nextEq⟩ :=
+    (handle_commitment_iff runtime state next id event candidate).mp accepted
+  exact vacant
 
 theorem completionStep_handle (state next : State graph)
     (message : Message Player (Payload graph))

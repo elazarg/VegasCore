@@ -24,6 +24,8 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   (bounds : MessageBounds (graph setup)) (horizon : Nat)
   (scheduler : (recoveryApplication (runtime setup) leaks).Scheduler)
 
+variable {Public : Type*} {signal : State L setup.context → Public}
+
 local notation "Initial" => PMF.map
   (fun native => (RecoveryState.mk native ∅ : RecoveryState (graph setup))) (initialLaw setup)
 local notation "NativeScheduler" => nativeScheduler (runtime setup) leaks scheduler
@@ -50,7 +52,8 @@ theorem recovery_keyed_local_comparisons [Fintype (RP).History]
     [(recoveryApplication (runtime setup) leaks).FiniteNature Initial scheduler]
     [Finite setup.intendedProtocol.History]
     [∀ player, DecidableEq ((R).InfoState player)]
-    (wellFormed : setup.WellFormed) (independent : setup.PrivateInputsIndependent)
+    (wellFormed : setup.WellFormed) (independent : setup.PrivateInputsIndependentGiven signal)
+    (observable : setup.PublicInitialSignal signal)
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (sourceMixed : ∀ n, (sequence n).IsFullyMixed)
     (sourceBayes : ∀ n, BehavioralAssessment.IsBayesConsistent setup.intendedModel (sequence n)
@@ -140,31 +143,35 @@ theorem recovery_keyed_local_comparisons [Fintype (RP).History]
       (Finset.single_le_sum (fun player _ => abs_nonneg (upper player)) (Finset.mem_univ who)))
   obtain ⟨memberError, memberLimit, members⟩ := recovery_pooled_member_gain_bounds setup leaks
     bounds
-    horizon scheduler wellFormed independent sequence sourceMixed scale positive le_one scaleEq
+    horizon scheduler wellFormed independent observable sequence sourceMixed scale positive
+    le_one scaleEq
     covers coversInputs capacity weights assessments fallback assembled bayes opportunity inclusion
     timely certificate rawCertificate parameter utility excludedPayoff payoffBound nonnegative
     recoveryCertificate menuCertificate completes payoffBounded excludedBounded slots_pos
     readoutBounded globalUpper above below pooled
   obtain ⟨continuation, score, affineError, affineLimit, scoreUnit, affineValues⟩ :=
     recovery_keyed_component_value_bounds setup leaks bounds horizon scheduler wellFormed
-      independent
+      independent observable
       sequence sourceMixed scale positive le_one scaleEq covers coversInputs capacity weights
       assessments fallback assembled bayes opportunity inclusion timely certificate rawCertificate
       parameter utility excludedPayoff payoffBound nonnegative recoveryCertificate menuCertificate
       completes payoffBounded excludedBounded slots_pos readoutBounded globalUpper above below
   obtain ⟨valueError, valueLimit, comparisonValues⟩ := recovery_local_value_comparison_bounds setup
-    leaks bounds horizon scheduler wellFormed independent sequence sourceMixed scale positive le_one
+    leaks bounds horizon scheduler wellFormed independent observable sequence sourceMixed scale
+    positive le_one
     scaleEq covers coversInputs capacity weights assessments fallback assembled bayes opportunity
     inclusion timely certificate rawCertificate parameter utility excludedPayoff payoffBound
     nonnegative recoveryCertificate menuCertificate completes payoffBounded excludedBounded
   obtain ⟨nativeError, nativeLimit, nativeCommitments⟩ :=
     nativeComparison_keyed_commitment_comparisons setup leaks bounds horizon scheduler wellFormed
-      independent covers coversInputs capacity slots_pos sequence sourceMixed sourceBayes scale
+      independent observable covers coversInputs capacity slots_pos sequence sourceMixed
+      sourceBayes scale
       positive le_one scaleEq weights opportunity inclusion timely completes parameter utility
       excludedPayoff nonnegative readoutBounded excludedBounded
   obtain ⟨irregularError, irregularLimit, irregular⟩ := nativeComparison_irregular_bounds setup
     leaks
-    bounds horizon scheduler wellFormed independent sequence sourceMixed scale positive le_one
+    bounds horizon scheduler wellFormed independent observable sequence sourceMixed scale
+    positive le_one
     scaleEq covers coversInputs capacity weights
   have scaleLimit : Tendsto scale atTop (nhds 0) := by
     have identity : scale = fun n => trembleScale

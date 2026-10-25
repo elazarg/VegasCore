@@ -20,6 +20,8 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   (bounds : MessageBounds (graph setup)) (horizon : Nat)
   (scheduler : (recoveryApplication (runtime setup) leaks).Scheduler)
 
+variable {Public : Type*} {signal : State L setup.context → Public}
+
 local notation "Initial" => PMF.map
   (fun native => (RecoveryState.mk native ∅ : RecoveryState (graph setup))) (initialLaw setup)
 local notation "NativeScheduler" => nativeScheduler (runtime setup) leaks scheduler
@@ -46,7 +48,8 @@ theorem recovery_local_comparisons [Fintype (RP).History]
     [(recoveryApplication (runtime setup) leaks).FiniteNature Initial scheduler]
     [Finite setup.intendedProtocol.History]
     [∀ player, DecidableEq ((R).InfoState player)]
-    (wellFormed : setup.WellFormed) (independent : setup.PrivateInputsIndependent)
+    (wellFormed : setup.WellFormed) (independent : setup.PrivateInputsIndependentGiven signal)
+    (observable : setup.PublicInitialSignal signal)
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (sourceMixed : ∀ n, (sequence n).IsFullyMixed)
     (sourceBayes : ∀ n, BehavioralAssessment.IsBayesConsistent setup.intendedModel (sequence n)
@@ -126,13 +129,15 @@ theorem recovery_local_comparisons [Fintype (RP).History]
   let menuCertificate := ((RMenu).bounded Initial horizon scheduler).wellFoundedHistories
   obtain ⟨nonlateError, nonlateLimit, nonlateBound⟩ := recovery_nonlate_local_comparisons setup
     leaks
-    bounds horizon scheduler wellFormed independent sequence sourceMixed sourceBayes scale positive
+    bounds horizon scheduler wellFormed independent observable sequence sourceMixed sourceBayes
+    scale positive
     le_one scaleEq covers coversInputs capacity weights assessments fallback assembled bayes
     opportunity inclusion timely rawCertificate parameter utility excludedPayoff payoffBound
     nonnegative recoveryCertificate menuCertificate completes payoffBounded excludedBounded below
     upper le_upper readoutBounded
   obtain ⟨keyedError, keyedLimit, keyedBound⟩ := recovery_keyed_local_comparisons setup leaks bounds
-    horizon scheduler wellFormed independent sequence sourceMixed sourceBayes scale positive le_one
+    horizon scheduler wellFormed independent observable sequence sourceMixed sourceBayes scale
+    positive le_one
     scaleEq covers coversInputs capacity slots_pos weights assessments fallback assembled bayes
     opportunity inclusion timely parameter utility excludedPayoff payoffBound nonnegative completes
     payoffBounded excludedBounded below upper le_upper readoutBounded pooled

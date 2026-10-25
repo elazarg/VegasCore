@@ -194,11 +194,7 @@ theorem WithinTV.of_bind_point (timing : PMF ι) (index : ι)
     (branch : ι → PMF α) {error : ℝ} (mass : 1 - (timing index).toReal ≤ error) :
     WithinTV error (timing.bind branch) (branch index) := by
   have retained := WithinTV.of_domination (branch index) (timing.bind branch)
-    (timing index).toReal (pmf_toReal_apply_le_one _ _) (fun outcome => by
-      rw [← ENNReal.toReal_mul]
-      apply ENNReal.toReal_mono (PMF.apply_ne_top _ _)
-      rw [PMF.bind_apply]
-      exact ENNReal.le_tsum (f := fun other => timing other * (branch other) outcome) index)
+    (timing index).toReal (pmf_toReal_apply_le_one _ _) (bind_branch_lower timing index branch)
   exact retained.symm.mono mass
 
 /-- Any two laws are within one of each other. -/

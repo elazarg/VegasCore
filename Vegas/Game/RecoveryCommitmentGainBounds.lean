@@ -20,6 +20,8 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   (bounds : MessageBounds (graph setup)) (horizon : Nat)
   (scheduler : (recoveryApplication (runtime setup) leaks).Scheduler)
 
+variable {Public : Type*} {signal : State L setup.context → Public}
+
 local notation "Initial" => PMF.map
   (fun native => (RecoveryState.mk native ∅ : RecoveryState (graph setup))) (initialLaw setup)
 local notation "NativeScheduler" => nativeScheduler (runtime setup) leaks scheduler
@@ -40,7 +42,8 @@ theorem nativeComparison_intendedCommitment_gain_bounds [Fintype (RP).History]
     [(application setup leaks).FiniteNature (initialLaw setup) (NativeScheduler)]
     [Finite setup.intendedProtocol.History]
     [∀ who, DecidableEq ((R).InfoState who)] [∀ who, DecidableEq ((N).InfoState who)]
-    (wellFormed : setup.WellFormed) (independent : setup.PrivateInputsIndependent)
+    (wellFormed : setup.WellFormed) (independent : setup.PrivateInputsIndependentGiven signal)
+    (observable : setup.PublicInitialSignal signal)
     (covers : bounds.CoversOutputValues) (coversInputs : bounds.CoversInputValues)
     (capacity : ∀ player, bindingEventCount (graph setup) player < bounds.candidateCount)
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
@@ -95,10 +98,12 @@ theorem nativeComparison_intendedCommitment_gain_bounds [Fintype (RP).History]
             intendedSiteGain setup parameter utility excludedPayoff (sequence n) sourceDeviation +
               error n := by
   obtain ⟨distance, distanceLimit, posterior⟩ := nativeComparison_source_belief_bounds setup leaks
-    bounds horizon scheduler wellFormed independent sequence sourceMixed sourceBayes scale positive
+    bounds horizon scheduler wellFormed independent observable sequence sourceMixed sourceBayes
+    scale positive
     le_one scaleEq covers coversInputs capacity weights
   obtain ⟨drift, driftLimit, irregular⟩ := nativeComparison_irregular_bounds setup leaks bounds
-    horizon scheduler wellFormed independent sequence sourceMixed scale positive le_one scaleEq
+    horizon scheduler wellFormed independent observable sequence sourceMixed scale positive
+    le_one scaleEq
     covers coversInputs capacity weights
   let retentionError := fun n => 1 - slotRetention (scale n)
   let error := fun n =>

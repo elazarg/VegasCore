@@ -273,7 +273,7 @@ asynchronous contract, for every authentic audit and every nonnegative deposit,
 if a source profile is an `ε`-Nash equilibrium of the source protocol model,
 its turn-counted clients are an `(ε + 2 * δ * R)`-Nash equilibrium of every
 response menu that admits every profile's clients, for the audited payoff. Here
-`δ` is the total deferral weight of the turn timing and every realized payoff
+`δ` is the product deferral error of the turn timing and every realized payoff
 value, charged or not, lies in an interval of length `R`. -/
 theorem isεNash_clientProfile {Parameter : Type}
     (ordered : (serviceGraph service.setup service.mode).BarrierOrdered)
@@ -315,7 +315,7 @@ theorem isεNash_clientProfile {Parameter : Type}
       IsεNash ((menu.information (serviceInitialLaw service.setup service.mode) service.horizon
         service.scheduler).toBehavioralGameForm (2 * service.horizon + 1))
         (fun history who => payoff history.state who)
-        (ε + 2 * (∑ event, timing.deferral event) * range)
+        (ε + 2 * timing.deferralError * range)
         (service.clientProfile admission menu timing source) := by
   intro base payoff equilibrium
   apply (isεNash_iff_εBestResponse _ _).mpr
@@ -374,7 +374,7 @@ theorem isεNash_clientProfile_approximate {Parameter : Type}
       IsεNash ((menu.information (serviceInitialLaw service.setup service.mode) service.horizon
         service.scheduler).toBehavioralGameForm (2 * service.horizon + 1))
         (fun history who => payoff history.state who)
-        (ε + 2 * (∑ event, timing.deferral event) * range)
+        (ε + 2 * timing.deferralError * range)
         (service.clientProfile admission menu timing source)) ∧
     (IsεNash ((menu.information (serviceInitialLaw service.setup service.mode) service.horizon
         service.scheduler).toBehavioralGameForm (2 * service.horizon + 1))
@@ -384,7 +384,7 @@ theorem isεNash_clientProfile_approximate {Parameter : Type}
         (instructionCount service.setup.program + 1))
         (fun final who => (service.setup.protocolReadout final.state).elim 0
           (fun state => utility (service.setup.parameterOutcome parameter state) who))
-        (ε + 2 * (∑ event, timing.deferral event) * range) source) :=
+        (ε + 2 * timing.deferralError * range) source) :=
   ⟨service.isεNash_clientProfile admission ordered parameter utility sample authentic deposit
     nonnegative menu
       timing covered low range within ε source,
@@ -454,10 +454,10 @@ theorem intended_clientProfile_isεNash {Parameter : Type}
     IsεNash ((menu.information (serviceInitialLaw service.setup service.mode) service.horizon
         service.scheduler).toBehavioralGameForm (2 * service.horizon + 1))
         (fun history who => payoff history.state who)
-        (ε + 2 * (∑ event, timing.deferral event) * spread)
+        (ε + 2 * timing.deferralError * spread)
         (service.clientProfile (CommitmentInterface.values service.setup.program) menu timing
           source) ∧
-      PMF.WithinTV (∑ event, timing.deferral event)
+      PMF.WithinTV timing.deferralError
         (((menu.information (serviceInitialLaw service.setup service.mode) service.horizon
           service.scheduler).runBehavioral (service.clientProfile (CommitmentInterface.values
             service.setup.program) menu timing source)

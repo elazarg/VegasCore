@@ -149,9 +149,18 @@ theorem expect_comm_of_support_finite {α β : Type*} (μ : PMF α) (ν : PMF β
     (μFinite : μ.support.Finite) (νFinite : ν.support.Finite) (g : α → β → ℝ) :
     expect μ (fun a => expect ν (fun b => g a b)) =
       expect ν (fun b => expect μ (fun a => g a b)) := by
-  simp_rw [expect_eq_sum_of_support_finite _ μFinite, expect_eq_sum_of_support_finite _ νFinite,
-    Finset.mul_sum]
-  rw [Finset.sum_comm]
-  exact Finset.sum_congr rfl fun b _ => Finset.sum_congr rfl fun a _ => by ring
+  exact expect_comm_of_support_finite_left μ ν μFinite g
+    (fun a _ => payoffIntegrable_of_finite_support ν (g a) νFinite)
+
+/-- A common initial law preserves a supported kernel domination factor. -/
+theorem bind_same_initial_domination {α β : Type*} (initial : PMF α)
+    (source target : α → PMF β) (factor : ℝ)
+    (lower : ∀ state ∈ initial.support, ∀ outcome,
+      factor * (source state outcome).toReal ≤ (target state outcome).toReal)
+    (outcome : β) :
+    factor * ((initial.bind source) outcome).toReal ≤
+      ((initial.bind target) outcome).toReal := by
+  simpa only [one_mul] using bind_supported_domination initial initial source target
+    1 factor (by norm_num) (fun _ => by simp) lower outcome
 
 end GameTheory.Math.Probability

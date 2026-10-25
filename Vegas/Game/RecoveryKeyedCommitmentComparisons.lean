@@ -21,6 +21,8 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   (bounds : MessageBounds (graph setup)) (horizon : Nat)
   (scheduler : (recoveryApplication (runtime setup) leaks).Scheduler)
 
+variable {Public : Type*} {signal : State L setup.context → Public}
+
 local notation "Initial" => PMF.map
   (fun native => (RecoveryState.mk native ∅ : RecoveryState (graph setup))) (initialLaw setup)
 local notation "NativeScheduler" => nativeScheduler (runtime setup) leaks scheduler
@@ -71,7 +73,8 @@ theorem nativeComparison_keyed_commitment_comparisons [Fintype (RP).History]
     [(application setup leaks).FiniteNature (initialLaw setup) (NativeScheduler)]
     [Finite setup.intendedProtocol.History]
     [∀ who, DecidableEq ((R).InfoState who)] [∀ who, DecidableEq ((N).InfoState who)]
-    (wellFormed : setup.WellFormed) (independent : setup.PrivateInputsIndependent)
+    (wellFormed : setup.WellFormed) (independent : setup.PrivateInputsIndependentGiven signal)
+    (observable : setup.PublicInitialSignal signal)
     (covers : bounds.CoversOutputValues) (coversInputs : bounds.CoversInputValues)
     (capacity : ∀ player, bindingEventCount (graph setup) player < bounds.candidateCount)
     (slots_pos : 0 < bounds.candidateCount)
@@ -131,6 +134,7 @@ theorem nativeComparison_keyed_commitment_comparisons [Fintype (RP).History]
             success * intendedSiteGain setup parameter utility excludedPayoff (sequence n)
               sourceDeviation + error n := by
   let inputs := nativeBaseInputs setup leaks bounds horizon scheduler wellFormed independent
+    observable
     sequence sourceMixed covers coversInputs capacity slots_pos
   have sameScale : scale = inputs.scale := funext scaleEq
   subst scale
@@ -151,7 +155,8 @@ theorem nativeComparison_keyed_commitment_comparisons [Fintype (RP).History]
     (fun n => nativeComparisonWeights setup leaks bounds horizon scheduler (weights n))
     target assembled mixed bayes
   obtain ⟨distance, distanceLimit, posterior⟩ := nativeComparison_source_belief_bounds setup leaks
-    bounds horizon scheduler wellFormed independent sequence sourceMixed sourceBayes inputs.scale
+    bounds horizon scheduler wellFormed independent observable sequence sourceMixed sourceBayes
+    inputs.scale
     positive le_one (fun _ => rfl) covers coversInputs capacity weights
   let depth : ℝ := 2 * horizon + 1
   let path := fun n => depth * (inputs.scale n ^ 3 + inputs.scale n ^ 3)

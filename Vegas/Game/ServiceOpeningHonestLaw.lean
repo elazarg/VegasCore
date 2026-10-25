@@ -226,22 +226,8 @@ theorem ConcurrentPhaseEnds.boundary (relaxed : (serviceGraph setup mode).Reveal
         profile refs revelations registry embedding refsBefore offset aligned
       have wall : BlockEnd setup mode (offset + count) :=
         CompiledSuffix.blockEnd maximal tailAligned.graphSuffix
-      have bindings : ∀ event : (serviceGraph setup mode).EventId, offset ≤ event.val →
-          event.val < offset + count → ∃ owner payload outputEq codeEq,
-            EventGraphRuntime.nodeView (serviceGraph setup mode) event =
-              .bind owner payload outputEq codeEq := by
-        intro event lower upper
-        have within := prefixed.le_eventCount
-        obtain ⟨index, below, same⟩ : ∃ index : Fin (eventCount program), index.val < count ∧
-            embedding.event index = event := by
-          refine ⟨⟨event.val - offset, by omega⟩, by simp only; omega, ?_⟩
-          apply Fin.ext
-          rw [aligned.graphSuffix.rankEq]
-          simp only
-          omega
-        subst same
-        exact CompiledSuffix.commitPrefix_bind count program prefixed refs _ _ embedding
-          refsBefore offset aligned.graphSuffix index below
+      have bindings := CompiledSuffix.commitPrefix_bind_interval (setup := setup)
+        (mode := mode) prefixed aligned.graphSuffix
       simp only [deviationPhases] at reached
       obtain ⟨middle, moved, later⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       have done := blockRun_completes complete (offset + count) execution boundary bounded middle

@@ -277,7 +277,7 @@ theorem binding_value_frontier_posterior
   refine ⟨ready, appended.1, appended.2, ?_⟩
   have mass := observation_fiber_mass original
     (issuedBindingObservation setup implementation control entry.phase) observed
-    (fun key => field.get? key.2.1) (some (.success value)) oldSupported same
+    (fun key => field.get? key.2.1) (some (.success value)) same
   rw [← beforeEq, rowAtom] at mass
   exact mass
 

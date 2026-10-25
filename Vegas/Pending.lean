@@ -397,7 +397,6 @@ import Vegas.Pending.ReservedEpochCommandShape
 import Vegas.Pending.ReservedEpochCompletion
 import Vegas.Pending.ReservedEpochDelivery
 import Vegas.Pending.ReservedEpochEmissionTime
-import Vegas.Pending.ReservedEpochEmptyPrefix
 import Vegas.Pending.ReservedEpochEmptyProcessing
 import Vegas.Pending.ReservedEpochExhaustion
 import Vegas.Pending.ReservedEpochExpiredRequest

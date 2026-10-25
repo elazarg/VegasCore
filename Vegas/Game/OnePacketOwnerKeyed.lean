@@ -10,8 +10,8 @@ import Vegas.Game.OnePacketSwapInfo
 Take two decision sites of `who` with the same late-delivery key, at neither
 of which `who` owes a failure, in a well-formed setup whose hidden initial
 cells are independent given an observed public initial signal. Private
-splicing must preserve that signal, and all public initial inputs must
-determine it. The owner swap between the two sites' views is guarded at both
+splicing preserves that signal because the public initial inputs determine it. The owner swap
+between the two sites' views is guarded at both
 sites, moves values within the bounds, keeps regularity, and multiplies the
 others' source weight of every history of the first site by a common positive
 ratio; when it also sends the first site's information state to the second's,
@@ -55,12 +55,7 @@ theorem ownerSwap_baseLawAgrees
     {Public : Type*} (signal : State L setup.context → Public)
     [Finite (onePacketProtocol setup leaks bounds horizon scheduler).History]
     (wellFormed : setup.WellFormed) (independent : setup.PrivateInputsIndependentGiven signal)
-    (preserves : ∀ (owner : Player) (mine others : State L setup.context),
-      signal (splice owner mine others) = signal others)
-    (observable : ∀ (first second : State L setup.context),
-      (∀ input, (graph setup).fieldPublic (.inl input) →
-        setup.eventInputs first input = setup.eventInputs second input) →
-      signal first = signal second)
+    (observable : setup.PublicInitialSignal signal)
     (covers : bounds.CoversInputValues)
     (assessment : setup.intendedModel.BehavioralAssessment)
     (weight : List (Option (OperationalState setup leaks)) → ℝ) {who : Player}
@@ -124,7 +119,8 @@ theorem ownerSwap_baseLawAgrees
       state.config.inputs ∈ swapAllowed swap ∩ shared →
         state.swap swap ∈ (initialLaw setup).support :=
     fun state member inside => initialClosed_swapAllowed swap state member inside.1
-  have scaled := ownerSwap_priorScaled signal wellFormed independent preserves
+  have scaled := ownerSwap_priorScaled signal wellFormed independent (public_signal_preserved
+    signal observable)
     (view₁ := view₁) (view₂ := view₂) baseMember otherMember baseStore otherStore
   refine baseLawAgrees_of_swap_scaled _ _ site₁ site₂ swap (swapAllowed swap)
     (initialClosed_swapAllowed swap) bounded (swapAllowed_closed swap) guardedFirst guardedSecond

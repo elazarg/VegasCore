@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.OnePacketCounterpartGuard
+import Vegas.Game.OnePacketPublicInitialSignal
 import Vegas.Source.PrivateInputsIndependent
 
 /-! # Splicing two source points for a player
@@ -21,8 +22,8 @@ them for a player `r`.
   player when every accepted handle belongs to the owner of its field
   (`Vegas.fixes_between_of_visible`).
 * It agrees with `p` wherever `w` does (`Vegas.cell?_splicePoint_eq_of_agree`).
-* With independent hidden initial cells, it finds the cells of a supported draw
-  when `p` and `w` do (`Vegas.drawn_splicePoint`).
+* With hidden initial cells independent given a publicly determined signal, it finds
+  the cells of a supported draw when `p` and `w` do (`Vegas.drawn_splicePoint`).
 -/
 
 noncomputable section
@@ -255,6 +256,8 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)} [DecidableEq (CellTy Player L)]
   {p w : ProtocolState setup.program} {r : Player}
 
+variable {Public : Type*} {signal : State L setup.context → Public}
+
 /-- **The splice agrees with the first point on public cells.** -/
 theorem publicCellsAgree_splicePoint (publicAgree : PublicCellsAgree setup p w) :
     PublicCellsAgree setup p (ProtocolState.splicePoint setup.program r p w) := by
@@ -303,18 +306,51 @@ theorem initialCellsAt_splicePoint {mine others : State L setup.context}
     exact mineCells source
   · exact ProtocolState.cell?_splicePoint_of_found hidden (mineCells source) (othersCells source)
 
-/-- **With independent hidden initial cells, the splice finds the cells of a
-supported draw** when both points do. -/
-theorem drawn_splicePoint (independent : setup.PrivateInputsIndependent)
+/-- Public native cells identify the public initial source values found there. -/
+theorem initial_public_cells_eq {mine others : State L setup.context}
+    (mineCells : InitialCellsAt mine p) (otherCells : InitialCellsAt others w)
+    (agree : PublicCellsAgree setup p w) {name : VarId} {kind : CellTy Player L}
+    (source : HasVar setup.context name kind) (publicKind : (cellField kind).IsPublic) :
+    mine.get source = others.get source :=
+  agree name kind publicKind _ _ (mineCells source) (otherCells source)
+
+/-- Agreeing public source cells identify every public compiled initial input. -/
+theorem initial_public_inputs_eq {mine others : State L setup.context}
+    (mineCells : InitialCellsAt mine p) (otherCells : InitialCellsAt others w)
+    (agree : PublicCellsAgree setup p w) (input : (graph setup).InputId)
+    (publicField : (graph setup).fieldPublic (.inl input)) :
+    setup.eventInputs mine input = setup.eventInputs others input := by
+  obtain ⟨name, kind, source, found⟩ :=
+    (ContextRefs.initial_coversPrefix setup.program).1 input
+  have same : inputId source = input := Sum.inl.inj found
+  subst input
+  have publicKind : (cellField kind).IsPublic := by
+    change (inputLayout setup.context (inputId source)).IsPublic at publicField
+    rwa [inputLayout_inputId source] at publicField
+  have cellEq := initial_public_cells_eq mineCells otherCells agree source publicKind
+  have firstValue := encodeInputs_get mine source
+  have secondValue := encodeInputs_get others source
+  change cast _ (setup.eventInputs mine (inputId source)) = _ at firstValue
+  change cast _ (setup.eventInputs others (inputId source)) = _ at secondValue
+  have valuesEq := firstValue.trans ((congrArg cellValue cellEq).trans secondValue.symm)
+  have back := congrArg (fun value =>
+    cast (congrArg EventGraph.EventField.Value (inputLayout_inputId source)).symm value) valuesEq
+  simpa only [cast_cast, cast_eq] using back
+
+/-- Within a publicly observed signal fiber, the splice contains a supported draw. -/
+theorem drawn_splicePoint
+    (independent : setup.PrivateInputsIndependentGiven signal)
+    (observable : setup.PublicInitialSignal signal)
+    (agree : PublicCellsAgree setup p w) {r : Player}
     (drawnP : ∃ initial ∈ setup.initialLaw.support, InitialCellsAt initial p)
     (drawnW : ∃ initial ∈ setup.initialLaw.support, InitialCellsAt initial w) :
     ∃ initial ∈ setup.initialLaw.support,
       InitialCellsAt initial (ProtocolState.splicePoint setup.program r p w) := by
   obtain ⟨mine, mineMember, mineCells⟩ := drawnP
-  obtain ⟨others, othersMember, othersCells⟩ := drawnW
-  exact ⟨_, setup.splice_mem_support (fun _ => ())
-    (fun owner first second _ => independent owner first second) r mineMember othersMember rfl,
-    initialCellsAt_splicePoint mineCells othersCells⟩
+  obtain ⟨others, othersMember, otherCells⟩ := drawnW
+  have sameSignal := observable mine others (initial_public_inputs_eq mineCells otherCells agree)
+  exact ⟨_, setup.splice_mem_support signal independent r mineMember othersMember sameSignal,
+    initialCellsAt_splicePoint mineCells otherCells⟩
 
 section Fixes
 

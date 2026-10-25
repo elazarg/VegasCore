@@ -16,7 +16,7 @@ out of both laws over the same set `E`, leaving `A o` times a constant, so the
 normalized `O`-marginal of `p` is close to that of `q`; neither the posterior
 of the excluded coordinate nor any single fiber is compared. Irregular
 outcomes of total weight at most `η` times the regular weight move the
-normalized marginal by at most `2 * η` more.
+normalized marginal by at most `2 * η / (1 + η)` more.
 
 Distances are measured by the `ℓ¹` distance `∑ o, |P o - Q o|` between the
 normalized marginals, twice the total variation distance. The statements work
@@ -193,18 +193,32 @@ theorem sum_abs_marginal_sub_marginal_le_of_product [Fintype Ω] [Fintype O] [Fi
   rw [m_total, source_eq o]
 
 /-- Adding nonnegative mass of total at most `η` times the total of a
-nonnegative weight moves its normalization at most `2 * η` in `ℓ¹`. This
+nonnegative weight moves its normalization at most `2 * η / (1 + η)` in `ℓ¹`. This
 holds however the added mass is spread over the coordinates. -/
 theorem sum_abs_div_sum_add_sub_div_sum_le [Fintype α] {m s : α → ℝ} {η : ℝ}
     (m_nonneg : ∀ a, 0 ≤ m a) (s_nonneg : ∀ a, 0 ≤ s a) (m_pos : 0 < ∑ a, m a)
     (small : ∑ a, s a ≤ η * ∑ a, m a) :
-    ∑ a, |(m a + s a) / ∑ b, (m b + s b) - m a / ∑ b, m b| ≤ 2 * η := by
-  have bound := sum_abs_div_sum_sub_div_sum_le (u := fun a => m a + s a) (γ := η)
-    m_nonneg m_pos ?_ one_pos ?_
-  · rwa [div_one] at bound
-  · simpa only [add_sub_cancel_left, abs_of_nonneg (s_nonneg _)] using small
-  · rw [one_mul, sum_add_distrib]
-    linarith [sum_nonneg fun a (_ : a ∈ univ) => s_nonneg a]
+    ∑ a, |(m a + s a) / ∑ b, (m b + s b) - m a / ∑ b, m b| ≤ 2 * η / (1 + η) := by
+  let M := ∑ a, m a
+  let S := ∑ a, s a
+  have S_nonneg : 0 ≤ S := sum_nonneg fun a _ => s_nonneg a
+  have ratio_nonneg : 0 ≤ S / M := div_nonneg S_nonneg m_pos.le
+  have ratio_small : S / M ≤ η := (div_le_iff₀ m_pos).mpr small
+  have positive : 0 < 1 + S / M := by linarith
+  have close : ∑ a, |(m a + s a) - m a| ≤ (S / M) * M := by
+    simp only [add_sub_cancel_left, abs_of_nonneg (s_nonneg _)]
+    change S ≤ S / M * M
+    rw [div_mul_cancel₀ _ m_pos.ne']
+  have lower : (1 + S / M) * M ≤ ∑ a, (m a + s a) := by
+    rw [sum_add_distrib]
+    change (1 + S / M) * M ≤ M + S
+    rw [add_mul, one_mul, div_mul_cancel₀ _ m_pos.ne']
+  have bound := sum_abs_div_sum_sub_div_sum_le m_nonneg m_pos close positive lower
+  have eta_nonneg : 0 ≤ η := ratio_nonneg.trans ratio_small
+  have improved : 2 * (S / M) / (1 + S / M) ≤ 2 * η / (1 + η) := by
+    rw [div_le_div_iff₀ positive (by linarith : 0 < 1 + η)]
+    nlinarith
+  exact bound.trans improved
 
 /-- Stage data for transporting a marginal through an approximate product
 factorization. Regular outcomes `Ω` project by `π` onto pairs of a retained
@@ -263,7 +277,8 @@ variable [Fintype Ω] [Fintype Ψ] [DecidableEq O] [DecidableEq E]
 terms of the three relative errors. -/
 def errorBound (w : NearProductWeights π ω) : ℝ :=
   2 * (w.factorError + w.fiberError + w.factorError * w.fiberError) /
-      ((1 - w.factorError) * (1 - w.fiberError)) + 2 * w.remainderRatio
+      ((1 - w.factorError) * (1 - w.fiberError)) +
+    2 * w.remainderRatio / (1 + w.remainderRatio)
 
 /-- Regular weights are nonnegative, since they are within a relative error
 below one of nonnegative products. -/
@@ -313,7 +328,7 @@ theorem sum_abs_nativeLaw_sub_sourceLaw_le (w : NearProductWeights π ω) :
           |m o / ∑ o', m o' - w.sourceLaw o|) := sum_le_sum fun o _ => by
         rw [native_eq]
         exact abs_sub_le _ _ _
-    _ ≤ 2 * w.remainderRatio +
+    _ ≤ 2 * w.remainderRatio / (1 + w.remainderRatio) +
           2 * (w.factorError + w.fiberError + w.factorError * w.fiberError) /
             ((1 - w.factorError) * (1 - w.fiberError)) := by
         rw [sum_add_distrib]

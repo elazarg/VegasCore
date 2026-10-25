@@ -134,7 +134,7 @@ variable [Fintype Player]
 
 /-- Deferring clients preserve and reflect approximate Nash for valuation plus
 the actual audited monetary settlement. Each direction has the existing loss
-`2 * (sum of event deferrals) * range`, against all bounded raw-menu deviations. -/
+`2 * timing.deferralError * range`, against all bounded raw-menu deviations. -/
 theorem payment_rawClientProfile_isεNash_approximate {Parameter : Type}
     (admission : CommitmentInterface service.setup.program)
     (ordered : (serviceGraph service.setup service.mode).BarrierOrdered)
@@ -164,7 +164,7 @@ theorem payment_rawClientProfile_isεNash_approximate {Parameter : Type}
       IsεNash ((service.rawMenu.information (serviceInitialLaw service.setup service.mode)
           service.horizon service.scheduler).toBehavioralGameForm (2 * service.horizon + 1))
         (fun history who => service.paymentExpectedUtility parameter valuation sample deposit
-          history.state who) (ε + 2 * (∑ event, timing.deferral event) * range)
+          history.state who) (ε + 2 * timing.deferralError * range)
         (service.clientProfile admission service.rawMenu timing source)) ∧
     (IsεNash ((service.rawMenu.information (serviceInitialLaw service.setup service.mode)
           service.horizon service.scheduler).toBehavioralGameForm (2 * service.horizon + 1))
@@ -176,7 +176,7 @@ theorem payment_rawClientProfile_isεNash_approximate {Parameter : Type}
         (fun final who => (service.setup.protocolReadout final.state).elim 0
           (fun terminal => service.setup.program.parameterPaymentUtility valuation
             (service.setup.parameterOutcome parameter terminal) who))
-        (ε + 2 * (∑ event, timing.deferral event) * range) source) := by
+        (ε + 2 * timing.deferralError * range) source) := by
   rw [service.paymentExpectedUtility_eq]
   exact service.isεNash_rawClientProfile_approximate admission ordered parameter
     (service.setup.program.parameterPaymentUtility valuation) sample authentic deposit

@@ -106,8 +106,8 @@ theorem bob_second_step : disclosed.step 3 disclosed_bob_ready false = PMF.pure 
 
 theorem not_readyIndependent : ¬ graph.ReadyIndependent compiled := by
   intro independent
-  have same := independent.normalizePolicy_complete_foreign bound 3 2 bob_ready alice_ready
-    bob_actor Player.alice (by rfl) (by decide) true (.success 6)
+  have same := independent.normalizedAction_complete bound 3 2 bob_ready alice_ready
+    (by decide) true (.success 6)
   change graph.normalizePolicy Player.bob (compiled Player.bob) 3 bob_actor
       (graph.playerObserve Player.bob disclosed) =
     graph.normalizePolicy Player.bob (compiled Player.bob) 3 bob_actor
@@ -149,9 +149,11 @@ theorem normalized_alice_after_bob :
       (graph.playerObserve Player.alice bobFirst) = PMF.pure true := by rfl
 
 theorem bob_first_policy_law :
-    policyStepThen compiled bound 3 2 bob_ready alice_ready (by decide)
-      Player.bob Player.alice bob_actor alice_actor = PMF.pure bobFirst_terminal := by
-  unfold policyStepThen
+    policyStepThen compiled bound 3 2 bob_ready alice_ready (by decide) =
+      PMF.pure bobFirst_terminal := by
+  unfold policyStepThen kernelStepThen
+  simp only [normalizedAction_of_actor _ _ 3 Player.bob bob_actor,
+    normalizedAction_of_actor _ _ 2 Player.alice alice_actor]
   rw [normalized_bob_before_alice, PMF.pure_bind]
   trans (bound.step 3 bob_ready true).bind (fun _ => PMF.pure bobFirst_terminal)
   · apply GameTheory.Math.Probability.bindOnSupport_eq_bind_of_eq_on_support
@@ -162,9 +164,10 @@ theorem bob_first_policy_law :
   · rw [bob_first_step, PMF.pure_bind]
 
 theorem alice_first_policy_law :
-    policyStepThen compiled bound 2 3 alice_ready bob_ready (by decide)
-      Player.alice Player.bob alice_actor bob_actor = PMF.pure bobSecond := by
-  unfold policyStepThen
+    policyStepThen compiled bound 2 3 alice_ready bob_ready (by decide) = PMF.pure bobSecond := by
+  unfold policyStepThen kernelStepThen
+  simp only [normalizedAction_of_actor _ _ 3 Player.bob bob_actor,
+    normalizedAction_of_actor _ _ 2 Player.alice alice_actor]
   rw [normalized_alice_before, PMF.pure_bind]
   trans (bound.step 2 alice_ready true).bind (fun _ => PMF.pure bobSecond)
   · apply GameTheory.Math.Probability.bindOnSupport_eq_bind_of_eq_on_support
@@ -179,10 +182,8 @@ theorem bobFirst_cut_terminal : bobFirst_terminal.cut.Terminal := by decide
 theorem bobSecond_cut_terminal : bobSecond.cut.Terminal := by decide
 
 theorem terminal_store_laws_differ :
-    (policyStepThen compiled bound 3 2 bob_ready alice_ready (by decide)
-      Player.bob Player.alice bob_actor alice_actor).map Config.store ≠
-    (policyStepThen compiled bound 2 3 alice_ready bob_ready (by decide)
-      Player.alice Player.bob alice_actor bob_actor).map Config.store := by
+    (policyStepThen compiled bound 3 2 bob_ready alice_ready (by decide)).map Config.store ≠
+    (policyStepThen compiled bound 2 3 alice_ready bob_ready (by decide)).map Config.store := by
   rw [bob_first_policy_law, alice_first_policy_law, PMF.pure_map, PMF.pure_map]
   intro same
   have values := congrArg (fun law : PMF (EventGraph.Store graph.layout) =>

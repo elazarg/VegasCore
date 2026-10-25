@@ -141,7 +141,7 @@ section Projection
 fiber and remainder errors. -/
 def projectionErrorBound (factorError fiberError remainderRatio : ℝ) : ℝ :=
   2 * (factorError + fiberError + factorError * fiberError) /
-      ((1 - factorError) * (1 - fiberError)) + 2 * remainderRatio
+      ((1 - factorError) * (1 - fiberError)) + 2 * remainderRatio / (1 + remainderRatio)
 
 /-- The projection error bound vanishes with its three errors. -/
 theorem tendsto_projectionErrorBound {factorError fiberError remainderRatio : ℕ → ℝ}
@@ -152,7 +152,9 @@ theorem tendsto_projectionErrorBound {factorError fiberError remainderRatio : �
   have numerator := ((factor.add fiber).add (factor.mul fiber)).const_mul 2
   have denominator := ((tendsto_const_nhds (x := (1 : ℝ))).sub factor).mul
     ((tendsto_const_nhds (x := (1 : ℝ))).sub fiber)
-  have limit := (numerator.div denominator (by norm_num)).add (remainder.const_mul 2)
+  have contamination := (remainder.const_mul 2).div
+    (tendsto_const_nhds.add remainder) (by norm_num : (1 : ℝ) + 0 ≠ 0)
+  have limit := (numerator.div denominator (by norm_num)).add contamination
   norm_num at limit
   exact limit
 

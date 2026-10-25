@@ -5,9 +5,9 @@ import Vegas.EventGraph.SchedulingLaw
 /-! # Erasing honest public scheduling choices
 
 Normalized policies factor through the semantic state consisting of the cut,
-typed store, and per-player original-action recall.  Public-barrier local
-confluence then makes the terminal store law independent of the public
-scheduler.
+typed store, and per-player original-action recall. Stable action kernels and distinct
+actual actors at ready events give local confluence, including chance events,
+and make the terminal store law independent of the public scheduler.
 -/
 
 noncomputable section
@@ -143,9 +143,7 @@ private theorem normalizedThenCanonical_insert_second
     (profile : graph.BehavioralProfile) (config : graph.Config)
     (first second : graph.EventId)
     (firstReady : config.cut.Ready first) (secondReady : config.cut.Ready second)
-    (different : first ≠ second) (firstOwner secondOwner : Player)
-    (firstActor : graph.actor? first = some firstOwner)
-    (secondActor : graph.actor? second = some secondOwner)
+    (different : first ≠ second)
     (insertSecond : ∀ (firstAction : graph.Action first) next
       (member : next ∈ (config.step first firstReady firstAction).support),
       let nextReady : next.cut.Ready second := by
@@ -154,48 +152,21 @@ private theorem normalizedThenCanonical_insert_second
       graph.normalizedThenCanonical profile next second nextReady =
         graph.canonicalContinuation profile next) :
     graph.normalizedThenCanonical profile config first firstReady =
-      (policyStepThen profile config first second firstReady secondReady different
-        firstOwner secondOwner firstActor secondActor).bind
+      (policyStepThen profile config first second firstReady secondReady different).bind
           (graph.canonicalContinuation profile) := by
-  unfold normalizedThenCanonical policyStepThen
-  unfold normalizedPolicyStep
-  split
-  · rename_i owner actor
-    have ownerEq : owner = firstOwner := Option.some.inj (actor.symm.trans firstActor)
-    subst owner
-    simp only [PMF.bind_bind]
-    apply bind_congr_on_support _
-    intro firstAction _
-    rw [← PMF.bindOnSupport_eq_bind
-      (config.step first firstReady firstAction) (graph.canonicalContinuation profile)]
-    rw [bindOnSupport_bind]
-    apply bindOnSupport_congr _
-    intro next member
-    have nextReady : next.cut.Ready second := by
-      rw [config.step_cut first firstReady firstAction next member]
-      exact secondReady.after_complete firstReady different.symm
-    have recur := insertSecond firstAction next member
-    change graph.normalizedThenCanonical profile next second nextReady =
-      graph.canonicalContinuation profile next at recur
-    have secondStepEq :
-        graph.normalizedPolicyStep profile next second nextReady =
-          (graph.normalizePolicy secondOwner (profile secondOwner) second secondActor
-            (graph.playerObserve secondOwner next)).bind
-              (next.step second nextReady) := by
-      unfold normalizedPolicyStep
-      split
-      · rename_i owner actor
-        have ownerEq : owner = secondOwner :=
-          Option.some.inj (actor.symm.trans secondActor)
-        subst owner
-        rfl
-      · rename_i ownerless
-        simp [ownerless] at secondActor
-    rw [← recur]
-    unfold normalizedThenCanonical
-    rw [secondStepEq, PMF.bind_bind]
-  · rename_i ownerless
-    simp [ownerless] at firstActor
+  unfold normalizedThenCanonical policyStepThen kernelStepThen
+  simp only [normalizedPolicyStep_eq_bind, PMF.bind_bind]
+  apply bind_congr_on_support _
+  intro firstAction _
+  rw [← PMF.bindOnSupport_eq_bind
+    (config.step first firstReady firstAction) (graph.canonicalContinuation profile)]
+  rw [bindOnSupport_bind]
+  apply bindOnSupport_congr _
+  intro next member
+  have recur := insertSecond firstAction next member
+  rw [← recur]
+  unfold normalizedThenCanonical
+  rw [normalizedPolicyStep_eq_bind, PMF.bind_bind]
 
 /-- Local confluence: choosing any ready event and then reverting to canonical
 scheduling has exactly the canonical semantic-state law. -/
@@ -224,12 +195,10 @@ theorem ReadyIndependent.normalizedThenCanonical_eq
       by_cases same : event = canonical
       · subst event
         exact (canonicalContinuation_step profile config canonical canonicalReady least).symm
-      · obtain ⟨eventOwner, canonicalOwner, eventActor, canonicalActor, ownerNe⟩ :=
-          independent.ready_pair_actors ready canonicalReady same
-        let eventThenCanonical := policyStepThen profile config event canonical ready
-          canonicalReady same eventOwner canonicalOwner eventActor canonicalActor
+      · let eventThenCanonical := policyStepThen profile config event canonical ready
+          canonicalReady same
         let canonicalThenEvent := policyStepThen profile config canonical event
-          canonicalReady ready (Ne.symm same) canonicalOwner eventOwner canonicalActor eventActor
+          canonicalReady ready (Ne.symm same)
         have insertCanonical : ∀ (eventAction : graph.Action event) next
             (member : next ∈ (config.step event ready eventAction).support),
             let nextReady : next.cut.Ready canonical := by
@@ -260,18 +229,18 @@ theorem ReadyIndependent.normalizedThenCanonical_eq
             graph.normalizedThenCanonical profile config event ready =
               eventThenCanonical.bind (graph.canonicalContinuation profile) := by
           exact normalizedThenCanonical_insert_second profile config event canonical
-            ready canonicalReady same eventOwner canonicalOwner eventActor canonicalActor
+            ready canonicalReady same
             insertCanonical
         have canonicalExpansion :
             graph.normalizedThenCanonical profile config canonical canonicalReady =
               canonicalThenEvent.bind (graph.canonicalContinuation profile) := by
           exact normalizedThenCanonical_insert_second profile config canonical event
-            canonicalReady ready (Ne.symm same) canonicalOwner eventOwner canonicalActor eventActor
+            canonicalReady ready (Ne.symm same)
             insertEvent
         have diamond : eventThenCanonical.map graph.semanticKey =
             canonicalThenEvent.map graph.semanticKey := by
           exact independent.policyStepThen_map_semanticKey_comm config event canonical
-            ready canonicalReady same eventOwner canonicalOwner eventActor canonicalActor
+            ready canonicalReady same
         have continuationEq :
             eventThenCanonical.bind (graph.canonicalContinuation profile) =
               canonicalThenEvent.bind (graph.canonicalContinuation profile) := by

@@ -121,22 +121,10 @@ theorem split_converges (sequence : Nat → PMF Normal) (law : PMF Normal)
       (fun n => (sequence n).bind
         (splitKernel project canonical retract (weight n) (nonnegative n) (atMostOne n)))
       (law.map canonical) := by
-  rw [pmfConvergesPointwise_iff_toReal]
-  intro raw
-  have projected : ((law.map canonical) raw).toReal =
-      (law (project raw)).toReal * ((pure (canonical (project raw))) raw).toReal := by
-    rw [← bind_pure_comp, bind_apply_of_unique_branch law _ raw (project raw)
-      fun action _ member => by
-        have same := (PMF.mem_support_pure_iff _ _).mp member
-        rw [same, retract], ENNReal.toReal_mul]
-    rfl
-  simp only [split_prob, splitKernel, mix_apply_toReal, projected]
-  have zero := vanishes.mul_const
-    (((fiberUniform project canonical retract (project raw)) raw).toReal)
-  have one : Tendsto (fun _ : Nat => (1 : ℝ)) atTop (nhds 1) := tendsto_const_nhds
-  have canonicalLimit := (one.sub vanishes).mul_const
-    (((pure (canonical (project raw))) raw).toReal)
-  simpa only [zero_mul, sub_zero, one_mul, zero_add] using
-    (converges.toReal (project raw)).mul (zero.add canonicalLimit)
+  change PMFConvergesPointwise _ (law.bind fun action => pure (canonical action))
+  apply converges.bind
+  intro action
+  exact pmfConvergesPointwise_mix_zero weight nonnegative atMostOne vanishes
+    (fiberUniform project canonical retract action) (pure (canonical action))
 
 end PMF

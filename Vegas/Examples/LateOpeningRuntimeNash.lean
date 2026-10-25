@@ -94,7 +94,7 @@ theorem first_opportunity_nash_iff (weight : ℝ) (nonnegative : 0 ≤ weight)
     error source
 
 /-- With clients that may defer by any turn timing, Nash equilibria correspond
-in both directions, with extra slack twice the total deferral weight times the
+in both directions, with extra slack twice the product deferral error times the
 payoff range, against the entire bounded native raw menu. -/
 theorem deferring_client_nash_correspondence (weight : ℝ) (nonnegative : 0 ≤ weight)
     {reward forfeit : ℝ} (rewardNonnegative : 0 ≤ reward)
@@ -106,7 +106,7 @@ theorem deferring_client_nash_correspondence (weight : ℝ) (nonnegative : 0 ≤
     {turns : Nat} (timing : TurnTiming setup turns .sequential)
     (admission : CommitmentInterface program)
     (error : ℝ) (source : Profile (setup.informationModel admission).behavioralSignature) :
-    let slack := 2 * (∑ event, timing.deferral event) *
+    let slack := 2 * timing.deferralError *
       (forfeit + reward + 1 + deposit alice + deposit bob)
     let clients := (service weight nonnegative).clientProfile admission rawMenu timing source
     (IsεNash ((setup.informationModel admission).toBehavioralGameForm 4)
@@ -151,7 +151,7 @@ theorem deferring_client_nash_reflection (weight : ℝ) (nonnegative : 0 ≤ wei
       IsεNash ((setup.informationModel admission).toBehavioralGameForm 4)
         (fun history who => (setup.protocolReadout history.state).elim 0
           (fun terminal => sourceUtility reward forfeit terminal who))
-        (error + 2 * (∑ event, timing.deferral event) *
+        (error + 2 * timing.deferralError *
           (forfeit + reward + 1 + deposit alice + deposit bob)) source := by
   intro native
   apply (isεNash_iff_εBestResponse _ _).mpr

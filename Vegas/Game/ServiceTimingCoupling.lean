@@ -2,6 +2,8 @@
 
 import Vegas.Game.SourceServiceAsyncStep
 import Interaction.ReactiveMixtureRounds
+import GameTheoryExtensions.Math.Probability.Expectation
+import Mathlib.Algebra.BigOperators.Ring.Finset
 
 /-! # Turn timings cost at most their deferral weight, in every dependency mode
 
@@ -12,7 +14,7 @@ whose timing fixes it (`Vegas.serviceTurnPolicy_eq_timingMixture`): the
 index only changes responses at the owner's turns at the event. Fixing one
 event's index at the first turn therefore moves the law of every run by at most
 the event's deferral weight, and fixing all of them moves it by at most the
-total deferral weight. This holds for every scheduler, every initial law, every
+product deferral error. This holds for every scheduler, every initial law, every
 dependency mode and deadline, and whatever policies some players follow
 instead of their clients (`Vegas.overriddenTurnProfile_roundsFrom_bind_within`).
 -/
@@ -177,11 +179,8 @@ def overriddenTurnProfile (bound : (serviceGraph setup mode).EventId → Nat) (t
     Player → (serviceApplication setup mode deadline leaks).Policy := fun who =>
   (override who).getD (serviceTurnPolicy setup mode deadline leaks bound turns timing profile who)
 
-/-- **One event's timing costs at most its deferral weight.** From the
-initial law, every run of the overridden clients, followed by any common
-kernel, is within the event's deferral weight of the run with the event's turn
-index fixed at the first turn. -/
-theorem overriddenTurnProfile_fix_roundsFrom_bind_within {β : Type}
+/-- Fixing one timing index retains its first-turn branch in every full execution law. -/
+theorem overriddenTurnProfile_fix_roundsFrom_bind_lower {β : Type}
     (initial : PMF (EventGraphRuntime.State (serviceGraph setup mode)))
     (scheduler : (serviceApplication setup mode deadline leaks).Scheduler) (horizon : Nat)
     (bound : (serviceGraph setup mode).EventId → Nat) {turns : Nat}
@@ -189,13 +188,15 @@ theorem overriddenTurnProfile_fix_roundsFrom_bind_within {β : Type}
     (override : Player → Option (serviceApplication setup mode deadline leaks).Policy)
     (event : (serviceGraph setup mode).EventId)
     (readout : (serviceApplication setup mode deadline leaks).Execution → PMF β) :
-    PMF.WithinTV (timing.deferral event)
-      (((serviceApplication setup mode deadline leaks).roundsFrom initial scheduler
-        (overriddenTurnProfile bound turns timing profile override) horizon).bind readout)
-      (((serviceApplication setup mode deadline leaks).roundsFrom initial scheduler
+    ∀ outcome, (1 - timing.deferral event) *
+      ((((serviceApplication setup mode deadline leaks).roundsFrom initial scheduler
         (overriddenTurnProfile bound turns (timing.fix event 0) profile override) horizon).bind
-          readout) := by
+          readout) outcome).toReal ≤
+      ((((serviceApplication setup mode deadline leaks).roundsFrom initial scheduler
+        (overriddenTurnProfile bound turns timing profile override) horizon).bind readout)
+          outcome).toReal := by
   let app := serviceApplication setup mode deadline leaks
+  intro outcome
   have nonneg := deferral_nonneg timing event
   cases owned : (serviceGraph setup mode).actor? event with
   | none =>
@@ -207,7 +208,7 @@ theorem overriddenTurnProfile_fix_roundsFrom_bind_within {β : Type}
         rw [serviceTurnPolicy_fix_of_not_owner bound timing profile event 0 who
           (by rw [owned]; exact fun absurd => by cases absurd)]
       rw [same]
-      exact (PMF.WithinTV.refl _).mono nonneg
+      exact mul_le_of_le_one_left ENNReal.toReal_nonneg (by linarith)
   | some owner =>
       cases overridden : override owner with
       | some policy =>
@@ -222,7 +223,7 @@ theorem overriddenTurnProfile_fix_roundsFrom_bind_within {β : Type}
             · rw [serviceTurnPolicy_fix_of_not_owner bound timing profile event 0 who
                 (by rw [owned]; exact fun equal => isOwner (Option.some.inj equal).symm)]
           rw [same]
-          exact (PMF.WithinTV.refl _).mono nonneg
+          exact mul_le_of_le_one_left ENNReal.toReal_nonneg (by linarith)
       | none =>
           let base := overriddenTurnProfile (deadline := deadline) (leaks := leaks) bound turns
             timing profile override
@@ -252,12 +253,15 @@ theorem overriddenTurnProfile_fix_roundsFrom_bind_within {β : Type}
               simp only [base, overriddenTurnProfile, overridden, Option.getD_none]
             · rw [Function.update_of_ne isOwner]
           rw [fixed 0]
-          change PMF.WithinTV _ ((app.roundsFrom initial scheduler base horizon).bind readout) _
+          change (1 - timing.deferral event) *
+            (((app.roundsFrom initial scheduler (Function.update base owner (member 0))
+              horizon).bind readout) outcome).toReal ≤
+            (((app.roundsFrom initial scheduler base horizon).bind readout) outcome).toReal
           unfold ReactiveApplication.roundsFrom
           rw [PMF.bind_bind, PMF.bind_bind]
-          apply PMF.WithinTV.bind_right
-          intro state _
-          conv_lhs => rw [mixed]
+          apply bind_same_initial_domination
+          intro state _ value
+          conv_rhs => rw [mixed]
           rw [← app.runRounds_policyMixture scheduler (timing event owner owned) member
             owner base horizon (ReactiveApplication.Execution.initial app state)]
           have prior : (app.policyMixture (timing event owner owned) member).posterior
@@ -268,21 +272,98 @@ theorem overriddenTurnProfile_fix_roundsFrom_bind_within {β : Type}
                 have empty := List.prefix_nil.mp member
                 simp at empty
           rw [prior, PMF.bind_bind]
-          apply PMF.WithinTV.of_bind_point (timing event owner owned) 0
-          unfold TurnTiming.deferral
-          split
-          · rename_i absent
-            rw [owned] at absent
-            cases absent
-          · rename_i who ownedWho
-            have same : who = owner := Option.some.inj (ownedWho.symm.trans owned)
-            subst same
-            exact le_refl _
+          have factor : 1 - timing.deferral event = (timing event owner owned 0).toReal := by
+            unfold TurnTiming.deferral
+            split
+            · rename_i absent
+              rw [owned] at absent
+              cases absent
+            · rename_i who ownedWho
+              have same : who = owner := Option.some.inj (ownedWho.symm.trans owned)
+              subst same
+              ring
+          rw [factor]
+          exact bind_branch_lower (timing event owner owned) 0
+            (fun slot => (app.runRounds scheduler (Function.update base owner (member slot))
+              horizon (ReactiveApplication.Execution.initial app state)).bind readout) value
 
-/-- **Every timing costs at most its total deferral weight.** From the
-initial law, every run of the overridden clients of a timing, followed by any
-common kernel, is within the total deferral weight of the run of the
-overridden first-turn clients. -/
+private theorem retention_nonneg {turns : Nat} (timing : TurnTiming setup turns mode)
+    (event : (serviceGraph setup mode).EventId) : 0 ≤ 1 - timing.deferral event := by
+  unfold TurnTiming.deferral
+  split
+  · norm_num
+  · simpa only [sub_sub_cancel] using
+      (ENNReal.toReal_nonneg (a := timing event _ _ 0))
+
+/-- The retained first-turn error is a probability-sized bound. -/
+theorem TurnTiming.deferralError_mem_Icc {turns : Nat} (timing : TurnTiming setup turns mode) :
+    timing.deferralError ∈ Set.Icc (0 : ℝ) 1 := by
+  unfold TurnTiming.deferralError
+  constructor
+  · apply sub_nonneg.mpr
+    exact Finset.prod_le_one₀ (fun event _ => retention_nonneg timing event)
+      (fun event _ => by linarith [deferral_nonneg timing event])
+  · exact sub_le_self _ (Finset.prod_nonneg fun event _ => retention_nonneg timing event)
+
+/-- Retaining first-turn branches improves the additive event-error bound. -/
+theorem TurnTiming.deferralError_le_sum {turns : Nat} (timing : TurnTiming setup turns mode) :
+    timing.deferralError ≤ ∑ event, timing.deferral event := by
+  unfold TurnTiming.deferralError
+  rw [Finset.prod_one_sub_ordered]
+  simp only [sub_sub_cancel]
+  apply Finset.sum_le_sum
+  intro event _
+  apply mul_le_of_le_one_right (deferral_nonneg timing event)
+  exact Finset.prod_le_one₀ (fun other _ => retention_nonneg timing other)
+    (fun other _ => by linarith [deferral_nonneg timing other])
+
+theorem overriddenTurnProfile_roundsFrom_bind_lower {β : Type}
+    (initial : PMF (EventGraphRuntime.State (serviceGraph setup mode)))
+    (scheduler : (serviceApplication setup mode deadline leaks).Scheduler) (horizon : Nat)
+    (bound : (serviceGraph setup mode).EventId → Nat) {turns : Nat}
+    (timing : TurnTiming setup turns mode) (profile : BehavioralProfile setup.program)
+    (override : Player → Option (serviceApplication setup mode deadline leaks).Policy)
+    (readout : (serviceApplication setup mode deadline leaks).Execution → PMF β) :
+    ∀ outcome, (∏ event, (1 - timing.deferral event)) *
+      ((((serviceApplication setup mode deadline leaks).roundsFrom initial scheduler
+        (overriddenTurnProfile bound turns (firstTurnTiming setup turns mode) profile override)
+          horizon).bind readout) outcome).toReal ≤
+      ((((serviceApplication setup mode deadline leaks).roundsFrom initial scheduler
+        (overriddenTurnProfile bound turns timing profile override) horizon).bind readout)
+          outcome).toReal := by
+  have general : ∀ (events : List (serviceGraph setup mode).EventId), events.Nodup →
+      ∀ current : TurnTiming setup turns mode, ∀ outcome,
+      ((events.map fun event => 1 - current.deferral event).prod) *
+        ((((serviceApplication setup mode deadline leaks).roundsFrom initial scheduler
+          (overriddenTurnProfile bound turns (current.fixFirst events) profile override)
+            horizon).bind readout) outcome).toReal ≤
+        ((((serviceApplication setup mode deadline leaks).roundsFrom initial scheduler
+          (overriddenTurnProfile bound turns current profile override) horizon).bind readout)
+            outcome).toReal := by
+    intro events
+    induction events with
+    | nil => intro _ current outcome; simp [TurnTiming.fixFirst]
+    | cons event rest ih =>
+        intro distinct current outcome
+        obtain ⟨absent, restDistinct⟩ := List.nodup_cons.mp distinct
+        have step := overriddenTurnProfile_fix_roundsFrom_bind_lower initial scheduler horizon
+          bound current profile override event readout outcome
+        have later := ih restDistinct (current.fix event 0) outcome
+        have sameWeights :
+            (rest.map fun other => 1 - (current.fix event 0).deferral other).prod =
+              (rest.map fun other => 1 - current.deferral other).prod := by
+          congr 1
+          apply List.map_congr_left
+          intro other member
+          rw [current.fix_deferral_of_ne event other 0 fun same => absent (same ▸ member)]
+        rw [sameWeights] at later
+        have scaled := mul_le_mul_of_nonneg_left later (retention_nonneg current event)
+        simpa only [List.map_cons, List.prod_cons, TurnTiming.fixFirst, mul_assoc] using
+          scaled.trans step
+  have all := general (List.finRange _) (List.nodup_finRange _) timing
+  rw [timing.fixFirst_all, ← Fin.prod_univ_def] at all
+  exact all
+
 theorem overriddenTurnProfile_roundsFrom_bind_within {β : Type}
     (initial : PMF (EventGraphRuntime.State (serviceGraph setup mode)))
     (scheduler : (serviceApplication setup mode deadline leaks).Scheduler) (horizon : Nat)
@@ -290,44 +371,22 @@ theorem overriddenTurnProfile_roundsFrom_bind_within {β : Type}
     (timing : TurnTiming setup turns mode) (profile : BehavioralProfile setup.program)
     (override : Player → Option (serviceApplication setup mode deadline leaks).Policy)
     (readout : (serviceApplication setup mode deadline leaks).Execution → PMF β) :
-    PMF.WithinTV (∑ event, timing.deferral event)
+    PMF.WithinTV timing.deferralError
       (((serviceApplication setup mode deadline leaks).roundsFrom initial scheduler
         (overriddenTurnProfile bound turns timing profile override) horizon).bind readout)
       (((serviceApplication setup mode deadline leaks).roundsFrom initial scheduler
         (overriddenTurnProfile bound turns (firstTurnTiming setup turns mode) profile override)
           horizon).bind readout) := by
-  have general : ∀ (events : List (serviceGraph setup mode).EventId), events.Nodup →
-      ∀ current : TurnTiming setup turns mode,
-      PMF.WithinTV ((events.map current.deferral).sum)
-        (((serviceApplication setup mode deadline leaks).roundsFrom initial scheduler
-          (overriddenTurnProfile bound turns current profile override) horizon).bind readout)
-        (((serviceApplication setup mode deadline leaks).roundsFrom initial scheduler
-          (overriddenTurnProfile bound turns (current.fixFirst events) profile override)
-            horizon).bind readout) := by
-    intro events
-    induction events with
-    | nil => intro _ current; simpa [TurnTiming.fixFirst] using PMF.WithinTV.refl _
-    | cons event rest ih =>
-        intro distinct current
-        obtain ⟨absent, restDistinct⟩ := List.nodup_cons.mp distinct
-        have step := overriddenTurnProfile_fix_roundsFrom_bind_within initial scheduler horizon
-          bound current profile override event readout
-        have later := ih restDistinct (current.fix event 0)
-        have sameWeights : (rest.map (current.fix event 0).deferral).sum =
-            (rest.map current.deferral).sum := by
-          congr 1
-          apply List.map_congr_left
-          intro other member
-          exact current.fix_deferral_of_ne event other 0 fun same => absent (same ▸ member)
-        rw [sameWeights] at later
-        simpa only [List.map_cons, List.sum_cons, TurnTiming.fixFirst] using step.trans later
-  have all := general (List.finRange _) (List.nodup_finRange _) timing
-  rw [timing.fixFirst_all, ← Fin.sum_univ_def] at all
-  exact all
+  apply PMF.WithinTV.symm
+  apply PMF.WithinTV.of_domination
+  · exact Finset.prod_le_one₀ (fun event _ => retention_nonneg timing event)
+      (fun event _ => by linarith [deferral_nonneg timing event])
+  · exact overriddenTurnProfile_roundsFrom_bind_lower initial scheduler horizon
+      bound timing profile override readout
 
 /-- **Honest timing coupling.** For every initial law and scheduler, the
 turn-counted clients of a timing, run from initialization and followed by any
-common kernel, are within the total deferral weight of the first-turn
+common kernel, are within the product deferral error of the first-turn
 clients. -/
 theorem serviceTurnPolicy_roundsFrom_bind_within {β : Type}
     (initial : PMF (EventGraphRuntime.State (serviceGraph setup mode)))
@@ -335,7 +394,7 @@ theorem serviceTurnPolicy_roundsFrom_bind_within {β : Type}
     (bound : (serviceGraph setup mode).EventId → Nat) {turns : Nat}
     (timing : TurnTiming setup turns mode) (profile : BehavioralProfile setup.program)
     (readout : (serviceApplication setup mode deadline leaks).Execution → PMF β) :
-    PMF.WithinTV (∑ event, timing.deferral event)
+    PMF.WithinTV timing.deferralError
       (((serviceApplication setup mode deadline leaks).roundsFrom initial scheduler
         (serviceTurnPolicy setup mode deadline leaks bound turns timing profile) horizon).bind
           readout)
@@ -347,8 +406,8 @@ theorem serviceTurnPolicy_roundsFrom_bind_within {β : Type}
 
 /-- **Deviated timing coupling.** For every initial law, scheduler and policy
 of one deviating player, the deviated turn-counted clients of a timing, run
-from initialization and followed by any common kernel, are within the total
-deferral weight of the deviated first-turn clients. -/
+from initialization and followed by any common kernel, are within the product
+deferral error of the deviated first-turn clients. -/
 theorem deviatedTurnProfile_roundsFrom_bind_within {β : Type}
     (initial : PMF (EventGraphRuntime.State (serviceGraph setup mode)))
     (scheduler : (serviceApplication setup mode deadline leaks).Scheduler) (horizon : Nat)
@@ -356,7 +415,7 @@ theorem deviatedTurnProfile_roundsFrom_bind_within {β : Type}
     (timing : TurnTiming setup turns mode) (profile : BehavioralProfile setup.program)
     (who : Player) (alternative : (serviceApplication setup mode deadline leaks).Policy)
     (readout : (serviceApplication setup mode deadline leaks).Execution → PMF β) :
-    PMF.WithinTV (∑ event, timing.deferral event)
+    PMF.WithinTV timing.deferralError
       (((serviceApplication setup mode deadline leaks).roundsFrom initial scheduler
         (deviatedTurnProfile bound turns timing profile who alternative) horizon).bind readout)
       (((serviceApplication setup mode deadline leaks).roundsFrom initial scheduler

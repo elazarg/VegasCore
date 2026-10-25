@@ -37,14 +37,17 @@ simultaneously ready foreign reveal meets a reveal kernel that ignores it. -/
 theorem RevealRelaxedOrdered.readyIndependent (relaxed : graph.RevealRelaxedOrdered)
     {profile : graph.BehavioralProfile} (oblivious : ObliviousAtPublications profile) :
     graph.ReadyIndependent profile where
-  ready_pair_actors := relaxed.ready_pair_actors
-  normalizePolicy_complete_foreign config event other eventReady otherReady who actor foreign
-      otherActor differentOwner action value := by
-    have different : event ≠ other := by
-      intro same
-      subst same
-      rw [actor] at otherActor
-      exact differentOwner (Option.some.inj otherActor).symm
+  ready_pair_not_actor leftReady rightReady different who leftActor rightActor := by
+    obtain ⟨leftOwner, rightOwner, leftOwned, rightOwned, ownersNe⟩ :=
+      relaxed.ready_pair_actors leftReady rightReady different
+    exact ownersNe ((Option.some.inj (leftOwned.symm.trans leftActor)).trans
+      (Option.some.inj (rightOwned.symm.trans rightActor)).symm)
+  normalizedAction_complete config event other eventReady otherReady different action value := by
+    obtain ⟨who, foreign, actor, otherActor, differentOwner⟩ :=
+      relaxed.ready_pair_actors eventReady otherReady different
+    have differentOwner : foreign ≠ who := differentOwner.symm
+    rw [normalizedAction_of_actor _ _ _ who actor,
+      normalizedAction_of_actor _ _ _ who actor]
     by_cases publication : (graph.outputLayout event).IsPublication
     · exact oblivious who event actor publication _ _
     · have otherPrivate : ¬ (graph.outputLayout other).IsPublic := by

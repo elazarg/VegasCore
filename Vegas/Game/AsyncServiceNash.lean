@@ -9,7 +9,7 @@ import Vegas.Game.SourceInformation
 
 The turn-counted clients of a source profile use the canonical source model
 and an admitting response menu. Under the asynchronous contract, their joint
-law of typed outcome and realized settlement is within total deferral weight
+law of typed outcome and realized settlement is within product deferral error
 `δ` of the first-turn law in total variation. A realized audited payoff range
 `R` for a given player therefore gives that player an expectation error `δ * R`.
 
@@ -127,7 +127,7 @@ theorem clientProfile_update (menu : (serviceApplication service.setup service.m
       simp only [Function.update_of_ne same])
 
 /-- For every source profile, the clients' audited expected payoff is within
-the total deferral weight times the payoff range of the source expected
+the product deferral error times the payoff range of the source expected
 payoff, in both directions, and both expectations are of integrable payoffs. -/
 private theorem clientProfile_value_close {Parameter : Type}
     (parameter : State L service.setup.context → Parameter)
@@ -175,9 +175,9 @@ private theorem clientProfile_value_close {Parameter : Type}
     PayoffIntegrable native (fun final => payoff final.state who) ∧
       PayoffIntegrable original sourcePayoff ∧
       expect native (fun final => payoff final.state who) - expect original sourcePayoff ≤
-        (∑ event, timing.deferral event) * range who ∧
+        timing.deferralError * range who ∧
       expect original sourcePayoff - expect native (fun final => payoff final.state who) ≤
-        (∑ event, timing.deferral event) * range who := by
+        timing.deferralError * range who := by
   intro base payoff native original sourcePayoff
   classical
   let settle := TerminalAudit.settlement base
@@ -194,7 +194,7 @@ private theorem clientProfile_value_close {Parameter : Type}
         payoffs)
   let sourceJoint := (service.setup.run decoded).map fun state =>
     (some state, stateUtility state)
-  have close : PMF.WithinTV (∑ event, timing.deferral event) nativeJoint sourceJoint :=
+  have close : PMF.WithinTV timing.deferralError nativeJoint sourceJoint :=
     sourceServiceClients_clientPolicy_settlement_lawError service.contract
       service.timely timing
       decoded terminal menu (covered source) sample authentic stateUtility deposit
@@ -308,7 +308,7 @@ private theorem clientProfile_value_close {Parameter : Type}
       bounded pair member.symm
 
 /-- A native approximate Nash equilibrium gives each source player an
-approximate best response. Its error adds twice the total deferral weight
+approximate best response. Its error adds twice the product deferral error
 multiplied by that player's realized audited payoff range. -/
 theorem isεBestResponse_of_clientProfile {Parameter : Type}
     (ordered : (serviceGraph service.setup service.mode).BarrierOrdered)
@@ -349,7 +349,7 @@ theorem isεBestResponse_of_clientProfile {Parameter : Type}
         (instructionCount service.setup.program + 1))
         (fun final player => (service.setup.protocolReadout final.state).elim 0
           (fun state => utility (service.setup.parameterOutcome parameter state) player))
-        (ε + 2 * (∑ event, timing.deferral event) * range who) who source (source who) := by
+        (ε + 2 * timing.deferralError * range who) who source (source who) := by
   intro base payoff native
   rw [isεNash_iff] at native
   intro who
@@ -520,7 +520,7 @@ theorem isεBestResponse_clientProfile_of_firstTurn_bounds {Parameter : Type}
         ((menu.information (serviceInitialLaw service.setup service.mode) service.horizon
           service.scheduler).toBehavioralGameForm (2 * service.horizon + 1))
         (fun history player => payoff history.state player)
-        (ε + 2 * (∑ event, timing.deferral event) * range who) who
+        (ε + 2 * timing.deferralError * range who) who
         (service.clientProfile admission menu timing source)
         (service.clientProfile admission menu timing source who) := by
   intro base payoff clients firstTurn equilibrium
@@ -615,7 +615,7 @@ theorem isεBestResponse_clientProfile_of_firstTurn_bounds {Parameter : Type}
       expect (app.roundsFrom (serviceInitialLaw service.setup service.mode) service.scheduler limit
         service.horizon)
         (fun execution => payoff (app.finished execution) who) ≤
-      (∑ event, timing.deferral event) * range who :=
+      timing.deferralError * range who :=
     coupled.expect_sub_le (fun execution => payoff (app.finished execution) who)
       (low who) (range who) (fun execution _ =>
         service.auditedPayoff_within parameter utility sample deposit low range within _ who)

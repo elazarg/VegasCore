@@ -125,10 +125,10 @@ theorem intended_openingClientProfile_isεNash {Parameter : Type}
     IsεNash ((menu.information (serviceInitialLaw service.setup service.mode) service.horizon
         service.scheduler).toBehavioralGameForm (2 * service.horizon + 1))
         (fun history who => payoff history.state who)
-        (ε + 2 * (∑ event, timing.deferral event) * spread)
+        (ε + 2 * timing.deferralError * spread)
         (service.clientProfile (CommitmentInterface.values service.setup.program) menu timing
           source) ∧
-      PMF.WithinTV (∑ event, timing.deferral event)
+      PMF.WithinTV timing.deferralError
         (((menu.information (serviceInitialLaw service.setup service.mode) service.horizon
           service.scheduler).runBehavioral (service.clientProfile (CommitmentInterface.values
             service.setup.program) menu timing source)
@@ -215,10 +215,10 @@ theorem intended_openingExtension_isεNash {Parameter : Type}
       IsεNash ((menu.information (serviceInitialLaw service.setup service.mode) service.horizon
           service.scheduler).toBehavioralGameForm (2 * service.horizon + 1))
           (fun history who => payoff history.state who)
-          (ε + 2 * (∑ event, timing.deferral event) * spread)
+          (ε + 2 * timing.deferralError * spread)
           (service.clientProfile (CommitmentInterface.values service.setup.program) menu timing
             source) ∧
-        PMF.WithinTV (∑ event, timing.deferral event)
+        PMF.WithinTV timing.deferralError
           (((menu.information (serviceInitialLaw service.setup service.mode) service.horizon
             service.scheduler).runBehavioral (service.clientProfile (CommitmentInterface.values
               service.setup.program) menu timing source)

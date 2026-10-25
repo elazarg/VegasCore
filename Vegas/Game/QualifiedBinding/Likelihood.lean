@@ -9009,11 +9009,7 @@ private theorem sourceReplay_source_prefix_cylinder_fold
           (block.block.wordAction who position) =
         ((sourceUnflaggedStrategy setup values) who
           (setup.proposalRecoveryModel.infoOf who prior)).map
-            (fun choice => choice.val.map (fun move => move.semantic.action)))
-    (referencePresent : ∀ position, true ∈
-      (ownWordLaw.map (fun candidate => decide (∀ index < position,
-          block.block.wordAction who index candidate =
-            block.block.wordAction who index (referenceWord.view who)))).support) :
+            (fun choice => choice.val.map (fun move => move.semantic.action))) :
     ∀ (last : setup.proposalRecoveryProtocol.History)
       (_kept : TracePrefix q.trace last.trace), TracePrefix last.trace g.trace →
       ∃ records : List (setup.proposalRecoveryModel.InfoState who ×
@@ -9223,7 +9219,7 @@ private theorem sourceReplay_source_prefix_cylinder_fold
               (sourceObservationAt position) (sourceObservationAt (position + 1))
                 (block.block.wordAction who position)
                   (block.block.wordAction who position (referenceWord.view who))
-                    (referencePresent position) (fun candidate _present =>
+                    (fun candidate _present =>
                       observationStep candidate)
             rw [increment, mass, law, referenceAction]
             have atom := sourceReplay_ordinary_commitment_action_atom setup values who
@@ -9935,16 +9931,12 @@ theorem sourceRawReplay_annotation_atom
       let selectedObservation := fun candidate => decide (
         issuedLedger setup implementation block.block low control high who candidate ∧
           block.block.wordAction who offset candidate = selectedAction)
-      have issuedPresent : true ∈ (ownWordLaw.map issuedObservation).support :=
-        (PMF.mem_support_map_iff ..).mpr ⟨referenceWord.view who,
-          (PMF.mem_support_map_iff ..).mpr ⟨referenceWord, referenceWordSupport, rfl⟩,
-            decide_eq_true (issuedLedgers who)⟩
       have selectedCylinder : (ownWordLaw.map selectedObservation) true =
           (ownWordLaw.map issuedObservation) true *
             (((fiberPosterior ownWordLaw issuedObservation true).map
               (block.block.wordAction who offset)) selectedAction) := by
         exact observation_fiber_mass ownWordLaw issuedObservation selectedObservation
-          (block.block.wordAction who offset) selectedAction issuedPresent (by
+          (block.block.wordAction who offset) selectedAction (by
             intro candidate _supported
             simp only [issuedObservation, selectedObservation, decide_eq_true_eq])
       let sourceObservation := fun history : setup.proposalRecoveryProtocol.History =>
@@ -10256,19 +10248,12 @@ theorem sourceRawReplay_annotation_atom
         simp only [eventCount_eq_instructionCount] at count
         rw [cursorOffset] at count
         omega
-      have referencePresent (position : Nat) : true ∈
-          (ownWordLaw.map (sourceObservationAt position)).support := by
-        refine (PMF.mem_support_map_iff ..).mpr ⟨referenceWord.view who,
-          (PMF.mem_support_map_iff ..).mpr ⟨referenceWord, referenceWordSupport, rfl⟩, ?_⟩
-        apply decide_eq_true
-        intro _index _bounded
-        rfl
       have sourceFold := sourceReplay_source_prefix_cylinder_fold setup values implementation
         who control checkpoint.residual.tail block phase cursor blockPositive q g qLength
           qInitialized cursorPrefix low offset gDepth offsetInside targetCurrent targetTrace
             gToTarget targetGeneration finishedExcluded actualAlive startRank embeddingRank
               wholeFinished wholeCurrent wholeAttempt literalWord wholeProper referenceWord
-                referenceWholeActions ownWordLaw rows sourcePositionLaw referencePresent
+                referenceWholeActions ownWordLaw rows sourcePositionLaw
       obtain ⟨sourceRecords, sourceRecordsEq, issuedCylinder⟩ := sourceFold g qKept .refl
       have recordsEq : sourceRecords = newOwn :=
         List.append_cancel_right (sourceRecordsEq.symm.trans ownSuffix)

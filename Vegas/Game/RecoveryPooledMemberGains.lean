@@ -19,6 +19,8 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   (bounds : MessageBounds (graph setup)) (horizon : Nat)
   (scheduler : (recoveryApplication (runtime setup) leaks).Scheduler)
 
+variable {Public : Type*} {signal : State L setup.context → Public}
+
 local notation "Initial" => PMF.map
   (fun native => (RecoveryState.mk native ∅ : RecoveryState (graph setup))) (initialLaw setup)
 local notation "NativeScheduler" => nativeScheduler (runtime setup) leaks scheduler
@@ -46,7 +48,8 @@ theorem recovery_pooled_member_gain_bounds [Fintype (RP).History]
     [(recoveryApplication (runtime setup) leaks).FiniteNature Initial scheduler]
     [Finite setup.intendedProtocol.History]
     [∀ player, DecidableEq ((R).InfoState player)]
-    (wellFormed : setup.WellFormed) (independent : setup.PrivateInputsIndependent)
+    (wellFormed : setup.WellFormed) (independent : setup.PrivateInputsIndependentGiven signal)
+    (observable : setup.PublicInitialSignal signal)
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (sourceMixed : ∀ n, (sequence n).IsFullyMixed)
     (scale : ℕ → ℝ) (positive : ∀ n, 0 < scale n) (le_one : ∀ n, scale n ≤ 1)
@@ -120,7 +123,7 @@ theorem recovery_pooled_member_gain_bounds [Fintype (RP).History]
             (scale n) (positive n).le (le_one n) ((R).agentAt site))) ≤ memberError n := by
   obtain ⟨continuation, score, error, limit, _scoreUnit, values⟩ :=
     recovery_keyed_component_value_bounds setup leaks bounds horizon scheduler wellFormed
-      independent
+      independent observable
       sequence sourceMixed scale positive le_one scaleEq covers coversInputs capacity weights
       assessments fallback assembled bayes opportunity inclusion timely certificate rawCertificate
       parameter utility excludedPayoff payoffBound nonnegative recoveryCertificate menuCertificate

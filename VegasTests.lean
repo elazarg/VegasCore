@@ -33,3 +33,5 @@ import VegasTests.PartialEnvironment
 
 import VegasTests.DependencyHeight
 import VegasTests.ConditionalPublicPrior
+import VegasTests.ChanceScheduling
+import VegasTests.ServiceTiming

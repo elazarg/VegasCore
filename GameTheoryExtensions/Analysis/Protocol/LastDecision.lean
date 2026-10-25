@@ -97,14 +97,9 @@ theorem consistent_update_of_reach_invariant
             reference.strategy who (response n) who site.1)
           (Profile.update (sig := M.behavioralSignature)
             reference.strategy who policy who site.1)
-        rw [pmfConvergesPointwise_iff_toReal]
-        intro choice
-        simp only [Profile.update_same]
-        simp only [response, mix_apply_toReal]
-        have first := vanishes.mul_const (((reference.strategy who site.1) choice).toReal)
-        have one : Tendsto (fun _ : Nat => (1 : ℝ)) atTop (nhds 1) := tendsto_const_nhds
-        have second := (one.sub vanishes).mul_const (((policy site.1) choice).toReal)
-        simpa only [zero_mul, sub_zero, one_mul, zero_add] using first.add second
+        simpa only [Profile.update_same] using
+          pmfConvergesPointwise_mix_zero weight (fun n => (positive n).le) atMostOne
+            vanishes (reference.strategy who site.1) (policy site.1)
       · change PMFConvergesPointwise
           (fun n => Profile.update (sig := M.behavioralSignature)
             reference.strategy who (response n) player site.1)

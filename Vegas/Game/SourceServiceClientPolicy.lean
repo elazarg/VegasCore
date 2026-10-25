@@ -140,7 +140,7 @@ Under the asynchronous contract with `delay + bound < deadline`, for every turn
 timing and every source profile whose clients' first-turn limit has its source
 outcome law, the client policies of the profile's turn-counted clients, restricted to a response
 menu that admits them, have the profile's source joint law of typed outcome and
-realized payoffs within the total deferral weight in total variation, for every
+realized payoffs within the product deferral error in total variation, for every
 authentic partial audit and every deposit. -/
 theorem sourceServiceClients_clientPolicy_settlement_lawError
     {mode : EventGraph.ExecutionMode} {deadline : (serviceGraph setup mode).EventId → Nat}
@@ -163,7 +163,7 @@ theorem sourceServiceClients_clientPolicy_settlement_lawError
     let settle := TerminalAudit.settlement (serviceBaseUtility setup mode deadline leaks utility)
       ((serviceRuntime setup mode deadline).serviceAuditObservation leaks)
       (serviceSourceAudit setup mode deadline leaks sample) deposit
-    PMF.WithinTV (∑ event, timing.deferral event)
+    PMF.WithinTV timing.deferralError
       (((menu.information (serviceInitialLaw setup mode) horizon scheduler).runBehavioral
         (fun who => menu.restrictPolicy (serviceInitialLaw setup mode) horizon scheduler who
           (serviceClientPolicy setup mode deadline leaks bound turns timing

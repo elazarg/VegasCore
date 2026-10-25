@@ -3631,9 +3631,6 @@ theorem issuedLedger_owner_cylinder_telescope
         intro bounded
         have inside : count < past.length := by omega
         have previous := ih (by omega)
-        have possible : true ∈ (law.map (observe count)).support :=
-          (PMF.mem_support_map_iff _ _ _).mpr
-            ⟨reference.view owner, referenceSupport, referenceMatches count⟩
         have current : past[count]? = some past[count] := List.getElem?_eq_getElem inside
         cases indexed : sourceIssuedRecordPosition setup implementation block low control
             owner past[count] with
@@ -3654,7 +3651,7 @@ theorem issuedLedger_owner_cylinder_telescope
         | some position =>
             have increment := observation_fiber_mass law (observe count) (observe (count + 1))
               (block.wordAction owner position)
-              (block.wordAction owner position (reference.view owner)) possible (by
+              (block.wordAction owner position (reference.view owner)) (by
                 intro word _drawn
                 rw [decide_eq_true_eq, decide_eq_true_eq, matchesStep count inside word]
                 constructor

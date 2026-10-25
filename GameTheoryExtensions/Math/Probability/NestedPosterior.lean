@@ -8,6 +8,20 @@ noncomputable section
 
 namespace GameTheory.Math.Probability
 
+/-- Reading out a posterior commutes with conditioning, including at null
+observations because the fallback is the original law. -/
+theorem fiberPosterior_map_readout {A B Info : Type*} (law : PMF A)
+    (read : A → B) (observe : B → Info) (observed : Info) :
+    (fiberPosterior law (observe ∘ read) observed).map read =
+      fiberPosterior (law.map read) observe observed := by
+  classical
+  by_cases present : observed ∈ (law.map (observe ∘ read)).support
+  · exact map_fiberPosterior_readout law read observe observed present
+  · have absentImage : observed ∉ ((law.map read).map observe).support := by
+      simpa only [PMF.map_comp] using present
+    rw [fiberPosterior_of_not_mem_support law (observe ∘ read) present,
+      fiberPosterior_of_not_mem_support (law.map read) observe absentImage]
+
 /-- The observed marginal times the conditional second-coordinate atom is
 the original joint atom, including at observations of zero mass. -/
 theorem mul_fiberPosterior_map_snd_apply {Output Memory : Type}
@@ -29,10 +43,10 @@ theorem mul_fiberPosterior_map_snd_apply {Output Memory : Type}
     rw [zero, zero_mul, jointZero]
 
 /-- The mass of an accumulated observation is its previous mass times the
-conditional atom of the newly read coordinate. -/
+conditional atom of the newly read coordinate, including when the previous
+observation has zero mass. -/
 theorem observation_fiber_mass {A B : Type} (law : PMF A)
     (old next : A → Bool) (field : A → B) (value : B)
-    (present : true ∈ (law.map old).support)
     (same : ∀ point ∈ law.support,
       next point = true ↔ old point = true ∧ field point = value) :
     (law.map next) true = (law.map old) true *
@@ -42,7 +56,7 @@ theorem observation_fiber_mass {A B : Type} (law : PMF A)
   let joint := law.map read
   have posterior : (fiberPosterior law old true).map read =
       fiberPosterior joint Prod.fst true := by
-    exact map_fiberPosterior_readout law read Prod.fst true present
+    exact fiberPosterior_map_readout law read Prod.fst true
   have conditional : ((fiberPosterior joint Prod.fst true).map Prod.snd) =
       (fiberPosterior law old true).map field := by
     rw [← posterior, PMF.map_comp]

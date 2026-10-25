@@ -69,7 +69,7 @@ weight; the regular base weights of each site have positive total and those of t
 first agree in law with the second's on a unit payoff of the record; and the
 irregular histories of each site carry at most `ρ` times its regular reach. Then
 the two beliefs give that payoff of the record expectations within
-`4 ρ + 4 ε / (1 - ε)`. -/
+`2 ρ / (1 + ρ) + 2 ε / (1 - ε)`. -/
 theorem recordLaw_near_of_baseLaw {who : Player}
     [Finite (onePacketProtocol setup leaks bounds horizon scheduler).History]
     (assessment : (onePacketInformation setup leaks bounds horizon
@@ -117,7 +117,7 @@ theorem recordLaw_near_of_baseLaw {who : Player}
         operationalRecord setup leaks bounds horizon scheduler history.1.trace) payoff -
       expect ((assessment.belief who second).map fun history =>
         operationalRecord setup leaks bounds horizon scheduler history.1.trace) payoff| ≤
-      4 * ρ + 4 * ε / (1 - ε) := by
+      2 * ρ / (1 + ρ) + 2 * ε / (1 - ε) := by
   let := Fintype.ofFinite ((onePacketInformation setup leaks bounds horizon
     scheduler).InformationHistory who first.1)
   let := Fintype.ofFinite ((onePacketInformation setup leaks bounds horizon

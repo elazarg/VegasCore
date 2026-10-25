@@ -10,6 +10,17 @@ noncomputable section
 
 namespace GameTheory.Math.Probability
 
+/-- A mixture contains each branch with at least its original weight. -/
+theorem bind_branch_lower {α β : Type*} (timing : PMF α) (index : α)
+    (branch : α → PMF β) (outcome : β) :
+    (timing index).toReal * (branch index outcome).toReal ≤
+      ((timing.bind branch) outcome).toReal := by
+  rw [← ENNReal.toReal_mul]
+  apply ENNReal.toReal_mono (PMF.apply_ne_top _ _)
+  rw [PMF.bind_apply]
+  exact ENNReal.le_tsum (f := fun other => timing other * (branch other) outcome) index
+
+
 /-- A mixture retains its right component with its original weight. -/
 theorem mix_retains_right {α : Type*} (weight : Set.Icc (0 : ℝ) 1)
     (extra retained : PMF α) (value : α) :

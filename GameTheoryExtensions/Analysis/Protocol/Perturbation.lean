@@ -41,14 +41,7 @@ theorem BehavioralAssessment.perturb_strategy_converges (reference : M.Behaviora
     PMFConvergesPointwise
       (fun n => (reference.perturb profile (weight n) (nonnegative n)
         (atMostOne n)).strategy who info) (profile who info) := by
-  rw [pmfConvergesPointwise_iff_toReal]
-  intro choice
-  change Tendsto (fun n => ((mix (weight n) (nonnegative n) (atMostOne n)
-    (reference.strategy who info) (profile who info)) choice).toReal) atTop _
-  simp only [mix_apply_toReal]
-  have first := vanishes.mul_const (((reference.strategy who info) choice).toReal)
-  have one : Tendsto (fun _ : Nat => (1 : ℝ)) atTop (nhds 1) := tendsto_const_nhds
-  have second := (one.sub vanishes).mul_const (((profile who info) choice).toReal)
-  simpa only [zero_mul, sub_zero, one_mul, zero_add] using first.add second
+  exact pmfConvergesPointwise_mix_zero weight nonnegative atMostOne vanishes
+    (reference.strategy who info) (profile who info)
 
 end GameTheory.Protocol.InformationModel

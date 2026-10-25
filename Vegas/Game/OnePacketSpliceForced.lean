@@ -13,8 +13,8 @@ failure. A responder `r ≠ who` at a state along `h` may owe at `p` (its own
 cells may be the ones that went wrong), and the swap between `p` and `w` may
 move what `r` sees. Splicing `p` and `w` for `r`
 (`Vegas.SourceProgram.ProtocolState.splicePoint`) keeps `r`'s hidden cells and
-takes everybody else's from `w`. With independent hidden initial cells the swap
-between `p` and the splice is guarded at the end of `h`, so it maps `h` and each
+takes everybody else's from `w`. With hidden initial cells independent given a public
+signal, the swap between `p` and the splice is guarded at the end of `h`, so it maps `h` and each
 of its prefixes to histories (`Vegas.forcedAgent_of_splice`):
 
 * it fixes `r`, so the image of each prefix carries `r`'s information there;
@@ -39,6 +39,8 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol Intera
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)} [DecidableEq (CellTy Player L)]
+
+variable {Public : Type*} {signal : State L setup.context → Public}
 
 section Points
 
@@ -205,12 +207,13 @@ theorem swapGuardState_of_tracePrefix (swap : HiddenSwap (graph setup))
 ending at a state `current` with decoded point `p`, at which every ready reveal
 belongs to `who`, and the end `w` of an intended history that `who` observes like
 `p`, at which nobody owes a failure. Assume the commitments changed by the splice
-that retains the responder's hidden cells are successful. With independent hidden
-initial cells and message bounds covering every binding field, every player
+that retains the responder's hidden cells are successful. With hidden initial cells
+independent given a publicly determined signal and bounds covering every binding field, every player
 `r ≠ who` acting at a state along the history acts at an information state
 forced for it. -/
 theorem forcedAgent_of_splice (wellFormed : setup.WellFormed)
-    (independent : setup.PrivateInputsIndependent) (covered : BindingFieldsCovered bounds)
+    (independent : setup.PrivateInputsIndependentGiven signal)
+    (observable : setup.PublicInitialSignal signal) (covered : BindingFieldsCovered bounds)
     {who : Player} {current : (application setup leaks).Control}
     (trace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some current))
     {p w : ProtocolState setup.program}
@@ -243,7 +246,7 @@ theorem forcedAgent_of_splice (wellFormed : setup.WellFormed)
     rw [decodedP, Option.some.injEq] at pointEq
     subst pointEq
     exact ⟨initial, member, found⟩
-  have drawn := drawn_splicePoint (r := r) independent drawnP
+  have drawn := drawn_splicePoint (r := r) independent observable publicAgree drawnP
     (exists_initialCellsAt second.trace secondState)
   have staticP := decodedPoint_staticAt decodedP
   have guarded : SwapGuardState setup swap (swapAllowed swap) (some current) :=

@@ -148,8 +148,6 @@ theorem rational_support_maximal (assessment : M.BehavioralAssessment)
   (decision.rationalAt_iff_support_maximal assessment).mp
     (rational decision.player decision.site) action supported alternative
 
-variable {OtherState : Type*}
-
 end ContinuationDecision
 
 end GameTheory.Protocol.InformationModel

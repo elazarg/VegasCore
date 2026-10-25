@@ -31,6 +31,8 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
       (initialLaw setup)) scheduler]
   [Finite setup.intendedProtocol.History]
 
+variable {Public : Type*} {signal : State L setup.context → Public}
+
 local notation "Initial" => PMF.map
   (fun native => (RecoveryState.mk native ∅ : RecoveryState (graph setup))) (initialLaw setup)
 local notation "NativeScheduler" => RecoveryProjection.nativeScheduler
@@ -53,7 +55,8 @@ actual permanent-exclusion recovery, preserving its joint readout and settled
 payoff law and charging nobody on its equilibrium paths. -/
 theorem recovery_intended_raw_sequentialEquilibrium_preserved
     (wellFormed : setup.WellFormed)
-    (independent : setup.PrivateInputsIndependent) {delay bound : (graph setup).EventId → Nat}
+    (independent : setup.PrivateInputsIndependentGiven signal)
+    (observable : setup.PublicInitialSignal signal) {delay bound : (graph setup).EventId → Nat}
     (opportunity : Recovery.Opportunity (runtime setup) leaks Initial horizon scheduler delay)
     (inclusion : Recovery.ProtectedInclusion (runtime setup) leaks Initial horizon scheduler bound)
     (completes : Recovery.CompletesPlay (runtime setup) leaks Initial horizon scheduler)
@@ -161,7 +164,8 @@ theorem recovery_intended_raw_sequentialEquilibrium_preserved
                     (sourceSequence n)) + error n := by
     by_cases slots_pos : 0 < bounds.candidateCount
     · exact RecoveryOnePacket.recovery_local_comparisons setup leaks bounds horizon scheduler
-        wellFormed independent sourceSequence sourceMixed sourceBayes scale positive le_one
+        wellFormed independent observable sourceSequence sourceMixed sourceBayes scale positive
+        le_one
         (fun _ => rfl) covers coversInputs capacity slots_pos weights sequence (fun _ => fallback)
         assembled bayes opportunity inclusion timely parameter utility excludedPayoff payoffBound
         nonnegative completes payoffBounded excludedBounded below upperUtility le_upper

@@ -54,6 +54,11 @@ def TurnTiming.deferral {setup : Setup (Player := Player) (L := L)}
   | none => 0
   | some who => 1 - (timing event who owned 0).toReal
 
+/-- The missing mass after retaining each event's first-turn branch. -/
+def TurnTiming.deferralError {setup : Setup (Player := Player) (L := L)}
+    {mode : EventGraph.ExecutionMode} {turns : Nat} (timing : TurnTiming setup turns mode) : ℝ :=
+  1 - ∏ event, (1 - timing.deferral event)
+
 section Configured
 
 variable (setup : Setup (Player := Player) (L := L)) (mode : EventGraph.ExecutionMode)
@@ -135,6 +140,11 @@ theorem firstTurnTiming_deferral {mode : EventGraph.ExecutionMode} (turns : Nat)
   split
   · rfl
   · simp [firstTurnTiming]
+
+@[simp]
+theorem firstTurnTiming_deferralError {mode : EventGraph.ExecutionMode} (turns : Nat) :
+    (firstTurnTiming setup turns mode).deferralError = 0 := by
+  simp [TurnTiming.deferralError, firstTurnTiming_deferral]
 
 end Generic
 

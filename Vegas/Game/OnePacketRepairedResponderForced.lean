@@ -25,11 +25,14 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
   {scheduler : (application setup leaks).Scheduler}
 
+variable {Public : Type*} {signal : State L setup.context → Public}
+
 /-- Every actual foreign responder input along a forced focal history is
 forced once the concrete single-owner repair constructor is available.
 Responder-preserving repair may retain that responder's own failed bindings. -/
 theorem forcedAgent_of_responder_preserving_repair (wellFormed : setup.WellFormed)
-    (independent : setup.PrivateInputsIndependent) (covered : BindingFieldsCovered bounds)
+    (independent : setup.PrivateInputsIndependentGiven signal)
+    (observable : setup.PublicInitialSignal signal) (covered : BindingFieldsCovered bounds)
     {focal responder : Player} (different : responder ≠ focal)
     {site : (onePacketInformation setup leaks bounds horizon scheduler).InformationSite focal}
     {past : List (application setup leaks).PlayerEntry}
@@ -152,7 +155,8 @@ theorem forcedAgent_of_responder_preserving_repair (wellFormed : setup.WellForme
         (initialLaw setup) horizon scheduler responder
           ((application setup leaks).observe responder (some current)) := by
     intro current priorTrace prefixOf
-    exact forcedAgent_of_splice wellFormed independent covered image decoded secondState sameView
+    exact forcedAgent_of_splice wellFormed independent observable covered image decoded
+      secondState sameView
       (decodedPoint_staticAt witnessDecoded) readyOwn succeed priorTrace prefixOf different
   have forcedRecord := forcedAgent_of_recorded_decision image responder forcedPrefixes imageMember
   change forcedAgent (bounds.onePacketMenu (runtime setup) leaks) (initialLaw setup) horizon
@@ -166,7 +170,8 @@ theorem forcedAgent_of_responder_preserving_repair (wellFormed : setup.WellForme
 /-- Actual witness-guided binding repairs make every foreign responder's
 recorded decision input forced, including decisions after its own failed binding. -/
 theorem forcedAgent_of_intended_witness_repairs (wellFormed : setup.WellFormed)
-    (independent : setup.PrivateInputsIndependent) (covers : bounds.CoversOutputValues)
+    (independent : setup.PrivateInputsIndependentGiven signal)
+    (observable : setup.PublicInitialSignal signal) (covers : bounds.CoversOutputValues)
     (covered : BindingFieldsCovered bounds)
     {focal responder : Player} (different : responder ≠ focal)
     {site : (onePacketInformation setup leaks bounds horizon scheduler).InformationSite focal}
@@ -196,7 +201,8 @@ theorem forcedAgent_of_intended_witness_repairs (wellFormed : setup.WellFormed)
     (acting : control.actor = some responder) :
     forcedAgent (bounds.onePacketMenu (runtime setup) leaks) (initialLaw setup) horizon scheduler
       responder ((application setup leaks).observe responder (some control)) := by
-  refine forcedAgent_of_responder_preserving_repair wellFormed independent covered different
+  refine forcedAgent_of_responder_preserving_repair wellFormed independent observable covered
+    different
     decision forced turn history witness historyState witnessState witnessDecoded free ?_
     prior joint legal realized isPrefix acting
   intro owner other current sourceTrace seen

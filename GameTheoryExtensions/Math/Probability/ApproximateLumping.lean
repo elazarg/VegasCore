@@ -77,15 +77,9 @@ private theorem expect_three_parts {α : Type*} (μ : PMF α) (s r h : α → �
     simpa only [mul_comm] using payoffIntegrable_const_mul (c := y) sum
   rw [expect_add (payoffIntegrable_add integrableSX integrableRest) integrableH,
     expect_add integrableSX integrableRest]
-  have first : expect μ (fun a => s a * x) = expect μ s * x := by
-    simp only [mul_comm _ x]
-    exact expect_const_mul
-  have second : expect μ (fun a => (1 - s a - r a) * y) = (1 - expect μ s - expect μ r) * y := by
-    simp only [mul_comm _ y]
-    rw [expect_const_mul, expect_sub (payoffIntegrable_sub (payoffIntegrable_constant μ 1)
-      integrableS) integrableR, expect_sub (payoffIntegrable_constant μ 1) integrableS,
-      expect_constant]
-  rw [first, second]
+  rw [expect_mul_const, expect_mul_const,
+    expect_sub (payoffIntegrable_sub (payoffIntegrable_constant μ 1) integrableS) integrableR,
+    expect_sub (payoffIntegrable_constant μ 1) integrableS, expect_constant]
 
 /-- **A law with two outcomes up to a remainder.** If a law maps its silent
 points to silentImage and its opening points to openImage, gives the silent

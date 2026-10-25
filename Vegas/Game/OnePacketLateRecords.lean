@@ -7,12 +7,12 @@ import Vegas.Game.OnePacketLateUniform
 
 At two late deliveries of `who` with the same late-delivery key, neither free
 nor owing, the beliefs' laws of operational records give every unit payoff of
-the record expectations within four times the irregular ratios plus four times
-the factorization error over one less it: the reach of a regular history is its
+the record expectations within twice the irregular ratio's share of the final
+mass plus twice the factorization error over one less it: the reach of a regular history is its
 factored weight, the owner mass of the site's recall times a base weight, the
 base laws of the two sites agree by the owner's hidden swap, and the irregular
-histories carry little reach (`Vegas.keyedRecord_near`). So, with independent
-hidden initial cells, the law of records at
+histories carry little reach (`Vegas.keyedRecord_near`). So, with hidden initial cells
+independent given a public initial signal, the law of records at
 a fixed late delivery of each key serves every late delivery with that key, up to
 a vanishing drift (`Vegas.OnePacketBaseInputs.lateRecords_of_keyed`).
 -/
@@ -33,6 +33,8 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
   (bounds : MessageBounds (graph setup)) (horizon : Nat)
   (scheduler : (application setup leaks).Scheduler)
+
+variable {Public : Type*} {signal : State L setup.context → Public}
 
 local notation "onePacketN" =>
   onePacketModel setup leaks bounds (initialLaw setup) horizon scheduler
@@ -76,12 +78,13 @@ of `who` with the same late-delivery key at which `who` owes no failure, under a
 fully mixed Bayes assessment at stage `n` with operational steps and honest
 counterparts at both sites, and a factorization error below one, the beliefs'
 laws of operational records give every unit payoff of the record expectations
-within four times the sum of the sites' irregular ratios plus four times the
-factorization error over one less it. -/
+within `2 ρ / (1 + ρ) + 2 ε / (1 - ε)`, where `ρ` is the sum of the sites'
+irregular ratios and `ε` is the factorization error. -/
 theorem keyedRecord_near
     [Finite ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
       scheduler).History]
-    (wellFormed : setup.WellFormed) (independent : setup.PrivateInputsIndependent)
+    (wellFormed : setup.WellFormed) (independent : setup.PrivateInputsIndependentGiven signal)
+    (observable : setup.PublicInitialSignal signal)
     (coversInputs : bounds.CoversInputValues)
     {sequence : ℕ → setup.intendedModel.BehavioralAssessment}
     {targetSequence : ℕ → (onePacketN).BehavioralAssessment} (n : ℕ)
@@ -111,11 +114,12 @@ theorem keyedRecord_near
         operationalRecord setup leaks bounds horizon scheduler history.1.trace) payoff -
       expect (((targetSequence n).belief who site₂).map fun history =>
         operationalRecord setup leaks bounds horizon scheduler history.1.trace) payoff| ≤
-      4 * (Nat.card ((onePacketN).InformationHistory who site₁.1) *
+      let ρ : ℝ := Nat.card ((onePacketN).InformationHistory who site₁.1) *
           (first.slack * first.scale n / first.floors n ^ first.depth) +
         Nat.card ((onePacketN).InformationHistory who site₂.1) *
-          (second.slack * second.scale n / second.floors n ^ second.depth)) +
-      4 * ((1 + steps.error n) ^ (2 * horizon + 1) - 1) /
+          (second.slack * second.scale n / second.floors n ^ second.depth)
+      2 * ρ / (1 + ρ) +
+      2 * ((1 + steps.error n) ^ (2 * horizon + 1) - 1) /
         (1 - ((1 + steps.error n) ^ (2 * horizon + 1) - 1)) := by
   let menu := bounds.onePacketMenu (runtime setup) leaks
   let ε := (1 + steps.error n) ^ (2 * horizon + 1) - 1
@@ -278,9 +282,8 @@ theorem keyedRecord_near
     intro site ratio le bound
     refine bound.trans (mul_le_mul_of_nonneg_right le ?_)
     exact tsum_nonneg fun history => by split_ifs <;> simp [reach]
-  have agree := ownerSwap_baseLawAgrees_late (fun _ : State L setup.context => ()) wellFormed
-    (fun owner first second _ => independent owner first second) (fun _ _ _ => rfl)
-    (fun _ _ _ => rfl) coversInputs (sequence n)
+  have agree := ownerSwap_baseLawAgrees_late signal wellFormed independent observable
+    coversInputs (sequence n)
     (operationalWeight setup leaks who (steps.mass n)) firstSite secondSite
     sameKey firstDebtFree secondDebtFree firstLate secondLate payoff
   exact recordLaw_near_of_baseLaw (targetSequence n) site₁ site₂ reach base regular
@@ -295,8 +298,8 @@ variable [(application setup leaks).FiniteNature (initialLaw setup) scheduler]
     scheduler).InfoState who)]
 
 open Classical in
-/-- **Late records.** For a well-formed setup with independent hidden initial
-cells, along every fully mixed Bayes
+/-- **Late records.** For a well-formed setup with hidden initial cells independent
+given a public initial signal, along every fully mixed Bayes
 sequence of assembled profiles, at late deliveries of agents that are neither
 free nor owing, the beliefs' laws of operational records give the certificate's
 lumped failure within a vanishing drift of its expectation under one record law
@@ -306,7 +309,8 @@ theorem OnePacketBaseInputs.lateRecords_of_keyed
     {sequence : ℕ → setup.intendedModel.BehavioralAssessment} {slots : Nat}
     (inputs : OnePacketBaseInputs setup leaks bounds horizon scheduler sequence slots)
     (wellFormed : setup.WellFormed)
-    (independent : setup.PrivateInputsIndependent)
+    (independent : setup.PrivateInputsIndependentGiven signal)
+    (observable : setup.PublicInitialSignal signal)
     (weights : ℕ → ∀ p, PMF (OnePacketPart setup leaks bounds horizon scheduler slots p))
     (targetSequence : ℕ → (onePacketN).BehavioralAssessment)
     (assembled : OnePacketAssembled setup leaks bounds horizon scheduler sequence inputs.scale
@@ -413,15 +417,17 @@ theorem OnePacketBaseInputs.lateRecords_of_keyed
           (first.slack * first.scale n / first.floors n ^ first.depth) +
         (Nat.card ((onePacketN).InformationHistory who found.choose.1) : ℝ) *
           (second.slack * second.scale n / second.floors n ^ second.depth)
-      let formula := fun n => 4 * ρ n + 4 * ε n / (1 - ε n)
+      let formula := fun n => 2 * ρ n / (1 + ρ n) + 2 * ε n / (1 - ε n)
       have εLimit : Tendsto ε atTop (nhds 0) := (onePacketReachFactorization own.steps).1
       have ρLimit : Tendsto ρ atTop (nhds 0) := by
         simpa using (tendsto_irregularRatio first.negligible _).add
           (tendsto_irregularRatio second.negligible _)
       have formulaLimit : Tendsto formula atTop (nhds 0) := by
-        have quotient := (εLimit.const_mul 4).div (tendsto_const_nhds.sub εLimit)
+        have contamination := (ρLimit.const_mul 2).div (tendsto_const_nhds.add ρLimit)
+          (by norm_num : (1 : ℝ) + 0 ≠ 0)
+        have quotient := (εLimit.const_mul 2).div (tendsto_const_nhds.sub εLimit)
           (by norm_num : (1 : ℝ) - 0 ≠ 0)
-        simpa using (ρLimit.const_mul 4).add quotient
+        simpa using contamination.add quotient
       have small : ∀ᶠ n in atTop, ε n < 1 :=
         εLimit.eventually (gt_mem_nhds (show (0 : ℝ) < 1 by norm_num))
       refine ⟨fun n => if ε n < 1 then formula n else 1, ?_, fun n key' siteKey' option => ?_⟩
@@ -437,7 +443,7 @@ theorem OnePacketBaseInputs.lateRecords_of_keyed
         rw [lawEq]
         by_cases smallAt : ε n < 1
         · simp only [smallAt, ↓reduceIte]
-          exact keyedRecord_near wellFormed independent inputs.coversInputs n (mixed n)
+          exact keyedRecord_near wellFormed independent observable inputs.coversInputs n (mixed n)
             (bayes n) atSite atSite' (siteKey.trans foundKey.symm) debtFree
             (siteDebtFree_of_not_owing setup leaks bounds horizon scheduler notOwing') keyed.1
             keyed'.1 own.steps first second smallAt _ (lumpedUnit n who key option)

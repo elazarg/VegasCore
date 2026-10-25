@@ -60,19 +60,6 @@ private theorem componentGame_mixed_play {Component : ι → Type*}
     (independentProduct fun who => (weights who).bind (component who)).bind F.play
   rw [← PMF.bind_bind, independentProduct_bind]
 
-private theorem bind_component_update {Component : ι → Type*}
-    (component : ∀ who, Component who → PMF (F.sig.Strategy who))
-    (weights : ∀ who, PMF (Component who)) (who : ι) (alternative : PMF (Component who)) :
-    (fun player => (Profile.update (sig := (componentGame component).sig.mixed) weights who
-        alternative player).bind (component player)) =
-      Profile.update (sig := F.sig.mixed) (fun player => (weights player).bind (component player))
-        who (alternative.bind (component who)) := by
-  funext player
-  by_cases same : player = who
-  · subst player
-    simp only [Profile.update_same]
-  · simp only [Profile.update_of_ne _ _ same]
-
 omit [DecidableEq ι] in
 /-- A player's payoff polynomial, averaged over point masses at its own
 strategies, is its payoff at the averaged weights. -/
@@ -172,7 +159,11 @@ theorem exists_pooled_bestResponses
     simp only [cast_eq]
     rw [expect_const_mul, expect_payoff_point (F := G) utility (spread x.1) who
       (alternative (pool who)), spreadLaws, ← probs_update, payoff_probs integrable,
-      componentGame_mixed_play, bind_component_update]
+      componentGame_mixed_play]
+    exact congrArg (fun profile : Profile F.sig.mixed =>
+      importance (probs G.sig laws) who * expectedUtility utility who (F.mixed.play profile))
+      (Profile.map_update (sig := G.sig.mixed) (target := F.sig.mixed)
+        (fun player law => law.bind (component player)) laws who (alternative (pool who)))
   have total (alternative : ∀ p, PMF (Part p)) (p : Pool) :
       expect (alternative p) (score x p) =
         ∑ who ∈ Finset.univ.filter (fun who => pool who = p),
@@ -192,17 +183,7 @@ theorem exists_pooled_bestResponses
   have compared := optimal p (alternative p)
   rw [total alternative p, show PMF.ofSimplex (x.property p (Set.mem_univ p)) = weights p from rfl,
     total weights p] at compared
-  have same (who : ι) :
-      Profile.update (sig := F.sig.mixed)
-          (fun player => (weights (pool player)).bind (component player))
-          who ((weights (pool who)).bind (component who)) =
-        fun player => (weights (pool player)).bind (component player) := by
-    funext player
-    by_cases equal : player = who
-    · subst player
-      simp only [Profile.update_same]
-    · simp only [Profile.update_of_ne _ _ equal]
-  simp only [same] at compared
+  simp only [Profile.update_eq_self] at compared
   rw [← spreadWeights]
   simp only [mul_sub, Finset.sum_sub_distrib]
   linarith

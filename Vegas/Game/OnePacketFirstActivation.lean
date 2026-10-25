@@ -75,34 +75,14 @@ theorem recordsEntry_transition (who : Player) (entry : (application setup leaks
   cases before with
   | none => exact holds.elim
   | some control =>
+      obtain ⟨next, rfl, recalls⟩ := (application setup leaks).transition_recall_prefix
+        initial horizon scheduler control after joint reached
       obtain ⟨earlier, later, split⟩ := holds
-      rcases control with ⟨remaining, current, execution⟩
-      cases current with
-      | some responder =>
-          cases (PMF.mem_support_pure_iff _ _).mp reached
-          change ∃ earlier later, (execution.respond (application setup leaks) responder
-            ((joint responder).getD ⟨none⟩)).recall who = earlier ++ entry :: later
-          rw [respond_recall]
-          split
-          · rename_i same
-            subst same
-            change execution.recall who = _ at split
-            rw [split]
-            exact ⟨earlier, _, List.append_assoc _ _ _⟩
-          · exact ⟨earlier, later, split⟩
-      | none =>
-          cases remaining with
-          | zero =>
-              cases (PMF.mem_support_pure_iff _ _).mp reached
-              exact ⟨earlier, later, split⟩
-          | succ remaining =>
-              obtain ⟨command, _, moved⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
-              obtain ⟨next, supported, rfl⟩ := PMF.support_map .. ▸ moved
-              refine ⟨earlier, later, ?_⟩
-              change next.recall who = _
-              rw [(application setup leaks).environmentStep_recall execution next command
-                supported]
-              exact split
+      obtain ⟨tail, retained⟩ := recalls who
+      refine ⟨earlier, later ++ tail, ?_⟩
+      rw [← retained, split]
+      simp only [List.append_assoc, List.cons_append]
+
 
 /-- A decision state is reached from an idle state by activating its actor,
 which changes neither the application state nor any recall. -/

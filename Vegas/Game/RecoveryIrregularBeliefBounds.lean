@@ -25,6 +25,8 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   (bounds : MessageBounds (graph setup)) (horizon : Nat)
   (scheduler : (recoveryApplication (runtime setup) leaks).Scheduler)
 
+variable {Public : Type*} {signal : State L setup.context → Public}
+
 local notation "Initial" => PMF.map
   (fun native => (RecoveryState.mk native ∅ : RecoveryState (graph setup))) (initialLaw setup)
 local notation "NativeScheduler" => nativeScheduler (runtime setup) leaks scheduler
@@ -44,7 +46,8 @@ theorem nativeComparison_irregular_bounds [Fintype (RP).History]
     [Finite setup.intendedProtocol.History]
     [∀ player, DecidableEq ((N).InfoState player)]
     [∀ player, DecidableEq ((R).InfoState player)]
-    (wellFormed : setup.WellFormed) (independent : setup.PrivateInputsIndependent)
+    (wellFormed : setup.WellFormed) (independent : setup.PrivateInputsIndependentGiven signal)
+    (observable : setup.PublicInitialSignal signal)
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (sourceMixed : ∀ n, (sequence n).IsFullyMixed)
     (scale : ℕ → ℝ) (positive : ∀ n, 0 < scale n) (le_one : ∀ n, scale n ≤ 1)
@@ -97,7 +100,8 @@ theorem nativeComparison_irregular_bounds [Fintype (RP).History]
         then (0 : ℝ) else 1) ≤ error)
     (fun _ _ _ _ _ le bound => bound.trans le) good (fun who site eligible => by
       obtain ⟨notFree, notOwing, past, view, event, atSite, turn⟩ := eligible
-      have inputs := OnePacketCounterpartInputs.ofBindingRepairs wellFormed independent sourceMixed
+      have inputs := OnePacketCounterpartInputs.ofBindingRepairs wellFormed independent
+        observable sourceMixed
         positive le_one scaleEq covers coversInputs capacity nativeWeights assembled mixed notFree
         notOwing atSite turn
       exact ⟨_, onePacket_irregularVanishes setup leaks bounds horizon (NativeScheduler) mixed bayes
@@ -115,7 +119,8 @@ theorem recovery_irregular_belief_bounds [Fintype (RP).History]
     [Finite setup.intendedProtocol.History]
     [∀ player, DecidableEq ((R).InfoState player)]
     [∀ player, DecidableEq ((N).InfoState player)]
-    (wellFormed : setup.WellFormed) (independent : setup.PrivateInputsIndependent)
+    (wellFormed : setup.WellFormed) (independent : setup.PrivateInputsIndependentGiven signal)
+    (observable : setup.PublicInitialSignal signal)
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (sourceMixed : ∀ n, (sequence n).IsFullyMixed)
     (scale : ℕ → ℝ) (positive : ∀ n, 0 < scale n) (le_one : ∀ n, scale n ≤ 1)
@@ -167,7 +172,8 @@ theorem recovery_irregular_belief_bounds [Fintype (RP).History]
             {history | ¬ RegularTrace setup leaks bounds horizon (NativeScheduler)
               (sequence n) who history.trace}).toReal ≤ drift n := by
   obtain ⟨drift, limit, estimates⟩ := nativeComparison_irregular_bounds setup leaks bounds horizon
-    scheduler wellFormed independent sequence sourceMixed scale positive le_one scaleEq covers
+    scheduler wellFormed independent observable sequence sourceMixed scale positive le_one
+    scaleEq covers
     coversInputs capacity weights
   refine ⟨drift, limit, ?_⟩
   intro n who site notFree notOwing past view atSite event turn

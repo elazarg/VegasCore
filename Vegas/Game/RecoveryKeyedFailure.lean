@@ -18,6 +18,8 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   (bounds : MessageBounds (graph setup)) (horizon : Nat)
   (scheduler : (recoveryApplication (runtime setup) leaks).Scheduler)
 
+variable {Public : Type*} {signal : State L setup.context → Public}
+
 local notation "Initial" => PMF.map
   (fun native => (RecoveryState.mk native ∅ : RecoveryState (graph setup))) (initialLaw setup)
 local notation "NativeScheduler" => nativeScheduler (runtime setup) leaks scheduler
@@ -41,7 +43,8 @@ theorem nativeComparison_keyed_failure_bounds [Fintype (RP).History]
     [(application setup leaks).FiniteNature (initialLaw setup) (NativeScheduler)]
     [∀ who, DecidableEq ((R).InfoState who)] [∀ who, DecidableEq ((N).InfoState who)]
     [Finite setup.intendedProtocol.History]
-    (wellFormed : setup.WellFormed) (independent : setup.PrivateInputsIndependent)
+    (wellFormed : setup.WellFormed) (independent : setup.PrivateInputsIndependentGiven signal)
+    (observable : setup.PublicInitialSignal signal)
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (sourceMixed : ∀ n, (sequence n).IsFullyMixed)
     (scale : ℕ → ℝ) (positive : ∀ n, 0 < scale n) (le_one : ∀ n, scale n ≤ 1)
@@ -69,6 +72,7 @@ theorem nativeComparison_keyed_failure_bounds [Fintype (RP).History]
             (onePacketLate setup leaks bounds horizon (NativeScheduler) sequence scale positive
               le_one n ((N).agentAt site) option) - failureScore n key option| ≤ drift n := by
   let inputs := nativeBaseInputs setup leaks bounds horizon scheduler wellFormed independent
+    observable
     sequence sourceMixed covers coversInputs capacity slots_pos
   have sameScale : scale = inputs.scale := funext scaleEq
   subst scale
@@ -85,7 +89,8 @@ theorem nativeComparison_keyed_failure_bounds [Fintype (RP).History]
     (fun n => nativeComparisonWeights setup leaks bounds horizon scheduler (weights n))
     target assembled mixed bayes
   obtain ⟨recordDrift, recordLimit, records⟩ := nativeComparison_keyed_record_bounds setup leaks
-    bounds horizon scheduler wellFormed independent sequence sourceMixed inputs.scale positive
+    bounds horizon scheduler wellFormed independent observable sequence sourceMixed inputs.scale
+    positive
     le_one (fun _ => rfl) covers coversInputs capacity slots_pos weights
   let lumping := fun n who => nativeComparisonLumping setup leaks bounds horizon scheduler sequence
     inputs.scale positive le_one weights covers capacity n who

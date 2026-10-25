@@ -53,18 +53,6 @@ theorem normalizeObservation_congr_of_semanticKey_eq
     exact congrFun (semanticKey_store_eq same) field
   · exact semanticKey_ownCompletions_eq same who
 
-/-- Execute one fixed ready event using the normalized profile. Chance nodes
-retain their ordinary evaluator law and unique unit action. -/
-def normalizedPolicyStep (graph : Vegas.EventGraph Player L)
-    (profile : graph.BehavioralProfile) (config : graph.Config)
-    (event : graph.EventId) (ready : config.cut.Ready event) : PMF graph.Config :=
-  match actor : graph.actor? event with
-  | some who =>
-      (graph.normalizePolicy who (profile who) event actor
-        (graph.playerObserve who config)).bind (config.step event ready)
-  | none => config.step event ready
-      (EventCode.actionOfActorNone (graph.nodes event) actor)
-
 /-- Completing the same event with the same action and value preserves key
 equality. Readiness witnesses are proof irrelevant. -/
 theorem semanticKey_complete_congr {left right : graph.Config}
@@ -212,15 +200,13 @@ theorem policyStepThen_result_cut
     (profile : graph.BehavioralProfile) (config : graph.Config)
     (first second : graph.EventId)
     (firstReady : config.cut.Ready first) (secondReady : config.cut.Ready second)
-    (different : first ≠ second) (firstOwner secondOwner : Player)
-    (firstActor : graph.actor? first = some firstOwner)
-    (secondActor : graph.actor? second = some secondOwner)
+    (different : first ≠ second)
     (result : graph.Config)
     (member : result ∈ (policyStepThen profile config first second firstReady secondReady
-      different firstOwner secondOwner firstActor secondActor).support) :
+      different).support) :
     result.cut = (config.cut.complete first firstReady).complete second
       (secondReady.after_complete firstReady different.symm) := by
-  unfold policyStepThen at member
+  unfold policyStepThen kernelStepThen at member
   rw [PMF.support_bind] at member
   simp only [Set.mem_iUnion] at member
   obtain ⟨firstAction, _, afterAction⟩ := member
@@ -245,19 +231,16 @@ theorem ReadyIndependent.policyStepThen_map_semanticKey_comm
     {profile : graph.BehavioralProfile} (independent : graph.ReadyIndependent profile)
     (config : graph.Config) (left right : graph.EventId)
     (leftReady : config.cut.Ready left) (rightReady : config.cut.Ready right)
-    (different : left ≠ right) (leftOwner rightOwner : Player)
-    (leftActor : graph.actor? left = some leftOwner)
-    (rightActor : graph.actor? right = some rightOwner) :
-    (policyStepThen profile config left right leftReady rightReady different
-      leftOwner rightOwner leftActor rightActor).map graph.semanticKey =
-    (policyStepThen profile config right left rightReady leftReady different.symm
-      rightOwner leftOwner rightActor leftActor).map graph.semanticKey := by
+    (different : left ≠ right) :
+    (policyStepThen profile config left right leftReady rightReady different).map
+        graph.semanticKey =
+      (policyStepThen profile config right left rightReady leftReady different.symm).map
+        graph.semanticKey := by
   let leftLaw := policyStepThen profile config left right leftReady rightReady different
-    leftOwner rightOwner leftActor rightActor
   let rightLaw := policyStepThen profile config right left rightReady leftReady
-    different.symm rightOwner leftOwner rightActor leftActor
+    different.symm
   have recall := independent.policyStepThen_map_storeRecall_comm config left right
-    leftReady rightReady different leftOwner rightOwner leftActor rightActor
+    leftReady rightReady different
   have leftRewrite : leftLaw.map graph.semanticKey =
       (leftLaw.map (storeRecall graph)).map
         (fun recalled =>
@@ -269,7 +252,7 @@ theorem ReadyIndependent.policyStepThen_map_semanticKey_comm
     apply Prod.ext
     · change result.cut = _
       exact policyStepThen_result_cut profile config left right leftReady rightReady
-        different leftOwner rightOwner leftActor rightActor result member
+        different result member
     · rfl
   have rightRewrite : rightLaw.map graph.semanticKey =
       (rightLaw.map (storeRecall graph)).map
@@ -282,7 +265,7 @@ theorem ReadyIndependent.policyStepThen_map_semanticKey_comm
     apply Prod.ext
     · change result.cut = _
       rw [policyStepThen_result_cut profile config right left rightReady leftReady
-        different.symm rightOwner leftOwner rightActor leftActor result member]
+        different.symm result member]
       exact config.cut.complete_comm rightReady leftReady different.symm
     · rfl
   rw [leftRewrite, rightRewrite, recall]

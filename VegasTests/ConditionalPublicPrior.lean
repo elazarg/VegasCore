@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Source.PrivateInputsIndependent
+import Vegas.Game.OnePacketPublicInitialSignal
 import Vegas.Expr.Simple
 import GameTheory.Math.Probability.Mixture
 
@@ -42,6 +42,14 @@ def setup : Setup (Player := Bool) (L := simpleExpr) where
   accounts := rfl
 
 def signal (state : State simpleExpr context) : Bool := state.get .here
+
+
+/-- The actual compiled public inputs reveal the signal used for conditional independence. -/
+theorem publicInitialSignal : setup.PublicInitialSignal signal := by
+  intro first second agree
+  have read := agree ⟨0, by decide⟩ (by trivial)
+  change first.get .here = second.get .here at read
+  exact read
 
 theorem state_eta (state : State simpleExpr context) :
     state = draw (state.get .here) (state.get (.there .here))
@@ -122,12 +130,9 @@ example : prior (draw false false false) = ENNReal.ofReal (9 / 32 : ℝ) ∧
 
 /-- The genuinely public coordinate is preserved by each private splice. -/
 theorem splice_preserves_signal (who : Bool) (mine others : State simpleExpr context) :
-    signal (splice who mine others) = signal others := by
-  obtain ⟨p, a, b, rfl⟩ := exists_draw mine
-  obtain ⟨q, c, d, rfl⟩ := exists_draw others
-  cases who with
-  | false => rw [splice_alice]; rfl
-  | true => rw [splice_bob]; rfl
+    signal (splice who mine others) = signal others :=
+  public_signal_preserved (setup := setup) signal publicInitialSignal who mine others
+
 
 /-- The private bits are independent, with nondegenerate noise, conditional on
 the public bit. The identity covers all source states, not just sampled draws. -/
@@ -170,5 +175,12 @@ theorem not_unconditionally_independent : ¬ setup.PrivateInputsIndependent := b
     prior_apply false false false, prior_apply true true true] at impossible
   have realImpossible := congrArg ENNReal.toReal impossible
   norm_num [ENNReal.toReal_mul] at realImpossible
+
+
+/-- These public conditional-prior guards admit a prior rejected by unconditional independence. -/
+theorem conditional_scope_is_strict :
+    setup.PrivateInputsIndependentGiven signal ∧ setup.PublicInitialSignal signal ∧
+      ¬ setup.PrivateInputsIndependent :=
+  ⟨privateInputsIndependentGiven, publicInitialSignal, not_unconditionally_independent⟩
 
 end VegasTests.ConditionalPublicPrior

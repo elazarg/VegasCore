@@ -95,7 +95,7 @@ theorem isεNash_rawClientProfile_approximate {Parameter : Type}
         service.horizon
         service.scheduler).toBehavioralGameForm (2 * service.horizon + 1))
         (fun history who => payoff history.state who)
-        (ε + 2 * (∑ event, timing.deferral event) * range)
+        (ε + 2 * timing.deferralError * range)
         (service.clientProfile admission service.rawMenu timing source)) ∧
     (IsεNash ((service.rawMenu.information (serviceInitialLaw service.setup service.mode)
       service.horizon
@@ -106,7 +106,7 @@ theorem isεNash_rawClientProfile_approximate {Parameter : Type}
         (instructionCount service.setup.program + 1))
         (fun final who => (service.setup.protocolReadout final.state).elim 0
           (fun state => utility (service.setup.parameterOutcome parameter state) who))
-        (ε + 2 * (∑ event, timing.deferral event) * range) source) :=
+        (ε + 2 * timing.deferralError * range) source) :=
   service.isεNash_clientProfile_approximate admission ordered parameter utility sample authentic
     deposit nonnegative
     service.rawMenu timing (service.rawMenu_admits admission timing) low range within ε source
@@ -164,10 +164,10 @@ theorem intended_rawClientProfile_isεNash {Parameter : Type}
       service.horizon
         service.scheduler).toBehavioralGameForm (2 * service.horizon + 1))
         (fun history who => payoff history.state who)
-        (ε + 2 * (∑ event, timing.deferral event) * spread)
+        (ε + 2 * timing.deferralError * spread)
         (service.clientProfile (CommitmentInterface.values service.setup.program) service.rawMenu
           timing source) ∧
-      PMF.WithinTV (∑ event, timing.deferral event)
+      PMF.WithinTV timing.deferralError
         (((service.rawMenu.information (serviceInitialLaw service.setup service.mode)
           service.horizon
           service.scheduler).runBehavioral (service.clientProfile (CommitmentInterface.values
@@ -236,7 +236,7 @@ theorem isεNash_firstTurnClientProfile_iff {Parameter : Type}
     sample
     authentic deposit nonnegative (firstTurnTiming service.setup turns service.mode) low range
       within ε source
-  simp only [firstTurnTiming_deferral, Finset.sum_const_zero, mul_zero, zero_mul, add_zero]
+  simp only [firstTurnTiming_deferralError, mul_zero, zero_mul, add_zero]
     at approximate
   exact ⟨approximate.2, approximate.1⟩
 
@@ -315,7 +315,7 @@ theorem intended_firstTurnClientProfile_isεNash {Parameter : Type}
     forfeit range sample authentic deposit nonnegative (firstTurnTiming service.setup turns
       service.mode) low
     spread within intended source agrees ε equilibrium
-  simp only [firstTurnTiming_deferral, Finset.sum_const_zero, mul_zero, zero_mul, add_zero]
+  simp only [firstTurnTiming_deferralError, mul_zero, zero_mul, add_zero]
     at approximate
   exact ⟨approximate.1, approximate.2.eq_of_zero⟩
 
@@ -358,7 +358,7 @@ theorem firstTurnClientProfile_settlement_law {Parameter : Type}
     service.rawMenu
     (service.rawMenu_admits admission (firstTurnTiming service.setup turns service.mode) source)
     sample authentic (fun state => utility (service.setup.parameterOutcome parameter state)) deposit
-  simp only [firstTurnTiming_deferral, Finset.sum_const_zero] at close
+  simp only [firstTurnTiming_deferralError] at close
   exact close.eq_of_zero
 
 

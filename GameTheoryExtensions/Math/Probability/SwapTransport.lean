@@ -9,7 +9,7 @@ part, within relative error `ε` of a positive multiple of a base weight, and an
 irregular part of total at most `ρ` times the regular total. If the normalized
 regular base weights give a payoff of a record with values in `[0, 1]` the same
 expectation on both sides, the two normalized laws give it expectations within
-`4 ρ + 4 ε / (1 - ε)`
+`2 ρ / (1 + ρ) + 2 ε / (1 - ε)`
 (`GameTheory.Math.Probability.abs_normalized_sub_le_of_base_agree`). The
 multiples on the two sides need not agree: normalization cancels them. A
 bijection between the regular parts that keeps the base weight and the record
@@ -27,8 +27,8 @@ open Finset
 
 variable {R : Type*}
 
-/-- A payoff with values in `[0, 1]` moves the expectation under a weight by at
-most the `ℓ¹` distance of the weights. -/
+/-- A unit payoff moves by at most the `ℓ¹` distance for arbitrary weights,
+without any assumption that their totals agree. -/
 theorem abs_sum_mul_sub_le_sum_abs {α : Type*} [Fintype α] (p q payoff : α → ℝ)
     (unit : ∀ a, 0 ≤ payoff a ∧ payoff a ≤ 1) :
     |∑ a, p a * payoff a - ∑ a, q a * payoff a| ≤ ∑ a, |p a - q a| := by
@@ -37,8 +37,39 @@ theorem abs_sum_mul_sub_le_sum_abs {α : Type*} [Fintype α] (p q payoff : α �
   rw [← sub_mul, abs_mul, abs_of_nonneg (unit a).1]
   exact mul_le_of_le_one_right (abs_nonneg _) (unit a).2
 
+/-- On equal-mass weights, a unit payoff moves by at most half the `ℓ¹`
+distance. The weights themselves may be signed. -/
+theorem abs_sum_mul_sub_le_half_sum_abs {α : Type*} [Fintype α] (p q payoff : α → ℝ)
+    (mass : ∑ a, p a = ∑ a, q a)
+    (unit : ∀ a, 0 ≤ payoff a ∧ payoff a ≤ 1) :
+    |∑ a, p a * payoff a - ∑ a, q a * payoff a| ≤ (∑ a, |p a - q a|) / 2 := by
+  have centered : ∑ a, p a * payoff a - ∑ a, q a * payoff a =
+      ∑ a, (p a - q a) * (payoff a - 1 / 2) := by
+    rw [← sum_sub_distrib]
+    calc
+      _ = ∑ a, ((p a - q a) * (payoff a - 1 / 2) + (p a - q a) / 2) := by
+        apply sum_congr rfl
+        intro a _
+        ring
+      _ = _ := by
+        rw [sum_add_distrib, ← sum_div, sum_sub_distrib, mass, sub_self, zero_div, add_zero]
+  rw [centered]
+  calc
+    _ ≤ ∑ a, |(p a - q a) * (payoff a - 1 / 2)| := abs_sum_le_sum_abs _ _
+    _ ≤ ∑ a, |p a - q a| / 2 := by
+      apply sum_le_sum
+      intro a _
+      have interval : |payoff a - 1 / 2| ≤ 1 / 2 :=
+        abs_le.mpr ⟨by linarith [(unit a).1], by linarith [(unit a).2]⟩
+      rw [abs_mul]
+      calc
+        _ ≤ |p a - q a| * (1 / 2) :=
+          mul_le_mul_of_nonneg_left interval (abs_nonneg _)
+        _ = _ := by ring
+    _ = _ := by rw [sum_div]
+
 open Classical in
-/-- One side of a swap: the normalized weight is within `2 ρ + 2 ε / (1 - ε)` of
+/-- One side of a swap: the normalized weight is within `ρ / (1 + ρ) + ε / (1 - ε)` of
 the normalized base law on unit payoffs. -/
 theorem abs_normalized_sub_base_le {γ : Type*} [Fintype γ] (weight base : γ → ℝ)
     (regular : γ → Prop) (record : γ → R) (scale ε ρ : ℝ) (ε_lt : ε < 1)
@@ -51,7 +82,7 @@ theorem abs_normalized_sub_base_le {γ : Type*} [Fintype γ] (weight base : γ �
     (payoff : R → ℝ) (unit : ∀ r, 0 ≤ payoff r ∧ payoff r ≤ 1) :
     |∑ a, weight a / (∑ c, weight c) * payoff (record a) -
       ∑ a, (if regular a then base a else 0) / (∑ c, if regular c then base c else 0) *
-        payoff (record a)| ≤ 2 * ρ + 2 * ε / (1 - ε) := by
+        payoff (record a)| ≤ ρ / (1 + ρ) + ε / (1 - ε) := by
   set regularWeight : γ → ℝ := fun a => if regular a then weight a else 0
   set irregularWeight : γ → ℝ := fun a => if regular a then 0 else weight a
   set scaledBase : γ → ℝ := fun a => if regular a then scale * base a else 0
@@ -94,6 +125,10 @@ theorem abs_normalized_sub_base_le {γ : Type*} [Fintype γ] (weight base : γ �
   have split : ∀ a, regularWeight a + irregularWeight a = weight a := fun a => by
     simp only [regularWeight, irregularWeight]
     split <;> simp
+  have weightPos : 0 < ∑ a, weight a := lt_of_lt_of_le regularPos
+    (sum_le_sum fun a _ => by rw [← split a]; exact le_add_of_nonneg_right (irregular_nonneg a))
+  have normalizedMass (f : γ → ℝ) (nonzero : (∑ a, f a) ≠ 0) :
+      (∑ a, f a / ∑ c, f c) = 1 := by rw [← sum_div, div_self nonzero]
   have stepIrregular := sum_abs_div_sum_add_sub_div_sum_le regular_nonneg irregular_nonneg
     regularPos irregular
   simp only [split] at stepIrregular
@@ -107,22 +142,29 @@ theorem abs_normalized_sub_base_le {γ : Type*} [Fintype γ] (weight base : γ �
     · field_simp
     · simp
   simp only [normalized] at stepClose
-  have first := abs_sum_mul_sub_le_sum_abs (fun a => weight a / ∑ c, weight c)
+  have first := abs_sum_mul_sub_le_half_sum_abs (fun a => weight a / ∑ c, weight c)
     (fun a => regularWeight a / ∑ c, regularWeight c) (fun a => payoff (record a))
+    (by rw [normalizedMass _ weightPos.ne', normalizedMass _ regularPos.ne'])
     (fun a => unit _)
-  have second := abs_sum_mul_sub_le_sum_abs (fun a => regularWeight a / ∑ c, regularWeight c)
+  have second := abs_sum_mul_sub_le_half_sum_abs (fun a => regularWeight a / ∑ c, regularWeight c)
     (fun a => (if regular a then base a else 0) / ∑ c, if regular c then base c else 0)
-    (fun a => payoff (record a)) (fun a => unit _)
+    (fun a => payoff (record a))
+    (by rw [normalizedMass _ regularPos.ne', normalizedMass _ positive.ne']) (fun a => unit _)
   have total := abs_sub_le (∑ a, weight a / (∑ c, weight c) * payoff (record a))
     (∑ a, regularWeight a / (∑ c, regularWeight c) * payoff (record a))
     (∑ a, (if regular a then base a else 0) / (∑ c, if regular c then base c else 0) *
       payoff (record a))
-  linarith
+  have firstBound := first.trans (div_le_div_of_nonneg_right stepIrregular
+    (by norm_num : (0 : ℝ) ≤ 2))
+  have secondBound := second.trans (div_le_div_of_nonneg_right stepClose
+    (by norm_num : (0 : ℝ) ≤ 2))
+  exact total.trans ((add_le_add firstBound secondBound).trans_eq (by ring))
 
 open Classical in
 /-- **Normalized laws with a common base law.** If the normalized regular base
 weights of two sides give every unit payoff of the record the same expectation,
-the normalized weights give it expectations within `4 ρ + 4 ε / (1 - ε)`. -/
+the normalized weights give it expectations within
+`2 ρ / (1 + ρ) + 2 ε / (1 - ε)`. -/
 theorem abs_normalized_sub_le_of_base_agree {α β : Type*} [Fintype α] [Fintype β]
     (weight₁ : α → ℝ) (weight₂ : β → ℝ) (base₁ : α → ℝ) (base₂ : β → ℝ)
     (regular₁ : α → Prop) (regular₂ : β → Prop) (record₁ : α → R) (record₂ : β → R)
@@ -146,13 +188,14 @@ theorem abs_normalized_sub_le_of_base_agree {α β : Type*} [Fintype α] [Fintyp
         (∑ c, if regular₁ c then base₁ c else 0) * payoff (record₁ a)) :
     |∑ a, weight₁ a / (∑ c, weight₁ c) * payoff (record₁ a) -
         ∑ b, weight₂ b / (∑ c, weight₂ c) * payoff (record₂ b)| ≤
-      4 * ρ + 4 * ε / (1 - ε) := by
+      2 * ρ / (1 + ρ) + 2 * ε / (1 - ε) := by
   have one := abs_normalized_sub_base_le weight₁ base₁ regular₁ record₁ scale₁ ε ρ ε_lt
     scale₁_pos weight₁_nonneg base₁_nonneg close₁ base₁_pos irregular₁ payoff unit
   have two := abs_normalized_sub_base_le weight₂ base₂ regular₂ record₂ scale₂ ε ρ ε_lt
     scale₂_pos weight₂_nonneg base₂_nonneg close₂ base₂_pos irregular₂ payoff unit
   rw [agree] at two
-  have doubled : 4 * ε / (1 - ε) = 2 * (2 * ε / (1 - ε)) := by ring
+  have doubled : 2 * ρ / (1 + ρ) + 2 * ε / (1 - ε) =
+      2 * (ρ / (1 + ρ) + ε / (1 - ε)) := by ring
   rw [doubled]
   rw [abs_le] at one two ⊢
   constructor <;> linarith [one.1, one.2, two.1, two.2]

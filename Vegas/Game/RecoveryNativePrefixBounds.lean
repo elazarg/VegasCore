@@ -25,6 +25,8 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   (bounds : MessageBounds (graph setup)) (horizon : Nat)
   (scheduler : (recoveryApplication (runtime setup) leaks).Scheduler)
 
+variable {Public : Type*} {signal : State L setup.context → Public}
+
 local notation "Initial" => PMF.map
   (fun native => (RecoveryState.mk native ∅ : RecoveryState (graph setup))) (initialLaw setup)
 local notation "NativeScheduler" => nativeScheduler (runtime setup) leaks scheduler
@@ -37,7 +39,8 @@ def nativeBaseInputs
     [(application setup leaks).FiniteNature (initialLaw setup) (NativeScheduler)]
     [Finite setup.intendedProtocol.History]
     [∀ who, DecidableEq ((N).InfoState who)] (wellFormed : setup.WellFormed)
-    (independent : setup.PrivateInputsIndependent)
+    (independent : setup.PrivateInputsIndependentGiven signal)
+    (observable : setup.PublicInitialSignal signal)
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (sourceMixed : ∀ n, (sequence n).IsFullyMixed)
     (covers : bounds.CoversOutputValues) (coversInputs : bounds.CoversInputValues)
@@ -49,7 +52,7 @@ def nativeBaseInputs
     0 (le_refl 0) covers coversInputs capacity slots_pos ?_
   intro weights targetSequence assembled mixed _bayes who site notFree notOwing
     past view atSite event turn
-  exact OnePacketCounterpartInputs.ofBindingRepairs wellFormed independent sourceMixed
+  exact OnePacketCounterpartInputs.ofBindingRepairs wellFormed independent observable sourceMixed
     (fun n => trembleScale_pos
       (combinedFloor_pos setup leaks bounds horizon (NativeScheduler) (sequence n)))
     (fun n => trembleScale_le_one
