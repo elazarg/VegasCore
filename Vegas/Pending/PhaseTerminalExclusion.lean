@@ -23,19 +23,12 @@ theorem settle_terminal_excluded (phases : List (RuntimePhase graph)) (generatio
     (settle phases generation entry current retired).phases = [] →
       (settle phases generation entry current retired).entry.excluded =
         (settle phases generation entry current retired).current.excluded := by
-  induction phases generalizing generation entry current retired with
-  | nil => exact prior
-  | cons phase remaining ih =>
-      simp only [settle]
-      split
-      · split
-        · split
-          · intro impossible
-            cases impossible
-          · exact ih _ _ _ _ (fun _ => rfl)
-        · exact ih _ _ _ _ (fun _ => rfl)
-      · intro impossible
-        cases impossible
+  revert prior
+  fun_induction settle with
+  | case1 => exact id
+  | case2 | case5 => exact fun _ impossible => by cases impossible
+  | case3 _ _ _ _ _ _ _ _ _ _ _ _ _ ih | case4 _ _ _ _ _ _ _ _ _ ih =>
+      exact fun _ => ih (fun _ => rfl)
 
 end PhaseRuntimeState
 

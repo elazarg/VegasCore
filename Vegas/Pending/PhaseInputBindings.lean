@@ -25,24 +25,23 @@ theorem settle_input_binding (input : graph.InputId) (candidate : Handle graph)
         some candidate ∧
       (settle phases generation entry current retired).current.native.accepted (.inl input) =
         some candidate := by
-  induction phases generalizing generation entry current retired with
-  | nil => exact ⟨saved, active⟩
-  | cons phase remaining ih =>
-      have drained : (phase.drain current).native.accepted (.inl input) = some candidate := by
-        rw [(phase.drain_tables current).1]
-        exact active
-      have rebuilt : (phase.drain (restore entry (phase.drain current))).native.accepted
-          (.inl input) = some candidate := by
-        rw [(phase.drain_tables _).1]
-        exact saved
-      simp only [settle]
-      split
-      · split
-        · split
-          · exact ⟨saved, rebuilt⟩
-          · exact ih _ _ _ _ rebuilt rebuilt
-        · exact ih _ _ _ _ drained drained
-      · exact ⟨saved, drained⟩
+  revert saved active
+  fun_induction settle with
+  | case1 => exact fun saved active => ⟨saved, active⟩
+  | case2 phase _ _ _ _ _ _ _ _ _ _ _ _ =>
+      intro saved _active
+      refine ⟨saved, ?_⟩
+      rwa [(phase.drain_tables _).1]
+  | case3 phase _ _ _ _ _ _ _ _ _ _ _ _ ih =>
+      intro saved _active
+      apply ih <;> rwa [(phase.drain_tables _).1]
+  | case4 phase _ _ _ _ _ _ _ _ ih =>
+      intro _saved active
+      apply ih <;> rwa [(phase.drain_tables _).1]
+  | case5 phase _ _ _ _ _ _ _ =>
+      intro saved active
+      refine ⟨saved, ?_⟩
+      rwa [(phase.drain_tables _).1]
 
 end PhaseRuntimeState
 

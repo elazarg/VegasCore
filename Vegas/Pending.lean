@@ -329,6 +329,7 @@ import Vegas.Pending.ReactiveCanonicalResolution
 import Vegas.Pending.ReactiveCompiledMenu
 import Vegas.Pending.ReactiveCompiledResolution
 import Vegas.Pending.ReactiveContinuationObservation
+import Vegas.Pending.ReactiveCompletion
 import Vegas.Pending.ReactiveCountAudit
 import Vegas.Pending.ReactiveCountVerdict
 import Vegas.Pending.ReactiveCountedResponseForms

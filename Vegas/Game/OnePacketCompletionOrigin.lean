@@ -31,96 +31,11 @@ theorem completion_pending_or_due
     (command = .application (.expire event) ∧
       ∃ entered, execution.application.activatedAt event = some entered ∧
         (runtime setup).deadline event ≤ execution.application.clock - entered) := by
-  have stutter : next.application.config = execution.application.config → False :=
-    config_ne_of_step member
-  cases command with
-  | activate who =>
-      exfalso
-      apply stutter
-      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
-      obtain ⟨_, _, rfl⟩ := PMF.support_map .. ▸ supported
-      rfl
-  | wait =>
-      exfalso
-      apply stutter
-      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
-      cases (PMF.mem_support_pure_iff _ _).mp supported
-      rfl
-  | «include» id =>
-      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
-      cases (PMF.mem_support_pure_iff _ _).mp supported
-      change (execution.includePending (application setup leaks) id).application.config ∈ _
-        at member
-      cases found : execution.network.lookup id with
-      | none =>
-          exact (config_ne_of_step member (by
-            simp only [ReactiveApplication.Execution.includePending,
-              MessageNetwork.includePending, found])).elim
-      | some message =>
-          cases accepted : (application setup leaks).handle execution.application message with
-          | none =>
-              exact (config_ne_of_step member (by
-                simp only [ReactiveApplication.Execution.includePending,
-                  MessageNetwork.includePending, found, accepted, Option.getD_none])).elim
-          | some after =>
-              have applicationEq :
-                  (execution.includePending (application setup leaks) id).application = after := by
-                simp only [ReactiveApplication.Execution.includePending,
-                  MessageNetwork.includePending, found, accepted, Option.getD_some]
-              obtain ⟨_, other, named, otherReady, _, acts⟩ :=
-                accepted_inclusion execution.application after message accepted
-              have call := reactiveHandle_call accepted
-              obtain ⟨completed, namedAgain, completedReady, completedAction, completedMember⟩ :=
-                handle_config_mem_step (runtime setup) execution.application after _ call
-              have which : completed = other := Option.some.inj (namedAgain.symm.trans named)
-              subst completed
-              rw [applicationEq] at member
-              cases step_completion_unique completedMember member
-              exact Or.inl ⟨message, List.mem_of_find?_eq_some found,
-                Option.some.inj (acts.symm.trans owned), named⟩
-  | application command =>
-      obtain ⟨changed, _⟩ := applicationStep_facts execution next command reached
-      cases command with
-      | advanceClock =>
-          exfalso
-          apply stutter
-          simp only [EventGraphRuntime.environmentStep, PMF.mem_support_pure_iff] at changed
-          rw [changed]
-      | executeSample sampled =>
-          exfalso
-          obtain ⟨_, effect⟩ := environmentStep_executeSample_config_activated (runtime setup)
-            execution.application next.application sampled changed
-          rcases effect with ⟨configEq, _⟩ | ⟨sampledReady, sampledAction, sampledMember, _⟩
-          · exact stutter configEq
-          · cases step_completion_unique sampledMember member
-            cases view : nodeView (graph setup) event with
-            | sample _ _ outputEq codeEq =>
-                rw [nodeView_sample_actor outputEq codeEq] at owned
-                cases owned
-            | bind _ _ _ _ | resolve _ _ _ _ _ _ =>
-                rw [environmentStep_executeSample_of_nonsample (runtime setup) _ event ready
-                  (fun _ _ _ _ same => by rw [view] at same; cases same),
-                  PMF.mem_support_pure_iff] at changed
-                exact stutter (congrArg (fun state => state.config) changed)
-      | expire expired =>
-          obtain ⟨_, effect⟩ := environmentStep_expire_config_activated (runtime setup)
-            execution.application next.application expired changed
-          rcases effect with ⟨configEq, _⟩ | ⟨expiredReady, expiredAction, expiredMember, _⟩
-          · exact (stutter configEq).elim
-          · cases step_completion_unique expiredMember member
-            refine Or.inr ⟨rfl, ?_⟩
-            cases activated : execution.application.activatedAt event with
-            | none =>
-                rw [environmentStep_expire_of_not_activated (runtime setup) _ event ready activated,
-                  PMF.mem_support_pure_iff] at changed
-                exact (stutter (congrArg (fun state => state.config) changed)).elim
-            | some entered =>
-                by_cases due : (runtime setup).deadline event ≤
-                    execution.application.clock - entered
-                · exact ⟨entered, rfl, due⟩
-                · rw [environmentStep_expire_of_not_due (runtime setup) _ event ready entered
-                    activated due, PMF.mem_support_pure_iff] at changed
-                  exact (stutter (congrArg (fun state => state.config) changed)).elim
+  rcases owned_completion_cases execution next command reached ready action member owned with
+    accepted | ⟨expired, entered, activated, due, _, _⟩
+  · rcases accepted with ⟨accepted⟩
+    exact Or.inl ⟨accepted.message, accepted.pending, accepted.sender, accepted.named⟩
+  · exact Or.inr ⟨expired, entered, activated, due⟩
 
 /-- A new public failure at an environment move from a clear state is at that
 move's actual owned graph step, so its origin is pending traffic or due expiry. -/

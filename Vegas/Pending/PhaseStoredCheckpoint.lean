@@ -43,20 +43,15 @@ theorem settle_storedCheckpoint (phases : List (RuntimePhase graph)) (generation
     (entry current : RecoveryState graph) (retired : List (RetiredCommitAttempt graph))
     (stored : KeepsStore entry.native current.native) :
     (settle phases generation entry current retired).StoredCheckpoint := by
-  induction phases generalizing generation entry current retired with
-  | nil => exact stored
-  | cons phase remaining ih =>
-      have drained : KeepsStore entry.native (phase.drain current).native :=
-        fun field value present => phase.drain_keepsStore current field value
-          (stored field value present)
-      simp only [settle]
-      split
-      · split
-        · split
-          · exact phase.drain_keepsStore _
-          · exact ih _ _ _ _ (fun _ _ present => present)
-        · exact ih _ _ _ _ (fun _ _ present => present)
-      · exact drained
+  revert stored
+  fun_induction settle with
+  | case1 => exact id
+  | case2 phase _ _ _ _ _ _ _ _ _ _ _ _ => exact fun _ => phase.drain_keepsStore _
+  | case3 _ _ _ _ _ _ _ _ _ _ _ _ _ ih | case4 _ _ _ _ _ _ _ _ _ ih =>
+      exact fun _ => ih (fun _ _ present => present)
+  | case5 phase _ _ _ current _ _ _ =>
+      exact fun stored field value present =>
+        phase.drain_keepsStore current field value (stored field value present)
 
 theorem initial_storedCheckpoint (plan : RuntimePhasePlan graph) (inputs : graph.Inputs) :
     (initial plan inputs).StoredCheckpoint :=

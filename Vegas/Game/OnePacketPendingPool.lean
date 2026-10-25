@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.OnePacketForced
+import Vegas.Pending.ReactiveCompletion
 import Vegas.Pending.ReactiveOnePacketMenu
 import Interaction.MessageNetworkIdentity
 import Interaction.ReactiveMessageIdentity
@@ -156,31 +157,6 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
 section Completion
 
-/-- A configuration that completed a ready event differs from the one before. -/
-theorem config_ne_of_step {config next : (graph setup).Config} {event : (graph setup).EventId}
-    {ready : config.cut.Ready event} {action : (graph setup).Action event}
-    (member : next ∈ (config.step event ready action).support) : next ≠ config := by
-  intro same
-  have completed : event ∈ next.cut.completed := by
-    rw [config.step_cut event ready action next member]
-    exact (EventOrder.Cut.mem_complete _ _ _ _).mpr (Or.inl rfl)
-  rw [same] at completed
-  exact ready.1 completed
-
-/-- Two completions reaching one configuration complete the same event with the
-same action. -/
-theorem step_completion_unique {config next : (graph setup).Config}
-    {first second : (graph setup).EventId} {firstReady : config.cut.Ready first}
-    {secondReady : config.cut.Ready second} {firstAction : (graph setup).Action first}
-    {secondAction : (graph setup).Action second}
-    (firstMember : next ∈ (config.step first firstReady firstAction).support)
-    (secondMember : next ∈ (config.step second secondReady secondAction).support) :
-    (⟨first, firstAction⟩ : (graph setup).Completion) = ⟨second, secondAction⟩ := by
-  have firstHistory := config.step_history first firstReady firstAction next firstMember
-  have secondHistory := config.step_history second secondReady secondAction next secondMember
-  rw [firstHistory] at secondHistory
-  exact List.singleton_injective (List.append_cancel_left secondHistory)
-
 /-- **How a scheduler command completes an event.** When an environment step
 completes a ready event, either an included packet naming that event was
 accepted, by the event's actor, or the action is the withholding action at a
@@ -197,137 +173,21 @@ theorem environment_completion_cause (execution next : (application setup leaks)
         (graph setup).actor? event = some message.sender) ∨
       ∀ payload (outputEq : (graph setup).outputLayout event = .publication payload),
         action = cast (congrArg EventGraph.EventField.Action outputEq.symm) false := by
-  let app := application setup leaks
-  have stutter : next.application.config = execution.application.config → False :=
-    config_ne_of_step member
-  cases command with
-  | activate who =>
-      exfalso
-      apply stutter
-      unfold ReactiveApplication.Execution.environmentStep at reached
-      rw [PMF.support_map] at reached
-      obtain ⟨updated, supported, rfl⟩ := reached
-      rw [PMF.support_map] at supported
-      obtain ⟨_, _, rfl⟩ := supported
-      rfl
-  | wait =>
-      exfalso
-      apply stutter
-      unfold ReactiveApplication.Execution.environmentStep at reached
-      rw [PMF.support_map] at reached
-      obtain ⟨updated, supported, rfl⟩ := reached
-      cases (PMF.mem_support_pure_iff _ _).mp supported
-      rfl
-  | «include» id =>
-      unfold ReactiveApplication.Execution.environmentStep at reached
-      rw [PMF.support_map] at reached
-      obtain ⟨updated, supported, rfl⟩ := reached
-      cases (PMF.mem_support_pure_iff _ _).mp supported
-      left
-      change (execution.includePending app id).application.config ∈ _ at member
-      change ∃ message ∈ (execution.includePending app id).network.ledger,
-        (message.id, true) ∈ (execution.includePending app id).receipts ∧ _
-      cases found : execution.network.lookup id with
-      | none =>
-          exact (config_ne_of_step member (by
-            simp only [ReactiveApplication.Execution.includePending,
-              MessageNetwork.includePending, found])).elim
-      | some message =>
-          obtain ⟨identified, _, ledgerEq⟩ := includePending_found execution.network
-            id message found
-          cases accepted : app.handle execution.application message with
-          | none =>
-              exact (config_ne_of_step member (by
-                simp only [ReactiveApplication.Execution.includePending,
-                  MessageNetwork.includePending, found, accepted, Option.getD_none])).elim
-          | some after =>
-              have applicationEq : (execution.includePending app id).application = after := by
-                simp only [ReactiveApplication.Execution.includePending,
-                  MessageNetwork.includePending, found, accepted, Option.getD_some]
-              have receiptsEq : (execution.includePending app id).receipts =
-                  execution.receipts ++ [(id, true)] := by
-                simp only [ReactiveApplication.Execution.includePending,
-                  MessageNetwork.includePending, found, accepted, Option.isSome_some]
-              have networkEq : (execution.includePending app id).network =
-                  (execution.network.includePending id).2 := app.includePending_network execution id
-              obtain ⟨_, namedEvent, named, namedReady, _, actor⟩ :=
-                accepted_inclusion execution.application after message accepted
-              obtain ⟨other, otherNamed, otherReady, otherAction, otherMember⟩ :=
-                handle_config_mem_step (runtime setup) execution.application after _
-                  (reactiveHandle_call accepted)
-              have sameNamed : other = _ := Option.some.inj (otherNamed.symm.trans named)
-              subst sameNamed
-              rw [applicationEq] at member
-              have same := step_completion_unique otherMember member
-              cases same
-              refine ⟨message, ?_, ?_, named, actor⟩
-              · rw [networkEq, ledgerEq]
-                exact List.mem_append_right _ (List.mem_singleton.mpr rfl)
-              · rw [receiptsEq, identified]
-                exact List.mem_append_right _ (List.mem_singleton.mpr rfl)
-  | application command =>
-      obtain ⟨changed, _⟩ := applicationStep_facts execution next command reached
-      right
-      intro payload outputEq
-      cases command with
-      | advanceClock =>
-          exfalso
-          apply stutter
-          simp only [EventGraphRuntime.environmentStep, PMF.mem_support_pure_iff] at changed
-          rw [changed]
-      | executeSample sampled =>
-          obtain ⟨_, effect⟩ := environmentStep_executeSample_config_activated (runtime setup)
-            execution.application next.application sampled changed
-          rcases effect with ⟨configEq, _⟩ | ⟨sampledReady, sampledAction, sampledMember, _⟩
-          · exact (stutter configEq).elim
-          · have same := step_completion_unique sampledMember member
-            cases same
-            exfalso
-            cases view : nodeView (graph setup) event with
-            | sample _ _ sampleEq _ => cases sampleEq.symm.trans outputEq
-            | bind _ _ bindEq _ => cases bindEq.symm.trans outputEq
-            | resolve owner resolved binding checks resolveEq codeEq =>
-                rw [environmentStep_executeSample_of_nonsample (runtime setup) _ event ready
-                  (fun _ _ _ _ sampled => by rw [view] at sampled; cases sampled),
-                  PMF.mem_support_pure_iff] at changed
-                exact stutter (congrArg (fun state => state.config) changed)
-      | expire expired =>
-          obtain ⟨_, effect⟩ := environmentStep_expire_config_activated (runtime setup)
-            execution.application next.application expired changed
-          rcases effect with ⟨configEq, _⟩ | ⟨expiredReady, expiredAction, expiredMember, _⟩
-          · exact (stutter configEq).elim
-          · have same := step_completion_unique expiredMember member
-            cases same
-            cases view : nodeView (graph setup) event with
-            | sample _ _ sampleEq _ => cases sampleEq.symm.trans outputEq
-            | bind _ _ bindEq _ => cases bindEq.symm.trans outputEq
-            | resolve owner resolved binding checks resolveEq codeEq =>
-                have samePayload : resolved = payload :=
-                  EventGraph.EventField.publication.inj (resolveEq.symm.trans outputEq)
-                subst samePayload
-                cases activated : execution.application.activatedAt event with
-                | none =>
-                    rw [environmentStep_expire_of_not_activated (runtime setup) _ event ready
-                      activated, PMF.mem_support_pure_iff] at changed
-                    exact (stutter (congrArg (fun state => state.config) changed)).elim
-                | some entered =>
-                    by_cases due : (runtime setup).deadline event ≤
-                        execution.application.clock - entered
-                    · rw [environmentStep_expire_resolve_eq (runtime setup) _ event ready entered
-                        activated due owner resolved binding checks resolveEq codeEq view,
-                        PMF.mem_support_pure_iff] at changed
-                      have history := execution.application.config.step_history event ready action
-                        _ member
-                      rw [changed] at history
-                      change execution.application.config.history ++
-                          [⟨event, cast (congrArg EventGraph.EventField.Action resolveEq.symm)
-                            false⟩] = _ at history
-                      have completion := List.singleton_injective
-                        (List.append_cancel_left history)
-                      exact (eq_of_heq (EventGraph.Completion.mk.inj completion).2).symm
-                    · rw [environmentStep_expire_of_not_due (runtime setup) _ event ready entered
-                        activated due, PMF.mem_support_pure_iff] at changed
-                      exact (stutter (congrArg (fun state => state.config) changed)).elim
+  rcases reactive_completion_cases (runtime setup) leaks execution next command reached ready
+      action member with accepted | ⟨_, _, _, _, _, expired⟩ | ownerless
+  · obtain ⟨message, _, ledger, receipt, named, actor, _⟩ := accepted
+    exact Or.inl ⟨message, ledger, receipt, named, actor⟩
+  · exact Or.inr expired.publication_eq
+  · right
+    intro payload outputEq
+    cases view : nodeView (graph setup) event with
+    | sample _ _ sampleEq _ => rw [sampleEq] at outputEq; cases outputEq
+    | bind owner _ bindingEq codeEq =>
+        rw [nodeView_bind_actor bindingEq codeEq] at ownerless
+        cases ownerless
+    | resolve owner _ _ _ publicationEq codeEq =>
+        rw [nodeView_resolve_actor publicationEq codeEq] at ownerless
+        cases ownerless
 
 end Completion
 

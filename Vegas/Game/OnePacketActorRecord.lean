@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketFreshSlots
+import Vegas.Game.OnePacketCompletion
 
 /-! # Completed events with an actor and the silence of other players
 
@@ -33,75 +33,6 @@ noncomputable section
 namespace Vegas.SourceProgram
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
-
-/-- A source action that commits a failed binding or does not disclose. -/
-def Failing (choice : Option (OwnAction Player L)) : Prop :=
-  (∀ owner name payload result, choice = some (.commit owner name payload result) →
-    result = .failure) ∧ OwnAction.disclosure choice = false
-
-/-- The decoded action of a binding event completed with a failed binding is
-failing. -/
-theorem decodeEventAction_failing_binding {Γ : SourceCtx Player L} {openNames : Finset VarId}
-    (program : SourceProgram Player L Γ openNames) :
-    ∀ (count : Nat) (bound : count < eventCount program) {owner : Player} {payload : L.Ty}
-      (outputEq : outputLayout program ⟨count, bound⟩ = .binding owner payload),
-      Failing (decodeEventAction program ⟨count, bound⟩
-        (cast (congrArg EventGraph.EventField.Action outputEq.symm)
-          (PublicationResult.failure : PublicationResult (L.Val payload)))) := by
-  induction program with
-  | ret _ =>
-      intro count bound
-      simp [eventCount] at bound
-  | sample _ _ _ next ih =>
-      intro count bound owner payload outputEq
-      cases count with
-      | zero => cases outputEq
-      | succ count => exact ih count (Nat.lt_of_succ_lt_succ bound) outputEq
-  | commit name commitOwner fresh guard next ih =>
-      intro count bound owner payload outputEq
-      cases count with
-      | zero =>
-          change EventGraph.EventField.binding commitOwner _ = _ at outputEq
-          obtain ⟨rfl, rfl⟩ := EventGraph.EventField.binding.inj outputEq
-          refine ⟨fun actor actorName actorPayload result chosen => ?_, rfl⟩
-          cases chosen
-          rfl
-      | succ count => exact ih count (Nat.lt_of_succ_lt_succ bound) outputEq
-  | reveal published revealOwner name fresh source unresolved next ih =>
-      intro count bound owner payload outputEq
-      cases count with
-      | zero => cases outputEq
-      | succ count => exact ih count (Nat.lt_of_succ_lt_succ bound) outputEq
-
-/-- The decoded action of a publication event completed with withholding is
-failing. -/
-theorem decodeEventAction_failing_publication {Γ : SourceCtx Player L}
-    {openNames : Finset VarId} (program : SourceProgram Player L Γ openNames) :
-    ∀ (count : Nat) (bound : count < eventCount program) {payload : L.Ty}
-      (outputEq : outputLayout program ⟨count, bound⟩ = .publication payload),
-      Failing (decodeEventAction program ⟨count, bound⟩
-        (cast (congrArg EventGraph.EventField.Action outputEq.symm) false)) := by
-  induction program with
-  | ret _ =>
-      intro count bound
-      simp [eventCount] at bound
-  | sample _ _ _ next ih =>
-      intro count bound payload outputEq
-      cases count with
-      | zero => cases outputEq
-      | succ count => exact ih count (Nat.lt_of_succ_lt_succ bound) outputEq
-  | commit name commitOwner fresh guard next ih =>
-      intro count bound payload outputEq
-      cases count with
-      | zero => cases outputEq
-      | succ count => exact ih count (Nat.lt_of_succ_lt_succ bound) outputEq
-  | reveal published revealOwner name fresh source unresolved next ih =>
-      intro count bound payload outputEq
-      cases count with
-      | zero =>
-          refine ⟨fun actor actorName actorPayload result chosen => ?_, rfl⟩
-          cases Option.some.inj chosen
-      | succ count => exact ih count (Nat.lt_of_succ_lt_succ bound) outputEq
 
 namespace ProtocolState
 
@@ -221,157 +152,12 @@ theorem actor_completion_cause (execution next : (application setup leaks).Execu
     (∃ message ∈ next.network.ledger, (message.id, true) ∈ next.receipts ∧
         message.payload.call.event? (graph setup) = some event ∧ message.sender = actor) ∨
       Failing (decodeEventAction setup.program event action) := by
-  have stutter : next.application.config = execution.application.config → False :=
-    config_ne_of_step member
-  cases command with
-  | activate who =>
-      exfalso
-      apply stutter
-      unfold ReactiveApplication.Execution.environmentStep at reached
-      rw [PMF.support_map] at reached
-      obtain ⟨updated, supported, rfl⟩ := reached
-      rw [PMF.support_map] at supported
-      obtain ⟨_, _, rfl⟩ := supported
-      rfl
-  | wait =>
-      exfalso
-      apply stutter
-      unfold ReactiveApplication.Execution.environmentStep at reached
-      rw [PMF.support_map] at reached
-      obtain ⟨updated, supported, rfl⟩ := reached
-      cases (PMF.mem_support_pure_iff _ _).mp supported
-      rfl
-  | «include» id =>
-      left
-      unfold ReactiveApplication.Execution.environmentStep at reached
-      rw [PMF.support_map] at reached
-      obtain ⟨updated, supported, rfl⟩ := reached
-      cases (PMF.mem_support_pure_iff _ _).mp supported
-      change (execution.includePending (application setup leaks) id).application.config ∈ _
-        at member
-      change ∃ message ∈ (execution.includePending (application setup leaks) id).network.ledger,
-        (message.id, true) ∈ (execution.includePending (application setup leaks) id).receipts ∧ _
-      cases found : execution.network.lookup id with
-      | none =>
-          exact (config_ne_of_step member (by
-            simp only [ReactiveApplication.Execution.includePending,
-              MessageNetwork.includePending, found])).elim
-      | some message =>
-          obtain ⟨identified, _, ledgerEq⟩ :=
-            includePending_found execution.network id message found
-          cases accepted : (application setup leaks).handle execution.application message with
-          | none =>
-              exact (config_ne_of_step member (by
-                simp only [ReactiveApplication.Execution.includePending,
-                  MessageNetwork.includePending, found, accepted, Option.getD_none])).elim
-          | some after =>
-              have applicationEq :
-                  (execution.includePending (application setup leaks) id).application = after := by
-                simp only [ReactiveApplication.Execution.includePending,
-                  MessageNetwork.includePending, found, accepted, Option.getD_some]
-              have receiptsEq : (execution.includePending (application setup leaks) id).receipts =
-                  execution.receipts ++ [(id, true)] := by
-                simp only [ReactiveApplication.Execution.includePending,
-                  MessageNetwork.includePending, found, accepted, Option.isSome_some]
-              have networkEq : (execution.includePending (application setup leaks) id).network =
-                  (execution.network.includePending id).2 :=
-                (application setup leaks).includePending_network execution id
-              obtain ⟨_, namedEvent, named, _, _, sender⟩ :=
-                accepted_inclusion execution.application after message accepted
-              obtain ⟨other, otherNamed, _, _, otherMember⟩ :=
-                handle_config_mem_step (runtime setup) execution.application after _
-                  (reactiveHandle_call accepted)
-              have sameNamed : other = namedEvent := Option.some.inj (otherNamed.symm.trans named)
-              subst sameNamed
-              rw [applicationEq] at member
-              cases step_completion_unique otherMember member
-              refine ⟨message, ?_, ?_, named, Option.some.inj (sender.symm.trans acts)⟩
-              · rw [networkEq, ledgerEq]
-                exact List.mem_append_right _ (List.mem_singleton.mpr rfl)
-              · rw [receiptsEq, identified]
-                exact List.mem_append_right _ (List.mem_singleton.mpr rfl)
-  | application command =>
-      obtain ⟨changed, _⟩ := applicationStep_facts execution next command reached
-      right
-      cases command with
-      | advanceClock =>
-          exfalso
-          apply stutter
-          simp only [EventGraphRuntime.environmentStep, PMF.mem_support_pure_iff] at changed
-          rw [changed]
-      | executeSample sampled =>
-          exfalso
-          obtain ⟨_, effect⟩ := environmentStep_executeSample_config_activated (runtime setup)
-            execution.application next.application sampled changed
-          rcases effect with ⟨configEq, _⟩ | ⟨sampledReady, sampledAction, sampledMember, _⟩
-          · exact stutter configEq
-          · cases step_completion_unique sampledMember member
-            cases view : nodeView (graph setup) event with
-            | sample _ _ outputEq codeEq =>
-                rw [nodeView_sample_actor outputEq codeEq] at acts
-                cases acts
-            | bind _ _ _ _ =>
-                rw [environmentStep_executeSample_of_nonsample (runtime setup) _ event ready
-                  (fun _ _ _ _ same => by rw [view] at same; cases same),
-                  PMF.mem_support_pure_iff] at changed
-                exact stutter (congrArg (fun state => state.config) changed)
-            | resolve _ _ _ _ _ _ =>
-                rw [environmentStep_executeSample_of_nonsample (runtime setup) _ event ready
-                  (fun _ _ _ _ same => by rw [view] at same; cases same),
-                  PMF.mem_support_pure_iff] at changed
-                exact stutter (congrArg (fun state => state.config) changed)
-      | expire expired =>
-          obtain ⟨_, effect⟩ := environmentStep_expire_config_activated (runtime setup)
-            execution.application next.application expired changed
-          rcases effect with ⟨configEq, _⟩ | ⟨expiredReady, expiredAction, expiredMember, _⟩
-          · exact (stutter configEq).elim
-          · cases step_completion_unique expiredMember member
-            have timed : ∃ entered, execution.application.activatedAt event = some entered ∧
-                (runtime setup).deadline event ≤ execution.application.clock - entered := by
-              cases activated : execution.application.activatedAt event with
-              | none =>
-                  rw [environmentStep_expire_of_not_activated (runtime setup) _ event ready
-                    activated, PMF.mem_support_pure_iff] at changed
-                  exact (stutter (congrArg (fun state => state.config) changed)).elim
-              | some entered =>
-                  by_cases due : (runtime setup).deadline event ≤
-                      execution.application.clock - entered
-                  · exact ⟨entered, rfl, due⟩
-                  · rw [environmentStep_expire_of_not_due (runtime setup) _ event ready entered
-                      activated due, PMF.mem_support_pure_iff] at changed
-                    exact (stutter (congrArg (fun state => state.config) changed)).elim
-            obtain ⟨entered, activated, due⟩ := timed
-            have actionOf : ∀ {output : EventGraph.EventField Player L}
-                (outputEq : (graph setup).outputLayout event = output) (value : output.Value)
-                (choice : output.Action),
-                next.application = execution.application.complete event ready
-                  (cast (congrArg EventGraph.EventField.Action outputEq.symm) choice)
-                  (cast (congrArg EventGraph.EventField.Value outputEq.symm) value) →
-                action = cast (congrArg EventGraph.EventField.Action outputEq.symm) choice := by
-              intro output outputEq value choice completed
-              have history := execution.application.config.step_history event ready action _
-                member
-              rw [completed] at history
-              change execution.application.config.history ++ [⟨event, _⟩] = _ at history
-              exact (eq_of_heq (EventGraph.Completion.mk.inj
-                (List.singleton_injective (List.append_cancel_left history))).2).symm
-            cases view : nodeView (graph setup) event with
-            | sample _ _ outputEq codeEq =>
-                rw [nodeView_sample_actor outputEq codeEq] at acts
-                cases acts
-            | bind owner payload outputEq codeEq =>
-                rw [environmentStep_expire_bind_eq (runtime setup) _ event ready entered activated
-                  due owner payload outputEq codeEq view, PMF.mem_support_pure_iff] at changed
-                rw [actionOf outputEq _ _ changed]
-                exact decodeEventAction_failing_binding setup.program event.val event.isLt
-                  outputEq
-            | resolve owner payload binding checks outputEq codeEq =>
-                rw [environmentStep_expire_resolve_eq (runtime setup) _ event ready entered
-                  activated due owner payload binding checks outputEq codeEq view,
-                  PMF.mem_support_pure_iff] at changed
-                rw [actionOf outputEq _ _ changed]
-                exact decodeEventAction_failing_publication setup.program event.val event.isLt
-                  outputEq
+  rcases owned_completion_cases execution next command reached ready action member acts with
+    accepted | ⟨_, _, _, _, _, expired⟩
+  · rcases accepted with ⟨accepted⟩
+    exact Or.inl ⟨accepted.message, accepted.ledger, accepted.receipt, accepted.named,
+      accepted.sender⟩
+  · exact Or.inr (expiredAction_failing expired)
 
 /-- **The actor record.** The configuration decodes at a prefix, and every
 completed event with an actor was completed by an accepted packet of that actor

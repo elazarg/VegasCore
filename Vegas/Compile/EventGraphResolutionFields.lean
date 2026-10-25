@@ -105,28 +105,52 @@ omit [DecidableEq Player] [IExpr.ResultTypes L] in
   | here => rfl
   | there source ih => exact ih
 
-def outputName : {Γ : SourceCtx Player L} → {openNames : Finset VarId} →
-    (program : SourceProgram Player L Γ openNames) → Fin (eventCount program) → VarId
+/-- The commitment cell a reveal event reveals, and nothing at other events. -/
+def revealedCell : {Γ : SourceCtx Player L} → {openNames : Finset VarId} →
+    (program : SourceProgram Player L Γ openNames) → Fin (eventCount program) →
+      Option (VarId × CellTy Player L)
   | _, _, .ret _, event => Fin.elim0 event
-  | _, _, .sample name _ _ next, event => Fin.cases name (outputName next) event
-  | _, _, .commit name _ _ _ next, event => Fin.cases name (outputName next) event
-  | _, _, .reveal published _ _ _ _ _ next, event =>
-      Fin.cases published (outputName next) event
+  | _, _, .sample _ _ _ next, event => Fin.cases none (revealedCell next) event
+  | _, _, .commit _ _ _ _ next, event => Fin.cases none (revealedCell next) event
+  | _, _, .reveal (payload := payload) _ owner name _ _ _ next, event =>
+      Fin.cases (some (name, .commitment owner payload)) (revealedCell next) event
 
-theorem compileRankedNodes_resolution_name {inputCount totalCount : Nat}
+/-- The name of the revealed commitment cell is the resolution name. -/
+theorem revealedCell_map_fst : ∀ {Γ : SourceCtx Player L} {openNames : Finset VarId}
+    (program : SourceProgram Player L Γ openNames) (event : Fin (eventCount program)),
+    (revealedCell program event).map Prod.fst = resolutionName? program event
+  | _, _, .ret _, event => Fin.elim0 event
+  | _, _, .sample _ _ _ next, event => by
+      cases event using Fin.cases with
+      | zero => rfl
+      | succ event => exact revealedCell_map_fst next event
+  | _, _, .commit _ _ _ _ next, event => by
+      cases event using Fin.cases with
+      | zero => rfl
+      | succ event => exact revealedCell_map_fst next event
+  | _, _, .reveal _ _ _ _ _ _ next, event => by
+      cases event using Fin.cases with
+      | zero => rfl
+      | succ event => exact revealedCell_map_fst next event
+
+/-- The lowerer preserves every labelling of revealed source cells that agrees
+with its typed references and output embedding. -/
+theorem compileRankedNodes_resolution_label {Label : Type*} {inputCount totalCount : Nat}
     {inputs : Fin inputCount → Vegas.EventGraph.EventField Player L}
     {outputs : Fin totalCount → Vegas.EventGraph.EventField Player L}
-    (nameOf : Fin inputCount ⊕ Fin totalCount → VarId) :
+    (label : VarId × CellTy Player L → Label)
+    (labelOf : Fin inputCount ⊕ Fin totalCount → Label) :
     ∀ {Γ : SourceCtx Player L} {openNames : Finset VarId}
       (program : SourceProgram Player L Γ openNames)
       (refs : ContextRefs (Vegas.EventGraph.fieldLayout inputs outputs) Γ)
       (revelations : Revelations Γ) (registry : Registry Γ)
       (embedding : OutputEmbedding inputs outputs program)
       (refsBefore : ContextRefsBefore refs embedding),
-      (∀ {name cell} (source : HasVar Γ name cell), nameOf (refs.get source).field = name) →
-      (∀ index, nameOf (.inr (embedding.event index)) = outputName program index) →
+      (∀ {name cell} (source : HasVar Γ name cell),
+        labelOf (refs.get source).field = label (name, cell)) →
+      (∀ index, labelOf (.inr (embedding.event index)) = label (eventCell program index)) →
       ∀ index, ((compileRankedNodes program refs revelations registry embedding refsBefore
-        index).code.resolutionField?).map nameOf = resolutionName? program index := by
+        index).code.resolutionField?).map labelOf = (revealedCell program index).map label := by
   intro Γ openNames program
   induction program with
   | ret => intro _ _ _ _ _ _ _ index; exact Fin.elim0 index
@@ -170,13 +194,14 @@ theorem compileRankedNodes_resolution_name {inputCount totalCount : Nat}
 def fieldName {Γ : SourceCtx Player L} {openNames : Finset VarId}
     (program : SourceProgram Player L Γ openNames) :
     Fin Γ.length ⊕ Fin (eventCount program) → VarId :=
-  Sum.elim (inputName Γ) (outputName program)
+  Sum.elim (inputName Γ) (fun event => (eventCell program event).1)
 
 theorem nodes_resolution_name {Γ : SourceCtx Player L} {openNames : Finset VarId}
     (program : SourceProgram Player L Γ openNames) (event : Fin (eventCount program)) :
     (((toEventGraph program).nodes event).resolutionField?).map (fieldName program) =
       resolutionName? program event := by
-  apply compileRankedNodes_resolution_name
+  rw [← revealedCell_map_fst]
+  apply compileRankedNodes_resolution_label Prod.fst
   · intro name cell source
     exact inputName_inputId source
   · intro index

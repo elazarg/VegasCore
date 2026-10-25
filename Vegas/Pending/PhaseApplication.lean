@@ -111,32 +111,25 @@ theorem settle_physical (phases : List (RuntimePhase graph)) (generation : Nat)
         current.native.candidates ∧
       (settle phases generation entry current retired).current.native.clock =
         current.native.clock := by
-  induction phases generalizing generation entry current retired with
-  | nil => exact ⟨rfl, rfl, rfl⟩
-  | cons phase remaining ih =>
-      simp only [settle]
-      split
-      · split
-        · split
-          · exact ⟨(phase.drain_excluded _).trans (phase.drain_excluded current),
-              (phase.drain_tables _).2.1.trans
-                (phase.drain_tables current).2.1,
-              (phase.drain_tables _).2.2.trans (phase.drain_tables current).2.2⟩
-          · obtain ⟨excluded, candidates, clock⟩ := ih generation
-              (phase.drain (restore entry (phase.drain current)))
-              (phase.drain (restore entry (phase.drain current)))
-              (retired ++ [⟨⟨phase.low, generation⟩, (phase.drain current).native⟩])
-            exact ⟨excluded.trans ((phase.drain_excluded _).trans (phase.drain_excluded _)),
-              candidates.trans ((phase.drain_tables _).2.1.trans
-                (phase.drain_tables current).2.1),
-              clock.trans ((phase.drain_tables _).2.2.trans (phase.drain_tables current).2.2)⟩
-        · obtain ⟨excluded, candidates, clock⟩ := ih generation (phase.drain current)
-              (phase.drain current) retired
-          exact ⟨excluded.trans (phase.drain_excluded _),
-            candidates.trans (phase.drain_tables _).2.1,
-            clock.trans (phase.drain_tables _).2.2⟩
-      · exact ⟨phase.drain_excluded _, (phase.drain_tables _).2.1,
-          (phase.drain_tables _).2.2⟩
+  fun_induction settle with
+  | case1 => exact ⟨rfl, rfl, rfl⟩
+  | case2 phase _ _ _ current _ _ _ _ _ _ _ _ =>
+      exact ⟨(phase.drain_excluded _).trans (phase.drain_excluded current),
+        (phase.drain_tables _).2.1.trans (phase.drain_tables current).2.1,
+        (phase.drain_tables _).2.2.trans (phase.drain_tables current).2.2⟩
+  | case3 phase _ _ _ current _ _ _ _ _ _ _ _ ih =>
+      obtain ⟨excluded, candidates, clock⟩ := ih
+      exact ⟨excluded.trans ((phase.drain_excluded _).trans (phase.drain_excluded _)),
+        candidates.trans ((phase.drain_tables _).2.1.trans (phase.drain_tables current).2.1),
+        clock.trans ((phase.drain_tables _).2.2.trans (phase.drain_tables current).2.2)⟩
+  | case4 phase _ _ _ current _ _ _ _ ih =>
+      obtain ⟨excluded, candidates, clock⟩ := ih
+      exact ⟨excluded.trans (phase.drain_excluded _),
+        candidates.trans (phase.drain_tables _).2.1,
+        clock.trans (phase.drain_tables _).2.2⟩
+  | case5 phase _ _ _ _ _ _ _ =>
+      exact ⟨phase.drain_excluded _, (phase.drain_tables _).2.1,
+        (phase.drain_tables _).2.2⟩
 
 /-- Saved and current configurations remain genuine native graph states. -/
 structure Invariant (inputs : graph.Inputs) (state : PhaseRuntimeState graph) : Prop where
@@ -149,20 +142,24 @@ theorem settle_invariant (phases : List (RuntimePhase graph)) (generation : Nat)
     {inputs : graph.Inputs} (saved : entry.native.Invariant inputs)
     (active : current.native.Invariant inputs) :
     (settle phases generation entry current retired).Invariant inputs := by
-  induction phases generalizing generation entry current retired with
-  | nil => exact ⟨saved, active⟩
-  | cons phase remaining ih =>
-      simp only [settle]
-      split
-      · split
-        · have restored := restore_invariant entry (phase.drain current) saved
-          have rebuilt := phase.drain_invariant _ restored
-          split
-          · exact ⟨restored, rebuilt⟩
-          · exact ih _ _ _ _ rebuilt rebuilt
-        · have drained := phase.drain_invariant current active
-          exact ih _ _ _ _ drained drained
-      · exact ⟨saved, phase.drain_invariant current active⟩
+  revert saved active
+  fun_induction settle with
+  | case1 => exact fun saved active => ⟨saved, active⟩
+  | case2 phase _ _ entry current _ _ _ _ _ _ _ _ =>
+      intro saved _active
+      have restored := restore_invariant entry (phase.drain current) saved
+      exact ⟨restored, phase.drain_invariant _ restored⟩
+  | case3 phase _ _ entry current _ _ _ _ _ _ _ _ ih =>
+      intro saved _active
+      have rebuilt := phase.drain_invariant _
+        (restore_invariant entry (phase.drain current) saved)
+      exact ih rebuilt rebuilt
+  | case4 phase _ _ _ current _ _ _ _ ih =>
+      intro _saved active
+      have drained := phase.drain_invariant current active
+      exact ih drained drained
+  | case5 phase _ _ _ current _ _ _ =>
+      exact fun saved active => ⟨saved, phase.drain_invariant current active⟩
 
 /-- The next exposed descriptor has no ready excluded event in its own interval. -/
 theorem settle_quiescent (phases : List (RuntimePhase graph)) (generation : Nat)
@@ -170,70 +167,40 @@ theorem settle_quiescent (phases : List (RuntimePhase graph)) (generation : Nat)
     ∀ phase ∈ (settle phases generation entry current retired).phases.head?,
       ∀ event ∈ phase.events,
         ¬ (settle phases generation entry current retired).current.AutomaticReady event := by
-  induction phases generalizing generation entry current retired with
-  | nil => simp only [settle, List.head?_nil, Option.not_mem_none, false_implies, implies_true]
-  | cons phase remaining ih =>
-      simp only [settle]
-      split
-      · split
-        · split
-          · intro target member event inside eligible
-            simp only [List.head?_cons, Option.mem_some_iff] at member
-            subst target
-            exact phase.drain_quiescent _ event ⟨inside, eligible⟩
-          · exact ih _ _ _ _
-        · exact ih _ _ _ _
-      · intro target member event inside eligible
-        simp only [List.head?_cons, Option.mem_some_iff] at member
-        subst target
-        exact phase.drain_quiescent _ event ⟨inside, eligible⟩
+  fun_induction settle with
+  | case1 => simp only [List.head?_nil, Option.not_mem_none, false_implies, implies_true]
+  | case2 phase _ _ _ _ _ _ _ _ _ _ _ _ | case5 phase _ _ _ _ _ _ _ =>
+      intro target member event inside eligible
+      simp only [List.head?_cons, Option.mem_some_iff] at member
+      subst target
+      exact phase.drain_quiescent _ event ⟨inside, eligible⟩
+  | case3 _ _ _ _ _ _ _ _ _ _ _ _ _ ih | case4 _ _ _ _ _ _ _ _ _ ih => exact ih
 
 /-- Every earlier retirement remains in the permanent archive. -/
 theorem settle_archive (phases : List (RuntimePhase graph)) (generation : Nat)
     (entry current : RecoveryState graph) (retired : List (RetiredCommitAttempt graph)) :
     retired <+: (settle phases generation entry current retired).retired := by
-  induction phases generalizing generation entry current retired with
-  | nil => exact List.prefix_refl _
-  | cons phase remaining ih =>
-      simp only [settle]
-      split
-      · split
-        · split
-          · exact List.prefix_append _ _
-          · exact (List.prefix_append _ _).trans (ih _ _ _ _)
-        · exact ih _ _ _ _
-      · exact List.prefix_refl _
+  fun_induction settle <;> first
+    | exact List.prefix_refl _
+    | exact List.prefix_append _ _
+    | assumption
+    | exact (List.prefix_append _ _).trans (by assumption)
 
 /-- The global retry generation never decreases during phase advancement. -/
 theorem settle_generation (phases : List (RuntimePhase graph)) (generation : Nat)
     (entry current : RecoveryState graph) (retired : List (RetiredCommitAttempt graph)) :
     generation ≤ (settle phases generation entry current retired).generation := by
-  induction phases generalizing generation entry current retired with
-  | nil => exact le_rfl
-  | cons phase remaining ih =>
-      simp only [settle]
-      split
-      · split
-        · split
-          · exact Nat.le_succ _
-          · exact ih _ _ _ _
-        · exact ih _ _ _ _
-      · exact le_rfl
+  fun_induction settle <;> first
+    | exact le_rfl
+    | exact Nat.le_succ _
+    | assumption
 
 theorem settle_suffix (phases : List (RuntimePhase graph)) (generation : Nat)
     (entry current : RecoveryState graph) (retired : List (RetiredCommitAttempt graph)) :
     (settle phases generation entry current retired).phases <:+ phases := by
-  induction phases generalizing generation entry current retired with
-  | nil => exact List.suffix_refl _
-  | cons phase remaining ih =>
-      simp only [settle]
-      split
-      · split
-        · split
-          · exact List.suffix_refl _
-          · exact (ih _ _ _ _).trans (List.suffix_cons _ _)
-        · exact (ih _ _ _ _).trans (List.suffix_cons _ _)
-      · exact List.suffix_refl _
+  fun_induction settle <;> first
+    | exact List.suffix_refl _
+    | exact (by assumption : _ <:+ _).trans (List.suffix_cons _ _)
 
 /-- A clean completed phase saves its actual high frontier and advances
 without allocating a retry generation. -/

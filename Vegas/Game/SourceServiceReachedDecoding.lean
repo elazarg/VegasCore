@@ -122,10 +122,10 @@ successor lemmas, which read only the configuration. -/
 def configState (config : (graph setup).Config) : EventGraphRuntime.State (graph setup) :=
   { EventGraphRuntime.State.initial (graph := graph setup) config.inputs with config := config }
 
-/-- Completing the ready event with any action keeps a residual, one rank
-later, whose source point is reached from the previous one by the source step
-of the decoded action. -/
-theorem SourceResidual.step {rank : Nat} {before : (graph setup).Config}
+/-- A fixed native completion preserves its typed source residual and its
+exact source-step atom. The successor witness supplies the same decoder and
+policy transport as the reached residual, including failed disclosures. -/
+theorem SourceResidual.step_mass {rank : Nat} {before : (graph setup).Config}
     (residual : SourceResidual setup profile rank before)
     (event : (graph setup).EventId) (ready : before.cut.Ready event)
     (action : (graph setup).Action event) (after : (graph setup).Config)
@@ -134,7 +134,12 @@ theorem SourceResidual.step {rank : Nat} {before : (graph setup).Config}
       next.lift (ProtocolState.entry next.program next.source) ∈
         (ProtocolState.step setup.program
           (residual.lift (ProtocolState.entry residual.program residual.source))
-          (fun _ => decodeEventAction setup.program event action)).support := by
+          (fun _ => decodeEventAction setup.program event action)).support ∧
+      (ProtocolState.step setup.program
+          (residual.lift (ProtocolState.entry residual.program residual.source))
+          (fun _ => decodeEventAction setup.program event action))
+        (next.lift (ProtocolState.entry next.program next.source)) =
+          (before.step event ready action) after := by
   obtain ⟨Γ, names, program, residualProfile, source, refs, embedding, refsBefore, aligned,
     admitted, effective, supports, disclosing, lift, commutes, steps, injective, transport,
     checkpoint⟩ := residual
@@ -172,8 +177,9 @@ theorem SourceResidual.step {rank : Nat} {before : (graph setup).Config}
           action = cast (congrArg EventGraph.EventField.Action outputEq.symm) marker :=
         ⟨cast (congrArg EventGraph.EventField.Action outputEq) action, by simp⟩
       cases marker
-      rw [sample_step before _ ready outputEq refs distribution codeEq source.state
-        checkpoint.agrees, PMF.support_map] at member
+      have graphLaw := sample_step before _ ready outputEq refs distribution codeEq source.state
+        checkpoint.agrees
+      rw [graphLaw, PMF.support_map] at member
       obtain ⟨value, drawn, rfl⟩ := member
       let tailEmbedding := embedding.tail next (by simp [eventCount]) (fun _ => rfl)
       let tailRefs : ContextRefs (graphLayout setup.program)
@@ -205,7 +211,7 @@ theorem SourceResidual.step {rank : Nat} {before : (graph setup).Config}
         injective := injective.comp Sum.inr_injective,
         transport := fun more store history => ?_,
         checkpoint := checkpoint.sample (native := configState before) name (embedding.event index)
-          atRank ready outputEq (fun ref => refsBefore ref index) decoded value }, ?_⟩
+          atRank ready outputEq (fun ref => refsBefore ref index) decoded value }, ?_, ?_⟩
       · rw [Function.comp_apply, commutes, ProtocolState.behavioralStateStep_sample_tail,
           PMF.map_comp]
       · rw [Function.comp_apply, steps]
@@ -220,6 +226,31 @@ theorem SourceResidual.step {rank : Nat} {before : (graph setup).Config}
           Sum.inr (ProtocolState.entry next (sampleSuccessor name source drawn))).support
         rw [PMF.support_map]
         exact ⟨value, drawn, rfl⟩
+      · rw [steps, decoded, graphLaw]
+        change (((L.evalDist distribution (sourcePublicEnv source.state)).map fun drawn =>
+            Sum.inr (ProtocolState.entry next (sampleSuccessor name source drawn))).map lift)
+              (lift (Sum.inr (ProtocolState.entry next (sampleSuccessor name source value)))) = _
+        rw [PMF.map_comp]
+        have sourceInjective : Function.Injective
+            (lift ∘ fun drawn : L.Val payload =>
+              (Sum.inr (ProtocolState.entry next (sampleSuccessor name source drawn)) :
+                ProtocolState (.sample name fresh distribution next))) := by
+          intro first second equal
+          have entries := ProtocolState.entry_injective next
+            (Sum.inr_injective (injective equal))
+          exact congrArg (fun config : Config Player L ((name, .publicData payload) :: Γ) =>
+            config.state.get .here) entries
+        have graphInjective : Function.Injective fun drawn : L.Val payload =>
+            before.complete (embedding.event index) ready
+              (cast (congrArg EventGraph.EventField.Action outputEq.symm) PUnit.unit)
+              (cast (congrArg EventGraph.EventField.Value outputEq.symm) drawn) := by
+          intro first second equal
+          have outputs := congrArg (fun config : (graph setup).Config =>
+            config.outputs (embedding.event index)) equal
+          simp only [EventGraph.Config.complete, Function.update_self, Option.some.injEq] at outputs
+          exact (cast_inj _).mp outputs
+        exact (pmf_map_apply_of_injective _ sourceInjective value).trans
+          (pmf_map_apply_of_injective _ graphInjective value).symm
   | @commit Γ openNames name owner payload fresh guard next =>
       let index : Fin (eventCount (.commit name owner fresh guard next)) :=
         ⟨0, by simp [eventCount]⟩
@@ -280,7 +311,7 @@ theorem SourceResidual.step {rank : Nat} {before : (graph setup).Config}
         transport := fun more store history => ?_,
         checkpoint := checkpoint.commit (native := configState before) name guard
           (embedding.event index) atRank ready outputEq (fun ref => refsBefore ref index)
-          choice decoded }, ?_⟩
+          choice decoded }, ?_, ?_⟩
       · rw [Function.comp_apply, commutes, ProtocolState.behavioralStateStep_commit_tail,
           PMF.map_comp]
       · rw [Function.comp_apply, steps]
@@ -296,6 +327,10 @@ theorem SourceResidual.step {rank : Nat} {before : (graph setup).Config}
           (OwnAction.binding owner name payload
             (some (OwnAction.commit owner name payload choice))))))).support
         rw [OwnAction.binding_commit, PMF.mem_support_pure_iff]
+      · rw [steps, decoded, commit_step before _ ready outputEq codeEq choice]
+        simp only [ProtocolState.step, ProtocolState.entry, Function.comp_apply, Sum.elim_inl,
+          OwnAction.binding_commit,
+          PMF.pure_map, PMF.pure_apply_self]
   | @reveal Γ openNames published owner name payload fresh selected unresolved next =>
       let index : Fin (eventCount
           (.reveal published owner name fresh selected unresolved next)) :=
@@ -364,7 +399,7 @@ theorem SourceResidual.step {rank : Nat} {before : (graph setup).Config}
         transport := fun more store history => ?_,
         checkpoint := checkpoint.reveal (native := configState before) published selected
           (embedding.event index) atRank ready outputEq (fun ref => refsBefore ref index)
-          disclose decoded }, ?_⟩
+          disclose decoded }, ?_, ?_⟩
       · rw [Function.comp_apply, commutes, ProtocolState.behavioralStateStep_reveal_tail,
           PMF.map_comp]
       · rw [Function.comp_apply, steps]
@@ -375,6 +410,29 @@ theorem SourceResidual.step {rank : Nat} {before : (graph setup).Config}
         rfl
       · rw [steps, PMF.support_map, decoded]
         exact ⟨_, (PMF.mem_support_pure_iff _ _).mpr rfl, rfl⟩
+      · rw [steps, decoded, before.step_eq_map_of_code _ ready outputEq _ codeEq disclose
+          (PMF.pure (disclosureResult published selected source disclose))
+          (compileResolve_eval? refs source.registry source.revelations source.state
+            before.store checkpoint.agrees selected disclose)]
+        simp only [ProtocolState.step, ProtocolState.entry, Function.comp_apply, Sum.elim_inl,
+          OwnAction.disclosure,
+          PMF.pure_map, PMF.pure_apply_self]
+
+/-- Completing the ready event with any action keeps a residual, one rank
+later, whose source point is reached from the previous one by the source step
+of the decoded action. -/
+theorem SourceResidual.step {rank : Nat} {before : (graph setup).Config}
+    (residual : SourceResidual setup profile rank before)
+    (event : (graph setup).EventId) (ready : before.cut.Ready event)
+    (action : (graph setup).Action event) (after : (graph setup).Config)
+    (member : after ∈ (before.step event ready action).support) :
+    ∃ next : SourceResidual setup profile (rank + 1) after,
+      next.lift (ProtocolState.entry next.program next.source) ∈
+        (ProtocolState.step setup.program
+          (residual.lift (ProtocolState.entry residual.program residual.source))
+          (fun _ => decodeEventAction setup.program event action)).support := by
+  obtain ⟨next, reached, _mass⟩ := residual.step_mass event ready action after member
+  exact ⟨next, reached⟩
 
 /-- A configuration step keeps a residual, at whichever prefix the step
 reaches. -/

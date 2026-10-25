@@ -30,98 +30,15 @@ open SourceProgram EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
-/-- The commitment cell a reveal event reveals, and nothing at other events. -/
-def revealedCell : {Γ : SourceCtx Player L} → {openNames : Finset VarId} →
-    (program : SourceProgram Player L Γ openNames) → Fin (eventCount program) →
-      Option (VarId × CellTy Player L)
-  | _, _, .ret _, event => Fin.elim0 event
-  | _, _, .sample _ _ _ next, event => Fin.cases none (revealedCell next) event
-  | _, _, .commit _ _ _ _ next, event => Fin.cases none (revealedCell next) event
-  | _, _, .reveal (payload := payload) _ owner name _ _ _ next, event =>
-      Fin.cases (some (name, .commitment owner payload)) (revealedCell next) event
-
-/-- The name of the revealed commitment cell is the resolution name. -/
-theorem revealedCell_map_fst : ∀ {Γ : SourceCtx Player L} {openNames : Finset VarId}
-    (program : SourceProgram Player L Γ openNames) (event : Fin (eventCount program)),
-    (revealedCell program event).map Prod.fst = resolutionName? program event
-  | _, _, .ret _, event => Fin.elim0 event
-  | _, _, .sample _ _ _ next, event => by
-      cases event using Fin.cases with
-      | zero => rfl
-      | succ event => exact revealedCell_map_fst next event
-  | _, _, .commit _ _ _ _ next, event => by
-      cases event using Fin.cases with
-      | zero => rfl
-      | succ event => exact revealedCell_map_fst next event
-  | _, _, .reveal _ _ _ _ _ _ next, event => by
-      cases event using Fin.cases with
-      | zero => rfl
-      | succ event => exact revealedCell_map_fst next event
-
-/-- The lowered resolve nodes read the fields of the commitment cells their
-reveals reveal, for any naming of fields by cells that the references and the
-output embedding respect. -/
-theorem compileRankedNodes_revealedCell {inputCount totalCount : Nat}
-    {inputs : Fin inputCount → Vegas.EventGraph.EventField Player L}
-    {outputs : Fin totalCount → Vegas.EventGraph.EventField Player L}
-    (cellOf : Fin inputCount ⊕ Fin totalCount → VarId × CellTy Player L) :
-    ∀ {Γ : SourceCtx Player L} {openNames : Finset VarId}
-      (program : SourceProgram Player L Γ openNames)
-      (refs : ContextRefs (Vegas.EventGraph.fieldLayout inputs outputs) Γ)
-      (revelations : Revelations Γ) (registry : Registry Γ)
-      (embedding : OutputEmbedding inputs outputs program)
-      (refsBefore : ContextRefsBefore refs embedding),
-      (∀ {name cell} (source : HasVar Γ name cell), cellOf (refs.get source).field = (name, cell)) →
-      (∀ index, cellOf (.inr (embedding.event index)) = eventCell program index) →
-      ∀ index, ((compileRankedNodes program refs revelations registry embedding refsBefore
-        index).code.resolutionField?).map cellOf = revealedCell program index := by
-  intro Γ openNames program
-  induction program with
-  | ret => intro _ _ _ _ _ _ _ index; exact Fin.elim0 index
-  | sample name fresh law next ih =>
-      intro refs revelations registry embedding before named outputsNamed index
-      cases index using Fin.cases with
-      | zero => rfl
-      | succ index =>
-          apply ih
-          · intro readName cell source
-            cases source with
-            | here => exact outputsNamed ⟨0, Nat.zero_lt_succ _⟩
-            | there source => exact named source
-          · intro remaining
-            exact outputsNamed (Fin.succ remaining)
-  | commit name owner fresh guard next ih =>
-      intro refs revelations registry embedding before named outputsNamed index
-      cases index using Fin.cases with
-      | zero => rfl
-      | succ index =>
-          apply ih
-          · intro readName cell source
-            cases source with
-            | here => exact outputsNamed ⟨0, Nat.zero_lt_succ _⟩
-            | there source => exact named source
-          · intro remaining
-            exact outputsNamed (Fin.succ remaining)
-  | reveal published owner name fresh selected unresolved next ih =>
-      intro refs revelations registry embedding before named outputsNamed index
-      cases index using Fin.cases with
-      | zero => exact congrArg some (named selected)
-      | succ index =>
-          apply ih
-          · intro readName cell source
-            cases source with
-            | here => exact outputsNamed ⟨0, Nat.zero_lt_succ _⟩
-            | there source => exact named source
-          · intro remaining
-            exact outputsNamed (Fin.succ remaining)
-
 /-- The resolve nodes of the default graph read the fields of the commitment
 cells their reveals reveal. -/
 theorem nodes_revealedCell (setup : Setup (Player := Player) (L := L))
     (event : (graph setup).EventId) :
     (((graph setup).nodes event).resolutionField?).map (fieldCell setup) =
       revealedCell setup.program event := by
-  apply compileRankedNodes_revealedCell
+  conv_rhs => rw [← show (revealedCell setup.program event).map id =
+    revealedCell setup.program event from congrFun Option.map_id _]
+  apply compileRankedNodes_resolution_label id
   · intro name cell source
     exact inputId_get source
   · intro index

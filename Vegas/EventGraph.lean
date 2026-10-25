@@ -4,6 +4,7 @@ import Vegas.EventGraph.BarrierBlocks
 import Vegas.EventGraph.BarrierInformation
 import Vegas.EventGraph.Barriers
 import Vegas.EventGraph.Basic
+import Vegas.EventGraph.OwnedStep
 import Vegas.EventGraph.BindingRefinement
 import Vegas.EventGraph.Canonical
 import Vegas.EventGraph.CanonicalNormalization

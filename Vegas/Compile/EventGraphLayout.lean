@@ -69,6 +69,39 @@ def outputLayout : {Γ : SourceCtx Player L} → {openNames : Finset VarId} →
   | _, _, .reveal (payload := payload) _ _ _ _ _ _ next, event =>
       Fin.cases (.publication payload) (outputLayout next) event
 
+namespace SourceProgram
+
+/-- The name and kind of the cell an event binds. -/
+def eventCell : {Γ : SourceCtx Player L} → {O : Finset VarId} →
+    (program : SourceProgram Player L Γ O) → Fin (eventCount program) →
+      VarId × CellTy Player L
+  | _, _, .ret _, event => Fin.elim0 event
+  | _, _, .sample (payload := payload) name _ _ next, event =>
+      Fin.cases (name, .publicData payload) (eventCell next) event
+  | _, _, .commit (payload := payload) name owner _ _ next, event =>
+      Fin.cases (name, .commitment owner payload) (eventCell next) event
+  | _, _, .reveal (payload := payload) published _ _ _ _ _ next, event =>
+      Fin.cases (published, .publication payload) (eventCell next) event
+
+theorem outputLayout_eventCell : ∀ {Γ : SourceCtx Player L} {O : Finset VarId}
+    (program : SourceProgram Player L Γ O) (event : Fin (eventCount program)),
+    outputLayout program event = cellField (eventCell program event).2
+  | _, _, .ret _, event => Fin.elim0 event
+  | _, _, .sample _ _ _ next, event => by
+      cases event using Fin.cases with
+      | zero => rfl
+      | succ event => exact outputLayout_eventCell next event
+  | _, _, .commit _ _ _ _ next, event => by
+      cases event using Fin.cases with
+      | zero => rfl
+      | succ event => exact outputLayout_eventCell next event
+  | _, _, .reveal _ _ _ _ _ _ next, event => by
+      cases event using Fin.cases with
+      | zero => rfl
+      | succ event => exact outputLayout_eventCell next event
+
+end SourceProgram
+
 /-- Typed references for every cell in one source prefix. -/
 structure ContextRefs {Field : Type}
     (layout : Field → Vegas.EventGraph.EventField Player L)

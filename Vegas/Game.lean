@@ -135,6 +135,7 @@ import Vegas.Game.OnePacketCommitmentSourcePolicy
 import Vegas.Game.OnePacketCompletedBindings
 import Vegas.Game.OnePacketCompletionCases
 import Vegas.Game.OnePacketCompletionContent
+import Vegas.Game.OnePacketCompletion
 import Vegas.Game.OnePacketCompletionLaw
 import Vegas.Game.OnePacketCompletionOrigin
 import Vegas.Game.OnePacketComponentSteps

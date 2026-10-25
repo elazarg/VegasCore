@@ -43,18 +43,14 @@ theorem settle_historyCheckpoint (phases : List (RuntimePhase graph)) (generatio
     (entry current : RecoveryState graph) (retired : List (RetiredCommitAttempt graph))
     (history : entry.native.config.history.IsPrefix current.native.config.history) :
     (settle phases generation entry current retired).HistoryCheckpoint := by
-  induction phases generalizing generation entry current retired with
-  | nil => exact history
-  | cons phase remaining ih =>
-      have drained := history.trans (phase.drain_history_prefix current)
-      simp only [settle]
-      split
-      · split
-        · split
-          · exact phase.drain_history_prefix _
-          · exact ih _ _ _ _ (⟨[], by simp⟩)
-        · exact ih _ _ _ _ (⟨[], by simp⟩)
-      · exact drained
+  revert history
+  fun_induction settle with
+  | case1 => exact id
+  | case2 phase _ _ _ _ _ _ _ _ _ _ _ _ => exact fun _ => phase.drain_history_prefix _
+  | case3 _ _ _ _ _ _ _ _ _ _ _ _ _ ih | case4 _ _ _ _ _ _ _ _ _ ih =>
+      exact fun _ => ih (⟨[], by simp⟩)
+  | case5 phase _ _ _ current _ _ _ =>
+      exact fun history => history.trans (phase.drain_history_prefix current)
 
 theorem initial_historyCheckpoint (plan : RuntimePhasePlan graph) (inputs : graph.Inputs) :
     (initial plan inputs).HistoryCheckpoint :=

@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.OnePacketChanceMass
+import Vegas.EventGraph.OwnedStep
 
 /-! # Completions of events with an actor in the intended replay
 
@@ -42,64 +43,11 @@ theorem SourceResidual.actorStepMass {rank : Nat} {before : (graph setup).Config
         (residual.lift (ProtocolState.entry residual.program residual.source))
         (fun _ => decodeEventAction setup.program event action)).map some)
       (decodedPoint setup after) = 1 := by
-  obtain ⟨point, next, beforeEq, afterEq, reached⟩ :=
-    decodedPoint_step residual event ready action after member
-  rw [decodedPoint_eq residual, Option.some.injEq] at beforeEq
-  rw [afterEq, beforeEq]
-  suffices deterministic : ∃ result, ProtocolState.step setup.program point
-      (fun _ => decodeEventAction setup.program event action) = PMF.pure result by
-    obtain ⟨result, pure⟩ := deterministic
-    rw [pure] at reached ⊢
-    rw [(PMF.mem_support_pure_iff _ _).mp reached, PMF.pure_map, PMF.pure_apply_self]
-  subst beforeEq
-  obtain ⟨Γ, names, program, residualProfile, source, refs, embedding, refsBefore, aligned,
-    admitted, effective, supports, disclosing, lift, commutes, steps, injective, transport,
-    checkpoint⟩ := residual
-  have atEvent := (ready_iff_rank setup before rank checkpoint.ordered event).mp ready
-  have counted := aligned.graphSuffix.countEq
-  change rank + eventCount program = (graph setup).order.eventCount at counted
-  cases program with
-  | ret payoffs =>
-      have := event.isLt
-      simp only [eventCount] at counted
-      omega
-  | @sample Γ openNames name payload fresh distribution next =>
-      exfalso
-      let index : Fin (eventCount (.sample name fresh distribution next)) :=
-        ⟨0, by simp [eventCount]⟩
-      have atRank : (embedding.event index).val = rank := by
-        simpa only [index, Nat.add_zero] using aligned.graphSuffix.rankEq index
-      have same : event = embedding.event index := Fin.ext (atEvent.trans atRank.symm)
-      subst same
-      have outputEq : (graph setup).outputLayout (embedding.event index) =
-          .publicData payload := by
-        change outputLayout setup.program (embedding.event index) = _
-        simpa [index, outputLayout, eventCount] using embedding.layout_eq index
-      have codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-          ((graph setup).nodes (embedding.event index)) =
-            .sample payload (compilePublicDist refs distribution) := by
-        change cast (congrArg (EventGraph.EventCode (graphLayout setup.program)) outputEq)
-          ((toEventGraph setup.program).nodes (embedding.event index)) = _
-        simpa [index, compileRankedNodes] using aligned.graphSuffix.nodeEq index
-      change EventGraph.EventCode.actor ((graph setup).nodes (embedding.event index)) =
-        some actor at acts
-      rw [← EventGraph.EventCode.actor_cast outputEq, codeEq] at acts
-      cases acts
-  | @commit Γ openNames name owner payload fresh guard next =>
-      refine ⟨lift (Sum.inr (ProtocolState.entry next (commitSuccessor name guard source
-        (OwnAction.binding owner name payload
-          (decodeEventAction setup.program event action))))), ?_⟩
-      change ProtocolState.step setup.program (lift (Sum.inl source)) _ = _
-      rw [steps]
-      change (PMF.pure _).map lift = _
-      rw [PMF.pure_map]
-  | @reveal Γ openNames published owner name payload fresh selected unresolved next =>
-      refine ⟨lift (Sum.inr (ProtocolState.entry next (revealSuccessor published selected source
-        (OwnAction.disclosure (decodeEventAction setup.program event action))))), ?_⟩
-      change ProtocolState.step setup.program (lift (Sum.inl source)) _ = _
-      rw [steps]
-      change (PMF.pure _).map lift = _
-      rw [PMF.pure_map]
+  obtain ⟨next, _reached, mass⟩ := residual.step_mass event ready action after member
+  rw [decodedPoint_eq next, pmf_map_apply_of_injective _ (Option.some_injective _), mass]
+  obtain ⟨result, pure⟩ := before.step_eq_pure_of_actor event ready action actor acts
+  rw [pure] at member ⊢
+  rw [(PMF.mem_support_pure_iff _ _).mp member, PMF.pure_apply_self]
 
 /-- The completion mass of a completion of an event with an actor is one. -/
 theorem completionMass_of_actor (before after : EventGraphRuntime.State (graph setup))
