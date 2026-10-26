@@ -96,14 +96,15 @@ theorem RecoveryOnePacket.intended_sequentialEquilibrium_preserved
   let floors := fun n => combinedFloor setup leaks bounds horizon (NativeScheduler)
     (sourceSequence n)
   let scale := fun n => trembleScale (floors n) (2 * horizon + 2) n
-  have positive : ∀ n, 0 < scale n := fun n => trembleScale_pos
-    (combinedFloor_pos setup leaks bounds horizon (NativeScheduler) (sourceSequence n))
-  have le_one : ∀ n, scale n ≤ 1 := fun n => trembleScale_le_one
-    (combinedFloor_pos setup leaks bounds horizon (NativeScheduler) (sourceSequence n)).le
-    (combinedFloor_le_one setup leaks bounds horizon (NativeScheduler) (sourceSequence n))
-  have vanishes : Tendsto scale atTop (nhds 0) := tendsto_trembleScale _
-    (fun n => combinedFloor_pos setup leaks bounds horizon (NativeScheduler) (sourceSequence n))
-    (fun n => combinedFloor_le_one setup leaks bounds horizon (NativeScheduler) (sourceSequence n))
+  have floorPositive := fun n =>
+    combinedFloor_pos setup leaks bounds horizon (NativeScheduler) (sourceSequence n)
+  have floorLeOne := fun n =>
+    combinedFloor_le_one setup leaks bounds horizon (NativeScheduler) (sourceSequence n)
+  have positive : ∀ n, 0 < scale n := fun n => trembleScale_pos (floorPositive n)
+  have le_one : ∀ n, scale n ≤ 1 := fun n =>
+    trembleScale_le_one (floorPositive n).le (floorLeOne n)
+  have vanishes : Tendsto scale atTop (nhds 0) :=
+    tendsto_trembleScale floors floorPositive floorLeOne
   obtain ⟨weights, sequence, limit, index, assembled, _mixed, bayes, increasing, converges,
       consistent, pooled, _limits, freeOptimal, _publicOptimal⟩ :=
     RecoveryOnePacket.exists_consistent_completion setup leaks bounds Initial horizon scheduler
@@ -125,33 +126,20 @@ theorem RecoveryOnePacket.intended_sequentialEquilibrium_preserved
       (fun _ => min_le_left _ _) (fun _ => le_max_left _ _) who
       (recoveryExclusionBase_mem_Icc parameter utility excludedPayoff lowerUtility upperUtility
         lower_le le_upper final.state who)
-  obtain ⟨error, errorVanishes, comparisons⟩ :
-      ∃ error : ℕ → ℝ, Tendsto error atTop (nhds 0) ∧
-        ∀ n who (site : (R).InformationSite who),
-          ¬ RecoveryOnePacket.FreeAgent setup leaks bounds Initial horizon scheduler
-            ((R).agentAt site) →
-          ∀ choice : (R).Choice who site.1,
-            localGain (2 * horizon + 1) (fun final => final.state)
-                (recoveryExclusionBase parameter utility excludedPayoff) (sequence n) site
-                (PMF.pure choice) ≤ error n ∨
-              ∃ mixture : PMF (setup.intendedModel.AssessmentDeviation who),
-                localGain (2 * horizon + 1) (fun final => final.state)
-                    (recoveryExclusionBase parameter utility excludedPayoff) (sequence n) site
-                    (PMF.pure choice) ≤
-                  expect mixture (intendedSiteGain setup parameter utility excludedPayoff
-                    (sourceSequence n)) + error n := by
-    by_cases slots_pos : 0 < bounds.candidateCount
-    · exact RecoveryOnePacket.recovery_local_comparisons setup leaks bounds horizon scheduler
+  obtain ⟨error, errorVanishes, comparisons⟩ :=
+    if slots_pos : 0 < bounds.candidateCount then
+      RecoveryOnePacket.recovery_local_comparisons setup leaks bounds horizon scheduler
         wellFormed independent observable sourceSequence sourceMixed sourceBayes scale positive
         le_one
         (fun _ => rfl) covers coversInputs capacity slots_pos weights sequence (fun _ => fallback)
         assembled bayes opportunity inclusion timely parameter utility excludedPayoff payoffBound
         nonnegative completes payoffBounded excludedBounded below upperUtility le_upper
         readoutBounded pooled
-    · refine ⟨fun _ => 0, tendsto_const_nhds, ?_⟩
-      intro _ who _ _ _
-      have impossible := capacity who
-      omega
+    else
+      ⟨fun _ => 0, tendsto_const_nhds, by
+          intro _ who _ _ _
+          have impossible := capacity who
+          omega⟩
   let sourceObserve := intendedReadoutExclusion setup parameter utility excludedPayoff
   let targetObserve := fun final : (RP).History =>
     (sourceReadout setup leaks (RecoveryProjection.protocolState (runtime setup) leaks final.state),
