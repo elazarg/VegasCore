@@ -37,3 +37,4 @@ import VegasTests.ChanceScheduling
 import VegasTests.ServiceTiming
 
 import VegasTests.RepeatedActivation
+import VegasTests.SourceTerminalCallbacks

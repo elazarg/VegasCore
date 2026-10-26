@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.StoppedHonestResponseCount
+import Vegas.Game.SourceTerminalComparison
 import GameTheoryExtensions.Protocol.ContinuationHorizon
 
 /-! # Terminal honest-law approximation by actual response opportunities -/
@@ -102,15 +103,57 @@ theorem onePacket_bounded_readout_exclusion_withinTV
           excludedPayoff))
       ((setup.intendedModel.runBehavioral intended sourceFuel).map
         (intendedReadoutExclusion setup parameter utility excludedPayoff)) := by
+  classical
+  let certificate := ((menu).bounded initial horizon scheduler).wellFoundedHistories
+  let honest := honestProfile setup leaks bounds initial horizon scheduler assessment
+  let complete := fun history : (E).History =>
+    NativeSourceTerminal (setup := setup) (leaks := leaks) history.state
+  have close := onePacket_sourceTerminal_readout_exclusion_withinTV_honest setup leaks bounds
+    initial horizon scheduler parameter utility excludedPayoff assessment certificate profile
+    (E).initHistory nonnegative le_one dominates
+  have counted : (menu).expectedResponses initial horizon scheduler certificate honest complete
+      (E).initHistory ≤ (min (Fintype.card Player) 1 * horizon : Nat) := by
+    by_cases inhabited : Nonempty Player
+    · have countBound := ((menu).expectedResponses_bounds initial horizon scheduler certificate
+        honest complete (E).initHistory).2
+      have playerCount : 1 ≤ Fintype.card Player := Fintype.card_pos_iff.mpr inhabited
+      simpa only [Nat.min_eq_right playerCount, one_mul,
+        show (application setup leaks).remainingResponses horizon (E).initHistory.state = horizon
+          from rfl] using countBound
+    · have counts : ∀ history : (E).History,
+          (application setup leaks).responseCount history.state = 0 := by
+        intro history
+        cases history.state with
+        | none => rfl
+        | some control =>
+            apply Finset.sum_eq_zero
+            intro who _
+            exact (inhabited ⟨who⟩).elim
+      simp only [ReactiveApplication.ResponseMenu.expectedResponses, counts, Nat.cast_zero,
+        expect_zero, sub_self]
+      exact Nat.cast_nonneg _
+  have exposureBound : (1 - retention) * (menu).expectedResponses initial horizon scheduler
+      certificate honest complete (E).initHistory ≤
+        ((min (Fintype.card Player) 1 * horizon : Nat) : ℝ) * (1 - retention) :=
+    (mul_le_mul_of_nonneg_left counted (sub_nonneg.mpr le_one)).trans_eq (mul_comm _ _)
+  have coarse := close.mono exposureBound
+  rw [(N).runBehavioralTerminalFrom_initHistory certificate _
+      ((menu).bounded initial horizon scheduler),
+    (N).runBehavioralTerminalFrom_initHistory certificate _
+      ((menu).bounded initial horizon scheduler)] at coarse
   let attach := fun readout : Option (State L setup.program.terminalCtx) =>
     (readout, exclusionReadoutUtility setup parameter utility excludedPayoff readout)
   have native : readoutExclusion setup leaks bounds initial horizon scheduler parameter utility
       excludedPayoff = attach ∘ fun final => sourceReadout setup leaks final.state := rfl
   have source : intendedReadoutExclusion setup parameter utility excludedPayoff =
       attach ∘ fun final => setup.protocolReadout final.state := rfl
-  rw [native, source, ← PMF.map_comp, ← PMF.map_comp, ← honestLaw, PMF.map_comp,
-    PMF.map_comp]
-  exact ((onePacket_bounded_withinTV_honest setup leaks bounds initial horizon scheduler
-    assessment profile nonnegative le_one dominates).map _).symm
+  have jointLaw : ((N).runBehavioral honest (2 * horizon + 1)).map
+      (readoutExclusion setup leaks bounds initial horizon scheduler parameter utility
+        excludedPayoff) =
+        (setup.intendedModel.runBehavioral intended sourceFuel).map
+          (intendedReadoutExclusion setup parameter utility excludedPayoff) := by
+    rw [native, source, ← PMF.map_comp, ← PMF.map_comp, honestLaw]
+  rw [← jointLaw]
+  exact coarse.symm
 
 end Vegas

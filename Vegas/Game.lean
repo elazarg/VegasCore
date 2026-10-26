@@ -942,3 +942,6 @@ import Vegas.Game.OnePacketHonestTerminalApproximation
 
 import Vegas.Game.StoppedHonestWeightedComparison
 import Vegas.Game.AsyncClientObservables
+import Vegas.Game.SourceTerminalReadout
+import Vegas.Game.SourceTerminalComparison
+import Vegas.Game.SourceTerminalIndifference

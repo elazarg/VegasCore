@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.OnePacketLateSuccess
+import Vegas.Game.SourceTerminalReadout
 import Vegas.Game.RevealServiceRosterContinuation
 
 /-! # Terminal source prefixes under arbitrary native continuations -/
@@ -15,38 +16,6 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-
-private theorem terminalPrefix_transition {initial : PMF (application setup leaks).State}
-    {horizon : Nat} {scheduler : (application setup leaks).Scheduler}
-    (control : (application setup leaks).Control)
-    (ordered : control.execution.application.config.cut.IsPrefix (graph setup).order.eventCount)
-    (joint : Player → Option (application setup leaks).Action)
-    {after : (application setup leaks).ProtocolState}
-    (reached : after ∈ ((application setup leaks).transition initial horizon scheduler
-      (some control) joint).support) :
-    ∃ next : (application setup leaks).Control, after = some next ∧
-      next.execution.application.config = control.execution.application.config := by
-  let app := application setup leaks
-  rcases control with ⟨remaining, actor, execution⟩
-  cases actor with
-  | some who =>
-      change after ∈ (PMF.pure _).support at reached
-      cases (PMF.mem_support_pure_iff _ _).mp reached
-      exact ⟨_, rfl, ((runtime setup).reactive_respond_application leaks execution who _).1⟩
-  | none =>
-      cases remaining with
-      | zero =>
-          change after ∈ (PMF.pure _).support at reached
-          cases (PMF.mem_support_pure_iff _ _).mp reached
-          exact ⟨_, rfl, rfl⟩
-      | succ remaining =>
-          obtain ⟨command, _, moved⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
-          obtain ⟨next, stepped, rfl⟩ := PMF.support_map .. ▸ moved
-          refine ⟨_, rfl, ?_⟩
-          rcases environmentStep_configStep setup leaks execution next command stepped with
-            same | ⟨event, ready, action, _member⟩
-          · exact same
-          · exact (ready.1 ((ordered.2 event).mpr event.isLt)).elim
 
 /-- Once every source event has completed, any finite native continuation has
 the exact source continuation readout law. No service hypothesis is required. -/
@@ -75,9 +44,13 @@ theorem terminalPrefix_readout_law [Fintype Player] (bounds : MessageBounds (gra
   have preserved := model.runBehavioralTerminalFrom_support_closed certificate players closed
     (fun before joint _legal after holds member => by
       obtain ⟨current, rfl, same⟩ := holds
-      obtain ⟨next, nextState, nextConfig⟩ := terminalPrefix_transition
-        (initial := initialLaw setup) (horizon := horizon) (scheduler := scheduler) current
-        (same.symm ▸ ordered) joint member
+      have terminal : current.execution.application.config.cut.Terminal := by
+        apply Finset.eq_univ_of_forall
+        intro event
+        exact (((same.symm ▸ ordered).2 event).mpr event.isLt)
+      obtain ⟨next, nextState, nextConfig⟩ := sourceTerminal_transition current
+        (initial := initialLaw setup) (horizon := horizon) (scheduler := scheduler)
+        terminal joint member
       exact ⟨next, nextState, nextConfig.trans same⟩)
     start ⟨control, state, rfl⟩
   have readout : ((model.runBehavioralTerminalFrom certificate players start).map

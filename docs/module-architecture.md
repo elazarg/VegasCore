@@ -434,6 +434,12 @@ directory's aggregator imports every module in it.
 
 ## Vegas/Game
 
+- [Actual completed-source signed residual and whole-policy indifference](../Vegas/Game/SourceTerminalIndifference.lean)
+
+- [Response budgets stopped at source completion](../Vegas/Game/SourceTerminalComparison.lean)
+
+- [Typed source readout stability after completion](../Vegas/Game/SourceTerminalReadout.lean)
+
 - [Client joint laws and observable probability/expectation guarantees](../Vegas/Game/AsyncClientObservables.lean)
 - [Actual public initial inputs at late-key sites](../Vegas/Game/OnePacketPublicInitialSignal.lean)
 - [Owner-prior transport within observed public fibers](../Vegas/Game/OnePacketConditionalPrior.lean)
@@ -793,6 +799,8 @@ their support arguments use the shared probability-law convergence API and
 the concrete terminal-state interpretation.
 
 ## Vegas/Examples
+
+- [Reachable native handle and observation obstruction](../Vegas/Examples/ProgramPaymentsNativeRepresentation.lean)
 
 - [An all-history physical phase service for private publication](../Vegas/Examples/SequentialPhaseService.lean)
 - [A funded raw phase equilibrium from executable payments](../Vegas/Examples/SequentialPhaseServiceEquilibrium.lean)

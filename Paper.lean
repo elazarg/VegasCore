@@ -21,6 +21,7 @@ import Vegas.Examples.ProgramPaymentsRuntime
 import Vegas.Examples.BoundedPaymentAuction
 import Vegas.Examples.SequentialPhaseServiceEquilibrium
 import VegasTests.RepeatedActivation
+import VegasTests.SourceTerminalCallbacks
 
 /-! # Paper theorems
 
@@ -3260,3 +3261,51 @@ open GameTheory.Protocol.PrivateStrategy in
 #guard_msgs (whitespace := lax) in
 open GameTheory.Protocol.PrivateStrategy in
 #print axioms expect_posterior_runBehavioral_eq_of_tensor_certificate
+
+/-- info: 'Vegas.sourceTerminal_readout_law' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas in
+#print axioms sourceTerminal_readout_law
+
+/-- info: 'Vegas.onePacket_sourceTerminal_readout_exclusion_withinTV_honest' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas in
+#print axioms onePacket_sourceTerminal_readout_exclusion_withinTV_honest
+
+/-- info: 'Vegas.onePacket_sourceTerminal_payoff_sub_le_honest' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas in
+#print axioms onePacket_sourceTerminal_payoff_sub_le_honest
+
+/-- info: 'Vegas.sourceTerminal_residual_eq_zero' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas in
+#print axioms sourceTerminal_residual_eq_zero
+
+/-- info: 'Vegas.sourceTerminal_gain_eq_zero' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas in
+#print axioms sourceTerminal_gain_eq_zero
+
+/-- info: 'Vegas.Examples.ProgramPaymentsNativeRepresentation.no_config_observation_factor' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.Examples.ProgramPaymentsNativeRepresentation in
+#print axioms no_config_observation_factor
+
+/-- info: 'Vegas.Examples.ProgramPaymentsNativeRepresentation.no_config_handle_factor' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.Examples.ProgramPaymentsNativeRepresentation in
+#print axioms no_config_handle_factor
+
+/-- info: 'VegasTests.SourceTerminalCallbacks.strict_callback_budget' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open VegasTests.SourceTerminalCallbacks in
+#print axioms strict_callback_budget
