@@ -324,6 +324,70 @@ operational and information adapters are substantial. A failed common-best
 example or a failed coupling should be reported at that exact scope. Neither
 is a refutation of the unchanged recovery theorem without independence.
 
+## Implementation backlog
+
+**Priority:** a bounded research track after the outstanding
+[source/phase operational-information and Nash port](source-phase-correspondence.md).
+The support-only extraction can run independently where its files do not overlap
+that port. Assumption weakening is not an exit criterion for
+[semantic consolidation](consolidation.md), and these proposals do not change
+the fixed asynchronous target or its checklist. Work belongs in Vegas and local
+GameTheoryExtensions; the separate GameTheory repository stays unchanged.
+
+- [ ] **Separate the support premise at actual consumers.** Identify the
+  splices used by history repairs, state exactly their required support closure
+  within public-signal fibers, and derive it from the existing independence
+  hypothesis. Generalize support-only callers such as `Vegas.drawn_splicePoint`
+  while retaining the stronger premise where prior-weight identities need it.
+  Acceptance requires an actual repaired-history consumer and a correlated,
+  rectangular-support instance that violates the independence identity.
+  The existing preservation statements must still be checked as instances.
+  This is a useful proof-interface improvement; it does not by itself weaken
+  the SE theorem's assumptions.
+
+- [ ] **Produce common near-best choices for an actual correlated runtime.**
+  Keep the existing timing key and component construction. Use a finite
+  rectangular-support prior whose correlation changes actual posteriors, with
+  competing continuation choices and nonconstant payoffs. Prove the required
+  common-best or signed-gain inequalities from the program and physical
+  service conditions, using the existing common-best and covariance APIs.
+  Account for the actual information sites, represented deviations and pooled
+  optimality; an assumed common-best hypothesis at the preservation boundary
+  is not an application. For an SE limit, any remaining error must vanish
+  uniformly where required along one common consistent assessment sequence.
+  A checked local consumer is an intermediate result, not a full preservation
+  theorem.
+
+- [ ] **Carry the weaker premises through the preserved equilibrium and law.**
+  If the local experiment succeeds, derive all remaining repair, rationality,
+  consistency and initialized-law obligations. Retain the supplied deadlines,
+  full raw-history physical service, legal whole-policy deviations, audit
+  funding, no-exit/no-charge guarantees and exact selected joint readout/payoff
+  law. Acceptance as a weakening requires both the existing independent-prior
+  theorem and a non-independent instance to follow from the resulting API.
+  Any additional program or service restriction must be explicit: a theorem
+  for a different restricted environment is a separate sufficient condition,
+  not automatically a weakening of the present theorem. A larger class is
+  established only to the extent its hypotheses have concrete producers.
+
+- [ ] **Investigate nonrectangular priors through joint-draw transport.**
+  Use a finite card deal to test whether an operational correspondence can
+  preserve the original joint draw without fixed-rest splicing. Start from
+  the existing initialization and initial-noise laws, then prove the missing
+  continuation and actual-information identities; those initial-step results
+  alone do not supply conditional beliefs at later or off-path decisions.
+  This route should follow the relevant source/phase correspondence work and
+  need not depend on success of the common-best experiment. A coupling adapter
+  or private key refinement is justified only by a concrete consumer, with
+  legal policy transport and a common consistency construction.
+
+Run each bounded experiment on its own branch. Merge a checked reusable
+improvement or a genuinely wider preservation result; otherwise document the
+precise obstruction and remove unused scaffolding. In particular, the
+opposite-optimizer diagnostic rules out that common-choice construction for
+that example, not every preserving target equilibrium. No new general pooling,
+coupling or information-compression framework is required before these tests.
+
 Bibliography entries are in `overleaf/vegas-paper.bib`:
 
 | Key | Role |

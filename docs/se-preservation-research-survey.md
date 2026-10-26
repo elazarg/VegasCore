@@ -25,7 +25,10 @@ certificates, payoff-aligned stopping, and the rejected compiled-runtime pilot.
 [Correlated initial priors](se-correlated-prior-research.md) separates the
 independence hypothesis's support and likelihood uses, identifies the existing
 common-best consumer as a weaker target, and examines joint-prior accounting,
-relation-supported couplings, and information-based alternatives.
+relation-supported couplings, and information-based alternatives. Its
+[implementation backlog](se-correlated-prior-research.md#implementation-backlog)
+orders the bounded experiments and distinguishes local proof-interface gains
+from a checked weakening of a preservation theorem.
 
 The most direct simplification opportunity is to transport only the
 continuation gains needed for rationality. Information compression supplies a

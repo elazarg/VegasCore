@@ -145,6 +145,24 @@ equilibrium of the full failure semantics are separate claims. The existing SE
 capstones start from the intended game. Defining operational exit does not by
 itself strengthen their premise to every source equilibrium.
 
+### Assumption-weakening research backlog
+
+The [correlated-prior backlog](se-correlated-prior-research.md#implementation-backlog)
+is a bounded follow-up to the operational-information correspondence and Nash
+port. Its first experiment separates support-only splicing from constant prior
+scaling, then tests whether actual correlated runtime continuations have a
+common near-best timing choice. The existing common-best and posterior-gain
+APIs supply the abstract consumers; the missing work is to produce their
+premises and retain consistency and the selected joint law.
+
+The support extraction may proceed independently without overlapping the port.
+Nonrectangular priors, including card deals, are a later joint-draw transport
+experiment that can reuse the port's operational and information results.
+Neither experiment is a prerequisite for consolidation or permission to weaken
+its retained results. A research result must retain the supplied-deadline and
+physical-service scope it claims, and distinguish a weaker prior assumption
+from an additional restriction on programs or environments.
+
 ### Truthfulness and failure
 
 In [the commit–reveal auction](../Vegas/Examples/CommitRevealAuction.lean),
