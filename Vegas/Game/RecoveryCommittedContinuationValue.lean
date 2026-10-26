@@ -119,7 +119,7 @@ theorem nativeComparison_commitment_value_affine_of_counted_service [Fintype (RP
           (sourcePointValue setup parameter utility excludedPayoff
             (setup.intendedOpeningProfile (sequence n).strategy) who) - excludedPayoff who))| ≤
       (2 * payoffBound *
-        (Fintype.card Player * (1 - slotRetention (scale n)))) *
+        (1 - slotRetention (scale n))) *
         (2 * horizon + 1) := by
   intro bounded common stopped payoff failure
   let certificate := bounded.wellFoundedHistories
@@ -314,7 +314,7 @@ theorem nativeComparison_commitment_value_affine [Fintype (RP).History]
           (sourcePointValue setup parameter utility excludedPayoff
             (setup.intendedOpeningProfile (sequence n).strategy) who) - excludedPayoff who))| ≤
       (2 * payoffBound *
-        (Fintype.card Player * (1 - slotRetention (scale n)))) *
+        (1 - slotRetention (scale n))) *
         (2 * horizon + 1) := by
   exact nativeComparison_commitment_value_affine_of_counted_service setup leaks bounds horizon
     scheduler wellFormed covers capacity sequence scale positive le_one weights n

@@ -73,7 +73,7 @@ theorem component_initialized_readout_withinTV
     {Parameter : Type} (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
     (excludedPayoff : Player → ℝ) :
-    PMF.WithinTV (2 * ((Fintype.card Player * (2 * horizon + 1) : ℕ) *
+    PMF.WithinTV (2 * ((min (Fintype.card Player) 1 * horizon : ℕ) *
       (1 - slotRetention (scale n))))
       (((model setup leaks bounds horizon scheduler).runBehavioral
         (componentStrategy setup leaks bounds horizon scheduler fallback (sequence n) (scale n)

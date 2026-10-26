@@ -77,7 +77,7 @@ theorem counted_stopped_boundary_value_sub_le
         execution.application.config)
         (fun readout =>
           exclusionReadoutUtility setup parameter utility excludedPayoff readout who)| ≤
-      (2 * payoffBound * (Fintype.card Player * (1 - retention))) *
+      (2 * payoffBound * (1 - retention)) *
         (application setup leaks).rank horizon start.state := by
   classical
   intro stopped
@@ -125,8 +125,12 @@ theorem counted_stopped_boundary_value_sub_le
       _ = _ := by rw [sourceLaw]
   change |expect _ payoff - _| ≤ _
   rw [← reference]
-  exact onePacket_stopped_expect_sub_le setup leaks bounds (initialLaw setup) horizon scheduler
+  have comparison := onePacket_stopped_expect_sub_le_remainingResponses setup leaks bounds
+    (initialLaw setup) horizon scheduler
     assessment certificate stopped profile start nonnegative le_one dominates payoff boundNonneg
       bounded
+  exact comparison.trans (mul_le_mul_of_nonneg_left
+    (by exact_mod_cast (application setup leaks).remainingResponses_le_rank horizon start.state)
+    (by positivity))
 
 end Vegas

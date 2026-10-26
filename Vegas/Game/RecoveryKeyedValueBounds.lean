@@ -75,7 +75,8 @@ theorem nativeComparison_keyed_value_sub_le_of_pending [Fintype (RP).History]
     (excludedPayoff : Player → ℝ) {payoffBound : ℝ} (boundNonneg : 0 ≤ payoffBound)
     (readoutBounded : ∀ readout,
       |exclusionReadoutUtility setup parameter utility excludedPayoff readout who| ≤ payoffBound)
-    (excludedBounded : |excludedPayoff who| ≤ payoffBound) :
+    (excludedBounded : |excludedPayoff who| ≤ payoffBound)
+    (boundaryError : ℝ) (boundaryErrorNonneg : 0 ≤ boundaryError) :
     let target := nativeComparisonSequence setup leaks bounds horizon scheduler sequence scale
       positive le_one weights n
     let common := target.strategy
@@ -90,7 +91,7 @@ theorem nativeComparison_keyed_value_sub_le_of_pending [Fintype (RP).History]
         (ProtocolState.OwesFailure who setup.program) final.state
     let payoff := fun final : (NP).History => if stopped final then excludedPayoff who else
       exclusionBase setup parameter utility excludedPayoff leaks final.state who
-    let error := (2 * payoffBound * (Fintype.card Player * (1 - slotRetention (scale n)))) *
+    let error := boundaryError *
       (2 * horizon + 1) +
       (2 * (scale n ^ 3 + (2 * horizon + 1 : ℕ) * (scale n ^ 3 + scale n ^ 3)) *
         (2 * horizon + 1) + scale n ^ 3 * (2 * horizon + 1)) * (2 * payoffBound) +
@@ -141,7 +142,7 @@ theorem nativeComparison_keyed_value_sub_le_of_pending [Fintype (RP).History]
     dsimp only [pathError]
     positivity
   have errorNonneg : 0 ≤ error := by
-    have retained := slotRetention_le_one (positive n).le (le_one n)
+    have := boundaryErrorNonneg
     have := (positive n).le
     dsimp only [error]
     positivity
@@ -308,7 +309,7 @@ theorem nativeComparison_keyed_value_sub_le [Fintype (RP).History]
         (ProtocolState.OwesFailure who setup.program) final.state
     let payoff := fun final : (NP).History => if stopped final then excludedPayoff who else
       exclusionBase setup parameter utility excludedPayoff leaks final.state who
-    let error := (2 * payoffBound * (Fintype.card Player * (1 - slotRetention (scale n)))) *
+    let error := (2 * payoffBound * (1 - slotRetention (scale n))) *
       (2 * horizon + 1) +
       (2 * (scale n ^ 3 + (2 * horizon + 1 : ℕ) * (scale n ^ 3 + scale n ^ 3)) *
         (2 * horizon + 1) + scale n ^ 3 * (2 * horizon + 1)) * (2 * payoffBound) +
@@ -328,6 +329,9 @@ theorem nativeComparison_keyed_value_sub_le [Fintype (RP).History]
     capacity sequence scale positive le_one weights n site late debtFree siteKey atSite
     unforcedMass decorrelated option parameter utility excludedPayoff boundNonneg readoutBounded
     excludedBounded
+    (2 * payoffBound * (1 - slotRetention (scale n))) (by
+      have retention := slotRetention_le_one (positive n).le (le_one n)
+      positivity)
   intro history forced
   exact nativeComparison_pending_value_affine setup leaks bounds horizon scheduler wellFormed
     covers capacity sequence scale positive le_one weights n opportunity inclusion timely completes
@@ -359,6 +363,7 @@ theorem nativeComparison_keyed_value_bounds_of_pending [Fintype (RP).History]
     (readoutBounded : ∀ who readout,
       |exclusionReadoutUtility setup parameter utility excludedPayoff readout who| ≤ payoffBound)
     (excludedBounded : ∀ who, |excludedPayoff who| ≤ payoffBound)
+    (retentionMultiplier : ℝ) (retentionMultiplierNonneg : 0 ≤ retentionMultiplier)
     (pendingValues : ∀ (n : ℕ) (who : Player) (site : (N).InformationSite who),
       LateDelivery setup leaks who site.1 →
       SiteDebtFree setup leaks bounds horizon (NativeScheduler) site →
@@ -381,7 +386,7 @@ theorem nativeComparison_keyed_value_bounds_of_pending [Fintype (RP).History]
           (ProtocolState.OwesFailure who setup.program) final.state
       let payoff := fun final : (NP).History => if stopped final then excludedPayoff who else
         exclusionBase setup parameter utility excludedPayoff leaks final.state who
-      let error := (2 * payoffBound * (Fintype.card Player * (1 - slotRetention (scale n)))) *
+      let error := (2 * payoffBound * (retentionMultiplier * (1 - slotRetention (scale n)))) *
         (2 * horizon + 1) +
         (2 * (scale n ^ 3 + (2 * horizon + 1 : ℕ) * (scale n ^ 3 + scale n ^ 3)) *
           (2 * horizon + 1) + scale n ^ 3 * (2 * horizon + 1)) * (2 * payoffBound) +
@@ -455,8 +460,8 @@ theorem nativeComparison_keyed_value_bounds_of_pending [Fintype (RP).History]
       slots_pos weights
   let depth : ℝ := 2 * horizon + 1
   let path := fun n => depth * (inputs.scale n ^ 3 + inputs.scale n ^ 3)
-  let row := fun n => (2 * payoffBound * (Fintype.card Player *
-      (1 - slotRetention (inputs.scale n)))) * depth +
+  let row := fun n =>
+    (2 * payoffBound * (retentionMultiplier * (1 - slotRetention (inputs.scale n)))) * depth +
     (2 * (inputs.scale n ^ 3 + path n) * depth + inputs.scale n ^ 3 * depth) * (2 * payoffBound) +
       2 * payoffBound * (inputs.scale n ^ 3 * depth)
   let error := fun n => row n + 2 * payoffBound * |unforced n| +
@@ -468,7 +473,7 @@ theorem nativeComparison_keyed_value_bounds_of_pending [Fintype (RP).History]
   have pathLimit : Tendsto path atTop (nhds 0) := by
     simpa [path] using (cube.add cube).const_mul depth
   have rowLimit : Tendsto row atTop (nhds 0) := by
-    have first := (retention.const_mul (2 * payoffBound * Fintype.card Player)).mul_const depth
+    have first := (retention.const_mul (2 * payoffBound * retentionMultiplier)).mul_const depth
     have second := ((((cube.add pathLimit).const_mul 2).mul_const depth).add
       (cube.mul_const depth)).mul_const (2 * payoffBound)
     have third := (cube.mul_const depth).const_mul (2 * payoffBound)
@@ -487,6 +492,9 @@ theorem nativeComparison_keyed_value_bounds_of_pending [Fintype (RP).History]
     atSite ((unforcedBound n who site notFree notOwing keyed).trans (le_abs_self _))
     ((decorrelated n who site notFree notOwing keyed).mono (le_abs_self _)) option parameter utility
     excludedPayoff boundNonneg (readoutBounded who) (excludedBounded who)
+    (2 * payoffBound * (retentionMultiplier * (1 - slotRetention (inputs.scale n)))) (by
+      have retention := slotRetention_le_one (positive n).le (le_one n)
+      positivity)
     (pendingValues n who site keyed.1 debtFree key siteKey event pending past view atSite option)
   let failure := localFailure (2 * horizon + 1) targetAt site
     {final | DecisionFailed key final.state} law
@@ -585,13 +593,17 @@ theorem nativeComparison_keyed_value_bounds [Fintype (RP).History]
   apply nativeComparison_keyed_value_bounds_of_pending setup leaks bounds horizon scheduler
     wellFormed independent observable sequence sourceMixed scale positive le_one scaleEq covers
     coversInputs capacity slots_pos weights parameter utility excludedPayoff payoffBound boundNonneg
-    readoutBounded excludedBounded
+    readoutBounded excludedBounded 1 (by norm_num)
   intro n who site late debtFree key siteKey event pending past view atSite option
     target common certificate law installed stopped payoff error history forced
-  exact nativeComparison_pending_value_affine setup leaks bounds horizon scheduler wellFormed
-    covers capacity sequence scale positive le_one weights n opportunity inclusion timely completes
-    site (Or.inl late) debtFree siteKey pending atSite law history forced (Or.inl ⟨option, rfl⟩)
-    parameter utility excludedPayoff boundNonneg (readoutBounded who) (excludedBounded who)
+  refine (nativeComparison_pending_value_affine setup leaks bounds horizon scheduler wellFormed
+      covers capacity sequence scale positive le_one weights n opportunity inclusion
+      timely completes site (Or.inl late) debtFree siteKey pending atSite law history forced
+      (Or.inl ⟨option, rfl⟩)
+      parameter utility excludedPayoff boundNonneg (readoutBounded who)
+      (excludedBounded who)).trans ?_
+  dsimp only [error]
+  simp only [one_mul, le_refl]
 
 open Classical in
 private theorem recovery_keyed_value_bounds_at_site [Fintype (RP).History]

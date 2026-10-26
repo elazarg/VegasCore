@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheoryExtensions.Analysis.Protocol.StoppedExitBound
+import GameTheoryExtensions.Analysis.Protocol.StoppedTerminalBound
 import GameTheoryExtensions.Math.Probability.TotalVariation
 import GameTheoryExtensions.Math.Probability.ExpectationContraction
 
@@ -135,6 +135,58 @@ theorem abs_expect_runBehavioralUntil_sub_le_of_stepTV_potential
       have := abs_le.mp (bounded next)
       constructor <;> linarith)
   nlinarith [stepBound]
+
+/-- An interval of width `width` incurs `width` times the local TV error.
+Centering the payoff preserves the difference of the stopped expectations. -/
+theorem abs_expect_runBehavioralUntil_sub_le_of_stepTV_interval_potential
+    (certificate : E.WellFoundedHistories)
+    (source target : ∀ who, M.BehavioralPolicy who) (stopped inside : E.History → Prop)
+    (payoff : E.History → ℝ) {low width : ℝ} (widthNonneg : 0 ≤ width)
+    (payoffBounded : ∀ history, low ≤ payoff history ∧ payoff history ≤ low + width)
+    (error potential : E.History → ℝ)
+    (nonnegative : ∀ history, inside history → 0 ≤ potential history)
+    (closed : ∀ history next, inside history → ¬ stopped history →
+      ¬ E.terminal history.state → next ∈ (M.runBehavioralFrom source 1 history).support →
+      inside next)
+    (integrable : ∀ history, inside history → ¬ stopped history →
+      ¬ E.terminal history.state →
+      PayoffIntegrable (M.runBehavioralFrom source 1 history) potential)
+    (pays : ∀ history, inside history → ¬ stopped history → ¬ E.terminal history.state →
+      width * error history + expect (M.runBehavioralFrom source 1 history) potential ≤
+        potential history)
+    (close : ∀ history, inside history → ¬ stopped history → ¬ E.terminal history.state →
+      PMF.WithinTV (error history) (M.runBehavioralFrom source 1 history)
+        (M.runBehavioralFrom target 1 history)) :
+    ∀ start, inside start →
+      |expect (M.runBehavioralUntil certificate source stopped start) payoff -
+        expect (M.runBehavioralUntil certificate target stopped start) payoff| ≤
+        potential start := by
+  let center := low + width / 2
+  have centered : ∀ history, |payoff history - center| ≤ width / 2 := by
+    intro history
+    obtain ⟨lower, upper⟩ := payoffBounded history
+    dsimp only [center]
+    exact abs_le.mpr ⟨by linarith, by linarith⟩
+  have originalIntegrable (law : PMF E.History) : PayoffIntegrable law payoff := by
+    apply payoffIntegrable_of_bounded law _ (C := width / 2 + |center|)
+    intro history
+    calc |payoff history| = |payoff history - center + center| := by congr 1; ring
+      _ ≤ |payoff history - center| + |center| := abs_add_le _ _
+      _ ≤ width / 2 + |center| := add_le_add (centered history) le_rfl
+  have factor : 2 * (width / 2) = width := by ring
+  have comparison := M.abs_expect_runBehavioralUntil_sub_le_of_stepTV_potential certificate
+    source target stopped inside (fun history => payoff history - center)
+    (by positivity) centered error potential nonnegative closed integrable
+    (fun history holds halt ended => by
+      simpa only [factor] using pays history holds halt ended) close
+  intro start holds
+  have estimate := comparison start holds
+  rw [expect_sub (originalIntegrable _) (payoffIntegrable_constant _ _),
+    expect_sub (originalIntegrable _) (payoffIntegrable_constant _ _),
+    expect_constant, expect_constant] at estimate
+  convert estimate using 1
+  congr 1
+  ring
 
 /-- One-step total variation errors accumulate only along reference continuations. -/
 theorem abs_expect_runBehavioralUntil_sub_le_of_stepTV

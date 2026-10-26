@@ -117,7 +117,7 @@ theorem nativeComparison_intendedCommitment_gain_bounds_of_counted_service [Fint
     covers coversInputs capacity weights
   let retentionError := fun n => 1 - slotRetention (scale n)
   let error := fun n =>
-    (2 * ((2 * payoffBound * (Fintype.card Player * retentionError n))) *
+    (2 * ((2 * payoffBound * retentionError n)) *
       (2 * horizon + 1) + 2 * payoffBound * retentionError n) +
     4 * payoffBound * drift n + 2 * payoffBound * distance n
   have scaleLimit : Tendsto scale atTop (nhds 0) := by
@@ -132,8 +132,7 @@ theorem nativeComparison_intendedCommitment_gain_bounds_of_counted_service [Fint
     simpa only [retentionError, sub_self] using
       (tendsto_const_nhds (x := (1 : ℝ))).sub (tendsto_slotRetention scaleLimit)
   have errorLimit : Tendsto error atTop (nhds 0) := by
-    have first := ((retentionLimit.const_mul (Fintype.card Player : ℝ)).const_mul
-      (2 * payoffBound)).const_mul 2
+    have first := (retentionLimit.const_mul (2 * payoffBound)).const_mul 2
     have limit := ((first.mul_const (2 * horizon + 1 : ℝ)).add
       (retentionLimit.const_mul (2 * payoffBound))).add
       (driftLimit.const_mul (4 * payoffBound))
@@ -199,7 +198,7 @@ theorem nativeComparison_intendedCommitment_gain_bounds_of_counted_service [Fint
         if RegularTrace setup leaks bounds horizon (NativeScheduler) (sequence n) who
           history.1.trace then (0 : ℝ) else 1)
   have compared : nativeGain ≤ replayedMean +
-      (2 * ((2 * payoffBound * (Fintype.card Player * (1 - slotRetention (scale n)))) *
+      (2 * ((2 * payoffBound * (1 - slotRetention (scale n))) *
         (2 * horizon + 1)) + 2 * payoffBound * (1 - slotRetention (scale n))) +
       4 * payoffBound * irregularMass := averaged
   have transferred : replayedMean - sourceMean ≤ 2 * payoffBound * distance n :=

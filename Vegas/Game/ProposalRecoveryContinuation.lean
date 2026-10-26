@@ -99,27 +99,7 @@ theorem proposalRecovery_runUntil_erased_eq
   · intro left right equal _going running
     exact setup.oneStep_coupled profile normalized left right equal running
 
-private theorem terminal_eq_until
-    (certificate : setup.proposalRecoveryProtocol.WellFoundedHistories)
-    (profile : ∀ who, setup.proposalRecoveryModel.BehavioralPolicy who)
-    (history : setup.proposalRecoveryProtocol.History) :
-    setup.proposalRecoveryModel.runBehavioralTerminalFrom certificate profile history =
-      setup.proposalRecoveryModel.runBehavioralUntil certificate profile (fun _ => False)
-        history := by
-  rw [setup.proposalRecoveryModel.runBehavioralTerminalFrom_eq_bind_runBehavioralUntil certificate
-    profile (fun _ => False)]
-  calc
-    _ = (setup.proposalRecoveryModel.runBehavioralUntil certificate profile (fun _ => False)
-        history).bind PMF.pure := by
-      apply bind_congr_on_support
-      intro final supported
-      have ended := setup.proposalRecoveryModel.mem_support_runBehavioralUntil certificate profile
-        (fun _ => False) history final supported
-      exact setup.proposalRecoveryProtocol.randomizedBackwardLaw_of_terminal
-        (ended.resolve_left (fun impossible => impossible))
-    _ = _ := PMF.bind_pure _
-
-/-- The full terminal semantic state, old erased information and all actual
+/-- The full terminal semantic state, erased information and all actual
 proposal deltas have the same joint law under the selected prescription. -/
 theorem proposalRecovery_terminal_erased_eq
     (profile : ∀ who, setup.proposalRecoveryModel.BehavioralPolicy who)
@@ -136,6 +116,7 @@ theorem proposalRecovery_terminal_erased_eq
         setup.proposalRecoveryErasedHistory := by
   have law := setup.proposalRecovery_runUntil_erased_eq profile normalized certificate
     (fun _ => False) first second same
-  simpa only [Function.comp_def, ← setup.terminal_eq_until] using law
+  simpa only [Function.comp_def,
+    ← setup.proposalRecoveryModel.runBehavioralTerminalFrom_eq_until_false] using law
 
 end Vegas.SourceProgram.Setup

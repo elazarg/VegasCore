@@ -112,7 +112,7 @@ theorem nativeComparison_pending_value_affine
           excludedPayoff (setup.intendedOpeningProfile (sequence n).strategy) who
           (siteRank site.1) history.1 +
         failure * excludedPayoff who)| ≤
-      (2 * payoffBound * (Fintype.card Player * (1 - slotRetention (scale n)))) *
+      (2 * payoffBound * (1 - slotRetention (scale n))) *
         (2 * horizon + 1) +
       (2 * (scale n ^ 3 + (2 * horizon + 1 : ℕ) * (scale n ^ 3 + scale n ^ 3)) *
         (2 * horizon + 1) + scale n ^ 3 * (2 * horizon + 1)) * (2 * payoffBound) +
@@ -128,6 +128,9 @@ theorem nativeComparison_pending_value_affine
       bounds horizon scheduler completes trace clear ended)
     site pendingSite debtFree siteKey pending atSite law history forced lawShape parameter utility
     excludedPayoff boundNonneg readoutBounded excludedBounded
+    (2 * payoffBound * (1 - slotRetention (scale n))) (by
+      have retention := slotRetention_le_one (positive n).le (le_one n)
+      positivity)
   intro nextRank start anchor state boundary target atRank targetIntended
   exact nativeComparison_stopped_boundary_value_sub_le setup leaks bounds horizon scheduler
     opportunity inclusion timely completes wellFormed covers capacity sequence scale positive le_one

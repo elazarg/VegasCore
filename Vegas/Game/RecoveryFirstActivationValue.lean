@@ -86,7 +86,7 @@ theorem nativeComparison_firstActivation_value_lower_of_counted_service [Fintype
           le_one weights n) stopped history)
         (fun final => if stopped final then excludedPayoff who else
           exclusionBase setup parameter utility excludedPayoff leaks final.state who) ≤
-      (2 * payoffBound * (Fintype.card Player * (1 - slotRetention (scale n)))) *
+      (2 * payoffBound * (1 - slotRetention (scale n))) *
         (2 * horizon + 1) + 2 * payoffBound * (1 - slotRetention (scale n)) := by
   intro stopped
   let common := nativeComparisonStrategy setup leaks bounds horizon scheduler sequence scale
@@ -106,7 +106,7 @@ theorem nativeComparison_firstActivation_value_lower_of_counted_service [Fintype
   let value := fun final : (NP).History => (nativeDecodedState setup leaks final.state).elim 0
     (sourcePointValue setup parameter utility excludedPayoff
       (setup.intendedOpeningProfile (sequence n).strategy) who)
-  let error := (2 * payoffBound * (Fintype.card Player * (1 - slotRetention (scale n)))) *
+  let error := (2 * payoffBound * (1 - slotRetention (scale n))) *
     (2 * horizon + 1)
   have payoffBounded : ∀ final, |payoff final| ≤ payoffBound := by
     intro final
@@ -297,7 +297,7 @@ theorem nativeComparison_firstActivation_value_lower [Fintype (RP).History]
           le_one weights n) stopped history)
         (fun final => if stopped final then excludedPayoff who else
           exclusionBase setup parameter utility excludedPayoff leaks final.state who) ≤
-      (2 * payoffBound * (Fintype.card Player * (1 - slotRetention (scale n)))) *
+      (2 * payoffBound * (1 - slotRetention (scale n))) *
         (2 * horizon + 1) + 2 * payoffBound * (1 - slotRetention (scale n)) := by
   exact nativeComparison_firstActivation_value_lower_of_counted_service setup leaks bounds
     horizon scheduler wellFormed covers capacity sequence scale positive le_one weights n

@@ -4,6 +4,7 @@ import Vegas.Game.RecoveryInitializedCounted
 import Vegas.Game.SequentialPhaseHonestLaw
 import Vegas.Game.SequentialPhaseNativeService
 import Vegas.Game.SequentialPhaseNativeComparison
+import Vegas.Game.OnePacketHonestTerminalApproximation
 
 /-! # Initialized native projections of actual phase comparison mixtures -/
 
@@ -105,7 +106,7 @@ theorem component_projection_initialized_failure_mass_le
         (positive n).le (le_one n) (weights n))) (2 * horizon + 1)).toOuterMeasure
       {history | ¬ ReactiveApplication.stateInvariant (app := application setup (RecoveryLeaks))
         (fun state => ExclusionEvidence 0 ∅ (RecoveryState.mk state ∅)) history.state}).toReal ≤
-      (Fintype.card Player * (2 * horizon + 1) : ℕ) * (1 - slotRetention (scale n)) := by
+      (min (Fintype.card Player) 1 * horizon : ℕ) * (1 - slotRetention (scale n)) := by
   exact RecoveryOnePacket.sourceNativeProfile_initialized_failure_mass_le_of_counted_service
     setup (RecoveryLeaks) bounds horizon (RecoveryScheduler)
     wellFormed covers capacity sequence scale positive le_one
@@ -132,7 +133,7 @@ theorem component_projection_initialized_readout_withinTV
     {Parameter : Type} (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
     (excludedPayoff : Player → ℝ) :
-    PMF.WithinTV ((Fintype.card Player * (2 * horizon + 1) : ℕ) *
+    PMF.WithinTV ((min (Fintype.card Player) 1 * horizon : ℕ) *
       (1 - slotRetention (scale n)))
       (((N).runBehavioral (RecoveryOnePacket.sourceNativeProfile setup (RecoveryLeaks) bounds
         horizon (RecoveryScheduler)
@@ -153,9 +154,10 @@ theorem component_projection_initialized_readout_withinTV
       (sequence n))
     ((bounds.onePacketMenu (runtime setup) (RecoveryLeaks)).bounded (Vegas.initialLaw setup) horizon
       (nativeScheduler))] at honestLaw
-  exact onePacket_readout_exclusion_withinTV setup (RecoveryLeaks) bounds (Vegas.initialLaw setup)
+  exact onePacket_bounded_readout_exclusion_withinTV setup (RecoveryLeaks) bounds
+    (Vegas.initialLaw setup)
     horizon (nativeScheduler) parameter utility excludedPayoff (sequence n) (sequence n).strategy
-    (instructionCount setup.program + 1) (2 * horizon + 1) honestLaw
+    (instructionCount setup.program + 1) honestLaw
     (slotRetention_nonneg (positive n).le (le_one n))
     (slotRetention_le_one (positive n).le (le_one n)) _
     (component_projection_dominates_honest_initialized setup leaks bounds horizon scheduler

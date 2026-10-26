@@ -70,7 +70,8 @@ theorem nativeComparison_pending_value_affine_of_boundary_values [Fintype (RP).H
     (excludedPayoff : Player → ℝ) {payoffBound : ℝ} (boundNonneg : 0 ≤ payoffBound)
     (readoutBounded : ∀ readout,
       |exclusionReadoutUtility setup parameter utility excludedPayoff readout who| ≤ payoffBound)
-    (excludedBounded : |excludedPayoff who| ≤ payoffBound) :
+    (excludedBounded : |excludedPayoff who| ≤ payoffBound)
+    (boundaryError : ℝ) (boundaryErrorNonneg : 0 ≤ boundaryError) :
     let common := nativeComparisonStrategy setup leaks bounds horizon scheduler sequence scale
       positive le_one weights n
     let certificate := ((Menu).bounded (initialLaw setup) horizon
@@ -100,7 +101,7 @@ theorem nativeComparison_pending_value_affine_of_boundary_values [Fintype (RP).H
             exclusionBase setup parameter utility excludedPayoff leaks final.state who) -
         sourcePointValue setup parameter utility excludedPayoff
           (setup.intendedOpeningProfile (sequence n).strategy) who point| ≤
-        (2 * payoffBound * (Fintype.card Player * (1 - slotRetention (scale n)))) *
+        boundaryError *
           (application setup leaks).rank horizon start.state) →
     |expect ((N).runBehavioralUntil certificate installed stopped history.1) payoff -
       ((1 - failure) *
@@ -108,7 +109,7 @@ theorem nativeComparison_pending_value_affine_of_boundary_values [Fintype (RP).H
           excludedPayoff (setup.intendedOpeningProfile (sequence n).strategy) who
           (siteRank site.1) history.1 +
         failure * excludedPayoff who)| ≤
-      (2 * payoffBound * (Fintype.card Player * (1 - slotRetention (scale n)))) *
+      boundaryError *
         (2 * horizon + 1) +
       (2 * (scale n ^ 3 + (2 * horizon + 1 : ℕ) * (scale n ^ 3 + scale n ^ 3)) *
         (2 * horizon + 1) + scale n ^ 3 * (2 * horizon + 1)) * (2 * payoffBound) +
@@ -143,6 +144,7 @@ theorem nativeComparison_pending_value_affine_of_boundary_values [Fintype (RP).H
     bounds horizon scheduler sequence scale positive le_one weights n terminalCompletes certificate
     who site.1 law history.1 current history.2 event ready owned key decided ordered point decoded
     intendedPoint parameter utility excludedPayoff boundNonneg readoutBounded excludedBounded
+    boundaryError boundaryErrorNonneg
     boundaryValues
   dsimp only at tail
   have freshEq : siteFresh who site.1 = fun control : (application setup leaks).Control =>
@@ -235,7 +237,7 @@ theorem nativeComparison_pending_value_affine [Fintype (RP).History]
           excludedPayoff (setup.intendedOpeningProfile (sequence n).strategy) who
           (siteRank site.1) history.1 +
         failure * excludedPayoff who)| ≤
-      (2 * payoffBound * (Fintype.card Player * (1 - slotRetention (scale n)))) *
+      (2 * payoffBound * (1 - slotRetention (scale n))) *
         (2 * horizon + 1) +
       (2 * (scale n ^ 3 + (2 * horizon + 1 : ℕ) * (scale n ^ 3 + scale n ^ 3)) *
         (2 * horizon + 1) + scale n ^ 3 * (2 * horizon + 1)) * (2 * payoffBound) +
@@ -248,6 +250,9 @@ theorem nativeComparison_pending_value_affine [Fintype (RP).History]
       (initialLaw_native setup) completes)
     site pendingSite debtFree siteKey pending atSite law history forced lawShape parameter utility
     excludedPayoff boundNonneg readoutBounded excludedBounded
+    (2 * payoffBound * (1 - slotRetention (scale n))) (by
+      have retention := slotRetention_le_one (positive n).le (le_one n)
+      positivity)
   intro nextRank start anchor state boundary target atRank targetIntended
   exact nativeComparison_stopped_boundary_value_sub_le setup leaks bounds horizon scheduler
     wellFormed covers capacity sequence scale positive le_one weights n opportunity inclusion timely

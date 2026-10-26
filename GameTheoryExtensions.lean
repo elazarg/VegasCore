@@ -90,3 +90,5 @@ import GameTheoryExtensions.Math.Probability.KernelPosteriorGain
 import GameTheoryExtensions.Math.Probability.ObservableMoments
 
 import GameTheoryExtensions.Analysis.PublicRandomization
+
+import GameTheoryExtensions.Analysis.Protocol.StoppedCharge

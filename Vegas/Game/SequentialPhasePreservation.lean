@@ -175,7 +175,7 @@ theorem intended_sequentialEquilibrium_preserved
                 final.state)
   let payoff := fun outcome : Option (State L setup.program.terminalCtx) × (Player → ℝ) =>
     fun who => outcome.2 who
-  let budget : ℝ := (Fintype.card Player * (2 * horizon + 1) : ℕ)
+  let budget : ℝ := (min (Fintype.card Player) 1 * horizon : ℕ)
   let lawError : ℕ → ℝ := fun n => 2 * (budget * (1 - slotRetention (scale n)))
   have lawVanishes : Tendsto lawError atTop (nhds 0) := by
     have retained := tendsto_slotRetention vanishes

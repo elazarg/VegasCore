@@ -120,7 +120,7 @@ theorem nativeComparison_nonlate_pending_comparisons_of_counted_service [Fintype
     le_one scaleEq
     covers coversInputs capacity weights
   let rowError := fun n =>
-    2 * ((2 * payoffBound * (Fintype.card Player * (1 - slotRetention (scale n)))) *
+    2 * ((2 * payoffBound * (1 - slotRetention (scale n))) *
       (2 * horizon + 1)) + 2 * payoffBound * (1 - slotRetention (scale n)) +
     2 * payoffBound * (scale n ^ 3 * (2 * horizon + 1)) +
     (2 * (scale n ^ 3 + (2 * horizon + 1 : ℕ) * (scale n ^ 3 + scale n ^ 3)) *
@@ -140,8 +140,8 @@ theorem nativeComparison_nonlate_pending_comparisons_of_counted_service [Fintype
   have cubeLimit : Tendsto (fun n => scale n ^ 3) atTop (nhds 0) := by
     simpa using scaleLimit.pow 3
   have rowLimit : Tendsto rowError atTop (nhds 0) := by
-    have first := (((retentionLimit.const_mul (Fintype.card Player : ℝ)).const_mul
-      (2 * payoffBound)).mul_const (2 * horizon + 1 : ℝ)).const_mul 2
+    have first := ((retentionLimit.const_mul (2 * payoffBound)).mul_const
+      (2 * horizon + 1 : ℝ)).const_mul 2
     have physical := (((cubeLimit.add ((cubeLimit.add cubeLimit).const_mul
       (2 * horizon + 1 : ℝ))).const_mul 2).mul_const (2 * horizon + 1 : ℝ)).add
       (cubeLimit.mul_const (2 * horizon + 1 : ℝ))
@@ -224,7 +224,7 @@ theorem nativeComparison_nonlate_pending_comparisons_of_counted_service [Fintype
             dsimp only [rowError]
             exact near.trans (by
               have retained : 0 ≤ 2 * payoffBound *
-                  (Fintype.card Player * (1 - slotRetention (scale n))) *
+                  (1 - slotRetention (scale n)) *
                   (2 * horizon + 1) := by positivity
               have extra : 0 ≤ 2 * payoffBound * (scale n ^ 3 * (2 * horizon + 1)) +
                   (2 * (scale n ^ 3 + (2 * horizon + 1 : ℕ) * (scale n ^ 3 + scale n ^ 3)) *

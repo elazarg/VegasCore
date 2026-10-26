@@ -65,6 +65,7 @@ theorem nativeComparison_local_completion_value_sub_le_of_boundary_values [Finty
     (readoutBounded : ∀ readout,
       |exclusionReadoutUtility setup parameter utility excludedPayoff readout who| ≤ payoffBound)
     (excludedBounded : |excludedPayoff who| ≤ payoffBound)
+    (boundaryError : ℝ) (boundaryErrorNonneg : 0 ≤ boundaryError)
     (boundaryValues : ∀ (nextRank : Nat) (start : (NP).History)
       (anchor : (application setup leaks).Execution),
       start.state = some ⟨horizon - anchor.environmentRecall.length, none, anchor⟩ →
@@ -82,7 +83,7 @@ theorem nativeComparison_local_completion_value_sub_le_of_boundary_values [Finty
             exclusionBase setup parameter utility excludedPayoff leaks final.state who) -
         sourcePointValue setup parameter utility excludedPayoff
           (setup.intendedOpeningProfile (sequence n).strategy) who point| ≤
-        (2 * payoffBound * (Fintype.card Player * (1 - slotRetention (scale n)))) *
+        boundaryError *
           (application setup leaks).rank horizon start.state) :
     let common := nativeComparisonStrategy setup leaks bounds horizon scheduler sequence scale
       positive le_one weights n
@@ -102,7 +103,7 @@ theorem nativeComparison_local_completion_value_sub_le_of_boundary_values [Finty
       expect phaseLaw (completionValue setup leaks bounds horizon (NativeScheduler) parameter
         utility excludedPayoff (setup.intendedOpeningProfile (sequence n).strategy) rank fresh who
         (fun _ => excludedPayoff who))| ≤
-      (2 * payoffBound * (Fintype.card Player * (1 - slotRetention (scale n)))) *
+      boundaryError *
         (2 * horizon + 1) +
       2 * payoffBound * expect phaseLaw
         (lateBadStop setup leaks bounds horizon (NativeScheduler) rank fresh event) := by
@@ -123,6 +124,7 @@ theorem nativeComparison_local_completion_value_sub_le_of_boundary_values [Finty
     bounds horizon scheduler sequence scale positive le_one weights n terminalCompletes certificate
     who info law history current observed event ready owned key decided ordered point decoded
     intended parameter utility excludedPayoff boundNonneg readoutBounded excludedBounded
+    boundaryError boundaryErrorNonneg
     boundaryValues
   rw [evaluated]
   dsimp only at comparison
@@ -183,7 +185,7 @@ theorem nativeComparison_local_completion_value_sub_le [Fintype (RP).History]
       expect phaseLaw (completionValue setup leaks bounds horizon (NativeScheduler) parameter
         utility excludedPayoff (setup.intendedOpeningProfile (sequence n).strategy) rank fresh who
         (fun _ => excludedPayoff who))| ≤
-      (2 * payoffBound * (Fintype.card Player * (1 - slotRetention (scale n)))) *
+      (2 * payoffBound * (1 - slotRetention (scale n))) *
         (2 * horizon + 1) +
       2 * payoffBound * expect phaseLaw
         (lateBadStop setup leaks bounds horizon (NativeScheduler) rank fresh event) := by
@@ -193,6 +195,9 @@ theorem nativeComparison_local_completion_value_sub_le [Fintype (RP).History]
       (initialLaw_native setup) completes)
     certificate who info law history current observed event ready owned key decided ordered point
     decoded intended parameter utility excludedPayoff boundNonneg readoutBounded excludedBounded
+    (2 * payoffBound * (1 - slotRetention (scale n))) (by
+      have retention := slotRetention_le_one (positive n).le (le_one n)
+      positivity)
   intro nextRank start anchor state boundary target atRank targetIntended
   exact nativeComparison_stopped_boundary_value_sub_le setup leaks bounds horizon scheduler
     wellFormed covers capacity sequence scale positive le_one weights n opportunity inclusion timely

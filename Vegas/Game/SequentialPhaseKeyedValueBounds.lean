@@ -125,12 +125,15 @@ theorem nativeComparison_keyed_value_bounds [Finite setup.intendedProtocol.Histo
     horizon (recoveryScheduler setup leaks scheduler) wellFormed independent observable sequence
     sourceMixed scale positive le_one scaleEq covers coversInputs capacity slots_pos
     (fun n => recoveryComparisonWeights setup leaks bounds horizon scheduler (weights n)) parameter
-    utility excludedPayoff payoffBound boundNonneg readoutBounded excludedBounded
+    utility excludedPayoff payoffBound boundNonneg readoutBounded excludedBounded 1 (by norm_num)
   intro n who site late debtFree key siteKey event pending past view atSite option
     target common certificate law installed stopped payoff error history forced
-  exact nativeComparison_pending_value_affine setup leaks bounds horizon scheduler opportunity
+  refine (nativeComparison_pending_value_affine setup leaks bounds horizon scheduler opportunity
     inclusion timely completes wellFormed covers capacity sequence scale positive le_one weights n
     site (Or.inl late) debtFree siteKey pending atSite law history forced (Or.inl ⟨option, rfl⟩)
-    parameter utility excludedPayoff boundNonneg (readoutBounded who) (excludedBounded who)
+    parameter utility excludedPayoff boundNonneg (readoutBounded who)
+    (excludedBounded who)).trans ?_
+  dsimp only [error]
+  simp only [one_mul, le_refl]
 
 end Vegas.SequentialPhase

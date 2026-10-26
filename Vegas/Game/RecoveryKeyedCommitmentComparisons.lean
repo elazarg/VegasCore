@@ -172,7 +172,7 @@ theorem nativeComparison_keyed_commitment_comparisons_of_counted_service [Fintyp
   let depth : ℝ := 2 * horizon + 1
   let path := fun n => depth * (inputs.scale n ^ 3 + inputs.scale n ^ 3)
   let retention := fun n =>
-    (2 * payoffBound * (Fintype.card Player * (1 - slotRetention (inputs.scale n)))) * depth
+    (2 * payoffBound * (1 - slotRetention (inputs.scale n))) * depth
   let optionError := fun n => retention n +
     (2 * (inputs.scale n ^ 3 + path n) * depth + inputs.scale n ^ 3 * depth) * (2 * payoffBound) +
       2 * payoffBound * (inputs.scale n ^ 3 * depth)
@@ -192,7 +192,7 @@ theorem nativeComparison_keyed_commitment_comparisons_of_counted_service [Fintyp
     simpa [path] using (cube.add cube).const_mul depth
   have retentionLimit : Tendsto retention atTop (nhds 0) := by
     simpa [retention, mul_assoc] using
-      ((retained.const_mul (2 * payoffBound * Fintype.card Player)).mul_const depth)
+      ((retained.const_mul (2 * payoffBound)).mul_const depth)
   have optionLimit : Tendsto optionError atTop (nhds 0) := by
     have second := ((((cube.add pathLimit).const_mul 2).mul_const depth).add
       (cube.mul_const depth)).mul_const (2 * payoffBound)

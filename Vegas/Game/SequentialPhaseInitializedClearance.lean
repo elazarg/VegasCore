@@ -94,7 +94,7 @@ theorem component_initialized_exclusion_mass_le
       (componentStrategy setup leaks bounds horizon scheduler fallback (sequence n) (scale n)
         (positive n).le (le_one n) (weights n)) (2 * horizon + 1)).map
         (fun final => exclusionFlag setup leaks final.state)) true).toReal) ≤
-      (Fintype.card Player * (2 * horizon + 1) : ℕ) * (1 - slotRetention (scale n)) := by
+      (min (Fintype.card Player) 1 * horizon : ℕ) * (1 - slotRetention (scale n)) := by
   classical
   have coupling := component_initialized_projection_withinTV setup leaks bounds horizon scheduler
     fallback (sequence n) (scale n) (positive n).le (le_one n) (weights n) (fun _ => false)
@@ -128,7 +128,7 @@ theorem initialized_limit_no_exclusion
       ∀ control, final.state = some control → control.execution.application.current.excluded = ∅ :=
         by
   classical
-  let budget : ℝ := (Fintype.card Player * (2 * horizon + 1) : ℕ)
+  let budget : ℝ := (min (Fintype.card Player) 1 * horizon : ℕ)
   have approximation (n : ℕ) :
       (((((M).runBehavioral (assessments n).strategy (2 * horizon + 1)).map
         (fun final => exclusionFlag setup leaks final.state)) true).toReal) ≤

@@ -19,6 +19,7 @@ import Vegas.Examples.ProgramPayments
 import Vegas.Examples.ProgramPaymentsRuntime
 import Vegas.Examples.BoundedPaymentAuction
 import Vegas.Examples.SequentialPhaseServiceEquilibrium
+import VegasTests.RepeatedActivation
 
 /-! # Paper theorems
 
@@ -2782,3 +2783,273 @@ open GameTheory.GameForm in
 #guard_msgs (whitespace := lax) in
 open GameTheory.GameForm in
 #print axioms isNash_ignorePublicSignal_iff
+
+/-- info: 'GameTheory.Protocol.ExecutionProtocol.trace_length_le' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open GameTheory.Protocol.ExecutionProtocol in
+#print axioms trace_length_le
+
+/-- info: 'GameTheory.Protocol.ExecutionProtocol.cumulative_bounds' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open GameTheory.Protocol.ExecutionProtocol in
+#print axioms cumulative_bounds
+
+/-- info: 'GameTheory.Protocol.ExecutionProtocol.cumulative_mono' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open GameTheory.Protocol.ExecutionProtocol in
+#print axioms cumulative_mono
+
+/-- info: 'GameTheory.Protocol.ExecutionProtocol.cumulative_integrable' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open GameTheory.Protocol.ExecutionProtocol in
+#print axioms cumulative_integrable
+
+/-- info: 'GameTheory.Protocol.InformationModel.expectedCharge_bounds' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open GameTheory.Protocol.InformationModel in
+#print axioms expectedCharge_bounds
+
+/-- info: 'GameTheory.Protocol.InformationModel.expectedCharge_integrable' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open GameTheory.Protocol.InformationModel in
+#print axioms expectedCharge_integrable
+
+/-- info: 'GameTheory.Protocol.InformationModel.expectedCharge_drift' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open GameTheory.Protocol.InformationModel in
+#print axioms expectedCharge_drift
+
+/-- info: 'Interaction.ReactiveApplication.responseCharge_le_one' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Interaction.ReactiveApplication in
+#print axioms responseCharge_le_one
+
+/-- info: 'Interaction.ReactiveApplication.remainingResponses_le_rank' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Interaction.ReactiveApplication in
+#print axioms remainingResponses_le_rank
+
+/-- info: 'Interaction.ReactiveApplication.remainingResponses_step' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Interaction.ReactiveApplication in
+#print axioms remainingResponses_step
+
+/-- info: 'Interaction.ReactiveApplication.ResponseMenu.active_card' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Interaction.ReactiveApplication.ResponseMenu in
+#print axioms active_card
+
+/-- info: 'Interaction.ReactiveApplication.ResponseMenu.remainingResponses_le_horizon_add_one' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Interaction.ReactiveApplication.ResponseMenu in
+#print axioms remainingResponses_le_horizon_add_one
+
+/-- info: 'Interaction.ReactiveApplication.ResponseMenu.run_one_eq_of_no_actor' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Interaction.ReactiveApplication.ResponseMenu in
+#print axioms run_one_eq_of_no_actor
+
+/-- info: 'Interaction.ReactiveApplication.responseCount_step' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Interaction.ReactiveApplication in
+#print axioms responseCount_step
+
+/-- info: 'Interaction.ReactiveApplication.responseCount_add_remainingResponses_step' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Interaction.ReactiveApplication in
+#print axioms responseCount_add_remainingResponses_step
+
+/-- info: 'Interaction.ReactiveApplication.responseCount_add_remainingResponses_le' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Interaction.ReactiveApplication in
+#print axioms responseCount_add_remainingResponses_le
+
+/-- info: 'Interaction.ReactiveApplication.ResponseMenu.cumulativeCharge_eq_responseCount' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Interaction.ReactiveApplication.ResponseMenu in
+#print axioms cumulativeCharge_eq_responseCount
+
+/-- info: 'Interaction.ReactiveApplication.ResponseMenu.responseCount_le_horizon' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Interaction.ReactiveApplication.ResponseMenu in
+#print axioms responseCount_le_horizon
+
+/-- info: 'Interaction.ReactiveApplication.ResponseMenu.responseCount_integrable' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Interaction.ReactiveApplication.ResponseMenu in
+#print axioms responseCount_integrable
+
+/-- info: 'Interaction.ReactiveApplication.ResponseMenu.expectedCharge_eq_expectedResponses' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Interaction.ReactiveApplication.ResponseMenu in
+#print axioms expectedCharge_eq_expectedResponses
+
+/-- info: 'Interaction.ReactiveApplication.ResponseMenu.stopped_responseCount_bounds' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Interaction.ReactiveApplication.ResponseMenu in
+#print axioms stopped_responseCount_bounds
+
+/-- info: 'Interaction.ReactiveApplication.ResponseMenu.expectedResponses_bounds' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Interaction.ReactiveApplication.ResponseMenu in
+#print axioms expectedResponses_bounds
+
+/-- info: 'Interaction.ReactiveApplication.ResponseMenu.expectedResponses_integrable' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Interaction.ReactiveApplication.ResponseMenu in
+#print axioms expectedResponses_integrable
+
+/-- info: 'Interaction.ReactiveApplication.ResponseMenu.expectedResponses_drift' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Interaction.ReactiveApplication.ResponseMenu in
+#print axioms expectedResponses_drift
+
+/-- info: 'Vegas.onePacket_step_withinTV_honest' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas in
+#print axioms onePacket_step_withinTV_honest
+
+/-- info: 'Vegas.onePacket_stopped_expect_sub_le_of_potential' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas in
+#print axioms onePacket_stopped_expect_sub_le_of_potential
+
+/-- info: 'Vegas.onePacket_stopped_expect_sub_le_remainingResponses' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas in
+#print axioms onePacket_stopped_expect_sub_le_remainingResponses
+
+/-- info: 'Vegas.onePacket_stopped_expect_sub_le' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas in
+#print axioms onePacket_stopped_expect_sub_le
+
+/-- info: 'Vegas.onePacket_stopped_withinTV_honest' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas in
+#print axioms onePacket_stopped_withinTV_honest
+
+/-- info: 'Vegas.onePacket_stopped_expect_sub_le_expectedResponses' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas in
+#print axioms onePacket_stopped_expect_sub_le_expectedResponses
+
+/-- info: 'Vegas.onePacket_terminal_withinTV_honest' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas in
+#print axioms onePacket_terminal_withinTV_honest
+
+/-- info: 'Vegas.onePacket_bounded_withinTV_honest' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas in
+#print axioms onePacket_bounded_withinTV_honest
+
+/-- info: 'Vegas.onePacket_bounded_readout_exclusion_withinTV' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas in
+#print axioms onePacket_bounded_readout_exclusion_withinTV
+
+/-- info: 'Vegas.onePacket_stopped_withinTV_of_history_retention' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas in
+#print axioms onePacket_stopped_withinTV_of_history_retention
+
+/-- info: 'Vegas.onePacket_mixture_stopped_withinTV_honest' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas in
+#print axioms onePacket_mixture_stopped_withinTV_honest
+
+/-- info: 'GameTheory.Protocol.InformationModel.abs_expect_runBehavioralUntil_sub_le_of_stepTV_interval_potential' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open GameTheory.Protocol.InformationModel in
+#print axioms abs_expect_runBehavioralUntil_sub_le_of_stepTV_interval_potential
+
+/-- info: 'GameTheory.Protocol.InformationModel.runBehavioralTerminalFrom_eq_until_false' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open GameTheory.Protocol.InformationModel in
+#print axioms runBehavioralTerminalFrom_eq_until_false
+
+/-- info: 'Vegas.RecoveryOnePacket.nativeComparison_local_phase_value_sub_le_of_boundary_values' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.RecoveryOnePacket in
+#print axioms nativeComparison_local_phase_value_sub_le_of_boundary_values
+
+/-- info: 'Vegas.RecoveryOnePacket.nativeComparison_local_completion_value_sub_le_of_boundary_values' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.RecoveryOnePacket in
+#print axioms nativeComparison_local_completion_value_sub_le_of_boundary_values
+
+/-- info: 'Vegas.RecoveryOnePacket.nativeComparison_pending_value_affine_of_boundary_values' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.RecoveryOnePacket in
+#print axioms nativeComparison_pending_value_affine_of_boundary_values
+
+/-- info: 'Vegas.RecoveryOnePacket.nativeComparison_keyed_value_sub_le_of_pending' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.RecoveryOnePacket in
+#print axioms nativeComparison_keyed_value_sub_le_of_pending
+
+/-- info: 'Vegas.RecoveryOnePacket.nativeComparison_keyed_value_bounds_of_pending' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.RecoveryOnePacket in
+#print axioms nativeComparison_keyed_value_bounds_of_pending
+
+/-- info: 'VegasTests.RepeatedActivation.repeatedActivation_round' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open VegasTests.RepeatedActivation in
+#print axioms repeatedActivation_round
+
+/-- info: 'VegasTests.RepeatedActivation.repeatedActivation_run_two' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open VegasTests.RepeatedActivation in
+#print axioms repeatedActivation_run_two
+
+/-- info: 'VegasTests.RepeatedActivation.responses_exceed_source_events' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open VegasTests.RepeatedActivation in
+#print axioms responses_exceed_source_events

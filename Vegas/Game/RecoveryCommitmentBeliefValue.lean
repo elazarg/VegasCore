@@ -106,7 +106,7 @@ theorem nativeComparison_intendedCommitment_belief_comparison_of_counted_service
             (sequence n) (projectedSite setup leaks decision,
               ((sequence n).strategy who).commit
                 (projectView setup leaks who site.1) sourceChoice)) +
-        (2 * ((2 * payoffBound * (Fintype.card Player * (1 - slotRetention (scale n)))) *
+        (2 * ((2 * payoffBound * (1 - slotRetention (scale n))) *
           (2 * horizon + 1)) + 2 * payoffBound * (1 - slotRetention (scale n))) +
         4 * payoffBound * expect belief (fun history =>
           if RegularTrace setup leaks bounds horizon (NativeScheduler) (sequence n) who
@@ -133,7 +133,7 @@ theorem nativeComparison_intendedCommitment_belief_comparison_of_counted_service
           ((common who).withLaw site.1 (PMF.pure choice))) stopped history.1) payoff -
       expect ((N).runBehavioralUntil certificate common stopped history.1) payoff
   let error := 2 * ((2 * payoffBound *
-      (Fintype.card Player * (1 - slotRetention (scale n)))) * (2 * horizon + 1)) +
+      (1 - slotRetention (scale n))) * (2 * horizon + 1)) +
     2 * payoffBound * (1 - slotRetention (scale n))
   let irregular := fun history : (N).InformationHistory who site.1 =>
     if RegularTrace setup leaks bounds horizon (NativeScheduler) (sequence n) who
@@ -264,7 +264,7 @@ theorem nativeComparison_intendedCommitment_belief_comparison [Fintype (RP).Hist
             (sequence n) (projectedSite setup leaks decision,
               ((sequence n).strategy who).commit
                 (projectView setup leaks who site.1) sourceChoice)) +
-        (2 * ((2 * payoffBound * (Fintype.card Player * (1 - slotRetention (scale n)))) *
+        (2 * ((2 * payoffBound * (1 - slotRetention (scale n))) *
           (2 * horizon + 1)) + 2 * payoffBound * (1 - slotRetention (scale n))) +
         4 * payoffBound * expect belief (fun history =>
           if RegularTrace setup leaks bounds horizon (NativeScheduler) (sequence n) who

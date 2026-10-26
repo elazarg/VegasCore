@@ -93,7 +93,7 @@ theorem nativeComparison_local_completion_value_sub_le_of_counted_service [Finty
       expect phaseLaw (completionValue setup leaks bounds horizon (NativeScheduler) parameter
         utility excludedPayoff (setup.intendedOpeningProfile (sequence n).strategy) rank fresh who
         (fun _ => excludedPayoff who))| ≤
-      (2 * payoffBound * (Fintype.card Player * (1 - slotRetention (scale n)))) *
+      (2 * payoffBound * (1 - slotRetention (scale n))) *
         (2 * horizon + 1) +
       2 * payoffBound * expect phaseLaw
         (lateBadStop setup leaks bounds horizon (NativeScheduler) rank fresh event) := by
@@ -102,6 +102,9 @@ theorem nativeComparison_local_completion_value_sub_le_of_counted_service [Finty
     completes
     certificate who info law history current observed event ready owned key decided ordered point
     decoded intended parameter utility excludedPayoff boundNonneg readoutBounded excludedBounded
+    (2 * payoffBound * (1 - slotRetention (scale n))) (by
+      have retention := slotRetention_le_one (positive n).le (le_one n)
+      positivity)
   intro nextRank start anchor state boundary target atRank targetIntended
   exact nativeComparison_stopped_boundary_value_sub_le_of_counted_service setup leaks bounds
     horizon scheduler
@@ -172,7 +175,7 @@ theorem nativeComparison_local_phase_value_sub_le_of_counted_service [Fintype (R
         (fun final => if stopped final then excludedPayoff who else
           exclusionBase setup parameter utility excludedPayoff leaks final.state who) -
       expect phaseLaw potential| ≤
-      (2 * payoffBound * (Fintype.card Player * (1 - slotRetention (scale n)))) *
+      (2 * payoffBound * (1 - slotRetention (scale n))) *
         (2 * horizon + 1) +
       2 * payoffBound * (phaseLaw.toOuterMeasure
         {final | completionPoint setup leaks bounds horizon (NativeScheduler) rank fresh final =
@@ -182,6 +185,9 @@ theorem nativeComparison_local_phase_value_sub_le_of_counted_service [Fintype (R
     completes
     certificate who info law history current observed event ready owned key decided ordered point
     decoded intended parameter utility excludedPayoff boundNonneg readoutBounded excludedBounded
+    (2 * payoffBound * (1 - slotRetention (scale n))) (by
+      have retention := slotRetention_le_one (positive n).le (le_one n)
+      positivity)
   intro nextRank start anchor state boundary target atRank targetIntended
   exact nativeComparison_stopped_boundary_value_sub_le_of_counted_service setup leaks bounds
     horizon scheduler
@@ -254,7 +260,7 @@ theorem nativeComparison_pending_value_affine_of_counted_service [Fintype (RP).H
           excludedPayoff (setup.intendedOpeningProfile (sequence n).strategy) who
           (siteRank site.1) history.1 +
         failure * excludedPayoff who)| ≤
-      (2 * payoffBound * (Fintype.card Player * (1 - slotRetention (scale n)))) *
+      (2 * payoffBound * (1 - slotRetention (scale n))) *
         (2 * horizon + 1) +
       (2 * (scale n ^ 3 + (2 * horizon + 1 : ℕ) * (scale n ^ 3 + scale n ^ 3)) *
         (2 * horizon + 1) + scale n ^ 3 * (2 * horizon + 1)) * (2 * payoffBound) +
@@ -266,6 +272,9 @@ theorem nativeComparison_pending_value_affine_of_counted_service [Fintype (RP).H
     completes
     site pendingSite debtFree siteKey pending atSite law history forced lawShape parameter utility
     excludedPayoff boundNonneg readoutBounded excludedBounded
+    (2 * payoffBound * (1 - slotRetention (scale n))) (by
+      have retention := slotRetention_le_one (positive n).le (le_one n)
+      positivity)
   intro nextRank start anchor state boundary target atRank targetIntended
   exact nativeComparison_stopped_boundary_value_sub_le_of_counted_service setup leaks bounds
     horizon scheduler

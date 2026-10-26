@@ -115,7 +115,7 @@ theorem nativeComparison_committed_value_sub_le_of_counted_service [Fintype (RP)
         (ProtocolState.OwesFailure who setup.program) final.state
     let payoff := fun final : (NP).History => if stopped final then excludedPayoff who else
       exclusionBase setup parameter utility excludedPayoff leaks final.state who
-    let error := (2 * payoffBound * (Fintype.card Player * (1 - slotRetention (scale n)))) *
+    let error := (2 * payoffBound * (1 - slotRetention (scale n))) *
       (2 * horizon + 1)
     |expect (target.belief who site) (fun history =>
         expect ((N).runBehavioralUntil certificate installed stopped history.1) payoff) -
@@ -383,7 +383,7 @@ theorem nativeComparison_committed_value_sub_le [Fintype (RP).History]
         (ProtocolState.OwesFailure who setup.program) final.state
     let payoff := fun final : (NP).History => if stopped final then excludedPayoff who else
       exclusionBase setup parameter utility excludedPayoff leaks final.state who
-    let error := (2 * payoffBound * (Fintype.card Player * (1 - slotRetention (scale n)))) *
+    let error := (2 * payoffBound * (1 - slotRetention (scale n))) *
       (2 * horizon + 1)
     |expect (target.belief who site) (fun history =>
         expect ((N).runBehavioralUntil certificate installed stopped history.1) payoff) -

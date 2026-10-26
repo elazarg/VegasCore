@@ -289,6 +289,22 @@ theorem runBehavioralTerminalFrom_eq_bind_runBehavioralUntil
   intro next member
   exact ih next (M.mem_support_runBehavioralFrom_one policies ended member).1
 
+/-- With no designated stop, the stopped law is exactly terminal play. -/
+theorem runBehavioralTerminalFrom_eq_until_false
+    (certificate : E.WellFoundedHistories) (policies : (i : ι) → M.BehavioralPolicy i)
+    (start : E.History) :
+    M.runBehavioralTerminalFrom certificate policies start =
+      M.runBehavioralUntil certificate policies (fun _ => False) start := by
+  rw [M.runBehavioralTerminalFrom_eq_bind_runBehavioralUntil certificate policies (fun _ => False)]
+  calc
+    _ = (M.runBehavioralUntil certificate policies (fun _ => False) start).bind PMF.pure := by
+      apply bind_congr_on_support
+      intro final supported
+      have ended := M.mem_support_runBehavioralUntil certificate policies
+        (fun _ => False) start final supported
+      exact E.randomizedBackwardLaw_of_terminal (ended.resolve_left (fun impossible => impossible))
+    _ = _ := PMF.bind_pure _
+
 end InformationModel
 
 end GameTheory.Protocol

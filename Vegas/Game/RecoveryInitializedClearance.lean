@@ -94,7 +94,7 @@ theorem initialized_limit_no_exclusion
     ∀ final ∈ ((R).runBehavioral limit.strategy (2 * horizon + 1)).support,
       ∀ control, final.state = some control → control.execution.application.excluded = ∅ := by
   classical
-  let budget : ℝ := (Fintype.card Player * (2 * horizon + 1) : ℕ)
+  let budget : ℝ := (min (Fintype.card Player) 1 * horizon : ℕ)
   have approximation (n : ℕ) :
       (((((R).runBehavioral (assessments n).strategy (2 * horizon + 1)).map
         (fun final => exclusionFlag setup leaks final.state)) true).toReal) ≤

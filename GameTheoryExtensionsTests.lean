@@ -39,3 +39,5 @@ import GameTheoryExtensionsTests.ObservableGainBoundaries
 import GameTheoryExtensionsTests.PublicRandomization
 
 import GameTheoryExtensionsTests.CyclicBeliefsCompletion
+
+import GameTheoryExtensionsTests.StoppedCharge

@@ -7,6 +7,7 @@ import Vegas.Game.RecoveryInitializedLaw
 import Vegas.Game.RecoveryNativePrior
 import Vegas.Game.RecoveryExclusionPayoff
 import Vegas.Pending.ExclusionTerminalClearance
+import Vegas.Game.OnePacketHonestTerminalApproximation
 
 /-! # Initialized laws of the actual common recovery strategy -/
 
@@ -112,7 +113,7 @@ honest mass available for a public failure, including at initialization. -/
 theorem sourceNativeProfile_initialized_failure_mass_le :
     (((N).runBehavioral (sourceNativeProfile setup leaks bounds horizon scheduler strategy)
       (2 * horizon + 1)).toOuterMeasure {history | ¬ Clear history.state}).toReal ≤
-      (Fintype.card Player * (2 * horizon + 1) : ℕ) * (1 - slotRetention (scale n)) := by
+      (min (Fintype.card Player) 1 * horizon : ℕ) * (1 - slotRetention (scale n)) := by
   exact sourceNativeProfile_initialized_failure_mass_le_of_counted_service setup leaks bounds
     horizon scheduler
     wellFormed covers capacity sequence scale positive le_one weights n fallback strategy assembled
@@ -131,7 +132,7 @@ include wellFormed covers capacity opportunity inclusion timely completes assemb
 /-- The initialized joint typed-readout and realized base-payoff law of the
 actual common recovery strategy approaches its original intended source law. -/
 theorem recovery_initialized_readout_withinTV :
-    PMF.WithinTV (2 * ((Fintype.card Player * (2 * horizon + 1) : ℕ) *
+    PMF.WithinTV (2 * ((min (Fintype.card Player) 1 * horizon : ℕ) *
       (1 - slotRetention (scale n))))
       (((R).runBehavioral strategy (2 * horizon + 1)).map (fun final =>
         (sourceReadout setup leaks (protocolState (runtime setup) leaks final.state),
@@ -140,7 +141,6 @@ theorem recovery_initialized_readout_withinTV :
         (instructionCount setup.program + 1)).map
         (intendedReadoutExclusion setup parameter utility excludedPayoff)) := by
   classical
-  let fuel := 2 * horizon + 1
   let certificate := ((NMenu).bounded (initialLaw setup) horizon
     (NativeScheduler)).wellFoundedHistories
   have close := recovery_initialized_projection_withinTV setup leaks bounds horizon scheduler
@@ -166,16 +166,17 @@ theorem recovery_initialized_readout_withinTV :
   rw [(N).runBehavioralTerminalFrom_initHistory certificate
     (honestProfile setup leaks bounds (initialLaw setup) horizon (NativeScheduler) (sequence n))
       ((NMenu).bounded (initialLaw setup) horizon (NativeScheduler))] at honestLaw
-  have nativeClose := onePacket_readout_exclusion_withinTV setup leaks bounds (initialLaw setup)
+  have nativeClose := onePacket_bounded_readout_exclusion_withinTV setup leaks bounds
+    (initialLaw setup)
     horizon (NativeScheduler) parameter utility excludedPayoff (sequence n) (sequence n).strategy
-    (instructionCount setup.program + 1) fuel honestLaw
+    (instructionCount setup.program + 1) honestLaw
       (slotRetention_nonneg (positive n).le (le_one n))
       (slotRetention_le_one (positive n).le (le_one n))
       (sourceNativeProfile setup leaks bounds horizon scheduler strategy)
       (sourceNativeProfile_dominatesHonestFrom_initialized setup leaks bounds horizon scheduler
         wellFormed covers capacity sequence scale positive le_one weights n fallback strategy
           assembled opportunity inclusion timely completes certificate)
-  simpa only [fuel, two_mul] using boundedClose.trans nativeClose
+  simpa only [two_mul] using boundedClose.trans nativeClose
 
 include wellFormed covers capacity opportunity inclusion timely completes in
 /-- A common completion sequence has a uniform vanishing initialized joint-law
@@ -197,12 +198,12 @@ theorem recovery_initialized_lawApproximation
             (instructionCount setup.program + 1)).map
             (intendedReadoutExclusion setup parameter utility excludedPayoff)) outcome).toReal| ≤
           lawError n := by
-  refine ⟨fun n => 2 * ((Fintype.card Player * (2 * horizon + 1) : ℕ) *
+  refine ⟨fun n => 2 * ((min (Fintype.card Player) 1 * horizon : ℕ) *
     (1 - slotRetention (scale n))), ?_, fun n outcome => ?_⟩
   · have retained := tendsto_slotRetention vanishing
     have difference := (tendsto_const_nhds (x := (1 : ℝ))).sub retained
     have converges := (difference.const_mul
-      ((Fintype.card Player * (2 * horizon + 1) : ℕ) : ℝ)).const_mul 2
+      ((min (Fintype.card Player) 1 * horizon : ℕ) : ℝ)).const_mul 2
     simpa using converges
   · exact (recovery_initialized_readout_withinTV setup leaks bounds horizon scheduler wellFormed
       covers capacity sequence scale positive le_one weights n fallback (strategies n)

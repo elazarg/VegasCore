@@ -101,7 +101,7 @@ theorem nativeComparison_keyed_value_sub_le_of_counted_service [Fintype (RP).His
         (ProtocolState.OwesFailure who setup.program) final.state
     let payoff := fun final : (NP).History => if stopped final then excludedPayoff who else
       exclusionBase setup parameter utility excludedPayoff leaks final.state who
-    let error := (2 * payoffBound * (Fintype.card Player * (1 - slotRetention (scale n)))) *
+    let error := (2 * payoffBound * (1 - slotRetention (scale n))) *
       (2 * horizon + 1) +
       (2 * (scale n ^ 3 + (2 * horizon + 1 : ℕ) * (scale n ^ 3 + scale n ^ 3)) *
         (2 * horizon + 1) + scale n ^ 3 * (2 * horizon + 1)) * (2 * payoffBound) +
@@ -121,6 +121,9 @@ theorem nativeComparison_keyed_value_sub_le_of_counted_service [Fintype (RP).His
     capacity sequence scale positive le_one weights n site late debtFree siteKey atSite
     unforcedMass decorrelated option parameter utility excludedPayoff boundNonneg readoutBounded
     excludedBounded
+    (2 * payoffBound * (1 - slotRetention (scale n))) (by
+      have retention := slotRetention_le_one (positive n).le (le_one n)
+      positivity)
   intro history forced
   exact nativeComparison_pending_value_affine_of_counted_service setup leaks bounds horizon
     scheduler wellFormed

@@ -96,7 +96,7 @@ theorem nativeComparison_silence_history_comparison_of_counted_service [Fintype 
           (Profile.update (sig := (N).behavioralSignature) common who
             ((common who).withLaw site.1 (PMF.pure choice))) stopped history.1) payoff -
         expect ((N).runBehavioralUntil certificate common stopped history.1) payoff ≤
-      2 * ((2 * payoffBound * (Fintype.card Player * (1 - slotRetention (scale n)))) *
+      2 * ((2 * payoffBound * (1 - slotRetention (scale n))) *
         (2 * horizon + 1)) + 2 * payoffBound * (1 - slotRetention (scale n)) +
       2 * payoffBound * (scale n ^ 3 * (2 * horizon + 1)) +
       (2 * (scale n ^ 3 + (2 * horizon + 1 : ℕ) * (scale n ^ 3 + scale n ^ 3)) *
@@ -259,7 +259,7 @@ theorem nativeComparison_silence_history_comparison [Fintype (RP).History]
           (Profile.update (sig := (N).behavioralSignature) common who
             ((common who).withLaw site.1 (PMF.pure choice))) stopped history.1) payoff -
         expect ((N).runBehavioralUntil certificate common stopped history.1) payoff ≤
-      2 * ((2 * payoffBound * (Fintype.card Player * (1 - slotRetention (scale n)))) *
+      2 * ((2 * payoffBound * (1 - slotRetention (scale n))) *
         (2 * horizon + 1)) + 2 * payoffBound * (1 - slotRetention (scale n)) +
       2 * payoffBound * (scale n ^ 3 * (2 * horizon + 1)) +
       (2 * (scale n ^ 3 + (2 * horizon + 1 : ℕ) * (scale n ^ 3 + scale n ^ 3)) *

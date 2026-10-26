@@ -3,6 +3,7 @@
 import Vegas.Game.OnePacketComparisonRetention
 import Vegas.Game.RecoveryNativeComparison
 import Vegas.Game.RecoveryComparisonStopped
+import Vegas.Game.OnePacketHonestTerminalApproximation
 
 /-! # Initialized retention of actual recovery projections under counted native service -/
 
@@ -163,7 +164,7 @@ honest mass available for a public failure, including at initialization. -/
 theorem sourceNativeProfile_initialized_failure_mass_le_of_counted_service :
     (((N).runBehavioral (sourceNativeProfile setup leaks bounds horizon scheduler strategy)
       (2 * horizon + 1)).toOuterMeasure {history | ¬ Clear history.state}).toReal ≤
-      (Fintype.card Player * (2 * horizon + 1) : ℕ) * (1 - slotRetention (scale n)) := by
+      (min (Fintype.card Player) 1 * horizon : ℕ) * (1 - slotRetention (scale n)) := by
   classical
   let certificate := ((NMenu).bounded (initialLaw setup) horizon
     (RecoveryProjection.nativeScheduler (runtime setup) leaks scheduler)).wellFoundedHistories
@@ -174,10 +175,10 @@ theorem sourceNativeProfile_initialized_failure_mass_le_of_counted_service :
     setup leaks bounds horizon
     scheduler wellFormed covers capacity sequence scale positive le_one weights n fallback strategy
       assembled opportunity inclusion timely completes certificate
-  have close := onePacket_withinTV_honest setup leaks bounds (initialLaw setup) horizon
-    (RecoveryProjection.nativeScheduler (runtime setup) leaks scheduler) (sequence n)
+  have close := onePacket_bounded_withinTV_honest setup leaks bounds (initialLaw setup) horizon
+    (RecoveryProjection.nativeScheduler (runtime setup) leaks scheduler) (sequence n) _
       (slotRetention_nonneg (positive n).le (le_one n))
-    (slotRetention_le_one (positive n).le (le_one n)) _ dominates (2 * horizon + 1)
+    (slotRetention_le_one (positive n).le (le_one n)) dominates
   have honestClear : (((N).runBehavioral honest (2 * horizon + 1)).toOuterMeasure
       {history | ¬ Clear history.state}).toReal = 0 := by
     rw [← expect_indicator]

@@ -104,7 +104,7 @@ theorem nativeComparison_local_completion_value_sub_le
           parameter
         utility excludedPayoff (setup.intendedOpeningProfile (sequence n).strategy) rank fresh who
         (fun _ => excludedPayoff who))| ≤
-      (2 * payoffBound * (Fintype.card Player * (1 - slotRetention (scale n)))) *
+      (2 * payoffBound * (1 - slotRetention (scale n))) *
         (2 * horizon + 1) +
       2 * payoffBound * expect phaseLaw
         (lateBadStop setup (RecoveryLeaks) bounds horizon (nativeScheduler) rank fresh event) := by
@@ -116,6 +116,9 @@ theorem nativeComparison_local_completion_value_sub_le
       bounds horizon scheduler completes trace clear ended)
     certificate who info law history current observed event ready owned key decided ordered point
     decoded intended parameter utility excludedPayoff boundNonneg readoutBounded excludedBounded
+    (2 * payoffBound * (1 - slotRetention (scale n))) (by
+      have retention := slotRetention_le_one (positive n).le (le_one n)
+      positivity)
   intro nextRank start anchor state boundary target atRank targetIntended
   exact nativeComparison_stopped_boundary_value_sub_le setup leaks bounds horizon scheduler
     opportunity inclusion timely completes wellFormed covers capacity sequence scale positive le_one

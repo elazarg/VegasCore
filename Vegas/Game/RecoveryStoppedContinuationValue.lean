@@ -75,7 +75,7 @@ theorem recovery_stopped_boundary_value_sub_le
         execution.application.config)
         (fun readout =>
           exclusionReadoutUtility setup parameter utility excludedPayoff readout who)| ≤
-      (2 * payoffBound * (Fintype.card Player * (1 - retention))) *
+      (2 * payoffBound * (1 - retention)) *
         (application setup leaks).rank horizon start.state  := by
   exact counted_stopped_boundary_value_sub_le
     (opportunity := Recovery.Opportunity.clear_counted_native bounds initialized nativeLaw

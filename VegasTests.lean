@@ -35,3 +35,5 @@ import VegasTests.DependencyHeight
 import VegasTests.ConditionalPublicPrior
 import VegasTests.ChanceScheduling
 import VegasTests.ServiceTiming
+
+import VegasTests.RepeatedActivation

@@ -126,7 +126,7 @@ theorem nativeComparison_firstActivation_commitment_gain_le_of_counted_service [
         (intendedReadoutExclusion setup parameter utility excludedPayoff) (payoffComponent setup)
         (sequence n) (sourceSite, ((sequence n).strategy who).commit sourceSite.1 sourceChoice)
         sourceHistory +
-      2 * ((2 * payoffBound * (Fintype.card Player * (1 - slotRetention (scale n)))) *
+      2 * ((2 * payoffBound * (1 - slotRetention (scale n))) *
         (2 * horizon + 1)) + 2 * payoffBound * (1 - slotRetention (scale n)) := by
   intro bounded common stopped payoff
   let certificate := bounded.wellFoundedHistories
@@ -347,7 +347,7 @@ theorem nativeComparison_firstActivation_commitment_gain_le [Fintype (RP).Histor
         (intendedReadoutExclusion setup parameter utility excludedPayoff) (payoffComponent setup)
         (sequence n) (sourceSite, ((sequence n).strategy who).commit sourceSite.1 sourceChoice)
         sourceHistory +
-      2 * ((2 * payoffBound * (Fintype.card Player * (1 - slotRetention (scale n)))) *
+      2 * ((2 * payoffBound * (1 - slotRetention (scale n))) *
         (2 * horizon + 1)) + 2 * payoffBound * (1 - slotRetention (scale n)) := by
   exact nativeComparison_firstActivation_commitment_gain_le_of_counted_service setup leaks
     bounds horizon scheduler wellFormed covers capacity sequence scale positive le_one weights

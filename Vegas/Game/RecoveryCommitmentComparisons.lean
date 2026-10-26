@@ -104,7 +104,7 @@ theorem nativeComparison_intendedCommitment_history_comparisons_of_counted_servi
             ((sequence n).strategy who).commit (projectView setup leaks who site.1) sourceChoice)
           (replayProjection setup leaks bounds horizon (NativeScheduler)
             (projectedSite setup leaks decision) site atSite rfl history) +
-        2 * ((2 * payoffBound * (Fintype.card Player * (1 - slotRetention (scale n)))) *
+        2 * ((2 * payoffBound * (1 - slotRetention (scale n))) *
           (2 * horizon + 1)) + 2 * payoffBound * (1 - slotRetention (scale n)) := by
   intro common certificate stopped payoff
   obtain ⟨sourceChoice, event, payload, outputEq, value, sourceAction,
@@ -232,7 +232,7 @@ theorem nativeComparison_intendedCommitment_history_comparisons [Fintype (RP).Hi
             ((sequence n).strategy who).commit (projectView setup leaks who site.1) sourceChoice)
           (replayProjection setup leaks bounds horizon (NativeScheduler)
             (projectedSite setup leaks decision) site atSite rfl history) +
-        2 * ((2 * payoffBound * (Fintype.card Player * (1 - slotRetention (scale n)))) *
+        2 * ((2 * payoffBound * (1 - slotRetention (scale n))) *
           (2 * horizon + 1)) + 2 * payoffBound * (1 - slotRetention (scale n)) := by
   exact nativeComparison_intendedCommitment_history_comparisons_of_counted_service setup leaks
     bounds horizon scheduler wellFormed covers capacity sequence scale positive le_one weights

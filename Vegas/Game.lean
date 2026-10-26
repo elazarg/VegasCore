@@ -935,3 +935,9 @@ import Vegas.Game.SequentialPhaseNonLateComparisons
 import Vegas.Game.SequentialPhaseLocalComparisons
 import Vegas.Game.SequentialPhasePreservation
 import Vegas.Game.SequentialPhaseRawPreservation
+
+import Vegas.Game.StoppedHonestResponseCount
+
+import Vegas.Game.OnePacketHonestTerminalApproximation
+
+import Vegas.Game.StoppedHonestWeightedComparison

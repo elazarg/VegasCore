@@ -91,7 +91,7 @@ theorem nativeComparison_stopped_boundary_value_sub_le
           exclusionBase setup parameter utility excludedPayoff (RecoveryLeaks) final.state who) -
       sourcePointValue setup parameter utility excludedPayoff
         (setup.intendedOpeningProfile (sequence n).strategy) who point| ≤
-      (2 * payoffBound * (Fintype.card Player * (1 - slotRetention (scale n)))) *
+      (2 * payoffBound * (1 - slotRetention (scale n))) *
         (application setup (RecoveryLeaks)).rank horizon start.state  := by
   have assembled := nativeComparisonSequence_assembled setup leaks bounds horizon scheduler
     sequence scale positive le_one weights

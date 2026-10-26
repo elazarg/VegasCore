@@ -103,7 +103,7 @@ theorem nativeComparison_unintendedCommitment_history_comparison_of_counted_serv
           (Profile.update (sig := (N).behavioralSignature) common who
             ((common who).withLaw site.1 (PMF.pure choice))) stopped history.1) payoff -
         expect ((N).runBehavioralUntil certificate common stopped history.1) payoff ≤
-      (2 * payoffBound * (Fintype.card Player * (1 - slotRetention (scale n)))) *
+      (2 * payoffBound * (1 - slotRetention (scale n))) *
         (2 * horizon + 1) + 2 * payoffBound * (1 - slotRetention (scale n)) := by
   intro common certificate stopped payoff history regular
   have forced := forcedAgent_of_not_free setup leaks bounds horizon (NativeScheduler) notFree
@@ -329,7 +329,7 @@ theorem nativeComparison_unintendedCommitment_history_comparison [Fintype (RP).H
           (Profile.update (sig := (N).behavioralSignature) common who
             ((common who).withLaw site.1 (PMF.pure choice))) stopped history.1) payoff -
         expect ((N).runBehavioralUntil certificate common stopped history.1) payoff ≤
-      (2 * payoffBound * (Fintype.card Player * (1 - slotRetention (scale n)))) *
+      (2 * payoffBound * (1 - slotRetention (scale n))) *
         (2 * horizon + 1) + 2 * payoffBound * (1 - slotRetention (scale n)) := by
   exact nativeComparison_unintendedCommitment_history_comparison_of_counted_service setup leaks
     bounds horizon scheduler wellFormed covers capacity sequence scale positive le_one weights

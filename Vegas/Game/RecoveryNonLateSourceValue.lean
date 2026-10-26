@@ -65,6 +65,7 @@ theorem nativeComparison_local_phase_value_sub_le_of_boundary_values [Fintype (R
     (readoutBounded : ∀ readout,
       |exclusionReadoutUtility setup parameter utility excludedPayoff readout who| ≤ payoffBound)
     (excludedBounded : |excludedPayoff who| ≤ payoffBound)
+    (boundaryError : ℝ) (boundaryErrorNonneg : 0 ≤ boundaryError)
     (boundaryValues : ∀ (nextRank : Nat) (start : (NP).History)
       (anchor : (application setup leaks).Execution),
       start.state = some ⟨horizon - anchor.environmentRecall.length, none, anchor⟩ →
@@ -82,7 +83,7 @@ theorem nativeComparison_local_phase_value_sub_le_of_boundary_values [Fintype (R
             exclusionBase setup parameter utility excludedPayoff leaks final.state who) -
         sourcePointValue setup parameter utility excludedPayoff
           (setup.intendedOpeningProfile (sequence n).strategy) who point| ≤
-        (2 * payoffBound * (Fintype.card Player * (1 - slotRetention (scale n)))) *
+        boundaryError *
           (application setup leaks).rank horizon start.state) :
     let common := nativeComparisonStrategy setup leaks bounds horizon scheduler sequence scale
       positive le_one weights n
@@ -104,7 +105,7 @@ theorem nativeComparison_local_phase_value_sub_le_of_boundary_values [Fintype (R
         (fun final => if stopped final then excludedPayoff who else
           exclusionBase setup parameter utility excludedPayoff leaks final.state who) -
       expect phaseLaw potential| ≤
-      (2 * payoffBound * (Fintype.card Player * (1 - slotRetention (scale n)))) *
+      boundaryError *
         (2 * horizon + 1) +
       2 * payoffBound * (phaseLaw.toOuterMeasure
         {final | completionPoint setup leaks bounds horizon (NativeScheduler) rank fresh final =
@@ -114,15 +115,12 @@ theorem nativeComparison_local_phase_value_sub_le_of_boundary_values [Fintype (R
     exclusionBase setup parameter utility excludedPayoff leaks final.state who
   let later := fun final : (NP).History =>
     expect ((N).runBehavioralUntil certificate installed stopped final) payoff
-  let error := (2 * payoffBound * (Fintype.card Player * (1 - slotRetention (scale n)))) *
+  let error := boundaryError *
     (2 * horizon + 1)
   let bad := {final : (NP).History |
     completionPoint setup leaks bounds horizon (NativeScheduler) rank fresh final = none ∧
       ¬ DecisionFailed key final.state}
-  have coefficientNonneg :
-      0 ≤ 2 * payoffBound * (Fintype.card Player * (1 - slotRetention (scale n))) := by
-    have retention := slotRetention_le_one (positive n).le (le_one n)
-    positivity
+  have coefficientNonneg : 0 ≤ boundaryError := boundaryErrorNonneg
   have errorNonneg : 0 ≤ error := mul_nonneg coefficientNonneg (by positivity)
   have payoffBounded : ∀ final, |payoff final| ≤ payoffBound := by
     intro final
@@ -303,7 +301,7 @@ theorem nativeComparison_local_phase_value_sub_le [Fintype (RP).History]
         (fun final => if stopped final then excludedPayoff who else
           exclusionBase setup parameter utility excludedPayoff leaks final.state who) -
       expect phaseLaw potential| ≤
-      (2 * payoffBound * (Fintype.card Player * (1 - slotRetention (scale n)))) *
+      (2 * payoffBound * (1 - slotRetention (scale n))) *
         (2 * horizon + 1) +
       2 * payoffBound * (phaseLaw.toOuterMeasure
         {final | completionPoint setup leaks bounds horizon (NativeScheduler) rank fresh final =
@@ -314,6 +312,9 @@ theorem nativeComparison_local_phase_value_sub_le [Fintype (RP).History]
       (initialLaw_native setup) completes)
     certificate who info law history current observed event ready owned key decided ordered point
     decoded intended parameter utility excludedPayoff boundNonneg readoutBounded excludedBounded
+    (2 * payoffBound * (1 - slotRetention (scale n))) (by
+      have retention := slotRetention_le_one (positive n).le (le_one n)
+      positivity)
   intro nextRank start anchor state boundary target atRank targetIntended
   exact nativeComparison_stopped_boundary_value_sub_le setup leaks bounds horizon scheduler
     wellFormed covers capacity sequence scale positive le_one weights n opportunity inclusion timely

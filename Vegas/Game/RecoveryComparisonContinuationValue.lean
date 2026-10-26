@@ -84,7 +84,7 @@ theorem nativeComparison_stopped_boundary_value_sub_le_of_counted_service [Finty
           exclusionBase setup parameter utility excludedPayoff leaks final.state who) -
       sourcePointValue setup parameter utility excludedPayoff
         (setup.intendedOpeningProfile (sequence n).strategy) who point| ≤
-      (2 * payoffBound * (Fintype.card Player * (1 - slotRetention (scale n)))) *
+      (2 * payoffBound * (1 - slotRetention (scale n))) *
         (application setup leaks).rank horizon start.state  := by
   exact OnePacketComparison.assembled_stopped_boundary_value_sub_le setup leaks bounds horizon
     (NativeScheduler) wellFormed covers capacity sequence scale positive le_one
@@ -138,7 +138,7 @@ theorem nativeComparison_stopped_boundary_value_sub_le [Fintype (RP).History]
           exclusionBase setup parameter utility excludedPayoff leaks final.state who) -
       sourcePointValue setup parameter utility excludedPayoff
         (setup.intendedOpeningProfile (sequence n).strategy) who point| ≤
-      (2 * payoffBound * (Fintype.card Player * (1 - slotRetention (scale n)))) *
+      (2 * payoffBound * (1 - slotRetention (scale n))) *
         (application setup leaks).rank horizon start.state  := by
   exact nativeComparison_stopped_boundary_value_sub_le_of_counted_service setup leaks bounds
     horizon scheduler wellFormed covers capacity sequence scale positive le_one weights n

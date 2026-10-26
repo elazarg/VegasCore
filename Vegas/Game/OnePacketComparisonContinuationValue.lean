@@ -96,7 +96,7 @@ theorem assembled_stopped_boundary_value_sub_le
           exclusionBase setup parameter utility excludedPayoff leaks final.state who) -
       sourcePointValue setup parameter utility excludedPayoff
         (setup.intendedOpeningProfile (sequence n).strategy) who point| ≤
-      (2 * payoffBound * (Fintype.card Player * (1 - slotRetention (scale n)))) *
+      (2 * payoffBound * (1 - slotRetention (scale n))) *
         (application setup leaks).rank horizon start.state := by
   intro stopped
   have retained := assembled_dominatesHonestFrom_boundary setup leaks bounds horizon
