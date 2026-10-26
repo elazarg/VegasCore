@@ -30,6 +30,11 @@ relation-supported couplings, and information-based alternatives. Its
 orders the bounded experiments and distinguishes local proof-interface gains
 from a checked weakening of a preservation theorem.
 
+[Private mempool observations](se-private-mempool-research.md) investigates the
+concurrent theorem's complete-visibility gap: latent archive mixtures, legal
+information coarsening, stochastic replay, private-message consistency, and
+finite obstruction searches with the other runtime hypotheses held fixed.
+
 The most direct simplification opportunity is to transport only the
 continuation gains needed for rationality. Information compression supplies a
 broader generalization route, while power-sequence consistency offers finite

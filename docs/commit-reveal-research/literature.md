@@ -59,6 +59,10 @@ The [correlated-prior analysis](../se-correlated-prior-research.md) traces the
 private-input independence hypothesis to supported history repairs and common
 prior ratios, then compares common-best incentives, joint-prior accounting,
 couplings, and common-information prescriptions as possible weakenings.
+The [private-mempool analysis](../se-private-mempool-research.md) separates the
+concurrent proof's archive and deterministic-observation dependencies, compares
+real observation interfaces, and develops mixture-based preservation routes
+and precisely scoped impossibility tests.
 
 Use papers, official protocol specifications or implementation documentation.
 Record the precise property supported: cryptographic confidentiality, finality,
