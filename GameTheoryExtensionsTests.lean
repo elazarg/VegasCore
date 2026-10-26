@@ -31,3 +31,11 @@ import GameTheoryExtensionsTests.NormalizedWeights
 import GameTheoryExtensionsTests.ForwardPathCoherence
 import GameTheoryExtensionsTests.SignedKernelPullback
 import GameTheoryExtensionsTests.InformationTiming
+
+import GameTheoryExtensionsTests.CyclicBeliefs
+
+import GameTheoryExtensionsTests.ObservableGainBoundaries
+
+import GameTheoryExtensionsTests.PublicRandomization
+
+import GameTheoryExtensionsTests.CyclicBeliefsCompletion

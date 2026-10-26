@@ -12,22 +12,107 @@ runtime semantics, or the quantifiers of existing preservation results.
 | Proposal | Experiment and acceptance criterion | Disposition |
 | --- | --- | --- |
 | Signed observable transport | Reuse real expectations; compare selected observables without asserting equality of laws | Integration boundary checked; guarded interface retained |
-| Continuation-gain equivalence | Produce the existing gain-comparison premise with explicit integration and deviation scope | In progress |
-| Sufficient information | Test what local sufficiency supplies and identify the additional joint-law and strategy quantifiers | In progress |
-| Coarsening at random | Derive an existing Bayes comparison from likelihoods on actual fibers | In progress |
+| Continuation-gain equivalence | Produce a gain comparison with explicit integration and deviation scope | Conditional context and closed-span results accepted |
+| Sufficient information | Test what local sufficiency supplies and identify the additional joint-law and strategy quantifiers | Policy-quantifier boundaries and static public-signal extension accepted |
+| Coarsening at random | Derive posterior transport from an actual observation channel | Likelihood producer accepted; runtime fibers remain a client obligation |
 | Stopped potentials | Prove the arbitrary-carrier stopped estimate and recover the uniform-depth theorem without stronger premises | In progress |
 | Quantitative abstraction | Supply a runtime producer of state-dependent charges and assess conditional uniformity | In progress |
 | Affine debt and error transport | Compare a potential implementation with the existing recurrence, charging all adapter costs | In progress |
 | Scheduler noninterference | Reuse the stopped relational theorem while retaining observable metadata | In progress |
 | Adapted information | Check a decision-timing boundary and assess the cost of a player-specific abstraction | Boundary accepted; general filtration interface deferred |
-| Power-sequence certificates | Connect shared behavioral rates to actual Bayes consistency; separate soundness from completeness | In progress |
-| Finite obstruction certificates | Check a finite obstruction with game meaning and a consistent alternative assessment | In progress |
+| Power-sequence certificates | Connect shared behavioral rates to actual Bayes consistency; separate soundness from completeness | Concrete normalized-power completion accepted; general characterization not added |
+| Finite obstruction certificates | Check a finite obstruction with game meaning and a consistent alternative assessment | Shared-choice obstruction and same-profile SE accepted |
 | Forward-path coherence | Check the acyclic parallel-path boundary for cycle-only criteria | Boundary accepted; no cycle-only runtime criterion |
 | External package reuse | Inspect package ownership and dependencies before importing or extracting machinery | Finite signed prototype checked; dependency not adopted |
 
 Accepted declarations, concrete consumers, measured costs, and reasons to retain
 an existing proof are recorded here as each experiment is checked. Boundary
 examples refute only their stated criterion, not SE preservation.
+
+## Gain comparisons and sufficient observables
+
+[KernelPosteriorGain](../GameTheoryExtensions/Math/Probability/KernelPosteriorGain.lean)
+constructs a posterior from a prior and an actual observation kernel using the
+existing `fiberPosterior`. A positive observation mass gives the likelihood
+density, transfers absolute integrability, and expresses a gain change as its
+likelihood covariance divided by that mass. A second estimate includes the
+likelihood-weighted difference between source and target continuation gains.
+It does not assume that the continuation kernels already agree.
+
+Constant likelihood on the prior support is equivalent to preserving the full
+posterior. Nonpositive likelihood covariance can instead preserve a
+nonpositive gain while changing the posterior. These are different sufficient
+conditions. The denominator remains explicit; small unconditioned errors are
+not treated as uniform conditional errors.
+
+[ObservableGainTransport](../GameTheoryExtensions/Analysis/Protocol/ObservableGainTransport.lean)
+uses that producer in the existing `Context.ofBelief` and local-optimality
+predicate. Every allowed alternative is compared as one choice across the
+hidden-state expectation. If choices are whole policies, their information
+restrictions and branch interpretation must be supplied by the client. The
+theorem does not choose a different alternative at each hidden history.
+It constructs neither consistent assessments nor an initialized joint law.
+
+[ObservableMoments](../GameTheoryExtensions/Math/Probability/ObservableMoments.lean)
+transports finite represented payoff spans, with both exact and coefficient
+weighted error estimates. Source and target hidden carriers may differ.
+Propagation through actual continuation kernels requires a common closure
+matrix for both bases. The arbitrary-carrier one-step theorem states the
+integration guards; the every-horizon theorem uses globally bounded bases.
+
+[ObservableGainBoundaries](../GameTheoryExtensionsTests/ObservableGainBoundaries.lean)
+checks changed posteriors with matching nonconstant gains, actual conditional
+optimality, a policy-dependent channel that defeats an honest-only condition,
+sharp covariance and changed-continuation bounds, rare-observation amplification,
+failure of terminal-moment closure, and distinct kernels preserving a genuinely
+closed gain basis at every horizon. These are additions, not proof compression.
+
+[PublicRandomization](../GameTheoryExtensions/Analysis/PublicRandomization.lean)
+gives a separate static result: ignoring an independent public signal preserves
+and reflects Nash at the embedded mixed profile, for arbitrary preferences.
+Every contingent randomized unilateral alternative has exactly the source
+outcome law of its averaged mixed action. The
+[two-player example](../GameTheoryExtensionsTests/PublicRandomization.lean)
+preserves a nontrivial source Nash profile and its full declared outcome law,
+while duplicated public information conditioned on a constant compression
+admits no product factorization. That factorization is not necessary for this
+forward static implementation. A general dynamic USI/MSI or SE compression
+interface is not installed: it would still need the policy, common-sequence
+and selected joint-law adapters stated in the survey.
+
+## Consistency and finite certificates
+
+[BeliefMonomial](../GameTheoryExtensions/Analysis/Protocol/BeliefMonomial.lean)
+proves that a balanced finite product identity between actual history reach
+probabilities is necessary for consistency. Matching information sites cancel
+the Bayes normalizers, and one common fully mixed sequence passes the identity
+to the limiting beliefs. This constrains all consistency sequences, without
+assuming they are power sequences.
+
+[CyclicBeliefs](../GameTheoryExtensionsTests/CyclicBeliefs.lean) supplies the
+game meaning: fixed Nature chooses a pair, a sender uses one shared four-choice
+information set, and the observer sees the pair but not the sender's choice.
+The observer also has four legal choices. A real reach-product identity rules
+out strict cyclic posterior rankings, including concentrated cyclic supports.
+Actual own-play occurrence counts produce the corresponding three impossible
+exponent inequalities. Mathlib's checked arithmetic closes their contradiction;
+no second rational LP solver is introduced for this certificate.
+
+[CyclicBeliefsCompletion](../GameTheoryExtensionsTests/CyclicBeliefsCompletion.lean)
+constructs a consistent SE with exactly the entire prescribed main strategy
+profile and equal pair-belief probabilities. One common Bayes sequence uses
+positive uniform trembles. With a positive base tending to zero, the main and
+rare weights have fixed coefficients one and normalized powers zero and one;
+the coordinate identities cover both players' non-idle information states,
+including unreachable coordinates, and idle menus are singleton. Nature stays
+fixed. Thus the proposed cyclic beliefs fail even though the same prescribed
+play admits a consistent equilibrium. All utilities in this fixture are zero.
+
+A general compiler from finite games to exponent systems, leading-coefficient
+solver, integer-exponent characterization and completeness theorem are not
+added. The checked positive construction and universal obstruction exercise
+the semantic obligations directly; an arithmetic-only formatter would not
+replace them or simplify the current component-based completion proof.
 
 ## Observable and information boundaries
 

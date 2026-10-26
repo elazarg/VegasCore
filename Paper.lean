@@ -2644,3 +2644,141 @@ open GameTheory.Protocol.InformationModel in
 #guard_msgs (whitespace := lax) in
 open GameTheory.Protocol.InformationModel in
 #print axioms abs_expect_runBehavioralUntil_sub_le_of_stepTV
+
+/-- info: 'GameTheory.Math.Probability.kernelPosterior_toReal_apply' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open GameTheory.Math.Probability in
+#print axioms kernelPosterior_toReal_apply
+
+/-- info: 'GameTheory.Math.Probability.kernelPosterior_weight_le' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open GameTheory.Math.Probability in
+#print axioms kernelPosterior_weight_le
+
+/-- info: 'GameTheory.Math.Probability.payoffIntegrable_kernelPosterior' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open GameTheory.Math.Probability in
+#print axioms payoffIntegrable_kernelPosterior
+
+/-- info: 'GameTheory.Math.Probability.payoffIntegrable_kernelLikelihood_mul' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open GameTheory.Math.Probability in
+#print axioms payoffIntegrable_kernelLikelihood_mul
+
+/-- info: 'GameTheory.Math.Probability.payoffIntegrable_bind_kernelPosterior' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open GameTheory.Math.Probability in
+#print axioms payoffIntegrable_bind_kernelPosterior
+
+/-- info: 'GameTheory.Math.Probability.expect_kernelPosterior' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open GameTheory.Math.Probability in
+#print axioms expect_kernelPosterior
+
+/-- info: 'GameTheory.Math.Probability.expect_kernelPosterior_sub_expect' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open GameTheory.Math.Probability in
+#print axioms expect_kernelPosterior_sub_expect
+
+/-- info: 'GameTheory.Math.Probability.expect_kernelPosterior_nonpos' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open GameTheory.Math.Probability in
+#print axioms expect_kernelPosterior_nonpos
+
+/-- info: 'GameTheory.Math.Probability.abs_expect_kernelPosterior_sub_expect_le' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open GameTheory.Math.Probability in
+#print axioms abs_expect_kernelPosterior_sub_expect_le
+
+/-- info: 'GameTheory.Math.Probability.abs_expect_kernelPosterior_changed_gain_sub_expect_le' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open GameTheory.Math.Probability in
+#print axioms abs_expect_kernelPosterior_changed_gain_sub_expect_le
+
+/-- info: 'GameTheory.Math.Probability.kernelPosterior_eq_iff' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open GameTheory.Math.Probability in
+#print axioms kernelPosterior_eq_iff
+
+/-- info: 'GameTheory.Math.Probability.kernelPosterior_eq_of_constant_likelihood' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open GameTheory.Math.Probability in
+#print axioms kernelPosterior_eq_of_constant_likelihood
+
+/-- info: 'GameTheory.Math.Probability.expect_eq_of_observable_span' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open GameTheory.Math.Probability in
+#print axioms expect_eq_of_observable_span
+
+/-- info: 'GameTheory.Math.Probability.abs_expect_sub_le_of_observable_span' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open GameTheory.Math.Probability in
+#print axioms abs_expect_sub_le_of_observable_span
+
+/-- info: 'GameTheory.Math.Probability.expect_bind_eq_of_closed_observables' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open GameTheory.Math.Probability in
+#print axioms expect_bind_eq_of_closed_observables
+
+/-- info: 'GameTheory.Math.Probability.expect_iterate_eq_of_closed_observables' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open GameTheory.Math.Probability in
+#print axioms expect_iterate_eq_of_closed_observables
+
+/-- info: 'GameTheory.Protocol.Context.ofBelief_gain_eq_expect' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open GameTheory.Protocol.Context in
+#print axioms ofBelief_gain_eq_expect
+
+/-- info: 'GameTheory.Protocol.Context.ofBelief_gain_after_observation' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open GameTheory.Protocol.Context in
+#print axioms ofBelief_gain_after_observation
+
+/-- info: 'GameTheory.Protocol.Context.isLocallyOptimal_after_observation' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open GameTheory.Protocol.Context in
+#print axioms isLocallyOptimal_after_observation
+
+/-- info: 'GameTheory.Protocol.InformationModel.BehavioralAssessment.IsSequentiallyConsistent.belief_prod_eq' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open GameTheory.Protocol.InformationModel in
+#print axioms BehavioralAssessment.IsSequentiallyConsistent.belief_prod_eq
+
+/-- info: 'GameTheory.GameForm.play_ignorePublicSignal' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open GameTheory.GameForm in
+#print axioms play_ignorePublicSignal
+
+/-- info: 'GameTheory.GameForm.play_update_ignorePublicSignal' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open GameTheory.GameForm in
+#print axioms play_update_ignorePublicSignal
+
+/-- info: 'GameTheory.GameForm.isNash_ignorePublicSignal_iff' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open GameTheory.GameForm in
+#print axioms isNash_ignorePublicSignal_iff

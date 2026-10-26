@@ -80,3 +80,13 @@ import GameTheoryExtensions.Math.Probability.OptionalDomination
 import GameTheoryExtensions.Math.Probability.ConditioningCost
 import GameTheoryExtensions.Analysis.Protocol.StoppedBayes
 import GameTheoryExtensions.Analysis.Protocol.StoppedReadout
+
+import GameTheoryExtensions.Analysis.Protocol.BeliefMonomial
+
+import GameTheoryExtensions.Analysis.Protocol.ObservableGainTransport
+
+import GameTheoryExtensions.Math.Probability.KernelPosteriorGain
+
+import GameTheoryExtensions.Math.Probability.ObservableMoments
+
+import GameTheoryExtensions.Analysis.PublicRandomization

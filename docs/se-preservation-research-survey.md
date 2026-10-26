@@ -7,6 +7,11 @@ interfaces, and proposed applications are distinguished throughout. The
 applications are research proposals, not checked preservation theorems or
 changes to the [fixed target and checklist](se-async-checklist.md).
 
+The [experiment ledger](se-preservation-experiments.md) records checked local
+implementations, concrete consumers, boundary examples and decisions to retain
+existing interfaces. Its results have their stated scopes; the broader
+applications below remain research proposals where those adapters are missing.
+
 The most direct simplification opportunity is to transport only the
 continuation gains needed for rationality. Information compression supplies a
 broader generalization route, while power-sequence consistency offers finite
