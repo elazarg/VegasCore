@@ -1654,46 +1654,26 @@ private theorem source_binding_posterior_disintegration {A : Type}
   have observes : pairObserved = observed ∘ Prod.snd := by
     funext found
     dsimp only [pairObserved, observed, Function.comp_def]
-    unfold bindingCompletedObservation
-    unfold residualBindingObservation
-    dsimp only
-    split
-    · rename_i leftEq
-      split
-      · rfl
-      · rename_i secondFinal rightEq
-        have impossible := leftEq.symm.trans rightEq
-        cases impossible
-    · rename_i firstFinal leftEq
-      split
-      · rename_i rightEq
-        have impossible := leftEq.symm.trans rightEq
-        cases impossible
-      · rename_i secondFinal rightEq
-        have finalEq : firstFinal = secondFinal := Option.some.inj (leftEq.symm.trans rightEq)
-        cases finalEq
-        apply decide_eq_decide.mpr
-        constructor
-        · rintro ⟨own, selected, foreign⟩
-          refine ⟨?_, selected⟩
-          intro owner
-          by_cases same : owner = who
-          · subst owner
-            exact own
-          · exact foreign owner same
-        · rintro ⟨ledger, selected⟩
-          exact ⟨ledger who, selected, fun owner _ => ledger owner⟩
+    unfold bindingCompletedObservation residualBindingObservation
+    dsimp only [block, k]
+    split <;> simp_all only
+    apply decide_eq_decide.mpr
+    constructor
+    · rintro ⟨own, selected, foreign⟩
+      refine ⟨?_, selected⟩
+      intro owner
+      by_cases same : owner = who
+      · subst owner
+        exact own
+      · exact foreign owner same
+    · rintro ⟨ledger, selected⟩
+      exact ⟨ledger who, selected, fun owner _ => ledger owner⟩
   obtain ⟨_pairPresent, _foreignPresent, conditional, _ownPresent, _ownConditional⟩ :=
     pairLaw operational fullValues sourceProfile nativeProfile who control trace tape target
       supportedWord canonicalSupported positive past view information event payload clean admitted
         value
-  have conditional' : fiberPosterior pair (observed ∘ Prod.snd) true =
-      (fiberPosterior (ordinaryForeignJoint setup values implementation operational who
-        ⟨some control, trace⟩ target) Prod.snd true).bind fun word =>
-          sourceForcedBlockJoint setup values implementation who ⟨some control, trace⟩ event payload
-            target word.1 value := by
-    rw [← observes]
-    exact conditional
+  change fiberPosterior pair pairObserved true = _ at conditional
+  rw [observes] at conditional
   have split := source_split_pair_completed_posterior setup ordinary k (block.block.length - k)
     target observed (by simpa only [ordinary, checkpoint, block, k, Nat.add_sub_of_le within]
       using present)
@@ -1703,7 +1683,7 @@ private theorem source_binding_posterior_disintegration {A : Type}
     _ = (fiberPosterior pair (observed ∘ Prod.snd) true).bind
         (fun found => reward found.2) := by
       simpa only [pair, PMF.bind_map, Function.comp_def] using integrated.symm
-    _ = _ := by rw [conditional']; simp only [PMF.bind_bind, PMF.bind_map, Function.comp_def]
+    _ = _ := by rw [conditional]; simp only [PMF.bind_bind, PMF.bind_map, Function.comp_def]
 
 open Classical in
 /-- On an admitted tape the original reach-weighted physical payoff is
