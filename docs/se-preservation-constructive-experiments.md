@@ -147,20 +147,19 @@ it does not claim sequential rationality or equality of selected joint laws.
 
 ## Validation and remaining scope
 
-The production roots have exact standard-axiom guards in Paper. Test-library
-roots are audited separately, respecting the library import boundaries.
+Production and test-library roots are audited separately for standard axioms,
+respecting the library import boundaries.
 Normal compilation covers the generic owners, concrete consumers, and existing
 preservation capstones. Source policy, centralized options, module boundaries,
 documentation references, whitespace, and all 111 Python tests are checked.
 The full default build passes all 5,962 jobs, including the existing concurrent,
 recovery and sequential-phase preservation capstones. Thirty-seven selected
-production and fixture roots use only the standard axioms; fifteen production
-roots have permanent exact guards in Paper. The pre-existing recursion
+production and fixture roots use only the standard axioms. The pre-existing recursion
 diagnostic in optional metadata for symbol frequencies replays without a
 kernel/build failure.
 
 Physical source cost is a net 1,117 lines across ten library owners, 2,095 lines
-in four concrete test modules, 90 lines of Paper guards, and 222 lines of exact
+in four concrete test modules, and 222 lines of exact
 search tooling and Python tests. These counts include the adapters and fixtures,
 not just the small abstract certificate statements.
 

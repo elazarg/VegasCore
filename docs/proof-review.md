@@ -172,6 +172,6 @@ experiments, including actual production API replays and the full unconditional
 recovery specialization. All 33 public candidate-probe theorems retain exact
 axiom guards. The normal build passes all 5,771 jobs. Twenty probes, the full unconditional
 recovery specialization, 60 exact standard-axiom roots and all 100 Python tests
-pass. Fifty-one permanent production guards pin the new and strengthened roots. The
+pass. The
 existing optional premise-suggestion metadata recursion diagnostic persists
 independently of successful kernel checks and builds.

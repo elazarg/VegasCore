@@ -24,6 +24,9 @@ compatibility. When renaming or refactoring, update all callers and docs.
   uses it. A technical import or dependency exception must identify the result,
   explain the obstacle, and document its separate checked audit. Definitions
   used to describe a model do not by themselves require theorem pins.
+* Paper.lean pins nothing else. The build rejects `sorry` and the source
+  policy rejects axiom declarations and trust escape hatches throughout the
+  tree, so research, library and test results need no axiom pin.
 * Before adding definitions or general proof machinery, search the owning layers
   with `rg` and inspect their declaration surfaces with `lean-defs.py`. Consult
   `docs/module-architecture.md` for reusable APIs and their scope; instantiate

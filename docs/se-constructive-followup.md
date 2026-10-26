@@ -172,8 +172,8 @@ additional live cancellation needs a separately justified payoff relation.
 
 The full default build passes all 5,982 jobs, including the original preservation
 capstones and every test aggregator. The 111 Python tests pass, as do the strict
-source-policy, module-boundary and documentation-reference checks. Sixteen new
-permanent Paper guards pass. A final fifteen-root audit of the generic covers,
+source-policy, module-boundary and documentation-reference checks. A final
+fifteen-root audit of the generic covers,
 exact assessment interpretation, both infinity regressions, conditional payoff
 family and native callback witnesses uses only the standard axioms. All six
 global trace-algebra theorem headers are retained exactly; their proofs share

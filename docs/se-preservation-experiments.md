@@ -328,9 +328,8 @@ Acceptance checks cover the ordinary complete build, including the recovery,
 sequential-phase and concurrent capstones, 105 tooling tests, strict source policy,
 module boundaries, documentation references and whitespace. There are 142
 distinct affected or supporting theorem roots with explicit standard-axiom
-audits, including the game boundaries. Production guards live in `Paper.lean`;
-test-library roots are audited in isolated modules, preserving the prohibition
-on audit imports from game-theory tests. Five exact full-statement scope probes
+audits, including the game boundaries. The audits run in isolated modules,
+preserving the prohibition on audit imports from game-theory tests. Five exact full-statement scope probes
 check the generalized callback interfaces separately.
 
 The non-strict dependency diagnostic reports 52 of 1,955 modules with

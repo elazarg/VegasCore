@@ -43,6 +43,4 @@ full histories. The accepted equality concerns the same original readout
 payoff; it does not replace the phase preservation error by zero or strengthen
 an SE theorem without its existing assumptions.
 
-Normal owner builds and the actual strict-budget regression pass. The paper
-audit pins the readout law, original joint-payoff bound, bounded-payoff bound,
-signed residual, whole-policy gain, two native obstructions and budget witness.
+Normal owner builds and the actual strict-budget regression pass.

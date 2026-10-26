@@ -264,12 +264,12 @@ def check_audit_pins(text: str) -> list[str]:
 
 
 def check_axiom_prints(relative: Path, text: str) -> list[str]:
-    """Keep dependency prints in Paper.lean, the axiom audit."""
+    """Keep dependency prints in Paper.lean, the axiom audit of the paper's results."""
     if relative == Path("Paper.lean"):
         return []
     clean = strip_lean_comments_and_strings(text)
     return [f"{relative}:{clean.count(chr(10), 0, match.start()) + 1}: "
-            "axiom prints belong in Paper.lean"
+            "axiom prints belong in Paper.lean, which pins only results the paper states"
             for match in re.finditer(r"#print\s+axioms\b", clean)]
 
 

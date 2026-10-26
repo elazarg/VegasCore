@@ -15,7 +15,9 @@
 
 [Paper](../Paper.lean) states the paper-facing theorems and pins their axioms.
 Every mathematical result or invariant stated in the maintained manuscript is
-pinned, including prose claims and examples. Dependency reachability does not
+pinned, including prose claims and examples, and nothing else is: the build
+rejects `sorry` and the source policy rejects axiom declarations and trust
+escape hatches throughout the tree. Dependency reachability does not
 determine paper coverage. Technical import exceptions require an explicit
 reason and a separately checked audit.
 The [consolidation ledger](consolidation.md) records the target of the

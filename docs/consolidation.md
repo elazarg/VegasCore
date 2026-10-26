@@ -533,8 +533,8 @@ The independent posterior and continuation applications contain 58 and 62 test
 lines. Monetary settlement, program utility, joint payment laws, source-protocol
 correspondence, ideal and runtime equilibrium bridges, and concrete incentive
 examples provide the payment interface. Independent examples exercise correlated
-audits, unfinished outcomes and valuation-sensitive exit utility. Paper guards
-the axioms of the payment results. These APIs isolate
+audits, unfinished outcomes and valuation-sensitive exit utility. These APIs
+isolate
 reusable mathematics and connect payments to equilibrium results; they do not
 establish a substantial overall size reduction or a compression factor for the
 remaining preservation cone.
