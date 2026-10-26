@@ -167,6 +167,44 @@ the exact original install-and-close step, including final-slot rollback and
 retry. These local kernels do not yet supply a joint law at every macro
 boundary with all surviving information preserved.
 
+## Source continuations after ineffective openings
+
+[Surviving continuation](../Vegas/Game/SourcePhaseSurvivingContinuation.lean)
+compares two actual source histories whose saved and live semantic states
+agree and whose surviving players have the same complete source information.
+Under any original source policy profile, every continuation length has the
+same law of the common typed readout and declared cash vector. Excluded players
+have only the automatic silent choice; no policy is required to factor through
+erased private memory. The comparison uses no prior-independence or finite
+Nature assumption. Arbitrary history-dependent valuation still requires the
+separate observation factorization stated above.
+
+[Ineffective disclosure continuation](../Vegas/Game/SourcePhaseDisclosureContinuation.lean)
+applies this result to actual legal source steps. Replacing an intention whose
+publication fails by its effective silent choice preserves the saved and live
+semantic states and excludes its actor. Every remaining player's full source
+information agrees, so the complete subsequent readout and cash law agrees
+under the original policies. This supplies the source continuation comparison
+needed by the guarded opening encoder. Matching that source step to the full
+physical delivery/expiry window remains an operational obligation.
+
+## Ordinary private inputs and permitted observations
+
+[Private-input execution transport](../Vegas/Pending/PhaseInitialInputObservation.lean)
+changes ordinary private input fields while fixing initial commitments, program
+outputs, and commitment candidates. Actual response, packet inclusion, and
+environment-command kernels commute with that change, including rejected
+packets and the supplied leakage rule. The resulting one-step couplings have
+the exact execution marginals and preserve the focal player's full permitted
+traffic when its visible initial fields agree. Recall agreement is derived
+from actual initialized raw histories. The arbitrary focal policy consumer
+uses that player's permitted inputs, without universal pending visibility or
+prior independence.
+
+This result does not transport initial commitment values or establish the
+conditional traffic-noise factorization needed for arbitrary native deviations.
+Those remain separate obligations of the initialized law comparison.
+
 ## Remaining strategy obligations
 
 The first positive policy target uses the sequential graph with maximal phase

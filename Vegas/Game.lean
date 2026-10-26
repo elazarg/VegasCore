@@ -18,6 +18,8 @@ import Vegas.Game.SourcePhaseClientLaw
 import Vegas.Game.SourcePhaseClientBinding
 import Vegas.Game.SourcePhaseClientOpening
 import Vegas.Game.SourcePhaseDisclosure
+import Vegas.Game.SourcePhaseSurvivingContinuation
+import Vegas.Game.SourcePhaseDisclosureContinuation
 import Vegas.Game.SourcePhaseInitialNoise
 import Vegas.Game.SourcePhaseInitialization
 import Vegas.Game.SourcePhaseNormalization

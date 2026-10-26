@@ -4,13 +4,15 @@ import Vegas.Source.CommitRecoveryDisclosureAliases
 import Vegas.Source.CommitRecoveryNoMissInformation
 import Vegas.Game.CommitRecoveryHiddenInformation
 import Vegas.Source.CommitRecoveryWordMass
+import Vegas.Source.CommitRecoveryObservedMemory
 
 /-! # Ineffective disclosure aliases preserve foreign source information
 
 The source player still samples its original intention. Suppressing an
 ineffective opening changes that player's private action word, but keeps the
 typed successor, exclusions and every other player's complete source
-information at the actual extended histories.
+information at the actual extended histories. The semantic successor keeps
+both saved and live stores, and an ineffective publication excludes its owner.
 -/
 
 noncomputable section
@@ -45,7 +47,8 @@ private theorem suffix_observe_congr {wholeΓ Γ : SourceCtx Player L}
 
 /-- The literal full source signals and own-play recall of every other player
 agree after replacing one disclosure by its effective Boolean. Both sides are
-actual legal source steps from the same initialized history. -/
+actual legal source steps from the same initialized history. Their saved and
+live semantic states agree; a failed publication excludes the actor. -/
 theorem sourcePhase_effective_disclosure_foreign_information
     (setup : Setup (Player := Player) (L := L))
     {Γ : SourceCtx Player L} {O : Finset VarId} {published name : VarId}
@@ -72,11 +75,15 @@ theorem sourcePhase_effective_disclosure_foreign_information
     (secondReached : secondState ∈ (setup.commitRecoveryProtocol.step (some current)
       ⟨secondJoint, secondLegal⟩).support) :
     firstState.elim ∅ (·.excluded) = secondState.elim ∅ (·.excluded) ∧
-      ∀ who, who ≠ owner →
+      (∀ who, who ≠ owner →
         setup.commitRecoveryModel.infoOf who
             (trace.extend firstJoint firstLegal firstReached) =
           setup.commitRecoveryModel.infoOf who
-            (trace.extend secondJoint secondLegal secondReached) := by
+            (trace.extend secondJoint secondLegal secondReached)) ∧
+      firstState.map CommitRecoveryState.eraseHistory =
+        secondState.map CommitRecoveryState.eraseHistory ∧
+      (disclosureResult published selected config disclose = .failure →
+        owner ∈ firstState.elim ∅ (·.excluded)) := by
   let excluded := fun choice => match disclosureResult published selected config choice with
     | .failure => insert owner current.excluded
     | .success _ => current.excluded
@@ -112,7 +119,7 @@ theorem sourcePhase_effective_disclosure_foreign_information
       | .failure => insert owner current.excluded
       | .success _ => current.excluded)
       (disclosureResult_effectiveDisclosure published selected config disclose).symm
-  refine ⟨?_, ?_⟩
+  refine ⟨?_, ?_, ?_, ?_⟩
   · rw [firstAt, secondAt]
     exact sameExcluded
   · intro who other
@@ -154,5 +161,38 @@ theorem sourcePhase_effective_disclosure_foreign_information
       firstJoint secondJoint firstLegal secondLegal firstState secondState firstReached
       secondReached rfl ((coordinate firstJoint firstLegal).trans
         (coordinate secondJoint secondLegal).symm) privateView publicView
+  · rw [firstAt, secondAt]
+    apply congrArg some
+    have configuration :
+        {revealSuccessor published selected config disclose with history := fun _ => []} =
+          {revealSuccessor published selected config
+            (effectiveDisclosure published selected config disclose) with
+              history := fun _ => []} := by
+      have cells := (effective_reveal_observations (published := published)
+        selected config disclose).1.symm
+      exact congrArg (fun state => {revealSuccessor published selected config disclose with
+        state := state, history := fun _ => []}) cells
+    have points : ProtocolState.withHistory setup.program (after disclose).point (fun _ => []) =
+        ProtocolState.withHistory setup.program
+          (after (effectiveDisclosure published selected config disclose)).point
+            (fun _ => []) := by
+      dsimp only [after, CommitRecoveryState.atPoint]
+      rw [← origin.withHistory_lift, ← origin.withHistory_lift]
+      simp only [ProtocolState.withHistory, Sum.elim_inr, ProtocolState.withHistory_entry]
+      rw [configuration]
+    change CommitRecoveryState.atPoint
+        (ProtocolState.withHistory setup.program (after disclose).point (fun _ => []))
+        (excluded disclose) current.generation =
+      CommitRecoveryState.atPoint
+        (ProtocolState.withHistory setup.program
+          (after (effectiveDisclosure published selected config disclose)).point (fun _ => []))
+        (excluded (effectiveDisclosure published selected config disclose)) current.generation
+    exact congrArg₂ (fun point excluded =>
+      CommitRecoveryState.atPoint point excluded current.generation) points sameExcluded
+  · intro failed
+    rw [firstAt]
+    change owner ∈ excluded disclose
+    simp only [excluded, failed]
+    exact Finset.mem_insert_self ..
 
 end Vegas

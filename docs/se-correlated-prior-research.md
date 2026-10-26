@@ -326,6 +326,14 @@ is a refutation of the unchanged recovery theorem without independence.
 
 ## Implementation backlog
 
+**Status: deferred pending research on the intended ledger information boundary.**
+The concurrent theorem's complete pending observation is not an accepted
+substitute for ledger-based public information and explicitly permitted private
+observations. Its archive reconstruction does not establish that the resulting
+strategies are legal after pending traffic is hidden. The active implementation
+work is the source/phase operational-information correspondence and Nash port;
+the assumption-weakening experiments below remain research proposals.
+
 **Priority:** a bounded research track after the outstanding
 [source/phase operational-information and Nash port](source-phase-correspondence.md).
 The support-only extraction can run independently where its files do not overlap

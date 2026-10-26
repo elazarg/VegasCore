@@ -106,13 +106,14 @@ theorem RecoverySourceCheckpoint.current_binding_prefix_trace
       ProtocolState.actor setup.program source.point = some owner ∧
       setup.commitRecoveryModel.IsDecisionInfo owner
         (setup.commitRecoveryModel.infoOf owner sourceTrace) ∧
-      filled.history owner = ProtocolState.history setup.program source.point owner ∧
-      decodeEventView? setup.program
+      (∀ observer, observer ∉ state.current.excluded →
+        filled.history observer = ProtocolState.history setup.program source.point observer) ∧
+      (∀ observer, observer ∉ state.current.excluded → decodeEventView? setup.program
         (ContextRefs.initial setup.context (outputLayout setup.program))
-        (outputEmbedding setup.program).ref owner (checkpoint.embedding.event selected)
-        ((serviceGraph setup .sequential).playerStore owner state.current.native.config.store)
-        (ProtocolState.history setup.program source.point owner) =
-          some (ProtocolState.observe owner setup.program source.point) ∧
+        (outputEmbedding setup.program).ref observer (checkpoint.embedding.event selected)
+        ((serviceGraph setup .sequential).playerStore observer state.current.native.config.store)
+        (ProtocolState.history setup.program source.point observer) =
+          some (ProtocolState.observe observer setup.program source.point)) ∧
       setup.recoveryAddressWord sourceTrace = setup.recoveryAddressWord checkpoint.trace ++
         (List.range earlier.length).map (fun index =>
           (some (state.attempt.phase + index + 1),
@@ -188,18 +189,20 @@ theorem RecoverySourceCheckpoint.current_binding_prefix_trace
     exact decodeCommitAttempt_state_agrees setup.program .sequential earlier suffix embedding refs
       state.current.native entry state.entry.excluded state.attempt.phase compiled.rankEq valid
       receiptOrder currentAgreement processed
-  have visibleDecode := (decodeObservation?_playerStore (graph := toEventGraph setup.program)
-    owner (commitBlockRefs setup.program earlier suffix embedding refs)
+  have visibleDecode (observer : Player) :=
+    (decodeObservation?_playerStore (graph := toEventGraph setup.program)
+    observer (commitBlockRefs setup.program earlier suffix embedding refs)
     state.current.native.config.store).trans
-      (decodeObservation?_eq_some _ owner decoded.1.state _ fullAgreement)
-  have localView := decodeEventView?_commitPrefix_entry setup.program earlier suffix embedding
-    refs ((toEventGraph setup.program).playerStore owner state.current.native.config.store)
-    decoded.1 owner selected atEnd visibleDecode
-  have wholeView := (views.decode owner selected
-    ((toEventGraph setup.program).playerStore owner state.current.native.config.store)
-      (decoded.1.history owner)).trans
-    ((congrArg (Option.map (views.view owner)) localView).trans
-      (congrArg some (views.observe owner
+      (decodeObservation?_eq_some _ observer decoded.1.state _ fullAgreement)
+  have localView (observer : Player) := decodeEventView?_commitPrefix_entry setup.program earlier
+    suffix embedding refs
+    ((toEventGraph setup.program).playerStore observer state.current.native.config.store)
+    decoded.1 observer selected atEnd (visibleDecode observer)
+  have wholeView (observer : Player) := (views.decode observer selected
+    ((toEventGraph setup.program).playerStore observer state.current.native.config.store)
+      (decoded.1.history observer)).trans
+    ((congrArg (Option.map (views.view observer)) (localView observer)).trans
+      (congrArg some (views.observe observer
         (earlier.liftPoint suffix (ProtocolState.entry suffix decoded.1)))).symm)
   let first := CommitRecoveryState.atPoint
     (lift (ProtocolState.entry (earlier.prepend suffix) entry)) state.entry.excluded
@@ -305,22 +308,26 @@ theorem RecoverySourceCheckpoint.current_binding_prefix_trace
   have active : owner ∉ after.excluded := by
     change owner ∉ decoded.2.1
     rwa [excluded]
-  have sourceWord : ProtocolState.history setup.program after.point owner =
-      decoded.1.history owner := by
-    change ProtocolState.history setup.program target owner = _
+  have sourceWord (observer : Player) : ProtocolState.history setup.program after.point observer =
+      decoded.1.history observer := by
+    change ProtocolState.history setup.program target observer = _
     rw [histories, earlier.liftPoint_history]
     rfl
-  have sameView := decodeCommitAttempt_surviving_view_eq_fill setup.program .sequential earlier
-    suffix embedding state.current.native valid owner entry entry state.entry.excluded rfl
-      (fun index inside _owned => processed index inside) (by rwa [excluded])
-  have sameWord : decoded.1.history owner =
+  have sameWord (observer : Player) (surviving : observer ∉ state.current.excluded) :
+      decoded.1.history observer =
       (fillCommitPrefix setup.program earlier suffix embedding
-        state.current.native.config.store entry).history owner := congrArg Prod.snd sameView
+        state.current.native.config.store entry).history observer := by
+    have sameView := decodeCommitAttempt_surviving_view_eq_fill setup.program .sequential earlier
+      suffix embedding state.current.native valid observer entry entry state.entry.excluded rfl
+        (fun index inside _owned => processed index inside) (by rwa [excluded])
+    exact congrArg Prod.snd sameView
   refine ⟨after, sourceTrace, rfl, sourcePrefix.tracePrefix, excluded, rfl, publicSignal, actor,
     commitRecovery_isDecisionInfo_of_surviving_actor setup after sourceTrace owner active actor,
-    sameWord.symm.trans sourceWord.symm, ?_, ?_, joints⟩
-  · rw [sourceWord]
-    exact wholeView
+    fun observer surviving => (sameWord observer surviving).symm.trans (sourceWord observer).symm,
+    ?_, ?_, joints⟩
+  · intro observer _surviving
+    rw [sourceWord observer]
+    exact wholeView observer
   · rw [numeric, exactAddresses]
 
 /-- Every actual initialized sequential binding request has a legal current
@@ -411,13 +418,15 @@ theorem phase_ready_binding_current_source
   have actualWord := checkpoint.filled_prefix_archived_history_of_ready archivedRecall archives
     fresh guard next earlier reconstruct survives selected atEnd (selectedEq.symm ▸ request.2.2.1)
       (selectedEq.symm ▸ acting) bindingRecord.active native.active.reachable retained saved
-  rw [← word, selectedEq] at decoded
+  have wordAt := word who request.2.2.2.2
+  have decodedAt := decoded who request.2.2.2.2
+  rw [← wordAt, selectedEq] at decodedAt
   have eventRank : event.val = control.execution.application.attempt.phase + earlier.length := by
     rw [← selectedEq, checkpoint.compiled.rankEq, atEnd]
   refine ⟨source, sourceTrace, excluded, generation, publicSignal, actor, played, ?_, ?_⟩
   · rw [phaseSurvivingSourceView?_observed_of_history setup .sequential runtime leaks plan inputs
       horizon scheduler physicalTrace who event, ← actualWord]
-    exact decoded
+    exact decodedAt
   · rw [numeric, publicChronology.addresses]
     simp only [PhaseRuntimeState.sourceCurrentAddressWord, eventRank, Nat.add_sub_cancel_left]
 

@@ -284,6 +284,7 @@ directory's aggregator imports every module in it.
 ## Vegas/Pending
 
 - [Complete focal phase traffic and arbitrary responses](../Vegas/Pending/PhaseTraffic.lean)
+- [Ordinary private-input transport through actual execution and focal observations](../Vegas/Pending/PhaseInitialInputObservation.lean)
 - [Hidden foreign binding laws at a shared physical slot](../Vegas/Pending/PhaseForeignTraffic.lean)
 - [Raw candidate provenance and canonical fresh slots](../Vegas/Pending/PhaseCandidateInputs.lean)
 - [Actual binding delivery under a private binding frame](../Vegas/Pending/PhaseTrafficBinding.lean)
@@ -470,6 +471,8 @@ directory's aggregator imports every module in it.
 - [Nontruncated actual first binding encoders](../Vegas/Game/SourcePhaseClientBinding.lean)
 - [Locally validated opening encoders](../Vegas/Game/SourcePhaseClientOpening.lean)
 - [Suppressed ineffective openings preserve foreign full information](../Vegas/Game/SourcePhaseDisclosure.lean)
+- [Original source continuation laws from surviving full information](../Vegas/Game/SourcePhaseSurvivingContinuation.lean)
+- [Ineffective opening suppression preserves continuation readout and cash laws](../Vegas/Game/SourcePhaseDisclosureContinuation.lean)
 
 - [Physical integer phase cash and audited monetary utility](../Vegas/Game/PhaseCash.lean)
 
