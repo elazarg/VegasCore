@@ -324,6 +324,11 @@ test-library roots are audited in isolated modules, preserving the prohibition
 on audit imports from game-theory tests. Five exact full-statement scope probes
 check the generalized callback interfaces separately.
 
+The non-strict dependency diagnostic reports 52 of 1,955 modules with
+declarations unreached from Paper, tests and examples, totaling 5,370 lines.
+The unreached module count matches the evaluation baseline. This report is
+separate from default-build coverage; no zero-unreached claim is made.
+
 The full build replays the pre-existing optional symbol-frequency metadata
 recursion diagnostic for `Vegas.Examples.CommitTimingInformationAudit`. Proof
 checking and the axiom guards pass; the central Lean options are unchanged.
