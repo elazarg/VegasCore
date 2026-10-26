@@ -76,7 +76,7 @@ theorem decodeState?_eq_some {Field : Type}
         cases source <;> rfl
 
 omit [DecidableEq Player] R in
-private theorem exists_decodeState_agrees {Field : Type}
+theorem exists_decodeState_agrees {Field : Type}
     {layout : Field → Vegas.EventGraph.EventField Player L} :
     {Γ : SourceCtx Player L} → (refs : ContextRefs layout Γ) →
     (store : Vegas.EventGraph.Store layout) →

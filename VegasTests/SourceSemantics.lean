@@ -145,6 +145,7 @@ def mixedSetup : SourceProgram.Setup (Player := Player) (L := simpleExpr) where
   obligations := {seed}
   program := mixedProgram
   accounts := rfl
+  exitTransfers := fun _ => 0
 
 private abbrev doomed : VarId := 20
 private abbrev doomedOut : VarId := 21

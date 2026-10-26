@@ -33,6 +33,9 @@ structure Setup where
   obligations : Finset VarId
   program : SourceProgram Player L context obligations
   accounts : obligations = commitmentNames context
+  /-- The declared integer receipt replaces ordinary terminal payments after
+  this player's permanent exit. -/
+  exitTransfers : Player → Int
 
 namespace Setup
 

@@ -1,11 +1,13 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.AsyncServiceRawNash
+import Vegas.Game.TerminalObservationLaws
 
 /-! # Client laws and observable guarantees under asynchronous service
 
-The joint law of the typed terminal readout and realized settlement is within
-the product deferral error of the source law for every source profile.
+The common terminal observation retains the typed state, its original inputs
+and public result, and the entire realized settlement vector. Its joint law is
+within the product deferral error of the source law for every source profile.
 Equilibrium assumptions are unnecessary. Event probabilities and bounded
 observable expectations inherit lower bounds with the same law error.
 -/
@@ -21,14 +23,14 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L] (service : AsyncServiceSpec Player L)
   (admission : CommitmentInterface service.setup.program)
 
-/-- The actual raw client's typed readout jointly with its realized audit settlement. -/
+/-- The actual raw client's common terminal observation, including realized audit settlement. -/
 def clientSettlementLaw {turns : Nat} (timing : TurnTiming service.setup turns service.mode)
     (source : Profile (service.sourceModel admission).behavioralSignature)
     (sample : List (SettledEvidence service.setup service.mode) →
       PMF (List (SettledEvidence service.setup service.mode)))
     (utility : State L service.setup.program.terminalCtx → Player → ℝ)
     (deposit : Player → ℝ) :
-    PMF (Option (State L service.setup.program.terminalCtx) × (Player → ℝ)) :=
+    PMF (TerminalObservation service.setup) :=
   let settle := TerminalAudit.settlement
     (serviceBaseUtility service.setup service.mode service.deadline service.leaks utility)
     ((serviceRuntime service.setup service.mode service.deadline).serviceAuditObservation
@@ -39,16 +41,17 @@ def clientSettlementLaw {turns : Nat} (timing : TurnTiming service.setup turns s
       (service.clientProfile admission service.rawMenu timing source)
       (2 * service.horizon + 1)).bind fun final =>
         (settle final.state).map fun payoffs =>
-          (serviceSourceReadout service.setup service.mode service.deadline service.leaks
-            final.state, payoffs)
+          TerminalObservation.read service.setup
+            (serviceSourceReadout service.setup service.mode service.deadline service.leaks
+              final.state) payoffs
 
-/-- The corresponding source law in the same joint readout/settlement carrier. -/
+/-- The source law uses the same fixed terminal-input and public-result reader. -/
 def sourceSettlementLaw
     (source : Profile (service.sourceModel admission).behavioralSignature)
     (utility : State L service.setup.program.terminalCtx → Player → ℝ) :
-    PMF (Option (State L service.setup.program.terminalCtx) × (Player → ℝ)) :=
+    PMF (TerminalObservation service.setup) :=
   (service.setup.run (service.setup.decodeBehavioralProfile admission source)).map
-    (fun state => (some state, utility state))
+    (fun state => TerminalObservation.read service.setup (some state) (utility state))
 
 /-- Every source profile's raw clients reproduce its joint law within the
 product deferral error. Neither rationality nor a payoff-range premise is needed. -/
@@ -63,12 +66,17 @@ theorem clientSettlementLaw_withinTV
     (deposit : Player → ℝ) :
     PMF.WithinTV timing.deferralError
       (service.clientSettlementLaw admission timing source sample utility deposit)
-      (service.sourceSettlementLaw admission source utility) :=
-  sourceServiceClients_clientPolicy_settlement_lawError service.contract service.timely timing
+      (service.sourceSettlementLaw admission source utility) := by
+  have close := sourceServiceClients_clientPolicy_settlement_lawError service.contract
+    service.timely timing
     (service.setup.decodeBehavioralProfile admission source)
     (firstTurn_readout_law service.setup service.leaks ordered service.contract service.timely
       turns _ (sourceServiceClientProfile_effective _)) service.rawMenu
     (service.rawMenu_admits admission timing source) sample authentic utility deposit
+  convert close.map (Function.uncurry (TerminalObservation.read service.setup)) using 1 <;>
+    simp only [clientSettlementLaw, sourceSettlementLaw, PMF.map_bind, PMF.map_comp,
+      Function.comp_def, Function.uncurry]
+  rfl
 
 /-- A source event's probability lower bound loses at most the deferral error
 under the actual raw client law, including the realized settlement. -/
@@ -81,7 +89,7 @@ theorem clientSettlementLaw_event_lower_bound
     (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
     (utility : State L service.setup.program.terminalCtx → Player → ℝ)
     (deposit : Player → ℝ)
-    (event : Set (Option (State L service.setup.program.terminalCtx) × (Player → ℝ)))
+    (event : Set (TerminalObservation service.setup))
     (lower : ℝ)
     (sourceLower : lower ≤
       ((service.sourceSettlementLaw admission source utility).toOuterMeasure event).toReal) :
@@ -104,7 +112,7 @@ theorem clientSettlementLaw_expect_lower_bound
     (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
     (utility : State L service.setup.program.terminalCtx → Player → ℝ)
     (deposit : Player → ℝ)
-    (observable : Option (State L service.setup.program.terminalCtx) × (Player → ℝ) → ℝ)
+    (observable : TerminalObservation service.setup → ℝ)
     (low width lower : ℝ)
     (bounded : ∀ result,
       result ∈ (service.clientSettlementLaw admission timing source sample utility deposit).support

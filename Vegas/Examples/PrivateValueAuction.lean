@@ -48,6 +48,7 @@ def setup (prior : PMF (Player → Int)) : Setup (Player := Player) (L := simple
   obligations := ∅
   program := program
   accounts := rfl
+  exitTransfers := fun _ => 0
 
 def values (state : State simpleExpr context) : Player → Int
   | .alice => state.get .here

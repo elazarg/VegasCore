@@ -1,5 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
+import VegasTests.DeclaredExitCash
 import VegasTests.ConcurrentRawHypotheses
 import VegasTests.CurrentBindingGainContract
 import VegasTests.Disclosure

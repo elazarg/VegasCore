@@ -11,8 +11,14 @@ model does not depend on one.
 A [source program](Vegas/Source/Basic.lean) samples public chance, lets an owner
 commit to a private typed value under a guard, lets the owner reveal that
 commitment, and returns. The initial context holds public data and owner-private
-inputs, drawn from a joint initial law. A commitment or reveal can fail; failure
-is a value and play continues ([source semantics](docs/source-semantics.md)).
+inputs, drawn from a joint initial law. The instruction evaluator represents
+failure as a value and continues; that view remains in the retained plain Nash
+results ([source semantics](docs/source-semantics.md)). The chosen operational
+policy is permanent public exit with observed commitment-phase retries. Its
+[source phase game](Vegas/Game/SourcePhaseGame.lean) reuses the existing exit/retry
+kernel and requires program-declared integer exit transfers. The full
+continuing-source/phase Nash port remains separate; the
+[semantic contract](docs/common-semantics-contract.md) states that boundary.
 
 The language is deliberately small:
 
@@ -28,8 +34,11 @@ outcome together with initial-input parameters, or over the terminal state.
 valuation to the program's evaluated `ret` payments. The
 [payment example](Vegas/Examples/ProgramPayments.lean) proves that changing a
 program bonus reverses a strict incentive, and that compilation preserves the
-payment law. Migrating the capstones to this interface remains in the
-[consolidation plan](docs/consolidation.md).
+payment law. Both phase SE environments have monetary specializations over the
+same terminal-observation carrier. The [compiled cash reader](Vegas/Compile/EventGraphCash.lean)
+evaluates native payment instructions and applies the declared exit override.
+The [compression and migration report](docs/consolidation-compression.md) records
+the checked scopes, measured costs and remaining contract ports.
 
 ## Compilation
 

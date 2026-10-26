@@ -23,6 +23,10 @@ code, which is checked at that tag only.
   description.
 - [Consolidation ledger](consolidation.md): the reduction plan, findings,
   measurements and the index of retired results.
+- [Compression and migration](consolidation-compression.md): measured proof
+  pilots, accepted common observations and cash laws, and rejected replacements.
+- [Common semantic contract](common-semantics-contract.md): the chosen exit,
+  retry and declared-payment policy and its remaining source/contract adapters.
 - [Proof review and mathematical mining](proof-review.md): codebase coverage,
   checked experiments, compression candidates and stronger nearby results.
 

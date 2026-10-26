@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import GameTheoryExtensions.Analysis.Protocol.TerminalAudit
+import GameTheoryExtensions.Math.Transfers
 
 /-! # Monetary settlement evaluated by quasi-linear utility
 
@@ -15,26 +16,6 @@ noncomputable section
 namespace GameTheory
 
 open Math.Probability
-
-/-- Sum all transfer entries belonging to a player, including duplicates. -/
-def transferAmount {Player : Type*} [DecidableEq Player]
-    (entries : List (Player × Int)) (who : Player) : Int :=
-  (entries.map fun entry => if entry.1 = who then entry.2 else 0).sum
-
-@[simp] theorem transferAmount_nil {Player : Type*} [DecidableEq Player] (who : Player) :
-    transferAmount ([] : List (Player × Int)) who = 0 := rfl
-
-@[simp] theorem transferAmount_cons {Player : Type*} [DecidableEq Player]
-    (entry : Player × Int) (entries : List (Player × Int)) (who : Player) :
-    transferAmount (entry :: entries) who =
-      (if entry.1 = who then entry.2 else 0) + transferAmount entries who := rfl
-
-/-- Appending transfer instructions adds their monetary effects. -/
-theorem transferAmount_append {Player : Type*} [DecidableEq Player]
-    (first second : List (Player × Int)) (who : Player) :
-    transferAmount (first ++ second) who =
-      transferAmount first who + transferAmount second who := by
-  simp only [transferAmount, List.map_append, List.sum_append]
 
 /-- Utility of an outcome paired with its realized monetary receipts. -/
 def monetaryUtility {Player Outcome : Type*} (valuation : Outcome → Player → ℝ)
@@ -198,6 +179,26 @@ theorem jointSettlement_readout_sub_valuation {Retained : Type}
       retainedValuation (retain outcome) who = receipts who
     rw [factors outcome supported]
     ring
+
+/-- A retained joint utility law determines the corresponding cash law whenever
+valuation factors through that same retained observation on the actual support.
+All outcome, receipt and verdict correlations are retained. -/
+theorem jointSettlement_readout_eq_of_utility_law {Retained : Type}
+    (law : PMF Outcome) (valuation transfer : Outcome → Player → ℝ)
+    (retain : Outcome → Retained) (retainedValuation : Retained → Player → ℝ)
+    (factors : ∀ outcome ∈ law.support, valuation outcome = retainedValuation (retain outcome))
+    (observe : Outcome → Observation) (audit : Observation → PMF (Player → Bool))
+    (deposit : Player → ℝ) (reference : PMF (Retained × (Player → ℝ)))
+    (utilityLaw :
+      (jointSettlement law (fun outcome who => valuation outcome who + transfer outcome who)
+        observe audit deposit).map (fun realized => (retain realized.1, realized.2)) =
+        reference.map (utilityReadout retainedValuation)) :
+    (jointSettlement law transfer observe audit deposit).map
+        (fun realized => (retain realized.1, realized.2)) = reference := by
+  have recovered := congrArg (PMF.map (receiptReadout retainedValuation)) utilityLaw
+  rw [PMF.map_comp, jointSettlement_readout_sub_valuation law valuation transfer retain
+    retainedValuation factors, map_utilityReadout_receiptReadout] at recovered
+  exact recovered
 
 /-- A clean audit preserves the joint outcome and monetary transfer law. -/
 theorem jointSettlement_clean (law : PMF Outcome) (transfer : Outcome → Player → ℝ)

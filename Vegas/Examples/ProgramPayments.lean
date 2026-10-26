@@ -45,6 +45,7 @@ def setup (bonus : Int) : Setup (Player := Player) (L := simpleExpr) where
   obligations := ∅
   program := program bonus
   accounts := rfl
+  exitTransfers := fun _ => 0
 
 instance (bonus : Int) : (setup bonus).FiniteInitialLaw where
   support_finite := by

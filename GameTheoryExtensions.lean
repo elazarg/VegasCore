@@ -1,5 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
+import GameTheoryExtensions.Math.Transfers
 import GameTheoryExtensions.Analysis.Enforcement
 import GameTheoryExtensions.Analysis.ObservableEnforcement
 import GameTheoryExtensions.Analysis.Protocol.AffineKeyedPools

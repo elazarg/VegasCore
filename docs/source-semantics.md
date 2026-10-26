@@ -1,5 +1,12 @@
 # Source semantics
 
+This page describes the continuing instruction evaluator used by the retained
+plain-contract results. The chosen operational source game instead uses
+permanent exit with commitment-phase retries, retained recall and declared exit
+transfers. Its [semantic contract](common-semantics-contract.md) and
+[source phase game](../Vegas/Game/SourcePhaseGame.lean) state the checked policy
+and the remaining correspondence obligations.
+
 [SourceProgram](../Vegas/Source/Basic.lean) is a finite typed program with four
 constructors: return, public sample, private commitment and guarded reveal.
 The initial context can contain public data and persistent owner-private inputs.

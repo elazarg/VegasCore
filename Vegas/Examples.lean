@@ -1,5 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
+import Vegas.Examples.FailureContinuationScope
+import Vegas.Examples.SourcePhaseFailureContinuation
+import Vegas.Examples.SequentialPhasePayments
 import Vegas.Examples.CommitRevealAuction
 import Vegas.Examples.BoundedPaymentAuction
 import Vegas.Examples.CommitTimingInformationAudit

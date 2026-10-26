@@ -162,6 +162,7 @@ private def pairSetup : SourceProgram.Setup (Player := Bool) (L := simpleExpr) w
   obligations := ∅
   program := pairSource
   accounts := rfl
+  exitTransfers := fun _ => 0
 
 instance : pairSetup.FiniteInitialLaw := ⟨by simp [pairSetup]⟩
 

@@ -246,11 +246,12 @@ device in the proof layer), tag and remove, or remove.
 
 | Construction | Role | Proposed disposition |
 | --- | --- | --- |
-| `SourceProgram.gameForm`, `Setup.gameForm` | Source semantics as a game form | keep one; `Vegas.SourceProgram.Setup.protocol_runBehavioral_eq` relates it to the protocol |
-| `Setup.executionProtocol`, `Setup.informationModel` | Source semantics as an information model, parameterized by a commitment interface | keep |
+| `SourceProgram.gameForm`, `Setup.gameForm` | Continuing-source analysis game used by the retained plain Nash family | retain its scope until the operational-game port; `Vegas.SourceProgram.Setup.protocol_runBehavioral_eq` relates it to the instruction evaluator |
+| `Setup.executionProtocol`, `Setup.informationModel` | Continuing-source instruction view, parameterized by commitment admission | retain for existing compiler/Nash results; do not identify it silently with permanent exit |
 | `Setup.intendedModel` | Analysis view: commitments hold predicted values, reveals open; premise of every SE theorem | keep |
 | `Setup.exclusionModel`, `Setup.exclusionMoveModel` | Analysis view with a fixed exit payoff | decision D3 |
-| `commitRecoveryModel`, `commitRecoveryErasedModel`, `proposalRecoveryModel` | Proof carriers of the concurrent SE theorem (26k of the 47k lines in Vegas/Source) | carrier: move to the proof layer and label |
+| `CommitRecoveryState`, `Setup.commitRecoveryProtocol`, `Setup.commitRecoveryModel` | Existing operational source exit/retry kernel with observed attempt recall | reuse for the chosen source policy; `Setup.sourcePhaseGame` adds declared cash and separate valuation without another evaluator |
+| `commitRecoveryErasedModel`, `proposalRecoveryModel` | Erasure and proposal-label proof views | retain as explicit proof devices; port or retire only with their theorem scopes accounted for |
 | `Setup.valueBindingGame` | Pure value-binding game form, used only by the commit–reveal auction example; its behavioral edge ([`Vegas/Game/ValueBindingEdge.lean`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/ValueBindingEdge.lean)) is unused | remove the edge; keep the game form only with the example |
 | `SourceProgram.Initial` | Duplicate of `Setup` with a point-mass initial state | removed; tests use a `Setup` with a point-mass law, and `Vegas.SourceProgram.Setup.revealed` states the accounting theorem |
 | `Vegas/Language` | Surface-syntax prototype with no semantics or elaboration | tag and remove |
@@ -654,8 +655,10 @@ for arbitrary runtime laws, which may include exclusions and whose exit
 valuation may differ from the retained readout. The source valuation includes the
 existing failed-publication exclusion rule and is zero on an absent readout;
 ordinary valuation agrees with it only under the separate failure hypothesis.
-Exit receipts remain declared analysis settlement data until a compiler/runtime
-implementation proves them.
+Exit receipts are required integer source-setup data. The source and compiled
+settlement readers agree pointwise in every mode and structural configuration.
+This is an abstract monetary interpretation, not an escrow-balance or EVM
+execution theorem; see the [migration report](consolidation-compression.md).
 
 These results keep the existing contracts distinct and leave the source failure,
 exit and rollback choices open. They provide conditional monetary adapters for
@@ -719,9 +722,13 @@ retained; every Paper theorem has an instance.
 
 ### Step 6. Proof compression and naming
 
-- [ ] Compress one self-contained proof module and measure the reduction
+- [x] Compress one self-contained proof module and measure the reduction
       before choosing a size target or replacing proof machinery. Evaluate
       power-sequence consistency only where it simplifies an actual obligation.
+      The [checked pilots](consolidation-compression.md) remove 48 lines in
+      complete owning modules; the actual posterior certificate replacement
+      is rejected with its adapter obligations documented. No overall size
+      target is inferred from this measurement.
 - [ ] Recurring hypothesis groups bundled into structures; repeated terms
       named with API lemmas; declarations over 500 lines split.
 - [ ] Duplicate private helpers and near-copy files merged.
@@ -751,14 +758,16 @@ Exit: size within the target, or the excess explained in
   builder. Deriving it from the concurrent theorem waits: the environments
   differ, so the derivation is not expected to be routine.
 - **D2. The single contract.** Proposed: the phase contract.
-- **D3. Source failure semantics.** Commit–reveal with exit
-  (semantics-and-enforcement.md III.1), or the intended game with forfeit and
-  exclusion payoff rewrites as analysis views only. Recommended: operational
-  exit and explicit phase-retry semantics, with an intended restriction derived
-  from the same semantics. Specify retained information, survivors' payments
-  and the valuation hypothesis behind constant exit utility before porting
-  results. This also decides the fate of `exclusionModel`; the choice remains
-  open.
+- **D3. Source failure semantics.** Decided: permanent public exit, automatic
+  failure of the exited owner's later events, and commitment-phase retries for
+  surviving owners with observations and recall retained. The source declares
+  integer exit transfers that replace an exited player's ordinary ret payment;
+  valuation remains separate with explicit hypotheses for constant exit utility.
+  The [common semantic contract](common-semantics-contract.md) specifies the
+  policy, monetary implementation and remaining correspondence obligations.
+  The existing continuing-source evaluator and its retained full-policy Nash
+  results are not silently equated with this operational policy. Intended-view,
+  source/phase and settlement adapters must pass before a contract is retired.
 - **D4. Truthfulness.** Decided meaning: truthfulness preservation, for example
   that truthful bidding stays dominant when a second-price auction is compiled.
   The language must be able to state it. Conditional withholding already

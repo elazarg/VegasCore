@@ -1,5 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
+import Vegas.Compile.EventGraphCash
 import Vegas.Compile.CommitBlockReferences
 import Vegas.Compile.CommitPhaseLayout
 import Vegas.Compile.CommitPrefixAdmission

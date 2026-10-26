@@ -40,6 +40,8 @@ directory's aggregator imports every module in it.
 
 ## GameTheoryExtensions
 
+- [Integer transfer aggregation without auditing dependencies](../GameTheoryExtensions/Math/Transfers.lean)
+
 - [Conditional tensor certificates with unequal observation masses](../GameTheoryExtensions/Analysis/ConditionalObservableTensor.lean)
 
 - [Actual adaptive transcript moments and Bayes normalization](../GameTheoryExtensions/Analysis/PrivateTranscriptWeights.lean)
@@ -144,6 +146,8 @@ directory's aggregator imports every module in it.
 - [Typed selected partial environments](../Vegas/Foundation/PartialEnvironment.lean)
 
 ## Vegas/Source
+
+- [Program-declared integer cash and exit overrides](../Vegas/Source/Settlement.lean)
 
 - [Terminal guard safety for every source profile and initial law](../Vegas/Source/Safety.lean)
 - [Actual value-history representations of unilateral failed-binding deviations](../Vegas/Source/BindingRepairTrace.lean)
@@ -251,6 +255,8 @@ directory's aggregator imports every module in it.
 - [Source-ranked same-owner recall in relaxed graphs](../Vegas/EventGraph/RelaxedRecall.lean)
 
 ## Vegas/Compile
+
+- [Actual compiled payoff instructions and declared exit cash](../Vegas/Compile/EventGraphCash.lean)
 
 - [Typed context agreement under dependent reindexing](../Vegas/Compile/ContextRefsTransport.lean)
 
@@ -437,6 +443,18 @@ directory's aggregator imports every module in it.
 - [Raw submission bounds from reserved owner slots](../Vegas/Pending/ReservedEpochTraffic.lean)
 
 ## Vegas/Game
+
+- [Declared monetary source game on the existing exit/retry kernel](../Vegas/Game/SourcePhaseGame.lean)
+
+- [Physical integer phase cash and audited monetary utility](../Vegas/Game/PhaseCash.lean)
+
+- [Sequential-phase monetary SE and full joint cash law](../Vegas/Game/SequentialPhasePaymentPreservation.lean)
+
+- [Exact phase cash inversion under correlated audits](../Vegas/Game/PhasePaymentReadout.lean)
+
+- [Lossless common-observation recoding and total-variation equivalence](../Vegas/Game/TerminalObservationLaws.lean)
+
+- [Common original-input, typed-terminal, public-result and vector observation](../Vegas/Game/TerminalObservation.lean)
 
 - [Typed source readout stability after completion](../Vegas/Game/SourceTerminalReadout.lean)
 - [Response budgets stopped at source completion](../Vegas/Game/SourceTerminalComparison.lean)
@@ -801,6 +819,12 @@ their support arguments use the shared probability-law convergence API and
 the concrete terminal-state interpretation.
 
 ## Vegas/Examples
+
+- [Funded sequential raw equilibrium preserving program-declared cash](../Vegas/Examples/SequentialPhasePayments.lean)
+
+- [Actual initialized source exit with declared cash and retained valuation](../Vegas/Examples/SourcePhaseFailureContinuation.lean)
+
+- [Continuing-source and phase decision-interface obstruction](../Vegas/Examples/FailureContinuationScope.lean)
 
 - [Reachable native handle and observation obstruction](../Vegas/Examples/ProgramPaymentsNativeRepresentation.lean)
 

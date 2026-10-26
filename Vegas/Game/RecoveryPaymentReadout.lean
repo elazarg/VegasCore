@@ -118,30 +118,21 @@ theorem recovery_jointCashLaw_of_utility_law {Parameter Observation : Type}
           state who := by
     funext state who
     exact recoveryExclusionBase_add parameter valuation _ exitValuation exitTransfer state who
-  have recovered := congrArg (PMF.map (receiptReadout sourceValuation)) utilityLaw
-  rw [PMF.map_comp, baseAdd, TerminalAudit.jointSettlement_readout_sub_valuation law
+  rw [baseAdd] at utilityLaw
+  apply TerminalAudit.jointSettlement_readout_eq_of_utility_law law
     (recoveryExclusionBase parameter valuation exitValuation) _
     (recoveryPaymentReadout setup leaks) sourceValuation
     (recoveryExclusionBase_valuation_factors setup leaks parameter valuation exitValuation law
-      exitCompatible)] at recovered
-  rw [PMF.map_comp] at recovered
-  exact recovered.trans (by
-    congr 1
-    funext readout
-    apply Prod.ext
-    · rfl
-    · funext who
-      change exclusionReadoutUtility setup parameter
-          (fun outcome owner => valuation outcome owner +
-            setup.program.publicTransfers outcome.2 owner)
-          (fun owner => exitValuation owner + exitTransfer owner) readout who -
-        exclusionReadoutUtility setup parameter valuation exitValuation readout who =
-          exclusionReadoutUtility setup parameter
-            (fun outcome owner => setup.program.publicTransfers outcome.2 owner)
-            exitTransfer readout who
-      rw [exclusionReadoutUtility_add setup parameter valuation
-        (fun outcome owner => setup.program.publicTransfers outcome.2 owner)
-        exitValuation exitTransfer]
-      ring)
+      exitCompatible) observe audit deposit _
+  apply utilityLaw.trans
+  rw [PMF.map_comp]
+  congr 1
+  funext readout
+  apply Prod.ext
+  · rfl
+  · funext who
+    exact exclusionReadoutUtility_add setup parameter valuation
+      (fun outcome owner => setup.program.publicTransfers outcome.2 owner)
+      exitValuation exitTransfer readout who
 
 end Vegas

@@ -40,6 +40,7 @@ def setup : Setup (Player := Bool) (L := simpleExpr) where
   obligations := ∅
   program := .ret []
   accounts := rfl
+  exitTransfers := fun _ => 0
 
 def signal (state : State simpleExpr context) : Bool := state.get .here
 

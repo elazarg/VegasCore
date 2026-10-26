@@ -48,6 +48,7 @@ def setup : Setup (Player := Player) (L := simpleExpr) where
   obligations := {0}
   program := program
   accounts := rfl
+  exitTransfers := fun _ => 0
 
 abbrev compiled := graph setup
 abbrev event : compiled.EventId := ⟨0, by decide⟩

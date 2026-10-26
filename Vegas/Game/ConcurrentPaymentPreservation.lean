@@ -64,35 +64,17 @@ theorem programPayments_bounded (setup : Setup (Player := Player) (L := L))
 
 end ConcurrentPayoffs
 
-namespace ConcurrentTerminalObservation
 
-/-- Change only the monetary coordinate: every original input, typed terminal
-state and public-result coordinate is retained. Absent readout keeps zero valuation. -/
-def cashReadout (setup : Setup (Player := Player) (L := L))
-    (valuation : State L setup.program.terminalCtx → Player → ℝ)
-    (observation : ConcurrentTerminalObservation setup) : ConcurrentTerminalObservation setup :=
-  { observation with netPayoffs := fun who => observation.netPayoffs who -
-      observation.terminalState.elim 0 (fun terminal => valuation terminal who) }
-
-omit [Fintype Player] in
-theorem cashReadout_read (setup : Setup (Player := Player) (L := L))
-    (valuation : State L setup.program.terminalCtx → Player → ℝ)
-    (terminal : Option (State L setup.program.terminalCtx)) (payoffs : Player → ℝ) :
-    cashReadout setup valuation (read setup terminal payoffs) =
-      read setup terminal (fun who => payoffs who -
-        terminal.elim 0 (fun state => valuation state who)) := rfl
-
-end ConcurrentTerminalObservation
 
 /-- The intended joint law with program-computed cash in place of utility. -/
 def concurrentSourceCashLaw (setup : Setup (Player := Player) (L := L))
     (source : setup.intendedModel.BehavioralAssessment) :
-    PMF (ConcurrentTerminalObservation setup) :=
+    PMF (TerminalObservation setup) :=
   (setup.intendedModel.runBehavioralTerminalFrom
     setup.intended_bounded.wellFoundedHistories source.strategy
     setup.intendedProtocol.initHistory).map fun final =>
       let terminal := setup.protocolReadout final.state
-      ConcurrentTerminalObservation.read setup terminal
+      TerminalObservation.read setup terminal
         (fun who => terminal.elim 0 (fun state =>
           setup.program.publicTransfers (setup.program.publicOutcome state) who))
 
@@ -111,12 +93,12 @@ def cashBase (exitTransfer : Player → ℝ) :=
 /-- Actual correlated audit receipts, jointly with all original outcome data. -/
 def jointCashLaw (exitTransfer : Player → ℝ) (countAudit : ConcurrentCountAudit setup)
     (target : implementation.model.BehavioralAssessment) :
-    PMF (ConcurrentTerminalObservation setup) :=
+    PMF (TerminalObservation setup) :=
   (implementation.terminalLaw target).bind fun final =>
     (TerminalAudit.settlement (implementation.cashBase exitTransfer)
       implementation.application.stateTraffic (implementation.audit countAudit)
       countAudit.deposit final.state).map fun receipts =>
-        ConcurrentTerminalObservation.read setup
+        TerminalObservation.read setup
           (phaseSourceReadout setup .concurrent implementation.runtime implementation.leaks
             final.state) receipts
 
@@ -153,20 +135,20 @@ theorem concurrent_programPayments_source_cash_law
       Player → ℝ) (source : setup.intendedModel.BehavioralAssessment) :
     ((ConcurrentPayoffs.programPayments setup valuation exitValuation exitTransfer
         lowerValuation upperValuation lowerTransfer upperTransfer).jointLaw source).map
-        (ConcurrentTerminalObservation.cashReadout setup valuation) =
+        (TerminalObservation.cashReadout setup valuation) =
       concurrentSourceCashLaw setup source := by
   unfold ConcurrentPayoffs.jointLaw concurrentSourceCashLaw
   rw [PMF.map_comp]
   congr 1
   funext final
-  rw [Function.comp_apply, ConcurrentTerminalObservation.cashReadout_read]
-  apply congrArg (ConcurrentTerminalObservation.read setup (setup.protocolReadout final.state))
+  rw [Function.comp_apply, TerminalObservation.cashReadout_read]
+  apply congrArg (TerminalObservation.read setup (setup.protocolReadout final.state))
   funext who
   cases setup.protocolReadout final.state <;>
     simp [ConcurrentPayoffs.programPayments]
 
-/-- On the clean, unexcluded support delivered by the original theorem, the
-inverse valuation readout is the law of actual audited monetary receipts. -/
+/-- On unexcluded support, inverse valuation recovers actual audited cash,
+including any correlated charges. Audit cleanliness is unnecessary. -/
 theorem concurrent_programPayments_target_cash_law
     (setup : Setup (Player := Player) (L := L))
     (implementation : ReservedConcurrentImplementation setup)
@@ -177,39 +159,46 @@ theorem concurrent_programPayments_target_cash_law
     (target : implementation.model.BehavioralAssessment)
     (noExclusions : ∀ final ∈ (implementation.terminalLaw target).support, ∀ who,
       ¬ PhaseExcluded setup .concurrent implementation.runtime implementation.leaks who final.state)
-    (noCharges : ∀ final ∈ (implementation.terminalLaw target).support, ∀ who,
-      TerminalAudit.charge implementation.application.stateTraffic
-        (implementation.audit countAudit) final.state who = 0) :
+ :
     (implementation.jointLaw
         (ConcurrentPayoffs.programPayments setup valuation exitValuation exitTransfer
           lowerValuation upperValuation lowerTransfer upperTransfer) countAudit target).map
-        (ConcurrentTerminalObservation.cashReadout setup valuation) =
+        (TerminalObservation.cashReadout setup valuation) =
       implementation.jointCashLaw exitTransfer countAudit target := by
   unfold ReservedConcurrentImplementation.jointLaw ReservedConcurrentImplementation.jointCashLaw
   rw [PMF.map_bind]
   apply bind_congr_on_support _
   intro final supported
-  rw [TerminalAudit.settlement_clean _ _ _ _ _ (noCharges final supported),
-    TerminalAudit.settlement_clean _ _ _ _ _ (noCharges final supported)]
-  simp only [PMF.pure_map]
+  have baseAdd : implementation.base
+      (ConcurrentPayoffs.programPayments setup valuation exitValuation exitTransfer
+        lowerValuation upperValuation lowerTransfer upperTransfer) =
+      fun state who =>
+        phaseExclusionBase setup .concurrent implementation.runtime implementation.leaks
+          valuation exitValuation state who + implementation.cashBase exitTransfer state who := by
+    funext state who
+    exact phaseExclusionBase_add setup .concurrent implementation.runtime implementation.leaks
+      valuation _ exitValuation exitTransfer state who
+  rw [baseAdd, ← TerminalAudit.settlement_add_valuation
+    (phaseExclusionBase setup .concurrent implementation.runtime implementation.leaks
+      valuation exitValuation) (implementation.cashBase exitTransfer)]
+  simp only [PMF.map_comp, Function.comp_def]
   congr 1
-  rw [ConcurrentTerminalObservation.cashReadout_read]
-  apply congrArg (ConcurrentTerminalObservation.read setup _)
+  funext receipts
+  rw [TerminalObservation.cashReadout_read]
+  apply congrArg (TerminalObservation.read setup _)
   funext who
   have clear := noExclusions final supported who
   cases current : final.state with
   | none =>
-    simp only [ReservedConcurrentImplementation.base,
-      ReservedConcurrentImplementation.cashBase, phaseExclusionBase, phaseSourceReadout,
-      Option.bind_none, Option.elim_none, sub_zero]
+    simp only [phaseExclusionBase, phaseSourceReadout,
+      Option.bind_none, Option.elim_none, zero_add, sub_zero]
   | some control =>
     have excluded : who ∉ control.execution.application.current.excluded := by
       simpa only [current, PhaseExcluded] using clear
-    simp only [ReservedConcurrentImplementation.base,
-      ReservedConcurrentImplementation.cashBase, phaseExclusionBase, excluded,
-      ↓reduceIte, ConcurrentPayoffs.programPayments]
+    simp only [phaseExclusionBase, excluded, ite_false]
     cases phaseSourceReadout setup .concurrent implementation.runtime implementation.leaks
         (some control) <;> simp
+
 
 /-- Separate valuation/payment bounds and a constant exit valuation instantiate
 the original concurrent SE theorem. Every original assumption and quantifier is
@@ -252,12 +241,12 @@ theorem concurrent_programPayments_sequential_preservation
   obtain ⟨target, preserved⟩ := concurrentRawSequentialPreservation setup implementation payoffs
     countAudit ⟨operational, bounded, funded⟩ source equilibrium
   refine ⟨target, preserved, ?_⟩
-  have cashLaw := congrArg (PMF.map (ConcurrentTerminalObservation.cashReadout setup valuation))
+  have cashLaw := congrArg (PMF.map (TerminalObservation.cashReadout setup valuation))
     preserved.jointLaw
   rw [concurrent_programPayments_source_cash_law,
     concurrent_programPayments_target_cash_law setup implementation valuation exitValuation
       exitTransfer lowerValuation upperValuation lowerTransfer upperTransfer countAudit target
-      preserved.noExclusions preserved.noCharges] at cashLaw
+      preserved.noExclusions] at cashLaw
   exact cashLaw
 
 end Vegas

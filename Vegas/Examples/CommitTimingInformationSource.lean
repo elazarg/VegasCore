@@ -57,6 +57,7 @@ def setup : Setup (Player := Player) (L := simpleExpr) where
   obligations := ∅
   program := program
   accounts := rfl
+  exitTransfers := fun _ => 0
 
 @[simp] theorem initialParameter_sourceInitial (bit : Bool) :
     initialParameter (sourceInitial bit) = bit := rfl

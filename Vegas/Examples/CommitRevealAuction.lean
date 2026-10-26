@@ -47,6 +47,7 @@ def setup : Setup (Player := Player) (L := simpleExpr) where
   obligations := ∅
   program := program
   accounts := rfl
+  exitTransfers := fun _ => 0
 
 /-- Alice binds the supplied report and always discloses it. -/
 def alicePolicy (report : Int) : BehavioralPolicy Player.alice program :=

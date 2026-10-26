@@ -126,6 +126,7 @@ def setup (penalty : Int) : Setup (Player := Player) (L := simpleExpr) where
   obligations := ∅
   program := program penalty
   accounts := rfl
+  exitTransfers := fun _ => -penalty
 
 instance (penalty : Int) : (setup penalty).FiniteInitialLaw where
   support_finite := by

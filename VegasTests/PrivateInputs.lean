@@ -28,6 +28,7 @@ private def inputOnly (types : Player → Int) : SourceProgram.Setup
   obligations := ∅
   program := .ret []
   accounts := rfl
+  exitTransfers := fun _ => 0
 
 example : commitmentNames context = ∅ := rfl
 example : SourcePublicCtx simpleExpr context = [] := rfl

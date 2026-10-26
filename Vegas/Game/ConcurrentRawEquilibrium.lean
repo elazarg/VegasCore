@@ -670,16 +670,16 @@ theorem concurrentRawSequentialPreservation_of_local_comparisons
     payoffs.utility payoffs.excludedPayoff honestLimit.strategy limit.strategy extension Hs
   have countedObservation :
       ((N).runBehavioralTerminalFrom countedCertificate counted.strategy (E).initHistory).map
-        (fun final => ConcurrentTerminalObservation.read setup
+        (fun final => TerminalObservation.read setup
           (phaseSourceReadout setup .concurrent implementation.runtime implementation.leaks
             final.state) (implementation.base payoffs final.state)) =
         payoffs.jointLaw honestLimit := by
     let project := fun outcome : Outcome =>
-      ConcurrentTerminalObservation.read setup outcome.2.2.1 outcome.2.2.2
+      TerminalObservation.read setup outcome.2.2.1 outcome.2.2.2
     have countedProjected := congrArg (PMF.map project) countedLaw
     have sourceProjected := congrArg (PMF.map fun pair :
         Option (State L setup.program.terminalCtx) × (Player → ℝ) =>
-      ConcurrentTerminalObservation.read setup pair.1 pair.2) sourceJoint
+      TerminalObservation.read setup pair.1 pair.2) sourceJoint
     rw [countedTerminal]
     unfold ConcurrentPayoffs.jointLaw
     rw [setup.intendedModel.runBehavioralTerminalFrom_initHistory
@@ -706,7 +706,7 @@ theorem concurrentRawSequentialPreservation_of_local_comparisons
   · have projected := congrArg (PMF.map fun pair :
         (implementation.rawMenu.protocol implementation.initial implementation.horizon
           implementation.scheduler).History × (Player → ℝ) =>
-      ConcurrentTerminalObservation.read setup
+      TerminalObservation.read setup
         (phaseSourceReadout setup .concurrent implementation.runtime implementation.leaks
           pair.1.state) pair.2) settlementLaw
     have sameState (history : (E).History) :
@@ -715,7 +715,7 @@ theorem concurrentRawSequentialPreservation_of_local_comparisons
           implementation.scheduler).history history).state = history.state := rfl
     have projectedLaw :
         ((N).runBehavioralTerminalFrom countedCertificate counted.strategy (E).initHistory).map
-          (fun final => ConcurrentTerminalObservation.read setup
+          (fun final => TerminalObservation.read setup
             (phaseSourceReadout setup .concurrent implementation.runtime implementation.leaks
               final.state) (implementation.base payoffs final.state)) =
           implementation.jointLaw payoffs countAudit raw := by

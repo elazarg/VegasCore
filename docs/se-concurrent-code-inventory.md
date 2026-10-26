@@ -19,7 +19,7 @@ names the authentic evidence service and settlement funding. Implementation
 together. The top-level proposition therefore reads: every valid fixed
 implementation preserves every intended source equilibrium. Its
 `PreservesAssessment` conclusion names the raw equilibrium, one joint law of
-`ConcurrentTerminalObservation`, and supportwise zero exclusions and charges.
+`TerminalObservation`, and supportwise zero exclusions and charges.
 
 The [hypothesis instance](../VegasTests/ConcurrentRawHypotheses.lean) checks
 joint validity for two concurrently ready owners,

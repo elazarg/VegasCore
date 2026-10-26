@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.IntendedPreservation
+import Vegas.Game.TerminalObservation
 import Vegas.Game.PhaseExclusionPayoff
 import Vegas.Game.PhaseOnePacketExtension
 import Vegas.Pending.ReservedEpochResources
@@ -60,28 +61,6 @@ structure ConcurrentCountAudit (setup : Setup (Player := Player) (L := L)) where
   deliveryRate : Player → ℝ
   deposit : Player → ℝ
 
-/-- The complete observation whose JOINT law must be preserved. The four fields
-name the four outcome coordinates, including the entire payoff vector. -/
-structure ConcurrentTerminalObservation (setup : Setup (Player := Player) (L := L)) where
-  initialInputs : Option (State L setup.context)
-  terminalState : Option (State L setup.program.terminalCtx)
-  publicResult : Option (PublicOutcome setup.program)
-  netPayoffs : Player → ℝ
-
-namespace ConcurrentTerminalObservation
-
-/-- Both games use this same fixed reader; no alternative input decoder is a
-parameter of the preservation proposition. -/
-def read (setup : Setup (Player := Player) (L := L))
-    (terminal : Option (State L setup.program.terminalCtx)) (netPayoffs : Player → ℝ) :
-    ConcurrentTerminalObservation setup where
-  initialInputs := terminal.map (initialState setup.program)
-  terminalState := terminal
-  publicResult := terminal.map (publicOutcome setup.program)
-  netPayoffs := netPayoffs
-
-end ConcurrentTerminalObservation
-
 namespace ConcurrentPayoffs
 
 variable {setup : Setup (Player := Player) (L := L)} (payoffs : ConcurrentPayoffs setup)
@@ -108,12 +87,12 @@ def SourceEquilibrium (source : setup.intendedModel.BehavioralAssessment) : Prop
 
 /-- The original initialized source law, with all four coordinates retained. -/
 def jointLaw (source : setup.intendedModel.BehavioralAssessment) :
-    PMF (ConcurrentTerminalObservation setup) :=
+    PMF (TerminalObservation setup) :=
   (setup.intendedModel.runBehavioralTerminalFrom
     setup.intended_bounded.wellFoundedHistories source.strategy
     setup.intendedProtocol.initHistory).map fun final =>
       let terminal := setup.protocolReadout final.state
-      ConcurrentTerminalObservation.read setup terminal
+      TerminalObservation.read setup terminal
         (fun who => terminal.elim 0 (fun state => payoffs.utility state who))
 
 end ConcurrentPayoffs
@@ -203,11 +182,11 @@ def auditedUtility (payoffs : ConcurrentPayoffs setup) (countAudit : ConcurrentC
 than replacing its whole realized payoff vector by expected utilities. -/
 def jointLaw (payoffs : ConcurrentPayoffs setup) (countAudit : ConcurrentCountAudit setup)
     (target : implementation.model.BehavioralAssessment) :
-    PMF (ConcurrentTerminalObservation setup) :=
+    PMF (TerminalObservation setup) :=
   (implementation.terminalLaw target).bind fun final =>
     (TerminalAudit.settlement (implementation.base payoffs) implementation.application.stateTraffic
       (implementation.audit countAudit) countAudit.deposit final.state).map fun netPayoffs =>
-        ConcurrentTerminalObservation.read setup
+        TerminalObservation.read setup
           (phaseSourceReadout setup .concurrent implementation.runtime implementation.leaks
             final.state) netPayoffs
 

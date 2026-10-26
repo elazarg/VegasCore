@@ -48,6 +48,7 @@ def fairSetup : SourceProgram.Setup (Player := Player) (L := simpleExpr) where
   obligations := {secret}
   program := program
   accounts := rfl
+  exitTransfers := fun _ => 0
 
 /-- Bob receives no value for Alice's private cell in either world. This is
 the information-theoretic reason one shared guessing policy cannot optimize
